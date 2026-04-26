@@ -325,6 +325,28 @@ final class ProjectDocument: ObservableObject {
             style.backgroundOpacity = 0.74
             style.foregroundColor = .cyan
         }
+        if let recommended = type.defaultNumericPreset {
+            style.textPreset = recommended
+            if let tokens = recommended.recommendedTokens {
+                style.fontName = tokens.fontName
+                style.fontWeight = tokens.fontWeight
+                style.fontSize = tokens.fontSize
+                style.textAlignment = tokens.textAlignment
+                style.showLabel = tokens.showLabel
+                style.showUnit = tokens.showUnit
+                style.backgroundEnabled = tokens.backgroundEnabled
+                if let bg = tokens.backgroundColor {
+                    style.backgroundColor = bg
+                }
+                if let opacity = tokens.backgroundOpacity {
+                    style.backgroundOpacity = opacity
+                }
+                style.backgroundRadius = tokens.backgroundRadius
+                if let accent = tokens.accentColor {
+                    style.accentColor = accent
+                }
+            }
+        }
         let element = OverlayElement(
             type: type,
             position: CGPoint(x: 0.5, y: 0.5),
@@ -650,6 +672,38 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].style.textPreset = textPreset
+    }
+
+    /// Applies an `OverlayTextPreset` and, when the preset declares
+    /// recommended typography/style tokens, snaps fontName/fontSize/
+    /// fontWeight/textAlignment/showLabel/showUnit/backgroundEnabled/
+    /// accentColor to those tokens so users get the intended look.
+    func applyOverlayTextPreset(_ elementID: OverlayElement.ID, textPreset: OverlayTextPreset) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.textPreset = textPreset
+        guard let tokens = textPreset.recommendedTokens else { return }
+        var style = overlayLayout.elements[index].style
+        style.fontName = tokens.fontName
+        style.fontWeight = tokens.fontWeight
+        style.fontSize = tokens.fontSize
+        style.textAlignment = tokens.textAlignment
+        style.showLabel = tokens.showLabel
+        style.showUnit = tokens.showUnit
+        style.backgroundEnabled = tokens.backgroundEnabled
+        if let bg = tokens.backgroundColor {
+            style.backgroundColor = bg
+        }
+        if let opacity = tokens.backgroundOpacity {
+            style.backgroundOpacity = opacity
+        }
+        style.backgroundRadius = tokens.backgroundRadius
+        if let accent = tokens.accentColor {
+            style.accentColor = accent
+        }
+        overlayLayout.elements[index].style = style
     }
 
     func setOverlayGaugePreset(_ elementID: OverlayElement.ID, gaugePreset: OverlayGaugePreset) {

@@ -1,6 +1,6 @@
 # Running Overlay Product Requirements
 
-Last updated: 2026-04-26
+Last updated: 2026-04-26 (Running Gauge inspector dense layout)
 
 ## 1. Product Summary
 
@@ -295,8 +295,9 @@ Current implementation status:
 - Numeric overlays (heart rate, pace, calories, elapsed time, real time, distance, elevation, cadence, power) use the dense `NumericOverlayDetailView` Inspector with Content, Layout, Typography, Color, Background, and Effects sections matching `docs/design/numeric-overlay-ui.md`.
 - Numeric overlay style supports per-overlay unit option, label/unit visibility toggles, custom label text, rotation, text alignment, accent color, an explicit background enabled flag with background color/radius/padding X/Y, and an explicit shadow enabled flag with shadow offset X/Y. New fields decode with safe defaults so existing projects and templates remain compatible.
 - Visibility, lock, generic opacity, and metric reassignment controls are deferred until backed by persistent project model fields.
-- Selected text overlays expose a built-in style picker as the first Inspector control, with Minimal, Pill Badge, Metric Card, Big Number, Sport Watch, and Split Label presets.
-- Selected Running Gauge overlays expose a gauge style picker with Minimal Sport, High Contrast, Trail Adventure, Tech Future, and Retro Digital presets.
+- Selected text overlays expose a built-in style picker as the first Inspector control, with Minimal, Pill Badge, Metric Card, Big Number, Sport Watch, Split Label, Inline Ghost, Accent Bar, Sport Neon, and Serif Editorial presets.
+- Numeric overlay presets carry recommended typography tokens (font family, weight, size, alignment, label/unit visibility, background, accent color); selecting a preset snaps those fields so the overlay matches the design intent without further tuning.
+- Selected Running Gauge overlays use the dense `RunningGaugeOverlayDetailView` Inspector with Style, Layout, Typography, Color, and Background sections that share the exact tokens, row heights, controls, and section disclosure behavior of `NumericOverlayDetailView`. The Style section exposes a gauge preset picker with Minimal Sport, High Contrast, Trail Adventure, Tech Future, and Retro Digital presets; Layout offers the 9-cell anchor grid plus X/Y, Scale, and Rotation; Typography offers Font, Size, and Weight; Color offers an accent swatch strip wired to `foregroundColor`; Background offers a single Opacity slider for the gauge disc.
 - Space starts/stops playhead playback, and the overlay values update as playhead time changes.
 - Left and right arrows move the timeline playhead by exactly one project frame for fine timing checks.
 - Timeline ruler click/drag updates the current playhead.

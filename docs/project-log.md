@@ -2,6 +2,82 @@
 
 ## 2026-04-26
 
+### Running Gauge Inspector — Dense Layout Aligned With Numeric Overlay
+
+Summary:
+
+- Added `Sources/RunningOverlay/UI/RunningGaugeOverlayDetailView.swift`, a Running Gauge–specific Inspector panel that mirrors the dense design language of `NumericOverlayDetailView`. It reuses the same `NumericTokens` (row height 32, control height 28, panel padding 12/8, control radius 5, monospaced numeric font) and the shared dense components (`InspectorDenseRow`, `InspectorDenseSliderRow`, `InspectorDenseAxisField`, `InspectorDenseSegmented`, `InspectorDenseSwatchStrip`, `InspectorAnchorGrid`, `InspectorDenseMenuLabel`) so the two inspectors are visually identical pixel-for-pixel in spacing, typography, borders, and section disclosure behavior.
+- The gauge panel exposes only the parameters the gauge renderer actually consumes, organised into the same five-section pattern used by the numeric inspector:
+  - **Style** — gauge preset menu (Minimal Sport / High Contrast / Trail Adventure / Tech Future / Retro Digital).
+  - **Layout** — 9-cell anchor grid, X/Y position fields, Scale and Rotation sliders.
+  - **Typography** — Font menu, Size slider (drives all internal value/label/unit sub-sizes), Weight segmented control.
+  - **Color** — Accent swatch strip (drives the progress arc and value text via `foregroundColor`).
+  - **Background** — Opacity slider for the circular gauge background disc.
+- Header matches the numeric overlay layout: back chevron, type icon tile, title plus a "Gauge" caption pill, trailing destructive delete button, and a `Reset` / `Done` footer with the same `EditorSecondaryButtonStyle` / `EditorPrimaryButtonStyle` pairing.
+- Updated `ParameterPanelView.body` so the overlay element router dispatches `.runningGauge` to the new dense view; numeric overlays still route to `NumericOverlayDetailView` and the remaining non-numeric types (currently only `.routeMap`) keep using the legacy `OverlayDetailView`.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/RunningGaugeOverlayDetailView.swift` (new)
+- `Sources/RunningOverlay/UI/ParameterPanelView.swift`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`. Build succeeded.
+
+### Numeric Overlay Presets — Canonical 10 (Minimal Clean → Digital Watch)
+
+Summary:
+
+- Adopted the brief in `assets/image-413a701b-166c-42e5-947c-31b27a732e25.png` as the canonical numeric overlay preset system. The 10 presets exposed in the inspector are: Minimal Clean, Minimal Label, Pill, Metric Card, Big Number, Split Label, Neon Glow, Racing Stripe, Editorial, Digital Watch.
+- Added five new `OverlayTextPreset` cases (`.minimalLabel`, `.neonGlow`, `.racingStripe`, `.editorial`, `.digitalWatch`) and renamed display labels for the existing five reused cases (`.minimal` → "Minimal Clean", `.pillBadge` → "Pill", etc.).
+- Refreshed `OverlayPresetTokens` to also carry `backgroundColor`, `backgroundOpacity`, and `backgroundRadius`, so applying a preset can fully snap the background look (e.g. Pill → black 48% capsule, Digital Watch → black 60% rounded with phosphor-green accent border).
+- Recommended tokens are now defined for all 10 canonical presets. `ProjectDocument.applyOverlayTextPreset` writes the tokens through to `OverlayStyle` and `addOverlayElement(_:)` seeds new numeric elements with the type's recommended preset (e.g. `.power` → Racing Stripe, `.elapsedTime` → Digital Watch, `.heartRate`/`.cadence` → Pill).
+- Replaced the preset preview/export bodies for the canonical 10 in `PreviewCanvasView` (`minimalCleanView`, `minimalLabelView`, `pillView`, `splitLabelView`, `neonGlowView`, `racingStripeView`, `editorialView`, `digitalWatchView`) and `OverlayFrameRenderer` (`renderMinimalLabel`, `renderNeonGlow`, `renderRacingStripe`, `renderEditorial`, `renderDigitalWatch`). Added matching `presetTextRect` sizing for each new layout.
+- The numeric inspector preset menu and the text-preset row in `ParameterPanelView` both now iterate `OverlayTextPreset.numericPresets` (the 10 canonical cases) so legacy / deprecated cases (`.sportWatch`, `.inlineGhost`, `.accentBar`, `.sportNeon`, `.serifEditorial`) remain decodable for old projects but never appear in the picker.
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/OverlayElement.swift`
+- `Sources/RunningOverlay/Overlay/OverlayRenderModel.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `Sources/RunningOverlay/UI/NumericOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/ParameterPanelView.swift`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+- Ran `swift test`. All 51 tests passed.
+
+### Numeric Overlay Visual Presets — Inline Ghost / Accent Bar / Sport Neon / Serif Editorial
+
+Summary:
+
+- Added four new `OverlayTextPreset` cases for numeric overlays: `.inlineGhost`, `.accentBar`, `.sportNeon`, `.serifEditorial`. Each follows the design brief in `assets/image-621dbbba-3e2f-42df-87df-80810a9c2be0.png`.
+- Implemented preview rendering for the new presets in `TextPresetOverlayView`, including 0.5 px rules, accent bars/dots, uppercase tracked labels, and Georgia serif numerals.
+- Implemented matching export rendering in `OverlayFrameRenderer` (`renderInlineGhost` / `renderAccentBar` / `renderSportNeon` / `renderSerifEditorial`) plus per-preset bounding-box sizing in `presetTextRect`. `drawText` now accepts an optional foreground color so per-element opacity and accent tints work without overriding `OverlayStyle.foregroundColor`.
+- Added `OverlayPresetTokens` and `OverlayTextPreset.recommendedTokens`. The new `ProjectDocument.applyOverlayTextPreset` setter snaps `fontName`, `fontSize`, `fontWeight`, `textAlignment`, `showLabel`, `showUnit`, `backgroundEnabled`, and `accentColor` to the brief's tokens (e.g. Sport Neon → 36 pt heavy, cyan accent #22d3ee, transparent background) when the user picks a preset.
+- Added a `Style` row to the Content section of the numeric Inspector so users can pick any preset (existing or new) from the dense panel; selecting a preset routes through `applyOverlayTextPreset` so token snapping is undoable and Reset still works.
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/OverlayElement.swift`
+- `Sources/RunningOverlay/Overlay/OverlayRenderModel.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `Sources/RunningOverlay/UI/NumericOverlayDetailView.swift`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+- Ran `swift test`. All 51 tests passed.
+
 ### Numeric Overlay Preview Wiring & Inspector Polish
 
 Summary:

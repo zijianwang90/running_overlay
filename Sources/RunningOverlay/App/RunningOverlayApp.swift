@@ -6,6 +6,7 @@ struct RunningOverlayApp: App {
     @StateObject private var project = ProjectDocument()
 
     init() {
+        BundledFonts.registerAll()
         NSApplication.shared.setActivationPolicy(.regular)
         NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
         DispatchQueue.main.async {

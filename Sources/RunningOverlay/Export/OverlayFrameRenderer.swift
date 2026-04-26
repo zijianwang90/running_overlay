@@ -198,6 +198,440 @@ struct OverlayFrameRenderer {
             drawText(renderLayout.components.value, for: element, fontSize: valueFontSize, in: CGRect(x: rect.minX, y: rect.minY + renderLayout.labelFontSize * 1.85, width: rect.width, height: valueFontSize * 1.18), renderLayout: renderLayout)
             let valueWidth = textSize(renderLayout.components.value, for: element, fontSize: valueFontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY).width
             drawText(renderLayout.components.unit, for: element, fontSize: renderLayout.unitFontSize, in: CGRect(x: rect.minX + valueWidth + renderLayout.horizontalPadding * 0.65, y: rect.minY + renderLayout.labelFontSize * 1.85 + valueFontSize * 0.35, width: rect.width, height: renderLayout.unitFontSize * 1.25), renderLayout: renderLayout)
+        case .minimalLabel:
+            renderMinimalLabel(element: element, renderLayout: renderLayout, rect: rect, colors: colors)
+        case .neonGlow:
+            renderNeonGlow(element: element, renderLayout: renderLayout, rect: rect, colors: colors)
+        case .racingStripe:
+            renderRacingStripe(element: element, renderLayout: renderLayout, rect: rect, colors: colors)
+        case .editorial:
+            renderEditorial(element: element, renderLayout: renderLayout, rect: rect, colors: colors)
+        case .digitalWatch:
+            renderDigitalWatch(element: element, renderLayout: renderLayout, rect: rect, colors: colors)
+        case .inlineGhost:
+            renderInlineGhost(element: element, renderLayout: renderLayout, rect: rect, colors: colors)
+        case .accentBar:
+            renderAccentBar(element: element, renderLayout: renderLayout, rect: rect, colors: colors)
+        case .sportNeon:
+            renderSportNeon(element: element, renderLayout: renderLayout, rect: rect, colors: colors)
+        case .serifEditorial:
+            renderSerifEditorial(element: element, renderLayout: renderLayout, rect: rect, colors: colors)
+        }
+    }
+
+    private static func renderMinimalLabel(
+        element: OverlayElement,
+        renderLayout: OverlayTextRenderLayout,
+        rect: CGRect,
+        colors: TextPresetColors
+    ) {
+        let foreground = colors.foreground
+        var cursorY = rect.maxY
+        if element.style.showLabel, !renderLayout.components.label.isEmpty {
+            cursorY -= renderLayout.labelFontSize * 1.4
+            drawText(
+                renderLayout.components.label.uppercased(),
+                for: element,
+                fontSize: renderLayout.labelFontSize,
+                in: CGRect(x: rect.minX, y: cursorY, width: rect.width, height: renderLayout.labelFontSize * 1.25),
+                renderLayout: renderLayout,
+                color: foreground.withAlphaComponent(0.72)
+            )
+        }
+        cursorY -= renderLayout.fontSize * 1.10
+        let valueWidth = textSize(renderLayout.components.value, for: element, fontSize: renderLayout.fontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY).width
+        drawText(
+            renderLayout.components.value,
+            for: element,
+            fontSize: renderLayout.fontSize,
+            in: CGRect(x: rect.minX, y: cursorY, width: rect.width, height: renderLayout.fontSize * 1.25),
+            renderLayout: renderLayout,
+            color: foreground
+        )
+        if element.style.showUnit, !renderLayout.components.unit.isEmpty {
+            drawText(
+                renderLayout.components.unit,
+                for: element,
+                fontSize: renderLayout.unitFontSize,
+                in: CGRect(x: rect.minX + valueWidth + renderLayout.fontSize * 0.16, y: cursorY + renderLayout.fontSize * 0.42, width: rect.width, height: renderLayout.unitFontSize * 1.25),
+                renderLayout: renderLayout,
+                color: foreground.withAlphaComponent(0.92)
+            )
+        }
+    }
+
+    private static func renderNeonGlow(
+        element: OverlayElement,
+        renderLayout: OverlayTextRenderLayout,
+        rect: CGRect,
+        colors: TextPresetColors
+    ) {
+        let accent = NSColor(element.style.accentColor)
+        let valueWidth = textSize(renderLayout.components.value, for: element, fontSize: renderLayout.fontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY).width
+        let valueRect = CGRect(x: rect.minX, y: rect.maxY - renderLayout.fontSize * 1.15, width: rect.width, height: renderLayout.fontSize * 1.25)
+        // Glow halo: stamp the value behind itself in accent color so the
+        // existing shadow attributes produce a soft halo.
+        drawText(
+            renderLayout.components.value,
+            for: element,
+            fontSize: renderLayout.fontSize,
+            in: valueRect,
+            renderLayout: renderLayout,
+            color: accent.withAlphaComponent(0.55)
+        )
+        drawText(
+            renderLayout.components.value,
+            for: element,
+            fontSize: renderLayout.fontSize,
+            in: valueRect,
+            renderLayout: renderLayout,
+            color: colors.foreground
+        )
+        if element.style.showUnit, !renderLayout.components.unit.isEmpty {
+            drawText(
+                renderLayout.components.unit,
+                for: element,
+                fontSize: renderLayout.unitFontSize,
+                in: CGRect(x: rect.minX + valueWidth + renderLayout.fontSize * 0.16, y: valueRect.minY + renderLayout.fontSize * 0.35, width: rect.width, height: renderLayout.unitFontSize * 1.25),
+                renderLayout: renderLayout,
+                color: accent.withAlphaComponent(0.95)
+            )
+        }
+    }
+
+    private static func renderRacingStripe(
+        element: OverlayElement,
+        renderLayout: OverlayTextRenderLayout,
+        rect: CGRect,
+        colors: TextPresetColors
+    ) {
+        drawRoundedRect(rect, color: colors.background, cornerRadius: renderLayout.cornerRadius)
+        strokeRoundedRect(rect, color: colors.foreground.withAlphaComponent(0.14), cornerRadius: renderLayout.cornerRadius, lineWidth: 1)
+        let stripeWidth = max(renderLayout.fontSize * 0.12, 4)
+        let stripeRect = CGRect(
+            x: rect.minX + renderLayout.horizontalPadding,
+            y: rect.minY + renderLayout.verticalPadding,
+            width: stripeWidth,
+            height: rect.height - renderLayout.verticalPadding * 2
+        )
+        drawRoundedRect(stripeRect, color: NSColor(element.style.accentColor), cornerRadius: 2)
+        let textOriginX = stripeRect.maxX + renderLayout.fontSize * 0.34
+        let labelY = rect.minY + renderLayout.verticalPadding
+        if element.style.showLabel, !renderLayout.components.label.isEmpty {
+            drawText(
+                renderLayout.components.label.uppercased(),
+                for: element,
+                fontSize: renderLayout.labelFontSize,
+                in: CGRect(x: textOriginX, y: labelY, width: rect.width, height: renderLayout.labelFontSize * 1.25),
+                renderLayout: renderLayout,
+                color: NSColor(element.style.accentColor).withAlphaComponent(0.95)
+            )
+        }
+        let valueY = labelY + renderLayout.labelFontSize * 1.40
+        let valueWidth = textSize(renderLayout.components.value, for: element, fontSize: renderLayout.fontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY).width
+        drawText(
+            renderLayout.components.value,
+            for: element,
+            fontSize: renderLayout.fontSize,
+            in: CGRect(x: textOriginX, y: valueY, width: rect.width, height: renderLayout.fontSize * 1.25),
+            renderLayout: renderLayout
+        )
+        if element.style.showUnit, !renderLayout.components.unit.isEmpty {
+            drawText(
+                renderLayout.components.unit,
+                for: element,
+                fontSize: renderLayout.unitFontSize,
+                in: CGRect(x: textOriginX + valueWidth + renderLayout.fontSize * 0.16, y: valueY + renderLayout.fontSize * 0.32, width: rect.width, height: renderLayout.unitFontSize * 1.25),
+                renderLayout: renderLayout,
+                color: colors.foreground.withAlphaComponent(0.92)
+            )
+        }
+    }
+
+    private static func renderEditorial(
+        element: OverlayElement,
+        renderLayout: OverlayTextRenderLayout,
+        rect: CGRect,
+        colors: TextPresetColors
+    ) {
+        let accent = NSColor(element.style.accentColor)
+        var cursorY = rect.minY
+        if element.style.showLabel, !renderLayout.components.label.isEmpty {
+            drawText(
+                renderLayout.components.label.uppercased(),
+                for: element,
+                fontSize: renderLayout.labelFontSize,
+                in: CGRect(x: rect.minX, y: cursorY, width: rect.width, height: renderLayout.labelFontSize * 1.25),
+                renderLayout: renderLayout,
+                color: accent
+            )
+            cursorY += renderLayout.labelFontSize * 1.45
+        }
+        let valueWidth = textSize(renderLayout.components.value, for: element, fontSize: renderLayout.fontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY).width
+        drawText(
+            renderLayout.components.value,
+            for: element,
+            fontSize: renderLayout.fontSize,
+            in: CGRect(x: rect.minX, y: cursorY, width: rect.width, height: renderLayout.fontSize * 1.18),
+            renderLayout: renderLayout
+        )
+        if element.style.showUnit, !renderLayout.components.unit.isEmpty {
+            drawText(
+                renderLayout.components.unit,
+                for: element,
+                fontSize: renderLayout.unitFontSize,
+                in: CGRect(x: rect.minX + valueWidth + renderLayout.fontSize * 0.10, y: cursorY + renderLayout.fontSize * 0.30, width: rect.width, height: renderLayout.unitFontSize * 1.25),
+                renderLayout: renderLayout,
+                color: colors.foreground.withAlphaComponent(0.92)
+            )
+        }
+        cursorY += renderLayout.fontSize * 1.15
+        drawRoundedRect(
+            CGRect(x: rect.minX, y: cursorY + renderLayout.fontSize * 0.04, width: renderLayout.fontSize * 2.2, height: 3),
+            color: accent,
+            cornerRadius: 0
+        )
+    }
+
+    private static func renderDigitalWatch(
+        element: OverlayElement,
+        renderLayout: OverlayTextRenderLayout,
+        rect: CGRect,
+        colors: TextPresetColors
+    ) {
+        let accent = NSColor(element.style.accentColor)
+        drawRoundedRect(rect, color: colors.background, cornerRadius: renderLayout.cornerRadius)
+        strokeRoundedRect(rect, color: accent.withAlphaComponent(0.70), cornerRadius: renderLayout.cornerRadius, lineWidth: 1)
+        var cursorY = rect.minY + renderLayout.verticalPadding
+        if element.style.showLabel, !renderLayout.components.label.isEmpty {
+            drawText(
+                renderLayout.components.label.uppercased(),
+                for: element,
+                fontSize: renderLayout.labelFontSize,
+                in: CGRect(x: rect.minX + renderLayout.horizontalPadding, y: cursorY, width: rect.width, height: renderLayout.labelFontSize * 1.25),
+                renderLayout: renderLayout,
+                color: accent.withAlphaComponent(0.90)
+            )
+            cursorY += renderLayout.labelFontSize * 1.40
+        }
+        let valueWidth = textSize(renderLayout.components.value, for: element, fontSize: renderLayout.fontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY).width
+        drawText(
+            renderLayout.components.value,
+            for: element,
+            fontSize: renderLayout.fontSize,
+            in: CGRect(x: rect.minX + renderLayout.horizontalPadding, y: cursorY, width: rect.width, height: renderLayout.fontSize * 1.25),
+            renderLayout: renderLayout,
+            color: accent
+        )
+        if element.style.showUnit, !renderLayout.components.unit.isEmpty {
+            drawText(
+                renderLayout.components.unit,
+                for: element,
+                fontSize: renderLayout.unitFontSize,
+                in: CGRect(x: rect.minX + renderLayout.horizontalPadding + valueWidth + renderLayout.fontSize * 0.14, y: cursorY + renderLayout.fontSize * 0.32, width: rect.width, height: renderLayout.unitFontSize * 1.25),
+                renderLayout: renderLayout,
+                color: accent.withAlphaComponent(0.95)
+            )
+        }
+    }
+
+    private static func renderInlineGhost(
+        element: OverlayElement,
+        renderLayout: OverlayTextRenderLayout,
+        rect: CGRect,
+        colors: TextPresetColors
+    ) {
+        let foreground = colors.foreground
+        var cursorY = rect.maxY
+        if element.style.showLabel, !renderLayout.components.label.isEmpty {
+            cursorY -= renderLayout.labelFontSize * 1.2
+            drawText(
+                renderLayout.components.label.uppercased(),
+                for: element,
+                fontSize: renderLayout.labelFontSize,
+                in: CGRect(x: rect.minX, y: cursorY, width: rect.width, height: renderLayout.labelFontSize * 1.25),
+                renderLayout: renderLayout,
+                color: foreground.withAlphaComponent(0.28)
+            )
+        }
+        cursorY -= renderLayout.fontSize * 1.05
+        let valueWidth = textSize(renderLayout.components.value, for: element, fontSize: renderLayout.fontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY).width
+        drawText(
+            renderLayout.components.value,
+            for: element,
+            fontSize: renderLayout.fontSize,
+            in: CGRect(x: rect.minX, y: cursorY, width: rect.width, height: renderLayout.fontSize * 1.25),
+            renderLayout: renderLayout,
+            color: foreground.withAlphaComponent(0.88)
+        )
+        if element.style.showUnit, !renderLayout.components.unit.isEmpty {
+            drawText(
+                renderLayout.components.unit,
+                for: element,
+                fontSize: renderLayout.unitFontSize,
+                in: CGRect(x: rect.minX + valueWidth + renderLayout.fontSize * 0.18, y: cursorY + renderLayout.fontSize * 0.62, width: rect.width, height: renderLayout.unitFontSize * 1.25),
+                renderLayout: renderLayout,
+                color: foreground.withAlphaComponent(0.30)
+            )
+        }
+    }
+
+    private static func renderAccentBar(
+        element: OverlayElement,
+        renderLayout: OverlayTextRenderLayout,
+        rect: CGRect,
+        colors: TextPresetColors
+    ) {
+        let foreground = colors.foreground
+        let accent = NSColor(element.style.accentColor)
+        let barWidth = max(renderLayout.fontSize * 0.083, 1.5)
+        let barHeight = renderLayout.fontSize * 1.55
+        let barRect = CGRect(
+            x: rect.minX,
+            y: rect.midY - barHeight / 2,
+            width: barWidth,
+            height: barHeight
+        )
+        drawRoundedRect(barRect, color: accent, cornerRadius: max(renderLayout.fontSize * 0.06, 1))
+
+        let textX = rect.minX + barWidth + renderLayout.fontSize * 0.33
+        var cursorY = rect.maxY
+        if element.style.showLabel, !renderLayout.components.label.isEmpty {
+            cursorY -= renderLayout.labelFontSize * 1.2
+            drawText(
+                renderLayout.components.label.uppercased(),
+                for: element,
+                fontSize: renderLayout.labelFontSize,
+                in: CGRect(x: textX, y: cursorY, width: rect.width, height: renderLayout.labelFontSize * 1.25),
+                renderLayout: renderLayout,
+                color: foreground.withAlphaComponent(0.32)
+            )
+        }
+        cursorY -= renderLayout.fontSize * 1.05
+        drawText(
+            renderLayout.components.value,
+            for: element,
+            fontSize: renderLayout.fontSize,
+            in: CGRect(x: textX, y: cursorY, width: rect.width, height: renderLayout.fontSize * 1.25),
+            renderLayout: renderLayout,
+            color: foreground
+        )
+        if element.style.showUnit, !renderLayout.components.unit.isEmpty {
+            cursorY -= renderLayout.unitFontSize * 1.25
+            drawText(
+                renderLayout.components.unit,
+                for: element,
+                fontSize: renderLayout.unitFontSize,
+                in: CGRect(x: textX, y: cursorY, width: rect.width, height: renderLayout.unitFontSize * 1.25),
+                renderLayout: renderLayout,
+                color: foreground.withAlphaComponent(0.38)
+            )
+        }
+    }
+
+    private static func renderSportNeon(
+        element: OverlayElement,
+        renderLayout: OverlayTextRenderLayout,
+        rect: CGRect,
+        colors: TextPresetColors
+    ) {
+        let foreground = colors.foreground
+        let accent = NSColor(element.style.accentColor)
+        var cursorY = rect.maxY
+        if element.style.showLabel, !renderLayout.components.label.isEmpty {
+            cursorY -= renderLayout.labelFontSize * 1.25
+            drawText(
+                renderLayout.components.label.uppercased(),
+                for: element,
+                fontSize: renderLayout.labelFontSize,
+                in: CGRect(x: rect.minX, y: cursorY, width: rect.width, height: renderLayout.labelFontSize * 1.3),
+                renderLayout: renderLayout,
+                color: accent
+            )
+        }
+        cursorY -= renderLayout.fontSize * 1.05
+        drawText(
+            renderLayout.components.value,
+            for: element,
+            fontSize: renderLayout.fontSize,
+            in: CGRect(x: rect.minX, y: cursorY, width: rect.width, height: renderLayout.fontSize * 1.25),
+            renderLayout: renderLayout,
+            color: foreground
+        )
+        if element.style.showUnit, !renderLayout.components.unit.isEmpty {
+            cursorY -= renderLayout.unitFontSize * 1.6
+            let separatorWidth = renderLayout.fontSize * 0.6
+            drawRoundedRect(
+                CGRect(x: rect.minX, y: cursorY + renderLayout.unitFontSize * 0.6, width: separatorWidth, height: 0.5),
+                color: foreground.withAlphaComponent(0.10),
+                cornerRadius: 0
+            )
+            let dotSize = max(renderLayout.fontSize * 0.14, 4)
+            let dotX = rect.minX + separatorWidth + renderLayout.fontSize * 0.18
+            drawRoundedRect(
+                CGRect(x: dotX, y: cursorY + renderLayout.unitFontSize * 0.45, width: dotSize, height: dotSize),
+                color: accent,
+                cornerRadius: dotSize / 2
+            )
+            drawText(
+                renderLayout.components.unit,
+                for: element,
+                fontSize: renderLayout.unitFontSize,
+                in: CGRect(x: dotX + dotSize + renderLayout.fontSize * 0.18, y: cursorY, width: rect.width, height: renderLayout.unitFontSize * 1.25),
+                renderLayout: renderLayout,
+                color: foreground.withAlphaComponent(0.35)
+            )
+        }
+    }
+
+    private static func renderSerifEditorial(
+        element: OverlayElement,
+        renderLayout: OverlayTextRenderLayout,
+        rect: CGRect,
+        colors: TextPresetColors
+    ) {
+        let foreground = colors.foreground
+        var cursorY = rect.maxY
+        if element.style.showLabel, !renderLayout.components.label.isEmpty {
+            cursorY -= renderLayout.labelFontSize * 1.25
+            drawText(
+                renderLayout.components.label.uppercased(),
+                for: element,
+                fontSize: renderLayout.labelFontSize,
+                in: CGRect(x: rect.minX, y: cursorY, width: rect.width, height: renderLayout.labelFontSize * 1.3),
+                renderLayout: renderLayout,
+                color: foreground.withAlphaComponent(0.30),
+                alignment: .center
+            )
+        }
+        cursorY -= renderLayout.fontSize * 1.05
+        drawText(
+            renderLayout.components.value,
+            for: element,
+            fontSize: renderLayout.fontSize,
+            in: CGRect(x: rect.minX, y: cursorY, width: rect.width, height: renderLayout.fontSize * 1.25),
+            renderLayout: renderLayout,
+            color: foreground.withAlphaComponent(0.92),
+            alignment: .center
+        )
+        if element.style.showUnit, !renderLayout.components.unit.isEmpty {
+            let ruleWidth = renderLayout.fontSize * 0.78
+            cursorY -= renderLayout.fontSize * 0.18
+            drawRoundedRect(
+                CGRect(x: rect.midX - ruleWidth / 2, y: cursorY, width: ruleWidth, height: 0.5),
+                color: foreground.withAlphaComponent(0.20),
+                cornerRadius: 0
+            )
+            cursorY -= renderLayout.unitFontSize * 1.4
+            drawText(
+                renderLayout.components.unit,
+                for: element,
+                fontSize: renderLayout.unitFontSize,
+                in: CGRect(x: rect.minX, y: cursorY, width: rect.width, height: renderLayout.unitFontSize * 1.3),
+                renderLayout: renderLayout,
+                color: foreground.withAlphaComponent(0.28),
+                alignment: .center
+            )
         }
     }
 
@@ -725,6 +1159,71 @@ struct OverlayFrameRenderer {
                 width: max(spacedLabelSize.width, bigValueSize.width + unitSize.width + renderLayout.horizontalPadding * 0.65, renderLayout.fontSize * 3.5),
                 height: spacedLabelSize.height + bigValueSize.height + renderLayout.verticalPadding * 2.2
             )
+        case .inlineGhost:
+            let labelHeight = element.style.showLabel ? labelSize.height + renderLayout.fontSize * 0.06 : 0
+            let unitWidth = element.style.showUnit ? unitSize.width + renderLayout.fontSize * 0.18 : 0
+            size = CGSize(
+                width: valueSize.width + unitWidth,
+                height: labelHeight + valueSize.height
+            )
+        case .accentBar:
+            let barWidth = max(renderLayout.fontSize * 0.083, 1.5) + renderLayout.fontSize * 0.33
+            let labelHeight = element.style.showLabel ? labelSize.height : 0
+            let unitHeight = element.style.showUnit ? unitSize.height : 0
+            let textHeight = labelHeight + valueSize.height + unitHeight
+            size = CGSize(
+                width: barWidth + max(labelSize.width, valueSize.width, unitSize.width),
+                height: max(textHeight, renderLayout.fontSize * 1.55)
+            )
+        case .sportNeon:
+            let labelHeight = element.style.showLabel ? labelSize.height : 0
+            let unitHeight = element.style.showUnit ? max(unitSize.height, renderLayout.fontSize * 0.14) + renderLayout.unitFontSize * 0.6 : 0
+            size = CGSize(
+                width: max(valueSize.width, labelSize.width, unitSize.width + renderLayout.fontSize * 1.0),
+                height: labelHeight + valueSize.height + unitHeight
+            )
+        case .serifEditorial:
+            let labelHeight = element.style.showLabel ? labelSize.height : 0
+            let unitHeight = element.style.showUnit ? unitSize.height + renderLayout.fontSize * 0.36 : 0
+            size = CGSize(
+                width: max(valueSize.width, labelSize.width, renderLayout.fontSize * 0.78, unitSize.width),
+                height: labelHeight + valueSize.height + unitHeight
+            )
+        case .minimalLabel:
+            let labelHeight = element.style.showLabel ? labelSize.height + renderLayout.fontSize * 0.10 : 0
+            let unitWidth = element.style.showUnit ? unitSize.width + renderLayout.fontSize * 0.16 : 0
+            size = CGSize(
+                width: valueSize.width + unitWidth,
+                height: labelHeight + valueSize.height
+            )
+        case .neonGlow:
+            let unitWidth = element.style.showUnit ? unitSize.width + renderLayout.fontSize * 0.16 : 0
+            size = CGSize(
+                width: valueSize.width + unitWidth + renderLayout.fontSize * 0.8,
+                height: valueSize.height + renderLayout.fontSize * 0.4
+            )
+        case .racingStripe:
+            let stripeWidth = max(renderLayout.fontSize * 0.12, 4) + renderLayout.fontSize * 0.34
+            let labelHeight = element.style.showLabel ? labelSize.height + renderLayout.fontSize * 0.10 : 0
+            let unitWidth = element.style.showUnit ? unitSize.width + renderLayout.fontSize * 0.16 : 0
+            size = CGSize(
+                width: stripeWidth + max(labelSize.width, valueSize.width + unitWidth) + renderLayout.horizontalPadding * 2,
+                height: labelHeight + valueSize.height + renderLayout.verticalPadding * 2
+            )
+        case .editorial:
+            let labelHeight = element.style.showLabel ? labelSize.height + renderLayout.fontSize * 0.10 : 0
+            let unitWidth = element.style.showUnit ? unitSize.width + renderLayout.fontSize * 0.10 : 0
+            size = CGSize(
+                width: max(labelSize.width, valueSize.width + unitWidth, renderLayout.fontSize * 2.2),
+                height: labelHeight + valueSize.height + renderLayout.fontSize * 0.30
+            )
+        case .digitalWatch:
+            let labelHeight = element.style.showLabel ? labelSize.height + renderLayout.fontSize * 0.10 : 0
+            let unitWidth = element.style.showUnit ? unitSize.width + renderLayout.fontSize * 0.14 : 0
+            size = CGSize(
+                width: max(labelSize.width, valueSize.width + unitWidth) + renderLayout.horizontalPadding * 2,
+                height: labelHeight + valueSize.height + renderLayout.verticalPadding * 2
+            )
         }
 
         return CGRect(
@@ -764,6 +1263,7 @@ struct OverlayFrameRenderer {
         fontSize: Double,
         in rect: CGRect,
         renderLayout: OverlayTextRenderLayout,
+        color: NSColor? = nil,
         alignment: NSTextAlignment = .left
     ) {
         let paragraphStyle = NSMutableParagraphStyle()
@@ -775,6 +1275,9 @@ struct OverlayFrameRenderer {
             shadowOffsetY: renderLayout.shadowOffsetY
         )
         attributes[.paragraphStyle] = paragraphStyle
+        if let color {
+            attributes[.foregroundColor] = color
+        }
         NSAttributedString(string: text, attributes: attributes).draw(in: rect)
     }
 

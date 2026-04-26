@@ -40,6 +40,25 @@ struct NumericOverlayDetailView: View {
     @ViewBuilder
     private func contentSection(_ element: OverlayElement) -> some View {
         let units = OverlayUnitOption.options(for: element.type)
+        InspectorDenseRow(label: "Style") {
+            Menu {
+                ForEach(OverlayTextPreset.numericPresets) { preset in
+                    Button {
+                        project.applyOverlayTextPreset(elementID, textPreset: preset)
+                    } label: {
+                        if preset == element.style.textPreset {
+                            Label(preset.compactDisplayLabel, systemImage: "checkmark")
+                        } else {
+                            Text(preset.compactDisplayLabel)
+                        }
+                    }
+                }
+            } label: {
+                InspectorDenseMenuLabel(title: element.style.textPreset.compactDisplayLabel)
+            }
+            .menuStyle(.borderlessButton)
+            .frame(height: NumericTokens.controlHeight)
+        }
         if units.count > 1 {
             InspectorDenseRow(label: "Units") {
                 Menu {
@@ -804,6 +823,12 @@ enum NumericTokens {
     static let bodyStrongFont = Font.system(size: 12, weight: .semibold)
     static let captionFont = Font.system(size: 10, weight: .medium)
     static let numericFont = Font.system(size: 12, weight: .medium, design: .monospaced)
+}
+
+extension OverlayTextPreset {
+    var compactDisplayLabel: String {
+        label.components(separatedBy: " / ").first ?? label
+    }
 }
 
 extension OverlayElementType {

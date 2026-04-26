@@ -648,35 +648,11 @@ private struct TextPresetOverlayView: View {
         Group {
             switch layout.preset {
             case .minimal:
-                HStack(alignment: .firstTextBaseline, spacing: layout.horizontalPadding * 0.45) {
-                    if element.style.showLabel, !layout.components.label.isEmpty {
-                        Text(layout.components.label)
-                            .font(labelFont)
-                    }
-                    valueText
-                    if element.style.showUnit, !layout.components.unit.isEmpty {
-                        unitText
-                    }
-                }
-                .padding(.horizontal, layout.horizontalPadding)
-                .padding(.vertical, layout.verticalPadding)
-                .background(background)
-                .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
+                minimalCleanView
+            case .minimalLabel:
+                minimalLabelView
             case .pillBadge:
-                HStack(alignment: .firstTextBaseline, spacing: layout.horizontalPadding * 0.65) {
-                    Text(layout.components.shortLabel)
-                        .font(labelFont)
-                    Divider()
-                        .frame(height: layout.fontSize * 0.92)
-                        .background(Color.white.opacity(0.32))
-                    valueText
-                    unitText
-                }
-                .foregroundStyle(Color(element.style.foregroundColor))
-                .padding(.horizontal, layout.horizontalPadding)
-                .padding(.vertical, layout.verticalPadding)
-                .background(background)
-                .clipShape(Capsule())
+                pillView
             case .metricCard:
                 VStack(alignment: .leading, spacing: layout.verticalPadding * 0.7) {
                     Text(layout.components.label)
@@ -718,20 +694,23 @@ private struct TextPresetOverlayView: View {
                 }
                 .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
             case .splitLabel:
-                VStack(alignment: .leading, spacing: layout.verticalPadding * 0.85) {
-                    Text(layout.components.shortLabel.map(String.init).joined(separator: " "))
-                        .font(labelFont)
-                        .tracking(8)
-                    Rectangle()
-                        .fill(Color.accentColor)
-                        .frame(width: layout.fontSize * 3.5, height: max(layout.fontSize / 18, 2))
-                    HStack(alignment: .firstTextBaseline, spacing: layout.horizontalPadding * 0.65) {
-                        valueText
-                            .font(.custom(element.style.fontName, size: layout.fontSize * 1.45).weight(.bold))
-                        unitText
-                    }
-                }
-                .foregroundStyle(Color(element.style.foregroundColor))
+                splitLabelView
+            case .neonGlow:
+                neonGlowView
+            case .racingStripe:
+                racingStripeView
+            case .editorial:
+                editorialView
+            case .digitalWatch:
+                digitalWatchView
+            case .inlineGhost:
+                inlineGhostView
+            case .accentBar:
+                accentBarView
+            case .sportNeon:
+                sportNeonView
+            case .serifEditorial:
+                serifEditorialView
             }
         }
         .foregroundStyle(Color(element.style.foregroundColor))
@@ -742,6 +721,381 @@ private struct TextPresetOverlayView: View {
             x: element.style.shadowEnabled ? element.style.shadowOffsetX : 0,
             y: element.style.shadowEnabled ? element.style.shadowOffsetY : 0
         )
+    }
+
+    // MARK: - Canonical 10 numeric overlay presets
+
+    @ViewBuilder
+    private var minimalCleanView: some View {
+        let foreground = Color(element.style.foregroundColor)
+        VStack(alignment: .leading, spacing: layout.fontSize * 0.10) {
+            if element.style.showLabel, !layout.components.label.isEmpty {
+                Text(layout.components.label.uppercased())
+                    .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.medium))
+                    .tracking(layout.labelFontSize * 0.10)
+                    .foregroundStyle(foreground.opacity(0.70))
+            }
+            HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.14) {
+                Text(layout.components.value)
+                    .font(.custom(element.style.fontName, size: layout.fontSize).weight(.semibold))
+                    .tracking(-layout.fontSize * 0.012)
+                    .foregroundStyle(foreground)
+                if element.style.showUnit, !layout.components.unit.isEmpty {
+                    Text(layout.components.unit)
+                        .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
+                        .foregroundStyle(foreground.opacity(0.92))
+                }
+            }
+        }
+        .padding(.horizontal, element.style.backgroundEnabled ? layout.horizontalPadding : 0)
+        .padding(.vertical, element.style.backgroundEnabled ? layout.verticalPadding : 0)
+        .background(background)
+        .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
+    }
+
+    @ViewBuilder
+    private var minimalLabelView: some View {
+        let foreground = Color(element.style.foregroundColor)
+        VStack(alignment: .leading, spacing: layout.fontSize * 0.10) {
+            if element.style.showLabel, !layout.components.label.isEmpty {
+                Text(layout.components.label.uppercased())
+                    .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.medium))
+                    .tracking(layout.labelFontSize * 0.10)
+                    .foregroundStyle(foreground.opacity(0.72))
+            }
+            HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.14) {
+                Text(layout.components.value)
+                    .font(.custom(element.style.fontName, size: layout.fontSize).weight(.semibold))
+                    .tracking(-layout.fontSize * 0.012)
+                    .foregroundStyle(foreground)
+                if element.style.showUnit, !layout.components.unit.isEmpty {
+                    Text(layout.components.unit)
+                        .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
+                        .foregroundStyle(foreground.opacity(0.92))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var pillView: some View {
+        let foreground = Color(element.style.foregroundColor)
+        let accent = Color(element.style.accentColor)
+        let valueAndUnit = HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.14) {
+            Text(layout.components.value)
+                .font(.custom(element.style.fontName, size: layout.fontSize * 0.92).weight(.bold))
+                .tracking(-layout.fontSize * 0.009)
+                .foregroundStyle(foreground)
+            if element.style.showUnit, !layout.components.unit.isEmpty {
+                Text(layout.components.unit)
+                    .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
+                    .foregroundStyle(foreground.opacity(0.92))
+            }
+        }
+        Group {
+            if element.style.showLabel, !layout.components.label.isEmpty {
+                HStack(spacing: layout.fontSize * 0.32) {
+                    Text(layout.components.label.uppercased())
+                        .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.medium))
+                        .tracking(layout.labelFontSize * 0.10)
+                        .foregroundStyle(accent.opacity(0.92))
+                    Rectangle()
+                        .fill(foreground.opacity(0.32))
+                        .frame(width: 1, height: layout.fontSize * 0.78)
+                    valueAndUnit
+                }
+            } else {
+                valueAndUnit
+            }
+        }
+        .padding(.horizontal, layout.horizontalPadding)
+        .padding(.vertical, layout.verticalPadding)
+        .background(
+            Group {
+                if isSelected {
+                    Capsule().fill(Color.accentColor.opacity(0.45))
+                } else if element.style.backgroundEnabled {
+                    Capsule().fill(Color(element.style.backgroundColor).opacity(element.style.backgroundOpacity))
+                }
+            }
+        )
+        .overlay(
+            Capsule().stroke(foreground.opacity(0.16), lineWidth: 1)
+                .opacity(element.style.backgroundEnabled ? 1 : 0)
+        )
+    }
+
+    @ViewBuilder
+    private var splitLabelView: some View {
+        let foreground = Color(element.style.foregroundColor)
+        let accent = Color(element.style.accentColor)
+        VStack(alignment: .leading, spacing: layout.fontSize * 0.10) {
+            if element.style.showLabel, !layout.components.label.isEmpty {
+                Text(layout.components.label.uppercased())
+                    .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.semibold))
+                    .tracking(layout.labelFontSize * 0.18)
+                    .foregroundStyle(accent.opacity(0.95))
+            }
+            Rectangle()
+                .fill(accent)
+                .frame(width: layout.fontSize * 2.4, height: 2)
+            HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.14) {
+                Text(layout.components.value)
+                    .font(.custom(element.style.fontName, size: layout.fontSize).weight(.bold))
+                    .tracking(-layout.fontSize * 0.012)
+                    .foregroundStyle(foreground)
+                if element.style.showUnit, !layout.components.unit.isEmpty {
+                    Text(layout.components.unit)
+                        .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
+                        .foregroundStyle(foreground.opacity(0.92))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var neonGlowView: some View {
+        let accent = Color(element.style.accentColor)
+        let foreground = Color(element.style.foregroundColor)
+        HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.14) {
+            Text(layout.components.value)
+                .font(.custom(element.style.fontName, size: layout.fontSize).weight(.bold))
+                .tracking(-layout.fontSize * 0.010)
+                .foregroundStyle(foreground)
+                .shadow(color: accent.opacity(0.80), radius: layout.fontSize * 0.34)
+                .shadow(color: accent.opacity(0.36), radius: layout.fontSize * 0.62)
+            if element.style.showUnit, !layout.components.unit.isEmpty {
+                Text(layout.components.unit)
+                    .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.semibold))
+                    .foregroundStyle(accent.opacity(0.95))
+                    .shadow(color: accent.opacity(0.65), radius: layout.fontSize * 0.24)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var racingStripeView: some View {
+        let accent = Color(element.style.accentColor)
+        let foreground = Color(element.style.foregroundColor)
+        let stripeWidth = max(layout.fontSize * 0.12, 4)
+        let stripeGap = layout.fontSize * 0.34
+        VStack(alignment: .leading, spacing: layout.fontSize * 0.10) {
+            if element.style.showLabel, !layout.components.label.isEmpty {
+                Text(layout.components.label.uppercased())
+                    .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.bold))
+                    .tracking(layout.labelFontSize * 0.10)
+                    .foregroundStyle(accent.opacity(0.95))
+            }
+            HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.14) {
+                Text(layout.components.value)
+                    .font(.custom(element.style.fontName, size: layout.fontSize).weight(.bold))
+                    .tracking(-layout.fontSize * 0.010)
+                    .foregroundStyle(foreground)
+                if element.style.showUnit, !layout.components.unit.isEmpty {
+                    Text(layout.components.unit)
+                        .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
+                        .foregroundStyle(foreground.opacity(0.92))
+                }
+            }
+        }
+        .padding(.leading, stripeWidth + stripeGap)
+        .overlay(alignment: .leading) {
+            // Stripe lives inside the text block so it auto-sizes to the
+            // label + value height instead of stretching to the canvas.
+            RoundedRectangle(cornerRadius: 2)
+                .fill(accent)
+                .frame(width: stripeWidth)
+        }
+        .padding(.horizontal, layout.horizontalPadding)
+        .padding(.vertical, layout.verticalPadding)
+        .background(background)
+        .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: layout.cornerRadius)
+                .stroke(foreground.opacity(0.14), lineWidth: 1)
+                .opacity(element.style.backgroundEnabled ? 1 : 0)
+        )
+    }
+
+    @ViewBuilder
+    private var editorialView: some View {
+        let foreground = Color(element.style.foregroundColor)
+        let accent = Color(element.style.accentColor)
+        VStack(alignment: .leading, spacing: layout.fontSize * 0.04) {
+            if element.style.showLabel, !layout.components.label.isEmpty {
+                Text(layout.components.label.uppercased())
+                    .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.bold))
+                    .tracking(layout.labelFontSize * 0.18)
+                    .foregroundStyle(accent)
+            }
+            HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.10) {
+                Text(layout.components.value)
+                    .font(.custom(element.style.fontName, size: layout.fontSize).weight(.heavy))
+                    .tracking(-layout.fontSize * 0.018)
+                    .foregroundStyle(foreground)
+                if element.style.showUnit, !layout.components.unit.isEmpty {
+                    Text(layout.components.unit)
+                        .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
+                        .foregroundStyle(foreground.opacity(0.92))
+                }
+            }
+            Rectangle()
+                .fill(accent)
+                .frame(width: layout.fontSize * 2.2, height: 3)
+                .padding(.top, layout.fontSize * 0.04)
+        }
+    }
+
+    @ViewBuilder
+    private var digitalWatchView: some View {
+        let accent = Color(element.style.accentColor)
+        // Brian Cavalier's HTML5 digital-clock uses BankGothic Medium with
+        // saturated green + a soft glow to fake the LCD look. We do the same
+        // here: bundled BankGothic for the value, intensified accent halo.
+        let digitalFont = BundledFontName.digitalWatch
+        VStack(alignment: .leading, spacing: layout.fontSize * 0.10) {
+            if element.style.showLabel, !layout.components.label.isEmpty {
+                Text(layout.components.label.uppercased())
+                    .font(.custom(digitalFont, size: layout.labelFontSize))
+                    .tracking(layout.labelFontSize * 0.18)
+                    .foregroundStyle(accent.opacity(0.90))
+            }
+            HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.14) {
+                Text(layout.components.value)
+                    .font(.custom(digitalFont, size: layout.fontSize))
+                    .tracking(layout.fontSize * 0.020)
+                    .foregroundStyle(accent)
+                    .shadow(color: accent.opacity(0.85), radius: layout.fontSize * 0.18)
+                    .shadow(color: accent.opacity(0.45), radius: layout.fontSize * 0.42)
+                if element.style.showUnit, !layout.components.unit.isEmpty {
+                    Text(layout.components.unit)
+                        .font(.custom(digitalFont, size: layout.unitFontSize))
+                        .foregroundStyle(accent.opacity(0.95))
+                        .shadow(color: accent.opacity(0.55), radius: layout.fontSize * 0.14)
+                }
+            }
+        }
+        .padding(.horizontal, layout.horizontalPadding)
+        .padding(.vertical, layout.verticalPadding)
+        .background(background)
+        .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: layout.cornerRadius)
+                .stroke(accent.opacity(0.70), lineWidth: 1)
+        )
+    }
+
+    // MARK: - Legacy / deprecated previews kept for backward compatibility
+
+    @ViewBuilder
+    private var inlineGhostView: some View {
+        let foreground = Color(element.style.foregroundColor)
+        VStack(alignment: .leading, spacing: layout.fontSize * 0.06) {
+            if element.style.showLabel, !layout.components.label.isEmpty {
+                Text(layout.components.label.uppercased())
+                    .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.regular))
+                    .tracking(layout.labelFontSize * 0.12)
+                    .foregroundStyle(foreground.opacity(0.28))
+            }
+            HStack(alignment: .firstTextBaseline, spacing: layout.fontSize * 0.18) {
+                Text(layout.components.value)
+                    .font(.custom(element.style.fontName, size: layout.fontSize).weight(.light))
+                    .tracking(-layout.fontSize * 0.02)
+                    .foregroundStyle(foreground.opacity(0.88))
+                if element.style.showUnit, !layout.components.unit.isEmpty {
+                    Text(layout.components.unit)
+                        .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.regular))
+                        .foregroundStyle(foreground.opacity(0.30))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var accentBarView: some View {
+        let bar = Color(element.style.accentColor)
+        let foreground = Color(element.style.foregroundColor)
+        HStack(alignment: .center, spacing: layout.fontSize * 0.33) {
+            RoundedRectangle(cornerRadius: max(layout.fontSize * 0.06, 1))
+                .fill(bar)
+                .frame(width: max(layout.fontSize * 0.083, 1.5), height: layout.fontSize * 1.55)
+            VStack(alignment: .leading, spacing: layout.fontSize * 0.06) {
+                if element.style.showLabel, !layout.components.label.isEmpty {
+                    Text(layout.components.label.uppercased())
+                        .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.regular))
+                        .tracking(layout.labelFontSize * 0.12)
+                        .foregroundStyle(foreground.opacity(0.32))
+                }
+                Text(layout.components.value)
+                    .font(.custom(element.style.fontName, size: layout.fontSize).weight(.bold))
+                    .tracking(-layout.fontSize * 0.05)
+                    .foregroundStyle(foreground)
+                if element.style.showUnit, !layout.components.unit.isEmpty {
+                    Text(layout.components.unit)
+                        .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.regular))
+                        .foregroundStyle(foreground.opacity(0.38))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var sportNeonView: some View {
+        let accent = Color(element.style.accentColor)
+        let foreground = Color(element.style.foregroundColor)
+        VStack(alignment: .leading, spacing: layout.fontSize * 0.05) {
+            if element.style.showLabel, !layout.components.label.isEmpty {
+                Text(layout.components.label.uppercased())
+                    .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.bold))
+                    .tracking(layout.labelFontSize * 0.16)
+                    .foregroundStyle(accent)
+            }
+            Text(layout.components.value)
+                .font(.custom(element.style.fontName, size: layout.fontSize).weight(.heavy))
+                .tracking(-layout.fontSize * 0.06)
+                .foregroundStyle(foreground)
+            if element.style.showUnit, !layout.components.unit.isEmpty {
+                HStack(alignment: .center, spacing: layout.fontSize * 0.18) {
+                    Rectangle()
+                        .fill(foreground.opacity(0.10))
+                        .frame(width: layout.fontSize * 0.6, height: 0.5)
+                    Circle()
+                        .fill(accent)
+                        .frame(width: max(layout.fontSize * 0.14, 4), height: max(layout.fontSize * 0.14, 4))
+                    Text(layout.components.unit)
+                        .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.regular))
+                        .foregroundStyle(foreground.opacity(0.35))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var serifEditorialView: some View {
+        let foreground = Color(element.style.foregroundColor)
+        let serifFont = "Georgia"
+        VStack(spacing: layout.fontSize * 0.05) {
+            if element.style.showLabel, !layout.components.label.isEmpty {
+                Text(layout.components.label.uppercased())
+                    .font(.system(size: layout.labelFontSize, weight: .regular))
+                    .tracking(layout.labelFontSize * 0.2)
+                    .foregroundStyle(foreground.opacity(0.30))
+            }
+            Text(layout.components.value)
+                .font(.custom(serifFont, size: layout.fontSize))
+                .tracking(-layout.fontSize * 0.01)
+                .foregroundStyle(foreground.opacity(0.92))
+            if element.style.showUnit, !layout.components.unit.isEmpty {
+                Rectangle()
+                    .fill(foreground.opacity(0.20))
+                    .frame(width: layout.fontSize * 0.78, height: 0.5)
+                    .padding(.vertical, layout.fontSize * 0.18)
+                Text(layout.components.unit)
+                    .font(.system(size: layout.unitFontSize, weight: .regular))
+                    .tracking(layout.unitFontSize * 0.1)
+                    .foregroundStyle(foreground.opacity(0.28))
+            }
+        }
     }
 
     private var valueText: Text {

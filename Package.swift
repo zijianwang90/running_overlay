@@ -16,7 +16,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "RunningOverlay",
-            path: "Sources/RunningOverlay"
+            path: "Sources/RunningOverlay",
+            resources: [
+                .process("Resources")
+            ]
         ),
         .testTarget(
             name: "RunningOverlayTests",

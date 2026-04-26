@@ -181,7 +181,37 @@ enum OverlayRenderModel {
         case .sportWatch:
             return (fontSize * 0.46, fontSize * 0.46, context.scaled(18 * scale), context.scaled(14 * scale), context.scaled(18 * scale))
         case .splitLabel:
-            return (fontSize * 0.46, fontSize * 0.58, context.scaled(6), context.scaled(4), context.scaled(0))
+            return (fontSize * 0.34, fontSize * 0.50, context.scaled(0), context.scaled(0), context.scaled(0))
+        case .minimalLabel:
+            return (fontSize * 0.34, fontSize * 0.55, context.scaled(0), context.scaled(0), context.scaled(0))
+        case .neonGlow:
+            return (fontSize * 0.34, fontSize * 0.55, context.scaled(0), context.scaled(0), context.scaled(0))
+        case .racingStripe:
+            return (
+                fontSize * 0.34,
+                fontSize * 0.50,
+                context.scaled(element.style.backgroundPaddingX > 0 ? element.style.backgroundPaddingX : 18),
+                context.scaled(element.style.backgroundPaddingY > 0 ? element.style.backgroundPaddingY : 12),
+                context.scaled(element.style.backgroundRadius)
+            )
+        case .editorial:
+            return (fontSize * 0.34, fontSize * 0.42, context.scaled(0), context.scaled(0), context.scaled(0))
+        case .digitalWatch:
+            return (
+                fontSize * 0.32,
+                fontSize * 0.48,
+                context.scaled(element.style.backgroundPaddingX > 0 ? element.style.backgroundPaddingX : 18),
+                context.scaled(element.style.backgroundPaddingY > 0 ? element.style.backgroundPaddingY : 12),
+                context.scaled(element.style.backgroundRadius)
+            )
+        case .inlineGhost:
+            return (fontSize * 0.44, fontSize * 0.44, context.scaled(0), context.scaled(0), context.scaled(0))
+        case .accentBar:
+            return (fontSize * 0.27, fontSize * 0.33, context.scaled(0), context.scaled(0), context.scaled(0))
+        case .sportNeon:
+            return (fontSize * 0.22, fontSize * 0.25, context.scaled(0), context.scaled(0), context.scaled(0))
+        case .serifEditorial:
+            return (fontSize * 0.22, fontSize * 0.25, context.scaled(0), context.scaled(0), context.scaled(0))
         }
     }
 }

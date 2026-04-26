@@ -73,6 +73,23 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     var defaultUnitOption: OverlayUnitOption {
         OverlayUnitOption.defaultOption(for: self)
     }
+
+    /// Recommended numeric overlay style preset when adding a new element of
+    /// this type. See `docs/design/numeric-overlay-ui.md`.
+    var defaultNumericPreset: OverlayTextPreset? {
+        switch self {
+        case .distance: .minimal
+        case .pace: .minimal
+        case .heartRate: .pillBadge
+        case .power: .racingStripe
+        case .cadence: .pillBadge
+        case .calories: .metricCard
+        case .elevation: .minimalLabel
+        case .elapsedTime: .digitalWatch
+        case .realTime: .minimal
+        default: nil
+        }
+    }
 }
 
 enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
@@ -517,25 +534,225 @@ enum OverlayGaugePreset: String, CaseIterable, Identifiable, Codable {
 }
 
 enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
-    case minimal
-    case pillBadge
-    case metricCard
-    case bigNumber
+    // Canonical numeric overlay style presets. See `docs/design/numeric-overlay-ui.md`
+    // and the brief in `assets/image-413a701b-...png`.
+    case minimal           // Minimal Clean
+    case minimalLabel      // Minimal Label
+    case pillBadge         // Pill (compact + label modes)
+    case metricCard        // Metric Card
+    case bigNumber         // Big Number
+    case splitLabel        // Split Label
+    case neonGlow          // Neon Glow
+    case racingStripe      // Racing Stripe
+    case editorial         // Editorial
+    case digitalWatch      // Digital Watch
+
+    // Deprecated cases — kept for backward compatibility with previously
+    // saved projects/templates. Hidden from the inspector preset picker.
     case sportWatch
-    case splitLabel
+    case inlineGhost
+    case accentBar
+    case sportNeon
+    case serifEditorial
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
-        case .minimal: "Minimal / 极简"
-        case .pillBadge: "Pill Badge / 胶囊标签"
+        case .minimal: "Minimal Clean / 极简干净"
+        case .minimalLabel: "Minimal Label / 极简标签"
+        case .pillBadge: "Pill / 胶囊样式"
         case .metricCard: "Metric Card / 数据卡片"
         case .bigNumber: "Big Number / 大数字"
-        case .sportWatch: "Sport Watch / 运动手表"
         case .splitLabel: "Split Label / 分离标签"
+        case .neonGlow: "Neon Glow / 霓虹发光"
+        case .racingStripe: "Racing Stripe / 竞速条"
+        case .editorial: "Editorial / 杂志标题风"
+        case .digitalWatch: "Digital Watch / 数字表盘风"
+        case .sportWatch: "Sport Watch / 运动手表"
+        case .inlineGhost: "Inline Ghost / 横向影子"
+        case .accentBar: "Accent Bar / 强调竖线"
+        case .sportNeon: "Sport Neon / 霓虹运动"
+        case .serifEditorial: "Serif Editorial / 衬线刊物"
         }
     }
+
+    /// The canonical 10 numeric overlay presets the inspector picker should
+    /// expose. Deprecated cases stay decodable but never appear in the menu.
+    static let numericPresets: [OverlayTextPreset] = [
+        .minimal, .minimalLabel, .pillBadge, .metricCard, .bigNumber,
+        .splitLabel, .neonGlow, .racingStripe, .editorial, .digitalWatch
+    ]
+
+    /// Recommended typography/style tokens applied when the preset is picked.
+    var recommendedTokens: OverlayPresetTokens? {
+        // Use canonical `OverlayColor` constants so the inspector swatch strip
+        // can highlight the active accent after a preset is applied.
+        let blue = OverlayColor.blue
+        let cyan = OverlayColor.cyan
+        let orange = OverlayColor.orange
+        let yellow = OverlayColor.yellow
+        let phosphor = OverlayColor.green
+
+        switch self {
+        case .minimal:
+            return OverlayPresetTokens(
+                fontName: "SF Pro",
+                fontWeight: .semibold,
+                fontSize: 34,
+                textAlignment: .leading,
+                showLabel: false,
+                showUnit: true,
+                backgroundEnabled: false,
+                backgroundColor: nil,
+                backgroundOpacity: nil,
+                backgroundRadius: 0,
+                accentColor: blue
+            )
+        case .minimalLabel:
+            return OverlayPresetTokens(
+                fontName: "SF Pro",
+                fontWeight: .semibold,
+                fontSize: 34,
+                textAlignment: .leading,
+                showLabel: true,
+                showUnit: true,
+                backgroundEnabled: false,
+                backgroundColor: nil,
+                backgroundOpacity: nil,
+                backgroundRadius: 0,
+                accentColor: blue
+            )
+        case .pillBadge:
+            return OverlayPresetTokens(
+                fontName: "SF Pro",
+                fontWeight: .bold,
+                fontSize: 32,
+                textAlignment: .leading,
+                showLabel: false,
+                showUnit: true,
+                backgroundEnabled: true,
+                backgroundColor: .black,
+                backgroundOpacity: 0.48,
+                backgroundRadius: 999,
+                accentColor: blue
+            )
+        case .metricCard:
+            return OverlayPresetTokens(
+                fontName: "SF Pro",
+                fontWeight: .bold,
+                fontSize: 42,
+                textAlignment: .leading,
+                showLabel: true,
+                showUnit: true,
+                backgroundEnabled: true,
+                backgroundColor: .black,
+                backgroundOpacity: 0.50,
+                backgroundRadius: 16,
+                accentColor: blue
+            )
+        case .bigNumber:
+            return OverlayPresetTokens(
+                fontName: "SF Pro",
+                fontWeight: .bold,
+                fontSize: 82,
+                textAlignment: .trailing,
+                showLabel: false,
+                showUnit: true,
+                backgroundEnabled: false,
+                backgroundColor: nil,
+                backgroundOpacity: nil,
+                backgroundRadius: 0,
+                accentColor: blue
+            )
+        case .splitLabel:
+            return OverlayPresetTokens(
+                fontName: "SF Pro",
+                fontWeight: .bold,
+                fontSize: 42,
+                textAlignment: .leading,
+                showLabel: true,
+                showUnit: true,
+                backgroundEnabled: false,
+                backgroundColor: nil,
+                backgroundOpacity: nil,
+                backgroundRadius: 0,
+                accentColor: blue
+            )
+        case .neonGlow:
+            return OverlayPresetTokens(
+                fontName: "SF Pro",
+                fontWeight: .bold,
+                fontSize: 42,
+                textAlignment: .leading,
+                showLabel: false,
+                showUnit: true,
+                backgroundEnabled: false,
+                backgroundColor: nil,
+                backgroundOpacity: nil,
+                backgroundRadius: 0,
+                accentColor: cyan
+            )
+        case .racingStripe:
+            return OverlayPresetTokens(
+                fontName: "SF Pro",
+                fontWeight: .bold,
+                fontSize: 40,
+                textAlignment: .leading,
+                showLabel: true,
+                showUnit: true,
+                backgroundEnabled: true,
+                backgroundColor: .black,
+                backgroundOpacity: 0.50,
+                backgroundRadius: 12,
+                accentColor: orange
+            )
+        case .editorial:
+            return OverlayPresetTokens(
+                fontName: "SF Pro",
+                fontWeight: .bold,
+                fontSize: 64,
+                textAlignment: .leading,
+                showLabel: true,
+                showUnit: true,
+                backgroundEnabled: false,
+                backgroundColor: nil,
+                backgroundOpacity: nil,
+                backgroundRadius: 0,
+                accentColor: yellow
+            )
+        case .digitalWatch:
+            return OverlayPresetTokens(
+                fontName: BundledFontName.digitalWatch,
+                fontWeight: .medium,
+                fontSize: 40,
+                textAlignment: .leading,
+                showLabel: true,
+                showUnit: true,
+                backgroundEnabled: true,
+                backgroundColor: .black,
+                backgroundOpacity: 0.60,
+                backgroundRadius: 10,
+                accentColor: phosphor
+            )
+        case .sportWatch, .inlineGhost, .accentBar, .sportNeon, .serifEditorial:
+            return nil
+        }
+    }
+}
+
+struct OverlayPresetTokens {
+    var fontName: String
+    var fontWeight: OverlayFontWeight
+    var fontSize: Double
+    var textAlignment: OverlayTextAlignment
+    var showLabel: Bool
+    var showUnit: Bool
+    var backgroundEnabled: Bool
+    var backgroundColor: OverlayColor?
+    var backgroundOpacity: Double?
+    var backgroundRadius: Double
+    var accentColor: OverlayColor?
 }
 
 enum OverlayFontWeight: String, CaseIterable, Identifiable, Codable {

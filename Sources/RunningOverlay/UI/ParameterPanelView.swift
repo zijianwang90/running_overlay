@@ -19,8 +19,14 @@ struct ParameterPanelView: View {
                         .padding(.vertical, InspectorTheme.panelPaddingY)
                 }
             case .overlayElement(let elementID):
-                if let element = project.selectedOverlay(elementID), element.type.isNumericOverlay {
-                    NumericOverlayDetailView(elementID: elementID)
+                if let element = project.selectedOverlay(elementID) {
+                    if element.type.isNumericOverlay {
+                        NumericOverlayDetailView(elementID: elementID)
+                    } else if element.type == .runningGauge {
+                        RunningGaugeOverlayDetailView(elementID: elementID)
+                    } else {
+                        OverlayDetailView(elementID: elementID)
+                    }
                 } else {
                     OverlayDetailView(elementID: elementID)
                 }
@@ -442,7 +448,7 @@ private struct OverlayDetailView: View {
     @ViewBuilder
     private func presetControl(for element: OverlayElement) -> some View {
         if element.type.supportsTextPresets {
-            InspectorPickerRow(label: "Preset", selection: textPresetBinding, values: OverlayTextPreset.allCases) { $0.compactLabel }
+            InspectorPickerRow(label: "Preset", selection: textPresetBinding, values: OverlayTextPreset.numericPresets) { $0.compactLabel }
         } else if element.type == .runningGauge {
             InspectorPickerRow(label: "Preset", selection: gaugePresetBinding, values: OverlayGaugePreset.allCases) { $0.compactLabel }
         } else if element.type == .routeMap {
