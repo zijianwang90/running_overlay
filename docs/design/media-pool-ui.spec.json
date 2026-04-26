@@ -1,0 +1,189 @@
+{
+  "name": "Media Pool UI",
+  "updated": "2026-04-26",
+  "references": {
+    "mockup": "./media-pool.png",
+    "emptyMockup": "./media-pool-empty.png",
+    "relatedStyleSpec": "./inspector-ui.md"
+  },
+  "intent": {
+    "productTone": "dark professional desktop video-editing media bin",
+    "primaryAccent": "blue",
+    "density": "compact",
+    "avoid": [
+      "generic bright system list styling",
+      "oversized cards",
+      "decorative backgrounds",
+      "large empty black areas",
+      "non-functional filter controls"
+    ]
+  },
+  "tokens": {
+    "color": {
+      "media.panel": "#15191D",
+      "media.header": "#1B2025",
+      "media.rowEven": "#1B2025",
+      "media.rowOdd": "#171C21",
+      "media.rowHover": "#222932",
+      "media.rowSelected": "#263244",
+      "media.rowSelectedBorder": "#2F8CFF",
+      "media.menuBackground": "#1D2228",
+      "media.menuHover": "#2F8CFF",
+      "media.thumbnailBackground": "#101418",
+      "text.primary": "#F3F6F8",
+      "text.secondary": "#B6BEC7",
+      "text.muted": "#7E8893",
+      "border.subtle": "#2B3238",
+      "accent.blue": "#2F8CFF",
+      "danger.red": "#FF5A5F"
+    },
+    "markColor": {
+      "red": "#FF5A5F",
+      "orange": "#FF9342",
+      "yellow": "#FFD166",
+      "green": "#51C96B",
+      "blue": "#2F8CFF",
+      "purple": "#B657E8",
+      "gray": "#9EA3AA"
+    },
+    "typography": {
+      "headerTitle": { "size": 22, "weight": "semibold" },
+      "filename": { "size": 13, "weight": "semibold" },
+      "metadata": { "size": 11, "weight": "regular" },
+      "status": { "size": 11, "weight": "medium" }
+    },
+    "size": {
+      "rowHeight": 72,
+      "thumbnailWidth": 42,
+      "thumbnailHeight": 42,
+      "toolbarIconButton": 30,
+      "searchHeight": 30,
+      "markDot": 9,
+      "menuRadius": 8
+    },
+    "spacing": {
+      "panelPaddingX": 12,
+      "headerPaddingY": 10,
+      "rowPaddingX": 12,
+      "rowPaddingY": 8,
+      "rowContentGap": 8
+    }
+  },
+  "currentSwiftUIEntryPoint": "Sources/RunningOverlay/UI/MediaBrowserView.swift",
+  "preserveBehavior": [
+    "drag/drop video import",
+    "single row selection",
+    "Command-click multi-selection",
+    "Command+A select all visible media when active",
+    "double-click source preview",
+    "context menu match actions",
+    "context menu mark actions",
+    "context menu delete action",
+    "tag filter menu",
+    "alternating row backgrounds",
+    "focus loss clears transient media-pool preview"
+  ],
+  "layout": [
+    {
+      "component": "MediaPoolHeader",
+      "content": {
+        "title": "Media",
+        "toolbarButtons": [
+          { "id": "selectAllVisible", "icon": "checklist", "help": "Select All Visible Media" },
+          { "id": "clearSelection", "icon": "xmark.circle", "help": "Clear Media Selection" },
+          { "id": "filterMenu", "icon": "line.3.horizontal.decrease.circle", "help": "Filter by Mark" },
+          { "id": "more", "icon": "chevron.down", "help": "Media options", "optional": true }
+        ]
+      }
+    },
+    {
+      "component": "MediaPoolSearchAndFilter",
+      "optional": true,
+      "controls": [
+        { "type": "searchField", "placeholder": "Search media", "implementationRule": "only show if it filters displayName" },
+        { "type": "statusText", "value": "{visibleCount} clips" },
+        { "type": "filterChip", "label": "All", "selected": true },
+        { "type": "filterChip", "label": "Ready", "implementationRule": "only show if backed by real filter" },
+        { "type": "filterChip", "label": "Aligned", "implementationRule": "only show if backed by real filter" }
+      ]
+    },
+    {
+      "component": "MediaPoolList",
+      "rowHeight": 72,
+      "rowComponent": "MediaPoolRow"
+    }
+  ],
+  "row": {
+    "content": [
+      { "slot": "leading", "type": "thumbnailOrFileIcon", "optional": true },
+      { "slot": "mark", "type": "colorDotOrStripe", "optional": true },
+      { "slot": "primary", "type": "filename", "modelPath": "MediaItem.displayName" },
+      { "slot": "secondary", "type": "duration", "modelPath": "MediaItem.duration" },
+      { "slot": "secondary", "type": "captureDate", "modelPath": "MediaItem.inferredStartDate" },
+      { "slot": "trailing", "type": "alignmentStatus", "modelPath": "MediaItem.alignmentStatus.label" }
+    ],
+    "states": {
+      "defaultEven": "media.rowEven",
+      "defaultOdd": "media.rowOdd",
+      "hover": "media.rowHover",
+      "selected": "media.rowSelected with media.rowSelectedBorder accent",
+      "multiSelected": "same as selected for each selected row"
+    }
+  },
+  "contextMenu": {
+    "items": [
+      { "label": "Auto Match to Current Layer", "action": "project.matchMediaItemsToCurrentLayer(actionIDs)" },
+      { "label": "Match to New Layer", "action": "project.matchMediaItemsToNewLayer(actionIDs)" },
+      { "type": "separator" },
+      {
+        "label": "Mark",
+        "submenu": [
+          { "label": "Red", "mark": "red" },
+          { "label": "Orange", "mark": "orange" },
+          { "label": "Yellow", "mark": "yellow" },
+          { "label": "Green", "mark": "green" },
+          { "label": "Blue", "mark": "blue" },
+          { "label": "Purple", "mark": "purple" },
+          { "label": "Gray", "mark": "gray" },
+          { "label": "Clear Mark", "mark": null }
+        ]
+      },
+      { "type": "separator" },
+      { "label": "Select All", "action": "selectedMediaIDs = visibleIDs" },
+      { "label": "Delete from Media Pool", "action": "project.deleteMediaItems(actionIDs)" }
+    ],
+    "actionIDsRule": "if clicked item is already selected, apply to selectedMediaIDs; otherwise apply only to clicked item",
+    "nativeMenuAcceptable": true
+  },
+  "emptyStates": {
+    "noMedia": {
+      "icon": "video.badge.plus",
+      "text": "Drop videos here",
+      "secondaryText": "Import clips to match them with your running activity",
+      "primaryAction": "Import Videos",
+      "formatHint": "MP4, MOV",
+      "dropZone": "subtle dashed rounded rectangle"
+    },
+    "filteredEmpty": {
+      "icon": "line.3.horizontal.decrease.circle",
+      "text": "No media with this mark"
+    }
+  },
+  "recommendedComponents": [
+    "MediaPoolPanel",
+    "MediaPoolHeader",
+    "MediaPoolToolbarButton",
+    "MediaPoolSearchField",
+    "MediaPoolFilterStrip",
+    "MediaPoolRow",
+    "MediaStatusPill",
+    "MediaTagDot",
+    "MediaPoolEmptyState"
+  ],
+  "openQuestions": [
+    "Should search be added now or deferred?",
+    "Should Ready and Aligned filter chips be real filters or deferred?",
+    "Should rows show real thumbnails or icon wells?",
+    "Should tag color be shown as a dot, left stripe, or both?"
+  ]
+}

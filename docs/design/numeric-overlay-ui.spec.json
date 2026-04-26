@@ -1,0 +1,169 @@
+{
+  "name": "Numeric Overlay UI",
+  "updated": "2026-04-26",
+  "references": {
+    "mockup": "./numeric-overlay.png",
+    "relatedInspectorSpec": "./inspector-ui.md",
+    "relatedStyleSpec": "./app-ui.md"
+  },
+  "appliesToOverlayTypes": [
+    "heartRate",
+    "pace",
+    "calories",
+    "elapsedTime",
+    "realTime",
+    "distance",
+    "elevation",
+    "cadence",
+    "power"
+  ],
+  "excludedOverlayTypes": [
+    "distanceTimeline",
+    "elevationChart",
+    "runningGauge",
+    "routeMap"
+  ],
+  "intent": {
+    "template": "dense reusable Inspector detail panel for numeric metric overlays",
+    "density": "DaVinci-like compact parameter stack",
+    "avoid": [
+      "metric-specific one-off detail views",
+      "large card rows",
+      "loose vertical spacing",
+      "fake unit menus",
+      "enabled controls without model backing"
+    ]
+  },
+  "tokens": {
+    "reuse": "./app-ui.spec.json",
+    "numeric": {
+      "sectionHeaderHeight": 30,
+      "rowHeight": 32,
+      "rowGap": 6,
+      "sectionGap": 8,
+      "labelColumnWidth": 112,
+      "controlHeight": 30,
+      "iconButtonSize": 28,
+      "swatchSize": 22
+    }
+  },
+  "header": {
+    "title": "{overlay.label}",
+    "pill": "Numeric Overlay",
+    "valuePreview": "{formattedOverlayValue}",
+    "actions": ["back", "delete"]
+  },
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content",
+      "controls": [
+        { "id": "metric", "type": "dropdown", "value": "{metric}", "modelBacked": "future if metric can differ from OverlayElementType" },
+        { "id": "units", "type": "dropdown", "value": "{unitOption}", "requiredWhen": "metric has more than one unit option" },
+        { "id": "formatPreview", "type": "readout", "value": "{formattedOverlayValue}", "modelBacked": true },
+        { "id": "showLabel", "type": "toggle", "modelBacked": false },
+        { "id": "showUnit", "type": "toggle", "modelBacked": false },
+        { "id": "labelText", "type": "textField", "modelBacked": false }
+      ]
+    },
+    {
+      "id": "layout",
+      "title": "Layout",
+      "controls": [
+        { "id": "anchor", "type": "grid3x3", "modelBacked": false },
+        { "id": "position", "type": "numberPair", "labels": ["X", "Y"], "modelPaths": ["OverlayElement.position.x", "OverlayElement.position.y"] },
+        { "id": "scale", "type": "slider", "modelPath": "OverlayElement.scale" },
+        { "id": "rotation", "type": "numberOrSlider", "modelBacked": false }
+      ]
+    },
+    {
+      "id": "typography",
+      "title": "Typography",
+      "controls": [
+        { "id": "font", "type": "dropdown", "modelPath": "OverlayStyle.fontName" },
+        { "id": "fontSize", "type": "slider", "modelPath": "OverlayStyle.fontSize" },
+        { "id": "fontWeight", "type": "segmented", "options": ["Regular", "Medium", "Semibold", "Bold"], "modelPath": "OverlayStyle.fontWeight" },
+        { "id": "alignment", "type": "iconSegmented", "options": ["left", "center", "right"], "modelBacked": false }
+      ]
+    },
+    {
+      "id": "color",
+      "title": "Color",
+      "controls": [
+        { "id": "textColor", "type": "swatches", "modelPath": "OverlayStyle.foregroundColor" },
+        { "id": "accentColor", "type": "swatches", "modelBacked": false, "optional": true }
+      ]
+    },
+    {
+      "id": "background",
+      "title": "Background",
+      "controls": [
+        { "id": "enableBackground", "type": "toggle", "modelBacked": "can map to backgroundOpacity > 0 if accepted" },
+        { "id": "backgroundColor", "type": "swatch", "modelBacked": false },
+        { "id": "backgroundOpacity", "type": "slider", "modelPath": "OverlayStyle.backgroundOpacity" },
+        { "id": "backgroundRadius", "type": "slider", "modelBacked": false },
+        { "id": "backgroundPadding", "type": "numberPair", "labels": ["X", "Y"], "modelBacked": false }
+      ]
+    },
+    {
+      "id": "effects",
+      "title": "Effects",
+      "controls": [
+        { "id": "shadowToggle", "type": "toggle", "modelBacked": "can map to shadowOpacity > 0 if accepted" },
+        { "id": "shadowOpacity", "type": "slider", "modelPath": "OverlayStyle.shadowOpacity" },
+        { "id": "shadowRadius", "type": "sliderOrField", "modelPath": "OverlayStyle.shadowRadius" }
+      ]
+    }
+  ],
+  "unitOptionsByMetric": {
+    "heartRate": ["bpm"],
+    "pace": ["Metric (min/km)", "Imperial (min/mi)", "Rowing (min/500m)"],
+    "distance": ["Metric (km)", "Imperial (mi)", "Meters (m)"],
+    "elevation": ["Metric (m)", "Imperial (ft)"],
+    "power": ["watts"],
+    "cadence": ["spm"],
+    "calories": ["kcal"],
+    "elapsedTime": ["hh:mm:ss", "mm:ss", "seconds"],
+    "realTime": ["12-hour", "24-hour"]
+  },
+  "modelBackedToday": [
+    "type-derived metric",
+    "formatted value preview",
+    "position x/y",
+    "scale",
+    "font name",
+    "font size",
+    "font weight",
+    "foreground/text color",
+    "background opacity",
+    "shadow opacity",
+    "shadow radius"
+  ],
+  "modelGaps": [
+    "metric reassignment independent of OverlayElementType",
+    "unit preference per overlay",
+    "show label",
+    "show unit",
+    "custom label text",
+    "rotation",
+    "text alignment",
+    "background enabled flag",
+    "background color",
+    "background radius",
+    "background padding x/y",
+    "accent color"
+  ],
+  "recommendedComponents": [
+    "NumericOverlayDetailView",
+    "InspectorDenseSection",
+    "InspectorDenseRow",
+    "InspectorDenseMenuRow",
+    "InspectorDenseToggleRow",
+    "InspectorDenseSliderRow",
+    "InspectorDenseNumberPairRow",
+    "InspectorUnitMenu",
+    "InspectorAnchorGrid",
+    "InspectorSwatchRow",
+    "InspectorSegmentedIconControl"
+  ]
+}

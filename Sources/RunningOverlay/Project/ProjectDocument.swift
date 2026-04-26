@@ -1,0 +1,1485 @@
+import Foundation
+import AppKit
+import SwiftUI
+import UniformTypeIdentifiers
+
+@MainActor
+final class ProjectDocument: ObservableObject {
+    @Published var settings = ProjectSettings()
+    @Published var activity = ActivityTimeline.empty
+    @Published var mediaItems: [MediaItem] = []
+    @Published var timeline = TimelineModel.empty
+    @Published var overlayLayout = OverlayLayout.empty
+    @Published var selection: EditorSelection = .none
+    @Published var isPlaying = false
+    @Published var playbackRate: Double = 1
+    @Published var showingProjectSettings = false
+    @Published var showingExportDialog = false
+    @Published var overlayTemplates: [OverlayTemplate] = []
+    @Published var showPreviewGuides = false
+    @Published var isExporting = false
+    @Published var exportProgress: ExportProgressState?
+    @Published var mediaPoolPreviewItemID: MediaItem.ID?
+    @Published var mediaPoolPreviewSourceTime: TimeInterval = 0
+    @Published var statusMessage = "Ready to import a FIT file."
+    @Published var isTimelineCollapsed = false
+    @Published private(set) var canUndo = false
+    @Published private(set) var canRedo = false
+
+    private let overlayTemplateStore: OverlayTemplateStore
+    private var exportTask: Task<Void, Never>?
+    private var undoStack: [ProjectSnapshot] = []
+    private var redoStack: [ProjectSnapshot] = []
+    private var activeUndoSnapshot: ProjectSnapshot?
+
+    init(overlayTemplateStore: OverlayTemplateStore = OverlayTemplateStore()) {
+        self.overlayTemplateStore = overlayTemplateStore
+        loadOverlayTemplates()
+    }
+
+    func importFitFile() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.init(filenameExtension: "fit")].compactMap { $0 }
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return
+        }
+
+        do {
+            print("[RunningOverlay] Importing FIT file: \(url.path)")
+            registerUndoPoint()
+            activity = try FitFileParser.parse(url: url)
+            timeline.fitStartTime = 0
+            timeline.playhead = timeline.fitStartTime
+            statusMessage = "Loaded FIT: \(url.lastPathComponent), \(formatDuration(activity.duration)), \(formatDistance(activity.distanceMeters))."
+            print("[RunningOverlay] FIT import succeeded: \(url.lastPathComponent), duration=\(formatDuration(activity.duration)), distance=\(formatDistance(activity.distanceMeters)), records=\(activity.records.count)")
+        } catch {
+            statusMessage = "FIT import failed: \(error.localizedDescription)"
+            print("[RunningOverlay] FIT import failed: \(url.path)")
+            print("[RunningOverlay] Error: \(error.localizedDescription)")
+            print("[RunningOverlay] Debug: \(String(reflecting: error))")
+        }
+    }
+
+    func importVideos() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [
+            .movie,
+            .mpeg4Movie,
+            .quickTimeMovie,
+            .avi
+        ].compactMap { $0 }
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+
+        guard panel.runModal() == .OK else {
+            return
+        }
+
+        let urls = panel.urls
+        guard !urls.isEmpty else {
+            return
+        }
+
+        importVideoURLs(urls, replacingExisting: true)
+    }
+
+    func importVideoURLs(_ urls: [URL], replacingExisting: Bool = false) {
+        let videoURLs = urls.filter(Self.isSupportedVideoURL)
+        guard !videoURLs.isEmpty else {
+            statusMessage = "No supported video files were found."
+            return
+        }
+
+        statusMessage = "Importing \(videoURLs.count) video file(s)..."
+        let currentActivity = activity
+
+        Task {
+            let imported = await withTaskGroup(of: MediaItem.self) { group in
+                for url in videoURLs {
+                    group.addTask {
+                        await MediaMetadataReader.read(url: url, activity: currentActivity)
+                    }
+                }
+
+                var items: [MediaItem] = []
+                for await item in group {
+                    items.append(item)
+                }
+                return items.sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
+            }
+
+            registerUndoPoint()
+            let importedMediaItems = replacingExisting ? imported : mediaItems + imported
+            mediaItems = importedMediaItems
+
+            if replacingExisting {
+                timeline = TimelineModel.empty
+                mediaPoolPreviewItemID = nil
+            }
+
+            let matchableCount = imported.filter {
+                if case .readyToMatch = $0.alignmentStatus {
+                    return true
+                }
+                return false
+            }.count
+            let matchableSuffix = matchableCount > 0 ? ", \(matchableCount) ready for auto-match" : ""
+            statusMessage = "Imported \(imported.count) video file(s) to media pool\(matchableSuffix)."
+        }
+    }
+
+    func togglePlayback() {
+        if isPreviewingMediaPoolItem {
+            isPlaying.toggle()
+            if isPlaying {
+                playbackRate = max(playbackRate, 1)
+            } else {
+                playbackRate = 1
+            }
+            statusMessage = isPlaying ? "Source preview started." : "Source preview paused."
+            return
+        }
+
+        if isTimelineCollapsed, let visibleTime = timeline.visiblePlaybackTime(atOrAfter: timeline.playhead), visibleTime != timeline.playhead {
+            setPlayhead(visibleTime)
+        }
+        isPlaying.toggle()
+        if !isPlaying {
+            playbackRate = 1
+        } else {
+            playbackRate = max(playbackRate, 1)
+        }
+        statusMessage = isPlaying ? "Playback started." : "Playback paused."
+    }
+
+    func stopPlayback() {
+        isPlaying = false
+        playbackRate = 1
+        if isPreviewingMediaPoolItem {
+            mediaPoolPreviewSourceTime = 0
+            statusMessage = "Source preview stopped."
+        } else {
+            statusMessage = "Playback stopped."
+        }
+    }
+
+    func increaseForwardPlaybackRate() {
+        if !isPlaying {
+            isPlaying = true
+            playbackRate = 1
+        } else {
+            playbackRate = min(playbackRate * 2, 8)
+        }
+        statusMessage = playbackRate == 1 ? "Playback started." : "Playback \(Int(playbackRate))x."
+    }
+
+    func setPlaybackRate(_ rate: Double) {
+        let clampedRate = min(max(rate, 1), 8)
+        playbackRate = clampedRate
+        if isPlaying {
+            statusMessage = clampedRate == 1 ? "Playback started." : "Playback \(Int(clampedRate))x."
+        } else {
+            statusMessage = "Playback speed \(Int(clampedRate))x."
+        }
+    }
+
+    func advancePlayback(by delta: TimeInterval) {
+        guard isPlaying else {
+            return
+        }
+
+        let targetTime = timeline.playhead + delta * playbackRate
+        if isTimelineCollapsed {
+            guard let visibleTime = timeline.visiblePlaybackTime(atOrAfter: targetTime) else {
+                let bounds = timeline.projectBounds(activityDuration: activity.duration)
+                setPlayhead(bounds.upperBound)
+                isPlaying = false
+                playbackRate = 1
+                statusMessage = "Playback reached the end."
+                return
+            }
+            setPlayhead(visibleTime)
+            return
+        }
+
+        setPlayhead(targetTime)
+        if timeline.playhead >= timeline.projectBounds(activityDuration: activity.duration).upperBound {
+            setPlayhead(timeline.projectBounds(activityDuration: activity.duration).upperBound)
+            isPlaying = false
+            playbackRate = 1
+            statusMessage = "Playback reached the end."
+        }
+    }
+
+    func setPlayhead(_ elapsedTime: TimeInterval) {
+        var updatedTimeline = timeline
+        let bounds = updatedTimeline.projectBounds(activityDuration: activity.duration)
+        updatedTimeline.playhead = min(max(elapsedTime, bounds.lowerBound), bounds.upperBound)
+        timeline = updatedTimeline
+    }
+
+    func stepPlayheadByFrames(_ frameCount: Int) {
+        guard frameCount != 0 else {
+            return
+        }
+        clearMediaPoolPreview()
+        isPlaying = false
+        playbackRate = 1
+        let frameDuration = 1.0 / max(settings.frameRate.value, 1)
+        setPlayhead(timeline.playhead + Double(frameCount) * frameDuration)
+        statusMessage = frameCount > 0 ? "Stepped forward \(abs(frameCount)) frame." : "Stepped back \(abs(frameCount)) frame."
+    }
+
+    func setPlayheadFromPlayback(_ elapsedTime: TimeInterval) {
+        guard isPlaying else {
+            return
+        }
+        if isTimelineCollapsed {
+            guard let visibleTime = timeline.visiblePlaybackTime(atOrAfter: elapsedTime) else {
+                isPlaying = false
+                playbackRate = 1
+                statusMessage = "Playback reached the end."
+                return
+            }
+            setPlayhead(visibleTime)
+            return
+        }
+        setPlayhead(elapsedTime)
+        if timeline.playhead >= timeline.projectBounds(activityDuration: activity.duration).upperBound {
+            isPlaying = false
+            playbackRate = 1
+            statusMessage = "Playback reached the end."
+        }
+    }
+
+    func zoomTimelineIn() {
+        var updatedTimeline = timeline
+        updatedTimeline.zoomIn()
+        timeline = updatedTimeline
+    }
+
+    func zoomTimelineOut() {
+        var updatedTimeline = timeline
+        updatedTimeline.zoomOut()
+        timeline = updatedTimeline
+    }
+
+    var timelineZoomSliderValue: Double {
+        switch timeline.zoom {
+        case .fit:
+            return 0
+        case .pixelsPerSecond(let value):
+            return Self.sliderValue(forPixelsPerSecond: value)
+        }
+    }
+
+    var layerDataSampleTime: TimeInterval {
+        quantizedLayerDataTime(for: timeline.activityElapsed(atProjectTime: timeline.playhead))
+    }
+
+    var defaultExportDestinationURL: URL {
+        mediaItems.first?.fileURL?.deletingLastPathComponent()
+            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Movies")
+    }
+
+    func quantizedLayerDataTime(for elapsedTime: TimeInterval) -> TimeInterval {
+        let fps = max(settings.layerDataFrameRate.value, 1)
+        let frame = floor(max(elapsedTime, 0) * fps)
+        return min(frame / fps, activity.duration)
+    }
+
+    var timelineBounds: ClosedRange<TimeInterval> {
+        timeline.projectBounds(activityDuration: activity.duration)
+    }
+
+    func toggleTimelineCollapse() {
+        isTimelineCollapsed.toggle()
+        if isTimelineCollapsed, let visibleTime = timeline.visiblePlaybackTime(atOrAfter: timeline.playhead) {
+            setPlayhead(visibleTime)
+        }
+        statusMessage = isTimelineCollapsed ? "Timeline gaps hidden." : "Timeline gaps expanded."
+    }
+
+    func setTimelineZoomSliderValue(_ value: Double) {
+        var updatedTimeline = timeline
+        if value <= 2 {
+            updatedTimeline.zoom = .fit
+        } else {
+            updatedTimeline.zoom = .pixelsPerSecond(Self.pixelsPerSecond(forSliderValue: value))
+        }
+        timeline = updatedTimeline
+    }
+
+    func addOverlayElement(_ type: OverlayElementType) {
+        registerUndoPoint()
+        var style = OverlayStyle.default
+        if type == .routeMap {
+            style.routeMapPreset = .mapKit
+            style.routeMapProvider = .mapKit
+            style.backgroundOpacity = 0.74
+            style.foregroundColor = .cyan
+        }
+        let element = OverlayElement(
+            type: type,
+            position: CGPoint(x: 0.5, y: 0.5),
+            scale: 1.0,
+            style: style
+        )
+        overlayLayout.elements.append(element)
+        selection = .overlayElement(element.id)
+        statusMessage = "Added \(type.label) overlay."
+    }
+
+    func selectClip(_ clipID: TimelineClip.ID) {
+        selection = .timelineClip(clipID)
+    }
+
+    func selectedClip(_ clipID: TimelineClip.ID) -> TimelineClip? {
+        timeline.clip(with: clipID)
+    }
+
+    func placeMediaItem(_ mediaItemID: MediaItem.ID, onTrack trackName: String, at elapsedTime: TimeInterval) {
+        guard let mediaIndex = mediaItems.firstIndex(where: { $0.id == mediaItemID }) else {
+            statusMessage = "Could not place media: item not found."
+            return
+        }
+
+        registerUndoPoint()
+        let mediaItem = mediaItems[mediaIndex]
+        var updatedTimeline = timeline
+        guard let clipID = updatedTimeline.addOrMoveClip(
+            mediaItem: mediaItem,
+            trackName: trackName,
+            startTime: elapsedTime,
+            activity: activity
+        ) else {
+            statusMessage = "Could not place \(mediaItem.displayName)."
+            return
+        }
+        timeline = updatedTimeline
+
+        mediaItems[mediaIndex].alignmentStatus = .aligned(source: "manual")
+        mediaItems[mediaIndex].cameraGroupID = trackName
+        selection = .timelineClip(clipID)
+        statusMessage = "Placed \(mediaItem.displayName) at \(formatDuration(elapsedTime))."
+    }
+
+    func matchMediaItemsToCurrentLayer(_ mediaItemIDs: Set<MediaItem.ID>) {
+        matchMediaItems(mediaItemIDs, toTrackName: currentLayerName())
+    }
+
+    func matchMediaItemsToNewLayer(_ mediaItemIDs: Set<MediaItem.ID>) {
+        matchMediaItems(mediaItemIDs, toTrackName: timeline.nextLayerName())
+    }
+
+    func setMediaTag(_ tag: MediaTag?, for mediaItemIDs: Set<MediaItem.ID>) {
+        guard !mediaItemIDs.isEmpty else {
+            return
+        }
+        registerUndoPoint()
+        for index in mediaItems.indices where mediaItemIDs.contains(mediaItems[index].id) {
+            mediaItems[index].tag = tag
+        }
+        statusMessage = tag.map { "Tagged \(mediaItemIDs.count) media item(s) as \($0.label)." } ?? "Cleared tag from \(mediaItemIDs.count) media item(s)."
+    }
+
+    func deleteMediaItems(_ mediaItemIDs: Set<MediaItem.ID>) {
+        guard !mediaItemIDs.isEmpty else {
+            return
+        }
+        registerUndoPoint()
+        mediaItems.removeAll { mediaItemIDs.contains($0.id) }
+        if let mediaPoolPreviewItemID, mediaItemIDs.contains(mediaPoolPreviewItemID) {
+            self.mediaPoolPreviewItemID = nil
+            mediaPoolPreviewSourceTime = 0
+            isPlaying = false
+            playbackRate = 1
+        }
+        var updatedTimeline = timeline
+        updatedTimeline.deleteClips(forMediaItemIDs: mediaItemIDs)
+        timeline = updatedTimeline
+        if case .timelineClip(let clipID) = selection, timeline.clip(with: clipID) == nil {
+            selection = .none
+        }
+        statusMessage = "Deleted \(mediaItemIDs.count) media item(s) from the media pool."
+    }
+
+    func setSelectedClipOffset(_ clipID: TimelineClip.ID, offset: TimeInterval) {
+        registerContinuousUndoPoint()
+        var updatedTimeline = timeline
+        updatedTimeline.setClipOffset(clipID, offset: offset, activityDuration: activity.duration)
+        timeline = updatedTimeline
+    }
+
+    func moveClip(_ clipID: TimelineClip.ID, toEffectiveStartTime effectiveStartTime: TimeInterval) {
+        registerContinuousUndoPoint()
+        var updatedTimeline = timeline
+        updatedTimeline.moveClip(clipID, toEffectiveStartTime: effectiveStartTime, activityDuration: activity.duration)
+        timeline = updatedTimeline
+    }
+
+    func setClipDuration(_ clipID: TimelineClip.ID, duration: TimeInterval) {
+        registerContinuousUndoPoint()
+        var updatedTimeline = timeline
+        updatedTimeline.setClipDuration(clipID, duration: duration, activityDuration: activity.duration)
+        timeline = updatedTimeline
+    }
+
+    func moveFitStart(to startTime: TimeInterval) {
+        registerContinuousUndoPoint()
+        var updatedTimeline = timeline
+        updatedTimeline.moveFitStart(to: startTime)
+        timeline = updatedTimeline
+        statusMessage = "Moved FIT axis to \(formatSignedDuration(startTime))."
+    }
+
+    func renameTrack(containing clipID: TimelineClip.ID, to name: String) {
+        registerUndoPoint()
+        var updatedTimeline = timeline
+        updatedTimeline.renameTrack(containing: clipID, to: name)
+        timeline = updatedTimeline
+        if let clip = timeline.clip(with: clipID),
+           let mediaIndex = mediaItems.firstIndex(where: { $0.id == clip.mediaItemID }) {
+            mediaItems[mediaIndex].cameraGroupID = clip.cameraGroupID
+        }
+    }
+
+    func finishContinuousEdit() {
+        activeUndoSnapshot = nil
+        updateUndoRedoFlags()
+    }
+
+    func applyOffsetToCamera(for clipID: TimelineClip.ID) {
+        guard let clip = timeline.clip(with: clipID) else {
+            return
+        }
+        registerUndoPoint()
+        var updatedTimeline = timeline
+        updatedTimeline.applyOffset(
+            clip.alignmentOffset,
+            toCameraGroup: clip.cameraGroupID,
+            activityDuration: activity.duration
+        )
+        timeline = updatedTimeline
+        statusMessage = "Applied \(String(format: "%.1f", clip.alignmentOffset))s offset to \(clip.cameraGroupID)."
+    }
+
+    func previewMediaAtPlayhead() -> PreviewMedia? {
+        guard let clip = timeline.visibleClip(
+                at: timeline.playhead,
+                preferredTrackName: settings.previewTrackName,
+                disabledTrackNames: settings.disabledPreviewTrackNames
+              ),
+              let mediaItemID = clip.mediaItemID,
+              let mediaItem = mediaItems.first(where: { $0.id == mediaItemID }),
+              let fileURL = mediaItem.fileURL else {
+            return nil
+        }
+
+        return PreviewMedia(
+            url: fileURL,
+            sourceTime: timeline.playhead - clip.effectiveStartTime,
+            clipStartTime: clip.effectiveStartTime,
+            clipID: clip.id
+        )
+    }
+
+    func activePreviewMedia() -> PreviewMedia? {
+        if let mediaPoolPreviewItemID,
+           let mediaItem = mediaItems.first(where: { $0.id == mediaPoolPreviewItemID }),
+           let fileURL = mediaItem.fileURL {
+            return PreviewMedia(
+                url: fileURL,
+                sourceTime: mediaPoolPreviewSourceTime,
+                clipStartTime: 0,
+                clipID: mediaItem.id,
+                syncsToSourceTime: false
+            )
+        }
+        return previewMediaAtPlayhead()
+    }
+
+    var isPreviewingMediaPoolItem: Bool {
+        guard let mediaPoolPreviewItemID else {
+            return false
+        }
+        return mediaItems.contains { $0.id == mediaPoolPreviewItemID && $0.fileURL != nil }
+    }
+
+    func previewMediaPoolItem(_ mediaItemID: MediaItem.ID) {
+        guard let mediaItem = mediaItems.first(where: { $0.id == mediaItemID }),
+              mediaItem.fileURL != nil else {
+            statusMessage = "Could not preview media: file not found."
+            return
+        }
+        mediaPoolPreviewItemID = mediaItemID
+        mediaPoolPreviewSourceTime = 0
+        playbackRate = 1
+        isPlaying = true
+        statusMessage = "Previewing media: \(mediaItem.displayName)."
+    }
+
+    func clearMediaPoolPreview() {
+        guard mediaPoolPreviewItemID != nil else {
+            return
+        }
+        mediaPoolPreviewItemID = nil
+        mediaPoolPreviewSourceTime = 0
+        isPlaying = false
+        playbackRate = 1
+        statusMessage = "Timeline preview."
+    }
+
+    func setMediaPoolPreviewSourceTime(_ sourceTime: TimeInterval) {
+        guard isPreviewingMediaPoolItem else {
+            return
+        }
+        mediaPoolPreviewSourceTime = max(sourceTime, 0)
+    }
+
+    func jumpToPreviousPreviewItem() {
+        if let mediaPoolPreviewItemID,
+           let currentIndex = mediaItems.firstIndex(where: { $0.id == mediaPoolPreviewItemID }),
+           !mediaItems.isEmpty {
+            let nextIndex = currentIndex == mediaItems.startIndex ? mediaItems.index(before: mediaItems.endIndex) : mediaItems.index(before: currentIndex)
+            previewMediaPoolItem(mediaItems[nextIndex].id)
+            return
+        }
+
+        let clips = timeline.tracks.flatMap(\.clips).sorted { $0.effectiveStartTime < $1.effectiveStartTime }
+        guard let previousClip = clips.last(where: { $0.effectiveStartTime < timeline.playhead - 0.01 }) ?? clips.last else {
+            return
+        }
+        setPlayhead(previousClip.effectiveStartTime)
+    }
+
+    func jumpToNextPreviewItem() {
+        if let mediaPoolPreviewItemID,
+           let currentIndex = mediaItems.firstIndex(where: { $0.id == mediaPoolPreviewItemID }),
+           !mediaItems.isEmpty {
+            let nextIndex = mediaItems.index(after: currentIndex) == mediaItems.endIndex ? mediaItems.startIndex : mediaItems.index(after: currentIndex)
+            previewMediaPoolItem(mediaItems[nextIndex].id)
+            return
+        }
+
+        let clips = timeline.tracks.flatMap(\.clips).sorted { $0.effectiveStartTime < $1.effectiveStartTime }
+        guard let nextClip = clips.first(where: { $0.effectiveStartTime > timeline.playhead + 0.01 }) ?? clips.first else {
+            return
+        }
+        setPlayhead(nextClip.effectiveStartTime)
+    }
+
+    func setPreviewTrackName(_ trackName: String?) {
+        settings.previewTrackName = trackName
+        statusMessage = trackName.map { "Preview track: \($0)." } ?? "Preview track: Auto."
+    }
+
+    func setPreviewTrackDisabled(_ trackName: String, disabled: Bool) {
+        if disabled {
+            settings.disabledPreviewTrackNames.insert(trackName)
+            if settings.previewTrackName == trackName {
+                settings.previewTrackName = nil
+            }
+        } else {
+            settings.disabledPreviewTrackNames.remove(trackName)
+        }
+        statusMessage = disabled ? "Disabled preview track: \(trackName)." : "Enabled preview track: \(trackName)."
+    }
+
+    func selectOverlay(_ elementID: OverlayElement.ID) {
+        selection = .overlayElement(elementID)
+    }
+
+    func selectedOverlay(_ elementID: OverlayElement.ID) -> OverlayElement? {
+        overlayLayout.elements.first { $0.id == elementID }
+    }
+
+    func moveOverlay(_ elementID: OverlayElement.ID, to position: CGPoint) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].position = CGPoint(
+            x: min(max(position.x, 0), 1),
+            y: min(max(position.y, 0), 1)
+        )
+    }
+
+    func nudgeSelectedOverlay(dx: Double, dy: Double) {
+        guard case .overlayElement(let elementID) = selection,
+              let element = selectedOverlay(elementID) else {
+            return
+        }
+        moveOverlay(
+            elementID,
+            to: CGPoint(
+                x: element.position.x + dx,
+                y: element.position.y + dy
+            )
+        )
+        finishContinuousEdit()
+    }
+
+    func setOverlayScale(_ elementID: OverlayElement.ID, scale: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].scale = min(max(scale, 0.25), 4)
+    }
+
+    func setOverlayFontSize(_ elementID: OverlayElement.ID, fontSize: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.fontSize = fontSize
+    }
+
+    func setOverlayTextPreset(_ elementID: OverlayElement.ID, textPreset: OverlayTextPreset) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.textPreset = textPreset
+    }
+
+    func setOverlayGaugePreset(_ elementID: OverlayElement.ID, gaugePreset: OverlayGaugePreset) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.gaugePreset = gaugePreset
+    }
+
+    func setOverlayRouteMapPreset(_ elementID: OverlayElement.ID, routeMapPreset: OverlayRouteMapPreset) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapPreset = routeMapPreset
+        overlayLayout.elements[index].style.routeMapProvider = routeMapPreset == .mapKit ? .mapKit : .none
+    }
+
+    func setOverlayRouteMapShape(_ elementID: OverlayElement.ID, shape: OverlayRouteMapShape) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapShape = shape
+    }
+
+    func setOverlayRouteMapEdgeFade(_ elementID: OverlayElement.ID, edgeFade: OverlayRouteMapEdgeFade) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapEdgeFade = edgeFade
+    }
+
+    func setOverlayRouteMapFadeAmount(_ elementID: OverlayElement.ID, amount: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapFadeAmount = min(max(amount, 0.05), 0.45)
+    }
+
+    func setOverlayRouteMapColorMode(_ elementID: OverlayElement.ID, colorMode: OverlayRouteMapColorMode) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapColorMode = colorMode
+    }
+
+    func setOverlayRouteMapGradientStart(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapGradientStart = color
+    }
+
+    func setOverlayRouteMapGradientMiddle(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapGradientMiddle = color
+    }
+
+    func setOverlayRouteMapGradientEnd(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapGradientEnd = color
+    }
+
+    func setOverlayRouteMapMarkerStyle(_ elementID: OverlayElement.ID, markerStyle: OverlayRouteMapMarkerStyle) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapMarkerStyle = markerStyle
+        overlayLayout.elements[index].style.routeMapStartMarkerStyle = markerStyle
+        overlayLayout.elements[index].style.routeMapEndMarkerStyle = markerStyle
+    }
+
+    func setOverlayRouteMapBackgroundStyle(_ elementID: OverlayElement.ID, backgroundStyle: OverlayRouteMapBackgroundStyle) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapBackgroundStyle = backgroundStyle
+        overlayLayout.elements[index].style.routeMapProvider = backgroundStyle == .none ? .none : .mapKit
+    }
+
+    func setOverlayRouteMapLegendVisible(_ elementID: OverlayElement.ID, isVisible: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapLegendVisible = isVisible
+    }
+
+    func setOverlayRouteMapStartMarkerStyle(_ elementID: OverlayElement.ID, markerStyle: OverlayRouteMapMarkerStyle) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapStartMarkerStyle = markerStyle
+    }
+
+    func setOverlayRouteMapEndMarkerStyle(_ elementID: OverlayElement.ID, markerStyle: OverlayRouteMapMarkerStyle) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapEndMarkerStyle = markerStyle
+    }
+
+    func setOverlayRouteMapLegendMode(_ elementID: OverlayElement.ID, legendMode: OverlayRouteMapLegendMode) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapLegendMode = legendMode
+    }
+
+    func setOverlayFontName(_ elementID: OverlayElement.ID, fontName: String) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.fontName = fontName
+    }
+
+    func setOverlayFontWeight(_ elementID: OverlayElement.ID, fontWeight: OverlayFontWeight) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.fontWeight = fontWeight
+    }
+
+    func setOverlayForegroundColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.foregroundColor = color
+    }
+
+    func setOverlayBackgroundOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.backgroundOpacity = min(max(opacity, 0), 1)
+    }
+
+    func setOverlayShadowOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.shadowOpacity = min(max(opacity, 0), 1)
+    }
+
+    func setOverlayShadowRadius(_ elementID: OverlayElement.ID, radius: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.shadowRadius = min(max(radius, 0), 24)
+    }
+
+    func deleteOverlay(_ elementID: OverlayElement.ID) {
+        guard overlayLayout.elements.contains(where: { $0.id == elementID }) else {
+            return
+        }
+        registerUndoPoint()
+        overlayLayout.elements.removeAll { $0.id == elementID }
+        if selection == .overlayElement(elementID) {
+            selection = .none
+        }
+        statusMessage = "Deleted overlay element."
+    }
+
+    func deleteSelectedItem() {
+        switch selection {
+        case .timelineClip(let clipID):
+            guard timeline.clip(with: clipID) != nil else {
+                return
+            }
+            registerUndoPoint()
+            var updatedTimeline = timeline
+            updatedTimeline.deleteClip(clipID)
+            timeline = updatedTimeline
+            selection = .none
+            statusMessage = "Deleted timeline clip."
+        case .overlayElement(let elementID):
+            deleteOverlay(elementID)
+        case .none:
+            break
+        }
+    }
+
+    func saveOverlayTemplate(named name: String) {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            statusMessage = "Template name is required."
+            return
+        }
+        guard !overlayLayout.elements.isEmpty else {
+            statusMessage = "Add overlay elements before saving a template."
+            return
+        }
+
+        let now = Date()
+        if let index = overlayTemplates.firstIndex(where: { $0.name.localizedCaseInsensitiveCompare(trimmedName) == .orderedSame }) {
+            let existingTemplate = overlayTemplates[index]
+            overlayTemplates[index] = OverlayTemplate(
+                id: existingTemplate.id,
+                name: trimmedName,
+                createdAt: existingTemplate.createdAt,
+                updatedAt: now,
+                referenceResolution: overlayTemplateReferenceResolution,
+                elements: overlayLayout.elements.map(OverlayTemplateElement.init(element:))
+            )
+            statusMessage = "Updated overlay template: \(trimmedName)."
+        } else {
+            overlayTemplates.insert(
+                OverlayTemplate(
+                    name: trimmedName,
+                    layout: overlayLayout,
+                    referenceResolution: overlayTemplateReferenceResolution,
+                    now: now
+                ),
+                at: 0
+            )
+            statusMessage = "Saved overlay template: \(trimmedName)."
+        }
+        persistOverlayTemplates()
+    }
+
+    func applyOverlayTemplate(_ templateID: OverlayTemplate.ID) {
+        guard let template = overlayTemplates.first(where: { $0.id == templateID }) else {
+            statusMessage = "Overlay template not found."
+            return
+        }
+        registerUndoPoint()
+        overlayLayout = template.layout
+        selection = .none
+        statusMessage = "Applied overlay template: \(template.name)."
+    }
+
+    func deleteOverlayTemplate(_ templateID: OverlayTemplate.ID) {
+        guard let template = overlayTemplates.first(where: { $0.id == templateID }) else {
+            return
+        }
+        overlayTemplates.removeAll { $0.id == templateID }
+        persistOverlayTemplates()
+        statusMessage = "Deleted overlay template: \(template.name)."
+    }
+
+    func importOverlayTemplateFile() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.init(filenameExtension: OverlayTemplateStore.fileExtension)].compactMap { $0 }
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return
+        }
+
+        do {
+            var template = try overlayTemplateStore.loadTemplateFile(from: url)
+            if overlayTemplates.contains(where: { $0.name.localizedCaseInsensitiveCompare(template.name) == .orderedSame }) {
+                template.name = "\(template.name) Imported"
+            }
+            overlayTemplates.insert(template, at: 0)
+            persistOverlayTemplates()
+            statusMessage = "Imported overlay template: \(template.name)."
+        } catch {
+            statusMessage = "Overlay template import failed: \(error.localizedDescription)"
+            print("[RunningOverlay] Overlay template import failed: \(String(reflecting: error))")
+        }
+    }
+
+    func exportOverlayTemplateFile(_ templateID: OverlayTemplate.ID) {
+        guard let template = overlayTemplates.first(where: { $0.id == templateID }) else {
+            statusMessage = "Overlay template not found."
+            return
+        }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.init(filenameExtension: OverlayTemplateStore.fileExtension)].compactMap { $0 }
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = "\(template.name).\(OverlayTemplateStore.fileExtension)"
+
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return
+        }
+
+        do {
+            try overlayTemplateStore.exportTemplate(template, to: url)
+            statusMessage = "Exported overlay template: \(template.name)."
+        } catch {
+            statusMessage = "Overlay template export failed: \(error.localizedDescription)"
+            print("[RunningOverlay] Overlay template export failed: \(String(reflecting: error))")
+        }
+    }
+
+    func exportOverlays(to destinationURL: URL) {
+        guard !isExporting else {
+            return
+        }
+
+        let segments = timeline.tracks.flatMap(\.clips).compactMap { clip -> OverlayExportSegment? in
+            guard let mediaItemID = clip.mediaItemID,
+                  let mediaItem = mediaItems.first(where: { $0.id == mediaItemID }) else {
+                return nil
+            }
+            return OverlayExportSegment(
+                startTime: clip.effectiveStartTime,
+                duration: clip.duration,
+                sourceFileName: mediaItem.displayName
+            )
+        }
+        let job = OverlayExportJob(
+            destinationURL: destinationURL,
+            settings: settings,
+            activity: activity,
+            overlayLayout: overlayLayout,
+            fitStartTime: timeline.fitStartTime,
+            segments: segments
+        )
+
+        runExport(job: job, title: "Clip Overlay Export", completedMessage: "Overlay export completed.", failurePrefix: "Overlay export failed")
+    }
+
+    func cancelExport() {
+        guard isExporting else {
+            return
+        }
+        exportTask?.cancel()
+        statusMessage = "Cancelling export..."
+    }
+
+    func exportFullActivityOverlay(to destinationURL: URL) {
+        guard !isExporting else {
+            return
+        }
+        guard activity.duration > 0 else {
+            statusMessage = "Import a FIT file before exporting full activity overlay."
+            return
+        }
+
+        let job = OverlayExportJob(
+            destinationURL: destinationURL,
+            settings: settings,
+            activity: activity,
+            overlayLayout: overlayLayout,
+            fitStartTime: timeline.fitStartTime,
+            segments: [
+                OverlayExportSegment(
+                    startTime: timeline.fitStartTime,
+                    duration: activity.duration,
+                    sourceFileName: "full_activity.mov"
+                )
+            ]
+        )
+
+        runExport(job: job, title: "Full Activity Export", completedMessage: "Full activity overlay export completed.", failurePrefix: "Full activity overlay export failed")
+    }
+
+    func exportCalibrationOverlay(to destinationURL: URL) {
+        guard !isExporting else {
+            return
+        }
+
+        let calibrationActivity = activity.duration > 0 ? activity : Self.calibrationActivity()
+        let segmentStart = calibrationActivity.duration > 3
+            ? min(timeline.playhead, calibrationActivity.duration - 3)
+            : 0
+        let job = OverlayExportJob(
+            destinationURL: destinationURL,
+            settings: settings,
+            activity: calibrationActivity,
+            overlayLayout: Self.calibrationOverlayLayout(),
+            fitStartTime: 0,
+            segments: [
+                OverlayExportSegment(
+                    startTime: segmentStart,
+                    duration: 3,
+                    sourceFileName: "overlay_calibration.mov"
+                )
+            ],
+            renderGuides: true
+        )
+
+        runExport(job: job, title: "Calibration Overlay Export", completedMessage: "Calibration overlay export completed.", failurePrefix: "Calibration overlay export failed")
+    }
+
+    func exportCalibrationFrame(to destinationURL: URL) {
+        let calibrationActivity = activity.duration > 0 ? activity : Self.calibrationActivity()
+        let sampleTime = calibrationActivity.duration > 0
+            ? min(timeline.playhead, calibrationActivity.duration)
+            : 0
+        let outputURL = destinationURL.appendingPathComponent("overlay_calibration_frame.png")
+
+        do {
+            try FileManager.default.createDirectory(at: destinationURL, withIntermediateDirectories: true)
+            try? FileManager.default.removeItem(at: outputURL)
+            try OverlayFrameRenderer.renderPNG(
+                to: outputURL,
+                request: OverlayFrameRenderRequest(
+                    size: CGSize(width: settings.resolution.width, height: settings.resolution.height),
+                    layout: Self.calibrationOverlayLayout(),
+                    activity: calibrationActivity,
+                    elapsedTime: quantizedLayerDataTime(for: sampleTime),
+                    renderGuides: true
+                )
+            )
+            statusMessage = "Calibration frame exported: \(outputURL.lastPathComponent)."
+        } catch {
+            statusMessage = "Calibration frame export failed: \(error.localizedDescription)"
+            print("[RunningOverlay] Calibration frame export failed: \(String(reflecting: error))")
+        }
+    }
+
+    func undo() {
+        guard let snapshot = undoStack.popLast() else {
+            updateUndoRedoFlags()
+            return
+        }
+        redoStack.append(makeSnapshot())
+        restore(snapshot)
+        activeUndoSnapshot = nil
+        statusMessage = "Undo."
+        updateUndoRedoFlags()
+    }
+
+    func redo() {
+        guard let snapshot = redoStack.popLast() else {
+            updateUndoRedoFlags()
+            return
+        }
+        undoStack.append(makeSnapshot())
+        restore(snapshot)
+        activeUndoSnapshot = nil
+        statusMessage = "Redo."
+        updateUndoRedoFlags()
+    }
+
+    func clearSelection() {
+        selection = .none
+    }
+
+    private func loadOverlayTemplates() {
+        do {
+            overlayTemplates = try overlayTemplateStore.load()
+        } catch {
+            overlayTemplates = []
+            statusMessage = "Overlay template load failed: \(error.localizedDescription)"
+            print("[RunningOverlay] Overlay template load failed: \(String(reflecting: error))")
+        }
+    }
+
+    private func persistOverlayTemplates() {
+        do {
+            try overlayTemplateStore.save(overlayTemplates)
+        } catch {
+            statusMessage = "Overlay template save failed: \(error.localizedDescription)"
+            print("[RunningOverlay] Overlay template save failed: \(String(reflecting: error))")
+        }
+    }
+
+    private var overlayTemplateReferenceResolution: OverlayTemplateResolution {
+        OverlayTemplateResolution(width: settings.resolution.width, height: settings.resolution.height)
+    }
+
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let totalSeconds = Int(duration.rounded())
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        }
+        return String(format: "%02d:%02d", minutes, seconds)
+    }
+
+    private func formatDistance(_ meters: Double) -> String {
+        String(format: "%.2f km", meters / 1000)
+    }
+
+    private func formatSignedDuration(_ duration: TimeInterval) -> String {
+        let sign = duration < 0 ? "-" : ""
+        return sign + formatDuration(abs(duration))
+    }
+
+    private func currentLayerName() -> String {
+        if case .timelineClip(let clipID) = selection,
+           let clip = timeline.clip(with: clipID) {
+            return clip.cameraGroupID
+        }
+        if let previewTrackName = settings.previewTrackName,
+           timeline.tracks.contains(where: { $0.name == previewTrackName }) {
+            return previewTrackName
+        }
+        return timeline.tracks.first?.name ?? "Layer 1"
+    }
+
+    private func matchMediaItems(_ mediaItemIDs: Set<MediaItem.ID>, toTrackName trackName: String) {
+        let targetIDs = mediaItemIDs.filter { id in
+            mediaItems.contains { $0.id == id }
+        }
+        guard !targetIDs.isEmpty else {
+            statusMessage = "No media items selected."
+            return
+        }
+
+        registerUndoPoint()
+        var updatedTimeline = timeline
+        var lastClipID: TimelineClip.ID?
+        var matchedCount = 0
+
+        for mediaIndex in mediaItems.indices where targetIDs.contains(mediaItems[mediaIndex].id) {
+            let mediaItem = mediaItems[mediaIndex]
+            let startTime: TimeInterval
+            let source: String
+            if let inferredStartDate = mediaItem.inferredStartDate {
+                startTime = timeline.fitStartTime + inferredStartDate.timeIntervalSince(activity.startDate)
+                source = "timestamp"
+            } else {
+                startTime = timeline.playhead
+                source = "manual"
+            }
+
+            if let clipID = updatedTimeline.addOrMoveClip(
+                mediaItem: mediaItem,
+                trackName: trackName,
+                startTime: startTime,
+                activity: activity
+            ) {
+                mediaItems[mediaIndex].alignmentStatus = .aligned(source: source)
+                mediaItems[mediaIndex].cameraGroupID = trackName
+                lastClipID = clipID
+                matchedCount += 1
+            }
+        }
+
+        timeline = updatedTimeline
+        if let lastClipID {
+            selection = .timelineClip(lastClipID)
+        }
+        statusMessage = "Matched \(matchedCount) media item(s) to \(trackName)."
+    }
+
+    private static func isSupportedVideoURL(_ url: URL) -> Bool {
+        let supportedExtensions: Set<String> = ["mov", "mp4", "m4v", "avi"]
+        return supportedExtensions.contains(url.pathExtension.lowercased())
+    }
+
+    static func calibrationOverlayLayout() -> OverlayLayout {
+        OverlayLayout(elements: [
+            OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.14), scale: 1.15, style: .default),
+            OverlayElement(type: .elevationChart, position: CGPoint(x: 0.5, y: 0.30), scale: 1.0, style: .default),
+            OverlayElement(type: .heartRate, position: CGPoint(x: 0.12, y: 0.86), scale: 1.25, style: .default),
+            OverlayElement(type: .distance, position: CGPoint(x: 0.50, y: 0.68), scale: 1.35, style: .default),
+            OverlayElement(type: .pace, position: CGPoint(x: 0.86, y: 0.86), scale: 1.25, style: .default),
+            OverlayElement(type: .elapsedTime, position: CGPoint(x: 0.86, y: 0.14), scale: 1.0, style: .default)
+        ])
+    }
+
+    static func calibrationActivity() -> ActivityTimeline {
+        let startDate = Date(timeIntervalSince1970: 1_776_000_000)
+        return ActivityTimeline(
+            startDate: startDate,
+            duration: 3,
+            distanceMeters: 750,
+            records: [
+                ActivityRecord(
+                    elapsedTime: 0,
+                    timestamp: startDate,
+                    distanceMeters: 0,
+                    heartRate: 148,
+                    paceSecondsPerKilometer: 270,
+                    elevationMeters: 100,
+                    cadence: 178,
+                    powerWatts: 260,
+                    calories: 0
+                ),
+                ActivityRecord(
+                    elapsedTime: 1.5,
+                    timestamp: startDate.addingTimeInterval(1.5),
+                    distanceMeters: 375,
+                    heartRate: 160,
+                    paceSecondsPerKilometer: 252,
+                    elevationMeters: 112,
+                    cadence: 184,
+                    powerWatts: 285,
+                    calories: 8
+                ),
+                ActivityRecord(
+                    elapsedTime: 3,
+                    timestamp: startDate.addingTimeInterval(3),
+                    distanceMeters: 750,
+                    heartRate: 172,
+                    paceSecondsPerKilometer: 245,
+                    elevationMeters: 106,
+                    cadence: 188,
+                    powerWatts: 302,
+                    calories: 16
+                )
+            ]
+        )
+    }
+
+    private func runExport(job: OverlayExportJob, title: String, completedMessage: String, failurePrefix: String) {
+        guard !isExporting else {
+            return
+        }
+
+        isExporting = true
+        exportProgress = ExportProgressState(
+            title: title,
+            items: job.segments.enumerated().map { index, segment in
+                ExportProgressItem(index: index, name: segment.sourceFileName, progress: 0, status: .queued)
+            }
+        )
+        statusMessage = title
+
+        exportTask = Task {
+            do {
+                try await OverlayVideoExporter.export(job: job) { [weak self] progress in
+                    self?.updateExportProgress(progress)
+                }
+                exportProgress?.markCompleted()
+                statusMessage = completedMessage
+            } catch OverlayExportError.cancelled {
+                exportProgress?.markCancelled()
+                statusMessage = "Export cancelled."
+            } catch {
+                exportProgress?.markFailed(message: error.localizedDescription)
+                statusMessage = "\(failurePrefix): \(error.localizedDescription)"
+                print("[RunningOverlay] \(failurePrefix): \(String(reflecting: error))")
+            }
+            isExporting = false
+            exportTask = nil
+        }
+    }
+
+    private func updateExportProgress(_ progress: OverlayExportProgress) {
+        guard var currentProgress = exportProgress else {
+            return
+        }
+        currentProgress.update(progress)
+        exportProgress = currentProgress
+        statusMessage = progress.message
+    }
+
+    private static let zoomSliderFitThreshold = 2.0
+    private static let zoomSliderMaximum = 100.0
+    private static let minimumTimelinePixelsPerSecond = 0.25
+    private static let maximumTimelinePixelsPerSecond = 200.0
+
+    private static func pixelsPerSecond(forSliderValue sliderValue: Double) -> Double {
+        let normalized = min(
+            max((sliderValue - zoomSliderFitThreshold) / (zoomSliderMaximum - zoomSliderFitThreshold), 0),
+            1
+        )
+        return minimumTimelinePixelsPerSecond
+            + pow(normalized, 2) * (maximumTimelinePixelsPerSecond - minimumTimelinePixelsPerSecond)
+    }
+
+    private static func sliderValue(forPixelsPerSecond pixelsPerSecond: Double) -> Double {
+        let normalized = min(
+            max((pixelsPerSecond - minimumTimelinePixelsPerSecond) / (maximumTimelinePixelsPerSecond - minimumTimelinePixelsPerSecond), 0),
+            1
+        )
+        return zoomSliderFitThreshold + sqrt(normalized) * (zoomSliderMaximum - zoomSliderFitThreshold)
+    }
+
+    private func registerUndoPoint() {
+        undoStack.append(makeSnapshot())
+        redoStack.removeAll()
+        activeUndoSnapshot = nil
+        updateUndoRedoFlags()
+    }
+
+    private func registerContinuousUndoPoint() {
+        if let activeUndoSnapshot {
+            if undoStack.last != activeUndoSnapshot {
+                undoStack.append(activeUndoSnapshot)
+                redoStack.removeAll()
+                updateUndoRedoFlags()
+            }
+            return
+        }
+        let snapshot = makeSnapshot()
+        activeUndoSnapshot = snapshot
+        undoStack.append(snapshot)
+        redoStack.removeAll()
+        updateUndoRedoFlags()
+    }
+
+    private func makeSnapshot() -> ProjectSnapshot {
+        ProjectSnapshot(
+            settings: settings,
+            activity: activity,
+            mediaItems: mediaItems,
+            timeline: timeline,
+            overlayLayout: overlayLayout,
+            selection: selection
+        )
+    }
+
+    private func restore(_ snapshot: ProjectSnapshot) {
+        settings = snapshot.settings
+        activity = snapshot.activity
+        mediaItems = snapshot.mediaItems
+        timeline = snapshot.timeline
+        overlayLayout = snapshot.overlayLayout
+        selection = snapshot.selection
+    }
+
+    private func updateUndoRedoFlags() {
+        canUndo = !undoStack.isEmpty
+        canRedo = !redoStack.isEmpty
+    }
+}
+
+private struct ProjectSnapshot: Equatable {
+    var settings: ProjectSettings
+    var activity: ActivityTimeline
+    var mediaItems: [MediaItem]
+    var timeline: TimelineModel
+    var overlayLayout: OverlayLayout
+    var selection: EditorSelection
+}
+
+enum EditorSelection: Equatable {
+    case none
+    case timelineClip(TimelineClip.ID)
+    case overlayElement(OverlayElement.ID)
+}
+
+struct PreviewMedia: Equatable {
+    var url: URL
+    var sourceTime: TimeInterval
+    var clipStartTime: TimeInterval
+    var clipID: TimelineClip.ID
+    var syncsToSourceTime = true
+
+    init(
+        url: URL,
+        sourceTime: TimeInterval,
+        clipStartTime: TimeInterval,
+        clipID: TimelineClip.ID,
+        syncsToSourceTime: Bool = true
+    ) {
+        self.url = url
+        self.sourceTime = sourceTime
+        self.clipStartTime = clipStartTime
+        self.clipID = clipID
+        self.syncsToSourceTime = syncsToSourceTime
+    }
+}
+
+struct ExportProgressState: Equatable {
+    var title: String
+    var items: [ExportProgressItem]
+    var failureMessage: String?
+
+    var overallProgress: Double {
+        guard !items.isEmpty else {
+            return 0
+        }
+        return items.map(\.progress).reduce(0, +) / Double(items.count)
+    }
+
+    var completedCount: Int {
+        items.filter { $0.status == .completed }.count
+    }
+
+    mutating func update(_ progress: OverlayExportProgress) {
+        for index in items.indices {
+            if items[index].index < progress.segmentIndex, items[index].status != .completed {
+                items[index].progress = 1
+                items[index].status = .completed
+            } else if items[index].index == progress.segmentIndex {
+                items[index].progress = min(max(progress.segmentProgress, 0), 1)
+                items[index].status = items[index].progress >= 1 ? .completed : .exporting
+            }
+        }
+    }
+
+    mutating func markCompleted() {
+        for index in items.indices {
+            items[index].progress = 1
+            items[index].status = .completed
+        }
+    }
+
+    mutating func markFailed(message: String) {
+        failureMessage = message
+        if let exportingIndex = items.firstIndex(where: { $0.status == .exporting || $0.status == .queued }) {
+            items[exportingIndex].status = .failed
+        }
+    }
+
+    mutating func markCancelled() {
+        failureMessage = "Cancelled"
+        for index in items.indices where items[index].status == .exporting || items[index].status == .queued {
+            items[index].status = .cancelled
+        }
+    }
+}
+
+struct ExportProgressItem: Identifiable, Equatable {
+    var index: Int
+    var name: String
+    var progress: Double
+    var status: ExportProgressItemStatus
+
+    var id: Int { index }
+}
+
+enum ExportProgressItemStatus: String, Equatable {
+    case queued = "Queued"
+    case exporting = "Exporting"
+    case completed = "Done"
+    case failed = "Failed"
+    case cancelled = "Cancelled"
+}
