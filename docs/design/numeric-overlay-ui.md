@@ -1,6 +1,6 @@
 # Numeric Overlay UI Design Spec
 
-Last updated: 2026-04-26
+Last updated: 2026-04-26 (post numeric-overlay refactor)
 
 ## Purpose
 
@@ -68,7 +68,7 @@ Sections:
 3. `Typography`
 4. `Color`
 5. `Background`
-6. `Effects`
+6. `Shadow`
 
 Each section should render as a compact collapsible group:
 
@@ -84,7 +84,6 @@ Do not use large card containers for every row.
 
 | Control | Example | Requirement |
 | --- | --- | --- |
-| `Metric` dropdown | `Pace` | Selects the metric/source when supported. |
 | `Units` dropdown | `Metric (min/km)` | Required for metrics with unit variants. |
 | `Format Preview` readout | `13'49" / km` | Always visible and model-backed through formatter. |
 | `Show Label` toggle | On/off | Controls label visibility when supported. |
@@ -174,16 +173,12 @@ Controls:
 
 Model mapping:
 
-- Existing model supports `OverlayStyle.backgroundOpacity`.
-- Existing model does not yet expose background enabled, background color, radius, or padding as separate persisted fields.
+- `OverlayStyle.backgroundEnabled` toggles drawing.
+- `OverlayStyle.backgroundColor` is the fill color.
+- `OverlayStyle.backgroundOpacity` continues to multiply the alpha for backwards-compatible templates.
+- `OverlayStyle.backgroundRadius` and `OverlayStyle.backgroundPaddingX/Y` drive the rounded background on the `.minimal` text preset.
 
-Implementation rule:
-
-- In current model, `Enable Background` can map to `backgroundOpacity > 0` if product behavior is accepted.
-- If background color/radius/padding are shown, they must be model-backed before appearing enabled.
-- A disabled placeholder is acceptable only if visually clear.
-
-## Effects Section
+## Shadow Section
 
 Controls:
 
@@ -193,9 +188,8 @@ Controls:
 
 Model mapping:
 
-- Existing model supports `OverlayStyle.shadowOpacity`.
-- Existing model supports `OverlayStyle.shadowRadius`.
-- Shadow toggle can map to `shadowOpacity > 0` if product behavior is accepted.
+- `OverlayStyle.shadowEnabled` toggles drawing.
+- `OverlayStyle.shadowOpacity`, `OverlayStyle.shadowRadius`, `OverlayStyle.shadowOffsetX`, and `OverlayStyle.shadowOffsetY` drive the rendered NSShadow.
 
 ## Footer
 
@@ -231,34 +225,34 @@ Inspector width:
 
 ## Model Gaps
 
-The design intentionally includes controls that are desirable for a complete numeric overlay editor. These need model work before they can be enabled:
+Implemented in `OverlayStyle` (2026-04-26 refactor):
 
-- Metric reassignment independent of `OverlayElementType`.
-- Unit preference per overlay.
-- Show label.
-- Show unit.
-- Custom label text.
-- Rotation.
-- Text alignment.
-- Background enabled flag.
-- Background color.
-- Background radius.
-- Background padding X/Y.
-- Accent color.
+- `unitOption` (`OverlayUnitOption`) — per-overlay unit preference, decoded with default fallback for legacy projects.
+- `showLabel`, `showUnit`, `customLabel` — control label/unit visibility and override label text.
+- `rotationDegrees` — rotation in degrees applied at render time.
+- `textAlignment` (`OverlayTextAlignment`) — leading/center/trailing alignment.
+- `accentColor` — color used by overlays that expose an accent (defaults to `foregroundColor`).
+- `backgroundEnabled`, `backgroundColor`, `backgroundRadius`, `backgroundPaddingX`, `backgroundPaddingY` — explicit background controls; the legacy `backgroundOpacity` field continues to scale the alpha and stays decoded.
+- `shadowEnabled`, `shadowOffsetX`, `shadowOffsetY` — shadow toggle plus offset, in addition to existing `shadowOpacity` / `shadowRadius`.
 
-Model-backed today:
+`OverlayElementType.isNumericOverlay` and `OverlayElementType.defaultUnitOption` provide the unit defaults applied by `ProjectDocument.addOverlayElement` and used to filter the unit menu.
+
+Still routed through metric type (no separate model field):
+
+- Metric reassignment independent of `OverlayElementType` (changing the metric requires creating a new element).
+
+Model-backed and rendered today (post-refactor):
 
 - Type-derived metric.
-- Formatted value preview.
-- Position X/Y.
-- Scale.
-- Font name.
-- Font size.
-- Font weight.
-- Foreground/text color.
-- Background opacity.
-- Shadow opacity.
-- Shadow radius.
+- Formatted value preview, honoring `unitOption`, `showLabel`, `showUnit`, and `customLabel`.
+- Position X/Y, scale.
+- Font name, font size, font weight.
+- Foreground/text color and accent color.
+- Background enabled / color / radius / padding X / padding Y (`.minimal` text preset uses padding + radius for the rounded background).
+- Background opacity (legacy multiplier on the alpha).
+- Shadow enabled / opacity / radius / offset X / offset Y.
+- Rotation.
+- Text alignment.
 
 ## Implementation Guidance
 

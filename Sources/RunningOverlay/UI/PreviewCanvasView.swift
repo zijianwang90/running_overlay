@@ -649,8 +649,14 @@ private struct TextPresetOverlayView: View {
             switch layout.preset {
             case .minimal:
                 HStack(alignment: .firstTextBaseline, spacing: layout.horizontalPadding * 0.45) {
+                    if element.style.showLabel, !layout.components.label.isEmpty {
+                        Text(layout.components.label)
+                            .font(labelFont)
+                    }
                     valueText
-                    unitText
+                    if element.style.showUnit, !layout.components.unit.isEmpty {
+                        unitText
+                    }
                 }
                 .padding(.horizontal, layout.horizontalPadding)
                 .padding(.vertical, layout.verticalPadding)
@@ -730,7 +736,12 @@ private struct TextPresetOverlayView: View {
         }
         .foregroundStyle(Color(element.style.foregroundColor))
         .monospacedDigit()
-        .shadow(color: Color.black.opacity(element.style.shadowOpacity), radius: layout.shadowRadius, x: 0, y: layout.shadowOffsetY)
+        .shadow(
+            color: element.style.shadowEnabled ? Color.black.opacity(element.style.shadowOpacity) : Color.clear,
+            radius: element.style.shadowEnabled ? layout.shadowRadius : 0,
+            x: element.style.shadowEnabled ? element.style.shadowOffsetX : 0,
+            y: element.style.shadowEnabled ? element.style.shadowOffsetY : 0
+        )
     }
 
     private var valueText: Text {
@@ -748,7 +759,11 @@ private struct TextPresetOverlayView: View {
     }
 
     private var background: Color {
-        isSelected ? Color.accentColor.opacity(0.45) : Color.black.opacity(element.style.backgroundOpacity)
+        if isSelected {
+            return Color.accentColor.opacity(0.45)
+        }
+        guard element.style.backgroundEnabled else { return Color.clear }
+        return Color(element.style.backgroundColor).opacity(element.style.backgroundOpacity)
     }
 
     private var divider: some View {

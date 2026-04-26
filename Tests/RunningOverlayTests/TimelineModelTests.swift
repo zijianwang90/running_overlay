@@ -33,18 +33,21 @@ struct TimelineModelTests {
         #expect(timeline.tracks[0].clips[0].startTime == 30)
     }
 
-    @Test func applyOffsetUpdatesMatchingCameraGroup() {
+    @Test func applyOffsetUpdatesOnlyCurrentLayer() {
+        let layerAClip1 = TimelineClip(mediaItemID: nil, title: "a.mov", startTime: 10, duration: 5, alignmentOffset: 0, cameraGroupID: "Camera A")
+        let layerAClip2 = TimelineClip(mediaItemID: nil, title: "b.mov", startTime: 30, duration: 5, alignmentOffset: 0, cameraGroupID: "Camera A")
+        let layerBClip = TimelineClip(mediaItemID: nil, title: "c.mov", startTime: 40, duration: 5, alignmentOffset: 0, cameraGroupID: "Camera A")
         var timeline = TimelineModel(tracks: [
             TimelineTrack(name: "Camera A", clips: [
-                TimelineClip(mediaItemID: nil, title: "a.mov", startTime: 10, duration: 5, alignmentOffset: 0, cameraGroupID: "Camera A"),
-                TimelineClip(mediaItemID: nil, title: "b.mov", startTime: 30, duration: 5, alignmentOffset: 0, cameraGroupID: "Camera A")
+                layerAClip1,
+                layerAClip2
             ]),
             TimelineTrack(name: "Camera B", clips: [
-                TimelineClip(mediaItemID: nil, title: "c.mov", startTime: 40, duration: 5, alignmentOffset: 0, cameraGroupID: "Camera B")
+                layerBClip
             ])
         ])
 
-        timeline.applyOffset(2.5, toCameraGroup: "Camera A", activityDuration: 100)
+        timeline.applyOffset(2.5, toTrackContaining: layerAClip1.id, activityDuration: 100)
 
         #expect(timeline.tracks[0].clips.allSatisfy { $0.alignmentOffset == 2.5 })
         #expect(timeline.tracks[1].clips[0].alignmentOffset == 0)

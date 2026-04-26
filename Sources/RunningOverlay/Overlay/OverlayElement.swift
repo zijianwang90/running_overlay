@@ -57,6 +57,110 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
             true
         }
     }
+
+    /// Numeric Overlay template applies to type-derived metric overlays only.
+    /// See `docs/design/numeric-overlay-ui.md`.
+    var isNumericOverlay: Bool {
+        switch self {
+        case .heartRate, .pace, .calories, .elapsedTime, .realTime,
+             .distance, .elevation, .cadence, .power:
+            true
+        default:
+            false
+        }
+    }
+
+    var defaultUnitOption: OverlayUnitOption {
+        OverlayUnitOption.defaultOption(for: self)
+    }
+}
+
+enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
+    case bpm
+    case paceMetric
+    case paceImperial
+    case paceRowing
+    case distanceKilometers
+    case distanceMiles
+    case distanceMeters
+    case elevationMeters
+    case elevationFeet
+    case watts
+    case spm
+    case kcal
+    case durationHMS
+    case durationMS
+    case durationSeconds
+    case clock24Hour
+    case clock12Hour
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .bpm: "bpm"
+        case .paceMetric: "Metric (min/km)"
+        case .paceImperial: "Imperial (min/mi)"
+        case .paceRowing: "Rowing (min/500m)"
+        case .distanceKilometers: "Metric (km)"
+        case .distanceMiles: "Imperial (mi)"
+        case .distanceMeters: "Meters (m)"
+        case .elevationMeters: "Metric (m)"
+        case .elevationFeet: "Imperial (ft)"
+        case .watts: "watts"
+        case .spm: "spm"
+        case .kcal: "kcal"
+        case .durationHMS: "hh:mm:ss"
+        case .durationMS: "mm:ss"
+        case .durationSeconds: "seconds"
+        case .clock24Hour: "24-hour"
+        case .clock12Hour: "12-hour"
+        }
+    }
+
+    static func options(for type: OverlayElementType) -> [OverlayUnitOption] {
+        switch type {
+        case .heartRate: [.bpm]
+        case .pace: [.paceMetric, .paceImperial, .paceRowing]
+        case .distance: [.distanceKilometers, .distanceMiles, .distanceMeters]
+        case .elevation: [.elevationMeters, .elevationFeet]
+        case .power: [.watts]
+        case .cadence: [.spm]
+        case .calories: [.kcal]
+        case .elapsedTime: [.durationHMS, .durationMS, .durationSeconds]
+        case .realTime: [.clock24Hour, .clock12Hour]
+        case .distanceTimeline, .elevationChart, .runningGauge, .routeMap:
+            []
+        }
+    }
+
+    static func defaultOption(for type: OverlayElementType) -> OverlayUnitOption {
+        options(for: type).first ?? .bpm
+    }
+}
+
+enum OverlayTextAlignment: String, CaseIterable, Identifiable, Codable {
+    case leading
+    case center
+    case trailing
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .leading: "Left"
+        case .center: "Center"
+        case .trailing: "Right"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .leading: "text.alignleft"
+        case .center: "text.aligncenter"
+        case .trailing: "text.alignright"
+        }
+    }
 }
 
 struct OverlayStyle: Equatable, Codable {
@@ -85,6 +189,23 @@ struct OverlayStyle: Equatable, Codable {
     var shadowOpacity: Double
     var shadowRadius: Double
 
+    // Numeric Overlay additions (see docs/design/numeric-overlay-ui.md)
+    var unitOption: OverlayUnitOption
+    var showLabel: Bool
+    var showUnit: Bool
+    var customLabel: String
+    var rotationDegrees: Double
+    var textAlignment: OverlayTextAlignment
+    var accentColor: OverlayColor
+    var backgroundEnabled: Bool
+    var backgroundColor: OverlayColor
+    var backgroundRadius: Double
+    var backgroundPaddingX: Double
+    var backgroundPaddingY: Double
+    var shadowEnabled: Bool
+    var shadowOffsetX: Double
+    var shadowOffsetY: Double
+
     static let `default` = OverlayStyle(
         textPreset: .minimal,
         gaugePreset: .minimalSport,
@@ -109,7 +230,22 @@ struct OverlayStyle: Equatable, Codable {
         foregroundColor: .white,
         backgroundOpacity: 0.22,
         shadowOpacity: 0.35,
-        shadowRadius: 4
+        shadowRadius: 4,
+        unitOption: .paceMetric,
+        showLabel: false,
+        showUnit: true,
+        customLabel: "",
+        rotationDegrees: 0,
+        textAlignment: .leading,
+        accentColor: .blue,
+        backgroundEnabled: true,
+        backgroundColor: .black,
+        backgroundRadius: 6,
+        backgroundPaddingX: 10,
+        backgroundPaddingY: 6,
+        shadowEnabled: true,
+        shadowOffsetX: 0,
+        shadowOffsetY: 2
     )
 
     init(
@@ -136,7 +272,22 @@ struct OverlayStyle: Equatable, Codable {
         foregroundColor: OverlayColor,
         backgroundOpacity: Double,
         shadowOpacity: Double,
-        shadowRadius: Double
+        shadowRadius: Double,
+        unitOption: OverlayUnitOption = .paceMetric,
+        showLabel: Bool = false,
+        showUnit: Bool = true,
+        customLabel: String = "",
+        rotationDegrees: Double = 0,
+        textAlignment: OverlayTextAlignment = .leading,
+        accentColor: OverlayColor = .blue,
+        backgroundEnabled: Bool = true,
+        backgroundColor: OverlayColor = .black,
+        backgroundRadius: Double = 6,
+        backgroundPaddingX: Double = 10,
+        backgroundPaddingY: Double = 6,
+        shadowEnabled: Bool = true,
+        shadowOffsetX: Double = 0,
+        shadowOffsetY: Double = 2
     ) {
         self.textPreset = textPreset
         self.gaugePreset = gaugePreset
@@ -162,6 +313,21 @@ struct OverlayStyle: Equatable, Codable {
         self.backgroundOpacity = backgroundOpacity
         self.shadowOpacity = shadowOpacity
         self.shadowRadius = shadowRadius
+        self.unitOption = unitOption
+        self.showLabel = showLabel
+        self.showUnit = showUnit
+        self.customLabel = customLabel
+        self.rotationDegrees = rotationDegrees
+        self.textAlignment = textAlignment
+        self.accentColor = accentColor
+        self.backgroundEnabled = backgroundEnabled
+        self.backgroundColor = backgroundColor
+        self.backgroundRadius = backgroundRadius
+        self.backgroundPaddingX = backgroundPaddingX
+        self.backgroundPaddingY = backgroundPaddingY
+        self.shadowEnabled = shadowEnabled
+        self.shadowOffsetX = shadowOffsetX
+        self.shadowOffsetY = shadowOffsetY
     }
 
     init(from decoder: Decoder) throws {
@@ -190,6 +356,21 @@ struct OverlayStyle: Equatable, Codable {
         backgroundOpacity = try container.decodeIfPresent(Double.self, forKey: .backgroundOpacity) ?? Self.default.backgroundOpacity
         shadowOpacity = try container.decodeIfPresent(Double.self, forKey: .shadowOpacity) ?? Self.default.shadowOpacity
         shadowRadius = try container.decodeIfPresent(Double.self, forKey: .shadowRadius) ?? Self.default.shadowRadius
+        unitOption = try container.decodeIfPresent(OverlayUnitOption.self, forKey: .unitOption) ?? Self.default.unitOption
+        showLabel = try container.decodeIfPresent(Bool.self, forKey: .showLabel) ?? Self.default.showLabel
+        showUnit = try container.decodeIfPresent(Bool.self, forKey: .showUnit) ?? Self.default.showUnit
+        customLabel = try container.decodeIfPresent(String.self, forKey: .customLabel) ?? Self.default.customLabel
+        rotationDegrees = try container.decodeIfPresent(Double.self, forKey: .rotationDegrees) ?? Self.default.rotationDegrees
+        textAlignment = try container.decodeIfPresent(OverlayTextAlignment.self, forKey: .textAlignment) ?? Self.default.textAlignment
+        accentColor = try container.decodeIfPresent(OverlayColor.self, forKey: .accentColor) ?? Self.default.accentColor
+        backgroundEnabled = try container.decodeIfPresent(Bool.self, forKey: .backgroundEnabled) ?? Self.default.backgroundEnabled
+        backgroundColor = try container.decodeIfPresent(OverlayColor.self, forKey: .backgroundColor) ?? Self.default.backgroundColor
+        backgroundRadius = try container.decodeIfPresent(Double.self, forKey: .backgroundRadius) ?? Self.default.backgroundRadius
+        backgroundPaddingX = try container.decodeIfPresent(Double.self, forKey: .backgroundPaddingX) ?? Self.default.backgroundPaddingX
+        backgroundPaddingY = try container.decodeIfPresent(Double.self, forKey: .backgroundPaddingY) ?? Self.default.backgroundPaddingY
+        shadowEnabled = try container.decodeIfPresent(Bool.self, forKey: .shadowEnabled) ?? Self.default.shadowEnabled
+        shadowOffsetX = try container.decodeIfPresent(Double.self, forKey: .shadowOffsetX) ?? Self.default.shadowOffsetX
+        shadowOffsetY = try container.decodeIfPresent(Double.self, forKey: .shadowOffsetY) ?? Self.default.shadowOffsetY
     }
 }
 

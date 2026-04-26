@@ -138,13 +138,15 @@ struct TimelineModel: Equatable {
         }
     }
 
-    mutating func applyOffset(_ offset: TimeInterval, toCameraGroup cameraGroupID: String, activityDuration: TimeInterval) {
-        for trackIndex in tracks.indices {
-            for clipIndex in tracks[trackIndex].clips.indices where tracks[trackIndex].clips[clipIndex].cameraGroupID == cameraGroupID {
-                tracks[trackIndex].clips[clipIndex].alignmentOffset = offset
-            }
-            tracks[trackIndex].clips.sort { $0.effectiveStartTime < $1.effectiveStartTime }
+    mutating func applyOffset(_ offset: TimeInterval, toTrackContaining clipID: TimelineClip.ID, activityDuration: TimeInterval) {
+        guard let indexPath = clipIndexPath(clipID) else {
+            return
         }
+        let trackIndex = indexPath.track
+        for clipIndex in tracks[trackIndex].clips.indices {
+            tracks[trackIndex].clips[clipIndex].alignmentOffset = offset
+        }
+        tracks[trackIndex].clips.sort { $0.effectiveStartTime < $1.effectiveStartTime }
     }
 
     func clip(with id: TimelineClip.ID) -> TimelineClip? {

@@ -80,7 +80,7 @@ Completed so far:
 - Delete selected timeline clips.
 - Highlight media drop target layers and expose one new layer target during drag.
 - Inspector-based clip offset adjustment.
-- Apply selected offset to the same camera/source group.
+- Apply selected offset to all clips in the current timeline layer.
 - AppKit self-drawing timeline surface for smoother interaction.
 - Distinct label column and lane area in the timeline.
 - DaVinci-style full-height playhead with a large ruler head.

@@ -737,15 +737,18 @@ struct OverlayFrameRenderer {
 
     fileprivate static func textAttributes(for element: OverlayElement, fontSize: Double, shadowRadius: Double, shadowOffsetY: Double) -> [NSAttributedString.Key: Any] {
         let font = NSFont(name: element.style.fontName, size: fontSize) ?? .systemFont(ofSize: fontSize, weight: nsFontWeight(element.style.fontWeight))
-        let shadow = NSShadow()
-        shadow.shadowColor = NSColor.black.withAlphaComponent(element.style.shadowOpacity)
-        shadow.shadowBlurRadius = shadowRadius
-        shadow.shadowOffset = CGSize(width: 0, height: shadowOffsetY)
-        return [
+        var attributes: [NSAttributedString.Key: Any] = [
             .font: font,
-            .foregroundColor: NSColor(element.style.foregroundColor),
-            .shadow: shadow
+            .foregroundColor: NSColor(element.style.foregroundColor)
         ]
+        if element.style.shadowEnabled, element.style.shadowOpacity > 0 {
+            let shadow = NSShadow()
+            shadow.shadowColor = NSColor.black.withAlphaComponent(element.style.shadowOpacity)
+            shadow.shadowBlurRadius = shadowRadius
+            shadow.shadowOffset = CGSize(width: element.style.shadowOffsetX, height: shadowOffsetY)
+            attributes[.shadow] = shadow
+        }
+        return attributes
     }
 
     private static func textSize(_ text: String, for element: OverlayElement, fontSize: Double, shadowRadius: Double, shadowOffsetY: Double) -> CGSize {
@@ -822,7 +825,9 @@ struct OverlayFrameRenderer {
         NSGraphicsContext.current = NSGraphicsContext(cgContext: offscreenCGContext, flipped: true)
 
         if let backgroundCornerRadius {
-            NSColor.black.withAlphaComponent(element.style.backgroundOpacity).setFill()
+            let baseColor = NSColor(element.style.backgroundColor)
+            let opacity = element.style.backgroundEnabled ? element.style.backgroundOpacity : 0
+            baseColor.withAlphaComponent(opacity).setFill()
             NSBezierPath(
                 roundedRect: CGRect(x: 0, y: 0, width: rect.width * scale, height: rect.height * scale),
                 xRadius: backgroundCornerRadius * scale,
@@ -880,7 +885,9 @@ struct OverlayFrameRenderer {
     }
 
     private static func drawRoundedBackground(_ rect: CGRect, element: OverlayElement, cornerRadius: Double) {
-        NSColor.black.withAlphaComponent(element.style.backgroundOpacity).setFill()
+        let baseColor = NSColor(element.style.backgroundColor)
+        let opacity = element.style.backgroundEnabled ? element.style.backgroundOpacity : 0
+        baseColor.withAlphaComponent(opacity).setFill()
         NSBezierPath(roundedRect: rect, xRadius: cornerRadius, yRadius: cornerRadius).fill()
     }
 

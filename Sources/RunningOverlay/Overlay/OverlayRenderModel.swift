@@ -19,10 +19,10 @@ struct OverlayRenderContext {
 enum OverlayRenderModel {
     static func textLayout(for element: OverlayElement, in context: OverlayRenderContext) -> OverlayTextRenderLayout {
         let fontSize = context.scaled(element.style.fontSize * element.scale)
-        let metrics = textMetrics(for: element.style.textPreset, fontSize: fontSize, scale: element.scale, context: context)
-        let components = OverlayValueFormatter.components(for: element.type, activity: context.activity, elapsedTime: context.elapsedTime)
+        let metrics = textMetrics(for: element.style.textPreset, fontSize: fontSize, scale: element.scale, context: context, element: element)
+        let components = OverlayValueFormatter.components(for: element, activity: context.activity, elapsedTime: context.elapsedTime)
         return OverlayTextRenderLayout(
-            value: OverlayValueFormatter.value(for: element.type, activity: context.activity, elapsedTime: context.elapsedTime),
+            value: OverlayValueFormatter.value(for: element, activity: context.activity, elapsedTime: context.elapsedTime),
             components: components,
             preset: element.style.textPreset,
             fontSize: fontSize,
@@ -159,11 +159,19 @@ enum OverlayRenderModel {
         for preset: OverlayTextPreset,
         fontSize: Double,
         scale: Double,
-        context: OverlayRenderContext
+        context: OverlayRenderContext,
+        element: OverlayElement
     ) -> (labelFontSize: Double, unitFontSize: Double, horizontalPadding: Double, verticalPadding: Double, cornerRadius: Double) {
         switch preset {
         case .minimal:
-            return (fontSize * 0.72, fontSize * 0.58, context.scaled(10), context.scaled(6), context.scaled(6))
+            // Minimal preset adopts model-backed padding/radius from the numeric overlay style.
+            return (
+                fontSize * 0.72,
+                fontSize * 0.58,
+                context.scaled(element.style.backgroundPaddingX),
+                context.scaled(element.style.backgroundPaddingY),
+                context.scaled(element.style.backgroundRadius)
+            )
         case .pillBadge:
             return (fontSize * 0.42, fontSize * 0.58, context.scaled(18 * scale), context.scaled(10 * scale), context.scaled(28 * scale))
         case .metricCard:

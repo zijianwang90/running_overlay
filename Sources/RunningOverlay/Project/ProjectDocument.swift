@@ -318,6 +318,7 @@ final class ProjectDocument: ObservableObject {
     func addOverlayElement(_ type: OverlayElementType) {
         registerUndoPoint()
         var style = OverlayStyle.default
+        style.unitOption = type.defaultUnitOption
         if type == .routeMap {
             style.routeMapPreset = .mapKit
             style.routeMapProvider = .mapKit
@@ -454,7 +455,7 @@ final class ProjectDocument: ObservableObject {
         updateUndoRedoFlags()
     }
 
-    func applyOffsetToCamera(for clipID: TimelineClip.ID) {
+    func applyOffsetToCurrentLayer(for clipID: TimelineClip.ID) {
         guard let clip = timeline.clip(with: clipID) else {
             return
         }
@@ -462,11 +463,13 @@ final class ProjectDocument: ObservableObject {
         var updatedTimeline = timeline
         updatedTimeline.applyOffset(
             clip.alignmentOffset,
-            toCameraGroup: clip.cameraGroupID,
+            toTrackContaining: clipID,
             activityDuration: activity.duration
         )
         timeline = updatedTimeline
-        statusMessage = "Applied \(String(format: "%.1f", clip.alignmentOffset))s offset to \(clip.cameraGroupID)."
+        let clipCount = timeline.tracks.first(where: { $0.clips.contains(where: { $0.id == clipID }) })?.clips.count ?? 0
+        let trackName = timeline.tracks.first(where: { $0.clips.contains(where: { $0.id == clipID }) })?.name ?? "layer"
+        statusMessage = "Applied \(String(format: "%.1f", clip.alignmentOffset))s offset to all \(clipCount) clips in \(trackName)."
     }
 
     func previewMediaAtPlayhead() -> PreviewMedia? {
@@ -811,6 +814,150 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].style.shadowOpacity = min(max(opacity, 0), 1)
+    }
+
+    func setOverlayUnitOption(_ elementID: OverlayElement.ID, unitOption: OverlayUnitOption) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.unitOption = unitOption
+    }
+
+    func setOverlayShowLabel(_ elementID: OverlayElement.ID, showLabel: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.showLabel = showLabel
+    }
+
+    func setOverlayShowUnit(_ elementID: OverlayElement.ID, showUnit: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.showUnit = showUnit
+    }
+
+    func setOverlayCustomLabel(_ elementID: OverlayElement.ID, label: String) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.customLabel = label
+    }
+
+    func setOverlayPosition(_ elementID: OverlayElement.ID, position: CGPoint) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].position = CGPoint(
+            x: min(max(position.x, 0), 1),
+            y: min(max(position.y, 0), 1)
+        )
+    }
+
+    func setOverlayRotation(_ elementID: OverlayElement.ID, degrees: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.rotationDegrees = degrees
+    }
+
+    func setOverlayTextAlignment(_ elementID: OverlayElement.ID, alignment: OverlayTextAlignment) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.textAlignment = alignment
+    }
+
+    func setOverlayAccentColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.accentColor = color
+    }
+
+    func setOverlayBackgroundEnabled(_ elementID: OverlayElement.ID, enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.backgroundEnabled = enabled
+    }
+
+    func setOverlayBackgroundColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.backgroundColor = color
+    }
+
+    func setOverlayBackgroundRadius(_ elementID: OverlayElement.ID, radius: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.backgroundRadius = max(0, min(radius, 64))
+    }
+
+    func setOverlayBackgroundPadding(_ elementID: OverlayElement.ID, x: Double? = nil, y: Double? = nil) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        if let x {
+            overlayLayout.elements[index].style.backgroundPaddingX = max(0, min(x, 80))
+        }
+        if let y {
+            overlayLayout.elements[index].style.backgroundPaddingY = max(0, min(y, 80))
+        }
+    }
+
+    func setOverlayShadowEnabled(_ elementID: OverlayElement.ID, enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.shadowEnabled = enabled
+    }
+
+    func setOverlayShadowOffset(_ elementID: OverlayElement.ID, x: Double? = nil, y: Double? = nil) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        if let x {
+            overlayLayout.elements[index].style.shadowOffsetX = max(-32, min(x, 32))
+        }
+        if let y {
+            overlayLayout.elements[index].style.shadowOffsetY = max(-32, min(y, 32))
+        }
+    }
+
+    func resetOverlayStyle(_ elementID: OverlayElement.ID) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        let type = overlayLayout.elements[index].type
+        var style = OverlayStyle.default
+        style.unitOption = type.defaultUnitOption
+        if type == .routeMap {
+            style.routeMapPreset = .mapKit
+            style.routeMapProvider = .mapKit
+            style.backgroundOpacity = 0.74
+            style.foregroundColor = .cyan
+        }
+        overlayLayout.elements[index].style = style
+        overlayLayout.elements[index].scale = 1.0
+        statusMessage = "Reset overlay style."
     }
 
     func setOverlayShadowRadius(_ elementID: OverlayElement.ID, radius: Double) {

@@ -19,7 +19,11 @@ struct ParameterPanelView: View {
                         .padding(.vertical, InspectorTheme.panelPaddingY)
                 }
             case .overlayElement(let elementID):
-                OverlayDetailView(elementID: elementID)
+                if let element = project.selectedOverlay(elementID), element.type.isNumericOverlay {
+                    NumericOverlayDetailView(elementID: elementID)
+                } else {
+                    OverlayDetailView(elementID: elementID)
+                }
             case .none:
                 InspectorOuterView()
             }
@@ -82,9 +86,9 @@ struct ClipInspectorView: View {
             }
 
             Button {
-                project.applyOffsetToCamera(for: clipID)
+                project.applyOffsetToCurrentLayer(for: clipID)
             } label: {
-                Label("Apply to all clips from this camera", systemImage: "square.stack.3d.up")
+                Label("Apply to all clips in this layer", systemImage: "square.stack.3d.up")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(InspectorPrimaryButtonStyle())

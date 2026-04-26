@@ -2,6 +2,90 @@
 
 ## 2026-04-26
 
+### Numeric Overlay Preview Wiring & Inspector Polish
+
+Summary:
+
+- Wired numeric overlay preview rendering to the new style fields so toggles in the Inspector now affect the live preview, not just export:
+  - `.minimal` text preset honors `showLabel` (renders the label inline) and `showUnit` (hides the unit suffix when off).
+  - Background drawing now uses `backgroundEnabled` + `backgroundColor`; turning the toggle off removes the bubble entirely (selection highlight still draws).
+  - Shadow drawing now gates on `shadowEnabled` and uses `shadowOffsetX/Y`.
+- Removed the read-only `Metric` row at the top of the Content section in the numeric Inspector; metric is already shown in the header.
+- Removed the duplicate chevron in `InspectorDenseMenuLabel`; we now rely on the platform `Menu` indicator only.
+- Renamed the `Effects` section to `Shadow` (Inspector + design doc) so the title matches the controls inside it.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `Sources/RunningOverlay/UI/NumericOverlayDetailView.swift`
+- `docs/design/numeric-overlay-ui.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+- Ran `swift test`. All 51 tests passed.
+
+### Numeric Overlay UI Refactor
+
+Summary:
+
+- Refactored the numeric category Inspector to a dense, DaVinci-style two-column panel matching `docs/design/numeric-overlay-ui.md` and the `numeric-overlay.png` mockup.
+- Added a new `NumericOverlayDetailView` with collapsible sections (Content, Layout, Typography, Color, Background, Effects), compact dense rows, and a sticky Reset/Done footer.
+- Routed numeric overlay types (heart rate, pace, calories, elapsed time, real time, distance, elevation, cadence, power) through the new view via `ParameterPanelView`; non-numeric overlays continue to use the legacy `OverlayDetailView`.
+- Extended `OverlayStyle` with the previously missing fields: `unitOption`, `showLabel`, `showUnit`, `customLabel`, `rotationDegrees`, `textAlignment`, `accentColor`, `backgroundEnabled`, `backgroundColor`, `backgroundRadius`, `backgroundPaddingX`, `backgroundPaddingY`, `shadowEnabled`, `shadowOffsetX`, `shadowOffsetY`. All new fields decode with defaults for legacy templates.
+- Added `OverlayUnitOption` and `OverlayTextAlignment` enums plus `OverlayElementType.isNumericOverlay` / `defaultUnitOption` helpers.
+- Updated `OverlayValueFormatter` to be element-aware so it honors the new unit option, label/unit visibility, and custom label fields.
+- Updated `OverlayRenderModel` and `OverlayFrameRenderer` so the `.minimal` text preset uses the new background color/radius/padding/shadow fields when rendering.
+- Added `ProjectDocument` setters for every new field plus a `resetOverlayStyle` action used by the Reset footer button.
+- Added formatter tests covering pace metric/imperial/rowing units, distance miles/meters, elevation feet, duration seconds, and label/unit/custom-label flags.
+- Updated `docs/design/numeric-overlay-ui.md` to mark the previously-missing model fields as implemented.
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/OverlayElement.swift`
+- `Sources/RunningOverlay/Overlay/OverlayValueFormatter.swift`
+- `Sources/RunningOverlay/Overlay/OverlayRenderModel.swift`
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/UI/NumericOverlayDetailView.swift` (new)
+- `Sources/RunningOverlay/UI/ParameterPanelView.swift`
+- `Tests/RunningOverlayTests/OverlayValueFormatterTests.swift`
+- `docs/design/numeric-overlay-ui.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+- Ran `swift test`.
+- All 51 tests passed.
+
+### Layer-Wide Clip Offset Action
+
+Summary:
+
+- Updated the clip-offset action in the Inspector from camera-wide apply to layer-wide apply.
+- Changed clip Inspector button copy to `Apply to all clips in this layer`.
+- Updated timeline offset application logic to target only the selected clip's timeline layer, not all clips sharing camera/source group.
+- Added and updated tests to ensure only the current layer receives the offset update.
+- Synced requirements, development notes, and roadmap wording with the new layer-wide behavior.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/ParameterPanelView.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/Timeline/TimelineModel.swift`
+- `Tests/RunningOverlayTests/TimelineModelTests.swift`
+- `docs/requirements.md`
+- `docs/development.md`
+- `docs/roadmap.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift test`.
+- All 49 tests passed.
+
 ### Numeric Overlay UI Design Spec
 
 Summary:

@@ -228,15 +228,15 @@ When a timeline clip is selected:
 - Fine-tuning is relative to the app's current best FIT-to-video alignment.
 - Provide numeric second-based inputs for clip start and alignment offset.
 - Double-clicking timing field labels should reset the corresponding value to its default.
-- Provide an action: "Apply to all clips from this camera".
-- The action applies the same offset to all clips identified as the same camera/source.
+- Provide an action: "Apply to all clips in this layer".
+- The action applies the same offset to all clips in the currently selected timeline layer.
 
 Current implementation status:
 
 - Selected clips show title, camera/source group, start-time input, and offset input.
 - Start and offset inputs edit seconds to two decimal places.
 - Double-clicking the Start or Offset label resets the value to `0.00 s`.
-- The camera-wide apply action copies the selected clip's offset to clips from the same camera/source group.
+- The layer-wide apply action copies the selected clip's offset to all clips in the same timeline layer.
 - Dragging a clip on the timeline changes its effective start time while preserving its current offset value.
 
 When no timeline clip is selected:
@@ -292,7 +292,9 @@ Current implementation status:
 - Inspector tab segments should be clickable across the full segment area.
 - Clicking an add tile creates the overlay and opens its detail editor.
 - Selected overlay elements expose current value, normalized position, scale, preset, font family, font weight, font size, foreground color, background opacity, shadow opacity, and shadow radius controls in the Inspector detail state.
-- Visibility, lock, generic opacity, metric reassignment, and animation controls are deferred until backed by persistent project model fields.
+- Numeric overlays (heart rate, pace, calories, elapsed time, real time, distance, elevation, cadence, power) use the dense `NumericOverlayDetailView` Inspector with Content, Layout, Typography, Color, Background, and Effects sections matching `docs/design/numeric-overlay-ui.md`.
+- Numeric overlay style supports per-overlay unit option, label/unit visibility toggles, custom label text, rotation, text alignment, accent color, an explicit background enabled flag with background color/radius/padding X/Y, and an explicit shadow enabled flag with shadow offset X/Y. New fields decode with safe defaults so existing projects and templates remain compatible.
+- Visibility, lock, generic opacity, and metric reassignment controls are deferred until backed by persistent project model fields.
 - Selected text overlays expose a built-in style picker as the first Inspector control, with Minimal, Pill Badge, Metric Card, Big Number, Sport Watch, and Split Label presets.
 - Selected Running Gauge overlays expose a gauge style picker with Minimal Sport, High Contrast, Trail Adventure, Tech Future, and Retro Digital presets.
 - Space starts/stops playhead playback, and the overlay values update as playhead time changes.
@@ -311,7 +313,7 @@ Current implementation status:
 
 Future requirements:
 
-- Shadow, stroke, alignment, number formatting, units, richer chart style, and animation controls.
+- Stroke, richer chart style, and animation controls.
 - Copy/paste and grouping.
 
 ## 10.1 Overlay Templates

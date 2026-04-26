@@ -212,7 +212,7 @@ Current implementation:
 - Existing timeline clips can be dragged horizontally to change their effective start time.
 - Inspector start and offset fields update the selected clip's effective start time and alignment offset with 0.01 second precision.
 - Double-clicking Inspector timing labels resets start or offset to the default `0.00 s` value.
-- Inspector action applies the selected offset to clips with the same camera/source group.
+- Inspector action applies the selected offset to all clips in the currently selected timeline layer.
 - Timeline drawing and high-frequency interactions are handled by an AppKit `NSView` embedded in SwiftUI.
 - The AppKit timeline handles self-drawn ruler, ruler hover data, tracks, clips, playhead, clip dragging, ruler seeking, media drop, and Command-scroll zoom.
 - The AppKit timeline draws a muted-red playhead with a small downward-pointing triangle inside the ruler band; the triangle's tip connects to a thin vertical line that extends from the ruler through the visible tracks, and neither part is allowed to extend above the ruler.
@@ -264,6 +264,12 @@ Current implementation:
 - Inspector default width is 400 px and minimum width is 320 px; the panel is user-resizable through the custom `HorizontalResizeHandle`, and `ParameterPanelView` does not impose its own width frame so internal outer/detail/editing state switches cannot resize the right column or squeeze tile content.
 - Preview overlay elements can be dragged and clamped within the preview coordinate space.
 - Inspector supports selected overlay font family, font weight, font size, scale, color presets, and background opacity controls.
+- Numeric overlays (heart rate, pace, calories, elapsed time, real time, distance, elevation, cadence, power) use the dense `NumericOverlayDetailView` Inspector defined in `docs/design/numeric-overlay-ui.md`. `ParameterPanelView` routes these `OverlayElementType` values through the new view; other overlay types continue to use `OverlayDetailView`.
+- `OverlayStyle` carries the numeric-overlay editor state: `unitOption`, `showLabel`, `showUnit`, `customLabel`, `rotationDegrees`, `textAlignment`, `accentColor`, `backgroundEnabled` / `backgroundColor` / `backgroundRadius` / `backgroundPaddingX` / `backgroundPaddingY`, and `shadowEnabled` / `shadowOffsetX` / `shadowOffsetY`. All new fields decode with safe defaults so old saved projects and overlay templates load unchanged.
+- `OverlayValueFormatter.value(for:element:activity:elapsedTime:)` is element-aware: it picks the unit option and label/unit/custom-label rules from `OverlayStyle` to produce the rendered string and the Inspector's live preview.
+- `OverlayElementType.isNumericOverlay` and `OverlayElementType.defaultUnitOption` drive routing into the numeric editor and the unit defaults applied by `ProjectDocument.addOverlayElement`.
+- `OverlayRenderModel` and `OverlayFrameRenderer` honor the new background and shadow style fields on the `.minimal` text preset so the same configuration is consistent between preview, calibration PNG, and MOV export.
+- `ProjectDocument` exposes setters for every numeric overlay field plus `resetOverlayStyle` used by the numeric Inspector's footer Reset action; all setters are undoable.
 - Text overlays expose a first-position built-in style picker with Minimal, Pill Badge, Metric Card, Big Number, Sport Watch, and Split Label text presets.
 - Running Gauge is available as a composite circular dashboard overlay with distance, elapsed time, pace, and heart rate in one module.
 - Running Gauge supports Minimal Sport, High Contrast, Trail Adventure, Tech Future, and Retro Digital style presets through the Inspector.
