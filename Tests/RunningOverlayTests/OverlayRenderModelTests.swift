@@ -63,14 +63,20 @@ struct OverlayRenderModelTests {
 
         let layout = OverlayRenderModel.runningGaugeLayout(for: element, in: context)
 
-        #expect(layout.distance.value == "0.05")
-        #expect(layout.elapsedTime.value == "00:05")
-        #expect(layout.pace.value == "--'--\"")
-        #expect(layout.heartRate.value == "110")
+        // Default style preset is `.roadRun` whose layout preset is
+        // `.topTwoMiddleBottom`. Verify the canonical four regions land in
+        // the right slots with expected metric values bound.
+        let regions = Dictionary(uniqueKeysWithValues: layout.regions.map { ($0.config.region, $0) })
+        #expect(regions[.top]?.components.value == "0.05")
+        #expect(regions[.middleLeft]?.components.value == "--'--\"")
+        #expect(regions[.middleRight]?.components.value == "00:05")
+        #expect(regions[.bottom]?.components.value == "110")
         #expect(layout.progress == 0.5)
         #expect(layout.rect.width == 300)
         #expect(layout.rect.midX == 512)
         #expect(layout.rect.midY == 432)
+        #expect(layout.style.layoutPreset == .topTwoMiddleBottom)
+        #expect(layout.style.stylePreset == .roadRun)
     }
 
     @Test func routeMapLayoutProjectsGpsRouteAndCurrentPoint() {
@@ -89,8 +95,24 @@ struct OverlayRenderModelTests {
         #expect(layout.projectedPoints.count == 3)
         #expect(layout.projectedCurrentPoint != nil)
         #expect(layout.progress == 0.5)
-        #expect(layout.rect.width == 280)
-        #expect(layout.rect.height == 210)
+        // Default container size moved to 320 × 240 (4:3) so the user can
+        // resize either axis independently. Square shape is no longer
+        // forced to 1:1 — see `OverlayStyle.routeMapWidth/Height`.
+        #expect(layout.rect.width == 320)
+        #expect(layout.rect.height == 240)
+        // Centering fix: every projected point and the current point must
+        // stay inside `contentRect` (so the rendered stroke stays inside
+        // the visible map box). We expand by a 1pt tolerance to absorb
+        // double-precision rounding at the bounds where a point sits
+        // exactly on the edge.
+        let tolerance: CGFloat = 1
+        let bounds = layout.contentRect.insetBy(dx: -tolerance, dy: -tolerance)
+        for point in layout.projectedPoints {
+            #expect(bounds.contains(point))
+        }
+        if let current = layout.projectedCurrentPoint {
+            #expect(bounds.contains(current))
+        }
     }
 
     @MainActor

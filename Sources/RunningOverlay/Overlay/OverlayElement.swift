@@ -198,6 +198,22 @@ struct OverlayStyle: Equatable, Codable {
     var routeMapBackgroundStyle: OverlayRouteMapBackgroundStyle
     var routeMapLegendVisible: Bool
     var routeMapLegendMode: OverlayRouteMapLegendMode
+    /// Container visual preset (Square / Circle × Hard / Gradient edge).
+    /// Selecting a preset writes the bundled defaults onto the other route
+    /// map fields. See `docs/design/route-map-overlay-ui.md` for the table of
+    /// values each preset applies.
+    var routeMapContainerPreset: OverlayRouteMapContainerPreset
+    /// Alpha applied to the map snapshot only (route line, markers, and
+    /// legend stay opaque). 0.0 hides the map background, 1.0 draws it at
+    /// full opacity.
+    var routeMapMapOpacity: Double
+    /// Container width in design units (before `element.scale` and project
+    /// DPR multipliers are applied). Used by both shapes; for `.circle` the
+    /// renderer takes the smaller of width / height as the diameter.
+    var routeMapWidth: Double
+    /// Container height in design units (before `element.scale` and project
+    /// DPR multipliers are applied).
+    var routeMapHeight: Double
     var fontName: String
     var fontSize: Double
     var fontWeight: OverlayFontWeight
@@ -223,6 +239,12 @@ struct OverlayStyle: Equatable, Codable {
     var shadowOffsetX: Double
     var shadowOffsetY: Double
 
+    /// Running Gauge style. Used only by overlays of type `.runningGauge` —
+    /// safely ignored otherwise. Stored as a sub-struct so the gauge can grow
+    /// dial / ring / tick / region settings without polluting the rest of the
+    /// overlay style namespace. See `Sources/RunningOverlay/Overlay/RunningGaugeModel.swift`.
+    var gauge: RunningGaugeStyle
+
     static let `default` = OverlayStyle(
         textPreset: .minimal,
         gaugePreset: .minimalSport,
@@ -241,6 +263,10 @@ struct OverlayStyle: Equatable, Codable {
         routeMapBackgroundStyle: .dark,
         routeMapLegendVisible: true,
         routeMapLegendMode: .startFinishDistance,
+        routeMapContainerPreset: .squareHardEdge,
+        routeMapMapOpacity: 0.72,
+        routeMapWidth: 320,
+        routeMapHeight: 240,
         fontName: "SF Pro",
         fontSize: 28,
         fontWeight: .semibold,
@@ -262,7 +288,8 @@ struct OverlayStyle: Equatable, Codable {
         backgroundPaddingY: 6,
         shadowEnabled: true,
         shadowOffsetX: 0,
-        shadowOffsetY: 2
+        shadowOffsetY: 2,
+        gauge: RunningGaugeStyle.default
     )
 
     init(
@@ -283,6 +310,10 @@ struct OverlayStyle: Equatable, Codable {
         routeMapBackgroundStyle: OverlayRouteMapBackgroundStyle = .dark,
         routeMapLegendVisible: Bool = true,
         routeMapLegendMode: OverlayRouteMapLegendMode = .startFinishDistance,
+        routeMapContainerPreset: OverlayRouteMapContainerPreset = .squareHardEdge,
+        routeMapMapOpacity: Double = 0.72,
+        routeMapWidth: Double = 320,
+        routeMapHeight: Double = 240,
         fontName: String,
         fontSize: Double,
         fontWeight: OverlayFontWeight,
@@ -304,7 +335,8 @@ struct OverlayStyle: Equatable, Codable {
         backgroundPaddingY: Double = 6,
         shadowEnabled: Bool = true,
         shadowOffsetX: Double = 0,
-        shadowOffsetY: Double = 2
+        shadowOffsetY: Double = 2,
+        gauge: RunningGaugeStyle = .default
     ) {
         self.textPreset = textPreset
         self.gaugePreset = gaugePreset
@@ -323,6 +355,10 @@ struct OverlayStyle: Equatable, Codable {
         self.routeMapBackgroundStyle = routeMapBackgroundStyle
         self.routeMapLegendVisible = routeMapLegendVisible
         self.routeMapLegendMode = routeMapLegendMode
+        self.routeMapContainerPreset = routeMapContainerPreset
+        self.routeMapMapOpacity = min(max(routeMapMapOpacity, 0), 1)
+        self.routeMapWidth = min(max(routeMapWidth, 80), 1200)
+        self.routeMapHeight = min(max(routeMapHeight, 80), 1200)
         self.fontName = fontName
         self.fontSize = fontSize
         self.fontWeight = fontWeight
@@ -345,17 +381,27 @@ struct OverlayStyle: Equatable, Codable {
         self.shadowEnabled = shadowEnabled
         self.shadowOffsetX = shadowOffsetX
         self.shadowOffsetY = shadowOffsetY
+        self.gauge = gauge
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         textPreset = try container.decodeIfPresent(OverlayTextPreset.self, forKey: .textPreset) ?? Self.default.textPreset
         gaugePreset = try container.decodeIfPresent(OverlayGaugePreset.self, forKey: .gaugePreset) ?? Self.default.gaugePreset
-        routeMapPreset = try container.decodeIfPresent(OverlayRouteMapPreset.self, forKey: .routeMapPreset) ?? Self.default.routeMapPreset
+        // Legacy templates may have stored `routeMapPreset = "mapKit"` when
+        // the preset enum doubled as a "show map" trigger. We migrate any
+        // unknown raw value (including "mapKit") to `.gradient`, and rely on
+        // `routeMapBackgroundStyle` to drive map visibility going forward.
+        if let raw = try container.decodeIfPresent(String.self, forKey: .routeMapPreset),
+           let preset = OverlayRouteMapPreset(rawValue: raw) {
+            routeMapPreset = preset
+        } else {
+            routeMapPreset = Self.default.routeMapPreset
+        }
         routeMapProvider = try container.decodeIfPresent(OverlayRouteMapProvider.self, forKey: .routeMapProvider) ?? Self.default.routeMapProvider
         routeMapShape = try container.decodeIfPresent(OverlayRouteMapShape.self, forKey: .routeMapShape) ?? Self.default.routeMapShape
         routeMapEdgeFade = try container.decodeIfPresent(OverlayRouteMapEdgeFade.self, forKey: .routeMapEdgeFade) ?? Self.default.routeMapEdgeFade
-        routeMapFadeAmount = min(max(try container.decodeIfPresent(Double.self, forKey: .routeMapFadeAmount) ?? Self.default.routeMapFadeAmount, 0.05), 0.45)
+        routeMapFadeAmount = min(max(try container.decodeIfPresent(Double.self, forKey: .routeMapFadeAmount) ?? Self.default.routeMapFadeAmount, 0), 0.45)
         routeMapColorMode = try container.decodeIfPresent(OverlayRouteMapColorMode.self, forKey: .routeMapColorMode) ?? Self.default.routeMapColorMode
         routeMapGradientStart = try container.decodeIfPresent(OverlayColor.self, forKey: .routeMapGradientStart) ?? Self.default.routeMapGradientStart
         routeMapGradientMiddle = try container.decodeIfPresent(OverlayColor.self, forKey: .routeMapGradientMiddle) ?? Self.default.routeMapGradientMiddle
@@ -366,6 +412,10 @@ struct OverlayStyle: Equatable, Codable {
         routeMapBackgroundStyle = try container.decodeIfPresent(OverlayRouteMapBackgroundStyle.self, forKey: .routeMapBackgroundStyle) ?? Self.default.routeMapBackgroundStyle
         routeMapLegendVisible = try container.decodeIfPresent(Bool.self, forKey: .routeMapLegendVisible) ?? Self.default.routeMapLegendVisible
         routeMapLegendMode = try container.decodeIfPresent(OverlayRouteMapLegendMode.self, forKey: .routeMapLegendMode) ?? Self.default.routeMapLegendMode
+        routeMapContainerPreset = try container.decodeIfPresent(OverlayRouteMapContainerPreset.self, forKey: .routeMapContainerPreset) ?? Self.default.routeMapContainerPreset
+        routeMapMapOpacity = min(max(try container.decodeIfPresent(Double.self, forKey: .routeMapMapOpacity) ?? Self.default.routeMapMapOpacity, 0), 1)
+        routeMapWidth = min(max(try container.decodeIfPresent(Double.self, forKey: .routeMapWidth) ?? Self.default.routeMapWidth, 80), 1200)
+        routeMapHeight = min(max(try container.decodeIfPresent(Double.self, forKey: .routeMapHeight) ?? Self.default.routeMapHeight, 80), 1200)
         fontName = try container.decodeIfPresent(String.self, forKey: .fontName) ?? Self.default.fontName
         fontSize = try container.decodeIfPresent(Double.self, forKey: .fontSize) ?? Self.default.fontSize
         fontWeight = try container.decodeIfPresent(OverlayFontWeight.self, forKey: .fontWeight) ?? Self.default.fontWeight
@@ -388,6 +438,14 @@ struct OverlayStyle: Equatable, Codable {
         shadowEnabled = try container.decodeIfPresent(Bool.self, forKey: .shadowEnabled) ?? Self.default.shadowEnabled
         shadowOffsetX = try container.decodeIfPresent(Double.self, forKey: .shadowOffsetX) ?? Self.default.shadowOffsetX
         shadowOffsetY = try container.decodeIfPresent(Double.self, forKey: .shadowOffsetY) ?? Self.default.shadowOffsetY
+        if let storedGauge = try container.decodeIfPresent(RunningGaugeStyle.self, forKey: .gauge) {
+            gauge = storedGauge
+        } else {
+            // Migrate older projects: seed RunningGaugeStyle from the legacy
+            // top-level `gaugePreset` so existing layouts keep working until
+            // the user re-applies a preset from the new gauge inspector.
+            gauge = RunningGaugeStyle.preset(gaugePreset)
+        }
     }
 }
 
@@ -395,16 +453,19 @@ enum OverlayRouteMapPreset: String, CaseIterable, Identifiable, Codable {
     case minimal
     case gradient
     case glow
-    case mapKit
 
     var id: String { rawValue }
 
+    /// Display label. Route Style now describes the polyline appearance only;
+    /// whether a map background is rendered is a separate decision driven by
+    /// `OverlayStyle.routeMapBackgroundStyle` (and the dedicated "Show Map"
+    /// toggle in the Inspector). The legacy `mapKit` case is migrated to
+    /// `gradient` on decode for backward compatibility.
     var label: String {
         switch self {
         case .minimal: "Minimal / 极简轨迹"
         case .gradient: "Gradient / 渐变轨迹"
         case .glow: "Glow / 发光轨迹"
-        case .mapKit: "MapKit / 地图底图"
         }
     }
 }
@@ -511,24 +572,122 @@ enum OverlayRouteMapBackgroundStyle: String, CaseIterable, Identifiable, Codable
         case .satellite: "Satellite / 卫星"
         }
     }
+
+    /// Map style choices excluding `.none`. The Inspector's Map Style picker
+    /// uses this list since "show map" is a separate toggle.
+    static var visibleCases: [OverlayRouteMapBackgroundStyle] { [.dark, .light, .terrain, .satellite] }
+}
+
+/// Container visual preset for the Route Map overlay. Selecting a preset
+/// writes a bundle of defaults onto the element (`routeMapShape`,
+/// `routeMapEdgeFade`, `routeMapFadeAmount`, `routeMapMapOpacity`,
+/// `shadowEnabled`, `shadowOpacity`, `shadowRadius`,
+/// `shadowOffsetX`, `shadowOffsetY`).
+///
+/// See `docs/design/route-map-overlay-ui.md` and
+/// `docs/design/route-map-overlay-ui.spec.json` for the table of values each
+/// preset applies.
+enum OverlayRouteMapContainerPreset: String, CaseIterable, Identifiable, Codable {
+    case squareHardEdge
+    case circleHardEdge
+    case squareGradientEdge
+    case circleGradientEdge
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .squareHardEdge: "Square Hard / 方形硬边界"
+        case .circleHardEdge: "Circle Hard / 圆形硬边界"
+        case .squareGradientEdge: "Square Gradient / 方形渐变"
+        case .circleGradientEdge: "Circle Gradient / 圆形渐变"
+        }
+    }
+
+    var shape: OverlayRouteMapShape {
+        switch self {
+        case .squareHardEdge, .squareGradientEdge: .square
+        case .circleHardEdge, .circleGradientEdge: .circle
+        }
+    }
+
+    var edgeFade: OverlayRouteMapEdgeFade {
+        switch self {
+        case .squareHardEdge, .circleHardEdge: .solid
+        case .squareGradientEdge, .circleGradientEdge: .fadeOut
+        }
+    }
+
+    /// Edge softness amount. `0` for hard-edge presets so the renderer skips
+    /// the alpha mask and clips with the raw shape.
+    var fadeAmount: Double {
+        switch self {
+        case .squareHardEdge, .circleHardEdge: 0
+        case .squareGradientEdge: 0.30
+        case .circleGradientEdge: 0.34
+        }
+    }
+
+    var mapOpacity: Double {
+        switch self {
+        case .squareHardEdge, .circleHardEdge: 0.72
+        case .squareGradientEdge, .circleGradientEdge: 0.58
+        }
+    }
+
+    var shadowEnabled: Bool {
+        switch self {
+        case .squareHardEdge, .circleHardEdge: true
+        case .squareGradientEdge, .circleGradientEdge: false
+        }
+    }
+
+    var shadowOpacity: Double {
+        switch self {
+        case .squareHardEdge: 0.35
+        case .circleHardEdge: 0.38
+        case .squareGradientEdge, .circleGradientEdge: 0
+        }
+    }
+
+    var shadowRadius: Double {
+        switch self {
+        case .squareHardEdge: 14
+        case .circleHardEdge: 16
+        case .squareGradientEdge, .circleGradientEdge: 0
+        }
+    }
+
+    var shadowOffsetX: Double { 0 }
+
+    var shadowOffsetY: Double {
+        switch self {
+        case .squareHardEdge, .circleHardEdge: 6
+        case .squareGradientEdge, .circleGradientEdge: 0
+        }
+    }
 }
 
 enum OverlayGaugePreset: String, CaseIterable, Identifiable, Codable {
     case minimalSport
     case highContrast
+    case roadRun
     case trailAdventure
     case techFuture
     case retroDigital
+    case premiumGlass
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
         case .minimalSport: "Minimal Sport / 极简运动"
-        case .highContrast: "High Contrast / 高对比"
-        case .trailAdventure: "Trail Adventure / 越野探索"
-        case .techFuture: "Tech Future / 科技未来"
+        case .highContrast: "High Contrast Sport / 高对比运动"
+        case .roadRun: "Road Run / 公路跑风格"
+        case .trailAdventure: "Trail Adventure / 越野探险"
+        case .techFuture: "Future Tech / 科技未来"
         case .retroDigital: "Retro Digital / 复古数显"
+        case .premiumGlass: "Premium Glass / 精致玻璃"
         }
     }
 }

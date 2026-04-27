@@ -320,8 +320,13 @@ final class ProjectDocument: ObservableObject {
         var style = OverlayStyle.default
         style.unitOption = type.defaultUnitOption
         if type == .routeMap {
-            style.routeMapPreset = .mapKit
+            // Route Style preset describes the polyline appearance only; map
+            // visibility is driven by `routeMapBackgroundStyle` (see
+            // `docs/design/route-map-overlay-ui.md`). The default is to show
+            // the dark MapKit background with a Gradient route line on top.
+            style.routeMapPreset = .gradient
             style.routeMapProvider = .mapKit
+            style.routeMapBackgroundStyle = .dark
             style.backgroundOpacity = 0.74
             style.foregroundColor = .cyan
         }
@@ -712,6 +717,47 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].style.gaugePreset = gaugePreset
+        // Re-seed the gauge style block so visual parameters track the picked
+        // preset. The user can then continue tweaking individual fields via
+        // `mutateGaugeStyle(_:_:)`.
+        overlayLayout.elements[index].style.gauge = RunningGaugeStyle.preset(gaugePreset)
+    }
+
+    /// Generic mutator for the Running Gauge sub-style. Used by the gauge
+    /// inspector to update individual fields (layout, region configs, dial,
+    /// ring, ticks, dividers, color, effects). Registers a single undo
+    /// checkpoint per call so continuous controls (sliders) should still
+    /// route through `finishContinuousEdit()` when committing.
+    func mutateGaugeStyle(_ elementID: OverlayElement.ID, _ mutate: (inout RunningGaugeStyle) -> Void) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        mutate(&overlayLayout.elements[index].style.gauge)
+    }
+
+    /// Updates the layout preset and regenerates the per-region defaults.
+    func setOverlayGaugeLayout(_ elementID: OverlayElement.ID, layout: RunningGaugeLayoutPreset) {
+        mutateGaugeStyle(elementID) { gauge in
+            gauge.layoutPreset = layout
+            gauge.regions = RunningGaugeStyle.defaultRegions(for: layout)
+        }
+    }
+
+    /// Updates a single region config in place. The region is identified by
+    /// its `RunningGaugeRegion` since each region appears at most once per
+    /// layout preset.
+    func updateOverlayGaugeRegion(
+        _ elementID: OverlayElement.ID,
+        region: RunningGaugeRegion,
+        _ mutate: (inout RunningGaugeRegionConfig) -> Void
+    ) {
+        mutateGaugeStyle(elementID) { gauge in
+            guard let regionIndex = gauge.regions.firstIndex(where: { $0.region == region }) else {
+                return
+            }
+            mutate(&gauge.regions[regionIndex])
+        }
     }
 
     func setOverlayRouteMapPreset(_ elementID: OverlayElement.ID, routeMapPreset: OverlayRouteMapPreset) {
@@ -720,7 +766,40 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].style.routeMapPreset = routeMapPreset
-        overlayLayout.elements[index].style.routeMapProvider = routeMapPreset == .mapKit ? .mapKit : .none
+    }
+
+    /// Toggle the map background visibility. Off → `.none`, on → restore the
+    /// previously selected map style (or `.dark` if the previous value was
+    /// already `.none`). Map provider is recomputed by the layout from the
+    /// background style, so we only need to mutate one field.
+    func setOverlayRouteMapShowMap(_ elementID: OverlayElement.ID, showMap: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        if showMap {
+            if overlayLayout.elements[index].style.routeMapBackgroundStyle == .none {
+                overlayLayout.elements[index].style.routeMapBackgroundStyle = .dark
+            }
+        } else {
+            overlayLayout.elements[index].style.routeMapBackgroundStyle = .none
+        }
+    }
+
+    func setOverlayRouteMapWidth(_ elementID: OverlayElement.ID, width: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapWidth = min(max(width, 80), 1200)
+    }
+
+    func setOverlayRouteMapHeight(_ elementID: OverlayElement.ID, height: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapHeight = min(max(height, 80), 1200)
     }
 
     func setOverlayRouteMapShape(_ elementID: OverlayElement.ID, shape: OverlayRouteMapShape) {
@@ -729,6 +808,16 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].style.routeMapShape = shape
+        // Picking circle collapses width and height to the shorter edge so
+        // resizing handles in the editor don't desync from the rendered
+        // diameter. Square keeps the previous width/height as-is so the user
+        // can still drag a non-square rectangle.
+        if shape == .circle {
+            let side = min(overlayLayout.elements[index].style.routeMapWidth,
+                           overlayLayout.elements[index].style.routeMapHeight)
+            overlayLayout.elements[index].style.routeMapWidth = side
+            overlayLayout.elements[index].style.routeMapHeight = side
+        }
     }
 
     func setOverlayRouteMapEdgeFade(_ elementID: OverlayElement.ID, edgeFade: OverlayRouteMapEdgeFade) {
@@ -744,7 +833,48 @@ final class ProjectDocument: ObservableObject {
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
             return
         }
-        overlayLayout.elements[index].style.routeMapFadeAmount = min(max(amount, 0.05), 0.45)
+        overlayLayout.elements[index].style.routeMapFadeAmount = min(max(amount, 0), 0.45)
+    }
+
+    /// Apply a Route Map container preset (Square / Circle × Hard / Gradient
+    /// edge). Writes the bundled defaults declared by
+    /// `OverlayRouteMapContainerPreset` onto a single undo point so the
+    /// preset switch is reversible in one step.
+    ///
+    /// See `docs/design/route-map-overlay-ui.md` for the value table.
+    func setOverlayRouteMapContainerPreset(_ elementID: OverlayElement.ID, containerPreset: OverlayRouteMapContainerPreset) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapContainerPreset = containerPreset
+        overlayLayout.elements[index].style.routeMapShape = containerPreset.shape
+        overlayLayout.elements[index].style.routeMapEdgeFade = containerPreset.edgeFade
+        overlayLayout.elements[index].style.routeMapFadeAmount = containerPreset.fadeAmount
+        overlayLayout.elements[index].style.routeMapMapOpacity = containerPreset.mapOpacity
+        overlayLayout.elements[index].style.shadowEnabled = containerPreset.shadowEnabled
+        overlayLayout.elements[index].style.shadowOpacity = containerPreset.shadowOpacity
+        overlayLayout.elements[index].style.shadowRadius = containerPreset.shadowRadius
+        overlayLayout.elements[index].style.shadowOffsetX = containerPreset.shadowOffsetX
+        overlayLayout.elements[index].style.shadowOffsetY = containerPreset.shadowOffsetY
+    }
+
+    func setOverlayRouteMapMapOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapMapOpacity = min(max(opacity, 0), 1)
+    }
+
+    func setOverlayRouteMapEdgeSoftness(_ elementID: OverlayElement.ID, amount: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        let clamped = min(max(amount, 0), 0.45)
+        overlayLayout.elements[index].style.routeMapFadeAmount = clamped
+        overlayLayout.elements[index].style.routeMapEdgeFade = clamped > 0 ? .fadeOut : .solid
     }
 
     func setOverlayRouteMapColorMode(_ elementID: OverlayElement.ID, colorMode: OverlayRouteMapColorMode) {
@@ -1004,8 +1134,9 @@ final class ProjectDocument: ObservableObject {
         var style = OverlayStyle.default
         style.unitOption = type.defaultUnitOption
         if type == .routeMap {
-            style.routeMapPreset = .mapKit
+            style.routeMapPreset = .gradient
             style.routeMapProvider = .mapKit
+            style.routeMapBackgroundStyle = .dark
             style.backgroundOpacity = 0.74
             style.foregroundColor = .cyan
         }

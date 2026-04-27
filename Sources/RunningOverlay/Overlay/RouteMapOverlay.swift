@@ -100,6 +100,7 @@ struct OverlayRouteMapRenderLayout {
     var fadeAmount: Double
     var lineWidth: Double
     var glowRadius: Double
+    var mapOpacity: Double
     var progress: Double
     var geometry: RouteGeometry?
     var currentPoint: RoutePoint?
@@ -119,17 +120,36 @@ struct OverlayRouteMapRenderLayout {
     }
 
     private func project(_ point: RoutePoint, bounds: RouteBounds, rect: CGRect) -> CGPoint {
-        let minX = mercatorX(bounds.minLongitude)
-        let maxX = mercatorX(bounds.maxLongitude)
-        let minY = mercatorY(bounds.minLatitude)
-        let maxY = mercatorY(bounds.maxLatitude)
+        // Web Mercator y is monotonically *decreasing* as latitude grows
+        // (north → small mercator y, south → large mercator y). Both the
+        // SwiftUI preview canvas and the export renderer (set up with
+        // `NSGraphicsContext(cgContext:flipped:true)`) use a y-down
+        // coordinate system, so mercator y maps directly to render y once
+        // we recompute min/max from the actual projected corners (they
+        // were inverted in the original code, which produced a near-zero
+        // y-range and threw points outside `rect`).
+        let projectedMinX = mercatorX(bounds.minLongitude)
+        let projectedMaxX = mercatorX(bounds.maxLongitude)
+        let projectedSouth = mercatorY(bounds.minLatitude)
+        let projectedNorth = mercatorY(bounds.maxLatitude)
+        let minX = min(projectedMinX, projectedMaxX)
+        let maxX = max(projectedMinX, projectedMaxX)
+        let minY = min(projectedSouth, projectedNorth)
+        let maxY = max(projectedSouth, projectedNorth)
         let xRange = max(maxX - minX, 0.000001)
         let yRange = max(maxY - minY, 0.000001)
-        let x = (mercatorX(point.longitude) - minX) / xRange
-        let y = (mercatorY(point.latitude) - minY) / yRange
+        let scale = min(rect.width / xRange, rect.height / yRange)
+        let contentWidth = xRange * scale
+        let contentHeight = yRange * scale
+        let xOffset = (rect.width - contentWidth) * 0.5
+        let yOffset = (rect.height - contentHeight) * 0.5
+        let localX = (mercatorX(point.longitude) - minX) * scale
+        // North (small mercator y) lands at the top of rect, south at the
+        // bottom — this matches the y-down render coordinate system.
+        let localY = (mercatorY(point.latitude) - minY) * scale
         return CGPoint(
-            x: rect.minX + rect.width * x,
-            y: rect.maxY - rect.height * y
+            x: rect.minX + xOffset + localX,
+            y: rect.minY + yOffset + localY
         )
     }
 
@@ -180,11 +200,16 @@ enum RouteMapMaskRenderer {
                 shape: shape,
                 rect: rect,
                 cornerRadius: cornerRadius,
-                fadeAmount: min(max(fadeAmount, 0.05), 0.45)
+                fadeAmount: min(max(fadeAmount, 0), Self.maxFadeAmount)
             )
         }
         return context.makeImage()
     }
+
+    /// Maximum allowed Edge Softness. Above this the inner solid region
+    /// disappears entirely and the box becomes invisible, so we cap the
+    /// slider here. The value matches the docs spec.
+    static let maxFadeAmount: Double = 0.85
 
     static func makeNSImage(
         size: CGSize,
@@ -212,46 +237,51 @@ enum RouteMapMaskRenderer {
         cornerRadius: Double,
         fadeAmount: Double
     ) {
+        if fadeAmount <= 0.001 {
+            context.setFillColor(gray: 1, alpha: 1)
+            shapePath(shape: shape, rect: rect, cornerRadius: cornerRadius).fill()
+            return
+        }
         context.saveGState()
+        // Constrain the gradient to the container outline so the fade sits
+        // inside e.g. a rounded rectangle and never bleeds into the corners
+        // of an underlying rectangular bitmap.
         shapePath(shape: shape, rect: rect, cornerRadius: cornerRadius).addClip()
 
+        // Three-stop gradient (white → white → black) keeps the inner
+        // solid region punchy while letting the outer ring fall off
+        // gradually — visually closer to a vignette than a linear ramp.
+        guard let gradient = CGGradient(
+            colorsSpace: CGColorSpaceCreateDeviceGray(),
+            colors: [CGColor(gray: 1, alpha: 1), CGColor(gray: 1, alpha: 1), CGColor(gray: 0, alpha: 1)] as CFArray,
+            locations: [0, 0.45, 1] as [CGFloat]
+        ) else {
+            context.restoreGState()
+            return
+        }
+
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        // Use the half-diagonal as the outer radius so the gradient reaches
+        // every corner of a rectangular container — without this, square
+        // boxes would show a hard step where the radial fade hits the side
+        // edges.
+        let outerRadius: CGFloat
         switch shape {
         case .circle:
-            let center = CGPoint(x: rect.midX, y: rect.midY)
-            let outerRadius = min(rect.width, rect.height) * 0.5
-            let innerRadius = outerRadius * (1 - fadeAmount)
-            let colors = [CGColor(gray: 1, alpha: 1), CGColor(gray: 0, alpha: 1)] as CFArray
-            let locations: [CGFloat] = [0, 1]
-            guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceGray(), colors: colors, locations: locations) else {
-                context.restoreGState()
-                return
-            }
-            context.drawRadialGradient(
-                gradient,
-                startCenter: center,
-                startRadius: innerRadius,
-                endCenter: center,
-                endRadius: outerRadius,
-                options: [.drawsBeforeStartLocation, .drawsAfterEndLocation]
-            )
+            outerRadius = min(rect.width, rect.height) * 0.5
         case .square:
-            let inset = min(rect.width, rect.height) * fadeAmount
-            let innerRect = rect.insetBy(dx: inset, dy: inset)
-            context.setFillColor(gray: 1, alpha: 1)
-            context.fill(innerRect)
-
-            let colors = [CGColor(gray: 0, alpha: 1), CGColor(gray: 1, alpha: 1)] as CFArray
-            let locations: [CGFloat] = [0, 1]
-            guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceGray(), colors: colors, locations: locations) else {
-                context.restoreGState()
-                return
-            }
-
-            context.drawLinearGradient(gradient, start: CGPoint(x: rect.minX, y: rect.midY), end: CGPoint(x: innerRect.minX, y: rect.midY), options: [.drawsAfterEndLocation])
-            context.drawLinearGradient(gradient, start: CGPoint(x: rect.maxX, y: rect.midY), end: CGPoint(x: innerRect.maxX, y: rect.midY), options: [.drawsAfterEndLocation])
-            context.drawLinearGradient(gradient, start: CGPoint(x: rect.midX, y: rect.minY), end: CGPoint(x: rect.midX, y: innerRect.minY), options: [.drawsAfterEndLocation])
-            context.drawLinearGradient(gradient, start: CGPoint(x: rect.midX, y: rect.maxY), end: CGPoint(x: rect.midX, y: innerRect.maxY), options: [.drawsAfterEndLocation])
+            outerRadius = sqrt(rect.width * rect.width + rect.height * rect.height) * 0.5
         }
+        let innerRadius = outerRadius * max(0, 1 - fadeAmount)
+
+        context.drawRadialGradient(
+            gradient,
+            startCenter: center,
+            startRadius: innerRadius,
+            endCenter: center,
+            endRadius: outerRadius,
+            options: [.drawsBeforeStartLocation, .drawsAfterEndLocation]
+        )
         context.restoreGState()
     }
 

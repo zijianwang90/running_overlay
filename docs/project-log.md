@@ -1,6 +1,143 @@
 # Running Overlay Project Log
 
+## 2026-04-27
+
+### Inspector Segmented Controls Switched To Native Picker (All Inspector Flows)
+
+Summary:
+
+- Replaced Inspector custom segmented button rows with native SwiftUI segmented pickers (`Picker` with `.pickerStyle(.segmented)`).
+- Updated all matching Inspector controls in `ParameterPanelView`, and migrated the shared dense segmented control used by Numeric Overlay, Running Gauge, and Route Map detail inspectors.
+- Kept existing bindings and model mutations unchanged so behavior remains identical while interaction/focus/keyboard handling uses native control behavior.
+- Removed the custom segmented-row implementations in favor of native segmented pickers.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/ParameterPanelView.swift`
+- `Sources/RunningOverlay/UI/NumericOverlayDetailView.swift`
+- `docs/requirements.md`
+- `docs/development.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+
+### Route Map — Phase E.1 Centering Fix, Decoupled Map Visibility, Adjustable Container Size, Stronger Edge Softness
+
+Bug fixes and follow-up work on the Phase E refactor based on user feedback that (1) the projected route was running outside the map box, (2) the new Container Preset dropdown duplicated the Container section's controls, (3) square containers couldn't be resized independently, (4) Edge Softness barely affected the rendered output, and (5) "show map" was implicitly tied to Route Style.
+
+Summary:
+
+- Fixed the Mercator centering bug in `OverlayRouteMapRenderLayout.project`. `mercatorY` is monotonically *decreasing* in latitude, so the previous code was assigning the southernmost point's y to `minY` and the northernmost's to `maxY`, which produced a near-zero `yRange` (clamped to `0.000001`) and a huge `scale` that threw points way outside the rect. The new implementation computes `min` / `max` from the four projected corners and projects in a y-down coordinate system (matching both the SwiftUI preview and the `flipped: true` AppKit export context). The Container padding is now derived from the box's design size instead of being a flat `18 pt`, so wide rectangles still keep the polyline well inside the visible map. A regression assertion in `OverlayRenderModelTests` walks every projected point and the current point, and verifies they all fall inside `contentRect` (with a 1 pt FP tolerance for points that land exactly on an edge).
+- Decoupled map visibility from the Route Style preset. `OverlayRouteMapPreset` is now `minimal` / `gradient` / `glow` only — the legacy `mapKit` case is migrated to `gradient` on decode for backward compatibility. Map presence is the single responsibility of `routeMapBackgroundStyle`: `.none` hides the map, every other case renders it. `OverlayRenderModel.routeMapLayout` now derives `routeMapProvider` from the background style, so callers no longer need to keep them in sync. `setOverlayRouteMapPreset` no longer mutates `routeMapProvider`.
+- Added a dedicated **Show Map** toggle as the section accessory on `Background Map`, backed by the new `setOverlayRouteMapShowMap`. Off → `routeMapBackgroundStyle = .none`; on → restore the previously selected style, defaulting to `.dark` when the previous value was already `.none`. The Map Style dropdown excludes `.none` (`OverlayRouteMapBackgroundStyle.visibleCases`) and disables itself when Show Map is off.
+- Added independent container dimensions: `OverlayStyle.routeMapWidth` and `routeMapHeight` (default `320 × 240`, clamped `80...1200`). Square containers expose two sliders; circle containers collapse to a single Size slider that drives both axes (the renderer takes the shorter edge as the diameter). New setters `setOverlayRouteMapWidth` / `setOverlayRouteMapHeight` use continuous undo. Switching shape to `circle` collapses width and height to the shorter edge so editor handles stay synced with the rendered diameter.
+- Removed the `Container Preset` dropdown from the Inspector's Preset section because it duplicated the per-field Container controls. `OverlayRouteMapContainerPreset` and `setOverlayRouteMapContainerPreset` are kept for one-click recipes used by templates and tests, but no longer render an Inspector row.
+- Reworked `RouteMapMaskRenderer.drawFadeMask` so Edge Softness has the dramatic vignette effect from the design mockup. Both shapes now draw a single radial gradient (3-stop white → white → black at locations `[0, 0.45, 1]`) clipped to the container outline, with the outer radius set to the half-diagonal for square containers so the fade reaches every corner without a hard step. The maximum softness is raised from `0.45` to `0.85` (matching the slider's new range) and exposed as `RouteMapMaskRenderer.maxFadeAmount`.
+- Updated `OverlayFrameRenderer` and `PreviewCanvasView` so the map snapshot, the synthetic grid fallback, and the container background colour all key off `routeMapBackgroundStyle != .none` instead of `layout.preset == .mapKit`.
+
+Documentation:
+
+- `docs/design/route-map-overlay-ui.md` — Phase E.1 update. Section list now reads "Route Style Preset + Distance" for `Preset`, "Shape / Width / Height (or Size for circle) / Edge Mode / Edge Softness / Border" for `Container`, and "Show Map (header toggle) + Map Style (excluding none) + Map Opacity" for `Background Map`. Container Preset is documented as a templates-only API. Edge Softness range is `0...0.85`. Acceptance criteria updated to match.
+- `docs/design/route-map-overlay-ui.spec.json` — same updates in machine-readable form. The `Container` section now lists `width` / `height` / `size` controls (with `visibleWhen` rules), the `Background Map` section gets a `showMap` accessory definition, and `routeMapPreset` no longer lists `mapKit` as an option. `modelGapsPhaseE` is now empty; the new fields move into `modelBackedToday`.
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/OverlayElement.swift`
+- `Sources/RunningOverlay/Overlay/RouteMapOverlay.swift`
+- `Sources/RunningOverlay/Overlay/OverlayRenderModel.swift`
+- `Sources/RunningOverlay/UI/RouteMapOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Tests/RunningOverlayTests/OverlayRenderModelTests.swift`
+- `docs/design/route-map-overlay-ui.md`
+- `docs/design/route-map-overlay-ui.spec.json`
+- `docs/project-log.md`
+
+Verification: `swift build` succeeded with only the pre-existing Running Gauge actor-isolation warnings. `swift test` passed all 51 tests in 8 suites; the route map projection regression assertion was added to ensure the centering fix doesn't regress.
+
 ## 2026-04-26
+
+### Route Map — Phase E Container Presets, Map Opacity Slider, Inspector Spec Alignment
+
+Summary:
+
+- Promoted Route Map to its own dense Inspector detail view (`RouteMapOverlayDetailView`) modelled on `NumericOverlayDetailView`, so the right panel reuses `InspectorDenseRow`, `InspectorDenseSliderRow`, `InspectorDenseSegmented`, `InspectorDenseMenuLabel`, `InspectorDenseSwatchStrip`, `InspectorAnchorGrid`, and `NumericTokens` for byte-for-byte density parity with Numeric Overlay.
+- Reorganised the panel into the eight sections required by the new spec: `Preset` (Container Preset + Route Style Preset + Distance readout), `Layout` (Anchor / X / Y / Scale / Rotation / Opacity), `Container` (Shape / Edge Mode / Edge Softness), `Background Map` (Map Style / Map Opacity), `Route Line`, `Markers`, `Legend` (with toggle accessory in the section header), and `Effects`.
+- Introduced `OverlayRouteMapContainerPreset` (`squareHardEdge` / `circleHardEdge` / `squareGradientEdge` / `circleGradientEdge`). Selecting a preset writes a bundle of defaults (`routeMapShape`, `routeMapEdgeFade`, `routeMapFadeAmount`, `routeMapMapOpacity`, `shadowEnabled`, `shadowOpacity`, `shadowRadius`, `shadowOffsetX`, `shadowOffsetY`) onto the element through a single undo checkpoint. The four reference variants from the user's mockup can now be reproduced in one click.
+- Added `OverlayStyle.routeMapMapOpacity` (default `0.72`, clamped `0...1`) and wired it through `OverlayRouteMapRenderLayout.mapOpacity`. Preview (`PreviewCanvasView.RouteMapOverlayView`) now applies `layout.mapOpacity` to the MapKit snapshot instead of a hard-coded `0.82`. Export (`OverlayFrameRenderer.drawMapGrid`) now scales the synthetic map grid alpha by `layout.mapOpacity` so still / video exports match the slider.
+- Added `setOverlayRouteMapContainerPreset` and `setOverlayRouteMapMapOpacity` mutators to `ProjectDocument`, both registering an undo point so preset switches and slider drags are reversible. `setOverlayRouteMapEdgeSoftness` keeps its dual behaviour (writes both `routeMapFadeAmount` and `routeMapEdgeFade`).
+- Persisted the new fields through `OverlayStyle.init(from:)` with `decodeIfPresent` defaults so legacy templates and projects load unchanged. `routeMapMapOpacity` is clamped on decode.
+- Added a `RouteMapOverlayHeader` that mirrors the Numeric header (back / icon / title / `Overlay` pill / trash) plus a distance subtitle, replacing the older "1657 pts" header block with a clean `12.86 km` readout.
+
+Documentation:
+
+- New design spec `docs/design/route-map-overlay-ui.md` — header, eight sections, every control's model mapping, density tokens shared with Numeric Overlay, container preset value table, model gaps grouped into Phase E (this revision: container preset + map opacity) and Phase F (border / glow / map adjustments / route line richness / per-marker details / legend item list / typography / blend mode), and acceptance criteria.
+- New machine-readable spec `docs/design/route-map-overlay-ui.spec.json` listing every section, control, model path, options, default values, and `containerPresetDefaults` table — same shape as `numeric-overlay-ui.spec.json`.
+- Updated `docs/overlay-modules/route-map-overlay.md` with a pointer to the new design spec and added Phase E and Phase F to the implementation phase list, marking Phase D items completed where applicable.
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/OverlayElement.swift`
+- `Sources/RunningOverlay/Overlay/RouteMapOverlay.swift`
+- `Sources/RunningOverlay/Overlay/OverlayRenderModel.swift`
+- `Sources/RunningOverlay/UI/RouteMapOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/ParameterPanelView.swift`
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `docs/design/route-map-overlay-ui.md` (new)
+- `docs/design/route-map-overlay-ui.spec.json` (new)
+- `docs/overlay-modules/route-map-overlay.md`
+
+Verification: `swift build` succeeded (only pre-existing Running Gauge actor-isolation warnings remain). `swift test` passed all 51 tests in 8 suites.
+
+### Running Gauge — Full Module Redesign (7 Layouts × 7 Style Presets, Per-Region Metric Binding)
+
+Summary:
+
+- Promoted the Running Gauge from a hardcoded `Distance / Time / Pace / HR` disc to a fully configurable circular dial module with per-region metric binding, seven data-layout presets, seven visual style presets, and an Inspector that exposes every dial / ring / tick / divider / typography / color / effect knob the renderer consumes. Implements `Running Gauge Overlay 设计与实现指引` end-to-end through MVP scope (sections 1–8, 9, 14, 15 of the guide).
+- New data model file `Sources/RunningOverlay/Overlay/RunningGaugeModel.swift` introduces:
+  - `OverlayGaugeMetric` (distance / pace / elapsedTime / realTime / heartRate / power / cadence / elevation / calories) with bridging to the existing `OverlayElementType` so `OverlayValueFormatter.components(for:activity:elapsedTime:)` can resolve label/value/unit tuples without duplication.
+  - `RunningGaugeRegion` (11 region slots: top, middle, bottom, middleLeft/Center/Right, topLeft/Right, bottomLeft/Center/Right) and `RunningGaugeLayoutPreset` with the seven layouts from the spec — `topBottom`, `topMiddleBottom`, `threeZones`, `topTwoMiddleBottom`, `topThreeMiddleBottom`, `fourZones`, `fiveZones` — each declaring its visible regions in render order.
+  - `RunningGaugeRegionConfig` per-region struct: metric, custom label, show label/unit/icon flags, value/label/unit font scale, value/label weight, optional value/label colours.
+  - `RunningGaugeProgressMode` (none / distanceTarget / elapsedTimeTarget / heartRateZone / powerZone / paceIntensity / customPercentage).
+  - `RunningGaugeStyle`: the single source of truth for a gauge — style preset, layout preset, regions[], dial (color/opacity/glass), outer ring (toggle/color/opacity/width-scale), tick marks (toggle/color/opacities/count/major-every), progress ring (toggle/mode/color/track/opacity/width-scale/rounded-caps), dividers (toggle/color/opacity/width), typography (font/monospaced/primary+secondary weight), color (primary/secondary text/accent), effects (shadow toggle/opacity/radius, glow toggle/color/opacity/radius).
+  - Built-in presets `minimalSport`, `highContrastSport`, `roadRun`, `trailAdventure`, `futureTech`, `retroDigital`, `premiumGlass` matching the guide's recommended visual parameters and recommended layout pairings.
+  - `RunningGaugeStyle.defaultRegions(for:)` factory that emits the recommended metric assignments per layout (e.g. `topTwoMiddleBottom` → Distance / Pace / Time / HR).
+  - `RunningGaugeLayoutEngine.regionFrames(for:in:)` returns per-region `CGRect`s in gauge-local coordinates for every layout, and `dividerSegments(for:)` returns normalised divider lines so the renderer and the SwiftUI preview can share one source of truth.
+- Wired `RunningGaugeStyle` into `OverlayStyle.gauge` (with default + Codable migration that seeds the gauge sub-style from the legacy top-level `gaugePreset` for older project files). Extended `OverlayGaugePreset` with two new cases (`.roadRun`, `.premiumGlass`) and updated all preset display labels to match the design guide's bilingual format.
+- Refactored `OverlayRunningGaugeRenderLayout` and `OverlayRenderModel.runningGaugeLayout(for:in:)` to compute, for each rendered region, a canvas-space `CGRect`, the formatted metric value components, and value/label/unit font sizes scaled from the gauge diameter using the spec's `gaugeSize × 0.145` baseline. Progress is now derived from `RunningGaugeProgressMode` (distance target → distance ratio, elapsed-time / zone-style modes → elapsed/duration ratio, custom → 0.5 placeholder).
+- Replaced `renderRunningGauge` and its helpers in `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift` with a layered draw pass: dial fill → outer ring (configurable width/color/opacity) → tick marks (count, major-every, two opacities) → progress ring (track + arc with rounded caps) → divider lines (driven by `RunningGaugeLayoutEngine.dividerSegments` clamped to a `safeRadius = diameter * 0.40` inset) → per-region label / value / unit text (alignment, weight, monospaced digits via `featureSettings`). The legacy preset-specific helper switches (`gaugeMinimumBackgroundOpacity`, `gaugeValueColor`, `gaugeLabelColor`, `gaugeTickColor`) are gone — colours and opacities now flow directly from the user-editable `RunningGaugeStyle`.
+- Rewrote the SwiftUI `RunningGaugeOverlayView` in `PreviewCanvasView.swift` with the same layered structure so the in-editor preview is byte-for-byte parity with the export renderer. Tick and divider shapes share the layout engine helpers; per-region text uses `Text` views positioned via `position(x:y:)` from the same region frames the renderer consumes. New `GaugeMonospacedDigit` and `GaugeGlow` view modifiers conditionally apply monospaced digits and glow shadows so non-tech presets aren't taxed.
+- Rebuilt `RunningGaugeOverlayDetailView` to expose 11 dense Inspector sections that mirror the numeric overlay's design language — Style Preset, Position & Scale, Data Layout, Region Settings, Dial, Ring, Ticks, Dividers, Typography, Color, Effects. Region Settings lists every region in the active layout with an inline metric picker; clicking the slider chevron expands a per-region drawer with custom label, show-label/unit toggles, value-size/weight sliders, and value-color swatch. Conditional sub-rows (e.g. tick-color appears only when ticks are enabled, glow color only when glow is on) keep the panel readable across presets.
+- Added two new `ProjectDocument` mutators: `mutateGaugeStyle(_:_:)` (generic in-place mutator with a single undo checkpoint) and `setOverlayGaugeLayout(_:layout:)` / `updateOverlayGaugeRegion(_:region:_:)` for the layout + region surface area. `setOverlayGaugePreset` now re-seeds the gauge sub-style from the chosen preset so picking a preset resets visual parameters but not the user's data layout / region bindings.
+- Updated `Tests/RunningOverlayTests/OverlayRenderModelTests.swift` to assert against the new region-based layout output (verifying that the default `.roadRun` preset yields `topTwoMiddleBottom` with Distance / Pace / Time / HR bound to top / middleLeft / middleRight / bottom).
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/RunningGaugeModel.swift` (new)
+- `Sources/RunningOverlay/Overlay/OverlayElement.swift`
+- `Sources/RunningOverlay/Overlay/OverlayRenderModel.swift`
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `Sources/RunningOverlay/UI/RunningGaugeOverlayDetailView.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Tests/RunningOverlayTests/OverlayRenderModelTests.swift`
+- `docs/project-log.md`
+- `docs/requirements.md`
+
+Verification:
+
+- `swift build` clean.
+- `swift test` 51 tests in 8 suites pass, including the rewritten `runningGaugeLayoutCarriesCoreMetricsAndProgress` and `overlayFrameRendererWritesRunningGaugePNG` golden frame.
+
+Notes / next milestones (deferred to a follow-up per spec section 15 "v1 may defer"):
+
+- Glass blur and texture effects, full free-form custom region drag, multi-progress-ring stacks, and animated entry. The data model already carries `glassEffectEnabled`, glow, and a `RunningGaugeLayoutPreset.custom` placeholder so the renderer/inspector can be extended without further migrations.
+- Per-region icons and custom progress max for zone modes — fields are reserved (`showIcon`, `progressMode`) but the renderer currently substitutes time-based progress for HR/Power/Pace zones until a project-level zone configuration lands.
 
 ### Running Gauge Inspector — Dense Layout Aligned With Numeric Overlay
 

@@ -730,104 +730,214 @@ struct OverlayFrameRenderer {
 
     private static func renderRunningGauge(_ element: OverlayElement, renderContext: OverlayRenderContext) {
         let layout = OverlayRenderModel.runningGaugeLayout(for: element, in: renderContext)
-        let accent = NSColor(element.style.foregroundColor)
+        let style = layout.style
         let rect = layout.rect
         let center = CGPoint(x: rect.midX, y: rect.midY)
         let radius = rect.width / 2
-        let backgroundOpacity = max(element.style.backgroundOpacity, gaugeMinimumBackgroundOpacity(for: layout.preset))
 
-        NSColor.black.withAlphaComponent(backgroundOpacity).setFill()
+        // Dial background
+        NSColor(style.dialBackgroundColor).withAlphaComponent(style.dialBackgroundOpacity).setFill()
         NSBezierPath(ovalIn: rect).fill()
 
-        if layout.preset == .trailAdventure {
-            accent.withAlphaComponent(0.10).setStroke()
-            let path = NSBezierPath(ovalIn: rect.insetBy(dx: layout.ringWidth * 1.25, dy: layout.ringWidth * 1.25))
-            path.lineWidth = layout.ringWidth * 3.2
-            path.stroke()
+        // Outer ring
+        if style.outerRingEnabled {
+            strokeCircle(
+                center: center,
+                radius: radius - layout.outerRingWidth / 2,
+                color: NSColor(style.outerRingColor).withAlphaComponent(style.outerRingOpacity),
+                lineWidth: layout.outerRingWidth
+            )
         }
 
-        strokeCircle(center: center, radius: radius - layout.ringWidth * 2.3, color: NSColor.white.withAlphaComponent(layout.preset == .highContrast ? 0.78 : 0.26), lineWidth: layout.ringWidth)
-        strokeArc(
-            center: center,
-            radius: radius - layout.ringWidth * 2.3,
-            startAngle: -90,
-            endAngle: -90 + 360 * layout.progress,
-            color: accent,
-            lineWidth: layout.ringWidth
+        // Tick marks
+        if style.tickMarksEnabled {
+            drawGaugeTicks(
+                center: center,
+                radius: radius - layout.outerRingWidth - layout.tickLength * 0.6,
+                tickCount: max(style.tickCount, 6),
+                majorEvery: max(style.majorTickEvery, 1),
+                tickLength: layout.tickLength,
+                majorTickLength: layout.majorTickLength,
+                lineWidth: max(style.dividerWidth, 1),
+                color: NSColor(style.tickColor),
+                tickAlpha: style.tickOpacity,
+                majorAlpha: style.majorTickOpacity
+            )
+        }
+
+        // Progress ring
+        if style.progressRingEnabled {
+            let ringRadius = radius - layout.outerRingWidth - layout.progressRingWidth - 2
+            strokeCircle(
+                center: center,
+                radius: ringRadius,
+                color: NSColor(style.progressTrackColor).withAlphaComponent(style.progressTrackOpacity),
+                lineWidth: layout.progressRingWidth
+            )
+            strokeArc(
+                center: center,
+                radius: ringRadius,
+                startAngle: -90,
+                endAngle: -90 + 360 * layout.progress,
+                color: NSColor(style.progressColor),
+                lineWidth: layout.progressRingWidth
+            )
+        }
+
+        // Dividers
+        if style.dividerEnabled {
+            drawGaugeDividers(
+                style: style,
+                gaugeRect: rect,
+                lineWidth: max(style.dividerWidth, 1),
+                safeRadius: layout.safeRadius
+            )
+        }
+
+        // Data regions
+        for region in layout.regions {
+            drawGaugeRegion(region, style: style)
+        }
+    }
+
+    private static func drawGaugeRegion(
+        _ region: OverlayRunningGaugeRegionLayout,
+        style: RunningGaugeStyle
+    ) {
+        let config = region.config
+        let label = config.customLabel.isEmpty ? config.metric.compactLabel : config.customLabel.uppercased()
+        let valueColor = NSColor(config.valueColor ?? style.primaryTextColor)
+        let labelColor = NSColor(config.labelColor ?? style.secondaryTextColor).withAlphaComponent(0.78)
+        let unitColor = labelColor
+
+        var cursorY = region.rect.minY
+        if config.showLabel {
+            let labelRect = CGRect(
+                x: region.rect.minX,
+                y: cursorY,
+                width: region.rect.width,
+                height: region.labelFontSize * 1.40
+            )
+            drawGaugePlainText(
+                label,
+                fontName: style.fontName,
+                fontSize: region.labelFontSize,
+                color: labelColor,
+                rect: labelRect,
+                alignment: .center,
+                weight: nsFontWeight(config.labelWeight),
+                monospacedDigits: style.monospacedDigits
+            )
+            cursorY += region.labelFontSize * 1.10
+        }
+
+        let valueText = region.components.value
+        let valueRect = CGRect(
+            x: region.rect.minX,
+            y: cursorY,
+            width: region.rect.width,
+            height: region.valueFontSize * 1.30
+        )
+        drawGaugePlainText(
+            valueText,
+            fontName: style.fontName,
+            fontSize: region.valueFontSize,
+            color: valueColor,
+            rect: valueRect,
+            alignment: .center,
+            weight: nsFontWeight(config.valueWeight),
+            monospacedDigits: style.monospacedDigits
         )
 
-        drawGaugeTicks(
-            center: center,
-            radius: radius - layout.ringWidth * 4.2,
-            tickCount: layout.preset == .retroDigital ? 48 : 36,
-            tickLength: layout.tickLength,
-            lineWidth: max(layout.dividerWidth, 1),
-            color: gaugeTickColor(for: layout.preset, accent: accent)
-        )
-        drawGaugeDividers(in: rect.insetBy(dx: rect.width * 0.18, dy: rect.height * 0.18), lineWidth: layout.dividerWidth, color: NSColor.white.withAlphaComponent(layout.preset == .retroDigital ? 0.20 : 0.16))
+        if config.showUnit, !region.components.unit.isEmpty {
+            let unitRect = CGRect(
+                x: region.rect.minX,
+                y: cursorY + region.valueFontSize * 1.05,
+                width: region.rect.width,
+                height: region.unitFontSize * 1.30
+            )
+            drawGaugePlainText(
+                region.components.unit,
+                fontName: style.fontName,
+                fontSize: region.unitFontSize,
+                color: unitColor,
+                rect: unitRect,
+                alignment: .center,
+                weight: .medium,
+                monospacedDigits: style.monospacedDigits
+            )
+        }
+    }
 
-        let labelColor = gaugeLabelColor(for: layout.preset, accent: accent)
-        let valueColor = gaugeValueColor(for: layout.preset, accent: accent)
-        drawGaugeMetric(
-            layout.distance,
-            element: element,
-            rect: CGRect(x: rect.minX + rect.width * 0.26, y: rect.minY + rect.height * 0.18, width: rect.width * 0.48, height: rect.height * 0.24),
-            valueFontSize: layout.primaryFontSize,
-            labelFontSize: layout.labelFontSize,
-            unitFontSize: layout.unitFontSize,
-            valueColor: valueColor,
-            labelColor: labelColor
-        )
-        drawGaugeMetric(
-            layout.elapsedTime,
-            element: element,
-            rect: CGRect(x: rect.minX + rect.width * 0.14, y: rect.minY + rect.height * 0.48, width: rect.width * 0.34, height: rect.height * 0.20),
-            valueFontSize: layout.secondaryFontSize,
-            labelFontSize: layout.labelFontSize,
-            unitFontSize: layout.unitFontSize,
-            valueColor: valueColor,
-            labelColor: labelColor
-        )
-        drawGaugeMetric(
-            layout.pace,
-            element: element,
-            rect: CGRect(x: rect.minX + rect.width * 0.52, y: rect.minY + rect.height * 0.48, width: rect.width * 0.34, height: rect.height * 0.20),
-            valueFontSize: layout.secondaryFontSize,
-            labelFontSize: layout.labelFontSize,
-            unitFontSize: layout.unitFontSize,
-            valueColor: valueColor,
-            labelColor: labelColor
-        )
-        drawGaugeMetric(
-            layout.heartRate,
-            element: element,
-            rect: CGRect(x: rect.minX + rect.width * 0.31, y: rect.minY + rect.height * 0.70, width: rect.width * 0.38, height: rect.height * 0.18),
-            valueFontSize: layout.secondaryFontSize * 1.02,
-            labelFontSize: layout.labelFontSize,
-            unitFontSize: layout.unitFontSize,
-            valueColor: valueColor,
-            labelColor: labelColor
-        )
+    private static func drawGaugePlainText(
+        _ text: String,
+        fontName: String,
+        fontSize: Double,
+        color: NSColor,
+        rect: CGRect,
+        alignment: NSTextAlignment,
+        weight: NSFont.Weight,
+        monospacedDigits: Bool
+    ) {
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.alignment = alignment
+        var font = NSFont(name: fontName, size: fontSize) ?? .systemFont(ofSize: fontSize, weight: weight)
+        if monospacedDigits {
+            font = NSFontManager.shared.font(withFamily: font.familyName ?? font.fontName,
+                                             traits: [], weight: 5, size: fontSize) ?? font
+            // monospaced digits feature
+            let descriptor = font.fontDescriptor.addingAttributes([
+                .featureSettings: [
+                    [
+                        NSFontDescriptor.FeatureKey.typeIdentifier: kNumberSpacingType,
+                        NSFontDescriptor.FeatureKey.selectorIdentifier: kMonospacedNumbersSelector
+                    ]
+                ]
+            ])
+            if let monoFont = NSFont(descriptor: descriptor, size: fontSize) {
+                font = monoFont
+            }
+        }
+        NSAttributedString(
+            string: text,
+            attributes: [
+                .font: font,
+                .foregroundColor: color,
+                .paragraphStyle: paragraphStyle
+            ]
+        ).draw(in: rect)
+    }
+
+    private static func nsFontWeight(_ weight: OverlayFontWeight) -> NSFont.Weight {
+        switch weight {
+        case .regular: .regular
+        case .medium: .medium
+        case .semibold: .semibold
+        case .bold: .bold
+        }
     }
 
     private static func renderRouteMap(_ element: OverlayElement, renderContext: OverlayRenderContext) {
         let layout = OverlayRenderModel.routeMapLayout(for: element, in: renderContext)
         let accent = NSColor(element.style.foregroundColor)
         let backgroundOpacity: Double = switch layout.preset {
-        case .mapKit: max(element.style.backgroundOpacity, 0.72)
         case .glow: max(element.style.backgroundOpacity, 0.34)
-        default: element.style.backgroundOpacity
+        default:
+            element.style.routeMapBackgroundStyle == .none
+                ? element.style.backgroundOpacity
+                : max(element.style.backgroundOpacity, 0.72)
         }
 
-        let clipMask = RouteMapMaskRenderer.makeCGMask(
+        let shouldUseFadeMask = layout.edgeFade == .fadeOut && layout.fadeAmount > 0.001
+        let clipMask = shouldUseFadeMask ? RouteMapMaskRenderer.makeCGMask(
             size: layout.rect.size,
             shape: layout.shape,
             cornerRadius: layout.cornerRadius,
             edgeFade: layout.edgeFade,
             fadeAmount: layout.fadeAmount
-        )
+        ) : nil
 
-        if let cgContext = NSGraphicsContext.current?.cgContext, let clipMask {
+        if let cgContext = NSGraphicsContext.current?.cgContext, let clipMask, shouldUseFadeMask {
             cgContext.saveGState()
             cgContext.clip(to: layout.rect, mask: clipMask)
             drawRouteMapContent(element: element, layout: layout, accent: accent, backgroundOpacity: backgroundOpacity)
@@ -851,8 +961,8 @@ struct OverlayFrameRenderer {
         NSColor.black.withAlphaComponent(backgroundOpacity).setFill()
         RouteMapMaskRenderer.shapePath(shape: layout.shape, rect: layout.rect, cornerRadius: layout.cornerRadius).fill()
 
-        if layout.preset == .mapKit || element.style.routeMapBackgroundStyle != .none {
-            drawMapGrid(in: layout.rect, style: element.style.routeMapBackgroundStyle)
+        if element.style.routeMapBackgroundStyle != .none {
+            drawMapGrid(in: layout.rect, style: element.style.routeMapBackgroundStyle, opacity: layout.mapOpacity)
         }
 
         let points = layout.projectedPoints
@@ -1032,7 +1142,7 @@ struct OverlayFrameRenderer {
         return path
     }
 
-    private static func drawMapGrid(in rect: CGRect, style: OverlayRouteMapBackgroundStyle) {
+    private static func drawMapGrid(in rect: CGRect, style: OverlayRouteMapBackgroundStyle, opacity: Double) {
         let path = NSBezierPath()
         let step = max(rect.width / 6, 18)
         var x = rect.minX + step
@@ -1047,15 +1157,16 @@ struct OverlayFrameRenderer {
             path.line(to: CGPoint(x: rect.maxX, y: y))
             y += step
         }
+        let dimmer = max(min(opacity, 1), 0)
         switch style {
         case .light:
-            NSColor.black.withAlphaComponent(0.10).setStroke()
+            NSColor.black.withAlphaComponent(0.10 * dimmer).setStroke()
         case .terrain:
-            NSColor.systemGreen.withAlphaComponent(0.18).setStroke()
+            NSColor.systemGreen.withAlphaComponent(0.18 * dimmer).setStroke()
         case .satellite:
-            NSColor.white.withAlphaComponent(0.06).setStroke()
+            NSColor.white.withAlphaComponent(0.06 * dimmer).setStroke()
         case .none, .dark:
-            NSColor.white.withAlphaComponent(0.08).setStroke()
+            NSColor.white.withAlphaComponent(0.08 * dimmer).setStroke()
         }
         path.lineWidth = 1
         path.stroke()
@@ -1378,15 +1489,6 @@ struct OverlayFrameRenderer {
         drawRoundedBackground(rect, element: element, cornerRadius: cornerRadius)
     }
 
-    private static func nsFontWeight(_ weight: OverlayFontWeight) -> NSFont.Weight {
-        switch weight {
-        case .regular: .regular
-        case .medium: .medium
-        case .semibold: .semibold
-        case .bold: .bold
-        }
-    }
-
     private static func drawRoundedBackground(_ rect: CGRect, element: OverlayElement, cornerRadius: Double) {
         let baseColor = NSColor(element.style.backgroundColor)
         let opacity = element.style.backgroundEnabled ? element.style.backgroundOpacity : 0
@@ -1444,63 +1546,60 @@ struct OverlayFrameRenderer {
         path.stroke()
     }
 
-    private static func drawGaugeMetric(
-        _ metric: OverlayValueComponents,
-        element: OverlayElement,
-        rect: CGRect,
-        valueFontSize: Double,
-        labelFontSize: Double,
-        unitFontSize: Double,
-        valueColor: NSColor,
-        labelColor: NSColor
+    private static func drawGaugeDividers(
+        style: RunningGaugeStyle,
+        gaugeRect: CGRect,
+        lineWidth: Double,
+        safeRadius: Double
     ) {
-        let label = metric.shortLabel == "HR" ? "HEART RATE" : metric.label.uppercased()
-        drawPlainText(
-            label,
-            element: element,
-            fontSize: labelFontSize,
-            color: labelColor,
-            rect: CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: labelFontSize * 1.25),
-            alignment: .center,
-            weight: .medium
+        let center = CGPoint(x: gaugeRect.midX, y: gaugeRect.midY)
+        let safeBounds = CGRect(
+            x: center.x - safeRadius,
+            y: center.y - safeRadius,
+            width: safeRadius * 2,
+            height: safeRadius * 2
         )
-
-        let valueText = metric.unit.isEmpty ? metric.value : "\(metric.value) \(metric.unit)"
-        drawPlainText(
-            valueText,
-            element: element,
-            fontSize: valueFontSize,
-            color: valueColor,
-            rect: CGRect(x: rect.minX, y: rect.minY + labelFontSize * 1.05, width: rect.width, height: valueFontSize * 1.25),
-            alignment: .center,
-            weight: .bold
-        )
-    }
-
-    private static func drawGaugeDividers(in rect: CGRect, lineWidth: Double, color: NSColor) {
+        let segments = RunningGaugeLayoutEngine.dividerSegments(for: style.layoutPreset)
         let path = NSBezierPath()
-        path.move(to: CGPoint(x: rect.minX + rect.width * 0.18, y: rect.minY + rect.height * 0.44))
-        path.line(to: CGPoint(x: rect.minX + rect.width * 0.82, y: rect.minY + rect.height * 0.44))
-        path.move(to: CGPoint(x: rect.midX, y: rect.minY + rect.height * 0.44))
-        path.line(to: CGPoint(x: rect.midX, y: rect.minY + rect.height * 0.72))
-        path.move(to: CGPoint(x: rect.minX + rect.width * 0.25, y: rect.minY + rect.height * 0.72))
-        path.line(to: CGPoint(x: rect.minX + rect.width * 0.75, y: rect.minY + rect.height * 0.72))
-        color.setStroke()
+        for (start, end) in segments {
+            let p0 = CGPoint(
+                x: safeBounds.minX + start.x * safeBounds.width,
+                y: safeBounds.minY + start.y * safeBounds.height
+            )
+            let p1 = CGPoint(
+                x: safeBounds.minX + end.x * safeBounds.width,
+                y: safeBounds.minY + end.y * safeBounds.height
+            )
+            path.move(to: p0)
+            path.line(to: p1)
+        }
+        NSColor(style.dividerColor).withAlphaComponent(style.dividerOpacity).setStroke()
         path.lineWidth = lineWidth
         path.stroke()
     }
 
-    private static func drawGaugeTicks(center: CGPoint, radius: Double, tickCount: Int, tickLength: Double, lineWidth: Double, color: NSColor) {
+    private static func drawGaugeTicks(
+        center: CGPoint,
+        radius: Double,
+        tickCount: Int,
+        majorEvery: Int,
+        tickLength: Double,
+        majorTickLength: Double,
+        lineWidth: Double,
+        color: NSColor,
+        tickAlpha: Double,
+        majorAlpha: Double
+    ) {
         for index in 0..<tickCount {
             let angle = Double(index) / Double(tickCount) * 2 * Double.pi - Double.pi / 2
-            let major = index.isMultiple(of: 3)
-            let length = major ? tickLength : tickLength * 0.55
+            let isMajor = index.isMultiple(of: majorEvery)
+            let length = isMajor ? majorTickLength : tickLength
             let outer = CGPoint(x: center.x + cos(angle) * radius, y: center.y + sin(angle) * radius)
             let inner = CGPoint(x: center.x + cos(angle) * (radius - length), y: center.y + sin(angle) * (radius - length))
             let path = NSBezierPath()
             path.move(to: inner)
             path.line(to: outer)
-            color.withAlphaComponent(major ? color.alphaComponent : color.alphaComponent * 0.46).setStroke()
+            color.withAlphaComponent(isMajor ? majorAlpha : tickAlpha).setStroke()
             path.lineWidth = lineWidth
             path.stroke()
         }
@@ -1543,47 +1642,6 @@ struct OverlayFrameRenderer {
                 .paragraphStyle: paragraphStyle
             ]
         ).draw(in: rect)
-    }
-
-    private static func gaugeMinimumBackgroundOpacity(for preset: OverlayGaugePreset) -> Double {
-        switch preset {
-        case .minimalSport: 0.58
-        case .highContrast: 0.82
-        case .trailAdventure: 0.74
-        case .techFuture: 0.76
-        case .retroDigital: 0.78
-        }
-    }
-
-    private static func gaugeValueColor(for preset: OverlayGaugePreset, accent: NSColor) -> NSColor {
-        switch preset {
-        case .trailAdventure:
-            accent.withAlphaComponent(0.92)
-        case .retroDigital:
-            accent.withAlphaComponent(0.82)
-        default:
-            .white
-        }
-    }
-
-    private static func gaugeLabelColor(for preset: OverlayGaugePreset, accent: NSColor) -> NSColor {
-        switch preset {
-        case .highContrast:
-            accent
-        case .techFuture:
-            accent.withAlphaComponent(0.9)
-        default:
-            NSColor.white.withAlphaComponent(0.72)
-        }
-    }
-
-    private static func gaugeTickColor(for preset: OverlayGaugePreset, accent: NSColor) -> NSColor {
-        switch preset {
-        case .highContrast:
-            NSColor.white.withAlphaComponent(0.92)
-        default:
-            accent.withAlphaComponent(0.78)
-        }
     }
 
     private static func renderSafetyGuides(canvasSize: CGSize) {

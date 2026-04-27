@@ -262,6 +262,7 @@ Current implementation:
 - Overlay preview and Inspector value display use the project Layer Data FPS setting, so data values update at the configured cadence rather than every UI refresh.
 - Inspector overlay UI follows the dark tool-panel design spec in `docs/design/inspector-ui.md`, with tokenized colors, spacing, compact rows, add-overlay tabs, overlay rows, and a selected-overlay detail screen.
 - Inspector default width is 400 px and minimum width is 320 px; the panel is user-resizable through the custom `HorizontalResizeHandle`, and `ParameterPanelView` does not impose its own width frame so internal outer/detail/editing state switches cannot resize the right column or squeeze tile content.
+- Inspector segmented controls are implemented with native SwiftUI segmented `Picker` (`.pickerStyle(.segmented)`) instead of custom button rows, including shared dense controls used by Numeric Overlay, Running Gauge, and Route Map detail views.
 - Preview overlay elements can be dragged and clamped within the preview coordinate space.
 - Inspector supports selected overlay font family, font weight, font size, scale, color presets, and background opacity controls.
 - Numeric overlays (heart rate, pace, calories, elapsed time, real time, distance, elevation, cadence, power) use the dense `NumericOverlayDetailView` Inspector defined in `docs/design/numeric-overlay-ui.md`. `ParameterPanelView` routes these `OverlayElementType` values through the new view; other overlay types continue to use `OverlayDetailView`.

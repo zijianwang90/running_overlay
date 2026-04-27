@@ -2,15 +2,17 @@ import SwiftUI
 
 /// Dense Inspector detail panel for the Running Gauge overlay.
 ///
-/// Mirrors the design language of `NumericOverlayDetailView` (see
-/// `docs/design/numeric-overlay-ui.md`) — same tokens, row sizes, segmented
-/// controls, swatch strips, and section disclosure pattern — but exposes only
-/// the parameters the gauge renderer actually consumes.
+/// Mirrors the design language of `NumericOverlayDetailView` (same tokens,
+/// row sizes, segmented controls, swatch strips, section disclosure pattern)
+/// while exposing the full Running Gauge surface area: style preset, data
+/// layout + per-region metric configuration, dial, outer ring, progress ring,
+/// ticks, dividers, typography, color, and effects.
 struct RunningGaugeOverlayDetailView: View {
     @EnvironmentObject private var project: ProjectDocument
     let elementID: OverlayElement.ID
 
-    @State private var openSections: Set<GaugeSection> = Set(GaugeSection.allCases)
+    @State private var openSections: Set<GaugeSection> = [.style, .dataLayout, .regions]
+    @State private var expandedRegion: RunningGaugeRegion?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,11 +22,17 @@ struct RunningGaugeOverlayDetailView: View {
 
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
-                        sectionView(.style, element: element) { styleSection(element) }
-                        sectionView(.layout, element: element) { layoutSection(element) }
-                        sectionView(.typography, element: element) { typographySection(element) }
-                        sectionView(.color, element: element) { colorSection(element) }
-                        sectionView(.background, element: element) { backgroundSection(element) }
+                        sectionView(.style) { styleSection(element) }
+                        sectionView(.layout) { layoutSection(element) }
+                        sectionView(.dataLayout) { dataLayoutSection(element) }
+                        sectionView(.regions) { regionsSection(element) }
+                        sectionView(.dial) { dialSection(element) }
+                        sectionView(.ring) { ringSection(element) }
+                        sectionView(.ticks) { ticksSection(element) }
+                        sectionView(.dividers) { dividersSection(element) }
+                        sectionView(.typography) { typographySection(element) }
+                        sectionView(.color) { colorSection(element) }
+                        sectionView(.effects) { effectsSection(element) }
                     }
                     .padding(.horizontal, NumericTokens.panelPaddingX)
                     .padding(.vertical, NumericTokens.panelPaddingY)
@@ -38,7 +46,7 @@ struct RunningGaugeOverlayDetailView: View {
         }
     }
 
-    // MARK: - Sections
+    // MARK: - Style preset
 
     @ViewBuilder
     private func styleSection(_ element: OverlayElement) -> some View {
@@ -62,6 +70,8 @@ struct RunningGaugeOverlayDetailView: View {
             .frame(height: NumericTokens.controlHeight)
         }
     }
+
+    // MARK: - Layout (anchor / position / scale / rotation)
 
     @ViewBuilder
     private func layoutSection(_ element: OverlayElement) -> some View {
@@ -117,15 +127,361 @@ struct RunningGaugeOverlayDetailView: View {
         )
     }
 
+    // MARK: - Data layout
+
+    @ViewBuilder
+    private func dataLayoutSection(_ element: OverlayElement) -> some View {
+        let gauge = element.style.gauge
+        InspectorDenseRow(label: "Layout") {
+            Menu {
+                ForEach(RunningGaugeLayoutPreset.allCases) { layout in
+                    Button {
+                        project.setOverlayGaugeLayout(elementID, layout: layout)
+                        expandedRegion = nil
+                    } label: {
+                        if layout == gauge.layoutPreset {
+                            Label(layout.compactLabel, systemImage: "checkmark")
+                        } else {
+                            Text(layout.compactLabel)
+                        }
+                    }
+                }
+            } label: {
+                InspectorDenseMenuLabel(title: gauge.layoutPreset.compactLabel)
+            }
+            .menuStyle(.borderlessButton)
+            .frame(height: NumericTokens.controlHeight)
+        }
+    }
+
+    // MARK: - Region list + per-region settings
+
+    @ViewBuilder
+    private func regionsSection(_ element: OverlayElement) -> some View {
+        let gauge = element.style.gauge
+        VStack(spacing: NumericTokens.rowGap) {
+            ForEach(gauge.regions) { region in
+                regionRow(region)
+                if expandedRegion == region.region {
+                    regionDetail(region)
+                        .padding(.leading, NumericTokens.space3)
+                        .transition(.opacity)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func regionRow(_ region: RunningGaugeRegionConfig) -> some View {
+        let isOpen = expandedRegion == region.region
+        InspectorDenseRow(label: region.region.label) {
+            HStack(spacing: NumericTokens.space2) {
+                Menu {
+                    ForEach(OverlayGaugeMetric.allCases) { metric in
+                        Button {
+                            project.updateOverlayGaugeRegion(elementID, region: region.region) { config in
+                                config.metric = metric
+                            }
+                        } label: {
+                            if metric == region.metric {
+                                Label(metric.label, systemImage: "checkmark")
+                            } else {
+                                Text(metric.label)
+                            }
+                        }
+                    }
+                } label: {
+                    InspectorDenseMenuLabel(title: region.metric.label)
+                }
+                .menuStyle(.borderlessButton)
+                .frame(height: NumericTokens.controlHeight)
+
+                Button {
+                    expandedRegion = isOpen ? nil : region.region
+                } label: {
+                    Image(systemName: isOpen ? "chevron.up" : "slider.horizontal.3")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(NumericTokens.textMuted)
+                        .frame(width: 22, height: NumericTokens.controlHeight)
+                }
+                .buttonStyle(.plain)
+                .help(isOpen ? "Hide region settings" : "Show region settings")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func regionDetail(_ region: RunningGaugeRegionConfig) -> some View {
+        let element = project.selectedOverlay(elementID)
+        InspectorDenseRow(label: "Label") {
+            TextField(region.metric.compactLabel, text: Binding(
+                get: { region.customLabel },
+                set: { newValue in
+                    project.updateOverlayGaugeRegion(elementID, region: region.region) { $0.customLabel = newValue }
+                }
+            ), onCommit: { project.finishContinuousEdit() })
+            .textFieldStyle(.plain)
+            .font(NumericTokens.bodyFont)
+            .padding(.horizontal, NumericTokens.space2)
+            .frame(height: NumericTokens.controlHeight)
+            .background(NumericTokens.controlBackground)
+            .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
+            .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
+        }
+        InspectorDenseRow(label: "Show Label") {
+            gaugeToggle(isOn: region.showLabel) { newValue in
+                project.updateOverlayGaugeRegion(elementID, region: region.region) { $0.showLabel = newValue }
+            }
+        }
+        InspectorDenseRow(label: "Show Unit") {
+            gaugeToggle(isOn: region.showUnit) { newValue in
+                project.updateOverlayGaugeRegion(elementID, region: region.region) { $0.showUnit = newValue }
+            }
+        }
+        InspectorDenseSliderRow(
+            label: "Value Size",
+            value: Binding(
+                get: { region.valueFontScale },
+                set: { newValue in
+                    project.updateOverlayGaugeRegion(elementID, region: region.region) { $0.valueFontScale = newValue.gaugeQuantized(to: 0.02) }
+                }
+            ),
+            range: 0.30...1.40,
+            displayText: String(format: "%.2f", region.valueFontScale)
+        )
+        InspectorDenseRow(label: "Value Weight") {
+            InspectorDenseSegmented(values: OverlayFontWeight.allCases, selection: Binding(
+                get: { region.valueWeight },
+                set: { newValue in
+                    project.updateOverlayGaugeRegion(elementID, region: region.region) { $0.valueWeight = newValue }
+                }
+            )) { weight in
+                Text(weight.label)
+            }
+        }
+        InspectorDenseRow(label: "Value Color") {
+            InspectorDenseSwatchStrip(
+                presets: NumericOverlayDetailView.colorPresets,
+                selected: region.valueColor ?? element?.style.gauge.primaryTextColor ?? .white
+            ) { color in
+                project.updateOverlayGaugeRegion(elementID, region: region.region) { $0.valueColor = color }
+            }
+        }
+    }
+
+    // MARK: - Dial
+
+    @ViewBuilder
+    private func dialSection(_ element: OverlayElement) -> some View {
+        let gauge = element.style.gauge
+        InspectorDenseRow(label: "Background") {
+            InspectorDenseSwatchStrip(
+                presets: NumericOverlayDetailView.colorPresets,
+                selected: gauge.dialBackgroundColor
+            ) { color in
+                project.mutateGaugeStyle(elementID) { $0.dialBackgroundColor = color }
+            }
+        }
+        InspectorDenseSliderRow(
+            label: "Opacity",
+            value: gaugeBinding(\.dialBackgroundOpacity, of: gauge),
+            range: 0...1,
+            displayText: String(format: "%.0f%%", gauge.dialBackgroundOpacity * 100)
+        )
+        InspectorDenseRow(label: "Glass Effect") {
+            gaugeToggle(isOn: gauge.glassEffectEnabled) { newValue in
+                project.mutateGaugeStyle(elementID) { $0.glassEffectEnabled = newValue }
+            }
+        }
+    }
+
+    // MARK: - Ring (outer + progress)
+
+    @ViewBuilder
+    private func ringSection(_ element: OverlayElement) -> some View {
+        let gauge = element.style.gauge
+        InspectorDenseRow(label: "Outer Ring") {
+            gaugeToggle(isOn: gauge.outerRingEnabled) { newValue in
+                project.mutateGaugeStyle(elementID) { $0.outerRingEnabled = newValue }
+            }
+        }
+        if gauge.outerRingEnabled {
+            InspectorDenseRow(label: "Outer Color") {
+                InspectorDenseSwatchStrip(
+                    presets: NumericOverlayDetailView.colorPresets,
+                    selected: gauge.outerRingColor
+                ) { color in
+                    project.mutateGaugeStyle(elementID) { $0.outerRingColor = color }
+                }
+            }
+            InspectorDenseSliderRow(
+                label: "Outer Opacity",
+                value: gaugeBinding(\.outerRingOpacity, of: gauge),
+                range: 0...1,
+                displayText: String(format: "%.0f%%", gauge.outerRingOpacity * 100)
+            )
+            InspectorDenseSliderRow(
+                label: "Outer Width",
+                value: gaugeBinding(\.outerRingWidthScale, of: gauge),
+                range: 0.005...0.06,
+                displayText: String(format: "%.3f", gauge.outerRingWidthScale)
+            )
+        }
+        InspectorDenseRow(label: "Progress Ring") {
+            gaugeToggle(isOn: gauge.progressRingEnabled) { newValue in
+                project.mutateGaugeStyle(elementID) { $0.progressRingEnabled = newValue }
+            }
+        }
+        if gauge.progressRingEnabled {
+            InspectorDenseRow(label: "Progress Mode") {
+                Menu {
+                    ForEach(RunningGaugeProgressMode.allCases) { mode in
+                        Button {
+                            project.mutateGaugeStyle(elementID) { $0.progressMode = mode }
+                        } label: {
+                            if mode == gauge.progressMode {
+                                Label(mode.label, systemImage: "checkmark")
+                            } else {
+                                Text(mode.label)
+                            }
+                        }
+                    }
+                } label: {
+                    InspectorDenseMenuLabel(title: gauge.progressMode.label)
+                }
+                .menuStyle(.borderlessButton)
+                .frame(height: NumericTokens.controlHeight)
+            }
+            InspectorDenseRow(label: "Progress Color") {
+                InspectorDenseSwatchStrip(
+                    presets: NumericOverlayDetailView.colorPresets,
+                    selected: gauge.progressColor
+                ) { color in
+                    project.mutateGaugeStyle(elementID) { $0.progressColor = color }
+                }
+            }
+            InspectorDenseSliderRow(
+                label: "Track Opacity",
+                value: gaugeBinding(\.progressTrackOpacity, of: gauge),
+                range: 0...1,
+                displayText: String(format: "%.0f%%", gauge.progressTrackOpacity * 100)
+            )
+            InspectorDenseSliderRow(
+                label: "Ring Width",
+                value: gaugeBinding(\.progressRingWidthScale, of: gauge),
+                range: 0.005...0.06,
+                displayText: String(format: "%.3f", gauge.progressRingWidthScale)
+            )
+            InspectorDenseRow(label: "Rounded Caps") {
+                gaugeToggle(isOn: gauge.progressRoundedCaps) { newValue in
+                    project.mutateGaugeStyle(elementID) { $0.progressRoundedCaps = newValue }
+                }
+            }
+        }
+    }
+
+    // MARK: - Ticks
+
+    @ViewBuilder
+    private func ticksSection(_ element: OverlayElement) -> some View {
+        let gauge = element.style.gauge
+        InspectorDenseRow(label: "Tick Marks") {
+            gaugeToggle(isOn: gauge.tickMarksEnabled) { newValue in
+                project.mutateGaugeStyle(elementID) { $0.tickMarksEnabled = newValue }
+            }
+        }
+        if gauge.tickMarksEnabled {
+            InspectorDenseRow(label: "Tick Color") {
+                InspectorDenseSwatchStrip(
+                    presets: NumericOverlayDetailView.colorPresets,
+                    selected: gauge.tickColor
+                ) { color in
+                    project.mutateGaugeStyle(elementID) { $0.tickColor = color }
+                }
+            }
+            InspectorDenseSliderRow(
+                label: "Tick Count",
+                value: Binding(
+                    get: { Double(gauge.tickCount) },
+                    set: { newValue in
+                        project.mutateGaugeStyle(elementID) { $0.tickCount = max(6, Int(newValue.rounded())) }
+                    }
+                ),
+                range: 12...120,
+                displayText: "\(gauge.tickCount)"
+            )
+            InspectorDenseSliderRow(
+                label: "Major Every",
+                value: Binding(
+                    get: { Double(gauge.majorTickEvery) },
+                    set: { newValue in
+                        project.mutateGaugeStyle(elementID) { $0.majorTickEvery = max(1, Int(newValue.rounded())) }
+                    }
+                ),
+                range: 1...12,
+                displayText: "\(gauge.majorTickEvery)"
+            )
+            InspectorDenseSliderRow(
+                label: "Tick Opacity",
+                value: gaugeBinding(\.tickOpacity, of: gauge),
+                range: 0...1,
+                displayText: String(format: "%.0f%%", gauge.tickOpacity * 100)
+            )
+            InspectorDenseSliderRow(
+                label: "Major Opacity",
+                value: gaugeBinding(\.majorTickOpacity, of: gauge),
+                range: 0...1,
+                displayText: String(format: "%.0f%%", gauge.majorTickOpacity * 100)
+            )
+        }
+    }
+
+    // MARK: - Dividers
+
+    @ViewBuilder
+    private func dividersSection(_ element: OverlayElement) -> some View {
+        let gauge = element.style.gauge
+        InspectorDenseRow(label: "Dividers") {
+            gaugeToggle(isOn: gauge.dividerEnabled) { newValue in
+                project.mutateGaugeStyle(elementID) { $0.dividerEnabled = newValue }
+            }
+        }
+        if gauge.dividerEnabled {
+            InspectorDenseRow(label: "Divider Color") {
+                InspectorDenseSwatchStrip(
+                    presets: NumericOverlayDetailView.colorPresets,
+                    selected: gauge.dividerColor
+                ) { color in
+                    project.mutateGaugeStyle(elementID) { $0.dividerColor = color }
+                }
+            }
+            InspectorDenseSliderRow(
+                label: "Divider Opacity",
+                value: gaugeBinding(\.dividerOpacity, of: gauge),
+                range: 0...1,
+                displayText: String(format: "%.0f%%", gauge.dividerOpacity * 100)
+            )
+            InspectorDenseSliderRow(
+                label: "Divider Width",
+                value: gaugeBinding(\.dividerWidth, of: gauge),
+                range: 0.5...4,
+                displayText: String(format: "%.1f", gauge.dividerWidth)
+            )
+        }
+    }
+
+    // MARK: - Typography
+
     @ViewBuilder
     private func typographySection(_ element: OverlayElement) -> some View {
+        let gauge = element.style.gauge
         InspectorDenseRow(label: "Font") {
             Menu {
                 ForEach(NumericOverlayDetailView.fontPresets, id: \.self) { name in
                     Button {
-                        project.setOverlayFontName(elementID, fontName: name)
+                        project.mutateGaugeStyle(elementID) { $0.fontName = name }
                     } label: {
-                        if name == element.style.fontName {
+                        if name == gauge.fontName {
                             Label(name, systemImage: "checkmark")
                         } else {
                             Text(name)
@@ -133,61 +489,141 @@ struct RunningGaugeOverlayDetailView: View {
                     }
                 }
             } label: {
-                InspectorDenseMenuLabel(title: element.style.fontName)
+                InspectorDenseMenuLabel(title: gauge.fontName)
             }
             .menuStyle(.borderlessButton)
             .frame(height: NumericTokens.controlHeight)
         }
-        InspectorDenseSliderRow(
-            label: "Size",
-            value: Binding(
-                get: { element.style.fontSize },
-                set: { project.setOverlayFontSize(elementID, fontSize: $0.rounded()) }
-            ),
-            range: 12...96,
-            displayText: "\(Int(element.style.fontSize.rounded()))"
-        )
-        InspectorDenseRow(label: "Weight") {
+        InspectorDenseRow(label: "Monospaced") {
+            gaugeToggle(isOn: gauge.monospacedDigits) { newValue in
+                project.mutateGaugeStyle(elementID) { $0.monospacedDigits = newValue }
+            }
+        }
+        InspectorDenseRow(label: "Primary Weight") {
             InspectorDenseSegmented(values: OverlayFontWeight.allCases, selection: Binding(
-                get: { element.style.fontWeight },
-                set: { project.setOverlayFontWeight(elementID, fontWeight: $0) }
+                get: { gauge.primaryFontWeight },
+                set: { newValue in project.mutateGaugeStyle(elementID) { $0.primaryFontWeight = newValue } }
+            )) { weight in
+                Text(weight.label)
+            }
+        }
+        InspectorDenseRow(label: "Secondary") {
+            InspectorDenseSegmented(values: OverlayFontWeight.allCases, selection: Binding(
+                get: { gauge.secondaryFontWeight },
+                set: { newValue in project.mutateGaugeStyle(elementID) { $0.secondaryFontWeight = newValue } }
             )) { weight in
                 Text(weight.label)
             }
         }
     }
 
+    // MARK: - Color
+
     @ViewBuilder
     private func colorSection(_ element: OverlayElement) -> some View {
+        let gauge = element.style.gauge
+        InspectorDenseRow(label: "Primary Text") {
+            InspectorDenseSwatchStrip(
+                presets: NumericOverlayDetailView.colorPresets,
+                selected: gauge.primaryTextColor
+            ) { color in
+                project.mutateGaugeStyle(elementID) { $0.primaryTextColor = color }
+            }
+        }
+        InspectorDenseRow(label: "Secondary") {
+            InspectorDenseSwatchStrip(
+                presets: NumericOverlayDetailView.colorPresets,
+                selected: gauge.secondaryTextColor
+            ) { color in
+                project.mutateGaugeStyle(elementID) { $0.secondaryTextColor = color }
+            }
+        }
         InspectorDenseRow(label: "Accent") {
             InspectorDenseSwatchStrip(
                 presets: NumericOverlayDetailView.colorPresets,
-                selected: element.style.foregroundColor
+                selected: gauge.accentColor
             ) { color in
-                project.setOverlayForegroundColor(elementID, color: color)
+                project.mutateGaugeStyle(elementID) { $0.accentColor = color }
             }
         }
     }
 
+    // MARK: - Effects
+
     @ViewBuilder
-    private func backgroundSection(_ element: OverlayElement) -> some View {
-        InspectorDenseSliderRow(
-            label: "Opacity",
-            value: Binding(
-                get: { element.style.backgroundOpacity },
-                set: { project.setOverlayBackgroundOpacity(elementID, opacity: $0.gaugeQuantized(to: 0.05)) }
-            ),
-            range: 0...1,
-            displayText: String(format: "%.0f%%", element.style.backgroundOpacity * 100)
+    private func effectsSection(_ element: OverlayElement) -> some View {
+        let gauge = element.style.gauge
+        InspectorDenseRow(label: "Shadow") {
+            gaugeToggle(isOn: gauge.shadowEnabled) { newValue in
+                project.mutateGaugeStyle(elementID) { $0.shadowEnabled = newValue }
+            }
+        }
+        if gauge.shadowEnabled {
+            InspectorDenseSliderRow(
+                label: "Shadow Opacity",
+                value: gaugeBinding(\.shadowOpacity, of: gauge),
+                range: 0...1,
+                displayText: String(format: "%.0f%%", gauge.shadowOpacity * 100)
+            )
+            InspectorDenseSliderRow(
+                label: "Shadow Radius",
+                value: gaugeBinding(\.shadowRadius, of: gauge),
+                range: 0...30,
+                displayText: String(format: "%.0f", gauge.shadowRadius)
+            )
+        }
+        InspectorDenseRow(label: "Glow") {
+            gaugeToggle(isOn: gauge.glowEnabled) { newValue in
+                project.mutateGaugeStyle(elementID) { $0.glowEnabled = newValue }
+            }
+        }
+        if gauge.glowEnabled {
+            InspectorDenseRow(label: "Glow Color") {
+                InspectorDenseSwatchStrip(
+                    presets: NumericOverlayDetailView.colorPresets,
+                    selected: gauge.glowColor
+                ) { color in
+                    project.mutateGaugeStyle(elementID) { $0.glowColor = color }
+                }
+            }
+            InspectorDenseSliderRow(
+                label: "Glow Opacity",
+                value: gaugeBinding(\.glowOpacity, of: gauge),
+                range: 0...1,
+                displayText: String(format: "%.0f%%", gauge.glowOpacity * 100)
+            )
+            InspectorDenseSliderRow(
+                label: "Glow Radius",
+                value: gaugeBinding(\.glowRadius, of: gauge),
+                range: 0...24,
+                displayText: String(format: "%.0f", gauge.glowRadius)
+            )
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func gaugeBinding(_ keyPath: WritableKeyPath<RunningGaugeStyle, Double>, of current: RunningGaugeStyle) -> Binding<Double> {
+        Binding(
+            get: { current[keyPath: keyPath] },
+            set: { newValue in
+                project.mutateGaugeStyle(elementID) { gauge in
+                    gauge[keyPath: keyPath] = newValue
+                }
+            }
         )
     }
 
-    // MARK: - Composite components
+    @ViewBuilder
+    private func gaugeToggle(isOn: Bool, set: @Sendable @escaping (Bool) -> Void) -> some View {
+        Toggle("", isOn: Binding(get: { isOn }, set: set))
+            .toggleStyle(.switch)
+            .labelsHidden()
+    }
 
     @ViewBuilder
     private func sectionView<Body: View>(
         _ section: GaugeSection,
-        element: OverlayElement,
         @ViewBuilder content: () -> Body
     ) -> some View {
         let isOpen = openSections.contains(section)
@@ -290,7 +726,7 @@ private struct RunningGaugeOverlayHeader: View {
                 Text(element.type.label)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(NumericTokens.textPrimary)
-                Text("Gauge")
+                Text(element.style.gauge.layoutPreset.compactLabel)
                     .font(NumericTokens.captionFont)
                     .foregroundStyle(NumericTokens.textSecondary)
                     .padding(.horizontal, 6)
@@ -327,17 +763,29 @@ private struct RunningGaugeOverlayHeader: View {
 enum GaugeSection: String, CaseIterable {
     case style
     case layout
+    case dataLayout
+    case regions
+    case dial
+    case ring
+    case ticks
+    case dividers
     case typography
     case color
-    case background
+    case effects
 
     var title: String {
         switch self {
-        case .style: "Style"
-        case .layout: "Layout"
+        case .style: "Style Preset"
+        case .layout: "Position & Scale"
+        case .dataLayout: "Data Layout"
+        case .regions: "Region Settings"
+        case .dial: "Dial"
+        case .ring: "Ring"
+        case .ticks: "Ticks"
+        case .dividers: "Dividers"
         case .typography: "Typography"
         case .color: "Color"
-        case .background: "Background"
+        case .effects: "Effects"
         }
     }
 
@@ -345,9 +793,15 @@ enum GaugeSection: String, CaseIterable {
         switch self {
         case .style: "gauge"
         case .layout: "scope"
+        case .dataLayout: "square.grid.2x2"
+        case .regions: "slider.horizontal.3"
+        case .dial: "circle.fill"
+        case .ring: "circle.dashed"
+        case .ticks: "minus"
+        case .dividers: "line.3.horizontal"
         case .typography: "textformat"
         case .color: "paintpalette"
-        case .background: "rectangle.fill"
+        case .effects: "sparkles"
         }
     }
 }

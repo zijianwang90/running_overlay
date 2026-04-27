@@ -1,6 +1,6 @@
 # Running Overlay Product Requirements
 
-Last updated: 2026-04-26 (Running Gauge inspector dense layout)
+Last updated: 2026-04-26 (Running Gauge full module redesign — 7 layouts × 7 style presets, per-region metric binding)
 
 ## 1. Product Summary
 
@@ -289,7 +289,8 @@ Current implementation status:
 - Inspector uses a compact dark tool-panel layout for overlay add/manage and selected-overlay detail states.
 - Inspector width is preserved across outer/detail/editing hierarchy states so internal selection changes do not resize the right panel or truncate tile labels.
 - The Inspector outer state groups add-overlay tiles by Metrics, Charts, and Route and shows added overlays as live-value rows.
-- Inspector tab segments should be clickable across the full segment area.
+- Inspector segmented controls use native macOS segmented pickers for keyboard/focus and accessibility behavior.
+- This includes segmented controls in the outer Inspector and dense detail inspectors (Numeric Overlay, Running Gauge, and Route Map).
 - Clicking an add tile creates the overlay and opens its detail editor.
 - Selected overlay elements expose current value, normalized position, scale, preset, font family, font weight, font size, foreground color, background opacity, shadow opacity, and shadow radius controls in the Inspector detail state.
 - Numeric overlays (heart rate, pace, calories, elapsed time, real time, distance, elevation, cadence, power) use the dense `NumericOverlayDetailView` Inspector with Content, Layout, Typography, Color, Background, and Effects sections matching `docs/design/numeric-overlay-ui.md`.
@@ -297,14 +298,19 @@ Current implementation status:
 - Visibility, lock, generic opacity, and metric reassignment controls are deferred until backed by persistent project model fields.
 - Selected text overlays expose a built-in style picker as the first Inspector control, with Minimal, Pill Badge, Metric Card, Big Number, Sport Watch, Split Label, Inline Ghost, Accent Bar, Sport Neon, and Serif Editorial presets.
 - Numeric overlay presets carry recommended typography tokens (font family, weight, size, alignment, label/unit visibility, background, accent color); selecting a preset snaps those fields so the overlay matches the design intent without further tuning.
-- Selected Running Gauge overlays use the dense `RunningGaugeOverlayDetailView` Inspector with Style, Layout, Typography, Color, and Background sections that share the exact tokens, row heights, controls, and section disclosure behavior of `NumericOverlayDetailView`. The Style section exposes a gauge preset picker with Minimal Sport, High Contrast, Trail Adventure, Tech Future, and Retro Digital presets; Layout offers the 9-cell anchor grid plus X/Y, Scale, and Rotation; Typography offers Font, Size, and Weight; Color offers an accent swatch strip wired to `foregroundColor`; Background offers a single Opacity slider for the gauge disc.
+- Selected Running Gauge overlays use the dense `RunningGaugeOverlayDetailView` Inspector with eleven sections that share the exact tokens, row heights, controls, and section disclosure behavior of `NumericOverlayDetailView`: Style Preset, Position & Scale, Data Layout, Region Settings, Dial, Ring, Ticks, Dividers, Typography, Color, Effects.
+  - Style Preset offers Minimal Sport, High Contrast Sport, Road Run, Trail Adventure, Future Tech, Retro Digital, and Premium Glass; selecting a preset reseeds the gauge sub-style without touching the user's data layout / region bindings.
+  - Data Layout offers seven layout presets (Top / Bottom, Top / Middle / Bottom, Three Zones, Top + Two Middle + Bottom, Top + Three Middle + Bottom, Four Zones, Five Zones); choosing a layout regenerates the recommended per-region metric defaults.
+  - Region Settings lists every visible region with an inline metric picker (Distance, Pace, Elapsed Time, Real Time, Heart Rate, Power, Cadence, Elevation, Calories) and an expandable per-region drawer for Custom Label, Show Label / Show Unit, Value Size, Value Weight, and Value Color.
+  - Dial / Ring / Ticks / Dividers / Effects sections expose every renderer-consumed parameter (dial color + opacity + glass; outer ring + progress ring + progress mode + caps; tick count + major-every + opacities; divider color/opacity/width; shadow + glow). Conditional sub-rows show only when the parent toggle is on.
+  - Typography offers Font, Monospaced Digits, and primary/secondary Weight; Color offers Primary Text, Secondary, and Accent swatch strips.
 - Space starts/stops playhead playback, and the overlay values update as playhead time changes.
 - Left and right arrows move the timeline playhead by exactly one project frame for fine timing checks.
 - Timeline ruler click/drag updates the current playhead.
 - A muted red playhead with a small downward-pointing triangle inside the ruler band is shown on timeline tracks. The vertical line starts from inside the ruler and extends down through the visible tracks; neither the line nor the triangle is allowed to extend above the ruler.
 - The distance timeline overlay renders as a progress bar.
 - The live elevation chart overlay renders as a compact line chart with a playhead marker.
-- The Running Gauge overlay renders a circular dashboard with distance, elapsed time, pace, heart rate, ticks, progress ring, and section dividers.
+- The Running Gauge overlay renders a circular dashboard with a configurable dial background, optional outer ring, optional tick marks (count + major-every), optional progress ring (with mode: distance target / elapsed time / HR zone / power zone / pace intensity / custom), optional divider lines, and per-region data text. The active layout preset (one of seven) determines which regions are rendered, and each region independently binds a metric (Distance / Pace / Elapsed Time / Real Time / Heart Rate / Power / Cadence / Elevation / Calories), label visibility, unit visibility, value font scale/weight, and value color. Preview and export share the same `RunningGaugeLayoutEngine` region-frame and divider-segment helpers.
 - Overlay preview and export share the same render layout model for sampled values, normalized positions, base element dimensions, font sizes, padding, progress, and chart samples.
 - Text presets are stored with overlay style data and render consistently in preview, calibration PNGs, and transparent video export.
 - Gauge presets are stored with overlay style data and render consistently in preview, calibration PNGs, and transparent video export.

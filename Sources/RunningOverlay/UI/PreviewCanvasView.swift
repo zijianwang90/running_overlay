@@ -305,9 +305,9 @@ private struct RouteMapOverlayView: View {
                         Image(nsImage: mapSnapshot)
                             .resizable()
                             .scaledToFill()
-                            .opacity(0.82)
+                            .opacity(layout.mapOpacity)
                             .clipped()
-                    } else if layout.preset == .mapKit || element.style.routeMapBackgroundStyle != .none {
+                    } else if element.style.routeMapBackgroundStyle != .none {
                         mapGrid
                     }
                 }
@@ -384,13 +384,17 @@ private struct RouteMapOverlayView: View {
 
     @MainActor
     private func updateRenderAssets() async {
-        alphaMask = RouteMapMaskRenderer.makeNSImage(
-            size: layout.rect.size,
-            shape: layout.shape,
-            cornerRadius: layout.cornerRadius,
-            edgeFade: layout.edgeFade,
-            fadeAmount: layout.fadeAmount
-        )
+        if layout.edgeFade == .fadeOut, layout.fadeAmount > 0.001 {
+            alphaMask = RouteMapMaskRenderer.makeNSImage(
+                size: layout.rect.size,
+                shape: layout.shape,
+                cornerRadius: layout.cornerRadius,
+                edgeFade: layout.edgeFade,
+                fadeAmount: layout.fadeAmount
+            )
+        } else {
+            alphaMask = nil
+        }
 
         guard let request = mapSnapshotRequest else {
             mapSnapshot = nil
@@ -448,15 +452,15 @@ private struct RouteMapOverlayView: View {
             return Color(red: 0.13, green: 0.17, blue: 0.13).opacity(max(element.style.backgroundOpacity, 0.66))
         case .satellite:
             return Color(red: 0.05, green: 0.07, blue: 0.06).opacity(max(element.style.backgroundOpacity, 0.74))
-        case .none, .dark:
+        case .none:
             switch layout.preset {
-            case .mapKit:
-                return Color(red: 0.08, green: 0.10, blue: 0.11).opacity(max(element.style.backgroundOpacity, 0.72))
             case .glow:
                 return Color.black.opacity(max(element.style.backgroundOpacity, 0.34))
             default:
                 return Color.black.opacity(element.style.backgroundOpacity)
             }
+        case .dark:
+            return Color(red: 0.08, green: 0.10, blue: 0.11).opacity(max(element.style.backgroundOpacity, 0.72))
         }
     }
 
@@ -1132,163 +1136,150 @@ private struct RunningGaugeOverlayView: View {
     let layout: OverlayRunningGaugeRenderLayout
     let isSelected: Bool
 
+    private var style: RunningGaugeStyle { layout.style }
+    private var diameter: Double { layout.rect.width }
+
     var body: some View {
         ZStack {
+            // Dial background.
             Circle()
-                .fill(gaugeBackground)
+                .fill(Color(style.dialBackgroundColor).opacity(style.dialBackgroundOpacity))
                 .overlay {
-                    if layout.preset == .trailAdventure {
+                    if style.glassEffectEnabled {
                         Circle()
-                            .stroke(Color(element.style.foregroundColor).opacity(0.11), lineWidth: layout.ringWidth * 3.5)
-                            .blur(radius: layout.ringWidth * 0.35)
+                            .stroke(Color.white.opacity(0.18), lineWidth: max(layout.outerRingWidth * 0.5, 1))
+                            .blur(radius: layout.outerRingWidth * 0.4)
                     }
                 }
 
-            Circle()
-                .stroke(Color.white.opacity(trackOpacity), lineWidth: layout.ringWidth)
-                .padding(layout.ringWidth * 1.2)
-
-            Circle()
-                .trim(from: 0, to: layout.progress)
-                .stroke(
-                    Color(element.style.foregroundColor),
-                    style: StrokeStyle(lineWidth: layout.ringWidth, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
-                .padding(layout.ringWidth * 1.2)
-
-            GaugeTicksView(
-                tickCount: tickCount,
-                tickLength: layout.tickLength,
-                tickWidth: max(layout.dividerWidth, 1),
-                color: tickColor
-            )
-            .padding(layout.ringWidth * 2.8)
-
-            GaugeDividersView(lineWidth: layout.dividerWidth, color: Color.white.opacity(dividerOpacity))
-                .padding(layout.rect.width * 0.18)
-
-            VStack(spacing: layout.rect.height * 0.035) {
-                metricBlock(layout.distance, valueSize: layout.primaryFontSize, labelSize: layout.labelFontSize, unitSize: layout.unitFontSize)
-                    .padding(.top, layout.rect.height * 0.08)
-
-                Spacer(minLength: 0)
-
-                HStack(spacing: 0) {
-                    metricBlock(layout.elapsedTime, valueSize: layout.secondaryFontSize, labelSize: layout.labelFontSize, unitSize: layout.unitFontSize)
-                        .frame(maxWidth: .infinity)
-                    metricBlock(layout.pace, valueSize: layout.secondaryFontSize, labelSize: layout.labelFontSize, unitSize: layout.unitFontSize)
-                        .frame(maxWidth: .infinity)
-                }
-
-                Spacer(minLength: 0)
-
-                metricBlock(layout.heartRate, valueSize: layout.secondaryFontSize * 1.02, labelSize: layout.labelFontSize, unitSize: layout.unitFontSize)
-                    .padding(.bottom, layout.rect.height * 0.06)
+            // Outer ring.
+            if style.outerRingEnabled {
+                Circle()
+                    .strokeBorder(
+                        Color(style.outerRingColor).opacity(style.outerRingOpacity),
+                        lineWidth: layout.outerRingWidth
+                    )
             }
-            .padding(layout.rect.width * 0.19)
+
+            // Tick marks.
+            if style.tickMarksEnabled {
+                GaugeTicksView(
+                    tickCount: max(style.tickCount, 6),
+                    majorEvery: max(style.majorTickEvery, 1),
+                    tickLength: diameter * 0.025,
+                    majorTickLength: diameter * 0.040,
+                    tickWidth: max(style.dividerWidth, 1),
+                    color: Color(style.tickColor),
+                    tickOpacity: style.tickOpacity,
+                    majorOpacity: style.majorTickOpacity
+                )
+                .padding(layout.outerRingWidth + 2)
+            }
+
+            // Progress ring (track + arc).
+            if style.progressRingEnabled {
+                let inset = layout.outerRingWidth + layout.progressRingWidth + 2
+                Circle()
+                    .stroke(
+                        Color(style.progressTrackColor).opacity(style.progressTrackOpacity),
+                        lineWidth: layout.progressRingWidth
+                    )
+                    .padding(inset)
+                Circle()
+                    .trim(from: 0, to: max(min(layout.progress, 1), 0))
+                    .stroke(
+                        Color(style.progressColor),
+                        style: StrokeStyle(
+                            lineWidth: layout.progressRingWidth,
+                            lineCap: style.progressRoundedCaps ? .round : .butt
+                        )
+                    )
+                    .rotationEffect(.degrees(-90))
+                    .padding(inset)
+            }
+
+            // Dividers.
+            if style.dividerEnabled {
+                GaugeDividersView(
+                    segments: RunningGaugeLayoutEngine.dividerSegments(for: style.layoutPreset),
+                    lineWidth: max(style.dividerWidth, 1),
+                    color: Color(style.dividerColor).opacity(style.dividerOpacity),
+                    safeRadius: layout.safeRadius / (diameter / 2)
+                )
+            }
+
+            // Data regions.
+            ForEach(layout.regions, id: \.config.id) { region in
+                regionView(region)
+                    .frame(width: region.rect.width, height: region.rect.height)
+                    .position(
+                        x: region.rect.midX - layout.rect.minX,
+                        y: region.rect.midY - layout.rect.minY
+                    )
+            }
         }
-        .frame(width: layout.rect.width, height: layout.rect.height)
+        .frame(width: diameter, height: diameter)
         .overlay {
             if isSelected {
                 Circle()
-                    .stroke(Color.accentColor.opacity(0.85), lineWidth: max(layout.dividerWidth * 2, 2))
+                    .stroke(Color.accentColor.opacity(0.85), lineWidth: 2)
             }
         }
-        .shadow(color: Color.black.opacity(element.style.shadowOpacity), radius: layout.rect.width * 0.035 + layout.ringWidth, x: 0, y: layout.ringWidth * 0.8)
-        .monospacedDigit()
+        .shadow(
+            color: Color.black.opacity(style.shadowEnabled ? style.shadowOpacity : 0),
+            radius: style.shadowRadius,
+            x: 0,
+            y: max(style.shadowRadius * 0.25, 1)
+        )
+        .modifier(GaugeMonospacedDigit(enabled: style.monospacedDigits))
     }
 
-    private func metricBlock(_ metric: OverlayValueComponents, valueSize: Double, labelSize: Double, unitSize: Double) -> some View {
-        VStack(spacing: max(unitSize * 0.08, 1)) {
-            Text(metric.shortLabel == "HR" ? "HEART RATE" : metric.label.uppercased())
-                .font(.custom(element.style.fontName, size: labelSize).weight(.medium))
-                .foregroundStyle(labelColor)
-                .lineLimit(1)
-            HStack(alignment: .firstTextBaseline, spacing: max(unitSize * 0.25, 2)) {
-                Text(metric.value)
-                    .font(.custom(element.style.fontName, size: valueSize).weight(valueWeight))
-                    .foregroundStyle(valueColor)
+    @ViewBuilder
+    private func regionView(_ region: OverlayRunningGaugeRegionLayout) -> some View {
+        let config = region.config
+        let label = config.customLabel.isEmpty ? config.metric.compactLabel : config.customLabel.uppercased()
+        let valueColor = Color(config.valueColor ?? style.primaryTextColor)
+        let labelColor = Color(config.labelColor ?? style.secondaryTextColor).opacity(0.78)
+
+        VStack(spacing: max(region.unitFontSize * 0.10, 1)) {
+            if config.showLabel {
+                Text(label)
+                    .font(.custom(style.fontName, size: region.labelFontSize).weight(swiftFontWeight(config.labelWeight)))
+                    .foregroundStyle(labelColor)
                     .lineLimit(1)
-                if !metric.unit.isEmpty {
-                    Text(metric.unit)
-                        .font(.custom(element.style.fontName, size: unitSize).weight(.medium))
-                        .foregroundStyle(labelColor)
-                        .lineLimit(1)
-                }
+                    .minimumScaleFactor(0.6)
+            }
+            Text(region.components.value)
+                .font(.custom(style.fontName, size: region.valueFontSize).weight(swiftFontWeight(config.valueWeight)))
+                .foregroundStyle(valueColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+                .modifier(
+                    GaugeGlow(
+                        enabled: style.glowEnabled,
+                        color: Color(style.glowColor).opacity(style.glowOpacity),
+                        radius: style.glowRadius
+                    )
+                )
+            if config.showUnit, !region.components.unit.isEmpty {
+                Text(region.components.unit)
+                    .font(.custom(style.fontName, size: region.unitFontSize).weight(.medium))
+                    .foregroundStyle(labelColor)
+                    .lineLimit(1)
             }
         }
-    }
-
-    private var gaugeBackground: Color {
-        let opacity = max(element.style.backgroundOpacity, 0.58)
-        switch layout.preset {
-        case .minimalSport:
-            return Color.black.opacity(opacity)
-        case .highContrast:
-            return Color.black.opacity(max(opacity, 0.82))
-        case .trailAdventure:
-            return Color(red: 0.06, green: 0.07, blue: 0.04).opacity(max(opacity, 0.74))
-        case .techFuture:
-            return Color(red: 0.02, green: 0.04, blue: 0.07).opacity(max(opacity, 0.76))
-        case .retroDigital:
-            return Color(red: 0.05, green: 0.045, blue: 0.035).opacity(max(opacity, 0.78))
-        }
-    }
-
-    private var valueColor: Color {
-        switch layout.preset {
-        case .trailAdventure:
-            return Color(element.style.foregroundColor).opacity(0.92)
-        case .retroDigital:
-            return Color(element.style.foregroundColor).opacity(0.82)
-        default:
-            return .white
-        }
-    }
-
-    private var labelColor: Color {
-        switch layout.preset {
-        case .highContrast:
-            return Color(element.style.foregroundColor)
-        case .techFuture:
-            return Color(element.style.foregroundColor).opacity(0.9)
-        default:
-            return .white.opacity(0.72)
-        }
-    }
-
-    private var tickColor: Color {
-        switch layout.preset {
-        case .highContrast:
-            return .white.opacity(0.92)
-        default:
-            return Color(element.style.foregroundColor).opacity(0.78)
-        }
-    }
-
-    private var trackOpacity: Double {
-        layout.preset == .highContrast ? 0.78 : 0.26
-    }
-
-    private var dividerOpacity: Double {
-        layout.preset == .retroDigital ? 0.20 : 0.16
-    }
-
-    private var tickCount: Int {
-        layout.preset == .retroDigital ? 48 : 36
-    }
-
-    private var valueWeight: Font.Weight {
-        layout.preset == .retroDigital ? .medium : .bold
     }
 }
 
 private struct GaugeTicksView: View {
     let tickCount: Int
+    let majorEvery: Int
     let tickLength: Double
+    let majorTickLength: Double
     let tickWidth: Double
     let color: Color
+    let tickOpacity: Double
+    let majorOpacity: Double
 
     var body: some View {
         GeometryReader { proxy in
@@ -1296,10 +1287,12 @@ private struct GaugeTicksView: View {
             let radius = size / 2
             ZStack {
                 ForEach(0..<tickCount, id: \.self) { index in
+                    let isMajor = index.isMultiple(of: majorEvery)
+                    let length = isMajor ? majorTickLength : tickLength
                     Rectangle()
-                        .fill(color.opacity(index.isMultiple(of: 3) ? 1 : 0.46))
-                        .frame(width: tickWidth, height: index.isMultiple(of: 3) ? tickLength : tickLength * 0.55)
-                        .offset(y: -radius + tickLength / 2)
+                        .fill(color.opacity(isMajor ? majorOpacity : tickOpacity))
+                        .frame(width: tickWidth, height: length)
+                        .offset(y: -radius + length / 2)
                         .rotationEffect(.degrees(Double(index) / Double(tickCount) * 360))
                 }
             }
@@ -1309,23 +1302,58 @@ private struct GaugeTicksView: View {
 }
 
 private struct GaugeDividersView: View {
+    let segments: [(CGPoint, CGPoint)]
     let lineWidth: Double
     let color: Color
+    /// Fraction of half-side (0...1) describing the safe inset within which
+    /// dividers are drawn — keeps lines off the dial bezel.
+    let safeRadius: Double
 
     var body: some View {
         GeometryReader { proxy in
             Path { path in
                 let width = proxy.size.width
                 let height = proxy.size.height
-                path.move(to: CGPoint(x: width * 0.18, y: height * 0.44))
-                path.addLine(to: CGPoint(x: width * 0.82, y: height * 0.44))
-                path.move(to: CGPoint(x: width * 0.50, y: height * 0.44))
-                path.addLine(to: CGPoint(x: width * 0.50, y: height * 0.72))
-                path.move(to: CGPoint(x: width * 0.25, y: height * 0.72))
-                path.addLine(to: CGPoint(x: width * 0.75, y: height * 0.72))
+                let safeW = width * safeRadius
+                let safeH = height * safeRadius
+                let originX = (width - safeW) / 2
+                let originY = (height - safeH) / 2
+                for (start, end) in segments {
+                    path.move(to: CGPoint(x: originX + start.x * safeW, y: originY + start.y * safeH))
+                    path.addLine(to: CGPoint(x: originX + end.x * safeW, y: originY + end.y * safeH))
+                }
             }
             .stroke(color, lineWidth: lineWidth)
         }
+    }
+}
+
+private struct GaugeMonospacedDigit: ViewModifier {
+    let enabled: Bool
+    func body(content: Content) -> some View {
+        if enabled { content.monospacedDigit() } else { content }
+    }
+}
+
+private struct GaugeGlow: ViewModifier {
+    let enabled: Bool
+    let color: Color
+    let radius: Double
+    func body(content: Content) -> some View {
+        if enabled, radius > 0 {
+            content.shadow(color: color, radius: radius)
+        } else {
+            content
+        }
+    }
+}
+
+private func swiftFontWeight(_ w: OverlayFontWeight) -> Font.Weight {
+    switch w {
+    case .regular: .regular
+    case .medium: .medium
+    case .semibold: .semibold
+    case .bold: .bold
     }
 }
 

@@ -75,51 +75,118 @@ enum OverlayRenderModel {
     }
 
     static func runningGaugeLayout(for element: OverlayElement, in context: OverlayRenderContext) -> OverlayRunningGaugeRenderLayout {
+        let style = element.style.gauge
         let diameter = context.scaled(300 * element.scale)
         let rect = centeredRect(for: element, size: CGSize(width: diameter, height: diameter), canvasSize: context.canvasSize)
-        let progress = context.activity.distanceMeters > 0
-            ? context.activity.distance(at: context.elapsedTime) / context.activity.distanceMeters
-            : context.elapsedTime / max(context.activity.duration, 1)
+        let progress = computeGaugeProgress(style: style, context: context)
+
+        let regionFrames = RunningGaugeLayoutEngine.regionFrames(
+            for: style.layoutPreset,
+            in: CGSize(width: diameter, height: diameter)
+        )
+        let baseValueSize = diameter * 0.145
+        let baseLabelSize = diameter * 0.038
+        let baseUnitSize = diameter * 0.045
+        let regions: [OverlayRunningGaugeRegionLayout] = regionFrames.compactMap { frame in
+            guard let config = style.regions.first(where: { $0.region == frame.region }) else {
+                return nil
+            }
+            let canvasRect = CGRect(
+                x: rect.minX + frame.rect.minX,
+                y: rect.minY + frame.rect.minY,
+                width: frame.rect.width,
+                height: frame.rect.height
+            )
+            let valueSize = max(baseValueSize * config.valueFontScale, 8)
+            let labelSize = max(baseLabelSize * (config.labelFontScale / 0.32), 7)
+            let unitSize = max(baseUnitSize * (config.unitFontScale / 0.42), 7)
+            let components = OverlayValueFormatter.components(
+                for: config.metric.elementType,
+                activity: context.activity,
+                elapsedTime: context.elapsedTime
+            )
+            return OverlayRunningGaugeRegionLayout(
+                config: config,
+                rect: canvasRect,
+                components: components,
+                valueFontSize: valueSize,
+                labelFontSize: labelSize,
+                unitFontSize: unitSize
+            )
+        }
 
         return OverlayRunningGaugeRenderLayout(
-            preset: element.style.gaugePreset,
+            style: style,
             rect: rect,
+            diameter: diameter,
             progress: clampedProgress(progress),
-            distance: OverlayValueFormatter.components(for: .distance, activity: context.activity, elapsedTime: context.elapsedTime),
-            elapsedTime: OverlayValueFormatter.components(for: .elapsedTime, activity: context.activity, elapsedTime: context.elapsedTime),
-            pace: OverlayValueFormatter.components(for: .pace, activity: context.activity, elapsedTime: context.elapsedTime),
-            heartRate: OverlayValueFormatter.components(for: .heartRate, activity: context.activity, elapsedTime: context.elapsedTime),
-            primaryFontSize: context.scaled(element.style.fontSize * 1.38 * element.scale),
-            secondaryFontSize: context.scaled(element.style.fontSize * 0.88 * element.scale),
-            labelFontSize: context.scaled(max(9, element.style.fontSize * 0.36 * element.scale)),
-            unitFontSize: context.scaled(max(9, element.style.fontSize * 0.34 * element.scale)),
-            ringWidth: max(context.scaled(8 * element.scale), context.scaled(3)),
-            tickLength: context.scaled(8 * element.scale),
-            dividerWidth: max(context.scaled(1), context.scaled(1.2 * element.scale))
+            regions: regions,
+            outerRingWidth: max(diameter * style.outerRingWidthScale, 1.5),
+            progressRingWidth: max(diameter * style.progressRingWidthScale, 1.5),
+            tickLength: diameter * 0.025,
+            majorTickLength: diameter * 0.040,
+            safeRadius: diameter * 0.40
         )
     }
 
+    private static func computeGaugeProgress(style: RunningGaugeStyle, context: OverlayRenderContext) -> Double {
+        switch style.progressMode {
+        case .none:
+            return 0
+        case .distanceTarget:
+            return context.activity.distanceMeters > 0
+                ? context.activity.distance(at: context.elapsedTime) / context.activity.distanceMeters
+                : 0
+        case .elapsedTimeTarget:
+            return context.activity.duration > 0
+                ? context.elapsedTime / context.activity.duration
+                : 0
+        case .heartRateZone, .powerZone, .paceIntensity:
+            // Zone modes: fall back to elapsed-time progression until the
+            // user wires a custom max into the project model.
+            return context.activity.duration > 0
+                ? context.elapsedTime / context.activity.duration
+                : 0
+        case .customPercentage:
+            return 0.5
+        }
+    }
+
     static func routeMapLayout(for element: OverlayElement, in context: OverlayRenderContext) -> OverlayRouteMapRenderLayout {
-        let width = context.scaled(280 * element.scale)
-        let height = context.scaled(210 * element.scale)
         let mapShape = element.style.routeMapShape
+        let designWidth = element.style.routeMapWidth
+        let designHeight = element.style.routeMapHeight
+        let width = context.scaled(designWidth * element.scale)
+        let height = context.scaled(designHeight * element.scale)
+        // Circles ignore aspect: take the shorter edge as the diameter so the
+        // user can drag the bounding box wider/taller without distorting the
+        // circular window.
         let side = min(width, height)
         let mapSize = mapShape == .circle ? CGSize(width: side, height: side) : CGSize(width: width, height: height)
         let rect = centeredRect(for: element, size: mapSize, canvasSize: context.canvasSize)
-        let padding = context.scaled(18 * element.scale)
+        // Padding scales with the box size so wider boxes still keep the
+        // route well inside the visible map. The minimum keeps tiny boxes
+        // (≤120 pt) from squashing the route to the center.
+        let paddingDesign = max(min(min(designWidth, designHeight) * 0.12, 32), 12)
+        let padding = context.scaled(paddingDesign * element.scale)
+        // Map background visibility is purely driven by the background style
+        // now that the route style preset no longer encodes "show map".
+        let backgroundEnabled = element.style.routeMapBackgroundStyle != .none
+        let provider: OverlayRouteMapProvider = backgroundEnabled ? .mapKit : .none
         let progress = context.activity.duration > 0 ? context.elapsedTime / context.activity.duration : 0
 
         return OverlayRouteMapRenderLayout(
             preset: element.style.routeMapPreset,
-            provider: element.style.routeMapProvider,
+            provider: provider,
             rect: rect,
             contentRect: rect.insetBy(dx: padding, dy: padding),
-            cornerRadius: mapShape == .circle ? 0 : context.scaled(8 * element.scale),
+            cornerRadius: mapShape == .circle ? 0 : context.scaled(12 * element.scale),
             shape: mapShape,
             edgeFade: element.style.routeMapEdgeFade,
             fadeAmount: element.style.routeMapFadeAmount,
             lineWidth: max(context.scaled(4 * element.scale), 1.5),
             glowRadius: context.scaled(11 * element.scale),
+            mapOpacity: element.style.routeMapMapOpacity,
             progress: clampedProgress(progress),
             geometry: RouteGeometryBuilder.geometry(from: context.activity),
             currentPoint: context.activity.routePoint(at: context.elapsedTime)
@@ -254,19 +321,33 @@ struct OverlayElevationChartRenderLayout {
     var samples: [Double]
 }
 
-struct OverlayRunningGaugeRenderLayout {
-    var preset: OverlayGaugePreset
+struct OverlayRunningGaugeRegionLayout {
+    var config: RunningGaugeRegionConfig
+    /// Region bounding rect in canvas (export) coordinates.
     var rect: CGRect
-    var progress: Double
-    var distance: OverlayValueComponents
-    var elapsedTime: OverlayValueComponents
-    var pace: OverlayValueComponents
-    var heartRate: OverlayValueComponents
-    var primaryFontSize: Double
-    var secondaryFontSize: Double
+    var components: OverlayValueComponents
+    var valueFontSize: Double
     var labelFontSize: Double
     var unitFontSize: Double
-    var ringWidth: Double
+}
+
+struct OverlayRunningGaugeRenderLayout {
+    var style: RunningGaugeStyle
+    /// Bounding square of the gauge in canvas coordinates.
+    var rect: CGRect
+    var diameter: Double
+    /// Normalised 0...1 progress used by the progress ring (regardless of
+    /// whether `style.progressRingEnabled` is true; the renderer guards on
+    /// the flag separately).
+    var progress: Double
+    var regions: [OverlayRunningGaugeRegionLayout]
+    var outerRingWidth: Double
+    var progressRingWidth: Double
     var tickLength: Double
-    var dividerWidth: Double
+    var majorTickLength: Double
+    var safeRadius: Double
+
+    /// Convenience accessor for the legacy `preset` API still consumed by
+    /// some helpers. Resolves to `style.stylePreset`.
+    var preset: OverlayGaugePreset { style.stylePreset }
 }

@@ -24,6 +24,8 @@ struct ParameterPanelView: View {
                         NumericOverlayDetailView(elementID: elementID)
                     } else if element.type == .runningGauge {
                         RunningGaugeOverlayDetailView(elementID: elementID)
+                    } else if element.type == .routeMap {
+                        RouteMapOverlayDetailView(elementID: elementID)
                     } else {
                         OverlayDetailView(elementID: elementID)
                     }
@@ -163,8 +165,8 @@ private struct InspectorOuterView: View {
 
     private var addOverlaySection: some View {
         InspectorSection(title: "Add Overlay", subtitle: "Choose a data layer to place on the preview") {
-            InspectorSegmentedControl(selection: $activeCategory, values: OverlayCategory.allCases) { category in
-                Text(category.label)
+            InspectorSegmentedPicker(selection: $activeCategory, values: OverlayCategory.allCases) { category in
+                category.label
             }
 
             LazyVGrid(columns: [GridItem(.flexible(), spacing: InspectorTheme.space2), GridItem(.flexible(), spacing: InspectorTheme.space2)], spacing: InspectorTheme.space2) {
@@ -357,17 +359,20 @@ private struct OverlayDetailView: View {
 
             if element.type == .routeMap {
                 InspectorPickerRow(label: "Map Background", selection: routeMapBackgroundStyleBinding, values: OverlayRouteMapBackgroundStyle.allCases) { $0.compactLabel }
-                InspectorSegmentedControl(selection: routeMapColorModeBinding, values: OverlayRouteMapColorMode.allCases) { colorMode in
-                    Text(colorMode.compactLabel)
+                InspectorSegmentedPicker(selection: routeMapColorModeBinding, values: OverlayRouteMapColorMode.allCases) { colorMode in
+                    colorMode.compactLabel
                 }
-                InspectorSegmentedControl(selection: routeMapShapeBinding, values: OverlayRouteMapShape.allCases) { shape in
-                    Text(shape.compactLabel)
+                InspectorSegmentedPicker(selection: routeMapShapeBinding, values: OverlayRouteMapShape.allCases) { shape in
+                    shape.compactLabel
                 }
-                InspectorSegmentedControl(selection: routeMapEdgeFadeBinding, values: OverlayRouteMapEdgeFade.allCases) { edgeFade in
-                    Text(edgeFade.compactLabel)
-                }
-                InspectorSegmentedControl(selection: routeMapMarkerStyleBinding, values: OverlayRouteMapMarkerStyle.allCases) { markerStyle in
-                    Text(markerStyle.compactLabel)
+                InspectorSliderRow(
+                    label: "Edge Softness",
+                    value: routeMapEdgeSoftnessBinding,
+                    range: 0...0.45,
+                    display: element.style.routeMapFadeAmount <= 0.001 ? "Solid" : String(format: "%.0f%%", element.style.routeMapFadeAmount * 100)
+                )
+                InspectorSegmentedPicker(selection: routeMapMarkerStyleBinding, values: OverlayRouteMapMarkerStyle.allCases) { markerStyle in
+                    markerStyle.compactLabel
                 }
                 InspectorPickerRow(label: "Start Marker", selection: routeMapStartMarkerStyleBinding, values: OverlayRouteMapMarkerStyle.allCases) { $0.compactLabel }
                 InspectorPickerRow(label: "End Marker", selection: routeMapEndMarkerStyleBinding, values: OverlayRouteMapMarkerStyle.allCases) { $0.compactLabel }
@@ -380,14 +385,6 @@ private struct OverlayDetailView: View {
                 if element.style.routeMapLegendVisible {
                     InspectorPickerRow(label: "Legend Style", selection: routeMapLegendModeBinding, values: OverlayRouteMapLegendMode.allCases) { $0.compactLabel }
                 }
-                if element.style.routeMapEdgeFade == .fadeOut {
-                    InspectorSliderRow(
-                        label: "Fade Amount",
-                        value: routeMapFadeAmountBinding,
-                        range: 0.05...0.45,
-                        display: String(format: "%.0f%%", element.style.routeMapFadeAmount * 100)
-                    )
-                }
                 if element.style.routeMapColorMode == .gradient {
                     ColorSwatchRow(label: "Gradient Start", presets: colorPresets, selectedColor: element.style.routeMapGradientStart) { color in
                         project.setOverlayRouteMapGradientStart(elementID, color: color)
@@ -399,19 +396,19 @@ private struct OverlayDetailView: View {
                         project.setOverlayRouteMapGradientEnd(elementID, color: color)
                     }
                 }
-            }
+            } else {
+                InspectorPickerRow(label: "Font", selection: fontNameBinding, values: fontPresets) { $0 }
 
-            InspectorPickerRow(label: "Font", selection: fontNameBinding, values: fontPresets) { $0 }
+                InspectorSliderRow(
+                    label: "Font Size",
+                    value: fontSizeBinding,
+                    range: 12...96,
+                    display: "\(Int(element.style.fontSize.rounded()))"
+                )
 
-            InspectorSliderRow(
-                label: "Font Size",
-                value: fontSizeBinding,
-                range: 12...96,
-                display: "\(Int(element.style.fontSize.rounded()))"
-            )
-
-            InspectorSegmentedControl(selection: fontWeightBinding, values: OverlayFontWeight.allCases) { weight in
-                Text(weight.shortLabel)
+                InspectorSegmentedPicker(selection: fontWeightBinding, values: OverlayFontWeight.allCases) { weight in
+                    weight.shortLabel
+                }
             }
 
             ColorSwatchRow(
@@ -532,19 +529,11 @@ private struct OverlayDetailView: View {
         }
     }
 
-    private var routeMapEdgeFadeBinding: Binding<OverlayRouteMapEdgeFade> {
-        Binding {
-            element?.style.routeMapEdgeFade ?? .solid
-        } set: { newValue in
-            project.setOverlayRouteMapEdgeFade(elementID, edgeFade: newValue)
-        }
-    }
-
-    private var routeMapFadeAmountBinding: Binding<Double> {
+    private var routeMapEdgeSoftnessBinding: Binding<Double> {
         Binding {
             element?.style.routeMapFadeAmount ?? 0.22
         } set: { newValue in
-            project.setOverlayRouteMapFadeAmount(elementID, amount: newValue.quantized(to: 0.01))
+            project.setOverlayRouteMapEdgeSoftness(elementID, amount: newValue.quantized(to: 0.01))
         }
     }
 
@@ -778,37 +767,22 @@ private struct InspectorSection<Content: View>: View {
     }
 }
 
-private struct InspectorSegmentedControl<Value: Hashable & Identifiable, Label: View>: View {
+private struct InspectorSegmentedPicker<Value: Hashable, Values: RandomAccessCollection>: View where Values.Element == Value {
     @Binding var selection: Value
-    var values: [Value]
-    @ViewBuilder var label: (Value) -> Label
+    var values: Values
+    var title: (Value) -> String
 
     var body: some View {
-        HStack(spacing: 0) {
-            ForEach(values) { value in
-                Button {
-                    selection = value
-                } label: {
-                    label(value)
-                        .font(InspectorTheme.bodyStrongFont)
-                        .foregroundStyle(selection == value ? InspectorTheme.accentBlue : InspectorTheme.textSecondary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: InspectorTheme.controlHeight)
-                        .background(selection == value ? InspectorTheme.accentBlueSoft : Color.clear)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity)
-                .contentShape(Rectangle())
-
-                if value.id != values.last?.id {
-                    Divider()
-                        .overlay(InspectorTheme.borderSubtle)
-                }
+        Picker("", selection: $selection) {
+            ForEach(Array(values), id: \.self) { value in
+                Text(title(value))
+                    .font(InspectorTheme.bodyStrongFont)
+                    .tag(value)
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: InspectorTheme.controlRadius))
-        .overlay(InspectorRoundedBorder())
+        .labelsHidden()
+        .pickerStyle(.segmented)
+        .tint(InspectorTheme.accentBlue)
     }
 }
 
@@ -1282,43 +1256,49 @@ private extension OverlayGaugePreset {
     }
 }
 
-private extension OverlayRouteMapPreset {
+extension OverlayRouteMapPreset {
     var compactLabel: String {
         label.components(separatedBy: " / ").first ?? label
     }
 }
 
-private extension OverlayRouteMapShape {
+extension OverlayRouteMapContainerPreset {
     var compactLabel: String {
         label.components(separatedBy: " / ").first ?? label
     }
 }
 
-private extension OverlayRouteMapEdgeFade {
+extension OverlayRouteMapShape {
     var compactLabel: String {
         label.components(separatedBy: " / ").first ?? label
     }
 }
 
-private extension OverlayRouteMapColorMode {
+extension OverlayRouteMapEdgeFade {
     var compactLabel: String {
         label.components(separatedBy: " / ").first ?? label
     }
 }
 
-private extension OverlayRouteMapMarkerStyle {
+extension OverlayRouteMapColorMode {
     var compactLabel: String {
         label.components(separatedBy: " / ").first ?? label
     }
 }
 
-private extension OverlayRouteMapBackgroundStyle {
+extension OverlayRouteMapMarkerStyle {
     var compactLabel: String {
         label.components(separatedBy: " / ").first ?? label
     }
 }
 
-private extension OverlayRouteMapLegendMode {
+extension OverlayRouteMapBackgroundStyle {
+    var compactLabel: String {
+        label.components(separatedBy: " / ").first ?? label
+    }
+}
+
+extension OverlayRouteMapLegendMode {
     var compactLabel: String {
         label.components(separatedBy: " / ").first ?? label
     }

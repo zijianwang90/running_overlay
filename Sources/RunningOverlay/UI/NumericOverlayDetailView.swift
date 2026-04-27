@@ -683,29 +683,15 @@ struct InspectorDenseSegmented<Value: Hashable & Identifiable, Label: View>: Vie
     @ViewBuilder var label: (Value) -> Label
 
     var body: some View {
-        HStack(spacing: 0) {
+        Picker("", selection: $selection) {
             ForEach(values) { value in
-                Button {
-                    selection = value
-                } label: {
-                    label(value)
-                        .font(NumericTokens.bodyStrongFont)
-                        .foregroundStyle(selection == value ? NumericTokens.accentBlue : NumericTokens.textSecondary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: NumericTokens.controlHeight)
-                        .background(selection == value ? NumericTokens.accentBlueSoft : Color.clear)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                if value.id != values.last?.id {
-                    Rectangle()
-                        .fill(NumericTokens.borderSubtle)
-                        .frame(width: 1)
-                }
+                label(value)
+                    .tag(value)
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-        .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
+        .labelsHidden()
+        .pickerStyle(.segmented)
+        .tint(NumericTokens.accentBlue)
         .frame(maxWidth: .infinity)
     }
 }

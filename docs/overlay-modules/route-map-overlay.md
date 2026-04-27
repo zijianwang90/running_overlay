@@ -1,6 +1,13 @@
 # Route Map Overlay Design
 
-Last updated: 2026-04-25
+Last updated: 2026-04-26
+
+> **Inspector / UI design has its own spec.** See
+> [`docs/design/route-map-overlay-ui.md`](../design/route-map-overlay-ui.md) and
+> [`docs/design/route-map-overlay-ui.spec.json`](../design/route-map-overlay-ui.spec.json)
+> for header, sections, controls, density tokens, and per-control model
+> mapping. This module doc owns rendering architecture, GPS data, map snapshot
+> caching, animation behavior, privacy, costs, and phase planning.
 
 ## 1. Module Goal
 
@@ -214,11 +221,30 @@ Phase C: Map snapshot abstraction
 
 Phase D: Advanced polish
 
-- 起终点/当前位置 marker 样式。
-- Legend 和指标色带。
-- Progress reveal animation。
-- 起终点隐私模糊。
-- 模板 schema migration。
+- 起终点/当前位置 marker 样式。Completed (hidden / dot / pin / flag, 独立 start / end)。
+- Legend 和指标色带。Partially completed (minimal / start+finish+distance / gradientBand 三种模式)。
+- Progress reveal animation。Pending.
+- 起终点隐私模糊。Pending.
+- 模板 schema migration。Ongoing — 每次新增字段都通过 `decodeIfPresent` 默认值兜底，旧模板可直接加载。
+
+Phase E: Container presets and map dim controls (current revision)
+
+- 新增 `OverlayRouteMapContainerPreset` 枚举：`squareHardEdge` / `circleHardEdge` /
+  `squareGradientEdge` / `circleGradientEdge`，每个预设对应一组 shape /
+  edgeFade / fadeAmount / mapOpacity / shadow 默认值。
+- 新增 `OverlayStyle.routeMapMapOpacity` (默认 0.72)，preview 与 export 共同消费。
+- Inspector 用新的分组布局 (Preset / Layout / Container / Background Map /
+  Route Line / Markers / Legend / Effects)，与
+  `docs/design/route-map-overlay-ui.spec.json` 对齐。
+
+Phase F: Custom legend items, route line richness, container border / glow
+
+- 实现 `RouteMapLegendItemConfig` 列表，替换固定 `legendMode`（保留兼容）。
+- 路线线宽 / 不透明度 / 虚线 / 发光 / 阴影模型字段，并在 Inspector 暴露。
+- 容器 border / glow / blend mode 字段。
+- 地图 contrast / saturation / brightness / blur 调节。
+- 单独控制起终点 marker 颜色 / 大小 / 边框 / 标签文本。
+- 用 `byPace` / `byHeartRate` / `byPower` / `byElevation` 等指标驱动渐变颜色。
 
 ## 13. Open Questions
 
