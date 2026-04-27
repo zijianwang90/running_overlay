@@ -297,6 +297,40 @@ private struct RouteMapOverlayView: View {
     @State private var alphaMask: NSImage?
 
     var body: some View {
+        VStack(spacing: 0) {
+            mapContent
+                .frame(width: layout.rect.width, height: layout.rect.height)
+                .mask {
+                    if let alphaMask {
+                        Image(nsImage: alphaMask)
+                            .resizable()
+                            .scaledToFill()
+                            .luminanceToAlpha()
+                    } else {
+                        shapeFill
+                    }
+                }
+                .overlay {
+                    if isSelected || layout.borderVisible {
+                        shapeStroke(
+                            color: isSelected ? Color.accentColor.opacity(0.85) : Color.white.opacity(0.16),
+                            lineWidth: isSelected ? 2 : 1
+                        )
+                    }
+                }
+                .shadow(color: Color.black.opacity(element.style.shadowOpacity), radius: element.style.shadowRadius, x: 0, y: 2)
+
+            if let statsBar = layout.statsBarLayout, !statsBar.items.isEmpty {
+                statsBarView(statsBar)
+                    .frame(width: layout.rect.width, height: statsBar.rect.height)
+            }
+        }
+        .task(id: renderIdentity) {
+            await updateRenderAssets()
+        }
+    }
+
+    private var mapContent: some View {
         ZStack {
             RoundedRectangle(cornerRadius: layout.cornerRadius)
                 .fill(background)
@@ -332,34 +366,46 @@ private struct RouteMapOverlayView: View {
                 routeMarker(relativePoints.first, color: .green, style: element.style.routeMapStartMarkerStyle)
                 routeMarker(relativePoints.last, color: .red, style: element.style.routeMapEndMarkerStyle)
                 marker(relativeCurrentPoint, color: Color(element.style.foregroundColor), sizeMultiplier: 1.18)
+            }
+        }
+    }
 
-                if element.style.routeMapLegendVisible {
-                    routeLegend
-                        .padding(10)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+    private func statsBarView(_ statsBar: OverlayRouteMapStatsBarLayout) -> some View {
+        HStack(spacing: 0) {
+            ForEach(Array(statsBar.items.enumerated()), id: \.offset) { index, item in
+                statsBarCell(item)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if index < statsBar.items.count - 1 {
+                    Rectangle()
+                        .fill(Color.white.opacity(0.12))
+                        .frame(width: 1)
+                        .padding(.vertical, statsBar.rect.height * 0.15)
                 }
             }
         }
-        .frame(width: layout.rect.width, height: layout.rect.height)
-        .mask {
-            if let alphaMask {
-                Image(nsImage: alphaMask)
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                shapeFill
+        .background(Color.black.opacity(statsBar.backgroundOpacity))
+    }
+
+    private func statsBarCell(_ item: OverlayRouteMapStatsBarItemLayout) -> some View {
+        let barHeight = layout.statsBarLayout?.rect.height ?? 48
+        let valueFontSize = barHeight * 0.38
+        let unitFontSize  = barHeight * 0.22
+        let labelFontSize = barHeight * 0.20
+        return VStack(spacing: 1) {
+            Text(item.value)
+                .font(.custom(element.style.fontName, size: valueFontSize).weight(.semibold))
+                .foregroundStyle(Color.white)
+            if !item.unit.isEmpty {
+                Text(item.unit)
+                    .font(.custom(element.style.fontName, size: unitFontSize).weight(.medium))
+                    .foregroundStyle(Color.white.opacity(0.70))
             }
+            Text(item.label.uppercased())
+                .font(.custom(element.style.fontName, size: labelFontSize).weight(.medium))
+                .foregroundStyle(Color.white.opacity(0.50))
         }
-        .overlay {
-            shapeStroke(
-                color: isSelected ? Color.accentColor.opacity(0.85) : Color.white.opacity(0.16),
-                lineWidth: isSelected ? 2 : 1
-            )
-        }
-        .shadow(color: Color.black.opacity(element.style.shadowOpacity), radius: element.style.shadowRadius, x: 0, y: 2)
-        .task(id: renderIdentity) {
-            await updateRenderAssets()
-        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
     }
 
     private var renderIdentity: String {
@@ -513,51 +559,6 @@ private struct RouteMapOverlayView: View {
         case .none, .dark:
             return Color.white.opacity(0.08)
         }
-    }
-
-    private var routeLegend: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            legendRow(color: .green, text: "Start")
-            legendRow(color: .red, text: "Finish")
-            if element.style.routeMapLegendMode == .startFinishDistance {
-                Text(distanceText)
-                    .font(.custom(element.style.fontName, size: max(layout.lineWidth * 2.0, 10)).weight(.semibold))
-                    .foregroundStyle(Color.white.opacity(0.9))
-            }
-            if element.style.routeMapLegendMode == .gradientBand {
-                LinearGradient(
-                    colors: [
-                        Color(element.style.routeMapGradientStart),
-                        Color(element.style.routeMapGradientMiddle),
-                        Color(element.style.routeMapGradientEnd)
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(width: 72, height: 7)
-                .clipShape(Capsule())
-                Text(distanceText)
-                    .font(.custom(element.style.fontName, size: max(layout.lineWidth * 1.6, 9)).weight(.medium))
-                    .foregroundStyle(Color.white.opacity(0.88))
-            }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(Color.black.opacity(0.42))
-        .clipShape(RoundedRectangle(cornerRadius: 7))
-    }
-
-    private func legendRow(color: Color, text: String) -> some View {
-        HStack(spacing: 5) {
-            Circle().fill(color).frame(width: max(layout.lineWidth * 1.4, 6), height: max(layout.lineWidth * 1.4, 6))
-            Text(text)
-                .font(.custom(element.style.fontName, size: max(layout.lineWidth * 1.55, 9)).weight(.medium))
-                .foregroundStyle(Color.white.opacity(0.85))
-        }
-    }
-
-    private var distanceText: String {
-        String(format: "%.2f km", (layout.geometry?.distanceMeters ?? 0) / 1000)
     }
 
     private func routePath(points: [CGPoint]) -> Path {

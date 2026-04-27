@@ -2,6 +2,64 @@
 
 ## 2026-04-27
 
+### Route Map — Stats Bar (replaces Legend card)
+
+Replaced the bottom-left Start/Finish legend card with a horizontal **Stats Bar** that attaches below the map container. The bar is off by default (`visible = false`) so existing projects are unaffected.
+
+**Data model** (`OverlayElement.swift`): Added `RouteMapStatsMetric` enum (distance / pace / elapsedTime / heartRate / elevation / cadence / power / calories), `RouteMapStatsBarSlot` struct (metric, visible, customLabel), and `OverlayRouteMapStatsBarConfig` (visible, backgroundOpacity, slots[]). Added `routeMapStatsBar: OverlayRouteMapStatsBarConfig` to `OverlayStyle` with `decodeIfPresent` default for backward compatibility.
+
+**Render layout** (`RouteMapOverlay.swift`): Added `OverlayRouteMapStatsBarItemLayout` and `OverlayRouteMapStatsBarLayout` structs. Added `statsBarLayout: OverlayRouteMapStatsBarLayout?` to `OverlayRouteMapRenderLayout`.
+
+**Rect calculation** (`OverlayRenderModel.swift`): `routeMapLayout` now computes `totalRect` (map + bar) centered at `element.position`, splits it into `mapRect` (top) and `statsBarRect` (bottom). Stats bar height = 64 design-pt × element.scale. Slot values are resolved via `OverlayValueFormatter.components`.
+
+**Export renderer** (`OverlayFrameRenderer.swift`): Removed `drawRouteLegend` / `drawLegendItem` / `drawGradientBand` calls. Added `drawRouteMapStatsBar` which renders N equal-width cells with value (large, white), unit (small, 70% white), and label (uppercase, 50% white), separated by thin dividers.
+
+**Preview** (`PreviewCanvasView.swift`): `RouteMapOverlayView.body` is now a `VStack(spacing: 0)` — masked map content on top, stats bar below. Removed `routeLegend` / `legendRow` / `distanceText` helpers. `statsBarView` and `statsBarCell` handle SwiftUI rendering.
+
+**Inspector** (`RouteMapOverlayDetailView.swift`): Rewrote the Legend section as **Stats Bar** — toggle in header, background opacity slider, and 4 slot rows (metric picker + visible toggle each).
+
+**ProjectDocument** (`ProjectDocument.swift`): Added `setOverlayRouteMapStatsBarVisible`, `setOverlayRouteMapStatsBarBackgroundOpacity`, `setOverlayRouteMapStatsBarSlotMetric`, `setOverlayRouteMapStatsBarSlotVisible`.
+
+Files changed: `OverlayElement.swift`, `RouteMapOverlay.swift`, `OverlayRenderModel.swift`, `OverlayFrameRenderer.swift`, `PreviewCanvasView.swift`, `RouteMapOverlayDetailView.swift`, `ProjectDocument.swift`.
+
+---
+
+### Route Map — Edge Fade Preview Fix, Square Fade Fix, Border Toggle, Inspector Cleanup
+
+Three bugs fixed and one new control added, all in the Route Map overlay:
+
+**Edge Fade preview not working (`.luminanceToAlpha()` fix)**
+
+`RouteMapMaskRenderer.makeCGMask` creates a grayscale CGImage with no alpha channel (every pixel has alpha = 1). SwiftUI's `.mask()` modifier reads the mask view's *alpha* channel, not luminance, so the grayscale fade image was treated as fully opaque and had no visual effect. The export path (`CGContext.clip(to:mask:)`) interprets the gray values as luminance and was already correct. Fix: added `.luminanceToAlpha()` to the mask `Image` in `RouteMapOverlayView.body`, converting brightness → alpha before SwiftUI applies the mask.
+
+**Square fade only affecting corners (edge-distance pixel algorithm)**
+
+The original `drawFadeMask` used a radial gradient for both shapes, with the outer radius set to the half-diagonal of the bounding rectangle so the fade would reach every corner. For a square box the half-diagonal is `√2 × (half-side)`, while the center-to-edge-midpoint distance is just `half-side`. The inner boundary `innerRadius = outerRadius × (1 - fadeAmount)` sits close to the edge midpoints, so they receive almost no fade while the corners go fully black — producing the "only corners faded" visual artifact.
+
+Fixed by switching the square case to a **per-pixel minimum-edge-distance** algorithm: `gray = clamp(min(dist_left, dist_right, dist_top, dist_bottom) / fadeWidth, 0, 1)` where `fadeWidth = min(w, h) × 0.5 × fadeAmount`. The shape interior is first filled white using a CGContext clip path (handling rounded corners), then each non-black pixel is multiplied by its edge-distance value. The circle shape retains the existing radial gradient which was already correct.
+
+**Border toggle added to Container section**
+
+The white semi-transparent ring drawn around the container was always-on with no way to disable it. Added `routeMapBorderVisible: Bool` to `OverlayStyle` (default `true`, backwards-compatible via `decodeIfPresent`). The **Border** toggle in the Container inspector section controls the non-selected border in both preview (`RouteMapOverlayView`) and export (`strokeRouteMapBorder`). The selection-state accent border is unaffected.
+
+**Distance row removed from Preset section**
+
+The "Distance" row in the Preset inspector section displayed the total activity distance — a static metadata readout with no configurable effect. Removed to reduce noise; the value already appears in the panel header subtitle.
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/OverlayElement.swift` — `routeMapBorderVisible` field
+- `Sources/RunningOverlay/Overlay/RouteMapOverlay.swift` — `borderVisible` in render layout; square fade algorithm
+- `Sources/RunningOverlay/Overlay/OverlayRenderModel.swift` — pass `borderVisible` to layout
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift` — guard on `borderVisible` in `strokeRouteMapBorder`
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift` — `.luminanceToAlpha()` on mask image; conditional border overlay
+- `Sources/RunningOverlay/UI/RouteMapOverlayDetailView.swift` — Border toggle in Container; Distance row removed
+- `Sources/RunningOverlay/Project/ProjectDocument.swift` — `setOverlayRouteMapBorderVisible` mutation
+- `docs/overlay-modules/route-map-overlay.md` — Phase E bug-fix notes
+- `docs/project-log.md`
+
+Verification: `swift build` succeeded with no errors.
+
 ### Inspector Segmented Controls Switched To Native Picker (All Inspector Flows)
 
 Summary:

@@ -950,6 +950,58 @@ struct OverlayFrameRenderer {
         }
 
         strokeRouteMapBorder(layout: layout, isSelected: false)
+
+        if let statsBar = layout.statsBarLayout {
+            drawRouteMapStatsBar(layout: statsBar)
+        }
+    }
+
+    private static func drawRouteMapStatsBar(layout: OverlayRouteMapStatsBarLayout) {
+        guard !layout.items.isEmpty else { return }
+
+        NSColor.black.withAlphaComponent(layout.backgroundOpacity).setFill()
+        NSBezierPath(rect: layout.rect).fill()
+
+        let count = Double(layout.items.count)
+        let cellWidth = layout.rect.width / count
+        let valueFontSize = layout.rect.height * 0.38
+        let unitFontSize  = layout.rect.height * 0.22
+        let labelFontSize = layout.rect.height * 0.20
+
+        for (index, item) in layout.items.enumerated() {
+            let cellRect = CGRect(
+                x: layout.rect.minX + Double(index) * cellWidth,
+                y: layout.rect.minY,
+                width: cellWidth,
+                height: layout.rect.height
+            )
+
+            // value + unit (centered, vertically upper half)
+            let valueY = cellRect.minY + cellRect.height * 0.12
+            let valueRect = CGRect(x: cellRect.minX, y: valueY, width: cellRect.width, height: valueFontSize * 1.30)
+            let unitRect  = CGRect(x: cellRect.minX, y: valueY + valueFontSize * 1.05, width: cellRect.width, height: unitFontSize * 1.30)
+            let labelRect = CGRect(x: cellRect.minX, y: cellRect.maxY - labelFontSize * 1.40, width: cellRect.width, height: labelFontSize * 1.30)
+
+            drawGaugePlainText(item.value, fontName: layout.fontName, fontSize: valueFontSize,
+                               color: .white, rect: valueRect, alignment: .center, weight: .semibold, monospacedDigits: false)
+            if !item.unit.isEmpty {
+                drawGaugePlainText(item.unit, fontName: layout.fontName, fontSize: unitFontSize,
+                                   color: NSColor.white.withAlphaComponent(0.70), rect: unitRect, alignment: .center, weight: .medium, monospacedDigits: false)
+            }
+            drawGaugePlainText(item.label.uppercased(), fontName: layout.fontName, fontSize: labelFontSize,
+                               color: NSColor.white.withAlphaComponent(0.50), rect: labelRect, alignment: .center, weight: .medium, monospacedDigits: false)
+
+            // divider between cells
+            if index < layout.items.count - 1 {
+                NSColor.white.withAlphaComponent(0.12).setFill()
+                NSBezierPath(rect: CGRect(
+                    x: cellRect.maxX - 0.5,
+                    y: layout.rect.minY + layout.rect.height * 0.15,
+                    width: 1,
+                    height: layout.rect.height * 0.70
+                )).fill()
+            }
+        }
     }
 
     private static func drawRouteMapContent(
@@ -1001,12 +1053,10 @@ struct OverlayFrameRenderer {
         drawRouteMarker(points.last, color: .systemRed, lineWidth: layout.lineWidth, style: element.style.routeMapEndMarkerStyle)
         drawRouteMarker(layout.projectedCurrentPoint, color: accent, lineWidth: layout.lineWidth * 1.18)
 
-        if element.style.routeMapLegendVisible {
-            drawRouteLegend(layout: layout, element: element)
-        }
     }
 
     private static func strokeRouteMapBorder(layout: OverlayRouteMapRenderLayout, isSelected: Bool) {
+        guard isSelected || layout.borderVisible else { return }
         let border = RouteMapMaskRenderer.shapePath(shape: layout.shape, rect: layout.rect, cornerRadius: layout.cornerRadius)
         (isSelected ? NSColor.controlAccentColor.withAlphaComponent(0.85) : NSColor.white.withAlphaComponent(0.16)).setStroke()
         border.lineWidth = isSelected ? 2 : 1

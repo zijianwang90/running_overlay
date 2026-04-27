@@ -89,6 +89,19 @@ enum RouteGeometryBuilder {
     }
 }
 
+struct OverlayRouteMapStatsBarItemLayout {
+    var value: String
+    var unit: String
+    var label: String
+}
+
+struct OverlayRouteMapStatsBarLayout {
+    var rect: CGRect
+    var backgroundOpacity: Double
+    var items: [OverlayRouteMapStatsBarItemLayout]
+    var fontName: String
+}
+
 struct OverlayRouteMapRenderLayout {
     var preset: OverlayRouteMapPreset
     var provider: OverlayRouteMapProvider
@@ -98,12 +111,14 @@ struct OverlayRouteMapRenderLayout {
     var shape: OverlayRouteMapShape
     var edgeFade: OverlayRouteMapEdgeFade
     var fadeAmount: Double
+    var borderVisible: Bool
     var lineWidth: Double
     var glowRadius: Double
     var mapOpacity: Double
     var progress: Double
     var geometry: RouteGeometry?
     var currentPoint: RoutePoint?
+    var statsBarLayout: OverlayRouteMapStatsBarLayout?
 
     var projectedPoints: [CGPoint] {
         guard let geometry else {
@@ -242,47 +257,72 @@ enum RouteMapMaskRenderer {
             shapePath(shape: shape, rect: rect, cornerRadius: cornerRadius).fill()
             return
         }
-        context.saveGState()
-        // Constrain the gradient to the container outline so the fade sits
-        // inside e.g. a rounded rectangle and never bleeds into the corners
-        // of an underlying rectangular bitmap.
-        shapePath(shape: shape, rect: rect, cornerRadius: cornerRadius).addClip()
 
-        // Three-stop gradient (white → white → black) keeps the inner
-        // solid region punchy while letting the outer ring fall off
-        // gradually — visually closer to a vignette than a linear ramp.
-        guard let gradient = CGGradient(
-            colorsSpace: CGColorSpaceCreateDeviceGray(),
-            colors: [CGColor(gray: 1, alpha: 1), CGColor(gray: 1, alpha: 1), CGColor(gray: 0, alpha: 1)] as CFArray,
-            locations: [0, 0.45, 1] as [CGFloat]
-        ) else {
-            context.restoreGState()
-            return
-        }
-
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        // Use the half-diagonal as the outer radius so the gradient reaches
-        // every corner of a rectangular container — without this, square
-        // boxes would show a hard step where the radial fade hits the side
-        // edges.
-        let outerRadius: CGFloat
         switch shape {
         case .circle:
-            outerRadius = min(rect.width, rect.height) * 0.5
-        case .square:
-            outerRadius = sqrt(rect.width * rect.width + rect.height * rect.height) * 0.5
-        }
-        let innerRadius = outerRadius * max(0, 1 - fadeAmount)
+            // Radial gradient: works perfectly for circular containers.
+            context.saveGState()
+            context.addPath(shapePath(shape: shape, rect: rect, cornerRadius: cornerRadius).cgPath)
+            context.clip()
+            guard let gradient = CGGradient(
+                colorsSpace: CGColorSpaceCreateDeviceGray(),
+                colors: [CGColor(gray: 1, alpha: 1), CGColor(gray: 1, alpha: 1), CGColor(gray: 0, alpha: 1)] as CFArray,
+                locations: [0, 0.45, 1] as [CGFloat]
+            ) else {
+                context.restoreGState()
+                return
+            }
+            let center = CGPoint(x: rect.midX, y: rect.midY)
+            let outerRadius = min(rect.width, rect.height) * 0.5
+            let innerRadius = outerRadius * max(0, 1 - fadeAmount)
+            context.drawRadialGradient(
+                gradient,
+                startCenter: center,
+                startRadius: innerRadius,
+                endCenter: center,
+                endRadius: outerRadius,
+                options: [.drawsBeforeStartLocation, .drawsAfterEndLocation]
+            )
+            context.restoreGState()
 
-        context.drawRadialGradient(
-            gradient,
-            startCenter: center,
-            startRadius: innerRadius,
-            endCenter: center,
-            endRadius: outerRadius,
-            options: [.drawsBeforeStartLocation, .drawsAfterEndLocation]
-        )
-        context.restoreGState()
+        case .square:
+            // Per-edge linear fade using the minimum distance to any edge.
+            // A radial gradient only fades corners for square shapes because
+            // the edge midpoints are much closer to the center than corners.
+            // The edge-distance metric produces uniform softness on all sides.
+            //
+            // Step 1: fill the shape interior white, clipped to the rounded rect.
+            context.saveGState()
+            context.addPath(shapePath(shape: shape, rect: rect, cornerRadius: cornerRadius).cgPath)
+            context.clip()
+            context.setFillColor(gray: 1, alpha: 1)
+            context.fill(rect)
+            context.restoreGState()
+
+            // Step 2: apply fade by iterating pixels — multiply each by its
+            // normalised minimum distance to any edge.
+            let fadeWidth = min(rect.width, rect.height) * 0.5 * fadeAmount
+            guard fadeWidth > 0.5, let data = context.data else { return }
+            let ctxW = context.width
+            let ctxH = context.height
+            let bpr = context.bytesPerRow
+            let buf = data.assumingMemoryBound(to: UInt8.self)
+            for row in 0..<ctxH {
+                let base = row * bpr
+                for col in 0..<ctxW {
+                    let v = buf[base + col]
+                    guard v > 0 else { continue }
+                    let d = min(
+                        Double(col) / fadeWidth,
+                        Double(ctxW - 1 - col) / fadeWidth,
+                        Double(row) / fadeWidth,
+                        Double(ctxH - 1 - row) / fadeWidth,
+                        1.0
+                    )
+                    buf[base + col] = UInt8(max(d, 0) * 255)
+                }
+            }
+        }
     }
 
     static func shapePath(shape: OverlayRouteMapShape, rect: CGRect, cornerRadius: Double) -> NSBezierPath {

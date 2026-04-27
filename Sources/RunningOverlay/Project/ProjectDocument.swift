@@ -867,6 +867,14 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.routeMapMapOpacity = min(max(opacity, 0), 1)
     }
 
+    func setOverlayRouteMapBorderVisible(_ elementID: OverlayElement.ID, isVisible: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapBorderVisible = isVisible
+    }
+
     func setOverlayRouteMapEdgeSoftness(_ elementID: OverlayElement.ID, amount: Double) {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
@@ -934,6 +942,32 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].style.routeMapLegendVisible = isVisible
+    }
+
+    func setOverlayRouteMapStatsBarVisible(_ elementID: OverlayElement.ID, isVisible: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.visible = isVisible
+    }
+
+    func setOverlayRouteMapStatsBarBackgroundOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.backgroundOpacity = min(max(opacity, 0), 1)
+    }
+
+    func setOverlayRouteMapStatsBarSlotMetric(_ elementID: OverlayElement.ID, slotIndex: Int, metric: RouteMapStatsMetric) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        guard overlayLayout.elements[index].style.routeMapStatsBar.slots.indices.contains(slotIndex) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.slots[slotIndex].metric = metric
+    }
+
+    func setOverlayRouteMapStatsBarSlotVisible(_ elementID: OverlayElement.ID, slotIndex: Int, isVisible: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        guard overlayLayout.elements[index].style.routeMapStatsBar.slots.indices.contains(slotIndex) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.slots[slotIndex].visible = isVisible
     }
 
     func setOverlayRouteMapStartMarkerStyle(_ elementID: OverlayElement.ID, markerStyle: OverlayRouteMapMarkerStyle) {

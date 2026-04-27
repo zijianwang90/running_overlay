@@ -24,7 +24,7 @@ struct RouteMapOverlayDetailView: View {
                         sectionView(.backgroundMap, accessory: { showMapToggle(element) }) { backgroundMapSection(element) }
                         sectionView(.routeLine) { routeLineSection(element) }
                         sectionView(.markers) { markersSection(element) }
-                        sectionView(.legend, accessory: { legendVisibleToggle(element) }) { legendSection(element) }
+                        sectionView(.legend, accessory: { statsBarVisibleToggle(element) }) { statsBarSection(element) }
                         sectionView(.effects) { effectsSection(element) }
                     }
                     .padding(.horizontal, NumericTokens.panelPaddingX)
@@ -66,10 +66,6 @@ struct RouteMapOverlayDetailView: View {
             }
             .menuStyle(.borderlessButton)
             .frame(height: NumericTokens.controlHeight)
-        }
-
-        InspectorDenseRow(label: "Distance") {
-            InspectorDenseReadout(text: distanceText(for: element), isNumeric: true)
         }
     }
 
@@ -193,6 +189,16 @@ struct RouteMapOverlayDetailView: View {
             )) { mode in
                 Text(mode.compactLabel)
             }
+        }
+
+        InspectorDenseRow(label: "Border") {
+            Toggle("", isOn: Binding(
+                get: { element.style.routeMapBorderVisible },
+                set: { project.setOverlayRouteMapBorderVisible(elementID, isVisible: $0) }
+            ))
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .labelsHidden()
         }
 
         let softnessEnabled = element.style.routeMapEdgeFade == .fadeOut
@@ -369,29 +375,54 @@ struct RouteMapOverlayDetailView: View {
     }
 
     @ViewBuilder
-    private func legendSection(_ element: OverlayElement) -> some View {
-        let isEnabled = element.style.routeMapLegendVisible
-        InspectorDenseRow(label: "Style") {
-            Menu {
-                ForEach(OverlayRouteMapLegendMode.allCases) { mode in
-                    Button {
-                        project.setOverlayRouteMapLegendMode(elementID, legendMode: mode)
-                    } label: {
-                        if mode == element.style.routeMapLegendMode {
-                            Label(mode.compactLabel, systemImage: "checkmark")
-                        } else {
-                            Text(mode.compactLabel)
-                        }
-                    }
-                }
-            } label: {
-                InspectorDenseMenuLabel(title: element.style.routeMapLegendMode.compactLabel, isEnabled: isEnabled)
-            }
-            .menuStyle(.borderlessButton)
-            .frame(height: NumericTokens.controlHeight)
-        }
+    private func statsBarSection(_ element: OverlayElement) -> some View {
+        let config = element.style.routeMapStatsBar
+        let isEnabled = config.visible
+
+        InspectorDenseSliderRow(
+            label: "Background",
+            value: Binding(
+                get: { config.backgroundOpacity },
+                set: { project.setOverlayRouteMapStatsBarBackgroundOpacity(elementID, opacity: $0.quantizedRouteMap(to: 0.05)) }
+            ),
+            range: 0...1,
+            displayText: String(format: "%.0f%%", config.backgroundOpacity * 100)
+        )
         .opacity(isEnabled ? 1 : 0.5)
         .disabled(!isEnabled)
+
+        ForEach(config.slots.indices, id: \.self) { index in
+            let slot = config.slots[index]
+            InspectorDenseRow(label: "Slot \(index + 1)") {
+                Menu {
+                    ForEach(RouteMapStatsMetric.allCases) { metric in
+                        Button {
+                            project.setOverlayRouteMapStatsBarSlotMetric(elementID, slotIndex: index, metric: metric)
+                        } label: {
+                            if metric == slot.metric {
+                                Label(metric.label, systemImage: "checkmark")
+                            } else {
+                                Text(metric.label)
+                            }
+                        }
+                    }
+                } label: {
+                    InspectorDenseMenuLabel(title: slot.metric.label, isEnabled: slot.visible)
+                }
+                .menuStyle(.borderlessButton)
+                .frame(height: NumericTokens.controlHeight)
+
+                Toggle("", isOn: Binding(
+                    get: { slot.visible },
+                    set: { project.setOverlayRouteMapStatsBarSlotVisible(elementID, slotIndex: index, isVisible: $0) }
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .labelsHidden()
+            }
+            .opacity(isEnabled ? 1 : 0.5)
+            .disabled(!isEnabled)
+        }
     }
 
     @ViewBuilder
@@ -466,10 +497,10 @@ struct RouteMapOverlayDetailView: View {
     }
 
     @ViewBuilder
-    private func legendVisibleToggle(_ element: OverlayElement) -> some View {
+    private func statsBarVisibleToggle(_ element: OverlayElement) -> some View {
         Toggle("", isOn: Binding(
-            get: { element.style.routeMapLegendVisible },
-            set: { project.setOverlayRouteMapLegendVisible(elementID, isVisible: $0) }
+            get: { element.style.routeMapStatsBar.visible },
+            set: { project.setOverlayRouteMapStatsBarVisible(elementID, isVisible: $0) }
         ))
         .toggleStyle(.switch)
         .controlSize(.small)
@@ -605,7 +636,7 @@ enum RouteMapSection: String, CaseIterable {
         case .backgroundMap: "Background Map"
         case .routeLine: "Route Line"
         case .markers: "Markers"
-        case .legend: "Legend"
+        case .legend: "Stats Bar"
         case .effects: "Effects"
         }
     }

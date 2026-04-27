@@ -207,6 +207,9 @@ struct OverlayStyle: Equatable, Codable {
     /// legend stay opaque). 0.0 hides the map background, 1.0 draws it at
     /// full opacity.
     var routeMapMapOpacity: Double
+    /// Whether to draw the subtle border stroke around the container when not
+    /// selected. The selection-state border is always shown as a UI affordance.
+    var routeMapBorderVisible: Bool
     /// Container width in design units (before `element.scale` and project
     /// DPR multipliers are applied). Used by both shapes; for `.circle` the
     /// renderer takes the smaller of width / height as the diameter.
@@ -245,6 +248,10 @@ struct OverlayStyle: Equatable, Codable {
     /// overlay style namespace. See `Sources/RunningOverlay/Overlay/RunningGaugeModel.swift`.
     var gauge: RunningGaugeStyle
 
+    /// Stats bar attached below the route map container. Visible = false by
+    /// default so existing projects are unaffected.
+    var routeMapStatsBar: OverlayRouteMapStatsBarConfig
+
     static let `default` = OverlayStyle(
         textPreset: .minimal,
         gaugePreset: .minimalSport,
@@ -265,6 +272,7 @@ struct OverlayStyle: Equatable, Codable {
         routeMapLegendMode: .startFinishDistance,
         routeMapContainerPreset: .squareHardEdge,
         routeMapMapOpacity: 0.72,
+        routeMapBorderVisible: true,
         routeMapWidth: 320,
         routeMapHeight: 240,
         fontName: "SF Pro",
@@ -289,7 +297,8 @@ struct OverlayStyle: Equatable, Codable {
         shadowEnabled: true,
         shadowOffsetX: 0,
         shadowOffsetY: 2,
-        gauge: RunningGaugeStyle.default
+        gauge: RunningGaugeStyle.default,
+        routeMapStatsBar: .default
     )
 
     init(
@@ -312,6 +321,7 @@ struct OverlayStyle: Equatable, Codable {
         routeMapLegendMode: OverlayRouteMapLegendMode = .startFinishDistance,
         routeMapContainerPreset: OverlayRouteMapContainerPreset = .squareHardEdge,
         routeMapMapOpacity: Double = 0.72,
+        routeMapBorderVisible: Bool = true,
         routeMapWidth: Double = 320,
         routeMapHeight: Double = 240,
         fontName: String,
@@ -336,7 +346,8 @@ struct OverlayStyle: Equatable, Codable {
         shadowEnabled: Bool = true,
         shadowOffsetX: Double = 0,
         shadowOffsetY: Double = 2,
-        gauge: RunningGaugeStyle = .default
+        gauge: RunningGaugeStyle = .default,
+        routeMapStatsBar: OverlayRouteMapStatsBarConfig = .default
     ) {
         self.textPreset = textPreset
         self.gaugePreset = gaugePreset
@@ -357,6 +368,7 @@ struct OverlayStyle: Equatable, Codable {
         self.routeMapLegendMode = routeMapLegendMode
         self.routeMapContainerPreset = routeMapContainerPreset
         self.routeMapMapOpacity = min(max(routeMapMapOpacity, 0), 1)
+        self.routeMapBorderVisible = routeMapBorderVisible
         self.routeMapWidth = min(max(routeMapWidth, 80), 1200)
         self.routeMapHeight = min(max(routeMapHeight, 80), 1200)
         self.fontName = fontName
@@ -382,6 +394,7 @@ struct OverlayStyle: Equatable, Codable {
         self.shadowOffsetX = shadowOffsetX
         self.shadowOffsetY = shadowOffsetY
         self.gauge = gauge
+        self.routeMapStatsBar = routeMapStatsBar
     }
 
     init(from decoder: Decoder) throws {
@@ -414,6 +427,7 @@ struct OverlayStyle: Equatable, Codable {
         routeMapLegendMode = try container.decodeIfPresent(OverlayRouteMapLegendMode.self, forKey: .routeMapLegendMode) ?? Self.default.routeMapLegendMode
         routeMapContainerPreset = try container.decodeIfPresent(OverlayRouteMapContainerPreset.self, forKey: .routeMapContainerPreset) ?? Self.default.routeMapContainerPreset
         routeMapMapOpacity = min(max(try container.decodeIfPresent(Double.self, forKey: .routeMapMapOpacity) ?? Self.default.routeMapMapOpacity, 0), 1)
+        routeMapBorderVisible = try container.decodeIfPresent(Bool.self, forKey: .routeMapBorderVisible) ?? true
         routeMapWidth = min(max(try container.decodeIfPresent(Double.self, forKey: .routeMapWidth) ?? Self.default.routeMapWidth, 80), 1200)
         routeMapHeight = min(max(try container.decodeIfPresent(Double.self, forKey: .routeMapHeight) ?? Self.default.routeMapHeight, 80), 1200)
         fontName = try container.decodeIfPresent(String.self, forKey: .fontName) ?? Self.default.fontName
@@ -446,6 +460,7 @@ struct OverlayStyle: Equatable, Codable {
             // the user re-applies a preset from the new gauge inspector.
             gauge = RunningGaugeStyle.preset(gaugePreset)
         }
+        routeMapStatsBar = try container.decodeIfPresent(OverlayRouteMapStatsBarConfig.self, forKey: .routeMapStatsBar) ?? .default
     }
 }
 
@@ -666,6 +681,68 @@ enum OverlayRouteMapContainerPreset: String, CaseIterable, Identifiable, Codable
         case .squareGradientEdge, .circleGradientEdge: 0
         }
     }
+}
+
+enum RouteMapStatsMetric: String, CaseIterable, Identifiable, Codable {
+    case distance
+    case pace
+    case elapsedTime
+    case heartRate
+    case elevation
+    case cadence
+    case power
+    case calories
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .distance: "Distance"
+        case .pace: "Pace"
+        case .elapsedTime: "Time"
+        case .heartRate: "Heart Rate"
+        case .elevation: "Elevation"
+        case .cadence: "Cadence"
+        case .power: "Power"
+        case .calories: "Calories"
+        }
+    }
+
+    var elementType: OverlayElementType {
+        switch self {
+        case .distance: .distance
+        case .pace: .pace
+        case .elapsedTime: .elapsedTime
+        case .heartRate: .heartRate
+        case .elevation: .elevation
+        case .cadence: .cadence
+        case .power: .power
+        case .calories: .calories
+        }
+    }
+}
+
+struct RouteMapStatsBarSlot: Equatable, Codable {
+    var metric: RouteMapStatsMetric
+    var visible: Bool
+    var customLabel: String
+}
+
+struct OverlayRouteMapStatsBarConfig: Equatable, Codable {
+    var visible: Bool
+    var backgroundOpacity: Double
+    var slots: [RouteMapStatsBarSlot]
+
+    static let `default` = OverlayRouteMapStatsBarConfig(
+        visible: false,
+        backgroundOpacity: 0.88,
+        slots: [
+            RouteMapStatsBarSlot(metric: .distance,    visible: true, customLabel: ""),
+            RouteMapStatsBarSlot(metric: .pace,        visible: true, customLabel: ""),
+            RouteMapStatsBarSlot(metric: .elapsedTime, visible: true, customLabel: ""),
+            RouteMapStatsBarSlot(metric: .heartRate,   visible: true, customLabel: ""),
+        ]
+    )
 }
 
 enum OverlayGaugePreset: String, CaseIterable, Identifiable, Codable {

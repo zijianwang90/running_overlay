@@ -1,6 +1,6 @@
 # Route Map Overlay Design
 
-Last updated: 2026-04-26
+Last updated: 2026-04-27 (Stats Bar)
 
 > **Inspector / UI design has its own spec.** See
 > [`docs/design/route-map-overlay-ui.md`](../design/route-map-overlay-ui.md) and
@@ -227,7 +227,7 @@ Phase D: Advanced polish
 - 起终点隐私模糊。Pending.
 - 模板 schema migration。Ongoing — 每次新增字段都通过 `decodeIfPresent` 默认值兜底，旧模板可直接加载。
 
-Phase E: Container presets and map dim controls (current revision)
+Phase E: Container presets, map dim controls, edge fade fix (current revision)
 
 - 新增 `OverlayRouteMapContainerPreset` 枚举：`squareHardEdge` / `circleHardEdge` /
   `squareGradientEdge` / `circleGradientEdge`，每个预设对应一组 shape /
@@ -236,8 +236,32 @@ Phase E: Container presets and map dim controls (current revision)
 - Inspector 用新的分组布局 (Preset / Layout / Container / Background Map /
   Route Line / Markers / Legend / Effects)，与
   `docs/design/route-map-overlay-ui.spec.json` 对齐。
+- **Bug fix**: Edge Fade "Fade Out" 在 SwiftUI preview 中无效。根本原因：
+  `RouteMapMaskRenderer` 输出的是灰度 CGImage（无 alpha 通道），
+  SwiftUI `.mask()` 读 alpha 而非亮度，导致遮罩完全不透明。
+  修复：在 `PreviewCanvasView.RouteMapOverlayView` 的 `.mask {}` 内
+  对 `Image(nsImage: alphaMask)` 追加 `.luminanceToAlpha()`，将灰度
+  亮度值转换为 alpha。Export 路径（`cgContext.clip(to:mask:)`）本身
+  已按亮度解读灰度 mask，无需修改。
+- **Bug fix**: Square 形状 Edge Fade 仅四角渐变，边缘中间不渐变。根本原因：
+  原实现对方形也使用径向渐变，外半径为对角线一半，导致边缘中点接近内环
+  边界而几乎不渐变，四角却完全变黑。修复：方形 shape 改用"最短边距"像素
+  迭代算法——`gray = min(distance_to_each_edge) / fadeWidth`，保证四边
+  均匀渐变且圆角自然剪切（像素值=0 的区域保持不变）。
+- **新增**: Container 区域增加 Border 开关（`routeMapBorderVisible`）。
+  默认开启（兼容旧项目）；关闭后 preview 和 export 均不绘制非选中态边框线；
+  选中状态的 accent 选框不受影响。Preset 区域移除了无实际效果的 Distance 行。
 
-Phase F: Custom legend items, route line richness, container border / glow
+Phase F: Stats Bar (current revision)
+
+- 新增 `RouteMapStatsMetric` / `RouteMapStatsBarSlot` / `OverlayRouteMapStatsBarConfig` 数据模型。
+- 替换左下角 Start/Finish legend 小卡片为横向 Stats Bar（附在地图容器正下方）。
+- 支持 1~4 个可配置指标槽位，各自独立开关和 metric 选择。
+- `OverlayRouteMapRenderLayout` 新增 `statsBarLayout?: OverlayRouteMapStatsBarLayout`。
+- Preview（VStack）和 Export 渲染器均实现 Stats Bar 绘制。
+- 旧字段 `routeMapLegendVisible` / `routeMapLegendMode` 保留在 OverlayStyle 中（向后兼容），但不再渲染或出现在 Inspector。
+
+Phase G: Route line richness, container border / glow
 
 - 实现 `RouteMapLegendItemConfig` 列表，替换固定 `legendMode`（保留兼容）。
 - 路线线宽 / 不透明度 / 虚线 / 发光 / 阴影模型字段，并在 Inspector 暴露。

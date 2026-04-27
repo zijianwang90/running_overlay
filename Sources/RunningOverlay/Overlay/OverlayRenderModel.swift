@@ -163,7 +163,6 @@ enum OverlayRenderModel {
         // circular window.
         let side = min(width, height)
         let mapSize = mapShape == .circle ? CGSize(width: side, height: side) : CGSize(width: width, height: height)
-        let rect = centeredRect(for: element, size: mapSize, canvasSize: context.canvasSize)
         // Padding scales with the box size so wider boxes still keep the
         // route well inside the visible map. The minimum keeps tiny boxes
         // (≤120 pt) from squashing the route to the center.
@@ -175,21 +174,54 @@ enum OverlayRenderModel {
         let provider: OverlayRouteMapProvider = backgroundEnabled ? .mapKit : .none
         let progress = context.activity.duration > 0 ? context.elapsedTime / context.activity.duration : 0
 
+        // Stats bar: attaches below the map container.
+        let statsBarConfig = element.style.routeMapStatsBar
+        let statsBarVisible = statsBarConfig.visible && statsBarConfig.slots.contains { $0.visible }
+        let barDesignHeight: Double = 64
+        let barHeight = statsBarVisible ? context.scaled(barDesignHeight * element.scale) : 0
+
+        // Total rect (map + bar) centered at element.position; map stays on top.
+        let totalSize = CGSize(width: mapSize.width, height: mapSize.height + barHeight)
+        let totalRect = centeredRect(for: element, size: totalSize, canvasSize: context.canvasSize)
+        let mapRect = CGRect(origin: totalRect.origin, size: mapSize)
+
+        let statsBarLayout: OverlayRouteMapStatsBarLayout? = statsBarVisible ? {
+            let barRect = CGRect(x: totalRect.minX, y: mapRect.maxY, width: totalRect.width, height: barHeight)
+            let visibleSlots = statsBarConfig.slots.filter { $0.visible }
+            let items = visibleSlots.map { slot -> OverlayRouteMapStatsBarItemLayout in
+                let comps = OverlayValueFormatter.components(
+                    for: slot.metric.elementType,
+                    activity: context.activity,
+                    elapsedTime: context.elapsedTime
+                )
+                let label = slot.customLabel.isEmpty ? slot.metric.label : slot.customLabel
+                return OverlayRouteMapStatsBarItemLayout(value: comps.value, unit: comps.unit, label: label)
+            }
+            return OverlayRouteMapStatsBarLayout(
+                rect: barRect,
+                backgroundOpacity: statsBarConfig.backgroundOpacity,
+                items: items,
+                fontName: element.style.fontName
+            )
+        }() : nil
+
         return OverlayRouteMapRenderLayout(
             preset: element.style.routeMapPreset,
             provider: provider,
-            rect: rect,
-            contentRect: rect.insetBy(dx: padding, dy: padding),
+            rect: mapRect,
+            contentRect: mapRect.insetBy(dx: padding, dy: padding),
             cornerRadius: mapShape == .circle ? 0 : context.scaled(12 * element.scale),
             shape: mapShape,
             edgeFade: element.style.routeMapEdgeFade,
             fadeAmount: element.style.routeMapFadeAmount,
+            borderVisible: element.style.routeMapBorderVisible,
             lineWidth: max(context.scaled(4 * element.scale), 1.5),
             glowRadius: context.scaled(11 * element.scale),
             mapOpacity: element.style.routeMapMapOpacity,
             progress: clampedProgress(progress),
             geometry: RouteGeometryBuilder.geometry(from: context.activity),
-            currentPoint: context.activity.routePoint(at: context.elapsedTime)
+            currentPoint: context.activity.routePoint(at: context.elapsedTime),
+            statsBarLayout: statsBarLayout
         )
     }
 
