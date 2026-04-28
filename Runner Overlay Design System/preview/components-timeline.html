@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { background: #101418; padding: 0; }
+  .tl-header { display:flex;align-items:center;gap:8px;padding:0 12px;height:44px;background:#101418;border-bottom:1px solid #2B3238; }
+  .tl-label { font-size:13px;font-weight:500;color:#B6BEC7; }
+  .seg { display:flex;border:1px solid #2B3238;border-radius:6px;overflow:hidden; }
+  .seg-item { padding:0 10px;height:26px;display:flex;align-items:center;font-size:11px;font-weight:500;background:#20252A;border-right:1px solid #2B3238;cursor:pointer;color:#B6BEC7; }
+  .seg-item:last-child{border-right:none;}
+  .seg-item.active{background:#123052;color:#2F8CFF;}
+  .spacer{flex:1;}
+  .icon-btn{width:28px;height:28px;background:#20252A;border:1px solid #2B3238;border-radius:6px;display:flex;align-items:center;justify-content:center;}
+  .zoom-row { display:flex;align-items:center;gap:8px; }
+  .zoom-label { font-size:12px;font-weight:500;color:#B6BEC7; }
+  .zoom-track { width:80px;height:4px;background:#20252A;border-radius:2px;position:relative; }
+  .zoom-thumb { position:absolute;top:-4px;left:60%;width:12px;height:12px;background:#2F8CFF;border-radius:50%;transform:translateX(-50%); }
+  .zoom-val { font-family:var(--font-mono);font-size:11px;color:#7E8893; }
+
+  .ruler { height:28px;background:#11161A;border-bottom:1px solid #2B3238;display:flex;align-items:flex-end;position:relative;padding-left:60px; }
+  .ruler-hover { position:absolute;top:4px;left:calc(60px + 168px);transform:translateX(-50%); background:#1B2025;border:1px solid #2B3238;border-radius:5px;padding:2px 8px;font-family:var(--font-mono);font-size:10px;color:#F3F6F8;white-space:nowrap; }
+  .ruler-hover::after { content:'';position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);border:4px solid transparent;border-top-color:#2B3238; }
+  .tick { display:flex;flex-direction:column;align-items:center;flex-shrink:0; }
+  .tick-line { width:1px;height:8px;background:#3A424A; }
+  .tick-label { font-family:var(--font-mono);font-size:10px;font-weight:500;color:#7E8893;white-space:nowrap;margin-bottom:2px; }
+  .ticks { display:flex;justify-content:space-between;flex:1;padding:0 8px;align-items:flex-end;padding-bottom:0; }
+
+  .tracks { position:relative; }
+  .track-row { display:flex;align-items:stretch;height:44px;border-bottom:1px solid #2B3238; }
+  .track-label { width:60px;flex-shrink:0;background:#11161A;border-right:1px solid #2B3238;display:flex;align-items:center;padding:0 10px;font-size:11px;font-weight:600;color:#7E8893; }
+  .track-lane { flex:1;position:relative;overflow:hidden; }
+  .fit-bar { position:absolute;top:8px;left:4px;right:20px;height:28px;background:#49A862;border-radius:4px;display:flex;align-items:center;padding:0 8px;font-family:var(--font-mono);font-size:11px;font-weight:500;color:white; }
+  .clip { position:absolute;top:6px;height:32px;background:#2F73D9;border-radius:4px;display:flex;align-items:center;padding:0 6px;font-family:var(--font-mono);font-size:10px;color:rgba(255,255,255,.7);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;border:1px solid #0B0F12; }
+  .clip.selected { border:2px solid white; }
+  .drop-lane { display:flex;align-items:center;justify-content:center;border:1px dashed #2B3238;border-radius:4px;margin:6px;height:32px;color:#7E8893;font-size:12px;gap:6px; }
+  .playhead { position:absolute;top:0;bottom:0;left:calc(60px + 168px);width:1px;background:#E4525A;z-index:10; }
+  .playhead::before { content:'';position:absolute;top:0;left:-4px;border:4px solid transparent;border-top-color:#E4525A;border-left:4px solid transparent;border-right:4px solid transparent; }
+</style>
+</head>
+<body>
+<div class="tl-header">
+  <span class="tl-label">Preview</span>
+  <div class="icon-btn"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 2.5C4 2.5 2 5 2 6.5 2 8 4 10.5 6.5 10.5S11 8 11 6.5 9 2.5 6.5 2.5z" stroke="#B6BEC7" stroke-width="1.1"/><circle cx="6.5" cy="6.5" r="1.5" fill="#B6BEC7"/></svg></div>
+  <div class="spacer"></div>
+  <div class="icon-btn"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 5h4M2 8h4M7 5h4M7 8h4" stroke="#B6BEC7" stroke-width="1.1" stroke-linecap="round"/></svg></div>
+  <div class="zoom-row">
+    <span class="zoom-label">Zoom</span>
+    <div class="zoom-track"><div class="zoom-thumb"></div></div>
+    <span class="zoom-val">Fit</span>
+  </div>
+</div>
+<div class="ruler">
+  <div class="ruler-hover">55:24 · 9:39 AM · 10.61 km</div>
+  <div class="ticks">
+    <div class="tick"><div class="tick-label">-00:15</div><div class="tick-line"></div></div>
+    <div class="tick"><div class="tick-label">27:10</div><div class="tick-line"></div></div>
+    <div class="tick"><div class="tick-label">55:24</div><div class="tick-line"></div></div>
+    <div class="tick"><div class="tick-label">1:01:23</div><div class="tick-line"></div></div>
+    <div class="tick"><div class="tick-label">1:20:21</div><div class="tick-line"></div></div>
+    <div class="tick"><div class="tick-label">1:26:52</div><div class="tick-line"></div></div>
+  </div>
+</div>
+<div class="tracks">
+  <div class="playhead"></div>
+  <div class="track-row" style="background:#15191D;">
+    <div class="track-label">FIT</div>
+    <div class="track-lane">
+      <div class="fit-bar">00:00</div>
+    </div>
+  </div>
+  <div class="track-row" style="background:#171C21;">
+    <div class="track-label">Layer 1</div>
+    <div class="track-lane" style="position:relative;">
+      <div class="clip" style="left:2px;width:68px;">PRO_VID_…001</div>
+      <div class="clip" style="left:72px;width:72px;">PRO_VID_…002</div>
+      <div class="clip selected" style="left:146px;width:88px;">PRO_VID_…003</div>
+      <div class="clip" style="left:236px;width:60px;">PRO_VID_…004</div>
+      <div class="clip" style="left:298px;width:70px;">PRO_VID_…005</div>
+    </div>
+  </div>
+  <div class="track-row" style="background:#15191D;">
+    <div class="track-label">Layer 2</div>
+    <div class="track-lane">
+      <div class="drop-lane">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="#7E8893" stroke-width="1.1"/><path d="M7 4.5v5M4.5 7h5" stroke="#7E8893" stroke-width="1.1" stroke-linecap="round"/></svg>
+        Drop to Layer 2
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

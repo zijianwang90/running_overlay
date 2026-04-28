@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { background: #1a1a1a; padding: 16px; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .swatch { display: flex; flex-direction: column; gap: 4px; }
+  .chip { width: 80px; height: 48px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); }
+  .label { font-family: var(--font-mono); font-size: 10px; color: #888; }
+  .name  { font-family: var(--font-sans); font-size: 10px; color: #aaa; }
+  .group-label { font-family: var(--font-sans); font-size: 10px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+  .demo { height: 32px; border-radius: 4px; display: flex; align-items: center; padding: 0 8px; font-family: var(--font-mono); font-size: 11px; font-weight: 500; margin-top: 10px; gap: 8px; }
+</style>
+</head>
+<body>
+<div class="group-label">Timeline Colors</div>
+<div class="row">
+  <div class="swatch"><div class="chip" style="background:#49A862;"></div><div class="name">timeline.fit</div><div class="label">#49A862</div></div>
+  <div class="swatch"><div class="chip" style="background:#2F73D9;"></div><div class="name">timeline.clip</div><div class="label">#2F73D9</div></div>
+  <div class="swatch"><div class="chip" style="background:#E4525A;"></div><div class="name">timeline.playhead</div><div class="label">#E4525A</div></div>
+  <div class="swatch"><div class="chip" style="background:#15191D; border:1px solid #2B3238;"></div><div class="name">track.band.a</div><div class="label">#15191D</div></div>
+  <div class="swatch"><div class="chip" style="background:#171C21; border:1px solid #2B3238;"></div><div class="name">track.band.b</div><div class="label">#171C21</div></div>
+  <div class="swatch"><div class="chip" style="background:#11161A; border:1px solid #2B3238;"></div><div class="name">label.col</div><div class="label">#11161A</div></div>
+</div>
+<div class="group-label">In Context</div>
+<div class="demo" style="background:#15191D; border:1px solid #2B3238;">
+  <div style="width:6px; height:20px; background:#49A862; border-radius:2px;"></div>
+  <span style="color:#B6BEC7; font-size:10px;">FIT track</span>
+  <div style="width:60px; height:20px; background:#2F73D9; border-radius:3px; margin-left:8px;"></div>
+  <span style="color:#B6BEC7; font-size:10px;">Clip</span>
+  <div style="width:1px; height:24px; background:#E4525A; margin-left:12px;"></div>
+  <span style="color:#B6BEC7; font-size:10px;">Playhead</span>
+</div>
+</body>
+</html>

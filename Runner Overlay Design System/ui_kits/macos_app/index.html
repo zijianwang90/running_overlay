@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Running Overlay — Editor</title>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body, #root { height: 100%; width: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif;
+    background: #0B0F12;
+    color: #F3F6F8;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2B3238; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef } = React;
+
+// ─── Tokens ───────────────────────────────────────────────
+const T = {
+  appBg:           '#0B0F12',
+  appChrome:       '#101418',
+  panelBg:         '#15191D',
+  panelHeader:     '#1B2025',
+  surfaceControl:  '#20252A',
+  surfaceHover:    '#272D33',
+  surfacePressed:  '#11161A',
+  surfaceSelected: '#263244',
+  borderSubtle:    '#2B3238',
+  borderStrong:    '#3A424A',
+  textPrimary:     '#F3F6F8',
+  textSecondary:   '#B6BEC7',
+  textMuted:       '#7E8893',
+  accentBlue:      '#2F8CFF',
+  accentSoft:      '#123052',
+  dangerRed:       '#FF5A5F',
+  successGreen:    '#51C96B',
+  warningYellow:   '#FFD166',
+  fitGreen:        '#49A862',
+  clipBlue:        '#2F73D9',
+  playheadRed:     '#E4525A',
+};
+
+// ─── Shared micro components ──────────────────────────────
+const IconBtn = ({ children, active, danger, onClick, size = 30 }) => (
+  <button onClick={onClick} style={{
+    width: size, height: size, border: `1px solid ${active ? T.accentBlue : T.borderSubtle}`,
+    borderRadius: 7, background: active ? T.accentSoft : T.surfaceControl,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', flexShrink: 0, color: danger ? T.dangerRed : active ? T.accentBlue : T.textSecondary,
+    fontSize: 14,
+  }}>{children}</button>
+);
+
+const Pill = ({ children, color, bg, border }) => (
+  <span style={{
+    display: 'inline-flex', alignItems: 'center', padding: '2px 10px',
+    borderRadius: 100, fontSize: 11, fontWeight: 500,
+    color: color || T.textSecondary,
+    background: bg || T.panelHeader,
+    border: `1px solid ${border || T.borderSubtle}`,
+  }}>{children}</span>
+);
+
+const PanelHeader = ({ title, left, right, style }) => (
+  <div style={{
+    display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px', height: 54,
+    background: T.panelHeader, borderBottom: `1px solid ${T.borderSubtle}`,
+    flexShrink: 0, ...style,
+  }}>
+    {left || <span style={{ fontSize: 22, fontWeight: 600, color: T.textPrimary }}>{title}</span>}
+    <div style={{ flex: 1 }} />
+    {right}
+  </div>
+);
+
+const Divider = ({ v }) => (
+  <div style={v
+    ? { width: 1, background: T.borderSubtle, alignSelf: 'stretch' }
+    : { height: 1, background: T.borderSubtle, flexShrink: 0 }}
+  />
+);
+
+const Toggle = ({ on }) => (
+  <div style={{
+    width: 36, height: 20, borderRadius: 10, background: on ? T.accentBlue : T.surfaceControl,
+    border: `1px solid ${on ? T.accentBlue : T.borderSubtle}`,
+    position: 'relative', flexShrink: 0, cursor: 'pointer',
+  }}>
+    <div style={{
+      position: 'absolute', top: 2, left: on ? 18 : 2, width: 14, height: 14,
+      borderRadius: 7, background: 'white', transition: 'left .15s',
+    }} />
+  </div>
+);
+
+// ─── SVG Icons ────────────────────────────────────────────
+const IcoEye = () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 3C4 3 2 6 2 7s2 4 5 4 5-3 5-4-2-4-5-4z" stroke="currentColor" strokeWidth="1.2"/><circle cx="7" cy="7" r="1.5" fill="currentColor"/></svg>;
+const IcoLock = () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="3.5" y="6" width="7" height="5" rx="1" stroke="currentColor" strokeWidth="1.2"/><path d="M5 6V4.5a2 2 0 014 0V6" stroke="currentColor" strokeWidth="1.2"/></svg>;
+const IcoTrash = () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 4h8M5.5 4V3a.5.5 0 011 0v1M4 4l.5 7h5L10 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>;
+const IcoChevronR = () => <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4 2.5l3.5 3.5L4 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>;
+const IcoChevronD = () => <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 4l3.5 3.5L9.5 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>;
+const IcoBack = () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2.5L4 7l5 4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+const IcoGauge = () => <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.2"/><path d="M8 8m-3.5 0a3.5 3.5 0 0 1 7 0" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><circle cx="8" cy="8" r=".9" fill="currentColor"/><path d="M8 8l2.2-1.8" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/></svg>;
+const IcoPace = () => <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.2"/><path d="M8 5.5V8l1.5 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>;
+const IcoPlus = () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>;
+const IcoFilters = () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M4 7h6M6 10h2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>;
+const IcoSearch = () => <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="5.5" cy="5.5" r="3.5" stroke="currentColor" strokeWidth="1.2"/><path d="M8.5 8.5l2.5 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>;
+const IcoVideo = () => <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3.5" width="10" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M12 6.5l2.5-2v7L12 9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+const IcoInfo = () => <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.1"/><path d="M6.5 5.5v4M6.5 4.5v-.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>;
+
+// ─── Media Pool ───────────────────────────────────────────
+const mediaClips = [
+  { id:1, name:'PRO_VID_20260425_083915_00_001.mp4', dur:'0m 37s', time:'Apr 25 · 8:39 AM', mark:'#FF5A5F', status:'Aligned' },
+  { id:2, name:'PRO_VID_20260425_085810_00_002.mp4', dur:'1m 35s', time:'Apr 25 · 8:58 AM', mark:'#FF9342', status:'Aligned' },
+  { id:3, name:'PRO_VID_20260425_090526_00_003.mp4', dur:'4m 36s', time:'Apr 25 · 9:05 AM', mark:'#FFD166', status:'Aligned' },
+  { id:4, name:'PRO_VID_20260425_093449_00_004.mp4', dur:'0m 53s', time:'Apr 25 · 9:34 AM', mark:'#51C96B', status:'Aligned' },
+  { id:5, name:'PRO_VID_20260425_093814_00_005.mp4', dur:'2m 39s', time:'Apr 25 · 9:38 AM', mark:null, status:'Aligned' },
+  { id:6, name:'PRO_VID_20260425_094640_00_006.mp4', dur:'0m 46s', time:'Apr 25 · 9:46 AM', mark:null, status:'Aligned' },
+  { id:7, name:'PRO_VID_20260425_095711_00_007.mp4', dur:'4m 33s', time:'Apr 25 · 9:57 AM', mark:'#B657E8', status:'Aligned' },
+  { id:8, name:'PRO_VID_20260425_100454_00_008.mp4', dur:'1m 33s', time:'Apr 25 · 10:04 AM', mark:null, status:'Aligned' },
+];
+
+function MediaPanel({ selectedClip, onSelect }) {
+  const [filter, setFilter] = useState('All');
+  const [ctxMenu, setCtxMenu] = useState(null); // {id, x, y}
+  const [markSub, setMarkSub] = useState(false);
+
+  const marks = ['Red','Orange','Yellow','Green','Blue','Purple','Gray'];
+  const markColors = { Red:'#FF5A5F', Orange:'#FF9342', Yellow:'#FFD166', Green:'#51C96B', Blue:'#2F8CFF', Purple:'#B657E8', Gray:'#9EA3AA' };
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', background: T.panelBg, borderRight:`1px solid ${T.borderSubtle}`, position:'relative' }}>
+      <PanelHeader title="Media" right={
+        <div style={{ display:'flex', gap:4 }}>
+          <IconBtn><IcoVideo /></IconBtn>
+          <IconBtn><IcoFilters /></IconBtn>
+          <IconBtn><IcoChevronD /></IconBtn>
+        </div>
+      } />
+      {/* Search */}
+      <div style={{ padding:'8px 12px 0', flexShrink:0 }}>
+        <div style={{ height:30, background: T.surfaceControl, border:`1px solid ${T.borderSubtle}`, borderRadius:7, display:'flex', alignItems:'center', gap:7, padding:'0 10px', color: T.textMuted }}>
+          <IcoSearch /><span style={{ fontSize:13 }}>Search media</span>
+        </div>
+      </div>
+      {/* Filter row */}
+      <div style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 12px', flexShrink:0, borderBottom:`1px solid ${T.borderSubtle}` }}>
+        <span style={{ fontSize:11, color: T.textMuted, flex:1 }}>8 clips</span>
+        {['All','Ready','Aligned'].map(f => (
+          <button key={f} onClick={() => setFilter(f)} style={{
+            padding:'2px 10px', borderRadius:6, fontSize:11, fontWeight:500, cursor:'pointer',
+            background: filter===f ? T.accentBlue : T.surfaceControl,
+            color: filter===f ? 'white' : T.textSecondary,
+            border: `1px solid ${filter===f ? T.accentBlue : T.borderSubtle}`,
+          }}>{f}</button>
+        ))}
+      </div>
+      {/* Clip list */}
+      <div style={{ flex:1, overflowY:'auto' }}>
+        {mediaClips.map((clip, i) => {
+          const sel = selectedClip === clip.id;
+          return (
+            <div key={clip.id}
+              onClick={() => onSelect(clip.id)}
+              onContextMenu={e => { e.preventDefault(); setCtxMenu({id:clip.id, x:e.nativeEvent.offsetX, y:e.nativeEvent.offsetY}); setMarkSub(false); }}
+              style={{
+                display:'flex', alignItems:'center', gap:10, padding:'0 12px', height:72,
+                borderBottom:`1px solid ${T.borderSubtle}`,
+                background: sel ? T.surfaceSelected : i%2===0 ? '#1B2025' : '#171C21',
+                borderLeft: sel ? `2px solid ${T.accentBlue}` : '2px solid transparent',
+                cursor:'pointer',
+              }}>
+              {/* Thumb */}
+              <div style={{ width:42, height:42, background:'#101418', border:`1px solid ${T.borderSubtle}`, borderRadius:4, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color: T.textMuted }}>
+                <IcoVideo />
+              </div>
+              {/* Info */}
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:12, fontWeight:600, color: T.textPrimary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{clip.name}</div>
+                <div style={{ fontSize:11, color: T.textMuted, marginTop:2 }}>{clip.dur} · {clip.time}</div>
+              </div>
+              <div style={{ fontSize:11, color: T.textMuted, flexShrink:0 }}>Aligned</div>
+              {clip.mark
+                ? <div style={{ width:8, height:8, borderRadius:'50%', background:clip.mark, flexShrink:0 }} />
+                : <div style={{ width:8, height:8, flexShrink:0 }} />
+              }
+              <div style={{ color: T.textMuted, fontSize:16, flexShrink:0 }}>···</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Context menu */}
+      {ctxMenu && (
+        <div onClick={e => e.stopPropagation()} style={{
+          position:'absolute', top: ctxMenu.y, left: ctxMenu.x, zIndex:100,
+          background:'#1D2228', border:`1px solid ${T.borderSubtle}`, borderRadius:8,
+          minWidth:220, boxShadow:'0 8px 32px rgba(0,0,0,.5)', padding:'4px 0',
+        }}>
+          {['Auto Match to Current Layer','Match to New Layer'].map(a => (
+            <div key={a} onClick={() => setCtxMenu(null)} style={{ padding:'7px 14px', fontSize:13, color: T.textPrimary, cursor:'pointer' }}
+              onMouseEnter={e => e.currentTarget.style.background=T.accentBlue}
+              onMouseLeave={e => e.currentTarget.style.background='transparent'}
+            >{a}</div>
+          ))}
+          <Divider />
+          <div style={{ padding:'7px 14px', fontSize:13, color: T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', position:'relative' }}
+            onMouseEnter={e => { e.currentTarget.style.background=T.accentBlue; setMarkSub(true); }}
+            onMouseLeave={e => { e.currentTarget.style.background='transparent'; }}
+          >
+            Mark <IcoChevronR />
+            {markSub && (
+              <div style={{
+                position:'absolute', left:'100%', top:-4, background:'#1D2228',
+                border:`1px solid ${T.borderSubtle}`, borderRadius:8, minWidth:150,
+                boxShadow:'0 8px 32px rgba(0,0,0,.5)', padding:'4px 0',
+              }}>
+                {marks.map(m => (
+                  <div key={m} onClick={() => setCtxMenu(null)} style={{ padding:'7px 14px', fontSize:13, color: T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:10 }}
+                    onMouseEnter={e => e.currentTarget.style.background=T.accentBlue}
+                    onMouseLeave={e => e.currentTarget.style.background='transparent'}
+                  >
+                    <div style={{ width:10, height:10, borderRadius:'50%', background:markColors[m] }} />
+                    {m}
+                  </div>
+                ))}
+                <Divider />
+                <div onClick={() => setCtxMenu(null)} style={{ padding:'7px 14px', fontSize:13, color: T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:10 }}
+                  onMouseEnter={e => e.currentTarget.style.background=T.accentBlue}
+                  onMouseLeave={e => e.currentTarget.style.background='transparent'}
+                >
+                  <div style={{ width:10, height:10, borderRadius:'50%', border:`1px solid ${T.borderSubtle}` }} />
+                  Clear Mark
+                </div>
+              </div>
+            )}
+          </div>
+          <Divider />
+          <div onClick={() => setCtxMenu(null)} style={{ padding:'7px 14px', fontSize:13, color: T.textPrimary, cursor:'pointer' }}
+            onMouseEnter={e => e.currentTarget.style.background=T.accentBlue}
+            onMouseLeave={e => e.currentTarget.style.background='transparent'}
+          >Select All</div>
+          <div onClick={() => setCtxMenu(null)} style={{ padding:'7px 14px', fontSize:13, color: T.dangerRed, cursor:'pointer' }}
+            onMouseEnter={e => { e.currentTarget.style.background=T.dangerRed; e.currentTarget.style.color='white'; }}
+            onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color=T.dangerRed; }}
+          >Delete from Media Pool</div>
+        </div>
+      )}
+      {ctxMenu && <div onClick={() => setCtxMenu(null)} style={{ position:'fixed', inset:0, zIndex:99 }} />}
+    </div>
+  );
+}
+
+// ─── Preview Canvas ───────────────────────────────────────
+function PreviewPanel({ onSelectOverlay }) {
+  const [guides, setGuides] = useState(true);
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', background: T.appChrome, flex:1 }}>
+      <PanelHeader
+        left={<><span style={{ fontSize:22, fontWeight:600 }}>Preview</span><span style={{ fontSize:13, color: T.textMuted, marginLeft:8 }}>1920 × 1080 · 30 fps</span></>}
+        right={<div style={{ display:'flex', gap:6 }}>
+          <IconBtn active={guides} onClick={() => setGuides(g => !g)}>
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="2" y="2" width="11" height="11" rx="1" stroke="currentColor" strokeWidth="1.2"/><path d="M7.5 2v11M2 7.5h11" stroke="currentColor" strokeWidth="1" strokeDasharray="2 1.5"/></svg>
+          </IconBtn>
+          <div style={{ height:30, background: T.surfaceControl, border:`1px solid ${T.borderSubtle}`, borderRadius:7, display:'flex', alignItems:'center', padding:'0 10px', gap:5, cursor:'pointer' }}>
+            <span style={{ fontSize:13, fontWeight:500, color: T.textSecondary }}>Fit</span>
+            <IcoChevronD />
+          </div>
+        </div>}
+      />
+
+      {/* Canvas area */}
+      <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', background: T.appBg, overflow:'hidden', position:'relative' }}>
+        {/* Video frame */}
+        <div style={{ position:'relative', width:'85%', maxWidth:780, aspectRatio:'16/9', background:'#111', borderRadius:2, overflow:'hidden' }}>
+          {/* Running photo placeholder - warm gradient bg to suggest running footage */}
+          <div style={{ position:'absolute', inset:0, background:'linear-gradient(160deg, #1a1210 0%, #2d1f14 30%, #3d2a1a 50%, #1a1510 100%)' }} />
+          {/* Road perspective suggest */}
+          <div style={{ position:'absolute', bottom:0, left:'25%', right:'25%', height:'60%', background:'linear-gradient(to top, rgba(40,35,28,.8), transparent)', borderRadius:'50% 50% 0 0 / 30% 30% 0 0' }} />
+          <div style={{ position:'absolute', bottom:0, left:'40%', right:'40%', height:'80%', background:'linear-gradient(to top, rgba(60,55,45,.4), transparent)' }} />
+
+          {/* Safe guides */}
+          {guides && <>
+            <div style={{ position:'absolute', inset:'8%', border:`1px dashed rgba(47,140,255,.35)`, pointerEvents:'none' }} />
+            <div style={{ position:'absolute', top:'50%', left:0, right:0, height:1, background:'rgba(47,140,255,.15)', pointerEvents:'none' }} />
+            <div style={{ position:'absolute', left:'50%', top:0, bottom:0, width:1, background:'rgba(47,140,255,.15)', pointerEvents:'none' }} />
+          </>}
+
+          {/* Overlay: Running Gauge (bottom-left) */}
+          <div onClick={() => onSelectOverlay('gauge')} style={{
+            position:'absolute', bottom:'8%', left:'6%', cursor:'pointer',
+            background:'rgba(0,0,0,.55)', borderRadius:12, padding:'10px 14px',
+          }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+              {/* gauge arc */}
+              <svg width="52" height="52" viewBox="0 0 52 52">
+                <circle cx="26" cy="26" r="20" fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="3.5"/>
+                <circle cx="26" cy="26" r="20" fill="none" stroke="#51C96B" strokeWidth="3.5"
+                  strokeDasharray="75 125" strokeDashoffset="31" strokeLinecap="round"/>
+                <text x="26" y="22" textAnchor="middle" fill="white" fontSize="10" fontWeight="600" fontFamily="-apple-system">10.73</text>
+                <text x="26" y="32" textAnchor="middle" fill="#B6BEC7" fontSize="7" fontFamily="-apple-system">km</text>
+              </svg>
+              <div>
+                <div style={{ fontSize:10, color:'#B6BEC7' }}>Distance</div>
+                <div style={{ fontSize:10, color:T.accentBlue }}>of <b style={{ color:'white' }}>21.10</b> km</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Overlay: Pace (bottom-right) */}
+          <div onClick={() => onSelectOverlay('pace')} style={{
+            position:'absolute', bottom:'8%', right:'6%', cursor:'pointer', textAlign:'right',
+          }}>
+            <div style={{ fontSize:28, fontWeight:700, color:'white', fontFamily:'monospace', textShadow:'0 2px 8px rgba(0,0,0,.8)' }}>5'10"<span style={{ fontSize:16 }}>/km</span></div>
+            <div style={{ fontSize:11, color:'#B6BEC7', textShadow:'0 1px 4px rgba(0,0,0,.8)' }}>Avg Pace</div>
+          </div>
+
+          {/* Route map overlay (selected, top-right) */}
+          <div onClick={() => onSelectOverlay('route')} style={{
+            position:'absolute', top:'8%', right:'5%', width:'28%', aspectRatio:'1.1',
+            background:'rgba(20,24,28,.8)', border:`2px solid ${T.accentBlue}`, borderRadius:4, cursor:'pointer',
+          }}>
+            {/* Handle dots */}
+            {[[0,0],[50,0],[100,0],[0,50],[100,50],[0,100],[50,100],[100,100]].map(([x,y],i) => (
+              <div key={i} style={{
+                position:'absolute', width:8, height:8, borderRadius:'50%', background:T.accentBlue,
+                left:`${x}%`, top:`${y}%`, transform:'translate(-50%,-50%)',
+              }} />
+            ))}
+            <svg style={{ width:'100%', height:'100%' }} viewBox="0 0 100 100" fill="none">
+              <path d="M20 80 Q35 60 45 40 Q55 25 70 20 Q80 30 75 50 Q65 70 50 75 Q35 80 20 80z" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round"/>
+              <circle cx="20" cy="80" r="3" fill="#51C96B"/>
+              <circle cx="70" cy="20" r="3" fill={T.dangerRed}/>
+            </svg>
+            <div style={{ position:'absolute', bottom:6, right:8, fontSize:12, fontWeight:600, color:'white', fontFamily:'monospace' }}>13.47 km</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Playback bar */}
+      <div style={{ height:52, background: T.appChrome, borderTop:`1px solid ${T.borderSubtle}`, display:'flex', alignItems:'center', position:'relative', flexShrink:0 }}>
+        <div style={{ position:'absolute', left:'50%', transform:'translateX(-50%)', display:'flex', gap:4, alignItems:'center' }}>
+          {[
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 3v10M12 8L6 4v8l6-4z" fill="currentColor"/></svg>,
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="4" y="4" width="8" height="8" fill="currentColor"/></svg>,
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M5 4l6 4-6 4z" fill="currentColor"/></svg>,
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 3v10M4 8l6-4v8L4 8z" fill="currentColor"/></svg>,
+          ].map((icon, i) => (
+            <button key={i} style={{
+              width:36, height:36, border:`1px solid ${T.borderSubtle}`, borderRadius:7,
+              background: T.surfaceControl, color: T.textSecondary, display:'flex',
+              alignItems:'center', justifyContent:'center', cursor:'pointer',
+            }}>{icon}</button>
+          ))}
+        </div>
+        <div style={{ position:'absolute', right:16, display:'flex', alignItems:'center', gap:4 }}>
+          <div style={{ height:28, background: T.surfaceControl, border:`1px solid ${T.borderSubtle}`, borderRadius:6, display:'flex', alignItems:'center', padding:'0 8px', gap:4, cursor:'pointer' }}>
+            <span style={{ fontSize:12, fontWeight:500, color: T.textSecondary, fontFamily:'monospace' }}>1x</span>
+            <IcoChevronD />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Inspector ────────────────────────────────────────────
+function InspectorPanel({ selectedOverlay, onSelectOverlay }) {
+  const [tab, setTab] = useState('Metrics');
+  const [openSections, setOpenSections] = useState({ Content:true, Layout:true, Typography:false, Color:false, Background:false, Effects:false });
+  const toggleSection = k => setOpenSections(s => ({...s,[k]:!s[k]}));
+
+  // Overlay detail routing
+  if (selectedOverlay === 'gauge') return <GaugeDetail onBack={() => onSelectOverlay(null)} />;
+  if (selectedOverlay === 'route') return <RouteMapDetail onBack={() => onSelectOverlay(null)} />;
+  if (selectedOverlay === 'pace') {
+    return <InspectorDetail selectedOverlay={selectedOverlay} onBack={() => onSelectOverlay(null)} openSections={openSections} toggleSection={toggleSection} />;
+  }
+
+  const metrics = [
+    { name:'Heart Rate', hint:'BPM' }, { name:'Pace', hint:'min/km' },
+    { name:'Calories', hint:'kcal' }, { name:'Elapsed Time', hint:'Duration' },
+    { name:'Real Time', hint:'Current time' }, { name:'Distance', hint:'km' },
+    { name:'Distance Timeline', hint:'Over time' }, { name:'Elevation', hint:'m' },
+    { name:'Elevation Chart', hint:'Profile' }, { name:'Cadence', hint:'spm' },
+    { name:'Power', hint:'W' }, { name:'Running Gauge', hint:'Gauge + Value' },
+    { name:'Route Map', hint:'Map with route' },
+  ];
+
+  const addedEls = [
+    { id:'gauge', icon:<IcoGauge />, name:'Running Gauge', sub:'Distance · Gauge', val:'10.73 km' },
+    { id:'pace',  icon:<IcoPace />,  name:'Pace',          sub:'Pace · Text',       val:"5'10\"/km" },
+    { id:'route', icon:<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 11l1.5-3 2.5 2 2-3.5 2.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="3.5" cy="4.5" r="1.5" stroke="currentColor" strokeWidth="1.1"/></svg>, name:'Route Map', sub:'Route · Map', val:'12.86 km' },
+  ];
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', background: T.panelBg, overflow:'hidden' }}>
+      <PanelHeader title="Inspector" right={<div style={{ display:'flex', gap:4 }}>
+        <Pill>3 overlays</Pill>
+        <IconBtn><IcoFilters /></IconBtn>
+      </div>} />
+
+      <div style={{ flex:1, overflowY:'auto' }}>
+        {/* Add Overlay section */}
+        <div style={{ padding:'14px 14px 0' }}>
+          <div style={{ fontSize:15, fontWeight:600, marginBottom:2 }}>Add Overlay</div>
+          <div style={{ fontSize:11, color: T.textMuted, marginBottom:10 }}>Choose a data layer to place on the preview</div>
+          {/* Tabs */}
+          <div style={{ display:'flex', background:'rgba(255,255,255,.06)', borderRadius:6, padding:2, gap:1, marginBottom:10 }}>
+            {['Metrics','Charts','Route'].map(t => (
+              <button key={t} onClick={() => setTab(t)} style={{
+                flex:1, height:24, border:'none', borderRadius:5, cursor:'pointer',
+                fontSize:12, fontWeight:500,
+                background: tab===t ? '#3A4149' : 'transparent',
+                color: tab===t ? T.textPrimary : T.textSecondary,
+                boxShadow: tab===t ? '0 1px 3px rgba(0,0,0,.4)' : 'none',
+              }}>{t}</button>
+            ))}
+          </div>
+          {/* Tile grid */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:5, marginBottom:14 }}>
+            {metrics.map(m => (
+              <div key={m.name} style={{
+                display:'flex', alignItems:'center', gap:8, padding:'8px 10px',
+                background: T.surfaceControl,
+                border: `1px solid ${T.borderSubtle}`,
+                borderRadius:7, cursor:'pointer',
+              }}
+                onMouseEnter={e => e.currentTarget.style.background=T.surfaceHover}
+                onMouseLeave={e => e.currentTarget.style.background=T.surfaceControl}
+              >
+                <div style={{ width:24, height:24, display:'flex', alignItems:'center', justifyContent:'center', color: T.textSecondary, flexShrink:0 }}>
+                  <IcoPace />
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:12, fontWeight:600, color: T.textPrimary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{m.name}</div>
+                  <div style={{ fontSize:10, color: T.textMuted }}>{m.hint}</div>
+                </div>
+                <div style={{ color: T.textMuted, fontSize:16, lineHeight:1 }}>+</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <Divider />
+
+        {/* Added Elements */}
+        <div style={{ padding:'14px 14px 4px' }}>
+          <div style={{ fontSize:15, fontWeight:600, marginBottom:2 }}>Added Elements</div>
+          <div style={{ fontSize:11, color: T.textMuted, marginBottom:6 }}>Manage overlays in your scene</div>
+        </div>
+        {addedEls.map(el => (
+          <div key={el.id} onClick={() => onSelectOverlay(el.id)} style={{
+            display:'flex', alignItems:'center', gap:8, padding:'0 14px', height:56,
+            borderBottom:`1px solid ${T.borderSubtle}`, cursor:'pointer',
+          }}
+            onMouseEnter={e => e.currentTarget.style.background=T.surfaceHover}
+            onMouseLeave={e => e.currentTarget.style.background='transparent'}
+          >
+            <div style={{ width:30, height:30, background: T.surfaceControl, border:`1px solid ${T.borderSubtle}`, borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center', color: T.textSecondary, flexShrink:0 }}>{el.icon}</div>
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:13, fontWeight:600 }}>{el.name}</div>
+              <div style={{ fontSize:11, color: T.textMuted }}>{el.sub}</div>
+            </div>
+            <div style={{ fontFamily:'monospace', fontSize:13, color: T.textSecondary }}>{el.val}</div>
+            <div style={{ display:'flex', gap:3 }}>
+              {[<IcoEye/>,<IcoLock/>,<IcoTrash/>].map((ico, i) => (
+                <div key={i} onClick={e => e.stopPropagation()} style={{
+                  width:26, height:26, background: T.surfaceControl, border:`1px solid ${T.borderSubtle}`,
+                  borderRadius:5, display:'flex', alignItems:'center', justifyContent:'center',
+                  cursor:'pointer', color: T.textMuted, fontSize:13,
+                }}>{ico}</div>
+              ))}
+            </div>
+            <div style={{ color: T.borderStrong }}><IcoChevronR /></div>
+          </div>
+        ))}
+
+        {/* Footer hint */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'10px 14px', color: T.textMuted, fontSize:11 }}>
+          <IcoInfo /><span>Click an overlay to edit its style and position</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Inspector Detail — Numeric Overlay ───────────────────
+function InspectorDetail({ selectedOverlay, onBack, openSections, toggleSection }) {
+  const title = 'Pace';
+  const val = "13'49\" / km";
+  const pillLabel = 'Numeric Overlay';
+
+  const DenseRow = ({ label, children }) => (
+    <div style={{ display:'flex', alignItems:'center', padding:'0 14px', height:34, gap:10, borderBottom:`1px solid ${T.borderSubtle}` }}>
+      <div style={{ fontSize:12, color: T.textMuted, width:112, flexShrink:0 }}>{label}</div>
+      <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'flex-end' }}>{children}</div>
+    </div>
+  );
+
+  const Dropdown = ({ label }) => (
+    <div style={{ height:28, background: T.surfaceControl, border:`1px solid ${T.borderSubtle}`, borderRadius:6, display:'flex', alignItems:'center', padding:'0 10px', gap:6, cursor:'pointer', fontSize:12, color: T.textPrimary, minWidth:150 }}>
+      <span style={{ flex:1 }}>{label}</span><IcoChevronD />
+    </div>
+  );
+
+  const SectionHeader = ({ icon, label, k }) => (
+    <div onClick={() => toggleSection(k)} style={{
+      display:'flex', alignItems:'center', gap:8, padding:'0 14px', height:32,
+      cursor:'pointer', borderBottom:`1px solid ${T.borderSubtle}`,
+      background: T.panelHeader,
+    }}>
+      <span style={{ fontSize:13, color: T.textMuted }}>{icon}</span>
+      <span style={{ fontSize:13, fontWeight:600, flex:1 }}>{label}</span>
+      <span style={{ color: T.textMuted, transform: openSections[k] ? 'rotate(180deg)' : 'none', transition:'transform .15s' }}><IcoChevronD /></span>
+    </div>
+  );
+
+  const SegControl = ({ options, active }) => (
+    <div style={{ display:'flex', background:'rgba(255,255,255,.06)', borderRadius:6, padding:2, gap:1 }}>
+      {options.map(o => (
+        <div key={o} style={{
+          padding:'2px 10px', height:24, display:'flex', alignItems:'center', fontSize:11, fontWeight:500,
+          borderRadius:5, cursor:'pointer',
+          background: o===active ? '#3A4149' : 'transparent',
+          color: o===active ? T.textPrimary : T.textSecondary,
+          boxShadow: o===active ? '0 1px 3px rgba(0,0,0,.4)' : 'none',
+        }}>{o}</div>
+      ))}
+    </div>
+  );
+
+  const ColorSwatch = ({ color, active }) => (
+    <div style={{ width:22, height:22, borderRadius:5, background:color, border:active ? `2px solid white` : `1px solid ${T.borderSubtle}`, cursor:'pointer', position:'relative' }}>
+      {active && <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l3 3 4-5" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg></div>}
+    </div>
+  );
+
+  const SliderRow = ({ label, val, pct }) => (
+    <DenseRow label={label}>
+      <div style={{ display:'flex', alignItems:'center', gap:8, flex:1, justifyContent:'flex-end' }}>
+        <div style={{ flex:1, maxWidth:160, height:4, background: T.surfaceControl, borderRadius:2, position:'relative' }}>
+          <div style={{ position:'absolute', left:0, top:0, height:'100%', width:`${pct}%`, background: T.accentBlue, borderRadius:2 }} />
+          <div style={{ position:'absolute', top:-4, left:`${pct}%`, transform:'translateX(-50%)', width:12, height:12, borderRadius:6, background: T.accentBlue }} />
+        </div>
+        <div style={{ fontFamily:'monospace', fontSize:11, color: T.textSecondary, width:40, textAlign:'right' }}>{val}</div>
+      </div>
+    </DenseRow>
+  );
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', background: T.panelBg, overflow:'hidden' }}>
+      {/* Detail header */}
+      <div style={{ display:'flex', alignItems:'center', gap:8, padding:'0 12px', height:54, background: T.panelHeader, borderBottom:`1px solid ${T.borderSubtle}`, flexShrink:0 }}>
+        <IconBtn onClick={onBack}><IcoBack /></IconBtn>
+        <div style={{ width:28, height:28, background: T.surfaceControl, border:`1px solid ${T.borderSubtle}`, borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center', color: T.textSecondary }}>
+          <IcoPace />
+        </div>
+        <div style={{ flex:1 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <span style={{ fontSize:15, fontWeight:600 }}>{title}</span>
+            <Pill>{pillLabel}</Pill>
+          </div>
+          <div style={{ fontFamily:'monospace', fontSize:11, color: T.textMuted }}>{val}</div>
+        </div>
+        <IconBtn danger><IcoTrash /></IconBtn>
+      </div>
+
+      <div style={{ flex:1, overflowY:'auto' }}>
+        {/* Content Section */}
+        <SectionHeader icon="☰" label="Content" k="Content" />
+        {openSections.Content && <>
+          <DenseRow label="Metric"><Dropdown label="Pace" /></DenseRow>
+          <DenseRow label="Units"><Dropdown label="Metric (min/km)" /></DenseRow>
+          <DenseRow label="Format Preview"><span style={{ fontFamily:'monospace', fontSize:12, color: T.textSecondary }}>{val}</span></DenseRow>
+          <DenseRow label="Show Label"><Toggle on /></DenseRow>
+          <DenseRow label="Show Unit"><Toggle on /></DenseRow>
+          <DenseRow label="Label">
+            <div style={{ height:28, background: T.surfaceControl, border:`1px solid ${T.borderSubtle}`, borderRadius:6, padding:'0 10px', display:'flex', alignItems:'center', minWidth:150 }}>
+              <span style={{ fontSize:12, color: T.textPrimary }}>Pace</span>
+            </div>
+          </DenseRow>
+        </>}
+
+        {/* Layout / Position */}
+        <SectionHeader icon="⊹" label="Layout" k="Layout" />
+        {openSections.Layout && <>
+          <DenseRow label="Anchor">
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,22px)', gap:2 }}>
+              {[0,1,2,3,4,5,6,7,8].map(i => (
+                <div key={i} style={{ width:22, height:22, background: i===0 ? T.accentBlue : T.surfaceControl, border:`1px solid ${T.borderSubtle}`, borderRadius:3, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+                  <div style={{ width:5, height:5, borderRadius:'50%', background: i===0 ? 'white' : T.borderStrong }} />
+                </div>
+              ))}
+            </div>
+            <div style={{ display:'flex', gap:6, marginLeft:10, fontSize:12, color: T.textMuted }}>
+              X <span style={{ fontFamily:'monospace', color: T.textPrimary, background: T.surfaceControl, border:`1px solid ${T.borderSubtle}`, borderRadius:5, padding:'2px 8px' }}>0.887</span>
+              Y <span style={{ fontFamily:'monospace', color: T.textPrimary, background: T.surfaceControl, border:`1px solid ${T.borderSubtle}`, borderRadius:5, padding:'2px 8px' }}>0.920</span>
+            </div>
+          </DenseRow>
+          <SliderRow label="Scale" val="1.75x" pct={65} />
+          <SliderRow label="Opacity" val="85%" pct={85} />
+
+        </>}
+
+        {/* Style / Typography */}
+        <SectionHeader icon="Tt" label="Typography" k="Typography" />
+        {openSections.Typography && (
+            <>
+              <DenseRow label="Font"><Dropdown label="SF Pro" /></DenseRow>
+              <SliderRow label="Size" val="28" pct={60} />
+              <DenseRow label="Weight"><SegControl options={['Regular','Medium','Semibold','Bold']} active="Semibold" /></DenseRow>
+            </>
+        )}
+
+        {/* Color */}
+        <SectionHeader icon="◕" label="Color" k="Color" />
+        {openSections.Color && (
+          <DenseRow label="Text Color">
+            <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
+              {['#FFFFFF','#000000','#FF5A5F','#FF9342','#FFD166','#51C96B','#2F8CFF','#00C8FF','#B657E8','#FF6B9D'].map((c,i) => (
+                <ColorSwatch key={c} color={c} active={i===0} />
+              ))}
+            </div>
+          </DenseRow>
+        )}
+
+        {/* Background */}
+        <SectionHeader icon="☐" label="Background" k="Background" />
+        {openSections.Background && <>
+          <DenseRow label="Enable"><Toggle on /></DenseRow>
+          <SliderRow label="Opacity" val="35%" pct={35} />
+          <SliderRow label="Radius" val="6" pct={25} />
+        </>}
+
+        {/* Effects / Animation */}
+        <SectionHeader icon="✦" label="Effects" k="Effects" />
+        {openSections.Effects && (<>
+            <DenseRow label="Shadow"><Toggle on /></DenseRow>
+            <SliderRow label="Shadow Opacity" val="35%" pct={35} />
+            <SliderRow label="Shadow Radius" val="4" pct={20} />
+        </>)}
+      </div>
+
+      {/* Sticky footer */}
+      <div style={{ display:'flex', gap:8, padding:'10px 12px', borderTop:`1px solid ${T.borderSubtle}`, background: T.panelHeader, flexShrink:0 }}>
+        <button style={{ flex:1, height:34, background: T.surfaceControl, border:`1px solid ${T.borderSubtle}`, borderRadius:7, color: T.textSecondary, fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 11.5a5 5 0 100-10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><path d="M4 4.5l-.5-2.5L1 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          Reset
+        </button>
+        <button style={{ flex:2, height:34, background: T.accentBlue, border:'none', borderRadius:7, color:'white', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5l3.5 3.5 5.5-6" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          Done
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Running Gauge Detail ─────────────────────────────────
+function GaugeDetail({ onBack }) {
+  const [open, setOpen] = React.useState({ preset:true, dataLayout:true, region:true, dial:true, ring:true, ticks:false, dividers:false, typo:false, color:false, effects:false });
+  const tog = k => setOpen(s => ({...s,[k]:!s[k]}));
+
+  const SWATCHES = ['#FFFFFF','#111','#FF5A5F','#FF9342','#FFD166','#51C96B','#00CFFF','#2F8CFF','#B657E8','#FF6B9D'];
+  const SW = ({colors=SWATCHES, active=7}) => (
+    <div style={{display:'flex',gap:3}}>
+      {colors.map((c,i)=>(
+        <div key={i} style={{width:20,height:20,borderRadius:4,background:c,border:`1px solid ${i===0?T.borderStrong:'rgba(0,0,0,.2)'}`,cursor:'pointer',position:'relative',flexShrink:0}}>
+          {i===active && <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center'}}><svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1 4.5l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg></div>}
+        </div>
+      ))}
+    </div>
+  );
+  const Row = ({label, children, indent=false}) => (
+    <div style={{display:'flex',alignItems:'center',padding:`0 ${indent?16:12}px`,height:34,borderBottom:`1px solid ${T.borderSubtle}`,gap:8,background:indent?'#131619':'transparent'}}>
+      <span style={{fontSize:12,color:T.textMuted,width:120,flexShrink:0}}>{label}</span>
+      <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'flex-end',gap:6}}>{children}</div>
+    </div>
+  );
+  const Slider = ({pct, val}) => (
+    <div style={{flex:1,display:'flex',alignItems:'center',gap:8}}>
+      <div style={{flex:1,height:3,background:T.surfaceControl,borderRadius:2,position:'relative'}}>
+        <div style={{position:'absolute',left:0,top:0,height:'100%',width:`${pct}%`,background:T.accentBlue,borderRadius:2}}/>
+        <div style={{position:'absolute',top:'50%',left:`${pct}%`,transform:'translate(-50%,-50%)',width:14,height:14,borderRadius:7,background:'white',boxShadow:'0 1px 4px rgba(0,0,0,.5)'}}/>
+      </div>
+      <span style={{fontFamily:'monospace',fontSize:11,color:T.textSecondary,minWidth:40,textAlign:'right'}}>{val}</span>
+    </div>
+  );
+  const Drop = ({label}) => <div style={{display:'flex',alignItems:'center',gap:4,cursor:'pointer'}}><span style={{fontSize:13,color:T.textPrimary}}>{label}</span><span style={{color:T.textMuted,fontSize:10}}>∨</span></div>;
+  const Tog = ({on}) => <div style={{width:30,height:16,borderRadius:8,background:on?T.accentBlue:'#3A424A',position:'relative',cursor:'pointer',flexShrink:0}}><div style={{position:'absolute',top:2,left:on?16:2,width:12,height:12,borderRadius:6,background:'white',boxShadow:'0 1px 3px rgba(0,0,0,.4)'}}/></div>;
+  const Seg = ({opts,active}) => <div style={{display:'inline-flex',background:'rgba(255,255,255,.06)',borderRadius:7,padding:2,gap:1}}>{opts.map(o=><div key={o} style={{padding:'0 8px',height:24,display:'flex',alignItems:'center',fontSize:11,fontWeight:500,borderRadius:5,cursor:'pointer',background:o===active?'#3A4149':'transparent',color:o===active?T.textPrimary:T.textSecondary,boxShadow:o===active?'0 1px 3px rgba(0,0,0,.5)':'none'}}>{o}</div>)}</div>;
+  const SecHdr = ({icon,label,k,accessory}) => (
+    <div onClick={()=>tog(k)} style={{display:'flex',alignItems:'center',gap:7,padding:'0 12px',height:30,background:T.panelHeader,borderTop:`1px solid ${T.borderSubtle}`,borderBottom:`1px solid ${T.borderSubtle}`,cursor:'pointer'}}>
+      <span style={{color:T.textMuted,fontSize:12}}>{icon}</span>
+      <span style={{fontSize:13,fontWeight:600,color:T.textPrimary,flex:1}}>{label}</span>
+      {accessory}
+      <span style={{color:T.textMuted,fontSize:11}}>{open[k]?'∧':'∨'}</span>
+    </div>
+  );
+  const SubHdr = ({label,k,on}) => (
+    <div onClick={()=>tog(k)} style={{display:'flex',alignItems:'center',gap:7,padding:'0 12px 0 20px',height:28,background:'#181d22',borderBottom:`1px solid ${T.borderSubtle}`,cursor:'pointer'}}>
+      <span style={{fontSize:12,fontWeight:500,color:T.textSecondary,flex:1}}>{label}</span>
+      <Tog on={on}/><span style={{color:T.textMuted,fontSize:11,marginLeft:6}}>{open[k]?'∧':'∨'}</span>
+    </div>
+  );
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:T.panelBg,overflow:'hidden'}}>
+      {/* Header */}
+      <div style={{display:'flex',alignItems:'center',gap:8,padding:'0 12px',height:54,background:T.panelHeader,borderBottom:`1px solid ${T.borderSubtle}`,flexShrink:0}}>
+        <IconBtn onClick={onBack}><IcoBack/></IconBtn>
+        <div style={{width:28,height:28,background:T.surfaceControl,border:`1px solid ${T.borderSubtle}`,borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',color:T.textSecondary}}><IcoGauge/></div>
+        <div style={{flex:1}}>
+          <span style={{fontSize:15,fontWeight:600}}>Running Gauge</span>
+          <div style={{fontFamily:'monospace',fontSize:11,color:T.textMuted}}>1-Div-8</div>
+        </div>
+        <IconBtn danger><IcoTrash/></IconBtn>
+      </div>
+      <div style={{flex:1,overflowY:'auto'}}>
+        {/* Style Preset */}
+        <SecHdr icon="⊞" label="Style Preset" k="preset"/>
+        {open.preset && <Row label="Preset"><Drop label="Minimal Sport"/></Row>}
+
+        {/* Position & Scale — collapsed by default */}
+        <div onClick={()=>tog('pos')} style={{display:'flex',alignItems:'center',gap:7,padding:'0 12px',height:30,background:T.panelHeader,borderTop:`1px solid ${T.borderSubtle}`,borderBottom:`1px solid ${T.borderSubtle}`,cursor:'pointer'}}>
+          <span style={{color:T.textMuted,fontSize:12}}>⊹</span><span style={{fontSize:13,fontWeight:600,color:T.textPrimary,flex:1}}>Position &amp; Scale</span><span style={{color:T.textMuted,fontSize:11}}>∨</span>
+        </div>
+
+        {/* Data Layout */}
+        <SecHdr icon="⊞" label="Data Layout" k="dataLayout"/>
+        {open.dataLayout && <Row label="Layout"><Drop label="7×7×13"/></Row>}
+
+        {/* Region Settings */}
+        <SecHdr icon="◈" label="Region Settings" k="region"/>
+        {open.region && <>
+          {[['Top','Distance'],['Middle Left','Pace'],['Middle Right','Elapsed Time'],['Bottom','Heart Rate']].map(([lbl,val])=>(
+            <Row key={lbl} label={lbl}><Drop label={val}/></Row>
+          ))}
+        </>}
+
+        {/* Dial */}
+        <SecHdr icon="◎" label="Dial" k="dial"/>
+        {open.dial && <>
+          <Row label="Background"><SW active={7}/></Row>
+          <Row label="Opacity"><Slider pct={78} val="78%"/></Row>
+          <Row label="Glass Effect"><Tog on={false}/></Row>
+        </>}
+
+        {/* Ring */}
+        <SecHdr icon="◯" label="Ring" k="ring"/>
+        {open.ring && <>
+          <SubHdr label="Outer Ring" k="outerRing" on={true}/>
+          {open.outerRing !== false && <>
+            <Row label="Outer Color" indent><SW active={7}/></Row>
+            <Row label="Outer Opacity" indent><Slider pct={58} val="58%"/></Row>
+            <Row label="Outer Width" indent><Slider pct={22} val="0.022"/></Row>
+          </>}
+          <SubHdr label="Progress Ring" k="progressRing" on={true}/>
+          {open.progressRing !== false && <>
+            <Row label="Progress Mode" indent><Drop label="Distance Progress"/></Row>
+            <Row label="Progress Cover" indent><SW active={7}/></Row>
+            <Row label="Track Opacity" indent><Slider pct={22} val="22%"/></Row>
+            <Row label="Ring Width" indent><Slider pct={26} val="0.026"/></Row>
+            <Row label="Rounded Caps" indent><Tog on={false}/></Row>
+          </>}
+        </>}
+
+        {/* Ticks */}
+        <SecHdr icon="∶" label="Ticks" k="ticks"/>
+        {open.ticks && <>
+          <Row label="Tick Marks"><Tog on={true}/></Row>
+          <Row label="Tick Color"><SW active={7}/></Row>
+          <Row label="Tick Count"><Slider pct={68} val="68"/></Row>
+          <Row label="Major Every"><Slider pct={30} val="8"/></Row>
+          <Row label="Tick Opacity"><Slider pct={42} val="42%"/></Row>
+          <Row label="Major Opacity"><Slider pct={96} val="96%"/></Row>
+        </>}
+
+        {/* Dividers */}
+        <SecHdr icon="≡" label="Dividers" k="dividers"/>
+        {open.dividers && <>
+          <Row label="Dividers"><Tog on={true}/></Row>
+          <Row label="Divider Color"><SW active={7}/></Row>
+          <Row label="Divider Opacity"><Slider pct={12} val="12%"/></Row>
+          <Row label="Divider Width"><Slider pct={36} val="1.8"/></Row>
+        </>}
+
+        {/* Typography */}
+        <SecHdr icon="Aa" label="Typography" k="typo"/>
+        {open.typo && <>
+          <Row label="Font"><Drop label="SF Pro"/></Row>
+          <Row label="Monospaced"><Tog on={true}/></Row>
+          <Row label="Primary Weight"><Seg opts={['Regular','Medium','Semibold','Bold']} active="Regular"/></Row>
+          <Row label="Secondary"><Seg opts={['Regular','Medium','Semibold','Bold']} active="Medium"/></Row>
+        </>}
+
+        {/* Color */}
+        <SecHdr icon="◕" label="Color" k="color"/>
+        {open.color && <>
+          <Row label="Primary Text"><SW active={0}/></Row>
+          <Row label="Secondary"><SW active={0}/></Row>
+          <Row label="Accent"><SW active={7}/></Row>
+        </>}
+
+        {/* Effects */}
+        <SecHdr icon="✦" label="Effects" k="effects"/>
+        {open.effects && <>
+          <Row label="Shadow"><Tog on={true}/></Row>
+          <Row label="Shadow Opacity"><Slider pct={40} val="40%"/></Row>
+          <Row label="Shadow Radius"><Slider pct={50} val="12"/></Row>
+        </>}
+      </div>
+      {/* Footer */}
+      <div style={{display:'flex',gap:8,padding:'10px 12px',borderTop:`1px solid ${T.borderSubtle}`,background:T.panelHeader,flexShrink:0}}>
+        <button style={{flex:1,height:34,background:T.surfaceControl,border:`1px solid ${T.borderSubtle}`,borderRadius:7,color:T.textSecondary,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Reset</button>
+        <button style={{flex:2,height:34,background:T.accentBlue,border:'none',borderRadius:7,color:'white',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Done</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Route Map Detail ─────────────────────────────────────
+function RouteMapDetail({ onBack }) {
+  const [open, setOpen] = React.useState({ preset:true, layout:true, container:true, bgMap:true, routeLine:true, markers:true, legend:true, effects:true });
+  const tog = k => setOpen(s => ({...s,[k]:!s[k]}));
+
+  const SWATCHES = ['#FFFFFF','#111','#FF5A5F','#FF9342','#FFD166','#51C96B','#00CFFF','#2F8CFF','#B657E8','#FF6B9D'];
+  const SW = ({active=7}) => (
+    <div style={{display:'flex',gap:3}}>
+      {SWATCHES.map((c,i)=>(
+        <div key={i} style={{width:20,height:20,borderRadius:4,background:c,border:`1px solid ${i===0?T.borderStrong:'rgba(0,0,0,.2)'}`,cursor:'pointer',position:'relative',flexShrink:0}}>
+          {i===active && <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center'}}><svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1 4.5l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg></div>}
+        </div>
+      ))}
+    </div>
+  );
+  const Row = ({label, children, dimmed=false}) => (
+    <div style={{display:'flex',alignItems:'center',padding:'0 12px',height:34,borderBottom:`1px solid ${T.borderSubtle}`,gap:8,opacity:dimmed?.4:1}}>
+      <span style={{fontSize:12,color:T.textMuted,width:112,flexShrink:0}}>{label}</span>
+      <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'flex-end',gap:6}}>{children}</div>
+    </div>
+  );
+  const Slider = ({pct, val}) => (
+    <div style={{flex:1,display:'flex',alignItems:'center',gap:8}}>
+      <div style={{flex:1,height:3,background:T.surfaceControl,borderRadius:2,position:'relative'}}>
+        <div style={{position:'absolute',left:0,top:0,height:'100%',width:`${pct}%`,background:T.accentBlue,borderRadius:2}}/>
+        <div style={{position:'absolute',top:'50%',left:`${pct}%`,transform:'translate(-50%,-50%)',width:14,height:14,borderRadius:7,background:'white',boxShadow:'0 1px 4px rgba(0,0,0,.5)'}}/>
+      </div>
+      <span style={{fontFamily:'monospace',fontSize:11,color:T.textSecondary,minWidth:40,textAlign:'right'}}>{val}</span>
+    </div>
+  );
+  const AnchorRow = ({active=8}) => (
+    <div style={{display:'flex',alignItems:'center',padding:'8px 12px',borderBottom:`1px solid ${T.borderSubtle}`,gap:8}}>
+      <span style={{fontSize:12,color:T.textMuted,width:112,flexShrink:0}}>Anchor</span>
+      <div style={{flex:1,display:'flex',justifyContent:'flex-end'}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,20px)',gap:2}}>
+          {[0,1,2,3,4,5,6,7,8].map(i=>(
+            <div key={i} style={{width:20,height:20,background:i===active?T.accentBlue:T.surfaceControl,border:`1px solid ${i===active?T.accentBlue:T.borderSubtle}`,borderRadius:3,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+              <div style={{width:4,height:4,borderRadius:'50%',background:i===active?'white':T.borderStrong}}/>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+  const PosPair = ({x, y}) => (
+    <div style={{display:'flex',gap:6}}>
+      {[['X',x],['Y',y]].map(([lbl,val])=>(
+        <div key={lbl} style={{display:'flex',alignItems:'center',gap:4}}>
+          <span style={{fontSize:11,color:T.textMuted}}>{lbl}</span>
+          <div style={{height:26,background:T.surfaceControl,border:`1px solid ${T.borderSubtle}`,borderRadius:5,padding:'0 8px',display:'flex',alignItems:'center',minWidth:64}}>
+            <span style={{fontFamily:'monospace',fontSize:12,color:T.textPrimary}}>{val}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+  const Drop = ({label}) => <div style={{display:'flex',alignItems:'center',gap:4,cursor:'pointer'}}><span style={{fontSize:13,color:T.textPrimary}}>{label}</span><span style={{color:T.textMuted,fontSize:10}}>∨</span></div>;
+  const Tog = ({on}) => <div style={{width:30,height:16,borderRadius:8,background:on?T.accentBlue:'#3A424A',position:'relative',cursor:'pointer',flexShrink:0}}><div style={{position:'absolute',top:2,left:on?16:2,width:12,height:12,borderRadius:6,background:'white',boxShadow:'0 1px 3px rgba(0,0,0,.4)'}}/></div>;
+  const Seg = ({opts,active}) => <div style={{display:'inline-flex',background:'rgba(255,255,255,.06)',borderRadius:7,padding:2,gap:1}}>{opts.map(o=><div key={o} style={{padding:'0 8px',height:24,display:'flex',alignItems:'center',fontSize:11,fontWeight:500,borderRadius:5,cursor:'pointer',background:o===active?'#3A4149':'transparent',color:o===active?T.textPrimary:T.textSecondary,boxShadow:o===active?'0 1px 3px rgba(0,0,0,.5)':'none'}}>{o}</div>)}</div>;
+  const SecHdr = ({icon,label,k,accessory}) => (
+    <div onClick={()=>tog(k)} style={{display:'flex',alignItems:'center',gap:7,padding:'0 12px',height:30,background:T.panelHeader,borderTop:`1px solid ${T.borderSubtle}`,borderBottom:`1px solid ${T.borderSubtle}`,cursor:'pointer'}}>
+      <span style={{color:T.textMuted,fontSize:12}}>{icon}</span>
+      <span style={{fontSize:13,fontWeight:600,color:T.textPrimary,flex:1}}>{label}</span>
+      {accessory && <div onClick={e=>e.stopPropagation()}>{accessory}</div>}
+      <span style={{color:T.textMuted,fontSize:11,marginLeft:accessory?6:0}}>{open[k]?'∧':'∨'}</span>
+    </div>
+  );
+  const MapIcon = () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 11l1.5-3 2.5 2 2-3.5 2.5 4" stroke="#2F8CFF" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="3.5" cy="4.5" r="1.5" stroke="#2F8CFF" strokeWidth="1.1"/></svg>;
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:T.panelBg,overflow:'hidden'}}>
+      {/* Header */}
+      <div style={{display:'flex',alignItems:'center',gap:8,padding:'0 12px',height:54,background:T.panelHeader,borderBottom:`1px solid ${T.borderSubtle}`,flexShrink:0}}>
+        <IconBtn onClick={onBack}><IcoBack/></IconBtn>
+        <div style={{width:28,height:28,background:T.surfaceControl,border:`1px solid ${T.borderSubtle}`,borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><MapIcon/></div>
+        <div style={{flex:1}}>
+          <div style={{display:'flex',alignItems:'center',gap:6}}>
+            <span style={{fontSize:15,fontWeight:600}}>Route Map</span>
+            <Pill>Overlay</Pill>
+          </div>
+          <div style={{fontFamily:'monospace',fontSize:11,color:T.textMuted}}>5.02 km</div>
+        </div>
+        <IconBtn danger><IcoTrash/></IconBtn>
+      </div>
+
+      <div style={{flex:1,overflowY:'auto'}}>
+        {/* Preset */}
+        <SecHdr icon="⊞" label="Preset" k="preset"/>
+        {open.preset && <>
+          <Row label="Route Style"><Drop label="Minimal"/></Row>
+          <Row label="Distance"><span style={{fontFamily:'monospace',fontSize:12,color:T.textSecondary}}>5.02  km</span></Row>
+        </>}
+
+        {/* Layout */}
+        <SecHdr icon="⊹" label="Layout" k="layout"/>
+        {open.layout && <>
+          <AnchorRow active={8}/>
+          <div style={{display:'flex',alignItems:'center',padding:'0 12px',height:34,borderBottom:`1px solid ${T.borderSubtle}`,gap:8}}>
+            <span style={{fontSize:12,color:T.textMuted,width:112,flexShrink:0}}>Position</span>
+            <div style={{flex:1,display:'flex',justifyContent:'flex-end'}}><PosPair x="0.821" y="0.690"/></div>
+          </div>
+          <Row label="Scale"><Slider pct={28} val="1.00x"/></Row>
+          <Row label="Rotation"><Slider pct={50} val="0°"/></Row>
+          <Row label="Opacity"><Slider pct={74} val="74%"/></Row>
+        </>}
+
+        {/* Container */}
+        <SecHdr icon="□" label="Container" k="container"/>
+        {open.container && <>
+          <Row label="Shape"><Seg opts={['Square','Circle']} active="Square"/></Row>
+          <Row label="Width"><Slider pct={62} val="388 pt"/></Row>
+          <Row label="Height"><Slider pct={62} val="388 pt"/></Row>
+          <Row label="Edge Mode"><Seg opts={['Solid Edge','Fade Out']} active="Solid Edge"/></Row>
+          <Row label="Edge Softness"><Slider pct={45} val="45%"/></Row>
+        </>}
+
+        {/* Background Map */}
+        <SecHdr icon="⊕" label="Background Map" k="bgMap" accessory={<Tog on={true}/>}/>
+        {open.bgMap && <>
+          <Row label="Map Style"><Drop label="Dark"/></Row>
+          <Row label="Map Opacity"><Slider pct={72} val="72%"/></Row>
+        </>}
+
+        {/* Route Line */}
+        <SecHdr icon="∿" label="Route Line" k="routeLine"/>
+        {open.routeLine && <>
+          <Row label="Color Mode"><Seg opts={['Solid','Gradient']} active="Solid"/></Row>
+          <Row label="Color"><SW active={7}/></Row>
+        </>}
+
+        {/* Markers */}
+        <SecHdr icon="◈" label="Markers" k="markers"/>
+        {open.markers && <>
+          <Row label="All Markers"><Seg opts={['Hidden','Dot','Pin','Flag']} active="Dot"/></Row>
+          <Row label="Start"><Drop label="Dot"/></Row>
+          <Row label="End"><Drop label="Dot"/></Row>
+        </>}
+
+        {/* Legend */}
+        <SecHdr icon="≡" label="Legend" k="legend" accessory={<Tog on={false}/>}/>
+        {open.legend && <Row label="Style" dimmed={true}><Drop label="With Distance"/></Row>}
+
+        {/* Effects */}
+        <SecHdr icon="✦" label="Effects" k="effects"/>
+        {open.effects && <>
+          <Row label="Shadow Opacity"><Slider pct={35} val="35%"/></Row>
+          <Row label="Shadow Radius"><Slider pct={16} val="4"/></Row>
+        </>}
+      </div>
+
+      {/* Footer */}
+      <div style={{display:'flex',gap:8,padding:'10px 12px',borderTop:`1px solid ${T.borderSubtle}`,background:T.panelHeader,flexShrink:0}}>
+        <button style={{flex:1,height:34,background:T.surfaceControl,border:`1px solid ${T.borderSubtle}`,borderRadius:7,color:T.textSecondary,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Reset</button>
+        <button style={{flex:2,height:34,background:T.accentBlue,border:'none',borderRadius:7,color:'white',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Done</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Timeline ─────────────────────────────────────────────
+function TimelinePanel() {
+  const clips = [
+    { id:1, label:'PRO_VID_…001', left:0,   width:72 },
+    { id:2, label:'PRO_VID_…002', left:74,  width:80 },
+    { id:3, label:'PRO_VID_…003', left:156, width:96, selected:true },
+    { id:4, label:'PRO_VID_…004', left:254, width:66 },
+    { id:5, label:'PRO_VID_…005', left:322, width:76 },
+    { id:6, label:'PRO_VID_…006', left:400, width:52 },
+    { id:7, label:'PRO_VID_…007', left:454, width:88 },
+  ];
+
+  const LABEL_W = 54;
+  const PLAYHEAD = 204; // px from left of lane
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', background: T.appChrome, borderTop:`1px solid ${T.borderSubtle}` }}>
+      {/* Header */}
+      <div style={{ display:'flex', alignItems:'center', gap:8, padding:'0 12px', height:42, borderBottom:`1px solid ${T.borderSubtle}`, flexShrink:0 }}>
+        <span style={{ fontSize:12, fontWeight:500, color: T.textSecondary }}>Preview</span>
+        <IconBtn size={26}><IcoEye /></IconBtn>
+        <div style={{ flex:1 }} />
+        <IconBtn size={26}>
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 5h3M2 8h3M8 5h3M8 8h3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/></svg>
+        </IconBtn>
+        <span style={{ fontSize:12, color: T.textSecondary }}>Zoom</span>
+        <div style={{ width:90, height:4, background: T.surfaceControl, borderRadius:2, position:'relative' }}>
+          <div style={{ position:'absolute', left:0, width:'70%', height:'100%', background: T.accentBlue, borderRadius:2 }} />
+          <div style={{ position:'absolute', top:-4, left:'70%', transform:'translateX(-50%)', width:12, height:12, borderRadius:6, background: T.accentBlue }} />
+        </div>
+        <span style={{ fontFamily:'monospace', fontSize:11, color: T.textMuted }}>Fit</span>
+      </div>
+
+      {/* Ruler */}
+      <div style={{ height:28, background:'#11161A', borderBottom:`1px solid ${T.borderSubtle}`, position:'relative', flexShrink:0, display:'flex', alignItems:'flex-end' }}>
+        <div style={{ width: LABEL_W, flexShrink:0 }} />
+        {/* Hover pill */}
+        <div style={{
+          position:'absolute', top:4, left: LABEL_W + PLAYHEAD, transform:'translateX(-50%)',
+          background: T.panelHeader, border:`1px solid ${T.borderSubtle}`, borderRadius:5,
+          padding:'2px 8px', fontSize:10, fontFamily:'monospace', color: T.textPrimary, whiteSpace:'nowrap',
+          zIndex:10,
+        }}>
+          55:24 · 9:39 AM · 10.61 km
+          <div style={{ position:'absolute', bottom:-4, left:'50%', transform:'translateX(-50%)', width:0, height:0, borderLeft:'4px solid transparent', borderRight:'4px solid transparent', borderTop:`4px solid ${T.borderSubtle}` }} />
+        </div>
+        {/* Ruler ticks */}
+        {['-00:15','27:10','55:24','1:01:23','1:20:21','1:26:52'].map((t,i) => (
+          <div key={t} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', paddingBottom:0 }}>
+            <div style={{ fontFamily:'monospace', fontSize:10, color: T.textMuted, marginBottom:2 }}>{t}</div>
+            <div style={{ width:1, height:6, background:'#3A424A' }} />
+          </div>
+        ))}
+      </div>
+
+      {/* Tracks */}
+      <div style={{ flex:1, position:'relative', overflow:'hidden' }}>
+        {/* Playhead */}
+        <div style={{ position:'absolute', top:0, bottom:0, left: LABEL_W + PLAYHEAD, width:1, background: T.playheadRed, zIndex:10 }}>
+          <div style={{ position:'absolute', top:0, left:-4, width:0, height:0, borderLeft:'4px solid transparent', borderRight:'4px solid transparent', borderTop:`6px solid ${T.playheadRed}` }} />
+        </div>
+
+        {/* FIT track */}
+        <div style={{ display:'flex', height:44, borderBottom:`1px solid ${T.borderSubtle}`, background:'#15191D' }}>
+          <div style={{ width: LABEL_W, background:'#11161A', borderRight:`1px solid ${T.borderSubtle}`, display:'flex', alignItems:'center', paddingLeft:10, fontSize:11, fontWeight:600, color: T.textMuted, flexShrink:0 }}>FIT</div>
+          <div style={{ flex:1, position:'relative', overflow:'hidden' }}>
+            <div style={{ position:'absolute', top:8, left:4, right:16, height:28, background: T.fitGreen, borderRadius:4, display:'flex', alignItems:'center', padding:'0 8px', fontFamily:'monospace', fontSize:11, fontWeight:500, color:'white' }}>00:00</div>
+          </div>
+        </div>
+
+        {/* Layer 1 */}
+        <div style={{ display:'flex', height:44, borderBottom:`1px solid ${T.borderSubtle}`, background:'#171C21' }}>
+          <div style={{ width: LABEL_W, background:'#11161A', borderRight:`1px solid ${T.borderSubtle}`, display:'flex', alignItems:'center', paddingLeft:10, fontSize:11, fontWeight:600, color: T.textMuted, flexShrink:0 }}>Layer 1</div>
+          <div style={{ flex:1, position:'relative', overflow:'hidden' }}>
+            {clips.map(c => (
+              <div key={c.id} style={{
+                position:'absolute', top:6, height:32, left:c.left, width:c.width,
+                background: T.clipBlue, borderRadius:4,
+                border: c.selected ? `2px solid white` : `1px solid #0B0F12`,
+                display:'flex', alignItems:'center', padding:'0 6px',
+                fontFamily:'monospace', fontSize:9, color:'rgba(255,255,255,.75)',
+                overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis',
+              }}>{c.label}</div>
+            ))}
+          </div>
+        </div>
+
+        {/* Layer 2 drop */}
+        <div style={{ display:'flex', height:44, borderBottom:`1px solid ${T.borderSubtle}`, background:'#15191D' }}>
+          <div style={{ width: LABEL_W, background:'#11161A', borderRight:`1px solid ${T.borderSubtle}`, display:'flex', alignItems:'center', paddingLeft:10, fontSize:11, fontWeight:600, color: T.textMuted, flexShrink:0 }}>Layer 2</div>
+          <div style={{ flex:1, display:'flex', alignItems:'center', padding:'6px' }}>
+            <div style={{ flex:1, height:32, border:`1px dashed ${T.borderSubtle}`, borderRadius:4, display:'flex', alignItems:'center', justifyContent:'center', gap:6, color: T.textMuted, fontSize:12 }}>
+              <IcoPlus /> Drop to Layer 2
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── App Toolbar ──────────────────────────────────────────
+function AppToolbar() {
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:10, padding:'0 14px', height:54, background: T.appChrome, borderBottom:`1px solid ${T.borderSubtle}`, flexShrink:0 }}>
+      <button style={{ height:32, padding:'0 12px', background: T.surfaceControl, border:`1px solid ${T.borderSubtle}`, borderRadius:7, color: T.textSecondary, fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M4 6l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><path d="M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+        FIT
+      </button>
+      <button style={{ height:32, padding:'0 12px', background: T.surfaceControl, border:`1px solid ${T.borderSubtle}`, borderRadius:7, color: T.textSecondary, fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
+        <IcoVideo /> Videos
+      </button>
+      <div style={{ flex:1 }} />
+      <button style={{ height:32, padding:'0 14px', background: T.accentBlue, border:'none', borderRadius:7, color:'white', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M4 6l3 3 3-3" stroke="white" strokeWidth="1.4" strokeLinecap="round"/><path d="M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
+        Export
+      </button>
+    </div>
+  );
+}
+
+// ─── Status Bar ───────────────────────────────────────────
+function StatusBar() {
+  return (
+    <div style={{ display:'flex', alignItems:'center', height:32, padding:'0 12px', background: T.appChrome, borderTop:`1px solid ${T.borderSubtle}`, flexShrink:0 }}>
+      <span style={{ fontSize:11, color: T.textMuted }}>Ready · PRO_VID_20260425_090526_00_003.mp4 selected</span>
+      <div style={{ flex:1 }} />
+      <IconBtn size={26}>
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.1"/><path d="M6.5 4v2l1.5 1.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/></svg>
+      </IconBtn>
+    </div>
+  );
+}
+
+// ─── Root App ─────────────────────────────────────────────
+function App() {
+  const [selectedClip, setSelectedClip] = useState(3);
+  const [selectedOverlay, setSelectedOverlay] = useState(null);
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100vh', background: T.appBg, overflow:'hidden' }}>
+      <AppToolbar />
+
+      {/* Main content area */}
+      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minHeight:0 }}>
+        {/* Upper panels */}
+        <div style={{ flex:1, display:'flex', minHeight:0 }}>
+          {/* Media Pool */}
+          <div style={{ width:310, flexShrink:0 }}>
+            <MediaPanel selectedClip={selectedClip} onSelect={setSelectedClip} />
+          </div>
+
+          {/* Preview (center) */}
+          <PreviewPanel onSelectOverlay={setSelectedOverlay} />
+
+          {/* Inspector */}
+          <div style={{ width:368, flexShrink:0, borderLeft:`1px solid ${T.borderSubtle}` }}>
+            <InspectorPanel selectedOverlay={selectedOverlay} onSelectOverlay={setSelectedOverlay} />
+          </div>
+        </div>
+
+        {/* Timeline */}
+        <div style={{ height:190, flexShrink:0 }}>
+          <TimelinePanel />
+        </div>
+      </div>
+
+      <StatusBar />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

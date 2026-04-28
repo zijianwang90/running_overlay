@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { background: #15191D; padding: 0; width: 380px; }
+  .panel-header { display:flex;align-items:center;gap:8px;padding:0 14px;height:54px;background:#1B2025;border-bottom:1px solid #2B3238; }
+  .h-title { font-size:22px;font-weight:600;color:#F3F6F8;flex:1; }
+  .pill { display:inline-flex;align-items:center;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:500;background:#1B2025;color:#B6BEC7;border:1px solid #2B3238; }
+  .icon-btn { width:30px;height:30px;background:#20252A;border:1px solid #2B3238;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer; }
+  .section { padding: 14px 14px 8px; }
+  .section-title { font-size:15px;font-weight:600;color:#F3F6F8;margin-bottom:2px; }
+  .section-sub { font-size:11px;color:#7E8893;margin-bottom:10px; }
+  .seg { display:inline-flex;background:rgba(255,255,255,0.06);border-radius:8px;padding:2px;gap:1px;margin-bottom:10px;width:100%; }
+  .seg-item { flex:1;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;background:transparent;border-radius:6px;cursor:pointer;color:#B6BEC7;border:none; }
+  .seg-item.active { background:#3A4149;color:#F3F6F8;box-shadow:0 1px 3px rgba(0,0,0,.4),0 0 0 0.5px rgba(255,255,255,0.08); }
+  .tile-grid { display:grid;grid-template-columns:1fr 1fr;gap:5px; }
+  .tile { display:flex;align-items:center;gap:8px;background:#20252A;border:1px solid #2B3238;border-radius:7px;padding:8px 10px;cursor:pointer; }
+  .tile-name { font-size:13px;font-weight:600;color:#F3F6F8;flex:1; }
+  .tile-hint { font-size:10px;color:#7E8893;margin-top:1px; }
+  .add { color:#7E8893;font-size:16px;line-height:1; }
+  .divider { height:1px;background:#2B3238;margin:0 14px; }
+  .added-row { display:flex;align-items:center;gap:8px;padding:0 14px;height:56px;border-bottom:1px solid #2B3238; }
+  .row-icon { width:30px;height:30px;background:#20252A;border:1px solid #2B3238;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+  .row-name { font-size:13px;font-weight:600;color:#F3F6F8; }
+  .row-sub { font-size:11px;color:#7E8893;margin-top:1px; }
+  .row-val { font-family:var(--font-mono);font-size:13px;font-weight:500;color:#B6BEC7;margin-left:auto; }
+  .row-actions { display:flex;gap:4px;margin-left:6px; }
+  .row-action { width:26px;height:26px;background:#20252A;border:1px solid #2B3238;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer; }
+  .chevron { color:#3A424A;font-size:13px;margin-left:2px; }
+  .footer { padding:10px 14px;border-top:1px solid #2B3238;display:flex;align-items:center;justify-content:center;gap:6px; }
+  .foot-txt { font-size:11px;color:#7E8893; }
+</style>
+</head>
+<body>
+<div class="panel-header">
+  <div class="h-title">Inspector</div>
+  <span class="pill">2 overlays</span>
+  <div class="icon-btn"><svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 4.5h11M4 7.5h7M6 10.5h3" stroke="#B6BEC7" stroke-width="1.3" stroke-linecap="round"/></svg></div>
+</div>
+<div class="section">
+  <div class="section-title">Add Overlay</div>
+  <div class="section-sub">Choose a data layer to place on the preview</div>
+  <div class="seg">
+    <div class="seg-item active">Metrics</div>
+    <div class="seg-item">Charts</div>
+    <div class="seg-item">Route</div>
+  </div>
+  <div class="tile-grid">
+    <div class="tile"><div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2a5 5 0 100 12A5 5 0 008 2zm0 2v3h3" stroke="#B6BEC7" stroke-width="1.2" stroke-linecap="round"/></svg></div><div><div class="tile-name">Heart Rate</div><div class="tile-hint">BPM</div></div><div class="add">+</div></div>
+    <div class="tile"><div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#B6BEC7" stroke-width="1.2"/><path d="M8 5.5v2.5l1.5 1" stroke="#B6BEC7" stroke-width="1.2" stroke-linecap="round"/></svg></div><div><div class="tile-name">Pace</div><div class="tile-hint">min/km</div></div><div class="add">+</div></div>
+    <div class="tile"><div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 12l3-4 2 2 2.5-5 2 3.5" stroke="#B6BEC7" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><div class="tile-name">Distance</div><div class="tile-hint">km</div></div><div class="add">+</div></div>
+    <div class="tile"><div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 12l3.5-4.5L8 9.5 10 6l3 4" stroke="#B6BEC7" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><div class="tile-name">Elevation</div><div class="tile-hint">m</div></div><div class="add">+</div></div>
+    <div class="tile"><div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="#B6BEC7" stroke-width="1.2"/><path d="M8 8m-3.5 0a3.5 3.5 0 0 1 7 0" stroke="#B6BEC7" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="1" fill="#B6BEC7"/><path d="M8 8l2-1.5" stroke="#B6BEC7" stroke-width="1.1" stroke-linecap="round"/></svg></div><div><div class="tile-name">Running Gauge</div><div class="tile-hint">Gauge + Value</div></div><div class="add">+</div></div>
+    <div class="tile"><div style="width:24px;height:24px;display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 12l2-3 2.5 2 2-3.5 2.5 4" stroke="#B6BEC7" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="4" cy="5" r="2" stroke="#B6BEC7" stroke-width="1.1"/></svg></div><div><div class="tile-name">Route Map</div><div class="tile-hint">Map with route</div></div><div class="add">+</div></div>
+  </div>
+</div>
+<div class="divider"></div>
+<div class="section" style="padding-bottom:4px;">
+  <div class="section-title">Added Elements</div>
+  <div class="section-sub" style="margin-bottom:6px;">Manage overlays in your scene</div>
+</div>
+<div class="added-row">
+  <div class="row-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5" stroke="#B6BEC7" stroke-width="1.2"/><path d="M7 7m-3 0a3 3 0 0 1 6 0" stroke="#B6BEC7" stroke-width="1.2" stroke-linecap="round"/><circle cx="7" cy="7" r=".8" fill="#B6BEC7"/></svg></div>
+  <div><div class="row-name">Running Gauge</div><div class="row-sub">Distance · Gauge</div></div>
+  <div class="row-val">10.73 km</div>
+  <div class="row-actions">
+    <div class="row-action"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 2.5C4 2.5 2 5 2 6.5 2 8 4 10.5 6.5 10.5S11 8 11 6.5 9 2.5 6.5 2.5z" stroke="#B6BEC7" stroke-width="1.1"/><circle cx="6.5" cy="6.5" r="1.5" fill="#B6BEC7"/></svg></div>
+    <div class="row-action"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="3" y="2.5" width="7" height="8" rx="1" stroke="#B6BEC7" stroke-width="1.1"/><path d="M5 2.5V2a1 1 0 012 0v.5" stroke="#B6BEC7" stroke-width="1.1"/></svg></div>
+    <div class="row-action"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M3 3.5h7M5 3.5V3a.5.5 0 011 0v.5M4.5 3.5l.5 6M8.5 3.5l-.5 6" stroke="#B6BEC7" stroke-width="1.1" stroke-linecap="round"/></svg></div>
+  </div>
+  <div class="chevron">›</div>
+</div>
+<div class="added-row">
+  <div class="row-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5" stroke="#B6BEC7" stroke-width="1.2"/><path d="M7 4.5v2.8l1.5 1" stroke="#B6BEC7" stroke-width="1.2" stroke-linecap="round"/></svg></div>
+  <div><div class="row-name">Pace</div><div class="row-sub">Pace · Text</div></div>
+  <div class="row-val">5'10"/km</div>
+  <div class="row-actions">
+    <div class="row-action"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 2.5C4 2.5 2 5 2 6.5 2 8 4 10.5 6.5 10.5S11 8 11 6.5 9 2.5 6.5 2.5z" stroke="#B6BEC7" stroke-width="1.1"/><circle cx="6.5" cy="6.5" r="1.5" fill="#B6BEC7"/></svg></div>
+    <div class="row-action"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="3" y="2.5" width="7" height="8" rx="1" stroke="#B6BEC7" stroke-width="1.1"/><path d="M5 2.5V2a1 1 0 012 0v.5" stroke="#B6BEC7" stroke-width="1.1"/></svg></div>
+    <div class="row-action"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M3 3.5h7M5 3.5V3a.5.5 0 011 0v.5M4.5 3.5l.5 6M8.5 3.5l-.5 6" stroke="#B6BEC7" stroke-width="1.1" stroke-linecap="round"/></svg></div>
+  </div>
+  <div class="chevron">›</div>
+</div>
+<div class="footer">
+  <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#7E8893" stroke-width="1.1"/><path d="M6.5 5.5v4M6.5 4.5v-.5" stroke="#7E8893" stroke-width="1.2" stroke-linecap="round"/></svg>
+  <span class="foot-txt">Click an overlay to edit its style and position</span>
+</div>
+</body>
+</html>

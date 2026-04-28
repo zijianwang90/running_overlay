@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { background: #15191D; padding: 14px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .tile {
+    display: flex; align-items: center; gap: 10px;
+    background: #20252A; border: 1px solid #2B3238; border-radius: 7px;
+    padding: 10px 12px; cursor: pointer;
+  }
+  .tile:hover { background: #272D33; }
+  .tile-icon { width: 32px; height: 32px; display:flex;align-items:center;justify-content:center; flex-shrink:0; }
+  .tile-info { flex: 1; min-width: 0; }
+  .tile-name { font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: #F3F6F8; }
+  .tile-hint { font-family: var(--font-sans); font-size: 11px; color: #7E8893; margin-top: 1px; }
+  .add-btn { color: #7E8893; font-size: 18px; flex-shrink:0; line-height:1; }
+</style>
+</head>
+<body>
+<div class="grid">
+  <div class="tile">
+    <div class="tile-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 4c-3 0-6 2-7 5 1 3 4 5 7 5s6-2 7-5c-1-3-4-5-7-5z" stroke="#B6BEC7" stroke-width="1.2"/><path d="M5 14l2-4 3 2 2-4 2 3" stroke="#B6BEC7" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="tile-info"><div class="tile-name">Route Map</div><div class="tile-hint">Map with route</div></div>
+    <div class="add-btn">+</div>
+  </div>
+</div>
+</body>
+</html>

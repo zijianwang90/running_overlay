@@ -1,0 +1,177 @@
+/**
+ * Running Overlay — Design Tokens
+ * Source of truth: Sources/RunningOverlay/UI/EditorTheme.swift
+ * Last synced: 2026-04-27
+ *
+ * Usage: import this file into any HTML prototype or design artifact.
+ * All tokens map directly to the SwiftUI/AppKit EditorTheme enum values.
+ */
+
+:root {
+  /* ─── App Backgrounds ─────────────────────────────────── */
+  --app-bg:           #0B0F12;   /* Root app background          */
+  --app-chrome:       #101418;   /* Toolbar, outer chrome, split */
+
+  /* ─── Panel Surfaces ──────────────────────────────────── */
+  --panel-bg:         #15191D;   /* Panel bodies                 */
+  --panel-header:     #1B2025;   /* Panel title bars             */
+  --surface-raised:   #1B2025;   /* Elevated sections, popovers  */
+  --surface-control:  #20252A;   /* Buttons, fields, tiles       */
+  --surface-hover:    #272D33;   /* Hovered controls             */
+  --surface-pressed:  #11161A;   /* Pressed controls             */
+  --surface-selected: #263244;   /* Selected rows/items          */
+
+  /* ─── Borders ─────────────────────────────────────────── */
+  --border-subtle:    #2B3238;   /* Dividers, panel borders      */
+  --border-strong:    #3A424A;   /* Focus rings, active borders  */
+  --border-width:     1px;
+
+  /* ─── Text ────────────────────────────────────────────── */
+  --text-primary:     #F3F6F8;   /* Main labels                  */
+  --text-secondary:   #B6BEC7;   /* Metadata, subtitles          */
+  --text-muted:       #7E8893;   /* Hints, disabled              */
+
+  /* ─── Accent ──────────────────────────────────────────── */
+  --accent-blue:      #2F8CFF;   /* Primary actions, selected    */
+  --accent-blue-soft: #123052;   /* Active tab/tile background   */
+
+  /* ─── Status ──────────────────────────────────────────── */
+  --danger-red:       #FF5A5F;   /* Destructive actions          */
+  --success-green:    #51C96B;   /* Ready/aligned states         */
+  --warning-yellow:   #FFD166;   /* Warning/partial states       */
+
+  /* ─── Mark Colors (Media Pool) ────────────────────────── */
+  --mark-red:         #FF5A5F;
+  --mark-orange:      #FF9342;
+  --mark-yellow:      #FFD166;
+  --mark-green:       #51C96B;
+  --mark-blue:        #2F8CFF;
+  --mark-purple:      #B657E8;
+  --mark-gray:        #9EA3AA;
+
+  /* ─── Timeline-Specific ───────────────────────────────── */
+  --timeline-fit:          #49A862;   /* FIT activity bar         */
+  --timeline-clip:         #2F73D9;   /* Video clip blocks        */
+  --timeline-playhead:     #E4525A;   /* Playhead line            */
+  --timeline-track-a:      #15191D;   /* Alternating track band A */
+  --timeline-track-b:      #171C21;   /* Alternating track band B */
+  --timeline-label-col:    #11161A;   /* Label column background  */
+  --timeline-splice:       #0B0F12;   /* Splice/clip edge border  */
+  --timeline-drop-target:  #2F8CFF;   /* Drop zone border         */
+
+  /* ─── Spacing ─────────────────────────────────────────── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+
+  /* ─── Layout ──────────────────────────────────────────── */
+  --panel-padding-x:       14px;
+  --panel-header-height:   54px;
+  --control-height:        32px;
+  --control-height-dense:  30px;
+  --row-height-compact:    52px;
+  --row-height-media:      72px;
+  --icon-button-size:      30px;
+  --thumbnail-size:        42px;
+
+  /* ─── Radii ───────────────────────────────────────────── */
+  --radius-control:  7px;
+  --radius-panel:    8px;
+  --radius-pill:     100px;
+  --radius-clip:     4px;
+
+  /* ─── Typography ──────────────────────────────────────── */
+  --font-sans:  -apple-system, "SF Pro Display", "SF Pro Text", BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  --font-mono:  "SF Mono", ui-monospace, "Cascadia Code", "Fira Mono", monospace;
+
+  /* Font sizes */
+  --text-panel-title:    22px;
+  --text-section-title:  15px;
+  --text-body:           13px;
+  --text-caption:        11px;
+
+  /* Font weights */
+  --weight-regular:   400;
+  --weight-medium:    500;
+  --weight-semibold:  600;
+  --weight-bold:      700;
+}
+
+/* ─── Semantic type roles ─────────────────────────────────── */
+
+.type-panel-title {
+  font-family: var(--font-sans);
+  font-size: var(--text-panel-title);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.type-section-title {
+  font-family: var(--font-sans);
+  font-size: var(--text-section-title);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  letter-spacing: 0;
+  line-height: 1.3;
+}
+
+.type-body {
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  font-weight: var(--weight-regular);
+  color: var(--text-primary);
+  letter-spacing: 0;
+  line-height: 1.4;
+}
+
+.type-body-strong {
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  letter-spacing: 0;
+  line-height: 1.4;
+}
+
+.type-caption {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-regular);
+  color: var(--text-secondary);
+  letter-spacing: 0;
+  line-height: 1.4;
+}
+
+.type-numeric {
+  font-family: var(--font-mono);
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.type-timeline-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Base resets for design artifacts ───────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  color: var(--text-primary);
+  background: var(--app-bg);
+  -webkit-font-smoothing: antialiased;
+}

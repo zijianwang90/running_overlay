@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { background: #1a1a1a; padding: 16px; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .swatch { display: flex; flex-direction: column; gap: 4px; }
+  .chip { width: 72px; height: 48px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); }
+  .label { font-family: var(--font-mono); font-size: 10px; color: #888; }
+  .name  { font-family: var(--font-sans); font-size: 10px; color: #aaa; }
+  .group-label { font-family: var(--font-sans); font-size: 10px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-family: var(--font-sans); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="group-label">Text</div>
+<div class="row">
+  <div class="swatch"><div class="chip" style="background:#F3F6F8;"></div><div class="name">text.primary</div><div class="label">#F3F6F8</div></div>
+  <div class="swatch"><div class="chip" style="background:#B6BEC7;"></div><div class="name">text.secondary</div><div class="label">#B6BEC7</div></div>
+  <div class="swatch"><div class="chip" style="background:#7E8893;"></div><div class="name">text.muted</div><div class="label">#7E8893</div></div>
+</div>
+<div class="group-label">Accent</div>
+<div class="row">
+  <div class="swatch"><div class="chip" style="background:#2F8CFF;"></div><div class="name">accent.blue</div><div class="label">#2F8CFF</div></div>
+  <div class="swatch"><div class="chip" style="background:#123052;"></div><div class="name">accent.blue.soft</div><div class="label">#123052</div></div>
+</div>
+<div class="group-label">Status</div>
+<div class="row">
+  <div class="swatch"><div class="chip" style="background:#FF5A5F;"></div><div class="name">danger.red</div><div class="label">#FF5A5F</div></div>
+  <div class="swatch"><div class="chip" style="background:#51C96B;"></div><div class="name">success.green</div><div class="label">#51C96B</div></div>
+  <div class="swatch"><div class="chip" style="background:#FFD166;"></div><div class="name">warning.yellow</div><div class="label">#FFD166</div></div>
+</div>
+<div class="group-label">Status Pills</div>
+<div class="row" style="align-items:center; gap:8px;">
+  <span class="pill" style="background:#1a2f1e; color:#51C96B; border:1px solid #51C96B44;">Aligned</span>
+  <span class="pill" style="background:#2a1a1b; color:#FF5A5F; border:1px solid #FF5A5F44;">Error</span>
+  <span class="pill" style="background:#2a2316; color:#FFD166; border:1px solid #FFD16644;">Partial</span>
+  <span class="pill" style="background:#123052; color:#2F8CFF; border:1px solid #2F8CFF44;">2 overlays</span>
+</div>
+</body>
+</html>

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Route Map Presets</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0B0F12;font-family:-apple-system,"SF Pro Text",sans-serif;-webkit-font-smoothing:antialiased;padding:28px 24px;}
+h1{font-size:13px;font-weight:600;color:#7E8893;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+.section{margin-bottom:32px;}
+.section-title{font-size:11px;font-weight:500;color:#3A424A;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;margin-top:20px;}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.card{background:#15191D;border:1px solid #2B3238;border-radius:10px;overflow:hidden;}
+.card-canvas{aspect-ratio:1;position:relative;background:linear-gradient(160deg,#1a1810,#2a221a,#1a1510);}
+.card-canvas-inner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.card-label{padding:9px 12px;border-top:1px solid #2B3238;}
+.card-label-name{font-size:12px;font-weight:600;color:#F3F6F8;}
+.card-label-sub{font-size:10px;color:#7E8893;margin-top:2px;}
+
+/* Route path shape – reused via JS */
+</style>
+</head>
+<body>
+<h1>Route Map — Presets</h1>
+
+<div class="section-title">Container Presets — 容器样式</div>
+<div class="grid" id="container-grid"></div>
+
+<div class="section-title">Route Line Styles — 轨迹线样式</div>
+<div class="grid-3" id="line-grid"></div>
+
+<script>
+// ── Shared GPS route path (normalised 0–1) ──────────────────
+const RAW_ROUTE = [
+  [.18,.82],[.22,.70],[.28,.58],[.32,.50],[.30,.42],[.35,.34],[.42,.28],
+  [.50,.24],[.58,.28],[.65,.34],[.68,.44],[.64,.55],[.60,.64],[.55,.72],
+  [.52,.80],[.58,.86],[.66,.82],[.72,.76],[.78,.68],[.82,.60]
+];
+
+function routePoints(w, h) {
+  return RAW_ROUTE.map(([x,y]) => [x*w, y*h]);
+}
+
+function polylinePath(pts) {
+  return pts.map((p,i) => (i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+}
+
+function svgNS(tag, attrs={}) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k,v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+// ── Map background renderers ──────────────────────────────────
+function darkMap(svg, w, h) {
+  // Dark tile-like grid
+  const g = svgNS('g');
+  g.appendChild(svgNS('rect',{x:0,y:0,width:w,height:h,fill:'#111820'}));
+  // Road lines
+  const roads = [
+    [[0,h*.3],[w*.4,h*.3],[w*.4,h*.7],[w,h*.7]],
+    [[w*.2,0],[w*.2,h*.5],[w*.8,h*.5]],
+    [[w*.6,0],[w*.6,h*.3],[w,h*.3]],
+    [[0,h*.6],[w*.3,h*.6]],
+  ];
+  for (const road of roads) {
+    const path = road.map((p,i)=>(i===0?'M':'L')+p[0]+','+p[1]).join(' ');
+    const r = svgNS('path',{d:path,fill:'none',stroke:'#1e2840',
+      'stroke-width':'3','stroke-linecap':'round','stroke-linejoin':'round'});
+    g.appendChild(r);
+    const r2 = svgNS('path',{d:path,fill:'none',stroke:'#232e4a',
+      'stroke-width':'1.2','stroke-linecap':'round','stroke-linejoin':'round'});
+    g.appendChild(r2);
+  }
+  // Block fills
+  const blocks = [[w*.22,h*.05,w*.14,h*.22],[w*.44,h*.05,w*.12,h*.22],
+    [w*.64,h*.05,w*.14,h*.22],[w*.05,h*.35,w*.1,h*.12],
+    [w*.22,h*.35,w*.14,h*.12],[w*.64,h*.35,w*.12,h*.12],
+    [w*.05,h*.55,w*.12,h*.08],[w*.22,h*.55,w*.1,h*.08],[w*.44,h*.55,w*.12,h*.08]];
+  for (const [bx,by,bw,bh] of blocks) {
+    g.appendChild(svgNS('rect',{x:bx,y:by,width:bw,height:bh,fill:'#192030',rx:'1'}));
+  }
+  svg.appendChild(g);
+}
+
+// ── Route line renderers ──────────────────────────────────────
+function drawMinimalLine(svg, pts) {
+  // Thin solid white line, simple dots for markers
+  const path = svgNS('path',{d:polylinePath(pts),fill:'none',stroke:'white',
+    'stroke-width':'2.2','stroke-linecap':'round','stroke-linejoin':'round',opacity:'.9'});
+  svg.appendChild(path);
+  // Markers
+  const s = pts[0], e = pts[pts.length-1];
+  svg.appendChild(svgNS('circle',{cx:s[0],cy:s[1],r:'4',fill:'#40D066'}));
+  svg.appendChild(svgNS('circle',{cx:e[0],cy:e[1],r:'4',fill:'#FF5A5F'}));
+}
+
+function drawGradientLine(svg, pts, w, h) {
+  const id = 'grad_'+Math.random().toString(36).slice(2);
+  const defs = svgNS('defs');
+  const lg = svgNS('linearGradient',{id,x1:'0%',y1:'100%',x2:'100%',y2:'0%',
+    gradientUnits:'userSpaceOnUse'});
+  [[0,'#40D066'],[.5,'#FFD166'],[1,'#FF5A5F']].forEach(([offset,color])=>{
+    const stop = svgNS('stop',{offset:`${offset*100}%`,'stop-color':color});
+    lg.appendChild(stop);
+  });
+  defs.appendChild(lg);
+  svg.appendChild(defs);
+  const path = svgNS('path',{d:polylinePath(pts),fill:'none',stroke:`url(#${id})`,
+    'stroke-width':'3.5','stroke-linecap':'round','stroke-linejoin':'round'});
+  svg.appendChild(path);
+  const s = pts[0], e = pts[pts.length-1];
+  svg.appendChild(svgNS('circle',{cx:s[0],cy:s[1],r:'5',fill:'#40D066'}));
+  svg.appendChild(svgNS('circle',{cx:e[0],cy:e[1],r:'5',fill:'#FF5A5F'}));
+}
+
+function drawGlowLine(svg, pts) {
+  // Glow line: 2 passes – wide blurred + sharp
+  const id = 'glowF_'+Math.random().toString(36).slice(2);
+  const defs = svgNS('defs');
+  const f = svgNS('filter',{id,x:'-20%',y:'-20%',width:'140%',height:'140%'});
+  const blur = svgNS('feGaussianBlur',{in:'SourceGraphic',stdDeviation:'4',result:'blur'});
+  const merge = svgNS('feMerge');
+  ['blur','SourceGraphic'].forEach(n=>{
+    const mn = svgNS('feMergeNode'); if(n!=='SourceGraphic') mn.setAttribute('in',n); merge.appendChild(mn);
+  });
+  f.appendChild(blur); f.appendChild(merge); defs.appendChild(f);
+  svg.appendChild(defs);
+  // Wide glow pass
+  const glow = svgNS('path',{d:polylinePath(pts),fill:'none',stroke:'#3ABAFF',
+    'stroke-width':'6','stroke-linecap':'round','stroke-linejoin':'round',
+    opacity:'.45', filter:`url(#${id})`});
+  svg.appendChild(glow);
+  // Sharp line
+  const line = svgNS('path',{d:polylinePath(pts),fill:'none',stroke:'#3ABAFF',
+    'stroke-width':'2.8','stroke-linecap':'round','stroke-linejoin':'round'});
+  svg.appendChild(line);
+  const s = pts[0], e = pts[pts.length-1];
+  svg.appendChild(svgNS('circle',{cx:s[0],cy:s[1],r:'5',fill:'#40D066',
+    filter:`url(#${id})`}));
+  svg.appendChild(svgNS('circle',{cx:e[0],cy:e[1],r:'5',fill:'#FF5A5F',
+    filter:`url(#${id})`}));
+}
+
+// ── Legend ────────────────────────────────────────────────────
+function drawLegend(svg, w, h) {
+  const g = svgNS('g');
+  const bg = svgNS('rect',{x:w*.04,y:h*.76,width:w*.42,height:h*.2,
+    rx:'4',fill:'black','fill-opacity':'.55'});
+  g.appendChild(bg);
+  function legendRow(y, dot, label, val) {
+    const c = svgNS('circle',{cx:w*.09,cy:y,r:'4',fill:dot}); g.appendChild(c);
+    const lt = svgNS('text',{x:w*.14,y:y+3.5,'font-family':'-apple-system,sans-serif',
+      'font-size':'8','fill':'white','opacity':'.7'}); lt.textContent=label; g.appendChild(lt);
+    const vt = svgNS('text',{x:w*.42,y:y+3.5,'font-family':'monospace',
+      'font-size':'8','fill':'white','text-anchor':'end'}); vt.textContent=val; g.appendChild(vt);
+  }
+  legendRow(h*.82, '#40D066','Start','0:00');
+  legendRow(h*.9, '#FF5A5F','Finish','12.86 km');
+  svg.appendChild(g);
+}
+
+// ── Container builders ────────────────────────────────────────
+function buildContainer(preset, lineStyle) {
+  const SIZE = 200;
+  const card = document.createElement('div');
+  card.className = 'card';
+
+  const canvas = document.createElement('div');
+  canvas.className = 'card-canvas';
+
+  const inner = document.createElement('div');
+  inner.className = 'card-canvas-inner';
+
+  // Container properties
+  const isCircle = preset.includes('Circle');
+  const isGradient = preset.includes('Gradient');
+  const mapOpacity = isGradient ? 0.58 : 0.72;
+  const shadow = !isGradient;
+  const fadeAmount = preset === 'circleGradientEdge' ? 0.34 : preset === 'squareGradientEdge' ? 0.30 : 0;
+  const containerW = isCircle ? 140 : 160;
+  const containerH = isCircle ? 140 : 120;
+
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = `position:relative;width:${containerW}px;height:${containerH}px;`;
+  if (!isGradient && shadow) {
+    wrapper.style.boxShadow = `0 6px ${isCircle?16:14}px rgba(0,0,0,${isCircle?.38:.35})`;
+  }
+
+  // Create SVG
+  const svg = svgNS('svg');
+  svg.setAttribute('width', containerW);
+  svg.setAttribute('height', containerH);
+  svg.setAttribute('viewBox', `0 0 ${containerW} ${containerH}`);
+  svg.style.display = 'block';
+
+  const defs = svgNS('defs');
+  const clipId = 'clip_'+Math.random().toString(36).slice(2);
+  let clipShape;
+  if (isCircle) {
+    clipShape = svgNS('circle',{cx:containerW/2,cy:containerH/2,r:containerW/2-1});
+  } else {
+    clipShape = svgNS('rect',{x:0,y:0,width:containerW,height:containerH,rx:'8'});
+  }
+  const clip = svgNS('clipPath',{id:clipId});
+  clip.appendChild(clipShape);
+
+  // Gradient fade mask
+  const maskId = 'mask_'+Math.random().toString(36).slice(2);
+  if (isGradient && fadeAmount > 0) {
+    const mask = svgNS('mask',{id:maskId});
+    if (isCircle) {
+      const rg = svgNS('radialGradient',{id:maskId+'_rg',cx:'50%',cy:'50%',r:'50%'});
+      [[0,'white',1],[0.45,'white',1],[1,'white',0]].forEach(([off,col,op])=>{
+        const s = svgNS('stop',{offset:`${off*100}%`,'stop-color':col,'stop-opacity':op});
+        rg.appendChild(s);
+      });
+      defs.appendChild(rg);
+      const mRect = svgNS('rect',{x:0,y:0,width:containerW,height:containerH,fill:`url(#${maskId+'_rg'})`});
+      mask.appendChild(mRect);
+    } else {
+      const rg = svgNS('radialGradient',{id:maskId+'_rg',cx:'50%',cy:'50%',r:'70%'});
+      [[0,'white',1],[0.45,'white',1],[1,'white',0]].forEach(([off,col,op])=>{
+        const s = svgNS('stop',{offset:`${off*100}%`,'stop-color':col,'stop-opacity':op});
+        rg.appendChild(s);
+      });
+      defs.appendChild(rg);
+      const mRect = svgNS('rect',{x:0,y:0,width:containerW,height:containerH,fill:`url(#${maskId+'_rg'})`});
+      mask.appendChild(mRect);
+    }
+    defs.appendChild(mask);
+  }
+  defs.appendChild(clip);
+  svg.appendChild(defs);
+
+  // Clipped map group
+  const mapGroup = svgNS('g',{
+    'clip-path': `url(#${clipId})`,
+    ...(isGradient ? {mask:`url(#${maskId})`} : {})
+  });
+
+  // Map bg
+  darkMap(mapGroup, containerW, containerH);
+
+  // Route
+  const pts = routePoints(containerW, containerH);
+  const routeG = svgNS('g');
+  if (lineStyle === 'minimal') drawMinimalLine(routeG, pts);
+  else if (lineStyle === 'gradient') drawGradientLine(routeG, pts, containerW, containerH);
+  else if (lineStyle === 'glow') drawGlowLine(routeG, pts);
+  mapGroup.appendChild(routeG);
+
+  // Legend
+  if (!isCircle) drawLegend(mapGroup, containerW, containerH);
+
+  svg.appendChild(mapGroup);
+
+  // Border (hard edge only)
+  if (!isGradient) {
+    const border = isCircle
+      ? svgNS('circle',{cx:containerW/2,cy:containerH/2,r:containerW/2-1,
+          fill:'none',stroke:'rgba(255,255,255,0.12)','stroke-width':'1'})
+      : svgNS('rect',{x:'.5',y:'.5',width:containerW-1,height:containerH-1,rx:'8',
+          fill:'none',stroke:'rgba(255,255,255,0.12)','stroke-width':'1'});
+    svg.appendChild(border);
+  }
+
+  wrapper.appendChild(svg);
+  inner.appendChild(wrapper);
+  canvas.appendChild(inner);
+  card.appendChild(canvas);
+
+  return {card};
+}
+
+// ── Render container presets ──────────────────────────────────
+const containerPresets = [
+  {id:'squareHardEdge', name:'Square Hard Edge', sub:'方形硬边界 · Shadow · Map 72%'},
+  {id:'circleHardEdge', name:'Circle Hard Edge', sub:'圆形硬边界 · Shadow · Map 72%'},
+  {id:'squareGradientEdge', name:'Square Gradient Edge', sub:'方形渐变边缘 · No shadow · Map 58%'},
+  {id:'circleGradientEdge', name:'Circle Gradient Edge', sub:'圆形渐变边缘 · No shadow · Map 58%'},
+];
+const cg = document.getElementById('container-grid');
+for (const p of containerPresets) {
+  const {card} = buildContainer(p.id, 'gradient');
+  const label = document.createElement('div');
+  label.className = 'card-label';
+  label.innerHTML = `<div class="card-label-name">${p.name}</div><div class="card-label-sub">${p.sub}</div>`;
+  card.appendChild(label);
+  cg.appendChild(card);
+}
+
+// ── Render route line styles ──────────────────────────────────
+const lineStyles = [
+  {id:'minimal', name:'Minimal', sub:'极简轨迹 · Thin solid white line · Dot markers'},
+  {id:'gradient', name:'Gradient', sub:'渐变轨迹 · Green→Yellow→Red · Dot markers'},
+  {id:'glow', name:'Glow', sub:'发光轨迹 · Cyan with blur glow · Glow markers'},
+];
+const lg2 = document.getElementById('line-grid');
+for (const s of lineStyles) {
+  const {card} = buildContainer('squareHardEdge', s.id);
+  const label = document.createElement('div');
+  label.className = 'card-label';
+  label.innerHTML = `<div class="card-label-name">${s.name}</div><div class="card-label-sub">${s.sub}</div>`;
+  card.appendChild(label);
+  lg2.appendChild(card);
+}
+</script>
+</body>
+</html>

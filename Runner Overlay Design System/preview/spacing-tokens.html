@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { background: #1a1a1a; padding: 16px; display: flex; gap: 24px; }
+  .col { flex: 1; }
+  .group-label { font-family: var(--font-sans); font-size: 10px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .token-row { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+  .bar { background: #2F8CFF; border-radius: 2px; height: 14px; }
+  .token-name { font-family: var(--font-mono); font-size: 10px; color: #7E8893; width: 60px; flex-shrink:0; }
+  .token-val  { font-family: var(--font-mono); font-size: 10px; color: #4a5560; }
+  .divider { width: 1px; background: #2B3238; }
+  .size-row { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+  .size-block { background: #20252A; border: 1px solid #2B3238; border-radius: 3px; display:flex;align-items:center;justify-content:center; }
+  .sz-label { font-family: var(--font-mono); font-size: 10px; color: #7E8893; width: 120px; flex-shrink:0; }
+  .sz-val { font-family: var(--font-mono); font-size: 10px; color: #4a5560; }
+</style>
+</head>
+<body>
+<div class="col">
+  <div class="group-label">Spacing Scale</div>
+  <div class="token-row"><div class="token-name">space.1</div><div class="bar" style="width:4px;"></div><div class="token-val">4px</div></div>
+  <div class="token-row"><div class="token-name">space.2</div><div class="bar" style="width:8px;"></div><div class="token-val">8px</div></div>
+  <div class="token-row"><div class="token-name">space.3</div><div class="bar" style="width:12px;"></div><div class="token-val">12px</div></div>
+  <div class="token-row"><div class="token-name">space.4</div><div class="bar" style="width:16px;"></div><div class="token-val">16px</div></div>
+  <div class="token-row"><div class="token-name">space.5</div><div class="bar" style="width:20px;"></div><div class="token-val">20px</div></div>
+  <div class="token-row"><div class="token-name">space.6</div><div class="bar" style="width:24px;"></div><div class="token-val">24px</div></div>
+</div>
+<div class="divider"></div>
+<div class="col">
+  <div class="group-label">Radii</div>
+  <div class="size-row"><div class="sz-label">radius.control</div><div class="size-block" style="width:28px;height:28px;border-radius:7px;"></div><div class="sz-val">7px</div></div>
+  <div class="size-row"><div class="sz-label">radius.panel</div><div class="size-block" style="width:28px;height:28px;border-radius:8px;"></div><div class="sz-val">8px</div></div>
+  <div class="size-row"><div class="sz-label">radius.clip</div><div class="size-block" style="width:28px;height:28px;border-radius:4px;"></div><div class="sz-val">4px</div></div>
+  <div class="size-row"><div class="sz-label">radius.pill</div><div class="size-block" style="width:48px;height:20px;border-radius:100px;"></div><div class="sz-val">100px</div></div>
+  <div class="group-label" style="margin-top:10px;">Key Heights</div>
+  <div class="size-row"><div class="sz-label">panel.headerHeight</div><div class="size-block" style="width:54px;height:14px;border-radius:2px;"></div><div class="sz-val">54px</div></div>
+  <div class="size-row"><div class="sz-label">row.compact</div><div class="size-block" style="width:52px;height:13px;border-radius:2px;"></div><div class="sz-val">52px</div></div>
+  <div class="size-row"><div class="sz-label">row.media</div><div class="size-block" style="width:52px;height:18px;border-radius:2px;"></div><div class="sz-val">72px</div></div>
+  <div class="size-row"><div class="sz-label">iconButton</div><div class="size-block" style="width:30px;height:30px;border-radius:7px;"></div><div class="sz-val">30×30</div></div>
+</div>
+</body>
+</html>
