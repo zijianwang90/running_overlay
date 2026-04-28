@@ -1,6 +1,6 @@
 # Numeric Overlay UI Design Spec
 
-Last updated: 2026-04-26 (post numeric-overlay refactor)
+Last updated: 2026-04-28 (label/unit split sections + independent typography + background fade/blur)
 
 ## Purpose
 
@@ -37,7 +37,7 @@ Numeric Overlay editing should feel closer to a DaVinci Resolve inspector than t
 - Compact section headers with icons and collapse affordances.
 - Thin dividers instead of large card blocks.
 - Minimal vertical gaps.
-- Row heights around 30-34 px.
+- Most row heights around 30-34 px, with taller adaptive rows for controls that need extra vertical space (for example, anchor grids).
 - Controls should be precise, model-backed, and fast to scan.
 
 The panel should still use Running Overlay's dark design tokens and blue accent from [App UI](../../system/app-ui.md).
@@ -65,10 +65,12 @@ Sections:
 
 1. `Content`
 2. `Layout`
-3. `Typography`
-4. `Color`
-5. `Background`
-6. `Shadow`
+3. `Typography` (value only)
+4. `Label`
+5. `Unit`
+6. `Color`
+7. `Background`
+8. `Shadow`
 
 Each section should render as a compact collapsible group:
 
@@ -86,9 +88,6 @@ Do not use large card containers for every row.
 | --- | --- | --- |
 | `Units` dropdown | `Metric (min/km)` | Required for metrics with unit variants. |
 | `Format Preview` readout | `13'49" / km` | Always visible and model-backed through formatter. |
-| `Show Label` toggle | On/off | Controls label visibility when supported. |
-| `Show Unit` toggle | On/off | Controls unit suffix visibility when supported. |
-| `Label` text field | `Pace` | Custom display label when supported. |
 
 ### Unit Selection
 
@@ -121,33 +120,50 @@ Implementation rule:
 
 ## Layout Section
 
-Controls:
+Implemented via the shared `OverlayLayoutRows` component. Controls:
 
-- Anchor: compact 3x3 grid.
-- Position X and Y numeric fields on one row.
-- Scale slider with value label.
-- Rotation field/slider when supported.
+- Position X and Y numeric fields on one row (three-decimal precision).
+- Scale slider, range `0.25...4`, quantized to `0.05`, formatted `1.00x`.
+- Rotation slider, range `-180...180°`, integer degrees (`showRotation: true`).
 
-Model mapping:
-
-- Existing model supports `OverlayElement.position.x`, `OverlayElement.position.y`, and `OverlayElement.scale`.
-- Rotation is a future field unless model support is added.
+Anchor and Padding rows have been removed. Position is set numerically only.
 
 ## Typography Section
 
 Controls:
 
 - Font dropdown.
-- Font Size slider with numeric value.
+- Font Size slider with numeric value (value text only).
 - Weight segmented control: `Regular`, `Medium`, `Semibold`, `Bold`.
-- Alignment icon segmented buttons: left, center, right.
 
 Model mapping:
 
 - Existing model supports `OverlayStyle.fontName`.
 - Existing model supports `OverlayStyle.fontSize`.
 - Existing model supports `OverlayStyle.fontWeight`.
-- Alignment is a future field unless model support is added.
+- Alignment control is removed (the previous control had no rendering effect).
+- Typography size no longer scales label/unit; label and unit are edited in their own sections.
+
+## Label Section
+
+Controls:
+
+- `Enable Label` toggle in section header accessory.
+- Label text field.
+- Position segmented control: `Top`, `Bottom`, `Left`, `Right`.
+- Label font family.
+- Label font size.
+- Label font weight.
+
+## Unit Section
+
+Controls:
+
+- `Enable Unit` toggle in section header accessory.
+- Position segmented control: `Top`, `Bottom`, `Left`, `Right`.
+- Unit font family.
+- Unit font size.
+- Unit font weight.
 
 ## Color Section
 
@@ -170,6 +186,9 @@ Controls:
 - Opacity slider.
 - Radius slider.
 - Padding X and Padding Y fields or compact steppers.
+- Fade Out toggle.
+- Fade Amount slider.
+- Gaussian Blur slider.
 
 Model mapping:
 
@@ -177,6 +196,8 @@ Model mapping:
 - `OverlayStyle.backgroundColor` is the fill color.
 - `OverlayStyle.backgroundOpacity` continues to multiply the alpha for backwards-compatible templates.
 - `OverlayStyle.backgroundRadius` and `OverlayStyle.backgroundPaddingX/Y` drive the rounded background on the `.minimal` text preset.
+- `OverlayStyle.backgroundFadeOutEnabled` and `backgroundFadeOutAmount` drive optional edge fade for the numeric background.
+- `OverlayStyle.backgroundBlurRadius` applies gaussian blur to the background block.
 
 ## Shadow Section
 
@@ -209,11 +230,12 @@ Rules:
 | Token | Value |
 | --- | ---: |
 | `numeric.sectionHeaderHeight` | 30 |
-| `numeric.rowHeight` | 32 |
+| `numeric.rowHeight` | 34 |
+| `numeric.anchorGridRowHeight` | 64 (min-height for anchor grid rows) |
 | `numeric.rowGap` | 6 |
 | `numeric.sectionGap` | 8 |
 | `numeric.labelColumnWidth` | 112 |
-| `numeric.controlHeight` | 30 |
+| `numeric.controlHeight` | 26 |
 | `numeric.iconButtonSize` | 28 |
 | `numeric.swatchSize` | 22 |
 
@@ -229,10 +251,14 @@ Implemented in `OverlayStyle` (2026-04-26 refactor):
 
 - `unitOption` (`OverlayUnitOption`) — per-overlay unit preference, decoded with default fallback for legacy projects.
 - `showLabel`, `showUnit`, `customLabel` — control label/unit visibility and override label text.
+- `labelPosition`, `unitPosition` — top/bottom/left/right placement around the numeric value.
+- `labelFontName` / `labelFontSize` / `labelFontWeight` — label-only typography controls.
+- `unitFontName` / `unitFontSize` / `unitFontWeight` — unit-only typography controls.
 - `rotationDegrees` — rotation in degrees applied at render time.
 - `textAlignment` (`OverlayTextAlignment`) — leading/center/trailing alignment.
 - `accentColor` — color used by overlays that expose an accent (defaults to `foregroundColor`).
 - `backgroundEnabled`, `backgroundColor`, `backgroundRadius`, `backgroundPaddingX`, `backgroundPaddingY` — explicit background controls; the legacy `backgroundOpacity` field continues to scale the alpha and stays decoded.
+- `backgroundFadeOutEnabled`, `backgroundFadeOutAmount`, `backgroundBlurRadius` — background edge fade and blur controls.
 - `shadowEnabled`, `shadowOffsetX`, `shadowOffsetY` — shadow toggle plus offset, in addition to existing `shadowOpacity` / `shadowRadius`.
 
 `OverlayElementType.isNumericOverlay` and `OverlayElementType.defaultUnitOption` provide the unit defaults applied by `ProjectDocument.addOverlayElement` and used to filter the unit menu.

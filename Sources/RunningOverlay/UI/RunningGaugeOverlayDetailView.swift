@@ -70,60 +70,11 @@ struct RunningGaugeOverlayDetailView: View {
         }
     }
 
-    // MARK: - Layout (anchor / position / scale / rotation)
+    // MARK: - Layout (position / scale / rotation — no anchor, no width/height for square gauge)
 
     @ViewBuilder
     private func layoutSection(_ element: OverlayElement) -> some View {
-        InspectorDenseRow(label: "Anchor") {
-            InspectorAnchorGrid(position: element.position) { anchor in
-                project.setOverlayPosition(elementID, position: anchor)
-                project.finishContinuousEdit()
-            }
-        }
-        InspectorDenseRow(label: "Position") {
-            HStack(spacing: NumericTokens.space2) {
-                InspectorDenseAxisField(
-                    axis: "X",
-                    value: Binding(
-                        get: { Double(element.position.x) },
-                        set: {
-                            project.setOverlayPosition(elementID, position: CGPoint(x: $0, y: element.position.y))
-                            project.finishContinuousEdit()
-                        }
-                    ),
-                    precision: 3
-                )
-                InspectorDenseAxisField(
-                    axis: "Y",
-                    value: Binding(
-                        get: { Double(element.position.y) },
-                        set: {
-                            project.setOverlayPosition(elementID, position: CGPoint(x: element.position.x, y: $0))
-                            project.finishContinuousEdit()
-                        }
-                    ),
-                    precision: 3
-                )
-            }
-        }
-        InspectorDenseSliderRow(
-            label: "Scale",
-            value: Binding(
-                get: { element.scale },
-                set: { project.setOverlayScale(elementID, scale: $0.gaugeQuantized(to: 0.05)) }
-            ),
-            range: 0.25...4,
-            displayText: String(format: "%.2fx", element.scale)
-        )
-        InspectorDenseSliderRow(
-            label: "Rotation",
-            value: Binding(
-                get: { element.style.rotationDegrees },
-                set: { project.setOverlayRotation(elementID, degrees: $0.rounded()) }
-            ),
-            range: -180...180,
-            displayText: "\(Int(element.style.rotationDegrees))°"
-        )
+        OverlayLayoutRows(elementID: elementID, showRotation: true)
     }
 
     // MARK: - Data layout

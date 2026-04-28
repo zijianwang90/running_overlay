@@ -168,7 +168,7 @@ struct LapListOverlayDetailView: View {
             range: 1...10,
             displayText: "\(s.visibleRowCount)"
         )
-        InspectorDenseRow(label: "Anchor") {
+        InspectorDenseRow(label: "Anchor", minHeight: NumericTokens.anchorGridRowHeight) {
             Picker("", selection: Binding(
                 get: { s.currentRowAnchor },
                 set: { v in project.mutateLapListStyle(elementID) { $0.currentRowAnchor = v } }
@@ -308,15 +308,7 @@ struct LapListOverlayDetailView: View {
 
     @ViewBuilder
     private func positionSection(_ element: OverlayElement) -> some View {
-        InspectorDenseSliderRow(
-            label: "Scale",
-            value: Binding(
-                get: { element.scale },
-                set: { v in project.setOverlayScale(elementID, scale: v) }
-            ),
-            range: 0.25...4.0,
-            displayText: String(format: "%.2f×", element.scale)
-        )
+        OverlayLayoutRows(elementID: elementID)
     }
 
     // MARK: - Footer

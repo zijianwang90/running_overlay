@@ -2,6 +2,218 @@
 
 ## 2026-04-28
 
+### Shared OverlayLayoutRows Component + Section Ordering
+
+Summary:
+
+- Extracted the Position/Scale/Width/Height controls used in every overlay detail view into a single shared `OverlayLayoutRows` struct (in `NumericOverlayDetailView.swift`).
+- Removed the Anchor (3×3 grid) and Padding controls from all layout sections. Position is now always set by numeric X/Y fields only.
+- `OverlayLayoutRows` accepts optional `widthBinding`/`heightBinding` parameters; pass `nil` to hide those rows. Running Gauge passes `nil` for both (square component — no explicit dimensions). Distance Timeline passes both. Route Map, Numeric, and Lap views omit them.
+- Optional `showRotation` parameter keeps the rotation slider in views that need it (Numeric, Running Gauge, Route Map).
+- LapList, LapCard, and LapLive's Position section now shows Position X/Y + Scale instead of Scale only.
+- Section ordering rule applied: if a detail view has a Preset section it must be first; otherwise Layout is first. Distance Timeline was reordered to: Preset → Layout → Value → Label → …
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/NumericOverlayDetailView.swift` (added `OverlayLayoutRows`)
+- `Sources/RunningOverlay/UI/RunningGaugeOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/RouteMapOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/DistanceTimelineOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/LapListOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/LapCardOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/LapLiveOverlayDetailView.swift`
+- `docs/design/overlays/numeric/numeric-overlay-ui.md`
+- `docs/design/overlays/distance-timeline/distance-timeline-overlay-ui.md`
+- `docs/design/overlays/route-map/route-map-overlay-ui.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build` — Build complete, no errors.
+
+### Extract Shared StatsBarInspectorRows Component
+
+Summary:
+
+- Extracted the Stats Bar inspector UI shared between Distance Timeline and Route Map overlays into a new `StatsBarInspectorRows` view in `StatsBarInspectorRows.swift`.
+- The shared component renders Placement, Layout, Height, Background, Dividers, Radius, and Slot rows, which are identical in both overlays.
+- Distance Timeline-specific rows (Inside toggle; Width, Offset X/Y, Item Gap via `ExtraLayoutConfig`) are passed as optional config; Route Map-specific rows (Blur) are passed as an optional value.
+- Moved `RouteMapStatsBarPlacement.distanceTimelinePlacements` from a private extension in `DistanceTimelineOverlayDetailView` to the shared file so both callers can reference it.
+- Both detail views now delegate to `StatsBarInspectorRows`, eliminating ~80 lines of duplicated UI code.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/StatsBarInspectorRows.swift` (new)
+- `Sources/RunningOverlay/UI/DistanceTimelineOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/RouteMapOverlayDetailView.swift`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build` — Build complete, no errors.
+
+### Locked Element List-Click Guard
+
+Summary:
+
+- Updated `Added Elements` row navigation so locked overlays cannot open the detail inspector from the list.
+- Clicking a locked row now shows a status/toast-style message prompting the user to unlock before editing.
+- Kept existing lock behavior unchanged for canvas interaction and context-menu actions.
+
+Files changed:
+
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/UI/ParameterPanelView.swift`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+
+### Overlay Property Copy/Paste Menus
+
+Summary:
+
+- Added right-click `Copy Properties` / `Paste Properties` actions to Inspector Added Elements rows and Preview overlays.
+- Implemented model-level copy buffer in `ProjectDocument` and paste validation by overlay category.
+- Added `OverlayElementType.pasteCategory` so numeric overlays can paste only to numeric overlays, while non-numeric modules paste only within their own category.
+- Paste now applies copied configuration fields (`scale`, `isVisible`, `isLocked`, `style`) to the target element while preserving target identity/type.
+- Updated Inspector/Preview/development/requirements documentation for the new context-menu workflow.
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/OverlayElement.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/UI/ParameterPanelView.swift`
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `docs/design/panels/inspector/inspector-ui.md`
+- `docs/design/panels/preview/preview-ui.md`
+- `docs/development.md`
+- `docs/requirements.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+
+### Added Elements Visibility/Lock Actions
+
+Summary:
+
+- Implemented `Added Elements` row visibility and lock actions with real model-backed state.
+- Added persistent `OverlayElement.isVisible` / `OverlayElement.isLocked` fields and template-schema compatibility defaults for older templates.
+- Updated Preview behavior so hidden overlays are not rendered and locked overlays cannot be selected/dragged from canvas.
+- Updated export rendering so invisible overlays are skipped by `OverlayFrameRenderer`.
+- Synced Inspector/Preview/development/requirements docs to reflect shipped behavior.
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/OverlayElement.swift`
+- `Sources/RunningOverlay/Overlay/OverlayTemplate.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/UI/ParameterPanelView.swift`
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `docs/design/panels/inspector/inspector-ui.md`
+- `docs/design/panels/preview/preview-ui.md`
+- `docs/development.md`
+- `docs/requirements.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+
+### Lower Default Timeline Height On Launch
+
+Summary:
+
+- Reduced the initial vertical footprint of the Timeline panel so newly opened windows dedicate more space to Media/Preview/Inspector editing.
+- Kept timeline resizing behavior unchanged by only adjusting `TimelineView` default frame targets.
+- Updated development documentation to record the new default split allocation.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/MainEditorView.swift`
+- `docs/development.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+- Build completed successfully.
+
+### Preview Corner Handle Scale Drag
+
+Summary:
+
+- Upgraded selected-overlay corner handles in preview from visual affordances to interactive drag handles.
+- Dragging any of the four blue corner handles now scales the selected overlay by directly updating `OverlayElement.scale`.
+- Grouped scale drag updates as a continuous undo operation and commit at drag end.
+- Updated preview/requirements/development docs so overlay-canvas interaction behavior matches implementation.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `docs/design/panels/preview/preview-ui.md`
+- `docs/development.md`
+- `docs/requirements.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+- Build completed successfully.
+
+### Numeric Overlay Label/Unit Split + Background Effects
+
+Summary:
+
+- Refactored `NumericOverlayDetailView` to split Label and Unit into standalone sections with independent header toggles.
+- Removed label/unit switches and label text editing from Content; Typography now controls value text only.
+- Added independent label/unit typography controls (`font`, `size`, `weight`) and independent position controls (`top`, `bottom`, `left`, `right`).
+- Added background fade-out and gaussian blur controls in the Numeric overlay background section.
+- Standardized new numeric overlays to default to `Minimal Clean`.
+- Updated preview/render model + style decoding to support new label/unit and background fields while keeping older projects loadable.
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/OverlayElement.swift`
+- `Sources/RunningOverlay/Overlay/OverlayRenderModel.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/UI/NumericOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `docs/design/overlays/numeric/numeric-overlay-ui.md`
+- `docs/development.md`
+- `docs/requirements.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+- Build completed successfully.
+
+### Clip Inspector Dense Sizing Pass
+
+Summary:
+
+- Tightened the selected clip Inspector to match the dense detail-view tokens used by `NumericOverlayDetailView`.
+- Removed extra top padding before the clip timing section.
+- Reduced clip detail section headers, rows, controls, and icon buttons to the shared dense dimensions.
+- Moved `Apply to all clips in this layer` directly below the Offset row instead of keeping it in a sticky footer.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/ParameterPanelView.swift`
+- `docs/development.md`
+- `docs/requirements.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift test`.
+- All 55 tests passed.
+
 ### Upper Panel Divider Tightening
 
 Summary:
@@ -70,7 +282,7 @@ Summary:
 - Replaced the selected timeline clip Inspector's generic panel presentation with a dedicated clip detail view matching overlay detail structure.
 - Added a clip detail header with back navigation, video icon, clip title, Clip pill, live layer/start summary, and delete action.
 - Restyled clip timing controls as dense detail rows with a `Clip Timing` section header, editable layer field, Start and Offset numeric inputs, and preserved double-click reset behavior.
-- Moved the layer-wide offset apply action into a sticky footer so clip detail actions match the overlay detail interaction pattern.
+- Initially moved the layer-wide offset apply action into the clip detail footer; a follow-up sizing pass moved it directly below the Offset row to match the denser detail-view layout.
 
 Files changed:
 
@@ -2436,6 +2648,46 @@ Files changed:
 - `docs/roadmap.md`
 - `docs/project-log.md`
 - `docs/adr/0002-swift-package-bootstrap.md`
+
+Verification:
+
+- Ran `swift build`.
+- Build completed successfully.
+
+### Distance Timeline Refinement
+
+Summary:
+
+- Split Distance Timeline controls into Value, Label, Axis Labels, and Stats Bar sections.
+- Added metric/imperial Value units, Value disable mode, four custom Value slots, axis label/distance-point controls, and a Route Map-style Stats Bar.
+- Removed the standalone Distance Timeline Typography section; Value now owns the value font, size, weight, and color controls.
+- Added a Custom Values master toggle; when enabled, Custom 1-4 metric-picker rows appear and render inline after the main Value with adjustable group gap, item gap, size, color, and opacity.
+- Fixed Custom Values inline layout so increasing Group Gap moves the whole custom group without truncating custom values or reducing Item Gap.
+- Updated Axis Labels so start/end endpoint text uses Point Gap like intermediate distance points.
+- Kept Point Gap editable when More Points is disabled because endpoint labels also depend on it.
+- Added Stats Bar width, item gap, and X/Y offset controls, and adjusted inside/attached placement so the bar sits at component edges without covering the progress axis.
+- Split Distance Timeline Stats Bar placement into top/bottom/left/right plus a separate Inside toggle, including inside-left and inside-right rendering.
+- Expanded Distance Timeline background/border bounds to cover Axis Labels and inside Stats Bar placements at their current size and offset.
+- Added Tick Density control and updated tick rendering to use the configured density.
+- Fixed left/right Stats Bar background sizing so vertical slots and labels are fully covered.
+- Updated Distance Timeline preview selection bounds to cover the dynamic visual bounds, including Axis Labels and Stats Bar.
+- Removed inline Percent handling from the Distance Timeline content flow; progress percentage now lives in Stats Bar slots.
+- Changed Dense and Splits progress from segmented/dashed fills to solid progress fills.
+- Disabled the fake Glass background until a real blur/material effect is available.
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/OverlayElement.swift`
+- `Sources/RunningOverlay/Overlay/OverlayRenderModel.swift`
+- `Sources/RunningOverlay/UI/DistanceTimelineOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `Sources/RunningOverlay/UI/RouteMapOverlayDetailView.swift`
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `docs/design/overlays/distance-timeline/distance-timeline-overlay-ui.md`
+- `docs/design/overlays/distance-timeline/distance-timeline-overlay-ui.spec.json`
+- `docs/overlay-modules/distance-timeline-overlay.md`
+- `docs/development.md`
+- `docs/project-log.md`
 
 Verification:
 

@@ -4,7 +4,7 @@ struct DistanceTimelineOverlayDetailView: View {
     @EnvironmentObject private var project: ProjectDocument
     let elementID: OverlayElement.ID
 
-    @State private var openSections: Set<DistanceTimelineSection> = [.preset, .content, .layout, .progress]
+    @State private var openSections: Set<DistanceTimelineSection> = [.preset, .layout, .value, .progress]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -13,9 +13,12 @@ struct DistanceTimelineOverlayDetailView: View {
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
                         sectionView(.preset) { presetSection(element) }
-                        sectionView(.content) { contentSection(element) }
                         sectionView(.layout) { layoutSection(element) }
+                        sectionView(.value) { valueSection(element) }
+                        sectionView(.label) { labelSection(element) }
                         sectionView(.progress) { progressSection(element) }
+                        sectionView(.axisLabels) { axisLabelsSection(element) }
+                        sectionView(.statsBar) { statsBarSection(element) }
                         if element.style.distanceTimeline.preset.supportsMediaSlot {
                             sectionView(.mediaSlot) { mediaSlotSection(element) }
                         }
@@ -23,7 +26,6 @@ struct DistanceTimelineOverlayDetailView: View {
                             sectionView(.routeElevation) { routeElevationSection(element) }
                         }
                         sectionView(.backgroundBorder) { backgroundBorderSection(element) }
-                        sectionView(.typography) { typographySection(element) }
                         sectionView(.effects) { effectsSection(element) }
                     }
                 }
@@ -110,14 +112,106 @@ struct DistanceTimelineOverlayDetailView: View {
     }
 
     @ViewBuilder
-    private func contentSection(_ element: OverlayElement) -> some View {
+    private func valueSection(_ element: OverlayElement) -> some View {
+        let style = element.style.distanceTimeline
+        InspectorDenseRow(label: "Value") {
+            toggle(style.showValue) { newValue in
+                project.mutateDistanceTimelineStyle(elementID) { $0.showValue = newValue }
+            }
+        }
+        InspectorDenseRow(label: "Units") {
+            InspectorDenseSegmented(values: DistanceTimelineUnitSystem.allCases, selection: Binding(
+                get: { style.valueUnitSystem },
+                set: { unit in project.mutateDistanceTimelineStyle(elementID) { $0.valueUnitSystem = unit } }
+            )) { unit in
+                Text(unit.label)
+            }
+        }
+        InspectorDenseRow(label: "Font") {
+            Menu {
+                ForEach(NumericOverlayDetailView.fontPresets, id: \.self) { name in
+                    Button {
+                        project.setOverlayFontName(elementID, fontName: name)
+                    } label: {
+                        Text(name)
+                    }
+                }
+            } label: {
+                InspectorDenseMenuLabel(title: element.style.fontName)
+            }
+            .menuStyle(.borderlessButton)
+            .frame(height: NumericTokens.controlHeight)
+        }
+        InspectorDenseSliderRow(label: "Size", value: Binding(
+            get: { element.style.fontSize },
+            set: { project.setOverlayFontSize(elementID, fontSize: $0.rounded()) }
+        ), range: 12...72, displayText: "\(Int(element.style.fontSize))")
+        InspectorDenseRow(label: "Weight") {
+            InspectorDenseSegmented(values: OverlayFontWeight.allCases, selection: Binding(
+                get: { element.style.fontWeight },
+                set: { project.setOverlayFontWeight(elementID, fontWeight: $0) }
+            )) { weight in
+                Text(weight.label)
+            }
+        }
+        InspectorDenseRow(label: "Color") {
+            InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: element.style.foregroundColor) { color in
+                project.setOverlayForegroundColor(elementID, color: color)
+            }
+        }
+        InspectorDenseRow(label: "Custom Values") {
+            toggle(style.customValuesEnabled) { newValue in
+                project.mutateDistanceTimelineStyle(elementID) { $0.customValuesEnabled = newValue }
+            }
+        }
+        if style.customValuesEnabled {
+            InspectorDenseSliderRow(label: "Group Gap", value: distanceBinding(\.customValuesGroupSpacing, of: style), range: 0...80, displayText: "\(Int(style.customValuesGroupSpacing))")
+            InspectorDenseSliderRow(label: "Item Gap", value: distanceBinding(\.customValueSpacing, of: style), range: 0...48, displayText: "\(Int(style.customValueSpacing))")
+            InspectorDenseSliderRow(label: "Custom Size", value: distanceBinding(\.customValueFontSize, of: style), range: 8...32, displayText: "\(Int(style.customValueFontSize))")
+            InspectorDenseRow(label: "Custom Color") {
+                InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: style.customValueColor) { color in
+                    project.mutateDistanceTimelineStyle(elementID) { $0.customValueColor = color }
+                }
+            }
+            InspectorDenseSliderRow(label: "Custom Opacity", value: distanceBinding(\.customValueOpacity, of: style), range: 0...1, displayText: String(format: "%.0f%%", style.customValueOpacity * 100))
+            ForEach(0..<4, id: \.self) { index in
+                let custom = style.customValues[safe: index] ?? .empty
+                InspectorDenseRow(label: "Custom \(index + 1)") {
+                    Menu {
+                        ForEach(RouteMapStatsMetric.allCases) { metric in
+                            Button {
+                                project.mutateDistanceTimelineStyle(elementID) { $0.setCustomValueMetric(metric, at: index) }
+                            } label: {
+                                if metric == custom.metric { Label(metric.label, systemImage: "checkmark") }
+                                else { Text(metric.label) }
+                            }
+                        }
+                    } label: {
+                        InspectorDenseMenuLabel(title: custom.metric.label, isEnabled: custom.visible)
+                    }
+                    .menuStyle(.borderlessButton)
+                    .frame(height: NumericTokens.controlHeight)
+                    Toggle("", isOn: Binding(
+                        get: { custom.visible },
+                        set: { newValue in project.mutateDistanceTimelineStyle(elementID) { $0.setCustomValueVisible(newValue, at: index) } }
+                    ))
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+                    .labelsHidden()
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func labelSection(_ element: OverlayElement) -> some View {
         let style = element.style.distanceTimeline
         InspectorDenseRow(label: "Show Label") {
             toggle(style.showLabel) { newValue in
                 project.mutateDistanceTimelineStyle(elementID) { $0.showLabel = newValue }
             }
         }
-        InspectorDenseRow(label: "Label") {
+        InspectorDenseRow(label: "Text") {
             TextField("Distance", text: Binding(
                 get: { style.label },
                 set: { value in project.mutateDistanceTimelineStyle(elementID) { $0.label = value } }
@@ -130,55 +224,18 @@ struct DistanceTimelineOverlayDetailView: View {
             .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
             .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
         }
-        InspectorDenseRow(label: "Percent") {
-            toggle(style.showPercent) { newValue in
-                project.mutateDistanceTimelineStyle(elementID) { $0.showPercent = newValue }
-            }
-        }
-        InspectorDenseRow(label: "Start / Finish") {
-            toggle(style.showStartFinishLabels) { newValue in
-                project.mutateDistanceTimelineStyle(elementID) { $0.showStartFinishLabels = newValue }
-            }
-        }
     }
 
     @ViewBuilder
     private func layoutSection(_ element: OverlayElement) -> some View {
         let style = element.style.distanceTimeline
-        InspectorDenseRow(label: "Anchor") {
-            InspectorAnchorGrid(position: element.position) { anchor in
-                project.setOverlayPosition(elementID, position: anchor)
-                project.finishContinuousEdit()
-            }
-        }
-        InspectorDenseRow(label: "Position") {
-            HStack(spacing: NumericTokens.space2) {
-                InspectorDenseAxisField(axis: "X", value: Binding(
-                    get: { Double(element.position.x) },
-                    set: {
-                        project.setOverlayPosition(elementID, position: CGPoint(x: $0, y: element.position.y))
-                        project.finishContinuousEdit()
-                    }
-                ), precision: 3)
-                InspectorDenseAxisField(axis: "Y", value: Binding(
-                    get: { Double(element.position.y) },
-                    set: {
-                        project.setOverlayPosition(elementID, position: CGPoint(x: element.position.x, y: $0))
-                        project.finishContinuousEdit()
-                    }
-                ), precision: 3)
-            }
-        }
-        InspectorDenseSliderRow(label: "Scale", value: Binding(
-            get: { element.scale },
-            set: { project.setOverlayScale(elementID, scale: $0.distanceTimelineQuantized(to: 0.05)) }
-        ), range: 0.25...4, displayText: String(format: "%.2fx", element.scale))
-        InspectorDenseSliderRow(label: "Width", value: distanceBinding(\.width, of: style), range: 180...640, displayText: "\(Int(style.width))")
-        InspectorDenseSliderRow(label: "Height", value: distanceBinding(\.height, of: style), range: 52...150, displayText: "\(Int(style.height))")
-        InspectorDenseRow(label: "Padding") {
-            InspectorDenseAxisField(axis: "X", value: distanceBinding(\.paddingX, of: style), precision: 0)
-            InspectorDenseAxisField(axis: "Y", value: distanceBinding(\.paddingY, of: style), precision: 0)
-        }
+        OverlayLayoutRows(
+            elementID: elementID,
+            widthBinding: distanceBinding(\.width, of: style),
+            widthRange: 180...640,
+            heightBinding: distanceBinding(\.height, of: style),
+            heightRange: 52...150
+        )
     }
 
     @ViewBuilder
@@ -196,11 +253,88 @@ struct DistanceTimelineOverlayDetailView: View {
                 project.mutateDistanceTimelineStyle(elementID) { $0.tickMarksEnabled = newValue }
             }
         }
+        InspectorDenseSliderRow(label: "Tick Density", value: Binding(
+            get: { Double(style.tickDensity) },
+            set: { value in project.mutateDistanceTimelineStyle(elementID) { $0.tickDensity = min(max(Int(value.rounded()), 2), 40) } }
+        ), range: 2...40, displayText: "\(style.tickDensity)", isEnabled: style.tickMarksEnabled)
         InspectorDenseRow(label: "Marker") {
             toggle(style.currentMarkerEnabled) { newValue in
                 project.mutateDistanceTimelineStyle(elementID) { $0.currentMarkerEnabled = newValue }
             }
         }
+    }
+
+    @ViewBuilder
+    private func axisLabelsSection(_ element: OverlayElement) -> some View {
+        let style = element.style.distanceTimeline
+        InspectorDenseRow(label: "Enabled") {
+            toggle(style.showAxisLabels) { newValue in
+                project.mutateDistanceTimelineStyle(elementID) { $0.showAxisLabels = newValue }
+            }
+        }
+        InspectorDenseRow(label: "Mode") {
+            InspectorDenseSegmented(values: DistanceTimelineAxisLabelMode.allCases, selection: Binding(
+                get: { style.axisLabelMode },
+                set: { mode in project.mutateDistanceTimelineStyle(elementID) { $0.axisLabelMode = mode } }
+            )) { mode in
+                Text(mode.label)
+            }
+        }
+        InspectorDenseRow(label: "More Points") {
+            toggle(style.showDistancePoints) { newValue in
+                project.mutateDistanceTimelineStyle(elementID) { $0.showDistancePoints = newValue }
+            }
+        }
+        InspectorDenseSliderRow(label: "Density", value: Binding(
+            get: { Double(style.distancePointCount) },
+            set: { value in project.mutateDistanceTimelineStyle(elementID) { $0.distancePointCount = min(max(Int(value.rounded()), 0), 12) } }
+        ), range: 0...12, displayText: "\(style.distancePointCount)", isEnabled: style.showDistancePoints)
+        InspectorDenseSliderRow(label: "Point Gap", value: distanceBinding(\.distancePointOffset, of: style), range: -24...64, displayText: "\(Int(style.distancePointOffset))")
+    }
+
+    @ViewBuilder
+    private func statsBarSection(_ element: OverlayElement) -> some View {
+        let config = element.style.distanceTimeline.statsBar
+        InspectorDenseRow(label: "Enabled") {
+            toggle(config.visible) { newValue in
+                project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.visible = newValue }
+            }
+        }
+        StatsBarInspectorRows(
+            isOn: config.visible,
+            placement: config.placement,
+            availablePlacements: RouteMapStatsBarPlacement.distanceTimelinePlacements,
+            layoutMode: config.layoutMode,
+            height: config.height,
+            heightRange: 28...120,
+            heightLabel: "Size",
+            backgroundOpacity: config.backgroundOpacity,
+            dividerOpacity: config.dividerOpacity,
+            cornerRadius: config.cornerRadius,
+            cornerRadiusRange: 0...32,
+            slots: config.slots.map { (metric: $0.metric, visible: $0.visible) },
+            availableMetrics: RouteMapStatsMetric.allCases,
+            inside: config.inside,
+            extraLayout: .init(
+                width: config.width,
+                offsetX: config.offsetX,
+                offsetY: config.offsetY,
+                itemSpacing: config.itemSpacing,
+                onSetWidth: { value in project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.width = value.rounded() } },
+                onSetOffsetX: { value in project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.offsetX = value.rounded() } },
+                onSetOffsetY: { value in project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.offsetY = value.rounded() } },
+                onSetItemSpacing: { value in project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.itemSpacing = value.rounded() } }
+            ),
+            onSetPlacement: { placement in project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.placement = placement } },
+            onSetLayoutMode: { mode in project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.layoutMode = mode } },
+            onSetHeight: { value in project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.height = value.rounded() } },
+            onSetBackgroundOpacity: { value in project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.backgroundOpacity = value } },
+            onSetDividerOpacity: { value in project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.dividerOpacity = value } },
+            onSetCornerRadius: { value in project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.cornerRadius = value.rounded() } },
+            onSetSlotMetric: { index, metric in project.mutateDistanceTimelineStyle(elementID) { $0.setStatsBarMetric(metric, at: index) } },
+            onSetSlotVisible: { index, visible in project.mutateDistanceTimelineStyle(elementID) { $0.setStatsBarVisible(visible, at: index) } },
+            onSetInside: { value in project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.inside = value } }
+        )
     }
 
     @ViewBuilder
@@ -307,42 +441,6 @@ struct DistanceTimelineOverlayDetailView: View {
     }
 
     @ViewBuilder
-    private func typographySection(_ element: OverlayElement) -> some View {
-        InspectorDenseRow(label: "Font") {
-            Menu {
-                ForEach(NumericOverlayDetailView.fontPresets, id: \.self) { name in
-                    Button {
-                        project.setOverlayFontName(elementID, fontName: name)
-                    } label: {
-                        Text(name)
-                    }
-                }
-            } label: {
-                InspectorDenseMenuLabel(title: element.style.fontName)
-            }
-            .menuStyle(.borderlessButton)
-            .frame(height: NumericTokens.controlHeight)
-        }
-        InspectorDenseSliderRow(label: "Value Size", value: Binding(
-            get: { element.style.fontSize },
-            set: { project.setOverlayFontSize(elementID, fontSize: $0.rounded()) }
-        ), range: 12...72, displayText: "\(Int(element.style.fontSize))")
-        InspectorDenseRow(label: "Weight") {
-            InspectorDenseSegmented(values: OverlayFontWeight.allCases, selection: Binding(
-                get: { element.style.fontWeight },
-                set: { project.setOverlayFontWeight(elementID, fontWeight: $0) }
-            )) { weight in
-                Text(weight.label)
-            }
-        }
-        InspectorDenseRow(label: "Text Color") {
-            InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: element.style.foregroundColor) { color in
-                project.setOverlayForegroundColor(elementID, color: color)
-            }
-        }
-    }
-
-    @ViewBuilder
     private func effectsSection(_ element: OverlayElement) -> some View {
         let style = element.style.distanceTimeline
         InspectorDenseRow(label: "Glow") {
@@ -427,25 +525,29 @@ struct DistanceTimelineOverlayDetailView: View {
 
 private enum DistanceTimelineSection: String, CaseIterable {
     case preset
-    case content
+    case value
+    case label
     case layout
     case progress
+    case axisLabels
+    case statsBar
     case mediaSlot
     case routeElevation
     case backgroundBorder
-    case typography
     case effects
 
     var title: String {
         switch self {
         case .preset: "Preset"
-        case .content: "Content"
+        case .value: "Value"
+        case .label: "Label"
         case .layout: "Layout"
         case .progress: "Progress"
+        case .axisLabels: "Axis Labels"
+        case .statsBar: "Stats Bar"
         case .mediaSlot: "Media Slot"
         case .routeElevation: "Route / Elevation"
         case .backgroundBorder: "Background & Border"
-        case .typography: "Typography"
         case .effects: "Effects"
         }
     }
@@ -453,13 +555,15 @@ private enum DistanceTimelineSection: String, CaseIterable {
     var systemImage: String {
         switch self {
         case .preset: "slider.horizontal.3"
-        case .content: "text.alignleft"
+        case .value: "number"
+        case .label: "tag"
         case .layout: "scope"
         case .progress: "chart.bar.fill"
+        case .axisLabels: "ruler"
+        case .statsBar: "tablecells"
         case .mediaSlot: "photo"
         case .routeElevation: "point.topleft.down.curvedto.point.bottomright.up"
         case .backgroundBorder: "rectangle"
-        case .typography: "textformat"
         case .effects: "sparkles"
         }
     }
@@ -471,3 +575,41 @@ private extension Double {
         return (self / step).rounded() * step
     }
 }
+
+private extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
+    }
+}
+
+private extension DistanceTimelineStyle {
+    mutating func normalizeCustomValues() {
+        customValues = Array(customValues.prefix(4)) + Array(repeating: .empty, count: max(0, 4 - customValues.count))
+    }
+
+    mutating func setCustomValueVisible(_ visible: Bool, at index: Int) {
+        normalizeCustomValues()
+        customValues[index].visible = visible
+    }
+
+    mutating func setCustomValueLabel(_ label: String, at index: Int) {
+        normalizeCustomValues()
+        customValues[index].label = label
+    }
+
+    mutating func setCustomValueMetric(_ metric: RouteMapStatsMetric, at index: Int) {
+        normalizeCustomValues()
+        customValues[index].metric = metric
+    }
+
+    mutating func setStatsBarMetric(_ metric: RouteMapStatsMetric, at index: Int) {
+        guard statsBar.slots.indices.contains(index) else { return }
+        statsBar.slots[index].metric = metric
+    }
+
+    mutating func setStatsBarVisible(_ visible: Bool, at index: Int) {
+        guard statsBar.slots.indices.contains(index) else { return }
+        statsBar.slots[index].visible = visible
+    }
+}
+

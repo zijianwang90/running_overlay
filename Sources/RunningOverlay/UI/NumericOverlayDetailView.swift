@@ -18,6 +18,8 @@ struct NumericOverlayDetailView: View {
                         sectionView(.content, element: element) { contentSection(element) }
                         sectionView(.layout, element: element) { layoutSection(element) }
                         sectionView(.typography, element: element) { typographySection(element) }
+                        sectionView(.label, element: element, accessory: { labelEnabledToggle(element) }) { labelSection(element) }
+                        sectionView(.unit, element: element, accessory: { unitEnabledToggle(element) }) { unitSection(element) }
                         sectionView(.color, element: element) { colorSection(element) }
                         sectionView(.background, element: element, accessory: { backgroundEnabledToggle(element) }) { backgroundSection(element) }
                         sectionView(.effects, element: element, accessory: { shadowEnabledToggle(element) }) { effectsSection(element) }
@@ -84,91 +86,11 @@ struct NumericOverlayDetailView: View {
         InspectorDenseRow(label: "Format Preview") {
             InspectorDenseReadout(text: previewValue(for: element), isNumeric: true)
         }
-        InspectorDenseRow(label: "Show Label") {
-            Toggle("", isOn: Binding(
-                get: { element.style.showLabel },
-                set: { project.setOverlayShowLabel(elementID, showLabel: $0) }
-            ))
-            .toggleStyle(.switch)
-            .controlSize(.mini)
-            .labelsHidden()
-        }
-        InspectorDenseRow(label: "Show Unit") {
-            Toggle("", isOn: Binding(
-                get: { element.style.showUnit },
-                set: { project.setOverlayShowUnit(elementID, showUnit: $0) }
-            ))
-            .toggleStyle(.switch)
-            .controlSize(.mini)
-            .labelsHidden()
-        }
-        InspectorDenseRow(label: "Label") {
-            TextField(element.type.label, text: Binding(
-                get: { element.style.customLabel },
-                set: { project.setOverlayCustomLabel(elementID, label: $0) }
-            ), onCommit: { project.finishContinuousEdit() })
-            .textFieldStyle(.plain)
-            .font(NumericTokens.bodyFont)
-            .padding(.horizontal, NumericTokens.space2)
-            .frame(height: NumericTokens.controlHeight)
-            .background(NumericTokens.controlBackground)
-            .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-            .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-        }
     }
 
     @ViewBuilder
     private func layoutSection(_ element: OverlayElement) -> some View {
-        InspectorDenseRow(label: "Anchor") {
-            InspectorAnchorGrid(position: element.position) { anchor in
-                project.setOverlayPosition(elementID, position: anchor)
-                project.finishContinuousEdit()
-            }
-        }
-        InspectorDenseRow(label: "Position") {
-            HStack(spacing: NumericTokens.space2) {
-                InspectorDenseAxisField(
-                    axis: "X",
-                    value: Binding(
-                        get: { Double(element.position.x) },
-                        set: {
-                            project.setOverlayPosition(elementID, position: CGPoint(x: $0, y: element.position.y))
-                            project.finishContinuousEdit()
-                        }
-                    ),
-                    precision: 3
-                )
-                InspectorDenseAxisField(
-                    axis: "Y",
-                    value: Binding(
-                        get: { Double(element.position.y) },
-                        set: {
-                            project.setOverlayPosition(elementID, position: CGPoint(x: element.position.x, y: $0))
-                            project.finishContinuousEdit()
-                        }
-                    ),
-                    precision: 3
-                )
-            }
-        }
-        InspectorDenseSliderRow(
-            label: "Scale",
-            value: Binding(
-                get: { element.scale },
-                set: { project.setOverlayScale(elementID, scale: $0.quantizedNumeric(to: 0.05)) }
-            ),
-            range: 0.25...4,
-            displayText: String(format: "%.2fx", element.scale)
-        )
-        InspectorDenseSliderRow(
-            label: "Rotation",
-            value: Binding(
-                get: { element.style.rotationDegrees },
-                set: { project.setOverlayRotation(elementID, degrees: $0.rounded()) }
-            ),
-            range: -180...180,
-            displayText: "\(Int(element.style.rotationDegrees))°"
-        )
+        OverlayLayoutRows(elementID: elementID, showRotation: true)
     }
 
     @ViewBuilder
@@ -209,26 +131,207 @@ struct NumericOverlayDetailView: View {
                 Text(weight.label)
             }
         }
-        InspectorDenseRow(label: "Alignment") {
-            InspectorDenseSegmented(values: OverlayTextAlignment.allCases, selection: Binding(
-                get: { element.style.textAlignment },
-                set: { project.setOverlayTextAlignment(elementID, alignment: $0) }
-            )) { alignment in
-                Image(systemName: alignment.systemImage)
+        InspectorDenseRow(label: "Color") {
+            InspectorDenseSwatchStrip(
+                presets: NumericOverlayDetailView.colorPresets,
+                selected: element.style.valueColor
+            ) { color in
+                project.setOverlayValueColor(elementID, color: color)
             }
+        }
+        InspectorDenseSliderRow(
+            label: "Alpha",
+            value: Binding(
+                get: { element.style.valueOpacity },
+                set: { project.setOverlayValueOpacity(elementID, opacity: $0.quantizedNumeric(to: 0.05)) }
+            ),
+            range: 0...1,
+            displayText: String(format: "%.0f%%", element.style.valueOpacity * 100)
+        )
+    }
+
+    @ViewBuilder
+    private func labelSection(_ element: OverlayElement) -> some View {
+        let isEnabled = element.style.showLabel
+        InspectorDenseRow(label: "Text") {
+            TextField(element.type.label, text: Binding(
+                get: { element.style.customLabel },
+                set: { project.setOverlayCustomLabel(elementID, label: $0) }
+            ), onCommit: { project.finishContinuousEdit() })
+            .textFieldStyle(.plain)
+            .font(NumericTokens.bodyFont)
+            .padding(.horizontal, NumericTokens.space2)
+            .frame(height: NumericTokens.controlHeight)
+            .background(NumericTokens.controlBackground)
+            .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
+            .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.5)
+        }
+        InspectorDenseRow(label: "Position") {
+            InspectorDenseSegmented(values: OverlayTextAttachmentPosition.allCases, selection: Binding(
+                get: { element.style.labelPosition },
+                set: { project.setOverlayLabelPosition(elementID, position: $0) }
+            )) { position in
+                Text(position.label)
+            }
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.5)
+        }
+        InspectorDenseRow(label: "Color") {
+            InspectorDenseSwatchStrip(
+                presets: NumericOverlayDetailView.colorPresets,
+                selected: element.style.labelColor
+            ) { color in
+                project.setOverlayLabelColor(elementID, color: color)
+            }
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.5)
+        }
+        InspectorDenseSliderRow(
+            label: "Alpha",
+            value: Binding(
+                get: { element.style.labelOpacity },
+                set: { project.setOverlayLabelOpacity(elementID, opacity: $0.quantizedNumeric(to: 0.05)) }
+            ),
+            range: 0...1,
+            displayText: String(format: "%.0f%%", element.style.labelOpacity * 100),
+            isEnabled: isEnabled
+        )
+        fontEditorRows(
+            fontName: Binding(
+                get: { element.style.labelFontName },
+                set: { project.setOverlayLabelFontName(elementID, fontName: $0) }
+            ),
+            fontSize: Binding(
+                get: { element.style.labelFontSize },
+                set: { project.setOverlayLabelFontSize(elementID, fontSize: $0.rounded()) }
+            ),
+            fontWeight: Binding(
+                get: { element.style.labelFontWeight },
+                set: { project.setOverlayLabelFontWeight(elementID, fontWeight: $0) }
+            ),
+            isEnabled: isEnabled
+        )
+        InspectorDenseSliderRow(
+            label: "Spacing",
+            value: Binding(
+                get: { element.style.labelSpacing },
+                set: { project.setOverlayLabelSpacing(elementID, spacing: $0.quantizedNumeric(to: 0.5)) }
+            ),
+            range: 0...60,
+            displayText: String(format: "%.1f", element.style.labelSpacing),
+            isEnabled: isEnabled
+        )
+    }
+
+    @ViewBuilder
+    private func unitSection(_ element: OverlayElement) -> some View {
+        let isEnabled = element.style.showUnit
+        InspectorDenseRow(label: "Position") {
+            InspectorDenseSegmented(values: OverlayTextAttachmentPosition.allCases, selection: Binding(
+                get: { element.style.unitPosition },
+                set: { project.setOverlayUnitPosition(elementID, position: $0) }
+            )) { position in
+                Text(position.label)
+            }
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.5)
+        }
+        InspectorDenseRow(label: "Color") {
+            InspectorDenseSwatchStrip(
+                presets: NumericOverlayDetailView.colorPresets,
+                selected: element.style.unitColor
+            ) { color in
+                project.setOverlayUnitColor(elementID, color: color)
+            }
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.5)
+        }
+        InspectorDenseSliderRow(
+            label: "Alpha",
+            value: Binding(
+                get: { element.style.unitOpacity },
+                set: { project.setOverlayUnitOpacity(elementID, opacity: $0.quantizedNumeric(to: 0.05)) }
+            ),
+            range: 0...1,
+            displayText: String(format: "%.0f%%", element.style.unitOpacity * 100),
+            isEnabled: isEnabled
+        )
+        fontEditorRows(
+            fontName: Binding(
+                get: { element.style.unitFontName },
+                set: { project.setOverlayUnitFontName(elementID, fontName: $0) }
+            ),
+            fontSize: Binding(
+                get: { element.style.unitFontSize },
+                set: { project.setOverlayUnitFontSize(elementID, fontSize: $0.rounded()) }
+            ),
+            fontWeight: Binding(
+                get: { element.style.unitFontWeight },
+                set: { project.setOverlayUnitFontWeight(elementID, fontWeight: $0) }
+            ),
+            isEnabled: isEnabled
+        )
+        InspectorDenseSliderRow(
+            label: "Spacing",
+            value: Binding(
+                get: { element.style.unitSpacing },
+                set: { project.setOverlayUnitSpacing(elementID, spacing: $0.quantizedNumeric(to: 0.5)) }
+            ),
+            range: 0...60,
+            displayText: String(format: "%.1f", element.style.unitSpacing),
+            isEnabled: isEnabled
+        )
+    }
+
+    @ViewBuilder
+    private func fontEditorRows(
+        fontName: Binding<String>,
+        fontSize: Binding<Double>,
+        fontWeight: Binding<OverlayFontWeight>,
+        isEnabled: Bool
+    ) -> some View {
+        InspectorDenseRow(label: "Font") {
+            Menu {
+                ForEach(NumericOverlayDetailView.fontPresets, id: \.self) { name in
+                    Button {
+                        fontName.wrappedValue = name
+                    } label: {
+                        if name == fontName.wrappedValue {
+                            Label(name, systemImage: "checkmark")
+                        } else {
+                            Text(name)
+                        }
+                    }
+                }
+            } label: {
+                InspectorDenseMenuLabel(title: fontName.wrappedValue)
+            }
+            .menuStyle(.borderlessButton)
+            .frame(height: NumericTokens.controlHeight)
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.5)
+        }
+        InspectorDenseSliderRow(
+            label: "Size",
+            value: fontSize,
+            range: 8...72,
+            displayText: "\(Int(fontSize.wrappedValue.rounded()))",
+            isEnabled: isEnabled
+        )
+        InspectorDenseRow(label: "Weight") {
+            InspectorDenseSegmented(values: OverlayFontWeight.allCases, selection: fontWeight) { weight in
+                Text(weight.label)
+            }
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.5)
         }
     }
 
     @ViewBuilder
     private func colorSection(_ element: OverlayElement) -> some View {
-        InspectorDenseRow(label: "Text Color") {
-            InspectorDenseSwatchStrip(
-                presets: NumericOverlayDetailView.colorPresets,
-                selected: element.style.foregroundColor
-            ) { color in
-                project.setOverlayForegroundColor(elementID, color: color)
-            }
-        }
+        let accentEnabled = accentApplies(to: element.style.textPreset)
         InspectorDenseRow(label: "Accent") {
             InspectorDenseSwatchStrip(
                 presets: NumericOverlayDetailView.colorPresets,
@@ -236,6 +339,8 @@ struct NumericOverlayDetailView: View {
             ) { color in
                 project.setOverlayAccentColor(elementID, color: color)
             }
+            .disabled(!accentEnabled)
+            .opacity(accentEnabled ? 1 : 0.5)
         }
     }
 
@@ -295,6 +400,37 @@ struct NumericOverlayDetailView: View {
             }
             .opacity(isEnabled ? 1 : 0.5)
         }
+        InspectorDenseRow(label: "Fade Out") {
+            Toggle("", isOn: Binding(
+                get: { element.style.backgroundFadeOutEnabled },
+                set: { project.setOverlayBackgroundFadeOutEnabled(elementID, enabled: $0) }
+            ))
+            .toggleStyle(.switch)
+            .controlSize(.mini)
+            .labelsHidden()
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.5)
+        }
+        InspectorDenseSliderRow(
+            label: "Fade Amount",
+            value: Binding(
+                get: { element.style.backgroundFadeOutAmount },
+                set: { project.setOverlayBackgroundFadeOutAmount(elementID, amount: $0.quantizedNumeric(to: 0.05)) }
+            ),
+            range: 0...1,
+            displayText: String(format: "%.0f%%", element.style.backgroundFadeOutAmount * 100),
+            isEnabled: isEnabled && element.style.backgroundFadeOutEnabled
+        )
+        InspectorDenseSliderRow(
+            label: "Blur",
+            value: Binding(
+                get: { element.style.backgroundBlurRadius },
+                set: { project.setOverlayBackgroundBlurRadius(elementID, radius: $0.quantizedNumeric(to: 0.5)) }
+            ),
+            range: 0...40,
+            displayText: String(format: "%.1f", element.style.backgroundBlurRadius),
+            isEnabled: isEnabled
+        )
     }
 
     @ViewBuilder
@@ -405,6 +541,28 @@ struct NumericOverlayDetailView: View {
         Toggle("", isOn: Binding(
             get: { element.style.backgroundEnabled },
             set: { project.setOverlayBackgroundEnabled(elementID, enabled: $0) }
+        ))
+        .toggleStyle(.switch)
+        .controlSize(.mini)
+        .labelsHidden()
+    }
+
+    @ViewBuilder
+    private func labelEnabledToggle(_ element: OverlayElement) -> some View {
+        Toggle("", isOn: Binding(
+            get: { element.style.showLabel },
+            set: { project.setOverlayShowLabel(elementID, showLabel: $0) }
+        ))
+        .toggleStyle(.switch)
+        .controlSize(.mini)
+        .labelsHidden()
+    }
+
+    @ViewBuilder
+    private func unitEnabledToggle(_ element: OverlayElement) -> some View {
+        Toggle("", isOn: Binding(
+            get: { element.style.showUnit },
+            set: { project.setOverlayShowUnit(elementID, showUnit: $0) }
         ))
         .toggleStyle(.switch)
         .controlSize(.mini)
@@ -530,6 +688,8 @@ enum NumericSection: String, CaseIterable {
     case content
     case layout
     case typography
+    case label
+    case unit
     case color
     case background
     case effects
@@ -538,7 +698,9 @@ enum NumericSection: String, CaseIterable {
         switch self {
         case .content: "Content"
         case .layout: "Layout"
-        case .typography: "Typography"
+        case .typography: "Value"
+        case .label: "Label"
+        case .unit: "Unit"
         case .color: "Color"
         case .background: "Background"
         case .effects: "Shadow"
@@ -550,6 +712,8 @@ enum NumericSection: String, CaseIterable {
         case .content: "list.bullet.rectangle"
         case .layout: "scope"
         case .typography: "textformat"
+        case .label: "textformat.abc"
+        case .unit: "character.textbox"
         case .color: "paintpalette"
         case .background: "rectangle.fill"
         case .effects: "square.fill.on.square.fill"
@@ -557,8 +721,20 @@ enum NumericSection: String, CaseIterable {
     }
 }
 
+private extension NumericOverlayDetailView {
+    func accentApplies(to preset: OverlayTextPreset) -> Bool {
+        switch preset {
+        case .splitLabel, .neonGlow, .racingStripe, .editorial, .digitalWatch, .accentBar, .sportNeon:
+            true
+        default:
+            false
+        }
+    }
+}
+
 struct InspectorDenseRow<Trailing: View>: View {
     var label: String
+    var minHeight: CGFloat = NumericTokens.rowHeight
     @ViewBuilder var trailing: Trailing
 
     var body: some View {
@@ -573,7 +749,7 @@ struct InspectorDenseRow<Trailing: View>: View {
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .padding(.horizontal, NumericTokens.panelPaddingX)
-        .frame(height: NumericTokens.rowHeight)
+        .frame(minHeight: minHeight)
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(NumericTokens.borderSubtle)
@@ -773,6 +949,9 @@ struct InspectorAnchorGrid: View {
     var position: CGPoint
     var onSelect: (CGPoint) -> Void
 
+    private static let cellSize: CGFloat = 18
+    private static let cellSpacing: CGFloat = 3
+
     private let anchors: [(label: String, point: CGPoint)] = [
         ("tl", CGPoint(x: 0.05, y: 0.05)), ("tc", CGPoint(x: 0.5, y: 0.05)), ("tr", CGPoint(x: 0.95, y: 0.05)),
         ("ml", CGPoint(x: 0.05, y: 0.5)),  ("mc", CGPoint(x: 0.5, y: 0.5)),  ("mr", CGPoint(x: 0.95, y: 0.5)),
@@ -780,8 +959,12 @@ struct InspectorAnchorGrid: View {
     ]
 
     var body: some View {
-        let columns = [GridItem(.fixed(20), spacing: 4), GridItem(.fixed(20), spacing: 4), GridItem(.fixed(20), spacing: 4)]
-        LazyVGrid(columns: columns, spacing: 4) {
+        let columns = [
+            GridItem(.fixed(Self.cellSize), spacing: Self.cellSpacing),
+            GridItem(.fixed(Self.cellSize), spacing: Self.cellSpacing),
+            GridItem(.fixed(Self.cellSize), spacing: Self.cellSpacing)
+        ]
+        LazyVGrid(columns: columns, spacing: Self.cellSpacing) {
             ForEach(anchors, id: \.label) { anchor in
                 Button {
                     onSelect(anchor.point)
@@ -798,16 +981,106 @@ struct InspectorAnchorGrid: View {
                             RoundedRectangle(cornerRadius: 3)
                                 .stroke(isActive ? NumericTokens.accentBlue : NumericTokens.borderSubtle, lineWidth: 1)
                         )
-                        .frame(width: 20, height: 20)
+                        .frame(width: Self.cellSize, height: Self.cellSize)
                 }
                 .buttonStyle(.plain)
             }
         }
-        .frame(width: 72)
+        .frame(width: (Self.cellSize * 3) + (Self.cellSpacing * 2))
     }
 
     private func isAnchored(to point: CGPoint) -> Bool {
         abs(position.x - point.x) < 0.02 && abs(position.y - point.y) < 0.02
+    }
+}
+
+// MARK: - Shared layout rows
+
+/// Shared layout rows used by all overlay detail panels.
+/// Shows Position (X/Y), Scale, and optionally Rotation, Width, and Height.
+/// Anchor and Padding have been intentionally omitted.
+struct OverlayLayoutRows: View {
+    @EnvironmentObject private var project: ProjectDocument
+    let elementID: OverlayElement.ID
+
+    /// When true, includes a Rotation slider (−180 … 180 °).
+    var showRotation: Bool = false
+
+    /// Provide a binding to show a Width slider; pass nil to hide it (e.g. square components).
+    var widthBinding: Binding<Double>? = nil
+    var widthRange: ClosedRange<Double> = 100...720
+    var widthLabel: String = "Width"
+
+    /// Provide a binding to show a Height slider; pass nil to hide it.
+    var heightBinding: Binding<Double>? = nil
+    var heightRange: ClosedRange<Double> = 52...720
+    var heightLabel: String = "Height"
+
+    var body: some View {
+        if let element = project.selectedOverlay(elementID) {
+            InspectorDenseRow(label: "Position") {
+                HStack(spacing: NumericTokens.space2) {
+                    InspectorDenseAxisField(
+                        axis: "X",
+                        value: Binding(
+                            get: { Double(element.position.x) },
+                            set: {
+                                project.setOverlayPosition(elementID, position: CGPoint(x: $0, y: element.position.y))
+                                project.finishContinuousEdit()
+                            }
+                        ),
+                        precision: 3
+                    )
+                    InspectorDenseAxisField(
+                        axis: "Y",
+                        value: Binding(
+                            get: { Double(element.position.y) },
+                            set: {
+                                project.setOverlayPosition(elementID, position: CGPoint(x: element.position.x, y: $0))
+                                project.finishContinuousEdit()
+                            }
+                        ),
+                        precision: 3
+                    )
+                }
+            }
+            InspectorDenseSliderRow(
+                label: "Scale",
+                value: Binding(
+                    get: { element.scale },
+                    set: { project.setOverlayScale(elementID, scale: ($0 / 0.05).rounded() * 0.05) }
+                ),
+                range: 0.25...4,
+                displayText: String(format: "%.2fx", element.scale)
+            )
+            if showRotation {
+                InspectorDenseSliderRow(
+                    label: "Rotation",
+                    value: Binding(
+                        get: { element.style.rotationDegrees },
+                        set: { project.setOverlayRotation(elementID, degrees: $0.rounded()) }
+                    ),
+                    range: -180...180,
+                    displayText: "\(Int(element.style.rotationDegrees))°"
+                )
+            }
+            if let w = widthBinding {
+                InspectorDenseSliderRow(
+                    label: widthLabel,
+                    value: w,
+                    range: widthRange,
+                    displayText: "\(Int(w.wrappedValue))"
+                )
+            }
+            if let h = heightBinding {
+                InspectorDenseSliderRow(
+                    label: heightLabel,
+                    value: h,
+                    range: heightRange,
+                    displayText: "\(Int(h.wrappedValue))"
+                )
+            }
+        }
     }
 }
 
@@ -832,10 +1105,11 @@ enum NumericTokens {
     // Numeric Overlay tokens (numeric-overlay-ui.spec.json).
     static let sectionHeaderHeight: CGFloat = 30
     static let rowHeight: CGFloat = 34
+    static let anchorGridRowHeight: CGFloat = 64
     static let rowGap: CGFloat = 0
     static let sectionGap: CGFloat = 0
     static let labelColumnWidth: CGFloat = 112
-    static let controlHeight: CGFloat = 30
+    static let controlHeight: CGFloat = 26
     static let segmentedVisibleHeight: CGFloat = 24
     static let footerButtonHeight: CGFloat = 32
     static let iconButtonSize: CGFloat = 28

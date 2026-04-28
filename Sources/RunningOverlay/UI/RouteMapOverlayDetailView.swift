@@ -68,56 +68,7 @@ struct RouteMapOverlayDetailView: View {
 
     @ViewBuilder
     private func layoutSection(_ element: OverlayElement) -> some View {
-        InspectorDenseRow(label: "Anchor") {
-            InspectorAnchorGrid(position: element.position) { anchor in
-                project.setOverlayPosition(elementID, position: anchor)
-                project.finishContinuousEdit()
-            }
-        }
-        InspectorDenseRow(label: "Position") {
-            HStack(spacing: NumericTokens.space2) {
-                InspectorDenseAxisField(
-                    axis: "X",
-                    value: Binding(
-                        get: { Double(element.position.x) },
-                        set: {
-                            project.setOverlayPosition(elementID, position: CGPoint(x: $0, y: element.position.y))
-                            project.finishContinuousEdit()
-                        }
-                    ),
-                    precision: 3
-                )
-                InspectorDenseAxisField(
-                    axis: "Y",
-                    value: Binding(
-                        get: { Double(element.position.y) },
-                        set: {
-                            project.setOverlayPosition(elementID, position: CGPoint(x: element.position.x, y: $0))
-                            project.finishContinuousEdit()
-                        }
-                    ),
-                    precision: 3
-                )
-            }
-        }
-        InspectorDenseSliderRow(
-            label: "Scale",
-            value: Binding(
-                get: { element.scale },
-                set: { project.setOverlayScale(elementID, scale: $0.quantizedRouteMap(to: 0.05)) }
-            ),
-            range: 0.25...4,
-            displayText: String(format: "%.2fx", element.scale)
-        )
-        InspectorDenseSliderRow(
-            label: "Rotation",
-            value: Binding(
-                get: { element.style.rotationDegrees },
-                set: { project.setOverlayRotation(elementID, degrees: $0.rounded()) }
-            ),
-            range: -180...180,
-            displayText: "\(Int(element.style.rotationDegrees))°"
-        )
+        OverlayLayoutRows(elementID: elementID, showRotation: true)
         InspectorDenseSliderRow(
             label: "Opacity",
             value: Binding(
@@ -176,6 +127,17 @@ struct RouteMapOverlayDetailView: View {
                 ),
                 range: 120...720,
                 displayText: "\(Int(element.style.routeMapHeight.rounded())) pt"
+            )
+            InspectorDenseSliderRow(
+                label: "Corner Radius",
+                value: Binding(
+                    get: { element.style.routeMapCornerRadius },
+                    set: { project.setOverlayRouteMapCornerRadius(elementID, radius: $0.quantizedRouteMap(to: 2)) }
+                ),
+                range: 0...80,
+                displayText: element.style.routeMapCornerRadius < 1
+                    ? "Sharp"
+                    : "\(Int(element.style.routeMapCornerRadius.rounded())) pt"
             )
         }
 
@@ -374,52 +336,31 @@ struct RouteMapOverlayDetailView: View {
     @ViewBuilder
     private func statsBarSection(_ element: OverlayElement) -> some View {
         let config = element.style.routeMapStatsBar
-        let isEnabled = config.visible
-
-        InspectorDenseSliderRow(
-            label: "Background",
-            value: Binding(
-                get: { config.backgroundOpacity },
-                set: { project.setOverlayRouteMapStatsBarBackgroundOpacity(elementID, opacity: $0.quantizedRouteMap(to: 0.05)) }
-            ),
-            range: 0...1,
-            displayText: String(format: "%.0f%%", config.backgroundOpacity * 100)
+        StatsBarInspectorRows(
+            isOn: config.visible,
+            placement: config.placement,
+            availablePlacements: RouteMapStatsBarPlacement.allCases,
+            layoutMode: config.layoutMode,
+            height: config.height,
+            heightRange: 32...160,
+            heightLabel: "Height",
+            backgroundOpacity: config.backgroundOpacity,
+            dividerOpacity: config.dividerOpacity,
+            cornerRadius: config.cornerRadius,
+            cornerRadiusRange: 0...40,
+            slots: config.slots.map { (metric: $0.metric, visible: $0.visible) },
+            availableMetrics: RouteMapStatsMetric.allCases.filter { $0 != .progress },
+            blurRadius: config.blurRadius,
+            onSetPlacement: { project.setOverlayRouteMapStatsBarPlacement(elementID, placement: $0) },
+            onSetLayoutMode: { project.setOverlayRouteMapStatsBarLayoutMode(elementID, layoutMode: $0) },
+            onSetHeight: { project.setOverlayRouteMapStatsBarHeight(elementID, height: $0.quantizedRouteMap(to: 2)) },
+            onSetBackgroundOpacity: { project.setOverlayRouteMapStatsBarBackgroundOpacity(elementID, opacity: $0.quantizedRouteMap(to: 0.05)) },
+            onSetDividerOpacity: { project.setOverlayRouteMapStatsBarDividerOpacity(elementID, opacity: $0.quantizedRouteMap(to: 0.01)) },
+            onSetCornerRadius: { project.setOverlayRouteMapStatsBarCornerRadius(elementID, radius: $0.quantizedRouteMap(to: 1)) },
+            onSetSlotMetric: { project.setOverlayRouteMapStatsBarSlotMetric(elementID, slotIndex: $0, metric: $1) },
+            onSetSlotVisible: { project.setOverlayRouteMapStatsBarSlotVisible(elementID, slotIndex: $0, isVisible: $1) },
+            onSetBlurRadius: { project.setOverlayRouteMapStatsBarBlurRadius(elementID, radius: $0.quantizedRouteMap(to: 1)) }
         )
-        .opacity(isEnabled ? 1 : 0.5)
-        .disabled(!isEnabled)
-
-        ForEach(config.slots.indices, id: \.self) { index in
-            let slot = config.slots[index]
-            InspectorDenseRow(label: "Slot \(index + 1)") {
-                Menu {
-                    ForEach(RouteMapStatsMetric.allCases) { metric in
-                        Button {
-                            project.setOverlayRouteMapStatsBarSlotMetric(elementID, slotIndex: index, metric: metric)
-                        } label: {
-                            if metric == slot.metric {
-                                Label(metric.label, systemImage: "checkmark")
-                            } else {
-                                Text(metric.label)
-                            }
-                        }
-                    }
-                } label: {
-                    InspectorDenseMenuLabel(title: slot.metric.label, isEnabled: slot.visible)
-                }
-                .menuStyle(.borderlessButton)
-                .frame(height: NumericTokens.controlHeight)
-
-                Toggle("", isOn: Binding(
-                    get: { slot.visible },
-                    set: { project.setOverlayRouteMapStatsBarSlotVisible(elementID, slotIndex: index, isVisible: $0) }
-                ))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-                .labelsHidden()
-            }
-            .opacity(isEnabled ? 1 : 0.5)
-            .disabled(!isEnabled)
-        }
     }
 
     @ViewBuilder

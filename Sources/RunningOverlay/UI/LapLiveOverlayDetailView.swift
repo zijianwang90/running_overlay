@@ -291,15 +291,7 @@ struct LapLiveOverlayDetailView: View {
 
     @ViewBuilder
     private func positionSection(_ element: OverlayElement) -> some View {
-        InspectorDenseSliderRow(
-            label: "Scale",
-            value: Binding(
-                get: { element.scale },
-                set: { v in project.setOverlayScale(elementID, scale: v) }
-            ),
-            range: 0.25...4.0,
-            displayText: String(format: "%.2f×", element.scale)
-        )
+        OverlayLayoutRows(elementID: elementID)
     }
 
     private var footerBar: some View {

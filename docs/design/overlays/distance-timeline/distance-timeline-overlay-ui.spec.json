@@ -26,7 +26,7 @@
     {
       "id": "dense",
       "label": "Dense",
-      "description": "DaVinci-like technical panel with ticks or segmented progress"
+      "description": "DaVinci-like technical panel with ticks and solid progress"
     },
     {
       "id": "sport",
@@ -42,7 +42,7 @@
     {
       "id": "glass",
       "label": "Glass",
-      "description": "translucent blurred video-friendly panel",
+      "description": "named glass direction with fake glass background disabled until real blur/material support exists",
       "supportsFadeOut": true
     },
     {
@@ -67,7 +67,56 @@
   ],
   "content": {
     "required": ["currentDistance", "totalDistance", "progressFraction", "formattedValue"],
-    "optional": ["label", "percent", "startLabel", "finishLabel", "tickLabels", "currentMarker", "mediaSlot", "elevationProfile", "routePath"]
+    "optional": ["label", "customValues", "statsBar", "axisStartFinishLabels", "axisDistanceLabels", "distancePointLabels", "tickLabels", "currentMarker", "mediaSlot", "elevationProfile", "routePath"]
+  },
+  "progressTrack": {
+    "controls": ["trackHeight", "trackOpacity", "fillColor", "ticksEnabled", "tickDensity", "currentMarkerEnabled"],
+    "rules": [
+      "tickDensity controls tick count independently from preset",
+      "dense and splits progress fills remain solid"
+    ]
+  },
+  "value": {
+    "controls": ["enabled", "unitSystem", "font", "valueSize", "weight", "textColor", "customValuesEnabled", "customSlots", "customMetric", "customValuesGroupSpacing", "customValueSpacing", "customValueSize", "customValueColor", "customValueOpacity"],
+    "unitSystems": ["metric", "imperial"],
+    "customSlotCount": 4,
+    "rules": [
+      "primary value can be disabled so the component acts as a pure distance timeline",
+      "custom value rows appear only when customValuesEnabled is true",
+      "custom values are metric-driven, not manually typed text",
+      "customValuesGroupSpacing controls distance from primary value to the custom group",
+      "customValueSpacing controls distance between custom values",
+      "increasing customValuesGroupSpacing moves the whole custom group and must not compress custom values or reduce customValueSpacing",
+      "custom values render inline after the primary value on the same baseline",
+      "custom value style is independent from primary value style"
+    ]
+  },
+  "label": {
+    "controls": ["enabled", "text"],
+    "rules": ["label is a separate section following Numeric overlay label behavior"]
+  },
+  "axisLabels": {
+    "controls": ["enabled", "mode", "showDistancePoints", "distancePointDensity", "distancePointGap"],
+    "modes": ["startFinish", "distance"],
+    "rules": [
+      "start/finish or distance endpoint labels render below the progress axis using distancePointGap",
+      "distancePointGap remains editable when showDistancePoints is false because endpoint labels use it",
+      "additional distance points are optional and density-controlled"
+    ]
+  },
+  "statsBar": {
+    "controls": ["enabled", "placement", "inside", "layout", "width", "height", "offsetX", "offsetY", "itemSpacing", "backgroundOpacity", "dividerOpacity", "cornerRadius", "slots"],
+    "placements": ["bottomAttached", "topAttached", "leftAttached", "rightAttached"],
+    "slotCount": 4,
+    "metrics": ["progress", "distance", "pace", "elapsedTime", "heartRate", "elevation", "cadence", "power", "calories"],
+    "rules": [
+      "progress percentage is displayed through Stats Bar, not an inline Percent content toggle",
+      "inside is a separate boolean toggle from placement",
+      "inside supports top, bottom, left, and right placements",
+      "when inside is false offsets are distance from the whole component",
+      "when inside is true offsets are internal adjustment and must not cover the progress axis",
+      "left and right placements expand background height enough to cover all vertical slots"
+    ]
   },
   "mediaSlot": {
     "supportedPresets": ["sport", "lowerThird"],
@@ -116,9 +165,15 @@
     }
   },
   "backgroundBorderFade": {
-    "backgroundControls": ["enabled", "color", "opacity", "blurMaterial", "cornerRadius", "paddingX", "paddingY"],
+    "backgroundControls": ["enabled", "color", "opacity", "blurMaterialFuture", "cornerRadius", "paddingX", "paddingY"],
     "borderControls": ["enabled", "color", "opacity", "width"],
     "fadeControls": ["enabled", "edge", "amount", "fadeTextAdvanced"],
+    "boundsRules": [
+      "background and border include axis labels and distance point labels at the current distancePointGap",
+      "inside stats bars expand the main background and border using the current stats bar side, size, and offset",
+      "preview selection bounds use the same dynamic visual bounds as background and border",
+      "attached outside stats bar placements keep separate stats bar background"
+    ],
     "fadeRules": [
       "fade background and track layers first",
       "primary value text remains full opacity by default",
@@ -127,13 +182,15 @@
   },
   "inspectorSections": [
     "Preset",
-    "Content",
+    "Value",
+    "Label",
     "Layout",
     "Progress",
+    "Axis Labels",
+    "Stats Bar",
     "Media Slot",
     "Route / Elevation",
     "Background & Border",
-    "Typography",
     "Effects"
   ],
   "modelGaps": [
@@ -145,6 +202,9 @@
     "DistanceTimelineElevationStyle",
     "OverlayEdgeFadeStyle",
     "distance timeline background/border/fade fields",
+    "value unit system and custom value slots",
+    "axis label and distance point configuration",
+    "stats bar configuration",
     "animated SVG preview/export support",
     "asset packaging/persistence strategy"
   ],
@@ -155,7 +215,7 @@
     },
     {
       "phase": 2,
-      "scope": ["splits", "glass", "neon", "ticks", "current marker", "segmented track", "glow", "fade masks"]
+      "scope": ["splits", "glass", "neon", "ticks", "current marker", "solid dense progress", "glow", "fade masks"]
     },
     {
       "phase": 3,
@@ -167,4 +227,3 @@
     }
   ]
 }
-

@@ -1,12 +1,12 @@
 # Route Map Overlay UI Design Spec
 
-Last updated: 2026-04-27 (Phase E.1 fixes)
+Last updated: 2026-04-28 (Stats Bar major refactor — placement, layout modes, dividers, blur, corner radius)
 
 ## Purpose
 
 Route Map Overlay is a composite overlay that combines a **map background**, a
 **polyline of the GPS route**, **start / finish markers**, and a **fully
-customizable legend**. Unlike Numeric Overlays, it is not a single text field;
+customizable Status Bar**. Unlike Numeric Overlays, it is not a single text field;
 it is a small visual module dropped on top of the source video. This spec
 captures the editing surface and visual rules so the implementation stays
 consistent with the rest of the Inspector design system.
@@ -49,7 +49,7 @@ density and spacing match the rest of the Inspector.
 - Container presets at the top of the panel — the user should be able to pick
   one of the four reference variants in a single click and only fine-tune from
   there.
-- Legend is a **list of items** the user composes, not a fixed layout.
+- Status Bar is a bottom / edge data strip composed from configurable metric slots, not a fixed 3-column distance / pace / time block.
 - Route line is always more prominent than the map background. The map
   background defaults are intentionally dim, low saturation, and partially
   transparent.
@@ -78,16 +78,15 @@ Sections, in order:
 
 1. `Preset` — Route Style Preset (line appearance only) + Distance readout.
 2. `Layout` — Anchor, Position X/Y, Scale, Rotation, Opacity.
-3. `Container` — Shape, Width, Height (or Size for circle), Edge Mode, Edge
-   Softness, Border.
+3. `Container` — Shape, Width, Height (or Size for circle), Corner Radius
+   (square only), Edge Mode, Edge Softness, Border.
 4. `Background Map` — Show Map (header toggle), Map Style, Map Opacity,
    optional Contrast / Saturation / Brightness / Blur.
 5. `Route Line` — Color Mode, Solid Color, Gradient Stops, Width, Opacity,
    Dash, Glow.
 6. `Markers` — All Markers, Start Marker, Finish Marker (style / color / size /
    border / label).
-7. `Legend` — Enabled (toggle accessory), Position, Layout, Item Style,
-   Background, Items list, Typography.
+7. `Status Bar` — Enabled (toggle accessory), Placement, Layout, Slots, Background, Dividers, Typography.
 8. `Effects` — Shadow opacity / radius, Glow opacity / radius, Background
    opacity (container fill).
 
@@ -97,6 +96,7 @@ Each section renders as a compact collapsible group:
 - Small `Image(systemName:)` in `textSecondary`.
 - Section title, optional accessory (e.g. enabled toggle).
 - Body rows: `InspectorDenseRow` with two-column grid.
+- Anchor rows use a taller min-height so the 3x3 anchor grid cannot overflow into the next row.
 
 Do not use one-row card containers. Row gap is 6 px, section gap is 8 px.
 
@@ -143,13 +143,14 @@ Defaults:
 
 ## Layout Section
 
-Controls:
+Implemented via the shared `OverlayLayoutRows` component. Controls:
 
-- Anchor: 3x3 grid of preset normalized positions.
 - Position X / Y on one row, three-decimal precision.
 - Scale slider, range `0.25...4`, quantized to `0.05`, formatted `1.00x`.
 - Rotation slider, range `-180...180°`, integer degrees.
-- Container Opacity slider, range `0...1`, formatted as percentage.
+- Opacity slider, range `0...1`, formatted as percentage (Route Map–specific).
+
+The Anchor grid has been removed. Position is set numerically only.
 
 Model mapping:
 
@@ -167,11 +168,16 @@ Controls:
 - Height slider (square only), range `120...720` pt, quantized to 4 pt.
 - Size slider (circle only), range `120...600` pt, quantized to 4 pt — drives
   both `routeMapWidth` and `routeMapHeight` symmetrically.
-- Corner Radius slider (planned, square only), range `0...32`.
+- Corner Radius slider (square only), range `0...80` pt, quantized to 2 pt.
+  Display rule: show `Sharp` when `< 1`, otherwise `NN pt`. Default `12`.
+  Maps to `OverlayStyle.routeMapCornerRadius`. The setter is
+  `setOverlayRouteMapCornerRadius`.
 - Edge Mode segmented: `Hard` / `Gradient` (`OverlayRouteMapEdgeFade`).
 - Edge Softness slider, range `0...0.85`, quantized to `0.01`. Display rule:
   show `Solid` when `<= 0.001`, otherwise `NN%`. Disabled when Edge Mode is
-  `Hard`. The setter is `setOverlayRouteMapEdgeSoftness`.
+  `Hard`. The setter is `setOverlayRouteMapEdgeSoftness`. When Corner Radius
+  is set, the rounded corners are naturally included in the mask clip so the
+  fade follows the rounded shape boundary.
 - Border Enabled toggle (planned).
 - Border Color swatches (planned).
 - Border Width slider, range `0...4` (planned).
@@ -271,44 +277,120 @@ Rules:
 - `Hidden` removes the marker from preview and export.
 - Start defaults to green, Finish defaults to red.
 
-## Legend Section
+## Status Bar Section
 
-The Legend section header carries an `Enabled` toggle accessory. When the
-toggle is off, the body controls fade to 50% and remain disabled.
+The Status Bar is a configurable data strip that can be placed at any edge of
+the map container or overlaid inside it. It displays up to four live activity
+metrics and is the primary way to show data alongside the route map.
 
-Controls (v1, implemented today):
+The section header carries an `Enabled` toggle accessory. When off, body
+controls fade to 50% and remain disabled; preview and export skip the bar.
 
-- Enabled toggle accessory.
-- Style dropdown (`OverlayRouteMapLegendMode`): `Minimal` /
-  `Start + Finish + Distance` / `Gradient Band`.
+### Data Model
 
-Controls (v2, planned per spec):
+`OverlayRouteMapStatsBarConfig` fields:
 
-- Position dropdown: `topLeft`, `topRight`, `bottomLeft`, `bottomRight`,
-  `bottomCenter`, `outsideBottom`, `hidden`.
-- Layout segmented: `vertical`, `horizontal`, `compactGrid`, `badges`.
-- Item Style segmented: `labelValue`, `iconLabelValue`, `iconValue`,
-  `valueOnly`, `startFinishMarker`.
-- Background toggle, color swatches, opacity slider, corner radius, padding
-  X/Y, item spacing.
-- Items list (drag-reorder, add, remove, edit per item):
-  - Item Type: `metric`, `startMarker`, `finishMarker`, `customText`.
-  - Metric: `distance`, `pace`, `elapsedTime`, `heartRate`, `power`,
-    `cadence`, `elevation`, `calories`.
-  - Custom label, custom value, unit override.
-  - Toggle Icon / Label / Value / Unit, icon name, icon color override.
-- Typography: font family, label size, value size, label weight, value weight,
-  text color, label opacity, value opacity, icon opacity.
+| Field | Type | Default | Range |
+| --- | --- | --- | --- |
+| `visible` | `Bool` | `false` | — |
+| `placement` | `RouteMapStatsBarPlacement` | `.bottomAttached` | see below |
+| `layoutMode` | `RouteMapStatsBarLayoutMode` | `.equalColumns` | see below |
+| `height` | `Double` | `64` | `32...160` pt |
+| `backgroundOpacity` | `Double` | `0.88` | `0...1` |
+| `blurRadius` | `Double` | `0` | `0...32` pt |
+| `dividerOpacity` | `Double` | `0.12` | `0...1` |
+| `cornerRadius` | `Double` | `0` | `0...40` pt |
+| `slots` | `[RouteMapStatsBarSlot]` | 4 slots | — |
 
-Rules:
+Default slots:
 
-- Legend must **not** render a fixed pace color bar. The legacy
-  `gradientBand` mode is kept for backward compatibility but new templates
-  should compose their own gradient using a `customText` item if needed.
-- Default legend items for new Route Map elements: `Start`, `Finish`,
-  `Distance`, `Time`.
-- When `enabled == false`, the renderer skips drawing legend in preview and
-  export.
+| Slot | Metric | Enabled |
+| --- | --- | --- |
+| 1 | `distance` | on |
+| 2 | `pace` | on |
+| 3 | `elapsedTime` | on |
+| 4 | `heartRate` | off |
+
+### Placement (`RouteMapStatsBarPlacement`)
+
+| Case | Behaviour |
+| --- | --- |
+| `bottomAttached` | Bar below map; total element height = map + bar |
+| `topAttached` | Bar above map; total element height = map + bar |
+| `leftAttached` | Bar left of map; total element width = bar + map |
+| `rightAttached` | Bar right of map; total element width = map + bar |
+| `insideBottom` | Bar overlaid at bottom inside map bounds; total size = map |
+| `insideTop` | Bar overlaid at top inside map bounds; total size = map |
+
+For `leftAttached` / `rightAttached`, `height` becomes the bar's horizontal
+width; the bar's height matches the map height. The `stack` layout mode is
+recommended for vertical bars.
+
+### Layout Modes (`RouteMapStatsBarLayoutMode`)
+
+| Case | Description |
+| --- | --- |
+| `equalColumns` | N equal-width columns. Value (top, large), unit (below), label (bottom, small uppercase) |
+| `emphasis` | First slot 38% width at larger font; remaining slots share the rest |
+| `grid2x2` | 2 × 2 grid (up to 4 slots). Falls back to `equalColumns` if < 3 slots |
+| `stack` | Vertical list: label left, value+unit right per row. Ideal for left/right placements |
+| `compact` | Dense horizontal row: value + inline unit, tiny label below |
+
+Font-size ratios (relative to bar height H):
+
+| Mode / slot | value | unit | label |
+| --- | ---: | ---: | ---: |
+| `equalColumns` | 0.38 H | 0.22 H | 0.20 H |
+| `emphasis` first | 0.46 H | 0.26 H | 0.20 H |
+| `emphasis` rest | 0.33 H | 0.19 H | 0.17 H |
+| `grid2x2` (row H = H/2) | 0.40 rowH | 0.22 rowH | 0.18 rowH |
+| `stack` | min(0.42 rowH, 0.28 H) | inline | min(0.28 rowH, 0.18 H) |
+| `compact` | 0.34 H | 0.20 H (inline) | 0.16 H |
+
+### Inspector Controls
+
+Displayed in the Stats Bar section (in order):
+
+1. **Placement** — dropdown (`RouteMapStatsBarPlacement`). Setter: `setOverlayRouteMapStatsBarPlacement`.
+2. **Layout** — dropdown (`RouteMapStatsBarLayoutMode`). Setter: `setOverlayRouteMapStatsBarLayoutMode`.
+3. **Height** — slider `32...160` pt, step 2 pt. Setter: `setOverlayRouteMapStatsBarHeight`.
+4. **Background** — opacity slider `0...1`. Setter: `setOverlayRouteMapStatsBarBackgroundOpacity`.
+5. **Dividers** — opacity slider `0...1`; display `Off` below 0.005. Setter: `setOverlayRouteMapStatsBarDividerOpacity`.
+6. **Radius** — corner radius `0...40` pt; display `Sharp` below 1. Setter: `setOverlayRouteMapStatsBarCornerRadius`.
+7. **Blur** — radius `0...32`; display `Off` below 1. Setter: `setOverlayRouteMapStatsBarBlurRadius`.
+8. **Slot 1–4** — metric dropdown + visibility toggle per slot.
+
+All controls disable and dim to 50% when the section is toggled off.
+
+### Rendering
+
+**Export (`OverlayFrameRenderer.drawRouteMapStatsBar`)**:
+- Background: `NSBezierPath(roundedRect:)` fill with `cornerRadius`.
+- Clips subsequent drawing to the background path.
+- Dispatches to a private `drawStatsBar*` function per layout mode.
+- Vertical dividers: 1 pt white at `dividerOpacity`, spanning 70% of bar height.
+- Horizontal dividers (`grid2x2`, `stack`): 1 pt spanning 90% of bar width.
+
+**Preview (`PreviewCanvasView.RouteMapOverlayView`)**:
+- `placementContainer` is a `@ViewBuilder` that emits the correct outer
+  `VStack`/`HStack`/`ZStack.overlay` depending on `statsBar.placement`.
+- `statsBarContent` dispatches to SwiftUI layout functions per `layoutMode`.
+- Background applied via `.background(RoundedRectangle / Rectangle)`.
+- Values use the same formatters as Numeric Overlay.
+
+- Values use the same formatters as Numeric Overlay. Pace uses `M'SS" /km`
+  or selected unit system; elapsed time uses `HH:MM:SS` when duration >= 1 hour.
+- Missing data renders `—`, not `0`, unless the metric naturally starts at zero
+  such as elapsed time.
+- Slot order is user-controlled and should be drag-reorderable in Phase F.
+
+### Legacy Legend Compatibility
+
+Existing `routeMapLegendVisible` / `routeMapLegendMode` fields are treated as
+legacy migration inputs only. On decode, map old `routeMapLegendVisible` to
+`routeMapStatusBarVisible`. Do not expose the old fixed pace color bar in the
+Inspector. If an older document used `gradientBand`, migrate to a Status Bar
+with route metrics and keep route gradient controls in the Route Line section.
 
 ## Effects Section
 
@@ -341,11 +423,12 @@ Overlay:
 | Token | Value |
 | --- | ---: |
 | `numeric.sectionHeaderHeight` | 30 |
-| `numeric.rowHeight` | 32 |
+| `numeric.rowHeight` | 34 |
+| `numeric.anchorGridRowHeight` | 64 (min-height for anchor grid rows) |
 | `numeric.rowGap` | 6 |
 | `numeric.sectionGap` | 8 |
 | `numeric.labelColumnWidth` | 88 |
-| `numeric.controlHeight` | 28 |
+| `numeric.controlHeight` | 26 |
 | `numeric.iconButtonSize` | 28 |
 | `numeric.swatchSize` | 20 |
 | `numeric.panelPaddingX` | 12 |
@@ -371,7 +454,8 @@ Currently model-backed (post 2026-04-27 Phase E.1):
   `routeMapMarkerStyle` (legacy / quick set).
 - `routeMapBackgroundStyle` — single source of truth for map visibility.
   `routeMapProvider` is now derived in the layout step.
-- `routeMapLegendVisible`, `routeMapLegendMode`.
+- `routeMapStatusBarVisible`, `routeMapStatusBarPlacement`, `routeMapStatusBarSlots` (new model target).
+- `routeMapLegendVisible`, `routeMapLegendMode` are legacy migration fields only.
 - `OverlayElement.position`, `OverlayElement.scale`,
   `OverlayStyle.rotationDegrees`.
 - `OverlayStyle.backgroundOpacity` (container fill alpha).
@@ -387,9 +471,10 @@ Planned (Phase F, not yet implemented):
 - Map adjustments (`contrast` / `saturation` / `brightness` / `blur`).
 - Route line (`width` / `opacity` / `dash` / `glow` / `gradientMetric`).
 - Per-marker color / size / border / label.
-- Legend items list (`RouteMapLegendItemConfig`), legend layout enum,
-  legend item style enum, legend position enum.
-- Legend typography overrides.
+- Status Bar style preset enum.
+- Status Bar full appearance fields: height, background color / opacity, corner radius, padding, divider style.
+- Status Bar slot list (`RouteMapStatusBarSlotConfig`), including metric, label override, unit mode, icon settings, color overrides, and width weight.
+- Status Bar typography overrides.
 - Glow / blend mode container effects.
 
 When a Phase F field lands, this doc and `route-map-overlay-ui.spec.json`
@@ -414,10 +499,12 @@ move the corresponding entry from `modelGaps` into `modelBackedToday`.
   `routeMapLayoutProjectsGpsRouteAndCurrentPoint`.
 - Edge Softness has visual effect from `0%` to `85%`, transitions from a
   hard edge through a vignette to a soft fade-out.
-- Route Line, Markers, Legend, and Effects controls live in their own
+- Route Line, Markers, Status Bar, and Effects controls live in their own
   collapsible sections.
 - Inspector width 400 px renders without text clipping.
-- Disabling Legend hides every legend control row beneath it.
+- Disabling Status Bar hides every Status Bar control row beneath it and removes the data strip from preview/export.
+- Status Bar supports at least 1–4 configurable metric slots, with default Distance / Pace / Time enabled and Heart Rate disabled.
+- Status Bar does not render any pace color bar; route gradient remains controlled only by Route Line.
 - The detail view shares `NumericTokens` with Numeric Overlay; row height,
   row gap, control height, control radius, and label column width are
   visually identical to a Numeric Overlay panel side-by-side.
