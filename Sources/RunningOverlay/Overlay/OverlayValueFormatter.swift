@@ -191,7 +191,7 @@ enum OverlayValueFormatter {
                 value: g.map { String(format: "%+.1f", $0) } ?? "--",
                 unit: "%"
             )
-        case .lapList:
+        case .lapList, .lapCard, .lapLive:
             return OverlayValueComponents(label: "", shortLabel: "", value: "", unit: "")
         }
     }

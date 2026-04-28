@@ -107,6 +107,19 @@ struct ActivityTimeline: Equatable {
         return laps.last { $0.startElapsedTime <= t }
     }
 
+    func previousLap(at elapsedTime: TimeInterval) -> LapRecord? {
+        guard let cur = currentLap(at: elapsedTime),
+              let idx = laps.firstIndex(where: { $0.id == cur.id }),
+              idx > 0 else { return nil }
+        return laps[idx - 1]
+    }
+
+    /// Most recent lap with kind == .active that has already ended.
+    func lastActiveLap(at elapsedTime: TimeInterval) -> LapRecord? {
+        let t = clampedElapsedTime(elapsedTime)
+        return laps.last { $0.kind == .active && $0.endElapsedTime <= t }
+    }
+
     func lapElapsedTime(at elapsedTime: TimeInterval) -> TimeInterval {
         guard let lap = currentLap(at: elapsedTime) else { return elapsedTime }
         return max(clampedElapsedTime(elapsedTime) - lap.startElapsedTime, 0)
@@ -123,6 +136,40 @@ struct ActivityTimeline: Equatable {
             let inLap = clampedElapsedTime(elapsedTime) - lap.startElapsedTime
             return min(max(inLap / lap.totalElapsedTime, 0), 1)
         }
+    }
+
+    // MARK: - Recovery HR queries
+
+    /// Max HR recorded from the start of the current lap up to elapsedTime.
+    /// Useful for rest laps: captures the HR peak that occurs just after
+    /// stopping a hard interval.
+    func recoveryPeakHR(at elapsedTime: TimeInterval) -> Int? {
+        guard let lap = currentLap(at: elapsedTime) else { return nil }
+        let t = clampedElapsedTime(elapsedTime)
+        return records
+            .filter { $0.elapsedTime >= lap.startElapsedTime && $0.elapsedTime <= t }
+            .compactMap(\.heartRate)
+            .max()
+    }
+
+    /// How many bpm the HR has dropped from the lap peak to now.
+    func recoveryDrop(at elapsedTime: TimeInterval) -> Int? {
+        guard let peak = recoveryPeakHR(at: elapsedTime),
+              let current = heartRate(at: elapsedTime) else { return nil }
+        return max(peak - current, 0)
+    }
+
+    /// Percentage of peak HR that has been shed (drop / peak × 100).
+    func recoveryDropPercent(at elapsedTime: TimeInterval) -> Double? {
+        guard let peak = recoveryPeakHR(at: elapsedTime), peak > 0,
+              let drop = recoveryDrop(at: elapsedTime) else { return nil }
+        return Double(drop) / Double(peak) * 100
+    }
+
+    /// How far the current HR is above a target (positive = still above target).
+    func recoveryGapToTarget(at elapsedTime: TimeInterval, targetHR: Int) -> Int? {
+        guard let current = heartRate(at: elapsedTime) else { return nil }
+        return max(current - targetHR, 0)
     }
 
     var routePoints: [RoutePoint] {

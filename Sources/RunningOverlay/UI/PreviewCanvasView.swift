@@ -151,6 +151,16 @@ struct PreviewCanvasView: View {
                     element: element,
                     layout: OverlayRenderModel.lapListLayout(for: element, in: renderContext)
                 )
+            case .lapCard:
+                LapCardOverlayView(
+                    element: element,
+                    layout: OverlayRenderModel.lapCardLayout(for: element, in: renderContext)
+                )
+            case .lapLive:
+                LapLiveOverlayView(
+                    element: element,
+                    layout: OverlayRenderModel.lapLiveLayout(for: element, in: renderContext)
+                )
             default:
                 let layout = OverlayRenderModel.textLayout(for: element, in: renderContext)
                 TextPresetOverlayView(
@@ -1663,6 +1673,186 @@ private struct LapListOverlayView: View {
             .padding(.horizontal, layout.rowHeight * 0.25)
         }
         .frame(height: layout.rowHeight)
+    }
+}
+
+private struct LapCardOverlayView: View {
+    let element: OverlayElement
+    let layout: LapCardRenderLayout
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: layout.cornerRadius)
+                .fill(Color.black.opacity(layout.backgroundOpacity))
+
+            VStack(alignment: .leading, spacing: 0) {
+                // Header
+                Text(layout.headerText)
+                    .font(.custom(element.style.fontName, size: layout.fontSize)
+                        .weight(Font.Weight(element.style.fontWeight)))
+                    .foregroundStyle(Color(element.style.foregroundColor))
+                    .lineLimit(1)
+                    .frame(height: layout.headerHeight)
+                    .padding(.horizontal, layout.horizontalPadding)
+
+                // Stat rows
+                ForEach(Array(layout.columnRows.enumerated()), id: \.offset) { _, pair in
+                    HStack {
+                        Text(pair.label)
+                            .font(.custom(element.style.fontName, size: layout.fontSize * 0.78))
+                            .foregroundStyle(Color(element.style.foregroundColor).opacity(0.6))
+                        Spacer()
+                        Text(pair.value)
+                            .font(.custom(element.style.fontName, size: layout.fontSize)
+                                .weight(Font.Weight(element.style.fontWeight)))
+                            .foregroundStyle(Color(element.style.foregroundColor))
+                            .monospacedDigit()
+                    }
+                    .frame(height: layout.rowHeight)
+                    .padding(.horizontal, layout.horizontalPadding)
+                }
+
+                // Recovery section
+                if layout.showRecoverySection {
+                    Divider()
+                        .background(Color(element.style.foregroundColor).opacity(0.25))
+                        .padding(.horizontal, layout.horizontalPadding)
+                        .padding(.vertical, layout.dividerHeight / 2)
+
+                    Text("Recovery")
+                        .font(.custom(element.style.fontName, size: layout.fontSize * 0.78))
+                        .foregroundStyle(Color(element.style.foregroundColor).opacity(0.55))
+                        .frame(height: layout.recoveryHeaderHeight)
+                        .padding(.horizontal, layout.horizontalPadding)
+
+                    ForEach(Array(layout.recoveryRows.enumerated()), id: \.offset) { _, pair in
+                        HStack {
+                            Text(pair.label)
+                                .font(.custom(element.style.fontName, size: layout.fontSize * 0.78))
+                                .foregroundStyle(Color(element.style.foregroundColor).opacity(0.6))
+                            Spacer()
+                            Text(pair.value)
+                                .font(.custom(element.style.fontName, size: layout.fontSize)
+                                    .weight(Font.Weight(element.style.fontWeight)))
+                                .foregroundStyle(Color(element.style.accentColor))
+                                .monospacedDigit()
+                        }
+                        .frame(height: layout.rowHeight)
+                        .padding(.horizontal, layout.horizontalPadding)
+                    }
+
+                    if let progress = layout.recoveryProgress {
+                        GeometryReader { proxy in
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Color(layout.progressColor).opacity(0.55))
+                                .frame(width: proxy.size.width * progress, height: 6)
+                        }
+                        .frame(height: 6)
+                        .padding(.horizontal, layout.horizontalPadding)
+                    }
+                }
+
+                Spacer(minLength: layout.verticalPadding)
+            }
+            .padding(.top, layout.verticalPadding)
+        }
+        .frame(width: layout.rect.width, height: layout.rect.height)
+    }
+}
+
+private struct LapLiveOverlayView: View {
+    let element: OverlayElement
+    let layout: LapLiveRenderLayout
+
+    var body: some View {
+        if layout.isHidden { return AnyView(EmptyView()) }
+        return AnyView(
+            ZStack(alignment: .topLeading) {
+                RoundedRectangle(cornerRadius: layout.cornerRadius)
+                    .fill(Color.black.opacity(layout.backgroundOpacity))
+
+                VStack(alignment: .leading, spacing: 0) {
+                    // Header
+                    Text(layout.headerText)
+                        .font(.custom(element.style.fontName, size: layout.fontSize)
+                            .weight(Font.Weight(element.style.fontWeight)))
+                        .foregroundStyle(Color(element.style.foregroundColor))
+                        .lineLimit(1)
+                        .frame(height: layout.headerHeight)
+                        .padding(.horizontal, layout.horizontalPadding)
+
+                    // Progress bar
+                    if layout.showProgressBar {
+                        GeometryReader { proxy in
+                            ZStack(alignment: .leading) {
+                                Rectangle()
+                                    .fill(Color.black.opacity(0.3))
+                                Rectangle()
+                                    .fill(Color(layout.progressColor).opacity(layout.progressOpacity))
+                                    .frame(width: proxy.size.width * layout.progressFraction)
+                            }
+                        }
+                        .frame(height: layout.progressBarHeight)
+                    }
+
+                    // Active metric rows
+                    ForEach(Array(layout.metricRows.enumerated()), id: \.offset) { _, pair in
+                        HStack {
+                            Text(pair.label)
+                                .font(.custom(element.style.fontName, size: layout.fontSize * 0.78))
+                                .foregroundStyle(Color(element.style.foregroundColor).opacity(0.6))
+                            Spacer()
+                            Text(pair.value)
+                                .font(.custom(element.style.fontName, size: layout.fontSize)
+                                    .weight(Font.Weight(element.style.fontWeight)))
+                                .foregroundStyle(Color(element.style.foregroundColor))
+                                .monospacedDigit()
+                        }
+                        .frame(height: layout.rowHeight)
+                        .padding(.horizontal, layout.horizontalPadding)
+                    }
+
+                    // Recovery rows (rest mode)
+                    if layout.isRestMode && !layout.recoveryRows.isEmpty {
+                        if layout.recoveryHeaderHeight > 0 {
+                            Text("Recovery")
+                                .font(.custom(element.style.fontName, size: layout.fontSize * 0.78))
+                                .foregroundStyle(Color(element.style.foregroundColor).opacity(0.55))
+                                .frame(height: layout.recoveryHeaderHeight)
+                                .padding(.horizontal, layout.horizontalPadding)
+                        }
+                        ForEach(Array(layout.recoveryRows.enumerated()), id: \.offset) { _, pair in
+                            HStack {
+                                Text(pair.label)
+                                    .font(.custom(element.style.fontName, size: layout.fontSize * 0.78))
+                                    .foregroundStyle(Color(element.style.foregroundColor).opacity(0.6))
+                                Spacer()
+                                Text(pair.value)
+                                    .font(.custom(element.style.fontName, size: layout.fontSize)
+                                        .weight(Font.Weight(element.style.fontWeight)))
+                                    .foregroundStyle(Color(element.style.accentColor))
+                                    .monospacedDigit()
+                            }
+                            .frame(height: layout.rowHeight)
+                            .padding(.horizontal, layout.horizontalPadding)
+                        }
+                        if let progress = layout.recoveryProgress {
+                            GeometryReader { proxy in
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(Color(layout.progressColor).opacity(0.55))
+                                    .frame(width: proxy.size.width * progress, height: 5)
+                            }
+                            .frame(height: 5)
+                            .padding(.horizontal, layout.horizontalPadding)
+                        }
+                    }
+
+                    Spacer(minLength: layout.verticalPadding)
+                }
+                .padding(.top, layout.verticalPadding)
+            }
+            .frame(width: layout.rect.width, height: layout.rect.height)
+        )
     }
 }
 

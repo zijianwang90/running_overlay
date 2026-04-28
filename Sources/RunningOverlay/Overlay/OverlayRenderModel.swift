@@ -348,6 +348,236 @@ enum OverlayRenderModel {
         }
     }
 
+    static func lapCardLayout(for element: OverlayElement, in context: OverlayRenderContext) -> LapCardRenderLayout {
+        let s = element.style.lapCard
+        let lastActive = context.activity.lastActiveLap(at: context.elapsedTime)
+        let currentLap = context.activity.currentLap(at: context.elapsedTime)
+        let isRestLap = currentLap?.kind == .rest
+
+        let rowH = context.scaled(26 * element.scale)
+        let hPad = context.scaled(12 * element.scale)
+        let vPad = context.scaled(10 * element.scale)
+        let fontSize = context.scaled(13 * element.scale)
+        let width = context.scaled(s.cardWidth * element.scale)
+
+        var columnRows: [(label: String, value: String)] = []
+        if let lap = lastActive {
+            columnRows = s.columns.filter(\.visible).map { cfg in
+                (cfg.column.label, lapCardColumnText(cfg.column, lap: lap))
+            }
+        }
+
+        var recoveryRows: [(label: String, value: String)] = []
+        var recoveryProgress: Double? = nil
+        if isRestLap && s.showRecoverySection {
+            recoveryRows = s.recoveryMetrics.map { metric in
+                recoveryMetricRow(metric, activity: context.activity,
+                                  elapsedTime: context.elapsedTime, targetHR: s.recoveryTargetHR)
+            }
+            if s.recoveryProgressEnabled && s.recoveryTargetHR > 0 {
+                if let peak = context.activity.recoveryPeakHR(at: context.elapsedTime),
+                   let current = context.activity.heartRate(at: context.elapsedTime),
+                   peak > s.recoveryTargetHR {
+                    let drop = Double(peak - current)
+                    let needed = Double(peak - s.recoveryTargetHR)
+                    recoveryProgress = min(max(drop / needed, 0), 1)
+                }
+            }
+        }
+
+        let headerH = context.scaled(22 * element.scale)
+        let statRows = columnRows.count
+        let recRows = recoveryRows.count
+        let dividerH = (recRows > 0) ? context.scaled(6 * element.scale) : 0
+        let recHeaderH = (recRows > 0) ? context.scaled(16 * element.scale) : 0
+        let totalH = vPad + headerH + Double(statRows) * rowH + dividerH + recHeaderH + Double(recRows) * rowH + vPad
+
+        let rect = centeredRect(for: element, size: CGSize(width: width, height: totalH), canvasSize: context.canvasSize)
+        return LapCardRenderLayout(
+            rect: rect,
+            headerText: lastActive.map { "#\($0.lapIndex + 1) \(lapKindShort($0.kind))" } ?? "No Lap",
+            columnRows: columnRows,
+            showRecoverySection: isRestLap && s.showRecoverySection && !recoveryRows.isEmpty,
+            recoveryRows: recoveryRows,
+            recoveryProgress: recoveryProgress,
+            backgroundOpacity: s.backgroundOpacity,
+            cornerRadius: context.scaled(s.cornerRadius * element.scale),
+            fontSize: fontSize,
+            rowHeight: rowH,
+            horizontalPadding: hPad,
+            verticalPadding: vPad,
+            progressColor: s.progressColor,
+            headerHeight: headerH,
+            dividerHeight: dividerH,
+            recoveryHeaderHeight: recHeaderH
+        )
+    }
+
+    static func lapLiveLayout(for element: OverlayElement, in context: OverlayRenderContext) -> LapLiveRenderLayout {
+        let s = element.style.lapLive
+        let currentLap = context.activity.currentLap(at: context.elapsedTime)
+        let lapKind = currentLap?.kind ?? .unknown
+        let isRest = lapKind == .rest
+
+        let hPad = context.scaled(12 * element.scale)
+        let vPad = context.scaled(10 * element.scale)
+        let rowH = context.scaled(28 * element.scale)
+        let headerH = context.scaled(20 * element.scale)
+        let progressH = (s.showProgressBar && !isRest) ? context.scaled(6 * element.scale) : 0
+        let fontSize = context.scaled(13 * element.scale)
+        let width = context.scaled(s.cardWidth * element.scale)
+
+        var metricRows: [(label: String, value: String)] = []
+        var recoveryRows: [(label: String, value: String)] = []
+        var recoveryProgress: Double? = nil
+        let isHidden = isRest && s.restMode == .hidden
+
+        if !isRest {
+            metricRows = s.activeMetrics.filter(\.visible).map { cfg in
+                lapLiveMetricRow(cfg.metric, activity: context.activity, elapsedTime: context.elapsedTime)
+            }
+        } else if s.restMode == .recovery {
+            recoveryRows = s.recoveryMetrics.map { metric in
+                recoveryMetricRow(metric, activity: context.activity,
+                                  elapsedTime: context.elapsedTime, targetHR: s.recoveryTargetHR)
+            }
+            if s.recoveryProgressEnabled && s.recoveryTargetHR > 0 {
+                if let peak = context.activity.recoveryPeakHR(at: context.elapsedTime),
+                   let current = context.activity.heartRate(at: context.elapsedTime),
+                   peak > s.recoveryTargetHR {
+                    let drop = Double(peak - current)
+                    let needed = Double(peak - s.recoveryTargetHR)
+                    recoveryProgress = min(max(drop / needed, 0), 1)
+                }
+            }
+        }
+
+        let activeCount = isRest ? 0 : metricRows.count
+        let recCount = isRest ? recoveryRows.count : 0
+        let recHeaderH = recCount > 0 ? context.scaled(14 * element.scale) : 0
+        let totalH = isHidden ? 0
+            : vPad + headerH + progressH + Double(activeCount) * rowH + recHeaderH + Double(recCount) * rowH + vPad
+
+        let lapProgress = context.activity.lapProgress(at: context.elapsedTime,
+                                                       byDistance: s.progressMode == .distance)
+        let lapHeader: String
+        if let lap = currentLap {
+            lapHeader = "#\(lap.lapIndex + 1) \(lapKindShort(lap.kind))"
+        } else {
+            lapHeader = "--"
+        }
+
+        let rect = centeredRect(for: element, size: CGSize(width: width, height: totalH), canvasSize: context.canvasSize)
+        return LapLiveRenderLayout(
+            rect: rect,
+            headerText: lapHeader,
+            lapKind: lapKind,
+            isHidden: isHidden,
+            isRestMode: isRest,
+            metricRows: metricRows,
+            progressFraction: lapProgress,
+            showProgressBar: s.showProgressBar && !isRest,
+            progressBarHeight: progressH,
+            recoveryRows: recoveryRows,
+            recoveryHeaderHeight: recHeaderH,
+            recoveryProgress: recoveryProgress,
+            backgroundOpacity: s.backgroundOpacity,
+            cornerRadius: context.scaled(s.cornerRadius * element.scale),
+            fontSize: fontSize,
+            rowHeight: rowH,
+            horizontalPadding: hPad,
+            verticalPadding: vPad,
+            headerHeight: headerH,
+            progressColor: s.progressColor,
+            progressOpacity: s.progressOpacity
+        )
+    }
+
+    private static func lapCardColumnText(_ column: LapCardColumn, lap: LapRecord) -> String {
+        switch column {
+        case .lapNumber: return "#\(lap.lapIndex + 1)"
+        case .lapKind: return lapKindShort(lap.kind)
+        case .distance:
+            let m = lap.totalDistanceMeters
+            return m >= 1000 ? String(format: "%.2f km", m / 1000) : String(format: "%.0f m", m)
+        case .elapsedTime:
+            let secs = Int(lap.totalElapsedTime.rounded())
+            return String(format: "%d:%02d", secs / 60, secs % 60)
+        case .pace:
+            guard let p = lap.avgPaceSecondsPerKm else { return "--" }
+            let secs = Int(p.rounded())
+            return String(format: "%d'%02d\"", secs / 60, secs % 60)
+        case .avgHR: return lap.avgHeartRate.map { "\($0) bpm" } ?? "--"
+        case .maxHR: return lap.maxHeartRate.map { "\($0) bpm" } ?? "--"
+        case .cadence: return lap.avgCadenceSPM.map { "\($0) spm" } ?? "--"
+        case .power: return lap.avgPowerWatts.map { "\($0) W" } ?? "--"
+        case .ascent: return lap.totalAscent.map { "\($0) m" } ?? "--"
+        }
+    }
+
+    private static func lapKindShort(_ kind: LapKind) -> String {
+        switch kind {
+        case .warmup: return "WU"
+        case .active: return "RUN"
+        case .rest: return "REST"
+        case .cooldown: return "CD"
+        case .unknown: return "LAP"
+        }
+    }
+
+    private static func recoveryMetricRow(
+        _ metric: RecoveryMetric,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval,
+        targetHR: Int
+    ) -> (label: String, value: String) {
+        switch metric {
+        case .peakHR:
+            return (metric.label, activity.recoveryPeakHR(at: elapsedTime).map { "\($0) bpm" } ?? "--")
+        case .currentHR:
+            return (metric.label, activity.heartRate(at: elapsedTime).map { "\($0) bpm" } ?? "--")
+        case .hrDrop:
+            return (metric.label, activity.recoveryDrop(at: elapsedTime).map { "\($0) bpm↓" } ?? "--")
+        case .hrDropPercent:
+            return (metric.label, activity.recoveryDropPercent(at: elapsedTime).map { String(format: "%.0f%%", $0) } ?? "--")
+        case .restElapsedTime:
+            let t = activity.lapElapsedTime(at: elapsedTime)
+            let secs = Int(t.rounded())
+            return (metric.label, String(format: "%d:%02d", secs / 60, secs % 60))
+        case .targetHRGap:
+            guard targetHR > 0 else { return (metric.label, "--") }
+            return (metric.label, activity.recoveryGapToTarget(at: elapsedTime, targetHR: targetHR).map { "\($0) bpm" } ?? "--")
+        }
+    }
+
+    private static func lapLiveMetricRow(
+        _ metric: LapLiveMetric,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval
+    ) -> (label: String, value: String) {
+        switch metric {
+        case .lapElapsedTime:
+            let t = activity.lapElapsedTime(at: elapsedTime)
+            let secs = Int(t.rounded())
+            return (metric.label, String(format: "%d:%02d", secs / 60, secs % 60))
+        case .lapDistance:
+            guard let cur = activity.currentLap(at: elapsedTime) else { return (metric.label, "--") }
+            let d = activity.distance(at: elapsedTime) - cur.startDistanceMeters
+            return (metric.label, d >= 1000 ? String(format: "%.2f km", d / 1000) : String(format: "%.0f m", d))
+        case .pace:
+            let v = activity.pace(at: elapsedTime).map { p -> String in
+                let secs = Int(p.rounded()); return String(format: "%d'%02d\"", secs / 60, secs % 60)
+            } ?? "--"
+            return (metric.label, v)
+        case .heartRate:
+            return (metric.label, activity.heartRate(at: elapsedTime).map { "\($0) bpm" } ?? "--")
+        case .power:
+            return (metric.label, activity.power(at: elapsedTime).map { "\($0) W" } ?? "--")
+        case .cadence:
+            return (metric.label, activity.cadence(at: elapsedTime).map { "\($0) spm" } ?? "--")
+        }
+    }
+
     static func centeredRect(for element: OverlayElement, contentSize: CGSize, textSize: CGSize, context: OverlayRenderContext) -> CGRect {
         let width = textSize.width + contentSize.width
         let height = textSize.height + contentSize.height
@@ -530,4 +760,51 @@ struct LapListRenderLayout {
     var progressBarEnabled: Bool
     var fontSize: Double
     var columns: [LapListColumn]
+}
+
+// MARK: - Lap Card
+
+struct LapCardRenderLayout {
+    var rect: CGRect
+    var headerText: String
+    var columnRows: [(label: String, value: String)]
+    var showRecoverySection: Bool
+    var recoveryRows: [(label: String, value: String)]
+    var recoveryProgress: Double?
+    var backgroundOpacity: Double
+    var cornerRadius: Double
+    var fontSize: Double
+    var rowHeight: Double
+    var horizontalPadding: Double
+    var verticalPadding: Double
+    var progressColor: OverlayColor
+    var headerHeight: Double
+    var dividerHeight: Double
+    var recoveryHeaderHeight: Double
+}
+
+// MARK: - Lap Live
+
+struct LapLiveRenderLayout {
+    var rect: CGRect
+    var headerText: String
+    var lapKind: LapKind
+    var isHidden: Bool
+    var isRestMode: Bool
+    var metricRows: [(label: String, value: String)]
+    var progressFraction: Double
+    var showProgressBar: Bool
+    var progressBarHeight: Double
+    var recoveryRows: [(label: String, value: String)]
+    var recoveryHeaderHeight: Double
+    var recoveryProgress: Double?
+    var backgroundOpacity: Double
+    var cornerRadius: Double
+    var fontSize: Double
+    var rowHeight: Double
+    var horizontalPadding: Double
+    var verticalPadding: Double
+    var headerHeight: Double
+    var progressColor: OverlayColor
+    var progressOpacity: Double
 }

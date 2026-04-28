@@ -28,6 +28,10 @@ struct ParameterPanelView: View {
                         RouteMapOverlayDetailView(elementID: elementID)
                     } else if element.type == .lapList {
                         LapListOverlayDetailView(elementID: elementID)
+                    } else if element.type == .lapCard {
+                        LapCardOverlayDetailView(elementID: elementID)
+                    } else if element.type == .lapLive {
+                        LapLiveOverlayDetailView(elementID: elementID)
                     } else {
                         OverlayDetailView(elementID: elementID)
                     }
@@ -1205,7 +1209,9 @@ private struct OverlayTileInfo: Identifiable {
         OverlayTileInfo(type: .grade, hint: "slope %", systemImage: "arrow.up.right", category: .metrics),
         OverlayTileInfo(type: .runningGauge, hint: "live gauge", systemImage: "gauge", category: .charts, isAccent: true),
         OverlayTileInfo(type: .routeMap, hint: "GPS path", systemImage: "map", category: .route, isAccent: true),
-        OverlayTileInfo(type: .lapList, hint: "lap teleprompter", systemImage: "list.number", category: .charts, isAccent: true)
+        OverlayTileInfo(type: .lapList, hint: "lap teleprompter", systemImage: "list.number", category: .charts, isAccent: true),
+        OverlayTileInfo(type: .lapCard, hint: "lap recap card", systemImage: "rectangle.badge.checkmark", category: .charts, isAccent: true),
+        OverlayTileInfo(type: .lapLive, hint: "live lap HUD", systemImage: "stopwatch", category: .charts, isAccent: true)
     ]
 
     static func tiles(for category: OverlayCategory) -> [OverlayTileInfo] {

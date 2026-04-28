@@ -982,6 +982,30 @@ final class ProjectDocument: ObservableObject {
         mutate(&overlayLayout.elements[index].style.lapList)
     }
 
+    func mutateLapCardStyle(_ elementID: OverlayElement.ID, _ mutate: (inout LapCardStyle) -> Void) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.lapCard)
+    }
+
+    func mutateLapCardStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout LapCardStyle) -> Void) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.lapCard)
+    }
+
+    func mutateLapLiveStyle(_ elementID: OverlayElement.ID, _ mutate: (inout LapLiveStyle) -> Void) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.lapLive)
+    }
+
+    func mutateLapLiveStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout LapLiveStyle) -> Void) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.lapLive)
+    }
+
     func setOverlayRouteMapStartMarkerStyle(_ elementID: OverlayElement.ID, markerStyle: OverlayRouteMapMarkerStyle) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {

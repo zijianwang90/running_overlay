@@ -841,6 +841,8 @@ extension OverlayElementType {
         case .temperature: "thermometer"
         case .grade: "arrow.up.right"
         case .lapList: "list.number"
+        case .lapCard: "rectangle.badge.checkmark"
+        case .lapLive: "stopwatch"
         }
     }
 }
