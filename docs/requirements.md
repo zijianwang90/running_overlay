@@ -66,7 +66,7 @@ The app follows a professional video-editing layout inspired by Final Cut Pro an
 - Top-right: export button.
 - Lower-right: project settings gear.
 - Default visual appearance: dark editing workspace similar to Final Cut Pro and DaVinci Resolve, not a white/light system theme.
-- App chrome and panels should use the shared app UI design tokens from `docs/design/app-ui.md`: near-black root background, charcoal panels, raised headers, subtle borders, compact controls, and blue primary accent.
+- App chrome and panels should use the shared app UI design tokens from `docs/design/system/app-ui.md`: near-black root background, charcoal panels, raised headers, subtle borders, compact controls, and blue primary accent.
 - Media Pool, Preview, Timeline, Inspector, settings, export, and status surfaces should use a consistent panel/header/row/control language.
 
 Layout interaction requirements:
@@ -201,6 +201,7 @@ Current implementation status:
 
 - Selected clips expose track/camera name editing in the Inspector.
 - Selected clips expose a start-time input in the Inspector. Duration editing is deferred until clip trim-length adjustment is needed.
+- Selected clips should use the same dense detail Inspector treatment as overlay detail views: header with back/action controls, section rows, and sticky action footer.
 
 Future requirements:
 
@@ -236,6 +237,7 @@ Current implementation status:
 - Selected clips show title, camera/source group, start-time input, and offset input.
 - Start and offset inputs edit seconds to two decimal places.
 - Double-clicking the Start or Offset label resets the value to `0.00 s`.
+- Selected clip Inspector includes a destructive delete action in the detail header and a layer-wide offset apply action in the footer.
 - The layer-wide apply action copies the selected clip's offset to all clips in the same timeline layer.
 - Dragging a clip on the timeline changes its effective start time while preserving its current offset value.
 
@@ -293,7 +295,7 @@ Current implementation status:
 - This includes segmented controls in the outer Inspector and dense detail inspectors (Numeric Overlay, Running Gauge, and Route Map).
 - Clicking an add tile creates the overlay and opens its detail editor.
 - Selected overlay elements expose current value, normalized position, scale, preset, font family, font weight, font size, foreground color, background opacity, shadow opacity, and shadow radius controls in the Inspector detail state.
-- Numeric overlays (heart rate, pace, calories, elapsed time, real time, distance, elevation, cadence, power) use the dense `NumericOverlayDetailView` Inspector with Content, Layout, Typography, Color, Background, and Effects sections matching `docs/design/numeric-overlay-ui.md`.
+- Numeric overlays (heart rate, pace, calories, elapsed time, real time, distance, elevation, cadence, power) use the dense `NumericOverlayDetailView` Inspector with Content, Layout, Typography, Color, Background, and Effects sections matching `docs/design/overlays/numeric/numeric-overlay-ui.md`.
 - Numeric overlay style supports per-overlay unit option, label/unit visibility toggles, custom label text, rotation, text alignment, accent color, an explicit background enabled flag with background color/radius/padding X/Y, and an explicit shadow enabled flag with shadow offset X/Y. New fields decode with safe defaults so existing projects and templates remain compatible.
 - Visibility, lock, generic opacity, and metric reassignment controls are deferred until backed by persistent project model fields.
 - Selected text overlays expose a built-in style picker as the first Inspector control, with Minimal, Pill Badge, Metric Card, Big Number, Sport Watch, Split Label, Inline Ghost, Accent Bar, Sport Neon, and Serif Editorial presets.
@@ -307,8 +309,11 @@ Current implementation status:
 - Space starts/stops playhead playback, and the overlay values update as playhead time changes.
 - Left and right arrows move the timeline playhead by exactly one project frame for fine timing checks.
 - Timeline ruler click/drag updates the current playhead.
+- Timeline ruler hover data appears above the time scale, not under the cursor, with an arrow pointing to the hovered ruler position.
 - A muted red playhead with a small downward-pointing triangle inside the ruler band is shown on timeline tracks. The vertical line starts from inside the ruler and extends down through the visible tracks; neither the line nor the triangle is allowed to extend above the ruler.
-- The distance timeline overlay renders as a progress bar.
+- The Distance Timeline overlay renders a configurable compact progress module with minimal, dense, sport, splits, glass, neon, lower-third, and route presets.
+- Distance Timeline presets can control value/label/percent content, background, border, padding, track height, ticks, current marker, glow, fade amount, media slot for applicable presets, route elevation underlay, and GPS sampled route geometry for the route preset.
+- Distance Timeline media slots support system icons plus embedded static or animated SVG assets. Embedded SVG assets must persist through overlay templates and render deterministically in preview and export.
 - The live elevation chart overlay renders as a compact line chart with a playhead marker.
 - The Running Gauge overlay renders a circular dashboard with a configurable dial background, optional outer ring, optional tick marks (count + major-every), optional progress ring (with mode: distance target / elapsed time / HR zone / power zone / pace intensity / custom), optional divider lines, and per-region data text. The active layout preset (one of seven) determines which regions are rendered, and each region independently binds a metric (Distance / Pace / Elapsed Time / Real Time / Heart Rate / Power / Cadence / Elevation / Calories), label visibility, unit visibility, value font scale/weight, and value color. Preview and export share the same `RunningGaugeLayoutEngine` region-frame and divider-segment helpers.
 - Overlay preview and export share the same render layout model for sampled values, normalized positions, base element dimensions, font sizes, padding, progress, and chart samples.
@@ -487,7 +492,7 @@ Export behavior:
 - Activity data is sampled from the FIT timeline for each segment using the configured Layer Data FPS cadence.
 - Export rendering scales overlay dimensions from the 720p preview reference so text, padding, and graphic sizes remain proportional at 1080p, 2K, and 4K output sizes.
 - Exported text should be antialiased through supersampled rendering before compositing into the final transparent frame, especially for large colored timer overlays.
-- Exported distance timeline and elevation chart elements should match their preview counterparts instead of falling back to static text.
+- Exported distance timeline and elevation chart elements should match their preview counterparts instead of falling back to static text; Distance Timeline export uses the same preset-aware layout as preview.
 - Output filename follows the source video filename with `_overlay.mov` appended before or after the extension pattern to be finalized.
 
 Example:

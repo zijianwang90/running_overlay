@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Dense Inspector detail panel for Numeric Overlay metrics.
-/// See `docs/design/numeric-overlay-ui.md` for the spec this view implements.
+/// See `docs/design/overlays/numeric/numeric-overlay-ui.md` for the spec this view implements.
 struct NumericOverlayDetailView: View {
     @EnvironmentObject private var project: ProjectDocument
     let elementID: OverlayElement.ID

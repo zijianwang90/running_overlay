@@ -81,7 +81,7 @@ struct MediaBrowserView: View {
     }
 
     private var searchAndFilterStrip: some View {
-        VStack(alignment: .leading, spacing: EditorTheme.space2) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: EditorTheme.space2) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 12, weight: .semibold))
@@ -110,12 +110,19 @@ struct MediaBrowserView: View {
                 RoundedRectangle(cornerRadius: EditorTheme.controlRadius)
                     .stroke(EditorTheme.borderSubtle, lineWidth: 1)
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(EditorTheme.borderSubtle)
+                    .frame(height: 1)
+            }
 
-            HStack(spacing: EditorTheme.space2) {
+            HStack(spacing: 6) {
                 Text(visibleCountLabel)
                     .font(EditorTheme.captionFont)
                     .foregroundStyle(EditorTheme.textMuted)
-                    .frame(minWidth: 48, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                 ForEach(MediaStatusFilter.allCases) { filter in
                     Button {
@@ -126,17 +133,17 @@ struct MediaBrowserView: View {
                     .buttonStyle(MediaFilterChipStyle(isSelected: statusFilter == filter))
                 }
 
-                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 6)
+            .padding(.bottom, 8)
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(EditorTheme.borderSubtle)
+                    .frame(height: 1)
             }
         }
-        .padding(.horizontal, EditorTheme.panelPaddingX)
-        .padding(.vertical, EditorTheme.space2)
         .background(EditorTheme.panelBackground)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(EditorTheme.borderSubtle)
-                .frame(height: 1)
-        }
     }
 
     private var mediaList: some View {
@@ -145,16 +152,20 @@ struct MediaBrowserView: View {
                 ForEach(Array(filteredMediaItems.enumerated()), id: \.element.id) { index, item in
                     mediaRow(item)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, EditorTheme.space3)
-                        .padding(.vertical, EditorTheme.space2)
-                        .frame(minHeight: EditorTheme.mediaRowHeight, alignment: .center)
+                        .padding(.horizontal, 12)
+                        .frame(height: EditorTheme.mediaRowHeight, alignment: .center)
                         .background(rowBackground(index: index, item: item))
                         .overlay(alignment: .leading) {
                             if selectedMediaIDs.contains(item.id) {
                                 Rectangle()
                                     .fill(EditorTheme.accentBlue)
-                                    .frame(width: 3)
+                                    .frame(width: 2)
                             }
+                        }
+                        .overlay(alignment: .bottom) {
+                            Rectangle()
+                                .fill(EditorTheme.borderSubtle.opacity(0.72))
+                                .frame(height: 1)
                         }
                         .contentShape(Rectangle())
                         .onHover { isHovering in
@@ -272,17 +283,17 @@ struct MediaBrowserView: View {
     }
 
     private func mediaRow(_ item: MediaItem) -> some View {
-        HStack(spacing: EditorTheme.space3) {
-            RoundedRectangle(cornerRadius: EditorTheme.controlRadius)
+        HStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: 4)
                 .fill(MediaBrowserColor.thumbnailBackground)
                 .overlay {
-                    RoundedRectangle(cornerRadius: EditorTheme.controlRadius)
+                    RoundedRectangle(cornerRadius: 4)
                         .stroke(EditorTheme.borderSubtle, lineWidth: 1)
                 }
                 .overlay {
-                    Image(systemName: "film")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(EditorTheme.textSecondary)
+                    Image(systemName: "play.rectangle")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(EditorTheme.textMuted)
                 }
                 .overlay(alignment: .topTrailing) {
                 if project.mediaPoolPreviewItemID == item.id {
@@ -297,7 +308,7 @@ struct MediaBrowserView: View {
                 }
             .frame(width: 42, height: 42)
 
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(item.displayName)
                     .font(EditorTheme.bodyStrongFont)
                     .foregroundStyle(EditorTheme.textPrimary)
@@ -316,13 +327,20 @@ struct MediaBrowserView: View {
             }
             .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
 
-            VStack(alignment: .trailing, spacing: 6) {
-                if let tag = item.tag {
-                    MediaTagDot(tag: tag, size: 9)
-                }
-                MediaStatusPill(status: item.alignmentStatus)
+            Text(item.alignmentStatus.label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(EditorTheme.textMuted)
+                .lineLimit(1)
+                .frame(maxWidth: 124, alignment: .trailing)
+
+            if let tag = item.tag {
+                MediaTagDot(tag: tag, size: 8)
             }
-            .frame(width: 112, alignment: .trailing)
+
+            Image(systemName: "ellipsis")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(EditorTheme.textMuted)
+                .frame(width: 16)
         }
     }
 
@@ -574,10 +592,10 @@ private struct MediaFilterChipStyle: ButtonStyle {
             .padding(.horizontal, 10)
             .frame(height: 24)
             .background(background(isPressed: configuration.isPressed))
-            .clipShape(Capsule())
+            .clipShape(RoundedRectangle(cornerRadius: 6))
             .overlay {
-                Capsule()
-                    .stroke(isSelected ? EditorTheme.accentBlue.opacity(0.75) : EditorTheme.borderSubtle, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(isSelected ? EditorTheme.accentBlue : EditorTheme.borderSubtle, lineWidth: 1)
             }
     }
 
@@ -585,7 +603,7 @@ private struct MediaFilterChipStyle: ButtonStyle {
         if isPressed {
             return EditorTheme.surfacePressed
         }
-        return isSelected ? EditorTheme.accentBlueSoft : EditorTheme.surfaceControl
+        return isSelected ? EditorTheme.accentBlue : EditorTheme.surfaceControl
     }
 }
 

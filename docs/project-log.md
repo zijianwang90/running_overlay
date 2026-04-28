@@ -1,5 +1,97 @@
 # Running Overlay Project Log
 
+## 2026-04-28
+
+### Timeline Ruler Hover Placement
+
+Summary:
+
+- Split the timeline ruler into a reserved hover-info band above the time scale and a lower scale band for ticks and labels.
+- Moved the ruler hover info pill into the upper band so it no longer sits under the mouse cursor.
+- Kept the pill arrow aligned to the hovered ruler position.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/TimelineView.swift`
+- `docs/design/timeline-ui.md`
+- `docs/design/timeline-ui.spec.json`
+- `docs/development.md`
+- `docs/requirements.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift test`.
+- All 53 tests passed.
+- Ran `jq empty docs/design/timeline-ui.spec.json`.
+
+### Media Pool Row Refinement
+
+Summary:
+
+- Refined Media Pool rows against `Runner Overlay Design System/preview/components-rows.html`.
+- Split search and status filters into distinct compact rows with design-system padding and borders.
+- Tightened media row layout to 72 px height, 42 px thumbnail well, compact metadata, muted right-side status text, mark dot, and trailing more affordance.
+- Adjusted status filter chips to use the solid active-blue treatment from the row component reference.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/MediaBrowserView.swift`
+- `docs/development.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift test`.
+- All 52 tests passed.
+
+### Clip Inspector Detail Style Alignment
+
+Summary:
+
+- Replaced the selected timeline clip Inspector's generic panel presentation with a dedicated clip detail view matching overlay detail structure.
+- Added a clip detail header with back navigation, video icon, clip title, Clip pill, live layer/start summary, and delete action.
+- Restyled clip timing controls as dense detail rows with a `Clip Timing` section header, editable layer field, Start and Offset numeric inputs, and preserved double-click reset behavior.
+- Moved the layer-wide offset apply action into a sticky footer so clip detail actions match the overlay detail interaction pattern.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/ParameterPanelView.swift`
+- `docs/development.md`
+- `docs/requirements.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift test`.
+- All 52 tests passed.
+
+### Distance Timeline Overlay Style System Design
+
+Summary:
+
+- Added a Distance Timeline Overlay design board with eight visual directions: Minimal, Dense, Sport, Splits, Glass, Neon, Lower Third, and Route.
+- Added implementation-facing UI documentation for `OverlayElementType.distanceTimeline`, including preset behavior, progress track controls, typography, background, border, fade out, and effects.
+- Defined customizable left media slots for Sport and Lower Third presets, including static SVG, animated SVG, image, icon, and future video-loop modes.
+- Defined Route/Elevation customization, including route/path modes, start/finish/current markers, elevation profile, shaded area under the elevation line, shadow blur, and progress clipping.
+- Documented border toggle, edge fade/fade-out behavior, background/material controls, current model gaps, and phased implementation guidance.
+- Added the module to `docs/overlay-modules` so follow-up implementation work has both product-level and UI-level guidance.
+
+Files changed:
+
+- `docs/design/README.md`
+- `docs/design/distance-timeline-overlay-ui.md`
+- `docs/design/distance-timeline-overlay-ui.spec.json`
+- `docs/design/distance-timeline-overlay-styles.png`
+- `docs/overlay-modules/README.md`
+- `docs/overlay-modules/distance-timeline-overlay.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `jq empty docs/design/distance-timeline-overlay-ui.spec.json`.
+- Documentation/design-only change; tests not run.
+
 ## 2026-04-27
 
 ### Detail Header Tap Area And Margin Cleanup

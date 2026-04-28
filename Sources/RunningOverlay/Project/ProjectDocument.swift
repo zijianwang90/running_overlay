@@ -322,7 +322,7 @@ final class ProjectDocument: ObservableObject {
         if type == .routeMap {
             // Route Style preset describes the polyline appearance only; map
             // visibility is driven by `routeMapBackgroundStyle` (see
-            // `docs/design/route-map-overlay-ui.md`). The default is to show
+            // `docs/design/overlays/route-map/route-map-overlay-ui.md`). The default is to show
             // the dark MapKit background with a Gradient route line on top.
             style.routeMapPreset = .gradient
             style.routeMapProvider = .mapKit
@@ -679,6 +679,55 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.textPreset = textPreset
     }
 
+    func setOverlayDistanceTimelinePreset(_ elementID: OverlayElement.ID, preset: DistanceTimelinePreset) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.distanceTimeline = DistanceTimelineStyle.preset(preset)
+    }
+
+    func mutateDistanceTimelineStyle(_ elementID: OverlayElement.ID, _ mutate: (inout DistanceTimelineStyle) -> Void) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        mutate(&overlayLayout.elements[index].style.distanceTimeline)
+    }
+
+    func importDistanceTimelineIconAsset(_ elementID: OverlayElement.ID) {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.init(filenameExtension: "svg")].compactMap { $0 }
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return
+        }
+
+        do {
+            let source = try String(contentsOf: url, encoding: .utf8)
+            let isAnimated = source.localizedCaseInsensitiveContains("<animate")
+                || source.localizedCaseInsensitiveContains("animateTransform")
+            registerUndoPoint()
+            guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+                return
+            }
+            var slot = overlayLayout.elements[index].style.distanceTimeline.mediaSlot
+            slot.mode = isAnimated ? .animatedSVG : .staticSVG
+            slot.assetName = url.lastPathComponent
+            slot.svgSource = source
+            slot.animationDuration = Self.svgDuration(from: source) ?? slot.animationDuration
+            overlayLayout.elements[index].style.distanceTimeline.mediaSlot = slot
+            overlayLayout.elements[index].style.distanceTimeline.mediaSlotMode = slot.mode
+            overlayLayout.elements[index].style.distanceTimeline.mediaSlotEnabled = true
+            statusMessage = "Imported icon asset: \(url.lastPathComponent)."
+        } catch {
+            statusMessage = "Icon import failed: \(error.localizedDescription)"
+        }
+    }
+
     /// Applies an `OverlayTextPreset` and, when the preset declares
     /// recommended typography/style tokens, snaps fontName/fontSize/
     /// fontWeight/textAlignment/showLabel/showUnit/backgroundEnabled/
@@ -709,6 +758,25 @@ final class ProjectDocument: ObservableObject {
             style.accentColor = accent
         }
         overlayLayout.elements[index].style = style
+    }
+
+    private static func svgDuration(from source: String) -> Double? {
+        let pattern = #"\bdur\s*=\s*("[^"]*"|'[^']*')"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
+              let match = regex.firstMatch(in: source, range: NSRange(source.startIndex..<source.endIndex, in: source)),
+              let range = Range(match.range(at: 1), in: source) else {
+            return nil
+        }
+        var value = String(source[range])
+        value.removeFirst()
+        value.removeLast()
+        if value.hasSuffix("ms") {
+            return Double(value.dropLast(2)).map { $0 / 1000 }
+        }
+        if value.hasSuffix("s") {
+            return Double(value.dropLast())
+        }
+        return Double(value)
     }
 
     func setOverlayGaugePreset(_ elementID: OverlayElement.ID, gaugePreset: OverlayGaugePreset) {
@@ -841,7 +909,7 @@ final class ProjectDocument: ObservableObject {
     /// `OverlayRouteMapContainerPreset` onto a single undo point so the
     /// preset switch is reversible in one step.
     ///
-    /// See `docs/design/route-map-overlay-ui.md` for the value table.
+    /// See `docs/design/overlays/route-map/route-map-overlay-ui.md` for the value table.
     func setOverlayRouteMapContainerPreset(_ elementID: OverlayElement.ID, containerPreset: OverlayRouteMapContainerPreset) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {

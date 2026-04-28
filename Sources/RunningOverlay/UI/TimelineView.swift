@@ -198,21 +198,26 @@ private final class TimelineCanvasNSView: NSView {
     private var mediaDropTargetTrackName: String?
     private var trackingArea: NSTrackingArea?
 
-    private let rulerHeight: CGFloat = 42
-    private let fitTrackHeight: CGFloat = 34
-    private let trackHeight: CGFloat = 48
-    private let trackGap: CGFloat = 8
-    private let labelWidth: CGFloat = 92
-    private let contentPadding: CGFloat = 12
+    private let rulerHoverHeight: CGFloat = 30
+    private let rulerScaleHeight: CGFloat = 28
+    private let fitTrackHeight: CGFloat = 44
+    private let trackHeight: CGFloat = 44
+    private let trackGap: CGFloat = 0
+    private let labelWidth: CGFloat = 64
+    private let contentPadding: CGFloat = 8
     private let playheadLineWidth: CGFloat = 2
     private let playheadHeadSize = CGSize(width: 12, height: 8)
+
+    private var rulerHeight: CGFloat {
+        rulerHoverHeight + rulerScaleHeight
+    }
 
     private var hasTimelineContent: Bool {
         activityDuration > 0 || !tracks.isEmpty || mediaItemsAreAvailable || isMediaDragActive
     }
 
     private var trackStartY: CGFloat {
-        rulerHeight + contentPadding + (activityDuration > 0 ? fitTrackHeight + trackGap : 0)
+        rulerHeight + (activityDuration > 0 ? fitTrackHeight : 0)
     }
 
     var playheadX: CGFloat {
@@ -275,7 +280,7 @@ private final class TimelineCanvasNSView: NSView {
         let timelineHeight = max(
             viewportSize.height,
             hasTimelineContent
-                ? trackStartY + contentPadding + CGFloat(trackCount) * trackHeight + CGFloat(max(trackCount - 1, 0)) * trackGap
+                ? trackStartY + CGFloat(trackCount) * trackHeight + CGFloat(max(trackCount - 1, 0)) * trackGap
                 : viewportSize.height
         )
         frame = CGRect(origin: .zero, size: CGSize(width: timelineWidth, height: timelineHeight))
@@ -333,7 +338,7 @@ private final class TimelineCanvasNSView: NSView {
 
     override func mouseMoved(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        hoverPoint = point.y <= rulerHeight && activityDuration > 0 ? point : nil
+        hoverPoint = point.y >= rulerHoverHeight && point.y <= rulerHeight && activityDuration > 0 ? point : nil
         needsDisplay = true
     }
 
@@ -349,7 +354,7 @@ private final class TimelineCanvasNSView: NSView {
         window?.makeFirstResponder(self)
         project.clearMediaPoolPreview()
         let point = convert(event.locationInWindow, from: nil)
-        if point.y <= rulerHeight {
+        if point.y >= rulerHoverHeight && point.y <= rulerHeight {
             project.setPlayhead(time(atX: point.x))
             return
         }
@@ -375,7 +380,7 @@ private final class TimelineCanvasNSView: NSView {
     override func mouseDragged(with event: NSEvent) {
         guard let project else { return }
         let point = convert(event.locationInWindow, from: nil)
-        if point.y <= rulerHeight {
+        if point.y >= rulerHoverHeight && point.y <= rulerHeight {
             project.setPlayhead(time(atX: point.x))
             return
         }
@@ -475,13 +480,14 @@ private final class TimelineCanvasNSView: NSView {
 
         let timelineStartX = labelWidth + contentPadding
         let timelineWidth = CGFloat(max(visibleEndTime - visibleStartTime, 1) * pixelsPerSecond)
+        let scaleTopY = rulerHoverHeight
         NSColor.editorBorderSubtle.setStroke()
         NSBezierPath.strokeLine(
             from: CGPoint(x: 0, y: rulerHeight - 0.5),
             to: CGPoint(x: bounds.width, y: rulerHeight - 0.5)
         )
         NSBezierPath.strokeLine(
-            from: CGPoint(x: timelineStartX - 0.5, y: 0),
+            from: CGPoint(x: timelineStartX - 0.5, y: scaleTopY),
             to: CGPoint(x: timelineStartX - 0.5, y: rulerHeight)
         )
 
@@ -504,10 +510,10 @@ private final class TimelineCanvasNSView: NSView {
                 .projectTime(forDisplayTime: displayTime, activityDuration: activityDuration, collapsed: isCollapsed)
             let x = timelineStartX + timelineWidth * progress
             NSColor.editorBorderSubtle.withAlphaComponent(0.6).setStroke()
-            NSBezierPath.strokeLine(from: CGPoint(x: x, y: 14), to: CGPoint(x: x, y: 24))
+            NSBezierPath.strokeLine(from: CGPoint(x: x, y: scaleTopY + 18), to: CGPoint(x: x, y: rulerHeight - 2))
             drawText(
                 formatSignedDuration(projectTime - fitStartTime),
-                at: CGPoint(x: x - 20, y: 26),
+                at: CGPoint(x: x - 20, y: scaleTopY + 6),
                 color: .editorTextMuted,
                 font: .systemFont(ofSize: 10)
             )
@@ -516,23 +522,27 @@ private final class TimelineCanvasNSView: NSView {
     }
 
     private func drawFitTrack() {
-        let y = rulerHeight + contentPadding
+        let y = rulerHeight
         let timelineStartX = labelWidth + contentPadding
         let labelRect = CGRect(x: 0, y: y, width: timelineStartX - 1, height: fitTrackHeight)
         NSColor.timelineLabelColumnBackground.setFill()
         labelRect.fill()
-        drawText("FIT", at: CGPoint(x: contentPadding, y: y + 10), color: .editorTextPrimary, font: .systemFont(ofSize: 11, weight: .semibold))
+        NSColor.editorBorderSubtle.withAlphaComponent(0.55).setStroke()
+        NSBezierPath.strokeLine(from: CGPoint(x: 0, y: y + fitTrackHeight - 0.5), to: CGPoint(x: timelineStartX - 1, y: y + fitTrackHeight - 0.5))
+        drawText("FIT", at: CGPoint(x: 10, y: y + 16), color: .editorTextPrimary, font: .systemFont(ofSize: 11, weight: .semibold))
 
-        let laneRect = CGRect(x: timelineStartX, y: y, width: max(bounds.width - timelineStartX - contentPadding, 1), height: fitTrackHeight)
+        let laneRect = CGRect(x: timelineStartX, y: y, width: max(bounds.width - timelineStartX, 1), height: fitTrackHeight)
         NSColor.timelineTrackBandA.setFill()
         laneRect.fill()
+        NSColor.editorBorderSubtle.withAlphaComponent(0.45).setStroke()
+        NSBezierPath.strokeLine(from: CGPoint(x: laneRect.minX, y: laneRect.maxY - 0.5), to: CGPoint(x: laneRect.maxX, y: laneRect.maxY - 0.5))
 
         guard activityDuration > 0 else {
             return
         }
         let fitRects = fitTrackRects()
         for fitRect in fitRects {
-            let path = roundedPath(fitRect, radius: 3)
+            let path = roundedPath(fitRect, radius: 4)
             NSColor.timelineFitGreen.withAlphaComponent(0.9).setFill()
             path.fill()
             NSColor.timelineSpliceBorder.withAlphaComponent(0.9).setStroke()
@@ -540,7 +550,7 @@ private final class TimelineCanvasNSView: NSView {
             path.stroke()
         }
         if let fitRect = fitRects.first {
-            drawText("00:00", in: fitRect.insetBy(dx: 8, dy: 7), color: .white, font: .systemFont(ofSize: 11, weight: .medium), lineBreakMode: .byTruncatingTail)
+            drawText("00:00", in: fitRect.insetBy(dx: 8, dy: 6), color: .white, font: .systemFont(ofSize: 11, weight: .medium), lineBreakMode: .byTruncatingTail)
         }
     }
 
@@ -571,10 +581,10 @@ private final class TimelineCanvasNSView: NSView {
             NSColor.timelineLabelColumnBackground.setFill()
             labelRect.fill()
             NSColor.editorBorderSubtle.withAlphaComponent(0.55).setStroke()
-            NSBezierPath.strokeLine(from: CGPoint(x: 0, y: y + trackHeight), to: CGPoint(x: timelineStartX - 1, y: y + trackHeight))
+            NSBezierPath.strokeLine(from: CGPoint(x: 0, y: y + trackHeight - 0.5), to: CGPoint(x: timelineStartX - 1, y: y + trackHeight - 0.5))
             drawText(
                 track.name,
-                at: CGPoint(x: contentPadding, y: y + 17),
+                at: CGPoint(x: 10, y: y + 16),
                 color: .editorTextPrimary,
                 font: .systemFont(ofSize: 11, weight: .medium)
             )
@@ -636,15 +646,15 @@ private final class TimelineCanvasNSView: NSView {
         let effectiveStart = clip.id == draggingClipID ? dragCurrentStart : clip.effectiveStartTime
         let x = x(forProjectTime: effectiveStart)
         let width = max(CGFloat(clip.duration * pixelsPerSecond), 1)
-        let rect = CGRect(x: x, y: y + 7, width: width, height: trackHeight - 14)
+        let rect = CGRect(x: x, y: y + 6, width: width, height: trackHeight - 12)
         let isSelected = clip.id == selectedClipID
         let color = isSelected ? NSColor.timelineClipBlue : NSColor.timelineClipBlue.withAlphaComponent(0.72)
         let roundedCorners = clipRoundedCorners(for: clip, in: track)
-        let fillPath = roundedPath(rect, radius: 3, corners: roundedCorners)
+        let fillPath = roundedPath(rect, radius: 4, corners: roundedCorners)
         color.setFill()
         fillPath.fill()
 
-        let borderPath = roundedPath(rect, radius: 3, corners: roundedCorners)
+        let borderPath = roundedPath(rect, radius: 4, corners: roundedCorners)
         if isSelected {
             NSColor.white.setStroke()
             borderPath.lineWidth = 2
@@ -747,9 +757,9 @@ private final class TimelineCanvasNSView: NSView {
             for clip in track.clips {
                 let rect = CGRect(
                     x: x(forProjectTime: clip.effectiveStartTime),
-                    y: y + 7,
+                    y: y + 6,
                     width: max(CGFloat(clip.duration * pixelsPerSecond), 1),
-                    height: trackHeight - 14
+                    height: trackHeight - 12
                 )
                 if rect.contains(point) {
                     return (track, clip)
@@ -799,11 +809,11 @@ private final class TimelineCanvasNSView: NSView {
     }
 
     private func fitTrackRect() -> CGRect {
-        fitTrackRects().first ?? CGRect(x: x(forProjectTime: fitStartTime), y: rulerHeight + contentPadding + 5, width: 54, height: fitTrackHeight - 10)
+        fitTrackRects().first ?? CGRect(x: x(forProjectTime: fitStartTime), y: rulerHeight + 8, width: 54, height: fitTrackHeight - 16)
     }
 
     private func fitTrackRects() -> [CGRect] {
-        let y = rulerHeight + contentPadding
+        let y = rulerHeight
         if isCollapsed {
             let timeline = TimelineModel(tracks: tracks, zoom: .fit, playhead: playhead, fitStartTime: fitStartTime)
             let segments = timeline.collapsedDisplaySegments()
@@ -811,14 +821,14 @@ private final class TimelineCanvasNSView: NSView {
                 return segments.map { segment in
                     let startX = labelWidth + contentPadding + CGFloat((segment.displayStartTime - visibleStartTime) * pixelsPerSecond)
                     let width = CGFloat(max(segment.displayEndTime - segment.displayStartTime, 0) * pixelsPerSecond)
-                    return CGRect(x: startX, y: y + 5, width: max(width, 2), height: fitTrackHeight - 10)
+                    return CGRect(x: startX, y: y + 8, width: max(width, 2), height: fitTrackHeight - 16)
                 }
             }
         }
 
         let startX = x(forProjectTime: fitStartTime)
         let endX = x(forProjectTime: fitStartTime + max(activityDuration, 0))
-        return [CGRect(x: startX, y: y + 5, width: max(endX - startX, 54), height: fitTrackHeight - 10)]
+        return [CGRect(x: startX, y: y + 8, width: max(endX - startX, 54), height: fitTrackHeight - 16)]
     }
 
     private func roundedPath(_ rect: CGRect, radius: CGFloat) -> NSBezierPath {

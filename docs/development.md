@@ -132,7 +132,7 @@ Current implementation:
 - Domain model modules: `FitData`, `MediaImport`, `Timeline`, and `Overlay`.
 - Main editor uses horizontal and vertical split views so media, preview, inspector, and timeline boundaries are draggable.
 - Initial app state is empty: no sample media, sample timeline clips, sample overlay elements, or fake FIT duration.
-- App-level UI uses the shared dark editor design tokens from `docs/design/app-ui.md` through `EditorTheme`.
+- App-level UI uses the shared dark editor design tokens from `docs/design/system/app-ui.md` through `EditorTheme`.
 - Media Pool, Preview controls, Timeline, Inspector, status bar, export progress, project settings, and export dialog share dark panel/header/control colors, compact sizing, subtle borders, and system typography.
 - Resizable panes keep stable minimum widths so media controls do not collapse when selection hierarchy changes.
 - Media Pool default width is 380 px (min 300 px) and Inspector default width is 400 px (min 320 px); both panels remain user-resizable via custom drag handles.
@@ -179,7 +179,7 @@ Current implementation:
 - Media browser rows support multi-selection, select-all-visible, tag filtering, right-click tag assignment, explicit matching to the current layer or a new layer, and deletion from the media pool.
 - The media browser includes filename search plus real status chips for `All`, `Ready`, and `Aligned`; filter changes prune selections that are no longer visible.
 - The media browser captures Command+A while active to select all visible filtered media rows without showing a system focus ring.
-- The media browser uses custom dark alternating row backgrounds, hover fills, selected-row accent strips, centered compact file icon wells, and status pills instead of system list separators.
+- The media browser row layout follows the design-system row reference with 72 px rows, 42 px thumbnail wells, compact metadata, right-side muted status text, mark dots, and a trailing more affordance.
 - The context menu Mark submenu uses circular color icons for each mark option.
 - The no-media empty state includes a drag/drop prompt, an `Import Videos` action, a short matching-workflow description, and a supported-format hint.
 - First-pass camera/source grouping uses the first filename token.
@@ -205,7 +205,7 @@ Current implementation:
 - Selected media browser items can be matched from the right-click menu to the current timeline layer or to a new layer.
 - Timeline shows a default empty `Layer 1` track when no clips exist but FIT or media context exists.
 - Timeline drawing separates the label column from the central lane area with distinct backgrounds and a vertical divider.
-- Timeline styling follows `docs/design/timeline-ui.md` and `docs/design/timeline-ui.spec.json`, including compact header controls, dark alternating lane bands, subtle ruler ticks, square-adjacent clip joins with dark splice borders, and compact hover info pills.
+- Timeline styling follows `docs/design/panels/timeline/timeline-ui.md` and `docs/design/panels/timeline/timeline-ui.spec.json`, including compact header controls, dark alternating lane bands, subtle ruler ticks, square-adjacent clip joins with dark splice borders, and compact hover info pills.
 - Dropping a media item creates or moves a timeline clip at the drop location.
 - Media drag-over highlights the target layer, and the AppKit timeline exposes only one new layer drop target beyond existing layers.
 - `TimelineClip` stores `startTime` and `alignmentOffset` separately.
@@ -213,11 +213,12 @@ Current implementation:
 - Inspector start and offset fields update the selected clip's effective start time and alignment offset with 0.01 second precision.
 - Double-clicking Inspector timing labels resets start or offset to the default `0.00 s` value.
 - Inspector action applies the selected offset to all clips in the currently selected timeline layer.
+- Timeline clips use a dedicated clip detail Inspector with the same header, section-row layout, sticky footer, back action, and destructive delete affordance as overlay detail inspectors.
 - Timeline drawing and high-frequency interactions are handled by an AppKit `NSView` embedded in SwiftUI.
 - The AppKit timeline handles self-drawn ruler, ruler hover data, tracks, clips, playhead, clip dragging, ruler seeking, media drop, and Command-scroll zoom.
 - The AppKit timeline draws a muted-red playhead with a small downward-pointing triangle inside the ruler band; the triangle's tip connects to a thin vertical line that extends from the ruler through the visible tracks, and neither part is allowed to extend above the ruler.
 - Selected timeline clips draw a 2 px white border on top of their blue fill, replacing the default dark splice border for the selected block only.
-- The ruler hover info pill draws as a rounded panel with a small downward-pointing arrow on its bottom edge whose tip aligns with the hovered ruler position.
+- The ruler hover info pill draws in a reserved band above the time scale as a rounded panel with a small downward-pointing arrow on its bottom edge whose tip aligns with the hovered ruler position.
 - AppKit timeline inputs are passed as explicit SwiftUI values so FIT import, playhead, zoom, selection, and media changes reliably refresh the timeline.
 - Timeline model time is project time. `TimelineModel.fitStartTime` maps project time back to FIT activity elapsed time.
 - Imported video clips are placed by real timestamp relative to FIT start and are no longer clamped to `0...activity.duration`.
@@ -239,7 +240,7 @@ Current implementation:
 - A completely empty project timeline draws as an empty work area without a playhead, FIT layer, or default track; the default drop lane appears only after FIT or media context exists.
 - Split-view boundary cursor hints are implemented with transparent AppKit cursor rect views that do not intercept drag events.
 - `ProjectDocument.layerDataSampleTime` maps project playhead time through `fitStartTime`, then quantizes by `settings.layerDataFrameRate` before FIT-derived overlay values are read.
-- Selected clips expose Inspector controls for camera/track renaming, start time, and offset. Duration editing is intentionally hidden until trim-length adjustment is needed.
+- Selected clips expose a dense detail Inspector for camera/track renaming, start time, and offset. Duration editing is intentionally hidden until trim-length adjustment is needed.
 
 Pending:
 
@@ -260,12 +261,12 @@ Current implementation:
 - `OverlayValueFormatter` formats overlay values from `ActivityTimeline` at the current playhead.
 - `ActivityTimeline` supports interpolation for distance, heart rate, pace, elevation, cadence, power, and calories.
 - Overlay preview and Inspector value display use the project Layer Data FPS setting, so data values update at the configured cadence rather than every UI refresh.
-- Inspector overlay UI follows the dark tool-panel design spec in `docs/design/inspector-ui.md`, with tokenized colors, spacing, compact rows, add-overlay tabs, overlay rows, and a selected-overlay detail screen.
+- Inspector overlay UI follows the dark tool-panel design spec in `docs/design/panels/inspector/inspector-ui.md`, with tokenized colors, spacing, compact rows, add-overlay tabs, overlay rows, and a selected-overlay detail screen.
 - Inspector default width is 400 px and minimum width is 320 px; the panel is user-resizable through the custom `HorizontalResizeHandle`, and `ParameterPanelView` does not impose its own width frame so internal outer/detail/editing state switches cannot resize the right column or squeeze tile content.
 - Inspector segmented controls are implemented with native SwiftUI segmented `Picker` (`.pickerStyle(.segmented)`) instead of custom button rows, including shared dense controls used by Numeric Overlay, Running Gauge, and Route Map detail views.
 - Preview overlay elements can be dragged and clamped within the preview coordinate space.
 - Inspector supports selected overlay font family, font weight, font size, scale, color presets, and background opacity controls.
-- Numeric overlays (heart rate, pace, calories, elapsed time, real time, distance, elevation, cadence, power) use the dense `NumericOverlayDetailView` Inspector defined in `docs/design/numeric-overlay-ui.md`. `ParameterPanelView` routes these `OverlayElementType` values through the new view; other overlay types continue to use `OverlayDetailView`.
+- Numeric overlays (heart rate, pace, calories, elapsed time, real time, distance, elevation, cadence, power) use the dense `NumericOverlayDetailView` Inspector defined in `docs/design/overlays/numeric/numeric-overlay-ui.md`. `ParameterPanelView` routes these `OverlayElementType` values through the new view; other overlay types continue to use `OverlayDetailView`.
 - `OverlayStyle` carries the numeric-overlay editor state: `unitOption`, `showLabel`, `showUnit`, `customLabel`, `rotationDegrees`, `textAlignment`, `accentColor`, `backgroundEnabled` / `backgroundColor` / `backgroundRadius` / `backgroundPaddingX` / `backgroundPaddingY`, and `shadowEnabled` / `shadowOffsetX` / `shadowOffsetY`. All new fields decode with safe defaults so old saved projects and overlay templates load unchanged.
 - `OverlayValueFormatter.value(for:element:activity:elapsedTime:)` is element-aware: it picks the unit option and label/unit/custom-label rules from `OverlayStyle` to produce the rendered string and the Inspector's live preview.
 - `OverlayElementType.isNumericOverlay` and `OverlayElementType.defaultUnitOption` drive routing into the numeric editor and the unit defaults applied by `ProjectDocument.addOverlayElement`.
@@ -283,7 +284,10 @@ Current implementation:
 - Inspector shows a dark add/manage outer state when no overlay element is selected; add tiles are grouped by Metrics, Charts, and Route, and newly added overlays open their detail screen.
 - Inspector add-overlay tabs use full-segment hit targets, not text-only click regions.
 - Inspector added-overlay rows show icon, type, live value preview, disabled visibility/lock placeholders, delete, and detail navigation without sorting affordances.
-- Distance timeline overlays render as progress bars.
+- Distance Timeline is a dedicated module with minimal, dense, sport, splits, glass, neon, lower-third, and route presets, backed by `DistanceTimelineStyle`.
+- Distance Timeline preview/export rendering supports distinct progress treatments, optional system-icon media slots for sport/lower-third, border/background controls, ticks, marker, glow, fade amount, route elevation underlay, and sampled GPS route geometry when available.
+- Distance Timeline media slots use the generic `OverlayIconSlot` model; the current UI exposes it only for Distance Timeline, but the Codable data and deterministic SVG renderer are reusable by other overlay modules.
+- Distance Timeline SVG import embeds static or animated SVG source in `OverlayStyle.distanceTimeline.mediaSlot`; preview and export sample animated SVG from overlay elapsed time so rendered frames are deterministic.
 - Elevation chart overlays render as line charts with playhead markers.
 - Running Gauge overlays render circular ticks, a progress ring, section dividers, and core run metrics in both preview and export.
 - Route Map overlays render the route path, start marker, finish marker, and current-position marker in both preview and export.

@@ -79,7 +79,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     }
 
     /// Numeric Overlay template applies to type-derived metric overlays only.
-    /// See `docs/design/numeric-overlay-ui.md`.
+    /// See `docs/design/overlays/numeric/numeric-overlay-ui.md`.
     var isNumericOverlay: Bool {
         switch self {
         case .heartRate, .pace, .calories, .elapsedTime, .realTime,
@@ -97,7 +97,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     }
 
     /// Recommended numeric overlay style preset when adding a new element of
-    /// this type. See `docs/design/numeric-overlay-ui.md`.
+    /// this type. See `docs/design/overlays/numeric/numeric-overlay-ui.md`.
     var defaultNumericPreset: OverlayTextPreset? {
         switch self {
         case .distance: .minimal
@@ -254,7 +254,7 @@ struct OverlayStyle: Equatable, Codable {
     var routeMapLegendMode: OverlayRouteMapLegendMode
     /// Container visual preset (Square / Circle × Hard / Gradient edge).
     /// Selecting a preset writes the bundled defaults onto the other route
-    /// map fields. See `docs/design/route-map-overlay-ui.md` for the table of
+    /// map fields. See `docs/design/overlays/route-map/route-map-overlay-ui.md` for the table of
     /// values each preset applies.
     var routeMapContainerPreset: OverlayRouteMapContainerPreset
     /// Alpha applied to the map snapshot only (route line, markers, and
@@ -279,7 +279,7 @@ struct OverlayStyle: Equatable, Codable {
     var shadowOpacity: Double
     var shadowRadius: Double
 
-    // Numeric Overlay additions (see docs/design/numeric-overlay-ui.md)
+    // Numeric Overlay additions (see docs/design/overlays/numeric/numeric-overlay-ui.md)
     var unitOption: OverlayUnitOption
     var showLabel: Bool
     var showUnit: Bool
@@ -295,6 +295,10 @@ struct OverlayStyle: Equatable, Codable {
     var shadowEnabled: Bool
     var shadowOffsetX: Double
     var shadowOffsetY: Double
+
+    /// Distance Timeline configuration. Used only by `.distanceTimeline`.
+    /// See `docs/overlay-modules/distance-timeline-overlay.md`.
+    var distanceTimeline: DistanceTimelineStyle
 
     /// Running Gauge style. Used only by overlays of type `.runningGauge` —
     /// safely ignored otherwise. Stored as a sub-struct so the gauge can grow
@@ -360,6 +364,7 @@ struct OverlayStyle: Equatable, Codable {
         shadowEnabled: true,
         shadowOffsetX: 0,
         shadowOffsetY: 2,
+        distanceTimeline: .default,
         gauge: RunningGaugeStyle.default,
         routeMapStatsBar: .default,
         lapList: .default,
@@ -412,6 +417,7 @@ struct OverlayStyle: Equatable, Codable {
         shadowEnabled: Bool = true,
         shadowOffsetX: Double = 0,
         shadowOffsetY: Double = 2,
+        distanceTimeline: DistanceTimelineStyle = .default,
         gauge: RunningGaugeStyle = .default,
         routeMapStatsBar: OverlayRouteMapStatsBarConfig = .default,
         lapList: LapListStyle = .default,
@@ -462,6 +468,7 @@ struct OverlayStyle: Equatable, Codable {
         self.shadowEnabled = shadowEnabled
         self.shadowOffsetX = shadowOffsetX
         self.shadowOffsetY = shadowOffsetY
+        self.distanceTimeline = distanceTimeline
         self.gauge = gauge
         self.routeMapStatsBar = routeMapStatsBar
         self.lapList = lapList
@@ -524,6 +531,7 @@ struct OverlayStyle: Equatable, Codable {
         shadowEnabled = try container.decodeIfPresent(Bool.self, forKey: .shadowEnabled) ?? Self.default.shadowEnabled
         shadowOffsetX = try container.decodeIfPresent(Double.self, forKey: .shadowOffsetX) ?? Self.default.shadowOffsetX
         shadowOffsetY = try container.decodeIfPresent(Double.self, forKey: .shadowOffsetY) ?? Self.default.shadowOffsetY
+        distanceTimeline = try container.decodeIfPresent(DistanceTimelineStyle.self, forKey: .distanceTimeline) ?? .default
         if let storedGauge = try container.decodeIfPresent(RunningGaugeStyle.self, forKey: .gauge) {
             gauge = storedGauge
         } else {
@@ -536,6 +544,320 @@ struct OverlayStyle: Equatable, Codable {
         lapList = try container.decodeIfPresent(LapListStyle.self, forKey: .lapList) ?? .default
         lapCard = try container.decodeIfPresent(LapCardStyle.self, forKey: .lapCard) ?? .default
         lapLive = try container.decodeIfPresent(LapLiveStyle.self, forKey: .lapLive) ?? .default
+    }
+}
+
+enum DistanceTimelinePreset: String, CaseIterable, Identifiable, Codable {
+    case minimal
+    case dense
+    case sport
+    case splits
+    case glass
+    case neon
+    case lowerThird
+    case route
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .minimal: "Minimal / 极简"
+        case .dense: "Dense / 密集技术"
+        case .sport: "Sport / 运动"
+        case .splits: "Splits / 分段刻度"
+        case .glass: "Glass / 玻璃"
+        case .neon: "Neon / 霓虹"
+        case .lowerThird: "Lower Third / 下三分之一"
+        case .route: "Route / 路线"
+        }
+    }
+
+    var compactLabel: String {
+        label.components(separatedBy: " / ").first ?? label
+    }
+
+    var supportsMediaSlot: Bool {
+        self == .sport || self == .lowerThird
+    }
+
+    var supportsElevation: Bool {
+        self == .route
+    }
+}
+
+enum DistanceTimelineMediaSlotMode: String, CaseIterable, Identifiable, Codable {
+    case none
+    case systemIcon
+    case staticSVG
+    case animatedSVG
+    case image
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .none: "None"
+        case .systemIcon: "System Icon"
+        case .staticSVG: "Static SVG"
+        case .animatedSVG: "Animated SVG"
+        case .image: "Image"
+        }
+    }
+
+    var isImplemented: Bool {
+        switch self {
+        case .none, .systemIcon, .staticSVG, .animatedSVG:
+            true
+        case .image:
+            false
+        }
+    }
+}
+
+enum OverlayIconTintMode: String, CaseIterable, Identifiable, Codable {
+    case original
+    case accent
+    case text
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .original: "Original"
+        case .accent: "Accent"
+        case .text: "Text"
+        }
+    }
+}
+
+struct OverlayIconSlot: Equatable, Codable {
+    var mode: DistanceTimelineMediaSlotMode
+    var systemImage: String
+    var assetName: String
+    var svgSource: String
+    var tintMode: OverlayIconTintMode
+    var animationDuration: Double
+    var animationSpeed: Double
+    var loop: Bool
+
+    static let `default` = OverlayIconSlot(
+        mode: .systemIcon,
+        systemImage: "figure.run",
+        assetName: "",
+        svgSource: "",
+        tintMode: .accent,
+        animationDuration: 1.2,
+        animationSpeed: 1,
+        loop: true
+    )
+
+    var hasEmbeddedSVG: Bool {
+        !svgSource.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+}
+
+enum DistanceTimelineFadeEdge: String, CaseIterable, Identifiable, Codable {
+    case left
+    case right
+    case both
+    case vertical
+    case all
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .left: "Left"
+        case .right: "Right"
+        case .both: "Both"
+        case .vertical: "Vertical"
+        case .all: "All"
+        }
+    }
+}
+
+struct DistanceTimelineStyle: Equatable, Codable {
+    var preset: DistanceTimelinePreset
+    var width: Double
+    var height: Double
+    var showLabel: Bool
+    var label: String
+    var showPercent: Bool
+    var showStartFinishLabels: Bool
+    var backgroundEnabled: Bool
+    var backgroundColor: OverlayColor
+    var backgroundOpacity: Double
+    var borderEnabled: Bool
+    var borderColor: OverlayColor
+    var borderOpacity: Double
+    var borderWidth: Double
+    var cornerRadius: Double
+    var paddingX: Double
+    var paddingY: Double
+    var trackHeight: Double
+    var trackOpacity: Double
+    var fillColor: OverlayColor
+    var tickMarksEnabled: Bool
+    var currentMarkerEnabled: Bool
+    var glowEnabled: Bool
+    var fadeEnabled: Bool
+    var fadeEdge: DistanceTimelineFadeEdge
+    var fadeAmount: Double
+    var mediaSlotEnabled: Bool
+    var mediaSlotMode: DistanceTimelineMediaSlotMode
+    var mediaSystemImage: String
+    var mediaSlotSize: Double
+    var mediaSlot: OverlayIconSlot
+    var elevationProfileVisible: Bool
+
+    static let `default` = preset(.minimal)
+
+    static func preset(_ presetValue: DistanceTimelinePreset) -> DistanceTimelineStyle {
+        switch presetValue {
+        case .minimal:
+            return DistanceTimelineStyle(
+                preset: presetValue,
+                width: 280,
+                height: 68,
+                showLabel: false,
+                label: "Distance",
+                showPercent: false,
+                showStartFinishLabels: false,
+                backgroundEnabled: true,
+                backgroundColor: .black,
+                backgroundOpacity: 0.70,
+                borderEnabled: false,
+                borderColor: .white,
+                borderOpacity: 0.18,
+                borderWidth: 1,
+                cornerRadius: 9,
+                paddingX: 14,
+                paddingY: 10,
+                trackHeight: 6,
+                trackOpacity: 0.24,
+                fillColor: .green,
+                tickMarksEnabled: false,
+                currentMarkerEnabled: false,
+                glowEnabled: false,
+                fadeEnabled: false,
+                fadeEdge: .right,
+                fadeAmount: 0.22,
+                mediaSlotEnabled: false,
+                mediaSlotMode: .none,
+                mediaSystemImage: "figure.run",
+                mediaSlotSize: 30,
+                mediaSlot: .default,
+                elevationProfileVisible: false
+            )
+        case .dense:
+            var style = preset(.minimal)
+            style.preset = presetValue
+            style.width = 320
+            style.height = 76
+            style.showLabel = true
+            style.showPercent = true
+            style.backgroundOpacity = 0.82
+            style.borderEnabled = true
+            style.borderOpacity = 0.18
+            style.cornerRadius = 6
+            style.trackHeight = 8
+            style.tickMarksEnabled = true
+            style.currentMarkerEnabled = true
+            return style
+        case .sport:
+            var style = preset(.minimal)
+            style.preset = presetValue
+            style.width = 340
+            style.height = 86
+            style.showLabel = true
+            style.showPercent = true
+            style.backgroundOpacity = 0.76
+            style.cornerRadius = 14
+            style.paddingX = 16
+            style.trackHeight = 8
+            style.currentMarkerEnabled = true
+            style.mediaSlotEnabled = true
+            style.mediaSlotMode = .systemIcon
+            style.mediaSlotSize = 34
+            style.mediaSlot = .default
+            return style
+        case .splits:
+            var style = preset(.minimal)
+            style.preset = presetValue
+            style.width = 360
+            style.height = 78
+            style.showPercent = true
+            style.showStartFinishLabels = true
+            style.backgroundOpacity = 0.65
+            style.borderEnabled = true
+            style.borderOpacity = 0.20
+            style.tickMarksEnabled = true
+            style.currentMarkerEnabled = true
+            return style
+        case .glass:
+            var style = preset(.minimal)
+            style.preset = presetValue
+            style.width = 320
+            style.height = 76
+            style.showLabel = true
+            style.showPercent = true
+            style.backgroundOpacity = 0.48
+            style.borderEnabled = true
+            style.borderOpacity = 0.34
+            style.cornerRadius = 16
+            style.fadeEnabled = true
+            style.fadeEdge = .both
+            style.fadeAmount = 0.24
+            return style
+        case .neon:
+            var style = preset(.minimal)
+            style.preset = presetValue
+            style.width = 330
+            style.height = 72
+            style.showPercent = true
+            style.backgroundOpacity = 0.60
+            style.fillColor = .cyan
+            style.trackOpacity = 0.18
+            style.trackHeight = 5
+            style.currentMarkerEnabled = true
+            style.glowEnabled = true
+            return style
+        case .lowerThird:
+            var style = preset(.minimal)
+            style.preset = presetValue
+            style.width = 460
+            style.height = 82
+            style.showLabel = true
+            style.showPercent = true
+            style.backgroundOpacity = 0.62
+            style.cornerRadius = 7
+            style.paddingX = 18
+            style.mediaSlotEnabled = true
+            style.mediaSlotMode = .systemIcon
+            style.mediaSlotSize = 36
+            style.mediaSlot = .default
+            style.fadeEnabled = true
+            style.fadeEdge = .right
+            style.fadeAmount = 0.28
+            return style
+        case .route:
+            var style = preset(.minimal)
+            style.preset = presetValue
+            style.width = 370
+            style.height = 102
+            style.showLabel = true
+            style.showPercent = true
+            style.backgroundOpacity = 0.58
+            style.borderEnabled = true
+            style.borderOpacity = 0.16
+            style.trackHeight = 5
+            style.currentMarkerEnabled = true
+            style.elevationProfileVisible = true
+            style.fadeEnabled = true
+            style.fadeEdge = .both
+            style.fadeAmount = 0.24
+            return style
+        }
     }
 }
 
@@ -674,8 +996,8 @@ enum OverlayRouteMapBackgroundStyle: String, CaseIterable, Identifiable, Codable
 /// `shadowEnabled`, `shadowOpacity`, `shadowRadius`,
 /// `shadowOffsetX`, `shadowOffsetY`).
 ///
-/// See `docs/design/route-map-overlay-ui.md` and
-/// `docs/design/route-map-overlay-ui.spec.json` for the table of values each
+/// See `docs/design/overlays/route-map/route-map-overlay-ui.md` and
+/// `docs/design/overlays/route-map/route-map-overlay-ui.spec.json` for the table of values each
 /// preset applies.
 enum OverlayRouteMapContainerPreset: String, CaseIterable, Identifiable, Codable {
     case squareHardEdge
@@ -845,7 +1167,7 @@ enum OverlayGaugePreset: String, CaseIterable, Identifiable, Codable {
 }
 
 enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
-    // Canonical numeric overlay style presets. See `docs/design/numeric-overlay-ui.md`
+    // Canonical numeric overlay style presets. See `docs/design/overlays/numeric/numeric-overlay-ui.md`
     // and the brief in `assets/image-413a701b-...png`.
     case minimal           // Minimal Clean
     case minimalLabel      // Minimal Label

@@ -29,12 +29,60 @@ struct OverlayRenderModelTests {
 
         let layout = OverlayRenderModel.distanceTimelineLayout(for: element, in: context)
 
-        #expect(layout.label == "0.05 / 0.10 km")
+        #expect(layout.label == "Distance")
+        #expect(layout.valueText == "0.05 / 0.10 km")
         #expect(layout.progress == 0.5)
-        #expect(layout.rect.width == 220)
-        #expect(layout.rect.height == 58)
+        #expect(layout.style.preset == .minimal)
+        #expect(layout.rect.width == 280)
+        #expect(layout.rect.height == 68)
         #expect(layout.rect.midX == 640)
         #expect(layout.rect.midY == 180)
+        #expect(layout.trackRect.width == 252)
+        #expect(layout.trackRect.height == 6)
+    }
+
+    @Test func distanceTimelinePresetLayoutIncludesSportMediaSlotAndRouteElevation() {
+        var sportStyle = OverlayStyle.default
+        sportStyle.distanceTimeline = .preset(.sport)
+        let sportElement = OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.25), scale: 1, style: sportStyle)
+        let context = OverlayRenderContext(canvasSize: OverlayRenderContext.referenceCanvasSize, activity: sampleActivity(), elapsedTime: 5)
+
+        let sportLayout = OverlayRenderModel.distanceTimelineLayout(for: sportElement, in: context)
+
+        #expect(sportLayout.style.preset == .sport)
+        #expect(sportLayout.mediaSlotRect != nil)
+        #expect(sportLayout.style.showPercent)
+
+        var routeStyle = OverlayStyle.default
+        routeStyle.distanceTimeline = .preset(.route)
+        let routeElement = OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: routeStyle)
+
+        let routeLayout = OverlayRenderModel.distanceTimelineLayout(for: routeElement, in: context)
+
+        #expect(routeLayout.style.preset == .route)
+        #expect(routeLayout.style.elevationProfileVisible)
+        #expect(routeLayout.elevationSamples == [100, 110])
+    }
+
+    @Test func distanceTimelineRoutePresetProjectsGpsRouteWhenAvailable() throws {
+        var style = OverlayStyle.default
+        style.distanceTimeline = .preset(.route)
+        let element = OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleRouteActivity(),
+            elapsedTime: 5
+        )
+
+        let layout = OverlayRenderModel.distanceTimelineLayout(for: element, in: context)
+
+        #expect(layout.routePoints.count == 3)
+        let current = try #require(layout.routeCurrentPoint)
+        let bounds = layout.contentRect.insetBy(dx: -1, dy: -1)
+        for point in layout.routePoints {
+            #expect(bounds.contains(point))
+        }
+        #expect(bounds.contains(current))
     }
 
     @Test func elevationChartLayoutCarriesSamplesAndProgress() {
@@ -165,6 +213,46 @@ struct OverlayRenderModelTests {
                 layout: layout,
                 activity: sampleRouteActivity(),
                 elapsedTime: 5,
+                renderGuides: false
+            )
+        )
+
+        let data = try Data(contentsOf: outputURL)
+        #expect(data.starts(with: [0x89, 0x50, 0x4E, 0x47]))
+        #expect(data.count > 100)
+    }
+
+    @MainActor
+    @Test func overlayFrameRendererWritesDistanceTimelineAnimatedSVGSlotPNG() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.removeItem(at: directory)
+        }
+
+        var style = OverlayStyle.default
+        style.distanceTimeline = .preset(.sport)
+        style.distanceTimeline.mediaSlot.mode = .animatedSVG
+        style.distanceTimeline.mediaSlot.svgSource = """
+        <svg viewBox="0 0 24 24">
+          <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="2s" repeatCount="indefinite"/>
+          <path d="M12 3 L15 12 L12 21 L9 12 Z" fill="currentColor"/>
+        </svg>
+        """
+        style.distanceTimeline.mediaSlot.assetName = "pulse.svg"
+        style.distanceTimeline.mediaSlot.animationDuration = 2
+
+        let outputURL = directory.appendingPathComponent("distance-timeline-svg.png")
+        let layout = OverlayLayout(elements: [
+            OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        ])
+        try OverlayFrameRenderer.renderPNG(
+            to: outputURL,
+            request: OverlayFrameRenderRequest(
+                size: CGSize(width: 640, height: 360),
+                layout: layout,
+                activity: ProjectDocument.calibrationActivity(),
+                elapsedTime: 1.0,
                 renderGuides: false
             )
         )

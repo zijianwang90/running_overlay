@@ -7,21 +7,13 @@ struct ParameterPanelView: View {
         Group {
             switch project.selection {
             case .timelineClip(let clipID):
-                InspectorPanel {
-                    InspectorHeader(
-                        title: "Inspector",
-                        status: "Clip",
-                        trailingSystemImage: "slider.horizontal.3"
-                    )
-                } content: {
-                    ClipInspectorView(clipID: clipID)
-                        .padding(.horizontal, InspectorTheme.panelPaddingX)
-                        .padding(.vertical, InspectorTheme.panelPaddingY)
-                }
+                ClipDetailView(clipID: clipID)
             case .overlayElement(let elementID):
                 if let element = project.selectedOverlay(elementID) {
                     if element.type.isNumericOverlay {
                         NumericOverlayDetailView(elementID: elementID)
+                    } else if element.type == .distanceTimeline {
+                        DistanceTimelineOverlayDetailView(elementID: elementID)
                     } else if element.type == .runningGauge {
                         RunningGaugeOverlayDetailView(elementID: elementID)
                     } else if element.type == .routeMap {
@@ -141,6 +133,272 @@ struct ClipInspectorView: View {
     private func resetOffset() {
         project.setSelectedClipOffset(clipID, offset: 0)
         project.finishContinuousEdit()
+    }
+}
+
+private struct ClipDetailView: View {
+    @EnvironmentObject private var project: ProjectDocument
+    let clipID: TimelineClip.ID
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if let clip = project.selectedClip(clipID) {
+                ClipDetailHeader(clip: clip)
+
+                Divider()
+                    .overlay(InspectorTheme.borderSubtle)
+
+                ScrollView {
+                    VStack(spacing: InspectorTheme.sectionGap) {
+                        InspectorDetailSection(title: "Clip Timing", systemImage: "video.badge.waveform") {
+                            InspectorDetailRow(label: "Clip") {
+                                Text(clip.title)
+                                    .font(InspectorTheme.bodyStrongFont)
+                                    .foregroundStyle(InspectorTheme.textPrimary)
+                                    .lineLimit(1)
+                            }
+
+                            InspectorDetailRow(label: "Layer") {
+                                TextField("Layer", text: cameraBinding)
+                                    .textFieldStyle(.plain)
+                                    .font(InspectorTheme.bodyStrongFont)
+                                    .foregroundStyle(InspectorTheme.textPrimary)
+                                    .multilineTextAlignment(.trailing)
+                            }
+
+                            InspectorDetailNumberRow(
+                                label: "Start",
+                                value: startBinding,
+                                precision: 2,
+                                suffix: "s",
+                                reset: resetStart
+                            )
+
+                            InspectorDetailNumberRow(
+                                label: "Offset",
+                                value: offsetBinding,
+                                precision: 2,
+                                suffix: "s",
+                                reset: resetOffset
+                            )
+                        }
+                    }
+                    .padding(.vertical, InspectorTheme.panelPaddingY)
+                }
+
+                Divider()
+                    .overlay(InspectorTheme.borderSubtle)
+
+                HStack(spacing: InspectorTheme.space3) {
+                    Button {
+                        project.applyOffsetToCurrentLayer(for: clipID)
+                    } label: {
+                        Label("Apply to all clips in this layer", systemImage: "square.stack.3d.up")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(InspectorPrimaryButtonStyle())
+                }
+                .padding(.horizontal, InspectorTheme.panelPaddingX)
+                .padding(.vertical, InspectorTheme.space3)
+                .background(InspectorTheme.panelBackgroundElevated)
+            } else {
+                InspectorHeader(title: "Inspector", status: "Missing", trailingSystemImage: "slider.horizontal.3")
+                Spacer()
+            }
+        }
+    }
+
+    private var offsetBinding: Binding<Double> {
+        Binding {
+            project.selectedClip(clipID)?.alignmentOffset ?? 0
+        } set: { newValue in
+            project.setSelectedClipOffset(clipID, offset: newValue.quantized(to: 0.01))
+        }
+    }
+
+    private var startBinding: Binding<Double> {
+        Binding {
+            project.selectedClip(clipID)?.effectiveStartTime ?? 0
+        } set: { newValue in
+            project.moveClip(clipID, toEffectiveStartTime: newValue.quantized(to: 0.01))
+        }
+    }
+
+    private var cameraBinding: Binding<String> {
+        Binding {
+            project.selectedClip(clipID)?.cameraGroupID ?? ""
+        } set: { newValue in
+            project.renameTrack(containing: clipID, to: newValue)
+        }
+    }
+
+    private func resetStart() {
+        project.moveClip(clipID, toEffectiveStartTime: 0)
+        project.finishContinuousEdit()
+    }
+
+    private func resetOffset() {
+        project.setSelectedClipOffset(clipID, offset: 0)
+        project.finishContinuousEdit()
+    }
+}
+
+private struct ClipDetailHeader: View {
+    @EnvironmentObject private var project: ProjectDocument
+    let clip: TimelineClip
+
+    var body: some View {
+        HStack(spacing: InspectorTheme.space3) {
+            InspectorIconButton(systemImage: "chevron.left", help: "Back") {
+                project.clearSelection()
+            }
+
+            ZStack {
+                RoundedRectangle(cornerRadius: InspectorTheme.controlRadius)
+                    .fill(InspectorTheme.controlBackground)
+                Image(systemName: "video")
+                    .font(.system(size: 22, weight: .medium))
+                    .foregroundStyle(InspectorTheme.textPrimary)
+            }
+            .frame(width: 46, height: 46)
+            .overlay(InspectorRoundedBorder())
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: InspectorTheme.space2) {
+                    Text(clip.title)
+                        .font(InspectorTheme.titleFont)
+                        .lineLimit(1)
+                    Text("Clip")
+                        .font(InspectorTheme.captionFont)
+                        .foregroundStyle(InspectorTheme.textSecondary)
+                        .padding(.horizontal, InspectorTheme.space2)
+                        .padding(.vertical, 3)
+                        .background(InspectorTheme.controlBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                        .overlay(InspectorRoundedBorder(cornerRadius: 5))
+                }
+                Text("\(clip.cameraGroupID)  |  \(String(format: "%.2f s", clip.effectiveStartTime))")
+                    .font(InspectorTheme.numericFont)
+                    .foregroundStyle(InspectorTheme.textSecondary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            InspectorIconButton(systemImage: "trash", help: "Delete Clip", role: .destructive) {
+                project.deleteSelectedItem()
+            }
+        }
+        .padding(.horizontal, InspectorTheme.panelPaddingX)
+        .padding(.vertical, InspectorTheme.space3)
+        .background(InspectorTheme.panelBackgroundElevated)
+    }
+}
+
+private struct InspectorDetailSection<Content: View>: View {
+    var title: String
+    var systemImage: String
+    @ViewBuilder var content: Content
+
+    init(title: String, systemImage: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.systemImage = systemImage
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: InspectorTheme.space2) {
+                Image(systemName: systemImage)
+                    .foregroundStyle(InspectorTheme.textSecondary)
+                    .frame(width: 22, alignment: .leading)
+                Text(title)
+                    .font(InspectorTheme.sectionTitleFont)
+                    .foregroundStyle(InspectorTheme.textPrimary)
+                Spacer()
+            }
+            .padding(.horizontal, InspectorTheme.panelPaddingX)
+            .frame(height: 58)
+            .background(InspectorTheme.panelBackgroundElevated)
+            .overlay(alignment: .bottom) {
+                Divider()
+                    .overlay(InspectorTheme.borderSubtle)
+            }
+
+            VStack(spacing: 0) {
+                content
+            }
+        }
+    }
+}
+
+private struct InspectorDetailRow<Content: View>: View {
+    var label: String
+    @ViewBuilder var content: Content
+
+    init(label: String, @ViewBuilder content: () -> Content) {
+        self.label = label
+        self.content = content()
+    }
+
+    var body: some View {
+        HStack(spacing: InspectorTheme.space3) {
+            Text(label)
+                .font(InspectorTheme.bodyFont)
+                .foregroundStyle(InspectorTheme.textSecondary)
+                .frame(width: 96, alignment: .leading)
+
+            content
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .padding(.horizontal, InspectorTheme.panelPaddingX)
+        .frame(minHeight: 68)
+        .background(InspectorTheme.panelBackground)
+        .overlay(alignment: .bottom) {
+            Divider()
+                .overlay(InspectorTheme.borderSubtle)
+        }
+    }
+}
+
+private struct InspectorDetailNumberRow: View {
+    @EnvironmentObject private var project: ProjectDocument
+    var label: String
+    @Binding var value: Double
+    var precision: Int
+    var suffix: String?
+    var reset: (() -> Void)?
+
+    var body: some View {
+        InspectorDetailRow(label: label) {
+            HStack(spacing: InspectorTheme.space2) {
+                TextField(label, value: $value, format: .number.precision(.fractionLength(precision)))
+                    .textFieldStyle(.plain)
+                    .font(InspectorTheme.numericFont)
+                    .foregroundStyle(InspectorTheme.textPrimary)
+                    .monospacedDigit()
+                    .multilineTextAlignment(.trailing)
+                    .onSubmit {
+                        project.finishContinuousEdit()
+                        NSApp.keyWindow?.makeFirstResponder(nil)
+                    }
+
+                if let suffix {
+                    Text(suffix)
+                        .font(InspectorTheme.bodyStrongFont)
+                        .foregroundStyle(InspectorTheme.textMuted)
+                }
+            }
+            .padding(.horizontal, InspectorTheme.space3)
+            .frame(height: InspectorTheme.controlHeight)
+            .background(InspectorTheme.controlBackground)
+            .clipShape(RoundedRectangle(cornerRadius: InspectorTheme.controlRadius))
+            .overlay(InspectorRoundedBorder())
+        }
+        .onTapGesture(count: 2) {
+            reset?()
+        }
+        .help(reset == nil ? "" : "Double-click to reset")
     }
 }
 

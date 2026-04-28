@@ -119,7 +119,7 @@ Completed so far:
 - Text overlay built-in style picker with Minimal, Pill Badge, Metric Card, Big Number, Sport Watch, and Split Label presets.
 - Inspector normalized X/Y position entry, shadow controls, and arrow-key nudging.
 - Playhead playback and ruler seeking.
-- Distance timeline progress bar rendering.
+- Distance Timeline module rewrite with preset-aware rendering, dense Inspector controls, media-slot groundwork, border/background controls, ticks, marker, glow, fade, and route elevation underlay.
 - Elevation line chart rendering.
 - Running Gauge composite circular dashboard rendering.
 - Project Layer Data FPS setting for throttled overlay value updates.
@@ -130,7 +130,9 @@ Completed so far:
 
 Pending:
 
-- More visual style controls for chart and timeline overlays.
+- Broaden reusable `OverlayIconSlot` controls beyond Distance Timeline to other overlay modules that need custom icons.
+- Full SVG path/paint coverage, raster image persistence, and video-loop support for icon slots.
+- Fine-grained Distance Timeline fade masks that affect background/track layers without lowering primary text opacity.
 - Overlay positioning precision tools.
 
 ## Milestone 5.1: Overlay Templates

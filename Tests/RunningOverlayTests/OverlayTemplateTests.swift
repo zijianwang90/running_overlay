@@ -51,6 +51,22 @@ struct OverlayTemplateTests {
 
         #expect(style.textPreset == .minimal)
         #expect(style.gaugePreset == .minimalSport)
+        #expect(style.distanceTimeline.preset == .minimal)
+    }
+
+    @Test func distanceTimelineIconSlotPersistsEmbeddedSVG() throws {
+        var style = OverlayStyle.default
+        style.distanceTimeline = .preset(.sport)
+        style.distanceTimeline.mediaSlot.mode = .animatedSVG
+        style.distanceTimeline.mediaSlot.assetName = "runner.svg"
+        style.distanceTimeline.mediaSlot.svgSource = "<svg viewBox=\"0 0 24 24\"><path d=\"M2 12 L22 12\" stroke=\"currentColor\"/></svg>"
+
+        let data = try JSONEncoder().encode(style)
+        let decoded = try JSONDecoder().decode(OverlayStyle.self, from: data)
+
+        #expect(decoded.distanceTimeline.mediaSlot.mode == .animatedSVG)
+        #expect(decoded.distanceTimeline.mediaSlot.assetName == "runner.svg")
+        #expect(decoded.distanceTimeline.mediaSlot.svgSource.contains("<path"))
     }
 
     @Test func applyOverlayTemplateIsUndoable() throws {

@@ -647,42 +647,238 @@ struct OverlayFrameRenderer {
         cache: inout OverlayRenderCache
     ) {
         let renderLayout = OverlayRenderModel.distanceTimelineLayout(for: element, in: renderContext)
-        drawRoundedBackground(renderLayout.rect, element: element, cornerRadius: renderLayout.cornerRadius)
+        let style = renderLayout.style
+        let accent = NSColor(style.fillColor)
+        let foreground = NSColor(element.style.foregroundColor)
 
-        let labelLayout = cache.textLayout(
-            for: element,
-            text: renderLayout.label,
-            fontSize: renderLayout.labelFontSize,
-            shadowRadius: renderContext.scaled(element.style.shadowRadius),
-            shadowOffsetY: renderContext.scaled(2)
-        )
-        let labelRect = CGRect(
-            x: renderLayout.rect.minX + renderLayout.horizontalPadding,
-            y: renderLayout.rect.minY + renderLayout.verticalPadding,
-            width: renderLayout.rect.width - renderLayout.horizontalPadding * 2,
-            height: labelLayout.size.height
-        )
-        drawSupersampledText(
-            renderLayout.label,
-            for: element,
-            fontSize: renderLayout.labelFontSize,
-            shadowRadius: renderContext.scaled(element.style.shadowRadius),
-            shadowOffsetY: renderContext.scaled(2),
-            in: labelRect,
-            textRect: CGRect(origin: .zero, size: labelRect.size)
-        )
+        if style.backgroundEnabled {
+            drawRoundedRect(renderLayout.rect, color: NSColor(style.backgroundColor).withAlphaComponent(style.backgroundOpacity), cornerRadius: renderLayout.cornerRadius)
+            if style.preset == .glass {
+                drawRoundedRect(renderLayout.rect, color: NSColor.white.withAlphaComponent(0.08), cornerRadius: renderLayout.cornerRadius)
+            }
+        }
+        if style.borderEnabled {
+            strokeRoundedRect(
+                renderLayout.rect,
+                color: NSColor(style.borderColor).withAlphaComponent(style.borderOpacity),
+                cornerRadius: renderLayout.cornerRadius,
+                lineWidth: renderLayout.borderWidth
+            )
+        }
 
-        let trackRect = CGRect(
-            x: renderLayout.rect.minX + renderLayout.horizontalPadding,
-            y: renderLayout.rect.maxY - renderLayout.verticalPadding - renderLayout.trackHeight,
-            width: renderLayout.rect.width - renderLayout.horizontalPadding * 2,
-            height: renderLayout.trackHeight
+        if let mediaRect = renderLayout.mediaSlotRect {
+            drawRoundedRect(mediaRect, color: accent.withAlphaComponent(0.18), cornerRadius: mediaRect.width * 0.28)
+            let slot = style.mediaSlot
+            if (slot.mode == .staticSVG || slot.mode == .animatedSVG), slot.hasEmbeddedSVG {
+                let tint = slot.tintMode == .text ? foreground : accent
+                OverlayIconRenderer.draw(
+                    slot: slot,
+                    in: mediaRect.insetBy(dx: mediaRect.width * 0.12, dy: mediaRect.height * 0.12),
+                    elapsedTime: renderLayout.elapsedTime,
+                    tintColor: tint
+                )
+            } else {
+                drawPlainText(
+                    "􀜤",
+                    element: element,
+                    fontSize: mediaRect.width * 0.48,
+                    color: slot.tintMode == .text ? foreground : accent,
+                    rect: mediaRect.insetBy(dx: mediaRect.width * 0.20, dy: mediaRect.height * 0.18),
+                    alignment: .center,
+                    weight: .semibold
+                )
+            }
+        }
+
+        if style.preset == .route, style.elevationProfileVisible {
+            drawDistanceTimelineElevationProfile(renderLayout, color: accent.withAlphaComponent(0.16))
+        }
+
+        drawDistanceTimelineText(renderLayout, element: element, foreground: foreground, accent: accent)
+        drawDistanceTimelineTrack(renderLayout, foreground: foreground, accent: accent)
+
+        if style.showStartFinishLabels {
+            let y = min(renderLayout.trackRect.maxY + renderLayout.unitFontSize * 0.35, renderLayout.rect.maxY - renderLayout.unitFontSize * 1.1)
+            drawPlainText("START", element: element, fontSize: renderLayout.unitFontSize, color: foreground.withAlphaComponent(0.58), rect: CGRect(x: renderLayout.trackRect.minX, y: y, width: renderLayout.trackRect.width / 2, height: renderLayout.unitFontSize * 1.3), alignment: .left, weight: .medium)
+            drawPlainText("FINISH", element: element, fontSize: renderLayout.unitFontSize, color: foreground.withAlphaComponent(0.58), rect: CGRect(x: renderLayout.trackRect.midX, y: y, width: renderLayout.trackRect.width / 2, height: renderLayout.unitFontSize * 1.3), alignment: .right, weight: .medium)
+        }
+    }
+
+    private static func drawDistanceTimelineText(
+        _ layout: OverlayDistanceTimelineRenderLayout,
+        element: OverlayElement,
+        foreground: NSColor,
+        accent: NSColor
+    ) {
+        let content = layout.contentRect
+        if layout.style.showLabel {
+            drawPlainText(
+                layout.label.uppercased(),
+                element: element,
+                fontSize: layout.labelFontSize,
+                color: foreground.withAlphaComponent(layout.style.preset == .neon ? 0.86 : 0.64),
+                rect: CGRect(x: content.minX, y: content.minY, width: content.width * 0.62, height: layout.labelFontSize * 1.3),
+                alignment: .left,
+                weight: .medium
+            )
+        }
+        if layout.style.showPercent {
+            drawPlainText(
+                layout.percentText,
+                element: element,
+                fontSize: layout.percentFontSize,
+                color: accent,
+                rect: CGRect(x: content.midX, y: content.minY, width: content.width / 2, height: layout.percentFontSize * 1.3),
+                alignment: .right,
+                weight: .semibold
+            )
+        }
+        let valueScale: Double
+        switch layout.style.preset {
+        case .lowerThird: valueScale = 1.05
+        case .sport: valueScale = 1.12
+        case .dense: valueScale = 0.86
+        default: valueScale = 1
+        }
+        let valueY = content.minY + (layout.style.showLabel || layout.style.showPercent ? layout.labelFontSize * 1.05 : 0)
+        drawPlainText(
+            layout.valueText,
+            element: element,
+            fontSize: layout.valueFontSize * valueScale,
+            color: layout.style.preset == .neon ? NSColor.white.withAlphaComponent(0.92) : foreground,
+            rect: CGRect(x: content.minX, y: valueY, width: content.width, height: layout.valueFontSize * valueScale * 1.35),
+            alignment: .left,
+            weight: layout.style.preset == .dense || layout.style.preset == .neon ? .medium : .bold
         )
-        drawCapsule(trackRect, color: NSColor(element.style.foregroundColor).withAlphaComponent(0.25))
-        drawCapsule(
-            CGRect(x: trackRect.minX, y: trackRect.minY, width: trackRect.width * renderLayout.progress, height: trackRect.height),
-            color: NSColor(element.style.foregroundColor)
+    }
+
+    private static func drawDistanceTimelineTrack(
+        _ layout: OverlayDistanceTimelineRenderLayout,
+        foreground: NSColor,
+        accent: NSColor
+    ) {
+        let track = layout.trackRect
+        drawCapsule(track, color: foreground.withAlphaComponent(layout.style.trackOpacity))
+        if layout.style.preset == .route {
+            let fullRoutePath = distanceTimelineRoutePath(points: layout.routePoints, fallbackTrack: track, progress: 1)
+            foreground.withAlphaComponent(layout.style.trackOpacity).setStroke()
+            fullRoutePath.lineWidth = max(track.height, 2)
+            fullRoutePath.lineCapStyle = .round
+            fullRoutePath.lineJoinStyle = .round
+            fullRoutePath.stroke()
+
+            let path = distanceTimelineRoutePath(
+                points: progressedDistanceTimelineRoutePoints(layout),
+                fallbackTrack: track,
+                progress: layout.progress
+            )
+            accent.setStroke()
+            path.lineWidth = max(track.height, 2)
+            path.lineCapStyle = .round
+            path.lineJoinStyle = .round
+            path.stroke()
+        } else if layout.style.preset == .dense || layout.style.preset == .splits {
+            drawSegmentedDistanceFill(track, progress: layout.progress, color: accent)
+        } else {
+            drawCapsule(CGRect(x: track.minX, y: track.minY, width: max(track.width * layout.progress, track.height), height: track.height), color: accent)
+        }
+        if layout.style.tickMarksEnabled {
+            drawDistanceTimelineTicks(track, count: layout.style.preset == .splits ? 10 : 16, color: foreground.withAlphaComponent(0.52))
+        }
+        if layout.style.currentMarkerEnabled {
+            let markerSize = track.height * 2.2
+            let markerCenter: CGPoint
+            if layout.style.preset == .route {
+                markerCenter = layout.routeCurrentPoint ?? progressedDistanceTimelineRoutePoints(layout).last ?? CGPoint(x: track.minX + track.width * layout.progress, y: track.midY)
+            } else {
+                markerCenter = CGPoint(x: track.minX + track.width * layout.progress, y: track.midY)
+            }
+            NSColor.black.withAlphaComponent(0.38).setFill()
+            NSBezierPath(ovalIn: CGRect(x: markerCenter.x - markerSize / 2, y: markerCenter.y - markerSize / 2, width: markerSize, height: markerSize)).fill()
+            accent.setFill()
+            NSBezierPath(ovalIn: CGRect(x: markerCenter.x - markerSize * 0.36, y: markerCenter.y - markerSize * 0.36, width: markerSize * 0.72, height: markerSize * 0.72)).fill()
+        }
+    }
+
+    private static func progressedDistanceTimelineRoutePoints(_ layout: OverlayDistanceTimelineRenderLayout) -> [CGPoint] {
+        guard layout.routePoints.count > 1 else {
+            return []
+        }
+        let targetCount = max(Int((Double(layout.routePoints.count - 1) * layout.progress).rounded(.down)) + 1, 1)
+        var points = Array(layout.routePoints.prefix(min(targetCount, layout.routePoints.count)))
+        if let current = layout.routeCurrentPoint, points.last != current {
+            points.append(current)
+        }
+        return points
+    }
+
+    private static func distanceTimelineRoutePath(points: [CGPoint], fallbackTrack track: CGRect, progress: Double) -> NSBezierPath {
+        let path = NSBezierPath()
+        guard let first = points.first else {
+            path.move(to: CGPoint(x: track.minX, y: track.minY + track.height * 0.70))
+            path.curve(
+                to: CGPoint(x: track.minX + track.width * progress, y: track.minY + track.height * 0.36),
+                controlPoint1: CGPoint(x: track.minX + track.width * 0.25, y: track.minY - track.height * 0.4),
+                controlPoint2: CGPoint(x: track.minX + track.width * 0.58, y: track.minY + track.height * 1.6)
+            )
+            return path
+        }
+        path.move(to: first)
+        for point in points.dropFirst() {
+            path.line(to: point)
+        }
+        return path
+    }
+
+    private static func drawSegmentedDistanceFill(_ track: CGRect, progress: Double, color: NSColor) {
+        let segmentCount = 12
+        let gap = max(track.width * 0.012, 2)
+        let segmentWidth = (track.width - gap * Double(segmentCount - 1)) / Double(segmentCount)
+        let filled = progress * Double(segmentCount)
+        for index in 0..<segmentCount {
+            let fillFraction = min(max(filled - Double(index), 0), 1)
+            guard fillFraction > 0 else { continue }
+            let x = track.minX + Double(index) * (segmentWidth + gap)
+            drawRoundedRect(CGRect(x: x, y: track.minY, width: segmentWidth * fillFraction, height: track.height), color: color, cornerRadius: track.height / 2)
+        }
+    }
+
+    private static func drawDistanceTimelineTicks(_ track: CGRect, count: Int, color: NSColor) {
+        color.setStroke()
+        let path = NSBezierPath()
+        for index in 0...count {
+            let x = track.minX + track.width * Double(index) / Double(max(count, 1))
+            path.move(to: CGPoint(x: x, y: track.minY - track.height * 0.45))
+            path.line(to: CGPoint(x: x, y: track.maxY + track.height * 0.45))
+        }
+        path.lineWidth = 1
+        path.stroke()
+    }
+
+    private static func drawDistanceTimelineElevationProfile(_ layout: OverlayDistanceTimelineRenderLayout, color: NSColor) {
+        let samples = layout.elevationSamples
+        guard samples.count > 1 else { return }
+        let profileRect = CGRect(
+            x: layout.contentRect.minX,
+            y: layout.contentRect.maxY - layout.contentRect.height * 0.36,
+            width: layout.contentRect.width,
+            height: layout.contentRect.height * 0.30
         )
+        let minValue = samples.min() ?? 0
+        let maxValue = samples.max() ?? minValue
+        let range = max(maxValue - minValue, 1)
+        let path = NSBezierPath()
+        path.move(to: CGPoint(x: profileRect.minX, y: profileRect.maxY))
+        for index in samples.indices {
+            let x = profileRect.minX + profileRect.width * Double(index) / Double(max(samples.count - 1, 1))
+            let normalized = (samples[index] - minValue) / range
+            let y = profileRect.maxY - profileRect.height * normalized
+            path.line(to: CGPoint(x: x, y: y))
+        }
+        path.line(to: CGPoint(x: profileRect.maxX, y: profileRect.maxY))
+        path.close()
+        color.setFill()
+        path.fill()
     }
 
     private static func renderElevationChart(

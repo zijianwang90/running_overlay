@@ -1,0 +1,258 @@
+{
+  "name": "Inspector UI",
+  "updated": "2026-04-26",
+  "references": {
+    "outerMockup": "./inspector-outer.png",
+    "detailMockup": "./overlay-detail-running-gauge.png",
+    "numericOverlaySpec": "../../overlays/numeric/numeric-overlay-ui.md",
+    "numericOverlayMockup": "../../overlays/numeric/numeric-overlay.png"
+  },
+  "intent": {
+    "productTone": "dark professional desktop video-editing tool",
+    "primaryAccent": "blue",
+    "density": "compact",
+    "avoid": [
+      "marketing hero layout",
+      "decorative blobs",
+      "large empty black areas",
+      "nested cards inside cards",
+      "sorting affordances in Added Elements",
+      "Properties section on Inspector outer state"
+    ]
+  },
+  "tokens": {
+    "color": {
+      "app.background": "#0B0F12",
+      "panel.background": "#15191D",
+      "panel.backgroundElevated": "#1B2025",
+      "control.background": "#20252A",
+      "control.backgroundHover": "#272D33",
+      "control.backgroundPressed": "#11161A",
+      "border.subtle": "#2B3238",
+      "border.strong": "#3A424A",
+      "text.primary": "#F3F6F8",
+      "text.secondary": "#B6BEC7",
+      "text.muted": "#7E8893",
+      "accent.blue": "#2F8CFF",
+      "accent.blueSoft": "#123052",
+      "danger.red": "#FF5A5F",
+      "success.green": "#69D26F",
+      "warning.yellow": "#FFD166"
+    },
+    "typography": {
+      "title": { "size": 22, "weight": "semibold" },
+      "sectionTitle": { "size": 15, "weight": "semibold" },
+      "body": { "size": 13, "weight": "regular" },
+      "bodyStrong": { "size": 13, "weight": "semibold" },
+      "caption": { "size": 11, "weight": "regular" },
+      "numeric": { "size": 13, "weight": "medium", "monospacedDigits": true }
+    },
+    "spacing": {
+      "1": 4,
+      "2": 8,
+      "3": 12,
+      "4": 16,
+      "5": 20,
+      "6": 24,
+      "panelPaddingX": 18,
+      "panelPaddingY": 16,
+      "sectionGap": 22
+    },
+    "size": {
+      "controlHeight": 34,
+      "rowHeight": 52,
+      "iconButton": 30,
+      "tileMinHeight": 68,
+      "borderWidth": 1
+    },
+    "radius": {
+      "control": 7,
+      "panel": 8
+    }
+  },
+  "states": [
+    {
+      "id": "inspector.outer",
+      "trigger": "no overlay detail is open",
+      "currentSwiftUIEquivalent": "OverlayLibraryView",
+      "responsibilities": [
+        "add overlays",
+        "manage already added overlays",
+        "open overlay detail from an existing overlay row"
+      ],
+      "mustNotInclude": [
+        "Properties section",
+        "empty property editor",
+        "drag handles",
+        "sort controls"
+      ],
+      "layout": [
+        {
+          "component": "InspectorPanelWidth",
+          "defaultWidthPx": 400,
+          "minWidthPx": 320,
+          "resizable": true,
+          "behavior": "user-resizable via the leading split divider; current width must be preserved across every internal state change (outer, overlay detail, timeline clip selection); implementation must use a custom HStack + HorizontalResizeHandle with @State-tracked width instead of SwiftUI HSplitView so child intrinsic-size or identity changes cannot reset the right pane"
+        },
+        {
+          "component": "InspectorHeader",
+          "content": {
+            "title": "Inspector",
+            "statusPill": "{overlayCount} overlays",
+            "trailingIcon": "settings/filter"
+          }
+        },
+        {
+          "component": "AddOverlaySection",
+          "title": "Add Overlay",
+          "subtitle": "Choose a data layer to place on the preview",
+          "tabs": ["Metrics", "Charts", "Route"],
+          "defaultTab": "Metrics",
+          "gridColumns": 2,
+          "tileBehavior": "click adds overlay; preferred behavior is add then open detail"
+        },
+        {
+          "component": "AddedElementsSection",
+          "title": "Added Elements",
+          "rowBehavior": "row body opens overlay detail; action buttons do not navigate",
+          "sorting": false,
+          "actions": ["visibility", "lock", "delete", "openDetail"]
+        }
+      ],
+      "overlayTiles": [
+        { "type": "heartRate", "label": "Heart Rate", "hint": "bpm", "icon": "heart-pulse", "category": "Metrics" },
+        { "type": "pace", "label": "Pace", "hint": "min/km", "icon": "timer", "category": "Metrics" },
+        { "type": "calories", "label": "Calories", "hint": "kcal", "icon": "flame", "category": "Metrics" },
+        { "type": "elapsedTime", "label": "Elapsed Time", "hint": "duration", "icon": "clock", "category": "Metrics" },
+        { "type": "realTime", "label": "Real Time", "hint": "clock time", "icon": "watch", "category": "Metrics" },
+        { "type": "distance", "label": "Distance", "hint": "km / mi", "icon": "route", "category": "Metrics" },
+        { "type": "distanceTimeline", "label": "Distance Timeline", "hint": "progress", "icon": "activity", "category": "Charts" },
+        { "type": "elevation", "label": "Elevation", "hint": "altitude", "icon": "mountain", "category": "Metrics" },
+        { "type": "elevationChart", "label": "Elevation Chart", "hint": "profile", "icon": "area-chart", "category": "Charts" },
+        { "type": "cadence", "label": "Cadence", "hint": "spm", "icon": "footprints", "category": "Metrics" },
+        { "type": "power", "label": "Power", "hint": "watts", "icon": "zap", "category": "Metrics" },
+        { "type": "runningGauge", "label": "Running Gauge", "hint": "live gauge", "icon": "gauge", "category": "Charts", "accent": true },
+        { "type": "routeMap", "label": "Route Map", "hint": "GPS path", "icon": "map", "category": "Route", "accent": true }
+      ],
+      "exampleRows": [
+        {
+          "name": "Running Gauge",
+          "subtitle": "Distance • Gauge",
+          "value": "10.73 km",
+          "icon": "gauge"
+        },
+        {
+          "name": "Pace",
+          "subtitle": "Pace • Text",
+          "value": "5'10\"/km",
+          "icon": "timer"
+        }
+      ]
+    },
+    {
+      "id": "overlay.detail",
+      "trigger": "overlay row clicked or overlay clicked in Preview",
+      "currentSwiftUIEquivalent": "OverlayElementInspectorView",
+      "exampleOverlay": "Running Gauge",
+      "specializedTemplates": {
+        "numericOverlay": {
+          "spec": "../../overlays/numeric/numeric-overlay-ui.md",
+          "appliesTo": ["heartRate", "pace", "calories", "elapsedTime", "realTime", "distance", "elevation", "cadence", "power"],
+          "rule": "Use the dense reusable Numeric Overlay template for single-value metric overlays instead of one-off metric-specific detail views."
+        }
+      },
+      "layout": [
+        {
+          "component": "OverlayDetailHeader",
+          "content": {
+            "leadingIcon": "back",
+            "title": "{overlay.label}",
+            "pill": "Overlay",
+            "valuePreview": "{formattedOverlayValue}",
+            "trailingIcon": "trash"
+          }
+        },
+        {
+          "component": "ContentSection",
+          "controls": [
+            { "type": "select", "label": "Metric", "value": "Distance", "modelBacked": false },
+            { "type": "valuePreview", "label": "Format", "value": "10.73 km", "modelBacked": true },
+            { "type": "toggle", "label": "Show Label", "modelBacked": false },
+            { "type": "toggle", "label": "Show Unit", "modelBacked": false },
+            { "type": "textField", "label": "Label", "value": "Distance", "modelBacked": false }
+          ]
+        },
+        {
+          "component": "PositionSizeSection",
+          "controls": [
+            { "type": "anchorGrid", "label": "Anchor", "modelBacked": "optional" },
+            { "type": "numberField", "label": "X", "modelPath": "OverlayElement.position.x" },
+            { "type": "numberField", "label": "Y", "modelPath": "OverlayElement.position.y" },
+            { "type": "slider", "label": "Scale", "modelPath": "OverlayElement.scale" },
+            { "type": "slider", "label": "Opacity", "modelBacked": false }
+          ]
+        },
+        {
+          "component": "StyleSection",
+          "controls": [
+            { "type": "preset", "label": "Preset", "modelPath": "OverlayStyle.textPreset|gaugePreset|routeMapPreset" },
+            { "type": "select", "label": "Font", "modelPath": "OverlayStyle.fontName" },
+            { "type": "slider", "label": "Font Size", "modelPath": "OverlayStyle.fontSize" },
+            { "type": "segmented", "label": "Weight", "modelPath": "OverlayStyle.fontWeight" },
+            { "type": "swatches", "label": "Color", "modelPath": "OverlayStyle.foregroundColor" },
+            { "type": "slider", "label": "Background", "modelPath": "OverlayStyle.backgroundOpacity" },
+            { "type": "slider", "label": "Shadow", "modelPath": "OverlayStyle.shadowOpacity" },
+            { "type": "slider", "label": "Shadow Radius", "modelPath": "OverlayStyle.shadowRadius" }
+          ]
+        },
+        {
+          "component": "AnimationSection",
+          "modelBacked": false,
+          "displayRule": "hide or disable until project schema supports animation",
+          "controls": [
+            { "type": "toggle", "label": "Enable Animation", "value": true },
+            { "type": "select", "label": "Entrance", "value": "Fade Up" },
+            { "type": "durationField", "label": "Duration", "value": "0.4s" }
+          ]
+        },
+        {
+          "component": "StickyFooter",
+          "buttons": [
+            { "label": "Reset", "style": "secondary", "displayRule": "only if reset is implemented" },
+            { "label": "Done", "style": "primary", "action": "return to inspector.outer" }
+          ]
+        }
+      ]
+    }
+  ],
+  "interactions": {
+    "openDetail": [
+      "clicking an Added Elements row",
+      "clicking the corresponding overlay in Preview"
+    ],
+    "delete": "delete removes overlay and returns to inspector.outer if deleting from detail",
+    "sliders": "update continuously while dragging and call finishContinuousEdit at drag end",
+    "numericFields": "commit on submit and preserve normalized coordinate precision",
+    "actionButtonIsolation": "row action buttons must stop row navigation"
+  },
+  "recommendedComponents": [
+    "InspectorTheme",
+    "InspectorSection",
+    "InspectorHeader",
+    "InspectorSegmentedControl",
+    "OverlayAddTile",
+    "OverlayElementRow",
+    "OverlayDetailView",
+    "InspectorIconButton",
+    "InspectorSliderRow",
+    "InspectorValueField",
+    "ColorSwatchButton"
+  ],
+  "modelGaps": [
+    "Overlay visibility is not currently visible in OverlayElement",
+    "Overlay lock is not currently visible in OverlayElement",
+    "Generic overlay opacity is not currently visible in OverlayElement",
+    "Animation settings are not currently visible in OverlayStyle or OverlayElement",
+    "Metric reassignment for a placed overlay is not currently visible in OverlayElement"
+  ]
+}

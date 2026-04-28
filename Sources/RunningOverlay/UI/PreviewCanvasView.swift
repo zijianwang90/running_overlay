@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct PreviewCanvasView: View {
@@ -1538,29 +1539,305 @@ private struct DistanceTimelineOverlayView: View {
     let layout: OverlayDistanceTimelineRenderLayout
 
     var body: some View {
-        VStack(alignment: .leading, spacing: layout.verticalPadding * 0.75) {
-            Text(layout.label)
-                .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(Font.Weight(element.style.fontWeight)))
-                .foregroundStyle(Color(element.style.foregroundColor))
-                .monospacedDigit()
+        ZStack {
+            if layout.style.backgroundEnabled {
+                RoundedRectangle(cornerRadius: layout.cornerRadius)
+                    .fill(Color(distanceTimeline: layout.style.backgroundColor).opacity(layout.style.backgroundOpacity))
+                    .overlay {
+                        if layout.style.preset == .glass {
+                            RoundedRectangle(cornerRadius: layout.cornerRadius)
+                                .fill(.white.opacity(0.08))
+                        }
+                    }
+            }
 
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color(element.style.foregroundColor).opacity(0.25))
-                    Capsule()
-                        .fill(Color(element.style.foregroundColor))
-                        .frame(width: proxy.size.width * layout.progress)
+            if layout.style.borderEnabled {
+                RoundedRectangle(cornerRadius: layout.cornerRadius)
+                    .stroke(Color(distanceTimeline: layout.style.borderColor).opacity(layout.style.borderOpacity), lineWidth: layout.borderWidth)
+            }
+
+            if let mediaSlotRect = layout.mediaSlotRect {
+                let local = localRect(mediaSlotRect)
+                ZStack {
+                    RoundedRectangle(cornerRadius: local.width * 0.28)
+                        .fill(Color(distanceTimeline: layout.style.fillColor).opacity(0.18))
+                    DistanceTimelineMediaSlotView(
+                        style: layout.style,
+                        size: local.size,
+                        elapsedTime: layout.elapsedTime,
+                        accentColor: layout.style.fillColor,
+                        textColor: element.style.foregroundColor
+                    )
+                }
+                .frame(width: local.width, height: local.height)
+                .position(x: local.midX, y: local.midY)
+            }
+
+            if layout.style.preset == .route, layout.style.elevationProfileVisible {
+                elevationProfile
+                    .fill(Color(distanceTimeline: layout.style.fillColor).opacity(0.16))
+                    .frame(width: localRect(layout.contentRect).width, height: localRect(layout.contentRect).height * 0.30)
+                    .position(x: localRect(layout.contentRect).midX, y: localRect(layout.contentRect).maxY - localRect(layout.contentRect).height * 0.22)
+            }
+
+            valueLayer
+            progressLayer
+
+            if layout.style.showStartFinishLabels {
+                startFinishLabels
+            }
+        }
+        .frame(width: layout.rect.width, height: layout.rect.height)
+        .shadow(
+            color: Color.black.opacity(element.style.shadowEnabled ? element.style.shadowOpacity : 0),
+            radius: element.style.shadowRadius,
+            x: element.style.shadowOffsetX,
+            y: element.style.shadowOffsetY
+        )
+        .opacity(layout.style.fadeEnabled ? max(1 - layout.style.fadeAmount * 0.35, 0.72) : 1)
+    }
+
+    private var valueLayer: some View {
+        let content = localRect(layout.contentRect)
+        let align: Alignment = layout.style.preset == .lowerThird ? .leading : .leading
+        return VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                if layout.style.showLabel {
+                    Text(layout.label.uppercased())
+                        .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.medium))
+                        .foregroundStyle(labelColor)
+                }
+                Spacer(minLength: 6)
+                if layout.style.showPercent {
+                    Text(layout.percentText)
+                        .font(.custom(element.style.fontName, size: layout.percentFontSize).weight(.semibold))
+                        .foregroundStyle(accentColor)
                 }
             }
-            .frame(height: layout.trackHeight)
+            Text(layout.valueText)
+                .font(.custom(element.style.fontName, size: valueFontSize).weight(valueWeight))
+                .foregroundStyle(valueColor)
+                .monospacedDigit()
+                .lineLimit(1)
         }
-        .frame(width: layout.rect.width - layout.horizontalPadding * 2)
-        .padding(.horizontal, layout.horizontalPadding)
-        .padding(.vertical, layout.verticalPadding)
-        .background(Color.black.opacity(element.style.backgroundOpacity))
-        .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
-        .shadow(color: Color.black.opacity(element.style.shadowOpacity), radius: element.style.shadowRadius, x: 0, y: 2)
+        .frame(width: content.width, height: max(layout.trackRect.minY - layout.contentRect.minY - 2, layout.valueFontSize * 1.2), alignment: align)
+        .position(x: content.midX, y: content.minY + max(layout.trackRect.minY - layout.contentRect.minY, layout.valueFontSize * 1.2) / 2)
+    }
+
+    private var progressLayer: some View {
+        let track = localRect(layout.trackRect)
+        return ZStack(alignment: .leading) {
+            trackShape
+                .fill(trackColor)
+            if layout.style.preset == .route {
+                routePath(points: layout.routePoints.map(localPoint))
+                    .stroke(trackColor, style: StrokeStyle(lineWidth: max(track.height, 2), lineCap: .round, lineJoin: .round))
+                routePath(points: progressedRoutePoints.map(localPoint))
+                    .stroke(accentColor, style: StrokeStyle(lineWidth: max(track.height, 2), lineCap: .round, lineJoin: .round))
+            } else if layout.style.preset == .dense || layout.style.preset == .splits {
+                segmentedFill(in: track.size)
+                    .fill(accentColor)
+            } else {
+                trackShape
+                    .fill(accentColor)
+                    .frame(width: max(track.width * layout.progress, track.height))
+                    .shadow(color: glowColor, radius: layout.style.glowEnabled ? track.height * 2.8 : 0)
+            }
+
+            if layout.style.tickMarksEnabled {
+                tickMarks(in: track.size)
+                    .stroke(labelColor.opacity(0.52), lineWidth: 1)
+            }
+
+            if layout.style.currentMarkerEnabled {
+                let markerPoint = layout.style.preset == .route
+                    ? localPoint(layout.routeCurrentPoint ?? progressedRoutePoints.last ?? CGPoint(x: layout.trackRect.minX + layout.trackRect.width * layout.progress, y: layout.trackRect.midY))
+                    : CGPoint(x: max(track.width * layout.progress, 0), y: track.height * 0.5)
+                Circle()
+                    .fill(accentColor)
+                    .frame(width: track.height * 2.2, height: track.height * 2.2)
+                    .shadow(color: glowColor, radius: layout.style.glowEnabled ? track.height * 2.3 : 0)
+                    .position(x: markerPoint.x, y: markerPoint.y)
+            }
+        }
+        .frame(width: track.width, height: track.height)
+        .position(x: track.midX, y: track.midY)
+    }
+
+    private var startFinishLabels: some View {
+        let track = localRect(layout.trackRect)
+        return HStack {
+            Text("START")
+            Spacer()
+            Text("FINISH")
+        }
+        .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
+        .foregroundStyle(labelColor.opacity(0.78))
+        .frame(width: track.width)
+        .position(x: track.midX, y: min(track.maxY + layout.unitFontSize * 0.9, layout.rect.height - layout.unitFontSize))
+    }
+
+    private var trackShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: layout.trackRect.height / 2)
+    }
+
+    private var valueFontSize: Double {
+        switch layout.style.preset {
+        case .lowerThird: layout.valueFontSize * 1.05
+        case .sport: layout.valueFontSize * 1.12
+        case .dense: layout.valueFontSize * 0.86
+        default: layout.valueFontSize
+        }
+    }
+
+    private var valueWeight: Font.Weight {
+        switch layout.style.preset {
+        case .dense, .neon: .medium
+        default: .bold
+        }
+    }
+
+    private var valueColor: Color {
+        layout.style.preset == .neon ? Color.white.opacity(0.92) : Color(distanceTimeline: element.style.foregroundColor)
+    }
+
+    private var labelColor: Color {
+        layout.style.preset == .neon ? accentColor.opacity(0.86) : Color(distanceTimeline: element.style.foregroundColor).opacity(0.64)
+    }
+
+    private var accentColor: Color {
+        Color(distanceTimeline: layout.style.fillColor)
+    }
+
+    private var trackColor: Color {
+        Color(distanceTimeline: element.style.foregroundColor).opacity(layout.style.trackOpacity)
+    }
+
+    private var glowColor: Color {
+        accentColor.opacity(0.75)
+    }
+
+    private func localRect(_ rect: CGRect) -> CGRect {
+        CGRect(x: rect.minX - layout.rect.minX, y: rect.minY - layout.rect.minY, width: rect.width, height: rect.height)
+    }
+
+    private func localPoint(_ point: CGPoint) -> CGPoint {
+        CGPoint(x: point.x - layout.trackRect.minX, y: point.y - layout.trackRect.minY)
+    }
+
+    private var progressedRoutePoints: [CGPoint] {
+        guard layout.routePoints.count > 1 else {
+            let track = layout.trackRect
+            return [
+                CGPoint(x: track.minX, y: track.minY + track.height * 0.70),
+                CGPoint(x: track.minX + track.width * layout.progress, y: track.minY + track.height * 0.36)
+            ]
+        }
+        let targetCount = max(Int((Double(layout.routePoints.count - 1) * layout.progress).rounded(.down)) + 1, 1)
+        var points = Array(layout.routePoints.prefix(min(targetCount, layout.routePoints.count)))
+        if let current = layout.routeCurrentPoint, points.last != current {
+            points.append(current)
+        }
+        return points
+    }
+
+    private func routePath(points: [CGPoint]) -> Path {
+        var path = Path()
+        guard let first = points.first else {
+            let track = localRect(layout.trackRect)
+            path.move(to: CGPoint(x: 0, y: track.height * 0.70))
+            path.addCurve(
+                to: CGPoint(x: track.width * layout.progress, y: track.height * 0.36),
+                control1: CGPoint(x: track.width * 0.25, y: -track.height * 0.4),
+                control2: CGPoint(x: track.width * 0.58, y: track.height * 1.6)
+            )
+            return path
+        }
+        path.move(to: first)
+        for point in points.dropFirst() {
+            path.addLine(to: point)
+        }
+        return path
+    }
+
+    private func segmentedFill(in size: CGSize) -> Path {
+        var path = Path()
+        let segmentCount = 12
+        let gap = max(size.width * 0.012, 2)
+        let segmentWidth = (size.width - gap * Double(segmentCount - 1)) / Double(segmentCount)
+        let filled = layout.progress * Double(segmentCount)
+        for index in 0..<segmentCount {
+            let fillFraction = min(max(filled - Double(index), 0), 1)
+            guard fillFraction > 0 else { continue }
+            let x = Double(index) * (segmentWidth + gap)
+            path.addRoundedRect(
+                in: CGRect(x: x, y: 0, width: segmentWidth * fillFraction, height: size.height),
+                cornerSize: CGSize(width: size.height / 2, height: size.height / 2)
+            )
+        }
+        return path
+    }
+
+    private func tickMarks(in size: CGSize) -> Path {
+        var path = Path()
+        let count = layout.style.preset == .splits ? 10 : 16
+        for index in 0...count {
+            let x = size.width * Double(index) / Double(max(count, 1))
+            path.move(to: CGPoint(x: x, y: -size.height * 0.45))
+            path.addLine(to: CGPoint(x: x, y: size.height * 1.45))
+        }
+        return path
+    }
+
+    private var elevationProfile: Path {
+        var path = Path()
+        let samples = layout.elevationSamples
+        guard samples.count > 1 else { return path }
+        let minValue = samples.min() ?? 0
+        let maxValue = samples.max() ?? minValue
+        let range = max(maxValue - minValue, 1)
+        let width = localRect(layout.contentRect).width
+        let height = localRect(layout.contentRect).height * 0.30
+        path.move(to: CGPoint(x: 0, y: height))
+        for index in samples.indices {
+            let x = width * Double(index) / Double(max(samples.count - 1, 1))
+            let normalized = (samples[index] - minValue) / range
+            let y = height - height * normalized
+            path.addLine(to: CGPoint(x: x, y: y))
+        }
+        path.addLine(to: CGPoint(x: width, y: height))
+        path.closeSubpath()
+        return path
+    }
+}
+
+private struct DistanceTimelineMediaSlotView: View {
+    let style: DistanceTimelineStyle
+    let size: CGSize
+    let elapsedTime: TimeInterval
+    let accentColor: OverlayColor
+    let textColor: OverlayColor
+
+    var body: some View {
+        let slot = style.mediaSlot
+        Group {
+            if (slot.mode == .staticSVG || slot.mode == .animatedSVG),
+               let image = OverlayIconRenderer.image(
+                slot: slot,
+                size: size,
+                elapsedTime: elapsedTime,
+                tintColor: NSColor(previewOverlay: slot.tintMode == .text ? textColor : accentColor)
+               ) {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                Image(systemName: slot.systemImage.isEmpty ? style.mediaSystemImage : slot.systemImage)
+                    .font(.system(size: size.width * 0.48, weight: .semibold))
+                    .foregroundStyle(Color(distanceTimeline: slot.tintMode == .text ? textColor : accentColor))
+            }
+        }
+        .frame(width: size.width, height: size.height)
     }
 }
 
@@ -1857,6 +2134,10 @@ private struct LapLiveOverlayView: View {
 }
 
 private extension Color {
+    init(distanceTimeline overlayColor: OverlayColor) {
+        self.init(overlayColor)
+    }
+
     init(_ overlayColor: OverlayColor) {
         self.init(
             red: overlayColor.red,
@@ -1864,6 +2145,12 @@ private extension Color {
             blue: overlayColor.blue,
             opacity: overlayColor.alpha
         )
+    }
+}
+
+private extension NSColor {
+    convenience init(previewOverlay color: OverlayColor) {
+        self.init(red: color.red, green: color.green, blue: color.blue, alpha: color.alpha)
     }
 }
 

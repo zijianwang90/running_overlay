@@ -1,0 +1,170 @@
+{
+  "name": "Distance Timeline Overlay UI",
+  "updated": "2026-04-28",
+  "references": {
+    "styleBoard": "./distance-timeline-overlay-styles.png",
+    "relatedModuleSpec": "../../../overlay-modules/distance-timeline-overlay.md",
+    "relatedStyleSpec": "../../system/app-ui.md"
+  },
+  "appliesToOverlayTypes": ["distanceTimeline"],
+  "intent": {
+    "description": "compact progress/timeline overlay for distance or activity progress",
+    "avoid": [
+      "treating this as the bottom editor timeline",
+      "single hard-coded bar style",
+      "non-exportable animated asset controls",
+      "fading primary text by default",
+      "showing irrelevant controls for presets that do not use them"
+    ]
+  },
+  "presets": [
+    {
+      "id": "minimal",
+      "label": "Minimal",
+      "description": "compact translucent dark widget with value and slim progress bar"
+    },
+    {
+      "id": "dense",
+      "label": "Dense",
+      "description": "DaVinci-like technical panel with ticks or segmented progress"
+    },
+    {
+      "id": "sport",
+      "label": "Sport",
+      "description": "sport-watch style with optional left media slot",
+      "supportsMediaSlot": true
+    },
+    {
+      "id": "splits",
+      "label": "Splits",
+      "description": "kilometer ticks, current marker, start/finish context"
+    },
+    {
+      "id": "glass",
+      "label": "Glass",
+      "description": "translucent blurred video-friendly panel",
+      "supportsFadeOut": true
+    },
+    {
+      "id": "neon",
+      "label": "Neon",
+      "description": "cyan/glow line and pulse marker"
+    },
+    {
+      "id": "lowerThird",
+      "label": "Lower Third",
+      "description": "broadcast lower-third with optional left media slot",
+      "supportsMediaSlot": true
+    },
+    {
+      "id": "route",
+      "label": "Route",
+      "description": "route/path-like progress with optional elevation profile",
+      "supportsRoute": true,
+      "supportsElevation": true,
+      "supportsFadeOut": true
+    }
+  ],
+  "content": {
+    "required": ["currentDistance", "totalDistance", "progressFraction", "formattedValue"],
+    "optional": ["label", "percent", "startLabel", "finishLabel", "tickLabels", "currentMarker", "mediaSlot", "elevationProfile", "routePath"]
+  },
+  "mediaSlot": {
+    "supportedPresets": ["sport", "lowerThird"],
+    "modes": ["none", "systemIcon", "staticSVG", "animatedSVG", "image", "videoLoopFuture"],
+    "controls": [
+      "enabled",
+      "sourceType",
+      "assetPicker",
+      "size",
+      "tintMode",
+      "animationSpeed",
+      "loop"
+    ],
+    "rules": [
+      "slot size is fixed per preset so text alignment does not jump",
+      "animated SVG controls are disabled until preview and export support exists",
+      "slot media must be project-local or project-packaged when persistence supports it"
+    ]
+  },
+  "routeElevation": {
+    "supportedPresets": ["route"],
+    "routeControls": [
+      "pathMode",
+      "startDot",
+      "finishDot",
+      "currentMarker",
+      "markerSize",
+      "lineWidth",
+      "lineCap",
+      "progressColorMode"
+    ],
+    "elevationControls": [
+      "showElevationProfile",
+      "profileSource",
+      "profileLineColor",
+      "profileFillShadow",
+      "fillOpacity",
+      "shadowBlur",
+      "shadowOffset",
+      "clipProfileToProgress"
+    ],
+    "elevationShadowDefault": {
+      "fillOpacity": 0.18,
+      "shadowOpacity": 0.25,
+      "blur": 6
+    }
+  },
+  "backgroundBorderFade": {
+    "backgroundControls": ["enabled", "color", "opacity", "blurMaterial", "cornerRadius", "paddingX", "paddingY"],
+    "borderControls": ["enabled", "color", "opacity", "width"],
+    "fadeControls": ["enabled", "edge", "amount", "fadeTextAdvanced"],
+    "fadeRules": [
+      "fade background and track layers first",
+      "primary value text remains full opacity by default",
+      "text fade is advanced and off by default"
+    ]
+  },
+  "inspectorSections": [
+    "Preset",
+    "Content",
+    "Layout",
+    "Progress",
+    "Media Slot",
+    "Route / Elevation",
+    "Background & Border",
+    "Typography",
+    "Effects"
+  ],
+  "modelGaps": [
+    "DistanceTimelinePreset enum",
+    "DistanceTimelineStyle config",
+    "DistanceTimelineMediaSlot",
+    "DistanceTimelineTrackStyle",
+    "DistanceTimelineRouteStyle",
+    "DistanceTimelineElevationStyle",
+    "OverlayEdgeFadeStyle",
+    "distance timeline background/border/fade fields",
+    "animated SVG preview/export support",
+    "asset packaging/persistence strategy"
+  ],
+  "implementationPhases": [
+    {
+      "phase": 1,
+      "scope": ["preset enum", "style config", "minimal", "dense", "sport", "lowerThird", "border toggle", "background controls", "static media slot"]
+    },
+    {
+      "phase": 2,
+      "scope": ["splits", "glass", "neon", "ticks", "current marker", "segmented track", "glow", "fade masks"]
+    },
+    {
+      "phase": 3,
+      "scope": ["route preset", "elevation profile", "elevation fill/shadow", "GPS sampled path when available"]
+    },
+    {
+      "phase": 4,
+      "scope": ["animated SVG slot rendering", "preview/export timing verification", "asset packaging"]
+    }
+  ]
+}
+

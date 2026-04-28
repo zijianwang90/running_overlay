@@ -3,8 +3,8 @@
 Last updated: 2026-04-27 (Stats Bar)
 
 > **Inspector / UI design has its own spec.** See
-> [`docs/design/route-map-overlay-ui.md`](../design/route-map-overlay-ui.md) and
-> [`docs/design/route-map-overlay-ui.spec.json`](../design/route-map-overlay-ui.spec.json)
+> [`docs/design/overlays/route-map/route-map-overlay-ui.md`](../design/overlays/route-map/route-map-overlay-ui.md) and
+> [`docs/design/overlays/route-map/route-map-overlay-ui.spec.json`](../design/overlays/route-map/route-map-overlay-ui.spec.json)
 > for header, sections, controls, density tokens, and per-control model
 > mapping. This module doc owns rendering architecture, GPS data, map snapshot
 > caching, animation behavior, privacy, costs, and phase planning.
@@ -235,7 +235,7 @@ Phase E: Container presets, map dim controls, edge fade fix (current revision)
 - 新增 `OverlayStyle.routeMapMapOpacity` (默认 0.72)，preview 与 export 共同消费。
 - Inspector 用新的分组布局 (Preset / Layout / Container / Background Map /
   Route Line / Markers / Legend / Effects)，与
-  `docs/design/route-map-overlay-ui.spec.json` 对齐。
+  `docs/design/overlays/route-map/route-map-overlay-ui.spec.json` 对齐。
 - **Bug fix**: Edge Fade "Fade Out" 在 SwiftUI preview 中无效。根本原因：
   `RouteMapMaskRenderer` 输出的是灰度 CGImage（无 alpha 通道），
   SwiftUI `.mask()` 读 alpha 而非亮度，导致遮罩完全不透明。

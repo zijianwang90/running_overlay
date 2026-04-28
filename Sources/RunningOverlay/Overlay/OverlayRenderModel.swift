@@ -37,22 +37,83 @@ enum OverlayRenderModel {
     }
 
     static func distanceTimelineLayout(for element: OverlayElement, in context: OverlayRenderContext) -> OverlayDistanceTimelineRenderLayout {
-        let width = context.scaled(220 * element.scale)
-        let height = context.scaled(58 * element.scale)
+        let style = element.style.distanceTimeline
+        let width = context.scaled(style.width * element.scale)
+        let height = context.scaled(style.height * element.scale)
         let rect = centeredRect(for: element, size: CGSize(width: width, height: height), canvasSize: context.canvasSize)
         let progress = context.activity.distanceMeters > 0
             ? context.activity.distance(at: context.elapsedTime) / context.activity.distanceMeters
             : context.elapsedTime / max(context.activity.duration, 1)
+        let clamped = clampedProgress(progress)
+        let paddingX = context.scaled(style.paddingX * element.scale)
+        let paddingY = context.scaled(style.paddingY * element.scale)
+        let mediaSize = style.mediaSlotEnabled && style.preset.supportsMediaSlot
+            ? context.scaled(style.mediaSlotSize * element.scale)
+            : 0
+        let mediaGap = mediaSize > 0 ? context.scaled(10 * element.scale) : 0
+        let contentRect = CGRect(
+            x: rect.minX + paddingX + mediaSize + mediaGap,
+            y: rect.minY + paddingY,
+            width: max(rect.width - paddingX * 2 - mediaSize - mediaGap, 1),
+            height: max(rect.height - paddingY * 2, 1)
+        )
+        let trackHeight = max(context.scaled(style.trackHeight * element.scale), 2)
+        let trackY: Double
+        switch style.preset {
+        case .lowerThird:
+            trackY = contentRect.maxY - trackHeight
+        case .route:
+            trackY = contentRect.minY + contentRect.height * 0.58
+        default:
+            trackY = contentRect.maxY - trackHeight
+        }
+        let trackRect = CGRect(
+            x: contentRect.minX,
+            y: trackY,
+            width: contentRect.width,
+            height: trackHeight
+        )
+        let mediaSlotRect: CGRect? = mediaSize > 0
+            ? CGRect(x: rect.minX + paddingX, y: rect.midY - mediaSize / 2, width: mediaSize, height: mediaSize)
+            : nil
+        let routeGeometry = style.preset == .route ? RouteGeometryBuilder.geometry(from: context.activity) : nil
+        let routePoints = routeGeometry.map { geometry in
+            geometry.points.map { projectRoutePoint($0, bounds: geometry.bounds, rect: contentRect) }
+        } ?? []
+        let routeCurrentPoint = routeGeometry.flatMap { geometry in
+            context.activity.routePoint(at: context.elapsedTime).map {
+                projectRoutePoint($0, bounds: geometry.bounds, rect: contentRect)
+            }
+        }
+        let distanceComponents = OverlayValueFormatter.components(for: .distance, activity: context.activity, elapsedTime: context.elapsedTime)
+        let totalComponents = OverlayValueComponents(
+            label: "Distance",
+            shortLabel: "DIST",
+            value: String(format: "%.2f", context.activity.distanceMeters / 1000),
+            unit: "km"
+        )
+        let valueText = "\(distanceComponents.value) / \(totalComponents.value) \(totalComponents.unit)"
 
         return OverlayDistanceTimelineRenderLayout(
-            label: OverlayValueFormatter.value(for: element.type, activity: context.activity, elapsedTime: context.elapsedTime),
+            style: style,
+            valueText: valueText,
+            label: style.label.isEmpty ? "Distance" : style.label,
+            percentText: "\(Int((clamped * 100).rounded()))%",
             rect: rect,
-            labelFontSize: context.scaled(max(12, element.style.fontSize * 0.58 * element.scale)),
-            horizontalPadding: context.scaled(10),
-            verticalPadding: context.scaled(8),
-            cornerRadius: context.scaled(6),
-            trackHeight: max(context.scaled(6), context.scaled(8 * element.scale)),
-            progress: clampedProgress(progress)
+            contentRect: contentRect,
+            trackRect: trackRect,
+            mediaSlotRect: mediaSlotRect,
+            elapsedTime: context.elapsedTime,
+            valueFontSize: context.scaled(max(12, element.style.fontSize * element.scale)),
+            labelFontSize: context.scaled(max(9, element.style.fontSize * 0.42 * element.scale)),
+            percentFontSize: context.scaled(max(9, element.style.fontSize * 0.44 * element.scale)),
+            unitFontSize: context.scaled(max(9, element.style.fontSize * 0.36 * element.scale)),
+            cornerRadius: context.scaled(style.cornerRadius * element.scale),
+            borderWidth: max(context.scaled(style.borderWidth * element.scale), 0.5),
+            progress: clamped,
+            elevationSamples: elevationSamples(from: context.activity),
+            routePoints: routePoints,
+            routeCurrentPoint: routeCurrentPoint
         )
     }
 
@@ -607,6 +668,38 @@ enum OverlayRenderModel {
         min(max(progress, 0), 1)
     }
 
+    private static func projectRoutePoint(_ point: RoutePoint, bounds: RouteBounds, rect: CGRect) -> CGPoint {
+        let projectedMinX = mercatorX(bounds.minLongitude)
+        let projectedMaxX = mercatorX(bounds.maxLongitude)
+        let projectedSouth = mercatorY(bounds.minLatitude)
+        let projectedNorth = mercatorY(bounds.maxLatitude)
+        let minX = min(projectedMinX, projectedMaxX)
+        let maxX = max(projectedMinX, projectedMaxX)
+        let minY = min(projectedSouth, projectedNorth)
+        let maxY = max(projectedSouth, projectedNorth)
+        let xRange = max(maxX - minX, 0.000001)
+        let yRange = max(maxY - minY, 0.000001)
+        let scale = min(rect.width / xRange, rect.height / yRange)
+        let contentWidth = xRange * scale
+        let contentHeight = yRange * scale
+        let xOffset = (rect.width - contentWidth) * 0.5
+        let yOffset = (rect.height - contentHeight) * 0.5
+        return CGPoint(
+            x: rect.minX + xOffset + (mercatorX(point.longitude) - minX) * scale,
+            y: rect.minY + yOffset + (mercatorY(point.latitude) - minY) * scale
+        )
+    }
+
+    private static func mercatorX(_ longitude: Double) -> Double {
+        (longitude + 180) / 360
+    }
+
+    private static func mercatorY(_ latitude: Double) -> Double {
+        let clampedLatitude = min(max(latitude, -85.05112878), 85.05112878)
+        let radians = clampedLatitude * .pi / 180
+        return (1 - log(tan(radians) + 1 / cos(radians)) / .pi) / 2
+    }
+
     private static func textMetrics(
         for preset: OverlayTextPreset,
         fontSize: Double,
@@ -683,14 +776,25 @@ struct OverlayTextRenderLayout {
 }
 
 struct OverlayDistanceTimelineRenderLayout {
+    var style: DistanceTimelineStyle
+    var valueText: String
     var label: String
+    var percentText: String
     var rect: CGRect
+    var contentRect: CGRect
+    var trackRect: CGRect
+    var mediaSlotRect: CGRect?
+    var elapsedTime: TimeInterval
+    var valueFontSize: Double
     var labelFontSize: Double
-    var horizontalPadding: Double
-    var verticalPadding: Double
+    var percentFontSize: Double
+    var unitFontSize: Double
     var cornerRadius: Double
-    var trackHeight: Double
+    var borderWidth: Double
     var progress: Double
+    var elevationSamples: [Double]
+    var routePoints: [CGPoint]
+    var routeCurrentPoint: CGPoint?
 }
 
 struct OverlayElevationChartRenderLayout {

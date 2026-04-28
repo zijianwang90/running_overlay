@@ -8,4 +8,4 @@ Current module notes:
 
 - [Route Map Overlay](route-map-overlay.md)
 - [Lap List Overlay](lap-list-overlay.md)
-
+- [Distance Timeline Overlay](distance-timeline-overlay.md)

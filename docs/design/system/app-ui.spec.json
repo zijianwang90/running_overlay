@@ -1,0 +1,149 @@
+{
+  "name": "Running Overlay App UI Design System",
+  "updated": "2026-04-26",
+  "relatedSpecs": [
+    "../panels/inspector/inspector-ui.md",
+    "../panels/media-pool/media-pool-ui.md",
+    "../panels/preview/preview-ui.md",
+    "../panels/timeline/timeline-ui.md"
+  ],
+  "productCharacter": {
+    "description": "focused desktop editor for aligning running activity data with video and exporting polished overlays",
+    "tone": ["calm", "dense", "precise", "professional", "fast to scan"],
+    "avoid": [
+      "marketing page composition",
+      "mobile fitness app styling",
+      "decorative dashboard styling",
+      "oversized cards",
+      "large empty black areas",
+      "non-model-backed controls that appear persistent"
+    ]
+  },
+  "tokens": {
+    "color": {
+      "app.bg": "#0B0F12",
+      "app.chrome": "#101418",
+      "panel.bg": "#15191D",
+      "panel.header": "#1B2025",
+      "surface.raised": "#1B2025",
+      "surface.control": "#20252A",
+      "surface.hover": "#272D33",
+      "surface.pressed": "#11161A",
+      "surface.selected": "#263244",
+      "border.subtle": "#2B3238",
+      "border.strong": "#3A424A",
+      "text.primary": "#F3F6F8",
+      "text.secondary": "#B6BEC7",
+      "text.muted": "#7E8893",
+      "accent.blue": "#2F8CFF",
+      "accent.blue.soft": "#123052",
+      "danger.red": "#FF5A5F",
+      "success.green": "#51C96B",
+      "warning.yellow": "#FFD166"
+    },
+    "typography": {
+      "fontFamily": "macOS system font",
+      "panelTitle": { "size": 22, "weight": "semibold" },
+      "sectionTitle": { "size": 15, "weight": "semibold" },
+      "body": { "size": 13, "weight": "regular" },
+      "bodyStrong": { "size": 13, "weight": "semibold" },
+      "caption": { "size": 11, "weight": "regular" },
+      "numeric": { "size": 13, "weight": "medium", "monospacedDigits": true },
+      "timelineLabel": { "size": 11, "weight": "medium" }
+    },
+    "spacing": {
+      "base": 4,
+      "1": 4,
+      "2": 8,
+      "3": 12,
+      "4": 16,
+      "5": 20,
+      "6": 24,
+      "panelPaddingXMin": 12,
+      "panelPaddingXMax": 18
+    },
+    "size": {
+      "panelHeaderHeightMin": 48,
+      "panelHeaderHeightMax": 56,
+      "controlHeightMin": 30,
+      "controlHeightMax": 34,
+      "compactRowHeight": 52,
+      "mediaRowHeightMin": 68,
+      "mediaRowHeightMax": 76,
+      "iconButton": 30,
+      "minimumDenseHitTarget": 28
+    },
+    "radius": {
+      "control": 7,
+      "panel": 8
+    }
+  },
+  "layout": {
+    "appRegions": [
+      { "id": "mediaPool", "position": "left", "purpose": "import and manage source media" },
+      { "id": "preview", "position": "center", "purpose": "video and overlay preview" },
+      { "id": "timeline", "position": "bottom", "purpose": "alignment and editing" },
+      { "id": "inspector", "position": "right", "purpose": "overlay and clip detail editing" }
+    ],
+    "panelRules": [
+      "fixed header bar with title and compact toolbar actions",
+      "content scrolls independently when needed",
+      "avoid floating cards inside panels",
+      "empty states preserve surrounding panel context",
+      "split panes keep stable minimum widths"
+    ]
+  },
+  "components": {
+    "headerBar": {
+      "height": "48-56",
+      "background": "panel.header",
+      "bottomBorder": "border.subtle",
+      "structure": ["left title", "right icon actions"]
+    },
+    "iconButton": {
+      "size": 30,
+      "hoverBackground": "surface.hover",
+      "activeBackground": "surface.pressed",
+      "requiresHelpAndAccessibilityLabel": true
+    },
+    "row": {
+      "selectedBackground": "surface.selected",
+      "hoverBackground": "surface.hover",
+      "useStableHeight": true
+    },
+    "emptyState": {
+      "structure": ["small icon", "primary message", "optional secondary message", "optional primary action"],
+      "useDashedDropZoneOnlyWhenDragDropSupported": true,
+      "avoidLargeIllustrations": true
+    }
+  },
+  "interactionStandards": [
+    "single click selects",
+    "double click previews or opens direct editing only where established",
+    "Command-click toggles multi-select in lists",
+    "Command+A applies to the active list or editor region",
+    "context menu actions apply to selected items when right-clicking a selected item; otherwise to clicked item",
+    "drag/drop targets have clear active feedback",
+    "row action buttons do not trigger row navigation"
+  ],
+  "recommendedSharedSwiftUI": [
+    "RunningOverlayTheme",
+    "EditorPanel",
+    "EditorPanelHeader",
+    "EditorIconButton",
+    "EditorSection",
+    "EditorRow",
+    "EditorSegmentedControl",
+    "EditorSearchField",
+    "EditorEmptyState",
+    "EditorStatusPill",
+    "EditorPlaybackButton",
+    "EditorDropdownButton",
+    "EditorTimelineControl"
+  ],
+  "documentationRule": [
+    "new substantial UI design work updates docs/design",
+    "structured specs are preferred for agent-readable implementation",
+    "project-log.md gets a dated entry for design work"
+  ]
+}

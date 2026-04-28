@@ -1,0 +1,507 @@
+{
+  "name": "Route Map Overlay UI",
+  "updated": "2026-04-27",
+  "references": {
+    "designDoc": "./route-map-overlay-ui.md",
+    "moduleDoc": "../../../overlay-modules/route-map-overlay.md",
+    "fullVideoMockup": null,
+    "relatedInspectorSpec": "../../panels/inspector/inspector-ui.md",
+    "relatedNumericSpec": "../numeric/numeric-overlay-ui.spec.json",
+    "relatedStyleSpec": "../../system/app-ui.md"
+  },
+  "appliesToOverlayTypes": ["routeMap"],
+  "excludedOverlayTypes": [
+    "heartRate",
+    "pace",
+    "calories",
+    "elapsedTime",
+    "realTime",
+    "distance",
+    "elevation",
+    "cadence",
+    "power",
+    "distanceTimeline",
+    "elevationChart",
+    "runningGauge"
+  ],
+  "intent": {
+    "template": "dense Inspector detail panel for the Route Map composite overlay",
+    "density": "matches numeric-overlay-ui density tokens; reuses InspectorDense* components",
+    "avoid": [
+      "fixed pace color bar in legend",
+      "single hard-coded layout that mixes container and route style",
+      "large card rows or loose vertical spacing",
+      "duplicating Numeric Overlay primitives",
+      "exposing controls without a model field"
+    ]
+  },
+  "tokens": {
+    "reuseFrom": "../numeric/numeric-overlay-ui.spec.json",
+    "numeric": {
+      "sectionHeaderHeight": 30,
+      "rowHeight": 32,
+      "rowGap": 6,
+      "sectionGap": 8,
+      "labelColumnWidth": 88,
+      "controlHeight": 28,
+      "iconButtonSize": 28,
+      "swatchSize": 20,
+      "panelPaddingX": 12,
+      "panelPaddingY": 8,
+      "controlRadius": 5
+    }
+  },
+  "header": {
+    "title": "Route Map",
+    "pill": "Overlay",
+    "subtitle": "{activity.totalDistance}",
+    "icon": "map",
+    "iconTint": "accentBlue",
+    "actions": ["back", "delete"]
+  },
+  "sections": [
+    {
+      "id": "preset",
+      "title": "Preset",
+      "icon": "wand.and.stars",
+      "controls": [
+        {
+          "id": "routeStylePreset",
+          "type": "dropdown",
+          "modelPath": "OverlayStyle.routeMapPreset",
+          "options": ["minimal", "gradient", "glow"],
+          "modelBacked": true,
+          "notes": [
+            "Describes the polyline appearance only.",
+            "No longer encodes 'show map' — that toggle lives on the Background Map section header.",
+            "Legacy 'mapKit' value is migrated to 'gradient' on decode."
+          ]
+        },
+        {
+          "id": "distanceReadout",
+          "type": "readout",
+          "modelPath": "ActivityTimeline.distanceMeters",
+          "displayRule": "{distance / 1000 with 2 decimals} km, '—' when zero"
+        }
+      ],
+      "removedControls": [
+        {
+          "id": "containerPreset",
+          "removedAt": "2026-04-27",
+          "reason": "Conflicted with the Container section's individual controls. Still callable via ProjectDocument.setOverlayRouteMapContainerPreset for templates and tests."
+        }
+      ]
+    },
+    {
+      "id": "layout",
+      "title": "Layout",
+      "icon": "scope",
+      "controls": [
+        { "id": "anchor", "type": "grid3x3", "modelBacked": false },
+        {
+          "id": "position",
+          "type": "numberPair",
+          "labels": ["X", "Y"],
+          "modelPaths": ["OverlayElement.position.x", "OverlayElement.position.y"]
+        },
+        { "id": "scale", "type": "slider", "modelPath": "OverlayElement.scale" },
+        { "id": "rotation", "type": "slider", "modelPath": "OverlayStyle.rotationDegrees" },
+        { "id": "containerOpacity", "type": "slider", "modelPath": "OverlayStyle.backgroundOpacity" }
+      ]
+    },
+    {
+      "id": "container",
+      "title": "Container",
+      "icon": "rectangle.dashed",
+      "controls": [
+        {
+          "id": "shape",
+          "type": "segmented",
+          "options": ["square", "circle"],
+          "modelPath": "OverlayStyle.routeMapShape",
+          "notes": [
+            "Picking circle collapses width and height to the shorter edge so editor handles stay synced with the rendered diameter."
+          ]
+        },
+        {
+          "id": "width",
+          "type": "slider",
+          "range": [120, 720],
+          "step": 4,
+          "modelPath": "OverlayStyle.routeMapWidth",
+          "modelBacked": true,
+          "visibleWhen": "shape == square",
+          "displayRule": "NN pt"
+        },
+        {
+          "id": "height",
+          "type": "slider",
+          "range": [120, 720],
+          "step": 4,
+          "modelPath": "OverlayStyle.routeMapHeight",
+          "modelBacked": true,
+          "visibleWhen": "shape == square",
+          "displayRule": "NN pt"
+        },
+        {
+          "id": "size",
+          "type": "slider",
+          "range": [120, 600],
+          "step": 4,
+          "modelPath": "min(OverlayStyle.routeMapWidth, OverlayStyle.routeMapHeight)",
+          "writes": ["OverlayStyle.routeMapWidth", "OverlayStyle.routeMapHeight"],
+          "modelBacked": true,
+          "visibleWhen": "shape == circle",
+          "displayRule": "NN pt"
+        },
+        {
+          "id": "cornerRadius",
+          "type": "slider",
+          "modelBacked": "phaseF",
+          "visibleWhen": "shape == square"
+        },
+        {
+          "id": "edgeMode",
+          "type": "segmented",
+          "options": ["hard", "gradient"],
+          "modelPath": "OverlayStyle.routeMapEdgeFade",
+          "writeNotes": "Edge Softness slider sets this implicitly via setOverlayRouteMapEdgeSoftness"
+        },
+        {
+          "id": "edgeSoftness",
+          "type": "slider",
+          "range": [0.0, 0.85],
+          "step": 0.01,
+          "modelPath": "OverlayStyle.routeMapFadeAmount",
+          "modelBacked": true,
+          "enabledWhen": "edgeMode == gradient",
+          "displayRule": "<= 0.001 -> 'Solid', else NN%",
+          "implementation": "RouteMapMaskRenderer draws a single radial vignette clipped to the container outline (3-stop white→white→black gradient at locations [0, 0.45, 1])."
+        },
+        { "id": "borderEnabled", "type": "toggle", "modelBacked": "phaseF" },
+        { "id": "borderColor", "type": "swatches", "modelBacked": "phaseF" },
+        { "id": "borderOpacity", "type": "slider", "modelBacked": "phaseF" },
+        { "id": "borderWidth", "type": "slider", "modelBacked": "phaseF" }
+      ]
+    },
+    {
+      "id": "backgroundMap",
+      "title": "Background Map",
+      "icon": "map",
+      "accessory": {
+        "id": "showMap",
+        "type": "toggle",
+        "modelPath": "OverlayStyle.routeMapBackgroundStyle != .none",
+        "writes": ["OverlayStyle.routeMapBackgroundStyle"],
+        "setter": "ProjectDocument.setOverlayRouteMapShowMap",
+        "rules": [
+          "Off → routeMapBackgroundStyle = .none.",
+          "On → restore previously selected style, defaulting to .dark when previous value was .none."
+        ]
+      },
+      "controls": [
+        {
+          "id": "mapStyle",
+          "type": "dropdown",
+          "options": ["dark", "light", "terrain", "satellite"],
+          "modelPath": "OverlayStyle.routeMapBackgroundStyle",
+          "modelBacked": true,
+          "enabledWhen": "showMap == true",
+          "notes": ["Excludes 'none' — show / hide is handled by the showMap toggle accessory."]
+        },
+        {
+          "id": "mapOpacity",
+          "type": "slider",
+          "range": [0.0, 1.0],
+          "modelPath": "OverlayStyle.routeMapMapOpacity",
+          "modelBacked": true,
+          "enabledWhen": "showMap == true"
+        },
+        { "id": "contrast", "type": "slider", "modelBacked": "phaseF" },
+        { "id": "saturation", "type": "slider", "modelBacked": "phaseF" },
+        { "id": "brightness", "type": "slider", "modelBacked": "phaseF" },
+        { "id": "blur", "type": "slider", "modelBacked": "phaseF" }
+      ]
+    },
+    {
+      "id": "routeLine",
+      "title": "Route Line",
+      "icon": "scribble.variable",
+      "controls": [
+        {
+          "id": "colorMode",
+          "type": "segmented",
+          "options": ["solid", "gradient"],
+          "modelPath": "OverlayStyle.routeMapColorMode"
+        },
+        {
+          "id": "solidColor",
+          "type": "swatches",
+          "modelPath": "OverlayStyle.foregroundColor",
+          "visibleWhen": "colorMode == solid"
+        },
+        {
+          "id": "gradientStart",
+          "type": "swatches",
+          "modelPath": "OverlayStyle.routeMapGradientStart",
+          "visibleWhen": "colorMode == gradient"
+        },
+        {
+          "id": "gradientMid",
+          "type": "swatches",
+          "modelPath": "OverlayStyle.routeMapGradientMiddle",
+          "visibleWhen": "colorMode == gradient"
+        },
+        {
+          "id": "gradientEnd",
+          "type": "swatches",
+          "modelPath": "OverlayStyle.routeMapGradientEnd",
+          "visibleWhen": "colorMode == gradient"
+        },
+        {
+          "id": "gradientMetric",
+          "type": "dropdown",
+          "options": ["pace", "heartRate", "power", "elevation"],
+          "modelBacked": "phaseF"
+        },
+        { "id": "width", "type": "slider", "modelBacked": "phaseF" },
+        { "id": "opacity", "type": "slider", "modelBacked": "phaseF" },
+        { "id": "dash", "type": "toggleAndPattern", "modelBacked": "phaseF" },
+        { "id": "glow", "type": "toggleAndSliders", "modelBacked": "phaseF" },
+        { "id": "shadow", "type": "toggleAndSliders", "modelBacked": "phaseF" }
+      ]
+    },
+    {
+      "id": "markers",
+      "title": "Markers",
+      "icon": "mappin.and.ellipse",
+      "controls": [
+        {
+          "id": "allMarkers",
+          "type": "segmented",
+          "options": ["hidden", "dot", "pin", "flag"],
+          "modelPath": "OverlayStyle.routeMapMarkerStyle",
+          "writes": ["routeMapStartMarkerStyle", "routeMapEndMarkerStyle"]
+        },
+        {
+          "id": "startMarker",
+          "type": "dropdown",
+          "options": ["hidden", "dot", "pin", "flag"],
+          "modelPath": "OverlayStyle.routeMapStartMarkerStyle"
+        },
+        {
+          "id": "finishMarker",
+          "type": "dropdown",
+          "options": ["hidden", "dot", "pin", "flag"],
+          "modelPath": "OverlayStyle.routeMapEndMarkerStyle"
+        },
+        { "id": "startColor", "type": "swatches", "modelBacked": "phaseF" },
+        { "id": "finishColor", "type": "swatches", "modelBacked": "phaseF" },
+        { "id": "markerSize", "type": "slider", "modelBacked": "phaseF" },
+        { "id": "markerBorder", "type": "toggleAndSliders", "modelBacked": "phaseF" },
+        { "id": "markerLabel", "type": "toggleAndText", "modelBacked": "phaseF" }
+      ]
+    },
+    {
+      "id": "legend",
+      "title": "Legend",
+      "icon": "list.dash",
+      "accessory": { "id": "legendEnabled", "type": "toggle", "modelPath": "OverlayStyle.routeMapLegendVisible" },
+      "controls": [
+        {
+          "id": "legendStyle",
+          "type": "dropdown",
+          "options": ["minimal", "startFinishDistance", "gradientBand"],
+          "modelPath": "OverlayStyle.routeMapLegendMode",
+          "deprecationNote": "kept for backward compatibility; new templates should compose items"
+        },
+        {
+          "id": "legendPosition",
+          "type": "dropdown",
+          "options": [
+            "topLeft",
+            "topRight",
+            "bottomLeft",
+            "bottomRight",
+            "bottomCenter",
+            "outsideBottom",
+            "hidden"
+          ],
+          "modelBacked": "phaseF"
+        },
+        {
+          "id": "legendLayout",
+          "type": "segmented",
+          "options": ["vertical", "horizontal", "compactGrid", "badges"],
+          "modelBacked": "phaseF"
+        },
+        {
+          "id": "legendItemStyle",
+          "type": "segmented",
+          "options": ["labelValue", "iconLabelValue", "iconValue", "valueOnly", "startFinishMarker"],
+          "modelBacked": "phaseF"
+        },
+        { "id": "legendBackgroundEnabled", "type": "toggle", "modelBacked": "phaseF" },
+        { "id": "legendBackgroundColor", "type": "swatches", "modelBacked": "phaseF" },
+        { "id": "legendBackgroundOpacity", "type": "slider", "modelBacked": "phaseF" },
+        { "id": "legendCornerRadius", "type": "slider", "modelBacked": "phaseF" },
+        { "id": "legendPaddingX", "type": "slider", "modelBacked": "phaseF" },
+        { "id": "legendPaddingY", "type": "slider", "modelBacked": "phaseF" },
+        { "id": "legendItemSpacing", "type": "slider", "modelBacked": "phaseF" },
+        {
+          "id": "legendItems",
+          "type": "list",
+          "itemModel": "RouteMapLegendItemConfig",
+          "itemTypes": ["metric", "startMarker", "finishMarker", "customText"],
+          "metricOptions": [
+            "distance",
+            "pace",
+            "elapsedTime",
+            "heartRate",
+            "power",
+            "cadence",
+            "elevation",
+            "calories"
+          ],
+          "perItemControls": [
+            "type",
+            "metric",
+            "customLabel",
+            "customValue",
+            "unitOverride",
+            "iconEnabled",
+            "iconName",
+            "iconColor",
+            "labelEnabled",
+            "valueEnabled",
+            "unitEnabled",
+            "colorOverride"
+          ],
+          "modelBacked": "phaseF"
+        },
+        { "id": "legendTextColor", "type": "swatches", "modelBacked": "phaseF" },
+        { "id": "legendLabelSize", "type": "slider", "modelBacked": "phaseF" },
+        { "id": "legendValueSize", "type": "slider", "modelBacked": "phaseF" },
+        { "id": "legendLabelWeight", "type": "segmented", "modelBacked": "phaseF" },
+        { "id": "legendValueWeight", "type": "segmented", "modelBacked": "phaseF" }
+      ]
+    },
+    {
+      "id": "effects",
+      "title": "Effects",
+      "icon": "sparkles",
+      "controls": [
+        { "id": "shadowOpacity", "type": "slider", "modelPath": "OverlayStyle.shadowOpacity" },
+        { "id": "shadowRadius", "type": "slider", "modelPath": "OverlayStyle.shadowRadius" },
+        { "id": "shadowOffset", "type": "numberPair", "modelPaths": ["OverlayStyle.shadowOffsetX", "OverlayStyle.shadowOffsetY"] },
+        { "id": "shadowColor", "type": "swatches", "modelBacked": "phaseF" },
+        { "id": "glowEnabled", "type": "toggle", "modelBacked": "phaseF" },
+        { "id": "glowColor", "type": "swatches", "modelBacked": "phaseF" },
+        { "id": "glowOpacity", "type": "slider", "modelBacked": "phaseF" },
+        { "id": "glowRadius", "type": "slider", "modelBacked": "phaseF" },
+        { "id": "blendMode", "type": "dropdown", "modelBacked": "phaseF" },
+        { "id": "containerFillOpacity", "type": "slider", "modelPath": "OverlayStyle.backgroundOpacity" }
+      ]
+    }
+  ],
+  "containerPresetDefaults": {
+    "squareHardEdge": {
+      "shape": "square",
+      "edgeFade": "solid",
+      "fadeAmount": 0.0,
+      "mapOpacity": 0.72,
+      "borderEnabled": true,
+      "borderOpacity": 0.22,
+      "borderWidth": 1.0,
+      "shadowEnabled": true,
+      "shadowOpacity": 0.35,
+      "shadowRadius": 14,
+      "shadowOffsetX": 0,
+      "shadowOffsetY": 6
+    },
+    "circleHardEdge": {
+      "shape": "circle",
+      "edgeFade": "solid",
+      "fadeAmount": 0.0,
+      "mapOpacity": 0.72,
+      "borderEnabled": true,
+      "borderOpacity": 0.24,
+      "borderWidth": 1.2,
+      "shadowEnabled": true,
+      "shadowOpacity": 0.38,
+      "shadowRadius": 16,
+      "shadowOffsetX": 0,
+      "shadowOffsetY": 6
+    },
+    "squareGradientEdge": {
+      "shape": "square",
+      "edgeFade": "fadeOut",
+      "fadeAmount": 0.30,
+      "mapOpacity": 0.58,
+      "borderEnabled": false,
+      "shadowEnabled": false
+    },
+    "circleGradientEdge": {
+      "shape": "circle",
+      "edgeFade": "fadeOut",
+      "fadeAmount": 0.34,
+      "mapOpacity": 0.58,
+      "borderEnabled": false,
+      "shadowEnabled": false
+    }
+  },
+  "modelBackedToday": [
+    "routeMapPreset (line aesthetic only — no longer encodes 'show map')",
+    "routeMapShape",
+    "routeMapWidth",
+    "routeMapHeight",
+    "routeMapEdgeFade (driven by Edge Softness)",
+    "routeMapFadeAmount",
+    "routeMapColorMode",
+    "routeMapGradientStart / Middle / End",
+    "OverlayStyle.foregroundColor (solid route color)",
+    "routeMapStartMarkerStyle",
+    "routeMapEndMarkerStyle",
+    "routeMapMarkerStyle (legacy quick-set)",
+    "routeMapBackgroundStyle (single source of truth for map visibility)",
+    "routeMapProvider (derived in OverlayRenderModel.routeMapLayout)",
+    "routeMapLegendVisible",
+    "routeMapLegendMode",
+    "OverlayElement.position.x / y",
+    "OverlayElement.scale",
+    "OverlayStyle.rotationDegrees",
+    "OverlayStyle.backgroundOpacity (container fill alpha)",
+    "OverlayStyle.shadowOpacity",
+    "OverlayStyle.shadowRadius",
+    "routeMapContainerPreset (template / test API; not in Inspector)",
+    "routeMapMapOpacity"
+  ],
+  "modelGapsPhaseE": [],
+  "modelGapsPhaseF": [
+    "borderEnabled / borderColor / borderOpacity / borderWidth",
+    "glowEnabled / glowColor / glowOpacity / glowRadius",
+    "mapContrast / mapSaturation / mapBrightness / mapBlur",
+    "routeLine width / opacity / dash / glow / shadow",
+    "routeLine gradientMetric (byPace / byHeartRate / byPower / byElevation)",
+    "per-marker color / size / border / label",
+    "legend position enum",
+    "legend layout enum (vertical / horizontal / compactGrid / badges)",
+    "legend item style enum (labelValue / iconLabelValue / iconValue / valueOnly / startFinishMarker)",
+    "legend background color / opacity / corner radius / padding / item spacing",
+    "legend items list (RouteMapLegendItemConfig)",
+    "legend typography (font, sizes, weights, color, opacities)",
+    "shadow color / shadow offsetX / shadow offsetY explicit (offsets exist, color is fixed)",
+    "container blend mode"
+  ],
+  "recommendedComponents": [
+    "RouteMapOverlayDetailView",
+    "RouteMapOverlayHeader",
+    "InspectorDenseRow",
+    "InspectorDenseSliderRow",
+    "InspectorDenseSegmented",
+    "InspectorDenseMenuLabel",
+    "InspectorDenseSwatchStrip",
+    "InspectorDenseAxisField",
+    "InspectorAnchorGrid"
+  ]
+}
