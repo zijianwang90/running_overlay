@@ -26,8 +26,6 @@ struct RouteMapOverlayDetailView: View {
                         sectionView(.legend, accessory: { statsBarVisibleToggle(element) }) { statsBarSection(element) }
                         sectionView(.effects) { effectsSection(element) }
                     }
-                    .padding(.horizontal, NumericTokens.panelPaddingX)
-                    .padding(.vertical, NumericTokens.panelPaddingY)
                 }
 
                 Divider().overlay(NumericTokens.borderSubtle)
@@ -196,7 +194,7 @@ struct RouteMapOverlayDetailView: View {
                 set: { project.setOverlayRouteMapBorderVisible(elementID, isVisible: $0) }
             ))
             .toggleStyle(.switch)
-            .controlSize(.small)
+            .controlSize(.mini)
             .labelsHidden()
         }
 
@@ -270,7 +268,7 @@ struct RouteMapOverlayDetailView: View {
             set: { project.setOverlayRouteMapShowMap(elementID, showMap: $0) }
         ))
         .toggleStyle(.switch)
-        .controlSize(.small)
+        .controlSize(.mini)
         .labelsHidden()
         .help("Show or hide the map background")
     }
@@ -465,23 +463,22 @@ struct RouteMapOverlayDetailView: View {
                     .foregroundStyle(NumericTokens.textPrimary)
                 Spacer()
                 accessory()
-                Button {
-                    if isOpen {
-                        openSections.remove(section)
-                    } else {
-                        openSections.insert(section)
-                    }
-                } label: {
-                    Image(systemName: isOpen ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(NumericTokens.textMuted)
-                        .frame(width: 18, height: 18)
-                }
-                .buttonStyle(.plain)
+                Image(systemName: isOpen ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(NumericTokens.textMuted)
+                    .frame(width: 18, height: 18)
             }
             .frame(height: NumericTokens.sectionHeaderHeight)
             .padding(.horizontal, NumericTokens.panelPaddingX)
             .background(NumericTokens.panelBackgroundElevated)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if isOpen {
+                    openSections.remove(section)
+                } else {
+                    openSections.insert(section)
+                }
+            }
             .overlay(alignment: .top) {
                 Rectangle()
                     .fill(NumericTokens.borderSubtle)
@@ -508,28 +505,19 @@ struct RouteMapOverlayDetailView: View {
             set: { project.setOverlayRouteMapStatsBarVisible(elementID, isVisible: $0) }
         ))
         .toggleStyle(.switch)
-        .controlSize(.small)
+        .controlSize(.mini)
         .labelsHidden()
     }
 
     private var footerBar: some View {
-        HStack(spacing: NumericTokens.space2) {
-            Button {
-                project.resetOverlayStyle(elementID)
-            } label: {
-                Label("Reset", systemImage: "arrow.counterclockwise")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(EditorSecondaryButtonStyle())
-
-            Button {
-                project.selection = .none
-            } label: {
-                Label("Done", systemImage: "checkmark")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(EditorPrimaryButtonStyle())
-        }
+        InspectorDetailFooterBar(
+            leadingTitle: "Reset",
+            leadingSystemImage: "arrow.counterclockwise",
+            trailingTitle: "Done",
+            trailingSystemImage: "checkmark",
+            onLeadingTap: { project.resetOverlayStyle(elementID) },
+            onTrailingTap: { project.selection = .none }
+        )
         .padding(.horizontal, NumericTokens.panelPaddingX)
         .padding(.vertical, NumericTokens.space3)
         .background(NumericTokens.panelBackgroundElevated)

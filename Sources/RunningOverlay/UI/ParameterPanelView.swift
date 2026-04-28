@@ -161,8 +161,8 @@ private struct InspectorOuterView: View {
                     addOverlaySection
                     AddedElementsSection()
                 }
-                .padding(.horizontal, InspectorTheme.panelPaddingX)
-                .padding(.vertical, InspectorTheme.panelPaddingY)
+                .padding(.horizontal, InspectorTheme.outerPanelPaddingX)
+                .padding(.vertical, InspectorTheme.outerPanelPaddingY)
             }
         }
     }
@@ -233,19 +233,19 @@ private struct OverlayElementRow: View {
             .buttonStyle(.plain)
 
             Divider()
-                .frame(height: 28)
+                .frame(height: 24)
                 .overlay(InspectorTheme.borderSubtle)
 
-            InspectorIconButton(systemImage: "eye", help: "Visibility unavailable", isEnabled: false) {}
-            InspectorIconButton(systemImage: "lock", help: "Lock unavailable", isEnabled: false) {}
-            InspectorIconButton(systemImage: "trash", help: "Delete", role: .destructive) {
+            InspectorIconButton(systemImage: "eye", help: "Visibility unavailable", isEnabled: false, compact: true) {}
+            InspectorIconButton(systemImage: "lock", help: "Lock unavailable", isEnabled: false, compact: true) {}
+            InspectorIconButton(systemImage: "trash", help: "Delete", role: .destructive, compact: true) {
                 project.deleteOverlay(element.id)
             }
             Image(systemName: "chevron.right")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(InspectorTheme.textMuted)
         }
-        .padding(.horizontal, InspectorTheme.space3)
+        .padding(.horizontal, InspectorTheme.outerRowPaddingX)
         .frame(minHeight: InspectorTheme.rowHeight)
         .background(InspectorTheme.controlBackground)
         .clipShape(RoundedRectangle(cornerRadius: InspectorTheme.controlRadius))
@@ -255,9 +255,9 @@ private struct OverlayElementRow: View {
     private var rowBody: some View {
         HStack(spacing: InspectorTheme.space3) {
             Image(systemName: element.type.inspectorIcon)
-                .font(.system(size: 22, weight: .medium))
+                .font(.system(size: 19, weight: .medium))
                 .foregroundStyle(element.type.isFeaturedOverlay ? InspectorTheme.accentBlue : InspectorTheme.textPrimary)
-                .frame(width: 30)
+                .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(element.type.label)
@@ -787,6 +787,7 @@ private struct InspectorSegmentedPicker<Value: Hashable, Values: RandomAccessCol
         .labelsHidden()
         .pickerStyle(.segmented)
         .tint(InspectorTheme.accentBlue)
+        .frame(height: InspectorTheme.segmentedControlHeight)
     }
 }
 
@@ -798,9 +799,9 @@ private struct OverlayAddTile: View {
         Button(action: action) {
             HStack(spacing: InspectorTheme.space3) {
                 Image(systemName: tile.systemImage)
-                    .font(.system(size: 24, weight: .medium))
+                    .font(.system(size: 19, weight: .medium))
                     .foregroundStyle(tile.isAccent ? InspectorTheme.accentBlue : InspectorTheme.textPrimary)
-                    .frame(width: 28)
+                    .frame(width: 22)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(tile.label)
@@ -816,10 +817,11 @@ private struct OverlayAddTile: View {
                 Spacer(minLength: InspectorTheme.space1)
 
                 Image(systemName: "plus")
-                    .font(.system(size: 17, weight: .regular))
-                    .foregroundStyle(InspectorTheme.textPrimary)
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(InspectorTheme.textSecondary)
+                    .frame(width: 18, alignment: .center)
             }
-            .padding(.horizontal, InspectorTheme.space3)
+            .padding(.horizontal, InspectorTheme.outerTilePaddingX)
             .frame(minHeight: InspectorTheme.tileMinHeight)
             .contentShape(Rectangle())
         }
@@ -1037,6 +1039,7 @@ private struct InspectorIconButton: View {
     var help: String
     var role: ButtonRole?
     var isEnabled = true
+    var compact = false
     var action: () -> Void
 
     var body: some View {
@@ -1044,7 +1047,10 @@ private struct InspectorIconButton: View {
             Image(systemName: systemImage)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(foreground)
-                .frame(width: InspectorTheme.iconButtonSize, height: InspectorTheme.iconButtonSize)
+                .frame(
+                    width: compact ? InspectorTheme.compactIconButtonSize : InspectorTheme.iconButtonSize,
+                    height: compact ? InspectorTheme.compactIconButtonSize : InspectorTheme.iconButtonSize
+                )
                 .background(InspectorTheme.controlBackground)
                 .clipShape(RoundedRectangle(cornerRadius: InspectorTheme.controlRadius))
                 .overlay(InspectorRoundedBorder())
@@ -1125,11 +1131,17 @@ private enum InspectorTheme {
     static let space3 = EditorTheme.space3
     static let panelPaddingX: CGFloat = 18
     static let panelPaddingY: CGFloat = 16
-    static let sectionGap: CGFloat = 22
+    static let outerPanelPaddingX: CGFloat = 14
+    static let outerPanelPaddingY: CGFloat = 14
+    static let sectionGap: CGFloat = 18
     static let controlHeight: CGFloat = 34
-    static let rowHeight = EditorTheme.compactRowHeight
+    static let rowHeight: CGFloat = 56
     static let iconButtonSize = EditorTheme.iconButtonSize
-    static let tileMinHeight: CGFloat = 68
+    static let compactIconButtonSize: CGFloat = 26
+    static let tileMinHeight: CGFloat = 56
+    static let segmentedControlHeight: CGFloat = 24
+    static let outerTilePaddingX: CGFloat = 10
+    static let outerRowPaddingX: CGFloat = 10
     static let controlRadius = EditorTheme.controlRadius
 
     static let titleFont = EditorTheme.panelTitleFont

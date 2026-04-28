@@ -10,7 +10,6 @@ struct LapListOverlayDetailView: View {
         VStack(spacing: 0) {
             if let element = project.selectedOverlay(elementID) {
                 header(element: element)
-                Divider().overlay(NumericTokens.borderSubtle)
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
                         sectionView(.layout, element: element) { layoutSection(element) }
@@ -18,8 +17,6 @@ struct LapListOverlayDetailView: View {
                         sectionView(.columns, element: element) { columnsSection(element) }
                         sectionView(.position, element: element) { positionSection(element) }
                     }
-                    .padding(.horizontal, NumericTokens.panelPaddingX)
-                    .padding(.vertical, NumericTokens.panelPaddingY)
                 }
                 Divider().overlay(NumericTokens.borderSubtle)
                 footerBar
@@ -97,7 +94,12 @@ struct LapListOverlayDetailView: View {
             Spacer()
         }
         .padding(.horizontal, NumericTokens.panelPaddingX)
-        .padding(.vertical, NumericTokens.panelPaddingY)
+        .frame(height: EditorTheme.panelHeaderHeight)
+        .background(NumericTokens.panelBackgroundElevated)
+        .overlay(alignment: .bottom) {
+            Divider()
+                .overlay(NumericTokens.borderSubtle)
+        }
     }
 
     // MARK: - Section wrapper
@@ -108,7 +110,7 @@ struct LapListOverlayDetailView: View {
         @ViewBuilder content: () -> Content
     ) -> some View {
         let isOpen = openSections.contains(section)
-        return VStack(alignment: .leading, spacing: NumericTokens.rowGap) {
+        return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: NumericTokens.space2) {
                 Image(systemName: section.systemImage)
                     .frame(width: 16, alignment: .center)
@@ -117,33 +119,38 @@ struct LapListOverlayDetailView: View {
                     .font(NumericTokens.sectionTitleFont)
                     .foregroundStyle(NumericTokens.textPrimary)
                 Spacer()
-                Button {
-                    if isOpen {
-                        openSections.remove(section)
-                    } else {
-                        openSections.insert(section)
-                    }
-                } label: {
-                    Image(systemName: isOpen ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(NumericTokens.textMuted)
-                        .frame(width: 18, height: 18)
-                }
-                .buttonStyle(.plain)
+                Image(systemName: isOpen ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(NumericTokens.textMuted)
+                    .frame(width: 18, height: 18)
             }
             .frame(height: NumericTokens.sectionHeaderHeight)
+            .padding(.horizontal, NumericTokens.panelPaddingX)
+            .background(NumericTokens.panelBackgroundElevated)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if isOpen {
+                    openSections.remove(section)
+                } else {
+                    openSections.insert(section)
+                }
+            }
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(NumericTokens.borderSubtle)
+                    .frame(height: 1)
+            }
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(NumericTokens.borderSubtle)
+                    .frame(height: 1)
+            }
 
             if isOpen {
-                VStack(spacing: NumericTokens.rowGap) {
+                VStack(spacing: 0) {
                     content()
                 }
             }
-        }
-        .padding(.bottom, NumericTokens.space2)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(NumericTokens.borderSubtle)
-                .frame(height: 1)
         }
     }
 
@@ -173,6 +180,8 @@ struct LapListOverlayDetailView: View {
             }
             .labelsHidden()
             .pickerStyle(.segmented)
+            .tint(NumericTokens.accentBlue)
+            .frame(height: NumericTokens.segmentedVisibleHeight)
             .frame(maxWidth: .infinity)
         }
         InspectorDenseSliderRow(
@@ -207,6 +216,8 @@ struct LapListOverlayDetailView: View {
                 get: { s.fadeEnabled },
                 set: { v in project.mutateLapListStyle(elementID) { $0.fadeEnabled = v } }
             ))
+            .toggleStyle(.switch)
+            .controlSize(.mini)
             .labelsHidden()
             .tint(NumericTokens.accentBlue)
         }
@@ -233,6 +244,8 @@ struct LapListOverlayDetailView: View {
                 get: { s.progressBarEnabled },
                 set: { v in project.mutateLapListStyle(elementID) { $0.progressBarEnabled = v } }
             ))
+            .toggleStyle(.switch)
+            .controlSize(.mini)
             .labelsHidden()
             .tint(NumericTokens.accentBlue)
         }
@@ -247,6 +260,8 @@ struct LapListOverlayDetailView: View {
                 }
                 .labelsHidden()
                 .pickerStyle(.segmented)
+                .tint(NumericTokens.accentBlue)
+                .frame(height: NumericTokens.segmentedVisibleHeight)
                 .frame(maxWidth: .infinity)
             }
             InspectorDenseRow(label: "Color") {
@@ -281,6 +296,8 @@ struct LapListOverlayDetailView: View {
                     get: { col.visible },
                     set: { v in project.mutateLapListStyle(elementID) { $0.columns[i].visible = v } }
                 ))
+                .toggleStyle(.switch)
+                .controlSize(.mini)
                 .labelsHidden()
                 .tint(NumericTokens.accentBlue)
             }

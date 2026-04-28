@@ -2,6 +2,107 @@
 
 ## 2026-04-27
 
+### Detail Header Tap Area And Margin Cleanup
+
+Summary:
+
+- Updated detail view section headers so collapse/expand is triggered by tapping the full header row, not only the chevron icon.
+- Applied this interaction change consistently across Numeric Overlay, Running Gauge, Route Map, and Lap List detail views.
+- Removed extra inner scroll container paddings from these detail views to eliminate unintended outer margins and inter-section spacing artifacts.
+- Kept existing control bindings and feature behavior unchanged; this is a visual and hit-area refinement only.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/NumericOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/RunningGaugeOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/RouteMapOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/LapListOverlayDetailView.swift`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+
+### Inspector Outer Components Compactness Pass
+
+Summary:
+
+- Updated the outer Inspector (`Add Overlay` and `Added Elements`) to better match the compact density shown in `Runner Overlay Design System/preview/components-inspector.html`.
+- Reduced segmented control visible height, tile icon scale, tile min-height, and added-row action button size to tighten vertical rhythm while keeping comfortable click targets.
+- Adjusted outer panel and row horizontal paddings for denser composition.
+- Fixed the add-tile plus icon alignment by giving the trailing plus a dedicated compact frame so it no longer appears overly flush-right.
+- Kept the footer hint text removed (`Click an overlay to edit its style and position` remains absent).
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/ParameterPanelView.swift`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+
+### Detail Views Pixel-Level Polish Pass
+
+Summary:
+
+- Applied a pixel-level UI polish pass across all detail views to better match the `inspector-running-gauge.html` visual spec.
+- Standardized switch sizing to mini controls in dense detail rows and section accessories for tighter vertical balance.
+- Reduced segmented control visible height in dense detail rows and Lap List segmented pickers for better parity with the compact design target.
+- Updated shared detail footers (`Reset` / `Done`) to use a 1:2 width ratio via a shared footer bar component, matching the target action hierarchy.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/NumericOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/RouteMapOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/RunningGaugeOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/LapListOverlayDetailView.swift`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+
+### Lap List Detail View Visual Alignment
+
+Summary:
+
+- Updated `LapListOverlayDetailView` to match the same dense detail-view visual structure used by Numeric Overlay, Route Map, and Running Gauge.
+- Removed the extra external divider row under the header and moved separator treatment into the header container.
+- Updated section header styling to the same top/bottom border rhythm and panel-header background used by other detail views.
+- Updated section body spacing to stack rows with the shared row-divider rhythm.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/LapListOverlayDetailView.swift`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+
+### Detail Views Visual And Interaction Restyle (No Functional Changes)
+
+Summary:
+
+- Restyled dense Inspector detail views to match the design-system `inspector-running-gauge.html` direction more closely while preserving all existing behavior and bindings.
+- Applied the updated dense row/section visual language across shared components so Numeric Overlay, Route Map, and Running Gauge detail views all inherit the same spacing, row height, control density, and section divider rhythm.
+- Updated section headers to use explicit top/bottom 1 px borders and panel-header surfaces, and updated dense rows to use fixed-height rows with per-row bottom dividers.
+- Updated shared dense control sizing (`rowHeight`, `controlHeight`, label column width, and numeric slider value chip width) for stronger visual parity with the design artifact.
+- For Running Gauge, added visual sub-section headers for `Outer Ring` and `Progress Ring` (toggle + chevron) to mirror the reference hierarchy and interaction feel without changing any underlying setting logic.
+- Moved Route Map and Running Gauge header separators into header views (removing external extra separator rows) to keep top-bar structure and vertical rhythm aligned with other detail views.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/NumericOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/RouteMapOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/RunningGaugeOverlayDetailView.swift`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+
 ### Remove Inspector Footer Hint
 
 Summary:

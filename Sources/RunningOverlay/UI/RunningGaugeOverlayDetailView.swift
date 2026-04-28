@@ -35,8 +35,6 @@ struct RunningGaugeOverlayDetailView: View {
                         sectionView(.color) { colorSection(element) }
                         sectionView(.effects) { effectsSection(element) }
                     }
-                    .padding(.horizontal, NumericTokens.panelPaddingX)
-                    .padding(.vertical, NumericTokens.panelPaddingY)
                 }
 
                 Divider().overlay(NumericTokens.borderSubtle)
@@ -301,81 +299,92 @@ struct RunningGaugeOverlayDetailView: View {
     @ViewBuilder
     private func ringSection(_ element: OverlayElement) -> some View {
         let gauge = element.style.gauge
-        InspectorDenseRow(label: "Outer Ring") {
-            gaugeToggle(isOn: gauge.outerRingEnabled) { newValue in
-                project.mutateGaugeStyle(elementID) { $0.outerRingEnabled = newValue }
-            }
-        }
-        if gauge.outerRingEnabled {
-            InspectorDenseRow(label: "Outer Color") {
-                InspectorDenseSwatchStrip(
-                    presets: NumericOverlayDetailView.colorPresets,
-                    selected: gauge.outerRingColor
-                ) { color in
-                    project.mutateGaugeStyle(elementID) { $0.outerRingColor = color }
+        VStack(spacing: 0) {
+            gaugeSubsectionHeader(
+                title: "Outer Ring",
+                isOn: gauge.outerRingEnabled,
+                isExpanded: outerRingExpanded,
+                onToggleOn: { newValue in
+                    project.mutateGaugeStyle(elementID) { $0.outerRingEnabled = newValue }
+                },
+                onToggleExpanded: { outerRingExpanded.toggle() }
+            )
+            if gauge.outerRingEnabled && outerRingExpanded {
+                InspectorDenseRow(label: "Outer Color") {
+                    InspectorDenseSwatchStrip(
+                        presets: NumericOverlayDetailView.colorPresets,
+                        selected: gauge.outerRingColor
+                    ) { color in
+                        project.mutateGaugeStyle(elementID) { $0.outerRingColor = color }
+                    }
                 }
+                InspectorDenseSliderRow(
+                    label: "Outer Opacity",
+                    value: gaugeBinding(\.outerRingOpacity, of: gauge),
+                    range: 0...1,
+                    displayText: String(format: "%.0f%%", gauge.outerRingOpacity * 100)
+                )
+                InspectorDenseSliderRow(
+                    label: "Outer Width",
+                    value: gaugeBinding(\.outerRingWidthScale, of: gauge),
+                    range: 0.005...0.06,
+                    displayText: String(format: "%.3f", gauge.outerRingWidthScale)
+                )
             }
-            InspectorDenseSliderRow(
-                label: "Outer Opacity",
-                value: gaugeBinding(\.outerRingOpacity, of: gauge),
-                range: 0...1,
-                displayText: String(format: "%.0f%%", gauge.outerRingOpacity * 100)
+
+            gaugeSubsectionHeader(
+                title: "Progress Ring",
+                isOn: gauge.progressRingEnabled,
+                isExpanded: progressRingExpanded,
+                onToggleOn: { newValue in
+                    project.mutateGaugeStyle(elementID) { $0.progressRingEnabled = newValue }
+                },
+                onToggleExpanded: { progressRingExpanded.toggle() }
             )
-            InspectorDenseSliderRow(
-                label: "Outer Width",
-                value: gaugeBinding(\.outerRingWidthScale, of: gauge),
-                range: 0.005...0.06,
-                displayText: String(format: "%.3f", gauge.outerRingWidthScale)
-            )
-        }
-        InspectorDenseRow(label: "Progress Ring") {
-            gaugeToggle(isOn: gauge.progressRingEnabled) { newValue in
-                project.mutateGaugeStyle(elementID) { $0.progressRingEnabled = newValue }
-            }
-        }
-        if gauge.progressRingEnabled {
-            InspectorDenseRow(label: "Progress Mode") {
-                Menu {
-                    ForEach(RunningGaugeProgressMode.allCases) { mode in
-                        Button {
-                            project.mutateGaugeStyle(elementID) { $0.progressMode = mode }
-                        } label: {
-                            if mode == gauge.progressMode {
-                                Label(mode.label, systemImage: "checkmark")
-                            } else {
-                                Text(mode.label)
+            if gauge.progressRingEnabled && progressRingExpanded {
+                InspectorDenseRow(label: "Progress Mode") {
+                    Menu {
+                        ForEach(RunningGaugeProgressMode.allCases) { mode in
+                            Button {
+                                project.mutateGaugeStyle(elementID) { $0.progressMode = mode }
+                            } label: {
+                                if mode == gauge.progressMode {
+                                    Label(mode.label, systemImage: "checkmark")
+                                } else {
+                                    Text(mode.label)
+                                }
                             }
                         }
+                    } label: {
+                        InspectorDenseMenuLabel(title: gauge.progressMode.label)
                     }
-                } label: {
-                    InspectorDenseMenuLabel(title: gauge.progressMode.label)
+                    .menuStyle(.borderlessButton)
+                    .frame(height: NumericTokens.controlHeight)
                 }
-                .menuStyle(.borderlessButton)
-                .frame(height: NumericTokens.controlHeight)
-            }
-            InspectorDenseRow(label: "Progress Color") {
-                InspectorDenseSwatchStrip(
-                    presets: NumericOverlayDetailView.colorPresets,
-                    selected: gauge.progressColor
-                ) { color in
-                    project.mutateGaugeStyle(elementID) { $0.progressColor = color }
+                InspectorDenseRow(label: "Progress Color") {
+                    InspectorDenseSwatchStrip(
+                        presets: NumericOverlayDetailView.colorPresets,
+                        selected: gauge.progressColor
+                    ) { color in
+                        project.mutateGaugeStyle(elementID) { $0.progressColor = color }
+                    }
                 }
-            }
-            InspectorDenseSliderRow(
-                label: "Track Opacity",
-                value: gaugeBinding(\.progressTrackOpacity, of: gauge),
-                range: 0...1,
-                displayText: String(format: "%.0f%%", gauge.progressTrackOpacity * 100)
-            )
-            InspectorDenseSliderRow(
-                label: "Ring Width",
-                value: gaugeBinding(\.progressRingWidthScale, of: gauge),
-                range: 0.005...0.06,
-                displayText: String(format: "%.3f", gauge.progressRingWidthScale)
-            )
-            InspectorDenseRow(label: "Rounded Caps") {
-                gaugeToggle(isOn: gauge.progressRoundedCaps) { newValue in
-                    project.mutateGaugeStyle(elementID) { $0.progressRoundedCaps = newValue }
+                InspectorDenseSliderRow(
+                    label: "Track Opacity",
+                    value: gaugeBinding(\.progressTrackOpacity, of: gauge),
+                    range: 0...1,
+                    displayText: String(format: "%.0f%%", gauge.progressTrackOpacity * 100)
+                )
+                InspectorDenseSliderRow(
+                    label: "Ring Width",
+                    value: gaugeBinding(\.progressRingWidthScale, of: gauge),
+                    range: 0.005...0.06,
+                    displayText: String(format: "%.3f", gauge.progressRingWidthScale)
+                )
+                InspectorDenseRow(label: "Rounded Caps") {
+                    gaugeToggle(isOn: gauge.progressRoundedCaps) { newValue in
+                        project.mutateGaugeStyle(elementID) { $0.progressRoundedCaps = newValue }
+                    }
                 }
             }
         }
@@ -616,10 +625,46 @@ struct RunningGaugeOverlayDetailView: View {
     }
 
     @ViewBuilder
-    private func gaugeToggle(isOn: Bool, set: @Sendable @escaping (Bool) -> Void) -> some View {
-        Toggle("", isOn: Binding(get: { isOn }, set: set))
+    private func gaugeToggle(isOn: Bool, set: @escaping (Bool) -> Void) -> some View {
+        Toggle("", isOn: Binding(get: { isOn }, set: { newValue in
+            set(newValue)
+        }))
             .toggleStyle(.switch)
             .labelsHidden()
+            .controlSize(.mini)
+    }
+
+    @ViewBuilder
+    private func gaugeSubsectionHeader(
+        title: String,
+        isOn: Bool,
+        isExpanded: Bool,
+        onToggleOn: @escaping (Bool) -> Void,
+        onToggleExpanded: @escaping () -> Void
+    ) -> some View {
+        HStack(spacing: NumericTokens.space2) {
+            Text(title)
+                .font(NumericTokens.bodyFont.weight(.medium))
+                .foregroundStyle(NumericTokens.textSecondary)
+            Spacer()
+            gaugeToggle(isOn: isOn, set: onToggleOn)
+            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(NumericTokens.textMuted)
+                .frame(width: 18, height: 18)
+        }
+        .padding(.horizontal, NumericTokens.panelPaddingX)
+        .frame(height: NumericTokens.sectionHeaderHeight)
+        .background(NumericTokens.panelBackground.opacity(0.72))
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onToggleExpanded()
+        }
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(NumericTokens.borderSubtle)
+                .frame(height: 1)
+        }
     }
 
     @ViewBuilder
@@ -628,7 +673,7 @@ struct RunningGaugeOverlayDetailView: View {
         @ViewBuilder content: () -> Body
     ) -> some View {
         let isOpen = openSections.contains(section)
-        VStack(alignment: .leading, spacing: NumericTokens.rowGap) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: NumericTokens.space2) {
                 Image(systemName: section.systemImage)
                     .frame(width: 16, alignment: .center)
@@ -637,54 +682,50 @@ struct RunningGaugeOverlayDetailView: View {
                     .font(NumericTokens.sectionTitleFont)
                     .foregroundStyle(NumericTokens.textPrimary)
                 Spacer()
-                Button {
-                    if isOpen {
-                        openSections.remove(section)
-                    } else {
-                        openSections.insert(section)
-                    }
-                } label: {
-                    Image(systemName: isOpen ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(NumericTokens.textMuted)
-                        .frame(width: 18, height: 18)
-                }
-                .buttonStyle(.plain)
+                Image(systemName: isOpen ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(NumericTokens.textMuted)
+                    .frame(width: 18, height: 18)
             }
             .frame(height: NumericTokens.sectionHeaderHeight)
+            .padding(.horizontal, NumericTokens.panelPaddingX)
+            .background(NumericTokens.panelBackgroundElevated)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if isOpen {
+                    openSections.remove(section)
+                } else {
+                    openSections.insert(section)
+                }
+            }
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(NumericTokens.borderSubtle)
+                    .frame(height: 1)
+            }
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(NumericTokens.borderSubtle)
+                    .frame(height: 1)
+            }
 
             if isOpen {
-                VStack(spacing: NumericTokens.rowGap) {
+                VStack(spacing: 0) {
                     content()
                 }
             }
         }
-        .padding(.bottom, NumericTokens.space2)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(NumericTokens.borderSubtle)
-                .frame(height: 1)
-        }
     }
 
     private var footerBar: some View {
-        HStack(spacing: NumericTokens.space2) {
-            Button {
-                project.resetOverlayStyle(elementID)
-            } label: {
-                Label("Reset", systemImage: "arrow.counterclockwise")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(EditorSecondaryButtonStyle())
-
-            Button {
-                project.selection = .none
-            } label: {
-                Label("Done", systemImage: "checkmark")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(EditorPrimaryButtonStyle())
-        }
+        InspectorDetailFooterBar(
+            leadingTitle: "Reset",
+            leadingSystemImage: "arrow.counterclockwise",
+            trailingTitle: "Done",
+            trailingSystemImage: "checkmark",
+            onLeadingTap: { project.resetOverlayStyle(elementID) },
+            onTrailingTap: { project.selection = .none }
+        )
         .padding(.horizontal, NumericTokens.panelPaddingX)
         .padding(.vertical, NumericTokens.space3)
         .background(NumericTokens.panelBackgroundElevated)
@@ -756,6 +797,10 @@ private struct RunningGaugeOverlayHeader: View {
         .padding(.horizontal, NumericTokens.panelPaddingX)
         .frame(height: EditorTheme.panelHeaderHeight)
         .background(NumericTokens.panelBackgroundElevated)
+        .overlay(alignment: .bottom) {
+            Divider()
+                .overlay(NumericTokens.borderSubtle)
+        }
     }
 }
 

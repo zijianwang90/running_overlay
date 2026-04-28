@@ -22,8 +22,6 @@ struct NumericOverlayDetailView: View {
                         sectionView(.background, element: element, accessory: { backgroundEnabledToggle(element) }) { backgroundSection(element) }
                         sectionView(.effects, element: element, accessory: { shadowEnabledToggle(element) }) { effectsSection(element) }
                     }
-                    .padding(.horizontal, NumericTokens.panelPaddingX)
-                    .padding(.vertical, NumericTokens.panelPaddingY)
                 }
 
                 Divider().overlay(NumericTokens.borderSubtle)
@@ -92,6 +90,7 @@ struct NumericOverlayDetailView: View {
                 set: { project.setOverlayShowLabel(elementID, showLabel: $0) }
             ))
             .toggleStyle(.switch)
+            .controlSize(.mini)
             .labelsHidden()
         }
         InspectorDenseRow(label: "Show Unit") {
@@ -100,6 +99,7 @@ struct NumericOverlayDetailView: View {
                 set: { project.setOverlayShowUnit(elementID, showUnit: $0) }
             ))
             .toggleStyle(.switch)
+            .controlSize(.mini)
             .labelsHidden()
         }
         InspectorDenseRow(label: "Label") {
@@ -365,23 +365,22 @@ struct NumericOverlayDetailView: View {
                     .foregroundStyle(NumericTokens.textPrimary)
                 Spacer()
                 accessory()
-                Button {
-                    if isOpen {
-                        openSections.remove(section)
-                    } else {
-                        openSections.insert(section)
-                    }
-                } label: {
-                    Image(systemName: isOpen ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(NumericTokens.textMuted)
-                        .frame(width: 18, height: 18)
-                }
-                .buttonStyle(.plain)
+                Image(systemName: isOpen ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(NumericTokens.textMuted)
+                    .frame(width: 18, height: 18)
             }
             .frame(height: NumericTokens.sectionHeaderHeight)
             .padding(.horizontal, NumericTokens.panelPaddingX)
             .background(NumericTokens.panelBackgroundElevated)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if isOpen {
+                    openSections.remove(section)
+                } else {
+                    openSections.insert(section)
+                }
+            }
             .overlay(alignment: .top) {
                 Rectangle()
                     .fill(NumericTokens.borderSubtle)
@@ -408,7 +407,7 @@ struct NumericOverlayDetailView: View {
             set: { project.setOverlayBackgroundEnabled(elementID, enabled: $0) }
         ))
         .toggleStyle(.switch)
-        .controlSize(.small)
+        .controlSize(.mini)
         .labelsHidden()
     }
 
@@ -419,28 +418,19 @@ struct NumericOverlayDetailView: View {
             set: { project.setOverlayShadowEnabled(elementID, enabled: $0) }
         ))
         .toggleStyle(.switch)
-        .controlSize(.small)
+        .controlSize(.mini)
         .labelsHidden()
     }
 
     private var footerBar: some View {
-        HStack(spacing: NumericTokens.space2) {
-            Button {
-                project.resetOverlayStyle(elementID)
-            } label: {
-                Label("Reset", systemImage: "arrow.counterclockwise")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(EditorSecondaryButtonStyle())
-
-            Button {
-                project.selection = .none
-            } label: {
-                Label("Done", systemImage: "checkmark")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(EditorPrimaryButtonStyle())
-        }
+        InspectorDetailFooterBar(
+            leadingTitle: "Reset",
+            leadingSystemImage: "arrow.counterclockwise",
+            trailingTitle: "Done",
+            trailingSystemImage: "checkmark",
+            onLeadingTap: { project.resetOverlayStyle(elementID) },
+            onTrailingTap: { project.selection = .none }
+        )
         .padding(.horizontal, NumericTokens.panelPaddingX)
         .padding(.vertical, NumericTokens.space3)
         .background(NumericTokens.panelBackgroundElevated)
@@ -707,7 +697,40 @@ struct InspectorDenseSegmented<Value: Hashable & Identifiable, Label: View>: Vie
         .labelsHidden()
         .pickerStyle(.segmented)
         .tint(NumericTokens.accentBlue)
+        .frame(height: NumericTokens.segmentedVisibleHeight)
         .frame(maxWidth: .infinity)
+    }
+}
+
+struct InspectorDetailFooterBar: View {
+    var leadingTitle: String
+    var leadingSystemImage: String
+    var trailingTitle: String
+    var trailingSystemImage: String
+    var onLeadingTap: () -> Void
+    var onTrailingTap: () -> Void
+
+    var body: some View {
+        GeometryReader { proxy in
+            let spacing = NumericTokens.space2
+            let unitWidth = max((proxy.size.width - spacing) / 3, 0)
+            HStack(spacing: spacing) {
+                Button(action: onLeadingTap) {
+                    Label(leadingTitle, systemImage: leadingSystemImage)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(EditorSecondaryButtonStyle())
+                .frame(width: unitWidth)
+
+                Button(action: onTrailingTap) {
+                    Label(trailingTitle, systemImage: trailingSystemImage)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(EditorPrimaryButtonStyle())
+                .frame(width: unitWidth * 2)
+            }
+        }
+        .frame(height: NumericTokens.footerButtonHeight)
     }
 }
 
@@ -810,9 +833,11 @@ enum NumericTokens {
     static let sectionHeaderHeight: CGFloat = 30
     static let rowHeight: CGFloat = 34
     static let rowGap: CGFloat = 0
-    static let sectionGap: CGFloat = 8
+    static let sectionGap: CGFloat = 0
     static let labelColumnWidth: CGFloat = 112
     static let controlHeight: CGFloat = 30
+    static let segmentedVisibleHeight: CGFloat = 24
+    static let footerButtonHeight: CGFloat = 32
     static let iconButtonSize: CGFloat = 28
     static let swatchSize: CGFloat = 20
     static let panelPaddingX: CGFloat = 12
