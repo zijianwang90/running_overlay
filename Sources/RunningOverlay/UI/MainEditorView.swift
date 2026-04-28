@@ -267,6 +267,9 @@ private struct ExportProgressPopover: View {
 }
 
 private struct HorizontalResizeHandle: View {
+    private static let visualWidth: CGFloat = 1
+    private static let hitWidth: CGFloat = 12
+
     @Binding var width: CGFloat
     let minWidth: CGFloat
     let maxWidth: CGFloat
@@ -275,33 +278,33 @@ private struct HorizontalResizeHandle: View {
     @State private var startWidth: CGFloat?
 
     var body: some View {
-        ZStack {
-            EditorTheme.borderSubtle
-                .frame(width: 1)
-            Color.clear
-                .contentShape(Rectangle())
-        }
-        .frame(width: 8)
-        .frame(maxHeight: .infinity)
-        .onHover { hovering in
-            if hovering {
-                NSCursor.resizeLeftRight.push()
-            } else {
-                NSCursor.pop()
-            }
-        }
-        .gesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { value in
-                    if startWidth == nil {
-                        startWidth = width
+        EditorTheme.borderSubtle
+            .frame(width: Self.visualWidth)
+            .overlay {
+                Color.clear
+                    .frame(width: Self.hitWidth)
+                    .contentShape(Rectangle())
+                    .onHover { hovering in
+                        if hovering {
+                            NSCursor.resizeLeftRight.push()
+                        } else {
+                            NSCursor.pop()
+                        }
                     }
-                    let proposed = (startWidth ?? width) + sign * value.translation.width
-                    width = min(max(proposed, minWidth), maxWidth)
-                }
-                .onEnded { _ in
-                    startWidth = nil
-                }
-        )
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { value in
+                                if startWidth == nil {
+                                    startWidth = width
+                                }
+                                let proposed = (startWidth ?? width) + sign * value.translation.width
+                                width = min(max(proposed, minWidth), maxWidth)
+                            }
+                            .onEnded { _ in
+                                startWidth = nil
+                            }
+                    )
+            }
+        .frame(maxHeight: .infinity)
     }
 }

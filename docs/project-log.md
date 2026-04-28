@@ -2,6 +2,24 @@
 
 ## 2026-04-28
 
+### Upper Panel Divider Tightening
+
+Summary:
+
+- Removed the visual padding created by the upper horizontal resize handles between Media Pool, Preview, and Inspector.
+- Kept a wider invisible drag target over the 1 px divider so the split lines remain easy to resize while the panels visually butt together.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/MainEditorView.swift`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift test`.
+- All 55 tests passed.
+- Ran `swift build`.
+
 ### Timeline Ruler Hover Placement
 
 Summary:
