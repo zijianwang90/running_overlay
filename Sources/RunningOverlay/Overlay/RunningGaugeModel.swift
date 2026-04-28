@@ -16,6 +16,13 @@ enum OverlayGaugeMetric: String, CaseIterable, Identifiable, Codable {
     case cadence
     case elevation
     case calories
+    case verticalOscillation
+    case groundContactTime
+    case strideLength
+    case verticalRatio
+    case groundContactBalance
+    case temperature
+    case grade
 
     var id: String { rawValue }
 
@@ -30,6 +37,13 @@ enum OverlayGaugeMetric: String, CaseIterable, Identifiable, Codable {
         case .cadence: "Cadence"
         case .elevation: "Elevation"
         case .calories: "Calories"
+        case .verticalOscillation: "Vert. Oscillation"
+        case .groundContactTime: "GCT"
+        case .strideLength: "Stride Length"
+        case .verticalRatio: "Vert. Ratio"
+        case .groundContactBalance: "GCT Balance"
+        case .temperature: "Temperature"
+        case .grade: "Grade"
         }
     }
 
@@ -44,6 +58,13 @@ enum OverlayGaugeMetric: String, CaseIterable, Identifiable, Codable {
         case .cadence: "CADENCE"
         case .elevation: "ELEV"
         case .calories: "KCAL"
+        case .verticalOscillation: "OSC"
+        case .groundContactTime: "GCT"
+        case .strideLength: "STRIDE"
+        case .verticalRatio: "V-RATIO"
+        case .groundContactBalance: "BALANCE"
+        case .temperature: "TEMP"
+        case .grade: "GRADE"
         }
     }
 
@@ -60,6 +81,13 @@ enum OverlayGaugeMetric: String, CaseIterable, Identifiable, Codable {
         case .cadence: .cadence
         case .elevation: .elevation
         case .calories: .calories
+        case .verticalOscillation: .verticalOscillation
+        case .groundContactTime: .groundContactTime
+        case .strideLength: .strideLength
+        case .verticalRatio: .verticalRatio
+        case .groundContactBalance: .groundContactBalance
+        case .temperature: .temperature
+        case .grade: .grade
         }
     }
 
@@ -76,6 +104,13 @@ enum OverlayGaugeMetric: String, CaseIterable, Identifiable, Codable {
         case .cadence: .cyan
         case .elevation: .orange
         case .calories: .pink
+        case .verticalOscillation: .cyan
+        case .groundContactTime: .green
+        case .strideLength: .blue
+        case .verticalRatio: .yellow
+        case .groundContactBalance: .white
+        case .temperature: .orange
+        case .grade: .green
         }
     }
 }

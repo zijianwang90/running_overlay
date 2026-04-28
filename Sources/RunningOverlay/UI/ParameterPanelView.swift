@@ -26,6 +26,8 @@ struct ParameterPanelView: View {
                         RunningGaugeOverlayDetailView(elementID: elementID)
                     } else if element.type == .routeMap {
                         RouteMapOverlayDetailView(elementID: elementID)
+                    } else if element.type == .lapList {
+                        LapListOverlayDetailView(elementID: elementID)
                     } else {
                         OverlayDetailView(elementID: elementID)
                     }
@@ -1194,8 +1196,16 @@ private struct OverlayTileInfo: Identifiable {
         OverlayTileInfo(type: .elevationChart, hint: "profile", systemImage: "chart.line.uptrend.xyaxis", category: .charts),
         OverlayTileInfo(type: .cadence, hint: "spm", systemImage: "figure.run", category: .metrics),
         OverlayTileInfo(type: .power, hint: "watts", systemImage: "bolt", category: .metrics),
+        OverlayTileInfo(type: .verticalOscillation, hint: "cm", systemImage: "arrow.up.and.down", category: .metrics),
+        OverlayTileInfo(type: .groundContactTime, hint: "ms", systemImage: "timer", category: .metrics),
+        OverlayTileInfo(type: .strideLength, hint: "m", systemImage: "arrow.left.and.right", category: .metrics),
+        OverlayTileInfo(type: .verticalRatio, hint: "%", systemImage: "percent", category: .metrics),
+        OverlayTileInfo(type: .groundContactBalance, hint: "L/R", systemImage: "scale.3d", category: .metrics),
+        OverlayTileInfo(type: .temperature, hint: "°C / °F", systemImage: "thermometer", category: .metrics),
+        OverlayTileInfo(type: .grade, hint: "slope %", systemImage: "arrow.up.right", category: .metrics),
         OverlayTileInfo(type: .runningGauge, hint: "live gauge", systemImage: "gauge", category: .charts, isAccent: true),
-        OverlayTileInfo(type: .routeMap, hint: "GPS path", systemImage: "map", category: .route, isAccent: true)
+        OverlayTileInfo(type: .routeMap, hint: "GPS path", systemImage: "map", category: .route, isAccent: true),
+        OverlayTileInfo(type: .lapList, hint: "lap teleprompter", systemImage: "list.number", category: .charts, isAccent: true)
     ]
 
     static func tiles(for category: OverlayCategory) -> [OverlayTileInfo] {

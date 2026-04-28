@@ -108,6 +108,8 @@ struct OverlayFrameRenderer {
             renderRunningGauge(element, renderContext: renderContext)
         case .routeMap:
             renderRouteMap(element, renderContext: renderContext)
+        case .lapList:
+            renderLapList(element, renderContext: renderContext)
         default:
             renderTextElement(element, renderContext: renderContext, cache: &cache)
         }
@@ -726,6 +728,62 @@ struct OverlayFrameRenderer {
                 height: chartRect.height
             )
         ).fill()
+    }
+
+    private static func renderLapList(_ element: OverlayElement, renderContext: OverlayRenderContext) {
+        let layout = OverlayRenderModel.lapListLayout(for: element, in: renderContext)
+        let fgColor = NSColor(element.style.foregroundColor)
+
+        for row in layout.rows {
+            let bg = NSColor.black.withAlphaComponent(layout.backgroundOpacity * row.rowOpacity)
+            let path = NSBezierPath(roundedRect: row.rowRect, xRadius: layout.rowCornerRadius, yRadius: layout.rowCornerRadius)
+            bg.setFill()
+            path.fill()
+
+            if layout.progressBarEnabled && row.progressFraction > 0 {
+                let barWidth = row.rowRect.width * row.progressFraction
+                let barRect = CGRect(x: row.rowRect.minX, y: row.rowRect.minY, width: barWidth, height: row.rowRect.height)
+                let progressBg = NSColor(layout.progressColor).withAlphaComponent(layout.progressOpacity * row.rowOpacity)
+                let barPath = NSBezierPath(roundedRect: barRect, xRadius: layout.rowCornerRadius, yRadius: layout.rowCornerRadius)
+                progressBg.setFill()
+                barPath.fill()
+            }
+
+            if row.isCurrent {
+                let borderColor = fgColor.withAlphaComponent(0.55 * row.rowOpacity)
+                let borderPath = NSBezierPath(roundedRect: row.rowRect.insetBy(dx: 0.5, dy: 0.5), xRadius: layout.rowCornerRadius, yRadius: layout.rowCornerRadius)
+                borderPath.lineWidth = 1
+                borderColor.setStroke()
+                borderPath.stroke()
+            }
+
+            let textColor = fgColor.withAlphaComponent(row.rowOpacity)
+            let padding: Double = layout.rowHeight * 0.25
+            let contentRect = row.rowRect.insetBy(dx: padding, dy: 0)
+            let columnCount = row.columnTexts.count
+            guard columnCount > 0 else { continue }
+            let colWidth = contentRect.width / Double(columnCount)
+
+            for (i, text) in row.columnTexts.enumerated() {
+                let colRect = CGRect(
+                    x: contentRect.minX + Double(i) * colWidth,
+                    y: contentRect.minY,
+                    width: colWidth,
+                    height: contentRect.height
+                )
+                let font = NSFont(name: element.style.fontName, size: layout.fontSize)
+                    ?? .systemFont(ofSize: layout.fontSize, weight: nsFontWeight(element.style.fontWeight))
+                let attrs: [NSAttributedString.Key: Any] = [
+                    .font: font,
+                    .foregroundColor: textColor
+                ]
+                let str = NSAttributedString(string: text, attributes: attrs)
+                let strSize = str.size()
+                let textX = i == 0 ? colRect.minX : colRect.midX - strSize.width / 2
+                let textY = colRect.midY - strSize.height / 2
+                str.draw(at: CGPoint(x: textX, y: textY))
+            }
+        }
     }
 
     private static func renderRunningGauge(_ element: OverlayElement, renderContext: OverlayRenderContext) {

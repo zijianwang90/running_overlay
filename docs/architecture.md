@@ -1,6 +1,6 @@
 # Running Overlay Architecture Notes
 
-Last updated: 2026-04-25
+Last updated: 2026-04-27
 
 ## 1. Architecture Goal
 
@@ -39,10 +39,11 @@ flowchart LR
 
 Responsibilities:
 
-- Decode FIT records.
+- Decode FIT records (message type 20) and lap messages (message type 19).
 - Preserve activity timestamps.
-- Normalize metrics into app-level records.
-- Provide time-based sampling for UI preview and export.
+- Normalize metrics into app-level records: heart rate, cadence, pace, distance, elevation, power, calories, GPS coordinates, running dynamics (vertical oscillation, ground contact time, stride length, ground contact balance), temperature, grade.
+- Parse lap structure into `LapRecord` arrays with kind classification (warmup / active / rest / cooldown).
+- Provide time-based sampling and lap-based queries (`currentLap`, `lapElapsedTime`, `lapProgress`) for UI preview and export.
 
 Non-responsibilities:
 
@@ -97,6 +98,14 @@ Responsibilities:
 - Bind overlay elements to sampled activity data.
 - Provide renderable overlay state for preview and export.
 - Keep Inspector controls model-backed; omit or disable controls such as visibility, lock, animation, generic opacity, and metric reassignment until those fields exist in the project schema.
+
+Current overlay element types:
+
+| Category | Types |
+|---|---|
+| Metrics | heartRate, pace, distance, elapsedTime, realTime, elevation, cadence, power, calories, verticalOscillation, groundContactTime, strideLength, verticalRatio, groundContactBalance, temperature, grade |
+| Charts | distanceTimeline, elevationChart, runningGauge, lapList |
+| Route | routeMap |
 
 ### Preview
 

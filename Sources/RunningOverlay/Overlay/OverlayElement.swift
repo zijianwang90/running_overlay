@@ -28,6 +28,14 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     case power
     case runningGauge
     case routeMap
+    case lapList
+    case verticalOscillation
+    case groundContactTime
+    case strideLength
+    case verticalRatio
+    case groundContactBalance
+    case temperature
+    case grade
 
     var id: String { rawValue }
 
@@ -46,12 +54,20 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         case .power: "Power"
         case .runningGauge: "Running Gauge"
         case .routeMap: "Route Map"
+        case .lapList: "Lap List"
+        case .verticalOscillation: "Vertical Oscillation"
+        case .groundContactTime: "Ground Contact Time"
+        case .strideLength: "Stride Length"
+        case .verticalRatio: "Vertical Ratio"
+        case .groundContactBalance: "GCT Balance"
+        case .temperature: "Temperature"
+        case .grade: "Grade"
         }
     }
 
     var supportsTextPresets: Bool {
         switch self {
-        case .distanceTimeline, .elevationChart, .runningGauge, .routeMap:
+        case .distanceTimeline, .elevationChart, .runningGauge, .routeMap, .lapList:
             false
         default:
             true
@@ -63,7 +79,9 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     var isNumericOverlay: Bool {
         switch self {
         case .heartRate, .pace, .calories, .elapsedTime, .realTime,
-             .distance, .elevation, .cadence, .power:
+             .distance, .elevation, .cadence, .power,
+             .verticalOscillation, .groundContactTime, .strideLength,
+             .verticalRatio, .groundContactBalance, .temperature, .grade:
             true
         default:
             false
@@ -87,6 +105,13 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         case .elevation: .minimalLabel
         case .elapsedTime: .digitalWatch
         case .realTime: .minimal
+        case .verticalOscillation: .minimalLabel
+        case .groundContactTime: .minimalLabel
+        case .strideLength: .minimalLabel
+        case .verticalRatio: .minimalLabel
+        case .groundContactBalance: .minimalLabel
+        case .temperature: .pillBadge
+        case .grade: .minimalLabel
         default: nil
         }
     }
@@ -110,6 +135,15 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
     case durationSeconds
     case clock24Hour
     case clock12Hour
+    case oscillationMillimeters
+    case oscillationCentimeters
+    case contactTimeMilliseconds
+    case strideLengthMeters
+    case verticalRatioPercent
+    case balancePercent
+    case temperatureCelsius
+    case temperatureFahrenheit
+    case gradePercent
 
     var id: String { rawValue }
 
@@ -132,6 +166,15 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
         case .durationSeconds: "seconds"
         case .clock24Hour: "24-hour"
         case .clock12Hour: "12-hour"
+        case .oscillationMillimeters: "Millimeters (mm)"
+        case .oscillationCentimeters: "Centimeters (cm)"
+        case .contactTimeMilliseconds: "Milliseconds (ms)"
+        case .strideLengthMeters: "Meters (m)"
+        case .verticalRatioPercent: "Percent (%)"
+        case .balancePercent: "L/R %"
+        case .temperatureCelsius: "Celsius (°C)"
+        case .temperatureFahrenheit: "Fahrenheit (°F)"
+        case .gradePercent: "Percent (%)"
         }
     }
 
@@ -146,7 +189,14 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
         case .calories: [.kcal]
         case .elapsedTime: [.durationHMS, .durationMS, .durationSeconds]
         case .realTime: [.clock24Hour, .clock12Hour]
-        case .distanceTimeline, .elevationChart, .runningGauge, .routeMap:
+        case .verticalOscillation: [.oscillationCentimeters, .oscillationMillimeters]
+        case .groundContactTime: [.contactTimeMilliseconds]
+        case .strideLength: [.strideLengthMeters]
+        case .verticalRatio: [.verticalRatioPercent]
+        case .groundContactBalance: [.balancePercent]
+        case .temperature: [.temperatureCelsius, .temperatureFahrenheit]
+        case .grade: [.gradePercent]
+        case .distanceTimeline, .elevationChart, .runningGauge, .routeMap, .lapList:
             []
         }
     }
@@ -252,6 +302,9 @@ struct OverlayStyle: Equatable, Codable {
     /// default so existing projects are unaffected.
     var routeMapStatsBar: OverlayRouteMapStatsBarConfig
 
+    /// Lap list overlay configuration. Only used by `.lapList` elements.
+    var lapList: LapListStyle
+
     static let `default` = OverlayStyle(
         textPreset: .minimal,
         gaugePreset: .minimalSport,
@@ -298,7 +351,8 @@ struct OverlayStyle: Equatable, Codable {
         shadowOffsetX: 0,
         shadowOffsetY: 2,
         gauge: RunningGaugeStyle.default,
-        routeMapStatsBar: .default
+        routeMapStatsBar: .default,
+        lapList: .default
     )
 
     init(
@@ -347,7 +401,8 @@ struct OverlayStyle: Equatable, Codable {
         shadowOffsetX: Double = 0,
         shadowOffsetY: Double = 2,
         gauge: RunningGaugeStyle = .default,
-        routeMapStatsBar: OverlayRouteMapStatsBarConfig = .default
+        routeMapStatsBar: OverlayRouteMapStatsBarConfig = .default,
+        lapList: LapListStyle = .default
     ) {
         self.textPreset = textPreset
         self.gaugePreset = gaugePreset
@@ -395,6 +450,7 @@ struct OverlayStyle: Equatable, Codable {
         self.shadowOffsetY = shadowOffsetY
         self.gauge = gauge
         self.routeMapStatsBar = routeMapStatsBar
+        self.lapList = lapList
     }
 
     init(from decoder: Decoder) throws {
@@ -461,6 +517,7 @@ struct OverlayStyle: Equatable, Codable {
             gauge = RunningGaugeStyle.preset(gaugePreset)
         }
         routeMapStatsBar = try container.decodeIfPresent(OverlayRouteMapStatsBarConfig.self, forKey: .routeMapStatsBar) ?? .default
+        lapList = try container.decodeIfPresent(LapListStyle.self, forKey: .lapList) ?? .default
     }
 }
 
@@ -1025,4 +1082,106 @@ struct OverlayColor: Equatable, Hashable, Codable {
     static let cyan = OverlayColor(red: 0.25, green: 0.75, blue: 1, alpha: 1)
     static let purple = OverlayColor(red: 0.56, green: 0.28, blue: 1, alpha: 1)
     static let pink = OverlayColor(red: 1, green: 0.28, blue: 0.43, alpha: 1)
+}
+
+// MARK: - Lap List
+
+enum LapProgressMode: String, Equatable, Codable {
+    case distance
+    case time
+}
+
+enum LapListAnchor: String, CaseIterable, Identifiable, Equatable, Codable {
+    case top
+    case center
+    case bottom
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .top: "Top / 顶部"
+        case .center: "Center / 居中"
+        case .bottom: "Bottom / 底部"
+        }
+    }
+}
+
+enum LapColumnMetric: String, CaseIterable, Identifiable, Equatable, Codable {
+    case lapNumber
+    case lapKind
+    case distance
+    case elapsedTime
+    case pace
+    case heartRate
+    case cadence
+    case power
+    case ascent
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .lapNumber: "Lap #"
+        case .lapKind: "Type"
+        case .distance: "Distance"
+        case .elapsedTime: "Time"
+        case .pace: "Pace"
+        case .heartRate: "HR"
+        case .cadence: "Cadence"
+        case .power: "Power"
+        case .ascent: "Ascent"
+        }
+    }
+}
+
+struct LapListColumn: Identifiable, Equatable, Codable {
+    var metric: LapColumnMetric
+    var visible: Bool
+
+    var id: String { metric.rawValue }
+}
+
+struct LapListStyle: Equatable, Codable {
+    var visibleRowCount: Int
+    var currentRowAnchor: LapListAnchor
+    var fadeEnabled: Bool
+    var fadeMinOpacity: Double
+    var progressBarEnabled: Bool
+    var progressMode: LapProgressMode
+    var progressColor: OverlayColor
+    var progressOpacity: Double
+    var showCompletedMark: Bool
+    var rowHeight: Double
+    var rowCornerRadius: Double
+    var rowSpacing: Double
+    var backgroundOpacity: Double
+    var columns: [LapListColumn]
+
+    static let `default` = LapListStyle(
+        visibleRowCount: 5,
+        currentRowAnchor: .center,
+        fadeEnabled: true,
+        fadeMinOpacity: 0.25,
+        progressBarEnabled: true,
+        progressMode: .distance,
+        progressColor: .blue,
+        progressOpacity: 0.35,
+        showCompletedMark: false,
+        rowHeight: 36,
+        rowCornerRadius: 4,
+        rowSpacing: 2,
+        backgroundOpacity: 0.75,
+        columns: [
+            LapListColumn(metric: .lapNumber, visible: true),
+            LapListColumn(metric: .lapKind, visible: true),
+            LapListColumn(metric: .distance, visible: true),
+            LapListColumn(metric: .elapsedTime, visible: true),
+            LapListColumn(metric: .pace, visible: true),
+            LapListColumn(metric: .heartRate, visible: false),
+            LapListColumn(metric: .cadence, visible: false),
+            LapListColumn(metric: .power, visible: false),
+            LapListColumn(metric: .ascent, visible: false),
+        ]
+    )
 }

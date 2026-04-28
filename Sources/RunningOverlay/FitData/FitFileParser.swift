@@ -25,10 +25,23 @@ struct FitFileParser {
     private var offset = 0
     private var definitions: [UInt8: FitDefinitionMessage] = [:]
     private var records: [ActivityRecord] = []
+    private var rawLaps: [RawLap] = []
     private var sessionStartDate: Date?
     private var sessionElapsedTime: TimeInterval?
     private var sessionDistanceMeters: Double?
     private var sessionCalories: Double?
+
+    private struct RawLap {
+        var startTimestamp: Date?
+        var totalElapsedTime: TimeInterval
+        var totalDistanceMeters: Double
+        var avgSpeedMS: Double?
+        var avgHeartRate: Int?
+        var maxHeartRate: Int?
+        var avgCadenceStrides: Int?   // strides/min from FIT field 17
+        var avgPowerWatts: Int?
+        var totalAscent: Int?
+    }
 
     init(data: Data) {
         self.data = data
@@ -59,11 +72,13 @@ struct FitFileParser {
                 .sorted { $0.elapsedTime < $1.elapsedTime }
             let duration = sessionElapsedTime ?? max(normalizedRecords.map(\.elapsedTime).max() ?? 0, 1)
             let distance = sessionDistanceMeters ?? records.compactMap(\.distanceMeters).max() ?? 0
+            let lapRecords = buildLapRecords(startDate: startDate, totalLaps: rawLaps.count)
             return ActivityTimeline(
                 startDate: startDate,
                 duration: duration,
                 distanceMeters: distance,
-                records: normalizedRecords
+                records: normalizedRecords,
+                laps: lapRecords
             )
         }
 
@@ -72,7 +87,8 @@ struct FitFileParser {
                 startDate: startDate,
                 duration: elapsed,
                 distanceMeters: sessionDistanceMeters ?? 0,
-                records: []
+                records: [],
+                laps: []
             )
         }
 
@@ -193,6 +209,10 @@ struct FitFileParser {
             }
         case 18:
             readSession(from: fieldValues, architecture: definition.architecture)
+        case 19:
+            if let lap = makeLap(from: fieldValues, architecture: definition.architecture) {
+                rawLaps.append(lap)
+            }
         default:
             break
         }
@@ -229,6 +249,12 @@ struct FitFileParser {
         let calories = uint16(fields[33], architecture: architecture).flatMap(validUInt16).map(Double.init) ?? sessionCalories
         let latitude = int32(fields[0], architecture: architecture).flatMap(validInt32).map(semicirclesToDegrees)
         let longitude = int32(fields[1], architecture: architecture).flatMap(validInt32).map(semicirclesToDegrees)
+        let verticalOscillation = uint16(fields[39], architecture: architecture).flatMap(validUInt16).map { Double($0) / 10.0 }
+        let groundContactTime = uint16(fields[41], architecture: architecture).flatMap(validUInt16).map { Double($0) / 10.0 }
+        let strideLength = uint16(fields[84], architecture: architecture).flatMap(validUInt16).map { Double($0) / 10_000.0 }
+        let groundContactBalance = parseGroundContactBalance(fields[30])
+        let temperature = int8(fields[13]).flatMap(validInt8).map(Double.init)
+        let grade = int16(fields[9], architecture: architecture).flatMap(validInt16).map { Double($0) / 100.0 }
 
         return ActivityRecord(
             elapsedTime: max(timestamp.timeIntervalSince(startDate), 0),
@@ -241,8 +267,82 @@ struct FitFileParser {
             powerWatts: power,
             calories: calories,
             latitude: latitude,
-            longitude: longitude
+            longitude: longitude,
+            verticalOscillationMM: verticalOscillation,
+            groundContactTimeMS: groundContactTime,
+            strideLengthM: strideLength,
+            groundContactBalance: groundContactBalance,
+            temperatureCelsius: temperature,
+            gradePercent: grade
         )
+    }
+
+    private func makeLap(from fields: [UInt8: Data], architecture: FitArchitecture) -> RawLap? {
+        guard let elapsed = uint32(fields[7], architecture: architecture).flatMap(validUInt32) else { return nil }
+        let startRaw = uint32(fields[2], architecture: architecture).flatMap(validUInt32)
+        let dist = uint32(fields[9], architecture: architecture).flatMap(validUInt32).map { Double($0) / 100 } ?? 0
+        let avgSpeed = uint16(fields[13], architecture: architecture).flatMap(validUInt16).map { Double($0) / 1000 }
+        let avgHR = fields[15].flatMap(uint8).flatMap(validUInt8).map(Int.init)
+        let maxHR = fields[16].flatMap(uint8).flatMap(validUInt8).map(Int.init)
+        let cadence = fields[17].flatMap(uint8).flatMap(validUInt8).map { Int($0) * 2 }  // strides→spm
+        let power = uint16(fields[19], architecture: architecture).flatMap(validUInt16).flatMap { $0 == 0 ? nil : Int($0) }
+        let ascent = uint16(fields[21], architecture: architecture).flatMap(validUInt16).map(Int.init)
+        return RawLap(
+            startTimestamp: startRaw.map(fitDate),
+            totalElapsedTime: Double(elapsed) / 1000,
+            totalDistanceMeters: dist,
+            avgSpeedMS: avgSpeed,
+            avgHeartRate: avgHR,
+            maxHeartRate: maxHR,
+            avgCadenceStrides: cadence,
+            avgPowerWatts: power,
+            totalAscent: ascent
+        )
+    }
+
+    private func buildLapRecords(startDate: Date, totalLaps: Int) -> [LapRecord] {
+        guard !rawLaps.isEmpty else { return [] }
+        var result: [LapRecord] = []
+        var cumulativeDistance = 0.0
+        var cumulativeTime = 0.0
+
+        for (index, raw) in rawLaps.enumerated() {
+            let startElapsed: TimeInterval
+            if let ts = raw.startTimestamp {
+                startElapsed = max(ts.timeIntervalSince(startDate), 0)
+            } else {
+                startElapsed = cumulativeTime
+            }
+            let endElapsed = startElapsed + raw.totalElapsedTime
+            let pace = raw.avgSpeedMS.map { $0 > 0 ? 1000 / $0 : 0 }
+            let kind = lapKind(index: index, total: rawLaps.count, avgSpeedMS: raw.avgSpeedMS)
+            result.append(LapRecord(
+                lapIndex: index,
+                startElapsedTime: startElapsed,
+                endElapsedTime: endElapsed,
+                startDistanceMeters: cumulativeDistance,
+                totalDistanceMeters: raw.totalDistanceMeters,
+                totalElapsedTime: raw.totalElapsedTime,
+                avgPaceSecondsPerKm: pace,
+                avgHeartRate: raw.avgHeartRate,
+                maxHeartRate: raw.maxHeartRate,
+                avgCadenceSPM: raw.avgCadenceStrides,
+                avgPowerWatts: raw.avgPowerWatts,
+                totalAscent: raw.totalAscent,
+                kind: kind
+            ))
+            cumulativeDistance += raw.totalDistanceMeters
+            cumulativeTime = endElapsed
+        }
+        return result
+    }
+
+    private func lapKind(index: Int, total: Int, avgSpeedMS: Double?) -> LapKind {
+        let speed = avgSpeedMS ?? 0
+        // First and last laps are warmup/cooldown if they are slow jogs
+        if index == 0, speed < 3.5 { return .warmup }
+        if index == total - 1, speed < 3.5 { return .cooldown }
+        return speed >= 3.5 ? .active : .rest
     }
 
     private func fitDate(_ timestamp: UInt32) -> Date {
@@ -342,6 +442,30 @@ struct FitFileParser {
 
     private func validInt32(_ value: Int32) -> Int32? {
         value == Int32.max ? nil : value
+    }
+
+    private func int8(_ data: Data?) -> Int8? {
+        guard let data, data.count >= 1 else { return nil }
+        return Int8(bitPattern: data[data.startIndex])
+    }
+
+    private func int16(_ data: Data?, architecture: FitArchitecture) -> Int16? {
+        uint16(data, architecture: architecture).map { Int16(bitPattern: $0) }
+    }
+
+    private func validInt8(_ value: Int8) -> Int8? {
+        value == Int8.max ? nil : value
+    }
+
+    private func validInt16(_ value: Int16) -> Int16? {
+        value == Int16.max ? nil : value
+    }
+
+    private func parseGroundContactBalance(_ data: Data?) -> Double? {
+        guard let raw = data.flatMap(uint8), raw != UInt8.max else { return nil }
+        let pct = Double(raw & 0x7F)
+        // bit 7 set → stored percentage is for right side; otherwise for left side
+        return raw & 0x80 != 0 ? 100.0 - pct : pct
     }
 
     private func semicirclesToDegrees(_ value: Int32) -> Double {

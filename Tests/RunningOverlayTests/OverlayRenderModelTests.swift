@@ -257,7 +257,8 @@ struct OverlayRenderModelTests {
                     powerWatts: nil,
                     calories: nil
                 )
-            ]
+            ],
+            laps: []
         )
     }
 
@@ -307,7 +308,8 @@ struct OverlayRenderModelTests {
                     latitude: 40.7550,
                     longitude: -73.9800
                 )
-            ]
+            ],
+            laps: []
         )
     }
 }

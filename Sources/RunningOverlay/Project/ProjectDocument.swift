@@ -970,6 +970,18 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.routeMapStatsBar.slots[slotIndex].visible = isVisible
     }
 
+    func mutateLapListStyle(_ elementID: OverlayElement.ID, _ mutate: (inout LapListStyle) -> Void) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.lapList)
+    }
+
+    func mutateLapListStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout LapListStyle) -> Void) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.lapList)
+    }
+
     func setOverlayRouteMapStartMarkerStyle(_ elementID: OverlayElement.ID, markerStyle: OverlayRouteMapMarkerStyle) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
@@ -1628,7 +1640,8 @@ final class ProjectDocument: ObservableObject {
                     powerWatts: 302,
                     calories: 16
                 )
-            ]
+            ],
+            laps: []
         )
     }
 

@@ -2,6 +2,69 @@
 
 ## 2026-04-27
 
+### Extended FIT Parsing — Running Dynamics + Lap Data
+
+Extended `FitFileParser` and `ActivityTimeline` with two groups of new data:
+
+**Running dynamics (Phase A from the FIT numeric overlay plan)**
+
+Newly parsed FIT record fields (message type 20):
+
+| Field | FIT # | Unit stored | Notes |
+|---|---|---|---|
+| vertical_oscillation | 39 | mm (double) | uint16 × 0.1 mm |
+| ground_contact_time | 41 | ms (double) | uint16 × 0.1 ms |
+| stride_length | 84 | m (double) | uint16 × 0.1 mm → m |
+| ground_contact_balance | 30 | % (double) | uint8 × 100 (left % * 100) |
+| temperature | 13 | °C (double) | sint8 |
+| grade | 9 | % (double) | sint16 × 0.01 |
+
+Added to `ActivityRecord`: `verticalOscillationMM`, `groundContactTimeMS`, `strideLengthM`, `groundContactBalance`, `temperatureCelsius`, `gradePercent`.
+
+Added to `ActivityTimeline`: `verticalOscillation(at:)`, `groundContactTime(at:)`, `strideLength(at:)`, `verticalRatio(at:)` (computed: osc/stride × 100), `groundContactBalance(at:)`, `temperature(at:)`, `grade(at:)` — all interpolated.
+
+**Lap data (FIT message type 19)**
+
+Added `LapKind` enum (`warmup / active / rest / cooldown / unknown`) and `LapRecord` struct (lapIndex, startElapsedTime, endElapsedTime, startDistanceMeters, totalDistanceMeters, totalElapsedTime, avgPaceSecondsPerKm, avgHeartRate, maxHeartRate, avgCadenceSPM, avgPowerWatts, totalAscent, kind). Added `laps: [LapRecord]` to `ActivityTimeline`. Classification uses avg speed threshold 3.5 m/s with warm-up/cool-down detection for first and last laps.
+
+Added to `ActivityTimeline`: `currentLap(at:)`, `lapElapsedTime(at:)`, `lapProgress(at:byDistance:)`.
+
+Parser additions: `RawLap` private struct, `makeLap(from:architecture:)` (reads fields 2/7/8/9/13/15/16/17/19/21), `buildLapRecords(startDate:totalLaps:)`, `lapKind(index:total:avgSpeedMS:)`, `parseGroundContactBalance`, int8/int16 decode helpers.
+
+**Numeric overlay types (7 new cases in `OverlayElementType`)**
+
+`verticalOscillation`, `groundContactTime`, `strideLength`, `verticalRatio`, `groundContactBalance`, `temperature`, `grade` — each with corresponding `OverlayUnitOption` cases, `OverlayValueFormatter.components` formatting, `RunningGaugeModel.OverlayGaugeMetric` cases, `numericIcon` SF symbols, and tile entries in the Inspector overlay browser.
+
+Files changed: `FitFileParser.swift`, `ActivityTimeline.swift`, `OverlayElement.swift`, `OverlayValueFormatter.swift`, `RunningGaugeModel.swift`, `NumericOverlayDetailView.swift`, `ParameterPanelView.swift`, `ProjectDocument.swift` (calibration activity `laps: []`), all test files that construct `ActivityTimeline`.
+
+Verification: `swift build` clean. `swift test` — all 51 tests passed.
+
+---
+
+### Lap List Overlay — Teleprompter-Style Lap Course Display
+
+New chart overlay type (`OverlayElementType.lapList`) that renders the full workout lap structure as a vertically scrolling list, centered on the current lap with real-time progress and configurable columns.
+
+**Data model** (`OverlayElement.swift`): Added `LapProgressMode` (distance / time), `LapListAnchor` (top / center / bottom), `LapColumnMetric` (lapNumber / lapKind / distance / elapsedTime / pace / heartRate / cadence / power / ascent), `LapListColumn` (metric + visible), `LapListStyle` (visibleRowCount, currentRowAnchor, fadeEnabled, fadeMinOpacity, progressBarEnabled, progressMode, progressColor, progressOpacity, showCompletedMark, rowHeight, rowCornerRadius, rowSpacing, backgroundOpacity, columns[]). Added `var lapList: LapListStyle` to `OverlayStyle` with `decodeIfPresent` fallback to `.default`.
+
+**Render layout** (`OverlayRenderModel.swift`): Added `LapListRowRenderLayout` (lapRecord, rowRect, progressFraction, isCurrent, rowOpacity, columnTexts) and `LapListRenderLayout`. `lapListLayout(for:in:)` computes: visible window of laps centered at anchor row, per-row opacity from distance-to-current with `fadeMinOpacity` floor, per-row progress (1.0 completed / live fraction current / 0.0 future), column text via `lapColumnText(_:lap:activity:elapsedTime:isCurrent:)`.
+
+**Export renderer** (`OverlayFrameRenderer.swift`): `renderLapList(_:renderContext:)` draws row backgrounds (rounded rect, semi-transparent black), progress bar fills (rounded rect clipped to progress fraction, accent color), current-lap border stroke, and column text laid out in equal-width cells with leading alignment for the first column and centered for the rest. Wired as a new `case .lapList` in `renderElement`.
+
+**Preview** (`PreviewCanvasView.swift`): `LapListOverlayView` SwiftUI view — `VStack` of `lapRow` cells, each a `ZStack` with background, GeometryReader progress bar, optional border stroke, and `HStack` of column `Text` views. Wired as `case .lapList` in `overlayView`.
+
+**Inspector** (`LapListOverlayDetailView.swift`): New dedicated inspector with four collapsible sections: *Layout* (visible rows stepper, current lap anchor segmented picker, row height / spacing / background opacity sliders, fade toggle + min opacity slider), *Progress Bar* (enabled toggle, mode segmented picker, color swatch strip, opacity slider), *Columns* (toggle each of the 9 column metrics), *Position* (scale slider). Header mirrors the Route Map header pattern (back button, icon, title, category pill).
+
+**Routing**: `ParameterPanelView` routes `.lapList` to `LapListOverlayDetailView`. `lapList` tile added to the Charts category in the overlay browser with `isAccent: true`. All 7 new running-dynamics tiles added to the Metrics category.
+
+**ProjectDocument**: Added `mutateLapListStyle(_:_:)` and `mutateLapListStyleContinuous(_:_:)` mutation helpers.
+
+Files changed: `OverlayElement.swift`, `OverlayRenderModel.swift`, `OverlayFrameRenderer.swift`, `PreviewCanvasView.swift`, `ParameterPanelView.swift`, `ProjectDocument.swift`, new file `LapListOverlayDetailView.swift`, `OverlayValueFormatter.swift` (stub case), `NumericOverlayDetailView.swift` (icon), all test files.
+
+Verification: `swift build` clean. `swift test` — all 51 tests passed.
+
+---
+
 ### Route Map — Stats Bar (replaces Legend card)
 
 Replaced the bottom-left Start/Finish legend card with a horizontal **Stats Bar** that attaches below the map container. The bar is off by default (`visible = false`) so existing projects are unaffected.

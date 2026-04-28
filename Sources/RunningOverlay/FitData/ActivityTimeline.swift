@@ -1,10 +1,36 @@
 import Foundation
 
+enum LapKind: String, Equatable, Codable {
+    case warmup
+    case active    // fast running / interval
+    case rest      // recovery jog
+    case cooldown
+    case unknown
+}
+
+struct LapRecord: Identifiable, Equatable {
+    let id = UUID()
+    var lapIndex: Int
+    var startElapsedTime: TimeInterval
+    var endElapsedTime: TimeInterval
+    var startDistanceMeters: Double
+    var totalDistanceMeters: Double
+    var totalElapsedTime: TimeInterval
+    var avgPaceSecondsPerKm: Double?
+    var avgHeartRate: Int?
+    var maxHeartRate: Int?
+    var avgCadenceSPM: Int?
+    var avgPowerWatts: Int?
+    var totalAscent: Int?
+    var kind: LapKind
+}
+
 struct ActivityTimeline: Equatable {
     var startDate: Date
     var duration: TimeInterval
     var distanceMeters: Double
     var records: [ActivityRecord]
+    var laps: [LapRecord]
 
     var endDate: Date {
         startDate.addingTimeInterval(duration)
@@ -40,6 +66,63 @@ struct ActivityTimeline: Equatable {
 
     func calories(at elapsedTime: TimeInterval) -> Double? {
         interpolatedValue(at: elapsedTime, keyPath: \.calories)
+    }
+
+    func verticalOscillation(at elapsedTime: TimeInterval) -> Double? {
+        interpolatedValue(at: elapsedTime, keyPath: \.verticalOscillationMM)
+    }
+
+    func groundContactTime(at elapsedTime: TimeInterval) -> Double? {
+        interpolatedValue(at: elapsedTime, keyPath: \.groundContactTimeMS)
+    }
+
+    func strideLength(at elapsedTime: TimeInterval) -> Double? {
+        interpolatedValue(at: elapsedTime, keyPath: \.strideLengthM)
+    }
+
+    func verticalRatio(at elapsedTime: TimeInterval) -> Double? {
+        guard let osc = verticalOscillation(at: elapsedTime),
+              let stride = strideLength(at: elapsedTime),
+              stride > 0 else { return nil }
+        // osc is in mm, stride is in m → convert stride to mm for ratio
+        return osc / (stride * 1000) * 100
+    }
+
+    func groundContactBalance(at elapsedTime: TimeInterval) -> Double? {
+        interpolatedValue(at: elapsedTime, keyPath: \.groundContactBalance)
+    }
+
+    func temperature(at elapsedTime: TimeInterval) -> Double? {
+        interpolatedValue(at: elapsedTime, keyPath: \.temperatureCelsius)
+    }
+
+    func grade(at elapsedTime: TimeInterval) -> Double? {
+        interpolatedValue(at: elapsedTime, keyPath: \.gradePercent)
+    }
+
+    // MARK: - Lap queries
+
+    func currentLap(at elapsedTime: TimeInterval) -> LapRecord? {
+        let t = clampedElapsedTime(elapsedTime)
+        return laps.last { $0.startElapsedTime <= t }
+    }
+
+    func lapElapsedTime(at elapsedTime: TimeInterval) -> TimeInterval {
+        guard let lap = currentLap(at: elapsedTime) else { return elapsedTime }
+        return max(clampedElapsedTime(elapsedTime) - lap.startElapsedTime, 0)
+    }
+
+    func lapProgress(at elapsedTime: TimeInterval, byDistance: Bool) -> Double {
+        guard let lap = currentLap(at: elapsedTime) else { return 0 }
+        if byDistance {
+            guard lap.totalDistanceMeters > 0 else { return 0 }
+            let traveled = distance(at: elapsedTime) - lap.startDistanceMeters
+            return min(max(traveled / lap.totalDistanceMeters, 0), 1)
+        } else {
+            guard lap.totalElapsedTime > 0 else { return 0 }
+            let inLap = clampedElapsedTime(elapsedTime) - lap.startElapsedTime
+            return min(max(inLap / lap.totalElapsedTime, 0), 1)
+        }
     }
 
     var routePoints: [RoutePoint] {
@@ -140,7 +223,8 @@ struct ActivityTimeline: Equatable {
         startDate: Date(timeIntervalSince1970: 0),
         duration: 0,
         distanceMeters: 0,
-        records: []
+        records: [],
+        laps: []
     )
 }
 
@@ -157,6 +241,12 @@ struct ActivityRecord: Identifiable, Equatable {
     var calories: Double?
     var latitude: Double?
     var longitude: Double?
+    var verticalOscillationMM: Double?
+    var groundContactTimeMS: Double?
+    var strideLengthM: Double?
+    var groundContactBalance: Double?
+    var temperatureCelsius: Double?
+    var gradePercent: Double?
 
     init(
         elapsedTime: TimeInterval,
@@ -169,7 +259,13 @@ struct ActivityRecord: Identifiable, Equatable {
         powerWatts: Int?,
         calories: Double?,
         latitude: Double? = nil,
-        longitude: Double? = nil
+        longitude: Double? = nil,
+        verticalOscillationMM: Double? = nil,
+        groundContactTimeMS: Double? = nil,
+        strideLengthM: Double? = nil,
+        groundContactBalance: Double? = nil,
+        temperatureCelsius: Double? = nil,
+        gradePercent: Double? = nil
     ) {
         self.elapsedTime = elapsedTime
         self.timestamp = timestamp
@@ -182,6 +278,12 @@ struct ActivityRecord: Identifiable, Equatable {
         self.calories = calories
         self.latitude = latitude
         self.longitude = longitude
+        self.verticalOscillationMM = verticalOscillationMM
+        self.groundContactTimeMS = groundContactTimeMS
+        self.strideLengthM = strideLengthM
+        self.groundContactBalance = groundContactBalance
+        self.temperatureCelsius = temperatureCelsius
+        self.gradePercent = gradePercent
     }
 }
 

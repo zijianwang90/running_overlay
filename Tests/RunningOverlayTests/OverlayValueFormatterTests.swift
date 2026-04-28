@@ -32,7 +32,8 @@ struct OverlayValueFormatterTests {
                     powerWatts: nil,
                     calories: nil
                 )
-            ]
+            ],
+            laps: []
         )
 
         #expect(OverlayValueFormatter.value(for: .distance, activity: activity, elapsedTime: 5) == "0.05 km")
@@ -61,7 +62,8 @@ struct OverlayValueFormatterTests {
                     heartRate: 150, paceSecondsPerKilometer: 300, elevationMeters: 100,
                     cadence: 180, powerWatts: 250, calories: 50
                 )
-            ]
+            ],
+            laps: []
         )
 
         var paceElement = OverlayElement(type: .pace, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: .default)
@@ -96,7 +98,8 @@ struct OverlayValueFormatterTests {
             records: [
                 ActivityRecord(elapsedTime: 0, timestamp: startDate, distanceMeters: 0, heartRate: 120, paceSecondsPerKilometer: nil, elevationMeters: nil, cadence: nil, powerWatts: nil, calories: nil),
                 ActivityRecord(elapsedTime: 10, timestamp: startDate.addingTimeInterval(10), distanceMeters: 0, heartRate: 120, paceSecondsPerKilometer: nil, elevationMeters: nil, cadence: nil, powerWatts: nil, calories: nil)
-            ]
+            ],
+            laps: []
         )
 
         var element = OverlayElement(type: .heartRate, position: .zero, scale: 1, style: .default)

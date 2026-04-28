@@ -37,6 +37,9 @@ Completed so far:
 - First-pass FIT parser for standard record/session messages.
 - Activity timeline population from parsed FIT data.
 - Full-width timeline ruler hover with elapsed time, real-world time, and distance.
+- Extended FIT record parsing for running dynamics: vertical oscillation, ground contact time, stride length, ground contact balance, temperature, grade.
+- Full lap data parsing (FIT message type 19): lap index, start/end elapsed time, distance, pace, heart rate, cadence, power, ascent, kind (warmup/active/rest/cooldown classification).
+- `ActivityTimeline` lap query methods: `currentLap(at:)`, `lapElapsedTime(at:)`, `lapProgress(at:byDistance:)`.
 
 ## Milestone 3: Video Import And Placement
 
@@ -122,6 +125,8 @@ Completed so far:
 - Project Layer Data FPS setting for throttled overlay value updates.
 - Shared preview/export rendering for text style presets.
 - Shared preview/export rendering for Running Gauge presets.
+- Extended numeric overlay types: vertical oscillation, ground contact time, stride length, vertical ratio, ground contact balance, temperature, grade.
+- Lap List chart overlay: teleprompter-style scrolling lap course with current-lap highlight, progress bar, fade, and configurable columns.
 
 Pending:
 
@@ -172,6 +177,7 @@ Completed so far:
 - Added the Route Map overlay type with Minimal, Gradient, Glow, and MapKit presets.
 - Added preview/export route rendering with start, finish, and current-position markers.
 - Added MapKit snapshot provider scaffolding and preview-time MapKit snapshot loading for the MapKit preset.
+- Added Lap List overlay module — see `docs/overlay-modules/lap-list-overlay.md`.
 
 Pending:
 

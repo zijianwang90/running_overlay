@@ -38,7 +38,8 @@ struct ProjectDocumentUndoTests {
             startDate: Date(timeIntervalSince1970: 0),
             duration: 100,
             distanceMeters: 0,
-            records: []
+            records: [],
+            laps: []
         )
         var timeline = TimelineModel(tracks: [])
         let media = MediaItem(
@@ -67,7 +68,8 @@ struct ProjectDocumentUndoTests {
             startDate: Date(timeIntervalSince1970: 100),
             duration: 100,
             distanceMeters: 0,
-            records: []
+            records: [],
+            laps: []
         )
         let media = MediaItem(
             displayName: "clip.mov",
@@ -98,7 +100,8 @@ struct ProjectDocumentUndoTests {
             startDate: Date(timeIntervalSince1970: 0),
             duration: 100,
             distanceMeters: 0,
-            records: []
+            records: [],
+            laps: []
         )
         let media = MediaItem(
             displayName: "clip.mov",

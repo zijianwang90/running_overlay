@@ -146,6 +146,11 @@ struct PreviewCanvasView: View {
                     layout: OverlayRenderModel.routeMapLayout(for: element, in: renderContext),
                     isSelected: project.selection == .overlayElement(element.id)
                 )
+            case .lapList:
+                LapListOverlayView(
+                    element: element,
+                    layout: OverlayRenderModel.lapListLayout(for: element, in: renderContext)
+                )
             default:
                 let layout = OverlayRenderModel.textLayout(for: element, in: renderContext)
                 TextPresetOverlayView(
@@ -1604,6 +1609,60 @@ private struct ElevationChartOverlayView: View {
         }
 
         return path
+    }
+}
+
+private struct LapListOverlayView: View {
+    let element: OverlayElement
+    let layout: LapListRenderLayout
+
+    var body: some View {
+        VStack(spacing: layout.rowSpacing) {
+            ForEach(layout.rows, id: \.lapRecord.id) { row in
+                lapRow(row)
+            }
+        }
+        .frame(width: layout.rect.width)
+    }
+
+    private func lapRow(_ row: LapListRowRenderLayout) -> some View {
+        ZStack(alignment: .leading) {
+            // Background
+            RoundedRectangle(cornerRadius: layout.rowCornerRadius)
+                .fill(Color.black.opacity(layout.backgroundOpacity * row.rowOpacity))
+
+            // Progress bar
+            if layout.progressBarEnabled && row.progressFraction > 0 {
+                GeometryReader { proxy in
+                    RoundedRectangle(cornerRadius: layout.rowCornerRadius)
+                        .fill(Color(element.style.lapList.progressColor)
+                            .opacity(layout.progressOpacity * row.rowOpacity))
+                        .frame(width: proxy.size.width * row.progressFraction)
+                }
+            }
+
+            // Border for current lap
+            if row.isCurrent {
+                RoundedRectangle(cornerRadius: layout.rowCornerRadius)
+                    .stroke(Color(element.style.foregroundColor).opacity(0.55), lineWidth: 1)
+            }
+
+            // Columns
+            HStack(spacing: 0) {
+                ForEach(Array(zip(layout.columns, row.columnTexts).enumerated()), id: \.offset) { _, pair in
+                    let (_, text) = pair
+                    Text(text)
+                        .font(.custom(element.style.fontName, size: layout.fontSize)
+                            .weight(Font.Weight(element.style.fontWeight)))
+                        .foregroundStyle(Color(element.style.foregroundColor).opacity(row.rowOpacity))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(.horizontal, layout.rowHeight * 0.25)
+        }
+        .frame(height: layout.rowHeight)
     }
 }
 

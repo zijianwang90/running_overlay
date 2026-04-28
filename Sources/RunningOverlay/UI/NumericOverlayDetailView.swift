@@ -833,6 +833,14 @@ extension OverlayElementType {
         case .elevationChart: "chart.line.uptrend.xyaxis"
         case .runningGauge: "gauge"
         case .routeMap: "map"
+        case .verticalOscillation: "arrow.up.and.down"
+        case .groundContactTime: "timer"
+        case .strideLength: "arrow.left.and.right"
+        case .verticalRatio: "percent"
+        case .groundContactBalance: "scale.3d"
+        case .temperature: "thermometer"
+        case .grade: "arrow.up.right"
+        case .lapList: "list.number"
         }
     }
 }

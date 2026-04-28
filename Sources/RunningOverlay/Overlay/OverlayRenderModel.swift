@@ -225,6 +225,129 @@ enum OverlayRenderModel {
         )
     }
 
+    static func lapListLayout(for element: OverlayElement, in context: OverlayRenderContext) -> LapListRenderLayout {
+        let s = element.style.lapList
+        let laps = context.activity.laps
+        let currentLap = context.activity.currentLap(at: context.elapsedTime)
+        let currentIndex = currentLap.flatMap { lap in laps.firstIndex(where: { $0.id == lap.id }) } ?? 0
+
+        let rowH = context.scaled(s.rowHeight * element.scale)
+        let spacing = context.scaled(s.rowSpacing * element.scale)
+        let visibleCount = s.visibleRowCount
+        let totalH = rowH * Double(visibleCount) + spacing * Double(max(visibleCount - 1, 0))
+        let width = context.scaled(280 * element.scale)
+        let rect = centeredRect(for: element, size: CGSize(width: width, height: totalH), canvasSize: context.canvasSize)
+
+        // Determine which lap indices are visible.
+        // The current lap sits at the anchor row (top=0, center=mid, bottom=last).
+        let anchorRow: Int
+        switch s.currentRowAnchor {
+        case .top: anchorRow = 0
+        case .center: anchorRow = visibleCount / 2
+        case .bottom: anchorRow = visibleCount - 1
+        }
+        let firstVisibleIndex = currentIndex - anchorRow
+
+        var rows: [LapListRowRenderLayout] = []
+        for slot in 0..<visibleCount {
+            let lapIndex = firstVisibleIndex + slot
+            guard lapIndex >= 0, lapIndex < laps.count else { continue }
+            let lap = laps[lapIndex]
+            let isCurrent = lapIndex == currentIndex
+            let rowY = rect.minY + Double(slot) * (rowH + spacing)
+            let rowRect = CGRect(x: rect.minX, y: rowY, width: width, height: rowH)
+
+            let distanceFromCurrent = abs(slot - anchorRow)
+            let opacity: Double
+            if s.fadeEnabled && distanceFromCurrent > 0 {
+                let fraction = Double(distanceFromCurrent) / Double(max(anchorRow, visibleCount - 1 - anchorRow, 1))
+                opacity = max(1.0 - (1.0 - s.fadeMinOpacity) * fraction, s.fadeMinOpacity)
+            } else {
+                opacity = 1.0
+            }
+
+            let progress: Double
+            if isCurrent {
+                progress = context.activity.lapProgress(at: context.elapsedTime, byDistance: s.progressMode == .distance)
+            } else if lapIndex < currentIndex {
+                progress = 1.0
+            } else {
+                progress = 0.0
+            }
+
+            let texts = s.columns.filter(\.visible).map { col -> String in
+                lapColumnText(col.metric, lap: lap, activity: context.activity,
+                              elapsedTime: context.elapsedTime, isCurrent: isCurrent)
+            }
+
+            rows.append(LapListRowRenderLayout(
+                lapRecord: lap,
+                rowRect: rowRect,
+                progressFraction: progress,
+                isCurrent: isCurrent,
+                rowOpacity: opacity,
+                columnTexts: texts
+            ))
+        }
+
+        let fontSize = context.scaled(max(10, (s.rowHeight * 0.38) * element.scale))
+        return LapListRenderLayout(
+            rect: rect,
+            rows: rows,
+            rowHeight: rowH,
+            rowCornerRadius: context.scaled(s.rowCornerRadius * element.scale),
+            rowSpacing: spacing,
+            backgroundOpacity: s.backgroundOpacity,
+            progressColor: s.progressColor,
+            progressOpacity: s.progressOpacity,
+            progressBarEnabled: s.progressBarEnabled,
+            fontSize: fontSize,
+            columns: s.columns.filter(\.visible)
+        )
+    }
+
+    private static func lapColumnText(
+        _ metric: LapColumnMetric,
+        lap: LapRecord,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval,
+        isCurrent: Bool
+    ) -> String {
+        switch metric {
+        case .lapNumber:
+            return "#\(lap.lapIndex + 1)"
+        case .lapKind:
+            switch lap.kind {
+            case .warmup: return "WU"
+            case .active: return "RUN"
+            case .rest: return "REST"
+            case .cooldown: return "CD"
+            case .unknown: return "LAP"
+            }
+        case .distance:
+            let meters = lap.totalDistanceMeters
+            return meters >= 1000
+                ? String(format: "%.2f km", meters / 1000)
+                : String(format: "%.0f m", meters)
+        case .elapsedTime:
+            let t = isCurrent ? activity.lapElapsedTime(at: elapsedTime) : lap.totalElapsedTime
+            let secs = Int(t.rounded())
+            return String(format: "%d:%02d", secs / 60, secs % 60)
+        case .pace:
+            guard let p = lap.avgPaceSecondsPerKm else { return "--" }
+            let secs = Int(p.rounded())
+            return String(format: "%d'%02d\"", secs / 60, secs % 60)
+        case .heartRate:
+            return lap.avgHeartRate.map { "\($0) bpm" } ?? "--"
+        case .cadence:
+            return lap.avgCadenceSPM.map { "\($0) spm" } ?? "--"
+        case .power:
+            return lap.avgPowerWatts.map { "\($0) W" } ?? "--"
+        case .ascent:
+            return lap.totalAscent.map { "\($0) m" } ?? "--"
+        }
+    }
+
     static func centeredRect(for element: OverlayElement, contentSize: CGSize, textSize: CGSize, context: OverlayRenderContext) -> CGRect {
         let width = textSize.width + contentSize.width
         let height = textSize.height + contentSize.height
@@ -382,4 +505,29 @@ struct OverlayRunningGaugeRenderLayout {
     /// Convenience accessor for the legacy `preset` API still consumed by
     /// some helpers. Resolves to `style.stylePreset`.
     var preset: OverlayGaugePreset { style.stylePreset }
+}
+
+// MARK: - Lap List
+
+struct LapListRowRenderLayout {
+    var lapRecord: LapRecord
+    var rowRect: CGRect
+    var progressFraction: Double
+    var isCurrent: Bool
+    var rowOpacity: Double
+    var columnTexts: [String]
+}
+
+struct LapListRenderLayout {
+    var rect: CGRect
+    var rows: [LapListRowRenderLayout]
+    var rowHeight: Double
+    var rowCornerRadius: Double
+    var rowSpacing: Double
+    var backgroundOpacity: Double
+    var progressColor: OverlayColor
+    var progressOpacity: Double
+    var progressBarEnabled: Bool
+    var fontSize: Double
+    var columns: [LapListColumn]
 }

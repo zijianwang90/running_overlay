@@ -10,7 +10,8 @@ struct ProjectSettingsTests {
             startDate: Date(timeIntervalSince1970: 0),
             duration: 10,
             distanceMeters: 0,
-            records: []
+            records: [],
+            laps: []
         )
         project.settings.layerDataFrameRate = .fps5
         project.setPlayhead(1.29)
@@ -24,7 +25,8 @@ struct ProjectSettingsTests {
             startDate: Date(timeIntervalSince1970: 0),
             duration: 10,
             distanceMeters: 0,
-            records: []
+            records: [],
+            laps: []
         )
         project.settings.layerDataFrameRate = .fps5
         project.moveFitStart(to: 5)
@@ -39,7 +41,8 @@ struct ProjectSettingsTests {
             startDate: Date(timeIntervalSince1970: 0),
             duration: 2,
             distanceMeters: 0,
-            records: []
+            records: [],
+            laps: []
         )
         project.settings.layerDataFrameRate = .fps30
 
@@ -52,7 +55,8 @@ struct ProjectSettingsTests {
             startDate: Date(timeIntervalSince1970: 0),
             duration: 5,
             distanceMeters: 0,
-            records: []
+            records: [],
+            laps: []
         )
 
         project.setPlayheadFromPlayback(2)
@@ -69,7 +73,8 @@ struct ProjectSettingsTests {
             startDate: Date(timeIntervalSince1970: 0),
             duration: 5,
             distanceMeters: 0,
-            records: []
+            records: [],
+            laps: []
         )
 
         project.togglePlayback()
@@ -85,7 +90,8 @@ struct ProjectSettingsTests {
             startDate: Date(timeIntervalSince1970: 0),
             duration: 10,
             distanceMeters: 0,
-            records: []
+            records: [],
+            laps: []
         )
         project.settings.frameRate = .fps25
         project.setPlayhead(2)
@@ -103,7 +109,8 @@ struct ProjectSettingsTests {
             startDate: Date(timeIntervalSince1970: 0),
             duration: 100,
             distanceMeters: 0,
-            records: []
+            records: [],
+            laps: []
         )
         project.timeline = TimelineModel(tracks: [
             TimelineTrack(name: "Camera A", clips: [

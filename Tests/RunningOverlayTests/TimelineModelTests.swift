@@ -8,7 +8,8 @@ struct TimelineModelTests {
             startDate: Date(timeIntervalSince1970: 0),
             duration: 120,
             distanceMeters: 0,
-            records: []
+            records: [],
+            laps: []
         )
         let media = MediaItem(
             displayName: "clip.mov",
@@ -168,7 +169,8 @@ struct TimelineModelTests {
             startDate: Date(timeIntervalSince1970: 100),
             duration: 60,
             distanceMeters: 0,
-            records: []
+            records: [],
+            laps: []
         )
         let media = MediaItem(
             displayName: "prestart.mov",

@@ -141,6 +141,58 @@ enum OverlayValueFormatter {
             return OverlayValueComponents(label: "Running Gauge", shortLabel: "GAUGE", value: String(format: "%.2f", activity.distance(at: elapsedTime) / 1000), unit: "km")
         case .routeMap:
             return OverlayValueComponents(label: "Route Map", shortLabel: "ROUTE", value: "\(activity.routePoints.count)", unit: "pts")
+        case .verticalOscillation:
+            return formatVerticalOscillation(activity.verticalOscillation(at: elapsedTime), option: unitOption, resolvedLabel: resolvedLabel)
+        case .groundContactTime:
+            let ms = activity.groundContactTime(at: elapsedTime)
+            return OverlayValueComponents(
+                label: resolvedLabel("GCT"),
+                shortLabel: "GCT",
+                value: ms.map { "\(Int($0.rounded()))" } ?? "--",
+                unit: "ms"
+            )
+        case .strideLength:
+            let m = activity.strideLength(at: elapsedTime)
+            return OverlayValueComponents(
+                label: resolvedLabel("Stride"),
+                shortLabel: "STRIDE",
+                value: m.map { String(format: "%.2f", $0) } ?? "--",
+                unit: "m"
+            )
+        case .verticalRatio:
+            let ratio = activity.verticalRatio(at: elapsedTime)
+            return OverlayValueComponents(
+                label: resolvedLabel("Vert. Ratio"),
+                shortLabel: "VR",
+                value: ratio.map { String(format: "%.1f", $0) } ?? "--",
+                unit: "%"
+            )
+        case .groundContactBalance:
+            let leftPct = activity.groundContactBalance(at: elapsedTime)
+            let valueStr: String
+            if let l = leftPct {
+                valueStr = String(format: "%.1fL / %.1fR", l, 100.0 - l)
+            } else {
+                valueStr = "--"
+            }
+            return OverlayValueComponents(
+                label: resolvedLabel("GCT Balance"),
+                shortLabel: "BAL",
+                value: valueStr,
+                unit: "%"
+            )
+        case .temperature:
+            return formatTemperature(activity.temperature(at: elapsedTime), option: unitOption, resolvedLabel: resolvedLabel)
+        case .grade:
+            let g = activity.grade(at: elapsedTime)
+            return OverlayValueComponents(
+                label: resolvedLabel("Grade"),
+                shortLabel: "GRD",
+                value: g.map { String(format: "%+.1f", $0) } ?? "--",
+                unit: "%"
+            )
+        case .lapList:
+            return OverlayValueComponents(label: "", shortLabel: "", value: "", unit: "")
         }
     }
 
@@ -200,6 +252,44 @@ enum OverlayValueFormatter {
         case .paceImperial: "/mi"
         case .paceRowing: "/500m"
         default: "/km"
+        }
+    }
+
+    private static func formatVerticalOscillation(_ mm: Double?, option: OverlayUnitOption, resolvedLabel: (String) -> String) -> OverlayValueComponents {
+        switch option {
+        case .oscillationMillimeters:
+            return OverlayValueComponents(
+                label: resolvedLabel("Vert. Osc."),
+                shortLabel: "OSC",
+                value: mm.map { "\(Int($0.rounded()))" } ?? "--",
+                unit: "mm"
+            )
+        default:
+            return OverlayValueComponents(
+                label: resolvedLabel("Vert. Osc."),
+                shortLabel: "OSC",
+                value: mm.map { String(format: "%.1f", $0 / 10.0) } ?? "--",
+                unit: "cm"
+            )
+        }
+    }
+
+    private static func formatTemperature(_ celsius: Double?, option: OverlayUnitOption, resolvedLabel: (String) -> String) -> OverlayValueComponents {
+        switch option {
+        case .temperatureFahrenheit:
+            return OverlayValueComponents(
+                label: resolvedLabel("Temp"),
+                shortLabel: "TEMP",
+                value: celsius.map { "\(Int(($0 * 9.0 / 5.0 + 32).rounded()))°" } ?? "--",
+                unit: "°F"
+            )
+        default:
+            return OverlayValueComponents(
+                label: resolvedLabel("Temp"),
+                shortLabel: "TEMP",
+                value: celsius.map { "\(Int($0.rounded()))°" } ?? "--",
+                unit: "°C"
+            )
         }
     }
 
