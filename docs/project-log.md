@@ -2,6 +2,39 @@
 
 ## 2026-04-27
 
+### Remove Inspector Footer Hint
+
+Summary:
+
+- Removed the bottom Inspector hint bar that displayed `Click an overlay to edit its style and position` in the outer Inspector state.
+- Kept the rest of the Inspector layout and add/manage overlay flows unchanged.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/ParameterPanelView.swift`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+
+### Numeric Overlay Header Height Alignment
+
+Summary:
+
+- Aligned the Numeric Overlay detail header bar with the shared top-bar height rhythm used by other editor headers.
+- Moved the header separator line into `NumericOverlayHeader` so the panel no longer adds an extra external divider row under the header.
+- This removes the extra visual 1 px height and makes the Numeric Overlay top bar match other header bars in both structure and rendered height.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/NumericOverlayDetailView.swift`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+
 ### Extended FIT Parsing — Running Dynamics + Lap Data
 
 Extended `FitFileParser` and `ActivityTimeline` with two groups of new data:

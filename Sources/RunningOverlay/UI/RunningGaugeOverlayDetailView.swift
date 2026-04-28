@@ -13,12 +13,13 @@ struct RunningGaugeOverlayDetailView: View {
 
     @State private var openSections: Set<GaugeSection> = [.style, .dataLayout, .regions]
     @State private var expandedRegion: RunningGaugeRegion?
+    @State private var outerRingExpanded = true
+    @State private var progressRingExpanded = true
 
     var body: some View {
         VStack(spacing: 0) {
             if let element = project.selectedOverlay(elementID) {
                 RunningGaugeOverlayHeader(element: element)
-                Divider().overlay(NumericTokens.borderSubtle)
 
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {

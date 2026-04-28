@@ -64,6 +64,11 @@ coverage/
 tmp/
 temp/
 
+# Claude Code
+.claude/settings.local.json
+.claude/worktrees/
+.claude/memory/
+
 # Project-specific local artifacts
 # Local sample fixtures or exports that should stay out of version control.
 ExampleData/local/

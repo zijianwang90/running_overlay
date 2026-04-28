@@ -12,7 +12,6 @@ struct NumericOverlayDetailView: View {
         VStack(spacing: 0) {
             if let element = project.selectedOverlay(elementID) {
                 NumericOverlayHeader(element: element)
-                Divider().overlay(NumericTokens.borderSubtle)
 
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
@@ -356,7 +355,7 @@ struct NumericOverlayDetailView: View {
         @ViewBuilder content: () -> Body
     ) -> some View {
         let isOpen = openSections.contains(section)
-        VStack(alignment: .leading, spacing: NumericTokens.rowGap) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: NumericTokens.space2) {
                 Image(systemName: section.systemImage)
                     .frame(width: 16, alignment: .center)
@@ -381,18 +380,24 @@ struct NumericOverlayDetailView: View {
                 .buttonStyle(.plain)
             }
             .frame(height: NumericTokens.sectionHeaderHeight)
+            .padding(.horizontal, NumericTokens.panelPaddingX)
+            .background(NumericTokens.panelBackgroundElevated)
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(NumericTokens.borderSubtle)
+                    .frame(height: 1)
+            }
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(NumericTokens.borderSubtle)
+                    .frame(height: 1)
+            }
 
             if isOpen {
-                VStack(spacing: NumericTokens.rowGap) {
+                VStack(spacing: 0) {
                     content()
                 }
             }
-        }
-        .padding(.bottom, NumericTokens.space2)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(NumericTokens.borderSubtle)
-                .frame(height: 1)
         }
     }
 
@@ -522,6 +527,10 @@ struct NumericOverlayHeader: View {
         .padding(.horizontal, NumericTokens.panelPaddingX)
         .frame(height: EditorTheme.panelHeaderHeight)
         .background(NumericTokens.panelBackgroundElevated)
+        .overlay(alignment: .bottom) {
+            Divider()
+                .overlay(NumericTokens.borderSubtle)
+        }
     }
 }
 
@@ -573,7 +582,13 @@ struct InspectorDenseRow<Trailing: View>: View {
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
-        .frame(minHeight: NumericTokens.rowHeight)
+        .padding(.horizontal, NumericTokens.panelPaddingX)
+        .frame(height: NumericTokens.rowHeight)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(NumericTokens.borderSubtle)
+                .frame(height: 1)
+        }
     }
 }
 
@@ -635,9 +650,9 @@ struct InspectorDenseSliderRow: View {
             .controlSize(.small)
             .frame(maxWidth: .infinity)
             Text(displayText)
-                .font(NumericTokens.numericFont)
+                .font(NumericTokens.captionFont.monospacedDigit())
                 .foregroundStyle(NumericTokens.textSecondary)
-                .frame(width: 56, alignment: .trailing)
+                .frame(width: 44, alignment: .trailing)
                 .padding(.horizontal, NumericTokens.space2)
                 .frame(height: NumericTokens.controlHeight)
                 .background(NumericTokens.controlBackground)
@@ -788,16 +803,16 @@ enum NumericTokens {
     static let accentBlueSoft = EditorTheme.accentBlueSoft
     static let dangerRed = EditorTheme.dangerRed
 
-    static let space2: CGFloat = 6
+    static let space2: CGFloat = 8
     static let space3: CGFloat = 10
 
     // Numeric Overlay tokens (numeric-overlay-ui.spec.json).
     static let sectionHeaderHeight: CGFloat = 30
-    static let rowHeight: CGFloat = 32
-    static let rowGap: CGFloat = 6
+    static let rowHeight: CGFloat = 34
+    static let rowGap: CGFloat = 0
     static let sectionGap: CGFloat = 8
-    static let labelColumnWidth: CGFloat = 88
-    static let controlHeight: CGFloat = 28
+    static let labelColumnWidth: CGFloat = 112
+    static let controlHeight: CGFloat = 30
     static let iconButtonSize: CGFloat = 28
     static let swatchSize: CGFloat = 20
     static let panelPaddingX: CGFloat = 12

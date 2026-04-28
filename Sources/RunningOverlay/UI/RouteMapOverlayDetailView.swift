@@ -14,7 +14,6 @@ struct RouteMapOverlayDetailView: View {
         VStack(spacing: 0) {
             if let element = project.selectedOverlay(elementID) {
                 RouteMapOverlayHeader(element: element, subtitle: subtitle(for: element))
-                Divider().overlay(NumericTokens.borderSubtle)
 
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
@@ -456,7 +455,7 @@ struct RouteMapOverlayDetailView: View {
         @ViewBuilder content: () -> Body
     ) -> some View {
         let isOpen = openSections.contains(section)
-        VStack(alignment: .leading, spacing: NumericTokens.rowGap) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: NumericTokens.space2) {
                 Image(systemName: section.systemImage)
                     .frame(width: 16, alignment: .center)
@@ -481,18 +480,24 @@ struct RouteMapOverlayDetailView: View {
                 .buttonStyle(.plain)
             }
             .frame(height: NumericTokens.sectionHeaderHeight)
+            .padding(.horizontal, NumericTokens.panelPaddingX)
+            .background(NumericTokens.panelBackgroundElevated)
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(NumericTokens.borderSubtle)
+                    .frame(height: 1)
+            }
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(NumericTokens.borderSubtle)
+                    .frame(height: 1)
+            }
 
             if isOpen {
-                VStack(spacing: NumericTokens.rowGap) {
+                VStack(spacing: 0) {
                     content()
                 }
             }
-        }
-        .padding(.bottom, NumericTokens.space2)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(NumericTokens.borderSubtle)
-                .frame(height: 1)
         }
     }
 
@@ -613,6 +618,10 @@ struct RouteMapOverlayHeader: View {
         .padding(.horizontal, NumericTokens.panelPaddingX)
         .frame(height: EditorTheme.panelHeaderHeight)
         .background(NumericTokens.panelBackgroundElevated)
+        .overlay(alignment: .bottom) {
+            Divider()
+                .overlay(NumericTokens.borderSubtle)
+        }
     }
 }
 

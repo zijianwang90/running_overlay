@@ -164,8 +164,6 @@ private struct InspectorOuterView: View {
                 .padding(.horizontal, InspectorTheme.panelPaddingX)
                 .padding(.vertical, InspectorTheme.panelPaddingY)
             }
-
-            InspectorFooterHint(text: "Click an overlay to edit its style and position")
         }
     }
 
@@ -1062,26 +1060,6 @@ private struct InspectorIconButton: View {
             return InspectorTheme.textMuted.opacity(0.45)
         }
         return role == .destructive ? InspectorTheme.dangerRed : InspectorTheme.textPrimary
-    }
-}
-
-private struct InspectorFooterHint: View {
-    var text: String
-
-    var body: some View {
-        HStack(spacing: InspectorTheme.space2) {
-            Image(systemName: "info.circle")
-            Text(text)
-        }
-        .font(InspectorTheme.captionFont)
-        .foregroundStyle(InspectorTheme.textMuted)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, InspectorTheme.space3)
-        .background(InspectorTheme.panelBackgroundElevated)
-        .overlay(alignment: .top) {
-            Divider()
-                .overlay(InspectorTheme.borderSubtle)
-        }
     }
 }
 
