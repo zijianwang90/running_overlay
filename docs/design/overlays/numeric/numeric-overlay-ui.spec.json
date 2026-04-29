@@ -107,6 +107,16 @@
       ]
     },
     {
+      "id": "border",
+      "title": "Border",
+      "controls": [
+        { "id": "enableBorder", "type": "toggle", "modelPath": "OverlayStyle.borderEnabled" },
+        { "id": "borderColor", "type": "swatches", "modelPath": "OverlayStyle.borderColor" },
+        { "id": "borderOpacity", "type": "slider", "modelPath": "OverlayStyle.borderOpacity" },
+        { "id": "borderWidth", "type": "slider", "modelPath": "OverlayStyle.borderWidth" }
+      ]
+    },
+    {
       "id": "effects",
       "title": "Effects",
       "controls": [

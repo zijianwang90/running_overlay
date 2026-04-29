@@ -22,6 +22,7 @@ struct NumericOverlayDetailView: View {
                         sectionView(.unit, element: element, accessory: { unitEnabledToggle(element) }) { unitSection(element) }
                         sectionView(.color, element: element) { colorSection(element) }
                         OverlayBackgroundInspectorModule(elementID: elementID, element: element)
+                        OverlayBorderInspectorModule(elementID: elementID, element: element)
                         OverlayEffectsInspectorModule(elementID: elementID, element: element)
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)

@@ -601,6 +601,7 @@ private struct OverlayDetailView: View {
                         positionSection(element)
                         styleSection(element)
                         OverlayBackgroundInspectorModule(elementID: elementID, element: element)
+                        OverlayBorderInspectorModule(elementID: elementID, element: element)
                         OverlayEffectsInspectorModule(elementID: elementID, element: element)
                     }
                     .padding(.horizontal, InspectorTheme.panelPaddingX)

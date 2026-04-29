@@ -70,7 +70,8 @@ Sections:
 5. `Unit`
 6. `Color`
 7. `Background`
-8. `Effects`
+8. `Border`
+9. `Effects`
 
 Each section should render as a compact collapsible group:
 
@@ -236,6 +237,22 @@ Rendering rules:
 - Glow targets foreground/internal elements.
 - Fade Out targets only the background; when background is disabled, Fade Out has no visual effect.
 
+## Border Section
+
+Implemented with the shared `OverlayBorderInspectorModule`. The module owns the section title, icon, disclosure state, and header on/off switch.
+
+Controls:
+
+- `Enable Border` toggle.
+- Border color swatch.
+- Border opacity slider.
+- Border thickness slider.
+
+Model mapping:
+
+- `OverlayStyle.borderEnabled` toggles drawing.
+- `OverlayStyle.borderColor`, `borderOpacity`, and `borderWidth` drive the rendered stroke.
+
 ## Footer
 
 Sticky footer:
@@ -283,6 +300,7 @@ Implemented in `OverlayStyle` (2026-04-26 refactor):
 - `accentColor` — color used by overlays that expose an accent (defaults to `foregroundColor`).
 - `backgroundEnabled`, `backgroundColor`, `backgroundRadius`, `backgroundPaddingX`, `backgroundPaddingY` — explicit background controls; the legacy `backgroundOpacity` field continues to scale the alpha and stays decoded.
 - `backgroundFadeOutEnabled`, `backgroundFadeOutAmount`, `backgroundBlurRadius` — background edge fade and blur controls.
+- `borderEnabled`, `borderColor`, `borderOpacity`, `borderWidth` — shared border controls.
 - `shadowEnabled`, `shadowColor`, `shadowOffsetX`, `shadowOffsetY`, `shadowThickness` — shadow toggle plus color, direction, and thickness, in addition to existing `shadowOpacity` / `shadowRadius`.
 - `glowEnabled`, `glowColor`, `glowIntensity` — foreground glow controls shared by detail panels.
 
@@ -301,6 +319,7 @@ Model-backed and rendered today (post-refactor):
 - Foreground/text color and accent color.
 - Background enabled / color / radius / padding X / padding Y (`.minimal` text preset uses padding + radius for the rounded background).
 - Background opacity (legacy multiplier on the alpha).
+- Border enabled / color / opacity / thickness.
 - Shadow enabled / color / opacity / radius / thickness / offset X / offset Y.
 - Glow enabled / color / intensity.
 - Fade Out enabled / amount for background edge fade.

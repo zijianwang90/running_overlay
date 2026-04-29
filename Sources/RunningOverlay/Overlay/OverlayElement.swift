@@ -352,6 +352,10 @@ struct OverlayStyle: Equatable, Codable {
     var backgroundFadeOutEnabled: Bool
     var backgroundFadeOutAmount: Double
     var backgroundBlurRadius: Double
+    var borderEnabled: Bool
+    var borderColor: OverlayColor
+    var borderOpacity: Double
+    var borderWidth: Double
     var shadowEnabled: Bool
     var shadowColor: OverlayColor
     var shadowOffsetX: Double
@@ -451,6 +455,10 @@ struct OverlayStyle: Equatable, Codable {
         backgroundFadeOutEnabled: false,
         backgroundFadeOutAmount: 0.22,
         backgroundBlurRadius: 0,
+        borderEnabled: false,
+        borderColor: .white,
+        borderOpacity: 0.22,
+        borderWidth: 1,
         shadowEnabled: true,
         shadowColor: .black,
         shadowOffsetX: 0,
@@ -531,6 +539,10 @@ struct OverlayStyle: Equatable, Codable {
         backgroundFadeOutEnabled: Bool = false,
         backgroundFadeOutAmount: Double = 0.22,
         backgroundBlurRadius: Double = 0,
+        borderEnabled: Bool = false,
+        borderColor: OverlayColor = .white,
+        borderOpacity: Double = 0.22,
+        borderWidth: Double = 1,
         shadowEnabled: Bool = true,
         shadowColor: OverlayColor = .black,
         shadowOffsetX: Double = 0,
@@ -609,6 +621,10 @@ struct OverlayStyle: Equatable, Codable {
         self.backgroundFadeOutEnabled = backgroundFadeOutEnabled
         self.backgroundFadeOutAmount = backgroundFadeOutAmount
         self.backgroundBlurRadius = backgroundBlurRadius
+        self.borderEnabled = borderEnabled
+        self.borderColor = borderColor
+        self.borderOpacity = borderOpacity
+        self.borderWidth = borderWidth
         self.shadowEnabled = shadowEnabled
         self.shadowColor = shadowColor
         self.shadowOffsetX = shadowOffsetX
@@ -699,6 +715,10 @@ struct OverlayStyle: Equatable, Codable {
         backgroundFadeOutEnabled = try container.decodeIfPresent(Bool.self, forKey: .backgroundFadeOutEnabled) ?? Self.default.backgroundFadeOutEnabled
         backgroundFadeOutAmount = min(max(try container.decodeIfPresent(Double.self, forKey: .backgroundFadeOutAmount) ?? Self.default.backgroundFadeOutAmount, 0), 1)
         backgroundBlurRadius = max(try container.decodeIfPresent(Double.self, forKey: .backgroundBlurRadius) ?? Self.default.backgroundBlurRadius, 0)
+        borderEnabled = try container.decodeIfPresent(Bool.self, forKey: .borderEnabled) ?? Self.default.borderEnabled
+        borderColor = try container.decodeIfPresent(OverlayColor.self, forKey: .borderColor) ?? Self.default.borderColor
+        borderOpacity = min(max(try container.decodeIfPresent(Double.self, forKey: .borderOpacity) ?? Self.default.borderOpacity, 0), 1)
+        borderWidth = min(max(try container.decodeIfPresent(Double.self, forKey: .borderWidth) ?? Self.default.borderWidth, 0.5), 12)
         shadowEnabled = try container.decodeIfPresent(Bool.self, forKey: .shadowEnabled) ?? Self.default.shadowEnabled
         shadowColor = try container.decodeIfPresent(OverlayColor.self, forKey: .shadowColor) ?? Self.default.shadowColor
         shadowOffsetX = try container.decodeIfPresent(Double.self, forKey: .shadowOffsetX) ?? Self.default.shadowOffsetX

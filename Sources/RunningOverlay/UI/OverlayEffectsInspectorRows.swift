@@ -56,29 +56,30 @@ struct CollapsibleEffectsInspectorSection<Content: View>: View {
                     .font(NumericTokens.sectionTitleFont)
                     .foregroundStyle(NumericTokens.textPrimary)
                 Spacer()
-                Button {
-                    withAnimation(.easeInOut(duration: 0.16)) { isExpanded.toggle() }
-                } label: {
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(NumericTokens.textSecondary)
-                        .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                }
-                .buttonStyle(.plain)
+                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(NumericTokens.textMuted)
+                    .frame(width: 18, height: 18)
             }
-            .padding(.horizontal, NumericTokens.panelPaddingX)
             .frame(height: NumericTokens.sectionHeaderHeight)
+            .padding(.horizontal, NumericTokens.panelPaddingX)
+            .background(NumericTokens.panelBackgroundElevated)
             .contentShape(Rectangle())
             .onTapGesture {
-                withAnimation(.easeInOut(duration: 0.16)) { isExpanded.toggle() }
+                isExpanded.toggle()
+            }
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(NumericTokens.borderSubtle)
+                    .frame(height: 1)
             }
 
             if isExpanded {
-                content()
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+                VStack(spacing: 0) {
+                    content()
+                }
             }
         }
-        .background(NumericTokens.panelBackgroundElevated)
         .overlay(RoundedRectangle(cornerRadius: 0).stroke(NumericTokens.borderSubtle, lineWidth: 1))
     }
 }

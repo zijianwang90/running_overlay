@@ -23,6 +23,7 @@ struct ElevationChartOverlayDetailView: View {
                         sectionView(.background) { backgroundSection(element) }
                         sectionView(.effects) { effectsSection(element) }
                         OverlayBackgroundInspectorModule(elementID: elementID, element: element)
+                        OverlayBorderInspectorModule(elementID: elementID, element: element)
                         OverlayEffectsInspectorModule(elementID: elementID, element: element)
                     }
                 }

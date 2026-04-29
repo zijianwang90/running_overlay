@@ -276,7 +276,19 @@
         "Padding",
         "Blur"
       ],
-      "orderingRule": "Append near the end of every overlay detail panel before Effects."
+      "orderingRule": "Append near the end of every overlay detail panel before Border and Effects."
+    },
+    "border": {
+      "sectionComponent": "OverlayBorderInspectorModule",
+      "rowsComponent": "OverlayBorderInspectorRows",
+      "icon": "rectangle",
+      "enabledTogglePlacement": "headerLeftOfChevron",
+      "canonicalRows": [
+        "Color",
+        "Opacity",
+        "Thickness"
+      ],
+      "orderingRule": "Append after Background and before Effects."
     },
     "effects": {
       "sectionComponent": "OverlayEffectsInspectorModule",
@@ -296,7 +308,8 @@
         "Fade Out",
         "Fade Amount"
       ],
-      "renderingRule": "Shadow targets the background/container when background is enabled and foreground elements when background is disabled; Glow targets foreground elements; Fade Out only affects background."
+      "renderingRule": "Shadow targets the background/container when background is enabled and foreground elements when background is disabled; Glow targets foreground elements; Fade Out only affects background.",
+      "orderingRule": "Append after Background and Border."
     }
   },
   "modelGaps": [

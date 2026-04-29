@@ -25,9 +25,8 @@ struct DistanceTimelineOverlayDetailView: View {
                         if element.style.distanceTimeline.preset.supportsElevation {
                             sectionView(.routeElevation) { routeElevationSection(element) }
                         }
-                        sectionView(.backgroundBorder) { backgroundBorderSection(element) }
-                        sectionView(.effects) { effectsSection(element) }
                         OverlayBackgroundInspectorModule(elementID: elementID, element: element)
+                        OverlayBorderInspectorModule(elementID: elementID, element: element)
                         OverlayEffectsInspectorModule(elementID: elementID, element: element)
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -467,46 +466,6 @@ struct DistanceTimelineOverlayDetailView: View {
         }
     }
 
-    @ViewBuilder
-    private func backgroundBorderSection(_ element: OverlayElement) -> some View {
-        let style = element.style.distanceTimeline
-        InspectorDenseRow(label: "Background") {
-            toggle(style.backgroundEnabled) { newValue in
-                project.mutateDistanceTimelineStyle(elementID) { $0.backgroundEnabled = newValue }
-            }
-        }
-        InspectorDenseRow(label: "BG Color") {
-            InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: style.backgroundColor) { color in
-                project.mutateDistanceTimelineStyle(elementID) { $0.backgroundColor = color }
-            }
-        }
-        InspectorDenseSliderRow(label: "BG Opacity", value: distanceBinding(\.backgroundOpacity, of: style), range: 0...1, displayText: String(format: "%.0f%%", style.backgroundOpacity * 100))
-        InspectorDenseSliderRow(label: "Radius", value: distanceBinding(\.cornerRadius, of: style), range: 0...32, displayText: "\(Int(style.cornerRadius))")
-        InspectorDenseRow(label: "Border") {
-            toggle(style.borderEnabled) { newValue in
-                project.mutateDistanceTimelineStyle(elementID) { $0.borderEnabled = newValue }
-            }
-        }
-        InspectorDenseSliderRow(label: "Border Width", value: distanceBinding(\.borderWidth, of: style), range: 0.5...6, displayText: String(format: "%.1f", style.borderWidth), isEnabled: style.borderEnabled)
-        InspectorDenseSliderRow(label: "Border Opacity", value: distanceBinding(\.borderOpacity, of: style), range: 0...1, displayText: String(format: "%.0f%%", style.borderOpacity * 100), isEnabled: style.borderEnabled)
-    }
-
-    @ViewBuilder
-    private func effectsSection(_ element: OverlayElement) -> some View {
-        let style = element.style.distanceTimeline
-        InspectorDenseRow(label: "Glow") {
-            toggle(style.glowEnabled) { newValue in
-                project.mutateDistanceTimelineStyle(elementID) { $0.glowEnabled = newValue }
-            }
-        }
-        InspectorDenseRow(label: "Fade Out") {
-            toggle(style.fadeEnabled) { newValue in
-                project.mutateDistanceTimelineStyle(elementID) { $0.fadeEnabled = newValue }
-            }
-        }
-        InspectorDenseSliderRow(label: "Fade Amount", value: distanceBinding(\.fadeAmount, of: style), range: 0...0.6, displayText: String(format: "%.0f%%", style.fadeAmount * 100), isEnabled: style.fadeEnabled)
-    }
-
     private func toggle(_ isOn: Bool, action: @escaping (Bool) -> Void) -> some View {
         Toggle("", isOn: Binding(get: { isOn }, set: { newValue in action(newValue) }))
             .toggleStyle(.switch)
@@ -583,8 +542,6 @@ private enum DistanceTimelineSection: String, CaseIterable {
     case statsBar
     case mediaSlot
     case routeElevation
-    case backgroundBorder
-    case effects
 
     var title: String {
         switch self {
@@ -597,8 +554,6 @@ private enum DistanceTimelineSection: String, CaseIterable {
         case .statsBar: "Stats Bar"
         case .mediaSlot: "Media Slot"
         case .routeElevation: "Route / Elevation"
-        case .backgroundBorder: "Background & Border"
-        case .effects: "Effects"
         }
     }
 
@@ -613,8 +568,6 @@ private enum DistanceTimelineSection: String, CaseIterable {
         case .statsBar: "tablecells"
         case .mediaSlot: "photo"
         case .routeElevation: "point.topleft.down.curvedto.point.bottomright.up"
-        case .backgroundBorder: "rectangle"
-        case .effects: "sparkles"
         }
     }
 }

@@ -228,6 +228,15 @@ private extension View {
             .shadow(color: color.opacity(isEnabled ? opacity * max(thickness - 1, 0) * 0.32 : 0), radius: radius * 0.72, x: x, y: y)
             .shadow(color: color.opacity(isEnabled ? opacity * max(thickness - 2, 0) * 0.22 : 0), radius: radius * 0.48, x: x, y: y)
     }
+
+    func overlayGenericBorder(element: OverlayElement, cornerRadius: Double) -> some View {
+        self.overlay {
+            if element.style.borderEnabled {
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .stroke(Color(element.style.borderColor).opacity(element.style.borderOpacity), lineWidth: element.style.borderWidth)
+            }
+        }
+    }
 }
 
 private struct PreviewOverlayFramePreferenceKey: PreferenceKey {
@@ -1210,6 +1219,7 @@ struct TextPresetOverlayView: View {
         }
         .foregroundStyle(Color(element.style.foregroundColor))
         .monospacedDigit()
+        .overlayGenericBorder(element: element, cornerRadius: layout.cornerRadius)
         .overlayForegroundEffects(element: element, shadowRadius: layout.shadowRadius)
     }
 
@@ -2073,18 +2083,18 @@ struct DistanceTimelineOverlayView: View {
 
     var body: some View {
         ZStack {
-            if layout.style.backgroundEnabled {
+            if element.style.backgroundEnabled {
                 let background = backgroundLocalRect
                 RoundedRectangle(cornerRadius: layout.cornerRadius)
-                    .fill(Color(distanceTimeline: layout.style.backgroundColor).opacity(layout.style.backgroundOpacity))
+                    .fill(Color(element.style.backgroundColor).opacity(element.style.backgroundOpacity))
                     .frame(width: background.width, height: background.height)
                     .position(x: background.midX, y: background.midY)
             }
 
-            if layout.style.borderEnabled {
+            if element.style.borderEnabled {
                 let background = backgroundLocalRect
                 RoundedRectangle(cornerRadius: layout.cornerRadius)
-                    .stroke(Color(distanceTimeline: layout.style.borderColor).opacity(layout.style.borderOpacity), lineWidth: layout.borderWidth)
+                    .stroke(Color(element.style.borderColor).opacity(element.style.borderOpacity), lineWidth: element.style.borderWidth)
                     .frame(width: background.width, height: background.height)
                     .position(x: background.midX, y: background.midY)
             }
@@ -2717,6 +2727,7 @@ private struct LapListOverlayView: View {
             }
         }
         .frame(width: layout.rect.width)
+        .overlayGenericBorder(element: element, cornerRadius: layout.rowCornerRadius)
         .overlayForegroundEffects(element: element)
     }
 
@@ -2842,6 +2853,7 @@ private struct LapCardOverlayView: View {
             .padding(.top, layout.verticalPadding)
         }
         .frame(width: layout.rect.width, height: layout.rect.height)
+        .overlayGenericBorder(element: element, cornerRadius: layout.cornerRadius)
         .overlayForegroundEffects(element: element)
     }
 }
@@ -2938,6 +2950,7 @@ private struct LapLiveOverlayView: View {
                 .padding(.top, layout.verticalPadding)
             }
             .frame(width: layout.rect.width, height: layout.rect.height)
+            .overlayGenericBorder(element: element, cornerRadius: layout.cornerRadius)
             .overlayForegroundEffects(element: element)
         )
     }

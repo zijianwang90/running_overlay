@@ -1630,6 +1630,38 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.backgroundBlurRadius = min(max(radius, 0), 40)
     }
 
+    func setOverlayBorderEnabled(_ elementID: OverlayElement.ID, enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.borderEnabled = enabled
+    }
+
+    func setOverlayBorderColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.borderColor = color
+    }
+
+    func setOverlayBorderOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.borderOpacity = min(max(opacity, 0), 1)
+    }
+
+    func setOverlayBorderWidth(_ elementID: OverlayElement.ID, width: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.borderWidth = min(max(width, 0.5), 12)
+    }
+
     func setOverlayShadowEnabled(_ elementID: OverlayElement.ID, enabled: Bool) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {

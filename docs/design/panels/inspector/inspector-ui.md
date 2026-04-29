@@ -338,20 +338,25 @@ Behavior:
   - otherwise, `Layout` must be the first section.
 - New overlay detail panels must adopt this component pair and ordering rule directly instead of creating local layout section wrappers.
 
-## Shared Background And Effects Components
+## Shared Background, Border, And Effects Components
 
-`Background` and `Effects` are shared inspector modules and must be available at the end of every overlay detail panel.
+`Background`, `Border`, and `Effects` are shared inspector modules and must be available at the end of every overlay detail panel.
 
 - Use `OverlayBackgroundInspectorModule` for complete Background chrome and rows. The module includes the title, icon (`rectangle.fill`), disclosure behavior, and the header switch.
 - Use `OverlayBackgroundInspectorRows` only when a custom section wrapper is explicitly required.
 - Canonical Background rows are `Color`, `Opacity`, `Radius`, `Padding`, and `Blur`.
+- Use `OverlayBorderInspectorModule` for complete Border chrome and rows. The module includes the title, icon (`rectangle`), disclosure behavior, and the header switch.
+- Use `OverlayBorderInspectorRows` only when a custom section wrapper is explicitly required.
+- Canonical Border rows are `Color`, `Opacity`, and `Thickness`.
 - Use `OverlayEffectsInspectorModule` for complete Effects chrome and rows. The Effects section has disclosure behavior but no section-level switch.
 - Use `OverlayEffectsInspectorRows` only when a custom section wrapper is explicitly required.
 - Canonical Effects rows are `Shadow`, `Shadow Color`, `Shadow Opacity`, `Shadow Radius`, `Shadow Thickness`, `Shadow Offset`, `Glow`, `Glow Color`, `Glow Intensity`, `Fade Out`, and `Fade Amount`.
 - Shadow targets the whole background/container when the overlay background is enabled; if background is disabled, shadow targets the internal foreground elements.
 - Glow targets foreground/internal elements.
 - Fade Out targets only the background. If background is disabled, Fade Out controls may stay visible but have no rendered effect.
-- New overlay detail panels must append Background and Effects after overlay-specific sections.
+- New overlay detail panels must append Background, Border, and Effects after overlay-specific sections, in that order.
+- Distance Timeline must not keep its legacy local `Background & Border` or local `Effects` sections once the shared modules are present.
+- Shared module headers use the same row background, toggle placement, and chevron placement as other collapsible detail sections; disclosure changes are immediate without animation.
 
 ## SwiftUI Implementation Guidance
 
