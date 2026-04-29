@@ -1,6 +1,6 @@
 # Running Overlay Architecture Notes
 
-Last updated: 2026-04-27
+Last updated: 2026-04-29
 
 ## 1. Architecture Goal
 
@@ -98,6 +98,7 @@ Responsibilities:
 - Bind overlay elements to sampled activity data.
 - Provide renderable overlay state for preview and export.
 - Keep Inspector controls model-backed; omit or disable controls such as visibility, lock, animation, generic opacity, and metric reassignment until those fields exist in the project schema.
+- Provide addable overlay definitions to the left Overlay Pool; the right Inspector manages added overlays and edits selected overlay details.
 
 Current overlay element types:
 

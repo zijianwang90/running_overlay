@@ -113,6 +113,12 @@ Other numeric overlays should expose only relevant unit choices:
 | Elapsed Time | `hh:mm:ss`, `mm:ss`, `seconds` |
 | Real Time | `12-hour`, `24-hour` |
 
+Elapsed Time formatting rules:
+
+- `hh:mm:ss` always renders a fixed three-part clock with zero-padded hours/minutes/seconds (for example, `00:10:00`).
+- `mm:ss` renders `MM:SS`.
+- `seconds` renders rounded whole seconds.
+
 Implementation rule:
 
 - If a metric has only one unit, the Units row can be read-only or omitted.

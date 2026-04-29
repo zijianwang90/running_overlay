@@ -41,8 +41,9 @@ struct OverlayValueFormatterTests {
     }
 
     @Test func formatsElapsedTime() {
-        #expect(OverlayValueFormatter.formatDuration(65) == "01:05")
-        #expect(OverlayValueFormatter.formatDuration(3661) == "1:01:01")
+        #expect(OverlayValueFormatter.formatDuration(65) == "00:01:05")
+        #expect(OverlayValueFormatter.formatDuration(600, option: .durationHMS) == "00:10:00")
+        #expect(OverlayValueFormatter.formatDuration(3661) == "01:01:01")
     }
 
     @Test func numericOverlayHonorsUnitOption() {

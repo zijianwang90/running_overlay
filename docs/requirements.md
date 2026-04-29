@@ -134,7 +134,7 @@ Current implementation status:
 - The media browser supports user color tag marks from the context menu and filtering by tag from the browser header.
 - Selected media can be matched from the context menu to the current layer or to a new layer.
 - Media can be removed from the media pool from the context menu; removing media also removes timeline clips that reference it.
-- The no-media state should include an `Import Videos` button, a short explanation, and supported-format hint.
+- The no-media state should be FIT-first: before FIT import it should show `Import FIT`; after FIT import it should show `Import Videos`, a short explanation, drag/drop affordance, and supported-format hint.
 
 If timestamp matching is unavailable or insufficient:
 
@@ -288,11 +288,12 @@ Current implementation status:
 - Overlay elements display sampled values from the activity timeline at the current playhead.
 - Overlay values are sampled at the current playhead quantized by the project Layer Data FPS setting.
 - Preview overlay elements can be dragged within the preview.
-- Inspector uses a compact dark tool-panel layout for overlay add/manage and selected-overlay detail states.
+- The left Overlay Pool owns the add-overlay catalog and groups add tiles by Metrics, Charts, and Route.
+- Inspector uses a compact dark tool-panel layout for added-overlay management and selected-overlay detail states.
 - Inspector width is preserved across outer/detail/editing hierarchy states so internal selection changes do not resize the right panel or truncate tile labels.
-- The Inspector outer state groups add-overlay tiles by Metrics, Charts, and Route and shows added overlays as live-value rows.
+- The Inspector outer state shows added overlays as live-value rows and does not duplicate Overlay Pool add tiles.
 - Inspector segmented controls use native macOS segmented pickers for keyboard/focus and accessibility behavior.
-- This includes segmented controls in the outer Inspector and dense detail inspectors (Numeric Overlay, Running Gauge, and Route Map).
+- This includes segmented controls in Overlay Pool and dense detail inspectors (Numeric Overlay, Running Gauge, and Route Map).
 - Clicking an add tile creates the overlay and opens its detail editor.
 - Selected overlay elements expose current value, normalized position, scale, preset, font family, font weight, font size, foreground color, background opacity, shadow opacity, and shadow radius controls in the Inspector detail state.
 - Numeric overlays (heart rate, pace, calories, elapsed time, real time, distance, elevation, cadence, power, and advanced running metrics) use the dense `NumericOverlayDetailView` Inspector with Content, Layout, Typography (value), Label, Unit, Color, Background, and Effects sections matching `docs/design/overlays/numeric/numeric-overlay-ui.md`. Shared Layout uses Position/Scale/Width/Height/Opacity (no Rotation).

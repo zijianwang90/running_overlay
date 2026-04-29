@@ -2,6 +2,39 @@
 
 ## 2026-04-29
 
+### Left Pool Split And Overlay Pool
+
+Summary:
+
+- Added `PoolPanelView`, a left-pane container with `Media Pool` and `Overlay Pool` modes.
+- Moved the add-overlay catalog out of the Inspector and into `OverlayPoolView`, preserving the Metrics, Charts, and Route categories.
+- Removed global toolbar FIT/Videos import buttons; Media Pool now owns the import workflow.
+- Updated the no-media state to be FIT-first: `Import FIT` before activity data exists, then `Import Videos` after FIT import.
+- Changed Inspector outer state to show only `Added Overlays`; detail inspectors and row management actions remain unchanged.
+- Updated design, requirements, architecture, and development docs for the new left Pool/Inspector responsibility split.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/PoolPanelView.swift`
+- `Sources/RunningOverlay/UI/OverlayPoolView.swift`
+- `Sources/RunningOverlay/UI/MainEditorView.swift`
+- `Sources/RunningOverlay/UI/MediaBrowserView.swift`
+- `Sources/RunningOverlay/UI/ParameterPanelView.swift`
+- `docs/design/panels/media-pool/media-pool-ui.md`
+- `docs/design/panels/media-pool/media-pool-ui.spec.json`
+- `docs/design/panels/inspector/inspector-ui.md`
+- `docs/design/panels/inspector/inspector-ui.spec.json`
+- `docs/design/system/app-ui.md`
+- `docs/design/README.md`
+- `docs/development.md`
+- `docs/requirements.md`
+- `docs/architecture.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+
 ### Media Pool Status Dot Cleanup
 
 Summary:

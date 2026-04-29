@@ -19,7 +19,7 @@ struct MainEditorView: View {
 
             VSplitView {
                 HStack(spacing: 0) {
-                    MediaBrowserView()
+                    PoolPanelView()
                         .frame(width: mediaPoolWidth)
                         .frame(maxHeight: .infinity)
 
@@ -119,20 +119,6 @@ struct MainEditorView: View {
 
     private var toolbar: some View {
         HStack(spacing: 12) {
-            Button {
-                project.importFitFile()
-            } label: {
-                Label("FIT", systemImage: "waveform.path.ecg")
-            }
-            .buttonStyle(EditorSecondaryButtonStyle())
-
-            Button {
-                project.importVideos()
-            } label: {
-                Label("Videos", systemImage: "video.badge.plus")
-            }
-            .buttonStyle(EditorSecondaryButtonStyle())
-
             Spacer()
 
             if let exportProgress = project.exportProgress {

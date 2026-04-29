@@ -74,9 +74,9 @@ Mark colors:
 
 Current SwiftUI entry point:
 
+- `Sources/RunningOverlay/UI/PoolPanelView.swift`
 - `Sources/RunningOverlay/UI/MediaBrowserView.swift`
-- Planned left-side container: `Sources/RunningOverlay/UI/PoolPanelView.swift`
-- Overlay catalog source should be extracted from `Sources/RunningOverlay/UI/ParameterPanelView.swift` into a reusable view/model file, e.g. `Sources/RunningOverlay/UI/OverlayPoolView.swift`.
+- `Sources/RunningOverlay/UI/OverlayPoolView.swift`
 
 Existing behavior to preserve:
 
@@ -328,7 +328,7 @@ Empty and disabled states:
 
 Inspector boundary:
 
-- The Inspector outer state should only show `Added Overlays` / `Added Elements`.
+- The Inspector outer state should only show `Added Overlays`.
 - The Inspector should keep overlay row management: visibility, lock, delete, and detail navigation.
 - Overlay detail views remain in the Inspector.
 - The Inspector should not show `Metrics`, `Charts`, `Route`, or add-overlay tiles after this refactor.

@@ -64,6 +64,7 @@ Conversions between axes are always explicit. Pixel positions are never stored; 
 - Custom `HorizontalResizeHandle` instead of `HSplitView` to preserve inspector widths.
 - Timeline canvas is AppKit (`NSView`) embedded in SwiftUI for precise hit-testing and rendering.
 - Inspector content switches on `EditorSelection` enum (clip editor vs. overlay editor).
+- Left pane uses `PoolPanelView` to switch between `Media Pool` and `Overlay Pool`; add-overlay tiles live in Overlay Pool, while Inspector outer state manages only added overlays.
 
 ### Testing
 

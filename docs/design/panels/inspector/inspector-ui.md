@@ -1,13 +1,15 @@
 # Inspector UI Design Spec
 
-Last updated: 2026-04-26
+Last updated: 2026-04-29
 
 ## Purpose
 
 The Inspector is the right-side editing panel for overlay work in Running Overlay. It has two primary overlay states:
 
-1. **Inspector Outer**: no overlay detail is open. The user can add new overlays and manage existing overlays.
+1. **Inspector Outer**: no overlay detail is open. The user manages existing overlays.
 2. **Overlay Detail**: an existing overlay has been opened from the Inspector list or selected from the Preview. The user edits that overlay's content, position, size, style, and animation.
+
+Add-overlay selection now lives in the left `Overlay Pool`; the Inspector should not duplicate the overlay catalog.
 
 This spec is intended for implementation agents. Treat it as the source of truth for visual direction and interaction behavior for the Inspector refresh.
 
@@ -102,7 +104,6 @@ The outer Inspector appears when no overlay detail is open. It replaces the curr
 
 ### Responsibilities
 
-- Add overlays to the preview.
 - Display overlays already added to the project.
 - Allow each added overlay row to open its detail editor.
 - Provide quick row actions for visibility, lock, and delete.
@@ -111,16 +112,16 @@ The outer Inspector appears when no overlay detail is open. It replaces the curr
 
 - Do not show a `Properties` section.
 - Do not show an empty property state.
-- Do not include sorting, drag handles, or reorder affordances in `Added Elements`.
+- Do not include sorting, drag handles, or reorder affordances in `Added Overlays`.
+- Do not show the add-overlay catalog, category tabs, or overlay add tiles. Those belong to `Overlay Pool`.
 
 ### Layout
 
 Top to bottom:
 
 1. Header
-2. `Add Overlay` section
-3. `Added Elements` section
-4. Optional footer hint
+2. `Added Overlays` section
+3. Optional footer hint
 
 Inspector default width is 400 px with a 320 px minimum, and the panel is user-resizable by dragging its leading split divider. The Inspector must keep its current width across every internal state change — outer state, overlay detail, timeline clip selection, and any future state. The horizontal layout uses a custom `HStack` + `HorizontalResizeHandle` (not SwiftUI `HSplitView`) so widths are stored in `@State` and cannot be reset by child intrinsic-size or identity changes. The design mockup is square only for reference output; implementation should use a right-panel layout.
 
@@ -137,64 +138,11 @@ Behavior:
 - The pill count updates from `project.overlayLayout.elements.count`.
 - Settings/filter may be non-functional initially, but reserve the slot for future overlay filtering.
 
-### Add Overlay Section
+### Added Overlays Section
 
-Section title: `Add Overlay`
+Section title: `Added Overlays`
 
-Subtitle: `Choose a data layer to place on the preview`
-
-Tabs:
-
-- `Metrics`
-- `Charts`
-- `Route`
-
-Default active tab: `Metrics`
-
-The current code has one flat list from `OverlayElementType.allCases`. The refreshed UI can keep a single list initially while rendering the tabs as visual filters. If filtering is implemented:
-
-- `Metrics`: Heart Rate, Pace, Calories, Elapsed Time, Real Time, Distance, Elevation, Cadence, Power
-- `Charts`: Distance Timeline, Elevation Chart, Running Gauge
-- `Route`: Route Map
-
-Tile content:
-
-- Leading icon
-- Label
-- Short hint
-- Add affordance icon, usually `plus`
-
-Tile list:
-
-
-| Overlay           | Hint         | Suggested icon |
-| ----------------- | ------------ | -------------- |
-| Heart Rate        | `bpm`        | `heart-pulse`  |
-| Pace              | `min/km`     | `timer`        |
-| Calories          | `kcal`       | `flame`        |
-| Elapsed Time      | `duration`   | `clock`        |
-| Real Time         | `clock time` | `watch`        |
-| Distance          | `km / mi`    | `route`        |
-| Distance Timeline | `progress`   | `activity`     |
-| Elevation         | `altitude`   | `mountain`     |
-| Elevation Chart   | `profile`    | `area-chart`   |
-| Cadence           | `spm`        | `footprints`   |
-| Power             | `watts`      | `zap`          |
-| Running Gauge     | `live gauge` | `gauge`        |
-| Route Map         | `GPS path`   | `map`          |
-
-
-Tile behavior:
-
-- Click adds an overlay through the existing add action.
-- Newly added overlay can remain unselected or open detail immediately. Preferred behavior: add then open detail, because the Inspector detail screen is the natural next step after adding.
-- `Running Gauge` and `Route Map` may use subtle blue accent treatment to show they are richer overlay types, but no tile is selected in the outer state.
-
-### Added Elements Section
-
-Section title: `Added Elements`
-
-Rows shown in mockup:
+Example rows:
 
 - `Running Gauge`, subtitle `Distance • Gauge`, value `10.73 km`
 - `Pace`, subtitle `Pace • Text`, value `5'10"/km`
@@ -218,14 +166,14 @@ Row behavior:
 - Visibility and lock are separate hit targets with immediate model updates.
 - Visibility off hides the overlay from both Preview and export output.
 - Lock on prevents canvas selection and drag edits from Preview; list actions (unlock/delete/open detail) remain available.
-- Right-clicking an Added Elements row opens a context menu with `Copy Properties` and `Paste Properties`.
+- Right-clicking an Added Overlays row opens a context menu with `Copy Properties` and `Paste Properties`.
 - Paste applies the copied overlay configuration to the target row only when both overlays are in the same paste category (numeric overlays can paste to numeric overlays only).
 - No sorting behavior. Do not include drag handles.
 
 Empty state:
 
 - If no overlays exist, show a compact row-like empty state: `No overlays added yet`.
-- Keep the `Add Overlay` grid prominent.
+- The empty state stays compact. It should not include a duplicate add-overlay grid; users add overlays from the left `Overlay Pool`.
 
 ## State 2: Overlay Detail
 
@@ -264,7 +212,7 @@ Behavior:
 
 - Back returns to the outer Inspector and clears overlay detail focus if needed.
 - Trash deletes the overlay and returns to the outer Inspector.
-- The header value should use the same formatter as the Preview and Added Elements row.
+- The header value should use the same formatter as the Preview and Added Overlays row.
 
 ### Content Section
 

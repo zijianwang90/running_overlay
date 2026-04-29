@@ -431,7 +431,6 @@ private struct InspectorDetailNumberRow: View {
 
 private struct InspectorOuterView: View {
     @EnvironmentObject private var project: ProjectDocument
-    @State private var activeCategory: OverlayCategory = .metrics
 
     var body: some View {
         VStack(spacing: 0) {
@@ -443,27 +442,10 @@ private struct InspectorOuterView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: InspectorTheme.sectionGap) {
-                    addOverlaySection
-                    AddedElementsSection()
+                    AddedOverlaysSection()
                 }
                 .padding(.horizontal, InspectorTheme.outerPanelPaddingX)
                 .padding(.vertical, InspectorTheme.outerPanelPaddingY)
-            }
-        }
-    }
-
-    private var addOverlaySection: some View {
-        InspectorSection(title: "Add Overlay", subtitle: "Choose a data layer to place on the preview") {
-            InspectorSegmentedPicker(selection: $activeCategory, values: OverlayCategory.allCases) { category in
-                category.label
-            }
-
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: InspectorTheme.space2), GridItem(.flexible(), spacing: InspectorTheme.space2)], spacing: InspectorTheme.space2) {
-                ForEach(OverlayTileInfo.tiles(for: activeCategory)) { tile in
-                    OverlayAddTile(tile: tile) {
-                        project.addOverlayElement(tile.type)
-                    }
-                }
             }
         }
     }
@@ -474,11 +456,11 @@ private struct InspectorOuterView: View {
     }
 }
 
-private struct AddedElementsSection: View {
+private struct AddedOverlaysSection: View {
     @EnvironmentObject private var project: ProjectDocument
 
     var body: some View {
-        InspectorSection(title: "Added Elements", subtitle: "Manage overlays in your scene") {
+        InspectorSection(title: "Added Overlays", subtitle: "Manage overlays in your scene") {
             if project.overlayLayout.elements.isEmpty {
                 HStack(spacing: InspectorTheme.space3) {
                     Image(systemName: "rectangle.stack.badge.plus")
@@ -1102,45 +1084,6 @@ private struct InspectorSegmentedPicker<Value: Hashable, Values: RandomAccessCol
     }
 }
 
-private struct OverlayAddTile: View {
-    let tile: OverlayTileInfo
-    var action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: InspectorTheme.space3) {
-                Image(systemName: tile.systemImage)
-                    .font(.system(size: 19, weight: .medium))
-                    .foregroundStyle(tile.isAccent ? InspectorTheme.accentBlue : InspectorTheme.textPrimary)
-                    .frame(width: 22)
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(tile.label)
-                        .font(InspectorTheme.bodyStrongFont)
-                        .foregroundStyle(tile.isAccent ? InspectorTheme.accentBlue : InspectorTheme.textPrimary)
-                        .lineLimit(1)
-                    Text(tile.hint)
-                        .font(InspectorTheme.captionFont)
-                        .foregroundStyle(InspectorTheme.textMuted)
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: InspectorTheme.space1)
-
-                Image(systemName: "plus")
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundStyle(InspectorTheme.textSecondary)
-                    .frame(width: 18, alignment: .center)
-            }
-            .padding(.horizontal, InspectorTheme.outerTilePaddingX)
-            .frame(minHeight: InspectorTheme.tileMinHeight)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(InspectorTileButtonStyle(isAccent: tile.isAccent))
-        .help("Add \(tile.label)")
-    }
-}
-
 private struct InspectorReadOnlyRow: View {
     var label: String
     var value: String
@@ -1461,63 +1404,6 @@ private enum InspectorTheme {
     static let bodyStrongFont = EditorTheme.bodyStrongFont
     static let captionFont = EditorTheme.captionFont
     static let numericFont = EditorTheme.numericFont
-}
-
-private enum OverlayCategory: String, CaseIterable, Identifiable {
-    case metrics
-    case charts
-    case route
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .metrics: "Metrics"
-        case .charts: "Charts"
-        case .route: "Route"
-        }
-    }
-}
-
-private struct OverlayTileInfo: Identifiable {
-    var type: OverlayElementType
-    var hint: String
-    var systemImage: String
-    var category: OverlayCategory
-    var isAccent = false
-
-    var id: OverlayElementType { type }
-    var label: String { type.label }
-
-    static let all: [OverlayTileInfo] = [
-        OverlayTileInfo(type: .heartRate, hint: "bpm", systemImage: "heart", category: .metrics),
-        OverlayTileInfo(type: .pace, hint: "min/km", systemImage: "timer", category: .metrics),
-        OverlayTileInfo(type: .calories, hint: "kcal", systemImage: "flame", category: .metrics),
-        OverlayTileInfo(type: .elapsedTime, hint: "duration", systemImage: "clock", category: .metrics),
-        OverlayTileInfo(type: .realTime, hint: "clock time", systemImage: "watch.analog", category: .metrics),
-        OverlayTileInfo(type: .distance, hint: "km / mi", systemImage: "ruler", category: .metrics),
-        OverlayTileInfo(type: .distanceTimeline, hint: "progress", systemImage: "waveform.path.ecg", category: .charts),
-        OverlayTileInfo(type: .elevation, hint: "altitude", systemImage: "mountain.2", category: .metrics),
-        OverlayTileInfo(type: .elevationChart, hint: "profile", systemImage: "chart.line.uptrend.xyaxis", category: .charts),
-        OverlayTileInfo(type: .cadence, hint: "spm", systemImage: "figure.run", category: .metrics),
-        OverlayTileInfo(type: .power, hint: "watts", systemImage: "bolt", category: .metrics),
-        OverlayTileInfo(type: .verticalOscillation, hint: "cm", systemImage: "arrow.up.and.down", category: .metrics),
-        OverlayTileInfo(type: .groundContactTime, hint: "ms", systemImage: "timer", category: .metrics),
-        OverlayTileInfo(type: .strideLength, hint: "m", systemImage: "arrow.left.and.right", category: .metrics),
-        OverlayTileInfo(type: .verticalRatio, hint: "%", systemImage: "percent", category: .metrics),
-        OverlayTileInfo(type: .groundContactBalance, hint: "L/R", systemImage: "scale.3d", category: .metrics),
-        OverlayTileInfo(type: .temperature, hint: "°C / °F", systemImage: "thermometer", category: .metrics),
-        OverlayTileInfo(type: .grade, hint: "slope %", systemImage: "arrow.up.right", category: .metrics),
-        OverlayTileInfo(type: .runningGauge, hint: "live gauge", systemImage: "gauge", category: .charts, isAccent: true),
-        OverlayTileInfo(type: .routeMap, hint: "GPS path", systemImage: "map", category: .route, isAccent: true),
-        OverlayTileInfo(type: .lapList, hint: "lap teleprompter", systemImage: "list.number", category: .charts, isAccent: true),
-        OverlayTileInfo(type: .lapCard, hint: "lap recap card", systemImage: "rectangle.badge.checkmark", category: .charts, isAccent: true),
-        OverlayTileInfo(type: .lapLive, hint: "live lap HUD", systemImage: "stopwatch", category: .charts, isAccent: true)
-    ]
-
-    static func tiles(for category: OverlayCategory) -> [OverlayTileInfo] {
-        all.filter { $0.category == category }
-    }
 }
 
 private extension OverlayElement {

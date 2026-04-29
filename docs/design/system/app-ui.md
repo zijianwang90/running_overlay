@@ -96,7 +96,7 @@ Use 6-8 px radius for tool controls. Avoid pill-heavy styling unless the control
 
 The app is a multi-pane editor:
 
-- Left: Media Pool and import/source-management surfaces.
+- Left: Pool panel with `Media Pool` and `Overlay Pool` modes for import/source management and addable overlay modules.
 - Center: Preview canvas and playback controls.
 - Bottom: Timeline and alignment editing.
 - Right: Inspector and overlay/clip details.
@@ -179,7 +179,8 @@ Empty states should be functional and compact:
 
 Examples:
 
-- Media Pool: `Drop videos here`, `Import Videos`.
+- Media Pool before FIT: `Import FIT`, `Start with running activity data`.
+- Media Pool after FIT: `Drop videos here`, `Import Videos`.
 - Filtered list: `No media matches the current filter`.
 - Overlay list: `No overlays added yet`.
 

@@ -133,10 +133,11 @@ Current implementation:
 - Main editor uses horizontal and vertical split views so media, preview, inspector, and timeline boundaries are draggable.
 - Initial app state is empty: no sample media, sample timeline clips, sample overlay elements, or fake FIT duration.
 - App-level UI uses the shared dark editor design tokens from `docs/design/system/app-ui.md` through `EditorTheme`.
-- Media Pool, Preview controls, Timeline, Inspector, status bar, export progress, project settings, and export dialog share dark panel/header/control colors, compact sizing, subtle borders, and system typography.
+- Left Pool, Preview controls, Timeline, Inspector, status bar, export progress, project settings, and export dialog share dark panel/header/control colors, compact sizing, subtle borders, and system typography.
 - Resizable panes keep stable minimum widths so media controls do not collapse when selection hierarchy changes.
-- Media Pool default width is 380 px (min 300 px) and Inspector default width is 400 px (min 320 px); both panels remain user-resizable via custom drag handles.
-- The horizontal three-column layout in `MainEditorView` is implemented as a single `HStack` with `@State`-tracked widths (`mediaPoolWidth`, `inspectorWidth`) and custom `HorizontalResizeHandle` dividers instead of `HSplitView`. This guarantees that internal Inspector selection changes (`outer/clip/overlay detail`) and Media Pool content changes (e.g., importing media or matching all clips) cannot reset the left or right pane widths.
+- Left Pool default width is 380 px (min 300 px) and Inspector default width is 400 px (min 320 px); both panels remain user-resizable via custom drag handles.
+- The horizontal three-column layout in `MainEditorView` is implemented as a single `HStack` with `@State`-tracked widths (`mediaPoolWidth`, `inspectorWidth`) and custom `HorizontalResizeHandle` dividers instead of `HSplitView`. This guarantees that internal Inspector selection changes (`outer/clip/overlay detail`) and Left Pool content changes (e.g., switching Media Pool/Overlay Pool, importing media, or matching clips) cannot reset the left or right pane widths.
+- The left pane is `PoolPanelView`, a two-mode container with a compact top switch for `Media Pool` and `Overlay Pool`. The app toolbar no longer carries global FIT/Videos import buttons.
 - Media, Preview, and Inspector top headers share a unified header height and shared compact header button size tokens.
 - The initial `VSplitView` allocation favors the top editor stack more strongly by using a lower default Timeline ideal height (`180`) with a `160` minimum, while keeping the split boundary user-draggable.
 
@@ -182,7 +183,7 @@ Current implementation:
 - The media browser captures Command+A while active to select all visible filtered media rows without showing a system focus ring.
 - The media browser row layout follows the design-system row reference with 72 px rows, 42 px thumbnail wells, compact metadata, compact alignment-status dots with hover help text, and optional mark dots.
 - The context menu Mark submenu uses circular color icons for each mark option.
-- The no-media empty state includes a drag/drop prompt, an `Import Videos` action, a short matching-workflow description, and a supported-format hint.
+- The no-media empty state is FIT-first: before activity data is loaded it shows `Import FIT`; after a FIT is loaded it shows the drag/drop video prompt, `Import Videos`, a short matching-workflow description, and a supported-format hint. Video drops before FIT import are rejected with a status message.
 - First-pass camera/source grouping uses the first filename token.
 
 Pending:
@@ -262,7 +263,7 @@ Current implementation:
 - `OverlayValueFormatter` formats overlay values from `ActivityTimeline` at the current playhead.
 - `ActivityTimeline` supports interpolation for distance, heart rate, pace, elevation, cadence, power, and calories.
 - Overlay preview and Inspector value display use the project Layer Data FPS setting, so data values update at the configured cadence rather than every UI refresh.
-- Inspector overlay UI follows the dark tool-panel design spec in `docs/design/panels/inspector/inspector-ui.md`, with tokenized colors, spacing, compact rows, add-overlay tabs, overlay rows, and a selected-overlay detail screen.
+- Inspector overlay UI follows the dark tool-panel design spec in `docs/design/panels/inspector/inspector-ui.md`, with tokenized colors, spacing, compact added-overlay rows, and selected-overlay detail screens. Add-overlay tiles now live in the left `Overlay Pool`.
 - Overlay detail panels share reusable inspector modules for cross-overlay consistency: `CollapsibleLayoutInspectorSection` + `OverlayLayoutRows` (Layout) and `CollapsibleStatsBarInspectorSection` + `StatsBarInspectorRows` (Stats Bar). New detail views should reuse these modules instead of creating per-overlay variants.
 - Shared `Layout` rows are now fixed to `Position`, `Scale`, `Width`, `Height`, and `Opacity`; `Rotation` is intentionally removed from the shared Layout section across overlay detail panels.
 - Inspector default width is 400 px and minimum width is 320 px; the panel is user-resizable through the custom `HorizontalResizeHandle`, and `ParameterPanelView` does not impose its own width frame so internal outer/detail/editing state switches cannot resize the right column or squeeze tile content.
@@ -284,10 +285,10 @@ Current implementation:
 - Route Map export currently renders the local route/map fallback synchronously so MOV/PNG export does not depend on MapKit network/service timing.
 - Inspector supports normalized X/Y position entry plus shadow opacity and radius controls.
 - Up and down arrow keys nudge the selected overlay element vertically by one percent of the preview canvas.
-- Inspector shows a dark add/manage outer state when no overlay element is selected; add tiles are grouped by Metrics, Charts, and Route, and newly added overlays open their detail screen.
-- Inspector add-overlay tabs use full-segment hit targets, not text-only click regions.
+- Overlay Pool shows add tiles grouped by Metrics, Charts, and Route; clicking a tile calls `ProjectDocument.addOverlayElement`, which selects the new overlay and opens its detail Inspector.
+- Inspector shows a dark outer state when no overlay element is selected, but it only contains `Added Overlays`; it no longer carries the selectable overlay catalog.
 - Inspector added-overlay rows show icon, type, live value preview, visibility toggle, lock toggle, delete, and detail navigation without sorting affordances.
-- Added Elements rows expose a context menu (`Copy Properties` / `Paste Properties`) for overlay configuration transfer.
+- Added Overlays rows expose a context menu (`Copy Properties` / `Paste Properties`) for overlay configuration transfer.
 - Overlay visibility now gates both Preview rendering and `OverlayFrameRenderer` export rendering.
 - Overlay lock is persisted and currently blocks Preview canvas selection/drag plus position writes in `ProjectDocument.moveOverlay` / `setOverlayPosition`.
 - Overlay configuration paste is category-gated through `OverlayElementType.pasteCategory`; numeric overlays can paste only within the numeric group.

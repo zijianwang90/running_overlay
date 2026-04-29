@@ -337,9 +337,55 @@ struct MediaBrowserView: View {
         }
     }
 
-    private var dropTargetPlaceholder: some View {
+    @ViewBuilder private var dropTargetPlaceholder: some View {
+        if project.activity.duration <= 0 {
+            fitImportPlaceholder
+        } else {
+            videoImportPlaceholder
+        }
+    }
+
+    private var fitImportPlaceholder: some View {
         VStack(spacing: 8) {
             Spacer()
+            StepIndicator(currentStep: .fit)
+                .padding(.bottom, EditorTheme.space2)
+            Image(systemName: "waveform.path.ecg")
+                .font(.system(size: 32))
+                .foregroundStyle(EditorTheme.textMuted)
+            Text("Import FIT")
+                .font(EditorTheme.bodyStrongFont)
+                .foregroundStyle(EditorTheme.textSecondary)
+            Text("Start with running activity data")
+                .font(EditorTheme.captionFont)
+                .foregroundStyle(EditorTheme.textMuted)
+                .multilineTextAlignment(.center)
+            Button {
+                project.importFitFile()
+            } label: {
+                Label("Import FIT", systemImage: "plus")
+            }
+            .buttonStyle(EditorPrimaryButtonStyle())
+            Text("Then import videos")
+                .font(EditorTheme.captionFont)
+                .foregroundStyle(EditorTheme.textMuted)
+            Spacer()
+        }
+        .padding(EditorTheme.space4)
+        .frame(maxWidth: .infinity)
+        .background(EditorTheme.panelBackground)
+        .overlay {
+            RoundedRectangle(cornerRadius: EditorTheme.panelRadius)
+                .stroke(EditorTheme.borderSubtle, style: StrokeStyle(lineWidth: 1, dash: [5, 5]))
+                .padding(EditorTheme.space4)
+        }
+    }
+
+    private var videoImportPlaceholder: some View {
+        VStack(spacing: 8) {
+            Spacer()
+            StepIndicator(currentStep: .videos)
+                .padding(.bottom, EditorTheme.space2)
             Image(systemName: "video.badge.plus")
                 .font(.system(size: 32))
                 .foregroundStyle(EditorTheme.textMuted)
@@ -435,6 +481,11 @@ struct MediaBrowserView: View {
     }
 
     private func importDroppedVideoFiles(_ providers: [NSItemProvider]) -> Bool {
+        guard project.activity.duration > 0 else {
+            project.statusMessage = "Import a FIT file before importing videos."
+            return false
+        }
+
         let fileURLIdentifier = UTType.fileURL.identifier
         let collector = DroppedURLCollector()
         let group = DispatchGroup()
@@ -463,6 +514,80 @@ struct MediaBrowserView: View {
         let minutes = Int(duration) / 60
         let seconds = Int(duration) % 60
         return "\(minutes)m \(seconds)s"
+    }
+}
+
+private struct StepIndicator: View {
+    enum CurrentStep {
+        case fit
+        case videos
+    }
+
+    let currentStep: CurrentStep
+
+    var body: some View {
+        HStack(spacing: EditorTheme.space2) {
+            step(label: "1 FIT", state: currentStep == .fit ? .active : .complete)
+
+            Rectangle()
+                .fill(EditorTheme.borderSubtle)
+                .frame(width: 18, height: 1)
+
+            step(label: "2 Videos", state: currentStep == .videos ? .active : .inactive)
+        }
+    }
+
+    private func step(label: String, state: StepState) -> some View {
+        Text(label)
+            .font(EditorTheme.captionFont.weight(.medium))
+            .foregroundStyle(state.foreground)
+            .padding(.horizontal, EditorTheme.space2)
+            .frame(height: 22)
+            .background(state.background)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .overlay {
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(state.border, lineWidth: 1)
+            }
+    }
+
+    private enum StepState {
+        case active
+        case complete
+        case inactive
+
+        var foreground: Color {
+            switch self {
+            case .active:
+                Color.white
+            case .complete:
+                EditorTheme.successGreen
+            case .inactive:
+                EditorTheme.textMuted
+            }
+        }
+
+        var background: Color {
+            switch self {
+            case .active:
+                EditorTheme.accentBlue
+            case .complete:
+                EditorTheme.surfaceControl
+            case .inactive:
+                EditorTheme.surfacePressed
+            }
+        }
+
+        var border: Color {
+            switch self {
+            case .active:
+                EditorTheme.accentBlue
+            case .complete:
+                EditorTheme.successGreen.opacity(0.7)
+            case .inactive:
+                EditorTheme.borderSubtle
+            }
+        }
     }
 }
 

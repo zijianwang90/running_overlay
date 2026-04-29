@@ -432,8 +432,8 @@ enum OverlayRenderModel {
                 : (statsBarConfig.width > 0
                 ? min(context.scaled(statsBarConfig.width * element.scale), autoSpan)
                 : autoSpan)
-            let xOffset = isInside ? 0 : context.scaled(statsBarConfig.offsetX * element.scale)
-            let yOffset = isInside ? 0 : context.scaled(statsBarConfig.offsetY * element.scale)
+            let xOffset = context.scaled(statsBarConfig.offsetX * element.scale)
+            let yOffset = context.scaled(statsBarConfig.offsetY * element.scale)
 
             switch placement {
             case .bottomAttached:

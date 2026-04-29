@@ -402,7 +402,8 @@ Inside-mode additions:
 - Shared renderer uses Stats Bar-owned Value/Label typography and colors directly (no fallback to outer accent/foreground color).
 
 - Values use the same formatters as Numeric Overlay. Pace uses `M'SS" /km`
-  or selected unit system; elapsed time uses `HH:MM:SS` when duration >= 1 hour.
+  or selected unit system; elapsed time in `hh:mm:ss` mode is always rendered
+  as zero-padded `HH:MM:SS`.
 - Missing data renders `—`, not `0`, unless the metric naturally starts at zero
   such as elapsed time.
 - Slot order is user-controlled and should be drag-reorderable in Phase F.

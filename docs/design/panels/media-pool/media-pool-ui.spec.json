@@ -75,9 +75,9 @@
       "rowContentGap": 8
     }
   },
-  "currentSwiftUIEntryPoint": "Sources/RunningOverlay/UI/MediaBrowserView.swift",
-  "plannedSwiftUIEntryPoints": [
+  "currentSwiftUIEntryPoints": [
     "Sources/RunningOverlay/UI/PoolPanelView.swift",
+    "Sources/RunningOverlay/UI/MediaBrowserView.swift",
     "Sources/RunningOverlay/UI/OverlayPoolView.swift"
   ],
   "poolModes": [
@@ -267,7 +267,7 @@
     }
   },
   "inspectorBoundary": {
-    "outerStateContent": "Added Overlays / Added Elements only",
+    "outerStateContent": "Added Overlays only",
     "keptResponsibilities": [
       "visibility",
       "lock",

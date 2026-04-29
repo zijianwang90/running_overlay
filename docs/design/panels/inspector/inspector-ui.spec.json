@@ -1,6 +1,6 @@
 {
   "name": "Inspector UI",
-  "updated": "2026-04-28 (shared layout/stats bar modules)",
+  "updated": "2026-04-29 (add catalog moved to Overlay Pool)",
   "references": {
     "outerMockup": "./inspector-outer.png",
     "detailMockup": "./overlay-detail-running-gauge.png",
@@ -16,8 +16,9 @@
       "decorative blobs",
       "large empty black areas",
       "nested cards inside cards",
-      "sorting affordances in Added Elements",
-      "Properties section on Inspector outer state"
+      "sorting affordances in Added Overlays",
+      "Properties section on Inspector outer state",
+      "Add Overlay catalog on Inspector outer state"
     ]
   },
   "tokens": {
@@ -74,9 +75,8 @@
     {
       "id": "inspector.outer",
       "trigger": "no overlay detail is open",
-      "currentSwiftUIEquivalent": "OverlayLibraryView",
+      "currentSwiftUIEquivalent": "InspectorOuterView",
       "responsibilities": [
-        "add overlays",
         "manage already added overlays",
         "open overlay detail from an existing overlay row"
       ],
@@ -84,7 +84,10 @@
         "Properties section",
         "empty property editor",
         "drag handles",
-        "sort controls"
+        "sort controls",
+        "add overlay catalog",
+        "Metrics/Charts/Route add-overlay tabs",
+        "overlay add tiles"
       ],
       "layout": [
         {
@@ -103,37 +106,14 @@
           }
         },
         {
-          "component": "AddOverlaySection",
-          "title": "Add Overlay",
-          "subtitle": "Choose a data layer to place on the preview",
-          "tabs": ["Metrics", "Charts", "Route"],
-          "defaultTab": "Metrics",
-          "gridColumns": 2,
-          "tileBehavior": "click adds overlay; preferred behavior is add then open detail"
-        },
-        {
-          "component": "AddedElementsSection",
-          "title": "Added Elements",
+          "component": "AddedOverlaysSection",
+          "title": "Added Overlays",
           "rowBehavior": "row body opens overlay detail; action buttons do not navigate",
           "sorting": false,
           "actions": ["visibility", "lock", "delete", "openDetail"]
         }
       ],
-      "overlayTiles": [
-        { "type": "heartRate", "label": "Heart Rate", "hint": "bpm", "icon": "heart-pulse", "category": "Metrics" },
-        { "type": "pace", "label": "Pace", "hint": "min/km", "icon": "timer", "category": "Metrics" },
-        { "type": "calories", "label": "Calories", "hint": "kcal", "icon": "flame", "category": "Metrics" },
-        { "type": "elapsedTime", "label": "Elapsed Time", "hint": "duration", "icon": "clock", "category": "Metrics" },
-        { "type": "realTime", "label": "Real Time", "hint": "clock time", "icon": "watch", "category": "Metrics" },
-        { "type": "distance", "label": "Distance", "hint": "km / mi", "icon": "route", "category": "Metrics" },
-        { "type": "distanceTimeline", "label": "Distance Timeline", "hint": "progress", "icon": "activity", "category": "Charts" },
-        { "type": "elevation", "label": "Elevation", "hint": "altitude", "icon": "mountain", "category": "Metrics" },
-        { "type": "elevationChart", "label": "Elevation Chart", "hint": "profile", "icon": "area-chart", "category": "Charts" },
-        { "type": "cadence", "label": "Cadence", "hint": "spm", "icon": "footprints", "category": "Metrics" },
-        { "type": "power", "label": "Power", "hint": "watts", "icon": "zap", "category": "Metrics" },
-        { "type": "runningGauge", "label": "Running Gauge", "hint": "live gauge", "icon": "gauge", "category": "Charts", "accent": true },
-        { "type": "routeMap", "label": "Route Map", "hint": "GPS path", "icon": "map", "category": "Route", "accent": true }
-      ],
+      "addOverlayCatalogLocation": "left Overlay Pool",
       "exampleRows": [
         {
           "name": "Running Gauge",
@@ -227,7 +207,7 @@
   ],
   "interactions": {
     "openDetail": [
-      "clicking an Added Elements row",
+      "clicking an Added Overlays row",
       "clicking the corresponding overlay in Preview"
     ],
     "delete": "delete removes overlay and returns to inspector.outer if deleting from detail",
@@ -239,8 +219,6 @@
     "InspectorTheme",
     "InspectorSection",
     "InspectorHeader",
-    "InspectorSegmentedControl",
-    "OverlayAddTile",
     "OverlayElementRow",
     "OverlayDetailView",
     "InspectorIconButton",
