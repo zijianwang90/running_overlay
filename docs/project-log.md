@@ -2,14 +2,20 @@
 
 ## 2026-04-29
 
+Note:
+
+- Historical entries below may reference `OverlayVideoExporter` as part of the migration timeline. That exporter is now retired; active export runtime uses `SwiftUIOverlayVideoExporter` only.
+
 ### Finalize Shared-Component SwiftUI Export Path
 
 Summary:
 
 - Removed residual per-overlay experimental view implementations from `SwiftUIOverlayVideoExporter`; export now keeps only the shared component route used by preview (`OverlaySharedTextPresetView`, `OverlaySharedDistanceTimelineView`, `OverlaySharedRouteMapView`).
-- Updated SwiftUI export filtering to include visible text-preset overlays (not only numeric) plus Distance Timeline and Route Map, so shared-component coverage matches current supported visual scope.
-- Added `useSwiftUIExportForMainExport` in `ProjectDocument` and wired `Export` to select SwiftUI export when enabled.
-- Added `Use SwiftUI Export` toggle button below `Export` in `ExportDialogView`.
+- Updated SwiftUI export filtering to render all visible overlays through the shared-component path, so coverage now matches the full current control set.
+- Extended shared-component SwiftUI export coverage to all current overlay controls by adding shared wrappers and exporter dispatch for Elevation Chart, Running Gauge, Lap List, Lap Card, and Lap Live.
+- Updated SwiftUI exporter overlay filtering from partial-type checks to `isVisible` so all visible overlays render through the shared-component path.
+- Updated `docs/requirements.md` and `docs/development.md` with explicit next-step export optimization directions (layer caching, dirty-region redraw, adaptive quality knobs, and structured performance telemetry).
+- Retired legacy export-mode code after parity verification: removed `OverlayVideoExporter` usage and mode-toggle UI, and switched `Export` / `Export Full Activity` / `Export Test Clip` / `Export Test Frame` to the unified SwiftUI shared-component pipeline.
 
 Files changed:
 

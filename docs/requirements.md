@@ -515,10 +515,8 @@ Export behavior:
 - Overlapping timeline clips are exported separately, one output file per clip.
 - Full activity export can ignore all video segments and render one overlay file covering the entire FIT activity.
 - `Export Test Clip` renders a short transparent MOV anchored to the current playhead position, using the current overlay configuration.
-- `Export SwiftUI Test Clip` is an experimental export path that renders visible text-preset overlays, Distance Timeline, and Route Map via per-frame SwiftUI rasterization (`ImageRenderer`) before video encoding.
-- `Export Test Frame` renders a PNG at the current playhead position, using the current overlay configuration and renderer path.
-- `Export SwiftUI Test Frame` renders a PNG at the current playhead position through the experimental SwiftUI rasterization path.
-- Main `Export` supports a `Use SwiftUI Export` toggle directly under the Export button; when enabled, clip export uses the SwiftUI shared-component rasterization path.
+- `Export Test Frame` renders a PNG at the current playhead position through the SwiftUI shared-component rasterization path.
+- Main `Export` always uses the SwiftUI shared-component rasterization path (legacy export mode removed).
 - `Export Overlay JSON` writes the current `OverlayLayout` configuration to JSON for inspection, debugging, and reproducible style snapshots.
 - Test clip/frame sampling time must use the same playhead-to-activity conversion and Layer Data FPS quantization path as preview (`activityElapsed(atProjectTime:)` + quantization).
 - Test frame PNG orientation must match preview/export coordinates (no vertical inversion in the saved image).
@@ -540,6 +538,12 @@ Future requirements:
 - Burned-in composite export.
 - Alpha codec selection.
 - Per-track or per-camera export selection.
+- Export performance optimizations:
+  - Incremental frame rendering with static-layer caching so unchanged overlay layers are reused across adjacent frames.
+  - Per-overlay dirty-region rendering and composition to avoid full-canvas redraw on every frame.
+  - Optional adaptive layer data sampling for slowly changing metrics during long exports.
+  - Optional hardware-accelerated compositing path (Metal/Core Image) for large resolutions and long clips.
+  - Export telemetry output (frame encode time, render time, dropped/slow frames) for profiling and regression tracking.
 
 ## 13. Data Accuracy Requirements
 

@@ -17,7 +17,6 @@ final class ProjectDocument: ObservableObject {
     @Published var showingExportDialog = false
     @Published var overlayTemplates: [OverlayTemplate] = []
     @Published var showPreviewGuides = false
-    @Published var useSwiftUIExportForMainExport = false
     @Published var isExporting = false
     @Published var exportProgress: ExportProgressState?
     @Published var mediaPoolPreviewItemID: MediaItem.ID?
@@ -2042,16 +2041,12 @@ final class ProjectDocument: ObservableObject {
             segments: segments
         )
 
-        if useSwiftUIExportForMainExport {
-            runSwiftUIExport(
-                job: job,
-                title: "Clip Overlay Export (SwiftUI Experimental)",
-                completedMessage: "SwiftUI experimental overlay export completed.",
-                failurePrefix: "SwiftUI experimental overlay export failed"
-            )
-        } else {
-            runExport(job: job, title: "Clip Overlay Export", completedMessage: "Overlay export completed.", failurePrefix: "Overlay export failed")
-        }
+        runSwiftUIExport(
+            job: job,
+            title: "Clip Overlay Export",
+            completedMessage: "Overlay export completed.",
+            failurePrefix: "Overlay export failed"
+        )
     }
 
     func cancelExport() {
@@ -2087,7 +2082,12 @@ final class ProjectDocument: ObservableObject {
             ]
         )
 
-        runExport(job: job, title: "Full Activity Export", completedMessage: "Full activity overlay export completed.", failurePrefix: "Full activity overlay export failed")
+        runSwiftUIExport(
+            job: job,
+            title: "Full Activity Export",
+            completedMessage: "Full activity overlay export completed.",
+            failurePrefix: "Full activity overlay export failed"
+        )
     }
 
     func exportTestClip(to destinationURL: URL) {
@@ -2115,67 +2115,20 @@ final class ProjectDocument: ObservableObject {
             ]
         )
 
-        runExport(job: job, title: "Test Clip Export", completedMessage: "Test clip export completed.", failurePrefix: "Test clip export failed")
+        runSwiftUIExport(
+            job: job,
+            title: "Test Clip Export",
+            completedMessage: "Test clip export completed.",
+            failurePrefix: "Test clip export failed"
+        )
     }
 
     func exportSwiftUITestClip(to destinationURL: URL) {
-        guard !isExporting else {
-            return
-        }
-
-        let exportActivity = activity.duration > 0 ? activity : Self.calibrationActivity()
-        let playheadActivityTime = timeline.activityElapsed(atProjectTime: timeline.playhead)
-        let segmentStart = exportActivity.duration > 3
-            ? min(max(playheadActivityTime, 0), exportActivity.duration - 3)
-            : 0
-        let job = OverlayExportJob(
-            destinationURL: destinationURL,
-            settings: settings,
-            activity: exportActivity,
-            overlayLayout: overlayLayout,
-            fitStartTime: 0,
-            segments: [
-                OverlayExportSegment(
-                    startTime: segmentStart,
-                    duration: 3,
-                    sourceFileName: "overlay_swiftui_test_clip.mov"
-                )
-            ]
-        )
-
-        runSwiftUIExport(
-            job: job,
-            title: "SwiftUI Test Clip Export (Experimental)",
-            completedMessage: "SwiftUI experimental test clip export completed.",
-            failurePrefix: "SwiftUI experimental export failed"
-        )
+        exportTestClip(to: destinationURL)
     }
 
     func exportSwiftUITestFrame(to destinationURL: URL) {
-        let exportActivity = activity.duration > 0 ? activity : Self.calibrationActivity()
-        let playheadActivityTime = timeline.activityElapsed(atProjectTime: timeline.playhead)
-        let sampleTime = exportActivity.duration > 0
-            ? min(max(playheadActivityTime, 0), exportActivity.duration)
-            : 0
-        let outputURL = destinationURL.appendingPathComponent("overlay_swiftui_test_frame.png")
-
-        Task {
-            do {
-                try FileManager.default.createDirectory(at: destinationURL, withIntermediateDirectories: true)
-                try? FileManager.default.removeItem(at: outputURL)
-                try await SwiftUIOverlayVideoExporter.exportFramePNG(
-                    overlayLayout: overlayLayout,
-                    activity: exportActivity,
-                    elapsedTime: quantizedLayerDataTime(for: sampleTime),
-                    size: CGSize(width: settings.resolution.width, height: settings.resolution.height),
-                    outputURL: outputURL
-                )
-                statusMessage = "SwiftUI test frame exported: \(outputURL.lastPathComponent)."
-            } catch {
-                statusMessage = "SwiftUI test frame export failed: \(error.localizedDescription)"
-                print("[RunningOverlay] SwiftUI test frame export failed: \(String(reflecting: error))")
-            }
-        }
+        exportTestFrame(to: destinationURL)
     }
 
     func exportCurrentOverlayConfigurationJSON(to destinationURL: URL) {
@@ -2206,24 +2159,22 @@ final class ProjectDocument: ObservableObject {
             : 0
         let outputURL = destinationURL.appendingPathComponent("overlay_test_frame.png")
 
-        do {
-            try FileManager.default.createDirectory(at: destinationURL, withIntermediateDirectories: true)
-            try? FileManager.default.removeItem(at: outputURL)
-            try OverlayFrameRenderer.renderPNG(
-                to: outputURL,
-                request: OverlayFrameRenderRequest(
-                    size: CGSize(width: settings.resolution.width, height: settings.resolution.height),
-                    layout: overlayLayout,
+        Task {
+            do {
+                try FileManager.default.createDirectory(at: destinationURL, withIntermediateDirectories: true)
+                try? FileManager.default.removeItem(at: outputURL)
+                try await SwiftUIOverlayVideoExporter.exportFramePNG(
+                    overlayLayout: overlayLayout,
                     activity: exportActivity,
                     elapsedTime: quantizedLayerDataTime(for: sampleTime),
-                    renderGuides: false,
-                    flipVerticallyAfterRender: true
+                    size: CGSize(width: settings.resolution.width, height: settings.resolution.height),
+                    outputURL: outputURL
                 )
-            )
-            statusMessage = "Test frame exported: \(outputURL.lastPathComponent)."
-        } catch {
-            statusMessage = "Test frame export failed: \(error.localizedDescription)"
-            print("[RunningOverlay] Test frame export failed: \(String(reflecting: error))")
+                statusMessage = "Test frame exported: \(outputURL.lastPathComponent)."
+            } catch {
+                statusMessage = "Test frame export failed: \(error.localizedDescription)"
+                print("[RunningOverlay] Test frame export failed: \(String(reflecting: error))")
+            }
         }
     }
 
@@ -2415,43 +2366,6 @@ final class ProjectDocument: ObservableObject {
             ],
             laps: []
         )
-    }
-
-    private func runExport(job: OverlayExportJob, title: String, completedMessage: String, failurePrefix: String) {
-        guard !isExporting else {
-            return
-        }
-
-        isExporting = true
-        exportProgress = ExportProgressState(
-            title: title,
-            items: job.segments.enumerated().map { index, segment in
-                ExportProgressItem(index: index, name: segment.sourceFileName, progress: 0, status: .queued)
-            }
-        )
-        statusMessage = title
-
-        exportTask = Task {
-            do {
-                try await OverlayVideoExporter.export(job: job) { [weak self] progress in
-                    self?.updateExportProgress(progress)
-                }
-                exportProgress?.markCompleted()
-                statusMessage = completedMessage
-            } catch OverlayExportError.cancelled {
-                exportProgress?.markCancelled()
-                statusMessage = "Export cancelled."
-            } catch is CancellationError {
-                exportProgress?.markCancelled()
-                statusMessage = "Export cancelled."
-            } catch {
-                exportProgress?.markFailed(message: error.localizedDescription)
-                statusMessage = "\(failurePrefix): \(error.localizedDescription)"
-                print("[RunningOverlay] \(failurePrefix): \(String(reflecting: error))")
-            }
-            isExporting = false
-            exportTask = nil
-        }
     }
 
     private func runSwiftUIExport(job: OverlayExportJob, title: String, completedMessage: String, failurePrefix: String) {

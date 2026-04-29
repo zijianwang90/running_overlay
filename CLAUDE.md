@@ -24,7 +24,7 @@ Videos → MediaMetadataReader → MediaItem (inferred timestamps, alignment sta
 User aligns video clips → TimelineModel (tracks/clips with alignment offsets)
 Playhead → elapsed activity time → OverlayLayout samples metric values
 Sampled values + video frame → PreviewCanvasView (fitted to container)
-Timeline segments + activity data + overlays → OverlayVideoExporter → .mov files
+Timeline segments + activity data + overlays → SwiftUIOverlayVideoExporter (`ImageRenderer` + AVAssetWriter) → .mov files
 ```
 
 ### Key subsystems
@@ -37,7 +37,7 @@ Timeline segments + activity data + overlays → OverlayVideoExporter → .mov f
 | `MediaImport/` | AVFoundation metadata extraction, alignment state machine |
 | `Timeline/` | Multi-track model; clips store `TimeInterval` offsets, not pixels |
 | `Overlay/` | `OverlayElement` (13 types), styles, templates, `RunningGaugeModel`, `RouteMapOverlay` |
-| `Export/` | `OverlayFrameRenderer` (shared preview+export pipeline), `OverlayVideoExporter` (H.265 / ProRes 4444) |
+| `Export/` | `SwiftUIOverlayVideoExporter` (shared SwiftUI component rasterization + H.265/ProRes MOV encoding) |
 | `UI/` | SwiftUI views; AppKit self-drawing view for the timeline canvas |
 
 ### State management

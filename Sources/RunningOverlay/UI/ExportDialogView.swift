@@ -82,18 +82,6 @@ struct ExportDialogView: View {
                         dismiss()
                     }
                     .disabled(project.isExporting)
-                    Button("Export SwiftUI Test Clip") {
-                        destinationURL = URL(fileURLWithPath: (destination as NSString).expandingTildeInPath)
-                        project.exportSwiftUITestClip(to: destinationURL)
-                        dismiss()
-                    }
-                    .disabled(project.isExporting)
-                    Button("Export SwiftUI Test Frame") {
-                        destinationURL = URL(fileURLWithPath: (destination as NSString).expandingTildeInPath)
-                        project.exportSwiftUITestFrame(to: destinationURL)
-                        dismiss()
-                    }
-                    .disabled(project.isExporting)
                 }
 
                 HStack {
@@ -109,27 +97,14 @@ struct ExportDialogView: View {
                         dismiss()
                     }
                     .disabled(project.isExporting)
-                    VStack(alignment: .trailing, spacing: 6) {
-                        Button("Export") {
-                            destinationURL = URL(fileURLWithPath: (destination as NSString).expandingTildeInPath)
-                            project.exportOverlays(to: destinationURL)
-                            dismiss()
-                        }
-                        .buttonStyle(EditorPrimaryButtonStyle())
-                        .keyboardShortcut(.defaultAction)
-                        .disabled(project.isExporting)
-
-                        Button {
-                            project.useSwiftUIExportForMainExport.toggle()
-                        } label: {
-                            Label(
-                                project.useSwiftUIExportForMainExport ? "Use SwiftUI Export: On" : "Use SwiftUI Export: Off",
-                                systemImage: project.useSwiftUIExportForMainExport ? "checkmark.circle.fill" : "circle"
-                            )
-                        }
-                        .buttonStyle(EditorSecondaryButtonStyle())
-                        .disabled(project.isExporting)
+                    Button("Export") {
+                        destinationURL = URL(fileURLWithPath: (destination as NSString).expandingTildeInPath)
+                        project.exportOverlays(to: destinationURL)
+                        dismiss()
                     }
+                    .buttonStyle(EditorPrimaryButtonStyle())
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(project.isExporting)
                 }
             }
         }

@@ -41,3 +41,65 @@ struct OverlaySharedRouteMapView: View {
         )
     }
 }
+
+struct OverlaySharedElevationChartView: View {
+    let element: OverlayElement
+    let layout: OverlayElevationChartRenderLayout
+
+    var body: some View {
+        ElevationChartOverlayView(
+            element: element,
+            layout: layout
+        )
+    }
+}
+
+struct OverlaySharedRunningGaugeView: View {
+    let element: OverlayElement
+    let layout: OverlayRunningGaugeRenderLayout
+    let isInteractive: Bool
+
+    var body: some View {
+        RunningGaugeOverlayView(
+            element: element,
+            layout: layout,
+            isSelected: isInteractive
+        )
+    }
+}
+
+struct OverlaySharedLapListView: View {
+    let element: OverlayElement
+    let layout: LapListRenderLayout
+
+    var body: some View {
+        LapListOverlayView(
+            element: element,
+            layout: layout
+        )
+    }
+}
+
+struct OverlaySharedLapCardView: View {
+    let element: OverlayElement
+    let layout: LapCardRenderLayout
+
+    var body: some View {
+        LapCardOverlayView(
+            element: element,
+            layout: layout
+        )
+    }
+}
+
+struct OverlaySharedLapLiveView: View {
+    let element: OverlayElement
+    let layout: LapLiveRenderLayout
+
+    var body: some View {
+        LapLiveOverlayView(
+            element: element,
+            layout: layout
+        )
+    }
+}

@@ -447,13 +447,13 @@ Pending:
 - Batch export one overlay video for each timeline clip, including overlapping clips.
 - Full-activity export ignores video clips and renders one overlay file from FIT start to finish.
 - `Export Test Clip` renders a three-second transparent MOV around the current playhead position using the current overlay layout and active FIT data (falling back to synthetic data when no FIT activity is loaded).
-- `Export SwiftUI Test Clip` is an experimental Scheme-A probe that rasterizes SwiftUI overlay views (`ImageRenderer`) on each frame, then encodes transparent MOV output. Current scope includes visible text-preset overlays, Distance Timeline, and Route Map.
-- Preview and SwiftUI Scheme-A export now invoke the same shared overlay view entry points (`OverlaySharedTextPresetView`, `OverlaySharedDistanceTimelineView`, `OverlaySharedRouteMapView`) and differ only by `isInteractive` flags.
-- `SwiftUIOverlayVideoExporter` now removes its old per-type fallback drawing implementations and keeps only the shared component path used by preview.
-- `Export Test Frame` renders a PNG through the same `OverlayFrameRenderer` at the current playhead position using the current overlay layout.
-- `Export SwiftUI Test Frame` renders a PNG through the same experimental SwiftUI Scheme-A rasterization path at the current playhead position.
+- Export now uses a single SwiftUI-based renderer path that rasterizes shared overlay views (`ImageRenderer`) on each frame and encodes transparent MOV output.
+- Preview and export invoke the same shared overlay view entry points (`OverlaySharedTextPresetView`, `OverlaySharedDistanceTimelineView`, `OverlaySharedRouteMapView`) and differ only by `isInteractive` flags.
+- Shared entry points now also include elevation chart, running gauge, lap list, lap card, and lap live (`OverlaySharedElevationChartView`, `OverlaySharedRunningGaugeView`, `OverlaySharedLapListView`, `OverlaySharedLapCardView`, `OverlaySharedLapLiveView`) so SwiftUI export covers all current overlay controls on the same component path.
+- `SwiftUIOverlayVideoExporter` removes its old per-type fallback drawing implementations and keeps only the shared component path used by preview.
+- `Export Test Frame` renders a PNG through the same SwiftUI export rasterization path at the current playhead position.
 - `Export Overlay JSON` serializes the current `OverlayLayout` as `overlay_configuration.json` for reproducible renderer-debug snapshots.
-- Main `Export` can switch between legacy renderer export and SwiftUI shared-component export via `Use SwiftUI Export` toggle in `ExportDialogView`.
+- Main `Export` no longer exposes legacy mode toggles and always uses SwiftUI shared-component export.
 - Test clip/frame time sampling uses the same activity-time conversion as preview (`timeline.activityElapsed(atProjectTime:)`) before Layer Data FPS quantization.
 - `renderPNG` now supports the same post-render vertical row flip option used by MOV export, so test frame outputs match preview orientation.
 - Text preset export accent color now resolves from `element.style.accentColor` rather than `NSColor.controlAccentColor`.
@@ -464,7 +464,7 @@ Pending:
 - Export can be cancelled from the progress popover; the exporter checks cancellation between segments and while rendering frames.
 - Export reuses `AVAssetWriterInputPixelBufferAdaptor`'s pixel buffer pool instead of allocating a fresh pixel buffer every frame.
 - Export caches attributed text layouts by text/style/sample output, reducing repeated font and string layout work across frames.
-- `OverlayFrameRenderer` owns overlay drawing for both PNG frames and MOV pixel buffers; `OverlayVideoExporter` owns only MOV encoding, frame timing, and progress.
+- `SwiftUIOverlayVideoExporter` owns MOV encoding, frame timing, and progress while rasterizing shared SwiftUI overlay components per frame.
 - Export creates an explicit flipped `NSGraphicsContext` for text drawing so backgrounds and text render through the same bitmap context without global CGContext inversion.
 - Export text is rendered through a 2x supersampled transparent offscreen bitmap before compositing back into the output frame, reducing jagged edges on large saturated text and alpha-shadow boundaries.
 - Export scales font sizes, padding, rounded corners, shadows, distance timeline geometry, and elevation chart geometry from the shared 1280x720 render reference to the selected project resolution.
@@ -476,6 +476,14 @@ Pending:
 
 - Visual snapshot checks for preview/export overlay render parity.
 - Codec fallback handling if HEVC with alpha is unavailable on a machine.
+
+Export performance optimization directions:
+
+- Introduce frame-scoped render caches for static overlay layers (background shapes, static labels, static map tiles) and composite only dynamic layers each frame.
+- Add dirty-region rendering and composition so exporter redraws only changed overlay bounds instead of full-frame rasterization.
+- Parallelize non-UI preprocessing work (sample-time preparation, layout precompute, route/elevation intermediate buffers) while keeping `ImageRenderer` use on `MainActor`.
+- Add adaptive quality knobs for export jobs (supersampling factor, shadow quality, optional map detail level) with profile-based defaults.
+- Add structured export profiling logs (per-frame render ms, encode ms, queue backpressure wait ms, memory high-water mark) and keep representative benchmark projects for regression checks.
 
 ### Phase 7: Polish And Reliability
 

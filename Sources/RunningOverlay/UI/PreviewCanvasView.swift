@@ -580,15 +580,15 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
                     isInteractive: isSelected
                 )
             case .elevationChart:
-                ElevationChartOverlayView(
+                OverlaySharedElevationChartView(
                     element: element,
                     layout: OverlayRenderModel.elevationChartLayout(for: element, in: renderContext)
                 )
             case .runningGauge:
-                RunningGaugeOverlayView(
+                OverlaySharedRunningGaugeView(
                     element: element,
                     layout: OverlayRenderModel.runningGaugeLayout(for: element, in: renderContext),
-                    isSelected: isSelected
+                    isInteractive: isSelected
                 )
             case .routeMap:
                 OverlaySharedRouteMapView(
@@ -597,17 +597,17 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
                     isInteractive: isSelected
                 )
             case .lapList:
-                LapListOverlayView(
+                OverlaySharedLapListView(
                     element: element,
                     layout: OverlayRenderModel.lapListLayout(for: element, in: renderContext)
                 )
             case .lapCard:
-                LapCardOverlayView(
+                OverlaySharedLapCardView(
                     element: element,
                     layout: OverlayRenderModel.lapCardLayout(for: element, in: renderContext)
                 )
             case .lapLive:
-                LapLiveOverlayView(
+                OverlaySharedLapLiveView(
                     element: element,
                     layout: OverlayRenderModel.lapLiveLayout(for: element, in: renderContext)
                 )
@@ -1686,7 +1686,7 @@ struct TextPresetOverlayView: View {
     }
 }
 
-private struct RunningGaugeOverlayView: View {
+struct RunningGaugeOverlayView: View {
     let element: OverlayElement
     let layout: OverlayRunningGaugeRenderLayout
     let isSelected: Bool
@@ -2513,7 +2513,7 @@ private struct DistanceTimelineMediaSlotView: View {
     }
 }
 
-private struct ElevationChartOverlayView: View {
+struct ElevationChartOverlayView: View {
     let element: OverlayElement
     let layout: OverlayElevationChartRenderLayout
 
@@ -2716,7 +2716,7 @@ private struct ElevationChartOverlayView: View {
     }
 }
 
-private struct LapListOverlayView: View {
+struct LapListOverlayView: View {
     let element: OverlayElement
     let layout: LapListRenderLayout
 
@@ -2772,7 +2772,7 @@ private struct LapListOverlayView: View {
     }
 }
 
-private struct LapCardOverlayView: View {
+struct LapCardOverlayView: View {
     let element: OverlayElement
     let layout: LapCardRenderLayout
 
@@ -2858,7 +2858,7 @@ private struct LapCardOverlayView: View {
     }
 }
 
-private struct LapLiveOverlayView: View {
+struct LapLiveOverlayView: View {
     let element: OverlayElement
     let layout: LapLiveRenderLayout
 

@@ -29,9 +29,7 @@ struct SwiftUIOverlayVideoExporter {
             throw OverlayExportError.noSegments
         }
 
-        let supportedOverlays = job.overlayLayout.elements.filter {
-            $0.isVisible && ($0.type.supportsTextPresets || $0.type == .distanceTimeline || $0.type == .routeMap)
-        }
+        let supportedOverlays = job.overlayLayout.elements.filter(\.isVisible)
         guard !supportedOverlays.isEmpty else {
             throw SwiftUIOverlayExportError.noSupportedOverlays
         }
@@ -62,9 +60,7 @@ struct SwiftUIOverlayVideoExporter {
         size: CGSize,
         outputURL: URL
     ) async throws {
-        let supportedOverlays = overlayLayout.elements.filter {
-            $0.isVisible && ($0.type.supportsTextPresets || $0.type == .distanceTimeline || $0.type == .routeMap)
-        }
+        let supportedOverlays = overlayLayout.elements.filter(\.isVisible)
         guard !supportedOverlays.isEmpty else {
             throw SwiftUIOverlayExportError.noSupportedOverlays
         }
@@ -108,11 +104,12 @@ struct SwiftUIOverlayVideoExporter {
         let height = job.settings.resolution.height
         let frameRate = job.settings.frameRate.value
 
-        let outputSettings = [
-            AVVideoCodecKey: AVVideoCodecType.hevcWithAlpha,
-            AVVideoWidthKey: width,
-            AVVideoHeightKey: height
-        ] as [String: Any]
+        let outputSettings = outputSettings(
+            codec: job.settings.exportCodec,
+            width: width,
+            height: height,
+            bitrateMbps: job.settings.bitrateMbps
+        )
         let input = AVAssetWriterInput(mediaType: .video, outputSettings: outputSettings)
         input.expectsMediaDataInRealTime = false
 
@@ -244,6 +241,22 @@ struct SwiftUIOverlayVideoExporter {
         return pixelBuffer
     }
 
+    private static func outputSettings(codec: ProjectExportCodec, width: Int, height: Int, bitrateMbps: Double) -> [String: Any] {
+        var settings: [String: Any] = [
+            AVVideoCodecKey: codec.avCodec,
+            AVVideoWidthKey: width,
+            AVVideoHeightKey: height
+        ]
+
+        if codec == .hevcWithAlpha {
+            settings[AVVideoCompressionPropertiesKey] = [
+                AVVideoAverageBitRateKey: Int(bitrateMbps * 1_000_000)
+            ]
+        }
+
+        return settings
+    }
+
     private static func quantizedLayerDataTime(
         _ elapsedTime: TimeInterval,
         activityDuration: TimeInterval,
@@ -254,6 +267,17 @@ struct SwiftUIOverlayVideoExporter {
         return min(frame / fps, activityDuration)
     }
 
+}
+
+private extension ProjectExportCodec {
+    var avCodec: AVVideoCodecType {
+        switch self {
+        case .hevcWithAlpha:
+            .hevcWithAlpha
+        case .proRes4444:
+            .proRes4444
+        }
+    }
 }
 
 private struct SwiftUIOverlayFrameView: View {
@@ -281,14 +305,38 @@ private struct SwiftUIOverlayFrameView: View {
                             layout: OverlayRenderModel.routeMapLayout(for: element, in: context),
                             isInteractive: false
                         )
+                    case .elevationChart:
+                        OverlaySharedElevationChartView(
+                            element: element,
+                            layout: OverlayRenderModel.elevationChartLayout(for: element, in: context)
+                        )
+                    case .runningGauge:
+                        OverlaySharedRunningGaugeView(
+                            element: element,
+                            layout: OverlayRenderModel.runningGaugeLayout(for: element, in: context),
+                            isInteractive: false
+                        )
+                    case .lapList:
+                        OverlaySharedLapListView(
+                            element: element,
+                            layout: OverlayRenderModel.lapListLayout(for: element, in: context)
+                        )
+                    case .lapCard:
+                        OverlaySharedLapCardView(
+                            element: element,
+                            layout: OverlayRenderModel.lapCardLayout(for: element, in: context)
+                        )
+                    case .lapLive:
+                        OverlaySharedLapLiveView(
+                            element: element,
+                            layout: OverlayRenderModel.lapLiveLayout(for: element, in: context)
+                        )
                     default:
-                        if element.type.supportsTextPresets {
-                            OverlaySharedTextPresetView(
-                                element: element,
-                                layout: OverlayRenderModel.textLayout(for: element, in: context),
-                                isInteractive: false
-                            )
-                        }
+                        OverlaySharedTextPresetView(
+                            element: element,
+                            layout: OverlayRenderModel.textLayout(for: element, in: context),
+                            isInteractive: false
+                        )
                     }
                 }
                 .position(x: size.width * element.position.x, y: size.height * element.position.y)
