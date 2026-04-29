@@ -2,11 +2,94 @@
 
 ## 2026-04-29
 
+### Preview Canvas Drag Performance Optimization
+
+Summary:
+
+- Eliminated per-frame `@Published` mutations during overlay element drag by keeping a local `@State var liveDragPosition` in `PreviewCanvasView`. The position is written to `ProjectDocument` exactly once on drag end, rather than 60+ times per second. This prevents all ProjectDocument observers (Inspector, Timeline, Pool panels) from re-rendering during drag.
+- Extracted overlay element rendering into a private `OverlayElementContent` struct conforming to `@preconcurrency Equatable`. With `.equatable()`, SwiftUI skips `body` execution for non-dragged elements when only `liveDragPosition` changes, avoiding redundant `OverlayRenderModel.*Layout()` computations (gauge, map, chart, text) for elements that have not changed.
+- Moved selection update (`project.selectOverlay`) and undo checkpoint registration (implicit in `moveOverlay`) from per-frame to once per gesture, removing two sources of per-frame document mutation.
+- The `Equatable` comparison covers `element`, `canvasSize`, `sampleTime`, and `isSelected`; `activity` is intentionally excluded because comparing large FIT sample arrays each frame is expensive and `sampleTime` guards layout freshness in practice.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+
+Verification:
+
+- Ran `swift build`.
+- Ran `swift test` — all tests pass except the pre-existing `runningGaugeLayoutCarriesCoreMetricsAndProgress` time-format assertion failure in `OverlayRenderModelTests`.
+
+### Templates Pool Implementation
+
+Summary:
+
+- Added `Templates` as the third top-toolbar Pool mode.
+- Added `TemplatePoolView` with compact name-only rows for built-in and user templates.
+- Added built-in templates: `Easy Run`, `Interval Workout`, and `Race`.
+- Added confirmation dialogs before built-in or user templates clear and replace the current overlay layout.
+- Added user-template context menu actions for rename, duplicate, export, and delete.
+- Added footer actions with a small icon-only import button and a primary `Save Current as Template` button.
+- Removed the Overlay Templates management section from Project Settings.
+- Added ProjectDocument APIs for generated-name saves, built-in template application, rename, and duplicate.
+- Added template tests for generated-name save, rename, duplicate, and built-in replacement undo.
+- Refined Templates Pool rows to use explicit horizontal separators, removed the accidental center divider, and removed the blank-area import context menu from built-in template space.
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/OverlayTemplate.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/UI/PoolPanelView.swift`
+- `Sources/RunningOverlay/UI/ProjectSettingsView.swift`
+- `Sources/RunningOverlay/UI/TemplatePoolView.swift`
+- `Tests/RunningOverlayTests/OverlayTemplateTests.swift`
+- `docs/development.md`
+- `docs/project-log.md`
+- `docs/requirements.md`
+- `docs/roadmap.md`
+- `docs/design/panels/media-pool/media-pool-ui.md`
+- `docs/design/panels/media-pool/media-pool-ui.spec.json`
+
+Verification:
+
+- Ran `swift build`.
+- Ran `swift test --filter OverlayTemplateTests`.
+- Full `swift test` still has the pre-existing Running Gauge time-format assertion failure in `OverlayRenderModelTests`.
+
+### Templates Pool Design Direction
+
+Summary:
+
+- Expanded the left Pool design from two modes to three: `Media Pool`, `Overlay Pool`, and `Templates`.
+- Documented Templates Pool as the single template-management surface, replacing Project Settings template controls.
+- Defined a compact name-only row treatment for built-in and user templates: no leading icons, no trailing buttons, and no visible ellipsis controls.
+- Defined first-pass built-in templates: `Easy Run`, `Interval Workout`, and `Race`.
+- Specified that applying any template clears and replaces current overlays only after confirmation.
+- Specified user-template right-click actions: rename, duplicate, export, and delete.
+- Specified the footer layout: a small square import button on the left and a long `Save Current as Template` primary button on the right.
+
+Files changed:
+
+- `CLAUDE.md`
+- `docs/architecture.md`
+- `docs/design/README.md`
+- `docs/design/panels/media-pool/media-pool-ui.md`
+- `docs/design/panels/media-pool/media-pool-ui.spec.json`
+- `docs/design/system/app-ui.md`
+- `docs/development.md`
+- `docs/project-log.md`
+- `docs/requirements.md`
+- `docs/roadmap.md`
+
+Verification:
+
+- Validated updated JSON specs.
+
 ### Left Pool Split And Overlay Pool
 
 Summary:
 
-- Added `PoolPanelView`, a left-pane container with `Media Pool` and `Overlay Pool` modes.
+- Added a top-toolbar `Media Pool` / `Overlay Pool` switch backed by `MainEditorView` state, with `PoolPanelView` rendering the selected left-pane content.
 - Moved the add-overlay catalog out of the Inspector and into `OverlayPoolView`, preserving the Metrics, Charts, and Route categories.
 - Removed global toolbar FIT/Videos import buttons; Media Pool now owns the import workflow.
 - Updated the no-media state to be FIT-first: `Import FIT` before activity data exists, then `Import Videos` after FIT import.

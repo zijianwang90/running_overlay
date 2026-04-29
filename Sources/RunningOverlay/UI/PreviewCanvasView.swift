@@ -5,6 +5,8 @@ struct PreviewCanvasView: View {
     @EnvironmentObject private var project: ProjectDocument
     // Start position captured once per drag gesture; cumulative translation applied each frame.
     @State private var dragStartPositions: [OverlayElement.ID: CGPoint] = [:]
+    // Live position during drag — local state only, not written to document until drag ends.
+    @State private var liveDragPosition: (id: OverlayElement.ID, pos: CGPoint)?
 
     var body: some View {
         GeometryReader { proxy in
@@ -55,59 +57,64 @@ struct PreviewCanvasView: View {
 
                         ForEach(project.overlayLayout.elements.filter(\.isVisible)) { element in
                             let isSelected = project.selection == .overlayElement(element.id)
-                            overlayView(element, canvasSize: canvasSize)
-                                .overlay {
-                                    if isSelected, element.type != .distanceTimeline {
-                                        PreviewSelectionAffordance()
-                                    }
-                                }
-                                .position(
-                                    x: canvasSize.width * element.position.x,
-                                    y: canvasSize.height * element.position.y
-                                )
-                                .gesture(
-                                    DragGesture(minimumDistance: 2)
-                                        .onChanged { value in
-                                            guard !element.isLocked else {
-                                                return
-                                            }
-                                            // Capture start position exactly once per gesture.
-                                            // DragGesture.value.translation is always cumulative from
-                                            // gesture start, so startPos + totalTranslation is stable.
-                                            if dragStartPositions[element.id] == nil {
-                                                dragStartPositions[element.id] = element.position
-                                            }
-                                            guard let start = dragStartPositions[element.id] else { return }
-                                            project.moveOverlay(element.id, to: CGPoint(
-                                                x: start.x + value.translation.width / max(canvasSize.width, 1),
-                                                y: start.y + value.translation.height / max(canvasSize.height, 1)
-                                            ))
+                            // During drag: use local live position to avoid @Published mutation every frame.
+                            let displayPos: CGPoint = liveDragPosition?.id == element.id
+                                ? liveDragPosition!.pos
+                                : element.position
+                            OverlayElementContent(
+                                element: element,
+                                canvasSize: canvasSize,
+                                sampleTime: project.layerDataSampleTime,
+                                activity: project.activity,
+                                isSelected: isSelected
+                            )  // .equatable() skips body for unchanged elements (e.g., non-dragged)
+                            .equatable()
+                            .position(
+                                x: canvasSize.width * displayPos.x,
+                                y: canvasSize.height * displayPos.y
+                            )
+                            .gesture(
+                                DragGesture(minimumDistance: 2)
+                                    .onChanged { value in
+                                        guard !element.isLocked else { return }
+                                        // Capture start position and select exactly once per gesture.
+                                        if dragStartPositions[element.id] == nil {
+                                            dragStartPositions[element.id] = element.position
                                             project.selectOverlay(element.id)
                                         }
-                                        .onEnded { _ in
-                                            dragStartPositions[element.id] = nil
-                                            project.finishContinuousEdit()
+                                        guard let start = dragStartPositions[element.id] else { return }
+                                        liveDragPosition = (element.id, CGPoint(
+                                            x: min(max(start.x + value.translation.width / max(canvasSize.width, 1), 0), 1),
+                                            y: min(max(start.y + value.translation.height / max(canvasSize.height, 1), 0), 1)
+                                        ))
+                                    }
+                                    .onEnded { _ in
+                                        // Commit final position to document once (single @Published update).
+                                        if let live = liveDragPosition, live.id == element.id {
+                                            project.moveOverlay(element.id, to: live.pos)
                                         }
-                                )
-                                .onTapGesture {
-                                    guard !element.isLocked else {
-                                        return
+                                        liveDragPosition = nil
+                                        dragStartPositions[element.id] = nil
+                                        project.finishContinuousEdit()
                                     }
-                                    project.selectOverlay(element.id)
+                            )
+                            .onTapGesture {
+                                guard !element.isLocked else { return }
+                                project.selectOverlay(element.id)
+                            }
+                            .contextMenu {
+                                Button {
+                                    project.copyOverlayProperties(from: element.id)
+                                } label: {
+                                    Label("Copy Properties", systemImage: "doc.on.doc")
                                 }
-                                .contextMenu {
-                                    Button {
-                                        project.copyOverlayProperties(from: element.id)
-                                    } label: {
-                                        Label("Copy Properties", systemImage: "doc.on.doc")
-                                    }
-                                    Button {
-                                        project.pasteOverlayProperties(to: element.id)
-                                    } label: {
-                                        Label("Paste Properties", systemImage: "doc.on.clipboard")
-                                    }
-                                    .disabled(!project.canPasteOverlayProperties(to: element.id))
+                                Button {
+                                    project.pasteOverlayProperties(to: element.id)
+                                } label: {
+                                    Label("Paste Properties", systemImage: "doc.on.clipboard")
                                 }
+                                .disabled(!project.canPasteOverlayProperties(to: element.id))
+                            }
                         }
                     }
                     .frame(width: canvasSize.width, height: canvasSize.height)
@@ -138,64 +145,6 @@ struct PreviewCanvasView: View {
         }
 
         return CGSize(width: availableSize.height * aspectRatio, height: availableSize.height)
-    }
-
-    private func overlayView(_ element: OverlayElement, canvasSize: CGSize) -> some View {
-        let sampleTime = project.layerDataSampleTime
-        let renderContext = OverlayRenderContext(
-            canvasSize: canvasSize,
-            activity: project.activity,
-            elapsedTime: sampleTime
-        )
-        return Group {
-            switch element.type {
-            case .distanceTimeline:
-                DistanceTimelineOverlayView(
-                    element: element,
-                    layout: OverlayRenderModel.distanceTimelineLayout(for: element, in: renderContext),
-                    isSelected: project.selection == .overlayElement(element.id)
-                )
-            case .elevationChart:
-                ElevationChartOverlayView(
-                    element: element,
-                    layout: OverlayRenderModel.elevationChartLayout(for: element, in: renderContext)
-                )
-            case .runningGauge:
-                RunningGaugeOverlayView(
-                    element: element,
-                    layout: OverlayRenderModel.runningGaugeLayout(for: element, in: renderContext),
-                    isSelected: project.selection == .overlayElement(element.id)
-                )
-            case .routeMap:
-                RouteMapOverlayView(
-                    element: element,
-                    layout: OverlayRenderModel.routeMapLayout(for: element, in: renderContext),
-                    isSelected: project.selection == .overlayElement(element.id)
-                )
-            case .lapList:
-                LapListOverlayView(
-                    element: element,
-                    layout: OverlayRenderModel.lapListLayout(for: element, in: renderContext)
-                )
-            case .lapCard:
-                LapCardOverlayView(
-                    element: element,
-                    layout: OverlayRenderModel.lapCardLayout(for: element, in: renderContext)
-                )
-            case .lapLive:
-                LapLiveOverlayView(
-                    element: element,
-                    layout: OverlayRenderModel.lapLiveLayout(for: element, in: renderContext)
-                )
-            default:
-                let layout = OverlayRenderModel.textLayout(for: element, in: renderContext)
-                TextPresetOverlayView(
-                    element: element,
-                    layout: layout,
-                    isSelected: project.selection == .overlayElement(element.id)
-                )
-            }
-        }
     }
 
 }
@@ -269,6 +218,86 @@ private struct PreviewGuidesHUD: View {
             .background(EditorTheme.accentBlueSoft.opacity(0.78))
             .clipShape(RoundedRectangle(cornerRadius: EditorTheme.controlRadius))
             .padding(EditorTheme.space3)
+    }
+}
+
+// Equatable wrapper so SwiftUI can skip body re-execution for elements whose
+// inputs haven't changed (e.g., all non-dragged elements during a drag gesture).
+// activity is excluded from == because comparing large FIT sample arrays is expensive;
+// sampleTime serves as a proxy — the same elapsed time always yields the same layout.
+private struct OverlayElementContent: View, @preconcurrency Equatable {
+    let element: OverlayElement
+    let canvasSize: CGSize
+    let sampleTime: Double
+    let activity: ActivityTimeline
+    let isSelected: Bool
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.element == rhs.element
+            && lhs.canvasSize == rhs.canvasSize
+            && lhs.sampleTime == rhs.sampleTime
+            && lhs.isSelected == rhs.isSelected
+    }
+
+    var body: some View {
+        let renderContext = OverlayRenderContext(
+            canvasSize: canvasSize,
+            activity: activity,
+            elapsedTime: sampleTime
+        )
+        Group {
+            switch element.type {
+            case .distanceTimeline:
+                DistanceTimelineOverlayView(
+                    element: element,
+                    layout: OverlayRenderModel.distanceTimelineLayout(for: element, in: renderContext),
+                    isSelected: isSelected
+                )
+            case .elevationChart:
+                ElevationChartOverlayView(
+                    element: element,
+                    layout: OverlayRenderModel.elevationChartLayout(for: element, in: renderContext)
+                )
+            case .runningGauge:
+                RunningGaugeOverlayView(
+                    element: element,
+                    layout: OverlayRenderModel.runningGaugeLayout(for: element, in: renderContext),
+                    isSelected: isSelected
+                )
+            case .routeMap:
+                RouteMapOverlayView(
+                    element: element,
+                    layout: OverlayRenderModel.routeMapLayout(for: element, in: renderContext),
+                    isSelected: isSelected
+                )
+            case .lapList:
+                LapListOverlayView(
+                    element: element,
+                    layout: OverlayRenderModel.lapListLayout(for: element, in: renderContext)
+                )
+            case .lapCard:
+                LapCardOverlayView(
+                    element: element,
+                    layout: OverlayRenderModel.lapCardLayout(for: element, in: renderContext)
+                )
+            case .lapLive:
+                LapLiveOverlayView(
+                    element: element,
+                    layout: OverlayRenderModel.lapLiveLayout(for: element, in: renderContext)
+                )
+            default:
+                TextPresetOverlayView(
+                    element: element,
+                    layout: OverlayRenderModel.textLayout(for: element, in: renderContext),
+                    isSelected: isSelected
+                )
+            }
+        }
+        .overlay {
+            if isSelected, element.type != .distanceTimeline {
+                PreviewSelectionAffordance()
+            }
+        }
     }
 }
 

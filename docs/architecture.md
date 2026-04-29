@@ -99,6 +99,7 @@ Responsibilities:
 - Provide renderable overlay state for preview and export.
 - Keep Inspector controls model-backed; omit or disable controls such as visibility, lock, animation, generic opacity, and metric reassignment until those fields exist in the project schema.
 - Provide addable overlay definitions to the left Overlay Pool; the right Inspector manages added overlays and edits selected overlay details.
+- Provide reusable overlay layouts through Templates Pool. Applying a template replaces the current overlay layout through `ProjectDocument` so replacement is explicit and undoable.
 
 Current overlay element types:
 
@@ -119,6 +120,11 @@ Responsibilities:
 - Fit the project-resolution canvas into the available preview region.
 - Composite editable overlay elements over that fitted canvas.
 - Map overlay normalized positions, drag deltas, guides, and preview scale from the fitted canvas rather than the outer preview container.
+
+Drag rendering contract:
+
+- During an overlay element drag, position is tracked in local `@State` (`liveDragPosition`) inside `PreviewCanvasView` and not written to `ProjectDocument` until `onEnded`. This keeps `@Published overlayLayout` stable during the gesture, preventing cascading re-renders across all document observers.
+- Each overlay element is wrapped in `OverlayElementContent`, a private `Equatable` view. SwiftUI uses `.equatable()` to skip `body` re-execution for elements whose inputs (`element`, `canvasSize`, `sampleTime`, `isSelected`) have not changed, avoiding redundant layout model computations for non-dragged elements.
 
 ### Export
 
