@@ -119,7 +119,7 @@ struct OverlayRenderModelTests {
         let regions = Dictionary(uniqueKeysWithValues: layout.regions.map { ($0.config.region, $0) })
         #expect(regions[.top]?.components.value == "0.05")
         #expect(regions[.middleLeft]?.components.value == "--'--\"")
-        #expect(regions[.middleRight]?.components.value == "00:05")
+        #expect(regions[.middleRight]?.components.value == "00:00:05")
         #expect(regions[.bottom]?.components.value == "110")
         #expect(layout.progress == 0.5)
         #expect(layout.rect.width == 300)

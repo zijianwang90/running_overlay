@@ -84,11 +84,13 @@ Summary:
 - Added ProjectDocument APIs for generated-name saves, built-in template application, rename, and duplicate.
 - Added template tests for generated-name save, rename, duplicate, and built-in replacement undo.
 - Refined Templates Pool rows to use explicit horizontal separators, removed the accidental center divider, and removed the blank-area import context menu from built-in template space.
+- Replaced the placeholder `Easy Run` built-in with the bundled `EasyRun.rotemplate` resource supplied from `/Users/codywang/Desktop/running_overlay/Test 2/Template.rotemplate`.
 
 Files changed:
 
 - `Sources/RunningOverlay/Overlay/OverlayTemplate.swift`
 - `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/Resources/Templates/EasyRun.rotemplate`
 - `Sources/RunningOverlay/UI/PoolPanelView.swift`
 - `Sources/RunningOverlay/UI/ProjectSettingsView.swift`
 - `Sources/RunningOverlay/UI/TemplatePoolView.swift`

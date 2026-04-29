@@ -1,0 +1,3878 @@
+{
+  "createdAt" : 799162914.800923,
+  "elements" : [
+    {
+      "isLocked" : false,
+      "isVisible" : true,
+      "positionX" : 0.2102358908061998,
+      "positionY" : 0.9049159976211716,
+      "scale" : 1,
+      "style" : {
+        "accentColor" : {
+          "alpha" : 1,
+          "blue" : 1,
+          "green" : 1,
+          "red" : 1
+        },
+        "backgroundBlurRadius" : 0,
+        "backgroundColor" : {
+          "alpha" : 1,
+          "blue" : 0,
+          "green" : 0,
+          "red" : 0
+        },
+        "backgroundEnabled" : false,
+        "backgroundFadeOutAmount" : 0.22,
+        "backgroundFadeOutEnabled" : false,
+        "backgroundOpacity" : 0.5,
+        "backgroundPaddingX" : 10,
+        "backgroundPaddingY" : 6,
+        "backgroundRadius" : 0,
+        "customLabel" : "",
+        "distanceTimeline" : {
+          "axisLabelMode" : "startFinish",
+          "axisLabelOffset" : 14,
+          "backgroundColor" : {
+            "alpha" : 1,
+            "blue" : 0,
+            "green" : 0,
+            "red" : 0
+          },
+          "backgroundEnabled" : true,
+          "backgroundOpacity" : 0.7,
+          "borderColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "borderEnabled" : false,
+          "borderOpacity" : 0.18,
+          "borderWidth" : 1,
+          "cornerRadius" : 9,
+          "currentMarkerEnabled" : false,
+          "customValueColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "customValueFontSize" : 12,
+          "customValueOpacity" : 0.7,
+          "customValueSpacing" : 10,
+          "customValues" : [
+            {
+              "label" : "",
+              "metric" : "distance",
+              "value" : "",
+              "visible" : false
+            },
+            {
+              "label" : "",
+              "metric" : "distance",
+              "value" : "",
+              "visible" : false
+            },
+            {
+              "label" : "",
+              "metric" : "distance",
+              "value" : "",
+              "visible" : false
+            },
+            {
+              "label" : "",
+              "metric" : "distance",
+              "value" : "",
+              "visible" : false
+            }
+          ],
+          "customValuesEnabled" : false,
+          "customValuesGroupSpacing" : 12,
+          "distancePointCount" : 3,
+          "distancePointOffset" : 34,
+          "elevationProfileVisible" : false,
+          "fadeAmount" : 0.22,
+          "fadeEdge" : "right",
+          "fadeEnabled" : false,
+          "fillColor" : {
+            "alpha" : 1,
+            "blue" : 0.38,
+            "green" : 0.82,
+            "red" : 0.25
+          },
+          "glowEnabled" : false,
+          "height" : 68,
+          "label" : "Distance",
+          "mediaSlot" : {
+            "animationDuration" : 1.2,
+            "animationSpeed" : 1,
+            "assetName" : "",
+            "loop" : true,
+            "mode" : "systemIcon",
+            "svgSource" : "",
+            "systemImage" : "figure.run",
+            "tintMode" : "accent"
+          },
+          "mediaSlotEnabled" : false,
+          "mediaSlotMode" : "none",
+          "mediaSlotSize" : 30,
+          "mediaSystemImage" : "figure.run",
+          "paddingX" : 14,
+          "paddingY" : 10,
+          "preset" : "minimal",
+          "showAxisLabels" : false,
+          "showDistancePoints" : false,
+          "showLabel" : false,
+          "showValue" : true,
+          "statsBar" : {
+            "backgroundOpacity" : 0.72,
+            "cornerRadius" : 8,
+            "dividerOpacity" : 0.12,
+            "height" : 42,
+            "inside" : false,
+            "itemSpacing" : 0,
+            "labelColor" : {
+              "alpha" : 0.58,
+              "blue" : 1,
+              "green" : 1,
+              "red" : 1
+            },
+            "labelFontName" : "SF Pro Display",
+            "labelFontSize" : 10,
+            "labelFontWeight" : "medium",
+            "layoutMode" : "equalColumns",
+            "offsetX" : 0,
+            "offsetY" : 0,
+            "placement" : "bottomAttached",
+            "slots" : [
+              {
+                "customLabel" : "",
+                "metric" : "distance",
+                "visible" : true
+              },
+              {
+                "customLabel" : "",
+                "metric" : "pace",
+                "visible" : true
+              },
+              {
+                "customLabel" : "",
+                "metric" : "elapsedTime",
+                "visible" : false
+              },
+              {
+                "customLabel" : "",
+                "metric" : "heartRate",
+                "visible" : false
+              }
+            ],
+            "valueColor" : {
+              "alpha" : 1,
+              "blue" : 1,
+              "green" : 1,
+              "red" : 1
+            },
+            "valueFontName" : "SF Pro Display",
+            "valueFontSize" : 30,
+            "valueFontWeight" : "semibold",
+            "visible" : false,
+            "width" : 0
+          },
+          "tickDensity" : 16,
+          "tickMarksEnabled" : false,
+          "trackHeight" : 6,
+          "trackOpacity" : 0.24,
+          "valueUnitSystem" : "metric",
+          "width" : 280
+        },
+        "elevationChart" : {
+          "axisLabelsEnabled" : true,
+          "backgroundColor" : {
+            "alpha" : 1,
+            "blue" : 0,
+            "green" : 0,
+            "red" : 0
+          },
+          "backgroundEnabled" : true,
+          "backgroundOpacity" : 0.5,
+          "bigNumberFontSize" : 42,
+          "bigNumberMetric" : "currentElevation",
+          "bigNumbersEnabled" : false,
+          "borderEnabled" : true,
+          "borderOpacity" : 0.12,
+          "chartPaddingX" : 14,
+          "chartPaddingY" : 10,
+          "chartStyle" : "area",
+          "cornerRadius" : 16,
+          "currentMarkerEnabled" : true,
+          "dualAreaEnabled" : false,
+          "fillEnabled" : true,
+          "fillEndColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "fillOpacity" : 0.42,
+          "fillStartColor" : {
+            "alpha" : 1,
+            "blue" : 0.38,
+            "green" : 0.82,
+            "red" : 0.25
+          },
+          "glowEnabled" : false,
+          "glowOpacity" : 0.25,
+          "gridEnabled" : false,
+          "height" : 170,
+          "lineColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "lineOpacity" : 0.95,
+          "lineWidth" : 2.5,
+          "lowerFillColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.75,
+            "red" : 0.25
+          },
+          "markerColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "markerLabelEnabled" : true,
+          "preset" : "gradientArea",
+          "progressMode" : "fullProfile",
+          "shadowEnabled" : true,
+          "shadowOpacity" : 0.28,
+          "shadowRadius" : 14,
+          "smoothingEnabled" : true,
+          "statsBar" : {
+            "backgroundOpacity" : 0.62,
+            "cornerRadius" : 12,
+            "dividerOpacity" : 0.14,
+            "height" : 58,
+            "inside" : false,
+            "itemSpacing" : 0,
+            "labelColor" : {
+              "alpha" : 0.58,
+              "blue" : 1,
+              "green" : 1,
+              "red" : 1
+            },
+            "labelFontName" : "SF Pro Display",
+            "labelFontSize" : 10,
+            "labelFontWeight" : "medium",
+            "layoutMode" : "equalColumns",
+            "offsetX" : 0,
+            "offsetY" : 0,
+            "placement" : "bottomAttached",
+            "slots" : [
+              {
+                "customLabel" : "",
+                "metric" : "distance",
+                "visible" : true
+              },
+              {
+                "customLabel" : "ELEV",
+                "metric" : "elevation",
+                "visible" : true
+              },
+              {
+                "customLabel" : "",
+                "metric" : "elapsedTime",
+                "visible" : true
+              },
+              {
+                "customLabel" : "",
+                "metric" : "grade",
+                "visible" : false
+              }
+            ],
+            "valueColor" : {
+              "alpha" : 1,
+              "blue" : 1,
+              "green" : 1,
+              "red" : 1
+            },
+            "valueFontName" : "SF Pro Display",
+            "valueFontSize" : 22,
+            "valueFontWeight" : "semibold",
+            "visible" : true,
+            "width" : 0
+          },
+          "upperFillColor" : {
+            "alpha" : 1,
+            "blue" : 0.12,
+            "green" : 0.54,
+            "red" : 1
+          },
+          "width" : 420
+        },
+        "fontName" : "SF Pro",
+        "fontSize" : 42,
+        "fontWeight" : "bold",
+        "foregroundColor" : {
+          "alpha" : 1,
+          "blue" : 1,
+          "green" : 1,
+          "red" : 1
+        },
+        "gauge" : {
+          "accentColor" : {
+            "alpha" : 1,
+            "blue" : 0.12,
+            "green" : 0.54,
+            "red" : 1
+          },
+          "dialBackgroundColor" : {
+            "alpha" : 1,
+            "blue" : 0,
+            "green" : 0,
+            "red" : 0
+          },
+          "dialBackgroundOpacity" : 0.7,
+          "dividerColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "dividerEnabled" : true,
+          "dividerOpacity" : 0.22,
+          "dividerWidth" : 1,
+          "fontName" : "SF Pro",
+          "glassEffectEnabled" : false,
+          "glowColor" : {
+            "alpha" : 1,
+            "blue" : 0.12,
+            "green" : 0.54,
+            "red" : 1
+          },
+          "glowEnabled" : false,
+          "glowOpacity" : 0,
+          "glowRadius" : 0,
+          "layoutPreset" : "topTwoMiddleBottom",
+          "majorTickEvery" : 5,
+          "majorTickOpacity" : 0.95,
+          "monospacedDigits" : true,
+          "outerRingColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "outerRingEnabled" : true,
+          "outerRingOpacity" : 0.5,
+          "outerRingWidthScale" : 0.022,
+          "primaryFontWeight" : "bold",
+          "primaryTextColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "progressColor" : {
+            "alpha" : 1,
+            "blue" : 0.12,
+            "green" : 0.54,
+            "red" : 1
+          },
+          "progressMode" : "distanceTarget",
+          "progressRingEnabled" : true,
+          "progressRingWidthScale" : 0.026,
+          "progressRoundedCaps" : true,
+          "progressTrackColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "progressTrackOpacity" : 0.22,
+          "regions" : [
+            {
+              "customLabel" : "",
+              "labelFontScale" : 0.32,
+              "labelWeight" : "medium",
+              "metric" : "distance",
+              "region" : "top",
+              "showIcon" : false,
+              "showLabel" : true,
+              "showUnit" : true,
+              "unitFontScale" : 0.42,
+              "valueFontScale" : 1,
+              "valueWeight" : "bold"
+            },
+            {
+              "customLabel" : "",
+              "labelFontScale" : 0.32,
+              "labelWeight" : "medium",
+              "metric" : "pace",
+              "region" : "middleLeft",
+              "showIcon" : false,
+              "showLabel" : true,
+              "showUnit" : true,
+              "unitFontScale" : 0.42,
+              "valueFontScale" : 0.62,
+              "valueWeight" : "bold"
+            },
+            {
+              "customLabel" : "",
+              "labelFontScale" : 0.32,
+              "labelWeight" : "medium",
+              "metric" : "elapsedTime",
+              "region" : "middleRight",
+              "showIcon" : false,
+              "showLabel" : true,
+              "showUnit" : true,
+              "unitFontScale" : 0.42,
+              "valueFontScale" : 0.62,
+              "valueWeight" : "bold"
+            },
+            {
+              "customLabel" : "",
+              "labelFontScale" : 0.32,
+              "labelWeight" : "medium",
+              "metric" : "heartRate",
+              "region" : "bottom",
+              "showIcon" : false,
+              "showLabel" : true,
+              "showUnit" : true,
+              "unitFontScale" : 0.42,
+              "valueFontScale" : 0.66,
+              "valueWeight" : "bold"
+            }
+          ],
+          "secondaryFontWeight" : "medium",
+          "secondaryTextColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "shadowEnabled" : true,
+          "shadowOpacity" : 0.45,
+          "shadowRadius" : 12,
+          "stylePreset" : "roadRun",
+          "tickColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "tickCount" : 60,
+          "tickMarksEnabled" : true,
+          "tickOpacity" : 0.42
+        },
+        "gaugePreset" : "minimalSport",
+        "labelColor" : {
+          "alpha" : 1,
+          "blue" : 0.18,
+          "green" : 0.82,
+          "red" : 1
+        },
+        "labelFontName" : "SF Pro",
+        "labelFontSize" : 12,
+        "labelFontWeight" : "medium",
+        "labelOpacity" : 1,
+        "labelPosition" : "top",
+        "labelSpacing" : 8,
+        "lapCard" : {
+          "backgroundOpacity" : 0.8,
+          "cardWidth" : 280,
+          "columns" : [
+            {
+              "column" : "lapNumber",
+              "visible" : true
+            },
+            {
+              "column" : "lapKind",
+              "visible" : true
+            },
+            {
+              "column" : "distance",
+              "visible" : true
+            },
+            {
+              "column" : "elapsedTime",
+              "visible" : true
+            },
+            {
+              "column" : "pace",
+              "visible" : true
+            },
+            {
+              "column" : "avgHR",
+              "visible" : true
+            },
+            {
+              "column" : "maxHR",
+              "visible" : false
+            },
+            {
+              "column" : "cadence",
+              "visible" : false
+            },
+            {
+              "column" : "power",
+              "visible" : false
+            },
+            {
+              "column" : "ascent",
+              "visible" : false
+            }
+          ],
+          "cornerRadius" : 8,
+          "progressColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "recoveryMetrics" : [
+            "currentHR",
+            "hrDrop",
+            "hrDropPercent",
+            "restElapsedTime"
+          ],
+          "recoveryProgressEnabled" : false,
+          "recoveryTargetHR" : 0,
+          "showRecoverySection" : true
+        },
+        "lapList" : {
+          "backgroundOpacity" : 0.75,
+          "columns" : [
+            {
+              "metric" : "lapNumber",
+              "visible" : true
+            },
+            {
+              "metric" : "lapKind",
+              "visible" : true
+            },
+            {
+              "metric" : "distance",
+              "visible" : true
+            },
+            {
+              "metric" : "elapsedTime",
+              "visible" : true
+            },
+            {
+              "metric" : "pace",
+              "visible" : true
+            },
+            {
+              "metric" : "heartRate",
+              "visible" : false
+            },
+            {
+              "metric" : "cadence",
+              "visible" : false
+            },
+            {
+              "metric" : "power",
+              "visible" : false
+            },
+            {
+              "metric" : "ascent",
+              "visible" : false
+            }
+          ],
+          "currentRowAnchor" : "center",
+          "fadeEnabled" : true,
+          "fadeMinOpacity" : 0.25,
+          "progressBarEnabled" : true,
+          "progressColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "progressMode" : "distance",
+          "progressOpacity" : 0.35,
+          "rowCornerRadius" : 4,
+          "rowHeight" : 36,
+          "rowSpacing" : 2,
+          "showCompletedMark" : false,
+          "visibleRowCount" : 5
+        },
+        "lapLive" : {
+          "activeMetrics" : [
+            {
+              "metric" : "lapElapsedTime",
+              "visible" : true
+            },
+            {
+              "metric" : "lapDistance",
+              "visible" : true
+            },
+            {
+              "metric" : "pace",
+              "visible" : true
+            },
+            {
+              "metric" : "heartRate",
+              "visible" : true
+            },
+            {
+              "metric" : "power",
+              "visible" : false
+            },
+            {
+              "metric" : "cadence",
+              "visible" : false
+            }
+          ],
+          "backgroundOpacity" : 0.8,
+          "cardWidth" : 240,
+          "cornerRadius" : 8,
+          "progressColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "progressMode" : "distance",
+          "progressOpacity" : 0.35,
+          "recoveryMetrics" : [
+            "currentHR",
+            "hrDrop",
+            "hrDropPercent",
+            "restElapsedTime"
+          ],
+          "recoveryProgressEnabled" : false,
+          "recoveryTargetHR" : 0,
+          "restMode" : "recovery",
+          "showProgressBar" : true
+        },
+        "rotationDegrees" : 0,
+        "routeMapBackgroundStyle" : "dark",
+        "routeMapBorderVisible" : true,
+        "routeMapColorMode" : "solid",
+        "routeMapContainerPreset" : "squareHardEdge",
+        "routeMapCornerRadius" : 12,
+        "routeMapEdgeFade" : "solid",
+        "routeMapEndMarkerStyle" : "dot",
+        "routeMapFadeAmount" : 0.22,
+        "routeMapGradientEnd" : {
+          "alpha" : 1,
+          "blue" : 0.2,
+          "green" : 0.24,
+          "red" : 1
+        },
+        "routeMapGradientMiddle" : {
+          "alpha" : 1,
+          "blue" : 0.18,
+          "green" : 0.82,
+          "red" : 1
+        },
+        "routeMapGradientStart" : {
+          "alpha" : 1,
+          "blue" : 0.38,
+          "green" : 0.82,
+          "red" : 0.25
+        },
+        "routeMapHeight" : 240,
+        "routeMapLegendMode" : "startFinishDistance",
+        "routeMapLegendVisible" : true,
+        "routeMapMapOpacity" : 0.72,
+        "routeMapMarkerStyle" : "dot",
+        "routeMapPreset" : "minimal",
+        "routeMapProvider" : "none",
+        "routeMapShape" : "square",
+        "routeMapStartMarkerStyle" : "dot",
+        "routeMapStatsBar" : {
+          "backgroundOpacity" : 0.88,
+          "blurRadius" : 0,
+          "cornerRadius" : 0,
+          "dividerOpacity" : 0.12,
+          "height" : 64,
+          "inside" : false,
+          "itemSpacing" : 0,
+          "labelColor" : {
+            "alpha" : 0.58,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "labelFontName" : "SF Pro Display",
+          "labelFontSize" : 10,
+          "labelFontWeight" : "medium",
+          "layoutMode" : "equalColumns",
+          "offsetX" : 0,
+          "offsetY" : 0,
+          "placement" : "bottomAttached",
+          "slots" : [
+            {
+              "customLabel" : "",
+              "metric" : "distance",
+              "visible" : true
+            },
+            {
+              "customLabel" : "",
+              "metric" : "pace",
+              "visible" : true
+            },
+            {
+              "customLabel" : "",
+              "metric" : "elapsedTime",
+              "visible" : true
+            },
+            {
+              "customLabel" : "",
+              "metric" : "heartRate",
+              "visible" : false
+            }
+          ],
+          "valueColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "valueFontName" : "SF Pro Display",
+          "valueFontSize" : 30,
+          "valueFontWeight" : "semibold",
+          "visible" : false,
+          "width" : 0
+        },
+        "routeMapWidth" : 320,
+        "shadowEnabled" : true,
+        "shadowOffsetX" : 4,
+        "shadowOffsetY" : 4,
+        "shadowOpacity" : 0.7000000000000001,
+        "shadowRadius" : 4,
+        "showLabel" : true,
+        "showUnit" : true,
+        "textAlignment" : "leading",
+        "textPreset" : "splitLabel",
+        "unitColor" : {
+          "alpha" : 1,
+          "blue" : 1,
+          "green" : 1,
+          "red" : 1
+        },
+        "unitFontName" : "SF Pro",
+        "unitFontSize" : 20,
+        "unitFontWeight" : "medium",
+        "unitOpacity" : 1,
+        "unitOption" : "bpm",
+        "unitPosition" : "trailing",
+        "unitSpacing" : 8,
+        "valueColor" : {
+          "alpha" : 1,
+          "blue" : 1,
+          "green" : 1,
+          "red" : 1
+        },
+        "valueOpacity" : 1
+      },
+      "type" : "pace"
+    },
+    {
+      "isLocked" : false,
+      "isVisible" : true,
+      "positionX" : 0.089375,
+      "positionY" : 0.9049159976211717,
+      "scale" : 1,
+      "style" : {
+        "accentColor" : {
+          "alpha" : 1,
+          "blue" : 1,
+          "green" : 1,
+          "red" : 1
+        },
+        "backgroundBlurRadius" : 0,
+        "backgroundColor" : {
+          "alpha" : 1,
+          "blue" : 0,
+          "green" : 0,
+          "red" : 0
+        },
+        "backgroundEnabled" : false,
+        "backgroundFadeOutAmount" : 0.22,
+        "backgroundFadeOutEnabled" : false,
+        "backgroundOpacity" : 0.5,
+        "backgroundPaddingX" : 10,
+        "backgroundPaddingY" : 6,
+        "backgroundRadius" : 0,
+        "customLabel" : "",
+        "distanceTimeline" : {
+          "axisLabelMode" : "startFinish",
+          "axisLabelOffset" : 14,
+          "backgroundColor" : {
+            "alpha" : 1,
+            "blue" : 0,
+            "green" : 0,
+            "red" : 0
+          },
+          "backgroundEnabled" : true,
+          "backgroundOpacity" : 0.7,
+          "borderColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "borderEnabled" : false,
+          "borderOpacity" : 0.18,
+          "borderWidth" : 1,
+          "cornerRadius" : 9,
+          "currentMarkerEnabled" : false,
+          "customValueColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "customValueFontSize" : 12,
+          "customValueOpacity" : 0.7,
+          "customValueSpacing" : 10,
+          "customValues" : [
+            {
+              "label" : "",
+              "metric" : "distance",
+              "value" : "",
+              "visible" : false
+            },
+            {
+              "label" : "",
+              "metric" : "distance",
+              "value" : "",
+              "visible" : false
+            },
+            {
+              "label" : "",
+              "metric" : "distance",
+              "value" : "",
+              "visible" : false
+            },
+            {
+              "label" : "",
+              "metric" : "distance",
+              "value" : "",
+              "visible" : false
+            }
+          ],
+          "customValuesEnabled" : false,
+          "customValuesGroupSpacing" : 12,
+          "distancePointCount" : 3,
+          "distancePointOffset" : 34,
+          "elevationProfileVisible" : false,
+          "fadeAmount" : 0.22,
+          "fadeEdge" : "right",
+          "fadeEnabled" : false,
+          "fillColor" : {
+            "alpha" : 1,
+            "blue" : 0.38,
+            "green" : 0.82,
+            "red" : 0.25
+          },
+          "glowEnabled" : false,
+          "height" : 68,
+          "label" : "Distance",
+          "mediaSlot" : {
+            "animationDuration" : 1.2,
+            "animationSpeed" : 1,
+            "assetName" : "",
+            "loop" : true,
+            "mode" : "systemIcon",
+            "svgSource" : "",
+            "systemImage" : "figure.run",
+            "tintMode" : "accent"
+          },
+          "mediaSlotEnabled" : false,
+          "mediaSlotMode" : "none",
+          "mediaSlotSize" : 30,
+          "mediaSystemImage" : "figure.run",
+          "paddingX" : 14,
+          "paddingY" : 10,
+          "preset" : "minimal",
+          "showAxisLabels" : false,
+          "showDistancePoints" : false,
+          "showLabel" : false,
+          "showValue" : true,
+          "statsBar" : {
+            "backgroundOpacity" : 0.72,
+            "cornerRadius" : 8,
+            "dividerOpacity" : 0.12,
+            "height" : 42,
+            "inside" : false,
+            "itemSpacing" : 0,
+            "labelColor" : {
+              "alpha" : 0.58,
+              "blue" : 1,
+              "green" : 1,
+              "red" : 1
+            },
+            "labelFontName" : "SF Pro Display",
+            "labelFontSize" : 10,
+            "labelFontWeight" : "medium",
+            "layoutMode" : "equalColumns",
+            "offsetX" : 0,
+            "offsetY" : 0,
+            "placement" : "bottomAttached",
+            "slots" : [
+              {
+                "customLabel" : "",
+                "metric" : "distance",
+                "visible" : true
+              },
+              {
+                "customLabel" : "",
+                "metric" : "pace",
+                "visible" : true
+              },
+              {
+                "customLabel" : "",
+                "metric" : "elapsedTime",
+                "visible" : false
+              },
+              {
+                "customLabel" : "",
+                "metric" : "heartRate",
+                "visible" : false
+              }
+            ],
+            "valueColor" : {
+              "alpha" : 1,
+              "blue" : 1,
+              "green" : 1,
+              "red" : 1
+            },
+            "valueFontName" : "SF Pro Display",
+            "valueFontSize" : 30,
+            "valueFontWeight" : "semibold",
+            "visible" : false,
+            "width" : 0
+          },
+          "tickDensity" : 16,
+          "tickMarksEnabled" : false,
+          "trackHeight" : 6,
+          "trackOpacity" : 0.24,
+          "valueUnitSystem" : "metric",
+          "width" : 280
+        },
+        "elevationChart" : {
+          "axisLabelsEnabled" : true,
+          "backgroundColor" : {
+            "alpha" : 1,
+            "blue" : 0,
+            "green" : 0,
+            "red" : 0
+          },
+          "backgroundEnabled" : true,
+          "backgroundOpacity" : 0.5,
+          "bigNumberFontSize" : 42,
+          "bigNumberMetric" : "currentElevation",
+          "bigNumbersEnabled" : false,
+          "borderEnabled" : true,
+          "borderOpacity" : 0.12,
+          "chartPaddingX" : 14,
+          "chartPaddingY" : 10,
+          "chartStyle" : "area",
+          "cornerRadius" : 16,
+          "currentMarkerEnabled" : true,
+          "dualAreaEnabled" : false,
+          "fillEnabled" : true,
+          "fillEndColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "fillOpacity" : 0.42,
+          "fillStartColor" : {
+            "alpha" : 1,
+            "blue" : 0.38,
+            "green" : 0.82,
+            "red" : 0.25
+          },
+          "glowEnabled" : false,
+          "glowOpacity" : 0.25,
+          "gridEnabled" : false,
+          "height" : 170,
+          "lineColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "lineOpacity" : 0.95,
+          "lineWidth" : 2.5,
+          "lowerFillColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.75,
+            "red" : 0.25
+          },
+          "markerColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "markerLabelEnabled" : true,
+          "preset" : "gradientArea",
+          "progressMode" : "fullProfile",
+          "shadowEnabled" : true,
+          "shadowOpacity" : 0.28,
+          "shadowRadius" : 14,
+          "smoothingEnabled" : true,
+          "statsBar" : {
+            "backgroundOpacity" : 0.62,
+            "cornerRadius" : 12,
+            "dividerOpacity" : 0.14,
+            "height" : 58,
+            "inside" : false,
+            "itemSpacing" : 0,
+            "labelColor" : {
+              "alpha" : 0.58,
+              "blue" : 1,
+              "green" : 1,
+              "red" : 1
+            },
+            "labelFontName" : "SF Pro Display",
+            "labelFontSize" : 10,
+            "labelFontWeight" : "medium",
+            "layoutMode" : "equalColumns",
+            "offsetX" : 0,
+            "offsetY" : 0,
+            "placement" : "bottomAttached",
+            "slots" : [
+              {
+                "customLabel" : "",
+                "metric" : "distance",
+                "visible" : true
+              },
+              {
+                "customLabel" : "ELEV",
+                "metric" : "elevation",
+                "visible" : true
+              },
+              {
+                "customLabel" : "",
+                "metric" : "elapsedTime",
+                "visible" : true
+              },
+              {
+                "customLabel" : "",
+                "metric" : "grade",
+                "visible" : false
+              }
+            ],
+            "valueColor" : {
+              "alpha" : 1,
+              "blue" : 1,
+              "green" : 1,
+              "red" : 1
+            },
+            "valueFontName" : "SF Pro Display",
+            "valueFontSize" : 22,
+            "valueFontWeight" : "semibold",
+            "visible" : true,
+            "width" : 0
+          },
+          "upperFillColor" : {
+            "alpha" : 1,
+            "blue" : 0.12,
+            "green" : 0.54,
+            "red" : 1
+          },
+          "width" : 420
+        },
+        "fontName" : "SF Pro",
+        "fontSize" : 42,
+        "fontWeight" : "bold",
+        "foregroundColor" : {
+          "alpha" : 1,
+          "blue" : 1,
+          "green" : 1,
+          "red" : 1
+        },
+        "gauge" : {
+          "accentColor" : {
+            "alpha" : 1,
+            "blue" : 0.12,
+            "green" : 0.54,
+            "red" : 1
+          },
+          "dialBackgroundColor" : {
+            "alpha" : 1,
+            "blue" : 0,
+            "green" : 0,
+            "red" : 0
+          },
+          "dialBackgroundOpacity" : 0.7,
+          "dividerColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "dividerEnabled" : true,
+          "dividerOpacity" : 0.22,
+          "dividerWidth" : 1,
+          "fontName" : "SF Pro",
+          "glassEffectEnabled" : false,
+          "glowColor" : {
+            "alpha" : 1,
+            "blue" : 0.12,
+            "green" : 0.54,
+            "red" : 1
+          },
+          "glowEnabled" : false,
+          "glowOpacity" : 0,
+          "glowRadius" : 0,
+          "layoutPreset" : "topTwoMiddleBottom",
+          "majorTickEvery" : 5,
+          "majorTickOpacity" : 0.95,
+          "monospacedDigits" : true,
+          "outerRingColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "outerRingEnabled" : true,
+          "outerRingOpacity" : 0.5,
+          "outerRingWidthScale" : 0.022,
+          "primaryFontWeight" : "bold",
+          "primaryTextColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "progressColor" : {
+            "alpha" : 1,
+            "blue" : 0.12,
+            "green" : 0.54,
+            "red" : 1
+          },
+          "progressMode" : "distanceTarget",
+          "progressRingEnabled" : true,
+          "progressRingWidthScale" : 0.026,
+          "progressRoundedCaps" : true,
+          "progressTrackColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "progressTrackOpacity" : 0.22,
+          "regions" : [
+            {
+              "customLabel" : "",
+              "labelFontScale" : 0.32,
+              "labelWeight" : "medium",
+              "metric" : "distance",
+              "region" : "top",
+              "showIcon" : false,
+              "showLabel" : true,
+              "showUnit" : true,
+              "unitFontScale" : 0.42,
+              "valueFontScale" : 1,
+              "valueWeight" : "bold"
+            },
+            {
+              "customLabel" : "",
+              "labelFontScale" : 0.32,
+              "labelWeight" : "medium",
+              "metric" : "pace",
+              "region" : "middleLeft",
+              "showIcon" : false,
+              "showLabel" : true,
+              "showUnit" : true,
+              "unitFontScale" : 0.42,
+              "valueFontScale" : 0.62,
+              "valueWeight" : "bold"
+            },
+            {
+              "customLabel" : "",
+              "labelFontScale" : 0.32,
+              "labelWeight" : "medium",
+              "metric" : "elapsedTime",
+              "region" : "middleRight",
+              "showIcon" : false,
+              "showLabel" : true,
+              "showUnit" : true,
+              "unitFontScale" : 0.42,
+              "valueFontScale" : 0.62,
+              "valueWeight" : "bold"
+            },
+            {
+              "customLabel" : "",
+              "labelFontScale" : 0.32,
+              "labelWeight" : "medium",
+              "metric" : "heartRate",
+              "region" : "bottom",
+              "showIcon" : false,
+              "showLabel" : true,
+              "showUnit" : true,
+              "unitFontScale" : 0.42,
+              "valueFontScale" : 0.66,
+              "valueWeight" : "bold"
+            }
+          ],
+          "secondaryFontWeight" : "medium",
+          "secondaryTextColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "shadowEnabled" : true,
+          "shadowOpacity" : 0.45,
+          "shadowRadius" : 12,
+          "stylePreset" : "roadRun",
+          "tickColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "tickCount" : 60,
+          "tickMarksEnabled" : true,
+          "tickOpacity" : 0.42
+        },
+        "gaugePreset" : "minimalSport",
+        "labelColor" : {
+          "alpha" : 1,
+          "blue" : 0.18,
+          "green" : 0.82,
+          "red" : 1
+        },
+        "labelFontName" : "SF Pro",
+        "labelFontSize" : 12,
+        "labelFontWeight" : "medium",
+        "labelOpacity" : 1,
+        "labelPosition" : "top",
+        "labelSpacing" : 8,
+        "lapCard" : {
+          "backgroundOpacity" : 0.8,
+          "cardWidth" : 280,
+          "columns" : [
+            {
+              "column" : "lapNumber",
+              "visible" : true
+            },
+            {
+              "column" : "lapKind",
+              "visible" : true
+            },
+            {
+              "column" : "distance",
+              "visible" : true
+            },
+            {
+              "column" : "elapsedTime",
+              "visible" : true
+            },
+            {
+              "column" : "pace",
+              "visible" : true
+            },
+            {
+              "column" : "avgHR",
+              "visible" : true
+            },
+            {
+              "column" : "maxHR",
+              "visible" : false
+            },
+            {
+              "column" : "cadence",
+              "visible" : false
+            },
+            {
+              "column" : "power",
+              "visible" : false
+            },
+            {
+              "column" : "ascent",
+              "visible" : false
+            }
+          ],
+          "cornerRadius" : 8,
+          "progressColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "recoveryMetrics" : [
+            "currentHR",
+            "hrDrop",
+            "hrDropPercent",
+            "restElapsedTime"
+          ],
+          "recoveryProgressEnabled" : false,
+          "recoveryTargetHR" : 0,
+          "showRecoverySection" : true
+        },
+        "lapList" : {
+          "backgroundOpacity" : 0.75,
+          "columns" : [
+            {
+              "metric" : "lapNumber",
+              "visible" : true
+            },
+            {
+              "metric" : "lapKind",
+              "visible" : true
+            },
+            {
+              "metric" : "distance",
+              "visible" : true
+            },
+            {
+              "metric" : "elapsedTime",
+              "visible" : true
+            },
+            {
+              "metric" : "pace",
+              "visible" : true
+            },
+            {
+              "metric" : "heartRate",
+              "visible" : false
+            },
+            {
+              "metric" : "cadence",
+              "visible" : false
+            },
+            {
+              "metric" : "power",
+              "visible" : false
+            },
+            {
+              "metric" : "ascent",
+              "visible" : false
+            }
+          ],
+          "currentRowAnchor" : "center",
+          "fadeEnabled" : true,
+          "fadeMinOpacity" : 0.25,
+          "progressBarEnabled" : true,
+          "progressColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "progressMode" : "distance",
+          "progressOpacity" : 0.35,
+          "rowCornerRadius" : 4,
+          "rowHeight" : 36,
+          "rowSpacing" : 2,
+          "showCompletedMark" : false,
+          "visibleRowCount" : 5
+        },
+        "lapLive" : {
+          "activeMetrics" : [
+            {
+              "metric" : "lapElapsedTime",
+              "visible" : true
+            },
+            {
+              "metric" : "lapDistance",
+              "visible" : true
+            },
+            {
+              "metric" : "pace",
+              "visible" : true
+            },
+            {
+              "metric" : "heartRate",
+              "visible" : true
+            },
+            {
+              "metric" : "power",
+              "visible" : false
+            },
+            {
+              "metric" : "cadence",
+              "visible" : false
+            }
+          ],
+          "backgroundOpacity" : 0.8,
+          "cardWidth" : 240,
+          "cornerRadius" : 8,
+          "progressColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "progressMode" : "distance",
+          "progressOpacity" : 0.35,
+          "recoveryMetrics" : [
+            "currentHR",
+            "hrDrop",
+            "hrDropPercent",
+            "restElapsedTime"
+          ],
+          "recoveryProgressEnabled" : false,
+          "recoveryTargetHR" : 0,
+          "restMode" : "recovery",
+          "showProgressBar" : true
+        },
+        "rotationDegrees" : 0,
+        "routeMapBackgroundStyle" : "dark",
+        "routeMapBorderVisible" : true,
+        "routeMapColorMode" : "solid",
+        "routeMapContainerPreset" : "squareHardEdge",
+        "routeMapCornerRadius" : 12,
+        "routeMapEdgeFade" : "solid",
+        "routeMapEndMarkerStyle" : "dot",
+        "routeMapFadeAmount" : 0.22,
+        "routeMapGradientEnd" : {
+          "alpha" : 1,
+          "blue" : 0.2,
+          "green" : 0.24,
+          "red" : 1
+        },
+        "routeMapGradientMiddle" : {
+          "alpha" : 1,
+          "blue" : 0.18,
+          "green" : 0.82,
+          "red" : 1
+        },
+        "routeMapGradientStart" : {
+          "alpha" : 1,
+          "blue" : 0.38,
+          "green" : 0.82,
+          "red" : 0.25
+        },
+        "routeMapHeight" : 240,
+        "routeMapLegendMode" : "startFinishDistance",
+        "routeMapLegendVisible" : true,
+        "routeMapMapOpacity" : 0.72,
+        "routeMapMarkerStyle" : "dot",
+        "routeMapPreset" : "minimal",
+        "routeMapProvider" : "none",
+        "routeMapShape" : "square",
+        "routeMapStartMarkerStyle" : "dot",
+        "routeMapStatsBar" : {
+          "backgroundOpacity" : 0.88,
+          "blurRadius" : 0,
+          "cornerRadius" : 0,
+          "dividerOpacity" : 0.12,
+          "height" : 64,
+          "inside" : false,
+          "itemSpacing" : 0,
+          "labelColor" : {
+            "alpha" : 0.58,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "labelFontName" : "SF Pro Display",
+          "labelFontSize" : 10,
+          "labelFontWeight" : "medium",
+          "layoutMode" : "equalColumns",
+          "offsetX" : 0,
+          "offsetY" : 0,
+          "placement" : "bottomAttached",
+          "slots" : [
+            {
+              "customLabel" : "",
+              "metric" : "distance",
+              "visible" : true
+            },
+            {
+              "customLabel" : "",
+              "metric" : "pace",
+              "visible" : true
+            },
+            {
+              "customLabel" : "",
+              "metric" : "elapsedTime",
+              "visible" : true
+            },
+            {
+              "customLabel" : "",
+              "metric" : "heartRate",
+              "visible" : false
+            }
+          ],
+          "valueColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "valueFontName" : "SF Pro Display",
+          "valueFontSize" : 30,
+          "valueFontWeight" : "semibold",
+          "visible" : false,
+          "width" : 0
+        },
+        "routeMapWidth" : 320,
+        "shadowEnabled" : true,
+        "shadowOffsetX" : 4,
+        "shadowOffsetY" : 4,
+        "shadowOpacity" : 0.7000000000000001,
+        "shadowRadius" : 4,
+        "showLabel" : true,
+        "showUnit" : true,
+        "textAlignment" : "leading",
+        "textPreset" : "splitLabel",
+        "unitColor" : {
+          "alpha" : 1,
+          "blue" : 1,
+          "green" : 1,
+          "red" : 1
+        },
+        "unitFontName" : "SF Pro",
+        "unitFontSize" : 20,
+        "unitFontWeight" : "medium",
+        "unitOpacity" : 1,
+        "unitOption" : "bpm",
+        "unitPosition" : "trailing",
+        "unitSpacing" : 8,
+        "valueColor" : {
+          "alpha" : 1,
+          "blue" : 1,
+          "green" : 1,
+          "red" : 1
+        },
+        "valueOpacity" : 1
+      },
+      "type" : "heartRate"
+    },
+    {
+      "isLocked" : false,
+      "isVisible" : true,
+      "positionX" : 0.3227878812165477,
+      "positionY" : 0.9049159976211719,
+      "scale" : 1,
+      "style" : {
+        "accentColor" : {
+          "alpha" : 1,
+          "blue" : 1,
+          "green" : 1,
+          "red" : 1
+        },
+        "backgroundBlurRadius" : 0,
+        "backgroundColor" : {
+          "alpha" : 1,
+          "blue" : 0,
+          "green" : 0,
+          "red" : 0
+        },
+        "backgroundEnabled" : false,
+        "backgroundFadeOutAmount" : 0.22,
+        "backgroundFadeOutEnabled" : false,
+        "backgroundOpacity" : 0.5,
+        "backgroundPaddingX" : 10,
+        "backgroundPaddingY" : 6,
+        "backgroundRadius" : 0,
+        "customLabel" : "",
+        "distanceTimeline" : {
+          "axisLabelMode" : "startFinish",
+          "axisLabelOffset" : 14,
+          "backgroundColor" : {
+            "alpha" : 1,
+            "blue" : 0,
+            "green" : 0,
+            "red" : 0
+          },
+          "backgroundEnabled" : true,
+          "backgroundOpacity" : 0.7,
+          "borderColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "borderEnabled" : false,
+          "borderOpacity" : 0.18,
+          "borderWidth" : 1,
+          "cornerRadius" : 9,
+          "currentMarkerEnabled" : false,
+          "customValueColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "customValueFontSize" : 12,
+          "customValueOpacity" : 0.7,
+          "customValueSpacing" : 10,
+          "customValues" : [
+            {
+              "label" : "",
+              "metric" : "distance",
+              "value" : "",
+              "visible" : false
+            },
+            {
+              "label" : "",
+              "metric" : "distance",
+              "value" : "",
+              "visible" : false
+            },
+            {
+              "label" : "",
+              "metric" : "distance",
+              "value" : "",
+              "visible" : false
+            },
+            {
+              "label" : "",
+              "metric" : "distance",
+              "value" : "",
+              "visible" : false
+            }
+          ],
+          "customValuesEnabled" : false,
+          "customValuesGroupSpacing" : 12,
+          "distancePointCount" : 3,
+          "distancePointOffset" : 34,
+          "elevationProfileVisible" : false,
+          "fadeAmount" : 0.22,
+          "fadeEdge" : "right",
+          "fadeEnabled" : false,
+          "fillColor" : {
+            "alpha" : 1,
+            "blue" : 0.38,
+            "green" : 0.82,
+            "red" : 0.25
+          },
+          "glowEnabled" : false,
+          "height" : 68,
+          "label" : "Distance",
+          "mediaSlot" : {
+            "animationDuration" : 1.2,
+            "animationSpeed" : 1,
+            "assetName" : "",
+            "loop" : true,
+            "mode" : "systemIcon",
+            "svgSource" : "",
+            "systemImage" : "figure.run",
+            "tintMode" : "accent"
+          },
+          "mediaSlotEnabled" : false,
+          "mediaSlotMode" : "none",
+          "mediaSlotSize" : 30,
+          "mediaSystemImage" : "figure.run",
+          "paddingX" : 14,
+          "paddingY" : 10,
+          "preset" : "minimal",
+          "showAxisLabels" : false,
+          "showDistancePoints" : false,
+          "showLabel" : false,
+          "showValue" : true,
+          "statsBar" : {
+            "backgroundOpacity" : 0.72,
+            "cornerRadius" : 8,
+            "dividerOpacity" : 0.12,
+            "height" : 42,
+            "inside" : false,
+            "itemSpacing" : 0,
+            "labelColor" : {
+              "alpha" : 0.58,
+              "blue" : 1,
+              "green" : 1,
+              "red" : 1
+            },
+            "labelFontName" : "SF Pro Display",
+            "labelFontSize" : 10,
+            "labelFontWeight" : "medium",
+            "layoutMode" : "equalColumns",
+            "offsetX" : 0,
+            "offsetY" : 0,
+            "placement" : "bottomAttached",
+            "slots" : [
+              {
+                "customLabel" : "",
+                "metric" : "distance",
+                "visible" : true
+              },
+              {
+                "customLabel" : "",
+                "metric" : "pace",
+                "visible" : true
+              },
+              {
+                "customLabel" : "",
+                "metric" : "elapsedTime",
+                "visible" : false
+              },
+              {
+                "customLabel" : "",
+                "metric" : "heartRate",
+                "visible" : false
+              }
+            ],
+            "valueColor" : {
+              "alpha" : 1,
+              "blue" : 1,
+              "green" : 1,
+              "red" : 1
+            },
+            "valueFontName" : "SF Pro Display",
+            "valueFontSize" : 30,
+            "valueFontWeight" : "semibold",
+            "visible" : false,
+            "width" : 0
+          },
+          "tickDensity" : 16,
+          "tickMarksEnabled" : false,
+          "trackHeight" : 6,
+          "trackOpacity" : 0.24,
+          "valueUnitSystem" : "metric",
+          "width" : 280
+        },
+        "elevationChart" : {
+          "axisLabelsEnabled" : true,
+          "backgroundColor" : {
+            "alpha" : 1,
+            "blue" : 0,
+            "green" : 0,
+            "red" : 0
+          },
+          "backgroundEnabled" : true,
+          "backgroundOpacity" : 0.5,
+          "bigNumberFontSize" : 42,
+          "bigNumberMetric" : "currentElevation",
+          "bigNumbersEnabled" : false,
+          "borderEnabled" : true,
+          "borderOpacity" : 0.12,
+          "chartPaddingX" : 14,
+          "chartPaddingY" : 10,
+          "chartStyle" : "area",
+          "cornerRadius" : 16,
+          "currentMarkerEnabled" : true,
+          "dualAreaEnabled" : false,
+          "fillEnabled" : true,
+          "fillEndColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "fillOpacity" : 0.42,
+          "fillStartColor" : {
+            "alpha" : 1,
+            "blue" : 0.38,
+            "green" : 0.82,
+            "red" : 0.25
+          },
+          "glowEnabled" : false,
+          "glowOpacity" : 0.25,
+          "gridEnabled" : false,
+          "height" : 170,
+          "lineColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "lineOpacity" : 0.95,
+          "lineWidth" : 2.5,
+          "lowerFillColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.75,
+            "red" : 0.25
+          },
+          "markerColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "markerLabelEnabled" : true,
+          "preset" : "gradientArea",
+          "progressMode" : "fullProfile",
+          "shadowEnabled" : true,
+          "shadowOpacity" : 0.28,
+          "shadowRadius" : 14,
+          "smoothingEnabled" : true,
+          "statsBar" : {
+            "backgroundOpacity" : 0.62,
+            "cornerRadius" : 12,
+            "dividerOpacity" : 0.14,
+            "height" : 58,
+            "inside" : false,
+            "itemSpacing" : 0,
+            "labelColor" : {
+              "alpha" : 0.58,
+              "blue" : 1,
+              "green" : 1,
+              "red" : 1
+            },
+            "labelFontName" : "SF Pro Display",
+            "labelFontSize" : 10,
+            "labelFontWeight" : "medium",
+            "layoutMode" : "equalColumns",
+            "offsetX" : 0,
+            "offsetY" : 0,
+            "placement" : "bottomAttached",
+            "slots" : [
+              {
+                "customLabel" : "",
+                "metric" : "distance",
+                "visible" : true
+              },
+              {
+                "customLabel" : "ELEV",
+                "metric" : "elevation",
+                "visible" : true
+              },
+              {
+                "customLabel" : "",
+                "metric" : "elapsedTime",
+                "visible" : true
+              },
+              {
+                "customLabel" : "",
+                "metric" : "grade",
+                "visible" : false
+              }
+            ],
+            "valueColor" : {
+              "alpha" : 1,
+              "blue" : 1,
+              "green" : 1,
+              "red" : 1
+            },
+            "valueFontName" : "SF Pro Display",
+            "valueFontSize" : 22,
+            "valueFontWeight" : "semibold",
+            "visible" : true,
+            "width" : 0
+          },
+          "upperFillColor" : {
+            "alpha" : 1,
+            "blue" : 0.12,
+            "green" : 0.54,
+            "red" : 1
+          },
+          "width" : 420
+        },
+        "fontName" : "SF Pro",
+        "fontSize" : 42,
+        "fontWeight" : "bold",
+        "foregroundColor" : {
+          "alpha" : 1,
+          "blue" : 1,
+          "green" : 1,
+          "red" : 1
+        },
+        "gauge" : {
+          "accentColor" : {
+            "alpha" : 1,
+            "blue" : 0.12,
+            "green" : 0.54,
+            "red" : 1
+          },
+          "dialBackgroundColor" : {
+            "alpha" : 1,
+            "blue" : 0,
+            "green" : 0,
+            "red" : 0
+          },
+          "dialBackgroundOpacity" : 0.7,
+          "dividerColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "dividerEnabled" : true,
+          "dividerOpacity" : 0.22,
+          "dividerWidth" : 1,
+          "fontName" : "SF Pro",
+          "glassEffectEnabled" : false,
+          "glowColor" : {
+            "alpha" : 1,
+            "blue" : 0.12,
+            "green" : 0.54,
+            "red" : 1
+          },
+          "glowEnabled" : false,
+          "glowOpacity" : 0,
+          "glowRadius" : 0,
+          "layoutPreset" : "topTwoMiddleBottom",
+          "majorTickEvery" : 5,
+          "majorTickOpacity" : 0.95,
+          "monospacedDigits" : true,
+          "outerRingColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "outerRingEnabled" : true,
+          "outerRingOpacity" : 0.5,
+          "outerRingWidthScale" : 0.022,
+          "primaryFontWeight" : "bold",
+          "primaryTextColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "progressColor" : {
+            "alpha" : 1,
+            "blue" : 0.12,
+            "green" : 0.54,
+            "red" : 1
+          },
+          "progressMode" : "distanceTarget",
+          "progressRingEnabled" : true,
+          "progressRingWidthScale" : 0.026,
+          "progressRoundedCaps" : true,
+          "progressTrackColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "progressTrackOpacity" : 0.22,
+          "regions" : [
+            {
+              "customLabel" : "",
+              "labelFontScale" : 0.32,
+              "labelWeight" : "medium",
+              "metric" : "distance",
+              "region" : "top",
+              "showIcon" : false,
+              "showLabel" : true,
+              "showUnit" : true,
+              "unitFontScale" : 0.42,
+              "valueFontScale" : 1,
+              "valueWeight" : "bold"
+            },
+            {
+              "customLabel" : "",
+              "labelFontScale" : 0.32,
+              "labelWeight" : "medium",
+              "metric" : "pace",
+              "region" : "middleLeft",
+              "showIcon" : false,
+              "showLabel" : true,
+              "showUnit" : true,
+              "unitFontScale" : 0.42,
+              "valueFontScale" : 0.62,
+              "valueWeight" : "bold"
+            },
+            {
+              "customLabel" : "",
+              "labelFontScale" : 0.32,
+              "labelWeight" : "medium",
+              "metric" : "elapsedTime",
+              "region" : "middleRight",
+              "showIcon" : false,
+              "showLabel" : true,
+              "showUnit" : true,
+              "unitFontScale" : 0.42,
+              "valueFontScale" : 0.62,
+              "valueWeight" : "bold"
+            },
+            {
+              "customLabel" : "",
+              "labelFontScale" : 0.32,
+              "labelWeight" : "medium",
+              "metric" : "heartRate",
+              "region" : "bottom",
+              "showIcon" : false,
+              "showLabel" : true,
+              "showUnit" : true,
+              "unitFontScale" : 0.42,
+              "valueFontScale" : 0.66,
+              "valueWeight" : "bold"
+            }
+          ],
+          "secondaryFontWeight" : "medium",
+          "secondaryTextColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "shadowEnabled" : true,
+          "shadowOpacity" : 0.45,
+          "shadowRadius" : 12,
+          "stylePreset" : "roadRun",
+          "tickColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "tickCount" : 60,
+          "tickMarksEnabled" : true,
+          "tickOpacity" : 0.42
+        },
+        "gaugePreset" : "minimalSport",
+        "labelColor" : {
+          "alpha" : 1,
+          "blue" : 0.18,
+          "green" : 0.82,
+          "red" : 1
+        },
+        "labelFontName" : "SF Pro",
+        "labelFontSize" : 12,
+        "labelFontWeight" : "medium",
+        "labelOpacity" : 1,
+        "labelPosition" : "top",
+        "labelSpacing" : 8,
+        "lapCard" : {
+          "backgroundOpacity" : 0.8,
+          "cardWidth" : 280,
+          "columns" : [
+            {
+              "column" : "lapNumber",
+              "visible" : true
+            },
+            {
+              "column" : "lapKind",
+              "visible" : true
+            },
+            {
+              "column" : "distance",
+              "visible" : true
+            },
+            {
+              "column" : "elapsedTime",
+              "visible" : true
+            },
+            {
+              "column" : "pace",
+              "visible" : true
+            },
+            {
+              "column" : "avgHR",
+              "visible" : true
+            },
+            {
+              "column" : "maxHR",
+              "visible" : false
+            },
+            {
+              "column" : "cadence",
+              "visible" : false
+            },
+            {
+              "column" : "power",
+              "visible" : false
+            },
+            {
+              "column" : "ascent",
+              "visible" : false
+            }
+          ],
+          "cornerRadius" : 8,
+          "progressColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "recoveryMetrics" : [
+            "currentHR",
+            "hrDrop",
+            "hrDropPercent",
+            "restElapsedTime"
+          ],
+          "recoveryProgressEnabled" : false,
+          "recoveryTargetHR" : 0,
+          "showRecoverySection" : true
+        },
+        "lapList" : {
+          "backgroundOpacity" : 0.75,
+          "columns" : [
+            {
+              "metric" : "lapNumber",
+              "visible" : true
+            },
+            {
+              "metric" : "lapKind",
+              "visible" : true
+            },
+            {
+              "metric" : "distance",
+              "visible" : true
+            },
+            {
+              "metric" : "elapsedTime",
+              "visible" : true
+            },
+            {
+              "metric" : "pace",
+              "visible" : true
+            },
+            {
+              "metric" : "heartRate",
+              "visible" : false
+            },
+            {
+              "metric" : "cadence",
+              "visible" : false
+            },
+            {
+              "metric" : "power",
+              "visible" : false
+            },
+            {
+              "metric" : "ascent",
+              "visible" : false
+            }
+          ],
+          "currentRowAnchor" : "center",
+          "fadeEnabled" : true,
+          "fadeMinOpacity" : 0.25,
+          "progressBarEnabled" : true,
+          "progressColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "progressMode" : "distance",
+          "progressOpacity" : 0.35,
+          "rowCornerRadius" : 4,
+          "rowHeight" : 36,
+          "rowSpacing" : 2,
+          "showCompletedMark" : false,
+          "visibleRowCount" : 5
+        },
+        "lapLive" : {
+          "activeMetrics" : [
+            {
+              "metric" : "lapElapsedTime",
+              "visible" : true
+            },
+            {
+              "metric" : "lapDistance",
+              "visible" : true
+            },
+            {
+              "metric" : "pace",
+              "visible" : true
+            },
+            {
+              "metric" : "heartRate",
+              "visible" : true
+            },
+            {
+              "metric" : "power",
+              "visible" : false
+            },
+            {
+              "metric" : "cadence",
+              "visible" : false
+            }
+          ],
+          "backgroundOpacity" : 0.8,
+          "cardWidth" : 240,
+          "cornerRadius" : 8,
+          "progressColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "progressMode" : "distance",
+          "progressOpacity" : 0.35,
+          "recoveryMetrics" : [
+            "currentHR",
+            "hrDrop",
+            "hrDropPercent",
+            "restElapsedTime"
+          ],
+          "recoveryProgressEnabled" : false,
+          "recoveryTargetHR" : 0,
+          "restMode" : "recovery",
+          "showProgressBar" : true
+        },
+        "rotationDegrees" : 0,
+        "routeMapBackgroundStyle" : "dark",
+        "routeMapBorderVisible" : true,
+        "routeMapColorMode" : "solid",
+        "routeMapContainerPreset" : "squareHardEdge",
+        "routeMapCornerRadius" : 12,
+        "routeMapEdgeFade" : "solid",
+        "routeMapEndMarkerStyle" : "dot",
+        "routeMapFadeAmount" : 0.22,
+        "routeMapGradientEnd" : {
+          "alpha" : 1,
+          "blue" : 0.2,
+          "green" : 0.24,
+          "red" : 1
+        },
+        "routeMapGradientMiddle" : {
+          "alpha" : 1,
+          "blue" : 0.18,
+          "green" : 0.82,
+          "red" : 1
+        },
+        "routeMapGradientStart" : {
+          "alpha" : 1,
+          "blue" : 0.38,
+          "green" : 0.82,
+          "red" : 0.25
+        },
+        "routeMapHeight" : 240,
+        "routeMapLegendMode" : "startFinishDistance",
+        "routeMapLegendVisible" : true,
+        "routeMapMapOpacity" : 0.72,
+        "routeMapMarkerStyle" : "dot",
+        "routeMapPreset" : "minimal",
+        "routeMapProvider" : "none",
+        "routeMapShape" : "square",
+        "routeMapStartMarkerStyle" : "dot",
+        "routeMapStatsBar" : {
+          "backgroundOpacity" : 0.88,
+          "blurRadius" : 0,
+          "cornerRadius" : 0,
+          "dividerOpacity" : 0.12,
+          "height" : 64,
+          "inside" : false,
+          "itemSpacing" : 0,
+          "labelColor" : {
+            "alpha" : 0.58,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "labelFontName" : "SF Pro Display",
+          "labelFontSize" : 10,
+          "labelFontWeight" : "medium",
+          "layoutMode" : "equalColumns",
+          "offsetX" : 0,
+          "offsetY" : 0,
+          "placement" : "bottomAttached",
+          "slots" : [
+            {
+              "customLabel" : "",
+              "metric" : "distance",
+              "visible" : true
+            },
+            {
+              "customLabel" : "",
+              "metric" : "pace",
+              "visible" : true
+            },
+            {
+              "customLabel" : "",
+              "metric" : "elapsedTime",
+              "visible" : true
+            },
+            {
+              "customLabel" : "",
+              "metric" : "heartRate",
+              "visible" : false
+            }
+          ],
+          "valueColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "valueFontName" : "SF Pro Display",
+          "valueFontSize" : 30,
+          "valueFontWeight" : "semibold",
+          "visible" : false,
+          "width" : 0
+        },
+        "routeMapWidth" : 320,
+        "shadowEnabled" : true,
+        "shadowOffsetX" : 4,
+        "shadowOffsetY" : 4,
+        "shadowOpacity" : 0.7000000000000001,
+        "shadowRadius" : 4,
+        "showLabel" : true,
+        "showUnit" : true,
+        "textAlignment" : "leading",
+        "textPreset" : "splitLabel",
+        "unitColor" : {
+          "alpha" : 1,
+          "blue" : 1,
+          "green" : 1,
+          "red" : 1
+        },
+        "unitFontName" : "SF Pro",
+        "unitFontSize" : 20,
+        "unitFontWeight" : "medium",
+        "unitOpacity" : 1,
+        "unitOption" : "bpm",
+        "unitPosition" : "trailing",
+        "unitSpacing" : 8,
+        "valueColor" : {
+          "alpha" : 1,
+          "blue" : 1,
+          "green" : 1,
+          "red" : 1
+        },
+        "valueOpacity" : 1
+      },
+      "type" : "cadence"
+    },
+    {
+      "isLocked" : false,
+      "isVisible" : true,
+      "positionX" : 0.8938804987176628,
+      "positionY" : 0.1828577225195757,
+      "scale" : 1,
+      "style" : {
+        "accentColor" : {
+          "alpha" : 1,
+          "blue" : 1,
+          "green" : 0.58,
+          "red" : 0.22
+        },
+        "backgroundBlurRadius" : 0,
+        "backgroundColor" : {
+          "alpha" : 1,
+          "blue" : 0,
+          "green" : 0,
+          "red" : 0
+        },
+        "backgroundEnabled" : true,
+        "backgroundFadeOutAmount" : 0.22,
+        "backgroundFadeOutEnabled" : false,
+        "backgroundOpacity" : 0,
+        "backgroundPaddingX" : 10,
+        "backgroundPaddingY" : 6,
+        "backgroundRadius" : 6,
+        "customLabel" : "",
+        "distanceTimeline" : {
+          "axisLabelMode" : "startFinish",
+          "axisLabelOffset" : 14,
+          "backgroundColor" : {
+            "alpha" : 1,
+            "blue" : 0,
+            "green" : 0,
+            "red" : 0
+          },
+          "backgroundEnabled" : true,
+          "backgroundOpacity" : 0.7,
+          "borderColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "borderEnabled" : false,
+          "borderOpacity" : 0.18,
+          "borderWidth" : 1,
+          "cornerRadius" : 9,
+          "currentMarkerEnabled" : false,
+          "customValueColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "customValueFontSize" : 12,
+          "customValueOpacity" : 0.7,
+          "customValueSpacing" : 10,
+          "customValues" : [
+            {
+              "label" : "",
+              "metric" : "distance",
+              "value" : "",
+              "visible" : false
+            },
+            {
+              "label" : "",
+              "metric" : "distance",
+              "value" : "",
+              "visible" : false
+            },
+            {
+              "label" : "",
+              "metric" : "distance",
+              "value" : "",
+              "visible" : false
+            },
+            {
+              "label" : "",
+              "metric" : "distance",
+              "value" : "",
+              "visible" : false
+            }
+          ],
+          "customValuesEnabled" : false,
+          "customValuesGroupSpacing" : 12,
+          "distancePointCount" : 3,
+          "distancePointOffset" : 34,
+          "elevationProfileVisible" : false,
+          "fadeAmount" : 0.22,
+          "fadeEdge" : "right",
+          "fadeEnabled" : false,
+          "fillColor" : {
+            "alpha" : 1,
+            "blue" : 0.38,
+            "green" : 0.82,
+            "red" : 0.25
+          },
+          "glowEnabled" : false,
+          "height" : 68,
+          "label" : "Distance",
+          "mediaSlot" : {
+            "animationDuration" : 1.2,
+            "animationSpeed" : 1,
+            "assetName" : "",
+            "loop" : true,
+            "mode" : "systemIcon",
+            "svgSource" : "",
+            "systemImage" : "figure.run",
+            "tintMode" : "accent"
+          },
+          "mediaSlotEnabled" : false,
+          "mediaSlotMode" : "none",
+          "mediaSlotSize" : 30,
+          "mediaSystemImage" : "figure.run",
+          "paddingX" : 14,
+          "paddingY" : 10,
+          "preset" : "minimal",
+          "showAxisLabels" : false,
+          "showDistancePoints" : false,
+          "showLabel" : false,
+          "showValue" : true,
+          "statsBar" : {
+            "backgroundOpacity" : 0.72,
+            "cornerRadius" : 8,
+            "dividerOpacity" : 0.12,
+            "height" : 42,
+            "inside" : false,
+            "itemSpacing" : 0,
+            "labelColor" : {
+              "alpha" : 0.58,
+              "blue" : 1,
+              "green" : 1,
+              "red" : 1
+            },
+            "labelFontName" : "SF Pro Display",
+            "labelFontSize" : 10,
+            "labelFontWeight" : "medium",
+            "layoutMode" : "equalColumns",
+            "offsetX" : 0,
+            "offsetY" : 0,
+            "placement" : "bottomAttached",
+            "slots" : [
+              {
+                "customLabel" : "",
+                "metric" : "distance",
+                "visible" : true
+              },
+              {
+                "customLabel" : "",
+                "metric" : "pace",
+                "visible" : true
+              },
+              {
+                "customLabel" : "",
+                "metric" : "elapsedTime",
+                "visible" : false
+              },
+              {
+                "customLabel" : "",
+                "metric" : "heartRate",
+                "visible" : false
+              }
+            ],
+            "valueColor" : {
+              "alpha" : 1,
+              "blue" : 1,
+              "green" : 1,
+              "red" : 1
+            },
+            "valueFontName" : "SF Pro Display",
+            "valueFontSize" : 30,
+            "valueFontWeight" : "semibold",
+            "visible" : false,
+            "width" : 0
+          },
+          "tickDensity" : 16,
+          "tickMarksEnabled" : false,
+          "trackHeight" : 6,
+          "trackOpacity" : 0.24,
+          "valueUnitSystem" : "metric",
+          "width" : 280
+        },
+        "elevationChart" : {
+          "axisLabelsEnabled" : true,
+          "backgroundColor" : {
+            "alpha" : 1,
+            "blue" : 0,
+            "green" : 0,
+            "red" : 0
+          },
+          "backgroundEnabled" : true,
+          "backgroundOpacity" : 0.5,
+          "bigNumberFontSize" : 42,
+          "bigNumberMetric" : "currentElevation",
+          "bigNumbersEnabled" : false,
+          "borderEnabled" : true,
+          "borderOpacity" : 0.12,
+          "chartPaddingX" : 14,
+          "chartPaddingY" : 10,
+          "chartStyle" : "area",
+          "cornerRadius" : 16,
+          "currentMarkerEnabled" : true,
+          "dualAreaEnabled" : false,
+          "fillEnabled" : true,
+          "fillEndColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "fillOpacity" : 0.42,
+          "fillStartColor" : {
+            "alpha" : 1,
+            "blue" : 0.38,
+            "green" : 0.82,
+            "red" : 0.25
+          },
+          "glowEnabled" : false,
+          "glowOpacity" : 0.25,
+          "gridEnabled" : false,
+          "height" : 170,
+          "lineColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "lineOpacity" : 0.95,
+          "lineWidth" : 2.5,
+          "lowerFillColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.75,
+            "red" : 0.25
+          },
+          "markerColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "markerLabelEnabled" : true,
+          "preset" : "gradientArea",
+          "progressMode" : "fullProfile",
+          "shadowEnabled" : true,
+          "shadowOpacity" : 0.28,
+          "shadowRadius" : 14,
+          "smoothingEnabled" : true,
+          "statsBar" : {
+            "backgroundOpacity" : 0.62,
+            "cornerRadius" : 12,
+            "dividerOpacity" : 0.14,
+            "height" : 58,
+            "inside" : false,
+            "itemSpacing" : 0,
+            "labelColor" : {
+              "alpha" : 0.58,
+              "blue" : 1,
+              "green" : 1,
+              "red" : 1
+            },
+            "labelFontName" : "SF Pro Display",
+            "labelFontSize" : 10,
+            "labelFontWeight" : "medium",
+            "layoutMode" : "equalColumns",
+            "offsetX" : 0,
+            "offsetY" : 0,
+            "placement" : "bottomAttached",
+            "slots" : [
+              {
+                "customLabel" : "",
+                "metric" : "distance",
+                "visible" : true
+              },
+              {
+                "customLabel" : "ELEV",
+                "metric" : "elevation",
+                "visible" : true
+              },
+              {
+                "customLabel" : "",
+                "metric" : "elapsedTime",
+                "visible" : true
+              },
+              {
+                "customLabel" : "",
+                "metric" : "grade",
+                "visible" : false
+              }
+            ],
+            "valueColor" : {
+              "alpha" : 1,
+              "blue" : 1,
+              "green" : 1,
+              "red" : 1
+            },
+            "valueFontName" : "SF Pro Display",
+            "valueFontSize" : 22,
+            "valueFontWeight" : "semibold",
+            "visible" : true,
+            "width" : 0
+          },
+          "upperFillColor" : {
+            "alpha" : 1,
+            "blue" : 0.12,
+            "green" : 0.54,
+            "red" : 1
+          },
+          "width" : 420
+        },
+        "fontName" : "SF Pro",
+        "fontSize" : 28,
+        "fontWeight" : "semibold",
+        "foregroundColor" : {
+          "alpha" : 1,
+          "blue" : 0.38,
+          "green" : 0.82,
+          "red" : 0.25
+        },
+        "gauge" : {
+          "accentColor" : {
+            "alpha" : 1,
+            "blue" : 0.12,
+            "green" : 0.54,
+            "red" : 1
+          },
+          "dialBackgroundColor" : {
+            "alpha" : 1,
+            "blue" : 0,
+            "green" : 0,
+            "red" : 0
+          },
+          "dialBackgroundOpacity" : 0.7,
+          "dividerColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "dividerEnabled" : true,
+          "dividerOpacity" : 0.22,
+          "dividerWidth" : 1,
+          "fontName" : "SF Pro",
+          "glassEffectEnabled" : false,
+          "glowColor" : {
+            "alpha" : 1,
+            "blue" : 0.12,
+            "green" : 0.54,
+            "red" : 1
+          },
+          "glowEnabled" : false,
+          "glowOpacity" : 0,
+          "glowRadius" : 0,
+          "layoutPreset" : "topTwoMiddleBottom",
+          "majorTickEvery" : 5,
+          "majorTickOpacity" : 0.95,
+          "monospacedDigits" : true,
+          "outerRingColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "outerRingEnabled" : true,
+          "outerRingOpacity" : 0.5,
+          "outerRingWidthScale" : 0.022,
+          "primaryFontWeight" : "bold",
+          "primaryTextColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "progressColor" : {
+            "alpha" : 1,
+            "blue" : 0.12,
+            "green" : 0.54,
+            "red" : 1
+          },
+          "progressMode" : "distanceTarget",
+          "progressRingEnabled" : true,
+          "progressRingWidthScale" : 0.026,
+          "progressRoundedCaps" : true,
+          "progressTrackColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "progressTrackOpacity" : 0.22,
+          "regions" : [
+            {
+              "customLabel" : "",
+              "labelFontScale" : 0.32,
+              "labelWeight" : "medium",
+              "metric" : "distance",
+              "region" : "top",
+              "showIcon" : false,
+              "showLabel" : true,
+              "showUnit" : true,
+              "unitFontScale" : 0.42,
+              "valueFontScale" : 1,
+              "valueWeight" : "bold"
+            },
+            {
+              "customLabel" : "",
+              "labelFontScale" : 0.32,
+              "labelWeight" : "medium",
+              "metric" : "pace",
+              "region" : "middleLeft",
+              "showIcon" : false,
+              "showLabel" : true,
+              "showUnit" : true,
+              "unitFontScale" : 0.42,
+              "valueFontScale" : 0.62,
+              "valueWeight" : "bold"
+            },
+            {
+              "customLabel" : "",
+              "labelFontScale" : 0.32,
+              "labelWeight" : "medium",
+              "metric" : "elapsedTime",
+              "region" : "middleRight",
+              "showIcon" : false,
+              "showLabel" : true,
+              "showUnit" : true,
+              "unitFontScale" : 0.42,
+              "valueFontScale" : 0.62,
+              "valueWeight" : "bold"
+            },
+            {
+              "customLabel" : "",
+              "labelFontScale" : 0.32,
+              "labelWeight" : "medium",
+              "metric" : "heartRate",
+              "region" : "bottom",
+              "showIcon" : false,
+              "showLabel" : true,
+              "showUnit" : true,
+              "unitFontScale" : 0.42,
+              "valueFontScale" : 0.66,
+              "valueWeight" : "bold"
+            }
+          ],
+          "secondaryFontWeight" : "medium",
+          "secondaryTextColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "shadowEnabled" : true,
+          "shadowOpacity" : 0.45,
+          "shadowRadius" : 12,
+          "stylePreset" : "roadRun",
+          "tickColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "tickCount" : 60,
+          "tickMarksEnabled" : true,
+          "tickOpacity" : 0.42
+        },
+        "gaugePreset" : "minimalSport",
+        "labelColor" : {
+          "alpha" : 1,
+          "blue" : 0.38,
+          "green" : 0.82,
+          "red" : 0.25
+        },
+        "labelFontName" : "SF Pro",
+        "labelFontSize" : 16,
+        "labelFontWeight" : "medium",
+        "labelOpacity" : 1,
+        "labelPosition" : "top",
+        "labelSpacing" : 8,
+        "lapCard" : {
+          "backgroundOpacity" : 0.8,
+          "cardWidth" : 280,
+          "columns" : [
+            {
+              "column" : "lapNumber",
+              "visible" : true
+            },
+            {
+              "column" : "lapKind",
+              "visible" : true
+            },
+            {
+              "column" : "distance",
+              "visible" : true
+            },
+            {
+              "column" : "elapsedTime",
+              "visible" : true
+            },
+            {
+              "column" : "pace",
+              "visible" : true
+            },
+            {
+              "column" : "avgHR",
+              "visible" : true
+            },
+            {
+              "column" : "maxHR",
+              "visible" : false
+            },
+            {
+              "column" : "cadence",
+              "visible" : false
+            },
+            {
+              "column" : "power",
+              "visible" : false
+            },
+            {
+              "column" : "ascent",
+              "visible" : false
+            }
+          ],
+          "cornerRadius" : 8,
+          "progressColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "recoveryMetrics" : [
+            "currentHR",
+            "hrDrop",
+            "hrDropPercent",
+            "restElapsedTime"
+          ],
+          "recoveryProgressEnabled" : false,
+          "recoveryTargetHR" : 0,
+          "showRecoverySection" : true
+        },
+        "lapList" : {
+          "backgroundOpacity" : 0.75,
+          "columns" : [
+            {
+              "metric" : "lapNumber",
+              "visible" : true
+            },
+            {
+              "metric" : "lapKind",
+              "visible" : true
+            },
+            {
+              "metric" : "distance",
+              "visible" : true
+            },
+            {
+              "metric" : "elapsedTime",
+              "visible" : true
+            },
+            {
+              "metric" : "pace",
+              "visible" : true
+            },
+            {
+              "metric" : "heartRate",
+              "visible" : false
+            },
+            {
+              "metric" : "cadence",
+              "visible" : false
+            },
+            {
+              "metric" : "power",
+              "visible" : false
+            },
+            {
+              "metric" : "ascent",
+              "visible" : false
+            }
+          ],
+          "currentRowAnchor" : "center",
+          "fadeEnabled" : true,
+          "fadeMinOpacity" : 0.25,
+          "progressBarEnabled" : true,
+          "progressColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "progressMode" : "distance",
+          "progressOpacity" : 0.35,
+          "rowCornerRadius" : 4,
+          "rowHeight" : 36,
+          "rowSpacing" : 2,
+          "showCompletedMark" : false,
+          "visibleRowCount" : 5
+        },
+        "lapLive" : {
+          "activeMetrics" : [
+            {
+              "metric" : "lapElapsedTime",
+              "visible" : true
+            },
+            {
+              "metric" : "lapDistance",
+              "visible" : true
+            },
+            {
+              "metric" : "pace",
+              "visible" : true
+            },
+            {
+              "metric" : "heartRate",
+              "visible" : true
+            },
+            {
+              "metric" : "power",
+              "visible" : false
+            },
+            {
+              "metric" : "cadence",
+              "visible" : false
+            }
+          ],
+          "backgroundOpacity" : 0.8,
+          "cardWidth" : 240,
+          "cornerRadius" : 8,
+          "progressColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "progressMode" : "distance",
+          "progressOpacity" : 0.35,
+          "recoveryMetrics" : [
+            "currentHR",
+            "hrDrop",
+            "hrDropPercent",
+            "restElapsedTime"
+          ],
+          "recoveryProgressEnabled" : false,
+          "recoveryTargetHR" : 0,
+          "restMode" : "recovery",
+          "showProgressBar" : true
+        },
+        "rotationDegrees" : 0,
+        "routeMapBackgroundStyle" : "none",
+        "routeMapBorderVisible" : false,
+        "routeMapColorMode" : "gradient",
+        "routeMapContainerPreset" : "squareHardEdge",
+        "routeMapCornerRadius" : 12,
+        "routeMapEdgeFade" : "solid",
+        "routeMapEndMarkerStyle" : "hidden",
+        "routeMapFadeAmount" : 0.22,
+        "routeMapGradientEnd" : {
+          "alpha" : 1,
+          "blue" : 1,
+          "green" : 0.28,
+          "red" : 0.56
+        },
+        "routeMapGradientMiddle" : {
+          "alpha" : 1,
+          "blue" : 0.38,
+          "green" : 0.82,
+          "red" : 0.25
+        },
+        "routeMapGradientStart" : {
+          "alpha" : 1,
+          "blue" : 0.2,
+          "green" : 0.24,
+          "red" : 1
+        },
+        "routeMapHeight" : 232,
+        "routeMapLegendMode" : "startFinishDistance",
+        "routeMapLegendVisible" : true,
+        "routeMapMapOpacity" : 0.72,
+        "routeMapMarkerStyle" : "hidden",
+        "routeMapPreset" : "gradient",
+        "routeMapProvider" : "mapKit",
+        "routeMapShape" : "circle",
+        "routeMapStartMarkerStyle" : "hidden",
+        "routeMapStatsBar" : {
+          "backgroundOpacity" : 0.88,
+          "blurRadius" : 0,
+          "cornerRadius" : 0,
+          "dividerOpacity" : 0.12,
+          "height" : 64,
+          "inside" : false,
+          "itemSpacing" : 0,
+          "labelColor" : {
+            "alpha" : 0.58,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "labelFontName" : "SF Pro Display",
+          "labelFontSize" : 10,
+          "labelFontWeight" : "medium",
+          "layoutMode" : "equalColumns",
+          "offsetX" : 0,
+          "offsetY" : 0,
+          "placement" : "bottomAttached",
+          "slots" : [
+            {
+              "customLabel" : "",
+              "metric" : "distance",
+              "visible" : true
+            },
+            {
+              "customLabel" : "",
+              "metric" : "pace",
+              "visible" : true
+            },
+            {
+              "customLabel" : "",
+              "metric" : "elapsedTime",
+              "visible" : true
+            },
+            {
+              "customLabel" : "",
+              "metric" : "heartRate",
+              "visible" : false
+            }
+          ],
+          "valueColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "valueFontName" : "SF Pro Display",
+          "valueFontSize" : 30,
+          "valueFontWeight" : "semibold",
+          "visible" : false,
+          "width" : 0
+        },
+        "routeMapWidth" : 232,
+        "shadowEnabled" : true,
+        "shadowOffsetX" : 0,
+        "shadowOffsetY" : 2,
+        "shadowOpacity" : 0.9500000000000001,
+        "shadowRadius" : 7,
+        "showLabel" : false,
+        "showUnit" : true,
+        "textAlignment" : "leading",
+        "textPreset" : "minimal",
+        "unitColor" : {
+          "alpha" : 1,
+          "blue" : 0.38,
+          "green" : 0.82,
+          "red" : 0.25
+        },
+        "unitFontName" : "SF Pro",
+        "unitFontSize" : 20,
+        "unitFontWeight" : "medium",
+        "unitOpacity" : 1,
+        "unitOption" : "bpm",
+        "unitPosition" : "trailing",
+        "unitSpacing" : 8,
+        "valueColor" : {
+          "alpha" : 1,
+          "blue" : 0.38,
+          "green" : 0.82,
+          "red" : 0.25
+        },
+        "valueOpacity" : 1
+      },
+      "type" : "routeMap"
+    },
+    {
+      "isLocked" : false,
+      "isVisible" : true,
+      "positionX" : 0.2019680500038238,
+      "positionY" : 0.06896883363068686,
+      "scale" : 1,
+      "style" : {
+        "accentColor" : {
+          "alpha" : 1,
+          "blue" : 1,
+          "green" : 0.58,
+          "red" : 0.22
+        },
+        "backgroundBlurRadius" : 0,
+        "backgroundColor" : {
+          "alpha" : 1,
+          "blue" : 0,
+          "green" : 0,
+          "red" : 0
+        },
+        "backgroundEnabled" : true,
+        "backgroundFadeOutAmount" : 0.22,
+        "backgroundFadeOutEnabled" : false,
+        "backgroundOpacity" : 0.22,
+        "backgroundPaddingX" : 10,
+        "backgroundPaddingY" : 6,
+        "backgroundRadius" : 6,
+        "customLabel" : "",
+        "distanceTimeline" : {
+          "axisLabelMode" : "startFinish",
+          "axisLabelOffset" : 14,
+          "backgroundColor" : {
+            "alpha" : 1,
+            "blue" : 0,
+            "green" : 0,
+            "red" : 0
+          },
+          "backgroundEnabled" : false,
+          "backgroundOpacity" : 0,
+          "borderColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "borderEnabled" : false,
+          "borderOpacity" : 0.18,
+          "borderWidth" : 1,
+          "cornerRadius" : 9,
+          "currentMarkerEnabled" : true,
+          "customValueColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "customValueFontSize" : 12,
+          "customValueOpacity" : 0.7,
+          "customValueSpacing" : 10,
+          "customValues" : [
+            {
+              "label" : "",
+              "metric" : "distance",
+              "value" : "",
+              "visible" : false
+            },
+            {
+              "label" : "",
+              "metric" : "distance",
+              "value" : "",
+              "visible" : false
+            },
+            {
+              "label" : "",
+              "metric" : "distance",
+              "value" : "",
+              "visible" : false
+            },
+            {
+              "label" : "",
+              "metric" : "distance",
+              "value" : "",
+              "visible" : false
+            }
+          ],
+          "customValuesEnabled" : false,
+          "customValuesGroupSpacing" : 12,
+          "distancePointCount" : 3,
+          "distancePointOffset" : 14.12300145348837,
+          "elevationProfileVisible" : false,
+          "fadeAmount" : 0.22,
+          "fadeEdge" : "right",
+          "fadeEnabled" : false,
+          "fillColor" : {
+            "alpha" : 1,
+            "blue" : 0.38,
+            "green" : 0.82,
+            "red" : 0.25
+          },
+          "glowEnabled" : true,
+          "height" : 68,
+          "label" : "Distance",
+          "mediaSlot" : {
+            "animationDuration" : 1.2,
+            "animationSpeed" : 1,
+            "assetName" : "",
+            "loop" : true,
+            "mode" : "systemIcon",
+            "svgSource" : "",
+            "systemImage" : "figure.run",
+            "tintMode" : "accent"
+          },
+          "mediaSlotEnabled" : false,
+          "mediaSlotMode" : "none",
+          "mediaSlotSize" : 30,
+          "mediaSystemImage" : "figure.run",
+          "paddingX" : 14,
+          "paddingY" : 10,
+          "preset" : "minimal",
+          "showAxisLabels" : true,
+          "showDistancePoints" : true,
+          "showLabel" : true,
+          "showValue" : true,
+          "statsBar" : {
+            "backgroundOpacity" : 0.72,
+            "cornerRadius" : 8,
+            "dividerOpacity" : 0.12,
+            "height" : 42,
+            "inside" : false,
+            "itemSpacing" : 0,
+            "labelColor" : {
+              "alpha" : 0.58,
+              "blue" : 1,
+              "green" : 1,
+              "red" : 1
+            },
+            "labelFontName" : "SF Pro Display",
+            "labelFontSize" : 10,
+            "labelFontWeight" : "medium",
+            "layoutMode" : "equalColumns",
+            "offsetX" : 0,
+            "offsetY" : 0,
+            "placement" : "bottomAttached",
+            "slots" : [
+              {
+                "customLabel" : "",
+                "metric" : "distance",
+                "visible" : true
+              },
+              {
+                "customLabel" : "",
+                "metric" : "pace",
+                "visible" : true
+              },
+              {
+                "customLabel" : "",
+                "metric" : "elapsedTime",
+                "visible" : false
+              },
+              {
+                "customLabel" : "",
+                "metric" : "heartRate",
+                "visible" : false
+              }
+            ],
+            "valueColor" : {
+              "alpha" : 1,
+              "blue" : 1,
+              "green" : 1,
+              "red" : 1
+            },
+            "valueFontName" : "SF Pro Display",
+            "valueFontSize" : 30,
+            "valueFontWeight" : "semibold",
+            "visible" : false,
+            "width" : 0
+          },
+          "tickDensity" : 12,
+          "tickMarksEnabled" : true,
+          "trackHeight" : 6,
+          "trackOpacity" : 0.6294498873969038,
+          "valueUnitSystem" : "metric",
+          "width" : 403.7669591248648
+        },
+        "elevationChart" : {
+          "axisLabelsEnabled" : true,
+          "backgroundColor" : {
+            "alpha" : 1,
+            "blue" : 0,
+            "green" : 0,
+            "red" : 0
+          },
+          "backgroundEnabled" : true,
+          "backgroundOpacity" : 0.5,
+          "bigNumberFontSize" : 42,
+          "bigNumberMetric" : "currentElevation",
+          "bigNumbersEnabled" : false,
+          "borderEnabled" : true,
+          "borderOpacity" : 0.12,
+          "chartPaddingX" : 14,
+          "chartPaddingY" : 10,
+          "chartStyle" : "area",
+          "cornerRadius" : 16,
+          "currentMarkerEnabled" : true,
+          "dualAreaEnabled" : false,
+          "fillEnabled" : true,
+          "fillEndColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "fillOpacity" : 0.42,
+          "fillStartColor" : {
+            "alpha" : 1,
+            "blue" : 0.38,
+            "green" : 0.82,
+            "red" : 0.25
+          },
+          "glowEnabled" : false,
+          "glowOpacity" : 0.25,
+          "gridEnabled" : false,
+          "height" : 170,
+          "lineColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "lineOpacity" : 0.95,
+          "lineWidth" : 2.5,
+          "lowerFillColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.75,
+            "red" : 0.25
+          },
+          "markerColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "markerLabelEnabled" : true,
+          "preset" : "gradientArea",
+          "progressMode" : "fullProfile",
+          "shadowEnabled" : true,
+          "shadowOpacity" : 0.28,
+          "shadowRadius" : 14,
+          "smoothingEnabled" : true,
+          "statsBar" : {
+            "backgroundOpacity" : 0.62,
+            "cornerRadius" : 12,
+            "dividerOpacity" : 0.14,
+            "height" : 58,
+            "inside" : false,
+            "itemSpacing" : 0,
+            "labelColor" : {
+              "alpha" : 0.58,
+              "blue" : 1,
+              "green" : 1,
+              "red" : 1
+            },
+            "labelFontName" : "SF Pro Display",
+            "labelFontSize" : 10,
+            "labelFontWeight" : "medium",
+            "layoutMode" : "equalColumns",
+            "offsetX" : 0,
+            "offsetY" : 0,
+            "placement" : "bottomAttached",
+            "slots" : [
+              {
+                "customLabel" : "",
+                "metric" : "distance",
+                "visible" : true
+              },
+              {
+                "customLabel" : "ELEV",
+                "metric" : "elevation",
+                "visible" : true
+              },
+              {
+                "customLabel" : "",
+                "metric" : "elapsedTime",
+                "visible" : true
+              },
+              {
+                "customLabel" : "",
+                "metric" : "grade",
+                "visible" : false
+              }
+            ],
+            "valueColor" : {
+              "alpha" : 1,
+              "blue" : 1,
+              "green" : 1,
+              "red" : 1
+            },
+            "valueFontName" : "SF Pro Display",
+            "valueFontSize" : 22,
+            "valueFontWeight" : "semibold",
+            "visible" : true,
+            "width" : 0
+          },
+          "upperFillColor" : {
+            "alpha" : 1,
+            "blue" : 0.12,
+            "green" : 0.54,
+            "red" : 1
+          },
+          "width" : 420
+        },
+        "fontName" : "SF Pro",
+        "fontSize" : 19,
+        "fontWeight" : "semibold",
+        "foregroundColor" : {
+          "alpha" : 1,
+          "blue" : 1,
+          "green" : 1,
+          "red" : 1
+        },
+        "gauge" : {
+          "accentColor" : {
+            "alpha" : 1,
+            "blue" : 0.12,
+            "green" : 0.54,
+            "red" : 1
+          },
+          "dialBackgroundColor" : {
+            "alpha" : 1,
+            "blue" : 0,
+            "green" : 0,
+            "red" : 0
+          },
+          "dialBackgroundOpacity" : 0.7,
+          "dividerColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "dividerEnabled" : true,
+          "dividerOpacity" : 0.22,
+          "dividerWidth" : 1,
+          "fontName" : "SF Pro",
+          "glassEffectEnabled" : false,
+          "glowColor" : {
+            "alpha" : 1,
+            "blue" : 0.12,
+            "green" : 0.54,
+            "red" : 1
+          },
+          "glowEnabled" : false,
+          "glowOpacity" : 0,
+          "glowRadius" : 0,
+          "layoutPreset" : "topTwoMiddleBottom",
+          "majorTickEvery" : 5,
+          "majorTickOpacity" : 0.95,
+          "monospacedDigits" : true,
+          "outerRingColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "outerRingEnabled" : true,
+          "outerRingOpacity" : 0.5,
+          "outerRingWidthScale" : 0.022,
+          "primaryFontWeight" : "bold",
+          "primaryTextColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "progressColor" : {
+            "alpha" : 1,
+            "blue" : 0.12,
+            "green" : 0.54,
+            "red" : 1
+          },
+          "progressMode" : "distanceTarget",
+          "progressRingEnabled" : true,
+          "progressRingWidthScale" : 0.026,
+          "progressRoundedCaps" : true,
+          "progressTrackColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "progressTrackOpacity" : 0.22,
+          "regions" : [
+            {
+              "customLabel" : "",
+              "labelFontScale" : 0.32,
+              "labelWeight" : "medium",
+              "metric" : "distance",
+              "region" : "top",
+              "showIcon" : false,
+              "showLabel" : true,
+              "showUnit" : true,
+              "unitFontScale" : 0.42,
+              "valueFontScale" : 1,
+              "valueWeight" : "bold"
+            },
+            {
+              "customLabel" : "",
+              "labelFontScale" : 0.32,
+              "labelWeight" : "medium",
+              "metric" : "pace",
+              "region" : "middleLeft",
+              "showIcon" : false,
+              "showLabel" : true,
+              "showUnit" : true,
+              "unitFontScale" : 0.42,
+              "valueFontScale" : 0.62,
+              "valueWeight" : "bold"
+            },
+            {
+              "customLabel" : "",
+              "labelFontScale" : 0.32,
+              "labelWeight" : "medium",
+              "metric" : "elapsedTime",
+              "region" : "middleRight",
+              "showIcon" : false,
+              "showLabel" : true,
+              "showUnit" : true,
+              "unitFontScale" : 0.42,
+              "valueFontScale" : 0.62,
+              "valueWeight" : "bold"
+            },
+            {
+              "customLabel" : "",
+              "labelFontScale" : 0.32,
+              "labelWeight" : "medium",
+              "metric" : "heartRate",
+              "region" : "bottom",
+              "showIcon" : false,
+              "showLabel" : true,
+              "showUnit" : true,
+              "unitFontScale" : 0.42,
+              "valueFontScale" : 0.66,
+              "valueWeight" : "bold"
+            }
+          ],
+          "secondaryFontWeight" : "medium",
+          "secondaryTextColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "shadowEnabled" : true,
+          "shadowOpacity" : 0.45,
+          "shadowRadius" : 12,
+          "stylePreset" : "roadRun",
+          "tickColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "tickCount" : 60,
+          "tickMarksEnabled" : true,
+          "tickOpacity" : 0.42
+        },
+        "gaugePreset" : "minimalSport",
+        "labelColor" : {
+          "alpha" : 1,
+          "blue" : 1,
+          "green" : 1,
+          "red" : 1
+        },
+        "labelFontName" : "SF Pro",
+        "labelFontSize" : 16,
+        "labelFontWeight" : "medium",
+        "labelOpacity" : 1,
+        "labelPosition" : "top",
+        "labelSpacing" : 8,
+        "lapCard" : {
+          "backgroundOpacity" : 0.8,
+          "cardWidth" : 280,
+          "columns" : [
+            {
+              "column" : "lapNumber",
+              "visible" : true
+            },
+            {
+              "column" : "lapKind",
+              "visible" : true
+            },
+            {
+              "column" : "distance",
+              "visible" : true
+            },
+            {
+              "column" : "elapsedTime",
+              "visible" : true
+            },
+            {
+              "column" : "pace",
+              "visible" : true
+            },
+            {
+              "column" : "avgHR",
+              "visible" : true
+            },
+            {
+              "column" : "maxHR",
+              "visible" : false
+            },
+            {
+              "column" : "cadence",
+              "visible" : false
+            },
+            {
+              "column" : "power",
+              "visible" : false
+            },
+            {
+              "column" : "ascent",
+              "visible" : false
+            }
+          ],
+          "cornerRadius" : 8,
+          "progressColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "recoveryMetrics" : [
+            "currentHR",
+            "hrDrop",
+            "hrDropPercent",
+            "restElapsedTime"
+          ],
+          "recoveryProgressEnabled" : false,
+          "recoveryTargetHR" : 0,
+          "showRecoverySection" : true
+        },
+        "lapList" : {
+          "backgroundOpacity" : 0.75,
+          "columns" : [
+            {
+              "metric" : "lapNumber",
+              "visible" : true
+            },
+            {
+              "metric" : "lapKind",
+              "visible" : true
+            },
+            {
+              "metric" : "distance",
+              "visible" : true
+            },
+            {
+              "metric" : "elapsedTime",
+              "visible" : true
+            },
+            {
+              "metric" : "pace",
+              "visible" : true
+            },
+            {
+              "metric" : "heartRate",
+              "visible" : false
+            },
+            {
+              "metric" : "cadence",
+              "visible" : false
+            },
+            {
+              "metric" : "power",
+              "visible" : false
+            },
+            {
+              "metric" : "ascent",
+              "visible" : false
+            }
+          ],
+          "currentRowAnchor" : "center",
+          "fadeEnabled" : true,
+          "fadeMinOpacity" : 0.25,
+          "progressBarEnabled" : true,
+          "progressColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "progressMode" : "distance",
+          "progressOpacity" : 0.35,
+          "rowCornerRadius" : 4,
+          "rowHeight" : 36,
+          "rowSpacing" : 2,
+          "showCompletedMark" : false,
+          "visibleRowCount" : 5
+        },
+        "lapLive" : {
+          "activeMetrics" : [
+            {
+              "metric" : "lapElapsedTime",
+              "visible" : true
+            },
+            {
+              "metric" : "lapDistance",
+              "visible" : true
+            },
+            {
+              "metric" : "pace",
+              "visible" : true
+            },
+            {
+              "metric" : "heartRate",
+              "visible" : true
+            },
+            {
+              "metric" : "power",
+              "visible" : false
+            },
+            {
+              "metric" : "cadence",
+              "visible" : false
+            }
+          ],
+          "backgroundOpacity" : 0.8,
+          "cardWidth" : 240,
+          "cornerRadius" : 8,
+          "progressColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 0.58,
+            "red" : 0.22
+          },
+          "progressMode" : "distance",
+          "progressOpacity" : 0.35,
+          "recoveryMetrics" : [
+            "currentHR",
+            "hrDrop",
+            "hrDropPercent",
+            "restElapsedTime"
+          ],
+          "recoveryProgressEnabled" : false,
+          "recoveryTargetHR" : 0,
+          "restMode" : "recovery",
+          "showProgressBar" : true
+        },
+        "rotationDegrees" : 0,
+        "routeMapBackgroundStyle" : "dark",
+        "routeMapBorderVisible" : true,
+        "routeMapColorMode" : "solid",
+        "routeMapContainerPreset" : "squareHardEdge",
+        "routeMapCornerRadius" : 12,
+        "routeMapEdgeFade" : "solid",
+        "routeMapEndMarkerStyle" : "dot",
+        "routeMapFadeAmount" : 0.22,
+        "routeMapGradientEnd" : {
+          "alpha" : 1,
+          "blue" : 0.2,
+          "green" : 0.24,
+          "red" : 1
+        },
+        "routeMapGradientMiddle" : {
+          "alpha" : 1,
+          "blue" : 0.18,
+          "green" : 0.82,
+          "red" : 1
+        },
+        "routeMapGradientStart" : {
+          "alpha" : 1,
+          "blue" : 0.38,
+          "green" : 0.82,
+          "red" : 0.25
+        },
+        "routeMapHeight" : 240,
+        "routeMapLegendMode" : "startFinishDistance",
+        "routeMapLegendVisible" : true,
+        "routeMapMapOpacity" : 0.72,
+        "routeMapMarkerStyle" : "dot",
+        "routeMapPreset" : "minimal",
+        "routeMapProvider" : "none",
+        "routeMapShape" : "square",
+        "routeMapStartMarkerStyle" : "dot",
+        "routeMapStatsBar" : {
+          "backgroundOpacity" : 0.88,
+          "blurRadius" : 0,
+          "cornerRadius" : 0,
+          "dividerOpacity" : 0.12,
+          "height" : 64,
+          "inside" : false,
+          "itemSpacing" : 0,
+          "labelColor" : {
+            "alpha" : 0.58,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "labelFontName" : "SF Pro Display",
+          "labelFontSize" : 10,
+          "labelFontWeight" : "medium",
+          "layoutMode" : "equalColumns",
+          "offsetX" : 0,
+          "offsetY" : 0,
+          "placement" : "bottomAttached",
+          "slots" : [
+            {
+              "customLabel" : "",
+              "metric" : "distance",
+              "visible" : true
+            },
+            {
+              "customLabel" : "",
+              "metric" : "pace",
+              "visible" : true
+            },
+            {
+              "customLabel" : "",
+              "metric" : "elapsedTime",
+              "visible" : true
+            },
+            {
+              "customLabel" : "",
+              "metric" : "heartRate",
+              "visible" : false
+            }
+          ],
+          "valueColor" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          },
+          "valueFontName" : "SF Pro Display",
+          "valueFontSize" : 30,
+          "valueFontWeight" : "semibold",
+          "visible" : false,
+          "width" : 0
+        },
+        "routeMapWidth" : 320,
+        "shadowEnabled" : true,
+        "shadowOffsetX" : 0,
+        "shadowOffsetY" : 2,
+        "shadowOpacity" : 0.35,
+        "shadowRadius" : 4,
+        "showLabel" : false,
+        "showUnit" : true,
+        "textAlignment" : "leading",
+        "textPreset" : "minimal",
+        "unitColor" : {
+          "alpha" : 1,
+          "blue" : 1,
+          "green" : 1,
+          "red" : 1
+        },
+        "unitFontName" : "SF Pro",
+        "unitFontSize" : 20,
+        "unitFontWeight" : "medium",
+        "unitOpacity" : 1,
+        "unitOption" : "bpm",
+        "unitPosition" : "trailing",
+        "unitSpacing" : 8,
+        "valueColor" : {
+          "alpha" : 1,
+          "blue" : 1,
+          "green" : 1,
+          "red" : 1
+        },
+        "valueOpacity" : 1
+      },
+      "type" : "distanceTimeline"
+    }
+  ],
+  "id" : "3214DD25-003A-4C37-BDE0-863A94F494FD",
+  "name" : "Template",
+  "referenceResolution" : {
+    "height" : 1080,
+    "width" : 1920
+  },
+  "schemaVersion" : 1,
+  "updatedAt" : 799162914.800923
+}

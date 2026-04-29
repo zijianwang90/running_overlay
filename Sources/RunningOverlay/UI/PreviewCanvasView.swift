@@ -7,6 +7,8 @@ struct PreviewCanvasView: View {
     @State private var dragStartPositions: [OverlayElement.ID: CGPoint] = [:]
     // Live position during drag — local state only, not written to document until drag ends.
     @State private var liveDragPosition: (id: OverlayElement.ID, pos: CGPoint)?
+    @State private var overlayFrames: [OverlayElement.ID: CGRect] = [:]
+    @State private var activeSnapLines: [PreviewSnapLine] = []
 
     var body: some View {
         GeometryReader { proxy in
@@ -55,6 +57,9 @@ struct PreviewCanvasView: View {
                                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         }
 
+                        PreviewSnapLinesView(lines: activeSnapLines)
+                            .allowsHitTesting(false)
+
                         ForEach(project.overlayLayout.elements.filter(\.isVisible)) { element in
                             let isSelected = project.selection == .overlayElement(element.id)
                             // During drag: use local live position to avoid @Published mutation every frame.
@@ -69,6 +74,14 @@ struct PreviewCanvasView: View {
                                 isSelected: isSelected
                             )  // .equatable() skips body for unchanged elements (e.g., non-dragged)
                             .equatable()
+                            .background(
+                                GeometryReader { elementProxy in
+                                    Color.clear.preference(
+                                        key: PreviewOverlayFramePreferenceKey.self,
+                                        value: [element.id: elementProxy.frame(in: .named(PreviewCanvasCoordinateSpace.name))]
+                                    )
+                                }
+                            )
                             .position(
                                 x: canvasSize.width * displayPos.x,
                                 y: canvasSize.height * displayPos.y
@@ -83,10 +96,20 @@ struct PreviewCanvasView: View {
                                             project.selectOverlay(element.id)
                                         }
                                         guard let start = dragStartPositions[element.id] else { return }
-                                        liveDragPosition = (element.id, CGPoint(
-                                            x: min(max(start.x + value.translation.width / max(canvasSize.width, 1), 0), 1),
-                                            y: min(max(start.y + value.translation.height / max(canvasSize.height, 1), 0), 1)
-                                        ))
+                                        let proposedPosition = CGPoint(
+                                            x: start.x + value.translation.width / max(canvasSize.width, 1),
+                                            y: start.y + value.translation.height / max(canvasSize.height, 1)
+                                        )
+                                        let snapResult = PreviewSnapResolver().snap(
+                                            movingElementID: element.id,
+                                            proposedPosition: proposedPosition,
+                                            currentFrame: overlayFrames[element.id],
+                                            overlayFrames: overlayFrames,
+                                            canvasSize: canvasSize,
+                                            guidesEnabled: project.showPreviewGuides
+                                        )
+                                        liveDragPosition = (element.id, snapResult.position)
+                                        activeSnapLines = snapResult.lines
                                     }
                                     .onEnded { _ in
                                         // Commit final position to document once (single @Published update).
@@ -95,6 +118,7 @@ struct PreviewCanvasView: View {
                                         }
                                         liveDragPosition = nil
                                         dragStartPositions[element.id] = nil
+                                        activeSnapLines = []
                                         project.finishContinuousEdit()
                                     }
                             )
@@ -118,6 +142,10 @@ struct PreviewCanvasView: View {
                         }
                     }
                     .frame(width: canvasSize.width, height: canvasSize.height)
+                    .coordinateSpace(name: PreviewCanvasCoordinateSpace.name)
+                    .onPreferenceChange(PreviewOverlayFramePreferenceKey.self) { frames in
+                        overlayFrames = frames
+                    }
                     .contentShape(Rectangle())
                     .onTapGesture {
                         project.clearMediaPoolPreview()
@@ -153,6 +181,252 @@ private enum PreviewLayout {
     static let headerHeight: CGFloat = EditorTheme.panelHeaderHeight
     static let playbackHeight: CGFloat = 44
     static let headerButtonSize: CGFloat = EditorTheme.iconButtonSize
+}
+
+private enum PreviewCanvasCoordinateSpace {
+    static let name = "PreviewCanvasCoordinateSpace"
+}
+
+private struct PreviewOverlayFramePreferenceKey: PreferenceKey {
+    static let defaultValue: [OverlayElement.ID: CGRect] = [:]
+
+    static func reduce(value: inout [OverlayElement.ID: CGRect], nextValue: () -> [OverlayElement.ID: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
+    }
+}
+
+private struct PreviewSnapLine: Identifiable, Equatable {
+    enum Axis: Equatable {
+        case horizontal
+        case vertical
+    }
+
+    let axis: Axis
+    let position: CGFloat
+
+    var id: String {
+        "\(axis)-\(Int(position.rounded()))"
+    }
+}
+
+private struct PreviewSnapResult {
+    var position: CGPoint
+    var lines: [PreviewSnapLine]
+}
+
+private struct PreviewSnapResolver {
+    private let threshold: CGFloat = 6
+
+    func snap(
+        movingElementID: OverlayElement.ID,
+        proposedPosition: CGPoint,
+        currentFrame: CGRect?,
+        overlayFrames: [OverlayElement.ID: CGRect],
+        canvasSize: CGSize,
+        guidesEnabled: Bool
+    ) -> PreviewSnapResult {
+        guard canvasSize.width > 0, canvasSize.height > 0, let currentFrame, !currentFrame.isEmpty else {
+            return PreviewSnapResult(position: clampNormalized(proposedPosition), lines: [])
+        }
+
+        let proposedCenter = CGPoint(
+            x: proposedPosition.x * canvasSize.width,
+            y: proposedPosition.y * canvasSize.height
+        )
+        let proposedFrame = CGRect(
+            x: proposedCenter.x - currentFrame.width / 2,
+            y: proposedCenter.y - currentFrame.height / 2,
+            width: currentFrame.width,
+            height: currentFrame.height
+        )
+
+        var snappedCenter = proposedCenter
+        var lines: [PreviewSnapLine] = []
+
+        if let match = bestMatch(
+            movingAnchors: xAnchors(for: proposedFrame),
+            targets: xTargets(
+                movingElementID: movingElementID,
+                overlayFrames: overlayFrames,
+                canvasSize: canvasSize,
+                guidesEnabled: guidesEnabled
+            )
+        ) {
+            snappedCenter.x += match.delta
+            lines.append(PreviewSnapLine(axis: .vertical, position: match.targetPosition))
+        }
+
+        if let match = bestMatch(
+            movingAnchors: yAnchors(for: proposedFrame),
+            targets: yTargets(
+                movingElementID: movingElementID,
+                overlayFrames: overlayFrames,
+                canvasSize: canvasSize,
+                guidesEnabled: guidesEnabled
+            )
+        ) {
+            snappedCenter.y += match.delta
+            lines.append(PreviewSnapLine(axis: .horizontal, position: match.targetPosition))
+        }
+
+        let clampedCenter = clampCenter(snappedCenter, frameSize: currentFrame.size, canvasSize: canvasSize)
+        return PreviewSnapResult(
+            position: CGPoint(
+                x: clampedCenter.x / canvasSize.width,
+                y: clampedCenter.y / canvasSize.height
+            ),
+            lines: lines
+        )
+    }
+
+    private struct Anchor {
+        let position: CGFloat
+    }
+
+    private struct Target {
+        let position: CGFloat
+        let priority: Int
+    }
+
+    private struct Match {
+        let delta: CGFloat
+        let targetPosition: CGFloat
+        let distance: CGFloat
+        let priority: Int
+    }
+
+    private func bestMatch(movingAnchors: [Anchor], targets: [Target]) -> Match? {
+        var best: Match?
+        for anchor in movingAnchors {
+            for target in targets {
+                let delta = target.position - anchor.position
+                let distance = abs(delta)
+                guard distance <= threshold else { continue }
+                let match = Match(delta: delta, targetPosition: target.position, distance: distance, priority: target.priority)
+                if let current = best {
+                    if match.distance < current.distance || (match.distance == current.distance && match.priority < current.priority) {
+                        best = match
+                    }
+                } else {
+                    best = match
+                }
+            }
+        }
+        return best
+    }
+
+    private func xAnchors(for frame: CGRect) -> [Anchor] {
+        [
+            Anchor(position: frame.minX),
+            Anchor(position: frame.midX),
+            Anchor(position: frame.maxX)
+        ]
+    }
+
+    private func yAnchors(for frame: CGRect) -> [Anchor] {
+        [
+            Anchor(position: frame.minY),
+            Anchor(position: frame.midY),
+            Anchor(position: frame.maxY)
+        ]
+    }
+
+    private func xTargets(
+        movingElementID: OverlayElement.ID,
+        overlayFrames: [OverlayElement.ID: CGRect],
+        canvasSize: CGSize,
+        guidesEnabled: Bool
+    ) -> [Target] {
+        var targets: [Target] = []
+        if guidesEnabled {
+            targets.append(Target(position: canvasSize.width / 2, priority: 0))
+            targets.append(contentsOf: previewGuideXPositions(canvasWidth: canvasSize.width).map { Target(position: $0, priority: 1) })
+        }
+        targets.append(contentsOf: overlayFrames.compactMap { id, frame in
+            id == movingElementID ? nil : [
+                Target(position: frame.minX, priority: 2),
+                Target(position: frame.midX, priority: 2),
+                Target(position: frame.maxX, priority: 2)
+            ]
+        }.flatMap { $0 })
+        return targets
+    }
+
+    private func yTargets(
+        movingElementID: OverlayElement.ID,
+        overlayFrames: [OverlayElement.ID: CGRect],
+        canvasSize: CGSize,
+        guidesEnabled: Bool
+    ) -> [Target] {
+        var targets: [Target] = []
+        if guidesEnabled {
+            targets.append(Target(position: canvasSize.height / 2, priority: 0))
+            targets.append(contentsOf: previewGuideYPositions(canvasHeight: canvasSize.height).map { Target(position: $0, priority: 1) })
+        }
+        targets.append(contentsOf: overlayFrames.compactMap { id, frame in
+            id == movingElementID ? nil : [
+                Target(position: frame.minY, priority: 2),
+                Target(position: frame.midY, priority: 2),
+                Target(position: frame.maxY, priority: 2)
+            ]
+        }.flatMap { $0 })
+        return targets
+    }
+
+    private func previewGuideXPositions(canvasWidth: CGFloat) -> [CGFloat] {
+        [
+            canvasWidth * 0.05,
+            canvasWidth * 0.10,
+            canvasWidth * 0.90,
+            canvasWidth * 0.95
+        ]
+    }
+
+    private func previewGuideYPositions(canvasHeight: CGFloat) -> [CGFloat] {
+        [
+            canvasHeight * 0.05,
+            canvasHeight * 0.10,
+            canvasHeight * 0.90,
+            canvasHeight * 0.95
+        ]
+    }
+
+    private func clampNormalized(_ position: CGPoint) -> CGPoint {
+        CGPoint(x: min(max(position.x, 0), 1), y: min(max(position.y, 0), 1))
+    }
+
+    private func clampCenter(_ center: CGPoint, frameSize: CGSize, canvasSize: CGSize) -> CGPoint {
+        let minX = min(frameSize.width / 2, canvasSize.width / 2)
+        let maxX = max(canvasSize.width - frameSize.width / 2, canvasSize.width / 2)
+        let minY = min(frameSize.height / 2, canvasSize.height / 2)
+        let maxY = max(canvasSize.height - frameSize.height / 2, canvasSize.height / 2)
+        return CGPoint(
+            x: min(max(center.x, minX), maxX),
+            y: min(max(center.y, minY), maxY)
+        )
+    }
+}
+
+private struct PreviewSnapLinesView: View {
+    let lines: [PreviewSnapLine]
+
+    var body: some View {
+        GeometryReader { proxy in
+            Path { path in
+                for line in lines {
+                    switch line.axis {
+                    case .vertical:
+                        path.move(to: CGPoint(x: line.position, y: 0))
+                        path.addLine(to: CGPoint(x: line.position, y: proxy.size.height))
+                    case .horizontal:
+                        path.move(to: CGPoint(x: 0, y: line.position))
+                        path.addLine(to: CGPoint(x: proxy.size.width, y: line.position))
+                    }
+                }
+            }
+            .stroke(EditorTheme.accentBlue.opacity(0.72), style: StrokeStyle(lineWidth: 1.4, dash: [5, 4]))
+        }
+    }
 }
 
 private struct PreviewHeader: View {

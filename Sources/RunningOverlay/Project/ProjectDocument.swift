@@ -1767,6 +1767,16 @@ final class ProjectDocument: ObservableObject {
     }
 
     func applyBuiltInOverlayTemplate(_ template: BuiltInOverlayTemplate) {
+        if let resourceTemplate = loadBuiltInOverlayTemplateResource(template) {
+            applyOverlayTemplateLayout(resourceTemplate.layout, name: template.name)
+            return
+        }
+
+        guard !template.elements.isEmpty else {
+            statusMessage = "Built-in template not found: \(template.name)."
+            return
+        }
+
         registerUndoPoint()
         overlayLayout = OverlayLayout(
             elements: template.elements.map { entry in
@@ -1779,6 +1789,41 @@ final class ProjectDocument: ObservableObject {
         )
         selection = .none
         statusMessage = "Applied overlay template: \(template.name)."
+    }
+
+    private func applyOverlayTemplateLayout(_ layout: OverlayLayout, name: String) {
+        registerUndoPoint()
+        overlayLayout = layout
+        selection = .none
+        statusMessage = "Applied overlay template: \(name)."
+    }
+
+    private func loadBuiltInOverlayTemplateResource(_ template: BuiltInOverlayTemplate) -> OverlayTemplate? {
+        guard let resourceName = template.resourceName else {
+            return nil
+        }
+
+        let url = Bundle.module.url(
+                forResource: resourceName,
+                withExtension: OverlayTemplateStore.fileExtension,
+                subdirectory: "Templates"
+              )
+            ?? Bundle.module.url(
+                forResource: resourceName,
+                withExtension: OverlayTemplateStore.fileExtension
+            )
+
+        guard let url else {
+            return nil
+        }
+
+        do {
+            return try overlayTemplateStore.loadTemplateFile(from: url)
+        } catch {
+            statusMessage = "Built-in template load failed: \(template.name)."
+            print("[RunningOverlay] Built-in template load failed: \(template.name), \(String(reflecting: error))")
+            return nil
+        }
     }
 
     func renameOverlayTemplate(_ templateID: OverlayTemplate.ID, to name: String) {

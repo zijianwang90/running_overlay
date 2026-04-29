@@ -387,6 +387,7 @@ Initial template UI:
 - The top Pool switch includes `Media Pool`, `Overlay Pool`, and `Templates`.
 - `Templates` Pool includes:
   - `Built-in Templates`: `Easy Run`, `Interval Workout`, and `Race`.
+  - `Easy Run` is backed by the bundled `Sources/RunningOverlay/Resources/Templates/EasyRun.rotemplate` file so it can carry a fully authored overlay layout and styles.
   - `User Templates`: saved local templates, empty by default.
   - A compact footer with a small icon-only import button and a long `Save Current as Template` primary button.
 - Template rows are compact name-only rows:
@@ -408,6 +409,7 @@ Current implementation status:
 - Templates are persisted as JSON under Application Support.
 - Users can apply, delete, import, and export local templates.
 - Applying a template replaces the current overlay layout and participates in project undo/redo.
+- The `Easy Run` built-in template loads from the bundled `EasyRun.rotemplate` resource; generated built-in mappings are used for the remaining first-pass built-ins.
 - Saved template JSON includes schema version, name, timestamps, reference project resolution, and overlay elements.
 
 Open questions:

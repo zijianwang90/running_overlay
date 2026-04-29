@@ -144,6 +144,22 @@ struct OverlayTemplateTests {
         #expect(project.overlayLayout.elements[0].id == originalID)
     }
 
+    @Test func easyRunBuiltInTemplateLoadsBundledTemplateFile() throws {
+        let storeURL = temporaryTemplateURL()
+        defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }
+
+        let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
+        project.addOverlayElement(.elapsedTime)
+        let easyRun = try #require(BuiltInOverlayTemplate.all.first { $0.id == "easyRun" })
+
+        project.applyBuiltInOverlayTemplate(easyRun)
+
+        #expect(project.overlayLayout.elements.map(\.type) == [.pace, .heartRate, .cadence, .routeMap, .distanceTimeline])
+        #expect(project.overlayLayout.elements.first?.position.x == 0.2102358908061998)
+        #expect(project.overlayLayout.elements.first?.position.y == 0.9049159976211716)
+        #expect(project.overlayLayout.elements.first?.style.textPreset == .splitLabel)
+    }
+
     private func temporaryTemplateURL() -> URL {
         FileManager.default.temporaryDirectory
             .appendingPathComponent("RunningOverlayTests-\(UUID().uuidString)", isDirectory: true)

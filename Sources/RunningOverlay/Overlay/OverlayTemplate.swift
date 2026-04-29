@@ -63,16 +63,14 @@ struct BuiltInOverlayTemplate: Identifiable, Equatable {
     var id: String
     var name: String
     var elements: [Element]
+    var resourceName: String? = nil
 
     static let all: [BuiltInOverlayTemplate] = [
         BuiltInOverlayTemplate(
             id: "easyRun",
             name: "Easy Run",
-            elements: [
-                Element(type: .distance, positionX: 0.22, positionY: 0.82, scale: 1.0),
-                Element(type: .pace, positionX: 0.78, positionY: 0.82, scale: 1.0),
-                Element(type: .heartRate, positionX: 0.18, positionY: 0.18, scale: 1.0)
-            ]
+            elements: [],
+            resourceName: "EasyRun"
         ),
         BuiltInOverlayTemplate(
             id: "intervalWorkout",

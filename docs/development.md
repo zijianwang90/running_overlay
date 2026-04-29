@@ -269,6 +269,7 @@ Current implementation:
 - Inspector default width is 400 px and minimum width is 320 px; the panel is user-resizable through the custom `HorizontalResizeHandle`, and `ParameterPanelView` does not impose its own width frame so internal outer/detail/editing state switches cannot resize the right column or squeeze tile content.
 - Inspector segmented controls are implemented with native SwiftUI segmented `Picker` (`.pickerStyle(.segmented)`) instead of custom button rows, including shared dense controls used by Numeric Overlay, Running Gauge, and Route Map detail views.
 - Preview overlay elements can be dragged and clamped within the preview coordinate space.
+- Preview drag uses measured rendered overlay frames for snapping: with safe guides enabled, overlay edges snap to 90%/80% guide lines and overlay center axes snap to the canvas center crosshair; visible overlays also snap to each other's left/center/right and top/center/bottom alignment lines during drag.
 - Inspector supports selected overlay font family, font weight, font size (value text), scale, color presets, independent label/unit controls, and advanced background controls.
 - Numeric overlays (heart rate, pace, calories, elapsed time, real time, distance, elevation, cadence, power) use the dense `NumericOverlayDetailView` Inspector defined in `docs/design/overlays/numeric/numeric-overlay-ui.md`. `ParameterPanelView` routes these `OverlayElementType` values through the new view; other overlay types continue to use `OverlayDetailView`.
 - `OverlayStyle` carries the numeric-overlay editor state: `unitOption`, `showLabel`, `showUnit`, `customLabel`, `labelPosition`, `unitPosition`, `labelFont*`, `unitFont*`, `rotationDegrees`, `accentColor`, `backgroundEnabled` / `backgroundColor` / `backgroundRadius` / `backgroundPaddingX` / `backgroundPaddingY` / `backgroundFadeOut*` / `backgroundBlurRadius`, and `shadowEnabled` / `shadowOffsetX` / `shadowOffsetY`. All new fields decode with safe defaults so old saved projects and overlay templates load unchanged.
@@ -314,6 +315,7 @@ Current implementation:
 - Text preset selection is stored on `OverlayStyle`, decodes old templates as the Minimal preset, and is honored by both preview and export renderers.
 - Preview overlay positions, drag deltas, guides, font sizes, padding, and chart dimensions are based on the fitted project canvas inside the preview area, so resizing split panes keeps overlays anchored to the same normalized video position.
 - Preview can show 90%/80% safety guides and center crosshairs from an in-preview header toggle.
+- Preview draws temporary snap guide lines while an overlay drag is actively snapped; these lines are non-interactive and live only in Preview editing, not export rendering.
 - Selected overlays show a subtle blue selection border and corner handles on the fitted canvas.
 - Corner handles in preview are interactive: dragging a handle updates the selected overlay `scale` directly via `ProjectDocument.setOverlayScale`, with continuous undo grouped to drag end.
 - Playback advances the timeline playhead at 30 Hz while active.
@@ -407,6 +409,7 @@ Current implementation:
 - `ProjectDocument` loads templates on startup, saves/replaces templates by name, applies templates to the current overlay layout, deletes templates, and imports/exports standalone `.rotemplate` files.
 - Applying a template routes through `ProjectDocument.registerUndoPoint()` so the previous overlay layout can be restored with undo.
 - Template management lives in the left `Templates` Pool and has been removed from Project Settings. The pool uses compact name-only rows, built-in templates (`Easy Run`, `Interval Workout`, `Race`), user-template context menus, an icon-only import footer button, and a primary `Save Current as Template` footer button.
+- `Easy Run` is the first authored built-in template and loads from `Sources/RunningOverlay/Resources/Templates/EasyRun.rotemplate`; `Interval Workout` and `Race` are still generated from code-defined first-pass element mappings.
 - Applying any template from Templates Pool confirms, then clears and replaces the current overlay layout.
 
 Open engineering decisions:

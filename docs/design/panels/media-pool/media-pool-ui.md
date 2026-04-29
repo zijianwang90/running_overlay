@@ -368,6 +368,13 @@ Pool switch:
 - `Templates` is the third top-toolbar pool mode beside `Media Pool` and `Overlay Pool`.
 - Keep the selected state visually consistent with the other two pool modes.
 
+Section headers:
+
+- Use an Inspector-style header row for `Built-in Templates` and `User Templates`.
+- Header text is white primary text, not muted uppercase.
+- Header background uses the elevated panel/header surface.
+- Header spans the full Templates Pool content width and includes a subtle bottom divider.
+
 Built-in templates:
 
 - Section title: `Built-in Templates`
@@ -384,10 +391,10 @@ Built-in templates:
 
 Initial built-in template contents:
 
-- `Easy Run`: Distance, Pace, Heart Rate.
+- `Easy Run`: bundled from `Sources/RunningOverlay/Resources/Templates/EasyRun.rotemplate`.
 - `Interval Workout`: Elapsed Time, Pace, Heart Rate, Lap Live.
 - `Race`: Distance Timeline, Running Gauge, Route Map, Pace.
-- These are first-pass placeholder mappings. Each element should receive a reasonable normalized position so templates do not stack every overlay at center.
+- `Interval Workout` and `Race` are first-pass placeholder mappings. Each element should receive a reasonable normalized position so templates do not stack every overlay at center.
 
 User templates:
 

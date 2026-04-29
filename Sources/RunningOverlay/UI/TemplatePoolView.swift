@@ -18,7 +18,7 @@ struct TemplatePoolView: View {
             }
 
             ScrollView {
-                VStack(alignment: .leading, spacing: EditorTheme.space4) {
+                VStack(alignment: .leading, spacing: 0) {
                     templateSection(title: "Built-in Templates") {
                         VStack(spacing: 0) {
                             ForEach(BuiltInOverlayTemplate.all) { template in
@@ -28,10 +28,6 @@ struct TemplatePoolView: View {
                             }
                         }
                     }
-
-                    Rectangle()
-                        .fill(EditorTheme.borderSubtle)
-                        .frame(height: 1)
 
                     templateSection(title: "User Templates") {
                         if project.overlayTemplates.isEmpty {
@@ -79,8 +75,6 @@ struct TemplatePoolView: View {
 
                     Spacer(minLength: EditorTheme.space6)
                 }
-                .padding(.horizontal, EditorTheme.panelPaddingX)
-                .padding(.vertical, EditorTheme.space3)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
 
@@ -162,10 +156,22 @@ struct TemplatePoolView: View {
     }
 
     private func templateSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: EditorTheme.space2) {
-            Text(title.uppercased())
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(EditorTheme.textMuted)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text(title)
+                    .font(EditorTheme.sectionTitleFont)
+                    .foregroundStyle(EditorTheme.textPrimary)
+                Spacer()
+            }
+            .padding(.horizontal, EditorTheme.panelPaddingX)
+            .frame(height: 40)
+            .background(EditorTheme.panelHeader)
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(EditorTheme.borderSubtle)
+                    .frame(height: 1)
+            }
+
             content()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -223,7 +229,7 @@ private struct TemplatePoolRow: View {
                     .lineLimit(1)
                 Spacer()
             }
-            .padding(.horizontal, EditorTheme.space2)
+            .padding(.horizontal, EditorTheme.panelPaddingX)
             .frame(height: 30)
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
@@ -248,7 +254,7 @@ private struct TemplateEmptyRow: View {
                 .foregroundStyle(EditorTheme.textMuted)
             Spacer()
         }
-        .padding(.horizontal, EditorTheme.space2)
+        .padding(.horizontal, EditorTheme.panelPaddingX)
         .frame(height: 30)
         .frame(maxWidth: .infinity)
         .overlay(alignment: .bottom) {

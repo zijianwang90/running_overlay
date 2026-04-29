@@ -1,6 +1,6 @@
 # Preview UI Design Spec
 
-Last updated: 2026-04-28
+Last updated: 2026-04-29
 
 ## Purpose
 
@@ -126,6 +126,11 @@ Overlay editing affordances:
 - Handle scaling should use continuous undo grouping and commit on drag end.
 - Non-selected overlays should not show handles.
 - Row/action controls outside the canvas should not overlap overlay handles.
+- Dragging an overlay should support pixel-threshold snapping on the fitted canvas:
+  - When safe guides are enabled, overlay left/right edges snap to the 90%/80% vertical safe-guide lines, top/bottom edges snap to the 90%/80% horizontal safe-guide lines, and overlay center axes snap to the canvas center crosshair.
+  - Visible overlays snap to each other by left/center/right and top/center/bottom alignment lines, regardless of safe-guide visibility.
+  - The snap threshold is canvas-pixel based so behavior is stable across project resolutions and split-pane sizes.
+  - Active snap lines should render only during drag, above guide overlays and below/around interactive overlays, and should not intercept hit testing.
 
 ### Bottom Playback Row
 
@@ -167,6 +172,8 @@ Rules:
 - Clicking empty canvas clears overlay selection and clears media-pool preview, preserving current behavior.
 - Clicking an overlay selects it and opens the Inspector detail state.
 - Dragging an overlay updates normalized position and commits undo grouping at drag end.
+- Dragging an overlay first computes a proposed normalized center point, then applies preview snapping before updating local live-drag state.
+- Preview snapping uses measured rendered overlay frames in canvas coordinates, not hard-coded overlay type dimensions.
 - Dragging a selected overlay corner handle updates that overlay's `scale` continuously and commits undo grouping at drag end.
 - Overlays with visibility off are not rendered in the Preview canvas.
 - Locked overlays are rendered but cannot be selected or dragged from the Preview canvas.
@@ -213,4 +220,3 @@ Preview-specific controls should live in the Preview panel.
 - Playback buttons need labels: Previous, Stop, Play, Pause, Next.
 - Speed control needs label: `Playback Speed`.
 - Guide lines should not interfere with hit testing.
-

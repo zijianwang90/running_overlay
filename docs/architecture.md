@@ -100,6 +100,7 @@ Responsibilities:
 - Keep Inspector controls model-backed; omit or disable controls such as visibility, lock, animation, generic opacity, and metric reassignment until those fields exist in the project schema.
 - Provide addable overlay definitions to the left Overlay Pool; the right Inspector manages added overlays and edits selected overlay details.
 - Provide reusable overlay layouts through Templates Pool. Applying a template replaces the current overlay layout through `ProjectDocument` so replacement is explicit and undoable.
+- Support bundled authored built-in templates, starting with `Easy Run` loaded from `Resources/Templates/EasyRun.rotemplate`.
 
 Current overlay element types:
 
