@@ -2,6 +2,20 @@
 
 ## 2026-04-29
 
+### Unify Preview And SwiftUI Export Call Sites
+
+Summary:
+
+- Updated `PreviewCanvasView` to call shared overlay wrappers for text preset, distance timeline, and route map rendering.
+- Updated `SwiftUIOverlayVideoExporter` to call the same shared wrappers with `isInteractive: false`, so export disables selection affordances while keeping component visuals aligned with preview call sites.
+- This completes the second step after shared entry-point extraction: both preview and export now invoke the same overlay view entry points.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `Sources/RunningOverlay/Export/SwiftUIOverlayVideoExporter.swift`
+- `docs/project-log.md`
+
 ### Extract Shared Overlay View Entry Points
 
 Summary:

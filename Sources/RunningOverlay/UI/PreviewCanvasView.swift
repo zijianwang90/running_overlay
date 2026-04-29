@@ -565,10 +565,10 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
         Group {
             switch element.type {
             case .distanceTimeline:
-                DistanceTimelineOverlayView(
+                OverlaySharedDistanceTimelineView(
                     element: element,
                     layout: OverlayRenderModel.distanceTimelineLayout(for: element, in: renderContext),
-                    isSelected: isSelected
+                    isInteractive: isSelected
                 )
             case .elevationChart:
                 ElevationChartOverlayView(
@@ -582,10 +582,10 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
                     isSelected: isSelected
                 )
             case .routeMap:
-                RouteMapOverlayView(
+                OverlaySharedRouteMapView(
                     element: element,
                     layout: OverlayRenderModel.routeMapLayout(for: element, in: renderContext),
-                    isSelected: isSelected
+                    isInteractive: isSelected
                 )
             case .lapList:
                 LapListOverlayView(
@@ -603,10 +603,10 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
                     layout: OverlayRenderModel.lapLiveLayout(for: element, in: renderContext)
                 )
             default:
-                TextPresetOverlayView(
+                OverlaySharedTextPresetView(
                     element: element,
                     layout: OverlayRenderModel.textLayout(for: element, in: renderContext),
-                    isSelected: isSelected
+                    isInteractive: isSelected
                 )
             }
         }

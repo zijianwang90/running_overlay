@@ -447,7 +447,11 @@ Pending:
 - Batch export one overlay video for each timeline clip, including overlapping clips.
 - Full-activity export ignores video clips and renders one overlay file from FIT start to finish.
 - `Export Test Clip` renders a three-second transparent MOV around the current playhead position using the current overlay layout and active FIT data (falling back to synthetic data when no FIT activity is loaded).
+- `Export SwiftUI Test Clip` is an experimental Scheme-A probe that rasterizes SwiftUI overlay views (`ImageRenderer`) on each frame, then encodes transparent MOV output. Current scope includes visible numeric overlays, Distance Timeline, and Route Map.
+- Preview and SwiftUI Scheme-A export now invoke the same shared overlay view entry points (`OverlaySharedTextPresetView`, `OverlaySharedDistanceTimelineView`, `OverlaySharedRouteMapView`) and differ only by `isInteractive` flags.
 - `Export Test Frame` renders a PNG through the same `OverlayFrameRenderer` at the current playhead position using the current overlay layout.
+- `Export SwiftUI Test Frame` renders a PNG through the same experimental SwiftUI Scheme-A rasterization path at the current playhead position.
+- `Export Overlay JSON` serializes the current `OverlayLayout` as `overlay_configuration.json` for reproducible renderer-debug snapshots.
 - Test clip/frame time sampling uses the same activity-time conversion as preview (`timeline.activityElapsed(atProjectTime:)`) before Layer Data FPS quantization.
 - `renderPNG` now supports the same post-render vertical row flip option used by MOV export, so test frame outputs match preview orientation.
 - Text preset export accent color now resolves from `element.style.accentColor` rather than `NSColor.controlAccentColor`.
