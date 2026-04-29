@@ -2,6 +2,43 @@
 
 ## 2026-04-29
 
+### SwiftUI Per-Frame Export Experiment (Scheme A)
+
+Summary:
+
+- Added a new experimental export pipeline `SwiftUIOverlayVideoExporter` that rasterizes SwiftUI overlay content with `ImageRenderer` per frame and writes transparent MOV via `AVAssetWriter`.
+- Added `ProjectDocument.exportSwiftUITestClip(to:)` and `runSwiftUIExport(...)` so this path has independent progress/cancellation handling without changing the existing `OverlayVideoExporter` path.
+- Added an `Export SwiftUI Test Clip` action in `ExportDialogView` to trigger the experiment.
+- Expanded experiment scope: now renders visible numeric overlays, Distance Timeline, and Route Map through SwiftUI per-frame rasterization for Scheme-A feasibility/performance comparison.
+- Added `Export SwiftUI Test Frame` to write one PNG through the same Scheme-A rasterization path at the current playhead.
+- Added `Export Overlay JSON` to save the current `OverlayLayout` to `overlay_configuration.json`.
+- Split export actions into two button rows in `ExportDialogView` to avoid cramped controls.
+
+Files changed:
+
+- `Sources/RunningOverlay/Export/SwiftUIOverlayVideoExporter.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/UI/ExportDialogView.swift`
+- `docs/requirements.md`
+- `docs/development.md`
+- `docs/project-log.md`
+
+### Numeric Overlay Preview Uses Export Renderer
+
+Summary:
+
+- Started the shared-renderer migration on a narrow slice: numeric overlays now render their Preview visual content through `OverlayFrameRenderer`.
+- Added `OverlayFrameRenderer.renderNumericPreviewImage(...)`, which renders a single numeric element into the fitted preview canvas, flips the bitmap into display orientation, crops it to the element bounds, and returns an `NSImage` for SwiftUI.
+- Added `NumericOverlayRenderedPreviewView` in `PreviewCanvasView`; SwiftUI still owns selection outlines, dragging, snapping, and fallback rendering, while numeric text/background/effects come from the export renderer path.
+
+Files changed:
+
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `docs/requirements.md`
+- `docs/development.md`
+- `docs/design/overlays/numeric/numeric-overlay-ui.md`
+- `docs/project-log.md`
 ### Fix Test Export Orientation/Timing/Accent Parity
 
 Summary:
