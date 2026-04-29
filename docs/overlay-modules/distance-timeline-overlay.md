@@ -136,14 +136,14 @@ Implemented on 2026-04-28:
 - `OverlayElementType.distanceTimeline` now uses a dedicated `DistanceTimelineStyle` block on `OverlayStyle`.
 - Preset enum is in place for all eight design directions: minimal, dense, sport, splits, glass, neon, lowerThird, and route.
 - Preview and export share `OverlayDistanceTimelineRenderLayout`, including value text, progress/stat text, content rect, track rect, optional media slot rect, progress, axis labels, and elevation samples.
-- Value has its own typography controls, enabled/disabled state, metric/imperial unit system, and a Custom Values master toggle. When enabled, all four Custom 1-4 rows appear as metric pickers and render inline after the main value with independent group gap, item gap, size, color, and opacity. Group gap moves the entire custom group without compressing custom text or reducing item gap.
-- Label has been split into its own Inspector section following the Numeric overlay pattern.
+- Value has its own typography controls, enabled/disabled state, metric/imperial unit system, adjustable Progress Gap to the track, and a Custom Values master toggle. When enabled, all four Custom 1-4 rows appear as metric pickers and render inline after the main value with independent group gap, item gap, size, color, and opacity. Group gap moves the entire custom group without compressing custom text or reducing item gap.
+- Label has been split into its own Inspector section following the Numeric overlay pattern, with independent font, size, weight, color, and Label-to-Value gap controls.
 - Percent is no longer an inline Content option. Progress percentage is available through the dedicated Stats Bar, which supports up to four metric slots, top/bottom/left/right placement, Inside mode, width override, X/Y offset, and item gap.
 - Stats Bar Value and Label typography is now fully configurable per bar (font, size, weight, color), and rendered from Stats Bar-owned fields rather than outer accent color.
-- Stats Bar inspector now uses the shared cross-overlay component pair: `CollapsibleStatsBarInspectorSection` + `StatsBarInspectorRows`.
+- Stats Bar inspector now uses the shared cross-overlay component pair: `CollapsibleStatsBarInspectorSection` + `OverlayStatsBarInspectorRows`.
 - The Enabled switch is placed in the Stats Bar section header (left of chevron); expanded rows do not include a separate Enabled row.
 - Distance Timeline intentionally follows the same Stats Bar row set and icon as Route Map (the full shared set from the original Distance Timeline controls).
-- Axis labels are configurable separately from Value/Label: start/finish or distance endpoints can sit below the axis, and Point Gap controls both endpoint labels and optional intermediate distance points, so it stays editable even when More Points is off.
+- Axis labels are configurable separately from Value/Label: start/finish or distance endpoints can sit below the axis, Point Gap controls both endpoint labels and optional intermediate distance points, and font/color/size/weight are controlled independently.
 - Distance Timeline background and border bounds expand to include Axis Labels. Stats Bars with Inside enabled are included in the same background/border bounds at their current side, size, and offset; attached outside bars keep a separate bar background.
 - Tick density is configurable independently from preset, and left/right Stats Bar backgrounds expand enough to cover all vertical slots. Preview selection uses the same dynamic visual bounds as the background/border.
 - Dense and Splits render progress as a solid fill; their technical appearance comes from tick marks and axis labels rather than dashed/segmented progress.
@@ -152,7 +152,7 @@ Implemented on 2026-04-28:
 - Sport and lowerThird support deterministic media slot modes: system icon, embedded static SVG, and embedded animated SVG.
 - SVG import embeds the source text into the overlay style so templates persist the asset without relying on an external file path.
 - Animated SVG is sampled deterministically from overlay elapsed time in both preview and export. The first renderer supports common SVG primitives (`rect`, `circle`, `line`, `polyline`, `polygon`, simple `path` commands) plus simple `animateTransform` rotate and opacity pulse timing.
-- Background, border, corner radius, padding, track height, track opacity, ticks, current marker, glow, fade amount, and route elevation profile controls are exposed through `DistanceTimelineOverlayDetailView`.
+- Background, border, corner radius, padding, track height, track opacity, ticks, current marker style/color, glow, fade amount, and route elevation profile controls are exposed through `DistanceTimelineOverlayDetailView`.
 - The route preset renders a stylized route progress curve with optional elevation-profile underlay from FIT elevation samples.
 - When FIT GPS samples are available, the route preset projects and renders the sampled route geometry with a current-position marker; when GPS is missing, it falls back to the stylized progress curve.
 - The Inspector uses dense module-specific sections: Preset, Value, Label, Layout, Progress, Axis Labels, Stats Bar, Media Slot, Route / Elevation, Background & Border, and Effects. Irrelevant sections are hidden for presets that do not use them.

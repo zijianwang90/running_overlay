@@ -143,7 +143,7 @@ Defaults:
 
 ## Layout Section
 
-Implemented via the shared `CollapsibleLayoutInspectorSection` + `OverlayLayoutRows` components. Controls:
+Implemented via the shared `CollapsibleLayoutInspectorSection` + `OverlayLayoutInspectorRows` components. Controls:
 
 - Position X / Y on one row, three-decimal precision.
 - Scale slider, range `0.25...4`, quantized to `0.05`, formatted `1.00x`.

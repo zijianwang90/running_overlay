@@ -264,7 +264,7 @@ Current implementation:
 - `ActivityTimeline` supports interpolation for distance, heart rate, pace, elevation, cadence, power, and calories.
 - Overlay preview and Inspector value display use the project Layer Data FPS setting, so data values update at the configured cadence rather than every UI refresh.
 - Inspector overlay UI follows the dark tool-panel design spec in `docs/design/panels/inspector/inspector-ui.md`, with tokenized colors, spacing, compact added-overlay rows, and selected-overlay detail screens. Add-overlay tiles now live in the left `Overlay Pool`.
-- Overlay detail panels share reusable inspector modules for cross-overlay consistency: `CollapsibleLayoutInspectorSection` + `OverlayLayoutRows` (Layout) and `CollapsibleStatsBarInspectorSection` + `StatsBarInspectorRows` (Stats Bar). New detail views should reuse these modules instead of creating per-overlay variants.
+- Overlay detail panels share reusable inspector modules for cross-overlay consistency: `CollapsibleLayoutInspectorSection` + `OverlayLayoutInspectorRows` (Layout) and `CollapsibleStatsBarInspectorSection` + `OverlayStatsBarInspectorRows` (Stats Bar). New detail views should reuse these modules instead of creating per-overlay variants.
 - Shared `Layout` rows are now fixed to `Position`, `Scale`, `Width`, `Height`, and `Opacity`; `Rotation` is intentionally removed from the shared Layout section across overlay detail panels.
 - Inspector default width is 400 px and minimum width is 320 px; the panel is user-resizable through the custom `HorizontalResizeHandle`, and `ParameterPanelView` does not impose its own width frame so internal outer/detail/editing state switches cannot resize the right column or squeeze tile content.
 - Inspector segmented controls are implemented with native SwiftUI segmented `Picker` (`.pickerStyle(.segmented)`) instead of custom button rows, including shared dense controls used by Numeric Overlay, Running Gauge, and Route Map detail views.
@@ -286,7 +286,7 @@ Current implementation:
 - Route Map export currently renders the local route/map fallback synchronously so MOV/PNG export does not depend on MapKit network/service timing.
 - Inspector supports normalized X/Y position entry plus shadow opacity and radius controls.
 - Up and down arrow keys nudge the selected overlay element vertically by one percent of the preview canvas.
-- Overlay Pool shows add tiles grouped by Metrics, Charts, and Route; clicking a tile calls `ProjectDocument.addOverlayElement`, which selects the new overlay and opens its detail Inspector.
+- Overlay Pool shows add tiles grouped by Metrics, Charts, and Route; clicking a tile calls `ProjectDocument.addOverlayElement`, which selects the new overlay and opens its detail Inspector. Featured add tiles use the same card shape and border treatment as other tiles without a left-side blue accent strip.
 - Inspector shows a dark outer state when no overlay element is selected, but it only contains `Added Overlays`; it no longer carries the selectable overlay catalog.
 - Inspector added-overlay rows show icon, type, live value preview, visibility toggle, lock toggle, delete, and detail navigation without sorting affordances.
 - Added Overlays rows expose a context menu (`Copy Properties` / `Paste Properties`) for overlay configuration transfer.
@@ -296,6 +296,7 @@ Current implementation:
 - Distance Timeline is a dedicated module with minimal, dense, sport, splits, glass, neon, lower-third, and route presets, backed by `DistanceTimelineStyle`.
 - Distance Timeline preview/export rendering supports distinct progress treatments, optional system-icon media slots for sport/lower-third, border/background controls, ticks, marker, glow, fade amount, route elevation underlay, and sampled GPS route geometry when available.
 - Distance Timeline Value is separate from Label, owns the value font controls, can be disabled, switches metric/imperial units, and supports a Custom Values master toggle that expands four inline metric slots with independent group gap, item gap, size, color, and opacity. Group gap offsets the whole custom group without compressing custom text or changing item gap.
+- Distance Timeline adds fine-grained controls for Value-to-progress gap, Progress Marker style/color, Label font/color/size/weight and Label-to-Value gap, plus Axis Label font/color/size/weight. Preview and export use the same `DistanceTimelineStyle` fields.
 - Distance Timeline Percent was removed from Content and represented by the dedicated Stats Bar, which supports up to four metric slots, top/bottom/left/right placement, separate Inside mode for all four sides, adjustable width/height, item gap, and X/Y offset.
 - Route Map Stats Bar now follows the same full shared control surface as Distance Timeline (Placement, Inside, Layout, Size, Width, Offset, Item Gap, Background, Dividers, Radius, Slot 1-4), with Enabled in the section header.
 - Route Map and Distance Timeline Stats Bars now share a single renderer path in both Preview and Export (based on the Distance Timeline Stats Bar rendering logic), so future overlay modules can reuse one rendering implementation.

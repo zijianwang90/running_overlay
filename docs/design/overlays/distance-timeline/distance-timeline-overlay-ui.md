@@ -1,6 +1,6 @@
 # Distance Timeline Overlay UI Design Spec
 
-Last updated: 2026-04-28 (value/label/stats bar controls + solid dense progress)
+Last updated: 2026-04-29 (fine-grained value, label, axis, and marker controls)
 
 ## Purpose
 
@@ -211,6 +211,7 @@ Controls:
 - Value toggle.
 - Unit system: Metric / Imperial.
 - Font family, primary value size, weight, and text color.
+- Progress Gap controls the vertical distance between the Value block and the progress track.
 - Custom Values master toggle.
 - When Custom Values is enabled, show all four Custom 1-4 rows using the same slot-row pattern as Stats Bar slots: row title on the left, metric picker and visible toggle on the right.
 - Custom Values render inline after the primary Value text on the same baseline.
@@ -229,6 +230,8 @@ Controls:
 
 - Show label toggle.
 - Label text.
+- Font family, size, weight, and color.
+- Value Gap controls the vertical distance between the Label and the Value row.
 
 ## Axis Labels
 
@@ -240,8 +243,17 @@ Controls:
 - Distance point density.
 - Point Gap controls the vertical distance from the progress axis for start/finish endpoint labels and intermediate distance points.
 - Point Gap remains editable even when More Points is off because endpoint labels use it too.
+- Font family, size, weight, and color apply to endpoint labels and intermediate distance point labels.
 
 Start/finish text and distance labels should sit below the axis, not on top of or centered over the track.
+
+## Progress Marker
+
+Controls:
+
+- Marker toggle.
+- Marker style: dot, pill, or triangle. These are rendered as vector-native shapes in preview and export; SVG marker assets are not part of this control yet.
+- Marker color, independent from progress fill color.
 
 ## Stats Bar
 
@@ -264,7 +276,7 @@ For left/right placements, the bar background must expand enough to cover all ve
 Use dense Inspector primitives from Numeric Overlay:
 
 1. `Preset`
-2. `Layout` — shared `OverlayLayoutRows`: Position X/Y, Scale, Width, Height. No Anchor, no Padding.
+2. `Layout` — shared `OverlayLayoutInspectorRows`: Position X/Y, Scale, Width, Height. No Anchor, no Padding.
 3. `Value`
 4. `Label`
 5. `Progress`

@@ -161,6 +161,7 @@ struct DistanceTimelineOverlayDetailView: View {
                 project.setOverlayForegroundColor(elementID, color: color)
             }
         }
+        InspectorDenseSliderRow(label: "Progress Gap", value: distanceBinding(\.valueProgressSpacing, of: style), range: 0...48, displayText: "\(Int(style.valueProgressSpacing))")
         InspectorDenseRow(label: "Custom Values") {
             toggle(style.customValuesEnabled) { newValue in
                 project.mutateDistanceTimelineStyle(elementID) { $0.customValuesEnabled = newValue }
@@ -226,6 +227,19 @@ struct DistanceTimelineOverlayDetailView: View {
             .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
             .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
         }
+        typographyRows(
+            title: "Label",
+            fontName: style.labelFontName,
+            fontSize: style.labelFontSize,
+            fontWeight: style.labelFontWeight,
+            color: style.labelColor,
+            isEnabled: style.showLabel,
+            onSetFontName: { value in project.mutateDistanceTimelineStyle(elementID) { $0.labelFontName = value } },
+            onSetFontSize: { value in project.mutateDistanceTimelineStyle(elementID) { $0.labelFontSize = value.rounded() } },
+            onSetFontWeight: { value in project.mutateDistanceTimelineStyle(elementID) { $0.labelFontWeight = value } },
+            onSetColor: { value in project.mutateDistanceTimelineStyle(elementID) { $0.labelColor = value } }
+        )
+        InspectorDenseSliderRow(label: "Value Gap", value: distanceBinding(\.labelValueSpacing, of: style), range: 0...32, displayText: "\(Int(style.labelValueSpacing))", isEnabled: style.showLabel)
     }
 
     @ViewBuilder
@@ -240,7 +254,7 @@ struct DistanceTimelineOverlayDetailView: View {
                 }
             )
         ) {
-            OverlayLayoutRows(
+            OverlayLayoutInspectorRows(
                 elementID: elementID,
                 widthBinding: distanceBinding(\.width, of: style),
                 widthRange: 180...640,
@@ -275,6 +289,21 @@ struct DistanceTimelineOverlayDetailView: View {
                 project.mutateDistanceTimelineStyle(elementID) { $0.currentMarkerEnabled = newValue }
             }
         }
+        InspectorDenseRow(label: "Marker Style") {
+            InspectorDenseSegmented(values: DistanceTimelineMarkerStyle.allCases, selection: Binding(
+                get: { style.currentMarkerStyle },
+                set: { markerStyle in project.mutateDistanceTimelineStyle(elementID) { $0.currentMarkerStyle = markerStyle } }
+            )) { markerStyle in
+                Text(markerStyle.label)
+            }
+        }
+        .opacity(style.currentMarkerEnabled ? 1 : 0.5).disabled(!style.currentMarkerEnabled)
+        InspectorDenseRow(label: "Marker Color") {
+            InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: style.currentMarkerColor) { color in
+                project.mutateDistanceTimelineStyle(elementID) { $0.currentMarkerColor = color }
+            }
+        }
+        .opacity(style.currentMarkerEnabled ? 1 : 0.5).disabled(!style.currentMarkerEnabled)
     }
 
     @ViewBuilder
@@ -303,6 +332,18 @@ struct DistanceTimelineOverlayDetailView: View {
             set: { value in project.mutateDistanceTimelineStyle(elementID) { $0.distancePointCount = min(max(Int(value.rounded()), 0), 12) } }
         ), range: 0...12, displayText: "\(style.distancePointCount)", isEnabled: style.showDistancePoints)
         InspectorDenseSliderRow(label: "Point Gap", value: distanceBinding(\.distancePointOffset, of: style), range: -24...64, displayText: "\(Int(style.distancePointOffset))")
+        typographyRows(
+            title: "Axis",
+            fontName: style.axisLabelFontName,
+            fontSize: style.axisLabelFontSize,
+            fontWeight: style.axisLabelFontWeight,
+            color: style.axisLabelColor,
+            isEnabled: style.showAxisLabels || style.showDistancePoints,
+            onSetFontName: { value in project.mutateDistanceTimelineStyle(elementID) { $0.axisLabelFontName = value } },
+            onSetFontSize: { value in project.mutateDistanceTimelineStyle(elementID) { $0.axisLabelFontSize = value.rounded() } },
+            onSetFontWeight: { value in project.mutateDistanceTimelineStyle(elementID) { $0.axisLabelFontWeight = value } },
+            onSetColor: { value in project.mutateDistanceTimelineStyle(elementID) { $0.axisLabelColor = value } }
+        )
     }
 
     @ViewBuilder
@@ -330,7 +371,7 @@ struct DistanceTimelineOverlayDetailView: View {
     @ViewBuilder
     private func distanceTimelineStatsBarRows(_ element: OverlayElement) -> some View {
         let config = element.style.distanceTimeline.statsBar
-        StatsBarInspectorRows(
+        OverlayStatsBarInspectorRows(
             isOn: config.visible,
             placement: config.placement,
             availablePlacements: SharedStatsBarInspectorUI.placements,
@@ -480,6 +521,69 @@ struct DistanceTimelineOverlayDetailView: View {
                 project.mutateDistanceTimelineStyle(elementID) { $0[keyPath: keyPath] = newValue }
             }
         )
+    }
+
+    @ViewBuilder
+    private func typographyRows(
+        title: String,
+        fontName: String,
+        fontSize: Double,
+        fontWeight: OverlayFontWeight,
+        color: OverlayColor,
+        isEnabled: Bool,
+        onSetFontName: @escaping (String) -> Void,
+        onSetFontSize: @escaping (Double) -> Void,
+        onSetFontWeight: @escaping (OverlayFontWeight) -> Void,
+        onSetColor: @escaping (OverlayColor) -> Void
+    ) -> some View {
+        InspectorDenseRow(label: "\(title) Font") {
+            Menu {
+                ForEach(NumericOverlayDetailView.fontPresets, id: \.self) { name in
+                    Button {
+                        onSetFontName(name)
+                    } label: {
+                        if name == fontName { Label(name, systemImage: "checkmark") }
+                        else { Text(name) }
+                    }
+                }
+            } label: {
+                InspectorDenseMenuLabel(title: fontName, isEnabled: isEnabled)
+            }
+            .menuStyle(.borderlessButton)
+            .frame(height: NumericTokens.controlHeight)
+        }
+        .opacity(isEnabled ? 1 : 0.5).disabled(!isEnabled)
+
+        InspectorDenseSliderRow(
+            label: "\(title) Size",
+            value: Binding(
+                get: { fontSize },
+                set: { value in onSetFontSize(value) }
+            ),
+            range: 8...48,
+            displayText: "\(Int(fontSize.rounded()))",
+            isEnabled: isEnabled
+        )
+
+        InspectorDenseRow(label: "\(title) Weight") {
+            InspectorDenseSegmented(
+                values: OverlayFontWeight.allCases,
+                selection: Binding(
+                    get: { fontWeight },
+                    set: { value in onSetFontWeight(value) }
+                )
+            ) { weight in
+                Text(weight.label)
+            }
+        }
+        .opacity(isEnabled ? 1 : 0.5).disabled(!isEnabled)
+
+        InspectorDenseRow(label: "\(title) Color") {
+            InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: color) { newColor in
+                onSetColor(newColor)
+            }
+        }
+        .opacity(isEnabled ? 1 : 0.5).disabled(!isEnabled)
     }
 
     @ViewBuilder

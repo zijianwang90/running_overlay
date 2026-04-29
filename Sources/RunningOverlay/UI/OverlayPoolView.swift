@@ -161,14 +161,6 @@ private struct OverlayTileButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: EditorTheme.controlRadius)
                     .stroke(isAccent ? EditorTheme.borderStrong : EditorTheme.borderSubtle, lineWidth: 1)
             }
-            .overlay(alignment: .leading) {
-                if isAccent {
-                    RoundedRectangle(cornerRadius: 1)
-                        .fill(EditorTheme.accentBlue)
-                        .frame(width: 2)
-                        .padding(.vertical, EditorTheme.space2)
-                }
-            }
             .opacity(configuration.isPressed ? 0.88 : 1)
     }
 

@@ -253,7 +253,7 @@ struct LapCardOverlayDetailView: View {
                 }
             )
         ) {
-            OverlayLayoutRows(
+            OverlayLayoutInspectorRows(
                 elementID: elementID,
                 widthBinding: Binding(
                     get: { s.cardWidth },

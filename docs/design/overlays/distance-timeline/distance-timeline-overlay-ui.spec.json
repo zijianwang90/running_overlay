@@ -77,7 +77,7 @@
     ]
   },
   "value": {
-    "controls": ["enabled", "unitSystem", "font", "valueSize", "weight", "textColor", "customValuesEnabled", "customSlots", "customMetric", "customValuesGroupSpacing", "customValueSpacing", "customValueSize", "customValueColor", "customValueOpacity"],
+    "controls": ["enabled", "unitSystem", "font", "valueSize", "weight", "textColor", "valueProgressSpacing", "customValuesEnabled", "customSlots", "customMetric", "customValuesGroupSpacing", "customValueSpacing", "customValueSize", "customValueColor", "customValueOpacity"],
     "unitSystems": ["metric", "imperial"],
     "customSlotCount": 4,
     "rules": [
@@ -88,21 +88,27 @@
       "customValueSpacing controls distance between custom values",
       "increasing customValuesGroupSpacing moves the whole custom group and must not compress custom values or reduce customValueSpacing",
       "custom values render inline after the primary value on the same baseline",
-      "custom value style is independent from primary value style"
+      "custom value style is independent from primary value style",
+      "valueProgressSpacing controls vertical distance between the value block and progress track"
     ]
   },
   "label": {
-    "controls": ["enabled", "text"],
-    "rules": ["label is a separate section following Numeric overlay label behavior"]
+    "controls": ["enabled", "text", "font", "size", "weight", "color", "labelValueSpacing"],
+    "rules": ["label is a separate section following Numeric overlay label behavior", "labelValueSpacing controls vertical distance between label and value"]
   },
   "axisLabels": {
-    "controls": ["enabled", "mode", "showDistancePoints", "distancePointDensity", "distancePointGap"],
+    "controls": ["enabled", "mode", "showDistancePoints", "distancePointDensity", "distancePointGap", "font", "size", "weight", "color"],
     "modes": ["startFinish", "distance"],
     "rules": [
       "start/finish or distance endpoint labels render below the progress axis using distancePointGap",
       "distancePointGap remains editable when showDistancePoints is false because endpoint labels use it",
       "additional distance points are optional and density-controlled"
     ]
+  },
+  "progressMarker": {
+    "controls": ["enabled", "style", "color"],
+    "styles": ["dot", "pill", "triangle"],
+    "rules": ["marker color is independent from progress fill color", "marker styles render as vector-native shapes in preview and export; SVG marker assets are not supported yet"]
   },
   "statsBar": {
     "controls": ["enabled", "placement", "inside", "layout", "width", "height", "offsetX", "offsetY", "itemSpacing", "backgroundOpacity", "dividerOpacity", "cornerRadius", "slots"],
@@ -221,7 +227,7 @@
   },
   "sharedStatsBarInspector": {
     "sectionComponent": "CollapsibleStatsBarInspectorSection",
-    "rowsComponent": "StatsBarInspectorRows",
+    "rowsComponent": "OverlayStatsBarInspectorRows",
     "icon": "tablecells",
     "enabledTogglePlacement": "headerLeftOfChevron",
     "canonicalRows": [
@@ -243,7 +249,7 @@
   },
   "sharedLayoutInspector": {
     "sectionComponent": "CollapsibleLayoutInspectorSection",
-    "rowsComponent": "OverlayLayoutRows",
+    "rowsComponent": "OverlayLayoutInspectorRows",
     "canonicalRows": [
       "Position",
       "Scale",

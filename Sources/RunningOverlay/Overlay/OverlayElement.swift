@@ -1104,6 +1104,22 @@ enum DistanceTimelineAxisLabelMode: String, CaseIterable, Identifiable, Codable 
     }
 }
 
+enum DistanceTimelineMarkerStyle: String, CaseIterable, Identifiable, Codable {
+    case dot
+    case pill
+    case triangle
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .dot: "Dot"
+        case .pill: "Pill"
+        case .triangle: "Triangle"
+        }
+    }
+}
+
 struct DistanceTimelineCustomValue: Equatable, Codable {
     var visible: Bool
     var metric: RouteMapStatsMetric
@@ -1273,11 +1289,21 @@ struct DistanceTimelineStyle: Equatable, Codable {
     var customValueSpacing: Double
     var customValueColor: OverlayColor
     var customValueOpacity: Double
+    var valueProgressSpacing: Double
     var showLabel: Bool
     var label: String
+    var labelFontName: String
+    var labelFontSize: Double
+    var labelFontWeight: OverlayFontWeight
+    var labelColor: OverlayColor
+    var labelValueSpacing: Double
     var showAxisLabels: Bool
     var axisLabelMode: DistanceTimelineAxisLabelMode
     var axisLabelOffset: Double
+    var axisLabelFontName: String
+    var axisLabelFontSize: Double
+    var axisLabelFontWeight: OverlayFontWeight
+    var axisLabelColor: OverlayColor
     var showDistancePoints: Bool
     var distancePointCount: Int
     var distancePointOffset: Double
@@ -1298,6 +1324,8 @@ struct DistanceTimelineStyle: Equatable, Codable {
     var tickMarksEnabled: Bool
     var tickDensity: Int
     var currentMarkerEnabled: Bool
+    var currentMarkerStyle: DistanceTimelineMarkerStyle
+    var currentMarkerColor: OverlayColor
     var glowEnabled: Bool
     var fadeEnabled: Bool
     var fadeEdge: DistanceTimelineFadeEdge
@@ -1328,11 +1356,21 @@ struct DistanceTimelineStyle: Equatable, Codable {
         customValueSpacing: Double = 10,
         customValueColor: OverlayColor = .white,
         customValueOpacity: Double = 0.70,
+        valueProgressSpacing: Double = 8,
         showLabel: Bool,
         label: String,
+        labelFontName: String = "SF Pro",
+        labelFontSize: Double = 12,
+        labelFontWeight: OverlayFontWeight = .medium,
+        labelColor: OverlayColor = .white,
+        labelValueSpacing: Double = 2,
         showAxisLabels: Bool = false,
         axisLabelMode: DistanceTimelineAxisLabelMode = .startFinish,
         axisLabelOffset: Double = 14,
+        axisLabelFontName: String = "SF Pro",
+        axisLabelFontSize: Double = 11,
+        axisLabelFontWeight: OverlayFontWeight = .medium,
+        axisLabelColor: OverlayColor = .white,
         showDistancePoints: Bool = false,
         distancePointCount: Int = 3,
         distancePointOffset: Double = 34,
@@ -1353,6 +1391,8 @@ struct DistanceTimelineStyle: Equatable, Codable {
         tickMarksEnabled: Bool,
         tickDensity: Int = 16,
         currentMarkerEnabled: Bool,
+        currentMarkerStyle: DistanceTimelineMarkerStyle = .dot,
+        currentMarkerColor: OverlayColor? = nil,
         glowEnabled: Bool,
         fadeEnabled: Bool,
         fadeEdge: DistanceTimelineFadeEdge,
@@ -1376,11 +1416,21 @@ struct DistanceTimelineStyle: Equatable, Codable {
         self.customValueSpacing = customValueSpacing
         self.customValueColor = customValueColor
         self.customValueOpacity = customValueOpacity
+        self.valueProgressSpacing = valueProgressSpacing
         self.showLabel = showLabel
         self.label = label
+        self.labelFontName = labelFontName
+        self.labelFontSize = labelFontSize
+        self.labelFontWeight = labelFontWeight
+        self.labelColor = labelColor
+        self.labelValueSpacing = labelValueSpacing
         self.showAxisLabels = showAxisLabels
         self.axisLabelMode = axisLabelMode
         self.axisLabelOffset = axisLabelOffset
+        self.axisLabelFontName = axisLabelFontName
+        self.axisLabelFontSize = axisLabelFontSize
+        self.axisLabelFontWeight = axisLabelFontWeight
+        self.axisLabelColor = axisLabelColor
         self.showDistancePoints = showDistancePoints
         self.distancePointCount = min(max(distancePointCount, 0), 12)
         self.distancePointOffset = distancePointOffset
@@ -1401,6 +1451,8 @@ struct DistanceTimelineStyle: Equatable, Codable {
         self.tickMarksEnabled = tickMarksEnabled
         self.tickDensity = min(max(tickDensity, 2), 40)
         self.currentMarkerEnabled = currentMarkerEnabled
+        self.currentMarkerStyle = currentMarkerStyle
+        self.currentMarkerColor = currentMarkerColor ?? fillColor
         self.glowEnabled = glowEnabled
         self.fadeEnabled = fadeEnabled
         self.fadeEdge = fadeEdge
@@ -1432,13 +1484,23 @@ struct DistanceTimelineStyle: Equatable, Codable {
         customValueSpacing = try c.decodeIfPresent(Double.self, forKey: .customValueSpacing) ?? base.customValueSpacing
         customValueColor = try c.decodeIfPresent(OverlayColor.self, forKey: .customValueColor) ?? base.customValueColor
         customValueOpacity = try c.decodeIfPresent(Double.self, forKey: .customValueOpacity) ?? base.customValueOpacity
+        valueProgressSpacing = try c.decodeIfPresent(Double.self, forKey: .valueProgressSpacing) ?? base.valueProgressSpacing
         showLabel = try c.decodeIfPresent(Bool.self, forKey: .showLabel) ?? base.showLabel
         label = try c.decodeIfPresent(String.self, forKey: .label) ?? base.label
+        labelFontName = try c.decodeIfPresent(String.self, forKey: .labelFontName) ?? base.labelFontName
+        labelFontSize = try c.decodeIfPresent(Double.self, forKey: .labelFontSize) ?? base.labelFontSize
+        labelFontWeight = try c.decodeIfPresent(OverlayFontWeight.self, forKey: .labelFontWeight) ?? base.labelFontWeight
+        labelColor = try c.decodeIfPresent(OverlayColor.self, forKey: .labelColor) ?? base.labelColor
+        labelValueSpacing = try c.decodeIfPresent(Double.self, forKey: .labelValueSpacing) ?? base.labelValueSpacing
         showAxisLabels = try c.decodeIfPresent(Bool.self, forKey: .showAxisLabels)
             ?? legacy.decodeIfPresent(Bool.self, forKey: .showStartFinishLabels)
             ?? base.showAxisLabels
         axisLabelMode = try c.decodeIfPresent(DistanceTimelineAxisLabelMode.self, forKey: .axisLabelMode) ?? base.axisLabelMode
         axisLabelOffset = try c.decodeIfPresent(Double.self, forKey: .axisLabelOffset) ?? base.axisLabelOffset
+        axisLabelFontName = try c.decodeIfPresent(String.self, forKey: .axisLabelFontName) ?? base.axisLabelFontName
+        axisLabelFontSize = try c.decodeIfPresent(Double.self, forKey: .axisLabelFontSize) ?? base.axisLabelFontSize
+        axisLabelFontWeight = try c.decodeIfPresent(OverlayFontWeight.self, forKey: .axisLabelFontWeight) ?? base.axisLabelFontWeight
+        axisLabelColor = try c.decodeIfPresent(OverlayColor.self, forKey: .axisLabelColor) ?? base.axisLabelColor
         showDistancePoints = try c.decodeIfPresent(Bool.self, forKey: .showDistancePoints) ?? base.showDistancePoints
         distancePointCount = min(max(try c.decodeIfPresent(Int.self, forKey: .distancePointCount) ?? base.distancePointCount, 0), 12)
         distancePointOffset = try c.decodeIfPresent(Double.self, forKey: .distancePointOffset) ?? base.distancePointOffset
@@ -1459,6 +1521,8 @@ struct DistanceTimelineStyle: Equatable, Codable {
         tickMarksEnabled = try c.decodeIfPresent(Bool.self, forKey: .tickMarksEnabled) ?? base.tickMarksEnabled
         tickDensity = min(max(try c.decodeIfPresent(Int.self, forKey: .tickDensity) ?? base.tickDensity, 2), 40)
         currentMarkerEnabled = try c.decodeIfPresent(Bool.self, forKey: .currentMarkerEnabled) ?? base.currentMarkerEnabled
+        currentMarkerStyle = try c.decodeIfPresent(DistanceTimelineMarkerStyle.self, forKey: .currentMarkerStyle) ?? base.currentMarkerStyle
+        currentMarkerColor = try c.decodeIfPresent(OverlayColor.self, forKey: .currentMarkerColor) ?? base.currentMarkerColor
         glowEnabled = try c.decodeIfPresent(Bool.self, forKey: .glowEnabled) ?? base.glowEnabled
         fadeEnabled = try c.decodeIfPresent(Bool.self, forKey: .fadeEnabled) ?? base.fadeEnabled
         fadeEdge = try c.decodeIfPresent(DistanceTimelineFadeEdge.self, forKey: .fadeEdge) ?? base.fadeEdge
@@ -1495,11 +1559,21 @@ struct DistanceTimelineStyle: Equatable, Codable {
         case customValueSpacing
         case customValueColor
         case customValueOpacity
+        case valueProgressSpacing
         case showLabel
         case label
+        case labelFontName
+        case labelFontSize
+        case labelFontWeight
+        case labelColor
+        case labelValueSpacing
         case showAxisLabels
         case axisLabelMode
         case axisLabelOffset
+        case axisLabelFontName
+        case axisLabelFontSize
+        case axisLabelFontWeight
+        case axisLabelColor
         case showDistancePoints
         case distancePointCount
         case distancePointOffset
@@ -1520,6 +1594,8 @@ struct DistanceTimelineStyle: Equatable, Codable {
         case tickMarksEnabled
         case tickDensity
         case currentMarkerEnabled
+        case currentMarkerStyle
+        case currentMarkerColor
         case glowEnabled
         case fadeEnabled
         case fadeEdge

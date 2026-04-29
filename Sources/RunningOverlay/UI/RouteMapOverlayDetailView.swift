@@ -81,7 +81,7 @@ struct RouteMapOverlayDetailView: View {
                 }
             )
         ) {
-            OverlayLayoutRows(
+            OverlayLayoutInspectorRows(
                 elementID: elementID,
                 widthBinding: Binding(
                     get: { element.style.routeMapWidth },
@@ -385,7 +385,7 @@ struct RouteMapOverlayDetailView: View {
     @ViewBuilder
     private func routeMapStatsBarRows(_ element: OverlayElement) -> some View {
         let config = element.style.routeMapStatsBar
-        StatsBarInspectorRows(
+        OverlayStatsBarInspectorRows(
             isOn: config.visible,
             placement: config.placement,
             availablePlacements: SharedStatsBarInspectorUI.placements,

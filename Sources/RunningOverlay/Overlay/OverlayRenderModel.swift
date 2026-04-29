@@ -69,14 +69,19 @@ enum OverlayRenderModel {
             height: max(rect.height - paddingY * 2, 1)
         )
         let trackHeight = max(context.scaled(style.trackHeight * element.scale), 2)
+        let valueFontSize = context.scaled(max(12, element.style.fontSize * element.scale))
+        let labelFontSize = context.scaled(max(8, style.labelFontSize * element.scale))
+        let axisLabelFontSize = context.scaled(max(8, style.axisLabelFontSize * element.scale))
+        let valueBlockHeight = (style.showLabel ? labelFontSize + context.scaled(style.labelValueSpacing * element.scale) : 0)
+            + (style.showValue || style.customValuesEnabled ? valueFontSize * 1.35 : 0)
         let trackY: Double
         switch style.preset {
         case .lowerThird:
-            trackY = contentRect.maxY - trackHeight
+            trackY = min(contentRect.maxY - trackHeight, contentRect.minY + valueBlockHeight + context.scaled(style.valueProgressSpacing * element.scale))
         case .route:
             trackY = contentRect.minY + contentRect.height * 0.58
         default:
-            trackY = contentRect.maxY - trackHeight
+            trackY = min(contentRect.maxY - trackHeight, contentRect.minY + valueBlockHeight + context.scaled(style.valueProgressSpacing * element.scale))
         }
         let trackRect = CGRect(
             x: contentRect.minX,
@@ -156,10 +161,10 @@ enum OverlayRenderModel {
             trackRect: trackRect,
             mediaSlotRect: mediaSlotRect,
             elapsedTime: context.elapsedTime,
-            valueFontSize: context.scaled(max(12, element.style.fontSize * element.scale)),
-            labelFontSize: context.scaled(max(9, element.style.fontSize * 0.42 * element.scale)),
+            valueFontSize: valueFontSize,
+            labelFontSize: labelFontSize,
             percentFontSize: context.scaled(max(9, element.style.fontSize * 0.44 * element.scale)),
-            unitFontSize: context.scaled(max(9, element.style.fontSize * 0.36 * element.scale)),
+            unitFontSize: axisLabelFontSize,
             cornerRadius: context.scaled(style.cornerRadius * element.scale),
             borderWidth: max(context.scaled(style.borderWidth * element.scale), 0.5),
             progress: clamped,

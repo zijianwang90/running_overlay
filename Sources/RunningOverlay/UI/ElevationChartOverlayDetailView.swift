@@ -104,7 +104,7 @@ struct ElevationChartOverlayDetailView: View {
     private func layoutSection(_ element: OverlayElement) -> some View {
         let style = element.style.elevationChart
         CollapsibleLayoutInspectorSection(isExpanded: binding(for: .layout)) {
-            OverlayLayoutRows(
+            OverlayLayoutInspectorRows(
                 elementID: elementID,
                 widthBinding: elevationBinding(\.width, of: style, continuous: true),
                 widthRange: 220...720,
@@ -185,7 +185,7 @@ struct ElevationChartOverlayDetailView: View {
             isBarEnabled: config.visible,
             onSetBarEnabled: { isVisible in setStats { $0.visible = isVisible } }
         ) {
-            StatsBarInspectorRows(
+            OverlayStatsBarInspectorRows(
                 isOn: config.visible,
                 placement: config.placement,
                 availablePlacements: SharedStatsBarInspectorUI.placements,

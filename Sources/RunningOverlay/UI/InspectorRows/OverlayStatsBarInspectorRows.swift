@@ -4,7 +4,7 @@ import SwiftUI
 /// Distance Timeline and Route Map overlays.
 /// Keep this surface identical across overlays so future modules can reuse it
 /// without introducing per-overlay divergence.
-struct StatsBarInspectorRows: View {
+struct OverlayStatsBarInspectorRows: View {
 
     // MARK: - Required config
 
@@ -275,7 +275,7 @@ enum SharedStatsBarInspectorUI {
     static let metrics = RouteMapStatsMetric.allCases
 }
 
-extension StatsBarInspectorRows {
+extension OverlayStatsBarInspectorRows {
     struct TypographyConfig {
         var fontName: String
         var fontSize: Double

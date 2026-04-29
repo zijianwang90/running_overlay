@@ -1,6 +1,6 @@
 {
   "name": "Inspector UI",
-  "updated": "2026-04-29 (add catalog moved to Overlay Pool)",
+  "updated": "2026-04-29 (Overlay Pool tiles have no left accent strip)",
   "references": {
     "outerMockup": "./inspector-outer.png",
     "detailMockup": "./overlay-detail-running-gauge.png",
@@ -10,6 +10,7 @@
   "intent": {
     "productTone": "dark professional desktop video-editing tool",
     "primaryAccent": "blue",
+    "overlayPoolTileTreatment": "featured add tiles may use a stronger border but must not draw a left-side blue accent strip",
     "density": "compact",
     "avoid": [
       "marketing hero layout",
@@ -229,7 +230,7 @@
   "sharedInspectorModules": {
     "layout": {
       "sectionComponent": "CollapsibleLayoutInspectorSection",
-      "rowsComponent": "OverlayLayoutRows",
+      "rowsComponent": "OverlayLayoutInspectorRows",
       "canonicalRows": [
         "Position",
         "Scale",
@@ -244,7 +245,7 @@
     },
     "statsBar": {
       "sectionComponent": "CollapsibleStatsBarInspectorSection",
-      "rowsComponent": "StatsBarInspectorRows",
+      "rowsComponent": "OverlayStatsBarInspectorRows",
       "icon": "tablecells",
       "enabledTogglePlacement": "headerLeftOfChevron",
       "canonicalRows": [

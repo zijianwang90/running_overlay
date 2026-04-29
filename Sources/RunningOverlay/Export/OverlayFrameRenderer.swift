@@ -719,10 +719,11 @@ struct OverlayFrameRenderer {
                 layout.label.uppercased(),
                 element: element,
                 fontSize: layout.labelFontSize,
-                color: foreground.withAlphaComponent(layout.style.preset == .neon ? 0.86 : 0.64),
+                color: NSColor(layout.style.labelColor),
                 rect: CGRect(x: content.minX, y: content.minY, width: content.width * 0.62, height: layout.labelFontSize * 1.3),
                 alignment: .left,
-                weight: .medium
+                weight: nsFontWeight(layout.style.labelFontWeight),
+                fontName: layout.style.labelFontName
             )
         }
         let valueScale: Double
@@ -732,9 +733,9 @@ struct OverlayFrameRenderer {
         case .dense: valueScale = 0.86
         default: valueScale = 1
         }
-        let valueY = content.minY + (layout.style.showLabel ? layout.labelFontSize * 1.05 : 0)
-        var inlineX = content.minX
         let scale = distanceTimelineStyleScale(layout)
+        let valueY = content.minY + (layout.style.showLabel ? layout.labelFontSize * 1.3 + layout.style.labelValueSpacing * scale : 0)
+        var inlineX = content.minX
         if layout.style.showValue {
             let valueFont = layout.valueFontSize * valueScale
             drawPlainText(
@@ -808,8 +809,24 @@ struct OverlayFrameRenderer {
             }
             NSColor.black.withAlphaComponent(0.38).setFill()
             NSBezierPath(ovalIn: CGRect(x: markerCenter.x - markerSize / 2, y: markerCenter.y - markerSize / 2, width: markerSize, height: markerSize)).fill()
-            accent.setFill()
-            NSBezierPath(ovalIn: CGRect(x: markerCenter.x - markerSize * 0.36, y: markerCenter.y - markerSize * 0.36, width: markerSize * 0.72, height: markerSize * 0.72)).fill()
+            NSColor(layout.style.currentMarkerColor).setFill()
+            drawDistanceTimelineMarker(style: layout.style.currentMarkerStyle, center: markerCenter, size: markerSize * 0.72)
+        }
+    }
+
+    private static func drawDistanceTimelineMarker(style: DistanceTimelineMarkerStyle, center: CGPoint, size: Double) {
+        switch style {
+        case .dot:
+            NSBezierPath(ovalIn: CGRect(x: center.x - size / 2, y: center.y - size / 2, width: size, height: size)).fill()
+        case .pill:
+            NSBezierPath(roundedRect: CGRect(x: center.x - size * 0.75, y: center.y - size * 0.36, width: size * 1.5, height: size * 0.72), xRadius: size * 0.36, yRadius: size * 0.36).fill()
+        case .triangle:
+            let path = NSBezierPath()
+            path.move(to: CGPoint(x: center.x, y: center.y - size * 0.56))
+            path.line(to: CGPoint(x: center.x + size * 0.58, y: center.y + size * 0.48))
+            path.line(to: CGPoint(x: center.x - size * 0.58, y: center.y + size * 0.48))
+            path.close()
+            path.fill()
         }
     }
 
@@ -844,19 +861,19 @@ struct OverlayFrameRenderer {
     }
 
     private static func drawDistanceTimelineAxisLabels(_ layout: OverlayDistanceTimelineRenderLayout, element: OverlayElement, foreground: NSColor) {
-        let color = foreground.withAlphaComponent(0.58)
+        let color = NSColor(layout.style.axisLabelColor)
         let fontSize = layout.unitFontSize
         if layout.style.showAxisLabels {
             let y = layout.trackRect.maxY + layout.style.distancePointOffset * distanceTimelineStyleScale(layout)
-            drawPlainText(layout.startText, element: element, fontSize: fontSize, color: color, rect: CGRect(x: layout.trackRect.minX, y: y, width: layout.trackRect.width / 2, height: fontSize * 1.3), alignment: .left, weight: .medium)
-            drawPlainText(layout.finishText, element: element, fontSize: fontSize, color: color, rect: CGRect(x: layout.trackRect.midX, y: y, width: layout.trackRect.width / 2, height: fontSize * 1.3), alignment: .right, weight: .medium)
+            drawPlainText(layout.startText, element: element, fontSize: fontSize, color: color, rect: CGRect(x: layout.trackRect.minX, y: y, width: layout.trackRect.width / 2, height: fontSize * 1.3), alignment: .left, weight: nsFontWeight(layout.style.axisLabelFontWeight), fontName: layout.style.axisLabelFontName)
+            drawPlainText(layout.finishText, element: element, fontSize: fontSize, color: color, rect: CGRect(x: layout.trackRect.midX, y: y, width: layout.trackRect.width / 2, height: fontSize * 1.3), alignment: .right, weight: nsFontWeight(layout.style.axisLabelFontWeight), fontName: layout.style.axisLabelFontName)
         }
         if layout.style.showDistancePoints {
             let denominator = Double(layout.distancePointLabels.count + 1)
             let y = layout.trackRect.maxY + layout.style.distancePointOffset * distanceTimelineStyleScale(layout)
             for (index, label) in layout.distancePointLabels.enumerated() {
                 let centerX = layout.trackRect.minX + layout.trackRect.width * Double(index + 1) / denominator
-                drawPlainText(label, element: element, fontSize: fontSize, color: color, rect: CGRect(x: centerX - 45, y: y, width: 90, height: fontSize * 1.3), alignment: .center, weight: .medium)
+                drawPlainText(label, element: element, fontSize: fontSize, color: color, rect: CGRect(x: centerX - 45, y: y, width: 90, height: fontSize * 1.3), alignment: .center, weight: nsFontWeight(layout.style.axisLabelFontWeight), fontName: layout.style.axisLabelFontName)
             }
         }
     }
@@ -2610,11 +2627,12 @@ struct OverlayFrameRenderer {
         color: NSColor,
         rect: CGRect,
         alignment: NSTextAlignment,
-        weight: NSFont.Weight
+        weight: NSFont.Weight,
+        fontName: String? = nil
     ) {
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.alignment = alignment
-        let font = NSFont(name: element.style.fontName, size: fontSize) ?? .systemFont(ofSize: fontSize, weight: weight)
+        let font = NSFont(name: fontName ?? element.style.fontName, size: fontSize) ?? .systemFont(ofSize: fontSize, weight: weight)
         NSAttributedString(
             string: text,
             attributes: [

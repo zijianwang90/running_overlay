@@ -127,13 +127,13 @@ Implementation rule:
 
 ## Layout Section
 
-Implemented via the shared `OverlayLayoutRows` component. Controls:
+Implemented via the shared `OverlayLayoutInspectorRows` component. Controls:
 
 - Position X and Y numeric fields on one row (three-decimal precision).
 - Scale slider, range `0.25...4`, quantized to `0.05`, formatted `1.00x`.
-- Rotation slider, range `-180...180°`, integer degrees (`showRotation: true`).
+- Opacity slider, range `0...1`, displayed as a percentage.
 
-Anchor and Padding rows have been removed. Position is set numerically only.
+Anchor, Padding, and Rotation rows have been removed. Position is set numerically only.
 
 ## Typography Section
 

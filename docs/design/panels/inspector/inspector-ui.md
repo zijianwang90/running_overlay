@@ -10,6 +10,7 @@ The Inspector is the right-side editing panel for overlay work in Running Overla
 2. **Overlay Detail**: an existing overlay has been opened from the Inspector list or selected from the Preview. The user edits that overlay's content, position, size, style, and animation.
 
 Add-overlay selection now lives in the left `Overlay Pool`; the Inspector should not duplicate the overlay catalog.
+Overlay Pool add tiles use a consistent compact card treatment; featured tiles may use a stronger border, but they should not draw a left-side blue accent strip.
 
 This spec is intended for implementation agents. Treat it as the source of truth for visual direction and interaction behavior for the Inspector refresh.
 
@@ -316,7 +317,7 @@ Behavior:
 `Stats Bar` is a single shared inspector module and must not diverge by overlay type.
 
 - Use `CollapsibleStatsBarInspectorSection` for section chrome: title, icon, expand/collapse, and Enabled toggle in the header (toggle sits left of chevron).
-- Use `StatsBarInspectorRows` for the section body rows.
+- Use `OverlayStatsBarInspectorRows` for the section body rows.
 - Current canonical icon is `tablecells` for every overlay.
 - `Enabled` must not appear as a separate first row in expanded content.
 - Keep one shared row set across overlays: `Placement`, `Inside`, `Layout`, `Size`, `Width`, `Offset`, `Item Gap`, `Background`, `Dividers`, `Radius`, `Value Font/Size/Weight/Color`, `Label Font/Size/Weight/Color`, and `Slot 1...4`.
@@ -329,7 +330,7 @@ Behavior:
 `Layout` is also a single shared inspector module and must be reused by every overlay detail panel.
 
 - Use `CollapsibleLayoutInspectorSection` for section chrome: title, icon (`scope`), and disclosure behavior.
-- Use `OverlayLayoutRows` for the body rows.
+- Use `OverlayLayoutInspectorRows` for the body rows.
 - Canonical row set is fixed: `Position`, `Scale`, `Width`, `Height`, `Opacity`.
 - `Rotation` is not part of Layout and must not be shown in this section.
 - For square overlays such as Running Gauge, `Width` and `Height` can be hidden.

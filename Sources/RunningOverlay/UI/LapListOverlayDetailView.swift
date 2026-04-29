@@ -321,7 +321,7 @@ struct LapListOverlayDetailView: View {
                 }
             )
         ) {
-            OverlayLayoutRows(
+            OverlayLayoutInspectorRows(
                 elementID: elementID,
                 widthBinding: Binding(
                     get: { s.rowHeight * 6.5 },

@@ -73,8 +73,8 @@ Implemented in the Swift app as a dedicated `.elevationChart` overlay path:
 
 - Data model: `ElevationChartStyle` stored under `OverlayStyle.elevationChart`.
 - Inspector: `ElevationChartOverlayDetailView`.
-- Shared Layout: `CollapsibleLayoutInspectorSection` + `OverlayLayoutRows`.
-- Shared Stats Bar: `CollapsibleStatsBarInspectorSection` + `StatsBarInspectorRows`, backed by `DistanceTimelineStatsBarConfig`.
+- Shared Layout: `CollapsibleLayoutInspectorSection` + `OverlayLayoutInspectorRows`.
+- Shared Stats Bar: `CollapsibleStatsBarInspectorSection` + `OverlayStatsBarInspectorRows`, backed by `DistanceTimelineStatsBarConfig`.
 - Preview renderer: `PreviewCanvasView.ElevationChartOverlayView`.
 - Export renderer: `OverlayFrameRenderer.renderElevationChart`.
 - Render layout: `OverlayRenderModel.elevationChartLayout`.
@@ -760,8 +760,8 @@ Implemented first-version mapping:
 Gradient Area -> .gradientArea preset
 Dual Area -> .dualArea preset + dualAreaEnabled
 Big Numbers -> .bigNumbers preset + bigNumbersEnabled
-Layout -> shared OverlayLayoutRows
-Status Bar -> shared StatsBarInspectorRows / DistanceTimelineStatsBarConfig
+Layout -> shared OverlayLayoutInspectorRows
+Status Bar -> shared OverlayStatsBarInspectorRows / DistanceTimelineStatsBarConfig
 ```
 
 Second version can add:

@@ -2182,12 +2182,12 @@ struct DistanceTimelineOverlayView: View {
     private var valueLayer: some View {
         let content = localRect(layout.contentRect)
         let align: Alignment = layout.style.preset == .lowerThird ? .leading : .leading
-        return VStack(alignment: .leading, spacing: 2) {
+        return VStack(alignment: .leading, spacing: scaled(layout.style.labelValueSpacing)) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 if layout.style.showLabel {
                     Text(layout.label.uppercased())
-                        .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.medium))
-                        .foregroundStyle(labelColor)
+                        .font(.custom(layout.style.labelFontName, size: layout.labelFontSize).weight(Font.Weight(layout.style.labelFontWeight)))
+                        .foregroundStyle(Color(distanceTimeline: layout.style.labelColor))
                 }
                 Spacer(minLength: 6)
             }
@@ -2248,9 +2248,8 @@ struct DistanceTimelineOverlayView: View {
                 let markerPoint = layout.style.preset == .route
                     ? localPoint(layout.routeCurrentPoint ?? progressedRoutePoints.last ?? CGPoint(x: layout.trackRect.minX + layout.trackRect.width * layout.progress, y: layout.trackRect.midY))
                     : CGPoint(x: max(track.width * layout.progress, 0), y: track.height * 0.5)
-                Circle()
-                    .fill(accentColor)
-                    .frame(width: track.height * 2.2, height: track.height * 2.2)
+                markerView
+                    .frame(width: markerSize.width, height: markerSize.height)
                     .shadow(color: glowColor, radius: layout.style.glowEnabled ? track.height * 2.3 : 0)
                     .position(x: markerPoint.x, y: markerPoint.y)
             }
@@ -2280,7 +2279,8 @@ struct DistanceTimelineOverlayView: View {
             }
         }
         .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
-        .foregroundStyle(labelColor.opacity(0.78))
+        .font(.custom(layout.style.axisLabelFontName, size: layout.unitFontSize).weight(Font.Weight(layout.style.axisLabelFontWeight)))
+        .foregroundStyle(Color(distanceTimeline: layout.style.axisLabelColor))
         .frame(width: layout.rect.width, height: layout.rect.height)
     }
 
@@ -2341,6 +2341,34 @@ struct DistanceTimelineOverlayView: View {
 
     private var accentColor: Color {
         Color(distanceTimeline: layout.style.fillColor)
+    }
+
+    private var markerColor: Color {
+        Color(distanceTimeline: layout.style.currentMarkerColor)
+    }
+
+    private var markerSize: CGSize {
+        let track = localRect(layout.trackRect)
+        return switch layout.style.currentMarkerStyle {
+        case .dot:
+            CGSize(width: track.height * 2.2, height: track.height * 2.2)
+        case .pill:
+            CGSize(width: track.height * 3.4, height: track.height * 1.75)
+        case .triangle:
+            CGSize(width: track.height * 2.6, height: track.height * 2.4)
+        }
+    }
+
+    @ViewBuilder
+    private var markerView: some View {
+        switch layout.style.currentMarkerStyle {
+        case .dot:
+            Circle().fill(markerColor)
+        case .pill:
+            Capsule().fill(markerColor)
+        case .triangle:
+            DistanceTimelineTriangleMarkerShape().fill(markerColor)
+        }
     }
 
     private var trackColor: Color {
@@ -2510,6 +2538,17 @@ private struct DistanceTimelineMediaSlotView: View {
             }
         }
         .frame(width: size.width, height: size.height)
+    }
+}
+
+private struct DistanceTimelineTriangleMarkerShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.closeSubpath()
+        return path
     }
 }
 

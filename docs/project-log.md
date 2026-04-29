@@ -6,6 +6,52 @@ Note:
 
 - Historical entries below may reference `OverlayVideoExporter` as part of the migration timeline. That exporter is now retired; active export runtime uses `SwiftUIOverlayVideoExporter` only.
 
+### Group Inspector Row Files
+
+Summary:
+
+- Moved the four shared inspector row files into `Sources/RunningOverlay/UI/InspectorRows/` so reusable row components are easier to find.
+- Renamed `StatsBarInspectorRows.swift` and its view type to `OverlayStatsBarInspectorRows` to match the `Overlay...InspectorRows` naming convention used by the background, border, and effects row files.
+- Updated overlay detail views and inspector documentation to reference the new component name and path.
+
+### Extract Shared Layout Inspector Rows
+
+Summary:
+
+- Moved the shared Layout inspector rows out of `NumericOverlayDetailView.swift` and into `Sources/RunningOverlay/UI/InspectorRows/OverlayLayoutInspectorRows.swift`.
+- Renamed `OverlayLayoutRows` to `OverlayLayoutInspectorRows` so the Layout component follows the same `Overlay...InspectorRows` naming convention as the other shared inspector row files.
+- Kept `CollapsibleLayoutInspectorSection` beside the Layout rows so all overlay detail views use one shared Layout section chrome plus one shared body row component.
+- Updated all overlay detail views and design docs to reference `OverlayLayoutInspectorRows`.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/InspectorRows/OverlayBackgroundInspectorRows.swift`
+- `Sources/RunningOverlay/UI/InspectorRows/OverlayBorderInspectorRows.swift`
+- `Sources/RunningOverlay/UI/InspectorRows/OverlayEffectsInspectorRows.swift`
+- `Sources/RunningOverlay/UI/InspectorRows/OverlayLayoutInspectorRows.swift`
+- `Sources/RunningOverlay/UI/InspectorRows/OverlayStatsBarInspectorRows.swift`
+- `Sources/RunningOverlay/UI/DistanceTimelineOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/ElevationChartOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/LapCardOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/LapListOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/LapLiveOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/NumericOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/RouteMapOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/RunningGaugeOverlayDetailView.swift`
+- `docs/development.md`
+- `docs/design/overlays/distance-timeline/distance-timeline-overlay-ui.md`
+- `docs/design/overlays/distance-timeline/distance-timeline-overlay-ui.spec.json`
+- `docs/design/overlays/elevation-chart/elevation-chart-overlay-ui.md`
+- `docs/design/overlays/elevation-chart/elevation-chart-overlay-ui.spec.json`
+- `docs/design/overlays/numeric/numeric-overlay-ui.md`
+- `docs/design/overlays/route-map/route-map-overlay-ui.md`
+- `docs/design/panels/inspector/inspector-ui.md`
+- `docs/design/panels/inspector/inspector-ui.spec.json`
+- `docs/overlay-modules/distance-timeline-overlay.md`
+- `docs/overlay-modules/elevation-chart-overlay.md`
+- `docs/overlay-modules/route-map-overlay.md`
+- `docs/project-log.md`
+
 ### Finalize Shared-Component SwiftUI Export Path
 
 Summary:
@@ -319,17 +365,17 @@ Verification:
 
 Summary:
 
-- Finalized shared Stats Bar inspector behavior across Distance Timeline and Route Map using one component pair: `CollapsibleStatsBarInspectorSection` + `StatsBarInspectorRows`.
+- Finalized shared Stats Bar inspector behavior across Distance Timeline and Route Map using one component pair: `CollapsibleStatsBarInspectorSection` + `OverlayStatsBarInspectorRows`.
 - Unified the full Stats Bar control surface to the original Distance Timeline set: Placement, Inside, Layout, Size, Width, Offset, Item Gap, Background, Dividers, Radius, and Slot 1-4.
 - Moved the Stats Bar Enabled toggle to the section header (left of chevron) and standardized the icon to `tablecells`.
 - Added Route Map inside-mode behavior updates: inside bars reserve map-content padding (do not cover route lines), inside bar background merges with container clipping/radius, and left/right placements force vertical stack with Item Gap applied as vertical spacing.
 - Unified Stats Bar rendering: Route Map and Distance Timeline now use one shared Preview renderer (`SharedStatsBarContentView`) and one shared Export renderer path (`drawSharedStatsBar`), using Distance Timeline visual logic as baseline.
-- Finalized shared Layout inspector behavior across overlay detail panels with one component pair: `CollapsibleLayoutInspectorSection` + `OverlayLayoutRows`.
+- Finalized shared Layout inspector behavior across overlay detail panels with one component pair: `CollapsibleLayoutInspectorSection` + `OverlayLayoutInspectorRows`.
 - Standardized shared Layout row set to Position, Scale, Width, Height, Opacity (no Rotation), and applied section-ordering rule consistently across detail views.
 
 Files changed:
 
-- `Sources/RunningOverlay/UI/StatsBarInspectorRows.swift`
+- `Sources/RunningOverlay/UI/InspectorRows/OverlayStatsBarInspectorRows.swift`
 - `Sources/RunningOverlay/UI/DistanceTimelineOverlayDetailView.swift`
 - `Sources/RunningOverlay/UI/RouteMapOverlayDetailView.swift`
 - `Sources/RunningOverlay/UI/NumericOverlayDetailView.swift`
@@ -354,20 +400,20 @@ Verification:
 
 - Ran `swift build` multiple times after each integration step — Build complete, no errors.
 
-### Shared OverlayLayoutRows Component + Section Ordering
+### Shared OverlayLayoutInspectorRows Component + Section Ordering
 
 Summary:
 
-- Extracted the Position/Scale/Width/Height controls used in every overlay detail view into a single shared `OverlayLayoutRows` struct (in `NumericOverlayDetailView.swift`).
+- Extracted the Position/Scale/Width/Height controls used in every overlay detail view into a single shared `OverlayLayoutInspectorRows` struct, now located in `Sources/RunningOverlay/UI/InspectorRows/OverlayLayoutInspectorRows.swift`.
 - Removed the Anchor (3×3 grid) and Padding controls from all layout sections. Position is now always set by numeric X/Y fields only.
-- `OverlayLayoutRows` accepts optional `widthBinding`/`heightBinding` parameters; pass `nil` to hide those rows. Running Gauge passes `nil` for both (square component — no explicit dimensions). Distance Timeline passes both. Route Map, Numeric, and Lap views omit them.
-- Optional `showRotation` parameter keeps the rotation slider in views that need it (Numeric, Running Gauge, Route Map).
+- `OverlayLayoutInspectorRows` accepts optional `widthBinding`/`heightBinding` parameters; pass `nil` to hide those rows. Running Gauge passes `nil` for both (square component — no explicit dimensions). Distance Timeline passes both. Route Map, Numeric, and Lap views omit them.
+- Rotation is intentionally excluded from the shared Layout rows so the cross-overlay Layout surface stays fixed.
 - LapList, LapCard, and LapLive's Position section now shows Position X/Y + Scale instead of Scale only.
 - Section ordering rule applied: if a detail view has a Preset section it must be first; otherwise Layout is first. Distance Timeline was reordered to: Preset → Layout → Value → Label → …
 
 Files changed:
 
-- `Sources/RunningOverlay/UI/NumericOverlayDetailView.swift` (added `OverlayLayoutRows`)
+- `Sources/RunningOverlay/UI/InspectorRows/OverlayLayoutInspectorRows.swift` (added `OverlayLayoutInspectorRows`)
 - `Sources/RunningOverlay/UI/RunningGaugeOverlayDetailView.swift`
 - `Sources/RunningOverlay/UI/RouteMapOverlayDetailView.swift`
 - `Sources/RunningOverlay/UI/DistanceTimelineOverlayDetailView.swift`
@@ -383,19 +429,19 @@ Verification:
 
 - Ran `swift build` — Build complete, no errors.
 
-### Extract Shared StatsBarInspectorRows Component
+### Extract Shared OverlayStatsBarInspectorRows Component
 
 Summary:
 
-- Extracted the Stats Bar inspector UI shared between Distance Timeline and Route Map overlays into a new `StatsBarInspectorRows` view in `StatsBarInspectorRows.swift`.
+- Extracted the Stats Bar inspector UI shared between Distance Timeline and Route Map overlays into a new `OverlayStatsBarInspectorRows` view in `OverlayStatsBarInspectorRows.swift`.
 - The shared component renders Placement, Layout, Height, Background, Dividers, Radius, and Slot rows, which are identical in both overlays.
 - Distance Timeline-specific rows (Inside toggle; Width, Offset X/Y, Item Gap via `ExtraLayoutConfig`) are passed as optional config; Route Map-specific rows (Blur) are passed as an optional value.
 - Moved `RouteMapStatsBarPlacement.distanceTimelinePlacements` from a private extension in `DistanceTimelineOverlayDetailView` to the shared file so both callers can reference it.
-- Both detail views now delegate to `StatsBarInspectorRows`, eliminating ~80 lines of duplicated UI code.
+- Both detail views now delegate to `OverlayStatsBarInspectorRows`, eliminating ~80 lines of duplicated UI code.
 
 Files changed:
 
-- `Sources/RunningOverlay/UI/StatsBarInspectorRows.swift` (new)
+- `Sources/RunningOverlay/UI/InspectorRows/OverlayStatsBarInspectorRows.swift` (new)
 - `Sources/RunningOverlay/UI/DistanceTimelineOverlayDetailView.swift`
 - `Sources/RunningOverlay/UI/RouteMapOverlayDetailView.swift`
 - `docs/project-log.md`

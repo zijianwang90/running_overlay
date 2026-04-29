@@ -9,8 +9,8 @@ The Elevation Chart overlay is a dedicated `.elevationChart` module for renderin
 - Overlay type: `OverlayElementType.elevationChart`
 - Style model: `ElevationChartStyle` on `OverlayStyle.elevationChart`
 - Inspector: `Sources/RunningOverlay/UI/ElevationChartOverlayDetailView.swift`
-- Layout controls: shared `CollapsibleLayoutInspectorSection` and `OverlayLayoutRows`
-- Stats bar controls: shared `CollapsibleStatsBarInspectorSection` and `StatsBarInspectorRows`
+- Layout controls: shared `CollapsibleLayoutInspectorSection` and `OverlayLayoutInspectorRows`
+- Stats bar controls: shared `CollapsibleStatsBarInspectorSection` and `OverlayStatsBarInspectorRows`
 - Preview path: `PreviewCanvasView.ElevationChartOverlayView`
 - Export path: `OverlayFrameRenderer.renderElevationChart`
 - Render layout: `OverlayRenderModel.elevationChartLayout`

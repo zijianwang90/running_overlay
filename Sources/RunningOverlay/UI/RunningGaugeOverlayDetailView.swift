@@ -87,7 +87,7 @@ struct RunningGaugeOverlayDetailView: View {
                 }
             )
         ) {
-            OverlayLayoutRows(
+            OverlayLayoutInspectorRows(
                 elementID: elementID,
                 opacityBinding: Binding(
                     get: { element.style.backgroundOpacity },
