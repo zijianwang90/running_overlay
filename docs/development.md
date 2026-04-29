@@ -136,8 +136,8 @@ Current implementation:
 - Left Pool, Preview controls, Timeline, Inspector, status bar, export progress, project settings, and export dialog share dark panel/header/control colors, compact sizing, subtle borders, and system typography.
 - Resizable panes keep stable minimum widths so media controls do not collapse when selection hierarchy changes.
 - Left Pool default width is 380 px (min 300 px) and Inspector default width is 400 px (min 320 px); both panels remain user-resizable via custom drag handles.
-- The horizontal three-column layout in `MainEditorView` is implemented as a single `HStack` with `@State`-tracked widths (`mediaPoolWidth`, `inspectorWidth`) and custom `HorizontalResizeHandle` dividers instead of `HSplitView`. This guarantees that internal Inspector selection changes (`outer/clip/overlay detail`) and Left Pool content changes (e.g., switching Media Pool/Overlay Pool, importing media, or matching clips) cannot reset the left or right pane widths.
-- The left pane is `PoolPanelView`, a two-mode container with a compact top switch for `Media Pool` and `Overlay Pool`. The app toolbar no longer carries global FIT/Videos import buttons.
+- The horizontal three-column layout in `MainEditorView` is implemented as a single `HStack` with `@State`-tracked widths (`mediaPoolWidth`, `inspectorWidth`) and custom `HorizontalResizeHandle` dividers instead of `HSplitView`. This guarantees that internal Inspector selection changes (`outer/clip/overlay detail`) and Left Pool content changes (e.g., switching Media Pool/Overlay Pool/Templates, importing media, or matching clips) cannot reset the left or right pane widths.
+- `MainEditorView` owns the active left-pool mode. The compact `Media Pool` / `Overlay Pool` / `Templates` switch sits in the top app toolbar, aligned to the left pane width, while `PoolPanelView` renders the selected pool content below. The app toolbar no longer carries global FIT/Videos import buttons.
 - Media, Preview, and Inspector top headers share a unified header height and shared compact header button size tokens.
 - The initial `VSplitView` allocation favors the top editor stack more strongly by using a lower default Timeline ideal height (`180`) with a `160` minimum, while keeping the split boundary user-draggable.
 
@@ -395,7 +395,7 @@ Implementation phases:
 
 - Phase A: define Codable template schema and conversion to/from `OverlayLayout`. Completed.
 - Phase B: save current overlay layout as a named local template. Completed.
-- Phase C: template list UI in Project Settings. Completed.
+- Phase C: initial template list UI in Project Settings. Completed, then superseded by the left `Templates` Pool.
 - Phase D: apply/delete templates with undo support for apply. Completed.
 - Phase E: import/export template file. Completed.
 
@@ -406,7 +406,8 @@ Current implementation:
 - `OverlayTemplateStore` persists the local template library as JSON under Application Support.
 - `ProjectDocument` loads templates on startup, saves/replaces templates by name, applies templates to the current overlay layout, deletes templates, and imports/exports standalone `.rotemplate` files.
 - Applying a template routes through `ProjectDocument.registerUndoPoint()` so the previous overlay layout can be restored with undo.
-- Project Settings exposes save/apply/delete/import/export controls because template management is a low-frequency workflow.
+- Template management lives in the left `Templates` Pool and has been removed from Project Settings. The pool uses compact name-only rows, built-in templates (`Easy Run`, `Interval Workout`, `Race`), user-template context menus, an icon-only import footer button, and a primary `Save Current as Template` footer button.
+- Applying any template from Templates Pool confirms, then clears and replaces the current overlay layout.
 
 Open engineering decisions:
 

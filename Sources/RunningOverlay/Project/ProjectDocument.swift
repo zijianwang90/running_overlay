@@ -318,6 +318,25 @@ final class ProjectDocument: ObservableObject {
 
     func addOverlayElement(_ type: OverlayElementType) {
         registerUndoPoint()
+        let element = makeOverlayElement(type: type, position: CGPoint(x: 0.5, y: 0.5), scale: 1.0)
+        overlayLayout.elements.append(element)
+        selection = .overlayElement(element.id)
+        statusMessage = "Added \(type.label) overlay."
+    }
+
+    private func makeOverlayElement(type: OverlayElementType, position: CGPoint, scale: Double) -> OverlayElement {
+        let style = defaultOverlayStyle(for: type)
+        return OverlayElement(
+            type: type,
+            position: position,
+            scale: scale,
+            isVisible: true,
+            isLocked: false,
+            style: style
+        )
+    }
+
+    private func defaultOverlayStyle(for type: OverlayElementType) -> OverlayStyle {
         var style = OverlayStyle.default
         style.unitOption = type.defaultUnitOption
         if type == .routeMap {
@@ -367,17 +386,7 @@ final class ProjectDocument: ObservableObject {
                 }
             }
         }
-        let element = OverlayElement(
-            type: type,
-            position: CGPoint(x: 0.5, y: 0.5),
-            scale: 1.0,
-            isVisible: true,
-            isLocked: false,
-            style: style
-        )
-        overlayLayout.elements.append(element)
-        selection = .overlayElement(element.id)
-        statusMessage = "Added \(type.label) overlay."
+        return style
     }
 
     func selectClip(_ clipID: TimelineClip.ID) {
@@ -1730,6 +1739,14 @@ final class ProjectDocument: ObservableObject {
         persistOverlayTemplates()
     }
 
+    func saveCurrentOverlayTemplateWithGeneratedName() {
+        guard !overlayLayout.elements.isEmpty else {
+            statusMessage = "Add overlay elements before saving a template."
+            return
+        }
+        saveOverlayTemplate(named: nextOverlayTemplateName(base: "Template"))
+    }
+
     func applyOverlayTemplate(_ templateID: OverlayTemplate.ID) {
         guard let template = overlayTemplates.first(where: { $0.id == templateID }) else {
             statusMessage = "Overlay template not found."
@@ -1739,6 +1756,64 @@ final class ProjectDocument: ObservableObject {
         overlayLayout = template.layout
         selection = .none
         statusMessage = "Applied overlay template: \(template.name)."
+    }
+
+    func applyBuiltInOverlayTemplate(_ template: BuiltInOverlayTemplate) {
+        registerUndoPoint()
+        overlayLayout = OverlayLayout(
+            elements: template.elements.map { entry in
+                makeOverlayElement(
+                    type: entry.type,
+                    position: CGPoint(x: entry.positionX, y: entry.positionY),
+                    scale: entry.scale
+                )
+            }
+        )
+        selection = .none
+        statusMessage = "Applied overlay template: \(template.name)."
+    }
+
+    func renameOverlayTemplate(_ templateID: OverlayTemplate.ID, to name: String) {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            statusMessage = "Template name is required."
+            return
+        }
+        guard let index = overlayTemplates.firstIndex(where: { $0.id == templateID }) else {
+            statusMessage = "Overlay template not found."
+            return
+        }
+        guard !overlayTemplates.contains(where: { $0.id != templateID && $0.name.localizedCaseInsensitiveCompare(trimmedName) == .orderedSame }) else {
+            statusMessage = "A template named \(trimmedName) already exists."
+            return
+        }
+
+        overlayTemplates[index].name = trimmedName
+        overlayTemplates[index].updatedAt = Date()
+        persistOverlayTemplates()
+        statusMessage = "Renamed overlay template: \(trimmedName)."
+    }
+
+    func duplicateOverlayTemplate(_ templateID: OverlayTemplate.ID) {
+        guard let template = overlayTemplates.first(where: { $0.id == templateID }) else {
+            statusMessage = "Overlay template not found."
+            return
+        }
+        let now = Date()
+        let copyName = nextOverlayTemplateName(base: "\(template.name) Copy")
+        overlayTemplates.insert(
+            OverlayTemplate(
+                id: UUID(),
+                name: copyName,
+                createdAt: now,
+                updatedAt: now,
+                referenceResolution: template.referenceResolution,
+                elements: template.elements
+            ),
+            at: 0
+        )
+        persistOverlayTemplates()
+        statusMessage = "Duplicated overlay template: \(copyName)."
     }
 
     func deleteOverlayTemplate(_ templateID: OverlayTemplate.ID) {
@@ -1764,7 +1839,7 @@ final class ProjectDocument: ObservableObject {
         do {
             var template = try overlayTemplateStore.loadTemplateFile(from: url)
             if overlayTemplates.contains(where: { $0.name.localizedCaseInsensitiveCompare(template.name) == .orderedSame }) {
-                template.name = "\(template.name) Imported"
+                template.name = nextOverlayTemplateName(base: "\(template.name) Copy")
             }
             overlayTemplates.insert(template, at: 0)
             persistOverlayTemplates()
@@ -1796,6 +1871,23 @@ final class ProjectDocument: ObservableObject {
         } catch {
             statusMessage = "Overlay template export failed: \(error.localizedDescription)"
             print("[RunningOverlay] Overlay template export failed: \(String(reflecting: error))")
+        }
+    }
+
+    private func nextOverlayTemplateName(base: String) -> String {
+        let existingNames = Set(overlayTemplates.map { $0.name.lowercased() })
+        let trimmedBase = base.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Template" : base.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !existingNames.contains(trimmedBase.lowercased()) {
+            return trimmedBase
+        }
+
+        var index = 1
+        while true {
+            let candidate = "\(trimmedBase) \(index)"
+            if !existingNames.contains(candidate.lowercased()) {
+                return candidate
+            }
+            index += 1
         }
     }
 

@@ -52,6 +52,51 @@ struct OverlayTemplateResolution: Codable, Equatable {
     var height: Int
 }
 
+struct BuiltInOverlayTemplate: Identifiable, Equatable {
+    struct Element: Equatable {
+        var type: OverlayElementType
+        var positionX: Double
+        var positionY: Double
+        var scale: Double
+    }
+
+    var id: String
+    var name: String
+    var elements: [Element]
+
+    static let all: [BuiltInOverlayTemplate] = [
+        BuiltInOverlayTemplate(
+            id: "easyRun",
+            name: "Easy Run",
+            elements: [
+                Element(type: .distance, positionX: 0.22, positionY: 0.82, scale: 1.0),
+                Element(type: .pace, positionX: 0.78, positionY: 0.82, scale: 1.0),
+                Element(type: .heartRate, positionX: 0.18, positionY: 0.18, scale: 1.0)
+            ]
+        ),
+        BuiltInOverlayTemplate(
+            id: "intervalWorkout",
+            name: "Interval Workout",
+            elements: [
+                Element(type: .elapsedTime, positionX: 0.5, positionY: 0.16, scale: 1.0),
+                Element(type: .pace, positionX: 0.78, positionY: 0.82, scale: 1.0),
+                Element(type: .heartRate, positionX: 0.22, positionY: 0.82, scale: 1.0),
+                Element(type: .lapLive, positionX: 0.5, positionY: 0.86, scale: 1.0)
+            ]
+        ),
+        BuiltInOverlayTemplate(
+            id: "race",
+            name: "Race",
+            elements: [
+                Element(type: .distanceTimeline, positionX: 0.5, positionY: 0.86, scale: 1.0),
+                Element(type: .runningGauge, positionX: 0.18, positionY: 0.25, scale: 1.0),
+                Element(type: .routeMap, positionX: 0.82, positionY: 0.26, scale: 0.9),
+                Element(type: .pace, positionX: 0.82, positionY: 0.82, scale: 1.0)
+            ]
+        )
+    ]
+}
+
 struct OverlayTemplateElement: Codable, Equatable {
     var type: OverlayElementType
     var positionX: Double

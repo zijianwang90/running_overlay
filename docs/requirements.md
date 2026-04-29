@@ -375,23 +375,35 @@ Template must not include:
 
 Template behavior:
 
-- Applying a template replaces the current overlay layout.
+- Applying any built-in or user template replaces the current overlay layout.
+- Applying any template requires confirmation before replacement.
 - Applying a template should be undoable.
 - Saving a template should not affect timeline or media state.
 - Deleting a template should not affect the current project unless that template is currently only being previewed.
 
 Initial template UI:
 
-- In Project Settings, provide low-frequency template management actions:
-  - Save current overlay as template.
-  - Apply template.
-  - Delete template.
-  - Export template.
-  - Import template.
+- Template management is exposed through the left `Templates` Pool, not Project Settings.
+- The top Pool switch includes `Media Pool`, `Overlay Pool`, and `Templates`.
+- `Templates` Pool includes:
+  - `Built-in Templates`: `Easy Run`, `Interval Workout`, and `Race`.
+  - `User Templates`: saved local templates, empty by default.
+  - A compact footer with a small icon-only import button and a long `Save Current as Template` primary button.
+- Template rows are compact name-only rows:
+  - No leading icons.
+  - No trailing apply buttons.
+  - No visible ellipsis/menu buttons.
+  - Row click applies the template after confirmation.
+- User template row context menu actions:
+  - Rename.
+  - Duplicate.
+  - Export.
+  - Delete.
+- The footer import button is the only import entry inside Templates Pool; built-in template rows and blank built-in space should not show an import context menu.
 
 Current implementation status:
 
-- Project Settings provides an Overlay Templates section.
+- Local overlay template persistence exists; the UI now lives in the left `Templates` Pool instead of Project Settings.
 - Users can save the current overlay layout as a named local template.
 - Templates are persisted as JSON under Application Support.
 - Users can apply, delete, import, and export local templates.

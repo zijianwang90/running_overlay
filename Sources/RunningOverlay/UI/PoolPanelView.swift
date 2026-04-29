@@ -1,26 +1,27 @@
 import SwiftUI
 
 struct PoolPanelView: View {
-    @State private var activePool: PoolKind = .media
+    @Binding var activePool: PoolKind
 
     var body: some View {
-        VStack(spacing: 0) {
-            PoolModeSwitch(activePool: $activePool)
-
+        Group {
             switch activePool {
             case .media:
                 MediaBrowserView()
             case .overlay:
                 OverlayPoolView()
+            case .templates:
+                TemplatePoolView()
             }
         }
         .background(EditorTheme.panelBackground)
     }
 }
 
-private enum PoolKind: String, CaseIterable, Identifiable {
+enum PoolKind: String, CaseIterable, Identifiable {
     case media
     case overlay
+    case templates
 
     var id: String { rawValue }
 
@@ -28,18 +29,20 @@ private enum PoolKind: String, CaseIterable, Identifiable {
         switch self {
         case .media: "Media Pool"
         case .overlay: "Overlay Pool"
+        case .templates: "Templates"
         }
     }
 
     var systemImage: String {
         switch self {
-        case .media: "filmstrip"
+        case .media: "play.rectangle"
         case .overlay: "square.stack.3d.up"
+        case .templates: "rectangle.stack"
         }
     }
 }
 
-private struct PoolModeSwitch: View {
+struct PoolModeSwitch: View {
     @Binding var activePool: PoolKind
 
     var body: some View {
@@ -49,6 +52,7 @@ private struct PoolModeSwitch: View {
                     activePool = pool
                 } label: {
                     Label(pool.label, systemImage: pool.systemImage)
+                        .labelStyle(.titleAndIcon)
                         .font(EditorTheme.bodyStrongFont)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity)
@@ -56,13 +60,6 @@ private struct PoolModeSwitch: View {
                 .buttonStyle(PoolModeButtonStyle(isSelected: activePool == pool))
                 .help(pool.label)
             }
-        }
-        .padding(.horizontal, EditorTheme.panelPaddingX)
-        .padding(.vertical, 10)
-        .background(EditorTheme.appChrome)
-        .overlay(alignment: .bottom) {
-            Divider()
-                .overlay(EditorTheme.borderSubtle)
         }
     }
 }

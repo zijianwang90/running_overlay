@@ -102,6 +102,48 @@ struct OverlayTemplateTests {
         #expect(project.overlayLayout.elements[0].id == originalID)
     }
 
+    @Test func templatePoolManagementActionsPersist() throws {
+        let storeURL = temporaryTemplateURL()
+        defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }
+
+        let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
+        project.addOverlayElement(.distance)
+
+        project.saveCurrentOverlayTemplateWithGeneratedName()
+        let saved = try #require(project.overlayTemplates.first)
+        #expect(saved.name == "Template")
+
+        project.renameOverlayTemplate(saved.id, to: "Long Run")
+        #expect(project.overlayTemplates.first?.name == "Long Run")
+
+        project.duplicateOverlayTemplate(saved.id)
+        #expect(project.overlayTemplates.count == 2)
+        #expect(project.overlayTemplates[0].name == "Long Run Copy")
+
+        let loadedProject = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
+        #expect(loadedProject.overlayTemplates.map(\.name) == ["Long Run Copy", "Long Run"])
+    }
+
+    @Test func builtInOverlayTemplateReplacesLayoutAndIsUndoable() throws {
+        let storeURL = temporaryTemplateURL()
+        defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }
+
+        let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
+        project.addOverlayElement(.pace)
+        let originalID = try #require(project.overlayLayout.elements.first?.id)
+        let race = try #require(BuiltInOverlayTemplate.all.first { $0.id == "race" })
+
+        project.applyBuiltInOverlayTemplate(race)
+        #expect(project.overlayLayout.elements.map(\.type) == [.distanceTimeline, .runningGauge, .routeMap, .pace])
+        #expect(project.overlayLayout.elements.first?.id != originalID)
+        #expect(project.selection == .none)
+
+        project.undo()
+        #expect(project.overlayLayout.elements.count == 1)
+        #expect(project.overlayLayout.elements[0].type == .pace)
+        #expect(project.overlayLayout.elements[0].id == originalID)
+    }
+
     private func temporaryTemplateURL() -> URL {
         FileManager.default.temporaryDirectory
             .appendingPathComponent("RunningOverlayTests-\(UUID().uuidString)", isDirectory: true)

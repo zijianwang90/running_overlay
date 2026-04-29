@@ -3,7 +3,6 @@ import SwiftUI
 struct ProjectSettingsView: View {
     @EnvironmentObject private var project: ProjectDocument
     @Environment(\.dismiss) private var dismiss
-    @State private var templateName = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -43,10 +42,6 @@ struct ProjectSettingsView: View {
                         Text("\(Int(project.settings.bitrateMbps)) Mbps")
                             .frame(width: 72, alignment: .trailing)
                     }
-
-                    Divider()
-
-                    overlayTemplatesSection
                 }
             }
 
@@ -62,89 +57,5 @@ struct ProjectSettingsView: View {
         .padding(24)
         .frame(width: 520, height: 620)
         .background(EditorTheme.panelBackground)
-    }
-
-    private var overlayTemplatesSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Overlay Templates")
-                .font(EditorTheme.sectionTitleFont)
-                .foregroundStyle(EditorTheme.textPrimary)
-
-            HStack(spacing: 8) {
-                TextField("Template name", text: $templateName)
-                    .textFieldStyle(.roundedBorder)
-
-                Button {
-                    project.saveOverlayTemplate(named: templateName)
-                    if !templateName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        templateName = ""
-                    }
-                } label: {
-                    Image(systemName: "square.and.arrow.down")
-                }
-                .help("Save Current Overlay As Template")
-                .disabled(project.overlayLayout.elements.isEmpty)
-            }
-
-            Button {
-                project.importOverlayTemplateFile()
-            } label: {
-                Label("Import Template", systemImage: "square.and.arrow.down.on.square")
-            }
-
-            if project.overlayTemplates.isEmpty {
-                Text("No saved templates")
-                    .font(EditorTheme.captionFont)
-                    .foregroundStyle(EditorTheme.textMuted)
-            } else {
-                VStack(spacing: 6) {
-                    ForEach(project.overlayTemplates) { template in
-                        HStack(spacing: 8) {
-                            Button {
-                                project.applyOverlayTemplate(template.id)
-                            } label: {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(template.name)
-                                            .lineLimit(1)
-                                            .foregroundStyle(EditorTheme.textPrimary)
-                                        Text("\(template.elements.count) elements")
-                                            .font(EditorTheme.captionFont)
-                                            .foregroundStyle(EditorTheme.textMuted)
-                                    }
-                                    Spacer()
-                                }
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-
-                            Button {
-                                project.exportOverlayTemplateFile(template.id)
-                            } label: {
-                                Image(systemName: "square.and.arrow.up")
-                            }
-                            .buttonStyle(EditorIconButtonStyle())
-                            .help("Export Template")
-
-                            Button {
-                                project.deleteOverlayTemplate(template.id)
-                            } label: {
-                                Image(systemName: "trash")
-                            }
-                            .buttonStyle(EditorIconButtonStyle(role: .destructive))
-                            .help("Delete Template")
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 7)
-                        .background(EditorTheme.surfaceControl)
-                        .clipShape(RoundedRectangle(cornerRadius: EditorTheme.controlRadius))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: EditorTheme.controlRadius)
-                                .stroke(EditorTheme.borderSubtle, lineWidth: 1)
-                        }
-                    }
-                }
-            }
-        }
     }
 }

@@ -19,17 +19,22 @@ struct OverlayPoolView: View {
             }
 
             VStack(alignment: .leading, spacing: EditorTheme.space3) {
-                Picker("", selection: $activeCategory) {
-                    ForEach(OverlayCategory.allCases) { category in
-                        Text(category.label)
-                            .font(EditorTheme.bodyStrongFont)
-                            .tag(category)
+                HStack {
+                    Spacer()
+                    Picker("", selection: $activeCategory) {
+                        ForEach(OverlayCategory.allCases) { category in
+                            Text(category.label)
+                                .font(EditorTheme.bodyStrongFont)
+                                .tag(category)
+                        }
                     }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .tint(EditorTheme.accentBlue)
+                    .frame(maxWidth: 392)
+                    .frame(height: 24)
+                    Spacer()
                 }
-                .labelsHidden()
-                .pickerStyle(.segmented)
-                .tint(EditorTheme.accentBlue)
-                .frame(height: 24)
 
                 ScrollView {
                     LazyVGrid(columns: columns, spacing: EditorTheme.space2) {
@@ -115,13 +120,13 @@ struct OverlayAddTile: View {
             HStack(spacing: EditorTheme.space3) {
                 Image(systemName: tile.systemImage)
                     .font(.system(size: 19, weight: .medium))
-                    .foregroundStyle(tile.isAccent ? EditorTheme.accentBlue : EditorTheme.textPrimary)
+                    .foregroundStyle(EditorTheme.textPrimary)
                     .frame(width: 22)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(tile.label)
                         .font(EditorTheme.bodyStrongFont)
-                        .foregroundStyle(tile.isAccent ? EditorTheme.accentBlue : EditorTheme.textPrimary)
+                        .foregroundStyle(EditorTheme.textPrimary)
                         .lineLimit(1)
                     Text(tile.hint)
                         .font(EditorTheme.captionFont)
@@ -168,6 +173,6 @@ private struct OverlayTileButtonStyle: ButtonStyle {
     }
 
     private var background: Color {
-        isAccent ? EditorTheme.accentBlueSoft.opacity(0.55) : EditorTheme.surfaceControl
+        EditorTheme.surfaceControl
     }
 }

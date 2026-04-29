@@ -96,7 +96,7 @@ Use 6-8 px radius for tool controls. Avoid pill-heavy styling unless the control
 
 The app is a multi-pane editor:
 
-- Left: Pool panel with `Media Pool` and `Overlay Pool` modes for import/source management and addable overlay modules.
+- Left: Pool panel with `Media Pool`, `Overlay Pool`, and `Templates` modes for import/source management, addable overlay modules, and reusable overlay layouts.
 - Center: Preview canvas and playback controls.
 - Bottom: Timeline and alignment editing.
 - Right: Inspector and overlay/clip details.
@@ -183,6 +183,7 @@ Examples:
 - Media Pool after FIT: `Drop videos here`, `Import Videos`.
 - Filtered list: `No media matches the current filter`.
 - Overlay list: `No overlays added yet`.
+- Templates list: compact rows such as `Easy Run`, `Interval Workout`, `Race`, and `No saved templates yet`.
 
 ## Accessibility
 

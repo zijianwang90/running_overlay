@@ -7,7 +7,7 @@
     "relatedStyleSpec": "../inspector/inspector-ui.md"
   },
   "intent": {
-    "productTone": "dark professional desktop video-editing source and overlay bin",
+    "productTone": "dark professional desktop video-editing source, overlay, and template bin",
     "primaryAccent": "blue",
     "density": "compact",
     "avoid": [
@@ -16,7 +16,9 @@
       "decorative backgrounds",
       "large empty black areas",
       "non-functional filter controls",
-      "duplicating add-overlay tiles in the Inspector"
+      "duplicating add-overlay tiles in the Inspector",
+      "template management controls duplicated in Project Settings",
+      "template rows with thumbnails, leading icons, trailing action buttons, or ellipsis controls"
     ]
   },
   "tokens": {
@@ -64,6 +66,8 @@
       "overlayTileMinHeight": 56,
       "overlayTileMaxHeight": 64,
       "overlayCategoryHeight": 24,
+      "templateRowHeight": 30,
+      "templateFooterButton": 32,
       "markDot": 9,
       "menuRadius": 8
     },
@@ -78,13 +82,14 @@
   "currentSwiftUIEntryPoints": [
     "Sources/RunningOverlay/UI/PoolPanelView.swift",
     "Sources/RunningOverlay/UI/MediaBrowserView.swift",
-    "Sources/RunningOverlay/UI/OverlayPoolView.swift"
+    "Sources/RunningOverlay/UI/OverlayPoolView.swift",
+    "Sources/RunningOverlay/UI/TemplatePoolView.swift"
   ],
   "poolModes": [
     {
       "id": "media",
       "label": "Media Pool",
-      "icon": "filmstrip",
+      "icon": "play.rectangle",
       "content": "MediaBrowserView"
     },
     {
@@ -92,16 +97,22 @@
       "label": "Overlay Pool",
       "icon": "square.stack.3d.up",
       "content": "OverlayPoolView"
+    },
+    {
+      "id": "templates",
+      "label": "Templates",
+      "icon": "rectangle.stack",
+      "content": "TemplatePoolView"
     }
   ],
   "poolSwitch": {
     "height": 32,
     "radius": 8,
-    "placement": "top of left panel",
+    "placement": "top app toolbar, aligned to the left pane width",
     "selectedStyle": "accent blue fill or blue-accented dark fill",
     "unselectedStyle": "dark control fill, muted text, subtle border",
     "stateRule": "local UI state; do not persist in project files",
-    "resizeRule": "switching pools must not reset mediaPoolWidth"
+    "resizeRule": "switching pools must not reset mediaPoolWidth; resizing the left pane should keep the switch aligned to the left pane content width"
   },
   "preserveBehavior": [
     "drag/drop video import",
@@ -120,8 +131,9 @@
     {
       "component": "PoolModeSwitch",
       "controls": [
-        { "label": "Media Pool", "icon": "filmstrip" },
-        { "label": "Overlay Pool", "icon": "square.stack.3d.up" }
+        { "label": "Media Pool", "icon": "play.rectangle" },
+        { "label": "Overlay Pool", "icon": "square.stack.3d.up" },
+        { "label": "Templates", "icon": "rectangle.stack" }
       ]
     },
     {
@@ -241,6 +253,7 @@
     "categoryControl": {
       "height": 24,
       "hitTargetRule": "full segment hit targets",
+      "alignment": "centered in Overlay Pool content area",
       "selectedStyle": "accent blue",
       "unselectedStyle": "dark control fill with muted text"
     },
@@ -254,7 +267,7 @@
         "primary label",
         "secondary hint"
       ],
-      "featuredStyle": "small blue accent line or icon tint only"
+      "featuredStyle": "small blue accent line only; icons and primary labels stay text.primary"
     },
     "interaction": {
       "tap": "project.addOverlayElement(tile.type)",
@@ -281,6 +294,87 @@
       "overlay add tiles"
     ]
   },
+  "templatesPool": {
+    "purpose": "single home for applying, saving, importing, exporting, and managing overlay templates",
+    "replaces": "Overlay Templates controls in Project Settings",
+    "header": {
+      "title": "Templates",
+      "status": "Apply layouts",
+      "avoid": "header toolbar actions"
+    },
+    "rowStyle": {
+      "height": 30,
+      "content": ["template name only"],
+      "noLeadingIcon": true,
+      "noTrailingButton": true,
+      "noEllipsis": true,
+      "defaultBackground": "transparent or media.panel",
+      "hoverBackground": "media.rowHover",
+      "divider": "1px border.subtle"
+    },
+    "builtInTemplates": [
+      {
+        "id": "easyRun",
+        "name": "Easy Run",
+        "elements": ["distance", "pace", "heartRate"],
+        "actions": ["applyWithConfirmation"]
+      },
+      {
+        "id": "intervalWorkout",
+        "name": "Interval Workout",
+        "elements": ["elapsedTime", "pace", "heartRate", "lapLive"],
+        "actions": ["applyWithConfirmation"]
+      },
+      {
+        "id": "race",
+        "name": "Race",
+        "elements": ["distanceTimeline", "runningGauge", "routeMap", "pace"],
+        "actions": ["applyWithConfirmation"]
+      }
+    ],
+    "userTemplates": {
+      "dataSource": "ProjectDocument.overlayTemplates",
+      "emptyRow": "No saved templates yet",
+      "rowClick": "applyWithConfirmation",
+      "contextMenu": [
+        "Rename",
+        "Duplicate",
+        "Export...",
+        "Delete"
+      ],
+      "deleteRule": "confirm before deleting",
+      "exportRule": "export selected template as standalone shareable template file"
+    },
+    "applyRule": {
+      "behavior": "clear current overlay layout and replace with selected template",
+      "confirmationRequired": true,
+      "confirmationCopyExample": "Replace current overlays with \"Race\"?",
+      "undo": "ProjectDocument registers undo point",
+      "selectionAfterApply": "clear selection"
+    },
+    "footer": {
+      "layout": "sticky bottom horizontal row",
+      "importButton": {
+        "placement": "left",
+        "style": "secondary icon-only square",
+        "size": 32,
+        "icon": "tray.and.arrow.down",
+        "help": "Import Template",
+        "action": "open template file picker; import into user template library without applying"
+      },
+      "saveButton": {
+        "placement": "right",
+        "style": "primary blue",
+        "height": 32,
+        "label": "Save Current as Template",
+        "icon": "plus",
+        "action": "save current overlay layout as a user template",
+        "disabledRule": "disabled when current overlay layout has no elements"
+      }
+    },
+    "blankSpaceContextMenu": [],
+    "nameCollisionRule": "generate a readable copy name rather than overwriting without confirmation"
+  },
   "recommendedComponents": [
     "PoolPanelView",
     "PoolModeSwitch",
@@ -296,7 +390,12 @@
     "OverlayPoolView",
     "OverlayPoolHeader",
     "OverlayCategorySwitch",
-    "OverlayAddTile"
+    "OverlayAddTile",
+    "TemplatePoolView",
+    "TemplatePoolSection",
+    "TemplatePoolRow",
+    "TemplatePoolFooter",
+    "TemplateReplaceConfirmation"
   ],
   "openQuestions": [
     "Should search be added now or deferred?",

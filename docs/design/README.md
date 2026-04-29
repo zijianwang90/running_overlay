@@ -23,8 +23,8 @@ This directory stores implementation-facing product design references for Runnin
 - [Timeline UI Spec](./panels/timeline/timeline-ui.md): bottom Timeline panel layout, interactions, and component guidance.
 - [Timeline UI Structured Spec](./panels/timeline/timeline-ui.spec.json): machine-readable Timeline state, component, and interaction definitions.
 - [Timeline mockup](./panels/timeline/timeline.png): Timeline panel with FIT track, video tracks, playhead, collapse control, zoom, and drop target.
-- [Media Pool UI Spec](./panels/media-pool/media-pool-ui.md): left Pool panel design for Media Pool, Overlay Pool, FIT-first import, interactions, layout, and component guidance.
-- [Media Pool UI Structured Spec](./panels/media-pool/media-pool-ui.spec.json): machine-readable left Pool state, component, and token definitions.
+- [Media Pool UI Spec](./panels/media-pool/media-pool-ui.md): left Pool panel design for Media Pool, Overlay Pool, Templates, FIT-first import, interactions, layout, and component guidance.
+- [Media Pool UI Structured Spec](./panels/media-pool/media-pool-ui.spec.json): machine-readable left Pool state, component, template management, and token definitions.
 - [Media Pool mockup](./panels/media-pool/media-pool.png): media list state with context menu and mark submenu.
 - [Media Pool empty mockup](./panels/media-pool/media-pool-empty.png): empty media state with drag/drop import affordance.
 - [Inspector UI Spec](./panels/inspector/inspector-ui.md): right Inspector panel design, interaction, layout, and component guidance.

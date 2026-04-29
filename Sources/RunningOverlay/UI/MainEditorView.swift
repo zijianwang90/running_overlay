@@ -4,6 +4,7 @@ import SwiftUI
 struct MainEditorView: View {
     @EnvironmentObject private var project: ProjectDocument
     @State private var showingExportProgress = false
+    @State private var activePool: PoolKind = .media
     @State private var mediaPoolWidth: CGFloat = 380
     @State private var inspectorWidth: CGFloat = 400
 
@@ -19,7 +20,7 @@ struct MainEditorView: View {
 
             VSplitView {
                 HStack(spacing: 0) {
-                    PoolPanelView()
+                    PoolPanelView(activePool: $activePool)
                         .frame(width: mediaPoolWidth)
                         .frame(maxHeight: .infinity)
 
@@ -119,6 +120,9 @@ struct MainEditorView: View {
 
     private var toolbar: some View {
         HStack(spacing: 12) {
+            PoolModeSwitch(activePool: $activePool)
+                .frame(width: mediaPoolWidth - (EditorTheme.panelPaddingX * 2))
+
             Spacer()
 
             if let exportProgress = project.exportProgress {

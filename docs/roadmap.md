@@ -151,9 +151,13 @@ Completed so far:
 - Versioned Codable template schema.
 - Local JSON template library under Application Support.
 - Save current overlay layout as a named template.
-- Apply/delete templates from Project Settings.
+- Initial apply/delete templates from Project Settings, now superseded by Templates Pool.
 - Undo support when applying a template.
 - Standalone `.rotemplate` import/export.
+- Template management moved from Project Settings into the left `Templates` Pool.
+- Built-in templates: `Easy Run`, `Interval Workout`, and `Race`.
+- Confirmation before any template replaces the current overlay layout.
+- Compact user-template row context actions for rename, duplicate, export, and delete.
 
 Pending:
 
