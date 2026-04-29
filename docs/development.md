@@ -446,8 +446,11 @@ Pending:
 - Render transparent MOV overlays using H.265 with alpha or ProRes 4444.
 - Batch export one overlay video for each timeline clip, including overlapping clips.
 - Full-activity export ignores video clips and renders one overlay file from FIT start to finish.
-- Calibration export renders a three-second transparent MOV with fixed overlay reference points plus safety guides, using the active FIT data when available and synthetic data otherwise.
-- Calibration frame export renders a PNG with the same `OverlayFrameRenderer`, layout, activity data, and safety guides used by the calibration MOV.
+- `Export Test Clip` renders a three-second transparent MOV around the current playhead position using the current overlay layout and active FIT data (falling back to synthetic data when no FIT activity is loaded).
+- `Export Test Frame` renders a PNG through the same `OverlayFrameRenderer` at the current playhead position using the current overlay layout.
+- Test clip/frame time sampling uses the same activity-time conversion as preview (`timeline.activityElapsed(atProjectTime:)`) before Layer Data FPS quantization.
+- `renderPNG` now supports the same post-render vertical row flip option used by MOV export, so test frame outputs match preview orientation.
+- Text preset export accent color now resolves from `element.style.accentColor` rather than `NSColor.controlAccentColor`.
 - Apply project frame rate, resolution, bitrate, and Layer Data FPS.
 - Generate output filenames with `_overlay.mov`.
 - `ProjectDocument` owns structured export progress state for overall and per-output progress.
@@ -460,7 +463,7 @@ Pending:
 - Export text is rendered through a 2x supersampled transparent offscreen bitmap before compositing back into the output frame, reducing jagged edges on large saturated text and alpha-shadow boundaries.
 - Export scales font sizes, padding, rounded corners, shadows, distance timeline geometry, and elevation chart geometry from the shared 1280x720 render reference to the selected project resolution.
 - Export renders distance timeline and elevation chart overlays with the same shared progress and sample data used by preview.
-- Export can optionally render the same safety guides for calibration clips without affecting normal clip/full-activity exports.
+- Test clip/frame exports use current overlay content instead of fixed calibration reference overlays.
 - Export vertically flips completed pixel-buffer rows before appending frames, compensating for the `CVPixelBuffer` to MOV orientation path so the encoded result matches the preview coordinate system.
 
 Pending:

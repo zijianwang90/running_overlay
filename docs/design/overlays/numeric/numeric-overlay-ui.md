@@ -1,6 +1,6 @@
 # Numeric Overlay UI Design Spec
 
-Last updated: 2026-04-28 (label/unit split sections + independent typography + background fade/blur)
+Last updated: 2026-04-29 (shared background/effects inspector modules)
 
 ## Purpose
 
@@ -70,7 +70,7 @@ Sections:
 5. `Unit`
 6. `Color`
 7. `Background`
-8. `Shadow`
+8. `Effects`
 
 Each section should render as a compact collapsible group:
 
@@ -185,6 +185,8 @@ Model mapping:
 
 ## Background Section
 
+Implemented with the shared `OverlayBackgroundInspectorModule`. The module owns the section title, icon, disclosure state, and header on/off switch.
+
 Controls:
 
 - `Enable Background` toggle.
@@ -192,8 +194,6 @@ Controls:
 - Opacity slider.
 - Radius slider.
 - Padding X and Padding Y fields or compact steppers.
-- Fade Out toggle.
-- Fade Amount slider.
 - Gaussian Blur slider.
 
 Model mapping:
@@ -202,21 +202,39 @@ Model mapping:
 - `OverlayStyle.backgroundColor` is the fill color.
 - `OverlayStyle.backgroundOpacity` continues to multiply the alpha for backwards-compatible templates.
 - `OverlayStyle.backgroundRadius` and `OverlayStyle.backgroundPaddingX/Y` drive the rounded background on the `.minimal` text preset.
-- `OverlayStyle.backgroundFadeOutEnabled` and `backgroundFadeOutAmount` drive optional edge fade for the numeric background.
 - `OverlayStyle.backgroundBlurRadius` applies gaussian blur to the background block.
 
-## Shadow Section
+## Effects Section
+
+Implemented with the shared `OverlayEffectsInspectorModule`. Effects has no section-level enable switch; each effect controls its own enabled state.
 
 Controls:
 
 - Shadow toggle.
+- Shadow color swatch.
 - Shadow opacity slider.
 - Shadow radius field/slider.
+- Shadow thickness slider.
+- Shadow offset X and Y fields.
+- Glow toggle.
+- Glow color swatch.
+- Glow intensity slider.
+- Fade Out toggle.
+- Fade Amount slider.
 
 Model mapping:
 
 - `OverlayStyle.shadowEnabled` toggles drawing.
-- `OverlayStyle.shadowOpacity`, `OverlayStyle.shadowRadius`, `OverlayStyle.shadowOffsetX`, and `OverlayStyle.shadowOffsetY` drive the rendered NSShadow.
+- `OverlayStyle.shadowColor`, `shadowOpacity`, `shadowRadius`, `shadowThickness`, `shadowOffsetX`, and `shadowOffsetY` drive the rendered shadow.
+- `OverlayStyle.glowEnabled`, `glowColor`, and `glowIntensity` drive the foreground glow.
+- `OverlayStyle.backgroundFadeOutEnabled` and `backgroundFadeOutAmount` drive optional edge fade for the background only.
+
+Rendering rules:
+
+- When background is enabled, shadow targets the background/container where the overlay has a background surface.
+- When background is disabled, shadow targets the internal foreground elements.
+- Glow targets foreground/internal elements.
+- Fade Out targets only the background; when background is disabled, Fade Out has no visual effect.
 
 ## Footer
 
@@ -265,7 +283,8 @@ Implemented in `OverlayStyle` (2026-04-26 refactor):
 - `accentColor` — color used by overlays that expose an accent (defaults to `foregroundColor`).
 - `backgroundEnabled`, `backgroundColor`, `backgroundRadius`, `backgroundPaddingX`, `backgroundPaddingY` — explicit background controls; the legacy `backgroundOpacity` field continues to scale the alpha and stays decoded.
 - `backgroundFadeOutEnabled`, `backgroundFadeOutAmount`, `backgroundBlurRadius` — background edge fade and blur controls.
-- `shadowEnabled`, `shadowOffsetX`, `shadowOffsetY` — shadow toggle plus offset, in addition to existing `shadowOpacity` / `shadowRadius`.
+- `shadowEnabled`, `shadowColor`, `shadowOffsetX`, `shadowOffsetY`, `shadowThickness` — shadow toggle plus color, direction, and thickness, in addition to existing `shadowOpacity` / `shadowRadius`.
+- `glowEnabled`, `glowColor`, `glowIntensity` — foreground glow controls shared by detail panels.
 
 `OverlayElementType.isNumericOverlay` and `OverlayElementType.defaultUnitOption` provide the unit defaults applied by `ProjectDocument.addOverlayElement` and used to filter the unit menu.
 
@@ -282,7 +301,9 @@ Model-backed and rendered today (post-refactor):
 - Foreground/text color and accent color.
 - Background enabled / color / radius / padding X / padding Y (`.minimal` text preset uses padding + radius for the rounded background).
 - Background opacity (legacy multiplier on the alpha).
-- Shadow enabled / opacity / radius / offset X / offset Y.
+- Shadow enabled / color / opacity / radius / thickness / offset X / offset Y.
+- Glow enabled / color / intensity.
+- Fade Out enabled / amount for background edge fade.
 - Rotation.
 - Text alignment.
 
@@ -326,4 +347,3 @@ Do not duplicate one detail view per metric. Metric-specific behavior should be 
 - Background toggle and background controls are present in the design, but implementation only enables model-backed controls.
 - The panel is visibly denser than the earlier Pace implementation and avoids large cards or loose vertical gaps.
 - The formatted preview updates when metric/unit/style choices change.
-

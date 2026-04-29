@@ -34,6 +34,8 @@ struct RunningGaugeOverlayDetailView: View {
                         sectionView(.typography) { typographySection(element) }
                         sectionView(.color) { colorSection(element) }
                         sectionView(.effects) { effectsSection(element) }
+                        OverlayBackgroundInspectorModule(elementID: elementID, element: element)
+                        OverlayEffectsInspectorModule(elementID: elementID, element: element)
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }

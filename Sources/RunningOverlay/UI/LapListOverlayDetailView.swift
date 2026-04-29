@@ -16,6 +16,8 @@ struct LapListOverlayDetailView: View {
                         sectionView(.appearance, element: element) { appearanceSection(element) }
                         sectionView(.progress, element: element) { progressSection(element) }
                         sectionView(.columns, element: element) { columnsSection(element) }
+                        OverlayBackgroundInspectorModule(elementID: elementID, element: element)
+                        OverlayEffectsInspectorModule(elementID: elementID, element: element)
                     }
                 }
                 Divider().overlay(NumericTokens.borderSubtle)

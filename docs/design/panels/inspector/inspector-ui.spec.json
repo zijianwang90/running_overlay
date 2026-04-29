@@ -263,6 +263,40 @@
         "Slot 3",
         "Slot 4"
       ]
+    },
+    "background": {
+      "sectionComponent": "OverlayBackgroundInspectorModule",
+      "rowsComponent": "OverlayBackgroundInspectorRows",
+      "icon": "rectangle.fill",
+      "enabledTogglePlacement": "headerLeftOfChevron",
+      "canonicalRows": [
+        "Color",
+        "Opacity",
+        "Radius",
+        "Padding",
+        "Blur"
+      ],
+      "orderingRule": "Append near the end of every overlay detail panel before Effects."
+    },
+    "effects": {
+      "sectionComponent": "OverlayEffectsInspectorModule",
+      "rowsComponent": "OverlayEffectsInspectorRows",
+      "icon": "sparkles",
+      "enabledTogglePlacement": "none",
+      "canonicalRows": [
+        "Shadow",
+        "Shadow Color",
+        "Shadow Opacity",
+        "Shadow Radius",
+        "Shadow Thickness",
+        "Shadow Offset",
+        "Glow",
+        "Glow Color",
+        "Glow Intensity",
+        "Fade Out",
+        "Fade Amount"
+      ],
+      "renderingRule": "Shadow targets the background/container when background is enabled and foreground elements when background is disabled; Glow targets foreground elements; Fade Out only affects background."
     }
   },
   "modelGaps": [

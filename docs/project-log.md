@@ -2,6 +2,37 @@
 
 ## 2026-04-29
 
+### Fix Test Export Orientation/Timing/Accent Parity
+
+Summary:
+
+- Fixed `Export Test Frame` vertical inversion by adding optional post-render row flipping to PNG export and enabling it for test frame export.
+- Fixed test clip/frame sampling mismatch by converting playhead project time to activity elapsed time before clamping/quantization.
+- Fixed text preset export accent mismatch by using `element.style.accentColor` instead of system accent color in export text preset colors.
+
+Files changed:
+
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `docs/requirements.md`
+- `docs/development.md`
+- `docs/project-log.md`
+
+### Rename Test Export API In ProjectDocument
+
+Summary:
+
+- Renamed `ProjectDocument` test export APIs from calibration-oriented names to test-oriented names so method semantics match current behavior.
+- `exportCalibrationOverlay(to:)` is now `exportTestClip(to:)`.
+- `exportCalibrationFrame(to:)` is now `exportTestFrame(to:)`.
+- Updated `ExportDialogView` button actions to call the renamed methods.
+
+Files changed:
+
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/UI/ExportDialogView.swift`
+- `docs/project-log.md`
+
 ### Route Map: Runner Position Dot Color
 
 Added a dedicated color picker for the runner's current-position dot in the Route Map overlay inspector (Markers section, "Position Color" row).

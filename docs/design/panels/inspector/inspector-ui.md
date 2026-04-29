@@ -338,6 +338,21 @@ Behavior:
   - otherwise, `Layout` must be the first section.
 - New overlay detail panels must adopt this component pair and ordering rule directly instead of creating local layout section wrappers.
 
+## Shared Background And Effects Components
+
+`Background` and `Effects` are shared inspector modules and must be available at the end of every overlay detail panel.
+
+- Use `OverlayBackgroundInspectorModule` for complete Background chrome and rows. The module includes the title, icon (`rectangle.fill`), disclosure behavior, and the header switch.
+- Use `OverlayBackgroundInspectorRows` only when a custom section wrapper is explicitly required.
+- Canonical Background rows are `Color`, `Opacity`, `Radius`, `Padding`, and `Blur`.
+- Use `OverlayEffectsInspectorModule` for complete Effects chrome and rows. The Effects section has disclosure behavior but no section-level switch.
+- Use `OverlayEffectsInspectorRows` only when a custom section wrapper is explicitly required.
+- Canonical Effects rows are `Shadow`, `Shadow Color`, `Shadow Opacity`, `Shadow Radius`, `Shadow Thickness`, `Shadow Offset`, `Glow`, `Glow Color`, `Glow Intensity`, `Fade Out`, and `Fade Amount`.
+- Shadow targets the whole background/container when the overlay background is enabled; if background is disabled, shadow targets the internal foreground elements.
+- Glow targets foreground/internal elements.
+- Fade Out targets only the background. If background is disabled, Fade Out controls may stay visible but have no rendered effect.
+- New overlay detail panels must append Background and Effects after overlay-specific sections.
+
 ## SwiftUI Implementation Guidance
 
 The current entry points are:

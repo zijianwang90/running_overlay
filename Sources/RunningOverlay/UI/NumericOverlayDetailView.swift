@@ -21,8 +21,8 @@ struct NumericOverlayDetailView: View {
                         sectionView(.label, element: element, accessory: { labelEnabledToggle(element) }) { labelSection(element) }
                         sectionView(.unit, element: element, accessory: { unitEnabledToggle(element) }) { unitSection(element) }
                         sectionView(.color, element: element) { colorSection(element) }
-                        sectionView(.background, element: element, accessory: { backgroundEnabledToggle(element) }) { backgroundSection(element) }
-                        sectionView(.effects, element: element, accessory: { shadowEnabledToggle(element) }) { effectsSection(element) }
+                        OverlayBackgroundInspectorModule(elementID: elementID, element: element)
+                        OverlayEffectsInspectorModule(elementID: elementID, element: element)
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
@@ -1213,7 +1213,7 @@ extension Color {
 }
 
 extension Double {
-    fileprivate func quantizedNumeric(to step: Double) -> Double {
+    func quantizedNumeric(to step: Double) -> Double {
         guard step > 0 else { return self }
         return (self / step).rounded() * step
     }

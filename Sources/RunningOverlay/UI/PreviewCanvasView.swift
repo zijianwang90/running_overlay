@@ -187,6 +187,49 @@ private enum PreviewCanvasCoordinateSpace {
     static let name = "PreviewCanvasCoordinateSpace"
 }
 
+private extension View {
+    func overlayForegroundEffects(element: OverlayElement, shadowRadius: Double? = nil) -> some View {
+        self
+            .overlayForegroundGlow(element: element)
+            .overlayLayeredShadow(
+                color: Color(element.style.shadowColor),
+                isEnabled: element.style.shadowEnabled,
+                opacity: element.style.shadowOpacity,
+                radius: shadowRadius ?? element.style.shadowRadius,
+                x: element.style.shadowOffsetX,
+                y: element.style.shadowOffsetY,
+                thickness: element.style.shadowThickness
+            )
+    }
+
+    func overlayForegroundGlow(element: OverlayElement) -> some View {
+        self
+            .shadow(
+                color: Color(element.style.glowColor).opacity(element.style.glowEnabled ? element.style.glowIntensity * 0.72 : 0),
+                radius: element.style.glowEnabled ? max(element.style.glowIntensity * 18, 0) : 0
+            )
+            .shadow(
+                color: Color(element.style.glowColor).opacity(element.style.glowEnabled ? element.style.glowIntensity * 0.35 : 0),
+                radius: element.style.glowEnabled ? max(element.style.glowIntensity * 34, 0) : 0
+            )
+    }
+
+    func overlayLayeredShadow(
+        color: Color,
+        isEnabled: Bool,
+        opacity: Double,
+        radius: Double,
+        x: Double,
+        y: Double,
+        thickness: Double
+    ) -> some View {
+        self
+            .shadow(color: color.opacity(isEnabled ? opacity : 0), radius: radius, x: x, y: y)
+            .shadow(color: color.opacity(isEnabled ? opacity * max(thickness - 1, 0) * 0.32 : 0), radius: radius * 0.72, x: x, y: y)
+            .shadow(color: color.opacity(isEnabled ? opacity * max(thickness - 2, 0) * 0.22 : 0), radius: radius * 0.48, x: x, y: y)
+    }
+}
+
 private struct PreviewOverlayFramePreferenceKey: PreferenceKey {
     static let defaultValue: [OverlayElement.ID: CGRect] = [:]
 
@@ -784,7 +827,15 @@ private struct RouteMapOverlayView: View {
                     )
                 }
             }
-            .shadow(color: Color.black.opacity(element.style.shadowOpacity), radius: element.style.shadowRadius, x: 0, y: 2)
+            .overlayLayeredShadow(
+                color: Color(element.style.shadowColor),
+                isEnabled: element.style.shadowEnabled,
+                opacity: element.style.shadowOpacity,
+                radius: element.style.shadowRadius,
+                x: element.style.shadowOffsetX,
+                y: element.style.shadowOffsetY,
+                thickness: element.style.shadowThickness
+            )
     }
 
     private var mapContent: some View {
@@ -1159,12 +1210,7 @@ private struct TextPresetOverlayView: View {
         }
         .foregroundStyle(Color(element.style.foregroundColor))
         .monospacedDigit()
-        .shadow(
-            color: element.style.shadowEnabled ? Color.black.opacity(element.style.shadowOpacity) : Color.clear,
-            radius: element.style.shadowEnabled ? layout.shadowRadius : 0,
-            x: element.style.shadowEnabled ? element.style.shadowOffsetX : 0,
-            y: element.style.shadowEnabled ? element.style.shadowOffsetY : 0
-        )
+        .overlayForegroundEffects(element: element, shadowRadius: layout.shadowRadius)
     }
 
     // MARK: - Canonical 10 numeric overlay presets
@@ -1724,12 +1770,16 @@ private struct RunningGaugeOverlayView: View {
                     .stroke(Color.accentColor.opacity(0.85), lineWidth: 2)
             }
         }
-        .shadow(
-            color: Color.black.opacity(style.shadowEnabled ? style.shadowOpacity : 0),
-            radius: style.shadowRadius,
-            x: 0,
-            y: max(style.shadowRadius * 0.25, 1)
+        .overlayLayeredShadow(
+            color: Color(element.style.shadowColor),
+            isEnabled: element.style.shadowEnabled,
+            opacity: element.style.shadowOpacity,
+            radius: element.style.shadowRadius,
+            x: element.style.shadowOffsetX,
+            y: element.style.shadowOffsetY,
+            thickness: element.style.shadowThickness
         )
+        .overlayForegroundGlow(element: element)
         .modifier(GaugeMonospacedDigit(enabled: style.monospacedDigits))
     }
 
@@ -2084,12 +2134,16 @@ private struct DistanceTimelineOverlayView: View {
             }
         }
         .frame(width: layout.rect.width, height: layout.rect.height)
-        .shadow(
-            color: Color.black.opacity(element.style.shadowEnabled ? element.style.shadowOpacity : 0),
+        .overlayLayeredShadow(
+            color: Color(element.style.shadowColor),
+            isEnabled: element.style.shadowEnabled,
+            opacity: element.style.shadowOpacity,
             radius: element.style.shadowRadius,
             x: element.style.shadowOffsetX,
-            y: element.style.shadowOffsetY
+            y: element.style.shadowOffsetY,
+            thickness: element.style.shadowThickness
         )
+        .overlayForegroundGlow(element: element)
         .opacity(layout.style.fadeEnabled ? max(1 - layout.style.fadeAmount * 0.35, 0.72) : 1)
     }
 
@@ -2542,7 +2596,16 @@ private struct ElevationChartOverlayView: View {
             .padding(.vertical, layout.verticalPadding)
         }
         .frame(width: layout.rect.width, height: layout.rect.height)
-        .shadow(color: Color.black.opacity(layout.style.shadowEnabled ? layout.style.shadowOpacity : 0), radius: layout.style.shadowRadius, x: 0, y: 6)
+        .overlayLayeredShadow(
+            color: Color(element.style.shadowColor),
+            isEnabled: element.style.shadowEnabled,
+            opacity: element.style.shadowOpacity,
+            radius: element.style.shadowRadius,
+            x: element.style.shadowOffsetX,
+            y: element.style.shadowOffsetY,
+            thickness: element.style.shadowThickness
+        )
+        .overlayForegroundGlow(element: element)
     }
 
     private func chartPath(in size: CGSize) -> Path {
@@ -2654,6 +2717,7 @@ private struct LapListOverlayView: View {
             }
         }
         .frame(width: layout.rect.width)
+        .overlayForegroundEffects(element: element)
     }
 
     private func lapRow(_ row: LapListRowRenderLayout) -> some View {
@@ -2778,6 +2842,7 @@ private struct LapCardOverlayView: View {
             .padding(.top, layout.verticalPadding)
         }
         .frame(width: layout.rect.width, height: layout.rect.height)
+        .overlayForegroundEffects(element: element)
     }
 }
 
@@ -2873,6 +2938,7 @@ private struct LapLiveOverlayView: View {
                 .padding(.top, layout.verticalPadding)
             }
             .frame(width: layout.rect.width, height: layout.rect.height)
+            .overlayForegroundEffects(element: element)
         )
     }
 }

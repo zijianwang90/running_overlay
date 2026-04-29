@@ -18,6 +18,8 @@ struct LapLiveOverlayDetailView: View {
                         sectionView(.progress, element: element) { progressSection(element) }
                         sectionView(.metrics, element: element) { metricsSection(element) }
                         sectionView(.recovery, element: element) { recoverySection(element) }
+                        OverlayBackgroundInspectorModule(elementID: elementID, element: element)
+                        OverlayEffectsInspectorModule(elementID: elementID, element: element)
                     }
                     .padding(.horizontal, NumericTokens.panelPaddingX)
                     .padding(.vertical, NumericTokens.panelPaddingY)

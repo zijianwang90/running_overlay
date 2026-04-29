@@ -25,6 +25,8 @@ struct RouteMapOverlayDetailView: View {
                         sectionView(.markers) { markersSection(element) }
                         routeMapStatsBarInspectorSection(element)
                         sectionView(.effects) { effectsSection(element) }
+                        OverlayBackgroundInspectorModule(elementID: elementID, element: element)
+                        OverlayEffectsInspectorModule(elementID: elementID, element: element)
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }

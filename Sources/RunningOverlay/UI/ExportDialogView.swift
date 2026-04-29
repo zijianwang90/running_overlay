@@ -71,13 +71,13 @@ struct ExportDialogView: View {
                 }
                 Button("Export Test Clip") {
                     destinationURL = URL(fileURLWithPath: (destination as NSString).expandingTildeInPath)
-                    project.exportCalibrationOverlay(to: destinationURL)
+                    project.exportTestClip(to: destinationURL)
                     dismiss()
                 }
                 .disabled(project.isExporting)
                 Button("Export Test Frame") {
                     destinationURL = URL(fileURLWithPath: (destination as NSString).expandingTildeInPath)
-                    project.exportCalibrationFrame(to: destinationURL)
+                    project.exportTestFrame(to: destinationURL)
                     dismiss()
                 }
                 .disabled(project.isExporting)

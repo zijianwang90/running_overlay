@@ -22,6 +22,8 @@ struct ElevationChartOverlayDetailView: View {
                         statsBarSection(element)
                         sectionView(.background) { backgroundSection(element) }
                         sectionView(.effects) { effectsSection(element) }
+                        OverlayBackgroundInspectorModule(elementID: elementID, element: element)
+                        OverlayEffectsInspectorModule(elementID: elementID, element: element)
                     }
                 }
                 Divider().overlay(NumericTokens.borderSubtle)

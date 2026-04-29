@@ -353,8 +353,13 @@ struct OverlayStyle: Equatable, Codable {
     var backgroundFadeOutAmount: Double
     var backgroundBlurRadius: Double
     var shadowEnabled: Bool
+    var shadowColor: OverlayColor
     var shadowOffsetX: Double
     var shadowOffsetY: Double
+    var shadowThickness: Double
+    var glowEnabled: Bool
+    var glowColor: OverlayColor
+    var glowIntensity: Double
 
     /// Distance Timeline configuration. Used only by `.distanceTimeline`.
     /// See `docs/overlay-modules/distance-timeline-overlay.md`.
@@ -447,8 +452,13 @@ struct OverlayStyle: Equatable, Codable {
         backgroundFadeOutAmount: 0.22,
         backgroundBlurRadius: 0,
         shadowEnabled: true,
+        shadowColor: .black,
         shadowOffsetX: 0,
         shadowOffsetY: 2,
+        shadowThickness: 1,
+        glowEnabled: false,
+        glowColor: .white,
+        glowIntensity: 0,
         distanceTimeline: .default,
         elevationChart: .default,
         gauge: RunningGaugeStyle.default,
@@ -522,8 +532,13 @@ struct OverlayStyle: Equatable, Codable {
         backgroundFadeOutAmount: Double = 0.22,
         backgroundBlurRadius: Double = 0,
         shadowEnabled: Bool = true,
+        shadowColor: OverlayColor = .black,
         shadowOffsetX: Double = 0,
         shadowOffsetY: Double = 2,
+        shadowThickness: Double = 1,
+        glowEnabled: Bool = false,
+        glowColor: OverlayColor = .white,
+        glowIntensity: Double = 0,
         distanceTimeline: DistanceTimelineStyle = .default,
         elevationChart: ElevationChartStyle = .default,
         gauge: RunningGaugeStyle = .default,
@@ -595,8 +610,13 @@ struct OverlayStyle: Equatable, Codable {
         self.backgroundFadeOutAmount = backgroundFadeOutAmount
         self.backgroundBlurRadius = backgroundBlurRadius
         self.shadowEnabled = shadowEnabled
+        self.shadowColor = shadowColor
         self.shadowOffsetX = shadowOffsetX
         self.shadowOffsetY = shadowOffsetY
+        self.shadowThickness = shadowThickness
+        self.glowEnabled = glowEnabled
+        self.glowColor = glowColor
+        self.glowIntensity = glowIntensity
         self.distanceTimeline = distanceTimeline
         self.elevationChart = elevationChart
         self.gauge = gauge
@@ -680,8 +700,13 @@ struct OverlayStyle: Equatable, Codable {
         backgroundFadeOutAmount = min(max(try container.decodeIfPresent(Double.self, forKey: .backgroundFadeOutAmount) ?? Self.default.backgroundFadeOutAmount, 0), 1)
         backgroundBlurRadius = max(try container.decodeIfPresent(Double.self, forKey: .backgroundBlurRadius) ?? Self.default.backgroundBlurRadius, 0)
         shadowEnabled = try container.decodeIfPresent(Bool.self, forKey: .shadowEnabled) ?? Self.default.shadowEnabled
+        shadowColor = try container.decodeIfPresent(OverlayColor.self, forKey: .shadowColor) ?? Self.default.shadowColor
         shadowOffsetX = try container.decodeIfPresent(Double.self, forKey: .shadowOffsetX) ?? Self.default.shadowOffsetX
         shadowOffsetY = try container.decodeIfPresent(Double.self, forKey: .shadowOffsetY) ?? Self.default.shadowOffsetY
+        shadowThickness = min(max(try container.decodeIfPresent(Double.self, forKey: .shadowThickness) ?? Self.default.shadowThickness, 1), 4)
+        glowEnabled = try container.decodeIfPresent(Bool.self, forKey: .glowEnabled) ?? Self.default.glowEnabled
+        glowColor = try container.decodeIfPresent(OverlayColor.self, forKey: .glowColor) ?? Self.default.glowColor
+        glowIntensity = min(max(try container.decodeIfPresent(Double.self, forKey: .glowIntensity) ?? Self.default.glowIntensity, 0), 1)
         distanceTimeline = try container.decodeIfPresent(DistanceTimelineStyle.self, forKey: .distanceTimeline) ?? .default
         elevationChart = try container.decodeIfPresent(ElevationChartStyle.self, forKey: .elevationChart) ?? .default
         if let storedGauge = try container.decodeIfPresent(RunningGaugeStyle.self, forKey: .gauge) {

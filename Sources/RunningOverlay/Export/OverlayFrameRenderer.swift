@@ -49,6 +49,9 @@ struct OverlayFrameRenderer {
         }
 
         drawFrame(in: context, request: request, cache: &cache)
+        if request.flipVerticallyAfterRender {
+            flipBitmapRowsVertically(bitmap)
+        }
         guard let data = bitmap.representation(using: .png, properties: [:]) else {
             throw OverlayFrameRenderError.cannotCreatePNGData
         }
@@ -160,7 +163,7 @@ struct OverlayFrameRenderer {
         let colors = TextPresetColors(
             foreground: NSColor(element.style.foregroundColor),
             background: NSColor.black.withAlphaComponent(element.style.backgroundOpacity),
-            accent: NSColor.controlAccentColor
+            accent: NSColor(element.style.accentColor)
         )
         let rect = presetTextRect(for: element, renderLayout: renderLayout, renderContext: renderContext)
 
@@ -2655,7 +2658,35 @@ struct OverlayFrameRenderer {
             return
         }
 
-        let buffer = baseAddress.assumingMemoryBound(to: UInt8.self)
+        let buffer = baseAddress
+        var scratch = [UInt8](repeating: 0, count: bytesPerRow)
+
+        for row in 0..<(height / 2) {
+            let topOffset = row * bytesPerRow
+            let bottomOffset = (height - row - 1) * bytesPerRow
+            scratch.withUnsafeMutableBytes { scratchPointer in
+                guard let scratchBase = scratchPointer.baseAddress else {
+                    return
+                }
+                memcpy(scratchBase, buffer.advanced(by: topOffset), bytesPerRow)
+                memcpy(buffer.advanced(by: topOffset), buffer.advanced(by: bottomOffset), bytesPerRow)
+                memcpy(buffer.advanced(by: bottomOffset), scratchBase, bytesPerRow)
+            }
+        }
+    }
+
+    private static func flipBitmapRowsVertically(_ bitmap: NSBitmapImageRep) {
+        guard let baseAddress = bitmap.bitmapData else {
+            return
+        }
+
+        let height = bitmap.pixelsHigh
+        let bytesPerRow = bitmap.bytesPerRow
+        guard height > 1, bytesPerRow > 0 else {
+            return
+        }
+
+        let buffer = baseAddress
         var scratch = [UInt8](repeating: 0, count: bytesPerRow)
 
         for row in 0..<(height / 2) {

@@ -98,20 +98,29 @@
       "id": "background",
       "title": "Background",
       "controls": [
-        { "id": "enableBackground", "type": "toggle", "modelBacked": "can map to backgroundOpacity > 0 if accepted" },
-        { "id": "backgroundColor", "type": "swatch", "modelBacked": false },
+        { "id": "enableBackground", "type": "toggle", "modelPath": "OverlayStyle.backgroundEnabled" },
+        { "id": "backgroundColor", "type": "swatches", "modelPath": "OverlayStyle.backgroundColor" },
         { "id": "backgroundOpacity", "type": "slider", "modelPath": "OverlayStyle.backgroundOpacity" },
-        { "id": "backgroundRadius", "type": "slider", "modelBacked": false },
-        { "id": "backgroundPadding", "type": "numberPair", "labels": ["X", "Y"], "modelBacked": false }
+        { "id": "backgroundRadius", "type": "slider", "modelPath": "OverlayStyle.backgroundRadius" },
+        { "id": "backgroundPadding", "type": "numberPair", "labels": ["X", "Y"], "modelPaths": ["OverlayStyle.backgroundPaddingX", "OverlayStyle.backgroundPaddingY"] },
+        { "id": "backgroundBlur", "type": "slider", "modelPath": "OverlayStyle.backgroundBlurRadius" }
       ]
     },
     {
       "id": "effects",
       "title": "Effects",
       "controls": [
-        { "id": "shadowToggle", "type": "toggle", "modelBacked": "can map to shadowOpacity > 0 if accepted" },
+        { "id": "shadowToggle", "type": "toggle", "modelPath": "OverlayStyle.shadowEnabled" },
+        { "id": "shadowColor", "type": "swatches", "modelPath": "OverlayStyle.shadowColor" },
         { "id": "shadowOpacity", "type": "slider", "modelPath": "OverlayStyle.shadowOpacity" },
-        { "id": "shadowRadius", "type": "sliderOrField", "modelPath": "OverlayStyle.shadowRadius" }
+        { "id": "shadowRadius", "type": "sliderOrField", "modelPath": "OverlayStyle.shadowRadius" },
+        { "id": "shadowThickness", "type": "slider", "modelPath": "OverlayStyle.shadowThickness" },
+        { "id": "shadowOffset", "type": "numberPair", "labels": ["X", "Y"], "modelPaths": ["OverlayStyle.shadowOffsetX", "OverlayStyle.shadowOffsetY"] },
+        { "id": "glowToggle", "type": "toggle", "modelPath": "OverlayStyle.glowEnabled" },
+        { "id": "glowColor", "type": "swatches", "modelPath": "OverlayStyle.glowColor" },
+        { "id": "glowIntensity", "type": "slider", "modelPath": "OverlayStyle.glowIntensity" },
+        { "id": "fadeOutToggle", "type": "toggle", "modelPath": "OverlayStyle.backgroundFadeOutEnabled" },
+        { "id": "fadeAmount", "type": "slider", "modelPath": "OverlayStyle.backgroundFadeOutAmount" }
       ]
     }
   ],

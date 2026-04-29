@@ -509,12 +509,16 @@ Export behavior:
 - When an export is active, the toolbar shows a progress control in the upper-right area.
 - Clicking the progress control shows a popover with overall progress and per-output progress rows.
 - The progress popover allows cancelling the active export.
+- After the user cancels export, the export queue/progress popover state clears immediately instead of lingering in a failed or partial state.
 - Batch export one overlay clip for each video segment on the timeline.
 - Each overlay clip's start and end match the corresponding timeline video segment start and end.
 - Overlapping timeline clips are exported separately, one output file per clip.
 - Full activity export can ignore all video segments and render one overlay file covering the entire FIT activity.
-- A calibration test export can render a short transparent MOV with fixed reference overlays and safety guides for checking preview/export alignment.
-- A calibration test frame export can render a PNG through the same overlay frame renderer, helping distinguish renderer issues from MOV encoding/orientation issues.
+- `Export Test Clip` renders a short transparent MOV anchored to the current playhead position, using the current overlay configuration.
+- `Export Test Frame` renders a PNG at the current playhead position, using the current overlay configuration and renderer path.
+- Test clip/frame sampling time must use the same playhead-to-activity conversion and Layer Data FPS quantization path as preview (`activityElapsed(atProjectTime:)` + quantization).
+- Test frame PNG orientation must match preview/export coordinates (no vertical inversion in the saved image).
+- Text preset accent colors in export must come from each overlay style's accent color instead of system accent defaults.
 - Activity data is sampled from the FIT timeline for each segment using the configured Layer Data FPS cadence.
 - Export rendering scales overlay dimensions from the 720p preview reference so text, padding, and graphic sizes remain proportional at 1080p, 2K, and 4K output sizes.
 - Exported text should be antialiased through supersampled rendering before compositing into the final transparent frame, especially for large colored timer overlays.
@@ -531,7 +535,6 @@ Future requirements:
 - User-defined export presets.
 - Burned-in composite export.
 - Alpha codec selection.
-- Export cancellation.
 - Per-track or per-camera export selection.
 
 ## 13. Data Accuracy Requirements
@@ -568,3 +571,4 @@ Open questions:
 - Source video: User-imported camera video.
 - Overlay clip: Exported transparent video containing only data graphics.
 - Camera/source group: A set of clips believed to come from the same recording device or camera angle.
+

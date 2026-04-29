@@ -17,6 +17,8 @@ struct LapCardOverlayDetailView: View {
                         sectionView(.appearance, element: element) { appearanceSection(element) }
                         sectionView(.columns, element: element) { columnsSection(element) }
                         sectionView(.recovery, element: element) { recoverySection(element) }
+                        OverlayBackgroundInspectorModule(elementID: elementID, element: element)
+                        OverlayEffectsInspectorModule(elementID: elementID, element: element)
                     }
                     .padding(.horizontal, NumericTokens.panelPaddingX)
                     .padding(.vertical, NumericTokens.panelPaddingY)

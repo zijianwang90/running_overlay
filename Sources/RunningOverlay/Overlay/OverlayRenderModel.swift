@@ -43,7 +43,7 @@ enum OverlayRenderModel {
             backgroundFadeOutAmount: element.style.backgroundFadeOutAmount,
             backgroundBlurRadius: context.scaled(element.style.backgroundBlurRadius),
             shadowRadius: context.scaled(element.style.shadowRadius),
-            shadowOffsetY: context.scaled(2)
+            shadowOffsetY: context.scaled(element.style.shadowOffsetY)
         )
     }
 

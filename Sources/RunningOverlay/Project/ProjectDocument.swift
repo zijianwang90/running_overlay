@@ -1637,6 +1637,14 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.shadowEnabled = enabled
     }
 
+    func setOverlayShadowColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.shadowColor = color
+    }
+
     func setOverlayShadowOffset(_ elementID: OverlayElement.ID, x: Double? = nil, y: Double? = nil) {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
@@ -1648,6 +1656,38 @@ final class ProjectDocument: ObservableObject {
         if let y {
             overlayLayout.elements[index].style.shadowOffsetY = max(-32, min(y, 32))
         }
+    }
+
+    func setOverlayShadowThickness(_ elementID: OverlayElement.ID, thickness: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.shadowThickness = min(max(thickness, 1), 4)
+    }
+
+    func setOverlayGlowEnabled(_ elementID: OverlayElement.ID, enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.glowEnabled = enabled
+    }
+
+    func setOverlayGlowColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.glowColor = color
+    }
+
+    func setOverlayGlowIntensity(_ elementID: OverlayElement.ID, intensity: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.glowIntensity = min(max(intensity, 0), 1)
     }
 
     func resetOverlayStyle(_ elementID: OverlayElement.ID) {
@@ -1977,6 +2017,7 @@ final class ProjectDocument: ObservableObject {
             return
         }
         exportTask?.cancel()
+        exportProgress = nil
         statusMessage = "Cancelling export..."
     }
 
@@ -2007,40 +2048,41 @@ final class ProjectDocument: ObservableObject {
         runExport(job: job, title: "Full Activity Export", completedMessage: "Full activity overlay export completed.", failurePrefix: "Full activity overlay export failed")
     }
 
-    func exportCalibrationOverlay(to destinationURL: URL) {
+    func exportTestClip(to destinationURL: URL) {
         guard !isExporting else {
             return
         }
 
-        let calibrationActivity = activity.duration > 0 ? activity : Self.calibrationActivity()
-        let segmentStart = calibrationActivity.duration > 3
-            ? min(timeline.playhead, calibrationActivity.duration - 3)
+        let exportActivity = activity.duration > 0 ? activity : Self.calibrationActivity()
+        let playheadActivityTime = timeline.activityElapsed(atProjectTime: timeline.playhead)
+        let segmentStart = exportActivity.duration > 3
+            ? min(max(playheadActivityTime, 0), exportActivity.duration - 3)
             : 0
         let job = OverlayExportJob(
             destinationURL: destinationURL,
             settings: settings,
-            activity: calibrationActivity,
-            overlayLayout: Self.calibrationOverlayLayout(),
+            activity: exportActivity,
+            overlayLayout: overlayLayout,
             fitStartTime: 0,
             segments: [
                 OverlayExportSegment(
                     startTime: segmentStart,
                     duration: 3,
-                    sourceFileName: "overlay_calibration.mov"
+                    sourceFileName: "overlay_test_clip.mov"
                 )
-            ],
-            renderGuides: true
+            ]
         )
 
-        runExport(job: job, title: "Calibration Overlay Export", completedMessage: "Calibration overlay export completed.", failurePrefix: "Calibration overlay export failed")
+        runExport(job: job, title: "Test Clip Export", completedMessage: "Test clip export completed.", failurePrefix: "Test clip export failed")
     }
 
-    func exportCalibrationFrame(to destinationURL: URL) {
-        let calibrationActivity = activity.duration > 0 ? activity : Self.calibrationActivity()
-        let sampleTime = calibrationActivity.duration > 0
-            ? min(timeline.playhead, calibrationActivity.duration)
+    func exportTestFrame(to destinationURL: URL) {
+        let exportActivity = activity.duration > 0 ? activity : Self.calibrationActivity()
+        let playheadActivityTime = timeline.activityElapsed(atProjectTime: timeline.playhead)
+        let sampleTime = exportActivity.duration > 0
+            ? min(max(playheadActivityTime, 0), exportActivity.duration)
             : 0
-        let outputURL = destinationURL.appendingPathComponent("overlay_calibration_frame.png")
+        let outputURL = destinationURL.appendingPathComponent("overlay_test_frame.png")
 
         do {
             try FileManager.default.createDirectory(at: destinationURL, withIntermediateDirectories: true)
@@ -2049,16 +2091,17 @@ final class ProjectDocument: ObservableObject {
                 to: outputURL,
                 request: OverlayFrameRenderRequest(
                     size: CGSize(width: settings.resolution.width, height: settings.resolution.height),
-                    layout: Self.calibrationOverlayLayout(),
-                    activity: calibrationActivity,
+                    layout: overlayLayout,
+                    activity: exportActivity,
                     elapsedTime: quantizedLayerDataTime(for: sampleTime),
-                    renderGuides: true
+                    renderGuides: false,
+                    flipVerticallyAfterRender: true
                 )
             )
-            statusMessage = "Calibration frame exported: \(outputURL.lastPathComponent)."
+            statusMessage = "Test frame exported: \(outputURL.lastPathComponent)."
         } catch {
-            statusMessage = "Calibration frame export failed: \(error.localizedDescription)"
-            print("[RunningOverlay] Calibration frame export failed: \(String(reflecting: error))")
+            statusMessage = "Test frame export failed: \(error.localizedDescription)"
+            print("[RunningOverlay] Test frame export failed: \(String(reflecting: error))")
         }
     }
 
@@ -2274,6 +2317,9 @@ final class ProjectDocument: ObservableObject {
                 exportProgress?.markCompleted()
                 statusMessage = completedMessage
             } catch OverlayExportError.cancelled {
+                exportProgress?.markCancelled()
+                statusMessage = "Export cancelled."
+            } catch is CancellationError {
                 exportProgress?.markCancelled()
                 statusMessage = "Export cancelled."
             } catch {
