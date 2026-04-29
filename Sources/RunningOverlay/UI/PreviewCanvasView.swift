@@ -730,7 +730,7 @@ private struct SharedStatsBarContentView: View {
     }
 }
 
-private struct RouteMapOverlayView: View {
+struct RouteMapOverlayView: View {
     let element: OverlayElement
     let layout: OverlayRouteMapRenderLayout
     let isSelected: Bool
@@ -1134,7 +1134,7 @@ private struct RouteFlagShape: Shape {
     }
 }
 
-private struct TextPresetOverlayView: View {
+struct TextPresetOverlayView: View {
     let element: OverlayElement
     let layout: OverlayTextRenderLayout
     let isSelected: Bool
@@ -2066,7 +2066,7 @@ private extension ProjectResolution {
     }
 }
 
-private struct DistanceTimelineOverlayView: View {
+struct DistanceTimelineOverlayView: View {
     let element: OverlayElement
     let layout: OverlayDistanceTimelineRenderLayout
     let isSelected: Bool

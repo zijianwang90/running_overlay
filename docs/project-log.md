@@ -2,6 +2,20 @@
 
 ## 2026-04-29
 
+### Extract Shared Overlay View Entry Points
+
+Summary:
+
+- Added a new shared UI file `OverlaySharedViews.swift` with reusable entry-point wrappers for text preset, distance timeline, and route map overlays.
+- Exposed `TextPresetOverlayView`, `DistanceTimelineOverlayView`, and `RouteMapOverlayView` at module scope so shared wrappers can reference the same component implementations.
+- This sets up the follow-up step where Preview and SwiftUI export both call the same shared view entry points while passing different interactivity flags.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/OverlaySharedViews.swift`
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `docs/project-log.md`
+
 ### SwiftUI Per-Frame Export Experiment (Scheme A)
 
 Summary:
