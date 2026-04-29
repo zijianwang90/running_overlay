@@ -273,7 +273,8 @@ For left/right placements, the bar background must expand enough to cover all ve
 
 ## Inspector Sections
 
-Use dense Inspector primitives from Numeric Overlay:
+Use dense Inspector primitives from
+`Sources/RunningOverlay/UI/InspectorRows/InspectorDenseComponents.swift`:
 
 1. `Preset`
 2. `Layout` — shared `OverlayLayoutInspectorRows`: Position X/Y, Scale, Width, Height. No Anchor, no Padding.

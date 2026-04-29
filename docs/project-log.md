@@ -6,6 +6,23 @@ Note:
 
 - Historical entries below may reference `OverlayVideoExporter` as part of the migration timeline. That exporter is now retired; active export runtime uses `SwiftUIOverlayVideoExporter` only.
 
+### Extract Dense Inspector Components
+
+Summary:
+
+- Moved the shared dense Inspector primitives out of `NumericOverlayDetailView.swift` and into `Sources/RunningOverlay/UI/InspectorRows/InspectorDenseComponents.swift`.
+- Kept existing type names and APIs unchanged (`InspectorDenseRow`, `InspectorDenseSliderRow`, `InspectorDenseAxisField`, `InspectorDenseSegmented`, `InspectorDenseMenuLabel`, `InspectorDenseSwatchStrip`, `InspectorAnchorGrid`, `InspectorDetailFooterBar`, and `NumericTokens`) so existing overlay detail views continue to use the same components without call-site churn.
+- Updated design documentation to point at the shared component file instead of treating these primitives as Numeric Overlay internals.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/InspectorRows/InspectorDenseComponents.swift`
+- `Sources/RunningOverlay/UI/NumericOverlayDetailView.swift`
+- `docs/design/overlays/distance-timeline/distance-timeline-overlay-ui.md`
+- `docs/design/overlays/numeric/numeric-overlay-ui.md`
+- `docs/design/overlays/route-map/route-map-overlay-ui.md`
+- `docs/project-log.md`
+
 ### Group Inspector Row Files
 
 Summary:

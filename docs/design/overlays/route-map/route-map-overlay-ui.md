@@ -34,11 +34,11 @@ The four reference container variants:
 - `OverlayElementType.routeMap` only.
 
 Route Map does **not** share the Numeric Overlay detail view. It uses its own
-`RouteMapOverlayDetailView`, but reuses Numeric Overlay's dense Inspector
-primitives (`InspectorDenseRow`, `InspectorDenseSliderRow`,
-`InspectorDenseSegmented`, `InspectorDenseMenuLabel`,
-`InspectorDenseSwatchStrip`, `InspectorAnchorGrid`) and `NumericTokens` so
-density and spacing match the rest of the Inspector.
+`RouteMapOverlayDetailView`, but reuses the shared dense Inspector primitives
+from `Sources/RunningOverlay/UI/InspectorRows/InspectorDenseComponents.swift`
+(`InspectorDenseRow`, `InspectorDenseSliderRow`, `InspectorDenseSegmented`,
+`InspectorDenseMenuLabel`, `InspectorDenseSwatchStrip`, `InspectorAnchorGrid`)
+and `NumericTokens` so density and spacing match the rest of the Inspector.
 
 ## Design Direction
 
@@ -441,8 +441,9 @@ Sticky footer:
 
 ## Density And Layout Tokens
 
-Re-uses `NumericTokens` so the editing surface visually matches Numeric
-Overlay:
+Re-uses the shared `NumericTokens` from
+`Sources/RunningOverlay/UI/InspectorRows/InspectorDenseComponents.swift` so the
+editing surface visually matches the other dense overlay inspectors:
 
 | Token | Value |
 | --- | ---: |
@@ -535,6 +536,7 @@ move the corresponding entry from `modelGaps` into `modelBackedToday`.
 - Disabling Status Bar hides every Status Bar control row beneath it and removes the data strip from preview/export.
 - Status Bar supports at least 1–4 configurable metric slots, with default Distance / Pace / Time enabled and Heart Rate disabled.
 - Status Bar does not render any pace color bar; route gradient remains controlled only by Route Line.
-- The detail view shares `NumericTokens` with Numeric Overlay; row height,
-  row gap, control height, control radius, and label column width are
-  visually identical to a Numeric Overlay panel side-by-side.
+- The detail view shares `NumericTokens` from
+  `Sources/RunningOverlay/UI/InspectorRows/InspectorDenseComponents.swift`;
+  row height, row gap, control height, control radius, and label column width
+  are visually identical to a Numeric Overlay panel side-by-side.

@@ -331,6 +331,7 @@ Model-backed and rendered today (post-refactor):
 Recommended components:
 
 - `NumericOverlayDetailView`
+- `Sources/RunningOverlay/UI/InspectorRows/InspectorDenseComponents.swift`
 - `InspectorDenseSection`
 - `InspectorDenseRow`
 - `InspectorDenseMenuRow`
