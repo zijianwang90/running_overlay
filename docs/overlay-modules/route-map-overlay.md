@@ -1,6 +1,6 @@
 # Route Map Overlay Design
 
-Last updated: 2026-04-27 (Stats Bar)
+Last updated: 2026-04-28 (Stats Bar unified inspector)
 
 > **Inspector / UI design has its own spec.** See
 > [`docs/design/overlays/route-map/route-map-overlay-ui.md`](../design/overlays/route-map/route-map-overlay-ui.md) and
@@ -260,6 +260,12 @@ Phase F: Stats Bar (current revision)
 - `OverlayRouteMapRenderLayout` 新增 `statsBarLayout?: OverlayRouteMapStatsBarLayout`。
 - Preview（VStack）和 Export 渲染器均实现 Stats Bar 绘制。
 - 旧字段 `routeMapLegendVisible` / `routeMapLegendMode` 保留在 OverlayStyle 中（向后兼容），但不再渲染或出现在 Inspector。
+- Inspector 的 Stats Bar 区域改为复用统一组件：`CollapsibleStatsBarInspectorSection` + `StatsBarInspectorRows`。
+- Enabled 开关位于 Stats Bar 标题行（箭头左侧），展开内容不再包含独立 Enabled 行。
+- Route Map 与 Distance Timeline 使用相同 Stats Bar 图标（`tablecells`）和同一套完整控制：Placement / Inside / Layout / Size / Width / Offset / Item Gap / Background / Dividers / Radius / Slot 1-4。
+- 当 Route Map Stats Bar 为 `Inside` 时，路线内容绘制区域自动为 bar 预留内边距，避免 bar 覆盖路线折线。
+- `Inside` 模式下 Stats Bar 背景不再使用 bar 自身圆角，改为按外层容器形状/圆角裁切，实现与容器底边（或顶边）一体化视觉。
+- Stats Bar 位于 Left/Right 时，渲染强制使用纵向堆叠（top-to-bottom），并将 `Item Gap` 作为纵向行间距。
 
 Phase G: Route line richness, container border / glow
 

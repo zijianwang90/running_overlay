@@ -4,7 +4,7 @@ Last updated: 2026-04-28
 
 ## Purpose
 
-Distance Timeline Overlay is a compact visual progress component for showing activity distance or progress over a video. It starts from the existing simple `5.94 / 18.44 km` progress bar and expands it into a styleable module with presets, optional media slots, route/elevation variants, border controls, and fade behavior.
+Distance Timeline Overlay is a compact visual progress component for showing activity distance or progress over a video. It starts from the existing simple `5.94 / 18.44 km` progress bar and expands it into a styleable module with presets, optional media slots, route/elevation variants, axis labels, a stats bar, border controls, and fade behavior.
 
 Design spec:
 
@@ -19,6 +19,9 @@ Design spec:
 - Add a custom left-side media slot for sport/lower-third variants.
 - Use route/elevation visuals when terrain context matters.
 - Control whether background, border, fade, and shadows are visible.
+- Toggle the primary Value on/off, switch metric/imperial units, and append up to four metric-driven custom values inline after the main value with separate group gap, item gap, size, color, and opacity.
+- Move progress percentage and other metrics into a dedicated Stats Bar that can be placed top/bottom/left/right.
+- Configure axis labels below the timeline as start/finish text or distance endpoints, plus optional intermediate distance points.
 
 ## Data Inputs
 
@@ -45,8 +48,10 @@ Recommended layout pipeline:
 4. Layout content regions:
    - media slot
    - value text
-   - label/percent
+   - label
    - progress track
+   - axis labels and distance points
+   - stats bar
    - route/elevation area when enabled
 5. Draw background and optional border.
 6. Draw progress track/path/profile.
@@ -87,13 +92,15 @@ Elevation profile shadow should be subtle and configurable.
 Use dense Inspector sections:
 
 - Preset
-- Content
+- Value
+- Label
 - Layout
 - Progress
+- Axis Labels
+- Stats Bar
 - Media Slot
 - Route / Elevation
 - Background & Border
-- Typography
 - Effects
 
 Only show sections that apply to the current preset.
@@ -109,7 +116,7 @@ Phase 1:
 Phase 2:
 
 - Presets: splits, glass, neon.
-- Ticks, marker, glow, fade masks.
+- Ticks, marker, solid dense/splits progress, glow, fade masks.
 
 Phase 3:
 
@@ -128,7 +135,19 @@ Implemented on 2026-04-28:
 
 - `OverlayElementType.distanceTimeline` now uses a dedicated `DistanceTimelineStyle` block on `OverlayStyle`.
 - Preset enum is in place for all eight design directions: minimal, dense, sport, splits, glass, neon, lowerThird, and route.
-- Preview and export share `OverlayDistanceTimelineRenderLayout`, including value text, percent text, content rect, track rect, optional media slot rect, progress, and elevation samples.
+- Preview and export share `OverlayDistanceTimelineRenderLayout`, including value text, progress/stat text, content rect, track rect, optional media slot rect, progress, axis labels, and elevation samples.
+- Value has its own typography controls, enabled/disabled state, metric/imperial unit system, and a Custom Values master toggle. When enabled, all four Custom 1-4 rows appear as metric pickers and render inline after the main value with independent group gap, item gap, size, color, and opacity. Group gap moves the entire custom group without compressing custom text or reducing item gap.
+- Label has been split into its own Inspector section following the Numeric overlay pattern.
+- Percent is no longer an inline Content option. Progress percentage is available through the dedicated Stats Bar, which supports up to four metric slots, top/bottom/left/right placement, Inside mode, width override, X/Y offset, and item gap.
+- Stats Bar Value and Label typography is now fully configurable per bar (font, size, weight, color), and rendered from Stats Bar-owned fields rather than outer accent color.
+- Stats Bar inspector now uses the shared cross-overlay component pair: `CollapsibleStatsBarInspectorSection` + `StatsBarInspectorRows`.
+- The Enabled switch is placed in the Stats Bar section header (left of chevron); expanded rows do not include a separate Enabled row.
+- Distance Timeline intentionally follows the same Stats Bar row set and icon as Route Map (the full shared set from the original Distance Timeline controls).
+- Axis labels are configurable separately from Value/Label: start/finish or distance endpoints can sit below the axis, and Point Gap controls both endpoint labels and optional intermediate distance points, so it stays editable even when More Points is off.
+- Distance Timeline background and border bounds expand to include Axis Labels. Stats Bars with Inside enabled are included in the same background/border bounds at their current side, size, and offset; attached outside bars keep a separate bar background.
+- Tick density is configurable independently from preset, and left/right Stats Bar backgrounds expand enough to cover all vertical slots. Preview selection uses the same dynamic visual bounds as the background/border.
+- Dense and Splits render progress as a solid fill; their technical appearance comes from tick marks and axis labels rather than dashed/segmented progress.
+- The Glass preset keeps the named preset and border/fade defaults, but disables the fake glass background until a real blur/material implementation exists.
 - Minimal, dense, sport, splits, glass, neon, lowerThird, and route presets render distinct visual treatments in both SwiftUI preview and PNG/MOV export.
 - Sport and lowerThird support deterministic media slot modes: system icon, embedded static SVG, and embedded animated SVG.
 - SVG import embeds the source text into the overlay style so templates persist the asset without relying on an external file path.
@@ -136,7 +155,7 @@ Implemented on 2026-04-28:
 - Background, border, corner radius, padding, track height, track opacity, ticks, current marker, glow, fade amount, and route elevation profile controls are exposed through `DistanceTimelineOverlayDetailView`.
 - The route preset renders a stylized route progress curve with optional elevation-profile underlay from FIT elevation samples.
 - When FIT GPS samples are available, the route preset projects and renders the sampled route geometry with a current-position marker; when GPS is missing, it falls back to the stylized progress curve.
-- The Inspector uses dense module-specific sections: Preset, Content, Layout, Progress, Media Slot, Route / Elevation, Background & Border, Typography, and Effects. Irrelevant sections are hidden for presets that do not use them.
+- The Inspector uses dense module-specific sections: Preset, Value, Label, Layout, Progress, Axis Labels, Stats Bar, Media Slot, Route / Elevation, Background & Border, and Effects. Irrelevant sections are hidden for presets that do not use them.
 
 Remaining:
 

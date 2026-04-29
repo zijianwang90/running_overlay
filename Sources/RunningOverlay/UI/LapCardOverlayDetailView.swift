@@ -13,10 +13,10 @@ struct LapCardOverlayDetailView: View {
                 Divider().overlay(NumericTokens.borderSubtle)
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
-                        sectionView(.layout, element: element) { layoutSection(element) }
+                        layoutInspectorSection(element)
+                        sectionView(.appearance, element: element) { appearanceSection(element) }
                         sectionView(.columns, element: element) { columnsSection(element) }
                         sectionView(.recovery, element: element) { recoverySection(element) }
-                        sectionView(.position, element: element) { positionSection(element) }
                     }
                     .padding(.horizontal, NumericTokens.panelPaddingX)
                     .padding(.vertical, NumericTokens.panelPaddingY)
@@ -30,23 +30,23 @@ struct LapCardOverlayDetailView: View {
     }
 
     private enum LapCardSection: String, CaseIterable {
-        case layout, columns, recovery, position
+        case layout, appearance, columns, recovery
 
         var title: String {
             switch self {
             case .layout: "Layout"
+            case .appearance: "Card"
             case .columns: "Columns"
             case .recovery: "Recovery (Rest Lap)"
-            case .position: "Position"
             }
         }
 
         var systemImage: String {
             switch self {
-            case .layout: "rectangle.grid.1x2"
+            case .layout: "scope"
+            case .appearance: "rectangle.grid.1x2"
             case .columns: "list.bullet"
             case .recovery: "heart.fill"
-            case .position: "move.3d"
             }
         }
     }
@@ -134,7 +134,7 @@ struct LapCardOverlayDetailView: View {
     }
 
     @ViewBuilder
-    private func layoutSection(_ element: OverlayElement) -> some View {
+    private func appearanceSection(_ element: OverlayElement) -> some View {
         let s = element.style.lapCard
         InspectorDenseSliderRow(
             label: "Card Width",
@@ -239,8 +239,35 @@ struct LapCardOverlayDetailView: View {
     }
 
     @ViewBuilder
-    private func positionSection(_ element: OverlayElement) -> some View {
-        OverlayLayoutRows(elementID: elementID)
+    private func layoutInspectorSection(_ element: OverlayElement) -> some View {
+        let s = element.style.lapCard
+        CollapsibleLayoutInspectorSection(
+            isExpanded: Binding(
+                get: { openSections.contains(.layout) },
+                set: { newValue in
+                    if newValue { openSections.insert(.layout) }
+                    else { openSections.remove(.layout) }
+                }
+            )
+        ) {
+            OverlayLayoutRows(
+                elementID: elementID,
+                widthBinding: Binding(
+                    get: { s.cardWidth },
+                    set: { v in project.mutateLapCardStyleContinuous(elementID) { $0.cardWidth = v } }
+                ),
+                widthRange: 120...600,
+                heightBinding: Binding(
+                    get: { s.cardWidth },
+                    set: { v in project.mutateLapCardStyleContinuous(elementID) { $0.cardWidth = v } }
+                ),
+                heightRange: 120...600,
+                opacityBinding: Binding(
+                    get: { s.backgroundOpacity },
+                    set: { v in project.mutateLapCardStyleContinuous(elementID) { $0.backgroundOpacity = v } }
+                )
+            )
+        }
     }
 
     private var footerBar: some View {

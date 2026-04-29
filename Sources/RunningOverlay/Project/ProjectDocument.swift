@@ -31,6 +31,7 @@ final class ProjectDocument: ObservableObject {
     private var undoStack: [ProjectSnapshot] = []
     private var redoStack: [ProjectSnapshot] = []
     private var activeUndoSnapshot: ProjectSnapshot?
+    private var copiedOverlayConfiguration: CopiedOverlayConfiguration?
 
     init(overlayTemplateStore: OverlayTemplateStore = OverlayTemplateStore()) {
         self.overlayTemplateStore = overlayTemplateStore
@@ -339,6 +340,20 @@ final class ProjectDocument: ObservableObject {
                 style.textAlignment = tokens.textAlignment
                 style.showLabel = tokens.showLabel
                 style.showUnit = tokens.showUnit
+                style.labelPosition = tokens.labelPosition
+                style.unitPosition = tokens.unitPosition
+                if let size = tokens.labelFontSize {
+                    style.labelFontSize = size
+                }
+                if let weight = tokens.labelFontWeight {
+                    style.labelFontWeight = weight
+                }
+                if let size = tokens.unitFontSize {
+                    style.unitFontSize = size
+                }
+                if let weight = tokens.unitFontWeight {
+                    style.unitFontWeight = weight
+                }
                 style.backgroundEnabled = tokens.backgroundEnabled
                 if let bg = tokens.backgroundColor {
                     style.backgroundColor = bg
@@ -356,6 +371,8 @@ final class ProjectDocument: ObservableObject {
             type: type,
             position: CGPoint(x: 0.5, y: 0.5),
             scale: 1.0,
+            isVisible: true,
+            isLocked: false,
             style: style
         )
         overlayLayout.elements.append(element)
@@ -625,13 +642,68 @@ final class ProjectDocument: ObservableObject {
         selection = .overlayElement(elementID)
     }
 
+    func openOverlayDetailFromList(_ elementID: OverlayElement.ID) {
+        guard let element = selectedOverlay(elementID) else {
+            statusMessage = "Overlay not found."
+            return
+        }
+        guard !element.isLocked else {
+            statusMessage = "Element is locked. Unlock it before editing."
+            return
+        }
+        selection = .overlayElement(elementID)
+    }
+
     func selectedOverlay(_ elementID: OverlayElement.ID) -> OverlayElement? {
         overlayLayout.elements.first { $0.id == elementID }
+    }
+
+    func copyOverlayProperties(from elementID: OverlayElement.ID) {
+        guard let element = selectedOverlay(elementID) else {
+            statusMessage = "Unable to copy overlay properties."
+            return
+        }
+        copiedOverlayConfiguration = CopiedOverlayConfiguration(element: element)
+        statusMessage = "Copied \(element.type.label) properties."
+    }
+
+    func canPasteOverlayProperties(to elementID: OverlayElement.ID) -> Bool {
+        guard let target = selectedOverlay(elementID),
+              let copiedOverlayConfiguration else {
+            return false
+        }
+        return target.type.pasteCategory == copiedOverlayConfiguration.category
+    }
+
+    func pasteOverlayProperties(to elementID: OverlayElement.ID) {
+        guard let copiedOverlayConfiguration else {
+            statusMessage = "No copied overlay properties."
+            return
+        }
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            statusMessage = "Unable to paste overlay properties."
+            return
+        }
+        let targetType = overlayLayout.elements[index].type
+        guard targetType.pasteCategory == copiedOverlayConfiguration.category else {
+            statusMessage = "Paste is only available for the same overlay category."
+            return
+        }
+
+        registerUndoPoint()
+        overlayLayout.elements[index].scale = copiedOverlayConfiguration.scale
+        overlayLayout.elements[index].isVisible = copiedOverlayConfiguration.isVisible
+        overlayLayout.elements[index].isLocked = copiedOverlayConfiguration.isLocked
+        overlayLayout.elements[index].style = copiedOverlayConfiguration.style
+        statusMessage = "Pasted properties to \(targetType.label)."
     }
 
     func moveOverlay(_ elementID: OverlayElement.ID, to position: CGPoint) {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        guard !overlayLayout.elements[index].isLocked else {
             return
         }
         overlayLayout.elements[index].position = CGPoint(
@@ -695,6 +767,30 @@ final class ProjectDocument: ObservableObject {
         mutate(&overlayLayout.elements[index].style.distanceTimeline)
     }
 
+    func setOverlayElevationChartPreset(_ elementID: OverlayElement.ID, preset: ElevationChartPreset) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.elevationChart = ElevationChartStyle.preset(preset)
+    }
+
+    func mutateElevationChartStyle(_ elementID: OverlayElement.ID, _ mutate: (inout ElevationChartStyle) -> Void) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        mutate(&overlayLayout.elements[index].style.elevationChart)
+    }
+
+    func mutateElevationChartStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout ElevationChartStyle) -> Void) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        mutate(&overlayLayout.elements[index].style.elevationChart)
+    }
+
     func importDistanceTimelineIconAsset(_ elementID: OverlayElement.ID) {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.init(filenameExtension: "svg")].compactMap { $0 }
@@ -746,6 +842,20 @@ final class ProjectDocument: ObservableObject {
         style.textAlignment = tokens.textAlignment
         style.showLabel = tokens.showLabel
         style.showUnit = tokens.showUnit
+        style.labelPosition = tokens.labelPosition
+        style.unitPosition = tokens.unitPosition
+        if let size = tokens.labelFontSize {
+            style.labelFontSize = size
+        }
+        if let weight = tokens.labelFontWeight {
+            style.labelFontWeight = weight
+        }
+        if let size = tokens.unitFontSize {
+            style.unitFontSize = size
+        }
+        if let weight = tokens.unitFontWeight {
+            style.unitFontWeight = weight
+        }
         style.backgroundEnabled = tokens.backgroundEnabled
         if let bg = tokens.backgroundColor {
             style.backgroundColor = bg
@@ -886,6 +996,14 @@ final class ProjectDocument: ObservableObject {
             overlayLayout.elements[index].style.routeMapWidth = side
             overlayLayout.elements[index].style.routeMapHeight = side
         }
+    }
+
+    func setOverlayRouteMapCornerRadius(_ elementID: OverlayElement.ID, radius: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapCornerRadius = min(max(radius, 0), 120)
     }
 
     func setOverlayRouteMapEdgeFade(_ elementID: OverlayElement.ID, edgeFade: OverlayRouteMapEdgeFade) {
@@ -1038,6 +1156,120 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.routeMapStatsBar.slots[slotIndex].visible = isVisible
     }
 
+    func setOverlayRouteMapStatsBarPlacement(_ elementID: OverlayElement.ID, placement: RouteMapStatsBarPlacement) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.placement = placement
+    }
+
+    func setOverlayRouteMapStatsBarLayoutMode(_ elementID: OverlayElement.ID, layoutMode: RouteMapStatsBarLayoutMode) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.layoutMode = layoutMode
+    }
+
+    func setOverlayRouteMapStatsBarHeight(_ elementID: OverlayElement.ID, height: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.height = min(max(height, 32), 160)
+    }
+
+    func setOverlayRouteMapStatsBarInside(_ elementID: OverlayElement.ID, isInside: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.inside = isInside
+    }
+
+    func setOverlayRouteMapStatsBarWidth(_ elementID: OverlayElement.ID, width: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.width = max(width, 0)
+    }
+
+    func setOverlayRouteMapStatsBarOffsetX(_ elementID: OverlayElement.ID, offsetX: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.offsetX = offsetX
+    }
+
+    func setOverlayRouteMapStatsBarOffsetY(_ elementID: OverlayElement.ID, offsetY: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.offsetY = offsetY
+    }
+
+    func setOverlayRouteMapStatsBarItemSpacing(_ elementID: OverlayElement.ID, spacing: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.itemSpacing = min(max(spacing, 0), 32)
+    }
+
+    func setOverlayRouteMapStatsBarDividerOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.dividerOpacity = min(max(opacity, 0), 1)
+    }
+
+    func setOverlayRouteMapStatsBarCornerRadius(_ elementID: OverlayElement.ID, radius: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.cornerRadius = min(max(radius, 0), 40)
+    }
+
+    func setOverlayRouteMapStatsBarValueFontName(_ elementID: OverlayElement.ID, fontName: String) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.valueFontName = fontName
+    }
+
+    func setOverlayRouteMapStatsBarValueFontSize(_ elementID: OverlayElement.ID, fontSize: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.valueFontSize = min(max(fontSize, 8), 96)
+    }
+
+    func setOverlayRouteMapStatsBarValueFontWeight(_ elementID: OverlayElement.ID, fontWeight: OverlayFontWeight) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.valueFontWeight = fontWeight
+    }
+
+    func setOverlayRouteMapStatsBarValueColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.valueColor = color
+    }
+
+    func setOverlayRouteMapStatsBarLabelFontName(_ elementID: OverlayElement.ID, fontName: String) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.labelFontName = fontName
+    }
+
+    func setOverlayRouteMapStatsBarLabelFontSize(_ elementID: OverlayElement.ID, fontSize: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.labelFontSize = min(max(fontSize, 8), 96)
+    }
+
+    func setOverlayRouteMapStatsBarLabelFontWeight(_ elementID: OverlayElement.ID, fontWeight: OverlayFontWeight) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.labelFontWeight = fontWeight
+    }
+
+    func setOverlayRouteMapStatsBarLabelColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.labelColor = color
+    }
+
+    func setOverlayRouteMapStatsBarBlurRadius(_ elementID: OverlayElement.ID, radius: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.routeMapStatsBar.blurRadius = min(max(radius, 0), 32)
+    }
+
     func mutateLapListStyle(_ elementID: OverlayElement.ID, _ mutate: (inout LapListStyle) -> Void) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
@@ -1120,6 +1352,45 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].style.foregroundColor = color
+        overlayLayout.elements[index].style.valueColor = color
+        overlayLayout.elements[index].style.labelColor = color
+        overlayLayout.elements[index].style.unitColor = color
+    }
+
+    func setOverlayValueColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.valueColor = color
+    }
+
+    func setOverlayValueOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.valueOpacity = min(max(opacity, 0), 1)
+    }
+
+    func setOverlayLabelColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.labelColor = color
+    }
+
+    func setOverlayLabelOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.labelOpacity = min(max(opacity, 0), 1)
+    }
+
+    func setOverlayUnitColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.unitColor = color
+    }
+
+    func setOverlayUnitOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.unitOpacity = min(max(opacity, 0), 1)
     }
 
     func setOverlayBackgroundOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
@@ -1170,15 +1441,96 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.customLabel = label
     }
 
+    func setOverlayLabelPosition(_ elementID: OverlayElement.ID, position: OverlayTextAttachmentPosition) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.labelPosition = position
+    }
+
+    func setOverlayUnitPosition(_ elementID: OverlayElement.ID, position: OverlayTextAttachmentPosition) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.unitPosition = position
+    }
+
+    func setOverlayLabelFontName(_ elementID: OverlayElement.ID, fontName: String) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.labelFontName = fontName
+    }
+
+    func setOverlayLabelFontSize(_ elementID: OverlayElement.ID, fontSize: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.labelFontSize = min(max(fontSize, 8), 72)
+    }
+
+    func setOverlayLabelFontWeight(_ elementID: OverlayElement.ID, fontWeight: OverlayFontWeight) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.labelFontWeight = fontWeight
+    }
+
+    func setOverlayLabelSpacing(_ elementID: OverlayElement.ID, spacing: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.labelSpacing = min(max(spacing, 0), 60)
+    }
+
+    func setOverlayUnitFontName(_ elementID: OverlayElement.ID, fontName: String) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.unitFontName = fontName
+    }
+
+    func setOverlayUnitFontSize(_ elementID: OverlayElement.ID, fontSize: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.unitFontSize = min(max(fontSize, 8), 72)
+    }
+
+    func setOverlayUnitFontWeight(_ elementID: OverlayElement.ID, fontWeight: OverlayFontWeight) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.unitFontWeight = fontWeight
+    }
+
+    func setOverlayUnitSpacing(_ elementID: OverlayElement.ID, spacing: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.unitSpacing = min(max(spacing, 0), 60)
+    }
+
     func setOverlayPosition(_ elementID: OverlayElement.ID, position: CGPoint) {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        guard !overlayLayout.elements[index].isLocked else {
             return
         }
         overlayLayout.elements[index].position = CGPoint(
             x: min(max(position.x, 0), 1),
             y: min(max(position.y, 0), 1)
         )
+    }
+
+    func setOverlayVisibility(_ elementID: OverlayElement.ID, isVisible: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].isVisible = isVisible
+        statusMessage = isVisible ? "Overlay is now visible." : "Overlay is now hidden."
+    }
+
+    func setOverlayLocked(_ elementID: OverlayElement.ID, isLocked: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].isLocked = isLocked
+        statusMessage = isLocked ? "Overlay locked." : "Overlay unlocked."
     }
 
     func setOverlayRotation(_ elementID: OverlayElement.ID, degrees: Double) {
@@ -1240,6 +1592,24 @@ final class ProjectDocument: ObservableObject {
         if let y {
             overlayLayout.elements[index].style.backgroundPaddingY = max(0, min(y, 80))
         }
+    }
+
+    func setOverlayBackgroundFadeOutEnabled(_ elementID: OverlayElement.ID, enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.backgroundFadeOutEnabled = enabled
+    }
+
+    func setOverlayBackgroundFadeOutAmount(_ elementID: OverlayElement.ID, amount: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.backgroundFadeOutAmount = min(max(amount, 0), 1)
+    }
+
+    func setOverlayBackgroundBlurRadius(_ elementID: OverlayElement.ID, radius: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.backgroundBlurRadius = min(max(radius, 0), 40)
     }
 
     func setOverlayShadowEnabled(_ elementID: OverlayElement.ID, enabled: Bool) {
@@ -1683,12 +2053,12 @@ final class ProjectDocument: ObservableObject {
 
     static func calibrationOverlayLayout() -> OverlayLayout {
         OverlayLayout(elements: [
-            OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.14), scale: 1.15, style: .default),
-            OverlayElement(type: .elevationChart, position: CGPoint(x: 0.5, y: 0.30), scale: 1.0, style: .default),
-            OverlayElement(type: .heartRate, position: CGPoint(x: 0.12, y: 0.86), scale: 1.25, style: .default),
-            OverlayElement(type: .distance, position: CGPoint(x: 0.50, y: 0.68), scale: 1.35, style: .default),
-            OverlayElement(type: .pace, position: CGPoint(x: 0.86, y: 0.86), scale: 1.25, style: .default),
-            OverlayElement(type: .elapsedTime, position: CGPoint(x: 0.86, y: 0.14), scale: 1.0, style: .default)
+            OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.14), scale: 1.15, isVisible: true, isLocked: false, style: .default),
+            OverlayElement(type: .elevationChart, position: CGPoint(x: 0.5, y: 0.30), scale: 1.0, isVisible: true, isLocked: false, style: .default),
+            OverlayElement(type: .heartRate, position: CGPoint(x: 0.12, y: 0.86), scale: 1.25, isVisible: true, isLocked: false, style: .default),
+            OverlayElement(type: .distance, position: CGPoint(x: 0.50, y: 0.68), scale: 1.35, isVisible: true, isLocked: false, style: .default),
+            OverlayElement(type: .pace, position: CGPoint(x: 0.86, y: 0.86), scale: 1.25, isVisible: true, isLocked: false, style: .default),
+            OverlayElement(type: .elapsedTime, position: CGPoint(x: 0.86, y: 0.14), scale: 1.0, isVisible: true, isLocked: false, style: .default)
         ])
     }
 
@@ -1858,6 +2228,22 @@ private struct ProjectSnapshot: Equatable {
     var timeline: TimelineModel
     var overlayLayout: OverlayLayout
     var selection: EditorSelection
+}
+
+private struct CopiedOverlayConfiguration {
+    var category: OverlayPasteCategory
+    var scale: Double
+    var isVisible: Bool
+    var isLocked: Bool
+    var style: OverlayStyle
+
+    init(element: OverlayElement) {
+        category = element.type.pasteCategory
+        scale = element.scale
+        isVisible = element.isVisible
+        isLocked = element.isLocked
+        style = element.style
+    }
 }
 
 enum EditorSelection: Equatable {

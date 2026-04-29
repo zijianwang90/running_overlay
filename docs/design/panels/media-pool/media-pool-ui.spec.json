@@ -1,13 +1,13 @@
 {
-  "name": "Media Pool UI",
-  "updated": "2026-04-26",
+  "name": "Left Pool UI",
+  "updated": "2026-04-29",
   "references": {
     "mockup": "./media-pool.png",
     "emptyMockup": "./media-pool-empty.png",
     "relatedStyleSpec": "../inspector/inspector-ui.md"
   },
   "intent": {
-    "productTone": "dark professional desktop video-editing media bin",
+    "productTone": "dark professional desktop video-editing source and overlay bin",
     "primaryAccent": "blue",
     "density": "compact",
     "avoid": [
@@ -15,7 +15,8 @@
       "oversized cards",
       "decorative backgrounds",
       "large empty black areas",
-      "non-functional filter controls"
+      "non-functional filter controls",
+      "duplicating add-overlay tiles in the Inspector"
     ]
   },
   "tokens": {
@@ -58,6 +59,11 @@
       "thumbnailHeight": 42,
       "toolbarIconButton": 30,
       "searchHeight": 30,
+      "poolSwitchHeight": 32,
+      "poolSwitchRadius": 8,
+      "overlayTileMinHeight": 56,
+      "overlayTileMaxHeight": 64,
+      "overlayCategoryHeight": 24,
       "markDot": 9,
       "menuRadius": 8
     },
@@ -70,6 +76,33 @@
     }
   },
   "currentSwiftUIEntryPoint": "Sources/RunningOverlay/UI/MediaBrowserView.swift",
+  "plannedSwiftUIEntryPoints": [
+    "Sources/RunningOverlay/UI/PoolPanelView.swift",
+    "Sources/RunningOverlay/UI/OverlayPoolView.swift"
+  ],
+  "poolModes": [
+    {
+      "id": "media",
+      "label": "Media Pool",
+      "icon": "filmstrip",
+      "content": "MediaBrowserView"
+    },
+    {
+      "id": "overlay",
+      "label": "Overlay Pool",
+      "icon": "square.stack.3d.up",
+      "content": "OverlayPoolView"
+    }
+  ],
+  "poolSwitch": {
+    "height": 32,
+    "radius": 8,
+    "placement": "top of left panel",
+    "selectedStyle": "accent blue fill or blue-accented dark fill",
+    "unselectedStyle": "dark control fill, muted text, subtle border",
+    "stateRule": "local UI state; do not persist in project files",
+    "resizeRule": "switching pools must not reset mediaPoolWidth"
+  },
   "preserveBehavior": [
     "drag/drop video import",
     "single row selection",
@@ -84,6 +117,13 @@
     "focus loss clears transient media-pool preview"
   ],
   "layout": [
+    {
+      "component": "PoolModeSwitch",
+      "controls": [
+        { "label": "Media Pool", "icon": "filmstrip" },
+        { "label": "Overlay Pool", "icon": "square.stack.3d.up" }
+      ]
+    },
     {
       "component": "MediaPoolHeader",
       "content": {
@@ -116,11 +156,11 @@
   "row": {
     "content": [
       { "slot": "leading", "type": "thumbnailOrFileIcon", "optional": true },
-      { "slot": "mark", "type": "colorDotOrStripe", "optional": true },
       { "slot": "primary", "type": "filename", "modelPath": "MediaItem.displayName" },
       { "slot": "secondary", "type": "duration", "modelPath": "MediaItem.duration" },
       { "slot": "secondary", "type": "captureDate", "modelPath": "MediaItem.inferredStartDate" },
-      { "slot": "trailing", "type": "alignmentStatus", "modelPath": "MediaItem.alignmentStatus.label" }
+      { "slot": "trailing", "type": "alignmentStatusDot", "modelPath": "MediaItem.alignmentStatus", "help": "MediaItem.alignmentStatus.label" },
+      { "slot": "mark", "type": "colorDotOrStripe", "optional": true, "help": "MediaTag.label" }
     ],
     "states": {
       "defaultEven": "media.rowEven",
@@ -156,12 +196,28 @@
     "nativeMenuAcceptable": true
   },
   "emptyStates": {
-    "noMedia": {
+    "noFitNoMedia": {
+      "icon": "waveform.path.ecg",
+      "title": "Import FIT",
+      "secondaryText": "Start with running activity data",
+      "primaryAction": "Import FIT",
+      "stepIndicator": [
+        { "label": "FIT", "state": "active" },
+        { "label": "Videos", "state": "inactive" }
+      ],
+      "mutedHint": "Then import videos",
+      "dropZone": "subtle dashed rounded rectangle; do not imply video drop is ready before FIT import"
+    },
+    "fitImportedNoMedia": {
       "icon": "video.badge.plus",
       "text": "Drop videos here",
       "secondaryText": "Import clips to match them with your running activity",
       "primaryAction": "Import Videos",
       "formatHint": "MP4, MOV",
+      "stepIndicator": [
+        { "label": "FIT", "state": "complete" },
+        { "label": "Videos", "state": "active" }
+      ],
       "dropZone": "subtle dashed rounded rectangle"
     },
     "filteredEmpty": {
@@ -169,7 +225,65 @@
       "text": "No media with this mark"
     }
   },
+  "overlayPool": {
+    "purpose": "catalog of addable overlay modules; replaces Inspector Add Overlay section",
+    "dataSourceRule": "reuse the OverlayTileInfo-style definitions currently backing Inspector add tiles",
+    "header": {
+      "title": "Overlay Pool",
+      "status": "Add overlays",
+      "avoid": "extra toolbar actions unless immediately useful"
+    },
+    "categories": [
+      { "id": "metrics", "label": "Metrics" },
+      { "id": "charts", "label": "Charts" },
+      { "id": "route", "label": "Route" }
+    ],
+    "categoryControl": {
+      "height": 24,
+      "hitTargetRule": "full segment hit targets",
+      "selectedStyle": "accent blue",
+      "unselectedStyle": "dark control fill with muted text"
+    },
+    "tileGrid": {
+      "columnsAtDefaultWidth": 2,
+      "fallbackColumnsBelowWidth": 1,
+      "fallbackWidth": 320,
+      "height": "56-64",
+      "content": [
+        "leading icon",
+        "primary label",
+        "secondary hint"
+      ],
+      "featuredStyle": "small blue accent line or icon tint only"
+    },
+    "interaction": {
+      "tap": "project.addOverlayElement(tile.type)",
+      "afterAdd": "prefer selecting the new overlay and opening its detail Inspector"
+    },
+    "availability": {
+      "beforeFitImport": "available",
+      "missingFitChannelRule": "keep tile enabled and let preview use empty/default values",
+      "hideRule": "do not hide overlay types based on current FIT data unless a future compatibility rule is explicit"
+    }
+  },
+  "inspectorBoundary": {
+    "outerStateContent": "Added Overlays / Added Elements only",
+    "keptResponsibilities": [
+      "visibility",
+      "lock",
+      "delete",
+      "detail navigation",
+      "overlay detail editing"
+    ],
+    "removedResponsibilities": [
+      "Add Overlay catalog",
+      "Metrics/Charts/Route overlay category tabs",
+      "overlay add tiles"
+    ]
+  },
   "recommendedComponents": [
+    "PoolPanelView",
+    "PoolModeSwitch",
     "MediaPoolPanel",
     "MediaPoolHeader",
     "MediaPoolToolbarButton",
@@ -178,7 +292,11 @@
     "MediaPoolRow",
     "MediaStatusPill",
     "MediaTagDot",
-    "MediaPoolEmptyState"
+    "MediaPoolEmptyState",
+    "OverlayPoolView",
+    "OverlayPoolHeader",
+    "OverlayCategorySwitch",
+    "OverlayAddTile"
   ],
   "openQuestions": [
     "Should search be added now or deferred?",

@@ -13,12 +13,12 @@ struct DistanceTimelineOverlayDetailView: View {
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
                         sectionView(.preset) { presetSection(element) }
-                        sectionView(.layout) { layoutSection(element) }
+                        layoutInspectorSection(element)
                         sectionView(.value) { valueSection(element) }
                         sectionView(.label) { labelSection(element) }
                         sectionView(.progress) { progressSection(element) }
                         sectionView(.axisLabels) { axisLabelsSection(element) }
-                        sectionView(.statsBar) { statsBarSection(element) }
+                        statsBarInspectorSection(element)
                         if element.style.distanceTimeline.preset.supportsMediaSlot {
                             sectionView(.mediaSlot) { mediaSlotSection(element) }
                         }
@@ -28,6 +28,7 @@ struct DistanceTimelineOverlayDetailView: View {
                         sectionView(.backgroundBorder) { backgroundBorderSection(element) }
                         sectionView(.effects) { effectsSection(element) }
                     }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
                 Divider().overlay(NumericTokens.borderSubtle)
                 footerBar
@@ -227,15 +228,26 @@ struct DistanceTimelineOverlayDetailView: View {
     }
 
     @ViewBuilder
-    private func layoutSection(_ element: OverlayElement) -> some View {
+    private func layoutInspectorSection(_ element: OverlayElement) -> some View {
         let style = element.style.distanceTimeline
-        OverlayLayoutRows(
-            elementID: elementID,
-            widthBinding: distanceBinding(\.width, of: style),
-            widthRange: 180...640,
-            heightBinding: distanceBinding(\.height, of: style),
-            heightRange: 52...150
-        )
+        CollapsibleLayoutInspectorSection(
+            isExpanded: Binding(
+                get: { openSections.contains(.layout) },
+                set: { newValue in
+                    if newValue { openSections.insert(.layout) }
+                    else { openSections.remove(.layout) }
+                }
+            )
+        ) {
+            OverlayLayoutRows(
+                elementID: elementID,
+                widthBinding: distanceBinding(\.width, of: style),
+                widthRange: 180...640,
+                heightBinding: distanceBinding(\.height, of: style),
+                heightRange: 52...150,
+                opacityBinding: distanceBinding(\.backgroundOpacity, of: style)
+            )
+        }
     }
 
     @ViewBuilder
@@ -293,27 +305,64 @@ struct DistanceTimelineOverlayDetailView: View {
     }
 
     @ViewBuilder
-    private func statsBarSection(_ element: OverlayElement) -> some View {
+    private func statsBarInspectorSection(_ element: OverlayElement) -> some View {
         let config = element.style.distanceTimeline.statsBar
-        InspectorDenseRow(label: "Enabled") {
-            toggle(config.visible) { newValue in
+        CollapsibleStatsBarInspectorSection(
+            isExpanded: Binding(
+                get: { openSections.contains(.statsBar) },
+                set: { newValue in
+                    if newValue { openSections.insert(.statsBar) }
+                    else { openSections.remove(.statsBar) }
+                }
+            ),
+            title: SharedStatsBarInspectorUI.sectionTitle,
+            systemImage: SharedStatsBarInspectorUI.sectionSystemImage,
+            isBarEnabled: config.visible,
+            onSetBarEnabled: { newValue in
                 project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.visible = newValue }
             }
+        ) {
+            distanceTimelineStatsBarRows(element)
         }
+    }
+
+    @ViewBuilder
+    private func distanceTimelineStatsBarRows(_ element: OverlayElement) -> some View {
+        let config = element.style.distanceTimeline.statsBar
         StatsBarInspectorRows(
             isOn: config.visible,
             placement: config.placement,
-            availablePlacements: RouteMapStatsBarPlacement.distanceTimelinePlacements,
+            availablePlacements: SharedStatsBarInspectorUI.placements,
             layoutMode: config.layoutMode,
             height: config.height,
-            heightRange: 28...120,
-            heightLabel: "Size",
+            heightRange: SharedStatsBarInspectorUI.heightRange,
+            heightLabel: SharedStatsBarInspectorUI.heightLabel,
             backgroundOpacity: config.backgroundOpacity,
             dividerOpacity: config.dividerOpacity,
             cornerRadius: config.cornerRadius,
-            cornerRadiusRange: 0...32,
+            cornerRadiusRange: SharedStatsBarInspectorUI.cornerRadiusRange,
+            valueTypography: .init(
+                fontName: config.valueFontName,
+                fontSize: config.valueFontSize,
+                fontWeight: config.valueFontWeight,
+                color: config.valueColor,
+                onSetFontName: { value in project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.valueFontName = value } },
+                onSetFontSize: { value in project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.valueFontSize = value.rounded() } },
+                onSetFontWeight: { value in project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.valueFontWeight = value } },
+                onSetColor: { value in project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.valueColor = value } }
+            ),
+            labelTypography: .init(
+                fontName: config.labelFontName,
+                fontSize: config.labelFontSize,
+                fontWeight: config.labelFontWeight,
+                color: config.labelColor,
+                onSetFontName: { value in project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.labelFontName = value } },
+                onSetFontSize: { value in project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.labelFontSize = value.rounded() } },
+                onSetFontWeight: { value in project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.labelFontWeight = value } },
+                onSetColor: { value in project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.labelColor = value } }
+            ),
             slots: config.slots.map { (metric: $0.metric, visible: $0.visible) },
-            availableMetrics: RouteMapStatsMetric.allCases,
+            availableMetrics: SharedStatsBarInspectorUI.metrics,
             inside: config.inside,
             extraLayout: .init(
                 width: config.width,
@@ -499,7 +548,6 @@ struct DistanceTimelineOverlayDetailView: View {
                     openSections.insert(section)
                 }
             }
-            .overlay(alignment: .top) { Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1) }
             .overlay(alignment: .bottom) { Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1) }
 
             if isOpen {
@@ -612,4 +660,3 @@ private extension DistanceTimelineStyle {
         statsBar.slots[index].visible = visible
     }
 }
-

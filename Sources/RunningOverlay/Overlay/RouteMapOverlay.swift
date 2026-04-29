@@ -97,9 +97,27 @@ struct OverlayRouteMapStatsBarItemLayout {
 
 struct OverlayRouteMapStatsBarLayout {
     var rect: CGRect
+    var isInside: Bool
+    var containerRect: CGRect
+    var containerShape: OverlayRouteMapShape
+    var containerCornerRadius: Double
     var backgroundOpacity: Double
+    var blurRadius: Double
+    var dividerOpacity: Double
+    var cornerRadius: Double
+    var itemSpacing: Double
+    var layoutMode: RouteMapStatsBarLayoutMode
+    var placement: RouteMapStatsBarPlacement
     var items: [OverlayRouteMapStatsBarItemLayout]
     var fontName: String
+    var valueFontName: String
+    var valueFontSize: Double
+    var valueFontWeight: OverlayFontWeight
+    var valueColor: OverlayColor
+    var labelFontName: String
+    var labelFontSize: Double
+    var labelFontWeight: OverlayFontWeight
+    var labelColor: OverlayColor
 }
 
 struct OverlayRouteMapRenderLayout {
@@ -286,11 +304,6 @@ enum RouteMapMaskRenderer {
             context.restoreGState()
 
         case .square:
-            // Per-edge linear fade using the minimum distance to any edge.
-            // A radial gradient only fades corners for square shapes because
-            // the edge midpoints are much closer to the center than corners.
-            // The edge-distance metric produces uniform softness on all sides.
-            //
             // Step 1: fill the shape interior white, clipped to the rounded rect.
             context.saveGState()
             context.addPath(shapePath(shape: shape, rect: rect, cornerRadius: cornerRadius).cgPath)
@@ -299,27 +312,37 @@ enum RouteMapMaskRenderer {
             context.fill(rect)
             context.restoreGState()
 
-            // Step 2: apply fade by iterating pixels — multiply each by its
-            // normalised minimum distance to any edge.
+            // Step 2: apply fade per-pixel using a rounded-rect SDF so the
+            // softness follows the corner curve instead of producing pointy
+            // bright corners. The SDF gives the signed distance to the shape
+            // boundary (negative inside), so distToBoundary = -sdf.
             let fadeWidth = min(rect.width, rect.height) * 0.5 * fadeAmount
             guard fadeWidth > 0.5, let data = context.data else { return }
             let ctxW = context.width
             let ctxH = context.height
             let bpr = context.bytesPerRow
             let buf = data.assumingMemoryBound(to: UInt8.self)
+            let cx = Double(ctxW) * 0.5
+            let cy = Double(ctxH) * 0.5
+            let hw = Double(ctxW) * 0.5   // half-width
+            let hh = Double(ctxH) * 0.5   // half-height
+            // Clamp radius so it never exceeds the shorter half-dimension.
+            let r = min(cornerRadius, min(hw, hh))
             for row in 0..<ctxH {
                 let base = row * bpr
+                let py = Double(row) - cy + 0.5
                 for col in 0..<ctxW {
                     let v = buf[base + col]
                     guard v > 0 else { continue }
-                    let d = min(
-                        Double(col) / fadeWidth,
-                        Double(ctxW - 1 - col) / fadeWidth,
-                        Double(row) / fadeWidth,
-                        Double(ctxH - 1 - row) / fadeWidth,
-                        1.0
-                    )
-                    buf[base + col] = UInt8(max(d, 0) * 255)
+                    let px = Double(col) - cx + 0.5
+                    // Rounded-rect SDF (standard formulation).
+                    let qx = abs(px) - (hw - r)
+                    let qy = abs(py) - (hh - r)
+                    let sdf = sqrt(max(qx, 0) * max(qx, 0) + max(qy, 0) * max(qy, 0))
+                              + min(max(qx, qy), 0) - r
+                    // Inside the shape sdf < 0; distance from boundary = -sdf.
+                    let alpha = min(max(-sdf / fadeWidth, 0), 1)
+                    buf[base + col] = UInt8(alpha * 255)
                 }
             }
         }

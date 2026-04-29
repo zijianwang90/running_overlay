@@ -1,10 +1,15 @@
 # Media Pool UI Design Spec
 
-Last updated: 2026-04-26
+Last updated: 2026-04-29
 
 ## Purpose
 
-The Media Pool is the left-side source bin for imported video files. It supports import visibility, selection, source preview, timestamp matching, tag filtering, and context-menu actions. This refresh aligns Media Pool styling with the Inspector design language documented in [Inspector UI Design Spec](../inspector/inspector-ui.md).
+The left-side pool panel is the source library area for project inputs and addable overlay modules. It contains two sibling modes:
+
+- `Media Pool`: imported video files and the FIT-first media import workflow.
+- `Overlay Pool`: available overlay modules that can be added to the preview.
+
+The Media Pool supports import visibility, selection, source preview, timestamp matching, tag filtering, and context-menu actions. The Overlay Pool moves the selectable overlay catalog out of the Inspector so the Inspector can focus on added overlays and detail editing. This refresh aligns the left pool styling with the Inspector design language documented in [Inspector UI Design Spec](../inspector/inspector-ui.md).
 
 This spec is implementation-facing. Use it to restyle `MediaBrowserView` while preserving current behavior.
 
@@ -16,13 +21,15 @@ This spec is implementation-facing. Use it to restyle `MediaBrowserView` while p
 
 ## Design Direction
 
-The Media Pool should feel like a professional video editor bin, not a generic system list. Keep the UI dense and scannable:
+The left pool should feel like a professional video editor bin, not a generic system list. Keep the UI dense and scannable:
 
 - Dark panel background with alternating row bands.
-- Compact rows with clear filename, duration, capture time, and alignment status.
+- A compact top mode switch controls `Media Pool` vs. `Overlay Pool`, similar to a production editor's source/effects panel switch.
+- Compact rows with clear filename, duration, capture time, and a compact alignment status indicator.
 - Selected rows use a controlled blue/charcoal highlight, not a full washed-out system selection.
 - Menus feel native to macOS but visually belong to the app: dark, elevated, rounded, bordered.
 - Color marks are small, fast-to-scan dots or strips, not dominant labels.
+- Overlay module choices live in `Overlay Pool`; the Inspector should not duplicate the add-overlay catalog.
 
 Use the same app-level visual tokens as the Inspector where possible.
 
@@ -46,6 +53,10 @@ Prefer reusing shared tokens from `inspector-ui.md`. Media-specific values:
 | `thumbnail.size` | `42x42 px` | Optional thumbnail/icon well |
 | `toolbar.iconButton` | `30x30 px` | Header actions |
 | `search.height` | `30 px` | Search/filter field |
+| `pool.switchHeight` | `32 px` | Media/Overlay pool segmented switch |
+| `pool.switchRadius` | `8 px max` | Mode switch container and selected item |
+| `overlay.tileHeight` | `56-64 px` | Overlay Pool add tiles |
+| `overlay.categoryHeight` | `24 px` | Metrics/Charts/Route segmented control |
 
 Mark colors:
 
@@ -64,6 +75,8 @@ Mark colors:
 Current SwiftUI entry point:
 
 - `Sources/RunningOverlay/UI/MediaBrowserView.swift`
+- Planned left-side container: `Sources/RunningOverlay/UI/PoolPanelView.swift`
+- Overlay catalog source should be extracted from `Sources/RunningOverlay/UI/ParameterPanelView.swift` into a reusable view/model file, e.g. `Sources/RunningOverlay/UI/OverlayPoolView.swift`.
 
 Existing behavior to preserve:
 
@@ -85,12 +98,47 @@ Existing behavior to preserve:
 
 Top to bottom:
 
-1. Header bar
-2. Search and filter strip
-3. Media list
-4. Empty states when needed
+1. Pool mode switch
+2. Active pool header
+3. Active pool controls
+4. Active pool content
+5. Empty states when needed
 
 Recommended panel width: 300-380 px. The mockup is square for design transfer only.
+
+## Pool Mode Switch
+
+The top-left panel starts with a compact two-option switch:
+
+- `Media Pool`
+- `Overlay Pool`
+
+Visual rules:
+
+- Keep it in the left panel only. It replaces global toolbar import buttons as the primary entry point into media and overlay resources.
+- Use icon + label for both choices:
+  - `Media Pool`: filmstrip or folder/video icon.
+  - `Overlay Pool`: stacked squares, sparkles, or layer icon.
+- Selected item uses the app blue accent fill or a blue-accented dark fill.
+- Unselected item uses `control.background` with muted text and a subtle border.
+- Height: 32 px.
+- Corner radius: 8 px max.
+- Padding: 12 px horizontal, 8-10 px vertical around the switch.
+- Do not add a separate card around the switch; it belongs directly to the panel chrome.
+
+Interaction:
+
+- Switching pools must not reset the left panel width.
+- Switching pools must not clear media row selection unless the selected media becomes invalid through a later media action.
+- The active mode is local UI state. It does not need to persist in project files.
+- Keyboard focus should remain inside the left pool when the user switches modes.
+
+Recommended implementation:
+
+- Add `PoolPanelView` with local `@State private var activePool: PoolKind = .media`.
+- Render `MediaBrowserView` for `.media`.
+- Render `OverlayPoolView` for `.overlay`.
+- Keep the existing horizontal resize handle and width state in `MainEditorView`.
 
 ## Header Bar
 
@@ -141,7 +189,8 @@ Each row contains:
 - Primary filename.
 - Secondary duration.
 - Secondary capture date/time.
-- Right-side alignment status, e.g. `Aligned by timestamp`.
+- Right-side alignment status dot. Hovering the dot shows the full status label, e.g. `Aligned by timestamp`.
+- Do not show a trailing more/ellipsis affordance unless it opens a visible row action menu.
 
 Example filenames:
 
@@ -166,7 +215,7 @@ Text:
 
 - Filename: 13 px semibold, primary text.
 - Metadata: 11-12 px regular, secondary text.
-- Alignment status: 11-12 px medium, secondary or muted text.
+- Alignment status dot: 8-9 px circular indicator using success/warning/muted status color, with the full status label exposed as hover help and accessibility text.
 - Use monospaced digits for duration if it improves scanning.
 
 ## Context Menu
@@ -206,13 +255,24 @@ SwiftUI note:
 
 ## Empty States
 
-No media:
+No FIT and no media:
+
+- Center icon: `waveform.path.ecg`
+- Title: `Import FIT`
+- Secondary text: `Start with running activity data`
+- Primary action: `Import FIT`
+- Step indicator: `1 FIT` active, `2 Videos` inactive.
+- Secondary disabled or muted hint: `Then import videos`
+- Use a subtle dashed rounded rectangle drop zone boundary, but do not imply video drop is ready before FIT import.
+
+FIT imported, no media:
 
 - Center icon: `video.badge.plus`
 - Text: `Drop videos here`
 - Secondary text: `Import clips to match them with your running activity`
 - Primary action: `Import Videos`
 - Optional format hint: `MP4, MOV`
+- Step indicator: `1 FIT` complete, `2 Videos` active.
 - Use a subtle dashed rounded rectangle drop zone only when drag/drop import is active.
 - Keep background consistent with the panel.
 
@@ -222,6 +282,56 @@ Filtered empty:
 - Text: `No media with this mark` or `No media matches the current filter`.
 
 Empty states should be compact and functional. Avoid large illustration cards.
+
+## Overlay Pool
+
+Purpose:
+
+- Overlay Pool is the catalog of addable overlay modules.
+- It replaces the Inspector's `Add Overlay` section.
+- It should reuse the same overlay definitions currently backing the Inspector tiles: type, label, hint, icon, category, and accent status.
+
+Header:
+
+- Title: `Overlay Pool`
+- Optional status text: `Add overlays`
+- Avoid extra toolbar actions unless they are real and immediately useful.
+
+Controls:
+
+- Category segmented control:
+  - `Metrics`
+  - `Charts`
+  - `Route`
+- Height: 24 px.
+- Use full-segment hit targets.
+- Selected segment uses blue accent; unselected segments use dark controls with muted text.
+
+Tiles:
+
+- Two-column grid at 360-380 px panel width.
+- One-column fallback below 320 px if text starts to clip.
+- Tile height: 56-64 px.
+- Tile content:
+  - Leading icon.
+  - Primary label, e.g. `Heart Rate`, `Pace`, `Distance`, `Running Gauge`, `Route Map`.
+  - Secondary hint, e.g. `bpm`, `min/km`, `GPS path`.
+- Featured overlays may use a small blue accent line or icon tint, not a large promotional treatment.
+- Tile tap calls `project.addOverlayElement(tile.type)`.
+- After adding, prefer selecting the new overlay and opening its detail Inspector so the next action is editing.
+
+Empty and disabled states:
+
+- Overlay Pool should remain available before FIT import. Layout work is valid without activity data.
+- If a module depends on unavailable FIT channels, keep the tile enabled and let the preview value show its existing empty/default state.
+- Do not hide overlay types based on current FIT data unless there is a clear future compatibility rule.
+
+Inspector boundary:
+
+- The Inspector outer state should only show `Added Overlays` / `Added Elements`.
+- The Inspector should keep overlay row management: visibility, lock, delete, and detail navigation.
+- Overlay detail views remain in the Inspector.
+- The Inspector should not show `Metrics`, `Charts`, `Route`, or add-overlay tiles after this refactor.
 
 ## Interaction Rules
 
@@ -236,6 +346,8 @@ Empty states should be compact and functional. Avoid large illustration cards.
 
 ## Recommended Components
 
+- `PoolPanelView`
+- `PoolModeSwitch`
 - `MediaPoolPanel`
 - `MediaPoolHeader`
 - `MediaPoolToolbarButton`
@@ -245,6 +357,10 @@ Empty states should be compact and functional. Avoid large illustration cards.
 - `MediaStatusPill`
 - `MediaTagDot`
 - `MediaPoolEmptyState`
+- `OverlayPoolView`
+- `OverlayPoolHeader`
+- `OverlayCategorySwitch`
+- `OverlayAddTile`
 
 Reuse a shared app theme where possible:
 

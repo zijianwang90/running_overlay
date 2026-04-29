@@ -1,6 +1,6 @@
 # Running Overlay Development Guide
 
-Last updated: 2026-04-26
+Last updated: 2026-04-28
 
 ## 1. Engineering Principles
 
@@ -138,6 +138,7 @@ Current implementation:
 - Media Pool default width is 380 px (min 300 px) and Inspector default width is 400 px (min 320 px); both panels remain user-resizable via custom drag handles.
 - The horizontal three-column layout in `MainEditorView` is implemented as a single `HStack` with `@State`-tracked widths (`mediaPoolWidth`, `inspectorWidth`) and custom `HorizontalResizeHandle` dividers instead of `HSplitView`. This guarantees that internal Inspector selection changes (`outer/clip/overlay detail`) and Media Pool content changes (e.g., importing media or matching all clips) cannot reset the left or right pane widths.
 - Media, Preview, and Inspector top headers share a unified header height and shared compact header button size tokens.
+- The initial `VSplitView` allocation favors the top editor stack more strongly by using a lower default Timeline ideal height (`180`) with a `160` minimum, while keeping the split boundary user-draggable.
 
 ### Phase 2: FIT Import And Activity Timeline
 
@@ -179,7 +180,7 @@ Current implementation:
 - Media browser rows support multi-selection, select-all-visible, tag filtering, right-click tag assignment, explicit matching to the current layer or a new layer, and deletion from the media pool.
 - The media browser includes filename search plus real status chips for `All`, `Ready`, and `Aligned`; filter changes prune selections that are no longer visible.
 - The media browser captures Command+A while active to select all visible filtered media rows without showing a system focus ring.
-- The media browser row layout follows the design-system row reference with 72 px rows, 42 px thumbnail wells, compact metadata, right-side muted status text, mark dots, and a trailing more affordance.
+- The media browser row layout follows the design-system row reference with 72 px rows, 42 px thumbnail wells, compact metadata, compact alignment-status dots with hover help text, and optional mark dots.
 - The context menu Mark submenu uses circular color icons for each mark option.
 - The no-media empty state includes a drag/drop prompt, an `Import Videos` action, a short matching-workflow description, and a supported-format hint.
 - First-pass camera/source grouping uses the first filename token.
@@ -213,7 +214,7 @@ Current implementation:
 - Inspector start and offset fields update the selected clip's effective start time and alignment offset with 0.01 second precision.
 - Double-clicking Inspector timing labels resets start or offset to the default `0.00 s` value.
 - Inspector action applies the selected offset to all clips in the currently selected timeline layer.
-- Timeline clips use a dedicated clip detail Inspector with the same header, section-row layout, sticky footer, back action, and destructive delete affordance as overlay detail inspectors.
+- Timeline clips use a dedicated clip detail Inspector with the same compact header, dense 34 px section-row layout, back action, and destructive delete affordance as overlay detail inspectors.
 - Timeline drawing and high-frequency interactions are handled by an AppKit `NSView` embedded in SwiftUI.
 - The AppKit timeline handles self-drawn ruler, ruler hover data, tracks, clips, playhead, clip dragging, ruler seeking, media drop, and Command-scroll zoom.
 - The AppKit timeline draws a muted-red playhead with a small downward-pointing triangle inside the ruler band; the triangle's tip connects to a thin vertical line that extends from the ruler through the visible tracks, and neither part is allowed to extend above the ruler.
@@ -262,12 +263,14 @@ Current implementation:
 - `ActivityTimeline` supports interpolation for distance, heart rate, pace, elevation, cadence, power, and calories.
 - Overlay preview and Inspector value display use the project Layer Data FPS setting, so data values update at the configured cadence rather than every UI refresh.
 - Inspector overlay UI follows the dark tool-panel design spec in `docs/design/panels/inspector/inspector-ui.md`, with tokenized colors, spacing, compact rows, add-overlay tabs, overlay rows, and a selected-overlay detail screen.
+- Overlay detail panels share reusable inspector modules for cross-overlay consistency: `CollapsibleLayoutInspectorSection` + `OverlayLayoutRows` (Layout) and `CollapsibleStatsBarInspectorSection` + `StatsBarInspectorRows` (Stats Bar). New detail views should reuse these modules instead of creating per-overlay variants.
+- Shared `Layout` rows are now fixed to `Position`, `Scale`, `Width`, `Height`, and `Opacity`; `Rotation` is intentionally removed from the shared Layout section across overlay detail panels.
 - Inspector default width is 400 px and minimum width is 320 px; the panel is user-resizable through the custom `HorizontalResizeHandle`, and `ParameterPanelView` does not impose its own width frame so internal outer/detail/editing state switches cannot resize the right column or squeeze tile content.
 - Inspector segmented controls are implemented with native SwiftUI segmented `Picker` (`.pickerStyle(.segmented)`) instead of custom button rows, including shared dense controls used by Numeric Overlay, Running Gauge, and Route Map detail views.
 - Preview overlay elements can be dragged and clamped within the preview coordinate space.
-- Inspector supports selected overlay font family, font weight, font size, scale, color presets, and background opacity controls.
+- Inspector supports selected overlay font family, font weight, font size (value text), scale, color presets, independent label/unit controls, and advanced background controls.
 - Numeric overlays (heart rate, pace, calories, elapsed time, real time, distance, elevation, cadence, power) use the dense `NumericOverlayDetailView` Inspector defined in `docs/design/overlays/numeric/numeric-overlay-ui.md`. `ParameterPanelView` routes these `OverlayElementType` values through the new view; other overlay types continue to use `OverlayDetailView`.
-- `OverlayStyle` carries the numeric-overlay editor state: `unitOption`, `showLabel`, `showUnit`, `customLabel`, `rotationDegrees`, `textAlignment`, `accentColor`, `backgroundEnabled` / `backgroundColor` / `backgroundRadius` / `backgroundPaddingX` / `backgroundPaddingY`, and `shadowEnabled` / `shadowOffsetX` / `shadowOffsetY`. All new fields decode with safe defaults so old saved projects and overlay templates load unchanged.
+- `OverlayStyle` carries the numeric-overlay editor state: `unitOption`, `showLabel`, `showUnit`, `customLabel`, `labelPosition`, `unitPosition`, `labelFont*`, `unitFont*`, `rotationDegrees`, `accentColor`, `backgroundEnabled` / `backgroundColor` / `backgroundRadius` / `backgroundPaddingX` / `backgroundPaddingY` / `backgroundFadeOut*` / `backgroundBlurRadius`, and `shadowEnabled` / `shadowOffsetX` / `shadowOffsetY`. All new fields decode with safe defaults so old saved projects and overlay templates load unchanged.
 - `OverlayValueFormatter.value(for:element:activity:elapsedTime:)` is element-aware: it picks the unit option and label/unit/custom-label rules from `OverlayStyle` to produce the rendered string and the Inspector's live preview.
 - `OverlayElementType.isNumericOverlay` and `OverlayElementType.defaultUnitOption` drive routing into the numeric editor and the unit defaults applied by `ProjectDocument.addOverlayElement`.
 - `OverlayRenderModel` and `OverlayFrameRenderer` honor the new background and shadow style fields on the `.minimal` text preset so the same configuration is consistent between preview, calibration PNG, and MOV export.
@@ -283,9 +286,24 @@ Current implementation:
 - Up and down arrow keys nudge the selected overlay element vertically by one percent of the preview canvas.
 - Inspector shows a dark add/manage outer state when no overlay element is selected; add tiles are grouped by Metrics, Charts, and Route, and newly added overlays open their detail screen.
 - Inspector add-overlay tabs use full-segment hit targets, not text-only click regions.
-- Inspector added-overlay rows show icon, type, live value preview, disabled visibility/lock placeholders, delete, and detail navigation without sorting affordances.
+- Inspector added-overlay rows show icon, type, live value preview, visibility toggle, lock toggle, delete, and detail navigation without sorting affordances.
+- Added Elements rows expose a context menu (`Copy Properties` / `Paste Properties`) for overlay configuration transfer.
+- Overlay visibility now gates both Preview rendering and `OverlayFrameRenderer` export rendering.
+- Overlay lock is persisted and currently blocks Preview canvas selection/drag plus position writes in `ProjectDocument.moveOverlay` / `setOverlayPosition`.
+- Overlay configuration paste is category-gated through `OverlayElementType.pasteCategory`; numeric overlays can paste only within the numeric group.
 - Distance Timeline is a dedicated module with minimal, dense, sport, splits, glass, neon, lower-third, and route presets, backed by `DistanceTimelineStyle`.
 - Distance Timeline preview/export rendering supports distinct progress treatments, optional system-icon media slots for sport/lower-third, border/background controls, ticks, marker, glow, fade amount, route elevation underlay, and sampled GPS route geometry when available.
+- Distance Timeline Value is separate from Label, owns the value font controls, can be disabled, switches metric/imperial units, and supports a Custom Values master toggle that expands four inline metric slots with independent group gap, item gap, size, color, and opacity. Group gap offsets the whole custom group without compressing custom text or changing item gap.
+- Distance Timeline Percent was removed from Content and represented by the dedicated Stats Bar, which supports up to four metric slots, top/bottom/left/right placement, separate Inside mode for all four sides, adjustable width/height, item gap, and X/Y offset.
+- Route Map Stats Bar now follows the same full shared control surface as Distance Timeline (Placement, Inside, Layout, Size, Width, Offset, Item Gap, Background, Dividers, Radius, Slot 1-4), with Enabled in the section header.
+- Route Map and Distance Timeline Stats Bars now share a single renderer path in both Preview and Export (based on the Distance Timeline Stats Bar rendering logic), so future overlay modules can reuse one rendering implementation.
+- For Route Map, when Stats Bar is inside the container it reserves map content padding so route lines are not covered; inside bar background is clipped by container shape/radius for a fused edge appearance.
+- For Route Map left/right Stats Bar placements, rendering always switches to vertical stack flow and applies `itemSpacing` as row gap.
+- Dense and Splits Distance Timeline progress fills render as solid bars; tick marks and axis labels provide the technical/split visual detail.
+- The Glass preset no longer fakes a glass fill; its background is disabled until a real blur/material effect is implemented.
+- Distance Timeline axis labels can show start/finish text or distance endpoints below the axis; Point Gap now controls both endpoint labels and optional intermediate distance points, and remains editable when More Points is off.
+- Distance Timeline background/border bounds expand to cover Axis Labels and Stats Bars with Inside enabled at their current side/offset, while attached outside Stats Bars keep their own bar background. Preview selection uses the same dynamic bounds.
+- Distance Timeline ticks expose density control, and left/right Stats Bar backgrounds expand to cover all vertical slots.
 - Distance Timeline media slots use the generic `OverlayIconSlot` model; the current UI exposes it only for Distance Timeline, but the Codable data and deterministic SVG renderer are reusable by other overlay modules.
 - Distance Timeline SVG import embeds static or animated SVG source in `OverlayStyle.distanceTimeline.mediaSlot`; preview and export sample animated SVG from overlay elapsed time so rendered frames are deterministic.
 - Elevation chart overlays render as line charts with playhead markers.
@@ -296,6 +314,7 @@ Current implementation:
 - Preview overlay positions, drag deltas, guides, font sizes, padding, and chart dimensions are based on the fitted project canvas inside the preview area, so resizing split panes keeps overlays anchored to the same normalized video position.
 - Preview can show 90%/80% safety guides and center crosshairs from an in-preview header toggle.
 - Selected overlays show a subtle blue selection border and corner handles on the fitted canvas.
+- Corner handles in preview are interactive: dragging a handle updates the selected overlay `scale` directly via `ProjectDocument.setOverlayScale`, with continuous undo grouped to drag end.
 - Playback advances the timeline playhead at 30 Hz while active.
 - Left and right arrow keys step the timeline playhead backward or forward by one project frame, using the current project frame rate.
 - Timeline ruler click/drag seeks the playhead, and timeline tracks show a red playhead indicator.
@@ -331,7 +350,7 @@ Preview pending:
 
 Overlay pending:
 
-- Stroke, shadow, and alignment controls.
+- Stroke controls.
 - More chart styling controls.
 - Keyboard and precision controls for overlay positioning.
 
@@ -382,7 +401,7 @@ Implementation phases:
 Current implementation:
 
 - `OverlayTemplate` is a versioned Codable schema that stores metadata and `OverlayTemplateElement` values.
-- Template elements store overlay type, normalized position, scale, and style only.
+- Template elements store overlay type, normalized position, scale, visibility, lock state, and style.
 - `OverlayTemplateStore` persists the local template library as JSON under Application Support.
 - `ProjectDocument` loads templates on startup, saves/replaces templates by name, applies templates to the current overlay layout, deletes templates, and imports/exports standalone `.rotemplate` files.
 - Applying a template routes through `ProjectDocument.registerUndoPoint()` so the previous overlay layout can be restored with undo.

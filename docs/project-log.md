@@ -1,6 +1,69 @@
 # Running Overlay Project Log
 
+## 2026-04-29
+
+### Media Pool Status Dot Cleanup
+
+Summary:
+
+- Removed the long right-side alignment status text from media rows.
+- Added compact alignment-status dots with hover help text containing the full status label, such as `Aligned by timestamp`.
+- Removed the trailing ellipsis icon because row actions are already available through the context menu and the icon did not open a visible menu.
+- Added hover help for media mark dots.
+- Updated the Media Pool design docs, structured UI spec, and development notes to reflect the current row behavior.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/MediaBrowserView.swift`
+- `docs/design/panels/media-pool/media-pool-ui.md`
+- `docs/design/panels/media-pool/media-pool-ui.spec.json`
+- `docs/development.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+
 ## 2026-04-28
+
+### Shared Stats Bar + Shared Layout Final Unification
+
+Summary:
+
+- Finalized shared Stats Bar inspector behavior across Distance Timeline and Route Map using one component pair: `CollapsibleStatsBarInspectorSection` + `StatsBarInspectorRows`.
+- Unified the full Stats Bar control surface to the original Distance Timeline set: Placement, Inside, Layout, Size, Width, Offset, Item Gap, Background, Dividers, Radius, and Slot 1-4.
+- Moved the Stats Bar Enabled toggle to the section header (left of chevron) and standardized the icon to `tablecells`.
+- Added Route Map inside-mode behavior updates: inside bars reserve map-content padding (do not cover route lines), inside bar background merges with container clipping/radius, and left/right placements force vertical stack with Item Gap applied as vertical spacing.
+- Unified Stats Bar rendering: Route Map and Distance Timeline now use one shared Preview renderer (`SharedStatsBarContentView`) and one shared Export renderer path (`drawSharedStatsBar`), using Distance Timeline visual logic as baseline.
+- Finalized shared Layout inspector behavior across overlay detail panels with one component pair: `CollapsibleLayoutInspectorSection` + `OverlayLayoutRows`.
+- Standardized shared Layout row set to Position, Scale, Width, Height, Opacity (no Rotation), and applied section-ordering rule consistently across detail views.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/StatsBarInspectorRows.swift`
+- `Sources/RunningOverlay/UI/DistanceTimelineOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/RouteMapOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/NumericOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/RunningGaugeOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/LapCardOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/LapLiveOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/LapListOverlayDetailView.swift`
+- `Sources/RunningOverlay/Overlay/OverlayElement.swift`
+- `Sources/RunningOverlay/Overlay/OverlayRenderModel.swift`
+- `Sources/RunningOverlay/Overlay/RouteMapOverlay.swift`
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `docs/design/panels/inspector/inspector-ui.md`
+- `docs/design/overlays/route-map/route-map-overlay-ui.md`
+- `docs/overlay-modules/route-map-overlay.md`
+- `docs/overlay-modules/distance-timeline-overlay.md`
+- `docs/development.md`
+- `docs/requirements.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build` multiple times after each integration step — Build complete, no errors.
 
 ### Shared OverlayLayoutRows Component + Section Ordering
 
@@ -261,7 +324,7 @@ Summary:
 
 - Refined Media Pool rows against `Runner Overlay Design System/preview/components-rows.html`.
 - Split search and status filters into distinct compact rows with design-system padding and borders.
-- Tightened media row layout to 72 px height, 42 px thumbnail well, compact metadata, muted right-side status text, mark dot, and trailing more affordance.
+- Tightened media row layout to 72 px height, 42 px thumbnail well, compact metadata, muted right-side status text, mark dot, and trailing more affordance. This was later simplified to a status dot with hover help and no trailing ellipsis.
 - Adjusted status filter chips to use the solid active-blue treatment from the row component reference.
 
 Files changed:

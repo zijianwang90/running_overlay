@@ -44,12 +44,13 @@ struct MainEditorView: View {
                     ParameterPanelView()
                         .frame(width: inspectorWidth)
                         .frame(maxHeight: .infinity)
+                        .clipped()
                 }
-                .frame(minHeight: 360)
+                .frame(minHeight: 360, idealHeight: 800)
                 .splitResizeCursor(.resizeUpDown, edge: .bottom, thickness: 18)
 
                 TimelineView()
-                    .frame(minHeight: 180, idealHeight: 240)
+                    .frame(minHeight: 120, idealHeight: 130)
                     .splitResizeCursor(.resizeUpDown, edge: .top, thickness: 18)
             }
 
@@ -65,38 +66,47 @@ struct MainEditorView: View {
                 .environmentObject(project)
         }
         .onKeyPress(.space) {
+            guard !isTextInputFocused else { return .ignored }
             project.togglePlayback()
             return .handled
         }
         .onKeyPress("k") {
+            guard !isTextInputFocused else { return .ignored }
             project.togglePlayback()
             return .handled
         }
         .onKeyPress("l") {
+            guard !isTextInputFocused else { return .ignored }
             project.increaseForwardPlaybackRate()
             return .handled
         }
         .onKeyPress(.leftArrow) {
+            guard !isTextInputFocused else { return .ignored }
             project.stepPlayheadByFrames(-1)
             return .handled
         }
         .onKeyPress(.rightArrow) {
+            guard !isTextInputFocused else { return .ignored }
             project.stepPlayheadByFrames(1)
             return .handled
         }
         .onKeyPress(.upArrow) {
+            guard !isTextInputFocused else { return .ignored }
             project.nudgeSelectedOverlay(dx: 0, dy: -0.01)
             return .handled
         }
         .onKeyPress(.downArrow) {
+            guard !isTextInputFocused else { return .ignored }
             project.nudgeSelectedOverlay(dx: 0, dy: 0.01)
             return .handled
         }
         .onKeyPress(.delete) {
+            guard !isTextInputFocused else { return .ignored }
             project.deleteSelectedItem()
             return .handled
         }
         .onKeyPress(.deleteForward) {
+            guard !isTextInputFocused else { return .ignored }
             project.deleteSelectedItem()
             return .handled
         }
@@ -166,6 +176,14 @@ struct MainEditorView: View {
             Divider()
                 .overlay(EditorTheme.borderSubtle)
         }
+    }
+
+    private var isTextInputFocused: Bool {
+        guard let responder = NSApp.keyWindow?.firstResponder else { return false }
+        if let textView = responder as? NSTextView, textView.isEditable {
+            return true
+        }
+        return responder is NSTextField
     }
 }
 

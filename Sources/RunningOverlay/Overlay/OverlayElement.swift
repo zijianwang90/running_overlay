@@ -11,7 +11,20 @@ struct OverlayElement: Identifiable, Equatable {
     var type: OverlayElementType
     var position: CGPoint
     var scale: Double
+    var isVisible: Bool = true
+    var isLocked: Bool = false
     var style: OverlayStyle
+}
+
+enum OverlayPasteCategory: String, Equatable {
+    case numeric
+    case distanceTimeline
+    case elevationChart
+    case runningGauge
+    case routeMap
+    case lapList
+    case lapCard
+    case lapLive
 }
 
 enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
@@ -99,24 +112,30 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     /// Recommended numeric overlay style preset when adding a new element of
     /// this type. See `docs/design/overlays/numeric/numeric-overlay-ui.md`.
     var defaultNumericPreset: OverlayTextPreset? {
+        isNumericOverlay ? .minimal : nil
+    }
+
+    var pasteCategory: OverlayPasteCategory {
+        if isNumericOverlay {
+            return .numeric
+        }
         switch self {
-        case .distance: .minimal
-        case .pace: .minimal
-        case .heartRate: .pillBadge
-        case .power: .racingStripe
-        case .cadence: .pillBadge
-        case .calories: .metricCard
-        case .elevation: .minimalLabel
-        case .elapsedTime: .digitalWatch
-        case .realTime: .minimal
-        case .verticalOscillation: .minimalLabel
-        case .groundContactTime: .minimalLabel
-        case .strideLength: .minimalLabel
-        case .verticalRatio: .minimalLabel
-        case .groundContactBalance: .minimalLabel
-        case .temperature: .pillBadge
-        case .grade: .minimalLabel
-        default: nil
+        case .distanceTimeline:
+            return .distanceTimeline
+        case .elevationChart:
+            return .elevationChart
+        case .runningGauge:
+            return .runningGauge
+        case .routeMap:
+            return .routeMap
+        case .lapList:
+            return .lapList
+        case .lapCard:
+            return .lapCard
+        case .lapLive:
+            return .lapLive
+        default:
+            return .numeric
         }
     }
 }
@@ -234,6 +253,24 @@ enum OverlayTextAlignment: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+enum OverlayTextAttachmentPosition: String, CaseIterable, Identifiable, Codable {
+    case top
+    case bottom
+    case leading
+    case trailing
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .top: "Top"
+        case .bottom: "Bottom"
+        case .leading: "Left"
+        case .trailing: "Right"
+        }
+    }
+}
+
 struct OverlayStyle: Equatable, Codable {
     var textPreset: OverlayTextPreset
     var gaugePreset: OverlayGaugePreset
@@ -271,10 +308,19 @@ struct OverlayStyle: Equatable, Codable {
     /// Container height in design units (before `element.scale` and project
     /// DPR multipliers are applied).
     var routeMapHeight: Double
+    /// Corner radius for `.square` containers in design units. `0` = sharp
+    /// corners. Circle containers ignore this value.
+    var routeMapCornerRadius: Double
     var fontName: String
     var fontSize: Double
     var fontWeight: OverlayFontWeight
     var foregroundColor: OverlayColor
+    var valueColor: OverlayColor
+    var valueOpacity: Double
+    var labelColor: OverlayColor
+    var labelOpacity: Double
+    var unitColor: OverlayColor
+    var unitOpacity: Double
     var backgroundOpacity: Double
     var shadowOpacity: Double
     var shadowRadius: Double
@@ -284,6 +330,16 @@ struct OverlayStyle: Equatable, Codable {
     var showLabel: Bool
     var showUnit: Bool
     var customLabel: String
+    var labelPosition: OverlayTextAttachmentPosition
+    var unitPosition: OverlayTextAttachmentPosition
+    var labelFontName: String
+    var labelFontSize: Double
+    var labelFontWeight: OverlayFontWeight
+    var labelSpacing: Double
+    var unitFontName: String
+    var unitFontSize: Double
+    var unitFontWeight: OverlayFontWeight
+    var unitSpacing: Double
     var rotationDegrees: Double
     var textAlignment: OverlayTextAlignment
     var accentColor: OverlayColor
@@ -292,6 +348,9 @@ struct OverlayStyle: Equatable, Codable {
     var backgroundRadius: Double
     var backgroundPaddingX: Double
     var backgroundPaddingY: Double
+    var backgroundFadeOutEnabled: Bool
+    var backgroundFadeOutAmount: Double
+    var backgroundBlurRadius: Double
     var shadowEnabled: Bool
     var shadowOffsetX: Double
     var shadowOffsetY: Double
@@ -299,6 +358,10 @@ struct OverlayStyle: Equatable, Codable {
     /// Distance Timeline configuration. Used only by `.distanceTimeline`.
     /// See `docs/overlay-modules/distance-timeline-overlay.md`.
     var distanceTimeline: DistanceTimelineStyle
+
+    /// Elevation Chart configuration. Used only by `.elevationChart`.
+    /// See `docs/design/overlays/elevation-chart/elevation-chart-overlay-ui.md`.
+    var elevationChart: ElevationChartStyle
 
     /// Running Gauge style. Used only by overlays of type `.runningGauge` —
     /// safely ignored otherwise. Stored as a sub-struct so the gauge can grow
@@ -342,10 +405,17 @@ struct OverlayStyle: Equatable, Codable {
         routeMapBorderVisible: true,
         routeMapWidth: 320,
         routeMapHeight: 240,
+        routeMapCornerRadius: 12,
         fontName: "SF Pro",
         fontSize: 28,
         fontWeight: .semibold,
         foregroundColor: .white,
+        valueColor: .white,
+        valueOpacity: 1,
+        labelColor: .white,
+        labelOpacity: 1,
+        unitColor: .white,
+        unitOpacity: 1,
         backgroundOpacity: 0.22,
         shadowOpacity: 0.35,
         shadowRadius: 4,
@@ -353,6 +423,16 @@ struct OverlayStyle: Equatable, Codable {
         showLabel: false,
         showUnit: true,
         customLabel: "",
+        labelPosition: .top,
+        unitPosition: .trailing,
+        labelFontName: "SF Pro",
+        labelFontSize: 16,
+        labelFontWeight: .medium,
+        labelSpacing: 8,
+        unitFontName: "SF Pro",
+        unitFontSize: 20,
+        unitFontWeight: .medium,
+        unitSpacing: 8,
         rotationDegrees: 0,
         textAlignment: .leading,
         accentColor: .blue,
@@ -361,10 +441,14 @@ struct OverlayStyle: Equatable, Codable {
         backgroundRadius: 6,
         backgroundPaddingX: 10,
         backgroundPaddingY: 6,
+        backgroundFadeOutEnabled: false,
+        backgroundFadeOutAmount: 0.22,
+        backgroundBlurRadius: 0,
         shadowEnabled: true,
         shadowOffsetX: 0,
         shadowOffsetY: 2,
         distanceTimeline: .default,
+        elevationChart: .default,
         gauge: RunningGaugeStyle.default,
         routeMapStatsBar: .default,
         lapList: .default,
@@ -395,10 +479,17 @@ struct OverlayStyle: Equatable, Codable {
         routeMapBorderVisible: Bool = true,
         routeMapWidth: Double = 320,
         routeMapHeight: Double = 240,
+        routeMapCornerRadius: Double = 12,
         fontName: String,
         fontSize: Double,
         fontWeight: OverlayFontWeight,
         foregroundColor: OverlayColor,
+        valueColor: OverlayColor = .white,
+        valueOpacity: Double = 1,
+        labelColor: OverlayColor = .white,
+        labelOpacity: Double = 1,
+        unitColor: OverlayColor = .white,
+        unitOpacity: Double = 1,
         backgroundOpacity: Double,
         shadowOpacity: Double,
         shadowRadius: Double,
@@ -406,6 +497,16 @@ struct OverlayStyle: Equatable, Codable {
         showLabel: Bool = false,
         showUnit: Bool = true,
         customLabel: String = "",
+        labelPosition: OverlayTextAttachmentPosition = .top,
+        unitPosition: OverlayTextAttachmentPosition = .trailing,
+        labelFontName: String = "SF Pro",
+        labelFontSize: Double = 16,
+        labelFontWeight: OverlayFontWeight = .medium,
+        labelSpacing: Double = 8,
+        unitFontName: String = "SF Pro",
+        unitFontSize: Double = 20,
+        unitFontWeight: OverlayFontWeight = .medium,
+        unitSpacing: Double = 8,
         rotationDegrees: Double = 0,
         textAlignment: OverlayTextAlignment = .leading,
         accentColor: OverlayColor = .blue,
@@ -414,10 +515,14 @@ struct OverlayStyle: Equatable, Codable {
         backgroundRadius: Double = 6,
         backgroundPaddingX: Double = 10,
         backgroundPaddingY: Double = 6,
+        backgroundFadeOutEnabled: Bool = false,
+        backgroundFadeOutAmount: Double = 0.22,
+        backgroundBlurRadius: Double = 0,
         shadowEnabled: Bool = true,
         shadowOffsetX: Double = 0,
         shadowOffsetY: Double = 2,
         distanceTimeline: DistanceTimelineStyle = .default,
+        elevationChart: ElevationChartStyle = .default,
         gauge: RunningGaugeStyle = .default,
         routeMapStatsBar: OverlayRouteMapStatsBarConfig = .default,
         lapList: LapListStyle = .default,
@@ -446,10 +551,17 @@ struct OverlayStyle: Equatable, Codable {
         self.routeMapBorderVisible = routeMapBorderVisible
         self.routeMapWidth = min(max(routeMapWidth, 80), 1200)
         self.routeMapHeight = min(max(routeMapHeight, 80), 1200)
+        self.routeMapCornerRadius = min(max(routeMapCornerRadius, 0), 120)
         self.fontName = fontName
         self.fontSize = fontSize
         self.fontWeight = fontWeight
         self.foregroundColor = foregroundColor
+        self.valueColor = valueColor
+        self.valueOpacity = min(max(valueOpacity, 0), 1)
+        self.labelColor = labelColor
+        self.labelOpacity = min(max(labelOpacity, 0), 1)
+        self.unitColor = unitColor
+        self.unitOpacity = min(max(unitOpacity, 0), 1)
         self.backgroundOpacity = backgroundOpacity
         self.shadowOpacity = shadowOpacity
         self.shadowRadius = shadowRadius
@@ -457,6 +569,16 @@ struct OverlayStyle: Equatable, Codable {
         self.showLabel = showLabel
         self.showUnit = showUnit
         self.customLabel = customLabel
+        self.labelPosition = labelPosition
+        self.unitPosition = unitPosition
+        self.labelFontName = labelFontName
+        self.labelFontSize = labelFontSize
+        self.labelFontWeight = labelFontWeight
+        self.labelSpacing = max(labelSpacing, 0)
+        self.unitFontName = unitFontName
+        self.unitFontSize = unitFontSize
+        self.unitFontWeight = unitFontWeight
+        self.unitSpacing = max(unitSpacing, 0)
         self.rotationDegrees = rotationDegrees
         self.textAlignment = textAlignment
         self.accentColor = accentColor
@@ -465,10 +587,14 @@ struct OverlayStyle: Equatable, Codable {
         self.backgroundRadius = backgroundRadius
         self.backgroundPaddingX = backgroundPaddingX
         self.backgroundPaddingY = backgroundPaddingY
+        self.backgroundFadeOutEnabled = backgroundFadeOutEnabled
+        self.backgroundFadeOutAmount = backgroundFadeOutAmount
+        self.backgroundBlurRadius = backgroundBlurRadius
         self.shadowEnabled = shadowEnabled
         self.shadowOffsetX = shadowOffsetX
         self.shadowOffsetY = shadowOffsetY
         self.distanceTimeline = distanceTimeline
+        self.elevationChart = elevationChart
         self.gauge = gauge
         self.routeMapStatsBar = routeMapStatsBar
         self.lapList = lapList
@@ -509,10 +635,17 @@ struct OverlayStyle: Equatable, Codable {
         routeMapBorderVisible = try container.decodeIfPresent(Bool.self, forKey: .routeMapBorderVisible) ?? true
         routeMapWidth = min(max(try container.decodeIfPresent(Double.self, forKey: .routeMapWidth) ?? Self.default.routeMapWidth, 80), 1200)
         routeMapHeight = min(max(try container.decodeIfPresent(Double.self, forKey: .routeMapHeight) ?? Self.default.routeMapHeight, 80), 1200)
+        routeMapCornerRadius = min(max(try container.decodeIfPresent(Double.self, forKey: .routeMapCornerRadius) ?? Self.default.routeMapCornerRadius, 0), 120)
         fontName = try container.decodeIfPresent(String.self, forKey: .fontName) ?? Self.default.fontName
         fontSize = try container.decodeIfPresent(Double.self, forKey: .fontSize) ?? Self.default.fontSize
         fontWeight = try container.decodeIfPresent(OverlayFontWeight.self, forKey: .fontWeight) ?? Self.default.fontWeight
         foregroundColor = try container.decodeIfPresent(OverlayColor.self, forKey: .foregroundColor) ?? Self.default.foregroundColor
+        valueColor = try container.decodeIfPresent(OverlayColor.self, forKey: .valueColor) ?? foregroundColor
+        valueOpacity = min(max(try container.decodeIfPresent(Double.self, forKey: .valueOpacity) ?? Self.default.valueOpacity, 0), 1)
+        labelColor = try container.decodeIfPresent(OverlayColor.self, forKey: .labelColor) ?? foregroundColor
+        labelOpacity = min(max(try container.decodeIfPresent(Double.self, forKey: .labelOpacity) ?? Self.default.labelOpacity, 0), 1)
+        unitColor = try container.decodeIfPresent(OverlayColor.self, forKey: .unitColor) ?? foregroundColor
+        unitOpacity = min(max(try container.decodeIfPresent(Double.self, forKey: .unitOpacity) ?? Self.default.unitOpacity, 0), 1)
         backgroundOpacity = try container.decodeIfPresent(Double.self, forKey: .backgroundOpacity) ?? Self.default.backgroundOpacity
         shadowOpacity = try container.decodeIfPresent(Double.self, forKey: .shadowOpacity) ?? Self.default.shadowOpacity
         shadowRadius = try container.decodeIfPresent(Double.self, forKey: .shadowRadius) ?? Self.default.shadowRadius
@@ -520,6 +653,16 @@ struct OverlayStyle: Equatable, Codable {
         showLabel = try container.decodeIfPresent(Bool.self, forKey: .showLabel) ?? Self.default.showLabel
         showUnit = try container.decodeIfPresent(Bool.self, forKey: .showUnit) ?? Self.default.showUnit
         customLabel = try container.decodeIfPresent(String.self, forKey: .customLabel) ?? Self.default.customLabel
+        labelPosition = try container.decodeIfPresent(OverlayTextAttachmentPosition.self, forKey: .labelPosition) ?? Self.default.labelPosition
+        unitPosition = try container.decodeIfPresent(OverlayTextAttachmentPosition.self, forKey: .unitPosition) ?? Self.default.unitPosition
+        labelFontName = try container.decodeIfPresent(String.self, forKey: .labelFontName) ?? Self.default.labelFontName
+        labelFontSize = try container.decodeIfPresent(Double.self, forKey: .labelFontSize) ?? Self.default.labelFontSize
+        labelFontWeight = try container.decodeIfPresent(OverlayFontWeight.self, forKey: .labelFontWeight) ?? Self.default.labelFontWeight
+        labelSpacing = max(try container.decodeIfPresent(Double.self, forKey: .labelSpacing) ?? Self.default.labelSpacing, 0)
+        unitFontName = try container.decodeIfPresent(String.self, forKey: .unitFontName) ?? Self.default.unitFontName
+        unitFontSize = try container.decodeIfPresent(Double.self, forKey: .unitFontSize) ?? Self.default.unitFontSize
+        unitFontWeight = try container.decodeIfPresent(OverlayFontWeight.self, forKey: .unitFontWeight) ?? Self.default.unitFontWeight
+        unitSpacing = max(try container.decodeIfPresent(Double.self, forKey: .unitSpacing) ?? Self.default.unitSpacing, 0)
         rotationDegrees = try container.decodeIfPresent(Double.self, forKey: .rotationDegrees) ?? Self.default.rotationDegrees
         textAlignment = try container.decodeIfPresent(OverlayTextAlignment.self, forKey: .textAlignment) ?? Self.default.textAlignment
         accentColor = try container.decodeIfPresent(OverlayColor.self, forKey: .accentColor) ?? Self.default.accentColor
@@ -528,10 +671,14 @@ struct OverlayStyle: Equatable, Codable {
         backgroundRadius = try container.decodeIfPresent(Double.self, forKey: .backgroundRadius) ?? Self.default.backgroundRadius
         backgroundPaddingX = try container.decodeIfPresent(Double.self, forKey: .backgroundPaddingX) ?? Self.default.backgroundPaddingX
         backgroundPaddingY = try container.decodeIfPresent(Double.self, forKey: .backgroundPaddingY) ?? Self.default.backgroundPaddingY
+        backgroundFadeOutEnabled = try container.decodeIfPresent(Bool.self, forKey: .backgroundFadeOutEnabled) ?? Self.default.backgroundFadeOutEnabled
+        backgroundFadeOutAmount = min(max(try container.decodeIfPresent(Double.self, forKey: .backgroundFadeOutAmount) ?? Self.default.backgroundFadeOutAmount, 0), 1)
+        backgroundBlurRadius = max(try container.decodeIfPresent(Double.self, forKey: .backgroundBlurRadius) ?? Self.default.backgroundBlurRadius, 0)
         shadowEnabled = try container.decodeIfPresent(Bool.self, forKey: .shadowEnabled) ?? Self.default.shadowEnabled
         shadowOffsetX = try container.decodeIfPresent(Double.self, forKey: .shadowOffsetX) ?? Self.default.shadowOffsetX
         shadowOffsetY = try container.decodeIfPresent(Double.self, forKey: .shadowOffsetY) ?? Self.default.shadowOffsetY
         distanceTimeline = try container.decodeIfPresent(DistanceTimelineStyle.self, forKey: .distanceTimeline) ?? .default
+        elevationChart = try container.decodeIfPresent(ElevationChartStyle.self, forKey: .elevationChart) ?? .default
         if let storedGauge = try container.decodeIfPresent(RunningGaugeStyle.self, forKey: .gauge) {
             gauge = storedGauge
         } else {
@@ -582,6 +729,209 @@ enum DistanceTimelinePreset: String, CaseIterable, Identifiable, Codable {
 
     var supportsElevation: Bool {
         self == .route
+    }
+}
+
+// MARK: - Elevation Chart
+
+enum ElevationChartPreset: String, CaseIterable, Identifiable, Codable {
+    case gradientArea
+    case dualArea
+    case bigNumbers
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .gradientArea: "Gradient Area"
+        case .dualArea: "Dual Area"
+        case .bigNumbers: "Big Numbers"
+        }
+    }
+}
+
+enum ElevationChartRenderStyle: String, CaseIterable, Identifiable, Codable {
+    case area
+    case lineOnly
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .area: "Area"
+        case .lineOnly: "Line"
+        }
+    }
+}
+
+enum ElevationChartProgressMode: String, CaseIterable, Identifiable, Codable {
+    case fullProfile
+    case progressToCurrent
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .fullProfile: "Full"
+        case .progressToCurrent: "Progress"
+        }
+    }
+}
+
+enum ElevationChartBigMetric: String, CaseIterable, Identifiable, Codable {
+    case currentElevation
+    case elevationGain
+    case maxElevation
+    case minElevation
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .currentElevation: "Current"
+        case .elevationGain: "Gain"
+        case .maxElevation: "Max"
+        case .minElevation: "Min"
+        }
+    }
+}
+
+struct ElevationChartStyle: Equatable, Codable {
+    var preset: ElevationChartPreset
+    var width: Double
+    var height: Double
+    var chartStyle: ElevationChartRenderStyle
+    var smoothingEnabled: Bool
+    var progressMode: ElevationChartProgressMode
+    var chartPaddingX: Double
+    var chartPaddingY: Double
+    var lineColor: OverlayColor
+    var lineWidth: Double
+    var lineOpacity: Double
+    var fillEnabled: Bool
+    var fillStartColor: OverlayColor
+    var fillEndColor: OverlayColor
+    var fillOpacity: Double
+    var dualAreaEnabled: Bool
+    var upperFillColor: OverlayColor
+    var lowerFillColor: OverlayColor
+    var currentMarkerEnabled: Bool
+    var markerColor: OverlayColor
+    var markerLabelEnabled: Bool
+    var gridEnabled: Bool
+    var axisLabelsEnabled: Bool
+    var bigNumbersEnabled: Bool
+    var bigNumberMetric: ElevationChartBigMetric
+    var bigNumberFontSize: Double
+    var backgroundEnabled: Bool
+    var backgroundColor: OverlayColor
+    var backgroundOpacity: Double
+    var cornerRadius: Double
+    var borderEnabled: Bool
+    var borderOpacity: Double
+    var shadowEnabled: Bool
+    var shadowOpacity: Double
+    var shadowRadius: Double
+    var glowEnabled: Bool
+    var glowOpacity: Double
+    var statsBar: DistanceTimelineStatsBarConfig
+
+    static let `default` = ElevationChartStyle.preset(.gradientArea)
+
+    static func preset(_ preset: ElevationChartPreset) -> ElevationChartStyle {
+        var style = ElevationChartStyle(
+            preset: preset,
+            width: 420,
+            height: preset == .bigNumbers ? 190 : 170,
+            chartStyle: .area,
+            smoothingEnabled: true,
+            progressMode: .fullProfile,
+            chartPaddingX: 14,
+            chartPaddingY: 10,
+            lineColor: .white,
+            lineWidth: preset == .bigNumbers ? 2.2 : 2.5,
+            lineOpacity: 0.95,
+            fillEnabled: true,
+            fillStartColor: .green,
+            fillEndColor: .blue,
+            fillOpacity: preset == .bigNumbers ? 0.28 : 0.42,
+            dualAreaEnabled: false,
+            upperFillColor: .orange,
+            lowerFillColor: .cyan,
+            currentMarkerEnabled: true,
+            markerColor: .blue,
+            markerLabelEnabled: true,
+            gridEnabled: false,
+            axisLabelsEnabled: true,
+            bigNumbersEnabled: preset == .bigNumbers,
+            bigNumberMetric: .currentElevation,
+            bigNumberFontSize: 42,
+            backgroundEnabled: true,
+            backgroundColor: .black,
+            backgroundOpacity: 0.50,
+            cornerRadius: 16,
+            borderEnabled: true,
+            borderOpacity: 0.12,
+            shadowEnabled: true,
+            shadowOpacity: 0.28,
+            shadowRadius: 14,
+            glowEnabled: false,
+            glowOpacity: 0.25,
+            statsBar: ElevationChartStyle.defaultStatsBar
+        )
+        switch preset {
+        case .gradientArea:
+            break
+        case .dualArea:
+            style.dualAreaEnabled = true
+            style.fillStartColor = OverlayColor.yellow
+            style.fillEndColor = OverlayColor.red
+            style.markerColor = OverlayColor.red
+            style.statsBar.slots = [
+                DistanceTimelineStatsBarSlot(metric: .distance, visible: true, customLabel: ""),
+                DistanceTimelineStatsBarSlot(metric: .elevation, visible: true, customLabel: "ELEV"),
+                DistanceTimelineStatsBarSlot(metric: .elapsedTime, visible: true, customLabel: ""),
+                DistanceTimelineStatsBarSlot(metric: .grade, visible: false, customLabel: ""),
+            ]
+        case .bigNumbers:
+            style.statsBar.visible = false
+            style.markerLabelEnabled = false
+            style.axisLabelsEnabled = false
+        }
+        return style
+    }
+
+    private static let defaultStatsBar = DistanceTimelineStatsBarConfig(
+        visible: true,
+        placement: .bottomAttached,
+        inside: false,
+        layoutMode: .equalColumns,
+        width: 0,
+        height: 58,
+        offsetX: 0,
+        offsetY: 0,
+        itemSpacing: 0,
+        backgroundOpacity: 0.62,
+        dividerOpacity: 0.14,
+        cornerRadius: 12,
+        valueFontSize: 22,
+        labelFontSize: 10,
+        slots: [
+            DistanceTimelineStatsBarSlot(metric: .distance, visible: true, customLabel: ""),
+            DistanceTimelineStatsBarSlot(metric: .elevation, visible: true, customLabel: "ELEV"),
+            DistanceTimelineStatsBarSlot(metric: .elapsedTime, visible: true, customLabel: ""),
+            DistanceTimelineStatsBarSlot(metric: .grade, visible: false, customLabel: ""),
+        ]
+    )
+
+    mutating func setStatsBarMetric(_ metric: RouteMapStatsMetric, at index: Int) {
+        guard statsBar.slots.indices.contains(index) else { return }
+        statsBar.slots[index].metric = metric
+    }
+
+    mutating func setStatsBarVisible(_ visible: Bool, at index: Int) {
+        guard statsBar.slots.indices.contains(index) else { return }
+        statsBar.slots[index].visible = visible
     }
 }
 
@@ -676,14 +1026,212 @@ enum DistanceTimelineFadeEdge: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+enum DistanceTimelineUnitSystem: String, CaseIterable, Identifiable, Codable {
+    case metric
+    case imperial
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .metric: "Metric"
+        case .imperial: "Imperial"
+        }
+    }
+}
+
+enum DistanceTimelineAxisLabelMode: String, CaseIterable, Identifiable, Codable {
+    case startFinish
+    case distance
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .startFinish: "Start / Finish"
+        case .distance: "Distance"
+        }
+    }
+}
+
+struct DistanceTimelineCustomValue: Equatable, Codable {
+    var visible: Bool
+    var metric: RouteMapStatsMetric
+    var label: String
+    var value: String
+
+    static let empty = DistanceTimelineCustomValue(visible: false, metric: .distance, label: "", value: "")
+
+    init(visible: Bool, metric: RouteMapStatsMetric, label: String = "", value: String = "") {
+        self.visible = visible
+        self.metric = metric
+        self.label = label
+        self.value = value
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        visible = try c.decodeIfPresent(Bool.self, forKey: .visible) ?? false
+        metric = try c.decodeIfPresent(RouteMapStatsMetric.self, forKey: .metric) ?? .distance
+        label = try c.decodeIfPresent(String.self, forKey: .label) ?? ""
+        value = try c.decodeIfPresent(String.self, forKey: .value) ?? ""
+    }
+}
+
+struct DistanceTimelineStatsBarSlot: Equatable, Codable {
+    var metric: RouteMapStatsMetric
+    var visible: Bool
+    var customLabel: String
+}
+
+struct DistanceTimelineStatsBarConfig: Equatable, Codable {
+    var visible: Bool
+    var placement: RouteMapStatsBarPlacement
+    var inside: Bool
+    var layoutMode: RouteMapStatsBarLayoutMode
+    var width: Double
+    var height: Double
+    var offsetX: Double
+    var offsetY: Double
+    var itemSpacing: Double
+    var backgroundOpacity: Double
+    var dividerOpacity: Double
+    var cornerRadius: Double
+    var valueFontName: String
+    var valueFontSize: Double
+    var valueFontWeight: OverlayFontWeight
+    var valueColor: OverlayColor
+    var labelFontName: String
+    var labelFontSize: Double
+    var labelFontWeight: OverlayFontWeight
+    var labelColor: OverlayColor
+    var slots: [DistanceTimelineStatsBarSlot]
+
+    static let `default` = DistanceTimelineStatsBarConfig(
+        visible: false,
+        placement: .bottomAttached,
+        inside: false,
+        layoutMode: .equalColumns,
+        width: 0,
+        height: 42,
+        offsetX: 0,
+        offsetY: 0,
+        itemSpacing: 0,
+        backgroundOpacity: 0.72,
+        dividerOpacity: 0.12,
+        cornerRadius: 8,
+        valueFontName: "SF Pro Display",
+        valueFontSize: 30,
+        valueFontWeight: .semibold,
+        valueColor: .white,
+        labelFontName: "SF Pro Display",
+        labelFontSize: 10,
+        labelFontWeight: .medium,
+        labelColor: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.58),
+        slots: [
+            DistanceTimelineStatsBarSlot(metric: .distance, visible: true, customLabel: ""),
+            DistanceTimelineStatsBarSlot(metric: .pace, visible: true, customLabel: ""),
+            DistanceTimelineStatsBarSlot(metric: .elapsedTime, visible: false, customLabel: ""),
+            DistanceTimelineStatsBarSlot(metric: .heartRate, visible: false, customLabel: ""),
+        ]
+    )
+
+    init(
+        visible: Bool,
+        placement: RouteMapStatsBarPlacement,
+        inside: Bool = false,
+        layoutMode: RouteMapStatsBarLayoutMode,
+        width: Double = 0,
+        height: Double,
+        offsetX: Double = 0,
+        offsetY: Double = 0,
+        itemSpacing: Double = 0,
+        backgroundOpacity: Double,
+        dividerOpacity: Double,
+        cornerRadius: Double,
+        valueFontName: String = "SF Pro Display",
+        valueFontSize: Double = 30,
+        valueFontWeight: OverlayFontWeight = .semibold,
+        valueColor: OverlayColor = .white,
+        labelFontName: String = "SF Pro Display",
+        labelFontSize: Double = 10,
+        labelFontWeight: OverlayFontWeight = .medium,
+        labelColor: OverlayColor = OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.58),
+        slots: [DistanceTimelineStatsBarSlot]
+    ) {
+        self.visible = visible
+        self.placement = placement.attachedDistanceTimelinePlacement
+        self.inside = inside || placement.isInside
+        self.layoutMode = layoutMode
+        self.width = width
+        self.height = height
+        self.offsetX = offsetX
+        self.offsetY = offsetY
+        self.itemSpacing = itemSpacing
+        self.backgroundOpacity = backgroundOpacity
+        self.dividerOpacity = dividerOpacity
+        self.cornerRadius = cornerRadius
+        self.valueFontName = valueFontName
+        self.valueFontSize = valueFontSize
+        self.valueFontWeight = valueFontWeight
+        self.valueColor = valueColor
+        self.labelFontName = labelFontName
+        self.labelFontSize = labelFontSize
+        self.labelFontWeight = labelFontWeight
+        self.labelColor = labelColor
+        self.slots = slots
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let base = Self.default
+        visible = try c.decodeIfPresent(Bool.self, forKey: .visible) ?? base.visible
+        let decodedPlacement = try c.decodeIfPresent(RouteMapStatsBarPlacement.self, forKey: .placement) ?? base.placement
+        placement = decodedPlacement.attachedDistanceTimelinePlacement
+        inside = try c.decodeIfPresent(Bool.self, forKey: .inside) ?? decodedPlacement.isInside
+        layoutMode = try c.decodeIfPresent(RouteMapStatsBarLayoutMode.self, forKey: .layoutMode) ?? base.layoutMode
+        width = try c.decodeIfPresent(Double.self, forKey: .width) ?? base.width
+        height = try c.decodeIfPresent(Double.self, forKey: .height) ?? base.height
+        offsetX = try c.decodeIfPresent(Double.self, forKey: .offsetX) ?? base.offsetX
+        offsetY = try c.decodeIfPresent(Double.self, forKey: .offsetY) ?? base.offsetY
+        itemSpacing = try c.decodeIfPresent(Double.self, forKey: .itemSpacing) ?? base.itemSpacing
+        backgroundOpacity = try c.decodeIfPresent(Double.self, forKey: .backgroundOpacity) ?? base.backgroundOpacity
+        dividerOpacity = try c.decodeIfPresent(Double.self, forKey: .dividerOpacity) ?? base.dividerOpacity
+        cornerRadius = try c.decodeIfPresent(Double.self, forKey: .cornerRadius) ?? base.cornerRadius
+        valueFontName = try c.decodeIfPresent(String.self, forKey: .valueFontName) ?? base.valueFontName
+        valueFontSize = try c.decodeIfPresent(Double.self, forKey: .valueFontSize) ?? base.valueFontSize
+        valueFontWeight = try c.decodeIfPresent(OverlayFontWeight.self, forKey: .valueFontWeight) ?? base.valueFontWeight
+        valueColor = try c.decodeIfPresent(OverlayColor.self, forKey: .valueColor) ?? base.valueColor
+        labelFontName = try c.decodeIfPresent(String.self, forKey: .labelFontName) ?? base.labelFontName
+        labelFontSize = try c.decodeIfPresent(Double.self, forKey: .labelFontSize) ?? base.labelFontSize
+        labelFontWeight = try c.decodeIfPresent(OverlayFontWeight.self, forKey: .labelFontWeight) ?? base.labelFontWeight
+        labelColor = try c.decodeIfPresent(OverlayColor.self, forKey: .labelColor) ?? base.labelColor
+        slots = try c.decodeIfPresent([DistanceTimelineStatsBarSlot].self, forKey: .slots) ?? base.slots
+    }
+}
+
 struct DistanceTimelineStyle: Equatable, Codable {
     var preset: DistanceTimelinePreset
     var width: Double
     var height: Double
+    var showValue: Bool
+    var valueUnitSystem: DistanceTimelineUnitSystem
+    var customValuesEnabled: Bool
+    var customValues: [DistanceTimelineCustomValue]
+    var customValueFontSize: Double
+    var customValuesGroupSpacing: Double
+    var customValueSpacing: Double
+    var customValueColor: OverlayColor
+    var customValueOpacity: Double
     var showLabel: Bool
     var label: String
-    var showPercent: Bool
-    var showStartFinishLabels: Bool
+    var showAxisLabels: Bool
+    var axisLabelMode: DistanceTimelineAxisLabelMode
+    var axisLabelOffset: Double
+    var showDistancePoints: Bool
+    var distancePointCount: Int
+    var distancePointOffset: Double
+    var statsBar: DistanceTimelineStatsBarConfig
     var backgroundEnabled: Bool
     var backgroundColor: OverlayColor
     var backgroundOpacity: Double
@@ -698,6 +1246,7 @@ struct DistanceTimelineStyle: Equatable, Codable {
     var trackOpacity: Double
     var fillColor: OverlayColor
     var tickMarksEnabled: Bool
+    var tickDensity: Int
     var currentMarkerEnabled: Bool
     var glowEnabled: Bool
     var fadeEnabled: Bool
@@ -710,7 +1259,233 @@ struct DistanceTimelineStyle: Equatable, Codable {
     var mediaSlot: OverlayIconSlot
     var elevationProfileVisible: Bool
 
+    var showPercent: Bool {
+        statsBar.visible && statsBar.slots.contains { $0.visible && $0.metric == .progress }
+    }
+
     static let `default` = preset(.minimal)
+
+    init(
+        preset: DistanceTimelinePreset,
+        width: Double,
+        height: Double,
+        showValue: Bool = true,
+        valueUnitSystem: DistanceTimelineUnitSystem = .metric,
+        customValuesEnabled: Bool = false,
+        customValues: [DistanceTimelineCustomValue] = Array(repeating: .empty, count: 4),
+        customValueFontSize: Double = 12,
+        customValuesGroupSpacing: Double = 12,
+        customValueSpacing: Double = 10,
+        customValueColor: OverlayColor = .white,
+        customValueOpacity: Double = 0.70,
+        showLabel: Bool,
+        label: String,
+        showAxisLabels: Bool = false,
+        axisLabelMode: DistanceTimelineAxisLabelMode = .startFinish,
+        axisLabelOffset: Double = 14,
+        showDistancePoints: Bool = false,
+        distancePointCount: Int = 3,
+        distancePointOffset: Double = 34,
+        statsBar: DistanceTimelineStatsBarConfig = .default,
+        backgroundEnabled: Bool,
+        backgroundColor: OverlayColor,
+        backgroundOpacity: Double,
+        borderEnabled: Bool,
+        borderColor: OverlayColor,
+        borderOpacity: Double,
+        borderWidth: Double,
+        cornerRadius: Double,
+        paddingX: Double,
+        paddingY: Double,
+        trackHeight: Double,
+        trackOpacity: Double,
+        fillColor: OverlayColor,
+        tickMarksEnabled: Bool,
+        tickDensity: Int = 16,
+        currentMarkerEnabled: Bool,
+        glowEnabled: Bool,
+        fadeEnabled: Bool,
+        fadeEdge: DistanceTimelineFadeEdge,
+        fadeAmount: Double,
+        mediaSlotEnabled: Bool,
+        mediaSlotMode: DistanceTimelineMediaSlotMode,
+        mediaSystemImage: String,
+        mediaSlotSize: Double,
+        mediaSlot: OverlayIconSlot,
+        elevationProfileVisible: Bool
+    ) {
+        self.preset = preset
+        self.width = width
+        self.height = height
+        self.showValue = showValue
+        self.valueUnitSystem = valueUnitSystem
+        self.customValuesEnabled = customValuesEnabled
+        self.customValues = Array(customValues.prefix(4)) + Array(repeating: .empty, count: max(0, 4 - customValues.count))
+        self.customValueFontSize = customValueFontSize
+        self.customValuesGroupSpacing = customValuesGroupSpacing
+        self.customValueSpacing = customValueSpacing
+        self.customValueColor = customValueColor
+        self.customValueOpacity = customValueOpacity
+        self.showLabel = showLabel
+        self.label = label
+        self.showAxisLabels = showAxisLabels
+        self.axisLabelMode = axisLabelMode
+        self.axisLabelOffset = axisLabelOffset
+        self.showDistancePoints = showDistancePoints
+        self.distancePointCount = min(max(distancePointCount, 0), 12)
+        self.distancePointOffset = distancePointOffset
+        self.statsBar = statsBar
+        self.backgroundEnabled = backgroundEnabled
+        self.backgroundColor = backgroundColor
+        self.backgroundOpacity = backgroundOpacity
+        self.borderEnabled = borderEnabled
+        self.borderColor = borderColor
+        self.borderOpacity = borderOpacity
+        self.borderWidth = borderWidth
+        self.cornerRadius = cornerRadius
+        self.paddingX = paddingX
+        self.paddingY = paddingY
+        self.trackHeight = trackHeight
+        self.trackOpacity = trackOpacity
+        self.fillColor = fillColor
+        self.tickMarksEnabled = tickMarksEnabled
+        self.tickDensity = min(max(tickDensity, 2), 40)
+        self.currentMarkerEnabled = currentMarkerEnabled
+        self.glowEnabled = glowEnabled
+        self.fadeEnabled = fadeEnabled
+        self.fadeEdge = fadeEdge
+        self.fadeAmount = fadeAmount
+        self.mediaSlotEnabled = mediaSlotEnabled
+        self.mediaSlotMode = mediaSlotMode
+        self.mediaSystemImage = mediaSystemImage
+        self.mediaSlotSize = mediaSlotSize
+        self.mediaSlot = mediaSlot
+        self.elevationProfileVisible = elevationProfileVisible
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let legacy = try decoder.container(keyedBy: LegacyCodingKeys.self)
+        let presetValue = try c.decodeIfPresent(DistanceTimelinePreset.self, forKey: .preset) ?? .minimal
+        let base = DistanceTimelineStyle.preset(presetValue)
+
+        preset = presetValue
+        width = try c.decodeIfPresent(Double.self, forKey: .width) ?? base.width
+        height = try c.decodeIfPresent(Double.self, forKey: .height) ?? base.height
+        showValue = try c.decodeIfPresent(Bool.self, forKey: .showValue) ?? true
+        valueUnitSystem = try c.decodeIfPresent(DistanceTimelineUnitSystem.self, forKey: .valueUnitSystem) ?? .metric
+        customValuesEnabled = try c.decodeIfPresent(Bool.self, forKey: .customValuesEnabled) ?? false
+        let decodedCustomValues = try c.decodeIfPresent([DistanceTimelineCustomValue].self, forKey: .customValues) ?? base.customValues
+        customValues = Array(decodedCustomValues.prefix(4)) + Array(repeating: .empty, count: max(0, 4 - decodedCustomValues.count))
+        customValueFontSize = try c.decodeIfPresent(Double.self, forKey: .customValueFontSize) ?? base.customValueFontSize
+        customValuesGroupSpacing = try c.decodeIfPresent(Double.self, forKey: .customValuesGroupSpacing) ?? base.customValuesGroupSpacing
+        customValueSpacing = try c.decodeIfPresent(Double.self, forKey: .customValueSpacing) ?? base.customValueSpacing
+        customValueColor = try c.decodeIfPresent(OverlayColor.self, forKey: .customValueColor) ?? base.customValueColor
+        customValueOpacity = try c.decodeIfPresent(Double.self, forKey: .customValueOpacity) ?? base.customValueOpacity
+        showLabel = try c.decodeIfPresent(Bool.self, forKey: .showLabel) ?? base.showLabel
+        label = try c.decodeIfPresent(String.self, forKey: .label) ?? base.label
+        showAxisLabels = try c.decodeIfPresent(Bool.self, forKey: .showAxisLabels)
+            ?? legacy.decodeIfPresent(Bool.self, forKey: .showStartFinishLabels)
+            ?? base.showAxisLabels
+        axisLabelMode = try c.decodeIfPresent(DistanceTimelineAxisLabelMode.self, forKey: .axisLabelMode) ?? base.axisLabelMode
+        axisLabelOffset = try c.decodeIfPresent(Double.self, forKey: .axisLabelOffset) ?? base.axisLabelOffset
+        showDistancePoints = try c.decodeIfPresent(Bool.self, forKey: .showDistancePoints) ?? base.showDistancePoints
+        distancePointCount = min(max(try c.decodeIfPresent(Int.self, forKey: .distancePointCount) ?? base.distancePointCount, 0), 12)
+        distancePointOffset = try c.decodeIfPresent(Double.self, forKey: .distancePointOffset) ?? base.distancePointOffset
+        statsBar = try c.decodeIfPresent(DistanceTimelineStatsBarConfig.self, forKey: .statsBar) ?? base.statsBar
+        backgroundEnabled = try c.decodeIfPresent(Bool.self, forKey: .backgroundEnabled) ?? base.backgroundEnabled
+        backgroundColor = try c.decodeIfPresent(OverlayColor.self, forKey: .backgroundColor) ?? base.backgroundColor
+        backgroundOpacity = try c.decodeIfPresent(Double.self, forKey: .backgroundOpacity) ?? base.backgroundOpacity
+        borderEnabled = try c.decodeIfPresent(Bool.self, forKey: .borderEnabled) ?? base.borderEnabled
+        borderColor = try c.decodeIfPresent(OverlayColor.self, forKey: .borderColor) ?? base.borderColor
+        borderOpacity = try c.decodeIfPresent(Double.self, forKey: .borderOpacity) ?? base.borderOpacity
+        borderWidth = try c.decodeIfPresent(Double.self, forKey: .borderWidth) ?? base.borderWidth
+        cornerRadius = try c.decodeIfPresent(Double.self, forKey: .cornerRadius) ?? base.cornerRadius
+        paddingX = try c.decodeIfPresent(Double.self, forKey: .paddingX) ?? base.paddingX
+        paddingY = try c.decodeIfPresent(Double.self, forKey: .paddingY) ?? base.paddingY
+        trackHeight = try c.decodeIfPresent(Double.self, forKey: .trackHeight) ?? base.trackHeight
+        trackOpacity = try c.decodeIfPresent(Double.self, forKey: .trackOpacity) ?? base.trackOpacity
+        fillColor = try c.decodeIfPresent(OverlayColor.self, forKey: .fillColor) ?? base.fillColor
+        tickMarksEnabled = try c.decodeIfPresent(Bool.self, forKey: .tickMarksEnabled) ?? base.tickMarksEnabled
+        tickDensity = min(max(try c.decodeIfPresent(Int.self, forKey: .tickDensity) ?? base.tickDensity, 2), 40)
+        currentMarkerEnabled = try c.decodeIfPresent(Bool.self, forKey: .currentMarkerEnabled) ?? base.currentMarkerEnabled
+        glowEnabled = try c.decodeIfPresent(Bool.self, forKey: .glowEnabled) ?? base.glowEnabled
+        fadeEnabled = try c.decodeIfPresent(Bool.self, forKey: .fadeEnabled) ?? base.fadeEnabled
+        fadeEdge = try c.decodeIfPresent(DistanceTimelineFadeEdge.self, forKey: .fadeEdge) ?? base.fadeEdge
+        fadeAmount = try c.decodeIfPresent(Double.self, forKey: .fadeAmount) ?? base.fadeAmount
+        mediaSlotEnabled = try c.decodeIfPresent(Bool.self, forKey: .mediaSlotEnabled) ?? base.mediaSlotEnabled
+        mediaSlotMode = try c.decodeIfPresent(DistanceTimelineMediaSlotMode.self, forKey: .mediaSlotMode) ?? base.mediaSlotMode
+        mediaSystemImage = try c.decodeIfPresent(String.self, forKey: .mediaSystemImage) ?? base.mediaSystemImage
+        mediaSlotSize = try c.decodeIfPresent(Double.self, forKey: .mediaSlotSize) ?? base.mediaSlotSize
+        mediaSlot = try c.decodeIfPresent(OverlayIconSlot.self, forKey: .mediaSlot) ?? base.mediaSlot
+        elevationProfileVisible = try c.decodeIfPresent(Bool.self, forKey: .elevationProfileVisible) ?? base.elevationProfileVisible
+
+        if (try legacy.decodeIfPresent(Bool.self, forKey: .showPercent) ?? false), !statsBar.visible {
+            statsBar.visible = true
+            statsBar.placement = .rightAttached
+            statsBar.inside = false
+            statsBar.layoutMode = .compact
+            if statsBar.slots.isEmpty {
+                statsBar.slots = DistanceTimelineStatsBarConfig.default.slots
+            }
+            statsBar.slots[0] = DistanceTimelineStatsBarSlot(metric: .progress, visible: true, customLabel: "")
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case preset
+        case width
+        case height
+        case showValue
+        case valueUnitSystem
+        case customValuesEnabled
+        case customValues
+        case customValueFontSize
+        case customValuesGroupSpacing
+        case customValueSpacing
+        case customValueColor
+        case customValueOpacity
+        case showLabel
+        case label
+        case showAxisLabels
+        case axisLabelMode
+        case axisLabelOffset
+        case showDistancePoints
+        case distancePointCount
+        case distancePointOffset
+        case statsBar
+        case backgroundEnabled
+        case backgroundColor
+        case backgroundOpacity
+        case borderEnabled
+        case borderColor
+        case borderOpacity
+        case borderWidth
+        case cornerRadius
+        case paddingX
+        case paddingY
+        case trackHeight
+        case trackOpacity
+        case fillColor
+        case tickMarksEnabled
+        case tickDensity
+        case currentMarkerEnabled
+        case glowEnabled
+        case fadeEnabled
+        case fadeEdge
+        case fadeAmount
+        case mediaSlotEnabled
+        case mediaSlotMode
+        case mediaSystemImage
+        case mediaSlotSize
+        case mediaSlot
+        case elevationProfileVisible
+    }
+
+    private enum LegacyCodingKeys: String, CodingKey {
+        case showPercent
+        case showStartFinishLabels
+    }
 
     static func preset(_ presetValue: DistanceTimelinePreset) -> DistanceTimelineStyle {
         switch presetValue {
@@ -721,8 +1496,6 @@ struct DistanceTimelineStyle: Equatable, Codable {
                 height: 68,
                 showLabel: false,
                 label: "Distance",
-                showPercent: false,
-                showStartFinishLabels: false,
                 backgroundEnabled: true,
                 backgroundColor: .black,
                 backgroundOpacity: 0.70,
@@ -753,15 +1526,19 @@ struct DistanceTimelineStyle: Equatable, Codable {
             var style = preset(.minimal)
             style.preset = presetValue
             style.width = 320
-            style.height = 76
+            style.height = 92
             style.showLabel = true
-            style.showPercent = true
+            style.showAxisLabels = true
+            style.axisLabelMode = .startFinish
+            style.showDistancePoints = true
+            style.distancePointCount = 3
             style.backgroundOpacity = 0.82
             style.borderEnabled = true
             style.borderOpacity = 0.18
             style.cornerRadius = 6
             style.trackHeight = 8
             style.tickMarksEnabled = true
+            style.tickDensity = 16
             style.currentMarkerEnabled = true
             return style
         case .sport:
@@ -770,7 +1547,17 @@ struct DistanceTimelineStyle: Equatable, Codable {
             style.width = 340
             style.height = 86
             style.showLabel = true
-            style.showPercent = true
+            style.statsBar.visible = true
+            style.statsBar.placement = .rightAttached
+            style.statsBar.inside = false
+            style.statsBar.layoutMode = .compact
+            style.statsBar.height = 58
+            style.statsBar.slots = [
+                DistanceTimelineStatsBarSlot(metric: .progress, visible: true, customLabel: ""),
+                DistanceTimelineStatsBarSlot(metric: .pace, visible: false, customLabel: ""),
+                DistanceTimelineStatsBarSlot(metric: .elapsedTime, visible: false, customLabel: ""),
+                DistanceTimelineStatsBarSlot(metric: .heartRate, visible: false, customLabel: ""),
+            ]
             style.backgroundOpacity = 0.76
             style.cornerRadius = 14
             style.paddingX = 16
@@ -786,12 +1573,15 @@ struct DistanceTimelineStyle: Equatable, Codable {
             style.preset = presetValue
             style.width = 360
             style.height = 78
-            style.showPercent = true
-            style.showStartFinishLabels = true
+            style.showAxisLabels = true
+            style.axisLabelMode = .distance
+            style.showDistancePoints = true
+            style.distancePointCount = 4
             style.backgroundOpacity = 0.65
             style.borderEnabled = true
             style.borderOpacity = 0.20
             style.tickMarksEnabled = true
+            style.tickDensity = 10
             style.currentMarkerEnabled = true
             return style
         case .glass:
@@ -800,8 +1590,8 @@ struct DistanceTimelineStyle: Equatable, Codable {
             style.width = 320
             style.height = 76
             style.showLabel = true
-            style.showPercent = true
-            style.backgroundOpacity = 0.48
+            style.backgroundEnabled = false
+            style.backgroundOpacity = 0
             style.borderEnabled = true
             style.borderOpacity = 0.34
             style.cornerRadius = 16
@@ -814,7 +1604,17 @@ struct DistanceTimelineStyle: Equatable, Codable {
             style.preset = presetValue
             style.width = 330
             style.height = 72
-            style.showPercent = true
+            style.statsBar.visible = true
+            style.statsBar.placement = .rightAttached
+            style.statsBar.inside = false
+            style.statsBar.layoutMode = .compact
+            style.statsBar.height = 58
+            style.statsBar.slots = [
+                DistanceTimelineStatsBarSlot(metric: .progress, visible: true, customLabel: ""),
+                DistanceTimelineStatsBarSlot(metric: .pace, visible: false, customLabel: ""),
+                DistanceTimelineStatsBarSlot(metric: .elapsedTime, visible: false, customLabel: ""),
+                DistanceTimelineStatsBarSlot(metric: .heartRate, visible: false, customLabel: ""),
+            ]
             style.backgroundOpacity = 0.60
             style.fillColor = .cyan
             style.trackOpacity = 0.18
@@ -828,7 +1628,17 @@ struct DistanceTimelineStyle: Equatable, Codable {
             style.width = 460
             style.height = 82
             style.showLabel = true
-            style.showPercent = true
+            style.statsBar.visible = true
+            style.statsBar.placement = .rightAttached
+            style.statsBar.inside = false
+            style.statsBar.layoutMode = .compact
+            style.statsBar.height = 72
+            style.statsBar.slots = [
+                DistanceTimelineStatsBarSlot(metric: .progress, visible: true, customLabel: ""),
+                DistanceTimelineStatsBarSlot(metric: .pace, visible: false, customLabel: ""),
+                DistanceTimelineStatsBarSlot(metric: .elapsedTime, visible: false, customLabel: ""),
+                DistanceTimelineStatsBarSlot(metric: .heartRate, visible: false, customLabel: ""),
+            ]
             style.backgroundOpacity = 0.62
             style.cornerRadius = 7
             style.paddingX = 18
@@ -846,7 +1656,8 @@ struct DistanceTimelineStyle: Equatable, Codable {
             style.width = 370
             style.height = 102
             style.showLabel = true
-            style.showPercent = true
+            style.showAxisLabels = true
+            style.axisLabelMode = .startFinish
             style.backgroundOpacity = 0.58
             style.borderEnabled = true
             style.borderOpacity = 0.16
@@ -1081,11 +1892,13 @@ enum OverlayRouteMapContainerPreset: String, CaseIterable, Identifiable, Codable
 }
 
 enum RouteMapStatsMetric: String, CaseIterable, Identifiable, Codable {
+    case progress
     case distance
     case pace
     case elapsedTime
     case heartRate
     case elevation
+    case grade
     case cadence
     case power
     case calories
@@ -1094,11 +1907,13 @@ enum RouteMapStatsMetric: String, CaseIterable, Identifiable, Codable {
 
     var label: String {
         switch self {
+        case .progress: "Progress"
         case .distance: "Distance"
         case .pace: "Pace"
         case .elapsedTime: "Time"
         case .heartRate: "Heart Rate"
         case .elevation: "Elevation"
+        case .grade: "Grade"
         case .cadence: "Cadence"
         case .power: "Power"
         case .calories: "Calories"
@@ -1107,17 +1922,81 @@ enum RouteMapStatsMetric: String, CaseIterable, Identifiable, Codable {
 
     var elementType: OverlayElementType {
         switch self {
+        case .progress: .distance
         case .distance: .distance
         case .pace: .pace
         case .elapsedTime: .elapsedTime
         case .heartRate: .heartRate
         case .elevation: .elevation
+        case .grade: .grade
         case .cadence: .cadence
         case .power: .power
         case .calories: .calories
         }
     }
 }
+
+// MARK: - Stats Bar enums
+
+enum RouteMapStatsBarPlacement: String, CaseIterable, Identifiable, Codable {
+    case bottomAttached
+    case topAttached
+    case leftAttached
+    case rightAttached
+    case insideBottom
+    case insideTop
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .bottomAttached: "Bottom"
+        case .topAttached:    "Top"
+        case .leftAttached:   "Left"
+        case .rightAttached:  "Right"
+        case .insideBottom:   "Inside Bottom"
+        case .insideTop:      "Inside Top"
+        }
+    }
+
+    var isVertical: Bool { self == .leftAttached || self == .rightAttached }
+    var isInside: Bool   { self == .insideBottom || self == .insideTop }
+
+    var attachedDistanceTimelinePlacement: RouteMapStatsBarPlacement {
+        switch self {
+        case .insideTop: .topAttached
+        case .insideBottom: .bottomAttached
+        default: self
+        }
+    }
+}
+
+enum RouteMapStatsBarLayoutMode: String, CaseIterable, Identifiable, Codable {
+    /// All slots the same width, horizontal.
+    case equalColumns
+    /// First slot prominent (wider, larger font), rest equal.
+    case emphasis
+    /// Two rows × two columns (up to 4 slots).
+    case grid2x2
+    /// Slots stacked vertically — ideal for left/right placement.
+    case stack
+    /// Single dense row with inline value+unit and tiny label.
+    case compact
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .equalColumns: "Equal"
+        case .emphasis:     "Emphasis"
+        case .grid2x2:      "2×2 Grid"
+        case .stack:        "Stack"
+        case .compact:      "Compact"
+        }
+    }
+}
+
+// MARK: - Stats Bar model
 
 struct RouteMapStatsBarSlot: Equatable, Codable {
     var metric: RouteMapStatsMetric
@@ -1127,19 +2006,137 @@ struct RouteMapStatsBarSlot: Equatable, Codable {
 
 struct OverlayRouteMapStatsBarConfig: Equatable, Codable {
     var visible: Bool
+    var placement: RouteMapStatsBarPlacement
+    var inside: Bool
+    var layoutMode: RouteMapStatsBarLayoutMode
+    /// Bar thickness in design units. For bottom/top this is height;
+    /// for left/right this is the horizontal width. Range 32...160.
+    var height: Double
+    /// Long-side span in design units. 0 = auto (fills map edge span).
+    var width: Double
+    var offsetX: Double
+    var offsetY: Double
+    var itemSpacing: Double
     var backgroundOpacity: Double
+    /// Gaussian blur radius applied to the bar background (design units). 0 = off.
+    var blurRadius: Double
+    /// Opacity of the 1 pt divider lines between slots.
+    var dividerOpacity: Double
+    /// Corner radius of the bar background shape (design units).
+    var cornerRadius: Double
+    var valueFontName: String
+    var valueFontSize: Double
+    var valueFontWeight: OverlayFontWeight
+    var valueColor: OverlayColor
+    var labelFontName: String
+    var labelFontSize: Double
+    var labelFontWeight: OverlayFontWeight
+    var labelColor: OverlayColor
     var slots: [RouteMapStatsBarSlot]
 
     static let `default` = OverlayRouteMapStatsBarConfig(
         visible: false,
+        placement: .bottomAttached,
+        inside: false,
+        layoutMode: .equalColumns,
+        height: 64,
+        width: 0,
+        offsetX: 0,
+        offsetY: 0,
+        itemSpacing: 0,
         backgroundOpacity: 0.88,
+        blurRadius: 0,
+        dividerOpacity: 0.12,
+        cornerRadius: 0,
+        valueFontName: "SF Pro Display",
+        valueFontSize: 30,
+        valueFontWeight: .semibold,
+        valueColor: .white,
+        labelFontName: "SF Pro Display",
+        labelFontSize: 10,
+        labelFontWeight: .medium,
+        labelColor: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.58),
         slots: [
-            RouteMapStatsBarSlot(metric: .distance,    visible: true, customLabel: ""),
-            RouteMapStatsBarSlot(metric: .pace,        visible: true, customLabel: ""),
-            RouteMapStatsBarSlot(metric: .elapsedTime, visible: true, customLabel: ""),
-            RouteMapStatsBarSlot(metric: .heartRate,   visible: true, customLabel: ""),
+            RouteMapStatsBarSlot(metric: .distance,    visible: true,  customLabel: ""),
+            RouteMapStatsBarSlot(metric: .pace,        visible: true,  customLabel: ""),
+            RouteMapStatsBarSlot(metric: .elapsedTime, visible: true,  customLabel: ""),
+            RouteMapStatsBarSlot(metric: .heartRate,   visible: false, customLabel: ""),
         ]
     )
+
+    init(
+        visible: Bool,
+        placement: RouteMapStatsBarPlacement = .bottomAttached,
+        inside: Bool = false,
+        layoutMode: RouteMapStatsBarLayoutMode = .equalColumns,
+        height: Double = 64,
+        width: Double = 0,
+        offsetX: Double = 0,
+        offsetY: Double = 0,
+        itemSpacing: Double = 0,
+        backgroundOpacity: Double = 0.88,
+        blurRadius: Double = 0,
+        dividerOpacity: Double = 0.12,
+        cornerRadius: Double = 0,
+        valueFontName: String = "SF Pro Display",
+        valueFontSize: Double = 30,
+        valueFontWeight: OverlayFontWeight = .semibold,
+        valueColor: OverlayColor = .white,
+        labelFontName: String = "SF Pro Display",
+        labelFontSize: Double = 10,
+        labelFontWeight: OverlayFontWeight = .medium,
+        labelColor: OverlayColor = OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.58),
+        slots: [RouteMapStatsBarSlot]
+    ) {
+        self.visible = visible
+        self.placement = placement
+        self.inside = inside
+        self.layoutMode = layoutMode
+        self.height = min(max(height, 32), 160)
+        self.width = max(width, 0)
+        self.offsetX = offsetX
+        self.offsetY = offsetY
+        self.itemSpacing = min(max(itemSpacing, 0), 32)
+        self.backgroundOpacity = min(max(backgroundOpacity, 0), 1)
+        self.blurRadius = min(max(blurRadius, 0), 32)
+        self.dividerOpacity = min(max(dividerOpacity, 0), 1)
+        self.cornerRadius = min(max(cornerRadius, 0), 40)
+        self.valueFontName = valueFontName
+        self.valueFontSize = valueFontSize
+        self.valueFontWeight = valueFontWeight
+        self.valueColor = valueColor
+        self.labelFontName = labelFontName
+        self.labelFontSize = labelFontSize
+        self.labelFontWeight = labelFontWeight
+        self.labelColor = labelColor
+        self.slots = slots
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        visible           = try c.decodeIfPresent(Bool.self,                        forKey: .visible)           ?? false
+        placement         = try c.decodeIfPresent(RouteMapStatsBarPlacement.self,   forKey: .placement)         ?? .bottomAttached
+        inside            = try c.decodeIfPresent(Bool.self,                        forKey: .inside)            ?? false
+        layoutMode        = try c.decodeIfPresent(RouteMapStatsBarLayoutMode.self,  forKey: .layoutMode)        ?? .equalColumns
+        height            = min(max(try c.decodeIfPresent(Double.self,              forKey: .height)            ?? 64,   32), 160)
+        width             = max(try c.decodeIfPresent(Double.self,                  forKey: .width)             ?? 0,    0)
+        offsetX           = try c.decodeIfPresent(Double.self,                      forKey: .offsetX)           ?? 0
+        offsetY           = try c.decodeIfPresent(Double.self,                      forKey: .offsetY)           ?? 0
+        itemSpacing       = min(max(try c.decodeIfPresent(Double.self,              forKey: .itemSpacing)       ?? 0,    0),  32)
+        backgroundOpacity = min(max(try c.decodeIfPresent(Double.self,              forKey: .backgroundOpacity) ?? 0.88, 0),  1)
+        blurRadius        = min(max(try c.decodeIfPresent(Double.self,              forKey: .blurRadius)        ?? 0,    0),  32)
+        dividerOpacity    = min(max(try c.decodeIfPresent(Double.self,              forKey: .dividerOpacity)    ?? 0.12, 0),  1)
+        cornerRadius      = min(max(try c.decodeIfPresent(Double.self,              forKey: .cornerRadius)      ?? 0,    0),  40)
+        valueFontName     = try c.decodeIfPresent(String.self,                      forKey: .valueFontName)     ?? Self.default.valueFontName
+        valueFontSize     = try c.decodeIfPresent(Double.self,                      forKey: .valueFontSize)     ?? Self.default.valueFontSize
+        valueFontWeight   = try c.decodeIfPresent(OverlayFontWeight.self,           forKey: .valueFontWeight)   ?? Self.default.valueFontWeight
+        valueColor        = try c.decodeIfPresent(OverlayColor.self,                forKey: .valueColor)        ?? Self.default.valueColor
+        labelFontName     = try c.decodeIfPresent(String.self,                      forKey: .labelFontName)     ?? Self.default.labelFontName
+        labelFontSize     = try c.decodeIfPresent(Double.self,                      forKey: .labelFontSize)     ?? Self.default.labelFontSize
+        labelFontWeight   = try c.decodeIfPresent(OverlayFontWeight.self,           forKey: .labelFontWeight)   ?? Self.default.labelFontWeight
+        labelColor        = try c.decodeIfPresent(OverlayColor.self,                forKey: .labelColor)        ?? Self.default.labelColor
+        slots             = try c.decodeIfPresent([RouteMapStatsBarSlot].self,      forKey: .slots)             ?? Self.default.slots
+    }
 }
 
 enum OverlayGaugePreset: String, CaseIterable, Identifiable, Codable {
@@ -1381,6 +2378,12 @@ struct OverlayPresetTokens {
     var textAlignment: OverlayTextAlignment
     var showLabel: Bool
     var showUnit: Bool
+    var labelPosition: OverlayTextAttachmentPosition = .top
+    var unitPosition: OverlayTextAttachmentPosition = .trailing
+    var labelFontSize: Double? = nil
+    var labelFontWeight: OverlayFontWeight? = nil
+    var unitFontSize: Double? = nil
+    var unitFontWeight: OverlayFontWeight? = nil
     var backgroundEnabled: Bool
     var backgroundColor: OverlayColor?
     var backgroundOpacity: Double?

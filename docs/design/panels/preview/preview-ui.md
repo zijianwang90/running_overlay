@@ -1,6 +1,6 @@
 # Preview UI Design Spec
 
-Last updated: 2026-04-26
+Last updated: 2026-04-28
 
 ## Purpose
 
@@ -122,6 +122,8 @@ Overlay editing affordances:
 
 - Selected overlay gets a subtle blue selection border and small corner handles.
 - Handles should be visible but not oversized.
+- Dragging any corner handle scales the selected overlay by updating the element `scale` value directly.
+- Handle scaling should use continuous undo grouping and commit on drag end.
 - Non-selected overlays should not show handles.
 - Row/action controls outside the canvas should not overlap overlay handles.
 
@@ -165,6 +167,10 @@ Rules:
 - Clicking empty canvas clears overlay selection and clears media-pool preview, preserving current behavior.
 - Clicking an overlay selects it and opens the Inspector detail state.
 - Dragging an overlay updates normalized position and commits undo grouping at drag end.
+- Dragging a selected overlay corner handle updates that overlay's `scale` continuously and commits undo grouping at drag end.
+- Overlays with visibility off are not rendered in the Preview canvas.
+- Locked overlays are rendered but cannot be selected or dragged from the Preview canvas.
+- Right-clicking a Preview overlay opens `Copy Properties` / `Paste Properties` actions that share the same category-compatibility rules as Inspector rows.
 
 ## Component Guidance
 

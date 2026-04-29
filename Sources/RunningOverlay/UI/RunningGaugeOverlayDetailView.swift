@@ -24,7 +24,7 @@ struct RunningGaugeOverlayDetailView: View {
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
                         sectionView(.style) { styleSection(element) }
-                        sectionView(.layout) { layoutSection(element) }
+                        layoutInspectorSection(element)
                         sectionView(.dataLayout) { dataLayoutSection(element) }
                         sectionView(.regions) { regionsSection(element) }
                         sectionView(.dial) { dialSection(element) }
@@ -35,6 +35,7 @@ struct RunningGaugeOverlayDetailView: View {
                         sectionView(.color) { colorSection(element) }
                         sectionView(.effects) { effectsSection(element) }
                     }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
 
                 Divider().overlay(NumericTokens.borderSubtle)
@@ -70,11 +71,27 @@ struct RunningGaugeOverlayDetailView: View {
         }
     }
 
-    // MARK: - Layout (position / scale / rotation — no anchor, no width/height for square gauge)
+    // MARK: - Layout (position / scale / opacity; no width/height for square gauge)
 
     @ViewBuilder
-    private func layoutSection(_ element: OverlayElement) -> some View {
-        OverlayLayoutRows(elementID: elementID, showRotation: true)
+    private func layoutInspectorSection(_ element: OverlayElement) -> some View {
+        CollapsibleLayoutInspectorSection(
+            isExpanded: Binding(
+                get: { openSections.contains(.layout) },
+                set: { newValue in
+                    if newValue { openSections.insert(.layout) }
+                    else { openSections.remove(.layout) }
+                }
+            )
+        ) {
+            OverlayLayoutRows(
+                elementID: elementID,
+                opacityBinding: Binding(
+                    get: { element.style.backgroundOpacity },
+                    set: { project.setOverlayBackgroundOpacity(elementID, opacity: ($0 / 0.05).rounded() * 0.05) }
+                )
+            )
+        }
     }
 
     // MARK: - Data layout
@@ -648,11 +665,6 @@ struct RunningGaugeOverlayDetailView: View {
                 } else {
                     openSections.insert(section)
                 }
-            }
-            .overlay(alignment: .top) {
-                Rectangle()
-                    .fill(NumericTokens.borderSubtle)
-                    .frame(height: 1)
             }
             .overlay(alignment: .bottom) {
                 Rectangle()

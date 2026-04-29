@@ -1,6 +1,6 @@
 {
   "name": "Distance Timeline Overlay UI",
-  "updated": "2026-04-28",
+  "updated": "2026-04-28 (shared stats bar renderer alignment)",
   "references": {
     "styleBoard": "./distance-timeline-overlay-styles.png",
     "relatedModuleSpec": "../../../overlay-modules/distance-timeline-overlay.md",
@@ -182,9 +182,9 @@
   },
   "inspectorSections": [
     "Preset",
+    "Layout",
     "Value",
     "Label",
-    "Layout",
     "Progress",
     "Axis Labels",
     "Stats Bar",
@@ -208,6 +208,53 @@
     "animated SVG preview/export support",
     "asset packaging/persistence strategy"
   ],
+  "sharedStatsBarRenderer": {
+    "preview": "PreviewCanvasView.SharedStatsBarContentView",
+    "export": "OverlayFrameRenderer.drawSharedStatsBar",
+    "baseline": "Distance Timeline stats bar rendering behavior",
+    "rules": [
+      "Distance Timeline and Route Map use the same stats bar rendering pipeline.",
+      "Stacked flow is used when placement is vertical or layout mode is stack.",
+      "itemSpacing is applied in both stacked and horizontal flows.",
+      "dividers render between slots in both stacked and horizontal flows."
+    ]
+  },
+  "sharedStatsBarInspector": {
+    "sectionComponent": "CollapsibleStatsBarInspectorSection",
+    "rowsComponent": "StatsBarInspectorRows",
+    "icon": "tablecells",
+    "enabledTogglePlacement": "headerLeftOfChevron",
+    "canonicalRows": [
+      "Placement",
+      "Inside",
+      "Layout",
+      "Size",
+      "Width",
+      "Offset",
+      "Item Gap",
+      "Background",
+      "Dividers",
+      "Radius",
+      "Slot 1",
+      "Slot 2",
+      "Slot 3",
+      "Slot 4"
+    ]
+  },
+  "sharedLayoutInspector": {
+    "sectionComponent": "CollapsibleLayoutInspectorSection",
+    "rowsComponent": "OverlayLayoutRows",
+    "canonicalRows": [
+      "Position",
+      "Scale",
+      "Width",
+      "Height",
+      "Opacity"
+    ],
+    "forbiddenRows": [
+      "Rotation"
+    ]
+  },
   "implementationPhases": [
     {
       "phase": 1,

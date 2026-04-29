@@ -3,6 +3,7 @@ import SwiftUI
 
 struct PreviewCanvasView: View {
     @EnvironmentObject private var project: ProjectDocument
+    // Start position captured once per drag gesture; cumulative translation applied each frame.
     @State private var dragStartPositions: [OverlayElement.ID: CGPoint] = [:]
 
     var body: some View {
@@ -52,11 +53,11 @@ struct PreviewCanvasView: View {
                                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         }
 
-                        ForEach(project.overlayLayout.elements) { element in
+                        ForEach(project.overlayLayout.elements.filter(\.isVisible)) { element in
                             let isSelected = project.selection == .overlayElement(element.id)
                             overlayView(element, canvasSize: canvasSize)
                                 .overlay {
-                                    if isSelected {
+                                    if isSelected, element.type != .distanceTimeline {
                                         PreviewSelectionAffordance()
                                     }
                                 }
@@ -67,13 +68,20 @@ struct PreviewCanvasView: View {
                                 .gesture(
                                     DragGesture(minimumDistance: 2)
                                         .onChanged { value in
-                                            let initialPosition = dragStartPositions[element.id] ?? element.position
-                                            dragStartPositions[element.id] = initialPosition
-                                            let nextPosition = CGPoint(
-                                                x: initialPosition.x + value.translation.width / max(canvasSize.width, 1),
-                                                y: initialPosition.y + value.translation.height / max(canvasSize.height, 1)
-                                            )
-                                            project.moveOverlay(element.id, to: nextPosition)
+                                            guard !element.isLocked else {
+                                                return
+                                            }
+                                            // Capture start position exactly once per gesture.
+                                            // DragGesture.value.translation is always cumulative from
+                                            // gesture start, so startPos + totalTranslation is stable.
+                                            if dragStartPositions[element.id] == nil {
+                                                dragStartPositions[element.id] = element.position
+                                            }
+                                            guard let start = dragStartPositions[element.id] else { return }
+                                            project.moveOverlay(element.id, to: CGPoint(
+                                                x: start.x + value.translation.width / max(canvasSize.width, 1),
+                                                y: start.y + value.translation.height / max(canvasSize.height, 1)
+                                            ))
                                             project.selectOverlay(element.id)
                                         }
                                         .onEnded { _ in
@@ -82,7 +90,23 @@ struct PreviewCanvasView: View {
                                         }
                                 )
                                 .onTapGesture {
+                                    guard !element.isLocked else {
+                                        return
+                                    }
                                     project.selectOverlay(element.id)
+                                }
+                                .contextMenu {
+                                    Button {
+                                        project.copyOverlayProperties(from: element.id)
+                                    } label: {
+                                        Label("Copy Properties", systemImage: "doc.on.doc")
+                                    }
+                                    Button {
+                                        project.pasteOverlayProperties(to: element.id)
+                                    } label: {
+                                        Label("Paste Properties", systemImage: "doc.on.clipboard")
+                                    }
+                                    .disabled(!project.canPasteOverlayProperties(to: element.id))
                                 }
                         }
                     }
@@ -128,7 +152,8 @@ struct PreviewCanvasView: View {
             case .distanceTimeline:
                 DistanceTimelineOverlayView(
                     element: element,
-                    layout: OverlayRenderModel.distanceTimelineLayout(for: element, in: renderContext)
+                    layout: OverlayRenderModel.distanceTimelineLayout(for: element, in: renderContext),
+                    isSelected: project.selection == .overlayElement(element.id)
                 )
             case .elevationChart:
                 ElevationChartOverlayView(
@@ -248,36 +273,11 @@ private struct PreviewGuidesHUD: View {
 }
 
 private struct PreviewSelectionAffordance: View {
-    private let handleSize: CGFloat = 7
-
     var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(EditorTheme.accentBlue.opacity(0.92), lineWidth: 1.4)
-
-                handle
-                    .position(x: 0, y: 0)
-                handle
-                    .position(x: proxy.size.width, y: 0)
-                handle
-                    .position(x: 0, y: proxy.size.height)
-                handle
-                    .position(x: proxy.size.width, y: proxy.size.height)
-            }
+        RoundedRectangle(cornerRadius: 4)
+            .stroke(EditorTheme.accentBlue.opacity(0.92), lineWidth: 1.4)
+            .padding(-5)
             .allowsHitTesting(false)
-        }
-        .padding(-5)
-    }
-
-    private var handle: some View {
-        RoundedRectangle(cornerRadius: 2)
-            .fill(EditorTheme.accentBlue)
-            .frame(width: handleSize, height: handleSize)
-            .overlay {
-                RoundedRectangle(cornerRadius: 2)
-                    .stroke(Color.white.opacity(0.85), lineWidth: 1)
-            }
     }
 }
 
@@ -305,6 +305,85 @@ private struct PreviewIconButtonStyle: ButtonStyle {
     }
 }
 
+private struct SharedStatsBarItemData {
+    let value: String
+    let unit: String
+    let label: String
+}
+
+private struct SharedStatsBarContentView: View {
+    let items: [SharedStatsBarItemData]
+    let stacked: Bool
+    let itemSpacing: Double
+    let dividerOpacity: Double
+    let cornerRadius: Double
+    let backgroundOpacity: Double
+    let valueFontName: String
+    let valueFontWeight: OverlayFontWeight
+    let valueColor: Color
+    let labelFontName: String
+    let labelFontWeight: OverlayFontWeight
+    let labelColor: Color
+    let valueFontSize: Double
+    let labelFontSize: Double
+
+    var body: some View {
+        Group {
+            if stacked {
+                VStack(spacing: itemSpacing) {
+                    rows
+                }
+            } else {
+                HStack(spacing: itemSpacing) {
+                    rows
+                }
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: cornerRadius)
+                .fill(Color.black.opacity(backgroundOpacity))
+        )
+        .clipped()
+    }
+
+    @ViewBuilder
+    private var rows: some View {
+        ForEach(Array(items.enumerated()), id: \.offset) { index, item in
+            itemView(item)
+            if index < items.count - 1 && dividerOpacity > 0 {
+                if stacked {
+                    Rectangle()
+                        .fill(labelColor.opacity(dividerOpacity))
+                        .frame(height: 1)
+                        .padding(.horizontal, 6)
+                } else {
+                    Rectangle()
+                        .fill(labelColor.opacity(dividerOpacity))
+                        .frame(width: 1)
+                        .padding(.vertical, 6)
+                }
+            }
+        }
+    }
+
+    private func itemView(_ item: SharedStatsBarItemData) -> some View {
+        VStack(alignment: .center, spacing: 1) {
+            Text(item.value + (item.unit.isEmpty ? "" : " \(item.unit)"))
+                .font(.custom(valueFontName, size: valueFontSize).weight(Font.Weight(valueFontWeight)))
+                .foregroundStyle(valueColor)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(item.label.uppercased())
+                .font(.custom(labelFontName, size: labelFontSize).weight(Font.Weight(labelFontWeight)))
+                .foregroundStyle(labelColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
 private struct RouteMapOverlayView: View {
     let element: OverlayElement
     let layout: OverlayRouteMapRenderLayout
@@ -313,37 +392,96 @@ private struct RouteMapOverlayView: View {
     @State private var alphaMask: NSImage?
 
     var body: some View {
-        VStack(spacing: 0) {
-            mapContent
-                .frame(width: layout.rect.width, height: layout.rect.height)
-                .mask {
-                    if let alphaMask {
-                        Image(nsImage: alphaMask)
-                            .resizable()
-                            .scaledToFill()
-                            .luminanceToAlpha()
-                    } else {
-                        shapeFill
-                    }
-                }
-                .overlay {
-                    if isSelected || layout.borderVisible {
-                        shapeStroke(
-                            color: isSelected ? Color.accentColor.opacity(0.85) : Color.white.opacity(0.16),
-                            lineWidth: isSelected ? 2 : 1
-                        )
-                    }
-                }
-                .shadow(color: Color.black.opacity(element.style.shadowOpacity), radius: element.style.shadowRadius, x: 0, y: 2)
+        placementContainer
+            .task(id: renderIdentity) { await updateRenderAssets() }
+    }
 
-            if let statsBar = layout.statsBarLayout, !statsBar.items.isEmpty {
-                statsBarView(statsBar)
-                    .frame(width: layout.rect.width, height: statsBar.rect.height)
+    @ViewBuilder
+    private var placementContainer: some View {
+        if let statsBar = layout.statsBarLayout, !statsBar.items.isEmpty {
+            if statsBar.isInside {
+                switch statsBar.placement {
+                case .topAttached, .insideTop:
+                    maskedMapView.overlay(alignment: .top) {
+                        statsBarContent(statsBar).frame(width: statsBar.rect.width, height: statsBar.rect.height)
+                    }
+                    .compositingGroup()
+                    .mask { shapeFill }
+                case .bottomAttached, .insideBottom:
+                    maskedMapView.overlay(alignment: .bottom) {
+                        statsBarContent(statsBar).frame(width: statsBar.rect.width, height: statsBar.rect.height)
+                    }
+                    .compositingGroup()
+                    .mask { shapeFill }
+                case .leftAttached:
+                    maskedMapView.overlay(alignment: .leading) {
+                        statsBarContent(statsBar).frame(width: statsBar.rect.width, height: statsBar.rect.height)
+                    }
+                    .compositingGroup()
+                    .mask { shapeFill }
+                case .rightAttached:
+                    maskedMapView.overlay(alignment: .trailing) {
+                        statsBarContent(statsBar).frame(width: statsBar.rect.width, height: statsBar.rect.height)
+                    }
+                    .compositingGroup()
+                    .mask { shapeFill }
+                }
+            } else {
+                switch statsBar.placement {
+                case .bottomAttached:
+                    VStack(spacing: 0) {
+                        maskedMapView
+                        statsBarContent(statsBar).frame(width: statsBar.rect.width, height: statsBar.rect.height)
+                    }
+                case .topAttached:
+                    VStack(spacing: 0) {
+                        statsBarContent(statsBar).frame(width: statsBar.rect.width, height: statsBar.rect.height)
+                        maskedMapView
+                    }
+                case .leftAttached:
+                    HStack(spacing: 0) {
+                        statsBarContent(statsBar).frame(width: statsBar.rect.width, height: statsBar.rect.height)
+                        maskedMapView
+                    }
+                case .rightAttached:
+                    HStack(spacing: 0) {
+                        maskedMapView
+                        statsBarContent(statsBar).frame(width: statsBar.rect.width, height: statsBar.rect.height)
+                    }
+                case .insideBottom:
+                    maskedMapView.overlay(alignment: .bottom) {
+                        statsBarContent(statsBar).frame(width: statsBar.rect.width, height: statsBar.rect.height)
+                    }
+                case .insideTop:
+                    maskedMapView.overlay(alignment: .top) {
+                        statsBarContent(statsBar).frame(width: statsBar.rect.width, height: statsBar.rect.height)
+                    }
+                }
             }
+        } else {
+            maskedMapView
         }
-        .task(id: renderIdentity) {
-            await updateRenderAssets()
-        }
+    }
+
+    private var maskedMapView: some View {
+        mapContent
+            .frame(width: layout.rect.width, height: layout.rect.height)
+            .mask {
+                if let alphaMask {
+                    Image(nsImage: alphaMask).resizable().scaledToFill().luminanceToAlpha()
+                } else {
+                    shapeFill
+                }
+            }
+            .overlay {
+                if isSelected || layout.borderVisible {
+                    shapeStroke(
+                        color: isSelected ? Color.accentColor.opacity(0.85) : Color.white.opacity(0.16),
+                        lineWidth: isSelected ? 2 : 1
+                    )
+                }
+            }
+            .shadow(color: Color.black.opacity(element.style.shadowOpacity), radius: element.style.shadowRadius, x: 0, y: 2)
     }
 
     private var mapContent: some View {
@@ -386,42 +524,24 @@ private struct RouteMapOverlayView: View {
         }
     }
 
-    private func statsBarView(_ statsBar: OverlayRouteMapStatsBarLayout) -> some View {
-        HStack(spacing: 0) {
-            ForEach(Array(statsBar.items.enumerated()), id: \.offset) { index, item in
-                statsBarCell(item)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                if index < statsBar.items.count - 1 {
-                    Rectangle()
-                        .fill(Color.white.opacity(0.12))
-                        .frame(width: 1)
-                        .padding(.vertical, statsBar.rect.height * 0.15)
-                }
-            }
-        }
-        .background(Color.black.opacity(statsBar.backgroundOpacity))
-    }
-
-    private func statsBarCell(_ item: OverlayRouteMapStatsBarItemLayout) -> some View {
-        let barHeight = layout.statsBarLayout?.rect.height ?? 48
-        let valueFontSize = barHeight * 0.38
-        let unitFontSize  = barHeight * 0.22
-        let labelFontSize = barHeight * 0.20
-        return VStack(spacing: 1) {
-            Text(item.value)
-                .font(.custom(element.style.fontName, size: valueFontSize).weight(.semibold))
-                .foregroundStyle(Color.white)
-            if !item.unit.isEmpty {
-                Text(item.unit)
-                    .font(.custom(element.style.fontName, size: unitFontSize).weight(.medium))
-                    .foregroundStyle(Color.white.opacity(0.70))
-            }
-            Text(item.label.uppercased())
-                .font(.custom(element.style.fontName, size: labelFontSize).weight(.medium))
-                .foregroundStyle(Color.white.opacity(0.50))
-        }
-        .lineLimit(1)
-        .minimumScaleFactor(0.7)
+    @ViewBuilder
+    private func statsBarContent(_ statsBar: OverlayRouteMapStatsBarLayout) -> some View {
+        SharedStatsBarContentView(
+            items: statsBar.items.map { .init(value: $0.value, unit: $0.unit, label: $0.label) },
+            stacked: statsBar.placement.isVertical || statsBar.layoutMode == .stack,
+            itemSpacing: statsBar.itemSpacing,
+            dividerOpacity: statsBar.dividerOpacity,
+            cornerRadius: statsBar.cornerRadius,
+            backgroundOpacity: statsBar.backgroundOpacity,
+            valueFontName: statsBar.valueFontName,
+            valueFontWeight: statsBar.valueFontWeight,
+            valueColor: Color(statsBar.valueColor),
+            labelFontName: statsBar.labelFontName,
+            labelFontWeight: statsBar.labelFontWeight,
+            labelColor: Color(statsBar.labelColor),
+            valueFontSize: statsBar.valueFontSize,
+            labelFontSize: statsBar.labelFontSize
+        )
     }
 
     private var renderIdentity: String {
@@ -748,54 +868,52 @@ private struct TextPresetOverlayView: View {
 
     @ViewBuilder
     private var minimalCleanView: some View {
-        let foreground = Color(element.style.foregroundColor)
-        VStack(alignment: .leading, spacing: layout.fontSize * 0.10) {
-            if element.style.showLabel, !layout.components.label.isEmpty {
-                Text(layout.components.label.uppercased())
-                    .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.medium))
-                    .tracking(layout.labelFontSize * 0.10)
-                    .foregroundStyle(foreground.opacity(0.70))
-            }
-            HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.14) {
-                Text(layout.components.value)
-                    .font(.custom(element.style.fontName, size: layout.fontSize).weight(.semibold))
-                    .tracking(-layout.fontSize * 0.012)
-                    .foregroundStyle(foreground)
-                if element.style.showUnit, !layout.components.unit.isEmpty {
-                    Text(layout.components.unit)
-                        .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
-                        .foregroundStyle(foreground.opacity(0.92))
+        metricCoreContent
+        .padding(.horizontal, element.style.backgroundEnabled ? layout.horizontalPadding : 0)
+        .padding(.vertical, element.style.backgroundEnabled ? layout.verticalPadding : 0)
+        .background {
+            if isSelected {
+                RoundedRectangle(cornerRadius: layout.cornerRadius)
+                    .fill(Color.accentColor.opacity(0.45))
+            } else if element.style.backgroundEnabled {
+                GeometryReader { proxy in
+                    let bgShape = RoundedRectangle(cornerRadius: layout.cornerRadius)
+                    let blurMix = min(max(layout.backgroundBlurRadius / 24, 0), 1)
+                    let fadeRadius = max(min(proxy.size.width, proxy.size.height) * 0.5 * layout.backgroundFadeOutAmount, 0)
+
+                    ZStack {
+                        // Backdrop blur layer so blur is visible over video.
+                        if layout.backgroundBlurRadius > 0.01 {
+                            bgShape
+                                .fill(.ultraThinMaterial)
+                                .opacity(blurMix)
+                        }
+
+                        bgShape
+                            .fill(Color(element.style.backgroundColor).opacity(element.style.backgroundOpacity))
+                    }
+                    .mask {
+                        if layout.backgroundFadeOutEnabled && fadeRadius > 0.5 {
+                            // Four-edge fade: shrink + blur the alpha mask so
+                            // all sides/corners fade toward transparent.
+                            RoundedRectangle(cornerRadius: layout.cornerRadius)
+                                .fill(Color.white)
+                                .padding(fadeRadius)
+                                .blur(radius: fadeRadius)
+                        } else {
+                            RoundedRectangle(cornerRadius: layout.cornerRadius)
+                                .fill(Color.white)
+                        }
+                    }
                 }
             }
         }
-        .padding(.horizontal, element.style.backgroundEnabled ? layout.horizontalPadding : 0)
-        .padding(.vertical, element.style.backgroundEnabled ? layout.verticalPadding : 0)
-        .background(background)
         .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
     }
 
     @ViewBuilder
     private var minimalLabelView: some View {
-        let foreground = Color(element.style.foregroundColor)
-        VStack(alignment: .leading, spacing: layout.fontSize * 0.10) {
-            if element.style.showLabel, !layout.components.label.isEmpty {
-                Text(layout.components.label.uppercased())
-                    .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.medium))
-                    .tracking(layout.labelFontSize * 0.10)
-                    .foregroundStyle(foreground.opacity(0.72))
-            }
-            HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.14) {
-                Text(layout.components.value)
-                    .font(.custom(element.style.fontName, size: layout.fontSize).weight(.semibold))
-                    .tracking(-layout.fontSize * 0.012)
-                    .foregroundStyle(foreground)
-                if element.style.showUnit, !layout.components.unit.isEmpty {
-                    Text(layout.components.unit)
-                        .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
-                        .foregroundStyle(foreground.opacity(0.92))
-                }
-            }
-        }
+        metricCoreContent
     }
 
     @ViewBuilder
@@ -1126,11 +1244,11 @@ private struct TextPresetOverlayView: View {
 
     private var unitText: Text {
         Text(layout.components.unit)
-            .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(Font.Weight(element.style.fontWeight)))
+            .font(.custom(layout.unitFontName, size: layout.unitFontSize).weight(Font.Weight(layout.unitFontWeight)))
     }
 
     private var labelFont: Font {
-        .custom(element.style.fontName, size: layout.labelFontSize).weight(Font.Weight(element.style.fontWeight))
+        .custom(layout.labelFontName, size: layout.labelFontSize).weight(Font.Weight(layout.labelFontWeight))
     }
 
     private var background: Color {
@@ -1145,6 +1263,67 @@ private struct TextPresetOverlayView: View {
         Rectangle()
             .fill(Color(element.style.foregroundColor).opacity(0.28))
             .frame(width: layout.fontSize * 2.7, height: max(layout.fontSize / 26, 1))
+    }
+
+    @ViewBuilder
+    private var metricCoreContent: some View {
+        let label = Text(layout.components.label)
+            .font(labelFont)
+            .tracking(layout.labelFontSize * 0.10)
+            .foregroundStyle(labelTextColor)
+        let unit = Text(layout.components.unit)
+            .font(.custom(layout.unitFontName, size: layout.unitFontSize).weight(Font.Weight(layout.unitFontWeight)))
+            .foregroundStyle(unitTextColor)
+        let value = Text(layout.components.value)
+            .font(.custom(element.style.fontName, size: layout.fontSize).weight(.semibold))
+            .tracking(-layout.fontSize * 0.012)
+            .foregroundStyle(valueTextColor)
+
+        VStack(alignment: .leading, spacing: 0) {
+            if element.style.showLabel && !layout.components.label.isEmpty && layout.labelPosition == .top {
+                label
+                    .padding(.bottom, layout.labelSpacing)
+            }
+            HStack(alignment: .lastTextBaseline, spacing: 0) {
+                if element.style.showLabel && !layout.components.label.isEmpty && layout.labelPosition == .leading {
+                    label
+                        .padding(.trailing, layout.labelSpacing)
+                }
+                if element.style.showUnit && !layout.components.unit.isEmpty && layout.unitPosition == .leading {
+                    unit
+                        .padding(.trailing, layout.unitSpacing)
+                }
+                value
+                if element.style.showUnit && !layout.components.unit.isEmpty && layout.unitPosition == .trailing {
+                    unit
+                        .padding(.leading, layout.unitSpacing)
+                }
+                if element.style.showLabel && !layout.components.label.isEmpty && layout.labelPosition == .trailing {
+                    label
+                        .padding(.leading, layout.labelSpacing)
+                }
+            }
+            if element.style.showUnit && !layout.components.unit.isEmpty && layout.unitPosition == .bottom {
+                unit
+                    .padding(.top, layout.unitSpacing)
+            }
+            if element.style.showLabel && !layout.components.label.isEmpty && layout.labelPosition == .bottom {
+                label
+                    .padding(.top, layout.labelSpacing)
+            }
+        }
+    }
+
+    private var valueTextColor: Color {
+        Color(element.style.valueColor).opacity(element.style.valueOpacity)
+    }
+
+    private var labelTextColor: Color {
+        Color(element.style.labelColor).opacity(element.style.labelOpacity)
+    }
+
+    private var unitTextColor: Color {
+        Color(element.style.unitColor).opacity(element.style.unitOpacity)
     }
 }
 
@@ -1537,23 +1716,24 @@ private extension ProjectResolution {
 private struct DistanceTimelineOverlayView: View {
     let element: OverlayElement
     let layout: OverlayDistanceTimelineRenderLayout
+    let isSelected: Bool
 
     var body: some View {
         ZStack {
             if layout.style.backgroundEnabled {
+                let background = backgroundLocalRect
                 RoundedRectangle(cornerRadius: layout.cornerRadius)
                     .fill(Color(distanceTimeline: layout.style.backgroundColor).opacity(layout.style.backgroundOpacity))
-                    .overlay {
-                        if layout.style.preset == .glass {
-                            RoundedRectangle(cornerRadius: layout.cornerRadius)
-                                .fill(.white.opacity(0.08))
-                        }
-                    }
+                    .frame(width: background.width, height: background.height)
+                    .position(x: background.midX, y: background.midY)
             }
 
             if layout.style.borderEnabled {
+                let background = backgroundLocalRect
                 RoundedRectangle(cornerRadius: layout.cornerRadius)
                     .stroke(Color(distanceTimeline: layout.style.borderColor).opacity(layout.style.borderOpacity), lineWidth: layout.borderWidth)
+                    .frame(width: background.width, height: background.height)
+                    .position(x: background.midX, y: background.midY)
             }
 
             if let mediaSlotRect = layout.mediaSlotRect {
@@ -1583,8 +1763,21 @@ private struct DistanceTimelineOverlayView: View {
             valueLayer
             progressLayer
 
-            if layout.style.showStartFinishLabels {
-                startFinishLabels
+            if layout.style.showAxisLabels || layout.style.showDistancePoints {
+                axisLabels
+            }
+
+            if layout.style.statsBar.visible {
+                statsBar
+            }
+
+            if isSelected {
+                let selection = backgroundLocalRect
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(EditorTheme.accentBlue.opacity(0.92), lineWidth: 1.4)
+                    .frame(width: selection.width + 10, height: selection.height + 10)
+                    .position(x: selection.midX, y: selection.midY)
+                    .allowsHitTesting(false)
             }
         }
         .frame(width: layout.rect.width, height: layout.rect.height)
@@ -1595,6 +1788,28 @@ private struct DistanceTimelineOverlayView: View {
             y: element.style.shadowOffsetY
         )
         .opacity(layout.style.fadeEnabled ? max(1 - layout.style.fadeAmount * 0.35, 0.72) : 1)
+    }
+
+    private var backgroundLocalRect: CGRect {
+        var rect = CGRect(origin: .zero, size: layout.rect.size)
+        let track = localRect(layout.trackRect)
+        let pad = scaled(6)
+        if layout.style.showAxisLabels || layout.style.showDistancePoints {
+            let y = track.maxY + scaled(layout.style.distancePointOffset)
+            let labels = CGRect(
+                x: 0,
+                y: y - layout.unitFontSize * 0.85,
+                width: layout.rect.width,
+                height: layout.unitFontSize * 1.7
+            ).insetBy(dx: -pad, dy: -pad * 0.5)
+            rect = rect.union(labels)
+        }
+        if layout.style.statsBar.visible,
+           layout.style.statsBar.inside,
+           let statsRect = statsBarDisplayRect {
+            rect = rect.union(statsRect.insetBy(dx: -pad, dy: -pad))
+        }
+        return rect
     }
 
     private var valueLayer: some View {
@@ -1608,17 +1823,33 @@ private struct DistanceTimelineOverlayView: View {
                         .foregroundStyle(labelColor)
                 }
                 Spacer(minLength: 6)
-                if layout.style.showPercent {
-                    Text(layout.percentText)
-                        .font(.custom(element.style.fontName, size: layout.percentFontSize).weight(.semibold))
-                        .foregroundStyle(accentColor)
+            }
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
+                if layout.style.showValue {
+                    Text(layout.valueText)
+                        .font(.custom(element.style.fontName, size: valueFontSize).weight(valueWeight))
+                        .foregroundStyle(valueColor)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+                if !layout.customValues.isEmpty {
+                    HStack(alignment: .firstTextBaseline, spacing: scaled(layout.style.customValueSpacing)) {
+                        ForEach(Array(layout.customValues.enumerated()), id: \.offset) { _, item in
+                            Text(item.value.isEmpty ? item.label : item.value)
+                                .font(.custom(element.style.fontName, size: scaled(layout.style.customValueFontSize)).weight(.semibold))
+                                .foregroundStyle(Color(distanceTimeline: layout.style.customValueColor).opacity(layout.style.customValueOpacity))
+                                .monospacedDigit()
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                        }
+                    }
+                    .padding(.leading, layout.style.showValue ? scaled(layout.style.customValuesGroupSpacing) : 0)
+                    .fixedSize(horizontal: true, vertical: false)
                 }
             }
-            Text(layout.valueText)
-                .font(.custom(element.style.fontName, size: valueFontSize).weight(valueWeight))
-                .foregroundStyle(valueColor)
-                .monospacedDigit()
-                .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(width: content.width, height: max(layout.trackRect.minY - layout.contentRect.minY - 2, layout.valueFontSize * 1.2), alignment: align)
         .position(x: content.midX, y: content.minY + max(layout.trackRect.minY - layout.contentRect.minY, layout.valueFontSize * 1.2) / 2)
@@ -1634,9 +1865,6 @@ private struct DistanceTimelineOverlayView: View {
                     .stroke(trackColor, style: StrokeStyle(lineWidth: max(track.height, 2), lineCap: .round, lineJoin: .round))
                 routePath(points: progressedRoutePoints.map(localPoint))
                     .stroke(accentColor, style: StrokeStyle(lineWidth: max(track.height, 2), lineCap: .round, lineJoin: .round))
-            } else if layout.style.preset == .dense || layout.style.preset == .splits {
-                segmentedFill(in: track.size)
-                    .fill(accentColor)
             } else {
                 trackShape
                     .fill(accentColor)
@@ -1664,17 +1892,56 @@ private struct DistanceTimelineOverlayView: View {
         .position(x: track.midX, y: track.midY)
     }
 
-    private var startFinishLabels: some View {
+    private var axisLabels: some View {
         let track = localRect(layout.trackRect)
-        return HStack {
-            Text("START")
-            Spacer()
-            Text("FINISH")
+        return ZStack {
+            if layout.style.showAxisLabels {
+                HStack {
+                    Text(layout.startText)
+                    Spacer()
+                    Text(layout.finishText)
+                }
+                .position(x: track.midX, y: track.maxY + scaled(layout.style.distancePointOffset))
+            }
+            if layout.style.showDistancePoints {
+                ForEach(Array(layout.distancePointLabels.enumerated()), id: \.offset) { index, label in
+                    let denominator = Double(layout.distancePointLabels.count + 1)
+                    let x = track.width * Double(index + 1) / denominator
+                    Text(label)
+                        .position(x: track.minX + x, y: track.maxY + scaled(layout.style.distancePointOffset))
+                }
+            }
         }
         .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
         .foregroundStyle(labelColor.opacity(0.78))
-        .frame(width: track.width)
-        .position(x: track.midX, y: min(track.maxY + layout.unitFontSize * 0.9, layout.rect.height - layout.unitFontSize))
+        .frame(width: layout.rect.width, height: layout.rect.height)
+    }
+
+    private var statsBar: some View {
+        guard let rect = statsBarDisplayRect else {
+            return AnyView(EmptyView())
+        }
+        let config = layout.style.statsBar
+        return AnyView(
+            SharedStatsBarContentView(
+                items: layout.statsBarItems.map { .init(value: $0.value, unit: $0.unit, label: $0.label) },
+                stacked: config.placement.isVertical || config.layoutMode == .stack,
+                itemSpacing: scaled(config.itemSpacing),
+                dividerOpacity: config.dividerOpacity,
+                cornerRadius: config.cornerRadius,
+                backgroundOpacity: config.backgroundOpacity,
+                valueFontName: config.valueFontName,
+                valueFontWeight: config.valueFontWeight,
+                valueColor: Color(config.valueColor),
+                labelFontName: config.labelFontName,
+                labelFontWeight: config.labelFontWeight,
+                labelColor: Color(config.labelColor),
+                valueFontSize: scaled(config.valueFontSize),
+                labelFontSize: scaled(config.labelFontSize)
+            )
+            .frame(width: rect.width, height: rect.height)
+            .position(x: rect.midX, y: rect.midY)
+        )
     }
 
     private var trackShape: RoundedRectangle {
@@ -1725,6 +1992,32 @@ private struct DistanceTimelineOverlayView: View {
         CGPoint(x: point.x - layout.trackRect.minX, y: point.y - layout.trackRect.minY)
     }
 
+    private var statsBarDisplayRect: CGRect? {
+        let config = layout.style.statsBar
+        guard layout.style.statsBar.visible, !layout.statsBarItems.isEmpty else { return nil }
+        let barHeight = scaled(config.height)
+        let isVertical = config.placement.isVertical
+        let autoWidth = isVertical ? max(min(scaled(config.height), layout.rect.width * 0.34), scaled(76)) : layout.rect.width
+        let barWidth = config.width > 0 ? min(scaled(config.width), layout.rect.width * 1.4) : autoWidth
+        let finalHeight = isVertical ? max(barHeight, statsBarMinimumVerticalHeight) : barHeight
+        return statsBarLocalRect(width: barWidth, height: finalHeight, placement: config.placement)
+    }
+
+    private var statsBarMinimumVerticalHeight: Double {
+        let count = max(layout.statsBarItems.count, 1)
+        let valueHeight = layout.percentFontSize * 1.25
+        let labelHeight = max(layout.unitFontSize * 0.72, 7)
+        return Double(count) * (valueHeight + labelHeight + scaled(8)) + Double(max(count - 1, 0)) * scaled(layout.style.statsBar.itemSpacing)
+    }
+
+    private var styleScale: Double {
+        layout.rect.width / max(layout.style.width, 1)
+    }
+
+    private func scaled(_ value: Double) -> Double {
+        value * styleScale
+    }
+
     private var progressedRoutePoints: [CGPoint] {
         guard layout.routePoints.count > 1 else {
             let track = layout.trackRect
@@ -1760,27 +2053,39 @@ private struct DistanceTimelineOverlayView: View {
         return path
     }
 
-    private func segmentedFill(in size: CGSize) -> Path {
-        var path = Path()
-        let segmentCount = 12
-        let gap = max(size.width * 0.012, 2)
-        let segmentWidth = (size.width - gap * Double(segmentCount - 1)) / Double(segmentCount)
-        let filled = layout.progress * Double(segmentCount)
-        for index in 0..<segmentCount {
-            let fillFraction = min(max(filled - Double(index), 0), 1)
-            guard fillFraction > 0 else { continue }
-            let x = Double(index) * (segmentWidth + gap)
-            path.addRoundedRect(
-                in: CGRect(x: x, y: 0, width: segmentWidth * fillFraction, height: size.height),
-                cornerSize: CGSize(width: size.height / 2, height: size.height / 2)
-            )
+    private func statsBarLocalRect(width: Double, height: Double, placement: RouteMapStatsBarPlacement) -> CGRect {
+        let config = layout.style.statsBar
+        let offsetX = scaled(config.offsetX)
+        let offsetY = scaled(config.offsetY)
+        let centeredX = (layout.rect.width - width) / 2 + offsetX
+        let track = localRect(layout.trackRect)
+        if config.inside {
+            return switch placement {
+            case .topAttached, .insideTop:
+                CGRect(x: centeredX, y: min(scaled(layout.style.paddingY) + offsetY, max(track.minY - height - offsetY, scaled(layout.style.paddingY))), width: width, height: height)
+            case .bottomAttached, .insideBottom:
+                CGRect(x: centeredX, y: max(layout.rect.height - height - scaled(layout.style.paddingY) - offsetY, track.maxY + offsetY), width: width, height: height)
+            case .leftAttached:
+                CGRect(x: scaled(layout.style.paddingX) + offsetX, y: (layout.rect.height - height) / 2 + offsetY, width: width, height: height)
+            case .rightAttached:
+                CGRect(x: layout.rect.width - width - scaled(layout.style.paddingX) - offsetX, y: (layout.rect.height - height) / 2 + offsetY, width: width, height: height)
+            }
         }
-        return path
+        return switch placement {
+        case .topAttached, .insideTop:
+            CGRect(x: centeredX, y: -height - offsetY, width: width, height: height)
+        case .bottomAttached, .insideBottom:
+            CGRect(x: centeredX, y: layout.rect.height + offsetY, width: width, height: height)
+        case .leftAttached:
+            CGRect(x: -width - offsetX, y: (layout.rect.height - height) / 2 + offsetY, width: width, height: height)
+        case .rightAttached:
+            CGRect(x: layout.rect.width + offsetX, y: (layout.rect.height - height) / 2 + offsetY, width: width, height: height)
+        }
     }
 
     private func tickMarks(in size: CGSize) -> Path {
         var path = Path()
-        let count = layout.style.preset == .splits ? 10 : 16
+        let count = max(layout.style.tickDensity, 2)
         for index in 0...count {
             let x = size.width * Double(index) / Double(max(count, 1))
             path.move(to: CGPoint(x: x, y: -size.height * 0.45))
@@ -1846,30 +2151,95 @@ private struct ElevationChartOverlayView: View {
     let layout: OverlayElevationChartRenderLayout
 
     var body: some View {
-        VStack(alignment: .leading, spacing: layout.verticalPadding * 0.75) {
-            Text(layout.label)
-                .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(Font.Weight(element.style.fontWeight)))
-                .foregroundStyle(Color(element.style.foregroundColor))
-                .monospacedDigit()
-
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    chartPath(in: proxy.size)
-                        .stroke(Color(element.style.foregroundColor).opacity(0.85), lineWidth: layout.lineWidth)
-                    Rectangle()
-                        .fill(Color(element.style.foregroundColor).opacity(0.45))
-                        .frame(width: 2, height: proxy.size.height)
-                        .offset(x: proxy.size.width * layout.progress)
+        ZStack {
+            if layout.style.backgroundEnabled {
+                RoundedRectangle(cornerRadius: layout.cornerRadius)
+                    .fill(Color(layout.style.backgroundColor).opacity(layout.style.backgroundOpacity))
+                if layout.style.borderEnabled {
+                    RoundedRectangle(cornerRadius: layout.cornerRadius)
+                        .stroke(Color.white.opacity(layout.style.borderOpacity), lineWidth: 1)
                 }
             }
-            .frame(height: layout.chartHeight)
+
+            VStack(alignment: .leading, spacing: layout.verticalPadding) {
+                if layout.style.bigNumbersEnabled {
+                    HStack(alignment: .firstTextBaseline, spacing: 5) {
+                        Text(layout.bigNumberText.value)
+                            .font(.custom(element.style.fontName, size: layout.valueFontSize).weight(.semibold))
+                            .foregroundStyle(Color(element.style.foregroundColor))
+                            .monospacedDigit()
+                        Text(layout.bigNumberText.unit)
+                            .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
+                            .foregroundStyle(Color(element.style.foregroundColor).opacity(0.86))
+                        Text(layout.bigNumberText.shortLabel)
+                            .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.medium))
+                            .foregroundStyle(Color(element.style.foregroundColor).opacity(0.62))
+                            .padding(.leading, 2)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                }
+
+                GeometryReader { proxy in
+                    ZStack(alignment: .leading) {
+                        if layout.style.gridEnabled {
+                            gridPath(in: proxy.size)
+                                .stroke(Color.white.opacity(0.14), lineWidth: 1)
+                        }
+                        if layout.style.fillEnabled && layout.style.chartStyle == .area {
+                            if layout.style.dualAreaEnabled {
+                                areaPath(in: proxy.size)
+                                    .fill(LinearGradient(
+                                        colors: [Color(layout.style.upperFillColor).opacity(layout.style.fillOpacity), Color(layout.style.lowerFillColor).opacity(layout.style.fillOpacity * 0.72)],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    ))
+                            } else {
+                                areaPath(in: proxy.size)
+                                    .fill(LinearGradient(
+                                        colors: [Color(layout.style.fillStartColor).opacity(layout.style.fillOpacity), Color(layout.style.fillEndColor).opacity(layout.style.fillOpacity * 0.72)],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    ))
+                            }
+                        }
+                        chartPath(in: proxy.size)
+                            .stroke(Color(layout.style.lineColor).opacity(layout.style.lineOpacity), style: StrokeStyle(lineWidth: layout.lineWidth, lineCap: .round, lineJoin: .round))
+                            .shadow(color: Color(layout.style.lineColor).opacity(layout.style.glowEnabled ? layout.style.glowOpacity : 0), radius: layout.style.glowEnabled ? 6 : 0)
+                        if layout.style.currentMarkerEnabled {
+                            marker(in: proxy.size)
+                        }
+                        if layout.style.axisLabelsEnabled {
+                            axisLabels(in: proxy.size)
+                        }
+                    }
+                }
+                .frame(height: layout.chartHeight)
+
+                if layout.style.statsBar.visible, !layout.statsBarItems.isEmpty {
+                    SharedStatsBarContentView(
+                        items: layout.statsBarItems.map { .init(value: $0.value, unit: $0.unit, label: $0.label) },
+                        stacked: layout.style.statsBar.placement.isVertical || layout.style.statsBar.layoutMode == .stack,
+                        itemSpacing: layout.style.statsBar.itemSpacing,
+                        dividerOpacity: layout.style.statsBar.dividerOpacity,
+                        cornerRadius: layout.style.statsBar.cornerRadius,
+                        backgroundOpacity: layout.style.statsBar.backgroundOpacity,
+                        valueFontName: layout.style.statsBar.valueFontName,
+                        valueFontWeight: layout.style.statsBar.valueFontWeight,
+                        valueColor: Color(layout.style.statsBar.valueColor),
+                        labelFontName: layout.style.statsBar.labelFontName,
+                        labelFontWeight: layout.style.statsBar.labelFontWeight,
+                        labelColor: Color(layout.style.statsBar.labelColor),
+                        valueFontSize: layout.style.statsBar.valueFontSize,
+                        labelFontSize: layout.style.statsBar.labelFontSize
+                    )
+                    .frame(height: layout.style.statsBar.height)
+                }
+            }
+            .padding(.horizontal, layout.horizontalPadding)
+            .padding(.vertical, layout.verticalPadding)
         }
-        .frame(width: layout.rect.width - layout.horizontalPadding * 2)
-        .padding(.horizontal, layout.horizontalPadding)
-        .padding(.vertical, layout.verticalPadding)
-        .background(Color.black.opacity(element.style.backgroundOpacity))
-        .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
-        .shadow(color: Color.black.opacity(element.style.shadowOpacity), radius: element.style.shadowRadius, x: 0, y: 2)
+        .frame(width: layout.rect.width, height: layout.rect.height)
+        .shadow(color: Color.black.opacity(layout.style.shadowEnabled ? layout.style.shadowOpacity : 0), radius: layout.style.shadowRadius, x: 0, y: 6)
     }
 
     private func chartPath(in size: CGSize) -> Path {
@@ -1896,6 +2266,77 @@ private struct ElevationChartOverlayView: View {
         }
 
         return path
+    }
+
+    private func areaPath(in size: CGSize) -> Path {
+        var path = chartPath(in: size)
+        path.addLine(to: CGPoint(x: size.width, y: size.height))
+        path.addLine(to: CGPoint(x: 0, y: size.height))
+        path.closeSubpath()
+        return path
+    }
+
+    private func marker(in size: CGSize) -> some View {
+        let point = chartPoint(at: layout.progress, in: size)
+        return ZStack {
+            Rectangle()
+                .fill(Color.white.opacity(0.28))
+                .frame(width: 1, height: size.height)
+                .position(x: point.x, y: size.height / 2)
+            Circle()
+                .fill(Color(layout.style.markerColor))
+                .frame(width: 12, height: 12)
+                .overlay(Circle().stroke(Color.white.opacity(0.9), lineWidth: 2))
+                .position(point)
+            if layout.style.markerLabelEnabled {
+                Text(layout.label)
+                    .font(.custom(element.style.fontName, size: max(layout.labelFontSize, 9)).weight(.semibold))
+                    .foregroundStyle(.white)
+                    .monospacedDigit()
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(RoundedRectangle(cornerRadius: 5).fill(Color(layout.style.markerColor).opacity(0.92)))
+                    .position(x: min(max(point.x, 26), size.width - 26), y: max(point.y - 22, 10))
+            }
+        }
+    }
+
+    private func axisLabels(in size: CGSize) -> some View {
+        let minValue = layout.samples.min() ?? 0
+        let maxValue = layout.samples.max() ?? minValue
+        return ZStack {
+            Text("\(Int(maxValue.rounded()))")
+                .position(x: 14, y: 8)
+            Text("\(Int(minValue.rounded()))")
+                .position(x: 10, y: size.height - 8)
+            Text("m")
+                .position(x: size.width - 10, y: 8)
+        }
+        .font(.custom(element.style.fontName, size: max(layout.labelFontSize * 0.78, 8)).weight(.medium))
+        .foregroundStyle(Color(element.style.foregroundColor).opacity(0.58))
+    }
+
+    private func gridPath(in size: CGSize) -> Path {
+        var path = Path()
+        for fraction in [0.25, 0.5, 0.75] {
+            let y = size.height * fraction
+            path.move(to: CGPoint(x: 0, y: y))
+            path.addLine(to: CGPoint(x: size.width, y: y))
+        }
+        return path
+    }
+
+    private func chartPoint(at progress: Double, in size: CGSize) -> CGPoint {
+        guard !layout.samples.isEmpty else {
+            return CGPoint(x: size.width * progress, y: size.height / 2)
+        }
+        let index = min(max(Int((Double(layout.samples.count - 1) * progress).rounded()), 0), layout.samples.count - 1)
+        let minValue = layout.samples.min() ?? 0
+        let maxValue = layout.samples.max() ?? minValue
+        let range = max(maxValue - minValue, 1)
+        let x = size.width * CGFloat(index) / CGFloat(max(layout.samples.count - 1, 1))
+        let y = size.height - size.height * CGFloat((layout.samples[index] - minValue) / range)
+        return CGPoint(x: x, y: y)
     }
 }
 

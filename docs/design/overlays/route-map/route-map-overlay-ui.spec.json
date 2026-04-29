@@ -1,6 +1,6 @@
 {
   "name": "Route Map Overlay UI",
-  "updated": "2026-04-28",
+  "updated": "2026-04-28 (shared stats bar + shared layout renderer alignment)",
   "references": {
     "designDoc": "./route-map-overlay-ui.md",
     "moduleDoc": "../../../overlay-modules/route-map-overlay.md",
@@ -126,7 +126,12 @@
         {
           "id": "rotation",
           "type": "slider",
-          "modelPath": "OverlayStyle.rotationDegrees"
+          "modelPath": "OverlayStyle.rotationDegrees",
+          "deprecated": true,
+          "notes": [
+            "Shared Layout section has removed Rotation.",
+            "Use shared Layout rows: Position / Scale / Width / Height / Opacity."
+          ]
         },
         {
           "id": "containerOpacity",
@@ -462,83 +467,71 @@
     {
       "id": "statusBar",
       "title": "Status Bar",
-      "icon": "list.bullet.rectangle",
+      "icon": "tablecells",
       "accessory": {
         "id": "statusBarEnabled",
         "type": "toggle",
-        "modelPath": "OverlayStyle.routeMapStatusBarVisible"
+        "modelPath": "OverlayStyle.routeMapStatsBar.visible",
+        "placement": "headerLeftOfChevron"
       },
       "controls": [
         {
-          "id": "statusBarPreset",
-          "type": "dropdown",
-          "modelPath": "OverlayStyle.routeMapStatusBarPreset",
-          "options": [
-            "glassBar",
-            "minimalStrip",
-            "sportHUD",
-            "floatingPill",
-            "editorial"
-          ],
-          "modelBacked": "phaseF"
-        },
-        {
           "id": "placement",
           "type": "dropdown",
-          "modelPath": "OverlayStyle.routeMapStatusBarPlacement",
+          "modelPath": "OverlayStyle.routeMapStatsBar.placement",
           "options": [
-            "bottomAttached",
             "topAttached",
-            "bottomFloating",
-            "topFloating",
-            "hidden"
-          ],
-          "default": "bottomAttached",
-          "modelBacked": "phaseF"
+            "bottomAttached",
+            "leftAttached",
+            "rightAttached",
+            "insideTop",
+            "insideBottom"
+          ]
         },
         {
-          "id": "height",
+          "id": "inside",
+          "type": "toggle",
+          "modelPath": "OverlayStyle.routeMapStatsBar.inside"
+        },
+        {
+          "id": "size",
           "type": "slider",
           "range": [
-            44,
-            112
+            32,
+            120
           ],
-          "step": 2,
-          "default": 76,
-          "modelPath": "OverlayStyle.routeMapStatusBarHeight",
-          "modelBacked": "phaseF",
-          "displayRule": "NN pt"
+          "modelPath": "OverlayStyle.routeMapStatsBar.height"
         },
         {
-          "id": "backgroundColor",
-          "type": "swatches",
-          "modelPath": "OverlayStyle.routeMapStatusBarBackgroundColor",
-          "default": "#000000",
-          "modelBacked": "phaseF"
-        },
-        {
-          "id": "backgroundOpacity",
+          "id": "width",
           "type": "slider",
           "range": [
             0,
-            1
+            640
           ],
-          "step": 0.01,
-          "default": 0.88,
-          "modelPath": "OverlayStyle.routeMapStatusBarBackgroundOpacity",
-          "modelBacked": "phaseF",
-          "displayRule": "NN%"
+          "modelPath": "OverlayStyle.routeMapStatsBar.width",
+          "displayRule": "0 => Auto"
         },
         {
-          "id": "cornerRadius",
+          "id": "offset",
+          "type": "numberPair",
+          "labels": [
+            "X",
+            "Y"
+          ],
+          "modelPaths": [
+            "OverlayStyle.routeMapStatsBar.offsetX",
+            "OverlayStyle.routeMapStatsBar.offsetY"
+          ]
+        },
+        {
+          "id": "itemGap",
           "type": "slider",
           "range": [
             0,
             32
           ],
-          "step": 1,
-          "modelPath": "OverlayStyle.routeMapStatusBarCornerRadius",
-          "modelBacked": "phaseF"
+          "modelPath": "OverlayStyle.routeMapStatsBar.itemSpacing"
         },
         {
           "id": "padding",
@@ -699,9 +692,9 @@
         }
       ],
       "migrationNotes": [
-        "Map legacy routeMapLegendVisible to routeMapStatusBarVisible on decode.",
+        "Map legacy routeMapLegendVisible to routeMapStatsBar.visible on decode.",
         "Do not expose legacy routeMapLegendMode gradientBand in new UI.",
-        "Status Bar presets only write Status Bar fields; they do not modify route line, markers, map style, or container shape."
+        "Route Map and Distance Timeline share the same full Stats Bar control surface and renderer behavior."
       ]
     },
     {
@@ -834,7 +827,8 @@
     "OverlayStyle.shadowRadius",
     "routeMapContainerPreset (template / test API; not in Inspector)",
     "routeMapMapOpacity",
-    "routeMapLegendVisible / routeMapLegendMode (legacy migration only)"
+    "routeMapLegendVisible / routeMapLegendMode (legacy migration only)",
+    "routeMapStatsBar.visible / placement / inside / layoutMode / height / width / offsetX / offsetY / itemSpacing / backgroundOpacity / dividerOpacity / cornerRadius / slots"
   ],
   "modelGapsPhaseE": [],
   "modelGapsPhaseF": [
@@ -846,13 +840,19 @@
     "per-marker color / size / border / label",
     "shadow color / shadow offsetX / shadow offsetY explicit (offsets exist, color is fixed)",
     "container blend mode",
-    "Status Bar visibility / placement / preset",
-    "Status Bar background color / opacity / corner radius / padding / height",
-    "Status Bar layout enum (equalColumns / primaryLeft / primaryCenter / compactBadges)",
-    "Status Bar dividers (visible / color / opacity / width)",
-    "Status Bar slots list (RouteMapStatusBarSlotConfig)",
-    "Status Bar typography (font, value/label/unit sizes, weights, opacities, monospaced digits)"
+    "Status Bar slot label override editing in inspector",
+    "Status Bar typography overrides"
   ],
+  "sharedStatsBarRenderer": {
+    "preview": "PreviewCanvasView.SharedStatsBarContentView",
+    "export": "OverlayFrameRenderer.drawSharedStatsBar",
+    "baseline": "Distance Timeline stats bar rendering behavior",
+    "rules": [
+      "Route Map and Distance Timeline use the same stats bar rendering pipeline.",
+      "For left/right placement, stats bar renders as vertical stack and applies itemSpacing as row gap.",
+      "For inside placement on Route Map, route content reserves bar lane so route lines do not draw under the bar."
+    ]
+  },
   "recommendedComponents": [
     "RouteMapOverlayDetailView",
     "RouteMapOverlayHeader",

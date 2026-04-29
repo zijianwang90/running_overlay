@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 struct TimelineView: View {
     @EnvironmentObject private var project: ProjectDocument
+    @State private var hoverInfo: TimelineHoverInfo?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -67,8 +68,15 @@ struct TimelineView: View {
                 hasMediaItems: !project.mediaItems.isEmpty,
                 selection: project.selection,
                 isPlaying: project.isPlaying,
-                isCollapsed: project.isTimelineCollapsed
+                isCollapsed: project.isTimelineCollapsed,
+                hoverInfo: $hoverInfo
             )
+            .overlay(alignment: .topLeading) {
+                if let hoverInfo {
+                    RulerHoverTooltip(info: hoverInfo)
+                        .offset(y: -(4 + 22 + 5))
+                }
+            }
         }
         .background(EditorTheme.panelBackground)
     }
@@ -94,6 +102,7 @@ private struct TimelineCanvasRepresentable: NSViewRepresentable {
     let selection: EditorSelection
     let isPlaying: Bool
     let isCollapsed: Bool
+    @Binding var hoverInfo: TimelineHoverInfo?
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -109,6 +118,9 @@ private struct TimelineCanvasRepresentable: NSViewRepresentable {
         scrollView.backgroundColor = .editorPanelBackground
 
         let canvas = TimelineCanvasNSView()
+        canvas.hostScrollView = scrollView
+        let coordinator = context.coordinator
+        canvas.onHoverChange = { info in coordinator.onHoverChange?(info) }
         scrollView.documentView = canvas
         return scrollView
     }
@@ -133,10 +145,12 @@ private struct TimelineCanvasRepresentable: NSViewRepresentable {
             keepPlayheadVisible(in: scrollView, canvas: canvas)
         }
         context.coordinator.lastZoom = timeline.zoom
+        context.coordinator.onHoverChange = { [binding = _hoverInfo] info in binding.wrappedValue = info }
     }
 
     final class Coordinator {
         var lastZoom: TimelineZoom?
+        var onHoverChange: ((TimelineHoverInfo?) -> Void)?
     }
 
     private func centerPlayhead(in scrollView: NSScrollView, canvas: TimelineCanvasNSView) {
@@ -176,6 +190,60 @@ private struct RectCorners: OptionSet {
     static let all: RectCorners = [.topLeft, .topRight, .bottomRight, .bottomLeft]
 }
 
+private struct TimelineHoverInfo {
+    let visibleX: CGFloat
+    let text: String
+}
+
+private struct RulerHoverTooltip: View {
+    let info: TimelineHoverInfo
+
+    private let tooltipWidth: CGFloat = 220
+    private let tooltipHeight: CGFloat = 22
+    private let arrowSize: CGFloat = 5
+    private let topPad: CGFloat = 4
+
+    var body: some View {
+        GeometryReader { geo in
+            let x = info.visibleX
+            let pillX = min(max(x - tooltipWidth / 2, 4), geo.size.width - tooltipWidth - 4)
+            let arrowAnchorX = min(max(x, pillX + 12), pillX + tooltipWidth - 12)
+
+            ZStack(alignment: .topLeading) {
+                Canvas { ctx, _ in
+                    let rect = CGRect(x: pillX, y: topPad, width: tooltipWidth, height: tooltipHeight)
+                    let pillPath = Path(roundedRect: rect, cornerRadius: 10)
+                    ctx.fill(pillPath, with: .color(Color(nsColor: .editorPanelHeader).opacity(0.96)))
+                    ctx.stroke(pillPath, with: .color(Color(nsColor: .editorBorderSubtle).opacity(0.9)), lineWidth: 1)
+
+                    var arrow = Path()
+                    arrow.move(to: CGPoint(x: arrowAnchorX - arrowSize, y: topPad + tooltipHeight))
+                    arrow.addLine(to: CGPoint(x: arrowAnchorX + arrowSize, y: topPad + tooltipHeight))
+                    arrow.addLine(to: CGPoint(x: arrowAnchorX, y: topPad + tooltipHeight + arrowSize))
+                    arrow.closeSubpath()
+                    ctx.fill(arrow, with: .color(Color(nsColor: .editorPanelHeader).opacity(0.96)))
+
+                    var arrowStroke = Path()
+                    arrowStroke.move(to: CGPoint(x: arrowAnchorX - arrowSize, y: topPad + tooltipHeight))
+                    arrowStroke.addLine(to: CGPoint(x: arrowAnchorX, y: topPad + tooltipHeight + arrowSize))
+                    arrowStroke.addLine(to: CGPoint(x: arrowAnchorX + arrowSize, y: topPad + tooltipHeight))
+                    ctx.stroke(arrowStroke, with: .color(Color(nsColor: .editorBorderSubtle).opacity(0.9)), lineWidth: 1)
+                }
+
+                Text(info.text)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(Color(nsColor: .editorTextPrimary))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(width: tooltipWidth - 16, alignment: .leading)
+                    .offset(x: pillX + 8, y: topPad + (tooltipHeight - 12) / 2)
+            }
+        }
+        .frame(height: topPad + tooltipHeight + arrowSize)
+        .allowsHitTesting(false)
+    }
+}
+
 private final class TimelineCanvasNSView: NSView {
     private weak var project: ProjectDocument?
     private var tracks: [TimelineTrack] = []
@@ -198,7 +266,6 @@ private final class TimelineCanvasNSView: NSView {
     private var mediaDropTargetTrackName: String?
     private var trackingArea: NSTrackingArea?
 
-    private let rulerHoverHeight: CGFloat = 30
     private let rulerScaleHeight: CGFloat = 28
     private let fitTrackHeight: CGFloat = 44
     private let trackHeight: CGFloat = 44
@@ -208,9 +275,10 @@ private final class TimelineCanvasNSView: NSView {
     private let playheadLineWidth: CGFloat = 2
     private let playheadHeadSize = CGSize(width: 12, height: 8)
 
-    private var rulerHeight: CGFloat {
-        rulerHoverHeight + rulerScaleHeight
-    }
+    weak var hostScrollView: NSScrollView?
+    var onHoverChange: ((TimelineHoverInfo?) -> Void)?
+
+    private var rulerHeight: CGFloat { rulerScaleHeight }
 
     private var hasTimelineContent: Bool {
         activityDuration > 0 || !tracks.isEmpty || mediaItemsAreAvailable || isMediaDragActive
@@ -333,17 +401,28 @@ private final class TimelineCanvasNSView: NSView {
         if activityDuration > 0 || !tracks.isEmpty {
             drawPlayhead()
         }
-        drawRulerHover()
     }
 
     override func mouseMoved(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        hoverPoint = point.y >= rulerHoverHeight && point.y <= rulerHeight && activityDuration > 0 ? point : nil
+        let inRuler = point.y <= rulerHeight && activityDuration > 0
+        hoverPoint = inRuler ? point : nil
+        if inRuler, let project {
+            let scrollOffsetX = hostScrollView?.documentVisibleRect.origin.x ?? 0
+            let visibleX = point.x - scrollOffsetX
+            let projectTime = time(atX: point.x)
+            let elapsed = projectTime - fitStartTime
+            let text = "\(formatSignedDuration(elapsed)) • \(project.activity.timestamp(at: elapsed).formatted(date: .omitted, time: .shortened)) • \(String(format: "%.2f km", project.activity.distance(at: elapsed) / 1000))"
+            onHoverChange?(TimelineHoverInfo(visibleX: visibleX, text: text))
+        } else {
+            onHoverChange?(nil)
+        }
         needsDisplay = true
     }
 
     override func mouseExited(with event: NSEvent) {
         hoverPoint = nil
+        onHoverChange?(nil)
         needsDisplay = true
     }
 
@@ -354,7 +433,7 @@ private final class TimelineCanvasNSView: NSView {
         window?.makeFirstResponder(self)
         project.clearMediaPoolPreview()
         let point = convert(event.locationInWindow, from: nil)
-        if point.y >= rulerHoverHeight && point.y <= rulerHeight {
+        if point.y <= rulerHeight {
             project.setPlayhead(time(atX: point.x))
             return
         }
@@ -380,7 +459,7 @@ private final class TimelineCanvasNSView: NSView {
     override func mouseDragged(with event: NSEvent) {
         guard let project else { return }
         let point = convert(event.locationInWindow, from: nil)
-        if point.y >= rulerHoverHeight && point.y <= rulerHeight {
+        if point.y <= rulerHeight {
             project.setPlayhead(time(atX: point.x))
             return
         }
@@ -480,7 +559,7 @@ private final class TimelineCanvasNSView: NSView {
 
         let timelineStartX = labelWidth + contentPadding
         let timelineWidth = CGFloat(max(visibleEndTime - visibleStartTime, 1) * pixelsPerSecond)
-        let scaleTopY = rulerHoverHeight
+        let scaleTopY: CGFloat = 0
         NSColor.editorBorderSubtle.setStroke()
         NSBezierPath.strokeLine(
             from: CGPoint(x: 0, y: rulerHeight - 0.5),

@@ -88,7 +88,7 @@ struct OverlayFrameRenderer {
             renderSafetyGuides(canvasSize: request.size)
         }
 
-        for element in request.layout.elements {
+        for element in request.layout.elements where element.isVisible {
             let renderContext = OverlayRenderContext(canvasSize: request.size, activity: request.activity, elapsedTime: request.elapsedTime)
             renderElement(element, renderContext: renderContext, cache: &cache)
         }
@@ -650,16 +650,14 @@ struct OverlayFrameRenderer {
         let style = renderLayout.style
         let accent = NSColor(style.fillColor)
         let foreground = NSColor(element.style.foregroundColor)
+        let backgroundRect = distanceTimelineBackgroundRect(renderLayout)
 
         if style.backgroundEnabled {
-            drawRoundedRect(renderLayout.rect, color: NSColor(style.backgroundColor).withAlphaComponent(style.backgroundOpacity), cornerRadius: renderLayout.cornerRadius)
-            if style.preset == .glass {
-                drawRoundedRect(renderLayout.rect, color: NSColor.white.withAlphaComponent(0.08), cornerRadius: renderLayout.cornerRadius)
-            }
+            drawRoundedRect(backgroundRect, color: NSColor(style.backgroundColor).withAlphaComponent(style.backgroundOpacity), cornerRadius: renderLayout.cornerRadius)
         }
         if style.borderEnabled {
             strokeRoundedRect(
-                renderLayout.rect,
+                backgroundRect,
                 color: NSColor(style.borderColor).withAlphaComponent(style.borderOpacity),
                 cornerRadius: renderLayout.cornerRadius,
                 lineWidth: renderLayout.borderWidth
@@ -697,10 +695,12 @@ struct OverlayFrameRenderer {
         drawDistanceTimelineText(renderLayout, element: element, foreground: foreground, accent: accent)
         drawDistanceTimelineTrack(renderLayout, foreground: foreground, accent: accent)
 
-        if style.showStartFinishLabels {
-            let y = min(renderLayout.trackRect.maxY + renderLayout.unitFontSize * 0.35, renderLayout.rect.maxY - renderLayout.unitFontSize * 1.1)
-            drawPlainText("START", element: element, fontSize: renderLayout.unitFontSize, color: foreground.withAlphaComponent(0.58), rect: CGRect(x: renderLayout.trackRect.minX, y: y, width: renderLayout.trackRect.width / 2, height: renderLayout.unitFontSize * 1.3), alignment: .left, weight: .medium)
-            drawPlainText("FINISH", element: element, fontSize: renderLayout.unitFontSize, color: foreground.withAlphaComponent(0.58), rect: CGRect(x: renderLayout.trackRect.midX, y: y, width: renderLayout.trackRect.width / 2, height: renderLayout.unitFontSize * 1.3), alignment: .right, weight: .medium)
+        if style.showAxisLabels || style.showDistancePoints {
+            drawDistanceTimelineAxisLabels(renderLayout, element: element, foreground: foreground)
+        }
+
+        if style.statsBar.visible {
+            drawDistanceTimelineStatsBar(renderLayout, element: element, foreground: foreground, accent: accent)
         }
     }
 
@@ -722,17 +722,6 @@ struct OverlayFrameRenderer {
                 weight: .medium
             )
         }
-        if layout.style.showPercent {
-            drawPlainText(
-                layout.percentText,
-                element: element,
-                fontSize: layout.percentFontSize,
-                color: accent,
-                rect: CGRect(x: content.midX, y: content.minY, width: content.width / 2, height: layout.percentFontSize * 1.3),
-                alignment: .right,
-                weight: .semibold
-            )
-        }
         let valueScale: Double
         switch layout.style.preset {
         case .lowerThird: valueScale = 1.05
@@ -740,16 +729,39 @@ struct OverlayFrameRenderer {
         case .dense: valueScale = 0.86
         default: valueScale = 1
         }
-        let valueY = content.minY + (layout.style.showLabel || layout.style.showPercent ? layout.labelFontSize * 1.05 : 0)
-        drawPlainText(
-            layout.valueText,
-            element: element,
-            fontSize: layout.valueFontSize * valueScale,
-            color: layout.style.preset == .neon ? NSColor.white.withAlphaComponent(0.92) : foreground,
-            rect: CGRect(x: content.minX, y: valueY, width: content.width, height: layout.valueFontSize * valueScale * 1.35),
-            alignment: .left,
-            weight: layout.style.preset == .dense || layout.style.preset == .neon ? .medium : .bold
-        )
+        let valueY = content.minY + (layout.style.showLabel ? layout.labelFontSize * 1.05 : 0)
+        var inlineX = content.minX
+        let scale = distanceTimelineStyleScale(layout)
+        if layout.style.showValue {
+            let valueFont = layout.valueFontSize * valueScale
+            drawPlainText(
+                layout.valueText,
+                element: element,
+                fontSize: valueFont,
+                color: layout.style.preset == .neon ? NSColor.white.withAlphaComponent(0.92) : foreground,
+                rect: CGRect(x: content.minX, y: valueY, width: content.width, height: valueFont * 1.35),
+                alignment: .left,
+                weight: layout.style.preset == .dense || layout.style.preset == .neon ? .medium : .bold
+            )
+            inlineX += textSize(layout.valueText, for: element, fontSize: valueFont, shadowRadius: 0, shadowOffsetY: 0).width + layout.style.customValuesGroupSpacing * scale
+        }
+        if !layout.customValues.isEmpty {
+            for item in layout.customValues {
+                let text = item.value.isEmpty ? item.label : item.value
+                let fontSize = layout.style.customValueFontSize * scale
+                let width = textSize(text, for: element, fontSize: fontSize, shadowRadius: 0, shadowOffsetY: 0).width
+                drawPlainText(
+                    text,
+                    element: element,
+                    fontSize: fontSize,
+                    color: NSColor(layout.style.customValueColor).withAlphaComponent(layout.style.customValueOpacity),
+                    rect: CGRect(x: inlineX, y: valueY + max(layout.valueFontSize * valueScale - fontSize, 0) * 0.35, width: width + 8, height: fontSize * 1.3),
+                    alignment: .left,
+                    weight: .semibold
+                )
+                inlineX += width + layout.style.customValueSpacing * scale
+            }
+        }
     }
 
     private static func drawDistanceTimelineTrack(
@@ -777,13 +789,11 @@ struct OverlayFrameRenderer {
             path.lineCapStyle = .round
             path.lineJoinStyle = .round
             path.stroke()
-        } else if layout.style.preset == .dense || layout.style.preset == .splits {
-            drawSegmentedDistanceFill(track, progress: layout.progress, color: accent)
         } else {
             drawCapsule(CGRect(x: track.minX, y: track.minY, width: max(track.width * layout.progress, track.height), height: track.height), color: accent)
         }
         if layout.style.tickMarksEnabled {
-            drawDistanceTimelineTicks(track, count: layout.style.preset == .splits ? 10 : 16, color: foreground.withAlphaComponent(0.52))
+            drawDistanceTimelineTicks(track, count: max(layout.style.tickDensity, 2), color: foreground.withAlphaComponent(0.52))
         }
         if layout.style.currentMarkerEnabled {
             let markerSize = track.height * 2.2
@@ -830,17 +840,158 @@ struct OverlayFrameRenderer {
         return path
     }
 
-    private static func drawSegmentedDistanceFill(_ track: CGRect, progress: Double, color: NSColor) {
-        let segmentCount = 12
-        let gap = max(track.width * 0.012, 2)
-        let segmentWidth = (track.width - gap * Double(segmentCount - 1)) / Double(segmentCount)
-        let filled = progress * Double(segmentCount)
-        for index in 0..<segmentCount {
-            let fillFraction = min(max(filled - Double(index), 0), 1)
-            guard fillFraction > 0 else { continue }
-            let x = track.minX + Double(index) * (segmentWidth + gap)
-            drawRoundedRect(CGRect(x: x, y: track.minY, width: segmentWidth * fillFraction, height: track.height), color: color, cornerRadius: track.height / 2)
+    private static func drawDistanceTimelineAxisLabels(_ layout: OverlayDistanceTimelineRenderLayout, element: OverlayElement, foreground: NSColor) {
+        let color = foreground.withAlphaComponent(0.58)
+        let fontSize = layout.unitFontSize
+        if layout.style.showAxisLabels {
+            let y = layout.trackRect.maxY + layout.style.distancePointOffset * distanceTimelineStyleScale(layout)
+            drawPlainText(layout.startText, element: element, fontSize: fontSize, color: color, rect: CGRect(x: layout.trackRect.minX, y: y, width: layout.trackRect.width / 2, height: fontSize * 1.3), alignment: .left, weight: .medium)
+            drawPlainText(layout.finishText, element: element, fontSize: fontSize, color: color, rect: CGRect(x: layout.trackRect.midX, y: y, width: layout.trackRect.width / 2, height: fontSize * 1.3), alignment: .right, weight: .medium)
         }
+        if layout.style.showDistancePoints {
+            let denominator = Double(layout.distancePointLabels.count + 1)
+            let y = layout.trackRect.maxY + layout.style.distancePointOffset * distanceTimelineStyleScale(layout)
+            for (index, label) in layout.distancePointLabels.enumerated() {
+                let centerX = layout.trackRect.minX + layout.trackRect.width * Double(index + 1) / denominator
+                drawPlainText(label, element: element, fontSize: fontSize, color: color, rect: CGRect(x: centerX - 45, y: y, width: 90, height: fontSize * 1.3), alignment: .center, weight: .medium)
+            }
+        }
+    }
+
+    private static func drawDistanceTimelineStatsBar(_ layout: OverlayDistanceTimelineRenderLayout, element: OverlayElement, foreground: NSColor, accent: NSColor) {
+        guard !layout.statsBarItems.isEmpty else { return }
+        let config = layout.style.statsBar
+        let rect = distanceTimelineStatsBarRect(layout, config: config)
+        drawSharedStatsBar(
+            rect: rect,
+            items: layout.statsBarItems,
+            valueFontName: config.valueFontName,
+            valueFontSize: config.valueFontSize * distanceTimelineStyleScale(layout),
+            valueFontWeight: config.valueFontWeight,
+            valueColor: NSColor(config.valueColor),
+            labelFontName: config.labelFontName,
+            labelFontSize: config.labelFontSize * distanceTimelineStyleScale(layout),
+            labelFontWeight: config.labelFontWeight,
+            labelColor: NSColor(config.labelColor),
+            backgroundOpacity: config.backgroundOpacity,
+            cornerRadius: config.cornerRadius,
+            dividerOpacity: config.dividerOpacity,
+            itemSpacing: config.itemSpacing * distanceTimelineStyleScale(layout),
+            stacked: config.placement.isVertical || config.layoutMode == .stack
+        )
+    }
+
+    private static func drawDistanceTimelineStatsBarItem(
+        _ item: OverlayDistanceTimelineStatsBarItemLayout,
+        element: OverlayElement,
+        foreground: NSColor,
+        accent: NSColor,
+        layout: OverlayDistanceTimelineRenderLayout,
+        rect: CGRect
+    ) {
+        drawPlainText(
+            item.value + (item.unit.isEmpty ? "" : " \(item.unit)"),
+            element: element,
+            fontSize: layout.percentFontSize,
+            color: accent,
+            rect: CGRect(x: rect.minX, y: rect.minY + rect.height * 0.18, width: rect.width, height: layout.percentFontSize * 1.25),
+            alignment: .center,
+            weight: .semibold
+        )
+        drawPlainText(
+            item.label.uppercased(),
+            element: element,
+            fontSize: max(layout.unitFontSize * 0.72, 7),
+            color: foreground.withAlphaComponent(0.58),
+            rect: CGRect(x: rect.minX, y: rect.minY + rect.height * 0.58, width: rect.width, height: layout.unitFontSize),
+            alignment: .center,
+            weight: .medium
+        )
+    }
+
+    private static func distanceTimelineStatsBarRect(_ layout: OverlayDistanceTimelineRenderLayout, config: DistanceTimelineStatsBarConfig) -> CGRect {
+        let scale = distanceTimelineStyleScale(layout)
+        let baseHeight = config.height * scale
+        let autoWidth = config.placement.isVertical ? max(min(config.height * scale, layout.rect.width * 0.34), distanceTimelineStatsBarMinimumVerticalWidth(layout)) : layout.rect.width
+        let width = config.width > 0 ? min(config.width * scale, layout.rect.width * 1.4) : autoWidth
+        let height = config.placement.isVertical ? max(baseHeight, distanceTimelineStatsBarMinimumVerticalHeight(layout)) : baseHeight
+        let offsetX = config.offsetX * scale
+        let offsetY = config.offsetY * scale
+        let centeredX = layout.rect.minX + (layout.rect.width - width) / 2 + offsetX
+        if config.inside {
+            switch config.placement {
+            case .topAttached, .insideTop:
+                let paddingY = layout.style.paddingY * scale
+                let naturalY = layout.rect.minY + paddingY + offsetY
+                let safeY = layout.trackRect.minY - height - offsetY
+                return CGRect(x: centeredX, y: min(naturalY, max(safeY, layout.rect.minY + paddingY)), width: width, height: height)
+            case .bottomAttached, .insideBottom:
+                let paddingY = layout.style.paddingY * scale
+                let naturalY = layout.rect.maxY - height - paddingY - offsetY
+                let safeY = layout.trackRect.maxY + offsetY
+                return CGRect(x: centeredX, y: max(naturalY, safeY), width: width, height: height)
+            case .leftAttached:
+                return CGRect(x: layout.rect.minX + layout.style.paddingX * scale + offsetX, y: layout.rect.minY + (layout.rect.height - height) / 2 + offsetY, width: width, height: height)
+            case .rightAttached:
+                return CGRect(x: layout.rect.maxX - width - layout.style.paddingX * scale - offsetX, y: layout.rect.minY + (layout.rect.height - height) / 2 + offsetY, width: width, height: height)
+            }
+        }
+        switch config.placement {
+        case .topAttached, .insideTop:
+            return CGRect(x: centeredX, y: layout.rect.minY - height - offsetY, width: width, height: height)
+        case .bottomAttached, .insideBottom:
+            return CGRect(x: centeredX, y: layout.rect.maxY + offsetY, width: width, height: height)
+        case .leftAttached:
+            return CGRect(x: layout.rect.minX - width - offsetX, y: layout.rect.minY + (layout.rect.height - height) / 2 + offsetY, width: width, height: height)
+        case .rightAttached:
+            return CGRect(x: layout.rect.maxX + offsetX, y: layout.rect.minY + (layout.rect.height - height) / 2 + offsetY, width: width, height: height)
+        }
+    }
+
+    private static func distanceTimelineStyleScale(_ layout: OverlayDistanceTimelineRenderLayout) -> Double {
+        layout.rect.width / max(layout.style.width, 1)
+    }
+
+    private static func distanceTimelineStatsBarMinimumVerticalHeight(_ layout: OverlayDistanceTimelineRenderLayout) -> Double {
+        let count = max(layout.statsBarItems.count, 1)
+        let gap = layout.style.statsBar.itemSpacing * distanceTimelineStyleScale(layout)
+        let rowHeight = layout.percentFontSize * 1.25 + max(layout.unitFontSize * 0.72, 7) + 8 * distanceTimelineStyleScale(layout)
+        return Double(count) * rowHeight + Double(max(count - 1, 0)) * gap
+    }
+
+    private static func distanceTimelineStatsBarMinimumVerticalWidth(_ layout: OverlayDistanceTimelineRenderLayout) -> Double {
+        let valueFont = layout.percentFontSize
+        let labelFont = max(layout.unitFontSize * 0.72, 7)
+        let maxValueWidth = layout.statsBarItems.map {
+            Double(($0.value + ($0.unit.isEmpty ? "" : " \($0.unit)")).count) * valueFont * 0.62
+        }.max() ?? 0
+        let maxLabelWidth = layout.statsBarItems.map {
+            Double($0.label.uppercased().count) * labelFont * 0.58
+        }.max() ?? 0
+        return max(maxValueWidth, maxLabelWidth) + 20 * distanceTimelineStyleScale(layout)
+    }
+
+    private static func distanceTimelineBackgroundRect(_ layout: OverlayDistanceTimelineRenderLayout) -> CGRect {
+        var rect = layout.rect
+        let scale = distanceTimelineStyleScale(layout)
+        let pad = 6 * scale
+        if layout.style.showAxisLabels || layout.style.showDistancePoints {
+            let y = layout.trackRect.maxY + layout.style.distancePointOffset * scale
+            let labels = CGRect(
+                x: layout.rect.minX,
+                y: y - layout.unitFontSize * 0.85,
+                width: layout.rect.width,
+                height: layout.unitFontSize * 1.7
+            ).insetBy(dx: -pad, dy: -pad * 0.5)
+            rect = rect.union(labels)
+        }
+        if layout.style.statsBar.visible,
+           layout.style.statsBar.inside,
+           !layout.statsBarItems.isEmpty {
+            let statsRect = distanceTimelineStatsBarRect(layout, config: layout.style.statsBar)
+            rect = rect.union(statsRect.insetBy(dx: -pad, dy: -pad))
+        }
+        return rect
     }
 
     private static func drawDistanceTimelineTicks(_ track: CGRect, count: Int, color: NSColor) {
@@ -887,47 +1038,99 @@ struct OverlayFrameRenderer {
         cache: inout OverlayRenderCache
     ) {
         let renderLayout = OverlayRenderModel.elevationChartLayout(for: element, in: renderContext)
-        drawRoundedBackground(renderLayout.rect, element: element, cornerRadius: renderLayout.cornerRadius)
-
-        let labelLayout = cache.textLayout(
-            for: element,
-            text: renderLayout.label,
-            fontSize: renderLayout.labelFontSize,
-            shadowRadius: renderContext.scaled(element.style.shadowRadius),
-            shadowOffsetY: renderContext.scaled(2)
-        )
-        let labelRect = CGRect(
-            x: renderLayout.rect.minX + renderLayout.horizontalPadding,
-            y: renderLayout.rect.minY + renderLayout.verticalPadding,
-            width: renderLayout.rect.width - renderLayout.horizontalPadding * 2,
-            height: labelLayout.size.height
-        )
-        drawSupersampledText(
-            renderLayout.label,
-            for: element,
-            fontSize: renderLayout.labelFontSize,
-            shadowRadius: renderContext.scaled(element.style.shadowRadius),
-            shadowOffsetY: renderContext.scaled(2),
-            in: labelRect,
-            textRect: CGRect(origin: .zero, size: labelRect.size)
-        )
+        let style = renderLayout.style
+        if style.backgroundEnabled {
+            drawRoundedRect(
+                renderLayout.rect,
+                color: NSColor(style.backgroundColor).withAlphaComponent(style.backgroundOpacity),
+                cornerRadius: renderLayout.cornerRadius
+            )
+            if style.borderEnabled {
+                let border = NSBezierPath(roundedRect: renderLayout.rect.insetBy(dx: 0.5, dy: 0.5), xRadius: renderLayout.cornerRadius, yRadius: renderLayout.cornerRadius)
+                border.lineWidth = 1
+                NSColor.white.withAlphaComponent(style.borderOpacity).setStroke()
+                border.stroke()
+            }
+        }
 
         let chartRect = CGRect(
             x: renderLayout.rect.minX + renderLayout.horizontalPadding,
-            y: renderLayout.rect.maxY - renderLayout.verticalPadding - renderLayout.chartHeight,
+            y: renderLayout.rect.maxY - renderLayout.verticalPadding - renderLayout.chartHeight - (style.statsBar.visible ? renderContext.scaled(style.statsBar.height * element.scale + 8) : 0),
             width: renderLayout.rect.width - renderLayout.horizontalPadding * 2,
             height: renderLayout.chartHeight
         )
-        drawElevationPath(samples: renderLayout.samples, in: chartRect, color: NSColor(element.style.foregroundColor).withAlphaComponent(0.85), lineWidth: renderLayout.lineWidth)
-        NSColor(element.style.foregroundColor).withAlphaComponent(0.45).setFill()
-        NSBezierPath(
-            rect: CGRect(
-                x: chartRect.minX + chartRect.width * renderLayout.progress,
-                y: chartRect.minY,
-                width: max(renderContext.scaled(2), 1),
-                height: chartRect.height
+
+        if style.bigNumbersEnabled {
+            let value = renderLayout.bigNumberText.value + (renderLayout.bigNumberText.unit.isEmpty ? "" : " \(renderLayout.bigNumberText.unit)")
+            drawGaugePlainText(
+                value,
+                fontName: element.style.fontName,
+                fontSize: renderLayout.valueFontSize,
+                color: NSColor(element.style.foregroundColor),
+                rect: CGRect(x: renderLayout.rect.minX, y: renderLayout.rect.minY + renderLayout.verticalPadding, width: renderLayout.rect.width, height: renderLayout.valueFontSize * 1.2),
+                alignment: .center,
+                weight: .semibold,
+                monospacedDigits: true
             )
-        ).fill()
+            drawGaugePlainText(
+                renderLayout.bigNumberText.shortLabel,
+                fontName: element.style.fontName,
+                fontSize: renderLayout.labelFontSize,
+                color: NSColor(element.style.foregroundColor).withAlphaComponent(0.62),
+                rect: CGRect(x: renderLayout.rect.minX, y: renderLayout.rect.minY + renderLayout.verticalPadding + renderLayout.valueFontSize * 1.05, width: renderLayout.rect.width, height: renderLayout.labelFontSize * 1.4),
+                alignment: .center,
+                weight: .medium,
+                monospacedDigits: false
+            )
+        }
+
+        if style.gridEnabled {
+            for fraction in [0.25, 0.5, 0.75] {
+                let y = chartRect.minY + chartRect.height * fraction
+                drawLine(from: CGPoint(x: chartRect.minX, y: y), to: CGPoint(x: chartRect.maxX, y: y), color: NSColor.white.withAlphaComponent(0.14), lineWidth: 1)
+            }
+        }
+        if style.fillEnabled, style.chartStyle == .area {
+            drawElevationArea(samples: renderLayout.samples, in: chartRect, color: NSColor(style.dualAreaEnabled ? style.upperFillColor : style.fillStartColor).withAlphaComponent(style.fillOpacity))
+        }
+        drawElevationPath(samples: renderLayout.samples, in: chartRect, color: NSColor(style.lineColor).withAlphaComponent(style.lineOpacity), lineWidth: renderLayout.lineWidth)
+
+        if style.currentMarkerEnabled {
+            let marker = elevationMarkerPoint(samples: renderLayout.samples, progress: renderLayout.progress, in: chartRect)
+            drawLine(from: CGPoint(x: marker.x, y: chartRect.minY), to: CGPoint(x: marker.x, y: chartRect.maxY), color: NSColor.white.withAlphaComponent(0.28), lineWidth: 1)
+            NSColor(style.markerColor).setFill()
+            NSBezierPath(ovalIn: CGRect(x: marker.x - 5, y: marker.y - 5, width: 10, height: 10)).fill()
+            NSColor.white.withAlphaComponent(0.9).setStroke()
+            let ring = NSBezierPath(ovalIn: CGRect(x: marker.x - 6, y: marker.y - 6, width: 12, height: 12))
+            ring.lineWidth = 2
+            ring.stroke()
+        }
+
+        if style.statsBar.visible, !renderLayout.statsBarItems.isEmpty {
+            let statsRect = CGRect(
+                x: renderLayout.rect.minX + renderLayout.horizontalPadding,
+                y: renderLayout.rect.maxY - renderLayout.verticalPadding - renderContext.scaled(style.statsBar.height * element.scale),
+                width: renderLayout.rect.width - renderLayout.horizontalPadding * 2,
+                height: renderContext.scaled(style.statsBar.height * element.scale)
+            )
+            drawSharedStatsBar(
+                rect: statsRect,
+                items: renderLayout.statsBarItems,
+                valueFontName: style.statsBar.valueFontName,
+                valueFontSize: renderContext.scaled(style.statsBar.valueFontSize * element.scale),
+                valueFontWeight: style.statsBar.valueFontWeight,
+                valueColor: NSColor(style.statsBar.valueColor),
+                labelFontName: style.statsBar.labelFontName,
+                labelFontSize: renderContext.scaled(style.statsBar.labelFontSize * element.scale),
+                labelFontWeight: style.statsBar.labelFontWeight,
+                labelColor: NSColor(style.statsBar.labelColor),
+                backgroundOpacity: style.statsBar.backgroundOpacity,
+                cornerRadius: style.statsBar.cornerRadius,
+                dividerOpacity: style.statsBar.dividerOpacity,
+                itemSpacing: style.statsBar.itemSpacing,
+                stacked: style.statsBar.placement.isVertical || style.statsBar.layoutMode == .stack
+            )
+        }
     }
 
     private static func renderLapList(_ element: OverlayElement, renderContext: OverlayRenderContext) {
@@ -1367,49 +1570,323 @@ struct OverlayFrameRenderer {
     private static func drawRouteMapStatsBar(layout: OverlayRouteMapStatsBarLayout) {
         guard !layout.items.isEmpty else { return }
 
-        NSColor.black.withAlphaComponent(layout.backgroundOpacity).setFill()
-        NSBezierPath(rect: layout.rect).fill()
+        if layout.isInside {
+            NSGraphicsContext.saveGraphicsState()
+            RouteMapMaskRenderer.shapePath(
+                shape: layout.containerShape,
+                rect: layout.containerRect,
+                cornerRadius: layout.containerCornerRadius
+            ).addClip()
+        }
 
-        let count = Double(layout.items.count)
-        let cellWidth = layout.rect.width / count
-        let valueFontSize = layout.rect.height * 0.38
-        let unitFontSize  = layout.rect.height * 0.22
-        let labelFontSize = layout.rect.height * 0.20
+        let sharedItems = layout.items.map {
+            OverlayDistanceTimelineStatsBarItemLayout(label: $0.label, value: $0.value, unit: $0.unit)
+        }
+        drawSharedStatsBar(
+            rect: layout.rect,
+            items: sharedItems,
+            valueFontName: layout.valueFontName,
+            valueFontSize: layout.valueFontSize,
+            valueFontWeight: layout.valueFontWeight,
+            valueColor: NSColor(layout.valueColor),
+            labelFontName: layout.labelFontName,
+            labelFontSize: layout.labelFontSize,
+            labelFontWeight: layout.labelFontWeight,
+            labelColor: NSColor(layout.labelColor),
+            backgroundOpacity: layout.backgroundOpacity,
+            cornerRadius: layout.cornerRadius,
+            dividerOpacity: layout.dividerOpacity,
+            itemSpacing: layout.itemSpacing,
+            stacked: layout.placement.isVertical || layout.layoutMode == .stack
+        )
+        if layout.isInside {
+            NSGraphicsContext.restoreGraphicsState()
+        }
+    }
 
-        for (index, item) in layout.items.enumerated() {
-            let cellRect = CGRect(
-                x: layout.rect.minX + Double(index) * cellWidth,
-                y: layout.rect.minY,
-                width: cellWidth,
-                height: layout.rect.height
-            )
-
-            // value + unit (centered, vertically upper half)
-            let valueY = cellRect.minY + cellRect.height * 0.12
-            let valueRect = CGRect(x: cellRect.minX, y: valueY, width: cellRect.width, height: valueFontSize * 1.30)
-            let unitRect  = CGRect(x: cellRect.minX, y: valueY + valueFontSize * 1.05, width: cellRect.width, height: unitFontSize * 1.30)
-            let labelRect = CGRect(x: cellRect.minX, y: cellRect.maxY - labelFontSize * 1.40, width: cellRect.width, height: labelFontSize * 1.30)
-
-            drawGaugePlainText(item.value, fontName: layout.fontName, fontSize: valueFontSize,
-                               color: .white, rect: valueRect, alignment: .center, weight: .semibold, monospacedDigits: false)
-            if !item.unit.isEmpty {
-                drawGaugePlainText(item.unit, fontName: layout.fontName, fontSize: unitFontSize,
-                                   color: NSColor.white.withAlphaComponent(0.70), rect: unitRect, alignment: .center, weight: .medium, monospacedDigits: false)
+    private static func drawSharedStatsBar(
+        rect: CGRect,
+        items: [OverlayDistanceTimelineStatsBarItemLayout],
+        valueFontName: String,
+        valueFontSize: Double,
+        valueFontWeight: OverlayFontWeight,
+        valueColor: NSColor,
+        labelFontName: String,
+        labelFontSize: Double,
+        labelFontWeight: OverlayFontWeight,
+        labelColor: NSColor,
+        backgroundOpacity: Double,
+        cornerRadius: Double,
+        dividerOpacity: Double,
+        itemSpacing: Double,
+        stacked: Bool
+    ) {
+        guard !items.isEmpty else { return }
+        drawRoundedRect(rect, color: NSColor.black.withAlphaComponent(backgroundOpacity), cornerRadius: cornerRadius)
+        let gap = max(itemSpacing, 0)
+        if stacked {
+            let slotHeight = (rect.height - gap * Double(max(items.count - 1, 0))) / Double(items.count)
+            for (index, item) in items.enumerated() {
+                let y = rect.minY + Double(index) * (slotHeight + gap)
+                if index > 0, dividerOpacity > 0 {
+                    drawLine(from: CGPoint(x: rect.minX + 6, y: y - gap / 2), to: CGPoint(x: rect.maxX - 6, y: y - gap / 2), color: labelColor.withAlphaComponent(dividerOpacity), lineWidth: 1)
+                }
+                drawSharedStatsBarItem(
+                    item,
+                    valueFontName: valueFontName,
+                    valueFontWeight: valueFontWeight,
+                    valueColor: valueColor,
+                    labelFontName: labelFontName,
+                    labelFontWeight: labelFontWeight,
+                    labelColor: labelColor,
+                    valueFontSize: valueFontSize,
+                    labelFontSize: labelFontSize,
+                    rect: CGRect(x: rect.minX, y: y, width: rect.width, height: slotHeight)
+                )
             }
-            drawGaugePlainText(item.label.uppercased(), fontName: layout.fontName, fontSize: labelFontSize,
-                               color: NSColor.white.withAlphaComponent(0.50), rect: labelRect, alignment: .center, weight: .medium, monospacedDigits: false)
+        } else {
+            let slotWidth = (rect.width - gap * Double(max(items.count - 1, 0))) / Double(items.count)
+            for (index, item) in items.enumerated() {
+                let x = rect.minX + Double(index) * (slotWidth + gap)
+                if index > 0, dividerOpacity > 0 {
+                    drawLine(from: CGPoint(x: x - gap / 2, y: rect.minY + 6), to: CGPoint(x: x - gap / 2, y: rect.maxY - 6), color: labelColor.withAlphaComponent(dividerOpacity), lineWidth: 1)
+                }
+                drawSharedStatsBarItem(
+                    item,
+                    valueFontName: valueFontName,
+                    valueFontWeight: valueFontWeight,
+                    valueColor: valueColor,
+                    labelFontName: labelFontName,
+                    labelFontWeight: labelFontWeight,
+                    labelColor: labelColor,
+                    valueFontSize: valueFontSize,
+                    labelFontSize: labelFontSize,
+                    rect: CGRect(x: x, y: rect.minY, width: slotWidth, height: rect.height)
+                )
+            }
+        }
+    }
 
-            // divider between cells
-            if index < layout.items.count - 1 {
-                NSColor.white.withAlphaComponent(0.12).setFill()
+    private static func drawSharedStatsBarItem(
+        _ item: OverlayDistanceTimelineStatsBarItemLayout,
+        valueFontName: String,
+        valueFontWeight: OverlayFontWeight,
+        valueColor: NSColor,
+        labelFontName: String,
+        labelFontWeight: OverlayFontWeight,
+        labelColor: NSColor,
+        valueFontSize: Double,
+        labelFontSize: Double,
+        rect: CGRect
+    ) {
+        drawGaugePlainText(item.value + (item.unit.isEmpty ? "" : " \(item.unit)"),
+                           fontName: valueFontName, fontSize: valueFontSize,
+                           color: valueColor,
+                           rect: CGRect(x: rect.minX, y: rect.minY + rect.height * 0.18, width: rect.width, height: valueFontSize * 1.25),
+                           alignment: .center, weight: nsFontWeight(valueFontWeight), monospacedDigits: true)
+        drawGaugePlainText(item.label.uppercased(),
+                           fontName: labelFontName, fontSize: labelFontSize,
+                           color: labelColor,
+                           rect: CGRect(x: rect.minX, y: rect.minY + rect.height * 0.58, width: rect.width, height: labelFontSize * 1.2),
+                           alignment: .center, weight: nsFontWeight(labelFontWeight), monospacedDigits: false)
+    }
+
+    private static func drawStatsBarVerticalStack(layout: OverlayRouteMapStatsBarLayout) {
+        let items = layout.items
+        guard !items.isEmpty else { return }
+
+        let gap = max(layout.itemSpacing, 0)
+        let rowH = (layout.rect.height - gap * Double(max(items.count - 1, 0))) / Double(items.count)
+        guard rowH > 1 else { return }
+
+        // Reuse the column renderer per vertical cell so typography stays consistent.
+        let vFS = rowH * 0.34
+        let uFS = rowH * 0.20
+        let lFS = rowH * 0.18
+
+        for (i, item) in items.enumerated() {
+            let y = layout.rect.minY + Double(i) * (rowH + gap)
+            let cell = CGRect(x: layout.rect.minX, y: y, width: layout.rect.width, height: rowH)
+            drawStatsColumn(item: item, cell: cell, fontName: layout.fontName, vFS: vFS, uFS: uFS, lFS: lFS)
+
+            if i < items.count - 1 {
+                NSColor.white.withAlphaComponent(layout.dividerOpacity).setFill()
                 NSBezierPath(rect: CGRect(
-                    x: cellRect.maxX - 0.5,
-                    y: layout.rect.minY + layout.rect.height * 0.15,
-                    width: 1,
-                    height: layout.rect.height * 0.70
+                    x: layout.rect.minX + layout.rect.width * 0.08,
+                    y: cell.maxY + gap * 0.5 - 0.5,
+                    width: layout.rect.width * 0.84,
+                    height: 1
                 )).fill()
             }
         }
+    }
+
+    // MARK: - Stats bar layout modes
+
+    private static func drawStatsBarEqualColumns(layout: OverlayRouteMapStatsBarLayout) {
+        let n = Double(layout.items.count)
+        guard n > 0 else { return }
+        let gap = max(layout.itemSpacing, 0)
+        let cellW = (layout.rect.width - gap * max(n - 1, 0)) / n
+        let H = layout.rect.height
+        for (i, item) in layout.items.enumerated() {
+            let x = layout.rect.minX + Double(i) * (cellW + gap)
+            let cell = CGRect(x: x, y: layout.rect.minY, width: cellW, height: H)
+            drawStatsColumn(item: item, cell: cell, fontName: layout.fontName,
+                            vFS: H * 0.38, uFS: H * 0.22, lFS: H * 0.20)
+            if i < layout.items.count - 1 {
+                drawStatsVerticalDivider(x: cell.maxX, barRect: layout.rect, opacity: layout.dividerOpacity)
+            }
+        }
+    }
+
+    private static func drawStatsBarEmphasis(layout: OverlayRouteMapStatsBarLayout) {
+        guard !layout.items.isEmpty else { return }
+        let gap = max(layout.itemSpacing, 0)
+        let H = layout.rect.height
+        let firstW = max((layout.rect.width - gap) * 0.38, 1)
+        let firstCell = CGRect(x: layout.rect.minX, y: layout.rect.minY, width: firstW, height: H)
+        drawStatsColumn(item: layout.items[0], cell: firstCell, fontName: layout.fontName,
+                        vFS: H * 0.46, uFS: H * 0.26, lFS: H * 0.20)
+        if layout.items.count > 1 {
+            drawStatsVerticalDivider(x: firstCell.maxX, barRect: layout.rect, opacity: layout.dividerOpacity)
+            let rest = Array(layout.items.dropFirst())
+            let restGapCount = Double(max(rest.count - 1, 0))
+            let cellW = (layout.rect.width - firstW - gap - (gap * restGapCount)) / Double(rest.count)
+            for (i, item) in rest.enumerated() {
+                let x = firstCell.maxX + gap + Double(i) * (cellW + gap)
+                let cell = CGRect(x: x, y: layout.rect.minY, width: cellW, height: H)
+                drawStatsColumn(item: item, cell: cell, fontName: layout.fontName,
+                                vFS: H * 0.33, uFS: H * 0.19, lFS: H * 0.17)
+                if i < rest.count - 1 {
+                    drawStatsVerticalDivider(x: cell.maxX, barRect: layout.rect, opacity: layout.dividerOpacity)
+                }
+            }
+        }
+    }
+
+    private static func drawStatsBarGrid2x2(layout: OverlayRouteMapStatsBarLayout) {
+        let items = layout.items
+        guard !items.isEmpty else { return }
+        if items.count < 3 { drawStatsBarEqualColumns(layout: layout); return }
+        let H = layout.rect.height
+        let rowH = H * 0.5
+        let col0W = layout.rect.width * 0.5
+        let col1W = layout.rect.width - col0W
+        let vFS = rowH * 0.40, uFS = rowH * 0.22, lFS = rowH * 0.18
+        // Row 0
+        let r0y = layout.rect.minY
+        let cell00 = CGRect(x: layout.rect.minX, y: r0y, width: col0W, height: rowH)
+        let cell01 = CGRect(x: layout.rect.minX + col0W, y: r0y, width: col1W, height: rowH)
+        drawStatsColumn(item: items[0], cell: cell00, fontName: layout.fontName, vFS: vFS, uFS: uFS, lFS: lFS)
+        drawStatsVerticalDivider(x: cell00.maxX, barRect: layout.rect, opacity: layout.dividerOpacity)
+        drawStatsColumn(item: items[1], cell: cell01, fontName: layout.fontName, vFS: vFS, uFS: uFS, lFS: lFS)
+        // Horizontal divider
+        NSColor.white.withAlphaComponent(layout.dividerOpacity).setFill()
+        NSBezierPath(rect: CGRect(x: layout.rect.minX + layout.rect.width * 0.05, y: r0y + rowH - 0.5,
+                                   width: layout.rect.width * 0.90, height: 1)).fill()
+        // Row 1
+        let r1y = r0y + rowH
+        if items.count == 3 {
+            drawStatsColumn(item: items[2], cell: CGRect(x: layout.rect.minX, y: r1y, width: layout.rect.width, height: rowH),
+                            fontName: layout.fontName, vFS: vFS, uFS: uFS, lFS: lFS)
+        } else {
+            let cell10 = CGRect(x: layout.rect.minX, y: r1y, width: col0W, height: rowH)
+            let cell11 = CGRect(x: layout.rect.minX + col0W, y: r1y, width: col1W, height: rowH)
+            drawStatsColumn(item: items[2], cell: cell10, fontName: layout.fontName, vFS: vFS, uFS: uFS, lFS: lFS)
+            drawStatsVerticalDivider(x: cell10.maxX, barRect: layout.rect, opacity: layout.dividerOpacity)
+            drawStatsColumn(item: items[3], cell: cell11, fontName: layout.fontName, vFS: vFS, uFS: uFS, lFS: lFS)
+        }
+    }
+
+    private static func drawStatsBarStack(layout: OverlayRouteMapStatsBarLayout) {
+        let items = layout.items
+        guard !items.isEmpty else { return }
+        let gap = max(layout.itemSpacing, 0)
+        let rowH = (layout.rect.height - gap * Double(max(items.count - 1, 0))) / Double(items.count)
+        let H = layout.rect.height
+        let vFS = min(rowH * 0.42, H * 0.28)
+        let lFS = min(rowH * 0.28, H * 0.18)
+        let labelW = layout.rect.width * 0.32
+        let valueW = layout.rect.width - labelW
+        for (i, item) in items.enumerated() {
+            let rowY = layout.rect.minY + Double(i) * (rowH + gap)
+            let rowRect = CGRect(x: layout.rect.minX, y: rowY, width: layout.rect.width, height: rowH)
+            let labelRect = CGRect(x: rowRect.minX + 6, y: rowRect.minY, width: labelW - 6, height: rowH)
+            let inlineText = item.unit.isEmpty ? item.value : "\(item.value) \(item.unit)"
+            let valueRect = CGRect(x: rowRect.minX + labelW, y: rowRect.minY, width: valueW - 6, height: rowH)
+            drawGaugePlainText(item.label.uppercased(), fontName: layout.fontName, fontSize: lFS,
+                               color: NSColor.white.withAlphaComponent(0.50), rect: labelRect,
+                               alignment: .left, weight: .medium, monospacedDigits: false)
+            drawGaugePlainText(inlineText, fontName: layout.fontName, fontSize: vFS,
+                               color: .white, rect: valueRect, alignment: .right, weight: .semibold, monospacedDigits: false)
+            if i < items.count - 1 {
+                NSColor.white.withAlphaComponent(layout.dividerOpacity).setFill()
+                NSBezierPath(rect: CGRect(x: layout.rect.minX + layout.rect.width * 0.05, y: rowRect.maxY - 0.5,
+                                           width: layout.rect.width * 0.90, height: 1)).fill()
+            }
+        }
+    }
+
+    private static func drawStatsBarCompact(layout: OverlayRouteMapStatsBarLayout) {
+        let n = Double(layout.items.count)
+        guard n > 0 else { return }
+        let gap = max(layout.itemSpacing, 0)
+        let cellW = (layout.rect.width - gap * max(n - 1, 0)) / n
+        let H = layout.rect.height
+        let vFS = H * 0.34, uFS = H * 0.20, lFS = H * 0.16
+        for (i, item) in layout.items.enumerated() {
+            let x = layout.rect.minX + Double(i) * (cellW + gap)
+            let cell = CGRect(x: x, y: layout.rect.minY, width: cellW, height: H)
+            let midY = cell.minY + cell.height * 0.14
+            let valRect  = CGRect(x: cell.minX, y: midY, width: cellW * 0.58, height: vFS * 1.3)
+            let unitRect = CGRect(x: cell.minX + cellW * 0.58, y: midY + vFS * 0.18, width: cellW * 0.36, height: vFS * 1.3)
+            let lblRect  = CGRect(x: cell.minX, y: cell.maxY - lFS * 1.4, width: cellW, height: lFS * 1.3)
+            drawGaugePlainText(item.value, fontName: layout.fontName, fontSize: vFS,
+                               color: .white, rect: valRect, alignment: .right, weight: .semibold, monospacedDigits: false)
+            if !item.unit.isEmpty {
+                drawGaugePlainText(item.unit, fontName: layout.fontName, fontSize: uFS,
+                                   color: NSColor.white.withAlphaComponent(0.65), rect: unitRect,
+                                   alignment: .left, weight: .medium, monospacedDigits: false)
+            }
+            drawGaugePlainText(item.label.uppercased(), fontName: layout.fontName, fontSize: lFS,
+                               color: NSColor.white.withAlphaComponent(0.45), rect: lblRect,
+                               alignment: .center, weight: .medium, monospacedDigits: false)
+            if i < layout.items.count - 1 {
+                drawStatsVerticalDivider(x: cell.maxX, barRect: layout.rect, opacity: layout.dividerOpacity)
+            }
+        }
+    }
+
+    // MARK: - Stats bar drawing helpers
+
+    private static func drawStatsColumn(
+        item: OverlayRouteMapStatsBarItemLayout,
+        cell: CGRect, fontName: String,
+        vFS: Double, uFS: Double, lFS: Double
+    ) {
+        let valueY = cell.minY + cell.height * 0.12
+        let valueRect = CGRect(x: cell.minX, y: valueY, width: cell.width, height: vFS * 1.30)
+        let unitRect  = CGRect(x: cell.minX, y: valueY + vFS * 1.05, width: cell.width, height: uFS * 1.30)
+        let labelRect = CGRect(x: cell.minX, y: cell.maxY - lFS * 1.40, width: cell.width, height: lFS * 1.30)
+        drawGaugePlainText(item.value, fontName: fontName, fontSize: vFS,
+                           color: .white, rect: valueRect, alignment: .center, weight: .semibold, monospacedDigits: false)
+        if !item.unit.isEmpty {
+            drawGaugePlainText(item.unit, fontName: fontName, fontSize: uFS,
+                               color: NSColor.white.withAlphaComponent(0.70), rect: unitRect,
+                               alignment: .center, weight: .medium, monospacedDigits: false)
+        }
+        drawGaugePlainText(item.label.uppercased(), fontName: fontName, fontSize: lFS,
+                           color: NSColor.white.withAlphaComponent(0.50), rect: labelRect,
+                           alignment: .center, weight: .medium, monospacedDigits: false)
+    }
+
+    private static func drawStatsVerticalDivider(x: Double, barRect: CGRect, opacity: Double) {
+        NSColor.white.withAlphaComponent(opacity).setFill()
+        NSBezierPath(rect: CGRect(
+            x: x - 0.5, y: barRect.minY + barRect.height * 0.15,
+            width: 1, height: barRect.height * 0.70
+        )).fill()
     }
 
     private static func drawRouteMapContent(
@@ -1966,6 +2443,15 @@ struct OverlayFrameRenderer {
         path.stroke()
     }
 
+    private static func drawLine(from start: CGPoint, to end: CGPoint, color: NSColor, lineWidth: Double) {
+        color.setStroke()
+        let path = NSBezierPath()
+        path.move(to: start)
+        path.line(to: end)
+        path.lineWidth = lineWidth
+        path.stroke()
+    }
+
     private static func drawCapsule(_ rect: CGRect, color: NSColor) {
         color.setFill()
         NSBezierPath(roundedRect: rect, xRadius: rect.height / 2, yRadius: rect.height / 2).fill()
@@ -2002,6 +2488,40 @@ struct OverlayFrameRenderer {
         path.lineJoinStyle = .round
         path.lineCapStyle = .round
         path.stroke()
+    }
+
+    private static func drawElevationArea(samples: [Double], in rect: CGRect, color: NSColor) {
+        let path = NSBezierPath()
+        guard samples.count > 1 else { return }
+
+        let minValue = samples.min() ?? 0
+        let maxValue = samples.max() ?? minValue
+        let range = max(maxValue - minValue, 1)
+
+        path.move(to: CGPoint(x: rect.minX, y: rect.maxY))
+        for index in samples.indices {
+            let x = rect.minX + rect.width * Double(index) / Double(max(samples.count - 1, 1))
+            let normalized = (samples[index] - minValue) / range
+            let y = rect.maxY - rect.height * normalized
+            path.line(to: CGPoint(x: x, y: y))
+        }
+        path.line(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.close()
+        color.setFill()
+        path.fill()
+    }
+
+    private static func elevationMarkerPoint(samples: [Double], progress: Double, in rect: CGRect) -> CGPoint {
+        guard !samples.isEmpty else {
+            return CGPoint(x: rect.minX + rect.width * progress, y: rect.midY)
+        }
+        let index = min(max(Int((Double(samples.count - 1) * progress).rounded()), 0), samples.count - 1)
+        let minValue = samples.min() ?? 0
+        let maxValue = samples.max() ?? minValue
+        let range = max(maxValue - minValue, 1)
+        let x = rect.minX + rect.width * Double(index) / Double(max(samples.count - 1, 1))
+        let y = rect.maxY - rect.height * ((samples[index] - minValue) / range)
+        return CGPoint(x: x, y: y)
     }
 
     private static func drawGaugeDividers(

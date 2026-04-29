@@ -12,10 +12,10 @@ struct LapListOverlayDetailView: View {
                 header(element: element)
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
-                        sectionView(.layout, element: element) { layoutSection(element) }
+                        layoutInspectorSection(element)
+                        sectionView(.appearance, element: element) { appearanceSection(element) }
                         sectionView(.progress, element: element) { progressSection(element) }
                         sectionView(.columns, element: element) { columnsSection(element) }
-                        sectionView(.position, element: element) { positionSection(element) }
                     }
                 }
                 Divider().overlay(NumericTokens.borderSubtle)
@@ -29,23 +29,23 @@ struct LapListOverlayDetailView: View {
     // MARK: - Section model
 
     private enum LapListSection: String, CaseIterable {
-        case layout, progress, columns, position
+        case layout, appearance, progress, columns
 
         var title: String {
             switch self {
             case .layout: "Layout"
+            case .appearance: "List"
             case .progress: "Progress Bar"
             case .columns: "Columns"
-            case .position: "Position"
             }
         }
 
         var systemImage: String {
             switch self {
-            case .layout: "square.grid.2x2"
+            case .layout: "scope"
+            case .appearance: "square.grid.2x2"
             case .progress: "chart.bar.fill"
             case .columns: "list.bullet"
-            case .position: "move.3d"
             }
         }
     }
@@ -154,10 +154,10 @@ struct LapListOverlayDetailView: View {
         }
     }
 
-    // MARK: - Layout section
+    // MARK: - Appearance section
 
     @ViewBuilder
-    private func layoutSection(_ element: OverlayElement) -> some View {
+    private func appearanceSection(_ element: OverlayElement) -> some View {
         let s = element.style.lapList
         InspectorDenseSliderRow(
             label: "Visible Rows",
@@ -304,11 +304,43 @@ struct LapListOverlayDetailView: View {
         }
     }
 
-    // MARK: - Position section
+    // MARK: - Shared layout section
 
     @ViewBuilder
-    private func positionSection(_ element: OverlayElement) -> some View {
-        OverlayLayoutRows(elementID: elementID)
+    private func layoutInspectorSection(_ element: OverlayElement) -> some View {
+        let s = element.style.lapList
+        CollapsibleLayoutInspectorSection(
+            isExpanded: Binding(
+                get: { openSections.contains(.layout) },
+                set: { newValue in
+                    if newValue { openSections.insert(.layout) }
+                    else { openSections.remove(.layout) }
+                }
+            )
+        ) {
+            OverlayLayoutRows(
+                elementID: elementID,
+                widthBinding: Binding(
+                    get: { s.rowHeight * 6.5 },
+                    set: { v in project.mutateLapListStyleContinuous(elementID) { $0.rowHeight = min(max(v / 6.5, 20), 72) } }
+                ),
+                widthRange: 130...468,
+                heightBinding: Binding(
+                    get: { Double(s.visibleRowCount) * (s.rowHeight + s.rowSpacing) },
+                    set: { v in
+                        project.mutateLapListStyle(elementID) {
+                            let rowPlusSpacing = max($0.rowHeight + $0.rowSpacing, 1)
+                            $0.visibleRowCount = min(max(Int((v / rowPlusSpacing).rounded()), 1), 10)
+                        }
+                    }
+                ),
+                heightRange: 20...840,
+                opacityBinding: Binding(
+                    get: { s.backgroundOpacity },
+                    set: { v in project.mutateLapListStyleContinuous(elementID) { $0.backgroundOpacity = v } }
+                )
+            )
+        }
     }
 
     // MARK: - Footer

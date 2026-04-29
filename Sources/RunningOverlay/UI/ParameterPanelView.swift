@@ -14,6 +14,8 @@ struct ParameterPanelView: View {
                         NumericOverlayDetailView(elementID: elementID)
                     } else if element.type == .distanceTimeline {
                         DistanceTimelineOverlayDetailView(elementID: elementID)
+                    } else if element.type == .elevationChart {
+                        ElevationChartOverlayDetailView(elementID: elementID)
                     } else if element.type == .runningGauge {
                         RunningGaugeOverlayDetailView(elementID: elementID)
                     } else if element.type == .routeMap {
@@ -149,12 +151,12 @@ private struct ClipDetailView: View {
                     .overlay(InspectorTheme.borderSubtle)
 
                 ScrollView {
-                    VStack(spacing: InspectorTheme.sectionGap) {
+                    VStack(spacing: 0) {
                         InspectorDetailSection(title: "Clip Timing", systemImage: "video.badge.waveform") {
                             InspectorDetailRow(label: "Clip") {
                                 Text(clip.title)
-                                    .font(InspectorTheme.bodyStrongFont)
-                                    .foregroundStyle(InspectorTheme.textPrimary)
+                                    .font(NumericTokens.bodyStrongFont)
+                                    .foregroundStyle(NumericTokens.textPrimary)
                                     .lineLimit(1)
                             }
 
@@ -181,26 +183,25 @@ private struct ClipDetailView: View {
                                 suffix: "s",
                                 reset: resetOffset
                             )
+
+                            HStack {
+                                Button {
+                                    project.applyOffsetToCurrentLayer(for: clipID)
+                                } label: {
+                                    Label("Apply to all clips in this layer", systemImage: "square.stack.3d.up")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(InspectorPrimaryButtonStyle())
+                            }
+                            .padding(.horizontal, NumericTokens.panelPaddingX)
+                            .padding(.vertical, NumericTokens.space2)
+                            .overlay(alignment: .bottom) {
+                                Divider()
+                                    .overlay(NumericTokens.borderSubtle)
+                            }
                         }
                     }
-                    .padding(.vertical, InspectorTheme.panelPaddingY)
                 }
-
-                Divider()
-                    .overlay(InspectorTheme.borderSubtle)
-
-                HStack(spacing: InspectorTheme.space3) {
-                    Button {
-                        project.applyOffsetToCurrentLayer(for: clipID)
-                    } label: {
-                        Label("Apply to all clips in this layer", systemImage: "square.stack.3d.up")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(InspectorPrimaryButtonStyle())
-                }
-                .padding(.horizontal, InspectorTheme.panelPaddingX)
-                .padding(.vertical, InspectorTheme.space3)
-                .background(InspectorTheme.panelBackgroundElevated)
             } else {
                 InspectorHeader(title: "Inspector", status: "Missing", trailingSystemImage: "slider.horizontal.3")
                 Spacer()
@@ -249,49 +250,68 @@ private struct ClipDetailHeader: View {
 
     var body: some View {
         HStack(spacing: InspectorTheme.space3) {
-            InspectorIconButton(systemImage: "chevron.left", help: "Back") {
+            Button {
                 project.clearSelection()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
+                    .background(NumericTokens.controlBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
+                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
+                    .foregroundStyle(NumericTokens.textPrimary)
             }
+            .buttonStyle(.plain)
+            .help("Back")
 
             ZStack {
-                RoundedRectangle(cornerRadius: InspectorTheme.controlRadius)
-                    .fill(InspectorTheme.controlBackground)
+                RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
+                    .fill(NumericTokens.controlBackground)
                 Image(systemName: "video")
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(InspectorTheme.textPrimary)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(NumericTokens.textPrimary)
             }
-            .frame(width: 46, height: 46)
-            .overlay(InspectorRoundedBorder())
+            .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
+            .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: InspectorTheme.space2) {
-                    Text(clip.title)
-                        .font(InspectorTheme.titleFont)
-                        .lineLimit(1)
-                    Text("Clip")
-                        .font(InspectorTheme.captionFont)
-                        .foregroundStyle(InspectorTheme.textSecondary)
-                        .padding(.horizontal, InspectorTheme.space2)
-                        .padding(.vertical, 3)
-                        .background(InspectorTheme.controlBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 5))
-                        .overlay(InspectorRoundedBorder(cornerRadius: 5))
-                }
-                Text("\(clip.cameraGroupID)  |  \(String(format: "%.2f s", clip.effectiveStartTime))")
-                    .font(InspectorTheme.numericFont)
-                    .foregroundStyle(InspectorTheme.textSecondary)
+            HStack(spacing: 8) {
+                Text(clip.title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(NumericTokens.textPrimary)
                     .lineLimit(1)
+                Text("Clip")
+                    .font(NumericTokens.captionFont)
+                    .foregroundStyle(NumericTokens.textSecondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(NumericTokens.controlBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(NumericTokens.borderSubtle, lineWidth: 1))
             }
 
             Spacer()
 
-            InspectorIconButton(systemImage: "trash", help: "Delete Clip", role: .destructive) {
+            Button(role: .destructive) {
                 project.deleteSelectedItem()
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
+                    .background(NumericTokens.controlBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
+                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
+                    .foregroundStyle(NumericTokens.dangerRed)
             }
+            .buttonStyle(.plain)
+            .help("Delete Clip")
         }
-        .padding(.horizontal, InspectorTheme.panelPaddingX)
-        .padding(.vertical, InspectorTheme.space3)
-        .background(InspectorTheme.panelBackgroundElevated)
+        .padding(.horizontal, NumericTokens.panelPaddingX)
+        .frame(height: EditorTheme.panelHeaderHeight)
+        .background(NumericTokens.panelBackgroundElevated)
+        .overlay(alignment: .bottom) {
+            Divider()
+                .overlay(NumericTokens.borderSubtle)
+        }
     }
 }
 
@@ -310,19 +330,25 @@ private struct InspectorDetailSection<Content: View>: View {
         VStack(spacing: 0) {
             HStack(spacing: InspectorTheme.space2) {
                 Image(systemName: systemImage)
-                    .foregroundStyle(InspectorTheme.textSecondary)
-                    .frame(width: 22, alignment: .leading)
+                    .foregroundStyle(NumericTokens.textSecondary)
+                    .frame(width: 16, alignment: .center)
                 Text(title)
-                    .font(InspectorTheme.sectionTitleFont)
-                    .foregroundStyle(InspectorTheme.textPrimary)
+                    .font(NumericTokens.sectionTitleFont)
+                    .foregroundStyle(NumericTokens.textPrimary)
                 Spacer()
             }
-            .padding(.horizontal, InspectorTheme.panelPaddingX)
-            .frame(height: 58)
-            .background(InspectorTheme.panelBackgroundElevated)
+            .padding(.horizontal, NumericTokens.panelPaddingX)
+            .frame(height: NumericTokens.sectionHeaderHeight)
+            .background(NumericTokens.panelBackgroundElevated)
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(NumericTokens.borderSubtle)
+                    .frame(height: 1)
+            }
             .overlay(alignment: .bottom) {
-                Divider()
-                    .overlay(InspectorTheme.borderSubtle)
+                Rectangle()
+                    .fill(NumericTokens.borderSubtle)
+                    .frame(height: 1)
             }
 
             VStack(spacing: 0) {
@@ -344,19 +370,20 @@ private struct InspectorDetailRow<Content: View>: View {
     var body: some View {
         HStack(spacing: InspectorTheme.space3) {
             Text(label)
-                .font(InspectorTheme.bodyFont)
-                .foregroundStyle(InspectorTheme.textSecondary)
-                .frame(width: 96, alignment: .leading)
+                .font(NumericTokens.bodyFont)
+                .foregroundStyle(NumericTokens.textSecondary)
+                .frame(width: NumericTokens.labelColumnWidth, alignment: .leading)
 
             content
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
-        .padding(.horizontal, InspectorTheme.panelPaddingX)
-        .frame(minHeight: 68)
-        .background(InspectorTheme.panelBackground)
+        .padding(.horizontal, NumericTokens.panelPaddingX)
+        .frame(height: NumericTokens.rowHeight)
+        .background(NumericTokens.panelBackground)
         .overlay(alignment: .bottom) {
-            Divider()
-                .overlay(InspectorTheme.borderSubtle)
+            Rectangle()
+                .fill(NumericTokens.borderSubtle)
+                .frame(height: 1)
         }
     }
 }
@@ -374,8 +401,8 @@ private struct InspectorDetailNumberRow: View {
             HStack(spacing: InspectorTheme.space2) {
                 TextField(label, value: $value, format: .number.precision(.fractionLength(precision)))
                     .textFieldStyle(.plain)
-                    .font(InspectorTheme.numericFont)
-                    .foregroundStyle(InspectorTheme.textPrimary)
+                    .font(NumericTokens.numericFont)
+                    .foregroundStyle(NumericTokens.textPrimary)
                     .monospacedDigit()
                     .multilineTextAlignment(.trailing)
                     .onSubmit {
@@ -385,15 +412,15 @@ private struct InspectorDetailNumberRow: View {
 
                 if let suffix {
                     Text(suffix)
-                        .font(InspectorTheme.bodyStrongFont)
-                        .foregroundStyle(InspectorTheme.textMuted)
+                        .font(NumericTokens.bodyStrongFont)
+                        .foregroundStyle(NumericTokens.textMuted)
                 }
             }
-            .padding(.horizontal, InspectorTheme.space3)
-            .frame(height: InspectorTheme.controlHeight)
-            .background(InspectorTheme.controlBackground)
-            .clipShape(RoundedRectangle(cornerRadius: InspectorTheme.controlRadius))
-            .overlay(InspectorRoundedBorder())
+            .padding(.horizontal, NumericTokens.space2)
+            .frame(height: NumericTokens.controlHeight)
+            .background(NumericTokens.controlBackground)
+            .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
+            .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
         }
         .onTapGesture(count: 2) {
             reset?()
@@ -484,7 +511,7 @@ private struct OverlayElementRow: View {
     var body: some View {
         HStack(spacing: InspectorTheme.space2) {
             Button {
-                project.selectOverlay(element.id)
+                project.openOverlayDetailFromList(element.id)
             } label: {
                 rowBody
             }
@@ -494,8 +521,20 @@ private struct OverlayElementRow: View {
                 .frame(height: 24)
                 .overlay(InspectorTheme.borderSubtle)
 
-            InspectorIconButton(systemImage: "eye", help: "Visibility unavailable", isEnabled: false, compact: true) {}
-            InspectorIconButton(systemImage: "lock", help: "Lock unavailable", isEnabled: false, compact: true) {}
+            InspectorIconButton(
+                systemImage: element.isVisible ? "eye" : "eye.slash",
+                help: element.isVisible ? "Hide Overlay" : "Show Overlay",
+                compact: true
+            ) {
+                project.setOverlayVisibility(element.id, isVisible: !element.isVisible)
+            }
+            InspectorIconButton(
+                systemImage: element.isLocked ? "lock.fill" : "lock.open",
+                help: element.isLocked ? "Unlock Overlay" : "Lock Overlay",
+                compact: true
+            ) {
+                project.setOverlayLocked(element.id, isLocked: !element.isLocked)
+            }
             InspectorIconButton(systemImage: "trash", help: "Delete", role: .destructive, compact: true) {
                 project.deleteOverlay(element.id)
             }
@@ -508,6 +547,20 @@ private struct OverlayElementRow: View {
         .background(InspectorTheme.controlBackground)
         .clipShape(RoundedRectangle(cornerRadius: InspectorTheme.controlRadius))
         .overlay(InspectorRoundedBorder())
+        .opacity(element.isVisible ? 1 : 0.72)
+        .contextMenu {
+            Button {
+                project.copyOverlayProperties(from: element.id)
+            } label: {
+                Label("Copy Properties", systemImage: "doc.on.doc")
+            }
+            Button {
+                project.pasteOverlayProperties(to: element.id)
+            } label: {
+                Label("Paste Properties", systemImage: "doc.on.clipboard")
+            }
+            .disabled(!project.canPasteOverlayProperties(to: element.id))
+        }
     }
 
     private var rowBody: some View {

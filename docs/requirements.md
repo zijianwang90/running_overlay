@@ -1,6 +1,6 @@
 # Running Overlay Product Requirements
 
-Last updated: 2026-04-26 (Running Gauge full module redesign — 7 layouts × 7 style presets, per-region metric binding)
+Last updated: 2026-04-28 (Preview corner-handle scaling now directly updates overlay `scale`)
 
 ## 1. Product Summary
 
@@ -201,7 +201,7 @@ Current implementation status:
 
 - Selected clips expose track/camera name editing in the Inspector.
 - Selected clips expose a start-time input in the Inspector. Duration editing is deferred until clip trim-length adjustment is needed.
-- Selected clips should use the same dense detail Inspector treatment as overlay detail views: header with back/action controls, section rows, and sticky action footer.
+- Selected clips should use the same dense detail Inspector treatment as overlay detail views: compact header with back/action controls and dense section rows.
 
 Future requirements:
 
@@ -237,7 +237,7 @@ Current implementation status:
 - Selected clips show title, camera/source group, start-time input, and offset input.
 - Start and offset inputs edit seconds to two decimal places.
 - Double-clicking the Start or Offset label resets the value to `0.00 s`.
-- Selected clip Inspector includes a destructive delete action in the detail header and a layer-wide offset apply action in the footer.
+- Selected clip Inspector includes a destructive delete action in the detail header and a layer-wide offset apply action directly below the Offset row.
 - The layer-wide apply action copies the selected clip's offset to all clips in the same timeline layer.
 - Dragging a clip on the timeline changes its effective start time while preserving its current offset value.
 
@@ -295,11 +295,16 @@ Current implementation status:
 - This includes segmented controls in the outer Inspector and dense detail inspectors (Numeric Overlay, Running Gauge, and Route Map).
 - Clicking an add tile creates the overlay and opens its detail editor.
 - Selected overlay elements expose current value, normalized position, scale, preset, font family, font weight, font size, foreground color, background opacity, shadow opacity, and shadow radius controls in the Inspector detail state.
-- Numeric overlays (heart rate, pace, calories, elapsed time, real time, distance, elevation, cadence, power) use the dense `NumericOverlayDetailView` Inspector with Content, Layout, Typography, Color, Background, and Effects sections matching `docs/design/overlays/numeric/numeric-overlay-ui.md`.
-- Numeric overlay style supports per-overlay unit option, label/unit visibility toggles, custom label text, rotation, text alignment, accent color, an explicit background enabled flag with background color/radius/padding X/Y, and an explicit shadow enabled flag with shadow offset X/Y. New fields decode with safe defaults so existing projects and templates remain compatible.
-- Visibility, lock, generic opacity, and metric reassignment controls are deferred until backed by persistent project model fields.
+- Numeric overlays (heart rate, pace, calories, elapsed time, real time, distance, elevation, cadence, power, and advanced running metrics) use the dense `NumericOverlayDetailView` Inspector with Content, Layout, Typography (value), Label, Unit, Color, Background, and Effects sections matching `docs/design/overlays/numeric/numeric-overlay-ui.md`. Shared Layout uses Position/Scale/Width/Height/Opacity (no Rotation).
+- Numeric overlay defaults now standardize to `Minimal Clean` for all numeric types.
+- Numeric overlay style supports per-overlay unit option, label/unit visibility toggles, custom label text, independent label/unit positions (`top/bottom/left/right`), independent label/unit typography (`font`, `size`, `weight`), rotation, accent color, background enable/color/radius/padding plus fade-out + gaussian blur controls, and shadow enable/offset controls. New fields decode with safe defaults so existing projects and templates remain compatible.
+- Added-overlay rows now support per-element visibility and lock toggles with persistent model fields.
+- Visibility off hides the element in both Preview and exported overlay frames.
+- Lock on keeps the element visible but prevents Preview-canvas selection and dragging.
+- Added-overlay rows and Preview overlays provide context-menu actions for copying and pasting overlay properties.
+- Property paste is limited to the same overlay category (for example, numeric -> numeric only).
 - Selected text overlays expose a built-in style picker as the first Inspector control, with Minimal, Pill Badge, Metric Card, Big Number, Sport Watch, Split Label, Inline Ghost, Accent Bar, Sport Neon, and Serif Editorial presets.
-- Numeric overlay presets carry recommended typography tokens (font family, weight, size, alignment, label/unit visibility, background, accent color); selecting a preset snaps those fields so the overlay matches the design intent without further tuning.
+- Numeric overlay presets carry recommended typography tokens (value font family/weight/size, label/unit visibility, label/unit defaults, background, accent color); selecting a preset snaps those fields so the overlay matches the design intent without further tuning.
 - Selected Running Gauge overlays use the dense `RunningGaugeOverlayDetailView` Inspector with eleven sections that share the exact tokens, row heights, controls, and section disclosure behavior of `NumericOverlayDetailView`: Style Preset, Position & Scale, Data Layout, Region Settings, Dial, Ring, Ticks, Dividers, Typography, Color, Effects.
   - Style Preset offers Minimal Sport, High Contrast Sport, Road Run, Trail Adventure, Future Tech, Retro Digital, and Premium Glass; selecting a preset reseeds the gauge sub-style without touching the user's data layout / region bindings.
   - Data Layout offers seven layout presets (Top / Bottom, Top / Middle / Bottom, Three Zones, Top + Two Middle + Bottom, Top + Three Middle + Bottom, Four Zones, Five Zones); choosing a layout regenerates the recommended per-region metric defaults.
@@ -322,6 +327,7 @@ Current implementation status:
 - Preview overlay placement and drag behavior are based on the actual fitted project canvas inside the preview panel, avoiding offset drift when split panes resize the preview area.
 - A small Preview header switch can show or hide preview safety guides, including 90%/80% safe frames and center crosshairs.
 - Selected overlays show a subtle blue selection border and small corner handles.
+- Dragging selected-overlay corner handles scales the overlay and writes directly to the element `scale` model value.
 
 Future requirements:
 
@@ -348,6 +354,8 @@ Template contents:
   - Element type.
   - Normalized position.
   - Scale.
+  - Visibility.
+  - Lock state.
   - Built-in text preset when present.
   - Built-in gauge preset when present.
   - Font family, size, weight.
@@ -427,6 +435,9 @@ Current implementation status:
 - Preview and export render route path, start marker, finish marker, and current-position marker.
 - MapKit is the first provider abstraction and the preview attempts `MKMapSnapshotter` for the MapKit preset.
 - When MapKit snapshot loading is unavailable, the MapKit preset falls back to a local dark grid background.
+- Route Map and Distance Timeline share one Stats Bar inspector component and one full control set; Enabled is in the section header, and all row controls are aligned between modules.
+- Route Map Stats Bar inside mode reserves map content padding for the bar lane (route geometry does not render underneath the bar).
+- Route Map Stats Bar on left/right edges renders as top-to-bottom stack, and `Item Gap` is applied as vertical spacing.
 
 Remaining:
 

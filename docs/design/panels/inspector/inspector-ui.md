@@ -215,7 +215,11 @@ Row behavior:
 - Clicking the row body opens the Overlay Detail screen for that element.
 - Clicking the same overlay in Preview must open the same detail screen.
 - Delete button removes the overlay and does not open detail.
-- Visibility and lock should be separate hit targets. If the project model does not support these yet, render disabled or omit until model support exists.
+- Visibility and lock are separate hit targets with immediate model updates.
+- Visibility off hides the overlay from both Preview and export output.
+- Lock on prevents canvas selection and drag edits from Preview; list actions (unlock/delete/open detail) remain available.
+- Right-clicking an Added Elements row opens a context menu with `Copy Properties` and `Paste Properties`.
+- Paste applies the copied overlay configuration to the target row only when both overlays are in the same paste category (numeric overlays can paste to numeric overlays only).
 - No sorting behavior. Do not include drag handles.
 
 Empty state:
@@ -359,6 +363,33 @@ Behavior:
 - Numeric fields should commit on submit and preserve normalized coordinate precision.
 - The panel should scroll when content exceeds height; header and optional footer may stay fixed.
 
+## Shared Stats Bar Inspector Component
+
+`Stats Bar` is a single shared inspector module and must not diverge by overlay type.
+
+- Use `CollapsibleStatsBarInspectorSection` for section chrome: title, icon, expand/collapse, and Enabled toggle in the header (toggle sits left of chevron).
+- Use `StatsBarInspectorRows` for the section body rows.
+- Current canonical icon is `tablecells` for every overlay.
+- `Enabled` must not appear as a separate first row in expanded content.
+- Keep one shared row set across overlays: `Placement`, `Inside`, `Layout`, `Size`, `Width`, `Offset`, `Item Gap`, `Background`, `Dividers`, `Radius`, `Value Font/Size/Weight/Color`, `Label Font/Size/Weight/Color`, and `Slot 1...4`.
+- Placement-specific rendering behavior must also stay consistent: left/right placements render vertical stack flow, and `Item Gap` affects vertical spacing in that flow.
+- Stats Bar typography is self-contained: Value and Label colors come from Stats Bar config, not outer overlay accent/foreground fallbacks.
+- Future overlays that need stats-bar controls should reuse this same component pair directly.
+
+## Shared Layout Inspector Component
+
+`Layout` is also a single shared inspector module and must be reused by every overlay detail panel.
+
+- Use `CollapsibleLayoutInspectorSection` for section chrome: title, icon (`scope`), and disclosure behavior.
+- Use `OverlayLayoutRows` for the body rows.
+- Canonical row set is fixed: `Position`, `Scale`, `Width`, `Height`, `Opacity`.
+- `Rotation` is not part of Layout and must not be shown in this section.
+- For square overlays such as Running Gauge, `Width` and `Height` can be hidden.
+- Section ordering rule:
+  - if the detail panel starts with a `Preset` section, `Layout` must be the second section;
+  - otherwise, `Layout` must be the first section.
+- New overlay detail panels must adopt this component pair and ordering rule directly instead of creating local layout section wrappers.
+
 ## SwiftUI Implementation Guidance
 
 The current entry points are:
@@ -396,6 +427,6 @@ Keep component APIs model-oriented. Avoid view-only state that diverges from `Pr
 ## Open Product Questions
 
 - Should adding an overlay immediately open detail? Preferred: yes.
-- Should overlay visibility and lock be persisted in `OverlayElement`? Current model does not show those fields.
+- Should lock also disable inspector field edits, or remain a canvas-interaction lock only?
 - Should opacity be a general overlay property or only part of style background/shadow?
 - Should animation be in the project schema for v1, or deferred?

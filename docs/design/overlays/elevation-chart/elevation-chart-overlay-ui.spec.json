@@ -1,0 +1,482 @@
+{
+  "name": "Elevation Chart Overlay UI",
+  "updated": "2026-04-29",
+  "references": {
+    "designDoc": "./elevation-chart-overlay-ui.md",
+    "relatedRouteMapStatusBarSpec": "../route-map/route-map-overlay-ui.spec.json",
+    "relatedNumericSpec": "../numeric/numeric-overlay-ui.spec.json"
+  },
+  "appliesToOverlayTypes": ["elevationChart"],
+  "excludedOverlayTypes": [
+    "routeMap",
+    "distanceTimeline",
+    "runningGauge",
+    "heartRate",
+    "pace",
+    "calories",
+    "elapsedTime",
+    "realTime",
+    "distance",
+    "cadence",
+    "power"
+  ],
+  "intent": {
+    "template": "dense Inspector detail panel for a dedicated elevation profile chart overlay",
+    "mainGoal": "show an elevation profile as a polished video overlay with optional reusable Status Bar",
+    "stylePolicy": "avoid redundant color-only presets; use configurable gradient colors instead",
+    "avoid": [
+      "bar chart style",
+      "dot or point chart style",
+      "step chart style",
+      "segmented chart style",
+      "putting elevation chart inside Distance Timeline",
+      "creating multiple presets that only differ by color",
+      "fixed metrics in Status Bar"
+    ]
+  },
+  "implementation": {
+    "status": "implemented-first-version",
+    "swiftModel": "OverlayStyle.elevationChart: ElevationChartStyle",
+    "inspector": "ElevationChartOverlayDetailView",
+    "sharedLayout": ["CollapsibleLayoutInspectorSection", "OverlayLayoutRows"],
+    "sharedStatsBar": ["CollapsibleStatsBarInspectorSection", "StatsBarInspectorRows", "DistanceTimelineStatsBarConfig"],
+    "previewRenderer": "PreviewCanvasView.ElevationChartOverlayView",
+    "exportRenderer": "OverlayFrameRenderer.renderElevationChart",
+    "renderLayout": "OverlayRenderModel.elevationChartLayout",
+    "notes": [
+      "Presets are structural and initialize values only.",
+      "Dual Area is implemented as a two-tone area treatment in the first version.",
+      "Climb/descent segmentation and remaining climb remain future renderer enhancements."
+    ]
+  },
+  "tokens": {
+    "reuseFrom": "../numeric/numeric-overlay-ui.spec.json",
+    "numeric": {
+      "sectionHeaderHeight": 30,
+      "rowHeight": 32,
+      "rowGap": 6,
+      "sectionGap": 8,
+      "labelColumnWidth": 96,
+      "controlHeight": 28,
+      "iconButtonSize": 28,
+      "swatchSize": 20,
+      "panelPaddingX": 12,
+      "panelPaddingY": 8,
+      "controlRadius": 6
+    }
+  },
+  "header": {
+    "title": "Elevation Chart",
+    "pill": "Overlay",
+    "subtitle": "{activity.elevationGain}",
+    "icon": "chart.xyaxis.line",
+    "iconFallback": "mountain.2.fill",
+    "iconTint": "accentBlue",
+    "actions": ["back", "delete"]
+  },
+  "model": {
+    "rootType": "OverlayStyle.elevationChart",
+    "suggestedSwiftTypes": {
+      "ElevationChartOverlayModel": {
+        "id": "UUID",
+        "preset": "ElevationChartPreset",
+        "layout": "OverlayLayoutConfig",
+        "chart": "ElevationChartConfig",
+        "lineAndFill": "ElevationLineAndFillConfig",
+        "markers": "ElevationMarkersConfig",
+        "axis": "ElevationAxisConfig",
+        "bigNumbers": "ElevationBigNumbersConfig",
+        "statusBar": "StatusBarConfig",
+        "background": "ElevationChartBackgroundConfig",
+        "effects": "ElevationChartEffectsConfig"
+      },
+      "ElevationChartPreset": ["gradientArea", "dualArea", "bigNumbers"],
+      "ElevationChartStyle": ["area", "lineOnly"],
+      "ElevationProgressMode": ["fullProfile", "progressToCurrent"],
+      "ElevationDualAreaMode": ["splitByBaseline", "climbDescent"],
+      "ElevationBaseline": ["minElevation", "averageElevation", "custom"],
+      "GradientDirection": ["topToBottom", "leftToRight", "diagonal"],
+      "ElevationMarkerStyle": ["dot", "ring", "verticalLine"],
+      "ElevationMarkerLabelStyle": ["valueOnly", "labelAndValue"],
+      "ElevationBigNumberMetric": ["currentElevation", "elevationGain", "maxElevation", "minElevation", "remainingClimb"],
+      "OverlayCornerPosition": ["topLeft", "topRight", "bottomLeft", "bottomRight", "center"],
+      "StatusBarLayout": ["equalColumns", "autoWidth", "featuredFirst", "twoByTwoGrid", "singleRow"],
+      "StatusBarPreset": ["glassBar", "minimalStrip", "sportHUD", "floatingPill", "editorial"],
+      "StatusBarMetric": [
+        "currentElevation",
+        "elevationGain",
+        "maxElevation",
+        "minElevation",
+        "grade",
+        "distance",
+        "elapsedTime",
+        "pace",
+        "heartRate",
+        "power",
+        "cadence",
+        "calories",
+        "customText"
+      ]
+    }
+  },
+  "defaultValues": {
+    "preset": "gradientArea",
+    "layout": {
+      "anchor": "bottomLeft",
+      "x": 0.08,
+      "y": 0.82,
+      "width": 420,
+      "height": 160,
+      "scale": 1.0,
+      "rotation": 0,
+      "opacity": 1.0
+    },
+    "chart": {
+      "chartStyle": "area",
+      "smoothingEnabled": true,
+      "smoothingAmount": 0.55,
+      "samplingMode": "auto",
+      "maxPointCount": 240,
+      "progressMode": "fullProfile",
+      "chartPaddingX": 14,
+      "chartPaddingY": 10
+    },
+    "lineAndFill": {
+      "lineEnabled": true,
+      "lineColor": "#FFFFFF",
+      "lineWidth": 2.5,
+      "lineOpacity": 0.95,
+      "lineGlowEnabled": false,
+      "lineGlowColor": "#38BDF8",
+      "lineGlowOpacity": 0.45,
+      "lineGlowRadius": 8,
+      "fillEnabled": true,
+      "fillGradientColors": ["#37D67A", "#2F80ED"],
+      "fillGradientDirection": "topToBottom",
+      "fillOpacity": 0.42,
+      "dualAreaEnabled": false,
+      "dualAreaMode": "splitByBaseline",
+      "dualAreaBaseline": "averageElevation",
+      "customBaselineValue": null,
+      "upperFillGradientColors": ["#FFD166", "#F97316"],
+      "lowerFillGradientColors": ["#2F80ED", "#38BDF8"],
+      "upperFillOpacity": 0.42,
+      "lowerFillOpacity": 0.36
+    },
+    "markers": {
+      "current": {
+        "enabled": true,
+        "style": "ring",
+        "size": 9,
+        "fillColor": "#2F80ED",
+        "borderColor": "#FFFFFF",
+        "borderWidth": 2,
+        "labelEnabled": false,
+        "labelStyle": "valueOnly"
+      },
+      "min": { "enabled": false },
+      "max": { "enabled": false },
+      "start": { "enabled": false },
+      "end": { "enabled": false }
+    },
+    "axis": {
+      "gridEnabled": false,
+      "gridOpacity": 0.12,
+      "baselineEnabled": false,
+      "minMaxLabelsEnabled": false,
+      "startEndLabelsEnabled": false,
+      "unitEnabled": true,
+      "labelFontSize": 10,
+      "labelOpacity": 0.55
+    },
+    "bigNumbers": {
+      "enabled": false,
+      "primaryMetric": "currentElevation",
+      "secondaryMetric": null,
+      "position": "topLeft",
+      "showUnit": true,
+      "showLabel": true,
+      "fontSize": 42,
+      "unitFontSize": 17,
+      "labelFontSize": 10,
+      "opacity": 1.0
+    },
+    "statusBar": {
+      "enabled": true,
+      "preset": "glassBar",
+      "position": "bottom",
+      "layout": "equalColumns",
+      "backgroundEnabled": true,
+      "backgroundColor": "#000000",
+      "backgroundOpacity": 0.62,
+      "height": 58,
+      "paddingX": 14,
+      "paddingY": 8,
+      "cornerRadius": 12,
+      "slotCount": 3,
+      "dividerEnabled": true,
+      "dividerOpacity": 0.14,
+      "valueFontSize": 22,
+      "unitFontSize": 12,
+      "labelFontSize": 10,
+      "labelOpacity": 0.48,
+      "slots": [
+        {
+          "id": "slot1",
+          "enabled": true,
+          "metric": "elevationGain",
+          "labelOverride": "GAIN",
+          "unitOverride": null,
+          "showValue": true,
+          "showUnit": true,
+          "showLabel": true,
+          "showIcon": false,
+          "iconName": null,
+          "emphasis": "normal"
+        },
+        {
+          "id": "slot2",
+          "enabled": true,
+          "metric": "currentElevation",
+          "labelOverride": "ELEV",
+          "unitOverride": null,
+          "showValue": true,
+          "showUnit": true,
+          "showLabel": true,
+          "showIcon": false,
+          "iconName": null,
+          "emphasis": "normal"
+        },
+        {
+          "id": "slot3",
+          "enabled": true,
+          "metric": "grade",
+          "labelOverride": "GRADE",
+          "unitOverride": null,
+          "showValue": true,
+          "showUnit": true,
+          "showLabel": true,
+          "showIcon": false,
+          "iconName": null,
+          "emphasis": "normal"
+        },
+        {
+          "id": "slot4",
+          "enabled": false,
+          "metric": "heartRate",
+          "labelOverride": "HR",
+          "unitOverride": null,
+          "showValue": true,
+          "showUnit": true,
+          "showLabel": true,
+          "showIcon": false,
+          "iconName": null,
+          "emphasis": "normal"
+        }
+      ]
+    },
+    "background": {
+      "enabled": true,
+      "color": "#000000",
+      "opacity": 0.5,
+      "cornerRadius": 16,
+      "paddingX": 14,
+      "paddingY": 12,
+      "borderEnabled": true,
+      "borderColor": "#FFFFFF",
+      "borderOpacity": 0.12,
+      "borderWidth": 1
+    },
+    "effects": {
+      "shadowEnabled": true,
+      "shadowOpacity": 0.28,
+      "shadowRadius": 14,
+      "shadowOffsetX": 0,
+      "shadowOffsetY": 6,
+      "backdropBlurEnabled": false,
+      "backdropBlurRadius": 8,
+      "glowEnabled": false,
+      "glowColor": "#38BDF8",
+      "glowOpacity": 0.25,
+      "glowRadius": 14
+    }
+  },
+  "sections": [
+    {
+      "id": "preset",
+      "title": "Preset",
+      "icon": "wand.and.stars",
+      "controls": [
+        {
+          "id": "elevationChartPreset",
+          "type": "segmentedOrDropdown",
+          "modelPath": "preset",
+          "options": ["gradientArea", "dualArea", "bigNumbers"],
+          "notes": "Presets initialize parameters only; all fields remain editable."
+        }
+      ]
+    },
+    {
+      "id": "layout",
+      "title": "Layout",
+      "icon": "scope",
+      "controls": [
+        { "id": "anchor", "type": "anchorGrid", "modelPath": "layout.anchor" },
+        { "id": "position", "type": "xyInputs", "modelPaths": ["layout.x", "layout.y"] },
+        { "id": "size", "type": "widthHeightInputs", "modelPaths": ["layout.width", "layout.height"] },
+        { "id": "scale", "type": "sliderWithNumber", "modelPath": "layout.scale", "range": [0.2, 3.0] },
+        { "id": "rotation", "type": "sliderWithNumber", "modelPath": "layout.rotation", "range": [-180, 180] },
+        { "id": "opacity", "type": "sliderWithNumber", "modelPath": "layout.opacity", "range": [0, 1] }
+      ]
+    },
+    {
+      "id": "chart",
+      "title": "Chart",
+      "icon": "chart.xyaxis.line",
+      "controls": [
+        { "id": "chartStyle", "type": "segmented", "modelPath": "chart.chartStyle", "options": ["area", "lineOnly"] },
+        { "id": "smoothingEnabled", "type": "toggle", "modelPath": "chart.smoothingEnabled" },
+        { "id": "smoothingAmount", "type": "sliderWithNumber", "modelPath": "chart.smoothingAmount", "range": [0, 1], "enabledWhen": "chart.smoothingEnabled" },
+        { "id": "samplingMode", "type": "dropdown", "modelPath": "chart.samplingMode", "options": ["auto", "raw", "downsampled"] },
+        { "id": "progressMode", "type": "dropdown", "modelPath": "chart.progressMode", "options": ["fullProfile", "progressToCurrent"] },
+        { "id": "chartPadding", "type": "xyInputs", "modelPaths": ["chart.chartPaddingX", "chart.chartPaddingY"] }
+      ]
+    },
+    {
+      "id": "lineAndFill",
+      "title": "Line & Fill",
+      "icon": "paintpalette",
+      "controls": [
+        { "id": "lineEnabled", "type": "toggle", "modelPath": "lineAndFill.lineEnabled" },
+        { "id": "lineColor", "type": "colorSwatch", "modelPath": "lineAndFill.lineColor", "enabledWhen": "lineAndFill.lineEnabled" },
+        { "id": "lineWidth", "type": "sliderWithNumber", "modelPath": "lineAndFill.lineWidth", "range": [0.5, 8] },
+        { "id": "lineOpacity", "type": "sliderWithNumber", "modelPath": "lineAndFill.lineOpacity", "range": [0, 1] },
+        { "id": "fillEnabled", "type": "toggle", "modelPath": "lineAndFill.fillEnabled" },
+        { "id": "fillGradientColors", "type": "gradientEditor", "modelPath": "lineAndFill.fillGradientColors", "enabledWhen": "lineAndFill.fillEnabled && !lineAndFill.dualAreaEnabled" },
+        { "id": "fillOpacity", "type": "sliderWithNumber", "modelPath": "lineAndFill.fillOpacity", "range": [0, 1], "enabledWhen": "lineAndFill.fillEnabled && !lineAndFill.dualAreaEnabled" },
+        { "id": "dualAreaEnabled", "type": "toggle", "modelPath": "lineAndFill.dualAreaEnabled" },
+        { "id": "dualAreaMode", "type": "dropdown", "modelPath": "lineAndFill.dualAreaMode", "options": ["splitByBaseline", "climbDescent"], "enabledWhen": "lineAndFill.dualAreaEnabled" },
+        { "id": "dualAreaBaseline", "type": "dropdown", "modelPath": "lineAndFill.dualAreaBaseline", "options": ["minElevation", "averageElevation", "custom"], "enabledWhen": "lineAndFill.dualAreaEnabled" },
+        { "id": "upperFillGradientColors", "type": "gradientEditor", "modelPath": "lineAndFill.upperFillGradientColors", "enabledWhen": "lineAndFill.dualAreaEnabled" },
+        { "id": "lowerFillGradientColors", "type": "gradientEditor", "modelPath": "lineAndFill.lowerFillGradientColors", "enabledWhen": "lineAndFill.dualAreaEnabled" }
+      ]
+    },
+    {
+      "id": "markers",
+      "title": "Markers",
+      "icon": "mappin.and.ellipse",
+      "controls": [
+        { "id": "currentMarker", "type": "markerEditor", "modelPath": "markers.current" },
+        { "id": "minMarker", "type": "markerEditor", "modelPath": "markers.min" },
+        { "id": "maxMarker", "type": "markerEditor", "modelPath": "markers.max" },
+        { "id": "startMarker", "type": "markerEditor", "modelPath": "markers.start" },
+        { "id": "endMarker", "type": "markerEditor", "modelPath": "markers.end" }
+      ]
+    },
+    {
+      "id": "axis",
+      "title": "Axis & Labels",
+      "icon": "textformat.size",
+      "controls": [
+        { "id": "gridEnabled", "type": "toggle", "modelPath": "axis.gridEnabled" },
+        { "id": "gridOpacity", "type": "sliderWithNumber", "modelPath": "axis.gridOpacity", "range": [0, 1], "enabledWhen": "axis.gridEnabled" },
+        { "id": "baselineEnabled", "type": "toggle", "modelPath": "axis.baselineEnabled" },
+        { "id": "minMaxLabelsEnabled", "type": "toggle", "modelPath": "axis.minMaxLabelsEnabled" },
+        { "id": "startEndLabelsEnabled", "type": "toggle", "modelPath": "axis.startEndLabelsEnabled" },
+        { "id": "unitEnabled", "type": "toggle", "modelPath": "axis.unitEnabled" },
+        { "id": "labelFontSize", "type": "sliderWithNumber", "modelPath": "axis.labelFontSize", "range": [8, 18] },
+        { "id": "labelOpacity", "type": "sliderWithNumber", "modelPath": "axis.labelOpacity", "range": [0, 1] }
+      ]
+    },
+    {
+      "id": "bigNumbers",
+      "title": "Big Numbers",
+      "icon": "number",
+      "controls": [
+        { "id": "enabled", "type": "toggle", "modelPath": "bigNumbers.enabled" },
+        { "id": "primaryMetric", "type": "dropdown", "modelPath": "bigNumbers.primaryMetric", "options": ["currentElevation", "elevationGain", "maxElevation", "minElevation", "remainingClimb"], "enabledWhen": "bigNumbers.enabled" },
+        { "id": "position", "type": "dropdown", "modelPath": "bigNumbers.position", "options": ["topLeft", "topRight", "bottomLeft", "bottomRight", "center"], "enabledWhen": "bigNumbers.enabled" },
+        { "id": "showUnit", "type": "toggle", "modelPath": "bigNumbers.showUnit", "enabledWhen": "bigNumbers.enabled" },
+        { "id": "showLabel", "type": "toggle", "modelPath": "bigNumbers.showLabel", "enabledWhen": "bigNumbers.enabled" },
+        { "id": "fontSize", "type": "sliderWithNumber", "modelPath": "bigNumbers.fontSize", "range": [20, 80], "enabledWhen": "bigNumbers.enabled" },
+        { "id": "unitFontSize", "type": "sliderWithNumber", "modelPath": "bigNumbers.unitFontSize", "range": [8, 32], "enabledWhen": "bigNumbers.enabled" }
+      ]
+    },
+    {
+      "id": "statusBar",
+      "title": "Status Bar",
+      "icon": "rectangle.bottomthird.inset.filled",
+      "controls": [
+        { "id": "enabled", "type": "toggle", "modelPath": "statusBar.enabled" },
+        { "id": "preset", "type": "dropdown", "modelPath": "statusBar.preset", "options": ["glassBar", "minimalStrip", "sportHUD", "floatingPill", "editorial"], "enabledWhen": "statusBar.enabled" },
+        { "id": "layout", "type": "dropdown", "modelPath": "statusBar.layout", "options": ["equalColumns", "autoWidth", "featuredFirst", "twoByTwoGrid", "singleRow"], "enabledWhen": "statusBar.enabled" },
+        { "id": "backgroundOpacity", "type": "sliderWithNumber", "modelPath": "statusBar.backgroundOpacity", "range": [0, 1], "enabledWhen": "statusBar.enabled" },
+        { "id": "height", "type": "sliderWithNumber", "modelPath": "statusBar.height", "range": [36, 120], "enabledWhen": "statusBar.enabled" },
+        { "id": "slotCount", "type": "stepper", "modelPath": "statusBar.slotCount", "range": [1, 4], "enabledWhen": "statusBar.enabled" },
+        { "id": "slots", "type": "statusSlotList", "modelPath": "statusBar.slots", "enabledWhen": "statusBar.enabled" },
+        { "id": "dividers", "type": "toggle", "modelPath": "statusBar.dividerEnabled", "enabledWhen": "statusBar.enabled" }
+      ]
+    },
+    {
+      "id": "background",
+      "title": "Background",
+      "icon": "square.on.square",
+      "controls": [
+        { "id": "enabled", "type": "toggle", "modelPath": "background.enabled" },
+        { "id": "color", "type": "colorSwatch", "modelPath": "background.color", "enabledWhen": "background.enabled" },
+        { "id": "opacity", "type": "sliderWithNumber", "modelPath": "background.opacity", "range": [0, 1], "enabledWhen": "background.enabled" },
+        { "id": "cornerRadius", "type": "sliderWithNumber", "modelPath": "background.cornerRadius", "range": [0, 40], "enabledWhen": "background.enabled" },
+        { "id": "padding", "type": "xyInputs", "modelPaths": ["background.paddingX", "background.paddingY"], "enabledWhen": "background.enabled" },
+        { "id": "borderEnabled", "type": "toggle", "modelPath": "background.borderEnabled", "enabledWhen": "background.enabled" },
+        { "id": "borderOpacity", "type": "sliderWithNumber", "modelPath": "background.borderOpacity", "range": [0, 1], "enabledWhen": "background.enabled && background.borderEnabled" }
+      ]
+    },
+    {
+      "id": "effects",
+      "title": "Effects",
+      "icon": "sparkles",
+      "controls": [
+        { "id": "shadowEnabled", "type": "toggle", "modelPath": "effects.shadowEnabled" },
+        { "id": "shadowOpacity", "type": "sliderWithNumber", "modelPath": "effects.shadowOpacity", "range": [0, 1], "enabledWhen": "effects.shadowEnabled" },
+        { "id": "shadowRadius", "type": "sliderWithNumber", "modelPath": "effects.shadowRadius", "range": [0, 40], "enabledWhen": "effects.shadowEnabled" },
+        { "id": "backdropBlurEnabled", "type": "toggle", "modelPath": "effects.backdropBlurEnabled" },
+        { "id": "glowEnabled", "type": "toggle", "modelPath": "effects.glowEnabled" }
+      ]
+    }
+  ],
+  "presetInitializers": {
+    "gradientArea": {
+      "lineAndFill.dualAreaEnabled": false,
+      "bigNumbers.enabled": false,
+      "lineAndFill.fillEnabled": true,
+      "lineAndFill.fillGradientColors": ["#37D67A", "#2F80ED"],
+      "statusBar.enabled": true
+    },
+    "dualArea": {
+      "lineAndFill.dualAreaEnabled": true,
+      "lineAndFill.dualAreaMode": "splitByBaseline",
+      "lineAndFill.dualAreaBaseline": "averageElevation",
+      "lineAndFill.upperFillGradientColors": ["#FFD166", "#F97316"],
+      "lineAndFill.lowerFillGradientColors": ["#2F80ED", "#38BDF8"],
+      "bigNumbers.enabled": false,
+      "statusBar.enabled": true
+    },
+    "bigNumbers": {
+      "bigNumbers.enabled": true,
+      "bigNumbers.primaryMetric": "currentElevation",
+      "bigNumbers.position": "topLeft",
+      "bigNumbers.fontSize": 42,
+      "lineAndFill.fillOpacity": 0.28,
+      "statusBar.enabled": false
+    }
+  },
+  "implementationNotes": [
+    "Implement as a dedicated ElevationChart overlay type, not as DistanceTimeline content.",
+    "Gradient colors are user-editable; do not create separate color-only presets.",
+    "Dual Area is an option on the area chart renderer.",
+    "Big Numbers is an emphasis layer over the chart, not a separate data visualization type.",
+    "Status Bar should share code or configuration patterns with Route Map Status Bar where possible.",
+    "Do not expose bar, dot, step, or segmented chart options in this version.",
+    "Selection outline belongs to the editor only and must not be exported."
+  ]
+}

@@ -26,11 +26,22 @@ enum OverlayRenderModel {
             components: components,
             preset: element.style.textPreset,
             fontSize: fontSize,
-            labelFontSize: metrics.labelFontSize,
-            unitFontSize: metrics.unitFontSize,
+            labelFontSize: context.scaled(element.style.labelFontSize * element.scale),
+            unitFontSize: context.scaled(element.style.unitFontSize * element.scale),
+            labelFontName: element.style.labelFontName,
+            unitFontName: element.style.unitFontName,
+            labelFontWeight: element.style.labelFontWeight,
+            unitFontWeight: element.style.unitFontWeight,
+            labelPosition: element.style.labelPosition,
+            unitPosition: element.style.unitPosition,
+            labelSpacing: context.scaled(element.style.labelSpacing * element.scale),
+            unitSpacing: context.scaled(element.style.unitSpacing * element.scale),
             horizontalPadding: metrics.horizontalPadding,
             verticalPadding: metrics.verticalPadding,
             cornerRadius: metrics.cornerRadius,
+            backgroundFadeOutEnabled: element.style.backgroundFadeOutEnabled,
+            backgroundFadeOutAmount: element.style.backgroundFadeOutAmount,
+            backgroundBlurRadius: context.scaled(element.style.backgroundBlurRadius),
             shadowRadius: context.scaled(element.style.shadowRadius),
             shadowOffsetY: context.scaled(2)
         )
@@ -85,20 +96,61 @@ enum OverlayRenderModel {
                 projectRoutePoint($0, bounds: geometry.bounds, rect: contentRect)
             }
         }
-        let distanceComponents = OverlayValueFormatter.components(for: .distance, activity: context.activity, elapsedTime: context.elapsedTime)
+        let distanceMeters = context.activity.distance(at: context.elapsedTime)
+        let totalDistanceMeters = context.activity.distanceMeters
+        let currentDistance: Double
+        let totalDistance: Double
+        let unit: String
+        switch style.valueUnitSystem {
+        case .metric:
+            currentDistance = distanceMeters / 1000
+            totalDistance = totalDistanceMeters / 1000
+            unit = "km"
+        case .imperial:
+            currentDistance = distanceMeters / 1609.344
+            totalDistance = totalDistanceMeters / 1609.344
+            unit = "mi"
+        }
+        let distanceComponents = OverlayValueComponents(
+            label: "Distance",
+            shortLabel: "DIST",
+            value: String(format: "%.2f", currentDistance),
+            unit: unit
+        )
         let totalComponents = OverlayValueComponents(
             label: "Distance",
             shortLabel: "DIST",
-            value: String(format: "%.2f", context.activity.distanceMeters / 1000),
-            unit: "km"
+            value: String(format: "%.2f", totalDistance),
+            unit: unit
         )
         let valueText = "\(distanceComponents.value) / \(totalComponents.value) \(totalComponents.unit)"
+        let distancePointLabels = distancePointLabels(
+            totalDistance: totalDistance,
+            unit: unit,
+            count: style.distancePointCount
+        )
+        let statsBarItems = distanceStatsBarItems(
+            style: style,
+            activity: context.activity,
+            elapsedTime: context.elapsedTime,
+            progress: clamped
+        )
 
         return OverlayDistanceTimelineRenderLayout(
             style: style,
             valueText: valueText,
             label: style.label.isEmpty ? "Distance" : style.label,
             percentText: "\(Int((clamped * 100).rounded()))%",
+            customValues: distanceCustomValues(
+                style: style,
+                activity: context.activity,
+                elapsedTime: context.elapsedTime,
+                progress: clamped
+            ),
+            startText: style.axisLabelMode == .startFinish ? "START" : "0",
+            finishText: style.axisLabelMode == .startFinish ? "FINISH" : "\(totalComponents.value) \(unit)",
+            distancePointLabels: distancePointLabels,
+            statsBarItems: statsBarItems,
             rect: rect,
             contentRect: contentRect,
             trackRect: trackRect,
@@ -117,22 +169,139 @@ enum OverlayRenderModel {
         )
     }
 
+    private static func distancePointLabels(totalDistance: Double, unit: String, count: Int) -> [String] {
+        guard count > 0 else { return [] }
+        return (1...count).map { index in
+            let value = totalDistance * Double(index) / Double(count + 1)
+            return String(format: value >= 10 ? "%.1f %@" : "%.2f %@", value, unit)
+        }
+    }
+
+    private static func distanceStatsBarItems(
+        style: DistanceTimelineStyle,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval,
+        progress: Double
+    ) -> [OverlayDistanceTimelineStatsBarItemLayout] {
+        style.statsBar.slots.prefix(4).compactMap { slot in
+            guard slot.visible else { return nil }
+            if slot.metric == .progress {
+                return OverlayDistanceTimelineStatsBarItemLayout(
+                    label: slot.customLabel.isEmpty ? "PROGRESS" : slot.customLabel,
+                    value: "\(Int((progress * 100).rounded()))%",
+                    unit: ""
+                )
+            }
+            let components = OverlayValueFormatter.components(for: slot.metric.elementType, activity: activity, elapsedTime: elapsedTime)
+            return OverlayDistanceTimelineStatsBarItemLayout(
+                label: slot.customLabel.isEmpty ? components.shortLabel : slot.customLabel,
+                value: components.value,
+                unit: components.unit
+            )
+        }
+    }
+
+    private static func distanceCustomValues(
+        style: DistanceTimelineStyle,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval,
+        progress: Double
+    ) -> [DistanceTimelineCustomValue] {
+        guard style.customValuesEnabled else { return [] }
+        return style.customValues.prefix(4).compactMap { slot in
+            guard slot.visible else { return nil }
+            if slot.metric == .progress {
+                return DistanceTimelineCustomValue(visible: true, metric: slot.metric, value: "\(Int((progress * 100).rounded()))%")
+            }
+            let components = OverlayValueFormatter.components(for: slot.metric.elementType, activity: activity, elapsedTime: elapsedTime)
+            let text = components.unit.isEmpty ? components.value : "\(components.value) \(components.unit)"
+            return DistanceTimelineCustomValue(visible: true, metric: slot.metric, value: text)
+        }
+    }
+
     static func elevationChartLayout(for element: OverlayElement, in context: OverlayRenderContext) -> OverlayElevationChartRenderLayout {
-        let width = context.scaled(220 * element.scale)
-        let height = context.scaled(90 * element.scale)
+        let style = element.style.elevationChart
+        let width = context.scaled(style.width * element.scale)
+        let height = context.scaled(style.height * element.scale)
         let rect = centeredRect(for: element, size: CGSize(width: width, height: height), canvasSize: context.canvasSize)
-        return OverlayElevationChartRenderLayout(
-            label: OverlayValueFormatter.value(for: element.type, activity: context.activity, elapsedTime: context.elapsedTime),
-            rect: rect,
-            labelFontSize: context.scaled(max(12, element.style.fontSize * 0.52 * element.scale)),
-            horizontalPadding: context.scaled(10),
-            verticalPadding: context.scaled(8),
-            cornerRadius: context.scaled(6),
-            chartHeight: context.scaled(60 * element.scale),
-            lineWidth: max(context.scaled(1.5), context.scaled(2 * element.scale)),
-            progress: clampedProgress(context.elapsedTime / max(context.activity.duration, 1)),
-            samples: elevationSamples(from: context.activity)
+        let progress = clampedProgress(context.elapsedTime / max(context.activity.duration, 1))
+        let samples = elevationSamples(from: context.activity)
+        let visibleSamples: [Double]
+        if style.progressMode == .progressToCurrent, samples.count > 1 {
+            let count = max(2, min(samples.count, Int((Double(samples.count - 1) * progress).rounded()) + 1))
+            visibleSamples = Array(samples.prefix(count))
+        } else {
+            visibleSamples = samples
+        }
+        let statsBarItems = elevationChartStatsBarItems(
+            style: style,
+            activity: context.activity,
+            elapsedTime: context.elapsedTime,
+            progress: progress
         )
+        return OverlayElevationChartRenderLayout(
+            style: style,
+            bigNumberText: elevationBigNumber(style: style, activity: context.activity, elapsedTime: context.elapsedTime),
+            label: OverlayValueFormatter.value(for: element.type, activity: context.activity, elapsedTime: context.elapsedTime),
+            statsBarItems: statsBarItems,
+            rect: rect,
+            labelFontSize: context.scaled(max(10, element.style.fontSize * 0.38 * element.scale)),
+            valueFontSize: context.scaled(max(18, style.bigNumberFontSize * element.scale)),
+            unitFontSize: context.scaled(max(10, style.bigNumberFontSize * 0.38 * element.scale)),
+            horizontalPadding: context.scaled(style.chartPaddingX * element.scale),
+            verticalPadding: context.scaled(style.chartPaddingY * element.scale),
+            cornerRadius: context.scaled(style.cornerRadius * element.scale),
+            chartHeight: context.scaled(max(52, (style.bigNumbersEnabled ? style.height * 0.40 : style.height - (style.statsBar.visible ? style.statsBar.height + 34 : 34)) * element.scale)),
+            lineWidth: max(context.scaled(1), context.scaled(style.lineWidth * element.scale)),
+            progress: progress,
+            samples: visibleSamples
+        )
+    }
+
+    private static func elevationChartStatsBarItems(
+        style: ElevationChartStyle,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval,
+        progress: Double
+    ) -> [OverlayDistanceTimelineStatsBarItemLayout] {
+        guard style.statsBar.visible else { return [] }
+        return style.statsBar.slots.prefix(4).compactMap { slot in
+            guard slot.visible else { return nil }
+            if slot.metric == .progress {
+                return OverlayDistanceTimelineStatsBarItemLayout(
+                    label: slot.customLabel.isEmpty ? "PROGRESS" : slot.customLabel,
+                    value: "\(Int((progress * 100).rounded()))%",
+                    unit: ""
+                )
+            }
+            let components = OverlayValueFormatter.components(for: slot.metric.elementType, activity: activity, elapsedTime: elapsedTime)
+            return OverlayDistanceTimelineStatsBarItemLayout(
+                label: slot.customLabel.isEmpty ? components.shortLabel : slot.customLabel,
+                value: components.value,
+                unit: components.unit
+            )
+        }
+    }
+
+    private static func elevationBigNumber(
+        style: ElevationChartStyle,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval
+    ) -> OverlayValueComponents {
+        let elevations = activity.records.compactMap(\.elevationMeters)
+        switch style.bigNumberMetric {
+        case .currentElevation:
+            return OverlayValueFormatter.components(for: .elevation, activity: activity, elapsedTime: elapsedTime)
+        case .elevationGain:
+            let gain = zip(elevations, elevations.dropFirst()).reduce(0) { total, pair in
+                total + max(pair.1 - pair.0, 0)
+            }
+            return OverlayValueComponents(label: "Elevation Gain", shortLabel: "GAIN", value: "+\(Int(gain.rounded()))", unit: "m")
+        case .maxElevation:
+            return OverlayValueComponents(label: "Max Elevation", shortLabel: "MAX", value: "\(Int((elevations.max() ?? 0).rounded()))", unit: "m")
+        case .minElevation:
+            return OverlayValueComponents(label: "Min Elevation", shortLabel: "MIN", value: "\(Int((elevations.min() ?? 0).rounded()))", unit: "m")
+        }
     }
 
     static func runningGaugeLayout(for element: OverlayElement, in context: OverlayRenderContext) -> OverlayRunningGaugeRenderLayout {
@@ -235,21 +404,140 @@ enum OverlayRenderModel {
         let provider: OverlayRouteMapProvider = backgroundEnabled ? .mapKit : .none
         let progress = context.activity.duration > 0 ? context.elapsedTime / context.activity.duration : 0
 
-        // Stats bar: attaches below the map container.
+        // Stats bar: placement-aware layout relative to the map container.
         let statsBarConfig = element.style.routeMapStatsBar
         let statsBarVisible = statsBarConfig.visible && statsBarConfig.slots.contains { $0.visible }
-        let barDesignHeight: Double = 64
-        let barHeight = statsBarVisible ? context.scaled(barDesignHeight * element.scale) : 0
+        let placement = statsBarConfig.placement
+        let isInside = statsBarConfig.inside
+        let barThickness = statsBarVisible ? context.scaled(statsBarConfig.height * element.scale) : 0
 
-        // Total rect (map + bar) centered at element.position; map stays on top.
-        let totalSize = CGSize(width: mapSize.width, height: mapSize.height + barHeight)
+        // Total element size expands for attached placements; inside placements
+        // overlay the map so the total size stays at mapSize.
+        let totalSize: CGSize
+        if isInside || !statsBarVisible {
+            totalSize = mapSize
+        } else if placement.isVertical {
+            totalSize = CGSize(width: mapSize.width + barThickness, height: mapSize.height)
+        } else {
+            totalSize = CGSize(width: mapSize.width, height: mapSize.height + barThickness)
+        }
         let totalRect = centeredRect(for: element, size: totalSize, canvasSize: context.canvasSize)
-        let mapRect = CGRect(origin: totalRect.origin, size: mapSize)
+
+        let mapRect: CGRect
+        let barRect: CGRect
+        if statsBarVisible {
+            let autoSpan = placement.isVertical ? mapSize.height : mapSize.width
+            let span = isInside
+                ? autoSpan
+                : (statsBarConfig.width > 0
+                ? min(context.scaled(statsBarConfig.width * element.scale), autoSpan)
+                : autoSpan)
+            let xOffset = isInside ? 0 : context.scaled(statsBarConfig.offsetX * element.scale)
+            let yOffset = isInside ? 0 : context.scaled(statsBarConfig.offsetY * element.scale)
+
+            switch placement {
+            case .bottomAttached:
+                mapRect = CGRect(origin: totalRect.origin, size: mapSize)
+                if isInside {
+                    barRect = CGRect(
+                        x: mapRect.midX - span * 0.5 + xOffset,
+                        y: mapRect.maxY - barThickness + yOffset,
+                        width: span,
+                        height: barThickness
+                    )
+                } else {
+                    barRect = CGRect(
+                        x: mapRect.midX - span * 0.5 + xOffset,
+                        y: mapRect.maxY + yOffset,
+                        width: span,
+                        height: barThickness
+                    )
+                }
+            case .topAttached:
+                if isInside {
+                    mapRect = totalRect
+                    barRect = CGRect(
+                        x: totalRect.midX - span * 0.5 + xOffset,
+                        y: totalRect.minY + yOffset,
+                        width: span,
+                        height: barThickness
+                    )
+                } else {
+                    barRect = CGRect(
+                        x: totalRect.midX - span * 0.5 + xOffset,
+                        y: totalRect.minY + yOffset,
+                        width: span,
+                        height: barThickness
+                    )
+                    mapRect = CGRect(x: totalRect.minX, y: barRect.maxY, width: mapSize.width, height: mapSize.height)
+                }
+            case .leftAttached:
+                if isInside {
+                    mapRect = totalRect
+                    barRect = CGRect(
+                        x: totalRect.minX + xOffset,
+                        y: totalRect.midY - span * 0.5 + yOffset,
+                        width: barThickness,
+                        height: span
+                    )
+                } else {
+                    barRect = CGRect(
+                        x: totalRect.minX + xOffset,
+                        y: totalRect.midY - span * 0.5 + yOffset,
+                        width: barThickness,
+                        height: span
+                    )
+                    mapRect = CGRect(x: barRect.maxX, y: totalRect.minY, width: mapSize.width, height: mapSize.height)
+                }
+            case .rightAttached:
+                mapRect = CGRect(origin: totalRect.origin, size: mapSize)
+                if isInside {
+                    barRect = CGRect(
+                        x: mapRect.maxX - barThickness + xOffset,
+                        y: totalRect.midY - span * 0.5 + yOffset,
+                        width: barThickness,
+                        height: span
+                    )
+                } else {
+                    barRect = CGRect(
+                        x: mapRect.maxX + xOffset,
+                        y: totalRect.midY - span * 0.5 + yOffset,
+                        width: barThickness,
+                        height: span
+                    )
+                }
+            case .insideBottom:
+                mapRect = totalRect
+                barRect = CGRect(
+                    x: totalRect.midX - span * 0.5 + xOffset,
+                    y: totalRect.maxY - barThickness + yOffset,
+                    width: span,
+                    height: barThickness
+                )
+            case .insideTop:
+                mapRect = totalRect
+                barRect = CGRect(
+                    x: totalRect.midX - span * 0.5 + xOffset,
+                    y: totalRect.minY + yOffset,
+                    width: span,
+                    height: barThickness
+                )
+            }
+        } else {
+            mapRect = totalRect
+            barRect = .zero
+        }
 
         let statsBarLayout: OverlayRouteMapStatsBarLayout? = statsBarVisible ? {
-            let barRect = CGRect(x: totalRect.minX, y: mapRect.maxY, width: totalRect.width, height: barHeight)
             let visibleSlots = statsBarConfig.slots.filter { $0.visible }
             let items = visibleSlots.map { slot -> OverlayRouteMapStatsBarItemLayout in
+                if slot.metric == .progress {
+                    let progress = context.activity.distanceMeters > 0
+                        ? context.activity.distance(at: context.elapsedTime) / context.activity.distanceMeters
+                        : context.elapsedTime / max(context.activity.duration, 1)
+                    let label = slot.customLabel.isEmpty ? slot.metric.label : slot.customLabel
+                    return OverlayRouteMapStatsBarItemLayout(value: "\(Int((clampedProgress(progress) * 100).rounded()))%", unit: "", label: label)
+                }
                 let comps = OverlayValueFormatter.components(
                     for: slot.metric.elementType,
                     activity: context.activity,
@@ -260,18 +548,57 @@ enum OverlayRenderModel {
             }
             return OverlayRouteMapStatsBarLayout(
                 rect: barRect,
+                isInside: isInside,
+                containerRect: mapRect,
+                containerShape: mapShape,
+                containerCornerRadius: mapShape == .circle ? 0 : context.scaled(element.style.routeMapCornerRadius * element.scale),
                 backgroundOpacity: statsBarConfig.backgroundOpacity,
+                blurRadius: context.scaled(statsBarConfig.blurRadius * element.scale),
+                dividerOpacity: statsBarConfig.dividerOpacity,
+                cornerRadius: isInside ? 0 : context.scaled(statsBarConfig.cornerRadius * element.scale),
+                itemSpacing: context.scaled(statsBarConfig.itemSpacing * element.scale),
+                layoutMode: statsBarConfig.layoutMode,
+                placement: placement,
                 items: items,
-                fontName: element.style.fontName
+                fontName: element.style.fontName,
+                valueFontName: statsBarConfig.valueFontName,
+                valueFontSize: context.scaled(statsBarConfig.valueFontSize * element.scale),
+                valueFontWeight: statsBarConfig.valueFontWeight,
+                valueColor: statsBarConfig.valueColor,
+                labelFontName: statsBarConfig.labelFontName,
+                labelFontSize: context.scaled(statsBarConfig.labelFontSize * element.scale),
+                labelFontWeight: statsBarConfig.labelFontWeight,
+                labelColor: statsBarConfig.labelColor
             )
         }() : nil
+
+        var routeContentRect = mapRect.insetBy(dx: padding, dy: padding)
+        if let statsBar = statsBarLayout, statsBar.isInside {
+            // Reserve chart area so inside Stats Bar never covers route geometry.
+            let reserved = statsBar.rect.height + context.scaled(6 * element.scale)
+            if placement.isVertical {
+                if placement == .leftAttached {
+                    routeContentRect.origin.x += reserved
+                    routeContentRect.size.width = max(routeContentRect.width - reserved, 1)
+                } else {
+                    routeContentRect.size.width = max(routeContentRect.width - reserved, 1)
+                }
+            } else {
+                if placement == .topAttached {
+                    routeContentRect.origin.y += reserved
+                    routeContentRect.size.height = max(routeContentRect.height - reserved, 1)
+                } else {
+                    routeContentRect.size.height = max(routeContentRect.height - reserved, 1)
+                }
+            }
+        }
 
         return OverlayRouteMapRenderLayout(
             preset: element.style.routeMapPreset,
             provider: provider,
             rect: mapRect,
-            contentRect: mapRect.insetBy(dx: padding, dy: padding),
-            cornerRadius: mapShape == .circle ? 0 : context.scaled(12 * element.scale),
+            contentRect: routeContentRect,
+            cornerRadius: mapShape == .circle ? 0 : context.scaled(element.style.routeMapCornerRadius * element.scale),
             shape: mapShape,
             edgeFade: element.style.routeMapEdgeFade,
             fadeAmount: element.style.routeMapFadeAmount,
@@ -768,9 +1095,20 @@ struct OverlayTextRenderLayout {
     var fontSize: Double
     var labelFontSize: Double
     var unitFontSize: Double
+    var labelFontName: String
+    var unitFontName: String
+    var labelFontWeight: OverlayFontWeight
+    var unitFontWeight: OverlayFontWeight
+    var labelPosition: OverlayTextAttachmentPosition
+    var unitPosition: OverlayTextAttachmentPosition
+    var labelSpacing: Double
+    var unitSpacing: Double
     var horizontalPadding: Double
     var verticalPadding: Double
     var cornerRadius: Double
+    var backgroundFadeOutEnabled: Bool
+    var backgroundFadeOutAmount: Double
+    var backgroundBlurRadius: Double
     var shadowRadius: Double
     var shadowOffsetY: Double
 }
@@ -780,6 +1118,11 @@ struct OverlayDistanceTimelineRenderLayout {
     var valueText: String
     var label: String
     var percentText: String
+    var customValues: [DistanceTimelineCustomValue]
+    var startText: String
+    var finishText: String
+    var distancePointLabels: [String]
+    var statsBarItems: [OverlayDistanceTimelineStatsBarItemLayout]
     var rect: CGRect
     var contentRect: CGRect
     var trackRect: CGRect
@@ -797,10 +1140,21 @@ struct OverlayDistanceTimelineRenderLayout {
     var routeCurrentPoint: CGPoint?
 }
 
-struct OverlayElevationChartRenderLayout {
+struct OverlayDistanceTimelineStatsBarItemLayout {
     var label: String
+    var value: String
+    var unit: String
+}
+
+struct OverlayElevationChartRenderLayout {
+    var style: ElevationChartStyle
+    var bigNumberText: OverlayValueComponents
+    var label: String
+    var statsBarItems: [OverlayDistanceTimelineStatsBarItemLayout]
     var rect: CGRect
     var labelFontSize: Double
+    var valueFontSize: Double
+    var unitFontSize: Double
     var horizontalPadding: Double
     var verticalPadding: Double
     var cornerRadius: Double

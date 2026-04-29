@@ -327,20 +327,13 @@ struct MediaBrowserView: View {
             }
             .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
 
-            Text(item.alignmentStatus.label)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(EditorTheme.textMuted)
-                .lineLimit(1)
-                .frame(maxWidth: 124, alignment: .trailing)
+            MediaStatusDot(status: item.alignmentStatus, size: 8)
 
             if let tag = item.tag {
                 MediaTagDot(tag: tag, size: 8)
+                    .help(tag.label)
             }
 
-            Image(systemName: "ellipsis")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(EditorTheme.textMuted)
-                .frame(width: 16)
         }
     }
 
@@ -607,25 +600,23 @@ private struct MediaFilterChipStyle: ButtonStyle {
     }
 }
 
-private struct MediaStatusPill: View {
+private struct MediaStatusDot: View {
     let status: AlignmentStatus
+    let size: CGFloat
 
     var body: some View {
-        Text(status.label)
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(foreground)
-            .lineLimit(1)
-            .padding(.horizontal, 7)
-            .frame(height: 22)
-            .background(background)
-            .clipShape(Capsule())
+        Circle()
+            .fill(fill)
             .overlay {
-                Capsule()
-                    .stroke(border, lineWidth: 1)
+                Circle()
+                    .stroke(stroke, lineWidth: max(size * 0.08, 1))
             }
+            .frame(width: size, height: size)
+            .help(status.label)
+            .accessibilityLabel(status.label)
     }
 
-    private var foreground: Color {
+    private var fill: Color {
         switch status {
         case .aligned:
             EditorTheme.successGreen
@@ -636,25 +627,14 @@ private struct MediaStatusPill: View {
         }
     }
 
-    private var background: Color {
+    private var stroke: Color {
         switch status {
         case .aligned:
-            EditorTheme.successGreen.opacity(0.12)
+            EditorTheme.successGreen.opacity(0.78)
         case .readyToMatch:
-            EditorTheme.warningYellow.opacity(0.12)
+            EditorTheme.warningYellow.opacity(0.78)
         case .needsManualPlacement:
-            EditorTheme.surfaceControl.opacity(0.85)
-        }
-    }
-
-    private var border: Color {
-        switch status {
-        case .aligned:
-            EditorTheme.successGreen.opacity(0.32)
-        case .readyToMatch:
-            EditorTheme.warningYellow.opacity(0.32)
-        case .needsManualPlacement:
-            EditorTheme.borderSubtle
+            EditorTheme.textMuted.opacity(0.78)
         }
     }
 }

@@ -77,7 +77,7 @@ Rules:
 Sections, in order:
 
 1. `Preset` — Route Style Preset (line appearance only) + Distance readout.
-2. `Layout` — Anchor, Position X/Y, Scale, Rotation, Opacity.
+2. `Layout` — Position X/Y, Scale, Width, Height, Opacity.
 3. `Container` — Shape, Width, Height (or Size for circle), Corner Radius
    (square only), Edge Mode, Edge Softness, Border.
 4. `Background Map` — Show Map (header toggle), Map Style, Map Opacity,
@@ -86,7 +86,7 @@ Sections, in order:
    Dash, Glow.
 6. `Markers` — All Markers, Start Marker, Finish Marker (style / color / size /
    border / label).
-7. `Status Bar` — Enabled (toggle accessory), Placement, Layout, Slots, Background, Dividers, Typography.
+7. `Status Bar` — Enabled (toggle accessory), Placement, Inside, Layout, Size, Width, Offset, Item Gap, Slots, Background, Dividers, Radius.
 8. `Effects` — Shadow opacity / radius, Glow opacity / radius, Background
    opacity (container fill).
 
@@ -143,11 +143,12 @@ Defaults:
 
 ## Layout Section
 
-Implemented via the shared `OverlayLayoutRows` component. Controls:
+Implemented via the shared `CollapsibleLayoutInspectorSection` + `OverlayLayoutRows` components. Controls:
 
 - Position X / Y on one row, three-decimal precision.
 - Scale slider, range `0.25...4`, quantized to `0.05`, formatted `1.00x`.
-- Rotation slider, range `-180...180°`, integer degrees.
+- Width slider, range `120...720` pt, quantized to 4 pt.
+- Height slider, range `120...720` pt, quantized to 4 pt.
 - Opacity slider, range `0...1`, formatted as percentage (Route Map–specific).
 
 The Anchor grid has been removed. Position is set numerically only.
@@ -156,7 +157,6 @@ Model mapping:
 
 - `OverlayElement.position.x`, `OverlayElement.position.y`.
 - `OverlayElement.scale`.
-- `OverlayStyle.rotationDegrees`.
 - `OverlayStyle.backgroundOpacity` (re-used as overall container alpha).
 
 ## Container Section
@@ -294,12 +294,24 @@ controls fade to 50% and remain disabled; preview and export skip the bar.
 | --- | --- | --- | --- |
 | `visible` | `Bool` | `false` | — |
 | `placement` | `RouteMapStatsBarPlacement` | `.bottomAttached` | see below |
+| `inside` | `Bool` | `false` | — |
 | `layoutMode` | `RouteMapStatsBarLayoutMode` | `.equalColumns` | see below |
 | `height` | `Double` | `64` | `32...160` pt |
+| `width` | `Double` | `0` | `0...640` pt (`0` = Auto) |
+| `offsetX` | `Double` | `0` | design units |
+| `offsetY` | `Double` | `0` | design units |
+| `itemSpacing` | `Double` | `0` | `0...32` pt |
 | `backgroundOpacity` | `Double` | `0.88` | `0...1` |
-| `blurRadius` | `Double` | `0` | `0...32` pt |
 | `dividerOpacity` | `Double` | `0.12` | `0...1` |
-| `cornerRadius` | `Double` | `0` | `0...40` pt |
+| `cornerRadius` | `Double` | `0` | `0...32` pt |
+| `valueFontName` | `String` | `SF Pro Display` | font preset |
+| `valueFontSize` | `Double` | `30` | `8...96` pt |
+| `valueFontWeight` | `OverlayFontWeight` | `.semibold` | enum |
+| `valueColor` | `OverlayColor` | `white` | swatch |
+| `labelFontName` | `String` | `SF Pro Display` | font preset |
+| `labelFontSize` | `Double` | `10` | `8...96` pt |
+| `labelFontWeight` | `OverlayFontWeight` | `.medium` | enum |
+| `labelColor` | `OverlayColor` | `white@58%` | swatch |
 | `slots` | `[RouteMapStatsBarSlot]` | 4 slots | — |
 
 Default slots:
@@ -322,9 +334,13 @@ Default slots:
 | `insideBottom` | Bar overlaid at bottom inside map bounds; total size = map |
 | `insideTop` | Bar overlaid at top inside map bounds; total size = map |
 
-For `leftAttached` / `rightAttached`, `height` becomes the bar's horizontal
-width; the bar's height matches the map height. The `stack` layout mode is
-recommended for vertical bars.
+For `leftAttached` / `rightAttached`, the bar is rendered in vertical stack flow
+(top-to-bottom) regardless of selected layout mode so metrics remain legible.
+`itemSpacing` is applied as vertical row gap in this mode.
+
+When `inside == true`, bar geometry is treated as an inset lane inside the map
+container and route content reserves this lane as padding (the route line does
+not draw underneath the bar).
 
 ### Layout Modes (`RouteMapStatsBarLayoutMode`)
 
@@ -352,31 +368,38 @@ Font-size ratios (relative to bar height H):
 Displayed in the Stats Bar section (in order):
 
 1. **Placement** — dropdown (`RouteMapStatsBarPlacement`). Setter: `setOverlayRouteMapStatsBarPlacement`.
-2. **Layout** — dropdown (`RouteMapStatsBarLayoutMode`). Setter: `setOverlayRouteMapStatsBarLayoutMode`.
-3. **Height** — slider `32...160` pt, step 2 pt. Setter: `setOverlayRouteMapStatsBarHeight`.
-4. **Background** — opacity slider `0...1`. Setter: `setOverlayRouteMapStatsBarBackgroundOpacity`.
-5. **Dividers** — opacity slider `0...1`; display `Off` below 0.005. Setter: `setOverlayRouteMapStatsBarDividerOpacity`.
-6. **Radius** — corner radius `0...40` pt; display `Sharp` below 1. Setter: `setOverlayRouteMapStatsBarCornerRadius`.
-7. **Blur** — radius `0...32`; display `Off` below 1. Setter: `setOverlayRouteMapStatsBarBlurRadius`.
-8. **Slot 1–4** — metric dropdown + visibility toggle per slot.
+2. **Inside** — toggle. Setter: `setOverlayRouteMapStatsBarInside`.
+3. **Layout** — dropdown (`RouteMapStatsBarLayoutMode`). Setter: `setOverlayRouteMapStatsBarLayoutMode`.
+4. **Size** — slider `32...120` pt. Setter: `setOverlayRouteMapStatsBarHeight`.
+5. **Width** — slider `0...640` (`Auto` when 0). Setter: `setOverlayRouteMapStatsBarWidth`.
+6. **Offset** — X/Y fields. Setters: `setOverlayRouteMapStatsBarOffsetX` / `setOverlayRouteMapStatsBarOffsetY`.
+7. **Item Gap** — slider `0...32`. Setter: `setOverlayRouteMapStatsBarItemSpacing`.
+8. **Background** — opacity slider `0...1`. Setter: `setOverlayRouteMapStatsBarBackgroundOpacity`.
+9. **Dividers** — opacity slider `0...1`; display `Off` below 0.005. Setter: `setOverlayRouteMapStatsBarDividerOpacity`.
+10. **Radius** — corner radius `0...32` pt. Setter: `setOverlayRouteMapStatsBarCornerRadius`.
+11. **Value Typography** — Font, Size, Weight, Color.
+12. **Label Typography** — Font, Size, Weight, Color.
+13. **Slot 1–4** — metric dropdown + visibility toggle per slot.
 
 All controls disable and dim to 50% when the section is toggled off.
 
 ### Rendering
 
-**Export (`OverlayFrameRenderer.drawRouteMapStatsBar`)**:
-- Background: `NSBezierPath(roundedRect:)` fill with `cornerRadius`.
-- Clips subsequent drawing to the background path.
-- Dispatches to a private `drawStatsBar*` function per layout mode.
-- Vertical dividers: 1 pt white at `dividerOpacity`, spanning 70% of bar height.
-- Horizontal dividers (`grid2x2`, `stack`): 1 pt spanning 90% of bar width.
+**Export (`OverlayFrameRenderer`)**:
+- Route Map and Distance Timeline now call the same shared Stats Bar drawing path (`drawSharedStatsBar`) based on the Distance Timeline visual logic.
+- Background, divider, spacing, stacked-vs-horizontal flow, value text, and label text are rendered by the same function for both overlays.
 
-**Preview (`PreviewCanvasView.RouteMapOverlayView`)**:
+Inside-mode additions:
+- Route content rect reserves bar lane as padding (bar does not cover route polyline).
+- Bar background is clipped by container shape; inside bars should visually merge
+  with the container bottom/top radius (bar radius treated as off in inside mode).
+
+**Preview (`PreviewCanvasView`)**:
 - `placementContainer` is a `@ViewBuilder` that emits the correct outer
   `VStack`/`HStack`/`ZStack.overlay` depending on `statsBar.placement`.
-- `statsBarContent` dispatches to SwiftUI layout functions per `layoutMode`.
-- Background applied via `.background(RoundedRectangle / Rectangle)`.
-- Values use the same formatters as Numeric Overlay.
+- Route Map and Distance Timeline both render through `SharedStatsBarContentView`
+  (single SwiftUI Stats Bar renderer).
+- Shared renderer uses Stats Bar-owned Value/Label typography and colors directly (no fallback to outer accent/foreground color).
 
 - Values use the same formatters as Numeric Overlay. Pace uses `M'SS" /km`
   or selected unit system; elapsed time uses `HH:MM:SS` when duration >= 1 hour.
@@ -454,7 +477,15 @@ Currently model-backed (post 2026-04-27 Phase E.1):
   `routeMapMarkerStyle` (legacy / quick set).
 - `routeMapBackgroundStyle` — single source of truth for map visibility.
   `routeMapProvider` is now derived in the layout step.
-- `routeMapStatusBarVisible`, `routeMapStatusBarPlacement`, `routeMapStatusBarSlots` (new model target).
+- `routeMapStatsBar.visible`, `routeMapStatsBar.placement`, `routeMapStatsBar.inside`,
+  `routeMapStatsBar.layoutMode`, `routeMapStatsBar.height`, `routeMapStatsBar.width`,
+  `routeMapStatsBar.offsetX`, `routeMapStatsBar.offsetY`, `routeMapStatsBar.itemSpacing`,
+  `routeMapStatsBar.backgroundOpacity`, `routeMapStatsBar.dividerOpacity`,
+  `routeMapStatsBar.cornerRadius`, `routeMapStatsBar.valueFontName`, `routeMapStatsBar.valueFontSize`,
+  `routeMapStatsBar.valueFontWeight`, `routeMapStatsBar.valueColor`,
+  `routeMapStatsBar.labelFontName`, `routeMapStatsBar.labelFontSize`,
+  `routeMapStatsBar.labelFontWeight`, `routeMapStatsBar.labelColor`,
+  `routeMapStatsBar.slots`.
 - `routeMapLegendVisible`, `routeMapLegendMode` are legacy migration fields only.
 - `OverlayElement.position`, `OverlayElement.scale`,
   `OverlayStyle.rotationDegrees`.
@@ -472,9 +503,7 @@ Planned (Phase F, not yet implemented):
 - Route line (`width` / `opacity` / `dash` / `glow` / `gradientMetric`).
 - Per-marker color / size / border / label.
 - Status Bar style preset enum.
-- Status Bar full appearance fields: height, background color / opacity, corner radius, padding, divider style.
-- Status Bar slot list (`RouteMapStatusBarSlotConfig`), including metric, label override, unit mode, icon settings, color overrides, and width weight.
-- Status Bar typography overrides.
+- Status Bar slot label override editing in inspector.
 - Glow / blend mode container effects.
 
 When a Phase F field lands, this doc and `route-map-overlay-ui.spec.json`

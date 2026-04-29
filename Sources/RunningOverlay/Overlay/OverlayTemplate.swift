@@ -57,13 +57,25 @@ struct OverlayTemplateElement: Codable, Equatable {
     var positionX: Double
     var positionY: Double
     var scale: Double
+    var isVisible: Bool
+    var isLocked: Bool
     var style: OverlayStyle
 
-    init(type: OverlayElementType, positionX: Double, positionY: Double, scale: Double, style: OverlayStyle) {
+    init(
+        type: OverlayElementType,
+        positionX: Double,
+        positionY: Double,
+        scale: Double,
+        isVisible: Bool = true,
+        isLocked: Bool = false,
+        style: OverlayStyle
+    ) {
         self.type = type
         self.positionX = positionX
         self.positionY = positionY
         self.scale = scale
+        self.isVisible = isVisible
+        self.isLocked = isLocked
         self.style = style
     }
 
@@ -73,6 +85,8 @@ struct OverlayTemplateElement: Codable, Equatable {
             positionX: element.position.x,
             positionY: element.position.y,
             scale: element.scale,
+            isVisible: element.isVisible,
+            isLocked: element.isLocked,
             style: element.style
         )
     }
@@ -82,8 +96,31 @@ struct OverlayTemplateElement: Codable, Equatable {
             type: type,
             position: CGPoint(x: positionX, y: positionY),
             scale: scale,
+            isVisible: isVisible,
+            isLocked: isLocked,
             style: style
         )
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case type
+        case positionX
+        case positionY
+        case scale
+        case isVisible
+        case isLocked
+        case style
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        type = try container.decode(OverlayElementType.self, forKey: .type)
+        positionX = try container.decode(Double.self, forKey: .positionX)
+        positionY = try container.decode(Double.self, forKey: .positionY)
+        scale = try container.decode(Double.self, forKey: .scale)
+        isVisible = try container.decodeIfPresent(Bool.self, forKey: .isVisible) ?? true
+        isLocked = try container.decodeIfPresent(Bool.self, forKey: .isLocked) ?? false
+        style = try container.decode(OverlayStyle.self, forKey: .style)
     }
 }
 

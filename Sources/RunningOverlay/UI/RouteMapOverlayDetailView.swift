@@ -18,14 +18,15 @@ struct RouteMapOverlayDetailView: View {
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
                         sectionView(.preset) { presetSection(element) }
-                        sectionView(.layout) { layoutSection(element) }
+                        layoutInspectorSection(element)
                         sectionView(.container) { containerSection(element) }
                         sectionView(.backgroundMap, accessory: { showMapToggle(element) }) { backgroundMapSection(element) }
                         sectionView(.routeLine) { routeLineSection(element) }
                         sectionView(.markers) { markersSection(element) }
-                        sectionView(.legend, accessory: { statsBarVisibleToggle(element) }) { statsBarSection(element) }
+                        routeMapStatsBarInspectorSection(element)
                         sectionView(.effects) { effectsSection(element) }
                     }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
 
                 Divider().overlay(NumericTokens.borderSubtle)
@@ -67,17 +68,34 @@ struct RouteMapOverlayDetailView: View {
     }
 
     @ViewBuilder
-    private func layoutSection(_ element: OverlayElement) -> some View {
-        OverlayLayoutRows(elementID: elementID, showRotation: true)
-        InspectorDenseSliderRow(
-            label: "Opacity",
-            value: Binding(
-                get: { element.style.backgroundOpacity },
-                set: { project.setOverlayBackgroundOpacity(elementID, opacity: $0.quantizedRouteMap(to: 0.05)) }
-            ),
-            range: 0...1,
-            displayText: String(format: "%.0f%%", element.style.backgroundOpacity * 100)
-        )
+    private func layoutInspectorSection(_ element: OverlayElement) -> some View {
+        CollapsibleLayoutInspectorSection(
+            isExpanded: Binding(
+                get: { openSections.contains(.layout) },
+                set: { newValue in
+                    if newValue { openSections.insert(.layout) }
+                    else { openSections.remove(.layout) }
+                }
+            )
+        ) {
+            OverlayLayoutRows(
+                elementID: elementID,
+                widthBinding: Binding(
+                    get: { element.style.routeMapWidth },
+                    set: { project.setOverlayRouteMapWidth(elementID, width: $0.quantizedRouteMap(to: 4)) }
+                ),
+                widthRange: 120...720,
+                heightBinding: Binding(
+                    get: { element.style.routeMapHeight },
+                    set: { project.setOverlayRouteMapHeight(elementID, height: $0.quantizedRouteMap(to: 4)) }
+                ),
+                heightRange: 120...720,
+                opacityBinding: Binding(
+                    get: { element.style.backgroundOpacity },
+                    set: { project.setOverlayBackgroundOpacity(elementID, opacity: $0.quantizedRouteMap(to: 0.05)) }
+                )
+            )
+        }
     }
 
     @ViewBuilder
@@ -334,23 +352,73 @@ struct RouteMapOverlayDetailView: View {
     }
 
     @ViewBuilder
-    private func statsBarSection(_ element: OverlayElement) -> some View {
+    private func routeMapStatsBarInspectorSection(_ element: OverlayElement) -> some View {
+        let config = element.style.routeMapStatsBar
+        CollapsibleStatsBarInspectorSection(
+            isExpanded: Binding(
+                get: { openSections.contains(.legend) },
+                set: { newValue in
+                    if newValue { openSections.insert(.legend) }
+                    else { openSections.remove(.legend) }
+                }
+            ),
+            title: SharedStatsBarInspectorUI.sectionTitle,
+            systemImage: SharedStatsBarInspectorUI.sectionSystemImage,
+            isBarEnabled: config.visible,
+            onSetBarEnabled: { project.setOverlayRouteMapStatsBarVisible(elementID, isVisible: $0) }
+        ) {
+            routeMapStatsBarRows(element)
+        }
+    }
+
+    @ViewBuilder
+    private func routeMapStatsBarRows(_ element: OverlayElement) -> some View {
         let config = element.style.routeMapStatsBar
         StatsBarInspectorRows(
             isOn: config.visible,
             placement: config.placement,
-            availablePlacements: RouteMapStatsBarPlacement.allCases,
+            availablePlacements: SharedStatsBarInspectorUI.placements,
             layoutMode: config.layoutMode,
             height: config.height,
-            heightRange: 32...160,
-            heightLabel: "Height",
+            heightRange: SharedStatsBarInspectorUI.heightRange,
+            heightLabel: SharedStatsBarInspectorUI.heightLabel,
             backgroundOpacity: config.backgroundOpacity,
             dividerOpacity: config.dividerOpacity,
             cornerRadius: config.cornerRadius,
-            cornerRadiusRange: 0...40,
+            cornerRadiusRange: SharedStatsBarInspectorUI.cornerRadiusRange,
+            valueTypography: .init(
+                fontName: config.valueFontName,
+                fontSize: config.valueFontSize,
+                fontWeight: config.valueFontWeight,
+                color: config.valueColor,
+                onSetFontName: { project.setOverlayRouteMapStatsBarValueFontName(elementID, fontName: $0) },
+                onSetFontSize: { project.setOverlayRouteMapStatsBarValueFontSize(elementID, fontSize: $0.quantizedRouteMap(to: 1)) },
+                onSetFontWeight: { project.setOverlayRouteMapStatsBarValueFontWeight(elementID, fontWeight: $0) },
+                onSetColor: { project.setOverlayRouteMapStatsBarValueColor(elementID, color: $0) }
+            ),
+            labelTypography: .init(
+                fontName: config.labelFontName,
+                fontSize: config.labelFontSize,
+                fontWeight: config.labelFontWeight,
+                color: config.labelColor,
+                onSetFontName: { project.setOverlayRouteMapStatsBarLabelFontName(elementID, fontName: $0) },
+                onSetFontSize: { project.setOverlayRouteMapStatsBarLabelFontSize(elementID, fontSize: $0.quantizedRouteMap(to: 1)) },
+                onSetFontWeight: { project.setOverlayRouteMapStatsBarLabelFontWeight(elementID, fontWeight: $0) },
+                onSetColor: { project.setOverlayRouteMapStatsBarLabelColor(elementID, color: $0) }
+            ),
             slots: config.slots.map { (metric: $0.metric, visible: $0.visible) },
-            availableMetrics: RouteMapStatsMetric.allCases.filter { $0 != .progress },
-            blurRadius: config.blurRadius,
+            availableMetrics: SharedStatsBarInspectorUI.metrics,
+            inside: config.inside,
+            extraLayout: .init(
+                width: config.width,
+                offsetX: config.offsetX,
+                offsetY: config.offsetY,
+                itemSpacing: config.itemSpacing,
+                onSetWidth: { project.setOverlayRouteMapStatsBarWidth(elementID, width: $0.quantizedRouteMap(to: 1)) },
+                onSetOffsetX: { project.setOverlayRouteMapStatsBarOffsetX(elementID, offsetX: $0.quantizedRouteMap(to: 1)) },
+                onSetOffsetY: { project.setOverlayRouteMapStatsBarOffsetY(elementID, offsetY: $0.quantizedRouteMap(to: 1)) },
+                onSetItemSpacing: { project.setOverlayRouteMapStatsBarItemSpacing(elementID, spacing: $0.quantizedRouteMap(to: 1)) }
+            ),
             onSetPlacement: { project.setOverlayRouteMapStatsBarPlacement(elementID, placement: $0) },
             onSetLayoutMode: { project.setOverlayRouteMapStatsBarLayoutMode(elementID, layoutMode: $0) },
             onSetHeight: { project.setOverlayRouteMapStatsBarHeight(elementID, height: $0.quantizedRouteMap(to: 2)) },
@@ -359,7 +427,7 @@ struct RouteMapOverlayDetailView: View {
             onSetCornerRadius: { project.setOverlayRouteMapStatsBarCornerRadius(elementID, radius: $0.quantizedRouteMap(to: 1)) },
             onSetSlotMetric: { project.setOverlayRouteMapStatsBarSlotMetric(elementID, slotIndex: $0, metric: $1) },
             onSetSlotVisible: { project.setOverlayRouteMapStatsBarSlotVisible(elementID, slotIndex: $0, isVisible: $1) },
-            onSetBlurRadius: { project.setOverlayRouteMapStatsBarBlurRadius(elementID, radius: $0.quantizedRouteMap(to: 1)) }
+            onSetInside: { project.setOverlayRouteMapStatsBarInside(elementID, isInside: $0) }
         )
     }
 
@@ -420,11 +488,6 @@ struct RouteMapOverlayDetailView: View {
                     openSections.insert(section)
                 }
             }
-            .overlay(alignment: .top) {
-                Rectangle()
-                    .fill(NumericTokens.borderSubtle)
-                    .frame(height: 1)
-            }
             .overlay(alignment: .bottom) {
                 Rectangle()
                     .fill(NumericTokens.borderSubtle)
@@ -437,17 +500,6 @@ struct RouteMapOverlayDetailView: View {
                 }
             }
         }
-    }
-
-    @ViewBuilder
-    private func statsBarVisibleToggle(_ element: OverlayElement) -> some View {
-        Toggle("", isOn: Binding(
-            get: { element.style.routeMapStatsBar.visible },
-            set: { project.setOverlayRouteMapStatsBarVisible(elementID, isVisible: $0) }
-        ))
-        .toggleStyle(.switch)
-        .controlSize(.mini)
-        .labelsHidden()
     }
 
     private var footerBar: some View {

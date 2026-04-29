@@ -1,6 +1,6 @@
 # Timeline UI Design Spec
 
-Last updated: 2026-04-26
+Last updated: 2026-04-28
 
 ## Purpose
 
@@ -98,8 +98,10 @@ Requirements:
 - Support activity labels such as `27:10`, `55:24`, `1:01:23`.
 - Support post-finish labels such as `1:20:21`, `1:26:52`.
 - Ticks should be subtle and evenly aligned to the time scale.
-- Hover data appears as a compact pill in a reserved band above the time scale, e.g. `55:24 • 9:39 AM • 10.61 km`.
+- Hover data appears as a compact pill tooltip, e.g. `55:24 • 9:39 AM • 10.61 km`.
+- The pill floats above the ruler, rendered as a SwiftUI overlay on the canvas with a negative y-offset so it visually overlaps the panel header below its bottom edge. No vertical space is reserved inside the ruler for the pill.
 - The hover pill has a small downward-pointing arrow on its bottom edge whose tip aligns with the hovered ruler position, so the pill reads as a tooltip pointing down to the time scale without sitting under the cursor.
+- The ruler height is `rulerScaleHeight` only (28 pt). There is no `rulerHoverHeight` padding.
 
 ## Label Column
 

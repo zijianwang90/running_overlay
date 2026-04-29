@@ -98,7 +98,9 @@ struct OverlayRenderModelTests {
         #expect(layout.label == "Elevation 105 m")
         #expect(layout.progress == 0.5)
         #expect(layout.samples == [100, 110])
-        #expect(layout.chartHeight == 60)
+        #expect(layout.style.preset == .gradientArea)
+        #expect(layout.statsBarItems.count == 3)
+        #expect(layout.chartHeight == 78)
     }
 
     @Test func runningGaugeLayoutCarriesCoreMetricsAndProgress() {

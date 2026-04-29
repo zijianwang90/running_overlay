@@ -15,8 +15,8 @@ struct NumericOverlayDetailView: View {
 
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
+                        layoutInspectorSection
                         sectionView(.content, element: element) { contentSection(element) }
-                        sectionView(.layout, element: element) { layoutSection(element) }
                         sectionView(.typography, element: element) { typographySection(element) }
                         sectionView(.label, element: element, accessory: { labelEnabledToggle(element) }) { labelSection(element) }
                         sectionView(.unit, element: element, accessory: { unitEnabledToggle(element) }) { unitSection(element) }
@@ -24,6 +24,7 @@ struct NumericOverlayDetailView: View {
                         sectionView(.background, element: element, accessory: { backgroundEnabledToggle(element) }) { backgroundSection(element) }
                         sectionView(.effects, element: element, accessory: { shadowEnabledToggle(element) }) { effectsSection(element) }
                     }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
 
                 Divider().overlay(NumericTokens.borderSubtle)
@@ -89,8 +90,24 @@ struct NumericOverlayDetailView: View {
     }
 
     @ViewBuilder
-    private func layoutSection(_ element: OverlayElement) -> some View {
-        OverlayLayoutRows(elementID: elementID, showRotation: true)
+    private var layoutInspectorSection: some View {
+        CollapsibleLayoutInspectorSection(
+            isExpanded: Binding(
+                get: { openSections.contains(.layout) },
+                set: { newValue in
+                    if newValue { openSections.insert(.layout) }
+                    else { openSections.remove(.layout) }
+                }
+            )
+        ) {
+            OverlayLayoutRows(
+                elementID: elementID,
+                opacityBinding: Binding(
+                    get: { project.selectedOverlay(elementID)?.style.backgroundOpacity ?? 0 },
+                    set: { project.setOverlayBackgroundOpacity(elementID, opacity: $0.quantizedNumeric(to: 0.05)) }
+                )
+            )
+        }
     }
 
     @ViewBuilder
@@ -516,11 +533,6 @@ struct NumericOverlayDetailView: View {
                 } else {
                     openSections.insert(section)
                 }
-            }
-            .overlay(alignment: .top) {
-                Rectangle()
-                    .fill(NumericTokens.borderSubtle)
-                    .frame(height: 1)
             }
             .overlay(alignment: .bottom) {
                 Rectangle()
@@ -997,14 +1009,11 @@ struct InspectorAnchorGrid: View {
 // MARK: - Shared layout rows
 
 /// Shared layout rows used by all overlay detail panels.
-/// Shows Position (X/Y), Scale, and optionally Rotation, Width, and Height.
-/// Anchor and Padding have been intentionally omitted.
+/// Canonical row set: Position (X/Y), Scale, Width, Height, Opacity.
+/// Rotation is intentionally excluded.
 struct OverlayLayoutRows: View {
     @EnvironmentObject private var project: ProjectDocument
     let elementID: OverlayElement.ID
-
-    /// When true, includes a Rotation slider (−180 … 180 °).
-    var showRotation: Bool = false
 
     /// Provide a binding to show a Width slider; pass nil to hide it (e.g. square components).
     var widthBinding: Binding<Double>? = nil
@@ -1015,6 +1024,12 @@ struct OverlayLayoutRows: View {
     var heightBinding: Binding<Double>? = nil
     var heightRange: ClosedRange<Double> = 52...720
     var heightLabel: String = "Height"
+
+    /// Opacity row is part of the canonical layout surface.
+    var opacityBinding: Binding<Double>
+    var opacityRange: ClosedRange<Double> = 0...1
+    var opacityLabel: String = "Opacity"
+    var opacityDisplay: (Double) -> String = { String(format: "%.0f%%", $0 * 100) }
 
     var body: some View {
         if let element = project.selectedOverlay(elementID) {
@@ -1053,17 +1068,6 @@ struct OverlayLayoutRows: View {
                 range: 0.25...4,
                 displayText: String(format: "%.2fx", element.scale)
             )
-            if showRotation {
-                InspectorDenseSliderRow(
-                    label: "Rotation",
-                    value: Binding(
-                        get: { element.style.rotationDegrees },
-                        set: { project.setOverlayRotation(elementID, degrees: $0.rounded()) }
-                    ),
-                    range: -180...180,
-                    displayText: "\(Int(element.style.rotationDegrees))°"
-                )
-            }
             if let w = widthBinding {
                 InspectorDenseSliderRow(
                     label: widthLabel,
@@ -1079,6 +1083,47 @@ struct OverlayLayoutRows: View {
                     range: heightRange,
                     displayText: "\(Int(h.wrappedValue))"
                 )
+            }
+            InspectorDenseSliderRow(
+                label: opacityLabel,
+                value: opacityBinding,
+                range: opacityRange,
+                displayText: opacityDisplay(opacityBinding.wrappedValue)
+            )
+        }
+    }
+}
+
+/// Shared collapsible section wrapper for the Layout block.
+/// This keeps title/icon/disclosure behavior consistent across all detail panels.
+struct CollapsibleLayoutInspectorSection<Content: View>: View {
+    @Binding var isExpanded: Bool
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: NumericTokens.space2) {
+                Image(systemName: "scope")
+                    .frame(width: 16, alignment: .center)
+                    .foregroundStyle(NumericTokens.textSecondary)
+                Text("Layout")
+                    .font(NumericTokens.sectionTitleFont)
+                    .foregroundStyle(NumericTokens.textPrimary)
+                Spacer()
+                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(NumericTokens.textMuted)
+                    .frame(width: 18, height: 18)
+            }
+            .frame(height: NumericTokens.sectionHeaderHeight)
+            .padding(.horizontal, NumericTokens.panelPaddingX)
+            .background(NumericTokens.panelBackgroundElevated)
+            .contentShape(Rectangle())
+            .onTapGesture { isExpanded.toggle() }
+            .overlay(alignment: .bottom) { Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1) }
+
+            if isExpanded {
+                VStack(spacing: 0) { content() }
             }
         }
     }
