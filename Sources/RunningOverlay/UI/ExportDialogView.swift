@@ -64,38 +64,73 @@ struct ExportDialogView: View {
                     .frame(width: 72, alignment: .trailing)
             }
 
-            HStack {
-                Spacer()
-                Button("Cancel") {
-                    dismiss()
+            VStack(alignment: .trailing, spacing: 10) {
+                HStack {
+                    Spacer()
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    Button("Export Test Clip") {
+                        destinationURL = URL(fileURLWithPath: (destination as NSString).expandingTildeInPath)
+                        project.exportTestClip(to: destinationURL)
+                        dismiss()
+                    }
+                    .disabled(project.isExporting)
+                    Button("Export Test Frame") {
+                        destinationURL = URL(fileURLWithPath: (destination as NSString).expandingTildeInPath)
+                        project.exportTestFrame(to: destinationURL)
+                        dismiss()
+                    }
+                    .disabled(project.isExporting)
+                    Button("Export SwiftUI Test Clip") {
+                        destinationURL = URL(fileURLWithPath: (destination as NSString).expandingTildeInPath)
+                        project.exportSwiftUITestClip(to: destinationURL)
+                        dismiss()
+                    }
+                    .disabled(project.isExporting)
+                    Button("Export SwiftUI Test Frame") {
+                        destinationURL = URL(fileURLWithPath: (destination as NSString).expandingTildeInPath)
+                        project.exportSwiftUITestFrame(to: destinationURL)
+                        dismiss()
+                    }
+                    .disabled(project.isExporting)
                 }
-                Button("Export Test Clip") {
-                    destinationURL = URL(fileURLWithPath: (destination as NSString).expandingTildeInPath)
-                    project.exportTestClip(to: destinationURL)
-                    dismiss()
-                }
-                .disabled(project.isExporting)
-                Button("Export Test Frame") {
-                    destinationURL = URL(fileURLWithPath: (destination as NSString).expandingTildeInPath)
-                    project.exportTestFrame(to: destinationURL)
-                    dismiss()
-                }
-                .disabled(project.isExporting)
-                Button("Export") {
-                    destinationURL = URL(fileURLWithPath: (destination as NSString).expandingTildeInPath)
-                    project.exportOverlays(to: destinationURL)
-                    dismiss()
-                }
-                .buttonStyle(EditorPrimaryButtonStyle())
-                .keyboardShortcut(.defaultAction)
-                .disabled(project.isExporting)
 
-                Button("Export Full Activity") {
-                    destinationURL = URL(fileURLWithPath: (destination as NSString).expandingTildeInPath)
-                    project.exportFullActivityOverlay(to: destinationURL)
-                    dismiss()
+                HStack {
+                    Spacer()
+                    Button("Export Overlay JSON") {
+                        destinationURL = URL(fileURLWithPath: (destination as NSString).expandingTildeInPath)
+                        project.exportCurrentOverlayConfigurationJSON(to: destinationURL)
+                        dismiss()
+                    }
+                    Button("Export Full Activity") {
+                        destinationURL = URL(fileURLWithPath: (destination as NSString).expandingTildeInPath)
+                        project.exportFullActivityOverlay(to: destinationURL)
+                        dismiss()
+                    }
+                    .disabled(project.isExporting)
+                    VStack(alignment: .trailing, spacing: 6) {
+                        Button("Export") {
+                            destinationURL = URL(fileURLWithPath: (destination as NSString).expandingTildeInPath)
+                            project.exportOverlays(to: destinationURL)
+                            dismiss()
+                        }
+                        .buttonStyle(EditorPrimaryButtonStyle())
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(project.isExporting)
+
+                        Button {
+                            project.useSwiftUIExportForMainExport.toggle()
+                        } label: {
+                            Label(
+                                project.useSwiftUIExportForMainExport ? "Use SwiftUI Export: On" : "Use SwiftUI Export: Off",
+                                systemImage: project.useSwiftUIExportForMainExport ? "checkmark.circle.fill" : "circle"
+                            )
+                        }
+                        .buttonStyle(EditorSecondaryButtonStyle())
+                        .disabled(project.isExporting)
+                    }
                 }
-                .disabled(project.isExporting)
             }
         }
         .padding(24)

@@ -2,6 +2,24 @@
 
 ## 2026-04-29
 
+### Finalize Shared-Component SwiftUI Export Path
+
+Summary:
+
+- Removed residual per-overlay experimental view implementations from `SwiftUIOverlayVideoExporter`; export now keeps only the shared component route used by preview (`OverlaySharedTextPresetView`, `OverlaySharedDistanceTimelineView`, `OverlaySharedRouteMapView`).
+- Updated SwiftUI export filtering to include visible text-preset overlays (not only numeric) plus Distance Timeline and Route Map, so shared-component coverage matches current supported visual scope.
+- Added `useSwiftUIExportForMainExport` in `ProjectDocument` and wired `Export` to select SwiftUI export when enabled.
+- Added `Use SwiftUI Export` toggle button below `Export` in `ExportDialogView`.
+
+Files changed:
+
+- `Sources/RunningOverlay/Export/SwiftUIOverlayVideoExporter.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/UI/ExportDialogView.swift`
+- `docs/requirements.md`
+- `docs/development.md`
+- `docs/project-log.md`
+
 ### Unify Preview And SwiftUI Export Call Sites
 
 Summary:
@@ -9,6 +27,7 @@ Summary:
 - Updated `PreviewCanvasView` to call shared overlay wrappers for text preset, distance timeline, and route map rendering.
 - Updated `SwiftUIOverlayVideoExporter` to call the same shared wrappers with `isInteractive: false`, so export disables selection affordances while keeping component visuals aligned with preview call sites.
 - This completes the second step after shared entry-point extraction: both preview and export now invoke the same overlay view entry points.
+- Removed an extra horizontal flip transform in SwiftUI experimental video frame drawing to fix mirrored output in `Export SwiftUI Test Clip`.
 
 Files changed:
 
