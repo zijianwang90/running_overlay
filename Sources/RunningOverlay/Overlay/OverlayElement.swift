@@ -286,6 +286,7 @@ struct OverlayStyle: Equatable, Codable {
     var routeMapMarkerStyle: OverlayRouteMapMarkerStyle
     var routeMapStartMarkerStyle: OverlayRouteMapMarkerStyle
     var routeMapEndMarkerStyle: OverlayRouteMapMarkerStyle
+    var routeMapRunnerDotColor: OverlayColor
     var routeMapBackgroundStyle: OverlayRouteMapBackgroundStyle
     var routeMapLegendVisible: Bool
     var routeMapLegendMode: OverlayRouteMapLegendMode
@@ -397,6 +398,7 @@ struct OverlayStyle: Equatable, Codable {
         routeMapMarkerStyle: .dot,
         routeMapStartMarkerStyle: .dot,
         routeMapEndMarkerStyle: .dot,
+        routeMapRunnerDotColor: .white,
         routeMapBackgroundStyle: .dark,
         routeMapLegendVisible: true,
         routeMapLegendMode: .startFinishDistance,
@@ -471,6 +473,7 @@ struct OverlayStyle: Equatable, Codable {
         routeMapMarkerStyle: OverlayRouteMapMarkerStyle = .dot,
         routeMapStartMarkerStyle: OverlayRouteMapMarkerStyle = .dot,
         routeMapEndMarkerStyle: OverlayRouteMapMarkerStyle = .dot,
+        routeMapRunnerDotColor: OverlayColor = .white,
         routeMapBackgroundStyle: OverlayRouteMapBackgroundStyle = .dark,
         routeMapLegendVisible: Bool = true,
         routeMapLegendMode: OverlayRouteMapLegendMode = .startFinishDistance,
@@ -543,6 +546,7 @@ struct OverlayStyle: Equatable, Codable {
         self.routeMapMarkerStyle = routeMapMarkerStyle
         self.routeMapStartMarkerStyle = routeMapStartMarkerStyle
         self.routeMapEndMarkerStyle = routeMapEndMarkerStyle
+        self.routeMapRunnerDotColor = routeMapRunnerDotColor
         self.routeMapBackgroundStyle = routeMapBackgroundStyle
         self.routeMapLegendVisible = routeMapLegendVisible
         self.routeMapLegendMode = routeMapLegendMode
@@ -640,6 +644,7 @@ struct OverlayStyle: Equatable, Codable {
         fontSize = try container.decodeIfPresent(Double.self, forKey: .fontSize) ?? Self.default.fontSize
         fontWeight = try container.decodeIfPresent(OverlayFontWeight.self, forKey: .fontWeight) ?? Self.default.fontWeight
         foregroundColor = try container.decodeIfPresent(OverlayColor.self, forKey: .foregroundColor) ?? Self.default.foregroundColor
+        routeMapRunnerDotColor = try container.decodeIfPresent(OverlayColor.self, forKey: .routeMapRunnerDotColor) ?? foregroundColor
         valueColor = try container.decodeIfPresent(OverlayColor.self, forKey: .valueColor) ?? foregroundColor
         valueOpacity = min(max(try container.decodeIfPresent(Double.self, forKey: .valueOpacity) ?? Self.default.valueOpacity, 0), 1)
         labelColor = try container.decodeIfPresent(OverlayColor.self, forKey: .labelColor) ?? foregroundColor

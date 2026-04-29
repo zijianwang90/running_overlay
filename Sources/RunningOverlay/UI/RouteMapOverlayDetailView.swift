@@ -349,6 +349,14 @@ struct RouteMapOverlayDetailView: View {
             .menuStyle(.borderlessButton)
             .frame(height: NumericTokens.controlHeight)
         }
+        InspectorDenseRow(label: "Position Color") {
+            InspectorDenseSwatchStrip(
+                presets: NumericOverlayDetailView.colorPresets,
+                selected: element.style.routeMapRunnerDotColor
+            ) { color in
+                project.setOverlayRouteMapRunnerDotColor(elementID, color: color)
+            }
+        }
     }
 
     @ViewBuilder

@@ -199,7 +199,7 @@ struct OverlayFrameRenderer {
         case .splitLabel:
             let label = renderLayout.components.shortLabel.map(String.init).joined(separator: " ")
             drawText(label, for: element, fontSize: renderLayout.labelFontSize, in: CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: renderLayout.labelFontSize * 1.35), renderLayout: renderLayout)
-            drawRoundedRect(CGRect(x: rect.minX, y: rect.minY + renderLayout.labelFontSize * 1.55, width: renderLayout.fontSize * 3.5, height: max(renderLayout.fontSize / 18, 2)), color: colors.accent, cornerRadius: 0)
+            drawRoundedRect(CGRect(x: rect.minX, y: rect.minY + renderLayout.labelFontSize * 1.55, width: renderLayout.fontSize * 3.5, height: max(renderLayout.fontSize / 18, 2)), color: NSColor(element.style.accentColor), cornerRadius: 0)
             let valueFontSize = renderLayout.fontSize * 1.45
             drawText(renderLayout.components.value, for: element, fontSize: valueFontSize, in: CGRect(x: rect.minX, y: rect.minY + renderLayout.labelFontSize * 1.85, width: rect.width, height: valueFontSize * 1.18), renderLayout: renderLayout)
             let valueWidth = textSize(renderLayout.components.value, for: element, fontSize: valueFontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY).width
@@ -330,7 +330,7 @@ struct OverlayFrameRenderer {
                 fontSize: renderLayout.labelFontSize,
                 in: CGRect(x: textOriginX, y: labelY, width: rect.width, height: renderLayout.labelFontSize * 1.25),
                 renderLayout: renderLayout,
-                color: NSColor(element.style.accentColor).withAlphaComponent(0.95)
+                color: colors.foreground
             )
         }
         let valueY = labelY + renderLayout.labelFontSize * 1.40
@@ -1936,7 +1936,7 @@ struct OverlayFrameRenderer {
 
         drawRouteMarker(points.first, color: .systemGreen, lineWidth: layout.lineWidth, style: element.style.routeMapStartMarkerStyle)
         drawRouteMarker(points.last, color: .systemRed, lineWidth: layout.lineWidth, style: element.style.routeMapEndMarkerStyle)
-        drawRouteMarker(layout.projectedCurrentPoint, color: accent, lineWidth: layout.lineWidth * 1.18)
+        drawRouteMarker(layout.projectedCurrentPoint, color: NSColor(element.style.routeMapRunnerDotColor), lineWidth: layout.lineWidth * 1.18)
 
     }
 

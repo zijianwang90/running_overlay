@@ -2,6 +2,56 @@
 
 ## 2026-04-29
 
+### Route Map: Runner Position Dot Color
+
+Added a dedicated color picker for the runner's current-position dot in the Route Map overlay inspector (Markers section, "Position Color" row).
+
+Previously the dot always used the route line's foreground color. Now it has its own `routeMapRunnerDotColor` property, defaulting to `foregroundColor` on decode so existing projects look identical.
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/OverlayElement.swift` — added `routeMapRunnerDotColor: OverlayColor` to `OverlayStyle`; decoded after `foregroundColor` so the fallback is available
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift` — runner dot now uses `NSColor(element.style.routeMapRunnerDotColor)` instead of `accent`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift` — added `setOverlayRouteMapRunnerDotColor`
+- `Sources/RunningOverlay/UI/RouteMapOverlayDetailView.swift` — added "Position Color" swatch row in `markersSection`
+
+### Fix Split Label and Racing Stripe label/line color roles
+
+Summary:
+
+- **Split Label**: the horizontal rule under the label was using `NSColor.controlAccentColor` (macOS system accent) instead of the element's user-configured `accentColor`. Fixed to use `NSColor(element.style.accentColor)`.
+- **Racing Stripe**: the label text was rendered in the element's `accentColor`, conflating the stripe color role with the label text role. Fixed to use `colors.foreground` (`element.style.foregroundColor`) so label color is controlled by the same "Color" picker as the rest of the text, while the vertical stripe continues to use `accentColor`.
+
+Color responsibility is now consistent across both presets: label text color → foreground/text color; line/stripe color → accent color.
+
+Files changed:
+
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `docs/project-log.md`
+
+### Preview Canvas Overlay Snapping
+
+Summary:
+
+- Added drag-time snapping for Preview overlays using measured rendered overlay frames in fitted-canvas coordinates.
+- When safe guides are enabled, overlay left/right/top/bottom edges snap to the 90% and 80% safe-frame guide lines, and overlay center axes snap to the canvas center crosshair.
+- Visible overlays can snap to each other's left/center/right and top/center/bottom alignment lines, so neighboring components can be bottom-aligned, top-aligned, left-aligned, right-aligned, or center-aligned while dragging.
+- Added temporary non-interactive snap lines during active drag to show which alignment target is being used.
+- Fixed the initial frame-measurement placement so dragging uses the overlay's own rendered bounds instead of the whole canvas bounds.
+- Updated Preview design and development documentation for snapping behavior.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `docs/development.md`
+- `docs/design/panels/preview/preview-ui.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+- Ran `swift test`.
+
 ### Preview Canvas Drag Performance Optimization
 
 Summary:

@@ -1331,6 +1331,14 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.routeMapEndMarkerStyle = markerStyle
     }
 
+    func setOverlayRouteMapRunnerDotColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapRunnerDotColor = color
+    }
+
     func setOverlayRouteMapLegendMode(_ elementID: OverlayElement.ID, legendMode: OverlayRouteMapLegendMode) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
