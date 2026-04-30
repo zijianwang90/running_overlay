@@ -1,6 +1,6 @@
 # Numeric Overlay UI Design Spec
 
-Last updated: 2026-04-29 (shared background/effects inspector modules)
+Last updated: 2026-04-30 (layout opacity applies to whole element)
 
 ## Purpose
 
@@ -131,7 +131,7 @@ Implemented via the shared `OverlayLayoutInspectorRows` component. Controls:
 
 - Position X and Y numeric fields on one row (three-decimal precision).
 - Scale slider, range `0.25...4`, quantized to `0.05`, formatted `1.00x`.
-- Opacity slider, range `0...1`, displayed as a percentage.
+- Opacity slider, range `0...1`, displayed as a percentage. This controls `OverlayElement.opacity` and fades the whole overlay, not just its background.
 
 Anchor, Padding, and Rotation rows have been removed. Position is set numerically only.
 
@@ -192,7 +192,7 @@ Controls:
 
 - `Enable Background` toggle.
 - Background color swatch.
-- Opacity slider.
+- Opacity slider. This controls background-only alpha; whole-overlay opacity lives in Layout.
 - Radius slider.
 - Padding X and Padding Y fields or compact steppers.
 - Gaussian Blur slider.

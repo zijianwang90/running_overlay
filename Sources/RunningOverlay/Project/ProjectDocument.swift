@@ -357,6 +357,7 @@ final class ProjectDocument: ObservableObject {
             type: type,
             position: position,
             scale: scale,
+            opacity: 1,
             isVisible: true,
             isLocked: false,
             style: style
@@ -772,6 +773,7 @@ final class ProjectDocument: ObservableObject {
 
         registerUndoPoint()
         overlayLayout.elements[index].scale = copiedOverlayConfiguration.scale
+        overlayLayout.elements[index].opacity = copiedOverlayConfiguration.opacity
         overlayLayout.elements[index].isVisible = copiedOverlayConfiguration.isVisible
         overlayLayout.elements[index].isLocked = copiedOverlayConfiguration.isLocked
         overlayLayout.elements[index].style = copiedOverlayConfiguration.style
@@ -813,6 +815,14 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].scale = min(max(scale, 0.25), 4)
+    }
+
+    func setOverlayOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].opacity = min(max(opacity, 0), 1)
     }
 
     func setOverlayFontSize(_ elementID: OverlayElement.ID, fontSize: Double) {
@@ -2710,6 +2720,7 @@ private struct ProjectSnapshot: Equatable {
 private struct CopiedOverlayConfiguration {
     var category: OverlayPasteCategory
     var scale: Double
+    var opacity: Double
     var isVisible: Bool
     var isLocked: Bool
     var style: OverlayStyle
@@ -2717,6 +2728,7 @@ private struct CopiedOverlayConfiguration {
     init(element: OverlayElement) {
         category = element.type.pasteCategory
         scale = element.scale
+        opacity = element.opacity
         isVisible = element.isVisible
         isLocked = element.isLocked
         style = element.style

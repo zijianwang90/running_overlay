@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct InspectorDenseRow<Trailing: View>: View {
     var label: String
@@ -185,7 +186,7 @@ struct InspectorDenseSwatchStrip: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            ForEach(presets, id: \.name) { preset in
+            ForEach(compactPresets, id: \.name) { preset in
                 Button {
                     action(preset.color)
                 } label: {
@@ -207,9 +208,80 @@ struct InspectorDenseSwatchStrip: View {
                 .buttonStyle(.plain)
                 .help(preset.name)
             }
-            Spacer(minLength: 0)
+
+            Button {
+                InspectorDenseColorPanelPresenter.shared.present(color: selected, onChange: action)
+            } label: {
+                RoundedRectangle(cornerRadius: 5)
+                    .fill(Color(numericOverlay: selected))
+                    .frame(width: NumericTokens.swatchSize, height: NumericTokens.swatchSize)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 5)
+                            .stroke(NumericTokens.borderStrong, lineWidth: 1)
+                    )
+                    .overlay {
+                        Image(systemName: "eyedropper")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(selected == .white || selected == .yellow ? Color.black.opacity(0.72) : Color.white.opacity(0.88))
+                    }
+            }
+            .buttonStyle(.plain)
+            .help("Custom Color")
         }
+        .frame(height: NumericTokens.controlHeight)
         .frame(maxWidth: .infinity, alignment: .trailing)
+    }
+
+    private var compactPresets: [(name: String, color: OverlayColor)] {
+        let preferred: [OverlayColor] = [.white, .black, .red, .yellow, .green, .blue]
+        return preferred.compactMap { color in
+            presets.first { $0.color == color }
+        }
+    }
+}
+
+@MainActor
+private final class InspectorDenseColorPanelPresenter: NSObject {
+    static let shared = InspectorDenseColorPanelPresenter()
+
+    private var onChange: ((OverlayColor) -> Void)?
+
+    func present(color: OverlayColor, onChange: @escaping (OverlayColor) -> Void) {
+        self.onChange = onChange
+        let panel = NSColorPanel.shared
+        panel.setTarget(self)
+        panel.setAction(#selector(colorChanged(_:)))
+        panel.isContinuous = true
+        panel.showsAlpha = true
+        panel.color = NSColor(overlayColor: color)
+        panel.makeKeyAndOrderFront(nil)
+    }
+
+    @objc private func colorChanged(_ sender: NSColorPanel) {
+        onChange?(OverlayColor(sender.color))
+    }
+}
+
+private extension OverlayColor {
+    init(_ color: NSColor) {
+        let nsColor = color.usingColorSpace(.deviceRGB) ?? .white
+        self.init(
+            red: Double(nsColor.redComponent),
+            green: Double(nsColor.greenComponent),
+            blue: Double(nsColor.blueComponent),
+            alpha: Double(nsColor.alphaComponent)
+        )
+    }
+}
+
+private extension NSColor {
+    convenience init(overlayColor: OverlayColor) {
+        self.init(
+            deviceRed: overlayColor.red,
+            green: overlayColor.green,
+            blue: overlayColor.blue,
+            alpha: overlayColor.alpha
+        )
     }
 }
 

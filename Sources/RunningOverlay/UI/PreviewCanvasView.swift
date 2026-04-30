@@ -634,6 +634,7 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
                 )
             }
         }
+        .opacity(element.opacity)
         .overlay {
             if isSelected, element.type != .distanceTimeline {
                 PreviewSelectionAffordance()

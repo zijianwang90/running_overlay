@@ -1,5 +1,14 @@
 # Running Overlay Project Log
 
+## 2026-04-30
+
+### Layout Opacity Applies To Whole Overlay
+
+- Added element-level `OverlayElement.opacity` with `ProjectDocument.setOverlayOpacity`.
+- Updated `OverlayLayoutInspectorRows` so the shared Layout `Opacity` row controls the whole overlay instead of binding to background opacity.
+- Applied element opacity at both render entry points: `PreviewCanvasView` for live preview and `OverlayFrameRenderer` for export.
+- Persisted template opacity through `OverlayTemplateElement`, with a default of `1` for existing templates.
+
 ## 2026-04-29
 
 Note:
@@ -864,6 +873,36 @@ Files changed:
 - `Sources/RunningOverlay/UI/RouteMapOverlayDetailView.swift`
 - `Sources/RunningOverlay/UI/RunningGaugeOverlayDetailView.swift`
 - `Sources/RunningOverlay/UI/LapListOverlayDetailView.swift`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+
+### Lap Detail Delete Placement Alignment
+
+Summary:
+
+- Moved `Lap Live`, `Lap Card`, and `Lap List` overlay deletion into the detail header's trailing trash icon button, matching the existing Numeric, Route Map, and Running Gauge top-bar pattern.
+- Removed the bottom delete footers from those three Lap detail views so destructive overlay actions have one consistent location.
+- Aligned `Lap Live` and `Lap Card` headers with the shared fixed-height elevated Inspector header styling, including bottom separator and bordered category pill.
+- Removed the extra top padding above the first `Lap List` detail section so `Layout` starts directly under the header separator.
+- Removed the extra full-section outer stroke from shared `Background`, `Border`, and `Effects` inspector modules to prevent left-edge jitter when those sections expand or collapse.
+- Removed the inset scroll padding and card-like section spacing from `Lap Card` and `Lap Live`; their overlay-specific sections now use the same full-width header/body rhythm as `Lap List` and Numeric detail sections.
+- Replaced the long dense color preset strip with six mainstream swatches plus a trailing fixed-size custom color button that opens the shared system color panel, preventing fixed preset lists or embedded system picker intrinsic width from forcing narrow Inspector panels to overflow horizontally.
+- Increased the Inspector split-pane minimum width from 320 px to 380 px to keep dense controls readable and reduce narrow-panel layout churn.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/InspectorRows/InspectorDenseComponents.swift`
+- `Sources/RunningOverlay/UI/MainEditorView.swift`
+- `Sources/RunningOverlay/UI/LapLiveOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/LapCardOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/LapListOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/InspectorRows/OverlayBackgroundInspectorRows.swift`
+- `Sources/RunningOverlay/UI/InspectorRows/OverlayBorderInspectorRows.swift`
+- `Sources/RunningOverlay/UI/InspectorRows/OverlayEffectsInspectorRows.swift`
+- `docs/design/panels/inspector/inspector-ui.md`
 - `docs/project-log.md`
 
 Verification:

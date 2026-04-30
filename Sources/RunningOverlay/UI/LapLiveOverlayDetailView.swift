@@ -10,7 +10,6 @@ struct LapLiveOverlayDetailView: View {
         VStack(spacing: 0) {
             if let element = project.selectedOverlay(elementID) {
                 header(element: element)
-                Divider().overlay(NumericTokens.borderSubtle)
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
                         layoutInspectorSection(element)
@@ -22,11 +21,8 @@ struct LapLiveOverlayDetailView: View {
                         OverlayBorderInspectorModule(elementID: elementID, element: element)
                         OverlayEffectsInspectorModule(elementID: elementID, element: element)
                     }
-                    .padding(.horizontal, NumericTokens.panelPaddingX)
-                    .padding(.vertical, NumericTokens.panelPaddingY)
+                    .padding(.bottom, NumericTokens.panelPaddingY)
                 }
-                Divider().overlay(NumericTokens.borderSubtle)
-                footerBar
             } else {
                 Spacer()
             }
@@ -71,6 +67,7 @@ struct LapLiveOverlayDetailView: View {
                     .foregroundStyle(NumericTokens.textPrimary)
             }
             .buttonStyle(.plain)
+            .help("Back")
 
             ZStack {
                 RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
@@ -93,13 +90,33 @@ struct LapLiveOverlayDetailView: View {
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(NumericTokens.controlBackground)
-                        .clipShape(Capsule())
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(NumericTokens.borderSubtle, lineWidth: 1))
                 }
             }
             Spacer()
+
+            Button(role: .destructive) {
+                project.deleteOverlay(element.id)
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
+                    .background(NumericTokens.controlBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
+                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
+                    .foregroundStyle(NumericTokens.dangerRed)
+            }
+            .buttonStyle(.plain)
+            .help("Delete")
         }
         .padding(.horizontal, NumericTokens.panelPaddingX)
-        .padding(.vertical, NumericTokens.panelPaddingY)
+        .frame(height: EditorTheme.panelHeaderHeight)
+        .background(NumericTokens.panelBackgroundElevated)
+        .overlay(alignment: .bottom) {
+            Divider()
+                .overlay(NumericTokens.borderSubtle)
+        }
     }
 
     private func sectionView<Content: View>(
@@ -108,7 +125,7 @@ struct LapLiveOverlayDetailView: View {
         @ViewBuilder content: () -> Content
     ) -> some View {
         let isOpen = openSections.contains(section)
-        return VStack(alignment: .leading, spacing: NumericTokens.rowGap) {
+        return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: NumericTokens.space2) {
                 Image(systemName: section.systemImage)
                     .frame(width: 16, alignment: .center)
@@ -117,25 +134,36 @@ struct LapLiveOverlayDetailView: View {
                     .font(NumericTokens.sectionTitleFont)
                     .foregroundStyle(NumericTokens.textPrimary)
                 Spacer()
-                Button {
-                    if isOpen { openSections.remove(section) } else { openSections.insert(section) }
-                } label: {
-                    Image(systemName: isOpen ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(NumericTokens.textMuted)
-                        .frame(width: 18, height: 18)
-                }
-                .buttonStyle(.plain)
+                Image(systemName: isOpen ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(NumericTokens.textMuted)
+                    .frame(width: 18, height: 18)
             }
             .frame(height: NumericTokens.sectionHeaderHeight)
+            .padding(.horizontal, NumericTokens.panelPaddingX)
+            .background(NumericTokens.panelBackgroundElevated)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if isOpen {
+                    openSections.remove(section)
+                } else {
+                    openSections.insert(section)
+                }
+            }
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(NumericTokens.borderSubtle)
+                    .frame(height: 1)
+            }
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(NumericTokens.borderSubtle)
+                    .frame(height: 1)
+            }
 
             if isOpen {
-                VStack(spacing: NumericTokens.rowGap) { content() }
+                VStack(spacing: 0) { content() }
             }
-        }
-        .padding(.bottom, NumericTokens.space2)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1)
         }
     }
 
@@ -315,28 +343,9 @@ struct LapLiveOverlayDetailView: View {
                     get: { s.cardWidth },
                     set: { v in project.mutateLapLiveStyleContinuous(elementID) { $0.cardWidth = v } }
                 ),
-                heightRange: 120...500,
-                opacityBinding: Binding(
-                    get: { s.backgroundOpacity },
-                    set: { v in project.mutateLapLiveStyleContinuous(elementID) { $0.backgroundOpacity = v } }
-                )
+                heightRange: 120...500
             )
         }
     }
 
-    private var footerBar: some View {
-        HStack {
-            Button {
-                project.deleteOverlay(elementID)
-            } label: {
-                Label("Delete", systemImage: "trash")
-                    .font(NumericTokens.captionFont)
-                    .foregroundStyle(NumericTokens.textSecondary)
-            }
-            .buttonStyle(.plain)
-            Spacer()
-        }
-        .padding(.horizontal, NumericTokens.panelPaddingX)
-        .padding(.vertical, NumericTokens.panelPaddingY * 0.75)
-    }
 }

@@ -92,11 +92,7 @@ struct RouteMapOverlayDetailView: View {
                     get: { element.style.routeMapHeight },
                     set: { project.setOverlayRouteMapHeight(elementID, height: $0.quantizedRouteMap(to: 4)) }
                 ),
-                heightRange: 120...720,
-                opacityBinding: Binding(
-                    get: { element.style.backgroundOpacity },
-                    set: { project.setOverlayBackgroundOpacity(elementID, opacity: $0.quantizedRouteMap(to: 0.05)) }
-                )
+                heightRange: 120...720
             )
         }
     }

@@ -1,6 +1,6 @@
 # Inspector UI Design Spec
 
-Last updated: 2026-04-29
+Last updated: 2026-04-30
 
 ## Purpose
 
@@ -185,7 +185,7 @@ The detail screen appears when `project.selection == .overlayElement(elementID)`
 - Identify the selected overlay.
 - Provide direct editing controls for that overlay.
 - Provide a return path to the outer Inspector.
-- Expose delete and done actions.
+- Expose destructive delete from the detail header.
 - Use [Numeric Overlay UI](../../overlays/numeric/numeric-overlay-ui.md) for single-value numeric metric overlays instead of building one-off Pace, Heart Rate, Distance, Power, Cadence, Calories, Elevation, Elapsed Time, or Real Time panels.
 
 ### Layout
@@ -197,7 +197,7 @@ Top to bottom:
 3. `Position & Size` section
 4. `Style` section
 5. `Animation` section
-6. Sticky action footer
+6. Optional sticky footer for non-destructive actions only
 
 ### Detail Header
 
@@ -213,6 +213,7 @@ Behavior:
 
 - Back returns to the outer Inspector and clears overlay detail focus if needed.
 - Trash deletes the overlay and returns to the outer Inspector.
+- Overlay detail views should not place a secondary delete button in the footer; all destructive overlay deletion belongs in the top header bar.
 - The header value should use the same formatter as the Preview and Added Overlays row.
 
 ### Content Section
@@ -332,6 +333,7 @@ Behavior:
 - Use `CollapsibleLayoutInspectorSection` for section chrome: title, icon (`scope`), and disclosure behavior.
 - Use `OverlayLayoutInspectorRows` for the body rows.
 - Canonical row set is fixed: `Position`, `Scale`, `Width`, `Height`, `Opacity`.
+- Layout `Opacity` is element-level opacity (`OverlayElement.opacity`) and must fade the whole rendered overlay in preview and export. Background-only transparency belongs in the shared Background module.
 - `Rotation` is not part of Layout and must not be shown in this section.
 - For square overlays such as Running Gauge, `Width` and `Height` can be hidden.
 - Section ordering rule:
@@ -358,6 +360,8 @@ Behavior:
 - New overlay detail panels must append Background, Border, and Effects after overlay-specific sections, in that order.
 - Distance Timeline must not keep its legacy local `Background & Border` or local `Effects` sections once the shared modules are present.
 - Shared module headers use the same row background, toggle placement, and chevron placement as other collapsible detail sections; disclosure changes are immediate without animation.
+- Shared Background, Border, and Effects modules use the same header/body separator model as regular detail sections and must not add an extra full-section outer stroke that changes the left edge while expanding.
+- Dense color swatch strips show a short mainstream preset set plus a trailing fixed-size custom color button that opens the shared system color panel; they must not embed a system color well or impose a long preset-list width as the row minimum because narrow Inspectors should clip neither section headers nor row labels.
 
 ## SwiftUI Implementation Guidance
 

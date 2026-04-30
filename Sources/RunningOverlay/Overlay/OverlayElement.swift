@@ -11,6 +11,7 @@ struct OverlayElement: Identifiable, Equatable {
     var type: OverlayElementType
     var position: CGPoint
     var scale: Double
+    var opacity: Double = 1
     var isVisible: Bool = true
     var isLocked: Bool = false
     var style: OverlayStyle

@@ -20,9 +20,8 @@ struct LapListOverlayDetailView: View {
                         OverlayBorderInspectorModule(elementID: elementID, element: element)
                         OverlayEffectsInspectorModule(elementID: elementID, element: element)
                     }
+                    .padding(.bottom, NumericTokens.panelPaddingY)
                 }
-                Divider().overlay(NumericTokens.borderSubtle)
-                footerBar
             } else {
                 Spacer()
             }
@@ -69,6 +68,7 @@ struct LapListOverlayDetailView: View {
                     .foregroundStyle(NumericTokens.textPrimary)
             }
             .buttonStyle(.plain)
+            .help("Back")
 
             ZStack {
                 RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
@@ -91,10 +91,25 @@ struct LapListOverlayDetailView: View {
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(NumericTokens.controlBackground)
-                        .clipShape(Capsule())
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(NumericTokens.borderSubtle, lineWidth: 1))
                 }
             }
             Spacer()
+
+            Button(role: .destructive) {
+                project.deleteOverlay(element.id)
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
+                    .background(NumericTokens.controlBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
+                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
+                    .foregroundStyle(NumericTokens.dangerRed)
+            }
+            .buttonStyle(.plain)
+            .help("Delete")
         }
         .padding(.horizontal, NumericTokens.panelPaddingX)
         .frame(height: EditorTheme.panelHeaderHeight)
@@ -337,30 +352,9 @@ struct LapListOverlayDetailView: View {
                         }
                     }
                 ),
-                heightRange: 20...840,
-                opacityBinding: Binding(
-                    get: { s.backgroundOpacity },
-                    set: { v in project.mutateLapListStyleContinuous(elementID) { $0.backgroundOpacity = v } }
-                )
+                heightRange: 20...840
             )
         }
     }
 
-    // MARK: - Footer
-
-    private var footerBar: some View {
-        HStack {
-            Button {
-                project.deleteOverlay(elementID)
-            } label: {
-                Label("Delete", systemImage: "trash")
-                    .font(NumericTokens.captionFont)
-                    .foregroundStyle(NumericTokens.textSecondary)
-            }
-            .buttonStyle(.plain)
-            Spacer()
-        }
-        .padding(.horizontal, NumericTokens.panelPaddingX)
-        .padding(.vertical, NumericTokens.panelPaddingY * 0.75)
-    }
 }
