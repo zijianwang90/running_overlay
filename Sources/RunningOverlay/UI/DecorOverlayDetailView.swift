@@ -14,7 +14,6 @@ struct DecorOverlayDetailView: View {
         VStack(spacing: 0) {
             if let element = project.selectedOverlay(elementID) {
                 header(element: element)
-                Divider().overlay(NumericTokens.borderSubtle)
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
                         switch element.type {
@@ -28,8 +27,7 @@ struct DecorOverlayDetailView: View {
                             EmptyView()
                         }
                     }
-                    .padding(.horizontal, NumericTokens.panelPaddingX)
-                    .padding(.vertical, NumericTokens.panelPaddingY)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
                 Divider().overlay(NumericTokens.borderSubtle)
                 footerBar
@@ -303,11 +301,7 @@ struct DecorOverlayDetailView: View {
                     get: { s.height },
                     set: { project.setDecorSize(elementID, height: $0) }
                 ) : nil,
-                heightRange: heightRange,
-                opacityBinding: Binding(
-                    get: { element.style.backgroundOpacity },
-                    set: { project.setOverlayBackgroundOpacity(elementID, opacity: $0) }
-                )
+                heightRange: heightRange
             )
         }
     }
@@ -524,24 +518,41 @@ struct DecorOverlayDetailView: View {
             }
             .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
 
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
-                    Text(element.type.label)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(NumericTokens.textPrimary)
-                    Text("Decor")
-                        .font(NumericTokens.captionFont)
-                        .foregroundStyle(NumericTokens.textSecondary)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(NumericTokens.controlBackground)
-                        .clipShape(Capsule())
-                }
+            HStack(spacing: 8) {
+                Text(element.type.label)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(NumericTokens.textPrimary)
+                Text("Decor")
+                    .font(NumericTokens.captionFont)
+                    .foregroundStyle(NumericTokens.textSecondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(NumericTokens.controlBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(NumericTokens.borderSubtle, lineWidth: 1))
             }
+
             Spacer()
+
+            Button(role: .destructive) {
+                project.deleteOverlay(element.id)
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
+                    .background(NumericTokens.controlBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
+                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
+                    .foregroundStyle(NumericTokens.dangerRed)
+            }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, NumericTokens.panelPaddingX)
-        .padding(.vertical, NumericTokens.panelPaddingY)
+        .frame(height: EditorTheme.panelHeaderHeight)
+        .background(NumericTokens.panelBackgroundElevated)
+        .overlay(alignment: .bottom) {
+            Divider().overlay(NumericTokens.borderSubtle)
+        }
     }
 
     private func headerSymbol(for type: OverlayElementType) -> String {
@@ -554,19 +565,17 @@ struct DecorOverlayDetailView: View {
     }
 
     private var footerBar: some View {
-        HStack {
-            Button {
-                project.deleteOverlay(elementID)
-            } label: {
-                Label("Delete", systemImage: "trash")
-                    .font(NumericTokens.captionFont)
-                    .foregroundStyle(NumericTokens.textSecondary)
-            }
-            .buttonStyle(.plain)
-            Spacer()
-        }
+        InspectorDetailFooterBar(
+            leadingTitle: "Reset",
+            leadingSystemImage: "arrow.counterclockwise",
+            trailingTitle: "Done",
+            trailingSystemImage: "checkmark",
+            onLeadingTap: { project.resetOverlayStyle(elementID) },
+            onTrailingTap: { project.selection = .none }
+        )
         .padding(.horizontal, NumericTokens.panelPaddingX)
-        .padding(.vertical, NumericTokens.panelPaddingY * 0.75)
+        .padding(.vertical, NumericTokens.space3)
+        .background(NumericTokens.panelBackgroundElevated)
     }
 
     private enum DecorSection: String, CaseIterable {
@@ -633,8 +642,6 @@ struct DecorOverlayDetailView: View {
 
             if isOpen {
                 VStack(spacing: 0) { content() }
-                    .padding(.horizontal, NumericTokens.panelPaddingX)
-                    .padding(.vertical, NumericTokens.panelPaddingY * 0.5)
             }
         }
     }

@@ -22,7 +22,7 @@ struct OverlayPoolView: View {
                 HStack {
                     Spacer()
                     Picker("", selection: $activeCategory) {
-                        ForEach(OverlayCategory.allCases) { category in
+                        ForEach(OverlayCategory.allCases.filter { $0 != .decor }) { category in
                             Text(category.label)
                                 .font(EditorTheme.bodyStrongFont)
                                 .tag(category)

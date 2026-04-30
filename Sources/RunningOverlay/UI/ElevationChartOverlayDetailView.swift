@@ -20,12 +20,11 @@ struct ElevationChartOverlayDetailView: View {
                         sectionView(.axis) { axisSection(element) }
                         sectionView(.bigNumbers) { bigNumbersSection(element) }
                         statsBarSection(element)
-                        sectionView(.background) { backgroundSection(element) }
-                        sectionView(.effects) { effectsSection(element) }
                         OverlayBackgroundInspectorModule(elementID: elementID, element: element)
                         OverlayBorderInspectorModule(elementID: elementID, element: element)
                         OverlayEffectsInspectorModule(elementID: elementID, element: element)
                     }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
                 Divider().overlay(NumericTokens.borderSubtle)
                 footerBar
@@ -109,8 +108,7 @@ struct ElevationChartOverlayDetailView: View {
                 widthBinding: elevationBinding(\.width, of: style, continuous: true),
                 widthRange: 220...720,
                 heightBinding: elevationBinding(\.height, of: style, continuous: true),
-                heightRange: 110...320,
-                opacityBinding: elevationBinding(\.backgroundOpacity, of: style, continuous: true)
+                heightRange: 110...320
             )
         }
     }
