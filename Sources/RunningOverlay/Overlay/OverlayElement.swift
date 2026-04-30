@@ -11,6 +11,7 @@ struct OverlayElement: Identifiable, Equatable {
     var type: OverlayElementType
     var position: CGPoint
     var scale: Double
+    var opacity: Double = 1
     var isVisible: Bool = true
     var isLocked: Bool = false
     var style: OverlayStyle
@@ -51,6 +52,9 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     case groundContactBalance
     case temperature
     case grade
+    case decorSolidColor
+    case decorIcon
+    case decorText
 
     var id: String { rawValue }
 
@@ -79,15 +83,29 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         case .groundContactBalance: "GCT Balance"
         case .temperature: "Temperature"
         case .grade: "Grade"
+        case .decorSolidColor: "Solid Color"
+        case .decorIcon: "Icon"
+        case .decorText: "Text"
         }
     }
 
     var supportsTextPresets: Bool {
         switch self {
-        case .distanceTimeline, .elevationChart, .runningGauge, .routeMap, .lapList, .lapCard, .lapLive:
+        case .distanceTimeline, .elevationChart, .runningGauge, .routeMap, .lapList, .lapCard, .lapLive,
+             .decorSolidColor, .decorIcon, .decorText:
             false
         default:
             true
+        }
+    }
+
+    /// Decor overlays are activity-data-independent visual elements
+    /// (Solid Color shapes, Icons, free-form Text). See
+    /// `~/.claude/plans/overlay-pool-solid-color-layout-bg-effe-shiny-pudding.md`.
+    var isDecorOverlay: Bool {
+        switch self {
+        case .decorSolidColor, .decorIcon, .decorText: true
+        default: false
         }
     }
 
@@ -219,7 +237,8 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
         case .groundContactBalance: [.balancePercent]
         case .temperature: [.temperatureCelsius, .temperatureFahrenheit]
         case .grade: [.gradePercent]
-        case .distanceTimeline, .elevationChart, .runningGauge, .routeMap, .lapList, .lapCard, .lapLive:
+        case .distanceTimeline, .elevationChart, .runningGauge, .routeMap, .lapList, .lapCard, .lapLive,
+             .decorSolidColor, .decorIcon, .decorText:
             []
         }
     }
@@ -392,6 +411,10 @@ struct OverlayStyle: Equatable, Codable {
     /// Lap live overlay configuration. Only used by `.lapLive` elements.
     var lapLive: LapLiveStyle
 
+    /// Decor element configuration. Used by `.decorSolidColor`, `.decorIcon`,
+    /// `.decorText`. See `DecorStyle`.
+    var decor: DecorStyle
+
     static let `default` = OverlayStyle(
         textPreset: .minimal,
         gaugePreset: .minimalSport,
@@ -473,7 +496,8 @@ struct OverlayStyle: Equatable, Codable {
         routeMapStatsBar: .default,
         lapList: .default,
         lapCard: .default,
-        lapLive: .default
+        lapLive: .default,
+        decor: .default
     )
 
     init(
@@ -557,7 +581,8 @@ struct OverlayStyle: Equatable, Codable {
         routeMapStatsBar: OverlayRouteMapStatsBarConfig = .default,
         lapList: LapListStyle = .default,
         lapCard: LapCardStyle = .default,
-        lapLive: LapLiveStyle = .default
+        lapLive: LapLiveStyle = .default,
+        decor: DecorStyle = .default
     ) {
         self.textPreset = textPreset
         self.gaugePreset = gaugePreset
@@ -640,6 +665,7 @@ struct OverlayStyle: Equatable, Codable {
         self.lapList = lapList
         self.lapCard = lapCard
         self.lapLive = lapLive
+        self.decor = decor
     }
 
     init(from decoder: Decoder) throws {
@@ -741,6 +767,7 @@ struct OverlayStyle: Equatable, Codable {
         lapList = try container.decodeIfPresent(LapListStyle.self, forKey: .lapList) ?? .default
         lapCard = try container.decodeIfPresent(LapCardStyle.self, forKey: .lapCard) ?? .default
         lapLive = try container.decodeIfPresent(LapLiveStyle.self, forKey: .lapLive) ?? .default
+        decor = try container.decodeIfPresent(DecorStyle.self, forKey: .decor) ?? .default
     }
 }
 
@@ -2859,3 +2886,178 @@ struct LapLiveStyle: Equatable, Codable {
         recoveryProgressEnabled: false
     )
 }
+
+// MARK: - Decor Text Support Types
+
+/// Font reference for the Decor Text element. Bundled fonts map to
+/// names registered by `BundledFonts`; system fonts use PostScript family
+/// names; user-uploaded fonts resolve via the `UserAssetStore`.
+enum DecorFontRef: Equatable, Codable {
+    case bundled(name: String)
+    case system(family: String)
+    case userAsset(id: UUID)
+}
+
+/// Gradient specification for text fill (Phase F6).
+struct GradientSpec: Equatable, Codable {
+    var stops: [GradientStop]
+    var direction: GradientDirection
+    enum GradientDirection: String, CaseIterable, Identifiable, Codable {
+        case topToBottom, leftToRight, bottomLeftToTopRight, topLeftToBottomRight
+        var id: String { rawValue }
+    }
+    struct GradientStop: Equatable, Codable {
+        var position: Double  // 0...1
+        var color: OverlayColor
+    }
+}
+
+/// Fill mode for Decor Text: solid color or gradient.
+enum DecorTextFill: Equatable, Codable {
+    case solid(color: OverlayColor)
+    case gradient(GradientSpec)
+}
+
+/// Text alignment options for the decor text block.
+enum DecorTextAlignment: String, CaseIterable, Identifiable, Codable {
+    case leading, center, trailing
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .leading: "Leading"
+        case .center: "Center"
+        case .trailing: "Trailing"
+        }
+    }
+}
+
+// MARK: - Decor
+
+/// Shape variants offered by the Solid Color decor element. Circle is a
+/// degenerate ellipse where width == height; the renderer collapses to the
+/// shorter side and the inspector keeps the controls in lockstep.
+enum DecorShape: String, CaseIterable, Identifiable, Codable {
+    case rectangle
+    case roundedRectangle
+    case circle
+    case capsule
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .rectangle: "Rectangle"
+        case .roundedRectangle: "Rounded"
+        case .circle: "Circle"
+        case .capsule: "Capsule"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .rectangle: "square"
+        case .roundedRectangle: "square.dashed"
+        case .circle: "circle"
+        case .capsule: "capsule"
+        }
+    }
+}
+
+/// Sub-struct holding all decor element style fields. Per project convention
+/// (mirrors `gauge`, `distanceTimeline`, `lapList`, etc.) decor fields live in
+/// their own namespace so they don't pollute numeric overlay storage. Future
+/// decor element types (Icon, Text) will extend this same struct.
+struct DecorStyle: Equatable, Codable {
+    /// Active solid-color shape variant.
+    var shape: DecorShape
+    /// Fill color drawn into the shape path.
+    var fillColor: OverlayColor
+    /// Width in design units (before `element.scale` is applied).
+    var width: Double
+    var height: Double
+    var cornerRadius: Double
+
+    // Icon (optional for backward compat)
+    var iconAsset: IconAsset?
+    var iconTint: OverlayColor?
+    var iconPreserveSVGColors: Bool?
+    var iconContentMode: IconContentMode?
+
+    // Text (optional for backward compat)
+    var textContent: String?
+    var textFont: DecorFontRef?
+    var textSize: Double?
+    var textAlignment: DecorTextAlignment?
+    var textLineHeight: Double?
+    var textLetterSpacing: Double?
+    var textFillMode: DecorTextFill?
+    var textStrokeWidth: Double?
+    var textStrokeColor: OverlayColor?
+    var textAutoFit: Bool?
+
+    static let `default` = DecorStyle(
+        shape: .rectangle,
+        fillColor: .white,
+        width: 240,
+        height: 80,
+        cornerRadius: 12,
+        iconAsset: nil,
+        iconTint: nil,
+        iconPreserveSVGColors: nil,
+        iconContentMode: nil,
+        textContent: nil,
+        textFont: nil,
+        textSize: nil,
+        textAlignment: nil,
+        textLineHeight: nil,
+        textLetterSpacing: nil,
+        textFillMode: nil,
+        textStrokeWidth: nil,
+        textStrokeColor: nil,
+        textAutoFit: nil
+    )
+}
+
+
+    /// Resolved text fields for a decor element, coalescing nil optionals.
+    struct DecorTextResolved {
+        var content: String
+        var font: DecorFontRef
+        var size: Double
+        var alignment: DecorTextAlignment
+        var lineHeight: Double
+        var letterSpacing: Double
+        var fillMode: DecorTextFill
+        var strokeWidth: Double
+        var strokeColor: OverlayColor
+        var autoFit: Bool
+
+        init(from style: DecorStyle) {
+            content = style.textContent ?? "Hello"
+            font = style.textFont ?? .system(family: "SF Pro Display")
+            size = style.textSize ?? 36
+            alignment = style.textAlignment ?? .center
+            lineHeight = style.textLineHeight ?? 1.2
+            letterSpacing = style.textLetterSpacing ?? 0
+            fillMode = style.textFillMode ?? .solid(color: .white)
+            strokeWidth = style.textStrokeWidth ?? 0
+            strokeColor = style.textStrokeColor ?? .white
+            autoFit = style.textAutoFit ?? false
+        }
+    }
+
+    /// Resolved icon fields for a decor element, coalescing nil optionals
+    /// to their sensible defaults.
+    struct DecorIconResolved {
+        var asset: IconAsset
+        var tint: OverlayColor
+        var preserveSVGColors: Bool
+        var contentMode: IconContentMode
+
+        init(from style: DecorStyle) {
+            asset = style.iconAsset ?? .none
+            tint = style.iconTint ?? .white
+            preserveSVGColors = style.iconPreserveSVGColors ?? false
+            contentMode = style.iconContentMode ?? .fit
+        }
+    }

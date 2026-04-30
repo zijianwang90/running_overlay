@@ -611,6 +611,21 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
                     element: element,
                     layout: OverlayRenderModel.lapLiveLayout(for: element, in: renderContext)
                 )
+            case .decorSolidColor:
+                OverlaySharedDecorSolidColorView(
+                    element: element,
+                    layout: OverlayRenderModel.decorSolidColorLayout(for: element, in: renderContext)
+                )
+            case .decorIcon:
+                OverlaySharedDecorIconView(
+                    element: element,
+                    layout: OverlayRenderModel.decorIconLayout(for: element, in: renderContext)
+                )
+            case .decorText:
+                OverlaySharedDecorTextView(
+                    element: element,
+                    layout: OverlayRenderModel.decorTextLayout(for: element, in: renderContext)
+                )
             default:
                 OverlaySharedTextPresetView(
                     element: element,
@@ -619,6 +634,7 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
                 )
             }
         }
+        .opacity(element.opacity)
         .overlay {
             if isSelected, element.type != .distanceTimeline {
                 PreviewSelectionAffordance()

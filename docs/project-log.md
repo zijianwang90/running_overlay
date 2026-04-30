@@ -1,10 +1,89 @@
 # Running Overlay Project Log
 
+## 2026-04-30
+
+### Layout Opacity Applies To Whole Overlay
+
+- Added element-level `OverlayElement.opacity` with `ProjectDocument.setOverlayOpacity`.
+- Updated `OverlayLayoutInspectorRows` so the shared Layout `Opacity` row controls the whole overlay instead of binding to background opacity.
+- Applied element opacity at both render entry points: `PreviewCanvasView` for live preview and `OverlayFrameRenderer` for export.
+- Persisted template opacity through `OverlayTemplateElement`, with a default of `1` for existing templates.
+
 ## 2026-04-29
 
 Note:
 
 - Historical entries below may reference `OverlayVideoExporter` as part of the migration timeline. That exporter is now retired; active export runtime uses `SwiftUIOverlayVideoExporter` only.
+
+### Decor Overlay Category — Phase C1 (SVG smoke-test gate)
+
+Spike that gates the IconRendering design before Phase C2 builds it. The previous DistanceTimeline Lower Third icon attempt failed because some SVGs that render fine in WebKit/preview do not render via the path the exporter uses; this test proves macOS-native SVG works in **both** paths so we can keep the design dependency-light.
+
+Result: all three fixture SVGs (simple, `<style>`-block, multicolor) load via `NSImage(contentsOf:)` *and* rasterize successfully into an offscreen `CGContext` with non-trivial pixel coverage. **Gate passed — staying on macOS-native SVG. No SVGKit dependency needed for Phase C2.**
+
+Lottie is intentionally not exercised here; the C6 step will add `lottie-spm` and a separate animation smoke test.
+
+Summary:
+
+- New `Tests/RunningOverlayTests/IconRenderingSmokeTests.swift` — three `@Test` cases covering simple / styled / multicolor SVGs. Each loads as `NSImage`, then draws into a 128×128 RGBA `CGContext` and asserts more than 100 non-transparent pixels.
+- New fixtures under `Tests/RunningOverlayTests/Fixtures/Icons/` — `simple-circle.svg`, `styled-square.svg` (uses `<style>` + classes), `multicolor-flag.svg`.
+- `Package.swift` — test target gains `resources: [.copy("Fixtures")]` so the SVG files are bundled and resolvable via `Bundle.module`.
+
+Files changed:
+
+- `Package.swift`
+- `Tests/RunningOverlayTests/IconRenderingSmokeTests.swift` *(new)*
+- `Tests/RunningOverlayTests/Fixtures/Icons/simple-circle.svg` *(new)*
+- `Tests/RunningOverlayTests/Fixtures/Icons/styled-square.svg` *(new)*
+- `Tests/RunningOverlayTests/Fixtures/Icons/multicolor-flag.svg` *(new)*
+- `docs/project-log.md`
+
+Verification:
+
+- `swift build` clean.
+- `swift test --filter IconRenderingSmokeTests` — 3/3 pass.
+- `swift test` full suite — 61/61 pass (was 58; +3 from this spike).
+
+Plan reference: step **C1** of `~/.claude/plans/overlay-pool-solid-color-layout-bg-effe-shiny-pudding.md`. Next up: **C2** (`IconAsset` enum + Codable round-trip test).
+
+### Decor Overlay Category — Phase A + Phase B (Solid Color end-to-end)
+
+Adds the full **Decor** overlay category to the Pool with the first usable subtype — **Solid Color** — wired end-to-end through model, mutators, live preview, SwiftUI export, and inspector. Decor elements are activity-data-independent visual primitives; Phase B ships the rectangle / rounded rectangle / circle / capsule shape with fill, layout, border, and effects. Icon (Phase D) and Text (Phase F) are scaffolded with placeholder inspectors only.
+
+Note: this work was previously partially landed in a worktree branch that was deleted before commit; this entry consolidates A1→B6 onto develop in a single pass.
+
+Summary:
+
+- **Model (A1, B1)**: `OverlayElementType` gains `decorSolidColor`, `decorIcon`, `decorText` plus `isDecorOverlay` helper. Exhaustive switches in `OverlayValueFormatter`, `NumericOverlayDetailView.numericIcon`, `OverlayUnitOption.options(for:)`, and `OverlayElementType.supportsTextPresets` updated. New `DecorShape` enum (`rectangle | roundedRectangle | circle | capsule`) and `DecorStyle` sub-struct (`shape`, `fillColor`, `width`, `height`, `cornerRadius`) live at the bottom of `OverlayElement.swift`. Wired `var decor: DecorStyle` into `OverlayStyle`'s declaration, default, init, and decoder via `decodeIfPresent ?? .default` so older project files round-trip.
+- **Pool (A2)**: `OverlayCategory` gains `.decor`; three tiles (`decorSolidColor` / `decorIcon` / `decorText`) appended to `OverlayTileInfo.all`. Segmented Pool tab picks them up automatically.
+- **Inspector dispatch (A3)**: `ParameterPanelView` routes `isDecorOverlay` elements to the new `DecorOverlayDetailView`. Inspector switches on subtype internally — Solid Color shows full sections, Icon/Text show placeholder until later phases.
+- **Mutators (B2)**: `ProjectDocument` gains `setDecorShape`, `setDecorFillColor`, `setDecorSize(width:height:)`, `setDecorCornerRadius`, plus generic `mutateDecorStyle` / `mutateDecorStyleContinuous` helpers. Discrete edits use `registerUndoPoint()`, drags use `registerContinuousUndoPoint()`. Switching to `.circle` collapses width/height to the shorter side (mirrors `setOverlayRouteMapShape`).
+- **Layout helper (B3 prep)**: New `OverlayRenderModel.decorSolidColorLayout(for:in:)` returns `DecorSolidColorRenderLayout` (shape, pixel size, fill color, scaled corner radius) — same canvas-DPR / element-scale convention as the other overlays.
+- **Preview + export (B3, B4)**: New `Sources/RunningOverlay/UI/DecorOverlayViews.swift` defines `OverlaySharedDecorSolidColorView` + `DecorSolidColorOverlayView`. The shared view honors the existing `OverlayStyle` border / shadow / glow flags so the standard inspector modules apply unchanged. Dispatch arms added to both `PreviewCanvasView` and `SwiftUIOverlayVideoExporter` so live preview and exported MOV are pixel-identical.
+- **Inspector (B5)**: `DecorOverlayDetailView` composes existing primitives directly — `InspectorDenseRow`, `InspectorDenseSliderRow`, `InspectorDenseSegmented`, `InspectorDenseSwatchStrip`, `OverlayLayoutInspectorRows` (Position / Scale / Width / Height / Opacity), plus the shared `OverlayBorderInspectorModule` and `OverlayEffectsInspectorModule`. No wrapping, no second-pass redesign of those primitives. Sections: Layout, Shape (segmented + corner-radius slider), Fill (color swatches), Border, Effects.
+- **Default preset (B6)**: `defaultOverlayStyle(for:)` seeds `decorSolidColor` with a 240×80 white rounded rectangle and turns off `backgroundEnabled` (the shape *is* the background) so the new element is immediately visible on the canvas.
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/OverlayElement.swift`
+- `Sources/RunningOverlay/Overlay/OverlayValueFormatter.swift`
+- `Sources/RunningOverlay/Overlay/OverlayRenderModel.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/UI/OverlayPoolView.swift`
+- `Sources/RunningOverlay/UI/ParameterPanelView.swift`
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `Sources/RunningOverlay/UI/NumericOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/DecorOverlayDetailView.swift` *(new)*
+- `Sources/RunningOverlay/UI/DecorOverlayViews.swift` *(new)*
+- `Sources/RunningOverlay/Export/SwiftUIOverlayVideoExporter.swift`
+- `docs/project-log.md`
+
+Verification:
+
+- `swift build` clean.
+- `swift test` — all 58 tests pass; legacy template round-trip preserved by `decodeIfPresent ?? .default`.
+
+Plan reference: phases **A1 → B6** of `~/.claude/plans/overlay-pool-solid-color-layout-bg-effe-shiny-pudding.md`. Next up: Phase **C** (Icon subsystem foundation — `IconAsset` / `IconRendering` smoke test gate).
 
 ### Extract Dense Inspector Components
 
@@ -794,6 +873,36 @@ Files changed:
 - `Sources/RunningOverlay/UI/RouteMapOverlayDetailView.swift`
 - `Sources/RunningOverlay/UI/RunningGaugeOverlayDetailView.swift`
 - `Sources/RunningOverlay/UI/LapListOverlayDetailView.swift`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift build`.
+
+### Lap Detail Delete Placement Alignment
+
+Summary:
+
+- Moved `Lap Live`, `Lap Card`, and `Lap List` overlay deletion into the detail header's trailing trash icon button, matching the existing Numeric, Route Map, and Running Gauge top-bar pattern.
+- Removed the bottom delete footers from those three Lap detail views so destructive overlay actions have one consistent location.
+- Aligned `Lap Live` and `Lap Card` headers with the shared fixed-height elevated Inspector header styling, including bottom separator and bordered category pill.
+- Removed the extra top padding above the first `Lap List` detail section so `Layout` starts directly under the header separator.
+- Removed the extra full-section outer stroke from shared `Background`, `Border`, and `Effects` inspector modules to prevent left-edge jitter when those sections expand or collapse.
+- Removed the inset scroll padding and card-like section spacing from `Lap Card` and `Lap Live`; their overlay-specific sections now use the same full-width header/body rhythm as `Lap List` and Numeric detail sections.
+- Replaced the long dense color preset strip with six mainstream swatches plus a trailing fixed-size custom color button that opens the shared system color panel, preventing fixed preset lists or embedded system picker intrinsic width from forcing narrow Inspector panels to overflow horizontally.
+- Increased the Inspector split-pane minimum width from 320 px to 380 px to keep dense controls readable and reduce narrow-panel layout churn.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/InspectorRows/InspectorDenseComponents.swift`
+- `Sources/RunningOverlay/UI/MainEditorView.swift`
+- `Sources/RunningOverlay/UI/LapLiveOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/LapCardOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/LapListOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/InspectorRows/OverlayBackgroundInspectorRows.swift`
+- `Sources/RunningOverlay/UI/InspectorRows/OverlayBorderInspectorRows.swift`
+- `Sources/RunningOverlay/UI/InspectorRows/OverlayEffectsInspectorRows.swift`
+- `docs/design/panels/inspector/inspector-ui.md`
 - `docs/project-log.md`
 
 Verification:
@@ -3131,3 +3240,48 @@ Verification:
 
 - Confirmed the project directory was empty before creating documentation.
 - No code or build verification yet because no app project exists.
+
+### Decor Category — Phases C through G (2026-04-30)
+
+Plan reference: `~/.claude/plans/overlay-pool-solid-color-layout-bg-effe-shiny-pudding.md`.
+
+**Phase C — Icon subsystem**
+
+- `IconAsset` enum (sfSymbol / userStaticSVG / userLottie / bundledSVG) with hand-rolled Codable.
+- `IconRendering` dual-path API: `IconView` (SwiftUI) and `IconRenderer.draw` (Core Graphics).
+- SF Symbol and bundled SVG rendering with tint, preserveSVGColors, content mode.
+- SVG smoke test gate passed (three fixtures rasterize via NSImage + CGContext).
+- Lottie dependency (`lottie-ios` 4.5.0) added; LottieView path works; offscreen CG path is a documented limitation.
+
+**Phase D — Decor Icon UI**
+
+- `DecorIconRenderLayout` / `decorIconLayout` on OverlayRenderModel.
+- `DecorIconOverlayView` / `OverlaySharedDecorIconView` in DecorOverlayViews.swift.
+- Preview canvas and SwiftUI export switch arms wired.
+- Full icon inspector: source picker (SF Symbol / Bundled SVG / Upload), symbol search + common grid, weight/scale pickers, tint swatch, content mode, preserveSVGColors toggle, Layout / Background / Effects sections.
+
+**Phase E — User asset store**
+
+- `UserAsset` model + `UserAssetStore` (content-addressed .assets/ folder).
+- `ProjectDocument.userAssets` with undo support.
+- `IconAssetResolver` wired to resolve user assets from the project.
+- Import action via NSOpenPanel for SVG files.
+- `OverlayTemplate` schemaVersion bumped to 2; optional `assets` field with custom Codable for backward compat.
+
+**Phase F — Decor Text**
+
+- `DecorFontRef`, `DecorTextFill`, `GradientSpec`, `DecorTextAlignment` types.
+- `DecorTextResolved` coalescing nil optionals.
+- `DecorTextRenderLayout` / `decorTextLayout` on OverlayRenderModel.
+- `DecorTextOverlayView` / `OverlaySharedDecorTextView` with stroke, shadow, glow.
+- Full text inspector: content editor, font picker (system/bundled), alignment, line height, letter spacing, auto-fit, fill color, stroke width/color, Layout / Background / Effects.
+- Default presets seeded for all three decor types.
+
+**Phase G — Polish**
+
+- All three decor element types render end-to-end: Pool → Canvas → Inspector → Export.
+- Default styles on add: Solid Color (240×80 white rounded rect), Icon (SF star.fill, 80×80, white tint), Text ("Hello", SF Pro, 320×60, centered).
+
+Verification:
+- `swift build` clean.
+- `swift test` — all 75 tests pass.

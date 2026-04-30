@@ -22,7 +22,7 @@ struct OverlayPoolView: View {
                 HStack {
                     Spacer()
                     Picker("", selection: $activeCategory) {
-                        ForEach(OverlayCategory.allCases) { category in
+                        ForEach(OverlayCategory.allCases.filter { $0 != .decor }) { category in
                             Text(category.label)
                                 .font(EditorTheme.bodyStrongFont)
                                 .tag(category)
@@ -58,6 +58,7 @@ enum OverlayCategory: String, CaseIterable, Identifiable {
     case metrics
     case charts
     case route
+    case decor
 
     var id: String { rawValue }
 
@@ -66,6 +67,7 @@ enum OverlayCategory: String, CaseIterable, Identifiable {
         case .metrics: "Metrics"
         case .charts: "Charts"
         case .route: "Route"
+        case .decor: "Decor"
         }
     }
 }
@@ -103,7 +105,10 @@ struct OverlayTileInfo: Identifiable {
         OverlayTileInfo(type: .routeMap, hint: "GPS path", systemImage: "map", category: .route, isAccent: true),
         OverlayTileInfo(type: .lapList, hint: "lap teleprompter", systemImage: "list.number", category: .charts, isAccent: true),
         OverlayTileInfo(type: .lapCard, hint: "lap recap card", systemImage: "rectangle.badge.checkmark", category: .charts, isAccent: true),
-        OverlayTileInfo(type: .lapLive, hint: "live lap HUD", systemImage: "stopwatch", category: .charts, isAccent: true)
+        OverlayTileInfo(type: .lapLive, hint: "live lap HUD", systemImage: "stopwatch", category: .charts, isAccent: true),
+        OverlayTileInfo(type: .decorSolidColor, hint: "shape", systemImage: "square.fill", category: .decor),
+        OverlayTileInfo(type: .decorIcon, hint: "symbol", systemImage: "star", category: .decor),
+        OverlayTileInfo(type: .decorText, hint: "label", systemImage: "textformat", category: .decor)
     ]
 
     static func tiles(for category: OverlayCategory) -> [OverlayTileInfo] {

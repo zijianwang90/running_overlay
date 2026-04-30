@@ -16,6 +16,9 @@ final class ProjectDocument: ObservableObject {
     @Published var showingProjectSettings = false
     @Published var showingExportDialog = false
     @Published var overlayTemplates: [OverlayTemplate] = []
+    @Published var userAssets: [UserAsset] = [] {
+        didSet { IconAssetResolver.configure(userAssets: userAssets, projectURL: projectURL) }
+    }
     @Published var showPreviewGuides = false
     @Published var isExporting = false
     @Published var exportProgress: ExportProgressState?
@@ -27,6 +30,7 @@ final class ProjectDocument: ObservableObject {
     @Published private(set) var canRedo = false
 
     private let overlayTemplateStore: OverlayTemplateStore
+    private(set) var projectURL: URL?
     private var exportTask: Task<Void, Never>?
     private var undoStack: [ProjectSnapshot] = []
     private var redoStack: [ProjectSnapshot] = []
@@ -36,6 +40,29 @@ final class ProjectDocument: ObservableObject {
     init(overlayTemplateStore: OverlayTemplateStore = OverlayTemplateStore()) {
         self.overlayTemplateStore = overlayTemplateStore
         loadOverlayTemplates()
+        IconAssetResolver.configure(userAssets: userAssets, projectURL: projectURL)
+    }
+
+    func assetURL(for assetID: UUID) -> URL? {
+        guard let asset = userAssets.first(where: { $0.id == assetID }) else { return nil }
+        return UserAssetStore.url(for: asset, projectURL: projectURL)
+    }
+
+    func importUserAsset(kind: UserAsset.Kind, allowedContentTypes: [UTType]) {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = allowedContentTypes
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            let asset = try UserAssetStore.import(url: url, kind: kind, projectURL: projectURL)
+            registerUndoPoint()
+            userAssets.append(asset)
+        } catch {
+            statusMessage = "Failed to import asset: \(error.localizedDescription)"
+        }
     }
 
     func importFitFile() {
@@ -330,6 +357,7 @@ final class ProjectDocument: ObservableObject {
             type: type,
             position: position,
             scale: scale,
+            opacity: 1,
             isVisible: true,
             isLocked: false,
             style: style
@@ -349,6 +377,50 @@ final class ProjectDocument: ObservableObject {
             style.routeMapBackgroundStyle = .dark
             style.backgroundOpacity = 0.74
             style.foregroundColor = .cyan
+        }
+        if type == .decorSolidColor {
+            style.decor = DecorStyle(
+                shape: .roundedRectangle,
+                fillColor: .white,
+                width: 240,
+                height: 80,
+                cornerRadius: 12
+            )
+            style.backgroundEnabled = false
+        }
+        if type == .decorIcon {
+            style.decor = DecorStyle(
+                shape: .roundedRectangle,
+                fillColor: OverlayColor(red: 0, green: 0, blue: 0, alpha: 0),
+                width: 80,
+                height: 80,
+                cornerRadius: 0,
+                iconAsset: .sfSymbol(name: "star.fill", weight: .medium, scale: .large),
+                iconTint: .white,
+                iconPreserveSVGColors: false,
+                iconContentMode: .fit
+            )
+            style.backgroundEnabled = false
+        }
+        if type == .decorText {
+            style.decor = DecorStyle(
+                shape: .rectangle,
+                fillColor: OverlayColor(red: 0, green: 0, blue: 0, alpha: 0),
+                width: 320,
+                height: 60,
+                cornerRadius: 0,
+                textContent: "Hello",
+                textFont: .system(family: "SF Pro Display"),
+                textSize: 36,
+                textAlignment: .center,
+                textLineHeight: 1.2,
+                textLetterSpacing: 0,
+                textFillMode: .solid(color: .white),
+                textStrokeWidth: 0,
+                textStrokeColor: .white,
+                textAutoFit: false
+            )
+            style.backgroundEnabled = false
         }
         if let recommended = type.defaultNumericPreset {
             style.textPreset = recommended
@@ -701,6 +773,7 @@ final class ProjectDocument: ObservableObject {
 
         registerUndoPoint()
         overlayLayout.elements[index].scale = copiedOverlayConfiguration.scale
+        overlayLayout.elements[index].opacity = copiedOverlayConfiguration.opacity
         overlayLayout.elements[index].isVisible = copiedOverlayConfiguration.isVisible
         overlayLayout.elements[index].isLocked = copiedOverlayConfiguration.isLocked
         overlayLayout.elements[index].style = copiedOverlayConfiguration.style
@@ -742,6 +815,14 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].scale = min(max(scale, 0.25), 4)
+    }
+
+    func setOverlayOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].opacity = min(max(opacity, 0), 1)
     }
 
     func setOverlayFontSize(_ elementID: OverlayElement.ID, fontSize: Double) {
@@ -1313,6 +1394,145 @@ final class ProjectDocument: ObservableObject {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
         mutate(&overlayLayout.elements[index].style.lapLive)
+    }
+
+    func mutateDecorStyle(_ elementID: OverlayElement.ID, _ mutate: (inout DecorStyle) -> Void) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.decor)
+    }
+
+    func mutateDecorStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout DecorStyle) -> Void) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.decor)
+    }
+
+    func setDecorShape(_ elementID: OverlayElement.ID, shape: DecorShape) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.shape = shape
+        if shape == .circle {
+            let side = min(overlayLayout.elements[index].style.decor.width,
+                           overlayLayout.elements[index].style.decor.height)
+            overlayLayout.elements[index].style.decor.width = side
+            overlayLayout.elements[index].style.decor.height = side
+        }
+    }
+
+    func setDecorFillColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.fillColor = color
+    }
+
+    func setDecorSize(_ elementID: OverlayElement.ID, width: Double? = nil, height: Double? = nil) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        if let width {
+            overlayLayout.elements[index].style.decor.width = min(max(width, 4), 4096)
+        }
+        if let height {
+            overlayLayout.elements[index].style.decor.height = min(max(height, 4), 4096)
+        }
+        if overlayLayout.elements[index].style.decor.shape == .circle {
+            let side = min(overlayLayout.elements[index].style.decor.width,
+                           overlayLayout.elements[index].style.decor.height)
+            overlayLayout.elements[index].style.decor.width = side
+            overlayLayout.elements[index].style.decor.height = side
+        }
+    }
+
+    func setDecorCornerRadius(_ elementID: OverlayElement.ID, radius: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.cornerRadius = min(max(radius, 0), 512)
+    }
+
+    func setDecorIconAsset(_ elementID: OverlayElement.ID, asset: IconAsset) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.iconAsset = asset
+    }
+
+    func setDecorIconTint(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.iconTint = color
+    }
+
+    func setDecorIconPreserveSVGColors(_ elementID: OverlayElement.ID, enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.iconPreserveSVGColors = enabled
+    }
+
+    func setDecorIconContentMode(_ elementID: OverlayElement.ID, mode: IconContentMode) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.iconContentMode = mode
+    }
+
+    // MARK: Decor Text mutators
+
+    func setDecorTextContent(_ elementID: OverlayElement.ID, content: String) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.textContent = content
+    }
+
+    func setDecorTextFont(_ elementID: OverlayElement.ID, font: DecorFontRef) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.textFont = font
+    }
+
+    func setDecorTextSize(_ elementID: OverlayElement.ID, size: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.textSize = min(max(size, 4), 512)
+    }
+
+    func setDecorTextAlignment(_ elementID: OverlayElement.ID, alignment: DecorTextAlignment) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.textAlignment = alignment
+    }
+
+    func setDecorTextLineHeight(_ elementID: OverlayElement.ID, lineHeight: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.textLineHeight = min(max(lineHeight, 0.5), 8)
+    }
+
+    func setDecorTextLetterSpacing(_ elementID: OverlayElement.ID, spacing: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.textLetterSpacing = min(max(spacing, -20), 80)
+    }
+
+    func setDecorTextFillMode(_ elementID: OverlayElement.ID, fillMode: DecorTextFill) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.textFillMode = fillMode
+    }
+
+    func setDecorTextStrokeWidth(_ elementID: OverlayElement.ID, width: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.textStrokeWidth = min(max(width, 0), 60)
+    }
+
+    func setDecorTextStrokeColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.textStrokeColor = color
+    }
+
+    func setDecorTextAutoFit(_ elementID: OverlayElement.ID, enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.textAutoFit = enabled
     }
 
     func setOverlayRouteMapStartMarkerStyle(_ elementID: OverlayElement.ID, markerStyle: OverlayRouteMapMarkerStyle) {
@@ -2466,6 +2686,7 @@ final class ProjectDocument: ObservableObject {
             mediaItems: mediaItems,
             timeline: timeline,
             overlayLayout: overlayLayout,
+            userAssets: userAssets,
             selection: selection
         )
     }
@@ -2476,6 +2697,7 @@ final class ProjectDocument: ObservableObject {
         mediaItems = snapshot.mediaItems
         timeline = snapshot.timeline
         overlayLayout = snapshot.overlayLayout
+        userAssets = snapshot.userAssets
         selection = snapshot.selection
     }
 
@@ -2491,12 +2713,14 @@ private struct ProjectSnapshot: Equatable {
     var mediaItems: [MediaItem]
     var timeline: TimelineModel
     var overlayLayout: OverlayLayout
+    var userAssets: [UserAsset]
     var selection: EditorSelection
 }
 
 private struct CopiedOverlayConfiguration {
     var category: OverlayPasteCategory
     var scale: Double
+    var opacity: Double
     var isVisible: Bool
     var isLocked: Bool
     var style: OverlayStyle
@@ -2504,6 +2728,7 @@ private struct CopiedOverlayConfiguration {
     init(element: OverlayElement) {
         category = element.type.pasteCategory
         scale = element.scale
+        opacity = element.opacity
         isVisible = element.isVisible
         isLocked = element.isLocked
         style = element.style

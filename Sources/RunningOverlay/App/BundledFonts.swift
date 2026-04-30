@@ -29,6 +29,10 @@ enum BundledFonts {
         }
     }
 
+    static var availableFontNames: [String] {
+        [BundledFontName.digitalWatch]
+    }
+
     private static func register(_ url: URL) {
         var error: Unmanaged<CFError>?
         let success = CTFontManagerRegisterFontsForURL(url as CFURL, .process, &error)

@@ -10,7 +10,7 @@ struct MainEditorView: View {
 
     private static let mediaPoolMinWidth: CGFloat = 300
     private static let mediaPoolMaxWidth: CGFloat = 720
-    private static let inspectorMinWidth: CGFloat = 320
+    private static let inspectorMinWidth: CGFloat = 380
     private static let inspectorMaxWidth: CGFloat = 720
     private static let previewMinWidth: CGFloat = 520
 

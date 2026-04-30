@@ -259,8 +259,7 @@ struct DistanceTimelineOverlayDetailView: View {
                 widthBinding: distanceBinding(\.width, of: style),
                 widthRange: 180...640,
                 heightBinding: distanceBinding(\.height, of: style),
-                heightRange: 52...150,
-                opacityBinding: distanceBinding(\.backgroundOpacity, of: style)
+                heightRange: 52...150
             )
         }
     }

@@ -93,7 +93,10 @@ struct OverlayFrameRenderer {
 
         for element in request.layout.elements where element.isVisible {
             let renderContext = OverlayRenderContext(canvasSize: request.size, activity: request.activity, elapsedTime: request.elapsedTime)
+            context.saveGState()
+            context.setAlpha(CGFloat(element.opacity))
             renderElement(element, renderContext: renderContext, cache: &cache)
+            context.restoreGState()
         }
     }
 

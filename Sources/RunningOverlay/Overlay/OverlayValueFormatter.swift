@@ -193,6 +193,8 @@ enum OverlayValueFormatter {
             )
         case .lapList, .lapCard, .lapLive:
             return OverlayValueComponents(label: "", shortLabel: "", value: "", unit: "")
+        case .decorSolidColor, .decorIcon, .decorText:
+            return OverlayValueComponents(label: type.label, shortLabel: "", value: "", unit: "")
         }
     }
 

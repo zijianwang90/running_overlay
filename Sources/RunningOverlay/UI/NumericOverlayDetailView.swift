@@ -102,11 +102,7 @@ struct NumericOverlayDetailView: View {
             )
         ) {
             OverlayLayoutInspectorRows(
-                elementID: elementID,
-                opacityBinding: Binding(
-                    get: { project.selectedOverlay(elementID)?.style.backgroundOpacity ?? 0 },
-                    set: { project.setOverlayBackgroundOpacity(elementID, opacity: $0.quantizedNumeric(to: 0.05)) }
-                )
+                elementID: elementID
             )
         }
     }
@@ -777,6 +773,9 @@ extension OverlayElementType {
         case .lapList: "list.number"
         case .lapCard: "rectangle.badge.checkmark"
         case .lapLive: "stopwatch"
+        case .decorSolidColor: "square.fill"
+        case .decorIcon: "star"
+        case .decorText: "textformat"
         }
     }
 }
