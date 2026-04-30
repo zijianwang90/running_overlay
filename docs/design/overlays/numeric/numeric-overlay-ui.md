@@ -289,6 +289,7 @@ Inspector width:
 - Default: 460 px.
 - Minimum: 460 px.
 - Numeric Overlay must remain usable at 460 px without text clipping.
+- Dense segmented controls with four options use compact labels in the Inspector (`Bot` for Bottom, `Reg` / `Med` / `Semi` / `Bold` for font weight) so Label and Unit sections do not overflow at the minimum width.
 
 ## Model Gaps
 

@@ -904,12 +904,14 @@ Summary:
 - Removed the inset scroll padding and card-like section spacing from `Lap Card` and `Lap Live`; their overlay-specific sections now use the same full-width header/body rhythm as `Lap List` and Numeric detail sections.
 - Replaced the long dense color preset strip with six mainstream swatches plus a trailing fixed-size custom color button that opens the shared system color panel, preventing fixed preset lists or embedded system picker intrinsic width from forcing narrow Inspector panels to overflow horizontally.
 - Increased the Inspector split-pane default and minimum width to 460 px, and raised the app window minimum width to 1300 px so the three-column editor cannot compress the Inspector below its stored width.
+- Shortened Numeric Overlay four-option segmented labels in dense rows (`Bot`, `Reg`, `Med`, `Semi`) so Label and Unit section expansion does not push segmented controls past the Inspector edge.
 
 Files changed:
 
 - `Sources/RunningOverlay/UI/InspectorRows/InspectorDenseComponents.swift`
 - `Sources/RunningOverlay/UI/MainEditorView.swift`
 - `Sources/RunningOverlay/App/RunningOverlayApp.swift`
+- `Sources/RunningOverlay/UI/NumericOverlayDetailView.swift`
 - `Sources/RunningOverlay/UI/LapLiveOverlayDetailView.swift`
 - `Sources/RunningOverlay/UI/LapCardOverlayDetailView.swift`
 - `Sources/RunningOverlay/UI/LapListOverlayDetailView.swift`

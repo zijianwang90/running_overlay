@@ -142,7 +142,8 @@ struct NumericOverlayDetailView: View {
                 get: { element.style.fontWeight },
                 set: { project.setOverlayFontWeight(elementID, fontWeight: $0) }
             )) { weight in
-                Text(weight.label)
+                Text(weight.compactInspectorLabel)
+                    .lineLimit(1)
             }
         }
         InspectorDenseRow(label: "Color") {
@@ -187,7 +188,8 @@ struct NumericOverlayDetailView: View {
                 get: { element.style.labelPosition },
                 set: { project.setOverlayLabelPosition(elementID, position: $0) }
             )) { position in
-                Text(position.label)
+                Text(position.compactInspectorLabel)
+                    .lineLimit(1)
             }
             .disabled(!isEnabled)
             .opacity(isEnabled ? 1 : 0.5)
@@ -247,7 +249,8 @@ struct NumericOverlayDetailView: View {
                 get: { element.style.unitPosition },
                 set: { project.setOverlayUnitPosition(elementID, position: $0) }
             )) { position in
-                Text(position.label)
+                Text(position.compactInspectorLabel)
+                    .lineLimit(1)
             }
             .disabled(!isEnabled)
             .opacity(isEnabled ? 1 : 0.5)
@@ -336,7 +339,8 @@ struct NumericOverlayDetailView: View {
         )
         InspectorDenseRow(label: "Weight") {
             InspectorDenseSegmented(values: OverlayFontWeight.allCases, selection: fontWeight) { weight in
-                Text(weight.label)
+                Text(weight.compactInspectorLabel)
+                    .lineLimit(1)
             }
             .disabled(!isEnabled)
             .opacity(isEnabled ? 1 : 0.5)
@@ -744,6 +748,28 @@ private extension NumericOverlayDetailView {
 extension OverlayTextPreset {
     var compactDisplayLabel: String {
         label.components(separatedBy: " / ").first ?? label
+    }
+}
+
+private extension OverlayTextAttachmentPosition {
+    var compactInspectorLabel: String {
+        switch self {
+        case .top: "Top"
+        case .bottom: "Bot"
+        case .leading: "Left"
+        case .trailing: "Right"
+        }
+    }
+}
+
+private extension OverlayFontWeight {
+    var compactInspectorLabel: String {
+        switch self {
+        case .regular: "Reg"
+        case .medium: "Med"
+        case .semibold: "Semi"
+        case .bold: "Bold"
+        }
     }
 }
 
