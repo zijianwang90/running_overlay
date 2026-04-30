@@ -1,13 +1,14 @@
 import SwiftUI
 
 /// Inspector detail view for the three Decor element subtypes
-/// (`decorSolidColor`, `decorIcon`, `decorText`). Phase B implements the
-/// Solid Color sections; Icon/Text remain placeholders until Phases D/F.
+/// (`decorSolidColor`, `decorIcon`, `decorText`). Solid Color (Phase B) and
+/// Icon (Phase D) are implemented; Text remains a placeholder until Phase F.
 struct DecorOverlayDetailView: View {
     @EnvironmentObject private var project: ProjectDocument
     let elementID: OverlayElement.ID
 
     @State private var openSections: Set<DecorSection> = Set(DecorSection.allCases)
+    @State private var sfSymbolSearchText: String = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -19,8 +20,10 @@ struct DecorOverlayDetailView: View {
                         switch element.type {
                         case .decorSolidColor:
                             solidColorBody(element: element)
-                        case .decorIcon, .decorText:
-                            placeholderBody(element: element)
+                        case .decorIcon:
+                            iconBody(element: element)
+                        case .decorText:
+                            textBody(element: element)
                         default:
                             EmptyView()
                         }
@@ -36,7 +39,7 @@ struct DecorOverlayDetailView: View {
         }
     }
 
-    // MARK: Solid Color
+    // MARK: Solid Color (Phase B)
 
     @ViewBuilder
     private func solidColorBody(element: OverlayElement) -> some View {
@@ -89,6 +92,189 @@ struct DecorOverlayDetailView: View {
         }
     }
 
+    // MARK: Icon (Phase D)
+
+    @ViewBuilder
+    private func iconBody(element: OverlayElement) -> some View {
+        layoutInspectorSection(element)
+        sectionView(.iconSource, element: element) { iconSourceSection(element) }
+        sectionView(.iconTint, element: element) { iconTintSection(element) }
+        OverlayBorderInspectorModule(elementID: elementID, element: element)
+        OverlayEffectsInspectorModule(elementID: elementID, element: element)
+    }
+
+    @ViewBuilder
+    private func iconSourceSection(_ element: OverlayElement) -> some View {
+        let r = DecorIconResolved(from: element.style.decor)
+
+        // Source type picker
+        InspectorDenseRow(label: "Source") {
+            InspectorDenseSegmented(
+                values: IconSourceType.allCases,
+                selection: Binding(
+                    get: { iconSourceType(for: r.asset) },
+                    set: { newSource in
+                        switch newSource {
+                        case .sfSymbol:
+                            project.setDecorIconAsset(elementID, asset: .sfSymbol(name: "star.fill", weight: .medium, scale: .large))
+                        case .bundledSVG:
+                            project.setDecorIconAsset(elementID, asset: .bundledSVG(name: ""))
+                        case .upload:
+                        project.importUserAsset(kind: .svg, allowedContentTypes: [.svg])
+                        if let lastAsset = project.userAssets.last {
+                            project.setDecorIconAsset(elementID, asset: .userStaticSVG(assetID: lastAsset.id))
+                        }
+                    }
+                }
+                ),
+                label: { source in
+                    HStack(spacing: 4) {
+                        Image(systemName: source.systemImage)
+                            .font(.system(size: 10))
+                        Text(source.label)
+                            .font(.system(size: 10, weight: .medium))
+                    }
+                }
+            )
+        }
+
+        switch r.asset {
+        case .sfSymbol, .none:
+            // Symbol name field
+            InspectorDenseRow(label: "Symbol Name") {
+                TextField("e.g. heart.fill", text: Binding(
+                    get: { sfSymbolSearchText.isEmpty ? (r.asset.symbolName ?? "star.fill") : sfSymbolSearchText },
+                    set: { newName in
+                        sfSymbolSearchText = newName
+                        if !newName.isEmpty {
+                            let weight = r.asset.symbolWeight ?? .medium
+                            let scale = r.asset.symbolScale ?? .large
+                            project.setDecorIconAsset(elementID, asset: .sfSymbol(name: newName, weight: weight, scale: scale))
+                        }
+                    }
+                ))
+                .textFieldStyle(.roundedBorder)
+                .font(NumericTokens.captionFont)
+                .frame(maxWidth: 220)
+            }
+
+            // Weight picker
+            InspectorDenseRow(label: "Weight") {
+                InspectorDenseSegmented(
+                    values: SymbolWeight.allCases,
+                    selection: Binding(
+                        get: { r.asset.symbolWeight ?? .medium },
+                        set: { newWeight in
+                            project.setDecorIconAsset(elementID, asset: .sfSymbol(
+                                name: r.asset.symbolName ?? "star.fill",
+                                weight: newWeight,
+                                scale: r.asset.symbolScale ?? .large
+                            ))
+                        }
+                    ),
+                    label: { weight in
+                        Text(weight.label.prefix(1))
+                            .font(.system(size: 10, weight: .medium))
+                    }
+                )
+            }
+
+            // Scale picker
+            InspectorDenseRow(label: "Scale") {
+                InspectorDenseSegmented(
+                    values: SymbolScale.allCases,
+                    selection: Binding(
+                        get: { r.asset.symbolScale ?? .large },
+                        set: { newScale in
+                            project.setDecorIconAsset(elementID, asset: .sfSymbol(
+                                name: r.asset.symbolName ?? "star.fill",
+                                weight: r.asset.symbolWeight ?? .medium,
+                                scale: newScale
+                            ))
+                        }
+                    ),
+                    label: { scale in Text(scale.label).font(.system(size: 10, weight: .medium)) }
+                )
+            }
+
+            // Common symbols grid
+            InspectorDenseRow(label: "Common") {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 8), spacing: 4) {
+                    ForEach(commonSFSymbols, id: \.self) { name in
+                        Button {
+                            sfSymbolSearchText = name
+                            project.setDecorIconAsset(elementID, asset: .sfSymbol(
+                                name: name,
+                                weight: r.asset.symbolWeight ?? .medium,
+                                scale: r.asset.symbolScale ?? .large
+                            ))
+                        } label: {
+                            Image(systemName: name)
+                                .font(.system(size: 14))
+                                .frame(width: 26, height: 26)
+                                .background(
+                                    (r.asset.symbolName ?? "") == name
+                                        ? NumericTokens.accentBlue.opacity(0.25)
+                                        : Color.clear
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 4))
+                        }
+                        .buttonStyle(.plain)
+                        .help(name)
+                    }
+                }
+            }
+
+        case .bundledSVG:
+            // Bundled SVG name display
+            let name = r.asset.bundledSVGName ?? ""
+            if name.isEmpty {
+                InspectorDenseRow(label: "SVG") { Text("None selected — add .svg files to Resources/Icons/").font(NumericTokens.captionFont).foregroundStyle(NumericTokens.textSecondary) }
+            } else {
+                InspectorDenseRow(label: "SVG") { Text("\(name).svg").font(NumericTokens.captionFont).foregroundStyle(NumericTokens.textPrimary) }
+            }
+
+            // "Preserve SVG Colors" toggle
+            InspectorDenseRow(label: "Preserve Colors") {
+                Toggle("", isOn: Binding(
+                    get: { r.preserveSVGColors },
+                    set: { project.setDecorIconPreserveSVGColors(elementID, enabled: $0) }
+                ))
+                .toggleStyle(.switch)
+            }
+
+        case .userStaticSVG, .userLottie:
+            InspectorDenseRow(label: "Asset") { Text("User upload — Phase E").font(NumericTokens.captionFont).foregroundStyle(NumericTokens.textSecondary) }
+        }
+    }
+
+    @ViewBuilder
+    private func iconTintSection(_ element: OverlayElement) -> some View {
+        let r = DecorIconResolved(from: element.style.decor)
+
+        // Content mode
+        InspectorDenseRow(label: "Content Mode") {
+            InspectorDenseSegmented(
+                values: IconContentMode.allCases,
+                selection: Binding(
+                    get: { r.contentMode },
+                    set: { project.setDecorIconContentMode(elementID, mode: $0) }
+                ),
+                label: { mode in Text(mode.label).font(.system(size: 10, weight: .medium)) }
+            )
+        }
+
+        // Tint color swatch
+        InspectorDenseRow(label: "Tint") {
+            InspectorDenseSwatchStrip(
+                presets: NumericOverlayDetailView.colorPresets,
+                selected: r.tint
+            ) { color in
+                project.setDecorIconTint(elementID, color: color)
+            }
+        }
+    }
+
     // MARK: Layout (shared)
 
     @ViewBuilder
@@ -96,6 +282,8 @@ struct DecorOverlayDetailView: View {
         let s = element.style.decor
         let widthRange: ClosedRange<Double> = 8...4096
         let heightRange: ClosedRange<Double> = 8...4096
+        let showSize = element.type == .decorSolidColor || element.type == .decorIcon
+
         CollapsibleLayoutInspectorSection(
             isExpanded: Binding(
                 get: { openSections.contains(.layout) },
@@ -106,12 +294,12 @@ struct DecorOverlayDetailView: View {
         ) {
             OverlayLayoutInspectorRows(
                 elementID: elementID,
-                widthBinding: element.type == .decorSolidColor ? Binding(
+                widthBinding: showSize ? Binding(
                     get: { s.width },
                     set: { project.setDecorSize(elementID, width: $0) }
                 ) : nil,
                 widthRange: widthRange,
-                heightBinding: element.type == .decorSolidColor ? Binding(
+                heightBinding: showSize ? Binding(
                     get: { s.height },
                     set: { project.setDecorSize(elementID, height: $0) }
                 ) : nil,
@@ -124,7 +312,177 @@ struct DecorOverlayDetailView: View {
         }
     }
 
-    // MARK: Placeholders for Icon/Text
+    // MARK: Text (Phase F)
+
+    @ViewBuilder
+    private func textBody(element: OverlayElement) -> some View {
+        layoutInspectorSection(element)
+        sectionView(.textContent, element: element) { textContentSection(element) }
+        sectionView(.textFont, element: element) { textFontSection(element) }
+        sectionView(.textAppearance, element: element) { textAppearanceSection(element) }
+        sectionView(.textFill, element: element) { textFillSection(element) }
+        OverlayBorderInspectorModule(elementID: elementID, element: element)
+        OverlayEffectsInspectorModule(elementID: elementID, element: element)
+    }
+
+    @ViewBuilder
+    private func textContentSection(_ element: OverlayElement) -> some View {
+        let r = DecorTextResolved(from: element.style.decor)
+        VStack(spacing: NumericTokens.rowGap) {
+            TextEditor(text: Binding(
+                get: { r.content },
+                set: { project.setDecorTextContent(elementID, content: $0) }
+            ))
+            .font(NumericTokens.bodyFont)
+            .frame(minHeight: 60)
+            .overlay(RoundedRectangle(cornerRadius: 4).stroke(NumericTokens.borderSubtle))
+        }
+    }
+
+    @ViewBuilder
+    private func textFontSection(_ element: OverlayElement) -> some View {
+        let r = DecorTextResolved(from: element.style.decor)
+        let fontIdx = switch r.font {
+        case .system: 0
+        case .bundled: 1
+        case .userAsset: 2
+        }
+        InspectorDenseRow(label: "Font") {
+            Picker("", selection: Binding<Int>(
+                get: { fontIdx },
+                set: { (idx: Int) in
+                    switch idx {
+                    case 0: project.setDecorTextFont(elementID, font: .system(family: "SF Pro Display"))
+                    case 1:
+                        let first = BundledFonts.availableFontNames.first ?? "SF Pro Display"
+                        project.setDecorTextFont(elementID, font: .bundled(name: first))
+                    default: break
+                    }
+                }
+            )) {
+                Text("System").tag(0)
+                Text("Bundled").tag(1)
+                Text("Upload").tag(2).disabled(true)
+            }
+            .pickerStyle(.segmented)
+        }
+        if case .system = r.font {
+            let families = NSFontManager.shared.availableFontFamilies
+            InspectorDenseRow(label: "Family") {
+                Picker("", selection: Binding(
+                    get: {
+                        if case .system(let f) = r.font { return f }
+                        return "SF Pro Display"
+                    },
+                    set: { project.setDecorTextFont(elementID, font: .system(family: $0)) }
+                )) {
+                    ForEach(families, id: \.self) { family in
+                        Text(family).tag(family)
+                    }
+                }
+                .frame(maxWidth: 200)
+            }
+        }
+        if case .bundled(let name) = r.font {
+            let names = BundledFonts.availableFontNames
+            if !names.isEmpty {
+                InspectorDenseRow(label: "Name") {
+                    Picker("", selection: Binding(
+                        get: { name },
+                        set: { project.setDecorTextFont(elementID, font: .bundled(name: $0)) }
+                    )) {
+                        ForEach(names, id: \.self) { n in
+                            Text(n).tag(n)
+                        }
+                    }
+                    .frame(maxWidth: 200)
+                }
+            }
+        }
+        InspectorDenseSliderRow(
+            label: "Size",
+            value: Binding(
+                get: { r.size },
+                set: { project.setDecorTextSize(elementID, size: $0) }
+            ),
+            range: 4...256,
+            displayText: "\(Int(r.size.rounded()))"
+        )
+    }
+
+    @ViewBuilder
+    private func textAppearanceSection(_ element: OverlayElement) -> some View {
+        let r = DecorTextResolved(from: element.style.decor)
+        InspectorDenseRow(label: "Alignment") {
+            InspectorDenseSegmented(
+                values: DecorTextAlignment.allCases,
+                selection: Binding(
+                    get: { r.alignment },
+                    set: { project.setDecorTextAlignment(elementID, alignment: $0) }
+                ),
+                label: { a in Text(a.label).font(.system(size: 10, weight: .medium)) }
+            )
+        }
+        InspectorDenseSliderRow(
+            label: "Line Height",
+            value: Binding(
+                get: { r.lineHeight },
+                set: { project.setDecorTextLineHeight(elementID, lineHeight: $0) }
+            ),
+            range: 0.5...4,
+            displayText: String(format: "%.1fx", r.lineHeight)
+        )
+        InspectorDenseSliderRow(
+            label: "Letter Spacing",
+            value: Binding(
+                get: { r.letterSpacing },
+                set: { project.setDecorTextLetterSpacing(elementID, spacing: $0) }
+            ),
+            range: -10...40,
+            displayText: "\(Int(r.letterSpacing.rounded()))"
+        )
+        InspectorDenseRow(label: "Auto Fit") {
+            Toggle("", isOn: Binding(
+                get: { r.autoFit },
+                set: { project.setDecorTextAutoFit(elementID, enabled: $0) }
+            ))
+            .toggleStyle(.switch)
+        }
+    }
+
+    @ViewBuilder
+    private func textFillSection(_ element: OverlayElement) -> some View {
+        let r = DecorTextResolved(from: element.style.decor)
+        if case .solid(let solidColor) = r.fillMode {
+            InspectorDenseRow(label: "Color") {
+                InspectorDenseSwatchStrip(
+                    presets: NumericOverlayDetailView.colorPresets,
+                    selected: solidColor
+                ) { color in
+                    project.setDecorTextFillMode(elementID, fillMode: .solid(color: color))
+                }
+            }
+        }
+        InspectorDenseSliderRow(
+            label: "Stroke Width",
+            value: Binding(
+                get: { r.strokeWidth },
+                set: { project.setDecorTextStrokeWidth(elementID, width: $0) }
+            ),
+            range: 0...30,
+            displayText: "\(Int(r.strokeWidth.rounded()))"
+        )
+        if r.strokeWidth > 0 {
+            InspectorDenseRow(label: "Stroke Color") {
+                InspectorDenseSwatchStrip(
+                    presets: NumericOverlayDetailView.colorPresets,
+                    selected: r.strokeColor
+                ) { color in
+                    project.setDecorTextStrokeColor(elementID, color: color)
+                }
+            }
+        }
+    }
 
     @ViewBuilder
     private func placeholderBody(element: OverlayElement) -> some View {
@@ -132,7 +490,7 @@ struct DecorOverlayDetailView: View {
             Text(element.type.label)
                 .font(NumericTokens.sectionTitleFont)
                 .foregroundStyle(NumericTokens.textPrimary)
-            Text("Inspector for this decor type lands in a future phase.")
+            Text("Inspector for this decor type lands in Phase F.")
                 .font(NumericTokens.bodyFont)
                 .foregroundStyle(NumericTokens.textSecondary)
         }
@@ -212,13 +570,19 @@ struct DecorOverlayDetailView: View {
     }
 
     private enum DecorSection: String, CaseIterable {
-        case layout, shape, fill
+        case layout, shape, fill, iconSource, iconTint, textContent, textFont, textAppearance, textFill
 
         var title: String {
             switch self {
             case .layout: "Layout"
             case .shape: "Shape"
             case .fill: "Fill"
+            case .iconSource: "Icon"
+            case .iconTint: "Color & Fit"
+            case .textContent: "Content"
+            case .textFont: "Font & Size"
+            case .textAppearance: "Appearance"
+            case .textFill: "Fill & Stroke"
             }
         }
 
@@ -227,6 +591,12 @@ struct DecorOverlayDetailView: View {
             case .layout: "scope"
             case .shape: "square.on.square"
             case .fill: "paintpalette"
+            case .iconSource: "star"
+            case .iconTint: "paintbrush"
+            case .textContent: "text.quote"
+            case .textFont: "character.square"
+            case .textAppearance: "text.alignleft"
+            case .textFill: "paintbrush.pointed"
             }
         }
     }
@@ -267,5 +637,67 @@ struct DecorOverlayDetailView: View {
                     .padding(.vertical, NumericTokens.panelPaddingY * 0.5)
             }
         }
+    }
+
+    // MARK: Helpers
+
+    private enum IconSourceType: String, CaseIterable, Identifiable {
+        case sfSymbol, bundledSVG, upload
+
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .sfSymbol: "SF Symbol"
+            case .bundledSVG: "Bundled"
+            case .upload: "Upload"
+            }
+        }
+        var systemImage: String {
+            switch self {
+            case .sfSymbol: "square.grid.3x3"
+            case .bundledSVG: "shippingbox"
+            case .upload: "square.and.arrow.up"
+            }
+        }
+    }
+
+    private func iconSourceType(for asset: IconAsset) -> IconSourceType {
+        switch asset {
+        case .sfSymbol: .sfSymbol
+        case .bundledSVG: .bundledSVG
+        case .userStaticSVG, .userLottie: .upload
+        case .none: .sfSymbol
+        }
+    }
+
+    private let commonSFSymbols: [String] = [
+        "star.fill", "heart.fill", "circle.fill", "square.fill",
+        "flame.fill", "bolt.fill", "figure.run", "figure.walk",
+        "mountain.2.fill", "leaf.fill", "drop.fill", "sun.max.fill",
+        "moon.fill", "cloud.fill", "location.fill", "flag.fill",
+        "arrow.up", "crown.fill", "sparkles", "music.note",
+        "camera.fill", "film.fill", "video.fill", "play.fill",
+        "pause.fill", "stop.fill", "record.circle", "timer",
+        "speedometer", "gauge.open.with.lines.needle.33percent",
+        "shoe.fill", "figure.outdoor.cycle", "figure.pool.swim",
+    ]
+}
+
+private extension IconAsset {
+    var symbolName: String? {
+        if case .sfSymbol(let name, _, _) = self { return name }
+        return nil
+    }
+    var symbolWeight: SymbolWeight? {
+        if case .sfSymbol(_, let w, _) = self { return w }
+        return nil
+    }
+    var symbolScale: SymbolScale? {
+        if case .sfSymbol(_, _, let s) = self { return s }
+        return nil
+    }
+    var bundledSVGName: String? {
+        if case .bundledSVG(let name) = self { return name }
+        return nil
     }
 }

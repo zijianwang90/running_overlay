@@ -21,7 +21,7 @@ struct OverlayTemplateTests {
         let loadedProject = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
         let template = try #require(loadedProject.overlayTemplates.first)
 
-        #expect(template.schemaVersion == 1)
+        #expect(template.schemaVersion == 2)
         #expect(template.name == "Race Layout")
         #expect(template.referenceResolution == OverlayTemplateResolution(width: 1920, height: 1080))
         #expect(template.elements.count == 1)

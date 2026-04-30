@@ -336,6 +336,16 @@ private struct SwiftUIOverlayFrameView: View {
                             element: element,
                             layout: OverlayRenderModel.decorSolidColorLayout(for: element, in: context)
                         )
+                    case .decorIcon:
+                        OverlaySharedDecorIconView(
+                            element: element,
+                            layout: OverlayRenderModel.decorIconLayout(for: element, in: context)
+                        )
+                    case .decorText:
+                        OverlaySharedDecorTextView(
+                            element: element,
+                            layout: OverlayRenderModel.decorTextLayout(for: element, in: context)
+                        )
                     default:
                         OverlaySharedTextPresetView(
                             element: element,

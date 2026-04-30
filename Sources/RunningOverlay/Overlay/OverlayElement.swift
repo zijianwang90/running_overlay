@@ -2886,6 +2886,50 @@ struct LapLiveStyle: Equatable, Codable {
     )
 }
 
+// MARK: - Decor Text Support Types
+
+/// Font reference for the Decor Text element. Bundled fonts map to
+/// names registered by `BundledFonts`; system fonts use PostScript family
+/// names; user-uploaded fonts resolve via the `UserAssetStore`.
+enum DecorFontRef: Equatable, Codable {
+    case bundled(name: String)
+    case system(family: String)
+    case userAsset(id: UUID)
+}
+
+/// Gradient specification for text fill (Phase F6).
+struct GradientSpec: Equatable, Codable {
+    var stops: [GradientStop]
+    var direction: GradientDirection
+    enum GradientDirection: String, CaseIterable, Identifiable, Codable {
+        case topToBottom, leftToRight, bottomLeftToTopRight, topLeftToBottomRight
+        var id: String { rawValue }
+    }
+    struct GradientStop: Equatable, Codable {
+        var position: Double  // 0...1
+        var color: OverlayColor
+    }
+}
+
+/// Fill mode for Decor Text: solid color or gradient.
+enum DecorTextFill: Equatable, Codable {
+    case solid(color: OverlayColor)
+    case gradient(GradientSpec)
+}
+
+/// Text alignment options for the decor text block.
+enum DecorTextAlignment: String, CaseIterable, Identifiable, Codable {
+    case leading, center, trailing
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .leading: "Leading"
+        case .center: "Center"
+        case .trailing: "Trailing"
+        }
+    }
+}
+
 // MARK: - Decor
 
 /// Shape variants offered by the Solid Color decor element. Circle is a
@@ -2929,16 +2973,90 @@ struct DecorStyle: Equatable, Codable {
     var fillColor: OverlayColor
     /// Width in design units (before `element.scale` is applied).
     var width: Double
-    /// Height in design units (before `element.scale` is applied).
     var height: Double
-    /// Corner radius for `.roundedRectangle`. Other shapes ignore this.
     var cornerRadius: Double
+
+    // Icon (optional for backward compat)
+    var iconAsset: IconAsset?
+    var iconTint: OverlayColor?
+    var iconPreserveSVGColors: Bool?
+    var iconContentMode: IconContentMode?
+
+    // Text (optional for backward compat)
+    var textContent: String?
+    var textFont: DecorFontRef?
+    var textSize: Double?
+    var textAlignment: DecorTextAlignment?
+    var textLineHeight: Double?
+    var textLetterSpacing: Double?
+    var textFillMode: DecorTextFill?
+    var textStrokeWidth: Double?
+    var textStrokeColor: OverlayColor?
+    var textAutoFit: Bool?
 
     static let `default` = DecorStyle(
         shape: .rectangle,
         fillColor: .white,
         width: 240,
         height: 80,
-        cornerRadius: 12
+        cornerRadius: 12,
+        iconAsset: nil,
+        iconTint: nil,
+        iconPreserveSVGColors: nil,
+        iconContentMode: nil,
+        textContent: nil,
+        textFont: nil,
+        textSize: nil,
+        textAlignment: nil,
+        textLineHeight: nil,
+        textLetterSpacing: nil,
+        textFillMode: nil,
+        textStrokeWidth: nil,
+        textStrokeColor: nil,
+        textAutoFit: nil
     )
 }
+
+
+    /// Resolved text fields for a decor element, coalescing nil optionals.
+    struct DecorTextResolved {
+        var content: String
+        var font: DecorFontRef
+        var size: Double
+        var alignment: DecorTextAlignment
+        var lineHeight: Double
+        var letterSpacing: Double
+        var fillMode: DecorTextFill
+        var strokeWidth: Double
+        var strokeColor: OverlayColor
+        var autoFit: Bool
+
+        init(from style: DecorStyle) {
+            content = style.textContent ?? "Hello"
+            font = style.textFont ?? .system(family: "SF Pro Display")
+            size = style.textSize ?? 36
+            alignment = style.textAlignment ?? .center
+            lineHeight = style.textLineHeight ?? 1.2
+            letterSpacing = style.textLetterSpacing ?? 0
+            fillMode = style.textFillMode ?? .solid(color: .white)
+            strokeWidth = style.textStrokeWidth ?? 0
+            strokeColor = style.textStrokeColor ?? .white
+            autoFit = style.textAutoFit ?? false
+        }
+    }
+
+    /// Resolved icon fields for a decor element, coalescing nil optionals
+    /// to their sensible defaults.
+    struct DecorIconResolved {
+        var asset: IconAsset
+        var tint: OverlayColor
+        var preserveSVGColors: Bool
+        var contentMode: IconContentMode
+
+        init(from style: DecorStyle) {
+            asset = style.iconAsset ?? .none
+            tint = style.iconTint ?? .white
+            preserveSVGColors = style.iconPreserveSVGColors ?? false
+            contentMode = style.iconContentMode ?? .fit
+        }
+    }

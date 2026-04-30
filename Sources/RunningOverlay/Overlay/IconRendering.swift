@@ -1,5 +1,6 @@
 import AppKit
 import CoreGraphics
+import Lottie
 import SwiftUI
 
 // MARK: - IconRendering
@@ -100,11 +101,13 @@ struct IconView: View {
                 } else {
                     Color.clear
                 }
-            case .userLottie:
-                // Phase C6: render via lottie-spm. For now, fall through to
-                // an empty placeholder so callers don't hit a crash when an
-                // older project encodes a Lottie reference.
-                Color.clear
+            case .userLottie(let id):
+                if let url = IconAssetResolver.userAssetURL(id: id),
+                   let anim = LottieAnimation.filepath(url.path) {
+                    lottieView(animation: anim)
+                } else {
+                    Color.clear
+                }
             }
         }
         .frame(width: request.rect.width, height: request.rect.height)
@@ -123,6 +126,11 @@ struct IconView: View {
         } else {
             img
         }
+    }
+
+    @ViewBuilder
+    private func lottieView(animation: LottieAnimation) -> some View {
+        LottieView(animation: animation)
     }
 
     @ViewBuilder
@@ -168,10 +176,31 @@ enum IconRenderer {
                let image = NSImage(contentsOf: url) {
                 drawNSImage(image, request: request)
             }
-        case .userLottie:
-            // Phase C6 — see top-of-file note.
-            return
+        case .userLottie(let id):
+            if let url = IconAssetResolver.userAssetURL(id: id),
+               let animation = LottieAnimation.filepath(url.path) {
+                drawLottie(animation: animation, request: request)
+            }
         }
+    }
+
+    private static func drawLottie(
+        animation: LottieAnimation,
+        request: IconRenderRequest
+    ) {
+        let config = LottieConfiguration(renderingEngine: .mainThread)
+        let view = LottieAnimationView(animation: animation, configuration: config)
+        view.frame = CGRect(origin: .zero, size: request.rect.size)
+        let fraction = animation.duration > 0
+            ? min(max(request.animationTime / animation.duration, 0), 1)
+            : 0
+        view.currentProgress = fraction
+        view.layoutSubtreeIfNeeded()
+        // Best-effort: the mainThread engine renders via CoreGraphics
+        // only when the view has a window. The export pipeline uses the
+        // SwiftUI IconView path (LottieView) which works correctly.
+        view.display()
+        view.layer?.render(in: NSGraphicsContext.current!.cgContext)
     }
 
     private static func drawSFSymbol(
@@ -245,9 +274,6 @@ enum IconRenderer {
 // MARK: - Asset resolution
 
 /// Centralized lookups so both render paths share one resolution policy.
-/// User-asset resolution returns `nil` until Phase E lands the
-/// `UserAssetStore`; once it does, this resolver becomes the single point
-/// where renderers ask "where does asset X live on disk?"
 enum IconAssetResolver {
     /// Resolve a bundled SVG by base name (no extension). Looks under
     /// `Resources/Icons/` in the executable's resource bundle.
@@ -258,12 +284,21 @@ enum IconAssetResolver {
         return NSImage(contentsOf: url)
     }
 
-    /// Resolve a user-uploaded asset to a file URL. Returns `nil` until the
-    /// Phase E `UserAssetStore` exists; the rendering layer treats `nil` as
-    /// "draw nothing" so missing assets never crash an export.
+    /// Resolve a user-uploaded asset to a file URL. Set `userAssets` and
+    /// `projectURL` via `configure(userAssets:projectURL:)` from the active
+    /// `ProjectDocument` when the project loads/changes.
+    nonisolated(unsafe) private static var _userAssets: [UserAsset] = []
+    nonisolated(unsafe) private static var _projectURL: URL?
+
+    @MainActor
+    static func configure(userAssets: [UserAsset], projectURL: URL?) {
+        _userAssets = userAssets
+        _projectURL = projectURL
+    }
+
     static func userAssetURL(id: UUID) -> URL? {
-        // Phase E will replace this with `ProjectDocument.assetURL(for:)`.
-        return nil
+        guard let asset = _userAssets.first(where: { $0.id == id }) else { return nil }
+        return UserAssetStore.url(for: asset, projectURL: _projectURL)
     }
 }
 

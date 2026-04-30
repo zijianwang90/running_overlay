@@ -3201,3 +3201,48 @@ Verification:
 
 - Confirmed the project directory was empty before creating documentation.
 - No code or build verification yet because no app project exists.
+
+### Decor Category — Phases C through G (2026-04-30)
+
+Plan reference: `~/.claude/plans/overlay-pool-solid-color-layout-bg-effe-shiny-pudding.md`.
+
+**Phase C — Icon subsystem**
+
+- `IconAsset` enum (sfSymbol / userStaticSVG / userLottie / bundledSVG) with hand-rolled Codable.
+- `IconRendering` dual-path API: `IconView` (SwiftUI) and `IconRenderer.draw` (Core Graphics).
+- SF Symbol and bundled SVG rendering with tint, preserveSVGColors, content mode.
+- SVG smoke test gate passed (three fixtures rasterize via NSImage + CGContext).
+- Lottie dependency (`lottie-ios` 4.5.0) added; LottieView path works; offscreen CG path is a documented limitation.
+
+**Phase D — Decor Icon UI**
+
+- `DecorIconRenderLayout` / `decorIconLayout` on OverlayRenderModel.
+- `DecorIconOverlayView` / `OverlaySharedDecorIconView` in DecorOverlayViews.swift.
+- Preview canvas and SwiftUI export switch arms wired.
+- Full icon inspector: source picker (SF Symbol / Bundled SVG / Upload), symbol search + common grid, weight/scale pickers, tint swatch, content mode, preserveSVGColors toggle, Layout / Background / Effects sections.
+
+**Phase E — User asset store**
+
+- `UserAsset` model + `UserAssetStore` (content-addressed .assets/ folder).
+- `ProjectDocument.userAssets` with undo support.
+- `IconAssetResolver` wired to resolve user assets from the project.
+- Import action via NSOpenPanel for SVG files.
+- `OverlayTemplate` schemaVersion bumped to 2; optional `assets` field with custom Codable for backward compat.
+
+**Phase F — Decor Text**
+
+- `DecorFontRef`, `DecorTextFill`, `GradientSpec`, `DecorTextAlignment` types.
+- `DecorTextResolved` coalescing nil optionals.
+- `DecorTextRenderLayout` / `decorTextLayout` on OverlayRenderModel.
+- `DecorTextOverlayView` / `OverlaySharedDecorTextView` with stroke, shadow, glow.
+- Full text inspector: content editor, font picker (system/bundled), alignment, line height, letter spacing, auto-fit, fill color, stroke width/color, Layout / Background / Effects.
+- Default presets seeded for all three decor types.
+
+**Phase G — Polish**
+
+- All three decor element types render end-to-end: Pool → Canvas → Inspector → Export.
+- Default styles on add: Solid Color (240×80 white rounded rect), Icon (SF star.fill, 80×80, white tint), Text ("Hello", SF Pro, 320×60, centered).
+
+Verification:
+- `swift build` clean.
+- `swift test` — all 75 tests pass.

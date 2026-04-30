@@ -8,15 +8,18 @@ struct OverlayTemplate: Identifiable, Codable, Equatable {
     var updatedAt: Date
     var referenceResolution: OverlayTemplateResolution?
     var elements: [OverlayTemplateElement]
+    /// Embedded asset blobs for self-contained template export (Phase E6).
+    var assets: [TemplateAsset]
 
     init(
-        schemaVersion: Int = 1,
+        schemaVersion: Int = 2,
         id: UUID = UUID(),
         name: String,
         createdAt: Date = Date(),
         updatedAt: Date = Date(),
         referenceResolution: OverlayTemplateResolution? = nil,
-        elements: [OverlayTemplateElement]
+        elements: [OverlayTemplateElement],
+        assets: [TemplateAsset] = []
     ) {
         self.schemaVersion = schemaVersion
         self.id = id
@@ -25,6 +28,7 @@ struct OverlayTemplate: Identifiable, Codable, Equatable {
         self.updatedAt = updatedAt
         self.referenceResolution = referenceResolution
         self.elements = elements
+        self.assets = assets
     }
 
     init(
@@ -44,6 +48,36 @@ struct OverlayTemplate: Identifiable, Codable, Equatable {
 
     var layout: OverlayLayout {
         OverlayLayout(elements: elements.map(\.overlayElement))
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, id, name, createdAt, updatedAt, referenceResolution, elements, assets
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try c.decode(Int.self, forKey: .schemaVersion)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        createdAt = try c.decode(Date.self, forKey: .createdAt)
+        updatedAt = try c.decode(Date.self, forKey: .updatedAt)
+        referenceResolution = try c.decodeIfPresent(OverlayTemplateResolution.self, forKey: .referenceResolution)
+        elements = try c.decode([OverlayTemplateElement].self, forKey: .elements)
+        assets = try c.decodeIfPresent([TemplateAsset].self, forKey: .assets) ?? []
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(schemaVersion, forKey: .schemaVersion)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encode(createdAt, forKey: .createdAt)
+        try c.encode(updatedAt, forKey: .updatedAt)
+        try c.encodeIfPresent(referenceResolution, forKey: .referenceResolution)
+        try c.encode(elements, forKey: .elements)
+        if !assets.isEmpty {
+            try c.encode(assets, forKey: .assets)
+        }
     }
 }
 
@@ -165,6 +199,17 @@ struct OverlayTemplateElement: Codable, Equatable {
         isLocked = try container.decodeIfPresent(Bool.self, forKey: .isLocked) ?? false
         style = try container.decode(OverlayStyle.self, forKey: .style)
     }
+}
+
+/// A base64-encoded asset blob embedded inside a `.rotemplate` file so
+/// standalone template export/import is self-contained.
+struct TemplateAsset: Codable, Equatable {
+    var id: UUID
+    var kind: UserAsset.Kind
+    var originalName: String
+    var sha256: String
+    var fileExtension: String
+    var base64Data: String
 }
 
 struct OverlayTemplateStore {
