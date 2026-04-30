@@ -24,6 +24,7 @@ final class ProjectDocument: ObservableObject {
     @Published var exportProgress: ExportProgressState?
     @Published var mediaPoolPreviewItemID: MediaItem.ID?
     @Published var mediaPoolPreviewSourceTime: TimeInterval = 0
+    @Published var fitSourceName: String = ""
     @Published var statusMessage = "Ready to import a FIT file."
     @Published var isTimelineCollapsed = false
     @Published private(set) var canUndo = false
@@ -80,6 +81,7 @@ final class ProjectDocument: ObservableObject {
             print("[RunningOverlay] Importing FIT file: \(url.path)")
             registerUndoPoint()
             activity = try FitFileParser.parse(url: url)
+            fitSourceName = url.lastPathComponent
             timeline.fitStartTime = 0
             timeline.playhead = timeline.fitStartTime
             statusMessage = "Loaded FIT: \(url.lastPathComponent), \(formatDuration(activity.duration)), \(formatDistance(activity.distanceMeters))."

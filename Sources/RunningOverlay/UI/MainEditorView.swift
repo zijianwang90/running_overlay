@@ -154,8 +154,12 @@ struct MainEditorView: View {
                 project.showingProjectSettings = true
             } label: {
                 Image(systemName: "gearshape")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(EditorTheme.textSecondary)
+                    .frame(width: 24, height: 24)
             }
-            .buttonStyle(EditorIconButtonStyle())
+            .buttonStyle(.plain)
+            .contentShape(Rectangle())
             .help("Project Settings")
         }
         .font(EditorTheme.captionFont)
