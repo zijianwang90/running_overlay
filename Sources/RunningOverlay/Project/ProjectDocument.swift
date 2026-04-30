@@ -350,6 +350,19 @@ final class ProjectDocument: ObservableObject {
             style.backgroundOpacity = 0.74
             style.foregroundColor = .cyan
         }
+        if type == .decorSolidColor {
+            // Decor solid-color elements ship with a visible-on-add preset:
+            // a 240×80 white rounded rectangle. The shape doubles as its own
+            // background so the shared `backgroundEnabled` flag stays off.
+            style.decor = DecorStyle(
+                shape: .roundedRectangle,
+                fillColor: .white,
+                width: 240,
+                height: 80,
+                cornerRadius: 12
+            )
+            style.backgroundEnabled = false
+        }
         if let recommended = type.defaultNumericPreset {
             style.textPreset = recommended
             if let tokens = recommended.recommendedTokens {
@@ -1313,6 +1326,59 @@ final class ProjectDocument: ObservableObject {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
         mutate(&overlayLayout.elements[index].style.lapLive)
+    }
+
+    func mutateDecorStyle(_ elementID: OverlayElement.ID, _ mutate: (inout DecorStyle) -> Void) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.decor)
+    }
+
+    func mutateDecorStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout DecorStyle) -> Void) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.decor)
+    }
+
+    func setDecorShape(_ elementID: OverlayElement.ID, shape: DecorShape) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.shape = shape
+        if shape == .circle {
+            let side = min(overlayLayout.elements[index].style.decor.width,
+                           overlayLayout.elements[index].style.decor.height)
+            overlayLayout.elements[index].style.decor.width = side
+            overlayLayout.elements[index].style.decor.height = side
+        }
+    }
+
+    func setDecorFillColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.fillColor = color
+    }
+
+    func setDecorSize(_ elementID: OverlayElement.ID, width: Double? = nil, height: Double? = nil) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        if let width {
+            overlayLayout.elements[index].style.decor.width = min(max(width, 4), 4096)
+        }
+        if let height {
+            overlayLayout.elements[index].style.decor.height = min(max(height, 4), 4096)
+        }
+        if overlayLayout.elements[index].style.decor.shape == .circle {
+            let side = min(overlayLayout.elements[index].style.decor.width,
+                           overlayLayout.elements[index].style.decor.height)
+            overlayLayout.elements[index].style.decor.width = side
+            overlayLayout.elements[index].style.decor.height = side
+        }
+    }
+
+    func setDecorCornerRadius(_ elementID: OverlayElement.ID, radius: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.cornerRadius = min(max(radius, 0), 512)
     }
 
     func setOverlayRouteMapStartMarkerStyle(_ elementID: OverlayElement.ID, markerStyle: OverlayRouteMapMarkerStyle) {

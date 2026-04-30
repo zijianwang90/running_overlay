@@ -777,6 +777,9 @@ extension OverlayElementType {
         case .lapList: "list.number"
         case .lapCard: "rectangle.badge.checkmark"
         case .lapLive: "stopwatch"
+        case .decorSolidColor: "square.fill"
+        case .decorIcon: "star"
+        case .decorText: "textformat"
         }
     }
 }

@@ -611,6 +611,11 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
                     element: element,
                     layout: OverlayRenderModel.lapLiveLayout(for: element, in: renderContext)
                 )
+            case .decorSolidColor:
+                OverlaySharedDecorSolidColorView(
+                    element: element,
+                    layout: OverlayRenderModel.decorSolidColorLayout(for: element, in: renderContext)
+                )
             default:
                 OverlaySharedTextPresetView(
                     element: element,

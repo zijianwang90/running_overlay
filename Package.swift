@@ -24,7 +24,10 @@ let package = Package(
         .testTarget(
             name: "RunningOverlayTests",
             dependencies: ["RunningOverlay"],
-            path: "Tests/RunningOverlayTests"
+            path: "Tests/RunningOverlayTests",
+            resources: [
+                .copy("Fixtures")
+            ]
         )
     ]
 )

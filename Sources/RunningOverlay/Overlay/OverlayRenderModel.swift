@@ -1091,6 +1091,44 @@ enum OverlayRenderModel {
             return (fontSize * 0.22, fontSize * 0.25, context.scaled(0), context.scaled(0), context.scaled(0))
         }
     }
+
+    /// Resolve final pixel dimensions for a Decor Solid Color element.
+    /// Width and height come from `DecorStyle`; `element.scale` plus the
+    /// canvas DPR (`context.scaled`) bring design units into pixel space.
+    /// Circle collapses both edges to the shorter side so a non-square
+    /// bounding box still renders as a circle until the user resizes.
+    static func decorSolidColorLayout(
+        for element: OverlayElement,
+        in context: OverlayRenderContext
+    ) -> DecorSolidColorRenderLayout {
+        let s = element.style.decor
+        let w = context.scaled(s.width * element.scale)
+        let h = context.scaled(s.height * element.scale)
+        let size: CGSize
+        switch s.shape {
+        case .circle:
+            let side = min(w, h)
+            size = CGSize(width: side, height: side)
+        default:
+            size = CGSize(width: w, height: h)
+        }
+        return DecorSolidColorRenderLayout(
+            shape: s.shape,
+            size: size,
+            fillColor: s.fillColor,
+            cornerRadius: context.scaled(s.cornerRadius * element.scale)
+        )
+    }
+}
+
+/// Pixel-space layout for a Decor Solid Color element. Returned by
+/// `OverlayRenderModel.decorSolidColorLayout(for:in:)` and consumed by both
+/// the live preview view and the SwiftUI export pipeline.
+struct DecorSolidColorRenderLayout {
+    var shape: DecorShape
+    var size: CGSize
+    var fillColor: OverlayColor
+    var cornerRadius: Double
 }
 
 struct OverlayTextRenderLayout {
