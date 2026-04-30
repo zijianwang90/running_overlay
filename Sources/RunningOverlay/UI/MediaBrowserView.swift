@@ -118,25 +118,52 @@ struct MediaBrowserView: View {
                     .frame(height: 1)
             }
 
-            HStack(spacing: 6) {
-                Text(visibleCountLabel)
-                    .font(EditorTheme.captionFont)
-                    .foregroundStyle(EditorTheme.textMuted)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(spacing: 0) {
+                HStack(spacing: 6) {
+                    Text(visibleCountLabel)
+                        .font(EditorTheme.captionFont)
+                        .foregroundStyle(EditorTheme.textMuted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                ForEach(MediaStatusFilter.allCases) { filter in
-                    Button {
-                        statusFilter = filter
-                    } label: {
-                        Text(filter.label)
+                    ForEach(MediaStatusFilter.allCases) { filter in
+                        Button {
+                            statusFilter = filter
+                        } label: {
+                            Text(filter.label)
+                        }
+                        .buttonStyle(MediaFilterChipStyle(isSelected: statusFilter == filter))
                     }
-                    .buttonStyle(MediaFilterChipStyle(isSelected: statusFilter == filter))
                 }
+                .padding(.horizontal, 12)
+                .padding(.top, 6)
+                .padding(.bottom, !project.mediaItems.isEmpty && project.activity.duration > 0 ? 4 : 8)
 
+                if !project.mediaItems.isEmpty && project.activity.duration > 0 {
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(EditorTheme.successGreen)
+                            .frame(width: 6, height: 6)
+                        Text(project.fitSourceName.isEmpty ? "FIT loaded" : project.fitSourceName)
+                            .font(EditorTheme.captionFont)
+                            .foregroundStyle(EditorTheme.textMuted)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Button {
+                            project.importFitFile()
+                        } label: {
+                            Text("Replace")
+                                .font(EditorTheme.captionFont)
+                                .foregroundStyle(EditorTheme.textMuted)
+                                .underline()
+                        }
+                        .buttonStyle(.plain)
+                        .help("Replace the current FIT file")
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 8)
+                }
             }
-            .padding(.horizontal, 12)
-            .padding(.top, 6)
-            .padding(.bottom, 8)
             .overlay(alignment: .bottom) {
                 Rectangle()
                     .fill(EditorTheme.borderSubtle)
@@ -385,7 +412,17 @@ struct MediaBrowserView: View {
         VStack(spacing: 8) {
             Spacer()
             StepIndicator(currentStep: .videos)
-                .padding(.bottom, EditorTheme.space2)
+            Button {
+                project.importFitFile()
+            } label: {
+                Text("Replace FIT")
+                    .font(EditorTheme.captionFont)
+                    .foregroundStyle(EditorTheme.textMuted)
+                    .underline()
+            }
+            .buttonStyle(.plain)
+            .help("Replace the current FIT file")
+            .padding(.bottom, EditorTheme.space2)
             Image(systemName: "video.badge.plus")
                 .font(.system(size: 32))
                 .foregroundStyle(EditorTheme.textMuted)

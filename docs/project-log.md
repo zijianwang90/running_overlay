@@ -2,6 +2,19 @@
 
 ## 2026-04-30
 
+### Borderless Status Bar Settings Button
+
+- Updated `MainEditorView` status bar `gearshape` button to a borderless icon-only style (`.buttonStyle(.plain)`), so it no longer visually touches the top/bottom edges of the 34 px bar.
+- Kept the bottom area height unchanged; only the button presentation changed.
+- Added a design-system note in `docs/design/system/app-ui.md` clarifying that compact app-chrome utility actions may use a borderless icon-button variant.
+
+### Replace FIT Button in Media Pool
+
+- Added `ProjectDocument.fitSourceName` (`@Published var`) to track the filename of the currently loaded FIT file.
+- `importFitFile()` sets `fitSourceName` to `url.lastPathComponent` on successful import.
+- `MediaBrowserView`: added a "Replace FIT" underlined text button directly below the step indicator in `videoImportPlaceholder` (shown when FIT is loaded but no videos yet).
+- `MediaBrowserView`: added a FIT status row (green dot + filename + "Replace" link) at the bottom of the filter strip, shown only when media items exist and a FIT is loaded. The bottom border is now owned by the outer `VStack` wrapping both the count/filter row and the FIT row.
+
 ### Layout Opacity Applies To Whole Overlay
 
 - Added element-level `OverlayElement.opacity` with `ProjectDocument.setOverlayOpacity`.
