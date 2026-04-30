@@ -124,7 +124,7 @@ Top to bottom:
 2. `Added Overlays` section
 3. Optional footer hint
 
-Inspector default width is 400 px with a 320 px minimum, and the panel is user-resizable by dragging its leading split divider. The Inspector must keep its current width across every internal state change — outer state, overlay detail, timeline clip selection, and any future state. The horizontal layout uses a custom `HStack` + `HorizontalResizeHandle` (not SwiftUI `HSplitView`) so widths are stored in `@State` and cannot be reset by child intrinsic-size or identity changes. The design mockup is square only for reference output; implementation should use a right-panel layout.
+Inspector default width is 460 px with a 460 px minimum, and the panel is user-resizable by dragging its leading split divider. The Inspector must keep its current width across every internal state change — outer state, overlay detail, timeline clip selection, and any future state. The horizontal layout uses a custom `HStack` + `HorizontalResizeHandle` (not SwiftUI `HSplitView`) so widths are stored in `@State` and cannot be reset by child intrinsic-size or identity changes. The app window minimum width must be large enough to contain the left pool minimum, preview minimum, Inspector minimum, and split handles without compressing the Inspector below its stored width. The design mockup is square only for reference output; implementation should use a right-panel layout.
 
 ### Header
 

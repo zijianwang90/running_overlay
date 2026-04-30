@@ -958,6 +958,9 @@ final class ProjectDocument: ObservableObject {
         style.backgroundRadius = tokens.backgroundRadius
         if let accent = tokens.accentColor {
             style.accentColor = accent
+            if textPreset == .splitLabel || textPreset == .racingStripe || textPreset == .editorial {
+                style.labelColor = accent
+            }
         }
         overlayLayout.elements[index].style = style
     }

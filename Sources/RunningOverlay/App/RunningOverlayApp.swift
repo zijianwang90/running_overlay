@@ -19,7 +19,7 @@ struct RunningOverlayApp: App {
             MainEditorView()
                 .environmentObject(project)
                 .preferredColorScheme(.dark)
-                .frame(minWidth: 1180, minHeight: 760)
+                .frame(minWidth: 1300, minHeight: 760)
         }
         .windowStyle(.titleBar)
         .commands {

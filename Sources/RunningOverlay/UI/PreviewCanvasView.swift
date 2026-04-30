@@ -1343,12 +1343,13 @@ struct TextPresetOverlayView: View {
     private var splitLabelView: some View {
         let foreground = Color(element.style.foregroundColor)
         let accent = Color(element.style.accentColor)
+        let labelColor = Color(element.style.labelColor).opacity(element.style.labelOpacity)
         VStack(alignment: .leading, spacing: layout.fontSize * 0.10) {
             if element.style.showLabel, !layout.components.label.isEmpty {
                 Text(layout.components.label.uppercased())
                     .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.semibold))
                     .tracking(layout.labelFontSize * 0.18)
-                    .foregroundStyle(accent.opacity(0.95))
+                    .foregroundStyle(labelColor)
             }
             Rectangle()
                 .fill(accent)
@@ -1391,6 +1392,7 @@ struct TextPresetOverlayView: View {
     private var racingStripeView: some View {
         let accent = Color(element.style.accentColor)
         let foreground = Color(element.style.foregroundColor)
+        let labelColor = Color(element.style.labelColor).opacity(element.style.labelOpacity)
         let stripeWidth = max(layout.fontSize * 0.12, 4)
         let stripeGap = layout.fontSize * 0.34
         VStack(alignment: .leading, spacing: layout.fontSize * 0.10) {
@@ -1398,7 +1400,7 @@ struct TextPresetOverlayView: View {
                 Text(layout.components.label.uppercased())
                     .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.bold))
                     .tracking(layout.labelFontSize * 0.10)
-                    .foregroundStyle(accent.opacity(0.95))
+                    .foregroundStyle(labelColor)
             }
             HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.14) {
                 Text(layout.components.value)
@@ -1435,12 +1437,13 @@ struct TextPresetOverlayView: View {
     private var editorialView: some View {
         let foreground = Color(element.style.foregroundColor)
         let accent = Color(element.style.accentColor)
+        let labelColor = Color(element.style.labelColor).opacity(element.style.labelOpacity)
         VStack(alignment: .leading, spacing: layout.fontSize * 0.04) {
             if element.style.showLabel, !layout.components.label.isEmpty {
                 Text(layout.components.label.uppercased())
                     .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.bold))
                     .tracking(layout.labelFontSize * 0.18)
-                    .foregroundStyle(accent)
+                    .foregroundStyle(labelColor)
             }
             HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.10) {
                 Text(layout.components.value)

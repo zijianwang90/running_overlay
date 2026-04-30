@@ -903,12 +903,13 @@ Summary:
 - Removed the extra full-section outer stroke from shared `Background`, `Border`, and `Effects` inspector modules to prevent left-edge jitter when those sections expand or collapse.
 - Removed the inset scroll padding and card-like section spacing from `Lap Card` and `Lap Live`; their overlay-specific sections now use the same full-width header/body rhythm as `Lap List` and Numeric detail sections.
 - Replaced the long dense color preset strip with six mainstream swatches plus a trailing fixed-size custom color button that opens the shared system color panel, preventing fixed preset lists or embedded system picker intrinsic width from forcing narrow Inspector panels to overflow horizontally.
-- Increased the Inspector split-pane minimum width from 320 px to 380 px to keep dense controls readable and reduce narrow-panel layout churn.
+- Increased the Inspector split-pane default and minimum width to 460 px, and raised the app window minimum width to 1300 px so the three-column editor cannot compress the Inspector below its stored width.
 
 Files changed:
 
 - `Sources/RunningOverlay/UI/InspectorRows/InspectorDenseComponents.swift`
 - `Sources/RunningOverlay/UI/MainEditorView.swift`
+- `Sources/RunningOverlay/App/RunningOverlayApp.swift`
 - `Sources/RunningOverlay/UI/LapLiveOverlayDetailView.swift`
 - `Sources/RunningOverlay/UI/LapCardOverlayDetailView.swift`
 - `Sources/RunningOverlay/UI/LapListOverlayDetailView.swift`
@@ -3298,3 +3299,20 @@ Plan reference: `~/.claude/plans/overlay-pool-solid-color-layout-bg-effe-shiny-p
 Verification:
 - `swift build` clean.
 - `swift test` — all 75 tests pass.
+
+### Numeric Preset Label/Accent Decoupling (2026-04-30)
+
+Summary:
+
+- Updated `splitLabel`, `racingStripe`, and `editorial` so label text color follows `labelColor`/`labelOpacity`.
+- Kept accent visuals style-specific: split divider, racing stripe bar, and editorial underline still use `accentColor`.
+- Synced preview and export renderers so canvas output and exported frames match.
+- Updated preset apply behavior so these three presets default `labelColor` to the preset accent color for backward visual parity.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `docs/design/overlays/numeric/numeric-overlay-ui.md`
+- `docs/project-log.md`

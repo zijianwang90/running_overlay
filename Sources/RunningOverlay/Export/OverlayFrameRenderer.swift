@@ -204,7 +204,14 @@ struct OverlayFrameRenderer {
             drawText(renderLayout.components.unit, for: element, fontSize: renderLayout.labelFontSize, in: CGRect(x: rect.minX, y: rect.maxY - renderLayout.verticalPadding - renderLayout.labelFontSize * 1.2, width: rect.width, height: renderLayout.labelFontSize * 1.25), renderLayout: renderLayout, alignment: .center)
         case .splitLabel:
             let label = renderLayout.components.shortLabel.map(String.init).joined(separator: " ")
-            drawText(label, for: element, fontSize: renderLayout.labelFontSize, in: CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: renderLayout.labelFontSize * 1.35), renderLayout: renderLayout)
+            drawText(
+                label,
+                for: element,
+                fontSize: renderLayout.labelFontSize,
+                in: CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: renderLayout.labelFontSize * 1.35),
+                renderLayout: renderLayout,
+                color: NSColor(element.style.labelColor).withAlphaComponent(element.style.labelOpacity)
+            )
             drawRoundedRect(CGRect(x: rect.minX, y: rect.minY + renderLayout.labelFontSize * 1.55, width: renderLayout.fontSize * 3.5, height: max(renderLayout.fontSize / 18, 2)), color: NSColor(element.style.accentColor), cornerRadius: 0)
             let valueFontSize = renderLayout.fontSize * 1.45
             drawText(renderLayout.components.value, for: element, fontSize: valueFontSize, in: CGRect(x: rect.minX, y: rect.minY + renderLayout.labelFontSize * 1.85, width: rect.width, height: valueFontSize * 1.18), renderLayout: renderLayout)
@@ -317,6 +324,7 @@ struct OverlayFrameRenderer {
         rect: CGRect,
         colors: TextPresetColors
     ) {
+        let labelColor = NSColor(element.style.labelColor).withAlphaComponent(element.style.labelOpacity)
         drawRoundedRect(rect, color: colors.background, cornerRadius: renderLayout.cornerRadius)
         strokeRoundedRect(rect, color: colors.foreground.withAlphaComponent(0.14), cornerRadius: renderLayout.cornerRadius, lineWidth: 1)
         let stripeWidth = max(renderLayout.fontSize * 0.12, 4)
@@ -336,7 +344,7 @@ struct OverlayFrameRenderer {
                 fontSize: renderLayout.labelFontSize,
                 in: CGRect(x: textOriginX, y: labelY, width: rect.width, height: renderLayout.labelFontSize * 1.25),
                 renderLayout: renderLayout,
-                color: colors.foreground
+                color: labelColor
             )
         }
         let valueY = labelY + renderLayout.labelFontSize * 1.40
@@ -367,6 +375,7 @@ struct OverlayFrameRenderer {
         colors: TextPresetColors
     ) {
         let accent = NSColor(element.style.accentColor)
+        let labelColor = NSColor(element.style.labelColor).withAlphaComponent(element.style.labelOpacity)
         var cursorY = rect.minY
         if element.style.showLabel, !renderLayout.components.label.isEmpty {
             drawText(
@@ -375,7 +384,7 @@ struct OverlayFrameRenderer {
                 fontSize: renderLayout.labelFontSize,
                 in: CGRect(x: rect.minX, y: cursorY, width: rect.width, height: renderLayout.labelFontSize * 1.25),
                 renderLayout: renderLayout,
-                color: accent
+                color: labelColor
             )
             cursorY += renderLayout.labelFontSize * 1.45
         }

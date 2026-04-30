@@ -1,6 +1,6 @@
 # Numeric Overlay UI Design Spec
 
-Last updated: 2026-04-30 (layout opacity applies to whole element)
+Last updated: 2026-04-30 (preset label color decoupled from accent)
 
 ## Purpose
 
@@ -178,11 +178,15 @@ Controls:
 
 - Text color swatches.
 - Optional accent color swatches if the selected preset uses an accent.
+- Label color swatches.
 
 Model mapping:
 
 - Existing model supports `OverlayStyle.foregroundColor`.
-- Accent color is a future field unless model support is added.
+- Existing model supports `OverlayStyle.labelColor`.
+- Existing model supports `OverlayStyle.accentColor`.
+- For `splitLabel`, `racingStripe`, and `editorial`, label text uses `labelColor`/`labelOpacity`, while accent lines/stripes use `accentColor`.
+- Preset apply defaults keep those styles visually consistent by setting label color to the preset accent color initially.
 
 ## Background Section
 
@@ -282,9 +286,9 @@ Rules:
 
 Inspector width:
 
-- Default: 400 px.
-- Minimum: 320 px.
-- Numeric Overlay must remain usable at 380-400 px without text clipping.
+- Default: 460 px.
+- Minimum: 460 px.
+- Numeric Overlay must remain usable at 460 px without text clipping.
 
 ## Model Gaps
 

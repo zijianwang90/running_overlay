@@ -6,11 +6,11 @@ struct MainEditorView: View {
     @State private var showingExportProgress = false
     @State private var activePool: PoolKind = .media
     @State private var mediaPoolWidth: CGFloat = 380
-    @State private var inspectorWidth: CGFloat = 400
+    @State private var inspectorWidth: CGFloat = 460
 
     private static let mediaPoolMinWidth: CGFloat = 300
     private static let mediaPoolMaxWidth: CGFloat = 720
-    private static let inspectorMinWidth: CGFloat = 380
+    private static let inspectorMinWidth: CGFloat = 460
     private static let inspectorMaxWidth: CGFloat = 720
     private static let previewMinWidth: CGFloat = 520
 

@@ -462,8 +462,8 @@ editing surface visually matches the other dense overlay inspectors:
 
 Inspector width:
 
-- Default: 400 px. Minimum: 320 px.
-- Route Map detail must remain usable at 380 px without horizontal clipping.
+- Default: 460 px. Minimum: 460 px.
+- Route Map detail must remain usable at 460 px without horizontal clipping.
 
 ## Model Gaps And Phases
 
@@ -532,7 +532,7 @@ move the corresponding entry from `modelGaps` into `modelBackedToday`.
   hard edge through a vignette to a soft fade-out.
 - Route Line, Markers, Status Bar, and Effects controls live in their own
   collapsible sections.
-- Inspector width 400 px renders without text clipping.
+- Inspector width 460 px renders without text clipping.
 - Disabling Status Bar hides every Status Bar control row beneath it and removes the data strip from preview/export.
 - Status Bar supports at least 1–4 configurable metric slots, with default Distance / Pace / Time enabled and Heart Rate disabled.
 - Status Bar does not render any pace color bar; route gradient remains controlled only by Route Line.
