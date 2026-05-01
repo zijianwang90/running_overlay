@@ -237,15 +237,14 @@ Controls:
 
 Controls:
 
-- Enabled toggle.
-- Mode: `Start / Finish` or `Distance`.
-- More distance points toggle.
-- Distance point density.
-- Point Gap controls the vertical distance from the progress axis for start/finish endpoint labels and intermediate distance points.
-- Point Gap remains editable even when More Points is off because endpoint labels use it too.
-- Font family, size, weight, and color apply to endpoint labels and intermediate distance point labels.
+- Enabled toggle (shows or hides every axis label: start, intermediate distance ticks, and finish).
+- Mode: `Start / Finish` or `Distance` (Distance mode formats the origin as `0 <unit>` to match other distance labels, e.g. `0 km`).
+- Distance point density (0 = no intermediate labels; endpoints still follow Enabled and Mode).
+- Point Gap controls the vertical distance from the progress axis for all axis labels.
+- Point Gap stays editable when axis labels are disabled so spacing is preserved when re-enabled.
+- Font family, size, weight, and color apply to all axis labels.
 
-Start/finish text and distance labels should sit below the axis, not on top of or centered over the track.
+Start/finish text and distance labels should sit below the axis, not on top of or centered over the track. Endpoint labels align to the progress track edges in preview and export (leading edge for the start label, trailing edge for the finish label).
 
 ## Progress Marker
 

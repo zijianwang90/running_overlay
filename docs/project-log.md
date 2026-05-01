@@ -1,6 +1,31 @@
 # Running Overlay Project Log
 
+## 2026-05-01
+
+### Elevation Chart Gradient Inspector Layout
+
+- Updated the Elevation Chart `Line & Fill` inspector so the fill gradient color controls are stacked as `From` and `To` rows instead of two full swatch strips on one row.
+- Kept the existing start/end fill color bindings intact; this is a layout-only change to prevent the gradient editor from widening the edit panel.
+- Updated the Elevation Chart module docs and UI design spec to document the stacked `From` / `To` gradient editor.
+
 ## 2026-04-30
+
+### Distance Timeline Axis Labels
+
+- Axis **Enabled** now toggles every timeline label (start, intermediate density points, and finish); removed the separate **More Points** inspector row. Intermediate labels still follow **Density** (0 = endpoints only).
+- **Distance** mode origin text is now `0 <unit>` (e.g. `0 km`) to match other distance tick labels; preview positions endpoint labels with the same track-width framing as export so the start label aligns to the track start.
+- Document migration on decode: legacy `showAxisLabels` / `showDistancePoints` combinations map to the unified toggle; legacy “endpoints only” (axis on, more points off) clears stored density to 0 so midpoint count is not revived accidentally.
+- Updated Distance Timeline UI spec, module doc, and implementation (`OverlayRenderModel`, `PreviewCanvasView`, `OverlayFrameRenderer`, `DistanceTimelineOverlayDetailView`, `DistanceTimelineStyle` decode).
+
+### Project Settings And Font Library Design Spec
+
+- Added the formal Project Settings and Font Library UI spec under `docs/design/panels/project-settings/`.
+- Captured the approved mockup in `project-settings-font-library.png`.
+- Documented the shared macOS dark modal language: centered titles, grouped bordered sections, stable rows, footer dividers, and blue primary actions.
+- Specified the Project Settings structure using only current settings: `Video`, `Encoding`, and `Typography`.
+- Specified Font Library rows with checkbox selection, font-family rendering, and right-aligned numeric running previews such as `5'42"/km` and `10.24 km`.
+- Updated the Font Library implementation plan and design README to point at the new spec and mockup.
+- Added `font-library-default-inline.png` and documented the inline default-font interaction: the current default shows a blue `Default` pill after the font name, while other favorite rows reveal a gray `Default` button in that position on hover.
 
 ### Borderless Status Bar Settings Button
 

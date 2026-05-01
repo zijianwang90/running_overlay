@@ -41,6 +41,22 @@ struct OverlayRenderModelTests {
         #expect(layout.trackRect.height == 6)
     }
 
+    @Test func distanceTimelineDistanceAxisLabelModeFormatsOriginWithUnit() {
+        var style = OverlayStyle.default
+        style.distanceTimeline.axisLabelMode = .distance
+        let element = OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.25), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleActivity(),
+            elapsedTime: 5
+        )
+
+        let layout = OverlayRenderModel.distanceTimelineLayout(for: element, in: context)
+
+        #expect(layout.startText == "0 km")
+        #expect(layout.finishText == "0.10 km")
+    }
+
     @Test func distanceTimelinePresetLayoutIncludesSportMediaSlotAndRouteElevation() {
         var sportStyle = OverlayStyle.default
         sportStyle.distanceTimeline = .preset(.sport)

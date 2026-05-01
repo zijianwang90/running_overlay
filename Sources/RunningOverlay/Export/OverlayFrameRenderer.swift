@@ -710,7 +710,7 @@ struct OverlayFrameRenderer {
         drawDistanceTimelineText(renderLayout, element: element, foreground: foreground, accent: accent)
         drawDistanceTimelineTrack(renderLayout, foreground: foreground, accent: accent)
 
-        if style.showAxisLabels || style.showDistancePoints {
+        if style.showAxisLabels {
             drawDistanceTimelineAxisLabels(renderLayout, element: element, foreground: foreground)
         }
 
@@ -873,20 +873,17 @@ struct OverlayFrameRenderer {
     }
 
     private static func drawDistanceTimelineAxisLabels(_ layout: OverlayDistanceTimelineRenderLayout, element: OverlayElement, foreground: NSColor) {
+        guard layout.style.showAxisLabels else { return }
         let color = NSColor(layout.style.axisLabelColor)
         let fontSize = layout.unitFontSize
-        if layout.style.showAxisLabels {
-            let y = layout.trackRect.maxY + layout.style.distancePointOffset * distanceTimelineStyleScale(layout)
-            drawPlainText(layout.startText, element: element, fontSize: fontSize, color: color, rect: CGRect(x: layout.trackRect.minX, y: y, width: layout.trackRect.width / 2, height: fontSize * 1.3), alignment: .left, weight: nsFontWeight(layout.style.axisLabelFontWeight), fontName: layout.style.axisLabelFontName)
-            drawPlainText(layout.finishText, element: element, fontSize: fontSize, color: color, rect: CGRect(x: layout.trackRect.midX, y: y, width: layout.trackRect.width / 2, height: fontSize * 1.3), alignment: .right, weight: nsFontWeight(layout.style.axisLabelFontWeight), fontName: layout.style.axisLabelFontName)
-        }
-        if layout.style.showDistancePoints {
-            let denominator = Double(layout.distancePointLabels.count + 1)
-            let y = layout.trackRect.maxY + layout.style.distancePointOffset * distanceTimelineStyleScale(layout)
-            for (index, label) in layout.distancePointLabels.enumerated() {
-                let centerX = layout.trackRect.minX + layout.trackRect.width * Double(index + 1) / denominator
-                drawPlainText(label, element: element, fontSize: fontSize, color: color, rect: CGRect(x: centerX - 45, y: y, width: 90, height: fontSize * 1.3), alignment: .center, weight: nsFontWeight(layout.style.axisLabelFontWeight), fontName: layout.style.axisLabelFontName)
-            }
+        let y = layout.trackRect.maxY + layout.style.distancePointOffset * distanceTimelineStyleScale(layout)
+        drawPlainText(layout.startText, element: element, fontSize: fontSize, color: color, rect: CGRect(x: layout.trackRect.minX, y: y, width: layout.trackRect.width / 2, height: fontSize * 1.3), alignment: .left, weight: nsFontWeight(layout.style.axisLabelFontWeight), fontName: layout.style.axisLabelFontName)
+        drawPlainText(layout.finishText, element: element, fontSize: fontSize, color: color, rect: CGRect(x: layout.trackRect.midX, y: y, width: layout.trackRect.width / 2, height: fontSize * 1.3), alignment: .right, weight: nsFontWeight(layout.style.axisLabelFontWeight), fontName: layout.style.axisLabelFontName)
+        guard !layout.distancePointLabels.isEmpty else { return }
+        let denominator = Double(layout.distancePointLabels.count + 1)
+        for (index, label) in layout.distancePointLabels.enumerated() {
+            let centerX = layout.trackRect.minX + layout.trackRect.width * Double(index + 1) / denominator
+            drawPlainText(label, element: element, fontSize: fontSize, color: color, rect: CGRect(x: centerX - 45, y: y, width: 90, height: fontSize * 1.3), alignment: .center, weight: nsFontWeight(layout.style.axisLabelFontWeight), fontName: layout.style.axisLabelFontName)
         }
     }
 
@@ -1007,7 +1004,7 @@ struct OverlayFrameRenderer {
         var rect = layout.rect
         let scale = distanceTimelineStyleScale(layout)
         let pad = 6 * scale
-        if layout.style.showAxisLabels || layout.style.showDistancePoints {
+        if layout.style.showAxisLabels {
             let y = layout.trackRect.maxY + layout.style.distancePointOffset * scale
             let labels = CGRect(
                 x: layout.rect.minX,

@@ -138,12 +138,24 @@ struct ElevationChartOverlayDetailView: View {
         InspectorDenseSliderRow(label: "Line Width", value: elevationBinding(\.lineWidth, of: style, continuous: true), range: 0.5...8, displayText: String(format: "%.1f", style.lineWidth))
         InspectorDenseSliderRow(label: "Line Opacity", value: elevationBinding(\.lineOpacity, of: style, continuous: true), range: 0...1, displayText: percent(style.lineOpacity))
         InspectorDenseRow(label: "Fill") { toggle(style.fillEnabled) { set(\.fillEnabled, to: $0) } }
-        InspectorDenseRow(label: "Gradient") {
-            InspectorDenseSwatchStrip(presets: colorPresets, selected: style.fillStartColor) { set(\.fillStartColor, to: $0) }
-            InspectorDenseSwatchStrip(presets: colorPresets, selected: style.fillEndColor) { set(\.fillEndColor, to: $0) }
+        InspectorDenseRow(label: "Gradient", minHeight: 68) {
+            VStack(alignment: .trailing, spacing: 6) {
+                gradientColorRow(label: "From", selected: style.fillStartColor) { set(\.fillStartColor, to: $0) }
+                gradientColorRow(label: "To", selected: style.fillEndColor) { set(\.fillEndColor, to: $0) }
+            }
         }
         InspectorDenseSliderRow(label: "Fill Opacity", value: elevationBinding(\.fillOpacity, of: style, continuous: true), range: 0...1, displayText: percent(style.fillOpacity))
         InspectorDenseRow(label: "Dual Area") { toggle(style.dualAreaEnabled) { set(\.dualAreaEnabled, to: $0) } }
+    }
+
+    private func gradientColorRow(label: String, selected: OverlayColor, action: @escaping (OverlayColor) -> Void) -> some View {
+        HStack(spacing: NumericTokens.space2) {
+            Text(label)
+                .font(NumericTokens.captionFont)
+                .foregroundStyle(NumericTokens.textMuted)
+                .frame(width: 28, alignment: .trailing)
+            InspectorDenseSwatchStrip(presets: colorPresets, selected: selected, action: action)
+        }
     }
 
     @ViewBuilder

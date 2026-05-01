@@ -310,7 +310,10 @@ struct DistanceTimelineOverlayDetailView: View {
         let style = element.style.distanceTimeline
         InspectorDenseRow(label: "Enabled") {
             toggle(style.showAxisLabels) { newValue in
-                project.mutateDistanceTimelineStyle(elementID) { $0.showAxisLabels = newValue }
+                project.mutateDistanceTimelineStyle(elementID) {
+                    $0.showAxisLabels = newValue
+                    $0.showDistancePoints = newValue
+                }
             }
         }
         InspectorDenseRow(label: "Mode") {
@@ -321,15 +324,10 @@ struct DistanceTimelineOverlayDetailView: View {
                 Text(mode.label)
             }
         }
-        InspectorDenseRow(label: "More Points") {
-            toggle(style.showDistancePoints) { newValue in
-                project.mutateDistanceTimelineStyle(elementID) { $0.showDistancePoints = newValue }
-            }
-        }
         InspectorDenseSliderRow(label: "Density", value: Binding(
             get: { Double(style.distancePointCount) },
             set: { value in project.mutateDistanceTimelineStyle(elementID) { $0.distancePointCount = min(max(Int(value.rounded()), 0), 12) } }
-        ), range: 0...12, displayText: "\(style.distancePointCount)", isEnabled: style.showDistancePoints)
+        ), range: 0...12, displayText: "\(style.distancePointCount)", isEnabled: style.showAxisLabels)
         InspectorDenseSliderRow(label: "Point Gap", value: distanceBinding(\.distancePointOffset, of: style), range: -24...64, displayText: "\(Int(style.distancePointOffset))")
         typographyRows(
             title: "Axis",
@@ -337,7 +335,7 @@ struct DistanceTimelineOverlayDetailView: View {
             fontSize: style.axisLabelFontSize,
             fontWeight: style.axisLabelFontWeight,
             color: style.axisLabelColor,
-            isEnabled: style.showAxisLabels || style.showDistancePoints,
+            isEnabled: style.showAxisLabels,
             onSetFontName: { value in project.mutateDistanceTimelineStyle(elementID) { $0.axisLabelFontName = value } },
             onSetFontSize: { value in project.mutateDistanceTimelineStyle(elementID) { $0.axisLabelFontSize = value.rounded() } },
             onSetFontWeight: { value in project.mutateDistanceTimelineStyle(elementID) { $0.axisLabelFontWeight = value } },

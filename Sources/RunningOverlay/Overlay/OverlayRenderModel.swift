@@ -152,7 +152,7 @@ enum OverlayRenderModel {
                 elapsedTime: context.elapsedTime,
                 progress: clamped
             ),
-            startText: style.axisLabelMode == .startFinish ? "START" : "0",
+            startText: style.axisLabelMode == .startFinish ? "START" : "0 \(unit)",
             finishText: style.axisLabelMode == .startFinish ? "FINISH" : "\(totalComponents.value) \(unit)",
             distancePointLabels: distancePointLabels,
             statsBarItems: statsBarItems,

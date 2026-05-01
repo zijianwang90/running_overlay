@@ -304,7 +304,7 @@ Current implementation:
 - For Route Map left/right Stats Bar placements, rendering always switches to vertical stack flow and applies `itemSpacing` as row gap.
 - Dense and Splits Distance Timeline progress fills render as solid bars; tick marks and axis labels provide the technical/split visual detail.
 - The Glass preset no longer fakes a glass fill; its background is disabled until a real blur/material effect is implemented.
-- Distance Timeline axis labels can show start/finish text or distance endpoints below the axis; Point Gap now controls both endpoint labels and optional intermediate distance points, and remains editable when More Points is off.
+- Distance Timeline axis labels use one Enabled toggle for start, intermediate (Density, 0 = none), and finish labels; Mode switches start/finish copy vs distance numerals (`0 <unit>` origin); Point Gap controls vertical offset for all axis labels and stays editable when labels are hidden.
 - Distance Timeline background/border bounds expand to cover Axis Labels and Stats Bars with Inside enabled at their current side/offset, while attached outside Stats Bars keep their own bar background. Preview selection uses the same dynamic bounds.
 - Distance Timeline ticks expose density control, and left/right Stats Bar backgrounds expand to cover all vertical slots.
 - Distance Timeline media slots use the generic `OverlayIconSlot` model; the current UI exposes it only for Distance Timeline, but the Codable data and deterministic SVG renderer are reusable by other overlay modules.

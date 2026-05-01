@@ -2145,7 +2145,7 @@ struct DistanceTimelineOverlayView: View {
             valueLayer
             progressLayer
 
-            if layout.style.showAxisLabels || layout.style.showDistancePoints {
+            if layout.style.showAxisLabels {
                 axisLabels
             }
 
@@ -2180,7 +2180,7 @@ struct DistanceTimelineOverlayView: View {
         var rect = CGRect(origin: .zero, size: layout.rect.size)
         let track = localRect(layout.trackRect)
         let pad = scaled(6)
-        if layout.style.showAxisLabels || layout.style.showDistancePoints {
+        if layout.style.showAxisLabels {
             let y = track.maxY + scaled(layout.style.distancePointOffset)
             let labels = CGRect(
                 x: 0,
@@ -2279,21 +2279,22 @@ struct DistanceTimelineOverlayView: View {
 
     private var axisLabels: some View {
         let track = localRect(layout.trackRect)
+        let y = track.maxY + scaled(layout.style.distancePointOffset)
         return ZStack {
-            if layout.style.showAxisLabels {
-                HStack {
-                    Text(layout.startText)
-                    Spacer()
-                    Text(layout.finishText)
-                }
-                .position(x: track.midX, y: track.maxY + scaled(layout.style.distancePointOffset))
+            HStack(spacing: 0) {
+                Text(layout.startText)
+                    .frame(width: track.width / 2, alignment: .leading)
+                Text(layout.finishText)
+                    .frame(width: track.width / 2, alignment: .trailing)
             }
-            if layout.style.showDistancePoints {
+            .frame(width: track.width)
+            .position(x: track.midX, y: y)
+            if !layout.distancePointLabels.isEmpty {
                 ForEach(Array(layout.distancePointLabels.enumerated()), id: \.offset) { index, label in
                     let denominator = Double(layout.distancePointLabels.count + 1)
                     let x = track.width * Double(index + 1) / denominator
                     Text(label)
-                        .position(x: track.minX + x, y: track.maxY + scaled(layout.style.distancePointOffset))
+                        .position(x: track.minX + x, y: y)
                 }
             }
         }

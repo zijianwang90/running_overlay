@@ -1,6 +1,6 @@
 # Elevation Chart Overlay
 
-Last updated: 2026-04-29
+Last updated: 2026-05-01
 
 The Elevation Chart overlay is a dedicated `.elevationChart` module for rendering an activity elevation profile. It is separate from Distance Timeline and Route Map, but intentionally reuses their shared inspector and stats bar infrastructure where it makes sense.
 
@@ -14,6 +14,7 @@ The Elevation Chart overlay is a dedicated `.elevationChart` module for renderin
 - Preview path: `PreviewCanvasView.ElevationChartOverlayView`
 - Export path: `OverlayFrameRenderer.renderElevationChart`
 - Render layout: `OverlayRenderModel.elevationChartLayout`
+- Fill gradient inspector: `From` and `To` swatch strips are stacked vertically so the color editor stays within the inspector width.
 
 ## Presets
 

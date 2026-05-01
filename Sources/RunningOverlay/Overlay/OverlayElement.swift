@@ -26,7 +26,6 @@ enum OverlayPasteCategory: String, Equatable {
     case lapList
     case lapCard
     case lapLive
-    case weatherWidget
 }
 
 enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
@@ -46,7 +45,6 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     case lapList
     case lapCard
     case lapLive
-    case weatherWidget
     case verticalOscillation
     case groundContactTime
     case strideLength
@@ -78,7 +76,6 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         case .lapList: "Lap List"
         case .lapCard: "Lap Card"
         case .lapLive: "Lap Live"
-        case .weatherWidget: "Weather Widget"
         case .verticalOscillation: "Vertical Oscillation"
         case .groundContactTime: "Ground Contact Time"
         case .strideLength: "Stride Length"
@@ -95,7 +92,6 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     var supportsTextPresets: Bool {
         switch self {
         case .distanceTimeline, .elevationChart, .runningGauge, .routeMap, .lapList, .lapCard, .lapLive,
-             .weatherWidget,
              .decorSolidColor, .decorIcon, .decorText:
             false
         default:
@@ -156,8 +152,6 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
             return .lapCard
         case .lapLive:
             return .lapLive
-        case .weatherWidget:
-            return .weatherWidget
         default:
             return .numeric
         }
@@ -244,7 +238,6 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
         case .temperature: [.temperatureCelsius, .temperatureFahrenheit]
         case .grade: [.gradePercent]
         case .distanceTimeline, .elevationChart, .runningGauge, .routeMap, .lapList, .lapCard, .lapLive,
-             .weatherWidget,
              .decorSolidColor, .decorIcon, .decorText:
             []
         }
@@ -418,9 +411,6 @@ struct OverlayStyle: Equatable, Codable {
     /// Lap live overlay configuration. Only used by `.lapLive` elements.
     var lapLive: LapLiveStyle
 
-    /// Weather widget configuration. Only used by `.weatherWidget` elements.
-    var weather: WeatherWidgetStyle
-
     /// Decor element configuration. Used by `.decorSolidColor`, `.decorIcon`,
     /// `.decorText`. See `DecorStyle`.
     var decor: DecorStyle
@@ -507,7 +497,6 @@ struct OverlayStyle: Equatable, Codable {
         lapList: .default,
         lapCard: .default,
         lapLive: .default,
-        weather: .default,
         decor: .default
     )
 
@@ -593,7 +582,6 @@ struct OverlayStyle: Equatable, Codable {
         lapList: LapListStyle = .default,
         lapCard: LapCardStyle = .default,
         lapLive: LapLiveStyle = .default,
-        weather: WeatherWidgetStyle = .default,
         decor: DecorStyle = .default
     ) {
         self.textPreset = textPreset
@@ -677,7 +665,6 @@ struct OverlayStyle: Equatable, Codable {
         self.lapList = lapList
         self.lapCard = lapCard
         self.lapLive = lapLive
-        self.weather = weather
         self.decor = decor
     }
 
@@ -780,7 +767,6 @@ struct OverlayStyle: Equatable, Codable {
         lapList = try container.decodeIfPresent(LapListStyle.self, forKey: .lapList) ?? .default
         lapCard = try container.decodeIfPresent(LapCardStyle.self, forKey: .lapCard) ?? .default
         lapLive = try container.decodeIfPresent(LapLiveStyle.self, forKey: .lapLive) ?? .default
-        weather = try container.decodeIfPresent(WeatherWidgetStyle.self, forKey: .weather) ?? .default
         decor = try container.decodeIfPresent(DecorStyle.self, forKey: .decor) ?? .default
     }
 }

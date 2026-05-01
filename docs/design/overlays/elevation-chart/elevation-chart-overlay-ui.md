@@ -152,6 +152,10 @@ dualAreaEnabled = false
 bigNumbersEnabled = false
 ```
 
+In the inspector, the fill gradient editor presents `From` and `To` as stacked
+swatch rows. Each row owns one color stop, keeping the color controls compact
+inside the fixed-width edit panel.
+
 ### Preset: Dual Area
 
 This is not a separate chart type. It enables a dual visual region inside the same area chart.
@@ -321,6 +325,8 @@ Line Width
 Line Opacity
 Fill Enabled
 Fill Gradient
+  From
+  To
 Fill Opacity
 Dual Area Enabled
 Dual Area Mode

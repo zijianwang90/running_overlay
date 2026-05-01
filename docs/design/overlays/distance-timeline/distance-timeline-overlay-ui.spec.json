@@ -1,6 +1,6 @@
 {
   "name": "Distance Timeline Overlay UI",
-  "updated": "2026-04-28 (shared stats bar renderer alignment)",
+  "updated": "2026-04-30 (axis labels: single enabled toggle, track-aligned endpoints, distance origin format)",
   "references": {
     "styleBoard": "./distance-timeline-overlay-styles.png",
     "relatedModuleSpec": "../../../overlay-modules/distance-timeline-overlay.md",
@@ -97,12 +97,13 @@
     "rules": ["label is a separate section following Numeric overlay label behavior", "labelValueSpacing controls vertical distance between label and value"]
   },
   "axisLabels": {
-    "controls": ["enabled", "mode", "showDistancePoints", "distancePointDensity", "distancePointGap", "font", "size", "weight", "color"],
+    "controls": ["enabled", "mode", "distancePointDensity", "distancePointGap", "font", "size", "weight", "color"],
     "modes": ["startFinish", "distance"],
     "rules": [
-      "start/finish or distance endpoint labels render below the progress axis using distancePointGap",
-      "distancePointGap remains editable when showDistancePoints is false because endpoint labels use it",
-      "additional distance points are optional and density-controlled"
+      "enabled controls visibility of start, finish, and intermediate distance labels together",
+      "start/finish or distance endpoint labels render below the progress axis using distancePointGap; distance mode origin uses the same unit suffix as other distance labels",
+      "distancePointGap remains editable when axis labels are disabled",
+      "intermediate distance labels are optional and density-controlled (density 0 means endpoints only)"
     ]
   },
   "progressMarker": {

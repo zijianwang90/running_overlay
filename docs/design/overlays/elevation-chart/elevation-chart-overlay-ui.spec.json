@@ -352,7 +352,7 @@
         { "id": "lineWidth", "type": "sliderWithNumber", "modelPath": "lineAndFill.lineWidth", "range": [0.5, 8] },
         { "id": "lineOpacity", "type": "sliderWithNumber", "modelPath": "lineAndFill.lineOpacity", "range": [0, 1] },
         { "id": "fillEnabled", "type": "toggle", "modelPath": "lineAndFill.fillEnabled" },
-        { "id": "fillGradientColors", "type": "gradientEditor", "modelPath": "lineAndFill.fillGradientColors", "enabledWhen": "lineAndFill.fillEnabled && !lineAndFill.dualAreaEnabled" },
+        { "id": "fillGradientColors", "type": "gradientEditor", "presentation": "stackedFromToSwatchRows", "modelPath": "lineAndFill.fillGradientColors", "enabledWhen": "lineAndFill.fillEnabled && !lineAndFill.dualAreaEnabled" },
         { "id": "fillOpacity", "type": "sliderWithNumber", "modelPath": "lineAndFill.fillOpacity", "range": [0, 1], "enabledWhen": "lineAndFill.fillEnabled && !lineAndFill.dualAreaEnabled" },
         { "id": "dualAreaEnabled", "type": "toggle", "modelPath": "lineAndFill.dualAreaEnabled" },
         { "id": "dualAreaMode", "type": "dropdown", "modelPath": "lineAndFill.dualAreaMode", "options": ["splitByBaseline", "climbDescent"], "enabledWhen": "lineAndFill.dualAreaEnabled" },
