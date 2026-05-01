@@ -55,6 +55,16 @@ struct OverlayRenderModelTests {
 
         #expect(layout.startText == "0 km")
         #expect(layout.finishText == "0.10 km")
+        #expect(layout.markerDistanceText == "0.05 km")
+    }
+
+    @Test func distanceTimelineAxisLabelTrackPlacementComputesTextTopY() {
+        let style = DistanceTimelineStyle.default
+        let track = CGRect(x: 0, y: 50, width: 100, height: 6)
+        let gap: CGFloat = 4
+        let textH: CGFloat = 13
+        #expect(style.distanceTimelineAxisLabelTextTopY(trackRect: track, placement: .below, scaledGap: gap, textLineHeight: textH) == track.maxY + gap)
+        #expect(style.distanceTimelineAxisLabelTextTopY(trackRect: track, placement: .above, scaledGap: gap, textLineHeight: textH) == track.minY - gap - textH)
     }
 
     @Test func distanceTimelinePresetLayoutIncludesSportMediaSlotAndRouteElevation() {

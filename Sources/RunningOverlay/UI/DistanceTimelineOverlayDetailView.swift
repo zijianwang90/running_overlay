@@ -303,17 +303,73 @@ struct DistanceTimelineOverlayDetailView: View {
             }
         }
         .opacity(style.currentMarkerEnabled ? 1 : 0.5).disabled(!style.currentMarkerEnabled)
+        InspectorDenseSliderRow(
+            label: "Marker Size",
+            value: Binding(
+                get: { style.currentMarkerSizeMultiplier },
+                set: { value in
+                    project.mutateDistanceTimelineStyle(elementID) {
+                        $0.currentMarkerSizeMultiplier = min(max(value, 0.25), 4)
+                    }
+                }
+            ),
+            range: 0.25...4,
+            displayText: String(format: "%.2f×", style.currentMarkerSizeMultiplier),
+            isEnabled: style.currentMarkerEnabled
+        )
+        InspectorDenseRow(label: "Marker Label") {
+            toggle(style.markerDistanceLabelEnabled) { newValue in
+                project.mutateDistanceTimelineStyle(elementID) { $0.markerDistanceLabelEnabled = newValue }
+            }
+        }
+        .opacity(style.currentMarkerEnabled ? 1 : 0.5).disabled(!style.currentMarkerEnabled)
+        InspectorDenseRow(label: "Label Side") {
+            InspectorDenseSegmented(values: DistanceTimelineAxisLabelTrackPlacement.allCases, selection: Binding(
+                get: { style.markerDistanceLabelPlacement },
+                set: { placement in project.mutateDistanceTimelineStyle(elementID) { $0.markerDistanceLabelPlacement = placement } }
+            )) { placement in
+                Text(placement.label)
+            }
+        }
+        .opacity(style.currentMarkerEnabled && style.markerDistanceLabelEnabled ? 1 : 0.5)
+        .disabled(!style.currentMarkerEnabled || !style.markerDistanceLabelEnabled)
+        InspectorDenseSliderRow(
+            label: "Label Offset",
+            value: distanceBinding(\.markerDistanceLabelOffset, of: style),
+            range: -24...64,
+            displayText: "\(Int(style.markerDistanceLabelOffset))",
+            isEnabled: style.currentMarkerEnabled && style.markerDistanceLabelEnabled
+        )
     }
 
     @ViewBuilder
     private func axisLabelsSection(_ element: OverlayElement) -> some View {
         let style = element.style.distanceTimeline
-        InspectorDenseRow(label: "Enabled") {
+        let axisTypographyEnabled = style.showAxisLabels || style.showDistancePoints || (style.markerDistanceLabelEnabled && style.currentMarkerEnabled)
+        InspectorDenseRow(label: "Start / Finish") {
             toggle(style.showAxisLabels) { newValue in
-                project.mutateDistanceTimelineStyle(elementID) {
-                    $0.showAxisLabels = newValue
-                    $0.showDistancePoints = newValue
-                }
+                project.mutateDistanceTimelineStyle(elementID) { $0.showAxisLabels = newValue }
+            }
+        }
+        InspectorDenseRow(label: "Start / End Side") {
+            InspectorDenseSegmented(values: DistanceTimelineAxisLabelTrackPlacement.allCases, selection: Binding(
+                get: { style.axisEndpointLabelPlacement },
+                set: { placement in project.mutateDistanceTimelineStyle(elementID) { $0.axisEndpointLabelPlacement = placement } }
+            )) { placement in
+                Text(placement.label)
+            }
+        }
+        .opacity(style.showAxisLabels ? 1 : 0.5).disabled(!style.showAxisLabels)
+        InspectorDenseSliderRow(
+            label: "Start / End Offset",
+            value: distanceBinding(\.distancePointOffset, of: style),
+            range: -24...64,
+            displayText: "\(Int(style.distancePointOffset))",
+            isEnabled: style.showAxisLabels
+        )
+        InspectorDenseRow(label: "More Points") {
+            toggle(style.showDistancePoints) { newValue in
+                project.mutateDistanceTimelineStyle(elementID) { $0.showDistancePoints = newValue }
             }
         }
         InspectorDenseRow(label: "Mode") {
@@ -327,15 +383,30 @@ struct DistanceTimelineOverlayDetailView: View {
         InspectorDenseSliderRow(label: "Density", value: Binding(
             get: { Double(style.distancePointCount) },
             set: { value in project.mutateDistanceTimelineStyle(elementID) { $0.distancePointCount = min(max(Int(value.rounded()), 0), 12) } }
-        ), range: 0...12, displayText: "\(style.distancePointCount)", isEnabled: style.showAxisLabels)
-        InspectorDenseSliderRow(label: "Point Gap", value: distanceBinding(\.distancePointOffset, of: style), range: -24...64, displayText: "\(Int(style.distancePointOffset))")
+        ), range: 0...12, displayText: "\(style.distancePointCount)", isEnabled: style.showDistancePoints)
+        InspectorDenseRow(label: "Midpoints Side") {
+            InspectorDenseSegmented(values: DistanceTimelineAxisLabelTrackPlacement.allCases, selection: Binding(
+                get: { style.axisMidpointLabelPlacement },
+                set: { placement in project.mutateDistanceTimelineStyle(elementID) { $0.axisMidpointLabelPlacement = placement } }
+            )) { placement in
+                Text(placement.label)
+            }
+        }
+        .opacity(style.showDistancePoints ? 1 : 0.5).disabled(!style.showDistancePoints)
+        InspectorDenseSliderRow(
+            label: "Midpoints Offset",
+            value: distanceBinding(\.midpointAxisLabelOffset, of: style),
+            range: -24...64,
+            displayText: "\(Int(style.midpointAxisLabelOffset))",
+            isEnabled: style.showDistancePoints
+        )
         typographyRows(
             title: "Axis",
             fontName: style.axisLabelFontName,
             fontSize: style.axisLabelFontSize,
             fontWeight: style.axisLabelFontWeight,
             color: style.axisLabelColor,
-            isEnabled: style.showAxisLabels,
+            isEnabled: axisTypographyEnabled,
             onSetFontName: { value in project.mutateDistanceTimelineStyle(elementID) { $0.axisLabelFontName = value } },
             onSetFontSize: { value in project.mutateDistanceTimelineStyle(elementID) { $0.axisLabelFontSize = value.rounded() } },
             onSetFontWeight: { value in project.mutateDistanceTimelineStyle(elementID) { $0.axisLabelFontWeight = value } },

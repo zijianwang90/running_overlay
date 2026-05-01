@@ -1,6 +1,23 @@
 # Running Overlay Project Log
 
+## 2026-04-30 (continued)
+
+### Weather Widget Implementation Plan
+
+- Added a detailed implementation plan to `docs/overlay-modules/weather-widget-overlay.md`, covering all 11 steps from data model through tests.
+- Decided: `cachedWeather: WeatherPayload?` lives inside `WeatherWidgetStyle` (not on `ProjectDocument`) so the cached API result round-trips through the Codable project snapshot and export remains offline-deterministic after a fetch.
+- Decided: Phase 2 weather API will use Open-Meteo historical archive (free, no key required) keyed on the activity GPS start point and start timestamp, with hourly resolution.
+- Decided: add a dedicated `OverlayCategory.weather` in the Overlay Pool rather than folding the widget into the metrics category.
+
 ## 2026-05-01
+
+### Weather Widget Design Spec
+
+- Added the Weather Widget Overlay design spec under `docs/design/overlays/weather-widget/`.
+- Captured the approved five-preset weather app plugin direction in `weather-widget-presets.png`: Simple Card, Compact Strip, Forecast Tile, Minimal Text, and Dashboard Bar.
+- Captured the unified weather condition icon family in `weather-icon-set.png`, including Sunny, Clear Night, Partly Cloudy, Cloudy, Rain, Heavy Rain, Thunder, Snow, Fog, and Wind.
+- Added a structured UI spec and module note documenting the first-pass data strategy: FIT temperature/manual fields first, weather API later with cached deterministic export data.
+- Updated the design and overlay module indexes.
 
 ### Elevation Chart Gradient Inspector Layout
 
@@ -10,12 +27,13 @@
 
 ## 2026-04-30
 
-### Distance Timeline Axis Labels
+### Distance Timeline Axis Labels And Marker Label
 
-- Axis **Enabled** now toggles every timeline label (start, intermediate density points, and finish); removed the separate **More Points** inspector row. Intermediate labels still follow **Density** (0 = endpoints only).
-- **Distance** mode origin text is now `0 <unit>` (e.g. `0 km`) to match other distance tick labels; preview positions endpoint labels with the same track-width framing as export so the start label aligns to the track start.
-- Document migration on decode: legacy `showAxisLabels` / `showDistancePoints` combinations map to the unified toggle; legacy “endpoints only” (axis on, more points off) clears stored density to 0 so midpoint count is not revived accidentally.
-- Updated Distance Timeline UI spec, module doc, and implementation (`OverlayRenderModel`, `PreviewCanvasView`, `OverlayFrameRenderer`, `DistanceTimelineOverlayDetailView`, `DistanceTimelineStyle` decode).
+- **Start / Finish** and **More Points** are independent toggles again (`showAxisLabels`, `showDistancePoints`), each with its own **Below / Above** placement and offset (`distancePointOffset` for endpoints, `midpointAxisLabelOffset` for midpoints; legacy JSON without `midpointAxisLabelOffset` inherits the stored `distancePointOffset` value).
+- **Marker Label** (`markerDistanceLabelEnabled`) shows current distance at the playhead (`markerDistanceText` on `OverlayDistanceTimelineRenderLayout`), with `markerDistanceLabelPlacement` and `markerDistanceLabelOffset`; typography follows the Axis font settings.
+- **Marker Size** (`currentMarkerSizeMultiplier`) scales marker rendering in preview and export.
+- Fixed SwiftUI axis label typography by removing the extra `.font` that applied the main overlay font on top of the axis font.
+- Updated Distance Timeline UI spec, module note, `development.md`, and implementation.
 
 ### Project Settings And Font Library Design Spec
 

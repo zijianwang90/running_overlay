@@ -46,3 +46,7 @@ This directory stores implementation-facing product design references for Runnin
 - [Distance Timeline Overlay UI Spec](./overlays/distance-timeline/distance-timeline-overlay-ui.md): progress/timeline overlay style system, custom media slots, variants, and Inspector controls.
 - [Distance Timeline Overlay UI Structured Spec](./overlays/distance-timeline/distance-timeline-overlay-ui.spec.json): machine-readable style variants, customization fields, and model gaps.
 - [Distance Timeline style board](./overlays/distance-timeline/distance-timeline-overlay-styles.png): eight style directions for distance progress overlays.
+- [Weather Widget Overlay UI Spec](./overlays/weather-widget/weather-widget-overlay-ui.md): weather-app-style overlay presets, location/temperature content rules, and shared condition icon guidance.
+- [Weather Widget Overlay UI Structured Spec](./overlays/weather-widget/weather-widget-overlay-ui.spec.json): machine-readable weather widget presets, fields, icon set, and data strategy.
+- [Weather Widget preset board](./overlays/weather-widget/weather-widget-presets.png): five visual directions for weather app plugin-style overlays.
+- [Weather Widget icon set](./overlays/weather-widget/weather-icon-set.png): unified weather condition icon family reference.

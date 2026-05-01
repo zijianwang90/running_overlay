@@ -2145,8 +2145,12 @@ struct DistanceTimelineOverlayView: View {
             valueLayer
             progressLayer
 
-            if layout.style.showAxisLabels {
+            if layout.style.showAxisLabels || layout.style.showDistancePoints {
                 axisLabels
+            }
+
+            if layout.style.markerDistanceLabelEnabled, layout.style.currentMarkerEnabled {
+                markerDistanceLabelLayer
             }
 
             if layout.style.statsBar.visible {
@@ -2180,15 +2184,32 @@ struct DistanceTimelineOverlayView: View {
         var rect = CGRect(origin: .zero, size: layout.rect.size)
         let track = localRect(layout.trackRect)
         let pad = scaled(6)
-        if layout.style.showAxisLabels {
-            let y = track.maxY + scaled(layout.style.distancePointOffset)
-            let labels = CGRect(
-                x: 0,
-                y: y - layout.unitFontSize * 0.85,
-                width: layout.rect.width,
-                height: layout.unitFontSize * 1.7
-            ).insetBy(dx: -pad, dy: -pad * 0.5)
-            rect = rect.union(labels)
+        if layout.style.showAxisLabels || layout.style.showDistancePoints || (layout.style.markerDistanceLabelEnabled && layout.style.currentMarkerEnabled) {
+            let textH = CGFloat(layout.unitFontSize * 1.3)
+            func unionBand(placement: DistanceTimelineAxisLabelTrackPlacement, gap: CGFloat) {
+                let yTop = layout.style.distanceTimelineAxisLabelTextTopY(
+                    trackRect: track,
+                    placement: placement,
+                    scaledGap: gap,
+                    textLineHeight: textH
+                )
+                let labels = CGRect(
+                    x: 0,
+                    y: yTop - layout.unitFontSize * 0.15,
+                    width: layout.rect.width,
+                    height: layout.unitFontSize * 1.7
+                ).insetBy(dx: -pad, dy: -pad * 0.5)
+                rect = rect.union(labels)
+            }
+            if layout.style.showAxisLabels {
+                unionBand(placement: layout.style.axisEndpointLabelPlacement, gap: CGFloat(scaled(layout.style.distancePointOffset)))
+            }
+            if layout.style.showDistancePoints, !layout.distancePointLabels.isEmpty {
+                unionBand(placement: layout.style.axisMidpointLabelPlacement, gap: CGFloat(scaled(layout.style.midpointAxisLabelOffset)))
+            }
+            if layout.style.markerDistanceLabelEnabled, layout.style.currentMarkerEnabled {
+                unionBand(placement: layout.style.markerDistanceLabelPlacement, gap: CGFloat(scaled(layout.style.markerDistanceLabelOffset)))
+            }
         }
         if layout.style.statsBar.visible,
            layout.style.statsBar.inside,
@@ -2264,9 +2285,7 @@ struct DistanceTimelineOverlayView: View {
             }
 
             if layout.style.currentMarkerEnabled {
-                let markerPoint = layout.style.preset == .route
-                    ? localPoint(layout.routeCurrentPoint ?? progressedRoutePoints.last ?? CGPoint(x: layout.trackRect.minX + layout.trackRect.width * layout.progress, y: layout.trackRect.midY))
-                    : CGPoint(x: max(track.width * layout.progress, 0), y: track.height * 0.5)
+                let markerPoint = markerPointInTrackLocal(track: track)
                 markerView
                     .frame(width: markerSize.width, height: markerSize.height)
                     .shadow(color: glowColor, radius: layout.style.glowEnabled ? track.height * 2.3 : 0)
@@ -2277,30 +2296,86 @@ struct DistanceTimelineOverlayView: View {
         .position(x: track.midX, y: track.midY)
     }
 
+    private func markerPointInTrackLocal(track: CGRect) -> CGPoint {
+        if layout.style.preset == .route {
+            localPoint(layout.routeCurrentPoint ?? progressedRoutePoints.last ?? CGPoint(x: layout.trackRect.minX + layout.trackRect.width * layout.progress, y: layout.trackRect.midY))
+        } else {
+            CGPoint(x: max(track.width * layout.progress, 0), y: track.height * 0.5)
+        }
+    }
+
+    private func markerDisplayPoint(track: CGRect) -> CGPoint {
+        let lp = markerPointInTrackLocal(track: track)
+        return CGPoint(x: track.minX + lp.x, y: track.minY + lp.y)
+    }
+
+    private var markerDistanceLabelLayer: some View {
+        let track = localRect(layout.trackRect)
+        let textH = CGFloat(layout.unitFontSize * 1.3)
+        let gap = CGFloat(scaled(layout.style.markerDistanceLabelOffset))
+        let yCenter = layout.style.distanceTimelineAxisLabelTextTopY(
+            trackRect: track,
+            placement: layout.style.markerDistanceLabelPlacement,
+            scaledGap: gap,
+            textLineHeight: textH
+        ) + textH / 2
+        let pt = markerDisplayPoint(track: track)
+        let axisFont = Font.custom(layout.style.axisLabelFontName, size: layout.unitFontSize).weight(Font.Weight(layout.style.axisLabelFontWeight))
+        return Text(layout.markerDistanceText)
+            .font(axisFont)
+            .foregroundStyle(Color(distanceTimeline: layout.style.axisLabelColor))
+            .monospacedDigit()
+            .lineLimit(1)
+            .position(x: pt.x, y: yCenter)
+            .frame(width: layout.rect.width, height: layout.rect.height)
+    }
+
     private var axisLabels: some View {
         let track = localRect(layout.trackRect)
-        let y = track.maxY + scaled(layout.style.distancePointOffset)
+        let textH = CGFloat(layout.unitFontSize * 1.3)
+        let axisFont = Font.custom(layout.style.axisLabelFontName, size: layout.unitFontSize).weight(Font.Weight(layout.style.axisLabelFontWeight))
+        let axisColor = Color(distanceTimeline: layout.style.axisLabelColor)
         return ZStack {
-            HStack(spacing: 0) {
-                Text(layout.startText)
-                    .frame(width: track.width / 2, alignment: .leading)
-                Text(layout.finishText)
-                    .frame(width: track.width / 2, alignment: .trailing)
+            if layout.style.showAxisLabels {
+                let gap = CGFloat(scaled(layout.style.distancePointOffset))
+                let yEndpointsCenter = layout.style.distanceTimelineAxisLabelTextTopY(
+                    trackRect: track,
+                    placement: layout.style.axisEndpointLabelPlacement,
+                    scaledGap: gap,
+                    textLineHeight: textH
+                ) + textH / 2
+                HStack(spacing: 0) {
+                    Text(layout.startText)
+                        .font(axisFont)
+                        .foregroundStyle(axisColor)
+                        .frame(width: track.width / 2, alignment: .leading)
+                    Text(layout.finishText)
+                        .font(axisFont)
+                        .foregroundStyle(axisColor)
+                        .frame(width: track.width / 2, alignment: .trailing)
+                }
+                .frame(width: track.width)
+                .position(x: track.midX, y: yEndpointsCenter)
             }
-            .frame(width: track.width)
-            .position(x: track.midX, y: y)
-            if !layout.distancePointLabels.isEmpty {
+            if layout.style.showDistancePoints, !layout.distancePointLabels.isEmpty {
+                let gapMid = CGFloat(scaled(layout.style.midpointAxisLabelOffset))
+                let yMidpointsCenter = layout.style.distanceTimelineAxisLabelTextTopY(
+                    trackRect: track,
+                    placement: layout.style.axisMidpointLabelPlacement,
+                    scaledGap: gapMid,
+                    textLineHeight: textH
+                ) + textH / 2
                 ForEach(Array(layout.distancePointLabels.enumerated()), id: \.offset) { index, label in
                     let denominator = Double(layout.distancePointLabels.count + 1)
                     let x = track.width * Double(index + 1) / denominator
                     Text(label)
-                        .position(x: track.minX + x, y: y)
+                        .font(axisFont)
+                        .foregroundStyle(axisColor)
+                        .monospacedDigit()
+                        .position(x: track.minX + x, y: yMidpointsCenter)
                 }
             }
         }
-        .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
-        .font(.custom(layout.style.axisLabelFontName, size: layout.unitFontSize).weight(Font.Weight(layout.style.axisLabelFontWeight)))
-        .foregroundStyle(Color(distanceTimeline: layout.style.axisLabelColor))
         .frame(width: layout.rect.width, height: layout.rect.height)
     }
 
@@ -2369,13 +2444,14 @@ struct DistanceTimelineOverlayView: View {
 
     private var markerSize: CGSize {
         let track = localRect(layout.trackRect)
+        let m = layout.style.currentMarkerSizeMultiplier
         return switch layout.style.currentMarkerStyle {
         case .dot:
-            CGSize(width: track.height * 2.2, height: track.height * 2.2)
+            CGSize(width: track.height * 2.2 * m, height: track.height * 2.2 * m)
         case .pill:
-            CGSize(width: track.height * 3.4, height: track.height * 1.75)
+            CGSize(width: track.height * 3.4 * m, height: track.height * 1.75 * m)
         case .triangle:
-            CGSize(width: track.height * 2.6, height: track.height * 2.4)
+            CGSize(width: track.height * 2.6 * m, height: track.height * 2.4 * m)
         }
     }
 

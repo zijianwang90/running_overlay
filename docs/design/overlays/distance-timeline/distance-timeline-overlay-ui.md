@@ -237,14 +237,15 @@ Controls:
 
 Controls:
 
-- Enabled toggle (shows or hides every axis label: start, intermediate distance ticks, and finish).
+- **Start / Finish** toggle: shows or hides the endpoint axis pair only.
+- **Start / End Side** and **Start / End Offset**: placement (`Below` / `Above` the track) and gap from the track edge for that pair (JSON field `distancePointOffset` stores this offset for compatibility).
+- **More Points** toggle: shows or hides intermediate distance tick labels.
 - Mode: `Start / Finish` or `Distance` (Distance mode formats the origin as `0 <unit>` to match other distance labels, e.g. `0 km`).
-- Distance point density (0 = no intermediate labels; endpoints still follow Enabled and Mode).
-- Point Gap controls the vertical distance from the progress axis for all axis labels.
-- Point Gap stays editable when axis labels are disabled so spacing is preserved when re-enabled.
-- Font family, size, weight, and color apply to all axis labels.
+- **Density** (0 = no intermediate labels when More Points is on).
+- **Midpoints Side** and **Midpoints Offset**: independent placement and gap for intermediate labels (`midpointAxisLabelOffset`).
+- **Axis** typography (font, size, weight, color) applies to start/finish text, midpoint tick text, and the optional marker distance label; typography rows stay enabled when any of those features is on.
 
-Start/finish text and distance labels should sit below the axis, not on top of or centered over the track. Endpoint labels align to the progress track edges in preview and export (leading edge for the start label, trailing edge for the finish label).
+Axis labels must not be centered on top of the track bar; they sit in a band on the chosen side of the track. Endpoint labels align to the progress track edges in preview and export (leading edge for the start label, trailing edge for the finish label). Background and selection bounds grow to include whichever label bands are active.
 
 ## Progress Marker
 
@@ -253,6 +254,9 @@ Controls:
 - Marker toggle.
 - Marker style: dot, pill, or triangle. These are rendered as vector-native shapes in preview and export; SVG marker assets are not part of this control yet.
 - Marker color, independent from progress fill color.
+- **Marker Size**: scales the marker graphic (export and preview use the same multiplier).
+- **Marker Label** toggle: when Marker is on, shows the **current distance** (e.g. `2.40 km`) near the playhead position, using Axis typography.
+- **Label Side** and **Label Offset** for that distance text (`markerDistanceLabelPlacement`, `markerDistanceLabelOffset`), independent from axis start/finish and midpoints.
 
 ## Stats Bar
 

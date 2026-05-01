@@ -1131,6 +1131,21 @@ enum DistanceTimelineAxisLabelMode: String, CaseIterable, Identifiable, Codable 
     }
 }
 
+/// Vertical placement of distance timeline axis text relative to the progress track (+Y is downward).
+enum DistanceTimelineAxisLabelTrackPlacement: String, CaseIterable, Identifiable, Codable, Sendable {
+    case below
+    case above
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .below: "Below"
+        case .above: "Above"
+        }
+    }
+}
+
 enum DistanceTimelineMarkerStyle: String, CaseIterable, Identifiable, Codable {
     case dot
     case pill
@@ -1324,6 +1339,7 @@ struct DistanceTimelineStyle: Equatable, Codable {
     var labelFontWeight: OverlayFontWeight
     var labelColor: OverlayColor
     var labelValueSpacing: Double
+    /// Start / finish axis text (START/FINISH or distance endpoints).
     var showAxisLabels: Bool
     var axisLabelMode: DistanceTimelineAxisLabelMode
     var axisLabelOffset: Double
@@ -1331,10 +1347,18 @@ struct DistanceTimelineStyle: Equatable, Codable {
     var axisLabelFontSize: Double
     var axisLabelFontWeight: OverlayFontWeight
     var axisLabelColor: OverlayColor
-    /// Encoded for backward compatibility; kept in sync with `showAxisLabels` (midpoint labels follow the same toggle).
+    /// Intermediate distance tick labels along the track.
     var showDistancePoints: Bool
     var distancePointCount: Int
+    /// Vertical gap from the track edge for start/finish axis labels (same key as legacy `distancePointOffset` in JSON).
     var distancePointOffset: Double
+    var midpointAxisLabelOffset: Double
+    var axisEndpointLabelPlacement: DistanceTimelineAxisLabelTrackPlacement
+    var axisMidpointLabelPlacement: DistanceTimelineAxisLabelTrackPlacement
+    var markerDistanceLabelEnabled: Bool
+    var markerDistanceLabelPlacement: DistanceTimelineAxisLabelTrackPlacement
+    var markerDistanceLabelOffset: Double
+    var currentMarkerSizeMultiplier: Double
     var statsBar: DistanceTimelineStatsBarConfig
     var backgroundEnabled: Bool
     var backgroundColor: OverlayColor
@@ -1402,6 +1426,13 @@ struct DistanceTimelineStyle: Equatable, Codable {
         showDistancePoints: Bool = false,
         distancePointCount: Int = 3,
         distancePointOffset: Double = 34,
+        midpointAxisLabelOffset: Double = 34,
+        axisEndpointLabelPlacement: DistanceTimelineAxisLabelTrackPlacement = .below,
+        axisMidpointLabelPlacement: DistanceTimelineAxisLabelTrackPlacement = .below,
+        markerDistanceLabelEnabled: Bool = false,
+        markerDistanceLabelPlacement: DistanceTimelineAxisLabelTrackPlacement = .above,
+        markerDistanceLabelOffset: Double = 12,
+        currentMarkerSizeMultiplier: Double = 1,
         statsBar: DistanceTimelineStatsBarConfig = .default,
         backgroundEnabled: Bool,
         backgroundColor: OverlayColor,
@@ -1462,6 +1493,13 @@ struct DistanceTimelineStyle: Equatable, Codable {
         self.showDistancePoints = showDistancePoints
         self.distancePointCount = min(max(distancePointCount, 0), 12)
         self.distancePointOffset = distancePointOffset
+        self.midpointAxisLabelOffset = midpointAxisLabelOffset
+        self.axisEndpointLabelPlacement = axisEndpointLabelPlacement
+        self.axisMidpointLabelPlacement = axisMidpointLabelPlacement
+        self.markerDistanceLabelEnabled = markerDistanceLabelEnabled
+        self.markerDistanceLabelPlacement = markerDistanceLabelPlacement
+        self.markerDistanceLabelOffset = markerDistanceLabelOffset
+        self.currentMarkerSizeMultiplier = min(max(currentMarkerSizeMultiplier, 0.25), 4)
         self.statsBar = statsBar
         self.backgroundEnabled = backgroundEnabled
         self.backgroundColor = backgroundColor
@@ -1520,13 +1558,10 @@ struct DistanceTimelineStyle: Equatable, Codable {
         labelFontWeight = try c.decodeIfPresent(OverlayFontWeight.self, forKey: .labelFontWeight) ?? base.labelFontWeight
         labelColor = try c.decodeIfPresent(OverlayColor.self, forKey: .labelColor) ?? base.labelColor
         labelValueSpacing = try c.decodeIfPresent(Double.self, forKey: .labelValueSpacing) ?? base.labelValueSpacing
-        let decodedShowAxisLabels = try c.decodeIfPresent(Bool.self, forKey: .showAxisLabels)
+        showAxisLabels = try c.decodeIfPresent(Bool.self, forKey: .showAxisLabels)
             ?? legacy.decodeIfPresent(Bool.self, forKey: .showStartFinishLabels)
             ?? base.showAxisLabels
-        let decodedShowDistancePoints = try c.decodeIfPresent(Bool.self, forKey: .showDistancePoints) ?? base.showDistancePoints
-        // Legacy split: endpoints vs midpoints. Any axis labels on → master toggle on; endpoints-only → clear stored density.
-        showAxisLabels = decodedShowAxisLabels || decodedShowDistancePoints
-        showDistancePoints = showAxisLabels
+        showDistancePoints = try c.decodeIfPresent(Bool.self, forKey: .showDistancePoints) ?? base.showDistancePoints
 
         axisLabelMode = try c.decodeIfPresent(DistanceTimelineAxisLabelMode.self, forKey: .axisLabelMode) ?? base.axisLabelMode
         axisLabelOffset = try c.decodeIfPresent(Double.self, forKey: .axisLabelOffset) ?? base.axisLabelOffset
@@ -1535,12 +1570,17 @@ struct DistanceTimelineStyle: Equatable, Codable {
         axisLabelFontWeight = try c.decodeIfPresent(OverlayFontWeight.self, forKey: .axisLabelFontWeight) ?? base.axisLabelFontWeight
         axisLabelColor = try c.decodeIfPresent(OverlayColor.self, forKey: .axisLabelColor) ?? base.axisLabelColor
 
-        var mergedPointCount = min(max(try c.decodeIfPresent(Int.self, forKey: .distancePointCount) ?? base.distancePointCount, 0), 12)
-        if decodedShowAxisLabels, !decodedShowDistancePoints {
-            mergedPointCount = 0
-        }
-        distancePointCount = mergedPointCount
-        distancePointOffset = try c.decodeIfPresent(Double.self, forKey: .distancePointOffset) ?? base.distancePointOffset
+        distancePointCount = min(max(try c.decodeIfPresent(Int.self, forKey: .distancePointCount) ?? base.distancePointCount, 0), 12)
+        let legacySharedGap = try c.decodeIfPresent(Double.self, forKey: .distancePointOffset) ?? base.distancePointOffset
+        distancePointOffset = legacySharedGap
+        midpointAxisLabelOffset = try c.decodeIfPresent(Double.self, forKey: .midpointAxisLabelOffset) ?? legacySharedGap
+        axisEndpointLabelPlacement = try c.decodeIfPresent(DistanceTimelineAxisLabelTrackPlacement.self, forKey: .axisEndpointLabelPlacement) ?? base.axisEndpointLabelPlacement
+        axisMidpointLabelPlacement = try c.decodeIfPresent(DistanceTimelineAxisLabelTrackPlacement.self, forKey: .axisMidpointLabelPlacement) ?? base.axisMidpointLabelPlacement
+        markerDistanceLabelEnabled = try c.decodeIfPresent(Bool.self, forKey: .markerDistanceLabelEnabled) ?? base.markerDistanceLabelEnabled
+        markerDistanceLabelPlacement = try c.decodeIfPresent(DistanceTimelineAxisLabelTrackPlacement.self, forKey: .markerDistanceLabelPlacement) ?? base.markerDistanceLabelPlacement
+        markerDistanceLabelOffset = try c.decodeIfPresent(Double.self, forKey: .markerDistanceLabelOffset) ?? base.markerDistanceLabelOffset
+        let decodedMarkerScale = try c.decodeIfPresent(Double.self, forKey: .currentMarkerSizeMultiplier) ?? base.currentMarkerSizeMultiplier
+        currentMarkerSizeMultiplier = min(max(decodedMarkerScale, 0.25), 4)
         statsBar = try c.decodeIfPresent(DistanceTimelineStatsBarConfig.self, forKey: .statsBar) ?? base.statsBar
         backgroundEnabled = try c.decodeIfPresent(Bool.self, forKey: .backgroundEnabled) ?? base.backgroundEnabled
         backgroundColor = try c.decodeIfPresent(OverlayColor.self, forKey: .backgroundColor) ?? base.backgroundColor
@@ -1614,6 +1654,13 @@ struct DistanceTimelineStyle: Equatable, Codable {
         case showDistancePoints
         case distancePointCount
         case distancePointOffset
+        case midpointAxisLabelOffset
+        case axisEndpointLabelPlacement
+        case axisMidpointLabelPlacement
+        case markerDistanceLabelEnabled
+        case markerDistanceLabelPlacement
+        case markerDistanceLabelOffset
+        case currentMarkerSizeMultiplier
         case statsBar
         case backgroundEnabled
         case backgroundColor
@@ -1820,7 +1867,7 @@ struct DistanceTimelineStyle: Equatable, Codable {
             style.height = 102
             style.showLabel = true
             style.showAxisLabels = true
-            style.showDistancePoints = true
+            style.showDistancePoints = false
             style.axisLabelMode = .startFinish
             style.backgroundOpacity = 0.58
             style.borderEnabled = true
@@ -1832,6 +1879,23 @@ struct DistanceTimelineStyle: Equatable, Codable {
             style.fadeEdge = .both
             style.fadeAmount = 0.24
             return style
+        }
+    }
+}
+
+extension DistanceTimelineStyle {
+    /// Top edge Y of the axis label text band (layout coordinates, +Y downward), aligned with export `drawPlainText` rects.
+    func distanceTimelineAxisLabelTextTopY(
+        trackRect: CGRect,
+        placement: DistanceTimelineAxisLabelTrackPlacement,
+        scaledGap: CGFloat,
+        textLineHeight: CGFloat
+    ) -> CGFloat {
+        switch placement {
+        case .below:
+            trackRect.maxY + scaledGap
+        case .above:
+            trackRect.minY - scaledGap - textLineHeight
         }
     }
 }

@@ -129,11 +129,10 @@ enum OverlayRenderModel {
             unit: unit
         )
         let valueText = "\(distanceComponents.value) / \(totalComponents.value) \(totalComponents.unit)"
-        let distancePointLabels = distancePointLabels(
-            totalDistance: totalDistance,
-            unit: unit,
-            count: style.distancePointCount
-        )
+        let markerDistanceText = "\(distanceComponents.value) \(unit)"
+        let distancePointLabels = style.showDistancePoints && style.distancePointCount > 0
+            ? Self.distancePointLabels(totalDistance: totalDistance, unit: unit, count: style.distancePointCount)
+            : []
         let statsBarItems = distanceStatsBarItems(
             style: style,
             activity: context.activity,
@@ -155,6 +154,7 @@ enum OverlayRenderModel {
             startText: style.axisLabelMode == .startFinish ? "START" : "0 \(unit)",
             finishText: style.axisLabelMode == .startFinish ? "FINISH" : "\(totalComponents.value) \(unit)",
             distancePointLabels: distancePointLabels,
+            markerDistanceText: markerDistanceText,
             statsBarItems: statsBarItems,
             rect: rect,
             contentRect: contentRect,
@@ -1230,6 +1230,7 @@ struct OverlayDistanceTimelineRenderLayout {
     var startText: String
     var finishText: String
     var distancePointLabels: [String]
+    var markerDistanceText: String
     var statsBarItems: [OverlayDistanceTimelineStatsBarItemLayout]
     var rect: CGRect
     var contentRect: CGRect

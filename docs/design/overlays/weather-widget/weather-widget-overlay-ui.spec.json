@@ -1,0 +1,92 @@
+{
+  "name": "Weather Widget Overlay UI",
+  "updated": "2026-05-01",
+  "status": "visual-design-only",
+  "references": {
+    "presetBoard": "./weather-widget-presets.png",
+    "iconSet": "./weather-icon-set.png",
+    "relatedModuleSpec": "../../../overlay-modules/weather-widget-overlay.md",
+    "relatedStyleSpec": "../../system/app-ui.md"
+  },
+  "intent": {
+    "description": "simple weather-app-style overlay for showing day-of-run weather and temperature context",
+    "avoid": [
+      "sport-specific styling as the default",
+      "mixed icon families",
+      "API dependency in the first design pass",
+      "large components without location/country text",
+      "decorative background art behind the widgets"
+    ]
+  },
+  "presets": [
+    {
+      "id": "simpleCard",
+      "label": "Simple Card",
+      "defaultSize": {"width": 300, "height": 110},
+      "fields": ["conditionLabel", "conditionIcon", "location", "weekday", "temperature", "humidity"],
+      "notes": "default preset; blue translucent card with vertical divider and location/country slot"
+    },
+    {
+      "id": "compactStrip",
+      "label": "Compact Strip",
+      "defaultSize": {"width": 220, "height": 56},
+      "fields": ["conditionIcon", "temperature", "condition", "city"],
+      "notes": "small corner-friendly weather summary"
+    },
+    {
+      "id": "forecastTile",
+      "label": "Forecast Tile",
+      "defaultSize": {"width": 180, "height": 180},
+      "fields": ["location", "conditionIcon", "temperature", "highTemperature", "lowTemperature", "humidity"],
+      "notes": "larger square-ish tile for title-card or social clips"
+    },
+    {
+      "id": "minimalText",
+      "label": "Minimal Text",
+      "defaultSize": {"width": 160, "height": 92},
+      "fields": ["location", "temperature", "condition", "conditionIcon"],
+      "notes": "text-first treatment with no heavy container"
+    },
+    {
+      "id": "dashboardBar",
+      "label": "Dashboard Bar",
+      "defaultSize": {"width": 460, "height": 86},
+      "fields": ["location", "condition", "temperature", "humidity", "wind", "feelsLike"],
+      "notes": "wide weather dashboard bar with metric chips"
+    }
+  ],
+  "contentFields": {
+    "required": ["condition", "temperature"],
+    "optional": ["location", "weekday", "humidity", "highTemperature", "lowTemperature", "wind", "feelsLike"]
+  },
+  "iconSet": {
+    "baseGrid": "64x64",
+    "conditions": ["sunny", "clearNight", "partlyCloudy", "cloudy", "rain", "heavyRain", "thunder", "snow", "fog", "wind"],
+    "rules": [
+      "all icons use the same family and optical weight",
+      "rounded filled geometric shapes are preferred",
+      "icons must scale cleanly to 20, 32, 48, and 64 px",
+      "do not mix emoji, realistic, outline-only, and cartoon treatments"
+    ],
+    "palette": {
+      "sunny": "warm yellow/orange",
+      "clearNight": "navy plus pale moon",
+      "cloud": "cool cyan/blue-gray",
+      "rain": "blue",
+      "thunder": "cloud blue plus yellow lightning",
+      "snow": "icy cyan",
+      "fog": "gray-blue",
+      "wind": "teal-gray"
+    }
+  },
+  "dataStrategy": {
+    "phase1": ["FIT temperature when available", "manual fallback temperature", "manual condition and secondary metrics"],
+    "phase2": ["weather API by activity timestamp and GPS start point", "cached project weather payload", "offline deterministic export"]
+  },
+  "inspectorSections": ["Preset", "Content", "Location", "Temperature", "Metrics", "Icon", "Layout", "Appearance", "Effects"],
+  "implementationNotes": [
+    "weather widget should become a dedicated overlay type, not only a numeric temperature preset",
+    "preview and export must share the same render layout",
+    "API-backed weather must be cached before export"
+  ]
+}

@@ -710,8 +710,11 @@ struct OverlayFrameRenderer {
         drawDistanceTimelineText(renderLayout, element: element, foreground: foreground, accent: accent)
         drawDistanceTimelineTrack(renderLayout, foreground: foreground, accent: accent)
 
-        if style.showAxisLabels {
+        if style.showAxisLabels || style.showDistancePoints {
             drawDistanceTimelineAxisLabels(renderLayout, element: element, foreground: foreground)
+        }
+        if style.markerDistanceLabelEnabled, style.currentMarkerEnabled {
+            drawDistanceTimelineMarkerDistanceLabel(renderLayout, element: element)
         }
 
         if style.statsBar.visible {
@@ -812,18 +815,50 @@ struct OverlayFrameRenderer {
             drawDistanceTimelineTicks(track, count: max(layout.style.tickDensity, 2), color: foreground.withAlphaComponent(0.52))
         }
         if layout.style.currentMarkerEnabled {
-            let markerSize = track.height * 2.2
-            let markerCenter: CGPoint
-            if layout.style.preset == .route {
-                markerCenter = layout.routeCurrentPoint ?? progressedDistanceTimelineRoutePoints(layout).last ?? CGPoint(x: track.minX + track.width * layout.progress, y: track.midY)
-            } else {
-                markerCenter = CGPoint(x: track.minX + track.width * layout.progress, y: track.midY)
-            }
+            let markerSize = track.height * 2.2 * layout.style.currentMarkerSizeMultiplier
+            let markerCenter = distanceTimelineMarkerCenter(layout)
             NSColor.black.withAlphaComponent(0.38).setFill()
             NSBezierPath(ovalIn: CGRect(x: markerCenter.x - markerSize / 2, y: markerCenter.y - markerSize / 2, width: markerSize, height: markerSize)).fill()
             NSColor(layout.style.currentMarkerColor).setFill()
             drawDistanceTimelineMarker(style: layout.style.currentMarkerStyle, center: markerCenter, size: markerSize * 0.72)
         }
+    }
+
+    private static func distanceTimelineMarkerCenter(_ layout: OverlayDistanceTimelineRenderLayout) -> CGPoint {
+        let track = layout.trackRect
+        if layout.style.preset == .route {
+            return layout.routeCurrentPoint ?? progressedDistanceTimelineRoutePoints(layout).last
+                ?? CGPoint(x: track.minX + track.width * layout.progress, y: track.midY)
+        }
+        return CGPoint(x: track.minX + track.width * layout.progress, y: track.midY)
+    }
+
+    private static func drawDistanceTimelineMarkerDistanceLabel(
+        _ layout: OverlayDistanceTimelineRenderLayout,
+        element: OverlayElement
+    ) {
+        let scale = distanceTimelineStyleScale(layout)
+        let gap = CGFloat(layout.style.markerDistanceLabelOffset * scale)
+        let fontSize = layout.unitFontSize
+        let textH = CGFloat(fontSize * 1.3)
+        let yTop = layout.style.distanceTimelineAxisLabelTextTopY(
+            trackRect: layout.trackRect,
+            placement: layout.style.markerDistanceLabelPlacement,
+            scaledGap: gap,
+            textLineHeight: textH
+        )
+        let center = distanceTimelineMarkerCenter(layout)
+        let color = NSColor(layout.style.axisLabelColor)
+        drawPlainText(
+            layout.markerDistanceText,
+            element: element,
+            fontSize: fontSize,
+            color: color,
+            rect: CGRect(x: center.x - 70, y: yTop, width: 140, height: fontSize * 1.3),
+            alignment: .center,
+            weight: nsFontWeight(layout.style.axisLabelFontWeight),
+            fontName: layout.style.axisLabelFontName
+        )
     }
 
     private static func drawDistanceTimelineMarker(style: DistanceTimelineMarkerStyle, center: CGPoint, size: Double) {
@@ -873,17 +908,34 @@ struct OverlayFrameRenderer {
     }
 
     private static func drawDistanceTimelineAxisLabels(_ layout: OverlayDistanceTimelineRenderLayout, element: OverlayElement, foreground: NSColor) {
-        guard layout.style.showAxisLabels else { return }
+        guard layout.style.showAxisLabels || layout.style.showDistancePoints else { return }
         let color = NSColor(layout.style.axisLabelColor)
         let fontSize = layout.unitFontSize
-        let y = layout.trackRect.maxY + layout.style.distancePointOffset * distanceTimelineStyleScale(layout)
-        drawPlainText(layout.startText, element: element, fontSize: fontSize, color: color, rect: CGRect(x: layout.trackRect.minX, y: y, width: layout.trackRect.width / 2, height: fontSize * 1.3), alignment: .left, weight: nsFontWeight(layout.style.axisLabelFontWeight), fontName: layout.style.axisLabelFontName)
-        drawPlainText(layout.finishText, element: element, fontSize: fontSize, color: color, rect: CGRect(x: layout.trackRect.midX, y: y, width: layout.trackRect.width / 2, height: fontSize * 1.3), alignment: .right, weight: nsFontWeight(layout.style.axisLabelFontWeight), fontName: layout.style.axisLabelFontName)
-        guard !layout.distancePointLabels.isEmpty else { return }
+        let scale = distanceTimelineStyleScale(layout)
+        let textH = CGFloat(fontSize * 1.3)
+        if layout.style.showAxisLabels {
+            let gapEndpoints = CGFloat(layout.style.distancePointOffset * scale)
+            let yEndpoints = layout.style.distanceTimelineAxisLabelTextTopY(
+                trackRect: layout.trackRect,
+                placement: layout.style.axisEndpointLabelPlacement,
+                scaledGap: gapEndpoints,
+                textLineHeight: textH
+            )
+            drawPlainText(layout.startText, element: element, fontSize: fontSize, color: color, rect: CGRect(x: layout.trackRect.minX, y: yEndpoints, width: layout.trackRect.width / 2, height: fontSize * 1.3), alignment: .left, weight: nsFontWeight(layout.style.axisLabelFontWeight), fontName: layout.style.axisLabelFontName)
+            drawPlainText(layout.finishText, element: element, fontSize: fontSize, color: color, rect: CGRect(x: layout.trackRect.midX, y: yEndpoints, width: layout.trackRect.width / 2, height: fontSize * 1.3), alignment: .right, weight: nsFontWeight(layout.style.axisLabelFontWeight), fontName: layout.style.axisLabelFontName)
+        }
+        guard layout.style.showDistancePoints, !layout.distancePointLabels.isEmpty else { return }
+        let gapMid = CGFloat(layout.style.midpointAxisLabelOffset * scale)
+        let yMidpoints = layout.style.distanceTimelineAxisLabelTextTopY(
+            trackRect: layout.trackRect,
+            placement: layout.style.axisMidpointLabelPlacement,
+            scaledGap: gapMid,
+            textLineHeight: textH
+        )
         let denominator = Double(layout.distancePointLabels.count + 1)
         for (index, label) in layout.distancePointLabels.enumerated() {
             let centerX = layout.trackRect.minX + layout.trackRect.width * Double(index + 1) / denominator
-            drawPlainText(label, element: element, fontSize: fontSize, color: color, rect: CGRect(x: centerX - 45, y: y, width: 90, height: fontSize * 1.3), alignment: .center, weight: nsFontWeight(layout.style.axisLabelFontWeight), fontName: layout.style.axisLabelFontName)
+            drawPlainText(label, element: element, fontSize: fontSize, color: color, rect: CGRect(x: centerX - 45, y: yMidpoints, width: 90, height: fontSize * 1.3), alignment: .center, weight: nsFontWeight(layout.style.axisLabelFontWeight), fontName: layout.style.axisLabelFontName)
         }
     }
 
@@ -1004,15 +1056,32 @@ struct OverlayFrameRenderer {
         var rect = layout.rect
         let scale = distanceTimelineStyleScale(layout)
         let pad = 6 * scale
-        if layout.style.showAxisLabels {
-            let y = layout.trackRect.maxY + layout.style.distancePointOffset * scale
-            let labels = CGRect(
-                x: layout.rect.minX,
-                y: y - layout.unitFontSize * 0.85,
-                width: layout.rect.width,
-                height: layout.unitFontSize * 1.7
-            ).insetBy(dx: -pad, dy: -pad * 0.5)
-            rect = rect.union(labels)
+        if layout.style.showAxisLabels || layout.style.showDistancePoints || (layout.style.markerDistanceLabelEnabled && layout.style.currentMarkerEnabled) {
+            let textH = CGFloat(layout.unitFontSize * 1.3)
+            func unionBand(placement: DistanceTimelineAxisLabelTrackPlacement, gap: CGFloat) {
+                let yTop = layout.style.distanceTimelineAxisLabelTextTopY(
+                    trackRect: layout.trackRect,
+                    placement: placement,
+                    scaledGap: gap,
+                    textLineHeight: textH
+                )
+                let labels = CGRect(
+                    x: layout.rect.minX,
+                    y: yTop - layout.unitFontSize * 0.15,
+                    width: layout.rect.width,
+                    height: layout.unitFontSize * 1.7
+                ).insetBy(dx: -pad, dy: -pad * 0.5)
+                rect = rect.union(labels)
+            }
+            if layout.style.showAxisLabels {
+                unionBand(placement: layout.style.axisEndpointLabelPlacement, gap: CGFloat(layout.style.distancePointOffset * scale))
+            }
+            if layout.style.showDistancePoints, !layout.distancePointLabels.isEmpty {
+                unionBand(placement: layout.style.axisMidpointLabelPlacement, gap: CGFloat(layout.style.midpointAxisLabelOffset * scale))
+            }
+            if layout.style.markerDistanceLabelEnabled, layout.style.currentMarkerEnabled {
+                unionBand(placement: layout.style.markerDistanceLabelPlacement, gap: CGFloat(layout.style.markerDistanceLabelOffset * scale))
+            }
         }
         if layout.style.statsBar.visible,
            layout.style.statsBar.inside,
