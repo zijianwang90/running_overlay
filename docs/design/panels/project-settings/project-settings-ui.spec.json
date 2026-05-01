@@ -1,0 +1,133 @@
+{
+  "name": "Project Settings And Font Library",
+  "lastUpdated": "2026-04-30",
+  "surfaces": {
+    "projectSettings": {
+      "presentation": "dark macOS modal",
+      "title": "Project Settings",
+      "sections": [
+        {
+          "title": "Video",
+          "rows": [
+            {
+              "label": "Resolution",
+              "control": "dropdown",
+              "value": "1080p 16:9"
+            },
+            {
+              "label": "Frame Rate",
+              "control": "dropdown",
+              "value": "30 fps"
+            },
+            {
+              "label": "Layer Data FPS",
+              "control": "dropdown",
+              "value": "10 fps"
+            }
+          ]
+        },
+        {
+          "title": "Encoding",
+          "rows": [
+            {
+              "label": "Bitrate",
+              "control": "slider",
+              "value": "30 Mbps",
+              "valueAlignment": "right"
+            }
+          ]
+        },
+        {
+          "title": "Typography",
+          "rows": [
+            {
+              "label": "Font Library",
+              "caption": "Choose fonts shown in overlay menus.",
+              "control": "secondaryButton",
+              "buttonLabel": "Manage..."
+            }
+          ]
+        }
+      ],
+      "footer": {
+        "primaryAction": "Done",
+        "alignment": "right"
+      }
+    },
+    "fontLibrary": {
+      "presentation": "dark macOS modal sheet",
+      "title": "Font Library",
+      "subtitle": "Manage fonts shown in overlay menus.",
+      "search": {
+        "placeholder": "Search fonts",
+        "filter": "localizedCaseInsensitiveContains"
+      },
+      "sections": [
+        {
+          "title": "Favorites",
+          "purpose": "selected fonts shown first"
+        },
+        {
+          "title": "All Fonts",
+          "purpose": "searchable system font families"
+        }
+      ],
+      "row": {
+        "leadingControl": "checkbox",
+        "primaryText": "font family name rendered in that family",
+        "inlineDefaultAction": {
+          "scope": "Favorites section only",
+          "placement": "immediately after font family name",
+          "currentDefaultState": {
+            "label": "Default",
+            "style": "blue compact pill",
+            "visibility": "always"
+          },
+          "hoverState": {
+            "label": "Default",
+            "style": "gray compact button",
+            "visibility": "on hover for non-default favorite rows"
+          },
+          "icons": "none",
+          "layoutRule": "reserve inline space so rows do not shift when the hover action appears"
+        },
+        "trailingText": "numeric running preview rendered in the same family",
+        "trailingExamples": [
+          "5'42\"/km",
+          "10.24 km",
+          "4'58\"/km",
+          "42.20 km"
+        ],
+        "numericPreviewAlignment": "right",
+        "stableRowHeight": true
+      },
+      "footer": {
+        "selectedCountFormat": "%d fonts selected",
+        "defaultSummaryFormat": "Default: %@",
+        "combinedFooterExample": "6 fonts selected • Default: SF Pro",
+        "primaryAction": "Done"
+      },
+      "defaultFont": {
+        "storage": "one favorite family name",
+        "mustBeFavorite": true,
+        "onRemoveCurrentDefault": "promote first remaining favorite",
+        "emptyFavoritesFallback": "first fallback favorite"
+      },
+      "fallbackFavorites": [
+        "SF Pro",
+        "Avenir Next",
+        "Helvetica Neue",
+        "Menlo"
+      ]
+    }
+  },
+  "visualRules": {
+    "theme": "dark utility editor",
+    "titleAlignment": "center",
+    "sectionTreatment": "header plus bordered grouped box",
+    "rowTreatment": "stable height with subtle separators",
+    "primaryAccent": "accent.blue",
+    "secondaryControls": "raised dark control",
+    "controlRadiusPx": "6-8"
+  }
+}

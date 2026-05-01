@@ -763,12 +763,7 @@ private struct OverlayDetailView: View {
         )
     }
 
-    private let fontPresets = [
-        "SF Pro",
-        "Avenir Next",
-        "Helvetica Neue",
-        "Menlo"
-    ]
+    private var fontPresets: [String] { FontLibraryManager.shared.effectiveFavorites }
 
     private let colorPresets: [(name: String, color: OverlayColor)] = [
         ("White", .white),
@@ -897,7 +892,7 @@ private struct OverlayDetailView: View {
 
     private var fontNameBinding: Binding<String> {
         Binding {
-            element?.style.fontName ?? "SF Pro"
+            element?.style.fontName ?? FontLibraryManager.shared.defaultFamily
         } set: { newValue in
             project.setOverlayFontName(elementID, fontName: newValue)
         }

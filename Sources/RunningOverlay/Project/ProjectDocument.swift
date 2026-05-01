@@ -368,6 +368,10 @@ final class ProjectDocument: ObservableObject {
 
     private func defaultOverlayStyle(for type: OverlayElementType) -> OverlayStyle {
         var style = OverlayStyle.default
+        let defaultFont = FontLibraryManager.shared.defaultFamily
+        style.fontName = defaultFont
+        style.labelFontName = defaultFont
+        style.unitFontName = defaultFont
         style.unitOption = type.defaultUnitOption
         if type == .routeMap {
             // Route Style preset describes the polyline appearance only; map
@@ -412,7 +416,7 @@ final class ProjectDocument: ObservableObject {
                 height: 60,
                 cornerRadius: 0,
                 textContent: "Hello",
-                textFont: .system(family: "SF Pro Display"),
+                textFont: .system(family: FontLibraryManager.shared.defaultFamily),
                 textSize: 36,
                 textAlignment: .center,
                 textLineHeight: 1.2,

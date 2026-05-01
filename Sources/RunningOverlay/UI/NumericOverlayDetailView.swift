@@ -615,7 +615,7 @@ struct NumericOverlayDetailView: View {
         )
     }
 
-    static let fontPresets = ["SF Pro", "Avenir Next", "Helvetica Neue", "Menlo"]
+    static var fontPresets: [String] { FontLibraryManager.shared.effectiveFavorites }
     static let colorPresets: [(name: String, color: OverlayColor)] = [
         ("White", .white), ("Black", .black), ("Red", .red), ("Orange", .orange),
         ("Yellow", .yellow), ("Green", .green), ("Blue", .blue), ("Cyan", .cyan),

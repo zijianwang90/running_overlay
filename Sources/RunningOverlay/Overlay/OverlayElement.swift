@@ -26,6 +26,7 @@ enum OverlayPasteCategory: String, Equatable {
     case lapList
     case lapCard
     case lapLive
+    case weatherWidget
 }
 
 enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
@@ -45,6 +46,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     case lapList
     case lapCard
     case lapLive
+    case weatherWidget
     case verticalOscillation
     case groundContactTime
     case strideLength
@@ -76,6 +78,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         case .lapList: "Lap List"
         case .lapCard: "Lap Card"
         case .lapLive: "Lap Live"
+        case .weatherWidget: "Weather Widget"
         case .verticalOscillation: "Vertical Oscillation"
         case .groundContactTime: "Ground Contact Time"
         case .strideLength: "Stride Length"
@@ -92,6 +95,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     var supportsTextPresets: Bool {
         switch self {
         case .distanceTimeline, .elevationChart, .runningGauge, .routeMap, .lapList, .lapCard, .lapLive,
+             .weatherWidget,
              .decorSolidColor, .decorIcon, .decorText:
             false
         default:
@@ -152,6 +156,8 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
             return .lapCard
         case .lapLive:
             return .lapLive
+        case .weatherWidget:
+            return .weatherWidget
         default:
             return .numeric
         }
@@ -238,6 +244,7 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
         case .temperature: [.temperatureCelsius, .temperatureFahrenheit]
         case .grade: [.gradePercent]
         case .distanceTimeline, .elevationChart, .runningGauge, .routeMap, .lapList, .lapCard, .lapLive,
+             .weatherWidget,
              .decorSolidColor, .decorIcon, .decorText:
             []
         }
@@ -411,6 +418,9 @@ struct OverlayStyle: Equatable, Codable {
     /// Lap live overlay configuration. Only used by `.lapLive` elements.
     var lapLive: LapLiveStyle
 
+    /// Weather widget configuration. Only used by `.weatherWidget` elements.
+    var weather: WeatherWidgetStyle
+
     /// Decor element configuration. Used by `.decorSolidColor`, `.decorIcon`,
     /// `.decorText`. See `DecorStyle`.
     var decor: DecorStyle
@@ -440,7 +450,7 @@ struct OverlayStyle: Equatable, Codable {
         routeMapWidth: 320,
         routeMapHeight: 240,
         routeMapCornerRadius: 12,
-        fontName: "SF Pro",
+        fontName: FontLibraryManager.currentDefaultFamily,
         fontSize: 28,
         fontWeight: .semibold,
         foregroundColor: .white,
@@ -459,11 +469,11 @@ struct OverlayStyle: Equatable, Codable {
         customLabel: "",
         labelPosition: .top,
         unitPosition: .trailing,
-        labelFontName: "SF Pro",
+        labelFontName: FontLibraryManager.currentDefaultFamily,
         labelFontSize: 16,
         labelFontWeight: .medium,
         labelSpacing: 8,
-        unitFontName: "SF Pro",
+        unitFontName: FontLibraryManager.currentDefaultFamily,
         unitFontSize: 20,
         unitFontWeight: .medium,
         unitSpacing: 8,
@@ -497,6 +507,7 @@ struct OverlayStyle: Equatable, Codable {
         lapList: .default,
         lapCard: .default,
         lapLive: .default,
+        weather: .default,
         decor: .default
     )
 
@@ -544,11 +555,11 @@ struct OverlayStyle: Equatable, Codable {
         customLabel: String = "",
         labelPosition: OverlayTextAttachmentPosition = .top,
         unitPosition: OverlayTextAttachmentPosition = .trailing,
-        labelFontName: String = "SF Pro",
+        labelFontName: String = FontLibraryManager.currentDefaultFamily,
         labelFontSize: Double = 16,
         labelFontWeight: OverlayFontWeight = .medium,
         labelSpacing: Double = 8,
-        unitFontName: String = "SF Pro",
+        unitFontName: String = FontLibraryManager.currentDefaultFamily,
         unitFontSize: Double = 20,
         unitFontWeight: OverlayFontWeight = .medium,
         unitSpacing: Double = 8,
@@ -582,6 +593,7 @@ struct OverlayStyle: Equatable, Codable {
         lapList: LapListStyle = .default,
         lapCard: LapCardStyle = .default,
         lapLive: LapLiveStyle = .default,
+        weather: WeatherWidgetStyle = .default,
         decor: DecorStyle = .default
     ) {
         self.textPreset = textPreset
@@ -665,6 +677,7 @@ struct OverlayStyle: Equatable, Codable {
         self.lapList = lapList
         self.lapCard = lapCard
         self.lapLive = lapLive
+        self.weather = weather
         self.decor = decor
     }
 
@@ -767,6 +780,7 @@ struct OverlayStyle: Equatable, Codable {
         lapList = try container.decodeIfPresent(LapListStyle.self, forKey: .lapList) ?? .default
         lapCard = try container.decodeIfPresent(LapCardStyle.self, forKey: .lapCard) ?? .default
         lapLive = try container.decodeIfPresent(LapLiveStyle.self, forKey: .lapLive) ?? .default
+        weather = try container.decodeIfPresent(WeatherWidgetStyle.self, forKey: .weather) ?? .default
         decor = try container.decodeIfPresent(DecorStyle.self, forKey: .decor) ?? .default
     }
 }
@@ -1213,11 +1227,11 @@ struct DistanceTimelineStatsBarConfig: Equatable, Codable {
         backgroundOpacity: 0.72,
         dividerOpacity: 0.12,
         cornerRadius: 8,
-        valueFontName: "SF Pro Display",
+        valueFontName: FontLibraryManager.currentDefaultFamily,
         valueFontSize: 30,
         valueFontWeight: .semibold,
         valueColor: .white,
-        labelFontName: "SF Pro Display",
+        labelFontName: FontLibraryManager.currentDefaultFamily,
         labelFontSize: 10,
         labelFontWeight: .medium,
         labelColor: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.58),
@@ -1242,11 +1256,11 @@ struct DistanceTimelineStatsBarConfig: Equatable, Codable {
         backgroundOpacity: Double,
         dividerOpacity: Double,
         cornerRadius: Double,
-        valueFontName: String = "SF Pro Display",
+        valueFontName: String = FontLibraryManager.currentDefaultFamily,
         valueFontSize: Double = 30,
         valueFontWeight: OverlayFontWeight = .semibold,
         valueColor: OverlayColor = .white,
-        labelFontName: String = "SF Pro Display",
+        labelFontName: String = FontLibraryManager.currentDefaultFamily,
         labelFontSize: Double = 10,
         labelFontWeight: OverlayFontWeight = .medium,
         labelColor: OverlayColor = OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.58),
@@ -1331,6 +1345,7 @@ struct DistanceTimelineStyle: Equatable, Codable {
     var axisLabelFontSize: Double
     var axisLabelFontWeight: OverlayFontWeight
     var axisLabelColor: OverlayColor
+    /// Encoded for backward compatibility; kept in sync with `showAxisLabels` (midpoint labels follow the same toggle).
     var showDistancePoints: Bool
     var distancePointCount: Int
     var distancePointOffset: Double
@@ -1386,7 +1401,7 @@ struct DistanceTimelineStyle: Equatable, Codable {
         valueProgressSpacing: Double = 8,
         showLabel: Bool,
         label: String,
-        labelFontName: String = "SF Pro",
+        labelFontName: String = FontLibraryManager.currentDefaultFamily,
         labelFontSize: Double = 12,
         labelFontWeight: OverlayFontWeight = .medium,
         labelColor: OverlayColor = .white,
@@ -1394,7 +1409,7 @@ struct DistanceTimelineStyle: Equatable, Codable {
         showAxisLabels: Bool = false,
         axisLabelMode: DistanceTimelineAxisLabelMode = .startFinish,
         axisLabelOffset: Double = 14,
-        axisLabelFontName: String = "SF Pro",
+        axisLabelFontName: String = FontLibraryManager.currentDefaultFamily,
         axisLabelFontSize: Double = 11,
         axisLabelFontWeight: OverlayFontWeight = .medium,
         axisLabelColor: OverlayColor = .white,
@@ -1519,17 +1534,26 @@ struct DistanceTimelineStyle: Equatable, Codable {
         labelFontWeight = try c.decodeIfPresent(OverlayFontWeight.self, forKey: .labelFontWeight) ?? base.labelFontWeight
         labelColor = try c.decodeIfPresent(OverlayColor.self, forKey: .labelColor) ?? base.labelColor
         labelValueSpacing = try c.decodeIfPresent(Double.self, forKey: .labelValueSpacing) ?? base.labelValueSpacing
-        showAxisLabels = try c.decodeIfPresent(Bool.self, forKey: .showAxisLabels)
+        let decodedShowAxisLabels = try c.decodeIfPresent(Bool.self, forKey: .showAxisLabels)
             ?? legacy.decodeIfPresent(Bool.self, forKey: .showStartFinishLabels)
             ?? base.showAxisLabels
+        let decodedShowDistancePoints = try c.decodeIfPresent(Bool.self, forKey: .showDistancePoints) ?? base.showDistancePoints
+        // Legacy split: endpoints vs midpoints. Any axis labels on → master toggle on; endpoints-only → clear stored density.
+        showAxisLabels = decodedShowAxisLabels || decodedShowDistancePoints
+        showDistancePoints = showAxisLabels
+
         axisLabelMode = try c.decodeIfPresent(DistanceTimelineAxisLabelMode.self, forKey: .axisLabelMode) ?? base.axisLabelMode
         axisLabelOffset = try c.decodeIfPresent(Double.self, forKey: .axisLabelOffset) ?? base.axisLabelOffset
         axisLabelFontName = try c.decodeIfPresent(String.self, forKey: .axisLabelFontName) ?? base.axisLabelFontName
         axisLabelFontSize = try c.decodeIfPresent(Double.self, forKey: .axisLabelFontSize) ?? base.axisLabelFontSize
         axisLabelFontWeight = try c.decodeIfPresent(OverlayFontWeight.self, forKey: .axisLabelFontWeight) ?? base.axisLabelFontWeight
         axisLabelColor = try c.decodeIfPresent(OverlayColor.self, forKey: .axisLabelColor) ?? base.axisLabelColor
-        showDistancePoints = try c.decodeIfPresent(Bool.self, forKey: .showDistancePoints) ?? base.showDistancePoints
-        distancePointCount = min(max(try c.decodeIfPresent(Int.self, forKey: .distancePointCount) ?? base.distancePointCount, 0), 12)
+
+        var mergedPointCount = min(max(try c.decodeIfPresent(Int.self, forKey: .distancePointCount) ?? base.distancePointCount, 0), 12)
+        if decodedShowAxisLabels, !decodedShowDistancePoints {
+            mergedPointCount = 0
+        }
+        distancePointCount = mergedPointCount
         distancePointOffset = try c.decodeIfPresent(Double.self, forKey: .distancePointOffset) ?? base.distancePointOffset
         statsBar = try c.decodeIfPresent(DistanceTimelineStatsBarConfig.self, forKey: .statsBar) ?? base.statsBar
         backgroundEnabled = try c.decodeIfPresent(Bool.self, forKey: .backgroundEnabled) ?? base.backgroundEnabled
@@ -1810,6 +1834,7 @@ struct DistanceTimelineStyle: Equatable, Codable {
             style.height = 102
             style.showLabel = true
             style.showAxisLabels = true
+            style.showDistancePoints = true
             style.axisLabelMode = .startFinish
             style.backgroundOpacity = 0.58
             style.borderEnabled = true
@@ -2201,11 +2226,11 @@ struct OverlayRouteMapStatsBarConfig: Equatable, Codable {
         blurRadius: 0,
         dividerOpacity: 0.12,
         cornerRadius: 0,
-        valueFontName: "SF Pro Display",
+        valueFontName: FontLibraryManager.currentDefaultFamily,
         valueFontSize: 30,
         valueFontWeight: .semibold,
         valueColor: .white,
-        labelFontName: "SF Pro Display",
+        labelFontName: FontLibraryManager.currentDefaultFamily,
         labelFontSize: 10,
         labelFontWeight: .medium,
         labelColor: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.58),
@@ -2231,11 +2256,11 @@ struct OverlayRouteMapStatsBarConfig: Equatable, Codable {
         blurRadius: Double = 0,
         dividerOpacity: Double = 0.12,
         cornerRadius: Double = 0,
-        valueFontName: String = "SF Pro Display",
+        valueFontName: String = FontLibraryManager.currentDefaultFamily,
         valueFontSize: Double = 30,
         valueFontWeight: OverlayFontWeight = .semibold,
         valueColor: OverlayColor = .white,
-        labelFontName: String = "SF Pro Display",
+        labelFontName: String = FontLibraryManager.currentDefaultFamily,
         labelFontSize: Double = 10,
         labelFontWeight: OverlayFontWeight = .medium,
         labelColor: OverlayColor = OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.58),
@@ -2380,7 +2405,7 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .minimal:
             return OverlayPresetTokens(
-                fontName: "SF Pro",
+                fontName: FontLibraryManager.currentDefaultFamily,
                 fontWeight: .semibold,
                 fontSize: 34,
                 textAlignment: .leading,
@@ -2394,7 +2419,7 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
             )
         case .minimalLabel:
             return OverlayPresetTokens(
-                fontName: "SF Pro",
+                fontName: FontLibraryManager.currentDefaultFamily,
                 fontWeight: .semibold,
                 fontSize: 34,
                 textAlignment: .leading,
@@ -2408,7 +2433,7 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
             )
         case .pillBadge:
             return OverlayPresetTokens(
-                fontName: "SF Pro",
+                fontName: FontLibraryManager.currentDefaultFamily,
                 fontWeight: .bold,
                 fontSize: 32,
                 textAlignment: .leading,
@@ -2422,7 +2447,7 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
             )
         case .metricCard:
             return OverlayPresetTokens(
-                fontName: "SF Pro",
+                fontName: FontLibraryManager.currentDefaultFamily,
                 fontWeight: .bold,
                 fontSize: 42,
                 textAlignment: .leading,
@@ -2436,7 +2461,7 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
             )
         case .bigNumber:
             return OverlayPresetTokens(
-                fontName: "SF Pro",
+                fontName: FontLibraryManager.currentDefaultFamily,
                 fontWeight: .bold,
                 fontSize: 82,
                 textAlignment: .trailing,
@@ -2450,7 +2475,7 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
             )
         case .splitLabel:
             return OverlayPresetTokens(
-                fontName: "SF Pro",
+                fontName: FontLibraryManager.currentDefaultFamily,
                 fontWeight: .bold,
                 fontSize: 42,
                 textAlignment: .leading,
@@ -2464,7 +2489,7 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
             )
         case .neonGlow:
             return OverlayPresetTokens(
-                fontName: "SF Pro",
+                fontName: FontLibraryManager.currentDefaultFamily,
                 fontWeight: .bold,
                 fontSize: 42,
                 textAlignment: .leading,
@@ -2478,7 +2503,7 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
             )
         case .racingStripe:
             return OverlayPresetTokens(
-                fontName: "SF Pro",
+                fontName: FontLibraryManager.currentDefaultFamily,
                 fontWeight: .bold,
                 fontSize: 40,
                 textAlignment: .leading,
@@ -2492,7 +2517,7 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
             )
         case .editorial:
             return OverlayPresetTokens(
-                fontName: "SF Pro",
+                fontName: FontLibraryManager.currentDefaultFamily,
                 fontWeight: .bold,
                 fontSize: 64,
                 textAlignment: .leading,
@@ -3034,7 +3059,7 @@ struct DecorStyle: Equatable, Codable {
 
         init(from style: DecorStyle) {
             content = style.textContent ?? "Hello"
-            font = style.textFont ?? .system(family: "SF Pro Display")
+            font = style.textFont ?? .system(family: FontLibraryManager.currentDefaultFamily)
             size = style.textSize ?? 36
             alignment = style.textAlignment ?? .center
             lineHeight = style.textLineHeight ?? 1.2

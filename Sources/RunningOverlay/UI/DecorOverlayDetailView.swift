@@ -346,9 +346,9 @@ struct DecorOverlayDetailView: View {
                 get: { fontIdx },
                 set: { (idx: Int) in
                     switch idx {
-                    case 0: project.setDecorTextFont(elementID, font: .system(family: "SF Pro Display"))
+                    case 0: project.setDecorTextFont(elementID, font: .system(family: FontLibraryManager.shared.defaultFamily))
                     case 1:
-                        let first = BundledFonts.availableFontNames.first ?? "SF Pro Display"
+                        let first = BundledFonts.availableFontNames.first ?? FontLibraryManager.shared.defaultFamily
                         project.setDecorTextFont(elementID, font: .bundled(name: first))
                     default: break
                     }
@@ -361,12 +361,12 @@ struct DecorOverlayDetailView: View {
             .pickerStyle(.segmented)
         }
         if case .system = r.font {
-            let families = NSFontManager.shared.availableFontFamilies
+            let families = FontLibraryManager.shared.effectiveFavorites
             InspectorDenseRow(label: "Family") {
                 Picker("", selection: Binding(
                     get: {
                         if case .system(let f) = r.font { return f }
-                        return "SF Pro Display"
+                        return FontLibraryManager.shared.defaultFamily
                     },
                     set: { project.setDecorTextFont(elementID, font: .system(family: $0)) }
                 )) {
