@@ -120,6 +120,8 @@ struct OverlayFrameRenderer {
             renderLapCard(element, renderContext: renderContext)
         case .lapLive:
             renderLapLive(element, renderContext: renderContext)
+        case .weatherWidget:
+            renderWeatherWidget(element, renderContext: renderContext)
         default:
             renderTextElement(element, renderContext: renderContext, cache: &cache)
         }
@@ -1434,6 +1436,57 @@ struct OverlayFrameRenderer {
                 NSColor(layout.progressColor).withAlphaComponent(0.55).setFill()
                 NSBezierPath(roundedRect: barRect, xRadius: barH / 2, yRadius: barH / 2).fill()
             }
+        }
+    }
+
+    private static func renderWeatherWidget(_ element: OverlayElement, renderContext: OverlayRenderContext) {
+        let layout = OverlayRenderModel.weatherWidgetLayout(for: element, in: renderContext)
+        let rect = layout.rect
+
+        let bg = NSColor(layout.style.cardBackgroundColor).withAlphaComponent(layout.style.cardBackgroundOpacity)
+        bg.setFill()
+        NSBezierPath(roundedRect: rect, xRadius: layout.style.cardCornerRadius, yRadius: layout.style.cardCornerRadius).fill()
+
+        let fg = NSColor.white
+        let fgMuted = NSColor.white.withAlphaComponent(0.65)
+
+        // Icon
+        if let symbol = NSImage(systemSymbolName: layout.sfSymbolName, accessibilityDescription: nil) {
+            let cfg = NSImage.SymbolConfiguration(pointSize: layout.iconSize, weight: .regular)
+            if let configured = symbol.withSymbolConfiguration(cfg) {
+                let iconColor = NSColor(layout.iconTint)
+                let tinted = NSImage(size: configured.size)
+                tinted.lockFocus()
+                iconColor.setFill()
+                NSRect(origin: .zero, size: configured.size).fill(using: .sourceAtop)
+                configured.draw(in: NSRect(origin: .zero, size: configured.size), from: .zero, operation: .sourceOver, fraction: 1)
+                tinted.unlockFocus()
+                let iconRect = CGRect(x: rect.minX + 12, y: rect.midY - layout.iconSize / 2, width: layout.iconSize, height: layout.iconSize)
+                tinted.draw(in: iconRect, from: .zero, operation: .sourceOver, fraction: 1)
+            }
+        }
+
+        let textX = rect.minX + layout.iconSize + 24
+
+        // Temperature
+        let tempFont = NSFont.systemFont(ofSize: layout.fontSize * 1.6, weight: .bold)
+        let tempAttrs: [NSAttributedString.Key: Any] = [.font: tempFont, .foregroundColor: fg]
+        let tempSize = (layout.temperatureFormatted as NSString).size(withAttributes: tempAttrs)
+        (layout.temperatureFormatted as NSString).draw(at: CGPoint(x: textX, y: rect.midY - tempSize.height / 2), withAttributes: tempAttrs)
+
+        // Condition label
+        if layout.style.showConditionLabel {
+            let condFont = NSFont.systemFont(ofSize: layout.fontSize * 0.7, weight: .regular)
+            let condAttrs: [NSAttributedString.Key: Any] = [.font: condFont, .foregroundColor: fgMuted]
+            let condX = textX + tempSize.width + 8
+            (layout.conditionLabel as NSString).draw(at: CGPoint(x: condX, y: rect.midY - condFont.pointSize / 2), withAttributes: condAttrs)
+        }
+
+        // Location
+        if !layout.locationText.isEmpty {
+            let locFont = NSFont.systemFont(ofSize: layout.fontSize * 0.75, weight: .medium)
+            let locAttrs: [NSAttributedString.Key: Any] = [.font: locFont, .foregroundColor: fgMuted]
+            (layout.locationText as NSString).draw(at: CGPoint(x: textX, y: rect.minY + 8), withAttributes: locAttrs)
         }
     }
 

@@ -34,8 +34,8 @@ Phase 1:
 Phase 2:
 
 - Activity start timestamp.
-- GPS start point or manually selected location.
-- Weather API response cached into the project.
+- GPS start point from FIT (used for coordinate-based localization and weather lookup) or manually selected location.
+- Historical weather from Open-Meteo archive API (activity date, not current forecast). Cached into the project for export determinism.
 
 ## Rendering Model
 
@@ -79,9 +79,9 @@ The first implementation can expose manual fields only. Weather API controls sho
 
 Add all new types in a `// MARK: - Weather Widget` section at the bottom of the file.
 
-**`WeatherCondition` enum** — 10 cases: `sunny, clearNight, partlyCloudy, cloudy, rain, heavyRain, thunder, snow, fog, wind`. Properties: `label`, `sfSymbolName` (SF Symbol fallback), `iconTint: OverlayColor`. Static func `fromWMO(_ code: Int) -> WeatherCondition` for Phase 2 Open-Meteo WMO code mapping.
+**`WeatherCondition` enum** — 10 cases: `sunny, clearNight, partlyCloudy, cloudy, rain, heavyRain, thunder, snow, fog, wind`. Properties: `label(locale:)` auto-localized from activity coordinates (not system locale), `sfSymbolName` (SF Symbol fallback), `iconTint: OverlayColor`. Static func `fromWMO(_ code: Int) -> WeatherCondition` for Phase 2 Open-Meteo WMO code mapping. All fields user-overridable.
 
-**`WeatherTemperatureUnit` enum** — `celsius`, `fahrenheit`. Method `formatted(_ celsius: Double) -> String`.
+**`WeatherTemperatureUnit` enum** — `celsius`, `fahrenheit`. Defaults to system locale. Method `formatted(_ celsius: Double) -> String`.
 
 **`WeatherDataSource` enum** — `fitTemperature` (Phase 1), `manual` (Phase 1), `openMeteo` (Phase 2).
 
@@ -154,7 +154,7 @@ New file following `NumericOverlayDetailView` structure. Use `InspectorDense*` p
 | Preset | `Menu` over all presets → `applyWeatherWidgetPreset` |
 | Content | Data source picker (FIT / Manual; API greyed in Phase 1); condition picker with icon preview |
 | Location | TextField for `locationText`; toggles for showLocation, showWeekday |
-| Temperature | Manual temp field; unit picker (°C / °F); FIT source indicator |
+| Temperature | Manual temp field; unit picker (°C / °F, defaults to system locale); FIT source indicator |
 | Metrics | Toggle + field rows for humidity, H/L, wind, feelsLike |
 | Icon | Condition icon preview; iconSize slider; showConditionLabel toggle |
 | Layout | `OverlayLayoutInspectorRows` with width/height bindings; corner radius slider |
@@ -183,9 +183,10 @@ Also update `defaultOverlayStyle(for:)` to set `style.weatherWidget = .preset(.s
 
 `actor WeatherFetcher` with `static func fetch(latitude:longitude:date:manualFallback:) async throws -> WeatherPayload`:
 
-- Open-Meteo archive API (free, no key required): `https://archive-api.open-meteo.com/v1/archive?latitude=…&hourly=temperature_2m,weathercode,windspeed_10m,relativehumidity_2m,apparent_temperature`
+- Queries historical weather for the activity date (Open-Meteo archive API, free, no key required): `https://archive-api.open-meteo.com/v1/archive?latitude=…&start_date=…&end_date=…&hourly=temperature_2m,weathercode,windspeed_10m,relativehumidity_2m,apparent_temperature`
 - Pick the hour matching activity start time; derive daily H/L from full hourly array.
 - Map WMO codes to `WeatherCondition` via `fromWMO(_:)`.
+- GPS coordinates from FIT used for both localization and API lookup; manual location override supported.
 - Fall back to `manualFallback` when coordinates are missing or API fails.
 - Private `OpenMeteoResponse: Decodable` struct for JSON decoding.
 
@@ -213,8 +214,8 @@ Also update `defaultOverlayStyle(for:)` to set `style.weatherWidget = .preset(.s
 
 Not implemented. The plan above captures the approved implementation approach.
 
-## Open Questions
+## Resolved Decisions
 
-- Should weather condition labels localize automatically or remain user-editable text?
-- Should temperature units follow project settings, locale, or a per-widget selector?
-- Should API-backed weather use historical activity weather or forecast weather for the export date?
+- **Condition label localization**: Auto-localized from activity coordinates (FIT GPS), not system locale. Every display field is user-editable; manual values override auto-localized ones.
+- **Temperature unit default**: Follows system locale (°C or °F), with a per-widget override in Inspector.
+- **API weather data**: Always historical weather for the activity date (Open-Meteo archive API). Running is always a past event; forecasts are not meaningful.

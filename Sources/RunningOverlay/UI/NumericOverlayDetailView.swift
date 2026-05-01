@@ -802,6 +802,7 @@ extension OverlayElementType {
         case .decorSolidColor: "square.fill"
         case .decorIcon: "star"
         case .decorText: "textformat"
+        case .weatherWidget: "cloud.sun.fill"
         }
     }
 }

@@ -58,6 +58,7 @@ enum OverlayCategory: String, CaseIterable, Identifiable {
     case metrics
     case charts
     case route
+    case weather
     case decor
 
     var id: String { rawValue }
@@ -67,6 +68,7 @@ enum OverlayCategory: String, CaseIterable, Identifiable {
         case .metrics: "Metrics"
         case .charts: "Charts"
         case .route: "Route"
+        case .weather: "Weather"
         case .decor: "Decor"
         }
     }
@@ -106,6 +108,7 @@ struct OverlayTileInfo: Identifiable {
         OverlayTileInfo(type: .lapList, hint: "lap teleprompter", systemImage: "list.number", category: .charts, isAccent: true),
         OverlayTileInfo(type: .lapCard, hint: "lap recap card", systemImage: "rectangle.badge.checkmark", category: .charts, isAccent: true),
         OverlayTileInfo(type: .lapLive, hint: "live lap HUD", systemImage: "stopwatch", category: .charts, isAccent: true),
+        OverlayTileInfo(type: .weatherWidget, hint: "current weather", systemImage: "cloud.sun.fill", category: .weather, isAccent: true),
         OverlayTileInfo(type: .decorSolidColor, hint: "shape", systemImage: "square.fill", category: .decor),
         OverlayTileInfo(type: .decorIcon, hint: "symbol", systemImage: "star", category: .decor),
         OverlayTileInfo(type: .decorText, hint: "label", systemImage: "textformat", category: .decor)

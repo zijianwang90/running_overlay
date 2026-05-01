@@ -26,6 +26,8 @@ struct ParameterPanelView: View {
                         LapCardOverlayDetailView(elementID: elementID)
                     } else if element.type == .lapLive {
                         LapLiveOverlayDetailView(elementID: elementID)
+                    } else if element.type == .weatherWidget {
+                        WeatherWidgetOverlayDetailView(elementID: elementID)
                     } else if element.type.isDecorOverlay {
                         DecorOverlayDetailView(elementID: elementID)
                     } else {

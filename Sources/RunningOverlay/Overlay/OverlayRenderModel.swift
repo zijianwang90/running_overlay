@@ -1375,3 +1375,112 @@ struct LapLiveRenderLayout {
     var progressColor: OverlayColor
     var progressOpacity: Double
 }
+
+// MARK: - Weather Widget
+
+struct WeatherWidgetRenderLayout {
+    var style: WeatherWidgetStyle
+    var rect: CGRect
+    var condition: WeatherCondition
+    var temperatureFormatted: String
+    var highFormatted: String
+    var lowFormatted: String
+    var humidityFormatted: String
+    var windFormatted: String
+    var feelsLikeFormatted: String
+    var locationText: String
+    var weekdayText: String
+    var conditionLabel: String
+    var sfSymbolName: String
+    var iconTint: OverlayColor
+    var iconSize: Double
+    var fontSize: Double
+}
+
+extension OverlayRenderModel {
+    static func weatherWidgetLayout(for element: OverlayElement, in context: OverlayRenderContext) -> WeatherWidgetRenderLayout {
+        let style = element.style.weatherWidget
+        let w = context.scaled(style.width * element.scale)
+        let h = context.scaled(style.height * element.scale)
+        let rect = centeredRect(for: element, size: CGSize(width: w, height: h), canvasSize: context.canvasSize)
+
+        let condition: WeatherCondition
+        let temperatureCelsius: Double
+        let humidity: Double?
+        let highCelsius: Double?
+        let lowCelsius: Double?
+        let windKph: Double?
+        let feelsLikeCelsius: Double?
+        let resolvedLocation: String?
+
+        if let cached = style.cachedWeather {
+            condition = cached.condition
+            temperatureCelsius = cached.temperatureCelsius
+            humidity = cached.humidity
+            highCelsius = cached.highTemperatureCelsius
+            lowCelsius = cached.lowTemperatureCelsius
+            windKph = cached.windKph
+            feelsLikeCelsius = cached.feelsLikeCelsius
+            resolvedLocation = cached.resolvedLocation
+        } else {
+            condition = style.manualCondition
+            switch style.dataSource {
+            case .fitTemperature:
+                temperatureCelsius = context.activity.temperature(at: context.elapsedTime) ?? style.manualTemperatureCelsius
+            case .manual, .openMeteo:
+                temperatureCelsius = style.manualTemperatureCelsius
+            }
+            humidity = style.showHumidity ? style.manualHumidity : nil
+            highCelsius = style.showHighLow ? style.manualHigh : nil
+            lowCelsius = style.showHighLow ? style.manualLow : nil
+            windKph = style.showWind ? style.manualWind : nil
+            feelsLikeCelsius = style.showFeelsLike ? style.manualFeelsLike : nil
+            resolvedLocation = style.showLocation && !style.locationText.isEmpty ? style.locationText : nil
+        }
+
+        let unit = style.temperatureUnit
+        let tempStr = unit.formatted(temperatureCelsius)
+        let highStr = highCelsius.map { unit.formatted($0) } ?? ""
+        let lowStr = lowCelsius.map { unit.formatted($0) } ?? ""
+        let humidityStr = humidity.map { "\(Int($0.rounded()))%" } ?? ""
+        let windStr = windKph.map { "\(String(format: "%.0f", $0)) km/h" } ?? ""
+        let feelsLikeStr = feelsLikeCelsius.map { unit.formatted($0) } ?? ""
+
+        let location: String
+        if !style.locationText.isEmpty {
+            location = style.locationText
+        } else if let resolved = resolvedLocation {
+            location = resolved
+        } else {
+            location = ""
+        }
+
+        var weekday = ""
+        if style.showWeekday {
+            let df = DateFormatter()
+            df.dateFormat = "EEE"
+            weekday = df.string(from: context.activity.startDate)
+        }
+
+        let fontSize = context.scaled(max(10, style.width * 0.04 * element.scale))
+
+        return WeatherWidgetRenderLayout(
+            style: style,
+            rect: rect,
+            condition: condition,
+            temperatureFormatted: tempStr,
+            highFormatted: highStr,
+            lowFormatted: lowStr,
+            humidityFormatted: humidityStr,
+            windFormatted: windStr,
+            feelsLikeFormatted: feelsLikeStr,
+            locationText: location,
+            weekdayText: weekday,
+            conditionLabel: condition.label,
+            sfSymbolName: condition.sfSymbolName,
+            iconTint: condition.iconTint,
+            iconSize: context.scaled(style.iconSize * element.scale),
+            fontSize: fontSize
+        )
+    }
+}

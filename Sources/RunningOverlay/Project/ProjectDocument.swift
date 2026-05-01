@@ -408,6 +408,9 @@ final class ProjectDocument: ObservableObject {
             )
             style.backgroundEnabled = false
         }
+        if type == .weatherWidget {
+            style.weatherWidget = WeatherWidgetStyle.preset(.simpleCard)
+        }
         if type == .decorText {
             style.decor = DecorStyle(
                 shape: .rectangle,
@@ -1415,6 +1418,18 @@ final class ProjectDocument: ObservableObject {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
         mutate(&overlayLayout.elements[index].style.decor)
+    }
+
+    func mutateWeatherWidgetStyle(_ elementID: OverlayElement.ID, _ mutate: (inout WeatherWidgetStyle) -> Void) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.weatherWidget)
+    }
+
+    func mutateWeatherWidgetStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout WeatherWidgetStyle) -> Void) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.weatherWidget)
     }
 
     func setDecorShape(_ elementID: OverlayElement.ID, shape: DecorShape) {

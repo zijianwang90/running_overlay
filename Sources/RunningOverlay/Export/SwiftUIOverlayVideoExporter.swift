@@ -346,6 +346,11 @@ private struct SwiftUIOverlayFrameView: View {
                             element: element,
                             layout: OverlayRenderModel.decorTextLayout(for: element, in: context)
                         )
+                    case .weatherWidget:
+                        OverlaySharedWeatherWidgetView(
+                            element: element,
+                            layout: OverlayRenderModel.weatherWidgetLayout(for: element, in: context)
+                        )
                     default:
                         OverlaySharedTextPresetView(
                             element: element,

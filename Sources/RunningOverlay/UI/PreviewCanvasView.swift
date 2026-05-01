@@ -626,6 +626,11 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
                     element: element,
                     layout: OverlayRenderModel.decorTextLayout(for: element, in: renderContext)
                 )
+            case .weatherWidget:
+                OverlaySharedWeatherWidgetView(
+                    element: element,
+                    layout: OverlayRenderModel.weatherWidgetLayout(for: element, in: renderContext)
+                )
             default:
                 OverlaySharedTextPresetView(
                     element: element,

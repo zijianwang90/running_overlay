@@ -26,8 +26,8 @@ The first design pass is visual-only. Do not wire API fetching, FIT extraction, 
 
 Required display fields:
 
-- `condition`: weather state, e.g. Rain, Cloudy, Sunny.
-- `temperature`: current temperature, e.g. `13°C`.
+- `condition`: weather state with auto-localized label derived from activity coordinates (not system locale), e.g. `雨` in Japan, `Rain` in US. Every field is user-overridable; manual edits take precedence over auto-localized values.
+- `temperature`: current temperature, e.g. `13°C`. Unit defaults to system locale (°C or °F), user-adjustable per widget.
 
 Optional display fields:
 
@@ -166,8 +166,9 @@ Phase 1 can be manual/FIT-first:
 
 Phase 2 can add weather API support:
 
-- Use activity start timestamp.
-- Use GPS start point or manually selected location.
+- Query historical weather for the activity date (Open-Meteo archive API), not current forecast. Running data is always past events; a forecast is meaningless.
+- Use GPS start point from FIT or manually selected location.
+- Auto-localize condition labels from activity coordinates (e.g. Japan → Japanese labels), not from system locale. All fields remain user-editable.
 - Cache resolved weather data in the project to make export deterministic.
 - Keep API failures non-destructive by falling back to manual fields.
 
@@ -188,9 +189,9 @@ Recommended sections:
 Key controls:
 
 - Preset picker: Simple Card, Compact Strip, Forecast Tile, Minimal Text, Dashboard Bar.
-- Condition picker using the shared icon set.
+- Condition picker using the shared icon set. Condition labels auto-localize from activity coordinates; user can override any field.
 - Data source picker: FIT Temperature, Manual, Weather API later.
-- Manual temperature fields.
+- Manual temperature fields with unit picker (°C / °F), defaulting to system locale.
 - Location text fields.
 - Toggles for weekday, humidity, high/low, wind, feels-like.
 - Background opacity and card color.
@@ -203,8 +204,8 @@ Key controls:
 - Preview and export must share the same render layout.
 - API-backed weather must be cached before export so videos are reproducible offline.
 
-## Open Questions
+## Resolved Decisions
 
-- Should localized condition labels be user-editable per project?
-- Should the default temperature unit follow project settings or per-widget settings?
-- Should weather API data resolve historical weather for the activity timestamp or current forecast for the project export date?
+- **Condition label localization**: Auto-localized from activity coordinates (FIT GPS), not system locale. Every display field is user-editable; manual values override auto-localized ones.
+- **Temperature unit default**: Follows system locale (°C or °F), with a per-widget override in Inspector.
+- **API weather data**: Always historical weather for the activity date (Open-Meteo archive API). Running is always a past event; forecasts are not meaningful.

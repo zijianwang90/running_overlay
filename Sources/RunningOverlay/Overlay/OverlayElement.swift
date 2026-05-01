@@ -26,6 +26,7 @@ enum OverlayPasteCategory: String, Equatable {
     case lapList
     case lapCard
     case lapLive
+    case weather
 }
 
 enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
@@ -52,6 +53,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     case groundContactBalance
     case temperature
     case grade
+    case weatherWidget
     case decorSolidColor
     case decorIcon
     case decorText
@@ -83,6 +85,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         case .groundContactBalance: "GCT Balance"
         case .temperature: "Temperature"
         case .grade: "Grade"
+        case .weatherWidget: "Weather Widget"
         case .decorSolidColor: "Solid Color"
         case .decorIcon: "Icon"
         case .decorText: "Text"
@@ -92,7 +95,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     var supportsTextPresets: Bool {
         switch self {
         case .distanceTimeline, .elevationChart, .runningGauge, .routeMap, .lapList, .lapCard, .lapLive,
-             .decorSolidColor, .decorIcon, .decorText:
+             .weatherWidget, .decorSolidColor, .decorIcon, .decorText:
             false
         default:
             true
@@ -152,6 +155,8 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
             return .lapCard
         case .lapLive:
             return .lapLive
+        case .weatherWidget:
+            return .weather
         default:
             return .numeric
         }
@@ -238,7 +243,7 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
         case .temperature: [.temperatureCelsius, .temperatureFahrenheit]
         case .grade: [.gradePercent]
         case .distanceTimeline, .elevationChart, .runningGauge, .routeMap, .lapList, .lapCard, .lapLive,
-             .decorSolidColor, .decorIcon, .decorText:
+             .weatherWidget, .decorSolidColor, .decorIcon, .decorText:
             []
         }
     }
@@ -415,6 +420,9 @@ struct OverlayStyle: Equatable, Codable {
     /// `.decorText`. See `DecorStyle`.
     var decor: DecorStyle
 
+    /// Weather Widget configuration. Used only by `.weatherWidget`.
+    var weatherWidget: WeatherWidgetStyle
+
     static let `default` = OverlayStyle(
         textPreset: .minimal,
         gaugePreset: .minimalSport,
@@ -497,7 +505,8 @@ struct OverlayStyle: Equatable, Codable {
         lapList: .default,
         lapCard: .default,
         lapLive: .default,
-        decor: .default
+        decor: .default,
+        weatherWidget: .preset(.simpleCard)
     )
 
     init(
@@ -582,7 +591,8 @@ struct OverlayStyle: Equatable, Codable {
         lapList: LapListStyle = .default,
         lapCard: LapCardStyle = .default,
         lapLive: LapLiveStyle = .default,
-        decor: DecorStyle = .default
+        decor: DecorStyle = .default,
+        weatherWidget: WeatherWidgetStyle = .preset(.simpleCard)
     ) {
         self.textPreset = textPreset
         self.gaugePreset = gaugePreset
@@ -666,6 +676,7 @@ struct OverlayStyle: Equatable, Codable {
         self.lapCard = lapCard
         self.lapLive = lapLive
         self.decor = decor
+        self.weatherWidget = weatherWidget
     }
 
     init(from decoder: Decoder) throws {
@@ -768,6 +779,7 @@ struct OverlayStyle: Equatable, Codable {
         lapCard = try container.decodeIfPresent(LapCardStyle.self, forKey: .lapCard) ?? .default
         lapLive = try container.decodeIfPresent(LapLiveStyle.self, forKey: .lapLive) ?? .default
         decor = try container.decodeIfPresent(DecorStyle.self, forKey: .decor) ?? .default
+        weatherWidget = try container.decodeIfPresent(WeatherWidgetStyle.self, forKey: .weatherWidget) ?? .preset(.simpleCard)
     }
 }
 
@@ -3136,3 +3148,269 @@ struct DecorStyle: Equatable, Codable {
             contentMode = style.iconContentMode ?? .fit
         }
     }
+
+// MARK: - Weather Widget
+
+enum WeatherCondition: String, CaseIterable, Identifiable, Equatable, Codable {
+    case sunny
+    case clearNight
+    case partlyCloudy
+    case cloudy
+    case rain
+    case heavyRain
+    case thunder
+    case snow
+    case fog
+    case wind
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .sunny: "Sunny"
+        case .clearNight: "Clear Night"
+        case .partlyCloudy: "Partly Cloudy"
+        case .cloudy: "Cloudy"
+        case .rain: "Rain"
+        case .heavyRain: "Heavy Rain"
+        case .thunder: "Thunderstorm"
+        case .snow: "Snow"
+        case .fog: "Fog"
+        case .wind: "Wind"
+        }
+    }
+
+    var sfSymbolName: String {
+        switch self {
+        case .sunny: "sun.max.fill"
+        case .clearNight: "moon.stars.fill"
+        case .partlyCloudy: "cloud.sun.fill"
+        case .cloudy: "cloud.fill"
+        case .rain: "cloud.drizzle.fill"
+        case .heavyRain: "cloud.heavyrain.fill"
+        case .thunder: "cloud.bolt.fill"
+        case .snow: "snowflake"
+        case .fog: "cloud.fog.fill"
+        case .wind: "wind"
+        }
+    }
+
+    var iconTint: OverlayColor {
+        switch self {
+        case .sunny: OverlayColor(red: 1, green: 0.8, blue: 0.2, alpha: 1)
+        case .clearNight: OverlayColor(red: 0.4, green: 0.5, blue: 1, alpha: 1)
+        case .partlyCloudy: OverlayColor(red: 0.55, green: 0.55, blue: 0.55, alpha: 1)
+        case .cloudy: OverlayColor(red: 0.45, green: 0.45, blue: 0.45, alpha: 1)
+        case .rain: OverlayColor(red: 0.3, green: 0.6, blue: 1, alpha: 1)
+        case .heavyRain: OverlayColor(red: 0.2, green: 0.4, blue: 0.9, alpha: 1)
+        case .thunder: OverlayColor(red: 0.8, green: 0.6, blue: 0.1, alpha: 1)
+        case .snow: OverlayColor(red: 0.75, green: 0.85, blue: 1, alpha: 1)
+        case .fog: OverlayColor(red: 0.55, green: 0.55, blue: 0.6, alpha: 1)
+        case .wind: OverlayColor(red: 0.5, green: 0.7, blue: 0.75, alpha: 1)
+        }
+    }
+
+    static func fromWMO(_ code: Int) -> WeatherCondition {
+        switch code {
+        case 0, 1: .sunny
+        case 2: .partlyCloudy
+        case 3: .cloudy
+        case 45, 48: .fog
+        case 51, 53, 55, 56, 57, 61, 63, 65: .rain
+        case 66, 67, 80, 81, 82: .heavyRain
+        case 71, 73, 75, 77, 85, 86: .snow
+        case 95, 96, 99: .thunder
+        default: .cloudy
+        }
+    }
+}
+
+enum WeatherTemperatureUnit: String, CaseIterable, Identifiable, Equatable, Codable {
+    case celsius
+    case fahrenheit
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .celsius: "Celsius (°C)"
+        case .fahrenheit: "Fahrenheit (°F)"
+        }
+    }
+
+    var shortLabel: String {
+        switch self {
+        case .celsius: "°C"
+        case .fahrenheit: "°F"
+        }
+    }
+
+    static func systemDefault() -> WeatherTemperatureUnit {
+        Locale.current.measurementSystem == .us ? .fahrenheit : .celsius
+    }
+
+    func formatted(_ celsiusValue: Double) -> String {
+        switch self {
+        case .celsius: return "\(Int(celsiusValue.rounded()))°"
+        case .fahrenheit: return "\(Int((celsiusValue * 9 / 5 + 32).rounded()))°"
+        }
+    }
+}
+
+enum WeatherDataSource: String, CaseIterable, Identifiable, Equatable, Codable {
+    case fitTemperature
+    case manual
+    case openMeteo
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .fitTemperature: "FIT Temperature"
+        case .manual: "Manual"
+        case .openMeteo: "Open-Meteo API"
+        }
+    }
+}
+
+enum WeatherWidgetPreset: String, CaseIterable, Identifiable, Equatable, Codable {
+    case simpleCard
+    case compactStrip
+    case forecastTile
+    case minimalText
+    case dashboardBar
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .simpleCard: "Simple Card"
+        case .compactStrip: "Compact Strip"
+        case .forecastTile: "Forecast Tile"
+        case .minimalText: "Minimal Text"
+        case .dashboardBar: "Dashboard Bar"
+        }
+    }
+
+    var defaultSize: CGSize {
+        switch self {
+        case .simpleCard: CGSize(width: 300, height: 110)
+        case .compactStrip: CGSize(width: 220, height: 56)
+        case .forecastTile: CGSize(width: 180, height: 180)
+        case .minimalText: CGSize(width: 160, height: 92)
+        case .dashboardBar: CGSize(width: 460, height: 86)
+        }
+    }
+}
+
+struct WeatherPayload: Equatable, Codable {
+    var condition: WeatherCondition
+    var temperatureCelsius: Double
+    var humidity: Double?
+    var highTemperatureCelsius: Double?
+    var lowTemperatureCelsius: Double?
+    var windKph: Double?
+    var feelsLikeCelsius: Double?
+    var resolvedLocation: String?
+    var sourceDate: Date?
+}
+
+struct WeatherWidgetStyle: Equatable, Codable {
+    var preset: WeatherWidgetPreset
+    var dataSource: WeatherDataSource
+    var manualCondition: WeatherCondition
+    var manualTemperatureCelsius: Double
+    var manualHumidity: Double
+    var manualHigh: Double
+    var manualLow: Double
+    var manualWind: Double
+    var manualFeelsLike: Double
+    var temperatureUnit: WeatherTemperatureUnit
+    var locationText: String
+    var showLocation: Bool
+    var showWeekday: Bool
+    var showHumidity: Bool
+    var showHighLow: Bool
+    var showWind: Bool
+    var showFeelsLike: Bool
+    var cardBackgroundColor: OverlayColor
+    var cardBackgroundOpacity: Double
+    var cardCornerRadius: Double
+    var iconSize: Double
+    var showConditionLabel: Bool
+    var width: Double
+    var height: Double
+    var cachedWeather: WeatherPayload?
+
+    static let `default` = WeatherWidgetStyle.preset(.simpleCard)
+
+    static func preset(_ presetValue: WeatherWidgetPreset) -> WeatherWidgetStyle {
+        switch presetValue {
+        case .simpleCard:
+            WeatherWidgetStyle(
+                preset: .simpleCard, dataSource: .fitTemperature,
+                manualCondition: .sunny, manualTemperatureCelsius: 22,
+                manualHumidity: 55, manualHigh: 26, manualLow: 18,
+                manualWind: 12, manualFeelsLike: 21,
+                temperatureUnit: .systemDefault(), locationText: "",
+                showLocation: true, showWeekday: false, showHumidity: true,
+                showHighLow: false, showWind: false, showFeelsLike: false,
+                cardBackgroundColor: OverlayColor(red: 0, green: 0, blue: 0, alpha: 1),
+                cardBackgroundOpacity: 0.60, cardCornerRadius: 10, iconSize: 36,
+                showConditionLabel: true, width: 300, height: 110, cachedWeather: nil
+            )
+        case .compactStrip:
+            WeatherWidgetStyle(
+                preset: .compactStrip, dataSource: .fitTemperature,
+                manualCondition: .partlyCloudy, manualTemperatureCelsius: 22,
+                manualHumidity: 50, manualHigh: 26, manualLow: 18,
+                manualWind: 0, manualFeelsLike: 0,
+                temperatureUnit: .systemDefault(), locationText: "",
+                showLocation: true, showWeekday: false, showHumidity: false,
+                showHighLow: false, showWind: false, showFeelsLike: false,
+                cardBackgroundColor: OverlayColor(red: 0, green: 0, blue: 0, alpha: 1),
+                cardBackgroundOpacity: 0.55, cardCornerRadius: 28, iconSize: 24,
+                showConditionLabel: true, width: 220, height: 56, cachedWeather: nil
+            )
+        case .forecastTile:
+            WeatherWidgetStyle(
+                preset: .forecastTile, dataSource: .fitTemperature,
+                manualCondition: .sunny, manualTemperatureCelsius: 22,
+                manualHumidity: 55, manualHigh: 26, manualLow: 18,
+                manualWind: 0, manualFeelsLike: 0,
+                temperatureUnit: .systemDefault(), locationText: "",
+                showLocation: true, showWeekday: true, showHumidity: true,
+                showHighLow: true, showWind: false, showFeelsLike: false,
+                cardBackgroundColor: OverlayColor(red: 0, green: 0, blue: 0, alpha: 1),
+                cardBackgroundOpacity: 0.60, cardCornerRadius: 14, iconSize: 44,
+                showConditionLabel: false, width: 180, height: 180, cachedWeather: nil
+            )
+        case .minimalText:
+            WeatherWidgetStyle(
+                preset: .minimalText, dataSource: .fitTemperature,
+                manualCondition: .cloudy, manualTemperatureCelsius: 22,
+                manualHumidity: 50, manualHigh: 26, manualLow: 18,
+                manualWind: 0, manualFeelsLike: 0,
+                temperatureUnit: .systemDefault(), locationText: "",
+                showLocation: true, showWeekday: false, showHumidity: false,
+                showHighLow: false, showWind: false, showFeelsLike: false,
+                cardBackgroundColor: OverlayColor(red: 0, green: 0, blue: 0, alpha: 1),
+                cardBackgroundOpacity: 0.40, cardCornerRadius: 8, iconSize: 20,
+                showConditionLabel: false, width: 160, height: 92, cachedWeather: nil
+            )
+        case .dashboardBar:
+            WeatherWidgetStyle(
+                preset: .dashboardBar, dataSource: .fitTemperature,
+                manualCondition: .sunny, manualTemperatureCelsius: 22,
+                manualHumidity: 55, manualHigh: 26, manualLow: 18,
+                manualWind: 12, manualFeelsLike: 21,
+                temperatureUnit: .systemDefault(), locationText: "",
+                showLocation: true, showWeekday: false, showHumidity: true,
+                showHighLow: false, showWind: true, showFeelsLike: true,
+                cardBackgroundColor: OverlayColor(red: 0, green: 0, blue: 0, alpha: 1),
+                cardBackgroundOpacity: 0.55, cardCornerRadius: 10, iconSize: 34,
+                showConditionLabel: true, width: 460, height: 86, cachedWeather: nil
+            )
+        }
+    }
+}
