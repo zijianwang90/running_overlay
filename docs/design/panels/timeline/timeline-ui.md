@@ -216,7 +216,7 @@ Rules:
 ## Interaction Rules
 
 - Ruler click/drag seeks the playhead.
-- Holding `C` while moving the mouse over the timeline time area scrubs the playhead to the hovered time, matching DaVinci-style hover scrubbing.
+- Holding `C` while moving the mouse over the timeline time area scrubs the playhead to the hovered time, matching DaVinci-style hover scrubbing. The timeline should consume `C` key-down/key-up events while the mouse is over the timeline so macOS does not play invalid-key feedback during hover scrub.
 - Clip click selects the clip.
 - Expanded-mode clip drag changes effective start time.
 - Collapsed-mode clip drag is disabled, but selection still works.

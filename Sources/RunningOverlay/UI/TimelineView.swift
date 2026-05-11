@@ -264,8 +264,10 @@ private final class TimelineCanvasNSView: NSView {
     private var isMediaDragActive = false
     private var mediaDropTargetTrackName: String?
     private var trackingArea: NSTrackingArea?
+    nonisolated(unsafe) private var keyEventMonitor: Any?
 
     private let hoverScrubKeyCode: CGKeyCode = 8
+    private let minimumScrubTimeDelta: TimeInterval = 0.0001
     private let rulerScaleHeight: CGFloat = 28
     private let fitTrackHeight: CGFloat = 44
     private let trackHeight: CGFloat = 44
@@ -275,8 +277,36 @@ private final class TimelineCanvasNSView: NSView {
     private let playheadLineWidth: CGFloat = 2
     private let playheadHeadSize = CGSize(width: 12, height: 8)
 
-    weak var hostScrollView: NSScrollView?
+    weak var hostScrollView: NSScrollView? {
+        didSet {
+            registerScrollObserver()
+        }
+    }
     var onHoverChange: ((TimelineHoverInfo?) -> Void)?
+
+    private var scrollOffsetX: CGFloat {
+        hostScrollView?.documentVisibleRect.origin.x ?? 0
+    }
+
+    private func registerScrollObserver() {
+        NotificationCenter.default.removeObserver(self, name: NSView.boundsDidChangeNotification, object: nil)
+        guard let clip = hostScrollView?.contentView else { return }
+        clip.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(scrollViewDidScroll(_:)),
+            name: NSView.boundsDidChangeNotification,
+            object: clip
+        )
+    }
+
+    @objc private func scrollViewDidScroll(_ notification: Notification) {
+        needsDisplay = true
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
 
     private var rulerHeight: CGFloat { rulerScaleHeight }
 
@@ -300,6 +330,12 @@ private final class TimelineCanvasNSView: NSView {
 
     required init?(coder: NSCoder) {
         nil
+    }
+
+    deinit {
+        if let keyEventMonitor {
+            NSEvent.removeMonitor(keyEventMonitor)
+        }
     }
 
     var displayTracks: [TimelineTrack] {
@@ -365,11 +401,43 @@ private final class TimelineCanvasNSView: NSView {
     }
 
     override func keyDown(with event: NSEvent) {
+        if event.keyCode == hoverScrubKeyCode {
+            return
+        }
         if event.keyCode == 51 || event.keyCode == 117 {
             project?.deleteSelectedItem()
             return
         }
         super.keyDown(with: event)
+    }
+
+    override func keyUp(with event: NSEvent) {
+        if event.keyCode == hoverScrubKeyCode {
+            return
+        }
+        super.keyUp(with: event)
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window == nil {
+            if let keyEventMonitor {
+                NSEvent.removeMonitor(keyEventMonitor)
+                self.keyEventMonitor = nil
+            }
+            return
+        }
+        guard keyEventMonitor == nil else {
+            return
+        }
+        keyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
+            guard let self,
+                  event.keyCode == self.hoverScrubKeyCode,
+                  self.isMouseOverTimeline else {
+                return event
+            }
+            return nil
+        }
     }
 
     override func updateTrackingAreas() {
@@ -487,7 +555,7 @@ private final class TimelineCanvasNSView: NSView {
 
     override func mouseUp(with event: NSEvent) {
         if let draggingClipID {
-            project?.moveClip(draggingClipID, toEffectiveStartTime: dragCurrentStart)
+            project?.moveTimelineClipFromDrag(draggingClipID, toEffectiveStartTime: dragCurrentStart)
         }
         draggingClipID = nil
         project?.finishContinuousEdit()
@@ -921,8 +989,13 @@ private final class TimelineCanvasNSView: NSView {
 
         hoverPoint = nil
         onHoverChange?(nil)
+        let scrubTime = time(atX: point.x)
+        guard abs(scrubTime - playhead) >= minimumScrubTimeDelta else {
+            return true
+        }
         project?.clearMediaPoolPreview()
-        project?.setPlayhead(time(atX: point.x))
+        playhead = scrubTime
+        project?.setPlayhead(scrubTime)
         needsDisplay = true
         return true
     }
@@ -937,6 +1010,15 @@ private final class TimelineCanvasNSView: NSView {
             && point.x <= bounds.maxX
             && point.y >= 0
             && point.y <= bounds.maxY
+    }
+
+    private var isMouseOverTimeline: Bool {
+        guard let window else {
+            return false
+        }
+        let pointInWindow = window.mouseLocationOutsideOfEventStream
+        let point = convert(pointInWindow, from: nil)
+        return bounds.contains(point)
     }
 
     private func time(atX x: CGFloat) -> TimeInterval {

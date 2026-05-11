@@ -119,6 +119,82 @@ struct ProjectDocumentUndoTests {
         #expect(project.timeline.playhead == 15)
     }
 
+    @Test func draggingAutoMatchedClipUpdatesOffsetOnly() throws {
+        let project = ProjectDocument()
+        project.activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 0),
+            duration: 100,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        let media = MediaItem(
+            displayName: "auto.mov",
+            fileURL: nil,
+            duration: 20,
+            inferredStartDate: Date(timeIntervalSince1970: 10),
+            cameraGroupID: "Camera A",
+            alignmentStatus: .aligned(source: "timestamp")
+        )
+        let clip = TimelineClip(
+            mediaItemID: media.id,
+            title: media.displayName,
+            startTime: 10,
+            duration: 20,
+            alignmentOffset: 0,
+            cameraGroupID: "Camera A"
+        )
+        project.mediaItems = [media]
+        project.timeline = TimelineModel(tracks: [
+            TimelineTrack(name: "Camera A", clips: [clip])
+        ])
+
+        project.moveTimelineClipFromDrag(clip.id, toEffectiveStartTime: 13)
+
+        let moved = try #require(project.timeline.clip(with: clip.id))
+        #expect(moved.startTime == 10)
+        #expect(moved.alignmentOffset == 3)
+        #expect(moved.effectiveStartTime == 13)
+    }
+
+    @Test func draggingManuallyPlacedClipUpdatesAlignedTimeOnly() throws {
+        let project = ProjectDocument()
+        project.activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 0),
+            duration: 100,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        let media = MediaItem(
+            displayName: "manual.mov",
+            fileURL: nil,
+            duration: 20,
+            inferredStartDate: nil,
+            cameraGroupID: "Camera A",
+            alignmentStatus: .aligned(source: "manual")
+        )
+        let clip = TimelineClip(
+            mediaItemID: media.id,
+            title: media.displayName,
+            startTime: 10,
+            duration: 20,
+            alignmentOffset: 2,
+            cameraGroupID: "Camera A"
+        )
+        project.mediaItems = [media]
+        project.timeline = TimelineModel(tracks: [
+            TimelineTrack(name: "Camera A", clips: [clip])
+        ])
+
+        project.moveTimelineClipFromDrag(clip.id, toEffectiveStartTime: 15)
+
+        let moved = try #require(project.timeline.clip(with: clip.id))
+        #expect(moved.startTime == 13)
+        #expect(moved.alignmentOffset == 2)
+        #expect(moved.effectiveStartTime == 15)
+    }
+
     @Test func matchingMediaToNewLayerUsesTimestampAndIsUndoable() throws {
         let project = ProjectDocument()
         project.activity = ActivityTimeline(

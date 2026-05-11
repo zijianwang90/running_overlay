@@ -495,6 +495,21 @@ final class ProjectDocument: ObservableObject {
         timeline.clip(with: clipID)
     }
 
+    func isAutoMatchedClip(_ clipID: TimelineClip.ID) -> Bool {
+        guard let mediaItemID = timeline.clip(with: clipID)?.mediaItemID,
+              let mediaItem = mediaItems.first(where: { $0.id == mediaItemID }) else {
+            return false
+        }
+        switch mediaItem.alignmentStatus {
+        case .aligned(let source):
+            return source != "manual"
+        case .readyToMatch:
+            return true
+        case .needsManualPlacement:
+            return false
+        }
+    }
+
     func placeMediaItem(_ mediaItemID: MediaItem.ID, onTrack trackName: String, at elapsedTime: TimeInterval) {
         guard let mediaIndex = mediaItems.firstIndex(where: { $0.id == mediaItemID }) else {
             statusMessage = "Could not place media: item not found."
@@ -652,6 +667,14 @@ final class ProjectDocument: ObservableObject {
         var updatedTimeline = timeline
         updatedTimeline.moveClip(clipID, toEffectiveStartTime: effectiveStartTime, activityDuration: activity.duration)
         timeline = updatedTimeline
+    }
+
+    func moveTimelineClipFromDrag(_ clipID: TimelineClip.ID, toEffectiveStartTime effectiveStartTime: TimeInterval) {
+        if isAutoMatchedClip(clipID), let clip = timeline.clip(with: clipID) {
+            setSelectedClipOffset(clipID, offset: effectiveStartTime - clip.startTime)
+        } else {
+            moveClip(clipID, toEffectiveStartTime: effectiveStartTime)
+        }
     }
 
     func setClipDuration(_ clipID: TimelineClip.ID, duration: TimeInterval) {

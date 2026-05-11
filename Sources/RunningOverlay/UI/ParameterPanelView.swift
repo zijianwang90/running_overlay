@@ -71,13 +71,22 @@ struct ClipInspectorView: View {
                     InspectorReadOnlyRow(label: "Clip", value: clip.title)
                     InspectorTextRow(label: "Camera", text: cameraBinding)
 
-                    InspectorNumberRow(
-                        label: "Start",
-                        value: startBinding,
-                        precision: 2,
-                        suffix: "s",
-                        reset: resetStart
-                    )
+                    if project.isAutoMatchedClip(clipID) {
+                        InspectorReadOnlyRow(
+                            label: "Auto Matched Start",
+                            value: formatSeconds(clip.startTime),
+                            systemImage: nil,
+                            isNumeric: true
+                        )
+                    } else {
+                        InspectorNumberRow(
+                            label: "Aligned Time",
+                            value: startBinding,
+                            precision: 2,
+                            suffix: "s",
+                            reset: resetStart
+                        )
+                    }
 
                     InspectorNumberRow(
                         label: "Offset",
@@ -172,13 +181,20 @@ private struct ClipDetailView: View {
                                     .multilineTextAlignment(.trailing)
                             }
 
-                            InspectorDetailNumberRow(
-                                label: "Start",
-                                value: startBinding,
-                                precision: 2,
-                                suffix: "s",
-                                reset: resetStart
-                            )
+                            if project.isAutoMatchedClip(clipID) {
+                                InspectorDetailReadOnlyValueRow(
+                                    label: "Auto Matched Start",
+                                    value: formatSeconds(clip.startTime)
+                                )
+                            } else {
+                                InspectorDetailNumberRow(
+                                    label: "Aligned Time",
+                                    value: startBinding,
+                                    precision: 2,
+                                    suffix: "s",
+                                    reset: resetStart
+                                )
+                            }
 
                             InspectorDetailNumberRow(
                                 label: "Offset",
@@ -246,6 +262,10 @@ private struct ClipDetailView: View {
         project.setSelectedClipOffset(clipID, offset: 0)
         project.finishContinuousEdit()
     }
+}
+
+private func formatSeconds(_ seconds: TimeInterval) -> String {
+    String(format: "%.2f s", seconds)
 }
 
 private struct ClipDetailHeader: View {
@@ -428,6 +448,21 @@ private struct InspectorDetailNumberRow: View {
             reset?()
         }
         .help(reset == nil ? "" : "Double-click to reset")
+    }
+}
+
+private struct InspectorDetailReadOnlyValueRow: View {
+    var label: String
+    var value: String
+
+    var body: some View {
+        InspectorDetailRow(label: label) {
+            Text(value)
+                .font(NumericTokens.numericFont)
+                .foregroundStyle(NumericTokens.textPrimary)
+                .monospacedDigit()
+                .lineLimit(1)
+        }
     }
 }
 

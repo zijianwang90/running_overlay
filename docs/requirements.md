@@ -150,7 +150,7 @@ Current implementation status:
 - While dragging media over the timeline, the target layer is highlighted.
 - When dragging below existing layers, exactly one new layer drop target is exposed.
 - Manually placed media is marked as aligned by manual placement.
-- Existing timeline clips can be dragged horizontally to adjust their timeline position.
+- Existing timeline clips can be dragged horizontally to adjust their timeline position. For timestamp-matched media, dragging changes the clip offset while preserving the automatic matched start; for manually placed media, dragging changes the editable aligned time while preserving the offset.
 - The timeline uses project time, not only activity elapsed time, so video clips can start before the FIT activity begins or continue after the FIT activity ends.
 - The FIT activity is shown as an independent `FIT` layer whose span represents activity elapsed `00:00` through activity finish.
 - The FIT layer defaults to filling the timeline when there are no out-of-range clips, but videos with real timestamps before start or after finish can extend the project timeline to the left or right.
@@ -228,7 +228,7 @@ When a timeline clip is selected:
 
 - Show clip position fine-tuning controls.
 - Fine-tuning is relative to the app's current best FIT-to-video alignment.
-- Provide numeric second-based inputs for clip start and alignment offset.
+- Provide numeric second-based inputs for manually placed clip aligned time and alignment offset. Timestamp-matched clips show the automatic matched start as read-only and expose offset as the adjustment control.
 - Double-clicking timing field labels should reset the corresponding value to its default.
 - Provide an action: "Apply to all clips in this layer".
 - The action applies the same offset to all clips in the currently selected timeline layer.

@@ -2347,6 +2347,29 @@ Verification:
 - Ran `swift test`.
 - All 40 tests passed.
 
+### Timeline Clip Alignment Semantics (2026-05-10)
+
+Summary:
+
+- Timestamp-matched clips now treat their automatic matched start as read-only in the Inspector and expose offset as the adjustment value.
+- Timeline dragging of timestamp-matched clips changes offset while preserving the automatic matched start.
+- Timeline dragging of manually placed clips changes aligned time while preserving offset.
+
+Files changed:
+
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/UI/ParameterPanelView.swift`
+- `Sources/RunningOverlay/UI/TimelineView.swift`
+- `Tests/RunningOverlayTests/ProjectDocumentUndoTests.swift`
+- `docs/development.md`
+- `docs/requirements.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Ran `swift test`.
+- All 93 tests passed.
+
 ### Export Text Supersampling
 
 Summary:

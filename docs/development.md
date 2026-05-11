@@ -212,8 +212,9 @@ Current implementation:
 - Dropping a media item creates or moves a timeline clip at the drop location.
 - Media drag-over highlights the target layer, and the AppKit timeline exposes only one new layer drop target beyond existing layers.
 - `TimelineClip` stores `startTime` and `alignmentOffset` separately.
-- Existing timeline clips can be dragged horizontally to change their effective start time.
-- Inspector start and offset fields update the selected clip's effective start time and alignment offset with 0.01 second precision, preserve in-progress numeric typing until focus leaves the field, and format to fixed precision only after commit.
+- Existing timeline clips can be dragged horizontally to change their effective start time. For timestamp-matched clips, dragging preserves the automatic matched start and changes `alignmentOffset`; for manually placed clips, dragging changes the editable aligned time and preserves `alignmentOffset`.
+- Inspector timing fields update the selected clip's aligned time and alignment offset with 0.01 second precision, preserve in-progress numeric typing until focus leaves the field, and format to fixed precision only after commit.
+- Timestamp-matched clips show their automatic matched start as a read-only `Auto Matched Start` row instead of exposing it as an editable start field.
 - While playback is paused and the playhead is inside the selected clip, editing the clip offset moves the playhead by the same effective-start delta so the visible video frame stays still during alignment.
 - Double-clicking Inspector timing labels resets start or offset to the default `0.00 s` value.
 - Inspector action applies the selected offset to all clips in the currently selected timeline layer.
@@ -325,7 +326,7 @@ Current implementation:
 - Corner handles in preview are interactive: dragging a handle updates the selected overlay `scale` directly via `ProjectDocument.setOverlayScale`, with continuous undo grouped to drag end.
 - Playback advances the timeline playhead at 30 Hz while active.
 - Left and right arrow keys step the timeline playhead backward or forward by one project frame, using the current project frame rate.
-- Timeline ruler click/drag seeks the playhead; holding `C` while moving the mouse across the timeline time area scrubs the playhead to the hovered time; timeline tracks show a red playhead indicator.
+- Timeline ruler click/drag seeks the playhead; holding `C` while moving the mouse across the timeline time area scrubs the playhead to the hovered time, with the timeline consuming the `C` key events while the mouse is over it to avoid invalid-key beeps; timeline tracks show a red playhead indicator.
 
 ### Preview Playback
 
