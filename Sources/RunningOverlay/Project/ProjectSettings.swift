@@ -1,6 +1,6 @@
 import Foundation
 
-struct ProjectSettings: Equatable {
+struct ProjectSettings: Equatable, Codable {
     var resolution: ProjectResolution = .hd1080
     var frameRate: ProjectFrameRate = .fps30
     var layerDataFrameRate: ProjectLayerDataFrameRate = .fps10
@@ -10,11 +10,18 @@ struct ProjectSettings: Equatable {
     var exportCodec: ProjectExportCodec = .hevcWithAlpha
 }
 
-struct ProjectResolution: Identifiable, Hashable {
+struct ProjectResolution: Identifiable, Hashable, Codable {
     let id: String
     let label: String
     let width: Int
     let height: Int
+
+    init(id: String, label: String, width: Int, height: Int) {
+        self.id = id
+        self.label = label
+        self.width = width
+        self.height = height
+    }
 
     static let hd720 = ProjectResolution(id: "1280x720", label: "720p 16:9", width: 1280, height: 720)
     static let hd1080 = ProjectResolution(id: "1920x1080", label: "1080p 16:9", width: 1920, height: 1080)
@@ -29,12 +36,29 @@ struct ProjectResolution: Identifiable, Hashable {
         .hd720, .hd1080, .qhd1440, .uhd4k,
         .vertical720, .vertical1080, .vertical1440, .vertical4k
     ]
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let id = try container.decode(String.self)
+        self = Self.presets.first(where: { $0.id == id }) ?? .hd1080
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(id)
+    }
 }
 
-struct ProjectFrameRate: Identifiable, Hashable {
+struct ProjectFrameRate: Identifiable, Hashable, Codable {
     let id: String
     let label: String
     let value: Double
+
+    init(id: String, label: String, value: Double) {
+        self.id = id
+        self.label = label
+        self.value = value
+    }
 
     static let fps23976 = ProjectFrameRate(id: "23.976", label: "23.976 fps", value: 23.976)
     static let fps24 = ProjectFrameRate(id: "24", label: "24 fps", value: 24)
@@ -48,12 +72,29 @@ struct ProjectFrameRate: Identifiable, Hashable {
     static let presets: [ProjectFrameRate] = [
         .fps23976, .fps24, .fps25, .fps2997, .fps30, .fps50, .fps5994, .fps60
     ]
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let id = try container.decode(String.self)
+        self = Self.presets.first(where: { $0.id == id }) ?? .fps30
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(id)
+    }
 }
 
-struct ProjectLayerDataFrameRate: Identifiable, Hashable {
+struct ProjectLayerDataFrameRate: Identifiable, Hashable, Codable {
     let id: String
     let label: String
     let value: Double
+
+    init(id: String, label: String, value: Double) {
+        self.id = id
+        self.label = label
+        self.value = value
+    }
 
     static let fps1 = ProjectLayerDataFrameRate(id: "1", label: "1 fps", value: 1)
     static let fps5 = ProjectLayerDataFrameRate(id: "5", label: "5 fps", value: 5)
@@ -64,9 +105,20 @@ struct ProjectLayerDataFrameRate: Identifiable, Hashable {
     static let presets: [ProjectLayerDataFrameRate] = [
         .fps1, .fps5, .fps10, .fps15, .fps30
     ]
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let id = try container.decode(String.self)
+        self = Self.presets.first(where: { $0.id == id }) ?? .fps10
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(id)
+    }
 }
 
-enum ProjectExportCodec: String, CaseIterable, Identifiable {
+enum ProjectExportCodec: String, CaseIterable, Identifiable, Codable {
     case hevcWithAlpha
     case proRes4444
 

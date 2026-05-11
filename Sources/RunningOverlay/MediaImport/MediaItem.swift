@@ -1,6 +1,6 @@
 import Foundation
 
-struct MediaItem: Identifiable, Equatable {
+struct MediaItem: Identifiable, Equatable, Codable {
     var id = UUID()
     var displayName: String
     var fileURL: URL?
@@ -11,12 +11,12 @@ struct MediaItem: Identifiable, Equatable {
     var folderID: MediaFolder.ID? = nil
 }
 
-struct MediaFolder: Identifiable, Equatable {
+struct MediaFolder: Identifiable, Equatable, Codable {
     var id = UUID()
     var name: String
 }
 
-enum AlignmentStatus: Equatable {
+enum AlignmentStatus: Equatable, Codable {
     case readyToMatch(source: String)
     case aligned(source: String)
     case needsManualPlacement

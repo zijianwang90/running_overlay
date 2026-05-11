@@ -67,6 +67,18 @@ struct ExportDialogView: View {
             VStack(alignment: .trailing, spacing: 10) {
                 HStack {
                     Spacer()
+                    Button("Save Project Snapshot") {
+                        project.saveProjectSnapshot()
+                    }
+                    .disabled(project.isExporting)
+                    Button("Restore Project Snapshot") {
+                        project.restoreProjectSnapshot()
+                    }
+                    .disabled(project.isExporting)
+                }
+
+                HStack {
+                    Spacer()
                     Button("Cancel") {
                         dismiss()
                     }

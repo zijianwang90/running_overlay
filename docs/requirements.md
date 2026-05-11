@@ -521,10 +521,14 @@ Export behavior:
 - `Export Test Frame` renders a PNG at the current playhead position through the SwiftUI shared-component rasterization path.
 - Main `Export` always uses the SwiftUI shared-component rasterization path (legacy export mode removed).
 - `Export Overlay JSON` writes the current `OverlayLayout` configuration to JSON for inspection, debugging, and reproducible style snapshots.
+- `Save Project Snapshot` writes a JSON snapshot of the current exportable project state for repeatable performance testing.
+- `Restore Project Snapshot` replaces the current project with a saved snapshot and clears runtime-only state such as selection, playback, export progress, and undo/redo history.
 - Test clip/frame sampling time must use the same playhead-to-activity conversion and Layer Data FPS quantization path as preview (`activityElapsed(atProjectTime:)` + quantization).
 - Test frame PNG orientation must match preview/export coordinates (no vertical inversion in the saved image).
 - Text preset accent colors in export must come from each overlay style's accent color instead of system accent defaults.
 - Activity data is sampled from the FIT timeline for each segment using the configured Layer Data FPS cadence.
+- Adjacent video frames that resolve to the same quantized Layer Data sample may reuse the previous rendered overlay image while still writing one pixel buffer per output frame.
+- Each completed export task writes task-level profiling files (`export_profile_<timestamp>.json` and `.csv`) into the destination folder; the files include summary totals and per-segment metrics.
 - Export rendering scales overlay dimensions from the 720p preview reference so text, padding, and graphic sizes remain proportional at 1080p, 2K, and 4K output sizes.
 - Exported text should be antialiased through supersampled rendering before compositing into the final transparent frame, especially for large colored timer overlays.
 - Exported distance timeline and elevation chart elements should match their preview counterparts instead of falling back to static text; Distance Timeline export uses the same preset-aware layout as preview.
@@ -542,6 +546,7 @@ Future requirements:
 - Alpha codec selection.
 - Per-track or per-camera export selection.
 - Export performance optimizations:
+  - Task-level JSON/CSV profiling artifacts for comparing export speed across repeatable project snapshots.
   - Incremental frame rendering with static-layer caching so unchanged overlay layers are reused across adjacent frames.
   - Per-overlay dirty-region rendering and composition to avoid full-canvas redraw on every frame.
   - Optional adaptive layer data sampling for slowly changing metrics during long exports.

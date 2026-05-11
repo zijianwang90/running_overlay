@@ -42,12 +42,15 @@ struct SwiftUIOverlayVideoExporter {
             size: CGSize(width: job.settings.resolution.width, height: job.settings.resolution.height)
         )
 
+        let profileStartedAt = Date()
+        var segmentProfiles: [OverlayExportSegmentProfile] = []
+
         for (index, segment) in job.segments.enumerated() {
             if Task.isCancelled {
                 throw OverlayExportError.cancelled
             }
             await progress(OverlayExportProgress(segmentIndex: index, segmentCount: job.segments.count, segmentName: segment.sourceFileName, segmentProgress: 0))
-            try await export(
+            let segmentProfile = try await export(
                 segment: segment,
                 segmentIndex: index,
                 segmentCount: job.segments.count,
@@ -56,8 +59,19 @@ struct SwiftUIOverlayVideoExporter {
                 routeMapSnapshots: routeMapSnapshots,
                 progress: progress
             )
+            segmentProfiles.append(segmentProfile)
             await progress(OverlayExportProgress(segmentIndex: index, segmentCount: job.segments.count, segmentName: segment.sourceFileName, segmentProgress: 1))
         }
+
+        try writeProfile(
+            OverlayExportProfile(
+                startedAt: profileStartedAt,
+                completedAt: Date(),
+                settings: job.settings,
+                segments: segmentProfiles
+            ),
+            to: job.destinationURL
+        )
     }
 
     static func exportFramePNG(
@@ -109,9 +123,10 @@ struct SwiftUIOverlayVideoExporter {
         overlays: [OverlayElement],
         routeMapSnapshots: [MapSnapshotRequest: NSImage],
         progress: @escaping @MainActor (OverlayExportProgress) -> Void
-    ) async throws {
+    ) async throws -> OverlayExportSegmentProfile {
         let outputURL = outputURL(for: segment, destinationURL: job.destinationURL)
         try? FileManager.default.removeItem(at: outputURL)
+        let segmentStartedAt = Date()
 
         let writer = try AVAssetWriter(outputURL: outputURL, fileType: .mov)
         let width = job.settings.resolution.width
@@ -152,14 +167,30 @@ struct SwiftUIOverlayVideoExporter {
             throw SwiftUIOverlayExportError.cannotCreatePixelBuffer
         }
 
-        let frameCount = max(1, Int(ceil(segment.duration * frameRate)))
+        let samples = frameSamples(
+            segment: segment,
+            frameRate: frameRate,
+            activityDuration: job.activity.duration,
+            layerDataFrameRate: job.settings.layerDataFrameRate.value,
+            fitStartTime: job.fitStartTime
+        )
+        let frameCount = samples.count
         let progressInterval = max(frameCount / 100, 1)
+        var imageRenderDuration: TimeInterval = 0
+        var pixelBufferDrawDuration: TimeInterval = 0
+        var appendDuration: TimeInterval = 0
+        var writerWaitDuration: TimeInterval = 0
+        var renderedFrameCount = 0
+        var reusedFrameCount = 0
+        var previousSampleElapsed: TimeInterval?
+        var previousCGImage: CGImage?
 
-        for frameIndex in 0..<frameCount {
+        for sample in samples {
             if Task.isCancelled {
                 writer.cancelWriting()
                 throw OverlayExportError.cancelled
             }
+            let waitStartedAt = Date()
             while !input.isReadyForMoreMediaData {
                 if Task.isCancelled {
                     writer.cancelWriting()
@@ -167,48 +198,58 @@ struct SwiftUIOverlayVideoExporter {
                 }
                 try await Task.sleep(nanoseconds: 1_000_000)
             }
+            writerWaitDuration += Date().timeIntervalSince(waitStartedAt)
 
             guard let pixelBuffer = makePixelBuffer(from: pixelBufferPool) else {
                 throw SwiftUIOverlayExportError.cannotCreatePixelBuffer
             }
 
-            let clipElapsed = Double(frameIndex) / frameRate
-            let activityElapsed = segment.startTime + clipElapsed
-            let sampleElapsed = quantizedLayerDataTime(
-                activityElapsed - job.fitStartTime,
-                activityDuration: job.activity.duration,
-                layerDataFrameRate: job.settings.layerDataFrameRate.value
-            )
-
-            let frameView = SwiftUIOverlayFrameView(
-                size: CGSize(width: width, height: height),
-                overlays: overlays,
-                activity: job.activity,
-                elapsedTime: sampleElapsed,
-                routeMapSnapshots: routeMapSnapshots
-            )
-            guard let cgImage = await MainActor.run(body: {
-                let renderer = ImageRenderer(content: frameView)
-                renderer.isOpaque = false
-                renderer.proposedSize = ProposedViewSize(width: CGFloat(width), height: CGFloat(height))
-                renderer.scale = 1
-                return renderer.cgImage
-            }) else {
-                throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce a CGImage.")
+            let cgImage: CGImage
+            if previousSampleElapsed == sample.sampleElapsed, let cachedCGImage = previousCGImage {
+                cgImage = cachedCGImage
+                reusedFrameCount += 1
+            } else {
+                let renderStartedAt = Date()
+                let frameView = SwiftUIOverlayFrameView(
+                    size: CGSize(width: width, height: height),
+                    overlays: overlays,
+                    activity: job.activity,
+                    elapsedTime: sample.sampleElapsed,
+                    routeMapSnapshots: routeMapSnapshots
+                )
+                guard let renderedCGImage = await MainActor.run(body: {
+                    let renderer = ImageRenderer(content: frameView)
+                    renderer.isOpaque = false
+                    renderer.proposedSize = ProposedViewSize(width: CGFloat(width), height: CGFloat(height))
+                    renderer.scale = 1
+                    return renderer.cgImage
+                }) else {
+                    throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce a CGImage.")
+                }
+                imageRenderDuration += Date().timeIntervalSince(renderStartedAt)
+                cgImage = renderedCGImage
+                previousSampleElapsed = sample.sampleElapsed
+                previousCGImage = renderedCGImage
+                renderedFrameCount += 1
             }
-            try draw(cgImage: cgImage, into: pixelBuffer, size: CGSize(width: width, height: height))
 
-            let presentationTime = CMTime(seconds: clipElapsed, preferredTimescale: 600)
+            let drawStartedAt = Date()
+            try draw(cgImage: cgImage, into: pixelBuffer, size: CGSize(width: width, height: height))
+            pixelBufferDrawDuration += Date().timeIntervalSince(drawStartedAt)
+
+            let presentationTime = CMTime(seconds: sample.clipElapsed, preferredTimescale: 600)
+            let appendStartedAt = Date()
             guard adaptor.append(pixelBuffer, withPresentationTime: presentationTime) else {
                 throw SwiftUIOverlayExportError.appendFailed(writer.error?.localizedDescription ?? "unknown error")
             }
+            appendDuration += Date().timeIntervalSince(appendStartedAt)
 
-            if frameIndex % progressInterval == 0 || frameIndex == frameCount - 1 {
+            if sample.frameIndex % progressInterval == 0 || sample.frameIndex == frameCount - 1 {
                 await progress(OverlayExportProgress(
                     segmentIndex: segmentIndex,
                     segmentCount: segmentCount,
                     segmentName: segment.sourceFileName,
-                    segmentProgress: Double(frameIndex + 1) / Double(frameCount)
+                    segmentProgress: Double(sample.frameIndex + 1) / Double(frameCount)
                 ))
             }
         }
@@ -223,6 +264,24 @@ struct SwiftUIOverlayVideoExporter {
         if let error = writer.error {
             throw SwiftUIOverlayExportError.appendFailed(error.localizedDescription)
         }
+
+        let totalDuration = Date().timeIntervalSince(segmentStartedAt)
+        return OverlayExportSegmentProfile(
+            segmentIndex: segmentIndex,
+            segmentName: segment.sourceFileName,
+            outputFileName: outputURL.lastPathComponent,
+            duration: segment.duration,
+            frameCount: frameCount,
+            renderedFrameCount: renderedFrameCount,
+            reusedFrameCount: reusedFrameCount,
+            reuseRate: frameCount > 0 ? Double(reusedFrameCount) / Double(frameCount) : 0,
+            totalDuration: totalDuration,
+            imageRenderDuration: imageRenderDuration,
+            pixelBufferDrawDuration: pixelBufferDrawDuration,
+            appendDuration: appendDuration,
+            writerWaitDuration: writerWaitDuration,
+            averageFrameDuration: frameCount > 0 ? totalDuration / Double(frameCount) : 0
+        )
     }
 
     private static func loadRouteMapSnapshots(
@@ -283,6 +342,26 @@ struct SwiftUIOverlayVideoExporter {
         return destinationURL.appendingPathComponent("\(baseName)_swiftui_overlay.mov")
     }
 
+    private static func writeProfile(_ profile: OverlayExportProfile, to destinationURL: URL) throws {
+        let stamp = profileTimestampFormatter.string(from: profile.completedAt)
+        let jsonURL = destinationURL.appendingPathComponent("export_profile_\(stamp).json")
+        let csvURL = destinationURL.appendingPathComponent("export_profile_\(stamp).csv")
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        try encoder.encode(profile).write(to: jsonURL)
+        try Data(profile.csvString().utf8).write(to: csvURL)
+    }
+
+    private static var profileTimestampFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyyMMdd_HHmmss_SSS"
+        return formatter
+    }
+
     private static func makePixelBuffer(from pool: CVPixelBufferPool) -> CVPixelBuffer? {
         var pixelBuffer: CVPixelBuffer?
         CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &pixelBuffer)
@@ -305,7 +384,41 @@ struct SwiftUIOverlayVideoExporter {
         return settings
     }
 
-    private static func quantizedLayerDataTime(
+    static func frameSamples(
+        segment: OverlayExportSegment,
+        frameRate: Double,
+        activityDuration: TimeInterval,
+        layerDataFrameRate: Double,
+        fitStartTime: TimeInterval
+    ) -> [OverlayExportFrameSample] {
+        let fps = max(frameRate, 1)
+        let frameCount = max(1, Int(ceil(segment.duration * fps)))
+        var samples: [OverlayExportFrameSample] = []
+        samples.reserveCapacity(frameCount)
+        var previousSampleElapsed: TimeInterval?
+
+        for frameIndex in 0..<frameCount {
+            let clipElapsed = Double(frameIndex) / fps
+            let activityElapsed = segment.startTime + clipElapsed
+            let sampleElapsed = quantizedLayerDataTime(
+                activityElapsed - fitStartTime,
+                activityDuration: activityDuration,
+                layerDataFrameRate: layerDataFrameRate
+            )
+            samples.append(OverlayExportFrameSample(
+                frameIndex: frameIndex,
+                clipElapsed: clipElapsed,
+                activityElapsed: activityElapsed,
+                sampleElapsed: sampleElapsed,
+                reusesPreviousRender: previousSampleElapsed == sampleElapsed
+            ))
+            previousSampleElapsed = sampleElapsed
+        }
+
+        return samples
+    }
+
+    static func quantizedLayerDataTime(
         _ elapsedTime: TimeInterval,
         activityDuration: TimeInterval,
         layerDataFrameRate: Double

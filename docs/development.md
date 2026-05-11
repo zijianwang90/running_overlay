@@ -460,6 +460,7 @@ Pending:
 - `SwiftUIOverlayVideoExporter` removes its old per-type fallback drawing implementations and keeps only the shared component path used by preview.
 - `Export Test Frame` renders a PNG through the same SwiftUI export rasterization path at the current playhead position.
 - `Export Overlay JSON` serializes the current `OverlayLayout` as `overlay_configuration.json` for reproducible renderer-debug snapshots.
+- `Save Project Snapshot` / `Restore Project Snapshot` in the Export dialog write and load a JSON snapshot of exportable project state for repeatable performance benchmarking.
 - Main `Export` no longer exposes legacy mode toggles and always uses SwiftUI shared-component export.
 - Test clip/frame time sampling uses the same activity-time conversion as preview (`timeline.activityElapsed(atProjectTime:)`) before Layer Data FPS quantization.
 - `renderPNG` now supports the same post-render vertical row flip option used by MOV export, so test frame outputs match preview orientation.
@@ -479,6 +480,8 @@ Pending:
 - Export renders distance timeline and elevation chart overlays with the same shared progress and sample data used by preview.
 - Test clip/frame exports use current overlay content instead of fixed calibration reference overlays.
 - Export vertically flips completed pixel-buffer rows before appending frames, compensating for the `CVPixelBuffer` to MOV orientation path so the encoded result matches the preview coordinate system.
+- Export reuses the previous `ImageRenderer` output when adjacent video frames quantize to the same Layer Data sample time, while still appending every output frame.
+- Each completed export task writes `export_profile_<timestamp>.json` and `export_profile_<timestamp>.csv` into the destination folder with whole-export totals and per-segment timing/reuse metrics.
 
 Pending:
 
@@ -491,7 +494,7 @@ Export performance optimization directions:
 - Add dirty-region rendering and composition so exporter redraws only changed overlay bounds instead of full-frame rasterization.
 - Parallelize non-UI preprocessing work (sample-time preparation, layout precompute, route/elevation intermediate buffers) while keeping `ImageRenderer` use on `MainActor`.
 - Add adaptive quality knobs for export jobs (supersampling factor, shadow quality, optional map detail level) with profile-based defaults.
-- Add structured export profiling logs (per-frame render ms, encode ms, queue backpressure wait ms, memory high-water mark) and keep representative benchmark projects for regression checks.
+- Extend structured export profiling with optional deeper per-frame samples, memory high-water mark, and benchmark fixtures once summary/segment artifacts identify the bottlenecks.
 
 ### Phase 7: Polish And Reliability
 

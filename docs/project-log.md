@@ -1,5 +1,25 @@
 # Running Overlay Project Log
 
+## 2026-05-11
+
+### Export Performance Branch: Profiling Files, Frame Reuse, Project Snapshots
+
+- Started the `codex/export-performance` branch in a dedicated worktree at `/Users/codywang/Documents/Projects/running_overlay_export_perf`.
+- Added Export dialog actions for saving and restoring a JSON project snapshot. The snapshot preserves exportable state for same-machine benchmark repeats and clears runtime-only state on restore.
+- Added task-level export profiling artifacts: each completed export writes JSON and CSV files with whole-export totals plus per-segment timing and frame-reuse metrics.
+- Added same-sample frame reuse in `SwiftUIOverlayVideoExporter`: adjacent frames with the same quantized Layer Data sample reuse the previous rendered `CGImage` while still appending every output frame.
+- Added focused tests for snapshot round-trip, profiling artifact structure, and sampling reuse decisions.
+- Restored missing SVG/Lottie fixture files required by the existing icon rendering smoke tests in fresh worktrees.
+
+Files changed:
+
+- `Sources/RunningOverlay/Export/SwiftUIOverlayVideoExporter.swift`
+- `Sources/RunningOverlay/Export/OverlayExportModels.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/UI/ExportDialogView.swift`
+- `docs/export-performance.md`
+- `Tests/RunningOverlayTests/ExportPerformanceTests.swift`
+
 ## 2026-05-10
 
 ### Media Pool Empty-Area Context Menu + Fix Root → Folder Drag (second attempt)
