@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct OverlaySharedTextPresetView: View {
@@ -32,12 +33,14 @@ struct OverlaySharedRouteMapView: View {
     let element: OverlayElement
     let layout: OverlayRouteMapRenderLayout
     let isInteractive: Bool
+    var staticMapSnapshot: NSImage? = nil
 
     var body: some View {
         RouteMapOverlayView(
             element: element,
             layout: layout,
-            isSelected: isInteractive
+            isSelected: isInteractive,
+            staticMapSnapshot: staticMapSnapshot
         )
     }
 }

@@ -764,6 +764,7 @@ struct RouteMapOverlayView: View {
     let element: OverlayElement
     let layout: OverlayRouteMapRenderLayout
     let isSelected: Bool
+    var staticMapSnapshot: NSImage?
     @State private var mapSnapshot: NSImage?
     @State private var alphaMask: NSImage?
 
@@ -873,8 +874,8 @@ struct RouteMapOverlayView: View {
             RoundedRectangle(cornerRadius: layout.cornerRadius)
                 .fill(background)
                 .overlay {
-                    if let mapSnapshot, layout.provider == .mapKit {
-                        Image(nsImage: mapSnapshot)
+                    if let resolvedMapSnapshot, layout.provider == .mapKit {
+                        Image(nsImage: resolvedMapSnapshot)
                             .resizable()
                             .scaledToFill()
                             .opacity(layout.mapOpacity)
@@ -933,19 +934,7 @@ struct RouteMapOverlayView: View {
     }
 
     private var mapSnapshotRequest: MapSnapshotRequest? {
-        guard layout.provider == .mapKit,
-              element.style.routeMapBackgroundStyle != .none,
-              let geometry = layout.geometry,
-              layout.rect.width > 1,
-              layout.rect.height > 1 else {
-            return nil
-        }
-        return MapSnapshotRequest(
-            bounds: geometry.bounds,
-            size: layout.rect.size,
-            style: layout.preset,
-            backgroundStyle: element.style.routeMapBackgroundStyle
-        )
+        RouteMapSnapshotRequestBuilder.request(for: element, layout: layout)
     }
 
     @MainActor
@@ -960,6 +949,11 @@ struct RouteMapOverlayView: View {
             )
         } else {
             alphaMask = nil
+        }
+
+        if let staticMapSnapshot {
+            mapSnapshot = staticMapSnapshot
+            return
         }
 
         guard let request = mapSnapshotRequest else {
@@ -977,6 +971,10 @@ struct RouteMapOverlayView: View {
         if case .success(let image) = result {
             mapSnapshot = image
         }
+    }
+
+    private var resolvedMapSnapshot: NSImage? {
+        staticMapSnapshot ?? mapSnapshot
     }
 
     @ViewBuilder

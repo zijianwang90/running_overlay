@@ -265,6 +265,26 @@ struct OverlayRenderModelTests {
         }
     }
 
+    @Test func routeMapSnapshotRequestUsesSharedLayoutInputs() throws {
+        var style = OverlayStyle.default
+        style.routeMapPreset = .gradient
+        style.routeMapBackgroundStyle = .satellite
+        let element = OverlayElement(type: .routeMap, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleRouteActivity(),
+            elapsedTime: 0
+        )
+        let layout = OverlayRenderModel.routeMapLayout(for: element, in: context)
+
+        let request = try #require(RouteMapSnapshotRequestBuilder.request(for: element, layout: layout))
+
+        #expect(request.bounds == layout.geometry?.bounds)
+        #expect(request.size == layout.rect.size)
+        #expect(request.style == .gradient)
+        #expect(request.backgroundStyle == .satellite)
+    }
+
     @MainActor
     @Test func overlayFrameRendererWritesRunningGaugePNG() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)

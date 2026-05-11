@@ -13,6 +13,27 @@ struct MapSnapshotRequest: Hashable {
     var backgroundStyle: OverlayRouteMapBackgroundStyle
 }
 
+enum RouteMapSnapshotRequestBuilder {
+    static func request(
+        for element: OverlayElement,
+        layout: OverlayRouteMapRenderLayout
+    ) -> MapSnapshotRequest? {
+        guard layout.provider == .mapKit,
+              element.style.routeMapBackgroundStyle != .none,
+              let geometry = layout.geometry,
+              layout.rect.width > 1,
+              layout.rect.height > 1 else {
+            return nil
+        }
+        return MapSnapshotRequest(
+            bounds: geometry.bounds,
+            size: layout.rect.size,
+            style: layout.preset,
+            backgroundStyle: element.style.routeMapBackgroundStyle
+        )
+    }
+}
+
 final class MapKitMapSnapshotProvider: MapSnapshotProvider {
     func snapshot(for request: MapSnapshotRequest, completion: @escaping @Sendable (Result<NSImage, Error>) -> Void) {
         let options = MKMapSnapshotter.Options()

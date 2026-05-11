@@ -288,7 +288,7 @@ Current implementation:
 - Route Map is available as a featured overlay module backed by FIT GPS latitude/longitude when present.
 - Route Map supports Minimal, Gradient, Glow, and MapKit presets through the Inspector.
 - Route Map preview attempts a MapKit snapshot for the MapKit preset and falls back to a local dark grid when a snapshot is unavailable.
-- Route Map export currently renders the local route/map fallback synchronously so MOV/PNG export does not depend on MapKit network/service timing.
+- Route Map export preloads MapKit snapshots once before MOV/PNG rasterization and passes them into the shared SwiftUI Route Map view as static render assets; if snapshot loading fails, export falls back to the local route/map grid.
 - Inspector supports normalized X/Y position entry plus shadow opacity and radius controls.
 - Up and down arrow keys nudge the selected overlay element vertically by one percent of the preview canvas.
 - Overlay Pool shows add tiles grouped by Metrics, Charts, and Route; clicking a tile calls `ProjectDocument.addOverlayElement`, which selects the new overlay and opens its detail Inspector. Featured add tiles use the same card shape and border treatment as other tiles without a left-side blue accent strip.
@@ -455,6 +455,7 @@ Pending:
 - `Export Test Clip` renders a three-second transparent MOV around the current playhead position using the current overlay layout and active FIT data (falling back to synthetic data when no FIT activity is loaded).
 - Export now uses a single SwiftUI-based renderer path that rasterizes shared overlay views (`ImageRenderer`) on each frame and encodes transparent MOV output.
 - Preview and export invoke the same shared overlay view entry points (`OverlaySharedTextPresetView`, `OverlaySharedDistanceTimelineView`, `OverlaySharedRouteMapView`) and differ only by `isInteractive` flags.
+- Route Map export resolves its `MapSnapshotRequest` from the same layout inputs as preview, preloads matching `NSImage` snapshots before frame rendering, and supplies them to `OverlaySharedRouteMapView` so `ImageRenderer` does not depend on asynchronous view tasks for the map background.
 - Shared entry points now also include elevation chart, running gauge, lap list, lap card, and lap live (`OverlaySharedElevationChartView`, `OverlaySharedRunningGaugeView`, `OverlaySharedLapListView`, `OverlaySharedLapCardView`, `OverlaySharedLapLiveView`) so SwiftUI export covers all current overlay controls on the same component path.
 - `SwiftUIOverlayVideoExporter` removes its old per-type fallback drawing implementations and keeps only the shared component path used by preview.
 - `Export Test Frame` renders a PNG through the same SwiftUI export rasterization path at the current playhead position.
