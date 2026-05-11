@@ -24,6 +24,37 @@ Files changed:
 - Root cause: stacked `.onTapGesture(count: 2)` + `.onTapGesture` forced SwiftUI to wait for the double-click resolution window before firing the single-tap selection.
 - Replaced both gestures with a single tap handler that inspects `NSApp.currentEvent?.clickCount` — single click selects immediately, second click triggers preview.
 
+### Media Pool Folders (replaces color tags)
+
+- Removed the `MediaTag` color label system entirely (`MediaTag` enum, `MediaItem.tag`, `setMediaTag` API, `MediaTagDot` / `MediaTagFilterMenuLabel` UI, the filter-by-mark menu, and the related Mark context-menu submenu). No project file migration needed because the project document is not persisted across launches.
+- Added a single-level folder system as the replacement organization mechanism:
+  - New `MediaFolder` model (id + name) and a new `mediaItems[i].folderID: MediaFolder.ID?` field.
+  - `ProjectDocument` adds `mediaFolders: [MediaFolder]`, with undo-tracked APIs: `createMediaFolder(name:containing:)`, `renameMediaFolder(_:to:)`, `deleteMediaFolder(_:)` (contained items return to the root, never deleted), and `moveMediaItems(_:toFolder:)`.
+  - `ProjectSnapshot` includes `mediaFolders` so all folder operations participate in undo/redo.
+- `MediaBrowserView` rewritten around a flat-tree row model that mixes expand/collapse folder rows with media rows (folders first, root items after). Active filters (search + Ready/Aligned) force-expand folders and hide empty folders so matches are always visible.
+- Multi-select behavior:
+  - Plain click: select only the clicked item; sets the selection anchor.
+  - `Cmd+Click`: toggle the clicked item in the current selection; updates the anchor.
+  - `Shift+Click`: select an inclusive range from the anchor to the clicked item across the flat visible order (works across folder boundaries).
+  - Double-click on a media row still triggers preview.
+- Folder interactions:
+  - Header gained a `folder.badge.plus` button — creates a new folder, includes the current selection if any, and enters inline rename.
+  - Folder row: single click toggles expansion; double-click renames inline; right-click → Rename / Delete.
+  - Drag a media row onto a folder row to move it; if the dragged item is part of the current selection, all selected items move together. Dropping onto empty list area moves the dragged set back to the root.
+  - Media row context menu gained "Add to Folder ▶ (New Folder from Selection / existing folders…)" and "Move to Root".
+
+Files changed:
+
+- `Sources/RunningOverlay/MediaImport/MediaItem.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/UI/MediaBrowserView.swift`
+- `Tests/RunningOverlayTests/ProjectDocumentUndoTests.swift` (renamed `mediaTagsAndDeletionAreUndoable` → `mediaFoldersAndDeletionAreUndoable`, exercises create/move/delete folder + delete media undo paths)
+
+Verification:
+
+- `swift build` clean.
+- `swift test` — all 87 tests pass.
+
 Files changed:
 
 - `Sources/RunningOverlay/UI/MediaBrowserView.swift`
