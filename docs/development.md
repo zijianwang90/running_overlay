@@ -219,7 +219,7 @@ Current implementation:
 - Inspector action applies the selected offset to all clips in the currently selected timeline layer.
 - Timeline clips use a dedicated clip detail Inspector with the same compact header, dense 34 px section-row layout, back action, and destructive delete affordance as overlay detail inspectors.
 - Timeline drawing and high-frequency interactions are handled by an AppKit `NSView` embedded in SwiftUI.
-- The AppKit timeline handles self-drawn ruler, ruler hover data, tracks, clips, playhead, clip dragging, ruler seeking, media drop, and Command-scroll zoom.
+- The AppKit timeline handles self-drawn ruler, ruler hover data, tracks, clips, playhead, clip dragging, ruler seeking, `C`-held hover scrubbing, media drop, and Command-scroll zoom.
 - The AppKit timeline draws a muted-red playhead with a small downward-pointing triangle inside the ruler band; the triangle's tip connects to a thin vertical line that extends from the ruler through the visible tracks, and neither part is allowed to extend above the ruler.
 - Selected timeline clips draw a 2 px white border on top of their blue fill, replacing the default dark splice border for the selected block only.
 - The ruler hover info pill draws in a reserved band above the time scale as a rounded panel with a small downward-pointing arrow on its bottom edge whose tip aligns with the hovered ruler position.
@@ -325,7 +325,7 @@ Current implementation:
 - Corner handles in preview are interactive: dragging a handle updates the selected overlay `scale` directly via `ProjectDocument.setOverlayScale`, with continuous undo grouped to drag end.
 - Playback advances the timeline playhead at 30 Hz while active.
 - Left and right arrow keys step the timeline playhead backward or forward by one project frame, using the current project frame rate.
-- Timeline ruler click/drag seeks the playhead, and timeline tracks show a red playhead indicator.
+- Timeline ruler click/drag seeks the playhead; holding `C` while moving the mouse across the timeline time area scrubs the playhead to the hovered time; timeline tracks show a red playhead indicator.
 
 ### Preview Playback
 

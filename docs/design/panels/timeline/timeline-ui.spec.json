@@ -1,6 +1,6 @@
 {
   "name": "Timeline UI",
-  "updated": "2026-04-26",
+  "updated": "2026-05-10",
   "references": {
     "mockup": "./timeline.png",
     "relatedStyleSpec": "../../system/app-ui.md"
@@ -92,6 +92,7 @@
     "collapse/expand gaps toggle",
     "nonlinear zoom slider and Fit label",
     "ruler seeking and hover data",
+    "C-held hover scrubbing moves playhead to hovered timeline time without clicking",
     "independent draggable FIT layer",
     "expanded-mode video clip horizontal drag",
     "collapsed mode hides no-video gaps",
@@ -103,6 +104,7 @@
   ],
   "interactions": {
     "rulerClickDrag": "seek playhead",
+    "cHeldHoverScrub": "while C is held, mouse movement over the timeline time area seeks the playhead to the hovered time",
     "clipClick": "select clip",
     "clipDragExpanded": "move effective start time",
     "clipDragCollapsed": "disabled; selection still works",

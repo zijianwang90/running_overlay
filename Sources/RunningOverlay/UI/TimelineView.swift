@@ -267,6 +267,7 @@ private final class TimelineCanvasNSView: NSView {
     private var mediaDropTargetTrackName: String?
     private var trackingArea: NSTrackingArea?
 
+    private let hoverScrubKeyCode: CGKeyCode = 8
     private let rulerScaleHeight: CGFloat = 28
     private let fitTrackHeight: CGFloat = 44
     private let trackHeight: CGFloat = 44
@@ -407,6 +408,10 @@ private final class TimelineCanvasNSView: NSView {
 
     override func mouseMoved(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
+        if scrubPlayheadIfNeeded(at: point) {
+            return
+        }
+
         let inRuler = point.y <= rulerHeight && activityDuration > 0
         let pauseHit = activitySegmentHit(at: point)
         hoverPoint = inRuler || pauseHit != nil ? point : nil
@@ -467,6 +472,10 @@ private final class TimelineCanvasNSView: NSView {
     override func mouseDragged(with event: NSEvent) {
         guard let project else { return }
         let point = convert(event.locationInWindow, from: nil)
+        if scrubPlayheadIfNeeded(at: point) {
+            return
+        }
+
         if point.y <= rulerHeight {
             project.setPlayhead(time(atX: point.x))
             return
@@ -884,6 +893,36 @@ private final class TimelineCanvasNSView: NSView {
     private func updateDropTarget(_ sender: NSDraggingInfo) {
         let point = convert(sender.draggingLocation, from: nil)
         mediaDropTargetTrackName = trackName(atY: point.y)
+    }
+
+    private func scrubPlayheadIfNeeded(at point: CGPoint) -> Bool {
+        guard isHoverScrubKeyPressed,
+              hasTimelineContent,
+              draggingClipID == nil,
+              !isDraggingFitAxis,
+              !isMediaDragActive,
+              timelineTimeAreaContains(point) else {
+            return false
+        }
+
+        hoverPoint = nil
+        onHoverChange?(nil)
+        project?.clearMediaPoolPreview()
+        project?.setPlayhead(time(atX: point.x))
+        needsDisplay = true
+        return true
+    }
+
+    private var isHoverScrubKeyPressed: Bool {
+        CGEventSource.keyState(.combinedSessionState, key: hoverScrubKeyCode)
+    }
+
+    private func timelineTimeAreaContains(_ point: CGPoint) -> Bool {
+        let timelineStartX = labelWidth + contentPadding
+        return point.x >= timelineStartX
+            && point.x <= bounds.maxX
+            && point.y >= 0
+            && point.y <= bounds.maxY
     }
 
     private func time(atX x: CGFloat) -> TimeInterval {

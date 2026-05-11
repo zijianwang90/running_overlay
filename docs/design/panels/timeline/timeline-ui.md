@@ -1,6 +1,6 @@
 # Timeline UI Design Spec
 
-Last updated: 2026-04-28
+Last updated: 2026-05-10
 
 ## Purpose
 
@@ -41,6 +41,7 @@ Existing behavior to preserve:
 - Collapse/expand toggle for hiding gaps without video.
 - Zoom slider with nonlinear mapping and `Fit` label.
 - Ruler seeking and hover data.
+- `C`-held hover scrubbing that moves the playhead to the hovered timeline time without clicking.
 - FIT layer shown independently above video tracks.
 - FIT layer can be dragged horizontally to align activity data.
 - Video clips can be dragged horizontally in expanded mode.
@@ -215,6 +216,7 @@ Rules:
 ## Interaction Rules
 
 - Ruler click/drag seeks the playhead.
+- Holding `C` while moving the mouse over the timeline time area scrubs the playhead to the hovered time, matching DaVinci-style hover scrubbing.
 - Clip click selects the clip.
 - Expanded-mode clip drag changes effective start time.
 - Collapsed-mode clip drag is disabled, but selection still works.
