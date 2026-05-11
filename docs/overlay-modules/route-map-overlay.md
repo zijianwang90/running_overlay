@@ -1,6 +1,6 @@
 # Route Map Overlay Design
 
-Last updated: 2026-04-28 (Stats Bar unified inspector)
+Last updated: 2026-05-10 (export MapKit snapshot preload)
 
 > **Inspector / UI design has its own spec.** See
 > [`docs/design/overlays/route-map/route-map-overlay-ui.md`](../design/overlays/route-map/route-map-overlay-ui.md) and
@@ -216,7 +216,8 @@ Phase C: Map snapshot abstraction
 
 - 定义 `MapSnapshotProvider`。Completed.
 - 接入首个地图 provider。MapKit preview snapshot loading completed.
-- 实现缓存层和失败降级。Pending.
+- 导出前冻结当前 MapKit 快照并传入共享 SwiftUI 渲染组件。Completed.
+- 实现持久化缓存层和失败降级。Partially completed（导出内存快照缓存已完成；跨会话磁盘缓存仍待实现）。
 - 支持用户自定义地图 API/Mapbox endpoint。Pending.
 
 Phase D: Advanced polish
@@ -267,7 +268,21 @@ Phase F: Stats Bar (current revision)
 - `Inside` 模式下 Stats Bar 背景不再使用 bar 自身圆角，改为按外层容器形状/圆角裁切，实现与容器底边（或顶边）一体化视觉。
 - Stats Bar 位于 Left/Right 时，渲染强制使用纵向堆叠（top-to-bottom），并将 `Item Gap` 作为纵向行间距。
 
-Phase G: Route line richness, container border / glow
+Phase G: Export Map Snapshot Preload (current revision)
+
+- 新增共享的 `RouteMapSnapshotRequestBuilder`，Preview 和 Export 都从同一份
+  `OverlayRouteMapRenderLayout` 输入生成 `MapSnapshotRequest`，避免两条路径的
+  bounds / size / style 逻辑分叉。
+- `SwiftUIOverlayVideoExporter` 在 MOV 和 PNG 导出前收集所有可见 Route Map
+  overlay 的 snapshot request，使用 `MapKitMapSnapshotProvider` 预取一次
+  `NSImage`，并在整次导出中复用。
+- `OverlaySharedRouteMapView` / `RouteMapOverlayView` 支持注入静态地图快照。
+  导出路径把预取图片直接传入 SwiftUI 树，因此 `ImageRenderer` 不再依赖
+  `RouteMapOverlayView.task` 的异步加载时序。
+- 如果 MapKit snapshot 请求失败或没有 GPS geometry，Route Map 仍回退到本地
+  grid 背景，路线、marker、Stats Bar 继续正常导出。
+
+Phase H: Route line richness, container border / glow
 
 - 实现 `RouteMapLegendItemConfig` 列表，替换固定 `legendMode`（保留兼容）。
 - 路线线宽 / 不透明度 / 虚线 / 发光 / 阴影模型字段，并在 Inspector 暴露。

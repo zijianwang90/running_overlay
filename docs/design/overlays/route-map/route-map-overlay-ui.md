@@ -385,7 +385,11 @@ All controls disable and dim to 50% when the section is toggled off.
 
 ### Rendering
 
-**Export (`OverlayFrameRenderer`)**:
+**Export (`SwiftUIOverlayVideoExporter`)**:
+- MapKit backgrounds are preloaded before MOV/PNG rasterization from the same
+  `MapSnapshotRequest` inputs used by preview, then injected into
+  `OverlaySharedRouteMapView` as static `NSImage` render assets. Failed or
+  unavailable snapshots fall back to the local grid background.
 - Route Map and Distance Timeline now call the same shared Stats Bar drawing path (`drawSharedStatsBar`) based on the Distance Timeline visual logic.
 - Background, divider, spacing, stacked-vs-horizontal flow, value text, and label text are rendered by the same function for both overlays.
 

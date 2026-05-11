@@ -845,7 +845,8 @@
   ],
   "sharedStatsBarRenderer": {
     "preview": "PreviewCanvasView.SharedStatsBarContentView",
-    "export": "OverlayFrameRenderer.drawSharedStatsBar",
+    "export": "SwiftUIOverlayVideoExporter via OverlaySharedRouteMapView",
+    "mapSnapshotExport": "SwiftUIOverlayVideoExporter preloads MapKit NSImage snapshots from RouteMapSnapshotRequestBuilder and injects them into RouteMapOverlayView; failed snapshots fall back to the local grid.",
     "baseline": "Distance Timeline stats bar rendering behavior",
     "rules": [
       "Route Map and Distance Timeline use the same stats bar rendering pipeline.",

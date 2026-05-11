@@ -1,3 +1,4 @@
+import AppKit
 import AVFoundation
 import CoreVideo
 import Foundation
@@ -35,6 +36,11 @@ struct SwiftUIOverlayVideoExporter {
         }
 
         try FileManager.default.createDirectory(at: job.destinationURL, withIntermediateDirectories: true)
+        let routeMapSnapshots = await loadRouteMapSnapshots(
+            overlays: supportedOverlays,
+            activity: job.activity,
+            size: CGSize(width: job.settings.resolution.width, height: job.settings.resolution.height)
+        )
 
         for (index, segment) in job.segments.enumerated() {
             if Task.isCancelled {
@@ -47,6 +53,7 @@ struct SwiftUIOverlayVideoExporter {
                 segmentCount: job.segments.count,
                 job: job,
                 overlays: supportedOverlays,
+                routeMapSnapshots: routeMapSnapshots,
                 progress: progress
             )
             await progress(OverlayExportProgress(segmentIndex: index, segmentCount: job.segments.count, segmentName: segment.sourceFileName, segmentProgress: 1))
@@ -64,12 +71,18 @@ struct SwiftUIOverlayVideoExporter {
         guard !supportedOverlays.isEmpty else {
             throw SwiftUIOverlayExportError.noSupportedOverlays
         }
+        let routeMapSnapshots = await loadRouteMapSnapshots(
+            overlays: supportedOverlays,
+            activity: activity,
+            size: size
+        )
 
         let frameView = SwiftUIOverlayFrameView(
             size: size,
             overlays: supportedOverlays,
             activity: activity,
-            elapsedTime: elapsedTime
+            elapsedTime: elapsedTime,
+            routeMapSnapshots: routeMapSnapshots
         )
         guard let cgImage = await MainActor.run(body: {
             let renderer = ImageRenderer(content: frameView)
@@ -94,6 +107,7 @@ struct SwiftUIOverlayVideoExporter {
         segmentCount: Int,
         job: OverlayExportJob,
         overlays: [OverlayElement],
+        routeMapSnapshots: [MapSnapshotRequest: NSImage],
         progress: @escaping @MainActor (OverlayExportProgress) -> Void
     ) async throws {
         let outputURL = outputURL(for: segment, destinationURL: job.destinationURL)
@@ -170,7 +184,8 @@ struct SwiftUIOverlayVideoExporter {
                 size: CGSize(width: width, height: height),
                 overlays: overlays,
                 activity: job.activity,
-                elapsedTime: sampleElapsed
+                elapsedTime: sampleElapsed,
+                routeMapSnapshots: routeMapSnapshots
             )
             guard let cgImage = await MainActor.run(body: {
                 let renderer = ImageRenderer(content: frameView)
@@ -208,6 +223,39 @@ struct SwiftUIOverlayVideoExporter {
         if let error = writer.error {
             throw SwiftUIOverlayExportError.appendFailed(error.localizedDescription)
         }
+    }
+
+    private static func loadRouteMapSnapshots(
+        overlays: [OverlayElement],
+        activity: ActivityTimeline,
+        size: CGSize
+    ) async -> [MapSnapshotRequest: NSImage] {
+        let context = OverlayRenderContext(canvasSize: size, activity: activity, elapsedTime: 0)
+        let requests = Set(overlays.compactMap { element -> MapSnapshotRequest? in
+            guard element.type == .routeMap else { return nil }
+            let layout = OverlayRenderModel.routeMapLayout(for: element, in: context)
+            return RouteMapSnapshotRequestBuilder.request(for: element, layout: layout)
+        })
+        guard !requests.isEmpty else {
+            return [:]
+        }
+
+        let provider = MapKitMapSnapshotProvider()
+        var snapshots: [MapSnapshotRequest: NSImage] = [:]
+        for request in requests {
+            if Task.isCancelled {
+                return snapshots
+            }
+            let result = await withCheckedContinuation { continuation in
+                provider.snapshot(for: request) { result in
+                    continuation.resume(returning: result)
+                }
+            }
+            if case .success(let image) = result {
+                snapshots[request] = image
+            }
+        }
+        return snapshots
     }
 
     private static func draw(cgImage: CGImage, into pixelBuffer: CVPixelBuffer, size: CGSize) throws {
@@ -285,6 +333,7 @@ private struct SwiftUIOverlayFrameView: View {
     let overlays: [OverlayElement]
     let activity: ActivityTimeline
     let elapsedTime: TimeInterval
+    let routeMapSnapshots: [MapSnapshotRequest: NSImage]
 
     var body: some View {
         ZStack {
@@ -300,10 +349,15 @@ private struct SwiftUIOverlayFrameView: View {
                             isInteractive: false
                         )
                     case .routeMap:
+                        let layout = OverlayRenderModel.routeMapLayout(for: element, in: context)
+                        let snapshot = RouteMapSnapshotRequestBuilder
+                            .request(for: element, layout: layout)
+                            .flatMap { routeMapSnapshots[$0] }
                         OverlaySharedRouteMapView(
                             element: element,
-                            layout: OverlayRenderModel.routeMapLayout(for: element, in: context),
-                            isInteractive: false
+                            layout: layout,
+                            isInteractive: false,
+                            staticMapSnapshot: snapshot
                         )
                     case .elevationChart:
                         OverlaySharedElevationChartView(
