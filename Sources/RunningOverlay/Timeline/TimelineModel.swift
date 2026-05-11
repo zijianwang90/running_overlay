@@ -177,6 +177,10 @@ struct TimelineModel: Equatable {
         return nil
     }
 
+    mutating func removeTrack(named name: String) {
+        tracks.removeAll { $0.name == name }
+    }
+
     mutating func deleteClip(_ clipID: TimelineClip.ID) {
         for trackIndex in tracks.indices {
             tracks[trackIndex].clips.removeAll { $0.id == clipID }

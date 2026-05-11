@@ -669,6 +669,24 @@ final class ProjectDocument: ObservableObject {
         statusMessage = "Moved FIT axis to \(formatSignedDuration(startTime))."
     }
 
+    func removeTrack(named name: String) {
+        guard timeline.tracks.contains(where: { $0.name == name }) else {
+            return
+        }
+        registerUndoPoint()
+        var updatedTimeline = timeline
+        updatedTimeline.removeTrack(named: name)
+        timeline = updatedTimeline
+        if settings.previewTrackName == name {
+            settings.previewTrackName = nil
+        }
+        settings.disabledPreviewTrackNames.remove(name)
+        if case .timelineClip(let clipID) = selection, timeline.clip(with: clipID) == nil {
+            selection = .none
+        }
+        statusMessage = "Deleted timeline layer: \(name)."
+    }
+
     func renameTrack(containing clipID: TimelineClip.ID, to name: String) {
         registerUndoPoint()
         var updatedTimeline = timeline
@@ -2711,6 +2729,7 @@ final class ProjectDocument: ObservableObject {
         var updatedTimeline = timeline
         var lastClipID: TimelineClip.ID?
         var matchedCount = 0
+        var skippedIDs: [MediaItem.ID] = []
         var skippedNames: [String] = []
 
         for mediaIndex in mediaItems.indices where targetIDs.contains(mediaItems[mediaIndex].id) {
@@ -2731,6 +2750,7 @@ final class ProjectDocument: ObservableObject {
                 startTime: startTime,
                 duration: mediaItem.duration
             ) {
+                skippedIDs.append(mediaItem.id)
                 skippedNames.append(mediaItem.displayName)
                 continue
             }
@@ -2761,6 +2781,51 @@ final class ProjectDocument: ObservableObject {
             summary = "Matched \(matchedCount) media item(s) to \(trackName); skipped \(skippedNames.count) due to overlap. Try \"Match to New Layer\" for those."
         }
         statusMessage = summary
+
+        if !skippedIDs.isEmpty {
+            let skippedSet = Set(skippedIDs)
+            let names = skippedNames
+            let matched = matchedCount
+            let layerName = trackName
+            DispatchQueue.main.async { [weak self] in
+                self?.presentOverlapSkippedAlert(
+                    matchedCount: matched,
+                    skippedNames: names,
+                    trackName: layerName,
+                    skippedIDs: skippedSet
+                )
+            }
+        }
+    }
+
+    private func presentOverlapSkippedAlert(
+        matchedCount: Int,
+        skippedNames: [String],
+        trackName: String,
+        skippedIDs: Set<MediaItem.ID>
+    ) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        if matchedCount == 0 {
+            alert.messageText = "No items placed on \(trackName)"
+        } else {
+            alert.messageText = "\(skippedNames.count) item(s) skipped on \(trackName)"
+        }
+
+        let preview = skippedNames.prefix(5).map { "• \($0)" }.joined(separator: "\n")
+        let suffix = skippedNames.count > 5 ? "\n…and \(skippedNames.count - 5) more" : ""
+        let intro = matchedCount == 0
+            ? "These media items overlap clips already on \(trackName) and were not placed:"
+            : "Matched \(matchedCount) item(s); these overlap clips already on \(trackName) and were not placed:"
+        alert.informativeText = "\(intro)\n\n\(preview)\(suffix)\n\nPlace the skipped item(s) on a brand-new layer?"
+
+        alert.addButton(withTitle: "Match to New Layer")
+        alert.addButton(withTitle: "Cancel")
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            matchMediaItemsToNewLayer(skippedIDs)
+        }
     }
 
     private static func isSupportedVideoURL(_ url: URL) -> Bool {

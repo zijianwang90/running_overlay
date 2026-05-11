@@ -260,8 +260,6 @@ private final class TimelineCanvasNSView: NSView {
     private var draggingClipID: TimelineClip.ID?
     private var dragInitialStart: TimeInterval = 0
     private var dragCurrentStart: TimeInterval = 0
-    private var isDraggingFitAxis = false
-    private var dragInitialFitStart: TimeInterval = 0
     private var hoverPoint: CGPoint?
     private var isMediaDragActive = false
     private var mediaDropTargetTrackName: String?
@@ -452,8 +450,6 @@ private final class TimelineCanvasNSView: NSView {
         }
 
         if fitTrackRects().contains(where: { $0.contains(point) }) {
-            isDraggingFitAxis = true
-            dragInitialFitStart = fitStartTime
             return
         }
 
@@ -481,13 +477,6 @@ private final class TimelineCanvasNSView: NSView {
             return
         }
 
-        if isDraggingFitAxis {
-            let delta = Double(event.deltaX) / max(pixelsPerSecond, 0.001)
-            fitStartTime += delta
-            needsDisplay = true
-            return
-        }
-
         guard draggingClipID != nil else {
             return
         }
@@ -497,15 +486,41 @@ private final class TimelineCanvasNSView: NSView {
     }
 
     override func mouseUp(with event: NSEvent) {
-        if isDraggingFitAxis {
-            project?.moveFitStart(to: fitStartTime)
-        }
         if let draggingClipID {
             project?.moveClip(draggingClipID, toEffectiveStartTime: dragCurrentStart)
         }
-        isDraggingFitAxis = false
         draggingClipID = nil
         project?.finishContinuousEdit()
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        guard point.y >= trackStartY else {
+            return
+        }
+        let trackSpan = trackHeight + trackGap
+        let index = Int((point.y - trackStartY) / trackSpan)
+        guard index >= 0, index < tracks.count else {
+            return
+        }
+        let trackName = tracks[index].name
+        let menu = NSMenu()
+        let item = NSMenuItem(
+            title: "Delete \(trackName)",
+            action: #selector(deleteTrackMenuAction(_:)),
+            keyEquivalent: ""
+        )
+        item.target = self
+        item.representedObject = trackName
+        menu.addItem(item)
+        NSMenu.popUpContextMenu(menu, with: event, for: self)
+    }
+
+    @objc private func deleteTrackMenuAction(_ sender: NSMenuItem) {
+        guard let trackName = sender.representedObject as? String else {
+            return
+        }
+        project?.removeTrack(named: trackName)
     }
 
     override func scrollWheel(with event: NSEvent) {
@@ -899,7 +914,6 @@ private final class TimelineCanvasNSView: NSView {
         guard isHoverScrubKeyPressed,
               hasTimelineContent,
               draggingClipID == nil,
-              !isDraggingFitAxis,
               !isMediaDragActive,
               timelineTimeAreaContains(point) else {
             return false

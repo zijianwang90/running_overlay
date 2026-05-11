@@ -2,6 +2,33 @@
 
 ## 2026-05-10
 
+### Media Pool Empty-Area Context Menu + Fix Root → Folder Drag (second attempt)
+
+- The first attempt at adding a right-click menu to the empty Media Pool area attached `.contextMenu` to a `Color.clear.contentShape(Rectangle())` background view, which on macOS SwiftUI does not actually respond to right-clicks even when the same view does respond to `.onTapGesture`. Moved `.contextMenu { emptyAreaContextMenu }` up to the `ScrollView` level instead — folder/media rows have their own `.contextMenu` modifiers which take precedence at their hit points, so empty-area right-clicks fall through to the scroll view's menu (Import Media… / New Folder).
+- The first attempt at fixing root-→-folder drag (switching the UTI from `UTType.text` to `UTType.plainText` in a unified `MediaPoolDropDelegate`) still didn't reliably deliver move drops. Replaced the delegate entirely with closure-form `.onDrop(of: [.plainText, .fileURL], isTargeted:) { providers in ... }` on the scroll background and every folder row. A new `handleDrop(providers:targetFolderID:)` helper inspects the providers — if any conform to `public.file-url` it routes to `importDroppedVideoFiles` (with the target folder), otherwise it loads the first provider as `NSString`, parses the UUID, and dispatches to `performDrop` on the main actor. Removed the now-unused `MediaPoolDropDelegate` struct.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/MediaBrowserView.swift`
+
+### Media Pool Empty-Area Context Menu + Fix Root → Folder Drag
+
+- Added a right-click context menu on the empty area of the Media Pool list (the `Color.clear` background behind `LazyVStack`). Two items: **Import Media…** (opens the standard import panel via `project.importVideos()`) and **New Folder** (creates a folder at root and enters inline rename — same behaviour as the header `folder.badge.plus` button).
+- Fixed: root media items couldn't be dragged onto folder rows. Root cause: `onDrag` registers the media UUID via `NSItemProvider(object: NSString)` which advertises `public.utf8-plain-text`. Drop side queried `UTType.text.identifier` (`public.text`) — that's a valid ancestor but SwiftUI's `info.itemProviders(for:)` did not surface the provider reliably. Switched both `validateDrop` / `itemProviders(for:)` queries and the `.onDrop(of:)` UTI lists to `UTType.plainText.identifier` (`public.plain-text`), which is a direct parent of `public.utf8-plain-text` and matches consistently.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/MediaBrowserView.swift`
+
+### Overlap Skip Warning — NSAlert with One-Click "Match to New Layer"
+
+- Status-bar messaging alone wasn't visible enough for batch matches — users were missing the "skipped N due to overlap" notice. Added an `NSAlert` that fires after `matchMediaItems` finishes if any item was skipped because of overlap. The alert lists up to 5 skipped names (with an "…and K more" suffix), states the count matched vs. skipped, and offers two buttons: **Match to New Layer** (immediately re-runs `matchMediaItemsToNewLayer` on the skipped IDs) and **Cancel**. The alert is dispatched via `DispatchQueue.main.async` so the partial-match state has a chance to render behind it.
+- Status message is kept as the persistent breadcrumb; the alert is the loud foreground notification.
+
+Files changed:
+
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+
 ### Timeline Overlap Rejection on Media Placement
 
 - Added `TimelineModel.wouldClipOverlap(mediaItemID:trackName:startTime:duration:)` — a non-mutating overlap probe that compares the prospective placement window against existing clips on the same track, excluding any clip belonging to the same media item (so a re-placement / move of the same item never reports against itself).
@@ -3509,3 +3536,17 @@ Files changed:
 - `Sources/RunningOverlay/Project/ProjectDocument.swift`
 - `docs/design/overlays/numeric/numeric-overlay-ui.md`
 - `docs/project-log.md`
+
+### Timeline Layer Right-Click Delete + FIT Drag Lock (2026-05-10)
+
+Summary:
+
+- Added right-click context menu on non-FIT timeline layer rows (`Layer 1`, `Layer 2`, …) with a "Delete <layer>" action; FIT row has no menu.
+- `ProjectDocument.removeTrack(named:)` removes the track and its clips, clears matching `previewTrackName`/`disabledPreviewTrackNames`, and registers an undo point.
+- Disabled horizontal drag on the FIT green track — dragging it had no meaningful semantics. Mouse-down on FIT rects is now a no-op; drag state and `mouseUp` commit removed.
+
+Files changed:
+
+- `Sources/RunningOverlay/Timeline/TimelineModel.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/UI/TimelineView.swift`

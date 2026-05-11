@@ -217,19 +217,25 @@ struct MediaBrowserView: View {
                 .background(
                     rootDropOverlayBackground
                 )
-                .onDrop(
-                    of: [UTType.text.identifier, UTType.fileURL.identifier],
-                    delegate: MediaPoolDropDelegate(
-                        targetFolderID: nil,
-                        selectedMediaIDs: selectedMediaIDs,
-                        isHighlighted: $isRootDropTarget,
-                        onMoveItem: performDrop,
-                        onImportFiles: { urls, folder in
-                            importVideoURLs(urls, intoFolder: folder)
-                        }
-                    )
-                )
+                .onDrop(of: [.plainText, .fileURL], isTargeted: $isRootDropTarget) { providers in
+                    handleDrop(providers: providers, targetFolderID: nil)
+                }
         )
+        .contextMenu {
+            emptyAreaContextMenu
+        }
+    }
+
+    @ViewBuilder
+    private var emptyAreaContextMenu: some View {
+        Button("Import Media…") {
+            project.importVideos()
+        }
+        Button("New Folder") {
+            let newID = project.createMediaFolder()
+            expandedFolderIDs.insert(newID)
+            beginRenaming(folderID: newID)
+        }
     }
 
     @ViewBuilder
@@ -312,22 +318,16 @@ struct MediaBrowserView: View {
             Button("Delete Folder") { project.deleteMediaFolder(folder.id) }
         }
         .onDrop(
-            of: [UTType.text.identifier, UTType.fileURL.identifier],
-            delegate: MediaPoolDropDelegate(
-                targetFolderID: folder.id,
-                selectedMediaIDs: selectedMediaIDs,
-                isHighlighted: Binding(
-                    get: { dropTargetFolderID == folder.id },
-                    set: { newValue in
-                        dropTargetFolderID = newValue ? folder.id : (dropTargetFolderID == folder.id ? nil : dropTargetFolderID)
-                    }
-                ),
-                onMoveItem: performDrop,
-                onImportFiles: { urls, target in
-                    importVideoURLs(urls, intoFolder: target)
+            of: [.plainText, .fileURL],
+            isTargeted: Binding(
+                get: { dropTargetFolderID == folder.id },
+                set: { newValue in
+                    dropTargetFolderID = newValue ? folder.id : (dropTargetFolderID == folder.id ? nil : dropTargetFolderID)
                 }
             )
-        )
+        ) { providers in
+            handleDrop(providers: providers, targetFolderID: folder.id)
+        }
     }
 
     private func mediaRowContainer(item: MediaItem, inFolder: Bool, index: Int) -> some View {
@@ -406,6 +406,27 @@ struct MediaBrowserView: View {
 
     private func importVideoURLs(_ urls: [URL], intoFolder folderID: MediaFolder.ID?) {
         project.importVideoURLs(urls, replacingExisting: false, intoFolder: folderID)
+    }
+
+    private func handleDrop(providers: [NSItemProvider], targetFolderID: MediaFolder.ID?) -> Bool {
+        let fileURLProviders = providers.filter {
+            $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier)
+        }
+        if !fileURLProviders.isEmpty {
+            return importDroppedVideoFiles(fileURLProviders, intoFolder: targetFolderID)
+        }
+
+        guard let provider = providers.first else { return false }
+        let capturedSelection = selectedMediaIDs
+        let target = targetFolderID
+        provider.loadObject(ofClass: NSString.self) { reading, _ in
+            guard let string = reading as? String, let mediaID = UUID(uuidString: string) else { return }
+            let draggedFromSelection = capturedSelection.contains(mediaID)
+            Task { @MainActor in
+                performDrop(droppedItemID: mediaID, draggedFromSelection: draggedFromSelection, targetFolderID: target)
+            }
+        }
+        return true
     }
 
     private func mediaIDs(inFolder folderID: MediaFolder.ID) -> Set<MediaItem.ID> {
@@ -839,70 +860,6 @@ struct MediaBrowserView: View {
         let minutes = Int(duration) / 60
         let seconds = Int(duration) % 60
         return "\(minutes)m \(seconds)s"
-    }
-}
-
-private struct MediaPoolDropDelegate: DropDelegate {
-    let targetFolderID: MediaFolder.ID?
-    let selectedMediaIDs: Set<MediaItem.ID>
-    @Binding var isHighlighted: Bool
-    let onMoveItem: @MainActor @Sendable (MediaItem.ID, Bool, MediaFolder.ID?) -> Void
-    let onImportFiles: @MainActor @Sendable ([URL], MediaFolder.ID?) -> Void
-
-    func dropEntered(info: DropInfo) {
-        isHighlighted = true
-    }
-
-    func dropExited(info: DropInfo) {
-        isHighlighted = false
-    }
-
-    func validateDrop(info: DropInfo) -> Bool {
-        info.hasItemsConforming(to: [UTType.text.identifier, UTType.fileURL.identifier])
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        isHighlighted = false
-        let folderID = targetFolderID
-
-        let fileProviders = info.itemProviders(for: [UTType.fileURL.identifier])
-        if !fileProviders.isEmpty {
-            let collector = DroppedURLCollector()
-            let group = DispatchGroup()
-            for provider in fileProviders {
-                group.enter()
-                provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
-                    defer { group.leave() }
-                    if let data = item as? Data,
-                       let string = String(data: data, encoding: .utf8),
-                       let url = URL(string: string) {
-                        collector.append(url)
-                    } else if let url = item as? URL {
-                        collector.append(url)
-                    }
-                }
-            }
-            let importFiles = onImportFiles
-            group.notify(queue: .main) {
-                Task { @MainActor in
-                    importFiles(collector.urls, folderID)
-                }
-            }
-            return true
-        }
-
-        let textProviders = info.itemProviders(for: [UTType.text.identifier])
-        guard let provider = textProviders.first else { return false }
-        let selected = selectedMediaIDs
-        let move = onMoveItem
-        provider.loadObject(ofClass: NSString.self) { reading, _ in
-            guard let string = reading as? String, let mediaID = UUID(uuidString: string) else { return }
-            let draggedFromSelection = selected.contains(mediaID)
-            Task { @MainActor in
-                move(mediaID, draggedFromSelection, folderID)
-            }
-        }
-        return true
     }
 }
 
