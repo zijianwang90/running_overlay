@@ -213,7 +213,8 @@ Current implementation:
 - Media drag-over highlights the target layer, and the AppKit timeline exposes only one new layer drop target beyond existing layers.
 - `TimelineClip` stores `startTime` and `alignmentOffset` separately.
 - Existing timeline clips can be dragged horizontally to change their effective start time.
-- Inspector start and offset fields update the selected clip's effective start time and alignment offset with 0.01 second precision.
+- Inspector start and offset fields update the selected clip's effective start time and alignment offset with 0.01 second precision, preserve in-progress numeric typing until focus leaves the field, and format to fixed precision only after commit.
+- While playback is paused and the playhead is inside the selected clip, editing the clip offset moves the playhead by the same effective-start delta so the visible video frame stays still during alignment.
 - Double-clicking Inspector timing labels resets start or offset to the default `0.00 s` value.
 - Inspector action applies the selected offset to all clips in the currently selected timeline layer.
 - Timeline clips use a dedicated clip detail Inspector with the same compact header, dense 34 px section-row layout, back action, and destructive delete affordance as overlay detail inspectors.

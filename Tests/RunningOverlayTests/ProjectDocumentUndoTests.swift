@@ -62,6 +62,63 @@ struct ProjectDocumentUndoTests {
         #expect(project.timeline.tracks[0].clips.count == 1)
     }
 
+    @Test func changingPausedVisibleClipOffsetKeepsSourceFrameStill() {
+        let project = ProjectDocument()
+        project.activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 0),
+            duration: 100,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        let clip = TimelineClip(
+            mediaItemID: nil,
+            title: "clip.mov",
+            startTime: 10,
+            duration: 20,
+            alignmentOffset: 0,
+            cameraGroupID: "Camera A"
+        )
+        project.timeline = TimelineModel(tracks: [
+            TimelineTrack(name: "Camera A", clips: [clip])
+        ])
+        project.setPlayhead(15)
+
+        project.setSelectedClipOffset(clip.id, offset: 3)
+
+        #expect(project.timeline.clip(with: clip.id)?.effectiveStartTime == 13)
+        #expect(project.timeline.playhead == 18)
+    }
+
+    @Test func changingPlayingClipOffsetDoesNotMovePlayhead() {
+        let project = ProjectDocument()
+        project.activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 0),
+            duration: 100,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        let clip = TimelineClip(
+            mediaItemID: nil,
+            title: "clip.mov",
+            startTime: 10,
+            duration: 20,
+            alignmentOffset: 0,
+            cameraGroupID: "Camera A"
+        )
+        project.timeline = TimelineModel(tracks: [
+            TimelineTrack(name: "Camera A", clips: [clip])
+        ])
+        project.setPlayhead(15)
+        project.isPlaying = true
+
+        project.setSelectedClipOffset(clip.id, offset: 3)
+
+        #expect(project.timeline.clip(with: clip.id)?.effectiveStartTime == 13)
+        #expect(project.timeline.playhead == 15)
+    }
+
     @Test func matchingMediaToNewLayerUsesTimestampAndIsUndoable() throws {
         let project = ProjectDocument()
         project.activity = ActivityTimeline(

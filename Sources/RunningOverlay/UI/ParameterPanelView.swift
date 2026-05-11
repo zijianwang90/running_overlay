@@ -403,16 +403,14 @@ private struct InspectorDetailNumberRow: View {
     var body: some View {
         InspectorDetailRow(label: label) {
             HStack(spacing: InspectorTheme.space2) {
-                TextField(label, value: $value, format: .number.precision(.fractionLength(precision)))
-                    .textFieldStyle(.plain)
-                    .font(NumericTokens.numericFont)
-                    .foregroundStyle(NumericTokens.textPrimary)
-                    .monospacedDigit()
-                    .multilineTextAlignment(.trailing)
-                    .onSubmit {
-                        project.finishContinuousEdit()
-                        NSApp.keyWindow?.makeFirstResponder(nil)
-                    }
+                InspectorBufferedNumberField(
+                    label: label,
+                    value: $value,
+                    precision: precision,
+                    font: NumericTokens.numericFont,
+                    textColor: NumericTokens.textPrimary,
+                    onCommit: project.finishContinuousEdit
+                )
 
                 if let suffix {
                     Text(suffix)
@@ -584,6 +582,91 @@ private struct OverlayElementRow: View {
             activity: project.activity,
             elapsedTime: project.layerDataSampleTime
         )
+    }
+}
+
+private struct InspectorBufferedNumberField: View {
+    var label: String
+    @Binding var value: Double
+    var precision: Int
+    var font: Font
+    var textColor: Color
+    var onCommit: () -> Void
+
+    @FocusState private var isFocused: Bool
+    @State private var text = ""
+
+    var body: some View {
+        TextField(label, text: $text)
+            .textFieldStyle(.plain)
+            .font(font)
+            .foregroundStyle(textColor)
+            .monospacedDigit()
+            .multilineTextAlignment(.trailing)
+            .focused($isFocused)
+            .onAppear {
+                text = formatted(value)
+            }
+            .onChange(of: value) { _, newValue in
+                guard !isFocused else {
+                    return
+                }
+                text = formatted(newValue)
+            }
+            .onChange(of: text) { _, newText in
+                guard isFocused, let parsed = parsedValue(from: newText) else {
+                    return
+                }
+                updateValueIfNeeded(parsed)
+            }
+            .onChange(of: isFocused) { _, focused in
+                if focused {
+                    text = editableText(for: value)
+                } else {
+                    commitText()
+                }
+            }
+            .onSubmit {
+                commitText()
+                NSApp.keyWindow?.makeFirstResponder(nil)
+            }
+    }
+
+    private func commitText() {
+        if let parsed = parsedValue(from: text) {
+            updateValueIfNeeded(parsed)
+        }
+        text = formatted(value)
+        onCommit()
+    }
+
+    private func parsedValue(from text: String) -> Double? {
+        let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
+        guard !normalized.isEmpty else {
+            return nil
+        }
+        return Double(normalized)
+    }
+
+    private func editableText(for value: Double) -> String {
+        let formattedValue = formatted(value)
+        return formattedValue.hasSuffix(".00") ? String(formattedValue.dropLast(3)) : formattedValue
+    }
+
+    private func formatted(_ value: Double) -> String {
+        String(format: "%.\(precision)f", value)
+    }
+
+    private func updateValueIfNeeded(_ parsed: Double) {
+        guard roundedForPrecision(parsed) != roundedForPrecision(value) else {
+            return
+        }
+        value = parsed
+    }
+
+    private func roundedForPrecision(_ value: Double) -> Double {
+        let scale = pow(10, Double(precision))
+        return (value * scale).rounded() / scale
     }
 }
 
@@ -1155,16 +1238,14 @@ private struct InspectorNumberRow: View {
                 }
                 .help(reset == nil ? "" : "Double-click to reset")
 
-            TextField(label, value: $value, format: .number.precision(.fractionLength(precision)))
-                .textFieldStyle(.plain)
-                .font(InspectorTheme.numericFont)
-                .foregroundStyle(InspectorTheme.textPrimary)
-                .monospacedDigit()
-                .multilineTextAlignment(.trailing)
-                .onSubmit {
-                    project.finishContinuousEdit()
-                    NSApp.keyWindow?.makeFirstResponder(nil)
-                }
+            InspectorBufferedNumberField(
+                label: label,
+                value: $value,
+                precision: precision,
+                font: InspectorTheme.numericFont,
+                textColor: InspectorTheme.textPrimary,
+                onCommit: project.finishContinuousEdit
+            )
 
             if let suffix {
                 Text(suffix)
