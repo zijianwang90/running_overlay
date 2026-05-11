@@ -2,6 +2,24 @@
 
 ## 2026-05-10
 
+### Media Pool Folder Rename UX, Folder-Targeted Finder Drops, Folder Auto-Match
+
+- Removed the double-click-to-rename gesture on folder rows. Renaming is now only reachable via the right-click `Rename Folder` action (less accidental). The rename text field is styled as an obvious input: an inline `Renaming:` caption, a filled control background, and a 1.5pt accent-blue border, and it auto-focuses on appear.
+- Replaced the separate `MediaItemDropDelegate` with a unified `MediaPoolDropDelegate` that accepts both `UTType.text` (move existing media between folder/root) and `UTType.fileURL` (import new files from Finder) on the same drop target. The previous fix that stacked two `.onDrop` modifiers wasn't reliable because the row hit-region swallowed file URL drops before they could bubble to the outer handler.
+- Wired the unified delegate into folder rows, media rows, and the empty-list background, so dragging files from Finder works whether they land on root area, on a folder row (imports straight into that folder), or on a media row (imports to root).
+- `ProjectDocument.importVideoURLs(_:replacingExisting:intoFolder:)` gained an optional `intoFolder:` parameter; imported items get stamped with the supplied folder ID inside the import task, and the status message includes the destination folder name.
+- Folder context menu gained `Auto Match to Current Layer` and `Match to New Layer`, which feed the folder's full member set into the existing `matchMediaItemsToCurrentLayer` / `matchMediaItemsToNewLayer` paths so a whole folder of clips can be placed onto the timeline at once. Both entries auto-disable when the folder is empty.
+
+### Media Pool Folder Refinements + Restore Finder Drag-Import
+
+- Collapsing a folder now also deselects any of its child media items (and clears the selection anchor if it pointed at a collapsed child). This prevents the surprise where pressing "New Folder" while a folder was collapsed would yank items out of their existing folder.
+- Creating a folder via the header `folder.badge.plus` button or the `Add to Folder → New Folder from Selection` context action now only includes selected items that are **currently at the root** (`folderID == nil`). Items already inside another folder stay put even if they were selected — moving items between folders requires an explicit context-menu action or drag/drop.
+- Restored dragging video files from Finder into the Media Pool. The new media-item move drop handlers I added in the prior change (declared only `UTType.text`) prevented the outer `.onDrop(of: [.fileURL])` from receiving file imports reliably; added a sibling `.onDrop(of: [.fileURL])` directly on the scroll list's background that routes to `importDroppedVideoFiles` so finder drops work whether they land on empty list area or are intercepted by the inner drop target.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/MediaBrowserView.swift`
+
 ### FIT Pause Segment Coloring
 
 - Parsed FIT timer start/stop events into `ActivityAnnotatedSegment` pause spans without changing real elapsed-time video alignment.

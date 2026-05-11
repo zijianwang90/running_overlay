@@ -119,7 +119,7 @@ final class ProjectDocument: ObservableObject {
         importVideoURLs(urls, replacingExisting: true)
     }
 
-    func importVideoURLs(_ urls: [URL], replacingExisting: Bool = false) {
+    func importVideoURLs(_ urls: [URL], replacingExisting: Bool = false, intoFolder folderID: MediaFolder.ID? = nil) {
         let videoURLs = urls.filter(Self.isSupportedVideoURL)
         guard !videoURLs.isEmpty else {
             statusMessage = "No supported video files were found."
@@ -128,6 +128,10 @@ final class ProjectDocument: ObservableObject {
 
         statusMessage = "Importing \(videoURLs.count) video file(s)..."
         let currentActivity = activity
+        let targetFolderID: MediaFolder.ID? = {
+            guard let folderID, mediaFolders.contains(where: { $0.id == folderID }) else { return nil }
+            return folderID
+        }()
 
         Task {
             let imported = await withTaskGroup(of: MediaItem.self) { group in
@@ -144,8 +148,19 @@ final class ProjectDocument: ObservableObject {
                 return items.sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
             }
 
+            let stampedImported: [MediaItem]
+            if let targetFolderID {
+                stampedImported = imported.map {
+                    var item = $0
+                    item.folderID = targetFolderID
+                    return item
+                }
+            } else {
+                stampedImported = imported
+            }
+
             registerUndoPoint()
-            let importedMediaItems = replacingExisting ? imported : mediaItems + imported
+            let importedMediaItems = replacingExisting ? stampedImported : mediaItems + stampedImported
             mediaItems = importedMediaItems
 
             if replacingExisting {
@@ -153,14 +168,15 @@ final class ProjectDocument: ObservableObject {
                 mediaPoolPreviewItemID = nil
             }
 
-            let matchableCount = imported.filter {
+            let matchableCount = stampedImported.filter {
                 if case .readyToMatch = $0.alignmentStatus {
                     return true
                 }
                 return false
             }.count
             let matchableSuffix = matchableCount > 0 ? ", \(matchableCount) ready for auto-match" : ""
-            statusMessage = "Imported \(imported.count) video file(s) to media pool\(matchableSuffix)."
+            let destination = targetFolderID.flatMap { id in mediaFolders.first { $0.id == id }?.name }.map { " into \"\($0)\"" } ?? ""
+            statusMessage = "Imported \(stampedImported.count) video file(s)\(destination)\(matchableSuffix)."
         }
     }
 
@@ -612,8 +628,12 @@ final class ProjectDocument: ObservableObject {
 
     func setSelectedClipOffset(_ clipID: TimelineClip.ID, offset: TimeInterval) {
         registerContinuousUndoPoint()
+        let pausedSourceTime = stationarySourceTime(for: clipID)
         var updatedTimeline = timeline
         updatedTimeline.setClipOffset(clipID, offset: offset, activityDuration: activity.duration)
+        if let pausedSourceTime, let updatedClip = updatedTimeline.clip(with: clipID) {
+            updatedTimeline.playhead = updatedClip.effectiveStartTime + pausedSourceTime
+        }
         timeline = updatedTimeline
     }
 
@@ -653,6 +673,17 @@ final class ProjectDocument: ObservableObject {
     func finishContinuousEdit() {
         activeUndoSnapshot = nil
         updateUndoRedoFlags()
+    }
+
+    private func stationarySourceTime(for clipID: TimelineClip.ID) -> TimeInterval? {
+        guard !isPlaying, let clip = timeline.clip(with: clipID) else {
+            return nil
+        }
+        let sourceTime = timeline.playhead - clip.effectiveStartTime
+        guard sourceTime >= 0, sourceTime <= clip.duration else {
+            return nil
+        }
+        return sourceTime
     }
 
     func applyOffsetToCurrentLayer(for clipID: TimelineClip.ID) {

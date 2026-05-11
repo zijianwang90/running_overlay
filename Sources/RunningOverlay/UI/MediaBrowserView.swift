@@ -16,6 +16,7 @@ struct MediaBrowserView: View {
     @State private var dropTargetFolderID: MediaFolder.ID?
     @State private var isRootDropTarget = false
     @State private var isMediaBrowserActive = false
+    @FocusState private var renameFieldFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -69,14 +70,14 @@ struct MediaBrowserView: View {
     private var header: some View {
         EditorPanelHeader(title: "Media") {
             Button {
-                let newID = project.createMediaFolder(containing: selectedMediaIDs)
+                let newID = project.createMediaFolder(containing: rootSelectedMediaIDs)
                 expandedFolderIDs.insert(newID)
                 beginRenaming(folderID: newID)
             } label: {
                 Image(systemName: "folder.badge.plus")
             }
             .buttonStyle(EditorIconButtonStyle(isEnabled: true))
-            .help(selectedMediaIDs.isEmpty ? "New Folder" : "New Folder from Selection")
+            .help(rootSelectedMediaIDs.isEmpty ? "New Folder" : "New Folder from \(rootSelectedMediaIDs.count) Selected Item(s)")
             .accessibilityLabel("New Folder")
 
             Button {
@@ -217,12 +218,15 @@ struct MediaBrowserView: View {
                     rootDropOverlayBackground
                 )
                 .onDrop(
-                    of: [UTType.text.identifier],
-                    delegate: MediaItemDropDelegate(
+                    of: [UTType.text.identifier, UTType.fileURL.identifier],
+                    delegate: MediaPoolDropDelegate(
                         targetFolderID: nil,
                         selectedMediaIDs: selectedMediaIDs,
                         isHighlighted: $isRootDropTarget,
-                        onPerform: performDrop
+                        onMoveItem: performDrop,
+                        onImportFiles: { urls, folder in
+                            importVideoURLs(urls, intoFolder: folder)
+                        }
                     )
                 )
         )
@@ -260,13 +264,7 @@ struct MediaBrowserView: View {
                 .font(.system(size: 14))
                 .foregroundStyle(EditorTheme.accentBlue)
             if isEditing {
-                TextField("Folder name", text: $editingFolderName, onCommit: { commitFolderRename(folder.id) })
-                    .textFieldStyle(.plain)
-                    .font(EditorTheme.bodyStrongFont)
-                    .foregroundStyle(EditorTheme.textPrimary)
-                    .onExitCommand {
-                        editingFolderID = nil
-                    }
+                folderRenameField(folder: folder)
             } else {
                 Text(folder.name)
                     .font(EditorTheme.bodyStrongFont)
@@ -274,9 +272,11 @@ struct MediaBrowserView: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 4)
-            Text("\(childCount)")
-                .font(EditorTheme.captionFont.monospacedDigit())
-                .foregroundStyle(EditorTheme.textMuted)
+            if !isEditing {
+                Text("\(childCount)")
+                    .font(EditorTheme.captionFont.monospacedDigit())
+                    .foregroundStyle(EditorTheme.textMuted)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
@@ -295,20 +295,25 @@ struct MediaBrowserView: View {
             if isEditing {
                 return
             }
-            if NSApp.currentEvent?.clickCount ?? 1 >= 2 {
-                beginRenaming(folderID: folder.id)
-                return
-            }
             toggleFolderExpansion(folder.id)
             isMediaBrowserActive = true
         }
         .contextMenu {
+            Button("Auto Match to Current Layer") {
+                project.matchMediaItemsToCurrentLayer(mediaIDs(inFolder: folder.id))
+            }
+            .disabled(mediaIDs(inFolder: folder.id).isEmpty)
+            Button("Match to New Layer") {
+                project.matchMediaItemsToNewLayer(mediaIDs(inFolder: folder.id))
+            }
+            .disabled(mediaIDs(inFolder: folder.id).isEmpty)
+            Divider()
             Button("Rename Folder") { beginRenaming(folderID: folder.id) }
             Button("Delete Folder") { project.deleteMediaFolder(folder.id) }
         }
         .onDrop(
-            of: [UTType.text.identifier],
-            delegate: MediaItemDropDelegate(
+            of: [UTType.text.identifier, UTType.fileURL.identifier],
+            delegate: MediaPoolDropDelegate(
                 targetFolderID: folder.id,
                 selectedMediaIDs: selectedMediaIDs,
                 isHighlighted: Binding(
@@ -317,7 +322,10 @@ struct MediaBrowserView: View {
                         dropTargetFolderID = newValue ? folder.id : (dropTargetFolderID == folder.id ? nil : dropTargetFolderID)
                     }
                 ),
-                onPerform: performDrop
+                onMoveItem: performDrop,
+                onImportFiles: { urls, target in
+                    importVideoURLs(urls, intoFolder: target)
+                }
             )
         )
     }
@@ -358,7 +366,7 @@ struct MediaBrowserView: View {
                 Divider()
                 Menu("Add to Folder") {
                     Button("New Folder from Selection") {
-                        let ids = actionIDs(for: item)
+                        let ids = actionIDs(for: item).intersection(rootMediaIDs)
                         let newID = project.createMediaFolder(containing: ids)
                         expandedFolderIDs.insert(newID)
                         beginRenaming(folderID: newID)
@@ -391,6 +399,51 @@ struct MediaBrowserView: View {
             .onDrag {
                 NSItemProvider(object: item.id.uuidString as NSString)
             }
+            .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+                importDroppedVideoFiles(providers, intoFolder: nil)
+            }
+    }
+
+    private func importVideoURLs(_ urls: [URL], intoFolder folderID: MediaFolder.ID?) {
+        project.importVideoURLs(urls, replacingExisting: false, intoFolder: folderID)
+    }
+
+    private func mediaIDs(inFolder folderID: MediaFolder.ID) -> Set<MediaItem.ID> {
+        Set(project.mediaItems.filter { $0.folderID == folderID }.map(\.id))
+    }
+
+    @ViewBuilder
+    private func folderRenameField(folder: MediaFolder) -> some View {
+        HStack(spacing: 6) {
+            Text("Renaming:")
+                .font(EditorTheme.captionFont)
+                .foregroundStyle(EditorTheme.textMuted)
+            TextField("Folder name", text: $editingFolderName, onCommit: { commitFolderRename(folder.id) })
+                .textFieldStyle(.plain)
+                .font(EditorTheme.bodyStrongFont)
+                .foregroundStyle(EditorTheme.textPrimary)
+                .focused($renameFieldFocused)
+                .submitLabel(.done)
+                .onExitCommand {
+                    editingFolderID = nil
+                }
+                .onAppear {
+                    DispatchQueue.main.async {
+                        renameFieldFocused = true
+                    }
+                }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(EditorTheme.surfaceControl)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(EditorTheme.accentBlue, lineWidth: 1.5)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private func handleMediaTap(_ item: MediaItem) {
@@ -454,6 +507,13 @@ struct MediaBrowserView: View {
     private func toggleFolderExpansion(_ folderID: MediaFolder.ID) {
         if expandedFolderIDs.contains(folderID) {
             expandedFolderIDs.remove(folderID)
+            let idsInFolder = Set(project.mediaItems.filter { $0.folderID == folderID }.map(\.id))
+            if !idsInFolder.isEmpty {
+                selectedMediaIDs.subtract(idsInFolder)
+                if let anchor = selectionAnchorID, idsInFolder.contains(anchor) {
+                    selectionAnchorID = nil
+                }
+            }
         } else {
             expandedFolderIDs.insert(folderID)
         }
@@ -461,6 +521,14 @@ struct MediaBrowserView: View {
 
     private func anyInFolder(_ ids: Set<MediaItem.ID>) -> Bool {
         project.mediaItems.contains { ids.contains($0.id) && $0.folderID != nil }
+    }
+
+    private var rootMediaIDs: Set<MediaItem.ID> {
+        Set(project.mediaItems.filter { $0.folderID == nil }.map(\.id))
+    }
+
+    private var rootSelectedMediaIDs: Set<MediaItem.ID> {
+        selectedMediaIDs.intersection(rootMediaIDs)
     }
 
     private var filteredMediaItems: [MediaItem] {
@@ -742,7 +810,7 @@ struct MediaBrowserView: View {
         }
     }
 
-    private func importDroppedVideoFiles(_ providers: [NSItemProvider]) -> Bool {
+    private func importDroppedVideoFiles(_ providers: [NSItemProvider], intoFolder folderID: MediaFolder.ID? = nil) -> Bool {
         guard project.activity.duration > 0 else {
             project.statusMessage = "Import a FIT file before importing videos."
             return false
@@ -767,7 +835,7 @@ struct MediaBrowserView: View {
         }
 
         group.notify(queue: .main) {
-            project.importVideoURLs(collector.urls, replacingExisting: false)
+            project.importVideoURLs(collector.urls, replacingExisting: false, intoFolder: folderID)
         }
         return true
     }
@@ -779,11 +847,12 @@ struct MediaBrowserView: View {
     }
 }
 
-private struct MediaItemDropDelegate: DropDelegate {
+private struct MediaPoolDropDelegate: DropDelegate {
     let targetFolderID: MediaFolder.ID?
     let selectedMediaIDs: Set<MediaItem.ID>
     @Binding var isHighlighted: Bool
-    let onPerform: @MainActor @Sendable (MediaItem.ID, Bool, MediaFolder.ID?) -> Void
+    let onMoveItem: @MainActor @Sendable (MediaItem.ID, Bool, MediaFolder.ID?) -> Void
+    let onImportFiles: @MainActor @Sendable ([URL], MediaFolder.ID?) -> Void
 
     func dropEntered(info: DropInfo) {
         isHighlighted = true
@@ -794,21 +863,48 @@ private struct MediaItemDropDelegate: DropDelegate {
     }
 
     func validateDrop(info: DropInfo) -> Bool {
-        info.hasItemsConforming(to: [UTType.text.identifier])
+        info.hasItemsConforming(to: [UTType.text.identifier, UTType.fileURL.identifier])
     }
 
     func performDrop(info: DropInfo) -> Bool {
         isHighlighted = false
-        let providers = info.itemProviders(for: [UTType.text.identifier])
-        guard let provider = providers.first else { return false }
         let folderID = targetFolderID
+
+        let fileProviders = info.itemProviders(for: [UTType.fileURL.identifier])
+        if !fileProviders.isEmpty {
+            let collector = DroppedURLCollector()
+            let group = DispatchGroup()
+            for provider in fileProviders {
+                group.enter()
+                provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+                    defer { group.leave() }
+                    if let data = item as? Data,
+                       let string = String(data: data, encoding: .utf8),
+                       let url = URL(string: string) {
+                        collector.append(url)
+                    } else if let url = item as? URL {
+                        collector.append(url)
+                    }
+                }
+            }
+            let importFiles = onImportFiles
+            group.notify(queue: .main) {
+                Task { @MainActor in
+                    importFiles(collector.urls, folderID)
+                }
+            }
+            return true
+        }
+
+        let textProviders = info.itemProviders(for: [UTType.text.identifier])
+        guard let provider = textProviders.first else { return false }
         let selected = selectedMediaIDs
-        let perform = onPerform
+        let move = onMoveItem
         provider.loadObject(ofClass: NSString.self) { reading, _ in
             guard let string = reading as? String, let mediaID = UUID(uuidString: string) else { return }
             let draggedFromSelection = selected.contains(mediaID)
             Task { @MainActor in
-                perform(mediaID, draggedFromSelection, folderID)
+                move(mediaID, draggedFromSelection, folderID)
             }
         }
         return true
