@@ -3573,3 +3573,14 @@ Files changed:
 - `Sources/RunningOverlay/Timeline/TimelineModel.swift`
 - `Sources/RunningOverlay/Project/ProjectDocument.swift`
 - `Sources/RunningOverlay/UI/TimelineView.swift`
+
+### Timeline Sticky Label Column (2026-05-10)
+
+Summary:
+
+- The left label column (FIT / Layer 1 / Layer 2 …) now stays pinned to the viewport when the timeline scrolls horizontally. Previously the labels scrolled away with the content.
+- Implementation: `TimelineCanvasNSView` observes its clip view's `boundsDidChange` notifications and, after all timeline content draws, paints a label-column overlay shifted to the current `scrollOffsetX`. The original document-coordinate label cells remain at x=0, so the un-scrolled state is unchanged.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/TimelineView.swift`

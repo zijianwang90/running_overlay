@@ -304,10 +304,6 @@ private final class TimelineCanvasNSView: NSView {
         needsDisplay = true
     }
 
-    deinit {
-        NotificationCenter.default.removeObserver(self)
-    }
-
     private var rulerHeight: CGFloat { rulerScaleHeight }
 
     private var hasTimelineContent: Bool {
@@ -336,6 +332,7 @@ private final class TimelineCanvasNSView: NSView {
         if let keyEventMonitor {
             NSEvent.removeMonitor(keyEventMonitor)
         }
+        NotificationCenter.default.removeObserver(self)
     }
 
     var displayTracks: [TimelineTrack] {
@@ -469,6 +466,68 @@ private final class TimelineCanvasNSView: NSView {
         drawTracks()
         if activityDuration > 0 || !tracks.isEmpty {
             drawPlayhead()
+        }
+        drawStickyLabelColumn()
+    }
+
+    private func drawStickyLabelColumn() {
+        let offsetX = scrollOffsetX
+        guard offsetX > 0 else {
+            return
+        }
+        let columnWidth = labelWidth + contentPadding
+
+        let rulerCornerRect = CGRect(x: offsetX, y: 0, width: columnWidth, height: rulerHeight)
+        NSColor.editorPanelHeader.setFill()
+        rulerCornerRect.fill()
+
+        let belowRect = CGRect(
+            x: offsetX,
+            y: rulerHeight,
+            width: columnWidth,
+            height: max(bounds.height - rulerHeight, 0)
+        )
+        NSColor.timelineLabelColumnBackground.setFill()
+        belowRect.fill()
+
+        NSColor.editorBorderSubtle.setStroke()
+        NSBezierPath.strokeLine(
+            from: CGPoint(x: offsetX + columnWidth - 0.5, y: 0),
+            to: CGPoint(x: offsetX + columnWidth - 0.5, y: bounds.height)
+        )
+        NSBezierPath.strokeLine(
+            from: CGPoint(x: offsetX, y: rulerHeight - 0.5),
+            to: CGPoint(x: offsetX + columnWidth, y: rulerHeight - 0.5)
+        )
+
+        if activityDuration > 0 {
+            let y = rulerHeight
+            NSColor.editorBorderSubtle.withAlphaComponent(0.55).setStroke()
+            NSBezierPath.strokeLine(
+                from: CGPoint(x: offsetX, y: y + fitTrackHeight - 0.5),
+                to: CGPoint(x: offsetX + columnWidth - 1, y: y + fitTrackHeight - 0.5)
+            )
+            drawText(
+                "FIT",
+                at: CGPoint(x: offsetX + 10, y: y + 16),
+                color: .editorTextPrimary,
+                font: .systemFont(ofSize: 11, weight: .semibold)
+            )
+        }
+
+        for (index, track) in displayTracks.enumerated() {
+            let y = trackStartY + CGFloat(index) * (trackHeight + trackGap)
+            NSColor.editorBorderSubtle.withAlphaComponent(0.55).setStroke()
+            NSBezierPath.strokeLine(
+                from: CGPoint(x: offsetX, y: y + trackHeight - 0.5),
+                to: CGPoint(x: offsetX + columnWidth - 1, y: y + trackHeight - 0.5)
+            )
+            drawText(
+                track.name,
+                at: CGPoint(x: offsetX + 10, y: y + 16),
+                color: .editorTextPrimary,
+                font: .systemFont(ofSize: 11, weight: .medium)
+            )
         }
     }
 
