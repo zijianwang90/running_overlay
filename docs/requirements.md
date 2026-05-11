@@ -510,6 +510,7 @@ Export behavior:
 
 - When an export is active, the toolbar shows a progress control in the upper-right area.
 - Clicking the progress control shows a popover with overall progress and per-output progress rows.
+- The export queue inside the progress popover has a fixed-height scrollable area so large batch exports do not push the popover beyond the screen.
 - The progress popover allows cancelling the active export.
 - After the user cancels export, the export queue/progress popover state clears immediately instead of lingering in a failed or partial state.
 - Batch export one overlay clip for each video segment on the timeline.

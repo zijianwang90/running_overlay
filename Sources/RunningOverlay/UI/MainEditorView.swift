@@ -210,6 +210,8 @@ private struct ExportProgressPopover: View {
     @EnvironmentObject private var project: ProjectDocument
     let progress: ExportProgressState
 
+    private static let queueHeight: CGFloat = 220
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -238,24 +240,28 @@ private struct ExportProgressPopover: View {
                     .foregroundStyle(EditorTheme.dangerRed)
             }
 
-            VStack(spacing: 8) {
-                ForEach(progress.items) { item in
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(item.name)
-                                .lineLimit(1)
-                            Spacer()
-                            Text(item.status.rawValue)
-                                .foregroundStyle(statusColor(item.status))
-                            Text("\(Int((item.progress * 100).rounded()))%")
-                                .monospacedDigit()
-                                .frame(width: 42, alignment: .trailing)
+            ScrollView {
+                VStack(spacing: 8) {
+                    ForEach(progress.items) { item in
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(item.name)
+                                    .lineLimit(1)
+                                Spacer()
+                                Text(item.status.rawValue)
+                                    .foregroundStyle(statusColor(item.status))
+                                Text("\(Int((item.progress * 100).rounded()))%")
+                                    .monospacedDigit()
+                                    .frame(width: 42, alignment: .trailing)
+                            }
+                            .font(.caption)
+                            ProgressView(value: item.progress)
                         }
-                        .font(.caption)
-                        ProgressView(value: item.progress)
                     }
                 }
+                .padding(.trailing, 6)
             }
+            .frame(height: Self.queueHeight)
         }
         .padding(14)
         .frame(width: 360)

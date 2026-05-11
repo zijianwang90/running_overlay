@@ -468,6 +468,7 @@ Pending:
 - Generate output filenames with `_overlay.mov`.
 - `ProjectDocument` owns structured export progress state for overall and per-output progress.
 - The toolbar displays export progress while exporting; clicking the progress control opens a persistent popover with item-level progress.
+- The export progress popover keeps the per-output queue in a fixed-height scroll view so long export queues remain reachable.
 - Export can be cancelled from the progress popover; the exporter checks cancellation between segments and while rendering frames.
 - Export reuses `AVAssetWriterInputPixelBufferAdaptor`'s pixel buffer pool instead of allocating a fresh pixel buffer every frame.
 - Export caches attributed text layouts by text/style/sample output, reducing repeated font and string layout work across frames.
