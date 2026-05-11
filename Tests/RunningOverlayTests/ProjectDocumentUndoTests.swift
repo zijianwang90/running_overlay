@@ -228,6 +228,79 @@ struct ProjectDocumentUndoTests {
         #expect(!project.isPlaying)
     }
 
+    @Test func placeMediaItemRejectsOverlap() throws {
+        let project = ProjectDocument()
+        project.activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 0),
+            duration: 100,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        let mediaA = MediaItem(
+            displayName: "a.mov",
+            fileURL: nil,
+            duration: 10,
+            inferredStartDate: nil,
+            cameraGroupID: "Camera A",
+            alignmentStatus: .needsManualPlacement
+        )
+        let mediaB = MediaItem(
+            displayName: "b.mov",
+            fileURL: nil,
+            duration: 10,
+            inferredStartDate: nil,
+            cameraGroupID: "Camera A",
+            alignmentStatus: .needsManualPlacement
+        )
+        project.mediaItems = [mediaA, mediaB]
+        project.placeMediaItem(mediaA.id, onTrack: "Camera A", at: 5)
+        #expect(project.timeline.tracks.first?.clips.count == 1)
+
+        project.placeMediaItem(mediaB.id, onTrack: "Camera A", at: 10)
+        #expect(project.timeline.tracks.first?.clips.count == 1)
+        #expect(project.statusMessage.contains("overlap"))
+        #expect(project.statusMessage.contains("Match to New Layer"))
+
+        project.placeMediaItem(mediaB.id, onTrack: "Camera A", at: 20)
+        #expect(project.timeline.tracks.first?.clips.count == 2)
+    }
+
+    @Test func matchMediaItemsSkipsOverlappingItems() throws {
+        let project = ProjectDocument()
+        project.activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 0),
+            duration: 100,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        let baseDate = Date(timeIntervalSince1970: 10)
+        let mediaA = MediaItem(
+            displayName: "a.mov",
+            fileURL: nil,
+            duration: 10,
+            inferredStartDate: baseDate,
+            cameraGroupID: "Camera A",
+            alignmentStatus: .readyToMatch(source: "timestamp")
+        )
+        let mediaB = MediaItem(
+            displayName: "b.mov",
+            fileURL: nil,
+            duration: 10,
+            inferredStartDate: baseDate.addingTimeInterval(5),
+            cameraGroupID: "Camera A",
+            alignmentStatus: .readyToMatch(source: "timestamp")
+        )
+        project.mediaItems = [mediaA, mediaB]
+
+        project.matchMediaItemsToCurrentLayer([mediaA.id, mediaB.id])
+
+        #expect(project.timeline.tracks.first?.clips.count == 1)
+        #expect(project.statusMessage.contains("skipped 1"))
+        #expect(project.statusMessage.contains("Match to New Layer"))
+    }
+
     @Test func forwardPlaybackRateCyclesUpToEightX() {
         let project = ProjectDocument()
 

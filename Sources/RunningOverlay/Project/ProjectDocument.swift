@@ -501,8 +501,18 @@ final class ProjectDocument: ObservableObject {
             return
         }
 
-        registerUndoPoint()
         let mediaItem = mediaItems[mediaIndex]
+        if timeline.wouldClipOverlap(
+            mediaItemID: mediaItem.id,
+            trackName: trackName,
+            startTime: elapsedTime,
+            duration: mediaItem.duration
+        ) {
+            statusMessage = "Cannot place \"\(mediaItem.displayName)\" on \(trackName): it overlaps an existing clip. Try \"Match to New Layer\" instead."
+            return
+        }
+
+        registerUndoPoint()
         var updatedTimeline = timeline
         guard let clipID = updatedTimeline.addOrMoveClip(
             mediaItem: mediaItem,
@@ -2701,6 +2711,7 @@ final class ProjectDocument: ObservableObject {
         var updatedTimeline = timeline
         var lastClipID: TimelineClip.ID?
         var matchedCount = 0
+        var skippedNames: [String] = []
 
         for mediaIndex in mediaItems.indices where targetIDs.contains(mediaItems[mediaIndex].id) {
             let mediaItem = mediaItems[mediaIndex]
@@ -2712,6 +2723,16 @@ final class ProjectDocument: ObservableObject {
             } else {
                 startTime = timeline.playhead
                 source = "manual"
+            }
+
+            if updatedTimeline.wouldClipOverlap(
+                mediaItemID: mediaItem.id,
+                trackName: trackName,
+                startTime: startTime,
+                duration: mediaItem.duration
+            ) {
+                skippedNames.append(mediaItem.displayName)
+                continue
             }
 
             if let clipID = updatedTimeline.addOrMoveClip(
@@ -2731,7 +2752,15 @@ final class ProjectDocument: ObservableObject {
         if let lastClipID {
             selection = .timelineClip(lastClipID)
         }
-        statusMessage = "Matched \(matchedCount) media item(s) to \(trackName)."
+        let summary: String
+        if matchedCount == 0 {
+            summary = "No items matched to \(trackName): \(skippedNames.count) overlap existing clip(s). Try \"Match to New Layer\"."
+        } else if skippedNames.isEmpty {
+            summary = "Matched \(matchedCount) media item(s) to \(trackName)."
+        } else {
+            summary = "Matched \(matchedCount) media item(s) to \(trackName); skipped \(skippedNames.count) due to overlap. Try \"Match to New Layer\" for those."
+        }
+        statusMessage = summary
     }
 
     private static func isSupportedVideoURL(_ url: URL) -> Bool {

@@ -414,36 +414,31 @@ struct MediaBrowserView: View {
 
     @ViewBuilder
     private func folderRenameField(folder: MediaFolder) -> some View {
-        HStack(spacing: 6) {
-            Text("Renaming:")
-                .font(EditorTheme.captionFont)
-                .foregroundStyle(EditorTheme.textMuted)
-            TextField("Folder name", text: $editingFolderName, onCommit: { commitFolderRename(folder.id) })
-                .textFieldStyle(.plain)
-                .font(EditorTheme.bodyStrongFont)
-                .foregroundStyle(EditorTheme.textPrimary)
-                .focused($renameFieldFocused)
-                .submitLabel(.done)
-                .onExitCommand {
-                    editingFolderID = nil
+        TextField("Folder name", text: $editingFolderName, onCommit: { commitFolderRename(folder.id) })
+            .textFieldStyle(.plain)
+            .font(EditorTheme.bodyStrongFont)
+            .foregroundStyle(EditorTheme.textPrimary)
+            .focused($renameFieldFocused)
+            .submitLabel(.done)
+            .onExitCommand {
+                editingFolderID = nil
+            }
+            .onAppear {
+                DispatchQueue.main.async {
+                    renameFieldFocused = true
                 }
-                .onAppear {
-                    DispatchQueue.main.async {
-                        renameFieldFocused = true
-                    }
-                }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(EditorTheme.surfaceControl)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 6)
-                .stroke(EditorTheme.accentBlue, lineWidth: 1.5)
-        }
-        .frame(maxWidth: .infinity)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(EditorTheme.surfaceControl)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(EditorTheme.accentBlue, lineWidth: 1.5)
+            }
+            .frame(maxWidth: .infinity)
     }
 
     private func handleMediaTap(_ item: MediaItem) {

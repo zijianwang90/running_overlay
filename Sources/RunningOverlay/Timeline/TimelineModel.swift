@@ -56,6 +56,25 @@ struct TimelineModel: Equatable {
             }
     }
 
+    func wouldClipOverlap(
+        mediaItemID: MediaItem.ID,
+        trackName: String,
+        startTime: TimeInterval,
+        duration: TimeInterval
+    ) -> Bool {
+        guard let track = tracks.first(where: { $0.name == trackName }) else { return false }
+        let newStart = startTime
+        let newEnd = startTime + max(duration, 0.1)
+        for clip in track.clips where clip.mediaItemID != mediaItemID {
+            let existingStart = clip.effectiveStartTime
+            let existingEnd = existingStart + clip.duration
+            if newStart < existingEnd && existingStart < newEnd {
+                return true
+            }
+        }
+        return false
+    }
+
     mutating func addOrMoveClip(
         mediaItem: MediaItem,
         trackName: String,

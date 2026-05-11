@@ -2,9 +2,24 @@
 
 ## 2026-05-10
 
+### Timeline Overlap Rejection on Media Placement
+
+- Added `TimelineModel.wouldClipOverlap(mediaItemID:trackName:startTime:duration:)` — a non-mutating overlap probe that compares the prospective placement window against existing clips on the same track, excluding any clip belonging to the same media item (so a re-placement / move of the same item never reports against itself).
+- `ProjectDocument.placeMediaItem` now consults the probe before `registerUndoPoint()`. On overlap it refuses outright with a status message that names the clip and suggests `Match to New Layer`, leaving the timeline (and undo stack) untouched.
+- `matchMediaItems` (the shared backend behind `Auto Match to Current Layer` / `Match to New Layer`, for both individual selection and folder context-menu actions) now skips overlapping items per-item instead of overwriting them, reporting both the number matched and the number skipped, and pointing the user at `Match to New Layer` when anything was skipped.
+- Added two tests in `ProjectDocumentUndoTests`:
+  - `placeMediaItemRejectsOverlap` — confirms a second 10s clip placed inside an existing 10s clip's range is refused and the status message mentions the suggested remediation; placing it past the existing clip succeeds.
+  - `matchMediaItemsSkipsOverlappingItems` — confirms batch match keeps the non-overlapping item, skips the overlapping one, and surfaces the skip count + suggestion in the status message.
+
+Files changed:
+
+- `Sources/RunningOverlay/Timeline/TimelineModel.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Tests/RunningOverlayTests/ProjectDocumentUndoTests.swift`
+
 ### Media Pool Folder Rename UX, Folder-Targeted Finder Drops, Folder Auto-Match
 
-- Removed the double-click-to-rename gesture on folder rows. Renaming is now only reachable via the right-click `Rename Folder` action (less accidental). The rename text field is styled as an obvious input: an inline `Renaming:` caption, a filled control background, and a 1.5pt accent-blue border, and it auto-focuses on appear.
+- Removed the double-click-to-rename gesture on folder rows. Renaming is now only reachable via the right-click `Rename Folder` action (less accidental). The rename text field is styled as an obvious input: a filled control background and a 1.5pt accent-blue border, and it auto-focuses on appear. (The earlier `Renaming:` caption inside the field was dropped — the bordered input is self-evident.)
 - Replaced the separate `MediaItemDropDelegate` with a unified `MediaPoolDropDelegate` that accepts both `UTType.text` (move existing media between folder/root) and `UTType.fileURL` (import new files from Finder) on the same drop target. The previous fix that stacked two `.onDrop` modifiers wasn't reliable because the row hit-region swallowed file URL drops before they could bubble to the outer handler.
 - Wired the unified delegate into folder rows, media rows, and the empty-list background, so dragging files from Finder works whether they land on root area, on a folder row (imports straight into that folder), or on a media row (imports to root).
 - `ProjectDocument.importVideoURLs(_:replacingExisting:intoFolder:)` gained an optional `intoFolder:` parameter; imported items get stamped with the supplied folder ID inside the import task, and the status message includes the destination folder name.
