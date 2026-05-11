@@ -31,6 +31,7 @@ struct ActivityTimeline: Equatable {
     var distanceMeters: Double
     var records: [ActivityRecord]
     var laps: [LapRecord]
+    var annotatedSegments: [ActivityAnnotatedSegment] = []
 
     var endDate: Date {
         startDate.addingTimeInterval(duration)
@@ -38,6 +39,13 @@ struct ActivityTimeline: Equatable {
 
     func timestamp(at elapsedTime: TimeInterval) -> Date {
         startDate.addingTimeInterval(clampedElapsedTime(elapsedTime))
+    }
+
+    func annotatedSegment(at elapsedTime: TimeInterval) -> ActivityAnnotatedSegment? {
+        let t = clampedElapsedTime(elapsedTime)
+        return annotatedSegments.first { segment in
+            t >= segment.startElapsedTime && t < segment.endElapsedTime
+        }
     }
 
     func distance(at elapsedTime: TimeInterval) -> Double {
@@ -271,8 +279,31 @@ struct ActivityTimeline: Equatable {
         duration: 0,
         distanceMeters: 0,
         records: [],
-        laps: []
+        laps: [],
+        annotatedSegments: []
     )
+}
+
+enum ActivityAnnotatedSegmentKind: String, Equatable, Codable {
+    case timerPaused
+
+    var label: String {
+        switch self {
+        case .timerPaused:
+            "运动暂停"
+        }
+    }
+}
+
+struct ActivityAnnotatedSegment: Identifiable, Equatable {
+    var id = UUID()
+    var kind: ActivityAnnotatedSegmentKind
+    var startElapsedTime: TimeInterval
+    var endElapsedTime: TimeInterval
+
+    var duration: TimeInterval {
+        max(endElapsedTime - startElapsedTime, 0)
+    }
 }
 
 struct ActivityRecord: Identifiable, Equatable {

@@ -1451,7 +1451,7 @@ struct OverlayFrameRenderer {
         let fgMuted = NSColor.white.withAlphaComponent(0.65)
 
         // Icon
-        if let symbol = NSImage(systemSymbolName: layout.sfSymbolName, accessibilityDescription: nil) {
+        if layout.style.showIcon, let symbol = NSImage(systemSymbolName: layout.sfSymbolName, accessibilityDescription: nil) {
             let cfg = NSImage.SymbolConfiguration(pointSize: layout.iconSize, weight: .regular)
             if let configured = symbol.withSymbolConfiguration(cfg) {
                 let iconColor = NSColor(layout.iconTint)
@@ -1466,7 +1466,7 @@ struct OverlayFrameRenderer {
             }
         }
 
-        let textX = rect.minX + layout.iconSize + 24
+        let textX = layout.style.showIcon ? rect.minX + layout.iconSize + 24 : rect.minX + 16
 
         // Temperature
         let tempFont = NSFont.systemFont(ofSize: layout.fontSize * 1.6, weight: .bold)

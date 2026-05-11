@@ -155,6 +155,80 @@ struct OverlayRenderModelTests {
         #expect(layout.style.stylePreset == .roadRun)
     }
 
+    @Test func weatherWidgetLayoutHonorsFITManualAndOpenMeteoSources() {
+        var style = OverlayStyle.default
+        style.weatherWidget = .preset(.simpleCard)
+        style.weatherWidget.dataSource = .fitTemperature
+        style.weatherWidget.manualTemperatureCelsius = 13
+        style.weatherWidget.manualCondition = .rain
+        style.weatherWidget.locationText = "大阪, 日本"
+        style.weatherWidget.cachedWeather = WeatherPayload(
+            condition: .sunny,
+            temperatureCelsius: 30,
+            humidity: 10,
+            highTemperatureCelsius: 31,
+            lowTemperatureCelsius: 25,
+            windKph: 4,
+            feelsLikeCelsius: 32,
+            resolvedLocation: "Cached",
+            sourceDate: nil
+        )
+        let element = OverlayElement(type: .weatherWidget, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(canvasSize: OverlayRenderContext.referenceCanvasSize, activity: sampleWeatherActivity(), elapsedTime: 5)
+
+        let fitLayout = OverlayRenderModel.weatherWidgetLayout(for: element, in: context)
+        #expect(fitLayout.temperatureFormatted == "15°C")
+        #expect(fitLayout.condition == .rain)
+        #expect(fitLayout.locationText == "大阪, 日本")
+        #expect(fitLayout.conditionLabel == "雨")
+
+        var manualStyle = style
+        manualStyle.weatherWidget.dataSource = .manual
+        let manualElement = OverlayElement(type: .weatherWidget, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: manualStyle)
+        let manualLayout = OverlayRenderModel.weatherWidgetLayout(for: manualElement, in: context)
+        #expect(manualLayout.temperatureFormatted == "13°C")
+        #expect(manualLayout.condition == .rain)
+
+        var apiStyle = style
+        apiStyle.weatherWidget.dataSource = .openMeteo
+        apiStyle.weatherWidget.metricSlots = [.humidity]
+        let apiElement = OverlayElement(type: .weatherWidget, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: apiStyle)
+        let apiLayout = OverlayRenderModel.weatherWidgetLayout(for: apiElement, in: context)
+        #expect(apiLayout.temperatureFormatted == "30°C")
+        #expect(apiLayout.condition == .sunny)
+        #expect(apiLayout.humidityFormatted == "10%")
+        #expect(apiLayout.windFormatted == "4 km/h")
+        #expect(apiLayout.metricSlots.map(\.kind) == [.humidity])
+        #expect(apiLayout.metricSlots.map(\.value) == ["10% RH"])
+
+        apiStyle.weatherWidget.metricSlots = [.none]
+        let hiddenSlotElement = OverlayElement(type: .weatherWidget, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: apiStyle)
+        let hiddenSlotLayout = OverlayRenderModel.weatherWidgetLayout(for: hiddenSlotElement, in: context)
+        #expect(hiddenSlotLayout.metricSlots.isEmpty)
+    }
+
+    @Test func weatherWidgetLayoutUsesOverridesAndFahrenheitFormatting() {
+        var style = OverlayStyle.default
+        style.weatherWidget = .preset(.dashboardBar)
+        style.weatherWidget.dataSource = .manual
+        style.weatherWidget.manualTemperatureCelsius = 10
+        style.weatherWidget.manualFeelsLike = 5
+        style.weatherWidget.temperatureUnit = .fahrenheit
+        style.weatherWidget.conditionLabelOverride = "Shower"
+        style.weatherWidget.humiditySuffix = "%"
+        let element = OverlayElement(type: .weatherWidget, position: CGPoint(x: 0.25, y: 0.75), scale: 2, style: style)
+        let context = OverlayRenderContext(canvasSize: OverlayRenderContext.referenceCanvasSize, activity: sampleWeatherActivity(), elapsedTime: 5)
+
+        let layout = OverlayRenderModel.weatherWidgetLayout(for: element, in: context)
+
+        #expect(layout.temperatureFormatted == "50°F")
+        #expect(layout.feelsLikeFormatted == "41°F")
+        #expect(layout.conditionLabel == "Shower")
+        #expect(abs(Double(layout.rect.width) - style.weatherWidget.width * 2) < 0.001)
+        #expect(layout.rect.midX == 320)
+        #expect(layout.rect.midY == 540)
+    }
+
     @Test func routeMapLayoutProjectsGpsRouteAndCurrentPoint() {
         var style = OverlayStyle.default
         style.routeMapPreset = .glow
@@ -423,6 +497,42 @@ struct OverlayRenderModelTests {
                     calories: nil,
                     latitude: 40.7550,
                     longitude: -73.9800
+                )
+            ],
+            laps: []
+        )
+    }
+
+    private func sampleWeatherActivity() -> ActivityTimeline {
+        let startDate = Date(timeIntervalSince1970: 1_000)
+        return ActivityTimeline(
+            startDate: startDate,
+            duration: 10,
+            distanceMeters: 100,
+            records: [
+                ActivityRecord(
+                    elapsedTime: 0,
+                    timestamp: startDate,
+                    distanceMeters: 0,
+                    heartRate: nil,
+                    paceSecondsPerKilometer: nil,
+                    elevationMeters: nil,
+                    cadence: nil,
+                    powerWatts: nil,
+                    calories: nil,
+                    temperatureCelsius: 14
+                ),
+                ActivityRecord(
+                    elapsedTime: 10,
+                    timestamp: startDate.addingTimeInterval(10),
+                    distanceMeters: 100,
+                    heartRate: nil,
+                    paceSecondsPerKilometer: nil,
+                    elevationMeters: nil,
+                    cadence: nil,
+                    powerWatts: nil,
+                    calories: nil,
+                    temperatureCelsius: 16
                 )
             ],
             laps: []

@@ -94,7 +94,7 @@ struct ProjectDocumentUndoTests {
         #expect(project.mediaItems[0].cameraGroupID == "Camera A")
     }
 
-    @Test func mediaTagsAndDeletionAreUndoable() throws {
+    @Test func mediaFoldersAndDeletionAreUndoable() throws {
         let project = ProjectDocument()
         project.activity = ActivityTimeline(
             startDate: Date(timeIntervalSince1970: 0),
@@ -114,15 +114,30 @@ struct ProjectDocumentUndoTests {
         project.mediaItems = [media]
         project.placeMediaItem(media.id, onTrack: "Camera A", at: 5)
 
-        project.setMediaTag(.red, for: [media.id])
-        #expect(project.mediaItems[0].tag == .red)
+        let folderID = project.createMediaFolder(name: "B-Roll", containing: [media.id])
+        #expect(project.mediaFolders.count == 1)
+        #expect(project.mediaItems[0].folderID == folderID)
+
+        project.moveMediaItems([media.id], toFolder: nil)
+        #expect(project.mediaItems[0].folderID == nil)
+
+        project.undo()
+        #expect(project.mediaItems[0].folderID == folderID)
+
+        project.deleteMediaFolder(folderID)
+        #expect(project.mediaFolders.isEmpty)
+        #expect(project.mediaItems[0].folderID == nil)
+
+        project.undo()
+        #expect(project.mediaFolders.count == 1)
+        #expect(project.mediaItems[0].folderID == folderID)
 
         project.deleteMediaItems([media.id])
         #expect(project.mediaItems.isEmpty)
         #expect(project.timeline.tracks.isEmpty)
 
         project.undo()
-        #expect(project.mediaItems[0].tag == .red)
+        #expect(project.mediaItems[0].folderID == folderID)
         #expect(project.timeline.tracks[0].clips.count == 1)
     }
 

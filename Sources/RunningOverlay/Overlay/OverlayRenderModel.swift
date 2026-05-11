@@ -1395,6 +1395,13 @@ struct WeatherWidgetRenderLayout {
     var iconTint: OverlayColor
     var iconSize: Double
     var fontSize: Double
+    var metricSlots: [WeatherMetricSlotRender]
+}
+
+struct WeatherMetricSlotRender: Equatable {
+    var kind: WeatherMetricSlotValue
+    var label: String
+    var value: String
 }
 
 extension OverlayRenderModel {
@@ -1413,7 +1420,7 @@ extension OverlayRenderModel {
         let feelsLikeCelsius: Double?
         let resolvedLocation: String?
 
-        if let cached = style.cachedWeather {
+        if style.dataSource == .openMeteo, let cached = style.cachedWeather {
             condition = cached.condition
             temperatureCelsius = cached.temperatureCelsius
             humidity = cached.humidity
@@ -1430,11 +1437,11 @@ extension OverlayRenderModel {
             case .manual, .openMeteo:
                 temperatureCelsius = style.manualTemperatureCelsius
             }
-            humidity = style.showHumidity ? style.manualHumidity : nil
-            highCelsius = style.showHighLow ? style.manualHigh : nil
-            lowCelsius = style.showHighLow ? style.manualLow : nil
-            windKph = style.showWind ? style.manualWind : nil
-            feelsLikeCelsius = style.showFeelsLike ? style.manualFeelsLike : nil
+            humidity = style.manualHumidity
+            highCelsius = style.manualHigh
+            lowCelsius = style.manualLow
+            windKph = style.manualWind
+            feelsLikeCelsius = style.manualFeelsLike
             resolvedLocation = style.showLocation && !style.locationText.isEmpty ? style.locationText : nil
         }
 
@@ -1445,6 +1452,14 @@ extension OverlayRenderModel {
         let humidityStr = humidity.map { "\(Int($0.rounded()))%" } ?? ""
         let windStr = windKph.map { "\(String(format: "%.0f", $0)) km/h" } ?? ""
         let feelsLikeStr = feelsLikeCelsius.map { unit.formatted($0) } ?? ""
+        let metricSlots = resolvedMetricSlots(
+            style: style,
+            highFormatted: highStr,
+            lowFormatted: lowStr,
+            humidityFormatted: humidityStr,
+            windFormatted: windStr,
+            feelsLikeFormatted: feelsLikeStr
+        )
 
         let location: String
         if !style.locationText.isEmpty {
@@ -1458,7 +1473,8 @@ extension OverlayRenderModel {
         var weekday = ""
         if style.showWeekday {
             let df = DateFormatter()
-            df.dateFormat = "EEE"
+            df.locale = Locale(identifier: localeIdentifier(for: location))
+            df.dateFormat = "EEEE"
             weekday = df.string(from: context.activity.startDate)
         }
 
@@ -1476,11 +1492,100 @@ extension OverlayRenderModel {
             feelsLikeFormatted: feelsLikeStr,
             locationText: location,
             weekdayText: weekday,
-            conditionLabel: condition.label,
+            conditionLabel: resolvedConditionLabel(style: style, condition: condition, location: location),
             sfSymbolName: condition.sfSymbolName,
             iconTint: condition.iconTint,
             iconSize: context.scaled(style.iconSize * element.scale),
-            fontSize: fontSize
+            fontSize: fontSize,
+            metricSlots: metricSlots
         )
+    }
+
+    private static func resolvedMetricSlots(
+        style: WeatherWidgetStyle,
+        highFormatted: String,
+        lowFormatted: String,
+        humidityFormatted: String,
+        windFormatted: String,
+        feelsLikeFormatted: String
+    ) -> [WeatherMetricSlotRender] {
+        style.normalizedMetricSlots().compactMap { slot in
+            let value: String
+            switch slot {
+            case .none:
+                value = ""
+            case .humidity:
+                value = metricValue(humidityFormatted, suffix: style.humiditySuffix)
+            case .highLow:
+                value = highFormatted.isEmpty || lowFormatted.isEmpty ? "" : "H \(highFormatted) / L \(lowFormatted)"
+            case .wind:
+                value = windFormatted
+            case .feelsLike:
+                value = feelsLikeFormatted
+            }
+            guard !value.isEmpty else { return nil }
+            return WeatherMetricSlotRender(kind: slot, label: metricLabel(for: slot, style: style), value: value)
+        }
+    }
+
+    private static func metricLabel(for slot: WeatherMetricSlotValue, style: WeatherWidgetStyle) -> String {
+        switch slot {
+        case .none:
+            return slot.compactLabel
+        case .humidity:
+            return style.humidityMetricLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? slot.compactLabel : style.humidityMetricLabel
+        case .wind:
+            return style.windMetricLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? slot.compactLabel : style.windMetricLabel
+        case .feelsLike:
+            return style.feelsLikeMetricLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? slot.compactLabel : style.feelsLikeMetricLabel
+        case .highLow:
+            return slot.compactLabel
+        }
+    }
+
+    private static func metricValue(_ value: String, suffix: String) -> String {
+        let suffix = suffix.trimmingCharacters(in: .whitespacesAndNewlines)
+        return suffix.isEmpty ? value : "\(value) \(suffix)"
+    }
+
+    private static func localeIdentifier(for location: String) -> String {
+        let lowercased = location.lowercased()
+        if location.contains("日本") || lowercased.contains("japan") {
+            return "ja_JP"
+        }
+        if location.contains("中国") || lowercased.contains("china") {
+            return "zh_CN"
+        }
+        if location.contains("台灣") || location.contains("台湾") || lowercased.contains("taiwan") {
+            return "zh_Hant_TW"
+        }
+        return Locale.current.identifier
+    }
+
+    private static func localizedConditionLabel(_ condition: WeatherCondition, location: String) -> String {
+        let lowercased = location.lowercased()
+        if location.contains("日本") || lowercased.contains("japan") {
+            switch condition {
+            case .sunny: return "晴"
+            case .clearNight: return "晴夜"
+            case .partlyCloudy: return "晴曇"
+            case .cloudy: return "曇"
+            case .rain: return "雨"
+            case .heavyRain: return "大雨"
+            case .thunder: return "雷雨"
+            case .snow: return "雪"
+            case .fog: return "霧"
+            case .wind: return "風"
+            }
+        }
+        return condition.label
+    }
+
+    private static func resolvedConditionLabel(style: WeatherWidgetStyle, condition: WeatherCondition, location: String) -> String {
+        let override = style.conditionLabelOverride.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !override.isEmpty {
+            return override
+        }
+        return localizedConditionLabel(condition, location: location)
     }
 }

@@ -1,6 +1,6 @@
 # Weather Widget Overlay
 
-Last updated: 2026-04-30
+Last updated: 2026-05-07
 
 ## Purpose
 
@@ -34,7 +34,8 @@ Phase 1:
 Phase 2:
 
 - Activity start timestamp.
-- GPS start point from FIT (used for coordinate-based localization and weather lookup) or manually selected location.
+- GPS start point from FIT (used for coordinate-based localization and weather lookup).
+- Current device location from CoreLocation when the user explicitly chooses the current-location fetch option.
 - Historical weather from Open-Meteo archive API (activity date, not current forecast). Cached into the project for export determinism.
 
 ## Rendering Model
@@ -51,27 +52,47 @@ Recommended layout pipeline:
 
 ## Presets
 
-- `simpleCard`: default blue translucent weather card with icon, divider, location, temperature, and humidity.
+- `simpleCard`: default blue translucent weather card with icon, a compact left visual block, divider, location, temperature, and humidity.
 - `compactStrip`: small corner-friendly strip with icon, temperature, condition, and city.
-- `forecastTile`: larger tile with location, icon, temperature, high/low, and humidity.
+- `forecastTile`: larger tile with location, icon, temperature, high/low, and humidity, separated by horizontal and vertical dividers.
 - `minimalText`: text-first treatment with minimal or no container.
-- `dashboardBar`: wide bar with location, condition, temperature, and metric chips.
+- `dashboardBar`: wide taller bar with location, condition, temperature, and readable metric chips.
+
+## Icon Assets
+
+Weather Widget uses production SVG icons, not cropped bitmap slices, so the icons remain sharp at every preset scale.
+
+Assets live under `Sources/RunningOverlay/Resources/Icons/`:
+
+- `weather-sunny.svg`
+- `weather-clear-night.svg`
+- `weather-partly-cloudy.svg`
+- `weather-cloudy.svg`
+- `weather-rain.svg`
+- `weather-heavy-rain.svg`
+- `weather-thunder.svg`
+- `weather-snow.svg`
+- `weather-fog.svg`
+- `weather-wind.svg`
+
+`WeatherCondition.bundledSVGName` maps each condition to the bundled file name, and `WeatherConditionIconView` renders via the shared `IconView` bundled SVG path with `preserveSVGColors: true`.
 
 ## Inspector
 
 Use dense Inspector sections:
 
-- Preset
-- Content
-- Location
-- Temperature
-- Metrics
-- Icon
 - Layout
+- Preset
 - Appearance
-- Effects
+- Location
+- Weather
 
-The first implementation can expose manual fields only. Weather API controls should stay hidden until API lookup, caching, and export determinism are implemented.
+Weather Widget 1.0 does not expose the shared Background, Border, or Effects inspector modules. The custom weather presets do not consume those generic overlay fields, so the user-facing customization surface is intentionally limited to fields that render reliably.
+
+The Inspector exposes two explicit API fetch actions in the Location section:
+
+- Activity Location: fetches Open-Meteo historical weather for the activity start date using the first FIT GPS route point. Disabled when the activity has no GPS route.
+- Current Location: fetches Open-Meteo historical weather for the activity start date using the user's current device location. This requires macOS location permission.
 
 ## Implementation Plan
 
@@ -85,9 +106,21 @@ Add all new types in a `// MARK: - Weather Widget` section at the bottom of the 
 
 **`WeatherDataSource` enum** — `fitTemperature` (Phase 1), `manual` (Phase 1), `openMeteo` (Phase 2).
 
+**`WeatherMetricSlotValue` enum** — `none`, `humidity`, `highLow`, `wind`, `feelsLike`. Used by Style-specific metric slots; `none` displays as `-` in the Inspector and renders no metric content.
+
 **`WeatherWidgetPreset` enum** — `simpleCard, compactStrip, forecastTile, minimalText, dashboardBar`. Property `defaultSize: CGSize` per design spec.
 
-**`WeatherPayload` struct** (Equatable, Codable) — cached result from FIT or API: `condition, temperatureCelsius, humidity?, highTemperatureCelsius?, lowTemperatureCelsius?, windKph?, feelsLikeCelsius?, resolvedLocation?, sourceDate?`
+Each preset also defines metric slot count and defaults:
+
+- `simpleCard`: 1 slot, default `humidity`
+- `compactStrip`: 0 slots
+- `forecastTile`: 3 slots, default `highLow, humidity, wind`
+- `minimalText`: 0 slots
+- `dashboardBar`: 3 slots, default `humidity, wind, feelsLike`
+
+**`WeatherFetchLocationMode` enum** — `activityLocation`, `currentLocation`; stored on fetched payloads so the cache records which API entry point produced it.
+
+**`WeatherPayload` struct** (Equatable, Codable) — cached result from FIT or API: `condition, temperatureCelsius, humidity?, highTemperatureCelsius?, lowTemperatureCelsius?, windKph?, feelsLikeCelsius?, resolvedLocation?, sourceDate?, fetchLocationMode?`
 
 **`WeatherWidgetStyle` struct** (Equatable, Codable):
 
@@ -98,9 +131,13 @@ manualCondition / manualTemperatureCelsius / manualHumidity / manualHigh / manua
 temperatureUnit: WeatherTemperatureUnit
 locationText: String
 showLocation / showWeekday / showHumidity / showHighLow / showWind / showFeelsLike: Bool
-cardBackgroundColor: OverlayColor
+metricSlots: [WeatherMetricSlotValue] // normalized to the selected preset's slot count
+cardBackgroundColor: OverlayColor // persisted legacy/style field; not exposed as a 1.0 Inspector control
 cardBackgroundOpacity / cardCornerRadius / iconSize: Double
-showConditionLabel: Bool
+dividerColor: OverlayColor
+dividerEnabled: Bool
+dividerThickness / dividerOpacity: Double
+showIcon / showConditionLabel: Bool
 width / height: Double
 cachedWeather: WeatherPayload?     // nil = not yet fetched; round-trips through Codable project snapshot
 ```
@@ -130,7 +167,7 @@ Static factory `WeatherWidgetStyle.preset(_ preset:)` — sets width/height and 
 **New file** `Sources/RunningOverlay/UI/WeatherWidgetOverlayViews.swift`:
 
 - `WeatherWidgetOverlayView: View` — switches on `layout.style.preset`, dispatches to five private sub-views: `SimpleCardPresetView`, `CompactStripPresetView`, `ForecastTilePresetView`, `MinimalTextPresetView`, `DashboardBarPresetView`.
-- Shared sub-component `WeatherConditionIconView(condition:size:)` — renders SF Symbol with condition tint; reused by all presets.
+- Shared sub-component `WeatherConditionIconView(condition:size:)` — renders the bundled weather SVG for each condition; reused by all presets.
 - Thin `OverlaySharedWeatherWidgetView` wrapper to match the project's existing naming convention.
 
 **`PreviewCanvasView.swift`** — add case in the per-type dispatch:
@@ -151,17 +188,16 @@ New file following `NumericOverlayDetailView` structure. Use `InspectorDense*` p
 
 | Section | Key controls |
 |---|---|
-| Preset | `Menu` over all presets → `applyWeatherWidgetPreset` |
-| Content | Data source picker (FIT / Manual; API greyed in Phase 1); condition picker with icon preview |
-| Location | TextField for `locationText`; toggles for showLocation, showWeekday |
-| Temperature | Manual temp field; unit picker (°C / °F, defaults to system locale); FIT source indicator |
-| Metrics | Toggle + field rows for humidity, H/L, wind, feelsLike |
-| Icon | Condition icon preview; iconSize slider; showConditionLabel toggle |
-| Layout | `OverlayLayoutInspectorRows` with width/height bindings; corner radius slider |
-| Appearance | Card background color swatch strip + opacity slider |
-| Effects | `OverlayBackgroundInspectorModule`, `OverlayBorderInspectorModule`, `OverlayEffectsInspectorModule` |
+| Preset | Compact Styles icon buttons over all presets → `applyWeatherWidgetPreset`; no duplicate text-only Preset menu in 1.0 |
+| Appearance | Palette, card opacity, corner radius, show divider, divider color, divider width, divider opacity |
+| Location | API fetch buttons for activity/current location; TextField for `locationText`; toggles for showLocation, showWeekday |
+| Weather | Combined content/temperature/metric/icon controls: condition, manual values, unit, Style-specific metric slots, showIcon, showConditionLabel |
+| Layout | `OverlayLayoutInspectorRows` with position/scale/width/height bindings |
+Shared `OverlayBackgroundInspectorModule`, `OverlayBorderInspectorModule`, and `OverlayEffectsInspectorModule` are intentionally omitted for Weather Widget 1.0.
 
-Footer: Reset / Done. Phase 2 adds "Fetch Weather" button → `project.fetchWeatherFromAPI(elementID)`.
+When `dataSource == .openMeteo`, Weather hides manual value text inputs because condition, temperature, and metric values are owned by the cached API payload. Unit and metric slot assignments remain editable.
+
+Footer: Reset / Done.
 
 ### ProjectDocument Mutations (`ProjectDocument.swift`)
 
@@ -169,7 +205,8 @@ Footer: Reset / Done. Phase 2 adds "Fetch Weather" button → `project.fetchWeat
 mutateWeatherWidgetStyle(_ id:, _ mutate:)               // registerUndoPoint
 mutateWeatherWidgetStyleContinuous(_ id:, _ mutate:)     // registerContinuousUndoPoint
 applyWeatherWidgetPreset(_ id:, preset:)                 // replaces visual/dimension defaults; preserves content fields + cachedWeather
-fetchWeatherFromAPI(_ id:)                               // Phase 2: Task { await WeatherFetcher.fetch(...) }
+fetchWeatherForActivityLocation(_ id:)                   // uses first FIT GPS route point
+fetchWeatherForCurrentLocation(_ id:)                    // uses CoreLocation current device coordinate
 ```
 
 Also update `defaultOverlayStyle(for:)` to set `style.weatherWidget = .preset(.simpleCard)` for `.weatherWidget`.
@@ -181,13 +218,14 @@ Also update `defaultOverlayStyle(for:)` to set `style.weatherWidget = .preset(.s
 
 ### Phase 2: WeatherFetcher (`Sources/RunningOverlay/Weather/WeatherFetcher.swift`)
 
-`actor WeatherFetcher` with `static func fetch(latitude:longitude:date:manualFallback:) async throws -> WeatherPayload`:
+`WeatherFetcher` with `static func fetch(latitude:longitude:date:resolvedLocation:) async throws -> WeatherPayload`:
 
-- Queries historical weather for the activity date (Open-Meteo archive API, free, no key required): `https://archive-api.open-meteo.com/v1/archive?latitude=…&start_date=…&end_date=…&hourly=temperature_2m,weathercode,windspeed_10m,relativehumidity_2m,apparent_temperature`
+- Queries historical weather for the activity date (Open-Meteo archive API, free, no key required): `https://archive-api.open-meteo.com/v1/archive?latitude=…&start_date=…&end_date=…&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=auto`
 - Pick the hour matching activity start time; derive daily H/L from full hourly array.
 - Map WMO codes to `WeatherCondition` via `fromWMO(_:)`.
-- GPS coordinates from FIT used for both localization and API lookup; manual location override supported.
-- Fall back to `manualFallback` when coordinates are missing or API fails.
+- `WeatherLocationResolver` provides the two coordinate sources: first FIT route point or current CoreLocation location.
+- Reverse geocoding fills `resolvedLocation`; if reverse geocoding fails, coordinates are used as a readable fallback.
+- API failures are non-destructive: ProjectDocument keeps the previous cached/manual fields and reports the failure in `statusMessage`.
 - Private `OpenMeteoResponse: Decodable` struct for JSON decoding.
 
 ### Tests
@@ -212,7 +250,36 @@ Also update `defaultOverlayStyle(for:)` to set `style.weatherWidget = .preset(.s
 
 ## Current Implementation
 
-Not implemented. The plan above captures the approved implementation approach.
+Implemented:
+
+- Weather Widget is a dedicated overlay type with its own Weather category in the Overlay Pool.
+- `WeatherWidgetStyle` stores preset, manual/FIT/Open-Meteo source selection, manual weather fields, display toggles, visual fields, and optional cached weather payload.
+- `WeatherWidgetStyle.metricSlots` replaces the old global metric visibility behavior in rendering. Each Style exposes its own slot count, and every slot can choose `-`, Humidity, High / Low, Wind, or Feels Like.
+- Inline metric rows render Feels Like as `Feels 12°C` so the secondary temperature is not confused with the current temperature; Dashboard Bar keeps `Feels` as the chip label and the temperature as the chip value.
+- `WeatherFetcher` queries Open-Meteo historical hourly weather with current field names (`weather_code`, `relative_humidity_2m`, `apparent_temperature`, `wind_speed_10m`) and converts the result into `WeatherPayload`.
+- Inspector has two API fetch buttons: activity GPS start location and current device location. A successful fetch switches the widget source to Open-Meteo, stores the payload in `cachedWeather`, and updates `locationText` from reverse geocoding.
+- Five presets render in SwiftUI through `OverlaySharedWeatherWidgetView`: `simpleCard`, `compactStrip`, `forecastTile`, `minimalText`, and `dashboardBar`.
+- The active SwiftUI preview/export path uses bundled SVG weather icons, so conditions no longer rely on mixed SF Symbol silhouettes.
+- Preset defaults now use app-like visual treatments instead of black-card variants: blue Simple Card, light Compact Strip, dark Forecast Tile, transparent Minimal Text, and graphite Dashboard Bar.
+- `ProjectDocument.applyWeatherWidgetPreset` applies preset visual defaults while preserving content fields and cached weather data.
+- Inspector now provides quick Styles icon buttons without a duplicate Preset menu, and orders setup as Preset, Appearance, then Location.
+- Inspector combines Content, Temperature, Metrics, and Icon into one Weather section.
+- Inspector exposes Style-specific metric slot menus instead of separate Humidity / High-Low / Wind / Feels Like toggles. Selecting `-` leaves that slot empty.
+- Inspector hides manual value inputs in Open-Meteo mode, removes Icon Size from user-facing controls, and adds `showIcon`.
+- Inspector provides editable condition label override in manual/FIT mode, palette selection in Appearance, and divider visibility/color/width/opacity controls.
+- Inspector omits shared Background, Border, and Effects modules for Weather Widget 1.0 because they do not affect the custom SwiftUI preset renderer.
+- Appearance no longer exposes Card Color; card surfaces are palette-owned for Weather Widget 1.0.
+- Show Divider hides all preset divider lines while preserving the user's divider color, width, and opacity values.
+- Simple Card tightens the left-side visual area before the divider, Forecast Tile renders divider lines around its metric area, and Dashboard Bar defaults to `560 x 112` to give metric chips enough height and width.
+- Temperature strings include explicit units (`°C` / `°F`).
+- Render model uses cached Open-Meteo values only when the selected data source is `.openMeteo`; FIT/manual modes are not overridden by stale cache data.
+- Optional cached metrics render through the selected Style's metric slots.
+
+Remaining:
+
+- Add broader WMO edge-case tests beyond the initial parser/URL coverage.
+- Add an app-bundle location usage description if the packaged macOS app needs a custom permission prompt.
+- Expand automatic localization beyond the current location-text heuristic.
 
 ## Resolved Decisions
 

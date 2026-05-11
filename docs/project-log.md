@@ -1,5 +1,89 @@
 # Running Overlay Project Log
 
+## 2026-05-10
+
+### FIT Pause Segment Coloring
+
+- Parsed FIT timer start/stop events into `ActivityAnnotatedSegment` pause spans without changing real elapsed-time video alignment.
+- Drew timer-paused spans as muted gray overlays on the draggable `FIT` timeline layer.
+- Added hover help for pause spans using the label `运动暂停`, with elapsed range and duration.
+- Clipped collapsed-mode FIT blocks to the actual activity range so video-only spans outside FIT data no longer show a green bar.
+- Updated the timeline, architecture, requirements, and development docs for annotation-driven FIT axis coloring.
+
+Files changed:
+
+- `Sources/RunningOverlay/FitData/ActivityTimeline.swift`
+- `Sources/RunningOverlay/FitData/FitFileParser.swift`
+- `Sources/RunningOverlay/UI/TimelineView.swift`
+- `Sources/RunningOverlay/UI/EditorTheme.swift`
+- `Tests/RunningOverlayTests/TimelineModelTests.swift`
+
+### Media Pool Click Responsiveness
+
+- Fixed perceived lag when selecting media rows in `MediaBrowserView`.
+- Root cause: stacked `.onTapGesture(count: 2)` + `.onTapGesture` forced SwiftUI to wait for the double-click resolution window before firing the single-tap selection.
+- Replaced both gestures with a single tap handler that inspects `NSApp.currentEvent?.clickCount` — single click selects immediately, second click triggers preview.
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/MediaBrowserView.swift`
+
+## 2026-05-07
+
+### Weather Widget Phase 1 Visual Pass
+
+- Reworked Weather Widget SwiftUI preset rendering to better match the approved weather-app-plugin design direction.
+- Added a shared custom SwiftUI weather icon family for all 10 conditions, replacing mixed SF Symbol silhouettes in the main SwiftUI preview/export path.
+- Updated the five preset treatments: blue Simple Card, light Compact Strip, dark Forecast Tile, transparent Minimal Text, and graphite Dashboard Bar.
+- Seeded preset defaults with realistic sample weather-app content such as `大阪, 日本`, `雨`, `13°C`, and `87% RH`.
+- Fixed weather temperature formatting to include explicit units (`°C` / `°F`).
+- Fixed render-model source precedence so cached Open-Meteo data is used only when `.openMeteo` is selected, and cached optional metrics still respect show/hide toggles.
+- Updated Weather Widget design and module docs to record the implemented first visual pass and remaining API/export-parity work.
+
+### Weather Widget Inspector Pass
+
+- Added `ProjectDocument.applyWeatherWidgetPreset`, centralizing preset switching so visual defaults update while content fields and cached weather are preserved.
+- Added Weather Widget style fields for condition label override, humidity suffix, Dashboard metric chip labels, and palette selection, with backward-compatible decode defaults for older project files.
+- Expanded the Weather Widget Inspector with quick preset buttons, editable label/suffix/chip fields, and a Palette menu.
+- Added tests for FIT/manual/Open-Meteo source precedence, cached metric visibility toggles, condition label override, Fahrenheit formatting, style round-trip, legacy weather style decode, and preset application behavior.
+
+### Weather Widget API Fetch Entry Points
+
+- Added `WeatherFetcher` for Open-Meteo historical archive requests using the current hourly field names: `temperature_2m`, `relative_humidity_2m`, `apparent_temperature`, `weather_code`, and `wind_speed_10m`.
+- Added two explicit weather fetch paths in `ProjectDocument`: by first FIT activity GPS point and by current device location through CoreLocation.
+- Successful fetches now switch the widget to Open-Meteo, cache the payload in `WeatherWidgetStyle.cachedWeather`, record the fetch location mode, and update visible location text from reverse geocoding.
+- Added Weather Widget Inspector buttons for activity-location and current-location fetches; the activity button is disabled when no GPS route exists.
+- Updated Weather Widget design and module docs to reflect the API fetch behavior and the decision to ignore legacy Core Graphics PNG parity.
+- Added WeatherFetcher tests for request URL construction, hourly payload parsing, and activity route coordinate selection.
+- Verification: `swift test` passed with 85 tests; a live Open-Meteo archive request for Osaka returned the expected hourly fields.
+
+### Weather Widget Inspector 1.0 Scope
+
+- Removed shared Background, Border, and Effects modules from the Weather Widget Inspector because those generic overlay controls do not affect the custom SwiftUI weather preset renderer.
+- Kept Weather Widget's own supported styling controls inside the widget renderer rather than exposing shared Background, Border, and Effects controls.
+- Updated the Weather Widget design spec, structured UI spec, and module docs to define the narrower 1.0 customization surface.
+- Removed the duplicate text-only Preset menu; Weather Widget 1.0 now switches presets only through the compact Styles icon buttons.
+- Reordered the Weather Widget Inspector setup flow to Layout, Preset, Appearance, Location, then content/temperature/metrics/icon details.
+- Combined the former Content, Temperature, Metrics, and Icon sections into one Weather section.
+- Added `WeatherWidgetStyle.showIcon` and wired it through SwiftUI preview/export rendering; Icon Size remains preset-owned and is no longer exposed in the Inspector.
+- In Open-Meteo mode, Weather hides manual condition, temperature, and metric value inputs because those values come from the cached API payload; unit and display toggles remain editable.
+- Replaced the old independent Humidity / High-Low / Wind / Feels Like render toggles with `WeatherMetricSlotValue` and `WeatherWidgetStyle.metricSlots`. Slot count is now driven by Style: Simple Card 1, Forecast Tile 3, Dashboard Bar 3, Compact Strip and Minimal Text 0.
+- Weather metric rendering now reads slot assignments, so each visible slot can choose any of the four supported values instead of some metrics only working in specific Styles.
+- Added 10 production `64 x 64` bundled SVG weather icons under `Sources/RunningOverlay/Resources/Icons/`, mapped via `WeatherCondition.bundledSVGName`, and switched `WeatherConditionIconView` to render those assets through `IconView`.
+- Added `WeatherIconAssetTests` to verify every weather condition resolves its bundled SVG.
+
+### Weather Widget Divider and Slot Refinement
+
+- Removed the ineffective Card Color control from Weather Widget Appearance; card surfaces are palette-owned in the 1.0 UI.
+- Added Appearance controls for divider color, width, and opacity, and wired those settings into SwiftUI weather preset rendering.
+- Added a Show Divider toggle that removes preset divider lines while preserving divider color, width, and opacity settings.
+- Tightened Simple Card's left block so the vertical divider sits closer to the icon group.
+- Added horizontal and vertical divider rendering to Forecast Tile.
+- Increased Dashboard Bar's default size to `560 x 112` and enlarged metric chips so labels and values remain readable.
+- Added the `-` metric slot option; selected empty slots render no metric content and do not show manual metric input rows.
+- Updated inline Feels Like metric rendering so Card/Tile rows show text such as `Feels 12°C`, while Dashboard Bar keeps label and value separated in the chip.
+- Updated Weather Widget design, structured spec, and module docs to reflect the current 1.0 customization surface.
+
 ## 2026-04-30 (continued)
 
 ### Weather Widget Implementation Plan

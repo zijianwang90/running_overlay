@@ -128,14 +128,18 @@ The FIT track represents the activity data layer.
 Visual:
 
 - Green bar spanning activity duration.
+- Timer-paused spans overlay the green FIT bar in muted gray.
 - Start block or label near the beginning, e.g. `00:00`.
 - Dark block borders consistent with clip splice edges.
 
 Behavior:
 
 - The FIT layer can be dragged horizontally to change `fitStartTime`.
+- Hovering a gray pause span shows `运动暂停` with the pause elapsed range and duration.
 - The design should hint that it is an alignable axis, not a normal video clip.
 - In collapsed mode, FIT-only regions without video may be hidden according to current model behavior.
+- In collapsed mode, video-only regions outside the FIT activity range must not draw a green FIT block.
+- FIT track span colors are annotation-driven so later workout phases such as interval reps and recovery rests can add their own colors without changing timeline alignment semantics.
 
 ## Video Tracks And Clips
 

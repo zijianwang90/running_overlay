@@ -164,6 +164,7 @@ Current implementation status:
 - Timeline zooming keeps the current playhead in view and recenters the view on the playhead when zoom changes.
 - The timeline header includes per-track preview enable/disable controls in an eye-icon menu. The previous explicit preview-track picker has been removed; preview track auto-selection is implicit, and users only need to toggle individual track visibility.
 - The timeline header includes an icon-only collapse/expand toggle. Collapsed mode hides gaps without video; for a single layer, clips are displayed back-to-back, and for multiple layers, FIT-only regions with no video on any layer are hidden while overlapping video spans remain aligned.
+- In collapsed mode, the FIT layer should only draw green FIT blocks where the visible video span overlaps the FIT activity range. Video-only spans outside the activity should remain empty above the clip.
 - The timeline collapse state is communicated by the header control style; the timeline must not introduce a separate `Gaps hidden` status row/band.
 - When the timeline is collapsed, playback skips hidden empty regions and continues at the next video span.
 - When the timeline is collapsed, existing video clips cannot be dragged horizontally; users must expand the timeline before timing edits that depend on full time context.
@@ -444,6 +445,7 @@ Open questions:
 Current implementation status:
 
 - FIT record parsing reads `position_lat` and `position_long` into activity records.
+- FIT timer pause spans should be represented as non-destructive activity annotations on the FIT layer. Paused spans use a muted gray color and a hover tooltip labeled `运动暂停`, while keeping the underlying timeline based on real elapsed time so video alignment is not shifted.
 - `ActivityTimeline` exposes route points and interpolated current route point lookup.
 - Route Map can be added from the overlay library.
 - Inspector exposes Minimal, Gradient, Glow, and MapKit route styles.

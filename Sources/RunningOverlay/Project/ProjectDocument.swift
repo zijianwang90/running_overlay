@@ -8,6 +8,7 @@ final class ProjectDocument: ObservableObject {
     @Published var settings = ProjectSettings()
     @Published var activity = ActivityTimeline.empty
     @Published var mediaItems: [MediaItem] = []
+    @Published var mediaFolders: [MediaFolder] = []
     @Published var timeline = TimelineModel.empty
     @Published var overlayLayout = OverlayLayout.empty
     @Published var selection: EditorSelection = .none
@@ -512,15 +513,80 @@ final class ProjectDocument: ObservableObject {
         matchMediaItems(mediaItemIDs, toTrackName: timeline.nextLayerName())
     }
 
-    func setMediaTag(_ tag: MediaTag?, for mediaItemIDs: Set<MediaItem.ID>) {
+    @discardableResult
+    func createMediaFolder(name: String = "New Folder", containing mediaItemIDs: Set<MediaItem.ID> = []) -> MediaFolder.ID {
+        registerUndoPoint()
+        let folder = MediaFolder(name: uniqueFolderName(from: name))
+        mediaFolders.append(folder)
+        if !mediaItemIDs.isEmpty {
+            for index in mediaItems.indices where mediaItemIDs.contains(mediaItems[index].id) {
+                mediaItems[index].folderID = folder.id
+            }
+            statusMessage = "Created folder \"\(folder.name)\" with \(mediaItemIDs.count) item(s)."
+        } else {
+            statusMessage = "Created folder \"\(folder.name)\"."
+        }
+        return folder.id
+    }
+
+    func renameMediaFolder(_ folderID: MediaFolder.ID, to newName: String) {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              let index = mediaFolders.firstIndex(where: { $0.id == folderID }),
+              mediaFolders[index].name != trimmed else {
+            return
+        }
+        registerUndoPoint()
+        mediaFolders[index].name = uniqueFolderName(from: trimmed, excluding: folderID)
+        statusMessage = "Renamed folder to \"\(mediaFolders[index].name)\"."
+    }
+
+    func deleteMediaFolder(_ folderID: MediaFolder.ID) {
+        guard let folderIndex = mediaFolders.firstIndex(where: { $0.id == folderID }) else {
+            return
+        }
+        registerUndoPoint()
+        let folderName = mediaFolders[folderIndex].name
+        for index in mediaItems.indices where mediaItems[index].folderID == folderID {
+            mediaItems[index].folderID = nil
+        }
+        mediaFolders.remove(at: folderIndex)
+        statusMessage = "Deleted folder \"\(folderName)\". Contained items returned to the root."
+    }
+
+    func moveMediaItems(_ mediaItemIDs: Set<MediaItem.ID>, toFolder folderID: MediaFolder.ID?) {
         guard !mediaItemIDs.isEmpty else {
+            return
+        }
+        if let folderID, !mediaFolders.contains(where: { $0.id == folderID }) {
+            return
+        }
+        let changed = mediaItems.contains { mediaItemIDs.contains($0.id) && $0.folderID != folderID }
+        guard changed else {
             return
         }
         registerUndoPoint()
         for index in mediaItems.indices where mediaItemIDs.contains(mediaItems[index].id) {
-            mediaItems[index].tag = tag
+            mediaItems[index].folderID = folderID
         }
-        statusMessage = tag.map { "Tagged \(mediaItemIDs.count) media item(s) as \($0.label)." } ?? "Cleared tag from \(mediaItemIDs.count) media item(s)."
+        if let folderID, let folder = mediaFolders.first(where: { $0.id == folderID }) {
+            statusMessage = "Moved \(mediaItemIDs.count) item(s) to \"\(folder.name)\"."
+        } else {
+            statusMessage = "Moved \(mediaItemIDs.count) item(s) to the root."
+        }
+    }
+
+    private func uniqueFolderName(from name: String, excluding folderID: MediaFolder.ID? = nil) -> String {
+        let base = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "New Folder" : name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let existing = Set(mediaFolders.filter { $0.id != folderID }.map(\.name))
+        if !existing.contains(base) {
+            return base
+        }
+        var counter = 2
+        while existing.contains("\(base) \(counter)") {
+            counter += 1
+        }
+        return "\(base) \(counter)"
     }
 
     func deleteMediaItems(_ mediaItemIDs: Set<MediaItem.ID>) {
@@ -1430,6 +1496,92 @@ final class ProjectDocument: ObservableObject {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
         mutate(&overlayLayout.elements[index].style.weatherWidget)
+    }
+
+    func applyWeatherWidgetPreset(_ elementID: OverlayElement.ID, preset: WeatherWidgetPreset) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        let existing = overlayLayout.elements[index].style.weatherWidget
+        var next = WeatherWidgetStyle.preset(preset)
+        next.dataSource = existing.dataSource
+        next.manualCondition = existing.manualCondition
+        next.manualTemperatureCelsius = existing.manualTemperatureCelsius
+        next.manualHumidity = existing.manualHumidity
+        next.manualHigh = existing.manualHigh
+        next.manualLow = existing.manualLow
+        next.manualWind = existing.manualWind
+        next.manualFeelsLike = existing.manualFeelsLike
+        next.conditionLabelOverride = existing.conditionLabelOverride
+        next.humiditySuffix = existing.humiditySuffix
+        next.humidityMetricLabel = existing.humidityMetricLabel
+        next.windMetricLabel = existing.windMetricLabel
+        next.feelsLikeMetricLabel = existing.feelsLikeMetricLabel
+        next.dividerEnabled = existing.dividerEnabled
+        next.dividerColor = existing.dividerColor
+        next.dividerThickness = existing.dividerThickness
+        next.dividerOpacity = existing.dividerOpacity
+        next.temperatureUnit = existing.temperatureUnit
+        next.locationText = existing.locationText
+        next.showIcon = existing.showIcon
+        next.metricSlots = WeatherWidgetStyle.normalizedMetricSlots(existing.metricSlots, for: preset)
+        next.cachedWeather = existing.cachedWeather
+        overlayLayout.elements[index].style.weatherWidget = next
+    }
+
+    func fetchWeatherForActivityLocation(_ elementID: OverlayElement.ID) {
+        fetchWeather(elementID, mode: .activityLocation)
+    }
+
+    func fetchWeatherForCurrentLocation(_ elementID: OverlayElement.ID) {
+        fetchWeather(elementID, mode: .currentLocation)
+    }
+
+    private func fetchWeather(_ elementID: OverlayElement.ID, mode: WeatherFetchLocationMode) {
+        guard overlayLayout.elements.contains(where: { $0.id == elementID }) else {
+            return
+        }
+
+        let activity = activity
+        statusMessage = "Fetching weather from \(mode.label)..."
+
+        Task {
+            do {
+                let coordinate: WeatherCoordinate
+                switch mode {
+                case .activityLocation:
+                    coordinate = try WeatherLocationResolver.activityStartCoordinate(from: activity)
+                case .currentLocation:
+                    coordinate = try await WeatherLocationResolver.currentCoordinate()
+                }
+
+                async let resolvedLocation = WeatherLocationResolver.displayName(
+                    latitude: coordinate.latitude,
+                    longitude: coordinate.longitude
+                )
+                var payload = try await WeatherFetcher.fetch(
+                    latitude: coordinate.latitude,
+                    longitude: coordinate.longitude,
+                    date: activity.startDate,
+                    resolvedLocation: nil
+                )
+                payload.resolvedLocation = await resolvedLocation
+                payload.fetchLocationMode = mode
+                applyFetchedWeatherPayload(payload, to: elementID)
+            } catch {
+                statusMessage = "Weather fetch failed: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    private func applyFetchedWeatherPayload(_ payload: WeatherPayload, to elementID: OverlayElement.ID) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.weatherWidget.dataSource = .openMeteo
+        overlayLayout.elements[index].style.weatherWidget.cachedWeather = payload
+        if let location = payload.resolvedLocation, !location.isEmpty {
+            overlayLayout.elements[index].style.weatherWidget.locationText = location
+        }
+        statusMessage = "Weather updated from \(payload.fetchLocationMode?.label ?? "Open-Meteo")."
     }
 
     func setDecorShape(_ elementID: OverlayElement.ID, shape: DecorShape) {
@@ -2708,6 +2860,7 @@ final class ProjectDocument: ObservableObject {
             settings: settings,
             activity: activity,
             mediaItems: mediaItems,
+            mediaFolders: mediaFolders,
             timeline: timeline,
             overlayLayout: overlayLayout,
             userAssets: userAssets,
@@ -2719,6 +2872,7 @@ final class ProjectDocument: ObservableObject {
         settings = snapshot.settings
         activity = snapshot.activity
         mediaItems = snapshot.mediaItems
+        mediaFolders = snapshot.mediaFolders
         timeline = snapshot.timeline
         overlayLayout = snapshot.overlayLayout
         userAssets = snapshot.userAssets
@@ -2735,6 +2889,7 @@ private struct ProjectSnapshot: Equatable {
     var settings: ProjectSettings
     var activity: ActivityTimeline
     var mediaItems: [MediaItem]
+    var mediaFolders: [MediaFolder]
     var timeline: TimelineModel
     var overlayLayout: OverlayLayout
     var userAssets: [UserAsset]

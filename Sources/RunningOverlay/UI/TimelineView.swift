@@ -248,6 +248,7 @@ private final class TimelineCanvasNSView: NSView {
     private weak var project: ProjectDocument?
     private var tracks: [TimelineTrack] = []
     private var activityDuration: TimeInterval = 0
+    private var activitySegments: [ActivityAnnotatedSegment] = []
     private var fitStartTime: TimeInterval = 0
     private var playhead: TimeInterval = 0
     private var visibleStartTime: TimeInterval = 0
@@ -324,6 +325,7 @@ private final class TimelineCanvasNSView: NSView {
         self.project = project
         tracks = timeline.tracks
         activityDuration = activity.duration
+        activitySegments = activity.annotatedSegments
         fitStartTime = timeline.fitStartTime
         playhead = timeline.playhead
         mediaItemsAreAvailable = hasMediaItems
@@ -406,8 +408,14 @@ private final class TimelineCanvasNSView: NSView {
     override func mouseMoved(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
         let inRuler = point.y <= rulerHeight && activityDuration > 0
-        hoverPoint = inRuler ? point : nil
-        if inRuler, let project {
+        let pauseHit = activitySegmentHit(at: point)
+        hoverPoint = inRuler || pauseHit != nil ? point : nil
+        if let pauseHit {
+            let scrollOffsetX = hostScrollView?.documentVisibleRect.origin.x ?? 0
+            let visibleX = point.x - scrollOffsetX
+            let text = "\(pauseHit.kind.label) • \(formatDuration(pauseHit.startElapsedTime))-\(formatDuration(pauseHit.endElapsedTime)) • \(formatDuration(pauseHit.duration))"
+            onHoverChange?(TimelineHoverInfo(visibleX: visibleX, text: text))
+        } else if inRuler, let project {
             let scrollOffsetX = hostScrollView?.documentVisibleRect.origin.x ?? 0
             let visibleX = point.x - scrollOffsetX
             let projectTime = time(atX: point.x)
@@ -628,8 +636,23 @@ private final class TimelineCanvasNSView: NSView {
             path.lineWidth = isCollapsed ? 1.3 : 1
             path.stroke()
         }
+        drawActivitySegments()
         if let fitRect = fitRects.first {
             drawText("00:00", in: fitRect.insetBy(dx: 8, dy: 6), color: .white, font: .systemFont(ofSize: 11, weight: .medium), lineBreakMode: .byTruncatingTail)
+        }
+    }
+
+    private func drawActivitySegments() {
+        for segment in activitySegments where segment.duration > 0 {
+            let color = activitySegmentColor(segment)
+            for rect in activitySegmentRects(segment) {
+                let path = roundedPath(rect, radius: 3)
+                color.withAlphaComponent(0.92).setFill()
+                path.fill()
+                NSColor.timelineSpliceBorder.withAlphaComponent(0.75).setStroke()
+                path.lineWidth = 1
+                path.stroke()
+            }
         }
     }
 
@@ -897,9 +920,18 @@ private final class TimelineCanvasNSView: NSView {
             let timeline = TimelineModel(tracks: tracks, zoom: .fit, playhead: playhead, fitStartTime: fitStartTime)
             let segments = timeline.collapsedDisplaySegments()
             if !segments.isEmpty {
-                return segments.map { segment in
-                    let startX = labelWidth + contentPadding + CGFloat((segment.displayStartTime - visibleStartTime) * pixelsPerSecond)
-                    let width = CGFloat(max(segment.displayEndTime - segment.displayStartTime, 0) * pixelsPerSecond)
+                let fitEndTime = fitStartTime + max(activityDuration, 0)
+                return segments.compactMap { segment in
+                    let start = max(segment.projectStartTime, fitStartTime)
+                    let end = min(segment.projectEndTime, fitEndTime)
+                    guard end > start else {
+                        return nil
+                    }
+
+                    let displayStart = segment.displayStartTime + start - segment.projectStartTime
+                    let displayEnd = segment.displayStartTime + end - segment.projectStartTime
+                    let startX = labelWidth + contentPadding + CGFloat((displayStart - visibleStartTime) * pixelsPerSecond)
+                    let width = CGFloat(max(displayEnd - displayStart, 0) * pixelsPerSecond)
                     return CGRect(x: startX, y: y + 8, width: max(width, 2), height: fitTrackHeight - 16)
                 }
             }
@@ -908,6 +940,49 @@ private final class TimelineCanvasNSView: NSView {
         let startX = x(forProjectTime: fitStartTime)
         let endX = x(forProjectTime: fitStartTime + max(activityDuration, 0))
         return [CGRect(x: startX, y: y + 8, width: max(endX - startX, 54), height: fitTrackHeight - 16)]
+    }
+
+    private func activitySegmentRects(_ segment: ActivityAnnotatedSegment) -> [CGRect] {
+        let projectStart = fitStartTime + segment.startElapsedTime
+        let projectEnd = fitStartTime + segment.endElapsedTime
+        let y = rulerHeight + 8
+        let height = fitTrackHeight - 16
+
+        if isCollapsed {
+            let timeline = TimelineModel(tracks: tracks, zoom: .fit, playhead: playhead, fitStartTime: fitStartTime)
+            return timeline.collapsedDisplaySegments().compactMap { displaySegment in
+                let start = max(projectStart, displaySegment.projectStartTime)
+                let end = min(projectEnd, displaySegment.projectEndTime)
+                guard end > start else {
+                    return nil
+                }
+                let displayStart = displaySegment.displayStartTime + start - displaySegment.projectStartTime
+                let displayEnd = displaySegment.displayStartTime + end - displaySegment.projectStartTime
+                let x = labelWidth + contentPadding + CGFloat((displayStart - visibleStartTime) * pixelsPerSecond)
+                let width = CGFloat((displayEnd - displayStart) * pixelsPerSecond)
+                return CGRect(x: x, y: y, width: max(width, 2), height: height)
+            }
+        }
+
+        let startX = x(forProjectTime: projectStart)
+        let endX = x(forProjectTime: projectEnd)
+        return [CGRect(x: startX, y: y, width: max(endX - startX, 2), height: height)]
+    }
+
+    private func activitySegmentHit(at point: CGPoint) -> ActivityAnnotatedSegment? {
+        guard activityDuration > 0, point.y >= rulerHeight, point.y <= rulerHeight + fitTrackHeight else {
+            return nil
+        }
+        return activitySegments.first { segment in
+            activitySegmentRects(segment).contains { $0.contains(point) }
+        }
+    }
+
+    private func activitySegmentColor(_ segment: ActivityAnnotatedSegment) -> NSColor {
+        switch segment.kind {
+        case .timerPaused:
+            .timelineFitPausedGray
+        }
     }
 
     private func roundedPath(_ rect: CGRect, radius: CGFloat) -> NSBezierPath {

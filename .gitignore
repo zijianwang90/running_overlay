@@ -3,6 +3,8 @@
 .AppleDouble
 .LSOverride
 Icon?
+!Sources/RunningOverlay/Resources/Icons/
+!Sources/RunningOverlay/Resources/Icons/**
 ._*
 .Spotlight-V100
 .Trashes

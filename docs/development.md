@@ -157,8 +157,9 @@ Current implementation:
 - FIT import success and failure details are printed to stdout, so they are visible when launching with `swift run RunningOverlay`.
 - Developer field definitions are read and skipped so standard fields in files with developer data remain parseable.
 - Record elapsed times are normalized after parsing with the final activity start date so overlay values sample the correct FIT record over time.
+- Timer start/stop events are parsed into `ActivityAnnotatedSegment` pause spans. These spans stay on the real elapsed-time axis and are available to timeline UI without changing video alignment.
 - Compressed timestamp headers are accepted only enough to route to local message definitions; full compressed timestamp reconstruction is not implemented yet.
-- Broad FIT profile coverage, CRC validation, pause handling, and timezone/device drift handling are still pending.
+- Broad FIT profile coverage, CRC validation, deeper pause semantics for data sampling, and timezone/device drift handling are still pending.
 
 ### Phase 3: Video Import And Metadata Alignment
 
@@ -226,6 +227,8 @@ Current implementation:
 - Imported video clips are placed by real timestamp relative to FIT start and are no longer clamped to `0...activity.duration`.
 - Project bounds are the union of the FIT layer span and all video clip spans, allowing pre-start and post-finish race footage.
 - The AppKit timeline draws a dedicated draggable `FIT` layer above video layers.
+- The FIT layer overlays timer-paused segments in gray and shows a `运动暂停` hover tooltip on those spans. Segment rendering is backed by typed activity annotations so future interval/rest/workout spans can use additional colors.
+- In collapsed mode, FIT track blocks are clipped to the actual FIT activity range, so video-only spans before start or after finish do not show a green FIT bar.
 - A FIT-only project shows the activity ruler and an empty video lane before media import.
 - During playback, the scroll view keeps the playhead visible horizontally.
 - Clip dragging is previewed inside the AppKit view and committed to the project model once on mouse-up.

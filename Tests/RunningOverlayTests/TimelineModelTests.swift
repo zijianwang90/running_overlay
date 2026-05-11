@@ -202,6 +202,28 @@ struct TimelineModelTests {
         #expect(timeline.activityElapsed(atProjectTime: -5) == -8)
     }
 
+    @Test func activityTimelineReturnsAnnotatedPauseSegmentAtElapsedTime() {
+        let pause = ActivityAnnotatedSegment(
+            kind: .timerPaused,
+            startElapsedTime: 30,
+            endElapsedTime: 45
+        )
+        let activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 0),
+            duration: 100,
+            distanceMeters: 0,
+            records: [],
+            laps: [],
+            annotatedSegments: [pause]
+        )
+
+        #expect(activity.annotatedSegment(at: 29) == nil)
+        #expect(activity.annotatedSegment(at: 30)?.kind == .timerPaused)
+        #expect(activity.annotatedSegment(at: 44.9)?.kind == .timerPaused)
+        #expect(activity.annotatedSegment(at: 45) == nil)
+        #expect(activity.annotatedSegment(at: 200) == nil)
+    }
+
     @Test func deleteClipRemovesEmptyTrack() {
         let clip = TimelineClip(mediaItemID: nil, title: "a.mov", startTime: 0, duration: 5, alignmentOffset: 0, cameraGroupID: "Camera A")
         var timeline = TimelineModel(tracks: [TimelineTrack(name: "Camera A", clips: [clip])])

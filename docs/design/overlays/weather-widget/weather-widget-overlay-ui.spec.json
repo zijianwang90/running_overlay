@@ -1,7 +1,7 @@
 {
   "name": "Weather Widget Overlay UI",
-  "updated": "2026-05-01",
-  "status": "visual-design-only",
+  "updated": "2026-05-07",
+  "status": "phase-2-open-meteo-fetch-entrypoints-and-v1-divider-controls-implemented",
   "references": {
     "presetBoard": "./weather-widget-presets.png",
     "iconSet": "./weather-icon-set.png",
@@ -13,7 +13,6 @@
     "avoid": [
       "sport-specific styling as the default",
       "mixed icon families",
-      "API dependency in the first design pass",
       "large components without location/country text",
       "decorative background art behind the widgets"
     ]
@@ -24,7 +23,7 @@
       "label": "Simple Card",
       "defaultSize": {"width": 300, "height": 110},
       "fields": ["conditionLabel", "conditionIcon", "location", "weekday", "temperature", "humidity"],
-      "notes": "default preset; blue translucent card with vertical divider and location/country slot"
+      "notes": "default preset; blue translucent card with vertical divider, compact left visual block, and location/country slot"
     },
     {
       "id": "compactStrip",
@@ -38,7 +37,7 @@
       "label": "Forecast Tile",
       "defaultSize": {"width": 180, "height": 180},
       "fields": ["location", "conditionIcon", "temperature", "highTemperature", "lowTemperature", "humidity"],
-      "notes": "larger square-ish tile for title-card or social clips"
+      "notes": "larger square-ish tile for title-card or social clips; configurable horizontal and vertical dividers separate header, temperature, and metric areas"
     },
     {
       "id": "minimalText",
@@ -50,9 +49,9 @@
     {
       "id": "dashboardBar",
       "label": "Dashboard Bar",
-      "defaultSize": {"width": 460, "height": 86},
+      "defaultSize": {"width": 560, "height": 112},
       "fields": ["location", "condition", "temperature", "humidity", "wind", "feelsLike"],
-      "notes": "wide weather dashboard bar with metric chips"
+      "notes": "wide weather dashboard bar with taller metric chips for readable labels and values"
     }
   ],
   "contentFields": {
@@ -62,6 +61,18 @@
   "iconSet": {
     "baseGrid": "64x64",
     "conditions": ["sunny", "clearNight", "partlyCloudy", "cloudy", "rain", "heavyRain", "thunder", "snow", "fog", "wind"],
+    "productionAssets": [
+      "Sources/RunningOverlay/Resources/Icons/weather-sunny.svg",
+      "Sources/RunningOverlay/Resources/Icons/weather-clear-night.svg",
+      "Sources/RunningOverlay/Resources/Icons/weather-partly-cloudy.svg",
+      "Sources/RunningOverlay/Resources/Icons/weather-cloudy.svg",
+      "Sources/RunningOverlay/Resources/Icons/weather-rain.svg",
+      "Sources/RunningOverlay/Resources/Icons/weather-heavy-rain.svg",
+      "Sources/RunningOverlay/Resources/Icons/weather-thunder.svg",
+      "Sources/RunningOverlay/Resources/Icons/weather-snow.svg",
+      "Sources/RunningOverlay/Resources/Icons/weather-fog.svg",
+      "Sources/RunningOverlay/Resources/Icons/weather-wind.svg"
+    ],
     "rules": [
       "all icons use the same family and optical weight",
       "rounded filled geometric shapes are preferred",
@@ -81,12 +92,102 @@
   },
   "dataStrategy": {
     "phase1": ["FIT temperature when available", "manual fallback temperature", "manual condition and secondary metrics"],
-    "phase2": ["weather API by activity timestamp and GPS start point", "cached project weather payload", "offline deterministic export"]
+    "phase2": [
+      "Open-Meteo historical API by activity timestamp",
+      "activity-location fetch by first FIT GPS route point",
+      "current-location fetch by CoreLocation device coordinate",
+      "reverse-geocoded location text",
+      "cached project weather payload",
+      "offline deterministic export"
+    ]
   },
-  "inspectorSections": ["Preset", "Content", "Location", "Temperature", "Metrics", "Icon", "Layout", "Appearance", "Effects"],
+  "inspectorSections": ["Layout", "Preset", "Appearance", "Location", "Weather"],
+  "inspectorSectionsHiddenForV1": [
+    {
+      "section": "Background",
+      "reason": "Shared overlay background controls do not affect the Weather Widget SwiftUI preset renderer."
+    },
+    {
+      "section": "Border",
+      "reason": "Shared overlay border controls do not affect the Weather Widget SwiftUI preset renderer."
+    },
+    {
+      "section": "Effects",
+      "reason": "Shared overlay effects controls do not affect the Weather Widget SwiftUI preset renderer."
+    }
+  ],
+  "inspectorControlsImplemented": [
+    "quick style icon buttons",
+    "data source menu",
+    "activity location API fetch button",
+    "current location API fetch button",
+    "condition picker",
+    "condition label override",
+    "location and weekday toggles",
+    "manual temperature field",
+    "temperature unit menu",
+    "style-specific metric slot menus",
+    "manual humidity, high/low, wind, feels-like fields for selected slots outside Open-Meteo mode",
+    "show icon toggle",
+    "condition label toggle",
+    "palette menu",
+    "card opacity",
+    "card radius",
+    "show divider toggle",
+    "divider color",
+    "divider width",
+    "divider opacity"
+  ],
+  "inspectorControlsHiddenForV1": [
+    {
+      "control": "Card Color swatches",
+      "reason": "Card surface color is palette-owned in Weather Widget 1.0; the old field did not reliably affect the preset renderer."
+    },
+    {
+      "control": "duplicate preset menu",
+      "reason": "Preset switching is already handled by the compact Styles icon buttons."
+    },
+    {
+      "control": "Icon Size slider",
+      "reason": "Icon size is preset-owned in Weather Widget 1.0."
+    },
+    {
+      "control": "manual API-owned text inputs in Open-Meteo mode",
+      "reason": "When the widget uses API data, condition, temperature, and metric values come from cached weather payloads."
+    }
+  ],
+  "metricSlots": {
+    "values": ["none", "humidity", "highLow", "wind", "feelsLike"],
+    "noneBehavior": "selected '-' slots render no metric content",
+    "slotCountByPreset": {
+      "simpleCard": 1,
+      "compactStrip": 0,
+      "forecastTile": 3,
+      "minimalText": 0,
+      "dashboardBar": 3
+    },
+    "defaultSlotsByPreset": {
+      "simpleCard": ["humidity"],
+      "compactStrip": [],
+      "forecastTile": ["highLow", "humidity", "wind"],
+      "minimalText": [],
+      "dashboardBar": ["humidity", "wind", "feelsLike"]
+    },
+    "inlineFeelsLikeLabel": "Inline metric rows render feelsLike as 'Feels 12°C'; Dashboard Bar keeps 'Feels' as the chip label and '12°C' as the value."
+  },
+  "dividers": {
+    "enabledControl": "Show Divider",
+    "enabledDefault": true,
+    "hiddenBehavior": "when disabled, preset divider lines are not rendered; color, width, and opacity values are preserved but hidden from the Inspector",
+    "controlsWhenEnabled": ["divider color", "divider width", "divider opacity"]
+  },
   "implementationNotes": [
     "weather widget should become a dedicated overlay type, not only a numeric temperature preset",
     "preview and export must share the same render layout",
-    "API-backed weather must be cached before export"
+    "API-backed weather must be cached before export",
+    "fetch actions write cachedWeather, switch dataSource to Open-Meteo, and update locationText from reverse geocoding",
+    "Open-Meteo archive request uses temperature_2m, relative_humidity_2m, apparent_temperature, weather_code, and wind_speed_10m",
+    "SwiftUI preview/export uses the shared custom weather icon family",
+    "Core Graphics PNG weather rendering is deprecated and no longer a target for parity"
   ]
 }

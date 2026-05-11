@@ -69,6 +69,142 @@ struct OverlayTemplateTests {
         #expect(decoded.distanceTimeline.mediaSlot.svgSource.contains("<path"))
     }
 
+    @Test func weatherWidgetStyleRoundTripsNewFields() throws {
+        var style = OverlayStyle.default
+        style.weatherWidget = .preset(.dashboardBar)
+        style.weatherWidget.conditionLabelOverride = "小雨"
+        style.weatherWidget.humiditySuffix = "RH"
+        style.weatherWidget.humidityMetricLabel = "湿度"
+        style.weatherWidget.windMetricLabel = "風"
+        style.weatherWidget.feelsLikeMetricLabel = "体感"
+        style.weatherWidget.palette = .lightGlass
+        style.weatherWidget.showIcon = false
+        style.weatherWidget.metricSlots = [.none, .wind, .highLow]
+        style.weatherWidget.dividerEnabled = false
+        style.weatherWidget.dividerColor = .cyan
+        style.weatherWidget.dividerThickness = 3
+        style.weatherWidget.dividerOpacity = 0.42
+        style.weatherWidget.cachedWeather = WeatherPayload(
+            condition: .rain,
+            temperatureCelsius: 13,
+            humidity: 87,
+            highTemperatureCelsius: 16,
+            lowTemperatureCelsius: 11,
+            windKph: 9,
+            feelsLikeCelsius: 12,
+            resolvedLocation: "大阪, 日本",
+            sourceDate: Date(timeIntervalSince1970: 1_000)
+        )
+
+        let data = try JSONEncoder().encode(style)
+        let decoded = try JSONDecoder().decode(OverlayStyle.self, from: data)
+
+        #expect(decoded.weatherWidget.conditionLabelOverride == "小雨")
+        #expect(decoded.weatherWidget.humidityMetricLabel == "湿度")
+        #expect(decoded.weatherWidget.windMetricLabel == "風")
+        #expect(decoded.weatherWidget.feelsLikeMetricLabel == "体感")
+        #expect(decoded.weatherWidget.palette == .lightGlass)
+        #expect(decoded.weatherWidget.showIcon == false)
+        #expect(decoded.weatherWidget.metricSlots == [.none, .wind, .highLow])
+        #expect(decoded.weatherWidget.dividerEnabled == false)
+        #expect(decoded.weatherWidget.dividerColor == .cyan)
+        #expect(decoded.weatherWidget.dividerThickness == 3)
+        #expect(decoded.weatherWidget.dividerOpacity == 0.42)
+        #expect(decoded.weatherWidget.cachedWeather?.resolvedLocation == "大阪, 日本")
+    }
+
+    @Test func weatherWidgetStyleDecodesLegacyWeatherFieldsWithDefaults() throws {
+        let json = """
+        {
+          "weatherWidget": {
+            "preset": "simpleCard",
+            "dataSource": "manual",
+            "manualCondition": "rain",
+            "manualTemperatureCelsius": 13,
+            "manualHumidity": 87,
+            "manualHigh": 16,
+            "manualLow": 11,
+            "manualWind": 9,
+            "manualFeelsLike": 12,
+            "temperatureUnit": "celsius",
+            "locationText": "大阪, 日本",
+            "showLocation": true,
+            "showWeekday": true,
+            "showHumidity": true,
+            "showHighLow": false,
+            "showWind": false,
+            "showFeelsLike": false,
+            "cardBackgroundColor": { "red": 0, "green": 0, "blue": 0, "alpha": 1 },
+            "cardBackgroundOpacity": 0.6,
+            "cardCornerRadius": 10,
+            "iconSize": 36,
+            "showConditionLabel": true,
+            "width": 300,
+            "height": 110
+          }
+        }
+        """
+
+        let decoded = try JSONDecoder().decode(OverlayStyle.self, from: Data(json.utf8))
+
+        #expect(decoded.weatherWidget.conditionLabelOverride == "")
+        #expect(decoded.weatherWidget.humiditySuffix == "RH")
+        #expect(decoded.weatherWidget.humidityMetricLabel == "RH")
+        #expect(decoded.weatherWidget.palette == .blueGlass)
+        #expect(decoded.weatherWidget.showIcon == true)
+        #expect(decoded.weatherWidget.metricSlots == [.humidity])
+        #expect(decoded.weatherWidget.dividerEnabled == true)
+        #expect(decoded.weatherWidget.dividerColor == .white)
+        #expect(decoded.weatherWidget.dividerThickness == 1)
+        #expect(decoded.weatherWidget.dividerOpacity == 0.34)
+    }
+
+    @Test func applyWeatherWidgetPresetPreservesContentAndCachedData() throws {
+        let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: temporaryTemplateURL()))
+        project.addOverlayElement(.weatherWidget)
+        let id = try #require(project.overlayLayout.elements.first?.id)
+        project.mutateWeatherWidgetStyle(id) { style in
+            style.manualCondition = .snow
+            style.manualTemperatureCelsius = -2
+            style.conditionLabelOverride = "Snow"
+            style.locationText = "Sapporo, Japan"
+            style.showIcon = false
+            style.metricSlots = [.wind]
+            style.dividerEnabled = false
+            style.dividerColor = .yellow
+            style.dividerThickness = 4
+            style.dividerOpacity = 0.5
+            style.cachedWeather = WeatherPayload(
+                condition: .snow,
+                temperatureCelsius: -2,
+                humidity: 80,
+                highTemperatureCelsius: 0,
+                lowTemperatureCelsius: -6,
+                windKph: 12,
+                feelsLikeCelsius: -5,
+                resolvedLocation: "Sapporo, Japan",
+                sourceDate: nil
+            )
+        }
+
+        project.applyWeatherWidgetPreset(id, preset: .dashboardBar)
+        let updated = try #require(project.overlayLayout.elements.first?.style.weatherWidget)
+
+        #expect(updated.preset == .dashboardBar)
+        #expect(updated.manualCondition == .snow)
+        #expect(updated.manualTemperatureCelsius == -2)
+        #expect(updated.conditionLabelOverride == "Snow")
+        #expect(updated.locationText == "Sapporo, Japan")
+        #expect(updated.showIcon == false)
+        #expect(updated.metricSlots == [.wind, .wind, .feelsLike])
+        #expect(updated.dividerEnabled == false)
+        #expect(updated.dividerColor == .yellow)
+        #expect(updated.dividerThickness == 4)
+        #expect(updated.dividerOpacity == 0.5)
+        #expect(updated.cachedWeather?.condition == .snow)
+        #expect(abs(updated.width - Double(WeatherWidgetPreset.dashboardBar.defaultSize.width)) < 0.001)
+    }
+
     @Test func applyOverlayTemplateIsUndoable() throws {
         let storeURL = temporaryTemplateURL()
         defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }

@@ -20,15 +20,9 @@ struct WeatherWidgetOverlayDetailView: View {
                     VStack(spacing: NumericTokens.sectionGap) {
                         layoutInspectorSection(element)
                         presetSection(element)
-                        contentSection(element)
-                        locationSection(element)
-                        temperatureSection(element)
-                        metricsSection(element)
-                        iconSection(element)
                         appearanceSection(element)
-                        OverlayBackgroundInspectorModule(elementID: elementID, element: element)
-                        OverlayBorderInspectorModule(elementID: elementID, element: element)
-                        OverlayEffectsInspectorModule(elementID: elementID, element: element)
+                        locationSection(element)
+                        weatherSection(element)
                     }
                     .padding(.bottom, NumericTokens.panelPaddingY)
                 }
@@ -43,18 +37,15 @@ struct WeatherWidgetOverlayDetailView: View {
     // MARK: - Section model
 
     private enum WeatherSection: String, CaseIterable {
-        case layout, preset, content, location, temperature, metrics, icon, appearance
+        case layout, preset, appearance, location, weather
 
         var title: String {
             switch self {
             case .layout: "Layout"
             case .preset: "Preset"
-            case .content: "Content"
-            case .location: "Location"
-            case .temperature: "Temperature"
-            case .metrics: "Metrics"
-            case .icon: "Icon"
             case .appearance: "Appearance"
+            case .location: "Location"
+            case .weather: "Weather"
             }
         }
 
@@ -62,12 +53,9 @@ struct WeatherWidgetOverlayDetailView: View {
             switch self {
             case .layout: "scope"
             case .preset: "rectangle.3.group"
-            case .content: "text.alignleft"
-            case .location: "location"
-            case .temperature: "thermometer"
-            case .metrics: "chart.bar"
-            case .icon: "cloud.sun"
             case .appearance: "paintpalette"
+            case .location: "location"
+            case .weather: "cloud.sun"
             }
         }
     }
@@ -203,31 +191,30 @@ struct WeatherWidgetOverlayDetailView: View {
     private func presetSection(_ element: OverlayElement) -> some View {
         let s = element.style.weatherWidget
         return sectionView(.preset, element: element) {
-            InspectorDenseRow(label: "Preset") {
-                Menu {
+            InspectorDenseRow(label: "Styles") {
+                HStack(spacing: 6) {
                     ForEach(WeatherWidgetPreset.allCases) { preset in
                         Button {
-                            project.mutateWeatherWidgetStyle(elementID) { style in
-                                let content = style
-                                style = WeatherWidgetStyle.preset(preset)
-                                style.manualCondition = content.manualCondition
-                                style.manualTemperatureCelsius = content.manualTemperatureCelsius
-                                style.manualHumidity = content.manualHumidity
-                                style.manualHigh = content.manualHigh
-                                style.manualLow = content.manualLow
-                                style.manualWind = content.manualWind
-                                style.manualFeelsLike = content.manualFeelsLike
-                                style.temperatureUnit = content.temperatureUnit
-                                style.locationText = content.locationText
-                                style.cachedWeather = content.cachedWeather
-                            }
+                            project.applyWeatherWidgetPreset(elementID, preset: preset)
                         } label: {
-                            if preset == s.preset { Label(preset.label, systemImage: "checkmark") }
-                            else { Text(preset.label) }
+                            VStack(spacing: 3) {
+                                Image(systemName: presetIcon(preset))
+                                    .font(.system(size: 12, weight: .semibold))
+                                Text(presetShortLabel(preset))
+                                    .font(.system(size: 8, weight: .medium))
+                            }
+                            .foregroundStyle(preset == s.preset ? NumericTokens.textPrimary : NumericTokens.textSecondary)
+                            .frame(width: 42, height: 36)
+                            .background(preset == s.preset ? NumericTokens.accentBlue.opacity(0.24) : NumericTokens.controlBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: 5))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 5)
+                                    .stroke(preset == s.preset ? NumericTokens.accentBlue : NumericTokens.borderSubtle, lineWidth: 1)
+                            }
                         }
+                        .buttonStyle(.plain)
+                        .help(preset.label)
                     }
-                } label: {
-                    InspectorDenseMenuLabel(title: s.preset.label)
                 }
             }
             InspectorDenseRow(label: "Data Source") {
@@ -247,30 +234,199 @@ struct WeatherWidgetOverlayDetailView: View {
         }
     }
 
-    // MARK: - Content section
+    // MARK: - Weather section
 
-    private func contentSection(_ element: OverlayElement) -> some View {
+    private func weatherSection(_ element: OverlayElement) -> some View {
         let s = element.style.weatherWidget
-        return sectionView(.content, element: element) {
-            InspectorDenseRow(label: "Condition") {
-                Menu {
-                    ForEach(WeatherCondition.allCases) { cond in
-                        Button {
-                            project.mutateWeatherWidgetStyle(elementID) { $0.manualCondition = cond }
-                        } label: {
-                            HStack {
-                                Image(systemName: cond.sfSymbolName).foregroundStyle(Color(cond.iconTint))
-                                if cond == s.manualCondition {
-                                    Label(cond.label, systemImage: "checkmark")
-                                } else { Text(cond.label) }
+        let usesAPI = s.dataSource == .openMeteo
+        let metricSlots = s.normalizedMetricSlots()
+        return sectionView(.weather, element: element) {
+            if usesAPI {
+                InspectorDenseRow(label: "Condition") {
+                    Text("From API")
+                        .font(NumericTokens.bodyFont)
+                        .foregroundStyle(NumericTokens.textSecondary)
+                }
+            } else {
+                InspectorDenseRow(label: "Condition") {
+                    Menu {
+                        ForEach(WeatherCondition.allCases) { cond in
+                            Button {
+                                project.mutateWeatherWidgetStyle(elementID) { $0.manualCondition = cond }
+                            } label: {
+                                HStack {
+                                    Image(systemName: cond.sfSymbolName).foregroundStyle(Color(cond.iconTint))
+                                    if cond == s.manualCondition {
+                                        Label(cond.label, systemImage: "checkmark")
+                                    } else { Text(cond.label) }
+                                }
                             }
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: s.manualCondition.sfSymbolName).foregroundStyle(Color(s.manualCondition.iconTint))
+                            InspectorDenseMenuLabel(title: s.manualCondition.label)
+                        }
+                    }
+                }
+                InspectorDenseRow(label: "Label Override") {
+                    TextField("Auto", text: Binding(
+                        get: { s.conditionLabelOverride },
+                        set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.conditionLabelOverride = v } }
+                    ))
+                    .textFieldStyle(.roundedBorder)
+                    .font(NumericTokens.bodyFont)
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: 140)
+                }
+                InspectorDenseRow(label: "Temperature") {
+                    HStack(spacing: 4) {
+                        TextField("", value: Binding(
+                            get: { s.manualTemperatureCelsius },
+                            set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.manualTemperatureCelsius = v } }
+                        ), format: .number)
+                        .textFieldStyle(.roundedBorder)
+                        .font(NumericTokens.bodyFont)
+                        .frame(width: 56)
+                        Text("°C").font(NumericTokens.bodyFont).foregroundStyle(NumericTokens.textSecondary)
+                    }
+                }
+            }
+
+            InspectorDenseRow(label: "Unit") {
+                Menu {
+                    ForEach(WeatherTemperatureUnit.allCases) { unit in
+                        Button {
+                            project.mutateWeatherWidgetStyle(elementID) { $0.temperatureUnit = unit }
+                        } label: {
+                            if unit == s.temperatureUnit { Label(unit.label, systemImage: "checkmark") }
+                            else { Text(unit.label) }
                         }
                     }
                 } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: s.manualCondition.sfSymbolName).foregroundStyle(Color(s.manualCondition.iconTint))
-                        InspectorDenseMenuLabel(title: s.manualCondition.label)
+                    InspectorDenseMenuLabel(title: s.temperatureUnit.shortLabel)
+                }
+            }
+
+            if s.preset.metricSlotCount == 0 {
+                InspectorDenseRow(label: "Metric Slots") {
+                    Text("None for this style")
+                        .font(NumericTokens.bodyFont)
+                        .foregroundStyle(NumericTokens.textSecondary)
+                }
+            } else {
+                ForEach(0..<s.preset.metricSlotCount, id: \.self) { index in
+                    metricSlotRow(index: index, selected: metricSlots[index])
+                }
+            }
+
+            if !usesAPI {
+                ForEach(manualMetricInputs(for: metricSlots), id: \.self) { metric in
+                    manualMetricInputRow(metric, style: s)
+                }
+            }
+
+            InspectorDenseRow(label: "Show Icon") {
+                Toggle("", isOn: Binding(
+                    get: { s.showIcon },
+                    set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.showIcon = v } }
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .labelsHidden()
+                .tint(NumericTokens.accentBlue)
+            }
+
+            InspectorDenseRow(label: "Condition Label") {
+                Toggle("", isOn: Binding(
+                    get: { s.showConditionLabel },
+                    set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.showConditionLabel = v } }
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .labelsHidden()
+                .tint(NumericTokens.accentBlue)
+            }
+        }
+    }
+
+    private func metricSlotRow(index: Int, selected: WeatherMetricSlotValue) -> some View {
+        InspectorDenseRow(label: "Slot \(index + 1)") {
+            Menu {
+                ForEach(WeatherMetricSlotValue.allCases) { metric in
+                    Button {
+                        project.mutateWeatherWidgetStyle(elementID) { style in
+                            var slots = style.normalizedMetricSlots()
+                            guard slots.indices.contains(index) else { return }
+                            slots[index] = metric
+                            style.metricSlots = WeatherWidgetStyle.normalizedMetricSlots(slots, for: style.preset)
+                        }
+                    } label: {
+                        if metric == selected { Label(metric.label, systemImage: "checkmark") }
+                        else { Text(metric.label) }
                     }
+                }
+            } label: {
+                InspectorDenseMenuLabel(title: selected.label)
+            }
+        }
+    }
+
+    private func manualMetricInputs(for slots: [WeatherMetricSlotValue]) -> [WeatherMetricSlotValue] {
+        WeatherMetricSlotValue.allCases.filter { $0 != .none && slots.contains($0) }
+    }
+
+    @ViewBuilder
+    private func manualMetricInputRow(_ metric: WeatherMetricSlotValue, style s: WeatherWidgetStyle) -> some View {
+        switch metric {
+        case .none:
+            EmptyView()
+        case .humidity:
+            InspectorDenseRow(label: "Humidity") {
+                HStack(spacing: 4) {
+                    TextField("", value: Binding(
+                        get: { s.manualHumidity },
+                        set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.manualHumidity = v } }
+                    ), format: .number)
+                    .textFieldStyle(.roundedBorder).font(NumericTokens.bodyFont).frame(width: 46)
+                    Text("%").font(NumericTokens.bodyFont).foregroundStyle(NumericTokens.textSecondary)
+                }
+            }
+        case .highLow:
+            InspectorDenseRow(label: "High / Low") {
+                HStack(spacing: 4) {
+                    TextField("", value: Binding(
+                        get: { s.manualHigh },
+                        set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.manualHigh = v } }
+                    ), format: .number)
+                    .textFieldStyle(.roundedBorder).font(NumericTokens.bodyFont).frame(width: 42)
+                    TextField("", value: Binding(
+                        get: { s.manualLow },
+                        set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.manualLow = v } }
+                    ), format: .number)
+                    .textFieldStyle(.roundedBorder).font(NumericTokens.bodyFont).frame(width: 42)
+                }
+            }
+        case .wind:
+            InspectorDenseRow(label: "Wind") {
+                HStack(spacing: 4) {
+                    TextField("", value: Binding(
+                        get: { s.manualWind },
+                        set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.manualWind = v } }
+                    ), format: .number)
+                    .textFieldStyle(.roundedBorder).font(NumericTokens.bodyFont).frame(width: 46)
+                    Text("km/h").font(NumericTokens.bodyFont).foregroundStyle(NumericTokens.textSecondary)
+                }
+            }
+        case .feelsLike:
+            InspectorDenseRow(label: "Feels Like") {
+                HStack(spacing: 4) {
+                    TextField("", value: Binding(
+                        get: { s.manualFeelsLike },
+                        set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.manualFeelsLike = v } }
+                    ), format: .number)
+                    .textFieldStyle(.roundedBorder).font(NumericTokens.bodyFont).frame(width: 46)
+                    Text("°C").font(NumericTokens.bodyFont).foregroundStyle(NumericTokens.textSecondary)
                 }
             }
         }
@@ -280,7 +436,32 @@ struct WeatherWidgetOverlayDetailView: View {
 
     private func locationSection(_ element: OverlayElement) -> some View {
         let s = element.style.weatherWidget
+        let hasActivityLocation = project.activity.routePoints.first != nil
         return sectionView(.location, element: element) {
+            InspectorDenseRow(label: "API Fetch") {
+                HStack(spacing: 6) {
+                    Button {
+                        project.fetchWeatherForActivityLocation(elementID)
+                    } label: {
+                        Image(systemName: "figure.run")
+                            .frame(width: 16, height: 16)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.mini)
+                    .disabled(!hasActivityLocation)
+                    .help("Fetch weather by the activity's GPS start position")
+
+                    Button {
+                        project.fetchWeatherForCurrentLocation(elementID)
+                    } label: {
+                        Image(systemName: "location.fill")
+                            .frame(width: 16, height: 16)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.mini)
+                    .help("Fetch weather by the current device location")
+                }
+            }
             InspectorDenseRow(label: "Location") {
                 TextField("e.g. Osaka, Japan", text: Binding(
                     get: { s.locationText },
@@ -303,148 +484,23 @@ struct WeatherWidgetOverlayDetailView: View {
         }
     }
 
-    // MARK: - Temperature section
-
-    private func temperatureSection(_ element: OverlayElement) -> some View {
-        let s = element.style.weatherWidget
-        return sectionView(.temperature, element: element) {
-            InspectorDenseRow(label: "Temperature") {
-                HStack(spacing: 4) {
-                    TextField("", value: Binding(
-                        get: { s.manualTemperatureCelsius },
-                        set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.manualTemperatureCelsius = v } }
-                    ), format: .number)
-                    .textFieldStyle(.roundedBorder).font(NumericTokens.bodyFont).frame(width: 56)
-                    Text("°C").font(NumericTokens.bodyFont).foregroundStyle(NumericTokens.textSecondary)
-                }
-            }
-            InspectorDenseRow(label: "Unit") {
-                Menu {
-                    ForEach(WeatherTemperatureUnit.allCases) { unit in
-                        Button {
-                            project.mutateWeatherWidgetStyle(elementID) { $0.temperatureUnit = unit }
-                        } label: {
-                            if unit == s.temperatureUnit { Label(unit.label, systemImage: "checkmark") }
-                            else { Text(unit.label) }
-                        }
-                    }
-                } label: {
-                    InspectorDenseMenuLabel(title: s.temperatureUnit.shortLabel)
-                }
-            }
-        }
-    }
-
-    // MARK: - Metrics section
-
-    private func metricsSection(_ element: OverlayElement) -> some View {
-        let s = element.style.weatherWidget
-        return sectionView(.metrics, element: element) {
-            InspectorDenseRow(label: "Humidity") {
-                HStack(spacing: 4) {
-                    Toggle("", isOn: Binding(
-                        get: { s.showHumidity },
-                        set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.showHumidity = v } }
-                    )).toggleStyle(.switch).controlSize(.mini).labelsHidden().tint(NumericTokens.accentBlue)
-                    if s.showHumidity {
-                        TextField("", value: Binding(
-                            get: { s.manualHumidity },
-                            set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.manualHumidity = v } }
-                        ), format: .number)
-                        .textFieldStyle(.roundedBorder).font(NumericTokens.bodyFont).frame(width: 46)
-                        Text("%").font(NumericTokens.bodyFont).foregroundStyle(NumericTokens.textSecondary)
-                    }
-                }
-            }
-            InspectorDenseRow(label: "High / Low") {
-                HStack(spacing: 4) {
-                    Toggle("", isOn: Binding(
-                        get: { s.showHighLow },
-                        set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.showHighLow = v } }
-                    )).toggleStyle(.switch).controlSize(.mini).labelsHidden().tint(NumericTokens.accentBlue)
-                    if s.showHighLow {
-                        TextField("", value: Binding(
-                            get: { s.manualHigh },
-                            set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.manualHigh = v } }
-                        ), format: .number)
-                        .textFieldStyle(.roundedBorder).font(NumericTokens.bodyFont).frame(width: 42)
-                        TextField("", value: Binding(
-                            get: { s.manualLow },
-                            set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.manualLow = v } }
-                        ), format: .number)
-                        .textFieldStyle(.roundedBorder).font(NumericTokens.bodyFont).frame(width: 42)
-                    }
-                }
-            }
-            InspectorDenseRow(label: "Wind") {
-                HStack(spacing: 4) {
-                    Toggle("", isOn: Binding(
-                        get: { s.showWind },
-                        set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.showWind = v } }
-                    )).toggleStyle(.switch).controlSize(.mini).labelsHidden().tint(NumericTokens.accentBlue)
-                    if s.showWind {
-                        TextField("", value: Binding(
-                            get: { s.manualWind },
-                            set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.manualWind = v } }
-                        ), format: .number)
-                        .textFieldStyle(.roundedBorder).font(NumericTokens.bodyFont).frame(width: 46)
-                        Text("km/h").font(NumericTokens.bodyFont).foregroundStyle(NumericTokens.textSecondary)
-                    }
-                }
-            }
-            InspectorDenseRow(label: "Feels Like") {
-                HStack(spacing: 4) {
-                    Toggle("", isOn: Binding(
-                        get: { s.showFeelsLike },
-                        set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.showFeelsLike = v } }
-                    )).toggleStyle(.switch).controlSize(.mini).labelsHidden().tint(NumericTokens.accentBlue)
-                    if s.showFeelsLike {
-                        TextField("", value: Binding(
-                            get: { s.manualFeelsLike },
-                            set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.manualFeelsLike = v } }
-                        ), format: .number)
-                        .textFieldStyle(.roundedBorder).font(NumericTokens.bodyFont).frame(width: 46)
-                        Text("°C").font(NumericTokens.bodyFont).foregroundStyle(NumericTokens.textSecondary)
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: - Icon section
-
-    private func iconSection(_ element: OverlayElement) -> some View {
-        let s = element.style.weatherWidget
-        return sectionView(.icon, element: element) {
-            InspectorDenseRow(label: "Condition Label") {
-                Toggle("", isOn: Binding(
-                    get: { s.showConditionLabel },
-                    set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.showConditionLabel = v } }
-                )).toggleStyle(.switch).controlSize(.mini).labelsHidden().tint(NumericTokens.accentBlue)
-            }
-            InspectorDenseSliderRow(
-                label: "Icon Size", value: Binding(
-                    get: { s.iconSize },
-                    set: { v in project.mutateWeatherWidgetStyleContinuous(elementID) { $0.iconSize = v } }
-                ), range: 12...80, displayText: "\(Int(s.iconSize.rounded()))"
-            )
-            InspectorDenseSliderRow(
-                label: "Corner Radius", value: Binding(
-                    get: { s.cardCornerRadius },
-                    set: { v in project.mutateWeatherWidgetStyleContinuous(elementID) { $0.cardCornerRadius = v } }
-                ), range: 0...56, displayText: "\(Int(s.cardCornerRadius.rounded()))"
-            )
-        }
-    }
-
     // MARK: - Appearance section
 
     private func appearanceSection(_ element: OverlayElement) -> some View {
         let s = element.style.weatherWidget
         return sectionView(.appearance, element: element) {
-            InspectorDenseRow(label: "Card Color") {
-                InspectorDenseSwatchStrip(presets: colorPresets, selected: s.cardBackgroundColor) { color in
-                    project.mutateWeatherWidgetStyle(elementID) { $0.cardBackgroundColor = color }
+            InspectorDenseRow(label: "Palette") {
+                Menu {
+                    ForEach(WeatherWidgetPalette.allCases) { palette in
+                        Button {
+                            project.mutateWeatherWidgetStyle(elementID) { $0.palette = palette }
+                        } label: {
+                            if palette == s.palette { Label(palette.label, systemImage: "checkmark") }
+                            else { Text(palette.label) }
+                        }
+                    }
+                } label: {
+                    InspectorDenseMenuLabel(title: s.palette.label)
                 }
             }
             InspectorDenseSliderRow(
@@ -453,6 +509,41 @@ struct WeatherWidgetOverlayDetailView: View {
                     set: { v in project.mutateWeatherWidgetStyleContinuous(elementID) { $0.cardBackgroundOpacity = v } }
                 ), range: 0...1, displayText: String(format: "%.0f%%", s.cardBackgroundOpacity * 100)
             )
+            InspectorDenseSliderRow(
+                label: "Corner Radius", value: Binding(
+                    get: { s.cardCornerRadius },
+                    set: { v in project.mutateWeatherWidgetStyleContinuous(elementID) { $0.cardCornerRadius = v } }
+                ), range: 0...56, displayText: "\(Int(s.cardCornerRadius.rounded()))"
+            )
+            InspectorDenseRow(label: "Show Divider") {
+                Toggle("", isOn: Binding(
+                    get: { s.dividerEnabled },
+                    set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.dividerEnabled = v } }
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .labelsHidden()
+                .tint(NumericTokens.accentBlue)
+            }
+            if s.dividerEnabled {
+                InspectorDenseRow(label: "Divider Color") {
+                    InspectorDenseSwatchStrip(presets: colorPresets, selected: s.dividerColor) { color in
+                        project.mutateWeatherWidgetStyle(elementID) { $0.dividerColor = color }
+                    }
+                }
+                InspectorDenseSliderRow(
+                    label: "Divider Width", value: Binding(
+                        get: { s.dividerThickness },
+                        set: { v in project.mutateWeatherWidgetStyleContinuous(elementID) { $0.dividerThickness = v } }
+                    ), range: 0.5...6, displayText: String(format: "%.1f", s.dividerThickness)
+                )
+                InspectorDenseSliderRow(
+                    label: "Divider Opacity", value: Binding(
+                        get: { s.dividerOpacity },
+                        set: { v in project.mutateWeatherWidgetStyleContinuous(elementID) { $0.dividerOpacity = v } }
+                    ), range: 0...1, displayText: String(format: "%.0f%%", s.dividerOpacity * 100)
+                )
+            }
         }
     }
 
@@ -461,6 +552,26 @@ struct WeatherWidgetOverlayDetailView: View {
         ("Yellow", .yellow), ("Green", .green), ("Blue", .blue), ("Cyan", .cyan),
         ("Purple", .purple), ("Pink", .pink)
     ]
+
+    private func presetShortLabel(_ preset: WeatherWidgetPreset) -> String {
+        switch preset {
+        case .simpleCard: "Card"
+        case .compactStrip: "Strip"
+        case .forecastTile: "Tile"
+        case .minimalText: "Text"
+        case .dashboardBar: "Bar"
+        }
+    }
+
+    private func presetIcon(_ preset: WeatherWidgetPreset) -> String {
+        switch preset {
+        case .simpleCard: "rectangle.split.2x1"
+        case .compactStrip: "capsule"
+        case .forecastTile: "square"
+        case .minimalText: "textformat"
+        case .dashboardBar: "rectangle.grid.1x2"
+        }
+    }
 
     // MARK: - Footer
 

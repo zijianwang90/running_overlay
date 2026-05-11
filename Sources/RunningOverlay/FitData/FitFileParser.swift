@@ -26,10 +26,21 @@ struct FitFileParser {
     private var definitions: [UInt8: FitDefinitionMessage] = [:]
     private var records: [ActivityRecord] = []
     private var rawLaps: [RawLap] = []
+    private var timerEvents: [TimerEvent] = []
     private var sessionStartDate: Date?
     private var sessionElapsedTime: TimeInterval?
     private var sessionDistanceMeters: Double?
     private var sessionCalories: Double?
+
+    private struct TimerEvent {
+        enum EventType {
+            case start
+            case stop
+        }
+
+        var timestamp: Date
+        var type: EventType
+    }
 
     private struct RawLap {
         var startTimestamp: Date?
@@ -73,22 +84,26 @@ struct FitFileParser {
             let duration = sessionElapsedTime ?? max(normalizedRecords.map(\.elapsedTime).max() ?? 0, 1)
             let distance = sessionDistanceMeters ?? records.compactMap(\.distanceMeters).max() ?? 0
             let lapRecords = buildLapRecords(startDate: startDate, totalLaps: rawLaps.count)
+            let annotatedSegments = buildAnnotatedSegments(startDate: startDate, duration: duration)
             return ActivityTimeline(
                 startDate: startDate,
                 duration: duration,
                 distanceMeters: distance,
                 records: normalizedRecords,
-                laps: lapRecords
+                laps: lapRecords,
+                annotatedSegments: annotatedSegments
             )
         }
 
         if let startDate = sessionStartDate, let elapsed = sessionElapsedTime {
+            let annotatedSegments = buildAnnotatedSegments(startDate: startDate, duration: elapsed)
             return ActivityTimeline(
                 startDate: startDate,
                 duration: elapsed,
                 distanceMeters: sessionDistanceMeters ?? 0,
                 records: [],
-                laps: []
+                laps: [],
+                annotatedSegments: annotatedSegments
             )
         }
 
@@ -213,6 +228,10 @@ struct FitFileParser {
             if let lap = makeLap(from: fieldValues, architecture: definition.architecture) {
                 rawLaps.append(lap)
             }
+        case 21:
+            if let event = makeTimerEvent(from: fieldValues, architecture: definition.architecture) {
+                timerEvents.append(event)
+            }
         default:
             break
         }
@@ -300,6 +319,24 @@ struct FitFileParser {
         )
     }
 
+    private func makeTimerEvent(from fields: [UInt8: Data], architecture: FitArchitecture) -> TimerEvent? {
+        guard let rawTimestamp = uint32(fields[253], architecture: architecture).flatMap(validUInt32),
+              let event = fields[0].flatMap(uint8).flatMap(validUInt8),
+              event == 0,
+              let eventType = fields[1].flatMap(uint8).flatMap(validUInt8) else {
+            return nil
+        }
+
+        switch eventType {
+        case 0:
+            return TimerEvent(timestamp: fitDate(rawTimestamp), type: .start)
+        case 1, 4:
+            return TimerEvent(timestamp: fitDate(rawTimestamp), type: .stop)
+        default:
+            return nil
+        }
+    }
+
     private func buildLapRecords(startDate: Date, totalLaps: Int) -> [LapRecord] {
         guard !rawLaps.isEmpty else { return [] }
         var result: [LapRecord] = []
@@ -335,6 +372,39 @@ struct FitFileParser {
             cumulativeTime = endElapsed
         }
         return result
+    }
+
+    private func buildAnnotatedSegments(startDate: Date, duration: TimeInterval) -> [ActivityAnnotatedSegment] {
+        let sortedEvents = timerEvents.sorted { $0.timestamp < $1.timestamp }
+        var segments: [ActivityAnnotatedSegment] = []
+        var pauseStart: TimeInterval?
+
+        for event in sortedEvents {
+            let elapsed = min(max(event.timestamp.timeIntervalSince(startDate), 0), duration)
+            switch event.type {
+            case .stop:
+                pauseStart = elapsed
+            case .start:
+                if let start = pauseStart, elapsed > start {
+                    segments.append(ActivityAnnotatedSegment(
+                        kind: .timerPaused,
+                        startElapsedTime: start,
+                        endElapsedTime: elapsed
+                    ))
+                }
+                pauseStart = nil
+            }
+        }
+
+        if let start = pauseStart, duration > start {
+            segments.append(ActivityAnnotatedSegment(
+                kind: .timerPaused,
+                startElapsedTime: start,
+                endElapsedTime: duration
+            ))
+        }
+
+        return segments
     }
 
     private func lapKind(index: Int, total: Int, avgSpeedMS: Double?) -> LapKind {

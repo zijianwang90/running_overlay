@@ -39,10 +39,11 @@ flowchart LR
 
 Responsibilities:
 
-- Decode FIT records (message type 20) and lap messages (message type 19).
+- Decode FIT records (message type 20), lap messages (message type 19), and timer start/stop events (message type 21).
 - Preserve activity timestamps.
 - Normalize metrics into app-level records: heart rate, cadence, pace, distance, elevation, power, calories, GPS coordinates, running dynamics (vertical oscillation, ground contact time, stride length, ground contact balance), temperature, grade.
 - Parse lap structure into `LapRecord` arrays with kind classification (warmup / active / rest / cooldown).
+- Convert timer pauses into `ActivityAnnotatedSegment` entries that can color the FIT axis without compressing or shifting the real elapsed-time timeline.
 - Provide time-based sampling and lap-based queries (`currentLap`, `lapElapsedTime`, `lapProgress`) for UI preview and export.
 
 Non-responsibilities:
@@ -145,6 +146,7 @@ The app has multiple time domains:
 - Media source time: time inside a video file.
 - Project timeline time: editable time used for video clips; it may be negative relative to FIT elapsed time.
 - FIT axis time: activity elapsed time represented by a draggable FIT layer inside the project timeline.
+- Activity annotation segment time: elapsed-time ranges, such as timer-paused spans, drawn on the FIT axis while preserving the same project-time mapping.
 - Render frame time: frame-indexed time during export.
 
 Conversions must be explicit:
