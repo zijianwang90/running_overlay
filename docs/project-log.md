@@ -1,5 +1,17 @@
 # Running Overlay Project Log
 
+## 2026-05-11
+
+### Fix Cadence Unit (strides → spm) + Honor `fractional_cadence`
+
+- FIT `record.cadence` (field 4) and `lap.avg_cadence` (field 17) are single-foot rpm by spec. The lap parser already doubled to spm, but the per-record parser stored the raw value and rendered it as "spm" — overlays showed ~90 instead of ~180.
+- Multiplied the record-level value by 2 at parse time so all downstream sampling (`activity.cadence(at:)`, gauges, formatters) is in spm without per-call-site conversions.
+- Also folded in `fractional_cadence` (record field 53, lap field 58; UINT8 scale=128 rpm) before doubling and rounding. Without this the displayed spm could only land on even numbers (178, 180, 182…); with it we recover odd-valued spm like 181.
+
+Files changed:
+
+- `Sources/RunningOverlay/FitData/FitFileParser.swift`
+
 ## 2026-05-10
 
 ### Media Pool Empty-Area Context Menu + Fix Root → Folder Drag (second attempt)

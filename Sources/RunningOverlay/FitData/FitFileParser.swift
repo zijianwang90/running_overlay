@@ -262,7 +262,9 @@ struct FitFileParser {
         let distance = uint32(fields[5], architecture: architecture).flatMap(validUInt32).map { Double($0) / 100 }
         let speed = uint16(fields[6], architecture: architecture).flatMap(validUInt16).map { Double($0) / 1000 }
         let heartRate = fields[3].flatMap(uint8).flatMap(validUInt8).map(Int.init)
-        let cadence = fields[4].flatMap(uint8).flatMap(validUInt8).map(Int.init)
+        let cadenceInt = fields[4].flatMap(uint8).flatMap(validUInt8).map(Double.init)
+        let cadenceFrac = fields[53].flatMap(uint8).flatMap(validUInt8).map { Double($0) / 128.0 } ?? 0
+        let cadence = cadenceInt.map { Int((($0 + cadenceFrac) * 2).rounded()) }  // strides→spm
         let altitude = uint16(fields[2], architecture: architecture).flatMap(validUInt16).map { Double($0) / 5 - 500 }
         let power = uint16(fields[7], architecture: architecture).flatMap(validUInt16).map(Int.init)
         let calories = uint16(fields[33], architecture: architecture).flatMap(validUInt16).map(Double.init) ?? sessionCalories
@@ -303,7 +305,9 @@ struct FitFileParser {
         let avgSpeed = uint16(fields[13], architecture: architecture).flatMap(validUInt16).map { Double($0) / 1000 }
         let avgHR = fields[15].flatMap(uint8).flatMap(validUInt8).map(Int.init)
         let maxHR = fields[16].flatMap(uint8).flatMap(validUInt8).map(Int.init)
-        let cadence = fields[17].flatMap(uint8).flatMap(validUInt8).map { Int($0) * 2 }  // strides→spm
+        let cadenceInt = fields[17].flatMap(uint8).flatMap(validUInt8).map(Double.init)
+        let cadenceFrac = fields[58].flatMap(uint8).flatMap(validUInt8).map { Double($0) / 128.0 } ?? 0
+        let cadence = cadenceInt.map { Int((($0 + cadenceFrac) * 2).rounded()) }  // strides→spm
         let power = uint16(fields[19], architecture: architecture).flatMap(validUInt16).flatMap { $0 == 0 ? nil : Int($0) }
         let ascent = uint16(fields[21], architecture: architecture).flatMap(validUInt16).map(Int.init)
         return RawLap(
