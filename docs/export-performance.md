@@ -11,6 +11,13 @@ without changing visual output or export timing.
   from project frame rate, segment time, FIT offset, and Layer Data FPS.
 - Shared SwiftUI overlay views are rasterized with `ImageRenderer`, then drawn
   into an `AVAssetWriterInputPixelBufferAdaptor` pixel buffer.
+- MOV export now separates conservative static decor overlays from dynamic
+  data overlays. Static decor renders once per task, and dynamic data overlays
+  render only inside their padded union rect unless that rect covers most of
+  the canvas.
+- When the dynamic union rect covers most of the canvas, MOV export uses the
+  full-frame single-layer path so fallback cases keep the original one-render,
+  one-draw cost profile.
 
 ## First Milestone
 
@@ -21,6 +28,39 @@ without changing visual output or export timing.
   - `export_profile_<timestamp>.csv`
 - Reuse the previously rendered `CGImage` when adjacent video frames resolve to
   the same quantized Layer Data sample time.
+
+## Second Milestone
+
+- Split export rendering into static and dynamic layers.
+- Cache the static layer for `decorSolidColor`, `decorIcon`, and `decorText`.
+- Render dynamic overlays into a padded union rect instead of the full canvas
+  when that rect covers less than 85% of the canvas.
+- Keep the same-sample dynamic render cache so repeated Layer Data sample times
+  reuse the previous dynamic image.
+- Extend profiling files to include static/dynamic render and draw timings,
+  dynamic render area ratio, static layer cache hits, and dynamic render count.
+
+## Third Milestone
+
+- Keep the layered region path only for exports whose dynamic union rect is
+  smaller than the full-frame threshold.
+- Route full-frame fallback exports through a single rendered image containing
+  all visible overlays, with same-sample reuse and one pixel-buffer clear/draw.
+- Extend profiling schema to v3 with render path, dynamic render rect,
+  static/dynamic overlay counts, and full-frame fallback count.
+- The second benchmark round regressed because the real project fell back to a
+  full-canvas dynamic rect while still paying layered draw overhead; v3 exists
+  to remove that overhead and make fallback behavior measurable.
+
+## Fourth Milestone
+
+- Add frame-level outlier profiling without changing render output.
+- Each segment now records render/draw/frame p50, p95, max, a slow-frame
+  threshold, and a count of frames above that threshold.
+- JSON segment records include the 10 slowest frames with frame index,
+  clip/sample time, render reuse flag, and render/draw/frame durations.
+- CSV keeps spreadsheet-friendly summary columns for distribution metrics and
+  slow-frame counts; detailed slow-frame arrays are JSON-only.
 
 ## Project Snapshot Workflow
 
@@ -56,19 +96,57 @@ Task-level fields include:
 - `appendDuration`
 - `writerWaitDuration`
 - `averageFrameDuration`
+- `staticRenderDuration`
+- `dynamicRenderDuration`
+- `staticDrawDuration`
+- `dynamicDrawDuration`
+- `dynamicRenderAreaRatio`
+- `staticLayerCacheHitCount`
+- `dynamicRenderCount`
+- `renderPath`
+- `dynamicRenderRectX`, `dynamicRenderRectY`
+- `dynamicRenderRectWidth`, `dynamicRenderRectHeight`
+- `dynamicOverlayCount`
+- `staticOverlayCount`
+- `fullFrameFallbackCount`
+- `renderDurationP50`, `renderDurationP95`, `renderDurationMax`
+- `drawDurationP50`, `drawDurationP95`, `drawDurationMax`
+- `frameDurationP50`, `frameDurationP95`, `frameDurationMax`
+- `slowFrameThreshold`
+- `slowFrameCount`
 
 Each segment records the same timing buckets plus `segmentName`,
-`outputFileName`, `duration`, and `frameCount`.
+`outputFileName`, `duration`, `frameCount`, and JSON-only `slowFrames`
+details for its 10 slowest frames.
 
 The CSV file contains the same comparison-oriented metrics in a spreadsheet
 shape: one `summary` row followed by one `segment` row per exported segment.
 Use it to compare before/after exports from the same project snapshot.
 
+For the third benchmark round, compare against the first and second runs:
+
+- v1 baseline: `/Users/codywang/Documents/Video Production/0509 纽约/Test/export_profile_20260511_132440_578.json`
+- v2 layered fallback regression: `/Users/codywang/Documents/Video Production/0509 纽约/Test2/export_profile_20260511_135450_510.json`
+- Expected v3 behavior: `renderPath=fullFrameSingleLayer` for the current real
+  project, `fullFrameFallbackCount` equal to segment count, and draw timing back
+  near the v1 baseline instead of the v2 segment 9 spike.
+
+For the fourth benchmark round, inspect `slowFrameCount`, `frameDurationMax`,
+and per-segment `slowFrames` for the segments that were outliers in Test3:
+
+- `DJI_20260509084933_0009_D.MP4`
+- `PRO_VID_20260509_091919_00_011.mp4`
+
+If the slow frames cluster around specific `sampleElapsed` values, optimize the
+overlay/data path used at those samples. If they are random and sparse, focus on
+`ImageRenderer` jitter, memory pressure, and autorelease behavior.
+
 ## Follow-Up Directions
 
-- Static-layer caching for overlay backgrounds, labels, map snapshots, and
-  other unchanged visual layers.
-- Dirty-region composition so only changed overlay bounds are redrawn.
+- Expand static-layer eligibility beyond decor overlays when a component can
+  prove it is independent of `elapsedTime`.
+- Add per-overlay dirty-region composition so only changed overlay bounds are
+  redrawn inside the dynamic union rect.
 - Adaptive quality presets for draft vs final exports.
 - Optional hardware-accelerated composition path after CPU-side profiling has
   identified the real bottlenecks.

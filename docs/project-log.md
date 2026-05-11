@@ -11,6 +11,27 @@
 - Added focused tests for snapshot round-trip, profiling artifact structure, and sampling reuse decisions.
 - Restored missing SVG/Lottie fixture files required by the existing icon rendering smoke tests in fresh worktrees.
 
+### Export Performance Branch: Layered Dynamic-Region Rendering
+
+- Added `ExportRenderPlan` to classify conservative static decor overlays separately from dynamic data overlays.
+- MOV export now renders the static decor layer once, then renders dynamic overlays into a padded union rect per unique Layer Data sample, falling back to full-frame dynamic rendering when the dynamic area is too large.
+- Extended profiling schema to v2 with static/dynamic render and draw timings, dynamic render area ratio, static layer cache hits, and dynamic render counts.
+- Added tests for render-plan classification, dynamic union padding, full-frame fallback, and profiling field output.
+
+### Export Performance Branch: Full-Frame Fallback Guardrail
+
+- Split MOV export into explicit `fullFrameSingleLayer` and `layeredRegion` render paths.
+- Full-frame fallback now renders all visible overlays into one image and clears/draws the pixel buffer once per frame, avoiding the layered draw overhead seen in the second benchmark round.
+- Extended profiling schema to v3 with render path, dynamic render rect, overlay counts, and full-frame fallback count.
+- Added tests for full-frame fallback diagnostics and profiling schema v3 output.
+
+### Export Performance Branch: Frame-Level Outlier Profiling
+
+- Extended profiling schema to v4 with render/draw/frame p50, p95, max, slow-frame threshold, and slow-frame counts.
+- JSON segment profiles now include the 10 slowest frames with frame index, clip time, sample time, render reuse flag, and render/draw/frame durations.
+- CSV profiles include distribution columns for spreadsheet comparison while keeping detailed slow-frame samples in JSON.
+- Added tests for schema v4 fields and slow-frame JSON round-trip.
+
 Files changed:
 
 - `Sources/RunningOverlay/Export/SwiftUIOverlayVideoExporter.swift`

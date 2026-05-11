@@ -24,6 +24,132 @@ enum SwiftUIOverlayExportError: LocalizedError {
     }
 }
 
+struct ExportRenderPlan: Equatable {
+    static let dynamicFullFrameAreaThreshold: Double = 0.85
+    static let safePadding: CGFloat = 96
+
+    var canvasSize: CGSize
+    var allOverlays: [OverlayElement]
+    var staticOverlays: [OverlayElement]
+    var dynamicOverlays: [OverlayElement]
+    var dynamicRenderRect: CGRect
+    var dynamicRenderAreaRatio: Double
+    var usesFullFrameDynamicRender: Bool
+    var renderPath: OverlayExportRenderPath {
+        usesFullFrameDynamicRender ? .fullFrameSingleLayer : .layeredRegion
+    }
+
+    init(overlays: [OverlayElement], canvasSize: CGSize, activity: ActivityTimeline) {
+        self.canvasSize = canvasSize
+        allOverlays = overlays
+        staticOverlays = overlays.filter(Self.isStaticOverlay)
+        dynamicOverlays = overlays.filter { !Self.isStaticOverlay($0) }
+
+        let canvasRect = CGRect(origin: .zero, size: canvasSize)
+        let context = OverlayRenderContext(canvasSize: canvasSize, activity: activity, elapsedTime: 0)
+        let rawDynamicRect = dynamicOverlays
+            .compactMap { Self.renderRect(for: $0, context: context) }
+            .reduce(CGRect.null) { $0.union($1) }
+
+        let paddedRect = rawDynamicRect.isNull
+            ? .zero
+            : rawDynamicRect
+                .insetBy(dx: -Self.safePadding, dy: -Self.safePadding)
+                .intersection(canvasRect)
+                .integral
+        let areaRatio = canvasRect.width > 0 && canvasRect.height > 0
+            ? (paddedRect.width * paddedRect.height) / (canvasRect.width * canvasRect.height)
+            : 0
+        usesFullFrameDynamicRender = areaRatio >= Self.dynamicFullFrameAreaThreshold
+        dynamicRenderRect = usesFullFrameDynamicRender && !dynamicOverlays.isEmpty ? canvasRect : paddedRect
+        dynamicRenderAreaRatio = canvasRect.width > 0 && canvasRect.height > 0
+            ? (dynamicRenderRect.width * dynamicRenderRect.height) / (canvasRect.width * canvasRect.height)
+            : 0
+    }
+
+    static func isStaticOverlay(_ element: OverlayElement) -> Bool {
+        switch element.type {
+        case .decorSolidColor, .decorIcon, .decorText:
+            true
+        default:
+            false
+        }
+    }
+
+    static func renderRect(for element: OverlayElement, context: OverlayRenderContext) -> CGRect? {
+        switch element.type {
+        case .distanceTimeline:
+            return OverlayRenderModel.distanceTimelineLayout(for: element, in: context).rect
+        case .routeMap:
+            return OverlayRenderModel.routeMapLayout(for: element, in: context).rect
+        case .elevationChart:
+            return OverlayRenderModel.elevationChartLayout(for: element, in: context).rect
+        case .runningGauge:
+            return OverlayRenderModel.runningGaugeLayout(for: element, in: context).rect
+        case .lapList:
+            return OverlayRenderModel.lapListLayout(for: element, in: context).rect
+        case .lapCard:
+            return OverlayRenderModel.lapCardLayout(for: element, in: context).rect
+        case .lapLive:
+            return OverlayRenderModel.lapLiveLayout(for: element, in: context).rect
+        case .weatherWidget:
+            return OverlayRenderModel.weatherWidgetLayout(for: element, in: context).rect
+        case .decorSolidColor:
+            return centeredRect(for: element, size: OverlayRenderModel.decorSolidColorLayout(for: element, in: context).size, canvasSize: context.canvasSize)
+        case .decorIcon:
+            return centeredRect(for: element, size: OverlayRenderModel.decorIconLayout(for: element, in: context).size, canvasSize: context.canvasSize)
+        case .decorText:
+            return centeredRect(for: element, size: OverlayRenderModel.decorTextLayout(for: element, in: context).size, canvasSize: context.canvasSize)
+        default:
+            return estimatedTextRect(for: element, context: context)
+        }
+    }
+
+    private static func centeredRect(for element: OverlayElement, size: CGSize, canvasSize: CGSize) -> CGRect {
+        CGRect(
+            x: canvasSize.width * element.position.x - size.width / 2,
+            y: canvasSize.height * element.position.y - size.height / 2,
+            width: size.width,
+            height: size.height
+        )
+    }
+
+    private static func estimatedTextRect(for element: OverlayElement, context: OverlayRenderContext) -> CGRect {
+        let layout = OverlayRenderModel.textLayout(for: element, in: context)
+        let valueWidth = max(CGFloat(layout.value.count) * layout.fontSize * 0.62, layout.fontSize * 2)
+        let labelWidth = max(CGFloat(layout.components.label.count) * layout.labelFontSize * 0.52, 0)
+        let unitWidth = max(CGFloat(layout.components.unit.count) * layout.unitFontSize * 0.52, 0)
+        let width = valueWidth + labelWidth + unitWidth + layout.horizontalPadding * 2 + layout.labelSpacing + layout.unitSpacing
+        let height = max(layout.fontSize, layout.labelFontSize + layout.unitFontSize) + layout.verticalPadding * 2
+        return centeredRect(for: element, size: CGSize(width: width, height: height), canvasSize: context.canvasSize)
+    }
+}
+
+private struct ExportFrameTiming {
+    var frameIndex: Int
+    var clipElapsed: TimeInterval
+    var sampleElapsed: TimeInterval
+    var reusedRender: Bool
+    var renderDuration: TimeInterval
+    var drawDuration: TimeInterval
+    var frameDuration: TimeInterval
+}
+
+private struct ExportFrameTimingSummary {
+    var renderDurationP50: TimeInterval
+    var renderDurationP95: TimeInterval
+    var renderDurationMax: TimeInterval
+    var drawDurationP50: TimeInterval
+    var drawDurationP95: TimeInterval
+    var drawDurationMax: TimeInterval
+    var frameDurationP50: TimeInterval
+    var frameDurationP95: TimeInterval
+    var frameDurationMax: TimeInterval
+    var slowFrameThreshold: TimeInterval
+    var slowFrameCount: Int
+    var slowFrames: [OverlayExportSlowFrameProfile]
+}
+
 struct SwiftUIOverlayVideoExporter {
     static func export(job: OverlayExportJob, progress: @escaping @MainActor (OverlayExportProgress) -> Void) async throws {
         guard !job.segments.isEmpty else {
@@ -41,8 +167,30 @@ struct SwiftUIOverlayVideoExporter {
             activity: job.activity,
             size: CGSize(width: job.settings.resolution.width, height: job.settings.resolution.height)
         )
-
         let profileStartedAt = Date()
+        let renderPlan = ExportRenderPlan(
+            overlays: supportedOverlays,
+            canvasSize: CGSize(width: job.settings.resolution.width, height: job.settings.resolution.height),
+            activity: job.activity
+        )
+        let staticLayer: CGImage?
+        let staticRenderDuration: TimeInterval
+        if renderPlan.usesFullFrameDynamicRender || renderPlan.staticOverlays.isEmpty {
+            staticLayer = nil
+            staticRenderDuration = 0
+        } else {
+            let staticLayerStartedAt = Date()
+            staticLayer = try await renderLayer(
+                size: renderPlan.canvasSize,
+                renderRect: CGRect(origin: .zero, size: renderPlan.canvasSize),
+                overlays: renderPlan.staticOverlays,
+                activity: job.activity,
+                elapsedTime: 0,
+                routeMapSnapshots: routeMapSnapshots
+            )
+            staticRenderDuration = Date().timeIntervalSince(staticLayerStartedAt)
+        }
+
         var segmentProfiles: [OverlayExportSegmentProfile] = []
 
         for (index, segment) in job.segments.enumerated() {
@@ -55,7 +203,9 @@ struct SwiftUIOverlayVideoExporter {
                 segmentIndex: index,
                 segmentCount: job.segments.count,
                 job: job,
-                overlays: supportedOverlays,
+                renderPlan: renderPlan,
+                staticLayer: staticLayer,
+                staticRenderDuration: index == 0 ? staticRenderDuration : 0,
                 routeMapSnapshots: routeMapSnapshots,
                 progress: progress
             )
@@ -120,7 +270,9 @@ struct SwiftUIOverlayVideoExporter {
         segmentIndex: Int,
         segmentCount: Int,
         job: OverlayExportJob,
-        overlays: [OverlayElement],
+        renderPlan: ExportRenderPlan,
+        staticLayer: CGImage?,
+        staticRenderDuration: TimeInterval,
         routeMapSnapshots: [MapSnapshotRequest: NSImage],
         progress: @escaping @MainActor (OverlayExportProgress) -> Void
     ) async throws -> OverlayExportSegmentProfile {
@@ -178,14 +330,21 @@ struct SwiftUIOverlayVideoExporter {
         let progressInterval = max(frameCount / 100, 1)
         var imageRenderDuration: TimeInterval = 0
         var pixelBufferDrawDuration: TimeInterval = 0
+        var dynamicRenderDuration: TimeInterval = 0
+        var staticDrawDuration: TimeInterval = 0
+        var dynamicDrawDuration: TimeInterval = 0
         var appendDuration: TimeInterval = 0
         var writerWaitDuration: TimeInterval = 0
         var renderedFrameCount = 0
         var reusedFrameCount = 0
+        var dynamicRenderCount = 0
         var previousSampleElapsed: TimeInterval?
-        var previousCGImage: CGImage?
+        var previousRenderedImage: CGImage?
+        var frameTimings: [ExportFrameTiming] = []
+        frameTimings.reserveCapacity(frameCount)
 
         for sample in samples {
+            let frameStartedAt = Date()
             if Task.isCancelled {
                 writer.cancelWriting()
                 throw OverlayExportError.cancelled
@@ -204,38 +363,97 @@ struct SwiftUIOverlayVideoExporter {
                 throw SwiftUIOverlayExportError.cannotCreatePixelBuffer
             }
 
-            let cgImage: CGImage
-            if previousSampleElapsed == sample.sampleElapsed, let cachedCGImage = previousCGImage {
-                cgImage = cachedCGImage
-                reusedFrameCount += 1
-            } else {
-                let renderStartedAt = Date()
-                let frameView = SwiftUIOverlayFrameView(
-                    size: CGSize(width: width, height: height),
-                    overlays: overlays,
-                    activity: job.activity,
-                    elapsedTime: sample.sampleElapsed,
-                    routeMapSnapshots: routeMapSnapshots
-                )
-                guard let renderedCGImage = await MainActor.run(body: {
-                    let renderer = ImageRenderer(content: frameView)
-                    renderer.isOpaque = false
-                    renderer.proposedSize = ProposedViewSize(width: CGFloat(width), height: CGFloat(height))
-                    renderer.scale = 1
-                    return renderer.cgImage
-                }) else {
-                    throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce a CGImage.")
-                }
-                imageRenderDuration += Date().timeIntervalSince(renderStartedAt)
-                cgImage = renderedCGImage
-                previousSampleElapsed = sample.sampleElapsed
-                previousCGImage = renderedCGImage
-                renderedFrameCount += 1
-            }
+            var renderDurationForFrame: TimeInterval = 0
+            var drawDurationForFrame: TimeInterval = 0
+            var reusedRenderForFrame = false
 
-            let drawStartedAt = Date()
-            try draw(cgImage: cgImage, into: pixelBuffer, size: CGSize(width: width, height: height))
-            pixelBufferDrawDuration += Date().timeIntervalSince(drawStartedAt)
+            if renderPlan.usesFullFrameDynamicRender {
+                let frameImage: CGImage
+                if previousSampleElapsed == sample.sampleElapsed, let cachedImage = previousRenderedImage {
+                    frameImage = cachedImage
+                    reusedFrameCount += 1
+                    reusedRenderForFrame = true
+                } else {
+                    let renderStartedAt = Date()
+                    guard let renderedImage = try await renderLayer(
+                        size: renderPlan.canvasSize,
+                        renderRect: CGRect(origin: .zero, size: renderPlan.canvasSize),
+                        overlays: renderPlan.allOverlays,
+                        activity: job.activity,
+                        elapsedTime: sample.sampleElapsed,
+                        routeMapSnapshots: routeMapSnapshots
+                    ) else {
+                        throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce a full-frame image.")
+                    }
+                    let renderDuration = Date().timeIntervalSince(renderStartedAt)
+                    renderDurationForFrame = renderDuration
+                    dynamicRenderDuration += renderDuration
+                    imageRenderDuration += renderDuration
+                    previousSampleElapsed = sample.sampleElapsed
+                    previousRenderedImage = renderedImage
+                    frameImage = renderedImage
+                    renderedFrameCount += 1
+                    dynamicRenderCount += 1
+                }
+
+                let drawStartedAt = Date()
+                try clearAndDraw(cgImage: frameImage, into: pixelBuffer, size: renderPlan.canvasSize)
+                let duration = Date().timeIntervalSince(drawStartedAt)
+                drawDurationForFrame += duration
+                dynamicDrawDuration += duration
+                pixelBufferDrawDuration += duration
+            } else {
+                let dynamicImage: CGImage?
+                if renderPlan.dynamicOverlays.isEmpty {
+                    dynamicImage = nil
+                } else if previousSampleElapsed == sample.sampleElapsed, let cachedDynamicImage = previousRenderedImage {
+                    dynamicImage = cachedDynamicImage
+                    reusedFrameCount += 1
+                    reusedRenderForFrame = true
+                } else {
+                    let renderStartedAt = Date()
+                    dynamicImage = try await renderLayer(
+                        size: renderPlan.canvasSize,
+                        renderRect: renderPlan.dynamicRenderRect,
+                        overlays: renderPlan.dynamicOverlays,
+                        activity: job.activity,
+                        elapsedTime: sample.sampleElapsed,
+                        routeMapSnapshots: routeMapSnapshots
+                    )
+                    let renderDuration = Date().timeIntervalSince(renderStartedAt)
+                    renderDurationForFrame = renderDuration
+                    dynamicRenderDuration += renderDuration
+                    imageRenderDuration += renderDuration
+                    if let dynamicImage {
+                        previousSampleElapsed = sample.sampleElapsed
+                        previousRenderedImage = dynamicImage
+                        renderedFrameCount += 1
+                        dynamicRenderCount += 1
+                    }
+                }
+
+                let clearStartedAt = Date()
+                try clear(pixelBuffer: pixelBuffer, size: CGSize(width: width, height: height))
+                let clearDuration = Date().timeIntervalSince(clearStartedAt)
+                drawDurationForFrame += clearDuration
+                pixelBufferDrawDuration += clearDuration
+                if let staticLayer {
+                    let staticDrawStartedAt = Date()
+                    try draw(cgImage: staticLayer, into: pixelBuffer, rect: CGRect(origin: .zero, size: renderPlan.canvasSize))
+                    let duration = Date().timeIntervalSince(staticDrawStartedAt)
+                    drawDurationForFrame += duration
+                    staticDrawDuration += duration
+                    pixelBufferDrawDuration += duration
+                }
+                if let dynamicImage {
+                    let dynamicDrawStartedAt = Date()
+                    try draw(cgImage: dynamicImage, into: pixelBuffer, rect: renderPlan.dynamicRenderRect)
+                    let duration = Date().timeIntervalSince(dynamicDrawStartedAt)
+                    drawDurationForFrame += duration
+                    dynamicDrawDuration += duration
+                    pixelBufferDrawDuration += duration
+                }
+            }
 
             let presentationTime = CMTime(seconds: sample.clipElapsed, preferredTimescale: 600)
             let appendStartedAt = Date()
@@ -243,6 +461,15 @@ struct SwiftUIOverlayVideoExporter {
                 throw SwiftUIOverlayExportError.appendFailed(writer.error?.localizedDescription ?? "unknown error")
             }
             appendDuration += Date().timeIntervalSince(appendStartedAt)
+            frameTimings.append(ExportFrameTiming(
+                frameIndex: sample.frameIndex,
+                clipElapsed: sample.clipElapsed,
+                sampleElapsed: sample.sampleElapsed,
+                reusedRender: reusedRenderForFrame,
+                renderDuration: renderDurationForFrame,
+                drawDuration: drawDurationForFrame,
+                frameDuration: Date().timeIntervalSince(frameStartedAt)
+            ))
 
             if sample.frameIndex % progressInterval == 0 || sample.frameIndex == frameCount - 1 {
                 await progress(OverlayExportProgress(
@@ -266,6 +493,7 @@ struct SwiftUIOverlayVideoExporter {
         }
 
         let totalDuration = Date().timeIntervalSince(segmentStartedAt)
+        let frameTimingSummary = summarizeFrameTimings(frameTimings)
         return OverlayExportSegmentProfile(
             segmentIndex: segmentIndex,
             segmentName: segment.sourceFileName,
@@ -276,11 +504,38 @@ struct SwiftUIOverlayVideoExporter {
             reusedFrameCount: reusedFrameCount,
             reuseRate: frameCount > 0 ? Double(reusedFrameCount) / Double(frameCount) : 0,
             totalDuration: totalDuration,
-            imageRenderDuration: imageRenderDuration,
+            imageRenderDuration: staticRenderDuration + imageRenderDuration,
             pixelBufferDrawDuration: pixelBufferDrawDuration,
+            staticRenderDuration: staticRenderDuration,
+            dynamicRenderDuration: dynamicRenderDuration,
+            staticDrawDuration: staticDrawDuration,
+            dynamicDrawDuration: dynamicDrawDuration,
+            dynamicRenderAreaRatio: renderPlan.dynamicRenderAreaRatio,
+            staticLayerCacheHitCount: staticLayer == nil ? 0 : frameCount,
+            dynamicRenderCount: dynamicRenderCount,
             appendDuration: appendDuration,
             writerWaitDuration: writerWaitDuration,
-            averageFrameDuration: frameCount > 0 ? totalDuration / Double(frameCount) : 0
+            averageFrameDuration: frameCount > 0 ? totalDuration / Double(frameCount) : 0,
+            renderPath: renderPlan.renderPath,
+            dynamicRenderRectX: Double(renderPlan.dynamicRenderRect.origin.x),
+            dynamicRenderRectY: Double(renderPlan.dynamicRenderRect.origin.y),
+            dynamicRenderRectWidth: Double(renderPlan.dynamicRenderRect.width),
+            dynamicRenderRectHeight: Double(renderPlan.dynamicRenderRect.height),
+            dynamicOverlayCount: renderPlan.dynamicOverlays.count,
+            staticOverlayCount: renderPlan.staticOverlays.count,
+            fullFrameFallbackCount: renderPlan.usesFullFrameDynamicRender ? 1 : 0,
+            renderDurationP50: frameTimingSummary.renderDurationP50,
+            renderDurationP95: frameTimingSummary.renderDurationP95,
+            renderDurationMax: frameTimingSummary.renderDurationMax,
+            drawDurationP50: frameTimingSummary.drawDurationP50,
+            drawDurationP95: frameTimingSummary.drawDurationP95,
+            drawDurationMax: frameTimingSummary.drawDurationMax,
+            frameDurationP50: frameTimingSummary.frameDurationP50,
+            frameDurationP95: frameTimingSummary.frameDurationP95,
+            frameDurationMax: frameTimingSummary.frameDurationMax,
+            slowFrameThreshold: frameTimingSummary.slowFrameThreshold,
+            slowFrameCount: frameTimingSummary.slowFrameCount,
+            slowFrames: frameTimingSummary.slowFrames
         )
     }
 
@@ -317,7 +572,104 @@ struct SwiftUIOverlayVideoExporter {
         return snapshots
     }
 
-    private static func draw(cgImage: CGImage, into pixelBuffer: CVPixelBuffer, size: CGSize) throws {
+    private static func summarizeFrameTimings(_ timings: [ExportFrameTiming]) -> ExportFrameTimingSummary {
+        let renderDurations = timings
+            .map(\.renderDuration)
+            .filter { $0 > 0 }
+            .sorted()
+        let drawDurations = timings.map(\.drawDuration).sorted()
+        let frameDurations = timings.map(\.frameDuration).sorted()
+        let frameP50 = percentile(frameDurations, 0.50)
+        let frameP95 = percentile(frameDurations, 0.95)
+        let slowFrameThreshold = max(frameP95 * 2, frameP50 * 4, 0.05)
+        let slowFrameCount = timings.filter { $0.frameDuration >= slowFrameThreshold }.count
+        let slowFrames = timings
+            .sorted { lhs, rhs in
+                if lhs.frameDuration == rhs.frameDuration {
+                    return lhs.frameIndex < rhs.frameIndex
+                }
+                return lhs.frameDuration > rhs.frameDuration
+            }
+            .prefix(10)
+            .map {
+                OverlayExportSlowFrameProfile(
+                    frameIndex: $0.frameIndex,
+                    clipElapsed: $0.clipElapsed,
+                    sampleElapsed: $0.sampleElapsed,
+                    reusedRender: $0.reusedRender,
+                    renderDuration: $0.renderDuration,
+                    drawDuration: $0.drawDuration,
+                    frameDuration: $0.frameDuration
+                )
+            }
+
+        return ExportFrameTimingSummary(
+            renderDurationP50: percentile(renderDurations, 0.50),
+            renderDurationP95: percentile(renderDurations, 0.95),
+            renderDurationMax: renderDurations.last ?? 0,
+            drawDurationP50: percentile(drawDurations, 0.50),
+            drawDurationP95: percentile(drawDurations, 0.95),
+            drawDurationMax: drawDurations.last ?? 0,
+            frameDurationP50: frameP50,
+            frameDurationP95: frameP95,
+            frameDurationMax: frameDurations.last ?? 0,
+            slowFrameThreshold: slowFrameThreshold,
+            slowFrameCount: slowFrameCount,
+            slowFrames: Array(slowFrames)
+        )
+    }
+
+    private static func percentile(_ sortedValues: [TimeInterval], _ percentile: Double) -> TimeInterval {
+        guard !sortedValues.isEmpty else {
+            return 0
+        }
+        guard sortedValues.count > 1 else {
+            return sortedValues[0]
+        }
+        let clampedPercentile = min(max(percentile, 0), 1)
+        let position = clampedPercentile * Double(sortedValues.count - 1)
+        let lowerIndex = Int(floor(position))
+        let upperIndex = Int(ceil(position))
+        guard lowerIndex != upperIndex else {
+            return sortedValues[lowerIndex]
+        }
+        let weight = position - Double(lowerIndex)
+        return sortedValues[lowerIndex] * (1 - weight) + sortedValues[upperIndex] * weight
+    }
+
+    private static func renderLayer(
+        size: CGSize,
+        renderRect: CGRect,
+        overlays: [OverlayElement],
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval,
+        routeMapSnapshots: [MapSnapshotRequest: NSImage]
+    ) async throws -> CGImage? {
+        guard !overlays.isEmpty, renderRect.width > 0, renderRect.height > 0 else {
+            return nil
+        }
+
+        let layerView = SwiftUIOverlayLayerView(
+            canvasSize: size,
+            renderRect: renderRect,
+            overlays: overlays,
+            activity: activity,
+            elapsedTime: elapsedTime,
+            routeMapSnapshots: routeMapSnapshots
+        )
+        guard let cgImage = await MainActor.run(body: {
+            let renderer = ImageRenderer(content: layerView)
+            renderer.isOpaque = false
+            renderer.proposedSize = ProposedViewSize(width: renderRect.width, height: renderRect.height)
+            renderer.scale = 1
+            return renderer.cgImage
+        }) else {
+            throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce a layer image.")
+        }
+        return cgImage
+    }
+
+    private static func clear(pixelBuffer: CVPixelBuffer, size: CGSize) throws {
         CVPixelBufferLockBaseAddress(pixelBuffer, [])
         defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, []) }
 
@@ -334,7 +686,46 @@ struct SwiftUIOverlayVideoExporter {
         }
 
         context.clear(CGRect(origin: .zero, size: size))
-        context.draw(cgImage, in: CGRect(origin: .zero, size: size))
+    }
+
+    private static func clearAndDraw(cgImage: CGImage, into pixelBuffer: CVPixelBuffer, size: CGSize) throws {
+        CVPixelBufferLockBaseAddress(pixelBuffer, [])
+        defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, []) }
+
+        guard let context = CGContext(
+            data: CVPixelBufferGetBaseAddress(pixelBuffer),
+            width: Int(size.width),
+            height: Int(size.height),
+            bitsPerComponent: 8,
+            bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer),
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
+        ) else {
+            throw SwiftUIOverlayExportError.cannotCreatePixelBuffer
+        }
+
+        let rect = CGRect(origin: .zero, size: size)
+        context.clear(rect)
+        context.draw(cgImage, in: rect)
+    }
+
+    private static func draw(cgImage: CGImage, into pixelBuffer: CVPixelBuffer, rect: CGRect) throws {
+        CVPixelBufferLockBaseAddress(pixelBuffer, [])
+        defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, []) }
+
+        guard let context = CGContext(
+            data: CVPixelBufferGetBaseAddress(pixelBuffer),
+            width: CVPixelBufferGetWidth(pixelBuffer),
+            height: CVPixelBufferGetHeight(pixelBuffer),
+            bitsPerComponent: 8,
+            bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer),
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
+        ) else {
+            throw SwiftUIOverlayExportError.cannotCreatePixelBuffer
+        }
+
+        context.draw(cgImage, in: rect)
     }
 
     private static func outputURL(for segment: OverlayExportSegment, destinationURL: URL) -> URL {
@@ -531,5 +922,29 @@ private struct SwiftUIOverlayFrameView: View {
         }
         .frame(width: size.width, height: size.height)
         .compositingGroup()
+    }
+}
+
+private struct SwiftUIOverlayLayerView: View {
+    let canvasSize: CGSize
+    let renderRect: CGRect
+    let overlays: [OverlayElement]
+    let activity: ActivityTimeline
+    let elapsedTime: TimeInterval
+    let routeMapSnapshots: [MapSnapshotRequest: NSImage]
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            SwiftUIOverlayFrameView(
+                size: canvasSize,
+                overlays: overlays,
+                activity: activity,
+                elapsedTime: elapsedTime,
+                routeMapSnapshots: routeMapSnapshots
+            )
+            .offset(x: -renderRect.minX, y: -renderRect.minY)
+        }
+        .frame(width: renderRect.width, height: renderRect.height, alignment: .topLeading)
+        .clipped()
     }
 }
