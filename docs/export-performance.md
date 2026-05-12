@@ -93,6 +93,22 @@ without changing visual output or export timing.
   `overlayDrawCount`, and JSON-only `overlayProfiles` for per-overlay render
   rects and timing totals.
 
+## Seventh Milestone Candidate
+
+- A conservative Route Map static-layer cache is tested inside the per-overlay
+  path.
+- Eligible route maps render their static base once per export task: map
+  background/snapshot, route stroke, start/end markers, mask, border, and
+  shadow.
+- The moving current marker renders separately for each unique Layer Data
+  sample and composites over the cached static route image.
+- Route Map static caching is disabled when the route map stats bar is visible,
+  because those values can change with elapsed time.
+- Test8 confirmed a performance win but exposed a per-overlay compositing
+  coordinate issue: overlay render rects are top-left SwiftUI coordinates,
+  while pixel-buffer drawing needs CoreGraphics bitmap coordinates. The
+  compositor now converts local overlay rects before drawing.
+
 ## Project Snapshot Workflow
 
 - Use `Save Project Snapshot` in the Export dialog to write
@@ -106,6 +122,31 @@ without changing visual output or export timing.
   media-pool preview, export progress, and undo/redo stacks.
 - Video and FIT source files are not copied. Media items keep their existing
   file paths, so snapshots are intended for same-machine benchmark repeats.
+
+## Automated Benchmark Workflow
+
+Run a full snapshot export without opening the editor:
+
+```bash
+swift run RunningOverlay --benchmark-export running_overlay_project_snapshot.json
+```
+
+By default the command creates `running_overlay_benchmark_<timestamp>` in the
+current working directory and writes the MOV outputs plus profiling JSON/CSV
+there.
+
+To choose a destination explicitly:
+
+```bash
+swift run RunningOverlay \
+  --benchmark-export /path/to/running_overlay_project_snapshot.json \
+  --benchmark-output /path/to/BenchmarkOut
+```
+
+The benchmark runner uses the same snapshot schema and export path as the UI:
+settings, activity timeline, media references, timeline clips, overlay layout,
+user assets, and FIT offset are restored from the snapshot. It prints segment
+progress to stdout and exits with a non-zero code on failure.
 
 ## Profiling Files
 
@@ -191,6 +232,59 @@ whose full dynamic union previously forced `dynamicRenderAreaRatio=1`. The path
 is expected to help only when `overlayRenderAreaRatio < 0.85`; otherwise v5
 full-frame fallback should remain active.
 
+For the next benchmark round, verify the Test8 performance improvement is kept
+and that exported overlay positions match the editor preview.
+
+## Fixed Benchmark Fixture
+
+All export-performance rounds after Test9 use this project snapshot as the
+benchmark fixture:
+
+```bash
+/Users/codywang/Documents/Video Production/0509 纽约/running_overlay_project_snapshot.json
+```
+
+Run the benchmark through the non-interactive app entry point and write each
+round to a new numbered directory:
+
+```bash
+swift run RunningOverlay \
+  --benchmark-export "/Users/codywang/Documents/Video Production/0509 纽约/running_overlay_project_snapshot.json" \
+  --benchmark-output "/Users/codywang/Documents/Video Production/0509 纽约/Test10"
+```
+
+The Test9 automated benchmark produced:
+
+- `totalDuration`: 428.517s
+- `imageRenderDuration`: 290.774s
+- `pixelBufferDrawDuration`: 135.670s
+- `renderPath`: `perOverlay`
+- `reuseRate`: 0.666
+
+Compared with Test8, image render time stayed slightly lower, but draw time
+rose. The next optimization should therefore avoid increasing the number of
+per-frame composited images unless it removes substantially more
+`ImageRenderer` work.
+
+## Rejected Distance Timeline Split
+
+Test10 and Test11 tried a conservative Distance Timeline static/dynamic split
+with overlay-local precomposition so the final pixel-buffer draw count would
+stay flat. The slice was reverted because it increased `ImageRenderer` time
+more than it reduced draw time:
+
+- Test10: `totalDuration=435.685s`, `imageRenderDuration=362.332s`,
+  `pixelBufferDrawDuration=71.044s`.
+- Test11: `totalDuration=470.050s`, `imageRenderDuration=381.938s`,
+  `pixelBufferDrawDuration=85.704s`.
+- Test9 baseline: `totalDuration=428.517s`, `imageRenderDuration=290.774s`,
+  `pixelBufferDrawDuration=135.670s`.
+
+Conclusion: splitting an existing SwiftUI overlay into multiple SwiftUI
+renders is not currently a good tradeoff for this project. Future large wins
+should reduce `ImageRenderer` invocations or replace expensive SwiftUI overlay
+renders, not create more SwiftUI render passes.
+
 ## Follow-Up Directions
 
 - Expand static-layer eligibility beyond decor overlays when a component can
@@ -199,6 +293,9 @@ full-frame fallback should remain active.
   proven.
 - Add dirty-region change detection so overlays whose sampled output did not
   change can reuse their previous local render independently.
+- Avoid SwiftUI static/dynamic splits that require additional `ImageRenderer`
+  passes unless a benchmark proves the render-time reduction exceeds the extra
+  render/composition overhead.
 - Adaptive quality presets for draft vs final exports.
 - Optional hardware-accelerated composition path after CPU-side profiling has
   identified the real bottlenecks.

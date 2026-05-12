@@ -4,22 +4,50 @@ import SwiftUI
 @main
 struct RunningOverlayApp: App {
     @StateObject private var project = ProjectDocument()
+    private let benchmarkCommand: ExportBenchmarkCommand?
 
     init() {
+        let parsedBenchmarkCommand: ExportBenchmarkCommand?
+        do {
+            parsedBenchmarkCommand = try ExportBenchmarkCommand.parse()
+        } catch {
+            fputs("[RunningOverlayBenchmark] \(error.localizedDescription)\n", stderr)
+            Foundation.exit(2)
+        }
+        benchmarkCommand = parsedBenchmarkCommand
+
         BundledFonts.registerAll()
-        NSApplication.shared.setActivationPolicy(.regular)
+        NSApplication.shared.setActivationPolicy(benchmarkCommand == nil ? .regular : .prohibited)
         NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
-        DispatchQueue.main.async {
-            NSApplication.shared.activate(ignoringOtherApps: false)
+        if let benchmarkCommand {
+            DispatchQueue.main.async {
+                Task {
+                    do {
+                        _ = try await ExportBenchmarkRunner.run(benchmarkCommand)
+                        NSApplication.shared.terminate(nil)
+                    } catch {
+                        fputs("[RunningOverlayBenchmark] failed: \(error.localizedDescription)\n", stderr)
+                        Foundation.exit(1)
+                    }
+                }
+            }
+        } else {
+            DispatchQueue.main.async {
+                NSApplication.shared.activate(ignoringOtherApps: false)
+            }
         }
     }
 
     var body: some Scene {
         WindowGroup {
-            MainEditorView()
-                .environmentObject(project)
-                .preferredColorScheme(.dark)
-                .frame(minWidth: 1300, minHeight: 760)
+            if benchmarkCommand == nil {
+                MainEditorView()
+                    .environmentObject(project)
+                    .preferredColorScheme(.dark)
+                    .frame(minWidth: 1300, minHeight: 760)
+            } else {
+                EmptyView()
+            }
         }
         .windowStyle(.titleBar)
         .commands {
@@ -28,13 +56,13 @@ struct RunningOverlayApp: App {
                     project.undo()
                 }
                 .keyboardShortcut("z", modifiers: [.command])
-                .disabled(!project.canUndo)
+                .disabled(benchmarkCommand != nil || !project.canUndo)
 
                 Button("Redo") {
                     project.redo()
                 }
                 .keyboardShortcut("Z", modifiers: [.command, .shift])
-                .disabled(!project.canRedo)
+                .disabled(benchmarkCommand != nil || !project.canRedo)
             }
 
             CommandGroup(after: .newItem) {
@@ -42,11 +70,13 @@ struct RunningOverlayApp: App {
                     project.importFitFile()
                 }
                 .keyboardShortcut("i", modifiers: [.command])
+                .disabled(benchmarkCommand != nil)
 
                 Button("Import Videos...") {
                     project.importVideos()
                 }
                 .keyboardShortcut("i", modifiers: [.command, .shift])
+                .disabled(benchmarkCommand != nil)
             }
 
             CommandMenu("Playback") {
@@ -54,16 +84,19 @@ struct RunningOverlayApp: App {
                     project.togglePlayback()
                 }
                 .keyboardShortcut(.space, modifiers: [])
+                .disabled(benchmarkCommand != nil)
 
                 Button(project.isPlaying ? "Pause (K)" : "Play (K)") {
                     project.togglePlayback()
                 }
                 .keyboardShortcut("k", modifiers: [])
+                .disabled(benchmarkCommand != nil)
 
                 Button("Play Faster (L)") {
                     project.increaseForwardPlaybackRate()
                 }
                 .keyboardShortcut("l", modifiers: [])
+                .disabled(benchmarkCommand != nil)
             }
 
             CommandMenu("Timeline") {
@@ -71,11 +104,13 @@ struct RunningOverlayApp: App {
                     project.zoomTimelineIn()
                 }
                 .keyboardShortcut("+", modifiers: [.command])
+                .disabled(benchmarkCommand != nil)
 
                 Button("Zoom Out") {
                     project.zoomTimelineOut()
                 }
                 .keyboardShortcut("-", modifiers: [.command])
+                .disabled(benchmarkCommand != nil)
             }
         }
     }

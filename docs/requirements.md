@@ -523,6 +523,8 @@ Export behavior:
 - `Export Overlay JSON` writes the current `OverlayLayout` configuration to JSON for inspection, debugging, and reproducible style snapshots.
 - `Save Project Snapshot` writes a JSON snapshot of the current exportable project state for repeatable performance testing.
 - `Restore Project Snapshot` replaces the current project with a saved snapshot and clears runtime-only state such as selection, playback, export progress, and undo/redo history.
+- `swift run RunningOverlay --benchmark-export <snapshot.json>` runs a non-interactive benchmark export from a project snapshot, creates a timestamped output folder in the current working directory by default, writes MOV/profile artifacts there, and exits without requiring editor interaction.
+- `--benchmark-output <directory>` overrides the automated benchmark output directory.
 - Test clip/frame sampling time must use the same playhead-to-activity conversion and Layer Data FPS quantization path as preview (`activityElapsed(atProjectTime:)` + quantization).
 - Test frame PNG orientation must match preview/export coordinates (no vertical inversion in the saved image).
 - Text preset accent colors in export must come from each overlay style's accent color instead of system accent defaults.
@@ -531,6 +533,8 @@ Export behavior:
 - Export may cache a static decor layer and render dynamic overlays into a padded union rect when that rect covers less than most of the canvas.
 - If the dynamic rect reaches the full-frame fallback threshold, export must use a single full-frame render/draw path rather than layered drawing.
 - If the dynamic rect reaches the full-frame threshold but individual dynamic overlay rects remain small enough in aggregate, export may render those overlays separately into padded local images and composite them in one pixel-buffer pass.
+- Per-overlay and dynamic-region export compositing must convert SwiftUI top-left overlay rects into pixel-buffer draw rects so exported overlay positions match the editor preview.
+- In the per-overlay path, eligible Route Map overlays may cache the static route-map base once per export task and render only the current marker per sampled frame; this must be disabled when route-map stats bar content is visible.
 - Full-frame fallback should render the full overlay frame directly, without the cropped layer wrapper used for dynamic-region rendering.
 - Long-running export rendering should release temporary rendering and CGContext objects promptly to reduce per-segment outliers.
 - Each completed export task writes task-level profiling files (`export_profile_<timestamp>.json` and `.csv`) into the destination folder; the files include summary totals, per-segment metrics, static/dynamic layer timings, render path, dynamic render rect, overlay counts, full-frame fallback count, per-overlay render metrics, and frame-level outlier metrics.
@@ -558,6 +562,7 @@ Future requirements:
   - Direct full-frame rendering and prompt temporary object cleanup for reducing renderer jitter in long exports.
   - Frame-level outlier profiling for identifying render/draw stalls inside otherwise normal segments.
   - Per-overlay render composition for full-frame-union layouts whose individual overlay bounds are still small.
+  - Static/dynamic Route Map splitting so map background and route strokes are reused while only the current marker updates, gated by visual-alignment tests.
   - Incremental frame rendering with static-layer caching so unchanged overlay layers are reused across adjacent frames.
   - Per-overlay dirty-region change detection to avoid rerendering overlay bounds whose sampled output did not change.
   - Optional adaptive layer data sampling for slowly changing metrics during long exports.

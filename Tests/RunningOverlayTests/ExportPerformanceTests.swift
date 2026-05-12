@@ -336,6 +336,56 @@ struct ExportPerformanceTests {
         #expect(plan.overlayRenderAreaRatio < ExportRenderPlan.perOverlayAreaThreshold)
     }
 
+    @Test func renderPlanEnablesRouteMapStaticCacheOnlyWithoutStatsBar() {
+        var style = OverlayStyle.default
+        style.routeMapProvider = .mapKit
+        style.routeMapStatsBar.visible = false
+        let element = OverlayElement(type: .routeMap, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(canvasSize: CGSize(width: 1280, height: 720), activity: sampleRouteActivity(), elapsedTime: 0)
+
+        #expect(ExportRenderPlan.canUseRouteMapStaticCache(for: element, context: context))
+
+        var statsStyle = style
+        statsStyle.routeMapStatsBar.visible = true
+        let statsElement = OverlayElement(type: .routeMap, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: statsStyle)
+
+        #expect(!ExportRenderPlan.canUseRouteMapStaticCache(for: statsElement, context: context))
+    }
+
+    @Test func topLeftOverlayRectsConvertToPixelBufferDrawRects() {
+        let canvasSize = CGSize(width: 1920, height: 1080)
+
+        #expect(SwiftUIOverlayVideoExporter.pixelBufferDrawRect(
+            forTopLeftRect: CGRect(x: 100, y: 80, width: 300, height: 200),
+            canvasSize: canvasSize
+        ) == CGRect(x: 100, y: 800, width: 300, height: 200))
+
+        #expect(SwiftUIOverlayVideoExporter.pixelBufferDrawRect(
+            forTopLeftRect: CGRect(x: 100, y: 800, width: 300, height: 200),
+            canvasSize: canvasSize
+        ) == CGRect(x: 100, y: 80, width: 300, height: 200))
+    }
+
+    @Test func benchmarkCommandParsesSnapshotAndOutputArguments() throws {
+        let parsed = try ExportBenchmarkCommand.parse(arguments: [
+            "RunningOverlay",
+            "--benchmark-export",
+            "running_overlay_project_snapshot.json",
+            "--benchmark-output",
+            "BenchmarkOut"
+        ])
+        let command = try #require(parsed)
+
+        #expect(command.snapshotURL.path.hasSuffix("/running_overlay_project_snapshot.json"))
+        #expect(command.outputDirectory?.path.hasSuffix("/BenchmarkOut") == true)
+    }
+
+    @Test func benchmarkCommandReturnsNilWithoutBenchmarkFlag() throws {
+        let command = try ExportBenchmarkCommand.parse(arguments: ["RunningOverlay"])
+
+        #expect(command == nil)
+    }
+
     @Test func exportProfileAggregatesFullFrameFallbackDiagnostics() {
         let segment = OverlayExportSegmentProfile(
             segmentIndex: 0,
@@ -430,5 +480,56 @@ struct ExportPerformanceTests {
         #expect(samples[0].clipElapsed == 0)
         #expect(samples[0].activityElapsed == 5)
         #expect(samples[0].sampleElapsed == 1)
+    }
+
+    private func sampleRouteActivity() -> ActivityTimeline {
+        let startDate = Date(timeIntervalSince1970: 2_000)
+        return ActivityTimeline(
+            startDate: startDate,
+            duration: 10,
+            distanceMeters: 1000,
+            records: [
+                ActivityRecord(
+                    elapsedTime: 0,
+                    timestamp: startDate,
+                    distanceMeters: 0,
+                    heartRate: 100,
+                    paceSecondsPerKilometer: 300,
+                    elevationMeters: 10,
+                    cadence: nil,
+                    powerWatts: nil,
+                    calories: nil,
+                    latitude: 40.7500,
+                    longitude: -73.9850
+                ),
+                ActivityRecord(
+                    elapsedTime: 5,
+                    timestamp: startDate.addingTimeInterval(5),
+                    distanceMeters: 500,
+                    heartRate: 120,
+                    paceSecondsPerKilometer: 280,
+                    elevationMeters: 14,
+                    cadence: nil,
+                    powerWatts: nil,
+                    calories: nil,
+                    latitude: 40.7525,
+                    longitude: -73.9835
+                ),
+                ActivityRecord(
+                    elapsedTime: 10,
+                    timestamp: startDate.addingTimeInterval(10),
+                    distanceMeters: 1000,
+                    heartRate: 140,
+                    paceSecondsPerKilometer: 260,
+                    elevationMeters: 18,
+                    cadence: nil,
+                    powerWatts: nil,
+                    calories: nil,
+                    latitude: 40.7550,
+                    longitude: -73.9800
+                )
+            ],
+            laps: []
+        )
     }
 }

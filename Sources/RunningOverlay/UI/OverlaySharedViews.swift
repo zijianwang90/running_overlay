@@ -34,13 +34,19 @@ struct OverlaySharedRouteMapView: View {
     let layout: OverlayRouteMapRenderLayout
     let isInteractive: Bool
     var staticMapSnapshot: NSImage? = nil
+    var showsBaseContent = true
+    var showsCurrentMarker = true
+    var showsContainerEffects = true
 
     var body: some View {
         RouteMapOverlayView(
             element: element,
             layout: layout,
             isSelected: isInteractive,
-            staticMapSnapshot: staticMapSnapshot
+            staticMapSnapshot: staticMapSnapshot,
+            showsBaseContent: showsBaseContent,
+            showsCurrentMarker: showsCurrentMarker,
+            showsContainerEffects: showsContainerEffects
         )
     }
 }

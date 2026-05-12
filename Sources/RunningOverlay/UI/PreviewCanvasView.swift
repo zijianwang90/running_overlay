@@ -765,6 +765,9 @@ struct RouteMapOverlayView: View {
     let layout: OverlayRouteMapRenderLayout
     let isSelected: Bool
     var staticMapSnapshot: NSImage?
+    var showsBaseContent = true
+    var showsCurrentMarker = true
+    var showsContainerEffects = true
     @State private var mapSnapshot: NSImage?
     @State private var alphaMask: NSImage?
 
@@ -775,7 +778,7 @@ struct RouteMapOverlayView: View {
 
     @ViewBuilder
     private var placementContainer: some View {
-        if let statsBar = layout.statsBarLayout, !statsBar.items.isEmpty {
+        if showsBaseContent, let statsBar = layout.statsBarLayout, !statsBar.items.isEmpty {
             if statsBar.isInside {
                 switch statsBar.placement {
                 case .topAttached, .insideTop:
@@ -851,7 +854,7 @@ struct RouteMapOverlayView: View {
                 }
             }
             .overlay {
-                if isSelected || layout.borderVisible {
+                if showsContainerEffects && (isSelected || layout.borderVisible) {
                     shapeStroke(
                         color: isSelected ? Color.accentColor.opacity(0.85) : Color.white.opacity(0.16),
                         lineWidth: isSelected ? 2 : 1
@@ -860,7 +863,7 @@ struct RouteMapOverlayView: View {
             }
             .overlayLayeredShadow(
                 color: Color(element.style.shadowColor),
-                isEnabled: element.style.shadowEnabled,
+                isEnabled: showsContainerEffects && element.style.shadowEnabled,
                 opacity: element.style.shadowOpacity,
                 radius: element.style.shadowRadius,
                 x: element.style.shadowOffsetX,
@@ -871,39 +874,44 @@ struct RouteMapOverlayView: View {
 
     private var mapContent: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: layout.cornerRadius)
-                .fill(background)
-                .overlay {
-                    if let resolvedMapSnapshot, layout.provider == .mapKit {
-                        Image(nsImage: resolvedMapSnapshot)
-                            .resizable()
-                            .scaledToFill()
-                            .opacity(layout.mapOpacity)
-                            .clipped()
-                    } else if element.style.routeMapBackgroundStyle != .none {
-                        mapGrid
+            if showsBaseContent {
+                RoundedRectangle(cornerRadius: layout.cornerRadius)
+                    .fill(background)
+                    .overlay {
+                        if let resolvedMapSnapshot, layout.provider == .mapKit {
+                            Image(nsImage: resolvedMapSnapshot)
+                                .resizable()
+                                .scaledToFill()
+                                .opacity(layout.mapOpacity)
+                                .clipped()
+                        } else if element.style.routeMapBackgroundStyle != .none {
+                            mapGrid
+                        }
                     }
-                }
 
-            if layout.projectedPoints.isEmpty {
-                Text("NO GPS")
-                    .font(.custom(element.style.fontName, size: max(layout.rect.width * 0.09, 10)).weight(.semibold))
-                    .foregroundStyle(Color(element.style.foregroundColor).opacity(0.72))
-            } else {
-                routePath(points: relativePoints)
-                    .stroke(Color.black.opacity(0.55), style: StrokeStyle(lineWidth: layout.lineWidth + 3, lineCap: .round, lineJoin: .round))
-
-                if layout.preset == .glow {
+                if layout.projectedPoints.isEmpty {
+                    Text("NO GPS")
+                        .font(.custom(element.style.fontName, size: max(layout.rect.width * 0.09, 10)).weight(.semibold))
+                        .foregroundStyle(Color(element.style.foregroundColor).opacity(0.72))
+                } else {
                     routePath(points: relativePoints)
-                        .stroke(Color(element.style.foregroundColor).opacity(0.55), style: StrokeStyle(lineWidth: layout.lineWidth * 2.3, lineCap: .round, lineJoin: .round))
-                        .blur(radius: layout.glowRadius)
+                        .stroke(Color.black.opacity(0.55), style: StrokeStyle(lineWidth: layout.lineWidth + 3, lineCap: .round, lineJoin: .round))
+
+                    if layout.preset == .glow {
+                        routePath(points: relativePoints)
+                            .stroke(Color(element.style.foregroundColor).opacity(0.55), style: StrokeStyle(lineWidth: layout.lineWidth * 2.3, lineCap: .round, lineJoin: .round))
+                            .blur(radius: layout.glowRadius)
+                    }
+
+                    routePath(points: relativePoints)
+                        .stroke(routeStroke, style: StrokeStyle(lineWidth: layout.lineWidth, lineCap: .round, lineJoin: .round))
+
+                    routeMarker(relativePoints.first, color: .green, style: element.style.routeMapStartMarkerStyle)
+                    routeMarker(relativePoints.last, color: .red, style: element.style.routeMapEndMarkerStyle)
                 }
+            }
 
-                routePath(points: relativePoints)
-                    .stroke(routeStroke, style: StrokeStyle(lineWidth: layout.lineWidth, lineCap: .round, lineJoin: .round))
-
-                routeMarker(relativePoints.first, color: .green, style: element.style.routeMapStartMarkerStyle)
-                routeMarker(relativePoints.last, color: .red, style: element.style.routeMapEndMarkerStyle)
+            if showsCurrentMarker, !layout.projectedPoints.isEmpty {
                 marker(relativeCurrentPoint, color: Color(element.style.foregroundColor), sizeMultiplier: 1.18)
             }
         }

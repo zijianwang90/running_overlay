@@ -84,7 +84,11 @@ struct ExportRenderPlan: Equatable {
             guard paddedOverlayRect.width > 0, paddedOverlayRect.height > 0 else {
                 return nil
             }
-            return ExportOverlayRenderItem(element: element, renderRect: paddedOverlayRect)
+            return ExportOverlayRenderItem(
+                element: element,
+                renderRect: paddedOverlayRect,
+                usesRouteMapStaticCache: Self.canUseRouteMapStaticCache(for: element, context: context)
+            )
         }
         overlayRenderItems = overlayItems
         overlayRenderAreaRatio = canvasRect.width > 0 && canvasRect.height > 0
@@ -104,6 +108,14 @@ struct ExportRenderPlan: Equatable {
         default:
             false
         }
+    }
+
+    static func canUseRouteMapStaticCache(for element: OverlayElement, context: OverlayRenderContext) -> Bool {
+        guard element.type == .routeMap else {
+            return false
+        }
+        let layout = OverlayRenderModel.routeMapLayout(for: element, in: context)
+        return layout.geometry != nil && (layout.statsBarLayout?.items.isEmpty ?? true)
     }
 
     static func renderRect(for element: OverlayElement, context: OverlayRenderContext) -> CGRect? {
@@ -158,6 +170,7 @@ struct ExportRenderPlan: Equatable {
 struct ExportOverlayRenderItem: Equatable {
     var element: OverlayElement
     var renderRect: CGRect
+    var usesRouteMapStaticCache: Bool
 }
 
 private struct ExportFrameTiming {
@@ -241,6 +254,33 @@ struct SwiftUIOverlayVideoExporter {
             )
             staticRenderDuration = Date().timeIntervalSince(staticLayerStartedAt)
         }
+        let routeMapStaticLayerStartedAt = Date()
+        var routeMapStaticLayerCache: [UUID: ExportOverlayRenderedImage] = [:]
+        if renderPlan.usesPerOverlayRender {
+            for item in renderPlan.overlayRenderItems where item.usesRouteMapStaticCache {
+                guard let renderedImage = try await renderRouteMapLayer(
+                    size: renderPlan.canvasSize,
+                    renderRect: item.renderRect,
+                    element: item.element,
+                    activity: job.activity,
+                    elapsedTime: 0,
+                    routeMapSnapshots: routeMapSnapshots,
+                    showsBaseContent: true,
+                    showsCurrentMarker: false,
+                    showsContainerEffects: true
+                ) else {
+                    throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce a route map static image.")
+                }
+                routeMapStaticLayerCache[item.element.id] = ExportOverlayRenderedImage(
+                    overlayID: item.element.id,
+                    cgImage: renderedImage,
+                    renderRect: item.renderRect
+                )
+            }
+        }
+        let routeMapStaticRenderDuration = routeMapStaticLayerCache.isEmpty
+            ? 0
+            : Date().timeIntervalSince(routeMapStaticLayerStartedAt)
 
         var segmentProfiles: [OverlayExportSegmentProfile] = []
 
@@ -256,7 +296,8 @@ struct SwiftUIOverlayVideoExporter {
                 job: job,
                 renderPlan: renderPlan,
                 staticLayer: staticLayer,
-                staticRenderDuration: index == 0 ? staticRenderDuration : 0,
+                staticRenderDuration: index == 0 ? staticRenderDuration + routeMapStaticRenderDuration : 0,
+                routeMapStaticLayerCache: routeMapStaticLayerCache,
                 routeMapSnapshots: routeMapSnapshots,
                 progress: progress
             )
@@ -324,6 +365,7 @@ struct SwiftUIOverlayVideoExporter {
         renderPlan: ExportRenderPlan,
         staticLayer: CGImage?,
         staticRenderDuration: TimeInterval,
+        routeMapStaticLayerCache: [UUID: ExportOverlayRenderedImage],
         routeMapSnapshots: [MapSnapshotRequest: NSImage],
         progress: @escaping @MainActor (OverlayExportProgress) -> Void
     ) async throws -> OverlayExportSegmentProfile {
@@ -443,15 +485,37 @@ struct SwiftUIOverlayVideoExporter {
                     renderedImages.reserveCapacity(renderPlan.overlayRenderItems.count)
                     for item in renderPlan.overlayRenderItems {
                         let overlayRenderStartedAt = Date()
-                        guard let renderedImage = try await renderLayer(
-                            size: renderPlan.canvasSize,
-                            renderRect: item.renderRect,
-                            overlays: [item.element],
-                            activity: job.activity,
-                            elapsedTime: sample.sampleElapsed,
-                            routeMapSnapshots: routeMapSnapshots
-                        ) else {
-                            throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce an overlay image.")
+                        let renderedImage: CGImage
+                        if item.usesRouteMapStaticCache {
+                            if let staticRouteMapImage = routeMapStaticLayerCache[item.element.id] {
+                                renderedImages.append(staticRouteMapImage)
+                            }
+                            guard let markerImage = try await renderRouteMapLayer(
+                                size: renderPlan.canvasSize,
+                                renderRect: item.renderRect,
+                                element: item.element,
+                                activity: job.activity,
+                                elapsedTime: sample.sampleElapsed,
+                                routeMapSnapshots: routeMapSnapshots,
+                                showsBaseContent: false,
+                                showsCurrentMarker: true,
+                                showsContainerEffects: false
+                            ) else {
+                                throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce a route map marker image.")
+                            }
+                            renderedImage = markerImage
+                        } else {
+                            guard let layerImage = try await renderLayer(
+                                size: renderPlan.canvasSize,
+                                renderRect: item.renderRect,
+                                overlays: [item.element],
+                                activity: job.activity,
+                                elapsedTime: sample.sampleElapsed,
+                                routeMapSnapshots: routeMapSnapshots
+                            ) else {
+                                throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce an overlay image.")
+                            }
+                            renderedImage = layerImage
                         }
                         let overlayRenderDuration = Date().timeIntervalSince(overlayRenderStartedAt)
                         overlayStats[item.element.id]?.renderCount += 1
@@ -843,6 +907,46 @@ struct SwiftUIOverlayVideoExporter {
         return cgImage
     }
 
+    private static func renderRouteMapLayer(
+        size: CGSize,
+        renderRect: CGRect,
+        element: OverlayElement,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval,
+        routeMapSnapshots: [MapSnapshotRequest: NSImage],
+        showsBaseContent: Bool,
+        showsCurrentMarker: Bool,
+        showsContainerEffects: Bool
+    ) async throws -> CGImage? {
+        guard renderRect.width > 0, renderRect.height > 0 else {
+            return nil
+        }
+
+        let layerView = SwiftUIRouteMapLayerView(
+            canvasSize: size,
+            renderRect: renderRect,
+            element: element,
+            activity: activity,
+            elapsedTime: elapsedTime,
+            routeMapSnapshots: routeMapSnapshots,
+            showsBaseContent: showsBaseContent,
+            showsCurrentMarker: showsCurrentMarker,
+            showsContainerEffects: showsContainerEffects
+        )
+        guard let cgImage = await MainActor.run(body: {
+            autoreleasepool {
+                let renderer = ImageRenderer(content: layerView)
+                renderer.isOpaque = false
+                renderer.proposedSize = ProposedViewSize(width: renderRect.width, height: renderRect.height)
+                renderer.scale = 1
+                return renderer.cgImage
+            }
+        }) else {
+            throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce a route map layer image.")
+        }
+        return cgImage
+    }
+
     private static func clear(pixelBuffer: CVPixelBuffer, size: CGSize) throws {
         CVPixelBufferLockBaseAddress(pixelBuffer, [])
         defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, []) }
@@ -906,7 +1010,7 @@ struct SwiftUIOverlayVideoExporter {
 
             context.clear(CGRect(origin: .zero, size: size))
             for (cgImage, rect) in cgImages {
-                context.draw(cgImage, in: rect)
+                context.draw(cgImage, in: pixelBufferDrawRect(forTopLeftRect: rect, canvasSize: size))
             }
         }
     }
@@ -928,8 +1032,18 @@ struct SwiftUIOverlayVideoExporter {
                 throw SwiftUIOverlayExportError.cannotCreatePixelBuffer
             }
 
-            context.draw(cgImage, in: rect)
+            let canvasSize = CGSize(width: CVPixelBufferGetWidth(pixelBuffer), height: CVPixelBufferGetHeight(pixelBuffer))
+            context.draw(cgImage, in: pixelBufferDrawRect(forTopLeftRect: rect, canvasSize: canvasSize))
         }
+    }
+
+    static func pixelBufferDrawRect(forTopLeftRect rect: CGRect, canvasSize: CGSize) -> CGRect {
+        CGRect(
+            x: rect.minX,
+            y: canvasSize.height - rect.maxY,
+            width: rect.width,
+            height: rect.height
+        )
     }
 
     private static func outputURL(for segment: OverlayExportSegment, destinationURL: URL) -> URL {
@@ -1146,6 +1260,41 @@ private struct SwiftUIOverlayLayerView: View {
                 elapsedTime: elapsedTime,
                 routeMapSnapshots: routeMapSnapshots
             )
+            .offset(x: -renderRect.minX, y: -renderRect.minY)
+        }
+        .frame(width: renderRect.width, height: renderRect.height, alignment: .topLeading)
+        .clipped()
+    }
+}
+
+private struct SwiftUIRouteMapLayerView: View {
+    let canvasSize: CGSize
+    let renderRect: CGRect
+    let element: OverlayElement
+    let activity: ActivityTimeline
+    let elapsedTime: TimeInterval
+    let routeMapSnapshots: [MapSnapshotRequest: NSImage]
+    let showsBaseContent: Bool
+    let showsCurrentMarker: Bool
+    let showsContainerEffects: Bool
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            let context = OverlayRenderContext(canvasSize: canvasSize, activity: activity, elapsedTime: elapsedTime)
+            let layout = OverlayRenderModel.routeMapLayout(for: element, in: context)
+            let snapshot = RouteMapSnapshotRequestBuilder
+                .request(for: element, layout: layout)
+                .flatMap { routeMapSnapshots[$0] }
+            OverlaySharedRouteMapView(
+                element: element,
+                layout: layout,
+                isInteractive: false,
+                staticMapSnapshot: snapshot,
+                showsBaseContent: showsBaseContent,
+                showsCurrentMarker: showsCurrentMarker,
+                showsContainerEffects: showsContainerEffects
+            )
+            .position(x: canvasSize.width * element.position.x, y: canvasSize.height * element.position.y)
             .offset(x: -renderRect.minX, y: -renderRect.minY)
         }
         .frame(width: renderRect.width, height: renderRect.height, alignment: .topLeading)

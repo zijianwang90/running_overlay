@@ -47,8 +47,37 @@
 - Extended profiling schema to v5 with per-overlay path enablement, total per-overlay area ratio, overlay render/draw counts, and JSON-only per-overlay timing/rect profiles.
 - Added tests for schema v5 fields, conservative large-overlay fallback, and per-overlay path eligibility when far-apart overlays force a full-frame dynamic union.
 
+### Export Performance Branch: Route Map Static Cache Candidate
+
+- Test7 showed per-overlay rendering reduced total export time to 478s and moved the remaining bottleneck to Route Map `ImageRenderer` cost.
+- Added a conservative Route Map static cache within the per-overlay path: route-map base content renders once per export task and the current marker renders per unique Layer Data sample.
+- Kept route maps with visible stats bars on the normal per-overlay path because stats values are elapsed-time dependent.
+- Added route-map shared-view flags so export can render base-only or marker-only route-map layers while the default preview/export call sites remain unchanged.
+- Added tests for Route Map static-cache eligibility.
+- Test8 improved total export time to 402s, but visual review showed route-map
+  layer position drift. The root issue was per-overlay compositing using
+  SwiftUI top-left render rects directly in the pixel-buffer CGContext. The
+  compositor now converts top-left rects into pixel-buffer draw rects before
+  drawing, and Route Map static caching is enabled again for another visual
+  benchmark pass.
+
+### Export Performance Branch: Automated Benchmark Export
+
+- Added `--benchmark-export <snapshot.json>` so `swift run RunningOverlay` can
+  restore a project snapshot and export all timeline clips without editor
+  interaction.
+- The benchmark command writes outputs into
+  `running_overlay_benchmark_<timestamp>` under the current working directory
+  by default, or into `--benchmark-output <directory>` when provided.
+- The runner uses the same `SwiftUIOverlayVideoExporter` path as the UI,
+  prints segment progress to stdout, writes MOV plus profiling JSON/CSV files,
+  and exits non-zero on failure.
+- Added parser tests for benchmark command arguments.
+
 Files changed:
 
+- `Sources/RunningOverlay/App/ExportBenchmarkCommand.swift`
+- `Sources/RunningOverlay/App/RunningOverlayApp.swift`
 - `Sources/RunningOverlay/Export/SwiftUIOverlayVideoExporter.swift`
 - `Sources/RunningOverlay/Export/OverlayExportModels.swift`
 - `Sources/RunningOverlay/Project/ProjectDocument.swift`
@@ -3640,3 +3669,35 @@ Summary:
 Files changed:
 
 - `Sources/RunningOverlay/UI/TimelineView.swift`
+
+### Export Performance Test9 + Next Benchmark Plan (2026-05-12)
+
+Summary:
+
+- Added the fixed benchmark fixture workflow for future optimization rounds:
+  `/Users/codywang/Documents/Video Production/0509 纽约/running_overlay_project_snapshot.json`.
+- Ran the new non-interactive benchmark command into Test9. Results:
+  `totalDuration=428.517s`, `imageRenderDuration=290.774s`,
+  `pixelBufferDrawDuration=135.670s`, `renderPath=perOverlay`.
+- Test9 kept the Test8 render-time improvement, but draw time increased, so
+  the next slice should reduce `ImageRenderer` work without adding more final
+  pixel-buffer draw operations.
+- Tested and reverted the next Distance Timeline static/dynamic split after
+  Test10/Test11. It reduced pixel-buffer draw time but increased
+  `ImageRenderer` time enough to regress total export time.
+
+Files changed:
+
+- `docs/export-performance.md`
+- `docs/development.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Automated benchmark command completed successfully:
+  `swift run RunningOverlay --benchmark-export "/Users/codywang/Documents/Video Production/0509 纽约/running_overlay_project_snapshot.json" --benchmark-output "/Users/codywang/Documents/Video Production/0509 纽约/Test9"`.
+- Rejected benchmark results:
+  - Test10: `totalDuration=435.685s`, `imageRenderDuration=362.332s`,
+    `pixelBufferDrawDuration=71.044s`.
+  - Test11: `totalDuration=470.050s`, `imageRenderDuration=381.938s`,
+    `pixelBufferDrawDuration=85.704s`.
