@@ -88,6 +88,15 @@ without changing visual output or export timing.
 - Same-sample reuse now caches the previous set of per-overlay `CGImage`
   renders and still appends every output video frame at its original
   presentation time.
+
+## Final Default
+
+- New projects default Layer Data FPS to 5 fps. The output video frame rate is
+  unchanged, but overlay values update every 0.2 seconds by default so export
+  can reuse more rendered overlay frames.
+- The 5 fps benchmark on the fixed New York snapshot reduced total export time
+  from Test12's 408.537s to 183.341s, with image render time dropping from
+  282.182s to 134.333s.
 - Profiling schema is v5. It adds `renderPath=perOverlay`,
   `overlayRenderPathEnabled`, `overlayRenderAreaRatio`, `overlayRenderCount`,
   `overlayDrawCount`, and JSON-only `overlayProfiles` for per-overlay render
@@ -284,6 +293,30 @@ Conclusion: splitting an existing SwiftUI overlay into multiple SwiftUI
 renders is not currently a good tradeoff for this project. Future large wins
 should reduce `ImageRenderer` invocations or replace expensive SwiftUI overlay
 renders, not create more SwiftUI render passes.
+
+## Numeric Batch Candidate
+
+Test12 targeted the remaining repeated `ImageRenderer` calls by batching simple
+numeric overlays in the per-overlay path:
+
+- Batchable types are standard numeric/text overlays such as heart rate, pace,
+  cadence, elapsed time, real time, distance, elevation, power, temperature,
+  and grade.
+- Complex overlays stay separate: Distance Timeline, Route Map, Elevation
+  Chart, Running Gauge, lap overlays, weather, and decor.
+- The batch is enabled only when at least two numeric overlays fit inside a
+  padded union rect whose area is below 45% of the canvas and smaller than the
+  sum of their individual padded areas.
+- The batch still renders through `SwiftUIOverlayLayerView`, so visual output
+  should match the current per-overlay path. Profiling records the batch under
+  the first grouped numeric overlay type.
+- Test12 improved on Test9 and the change is kept:
+  `totalDuration=408.537s`, `imageRenderDuration=282.182s`,
+  `pixelBufferDrawDuration=124.412s`.
+- `overlayRenderCount` dropped from 44,058 to 18,882 and `overlayDrawCount`
+  dropped from 150,928 to 75,464.
+- A frame extracted from Test12 confirmed the overlay positions match the
+  expected preview layout.
 
 ## Follow-Up Directions
 

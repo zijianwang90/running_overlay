@@ -27,6 +27,7 @@ enum SwiftUIOverlayExportError: LocalizedError {
 struct ExportRenderPlan: Equatable {
     static let dynamicFullFrameAreaThreshold: Double = 0.85
     static let perOverlayAreaThreshold: Double = 0.85
+    static let numericBatchAreaThreshold: Double = 0.45
     static let safePadding: CGFloat = 96
 
     var canvasSize: CGSize
@@ -73,7 +74,7 @@ struct ExportRenderPlan: Equatable {
         dynamicRenderAreaRatio = canvasRect.width > 0 && canvasRect.height > 0
             ? (dynamicRenderRect.width * dynamicRenderRect.height) / (canvasRect.width * canvasRect.height)
             : 0
-        let overlayItems = dynamicOverlays.compactMap { element -> ExportOverlayRenderItem? in
+        let individualOverlayItems = dynamicOverlays.compactMap { element -> ExportOverlayRenderItem? in
             guard let renderRect = Self.renderRect(for: element, context: context) else {
                 return nil
             }
@@ -85,11 +86,16 @@ struct ExportRenderPlan: Equatable {
                 return nil
             }
             return ExportOverlayRenderItem(
-                element: element,
+                id: element.id,
+                elements: [element],
                 renderRect: paddedOverlayRect,
                 usesRouteMapStaticCache: Self.canUseRouteMapStaticCache(for: element, context: context)
             )
         }
+        let overlayItems = Self.overlayItemsByBatchingNumericOverlays(
+            individualOverlayItems,
+            canvasRect: canvasRect
+        )
         overlayRenderItems = overlayItems
         overlayRenderAreaRatio = canvasRect.width > 0 && canvasRect.height > 0
             ? overlayItems.map { Double(($0.renderRect.width * $0.renderRect.height) / (canvasRect.width * canvasRect.height)) }.reduce(0, +)
@@ -97,7 +103,8 @@ struct ExportRenderPlan: Equatable {
         usesPerOverlayRender = usesFullFrameDynamicRender
             && staticOverlays.isEmpty
             && !dynamicOverlays.isEmpty
-            && overlayItems.count == dynamicOverlays.count
+            && individualOverlayItems.count == dynamicOverlays.count
+            && overlayItems.map(\.elements.count).reduce(0, +) == dynamicOverlays.count
             && overlayRenderAreaRatio < Self.perOverlayAreaThreshold
     }
 
@@ -116,6 +123,15 @@ struct ExportRenderPlan: Equatable {
         }
         let layout = OverlayRenderModel.routeMapLayout(for: element, in: context)
         return layout.geometry != nil && (layout.statsBarLayout?.items.isEmpty ?? true)
+    }
+
+    static func isNumericBatchCandidate(_ element: OverlayElement) -> Bool {
+        switch element.type {
+        case .heartRate, .pace, .calories, .elapsedTime, .realTime, .distance, .elevation, .cadence, .power, .verticalOscillation, .groundContactTime, .strideLength, .verticalRatio, .groundContactBalance, .temperature, .grade:
+            true
+        default:
+            false
+        }
     }
 
     static func renderRect(for element: OverlayElement, context: OverlayRenderContext) -> CGRect? {
@@ -165,12 +181,75 @@ struct ExportRenderPlan: Equatable {
         let height = max(layout.fontSize, layout.labelFontSize + layout.unitFontSize) + layout.verticalPadding * 2
         return centeredRect(for: element, size: CGSize(width: width, height: height), canvasSize: context.canvasSize)
     }
+
+    private static func overlayItemsByBatchingNumericOverlays(
+        _ items: [ExportOverlayRenderItem],
+        canvasRect: CGRect
+    ) -> [ExportOverlayRenderItem] {
+        let numericItems = items.filter { item in
+            item.elements.count == 1
+                && !item.usesRouteMapStaticCache
+                && item.elements.first.map(isNumericBatchCandidate) == true
+        }
+        guard numericItems.count >= 2, canvasRect.width > 0, canvasRect.height > 0 else {
+            return items
+        }
+
+        let numericUnion = numericItems
+            .map(\.renderRect)
+            .reduce(CGRect.null) { $0.union($1) }
+            .intersection(canvasRect)
+            .integral
+        guard !numericUnion.isNull, numericUnion.width > 0, numericUnion.height > 0 else {
+            return items
+        }
+
+        let canvasArea = canvasRect.width * canvasRect.height
+        let unionArea = numericUnion.width * numericUnion.height
+        let individualArea = numericItems
+            .map { $0.renderRect.width * $0.renderRect.height }
+            .reduce(0, +)
+        guard Double(unionArea / canvasArea) < Self.numericBatchAreaThreshold,
+              unionArea < individualArea else {
+            return items
+        }
+
+        let numericIDs = Set(numericItems.map(\.id))
+        let batchedElements = numericItems.flatMap(\.elements)
+        var result: [ExportOverlayRenderItem] = []
+        var insertedBatch = false
+        for item in items {
+            if numericIDs.contains(item.id) {
+                if !insertedBatch {
+                    result.append(ExportOverlayRenderItem(
+                        id: batchedElements[0].id,
+                        elements: batchedElements,
+                        renderRect: numericUnion,
+                        usesRouteMapStaticCache: false
+                    ))
+                    insertedBatch = true
+                }
+            } else {
+                result.append(item)
+            }
+        }
+        return result
+    }
 }
 
 struct ExportOverlayRenderItem: Equatable {
-    var element: OverlayElement
+    var id: UUID
+    var elements: [OverlayElement]
     var renderRect: CGRect
     var usesRouteMapStaticCache: Bool
+
+    var element: OverlayElement {
+        elements[0]
+    }
+
+    var isBatch: Bool {
+        elements.count > 1
+    }
 }
 
 private struct ExportFrameTiming {
@@ -271,8 +350,8 @@ struct SwiftUIOverlayVideoExporter {
                 ) else {
                     throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce a route map static image.")
                 }
-                routeMapStaticLayerCache[item.element.id] = ExportOverlayRenderedImage(
-                    overlayID: item.element.id,
+                routeMapStaticLayerCache[item.id] = ExportOverlayRenderedImage(
+                    overlayID: item.id,
                     cgImage: renderedImage,
                     renderRect: item.renderRect
                 )
@@ -436,9 +515,9 @@ struct SwiftUIOverlayVideoExporter {
         var previousOverlayImages: [ExportOverlayRenderedImage] = []
         var overlayStats = Dictionary(uniqueKeysWithValues: renderPlan.overlayRenderItems.map {
             (
-                $0.element.id,
+                $0.id,
                 ExportOverlayRenderStats(
-                    overlayID: $0.element.id,
+                    overlayID: $0.id,
                     overlayType: $0.element.type,
                     renderRect: $0.renderRect
                 )
@@ -487,7 +566,7 @@ struct SwiftUIOverlayVideoExporter {
                         let overlayRenderStartedAt = Date()
                         let renderedImage: CGImage
                         if item.usesRouteMapStaticCache {
-                            if let staticRouteMapImage = routeMapStaticLayerCache[item.element.id] {
+                            if let staticRouteMapImage = routeMapStaticLayerCache[item.id] {
                                 renderedImages.append(staticRouteMapImage)
                             }
                             guard let markerImage = try await renderRouteMapLayer(
@@ -508,7 +587,7 @@ struct SwiftUIOverlayVideoExporter {
                             guard let layerImage = try await renderLayer(
                                 size: renderPlan.canvasSize,
                                 renderRect: item.renderRect,
-                                overlays: [item.element],
+                                overlays: item.elements,
                                 activity: job.activity,
                                 elapsedTime: sample.sampleElapsed,
                                 routeMapSnapshots: routeMapSnapshots
@@ -518,11 +597,11 @@ struct SwiftUIOverlayVideoExporter {
                             renderedImage = layerImage
                         }
                         let overlayRenderDuration = Date().timeIntervalSince(overlayRenderStartedAt)
-                        overlayStats[item.element.id]?.renderCount += 1
-                        overlayStats[item.element.id]?.renderDuration += overlayRenderDuration
+                        overlayStats[item.id]?.renderCount += 1
+                        overlayStats[item.id]?.renderDuration += overlayRenderDuration
                         overlayRenderCount += 1
                         renderedImages.append(ExportOverlayRenderedImage(
-                            overlayID: item.element.id,
+                            overlayID: item.id,
                             cgImage: renderedImage,
                             renderRect: item.renderRect
                         ))
@@ -678,8 +757,8 @@ struct SwiftUIOverlayVideoExporter {
         let canvasArea = renderPlan.canvasSize.width * renderPlan.canvasSize.height
         let overlayRenderAreaRatio = renderPlan.overlayRenderAreaRatio
         let overlayProfiles = renderPlan.overlayRenderItems.map { item in
-            let stats = overlayStats[item.element.id] ?? ExportOverlayRenderStats(
-                overlayID: item.element.id,
+            let stats = overlayStats[item.id] ?? ExportOverlayRenderStats(
+                overlayID: item.id,
                 overlayType: item.element.type,
                 renderRect: item.renderRect
             )

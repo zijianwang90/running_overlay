@@ -3,7 +3,7 @@ import Foundation
 struct ProjectSettings: Equatable, Codable {
     var resolution: ProjectResolution = .hd1080
     var frameRate: ProjectFrameRate = .fps30
-    var layerDataFrameRate: ProjectLayerDataFrameRate = .fps10
+    var layerDataFrameRate: ProjectLayerDataFrameRate = .fps5
     var previewTrackName: String?
     var disabledPreviewTrackNames: Set<String> = []
     var bitrateMbps: Double = 30
@@ -109,7 +109,7 @@ struct ProjectLayerDataFrameRate: Identifiable, Hashable, Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         let id = try container.decode(String.self)
-        self = Self.presets.first(where: { $0.id == id }) ?? .fps10
+        self = Self.presets.first(where: { $0.id == id }) ?? .fps5
     }
 
     func encode(to encoder: Encoder) throws {

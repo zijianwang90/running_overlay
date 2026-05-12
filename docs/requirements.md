@@ -49,6 +49,7 @@ Initial settings:
   - 30 fps
 
 The layer data update frame rate controls how often FIT-derived values change in overlay preview and export. It is separate from the project video frame rate: a 30 fps project can still update data values at 1, 5, 10, or 15 fps when the user wants a less jittery data layer.
+New projects default to 5 fps so exports reuse more overlay frames while still preserving the configured video frame rate.
 
 Open questions:
 
@@ -563,6 +564,7 @@ Future requirements:
   - Frame-level outlier profiling for identifying render/draw stalls inside otherwise normal segments.
   - Per-overlay render composition for full-frame-union layouts whose individual overlay bounds are still small.
   - Static/dynamic Route Map splitting so map background and route strokes are reused while only the current marker updates, gated by visual-alignment tests.
+  - Numeric overlay batching in the per-overlay export path when multiple simple numeric overlays fit in a small padded union rect, reducing `ImageRenderer` calls without changing preview/export visuals.
   - Incremental frame rendering with static-layer caching so unchanged overlay layers are reused across adjacent frames.
   - Per-overlay dirty-region change detection to avoid rerendering overlay bounds whose sampled output did not change.
   - Optional adaptive layer data sampling for slowly changing metrics during long exports.

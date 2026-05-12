@@ -78,6 +78,19 @@ Files changed:
 
 - `Sources/RunningOverlay/App/ExportBenchmarkCommand.swift`
 - `Sources/RunningOverlay/App/RunningOverlayApp.swift`
+
+### Export Performance Branch: Numeric Batch and 5 FPS Default
+
+- Added numeric overlay batching in the per-overlay path so heart rate, pace,
+  cadence, elapsed time, and real time can render as one local SwiftUI image
+  when their padded union stays compact.
+- Test12 reduced the fixed snapshot from Test9's 428.517s to 408.537s, with
+  overlay render count dropping from 44058 to 18882.
+- A 5 fps Layer Data benchmark reduced the same snapshot to 183.341s total and
+  134.333s image render time by cutting rendered sample frames from 6294 to
+  3149.
+- New projects now default Layer Data FPS to 5 fps while keeping the output
+  video frame rate independent.
 - `Sources/RunningOverlay/Export/SwiftUIOverlayVideoExporter.swift`
 - `Sources/RunningOverlay/Export/OverlayExportModels.swift`
 - `Sources/RunningOverlay/Project/ProjectDocument.swift`
@@ -3701,3 +3714,29 @@ Verification:
     `pixelBufferDrawDuration=71.044s`.
   - Test11: `totalDuration=470.050s`, `imageRenderDuration=381.938s`,
     `pixelBufferDrawDuration=85.704s`.
+
+### Export Numeric Batch Candidate (2026-05-12)
+
+Summary:
+
+- Added a conservative numeric overlay batch candidate for the per-overlay
+  export path.
+- Batchable overlays are simple numeric/text overlays; complex overlays such
+  as Distance Timeline, Route Map, Running Gauge, lap overlays, weather, and
+  decor remain separate.
+- The batch is enabled only when the padded numeric union is below 45% of the
+  canvas and smaller than the sum of individual numeric padded areas.
+- Profiling records the batch under the first grouped numeric overlay type so
+  the existing schema remains stable.
+- Test12 improved on Test9: `totalDuration=408.537s`,
+  `imageRenderDuration=282.182s`, `pixelBufferDrawDuration=124.412s`,
+  `overlayRenderCount=18882`, and `overlayDrawCount=75464`.
+
+Verification:
+
+- `swift test`
+- `git diff --check`
+- Fixed-snapshot benchmark:
+  `swift run RunningOverlay --benchmark-export "/Users/codywang/Documents/Video Production/0509 纽约/running_overlay_project_snapshot.json" --benchmark-output "/Users/codywang/Documents/Video Production/0509 纽约/Test12"`.
+- Extracted a Test12 frame with `ffmpeg` and confirmed overlay positions match
+  the expected preview layout.

@@ -30,7 +30,7 @@ The settings modal should include only the current project export/settings contr
 1. `Video`
    - `Resolution` dropdown with `1080p 16:9`.
    - `Frame Rate` dropdown with `30 fps`.
-   - `Layer Data FPS` dropdown with `10 fps`.
+   - `Layer Data FPS` dropdown with `5 fps`.
 2. `Encoding`
    - `Bitrate` slider with blue filled track, knob, and right-aligned value `30 Mbps`.
 3. `Typography`

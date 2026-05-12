@@ -336,6 +336,47 @@ struct ExportPerformanceTests {
         #expect(plan.overlayRenderAreaRatio < ExportRenderPlan.perOverlayAreaThreshold)
     }
 
+    @Test func renderPlanBatchesNearbyNumericOverlays() throws {
+        let overlays = [
+            OverlayElement(type: .heartRate, position: CGPoint(x: 0.12, y: 0.86), scale: 1, style: .default),
+            OverlayElement(type: .pace, position: CGPoint(x: 0.24, y: 0.86), scale: 1, style: .default),
+            OverlayElement(type: .cadence, position: CGPoint(x: 0.36, y: 0.86), scale: 1, style: .default),
+            OverlayElement(type: .routeMap, position: CGPoint(x: 0.82, y: 0.18), scale: 1, style: .default)
+        ]
+
+        let plan = ExportRenderPlan(overlays: overlays, canvasSize: CGSize(width: 1280, height: 720), activity: sampleRouteActivity())
+        let batch = try #require(plan.overlayRenderItems.first { $0.elements.count == 3 })
+
+        #expect(batch.elements.map(\.type) == [.heartRate, .pace, .cadence])
+        #expect(plan.overlayRenderItems.count < plan.dynamicOverlays.count)
+        #expect(plan.overlayRenderAreaRatio < ExportRenderPlan.perOverlayAreaThreshold)
+    }
+
+    @Test func renderPlanDoesNotBatchNumericOverlaysWhenUnionIsTooLarge() {
+        let overlays = [
+            OverlayElement(type: .heartRate, position: CGPoint(x: 0.05, y: 0.08), scale: 1, style: .default),
+            OverlayElement(type: .pace, position: CGPoint(x: 0.95, y: 0.92), scale: 1, style: .default)
+        ]
+
+        let plan = ExportRenderPlan(overlays: overlays, canvasSize: CGSize(width: 1280, height: 720), activity: .empty)
+
+        #expect(plan.overlayRenderItems.count == 2)
+        #expect(plan.overlayRenderItems.allSatisfy { $0.elements.count == 1 })
+    }
+
+    @Test func renderPlanDoesNotBatchComplexOverlaysWithNumericOverlays() {
+        let overlays = [
+            OverlayElement(type: .heartRate, position: CGPoint(x: 0.12, y: 0.86), scale: 1, style: .default),
+            OverlayElement(type: .pace, position: CGPoint(x: 0.24, y: 0.86), scale: 1, style: .default),
+            OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.2), scale: 1, style: .default)
+        ]
+
+        let plan = ExportRenderPlan(overlays: overlays, canvasSize: CGSize(width: 1280, height: 720), activity: sampleRouteActivity())
+
+        #expect(plan.overlayRenderItems.contains { $0.elements.map(\.type) == [.heartRate, .pace] })
+        #expect(plan.overlayRenderItems.contains { $0.elements.map(\.type) == [.distanceTimeline] })
+    }
+
     @Test func renderPlanEnablesRouteMapStaticCacheOnlyWithoutStatsBar() {
         var style = OverlayStyle.default
         style.routeMapProvider = .mapKit
