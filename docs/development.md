@@ -483,6 +483,8 @@ Pending:
 - Export reuses the previous `ImageRenderer` output when adjacent video frames quantize to the same Layer Data sample time, while still appending every output frame.
 - MOV export uses an `ExportRenderPlan` that separates static decor overlays from dynamic data overlays, caches the static layer once, and renders dynamic overlays into a padded union rect when the rect stays below 85% of the canvas.
 - When the dynamic rect reaches the full-frame fallback threshold, MOV export uses a single full-frame render/draw path instead of layered drawing to avoid fallback overhead.
+- Full-frame fallback renders `SwiftUIOverlayFrameView` directly; the cropped `SwiftUIOverlayLayerView` wrapper is reserved for static layers and dynamic-region rendering.
+- `ImageRenderer` and pixel-buffer CGContext operations run inside autorelease boundaries to reduce temporary object buildup during long exports.
 - Each completed export task writes `export_profile_<timestamp>.json` and `export_profile_<timestamp>.csv` into the destination folder with whole-export totals, per-segment timing/reuse metrics, static/dynamic layer metrics, render-path diagnostics, and frame-level outlier metrics.
 - Export profiling stores per-segment render/draw/frame p50, p95, max, slow-frame count, and the 10 slowest frame samples in JSON so benchmark outliers can be tied back to frame index and `sampleElapsed`.
 

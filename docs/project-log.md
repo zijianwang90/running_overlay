@@ -32,6 +32,13 @@
 - CSV profiles include distribution columns for spreadsheet comparison while keeping detailed slow-frame samples in JSON.
 - Added tests for schema v4 fields and slow-frame JSON round-trip.
 
+### Export Performance Branch: Full-Frame Renderer Jitter Reduction
+
+- Test4 showed segment 4 and 9 returned to normal while segment 3 had sustained slow full-frame render samples.
+- Full-frame fallback now renders `SwiftUIOverlayFrameView` directly instead of using the cropped layer wrapper.
+- Wrapped `ImageRenderer` and pixel-buffer CGContext work in autorelease boundaries to reduce temporary object buildup across long exports.
+- Kept profiling schema at v4 so the next benchmark can use existing p50/p95/max and slow-frame fields.
+
 Files changed:
 
 - `Sources/RunningOverlay/Export/SwiftUIOverlayVideoExporter.swift`

@@ -62,6 +62,17 @@ without changing visual output or export timing.
 - CSV keeps spreadsheet-friendly summary columns for distribution metrics and
   slow-frame counts; detailed slow-frame arrays are JSON-only.
 
+## Fifth Milestone
+
+- Test4 showed the previous Test3 segment 4 and 9 outliers returned to normal,
+  but segment 3 had sustained slow full-frame renders and one 1s slow frame.
+- Full-frame fallback now renders `SwiftUIOverlayFrameView` directly instead of
+  routing through the cropped layer wrapper used by dynamic-region rendering.
+- `ImageRenderer` and pixel-buffer CGContext work are wrapped in autorelease
+  boundaries to reduce long-export temporary object buildup and random stalls.
+- Profiling schema remains v4; compare v5 output using the existing p50/p95/max
+  and `slowFrames` fields.
+
 ## Project Snapshot Workflow
 
 - Use `Save Project Snapshot` in the Export dialog to write
@@ -140,6 +151,13 @@ and per-segment `slowFrames` for the segments that were outliers in Test3:
 If the slow frames cluster around specific `sampleElapsed` values, optimize the
 overlay/data path used at those samples. If they are random and sparse, focus on
 `ImageRenderer` jitter, memory pressure, and autorelease behavior.
+
+For the fifth benchmark round, confirm that the full-frame fallback path still
+reports `renderPath=fullFrameSingleLayer`, then compare segment 3 against Test4:
+
+- `DJI_20260509084453_0008_D.MP4`
+- Expected movement: lower `renderDurationP95`, `drawDurationP95`,
+  `frameDurationMax`, and `slowFrameCount`.
 
 ## Follow-Up Directions
 

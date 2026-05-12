@@ -530,6 +530,8 @@ Export behavior:
 - Adjacent video frames that resolve to the same quantized Layer Data sample may reuse the previous rendered overlay image while still writing one pixel buffer per output frame.
 - Export may cache a static decor layer and render dynamic overlays into a padded union rect when that rect covers less than most of the canvas.
 - If the dynamic rect reaches the full-frame fallback threshold, export must use a single full-frame render/draw path rather than layered drawing.
+- Full-frame fallback should render the full overlay frame directly, without the cropped layer wrapper used for dynamic-region rendering.
+- Long-running export rendering should release temporary rendering and CGContext objects promptly to reduce per-segment outliers.
 - Each completed export task writes task-level profiling files (`export_profile_<timestamp>.json` and `.csv`) into the destination folder; the files include summary totals, per-segment metrics, static/dynamic layer timings, render path, dynamic render rect, overlay counts, full-frame fallback count, and frame-level outlier metrics.
 - Profiling JSON records each segment's 10 slowest frames with frame index, clip time, sample time, render reuse flag, render duration, draw duration, and frame duration.
 - Export rendering scales overlay dimensions from the 720p preview reference so text, padding, and graphic sizes remain proportional at 1080p, 2K, and 4K output sizes.
@@ -552,6 +554,7 @@ Future requirements:
   - Task-level JSON/CSV profiling artifacts for comparing export speed across repeatable project snapshots.
   - Static/dynamic layer rendering with padded dynamic-region rendering when overlays occupy only part of the canvas.
   - Full-frame fallback must preserve the original one-render, one-draw cost model when region rendering is not applicable.
+  - Direct full-frame rendering and prompt temporary object cleanup for reducing renderer jitter in long exports.
   - Frame-level outlier profiling for identifying render/draw stalls inside otherwise normal segments.
   - Incremental frame rendering with static-layer caching so unchanged overlay layers are reused across adjacent frames.
   - Per-overlay dirty-region rendering and composition to avoid full-canvas redraw on every frame.

@@ -375,16 +375,13 @@ struct SwiftUIOverlayVideoExporter {
                     reusedRenderForFrame = true
                 } else {
                     let renderStartedAt = Date()
-                    guard let renderedImage = try await renderLayer(
+                    let renderedImage = try await renderFullFrame(
                         size: renderPlan.canvasSize,
-                        renderRect: CGRect(origin: .zero, size: renderPlan.canvasSize),
                         overlays: renderPlan.allOverlays,
                         activity: job.activity,
                         elapsedTime: sample.sampleElapsed,
                         routeMapSnapshots: routeMapSnapshots
-                    ) else {
-                        throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce a full-frame image.")
-                    }
+                    )
                     let renderDuration = Date().timeIntervalSince(renderStartedAt)
                     renderDurationForFrame = renderDuration
                     dynamicRenderDuration += renderDuration
@@ -637,6 +634,34 @@ struct SwiftUIOverlayVideoExporter {
         return sortedValues[lowerIndex] * (1 - weight) + sortedValues[upperIndex] * weight
     }
 
+    private static func renderFullFrame(
+        size: CGSize,
+        overlays: [OverlayElement],
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval,
+        routeMapSnapshots: [MapSnapshotRequest: NSImage]
+    ) async throws -> CGImage {
+        let frameView = SwiftUIOverlayFrameView(
+            size: size,
+            overlays: overlays,
+            activity: activity,
+            elapsedTime: elapsedTime,
+            routeMapSnapshots: routeMapSnapshots
+        )
+        guard let cgImage = await MainActor.run(body: {
+            autoreleasepool {
+                let renderer = ImageRenderer(content: frameView)
+                renderer.isOpaque = false
+                renderer.proposedSize = ProposedViewSize(width: size.width, height: size.height)
+                renderer.scale = 1
+                return renderer.cgImage
+            }
+        }) else {
+            throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce a full-frame image.")
+        }
+        return cgImage
+    }
+
     private static func renderLayer(
         size: CGSize,
         renderRect: CGRect,
@@ -658,11 +683,13 @@ struct SwiftUIOverlayVideoExporter {
             routeMapSnapshots: routeMapSnapshots
         )
         guard let cgImage = await MainActor.run(body: {
-            let renderer = ImageRenderer(content: layerView)
-            renderer.isOpaque = false
-            renderer.proposedSize = ProposedViewSize(width: renderRect.width, height: renderRect.height)
-            renderer.scale = 1
-            return renderer.cgImage
+            autoreleasepool {
+                let renderer = ImageRenderer(content: layerView)
+                renderer.isOpaque = false
+                renderer.proposedSize = ProposedViewSize(width: renderRect.width, height: renderRect.height)
+                renderer.scale = 1
+                return renderer.cgImage
+            }
         }) else {
             throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce a layer image.")
         }
@@ -673,59 +700,65 @@ struct SwiftUIOverlayVideoExporter {
         CVPixelBufferLockBaseAddress(pixelBuffer, [])
         defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, []) }
 
-        guard let context = CGContext(
-            data: CVPixelBufferGetBaseAddress(pixelBuffer),
-            width: Int(size.width),
-            height: Int(size.height),
-            bitsPerComponent: 8,
-            bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer),
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
-        ) else {
-            throw SwiftUIOverlayExportError.cannotCreatePixelBuffer
-        }
+        try autoreleasepool {
+            guard let context = CGContext(
+                data: CVPixelBufferGetBaseAddress(pixelBuffer),
+                width: Int(size.width),
+                height: Int(size.height),
+                bitsPerComponent: 8,
+                bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer),
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
+            ) else {
+                throw SwiftUIOverlayExportError.cannotCreatePixelBuffer
+            }
 
-        context.clear(CGRect(origin: .zero, size: size))
+            context.clear(CGRect(origin: .zero, size: size))
+        }
     }
 
     private static func clearAndDraw(cgImage: CGImage, into pixelBuffer: CVPixelBuffer, size: CGSize) throws {
         CVPixelBufferLockBaseAddress(pixelBuffer, [])
         defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, []) }
 
-        guard let context = CGContext(
-            data: CVPixelBufferGetBaseAddress(pixelBuffer),
-            width: Int(size.width),
-            height: Int(size.height),
-            bitsPerComponent: 8,
-            bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer),
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
-        ) else {
-            throw SwiftUIOverlayExportError.cannotCreatePixelBuffer
-        }
+        try autoreleasepool {
+            guard let context = CGContext(
+                data: CVPixelBufferGetBaseAddress(pixelBuffer),
+                width: Int(size.width),
+                height: Int(size.height),
+                bitsPerComponent: 8,
+                bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer),
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
+            ) else {
+                throw SwiftUIOverlayExportError.cannotCreatePixelBuffer
+            }
 
-        let rect = CGRect(origin: .zero, size: size)
-        context.clear(rect)
-        context.draw(cgImage, in: rect)
+            let rect = CGRect(origin: .zero, size: size)
+            context.clear(rect)
+            context.draw(cgImage, in: rect)
+        }
     }
 
     private static func draw(cgImage: CGImage, into pixelBuffer: CVPixelBuffer, rect: CGRect) throws {
         CVPixelBufferLockBaseAddress(pixelBuffer, [])
         defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, []) }
 
-        guard let context = CGContext(
-            data: CVPixelBufferGetBaseAddress(pixelBuffer),
-            width: CVPixelBufferGetWidth(pixelBuffer),
-            height: CVPixelBufferGetHeight(pixelBuffer),
-            bitsPerComponent: 8,
-            bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer),
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
-        ) else {
-            throw SwiftUIOverlayExportError.cannotCreatePixelBuffer
-        }
+        try autoreleasepool {
+            guard let context = CGContext(
+                data: CVPixelBufferGetBaseAddress(pixelBuffer),
+                width: CVPixelBufferGetWidth(pixelBuffer),
+                height: CVPixelBufferGetHeight(pixelBuffer),
+                bitsPerComponent: 8,
+                bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer),
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
+            ) else {
+                throw SwiftUIOverlayExportError.cannotCreatePixelBuffer
+            }
 
-        context.draw(cgImage, in: rect)
+            context.draw(cgImage, in: rect)
+        }
     }
 
     private static func outputURL(for segment: OverlayExportSegment, destinationURL: URL) -> URL {
