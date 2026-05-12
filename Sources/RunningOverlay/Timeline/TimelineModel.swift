@@ -1,6 +1,6 @@
 import Foundation
 
-struct TimelineModel: Equatable {
+struct TimelineModel: Equatable, Codable {
     var tracks: [TimelineTrack]
     var zoom: TimelineZoom = .fit
     var playhead: TimeInterval = 0
@@ -417,13 +417,13 @@ struct TimelineDisplaySegment: Equatable {
     }
 }
 
-struct TimelineTrack: Identifiable, Equatable {
-    let id = UUID()
+struct TimelineTrack: Identifiable, Equatable, Codable {
+    var id = UUID()
     var name: String
     var clips: [TimelineClip]
 }
 
-struct TimelineClip: Identifiable, Equatable {
+struct TimelineClip: Identifiable, Equatable, Codable {
     var id = UUID()
     var mediaItemID: MediaItem.ID?
     var title: String
@@ -437,7 +437,7 @@ struct TimelineClip: Identifiable, Equatable {
     }
 }
 
-enum TimelineZoom: Equatable {
+enum TimelineZoom: Equatable, Codable {
     case fit
     case pixelsPerSecond(Double)
 
@@ -467,6 +467,38 @@ enum TimelineZoom: Equatable {
             .fit
         case .pixelsPerSecond(let value):
             .pixelsPerSecond(max(value / 1.35, 0.5))
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case mode
+        case pixelsPerSecond
+    }
+
+    private enum Mode: String, Codable {
+        case fit
+        case pixelsPerSecond
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let mode = try container.decode(Mode.self, forKey: .mode)
+        switch mode {
+        case .fit:
+            self = .fit
+        case .pixelsPerSecond:
+            self = .pixelsPerSecond(try container.decode(Double.self, forKey: .pixelsPerSecond))
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .fit:
+            try container.encode(Mode.fit, forKey: .mode)
+        case .pixelsPerSecond(let value):
+            try container.encode(Mode.pixelsPerSecond, forKey: .mode)
+            try container.encode(value, forKey: .pixelsPerSecond)
         }
     }
 }

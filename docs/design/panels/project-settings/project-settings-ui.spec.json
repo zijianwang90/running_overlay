@@ -1,6 +1,6 @@
 {
   "name": "Project Settings And Font Library",
-  "lastUpdated": "2026-04-30",
+  "lastUpdated": "2026-05-12",
   "surfaces": {
     "projectSettings": {
       "presentation": "dark macOS modal",
@@ -22,7 +22,7 @@
             {
               "label": "Layer Data FPS",
               "control": "dropdown",
-              "value": "10 fps"
+              "value": "5 fps"
             }
           ]
         },

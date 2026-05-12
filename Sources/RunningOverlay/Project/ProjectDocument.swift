@@ -2629,6 +2629,70 @@ final class ProjectDocument: ObservableObject {
         }
     }
 
+    func saveProjectSnapshot() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = "running_overlay_project_snapshot.json"
+
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return
+        }
+        saveProjectSnapshot(to: url)
+    }
+
+    func restoreProjectSnapshot() {
+        guard !isExporting else {
+            statusMessage = "Cancel the active export before restoring a project snapshot."
+            return
+        }
+
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return
+        }
+        restoreProjectSnapshot(from: url)
+    }
+
+    func saveProjectSnapshot(to outputURL: URL) {
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(makePersistentSnapshot())
+            try FileManager.default.createDirectory(at: outputURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try data.write(to: outputURL)
+            statusMessage = "Project snapshot saved: \(outputURL.lastPathComponent)."
+        } catch {
+            statusMessage = "Project snapshot save failed: \(error.localizedDescription)"
+            print("[RunningOverlay] Project snapshot save failed: \(String(reflecting: error))")
+        }
+    }
+
+    func restoreProjectSnapshot(from inputURL: URL) {
+        guard !isExporting else {
+            statusMessage = "Cancel the active export before restoring a project snapshot."
+            return
+        }
+
+        do {
+            let data = try Data(contentsOf: inputURL)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let snapshot = try decoder.decode(ProjectPerformanceSnapshot.self, from: data)
+            restorePersistentSnapshot(snapshot)
+            statusMessage = "Project snapshot restored: \(inputURL.lastPathComponent)."
+        } catch {
+            statusMessage = "Project snapshot restore failed: \(error.localizedDescription)"
+            print("[RunningOverlay] Project snapshot restore failed: \(String(reflecting: error))")
+        }
+    }
+
     func exportTestFrame(to destinationURL: URL) {
         let exportActivity = activity.duration > 0 ? activity : Self.calibrationActivity()
         let playheadActivityTime = timeline.activityElapsed(atProjectTime: timeline.playhead)
@@ -3027,6 +3091,43 @@ final class ProjectDocument: ObservableObject {
         selection = snapshot.selection
     }
 
+    private func makePersistentSnapshot() -> ProjectPerformanceSnapshot {
+        ProjectPerformanceSnapshot(
+            settings: settings,
+            activity: activity,
+            mediaItems: mediaItems,
+            mediaFolders: mediaFolders,
+            timeline: timeline,
+            overlayElements: overlayLayout.elements.map(OverlayTemplateElement.init(element:)),
+            userAssets: userAssets,
+            fitSourceName: fitSourceName
+        )
+    }
+
+    private func restorePersistentSnapshot(_ snapshot: ProjectPerformanceSnapshot) {
+        settings = snapshot.settings
+        activity = snapshot.activity
+        mediaItems = snapshot.mediaItems
+        mediaFolders = snapshot.mediaFolders
+        timeline = snapshot.timeline
+        overlayLayout = OverlayLayout(elements: snapshot.overlayElements.map(\.overlayElement))
+        userAssets = snapshot.userAssets
+        fitSourceName = snapshot.fitSourceName
+
+        selection = .none
+        isPlaying = false
+        playbackRate = 1
+        mediaPoolPreviewItemID = nil
+        mediaPoolPreviewSourceTime = 0
+        exportProgress = nil
+        exportTask = nil
+        isExporting = false
+        activeUndoSnapshot = nil
+        undoStack.removeAll()
+        redoStack.removeAll()
+        updateUndoRedoFlags()
+    }
+
     private func updateUndoRedoFlags() {
         canUndo = !undoStack.isEmpty
         canRedo = !redoStack.isEmpty
@@ -3042,6 +3143,18 @@ private struct ProjectSnapshot: Equatable {
     var overlayLayout: OverlayLayout
     var userAssets: [UserAsset]
     var selection: EditorSelection
+}
+
+struct ProjectPerformanceSnapshot: Codable, Equatable {
+    var schemaVersion: Int = 1
+    var settings: ProjectSettings
+    var activity: ActivityTimeline
+    var mediaItems: [MediaItem]
+    var mediaFolders: [MediaFolder]
+    var timeline: TimelineModel
+    var overlayElements: [OverlayTemplateElement]
+    var userAssets: [UserAsset]
+    var fitSourceName: String
 }
 
 private struct CopiedOverlayConfiguration {

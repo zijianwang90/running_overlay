@@ -49,6 +49,7 @@ Initial settings:
   - 30 fps
 
 The layer data update frame rate controls how often FIT-derived values change in overlay preview and export. It is separate from the project video frame rate: a 30 fps project can still update data values at 1, 5, 10, or 15 fps when the user wants a less jittery data layer.
+New projects default to 5 fps so exports reuse more overlay frames while still preserving the configured video frame rate.
 
 Open questions:
 
@@ -521,10 +522,24 @@ Export behavior:
 - `Export Test Frame` renders a PNG at the current playhead position through the SwiftUI shared-component rasterization path.
 - Main `Export` always uses the SwiftUI shared-component rasterization path (legacy export mode removed).
 - `Export Overlay JSON` writes the current `OverlayLayout` configuration to JSON for inspection, debugging, and reproducible style snapshots.
+- `Save Project Snapshot` writes a JSON snapshot of the current exportable project state for repeatable performance testing.
+- `Restore Project Snapshot` replaces the current project with a saved snapshot and clears runtime-only state such as selection, playback, export progress, and undo/redo history.
+- `swift run RunningOverlay --benchmark-export <snapshot.json>` runs a non-interactive benchmark export from a project snapshot, creates a timestamped output folder in the current working directory by default, writes MOV/profile artifacts there, and exits without requiring editor interaction.
+- `--benchmark-output <directory>` overrides the automated benchmark output directory.
 - Test clip/frame sampling time must use the same playhead-to-activity conversion and Layer Data FPS quantization path as preview (`activityElapsed(atProjectTime:)` + quantization).
 - Test frame PNG orientation must match preview/export coordinates (no vertical inversion in the saved image).
 - Text preset accent colors in export must come from each overlay style's accent color instead of system accent defaults.
 - Activity data is sampled from the FIT timeline for each segment using the configured Layer Data FPS cadence.
+- Adjacent video frames that resolve to the same quantized Layer Data sample may reuse the previous rendered overlay image while still writing one pixel buffer per output frame.
+- Export may cache a static decor layer and render dynamic overlays into a padded union rect when that rect covers less than most of the canvas.
+- If the dynamic rect reaches the full-frame fallback threshold, export must use a single full-frame render/draw path rather than layered drawing.
+- If the dynamic rect reaches the full-frame threshold but individual dynamic overlay rects remain small enough in aggregate, export may render those overlays separately into padded local images and composite them in one pixel-buffer pass.
+- Per-overlay and dynamic-region export compositing must convert SwiftUI top-left overlay rects into pixel-buffer draw rects so exported overlay positions match the editor preview.
+- In the per-overlay path, eligible Route Map overlays may cache the static route-map base once per export task and render only the current marker per sampled frame; this must be disabled when route-map stats bar content is visible.
+- Full-frame fallback should render the full overlay frame directly, without the cropped layer wrapper used for dynamic-region rendering.
+- Long-running export rendering should release temporary rendering and CGContext objects promptly to reduce per-segment outliers.
+- Each completed export task writes task-level profiling files (`export_profile_<timestamp>.json` and `.csv`) into the destination folder; the files include summary totals, per-segment metrics, static/dynamic layer timings, render path, dynamic render rect, overlay counts, full-frame fallback count, per-overlay render metrics, and frame-level outlier metrics.
+- Profiling JSON records each segment's 10 slowest frames with frame index, clip time, sample time, render reuse flag, render duration, draw duration, and frame duration.
 - Export rendering scales overlay dimensions from the 720p preview reference so text, padding, and graphic sizes remain proportional at 1080p, 2K, and 4K output sizes.
 - Exported text should be antialiased through supersampled rendering before compositing into the final transparent frame, especially for large colored timer overlays.
 - Exported distance timeline and elevation chart elements should match their preview counterparts instead of falling back to static text; Distance Timeline export uses the same preset-aware layout as preview.
@@ -542,8 +557,16 @@ Future requirements:
 - Alpha codec selection.
 - Per-track or per-camera export selection.
 - Export performance optimizations:
+  - Task-level JSON/CSV profiling artifacts for comparing export speed across repeatable project snapshots.
+  - Static/dynamic layer rendering with padded dynamic-region rendering when overlays occupy only part of the canvas.
+  - Full-frame fallback must preserve the original one-render, one-draw cost model when region rendering is not applicable.
+  - Direct full-frame rendering and prompt temporary object cleanup for reducing renderer jitter in long exports.
+  - Frame-level outlier profiling for identifying render/draw stalls inside otherwise normal segments.
+  - Per-overlay render composition for full-frame-union layouts whose individual overlay bounds are still small.
+  - Static/dynamic Route Map splitting so map background and route strokes are reused while only the current marker updates, gated by visual-alignment tests.
+  - Numeric overlay batching in the per-overlay export path when multiple simple numeric overlays fit in a small padded union rect, reducing `ImageRenderer` calls without changing preview/export visuals.
   - Incremental frame rendering with static-layer caching so unchanged overlay layers are reused across adjacent frames.
-  - Per-overlay dirty-region rendering and composition to avoid full-canvas redraw on every frame.
+  - Per-overlay dirty-region change detection to avoid rerendering overlay bounds whose sampled output did not change.
   - Optional adaptive layer data sampling for slowly changing metrics during long exports.
   - Optional hardware-accelerated compositing path (Metal/Core Image) for large resolutions and long clips.
   - Export telemetry output (frame encode time, render time, dropped/slow frames) for profiling and regression tracking.

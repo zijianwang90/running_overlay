@@ -12,6 +12,102 @@ Files changed:
 
 - `Sources/RunningOverlay/FitData/FitFileParser.swift`
 
+### Export Performance Branch: Profiling Files, Frame Reuse, Project Snapshots
+
+- Started the `codex/export-performance` branch in a dedicated worktree at `/Users/codywang/Documents/Projects/running_overlay_export_perf`.
+- Added Export dialog actions for saving and restoring a JSON project snapshot. The snapshot preserves exportable state for same-machine benchmark repeats and clears runtime-only state on restore.
+- Added task-level export profiling artifacts: each completed export writes JSON and CSV files with whole-export totals plus per-segment timing and frame-reuse metrics.
+- Added same-sample frame reuse in `SwiftUIOverlayVideoExporter`: adjacent frames with the same quantized Layer Data sample reuse the previous rendered `CGImage` while still appending every output frame.
+- Added focused tests for snapshot round-trip, profiling artifact structure, and sampling reuse decisions.
+- Restored missing SVG/Lottie fixture files required by the existing icon rendering smoke tests in fresh worktrees.
+
+### Export Performance Branch: Layered Dynamic-Region Rendering
+
+- Added `ExportRenderPlan` to classify conservative static decor overlays separately from dynamic data overlays.
+- MOV export now renders the static decor layer once, then renders dynamic overlays into a padded union rect per unique Layer Data sample, falling back to full-frame dynamic rendering when the dynamic area is too large.
+- Extended profiling schema to v2 with static/dynamic render and draw timings, dynamic render area ratio, static layer cache hits, and dynamic render counts.
+- Added tests for render-plan classification, dynamic union padding, full-frame fallback, and profiling field output.
+
+### Export Performance Branch: Full-Frame Fallback Guardrail
+
+- Split MOV export into explicit `fullFrameSingleLayer` and `layeredRegion` render paths.
+- Full-frame fallback now renders all visible overlays into one image and clears/draws the pixel buffer once per frame, avoiding the layered draw overhead seen in the second benchmark round.
+- Extended profiling schema to v3 with render path, dynamic render rect, overlay counts, and full-frame fallback count.
+- Added tests for full-frame fallback diagnostics and profiling schema v3 output.
+
+### Export Performance Branch: Frame-Level Outlier Profiling
+
+- Extended profiling schema to v4 with render/draw/frame p50, p95, max, slow-frame threshold, and slow-frame counts.
+- JSON segment profiles now include the 10 slowest frames with frame index, clip time, sample time, render reuse flag, and render/draw/frame durations.
+- CSV profiles include distribution columns for spreadsheet comparison while keeping detailed slow-frame samples in JSON.
+- Added tests for schema v4 fields and slow-frame JSON round-trip.
+
+### Export Performance Branch: Full-Frame Renderer Jitter Reduction
+
+- Test4 showed segment 4 and 9 returned to normal while segment 3 had sustained slow full-frame render samples.
+- Full-frame fallback now renders `SwiftUIOverlayFrameView` directly instead of using the cropped layer wrapper.
+- Wrapped `ImageRenderer` and pixel-buffer CGContext work in autorelease boundaries to reduce temporary object buildup across long exports.
+- Kept profiling schema at v4 so the next benchmark can use existing p50/p95/max and slow-frame fields.
+
+### Export Performance Branch: Per-Overlay Full-Frame-Union Rendering
+
+- Added `renderPath=perOverlay` for full-frame-union exports where every dynamic overlay has a reliable padded rect and the sum of those rects is below 85% of the canvas.
+- Per-overlay export renders each dynamic overlay into its own local `CGImage`, reuses the previous overlay image set for identical Layer Data sample times, and composites all overlay images into the pixel buffer with one context.
+- Kept the v5 `fullFrameSingleLayer` path for large single overlays, static-decor cases, or any plan without complete overlay rect coverage.
+- Extended profiling schema to v5 with per-overlay path enablement, total per-overlay area ratio, overlay render/draw counts, and JSON-only per-overlay timing/rect profiles.
+- Added tests for schema v5 fields, conservative large-overlay fallback, and per-overlay path eligibility when far-apart overlays force a full-frame dynamic union.
+
+### Export Performance Branch: Route Map Static Cache Candidate
+
+- Test7 showed per-overlay rendering reduced total export time to 478s and moved the remaining bottleneck to Route Map `ImageRenderer` cost.
+- Added a conservative Route Map static cache within the per-overlay path: route-map base content renders once per export task and the current marker renders per unique Layer Data sample.
+- Kept route maps with visible stats bars on the normal per-overlay path because stats values are elapsed-time dependent.
+- Added route-map shared-view flags so export can render base-only or marker-only route-map layers while the default preview/export call sites remain unchanged.
+- Added tests for Route Map static-cache eligibility.
+- Test8 improved total export time to 402s, but visual review showed route-map
+  layer position drift. The root issue was per-overlay compositing using
+  SwiftUI top-left render rects directly in the pixel-buffer CGContext. The
+  compositor now converts top-left rects into pixel-buffer draw rects before
+  drawing, and Route Map static caching is enabled again for another visual
+  benchmark pass.
+
+### Export Performance Branch: Automated Benchmark Export
+
+- Added `--benchmark-export <snapshot.json>` so `swift run RunningOverlay` can
+  restore a project snapshot and export all timeline clips without editor
+  interaction.
+- The benchmark command writes outputs into
+  `running_overlay_benchmark_<timestamp>` under the current working directory
+  by default, or into `--benchmark-output <directory>` when provided.
+- The runner uses the same `SwiftUIOverlayVideoExporter` path as the UI,
+  prints segment progress to stdout, writes MOV plus profiling JSON/CSV files,
+  and exits non-zero on failure.
+- Added parser tests for benchmark command arguments.
+
+Files changed:
+
+- `Sources/RunningOverlay/App/ExportBenchmarkCommand.swift`
+- `Sources/RunningOverlay/App/RunningOverlayApp.swift`
+
+### Export Performance Branch: Numeric Batch and 5 FPS Default
+
+- Added numeric overlay batching in the per-overlay path so heart rate, pace,
+  cadence, elapsed time, and real time can render as one local SwiftUI image
+  when their padded union stays compact.
+- Test12 reduced the fixed snapshot from Test9's 428.517s to 408.537s, with
+  overlay render count dropping from 44058 to 18882.
+- A 5 fps Layer Data benchmark reduced the same snapshot to 183.341s total and
+  134.333s image render time by cutting rendered sample frames from 6294 to
+  3149.
+- New projects now default Layer Data FPS to 5 fps while keeping the output
+  video frame rate independent.
+- `Sources/RunningOverlay/Export/SwiftUIOverlayVideoExporter.swift`
+- `Sources/RunningOverlay/Export/OverlayExportModels.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/UI/ExportDialogView.swift`
+- `docs/export-performance.md`
+- `Tests/RunningOverlayTests/ExportPerformanceTests.swift`
+
 ## 2026-05-10
 
 ### Media Pool Empty-Area Context Menu + Fix Root → Folder Drag (second attempt)
@@ -3596,3 +3692,61 @@ Summary:
 Files changed:
 
 - `Sources/RunningOverlay/UI/TimelineView.swift`
+
+### Export Performance Test9 + Next Benchmark Plan (2026-05-12)
+
+Summary:
+
+- Added the fixed benchmark fixture workflow for future optimization rounds:
+  `/Users/codywang/Documents/Video Production/0509 纽约/running_overlay_project_snapshot.json`.
+- Ran the new non-interactive benchmark command into Test9. Results:
+  `totalDuration=428.517s`, `imageRenderDuration=290.774s`,
+  `pixelBufferDrawDuration=135.670s`, `renderPath=perOverlay`.
+- Test9 kept the Test8 render-time improvement, but draw time increased, so
+  the next slice should reduce `ImageRenderer` work without adding more final
+  pixel-buffer draw operations.
+- Tested and reverted the next Distance Timeline static/dynamic split after
+  Test10/Test11. It reduced pixel-buffer draw time but increased
+  `ImageRenderer` time enough to regress total export time.
+
+Files changed:
+
+- `docs/export-performance.md`
+- `docs/development.md`
+- `docs/project-log.md`
+
+Verification:
+
+- Automated benchmark command completed successfully:
+  `swift run RunningOverlay --benchmark-export "/Users/codywang/Documents/Video Production/0509 纽约/running_overlay_project_snapshot.json" --benchmark-output "/Users/codywang/Documents/Video Production/0509 纽约/Test9"`.
+- Rejected benchmark results:
+  - Test10: `totalDuration=435.685s`, `imageRenderDuration=362.332s`,
+    `pixelBufferDrawDuration=71.044s`.
+  - Test11: `totalDuration=470.050s`, `imageRenderDuration=381.938s`,
+    `pixelBufferDrawDuration=85.704s`.
+
+### Export Numeric Batch Candidate (2026-05-12)
+
+Summary:
+
+- Added a conservative numeric overlay batch candidate for the per-overlay
+  export path.
+- Batchable overlays are simple numeric/text overlays; complex overlays such
+  as Distance Timeline, Route Map, Running Gauge, lap overlays, weather, and
+  decor remain separate.
+- The batch is enabled only when the padded numeric union is below 45% of the
+  canvas and smaller than the sum of individual numeric padded areas.
+- Profiling records the batch under the first grouped numeric overlay type so
+  the existing schema remains stable.
+- Test12 improved on Test9: `totalDuration=408.537s`,
+  `imageRenderDuration=282.182s`, `pixelBufferDrawDuration=124.412s`,
+  `overlayRenderCount=18882`, and `overlayDrawCount=75464`.
+
+Verification:
+
+- `swift test`
+- `git diff --check`
+- Fixed-snapshot benchmark:
+  `swift run RunningOverlay --benchmark-export "/Users/codywang/Documents/Video Production/0509 纽约/running_overlay_project_snapshot.json" --benchmark-output "/Users/codywang/Documents/Video Production/0509 纽约/Test12"`.
+- Extracted a Test12 frame with `ffmpeg` and confirmed overlay positions match
+  the expected preview layout.

@@ -5,6 +5,8 @@
 Icon?
 !Sources/RunningOverlay/Resources/Icons/
 !Sources/RunningOverlay/Resources/Icons/**
+!Tests/RunningOverlayTests/Fixtures/Icons/
+!Tests/RunningOverlayTests/Fixtures/Icons/**
 ._*
 .Spotlight-V100
 .Trashes

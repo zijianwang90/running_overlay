@@ -8,8 +8,8 @@ enum LapKind: String, Equatable, Codable {
     case unknown
 }
 
-struct LapRecord: Identifiable, Equatable {
-    let id = UUID()
+struct LapRecord: Identifiable, Equatable, Codable {
+    var id = UUID()
     var lapIndex: Int
     var startElapsedTime: TimeInterval
     var endElapsedTime: TimeInterval
@@ -25,7 +25,7 @@ struct LapRecord: Identifiable, Equatable {
     var kind: LapKind
 }
 
-struct ActivityTimeline: Equatable {
+struct ActivityTimeline: Equatable, Codable {
     var startDate: Date
     var duration: TimeInterval
     var distanceMeters: Double
@@ -295,7 +295,7 @@ enum ActivityAnnotatedSegmentKind: String, Equatable, Codable {
     }
 }
 
-struct ActivityAnnotatedSegment: Identifiable, Equatable {
+struct ActivityAnnotatedSegment: Identifiable, Equatable, Codable {
     var id = UUID()
     var kind: ActivityAnnotatedSegmentKind
     var startElapsedTime: TimeInterval
@@ -306,8 +306,8 @@ struct ActivityAnnotatedSegment: Identifiable, Equatable {
     }
 }
 
-struct ActivityRecord: Identifiable, Equatable {
-    let id = UUID()
+struct ActivityRecord: Identifiable, Equatable, Codable {
+    var id = UUID()
     var elapsedTime: TimeInterval
     var timestamp: Date
     var distanceMeters: Double?
