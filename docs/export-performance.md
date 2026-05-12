@@ -18,6 +18,11 @@ without changing visual output or export timing.
 - When the dynamic union rect covers most of the canvas, MOV export uses the
   full-frame single-layer path so fallback cases keep the original one-render,
   one-draw cost profile.
+- When the dynamic union rect is full-frame but each dynamic overlay has a
+  reliable smaller render rect, MOV export can use the per-overlay path:
+  render each overlay into its padded local rect, cache the set for identical
+  Layer Data sample times, then draw those overlay images into one pixel buffer
+  context.
 
 ## First Milestone
 
@@ -73,6 +78,21 @@ without changing visual output or export timing.
 - Profiling schema remains v4; compare v5 output using the existing p50/p95/max
   and `slowFrames` fields.
 
+## Sixth Milestone
+
+- Add a conservative per-overlay render path for full-frame-union exports whose
+  individual overlay padded rects still cover less than 85% of the canvas in
+  total.
+- Keep v5 full-frame fallback for large single overlays or cases with static
+  decor, so the new path does not split a no-benefit render.
+- Same-sample reuse now caches the previous set of per-overlay `CGImage`
+  renders and still appends every output video frame at its original
+  presentation time.
+- Profiling schema is v5. It adds `renderPath=perOverlay`,
+  `overlayRenderPathEnabled`, `overlayRenderAreaRatio`, `overlayRenderCount`,
+  `overlayDrawCount`, and JSON-only `overlayProfiles` for per-overlay render
+  rects and timing totals.
+
 ## Project Snapshot Workflow
 
 - Use `Save Project Snapshot` in the Export dialog to write
@@ -125,10 +145,17 @@ Task-level fields include:
 - `frameDurationP50`, `frameDurationP95`, `frameDurationMax`
 - `slowFrameThreshold`
 - `slowFrameCount`
+- `overlayRenderPathEnabledCount`
+- `overlayRenderAreaRatio`
+- `overlayRenderCount`
+- `overlayDrawCount`
 
 Each segment records the same timing buckets plus `segmentName`,
-`outputFileName`, `duration`, `frameCount`, and JSON-only `slowFrames`
-details for its 10 slowest frames.
+`outputFileName`, `duration`, `frameCount`, JSON-only `slowFrames`
+details for its 10 slowest frames, and JSON-only `overlayProfiles` details
+when the per-overlay path is available. Each overlay profile records overlay
+type, render rect, render area ratio, render count/duration, and draw
+count/duration.
 
 The CSV file contains the same comparison-oriented metrics in a spreadsheet
 shape: one `summary` row followed by one `segment` row per exported segment.
@@ -159,12 +186,19 @@ reports `renderPath=fullFrameSingleLayer`, then compare segment 3 against Test4:
 - Expected movement: lower `renderDurationP95`, `drawDurationP95`,
   `frameDurationMax`, and `slowFrameCount`.
 
+For the sixth benchmark round, look for `renderPath=perOverlay` on segments
+whose full dynamic union previously forced `dynamicRenderAreaRatio=1`. The path
+is expected to help only when `overlayRenderAreaRatio < 0.85`; otherwise v5
+full-frame fallback should remain active.
+
 ## Follow-Up Directions
 
 - Expand static-layer eligibility beyond decor overlays when a component can
   prove it is independent of `elapsedTime`.
-- Add per-overlay dirty-region composition so only changed overlay bounds are
-  redrawn inside the dynamic union rect.
+- Expand per-overlay eligibility to static-safe overlays once visual parity is
+  proven.
+- Add dirty-region change detection so overlays whose sampled output did not
+  change can reuse their previous local render independently.
 - Adaptive quality presets for draft vs final exports.
 - Optional hardware-accelerated composition path after CPU-side profiling has
   identified the real bottlenecks.

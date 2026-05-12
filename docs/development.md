@@ -484,8 +484,10 @@ Pending:
 - MOV export uses an `ExportRenderPlan` that separates static decor overlays from dynamic data overlays, caches the static layer once, and renders dynamic overlays into a padded union rect when the rect stays below 85% of the canvas.
 - When the dynamic rect reaches the full-frame fallback threshold, MOV export uses a single full-frame render/draw path instead of layered drawing to avoid fallback overhead.
 - Full-frame fallback renders `SwiftUIOverlayFrameView` directly; the cropped `SwiftUIOverlayLayerView` wrapper is reserved for static layers and dynamic-region rendering.
+- When full-frame fallback is caused by far-apart dynamic overlays rather than a truly large single overlay, MOV export may use `renderPath=perOverlay`: each dynamic overlay renders through the cropped layer wrapper into its own padded rect, then all local images are composited in one pixel-buffer context.
+- Per-overlay rendering is intentionally conservative: it requires no static decor overlays, a reliable render rect for every dynamic overlay, and total padded overlay area below 85% of the canvas. Otherwise the exporter keeps the v5 full-frame path.
 - `ImageRenderer` and pixel-buffer CGContext operations run inside autorelease boundaries to reduce temporary object buildup during long exports.
-- Each completed export task writes `export_profile_<timestamp>.json` and `export_profile_<timestamp>.csv` into the destination folder with whole-export totals, per-segment timing/reuse metrics, static/dynamic layer metrics, render-path diagnostics, and frame-level outlier metrics.
+- Each completed export task writes `export_profile_<timestamp>.json` and `export_profile_<timestamp>.csv` into the destination folder with whole-export totals, per-segment timing/reuse metrics, static/dynamic layer metrics, render-path diagnostics, per-overlay render metrics, and frame-level outlier metrics.
 - Export profiling stores per-segment render/draw/frame p50, p95, max, slow-frame count, and the 10 slowest frame samples in JSON so benchmark outliers can be tied back to frame index and `sampleElapsed`.
 
 Pending:
@@ -496,7 +498,7 @@ Pending:
 Export performance optimization directions:
 
 - Introduce frame-scoped render caches for static overlay layers (background shapes, static labels, static map tiles) and composite only dynamic layers each frame.
-- Add dirty-region rendering and composition so exporter redraws only changed overlay bounds instead of full-frame rasterization.
+- Add per-overlay dirty-region change detection so exporter rerenders only overlay bounds whose sampled output changes.
 - Parallelize non-UI preprocessing work (sample-time preparation, layout precompute, route/elevation intermediate buffers) while keeping `ImageRenderer` use on `MainActor`.
 - Add adaptive quality knobs for export jobs (supersampling factor, shadow quality, optional map detail level) with profile-based defaults.
 - Extend structured export profiling with optional deeper per-frame samples, memory high-water mark, and benchmark fixtures once summary/segment artifacts identify the bottlenecks.

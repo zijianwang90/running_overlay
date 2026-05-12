@@ -165,6 +165,38 @@ struct ExportPerformanceTests {
                     drawDuration: 0.04,
                     frameDuration: 0.24
                 )
+            ],
+            overlayRenderPathEnabled: true,
+            overlayRenderAreaRatio: 0.18,
+            overlayRenderCount: 60,
+            overlayDrawCount: 180,
+            overlayProfiles: [
+                OverlayExportOverlayProfile(
+                    overlayID: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+                    overlayType: .heartRate,
+                    renderRectX: 100,
+                    renderRectY: 200,
+                    renderRectWidth: 300,
+                    renderRectHeight: 200,
+                    renderAreaRatio: 0.06,
+                    renderCount: 30,
+                    renderDuration: 1.5,
+                    drawCount: 90,
+                    drawDuration: 0.3
+                ),
+                OverlayExportOverlayProfile(
+                    overlayID: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
+                    overlayType: .pace,
+                    renderRectX: 420,
+                    renderRectY: 200,
+                    renderRectWidth: 300,
+                    renderRectHeight: 400,
+                    renderAreaRatio: 0.12,
+                    renderCount: 30,
+                    renderDuration: 1.75,
+                    drawCount: 90,
+                    drawDuration: 0.3
+                )
             ]
         )
         let profile = OverlayExportProfile(
@@ -182,7 +214,7 @@ struct ExportPerformanceTests {
         let decoded = try decoder.decode(OverlayExportProfile.self, from: data)
 
         #expect(decoded.segmentCount == 1)
-        #expect(decoded.schemaVersion == 4)
+        #expect(decoded.schemaVersion == 5)
         #expect(decoded.totalFrameCount == 90)
         #expect(decoded.renderedFrameCount == 30)
         #expect(decoded.reusedFrameCount == 60)
@@ -213,7 +245,13 @@ struct ExportPerformanceTests {
         #expect(decoded.frameDurationMax == 0.24)
         #expect(decoded.slowFrameThreshold == 0.28)
         #expect(decoded.slowFrameCount == 1)
+        #expect(decoded.overlayRenderPathEnabledCount == 1)
+        #expect(decoded.overlayRenderAreaRatio == 0.18)
+        #expect(decoded.overlayRenderCount == 60)
+        #expect(decoded.overlayDrawCount == 180)
         #expect(decoded.segments.first?.slowFrames.first?.frameIndex == 12)
+        #expect(decoded.segments.first?.overlayProfiles.count == 2)
+        #expect(decoded.segments.first?.overlayProfiles.first?.overlayType == .heartRate)
         #expect(decoded.segments.first?.segmentName == "camera.mov")
 
         let csv = profile.csvString()
@@ -225,6 +263,7 @@ struct ExportPerformanceTests {
         #expect(csv.contains("\"renderDurationP50\",\"renderDurationP95\",\"renderDurationMax\""))
         #expect(csv.contains("\"frameDurationP50\",\"frameDurationP95\",\"frameDurationMax\""))
         #expect(csv.contains("\"slowFrameThreshold\",\"slowFrameCount\""))
+        #expect(csv.contains("\"overlayRenderPathEnabled\",\"overlayRenderAreaRatio\",\"overlayRenderCount\",\"overlayDrawCount\""))
         #expect(csv.contains("\"summary\""))
         #expect(csv.contains("\"segment\",\"0\",\"camera.mov\",\"camera_swiftui_overlay.mov\""))
     }
@@ -277,6 +316,24 @@ struct ExportPerformanceTests {
         #expect(plan.renderPath == .fullFrameSingleLayer)
         #expect(plan.dynamicRenderRect == CGRect(origin: .zero, size: canvasSize))
         #expect(plan.dynamicRenderAreaRatio == 1)
+        #expect(plan.overlayRenderAreaRatio >= ExportRenderPlan.perOverlayAreaThreshold)
+        #expect(!plan.usesPerOverlayRender)
+    }
+
+    @Test func renderPlanUsesPerOverlayPathWhenFullFrameUnionHasSmallIndividualAreas() {
+        let first = OverlayElement(type: .heartRate, position: CGPoint(x: 0.05, y: 0.1), scale: 1, style: .default)
+        let second = OverlayElement(type: .pace, position: CGPoint(x: 0.95, y: 0.9), scale: 1, style: .default)
+        let canvasSize = CGSize(width: 1280, height: 720)
+
+        let plan = ExportRenderPlan(overlays: [first, second], canvasSize: canvasSize, activity: .empty)
+
+        #expect(plan.usesFullFrameDynamicRender)
+        #expect(plan.usesPerOverlayRender)
+        #expect(plan.renderPath == .perOverlay)
+        #expect(plan.dynamicRenderRect == CGRect(origin: .zero, size: canvasSize))
+        #expect(plan.dynamicRenderAreaRatio == 1)
+        #expect(plan.overlayRenderItems.count == 2)
+        #expect(plan.overlayRenderAreaRatio < ExportRenderPlan.perOverlayAreaThreshold)
     }
 
     @Test func exportProfileAggregatesFullFrameFallbackDiagnostics() {

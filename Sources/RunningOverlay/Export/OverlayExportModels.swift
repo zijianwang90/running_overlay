@@ -38,6 +38,21 @@ struct OverlayExportFrameSample: Equatable {
 enum OverlayExportRenderPath: String, Codable, Equatable, Hashable {
     case fullFrameSingleLayer
     case layeredRegion
+    case perOverlay
+}
+
+struct OverlayExportOverlayProfile: Codable, Equatable {
+    var overlayID: UUID
+    var overlayType: OverlayElementType
+    var renderRectX: Double
+    var renderRectY: Double
+    var renderRectWidth: Double
+    var renderRectHeight: Double
+    var renderAreaRatio: Double
+    var renderCount: Int
+    var renderDuration: TimeInterval
+    var drawCount: Int
+    var drawDuration: TimeInterval
 }
 
 struct OverlayExportSlowFrameProfile: Codable, Equatable {
@@ -92,10 +107,15 @@ struct OverlayExportSegmentProfile: Codable, Equatable {
     var slowFrameThreshold: TimeInterval = 0
     var slowFrameCount: Int = 0
     var slowFrames: [OverlayExportSlowFrameProfile] = []
+    var overlayRenderPathEnabled: Bool = false
+    var overlayRenderAreaRatio: Double = 0
+    var overlayRenderCount: Int = 0
+    var overlayDrawCount: Int = 0
+    var overlayProfiles: [OverlayExportOverlayProfile] = []
 }
 
 struct OverlayExportProfile: Codable, Equatable {
-    var schemaVersion = 4
+    var schemaVersion = 5
     var startedAt: Date
     var completedAt: Date
     var settings: ProjectSettings
@@ -136,6 +156,10 @@ struct OverlayExportProfile: Codable, Equatable {
     var frameDurationMax: TimeInterval
     var slowFrameThreshold: TimeInterval
     var slowFrameCount: Int
+    var overlayRenderPathEnabledCount: Int
+    var overlayRenderAreaRatio: Double
+    var overlayRenderCount: Int
+    var overlayDrawCount: Int
     var segments: [OverlayExportSegmentProfile]
 
     init(startedAt: Date, completedAt: Date, settings: ProjectSettings, segments: [OverlayExportSegmentProfile]) {
@@ -185,6 +209,10 @@ struct OverlayExportProfile: Codable, Equatable {
         self.frameDurationMax = segments.map(\.frameDurationMax).max() ?? 0
         self.slowFrameThreshold = Self.weightedAverage(segments.map { ($0.slowFrameThreshold, $0.frameCount) })
         self.slowFrameCount = segments.map(\.slowFrameCount).reduce(0, +)
+        self.overlayRenderPathEnabledCount = segments.filter(\.overlayRenderPathEnabled).count
+        self.overlayRenderAreaRatio = Self.weightedAverage(segments.map { ($0.overlayRenderAreaRatio, $0.frameCount) })
+        self.overlayRenderCount = segments.map(\.overlayRenderCount).reduce(0, +)
+        self.overlayDrawCount = segments.map(\.overlayDrawCount).reduce(0, +)
         self.segments = segments
     }
 
@@ -201,7 +229,8 @@ struct OverlayExportProfile: Codable, Equatable {
             "renderDurationP50", "renderDurationP95", "renderDurationMax",
             "drawDurationP50", "drawDurationP95", "drawDurationMax",
             "frameDurationP50", "frameDurationP95", "frameDurationMax",
-            "slowFrameThreshold", "slowFrameCount"
+            "slowFrameThreshold", "slowFrameCount", "overlayRenderPathEnabled",
+            "overlayRenderAreaRatio", "overlayRenderCount", "overlayDrawCount"
         ]
         let summary = csvRow([
             "summary", "", "", "", "",
@@ -240,7 +269,11 @@ struct OverlayExportProfile: Codable, Equatable {
             String(frameDurationP95),
             String(frameDurationMax),
             String(slowFrameThreshold),
-            String(slowFrameCount)
+            String(slowFrameCount),
+            String(overlayRenderPathEnabledCount),
+            String(overlayRenderAreaRatio),
+            String(overlayRenderCount),
+            String(overlayDrawCount)
         ])
         let segmentRows = segments.map { segment in
             csvRow([
@@ -284,7 +317,11 @@ struct OverlayExportProfile: Codable, Equatable {
                 String(segment.frameDurationP95),
                 String(segment.frameDurationMax),
                 String(segment.slowFrameThreshold),
-                String(segment.slowFrameCount)
+                String(segment.slowFrameCount),
+                String(segment.overlayRenderPathEnabled),
+                String(segment.overlayRenderAreaRatio),
+                String(segment.overlayRenderCount),
+                String(segment.overlayDrawCount)
             ])
         }
         return ([csvRow(header), summary] + segmentRows).joined(separator: "\n") + "\n"

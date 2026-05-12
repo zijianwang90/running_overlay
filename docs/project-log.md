@@ -39,6 +39,14 @@
 - Wrapped `ImageRenderer` and pixel-buffer CGContext work in autorelease boundaries to reduce temporary object buildup across long exports.
 - Kept profiling schema at v4 so the next benchmark can use existing p50/p95/max and slow-frame fields.
 
+### Export Performance Branch: Per-Overlay Full-Frame-Union Rendering
+
+- Added `renderPath=perOverlay` for full-frame-union exports where every dynamic overlay has a reliable padded rect and the sum of those rects is below 85% of the canvas.
+- Per-overlay export renders each dynamic overlay into its own local `CGImage`, reuses the previous overlay image set for identical Layer Data sample times, and composites all overlay images into the pixel buffer with one context.
+- Kept the v5 `fullFrameSingleLayer` path for large single overlays, static-decor cases, or any plan without complete overlay rect coverage.
+- Extended profiling schema to v5 with per-overlay path enablement, total per-overlay area ratio, overlay render/draw counts, and JSON-only per-overlay timing/rect profiles.
+- Added tests for schema v5 fields, conservative large-overlay fallback, and per-overlay path eligibility when far-apart overlays force a full-frame dynamic union.
+
 Files changed:
 
 - `Sources/RunningOverlay/Export/SwiftUIOverlayVideoExporter.swift`
