@@ -112,8 +112,7 @@ struct BuiltInOverlayTemplate: Identifiable, Equatable {
             elements: [
                 Element(type: .elapsedTime, positionX: 0.5, positionY: 0.16, scale: 1.0),
                 Element(type: .pace, positionX: 0.78, positionY: 0.82, scale: 1.0),
-                Element(type: .heartRate, positionX: 0.22, positionY: 0.82, scale: 1.0),
-                Element(type: .lapLive, positionX: 0.5, positionY: 0.86, scale: 1.0)
+                Element(type: .heartRate, positionX: 0.22, positionY: 0.82, scale: 1.0)
             ]
         ),
         BuiltInOverlayTemplate(

@@ -20,12 +20,6 @@ struct ParameterPanelView: View {
                         RunningGaugeOverlayDetailView(elementID: elementID)
                     } else if element.type == .routeMap {
                         RouteMapOverlayDetailView(elementID: elementID)
-                    } else if element.type == .lapList {
-                        LapListOverlayDetailView(elementID: elementID)
-                    } else if element.type == .lapCard {
-                        LapCardOverlayDetailView(elementID: elementID)
-                    } else if element.type == .lapLive {
-                        LapLiveOverlayDetailView(elementID: elementID)
                     } else if element.type == .weatherWidget {
                         WeatherWidgetOverlayDetailView(elementID: elementID)
                     } else if element.type.isDecorOverlay {

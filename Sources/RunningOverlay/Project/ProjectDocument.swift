@@ -1530,42 +1530,6 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.routeMapStatsBar.blurRadius = min(max(radius, 0), 32)
     }
 
-    func mutateLapListStyle(_ elementID: OverlayElement.ID, _ mutate: (inout LapListStyle) -> Void) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.lapList)
-    }
-
-    func mutateLapListStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout LapListStyle) -> Void) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.lapList)
-    }
-
-    func mutateLapCardStyle(_ elementID: OverlayElement.ID, _ mutate: (inout LapCardStyle) -> Void) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.lapCard)
-    }
-
-    func mutateLapCardStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout LapCardStyle) -> Void) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.lapCard)
-    }
-
-    func mutateLapLiveStyle(_ elementID: OverlayElement.ID, _ mutate: (inout LapLiveStyle) -> Void) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.lapLive)
-    }
-
-    func mutateLapLiveStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout LapLiveStyle) -> Void) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.lapLive)
-    }
-
     func mutateDecorStyle(_ elementID: OverlayElement.ID, _ mutate: (inout DecorStyle) -> Void) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }

@@ -23,9 +23,6 @@ enum OverlayPasteCategory: String, Equatable {
     case elevationChart
     case runningGauge
     case routeMap
-    case lapList
-    case lapCard
-    case lapLive
     case weather
 }
 
@@ -43,9 +40,6 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     case power
     case runningGauge
     case routeMap
-    case lapList
-    case lapCard
-    case lapLive
     case verticalOscillation
     case groundContactTime
     case strideLength
@@ -75,9 +69,6 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         case .power: "Power"
         case .runningGauge: "Running Gauge"
         case .routeMap: "Route Map"
-        case .lapList: "Lap List"
-        case .lapCard: "Lap Card"
-        case .lapLive: "Lap Live"
         case .verticalOscillation: "Vertical Oscillation"
         case .groundContactTime: "Ground Contact Time"
         case .strideLength: "Stride Length"
@@ -94,7 +85,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
 
     var supportsTextPresets: Bool {
         switch self {
-        case .distanceTimeline, .elevationChart, .runningGauge, .routeMap, .lapList, .lapCard, .lapLive,
+        case .distanceTimeline, .elevationChart, .runningGauge, .routeMap,
              .weatherWidget, .decorSolidColor, .decorIcon, .decorText:
             false
         default:
@@ -149,12 +140,6 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
             return .runningGauge
         case .routeMap:
             return .routeMap
-        case .lapList:
-            return .lapList
-        case .lapCard:
-            return .lapCard
-        case .lapLive:
-            return .lapLive
         case .weatherWidget:
             return .weather
         default:
@@ -242,7 +227,7 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
         case .groundContactBalance: [.balancePercent]
         case .temperature: [.temperatureCelsius, .temperatureFahrenheit]
         case .grade: [.gradePercent]
-        case .distanceTimeline, .elevationChart, .runningGauge, .routeMap, .lapList, .lapCard, .lapLive,
+        case .distanceTimeline, .elevationChart, .runningGauge, .routeMap,
              .weatherWidget, .decorSolidColor, .decorIcon, .decorText:
             []
         }
@@ -422,15 +407,6 @@ struct OverlayStyle: Equatable, Codable {
     /// default so existing projects are unaffected.
     var routeMapStatsBar: OverlayRouteMapStatsBarConfig
 
-    /// Lap list overlay configuration. Only used by `.lapList` elements.
-    var lapList: LapListStyle
-
-    /// Lap card overlay configuration. Only used by `.lapCard` elements.
-    var lapCard: LapCardStyle
-
-    /// Lap live overlay configuration. Only used by `.lapLive` elements.
-    var lapLive: LapLiveStyle
-
     /// Decor element configuration. Used by `.decorSolidColor`, `.decorIcon`,
     /// `.decorText`. See `DecorStyle`.
     var decor: DecorStyle
@@ -522,9 +498,6 @@ struct OverlayStyle: Equatable, Codable {
         elevationChart: .default,
         gauge: RunningGaugeStyle.default,
         routeMapStatsBar: .default,
-        lapList: .default,
-        lapCard: .default,
-        lapLive: .default,
         decor: .default,
         weatherWidget: .preset(.simpleCard)
     )
@@ -613,9 +586,6 @@ struct OverlayStyle: Equatable, Codable {
         elevationChart: ElevationChartStyle = .default,
         gauge: RunningGaugeStyle = .default,
         routeMapStatsBar: OverlayRouteMapStatsBarConfig = .default,
-        lapList: LapListStyle = .default,
-        lapCard: LapCardStyle = .default,
-        lapLive: LapLiveStyle = .default,
         decor: DecorStyle = .default,
         weatherWidget: WeatherWidgetStyle = .preset(.simpleCard)
     ) {
@@ -702,9 +672,6 @@ struct OverlayStyle: Equatable, Codable {
         self.elevationChart = elevationChart
         self.gauge = gauge
         self.routeMapStatsBar = routeMapStatsBar
-        self.lapList = lapList
-        self.lapCard = lapCard
-        self.lapLive = lapLive
         self.decor = decor
         self.weatherWidget = weatherWidget
     }
@@ -810,9 +777,6 @@ struct OverlayStyle: Equatable, Codable {
             gauge = RunningGaugeStyle.preset(gaugePreset)
         }
         routeMapStatsBar = try container.decodeIfPresent(OverlayRouteMapStatsBarConfig.self, forKey: .routeMapStatsBar) ?? .default
-        lapList = try container.decodeIfPresent(LapListStyle.self, forKey: .lapList) ?? .default
-        lapCard = try container.decodeIfPresent(LapCardStyle.self, forKey: .lapCard) ?? .default
-        lapLive = try container.decodeIfPresent(LapLiveStyle.self, forKey: .lapLive) ?? .default
         decor = try container.decodeIfPresent(DecorStyle.self, forKey: .decor) ?? .default
         weatherWidget = try container.decodeIfPresent(WeatherWidgetStyle.self, forKey: .weatherWidget) ?? .preset(.simpleCard)
     }
@@ -2719,313 +2683,6 @@ struct OverlayColor: Equatable, Hashable, Codable {
     static let pink = OverlayColor(red: 1, green: 0.28, blue: 0.43, alpha: 1)
 }
 
-// MARK: - Lap List
-
-enum LapProgressMode: String, Equatable, Codable {
-    case distance
-    case time
-}
-
-enum LapListAnchor: String, CaseIterable, Identifiable, Equatable, Codable {
-    case top
-    case center
-    case bottom
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .top: "Top / 顶部"
-        case .center: "Center / 居中"
-        case .bottom: "Bottom / 底部"
-        }
-    }
-}
-
-enum LapColumnMetric: String, CaseIterable, Identifiable, Equatable, Codable {
-    case lapNumber
-    case lapKind
-    case distance
-    case elapsedTime
-    case pace
-    case heartRate
-    case cadence
-    case power
-    case ascent
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .lapNumber: "Lap #"
-        case .lapKind: "Type"
-        case .distance: "Distance"
-        case .elapsedTime: "Time"
-        case .pace: "Pace"
-        case .heartRate: "HR"
-        case .cadence: "Cadence"
-        case .power: "Power"
-        case .ascent: "Ascent"
-        }
-    }
-}
-
-struct LapListColumn: Identifiable, Equatable, Codable {
-    var metric: LapColumnMetric
-    var visible: Bool
-
-    var id: String { metric.rawValue }
-}
-
-struct LapListStyle: Equatable, Codable {
-    var visibleRowCount: Int
-    var currentRowAnchor: LapListAnchor
-    var fadeEnabled: Bool
-    var fadeMinOpacity: Double
-    var progressBarEnabled: Bool
-    var progressMode: LapProgressMode
-    var progressColor: OverlayColor
-    var progressOpacity: Double
-    var showCompletedMark: Bool
-    var rowHeight: Double
-    var rowCornerRadius: Double
-    var rowSpacing: Double
-    var backgroundOpacity: Double
-    var columns: [LapListColumn]
-
-    static let `default` = LapListStyle(
-        visibleRowCount: 5,
-        currentRowAnchor: .center,
-        fadeEnabled: true,
-        fadeMinOpacity: 0.25,
-        progressBarEnabled: true,
-        progressMode: .distance,
-        progressColor: .blue,
-        progressOpacity: 0.35,
-        showCompletedMark: false,
-        rowHeight: 36,
-        rowCornerRadius: 4,
-        rowSpacing: 2,
-        backgroundOpacity: 0.75,
-        columns: [
-            LapListColumn(metric: .lapNumber, visible: true),
-            LapListColumn(metric: .lapKind, visible: true),
-            LapListColumn(metric: .distance, visible: true),
-            LapListColumn(metric: .elapsedTime, visible: true),
-            LapListColumn(metric: .pace, visible: true),
-            LapListColumn(metric: .heartRate, visible: false),
-            LapListColumn(metric: .cadence, visible: false),
-            LapListColumn(metric: .power, visible: false),
-            LapListColumn(metric: .ascent, visible: false),
-        ]
-    )
-}
-
-// MARK: - Recovery Metric
-
-/// Metrics that can be displayed in the recovery section of Lap Card / Lap Live
-/// when the current lap kind is `.rest`.
-enum RecoveryMetric: String, CaseIterable, Identifiable, Equatable, Codable {
-    /// Peak HR recorded since the start of the current rest lap.
-    case peakHR
-    /// Current interpolated heart rate.
-    case currentHR
-    /// bpm dropped from the rest-lap peak to now.
-    case hrDrop
-    /// Percentage of peak HR that has been shed (drop / peak × 100).
-    case hrDropPercent
-    /// Time elapsed in the current rest lap (mm:ss).
-    case restElapsedTime
-    /// How many bpm the current HR is still above a user-configured target.
-    case targetHRGap
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .peakHR: "Peak HR"
-        case .currentHR: "HR Now"
-        case .hrDrop: "HR Drop"
-        case .hrDropPercent: "Drop %"
-        case .restElapsedTime: "Rest Time"
-        case .targetHRGap: "→ Target"
-        }
-    }
-}
-
-// MARK: - Lap Card
-
-/// Columns shown in a Lap Card recap — superset of `LapColumnMetric` with `maxHR`.
-enum LapCardColumn: String, CaseIterable, Identifiable, Equatable, Codable {
-    case lapNumber
-    case lapKind
-    case distance
-    case elapsedTime
-    case pace
-    case avgHR
-    case maxHR
-    case cadence
-    case power
-    case ascent
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .lapNumber: "Lap #"
-        case .lapKind: "Type"
-        case .distance: "Distance"
-        case .elapsedTime: "Time"
-        case .pace: "Avg Pace"
-        case .avgHR: "Avg HR"
-        case .maxHR: "Max HR"
-        case .cadence: "Cadence"
-        case .power: "Power"
-        case .ascent: "Ascent"
-        }
-    }
-}
-
-struct LapCardColumnConfig: Identifiable, Equatable, Codable {
-    var column: LapCardColumn
-    var visible: Bool
-
-    var id: String { column.rawValue }
-}
-
-struct LapCardStyle: Equatable, Codable {
-    /// Width of the card in design units (before element.scale).
-    var cardWidth: Double
-    var cornerRadius: Double
-    var backgroundOpacity: Double
-    /// Ordered list of stat columns to display.
-    var columns: [LapCardColumnConfig]
-    /// When true, a recovery HR section is appended during rest laps.
-    var showRecoverySection: Bool
-    /// Recovery metrics shown in the recovery section.
-    var recoveryMetrics: [RecoveryMetric]
-    /// Target HR for `.targetHRGap`. 0 means the metric is disabled.
-    var recoveryTargetHR: Int
-    /// Show a recovery-progress bar toward the target HR.
-    var recoveryProgressEnabled: Bool
-    var progressColor: OverlayColor
-
-    static let `default` = LapCardStyle(
-        cardWidth: 280,
-        cornerRadius: 8,
-        backgroundOpacity: 0.80,
-        columns: [
-            LapCardColumnConfig(column: .lapNumber, visible: true),
-            LapCardColumnConfig(column: .lapKind, visible: true),
-            LapCardColumnConfig(column: .distance, visible: true),
-            LapCardColumnConfig(column: .elapsedTime, visible: true),
-            LapCardColumnConfig(column: .pace, visible: true),
-            LapCardColumnConfig(column: .avgHR, visible: true),
-            LapCardColumnConfig(column: .maxHR, visible: false),
-            LapCardColumnConfig(column: .cadence, visible: false),
-            LapCardColumnConfig(column: .power, visible: false),
-            LapCardColumnConfig(column: .ascent, visible: false),
-        ],
-        showRecoverySection: true,
-        recoveryMetrics: [.currentHR, .hrDrop, .hrDropPercent, .restElapsedTime],
-        recoveryTargetHR: 0,
-        recoveryProgressEnabled: false,
-        progressColor: .blue
-    )
-}
-
-// MARK: - Lap Live
-
-/// Metrics shown in the active-lap panel of Lap Live.
-enum LapLiveMetric: String, CaseIterable, Identifiable, Equatable, Codable {
-    case lapElapsedTime
-    case lapDistance
-    case pace
-    case heartRate
-    case power
-    case cadence
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .lapElapsedTime: "Lap Time"
-        case .lapDistance: "Lap Dist"
-        case .pace: "Pace"
-        case .heartRate: "HR"
-        case .power: "Power"
-        case .cadence: "Cadence"
-        }
-    }
-}
-
-enum LapLiveRestMode: String, CaseIterable, Identifiable, Equatable, Codable {
-    /// Show the full recovery metrics section.
-    case recovery
-    /// Show a minimal condensed view (lap number + rest time only).
-    case minimal
-    /// Hide the overlay entirely during rest laps.
-    case hidden
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .recovery: "Recovery Panel"
-        case .minimal: "Minimal"
-        case .hidden: "Hide"
-        }
-    }
-}
-
-struct LapLiveMetricConfig: Identifiable, Equatable, Codable {
-    var metric: LapLiveMetric
-    var visible: Bool
-
-    var id: String { metric.rawValue }
-}
-
-struct LapLiveStyle: Equatable, Codable {
-    var cardWidth: Double
-    var cornerRadius: Double
-    var backgroundOpacity: Double
-    /// Metrics visible in active-lap mode.
-    var activeMetrics: [LapLiveMetricConfig]
-    /// Show a progress bar for the current lap.
-    var showProgressBar: Bool
-    var progressMode: LapProgressMode
-    var progressColor: OverlayColor
-    var progressOpacity: Double
-    /// What to display when the current lap kind is `.rest`.
-    var restMode: LapLiveRestMode
-    /// Recovery metrics shown when restMode == .recovery.
-    var recoveryMetrics: [RecoveryMetric]
-    var recoveryTargetHR: Int
-    var recoveryProgressEnabled: Bool
-
-    static let `default` = LapLiveStyle(
-        cardWidth: 240,
-        cornerRadius: 8,
-        backgroundOpacity: 0.80,
-        activeMetrics: [
-            LapLiveMetricConfig(metric: .lapElapsedTime, visible: true),
-            LapLiveMetricConfig(metric: .lapDistance, visible: true),
-            LapLiveMetricConfig(metric: .pace, visible: true),
-            LapLiveMetricConfig(metric: .heartRate, visible: true),
-            LapLiveMetricConfig(metric: .power, visible: false),
-            LapLiveMetricConfig(metric: .cadence, visible: false),
-        ],
-        showProgressBar: true,
-        progressMode: .distance,
-        progressColor: .blue,
-        progressOpacity: 0.35,
-        restMode: .recovery,
-        recoveryMetrics: [.currentHR, .hrDrop, .hrDropPercent, .restElapsedTime],
-        recoveryTargetHR: 0,
-        recoveryProgressEnabled: false
-    )
-}
-
 // MARK: - Decor Text Support Types
 
 /// Font reference for the Decor Text element. Bundled fonts map to
@@ -3103,7 +2760,7 @@ enum DecorShape: String, CaseIterable, Identifiable, Codable {
 }
 
 /// Sub-struct holding all decor element style fields. Per project convention
-/// (mirrors `gauge`, `distanceTimeline`, `lapList`, etc.) decor fields live in
+/// (mirrors `gauge`, `distanceTimeline`, etc.) decor fields live in
 /// their own namespace so they don't pollute numeric overlay storage. Future
 /// decor element types (Icon, Text) will extend this same struct.
 struct DecorStyle: Equatable, Codable {

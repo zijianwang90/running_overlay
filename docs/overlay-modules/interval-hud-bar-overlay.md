@@ -6,10 +6,12 @@ Last updated: 2026-05-13
 
 Interval HUD Bar is a horizontal interval-training overlay for showing the current workout rep, phase, remaining work, and key live metrics in one compact broadcast-style strip.
 
-It is separate from Lap Live:
+It replaces the retired lap overlay prototypes:
 
-- Lap Live is a compact vertical current-lap panel.
-- Interval HUD Bar is a wide horizontal HUD optimized for interval videos and lower-third placement.
+- `Lap List` was a vertical lap teleprompter.
+- `Lap Card` was a completed-lap recap card.
+- `Lap Live` was a compact vertical current-lap panel.
+- `Interval HUD Bar` is the new wide horizontal HUD optimized for interval videos and lower-third placement.
 
 ## Data Source
 

@@ -14,11 +14,11 @@ Design reference:
 
 - `OverlayElementType.intervalHUDBar`
 
-Related but separate overlays:
+Replaces retired lap overlay prototypes:
 
-- `lapLive`: compact vertical lap HUD.
-- `lapCard`: recovery recap card.
-- `lapList`: full lap list teleprompter.
+- `Lap Live`: compact vertical lap HUD.
+- `Lap Card`: recovery recap card.
+- `Lap List`: full lap list teleprompter.
 
 ## Functional Scope
 

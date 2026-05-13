@@ -2,6 +2,46 @@
 
 ## 2026-05-12
 
+### Retired Early Lap Overlay Prototypes
+
+- Removed the original `Lap List`, `Lap Card`, and `Lap Live` overlay components from the active app surface before implementing the replacement Interval HUD Bar.
+- Removed their element types, paste categories, style models, render layouts, SwiftUI preview/export views, exporter dispatch, inspector panels, Overlay Pool tiles, template references, and bundled template style payloads.
+- Deleted the old module note and added `docs/overlay-modules/retired-lap-overlays.md` with the retirement rationale, affected files, and git recovery commands.
+- Updated current architecture, roadmap, media-pool design, module, and interval HUD docs so they no longer describe the retired overlays as available features.
+
+Files removed:
+
+- `Sources/RunningOverlay/UI/LapListOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/LapCardOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/LapLiveOverlayDetailView.swift`
+- `docs/overlay-modules/lap-list-overlay.md`
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/OverlayElement.swift`
+- `Sources/RunningOverlay/Overlay/OverlayRenderModel.swift`
+- `Sources/RunningOverlay/UI/OverlaySharedViews.swift`
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `Sources/RunningOverlay/UI/ParameterPanelView.swift`
+- `Sources/RunningOverlay/UI/OverlayPoolView.swift`
+- `Sources/RunningOverlay/UI/NumericOverlayDetailView.swift`
+- `Sources/RunningOverlay/Overlay/OverlayTemplate.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/Export/SwiftUIOverlayVideoExporter.swift`
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `Sources/RunningOverlay/Overlay/OverlayValueFormatter.swift`
+- `Sources/RunningOverlay/Resources/Templates/EasyRun.rotemplate`
+- `docs/architecture.md`
+- `docs/development.md`
+- `docs/roadmap.md`
+- `docs/design/panels/media-pool/media-pool-ui.md`
+- `docs/design/panels/media-pool/media-pool-ui.spec.json`
+- `docs/design/overlays/numeric/numeric-overlay-ui.md`
+- `docs/design/overlays/interval-hud-bar/interval-hud-bar-overlay-ui.md`
+- `docs/overlay-modules/README.md`
+- `docs/overlay-modules/interval-hud-bar-overlay.md`
+- `docs/overlay-modules/retired-lap-overlays.md`
+
 ### Project Settings: Heart Rate Zones
 
 - Added a new "Physiology" section to Project Settings with a single row "Heart Rate Zones → Configure…". Sits peer-to-peer with the existing Typography / Font Library row per user request, opens a dedicated sheet.
