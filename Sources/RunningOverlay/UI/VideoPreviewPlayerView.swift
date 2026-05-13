@@ -5,6 +5,7 @@ struct VideoPreviewPlayerView: NSViewRepresentable {
     var previewMedia: PreviewMedia?
     var isPlaying: Bool
     var playbackRate: Double = 1
+    var fitMode: PreviewFitMode = .fit
     var onPlaybackActivityTime: (TimeInterval) -> Void
 
     func makeNSView(context: Context) -> VideoPreviewNSView {
@@ -16,6 +17,7 @@ struct VideoPreviewPlayerView: NSViewRepresentable {
             previewMedia: previewMedia,
             isPlaying: isPlaying,
             playbackRate: playbackRate,
+            fitMode: fitMode,
             onPlaybackActivityTime: onPlaybackActivityTime
         )
     }
@@ -36,7 +38,7 @@ final class VideoPreviewNSView: NSView {
         super.init(frame: frameRect)
         wantsLayer = true
         layer = CALayer()
-        layer?.backgroundColor = NSColor.black.cgColor
+        layer?.backgroundColor = NSColor.clear.cgColor
         playerLayer.player = player
         playerLayer.videoGravity = .resizeAspect
         layer?.addSublayer(playerLayer)
@@ -73,9 +75,14 @@ final class VideoPreviewNSView: NSView {
         previewMedia: PreviewMedia?,
         isPlaying: Bool,
         playbackRate: Double,
+        fitMode: PreviewFitMode,
         onPlaybackActivityTime: @escaping (TimeInterval) -> Void
     ) {
         self.onPlaybackActivityTime = onPlaybackActivityTime
+        let desiredGravity: AVLayerVideoGravity = fitMode == .fill ? .resizeAspectFill : .resizeAspect
+        if playerLayer.videoGravity != desiredGravity {
+            playerLayer.videoGravity = desiredGravity
+        }
 
         guard let previewMedia else {
             currentURL = nil

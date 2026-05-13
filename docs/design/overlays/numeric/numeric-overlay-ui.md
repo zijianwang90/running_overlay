@@ -172,9 +172,12 @@ Controls:
 
 - `Enable Unit` toggle in section header accessory.
 - Position segmented control: `Top`, `Bottom`, `Left`, `Right`.
+- Align segmented control (left / center / right) — backed by `OverlayStyle.unitTextAlignment`. Independent from both `labelTextAlignment` and `textAlignment` (value): the SwiftUI views anchor the outer VStack on `.leading` and let the unit row apply its own `frame(maxWidth: .infinity, alignment:)`. Only takes visual effect when the unit sits on its own line (`unitPosition == .top`/`.bottom` in the stacked metric layouts, or always in the `bigNumber` preset); inline unit positions stay baseline-glued to the value.
+- Color swatch + Alpha.
 - Unit font family.
 - Unit font size.
 - Unit font weight.
+- Spacing slider.
 
 ## Divider Section
 

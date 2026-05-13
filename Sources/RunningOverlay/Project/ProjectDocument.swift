@@ -23,6 +23,8 @@ final class ProjectDocument: ObservableObject {
         didSet { IconAssetResolver.configure(userAssets: userAssets, projectURL: projectURL) }
     }
     @Published var showPreviewGuides = false
+    @Published var previewFitMode: PreviewFitMode = .fit
+    @Published var previewCanvasBackground: Color = EditorTheme.appBackground
     @Published var isExporting = false
     @Published var exportProgress: ExportProgressState?
     @Published var mediaPoolPreviewItemID: MediaItem.ID?
@@ -2132,6 +2134,12 @@ final class ProjectDocument: ObservableObject {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
         overlayLayout.elements[index].style.labelTextAlignment = alignment
+    }
+
+    func setOverlayUnitTextAlignment(_ elementID: OverlayElement.ID, alignment: OverlayTextAlignment) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.unitTextAlignment = alignment
     }
 
     func setOverlayDividerEnabled(_ elementID: OverlayElement.ID, enabled: Bool) {

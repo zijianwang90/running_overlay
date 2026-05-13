@@ -1,6 +1,18 @@
 import AppKit
 import SwiftUI
 
+enum PreviewFitMode: Hashable {
+    case fit
+    case fill
+
+    var label: String {
+        switch self {
+        case .fit: return "Fit"
+        case .fill: return "Fill"
+        }
+    }
+}
+
 struct PreviewCanvasView: View {
     @EnvironmentObject private var project: ProjectDocument
     // Start position captured once per drag gesture; cumulative translation applied each frame.
@@ -23,13 +35,14 @@ struct PreviewCanvasView: View {
                 ZStack {
                     ZStack {
                         Rectangle()
-                            .fill(EditorTheme.appBackground)
+                            .fill(project.previewCanvasBackground)
 
                         if let previewMedia = project.activePreviewMedia() {
                             VideoPreviewPlayerView(
                                 previewMedia: previewMedia,
                                 isPlaying: project.isPlaying,
-                                playbackRate: project.playbackRate
+                                playbackRate: project.playbackRate,
+                                fitMode: project.previewFitMode
                             ) { activityTime in
                                 if project.isPreviewingMediaPoolItem {
                                     project.setMediaPoolPreviewSourceTime(activityTime)
@@ -500,11 +513,31 @@ private struct PreviewHeader: View {
             .help("Show Safe Frames")
             .accessibilityLabel("Show Safe Frames")
 
+            ColorPicker(
+                "Canvas Background",
+                selection: $project.previewCanvasBackground,
+                supportsOpacity: false
+            )
+            .labelsHidden()
+            .frame(height: PreviewLayout.headerButtonSize)
+            .help("Canvas Background Color")
+            .accessibilityLabel("Canvas Background Color")
+
             Menu {
-                Button("Fit") {}
+                ForEach([PreviewFitMode.fit, .fill], id: \.self) { mode in
+                    Button {
+                        project.previewFitMode = mode
+                    } label: {
+                        if project.previewFitMode == mode {
+                            Label(mode.label, systemImage: "checkmark")
+                        } else {
+                            Text(mode.label)
+                        }
+                    }
+                }
             } label: {
                 HStack(spacing: EditorTheme.space1) {
-                    Text("Fit")
+                    Text(project.previewFitMode.label)
                     Image(systemName: "chevron.down")
                         .font(.system(size: 9, weight: .semibold))
                 }
@@ -520,6 +553,7 @@ private struct PreviewHeader: View {
                 }
             }
             .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
             .fixedSize()
             .help("Preview Zoom")
             .accessibilityLabel("Preview Zoom")
@@ -1304,11 +1338,11 @@ struct TextPresetOverlayView: View {
             Text(layout.components.value)
                 .font(.custom(element.style.fontName, size: layout.fontSize * 0.92).weight(.bold))
                 .tracking(-layout.fontSize * 0.009)
-                .foregroundStyle(foreground)
+                .foregroundStyle(valueTextColor)
             if element.style.showUnit, !layout.components.unit.isEmpty {
                 Text(layout.components.unit)
                     .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
-                    .foregroundStyle(foreground.opacity(0.92))
+                    .foregroundStyle(unitTextColor)
             }
         }
         Group {
@@ -1349,7 +1383,6 @@ struct TextPresetOverlayView: View {
 
     @ViewBuilder
     private var splitLabelView: some View {
-        let foreground = Color(element.style.foregroundColor)
         let labelColor = Color(element.style.labelColor).opacity(element.style.labelOpacity)
         VStack(alignment: .leading, spacing: layout.fontSize * 0.10) {
             if element.style.showLabel, !layout.components.label.isEmpty {
@@ -1366,18 +1399,20 @@ struct TextPresetOverlayView: View {
                     .frame(width: layout.fontSize * 2.4, height: max(layout.dividerThickness, 0))
                     .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
             }
-            HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.14) {
-                Text(layout.components.value)
-                    .font(.custom(element.style.fontName, size: layout.fontSize).weight(.bold))
-                    .tracking(-layout.fontSize * 0.012)
-                    .foregroundStyle(foreground)
-                if element.style.showUnit, !layout.components.unit.isEmpty {
-                    Text(layout.components.unit)
-                        .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
-                        .foregroundStyle(foreground.opacity(0.92))
-                }
+            // Value and unit live on their own rows so each can drive its own
+            // frame alignment. The user wants unit-align to behave independently
+            // from value-align — sharing an HStack would glue them together.
+            Text(layout.components.value)
+                .font(.custom(element.style.fontName, size: layout.fontSize).weight(.bold))
+                .tracking(-layout.fontSize * 0.012)
+                .foregroundStyle(valueTextColor)
+                .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
+            if element.style.showUnit, !layout.components.unit.isEmpty {
+                Text(layout.components.unit)
+                    .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
+                    .foregroundStyle(unitTextColor)
+                    .frame(maxWidth: .infinity, alignment: unitStackFrameAlignment)
             }
-            .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
         }
         .fixedSize(horizontal: true, vertical: false)
     }
@@ -1385,12 +1420,11 @@ struct TextPresetOverlayView: View {
     @ViewBuilder
     private var neonGlowView: some View {
         let accent = Color(element.style.accentColor)
-        let foreground = Color(element.style.foregroundColor)
         HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.14) {
             Text(layout.components.value)
                 .font(.custom(element.style.fontName, size: layout.fontSize).weight(.bold))
                 .tracking(-layout.fontSize * 0.010)
-                .foregroundStyle(foreground)
+                .foregroundStyle(valueTextColor)
                 .shadow(color: accent.opacity(0.80), radius: layout.fontSize * 0.34)
                 .shadow(color: accent.opacity(0.36), radius: layout.fontSize * 0.62)
             if element.style.showUnit, !layout.components.unit.isEmpty {
@@ -1420,18 +1454,17 @@ struct TextPresetOverlayView: View {
                     .multilineTextAlignment(labelTextAlignmentSwiftUI)
                     .frame(maxWidth: .infinity, alignment: labelStackFrameAlignment)
             }
-            HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.14) {
-                Text(layout.components.value)
-                    .font(.custom(element.style.fontName, size: layout.fontSize).weight(.bold))
-                    .tracking(-layout.fontSize * 0.010)
-                    .foregroundStyle(foreground)
-                if element.style.showUnit, !layout.components.unit.isEmpty {
-                    Text(layout.components.unit)
-                        .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
-                        .foregroundStyle(foreground.opacity(0.92))
-                }
+            Text(layout.components.value)
+                .font(.custom(element.style.fontName, size: layout.fontSize).weight(.bold))
+                .tracking(-layout.fontSize * 0.010)
+                .foregroundStyle(valueTextColor)
+                .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
+            if element.style.showUnit, !layout.components.unit.isEmpty {
+                Text(layout.components.unit)
+                    .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
+                    .foregroundStyle(unitTextColor)
+                    .frame(maxWidth: .infinity, alignment: unitStackFrameAlignment)
             }
-            .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
         }
         .fixedSize(horizontal: true, vertical: false)
         .padding(.leading, stripeWidth + (layout.dividerEnabled ? stripeGap : 0))
@@ -1455,7 +1488,6 @@ struct TextPresetOverlayView: View {
 
     @ViewBuilder
     private var editorialView: some View {
-        let foreground = Color(element.style.foregroundColor)
         let labelColor = Color(element.style.labelColor).opacity(element.style.labelOpacity)
         VStack(alignment: .leading, spacing: layout.fontSize * 0.04) {
             if element.style.showLabel, !layout.components.label.isEmpty {
@@ -1466,18 +1498,17 @@ struct TextPresetOverlayView: View {
                     .multilineTextAlignment(labelTextAlignmentSwiftUI)
                     .frame(maxWidth: .infinity, alignment: labelStackFrameAlignment)
             }
-            HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.10) {
-                Text(layout.components.value)
-                    .font(.custom(element.style.fontName, size: layout.fontSize).weight(.heavy))
-                    .tracking(-layout.fontSize * 0.018)
-                    .foregroundStyle(foreground)
-                if element.style.showUnit, !layout.components.unit.isEmpty {
-                    Text(layout.components.unit)
-                        .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
-                        .foregroundStyle(foreground.opacity(0.92))
-                }
+            Text(layout.components.value)
+                .font(.custom(element.style.fontName, size: layout.fontSize).weight(.heavy))
+                .tracking(-layout.fontSize * 0.018)
+                .foregroundStyle(valueTextColor)
+                .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
+            if element.style.showUnit, !layout.components.unit.isEmpty {
+                Text(layout.components.unit)
+                    .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
+                    .foregroundStyle(unitTextColor)
+                    .frame(maxWidth: .infinity, alignment: unitStackFrameAlignment)
             }
-            .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
             if layout.dividerEnabled {
                 Rectangle()
                     .fill(dividerColor)
@@ -1507,7 +1538,7 @@ struct TextPresetOverlayView: View {
                 Text(layout.components.value)
                     .font(.custom(digitalFont, size: layout.fontSize))
                     .tracking(layout.fontSize * 0.020)
-                    .foregroundStyle(accent)
+                    .foregroundStyle(accent.opacity(element.style.valueOpacity))
                     .shadow(color: accent.opacity(0.85), radius: layout.fontSize * 0.18)
                     .shadow(color: accent.opacity(0.45), radius: layout.fontSize * 0.42)
                 if element.style.showUnit, !layout.components.unit.isEmpty {
@@ -1544,7 +1575,7 @@ struct TextPresetOverlayView: View {
                 Text(layout.components.value)
                     .font(.custom(element.style.fontName, size: layout.fontSize).weight(.light))
                     .tracking(-layout.fontSize * 0.02)
-                    .foregroundStyle(foreground.opacity(0.88))
+                    .foregroundStyle(Color(element.style.valueColor).opacity(element.style.valueOpacity * 0.88))
                 if element.style.showUnit, !layout.components.unit.isEmpty {
                     Text(layout.components.unit)
                         .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.regular))
@@ -1572,7 +1603,7 @@ struct TextPresetOverlayView: View {
                 Text(layout.components.value)
                     .font(.custom(element.style.fontName, size: layout.fontSize).weight(.bold))
                     .tracking(-layout.fontSize * 0.05)
-                    .foregroundStyle(foreground)
+                    .foregroundStyle(valueTextColor)
                 if element.style.showUnit, !layout.components.unit.isEmpty {
                     Text(layout.components.unit)
                         .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.regular))
@@ -1596,7 +1627,7 @@ struct TextPresetOverlayView: View {
             Text(layout.components.value)
                 .font(.custom(element.style.fontName, size: layout.fontSize).weight(.heavy))
                 .tracking(-layout.fontSize * 0.06)
-                .foregroundStyle(foreground)
+                .foregroundStyle(valueTextColor)
             if element.style.showUnit, !layout.components.unit.isEmpty {
                 HStack(alignment: .center, spacing: layout.fontSize * 0.18) {
                     Rectangle()
@@ -1627,7 +1658,7 @@ struct TextPresetOverlayView: View {
             Text(layout.components.value)
                 .font(.custom(serifFont, size: layout.fontSize))
                 .tracking(-layout.fontSize * 0.01)
-                .foregroundStyle(foreground.opacity(0.92))
+                .foregroundStyle(Color(element.style.valueColor).opacity(element.style.valueOpacity * 0.92))
             if element.style.showUnit, !layout.components.unit.isEmpty {
                 Rectangle()
                     .fill(foreground.opacity(0.20))
@@ -1644,6 +1675,7 @@ struct TextPresetOverlayView: View {
     private var valueText: Text {
         Text(layout.components.value)
             .font(.custom(element.style.fontName, size: layout.fontSize).weight(Font.Weight(element.style.fontWeight)))
+            .foregroundColor(valueTextColor)
     }
 
     private var unitText: Text {
@@ -1706,6 +1738,13 @@ struct TextPresetOverlayView: View {
         alignmentForFrame(layout.valueTextAlignment)
     }
 
+    /// Frame-anchor for the unit row when the unit sits on its own line. Inline
+    /// unit positions (`.leading`/`.trailing` of the value) stay baseline-locked
+    /// to the value and ignore this anchor.
+    private var unitStackFrameAlignment: Alignment {
+        alignmentForFrame(layout.unitTextAlignment)
+    }
+
     private func horizontalAlignment(_ a: OverlayTextAlignment) -> HorizontalAlignment {
         switch a {
         case .leading: .leading
@@ -1755,17 +1794,21 @@ struct TextPresetOverlayView: View {
         let showUnit = element.style.showUnit && !layout.components.unit.isEmpty
         switch layout.labelPosition {
         case .top, .bottom:
+            // Flatten value+unit into the outer leading-anchored VStack so each
+            // row gets its own `frame(maxWidth:, alignment:)`. That keeps unit
+            // alignment independent from both label and value.
             VStack(alignment: .leading, spacing: 0) {
                 if showLabel && layout.labelPosition == .top {
                     label
                         .frame(maxWidth: .infinity, alignment: labelStackFrameAlignment)
                         .padding(.bottom, layout.labelSpacing)
                 }
-                VStack(spacing: 0) {
-                    value
-                    if showUnit { unit }
+                value
+                    .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
+                if showUnit {
+                    unit
+                        .frame(maxWidth: .infinity, alignment: unitStackFrameAlignment)
                 }
-                .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
                 if showLabel && layout.labelPosition == .bottom {
                     label
                         .frame(maxWidth: .infinity, alignment: labelStackFrameAlignment)
@@ -1778,10 +1821,15 @@ struct TextPresetOverlayView: View {
                 if showLabel && layout.labelPosition == .leading {
                     label.padding(.trailing, layout.labelSpacing)
                 }
-                VStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 0) {
                     value
-                    if showUnit { unit }
+                        .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
+                    if showUnit {
+                        unit
+                            .frame(maxWidth: .infinity, alignment: unitStackFrameAlignment)
+                    }
                 }
+                .fixedSize(horizontal: true, vertical: false)
                 if showLabel && layout.labelPosition == .trailing {
                     label.padding(.leading, layout.labelSpacing)
                 }
@@ -1839,6 +1887,7 @@ struct TextPresetOverlayView: View {
             .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
             if showUnitFlag && layout.unitPosition == .bottom {
                 unit
+                    .frame(maxWidth: .infinity, alignment: unitStackFrameAlignment)
                     .padding(.top, layout.unitSpacing)
             }
             if showLabel && layout.labelPosition == .bottom {
@@ -2216,6 +2265,7 @@ private struct PreviewRateMenu: View {
             }
         }
         .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
         .fixedSize()
         .help("Playback Speed")
         .accessibilityLabel("Playback Speed")

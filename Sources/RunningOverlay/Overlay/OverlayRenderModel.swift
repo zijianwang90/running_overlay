@@ -46,6 +46,7 @@ enum OverlayRenderModel {
             shadowOffsetY: context.scaled(element.style.shadowOffsetY),
             labelTextAlignment: element.style.labelTextAlignment,
             valueTextAlignment: element.style.textAlignment,
+            unitTextAlignment: element.style.unitTextAlignment,
             dividerEnabled: element.style.dividerEnabled,
             dividerColor: element.style.dividerColor,
             dividerThickness: context.scaled(element.style.dividerThickness * element.scale),
@@ -1227,6 +1228,7 @@ struct OverlayTextRenderLayout {
     var shadowOffsetY: Double
     var labelTextAlignment: OverlayTextAlignment
     var valueTextAlignment: OverlayTextAlignment
+    var unitTextAlignment: OverlayTextAlignment
     var dividerEnabled: Bool
     var dividerColor: OverlayColor
     var dividerThickness: Double

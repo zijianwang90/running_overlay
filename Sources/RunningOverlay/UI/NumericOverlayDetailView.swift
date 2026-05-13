@@ -273,6 +273,19 @@ struct NumericOverlayDetailView: View {
             .disabled(!isEnabled)
             .opacity(isEnabled ? 1 : 0.5)
         }
+        // Unit alignment is independent from the label and value rows. Only
+        // applies when the unit sits on its own line — inline unit positions
+        // stay baseline-glued to the value.
+        InspectorDenseRow(label: "Align") {
+            InspectorDenseSegmented(values: OverlayTextAlignment.allCases, selection: Binding(
+                get: { element.style.unitTextAlignment },
+                set: { project.setOverlayUnitTextAlignment(elementID, alignment: $0) }
+            )) { alignment in
+                Image(systemName: alignment.systemImage)
+            }
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.5)
+        }
         InspectorDenseRow(label: "Color") {
             InspectorDenseSwatchStrip(
                 presets: NumericOverlayDetailView.colorPresets,
