@@ -91,6 +91,7 @@ Files changed:
   3149.
 - New projects now default Layer Data FPS to 5 fps while keeping the output
   video frame rate independent.
+- Added a 2 fps Layer Data preset for lower-cadence 4K HEVC benchmark testing.
 - `Sources/RunningOverlay/Export/SwiftUIOverlayVideoExporter.swift`
 - `Sources/RunningOverlay/Export/OverlayExportModels.swift`
 - `Sources/RunningOverlay/Project/ProjectDocument.swift`
@@ -3068,7 +3069,7 @@ Verification:
 
 Summary:
 
-- Added a project-level Layer Data FPS setting with 1, 5, 10, 15, and 30 fps presets.
+- Added a project-level Layer Data FPS setting with 1, 2, 5, 10, 15, and 30 fps presets.
 - Quantized FIT-derived overlay sample time through `ProjectDocument` so preview and Inspector values update at the configured cadence.
 - Added the setting to the project settings sheet and export dialog.
 - Documented that future export rendering must use the same data sampling cadence as preview.

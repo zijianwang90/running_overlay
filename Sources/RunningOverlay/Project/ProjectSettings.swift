@@ -97,13 +97,14 @@ struct ProjectLayerDataFrameRate: Identifiable, Hashable, Codable {
     }
 
     static let fps1 = ProjectLayerDataFrameRate(id: "1", label: "1 fps", value: 1)
+    static let fps2 = ProjectLayerDataFrameRate(id: "2", label: "2 fps", value: 2)
     static let fps5 = ProjectLayerDataFrameRate(id: "5", label: "5 fps", value: 5)
     static let fps10 = ProjectLayerDataFrameRate(id: "10", label: "10 fps", value: 10)
     static let fps15 = ProjectLayerDataFrameRate(id: "15", label: "15 fps", value: 15)
     static let fps30 = ProjectLayerDataFrameRate(id: "30", label: "30 fps", value: 30)
 
     static let presets: [ProjectLayerDataFrameRate] = [
-        .fps1, .fps5, .fps10, .fps15, .fps30
+        .fps1, .fps2, .fps5, .fps10, .fps15, .fps30
     ]
 
     init(from decoder: Decoder) throws {

@@ -43,12 +43,13 @@ Initial settings:
   - 60
 - Layer data update frame rate presets:
   - 1 fps
+  - 2 fps
   - 5 fps
   - 10 fps
   - 15 fps
   - 30 fps
 
-The layer data update frame rate controls how often FIT-derived values change in overlay preview and export. It is separate from the project video frame rate: a 30 fps project can still update data values at 1, 5, 10, or 15 fps when the user wants a less jittery data layer.
+The layer data update frame rate controls how often FIT-derived values change in overlay preview and export. It is separate from the project video frame rate: a 30 fps project can still update data values at 1, 2, 5, 10, or 15 fps when the user wants a less jittery data layer.
 New projects default to 5 fps so exports reuse more overlay frames while still preserving the configured video frame rate.
 
 Open questions:
