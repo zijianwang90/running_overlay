@@ -446,7 +446,7 @@ Open questions:
 Current implementation status:
 
 - FIT record parsing reads `position_lat` and `position_long` into activity records.
-- FIT timer pause spans should be represented as non-destructive activity annotations on the FIT layer. Paused spans use a muted gray color and a hover tooltip labeled `运动暂停`, while keeping the underlying timeline based on real elapsed time so video alignment is not shifted.
+- FIT timer pause spans should be represented as non-destructive activity annotations on the FIT layer. Paused spans use a muted gray color and a hover tooltip labeled `Timer Paused`, while keeping the underlying timeline based on real elapsed time so video alignment is not shifted. Interval lap phase spans also expose English hover tooltips with lap kind, lap number, elapsed range, and duration.
 - `ActivityTimeline` exposes route points and interpolated current route point lookup.
 - Route Map can be added from the overlay library.
 - Inspector exposes Minimal, Gradient, Glow, and MapKit route styles.

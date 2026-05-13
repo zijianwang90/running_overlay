@@ -248,6 +248,8 @@ private final class TimelineCanvasNSView: NSView {
     private weak var project: ProjectDocument?
     private var tracks: [TimelineTrack] = []
     private var activityDuration: TimeInterval = 0
+    private var activityLaps: [LapRecord] = []
+    private var isIntervalWorkout = false
     private var activitySegments: [ActivityAnnotatedSegment] = []
     private var fitStartTime: TimeInterval = 0
     private var playhead: TimeInterval = 0
@@ -357,6 +359,8 @@ private final class TimelineCanvasNSView: NSView {
         self.project = project
         tracks = timeline.tracks
         activityDuration = activity.duration
+        activityLaps = activity.laps
+        isIntervalWorkout = activity.isIntervalWorkout
         activitySegments = activity.annotatedSegments
         fitStartTime = timeline.fitStartTime
         playhead = timeline.playhead
@@ -539,11 +543,17 @@ private final class TimelineCanvasNSView: NSView {
 
         let inRuler = point.y <= rulerHeight && activityDuration > 0
         let pauseHit = activitySegmentHit(at: point)
-        hoverPoint = inRuler || pauseHit != nil ? point : nil
+        let lapHit = pauseHit == nil ? lapHit(at: point) : nil
+        hoverPoint = inRuler || pauseHit != nil || lapHit != nil ? point : nil
         if let pauseHit {
             let scrollOffsetX = hostScrollView?.documentVisibleRect.origin.x ?? 0
             let visibleX = point.x - scrollOffsetX
             let text = "\(pauseHit.kind.label) • \(formatDuration(pauseHit.startElapsedTime))-\(formatDuration(pauseHit.endElapsedTime)) • \(formatDuration(pauseHit.duration))"
+            onHoverChange?(TimelineHoverInfo(visibleX: visibleX, text: text))
+        } else if let lapHit {
+            let scrollOffsetX = hostScrollView?.documentVisibleRect.origin.x ?? 0
+            let visibleX = point.x - scrollOffsetX
+            let text = "\(lapKindTitle(lapHit.kind)) #\(lapHit.lapIndex + 1) • \(formatDuration(lapHit.startElapsedTime))-\(formatDuration(lapHit.endElapsedTime)) • \(formatDuration(lapHit.totalElapsedTime))"
             onHoverChange?(TimelineHoverInfo(visibleX: visibleX, text: text))
         } else if inRuler, let project {
             let scrollOffsetX = hostScrollView?.documentVisibleRect.origin.x ?? 0
@@ -781,30 +791,48 @@ private final class TimelineCanvasNSView: NSView {
         let fitRects = fitTrackRects()
         for fitRect in fitRects {
             let path = roundedPath(fitRect, radius: 4)
-            NSColor.timelineFitGreen.withAlphaComponent(0.9).setFill()
-            path.fill()
+            if isIntervalWorkout {
+                drawIntervalFitTrack(in: fitRect, clippedBy: path)
+            } else {
+                NSColor.timelineFitGreen.withAlphaComponent(0.9).setFill()
+                path.fill()
+            }
+            drawActivitySegments(in: fitRect, clippedBy: path)
             NSColor.timelineSpliceBorder.withAlphaComponent(0.9).setStroke()
             path.lineWidth = isCollapsed ? 1.3 : 1
             path.stroke()
         }
-        drawActivitySegments()
         if let fitRect = fitRects.first {
             drawText("00:00", in: fitRect.insetBy(dx: 8, dy: 6), color: .white, font: .systemFont(ofSize: 11, weight: .medium), lineBreakMode: .byTruncatingTail)
         }
     }
 
-    private func drawActivitySegments() {
-        for segment in activitySegments where segment.duration > 0 {
-            let color = activitySegmentColor(segment)
-            for rect in activitySegmentRects(segment) {
-                let path = roundedPath(rect, radius: 3)
-                color.withAlphaComponent(0.92).setFill()
-                path.fill()
-                NSColor.timelineSpliceBorder.withAlphaComponent(0.75).setStroke()
-                path.lineWidth = 1
-                path.stroke()
+    private func drawIntervalFitTrack(in fitRect: CGRect, clippedBy clipPath: NSBezierPath) {
+        NSGraphicsContext.saveGraphicsState()
+        clipPath.addClip()
+        NSColor.timelineFitGreen.withAlphaComponent(0.9).setFill()
+        fitRect.fill()
+        for lap in activityLaps where lap.endElapsedTime > lap.startElapsedTime {
+            let color = lapKindColor(lap.kind).withAlphaComponent(0.92)
+            color.setFill()
+            for rect in lapRects(lap).map({ $0.intersection(fitRect) }) where !rect.isNull && rect.width > 0 {
+                rect.fill()
             }
         }
+        NSGraphicsContext.restoreGraphicsState()
+    }
+
+    private func drawActivitySegments(in fitRect: CGRect, clippedBy clipPath: NSBezierPath) {
+        NSGraphicsContext.saveGraphicsState()
+        clipPath.addClip()
+        for segment in activitySegments where segment.duration > 0 {
+            let color = activitySegmentColor(segment)
+            for rect in activitySegmentRects(segment).map({ $0.intersection(fitRect) }) where !rect.isNull && rect.width > 0 {
+                color.withAlphaComponent(0.92).setFill()
+                rect.fill()
+            }
+        }
+        NSGraphicsContext.restoreGraphicsState()
     }
 
     private func drawTimelineSections() {
@@ -1163,12 +1191,84 @@ private final class TimelineCanvasNSView: NSView {
         return [CGRect(x: startX, y: y, width: max(endX - startX, 2), height: height)]
     }
 
+    private func lapRects(_ lap: LapRecord) -> [CGRect] {
+        let projectStart = fitStartTime + max(lap.startElapsedTime, 0)
+        let projectEnd = fitStartTime + min(lap.endElapsedTime, activityDuration)
+        let y = rulerHeight + 8
+        let height = fitTrackHeight - 16
+        guard projectEnd > projectStart else {
+            return []
+        }
+
+        if isCollapsed {
+            let timeline = TimelineModel(tracks: tracks, zoom: .fit, playhead: playhead, fitStartTime: fitStartTime)
+            return timeline.collapsedDisplaySegments().compactMap { displaySegment in
+                let start = max(projectStart, displaySegment.projectStartTime)
+                let end = min(projectEnd, displaySegment.projectEndTime)
+                guard end > start else {
+                    return nil
+                }
+                let displayStart = displaySegment.displayStartTime + start - displaySegment.projectStartTime
+                let displayEnd = displaySegment.displayStartTime + end - displaySegment.projectStartTime
+                let x = labelWidth + contentPadding + CGFloat((displayStart - visibleStartTime) * pixelsPerSecond)
+                let width = CGFloat((displayEnd - displayStart) * pixelsPerSecond)
+                return CGRect(x: x, y: y, width: max(width, 2), height: height)
+            }
+        }
+
+        let startX = x(forProjectTime: projectStart)
+        let endX = x(forProjectTime: projectEnd)
+        return [CGRect(x: startX, y: y, width: max(endX - startX, 2), height: height)]
+    }
+
     private func activitySegmentHit(at point: CGPoint) -> ActivityAnnotatedSegment? {
         guard activityDuration > 0, point.y >= rulerHeight, point.y <= rulerHeight + fitTrackHeight else {
             return nil
         }
         return activitySegments.first { segment in
             activitySegmentRects(segment).contains { $0.contains(point) }
+        }
+    }
+
+    private func lapHit(at point: CGPoint) -> LapRecord? {
+        guard isIntervalWorkout,
+              activityDuration > 0,
+              point.y >= rulerHeight,
+              point.y <= rulerHeight + fitTrackHeight else {
+            return nil
+        }
+        return activityLaps.first { lap in
+            lapRects(lap).contains { $0.contains(point) }
+        }
+    }
+
+    private func lapKindColor(_ kind: LapKind) -> NSColor {
+        switch kind {
+        case .warmup:
+            .timelineFitWarmupTeal
+        case .active:
+            .timelineFitRunOrange
+        case .rest:
+            .timelineFitRestBlue
+        case .cooldown:
+            .timelineFitCooldownPurple
+        case .unknown:
+            .timelineFitGreen
+        }
+    }
+
+    private func lapKindTitle(_ kind: LapKind) -> String {
+        switch kind {
+        case .warmup:
+            "Warm Up"
+        case .active:
+            "Run"
+        case .rest:
+            "Rest"
+        case .cooldown:
+            "Cool Down"
+        case .unknown:
+            "Lap"
         }
     }
 

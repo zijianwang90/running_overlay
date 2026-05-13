@@ -145,7 +145,7 @@ The app has multiple time domains:
 - Activity elapsed time: offset from FIT activity start.
 - Media source time: time inside a video file.
 - Project timeline time: editable time used for video clips; it may be negative relative to FIT elapsed time.
-- FIT axis time: activity elapsed time represented by a draggable FIT layer inside the project timeline.
+- FIT axis time: activity elapsed time represented by the FIT layer inside the project timeline.
 - Activity annotation segment time: elapsed-time ranges, such as timer-paused spans, drawn on the FIT axis while preserving the same project-time mapping.
 - Render frame time: frame-indexed time during export.
 

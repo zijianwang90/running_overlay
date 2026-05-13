@@ -1117,6 +1117,16 @@ final class ProjectDocument: ObservableObject {
                 style.labelColor = accent
             }
         }
+        if let divider = tokens.divider {
+            style.dividerEnabled = true
+            style.dividerColor = divider.color
+            style.dividerThickness = divider.thickness
+            style.dividerOpacity = divider.opacity
+        } else {
+            // Preset has no built-in divider; collapse the section by default.
+            // The user can still toggle it on if they want a custom one.
+            style.dividerEnabled = false
+        }
         overlayLayout.elements[index].style = style
     }
 
@@ -2050,6 +2060,36 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].style.accentColor = color
+    }
+
+    func setOverlayLabelTextAlignment(_ elementID: OverlayElement.ID, alignment: OverlayTextAlignment) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.labelTextAlignment = alignment
+    }
+
+    func setOverlayDividerEnabled(_ elementID: OverlayElement.ID, enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.dividerEnabled = enabled
+    }
+
+    func setOverlayDividerColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.dividerColor = color
+    }
+
+    func setOverlayDividerThickness(_ elementID: OverlayElement.ID, thickness: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.dividerThickness = min(max(thickness, 0), 16)
+    }
+
+    func setOverlayDividerOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.dividerOpacity = min(max(opacity, 0), 1)
     }
 
     func setOverlayBackgroundEnabled(_ elementID: OverlayElement.ID, enabled: Bool) {

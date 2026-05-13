@@ -224,6 +224,30 @@ struct TimelineModelTests {
         #expect(activity.annotatedSegment(at: 200) == nil)
     }
 
+    @Test func activityTimelineIdentifiesIntervalWorkoutsFromLapKinds() {
+        let intervalActivity = activityWithLaps([
+            lap(0, start: 0, end: 300, kind: .warmup),
+            lap(1, start: 300, end: 420, kind: .active),
+            lap(2, start: 420, end: 540, kind: .rest),
+            lap(3, start: 540, end: 660, kind: .active),
+            lap(4, start: 660, end: 900, kind: .cooldown)
+        ])
+        let steadyActivity = activityWithLaps([
+            lap(0, start: 0, end: 300, kind: .warmup),
+            lap(1, start: 300, end: 900, kind: .active),
+            lap(2, start: 900, end: 1200, kind: .cooldown)
+        ])
+        let incompleteActivity = activityWithLaps([
+            lap(0, start: 0, end: 120, kind: .active),
+            lap(1, start: 120, end: 240, kind: .rest)
+        ])
+
+        #expect(intervalActivity.isIntervalWorkout)
+        #expect(!steadyActivity.isIntervalWorkout)
+        #expect(!incompleteActivity.isIntervalWorkout)
+        #expect(!ActivityTimeline.empty.isIntervalWorkout)
+    }
+
     @Test func deleteClipRemovesEmptyTrack() {
         let clip = TimelineClip(mediaItemID: nil, title: "a.mov", startTime: 0, duration: 5, alignmentOffset: 0, cameraGroupID: "Camera A")
         var timeline = TimelineModel(tracks: [TimelineTrack(name: "Camera A", clips: [clip])])
@@ -232,5 +256,33 @@ struct TimelineModelTests {
 
         #expect(timeline.tracks.isEmpty)
         #expect(timeline.clip(with: clip.id) == nil)
+    }
+
+    private func activityWithLaps(_ laps: [LapRecord]) -> ActivityTimeline {
+        ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 0),
+            duration: laps.last?.endElapsedTime ?? 0,
+            distanceMeters: laps.reduce(0) { $0 + $1.totalDistanceMeters },
+            records: [],
+            laps: laps
+        )
+    }
+
+    private func lap(_ index: Int, start: TimeInterval, end: TimeInterval, kind: LapKind) -> LapRecord {
+        LapRecord(
+            lapIndex: index,
+            startElapsedTime: start,
+            endElapsedTime: end,
+            startDistanceMeters: Double(index) * 400,
+            totalDistanceMeters: 400,
+            totalElapsedTime: end - start,
+            avgPaceSecondsPerKm: nil,
+            avgHeartRate: nil,
+            maxHeartRate: nil,
+            avgCadenceSPM: nil,
+            avgPowerWatts: nil,
+            totalAscent: nil,
+            kind: kind
+        )
     }
 }

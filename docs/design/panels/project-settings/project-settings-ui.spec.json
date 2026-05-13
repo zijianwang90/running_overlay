@@ -1,6 +1,6 @@
 {
-  "name": "Project Settings And Font Library",
-  "lastUpdated": "2026-05-12",
+  "name": "Project Settings, Heart Rate Zones, And Font Library",
+  "lastUpdated": "2026-05-13",
   "surfaces": {
     "projectSettings": {
       "presentation": "dark macOS modal",
@@ -47,12 +47,117 @@
               "buttonLabel": "Manage..."
             }
           ]
+        },
+        {
+          "title": "Physiology",
+          "rows": [
+            {
+              "label": "Heart Rate Zones",
+              "caption": "Configure HR and pace ranges for overlays.",
+              "control": "secondaryButton",
+              "buttonLabel": "Configure..."
+            }
+          ]
         }
       ],
       "footer": {
         "primaryAction": "Done",
         "alignment": "right"
       }
+    },
+    "heartRateZones": {
+      "presentation": "dark macOS modal sheet",
+      "title": "Heart Rate Zones",
+      "subtitle": "Configure HR and pace ranges for each zone.",
+      "mockup": "./heart-rate-zones.png",
+      "functionalScope": [
+        "Zone Count segmented control with 5 and 6",
+        "Pace Unit segmented control with min/km and min/mile",
+        "Threshold HR numeric field with bpm unit",
+        "Threshold Pace field with selected pace unit",
+        "Editable HR min/max and pace min/max fields for each visible zone",
+        "Reset and Done footer actions"
+      ],
+      "excludedUntilImplemented": [
+        "FIT zone import",
+        "zone preview chart",
+        "auto-fill toggle",
+        "zone purpose/category editing",
+        "timeline preview",
+        "profile management"
+      ],
+      "sections": [
+        {
+          "title": "topSettings",
+          "rows": [
+            {
+              "label": "Zone Count",
+              "control": "segmented",
+              "values": [
+                "5",
+                "6"
+              ],
+              "alignment": "trailing"
+            },
+            {
+              "label": "Pace Unit",
+              "control": "segmented",
+              "values": [
+                "min/km",
+                "min/mile"
+              ],
+              "alignment": "trailing"
+            }
+          ]
+        },
+        {
+          "title": "Threshold",
+          "layout": "single grouped row with two aligned field groups",
+          "fields": [
+            {
+              "label": "Threshold HR",
+              "input": "numeric",
+              "unit": "bpm",
+              "example": "168"
+            },
+            {
+              "label": "Threshold Pace",
+              "input": "pace",
+              "unit": "{paceUnit}",
+              "example": "4:20"
+            }
+          ]
+        },
+        {
+          "title": "Zones",
+          "layout": "table grouped box",
+          "columns": [
+            "zone",
+            "HR Range",
+            "Pace Range"
+          ],
+          "row": {
+            "leading": "colored dot plus Z label",
+            "hrRange": "min field, dash, max field, bpm unit",
+            "paceRange": "min field, dash, max field, selected pace unit",
+            "separators": "subtle horizontal row separators",
+            "floatingCards": false
+          },
+          "zoneColors": {
+            "Z1": "blue",
+            "Z2": "cyan",
+            "Z3": "green",
+            "Z4": "yellow",
+            "Z5": "orange",
+            "Z6": "red"
+          }
+        }
+      ],
+      "footer": {
+        "secondaryAction": "Reset",
+        "primaryAction": "Done"
+      },
+      "textLanguage": "English until localization pass"
     },
     "fontLibrary": {
       "presentation": "dark macOS modal sheet",

@@ -209,6 +209,7 @@ Current implementation:
 - Timeline shows a default empty `Layer 1` track when no clips exist but FIT or media context exists.
 - Timeline drawing separates the label column from the central lane area with distinct backgrounds and a vertical divider.
 - Timeline styling follows `docs/design/panels/timeline/timeline-ui.md` and `docs/design/panels/timeline/timeline-ui.spec.json`, including compact header controls, dark alternating lane bands, subtle ruler ticks, square-adjacent clip joins with dark splice borders, and compact hover info pills.
+- FIT track rendering uses the existing `ActivityTimeline.laps` / `LapRecord.kind` interval classification to color WU, RUN, REST, and CD phases for interval workouts, while steady activities keep the default green FIT bar and timer-paused spans remain gray overlays.
 - Dropping a media item creates or moves a timeline clip at the drop location.
 - Media drag-over highlights the target layer, and the AppKit timeline exposes only one new layer drop target beyond existing layers.
 - `TimelineClip` stores `startTime` and `alignmentOffset` separately.
@@ -228,8 +229,8 @@ Current implementation:
 - Timeline model time is project time. `TimelineModel.fitStartTime` maps project time back to FIT activity elapsed time.
 - Imported video clips are placed by real timestamp relative to FIT start and are no longer clamped to `0...activity.duration`.
 - Project bounds are the union of the FIT layer span and all video clip spans, allowing pre-start and post-finish race footage.
-- The AppKit timeline draws a dedicated draggable `FIT` layer above video layers.
-- The FIT layer overlays timer-paused segments in gray and shows a `运动暂停` hover tooltip on those spans. Segment rendering is backed by typed activity annotations so future interval/rest/workout spans can use additional colors.
+- The AppKit timeline draws a dedicated `FIT` layer above video layers.
+- The FIT layer overlays timer-paused segments in gray and shows a `Timer Paused` hover tooltip on those spans. Interval phase blocks also show English hover tooltips with lap kind, lap number, elapsed range, and duration.
 - In collapsed mode, FIT track blocks are clipped to the actual FIT activity range, so video-only spans before start or after finish do not show a green FIT bar.
 - A FIT-only project shows the activity ruler and an empty video lane before media import.
 - During playback, the scroll view keeps the playhead visible horizontally.
