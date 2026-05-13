@@ -37,6 +37,27 @@ Files changed:
 - `docs/design/panels/project-settings/project-settings-ui.spec.json`
 - `docs/design/README.md`
 
+### Interval HUD Bar Overlay Design Spec
+
+- Added the Interval HUD Bar visual mockup to `docs/design/overlays/interval-hud-bar/interval-hud-bar.png`.
+- Added implementation-facing design docs for a horizontal interval HUD overlay showing rep, phase, remaining time/distance, HR zone, HR, pace, power, and REST-specific HR Drop.
+- Documented bottom bar modes: none, lap progress, HR zones, and pace zones.
+- Documented REST HR Drop display modes: `bpm` and `%`.
+- Specified that HR zone colors should be extracted into a shared palette used by Project Settings, Interval HUD Bar, and future physiology-aware overlays.
+- Added a module note under `docs/overlay-modules/` and linked the new overlay from design/module indexes.
+
+Files added:
+
+- `docs/design/overlays/interval-hud-bar/interval-hud-bar.png`
+- `docs/design/overlays/interval-hud-bar/interval-hud-bar-overlay-ui.md`
+- `docs/design/overlays/interval-hud-bar/interval-hud-bar-overlay-ui.spec.json`
+- `docs/overlay-modules/interval-hud-bar-overlay.md`
+
+Files changed:
+
+- `docs/design/README.md`
+- `docs/overlay-modules/README.md`
+
 ### Numeric Overlay: Independent Value Alignment Control
 
 - Surfaced `OverlayStyle.textAlignment` as the per-overlay **value alignment** in the Typography inspector section (an `Align` segmented row under Weight). Field already existed in the model and on every preset's tokens, but no Inspector control was reading it and the value was never applied at render time — so the only way to align the value was implicitly through the preset.

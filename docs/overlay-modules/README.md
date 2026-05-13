@@ -8,6 +8,7 @@ Current module notes:
 
 - [Route Map Overlay](route-map-overlay.md)
 - [Lap List Overlay](lap-list-overlay.md)
+- [Interval HUD Bar Overlay](interval-hud-bar-overlay.md)
 - [Distance Timeline Overlay](distance-timeline-overlay.md)
 - [Elevation Chart Overlay](elevation-chart-overlay.md)
 - [Weather Widget Overlay](weather-widget-overlay.md)

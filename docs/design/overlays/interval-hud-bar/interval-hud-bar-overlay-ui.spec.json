@@ -1,0 +1,157 @@
+{
+  "name": "Interval HUD Bar Overlay UI",
+  "lastUpdated": "2026-05-13",
+  "appliesToOverlayTypes": [
+    "intervalHUDBar"
+  ],
+  "mockups": {
+    "primary": "./interval-hud-bar.png"
+  },
+  "purpose": "Wide interval-training HUD showing current rep, phase, remaining work, live metrics, and optional lap/zone bar.",
+  "scope": {
+    "include": [
+      "rep count",
+      "phase",
+      "phase distance",
+      "time left",
+      "distance left",
+      "heart-rate zone",
+      "current heart rate",
+      "current pace",
+      "current power",
+      "REST heart-rate drop",
+      "bottom bar modes: none, lap progress, HR zones, pace zones"
+    ],
+    "excludeV1": [
+      "target pace",
+      "FIT workout-step parser",
+      "manual workout plan editor",
+      "zone profile management",
+      "rep transition animation"
+    ]
+  },
+  "dataSources": {
+    "interval": "ActivityTimeline.laps and LapRecord.kind",
+    "liveMetrics": "ActivityTimeline sample methods at elapsed time",
+    "zones": "HeartRateZonePreferences",
+    "recovery": [
+      "ActivityTimeline.recoveryPeakHR(at:)",
+      "ActivityTimeline.recoveryDrop(at:)",
+      "ActivityTimeline.recoveryDropPercent(at:)"
+    ]
+  },
+  "repRules": {
+    "total": "count active laps only",
+    "work": "current active lap ordinal among active laps",
+    "rest": "most recent active lap ordinal",
+    "warmupCooldown": "not counted as reps",
+    "beforeFirstWork": "-- / total"
+  },
+  "phaseLabels": {
+    "warmup": "WU",
+    "active": "WORK",
+    "rest": "REST",
+    "cooldown": "CD",
+    "unknown": "LAP"
+  },
+  "layout": {
+    "shape": "single horizontal rounded HUD",
+    "mainBlocks": [
+      "REP",
+      "PHASE",
+      "TIME LEFT",
+      "DIST LEFT",
+      "HR ZONE",
+      "METRICS"
+    ],
+    "separators": "thin vertical separators between main blocks",
+    "bottomBarPlacement": "inside the same container near bottom edge",
+    "nestedCards": false
+  },
+  "bottomBar": {
+    "modes": [
+      "none",
+      "lapProgress",
+      "heartRateZone",
+      "paceZone"
+    ],
+    "lapProgress": {
+      "track": "dark neutral",
+      "fill": "current phase color",
+      "label": "LAP PROGRESS"
+    },
+    "heartRateZone": {
+      "label": "HR ZONES",
+      "segments": [
+        "Z1",
+        "Z2",
+        "Z3",
+        "Z4",
+        "Z5",
+        "Z6"
+      ],
+      "marker": "small current-position marker",
+      "colorSource": "shared HR zone palette"
+    },
+    "paceZone": {
+      "label": "PACE ZONES",
+      "visualPattern": "same segmented strip as HR zones",
+      "colorSource": "shared HR zone palette"
+    }
+  },
+  "recovery": {
+    "restMetric": "HR DROP",
+    "dropModes": [
+      "bpm",
+      "percent"
+    ],
+    "bpmExample": "-18 bpm",
+    "percentExample": "10%"
+  },
+  "colors": {
+    "phase": {
+      "WORK": "orange",
+      "REST": "blue",
+      "WU": "teal",
+      "CD": "purple",
+      "LAP": "fitGreen"
+    },
+    "hrZones": {
+      "Z1": "blue",
+      "Z2": "cyan",
+      "Z3": "green",
+      "Z4": "yellow",
+      "Z5": "orange",
+      "Z6": "red"
+    },
+    "sharedPaletteRequired": true
+  },
+  "inspector": {
+    "sections": [
+      "Layout",
+      "Content",
+      "Metrics",
+      "Bottom Bar",
+      "Recovery",
+      "Appearance"
+    ],
+    "controls": {
+      "bottomBarMode": [
+        "None",
+        "Lap Progress",
+        "HR Zones",
+        "Pace Zones"
+      ],
+      "hrDropMode": [
+        "bpm",
+        "%"
+      ],
+      "metricSlots": [
+        "heartRate",
+        "pace",
+        "power",
+        "cadence"
+      ]
+    }
+  }
+}
