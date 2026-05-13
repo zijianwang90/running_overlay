@@ -22,14 +22,14 @@ Replaces retired lap overlay prototypes:
 
 ## Functional Scope
 
-The first implementation should support:
+The first implementation supports:
 
 - Rep count.
 - Current phase.
 - Current phase distance.
 - Time left.
 - Distance left.
-- HR zone.
+- HR zone or REST HR drop in a dedicated HUD cell.
 - Current HR.
 - Current pace.
 - Current power.
@@ -52,12 +52,25 @@ Default block order:
 
 1. `REP`
 2. Phase (`WORK`, `REST`, `WU`, `CD`, `LAP`) plus lap distance.
-3. `TIME LEFT`
-4. `DIST LEFT`
-5. `HR ZONE`
-6. Live metrics (`HR`, `PACE`, `PWR`)
+3. Remaining block, with user-selectable primary value:
+   - `TIME LEFT` primary with distance as secondary.
+   - `DIST LEFT` primary with time as secondary.
+4. Optional `HR ZONE` cell.
+5. Ordered metric slots (Numeric Overlay metrics only, repeated as configured).
 
-REST state replaces one right-side metric slot with `HR DROP` when enabled.
+Metric slots are an append/delete ordered list. Each metric block is separated by the same divider treatment as the fixed `REP`, phase, and remaining blocks. Duplicate metric slots are allowed so users can build dense or repeated layouts for different output contexts.
+
+The main row uses equal-width cells. Enabled `REP`, current training, remaining, HR Zone, and every configured metric each occupy one cell. If there are no metrics, the HUD does not reserve an empty metrics area.
+
+The first four cells are controlled by HUD Bar settings:
+
+- `Rep`: show/hide the rep count.
+- `Current Training`: show/hide the current interval item. Its detail can show remaining time or remaining distance; REST has an independent detail setting.
+- `Remaining`: show/hide the remaining block. Its primary value can be time left or distance left.
+- `HR Zone`: show/hide the zone cell. Mode `HR Zone` always shows the current zone; mode `HR Drop at Rest` shows HR Zone during training and switches to HR Drop only during REST.
+  - HR Drop display mode (`bpm` / `%`) lives directly under the HR Zone settings because it only affects the HR Zone cell's REST state.
+
+`HR DROP` no longer appears in the Metrics add list.
 
 ## Visual Style
 
@@ -80,24 +93,36 @@ Phase colors:
 
 ## Bottom Bar
 
-`lapProgress` mode:
+Bottom Bar is a separate Inspector section below Metrics. It has its own enable switch.
+
+Type menu:
+
+- `Lap Progress`
+- `HR Zones`
+- `Pace Zones`
+
+`Lap Progress` mode:
 
 - Track is a dark neutral strip.
 - Fill is current phase color.
 - Label may read `LAP PROGRESS`.
 - Optional percentage may sit below or inside the fill, as long as it does not collide with the bar.
+- Progress can be based on time or distance.
+- Glow highlights the completed portion. Glow intensity is editable; color follows the current phase.
 
-`heartRateZone` mode:
+`heartRateZones` mode:
 
 - Bar becomes a segmented Z1-Z6 strip.
 - Segment colors use the shared HR zone palette from Project Settings.
-- Current HR marker appears as a small white marker aligned to the active segment.
+- Current active segment uses full opacity; inactive segments are subdued.
 - Current zone label, such as `Z4`, uses the same zone color.
+- Glow highlights the active segment. Glow intensity is editable; color follows the active zone.
 
-`paceZone` mode:
+`paceZones` mode:
 
 - Same visual pattern as HR zone mode, driven by pace ranges.
-- Current pace marker uses the matched zone segment.
+- Current pace uses the matched zone segment.
+- Glow follows the matched active segment.
 
 ## REST HR Drop
 
@@ -108,16 +133,36 @@ REST mode should support HR drop display:
 
 The display mode should be a style option, not inferred from the selected bottom bar.
 
+## Typography Roles
+
+Interval HUD Bar exposes separate font controls for every data text role so users can tune the bar for broadcast overlays, mobile crops, or dense desktop videos.
+
+Editable typography roles:
+
+- `Labels`: small uppercase labels such as `REP`, `LEFT`, `HR`, and `PACE`.
+- `Primary Values`: large values in the rep and remaining blocks.
+- `Phase`: current interval item, such as `WORK` or `REST`.
+- `Phase Detail`: lap distance under the phase label.
+- `Metric Values`: live metric values such as `153`, `3'51"`, or `247`.
+- `Metric Units`: metric suffixes such as `bpm`, `/km`, or `w`.
+
+Each role exposes font family, size, and weight. Digits should remain legible during rapid value changes; monospaced or tabular fonts are preferred when available.
+
 ## Inspector Guidance
 
-Inspector sections:
+Implemented Inspector sections:
 
-- Layout: width, height, corner radius, background opacity, position, scale.
-- Content: toggles for Rep, Phase, Time Left, Distance Left, HR Zone, HR Drop.
-- Metrics: configurable metric slots for HR, Pace, Power, Cadence.
-- Bottom Bar: mode (`None`, `Lap Progress`, `HR Zones`, `Pace Zones`) and opacity.
-- Recovery: HR Drop mode (`bpm`, `%`) and visibility.
-- Appearance: shared background, border, and effects modules.
+- Layout: placement, size, and transform controls through the shared layout module.
+- HUD Bar: width, height, Rep toggle, Current Training toggle and detail modes, Remaining toggle and primary mode, HR Zone toggle, Zone mode, and HR Drop mode.
+- Metrics: ordered add/delete list. Each row chooses one Numeric Overlay metric; the list has no fixed slot count and duplicates are valid.
+- Bottom Bar: enable switch, type menu (`Lap Progress`, `HR Zones`, `Pace Zones`), progress mode (`Time` / `Distance`), Glow toggle, and Glow Intensity.
+- Typography: font family, size, and weight for Labels, Primary Values, Phase, Phase Detail, Metric Values, and Metric Units.
+- Divider: shared overlay divider fields used for all internal vertical separators.
+- Background: shared `OverlayBackgroundInspectorModule`.
+- Border: shared `OverlayBorderInspectorModule`.
+- Effects: shared `OverlayEffectsInspectorModule`.
+
+The last four sections must stay in this order: `Divider`, `Background`, `Border`, `Effects`. `Background`, `Border`, and `Effects` reuse the shared Inspector components. `Divider` uses the shared overlay divider model fields so the renderer, preview, and export stay aligned.
 
 Do not expose Target Pace controls until target workout data exists.
 
@@ -127,4 +172,4 @@ Do not expose Target Pace controls until target workout data exists.
 - Rep count uses `.active` laps only.
 - REST uses the most recent active rep number.
 - HR zone and pace zone color resolution should use one shared palette/helper also used by `HeartRateZonesView`.
-- Preview and export must share one render layout so values and geometry match.
+- Preview and export share one render layout so values and geometry match.

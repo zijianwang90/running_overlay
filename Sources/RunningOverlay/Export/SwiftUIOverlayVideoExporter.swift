@@ -144,6 +144,8 @@ struct ExportRenderPlan: Equatable {
             return OverlayRenderModel.elevationChartLayout(for: element, in: context).rect
         case .runningGauge:
             return OverlayRenderModel.runningGaugeLayout(for: element, in: context).rect
+        case .intervalHUDBar:
+            return OverlayRenderModel.intervalHUDBarLayout(for: element, in: context).rect
         case .weatherWidget:
             return OverlayRenderModel.weatherWidgetLayout(for: element, in: context).rect
         case .decorSolidColor:
@@ -1264,6 +1266,11 @@ private struct SwiftUIOverlayFrameView: View {
                             element: element,
                             layout: OverlayRenderModel.runningGaugeLayout(for: element, in: context),
                             isInteractive: false
+                        )
+                    case .intervalHUDBar:
+                        OverlaySharedIntervalHUDBarView(
+                            element: element,
+                            layout: OverlayRenderModel.intervalHUDBarLayout(for: element, in: context)
                         )
                     case .decorSolidColor:
                         OverlaySharedDecorSolidColorView(

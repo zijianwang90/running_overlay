@@ -25,13 +25,25 @@ First implementation uses existing lap-derived interval data:
 
 No FIT workout-step parser is required for v1.
 
+## Implementation Status
+
+Implemented in `codex/interval-hud-bar`:
+
+- `OverlayElementType.intervalHUDBar` and `IntervalHUDBarStyle`.
+- Preview/export shared SwiftUI view: `OverlaySharedIntervalHUDBarView`.
+- Render layout: `OverlayRenderModel.intervalHUDBarLayout(for:in:)`.
+- Overlay Pool tile in Charts.
+- Dedicated Inspector for size, main HUD cell visibility, current-training detail modes, HR Zone mode, HR Drop mode, remaining primary, ordered metrics, Bottom Bar, typography, divider, background, border, and effects.
+- SwiftUI exporter and legacy PNG renderer support.
+- Built-in `Interval Workout` template now includes Interval HUD Bar.
+
 ## Rep Rules
 
 - Rep count is based on `.active` laps only.
 - `WORK` maps from `.active`.
 - `REST` maps from `.rest`.
 - `WU` and `CD` do not count as reps.
-- During `REST`, show the most recent `WORK` rep number.
+- During `REST`, show the next active rep number after the completed work lap.
 - If no active rep exists yet, show `-- / total`.
 
 ## Default Content
@@ -39,14 +51,32 @@ No FIT workout-step parser is required for v1.
 The default bar shows:
 
 - `REP`: current active rep / total active reps.
-- Phase: `WORK`, `REST`, `WU`, `CD`, or `LAP`.
-- Phase distance: current lap distance.
-- `TIME LEFT`: current lap remaining time.
-- `DIST LEFT`: current lap remaining distance.
-- `HR ZONE`: current heart-rate zone and current HR.
-- Live metrics: pace and power by default.
+- Current Training: `WORK`, `REST`, `WU`, `CD`, or `LAP`, plus configurable detail. Training and REST can independently show remaining time or remaining distance.
+- Remaining block: either `TIME LEFT` as the primary value with distance as secondary, or `DIST LEFT` as the primary value with time as secondary.
+- HR Zone block: either always show current HR zone, or show HR Zone during training and switch to HR Drop during REST.
+- Ordered metrics: default slots are `HR` and `PACE`.
+
+Metrics are stored as an ordered add/delete list, not a fixed five-toggle surface. Users can append as many metric slots as needed, remove any row, and repeat the same metric when a layout calls for it. The options include every Numeric Overlay metric only. `HR Zone` and `HR Drop` are controlled by the dedicated HR Zone HUD cell.
+
+The preview and export render the main row as equal-width cells: enabled `REP`, Current Training, Remaining, HR Zone, and each metric all get one cell. When the metric list is empty, no blank metric area is reserved.
 
 Do not include Target Pace in v1.
+
+## Inspector Surface
+
+Inspector sections:
+
+- `Layout`: shared placement, size, scale, and transform controls.
+- `HUD Bar`: width, height, Rep toggle, Current Training toggle and detail modes, Remaining toggle and primary mode, HR Zone toggle, Zone mode, and HR Drop mode.
+- `Metrics`: ordered add/delete list using `IntervalHUDBarMetricSlot`, with all Numeric Overlay metric types available.
+- `Bottom Bar`: enable switch, type menu (`Lap Progress`, `HR Zones`, `Pace Zones`), progress mode, Glow toggle, and Glow Intensity.
+- `Typography`: separate font family, size, and weight controls for labels, primary values, phase, phase detail, metric values, and metric units.
+- `Divider`: shared overlay divider fields for all internal vertical separators.
+- `Background`: shared `OverlayBackgroundInspectorModule`.
+- `Border`: shared `OverlayBorderInspectorModule`.
+- `Effects`: shared `OverlayEffectsInspectorModule`.
+
+The final four sections stay in the canonical order `Divider`, `Background`, `Border`, `Effects`; `Background`, `Border`, and `Effects` are the shared components used by other overlays.
 
 ## REST HR Drop
 
@@ -67,16 +97,17 @@ The bottom bar is optional.
 
 Modes:
 
-- `none`: no bottom bar.
 - `lapProgress`: progress through the current lap, colored by current phase.
-- `heartRateZone`: segmented zone strip using the shared HR zone palette and current HR marker.
-- `paceZone`: segmented zone strip using configured pace zones and current pace marker.
+- `heartRateZones`: segmented zone strip using the shared HR zone palette and current HR zone.
+- `paceZones`: segmented zone strip using configured pace zones and current pace zone.
 
 Heart-rate and pace zone modes read global `HeartRateZonePreferences`.
 
+Glow is controlled inside the Bottom Bar section. In lap progress mode, it highlights the completed portion. In zone modes, it highlights the active zone segment. Glow intensity is editable; glow color follows the phase or active zone color.
+
 ## Shared Zone Colors
 
-The HR zone color palette should be extracted into a shared code path so Project Settings, Interval HUD Bar, and future physiology-aware overlays use the same colors.
+The HR zone color palette is shared through `HRZonePalette` so Project Settings, Interval HUD Bar, and future physiology-aware overlays use the same color values.
 
 | Zone | Color intent |
 | --- | --- |

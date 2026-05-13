@@ -370,6 +370,231 @@ enum OverlayRenderModel {
         )
     }
 
+    static func intervalHUDBarLayout(for element: OverlayElement, in context: OverlayRenderContext) -> IntervalHUDBarRenderLayout {
+        let style = element.style.intervalHUDBar
+        let width = context.scaled(style.width * element.scale)
+        let height = context.scaled(style.height * element.scale)
+        let rect = centeredRect(for: element, size: CGSize(width: width, height: height), canvasSize: context.canvasSize)
+        let lap = context.activity.currentLap(at: context.elapsedTime)
+        let t = min(max(context.elapsedTime, 0), context.activity.duration)
+        let lapEnd = lap?.endElapsedTime ?? max(context.activity.duration, 1)
+        let remainingTime = max(lapEnd - t, 0)
+        let remainingDistance = max((lap?.startDistanceMeters ?? 0) + (lap?.totalDistanceMeters ?? context.activity.distanceMeters) - context.activity.distance(at: t), 0)
+        let progress = context.activity.lapProgress(at: t, byDistance: style.progressMode == .distance)
+        let zoneSnapshot = HeartRateZonePreferences.currentSnapshot()
+        let currentHR = context.activity.heartRate(at: t)
+        let currentPace = context.activity.pace(at: t)
+        let activeZoneIndex = resolvedZoneIndex(heartRate: currentHR, paceSecondsPerKm: currentPace, snapshot: zoneSnapshot)
+        let phaseColor = lapKindColor(lap?.kind ?? .unknown, activeZoneIndex: activeZoneIndex)
+        let remainingTimeText = formatDuration(remainingTime)
+        let remainingDistanceText = formatDistanceMeters(remainingDistance)
+
+        return IntervalHUDBarRenderLayout(
+            style: style,
+            rect: rect,
+            phaseLabel: phaseLabel(lap?.kind ?? .unknown),
+            phaseDetail: phaseDetail(
+                style: style,
+                lap: lap,
+                remainingTimeText: remainingTimeText,
+                remainingDistanceText: remainingDistanceText
+            ),
+            phaseColor: phaseColor,
+            repText: repText(activity: context.activity, lap: lap),
+            remainingTimeText: remainingTimeText,
+            remainingDistanceText: remainingDistanceText,
+            remainingPrimaryLabel: "LEFT",
+            remainingPrimaryText: style.remainingPrimary == .time ? remainingTimeText : remainingDistanceText,
+            remainingSecondaryText: style.remainingPrimary == .time ? remainingDistanceText : remainingTimeText,
+            progress: clampedProgress(progress),
+            zoneItem: intervalZoneItem(
+                style: style,
+                activity: context.activity,
+                elapsedTime: t,
+                zoneIndex: activeZoneIndex
+            ),
+            metricItems: intervalMetricItems(
+                style: style,
+                activity: context.activity,
+                elapsedTime: t,
+                zoneIndex: activeZoneIndex,
+                zoneSnapshot: zoneSnapshot
+            ),
+            zoneSegments: intervalZoneSegments(snapshot: zoneSnapshot),
+            activeZoneIndex: activeZoneIndex,
+            labelText: scaled(style.labelText, scale: element.scale, context: context),
+            primaryValueText: scaled(style.primaryValueText, scale: element.scale, context: context),
+            phaseText: scaled(style.phaseText, scale: element.scale, context: context),
+            phaseDetailText: scaled(style.phaseDetailText, scale: element.scale, context: context),
+            metricValueText: scaled(style.metricValueText, scale: element.scale, context: context),
+            metricUnitText: scaled(style.metricUnitText, scale: element.scale, context: context),
+            barHeight: context.scaled(10 * element.scale)
+        )
+    }
+
+    private static func scaled(_ text: IntervalHUDBarTextStyle, scale: Double, context: OverlayRenderContext) -> IntervalHUDBarTextStyle {
+        IntervalHUDBarTextStyle(
+            fontName: text.fontName,
+            fontSize: context.scaled(text.fontSize * scale),
+            fontWeight: text.fontWeight
+        )
+    }
+
+    private static func intervalMetricItems(
+        style: IntervalHUDBarStyle,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval,
+        zoneIndex: Int?,
+        zoneSnapshot: HeartRateZoneSnapshot
+    ) -> [IntervalHUDBarMetricItem] {
+        style.metricSlots.compactMap { slot in
+            switch slot.metric {
+            case .heartRateZone, .hrDrop:
+                return nil
+            case .heartRate, .pace, .calories, .elapsedTime, .realTime, .distance, .elevation, .cadence, .power, .verticalOscillation, .groundContactTime, .strideLength, .verticalRatio, .groundContactBalance, .temperature, .grade:
+                guard let elementType = slot.metric.elementType else { return nil }
+                let components = OverlayValueFormatter.components(for: elementType, activity: activity, elapsedTime: elapsedTime)
+                return IntervalHUDBarMetricItem(
+                    metric: slot.metric,
+                    label: components.shortLabel.uppercased(),
+                    value: components.value,
+                    unit: components.unit,
+                    accentColor: nil
+                )
+            }
+        }
+    }
+
+    private static func intervalZoneItem(
+        style: IntervalHUDBarStyle,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval,
+        zoneIndex: Int?
+    ) -> IntervalHUDBarMetricItem? {
+        guard style.showsZone else { return nil }
+        if style.zoneDisplayMode == .hrDropAtRest,
+           activity.currentLap(at: elapsedTime)?.kind == .rest {
+            switch style.hrDropMode {
+            case .bpm:
+                let drop = activity.recoveryDrop(at: elapsedTime).map(String.init) ?? "--"
+                return IntervalHUDBarMetricItem(metric: .hrDrop, label: "HR DROP", value: drop, unit: "bpm", accentColor: nil)
+            case .percent:
+                let drop = activity.recoveryDropPercent(at: elapsedTime).map { "\(Int($0.rounded()))" } ?? "--"
+                return IntervalHUDBarMetricItem(metric: .hrDrop, label: "HR DROP", value: drop, unit: "%", accentColor: nil)
+            }
+        }
+        return IntervalHUDBarMetricItem(
+            metric: .heartRateZone,
+            label: "ZONE",
+            value: zoneIndex.map { "Z\($0 + 1)" } ?? "--",
+            unit: "",
+            accentColor: zoneIndex.map(HRZonePalette.overlayColor(forIndex:))
+        )
+    }
+
+    private static func intervalZoneSegments(snapshot: HeartRateZoneSnapshot) -> [IntervalHUDBarZoneSegment] {
+        (0..<snapshot.zoneCount).map { index in
+            IntervalHUDBarZoneSegment(
+                index: index,
+                label: "Z\(index + 1)",
+                color: HRZonePalette.overlayColor(forIndex: index)
+            )
+        }
+    }
+
+    private static func resolvedZoneIndex(heartRate: Int?, paceSecondsPerKm: Double?, snapshot: HeartRateZoneSnapshot) -> Int? {
+        let visibleZones = Array(snapshot.zones.prefix(snapshot.zoneCount))
+        if let heartRate,
+           let hrIndex = visibleZones.firstIndex(where: { zone in
+               let minHR = zone.minHR ?? Int.min
+               let maxHR = zone.maxHR ?? Int.max
+               return heartRate >= minHR && heartRate <= maxHR && (zone.minHR != nil || zone.maxHR != nil)
+           }) {
+            return hrIndex
+        }
+        guard let pace = paceSecondsPerKm else { return nil }
+        return visibleZones.firstIndex { zone in
+            guard zone.minPaceSecPerKm != nil || zone.maxPaceSecPerKm != nil else { return false }
+            let a = Double(zone.minPaceSecPerKm ?? Int.min)
+            let b = Double(zone.maxPaceSecPerKm ?? Int.max)
+            return pace >= min(a, b) && pace <= max(a, b)
+        }
+    }
+
+    private static func repText(activity: ActivityTimeline, lap: LapRecord?) -> String {
+        let activeLaps = activity.laps.filter { $0.kind == .active }
+        guard !activeLaps.isEmpty else { return "-- / --" }
+        guard let lap else { return "1 / \(activeLaps.count)" }
+        if lap.kind == .active,
+           let index = activeLaps.firstIndex(where: { $0.id == lap.id }) {
+            return "\(index + 1) / \(activeLaps.count)"
+        }
+        let completed = activeLaps.filter { $0.endElapsedTime <= lap.startElapsedTime }.count
+        return "\(min(completed + 1, activeLaps.count)) / \(activeLaps.count)"
+    }
+
+    private static func phaseLabel(_ kind: LapKind) -> String {
+        switch kind {
+        case .warmup: "WU"
+        case .active: "WORK"
+        case .rest: "REST"
+        case .cooldown: "CD"
+        case .unknown: "LAP"
+        }
+    }
+
+    private static func phaseDetail(
+        style: IntervalHUDBarStyle,
+        lap: LapRecord?,
+        remainingTimeText: String,
+        remainingDistanceText: String
+    ) -> String {
+        guard lap != nil else { return "" }
+        let mode = lap?.kind == .rest ? style.restPhaseDetailMode : style.phaseDetailMode
+        switch mode {
+        case .time:
+            return remainingTimeText
+        case .distance:
+            return remainingDistanceText
+        }
+    }
+
+    private static func lapKindColor(_ kind: LapKind, activeZoneIndex: Int?) -> OverlayColor {
+        if kind == .active, let activeZoneIndex {
+            return HRZonePalette.overlayColor(forIndex: activeZoneIndex)
+        }
+        switch kind {
+        case .warmup:
+            return OverlayColor(red: 0.22, green: 0.70, blue: 0.66, alpha: 1)
+        case .active:
+            return OverlayColor(red: 1.00, green: 0.38, blue: 0.14, alpha: 1)
+        case .rest:
+            return OverlayColor(red: 0.32, green: 0.58, blue: 0.82, alpha: 1)
+        case .cooldown:
+            return OverlayColor(red: 0.52, green: 0.42, blue: 0.82, alpha: 1)
+        case .unknown:
+            return OverlayColor(red: 0.25, green: 0.82, blue: 0.38, alpha: 1)
+        }
+    }
+
+    private static func formatDuration(_ duration: TimeInterval) -> String {
+        let total = max(Int(duration.rounded()), 0)
+        let hours = total / 3600
+        let minutes = (total % 3600) / 60
+        let seconds = total % 60
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        }
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    private static func formatDistanceMeters(_ meters: Double) -> String {
+        if meters >= 1000 {
+            return String(format: "%.2f km", meters / 1000)
+        }
+        return "\(Int(meters.rounded())) m"
+    }
+
     private static func computeGaugeProgress(style: RunningGaugeStyle, context: OverlayRenderContext) -> Double {
         switch style.progressMode {
         case .none:

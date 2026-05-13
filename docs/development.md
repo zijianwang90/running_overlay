@@ -457,7 +457,8 @@ Pending:
 - Export now uses a single SwiftUI-based renderer path that rasterizes shared overlay views (`ImageRenderer`) on each frame and encodes transparent MOV output.
 - Preview and export invoke the same shared overlay view entry points (`OverlaySharedTextPresetView`, `OverlaySharedDistanceTimelineView`, `OverlaySharedRouteMapView`) and differ only by `isInteractive` flags.
 - Route Map export resolves its `MapSnapshotRequest` from the same layout inputs as preview, preloads matching `NSImage` snapshots before frame rendering, and supplies them to `OverlaySharedRouteMapView` so `ImageRenderer` does not depend on asynchronous view tasks for the map background.
-- Shared entry points now also include elevation chart and running gauge (`OverlaySharedElevationChartView`, `OverlaySharedRunningGaugeView`) so SwiftUI export covers current overlay controls on the same component path.
+- Shared entry points now also include elevation chart, running gauge, and Interval HUD Bar (`OverlaySharedElevationChartView`, `OverlaySharedRunningGaugeView`, `OverlaySharedIntervalHUDBarView`) so SwiftUI export covers current overlay controls on the same component path.
+- Interval HUD Bar style decodes missing newer fields from defaults, allowing early HUD project snapshots to load after the ordered metrics, remaining-primary, and typography controls were added.
 - `SwiftUIOverlayVideoExporter` removes its old per-type fallback drawing implementations and keeps only the shared component path used by preview.
 - `Export Test Frame` renders a PNG through the same SwiftUI export rasterization path at the current playhead position.
 - `Export Overlay JSON` serializes the current `OverlayLayout` as `overlay_configuration.json` for reproducible renderer-debug snapshots.

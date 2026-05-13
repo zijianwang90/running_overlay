@@ -139,6 +139,8 @@ enum OverlayValueFormatter {
             )
         case .runningGauge:
             return OverlayValueComponents(label: "Running Gauge", shortLabel: "GAUGE", value: String(format: "%.2f", activity.distance(at: elapsedTime) / 1000), unit: "km")
+        case .intervalHUDBar:
+            return OverlayValueComponents(label: "Interval HUD Bar", shortLabel: "INTERVAL", value: "", unit: "")
         case .routeMap:
             return OverlayValueComponents(label: "Route Map", shortLabel: "ROUTE", value: "\(activity.routePoints.count)", unit: "pts")
         case .verticalOscillation:

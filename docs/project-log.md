@@ -2,6 +2,43 @@
 
 ## 2026-05-12
 
+### Interval HUD Bar Overlay Implementation
+
+- Added `OverlayElementType.intervalHUDBar`, `IntervalHUDBarStyle`, bottom bar modes, progress modes, HR Drop display modes, and metric slot configuration.
+- Implemented `OverlayRenderModel.intervalHUDBarLayout(for:in:)` using `ActivityTimeline.laps`, current lap progress, live HR/pace/power, REST recovery drop helpers, and shared HR zone preferences.
+- Extracted shared overlay HR zone colors through `HRZonePalette.overlayColors` and added a nonisolated `HeartRateZonePreferences.currentSnapshot()` reader for render/export paths.
+- Added `IntervalHUDBarOverlayView`, `OverlaySharedIntervalHUDBarView`, Overlay Pool Charts tile, dedicated Inspector, SwiftUI exporter support, and legacy PNG renderer support.
+- Updated the built-in `Interval Workout` template to include Interval HUD Bar.
+- Added render model test coverage for WORK/REST phase layout, rep text, HR zone matching, zone bar segments, and HR Drop percentage mode.
+
+Files added:
+
+- `Sources/RunningOverlay/Overlay/IntervalHUDBarModel.swift`
+- `Sources/RunningOverlay/UI/IntervalHUDBarOverlayView.swift`
+- `Sources/RunningOverlay/UI/IntervalHUDBarOverlayDetailView.swift`
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/OverlayElement.swift`
+- `Sources/RunningOverlay/Overlay/OverlayRenderModel.swift`
+- `Sources/RunningOverlay/UI/OverlaySharedViews.swift`
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `Sources/RunningOverlay/UI/OverlayPoolView.swift`
+- `Sources/RunningOverlay/UI/ParameterPanelView.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/Project/HeartRateZonePreferences.swift`
+- `Sources/RunningOverlay/Export/SwiftUIOverlayVideoExporter.swift`
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `Sources/RunningOverlay/Overlay/OverlayTemplate.swift`
+- `Tests/RunningOverlayTests/OverlayRenderModelTests.swift`
+- `docs/architecture.md`
+- `docs/development.md`
+- `docs/design/panels/media-pool/media-pool-ui.md`
+- `docs/design/panels/media-pool/media-pool-ui.spec.json`
+- `docs/design/overlays/interval-hud-bar/interval-hud-bar-overlay-ui.md`
+- `docs/overlay-modules/interval-hud-bar-overlay.md`
+- `docs/project-log.md`
+
 ### Retired Early Lap Overlay Prototypes
 
 - Removed the original `Lap List`, `Lap Card`, and `Lap Live` overlay components from the active app surface before implementing the replacement Interval HUD Bar.
@@ -3896,3 +3933,38 @@ Verification:
 - `git diff --check`
 - `swift test`
 - `swift test --filter TimelineModelTests`
+
+### Interval HUD Bar Inspector Customization (2026-05-13)
+
+Summary:
+
+- Reworked Interval HUD Bar metrics from fixed visibility toggles into an ordered add/delete list with unlimited slots and duplicate metrics allowed.
+- Added dividers between every metric block so user-added metrics follow the same block rhythm as Rep, Phase, and Remaining.
+- Changed the HUD main row so Rep, Phase, Remaining, and each metric render as equal-width cells; empty metric space is not reserved when no metrics are configured.
+- Expanded Interval HUD Bar metric options to include every Numeric Overlay metric.
+- Moved `HR Zone` and `HR Drop` out of the Metrics add list into a dedicated HR Zone HUD cell with `HR Zone` and `HR Drop at Rest` display modes.
+- Added visibility toggles for the four primary HUD cells: Rep, Current Training, Remaining, and HR Zone.
+- Added Current Training detail controls so normal training and REST can independently show remaining time or remaining distance.
+- Moved the `HR Drop` bpm/% mode control under the HR Zone settings.
+- Split Bottom Bar into its own Inspector section below Metrics with an enable switch, type menu, progress mode, Glow toggle, and Glow Intensity.
+- Added Bottom Bar glow rendering: lap progress glows the completed portion, and zone modes glow the active segment using the phase/zone color.
+- Added a Remaining setting that swaps the primary/secondary display between time left and distance left.
+- Simplified Remaining secondary label to always read `LEFT`.
+- Added separate typography controls for labels, primary values, phase, phase detail, metric values, and metric units.
+- Aligned the Inspector tail with the shared pattern: Divider, Background, Border, Effects. Background, Border, and Effects use the shared modules; Divider uses shared overlay divider fields.
+- Added default-backed decoding for Interval HUD Bar styles so early project snapshots survive newly added style fields.
+- Restored collapsible behavior and header divider lines for Layout, HUD Bar, Metrics, and Typography, and aligned the Interval HUD Bar detail header height with the shared Inspector header.
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/IntervalHUDBarModel.swift`
+- `Sources/RunningOverlay/Overlay/OverlayRenderModel.swift`
+- `Sources/RunningOverlay/UI/IntervalHUDBarOverlayView.swift`
+- `Sources/RunningOverlay/UI/IntervalHUDBarOverlayDetailView.swift`
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `Tests/RunningOverlayTests/OverlayRenderModelTests.swift`
+- `Tests/RunningOverlayTests/OverlayTemplateTests.swift`
+- `docs/design/overlays/interval-hud-bar/interval-hud-bar-overlay-ui.md`
+- `docs/design/overlays/interval-hud-bar/interval-hud-bar-overlay-ui.spec.json`
+- `docs/overlay-modules/interval-hud-bar-overlay.md`
+- `docs/project-log.md`

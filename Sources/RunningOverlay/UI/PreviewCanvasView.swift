@@ -590,6 +590,11 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
                     layout: OverlayRenderModel.runningGaugeLayout(for: element, in: renderContext),
                     isInteractive: isSelected
                 )
+            case .intervalHUDBar:
+                OverlaySharedIntervalHUDBarView(
+                    element: element,
+                    layout: OverlayRenderModel.intervalHUDBarLayout(for: element, in: renderContext)
+                )
             case .routeMap:
                 OverlaySharedRouteMapView(
                     element: element,

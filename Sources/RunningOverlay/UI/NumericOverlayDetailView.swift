@@ -874,6 +874,7 @@ extension OverlayElementType {
         case .distanceTimeline: "waveform.path.ecg"
         case .elevationChart: "chart.line.uptrend.xyaxis"
         case .runningGauge: "gauge"
+        case .intervalHUDBar: "rectangle.split.3x1"
         case .routeMap: "map"
         case .verticalOscillation: "arrow.up.and.down"
         case .groundContactTime: "timer"

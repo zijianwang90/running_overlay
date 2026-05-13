@@ -76,3 +76,15 @@ struct OverlaySharedRunningGaugeView: View {
         )
     }
 }
+
+struct OverlaySharedIntervalHUDBarView: View {
+    let element: OverlayElement
+    let layout: IntervalHUDBarRenderLayout
+
+    var body: some View {
+        IntervalHUDBarOverlayView(
+            element: element,
+            layout: layout
+        )
+    }
+}

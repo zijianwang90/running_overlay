@@ -286,6 +286,69 @@ struct OverlayRenderModelTests {
     }
 
     @MainActor
+    @Test func intervalHUDBarLayoutUsesLapsZonesAndRecoveryDrop() throws {
+        let prefs = HeartRateZonePreferences.shared
+        let oldCount = prefs.zoneCount
+        let oldZones = prefs.zones
+        defer {
+            prefs.zoneCount = oldCount
+            prefs.zones = oldZones
+        }
+        prefs.zoneCount = .five
+        prefs.zones = [
+            HeartRateZone(),
+            HeartRateZone(minHR: 120, maxHR: 139),
+            HeartRateZone(minHR: 140, maxHR: 160),
+            HeartRateZone(minHR: 161, maxHR: 180),
+            HeartRateZone(minHR: 181, maxHR: 200),
+            HeartRateZone()
+        ]
+
+        var style = OverlayStyle.default
+        style.intervalHUDBar.bottomBarMode = .heartRateZones
+        style.intervalHUDBar.hrDropMode = .percent
+        style.intervalHUDBar.remainingPrimary = .distance
+        style.intervalHUDBar.metricSlots.append(IntervalHUDBarMetricSlot(metric: .pace))
+        let element = OverlayElement(type: .intervalHUDBar, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let workContext = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 50
+        )
+        let restContext = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 130
+        )
+
+        let workLayout = OverlayRenderModel.intervalHUDBarLayout(for: element, in: workContext)
+        #expect(workLayout.phaseLabel == "WORK")
+        #expect(workLayout.repText == "1 / 2")
+        #expect(workLayout.remainingTimeText == "0:50")
+        #expect(workLayout.remainingPrimaryLabel == "LEFT")
+        #expect(workLayout.remainingPrimaryText == "100 m")
+        #expect(workLayout.metricItems.filter { $0.metric == .pace }.count == 2)
+        #expect(workLayout.progress == 0.5)
+
+        let restLayout = OverlayRenderModel.intervalHUDBarLayout(for: element, in: restContext)
+        #expect(restLayout.phaseLabel == "REST")
+        #expect(restLayout.activeZoneIndex == 2)
+        #expect(restLayout.zoneSegments.count == 5)
+        #expect(restLayout.zoneItem?.metric == .hrDrop)
+        #expect(restLayout.zoneItem?.value == "17")
+        #expect(restLayout.zoneItem?.unit == "%")
+    }
+
+    @Test func intervalHUDBarMetricsIncludeAllNumericOverlayTypes() {
+        let intervalMetricTypes = Set(IntervalHUDBarMetric.numericCases.compactMap(\.elementType))
+        let numericTypes = Set(OverlayElementType.allCases.filter(\.isNumericOverlay))
+
+        #expect(intervalMetricTypes == numericTypes)
+        #expect(!IntervalHUDBarMetric.numericCases.contains(.heartRateZone))
+        #expect(!IntervalHUDBarMetric.numericCases.contains(.hrDrop))
+    }
+
+    @MainActor
     @Test func overlayFrameRendererWritesRunningGaugePNG() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -520,6 +583,27 @@ struct OverlayRenderModelTests {
                 )
             ],
             laps: []
+        )
+    }
+
+    private func sampleIntervalActivity() -> ActivityTimeline {
+        let startDate = Date(timeIntervalSince1970: 3_000)
+        return ActivityTimeline(
+            startDate: startDate,
+            duration: 260,
+            distanceMeters: 520,
+            records: [
+                ActivityRecord(elapsedTime: 0, timestamp: startDate, distanceMeters: 0, heartRate: 130, paceSecondsPerKilometer: 300, elevationMeters: nil, cadence: nil, powerWatts: 230, calories: nil),
+                ActivityRecord(elapsedTime: 50, timestamp: startDate.addingTimeInterval(50), distanceMeters: 100, heartRate: 170, paceSecondsPerKilometer: 250, elevationMeters: nil, cadence: nil, powerWatts: 280, calories: nil),
+                ActivityRecord(elapsedTime: 100, timestamp: startDate.addingTimeInterval(100), distanceMeters: 200, heartRate: 180, paceSecondsPerKilometer: 270, elevationMeters: nil, cadence: nil, powerWatts: 260, calories: nil),
+                ActivityRecord(elapsedTime: 130, timestamp: startDate.addingTimeInterval(130), distanceMeters: 230, heartRate: 150, paceSecondsPerKilometer: 420, elevationMeters: nil, cadence: nil, powerWatts: 120, calories: nil),
+                ActivityRecord(elapsedTime: 260, timestamp: startDate.addingTimeInterval(260), distanceMeters: 520, heartRate: 182, paceSecondsPerKilometer: 255, elevationMeters: nil, cadence: nil, powerWatts: 285, calories: nil)
+            ],
+            laps: [
+                LapRecord(lapIndex: 0, startElapsedTime: 0, endElapsedTime: 100, startDistanceMeters: 0, totalDistanceMeters: 200, totalElapsedTime: 100, avgPaceSecondsPerKm: 260, avgHeartRate: 165, maxHeartRate: 180, avgCadenceSPM: nil, avgPowerWatts: 270, totalAscent: nil, kind: .active),
+                LapRecord(lapIndex: 1, startElapsedTime: 100, endElapsedTime: 160, startDistanceMeters: 200, totalDistanceMeters: 60, totalElapsedTime: 60, avgPaceSecondsPerKm: 420, avgHeartRate: 150, maxHeartRate: 180, avgCadenceSPM: nil, avgPowerWatts: 120, totalAscent: nil, kind: .rest),
+                LapRecord(lapIndex: 2, startElapsedTime: 160, endElapsedTime: 260, startDistanceMeters: 260, totalDistanceMeters: 260, totalElapsedTime: 100, avgPaceSecondsPerKm: 255, avgHeartRate: 176, maxHeartRate: 182, avgCadenceSPM: nil, avgPowerWatts: 285, totalAscent: nil, kind: .active)
+            ]
         )
     }
 

@@ -428,6 +428,27 @@ final class ProjectDocument: ObservableObject {
         if type == .weatherWidget {
             style.weatherWidget = WeatherWidgetStyle.preset(.simpleCard)
         }
+        if type == .intervalHUDBar {
+            style.intervalHUDBar = .default
+            style.foregroundColor = .white
+            style.labelColor = .white
+            style.unitColor = .white
+            style.backgroundEnabled = true
+            style.backgroundColor = .black
+            style.backgroundOpacity = 0.72
+            style.backgroundRadius = 10
+            style.borderEnabled = true
+            style.borderColor = .white
+            style.borderOpacity = 0.18
+            style.borderWidth = 1
+            style.dividerEnabled = true
+            style.dividerColor = .white
+            style.dividerThickness = 1
+            style.dividerOpacity = 0.28
+            style.shadowEnabled = true
+            style.shadowOpacity = 0.34
+            style.shadowRadius = 8
+        }
         if type == .decorText {
             style.decor = DecorStyle(
                 shape: .rectangle,
@@ -1552,6 +1573,18 @@ final class ProjectDocument: ObservableObject {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
         mutate(&overlayLayout.elements[index].style.weatherWidget)
+    }
+
+    func mutateIntervalHUDBarStyle(_ elementID: OverlayElement.ID, _ mutate: (inout IntervalHUDBarStyle) -> Void) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.intervalHUDBar)
+    }
+
+    func mutateIntervalHUDBarStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout IntervalHUDBarStyle) -> Void) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.intervalHUDBar)
     }
 
     func applyWeatherWidgetPreset(_ elementID: OverlayElement.ID, preset: WeatherWidgetPreset) {
