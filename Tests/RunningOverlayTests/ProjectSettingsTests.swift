@@ -160,6 +160,7 @@ struct ProjectSettingsTests {
 
     @Test func timelineZoomSliderUsesFineLowEndMapping() {
         let project = ProjectDocument()
+        project.fitPixelsPerSecond = ProjectDocument.minimumTimelinePixelsPerSecond
 
         #expect(project.timelineZoomSliderValue == 0)
 
