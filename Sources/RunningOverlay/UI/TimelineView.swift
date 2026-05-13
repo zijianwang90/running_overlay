@@ -375,7 +375,10 @@ private final class TimelineCanvasNSView: NSView {
         let displayBounds = timeline.displayBounds(activityDuration: activity.duration, collapsed: isCollapsed)
         visibleStartTime = displayBounds.lowerBound
         visibleEndTime = displayBounds.upperBound
-        pixelsPerSecond = resolvePixelsPerSecond(zoom: timeline.zoom, viewportWidth: viewportSize.width)
+        let fitPixelsPerSecond = resolvePixelsPerSecond(zoom: .fit, viewportWidth: viewportSize.width)
+        project.fitPixelsPerSecond = fitPixelsPerSecond
+        let rawPixelsPerSecond = resolvePixelsPerSecond(zoom: timeline.zoom, viewportWidth: viewportSize.width)
+        pixelsPerSecond = max(rawPixelsPerSecond, fitPixelsPerSecond)
 
         let visibleDuration = max(visibleEndTime - visibleStartTime, 1)
         let timelineWidth = max(

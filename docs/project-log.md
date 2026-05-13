@@ -1,5 +1,65 @@
 # Running Overlay Project Log
 
+## 2026-05-13
+
+### Timeline Zoom: Shift+Z Fit Toggle (DaVinci-style)
+
+- Added a `Shift+Z` keyboard shortcut (menu: **Timeline → Toggle Fit Zoom**) that snaps the timeline between Fit and the user's last working zoom, mirroring DaVinci Resolve's behavior.
+- Logic in `ProjectDocument.toggleTimelineFitZoom()`:
+  - Non-fit → `.fit`.
+  - `.fit` → restore `lastNonFitPixelsPerSecond` if known; otherwise fall back to `fitPixelsPerSecond * 5` (clamped to `[fit, 200]`).
+- `lastNonFitPixelsPerSecond` is maintained via a `didSet` on `timeline` (`rememberNonFitZoom`) so every path that ends in a non-fit zoom — slider drag, Cmd±, undo/redo, project load — refreshes the memory. The key UX requirement was "always remember the most recent zoom value, regardless of how the user got there," which a single chokepoint (`didSet`) satisfies without sprinkling bookkeeping through every mutation path.
+- Shortcut chosen as `Shift+Z` (no Cmd) because `Cmd+Z` / `Cmd+Shift+Z` are already bound to undo/redo and DaVinci's muscle memory is bare `Shift+Z`.
+
+### Timeline Zoom: Fit Is the Minimum
+
+- User reported the zoom slider's left half (slider values that mapped to pixels-per-second below the Fit value, e.g. `0.5`) produced a layout *shorter* than Fit — clips appeared squeezed and the px/s readout dropped below `1`. Intended behavior: the slider's leftmost position should be Fit, and any movement only zooms in.
+- Root cause: the slider mapped its raw range `0.25…200 px/s` regardless of the viewport's actual Fit value, and `TimelineZoom.zoomedIn()` from `.fit` produced a fixed `0.5 px/s` — both could land below Fit. The Fit px/s is viewport-dependent and was never known to `ProjectDocument`.
+- Fix:
+  - Added `ProjectDocument.fitPixelsPerSecond` (runtime cache, not persisted). `TimelineCanvasNSView.update` writes the freshly computed Fit value each render and clamps the rendered px/s to `≥ fit` as defense against stale state.
+  - Rewrote `zoomTimelineIn` / `zoomTimelineOut` and the slider mapping (`pixelsPerSecond(forSliderValue:fit:)` / `sliderValue(forPixelsPerSecond:fit:)`) to use `fitPixelsPerSecond` as the lower bound instead of the static `0.25`. Slider 0 = Fit; the px/s curve interpolates from Fit up to `200`.
+  - `timelineZoomSliderValue` now snaps any persisted px/s `≤ fit` back to the leftmost (Fit), so projects saved at an old sub-Fit zoom display correctly on reopen.
+- `TimelineZoom.zoomedIn/zoomedOut` are no longer reached (ProjectDocument owns the stepping math now). Left in place because the enum is `Codable` and used by tests/snapshots — removing them is unrelated cleanup.
+
+### Numeric Overlay: Unit Alignment in Inline Presets + Universal Value Alpha
+
+- User reported the new Unit Align control had no visible effect on the `splitLabel` preset (the same gap existed in `racingStripe` / `editorial`). Root cause: those presets rendered `value` and `unit` inside one `HStack(alignment: .lastTextBaseline)`, so there was only a single frame anchor (`valueStackFrameAlignment`) for the pair — the unit always tracked the value's horizontal placement.
+- Fix: split value and unit into separate rows in `splitLabelView`, `racingStripeView`, `editorialView`. Each row now applies its own `frame(maxWidth: .infinity, alignment:)` — value uses `valueStackFrameAlignment`, unit uses `unitStackFrameAlignment`. Inline-with-value unit positions (`.leading`/`.trailing` in `metricCoreContent`) still keep the unit glued to the value baseline by design — independent alignment doesn't make geometric sense on a shared baseline.
+- Trade-off: in those three presets the unit is no longer baselined inline with the value (it sits on its own row immediately below). This is the cost of giving the Unit Align segmented control real effect on these presets — accept the small visual change in exchange for the decoupling the user explicitly asked for.
+- Universal value alpha: user reported the Value `Alpha` slider had no effect on several presets. Root cause: most preset views read value text color from `Color(element.style.foregroundColor)` directly, bypassing `valueColor` / `valueOpacity`. Only `metricCoreContent` and `bigNumberView` used the `valueTextColor` helper that applies both. Routed every value-text `foregroundStyle(...)` through `valueTextColor`, with two carve-outs that preserve preset intent:
+  - Stylized opacity multipliers stay (`inlineGhost`'s `0.88`, `serifEditorial`'s `0.92`) but now multiply against `valueOpacity` instead of foreground: `Color(valueColor).opacity(valueOpacity * <multiplier>)`.
+  - Accent-tinted values (`digitalWatch`) use `accent.opacity(valueOpacity)` so user alpha rides on top of the LCD tint instead of replacing the color.
+- `valueText` (the `Text` helper used by `sportWatch`) now sets `.foregroundColor(valueTextColor)` so the watch dial respects value alpha. Same `unitTextColor` treatment applied to unit text in the now-split `splitLabel`/`racingStripe`/`editorial`.
+- Known gap, intentionally not addressed in this pass: `OverlayFrameRenderer` (the CG export path) still defaults to `foregroundColor` for value text via `textAttributes`. Bringing it to parity needs per-element-type color routing (label/unit drawText calls today inconsistently rely on the default), which is a larger change parked for a follow-up. Filed in this entry so the next person picking it up knows the preview/export gap.
+
+### Preview Header: Drop Duplicate Menu Chevron
+
+- The preview zoom (`Fit`) and playback rate (`1x`) menus in `PreviewCanvasView.swift` were rendering two chevrons: SwiftUI's auto menu indicator on the left of the label plus the explicit trailing `chevron.down` in the custom label. Added `.menuIndicator(.hidden)` to both `Menu`s so only the intentional right-side chevron remains.
+
+### Preview Header: Canvas Background Color Picker
+
+- Added an inline `ColorPicker` to the preview header, immediately to the left of the Fit/Fill menu, so the user can change the canvas backdrop color (most useful when there is no video clip under the playhead and the canvas would otherwise be blank).
+- Backed by a new `@Published var previewCanvasBackground: Color = EditorTheme.appBackground` on `ProjectDocument` (session-only, alongside `previewFitMode`). The preview's backdrop `Rectangle` now fills with this value instead of the hardcoded `EditorTheme.appBackground`.
+- `supportsOpacity: false` — the picker is for the visible backdrop, not for export (exports remain transparent MOV); allowing alpha here would just confuse intent.
+- `VideoPreviewNSView` previously hardcoded its host `CALayer.backgroundColor = NSColor.black`, which sat on top of the canvas `Rectangle` and showed as black letterbox/pillarbox bars whenever the video's aspect didn't match the project canvas — defeating the new color picker for the most common case (Fit + mismatched aspect). Changed to `NSColor.clear` so the canvas `Rectangle` behind the player layer becomes the visible letterbox color.
+
+### Preview Fit Mode: Fit / Fill
+
+- Wired the previously inert preview zoom menu to actually switch between two modes. New `PreviewFitMode` enum (`fit`, `fill`) in `PreviewCanvasView.swift`; new `@Published var previewFitMode: PreviewFitMode = .fit` on `ProjectDocument` (session-only, sits alongside `showPreviewGuides`).
+- **Semantics**: the canvas (black backdrop) always keeps the project's export aspect ratio — Fit/Fill controls how the underlying **video clip** sits inside that canvas, not how the canvas sits inside the preview area. So `fittedCanvasSize` is unchanged; instead the mode is plumbed into `VideoPreviewPlayerView` and toggles `AVPlayerLayer.videoGravity` between `.resizeAspect` (Fit — letterbox when video aspect ≠ project aspect) and `.resizeAspectFill` (Fill — crop video to fill the canvas).
+- (Initial implementation incorrectly scaled the whole canvas in Fill mode, expanding the black backdrop past the project aspect — corrected based on user feedback. AVPlayerLayer already auto-clips at its bounds, so no extra `.clipped()` is needed.)
+- Stretch (non-uniform scaling) intentionally **not** offered: any non-uniform scale would mislead the user about export geometry since overlays sit at canvas-relative coordinates.
+- Menu contents updated to two `Button`s with a checkmark for the active mode; the header label now reflects `project.previewFitMode.label` instead of a hardcoded "Fit".
+
+### Numeric Overlay: Independent Unit Alignment Control
+
+- Added `OverlayStyle.unitTextAlignment` (`OverlayTextAlignment`, default `.leading`). Plumbed through `OverlayTextRenderLayout.unitTextAlignment`, a new `ProjectDocument.setOverlayUnitTextAlignment(_:alignment:)` mutator, and a new "Align" row in the Inspector Unit section (segmented left/center/right). Backward-compat decoder uses `decodeIfPresent ?? Self.default.unitTextAlignment`.
+- User reported that the unit row was tracking other rows: when the unit sits on its own line (`unitPosition == .bottom` in stacked metric layouts, or always in the `bigNumber` preset) it was inheriting the value's frame alignment, so adjusting label/value align would visually drag the unit along. Fix: the unit row now applies its own `frame(maxWidth: .infinity, alignment: unitStackFrameAlignment)`.
+  - `bigNumberView` restructured: flattened the nested `VStack { value; unit }` into the outer `.leading`-anchored stack so value and unit each get an independent per-row frame anchor; same flattening applied in the side-label HStack branch.
+  - `metricCoreContent` bottom-unit branch now uses `unitStackFrameAlignment`.
+- Inline unit positions (`.leading`/`.trailing` of the value) stay glued to the value baseline by design — alignment doesn't make sense for those modes, so the new control is documented to apply only to standalone-row layouts.
+- Export parity: `OverlayFrameRenderer.bigNumber` now passes `nsTextAlignment(renderLayout.unitTextAlignment)` to the unit `drawText` call instead of hardcoded `.center`. Build clean, 111/111 tests pass.
+
 ## 2026-05-12
 
 ### Interval HUD Bar Overlay Implementation

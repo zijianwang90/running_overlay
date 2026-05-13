@@ -111,6 +111,12 @@ struct RunningOverlayApp: App {
                 }
                 .keyboardShortcut("-", modifiers: [.command])
                 .disabled(benchmarkCommand != nil)
+
+                Button("Toggle Fit Zoom") {
+                    project.toggleTimelineFitZoom()
+                }
+                .keyboardShortcut("z", modifiers: [.shift])
+                .disabled(benchmarkCommand != nil)
             }
         }
     }

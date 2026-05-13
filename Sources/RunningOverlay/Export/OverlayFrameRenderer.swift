@@ -222,7 +222,7 @@ struct OverlayFrameRenderer {
                 valueY += renderLayout.labelFontSize * 1.4 + renderLayout.labelSpacing
             }
             drawText(renderLayout.components.value, for: element, fontSize: valueFontSize, in: CGRect(x: rect.minX, y: valueY, width: rect.width, height: valueFontSize * 1.08), renderLayout: renderLayout, alignment: valueAlignment)
-            drawText(renderLayout.components.unit, for: element, fontSize: renderLayout.unitFontSize * 1.25, in: CGRect(x: rect.minX, y: rect.maxY - renderLayout.unitFontSize * 1.55, width: rect.width, height: renderLayout.unitFontSize * 1.45), renderLayout: renderLayout, alignment: .center)
+            drawText(renderLayout.components.unit, for: element, fontSize: renderLayout.unitFontSize * 1.25, in: CGRect(x: rect.minX, y: rect.maxY - renderLayout.unitFontSize * 1.55, width: rect.width, height: renderLayout.unitFontSize * 1.45), renderLayout: renderLayout, alignment: nsTextAlignment(renderLayout.unitTextAlignment))
             if showLabel && (renderLayout.labelPosition == .bottom || renderLayout.labelPosition == .trailing) {
                 drawText(
                     renderLayout.components.label,

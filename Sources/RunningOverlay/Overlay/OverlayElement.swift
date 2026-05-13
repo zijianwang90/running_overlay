@@ -363,6 +363,12 @@ struct OverlayStyle: Equatable, Codable {
     /// left or right of the value it controls vertical alignment
     /// (top/middle/bottom). Three discrete options; reuses `OverlayTextAlignment`.
     var labelTextAlignment: OverlayTextAlignment
+    /// Alignment of the numeric overlay unit text. Only takes effect when the
+    /// unit sits on its own row (currently `.bottom`/`.top` unit positions and
+    /// the `bigNumber` preset where unit is rendered under the value); inline
+    /// unit positions stay glued to the value baseline. Reuses
+    /// `OverlayTextAlignment` (left/center/right).
+    var unitTextAlignment: OverlayTextAlignment
     var accentColor: OverlayColor
     /// Numeric overlay divider — the decorative line that appears between the
     /// value and the label in presets that include one (splitLabel, editorial,
@@ -477,6 +483,7 @@ struct OverlayStyle: Equatable, Codable {
         rotationDegrees: 0,
         textAlignment: .leading,
         labelTextAlignment: .leading,
+        unitTextAlignment: .leading,
         accentColor: .blue,
         dividerEnabled: true,
         dividerColor: .white,
@@ -566,6 +573,7 @@ struct OverlayStyle: Equatable, Codable {
         rotationDegrees: Double = 0,
         textAlignment: OverlayTextAlignment = .leading,
         labelTextAlignment: OverlayTextAlignment = .leading,
+        unitTextAlignment: OverlayTextAlignment = .leading,
         accentColor: OverlayColor = .blue,
         dividerEnabled: Bool = true,
         dividerColor: OverlayColor = .white,
@@ -653,6 +661,7 @@ struct OverlayStyle: Equatable, Codable {
         self.rotationDegrees = rotationDegrees
         self.textAlignment = textAlignment
         self.labelTextAlignment = labelTextAlignment
+        self.unitTextAlignment = unitTextAlignment
         self.accentColor = accentColor
         self.dividerEnabled = dividerEnabled
         self.dividerColor = dividerColor
@@ -752,6 +761,7 @@ struct OverlayStyle: Equatable, Codable {
         rotationDegrees = try container.decodeIfPresent(Double.self, forKey: .rotationDegrees) ?? Self.default.rotationDegrees
         textAlignment = try container.decodeIfPresent(OverlayTextAlignment.self, forKey: .textAlignment) ?? Self.default.textAlignment
         labelTextAlignment = try container.decodeIfPresent(OverlayTextAlignment.self, forKey: .labelTextAlignment) ?? Self.default.labelTextAlignment
+        unitTextAlignment = try container.decodeIfPresent(OverlayTextAlignment.self, forKey: .unitTextAlignment) ?? Self.default.unitTextAlignment
         accentColor = try container.decodeIfPresent(OverlayColor.self, forKey: .accentColor) ?? Self.default.accentColor
         dividerEnabled = try container.decodeIfPresent(Bool.self, forKey: .dividerEnabled) ?? Self.default.dividerEnabled
         dividerColor = try container.decodeIfPresent(OverlayColor.self, forKey: .dividerColor) ?? Self.default.dividerColor
