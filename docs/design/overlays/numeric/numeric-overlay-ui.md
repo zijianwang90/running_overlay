@@ -68,7 +68,7 @@ Sections:
 3. `Typography` (value only)
 4. `Label`
 5. `Unit`
-6. `Color`
+6. `Divider` (replaces former `Color` — the accent swatch was repurposed as the divider color)
 7. `Background`
 8. `Border`
 9. `Effects`
@@ -142,13 +142,14 @@ Controls:
 - Font dropdown.
 - Font Size slider with numeric value (value text only).
 - Weight segmented control: `Regular`, `Medium`, `Semibold`, `Bold`.
+- Align segmented control (left / center / right) — backed by `OverlayStyle.textAlignment`. Independent from `labelTextAlignment`; the SwiftUI views anchor the outer VStack on `.leading` and let each row apply its own `frame(maxWidth: .infinity, alignment:)` so changing one alignment does not move the other row.
 
 Model mapping:
 
 - Existing model supports `OverlayStyle.fontName`.
 - Existing model supports `OverlayStyle.fontSize`.
 - Existing model supports `OverlayStyle.fontWeight`.
-- Alignment control is removed (the previous control had no rendering effect).
+- `OverlayStyle.textAlignment` is the value alignment (the Align row above writes to it).
 - Typography size no longer scales label/unit; label and unit are edited in their own sections.
 
 ## Label Section
@@ -158,6 +159,9 @@ Controls:
 - `Enable Label` toggle in section header accessory.
 - Label text field.
 - Position segmented control: `Top`, `Bottom`, `Left`, `Right`.
+- Align/Anchor segmented control: three options interpreted by position. Row label is `Align` when the label is stacked above/below the value (left / center / right) and `Anchor` when it sits to the side (top / middle / bottom). Backed by `OverlayStyle.labelTextAlignment` (`.leading / .center / .trailing` reused for both axes).
+- Label color swatches.
+- Label opacity slider.
 - Label font family.
 - Label font size.
 - Label font weight.
@@ -172,21 +176,22 @@ Controls:
 - Unit font size.
 - Unit font weight.
 
-## Color Section
+## Divider Section
 
-Controls:
+Controls (project-wide divider quad — keep parity with the LapList / Stats Bar dividers):
 
-- Text color swatches.
-- Optional accent color swatches if the selected preset uses an accent.
-- Label color swatches.
+- `Enable Divider` toggle in section header accessory.
+- Color swatch strip → `OverlayStyle.dividerColor`.
+- Thickness slider (0…16) → `OverlayStyle.dividerThickness`.
+- Alpha slider (0…100%) → `OverlayStyle.dividerOpacity`.
 
-Model mapping:
+Applies only to presets that draw a divider element: `pillBadge` (vertical 1pt), `splitLabel` (horizontal accent line), `racingStripe` (left vertical stripe), `editorial` (bottom accent rule), `sportWatch` (upper + lower rules). Position/orientation is preset-owned; the inspector only exposes color/thickness/alpha/visibility.
 
-- Existing model supports `OverlayStyle.foregroundColor`.
-- Existing model supports `OverlayStyle.labelColor`.
-- Existing model supports `OverlayStyle.accentColor`.
-- For `splitLabel`, `racingStripe`, and `editorial`, label text uses `labelColor`/`labelOpacity`, while accent lines/stripes use `accentColor`.
-- Preset apply defaults keep those styles visually consistent by setting label color to the preset accent color initially.
+For presets without a divider concept (`minimal`, `minimalLabel`, `metricCard`, `bigNumber`, `neonGlow`, `digitalWatch`) the entire section greys out and the toggle stays disabled — see `presetSupportsDivider` in `NumericOverlayDetailView`.
+
+The standalone "Color" section was retired: its only remaining live control was the Accent swatch, whose only consumer was the divider color in `splitLabel`/`editorial`/`racingStripe`/`pillBadge`. Those presets now read `dividerColor` directly, so the model field `accentColor` remains (kept for backwards-compatible decode and for non-divider presets like `neonGlow` / `digitalWatch` that still use it for glow/value tinting) but has no Inspector surface.
+
+`OverlayPresetTokens` carries an optional `DividerTokens` per preset so `applyOverlayTextPreset` snaps `dividerEnabled/Color/Thickness/Opacity` to match the preset's intended look; presets without a divider write `dividerEnabled = false`.
 
 ## Background Section
 

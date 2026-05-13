@@ -43,7 +43,13 @@ enum OverlayRenderModel {
             backgroundFadeOutAmount: element.style.backgroundFadeOutAmount,
             backgroundBlurRadius: context.scaled(element.style.backgroundBlurRadius),
             shadowRadius: context.scaled(element.style.shadowRadius),
-            shadowOffsetY: context.scaled(element.style.shadowOffsetY)
+            shadowOffsetY: context.scaled(element.style.shadowOffsetY),
+            labelTextAlignment: element.style.labelTextAlignment,
+            valueTextAlignment: element.style.textAlignment,
+            dividerEnabled: element.style.dividerEnabled,
+            dividerColor: element.style.dividerColor,
+            dividerThickness: context.scaled(element.style.dividerThickness * element.scale),
+            dividerOpacity: element.style.dividerOpacity
         )
     }
 
@@ -1219,6 +1225,12 @@ struct OverlayTextRenderLayout {
     var backgroundBlurRadius: Double
     var shadowRadius: Double
     var shadowOffsetY: Double
+    var labelTextAlignment: OverlayTextAlignment
+    var valueTextAlignment: OverlayTextAlignment
+    var dividerEnabled: Bool
+    var dividerColor: OverlayColor
+    var dividerThickness: Double
+    var dividerOpacity: Double
 }
 
 struct OverlayDistanceTimelineRenderLayout {

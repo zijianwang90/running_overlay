@@ -161,6 +161,10 @@ extension NSColor {
 
     // Timeline-specific tokens from design spec (timeline-ui.spec.json).
     static let timelineFitGreen = NSColor(hex: 0x49A862)
+    static let timelineFitWarmupTeal = NSColor(hex: 0x3AA6A3)
+    static let timelineFitRunOrange = NSColor(hex: 0xE77A3C)
+    static let timelineFitRestBlue = NSColor(hex: 0x4F82C7)
+    static let timelineFitCooldownPurple = NSColor(hex: 0x7A6AD8)
     static let timelineFitPausedGray = NSColor(hex: 0x6F7780)
     static let timelineClipBlue = NSColor(hex: 0x2F73D9)
     static let timelinePlayheadRed = NSColor(hex: 0xE4525A)

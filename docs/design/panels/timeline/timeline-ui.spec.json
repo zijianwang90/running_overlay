@@ -61,7 +61,7 @@
       "component": "TimelineLanes",
       "leftLabelColumn": ["FIT", "Layer 1", "Layer 2"],
       "tracks": [
-        { "type": "fit", "color": "timeline.fitGreen", "draggable": true },
+        { "type": "fit", "color": "timeline.fitGreen", "intervalColors": ["timeline.fitWarmupTeal", "timeline.fitRunOrange", "timeline.fitRestBlue", "timeline.fitCooldownPurple"], "draggable": false },
         { "type": "video", "color": "timeline.clipBlue", "clips": "multiple adjacent variable-width blocks" },
         { "type": "dropTarget", "label": "Drop to Layer 2", "visibleDuringDrag": true }
       ]
@@ -93,7 +93,7 @@
     "nonlinear zoom slider and Fit label",
     "ruler seeking and hover data",
     "C-held hover scrubbing moves playhead to hovered timeline time without clicking",
-    "independent draggable FIT layer",
+    "independent non-draggable FIT layer",
     "expanded-mode video clip horizontal drag",
     "collapsed mode hides no-video gaps",
     "collapsed mode disables existing video clip horizontal drag",

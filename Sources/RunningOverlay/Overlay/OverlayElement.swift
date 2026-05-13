@@ -367,7 +367,22 @@ struct OverlayStyle: Equatable, Codable {
     var unitSpacing: Double
     var rotationDegrees: Double
     var textAlignment: OverlayTextAlignment
+    /// Alignment of the numeric overlay label text. Interpreted in the context
+    /// of `labelPosition`: when the label sits above/below the value the field
+    /// controls horizontal alignment (left/center/right); when it sits to the
+    /// left or right of the value it controls vertical alignment
+    /// (top/middle/bottom). Three discrete options; reuses `OverlayTextAlignment`.
+    var labelTextAlignment: OverlayTextAlignment
     var accentColor: OverlayColor
+    /// Numeric overlay divider — the decorative line that appears between the
+    /// value and the label in presets that include one (splitLabel, editorial,
+    /// pillBadge, racingStripe, sportWatch). Position/orientation is owned by
+    /// the preset; these four fields control its visibility and style and
+    /// follow the project-wide divider quad convention.
+    var dividerEnabled: Bool
+    var dividerColor: OverlayColor
+    var dividerThickness: Double
+    var dividerOpacity: Double
     var backgroundEnabled: Bool
     var backgroundColor: OverlayColor
     var backgroundRadius: Double
@@ -477,7 +492,12 @@ struct OverlayStyle: Equatable, Codable {
         unitSpacing: 8,
         rotationDegrees: 0,
         textAlignment: .leading,
+        labelTextAlignment: .leading,
         accentColor: .blue,
+        dividerEnabled: true,
+        dividerColor: .white,
+        dividerThickness: 2,
+        dividerOpacity: 0.85,
         backgroundEnabled: true,
         backgroundColor: .black,
         backgroundRadius: 6,
@@ -563,7 +583,12 @@ struct OverlayStyle: Equatable, Codable {
         unitSpacing: Double = 8,
         rotationDegrees: Double = 0,
         textAlignment: OverlayTextAlignment = .leading,
+        labelTextAlignment: OverlayTextAlignment = .leading,
         accentColor: OverlayColor = .blue,
+        dividerEnabled: Bool = true,
+        dividerColor: OverlayColor = .white,
+        dividerThickness: Double = 2,
+        dividerOpacity: Double = 0.85,
         backgroundEnabled: Bool = true,
         backgroundColor: OverlayColor = .black,
         backgroundRadius: Double = 6,
@@ -647,7 +672,12 @@ struct OverlayStyle: Equatable, Codable {
         self.unitSpacing = max(unitSpacing, 0)
         self.rotationDegrees = rotationDegrees
         self.textAlignment = textAlignment
+        self.labelTextAlignment = labelTextAlignment
         self.accentColor = accentColor
+        self.dividerEnabled = dividerEnabled
+        self.dividerColor = dividerColor
+        self.dividerThickness = min(max(dividerThickness, 0), 16)
+        self.dividerOpacity = min(max(dividerOpacity, 0), 1)
         self.backgroundEnabled = backgroundEnabled
         self.backgroundColor = backgroundColor
         self.backgroundRadius = backgroundRadius
@@ -743,7 +773,12 @@ struct OverlayStyle: Equatable, Codable {
         unitSpacing = max(try container.decodeIfPresent(Double.self, forKey: .unitSpacing) ?? Self.default.unitSpacing, 0)
         rotationDegrees = try container.decodeIfPresent(Double.self, forKey: .rotationDegrees) ?? Self.default.rotationDegrees
         textAlignment = try container.decodeIfPresent(OverlayTextAlignment.self, forKey: .textAlignment) ?? Self.default.textAlignment
+        labelTextAlignment = try container.decodeIfPresent(OverlayTextAlignment.self, forKey: .labelTextAlignment) ?? Self.default.labelTextAlignment
         accentColor = try container.decodeIfPresent(OverlayColor.self, forKey: .accentColor) ?? Self.default.accentColor
+        dividerEnabled = try container.decodeIfPresent(Bool.self, forKey: .dividerEnabled) ?? Self.default.dividerEnabled
+        dividerColor = try container.decodeIfPresent(OverlayColor.self, forKey: .dividerColor) ?? Self.default.dividerColor
+        dividerThickness = min(max(try container.decodeIfPresent(Double.self, forKey: .dividerThickness) ?? Self.default.dividerThickness, 0), 16)
+        dividerOpacity = min(max(try container.decodeIfPresent(Double.self, forKey: .dividerOpacity) ?? Self.default.dividerOpacity, 0), 1)
         backgroundEnabled = try container.decodeIfPresent(Bool.self, forKey: .backgroundEnabled) ?? Self.default.backgroundEnabled
         backgroundColor = try container.decodeIfPresent(OverlayColor.self, forKey: .backgroundColor) ?? Self.default.backgroundColor
         backgroundRadius = try container.decodeIfPresent(Double.self, forKey: .backgroundRadius) ?? Self.default.backgroundRadius
@@ -2505,7 +2540,8 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
                 backgroundColor: .black,
                 backgroundOpacity: 0.48,
                 backgroundRadius: 999,
-                accentColor: blue
+                accentColor: blue,
+                divider: DividerTokens(color: .white, thickness: 1, opacity: 0.32)
             )
         case .metricCard:
             return OverlayPresetTokens(
@@ -2547,7 +2583,8 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
                 backgroundColor: nil,
                 backgroundOpacity: nil,
                 backgroundRadius: 0,
-                accentColor: blue
+                accentColor: blue,
+                divider: DividerTokens(color: blue, thickness: 2, opacity: 1)
             )
         case .neonGlow:
             return OverlayPresetTokens(
@@ -2575,7 +2612,8 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
                 backgroundColor: .black,
                 backgroundOpacity: 0.50,
                 backgroundRadius: 12,
-                accentColor: orange
+                accentColor: orange,
+                divider: DividerTokens(color: orange, thickness: 5, opacity: 1)
             )
         case .editorial:
             return OverlayPresetTokens(
@@ -2589,7 +2627,8 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
                 backgroundColor: nil,
                 backgroundOpacity: nil,
                 backgroundRadius: 0,
-                accentColor: yellow
+                accentColor: yellow,
+                divider: DividerTokens(color: yellow, thickness: 3, opacity: 1)
             )
         case .digitalWatch:
             return OverlayPresetTokens(
@@ -2629,6 +2668,19 @@ struct OverlayPresetTokens {
     var backgroundOpacity: Double?
     var backgroundRadius: Double
     var accentColor: OverlayColor?
+    /// Divider defaults for this preset. `nil` means "this preset has no
+    /// built-in divider" — `applyOverlayTextPreset` will write
+    /// `dividerEnabled = false` so the divider section stays inert until the
+    /// user re-enables it. Presets that DO render a divider should supply a
+    /// `DividerTokens` matching their hard-coded visual so users see no
+    /// regression after switching to the preset.
+    var divider: DividerTokens?
+}
+
+struct DividerTokens {
+    var color: OverlayColor
+    var thickness: Double
+    var opacity: Double
 }
 
 enum OverlayFontWeight: String, CaseIterable, Identifiable, Codable {

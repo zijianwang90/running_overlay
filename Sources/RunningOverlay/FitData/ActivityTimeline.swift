@@ -37,6 +37,12 @@ struct ActivityTimeline: Equatable, Codable {
         startDate.addingTimeInterval(duration)
     }
 
+    var isIntervalWorkout: Bool {
+        let activeCount = laps.filter { $0.kind == .active }.count
+        let restCount = laps.filter { $0.kind == .rest }.count
+        return activeCount >= 2 && restCount >= 1
+    }
+
     func timestamp(at elapsedTime: TimeInterval) -> Date {
         startDate.addingTimeInterval(clampedElapsedTime(elapsedTime))
     }
@@ -290,7 +296,7 @@ enum ActivityAnnotatedSegmentKind: String, Equatable, Codable {
     var label: String {
         switch self {
         case .timerPaused:
-            "运动暂停"
+            "Timer Paused"
         }
     }
 }

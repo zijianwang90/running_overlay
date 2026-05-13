@@ -20,7 +20,7 @@ struct NumericOverlayDetailView: View {
                         sectionView(.typography, element: element) { typographySection(element) }
                         sectionView(.label, element: element, accessory: { labelEnabledToggle(element) }) { labelSection(element) }
                         sectionView(.unit, element: element, accessory: { unitEnabledToggle(element) }) { unitSection(element) }
-                        sectionView(.color, element: element) { colorSection(element) }
+                        sectionView(.divider, element: element, accessory: { dividerEnabledToggle(element) }) { dividerSection(element) }
                         OverlayBackgroundInspectorModule(elementID: elementID, element: element)
                         OverlayBorderInspectorModule(elementID: elementID, element: element)
                         OverlayEffectsInspectorModule(elementID: elementID, element: element)
@@ -146,6 +146,14 @@ struct NumericOverlayDetailView: View {
                     .lineLimit(1)
             }
         }
+        InspectorDenseRow(label: "Align") {
+            InspectorDenseSegmented(values: OverlayTextAlignment.allCases, selection: Binding(
+                get: { element.style.textAlignment },
+                set: { project.setOverlayTextAlignment(elementID, alignment: $0) }
+            )) { alignment in
+                Image(systemName: alignment.systemImage)
+            }
+        }
         InspectorDenseRow(label: "Color") {
             InspectorDenseSwatchStrip(
                 presets: NumericOverlayDetailView.colorPresets,
@@ -190,6 +198,16 @@ struct NumericOverlayDetailView: View {
             )) { position in
                 Text(position.compactInspectorLabel)
                     .lineLimit(1)
+            }
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.5)
+        }
+        InspectorDenseRow(label: alignRowLabel(for: element.style.labelPosition)) {
+            InspectorDenseSegmented(values: OverlayTextAlignment.allCases, selection: Binding(
+                get: { element.style.labelTextAlignment },
+                set: { project.setOverlayLabelTextAlignment(elementID, alignment: $0) }
+            )) { alignment in
+                Image(systemName: alignSystemImage(for: alignment, position: element.style.labelPosition))
             }
             .disabled(!isEnabled)
             .opacity(isEnabled ? 1 : 0.5)
@@ -348,18 +366,43 @@ struct NumericOverlayDetailView: View {
     }
 
     @ViewBuilder
-    private func colorSection(_ element: OverlayElement) -> some View {
-        let accentEnabled = accentApplies(to: element.style.textPreset)
-        InspectorDenseRow(label: "Accent") {
+    private func dividerSection(_ element: OverlayElement) -> some View {
+        // The divider is only meaningful for presets that actually draw one
+        // (splitLabel, racingStripe, editorial, pillBadge, sportWatch). Other
+        // presets keep the controls visible but inert so the section retains
+        // its place in the layout and users get a hint about applicability.
+        let supports = presetSupportsDivider(element.style.textPreset)
+        let isEnabled = supports && element.style.dividerEnabled
+        InspectorDenseRow(label: "Color") {
             InspectorDenseSwatchStrip(
                 presets: NumericOverlayDetailView.colorPresets,
-                selected: element.style.accentColor
+                selected: element.style.dividerColor
             ) { color in
-                project.setOverlayAccentColor(elementID, color: color)
+                project.setOverlayDividerColor(elementID, color: color)
             }
-            .disabled(!accentEnabled)
-            .opacity(accentEnabled ? 1 : 0.5)
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.5)
         }
+        InspectorDenseSliderRow(
+            label: "Thickness",
+            value: Binding(
+                get: { element.style.dividerThickness },
+                set: { project.setOverlayDividerThickness(elementID, thickness: $0.quantizedNumeric(to: 0.5)) }
+            ),
+            range: 0...16,
+            displayText: String(format: "%.1f", element.style.dividerThickness),
+            isEnabled: isEnabled
+        )
+        InspectorDenseSliderRow(
+            label: "Alpha",
+            value: Binding(
+                get: { element.style.dividerOpacity },
+                set: { project.setOverlayDividerOpacity(elementID, opacity: $0.quantizedNumeric(to: 0.05)) }
+            ),
+            range: 0...1,
+            displayText: String(format: "%.0f%%", element.style.dividerOpacity * 100),
+            isEnabled: isEnabled
+        )
     }
 
     @ViewBuilder
@@ -583,6 +626,20 @@ struct NumericOverlayDetailView: View {
     }
 
     @ViewBuilder
+    private func dividerEnabledToggle(_ element: OverlayElement) -> some View {
+        let supports = presetSupportsDivider(element.style.textPreset)
+        Toggle("", isOn: Binding(
+            get: { element.style.dividerEnabled },
+            set: { project.setOverlayDividerEnabled(elementID, enabled: $0) }
+        ))
+        .toggleStyle(.switch)
+        .controlSize(.mini)
+        .labelsHidden()
+        .disabled(!supports)
+        .opacity(supports ? 1 : 0.5)
+    }
+
+    @ViewBuilder
     private func shadowEnabledToggle(_ element: OverlayElement) -> some View {
         Toggle("", isOn: Binding(
             get: { element.style.shadowEnabled },
@@ -703,7 +760,7 @@ enum NumericSection: String, CaseIterable {
     case typography
     case label
     case unit
-    case color
+    case divider
     case background
     case effects
 
@@ -714,7 +771,7 @@ enum NumericSection: String, CaseIterable {
         case .typography: "Value"
         case .label: "Label"
         case .unit: "Unit"
-        case .color: "Color"
+        case .divider: "Divider"
         case .background: "Background"
         case .effects: "Shadow"
         }
@@ -727,7 +784,7 @@ enum NumericSection: String, CaseIterable {
         case .typography: "textformat"
         case .label: "textformat.abc"
         case .unit: "character.textbox"
-        case .color: "paintpalette"
+        case .divider: "minus"
         case .background: "rectangle.fill"
         case .effects: "square.fill.on.square.fill"
         }
@@ -735,12 +792,41 @@ enum NumericSection: String, CaseIterable {
 }
 
 private extension NumericOverlayDetailView {
-    func accentApplies(to preset: OverlayTextPreset) -> Bool {
+    /// Whether a given preset actually renders a divider element. Mirrors the
+    /// `divider` field in `OverlayPresetTokens` — keep these in sync.
+    func presetSupportsDivider(_ preset: OverlayTextPreset) -> Bool {
         switch preset {
-        case .splitLabel, .neonGlow, .racingStripe, .editorial, .digitalWatch, .accentBar, .sportNeon:
+        case .pillBadge, .splitLabel, .racingStripe, .editorial, .sportWatch:
             true
         default:
             false
+        }
+    }
+
+    /// Row label for the label-alignment segmented control — flips between
+    /// horizontal and vertical wording so the meaning is obvious for a
+    /// stacked vs. side-attached label.
+    func alignRowLabel(for position: OverlayTextAttachmentPosition) -> String {
+        switch position {
+        case .top, .bottom: "Align"
+        case .leading, .trailing: "Anchor"
+        }
+    }
+
+    func alignSystemImage(for alignment: OverlayTextAlignment, position: OverlayTextAttachmentPosition) -> String {
+        switch position {
+        case .top, .bottom:
+            switch alignment {
+            case .leading: "text.alignleft"
+            case .center: "text.aligncenter"
+            case .trailing: "text.alignright"
+            }
+        case .leading, .trailing:
+            switch alignment {
+            case .leading: "arrow.up.to.line"
+            case .center: "minus"
+            case .trailing: "arrow.down.to.line"
+            }
         }
     }
 }

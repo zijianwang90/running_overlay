@@ -31,9 +31,10 @@ This directory stores implementation-facing product design references for Runnin
 - [Inspector UI Structured Spec](./panels/inspector/inspector-ui.spec.json): machine-readable Inspector state, component, and token definitions.
 - [Inspector outer mockup](./panels/inspector/inspector-outer.png): legacy Inspector outer reference; current Inspector outer manages added overlays while add-overlay tiles live in Overlay Pool.
 - [Overlay detail mockup](./panels/inspector/overlay-detail-running-gauge.png): detail editor state after selecting an overlay.
-- [Project Settings and Font Library UI Spec](./panels/project-settings/project-settings-ui.md): grouped settings modal and font favorite management sheet.
-- [Project Settings and Font Library Structured Spec](./panels/project-settings/project-settings-ui.spec.json): machine-readable settings and font library layout rules.
+- [Project Settings, Heart Rate Zones, and Font Library UI Spec](./panels/project-settings/project-settings-ui.md): grouped settings modal, HR/pace zone sheet, and font favorite management sheet.
+- [Project Settings, Heart Rate Zones, and Font Library Structured Spec](./panels/project-settings/project-settings-ui.spec.json): machine-readable settings, physiology zone, and font library layout rules.
 - [Project Settings and Font Library mockup](./panels/project-settings/project-settings-font-library.png): shared visual reference for both modals.
+- [Heart Rate Zones mockup](./panels/project-settings/heart-rate-zones.png): simplified HR/pace zone configuration sheet reference.
 - [Font Library inline default mockup](./panels/project-settings/font-library-default-inline.png): default font action shown inline after the favorite family name.
 
 ## Overlays

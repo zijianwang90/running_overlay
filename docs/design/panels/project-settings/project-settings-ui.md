@@ -1,10 +1,10 @@
-# Project Settings And Font Library UI Spec
+# Project Settings, Heart Rate Zones, And Font Library UI Spec
 
-Last updated: 2026-04-30
+Last updated: 2026-05-13
 
 ## Purpose
 
-This spec defines the Project Settings modal and the Font Library management sheet. The two surfaces share one macOS utility design language: dark translucent window chrome, centered modal titles, grouped sections, inset rows, subtle dividers, and blue primary actions.
+This spec defines the Project Settings modal, Heart Rate Zones sheet, and Font Library management sheet. These surfaces share one macOS utility design language: dark translucent window chrome, centered modal titles, grouped sections, inset rows, subtle dividers, and blue primary actions.
 
 Mockup reference:
 
@@ -13,6 +13,10 @@ Mockup reference:
 Default font interaction reference:
 
 ![Font Library inline default mockup](./font-library-default-inline.png)
+
+Heart Rate Zones reference:
+
+![Heart Rate Zones mockup](./heart-rate-zones.png)
 
 ## Visual Language
 
@@ -37,10 +41,63 @@ The settings modal should include only the current project export/settings contr
    - `Font Library` row.
    - Caption: `Choose fonts shown in overlay menus.`
    - Right secondary button: `Manage...`.
+4. `Physiology`
+   - `Heart Rate Zones` row.
+   - Caption: `Configure HR and pace ranges for overlays.`
+   - Right secondary button: `Configure...`.
 
 The modal footer contains a right-aligned primary `Done` button.
 
 Do not add unrelated settings such as project name, theme, notifications, hotkeys, opacity, or background controls unless those features are implemented and explicitly added to the settings model.
+
+## Heart Rate Zones Layout
+
+The Heart Rate Zones sheet configures the global HR and pace zone profile used by physiology-aware overlays.
+
+Functional scope is intentionally limited to the controls already present in the app:
+
+- Zone count segmented control: `5` / `6`.
+- Pace unit segmented control: `min/km` / `min/mile`.
+- Threshold fields: `Threshold HR` with `bpm`, and `Threshold Pace` with the selected pace unit.
+- Editable zone rows with a colored zone dot, `Z1`...`Z5` or `Z6`, HR min/max fields, and pace min/max fields.
+- Footer actions: secondary `Reset`, primary `Done`.
+
+Do not add import, preview, auto-fill, purpose/category, timeline preview, profile management, or explanatory feature controls until those behaviors exist in the app model.
+
+Structure:
+
+1. Centered title: `Heart Rate Zones`.
+2. Subtitle: `Configure HR and pace ranges for each zone.`
+3. Grouped settings box with two stable rows:
+   - `Zone Count`, trailing segmented control.
+   - `Pace Unit`, trailing segmented control.
+4. `Threshold` section header and one grouped row:
+   - Left field group: `Threshold HR`, numeric field, `bpm`.
+   - Right field group: `Threshold Pace`, pace field, selected pace unit.
+5. Zone table grouped box:
+   - Header columns: zone label area, `HR Range`, `Pace Range`.
+   - Rows use subtle separators, fixed row height, aligned inputs, and unit text outside fields.
+6. Footer divider, left `Reset`, right `Done`.
+
+Zone colors:
+
+| Zone | Color |
+| --- | --- |
+| Z1 | Blue |
+| Z2 | Cyan |
+| Z3 | Green |
+| Z4 | Yellow |
+| Z5 | Orange |
+| Z6 | Red |
+
+Zone row rules:
+
+- Keep inputs compact and equal width.
+- Use a simple dash between min and max fields.
+- Keep `bpm` and pace-unit labels outside the input fields.
+- Preserve a table-like layout; do not render each zone as a separate floating card.
+- If `6` zones is selected, add the Z6 row using the same spacing and red dot.
+- Text must remain English until the planned localization pass.
 
 ## Font Library Layout
 

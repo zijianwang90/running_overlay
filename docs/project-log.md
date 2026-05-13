@@ -1,5 +1,66 @@
 # Running Overlay Project Log
 
+## 2026-05-12
+
+### Project Settings: Heart Rate Zones
+
+- Added a new "Physiology" section to Project Settings with a single row "Heart Rate Zones → Configure…". Sits peer-to-peer with the existing Typography / Font Library row per user request, opens a dedicated sheet.
+- Sheet (`HeartRateZonesView`) lets the user pick 5 or 6 zones, choose a pace unit (min/km or min/mile), and enter optional HR range (bpm) and/or pace range (m:ss) per zone. Each row carries a fixed-palette colored dot (blue → cyan → green → yellow → orange → red) keyed to zone index.
+- Stored globally in `UserDefaults` via a new `HeartRateZonePreferences` `@Observable` singleton (mirrors `FontLibraryManager`). HR zones are a user trait — they should persist across projects rather than ride inside `.roov`. Pace values are normalized to seconds-per-km on disk; the UI re-renders via `PaceConversion` when the unit toggle flips, so switching units never loses data.
+- Persistence keeps a full 6-slot array even when the user is in 5-zone mode, so toggling 5 ↔ 6 preserves whatever the user typed into Z6. The footer "Reset" button only clears the currently-visible zones.
+- Added a "Threshold" subsection above the zone list with `Threshold HR` (bpm) and `Threshold Pace` (formatted per active unit) inputs, persisted in `UserDefaults`. Gives users an anchor metric for deriving zones.
+- Layout fix: widened the sheet (700 × 680) and applied `.fixedSize()` to all inline captions (HR, Pace, bpm, threshold labels). Earlier the row overflowed the 560pt sheet and SwiftUI compressed "Pace" into a vertical letter stack. Dropped the redundant trailing unit suffix on each zone row — unit already shows in the segmented control above.
+- Spec-compliance refactor against `docs/design/panels/project-settings/project-settings-ui.{md,spec.json}` and the `heart-rate-zones.png` mockup: moved `HR Range` / `Pace Range` out of each row and into a table-style column header row above the zones grouped box. Removed the inline `HR` / `Pace` captions per row. Wrapped the Z label in a small dark rounded pill next to the colored dot. Reused `SettingsGroupBox` + `SettingsSectionHeader` (instead of one-off rounded-rect chrome) so the sheet shares the macOS-utility design language used by Project Settings and Font Library. Subtitle updated to "Configure HR and pace ranges for each zone." and the Physiology row caption in `ProjectSettingsView` updated to "Configure HR and pace ranges for overlays." per spec. Sheet sized 720 × 660 with shared column-width constants so the header row aligns pixel-for-pixel with the data rows below.
+- This change wires only the *configuration layer*. `RunningGaugeProgressMode.heartRateZone` still falls back to elapsed-time progression; consuming the configured zones inside the gauge render path is a follow-up task.
+
+Files added:
+
+- `Sources/RunningOverlay/Project/HeartRateZonePreferences.swift`
+- `Sources/RunningOverlay/UI/HeartRateZonesView.swift`
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/ProjectSettingsView.swift`
+
+### Heart Rate Zones Sheet Design Spec
+
+- Added the simplified Heart Rate Zones sheet mockup to `docs/design/panels/project-settings/heart-rate-zones.png`.
+- Updated the Project Settings design spec to cover the Physiology row and the Heart Rate Zones sheet.
+- Locked the design scope to existing controls only: zone count, pace unit, threshold HR, threshold pace, zone HR/pace ranges, Reset, and Done.
+- Documented excluded future controls so implementation does not add import, preview, auto-fill, purpose/category, timeline preview, or profile management before the model supports them.
+- Updated the structured spec and design README to reference the new mockup and layout rules.
+
+Files changed:
+
+- `docs/design/panels/project-settings/heart-rate-zones.png`
+- `docs/design/panels/project-settings/project-settings-ui.md`
+- `docs/design/panels/project-settings/project-settings-ui.spec.json`
+- `docs/design/README.md`
+
+### Numeric Overlay: Independent Value Alignment Control
+
+- Surfaced `OverlayStyle.textAlignment` as the per-overlay **value alignment** in the Typography inspector section (an `Align` segmented row under Weight). Field already existed in the model and on every preset's tokens, but no Inspector control was reading it and the value was never applied at render time — so the only way to align the value was implicitly through the preset.
+- Fixed coupling between label and value alignment introduced in the previous change: the SwiftUI views used `VStack(alignment: labelHAlignment)`, which made the value row shift when the user changed the label alignment. Rewrote `metricCoreContent`, `bigNumberView`, `splitLabelView`, `racingStripeView`, and `editorialView` so that the outer `VStack(alignment: .leading)` is fixed, each row applies its own `.frame(maxWidth: .infinity, alignment:)` (label uses `labelStackFrameAlignment`, value/divider rows use `valueStackFrameAlignment`), and the parent uses `.fixedSize(horizontal: true, vertical: false)` to keep the overlay's intrinsic size from expanding to fill the canvas.
+- Export renderer (`OverlayFrameRenderer`) propagates `valueTextAlignment` into the layout and uses it for the `bigNumber` value draw; helper `nsTextAlignment(_:)` maps `OverlayTextAlignment → NSTextAlignment` for reuse.
+
+### Numeric Overlay: User-Editable Divider + Label Alignment, Big Number Label Fix
+
+- Added four user-controllable divider style fields to `OverlayStyle`: `dividerEnabled / dividerColor / dividerThickness / dividerOpacity` (project-wide divider quad convention). These drive the decorative line that lives between value and label in the presets that draw one — `pillBadge` (vertical separator), `splitLabel` (horizontal accent line), `racingStripe` (left vertical stripe), `editorial` (bottom accent rule), `sportWatch` (upper + lower rules). Position/orientation stays preset-owned; users only adjust color/thickness/opacity/visibility.
+- Added `labelTextAlignment: OverlayTextAlignment` on `OverlayStyle`. Reinterpreted by context: when `labelPosition` is top/bottom the field controls horizontal alignment (left/center/right); when leading/trailing it controls vertical anchor (top/middle/bottom). Applied in `metricCoreContent`, `splitLabelView`, `racingStripeView`, `editorialView`, `pillView`, and the new `bigNumberView`.
+- Inspector: removed the standalone "Color" section (its only remaining control was the Accent swatch, now superseded by `dividerColor`). Replaced it with a "Divider" section (color swatch + thickness slider + alpha slider + enabled toggle in header). Added an "Align/Anchor" row under the Label section's Position row that swaps its system icons depending on whether the label is stacked or side-attached. Inspector controls grey out for presets that don't render a divider (`presetSupportsDivider`).
+- `OverlayPresetTokens` gained an optional `DividerTokens` triple so `applyOverlayTextPreset` writes per-preset divider defaults — switching to a divider-bearing preset snaps to that preset's intended visual, switching to a non-divider preset turns the divider off.
+- Fix: the `bigNumber` preset render path silently dropped `style.showLabel` and never rendered the label component (both in `PreviewCanvasView` SwiftUI path and `OverlayFrameRenderer` CG export path). Now honors `showLabel`, `labelPosition`, and `labelTextAlignment`. `OverlayPresetTokens` for Big Number still defaults `showLabel = false` per spec, so existing projects are visually unchanged unless the user enables the label.
+- Export renderer (`OverlayFrameRenderer`) updated to read the same divider fields and renders bigNumber's label so MOV export matches preview.
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/OverlayElement.swift`
+- `Sources/RunningOverlay/Overlay/OverlayRenderModel.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `Sources/RunningOverlay/UI/NumericOverlayDetailView.swift`
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+
 ## 2026-05-11
 
 ### Fix Cadence Unit (strides → spm) + Honor `fractional_cadence`
@@ -173,8 +234,8 @@ Files changed:
 ### FIT Pause Segment Coloring
 
 - Parsed FIT timer start/stop events into `ActivityAnnotatedSegment` pause spans without changing real elapsed-time video alignment.
-- Drew timer-paused spans as muted gray overlays on the draggable `FIT` timeline layer.
-- Added hover help for pause spans using the label `运动暂停`, with elapsed range and duration.
+- Drew timer-paused spans as muted gray overlays on the `FIT` timeline layer.
+- Added hover help for pause spans using the label `Timer Paused`, with elapsed range and duration.
 - Clipped collapsed-mode FIT blocks to the actual activity range so video-only spans outside FIT data no longer show a green bar.
 - Updated the timeline, architecture, requirements, and development docs for annotation-driven FIT axis coloring.
 
@@ -2665,7 +2726,7 @@ Summary:
 - Refactored timeline placement to use project time instead of clamping all clips to FIT elapsed time.
 - Added `TimelineModel.fitStartTime` so the FIT activity is a movable axis inside the project timeline.
 - Preserved imported video timestamps before activity start and after activity finish, allowing race start/finish buffer footage.
-- Added a dedicated draggable `FIT` layer above video layers in the AppKit timeline.
+- Added a dedicated `FIT` layer above video layers in the AppKit timeline.
 - Updated overlay sampling and export sampling to map project time back to FIT elapsed time through the FIT axis.
 - Added tests for pre-start clips, movable FIT axis mapping, layer data sampling with FIT offset, the provided FIT file path, and GoPro-style filename timestamps.
 
@@ -3750,3 +3811,26 @@ Verification:
   `swift run RunningOverlay --benchmark-export "/Users/codywang/Documents/Video Production/0509 纽约/running_overlay_project_snapshot.json" --benchmark-output "/Users/codywang/Documents/Video Production/0509 纽约/Test12"`.
 - Extracted a Test12 frame with `ffmpeg` and confirmed overlay positions match
   the expected preview layout.
+
+### Interval FIT Track Coloring (2026-05-13)
+
+Summary:
+
+- Added interval-workout detection on `ActivityTimeline` using existing lap
+  classifications: at least two RUN laps and at least one REST lap.
+- Updated the AppKit timeline FIT track to color interval phases from
+  `LapRecord.kind` while preserving the default green bar for steady
+  activities.
+- Timer-paused spans still render as muted gray overlays above any interval
+  phase colors, but below the FIT track outer border so their visual height
+  matches adjacent phase blocks.
+- FIT track hover tooltips are English: pause spans show `Timer Paused`, and
+  interval phase spans show lap kind, lap number, elapsed range, and duration.
+- Documented that the current FIT track UI is not draggable.
+
+Verification:
+
+- Added unit coverage for interval-workout detection.
+- `git diff --check`
+- `swift test`
+- `swift test --filter TimelineModelTests`

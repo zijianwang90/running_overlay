@@ -182,7 +182,15 @@ struct OverlayFrameRenderer {
             let valueSize = textSize(renderLayout.components.value, for: element, fontSize: renderLayout.fontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY)
             let dividerX = rect.minX + renderLayout.horizontalPadding + labelSize.width + renderLayout.horizontalPadding * 0.65
             drawText(label, for: element, fontSize: renderLayout.labelFontSize, in: CGRect(x: rect.minX + renderLayout.horizontalPadding, y: rect.midY - labelSize.height / 2, width: labelSize.width, height: labelSize.height), renderLayout: renderLayout)
-            drawRoundedRect(CGRect(x: dividerX, y: rect.midY - renderLayout.fontSize * 0.45, width: max(renderContext.scaled(1), 1), height: renderLayout.fontSize * 0.9), color: colors.foreground.withAlphaComponent(0.32), cornerRadius: 0)
+            if renderLayout.dividerEnabled {
+                drawRoundedRect(
+                    CGRect(x: dividerX, y: rect.midY - renderLayout.fontSize * 0.45,
+                           width: max(renderLayout.dividerThickness, 1),
+                           height: renderLayout.fontSize * 0.9),
+                    color: NSColor(renderLayout.dividerColor).withAlphaComponent(renderLayout.dividerOpacity),
+                    cornerRadius: 0
+                )
+            }
             drawText(renderLayout.components.value, for: element, fontSize: renderLayout.fontSize, in: CGRect(x: dividerX + renderLayout.horizontalPadding * 0.65, y: rect.midY - valueSize.height / 2, width: valueSize.width, height: valueSize.height), renderLayout: renderLayout)
             drawText(renderLayout.components.unit, for: element, fontSize: renderLayout.unitFontSize, in: CGRect(x: rect.maxX - renderLayout.horizontalPadding - textSize(renderLayout.components.unit, for: element, fontSize: renderLayout.unitFontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY).width, y: rect.midY - renderLayout.unitFontSize * 0.48, width: rect.width, height: renderLayout.unitFontSize * 1.25), renderLayout: renderLayout)
         case .metricCard:
@@ -194,15 +202,53 @@ struct OverlayFrameRenderer {
             drawText(renderLayout.components.unit, for: element, fontSize: renderLayout.unitFontSize, in: CGRect(x: rect.minX + renderLayout.horizontalPadding + valueWidth + renderLayout.horizontalPadding * 0.35, y: baselineY + renderLayout.fontSize * 0.28, width: rect.width, height: renderLayout.unitFontSize * 1.25), renderLayout: renderLayout)
         case .bigNumber:
             let valueFontSize = renderLayout.fontSize * 1.95
-            drawText(renderLayout.components.value, for: element, fontSize: valueFontSize, in: CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: valueFontSize * 1.08), renderLayout: renderLayout)
+            // Label was previously dropped from this preset's draw path —
+            // honor `showLabel` so the inspector toggle and customLabel field
+            // actually take effect. Position-aware: top stacks above the value,
+            // bottom stacks below it. Side-attached labels are uncommon for a
+            // big number preset; we still respect leading/trailing but render
+            // them as top/bottom respectively to keep the layout legible.
+            var valueY = rect.minY
+            let showLabel = element.style.showLabel && !renderLayout.components.label.isEmpty
+            let labelColor = NSColor(element.style.labelColor).withAlphaComponent(element.style.labelOpacity)
+            let labelAlignment = nsTextAlignment(renderLayout.labelTextAlignment)
+            let valueAlignment = nsTextAlignment(renderLayout.valueTextAlignment)
+            if showLabel && (renderLayout.labelPosition == .top || renderLayout.labelPosition == .leading) {
+                drawText(
+                    renderLayout.components.label,
+                    for: element,
+                    fontSize: renderLayout.labelFontSize,
+                    in: CGRect(x: rect.minX, y: valueY, width: rect.width, height: renderLayout.labelFontSize * 1.25),
+                    renderLayout: renderLayout,
+                    color: labelColor,
+                    alignment: labelAlignment
+                )
+                valueY += renderLayout.labelFontSize * 1.4 + renderLayout.labelSpacing
+            }
+            drawText(renderLayout.components.value, for: element, fontSize: valueFontSize, in: CGRect(x: rect.minX, y: valueY, width: rect.width, height: valueFontSize * 1.08), renderLayout: renderLayout, alignment: valueAlignment)
             drawText(renderLayout.components.unit, for: element, fontSize: renderLayout.unitFontSize * 1.25, in: CGRect(x: rect.minX, y: rect.maxY - renderLayout.unitFontSize * 1.55, width: rect.width, height: renderLayout.unitFontSize * 1.45), renderLayout: renderLayout, alignment: .center)
+            if showLabel && (renderLayout.labelPosition == .bottom || renderLayout.labelPosition == .trailing) {
+                drawText(
+                    renderLayout.components.label,
+                    for: element,
+                    fontSize: renderLayout.labelFontSize,
+                    in: CGRect(x: rect.minX, y: rect.maxY - renderLayout.labelFontSize * 1.25, width: rect.width, height: renderLayout.labelFontSize * 1.25),
+                    renderLayout: renderLayout,
+                    color: labelColor,
+                    alignment: labelAlignment
+                )
+            }
         case .sportWatch:
             drawRoundedRect(rect, color: colors.background, cornerRadius: renderLayout.cornerRadius)
             strokeRoundedRect(rect, color: colors.foreground.withAlphaComponent(0.35), cornerRadius: renderLayout.cornerRadius, lineWidth: max(renderLayout.fontSize / 28, 1))
             drawText(renderLayout.components.shortLabel, for: element, fontSize: renderLayout.labelFontSize, in: CGRect(x: rect.minX, y: rect.minY + renderLayout.verticalPadding, width: rect.width, height: renderLayout.labelFontSize * 1.25), renderLayout: renderLayout, alignment: .center)
-            drawRoundedRect(CGRect(x: rect.minX + renderLayout.horizontalPadding, y: rect.minY + renderLayout.verticalPadding + renderLayout.labelFontSize * 1.45, width: rect.width - renderLayout.horizontalPadding * 2, height: max(renderLayout.fontSize / 26, 1)), color: colors.foreground.withAlphaComponent(0.28), cornerRadius: 0)
+            if renderLayout.dividerEnabled {
+                drawRoundedRect(CGRect(x: rect.minX + renderLayout.horizontalPadding, y: rect.minY + renderLayout.verticalPadding + renderLayout.labelFontSize * 1.45, width: rect.width - renderLayout.horizontalPadding * 2, height: max(renderLayout.dividerThickness, 1)), color: NSColor(renderLayout.dividerColor).withAlphaComponent(renderLayout.dividerOpacity), cornerRadius: 0)
+            }
             drawText(renderLayout.components.value, for: element, fontSize: renderLayout.fontSize, in: CGRect(x: rect.minX, y: rect.midY - renderLayout.fontSize * 0.55, width: rect.width, height: renderLayout.fontSize * 1.25), renderLayout: renderLayout, alignment: .center)
-            drawRoundedRect(CGRect(x: rect.minX + renderLayout.horizontalPadding, y: rect.maxY - renderLayout.verticalPadding - renderLayout.labelFontSize * 1.55, width: rect.width - renderLayout.horizontalPadding * 2, height: max(renderLayout.fontSize / 26, 1)), color: colors.foreground.withAlphaComponent(0.28), cornerRadius: 0)
+            if renderLayout.dividerEnabled {
+                drawRoundedRect(CGRect(x: rect.minX + renderLayout.horizontalPadding, y: rect.maxY - renderLayout.verticalPadding - renderLayout.labelFontSize * 1.55, width: rect.width - renderLayout.horizontalPadding * 2, height: max(renderLayout.dividerThickness, 1)), color: NSColor(renderLayout.dividerColor).withAlphaComponent(renderLayout.dividerOpacity), cornerRadius: 0)
+            }
             drawText(renderLayout.components.unit, for: element, fontSize: renderLayout.labelFontSize, in: CGRect(x: rect.minX, y: rect.maxY - renderLayout.verticalPadding - renderLayout.labelFontSize * 1.2, width: rect.width, height: renderLayout.labelFontSize * 1.25), renderLayout: renderLayout, alignment: .center)
         case .splitLabel:
             let label = renderLayout.components.shortLabel.map(String.init).joined(separator: " ")
@@ -214,7 +260,15 @@ struct OverlayFrameRenderer {
                 renderLayout: renderLayout,
                 color: NSColor(element.style.labelColor).withAlphaComponent(element.style.labelOpacity)
             )
-            drawRoundedRect(CGRect(x: rect.minX, y: rect.minY + renderLayout.labelFontSize * 1.55, width: renderLayout.fontSize * 3.5, height: max(renderLayout.fontSize / 18, 2)), color: NSColor(element.style.accentColor), cornerRadius: 0)
+            if renderLayout.dividerEnabled {
+                drawRoundedRect(
+                    CGRect(x: rect.minX, y: rect.minY + renderLayout.labelFontSize * 1.55,
+                           width: renderLayout.fontSize * 3.5,
+                           height: max(renderLayout.dividerThickness, 1)),
+                    color: NSColor(renderLayout.dividerColor).withAlphaComponent(renderLayout.dividerOpacity),
+                    cornerRadius: 0
+                )
+            }
             let valueFontSize = renderLayout.fontSize * 1.45
             drawText(renderLayout.components.value, for: element, fontSize: valueFontSize, in: CGRect(x: rect.minX, y: rect.minY + renderLayout.labelFontSize * 1.85, width: rect.width, height: valueFontSize * 1.18), renderLayout: renderLayout)
             let valueWidth = textSize(renderLayout.components.value, for: element, fontSize: valueFontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY).width
@@ -329,15 +383,17 @@ struct OverlayFrameRenderer {
         let labelColor = NSColor(element.style.labelColor).withAlphaComponent(element.style.labelOpacity)
         drawRoundedRect(rect, color: colors.background, cornerRadius: renderLayout.cornerRadius)
         strokeRoundedRect(rect, color: colors.foreground.withAlphaComponent(0.14), cornerRadius: renderLayout.cornerRadius, lineWidth: 1)
-        let stripeWidth = max(renderLayout.fontSize * 0.12, 4)
+        let stripeWidth = renderLayout.dividerEnabled ? max(renderLayout.dividerThickness * 2.4, 4) : 0
         let stripeRect = CGRect(
             x: rect.minX + renderLayout.horizontalPadding,
             y: rect.minY + renderLayout.verticalPadding,
             width: stripeWidth,
             height: rect.height - renderLayout.verticalPadding * 2
         )
-        drawRoundedRect(stripeRect, color: NSColor(element.style.accentColor), cornerRadius: 2)
-        let textOriginX = stripeRect.maxX + renderLayout.fontSize * 0.34
+        if renderLayout.dividerEnabled {
+            drawRoundedRect(stripeRect, color: NSColor(renderLayout.dividerColor).withAlphaComponent(renderLayout.dividerOpacity), cornerRadius: 2)
+        }
+        let textOriginX = stripeRect.maxX + (renderLayout.dividerEnabled ? renderLayout.fontSize * 0.34 : 0)
         let labelY = rect.minY + renderLayout.verticalPadding
         if element.style.showLabel, !renderLayout.components.label.isEmpty {
             drawText(
@@ -409,11 +465,16 @@ struct OverlayFrameRenderer {
             )
         }
         cursorY += renderLayout.fontSize * 1.15
-        drawRoundedRect(
-            CGRect(x: rect.minX, y: cursorY + renderLayout.fontSize * 0.04, width: renderLayout.fontSize * 2.2, height: 3),
-            color: accent,
-            cornerRadius: 0
-        )
+        if renderLayout.dividerEnabled {
+            drawRoundedRect(
+                CGRect(x: rect.minX, y: cursorY + renderLayout.fontSize * 0.04,
+                       width: renderLayout.fontSize * 2.2,
+                       height: max(renderLayout.dividerThickness, 1)),
+                color: NSColor(renderLayout.dividerColor).withAlphaComponent(renderLayout.dividerOpacity),
+                cornerRadius: 0
+            )
+        }
+        _ = accent  // accent reserved for future glow/decor; divider now owns the bottom rule
     }
 
     private static func renderDigitalWatch(
@@ -2320,6 +2381,17 @@ struct OverlayFrameRenderer {
         )
     }
 
+    /// Maps the cross-platform `OverlayTextAlignment` to AppKit's
+    /// `NSTextAlignment`. Used by preset paths that need to honor user-driven
+    /// label / value alignment in the export renderer.
+    private static func nsTextAlignment(_ a: OverlayTextAlignment) -> NSTextAlignment {
+        switch a {
+        case .leading: .left
+        case .center: .center
+        case .trailing: .right
+        }
+    }
+
     private static func presetTextRect(for element: OverlayElement, renderLayout: OverlayTextRenderLayout, renderContext: OverlayRenderContext) -> CGRect {
         let labelSize = textSize(renderLayout.components.label, for: element, fontSize: renderLayout.labelFontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY)
         let shortLabelSize = textSize(renderLayout.components.shortLabel, for: element, fontSize: renderLayout.labelFontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY)
@@ -2344,7 +2416,13 @@ struct OverlayFrameRenderer {
         case .bigNumber:
             let bigValueSize = textSize(renderLayout.components.value, for: element, fontSize: renderLayout.fontSize * 1.95, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY)
             let bigUnitSize = textSize(renderLayout.components.unit, for: element, fontSize: renderLayout.unitFontSize * 1.25, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY)
-            size = CGSize(width: max(bigValueSize.width, bigUnitSize.width), height: bigValueSize.height + bigUnitSize.height * 0.95)
+            let labelExtra = (element.style.showLabel && !renderLayout.components.label.isEmpty)
+                ? labelSize.height + renderLayout.labelSpacing
+                : 0
+            size = CGSize(
+                width: max(bigValueSize.width, bigUnitSize.width, labelSize.width),
+                height: bigValueSize.height + bigUnitSize.height * 0.95 + labelExtra
+            )
         case .sportWatch:
             size = CGSize(
                 width: max(valueSize.width + renderLayout.horizontalPadding * 2, renderLayout.fontSize * 3.2),

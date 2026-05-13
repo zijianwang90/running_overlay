@@ -4,6 +4,7 @@ struct ProjectSettingsView: View {
     @EnvironmentObject private var project: ProjectDocument
     @Environment(\.dismiss) private var dismiss
     @State private var showingFontLibrary = false
+    @State private var showingHeartRateZones = false
 
     var body: some View {
         VStack(spacing: 20) {
@@ -31,6 +32,12 @@ struct ProjectSettingsView: View {
                     SettingsGroupBox {
                         typographySection
                     }
+
+                    // MARK: - Physiology
+                    SettingsSectionHeader(title: "Physiology")
+                    SettingsGroupBox {
+                        heartRateZonesSection
+                    }
                 }
             }
 
@@ -49,6 +56,32 @@ struct ProjectSettingsView: View {
         .sheet(isPresented: $showingFontLibrary) {
             FontLibraryView()
         }
+        .sheet(isPresented: $showingHeartRateZones) {
+            HeartRateZonesView()
+        }
+    }
+
+    // MARK: - Physiology
+
+    private var heartRateZonesSection: some View {
+        SettingsRow(
+            leading: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Heart Rate Zones")
+                        .font(EditorTheme.bodyStrongFont)
+                        .foregroundStyle(EditorTheme.textPrimary)
+                    Text("Configure HR and pace ranges for overlays.")
+                        .font(EditorTheme.captionFont)
+                        .foregroundStyle(EditorTheme.textSecondary)
+                }
+            },
+            trailing: {
+                Button("Configure…") {
+                    showingHeartRateZones = true
+                }
+                .buttonStyle(EditorSecondaryButtonStyle())
+            }
+        )
     }
 
     // MARK: - Video
