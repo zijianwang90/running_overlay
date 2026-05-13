@@ -1,5 +1,26 @@
 # Running Overlay Project Log
 
+## 2026-05-13
+
+### Timeline Zoom: Shift+Z Fit Toggle (DaVinci-style)
+
+- Added a `Shift+Z` keyboard shortcut (menu: **Timeline → Toggle Fit Zoom**) that snaps the timeline between Fit and the user's last working zoom, mirroring DaVinci Resolve's behavior.
+- Logic in `ProjectDocument.toggleTimelineFitZoom()`:
+  - Non-fit → `.fit`.
+  - `.fit` → restore `lastNonFitPixelsPerSecond` if known; otherwise fall back to `fitPixelsPerSecond * 5` (clamped to `[fit, 200]`).
+- `lastNonFitPixelsPerSecond` is maintained via a `didSet` on `timeline` (`rememberNonFitZoom`) so every path that ends in a non-fit zoom — slider drag, Cmd±, undo/redo, project load — refreshes the memory. The key UX requirement was "always remember the most recent zoom value, regardless of how the user got there," which a single chokepoint (`didSet`) satisfies without sprinkling bookkeeping through every mutation path.
+- Shortcut chosen as `Shift+Z` (no Cmd) because `Cmd+Z` / `Cmd+Shift+Z` are already bound to undo/redo and DaVinci's muscle memory is bare `Shift+Z`.
+
+### Timeline Zoom: Fit Is the Minimum
+
+- User reported the zoom slider's left half (slider values that mapped to pixels-per-second below the Fit value, e.g. `0.5`) produced a layout *shorter* than Fit — clips appeared squeezed and the px/s readout dropped below `1`. Intended behavior: the slider's leftmost position should be Fit, and any movement only zooms in.
+- Root cause: the slider mapped its raw range `0.25…200 px/s` regardless of the viewport's actual Fit value, and `TimelineZoom.zoomedIn()` from `.fit` produced a fixed `0.5 px/s` — both could land below Fit. The Fit px/s is viewport-dependent and was never known to `ProjectDocument`.
+- Fix:
+  - Added `ProjectDocument.fitPixelsPerSecond` (runtime cache, not persisted). `TimelineCanvasNSView.update` writes the freshly computed Fit value each render and clamps the rendered px/s to `≥ fit` as defense against stale state.
+  - Rewrote `zoomTimelineIn` / `zoomTimelineOut` and the slider mapping (`pixelsPerSecond(forSliderValue:fit:)` / `sliderValue(forPixelsPerSecond:fit:)`) to use `fitPixelsPerSecond` as the lower bound instead of the static `0.25`. Slider 0 = Fit; the px/s curve interpolates from Fit up to `200`.
+  - `timelineZoomSliderValue` now snaps any persisted px/s `≤ fit` back to the leftmost (Fit), so projects saved at an old sub-Fit zoom display correctly on reopen.
+- `TimelineZoom.zoomedIn/zoomedOut` are no longer reached (ProjectDocument owns the stepping math now). Left in place because the enum is `Codable` and used by tests/snapshots — removing them is unrelated cleanup.
+
 ## 2026-05-12
 
 ### Project Settings: Heart Rate Zones

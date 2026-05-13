@@ -9,7 +9,9 @@ final class ProjectDocument: ObservableObject {
     @Published var activity = ActivityTimeline.empty
     @Published var mediaItems: [MediaItem] = []
     @Published var mediaFolders: [MediaFolder] = []
-    @Published var timeline = TimelineModel.empty
+    @Published var timeline = TimelineModel.empty {
+        didSet { rememberNonFitZoom() }
+    }
     @Published var overlayLayout = OverlayLayout.empty
     @Published var selection: EditorSelection = .none
     @Published var isPlaying = false
@@ -304,16 +306,77 @@ final class ProjectDocument: ObservableObject {
         }
     }
 
+    /// Cached "fit" pixels-per-second reported by the timeline canvas during its
+    /// most recent render. Used as the lower bound for zoom so the slider can
+    /// never produce a view that is smaller than Fit.
+    var fitPixelsPerSecond: Double = 1
+
+    /// Remembered px/s from the most recent non-fit zoom. Drives the Shift+Z
+    /// toggle: when at Fit, expand back to this value; when zoomed in, collapse
+    /// to Fit and keep this as the "go back" value.
+    private var lastNonFitPixelsPerSecond: Double?
+
+    private static let defaultToggleZoomMultiplier = 5.0
+
+    private func rememberNonFitZoom() {
+        if case .pixelsPerSecond(let value) = timeline.zoom, value > fitPixelsPerSecond {
+            lastNonFitPixelsPerSecond = value
+        }
+    }
+
+    func toggleTimelineFitZoom() {
+        var updatedTimeline = timeline
+        switch timeline.zoom {
+        case .fit:
+            let fallback = max(fitPixelsPerSecond * Self.defaultToggleZoomMultiplier, Self.minimumTimelinePixelsPerSecond)
+            let target = lastNonFitPixelsPerSecond ?? fallback
+            let clamped = min(max(target, zoomLowerBound), Self.maximumTimelinePixelsPerSecond)
+            updatedTimeline.zoom = .pixelsPerSecond(clamped)
+        case .pixelsPerSecond:
+            updatedTimeline.zoom = .fit
+        }
+        timeline = updatedTimeline
+    }
+
     func zoomTimelineIn() {
         var updatedTimeline = timeline
-        updatedTimeline.zoomIn()
+        let current = currentPixelsPerSecond
+        let next = min(current * 1.35, Self.maximumTimelinePixelsPerSecond)
+        if next <= zoomLowerBound * 1.001 {
+            updatedTimeline.zoom = .fit
+        } else {
+            updatedTimeline.zoom = .pixelsPerSecond(next)
+        }
         timeline = updatedTimeline
     }
 
     func zoomTimelineOut() {
         var updatedTimeline = timeline
-        updatedTimeline.zoomOut()
+        switch timeline.zoom {
+        case .fit:
+            return
+        case .pixelsPerSecond(let value):
+            let next = value / 1.35
+            if next <= zoomLowerBound * 1.001 {
+                updatedTimeline.zoom = .fit
+            } else {
+                updatedTimeline.zoom = .pixelsPerSecond(next)
+            }
+        }
         timeline = updatedTimeline
+    }
+
+    private var zoomLowerBound: Double {
+        max(fitPixelsPerSecond, Self.minimumTimelinePixelsPerSecond)
+    }
+
+    private var currentPixelsPerSecond: Double {
+        switch timeline.zoom {
+        case .fit:
+            return fitPixelsPerSecond
+        case .pixelsPerSecond(let value):
+            return max(value, fitPixelsPerSecond)
+        }
     }
 
     var timelineZoomSliderValue: Double {
@@ -321,7 +384,10 @@ final class ProjectDocument: ObservableObject {
         case .fit:
             return 0
         case .pixelsPerSecond(let value):
-            return Self.sliderValue(forPixelsPerSecond: value)
+            if value <= fitPixelsPerSecond {
+                return 0
+            }
+            return Self.sliderValue(forPixelsPerSecond: value, fit: zoomLowerBound)
         }
     }
 
@@ -354,10 +420,10 @@ final class ProjectDocument: ObservableObject {
 
     func setTimelineZoomSliderValue(_ value: Double) {
         var updatedTimeline = timeline
-        if value <= 2 {
+        if value <= Self.zoomSliderFitThreshold {
             updatedTimeline.zoom = .fit
         } else {
-            updatedTimeline.zoom = .pixelsPerSecond(Self.pixelsPerSecond(forSliderValue: value))
+            updatedTimeline.zoom = .pixelsPerSecond(Self.pixelsPerSecond(forSliderValue: value, fit: zoomLowerBound))
         }
         timeline = updatedTimeline
     }
@@ -3062,23 +3128,27 @@ final class ProjectDocument: ObservableObject {
         statusMessage = progress.message
     }
 
-    private static let zoomSliderFitThreshold = 2.0
-    private static let zoomSliderMaximum = 100.0
-    private static let minimumTimelinePixelsPerSecond = 0.25
-    private static let maximumTimelinePixelsPerSecond = 200.0
+    static let zoomSliderFitThreshold = 2.0
+    static let zoomSliderMaximum = 100.0
+    static let minimumTimelinePixelsPerSecond = 0.25
+    static let maximumTimelinePixelsPerSecond = 200.0
 
-    private static func pixelsPerSecond(forSliderValue sliderValue: Double) -> Double {
+    private static func pixelsPerSecond(forSliderValue sliderValue: Double, fit: Double) -> Double {
         let normalized = min(
             max((sliderValue - zoomSliderFitThreshold) / (zoomSliderMaximum - zoomSliderFitThreshold), 0),
             1
         )
-        return minimumTimelinePixelsPerSecond
-            + pow(normalized, 2) * (maximumTimelinePixelsPerSecond - minimumTimelinePixelsPerSecond)
+        let floor = max(fit, minimumTimelinePixelsPerSecond)
+        let ceiling = max(maximumTimelinePixelsPerSecond, floor)
+        return floor + pow(normalized, 2) * (ceiling - floor)
     }
 
-    private static func sliderValue(forPixelsPerSecond pixelsPerSecond: Double) -> Double {
+    private static func sliderValue(forPixelsPerSecond pixelsPerSecond: Double, fit: Double) -> Double {
+        let floor = max(fit, minimumTimelinePixelsPerSecond)
+        let ceiling = max(maximumTimelinePixelsPerSecond, floor)
+        guard ceiling > floor else { return 0 }
         let normalized = min(
-            max((pixelsPerSecond - minimumTimelinePixelsPerSecond) / (maximumTimelinePixelsPerSecond - minimumTimelinePixelsPerSecond), 0),
+            max((pixelsPerSecond - floor) / (ceiling - floor), 0),
             1
         )
         return zoomSliderFitThreshold + sqrt(normalized) * (zoomSliderMaximum - zoomSliderFitThreshold)
