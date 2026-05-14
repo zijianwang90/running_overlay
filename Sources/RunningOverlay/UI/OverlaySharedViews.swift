@@ -88,3 +88,15 @@ struct OverlaySharedIntervalHUDBarView: View {
         )
     }
 }
+
+struct OverlaySharedIntervalTimelineView: View {
+    let element: OverlayElement
+    let layout: IntervalTimelineRenderLayout
+
+    var body: some View {
+        IntervalTimelineOverlayView(
+            element: element,
+            layout: layout
+        )
+    }
+}

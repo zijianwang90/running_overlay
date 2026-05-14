@@ -20,6 +20,8 @@ struct ParameterPanelView: View {
                         RunningGaugeOverlayDetailView(elementID: elementID)
                     } else if element.type == .intervalHUDBar {
                         IntervalHUDBarOverlayDetailView(elementID: elementID)
+                    } else if element.type == .intervalTimeline {
+                        IntervalTimelineOverlayDetailView(elementID: elementID)
                     } else if element.type == .routeMap {
                         RouteMapOverlayDetailView(elementID: elementID)
                     } else if element.type == .weatherWidget {

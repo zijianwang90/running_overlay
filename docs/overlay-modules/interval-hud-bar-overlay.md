@@ -37,6 +37,10 @@ Implemented in `codex/interval-hud-bar`:
 - SwiftUI exporter and legacy PNG renderer support.
 - Built-in `Interval Workout` template now includes Interval HUD Bar.
 
+Companion module:
+
+- `Interval Timeline` is implemented as a separate schedule overlay for the same interval-training workflow. Use Interval HUD Bar for current rep/phase/metrics, and Interval Timeline for the horizontal workout plan with current-lap centering and large-set overflow summaries.
+
 ## Rep Rules
 
 - Rep count is based on `.active` laps only.
@@ -112,6 +116,8 @@ Bottom Bar Spacing controls the vertical gap between the HUD content cells and t
 Shared Background Padding is honored as Interval HUD Bar content padding: X padding moves HUD cells and the bottom bar inward; Y padding increases top and bottom interior breathing room in both preview and export.
 
 Zone modes support an Active Zone Width setting. Equal width keeps Z1-Z5/Z6 evenly divided; expanded width lets the active zone occupy up to 50% of the bar, with inactive zones sharing the remaining space evenly.
+
+Zone modes support Active Zone Height, Zone Gap, and Corner Radius. Active Zone Height raises the active segment up to 2x around the bar centerline without changing layout height; Zone Gap adds visual separation between adjacent segments; Corner Radius can create square, softly rounded, or pill-like progress bars.
 
 Zone modes also expose Inactive Opacity for non-active segments.
 

@@ -411,6 +411,81 @@ struct OverlayRenderModelTests {
         #expect(!IntervalHUDBarMetric.numericCases.contains(.hrDrop))
     }
 
+    @Test func intervalTimelineCentersCurrentLapAndSummarizesOverflow() {
+        var style = OverlayStyle.default
+        style.intervalTimeline.mode = .centeredWindow
+        style.intervalTimeline.visibleNeighbors = 2
+        style.intervalTimeline.primaryLabelMode = .kind
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: repeatedIntervalActivity(repCount: 25),
+            elapsedTime: 30 + 13 * 120 + 35
+        )
+
+        let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
+
+        #expect(layout.segments.count == 5)
+        #expect(layout.leftOverflowCount > 0)
+        #expect(layout.rightOverflowCount > 0)
+        let current = layout.segments.first { $0.isCurrent }
+        #expect(current?.kind == .active)
+        #expect(current?.label == "1min")
+        #expect(layout.repText == "Rep 14 / 25")
+        if let current {
+            #expect(abs(current.rect.midX - layout.markerX) > 0)
+            #expect(current.rect.height > (layout.segments.first { !$0.isCurrent }?.rect.height ?? 0))
+        }
+    }
+
+    @Test func intervalTimelineFullScheduleShowsAllSmallWorkouts() {
+        var style = OverlayStyle.default
+        style.intervalTimeline.mode = .fullSchedule
+        style.intervalTimeline.maxFullSegments = 12
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 130
+        )
+
+        let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
+
+        #expect(layout.segments.count == 3)
+        #expect(layout.leftOverflowCount == 0)
+        #expect(layout.rightOverflowCount == 0)
+        #expect(layout.segments.map(\.kind) == [.active, .rest, .active])
+        #expect(layout.segments.first(where: \.isCurrent)?.kind == .rest)
+    }
+
+    @Test func intervalTimelineMarkerToggleDoesNotMoveRailOrSegments() throws {
+        var enabledStyle = OverlayStyle.default
+        enabledStyle.intervalTimeline.mode = .centeredWindow
+        enabledStyle.intervalTimeline.visibleNeighbors = 2
+        enabledStyle.intervalTimeline.markerEnabled = true
+
+        var disabledStyle = enabledStyle
+        disabledStyle.intervalTimeline.markerEnabled = false
+
+        let enabledElement = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: enabledStyle)
+        let disabledElement = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: disabledStyle)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: repeatedIntervalActivity(repCount: 25),
+            elapsedTime: 30 + 13 * 120 + 35
+        )
+
+        let enabledLayout = OverlayRenderModel.intervalTimelineLayout(for: enabledElement, in: context)
+        let disabledLayout = OverlayRenderModel.intervalTimelineLayout(for: disabledElement, in: context)
+
+        #expect(enabledLayout.contentRect == disabledLayout.contentRect)
+        #expect(enabledLayout.railY == disabledLayout.railY)
+        #expect(enabledLayout.railDots == disabledLayout.railDots)
+        let enabledFirstRect = try #require(enabledLayout.segments.first?.rect)
+        let disabledFirstRect = try #require(disabledLayout.segments.first?.rect)
+        #expect(enabledFirstRect == disabledFirstRect)
+    }
+
     @MainActor
     @Test func overlayFrameRendererWritesRunningGaugePNG() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -668,6 +743,35 @@ struct OverlayRenderModelTests {
                 LapRecord(lapIndex: 2, startElapsedTime: 160, endElapsedTime: 260, startDistanceMeters: 260, totalDistanceMeters: 260, totalElapsedTime: 100, avgPaceSecondsPerKm: 255, avgHeartRate: 176, maxHeartRate: 182, avgCadenceSPM: nil, avgPowerWatts: 285, totalAscent: nil, kind: .active)
             ]
         )
+    }
+
+    private func repeatedIntervalActivity(repCount: Int) -> ActivityTimeline {
+        let startDate = Date(timeIntervalSince1970: 4_000)
+        var laps: [LapRecord] = [
+            LapRecord(lapIndex: 0, startElapsedTime: 0, endElapsedTime: 30, startDistanceMeters: 0, totalDistanceMeters: 80, totalElapsedTime: 30, avgPaceSecondsPerKm: 360, avgHeartRate: nil, maxHeartRate: nil, avgCadenceSPM: nil, avgPowerWatts: nil, totalAscent: nil, kind: .warmup)
+        ]
+        var records: [ActivityRecord] = [
+            ActivityRecord(elapsedTime: 0, timestamp: startDate, distanceMeters: 0, heartRate: 120, paceSecondsPerKilometer: 360, elevationMeters: nil, cadence: nil, powerWatts: nil, calories: nil)
+        ]
+        var elapsed: TimeInterval = 30
+        var distance = 80.0
+        for rep in 0..<repCount {
+            laps.append(LapRecord(lapIndex: laps.count, startElapsedTime: elapsed, endElapsedTime: elapsed + 60, startDistanceMeters: distance, totalDistanceMeters: 250, totalElapsedTime: 60, avgPaceSecondsPerKm: 240, avgHeartRate: nil, maxHeartRate: nil, avgCadenceSPM: nil, avgPowerWatts: nil, totalAscent: nil, kind: .active))
+            elapsed += 60
+            distance += 250
+            records.append(ActivityRecord(elapsedTime: elapsed, timestamp: startDate.addingTimeInterval(elapsed), distanceMeters: distance, heartRate: 170, paceSecondsPerKilometer: 240, elevationMeters: nil, cadence: nil, powerWatts: nil, calories: nil))
+            if rep < repCount - 1 {
+                laps.append(LapRecord(lapIndex: laps.count, startElapsedTime: elapsed, endElapsedTime: elapsed + 60, startDistanceMeters: distance, totalDistanceMeters: 120, totalElapsedTime: 60, avgPaceSecondsPerKm: 420, avgHeartRate: nil, maxHeartRate: nil, avgCadenceSPM: nil, avgPowerWatts: nil, totalAscent: nil, kind: .rest))
+                elapsed += 60
+                distance += 120
+                records.append(ActivityRecord(elapsedTime: elapsed, timestamp: startDate.addingTimeInterval(elapsed), distanceMeters: distance, heartRate: 140, paceSecondsPerKilometer: 420, elevationMeters: nil, cadence: nil, powerWatts: nil, calories: nil))
+            }
+        }
+        laps.append(LapRecord(lapIndex: laps.count, startElapsedTime: elapsed, endElapsedTime: elapsed + 60, startDistanceMeters: distance, totalDistanceMeters: 120, totalElapsedTime: 60, avgPaceSecondsPerKm: 360, avgHeartRate: nil, maxHeartRate: nil, avgCadenceSPM: nil, avgPowerWatts: nil, totalAscent: nil, kind: .cooldown))
+        elapsed += 60
+        distance += 120
+        records.append(ActivityRecord(elapsedTime: elapsed, timestamp: startDate.addingTimeInterval(elapsed), distanceMeters: distance, heartRate: 125, paceSecondsPerKilometer: 360, elevationMeters: nil, cadence: nil, powerWatts: nil, calories: nil))
+        return ActivityTimeline(startDate: startDate, duration: elapsed, distanceMeters: distance, records: records, laps: laps)
     }
 
     private func sampleWeatherActivity() -> ActivityTimeline {

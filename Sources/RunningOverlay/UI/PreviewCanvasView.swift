@@ -629,6 +629,11 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
                     element: element,
                     layout: OverlayRenderModel.intervalHUDBarLayout(for: element, in: renderContext)
                 )
+            case .intervalTimeline:
+                OverlaySharedIntervalTimelineView(
+                    element: element,
+                    layout: OverlayRenderModel.intervalTimelineLayout(for: element, in: renderContext)
+                )
             case .routeMap:
                 OverlaySharedRouteMapView(
                     element: element,

@@ -23,6 +23,7 @@ enum OverlayPasteCategory: String, Equatable {
     case elevationChart
     case runningGauge
     case intervalHUDBar
+    case intervalTimeline
     case routeMap
     case weather
 }
@@ -41,6 +42,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     case power
     case runningGauge
     case intervalHUDBar
+    case intervalTimeline
     case routeMap
     case verticalOscillation
     case groundContactTime
@@ -71,6 +73,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         case .power: "Power"
         case .runningGauge: "Running Gauge"
         case .intervalHUDBar: "Interval HUD Bar"
+        case .intervalTimeline: "Interval Timeline"
         case .routeMap: "Route Map"
         case .verticalOscillation: "Vertical Oscillation"
         case .groundContactTime: "Ground Contact Time"
@@ -88,7 +91,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
 
     var supportsTextPresets: Bool {
         switch self {
-        case .distanceTimeline, .elevationChart, .runningGauge, .intervalHUDBar, .routeMap,
+        case .distanceTimeline, .elevationChart, .runningGauge, .intervalHUDBar, .intervalTimeline, .routeMap,
              .weatherWidget, .decorSolidColor, .decorIcon, .decorText:
             false
         default:
@@ -143,6 +146,8 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
             return .runningGauge
         case .intervalHUDBar:
             return .intervalHUDBar
+        case .intervalTimeline:
+            return .intervalTimeline
         case .routeMap:
             return .routeMap
         case .weatherWidget:
@@ -232,7 +237,7 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
         case .groundContactBalance: [.balancePercent]
         case .temperature: [.temperatureCelsius, .temperatureFahrenheit]
         case .grade: [.gradePercent]
-        case .distanceTimeline, .elevationChart, .runningGauge, .intervalHUDBar, .routeMap,
+        case .distanceTimeline, .elevationChart, .runningGauge, .intervalHUDBar, .intervalTimeline, .routeMap,
              .weatherWidget, .decorSolidColor, .decorIcon, .decorText:
             []
         }
@@ -428,6 +433,9 @@ struct OverlayStyle: Equatable, Codable {
     /// Interval HUD Bar configuration. Used only by `.intervalHUDBar`.
     var intervalHUDBar: IntervalHUDBarStyle
 
+    /// Interval Timeline configuration. Used only by `.intervalTimeline`.
+    var intervalTimeline: IntervalTimelineStyle
+
     static let `default` = OverlayStyle(
         textPreset: .minimal,
         gaugePreset: .minimalSport,
@@ -515,7 +523,8 @@ struct OverlayStyle: Equatable, Codable {
         routeMapStatsBar: .default,
         decor: .default,
         weatherWidget: .preset(.simpleCard),
-        intervalHUDBar: .default
+        intervalHUDBar: .default,
+        intervalTimeline: .default
     )
 
     init(
@@ -605,7 +614,8 @@ struct OverlayStyle: Equatable, Codable {
         routeMapStatsBar: OverlayRouteMapStatsBarConfig = .default,
         decor: DecorStyle = .default,
         weatherWidget: WeatherWidgetStyle = .preset(.simpleCard),
-        intervalHUDBar: IntervalHUDBarStyle = .default
+        intervalHUDBar: IntervalHUDBarStyle = .default,
+        intervalTimeline: IntervalTimelineStyle = .default
     ) {
         self.textPreset = textPreset
         self.gaugePreset = gaugePreset
@@ -694,6 +704,7 @@ struct OverlayStyle: Equatable, Codable {
         self.decor = decor
         self.weatherWidget = weatherWidget
         self.intervalHUDBar = intervalHUDBar
+        self.intervalTimeline = intervalTimeline
     }
 
     init(from decoder: Decoder) throws {
@@ -801,6 +812,7 @@ struct OverlayStyle: Equatable, Codable {
         decor = try container.decodeIfPresent(DecorStyle.self, forKey: .decor) ?? .default
         weatherWidget = try container.decodeIfPresent(WeatherWidgetStyle.self, forKey: .weatherWidget) ?? .preset(.simpleCard)
         intervalHUDBar = try container.decodeIfPresent(IntervalHUDBarStyle.self, forKey: .intervalHUDBar) ?? .default
+        intervalTimeline = try container.decodeIfPresent(IntervalTimelineStyle.self, forKey: .intervalTimeline) ?? .default
     }
 }
 

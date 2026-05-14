@@ -447,6 +447,200 @@ enum OverlayRenderModel {
         )
     }
 
+    static func intervalTimelineLayout(for element: OverlayElement, in context: OverlayRenderContext) -> IntervalTimelineRenderLayout {
+        let style = element.style.intervalTimeline
+        let width = context.scaled(style.width * element.scale)
+        let height = context.scaled(style.height * element.scale)
+        let rect = centeredRect(for: element, size: CGSize(width: width, height: height), canvasSize: context.canvasSize)
+        let horizontalPadding = context.scaled(16 * element.scale)
+        let verticalPadding = context.scaled(6 * element.scale)
+        let contentRect = CGRect(
+            x: rect.minX + horizontalPadding,
+            y: rect.minY + verticalPadding,
+            width: max(rect.width - horizontalPadding * 2, 1),
+            height: max(rect.height - verticalPadding * 2 - context.scaled(14 * element.scale), 1)
+        )
+        let laps = context.activity.laps
+        let t = min(max(context.elapsedTime, 0), context.activity.duration)
+        let currentIndex = laps.indices.last { laps[$0].startElapsedTime <= t } ?? laps.indices.first
+        let shouldCenter = style.mode == .centeredWindow || laps.count > style.maxFullSegments
+        let visibleRange: Range<Int>
+        if laps.isEmpty {
+            visibleRange = 0..<0
+        } else if shouldCenter, let currentIndex {
+            let neighbors = max(style.visibleNeighbors, 0)
+            let start = max(currentIndex - neighbors, 0)
+            let end = min(currentIndex + neighbors + 1, laps.count)
+            visibleRange = start..<end
+        } else {
+            visibleRange = 0..<laps.count
+        }
+
+        let visibleLaps = visibleRange.map { laps[$0] }
+        let leftOverflow = max(visibleRange.lowerBound, 0)
+        let rightOverflow = max(laps.count - visibleRange.upperBound, 0)
+        let leadingOverflowWidth = style.overflowPillsEnabled && leftOverflow > 0 ? context.scaled(146 * element.scale) : 0
+        let trailingOverflowWidth = style.overflowPillsEnabled && rightOverflow > 0 ? context.scaled(112 * element.scale) : 0
+        let segmentArea = CGRect(
+            x: contentRect.minX + leadingOverflowWidth,
+            y: contentRect.minY,
+            width: max(contentRect.width - leadingOverflowWidth - trailingOverflowWidth, 1),
+            height: contentRect.height
+        )
+        let gap = context.scaled(style.segmentGap * element.scale)
+        let normalHeight = min(context.scaled(style.segmentHeight * element.scale), segmentArea.height)
+        let currentHeight = min(normalHeight * style.currentSegmentHeightScale, segmentArea.height)
+        let minWidth = context.scaled(style.minSegmentWidth * element.scale)
+        let currentProgress = context.activity.lapProgress(at: t, byDistance: false)
+        let currentVisibleOffset = currentIndex.flatMap { visibleRange.contains($0) ? $0 - visibleRange.lowerBound : nil }
+
+        let segmentWidths = intervalTimelineSegmentWidths(
+            laps: visibleLaps,
+            currentOffset: currentVisibleOffset,
+            style: style,
+            availableWidth: segmentArea.width,
+            gap: gap,
+            minWidth: minWidth,
+            centered: shouldCenter
+        )
+        var cursorX = segmentArea.minX
+        var segments: [IntervalTimelineSegmentLayout] = []
+        for (offset, lap) in visibleLaps.enumerated() {
+            let width = segmentWidths.indices.contains(offset) ? segmentWidths[offset] : minWidth
+            let isCurrent = currentVisibleOffset == offset
+            let h = isCurrent ? currentHeight : normalHeight
+            let y = segmentArea.midY - h / 2
+            let rect = CGRect(x: cursorX, y: y, width: width, height: h)
+            let completed = lap.endElapsedTime <= t
+            segments.append(IntervalTimelineSegmentLayout(
+                id: lap.id,
+                lapIndex: lap.lapIndex,
+                rect: rect,
+                label: intervalTimelineLabel(for: lap, mode: style.primaryLabelMode),
+                durationText: intervalTimelineDuration(lap.totalElapsedTime),
+                kind: lap.kind,
+                color: intervalTimelineColor(for: lap.kind, style: style),
+                opacity: isCurrent ? 1 : (completed ? style.completedOpacity : style.futureOpacity),
+                isCurrent: isCurrent,
+                isCompleted: completed
+            ))
+            cursorX += width + gap
+        }
+
+        let currentSegment = segments.first(where: \.isCurrent)
+        let markerX: Double
+        if let currentSegment {
+            switch style.markerPosition {
+            case .liveProgress:
+                markerX = currentSegment.rect.minX + currentSegment.rect.width * clampedProgress(currentProgress)
+            case .segmentCenter:
+                markerX = currentSegment.rect.midX
+            }
+        } else {
+            markerX = segmentArea.midX
+        }
+
+        return IntervalTimelineRenderLayout(
+            style: style,
+            rect: rect,
+            contentRect: contentRect,
+            railY: (segments.map(\.rect.maxY).max() ?? contentRect.midY) + context.scaled(style.railSpacing * element.scale),
+            railDots: intervalTimelineRailDots(
+                for: segments,
+                y: (segments.map(\.rect.maxY).max() ?? contentRect.midY) + context.scaled(style.railSpacing * element.scale)
+            ),
+            segments: segments,
+            leftOverflowCount: leftOverflow,
+            rightOverflowCount: rightOverflow,
+            currentProgress: clampedProgress(currentProgress),
+            markerX: markerX,
+            markerLabel: style.markerLabel.isEmpty ? "NOW" : style.markerLabel,
+            repText: style.repCounterEnabled ? intervalTimelineRepText(activity: context.activity, currentIndex: currentIndex) : nil,
+            labelFontSize: context.scaled(16 * element.scale),
+            durationFontSize: context.scaled(12 * element.scale),
+            pillFontSize: context.scaled(11 * element.scale),
+            ghostFontSize: context.scaled(12 * element.scale),
+            cornerRadius: context.scaled(element.style.backgroundRadius * element.scale)
+        )
+    }
+
+    private static func intervalTimelineRailDots(for segments: [IntervalTimelineSegmentLayout], y: Double) -> [CGPoint] {
+        segments.map { CGPoint(x: $0.rect.midX, y: y) }
+    }
+
+    private static func intervalTimelineSegmentWidths(
+        laps: [LapRecord],
+        currentOffset: Int?,
+        style: IntervalTimelineStyle,
+        availableWidth: Double,
+        gap: Double,
+        minWidth: Double,
+        centered: Bool
+    ) -> [Double] {
+        guard !laps.isEmpty else { return [] }
+        let totalGap = gap * Double(max(laps.count - 1, 0))
+        let usableWidth = max(availableWidth - totalGap, 1)
+        if centered {
+            let currentExtra = 0.25
+            let totalUnits = Double(laps.count) + (currentOffset == nil ? 0 : currentExtra)
+            let base = max(minWidth, usableWidth / max(totalUnits, 1))
+            return laps.indices.map { index in
+                index == currentOffset ? base * (1 + currentExtra) : base
+            }
+        }
+
+        let totalDuration = max(laps.map(\.totalElapsedTime).reduce(0, +), 1)
+        var widths = laps.map { max(minWidth, usableWidth * ($0.totalElapsedTime / totalDuration)) }
+        let sum = widths.reduce(0, +)
+        if sum > usableWidth {
+            let factor = usableWidth / sum
+            widths = widths.map { max($0 * factor, min(minWidth, usableWidth / Double(laps.count))) }
+        }
+        return widths
+    }
+
+    private static func intervalTimelineLabel(for lap: LapRecord, mode: IntervalTimelineLabelMode) -> String {
+        if mode == .distance, lap.kind == .active, lap.totalDistanceMeters > 0 {
+            return formatDistanceMeters(lap.totalDistanceMeters).replacingOccurrences(of: " ", with: "")
+        }
+        switch lap.kind {
+        case .warmup: return "WU"
+        case .active: return "1min"
+        case .rest: return "R"
+        case .cooldown: return "CD"
+        case .unknown: return "LAP"
+        }
+    }
+
+    private static func intervalTimelineDuration(_ duration: TimeInterval) -> String {
+        formatDuration(duration)
+    }
+
+    private static func intervalTimelineColor(for kind: LapKind, style: IntervalTimelineStyle) -> OverlayColor {
+        switch kind {
+        case .warmup: style.warmupColor
+        case .active: style.activeColor
+        case .rest: style.restColor
+        case .cooldown: style.cooldownColor
+        case .unknown: style.unknownColor
+        }
+    }
+
+    private static func intervalTimelineRepText(activity: ActivityTimeline, currentIndex: Int?) -> String? {
+        let activeLaps = activity.laps.filter { $0.kind == .active }
+        guard !activeLaps.isEmpty else { return nil }
+        guard let currentIndex, activity.laps.indices.contains(currentIndex) else {
+            return "Rep 1 / \(activeLaps.count)"
+        }
+        let lap = activity.laps[currentIndex]
+        if lap.kind == .active,
+           let activeIndex = activeLaps.firstIndex(where: { $0.id == lap.id }) {
+            return "Rep \(activeIndex + 1) / \(activeLaps.count)"
+        }
+        let completed = activeLaps.filter { $0.endElapsedTime <= lap.startElapsedTime }.count
+        return "Rep \(min(completed + 1, activeLaps.count)) / \(activeLaps.count)"
+    }
+
     private static func scaled(_ text: IntervalHUDBarTextStyle, scale: Double, context: OverlayRenderContext) -> IntervalHUDBarTextStyle {
         IntervalHUDBarTextStyle(
             fontName: text.fontName,

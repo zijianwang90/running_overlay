@@ -256,10 +256,10 @@ struct IntervalHUDBarOverlayView: View {
                 EmptyView()
             case .lapProgress:
                 ZStack(alignment: .leading) {
-                    Capsule()
+                    RoundedRectangle(cornerRadius: bottomBarCornerRadius)
                         .fill(Color(intervalHUD: style.trackColor).opacity(style.trackOpacity))
                     GeometryReader { proxy in
-                        Capsule()
+                        RoundedRectangle(cornerRadius: bottomBarCornerRadius)
                             .fill(Color(intervalHUD: layout.phaseColor))
                             .shadow(
                                 color: Color(intervalHUD: layout.phaseColor).opacity(style.bottomBarGlowEnabled ? style.bottomBarGlowIntensity : 0),
@@ -278,43 +278,44 @@ struct IntervalHUDBarOverlayView: View {
                         activeIndex: layout.bottomBarActiveZoneIndex,
                         activeWidthShare: style.activeZoneWidthShare
                     )
+                    let zoneRects = intervalZoneRects(frames: frames, width: proxy.size.width)
                     ZStack(alignment: .topLeading) {
                         if style.bottomBarGlowEnabled,
                            let activeIndex = layout.bottomBarActiveZoneIndex,
-                           let activeFrame = frames.first(where: { $0.index == activeIndex }),
+                           let activeRect = zoneRects.first(where: { $0.index == activeIndex }),
                            let activeSegment = layout.zoneSegments.first(where: { $0.index == activeIndex }) {
-                            RoundedRectangle(cornerRadius: layout.barHeight / 2)
+                            RoundedRectangle(cornerRadius: min(bottomBarCornerRadius, activeRect.height / 2))
                                 .fill(Color(intervalHUD: activeSegment.color).opacity(style.bottomBarGlowIntensity))
                                 .blur(radius: layout.barHeight * 1.6)
-                                .frame(width: max(proxy.size.width * activeFrame.width, 0), height: layout.barHeight)
+                                .frame(width: activeRect.width, height: activeRect.height)
                                 .offset(
-                                    x: proxy.size.width * activeFrame.start,
-                                    y: 0
+                                    x: activeRect.x,
+                                    y: activeRect.y
                                 )
                         }
 
-                        HStack(spacing: 0) {
-                            ForEach(frames, id: \.index) { frame in
-                                if let segment = layout.zoneSegments.first(where: { $0.index == frame.index }) {
+                        ZStack(alignment: .topLeading) {
+                            ForEach(zoneRects, id: \.index) { zoneRect in
+                                if let segment = layout.zoneSegments.first(where: { $0.index == zoneRect.index }) {
                                     let isActive = segment.index == layout.bottomBarActiveZoneIndex
-                                    Rectangle()
+                                    RoundedRectangle(cornerRadius: segmentCornerRadius(for: zoneRect, isActive: isActive))
                                         .fill(Color(intervalHUD: segment.color).opacity(isActive ? 1 : style.inactiveZoneOpacity))
-                                        .frame(width: max(proxy.size.width * frame.width, 0), height: layout.barHeight)
+                                        .frame(width: zoneRect.width, height: zoneRect.height)
+                                        .offset(x: zoneRect.x, y: zoneRect.y)
                                 }
                             }
                         }
                         .frame(width: proxy.size.width, height: layout.barHeight)
-                        .clipShape(Capsule())
                         .overlay {
-                            Capsule()
+                            RoundedRectangle(cornerRadius: bottomBarCornerRadius)
                                 .stroke(Color.white.opacity(0.12), lineWidth: 1)
                         }
 
                         if let marker = layout.zoneMarker,
-                           let markerFrame = frames.first(where: { $0.index == marker.zoneIndex }) {
+                           let markerRect = zoneRects.first(where: { $0.index == marker.zoneIndex }) {
                             zoneMarkerView(marker)
                                 .position(
-                                    x: proxy.size.width * (markerFrame.start + markerFrame.width * marker.fractionInZone),
+                                    x: markerRect.x + markerRect.width * marker.fractionInZone,
                                     y: zoneMarkerY
                                 )
                         }
@@ -333,6 +334,34 @@ struct IntervalHUDBarOverlayView: View {
             return -zoneMarkerGap - markerHeight / 2
         }
         return layout.barHeight + zoneMarkerGap + markerHeight / 2
+    }
+
+    private var bottomBarCornerRadius: Double {
+        min(max(style.bottomBarCornerRadius * element.scale, 0), layout.barHeight)
+    }
+
+    private func segmentCornerRadius(for rect: IntervalHUDBarZoneRect, isActive: Bool) -> Double {
+        min(bottomBarCornerRadius, rect.height / 2, rect.width / 2)
+    }
+
+    private func intervalZoneRects(frames: [IntervalHUDBarZoneSegmentFrame], width: Double) -> [IntervalHUDBarZoneRect] {
+        guard !frames.isEmpty else { return [] }
+        let requestedGap = max(style.zoneSegmentGap * element.scale, 0)
+        let maxGap = frames.count > 1 ? max(width / Double(frames.count - 1) * 0.18, 0) : 0
+        let gap = min(requestedGap, maxGap)
+        let usableWidth = max(width - gap * Double(max(frames.count - 1, 0)), 1)
+        return frames.map { frame in
+            let isActive = frame.index == layout.bottomBarActiveZoneIndex
+            let height = isActive ? layout.barHeight * max(style.activeZoneHeightScale, 1) : layout.barHeight
+            let indexOffset = Double(frame.index) * gap
+            return IntervalHUDBarZoneRect(
+                index: frame.index,
+                x: usableWidth * frame.start + indexOffset,
+                y: (layout.barHeight - height) / 2,
+                width: max(usableWidth * frame.width, 0),
+                height: height
+            )
+        }
     }
 
     private var zoneMarkerGap: Double {
@@ -427,6 +456,14 @@ private struct IntervalHUDBarVerticalLayout {
     var topPadding: Double
     var bottomPadding: Double
     var spacing: Double
+}
+
+private struct IntervalHUDBarZoneRect {
+    var index: Int
+    var x: Double
+    var y: Double
+    var width: Double
+    var height: Double
 }
 
 private extension Color {

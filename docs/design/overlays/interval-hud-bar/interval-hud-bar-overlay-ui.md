@@ -118,6 +118,9 @@ Type menu:
 - Segment colors use the shared HR zone palette from Project Settings.
 - Current active segment uses full opacity; inactive segment opacity is user-adjustable and must remain readable on the black HUD background.
 - Active Zone Width can keep equal segments or expand the active segment up to 50% of the full bar. Remaining segments divide the leftover width evenly.
+- Active Zone Height can raise the active segment up to 2x the base bar height, centered on the bottom bar axis, so the active zone reads as emphasized without moving the HUD layout.
+- Zone Gap controls the visual divider space between adjacent zone segments.
+- Corner Radius controls the bottom bar and segment radius; `0` creates a square progress-bar style and larger values move toward pill-shaped ends.
 - Optional Zone Marker is one solid filled triangle that points at the user's current HR position within the active segment.
 - Marker Position can be `Above` or `Below`; Marker Value can be shown or hidden. The marker and value use the active zone color.
 - Current zone label, such as `Z4`, uses the same zone color.
@@ -162,7 +165,7 @@ Implemented Inspector sections:
 - HUD Bar: width, height, Rep toggle, Current Training toggle and detail modes, Remaining toggle and primary mode, HR Zone toggle, Zone mode, and HR Drop mode.
 - Metrics: ordered add/delete list. Each row chooses one Numeric Overlay metric; the list has no fixed slot count and duplicates are valid. Metrics that support multiple units expose a per-row Units menu, reusing Numeric Overlay unit options such as pace `min/km` / `min/mi`, distance `km` / `mi` / `m`, elevation `m` / `ft`, and temperature `°C` / `°F`.
 - Bottom Bar: section-header enable switch, type menu (`Lap Progress`, `HR Zones`, `Pace Zones`), Spacing slider, Lap Progress mode shows progress mode (`Time` / `Distance`), Glow toggle, and Glow Intensity.
-- Bottom Bar zone settings: Active Zone Width slider (`Equal` to `50%`), Inactive Opacity slider, Zone Marker toggle, Marker Position (`Above` / `Below`), and Marker Value toggle. These controls appear only for `HR Zones` and `Pace Zones`.
+- Bottom Bar zone settings: Active Zone Width slider (`Equal` to `50%`), Active Zone Height slider, Zone Gap slider, Corner Radius slider, Inactive Opacity slider, Zone Marker toggle, Marker Position (`Above` / `Below`), and Marker Value toggle. These controls appear only for `HR Zones` and `Pace Zones`.
 - Typography: font family, size, and weight for Labels, Primary Values, Phase, Phase Detail, Metric Values, and Metric Units.
 - Divider: shared overlay divider fields used for all internal vertical separators.
 - Background: shared `OverlayBackgroundInspectorModule`.

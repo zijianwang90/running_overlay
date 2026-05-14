@@ -5,6 +5,7 @@
 ### Interval HUD Bar: Zone Bottom Bar Emphasis + Marker
 
 - Added Interval HUD Bar Bottom Bar zone controls for `HR Zones` and `Pace Zones`: Active Zone Width (`Equal` to `50%`), Zone Marker visibility, Marker Position (`Above` / `Below`), and optional Marker Value display.
+- Added zone segment gap, active zone height, and bottom bar corner radius controls so users can separate HR/Pace zones, make the active zone taller, or use square progress-bar ends.
 - Added Bottom Bar Spacing so users can tune the vertical gap between the HUD cells and the bar; preview and export use the same style value.
 - Wired shared Background Padding into Interval HUD Bar layout. X padding now moves cells and bottom bar inward; Y padding increases top and bottom interior space in both preview and export.
 - Zone bottom bars now use a shared segment-frame calculation for preview and export. Equal mode preserves the existing evenly divided Z1-Z5/Z6 strip; emphasized mode lets the active zone occupy up to half the bar while inactive zones split the remainder.
@@ -76,6 +77,11 @@
 ### Interval HUD Bar Overlay Implementation
 
 - Added `OverlayElementType.intervalHUDBar`, `IntervalHUDBarStyle`, bottom bar modes, progress modes, HR Drop display modes, and metric slot configuration.
+- Added `OverlayElementType.intervalTimeline` as a companion schedule overlay for Interval HUD Bar. It renders the interval plan horizontally, keeps the current lap centered and enlarged, shows live current-lap progress with a `NOW` marker, and summarizes hidden repetitions for high-count workouts.
+- Added `IntervalTimelineStyle`, `OverlayRenderModel.intervalTimelineLayout(for:in:)`, SwiftUI preview/export support, legacy PNG renderer support, Overlay Pool Charts entry, dedicated Inspector, and render model tests for centered-window overflow plus full-schedule behavior.
+- Revised Interval Timeline visual implementation to match the approved overlay treatment: removed the design-board title/badge from runtime rendering, made the overlay a compact pure timeline rail, added rail dots and WU/CD ghost edge labels, and flipped the `NOW` marker triangle upward toward the current segment.
+- Refined Interval Timeline overflow and Inspector behavior: hidden counts now render as square bordered `xN` boxes in `WU ··· [xN]` / `[xN] ··· CD` order, the rail exposes dedicated style controls, the `NOW` marker floats outside layout without moving rail geometry, and the Inspector `Reset` / `Done` footer is fixed at the bottom.
+- Tightened Interval Timeline overflow spacing and restored the rail to the previous line-and-dot style. Rail `Spacing` now controls the vertical gap below segments, with separate dot size/color/alpha and line width/color controls.
 - Implemented `OverlayRenderModel.intervalHUDBarLayout(for:in:)` using `ActivityTimeline.laps`, current lap progress, live HR/pace/power, REST recovery drop helpers, and shared HR zone preferences.
 - Extracted shared overlay HR zone colors through `HRZonePalette.overlayColors` and added a nonisolated `HeartRateZonePreferences.currentSnapshot()` reader for render/export paths.
 - Added `IntervalHUDBarOverlayView`, `OverlaySharedIntervalHUDBarView`, Overlay Pool Charts tile, dedicated Inspector, SwiftUI exporter support, and legacy PNG renderer support.

@@ -517,6 +517,23 @@ final class ProjectDocument: ObservableObject {
             style.shadowOpacity = 0.34
             style.shadowRadius = 8
         }
+        if type == .intervalTimeline {
+            style.intervalTimeline = .default
+            style.foregroundColor = .white
+            style.labelColor = .white
+            style.unitColor = .white
+            style.backgroundEnabled = true
+            style.backgroundColor = .black
+            style.backgroundOpacity = 0.78
+            style.backgroundRadius = 10
+            style.borderEnabled = true
+            style.borderColor = .white
+            style.borderOpacity = 0.16
+            style.borderWidth = 1
+            style.shadowEnabled = true
+            style.shadowOpacity = 0.34
+            style.shadowRadius = 10
+        }
         if type == .decorText {
             style.decor = DecorStyle(
                 shape: .rectangle,
@@ -1653,6 +1670,18 @@ final class ProjectDocument: ObservableObject {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
         mutate(&overlayLayout.elements[index].style.intervalHUDBar)
+    }
+
+    func mutateIntervalTimelineStyle(_ elementID: OverlayElement.ID, _ mutate: (inout IntervalTimelineStyle) -> Void) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.intervalTimeline)
+    }
+
+    func mutateIntervalTimelineStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout IntervalTimelineStyle) -> Void) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.intervalTimeline)
     }
 
     func applyWeatherWidgetPreset(_ elementID: OverlayElement.ID, preset: WeatherWidgetPreset) {

@@ -292,6 +292,45 @@ struct IntervalHUDBarOverlayDetailView: View {
                     displayText: style.activeZoneWidthShare <= 0 ? "Equal" : String(format: "%.0f%%", style.activeZoneWidthShare * 100)
                 )
                 InspectorDenseSliderRow(
+                    label: "Active Zone Height",
+                    value: Binding(
+                        get: { style.activeZoneHeightScale },
+                        set: { value in
+                            project.mutateIntervalHUDBarStyleContinuous(elementID) {
+                                $0.activeZoneHeightScale = value.quantizedNumeric(to: 0.05)
+                            }
+                        }
+                    ),
+                    range: 1...2,
+                    displayText: String(format: "%.2gx", style.activeZoneHeightScale)
+                )
+                InspectorDenseSliderRow(
+                    label: "Zone Gap",
+                    value: Binding(
+                        get: { style.zoneSegmentGap },
+                        set: { value in
+                            project.mutateIntervalHUDBarStyleContinuous(elementID) {
+                                $0.zoneSegmentGap = value.quantizedNumeric(to: 0.5)
+                            }
+                        }
+                    ),
+                    range: 0...12,
+                    displayText: String(format: "%.1f", style.zoneSegmentGap)
+                )
+                InspectorDenseSliderRow(
+                    label: "Corner Radius",
+                    value: Binding(
+                        get: { style.bottomBarCornerRadius },
+                        set: { value in
+                            project.mutateIntervalHUDBarStyleContinuous(elementID) {
+                                $0.bottomBarCornerRadius = value.quantizedNumeric(to: 0.5)
+                            }
+                        }
+                    ),
+                    range: 0...12,
+                    displayText: String(format: "%.1f", style.bottomBarCornerRadius)
+                )
+                InspectorDenseSliderRow(
                     label: "Inactive Opacity",
                     value: Binding(
                         get: { style.inactiveZoneOpacity },
