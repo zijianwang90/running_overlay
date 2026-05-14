@@ -177,7 +177,7 @@ Bottom Bar Spacing is the vertical gap between the data cell row and the bottom 
 
 Zone Marker is a floating overlay anchored to the current value position on the zone bar. It does not reserve layout height, move the bottom bar, change spacing, or resize the data row. Above and Below placements may overlap HUD text or extend beyond the background container.
 
-Effects Shadow follows the HUD container shape, using the shared `shadowColor`, opacity, radius, offset, and thickness fields. It is applied only when Background is enabled so the shadow belongs to the visible container surface instead of the internal text or bottom bar.
+Effects Shadow uses the shared `shadowColor`, opacity, radius, offset, and thickness fields. When Background is enabled, shadow follows the HUD container shape. When both Background and Border are disabled, shadow applies to the full HUD content group, including text, dividers, the bottom bar, and floating zone marker.
 
 Do not expose Target Pace controls until target workout data exists.
 

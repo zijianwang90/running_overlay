@@ -30,11 +30,15 @@ struct IntervalHUDBarOverlayView: View {
         }
         .padding(.top, verticalLayout.topPadding)
         .padding(.bottom, verticalLayout.bottomPadding)
+        .intervalHUDLayeredShadow(
+            element: element,
+            isEnabled: !element.style.backgroundEnabled && !element.style.borderEnabled
+        )
         .frame(width: layout.rect.width, height: layout.rect.height)
         .background(
             RoundedRectangle(cornerRadius: element.style.backgroundRadius)
                 .fill(Color(intervalHUD: element.style.backgroundColor).opacity(element.style.backgroundEnabled ? element.style.backgroundOpacity : 0))
-                .intervalHUDLayeredShadow(element: element)
+                .intervalHUDLayeredShadow(element: element, isEnabled: element.style.backgroundEnabled)
         )
         .overlay {
             if element.style.borderEnabled {
@@ -432,25 +436,25 @@ private extension Color {
 }
 
 private extension View {
-    func intervalHUDLayeredShadow(element: OverlayElement) -> some View {
+    func intervalHUDLayeredShadow(element: OverlayElement, isEnabled: Bool) -> some View {
         self
             .shadow(
                 color: Color(intervalHUD: element.style.shadowColor)
-                    .opacity(element.style.backgroundEnabled && element.style.shadowEnabled ? element.style.shadowOpacity : 0),
+                    .opacity(isEnabled && element.style.shadowEnabled ? element.style.shadowOpacity : 0),
                 radius: element.style.shadowRadius,
                 x: element.style.shadowOffsetX,
                 y: element.style.shadowOffsetY
             )
             .shadow(
                 color: Color(intervalHUD: element.style.shadowColor)
-                    .opacity(element.style.backgroundEnabled && element.style.shadowEnabled ? element.style.shadowOpacity * max(element.style.shadowThickness - 1, 0) * 0.32 : 0),
+                    .opacity(isEnabled && element.style.shadowEnabled ? element.style.shadowOpacity * max(element.style.shadowThickness - 1, 0) * 0.32 : 0),
                 radius: element.style.shadowRadius * 0.72,
                 x: element.style.shadowOffsetX,
                 y: element.style.shadowOffsetY
             )
             .shadow(
                 color: Color(intervalHUD: element.style.shadowColor)
-                    .opacity(element.style.backgroundEnabled && element.style.shadowEnabled ? element.style.shadowOpacity * max(element.style.shadowThickness - 2, 0) * 0.22 : 0),
+                    .opacity(isEnabled && element.style.shadowEnabled ? element.style.shadowOpacity * max(element.style.shadowThickness - 2, 0) * 0.22 : 0),
                 radius: element.style.shadowRadius * 0.48,
                 x: element.style.shadowOffsetX,
                 y: element.style.shadowOffsetY

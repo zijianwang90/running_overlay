@@ -1427,6 +1427,19 @@ struct OverlayFrameRenderer {
             border.lineWidth = element.style.borderWidth
             border.stroke()
         }
+        let contentShadowEnabled = !element.style.backgroundEnabled
+            && !element.style.borderEnabled
+            && element.style.shadowEnabled
+            && element.style.shadowOpacity > 0
+            && element.style.shadowRadius > 0
+        if contentShadowEnabled {
+            setIntervalHUDLayeredShadow(element: element)
+        }
+        defer {
+            if contentShadowEnabled {
+                NSGraphicsContext.current?.cgContext.restoreGState()
+            }
+        }
 
         let horizontalPadding = element.style.backgroundPaddingX * element.scale
         let verticalPadding = element.style.backgroundPaddingY * element.scale
@@ -1723,6 +1736,18 @@ struct OverlayFrameRenderer {
             color.setFill()
             path.fill()
         }
+    }
+
+    private static func setIntervalHUDLayeredShadow(element: OverlayElement) {
+        let thickness = min(max(element.style.shadowThickness, 1), 4)
+        let shadowOpacity = min(element.style.shadowOpacity * (1 + (thickness - 1) * 0.16), 1)
+        let shadowRadius = element.style.shadowRadius * (1 + (thickness - 1) * 0.10)
+        NSGraphicsContext.current?.cgContext.saveGState()
+        NSGraphicsContext.current?.cgContext.setShadow(
+            offset: CGSize(width: element.style.shadowOffsetX, height: element.style.shadowOffsetY),
+            blur: shadowRadius,
+            color: NSColor(element.style.shadowColor).withAlphaComponent(shadowOpacity).cgColor
+        )
     }
 
     private static func drawIntervalHUDDivider(element: OverlayElement, x: Double, rect: CGRect) {

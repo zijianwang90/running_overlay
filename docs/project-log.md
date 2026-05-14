@@ -87,6 +87,7 @@
 - Revised the Interval HUD Bar vertical allocator to preserve requested bottom-bar spacing first, compress top/bottom padding on short HUDs, and only cap spacing as a last resort.
 - Converted Interval HUD Bar Zone Marker into a floating overlay that no longer reserves vertical layout space or changes data row, bottom bar, spacing, or background geometry.
 - Moved the Interval HUD Bar Bottom Bar enable switch into the Bottom Bar section header before the disclosure chevron and removed the duplicate body row.
+- Updated Interval HUD Bar Effects shadow so it applies to the full content group when both Background and Border are disabled, while preserving container shadow when Background is enabled.
 
 Files added:
 

@@ -78,7 +78,7 @@ Inspector sections:
 
 The final four sections stay in the canonical order `Divider`, `Background`, `Border`, `Effects`; `Background`, `Border`, and `Effects` are the shared components used by other overlays.
 
-Background padding is container interior padding for the fixed HUD surface. Shadow is container-level and follows the shared Effects fields (`shadowColor`, opacity, radius, offset, thickness) when Background is enabled.
+Background padding is container interior padding for the fixed HUD surface. Shadow follows the shared Effects fields (`shadowColor`, opacity, radius, offset, thickness): it is container-level when Background is enabled, and content-level when both Background and Border are disabled.
 
 Bottom Bar Spacing is a real gap between the data row and bottom bar: `0` keeps them adjacent, and larger values separate them farther. The layout preserves requested spacing before compressing top/bottom padding on short HUDs; only when the data row and bar still cannot fit is spacing capped. Zone Marker is drawn as a floating overlay and never reserves layout height, so enabling it does not move the data row, bar, or background.
 

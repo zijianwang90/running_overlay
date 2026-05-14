@@ -304,8 +304,8 @@
         "OverlayEffectsInspectorModule"
       ],
       "effectsBehavior": {
-        "shadowTarget": "outerHudContainer",
-        "shadowRequiresBackground": true,
+        "shadowTarget": "outerHudContainerWithBackground; fullHudContentGroupWithoutBackgroundOrBorder",
+        "shadowRequiresBackground": false,
         "previewExportParity": true
       }
     },
