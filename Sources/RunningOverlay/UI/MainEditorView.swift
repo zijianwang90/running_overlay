@@ -1,4 +1,5 @@
 import AppKit
+import QuartzCore
 import SwiftUI
 
 struct MainEditorView: View {
@@ -7,6 +8,7 @@ struct MainEditorView: View {
     @State private var activePool: PoolKind = .media
     @State private var mediaPoolWidth: CGFloat = 380
     @State private var inspectorWidth: CGFloat = 460
+    @State private var lastPlaybackTickTime: CFTimeInterval?
 
     private static let mediaPoolMinWidth: CGFloat = 300
     private static let mediaPoolMaxWidth: CGFloat = 720
@@ -111,10 +113,20 @@ struct MainEditorView: View {
             project.deleteSelectedItem()
             return .handled
         }
-        .onReceive(Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()) { _ in
-            if !project.isPreviewingMediaPoolItem, project.previewMediaAtPlayhead() == nil {
-                project.advancePlayback(by: 1.0 / 30.0)
+        .onReceive(Timer.publish(every: 1.0 / 60.0, on: .main, in: .common).autoconnect()) { _ in
+            let shouldDrive = project.isPlaying
+                && !project.isPreviewingMediaPoolItem
+                && project.previewMediaAtPlayhead() == nil
+            guard shouldDrive else {
+                lastPlaybackTickTime = nil
+                return
             }
+            let now = CACurrentMediaTime()
+            defer { lastPlaybackTickTime = now }
+            guard let last = lastPlaybackTickTime else { return }
+            // Cap delta so a long stall doesn't fling the playhead forward.
+            let delta = min(max(now - last, 0), 0.25)
+            project.advancePlayback(by: delta)
         }
     }
 

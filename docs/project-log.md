@@ -14,6 +14,16 @@
 - Added per-slot unit options for Interval HUD Bar Metrics so pace, distance, elevation, temperature, and other Numeric Overlay-backed metrics can use imperial or alternate units inside the HUD.
 - Added the zone marker design reference at `docs/design/overlays/interval-hud-bar/interval-hud-bar-zone-marker.png`.
 
+### Playback Drift Without Video: Wall-Clock Delta Instead of Fixed Step
+
+- User reported that with only a FIT file imported (no video clips), 1x timeline playback ran noticeably slower than wall-clock — displayed elapsed time fell behind real time.
+- Root cause: `MainEditorView` drove playback via `Timer.publish(every: 1/30)` and unconditionally called `project.advancePlayback(by: 1.0/30.0)` on every tick. SwiftUI/RunLoop timers do not guarantee that cadence — overlay re-rendering and main-thread stalls drop ticks, and each dropped tick silently lost 1/30 s. With a video clip present this path is bypassed (AVPlayer's `periodicTimeObserver` drives the playhead via `setPlayheadFromPlayback()`), so the bug only surfaced in the FIT-only case.
+- Fix in `MainEditorView.swift`:
+  - Switched to wall-clock delta using `CACurrentMediaTime()`. The tick computes `now - lastTickTime` and feeds that into `advancePlayback`, which already multiplies by `playbackRate`. Dropped/late ticks now self-correct.
+  - Tightened the tick interval to 1/60 s so playhead updates feel smooth on 60 Hz panels (the cost is bounded because we no longer do real work unless playback is actually active).
+  - Gate on `project.isPlaying`; reset `lastPlaybackTickTime` to `nil` whenever the driver is inactive so the first tick after play/seek doesn't apply a stale delta.
+  - Capped per-tick delta at `0.25 s` to avoid flinging the playhead forward after a long stall (e.g. app backgrounded, modal sheet).
+
 ### Timeline Zoom: Shift+Z Fit Toggle (DaVinci-style)
 
 - Added a `Shift+Z` keyboard shortcut (menu: **Timeline → Toggle Fit Zoom**) that snaps the timeline between Fit and the user's last working zoom, mirroring DaVinci Resolve's behavior.
