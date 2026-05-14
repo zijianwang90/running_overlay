@@ -386,6 +386,12 @@ enum OverlayRenderModel {
         let currentHR = context.activity.heartRate(at: t)
         let currentPace = context.activity.pace(at: t)
         let activeZoneIndex = resolvedZoneIndex(heartRate: currentHR, paceSecondsPerKm: currentPace, snapshot: zoneSnapshot)
+        let bottomBarActiveZoneIndex = resolvedBottomBarZoneIndex(
+            mode: style.bottomBarMode,
+            heartRate: currentHR,
+            paceSecondsPerKm: currentPace,
+            snapshot: zoneSnapshot
+        )
         let phaseColor = lapKindColor(lap?.kind ?? .unknown, activeZoneIndex: activeZoneIndex)
         let remainingTimeText = formatDuration(remainingTime)
         let remainingDistanceText = formatDistanceMeters(remainingDistance)
@@ -423,6 +429,14 @@ enum OverlayRenderModel {
             ),
             zoneSegments: intervalZoneSegments(snapshot: zoneSnapshot),
             activeZoneIndex: activeZoneIndex,
+            bottomBarActiveZoneIndex: bottomBarActiveZoneIndex,
+            zoneMarker: intervalZoneMarker(
+                style: style,
+                heartRate: currentHR,
+                paceSecondsPerKm: currentPace,
+                snapshot: zoneSnapshot,
+                zoneIndex: bottomBarActiveZoneIndex
+            ),
             labelText: scaled(style.labelText, scale: element.scale, context: context),
             primaryValueText: scaled(style.primaryValueText, scale: element.scale, context: context),
             phaseText: scaled(style.phaseText, scale: element.scale, context: context),
@@ -454,7 +468,12 @@ enum OverlayRenderModel {
                 return nil
             case .heartRate, .pace, .calories, .elapsedTime, .realTime, .distance, .elevation, .cadence, .power, .verticalOscillation, .groundContactTime, .strideLength, .verticalRatio, .groundContactBalance, .temperature, .grade:
                 guard let elementType = slot.metric.elementType else { return nil }
-                let components = OverlayValueFormatter.components(for: elementType, activity: activity, elapsedTime: elapsedTime)
+                let components = OverlayValueFormatter.components(
+                    for: elementType,
+                    unit: slot.unitOption,
+                    activity: activity,
+                    elapsedTime: elapsedTime
+                )
                 return IntervalHUDBarMetricItem(
                     metric: slot.metric,
                     label: components.shortLabel.uppercased(),
@@ -506,19 +525,133 @@ enum OverlayRenderModel {
     private static func resolvedZoneIndex(heartRate: Int?, paceSecondsPerKm: Double?, snapshot: HeartRateZoneSnapshot) -> Int? {
         let visibleZones = Array(snapshot.zones.prefix(snapshot.zoneCount))
         if let heartRate,
-           let hrIndex = visibleZones.firstIndex(where: { zone in
-               let minHR = zone.minHR ?? Int.min
-               let maxHR = zone.maxHR ?? Int.max
-               return heartRate >= minHR && heartRate <= maxHR && (zone.minHR != nil || zone.maxHR != nil)
-           }) {
+           let hrIndex = resolvedHeartRateZoneIndex(heartRate: heartRate, zones: visibleZones) {
             return hrIndex
         }
         guard let pace = paceSecondsPerKm else { return nil }
-        return visibleZones.firstIndex { zone in
+        return resolvedPaceZoneIndex(paceSecondsPerKm: pace, zones: visibleZones)
+    }
+
+    private static func resolvedBottomBarZoneIndex(
+        mode: IntervalHUDBarBottomBarMode,
+        heartRate: Int?,
+        paceSecondsPerKm: Double?,
+        snapshot: HeartRateZoneSnapshot
+    ) -> Int? {
+        let visibleZones = Array(snapshot.zones.prefix(snapshot.zoneCount))
+        switch mode {
+        case .heartRateZones:
+            guard let heartRate else { return nil }
+            return resolvedHeartRateZoneIndex(heartRate: heartRate, zones: visibleZones)
+        case .paceZones:
+            guard let paceSecondsPerKm else { return nil }
+            return resolvedPaceZoneIndex(paceSecondsPerKm: paceSecondsPerKm, zones: visibleZones)
+        case .none, .lapProgress:
+            return nil
+        }
+    }
+
+    private static func resolvedHeartRateZoneIndex(heartRate: Int, zones: [HeartRateZone]) -> Int? {
+        zones.firstIndex { zone in
+            let minHR = zone.minHR ?? Int.min
+            let maxHR = zone.maxHR ?? Int.max
+            return heartRate >= minHR && heartRate <= maxHR && (zone.minHR != nil || zone.maxHR != nil)
+        }
+    }
+
+    private static func resolvedPaceZoneIndex(paceSecondsPerKm: Double, zones: [HeartRateZone]) -> Int? {
+        zones.firstIndex { zone in
             guard zone.minPaceSecPerKm != nil || zone.maxPaceSecPerKm != nil else { return false }
             let a = Double(zone.minPaceSecPerKm ?? Int.min)
             let b = Double(zone.maxPaceSecPerKm ?? Int.max)
-            return pace >= min(a, b) && pace <= max(a, b)
+            return paceSecondsPerKm >= min(a, b) && paceSecondsPerKm <= max(a, b)
+        }
+    }
+
+    private static func intervalZoneMarker(
+        style: IntervalHUDBarStyle,
+        heartRate: Int?,
+        paceSecondsPerKm: Double?,
+        snapshot: HeartRateZoneSnapshot,
+        zoneIndex: Int?
+    ) -> IntervalHUDBarZoneMarker? {
+        guard style.zoneMarkerEnabled,
+              style.bottomBarMode == .heartRateZones || style.bottomBarMode == .paceZones,
+              let zoneIndex,
+              zoneIndex >= 0,
+              zoneIndex < snapshot.zoneCount,
+              zoneIndex < snapshot.zones.count
+        else { return nil }
+
+        let zone = snapshot.zones[zoneIndex]
+        switch style.bottomBarMode {
+        case .heartRateZones:
+            guard let heartRate else { return nil }
+            return IntervalHUDBarZoneMarker(
+                zoneIndex: zoneIndex,
+                fractionInZone: heartRateFraction(heartRate, zone: zone),
+                valueText: "\(heartRate) bpm",
+                color: HRZonePalette.overlayColor(forIndex: zoneIndex)
+            )
+        case .paceZones:
+            guard let paceSecondsPerKm else { return nil }
+            return IntervalHUDBarZoneMarker(
+                zoneIndex: zoneIndex,
+                fractionInZone: paceFraction(paceSecondsPerKm, zone: zone),
+                valueText: formatPace(secondsPerKm: paceSecondsPerKm, paceUnit: snapshot.paceUnit),
+                color: HRZonePalette.overlayColor(forIndex: zoneIndex)
+            )
+        case .none, .lapProgress:
+            return nil
+        }
+    }
+
+    private static func formatPace(secondsPerKm: Double, paceUnit: PaceUnit) -> String {
+        "\(PaceConversion.format(secondsPerKm: Int(secondsPerKm.rounded()), unit: paceUnit)) \(paceUnit.label)"
+    }
+
+    private static func heartRateFraction(_ heartRate: Int, zone: HeartRateZone) -> Double {
+        guard let minHR = zone.minHR,
+              let maxHR = zone.maxHR,
+              maxHR > minHR
+        else { return 0.5 }
+        return clampedProgress(Double(heartRate - minHR) / Double(maxHR - minHR))
+    }
+
+    private static func paceFraction(_ paceSecondsPerKm: Double, zone: HeartRateZone) -> Double {
+        guard let minPace = zone.minPaceSecPerKm,
+              let maxPace = zone.maxPaceSecPerKm,
+              minPace != maxPace
+        else { return 0.5 }
+        let lower = Double(min(minPace, maxPace))
+        let upper = Double(max(minPace, maxPace))
+        return clampedProgress((paceSecondsPerKm - lower) / (upper - lower))
+    }
+
+    static func intervalZoneSegmentFrames(
+        segmentCount: Int,
+        activeIndex: Int?,
+        activeWidthShare: Double
+    ) -> [IntervalHUDBarZoneSegmentFrame] {
+        guard segmentCount > 0 else { return [] }
+        let equalWidth = 1 / Double(segmentCount)
+        let requestedActiveWidth = min(max(activeWidthShare, 0), 0.5)
+        guard let activeIndex,
+              activeIndex >= 0,
+              activeIndex < segmentCount,
+              requestedActiveWidth > equalWidth
+        else {
+            return (0..<segmentCount).map { index in
+                IntervalHUDBarZoneSegmentFrame(index: index, start: Double(index) * equalWidth, width: equalWidth)
+            }
+        }
+
+        let inactiveWidth = (1 - requestedActiveWidth) / Double(max(segmentCount - 1, 1))
+        var cursor = 0.0
+        return (0..<segmentCount).map { index in
+            let width = index == activeIndex ? requestedActiveWidth : inactiveWidth
+            defer { cursor += width }
+            return IntervalHUDBarZoneSegmentFrame(index: index, start: cursor, width: width)
         }
     }
 

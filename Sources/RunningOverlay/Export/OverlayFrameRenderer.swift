@@ -1419,8 +1419,7 @@ struct OverlayFrameRenderer {
         let rect = layout.rect
 
         if element.style.backgroundEnabled {
-            NSColor(element.style.backgroundColor).withAlphaComponent(element.style.backgroundOpacity).setFill()
-            NSBezierPath(roundedRect: rect, xRadius: element.style.backgroundRadius, yRadius: element.style.backgroundRadius).fill()
+            drawIntervalHUDContainerBackground(element: element, rect: rect)
         }
         if element.style.borderEnabled {
             NSColor(element.style.borderColor).withAlphaComponent(element.style.borderOpacity).setStroke()
@@ -1429,9 +1428,30 @@ struct OverlayFrameRenderer {
             border.stroke()
         }
 
-        let contentY = rect.minY + rect.height * 0.14
-        let contentH = rect.height * (!style.bottomBarEnabled ? 0.72 : 0.58)
-        let contentInset = rect.width * 0.04
+        let horizontalPadding = element.style.backgroundPaddingX * element.scale
+        let verticalPadding = element.style.backgroundPaddingY * element.scale
+        let hasVisibleBottomBar = style.bottomBarEnabled && style.bottomBarMode != .none
+        let bottomBarContentHeight = hasVisibleBottomBar ? layout.barHeight : 0
+        let verticalLayout = intervalHUDVerticalLayout(
+            layout: layout,
+            rect: rect,
+            desiredTopPadding: rect.height * 0.06 + verticalPadding,
+            desiredBottomPadding: rect.height * 0.12 + verticalPadding,
+            bottomBarContentHeight: bottomBarContentHeight,
+            hasVisibleBottomBar: hasVisibleBottomBar
+        )
+        let bottomPadding = verticalLayout.bottomPadding
+        let contentY = rect.minY + verticalLayout.topPadding
+        let barY = rect.maxY
+            - bottomPadding
+            - layout.barHeight
+        let contentBottom = hasVisibleBottomBar
+            ? barY - verticalLayout.spacing
+            : rect.maxY - bottomPadding
+        let contentH = hasVisibleBottomBar
+            ? max(contentBottom - contentY, 1)
+            : rect.height * 0.72
+        let contentInset = rect.width * 0.04 + horizontalPadding
         let contentRect = CGRect(
             x: rect.minX + contentInset,
             y: contentY,
@@ -1494,11 +1514,11 @@ struct OverlayFrameRenderer {
             drawCenteredText(layout.phaseLabel, in: columnRect.offsetBy(dx: 0, dy: -contentH * 0.10), textStyle: layout.phaseText, color: NSColor(layout.phaseColor))
         }
 
-        guard style.bottomBarEnabled else { return }
+        guard hasVisibleBottomBar else { return }
         let barRect = CGRect(
-            x: rect.minX + rect.width * 0.04,
-            y: rect.maxY - rect.height * 0.22,
-            width: rect.width * 0.92,
+            x: rect.minX + rect.width * 0.04 + horizontalPadding,
+            y: barY,
+            width: max(rect.width * 0.92 - horizontalPadding * 2, 1),
             height: layout.barHeight
         )
         switch style.bottomBarMode {
@@ -1524,31 +1544,184 @@ struct OverlayFrameRenderer {
         case .heartRateZones, .paceZones:
             let segments = layout.zoneSegments
             guard !segments.isEmpty else { return }
-            let segmentW = barRect.width / Double(segments.count)
-            for segment in segments {
-                let segmentRect = CGRect(
-                    x: barRect.minX + Double(segment.index) * segmentW,
+            let frames = OverlayRenderModel.intervalZoneSegmentFrames(
+                segmentCount: segments.count,
+                activeIndex: layout.bottomBarActiveZoneIndex,
+                activeWidthShare: style.activeZoneWidthShare
+            )
+            if style.bottomBarGlowEnabled,
+               let activeIndex = layout.bottomBarActiveZoneIndex,
+               let activeSegment = segments.first(where: { $0.index == activeIndex }),
+               let activeFrame = frames.first(where: { $0.index == activeIndex }) {
+                let activeRect = CGRect(
+                    x: barRect.minX + barRect.width * activeFrame.start,
                     y: barRect.minY,
-                    width: segmentW - 1,
+                    width: max(barRect.width * activeFrame.width, 0),
                     height: barRect.height
                 )
-                let isActive = segment.index == layout.activeZoneIndex
-                if isActive, style.bottomBarGlowEnabled {
-                    NSGraphicsContext.current?.cgContext.saveGState()
-                    NSGraphicsContext.current?.cgContext.setShadow(
-                        offset: .zero,
-                        blur: barRect.height * 1.8,
-                        color: NSColor(segment.color).withAlphaComponent(style.bottomBarGlowIntensity).cgColor
-                    )
-                }
+                NSGraphicsContext.current?.cgContext.saveGState()
+                NSGraphicsContext.current?.cgContext.setShadow(
+                    offset: .zero,
+                    blur: barRect.height * 2.4,
+                    color: NSColor(activeSegment.color).withAlphaComponent(style.bottomBarGlowIntensity).cgColor
+                )
+                NSColor(activeSegment.color)
+                    .withAlphaComponent(style.bottomBarGlowIntensity)
+                    .setFill()
+                NSBezierPath(roundedRect: activeRect, xRadius: barRect.height / 2, yRadius: barRect.height / 2).fill()
+                NSGraphicsContext.current?.cgContext.restoreGState()
+            }
+            for segment in segments {
+                guard let frame = frames.first(where: { $0.index == segment.index }) else { continue }
+                let segmentRect = CGRect(
+                    x: barRect.minX + barRect.width * frame.start,
+                    y: barRect.minY,
+                    width: max(barRect.width * frame.width, 0),
+                    height: barRect.height
+                )
+                let isActive = segment.index == layout.bottomBarActiveZoneIndex
                 NSColor(segment.color)
-                    .withAlphaComponent(isActive ? 1 : 0.42)
+                    .withAlphaComponent(isActive ? 1 : style.inactiveZoneOpacity)
                     .setFill()
                 segmentRect.fill()
-                if isActive, style.bottomBarGlowEnabled {
-                    NSGraphicsContext.current?.cgContext.restoreGState()
-                }
             }
+            if let marker = layout.zoneMarker,
+               let markerFrame = frames.first(where: { $0.index == marker.zoneIndex }) {
+                drawIntervalHUDZoneMarker(
+                    marker,
+                    frame: markerFrame,
+                    barRect: barRect,
+                    style: style,
+                    textStyle: layout.metricUnitText
+                )
+            }
+        }
+    }
+
+    private static func drawIntervalHUDZoneMarker(
+        _ marker: IntervalHUDBarZoneMarker,
+        frame: IntervalHUDBarZoneSegmentFrame,
+        barRect: CGRect,
+        style: IntervalHUDBarStyle,
+        textStyle: IntervalHUDBarTextStyle
+    ) {
+        let x = barRect.minX + barRect.width * (frame.start + frame.width * marker.fractionInZone)
+        let arrowW = max(barRect.height * 1.35, 8)
+        let arrowH = max(barRect.height * 0.9, 6)
+        let gap = style.zoneMarkerPosition == .below ? max(barRect.height * 0.55, 4) : max(barRect.height * 0.35, 3)
+        let color = NSColor(marker.color)
+        let triangle = NSBezierPath()
+
+        switch style.zoneMarkerPosition {
+        case .above:
+            let baseY = barRect.minY - gap - arrowH
+            triangle.move(to: CGPoint(x: x - arrowW / 2, y: baseY))
+            triangle.line(to: CGPoint(x: x + arrowW / 2, y: baseY))
+            triangle.line(to: CGPoint(x: x, y: baseY + arrowH))
+            if style.zoneMarkerShowsValue {
+                let labelRect = CGRect(
+                    x: x - 42,
+                    y: baseY - textStyle.fontSize - 6,
+                    width: 84,
+                    height: textStyle.fontSize + 4
+                )
+                drawCenteredText(marker.valueText, in: labelRect, textStyle: textStyle, color: color)
+            }
+        case .below:
+            let baseY = barRect.maxY + gap + arrowH
+            triangle.move(to: CGPoint(x: x, y: baseY - arrowH))
+            triangle.line(to: CGPoint(x: x + arrowW / 2, y: baseY))
+            triangle.line(to: CGPoint(x: x - arrowW / 2, y: baseY))
+            if style.zoneMarkerShowsValue {
+                let labelRect = CGRect(
+                    x: x - 42,
+                    y: baseY + 2,
+                    width: 84,
+                    height: textStyle.fontSize + 4
+                )
+                drawCenteredText(marker.valueText, in: labelRect, textStyle: textStyle, color: color)
+            }
+        }
+        triangle.close()
+        color.setFill()
+        triangle.fill()
+    }
+
+    private static func intervalHUDMinimumMainContentHeight(layout: IntervalHUDBarRenderLayout, rect: CGRect) -> Double {
+        let maxTextStackHeight = max(
+            layout.primaryValueText.fontSize + layout.labelText.fontSize + 4,
+            layout.phaseText.fontSize + layout.phaseDetailText.fontSize + 3,
+            layout.metricValueText.fontSize + max(layout.labelText.fontSize, layout.metricUnitText.fontSize) + 4
+        )
+        return max(rect.height * 0.30, min(maxTextStackHeight + 4, rect.height * 0.58))
+    }
+
+    private static func intervalHUDVerticalLayout(
+        layout: IntervalHUDBarRenderLayout,
+        rect: CGRect,
+        desiredTopPadding: Double,
+        desiredBottomPadding: Double,
+        bottomBarContentHeight: Double,
+        hasVisibleBottomBar: Bool
+    ) -> IntervalHUDExportVerticalLayout {
+        let minimumTopPadding = max(rect.height * 0.025, 2)
+        let minimumBottomPadding = max(rect.height * 0.025, 2)
+        let requestedSpacing = hasVisibleBottomBar ? max(layout.style.bottomBarSpacing, 0) : 0
+        let minimumContentHeight = intervalHUDMinimumMainContentHeight(layout: layout, rect: rect)
+        let desiredTotal = desiredTopPadding + minimumContentHeight + requestedSpacing + bottomBarContentHeight + desiredBottomPadding
+
+        guard hasVisibleBottomBar, desiredTotal > rect.height else {
+            return IntervalHUDExportVerticalLayout(
+                topPadding: desiredTopPadding,
+                bottomPadding: desiredBottomPadding,
+                spacing: requestedSpacing
+            )
+        }
+
+        let availablePadding = rect.height - minimumContentHeight - requestedSpacing - bottomBarContentHeight
+        if availablePadding >= minimumTopPadding + minimumBottomPadding {
+            let desiredPadding = max(desiredTopPadding + desiredBottomPadding, 1)
+            let topShare = desiredTopPadding / desiredPadding
+            let topPadding = max(minimumTopPadding, availablePadding * topShare)
+            let bottomPadding = max(minimumBottomPadding, availablePadding - topPadding)
+            return IntervalHUDExportVerticalLayout(
+                topPadding: topPadding,
+                bottomPadding: bottomPadding,
+                spacing: requestedSpacing
+            )
+        }
+
+        let maxSpacing = max(rect.height - minimumTopPadding - minimumBottomPadding - minimumContentHeight - bottomBarContentHeight, 0)
+        return IntervalHUDExportVerticalLayout(
+            topPadding: minimumTopPadding,
+            bottomPadding: minimumBottomPadding,
+            spacing: min(requestedSpacing, maxSpacing)
+        )
+    }
+
+    private static func drawIntervalHUDContainerBackground(element: OverlayElement, rect: CGRect) {
+        let path = NSBezierPath(
+            roundedRect: rect,
+            xRadius: element.style.backgroundRadius,
+            yRadius: element.style.backgroundRadius
+        )
+        let color = NSColor(element.style.backgroundColor).withAlphaComponent(element.style.backgroundOpacity)
+        if element.style.shadowEnabled, element.style.shadowOpacity > 0, element.style.shadowRadius > 0 {
+            let thickness = min(max(element.style.shadowThickness, 1), 4)
+            let shadowOpacity = min(element.style.shadowOpacity * (1 + (thickness - 1) * 0.16), 1)
+            let shadowRadius = element.style.shadowRadius * (1 + (thickness - 1) * 0.10)
+            NSGraphicsContext.current?.cgContext.saveGState()
+            NSGraphicsContext.current?.cgContext.setShadow(
+                offset: CGSize(width: element.style.shadowOffsetX, height: element.style.shadowOffsetY),
+                blur: shadowRadius,
+                color: NSColor(element.style.shadowColor).withAlphaComponent(shadowOpacity).cgColor
+            )
+            color.setFill()
+            path.fill()
+            NSGraphicsContext.current?.cgContext.restoreGState()
+        } else {
+            color.setFill()
+            path.fill()
         }
     }
 
@@ -2935,6 +3108,12 @@ private struct TextPresetColors {
     var foreground: NSColor
     var background: NSColor
     var accent: NSColor
+}
+
+private struct IntervalHUDExportVerticalLayout {
+    var topPadding: Double
+    var bottomPadding: Double
+    var spacing: Double
 }
 
 private struct TextLayoutKey: Hashable {

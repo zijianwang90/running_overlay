@@ -17,17 +17,24 @@ struct IntervalHUDBarOverlayView: View {
                         .frame(maxWidth: .infinity)
                 }
             }
-            .padding(.horizontal, layout.rect.width * 0.035)
+            .padding(.horizontal, horizontalContentPadding)
             .frame(height: mainContentHeight)
 
+            if hasVisibleBottomBar {
+                Spacer()
+                    .frame(height: effectiveBottomBarSpacing)
+            }
+
             bottomBar
-                .padding(.horizontal, layout.rect.width * 0.035)
-                .padding(.bottom, layout.rect.height * 0.12)
+                .padding(.horizontal, horizontalContentPadding)
         }
+        .padding(.top, verticalLayout.topPadding)
+        .padding(.bottom, verticalLayout.bottomPadding)
         .frame(width: layout.rect.width, height: layout.rect.height)
         .background(
             RoundedRectangle(cornerRadius: element.style.backgroundRadius)
                 .fill(Color(intervalHUD: element.style.backgroundColor).opacity(element.style.backgroundEnabled ? element.style.backgroundOpacity : 0))
+                .intervalHUDLayeredShadow(element: element)
         )
         .overlay {
             if element.style.borderEnabled {
@@ -38,7 +45,87 @@ struct IntervalHUDBarOverlayView: View {
     }
 
     private var mainContentHeight: Double {
-        layout.rect.height - (!style.bottomBarEnabled ? 0 : layout.barHeight + layout.rect.height * 0.18)
+        let availableHeight = max(layout.rect.height - verticalLayout.topPadding - verticalLayout.bottomPadding, 1)
+        if hasVisibleBottomBar {
+            return max(availableHeight - bottomBarContentHeight - verticalLayout.spacing, 1)
+        }
+        return availableHeight
+    }
+
+    private var effectiveBottomBarSpacing: Double {
+        verticalLayout.spacing
+    }
+
+    private var verticalLayout: IntervalHUDBarVerticalLayout {
+        let desiredTopPadding = topContentPadding
+        let desiredBottomPadding = bottomContentPadding
+        let minimumTopPadding = max(layout.rect.height * 0.025, 2)
+        let minimumBottomPadding = max(layout.rect.height * 0.025, 2)
+        let requestedSpacing = hasVisibleBottomBar ? max(style.bottomBarSpacing, 0) : 0
+        let minimumContentHeight = minimumMainContentHeight
+        let bottomHeight = bottomBarContentHeight
+        let desiredTotal = desiredTopPadding + minimumContentHeight + requestedSpacing + bottomHeight + desiredBottomPadding
+
+        guard hasVisibleBottomBar, desiredTotal > layout.rect.height else {
+            return IntervalHUDBarVerticalLayout(
+                topPadding: desiredTopPadding,
+                bottomPadding: desiredBottomPadding,
+                spacing: requestedSpacing
+            )
+        }
+
+        let availablePadding = layout.rect.height - minimumContentHeight - requestedSpacing - bottomHeight
+        if availablePadding >= minimumTopPadding + minimumBottomPadding {
+            let desiredPadding = max(desiredTopPadding + desiredBottomPadding, 1)
+            let topShare = desiredTopPadding / desiredPadding
+            let topPadding = max(minimumTopPadding, availablePadding * topShare)
+            let bottomPadding = max(minimumBottomPadding, availablePadding - topPadding)
+            return IntervalHUDBarVerticalLayout(
+                topPadding: topPadding,
+                bottomPadding: bottomPadding,
+                spacing: requestedSpacing
+            )
+        }
+
+        let maxSpacing = max(layout.rect.height - minimumTopPadding - minimumBottomPadding - minimumContentHeight - bottomHeight, 0)
+        return IntervalHUDBarVerticalLayout(
+            topPadding: minimumTopPadding,
+            bottomPadding: minimumBottomPadding,
+            spacing: min(requestedSpacing, maxSpacing)
+        )
+    }
+
+    private var minimumMainContentHeight: Double {
+        max(layout.rect.height * 0.30, min(maxTextStackHeight + 4, layout.rect.height * 0.58))
+    }
+
+    private var maxTextStackHeight: Double {
+        max(
+            layout.primaryValueText.fontSize + layout.labelText.fontSize + 4,
+            layout.phaseText.fontSize + layout.phaseDetailText.fontSize + 3,
+            layout.metricValueText.fontSize + max(layout.labelText.fontSize, layout.metricUnitText.fontSize) + 4
+        )
+    }
+
+    private var horizontalContentPadding: Double {
+        layout.rect.width * 0.035 + element.style.backgroundPaddingX * element.scale
+    }
+
+    private var topContentPadding: Double {
+        layout.rect.height * 0.06 + element.style.backgroundPaddingY * element.scale
+    }
+
+    private var bottomContentPadding: Double {
+        layout.rect.height * 0.12 + element.style.backgroundPaddingY * element.scale
+    }
+
+    private var bottomBarContentHeight: Double {
+        guard hasVisibleBottomBar else { return 0 }
+        return layout.barHeight
+    }
+
+    private var hasVisibleBottomBar: Bool {
+        style.bottomBarEnabled && style.bottomBarMode != .none
     }
 
     private var divider: some View {
@@ -181,27 +268,134 @@ struct IntervalHUDBarOverlayView: View {
                 }
                 .frame(height: layout.barHeight)
             case .heartRateZones, .paceZones:
-                HStack(spacing: 2) {
-                    ForEach(layout.zoneSegments) { segment in
-                        let isActive = segment.index == layout.activeZoneIndex
-                        Rectangle()
-                            .fill(Color(intervalHUD: segment.color).opacity(isActive ? 1 : 0.42))
-                            .shadow(
-                                color: Color(intervalHUD: segment.color).opacity(isActive && style.bottomBarGlowEnabled ? style.bottomBarGlowIntensity : 0),
-                                radius: isActive ? layout.barHeight * 1.25 : 0,
-                                x: 0,
-                                y: 0
-                            )
+                GeometryReader { proxy in
+                    let frames = OverlayRenderModel.intervalZoneSegmentFrames(
+                        segmentCount: layout.zoneSegments.count,
+                        activeIndex: layout.bottomBarActiveZoneIndex,
+                        activeWidthShare: style.activeZoneWidthShare
+                    )
+                    ZStack(alignment: .topLeading) {
+                        if style.bottomBarGlowEnabled,
+                           let activeIndex = layout.bottomBarActiveZoneIndex,
+                           let activeFrame = frames.first(where: { $0.index == activeIndex }),
+                           let activeSegment = layout.zoneSegments.first(where: { $0.index == activeIndex }) {
+                            RoundedRectangle(cornerRadius: layout.barHeight / 2)
+                                .fill(Color(intervalHUD: activeSegment.color).opacity(style.bottomBarGlowIntensity))
+                                .blur(radius: layout.barHeight * 1.6)
+                                .frame(width: max(proxy.size.width * activeFrame.width, 0), height: layout.barHeight)
+                                .offset(
+                                    x: proxy.size.width * activeFrame.start,
+                                    y: 0
+                                )
+                        }
+
+                        HStack(spacing: 0) {
+                            ForEach(frames, id: \.index) { frame in
+                                if let segment = layout.zoneSegments.first(where: { $0.index == frame.index }) {
+                                    let isActive = segment.index == layout.bottomBarActiveZoneIndex
+                                    Rectangle()
+                                        .fill(Color(intervalHUD: segment.color).opacity(isActive ? 1 : style.inactiveZoneOpacity))
+                                        .frame(width: max(proxy.size.width * frame.width, 0), height: layout.barHeight)
+                                }
+                            }
+                        }
+                        .frame(width: proxy.size.width, height: layout.barHeight)
+                        .clipShape(Capsule())
+                        .overlay {
+                            Capsule()
+                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        }
+
+                        if let marker = layout.zoneMarker,
+                           let markerFrame = frames.first(where: { $0.index == marker.zoneIndex }) {
+                            zoneMarkerView(marker)
+                                .position(
+                                    x: proxy.size.width * (markerFrame.start + markerFrame.width * marker.fractionInZone),
+                                    y: zoneMarkerY
+                                )
+                        }
                     }
                 }
                 .frame(height: layout.barHeight)
-                .clipShape(Capsule())
-                .overlay {
-                    Capsule()
-                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
+            }
+        }
+    }
+
+    private var zoneMarkerY: Double {
+        let arrowHeight = max(layout.barHeight * 0.9, 8)
+        let valueHeight = style.zoneMarkerShowsValue ? max(layout.metricUnitText.fontSize, 9) + 6 : 0
+        let markerHeight = arrowHeight + valueHeight + (style.zoneMarkerShowsValue ? 2 : 0)
+        if style.zoneMarkerPosition == .above {
+            return -zoneMarkerGap - markerHeight / 2
+        }
+        return layout.barHeight + zoneMarkerGap + markerHeight / 2
+    }
+
+    private var zoneMarkerGap: Double {
+        switch style.zoneMarkerPosition {
+        case .above:
+            max(layout.barHeight * 0.35, 3)
+        case .below:
+            max(layout.barHeight * 0.55, 4)
+        }
+    }
+
+    private func zoneMarkerView(_ marker: IntervalHUDBarZoneMarker) -> some View {
+        VStack(spacing: 2) {
+            if style.zoneMarkerPosition == .above {
+                if style.zoneMarkerShowsValue {
+                    zoneMarkerValue(marker)
+                }
+                IntervalHUDBarZoneMarkerTriangle(direction: .down)
+                    .fill(Color(intervalHUD: marker.color))
+                    .frame(width: max(layout.barHeight * 1.35, 12), height: max(layout.barHeight * 0.9, 8))
+            } else {
+                IntervalHUDBarZoneMarkerTriangle(direction: .up)
+                    .fill(Color(intervalHUD: marker.color))
+                    .frame(width: max(layout.barHeight * 1.35, 12), height: max(layout.barHeight * 0.9, 8))
+                if style.zoneMarkerShowsValue {
+                    zoneMarkerValue(marker)
                 }
             }
         }
+        .fixedSize()
+    }
+
+    private func zoneMarkerValue(_ marker: IntervalHUDBarZoneMarker) -> some View {
+        Text(marker.valueText)
+            .font(.custom(layout.metricUnitText.fontName, size: max(layout.metricUnitText.fontSize, 9)).weight(layout.metricUnitText.fontWeight.swiftUIFontWeight))
+            .foregroundStyle(Color(intervalHUD: marker.color))
+            .monospacedDigit()
+            .lineLimit(1)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(Color.black.opacity(0.55))
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+    }
+}
+
+private struct IntervalHUDBarZoneMarkerTriangle: Shape {
+    enum Direction {
+        case up
+        case down
+    }
+
+    var direction: Direction
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        switch direction {
+        case .up:
+            path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+            path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        case .down:
+            path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+        }
+        path.closeSubpath()
+        return path
     }
 }
 
@@ -225,9 +419,42 @@ private enum IntervalHUDBarCell: Identifiable {
     }
 }
 
+private struct IntervalHUDBarVerticalLayout {
+    var topPadding: Double
+    var bottomPadding: Double
+    var spacing: Double
+}
+
 private extension Color {
     init(intervalHUD color: OverlayColor) {
         self.init(.sRGB, red: color.red, green: color.green, blue: color.blue, opacity: color.alpha)
+    }
+}
+
+private extension View {
+    func intervalHUDLayeredShadow(element: OverlayElement) -> some View {
+        self
+            .shadow(
+                color: Color(intervalHUD: element.style.shadowColor)
+                    .opacity(element.style.backgroundEnabled && element.style.shadowEnabled ? element.style.shadowOpacity : 0),
+                radius: element.style.shadowRadius,
+                x: element.style.shadowOffsetX,
+                y: element.style.shadowOffsetY
+            )
+            .shadow(
+                color: Color(intervalHUD: element.style.shadowColor)
+                    .opacity(element.style.backgroundEnabled && element.style.shadowEnabled ? element.style.shadowOpacity * max(element.style.shadowThickness - 1, 0) * 0.32 : 0),
+                radius: element.style.shadowRadius * 0.72,
+                x: element.style.shadowOffsetX,
+                y: element.style.shadowOffsetY
+            )
+            .shadow(
+                color: Color(intervalHUD: element.style.shadowColor)
+                    .opacity(element.style.backgroundEnabled && element.style.shadowEnabled ? element.style.shadowOpacity * max(element.style.shadowThickness - 2, 0) * 0.22 : 0),
+                radius: element.style.shadowRadius * 0.48,
+                x: element.style.shadowOffsetX,
+                y: element.style.shadowOffsetY
+            )
     }
 }
 

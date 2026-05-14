@@ -329,6 +329,10 @@ struct OverlayRenderModelTests {
         #expect(workLayout.remainingPrimaryText == "100 m")
         #expect(workLayout.metricItems.filter { $0.metric == .pace }.count == 2)
         #expect(workLayout.progress == 0.5)
+        #expect(workLayout.bottomBarActiveZoneIndex == 3)
+        #expect(workLayout.zoneMarker?.zoneIndex == 3)
+        #expect(workLayout.zoneMarker?.valueText == "170 bpm")
+        #expect(abs((workLayout.zoneMarker?.fractionInZone ?? 0) - (9.0 / 19.0)) < 0.0001)
 
         let restLayout = OverlayRenderModel.intervalHUDBarLayout(for: element, in: restContext)
         #expect(restLayout.phaseLabel == "REST")
@@ -337,6 +341,65 @@ struct OverlayRenderModelTests {
         #expect(restLayout.zoneItem?.metric == .hrDrop)
         #expect(restLayout.zoneItem?.value == "17")
         #expect(restLayout.zoneItem?.unit == "%")
+    }
+
+    @Test func intervalHUDBarZoneSegmentFramesSupportActiveZoneEmphasis() {
+        let equalFrames = OverlayRenderModel.intervalZoneSegmentFrames(
+            segmentCount: 5,
+            activeIndex: 2,
+            activeWidthShare: 0
+        )
+        #expect(equalFrames.count == 5)
+        #expect(equalFrames.allSatisfy { abs($0.width - 0.2) < 0.0001 })
+
+        let emphasizedFrames = OverlayRenderModel.intervalZoneSegmentFrames(
+            segmentCount: 5,
+            activeIndex: 2,
+            activeWidthShare: 0.5
+        )
+        #expect(emphasizedFrames[2].start == 0.25)
+        #expect(emphasizedFrames[2].width == 0.5)
+        #expect(emphasizedFrames[0].width == 0.125)
+        #expect(emphasizedFrames[4].start == 0.875)
+
+        let sixZoneFrames = OverlayRenderModel.intervalZoneSegmentFrames(
+            segmentCount: 6,
+            activeIndex: 5,
+            activeWidthShare: 0.5
+        )
+        #expect(sixZoneFrames[5].start == 0.5)
+        #expect(sixZoneFrames[5].width == 0.5)
+
+        let fallbackFrames = OverlayRenderModel.intervalZoneSegmentFrames(
+            segmentCount: 5,
+            activeIndex: nil,
+            activeWidthShare: 0.5
+        )
+        #expect(fallbackFrames.allSatisfy { abs($0.width - 0.2) < 0.0001 })
+    }
+
+    @Test func intervalHUDBarMetricsHonorPerSlotUnitOptions() {
+        var style = OverlayStyle.default
+        style.intervalHUDBar.metricSlots = [
+            IntervalHUDBarMetricSlot(metric: .pace, unitOption: .paceImperial),
+            IntervalHUDBarMetricSlot(metric: .distance, unitOption: .distanceMiles)
+        ]
+        let element = OverlayElement(type: .intervalHUDBar, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 50
+        )
+
+        let layout = OverlayRenderModel.intervalHUDBarLayout(for: element, in: context)
+
+        let pace = layout.metricItems.first { $0.metric == .pace }
+        #expect(pace?.value == "6'42\"")
+        #expect(pace?.unit == "/mi")
+
+        let distance = layout.metricItems.first { $0.metric == .distance }
+        #expect(distance?.value == "0.06")
+        #expect(distance?.unit == "mi")
     }
 
     @Test func intervalHUDBarMetricsIncludeAllNumericOverlayTypes() {

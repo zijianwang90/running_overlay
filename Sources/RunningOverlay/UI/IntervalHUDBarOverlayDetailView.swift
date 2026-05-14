@@ -37,7 +37,11 @@ struct IntervalHUDBarOverlayDetailView: View {
                         IntervalHUDBarInspectorSection(
                             title: "Bottom Bar",
                             systemImage: "rectangle.bottomthird.inset.filled",
-                            isExpanded: binding(for: .bottomBar)
+                            isExpanded: binding(for: .bottomBar),
+                            headerToggle: Binding(
+                                get: { element.style.intervalHUDBar.bottomBarEnabled },
+                                set: { value in project.mutateIntervalHUDBarStyle(elementID) { $0.bottomBarEnabled = value } }
+                            )
                         ) {
                             bottomBarRows(element.style.intervalHUDBar)
                         }
@@ -230,9 +234,6 @@ struct IntervalHUDBarOverlayDetailView: View {
 
     @ViewBuilder
     private func bottomBarRows(_ style: IntervalHUDBarStyle) -> some View {
-        toggleRow("Bottom Bar", isOn: style.bottomBarEnabled) { value in
-            project.mutateIntervalHUDBarStyle(elementID) { $0.bottomBarEnabled = value }
-        }
         if style.bottomBarEnabled {
             InspectorDenseRow(label: "Type") {
                 Menu {
@@ -253,12 +254,71 @@ struct IntervalHUDBarOverlayDetailView: View {
                 .menuStyle(.borderlessButton)
                 .frame(height: NumericTokens.controlHeight)
             }
-            InspectorDenseRow(label: "Progress") {
-                InspectorDenseSegmented(values: IntervalHUDBarProgressMode.allCases, selection: Binding(
-                    get: { style.progressMode },
-                    set: { value in project.mutateIntervalHUDBarStyle(elementID) { $0.progressMode = value } }
-                )) { mode in
-                    Text(mode.label)
+            if style.bottomBarMode == .lapProgress {
+                InspectorDenseRow(label: "Progress") {
+                    InspectorDenseSegmented(values: IntervalHUDBarProgressMode.allCases, selection: Binding(
+                        get: { style.progressMode },
+                        set: { value in project.mutateIntervalHUDBarStyle(elementID) { $0.progressMode = value } }
+                    )) { mode in
+                        Text(mode.label)
+                    }
+                }
+            }
+            InspectorDenseSliderRow(
+                label: "Spacing",
+                value: Binding(
+                    get: { style.bottomBarSpacing },
+                    set: { value in
+                        project.mutateIntervalHUDBarStyleContinuous(elementID) {
+                            $0.bottomBarSpacing = value.rounded()
+                        }
+                    }
+                ),
+                range: 0...40,
+                displayText: "\(Int(style.bottomBarSpacing.rounded()))"
+            )
+            if style.bottomBarMode == .heartRateZones || style.bottomBarMode == .paceZones {
+                InspectorDenseSliderRow(
+                    label: "Active Zone Width",
+                    value: Binding(
+                        get: { style.activeZoneWidthShare },
+                        set: { value in
+                            project.mutateIntervalHUDBarStyleContinuous(elementID) {
+                                $0.activeZoneWidthShare = value.quantizedNumeric(to: 0.05)
+                            }
+                        }
+                    ),
+                    range: 0...0.5,
+                    displayText: style.activeZoneWidthShare <= 0 ? "Equal" : String(format: "%.0f%%", style.activeZoneWidthShare * 100)
+                )
+                InspectorDenseSliderRow(
+                    label: "Inactive Opacity",
+                    value: Binding(
+                        get: { style.inactiveZoneOpacity },
+                        set: { value in
+                            project.mutateIntervalHUDBarStyleContinuous(elementID) {
+                                $0.inactiveZoneOpacity = value.quantizedNumeric(to: 0.05)
+                            }
+                        }
+                    ),
+                    range: 0.2...1,
+                    displayText: String(format: "%.0f%%", style.inactiveZoneOpacity * 100)
+                )
+                toggleRow("Zone Marker", isOn: style.zoneMarkerEnabled) { value in
+                    project.mutateIntervalHUDBarStyle(elementID) { $0.zoneMarkerEnabled = value }
+                }
+                if style.zoneMarkerEnabled {
+                    InspectorDenseRow(label: "Marker Position") {
+                        InspectorDenseSegmented(values: IntervalHUDBarZoneMarkerPosition.allCases, selection: Binding(
+                            get: { style.zoneMarkerPosition },
+                            set: { value in project.mutateIntervalHUDBarStyle(elementID) { $0.zoneMarkerPosition = value } }
+                        )) { position in
+                            Text(position.label)
+                        }
+                    }
+                    toggleRow("Marker Value", isOn: style.zoneMarkerShowsValue) { value in
+                        project.mutateIntervalHUDBarStyle(elementID) { $0.zoneMarkerShowsValue = value }
+                    }
                 }
             }
             toggleRow("Glow", isOn: style.bottomBarGlowEnabled) { value in
@@ -297,6 +357,7 @@ struct IntervalHUDBarOverlayDetailView: View {
                             project.mutateIntervalHUDBarStyle(elementID) { hud in
                                 guard index < hud.metricSlots.count else { return }
                                 hud.metricSlots[index].metric = metric
+                                hud.metricSlots[index].unitOption = metric.defaultUnitOption
                             }
                         } label: {
                             if slot.metric == metric {
@@ -311,6 +372,29 @@ struct IntervalHUDBarOverlayDetailView: View {
                 }
                 .menuStyle(.borderlessButton)
                 .frame(height: NumericTokens.controlHeight)
+
+                if slot.metric.unitOptions.count > 1 {
+                    Menu {
+                        ForEach(slot.metric.unitOptions) { unit in
+                            Button {
+                                project.mutateIntervalHUDBarStyle(elementID) { hud in
+                                    guard index < hud.metricSlots.count else { return }
+                                    hud.metricSlots[index].unitOption = unit
+                                }
+                            } label: {
+                                if slot.unitOption == unit {
+                                    Label(unit.label, systemImage: "checkmark")
+                                } else {
+                                    Text(unit.label)
+                                }
+                            }
+                        }
+                    } label: {
+                        InspectorDenseMenuLabel(title: slot.unitOption.label)
+                    }
+                    .menuStyle(.borderlessButton)
+                    .frame(height: NumericTokens.controlHeight)
+                }
 
                 Button {
                     project.mutateIntervalHUDBarStyle(elementID) { hud in
@@ -534,7 +618,22 @@ private struct IntervalHUDBarInspectorSection<Content: View>: View {
     var title: String
     var systemImage: String
     @Binding var isExpanded: Bool
+    var headerToggle: Binding<Bool>?
     @ViewBuilder var content: Content
+
+    init(
+        title: String,
+        systemImage: String,
+        isExpanded: Binding<Bool>,
+        headerToggle: Binding<Bool>? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.systemImage = systemImage
+        self._isExpanded = isExpanded
+        self.headerToggle = headerToggle
+        self.content = content()
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -546,6 +645,12 @@ private struct IntervalHUDBarInspectorSection<Content: View>: View {
                     .font(NumericTokens.sectionTitleFont)
                     .foregroundStyle(NumericTokens.textPrimary)
                 Spacer()
+                if let headerToggle {
+                    Toggle("", isOn: headerToggle)
+                        .toggleStyle(.switch)
+                        .controlSize(.mini)
+                        .labelsHidden()
+                }
                 Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(NumericTokens.textMuted)

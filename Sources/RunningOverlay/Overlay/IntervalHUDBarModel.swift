@@ -92,6 +92,20 @@ enum IntervalHUDBarZoneDisplayMode: String, CaseIterable, Identifiable, Codable 
     }
 }
 
+enum IntervalHUDBarZoneMarkerPosition: String, CaseIterable, Identifiable, Codable {
+    case above
+    case below
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .above: "Above"
+        case .below: "Below"
+        }
+    }
+}
+
 enum IntervalHUDBarTypographyRole: String, CaseIterable, Identifiable, Codable {
     case labels
     case primaryValues
@@ -201,20 +215,31 @@ enum IntervalHUDBarMetric: String, CaseIterable, Identifiable, Codable {
     static var numericCases: [IntervalHUDBarMetric] {
         allCases.filter { $0.elementType?.isNumericOverlay == true }
     }
+
+    var defaultUnitOption: OverlayUnitOption {
+        elementType?.defaultUnitOption ?? .bpm
+    }
+
+    var unitOptions: [OverlayUnitOption] {
+        elementType.map(OverlayUnitOption.options(for:)) ?? []
+    }
 }
 
 struct IntervalHUDBarMetricSlot: Identifiable, Equatable, Codable {
     var id = UUID()
     var metric: IntervalHUDBarMetric
+    var unitOption: OverlayUnitOption
 
-    init(metric: IntervalHUDBarMetric) {
+    init(metric: IntervalHUDBarMetric, unitOption: OverlayUnitOption? = nil) {
         self.metric = metric
+        self.unitOption = unitOption ?? metric.defaultUnitOption
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
         metric = try container.decode(IntervalHUDBarMetric.self, forKey: .metric)
+        unitOption = try container.decodeIfPresent(OverlayUnitOption.self, forKey: .unitOption) ?? metric.defaultUnitOption
     }
 }
 
@@ -243,8 +268,14 @@ struct IntervalHUDBarStyle: Equatable, Codable {
     var phaseColorFallback: OverlayColor
     var trackColor: OverlayColor
     var trackOpacity: Double
+    var bottomBarSpacing: Double
     var bottomBarGlowEnabled: Bool
     var bottomBarGlowIntensity: Double
+    var activeZoneWidthShare: Double
+    var inactiveZoneOpacity: Double
+    var zoneMarkerEnabled: Bool
+    var zoneMarkerPosition: IntervalHUDBarZoneMarkerPosition
+    var zoneMarkerShowsValue: Bool
     var labelText: IntervalHUDBarTextStyle
     var primaryValueText: IntervalHUDBarTextStyle
     var phaseText: IntervalHUDBarTextStyle
@@ -271,8 +302,14 @@ struct IntervalHUDBarStyle: Equatable, Codable {
         phaseColorFallback: OverlayColor,
         trackColor: OverlayColor,
         trackOpacity: Double,
+        bottomBarSpacing: Double,
         bottomBarGlowEnabled: Bool,
         bottomBarGlowIntensity: Double,
+        activeZoneWidthShare: Double,
+        inactiveZoneOpacity: Double,
+        zoneMarkerEnabled: Bool,
+        zoneMarkerPosition: IntervalHUDBarZoneMarkerPosition,
+        zoneMarkerShowsValue: Bool,
         labelText: IntervalHUDBarTextStyle,
         primaryValueText: IntervalHUDBarTextStyle,
         phaseText: IntervalHUDBarTextStyle,
@@ -298,8 +335,14 @@ struct IntervalHUDBarStyle: Equatable, Codable {
         self.phaseColorFallback = phaseColorFallback
         self.trackColor = trackColor
         self.trackOpacity = trackOpacity
+        self.bottomBarSpacing = bottomBarSpacing
         self.bottomBarGlowEnabled = bottomBarGlowEnabled
         self.bottomBarGlowIntensity = bottomBarGlowIntensity
+        self.activeZoneWidthShare = activeZoneWidthShare
+        self.inactiveZoneOpacity = inactiveZoneOpacity
+        self.zoneMarkerEnabled = zoneMarkerEnabled
+        self.zoneMarkerPosition = zoneMarkerPosition
+        self.zoneMarkerShowsValue = zoneMarkerShowsValue
         self.labelText = labelText
         self.primaryValueText = primaryValueText
         self.phaseText = phaseText
@@ -331,8 +374,14 @@ struct IntervalHUDBarStyle: Equatable, Codable {
         phaseColorFallback = try container.decodeIfPresent(OverlayColor.self, forKey: .phaseColorFallback) ?? defaults.phaseColorFallback
         trackColor = try container.decodeIfPresent(OverlayColor.self, forKey: .trackColor) ?? defaults.trackColor
         trackOpacity = try container.decodeIfPresent(Double.self, forKey: .trackOpacity) ?? defaults.trackOpacity
+        bottomBarSpacing = try container.decodeIfPresent(Double.self, forKey: .bottomBarSpacing) ?? defaults.bottomBarSpacing
         bottomBarGlowEnabled = try container.decodeIfPresent(Bool.self, forKey: .bottomBarGlowEnabled) ?? defaults.bottomBarGlowEnabled
         bottomBarGlowIntensity = try container.decodeIfPresent(Double.self, forKey: .bottomBarGlowIntensity) ?? defaults.bottomBarGlowIntensity
+        activeZoneWidthShare = try container.decodeIfPresent(Double.self, forKey: .activeZoneWidthShare) ?? defaults.activeZoneWidthShare
+        inactiveZoneOpacity = try container.decodeIfPresent(Double.self, forKey: .inactiveZoneOpacity) ?? defaults.inactiveZoneOpacity
+        zoneMarkerEnabled = try container.decodeIfPresent(Bool.self, forKey: .zoneMarkerEnabled) ?? defaults.zoneMarkerEnabled
+        zoneMarkerPosition = try container.decodeIfPresent(IntervalHUDBarZoneMarkerPosition.self, forKey: .zoneMarkerPosition) ?? defaults.zoneMarkerPosition
+        zoneMarkerShowsValue = try container.decodeIfPresent(Bool.self, forKey: .zoneMarkerShowsValue) ?? defaults.zoneMarkerShowsValue
         labelText = try container.decodeIfPresent(IntervalHUDBarTextStyle.self, forKey: .labelText) ?? defaults.labelText
         primaryValueText = try container.decodeIfPresent(IntervalHUDBarTextStyle.self, forKey: .primaryValueText) ?? defaults.primaryValueText
         phaseText = try container.decodeIfPresent(IntervalHUDBarTextStyle.self, forKey: .phaseText) ?? defaults.phaseText
@@ -363,8 +412,14 @@ struct IntervalHUDBarStyle: Equatable, Codable {
         phaseColorFallback: OverlayColor(red: 1, green: 0.38, blue: 0.14, alpha: 1),
         trackColor: .white,
         trackOpacity: 0.14,
+        bottomBarSpacing: 10,
         bottomBarGlowEnabled: false,
         bottomBarGlowIntensity: 0.45,
+        activeZoneWidthShare: 0,
+        inactiveZoneOpacity: 0.55,
+        zoneMarkerEnabled: true,
+        zoneMarkerPosition: .above,
+        zoneMarkerShowsValue: true,
         labelText: IntervalHUDBarTextStyle(fontName: FontLibraryManager.currentDefaultFamily, fontSize: 13, fontWeight: .bold),
         primaryValueText: IntervalHUDBarTextStyle(fontName: FontLibraryManager.currentDefaultFamily, fontSize: 34, fontWeight: .bold),
         phaseText: IntervalHUDBarTextStyle(fontName: FontLibraryManager.currentDefaultFamily, fontSize: 30, fontWeight: .bold),
@@ -403,6 +458,8 @@ struct IntervalHUDBarRenderLayout {
     var metricItems: [IntervalHUDBarMetricItem]
     var zoneSegments: [IntervalHUDBarZoneSegment]
     var activeZoneIndex: Int?
+    var bottomBarActiveZoneIndex: Int?
+    var zoneMarker: IntervalHUDBarZoneMarker?
     var labelText: IntervalHUDBarTextStyle
     var primaryValueText: IntervalHUDBarTextStyle
     var phaseText: IntervalHUDBarTextStyle
@@ -426,4 +483,17 @@ struct IntervalHUDBarZoneSegment: Identifiable, Equatable {
     var index: Int
     var label: String
     var color: OverlayColor
+}
+
+struct IntervalHUDBarZoneMarker: Equatable {
+    var zoneIndex: Int
+    var fractionInZone: Double
+    var valueText: String
+    var color: OverlayColor
+}
+
+struct IntervalHUDBarZoneSegmentFrame: Equatable {
+    var index: Int
+    var start: Double
+    var width: Double
 }

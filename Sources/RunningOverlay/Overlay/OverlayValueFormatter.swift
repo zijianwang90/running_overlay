@@ -25,6 +25,10 @@ enum OverlayValueFormatter {
         components(for: type, unit: type.defaultUnitOption, customLabel: "", activity: activity, elapsedTime: elapsedTime)
     }
 
+    static func components(for type: OverlayElementType, unit: OverlayUnitOption, activity: ActivityTimeline, elapsedTime: TimeInterval) -> OverlayValueComponents {
+        components(for: type, unit: unit, customLabel: "", activity: activity, elapsedTime: elapsedTime)
+    }
+
     static func components(for element: OverlayElement, activity: ActivityTimeline, elapsedTime: TimeInterval) -> OverlayValueComponents {
         let type = element.type
         let unit = type.isNumericOverlay ? element.style.unitOption : type.defaultUnitOption

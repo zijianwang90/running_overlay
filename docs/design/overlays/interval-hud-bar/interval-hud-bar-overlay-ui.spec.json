@@ -144,13 +144,23 @@
         "Z5",
         "Z6"
       ],
-      "marker": "active segment uses full opacity; inactive segments are subdued",
+      "marker": "active segment uses full opacity; inactive segment opacity is user-adjustable and must remain readable on the black HUD background",
+      "inactiveOpacity": "Adjustable opacity for non-active segments.",
+      "activeZoneWidth": "Equal width by default; optionally expand the active segment up to 50% of the full bar, with inactive segments sharing the remaining width evenly.",
+      "zoneMarker": {
+        "shape": "single solid filled triangle",
+        "positions": ["Above", "Below"],
+        "visibility": "can be hidden completely",
+        "valueLabel": "optional current HR value, colored with the active zone"
+      },
       "colorSource": "shared HR zone palette",
       "glow": "Glow highlights the active segment. Intensity is editable; color follows the active zone."
     },
     "paceZones": {
       "label": "PACE ZONES",
       "visualPattern": "same segmented strip as HR zones",
+      "activeZoneWidth": "Same as HR Zones.",
+      "zoneMarker": "Single solid marker points at the current pace inside the matched pace segment; value label is optional.",
       "colorSource": "shared HR zone palette",
       "glow": "Glow highlights the active segment. Intensity is editable; color follows the active zone."
     }
@@ -216,11 +226,21 @@
         "HR Zones",
         "Pace Zones"
       ],
-      "bottomBarEnabled": true,
+      "bottomBarEnabled": "Section-header switch in the Bottom Bar header, before the disclosure chevron.",
       "bottomBarGlow": [
         "enabled",
         "intensity"
       ],
+      "bottomBarSpacing": "Adjusts vertical gap between HUD content cells and the bottom bar. Zero is adjacent; larger values move the row and bar farther apart. Rendered layout preserves spacing before compressing top/bottom padding, then caps spacing only if required to keep the data row and bar inside the background.",
+      "bottomBarZoneControls": [
+        "Active Zone Width",
+        "Inactive Opacity",
+        "Zone Marker",
+        "Marker Position",
+        "Marker Value"
+      ],
+      "bottomBarBelowMarkerClearance": "Zone Marker floats outside bottom-bar layout and never reserves height. Above/Below markers may overlap HUD text or extend beyond the background without changing other component positions.",
+      "metricUnits": "Each Metrics row stores its own unit option when the selected Numeric Overlay metric supports multiple units.",
       "hrDropMode": [
         "bpm",
         "%"
@@ -282,7 +302,12 @@
         "OverlayBackgroundInspectorModule",
         "OverlayBorderInspectorModule",
         "OverlayEffectsInspectorModule"
-      ]
+      ],
+      "effectsBehavior": {
+        "shadowTarget": "outerHudContainer",
+        "shadowRequiresBackground": true,
+        "previewExportParity": true
+      }
     },
     "sectionOrderRequirement": "The final four sections are Divider, Background, Border, Effects. Background, Border, and Effects must use shared inspector modules."
   }

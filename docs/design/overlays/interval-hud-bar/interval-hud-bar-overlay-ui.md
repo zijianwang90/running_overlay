@@ -10,6 +10,8 @@ Design reference:
 
 ![Interval HUD Bar mockup](./interval-hud-bar.png)
 
+![Interval HUD Bar zone marker mockup](./interval-hud-bar-zone-marker.png)
+
 ## Applies To
 
 - `OverlayElementType.intervalHUDBar`
@@ -114,7 +116,10 @@ Type menu:
 
 - Bar becomes a segmented Z1-Z6 strip.
 - Segment colors use the shared HR zone palette from Project Settings.
-- Current active segment uses full opacity; inactive segments are subdued.
+- Current active segment uses full opacity; inactive segment opacity is user-adjustable and must remain readable on the black HUD background.
+- Active Zone Width can keep equal segments or expand the active segment up to 50% of the full bar. Remaining segments divide the leftover width evenly.
+- Optional Zone Marker is one solid filled triangle that points at the user's current HR position within the active segment.
+- Marker Position can be `Above` or `Below`; Marker Value can be shown or hidden. The marker and value use the active zone color.
 - Current zone label, such as `Z4`, uses the same zone color.
 - Glow highlights the active segment. Glow intensity is editable; color follows the active zone.
 
@@ -122,6 +127,7 @@ Type menu:
 
 - Same visual pattern as HR zone mode, driven by pace ranges.
 - Current pace uses the matched zone segment.
+- Active Zone Width and Zone Marker behave the same as HR Zones, but marker position is derived from current pace within the matched pace range.
 - Glow follows the matched active segment.
 
 ## REST HR Drop
@@ -154,15 +160,24 @@ Implemented Inspector sections:
 
 - Layout: placement, size, and transform controls through the shared layout module.
 - HUD Bar: width, height, Rep toggle, Current Training toggle and detail modes, Remaining toggle and primary mode, HR Zone toggle, Zone mode, and HR Drop mode.
-- Metrics: ordered add/delete list. Each row chooses one Numeric Overlay metric; the list has no fixed slot count and duplicates are valid.
-- Bottom Bar: enable switch, type menu (`Lap Progress`, `HR Zones`, `Pace Zones`), progress mode (`Time` / `Distance`), Glow toggle, and Glow Intensity.
+- Metrics: ordered add/delete list. Each row chooses one Numeric Overlay metric; the list has no fixed slot count and duplicates are valid. Metrics that support multiple units expose a per-row Units menu, reusing Numeric Overlay unit options such as pace `min/km` / `min/mi`, distance `km` / `mi` / `m`, elevation `m` / `ft`, and temperature `°C` / `°F`.
+- Bottom Bar: section-header enable switch, type menu (`Lap Progress`, `HR Zones`, `Pace Zones`), Spacing slider, Lap Progress mode shows progress mode (`Time` / `Distance`), Glow toggle, and Glow Intensity.
+- Bottom Bar zone settings: Active Zone Width slider (`Equal` to `50%`), Inactive Opacity slider, Zone Marker toggle, Marker Position (`Above` / `Below`), and Marker Value toggle. These controls appear only for `HR Zones` and `Pace Zones`.
 - Typography: font family, size, and weight for Labels, Primary Values, Phase, Phase Detail, Metric Values, and Metric Units.
 - Divider: shared overlay divider fields used for all internal vertical separators.
 - Background: shared `OverlayBackgroundInspectorModule`.
 - Border: shared `OverlayBorderInspectorModule`.
-- Effects: shared `OverlayEffectsInspectorModule`.
+- Effects: shared `OverlayEffectsInspectorModule`; Shadow renders on the outer HUD container in both preview and export.
 
 The last four sections must stay in this order: `Divider`, `Background`, `Border`, `Effects`. `Background`, `Border`, and `Effects` reuse the shared Inspector components. `Divider` uses the shared overlay divider model fields so the renderer, preview, and export stay aligned.
+
+Background Padding is interpreted as HUD interior padding for this fixed-size overlay. X padding moves all HUD cells and the bottom bar inward; Y padding increases top and bottom interior space.
+
+Bottom Bar Spacing is the vertical gap between the data cell row and the bottom bar. `0` places the bottom bar directly against the data row layout area; increasing the value moves the data row and bottom bar farther apart. The renderer preserves the requested spacing first, then compresses top/bottom padding when the HUD is short. If the HUD still cannot fit the data row and bar, the rendered gap is capped so content remains inside the background container.
+
+Zone Marker is a floating overlay anchored to the current value position on the zone bar. It does not reserve layout height, move the bottom bar, change spacing, or resize the data row. Above and Below placements may overlap HUD text or extend beyond the background container.
+
+Effects Shadow follows the HUD container shape, using the shared `shadowColor`, opacity, radius, offset, and thickness fields. It is applied only when Background is enabled so the shadow belongs to the visible container surface instead of the internal text or bottom bar.
 
 Do not expose Target Pace controls until target workout data exists.
 

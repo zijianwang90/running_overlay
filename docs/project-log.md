@@ -2,6 +2,17 @@
 
 ## 2026-05-13
 
+### Interval HUD Bar: Zone Bottom Bar Emphasis + Marker
+
+- Added Interval HUD Bar Bottom Bar zone controls for `HR Zones` and `Pace Zones`: Active Zone Width (`Equal` to `50%`), Zone Marker visibility, Marker Position (`Above` / `Below`), and optional Marker Value display.
+- Added Bottom Bar Spacing so users can tune the vertical gap between the HUD cells and the bar; preview and export use the same style value.
+- Wired shared Background Padding into Interval HUD Bar layout. X padding now moves cells and bottom bar inward; Y padding increases top and bottom interior space in both preview and export.
+- Zone bottom bars now use a shared segment-frame calculation for preview and export. Equal mode preserves the existing evenly divided Z1-Z5/Z6 strip; emphasized mode lets the active zone occupy up to half the bar while inactive zones split the remainder.
+- Added a single solid triangle marker for the current HR/pace position inside the active zone. It can be hidden completely; when visible, its color and optional value label follow the active zone color.
+- Added an Inactive Opacity slider for HR/Pace zone bottom bars so users can tune non-active segment strength instead of using a fixed opacity.
+- Added per-slot unit options for Interval HUD Bar Metrics so pace, distance, elevation, temperature, and other Numeric Overlay-backed metrics can use imperial or alternate units inside the HUD.
+- Added the zone marker design reference at `docs/design/overlays/interval-hud-bar/interval-hud-bar-zone-marker.png`.
+
 ### Timeline Zoom: Shift+Z Fit Toggle (DaVinci-style)
 
 - Added a `Shift+Z` keyboard shortcut (menu: **Timeline → Toggle Fit Zoom**) that snaps the timeline between Fit and the user's last working zoom, mirroring DaVinci Resolve's behavior.
@@ -70,6 +81,12 @@
 - Added `IntervalHUDBarOverlayView`, `OverlaySharedIntervalHUDBarView`, Overlay Pool Charts tile, dedicated Inspector, SwiftUI exporter support, and legacy PNG renderer support.
 - Updated the built-in `Interval Workout` template to include Interval HUD Bar.
 - Added render model test coverage for WORK/REST phase layout, rep text, HR zone matching, zone bar segments, and HR Drop percentage mode.
+- Wired shared Effects shadow into the Interval HUD Bar container so preview and export both honor shadow color, opacity, radius, offset, and thickness when the HUD background is enabled.
+- Corrected Interval HUD Bar bottom bar spacing so larger values increase the visible gap, and moved below-positioned zone markers down so the bar no longer covers the triangle.
+- Clamped Interval HUD Bar effective bottom-bar spacing against available container height, preserving top/bottom padding, marker space, and a minimum data-row height so HUD content stays inside the background.
+- Revised the Interval HUD Bar vertical allocator to preserve requested bottom-bar spacing first, compress top/bottom padding on short HUDs, and only cap spacing as a last resort.
+- Converted Interval HUD Bar Zone Marker into a floating overlay that no longer reserves vertical layout space or changes data row, bottom bar, spacing, or background geometry.
+- Moved the Interval HUD Bar Bottom Bar enable switch into the Bottom Bar section header before the disclosure chevron and removed the duplicate body row.
 
 Files added:
 
