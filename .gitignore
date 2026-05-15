@@ -78,3 +78,7 @@ temp/
 ExampleData/local/
 Exports/
 *.fit.local
+
+# Python (e.g. Cursor project hooks under .cursor/hooks/)
+__pycache__/
+*.py[cod]
