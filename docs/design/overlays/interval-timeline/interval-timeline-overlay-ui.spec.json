@@ -1,0 +1,124 @@
+{
+  "name": "Interval Timeline Overlay UI",
+  "updated": "2026-05-14",
+  "appliesToOverlayTypes": ["intervalTimeline"],
+  "purpose": "Horizontal interval-workout schedule overlay that complements the current-interval HUD by showing surrounding workout progress.",
+  "dataSources": {
+    "laps": "ActivityTimeline.laps",
+    "currentLap": "ActivityTimeline.currentLap(at:)",
+    "lapProgress": "ActivityTimeline.lapProgress(at:byDistance:)",
+    "kind": "LapRecord.kind"
+  },
+  "visualModel": {
+    "background": "translucent near-black rounded strip",
+    "track": "horizontal sequence of lap segments",
+    "currentSegment": "larger, brighter, centered by default, with live progress fill",
+    "edgeOverflow": "WU ··· [xN] on the left and [xN] ··· CD on the right, with square bordered hidden-count boxes",
+    "marker": "upward NOW marker in a reserved marker lane below the rail, aligned to live progress or current segment center, without changing rail or segment geometry",
+    "railDots": "optional line-and-dot decoration rail; spacing controls vertical distance from segments, dots control size/color/alpha, and the line controls width/color",
+    "excludedFromRuntime": ["design-board title badge", "overlay title text", "legend", "mode switch controls"]
+  },
+  "lapKindMapping": {
+    "warmup": { "label": "WU", "defaultColor": "blue" },
+    "active": { "label": "distanceOrRUN", "defaultColor": "orange" },
+    "rest": { "label": "R", "defaultColor": "green" },
+    "cooldown": { "label": "CD", "defaultColor": "purple" },
+    "unknown": { "label": "LAP", "defaultColor": "slate" }
+  },
+  "layoutModes": [
+    {
+      "id": "centeredWindow",
+      "default": true,
+      "description": "Keep current lap centered and show a fixed number of neighboring laps.",
+      "overflow": "hidden previous/next laps are summarized with clipped-count pills"
+    },
+    {
+      "id": "fullSchedule",
+      "description": "Render the complete workout sequence across the available width.",
+      "overflow": "labels are reduced or hidden when blocks become too narrow"
+    },
+    {
+      "id": "compressedSets",
+      "description": "Compress repeated work/rest pairs into a set rail while expanding the current pair.",
+      "phase": "future"
+    }
+  ],
+  "defaults": {
+    "width": 780,
+    "height": 64,
+    "mode": "centeredWindow",
+    "visibleNeighbors": 3,
+    "maxFullSegments": 12,
+    "segmentHeight": 30,
+    "currentSegmentHeightScale": 1.35,
+    "minSegmentWidth": 54,
+    "segmentGap": 4,
+    "backgroundOpacity": 0.78,
+    "cornerRadius": 8,
+    "edgeFadeEnabled": true,
+    "currentProgressEnabled": true,
+    "markerEnabled": true,
+    "markerLabel": "NOW",
+    "markerPosition": "liveProgress",
+    "markerColor": "white",
+    "markerFontSize": 11,
+    "markerFontWeight": "bold",
+    "railEnabled": true,
+    "railSpacing": 5,
+    "railDotSize": 5,
+    "railColor": "white",
+    "railOpacity": 0.36,
+    "railLineColor": "slate",
+    "railLineWidth": 5
+  },
+  "inspectorSections": [
+    {
+      "title": "Layout",
+      "reuse": "CollapsibleLayoutInspectorSection",
+      "fields": ["position", "scale", "width", "height", "opacity"]
+    },
+    {
+      "title": "Timeline",
+      "fields": ["mode", "visibleNeighbors", "maxFullSegments", "proportionalWidth", "minSegmentWidth", "segmentGap"]
+    },
+    {
+      "title": "Current",
+      "fields": ["currentSegmentHeightScale", "currentProgressEnabled", "markerEnabled", "markerLabel", "markerPosition", "markerColor", "markerFontSize", "markerFontWeight"]
+    },
+    {
+      "title": "Rail",
+      "fields": ["railEnabled", "railSpacing", "railDotSize", "railOpacity", "railColor", "railLineWidth", "railLineColor"]
+    },
+    {
+      "title": "Labels",
+      "fields": ["primaryLabelMode", "durationLabelsEnabled", "repCounterEnabled", "overflowPillsEnabled", "fontFamily", "fontSize", "fontWeight"]
+    },
+    {
+      "title": "Colors",
+      "fields": ["warmupColor", "activeColor", "restColor", "cooldownColor", "unknownColor", "completedOpacity", "futureOpacity"]
+    },
+    {
+      "title": "Background",
+      "reuse": "OverlayBackgroundInspectorModule"
+    },
+    {
+      "title": "Border & Effects",
+      "reuse": "OverlayBorderInspectorModule + OverlayEffectsInspectorModule"
+    }
+  ],
+  "readabilityRules": [
+    "When lap count exceeds maxFullSegments, default to centeredWindow.",
+    "Current segment remains visually centered in centeredWindow mode.",
+    "Labels never overlap; hide duration before shrinking primary labels below readable size.",
+    "For high-repeat workouts such as 1min x25, show nearby context and summarize hidden repetitions at both edges.",
+    "Marker toggling must not move the rail, marker lane, or segment layout.",
+    "Marker triangle and label must stay inside the background and border.",
+    "WU/CD endpoint context keeps reserved space even when overflowPillsEnabled is false.",
+    "Rail spacing expands rendered background height so the rail remains inside the background.",
+    "Overlay bounds must remain stable when current lap changes."
+  ],
+  "firstImplementation": {
+    "include": ["centeredWindow", "fullSchedule"],
+    "defer": ["compressedSets repeated-pair grouping"]
+  }
+}

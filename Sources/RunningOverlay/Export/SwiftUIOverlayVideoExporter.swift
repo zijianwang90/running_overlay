@@ -144,12 +144,10 @@ struct ExportRenderPlan: Equatable {
             return OverlayRenderModel.elevationChartLayout(for: element, in: context).rect
         case .runningGauge:
             return OverlayRenderModel.runningGaugeLayout(for: element, in: context).rect
-        case .lapList:
-            return OverlayRenderModel.lapListLayout(for: element, in: context).rect
-        case .lapCard:
-            return OverlayRenderModel.lapCardLayout(for: element, in: context).rect
-        case .lapLive:
-            return OverlayRenderModel.lapLiveLayout(for: element, in: context).rect
+        case .intervalHUDBar:
+            return OverlayRenderModel.intervalHUDBarLayout(for: element, in: context).rect
+        case .intervalTimeline:
+            return OverlayRenderModel.intervalTimelineLayout(for: element, in: context).rect
         case .weatherWidget:
             return OverlayRenderModel.weatherWidgetLayout(for: element, in: context).rect
         case .decorSolidColor:
@@ -1271,20 +1269,15 @@ private struct SwiftUIOverlayFrameView: View {
                             layout: OverlayRenderModel.runningGaugeLayout(for: element, in: context),
                             isInteractive: false
                         )
-                    case .lapList:
-                        OverlaySharedLapListView(
+                    case .intervalHUDBar:
+                        OverlaySharedIntervalHUDBarView(
                             element: element,
-                            layout: OverlayRenderModel.lapListLayout(for: element, in: context)
+                            layout: OverlayRenderModel.intervalHUDBarLayout(for: element, in: context)
                         )
-                    case .lapCard:
-                        OverlaySharedLapCardView(
+                    case .intervalTimeline:
+                        OverlaySharedIntervalTimelineView(
                             element: element,
-                            layout: OverlayRenderModel.lapCardLayout(for: element, in: context)
-                        )
-                    case .lapLive:
-                        OverlaySharedLapLiveView(
-                            element: element,
-                            layout: OverlayRenderModel.lapLiveLayout(for: element, in: context)
+                            layout: OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
                         )
                     case .decorSolidColor:
                         OverlaySharedDecorSolidColorView(

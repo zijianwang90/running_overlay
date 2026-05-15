@@ -181,7 +181,7 @@ Controls:
 
 ## Divider Section
 
-Controls (project-wide divider quad — keep parity with the LapList / Stats Bar dividers):
+Controls (project-wide divider quad — keep parity with Stats Bar dividers):
 
 - `Enable Divider` toggle in section header accessory.
 - Color swatch strip → `OverlayStyle.dividerColor`.

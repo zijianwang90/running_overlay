@@ -25,6 +25,10 @@ enum OverlayValueFormatter {
         components(for: type, unit: type.defaultUnitOption, customLabel: "", activity: activity, elapsedTime: elapsedTime)
     }
 
+    static func components(for type: OverlayElementType, unit: OverlayUnitOption, activity: ActivityTimeline, elapsedTime: TimeInterval) -> OverlayValueComponents {
+        components(for: type, unit: unit, customLabel: "", activity: activity, elapsedTime: elapsedTime)
+    }
+
     static func components(for element: OverlayElement, activity: ActivityTimeline, elapsedTime: TimeInterval) -> OverlayValueComponents {
         let type = element.type
         let unit = type.isNumericOverlay ? element.style.unitOption : type.defaultUnitOption
@@ -139,6 +143,10 @@ enum OverlayValueFormatter {
             )
         case .runningGauge:
             return OverlayValueComponents(label: "Running Gauge", shortLabel: "GAUGE", value: String(format: "%.2f", activity.distance(at: elapsedTime) / 1000), unit: "km")
+        case .intervalHUDBar:
+            return OverlayValueComponents(label: "Interval HUD Bar", shortLabel: "INTERVAL", value: "", unit: "")
+        case .intervalTimeline:
+            return OverlayValueComponents(label: "Interval Timeline", shortLabel: "TIMELINE", value: "", unit: "")
         case .routeMap:
             return OverlayValueComponents(label: "Route Map", shortLabel: "ROUTE", value: "\(activity.routePoints.count)", unit: "pts")
         case .verticalOscillation:
@@ -191,8 +199,6 @@ enum OverlayValueFormatter {
                 value: g.map { String(format: "%+.1f", $0) } ?? "--",
                 unit: "%"
             )
-        case .lapList, .lapCard, .lapLive:
-            return OverlayValueComponents(label: "", shortLabel: "", value: "", unit: "")
         case .decorSolidColor, .decorIcon, .decorText, .weatherWidget:
             return OverlayValueComponents(label: type.label, shortLabel: "", value: "", unit: "")
         }

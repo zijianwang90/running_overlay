@@ -286,6 +286,327 @@ struct OverlayRenderModelTests {
     }
 
     @MainActor
+    @Test func intervalHUDBarLayoutUsesLapsZonesAndRecoveryDrop() throws {
+        let prefs = HeartRateZonePreferences.shared
+        let oldCount = prefs.zoneCount
+        let oldZones = prefs.zones
+        defer {
+            prefs.zoneCount = oldCount
+            prefs.zones = oldZones
+        }
+        prefs.zoneCount = .five
+        prefs.zones = [
+            HeartRateZone(),
+            HeartRateZone(minHR: 120, maxHR: 139),
+            HeartRateZone(minHR: 140, maxHR: 160),
+            HeartRateZone(minHR: 161, maxHR: 180),
+            HeartRateZone(minHR: 181, maxHR: 200),
+            HeartRateZone()
+        ]
+
+        var style = OverlayStyle.default
+        style.intervalHUDBar.bottomBarMode = .heartRateZones
+        style.intervalHUDBar.hrDropMode = .percent
+        style.intervalHUDBar.remainingPrimary = .distance
+        style.intervalHUDBar.metricSlots.append(IntervalHUDBarMetricSlot(metric: .pace))
+        let element = OverlayElement(type: .intervalHUDBar, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let workContext = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 50
+        )
+        let restContext = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 130
+        )
+
+        let workLayout = OverlayRenderModel.intervalHUDBarLayout(for: element, in: workContext)
+        #expect(workLayout.phaseLabel == "WORK")
+        #expect(workLayout.repText == "1 / 2")
+        #expect(workLayout.remainingTimeText == "0:50")
+        #expect(workLayout.remainingPrimaryLabel == "LEFT")
+        #expect(workLayout.remainingPrimaryText == "100 m")
+        #expect(workLayout.metricItems.filter { $0.metric == .pace }.count == 2)
+        #expect(workLayout.progress == 0.5)
+        #expect(workLayout.bottomBarActiveZoneIndex == 3)
+        #expect(workLayout.zoneMarker?.zoneIndex == 3)
+        #expect(workLayout.zoneMarker?.valueText == "170 bpm")
+        #expect(abs((workLayout.zoneMarker?.fractionInZone ?? 0) - (9.0 / 19.0)) < 0.0001)
+
+        let restLayout = OverlayRenderModel.intervalHUDBarLayout(for: element, in: restContext)
+        #expect(restLayout.phaseLabel == "REST")
+        #expect(restLayout.activeZoneIndex == 2)
+        #expect(restLayout.zoneSegments.count == 5)
+        #expect(restLayout.zoneItem?.metric == .hrDrop)
+        #expect(restLayout.zoneItem?.value == "17")
+        #expect(restLayout.zoneItem?.unit == "%")
+    }
+
+    @Test func intervalHUDBarZoneSegmentFramesSupportActiveZoneEmphasis() {
+        let equalFrames = OverlayRenderModel.intervalZoneSegmentFrames(
+            segmentCount: 5,
+            activeIndex: 2,
+            activeWidthShare: 0
+        )
+        #expect(equalFrames.count == 5)
+        #expect(equalFrames.allSatisfy { abs($0.width - 0.2) < 0.0001 })
+
+        let emphasizedFrames = OverlayRenderModel.intervalZoneSegmentFrames(
+            segmentCount: 5,
+            activeIndex: 2,
+            activeWidthShare: 0.5
+        )
+        #expect(emphasizedFrames[2].start == 0.25)
+        #expect(emphasizedFrames[2].width == 0.5)
+        #expect(emphasizedFrames[0].width == 0.125)
+        #expect(emphasizedFrames[4].start == 0.875)
+
+        let sixZoneFrames = OverlayRenderModel.intervalZoneSegmentFrames(
+            segmentCount: 6,
+            activeIndex: 5,
+            activeWidthShare: 0.5
+        )
+        #expect(sixZoneFrames[5].start == 0.5)
+        #expect(sixZoneFrames[5].width == 0.5)
+
+        let fallbackFrames = OverlayRenderModel.intervalZoneSegmentFrames(
+            segmentCount: 5,
+            activeIndex: nil,
+            activeWidthShare: 0.5
+        )
+        #expect(fallbackFrames.allSatisfy { abs($0.width - 0.2) < 0.0001 })
+    }
+
+    @Test func intervalHUDBarMetricsHonorPerSlotUnitOptions() {
+        var style = OverlayStyle.default
+        style.intervalHUDBar.metricSlots = [
+            IntervalHUDBarMetricSlot(metric: .pace, unitOption: .paceImperial),
+            IntervalHUDBarMetricSlot(metric: .distance, unitOption: .distanceMiles)
+        ]
+        let element = OverlayElement(type: .intervalHUDBar, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 50
+        )
+
+        let layout = OverlayRenderModel.intervalHUDBarLayout(for: element, in: context)
+
+        let pace = layout.metricItems.first { $0.metric == .pace }
+        #expect(pace?.value == "6'42\"")
+        #expect(pace?.unit == "/mi")
+
+        let distance = layout.metricItems.first { $0.metric == .distance }
+        #expect(distance?.value == "0.06")
+        #expect(distance?.unit == "mi")
+    }
+
+    @Test func intervalHUDBarMetricsIncludeAllNumericOverlayTypes() {
+        let intervalMetricTypes = Set(IntervalHUDBarMetric.numericCases.compactMap(\.elementType))
+        let numericTypes = Set(OverlayElementType.allCases.filter(\.isNumericOverlay))
+
+        #expect(intervalMetricTypes == numericTypes)
+        #expect(!IntervalHUDBarMetric.numericCases.contains(.heartRateZone))
+        #expect(!IntervalHUDBarMetric.numericCases.contains(.hrDrop))
+    }
+
+    @Test func intervalTimelineCentersCurrentLapAndSummarizesOverflow() {
+        var style = OverlayStyle.default
+        style.intervalTimeline.mode = .centeredWindow
+        style.intervalTimeline.visibleNeighbors = 2
+        style.intervalTimeline.primaryLabelMode = .kind
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: repeatedIntervalActivity(repCount: 25),
+            elapsedTime: 30 + 13 * 120 + 35
+        )
+
+        let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
+
+        #expect(layout.segments.count == 5)
+        #expect(layout.leftOverflowCount > 0)
+        #expect(layout.rightOverflowCount > 0)
+        let current = layout.segments.first { $0.isCurrent }
+        #expect(current?.kind == .active)
+        #expect(current?.label == "1min")
+        #expect(layout.repText == "Rep 14 / 25")
+        if let current {
+            #expect(abs(current.rect.midX - layout.markerX) > 0)
+            #expect(current.rect.height > (layout.segments.first { !$0.isCurrent }?.rect.height ?? 0))
+        }
+    }
+
+    @Test func intervalTimelineFullScheduleShowsAllSmallWorkouts() {
+        var style = OverlayStyle.default
+        style.intervalTimeline.mode = .fullSchedule
+        style.intervalTimeline.maxFullSegments = 12
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 130
+        )
+
+        let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
+
+        #expect(layout.segments.count == 3)
+        #expect(layout.leftOverflowCount == 0)
+        #expect(layout.rightOverflowCount == 0)
+        #expect(layout.segments.map(\.kind) == [.active, .rest, .active])
+        #expect(layout.segments.first(where: \.isCurrent)?.kind == .rest)
+    }
+
+    @Test func intervalTimelineMarkerToggleDoesNotMoveRailOrSegments() throws {
+        var enabledStyle = OverlayStyle.default
+        enabledStyle.intervalTimeline.mode = .centeredWindow
+        enabledStyle.intervalTimeline.visibleNeighbors = 2
+        enabledStyle.intervalTimeline.markerEnabled = true
+
+        var disabledStyle = enabledStyle
+        disabledStyle.intervalTimeline.markerEnabled = false
+
+        let enabledElement = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: enabledStyle)
+        let disabledElement = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: disabledStyle)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: repeatedIntervalActivity(repCount: 25),
+            elapsedTime: 30 + 13 * 120 + 35
+        )
+
+        let enabledLayout = OverlayRenderModel.intervalTimelineLayout(for: enabledElement, in: context)
+        let disabledLayout = OverlayRenderModel.intervalTimelineLayout(for: disabledElement, in: context)
+
+        #expect(enabledLayout.contentRect == disabledLayout.contentRect)
+        #expect(enabledLayout.railY == disabledLayout.railY)
+        #expect(enabledLayout.railDots == disabledLayout.railDots)
+        #expect(enabledLayout.markerTopY == disabledLayout.markerTopY)
+        let enabledFirstRect = try #require(enabledLayout.segments.first?.rect)
+        let disabledFirstRect = try #require(disabledLayout.segments.first?.rect)
+        #expect(enabledFirstRect == disabledFirstRect)
+    }
+
+    @Test func intervalTimelineReservesEdgeContextWhenOverflowPillsAreHidden() {
+        var style = OverlayStyle.default
+        style.intervalTimeline.mode = .centeredWindow
+        style.intervalTimeline.visibleNeighbors = 2
+        style.intervalTimeline.overflowPillsEnabled = false
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: repeatedIntervalActivity(repCount: 25),
+            elapsedTime: 30 + 13 * 120 + 35
+        )
+
+        let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
+
+        #expect(layout.leftOverflowCount > 0)
+        #expect(layout.rightOverflowCount > 0)
+        #expect(layout.segments.first?.rect.minX ?? 0 > layout.contentRect.minX + 44)
+        #expect(layout.segments.last?.rect.maxX ?? 0 < layout.contentRect.maxX - 44)
+    }
+
+    @Test func intervalTimelineOverflowPillClustersDoNotOverlapSegments() {
+        var style = OverlayStyle.default
+        style.intervalTimeline.mode = .centeredWindow
+        style.intervalTimeline.visibleNeighbors = 2
+        style.intervalTimeline.overflowPillsEnabled = true
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: repeatedIntervalActivity(repCount: 25),
+            elapsedTime: 30 + 13 * 120 + 35
+        )
+
+        let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
+
+        #expect(layout.leftOverflowCount > 0)
+        #expect(layout.rightOverflowCount > 0)
+        #expect(layout.segments.first?.rect.minX ?? 0 >= layout.contentRect.minX + 116)
+        #expect(layout.segments.last?.rect.maxX ?? 0 <= layout.contentRect.maxX - 116)
+    }
+
+    @Test func intervalTimelineRailSpacingExpandsBackgroundAndKeepsRailInside() {
+        var compactStyle = OverlayStyle.default
+        compactStyle.intervalTimeline.mode = .centeredWindow
+        compactStyle.intervalTimeline.railSpacing = 2
+
+        var roomyStyle = compactStyle
+        roomyStyle.intervalTimeline.railSpacing = 18
+
+        let compactElement = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: compactStyle)
+        let roomyElement = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: roomyStyle)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: repeatedIntervalActivity(repCount: 25),
+            elapsedTime: 30 + 13 * 120 + 35
+        )
+
+        let compactLayout = OverlayRenderModel.intervalTimelineLayout(for: compactElement, in: context)
+        let roomyLayout = OverlayRenderModel.intervalTimelineLayout(for: roomyElement, in: context)
+
+        #expect(roomyLayout.rect.height > compactLayout.rect.height)
+        #expect(roomyLayout.railY > compactLayout.railY)
+        #expect(roomyLayout.railY + max(roomyStyle.intervalTimeline.railDotSize, roomyStyle.intervalTimeline.railLineWidth) / 2 < roomyLayout.rect.maxY)
+    }
+
+    @Test func intervalTimelineMarkerLaneKeepsMarkerInsideBackground() {
+        var style = OverlayStyle.default
+        style.intervalTimeline.mode = .centeredWindow
+        style.intervalTimeline.visibleNeighbors = 3
+        style.intervalTimeline.markerEnabled = true
+        style.intervalTimeline.markerFontSize = 14
+        style.intervalTimeline.railLineWidth = 8
+        style.intervalTimeline.railDotSize = 8
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: repeatedIntervalActivity(repCount: 25),
+            elapsedTime: 30 + 13 * 120 + 35
+        )
+
+        let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
+        let markerBottom = layout.markerTopY + layout.markerTriangleHeight + 2 * element.scale + layout.markerLabelHeight
+        let railBottom = layout.railY + max(style.intervalTimeline.railDotSize, style.intervalTimeline.railLineWidth) * element.scale / 2
+
+        #expect(layout.markerTopY > railBottom)
+        #expect(markerBottom < layout.rect.maxY - 1)
+    }
+
+    @Test func intervalTimelineStyleDecodesOlderRailAndMarkerFieldsWithDefaults() throws {
+        let data = Data("""
+        {
+          "width": 780,
+          "height": 64,
+          "mode": "centeredWindow",
+          "visibleNeighbors": 3,
+          "maxFullSegments": 12,
+          "segmentHeight": 30,
+          "currentSegmentHeightScale": 1.35,
+          "minSegmentWidth": 54,
+          "segmentGap": 4,
+          "edgeFadeEnabled": true,
+          "currentProgressEnabled": true,
+          "markerEnabled": true,
+          "markerLabel": "NOW",
+          "markerPosition": "liveProgress",
+          "primaryLabelMode": "distance",
+          "durationLabelsEnabled": true,
+          "repCounterEnabled": true,
+          "overflowPillsEnabled": true
+        }
+        """.utf8)
+
+        let style = try JSONDecoder().decode(IntervalTimelineStyle.self, from: data)
+
+        #expect(style.markerColor == .white)
+        #expect(style.markerFontSize == IntervalTimelineStyle.default.markerFontSize)
+        #expect(style.railSpacing == IntervalTimelineStyle.default.railSpacing)
+        #expect(style.railLineWidth == IntervalTimelineStyle.default.railLineWidth)
+    }
+
+    @MainActor
     @Test func overlayFrameRendererWritesRunningGaugePNG() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -521,6 +842,56 @@ struct OverlayRenderModelTests {
             ],
             laps: []
         )
+    }
+
+    private func sampleIntervalActivity() -> ActivityTimeline {
+        let startDate = Date(timeIntervalSince1970: 3_000)
+        return ActivityTimeline(
+            startDate: startDate,
+            duration: 260,
+            distanceMeters: 520,
+            records: [
+                ActivityRecord(elapsedTime: 0, timestamp: startDate, distanceMeters: 0, heartRate: 130, paceSecondsPerKilometer: 300, elevationMeters: nil, cadence: nil, powerWatts: 230, calories: nil),
+                ActivityRecord(elapsedTime: 50, timestamp: startDate.addingTimeInterval(50), distanceMeters: 100, heartRate: 170, paceSecondsPerKilometer: 250, elevationMeters: nil, cadence: nil, powerWatts: 280, calories: nil),
+                ActivityRecord(elapsedTime: 100, timestamp: startDate.addingTimeInterval(100), distanceMeters: 200, heartRate: 180, paceSecondsPerKilometer: 270, elevationMeters: nil, cadence: nil, powerWatts: 260, calories: nil),
+                ActivityRecord(elapsedTime: 130, timestamp: startDate.addingTimeInterval(130), distanceMeters: 230, heartRate: 150, paceSecondsPerKilometer: 420, elevationMeters: nil, cadence: nil, powerWatts: 120, calories: nil),
+                ActivityRecord(elapsedTime: 260, timestamp: startDate.addingTimeInterval(260), distanceMeters: 520, heartRate: 182, paceSecondsPerKilometer: 255, elevationMeters: nil, cadence: nil, powerWatts: 285, calories: nil)
+            ],
+            laps: [
+                LapRecord(lapIndex: 0, startElapsedTime: 0, endElapsedTime: 100, startDistanceMeters: 0, totalDistanceMeters: 200, totalElapsedTime: 100, avgPaceSecondsPerKm: 260, avgHeartRate: 165, maxHeartRate: 180, avgCadenceSPM: nil, avgPowerWatts: 270, totalAscent: nil, kind: .active),
+                LapRecord(lapIndex: 1, startElapsedTime: 100, endElapsedTime: 160, startDistanceMeters: 200, totalDistanceMeters: 60, totalElapsedTime: 60, avgPaceSecondsPerKm: 420, avgHeartRate: 150, maxHeartRate: 180, avgCadenceSPM: nil, avgPowerWatts: 120, totalAscent: nil, kind: .rest),
+                LapRecord(lapIndex: 2, startElapsedTime: 160, endElapsedTime: 260, startDistanceMeters: 260, totalDistanceMeters: 260, totalElapsedTime: 100, avgPaceSecondsPerKm: 255, avgHeartRate: 176, maxHeartRate: 182, avgCadenceSPM: nil, avgPowerWatts: 285, totalAscent: nil, kind: .active)
+            ]
+        )
+    }
+
+    private func repeatedIntervalActivity(repCount: Int) -> ActivityTimeline {
+        let startDate = Date(timeIntervalSince1970: 4_000)
+        var laps: [LapRecord] = [
+            LapRecord(lapIndex: 0, startElapsedTime: 0, endElapsedTime: 30, startDistanceMeters: 0, totalDistanceMeters: 80, totalElapsedTime: 30, avgPaceSecondsPerKm: 360, avgHeartRate: nil, maxHeartRate: nil, avgCadenceSPM: nil, avgPowerWatts: nil, totalAscent: nil, kind: .warmup)
+        ]
+        var records: [ActivityRecord] = [
+            ActivityRecord(elapsedTime: 0, timestamp: startDate, distanceMeters: 0, heartRate: 120, paceSecondsPerKilometer: 360, elevationMeters: nil, cadence: nil, powerWatts: nil, calories: nil)
+        ]
+        var elapsed: TimeInterval = 30
+        var distance = 80.0
+        for rep in 0..<repCount {
+            laps.append(LapRecord(lapIndex: laps.count, startElapsedTime: elapsed, endElapsedTime: elapsed + 60, startDistanceMeters: distance, totalDistanceMeters: 250, totalElapsedTime: 60, avgPaceSecondsPerKm: 240, avgHeartRate: nil, maxHeartRate: nil, avgCadenceSPM: nil, avgPowerWatts: nil, totalAscent: nil, kind: .active))
+            elapsed += 60
+            distance += 250
+            records.append(ActivityRecord(elapsedTime: elapsed, timestamp: startDate.addingTimeInterval(elapsed), distanceMeters: distance, heartRate: 170, paceSecondsPerKilometer: 240, elevationMeters: nil, cadence: nil, powerWatts: nil, calories: nil))
+            if rep < repCount - 1 {
+                laps.append(LapRecord(lapIndex: laps.count, startElapsedTime: elapsed, endElapsedTime: elapsed + 60, startDistanceMeters: distance, totalDistanceMeters: 120, totalElapsedTime: 60, avgPaceSecondsPerKm: 420, avgHeartRate: nil, maxHeartRate: nil, avgCadenceSPM: nil, avgPowerWatts: nil, totalAscent: nil, kind: .rest))
+                elapsed += 60
+                distance += 120
+                records.append(ActivityRecord(elapsedTime: elapsed, timestamp: startDate.addingTimeInterval(elapsed), distanceMeters: distance, heartRate: 140, paceSecondsPerKilometer: 420, elevationMeters: nil, cadence: nil, powerWatts: nil, calories: nil))
+            }
+        }
+        laps.append(LapRecord(lapIndex: laps.count, startElapsedTime: elapsed, endElapsedTime: elapsed + 60, startDistanceMeters: distance, totalDistanceMeters: 120, totalElapsedTime: 60, avgPaceSecondsPerKm: 360, avgHeartRate: nil, maxHeartRate: nil, avgCadenceSPM: nil, avgPowerWatts: nil, totalAscent: nil, kind: .cooldown))
+        elapsed += 60
+        distance += 120
+        records.append(ActivityRecord(elapsedTime: elapsed, timestamp: startDate.addingTimeInterval(elapsed), distanceMeters: distance, heartRate: 125, paceSecondsPerKilometer: 360, elevationMeters: nil, cadence: nil, powerWatts: nil, calories: nil))
+        return ActivityTimeline(startDate: startDate, duration: elapsed, distanceMeters: distance, records: records, laps: laps)
     }
 
     private func sampleWeatherActivity() -> ActivityTimeline {

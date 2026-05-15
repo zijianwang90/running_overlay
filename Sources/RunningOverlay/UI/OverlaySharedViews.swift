@@ -77,36 +77,24 @@ struct OverlaySharedRunningGaugeView: View {
     }
 }
 
-struct OverlaySharedLapListView: View {
+struct OverlaySharedIntervalHUDBarView: View {
     let element: OverlayElement
-    let layout: LapListRenderLayout
+    let layout: IntervalHUDBarRenderLayout
 
     var body: some View {
-        LapListOverlayView(
+        IntervalHUDBarOverlayView(
             element: element,
             layout: layout
         )
     }
 }
 
-struct OverlaySharedLapCardView: View {
+struct OverlaySharedIntervalTimelineView: View {
     let element: OverlayElement
-    let layout: LapCardRenderLayout
+    let layout: IntervalTimelineRenderLayout
 
     var body: some View {
-        LapCardOverlayView(
-            element: element,
-            layout: layout
-        )
-    }
-}
-
-struct OverlaySharedLapLiveView: View {
-    let element: OverlayElement
-    let layout: LapLiveRenderLayout
-
-    var body: some View {
-        LapLiveOverlayView(
+        IntervalTimelineOverlayView(
             element: element,
             layout: layout
         )

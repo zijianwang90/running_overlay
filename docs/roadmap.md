@@ -126,7 +126,7 @@ Completed so far:
 - Shared preview/export rendering for text style presets.
 - Shared preview/export rendering for Running Gauge presets.
 - Extended numeric overlay types: vertical oscillation, ground contact time, stride length, vertical ratio, ground contact balance, temperature, grade.
-- Lap List chart overlay: teleprompter-style scrolling lap course with current-lap highlight, progress bar, fade, and configurable columns.
+- Retired the early Lap List, Lap Card, and Lap Live prototypes so the next interval-training UI can be built around the Interval HUD Bar design.
 
 Pending:
 
@@ -184,7 +184,7 @@ Completed so far:
 - Added the Route Map overlay type with Minimal, Gradient, Glow, and MapKit presets.
 - Added preview/export route rendering with start, finish, and current-position markers.
 - Added MapKit snapshot provider scaffolding and preview-time MapKit snapshot loading for the MapKit preset.
-- Added Lap List overlay module — see `docs/overlay-modules/lap-list-overlay.md`.
+- Retired the early Lap List overlay module in favor of the Interval HUD Bar direction — see `docs/overlay-modules/retired-lap-overlays.md` and `docs/overlay-modules/interval-hud-bar-overlay.md`.
 
 Pending:
 

@@ -54,6 +54,57 @@ struct OverlayTemplateTests {
         #expect(style.distanceTimeline.preset == .minimal)
     }
 
+    @Test func intervalHUDBarStyleDecodesOlderFieldsWithDefaults() throws {
+        let json = """
+        {
+          "width": 640,
+          "height": 108,
+          "bottomBarMode": "lapProgress",
+          "progressMode": "time",
+          "hrDropMode": "bpm",
+          "metricSlots": [
+            { "metric": "heartRateZone" },
+            { "metric": "heartRate" },
+            { "metric": "pace" },
+            { "metric": "hrDrop" }
+          ],
+          "phaseColorFallback": { "red": 1, "green": 0.38, "blue": 0.14, "alpha": 1 },
+          "trackColor": { "red": 1, "green": 1, "blue": 1, "alpha": 1 },
+          "trackOpacity": 0.14
+        }
+        """
+
+        let style = try JSONDecoder().decode(IntervalHUDBarStyle.self, from: Data(json.utf8))
+
+        #expect(style.width == 640)
+        #expect(style.height == 108)
+        #expect(style.bottomBarEnabled == true)
+        #expect(style.remainingPrimary == .time)
+        #expect(style.showsRep == true)
+        #expect(style.showsPhase == true)
+        #expect(style.showsRemaining == true)
+        #expect(style.showsZone == true)
+        #expect(style.zoneDisplayMode == .hrDropAtRest)
+        #expect(style.metricSlots.map(\.metric) == [.heartRate, .pace])
+        #expect(style.metricSlots.map(\.unitOption) == [.bpm, .paceMetric])
+        #expect(style.metricSlots.allSatisfy { $0.id.uuidString.isEmpty == false })
+        #expect(style.bottomBarSpacing == IntervalHUDBarStyle.default.bottomBarSpacing)
+        #expect(style.activeZoneWidthShare == IntervalHUDBarStyle.default.activeZoneWidthShare)
+        #expect(style.activeZoneHeightScale == IntervalHUDBarStyle.default.activeZoneHeightScale)
+        #expect(style.zoneSegmentGap == IntervalHUDBarStyle.default.zoneSegmentGap)
+        #expect(style.bottomBarCornerRadius == IntervalHUDBarStyle.default.bottomBarCornerRadius)
+        #expect(style.bottomBarBorderEnabled == IntervalHUDBarStyle.default.bottomBarBorderEnabled)
+        #expect(style.bottomBarBorderColor == IntervalHUDBarStyle.default.bottomBarBorderColor)
+        #expect(style.bottomBarBorderOpacity == IntervalHUDBarStyle.default.bottomBarBorderOpacity)
+        #expect(style.bottomBarBorderWidth == IntervalHUDBarStyle.default.bottomBarBorderWidth)
+        #expect(style.inactiveZoneOpacity == IntervalHUDBarStyle.default.inactiveZoneOpacity)
+        #expect(style.zoneMarkerEnabled == IntervalHUDBarStyle.default.zoneMarkerEnabled)
+        #expect(style.zoneMarkerPosition == IntervalHUDBarStyle.default.zoneMarkerPosition)
+        #expect(style.zoneMarkerShowsValue == IntervalHUDBarStyle.default.zoneMarkerShowsValue)
+        #expect(style.labelText == IntervalHUDBarStyle.default.labelText)
+        #expect(style.metricUnitText == IntervalHUDBarStyle.default.metricUnitText)
+    }
+
     @Test func distanceTimelineIconSlotPersistsEmbeddedSVG() throws {
         var style = OverlayStyle.default
         style.distanceTimeline = .preset(.sport)

@@ -54,9 +54,21 @@ struct HeartRateZone: Codable, Identifiable, Equatable {
 
 enum HRZonePalette {
     static let colors: [Color] = [.blue, .cyan, .green, .yellow, .orange, .red]
+    static let overlayColors: [OverlayColor] = [
+        OverlayColor(red: 0.12, green: 0.56, blue: 1.00, alpha: 1),
+        OverlayColor(red: 0.28, green: 0.82, blue: 0.96, alpha: 1),
+        OverlayColor(red: 0.18, green: 0.86, blue: 0.42, alpha: 1),
+        OverlayColor(red: 1.00, green: 0.84, blue: 0.12, alpha: 1),
+        OverlayColor(red: 1.00, green: 0.56, blue: 0.20, alpha: 1),
+        OverlayColor(red: 1.00, green: 0.22, blue: 0.18, alpha: 1)
+    ]
 
     static func color(forIndex index: Int) -> Color {
         colors[max(0, min(index, colors.count - 1))]
+    }
+
+    static func overlayColor(forIndex index: Int) -> OverlayColor {
+        overlayColors[max(0, min(index, overlayColors.count - 1))]
     }
 }
 
@@ -134,6 +146,24 @@ final class HeartRateZonePreferences {
         for i in 0..<zoneCount.rawValue where i < zones.count {
             zones[i] = HeartRateZone(id: zones[i].id)
         }
+    }
+
+    nonisolated static func currentSnapshot() -> HeartRateZoneSnapshot {
+        let defaults = UserDefaults.standard
+        let storedCount = defaults.object(forKey: zoneCountKey) as? Int
+        let zoneCount = storedCount.flatMap(HRZoneCount.init(rawValue:))?.rawValue ?? HRZoneCount.five.rawValue
+        let storedUnit = defaults.string(forKey: paceUnitKey)
+        let paceUnit = storedUnit.flatMap(PaceUnit.init(rawValue:)) ?? .minPerKm
+        let zones: [HeartRateZone]
+        if let data = defaults.data(forKey: zonesKey),
+           let decoded = try? JSONDecoder().decode([HeartRateZone].self, from: data) {
+            var padded = decoded
+            while padded.count < 6 { padded.append(HeartRateZone()) }
+            zones = Array(padded.prefix(6))
+        } else {
+            zones = HeartRateZone.emptySlots()
+        }
+        return HeartRateZoneSnapshot(zoneCount: zoneCount, paceUnit: paceUnit, zones: zones)
     }
 }
 

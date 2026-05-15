@@ -18,14 +18,12 @@ struct ParameterPanelView: View {
                         ElevationChartOverlayDetailView(elementID: elementID)
                     } else if element.type == .runningGauge {
                         RunningGaugeOverlayDetailView(elementID: elementID)
+                    } else if element.type == .intervalHUDBar {
+                        IntervalHUDBarOverlayDetailView(elementID: elementID)
+                    } else if element.type == .intervalTimeline {
+                        IntervalTimelineOverlayDetailView(elementID: elementID)
                     } else if element.type == .routeMap {
                         RouteMapOverlayDetailView(elementID: elementID)
-                    } else if element.type == .lapList {
-                        LapListOverlayDetailView(elementID: elementID)
-                    } else if element.type == .lapCard {
-                        LapCardOverlayDetailView(elementID: elementID)
-                    } else if element.type == .lapLive {
-                        LapLiveOverlayDetailView(elementID: elementID)
                     } else if element.type == .weatherWidget {
                         WeatherWidgetOverlayDetailView(elementID: elementID)
                     } else if element.type.isDecorOverlay {

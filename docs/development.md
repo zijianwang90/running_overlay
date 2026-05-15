@@ -271,6 +271,7 @@ Current implementation:
 - Overlay preview and Inspector value display use the project Layer Data FPS setting, so data values update at the configured cadence rather than every UI refresh.
 - Inspector overlay UI follows the dark tool-panel design spec in `docs/design/panels/inspector/inspector-ui.md`, with tokenized colors, spacing, compact added-overlay rows, and selected-overlay detail screens. Add-overlay tiles now live in the left `Overlay Pool`.
 - Overlay detail panels share reusable inspector modules for cross-overlay consistency: `CollapsibleLayoutInspectorSection` + `OverlayLayoutInspectorRows` (Layout) and `CollapsibleStatsBarInspectorSection` + `OverlayStatsBarInspectorRows` (Stats Bar). New detail views should reuse these modules instead of creating per-overlay variants.
+- Interval Timeline uses the same fixed footer pattern as other dense overlay detail views: header and `Reset` / `Done` footer stay pinned while Timeline, Current, Rail, Labels, Background, Border, and Effects sections scroll.
 - Shared `Layout` rows are now fixed to `Position`, `Scale`, `Width`, `Height`, and `Opacity`; `Rotation` is intentionally removed from the shared Layout section across overlay detail panels.
 - Inspector default width is 460 px and minimum width is 460 px; the panel is user-resizable through the custom `HorizontalResizeHandle`, and `ParameterPanelView` does not impose its own width frame so internal outer/detail/editing state switches cannot resize the right column or squeeze tile content.
 - Inspector segmented controls are implemented with native SwiftUI segmented `Picker` (`.pickerStyle(.segmented)`) instead of custom button rows, including shared dense controls used by Numeric Overlay, Running Gauge, and Route Map detail views.
@@ -315,6 +316,7 @@ Current implementation:
 - Distance Timeline ticks expose density control, and left/right Stats Bar backgrounds expand to cover all vertical slots.
 - Distance Timeline media slots use the generic `OverlayIconSlot` model; the current UI exposes it only for Distance Timeline, but the Codable data and deterministic SVG renderer are reusable by other overlay modules.
 - Distance Timeline SVG import embeds static or animated SVG source in `OverlayStyle.distanceTimeline.mediaSlot`; preview and export sample animated SVG from overlay elapsed time so rendered frames are deterministic.
+- Interval Timeline is available as a horizontal interval-workout schedule overlay that complements Interval HUD Bar: it uses existing `ActivityTimeline.laps`, renders as a compact title-free timeline rail, keeps the current lap centered and enlarged by default, and summarizes hidden repetitions for high-count workouts such as `1min x25`. See `docs/design/overlays/interval-timeline/interval-timeline-overlay-ui.md` and `docs/overlay-modules/interval-timeline-overlay.md`.
 - Elevation chart overlays render as line charts with playhead markers.
 - Running Gauge overlays render circular ticks, a progress ring, section dividers, and core run metrics in both preview and export.
 - Route Map overlays render the route path, start marker, finish marker, and current-position marker in both preview and export.
@@ -457,7 +459,8 @@ Pending:
 - Export now uses a single SwiftUI-based renderer path that rasterizes shared overlay views (`ImageRenderer`) on each frame and encodes transparent MOV output.
 - Preview and export invoke the same shared overlay view entry points (`OverlaySharedTextPresetView`, `OverlaySharedDistanceTimelineView`, `OverlaySharedRouteMapView`) and differ only by `isInteractive` flags.
 - Route Map export resolves its `MapSnapshotRequest` from the same layout inputs as preview, preloads matching `NSImage` snapshots before frame rendering, and supplies them to `OverlaySharedRouteMapView` so `ImageRenderer` does not depend on asynchronous view tasks for the map background.
-- Shared entry points now also include elevation chart, running gauge, lap list, lap card, and lap live (`OverlaySharedElevationChartView`, `OverlaySharedRunningGaugeView`, `OverlaySharedLapListView`, `OverlaySharedLapCardView`, `OverlaySharedLapLiveView`) so SwiftUI export covers all current overlay controls on the same component path.
+- Shared entry points now also include elevation chart, running gauge, and Interval HUD Bar (`OverlaySharedElevationChartView`, `OverlaySharedRunningGaugeView`, `OverlaySharedIntervalHUDBarView`) so SwiftUI export covers current overlay controls on the same component path.
+- Interval HUD Bar style decodes missing newer fields from defaults, allowing early HUD project snapshots to load after the ordered metrics, remaining-primary, and typography controls were added.
 - `SwiftUIOverlayVideoExporter` removes its old per-type fallback drawing implementations and keeps only the shared component path used by preview.
 - `Export Test Frame` renders a PNG through the same SwiftUI export rasterization path at the current playhead position.
 - `Export Overlay JSON` serializes the current `OverlayLayout` as `overlay_configuration.json` for reproducible renderer-debug snapshots.

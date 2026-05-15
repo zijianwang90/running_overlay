@@ -496,6 +496,44 @@ final class ProjectDocument: ObservableObject {
         if type == .weatherWidget {
             style.weatherWidget = WeatherWidgetStyle.preset(.simpleCard)
         }
+        if type == .intervalHUDBar {
+            style.intervalHUDBar = .default
+            style.foregroundColor = .white
+            style.labelColor = .white
+            style.unitColor = .white
+            style.backgroundEnabled = true
+            style.backgroundColor = .black
+            style.backgroundOpacity = 0.72
+            style.backgroundRadius = 10
+            style.borderEnabled = true
+            style.borderColor = .white
+            style.borderOpacity = 0.18
+            style.borderWidth = 1
+            style.dividerEnabled = true
+            style.dividerColor = .white
+            style.dividerThickness = 1
+            style.dividerOpacity = 0.28
+            style.shadowEnabled = true
+            style.shadowOpacity = 0.34
+            style.shadowRadius = 8
+        }
+        if type == .intervalTimeline {
+            style.intervalTimeline = .default
+            style.foregroundColor = .white
+            style.labelColor = .white
+            style.unitColor = .white
+            style.backgroundEnabled = true
+            style.backgroundColor = .black
+            style.backgroundOpacity = 0.78
+            style.backgroundRadius = 10
+            style.borderEnabled = true
+            style.borderColor = .white
+            style.borderOpacity = 0.16
+            style.borderWidth = 1
+            style.shadowEnabled = true
+            style.shadowOpacity = 0.34
+            style.shadowRadius = 10
+        }
         if type == .decorText {
             style.decor = DecorStyle(
                 shape: .rectangle,
@@ -1598,42 +1636,6 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.routeMapStatsBar.blurRadius = min(max(radius, 0), 32)
     }
 
-    func mutateLapListStyle(_ elementID: OverlayElement.ID, _ mutate: (inout LapListStyle) -> Void) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.lapList)
-    }
-
-    func mutateLapListStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout LapListStyle) -> Void) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.lapList)
-    }
-
-    func mutateLapCardStyle(_ elementID: OverlayElement.ID, _ mutate: (inout LapCardStyle) -> Void) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.lapCard)
-    }
-
-    func mutateLapCardStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout LapCardStyle) -> Void) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.lapCard)
-    }
-
-    func mutateLapLiveStyle(_ elementID: OverlayElement.ID, _ mutate: (inout LapLiveStyle) -> Void) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.lapLive)
-    }
-
-    func mutateLapLiveStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout LapLiveStyle) -> Void) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.lapLive)
-    }
-
     func mutateDecorStyle(_ elementID: OverlayElement.ID, _ mutate: (inout DecorStyle) -> Void) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
@@ -1656,6 +1658,30 @@ final class ProjectDocument: ObservableObject {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
         mutate(&overlayLayout.elements[index].style.weatherWidget)
+    }
+
+    func mutateIntervalHUDBarStyle(_ elementID: OverlayElement.ID, _ mutate: (inout IntervalHUDBarStyle) -> Void) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.intervalHUDBar)
+    }
+
+    func mutateIntervalHUDBarStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout IntervalHUDBarStyle) -> Void) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.intervalHUDBar)
+    }
+
+    func mutateIntervalTimelineStyle(_ elementID: OverlayElement.ID, _ mutate: (inout IntervalTimelineStyle) -> Void) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.intervalTimeline)
+    }
+
+    func mutateIntervalTimelineStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout IntervalTimelineStyle) -> Void) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.intervalTimeline)
     }
 
     func applyWeatherWidgetPreset(_ elementID: OverlayElement.ID, preset: WeatherWidgetPreset) {
