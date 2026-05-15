@@ -88,18 +88,18 @@ struct IntervalTimelineOverlayView: View {
     private func segmentView(_ segment: IntervalTimelineSegmentLayout) -> some View {
         let localRect = segment.rect.offsetBy(dx: -layout.rect.minX, dy: -layout.rect.minY)
         return ZStack {
-            RoundedRectangle(cornerRadius: 6 * element.scale)
+            RoundedRectangle(cornerRadius: layout.style.segmentCornerRadius * element.scale)
                 .fill(Color(intervalTimeline: segment.color).opacity(segment.opacity))
                 .overlay(alignment: .leading) {
                     if segment.isCurrent && layout.style.currentProgressEnabled {
-                        RoundedRectangle(cornerRadius: 6 * element.scale)
+                        RoundedRectangle(cornerRadius: layout.style.segmentCornerRadius * element.scale)
                             .fill(Color.white.opacity(0.30))
                             .frame(width: localRect.width * layout.currentProgress)
                     }
                 }
                 .overlay {
                     if segment.isCurrent {
-                        RoundedRectangle(cornerRadius: 6 * element.scale)
+                        RoundedRectangle(cornerRadius: layout.style.segmentCornerRadius * element.scale)
                             .stroke(Color.white.opacity(0.74), lineWidth: 1.4 * element.scale)
                     }
                 }
@@ -142,7 +142,7 @@ struct IntervalTimelineOverlayView: View {
                 .fill(Color(intervalTimeline: layout.style.markerColor).opacity(0.92))
                 .frame(width: 10 * element.scale, height: layout.markerTriangleHeight)
             Text(layout.markerLabel)
-                .font(.custom(element.style.fontName, size: layout.style.markerFontSize * element.scale).weight(layout.style.markerFontWeight.swiftUIFontWeight))
+                .font(.custom(layout.style.markerFontName.isEmpty ? element.style.fontName : layout.style.markerFontName, size: layout.style.markerFontSize * element.scale).weight(layout.style.markerFontWeight.swiftUIFontWeight))
                 .foregroundStyle(Color(intervalTimeline: layout.style.markerColor).opacity(0.88))
                 .frame(height: layout.markerLabelHeight)
                 .lineLimit(1)

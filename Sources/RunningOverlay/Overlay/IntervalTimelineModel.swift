@@ -53,6 +53,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
     var currentSegmentWidthFraction: Double
     var minSegmentWidth: Double
     var segmentGap: Double
+    var segmentCornerRadius: Double
     var edgeFadeEnabled: Bool
     var currentProgressEnabled: Bool
     var markerEnabled: Bool
@@ -61,6 +62,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
     var markerColor: OverlayColor
     var markerFontSize: Double
     var markerFontWeight: OverlayFontWeight
+    var markerFontName: String
     var primaryLabelMode: IntervalTimelineLabelMode
     var durationLabelsEnabled: Bool
     var repCounterEnabled: Bool
@@ -84,6 +86,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
         currentSegmentWidthFraction: 0.28,
         minSegmentWidth: 54,
         segmentGap: 4,
+        segmentCornerRadius: 6,
         edgeFadeEnabled: true,
         currentProgressEnabled: true,
         markerEnabled: true,
@@ -92,6 +95,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
         markerColor: .white,
         markerFontSize: 11,
         markerFontWeight: .bold,
+        markerFontName: "",
         primaryLabelMode: .distance,
         durationLabelsEnabled: true,
         repCounterEnabled: true,
@@ -116,6 +120,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
         currentSegmentWidthFraction: Double,
         minSegmentWidth: Double,
         segmentGap: Double,
+        segmentCornerRadius: Double,
         edgeFadeEnabled: Bool,
         currentProgressEnabled: Bool,
         markerEnabled: Bool,
@@ -124,6 +129,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
         markerColor: OverlayColor,
         markerFontSize: Double,
         markerFontWeight: OverlayFontWeight,
+        markerFontName: String,
         primaryLabelMode: IntervalTimelineLabelMode,
         durationLabelsEnabled: Bool,
         repCounterEnabled: Bool,
@@ -146,6 +152,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
         self.currentSegmentWidthFraction = currentSegmentWidthFraction
         self.minSegmentWidth = minSegmentWidth
         self.segmentGap = segmentGap
+        self.segmentCornerRadius = segmentCornerRadius
         self.edgeFadeEnabled = edgeFadeEnabled
         self.currentProgressEnabled = currentProgressEnabled
         self.markerEnabled = markerEnabled
@@ -154,6 +161,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
         self.markerColor = markerColor
         self.markerFontSize = markerFontSize
         self.markerFontWeight = markerFontWeight
+        self.markerFontName = markerFontName
         self.primaryLabelMode = primaryLabelMode
         self.durationLabelsEnabled = durationLabelsEnabled
         self.repCounterEnabled = repCounterEnabled
@@ -180,6 +188,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
         currentSegmentWidthFraction = try c.decodeIfPresent(Double.self, forKey: .currentSegmentWidthFraction) ?? base.currentSegmentWidthFraction
         minSegmentWidth = try c.decodeIfPresent(Double.self, forKey: .minSegmentWidth) ?? base.minSegmentWidth
         segmentGap = try c.decodeIfPresent(Double.self, forKey: .segmentGap) ?? base.segmentGap
+        segmentCornerRadius = try c.decodeIfPresent(Double.self, forKey: .segmentCornerRadius) ?? base.segmentCornerRadius
         edgeFadeEnabled = try c.decodeIfPresent(Bool.self, forKey: .edgeFadeEnabled) ?? base.edgeFadeEnabled
         currentProgressEnabled = try c.decodeIfPresent(Bool.self, forKey: .currentProgressEnabled) ?? base.currentProgressEnabled
         markerEnabled = try c.decodeIfPresent(Bool.self, forKey: .markerEnabled) ?? base.markerEnabled
@@ -188,6 +197,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
         markerColor = try c.decodeIfPresent(OverlayColor.self, forKey: .markerColor) ?? base.markerColor
         markerFontSize = try c.decodeIfPresent(Double.self, forKey: .markerFontSize) ?? base.markerFontSize
         markerFontWeight = try c.decodeIfPresent(OverlayFontWeight.self, forKey: .markerFontWeight) ?? base.markerFontWeight
+        markerFontName = try c.decodeIfPresent(String.self, forKey: .markerFontName) ?? base.markerFontName
         primaryLabelMode = try c.decodeIfPresent(IntervalTimelineLabelMode.self, forKey: .primaryLabelMode) ?? base.primaryLabelMode
         durationLabelsEnabled = try c.decodeIfPresent(Bool.self, forKey: .durationLabelsEnabled) ?? base.durationLabelsEnabled
         repCounterEnabled = try c.decodeIfPresent(Bool.self, forKey: .repCounterEnabled) ?? base.repCounterEnabled

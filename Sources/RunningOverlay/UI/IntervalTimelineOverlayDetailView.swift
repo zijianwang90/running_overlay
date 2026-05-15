@@ -156,6 +156,12 @@ struct IntervalTimelineOverlayDetailView: View {
             range: 0...14,
             displayText: "\(Int(style.segmentGap))"
         )
+        InspectorDenseSliderRow(
+            label: "Radius",
+            value: timelineBinding(\.segmentCornerRadius, current: style),
+            range: 0...20,
+            displayText: "\(Int(style.segmentCornerRadius))"
+        )
     }
 
     @ViewBuilder
@@ -205,6 +211,35 @@ struct IntervalTimelineOverlayDetailView: View {
                 get: { style.markerFontWeight },
                 set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.markerFontWeight = value } }
             )) { Text($0.label).tag($0) }
+        }
+        InspectorDenseRow(label: "Marker Font") {
+            Menu {
+                Button {
+                    project.mutateIntervalTimelineStyle(elementID) { $0.markerFontName = "" }
+                } label: {
+                    if style.markerFontName.isEmpty {
+                        Label("Default", systemImage: "checkmark")
+                    } else {
+                        Text("Default")
+                    }
+                }
+                Divider()
+                ForEach(NumericOverlayDetailView.fontPresets, id: \.self) { name in
+                    Button {
+                        project.mutateIntervalTimelineStyle(elementID) { $0.markerFontName = name }
+                    } label: {
+                        if name == style.markerFontName {
+                            Label(name, systemImage: "checkmark")
+                        } else {
+                            Text(name)
+                        }
+                    }
+                }
+            } label: {
+                InspectorDenseMenuLabel(title: style.markerFontName.isEmpty ? "Default" : style.markerFontName)
+            }
+            .menuStyle(.borderlessButton)
+            .frame(height: NumericTokens.controlHeight)
         }
         InspectorDenseRow(label: "Marker Color") {
             InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: style.markerColor) { color in
