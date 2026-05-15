@@ -448,17 +448,31 @@ enum OverlayRenderModel {
     }
 
     static func intervalTimelineLayout(for element: OverlayElement, in context: OverlayRenderContext) -> IntervalTimelineRenderLayout {
-        let style = element.style.intervalTimeline
+        var style = element.style.intervalTimeline
+        let kindPalette = IntervalKindColorPreferences.currentSnapshot()
+        style.warmupColor = kindPalette.warmup
+        style.activeColor = kindPalette.active
+        style.restColor = kindPalette.rest
+        style.cooldownColor = kindPalette.cooldown
         let width = context.scaled(style.width * element.scale)
-        let height = context.scaled(style.height * element.scale)
+        let railVisualHeight = style.railEnabled ? max(style.railDotSize, style.railLineWidth) : 0
+        let railLaneHeight = style.railEnabled ? style.railSpacing + railVisualHeight + 6 : 0
+        let markerTriangleHeight = context.scaled(6 * element.scale)
+        let markerStackSpacing = context.scaled(2 * element.scale)
+        let markerLabelHeight = context.scaled(max(style.markerFontSize * 1.4, 14) * element.scale)
+        let markerGap = context.scaled(4 * element.scale)
+        let markerBottomPadding = context.scaled(4 * element.scale)
+        let markerLaneHeight = markerGap + markerTriangleHeight + markerStackSpacing + markerLabelHeight + markerBottomPadding
+        let height = context.scaled((style.height + railLaneHeight) * element.scale) + markerLaneHeight
         let rect = centeredRect(for: element, size: CGSize(width: width, height: height), canvasSize: context.canvasSize)
         let horizontalPadding = context.scaled(16 * element.scale)
         let verticalPadding = context.scaled(6 * element.scale)
+        let railLaneHeightScaled = context.scaled(railLaneHeight * element.scale)
         let contentRect = CGRect(
             x: rect.minX + horizontalPadding,
             y: rect.minY + verticalPadding,
             width: max(rect.width - horizontalPadding * 2, 1),
-            height: max(rect.height - verticalPadding * 2 - context.scaled(14 * element.scale), 1)
+            height: max(rect.height - verticalPadding * 2 - railLaneHeightScaled - markerLaneHeight, 1)
         )
         let laps = context.activity.laps
         let t = min(max(context.elapsedTime, 0), context.activity.duration)
@@ -479,8 +493,10 @@ enum OverlayRenderModel {
         let visibleLaps = visibleRange.map { laps[$0] }
         let leftOverflow = max(visibleRange.lowerBound, 0)
         let rightOverflow = max(laps.count - visibleRange.upperBound, 0)
-        let leadingOverflowWidth = style.overflowPillsEnabled && leftOverflow > 0 ? context.scaled(146 * element.scale) : 0
-        let trailingOverflowWidth = style.overflowPillsEnabled && rightOverflow > 0 ? context.scaled(112 * element.scale) : 0
+        let edgeOnlyWidth = context.scaled(58 * element.scale)
+        let overflowClusterWidth = context.scaled(116 * element.scale)
+        let leadingOverflowWidth = leftOverflow > 0 ? (style.overflowPillsEnabled ? overflowClusterWidth : edgeOnlyWidth) : 0
+        let trailingOverflowWidth = rightOverflow > 0 ? (style.overflowPillsEnabled ? overflowClusterWidth : edgeOnlyWidth) : 0
         let segmentArea = CGRect(
             x: contentRect.minX + leadingOverflowWidth,
             y: contentRect.minY,
@@ -539,21 +555,24 @@ enum OverlayRenderModel {
         } else {
             markerX = segmentArea.midX
         }
+        let railY = (segments.map(\.rect.maxY).max() ?? contentRect.midY) + context.scaled(style.railSpacing * element.scale)
+        let railDots = intervalTimelineRailDots(for: segments, y: railY)
+        let markerTopY = railY + context.scaled(railVisualHeight * element.scale) / 2 + markerGap
 
         return IntervalTimelineRenderLayout(
             style: style,
             rect: rect,
             contentRect: contentRect,
-            railY: (segments.map(\.rect.maxY).max() ?? contentRect.midY) + context.scaled(style.railSpacing * element.scale),
-            railDots: intervalTimelineRailDots(
-                for: segments,
-                y: (segments.map(\.rect.maxY).max() ?? contentRect.midY) + context.scaled(style.railSpacing * element.scale)
-            ),
+            railY: railY,
+            railDots: railDots,
             segments: segments,
             leftOverflowCount: leftOverflow,
             rightOverflowCount: rightOverflow,
             currentProgress: clampedProgress(currentProgress),
             markerX: markerX,
+            markerTopY: markerTopY,
+            markerTriangleHeight: markerTriangleHeight,
+            markerLabelHeight: markerLabelHeight,
             markerLabel: style.markerLabel.isEmpty ? "NOW" : style.markerLabel,
             repText: style.repCounterEnabled ? intervalTimelineRepText(activity: context.activity, currentIndex: currentIndex) : nil,
             labelFontSize: context.scaled(16 * element.scale),
@@ -891,18 +910,11 @@ enum OverlayRenderModel {
         if kind == .active, let activeZoneIndex {
             return HRZonePalette.overlayColor(forIndex: activeZoneIndex)
         }
-        switch kind {
-        case .warmup:
-            return OverlayColor(red: 0.22, green: 0.70, blue: 0.66, alpha: 1)
-        case .active:
-            return OverlayColor(red: 1.00, green: 0.38, blue: 0.14, alpha: 1)
-        case .rest:
-            return OverlayColor(red: 0.32, green: 0.58, blue: 0.82, alpha: 1)
-        case .cooldown:
-            return OverlayColor(red: 0.52, green: 0.42, blue: 0.82, alpha: 1)
-        case .unknown:
-            return OverlayColor(red: 0.25, green: 0.82, blue: 0.38, alpha: 1)
+        if let color = IntervalKindColorPreferences.currentSnapshot().color(for: kind) {
+            return color
         }
+        // Only .unknown reaches here — keep the existing green fallback.
+        return OverlayColor(red: 0.25, green: 0.82, blue: 0.38, alpha: 1)
     }
 
     private static func formatDuration(_ duration: TimeInterval) -> String {

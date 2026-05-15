@@ -270,6 +270,9 @@ struct IntervalHUDBarOverlayView: View {
                             .frame(width: max(proxy.size.width * layout.progress, layout.progress > 0 ? layout.barHeight : 0))
                     }
                 }
+                .overlay {
+                    bottomBarBorderShape
+                }
                 .frame(height: layout.barHeight)
             case .heartRateZones, .paceZones:
                 GeometryReader { proxy in
@@ -305,10 +308,9 @@ struct IntervalHUDBarOverlayView: View {
                                 }
                             }
                         }
-                        .frame(width: proxy.size.width, height: layout.barHeight)
+                        .frame(width: proxy.size.width, height: layout.barHeight, alignment: .topLeading)
                         .overlay {
-                            RoundedRectangle(cornerRadius: bottomBarCornerRadius)
-                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                            bottomBarBorderShape
                         }
 
                         if let marker = layout.zoneMarker,
@@ -320,6 +322,7 @@ struct IntervalHUDBarOverlayView: View {
                                 )
                         }
                     }
+                    .frame(width: proxy.size.width, height: layout.barHeight, alignment: .topLeading)
                 }
                 .frame(height: layout.barHeight)
             }
@@ -340,23 +343,37 @@ struct IntervalHUDBarOverlayView: View {
         min(max(style.bottomBarCornerRadius * element.scale, 0), layout.barHeight)
     }
 
+    @ViewBuilder
+    private var bottomBarBorderShape: some View {
+        if style.bottomBarBorderEnabled && style.bottomBarBorderWidth > 0 && style.bottomBarBorderOpacity > 0 {
+            RoundedRectangle(cornerRadius: bottomBarCornerRadius)
+                .stroke(
+                    Color(intervalHUD: style.bottomBarBorderColor).opacity(style.bottomBarBorderOpacity),
+                    lineWidth: max(style.bottomBarBorderWidth * element.scale, 0)
+                )
+        }
+    }
+
     private func segmentCornerRadius(for rect: IntervalHUDBarZoneRect, isActive: Bool) -> Double {
         min(bottomBarCornerRadius, rect.height / 2, rect.width / 2)
     }
 
     private func intervalZoneRects(frames: [IntervalHUDBarZoneSegmentFrame], width: Double) -> [IntervalHUDBarZoneRect] {
-        guard !frames.isEmpty else { return [] }
+        let segmentCount = min(frames.count, layout.zoneSegments.count)
+        guard segmentCount > 0 else { return [] }
         let requestedGap = max(style.zoneSegmentGap * element.scale, 0)
-        let maxGap = frames.count > 1 ? max(width / Double(frames.count - 1) * 0.18, 0) : 0
+        let maxGap = segmentCount > 1 ? max(width / Double(segmentCount - 1) * 0.18, 0) : 0
         let gap = min(requestedGap, maxGap)
-        let usableWidth = max(width - gap * Double(max(frames.count - 1, 0)), 1)
-        return frames.map { frame in
-            let isActive = frame.index == layout.bottomBarActiveZoneIndex
+        let usableWidth = max(width - gap * Double(max(segmentCount - 1, 0)), 1)
+        return (0..<segmentCount).map { position in
+            let frame = frames[position]
+            let segment = layout.zoneSegments[position]
+            let isActive = segment.index == layout.bottomBarActiveZoneIndex
             let height = isActive ? layout.barHeight * max(style.activeZoneHeightScale, 1) : layout.barHeight
-            let indexOffset = Double(frame.index) * gap
+            let positionOffset = Double(position) * gap
             return IntervalHUDBarZoneRect(
-                index: frame.index,
-                x: usableWidth * frame.start + indexOffset,
+                index: segment.index,
+                x: usableWidth * frame.start + positionOffset,
                 y: (layout.barHeight - height) / 2,
                 width: max(usableWidth * frame.width, 0),
                 height: height

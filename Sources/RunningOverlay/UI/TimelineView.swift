@@ -1246,18 +1246,16 @@ private final class TimelineCanvasNSView: NSView {
     }
 
     private func lapKindColor(_ kind: LapKind) -> NSColor {
-        switch kind {
-        case .warmup:
-            .timelineFitWarmupTeal
-        case .active:
-            .timelineFitRunOrange
-        case .rest:
-            .timelineFitRestBlue
-        case .cooldown:
-            .timelineFitCooldownPurple
-        case .unknown:
-            .timelineFitGreen
+        let palette = IntervalKindColorPreferences.currentSnapshot()
+        if let color = palette.color(for: kind) {
+            return NSColor(
+                srgbRed: CGFloat(color.red),
+                green: CGFloat(color.green),
+                blue: CGFloat(color.blue),
+                alpha: CGFloat(color.alpha)
+            )
         }
+        return .timelineFitGreen
     }
 
     private func lapKindTitle(_ kind: LapKind) -> String {

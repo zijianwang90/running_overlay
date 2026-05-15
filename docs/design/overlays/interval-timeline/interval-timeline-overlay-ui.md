@@ -34,9 +34,9 @@ Baseline layout:
 - Track: one horizontal bar composed of lap segments.
 - Segment labels: primary label above or centered (`WU`, `400m`, `R`, `CD`), duration below when space allows.
 - Current segment: taller, brighter, slightly wider, with border/glow and a progress fill inside the segment.
-- Playhead: small upward marker floating below the overlay bounds and `NOW` label under the marker. It must not reserve layout height or move the rail when toggled.
-- Decoration rail: optional line-and-dot progress decoration below the segment row. `Spacing` controls the vertical distance from the segment row to the rail; dots expose size, color, and alpha, while the rail line exposes width and color.
-- Edge treatment: left/right fade masks plus optional clipped-count pills when many laps are omitted. The runtime order is `WU ··· [xN]` on the left and `[xN] ··· CD` on the right, using square bordered count boxes rather than capsules.
+- Playhead: small upward marker below the rail and `NOW` label under the marker. A marker lane is always reserved in the overlay bounds so the marker stays inside the background and border. Toggling marker visibility must not move the segment row, rail, or marker lane.
+- Decoration rail: optional line-and-dot progress decoration below the segment row and inside the background. `Spacing` controls the vertical distance from the segment row to the rail and expands the background height; dots expose size, color, and alpha, while the rail line exposes width and color.
+- Edge treatment: left/right fade masks plus optional clipped-count pills when many laps are omitted. The runtime order is a compact `WU ··· [xN]` cluster on the left and `[xN] ··· CD` cluster on the right, using square bordered count boxes rather than capsules. Each cluster owns fixed edge space before the segment row begins so pills and center segments never overlap; WU/CD edge context keeps reserved space even when clipped-count pills are disabled.
 
 ## Segment Semantics
 
@@ -124,7 +124,7 @@ Recommended sections:
 
 - **Layout**: shared Position, Scale, Width, Height, Opacity.
 - **Timeline**: Mode (`Centered`, `Full`, `Compressed Sets`), visible neighbors, max full segments, proportional width toggle, min segment width, segment gap.
-- **Current**: emphasis scale, current progress toggle, playhead marker toggle, marker label (`NOW`), marker position (`live progress` / `segment center`).
+- **Current**: emphasis scale, current progress toggle, playhead marker toggle, marker label (`NOW`), marker position (`live progress` / `segment center`), marker color, marker size, marker weight.
 - **Rail**: rail toggle, vertical spacing from segment row, dot size, dot alpha, dot color, line width, line color.
 - **Labels**: primary label mode (`kind`, `distance`, `custom`), duration labels, rep counter, clipped-count pills, typography.
 - **Colors**: per-kind colors for warmup, active, rest, cooldown, unknown; completed opacity; future opacity.
@@ -148,7 +148,7 @@ Recommended sections:
 | Corner radius | 8 pt |
 | Edge fade | on |
 | Current progress | on |
-| Marker | on, label `NOW` |
+| Marker | on, label `NOW`, white 11 pt bold |
 | Rail | on, 5 pt below segments, 5 pt dot size, white dots at 0.36 alpha, slate 5 pt line |
 
 ## Implementation Notes
@@ -164,7 +164,11 @@ Recommended sections:
 - `WU + 6 x 400m/R + CD` shows the complete sequence in Full Schedule and a centered current segment in Centered Window.
 - `1min x25` defaults to a readable centered window, with current segment centered and hidden repetitions summarized at the edges.
 - Current active/rest lap changes do not cause the overlay bounds to jump.
-- Toggling the marker does not change segment geometry or the rail position.
+- Toggling the marker does not change segment geometry, marker lane, or the rail position.
+- The marker triangle and label remain inside the background and border at all supported rail sizes and marker font sizes.
+- WU/CD endpoint labels remain readable with or without clipped-count pills enabled.
+- Overflow pill clusters remain compact but reserve enough width to avoid overlapping the first or last visible segment.
+- Increasing rail spacing keeps the rail inside the background by increasing the rendered background height.
 - The Inspector keeps `Reset` and `Done` fixed at the bottom while sections scroll.
 - Current lap progress advances smoothly at Layer Data FPS.
 - Labels never overlap inside segment blocks; when space is insufficient, labels reduce to kind-only or hide duration before shrinking below readable size.

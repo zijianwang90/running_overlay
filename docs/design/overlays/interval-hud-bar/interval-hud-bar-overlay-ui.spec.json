@@ -127,6 +127,15 @@
       "heartRateZones",
       "paceZones"
     ],
+    "sharedControls": {
+      "spacing": "Vertical gap between HUD content cells and the bottom bar.",
+      "cornerRadius": "Applies to every bottom bar mode; zero supports square progress bars.",
+      "border": {
+        "enabled": true,
+        "controls": ["Color", "Width", "Opacity"],
+        "scope": "Bottom bar strip only, separate from the outer HUD container border."
+      }
+    },
     "lapProgress": {
       "track": "dark neutral",
       "fill": "current phase color",
@@ -235,11 +244,16 @@
         "intensity"
       ],
       "bottomBarSpacing": "Adjusts vertical gap between HUD content cells and the bottom bar. Zero is adjacent; larger values move the row and bar farther apart. Rendered layout preserves spacing before compressing top/bottom padding, then caps spacing only if required to keep the data row and bar inside the background.",
+      "bottomBarBorder": [
+        "enabled",
+        "color",
+        "width",
+        "opacity"
+      ],
       "bottomBarZoneControls": [
         "Active Zone Width",
         "Active Zone Height",
         "Zone Gap",
-        "Corner Radius",
         "Inactive Opacity",
         "Zone Marker",
         "Marker Position",

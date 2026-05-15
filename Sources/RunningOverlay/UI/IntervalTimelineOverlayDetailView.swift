@@ -192,6 +192,23 @@ struct IntervalTimelineOverlayDetailView: View {
                 set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.markerPosition = value } }
             )) { Text($0.label).tag($0) }
         }
+        InspectorDenseSliderRow(
+            label: "Marker Size",
+            value: timelineBinding(\.markerFontSize, current: style),
+            range: 8...22,
+            displayText: "\(Int(style.markerFontSize))"
+        )
+        InspectorDenseRow(label: "Marker Weight") {
+            InspectorDenseSegmented(values: OverlayFontWeight.allCases, selection: Binding(
+                get: { style.markerFontWeight },
+                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.markerFontWeight = value } }
+            )) { Text($0.label).tag($0) }
+        }
+        InspectorDenseRow(label: "Marker Color") {
+            InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: style.markerColor) { color in
+                project.mutateIntervalTimelineStyle(elementID) { $0.markerColor = color }
+            }
+        }
     }
 
     @ViewBuilder

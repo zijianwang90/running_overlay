@@ -74,6 +74,9 @@ struct IntervalTimelineStyle: Equatable, Codable {
     var markerEnabled: Bool
     var markerLabel: String
     var markerPosition: IntervalTimelineMarkerPosition
+    var markerColor: OverlayColor
+    var markerFontSize: Double
+    var markerFontWeight: OverlayFontWeight
     var primaryLabelMode: IntervalTimelineLabelMode
     var durationLabelsEnabled: Bool
     var repCounterEnabled: Bool
@@ -110,8 +113,11 @@ Important rules:
 - The render path must be deterministic from `elapsedTime`, style, and activity data.
 - Do not store transient scroll offset in UI state for export-visible behavior.
 - Overlay bounds must not jump when the current lap changes.
-- The `NOW` marker floats outside the timeline geometry. Enabling or disabling it must not change `contentRect`, segment rects, or the rail position.
+- The `NOW` marker lives in a reserved marker lane below the rail. Enabling or disabling it must not change `contentRect`, segment rects, the marker lane, or the rail position.
+- The marker is visually attached to the rail: it renders just below the rail, remains inside the background and border, and supports marker color, font size, and font weight controls.
 - The rail is decorative and configurable through `railEnabled`, `railSpacing`, `railDotSize`, `railColor`, `railOpacity`, `railLineColor`, and `railLineWidth`. `railSpacing` is the vertical gap from segment blocks to the rail, not the distance between dots.
+- Rail spacing contributes to the rendered background height so the rail remains inside the background.
+- Endpoint context (`WU` / `CD`) reserves edge space whenever hidden laps exist, even if `overflowPillsEnabled` is false. When pills are visible, each compact edge cluster reserves enough width for endpoint label, ellipsis, and square `xN` pill before the visible segment area starts. `overflowPillsEnabled` only controls the hidden-count boxes and ellipses, not endpoint protection.
 - Label fitting should be layout-driven: hide duration labels first, then reduce to short kind labels, then hide non-current labels.
 
 ## Inspector

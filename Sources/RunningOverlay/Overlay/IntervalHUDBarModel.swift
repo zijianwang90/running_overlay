@@ -275,6 +275,10 @@ struct IntervalHUDBarStyle: Equatable, Codable {
     var activeZoneHeightScale: Double
     var zoneSegmentGap: Double
     var bottomBarCornerRadius: Double
+    var bottomBarBorderEnabled: Bool
+    var bottomBarBorderColor: OverlayColor
+    var bottomBarBorderOpacity: Double
+    var bottomBarBorderWidth: Double
     var inactiveZoneOpacity: Double
     var zoneMarkerEnabled: Bool
     var zoneMarkerPosition: IntervalHUDBarZoneMarkerPosition
@@ -312,6 +316,10 @@ struct IntervalHUDBarStyle: Equatable, Codable {
         activeZoneHeightScale: Double,
         zoneSegmentGap: Double,
         bottomBarCornerRadius: Double,
+        bottomBarBorderEnabled: Bool,
+        bottomBarBorderColor: OverlayColor,
+        bottomBarBorderOpacity: Double,
+        bottomBarBorderWidth: Double,
         inactiveZoneOpacity: Double,
         zoneMarkerEnabled: Bool,
         zoneMarkerPosition: IntervalHUDBarZoneMarkerPosition,
@@ -348,6 +356,10 @@ struct IntervalHUDBarStyle: Equatable, Codable {
         self.activeZoneHeightScale = activeZoneHeightScale
         self.zoneSegmentGap = zoneSegmentGap
         self.bottomBarCornerRadius = bottomBarCornerRadius
+        self.bottomBarBorderEnabled = bottomBarBorderEnabled
+        self.bottomBarBorderColor = bottomBarBorderColor
+        self.bottomBarBorderOpacity = bottomBarBorderOpacity
+        self.bottomBarBorderWidth = bottomBarBorderWidth
         self.inactiveZoneOpacity = inactiveZoneOpacity
         self.zoneMarkerEnabled = zoneMarkerEnabled
         self.zoneMarkerPosition = zoneMarkerPosition
@@ -390,6 +402,10 @@ struct IntervalHUDBarStyle: Equatable, Codable {
         activeZoneHeightScale = try container.decodeIfPresent(Double.self, forKey: .activeZoneHeightScale) ?? defaults.activeZoneHeightScale
         zoneSegmentGap = try container.decodeIfPresent(Double.self, forKey: .zoneSegmentGap) ?? defaults.zoneSegmentGap
         bottomBarCornerRadius = try container.decodeIfPresent(Double.self, forKey: .bottomBarCornerRadius) ?? defaults.bottomBarCornerRadius
+        bottomBarBorderEnabled = try container.decodeIfPresent(Bool.self, forKey: .bottomBarBorderEnabled) ?? defaults.bottomBarBorderEnabled
+        bottomBarBorderColor = try container.decodeIfPresent(OverlayColor.self, forKey: .bottomBarBorderColor) ?? defaults.bottomBarBorderColor
+        bottomBarBorderOpacity = try container.decodeIfPresent(Double.self, forKey: .bottomBarBorderOpacity) ?? defaults.bottomBarBorderOpacity
+        bottomBarBorderWidth = try container.decodeIfPresent(Double.self, forKey: .bottomBarBorderWidth) ?? defaults.bottomBarBorderWidth
         inactiveZoneOpacity = try container.decodeIfPresent(Double.self, forKey: .inactiveZoneOpacity) ?? defaults.inactiveZoneOpacity
         zoneMarkerEnabled = try container.decodeIfPresent(Bool.self, forKey: .zoneMarkerEnabled) ?? defaults.zoneMarkerEnabled
         zoneMarkerPosition = try container.decodeIfPresent(IntervalHUDBarZoneMarkerPosition.self, forKey: .zoneMarkerPosition) ?? defaults.zoneMarkerPosition
@@ -431,6 +447,10 @@ struct IntervalHUDBarStyle: Equatable, Codable {
         activeZoneHeightScale: 1,
         zoneSegmentGap: 2,
         bottomBarCornerRadius: 5,
+        bottomBarBorderEnabled: true,
+        bottomBarBorderColor: .white,
+        bottomBarBorderOpacity: 0.12,
+        bottomBarBorderWidth: 1,
         inactiveZoneOpacity: 0.55,
         zoneMarkerEnabled: true,
         zoneMarkerPosition: .above,

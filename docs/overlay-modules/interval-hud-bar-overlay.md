@@ -73,7 +73,7 @@ Inspector sections:
 - `Layout`: shared placement, size, scale, and transform controls.
 - `HUD Bar`: width, height, Rep toggle, Current Training toggle and detail modes, Remaining toggle and primary mode, HR Zone toggle, Zone mode, and HR Drop mode.
 - `Metrics`: ordered add/delete list using `IntervalHUDBarMetricSlot`, with all Numeric Overlay metric types available. Each slot can store a per-metric unit option for numeric metrics that support multiple units.
-- `Bottom Bar`: section-header enable switch, type menu (`Lap Progress`, `HR Zones`, `Pace Zones`), progress mode, Glow toggle, and Glow Intensity.
+- `Bottom Bar`: section-header enable switch, type menu (`Lap Progress`, `HR Zones`, `Pace Zones`), progress mode, spacing, corner radius, independent bottom-bar border controls, Glow toggle, and Glow Intensity.
 - `Typography`: separate font family, size, and weight controls for labels, primary values, phase, phase detail, metric values, and metric units.
 - `Divider`: shared overlay divider fields for all internal vertical separators.
 - `Background`: shared `OverlayBackgroundInspectorModule`.
@@ -118,6 +118,8 @@ Shared Background Padding is honored as Interval HUD Bar content padding: X padd
 Zone modes support an Active Zone Width setting. Equal width keeps Z1-Z5/Z6 evenly divided; expanded width lets the active zone occupy up to 50% of the bar, with inactive zones sharing the remaining space evenly.
 
 Zone modes support Active Zone Height, Zone Gap, and Corner Radius. Active Zone Height raises the active segment up to 2x around the bar centerline without changing layout height; Zone Gap adds visual separation between adjacent segments; Corner Radius can create square, softly rounded, or pill-like progress bars.
+
+Bottom Bar Border is independent from the shared overlay Border section. It applies only to the bottom strip, supports enable, color, width, and opacity settings, and renders consistently in preview and export for lap-progress and zone modes.
 
 Zone modes also expose Inactive Opacity for non-active segments.
 

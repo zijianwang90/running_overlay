@@ -277,6 +277,58 @@ struct IntervalHUDBarOverlayDetailView: View {
                 range: 0...40,
                 displayText: "\(Int(style.bottomBarSpacing.rounded()))"
             )
+            InspectorDenseSliderRow(
+                label: "Corner Radius",
+                value: Binding(
+                    get: { style.bottomBarCornerRadius },
+                    set: { value in
+                        project.mutateIntervalHUDBarStyleContinuous(elementID) {
+                            $0.bottomBarCornerRadius = value.quantizedNumeric(to: 0.5)
+                        }
+                    }
+                ),
+                range: 0...12,
+                displayText: String(format: "%.1f", style.bottomBarCornerRadius)
+            )
+            toggleRow("Border", isOn: style.bottomBarBorderEnabled) { value in
+                project.mutateIntervalHUDBarStyle(elementID) { $0.bottomBarBorderEnabled = value }
+            }
+            if style.bottomBarBorderEnabled {
+                InspectorDenseRow(label: "Border Color") {
+                    InspectorDenseSwatchStrip(
+                        presets: NumericOverlayDetailView.colorPresets,
+                        selected: style.bottomBarBorderColor
+                    ) { color in
+                        project.mutateIntervalHUDBarStyle(elementID) { $0.bottomBarBorderColor = color }
+                    }
+                }
+                InspectorDenseSliderRow(
+                    label: "Border Width",
+                    value: Binding(
+                        get: { style.bottomBarBorderWidth },
+                        set: { value in
+                            project.mutateIntervalHUDBarStyleContinuous(elementID) {
+                                $0.bottomBarBorderWidth = value.quantizedNumeric(to: 0.5)
+                            }
+                        }
+                    ),
+                    range: 0.5...8,
+                    displayText: String(format: "%.1f", style.bottomBarBorderWidth)
+                )
+                InspectorDenseSliderRow(
+                    label: "Border Opacity",
+                    value: Binding(
+                        get: { style.bottomBarBorderOpacity },
+                        set: { value in
+                            project.mutateIntervalHUDBarStyleContinuous(elementID) {
+                                $0.bottomBarBorderOpacity = value.quantizedNumeric(to: 0.05)
+                            }
+                        }
+                    ),
+                    range: 0...1,
+                    displayText: String(format: "%.0f%%", style.bottomBarBorderOpacity * 100)
+                )
+            }
             if style.bottomBarMode == .heartRateZones || style.bottomBarMode == .paceZones {
                 InspectorDenseSliderRow(
                     label: "Active Zone Width",
@@ -316,19 +368,6 @@ struct IntervalHUDBarOverlayDetailView: View {
                     ),
                     range: 0...12,
                     displayText: String(format: "%.1f", style.zoneSegmentGap)
-                )
-                InspectorDenseSliderRow(
-                    label: "Corner Radius",
-                    value: Binding(
-                        get: { style.bottomBarCornerRadius },
-                        set: { value in
-                            project.mutateIntervalHUDBarStyleContinuous(elementID) {
-                                $0.bottomBarCornerRadius = value.quantizedNumeric(to: 0.5)
-                            }
-                        }
-                    ),
-                    range: 0...12,
-                    displayText: String(format: "%.1f", style.bottomBarCornerRadius)
                 )
                 InspectorDenseSliderRow(
                     label: "Inactive Opacity",

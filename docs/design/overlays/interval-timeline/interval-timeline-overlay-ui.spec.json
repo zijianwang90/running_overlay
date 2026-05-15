@@ -14,7 +14,7 @@
     "track": "horizontal sequence of lap segments",
     "currentSegment": "larger, brighter, centered by default, with live progress fill",
     "edgeOverflow": "WU ··· [xN] on the left and [xN] ··· CD on the right, with square bordered hidden-count boxes",
-    "marker": "upward NOW marker floating below the overlay bounds, aligned to live progress or current segment center, without changing rail or segment geometry",
+    "marker": "upward NOW marker in a reserved marker lane below the rail, aligned to live progress or current segment center, without changing rail or segment geometry",
     "railDots": "optional line-and-dot decoration rail; spacing controls vertical distance from segments, dots control size/color/alpha, and the line controls width/color",
     "excludedFromRuntime": ["design-board title badge", "overlay title text", "legend", "mode switch controls"]
   },
@@ -60,6 +60,9 @@
     "markerEnabled": true,
     "markerLabel": "NOW",
     "markerPosition": "liveProgress",
+    "markerColor": "white",
+    "markerFontSize": 11,
+    "markerFontWeight": "bold",
     "railEnabled": true,
     "railSpacing": 5,
     "railDotSize": 5,
@@ -80,7 +83,7 @@
     },
     {
       "title": "Current",
-      "fields": ["currentSegmentHeightScale", "currentProgressEnabled", "markerEnabled", "markerLabel", "markerPosition"]
+      "fields": ["currentSegmentHeightScale", "currentProgressEnabled", "markerEnabled", "markerLabel", "markerPosition", "markerColor", "markerFontSize", "markerFontWeight"]
     },
     {
       "title": "Rail",
@@ -108,7 +111,10 @@
     "Current segment remains visually centered in centeredWindow mode.",
     "Labels never overlap; hide duration before shrinking primary labels below readable size.",
     "For high-repeat workouts such as 1min x25, show nearby context and summarize hidden repetitions at both edges.",
-    "Marker toggling must not move the rail or segment layout.",
+    "Marker toggling must not move the rail, marker lane, or segment layout.",
+    "Marker triangle and label must stay inside the background and border.",
+    "WU/CD endpoint context keeps reserved space even when overflowPillsEnabled is false.",
+    "Rail spacing expands rendered background height so the rail remains inside the background.",
     "Overlay bounds must remain stable when current lap changes."
   ],
   "firstImplementation": {

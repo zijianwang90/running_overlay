@@ -84,24 +84,24 @@ struct IntervalTimelineOverlayView: View {
             if layout.style.overflowPillsEnabled && layout.leftOverflowCount > 0 {
                 ellipsis()
                     .position(
-                        x: layout.contentRect.minX - layout.rect.minX + 58 * element.scale,
+                        x: layout.contentRect.minX - layout.rect.minX + 50 * element.scale,
                         y: layout.contentRect.midY - layout.rect.minY
                     )
                 overflowPill("x\(layout.leftOverflowCount)")
                     .position(
-                        x: layout.contentRect.minX - layout.rect.minX + 105 * element.scale,
+                        x: layout.contentRect.minX - layout.rect.minX + 84 * element.scale,
                         y: layout.contentRect.midY - layout.rect.minY
                     )
             }
             if layout.style.overflowPillsEnabled && layout.rightOverflowCount > 0 {
                 overflowPill("x\(layout.rightOverflowCount)")
                     .position(
-                        x: layout.contentRect.maxX - layout.rect.minX - 86 * element.scale,
+                        x: layout.contentRect.maxX - layout.rect.minX - 84 * element.scale,
                         y: layout.contentRect.midY - layout.rect.minY
                     )
                 ellipsis()
                     .position(
-                        x: layout.contentRect.maxX - layout.rect.minX - 48 * element.scale,
+                        x: layout.contentRect.maxX - layout.rect.minX - 50 * element.scale,
                         y: layout.contentRect.midY - layout.rect.minY
                     )
             }
@@ -174,17 +174,19 @@ struct IntervalTimelineOverlayView: View {
 
     private var markerView: some View {
         let x = layout.markerX - layout.rect.minX
-        let y = layout.rect.height + 16 * element.scale
+        let stackHeight = layout.markerTriangleHeight + 2 * element.scale + layout.markerLabelHeight
+        let y = layout.markerTopY - layout.rect.minY + stackHeight / 2
         return VStack(spacing: 2 * element.scale) {
             IntervalTimelineMarkerTriangle()
-                .fill(Color.white.opacity(0.92))
-                .frame(width: 10 * element.scale, height: 6 * element.scale)
+                .fill(Color(intervalTimeline: layout.style.markerColor).opacity(0.92))
+                .frame(width: 10 * element.scale, height: layout.markerTriangleHeight)
             Text(layout.markerLabel)
-                .font(.custom(element.style.fontName, size: layout.pillFontSize).weight(.bold))
-                .foregroundStyle(Color.white.opacity(0.88))
+                .font(.custom(element.style.fontName, size: layout.style.markerFontSize * element.scale).weight(layout.style.markerFontWeight.swiftUIFontWeight))
+                .foregroundStyle(Color(intervalTimeline: layout.style.markerColor).opacity(0.88))
+                .frame(height: layout.markerLabelHeight)
                 .lineLimit(1)
         }
-        .position(x: x, y: y + 7 * element.scale)
+        .position(x: x, y: y)
     }
 }
 
@@ -214,5 +216,16 @@ private extension View {
                 x: element.style.shadowOffsetX,
                 y: element.style.shadowOffsetY
             )
+    }
+}
+
+private extension OverlayFontWeight {
+    var swiftUIFontWeight: Font.Weight {
+        switch self {
+        case .regular: .regular
+        case .medium: .medium
+        case .semibold: .semibold
+        case .bold: .bold
+        }
     }
 }

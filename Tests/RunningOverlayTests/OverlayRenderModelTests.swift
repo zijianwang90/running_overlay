@@ -481,9 +481,129 @@ struct OverlayRenderModelTests {
         #expect(enabledLayout.contentRect == disabledLayout.contentRect)
         #expect(enabledLayout.railY == disabledLayout.railY)
         #expect(enabledLayout.railDots == disabledLayout.railDots)
+        #expect(enabledLayout.markerTopY == disabledLayout.markerTopY)
         let enabledFirstRect = try #require(enabledLayout.segments.first?.rect)
         let disabledFirstRect = try #require(disabledLayout.segments.first?.rect)
         #expect(enabledFirstRect == disabledFirstRect)
+    }
+
+    @Test func intervalTimelineReservesEdgeContextWhenOverflowPillsAreHidden() {
+        var style = OverlayStyle.default
+        style.intervalTimeline.mode = .centeredWindow
+        style.intervalTimeline.visibleNeighbors = 2
+        style.intervalTimeline.overflowPillsEnabled = false
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: repeatedIntervalActivity(repCount: 25),
+            elapsedTime: 30 + 13 * 120 + 35
+        )
+
+        let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
+
+        #expect(layout.leftOverflowCount > 0)
+        #expect(layout.rightOverflowCount > 0)
+        #expect(layout.segments.first?.rect.minX ?? 0 > layout.contentRect.minX + 44)
+        #expect(layout.segments.last?.rect.maxX ?? 0 < layout.contentRect.maxX - 44)
+    }
+
+    @Test func intervalTimelineOverflowPillClustersDoNotOverlapSegments() {
+        var style = OverlayStyle.default
+        style.intervalTimeline.mode = .centeredWindow
+        style.intervalTimeline.visibleNeighbors = 2
+        style.intervalTimeline.overflowPillsEnabled = true
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: repeatedIntervalActivity(repCount: 25),
+            elapsedTime: 30 + 13 * 120 + 35
+        )
+
+        let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
+
+        #expect(layout.leftOverflowCount > 0)
+        #expect(layout.rightOverflowCount > 0)
+        #expect(layout.segments.first?.rect.minX ?? 0 >= layout.contentRect.minX + 116)
+        #expect(layout.segments.last?.rect.maxX ?? 0 <= layout.contentRect.maxX - 116)
+    }
+
+    @Test func intervalTimelineRailSpacingExpandsBackgroundAndKeepsRailInside() {
+        var compactStyle = OverlayStyle.default
+        compactStyle.intervalTimeline.mode = .centeredWindow
+        compactStyle.intervalTimeline.railSpacing = 2
+
+        var roomyStyle = compactStyle
+        roomyStyle.intervalTimeline.railSpacing = 18
+
+        let compactElement = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: compactStyle)
+        let roomyElement = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: roomyStyle)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: repeatedIntervalActivity(repCount: 25),
+            elapsedTime: 30 + 13 * 120 + 35
+        )
+
+        let compactLayout = OverlayRenderModel.intervalTimelineLayout(for: compactElement, in: context)
+        let roomyLayout = OverlayRenderModel.intervalTimelineLayout(for: roomyElement, in: context)
+
+        #expect(roomyLayout.rect.height > compactLayout.rect.height)
+        #expect(roomyLayout.railY > compactLayout.railY)
+        #expect(roomyLayout.railY + max(roomyStyle.intervalTimeline.railDotSize, roomyStyle.intervalTimeline.railLineWidth) / 2 < roomyLayout.rect.maxY)
+    }
+
+    @Test func intervalTimelineMarkerLaneKeepsMarkerInsideBackground() {
+        var style = OverlayStyle.default
+        style.intervalTimeline.mode = .centeredWindow
+        style.intervalTimeline.visibleNeighbors = 3
+        style.intervalTimeline.markerEnabled = true
+        style.intervalTimeline.markerFontSize = 14
+        style.intervalTimeline.railLineWidth = 8
+        style.intervalTimeline.railDotSize = 8
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: repeatedIntervalActivity(repCount: 25),
+            elapsedTime: 30 + 13 * 120 + 35
+        )
+
+        let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
+        let markerBottom = layout.markerTopY + layout.markerTriangleHeight + 2 * element.scale + layout.markerLabelHeight
+        let railBottom = layout.railY + max(style.intervalTimeline.railDotSize, style.intervalTimeline.railLineWidth) * element.scale / 2
+
+        #expect(layout.markerTopY > railBottom)
+        #expect(markerBottom < layout.rect.maxY - 1)
+    }
+
+    @Test func intervalTimelineStyleDecodesOlderRailAndMarkerFieldsWithDefaults() throws {
+        let data = Data("""
+        {
+          "width": 780,
+          "height": 64,
+          "mode": "centeredWindow",
+          "visibleNeighbors": 3,
+          "maxFullSegments": 12,
+          "segmentHeight": 30,
+          "currentSegmentHeightScale": 1.35,
+          "minSegmentWidth": 54,
+          "segmentGap": 4,
+          "edgeFadeEnabled": true,
+          "currentProgressEnabled": true,
+          "markerEnabled": true,
+          "markerLabel": "NOW",
+          "markerPosition": "liveProgress",
+          "primaryLabelMode": "distance",
+          "durationLabelsEnabled": true,
+          "repCounterEnabled": true,
+          "overflowPillsEnabled": true
+        }
+        """.utf8)
+
+        let style = try JSONDecoder().decode(IntervalTimelineStyle.self, from: data)
+
+        #expect(style.markerColor == .white)
+        #expect(style.markerFontSize == IntervalTimelineStyle.default.markerFontSize)
+        #expect(style.railSpacing == IntervalTimelineStyle.default.railSpacing)
+        #expect(style.railLineWidth == IntervalTimelineStyle.default.railLineWidth)
     }
 
     @MainActor

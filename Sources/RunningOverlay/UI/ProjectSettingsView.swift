@@ -5,6 +5,7 @@ struct ProjectSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showingFontLibrary = false
     @State private var showingHeartRateZones = false
+    @State private var showingIntervalColors = false
 
     var body: some View {
         VStack(spacing: 20) {
@@ -38,6 +39,12 @@ struct ProjectSettingsView: View {
                     SettingsGroupBox {
                         heartRateZonesSection
                     }
+
+                    // MARK: - Intervals
+                    SettingsSectionHeader(title: "Intervals")
+                    SettingsGroupBox {
+                        intervalColorsSection
+                    }
                 }
             }
 
@@ -59,6 +66,32 @@ struct ProjectSettingsView: View {
         .sheet(isPresented: $showingHeartRateZones) {
             HeartRateZonesView()
         }
+        .sheet(isPresented: $showingIntervalColors) {
+            IntervalKindColorsView()
+        }
+    }
+
+    // MARK: - Intervals
+
+    private var intervalColorsSection: some View {
+        SettingsRow(
+            leading: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Interval Colors")
+                        .font(EditorTheme.bodyStrongFont)
+                        .foregroundStyle(EditorTheme.textPrimary)
+                    Text("Set the colors used for Warm Up, Active, Rest, and Cool Down.")
+                        .font(EditorTheme.captionFont)
+                        .foregroundStyle(EditorTheme.textSecondary)
+                }
+            },
+            trailing: {
+                Button("Configure…") {
+                    showingIntervalColors = true
+                }
+                .buttonStyle(EditorSecondaryButtonStyle())
+            }
+        )
     }
 
     // MARK: - Physiology
