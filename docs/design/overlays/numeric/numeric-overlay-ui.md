@@ -1,6 +1,6 @@
 # Numeric Overlay UI Design Spec
 
-Last updated: 2026-04-30 (preset label color decoupled from accent)
+Last updated: 2026-05-15 (minimal: inline unit L/R uses `unitTextAlignment` for vertical cross-axis, not label)
 
 ## Purpose
 
@@ -17,6 +17,7 @@ This spec guides all numeric overlay development, including UI, model mapping, f
 Use this template for these `OverlayElementType` values:
 
 - `heartRate`
+- `heartRateZone` — same Inspector sections as other metrics; adds **Zone colors → Match zone colors for text** (`OverlayStyle.textColorsFollowHeartRateZones`). When enabled, preview and export paint value/label/unit from the active zone’s entry in the shared `HRZonePalette` (see Project Settings → Heart Rate Zones). When disabled, typography behaves like any other numeric overlay. This type is **not** available as an Interval HUD Bar metric slot (the HUD keeps its own `heartRateZone` / `hrDrop` metrics).
 - `pace`
 - `calories`
 - `elapsedTime`
@@ -172,7 +173,7 @@ Controls:
 
 - `Enable Unit` toggle in section header accessory.
 - Position segmented control: `Top`, `Bottom`, `Left`, `Right`.
-- Align segmented control (left / center / right) — backed by `OverlayStyle.unitTextAlignment`. Independent from both `labelTextAlignment` and `textAlignment` (value): the SwiftUI views anchor the outer VStack on `.leading` and let the unit row apply its own `frame(maxWidth: .infinity, alignment:)`. Only takes visual effect when the unit sits on its own line (`unitPosition == .top`/`.bottom` in the stacked metric layouts, or always in the `bigNumber` preset); inline unit positions stay baseline-glued to the value.
+- Align segmented control (left / center / right) — backed by `OverlayStyle.unitTextAlignment`. Independent from both `labelTextAlignment` and `textAlignment` (value): the SwiftUI views anchor the outer VStack on `.leading` and let the unit row apply its own `frame(maxWidth: .infinity, alignment:)`. Only takes visual effect when the unit sits on its own line (`unitPosition == .top`/`.bottom` in the stacked metric layouts, or always in the `bigNumber` preset); inline unit positions stay baseline-glued to the value. In the `minimal` preset, the middle row applies `textAlignment` only to the value’s flexible slot so changing value align does not slide an inline unit with the whole row. When the unit is on the **left or right** of the value, the value+unit cluster uses `unitTextAlignment` for vertical cross-axis alignment so it does not follow the label’s side-anchor setting.
 - Color swatch + Alpha.
 - Unit font family.
 - Unit font size.

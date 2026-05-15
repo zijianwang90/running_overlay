@@ -1,6 +1,43 @@
 # Running Overlay Project Log
 
+## 2026-05-15
+
+### Overlay Pool: HR Zone numeric overlay
+
+- Added `OverlayElementType.heartRateZone` (Overlay Pool → Metrics): same numeric overlay Inspector as other metrics, value is current zone label `Z1`…`Zn` from Project Settings heart-rate zones (or `--` when HR or zone bounds don’t resolve).
+- New style flag `OverlayStyle.textColorsFollowHeartRateZones` with Inspector toggle **Zone colors → Match zone colors for text**. When on, preview (`TextPresetOverlayView`) and export (`OverlayFrameRenderer` preset path + minimal path) tint value/label/unit/accent/foreground swatches from `HRZonePalette` for the active zone; when off, colors follow the normal per-role swatches.
+- `OverlayTextRenderLayout.unifiedTextBaseColor` is computed in `OverlayRenderModel.textLayout` so preview/export share one source of truth. `OverlayValueFormatter` formats the standalone metric; HUD bar metric enum remains separate (unit test excludes `heartRateZone` overlay type from HUD slot parity).
+- Docs: `docs/design/overlays/numeric/numeric-overlay-ui.md`.
+
+### Cursor: Project hooks for `docs/project-log.md`
+
+- Added `.cursor/hooks.json` with `sessionStart` and `postToolUse` (matcher `Write|StrReplace`) running `.cursor/hooks/project-log-reminder.py`.
+- **sessionStart** injects `additional_context` with the standing convention (EN + 中文) to append dated sections to `docs/project-log.md` after substantive edits.
+- **postToolUse** injects a short nudge when writes touch `Sources/`, `Tests/`, `docs/` (except `docs/project-log.md`), `CLAUDE.md`, or `Package.swift`; skips `.cursor/hooks/` to avoid noise while editing the hook itself.
+- Scripts use `hook_event_name` from the common hook payload; `python3` only (no `jq`). Restart Cursor or save `hooks.json` if hooks do not load.
+
+### Numeric Overlay: Unit Align Independent of Value / Label (Minimal + Inspector)
+
+- Clarified product intent after a misread: **unit** alignment should not follow value or label controls — not a second pass on typography value-align semantics beyond what the model already exposes.
+- **`PreviewCanvasView` (`TextPresetOverlayView.metricCoreContent`)**:
+  - Middle row no longer applies `valueStackFrameAlignment` to the whole `HStack` (that slid inline units horizontally whenever value align changed). The value sits in its own `frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)` slot; the row expands with a neutral `.leading` cluster frame.
+  - When the unit is **left or right** of the value, the value+unit group is built as an inner `HStack(alignment: verticalAlignment(unitTextAlignment))`. If a **side label** is present, that cluster is wrapped in an outer `HStack(alignment: labelVAlignment)` for label↔block vertical anchor only. Previously a single `HStack(alignment: labelVAlignment)` held label, unit, and value, so changing the label’s side-anchor also moved the unit vertically.
+- **`NumericOverlayDetailView`**: Unit section Align row uses the same position-aware row title and SF Symbols as the Label section (`alignRowLabel` / `alignSystemImage` keyed on `unitPosition`) so Left/Right positions read as **Anchor** (top/middle/bottom) instead of horizontal text-align icons.
+- **`OverlayStyle.unitTextAlignment`** comment in `OverlayElement.swift` and **`docs/design/overlays/numeric/numeric-overlay-ui.md`** updated to describe top/bottom vs left/right interpretation.
+
 ## 2026-05-14
+
+### Interval Timeline: Scale Centered Segments to Fit
+
+- Fixed segments overflowing the background when `visibleNeighbors` is large. Previously each segment was clamped at `minSegmentWidth`, so once `count * minWidth + gaps > availableWidth` the row spilled past the right edge. Now in `centeredWindow`, after applying `minSegmentWidth` as a preference, if the total exceeds the usable width we scale `currentWidth` and `othersWidth` proportionally so the segments always fit. Tradeoff: very large neighbor counts produce sub-minWidth segments rather than visual overflow.
+- Applied the same scale-to-fit to the `fullSchedule` (duration-proportional) branch: dropped the post-scale `max($0 * factor, min(minWidth, usableWidth/count))` floor that could re-overflow after scaling. Widths now scale freely so they always fit, with `minSegmentWidth` acting as a preferred floor that yields when over capacity.
+- Widened the pill-to-segment gap from 8pt → 12pt so the last visible segment doesn't visually touch the right `xN` pill at modest scales.
+
+### Interval Timeline: Revert Progress Source, Marker Font, Segment Radius
+
+- Reverted the in-segment progress fill back to lap progress (`activity.lapProgress(at:byDistance: false)`). Overall workout position is already conveyed by *which* segment is highlighted plus the `Rep N / total` text; using overall progress for the fill made it advance only a few percent per rep, which was unreadable. The marker (when `liveProgress`) and the fill now both sweep across the current segment as that lap runs.
+- Added `markerFontName: String` to `IntervalTimelineStyle` (empty string = inherit the overlay's font). Wired the SwiftUI marker view and `OverlayFrameRenderer` marker text to consume it, and added a "Marker Font" menu in the Current inspector section (using `NumericOverlayDetailView.fontPresets`) so the marker label can be styled independently from the rest of the overlay.
+- Added `segmentCornerRadius: Double` (default 6) to `IntervalTimelineStyle`. The fill, progress highlight, and current stroke in both the SwiftUI preview and the CoreGraphics export now read this value. Added a "Radius" slider (0–20) at the bottom of the Timeline inspector section.
 
 ### Interval Timeline: Remove Rail
 

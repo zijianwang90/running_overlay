@@ -36,7 +36,7 @@ Timeline segments + activity data + overlays → SwiftUIOverlayVideoExporter (`I
 | `FitData/` | Binary FIT parser, `ActivityTimeline` with interpolated metric sampling |
 | `MediaImport/` | AVFoundation metadata extraction, alignment state machine |
 | `Timeline/` | Multi-track model; clips store `TimeInterval` offsets, not pixels |
-| `Overlay/` | `OverlayElement` (13 types), styles, templates, `RunningGaugeModel`, `RouteMapOverlay` |
+| `Overlay/` | `OverlayElement` (numeric + chart/map types), styles, templates, `RunningGaugeModel`, `RouteMapOverlay` |
 | `Export/` | `SwiftUIOverlayVideoExporter` (shared SwiftUI component rasterization + H.265/ProRes MOV encoding) |
 | `UI/` | SwiftUI views; AppKit self-drawing view for the timeline canvas |
 
@@ -69,6 +69,10 @@ Conversions between axes are always explicit. Pixel positions are never stored; 
 ### Testing
 
 Uses Swift Testing (`@Test` macro, `#expect`). Test files are in `Tests/RunningOverlayTests/`. Tests must not depend on external files unless gated on `RUNNING_OVERLAY_FIT_SAMPLE`.
+
+### Cursor project hooks
+
+- `.cursor/hooks.json` runs `sessionStart` + `postToolUse` (`Write|StrReplace`) to remind agents to update `docs/project-log.md` after substantive edits. See `docs/project-log.md` (2026-05-15) for behavior.
 
 ## Documentation
 

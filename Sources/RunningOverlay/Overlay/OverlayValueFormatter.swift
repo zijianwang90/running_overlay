@@ -78,6 +78,26 @@ enum OverlayValueFormatter {
                 value: activity.heartRate(at: elapsedTime).map(String.init) ?? "--",
                 unit: "bpm"
             )
+        case .heartRateZone:
+            let snapshot = HeartRateZonePreferences.currentSnapshot()
+            let visibleZones = Array(snapshot.zones.prefix(snapshot.zoneCount))
+            let zoneText: String = {
+                guard let hr = activity.heartRate(at: elapsedTime) else { return "--" }
+                if let idx = visibleZones.firstIndex(where: { zone in
+                    let minHR = zone.minHR ?? Int.min
+                    let maxHR = zone.maxHR ?? Int.max
+                    return hr >= minHR && hr <= maxHR && (zone.minHR != nil || zone.maxHR != nil)
+                }) {
+                    return "Z\(idx + 1)"
+                }
+                return "--"
+            }()
+            return OverlayValueComponents(
+                label: resolvedLabel("HR Zone"),
+                shortLabel: "ZONE",
+                value: zoneText,
+                unit: ""
+            )
         case .pace:
             let pace = activity.pace(at: elapsedTime).map { formatPaceComponents($0, option: unitOption) }
             return OverlayValueComponents(

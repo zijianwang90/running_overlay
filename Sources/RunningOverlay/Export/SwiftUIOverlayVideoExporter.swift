@@ -127,7 +127,7 @@ struct ExportRenderPlan: Equatable {
 
     static func isNumericBatchCandidate(_ element: OverlayElement) -> Bool {
         switch element.type {
-        case .heartRate, .pace, .calories, .elapsedTime, .realTime, .distance, .elevation, .cadence, .power, .verticalOscillation, .groundContactTime, .strideLength, .verticalRatio, .groundContactBalance, .temperature, .grade:
+        case .heartRate, .heartRateZone, .pace, .calories, .elapsedTime, .realTime, .distance, .elevation, .cadence, .power, .verticalOscillation, .groundContactTime, .strideLength, .verticalRatio, .groundContactBalance, .temperature, .grade:
             true
         default:
             false

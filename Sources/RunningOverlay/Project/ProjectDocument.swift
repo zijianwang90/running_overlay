@@ -458,6 +458,9 @@ final class ProjectDocument: ObservableObject {
         style.labelFontName = defaultFont
         style.unitFontName = defaultFont
         style.unitOption = type.defaultUnitOption
+        if type == .heartRateZone {
+            style.showUnit = false
+        }
         if type == .routeMap {
             // Route Style preset describes the polyline appearance only; map
             // visibility is driven by `routeMapBackgroundStyle` (see
@@ -2032,6 +2035,12 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.showUnit = showUnit
     }
 
+    func setOverlayTextColorsFollowHeartRateZones(_ elementID: OverlayElement.ID, _ enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.textColorsFollowHeartRateZones = enabled
+    }
+
     func setOverlayCustomLabel(_ elementID: OverlayElement.ID, label: String) {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
@@ -2348,6 +2357,9 @@ final class ProjectDocument: ObservableObject {
         let type = overlayLayout.elements[index].type
         var style = OverlayStyle.default
         style.unitOption = type.defaultUnitOption
+        if type == .heartRateZone {
+            style.showUnit = false
+        }
         if type == .routeMap {
             style.routeMapPreset = .gradient
             style.routeMapProvider = .mapKit

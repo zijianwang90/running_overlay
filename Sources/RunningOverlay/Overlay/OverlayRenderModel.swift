@@ -21,6 +21,16 @@ enum OverlayRenderModel {
         let fontSize = context.scaled(element.style.fontSize * element.scale)
         let metrics = textMetrics(for: element.style.textPreset, fontSize: fontSize, scale: element.scale, context: context, element: element)
         let components = OverlayValueFormatter.components(for: element, activity: context.activity, elapsedTime: context.elapsedTime)
+        let unifiedTextBaseColor: OverlayColor? = {
+            guard element.type == .heartRateZone,
+                  element.style.textColorsFollowHeartRateZones else { return nil }
+            let snapshot = HeartRateZonePreferences.currentSnapshot()
+            let visibleZones = Array(snapshot.zones.prefix(snapshot.zoneCount))
+            guard let hr = context.activity.heartRate(at: context.elapsedTime),
+                  let zoneIndex = resolvedHeartRateZoneIndex(heartRate: hr, zones: visibleZones)
+            else { return nil }
+            return HRZonePalette.overlayColor(forIndex: zoneIndex)
+        }()
         return OverlayTextRenderLayout(
             value: OverlayValueFormatter.value(for: element, activity: context.activity, elapsedTime: context.elapsedTime),
             components: components,
@@ -50,7 +60,8 @@ enum OverlayRenderModel {
             dividerEnabled: element.style.dividerEnabled,
             dividerColor: element.style.dividerColor,
             dividerThickness: context.scaled(element.style.dividerThickness * element.scale),
-            dividerOpacity: element.style.dividerOpacity
+            dividerOpacity: element.style.dividerOpacity,
+            unifiedTextBaseColor: unifiedTextBaseColor
         )
     }
 
@@ -504,7 +515,7 @@ enum OverlayRenderModel {
         let pillCenterInsetUnscaled = 64.0
         let pillWidthUnscaled = 36.0
         let pillHeightUnscaled = 26.0
-        let pillToSegmentGapUnscaled = 8.0
+        let pillToSegmentGapUnscaled = 12.0
         let ghostInset = context.scaled(ghostEdgeInsetUnscaled * element.scale)
         let ellipsisInset = context.scaled(ellipsisInsetUnscaled * element.scale)
         let pillInset = context.scaled(pillCenterInsetUnscaled * element.scale)
@@ -528,8 +539,7 @@ enum OverlayRenderModel {
         let normalHeight = normalHeightCap
         let currentHeight = currentHeightCap
         let minWidth = context.scaled(style.minSegmentWidth * element.scale)
-        let activityDuration = max(context.activity.duration, 0.0001)
-        let currentProgress = min(max(t / activityDuration, 0), 1)
+        let currentProgress = clampedProgress(context.activity.lapProgress(at: t, byDistance: false))
         let currentVisibleOffset = currentIndex.flatMap { visibleRange.contains($0) ? $0 - visibleRange.lowerBound : nil }
 
         let segmentWidths = intervalTimelineSegmentWidths(
@@ -620,12 +630,21 @@ enum OverlayRenderModel {
         if centered {
             let fraction = min(max(style.currentSegmentWidthFraction, 0.1), 0.6)
             if let currentOffset, laps.indices.contains(currentOffset), laps.count > 1 {
-                let currentWidth = max(minWidth, usableWidth * fraction)
-                let remaining = max(usableWidth - currentWidth, Double(laps.count - 1) * minWidth)
-                let othersWidth = max(minWidth, remaining / Double(laps.count - 1))
+                var currentWidth = max(minWidth, usableWidth * fraction)
+                var othersWidth = max(minWidth, (usableWidth - currentWidth) / Double(laps.count - 1))
+                let total = currentWidth + othersWidth * Double(laps.count - 1)
+                if total > usableWidth {
+                    let scale = usableWidth / total
+                    currentWidth *= scale
+                    othersWidth *= scale
+                }
                 return laps.indices.map { $0 == currentOffset ? currentWidth : othersWidth }
             }
-            let base = max(minWidth, usableWidth / Double(laps.count))
+            var base = max(minWidth, usableWidth / Double(laps.count))
+            let total = base * Double(laps.count)
+            if total > usableWidth {
+                base = usableWidth / Double(laps.count)
+            }
             return Array(repeating: base, count: laps.count)
         }
 
@@ -634,7 +653,7 @@ enum OverlayRenderModel {
         let sum = widths.reduce(0, +)
         if sum > usableWidth {
             let factor = usableWidth / sum
-            widths = widths.map { max($0 * factor, min(minWidth, usableWidth / Double(laps.count))) }
+            widths = widths.map { $0 * factor }
         }
         return widths
     }
@@ -1510,6 +1529,11 @@ struct OverlayTextRenderLayout {
     var dividerColor: OverlayColor
     var dividerThickness: Double
     var dividerOpacity: Double
+    /// When non-nil, numeric preset views and export use this RGB for text
+    /// (per-role opacity still applies) instead of `valueColor` / `labelColor` /
+    /// `unitColor`. Set for `.heartRateZone` when zone-colored text is enabled
+    /// and a zone resolves for the current HR.
+    var unifiedTextBaseColor: OverlayColor?
 }
 
 struct OverlayDistanceTimelineRenderLayout {

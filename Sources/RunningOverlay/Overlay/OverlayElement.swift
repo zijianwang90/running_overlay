@@ -30,6 +30,10 @@ enum OverlayPasteCategory: String, Equatable {
 
 enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     case heartRate
+    /// Current HR zone label (`Z1`…`Zn`) from Project Settings heart-rate zones.
+    /// Same numeric overlay styling as `.heartRate` plus an optional mode that
+    /// tints all text with the active zone’s palette color.
+    case heartRateZone
     case pace
     case calories
     case elapsedTime
@@ -61,6 +65,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     var label: String {
         switch self {
         case .heartRate: "Heart Rate"
+        case .heartRateZone: "HR Zone"
         case .pace: "Pace"
         case .calories: "Calories"
         case .elapsedTime: "Elapsed Time"
@@ -113,7 +118,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     /// See `docs/design/overlays/numeric/numeric-overlay-ui.md`.
     var isNumericOverlay: Bool {
         switch self {
-        case .heartRate, .pace, .calories, .elapsedTime, .realTime,
+        case .heartRate, .heartRateZone, .pace, .calories, .elapsedTime, .realTime,
              .distance, .elevation, .cadence, .power,
              .verticalOscillation, .groundContactTime, .strideLength,
              .verticalRatio, .groundContactBalance, .temperature, .grade:
@@ -222,6 +227,7 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
     static func options(for type: OverlayElementType) -> [OverlayUnitOption] {
         switch type {
         case .heartRate: [.bpm]
+        case .heartRateZone: []
         case .pace: [.paceMetric, .paceImperial, .paceRowing]
         case .distance: [.distanceKilometers, .distanceMiles, .distanceMeters]
         case .elevation: [.elevationMeters, .elevationFeet]
@@ -244,7 +250,10 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
     }
 
     static func defaultOption(for type: OverlayElementType) -> OverlayUnitOption {
-        options(for: type).first ?? .bpm
+        if let first = options(for: type).first {
+            return first
+        }
+        return .bpm
     }
 }
 
@@ -368,11 +377,13 @@ struct OverlayStyle: Equatable, Codable {
     /// left or right of the value it controls vertical alignment
     /// (top/middle/bottom). Three discrete options; reuses `OverlayTextAlignment`.
     var labelTextAlignment: OverlayTextAlignment
-    /// Alignment of the numeric overlay unit text. Only takes effect when the
-    /// unit sits on its own row (currently `.bottom`/`.top` unit positions and
-    /// the `bigNumber` preset where unit is rendered under the value); inline
-    /// unit positions stay glued to the value baseline. Reuses
-    /// `OverlayTextAlignment` (left/center/right).
+    /// Alignment of the numeric overlay unit text. Interpreted in the context
+    /// of `unitPosition`: when the unit sits above/below the value it controls
+    /// horizontal alignment on its own row; when it sits to the left or right
+    /// of the value (minimal preset) it controls vertical alignment of the unit
+    /// relative to the value in that row. Reuses `OverlayTextAlignment`. Inline
+    /// positions still baseline-lock to the value for horizontal layout; the
+    /// `bigNumber` preset keeps the unit under the value with horizontal align.
     var unitTextAlignment: OverlayTextAlignment
     var accentColor: OverlayColor
     /// Numeric overlay divider — the decorative line that appears between the
@@ -404,6 +415,10 @@ struct OverlayStyle: Equatable, Codable {
     var glowEnabled: Bool
     var glowColor: OverlayColor
     var glowIntensity: Double
+    /// When true and the overlay is `.heartRateZone`, value/label/unit text
+    /// paint from `HRZonePalette` for the active zone instead of the
+    /// per-role swatches. Ignored for all other overlay types.
+    var textColorsFollowHeartRateZones: Bool
 
     /// Distance Timeline configuration. Used only by `.distanceTimeline`.
     /// See `docs/overlay-modules/distance-timeline-overlay.md`.
@@ -517,6 +532,7 @@ struct OverlayStyle: Equatable, Codable {
         glowEnabled: false,
         glowColor: .white,
         glowIntensity: 0,
+        textColorsFollowHeartRateZones: false,
         distanceTimeline: .default,
         elevationChart: .default,
         gauge: RunningGaugeStyle.default,
@@ -608,6 +624,7 @@ struct OverlayStyle: Equatable, Codable {
         glowEnabled: Bool = false,
         glowColor: OverlayColor = .white,
         glowIntensity: Double = 0,
+        textColorsFollowHeartRateZones: Bool = false,
         distanceTimeline: DistanceTimelineStyle = .default,
         elevationChart: ElevationChartStyle = .default,
         gauge: RunningGaugeStyle = .default,
@@ -697,6 +714,7 @@ struct OverlayStyle: Equatable, Codable {
         self.glowEnabled = glowEnabled
         self.glowColor = glowColor
         self.glowIntensity = glowIntensity
+        self.textColorsFollowHeartRateZones = textColorsFollowHeartRateZones
         self.distanceTimeline = distanceTimeline
         self.elevationChart = elevationChart
         self.gauge = gauge
@@ -798,6 +816,7 @@ struct OverlayStyle: Equatable, Codable {
         glowEnabled = try container.decodeIfPresent(Bool.self, forKey: .glowEnabled) ?? Self.default.glowEnabled
         glowColor = try container.decodeIfPresent(OverlayColor.self, forKey: .glowColor) ?? Self.default.glowColor
         glowIntensity = min(max(try container.decodeIfPresent(Double.self, forKey: .glowIntensity) ?? Self.default.glowIntensity, 0), 1)
+        textColorsFollowHeartRateZones = try container.decodeIfPresent(Bool.self, forKey: .textColorsFollowHeartRateZones) ?? Self.default.textColorsFollowHeartRateZones
         distanceTimeline = try container.decodeIfPresent(DistanceTimelineStyle.self, forKey: .distanceTimeline) ?? .default
         elevationChart = try container.decodeIfPresent(ElevationChartStyle.self, forKey: .elevationChart) ?? .default
         if let storedGauge = try container.decodeIfPresent(RunningGaugeStyle.self, forKey: .gauge) {

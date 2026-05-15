@@ -46,6 +46,33 @@ struct OverlayValueFormatterTests {
         #expect(OverlayValueFormatter.formatDuration(3661) == "01:01:01")
     }
 
+    @Test func formatsHeartRateZoneComponents() {
+        let startDate = Date(timeIntervalSince1970: 0)
+        let activity = ActivityTimeline(
+            startDate: startDate,
+            duration: 60,
+            distanceMeters: 1000,
+            records: [
+                ActivityRecord(
+                    elapsedTime: 0,
+                    timestamp: startDate,
+                    distanceMeters: 0,
+                    heartRate: 120,
+                    paceSecondsPerKilometer: nil,
+                    elevationMeters: nil,
+                    cadence: nil,
+                    powerWatts: nil,
+                    calories: nil
+                )
+            ],
+            laps: []
+        )
+        let components = OverlayValueFormatter.components(for: .heartRateZone, activity: activity, elapsedTime: 0)
+        #expect(components.label == "HR Zone")
+        #expect(components.shortLabel == "ZONE")
+        #expect(components.unit == "")
+    }
+
     @Test func numericOverlayHonorsUnitOption() {
         let startDate = Date(timeIntervalSince1970: 0)
         let activity = ActivityTimeline(

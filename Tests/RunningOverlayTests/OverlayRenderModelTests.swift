@@ -457,7 +457,7 @@ struct OverlayRenderModelTests {
 
     @Test func intervalHUDBarMetricsIncludeAllNumericOverlayTypes() {
         let intervalMetricTypes = Set(IntervalHUDBarMetric.numericCases.compactMap(\.elementType))
-        let numericTypes = Set(OverlayElementType.allCases.filter(\.isNumericOverlay))
+        let numericTypes = Set(OverlayElementType.allCases.filter { $0.isNumericOverlay && $0 != .heartRateZone })
 
         #expect(intervalMetricTypes == numericTypes)
         #expect(!IntervalHUDBarMetric.numericCases.contains(.heartRateZone))

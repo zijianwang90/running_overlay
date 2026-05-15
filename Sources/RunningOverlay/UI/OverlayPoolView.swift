@@ -86,6 +86,7 @@ struct OverlayTileInfo: Identifiable {
 
     static let all: [OverlayTileInfo] = [
         OverlayTileInfo(type: .heartRate, hint: "bpm", systemImage: "heart", category: .metrics),
+        OverlayTileInfo(type: .heartRateZone, hint: "Z1–Z6", systemImage: "heart.text.square.fill", category: .metrics),
         OverlayTileInfo(type: .pace, hint: "min/km", systemImage: "timer", category: .metrics),
         OverlayTileInfo(type: .calories, hint: "kcal", systemImage: "flame", category: .metrics),
         OverlayTileInfo(type: .elapsedTime, hint: "duration", systemImage: "clock", category: .metrics),

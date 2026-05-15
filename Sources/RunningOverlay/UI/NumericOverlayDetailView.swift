@@ -60,7 +60,9 @@ struct NumericOverlayDetailView: View {
             .menuStyle(.borderlessButton)
             .frame(height: NumericTokens.controlHeight)
         }
-        if units.count > 1 {
+        if units.isEmpty {
+            EmptyView()
+        } else if units.count > 1 {
             InspectorDenseRow(label: "Units") {
                 Menu {
                     ForEach(units) { unit in
@@ -83,6 +85,18 @@ struct NumericOverlayDetailView: View {
         } else if let only = units.first {
             InspectorDenseRow(label: "Units") {
                 InspectorDenseReadout(text: only.label)
+            }
+        }
+        if element.type == .heartRateZone {
+            InspectorDenseRow(label: "Zone colors") {
+                Toggle(
+                    "Match zone colors for text",
+                    isOn: Binding(
+                        get: { element.style.textColorsFollowHeartRateZones },
+                        set: { project.setOverlayTextColorsFollowHeartRateZones(elementID, $0) }
+                    )
+                )
+                .toggleStyle(.checkbox)
             }
         }
         InspectorDenseRow(label: "Format Preview") {
@@ -273,15 +287,15 @@ struct NumericOverlayDetailView: View {
             .disabled(!isEnabled)
             .opacity(isEnabled ? 1 : 0.5)
         }
-        // Unit alignment is independent from the label and value rows. Only
-        // applies when the unit sits on its own line — inline unit positions
-        // stay baseline-glued to the value.
-        InspectorDenseRow(label: "Align") {
+        // Unit alignment is independent from label and value. Top/bottom: own
+        // row horizontal align. Left/right of value: vertical align in the row
+        // (minimal preset); baseline still ties unit to the value horizontally.
+        InspectorDenseRow(label: alignRowLabel(for: element.style.unitPosition)) {
             InspectorDenseSegmented(values: OverlayTextAlignment.allCases, selection: Binding(
                 get: { element.style.unitTextAlignment },
                 set: { project.setOverlayUnitTextAlignment(elementID, alignment: $0) }
             )) { alignment in
-                Image(systemName: alignment.systemImage)
+                Image(systemName: alignSystemImage(for: alignment, position: element.style.unitPosition))
             }
             .disabled(!isEnabled)
             .opacity(isEnabled ? 1 : 0.5)
@@ -876,6 +890,7 @@ extension OverlayElementType {
     var numericIcon: String {
         switch self {
         case .heartRate: "heart"
+        case .heartRateZone: "heart.text.square.fill"
         case .pace: "speedometer"
         case .calories: "flame"
         case .elapsedTime: "clock"

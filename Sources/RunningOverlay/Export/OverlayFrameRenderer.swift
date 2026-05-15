@@ -127,15 +127,25 @@ struct OverlayFrameRenderer {
 
     private static func renderTextElement(_ element: OverlayElement, renderContext: OverlayRenderContext, cache: inout OverlayRenderCache) {
         let renderLayout = OverlayRenderModel.textLayout(for: element, in: renderContext)
+        var drawElement = element
+        if element.type == .heartRateZone,
+           element.style.textColorsFollowHeartRateZones,
+           let base = renderLayout.unifiedTextBaseColor {
+            drawElement.style.foregroundColor = base
+            drawElement.style.valueColor = base
+            drawElement.style.labelColor = base
+            drawElement.style.unitColor = base
+            drawElement.style.accentColor = base
+        }
         guard renderLayout.preset == .minimal else {
-            renderPresetTextElement(element, renderLayout: renderLayout, renderContext: renderContext)
+            renderPresetTextElement(drawElement, renderLayout: renderLayout, renderContext: renderContext)
             return
         }
 
-        let layout = cache.textLayout(for: element, text: renderLayout.value, fontSize: renderLayout.fontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY)
+        let layout = cache.textLayout(for: drawElement, text: renderLayout.value, fontSize: renderLayout.fontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY)
         let textSize = layout.size
         let rect = OverlayRenderModel.centeredRect(
-            for: element,
+            for: drawElement,
             contentSize: CGSize(width: renderLayout.horizontalPadding * 2, height: renderLayout.verticalPadding * 2),
             textSize: textSize,
             context: renderContext
@@ -143,7 +153,7 @@ struct OverlayFrameRenderer {
 
         drawSupersampledText(
             renderLayout.value,
-            for: element,
+            for: drawElement,
             fontSize: renderLayout.fontSize,
             shadowRadius: renderLayout.shadowRadius,
             shadowOffsetY: renderLayout.shadowOffsetY,
@@ -159,10 +169,20 @@ struct OverlayFrameRenderer {
     }
 
     private static func renderPresetTextElement(
-        _ element: OverlayElement,
+        _ incoming: OverlayElement,
         renderLayout: OverlayTextRenderLayout,
         renderContext: OverlayRenderContext
     ) {
+        var element = incoming
+        if incoming.type == .heartRateZone,
+           incoming.style.textColorsFollowHeartRateZones,
+           let base = renderLayout.unifiedTextBaseColor {
+            element.style.valueColor = base
+            element.style.labelColor = base
+            element.style.unitColor = base
+            element.style.foregroundColor = base
+            element.style.accentColor = base
+        }
         let colors = TextPresetColors(
             foreground: NSColor(element.style.foregroundColor),
             background: NSColor.black.withAlphaComponent(element.style.backgroundOpacity),
@@ -1645,11 +1665,11 @@ struct OverlayFrameRenderer {
         }
 
         for segment in layout.segments {
-            drawRoundedRect(segment.rect, color: NSColor(segment.color).withAlphaComponent(segment.opacity), cornerRadius: 6 * element.scale)
+            drawRoundedRect(segment.rect, color: NSColor(segment.color).withAlphaComponent(segment.opacity), cornerRadius: layout.style.segmentCornerRadius * element.scale)
             if segment.isCurrent && layout.style.currentProgressEnabled {
                 let progressRect = CGRect(x: segment.rect.minX, y: segment.rect.minY, width: segment.rect.width * layout.currentProgress, height: segment.rect.height)
-                drawRoundedRect(progressRect, color: NSColor.white.withAlphaComponent(0.30), cornerRadius: 6 * element.scale)
-                strokeRoundedRect(segment.rect, color: NSColor.white.withAlphaComponent(0.74), cornerRadius: 6 * element.scale, lineWidth: 1.4 * element.scale)
+                drawRoundedRect(progressRect, color: NSColor.white.withAlphaComponent(0.30), cornerRadius: layout.style.segmentCornerRadius * element.scale)
+                strokeRoundedRect(segment.rect, color: NSColor.white.withAlphaComponent(0.74), cornerRadius: layout.style.segmentCornerRadius * element.scale, lineWidth: 1.4 * element.scale)
             }
 
             let lineCount = segment.isCurrent && layout.repText != nil ? 3 : (layout.style.durationLabelsEnabled ? 2 : 1)
@@ -1700,7 +1720,7 @@ struct OverlayFrameRenderer {
                     width: 64 * element.scale,
                     height: layout.markerLabelHeight
                 ),
-                fontName: element.style.fontName,
+                fontName: layout.style.markerFontName.isEmpty ? element.style.fontName : layout.style.markerFontName,
                 fontSize: layout.style.markerFontSize * element.scale,
                 weight: layout.style.markerFontWeight,
                 color: NSColor(layout.style.markerColor).withAlphaComponent(0.88),

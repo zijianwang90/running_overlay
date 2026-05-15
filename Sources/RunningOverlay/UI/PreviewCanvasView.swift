@@ -1217,6 +1217,7 @@ struct TextPresetOverlayView: View {
                 VStack(alignment: .leading, spacing: layout.verticalPadding * 0.7) {
                     Text(layout.components.label)
                         .font(labelFont)
+                        .foregroundStyle(labelTextColor)
                     HStack(alignment: .firstTextBaseline, spacing: layout.horizontalPadding * 0.35) {
                         valueText
                         unitText
@@ -1232,11 +1233,13 @@ struct TextPresetOverlayView: View {
                 VStack(spacing: layout.verticalPadding * 0.65) {
                     Text(layout.components.shortLabel)
                         .font(labelFont.weight(.bold))
+                        .foregroundStyle(labelTextColor)
                     divider
                     valueText
                     divider
                     unitText
                         .font(labelFont.weight(.bold))
+                        .foregroundStyle(unitTextColor)
                 }
                 .frame(minWidth: layout.fontSize * 3.2)
                 .padding(.horizontal, layout.horizontalPadding)
@@ -1267,7 +1270,7 @@ struct TextPresetOverlayView: View {
                 serifEditorialView
             }
         }
-        .foregroundStyle(Color(element.style.foregroundColor))
+        .foregroundStyle(overlayGroupForegroundColor)
         .monospacedDigit()
         .overlayGenericBorder(element: element, cornerRadius: layout.cornerRadius)
         .overlayForegroundEffects(element: element, shadowRadius: layout.shadowRadius)
@@ -1346,7 +1349,7 @@ struct TextPresetOverlayView: View {
                     Text(layout.components.label.uppercased())
                         .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.medium))
                         .tracking(layout.labelFontSize * 0.10)
-                        .foregroundStyle(accent.opacity(0.92))
+                        .foregroundStyle(labelTextColor)
                         .multilineTextAlignment(labelTextAlignmentSwiftUI)
                     if layout.dividerEnabled {
                         Rectangle()
@@ -1425,7 +1428,7 @@ struct TextPresetOverlayView: View {
             if element.style.showUnit, !layout.components.unit.isEmpty {
                 Text(layout.components.unit)
                     .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.semibold))
-                    .foregroundStyle(accent.opacity(0.95))
+                    .foregroundStyle(unitTextColor)
                     .shadow(color: accent.opacity(0.65), radius: layout.fontSize * 0.24)
             }
         }
@@ -1527,19 +1530,19 @@ struct TextPresetOverlayView: View {
                 Text(layout.components.label.uppercased())
                     .font(.custom(digitalFont, size: layout.labelFontSize))
                     .tracking(layout.labelFontSize * 0.18)
-                    .foregroundStyle(accent.opacity(0.90))
+                    .foregroundStyle(labelTextColor)
             }
             HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.14) {
                 Text(layout.components.value)
                     .font(.custom(digitalFont, size: layout.fontSize))
                     .tracking(layout.fontSize * 0.020)
-                    .foregroundStyle(accent.opacity(element.style.valueOpacity))
+                    .foregroundStyle(valueTextColor)
                     .shadow(color: accent.opacity(0.85), radius: layout.fontSize * 0.18)
                     .shadow(color: accent.opacity(0.45), radius: layout.fontSize * 0.42)
                 if element.style.showUnit, !layout.components.unit.isEmpty {
                     Text(layout.components.unit)
                         .font(.custom(digitalFont, size: layout.unitFontSize))
-                        .foregroundStyle(accent.opacity(0.95))
+                        .foregroundStyle(unitTextColor)
                         .shadow(color: accent.opacity(0.55), radius: layout.fontSize * 0.14)
                 }
             }
@@ -1564,17 +1567,21 @@ struct TextPresetOverlayView: View {
                 Text(layout.components.label.uppercased())
                     .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.regular))
                     .tracking(layout.labelFontSize * 0.12)
-                    .foregroundStyle(foreground.opacity(0.28))
+                    .foregroundStyle(heartRateZoneTextPaletteActive ? labelTextColor : foreground.opacity(0.28))
             }
             HStack(alignment: .firstTextBaseline, spacing: layout.fontSize * 0.18) {
                 Text(layout.components.value)
                     .font(.custom(element.style.fontName, size: layout.fontSize).weight(.light))
                     .tracking(-layout.fontSize * 0.02)
-                    .foregroundStyle(Color(element.style.valueColor).opacity(element.style.valueOpacity * 0.88))
+                    .foregroundStyle(
+                        heartRateZoneTextPaletteActive
+                            ? valueTextColor
+                            : Color(element.style.valueColor).opacity(element.style.valueOpacity * 0.88)
+                    )
                 if element.style.showUnit, !layout.components.unit.isEmpty {
                     Text(layout.components.unit)
                         .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.regular))
-                        .foregroundStyle(foreground.opacity(0.30))
+                        .foregroundStyle(heartRateZoneTextPaletteActive ? unitTextColor : foreground.opacity(0.30))
                 }
             }
         }
@@ -1593,7 +1600,7 @@ struct TextPresetOverlayView: View {
                     Text(layout.components.label.uppercased())
                         .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.regular))
                         .tracking(layout.labelFontSize * 0.12)
-                        .foregroundStyle(foreground.opacity(0.32))
+                        .foregroundStyle(heartRateZoneTextPaletteActive ? labelTextColor : foreground.opacity(0.32))
                 }
                 Text(layout.components.value)
                     .font(.custom(element.style.fontName, size: layout.fontSize).weight(.bold))
@@ -1602,7 +1609,7 @@ struct TextPresetOverlayView: View {
                 if element.style.showUnit, !layout.components.unit.isEmpty {
                     Text(layout.components.unit)
                         .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.regular))
-                        .foregroundStyle(foreground.opacity(0.38))
+                        .foregroundStyle(heartRateZoneTextPaletteActive ? unitTextColor : foreground.opacity(0.38))
                 }
             }
         }
@@ -1617,7 +1624,7 @@ struct TextPresetOverlayView: View {
                 Text(layout.components.label.uppercased())
                     .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.bold))
                     .tracking(layout.labelFontSize * 0.16)
-                    .foregroundStyle(accent)
+                    .foregroundStyle(heartRateZoneTextPaletteActive ? labelTextColor : accent)
             }
             Text(layout.components.value)
                 .font(.custom(element.style.fontName, size: layout.fontSize).weight(.heavy))
@@ -1633,7 +1640,7 @@ struct TextPresetOverlayView: View {
                         .frame(width: max(layout.fontSize * 0.14, 4), height: max(layout.fontSize * 0.14, 4))
                     Text(layout.components.unit)
                         .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.regular))
-                        .foregroundStyle(foreground.opacity(0.35))
+                        .foregroundStyle(heartRateZoneTextPaletteActive ? unitTextColor : foreground.opacity(0.35))
                 }
             }
         }
@@ -1648,12 +1655,12 @@ struct TextPresetOverlayView: View {
                 Text(layout.components.label.uppercased())
                     .font(.system(size: layout.labelFontSize, weight: .regular))
                     .tracking(layout.labelFontSize * 0.2)
-                    .foregroundStyle(foreground.opacity(0.30))
+                    .foregroundStyle(heartRateZoneTextPaletteActive ? labelTextColor : foreground.opacity(0.30))
             }
             Text(layout.components.value)
                 .font(.custom(serifFont, size: layout.fontSize))
                 .tracking(-layout.fontSize * 0.01)
-                .foregroundStyle(Color(element.style.valueColor).opacity(element.style.valueOpacity * 0.92))
+                .foregroundStyle(valueTextColor)
             if element.style.showUnit, !layout.components.unit.isEmpty {
                 Rectangle()
                     .fill(foreground.opacity(0.20))
@@ -1662,7 +1669,7 @@ struct TextPresetOverlayView: View {
                 Text(layout.components.unit)
                     .font(.system(size: layout.unitFontSize, weight: .regular))
                     .tracking(layout.unitFontSize * 0.1)
-                    .foregroundStyle(foreground.opacity(0.28))
+                    .foregroundStyle(heartRateZoneTextPaletteActive ? unitTextColor : foreground.opacity(0.28))
             }
         }
     }
@@ -1848,6 +1855,11 @@ struct TextPresetOverlayView: View {
             .foregroundStyle(valueTextColor)
         let showLabel = element.style.showLabel && !layout.components.label.isEmpty
         let showUnitFlag = element.style.showUnit && !layout.components.unit.isEmpty
+        let hasSideLabel = showLabel && (layout.labelPosition == .leading || layout.labelPosition == .trailing)
+        let hasInlineUnit = showUnitFlag && (layout.unitPosition == .leading || layout.unitPosition == .trailing)
+        let valueUnitClusterAlignment: VerticalAlignment = hasInlineUnit
+            ? verticalAlignment(layout.unitTextAlignment)
+            : .center
 
         // The outer VStack pins on `.leading` so that the per-row
         // `frame(maxWidth: .infinity, alignment:)` modifiers on the label and
@@ -1860,26 +1872,39 @@ struct TextPresetOverlayView: View {
                     .frame(maxWidth: .infinity, alignment: labelStackFrameAlignment)
                     .padding(.bottom, layout.labelSpacing)
             }
-            HStack(alignment: labelVAlignment, spacing: 0) {
-                if showLabel && layout.labelPosition == .leading {
-                    label
-                        .padding(.trailing, layout.labelSpacing)
+            Group {
+                let valueUnitCluster = HStack(alignment: valueUnitClusterAlignment, spacing: 0) {
+                    if showUnitFlag && layout.unitPosition == .leading {
+                        unit
+                            .padding(.trailing, layout.unitSpacing)
+                    }
+                    value
+                        .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
+                    if showUnitFlag && layout.unitPosition == .trailing {
+                        unit
+                            .padding(.leading, layout.unitSpacing)
+                    }
                 }
-                if showUnitFlag && layout.unitPosition == .leading {
-                    unit
-                        .padding(.trailing, layout.unitSpacing)
-                }
-                value
-                if showUnitFlag && layout.unitPosition == .trailing {
-                    unit
-                        .padding(.leading, layout.unitSpacing)
-                }
-                if showLabel && layout.labelPosition == .trailing {
-                    label
-                        .padding(.leading, layout.labelSpacing)
+                if hasSideLabel {
+                    HStack(alignment: labelVAlignment, spacing: 0) {
+                        if showLabel && layout.labelPosition == .leading {
+                            label
+                                .padding(.trailing, layout.labelSpacing)
+                        }
+                        valueUnitCluster
+                        if showLabel && layout.labelPosition == .trailing {
+                            label
+                                .padding(.leading, layout.labelSpacing)
+                        }
+                    }
+                } else {
+                    valueUnitCluster
                 }
             }
-            .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
+            // Expand the row to the VStack width with a neutral cluster anchor so
+            // `valueTextAlignment` only affects the value slot — inline units are
+            // not shifted when the value alignment changes.
+            .frame(maxWidth: .infinity, alignment: .leading)
             if showUnitFlag && layout.unitPosition == .bottom {
                 unit
                     .frame(maxWidth: .infinity, alignment: unitStackFrameAlignment)
@@ -1897,16 +1922,38 @@ struct TextPresetOverlayView: View {
         .fixedSize(horizontal: true, vertical: false)
     }
 
+    private var heartRateZoneTextPaletteActive: Bool {
+        element.type == .heartRateZone
+            && element.style.textColorsFollowHeartRateZones
+            && layout.unifiedTextBaseColor != nil
+    }
+
+    private var overlayGroupForegroundColor: Color {
+        if heartRateZoneTextPaletteActive, let base = layout.unifiedTextBaseColor {
+            return Color(base).opacity(element.style.valueOpacity)
+        }
+        return Color(element.style.foregroundColor)
+    }
+
     private var valueTextColor: Color {
-        Color(element.style.valueColor).opacity(element.style.valueOpacity)
+        if heartRateZoneTextPaletteActive, let base = layout.unifiedTextBaseColor {
+            return Color(base).opacity(element.style.valueOpacity)
+        }
+        return Color(element.style.valueColor).opacity(element.style.valueOpacity)
     }
 
     private var labelTextColor: Color {
-        Color(element.style.labelColor).opacity(element.style.labelOpacity)
+        if heartRateZoneTextPaletteActive, let base = layout.unifiedTextBaseColor {
+            return Color(base).opacity(element.style.labelOpacity)
+        }
+        return Color(element.style.labelColor).opacity(element.style.labelOpacity)
     }
 
     private var unitTextColor: Color {
-        Color(element.style.unitColor).opacity(element.style.unitOpacity)
+        if heartRateZoneTextPaletteActive, let base = layout.unifiedTextBaseColor {
+            return Color(base).opacity(element.style.unitOpacity)
+        }
+        return Color(element.style.unitColor).opacity(element.style.unitOpacity)
     }
 }
 
