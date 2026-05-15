@@ -398,6 +398,9 @@ struct IntervalHUDBarOverlayDetailView: View {
                         project.mutateIntervalHUDBarStyle(elementID) { $0.zoneMarkerShowsValue = value }
                     }
                 }
+                toggleRow("Threshold Marker", isOn: style.thresholdZoneMarkerEnabled) { value in
+                    project.mutateIntervalHUDBarStyle(elementID) { $0.thresholdZoneMarkerEnabled = value }
+                }
             }
             toggleRow("Glow", isOn: style.bottomBarGlowEnabled) { value in
                 project.mutateIntervalHUDBarStyle(elementID) { $0.bottomBarGlowEnabled = value }

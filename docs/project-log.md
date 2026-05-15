@@ -2,12 +2,32 @@
 
 ## 2026-05-14
 
+### Interval Timeline: Remove Rail
+
+- Dropped the rail entirely (dots + connecting capsule line) — visually redundant alongside the segment row and `NOW` marker. Removed `railEnabled`, `railSpacing`, `railDotSize`, `railColor`, `railOpacity`, `railLineColor`, `railLineWidth` from `IntervalTimelineStyle`; removed `railY`, `railDots` from `IntervalTimelineRenderLayout`. Older project JSON containing those keys still decodes — the unknown keys are silently ignored by `decodeIfPresent` since the corresponding CodingKeys are gone.
+- Removed the Rail section from the Inspector, the `railView` from the SwiftUI overlay, and the rail draw block from `OverlayFrameRenderer`.
+- Marker now stacks directly below the current segment (`markerTopY = currentBottom + markerGap`). The "marker visibility does not change geometry" invariant still holds. Updated `intervalTimelineMarkerLaneKeepsMarkerInsideBackground` to assert against the current segment's bottom instead of the rail. Deleted `intervalTimelineRailSpacingExpandsBackgroundAndKeepsRailInside`.
+
+### Interval Timeline: Tight Cluster, Tight Bottom Padding, Fixed Current Width
+
+- Tightened the overflow cluster (`WU/CD` ghost + `···` + `xN` pill) and moved its geometry into the layout (`overflowGhostInset`, `overflowEllipsisInset`, `overflowPillInset`, `overflowPillSize`). Previously the view positioned pills with `* element.scale` while the layout reserved width in canvas-scaled units, so at non-unit canvas scales the pill could overlap adjacent segments. The cluster now reserves ~72pt from `contentRect.minX/maxX` (down from 116pt), and the view consumes layout-provided positions so preview and export stay aligned.
+- Recomputed the overlay background height from the actual stacked content (`segmentMidY → currentBottom → marker → bottomPadding`) instead of additively reserving a rail lane that the rail never occupied. This removes the oversized empty band below the marker label.
+- Current segment width is no longer derived from lap duration. In `centeredWindow`, the current lap is drawn at a fixed fraction (`currentSegmentWidthFraction`, default `0.28`, exposed as a Width slider in the Current inspector section, range 15–50%). Remaining visible laps share the leftover width evenly. The progress fill inside the current segment is now overall workout progress (`elapsedTime / activity.duration`) — the Interval Timeline communicates schedule position, not the lap's internal progress (Interval HUD Bar already covers that).
+- Updated `intervalTimelineOverflowPillClustersDoNotOverlapSegments` and `intervalTimelineReservesEdgeContextWhenOverflowPillsAreHidden` to reflect the new cluster widths.
+
 ### Interval HUD Bar: Bottom Bar Border + Zone Geometry Fix
 
 - Fixed HR/Pace zone bottom-bar geometry so zone segment gaps are calculated from display order instead of the real zone index. This removes the large blank track area on the left and keeps Z1-Z6 segments inside the bar in both preview and export.
 - Fixed the SwiftUI preview zone-strip alignment by pinning the zone drawing stack to the top-leading edge after sizing it to the bar width. This keeps the first segment anchored to the left edge instead of centering the segment stack inside the bar.
 - Added independent Bottom Bar Border controls for Interval HUD Bar: enable, color, width, and opacity. The border applies only to the bottom strip and is separate from the shared outer HUD container border.
 - Moved Bottom Bar Corner Radius into the shared Bottom Bar controls so it applies consistently to `Lap Progress`, `HR Zones`, and `Pace Zones`.
+
+### Interval HUD Bar: Threshold Markers
+
+- Added a small bottom-bar threshold marker for zone modes. `HR Zones` reads the global `Threshold HR`; `Pace Zones` reads the global `Threshold Pace`. When the threshold falls inside a configured zone, the marker renders below the bar with a `T` label and the matched zone color.
+- Added an independent Threshold Marker toggle and refined its visual treatment to a subtle vertical tick on the bar with a small `T` label below it instead of a triangle marker.
+- Suppressed the current-value pace marker when live pace is `0` or invalid, avoiding misleading `0:00 min/km` markers while paused or stopped.
+- Extended `HeartRateZoneSnapshot` to include threshold HR/pace so preview and export can resolve threshold marker positions without reaching back into UI state.
 
 ### Project Settings: Centralized Interval Kind Colors
 

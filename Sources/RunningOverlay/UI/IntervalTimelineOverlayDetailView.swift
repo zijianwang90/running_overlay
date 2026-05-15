@@ -7,7 +7,6 @@ struct IntervalTimelineOverlayDetailView: View {
     @State private var layoutOpen = true
     @State private var timelineOpen = true
     @State private var currentOpen = true
-    @State private var railOpen = true
     @State private var labelsOpen = true
 
     var body: some View {
@@ -30,9 +29,6 @@ struct IntervalTimelineOverlayDetailView: View {
                         }
                         section("Current", systemImage: "location.fill", isOpen: $currentOpen) {
                             currentRows(element.style.intervalTimeline)
-                        }
-                        section("Rail", systemImage: "circle.grid.3x3.fill", isOpen: $railOpen) {
-                            railRows(element.style.intervalTimeline)
                         }
                         section("Labels", systemImage: "textformat", isOpen: $labelsOpen) {
                             labelRows(element.style.intervalTimeline)
@@ -170,6 +166,12 @@ struct IntervalTimelineOverlayDetailView: View {
             range: 1...1.8,
             displayText: String(format: "%.2fx", style.currentSegmentHeightScale)
         )
+        InspectorDenseSliderRow(
+            label: "Width",
+            value: timelineBinding(\.currentSegmentWidthFraction, current: style),
+            range: 0.15...0.5,
+            displayText: String(format: "%.0f%%", style.currentSegmentWidthFraction * 100)
+        )
         InspectorDenseRow(label: "Progress") {
             Toggle("", isOn: Binding(
                 get: { style.currentProgressEnabled },
@@ -209,53 +211,6 @@ struct IntervalTimelineOverlayDetailView: View {
                 project.mutateIntervalTimelineStyle(elementID) { $0.markerColor = color }
             }
         }
-    }
-
-    @ViewBuilder
-    private func railRows(_ style: IntervalTimelineStyle) -> some View {
-        InspectorDenseRow(label: "Dots") {
-            Toggle("", isOn: Binding(
-                get: { style.railEnabled },
-                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.railEnabled = value } }
-            ))
-            .labelsHidden()
-            .tint(NumericTokens.accentBlue)
-        }
-        InspectorDenseSliderRow(
-            label: "Spacing",
-            value: timelineBinding(\.railSpacing, current: style),
-            range: 0...18,
-            displayText: "\(Int(style.railSpacing))"
-        )
-        InspectorDenseSliderRow(
-            label: "Size",
-            value: timelineBinding(\.railDotSize, current: style),
-            range: 2...10,
-            displayText: "\(Int(style.railDotSize))"
-        )
-        InspectorDenseSliderRow(
-            label: "Alpha",
-            value: timelineBinding(\.railOpacity, current: style),
-            range: 0...1,
-            displayText: String(format: "%.2f", style.railOpacity)
-        )
-        InspectorDenseRow(label: "Color") {
-            InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: style.railColor) { color in
-                project.mutateIntervalTimelineStyle(elementID) { $0.railColor = color }
-            }
-        }
-        InspectorDenseSliderRow(
-            label: "Line Width",
-            value: timelineBinding(\.railLineWidth, current: style),
-            range: 1...10,
-            displayText: "\(Int(style.railLineWidth))"
-        )
-        InspectorDenseRow(label: "Line Color") {
-            InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: style.railLineColor) { color in
-                project.mutateIntervalTimelineStyle(elementID) { $0.railLineColor = color }
-            }
-        }
-        .opacity(style.railEnabled ? 1 : 0.5)
     }
 
     @ViewBuilder

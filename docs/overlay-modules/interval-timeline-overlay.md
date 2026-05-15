@@ -1,6 +1,6 @@
 # Interval Timeline Overlay
 
-Last updated: 2026-05-14
+Last updated: 2026-05-14 (rail removed; current-segment fixed-fraction width; tightened overflow cluster; tight bottom padding)
 
 ## Module Goal
 
@@ -67,6 +67,8 @@ struct IntervalTimelineStyle: Equatable, Codable {
     var maxFullSegments: Int
     var segmentHeight: Double
     var currentSegmentHeightScale: Double
+    var currentSegmentWidthFraction: Double
+    // (Rail dot/line fields removed — the overlay no longer renders a rail.)
     var minSegmentWidth: Double
     var segmentGap: Double
     var edgeFadeEnabled: Bool
@@ -81,13 +83,6 @@ struct IntervalTimelineStyle: Equatable, Codable {
     var durationLabelsEnabled: Bool
     var repCounterEnabled: Bool
     var overflowPillsEnabled: Bool
-    var railEnabled: Bool
-    var railSpacing: Double
-    var railDotSize: Double
-    var railColor: OverlayColor
-    var railOpacity: Double
-    var railLineColor: OverlayColor
-    var railLineWidth: Double
     var warmupColor: OverlayColor
     var activeColor: OverlayColor
     var restColor: OverlayColor
@@ -113,11 +108,12 @@ Important rules:
 - The render path must be deterministic from `elapsedTime`, style, and activity data.
 - Do not store transient scroll offset in UI state for export-visible behavior.
 - Overlay bounds must not jump when the current lap changes.
-- The `NOW` marker lives in a reserved marker lane below the rail. Enabling or disabling it must not change `contentRect`, segment rects, the marker lane, or the rail position.
-- The marker is visually attached to the rail: it renders just below the rail, remains inside the background and border, and supports marker color, font size, and font weight controls.
-- The rail is decorative and configurable through `railEnabled`, `railSpacing`, `railDotSize`, `railColor`, `railOpacity`, `railLineColor`, and `railLineWidth`. `railSpacing` is the vertical gap from segment blocks to the rail, not the distance between dots.
-- Rail spacing contributes to the rendered background height so the rail remains inside the background.
+- The `NOW` marker lives in a reserved marker lane directly below the current segment. Enabling or disabling it must not change `contentRect`, segment rects, or the marker lane position.
+- The marker renders just below the segment row, remains inside the background and border, and supports marker color, font size, and font weight controls.
 - Endpoint context (`WU` / `CD`) reserves edge space whenever hidden laps exist, even if `overflowPillsEnabled` is false. When pills are visible, each compact edge cluster reserves enough width for endpoint label, ellipsis, and square `xN` pill before the visible segment area starts. `overflowPillsEnabled` only controls the hidden-count boxes and ellipses, not endpoint protection.
+- Cluster geometry (ghost endpoint, ellipsis, pill) is computed in the layout (`overflowGhostInset`, `overflowEllipsisInset`, `overflowPillInset`, `overflowPillSize`) so SwiftUI preview and CoreGraphics export consume identical positions. Spacing is tight: ghost at ~14pt from the rect edge, ellipsis at ~38pt, pill center at ~64pt with a 36×26 pill, leaving an 8pt gap before the first/last segment.
+- The overlay background height is derived from the actual stacked content (segments → marker → bottom padding). This keeps the bottom flush with the marker label.
+- In `centeredWindow`, the current segment's width is a fixed fraction of the segment area (`currentSegmentWidthFraction`, default `0.28`). Remaining laps share the leftover width evenly. The current segment communicates *position in the overall workout*, not the lap's individual duration. The progress fill inside the current segment is overall workout progress (`elapsedTime / activity.duration`), not lap progress.
 - Label fitting should be layout-driven: hide duration labels first, then reduce to short kind labels, then hide non-current labels.
 
 ## Inspector
@@ -129,7 +125,6 @@ Primary sections:
 - Layout
 - Timeline
 - Current
-- Rail
 - Labels
 - Colors
 - Background
@@ -147,14 +142,13 @@ Shared modules should be reused for Layout, Background, Border, and Effects.
 - Add Preview and export renderers.
 - Add Inspector controls for the first-version fields.
 - Add tests for visible-window selection and current-lap centering.
-- Add tests that marker visibility does not move the rail or segment geometry.
+- Add tests that marker visibility does not move the segment geometry or content rect.
 
 ### Phase 2
 
 - Add Compressed Sets repeated-pair detection.
 - Add richer rep-counter labeling such as `RUN 9 / 25`.
 - Add per-kind custom label overrides.
-- Add optional tick rail for hidden repeated sets.
 
 ## Acceptance Criteria
 

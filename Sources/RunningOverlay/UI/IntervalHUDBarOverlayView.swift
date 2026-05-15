@@ -313,12 +313,21 @@ struct IntervalHUDBarOverlayView: View {
                             bottomBarBorderShape
                         }
 
+                        if let marker = layout.thresholdZoneMarker,
+                           let markerRect = zoneRects.first(where: { $0.index == marker.zoneIndex }) {
+                            zoneMarkerView(marker)
+                                .position(
+                                    x: markerRect.x + markerRect.width * marker.fractionInZone,
+                                    y: zoneMarkerY(for: marker)
+                                )
+                        }
+
                         if let marker = layout.zoneMarker,
                            let markerRect = zoneRects.first(where: { $0.index == marker.zoneIndex }) {
                             zoneMarkerView(marker)
                                 .position(
                                     x: markerRect.x + markerRect.width * marker.fractionInZone,
-                                    y: zoneMarkerY
+                                    y: zoneMarkerY(for: marker)
                                 )
                         }
                     }
@@ -329,10 +338,17 @@ struct IntervalHUDBarOverlayView: View {
         }
     }
 
-    private var zoneMarkerY: Double {
-        let arrowHeight = max(layout.barHeight * 0.9, 8)
-        let valueHeight = style.zoneMarkerShowsValue ? max(layout.metricUnitText.fontSize, 9) + 6 : 0
-        let markerHeight = arrowHeight + valueHeight + (style.zoneMarkerShowsValue ? 2 : 0)
+    private func zoneMarkerY(for marker: IntervalHUDBarZoneMarker) -> Double {
+        if marker.role == .threshold {
+            let lineHeight = thresholdMarkerLineHeight
+            let labelHeight = zoneMarkerValueFontSize(marker) + 4
+            let markerHeight = lineHeight + 2 + labelHeight
+            return layout.barHeight / 2 - lineHeight / 2 + markerHeight / 2
+        }
+        let arrowHeight = zoneMarkerArrowHeight(marker)
+        let showsValue = marker.role == .threshold || style.zoneMarkerShowsValue
+        let valueHeight = showsValue ? max(zoneMarkerValueFontSize(marker), 9) + 6 : 0
+        let markerHeight = arrowHeight + valueHeight + (showsValue ? 2 : 0)
         if style.zoneMarkerPosition == .above {
             return -zoneMarkerGap - markerHeight / 2
         }
@@ -390,30 +406,48 @@ struct IntervalHUDBarOverlayView: View {
         }
     }
 
+    @ViewBuilder
     private func zoneMarkerView(_ marker: IntervalHUDBarZoneMarker) -> some View {
-        VStack(spacing: 2) {
-            if style.zoneMarkerPosition == .above {
-                if style.zoneMarkerShowsValue {
-                    zoneMarkerValue(marker)
-                }
-                IntervalHUDBarZoneMarkerTriangle(direction: .down)
-                    .fill(Color(intervalHUD: marker.color))
-                    .frame(width: max(layout.barHeight * 1.35, 12), height: max(layout.barHeight * 0.9, 8))
-            } else {
-                IntervalHUDBarZoneMarkerTriangle(direction: .up)
-                    .fill(Color(intervalHUD: marker.color))
-                    .frame(width: max(layout.barHeight * 1.35, 12), height: max(layout.barHeight * 0.9, 8))
-                if style.zoneMarkerShowsValue {
-                    zoneMarkerValue(marker)
+        if marker.role == .threshold {
+            thresholdZoneMarkerView(marker)
+        } else {
+            VStack(spacing: 2) {
+                if style.zoneMarkerPosition == .above {
+                    if style.zoneMarkerShowsValue {
+                        zoneMarkerValue(marker)
+                    }
+                    IntervalHUDBarZoneMarkerTriangle(direction: .down)
+                        .fill(Color(intervalHUD: marker.color))
+                        .frame(width: zoneMarkerArrowWidth(marker), height: zoneMarkerArrowHeight(marker))
+                } else {
+                    IntervalHUDBarZoneMarkerTriangle(direction: .up)
+                        .fill(Color(intervalHUD: marker.color))
+                        .frame(width: zoneMarkerArrowWidth(marker), height: zoneMarkerArrowHeight(marker))
+                    if style.zoneMarkerShowsValue {
+                        zoneMarkerValue(marker)
+                    }
                 }
             }
+            .fixedSize()
+        }
+    }
+
+    private func thresholdZoneMarkerView(_ marker: IntervalHUDBarZoneMarker) -> some View {
+        VStack(spacing: 2) {
+            Capsule()
+                .fill(Color(intervalHUD: marker.color).opacity(0.78))
+                .frame(width: max(1.2 * element.scale, 1), height: thresholdMarkerLineHeight)
+            Text(marker.valueText)
+                .font(.custom(layout.metricUnitText.fontName, size: zoneMarkerValueFontSize(marker)).weight(layout.metricUnitText.fontWeight.swiftUIFontWeight))
+                .foregroundStyle(Color(intervalHUD: marker.color).opacity(0.78))
+                .lineLimit(1)
         }
         .fixedSize()
     }
 
     private func zoneMarkerValue(_ marker: IntervalHUDBarZoneMarker) -> some View {
         Text(marker.valueText)
-            .font(.custom(layout.metricUnitText.fontName, size: max(layout.metricUnitText.fontSize, 9)).weight(layout.metricUnitText.fontWeight.swiftUIFontWeight))
+            .font(.custom(layout.metricUnitText.fontName, size: zoneMarkerValueFontSize(marker)).weight(layout.metricUnitText.fontWeight.swiftUIFontWeight))
             .foregroundStyle(Color(intervalHUD: marker.color))
             .monospacedDigit()
             .lineLimit(1)
@@ -421,6 +455,22 @@ struct IntervalHUDBarOverlayView: View {
             .padding(.vertical, 2)
             .background(Color.black.opacity(0.55))
             .clipShape(RoundedRectangle(cornerRadius: 4))
+    }
+
+    private func zoneMarkerArrowWidth(_ marker: IntervalHUDBarZoneMarker) -> Double {
+        marker.role == .threshold ? max(layout.barHeight * 0.95, 9) : max(layout.barHeight * 1.35, 12)
+    }
+
+    private func zoneMarkerArrowHeight(_ marker: IntervalHUDBarZoneMarker) -> Double {
+        marker.role == .threshold ? max(layout.barHeight * 0.62, 6) : max(layout.barHeight * 0.9, 8)
+    }
+
+    private func zoneMarkerValueFontSize(_ marker: IntervalHUDBarZoneMarker) -> Double {
+        marker.role == .threshold ? max(layout.metricUnitText.fontSize * 0.72, 7) : max(layout.metricUnitText.fontSize, 9)
+    }
+
+    private var thresholdMarkerLineHeight: Double {
+        max(layout.barHeight * 1.35, 10)
     }
 }
 

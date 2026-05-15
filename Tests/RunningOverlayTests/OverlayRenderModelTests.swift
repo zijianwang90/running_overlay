@@ -290,9 +290,13 @@ struct OverlayRenderModelTests {
         let prefs = HeartRateZonePreferences.shared
         let oldCount = prefs.zoneCount
         let oldZones = prefs.zones
+        let oldThresholdHR = prefs.thresholdHR
+        let oldThresholdPace = prefs.thresholdPaceSecPerKm
         defer {
             prefs.zoneCount = oldCount
             prefs.zones = oldZones
+            prefs.thresholdHR = oldThresholdHR
+            prefs.thresholdPaceSecPerKm = oldThresholdPace
         }
         prefs.zoneCount = .five
         prefs.zones = [
@@ -303,6 +307,7 @@ struct OverlayRenderModelTests {
             HeartRateZone(minHR: 181, maxHR: 200),
             HeartRateZone()
         ]
+        prefs.thresholdHR = 170
 
         var style = OverlayStyle.default
         style.intervalHUDBar.bottomBarMode = .heartRateZones
@@ -333,6 +338,8 @@ struct OverlayRenderModelTests {
         #expect(workLayout.zoneMarker?.zoneIndex == 3)
         #expect(workLayout.zoneMarker?.valueText == "170 bpm")
         #expect(abs((workLayout.zoneMarker?.fractionInZone ?? 0) - (9.0 / 19.0)) < 0.0001)
+        #expect(workLayout.thresholdZoneMarker?.zoneIndex == 3)
+        #expect(workLayout.thresholdZoneMarker?.valueText == "T")
 
         let restLayout = OverlayRenderModel.intervalHUDBarLayout(for: element, in: restContext)
         #expect(restLayout.phaseLabel == "REST")
@@ -341,6 +348,52 @@ struct OverlayRenderModelTests {
         #expect(restLayout.zoneItem?.metric == .hrDrop)
         #expect(restLayout.zoneItem?.value == "17")
         #expect(restLayout.zoneItem?.unit == "%")
+    }
+
+    @MainActor
+    @Test func intervalHUDBarPaceMarkerSkipsZeroAndShowsThresholdMarker() throws {
+        let prefs = HeartRateZonePreferences.shared
+        let oldCount = prefs.zoneCount
+        let oldZones = prefs.zones
+        let oldThresholdHR = prefs.thresholdHR
+        let oldThresholdPace = prefs.thresholdPaceSecPerKm
+        defer {
+            prefs.zoneCount = oldCount
+            prefs.zones = oldZones
+            prefs.thresholdHR = oldThresholdHR
+            prefs.thresholdPaceSecPerKm = oldThresholdPace
+        }
+        prefs.zoneCount = .five
+        prefs.zones = [
+            HeartRateZone(minPaceSecPerKm: 400, maxPaceSecPerKm: 600),
+            HeartRateZone(minPaceSecPerKm: 330, maxPaceSecPerKm: 399),
+            HeartRateZone(minPaceSecPerKm: 280, maxPaceSecPerKm: 329),
+            HeartRateZone(minPaceSecPerKm: 240, maxPaceSecPerKm: 279),
+            HeartRateZone(minPaceSecPerKm: 180, maxPaceSecPerKm: 239),
+            HeartRateZone()
+        ]
+        prefs.thresholdPaceSecPerKm = 250
+
+        var style = OverlayStyle.default
+        style.intervalHUDBar.bottomBarMode = .paceZones
+        let element = OverlayElement(type: .intervalHUDBar, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: zeroPaceIntervalActivity(),
+            elapsedTime: 50
+        )
+
+        let layout = OverlayRenderModel.intervalHUDBarLayout(for: element, in: context)
+
+        #expect(layout.bottomBarActiveZoneIndex == nil)
+        #expect(layout.zoneMarker == nil)
+        #expect(layout.thresholdZoneMarker?.zoneIndex == 3)
+        #expect(layout.thresholdZoneMarker?.valueText == "T")
+
+        style.intervalHUDBar.thresholdZoneMarkerEnabled = false
+        let disabledElement = OverlayElement(type: .intervalHUDBar, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let disabledLayout = OverlayRenderModel.intervalHUDBarLayout(for: disabledElement, in: context)
+        #expect(disabledLayout.thresholdZoneMarker == nil)
     }
 
     @Test func intervalHUDBarZoneSegmentFramesSupportActiveZoneEmphasis() {
@@ -479,8 +532,6 @@ struct OverlayRenderModelTests {
         let disabledLayout = OverlayRenderModel.intervalTimelineLayout(for: disabledElement, in: context)
 
         #expect(enabledLayout.contentRect == disabledLayout.contentRect)
-        #expect(enabledLayout.railY == disabledLayout.railY)
-        #expect(enabledLayout.railDots == disabledLayout.railDots)
         #expect(enabledLayout.markerTopY == disabledLayout.markerTopY)
         let enabledFirstRect = try #require(enabledLayout.segments.first?.rect)
         let disabledFirstRect = try #require(disabledLayout.segments.first?.rect)
@@ -523,32 +574,8 @@ struct OverlayRenderModelTests {
 
         #expect(layout.leftOverflowCount > 0)
         #expect(layout.rightOverflowCount > 0)
-        #expect(layout.segments.first?.rect.minX ?? 0 >= layout.contentRect.minX + 116)
-        #expect(layout.segments.last?.rect.maxX ?? 0 <= layout.contentRect.maxX - 116)
-    }
-
-    @Test func intervalTimelineRailSpacingExpandsBackgroundAndKeepsRailInside() {
-        var compactStyle = OverlayStyle.default
-        compactStyle.intervalTimeline.mode = .centeredWindow
-        compactStyle.intervalTimeline.railSpacing = 2
-
-        var roomyStyle = compactStyle
-        roomyStyle.intervalTimeline.railSpacing = 18
-
-        let compactElement = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: compactStyle)
-        let roomyElement = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: roomyStyle)
-        let context = OverlayRenderContext(
-            canvasSize: OverlayRenderContext.referenceCanvasSize,
-            activity: repeatedIntervalActivity(repCount: 25),
-            elapsedTime: 30 + 13 * 120 + 35
-        )
-
-        let compactLayout = OverlayRenderModel.intervalTimelineLayout(for: compactElement, in: context)
-        let roomyLayout = OverlayRenderModel.intervalTimelineLayout(for: roomyElement, in: context)
-
-        #expect(roomyLayout.rect.height > compactLayout.rect.height)
-        #expect(roomyLayout.railY > compactLayout.railY)
-        #expect(roomyLayout.railY + max(roomyStyle.intervalTimeline.railDotSize, roomyStyle.intervalTimeline.railLineWidth) / 2 < roomyLayout.rect.maxY)
+        #expect(layout.segments.first?.rect.minX ?? 0 >= layout.contentRect.minX + 70)
+        #expect(layout.segments.last?.rect.maxX ?? 0 <= layout.contentRect.maxX - 70)
     }
 
     @Test func intervalTimelineMarkerLaneKeepsMarkerInsideBackground() {
@@ -557,8 +584,6 @@ struct OverlayRenderModelTests {
         style.intervalTimeline.visibleNeighbors = 3
         style.intervalTimeline.markerEnabled = true
         style.intervalTimeline.markerFontSize = 14
-        style.intervalTimeline.railLineWidth = 8
-        style.intervalTimeline.railDotSize = 8
         let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
         let context = OverlayRenderContext(
             canvasSize: OverlayRenderContext.referenceCanvasSize,
@@ -568,9 +593,9 @@ struct OverlayRenderModelTests {
 
         let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
         let markerBottom = layout.markerTopY + layout.markerTriangleHeight + 2 * element.scale + layout.markerLabelHeight
-        let railBottom = layout.railY + max(style.intervalTimeline.railDotSize, style.intervalTimeline.railLineWidth) * element.scale / 2
 
-        #expect(layout.markerTopY > railBottom)
+        let currentSegmentBottom = layout.segments.first(where: \.isCurrent).map { $0.rect.maxY } ?? layout.contentRect.maxY
+        #expect(layout.markerTopY > currentSegmentBottom)
         #expect(markerBottom < layout.rect.maxY - 1)
     }
 
@@ -594,7 +619,9 @@ struct OverlayRenderModelTests {
           "primaryLabelMode": "distance",
           "durationLabelsEnabled": true,
           "repCounterEnabled": true,
-          "overflowPillsEnabled": true
+          "overflowPillsEnabled": true,
+          "railEnabled": true,
+          "railSpacing": 5
         }
         """.utf8)
 
@@ -602,8 +629,7 @@ struct OverlayRenderModelTests {
 
         #expect(style.markerColor == .white)
         #expect(style.markerFontSize == IntervalTimelineStyle.default.markerFontSize)
-        #expect(style.railSpacing == IntervalTimelineStyle.default.railSpacing)
-        #expect(style.railLineWidth == IntervalTimelineStyle.default.railLineWidth)
+        #expect(style.overflowPillsEnabled == true)
     }
 
     @MainActor
@@ -861,6 +887,22 @@ struct OverlayRenderModelTests {
                 LapRecord(lapIndex: 0, startElapsedTime: 0, endElapsedTime: 100, startDistanceMeters: 0, totalDistanceMeters: 200, totalElapsedTime: 100, avgPaceSecondsPerKm: 260, avgHeartRate: 165, maxHeartRate: 180, avgCadenceSPM: nil, avgPowerWatts: 270, totalAscent: nil, kind: .active),
                 LapRecord(lapIndex: 1, startElapsedTime: 100, endElapsedTime: 160, startDistanceMeters: 200, totalDistanceMeters: 60, totalElapsedTime: 60, avgPaceSecondsPerKm: 420, avgHeartRate: 150, maxHeartRate: 180, avgCadenceSPM: nil, avgPowerWatts: 120, totalAscent: nil, kind: .rest),
                 LapRecord(lapIndex: 2, startElapsedTime: 160, endElapsedTime: 260, startDistanceMeters: 260, totalDistanceMeters: 260, totalElapsedTime: 100, avgPaceSecondsPerKm: 255, avgHeartRate: 176, maxHeartRate: 182, avgCadenceSPM: nil, avgPowerWatts: 285, totalAscent: nil, kind: .active)
+            ]
+        )
+    }
+
+    private func zeroPaceIntervalActivity() -> ActivityTimeline {
+        let startDate = Date(timeIntervalSince1970: 3_100)
+        return ActivityTimeline(
+            startDate: startDate,
+            duration: 100,
+            distanceMeters: 0,
+            records: [
+                ActivityRecord(elapsedTime: 0, timestamp: startDate, distanceMeters: 0, heartRate: 100, paceSecondsPerKilometer: 0, elevationMeters: nil, cadence: nil, powerWatts: nil, calories: nil),
+                ActivityRecord(elapsedTime: 100, timestamp: startDate.addingTimeInterval(100), distanceMeters: 0, heartRate: 105, paceSecondsPerKilometer: 0, elevationMeters: nil, cadence: nil, powerWatts: nil, calories: nil)
+            ],
+            laps: [
+                LapRecord(lapIndex: 0, startElapsedTime: 0, endElapsedTime: 100, startDistanceMeters: 0, totalDistanceMeters: 0, totalElapsedTime: 100, avgPaceSecondsPerKm: nil, avgHeartRate: 102, maxHeartRate: 105, avgCadenceSPM: nil, avgPowerWatts: nil, totalAscent: nil, kind: .rest)
             ]
         )
     }

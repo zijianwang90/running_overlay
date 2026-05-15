@@ -283,6 +283,7 @@ struct IntervalHUDBarStyle: Equatable, Codable {
     var zoneMarkerEnabled: Bool
     var zoneMarkerPosition: IntervalHUDBarZoneMarkerPosition
     var zoneMarkerShowsValue: Bool
+    var thresholdZoneMarkerEnabled: Bool
     var labelText: IntervalHUDBarTextStyle
     var primaryValueText: IntervalHUDBarTextStyle
     var phaseText: IntervalHUDBarTextStyle
@@ -324,6 +325,7 @@ struct IntervalHUDBarStyle: Equatable, Codable {
         zoneMarkerEnabled: Bool,
         zoneMarkerPosition: IntervalHUDBarZoneMarkerPosition,
         zoneMarkerShowsValue: Bool,
+        thresholdZoneMarkerEnabled: Bool,
         labelText: IntervalHUDBarTextStyle,
         primaryValueText: IntervalHUDBarTextStyle,
         phaseText: IntervalHUDBarTextStyle,
@@ -364,6 +366,7 @@ struct IntervalHUDBarStyle: Equatable, Codable {
         self.zoneMarkerEnabled = zoneMarkerEnabled
         self.zoneMarkerPosition = zoneMarkerPosition
         self.zoneMarkerShowsValue = zoneMarkerShowsValue
+        self.thresholdZoneMarkerEnabled = thresholdZoneMarkerEnabled
         self.labelText = labelText
         self.primaryValueText = primaryValueText
         self.phaseText = phaseText
@@ -410,6 +413,7 @@ struct IntervalHUDBarStyle: Equatable, Codable {
         zoneMarkerEnabled = try container.decodeIfPresent(Bool.self, forKey: .zoneMarkerEnabled) ?? defaults.zoneMarkerEnabled
         zoneMarkerPosition = try container.decodeIfPresent(IntervalHUDBarZoneMarkerPosition.self, forKey: .zoneMarkerPosition) ?? defaults.zoneMarkerPosition
         zoneMarkerShowsValue = try container.decodeIfPresent(Bool.self, forKey: .zoneMarkerShowsValue) ?? defaults.zoneMarkerShowsValue
+        thresholdZoneMarkerEnabled = try container.decodeIfPresent(Bool.self, forKey: .thresholdZoneMarkerEnabled) ?? defaults.thresholdZoneMarkerEnabled
         labelText = try container.decodeIfPresent(IntervalHUDBarTextStyle.self, forKey: .labelText) ?? defaults.labelText
         primaryValueText = try container.decodeIfPresent(IntervalHUDBarTextStyle.self, forKey: .primaryValueText) ?? defaults.primaryValueText
         phaseText = try container.decodeIfPresent(IntervalHUDBarTextStyle.self, forKey: .phaseText) ?? defaults.phaseText
@@ -455,6 +459,7 @@ struct IntervalHUDBarStyle: Equatable, Codable {
         zoneMarkerEnabled: true,
         zoneMarkerPosition: .above,
         zoneMarkerShowsValue: true,
+        thresholdZoneMarkerEnabled: true,
         labelText: IntervalHUDBarTextStyle(fontName: FontLibraryManager.currentDefaultFamily, fontSize: 13, fontWeight: .bold),
         primaryValueText: IntervalHUDBarTextStyle(fontName: FontLibraryManager.currentDefaultFamily, fontSize: 34, fontWeight: .bold),
         phaseText: IntervalHUDBarTextStyle(fontName: FontLibraryManager.currentDefaultFamily, fontSize: 30, fontWeight: .bold),
@@ -468,11 +473,15 @@ struct HeartRateZoneSnapshot: Equatable {
     var zoneCount: Int
     var paceUnit: PaceUnit
     var zones: [HeartRateZone]
+    var thresholdHR: Int?
+    var thresholdPaceSecPerKm: Int?
 
     static let empty = HeartRateZoneSnapshot(
         zoneCount: 5,
         paceUnit: .minPerKm,
-        zones: HeartRateZone.emptySlots()
+        zones: HeartRateZone.emptySlots(),
+        thresholdHR: nil,
+        thresholdPaceSecPerKm: nil
     )
 }
 
@@ -495,6 +504,7 @@ struct IntervalHUDBarRenderLayout {
     var activeZoneIndex: Int?
     var bottomBarActiveZoneIndex: Int?
     var zoneMarker: IntervalHUDBarZoneMarker?
+    var thresholdZoneMarker: IntervalHUDBarZoneMarker?
     var labelText: IntervalHUDBarTextStyle
     var primaryValueText: IntervalHUDBarTextStyle
     var phaseText: IntervalHUDBarTextStyle
@@ -521,10 +531,16 @@ struct IntervalHUDBarZoneSegment: Identifiable, Equatable {
 }
 
 struct IntervalHUDBarZoneMarker: Equatable {
+    var role: IntervalHUDBarZoneMarkerRole
     var zoneIndex: Int
     var fractionInZone: Double
     var valueText: String
     var color: OverlayColor
+}
+
+enum IntervalHUDBarZoneMarkerRole: Equatable {
+    case current
+    case threshold
 }
 
 struct IntervalHUDBarZoneSegmentFrame: Equatable {

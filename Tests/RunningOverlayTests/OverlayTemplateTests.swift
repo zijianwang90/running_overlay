@@ -101,6 +101,7 @@ struct OverlayTemplateTests {
         #expect(style.zoneMarkerEnabled == IntervalHUDBarStyle.default.zoneMarkerEnabled)
         #expect(style.zoneMarkerPosition == IntervalHUDBarStyle.default.zoneMarkerPosition)
         #expect(style.zoneMarkerShowsValue == IntervalHUDBarStyle.default.zoneMarkerShowsValue)
+        #expect(style.thresholdZoneMarkerEnabled == IntervalHUDBarStyle.default.thresholdZoneMarkerEnabled)
         #expect(style.labelText == IntervalHUDBarStyle.default.labelText)
         #expect(style.metricUnitText == IntervalHUDBarStyle.default.metricUnitText)
     }

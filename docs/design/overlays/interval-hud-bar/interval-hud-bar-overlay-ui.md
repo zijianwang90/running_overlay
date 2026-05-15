@@ -129,6 +129,7 @@ Shared Bottom Bar controls:
 - Corner Radius follows the shared Bottom Bar radius.
 - Optional Zone Marker is one solid filled triangle that points at the user's current HR position within the active segment.
 - Marker Position can be `Above` or `Below`; Marker Value can be shown or hidden. The marker and value use the active zone color.
+- Threshold Marker is optional. When enabled and Project Settings has `Threshold HR` filled, render a subtle thin vertical tick on the bar with a small `T` label below it, using the threshold's matched zone color.
 - Current zone label, such as `Z4`, uses the same zone color.
 - Glow highlights the active segment. Glow intensity is editable; color follows the active zone.
 
@@ -137,6 +138,8 @@ Shared Bottom Bar controls:
 - Same visual pattern as HR zone mode, driven by pace ranges.
 - Current pace uses the matched zone segment.
 - Active Zone Width and Zone Marker behave the same as HR Zones, but marker position is derived from current pace within the matched pace range.
+- When current pace is `0` or otherwise invalid, the current-value Zone Marker is hidden instead of pinning to an artificial zone.
+- Threshold Marker is optional. When enabled and Project Settings has `Threshold Pace` filled, render a subtle thin vertical tick on the bar with a small `T` label below it. It remains visible even when current pace is `0`, as long as the threshold falls inside a configured pace zone.
 - Glow follows the matched active segment.
 
 ## REST HR Drop
@@ -171,7 +174,7 @@ Implemented Inspector sections:
 - HUD Bar: width, height, Rep toggle, Current Training toggle and detail modes, Remaining toggle and primary mode, HR Zone toggle, Zone mode, and HR Drop mode.
 - Metrics: ordered add/delete list. Each row chooses one Numeric Overlay metric; the list has no fixed slot count and duplicates are valid. Metrics that support multiple units expose a per-row Units menu, reusing Numeric Overlay unit options such as pace `min/km` / `min/mi`, distance `km` / `mi` / `m`, elevation `m` / `ft`, and temperature `°C` / `°F`.
 - Bottom Bar: section-header enable switch, type menu (`Lap Progress`, `HR Zones`, `Pace Zones`), Spacing slider, Corner Radius slider, Border toggle, Border Color, Border Width, Border Opacity, Lap Progress mode shows progress mode (`Time` / `Distance`), Glow toggle, and Glow Intensity.
-- Bottom Bar zone settings: Active Zone Width slider (`Equal` to `50%`), Active Zone Height slider, Zone Gap slider, Inactive Opacity slider, Zone Marker toggle, Marker Position (`Above` / `Below`), and Marker Value toggle. These controls appear only for `HR Zones` and `Pace Zones`.
+- Bottom Bar zone settings: Active Zone Width slider (`Equal` to `50%`), Active Zone Height slider, Zone Gap slider, Inactive Opacity slider, Zone Marker toggle, Marker Position (`Above` / `Below`), Marker Value toggle, and Threshold Marker toggle. These controls appear only for `HR Zones` and `Pace Zones`.
 - Typography: font family, size, and weight for Labels, Primary Values, Phase, Phase Detail, Metric Values, and Metric Units.
 - Divider: shared overlay divider fields used for all internal vertical separators.
 - Background: shared `OverlayBackgroundInspectorModule`.
@@ -185,6 +188,8 @@ Background Padding is interpreted as HUD interior padding for this fixed-size ov
 Bottom Bar Spacing is the vertical gap between the data cell row and the bottom bar. `0` places the bottom bar directly against the data row layout area; increasing the value moves the data row and bottom bar farther apart. The renderer preserves the requested spacing first, then compresses top/bottom padding when the HUD is short. If the HUD still cannot fit the data row and bar, the rendered gap is capped so content remains inside the background container.
 
 Zone Marker is a floating overlay anchored to the current value position on the zone bar. It does not reserve layout height, move the bottom bar, change spacing, or resize the data row. Above and Below placements may overlap HUD text or extend beyond the background container.
+
+Threshold Marker is separate from the current-value Zone Marker. It uses the global `Threshold HR` or `Threshold Pace` from Project Settings, renders as a subtle vertical tick on the HR/Pace zone bar, and labels the threshold with a small `T` below the bar. Users can turn it off independently of the current-value Zone Marker.
 
 Bottom Bar Border is separate from the shared overlay Border section. The shared Border controls the outer HUD container; Bottom Bar Border controls only the progress/zone strip and must render in both preview and export.
 

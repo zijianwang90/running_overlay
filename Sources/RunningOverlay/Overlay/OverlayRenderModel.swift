@@ -437,6 +437,7 @@ enum OverlayRenderModel {
                 snapshot: zoneSnapshot,
                 zoneIndex: bottomBarActiveZoneIndex
             ),
+            thresholdZoneMarker: intervalThresholdZoneMarker(style: style, snapshot: zoneSnapshot),
             labelText: scaled(style.labelText, scale: element.scale, context: context),
             primaryValueText: scaled(style.primaryValueText, scale: element.scale, context: context),
             phaseText: scaled(style.phaseText, scale: element.scale, context: context),
@@ -455,24 +456,29 @@ enum OverlayRenderModel {
         style.restColor = kindPalette.rest
         style.cooldownColor = kindPalette.cooldown
         let width = context.scaled(style.width * element.scale)
-        let railVisualHeight = style.railEnabled ? max(style.railDotSize, style.railLineWidth) : 0
-        let railLaneHeight = style.railEnabled ? style.railSpacing + railVisualHeight + 6 : 0
         let markerTriangleHeight = context.scaled(6 * element.scale)
         let markerStackSpacing = context.scaled(2 * element.scale)
         let markerLabelHeight = context.scaled(max(style.markerFontSize * 1.4, 14) * element.scale)
         let markerGap = context.scaled(4 * element.scale)
         let markerBottomPadding = context.scaled(4 * element.scale)
-        let markerLaneHeight = markerGap + markerTriangleHeight + markerStackSpacing + markerLabelHeight + markerBottomPadding
-        let height = context.scaled((style.height + railLaneHeight) * element.scale) + markerLaneHeight
-        let rect = centeredRect(for: element, size: CGSize(width: width, height: height), canvasSize: context.canvasSize)
+        let markerStackHeight = markerTriangleHeight + markerStackSpacing + markerLabelHeight
         let horizontalPadding = context.scaled(16 * element.scale)
         let verticalPadding = context.scaled(6 * element.scale)
-        let railLaneHeightScaled = context.scaled(railLaneHeight * element.scale)
+        let segmentAreaHeight = context.scaled(style.height * element.scale)
+        let innerSegmentHeight = max(segmentAreaHeight - verticalPadding * 2, 1)
+        let normalHeightCap = min(context.scaled(style.segmentHeight * element.scale), innerSegmentHeight)
+        let currentHeightCap = min(normalHeightCap * style.currentSegmentHeightScale, innerSegmentHeight)
+        let segmentMidYRel = verticalPadding + innerSegmentHeight / 2
+        let currentBottomRel = segmentMidYRel + currentHeightCap / 2
+        let markerTopYRel = currentBottomRel + markerGap
+        let markerBottomRel = markerTopYRel + markerStackHeight
+        let height = markerBottomRel + markerBottomPadding
+        let rect = centeredRect(for: element, size: CGSize(width: width, height: height), canvasSize: context.canvasSize)
         let contentRect = CGRect(
             x: rect.minX + horizontalPadding,
             y: rect.minY + verticalPadding,
             width: max(rect.width - horizontalPadding * 2, 1),
-            height: max(rect.height - verticalPadding * 2 - railLaneHeightScaled - markerLaneHeight, 1)
+            height: innerSegmentHeight
         )
         let laps = context.activity.laps
         let t = min(max(context.elapsedTime, 0), context.activity.duration)
@@ -493,8 +499,23 @@ enum OverlayRenderModel {
         let visibleLaps = visibleRange.map { laps[$0] }
         let leftOverflow = max(visibleRange.lowerBound, 0)
         let rightOverflow = max(laps.count - visibleRange.upperBound, 0)
-        let edgeOnlyWidth = context.scaled(58 * element.scale)
-        let overflowClusterWidth = context.scaled(116 * element.scale)
+        let ghostEdgeInsetUnscaled = 14.0
+        let ellipsisInsetUnscaled = 38.0
+        let pillCenterInsetUnscaled = 64.0
+        let pillWidthUnscaled = 36.0
+        let pillHeightUnscaled = 26.0
+        let pillToSegmentGapUnscaled = 8.0
+        let ghostInset = context.scaled(ghostEdgeInsetUnscaled * element.scale)
+        let ellipsisInset = context.scaled(ellipsisInsetUnscaled * element.scale)
+        let pillInset = context.scaled(pillCenterInsetUnscaled * element.scale)
+        let pillSize = CGSize(
+            width: context.scaled(pillWidthUnscaled * element.scale),
+            height: context.scaled(pillHeightUnscaled * element.scale)
+        )
+        let pillRightEdgeFromRectEdge = pillInset + pillSize.width / 2
+        let pillToSegmentGap = context.scaled(pillToSegmentGapUnscaled * element.scale)
+        let edgeOnlyWidth = context.scaled(46 * element.scale)
+        let overflowClusterWidth = max(pillRightEdgeFromRectEdge + pillToSegmentGap - horizontalPadding, 0)
         let leadingOverflowWidth = leftOverflow > 0 ? (style.overflowPillsEnabled ? overflowClusterWidth : edgeOnlyWidth) : 0
         let trailingOverflowWidth = rightOverflow > 0 ? (style.overflowPillsEnabled ? overflowClusterWidth : edgeOnlyWidth) : 0
         let segmentArea = CGRect(
@@ -504,10 +525,11 @@ enum OverlayRenderModel {
             height: contentRect.height
         )
         let gap = context.scaled(style.segmentGap * element.scale)
-        let normalHeight = min(context.scaled(style.segmentHeight * element.scale), segmentArea.height)
-        let currentHeight = min(normalHeight * style.currentSegmentHeightScale, segmentArea.height)
+        let normalHeight = normalHeightCap
+        let currentHeight = currentHeightCap
         let minWidth = context.scaled(style.minSegmentWidth * element.scale)
-        let currentProgress = context.activity.lapProgress(at: t, byDistance: false)
+        let activityDuration = max(context.activity.duration, 0.0001)
+        let currentProgress = min(max(t / activityDuration, 0), 1)
         let currentVisibleOffset = currentIndex.flatMap { visibleRange.contains($0) ? $0 - visibleRange.lowerBound : nil }
 
         let segmentWidths = intervalTimelineSegmentWidths(
@@ -555,20 +577,16 @@ enum OverlayRenderModel {
         } else {
             markerX = segmentArea.midX
         }
-        let railY = (segments.map(\.rect.maxY).max() ?? contentRect.midY) + context.scaled(style.railSpacing * element.scale)
-        let railDots = intervalTimelineRailDots(for: segments, y: railY)
-        let markerTopY = railY + context.scaled(railVisualHeight * element.scale) / 2 + markerGap
+        let markerTopY = rect.minY + markerTopYRel
 
         return IntervalTimelineRenderLayout(
             style: style,
             rect: rect,
             contentRect: contentRect,
-            railY: railY,
-            railDots: railDots,
             segments: segments,
             leftOverflowCount: leftOverflow,
             rightOverflowCount: rightOverflow,
-            currentProgress: clampedProgress(currentProgress),
+            currentProgress: currentProgress,
             markerX: markerX,
             markerTopY: markerTopY,
             markerTriangleHeight: markerTriangleHeight,
@@ -579,12 +597,12 @@ enum OverlayRenderModel {
             durationFontSize: context.scaled(12 * element.scale),
             pillFontSize: context.scaled(11 * element.scale),
             ghostFontSize: context.scaled(12 * element.scale),
-            cornerRadius: context.scaled(element.style.backgroundRadius * element.scale)
+            cornerRadius: context.scaled(element.style.backgroundRadius * element.scale),
+            overflowGhostInset: ghostInset,
+            overflowEllipsisInset: ellipsisInset,
+            overflowPillInset: pillInset,
+            overflowPillSize: pillSize
         )
-    }
-
-    private static func intervalTimelineRailDots(for segments: [IntervalTimelineSegmentLayout], y: Double) -> [CGPoint] {
-        segments.map { CGPoint(x: $0.rect.midX, y: y) }
     }
 
     private static func intervalTimelineSegmentWidths(
@@ -600,12 +618,15 @@ enum OverlayRenderModel {
         let totalGap = gap * Double(max(laps.count - 1, 0))
         let usableWidth = max(availableWidth - totalGap, 1)
         if centered {
-            let currentExtra = 0.25
-            let totalUnits = Double(laps.count) + (currentOffset == nil ? 0 : currentExtra)
-            let base = max(minWidth, usableWidth / max(totalUnits, 1))
-            return laps.indices.map { index in
-                index == currentOffset ? base * (1 + currentExtra) : base
+            let fraction = min(max(style.currentSegmentWidthFraction, 0.1), 0.6)
+            if let currentOffset, laps.indices.contains(currentOffset), laps.count > 1 {
+                let currentWidth = max(minWidth, usableWidth * fraction)
+                let remaining = max(usableWidth - currentWidth, Double(laps.count - 1) * minWidth)
+                let othersWidth = max(minWidth, remaining / Double(laps.count - 1))
+                return laps.indices.map { $0 == currentOffset ? currentWidth : othersWidth }
             }
+            let base = max(minWidth, usableWidth / Double(laps.count))
+            return Array(repeating: base, count: laps.count)
         }
 
         let totalDuration = max(laps.map(\.totalElapsedTime).reduce(0, +), 1)
@@ -741,7 +762,7 @@ enum OverlayRenderModel {
            let hrIndex = resolvedHeartRateZoneIndex(heartRate: heartRate, zones: visibleZones) {
             return hrIndex
         }
-        guard let pace = paceSecondsPerKm else { return nil }
+        guard let pace = paceSecondsPerKm, pace > 0 else { return nil }
         return resolvedPaceZoneIndex(paceSecondsPerKm: pace, zones: visibleZones)
     }
 
@@ -757,7 +778,7 @@ enum OverlayRenderModel {
             guard let heartRate else { return nil }
             return resolvedHeartRateZoneIndex(heartRate: heartRate, zones: visibleZones)
         case .paceZones:
-            guard let paceSecondsPerKm else { return nil }
+            guard let paceSecondsPerKm, paceSecondsPerKm > 0 else { return nil }
             return resolvedPaceZoneIndex(paceSecondsPerKm: paceSecondsPerKm, zones: visibleZones)
         case .none, .lapProgress:
             return nil
@@ -801,17 +822,62 @@ enum OverlayRenderModel {
         case .heartRateZones:
             guard let heartRate else { return nil }
             return IntervalHUDBarZoneMarker(
+                role: .current,
                 zoneIndex: zoneIndex,
                 fractionInZone: heartRateFraction(heartRate, zone: zone),
                 valueText: "\(heartRate) bpm",
                 color: HRZonePalette.overlayColor(forIndex: zoneIndex)
             )
         case .paceZones:
-            guard let paceSecondsPerKm else { return nil }
+            guard let paceSecondsPerKm, paceSecondsPerKm > 0 else { return nil }
             return IntervalHUDBarZoneMarker(
+                role: .current,
                 zoneIndex: zoneIndex,
                 fractionInZone: paceFraction(paceSecondsPerKm, zone: zone),
                 valueText: formatPace(secondsPerKm: paceSecondsPerKm, paceUnit: snapshot.paceUnit),
+                color: HRZonePalette.overlayColor(forIndex: zoneIndex)
+            )
+        case .none, .lapProgress:
+            return nil
+        }
+    }
+
+    private static func intervalThresholdZoneMarker(
+        style: IntervalHUDBarStyle,
+        snapshot: HeartRateZoneSnapshot
+    ) -> IntervalHUDBarZoneMarker? {
+        guard style.thresholdZoneMarkerEnabled,
+              style.bottomBarMode == .heartRateZones || style.bottomBarMode == .paceZones
+        else { return nil }
+        let visibleZones = Array(snapshot.zones.prefix(snapshot.zoneCount))
+        switch style.bottomBarMode {
+        case .heartRateZones:
+            guard let thresholdHR = snapshot.thresholdHR,
+                  let zoneIndex = resolvedHeartRateZoneIndex(heartRate: thresholdHR, zones: visibleZones),
+                  zoneIndex >= 0,
+                  zoneIndex < snapshot.zones.count
+            else { return nil }
+            let zone = snapshot.zones[zoneIndex]
+            return IntervalHUDBarZoneMarker(
+                role: .threshold,
+                zoneIndex: zoneIndex,
+                fractionInZone: heartRateFraction(thresholdHR, zone: zone),
+                valueText: "T",
+                color: HRZonePalette.overlayColor(forIndex: zoneIndex)
+            )
+        case .paceZones:
+            guard let thresholdPace = snapshot.thresholdPaceSecPerKm,
+                  thresholdPace > 0,
+                  let zoneIndex = resolvedPaceZoneIndex(paceSecondsPerKm: Double(thresholdPace), zones: visibleZones),
+                  zoneIndex >= 0,
+                  zoneIndex < snapshot.zones.count
+            else { return nil }
+            let zone = snapshot.zones[zoneIndex]
+            return IntervalHUDBarZoneMarker(
+                role: .threshold,
+                zoneIndex: zoneIndex,
+                fractionInZone: paceFraction(Double(thresholdPace), zone: zone),
+                valueText: "T",
                 color: HRZonePalette.overlayColor(forIndex: zoneIndex)
             )
         case .none, .lapProgress:

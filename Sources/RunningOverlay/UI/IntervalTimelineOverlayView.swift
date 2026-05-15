@@ -16,7 +16,6 @@ struct IntervalTimelineOverlayView: View {
             }
 
             ZStack(alignment: .topLeading) {
-                railView
                 ghostEdgeLabels
                 ForEach(layout.segments) { segment in
                     segmentView(segment)
@@ -30,40 +29,15 @@ struct IntervalTimelineOverlayView: View {
         .frame(width: layout.rect.width, height: layout.rect.height)
     }
 
-    private var railView: some View {
-        return ZStack(alignment: .topLeading) {
-            if layout.style.railEnabled {
-                if let first = layout.railDots.first, let last = layout.railDots.last {
-                    Capsule()
-                        .fill(Color(intervalTimeline: layout.style.railLineColor).opacity(layout.style.railOpacity))
-                        .frame(
-                            width: max(last.x - first.x, layout.style.railLineWidth * element.scale),
-                            height: layout.style.railLineWidth * element.scale
-                        )
-                        .position(
-                            x: (first.x + last.x) / 2 - layout.rect.minX,
-                            y: layout.railY - layout.rect.minY
-                        )
-                }
-                ForEach(Array(layout.railDots.enumerated()), id: \.offset) { _, point in
-                    Circle()
-                        .fill(Color(intervalTimeline: layout.style.railColor).opacity(layout.style.railOpacity))
-                        .frame(width: layout.style.railDotSize * element.scale, height: layout.style.railDotSize * element.scale)
-                        .position(x: point.x - layout.rect.minX, y: point.y - layout.rect.minY)
-                }
-            }
-        }
-    }
-
     private var ghostEdgeLabels: some View {
         ZStack(alignment: .topLeading) {
             if layout.leftOverflowCount > 0 {
                 ghostLabel(kind: "WU", duration: "15:00", color: layout.style.warmupColor)
-                    .position(x: 18 * element.scale, y: layout.contentRect.midY - layout.rect.minY)
+                    .position(x: layout.overflowGhostInset, y: layout.contentRect.midY - layout.rect.minY)
             }
             if layout.rightOverflowCount > 0 {
                 ghostLabel(kind: "CD", duration: "10:00", color: layout.style.cooldownColor)
-                    .position(x: layout.rect.width - 18 * element.scale, y: layout.contentRect.midY - layout.rect.minY)
+                    .position(x: layout.rect.width - layout.overflowGhostInset, y: layout.contentRect.midY - layout.rect.minY)
             }
         }
     }
@@ -80,30 +54,17 @@ struct IntervalTimelineOverlayView: View {
     }
 
     private var overflowPills: some View {
-        ZStack(alignment: .topLeading) {
+        let midY = layout.contentRect.midY - layout.rect.minY
+        return ZStack(alignment: .topLeading) {
             if layout.style.overflowPillsEnabled && layout.leftOverflowCount > 0 {
-                ellipsis()
-                    .position(
-                        x: layout.contentRect.minX - layout.rect.minX + 50 * element.scale,
-                        y: layout.contentRect.midY - layout.rect.minY
-                    )
+                ellipsis().position(x: layout.overflowEllipsisInset, y: midY)
                 overflowPill("x\(layout.leftOverflowCount)")
-                    .position(
-                        x: layout.contentRect.minX - layout.rect.minX + 84 * element.scale,
-                        y: layout.contentRect.midY - layout.rect.minY
-                    )
+                    .position(x: layout.overflowPillInset, y: midY)
             }
             if layout.style.overflowPillsEnabled && layout.rightOverflowCount > 0 {
                 overflowPill("x\(layout.rightOverflowCount)")
-                    .position(
-                        x: layout.contentRect.maxX - layout.rect.minX - 84 * element.scale,
-                        y: layout.contentRect.midY - layout.rect.minY
-                    )
-                ellipsis()
-                    .position(
-                        x: layout.contentRect.maxX - layout.rect.minX - 50 * element.scale,
-                        y: layout.contentRect.midY - layout.rect.minY
-                    )
+                    .position(x: layout.rect.width - layout.overflowPillInset, y: midY)
+                ellipsis().position(x: layout.rect.width - layout.overflowEllipsisInset, y: midY)
             }
         }
     }
@@ -118,7 +79,7 @@ struct IntervalTimelineOverlayView: View {
         Text(text)
             .font(.custom(element.style.fontName, size: layout.pillFontSize).weight(.bold))
             .foregroundStyle(Color(intervalTimeline: element.style.foregroundColor).opacity(0.82))
-            .frame(width: 40 * element.scale, height: 28 * element.scale)
+            .frame(width: layout.overflowPillSize.width, height: layout.overflowPillSize.height)
             .background(Color.black.opacity(0.30))
             .clipShape(RoundedRectangle(cornerRadius: 5 * element.scale))
             .overlay(RoundedRectangle(cornerRadius: 5 * element.scale).stroke(Color.white.opacity(0.46), lineWidth: 1.4))

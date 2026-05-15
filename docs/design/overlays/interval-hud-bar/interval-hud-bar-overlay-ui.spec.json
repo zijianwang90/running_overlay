@@ -165,6 +165,7 @@
         "visibility": "can be hidden completely",
         "valueLabel": "optional current HR value, colored with the active zone"
       },
+      "thresholdMarker": "Optional subtle vertical tick on the bar with a small T label below it when Threshold HR is configured and falls inside a visible zone.",
       "colorSource": "shared HR zone palette",
       "glow": "Glow highlights the active segment. Intensity is editable; color follows the active zone."
     },
@@ -172,7 +173,8 @@
       "label": "PACE ZONES",
       "visualPattern": "same segmented strip as HR zones",
       "activeZoneWidth": "Same as HR Zones.",
-      "zoneMarker": "Single solid marker points at the current pace inside the matched pace segment; value label is optional.",
+      "zoneMarker": "Single solid marker points at the current pace inside the matched pace segment; value label is optional. Current marker is hidden when pace is zero or invalid.",
+      "thresholdMarker": "Optional subtle vertical tick on the bar with a small T label below it when Threshold Pace is configured and falls inside a visible pace zone.",
       "colorSource": "shared HR zone palette",
       "glow": "Glow highlights the active segment. Intensity is editable; color follows the active zone."
     }
@@ -257,7 +259,8 @@
         "Inactive Opacity",
         "Zone Marker",
         "Marker Position",
-        "Marker Value"
+        "Marker Value",
+        "Threshold Marker"
       ],
       "bottomBarBelowMarkerClearance": "Zone Marker floats outside bottom-bar layout and never reserves height. Above/Below markers may overlap HUD text or extend beyond the background without changing other component positions.",
       "metricUnits": "Each Metrics row stores its own unit option when the selected Numeric Overlay metric supports multiple units.",

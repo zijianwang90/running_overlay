@@ -50,6 +50,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
     var maxFullSegments: Int
     var segmentHeight: Double
     var currentSegmentHeightScale: Double
+    var currentSegmentWidthFraction: Double
     var minSegmentWidth: Double
     var segmentGap: Double
     var edgeFadeEnabled: Bool
@@ -64,13 +65,6 @@ struct IntervalTimelineStyle: Equatable, Codable {
     var durationLabelsEnabled: Bool
     var repCounterEnabled: Bool
     var overflowPillsEnabled: Bool
-    var railEnabled: Bool
-    var railSpacing: Double
-    var railDotSize: Double
-    var railColor: OverlayColor
-    var railOpacity: Double
-    var railLineColor: OverlayColor
-    var railLineWidth: Double
     var warmupColor: OverlayColor
     var activeColor: OverlayColor
     var restColor: OverlayColor
@@ -87,6 +81,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
         maxFullSegments: 12,
         segmentHeight: 30,
         currentSegmentHeightScale: 1.35,
+        currentSegmentWidthFraction: 0.28,
         minSegmentWidth: 54,
         segmentGap: 4,
         edgeFadeEnabled: true,
@@ -101,13 +96,6 @@ struct IntervalTimelineStyle: Equatable, Codable {
         durationLabelsEnabled: true,
         repCounterEnabled: true,
         overflowPillsEnabled: true,
-        railEnabled: true,
-        railSpacing: 5,
-        railDotSize: 5,
-        railColor: .white,
-        railOpacity: 0.36,
-        railLineColor: OverlayColor(red: 0.42, green: 0.48, blue: 0.54, alpha: 1),
-        railLineWidth: 5,
         warmupColor: .blue,
         activeColor: .orange,
         restColor: .green,
@@ -125,6 +113,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
         maxFullSegments: Int,
         segmentHeight: Double,
         currentSegmentHeightScale: Double,
+        currentSegmentWidthFraction: Double,
         minSegmentWidth: Double,
         segmentGap: Double,
         edgeFadeEnabled: Bool,
@@ -139,13 +128,6 @@ struct IntervalTimelineStyle: Equatable, Codable {
         durationLabelsEnabled: Bool,
         repCounterEnabled: Bool,
         overflowPillsEnabled: Bool,
-        railEnabled: Bool,
-        railSpacing: Double,
-        railDotSize: Double,
-        railColor: OverlayColor,
-        railOpacity: Double,
-        railLineColor: OverlayColor,
-        railLineWidth: Double,
         warmupColor: OverlayColor,
         activeColor: OverlayColor,
         restColor: OverlayColor,
@@ -161,6 +143,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
         self.maxFullSegments = maxFullSegments
         self.segmentHeight = segmentHeight
         self.currentSegmentHeightScale = currentSegmentHeightScale
+        self.currentSegmentWidthFraction = currentSegmentWidthFraction
         self.minSegmentWidth = minSegmentWidth
         self.segmentGap = segmentGap
         self.edgeFadeEnabled = edgeFadeEnabled
@@ -175,13 +158,6 @@ struct IntervalTimelineStyle: Equatable, Codable {
         self.durationLabelsEnabled = durationLabelsEnabled
         self.repCounterEnabled = repCounterEnabled
         self.overflowPillsEnabled = overflowPillsEnabled
-        self.railEnabled = railEnabled
-        self.railSpacing = railSpacing
-        self.railDotSize = railDotSize
-        self.railColor = railColor
-        self.railOpacity = railOpacity
-        self.railLineColor = railLineColor
-        self.railLineWidth = railLineWidth
         self.warmupColor = warmupColor
         self.activeColor = activeColor
         self.restColor = restColor
@@ -201,6 +177,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
         maxFullSegments = try c.decodeIfPresent(Int.self, forKey: .maxFullSegments) ?? base.maxFullSegments
         segmentHeight = try c.decodeIfPresent(Double.self, forKey: .segmentHeight) ?? base.segmentHeight
         currentSegmentHeightScale = try c.decodeIfPresent(Double.self, forKey: .currentSegmentHeightScale) ?? base.currentSegmentHeightScale
+        currentSegmentWidthFraction = try c.decodeIfPresent(Double.self, forKey: .currentSegmentWidthFraction) ?? base.currentSegmentWidthFraction
         minSegmentWidth = try c.decodeIfPresent(Double.self, forKey: .minSegmentWidth) ?? base.minSegmentWidth
         segmentGap = try c.decodeIfPresent(Double.self, forKey: .segmentGap) ?? base.segmentGap
         edgeFadeEnabled = try c.decodeIfPresent(Bool.self, forKey: .edgeFadeEnabled) ?? base.edgeFadeEnabled
@@ -215,13 +192,6 @@ struct IntervalTimelineStyle: Equatable, Codable {
         durationLabelsEnabled = try c.decodeIfPresent(Bool.self, forKey: .durationLabelsEnabled) ?? base.durationLabelsEnabled
         repCounterEnabled = try c.decodeIfPresent(Bool.self, forKey: .repCounterEnabled) ?? base.repCounterEnabled
         overflowPillsEnabled = try c.decodeIfPresent(Bool.self, forKey: .overflowPillsEnabled) ?? base.overflowPillsEnabled
-        railEnabled = try c.decodeIfPresent(Bool.self, forKey: .railEnabled) ?? base.railEnabled
-        railSpacing = try c.decodeIfPresent(Double.self, forKey: .railSpacing) ?? base.railSpacing
-        railDotSize = try c.decodeIfPresent(Double.self, forKey: .railDotSize) ?? base.railDotSize
-        railColor = try c.decodeIfPresent(OverlayColor.self, forKey: .railColor) ?? base.railColor
-        railOpacity = try c.decodeIfPresent(Double.self, forKey: .railOpacity) ?? base.railOpacity
-        railLineColor = try c.decodeIfPresent(OverlayColor.self, forKey: .railLineColor) ?? base.railLineColor
-        railLineWidth = try c.decodeIfPresent(Double.self, forKey: .railLineWidth) ?? base.railLineWidth
         warmupColor = try c.decodeIfPresent(OverlayColor.self, forKey: .warmupColor) ?? base.warmupColor
         activeColor = try c.decodeIfPresent(OverlayColor.self, forKey: .activeColor) ?? base.activeColor
         restColor = try c.decodeIfPresent(OverlayColor.self, forKey: .restColor) ?? base.restColor
@@ -236,8 +206,6 @@ struct IntervalTimelineRenderLayout: Equatable {
     var style: IntervalTimelineStyle
     var rect: CGRect
     var contentRect: CGRect
-    var railY: Double
-    var railDots: [CGPoint]
     var segments: [IntervalTimelineSegmentLayout]
     var leftOverflowCount: Int
     var rightOverflowCount: Int
@@ -253,6 +221,10 @@ struct IntervalTimelineRenderLayout: Equatable {
     var pillFontSize: Double
     var ghostFontSize: Double
     var cornerRadius: Double
+    var overflowGhostInset: Double
+    var overflowEllipsisInset: Double
+    var overflowPillInset: Double
+    var overflowPillSize: CGSize
 }
 
 struct IntervalTimelineSegmentLayout: Identifiable, Equatable {

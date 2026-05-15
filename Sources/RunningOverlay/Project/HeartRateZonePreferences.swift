@@ -163,7 +163,15 @@ final class HeartRateZonePreferences {
         } else {
             zones = HeartRateZone.emptySlots()
         }
-        return HeartRateZoneSnapshot(zoneCount: zoneCount, paceUnit: paceUnit, zones: zones)
+        let thresholdHR = defaults.object(forKey: thresholdHRKey) as? Int
+        let thresholdPaceSecPerKm = defaults.object(forKey: thresholdPaceKey) as? Int
+        return HeartRateZoneSnapshot(
+            zoneCount: zoneCount,
+            paceUnit: paceUnit,
+            zones: zones,
+            thresholdHR: thresholdHR,
+            thresholdPaceSecPerKm: thresholdPaceSecPerKm
+        )
     }
 }
 
