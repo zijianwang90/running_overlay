@@ -130,6 +130,7 @@ struct HeartRateZonesView: View {
                 ForEach(0..<prefs.zoneCount.rawValue, id: \.self) { index in
                     HeartRateZoneRow(
                         index: index,
+                        endpointKind: endpointKind(forIndex: index),
                         paceUnit: prefs.paceUnit,
                         zoneLabelColumnWidth: Self.zoneLabelColumnWidth,
                         hrFieldWidth: Self.hrFieldWidth,
@@ -163,6 +164,12 @@ struct HeartRateZonesView: View {
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 14)
+    }
+
+    private func endpointKind(forIndex index: Int) -> HeartRateZoneRow.EndpointKind {
+        if index == 0 { return .first }
+        if index == prefs.zoneCount.rawValue - 1 { return .last }
+        return .middle
     }
 
     private var rangeColumnWidth: CGFloat {
@@ -201,7 +208,10 @@ struct HeartRateZonesView: View {
 }
 
 private struct HeartRateZoneRow: View {
+    enum EndpointKind { case first, middle, last }
+
     let index: Int
+    let endpointKind: EndpointKind
     let paceUnit: PaceUnit
     let zoneLabelColumnWidth: CGFloat
     let hrFieldWidth: CGFloat
@@ -227,17 +237,9 @@ private struct HeartRateZoneRow: View {
             }
             .frame(width: zoneLabelColumnWidth, alignment: .leading)
 
-            rangeCluster(
-                minBinding: $zone.minHR,
-                maxBinding: $zone.maxHR,
-                unitText: "bpm"
-            )
+            hrCluster
 
-            rangeCluster(
-                paceMin: $zone.minPaceSecPerKm,
-                paceMax: $zone.maxPaceSecPerKm,
-                unitText: paceUnit.label
-            )
+            paceCluster
 
             Spacer(minLength: 0)
         }
@@ -245,32 +247,126 @@ private struct HeartRateZoneRow: View {
         .frame(minHeight: 44)
     }
 
-    private func rangeCluster(minBinding: Binding<Int?>, maxBinding: Binding<Int?>, unitText: String) -> some View {
-        HStack(spacing: rangeInternalSpacing) {
-            IntField(value: minBinding, placeholder: "min", width: hrFieldWidth)
-            Text("–")
-                .foregroundStyle(EditorTheme.textMuted)
-                .frame(width: 12)
-            IntField(value: maxBinding, placeholder: "max", width: hrFieldWidth)
-            Text(unitText)
-                .font(EditorTheme.captionFont)
-                .foregroundStyle(EditorTheme.textMuted)
-                .frame(width: rangeUnitColumnWidth, alignment: .leading)
+    @ViewBuilder
+    private var hrCluster: some View {
+        switch endpointKind {
+        case .first:
+            endpointHRCluster(
+                comparator: "<",
+                binding: Binding(
+                    get: { zone.maxHR },
+                    set: {
+                        zone.maxHR = $0
+                        zone.minHR = nil
+                    }
+                )
+            )
+        case .last:
+            endpointHRCluster(
+                comparator: ">",
+                binding: Binding(
+                    get: { zone.minHR },
+                    set: {
+                        zone.minHR = $0
+                        zone.maxHR = nil
+                    }
+                )
+            )
+        case .middle:
+            rangeHRCluster
         }
     }
 
-    private func rangeCluster(paceMin: Binding<Int?>, paceMax: Binding<Int?>, unitText: String) -> some View {
-        HStack(spacing: rangeInternalSpacing) {
-            PaceField(secondsPerKm: paceMin, unit: paceUnit, width: paceFieldWidth)
-            Text("–")
-                .foregroundStyle(EditorTheme.textMuted)
-                .frame(width: 12)
-            PaceField(secondsPerKm: paceMax, unit: paceUnit, width: paceFieldWidth)
-            Text(unitText)
-                .font(EditorTheme.captionFont)
-                .foregroundStyle(EditorTheme.textMuted)
-                .frame(width: rangeUnitColumnWidth, alignment: .leading)
+    @ViewBuilder
+    private var paceCluster: some View {
+        switch endpointKind {
+        case .first:
+            // Pace semantics invert HR: lower sec/km = faster. Z1 is the slowest zone,
+            // so the user enters a lower-bound (sec/km) prefixed with `>` (slower than).
+            endpointPaceCluster(
+                comparator: ">",
+                binding: Binding(
+                    get: { zone.minPaceSecPerKm },
+                    set: {
+                        zone.minPaceSecPerKm = $0
+                        zone.maxPaceSecPerKm = nil
+                    }
+                )
+            )
+        case .last:
+            endpointPaceCluster(
+                comparator: "<",
+                binding: Binding(
+                    get: { zone.maxPaceSecPerKm },
+                    set: {
+                        zone.maxPaceSecPerKm = $0
+                        zone.minPaceSecPerKm = nil
+                    }
+                )
+            )
+        case .middle:
+            rangePaceCluster
         }
+    }
+
+    private var rangeHRCluster: some View {
+        HStack(spacing: rangeInternalSpacing) {
+            IntField(value: $zone.minHR, placeholder: "min", width: hrFieldWidth)
+            dash
+            IntField(value: $zone.maxHR, placeholder: "max", width: hrFieldWidth)
+            unitLabel("bpm")
+        }
+    }
+
+    private var rangePaceCluster: some View {
+        HStack(spacing: rangeInternalSpacing) {
+            PaceField(secondsPerKm: $zone.minPaceSecPerKm, unit: paceUnit, width: paceFieldWidth)
+            dash
+            PaceField(secondsPerKm: $zone.maxPaceSecPerKm, unit: paceUnit, width: paceFieldWidth)
+            unitLabel(paceUnit.label)
+        }
+    }
+
+    // Endpoint clusters preserve the middle row's total width so columns stay aligned:
+    // range layout is [field | dash | field | unit] (4 slots, 3 gaps);
+    // endpoint layout is [comparator | field | filler | unit] (4 slots, 3 gaps) where
+    // comparator occupies the dash slot's width and filler equals one field's width.
+    private func endpointHRCluster(comparator: String, binding: Binding<Int?>) -> some View {
+        HStack(spacing: rangeInternalSpacing) {
+            comparatorLabel(comparator)
+            IntField(value: binding, placeholder: "—", width: hrFieldWidth)
+            Color.clear.frame(width: hrFieldWidth, height: 1)
+            unitLabel("bpm")
+        }
+    }
+
+    private func endpointPaceCluster(comparator: String, binding: Binding<Int?>) -> some View {
+        HStack(spacing: rangeInternalSpacing) {
+            comparatorLabel(comparator)
+            PaceField(secondsPerKm: binding, unit: paceUnit, width: paceFieldWidth)
+            Color.clear.frame(width: paceFieldWidth, height: 1)
+            unitLabel(paceUnit.label)
+        }
+    }
+
+    private var dash: some View {
+        Text("–")
+            .foregroundStyle(EditorTheme.textMuted)
+            .frame(width: 12)
+    }
+
+    private func comparatorLabel(_ text: String) -> some View {
+        Text(text)
+            .font(EditorTheme.bodyStrongFont)
+            .foregroundStyle(EditorTheme.textSecondary)
+            .frame(width: 12)
+    }
+
+    private func unitLabel(_ text: String) -> some View {
+        Text(text)
+            .font(EditorTheme.captionFont)
+            .foregroundStyle(EditorTheme.textMuted)
+            .frame(width: rangeUnitColumnWidth, alignment: .leading)
     }
 }
 
