@@ -891,7 +891,8 @@ extension OverlayElementType {
         switch self {
         case .heartRate: "heart"
         case .heartRateZone: "heart.text.square.fill"
-        case .pace: "speedometer"
+        case .pace, .avgPace: "speedometer"
+        case .lapPace: "flag.checkered"
         case .calories: "flame"
         case .elapsedTime: "clock"
         case .realTime: "watch.analog"

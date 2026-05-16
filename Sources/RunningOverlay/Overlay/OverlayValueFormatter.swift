@@ -99,12 +99,28 @@ enum OverlayValueFormatter {
                 unit: ""
             )
         case .pace:
-            let pace = activity.pace(at: elapsedTime).map { formatPaceComponents($0, option: unitOption) }
-            return OverlayValueComponents(
-                label: resolvedLabel("Pace"),
-                shortLabel: "PACE",
-                value: pace?.value ?? "--'--\"",
-                unit: pace?.unit ?? defaultPaceUnit(for: unitOption)
+            return paceOverlayComponents(
+                secondsPerKm: activity.pace(at: elapsedTime),
+                unitOption: unitOption,
+                resolvedLabel: resolvedLabel,
+                defaultLabel: "Pace",
+                shortLabel: "PACE"
+            )
+        case .avgPace:
+            return paceOverlayComponents(
+                secondsPerKm: activity.avgPace(at: elapsedTime),
+                unitOption: unitOption,
+                resolvedLabel: resolvedLabel,
+                defaultLabel: "Avg Pace",
+                shortLabel: "AVG"
+            )
+        case .lapPace:
+            return paceOverlayComponents(
+                secondsPerKm: activity.lapPace(at: elapsedTime),
+                unitOption: unitOption,
+                resolvedLabel: resolvedLabel,
+                defaultLabel: "Lap Pace",
+                shortLabel: "LAP"
             )
         case .calories:
             return OverlayValueComponents(
@@ -276,6 +292,22 @@ enum OverlayValueFormatter {
         default:
             return ("\(Int(meters.rounded()))", "m")
         }
+    }
+
+    private static func paceOverlayComponents(
+        secondsPerKm: Double?,
+        unitOption: OverlayUnitOption,
+        resolvedLabel: (String) -> String,
+        defaultLabel: String,
+        shortLabel: String
+    ) -> OverlayValueComponents {
+        let pace = secondsPerKm.map { formatPaceComponents($0, option: unitOption) }
+        return OverlayValueComponents(
+            label: resolvedLabel(defaultLabel),
+            shortLabel: shortLabel,
+            value: pace?.value ?? "--'--\"",
+            unit: pace?.unit ?? defaultPaceUnit(for: unitOption)
+        )
     }
 
     private static func defaultPaceUnit(for option: OverlayUnitOption) -> String {

@@ -66,6 +66,24 @@ struct ActivityTimeline: Equatable, Codable {
         interpolatedValue(at: elapsedTime, keyPath: \.paceSecondsPerKilometer)
     }
 
+    /// Cumulative session average: elapsed / (distance km). Matches watch Avg Pace.
+    func avgPace(at elapsedTime: TimeInterval) -> Double? {
+        let t = clampedElapsedTime(elapsedTime)
+        let meters = distance(at: elapsedTime)
+        guard t > 0, meters > 0 else { return nil }
+        return t / (meters / 1000.0)
+    }
+
+    /// Running average within the current lap (updates during the lap).
+    func lapPace(at elapsedTime: TimeInterval) -> Double? {
+        guard let lap = currentLap(at: elapsedTime) else { return nil }
+        let t = clampedElapsedTime(elapsedTime)
+        let inLapTime = t - lap.startElapsedTime
+        let inLapDistance = distance(at: elapsedTime) - lap.startDistanceMeters
+        guard inLapTime > 0, inLapDistance > 0 else { return nil }
+        return inLapTime / (inLapDistance / 1000.0)
+    }
+
     func elevation(at elapsedTime: TimeInterval) -> Double? {
         interpolatedValue(at: elapsedTime, keyPath: \.elevationMeters)
     }

@@ -1,5 +1,13 @@
 # Running Overlay Project Log
 
+## 2026-05-16
+
+### Numeric Overlay: Avg Pace and Lap Pace
+
+- Added `OverlayElementType.avgPace` and `.lapPace` (Overlay Pool → Metrics, after Pace): same numeric overlay Inspector, typography, and unit options as `pace`; values from `ActivityTimeline.avgPace(at:)` (cumulative elapsed ÷ distance) and `lapPace(at:)` (in-lap running average).
+- `OverlayValueFormatter` shares `paceOverlayComponents` for all three pace types. Interval HUD metric slots and export batching include the new types.
+- Tests: `OverlayValueFormatterTests.avgPaceUsesCumulativeSessionAverage`, `lapPaceUsesRunningAverageWithinCurrentLap`.
+
 ## 2026-05-15
 
 ### Overlay Pool: HR Zone numeric overlay

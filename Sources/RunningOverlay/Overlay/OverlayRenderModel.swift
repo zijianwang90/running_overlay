@@ -719,7 +719,7 @@ enum OverlayRenderModel {
             switch slot.metric {
             case .heartRateZone, .hrDrop:
                 return nil
-            case .heartRate, .pace, .calories, .elapsedTime, .realTime, .distance, .elevation, .cadence, .power, .verticalOscillation, .groundContactTime, .strideLength, .verticalRatio, .groundContactBalance, .temperature, .grade:
+            case .heartRate, .pace, .avgPace, .lapPace, .calories, .elapsedTime, .realTime, .distance, .elevation, .cadence, .power, .verticalOscillation, .groundContactTime, .strideLength, .verticalRatio, .groundContactBalance, .temperature, .grade:
                 guard let elementType = slot.metric.elementType else { return nil }
                 let components = OverlayValueFormatter.components(
                     for: elementType,

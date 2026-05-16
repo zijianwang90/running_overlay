@@ -132,6 +132,8 @@ enum IntervalHUDBarMetric: String, CaseIterable, Identifiable, Codable {
     case heartRateZone
     case heartRate
     case pace
+    case avgPace
+    case lapPace
     case calories
     case elapsedTime
     case realTime
@@ -155,6 +157,8 @@ enum IntervalHUDBarMetric: String, CaseIterable, Identifiable, Codable {
         case .heartRateZone: "HR Zone"
         case .heartRate: "HR"
         case .pace: "Pace"
+        case .avgPace: "Avg Pace"
+        case .lapPace: "Lap Pace"
         case .calories: "Calories"
         case .elapsedTime: "Elapsed Time"
         case .realTime: "Real Time"
@@ -181,6 +185,10 @@ enum IntervalHUDBarMetric: String, CaseIterable, Identifiable, Codable {
             .heartRate
         case .pace:
             .pace
+        case .avgPace:
+            .avgPace
+        case .lapPace:
+            .lapPace
         case .calories:
             .calories
         case .elapsedTime:

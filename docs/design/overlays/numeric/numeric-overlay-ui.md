@@ -18,7 +18,9 @@ Use this template for these `OverlayElementType` values:
 
 - `heartRate`
 - `heartRateZone` — same Inspector sections as other metrics; adds **Zone colors → Match zone colors for text** (`OverlayStyle.textColorsFollowHeartRateZones`). When enabled, preview and export paint value/label/unit from the active zone’s entry in the shared `HRZonePalette` (see Project Settings → Heart Rate Zones). When disabled, typography behaves like any other numeric overlay. This type is **not** available as an Interval HUD Bar metric slot (the HUD keeps its own `heartRateZone` / `hrDrop` metrics).
-- `pace`
+- `pace` — instantaneous speed-derived pace at the playhead.
+- `avgPace` — cumulative session average (elapsed ÷ distance); same Inspector and unit options as `pace`.
+- `lapPace` — running average within the current lap (in-lap elapsed ÷ in-lap distance).
 - `calories`
 - `elapsedTime`
 - `realTime`
@@ -107,6 +109,7 @@ Other numeric overlays should expose only relevant unit choices:
 | --- | --- |
 | Heart Rate | `bpm` |
 | Pace | `Metric (min/km)`, `Imperial (min/mi)`, `Rowing (min/500m)` |
+| Avg Pace / Lap Pace | Same as Pace |
 | Distance | `Metric (km)`, `Imperial (mi)`, `Meters (m)` |
 | Elevation | `Metric (m)`, `Imperial (ft)` |
 | Power | `watts` |

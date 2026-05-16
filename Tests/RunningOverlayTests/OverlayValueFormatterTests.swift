@@ -144,4 +144,74 @@ struct OverlayValueFormatterTests {
         element.style.showUnit = true
         #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 5) == "120 bpm")
     }
+
+    @Test func avgPaceUsesCumulativeSessionAverage() {
+        let startDate = Date(timeIntervalSince1970: 0)
+        let activity = ActivityTimeline(
+            startDate: startDate,
+            duration: 60,
+            distanceMeters: 1000,
+            records: [
+                ActivityRecord(
+                    elapsedTime: 0, timestamp: startDate, distanceMeters: 0,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil,
+                    cadence: nil, powerWatts: nil, calories: nil
+                ),
+                ActivityRecord(
+                    elapsedTime: 60, timestamp: startDate.addingTimeInterval(60), distanceMeters: 1000,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil,
+                    cadence: nil, powerWatts: nil, calories: nil
+                )
+            ],
+            laps: []
+        )
+
+        #expect(activity.avgPace(at: 60) == 60)
+        #expect(activity.avgPace(at: 0) == nil)
+        #expect(OverlayValueFormatter.value(for: .avgPace, activity: activity, elapsedTime: 60) == "1'00\"/km")
+        #expect(OverlayValueFormatter.value(for: .avgPace, activity: activity, elapsedTime: 0) == "--'--\"/km")
+    }
+
+    @Test func lapPaceUsesRunningAverageWithinCurrentLap() {
+        let startDate = Date(timeIntervalSince1970: 0)
+        let activity = ActivityTimeline(
+            startDate: startDate,
+            duration: 200,
+            distanceMeters: 500,
+            records: [
+                ActivityRecord(
+                    elapsedTime: 0, timestamp: startDate, distanceMeters: 0,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil,
+                    cadence: nil, powerWatts: nil, calories: nil
+                ),
+                ActivityRecord(
+                    elapsedTime: 100, timestamp: startDate.addingTimeInterval(100), distanceMeters: 200,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil,
+                    cadence: nil, powerWatts: nil, calories: nil
+                ),
+                ActivityRecord(
+                    elapsedTime: 160, timestamp: startDate.addingTimeInterval(160), distanceMeters: 360,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil,
+                    cadence: nil, powerWatts: nil, calories: nil
+                ),
+                ActivityRecord(
+                    elapsedTime: 200, timestamp: startDate.addingTimeInterval(200), distanceMeters: 500,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil,
+                    cadence: nil, powerWatts: nil, calories: nil
+                )
+            ],
+            laps: [
+                LapRecord(
+                    lapIndex: 0, startElapsedTime: 100, endElapsedTime: 200,
+                    startDistanceMeters: 200, totalDistanceMeters: 300, totalElapsedTime: 100,
+                    avgPaceSecondsPerKm: nil, avgHeartRate: nil, maxHeartRate: nil,
+                    avgCadenceSPM: nil, avgPowerWatts: nil, totalAscent: nil, kind: .active
+                )
+            ]
+        )
+
+        #expect(activity.lapPace(at: 99) == nil)
+        #expect(activity.lapPace(at: 160) == 375)
+        #expect(OverlayValueFormatter.value(for: .lapPace, activity: activity, elapsedTime: 160) == "6'15\"/km")
+    }
 }

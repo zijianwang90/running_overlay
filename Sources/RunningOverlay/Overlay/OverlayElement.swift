@@ -35,6 +35,8 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     /// tints all text with the active zone’s palette color.
     case heartRateZone
     case pace
+    case avgPace
+    case lapPace
     case calories
     case elapsedTime
     case realTime
@@ -67,6 +69,8 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         case .heartRate: "Heart Rate"
         case .heartRateZone: "HR Zone"
         case .pace: "Pace"
+        case .avgPace: "Avg Pace"
+        case .lapPace: "Lap Pace"
         case .calories: "Calories"
         case .elapsedTime: "Elapsed Time"
         case .realTime: "Real Time"
@@ -118,7 +122,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     /// See `docs/design/overlays/numeric/numeric-overlay-ui.md`.
     var isNumericOverlay: Bool {
         switch self {
-        case .heartRate, .heartRateZone, .pace, .calories, .elapsedTime, .realTime,
+        case .heartRate, .heartRateZone, .pace, .avgPace, .lapPace, .calories, .elapsedTime, .realTime,
              .distance, .elevation, .cadence, .power,
              .verticalOscillation, .groundContactTime, .strideLength,
              .verticalRatio, .groundContactBalance, .temperature, .grade:
@@ -228,7 +232,7 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
         switch type {
         case .heartRate: [.bpm]
         case .heartRateZone: []
-        case .pace: [.paceMetric, .paceImperial, .paceRowing]
+        case .pace, .avgPace, .lapPace: [.paceMetric, .paceImperial, .paceRowing]
         case .distance: [.distanceKilometers, .distanceMiles, .distanceMeters]
         case .elevation: [.elevationMeters, .elevationFeet]
         case .power: [.watts]
