@@ -2238,6 +2238,19 @@ final class ProjectDocument: ObservableObject {
         }
     }
 
+    func setOverlayNumericMinimumSize(_ elementID: OverlayElement.ID, width: Double? = nil, height: Double? = nil) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        if let width {
+            overlayLayout.elements[index].style.numericMinWidth = min(max(width, 0), 720)
+        }
+        if let height {
+            overlayLayout.elements[index].style.numericMinHeight = min(max(height, 0), 360)
+        }
+    }
+
     func setOverlayBackgroundFadeOutEnabled(_ elementID: OverlayElement.ID, enabled: Bool) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }

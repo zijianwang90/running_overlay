@@ -48,6 +48,8 @@ enum OverlayRenderModel {
             unitSpacing: context.scaled(element.style.unitSpacing * element.scale),
             horizontalPadding: metrics.horizontalPadding,
             verticalPadding: metrics.verticalPadding,
+            minimumWidth: context.scaled(element.style.numericMinWidth * element.scale),
+            minimumHeight: context.scaled(element.style.numericMinHeight * element.scale),
             cornerRadius: metrics.cornerRadius,
             backgroundFadeOutEnabled: element.style.backgroundFadeOutEnabled,
             backgroundFadeOutAmount: element.style.backgroundFadeOutAmount,
@@ -1516,6 +1518,8 @@ struct OverlayTextRenderLayout {
     var unitSpacing: Double
     var horizontalPadding: Double
     var verticalPadding: Double
+    var minimumWidth: Double
+    var minimumHeight: Double
     var cornerRadius: Double
     var backgroundFadeOutEnabled: Bool
     var backgroundFadeOutAmount: Double

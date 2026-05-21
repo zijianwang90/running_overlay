@@ -1,6 +1,6 @@
 {
   "name": "Numeric Overlay UI",
-  "updated": "2026-04-26",
+  "updated": "2026-05-21",
   "references": {
     "mockup": "./numeric-overlay.png",
     "relatedInspectorSpec": "../../panels/inspector/inspector-ui.md",
@@ -73,6 +73,8 @@
         { "id": "anchor", "type": "grid3x3", "modelBacked": false },
         { "id": "position", "type": "numberPair", "labels": ["X", "Y"], "modelPaths": ["OverlayElement.position.x", "OverlayElement.position.y"] },
         { "id": "scale", "type": "slider", "modelPath": "OverlayElement.scale" },
+        { "id": "minimumWidth", "type": "slider", "range": [0, 720], "modelPath": "OverlayStyle.numericMinWidth" },
+        { "id": "minimumHeight", "type": "slider", "range": [0, 360], "modelPath": "OverlayStyle.numericMinHeight" },
         { "id": "rotation", "type": "numberOrSlider", "modelBacked": false }
       ]
     },
@@ -150,6 +152,7 @@
     "formatted value preview",
     "position x/y",
     "scale",
+    "numeric minimum width/height",
     "font name",
     "font size",
     "font weight",
@@ -171,6 +174,10 @@
     "background radius",
     "background padding x/y",
     "accent color"
+  ],
+  "renderingRules": [
+    "Unit text remains on one line and inline units grow the numeric overlay natural width instead of wrapping.",
+    "numericMinWidth and numericMinHeight reserve additional frame space; zero preserves text-driven natural sizing."
   ],
   "recommendedComponents": [
     "NumericOverlayDetailView",

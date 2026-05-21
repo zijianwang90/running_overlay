@@ -1270,6 +1270,7 @@ struct TextPresetOverlayView: View {
                 serifEditorialView
             }
         }
+        .frame(minWidth: layout.minimumWidth, minHeight: layout.minimumHeight)
         .foregroundStyle(overlayGroupForegroundColor)
         .monospacedDigit()
         .overlayGenericBorder(element: element, cornerRadius: layout.cornerRadius)
@@ -1281,6 +1282,7 @@ struct TextPresetOverlayView: View {
     @ViewBuilder
     private var minimalCleanView: some View {
         metricCoreContent
+        .frame(minWidth: layout.minimumWidth, minHeight: layout.minimumHeight)
         .padding(.horizontal, element.style.backgroundEnabled ? layout.horizontalPadding : 0)
         .padding(.vertical, element.style.backgroundEnabled ? layout.verticalPadding : 0)
         .background {
@@ -1849,6 +1851,8 @@ struct TextPresetOverlayView: View {
         let unit = Text(layout.components.unit)
             .font(.custom(layout.unitFontName, size: layout.unitFontSize).weight(Font.Weight(layout.unitFontWeight)))
             .foregroundStyle(unitTextColor)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
         let value = Text(layout.components.value)
             .font(.custom(element.style.fontName, size: layout.fontSize).weight(.semibold))
             .tracking(-layout.fontSize * 0.012)

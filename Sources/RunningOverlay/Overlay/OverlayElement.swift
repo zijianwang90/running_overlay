@@ -404,6 +404,10 @@ struct OverlayStyle: Equatable, Codable {
     var backgroundRadius: Double
     var backgroundPaddingX: Double
     var backgroundPaddingY: Double
+    /// Optional minimum frame for numeric text overlays in design units.
+    /// Zero keeps the overlay sized from its rendered text.
+    var numericMinWidth: Double
+    var numericMinHeight: Double
     var backgroundFadeOutEnabled: Bool
     var backgroundFadeOutAmount: Double
     var backgroundBlurRadius: Double
@@ -521,6 +525,8 @@ struct OverlayStyle: Equatable, Codable {
         backgroundRadius: 6,
         backgroundPaddingX: 10,
         backgroundPaddingY: 6,
+        numericMinWidth: 0,
+        numericMinHeight: 0,
         backgroundFadeOutEnabled: false,
         backgroundFadeOutAmount: 0.22,
         backgroundBlurRadius: 0,
@@ -613,6 +619,8 @@ struct OverlayStyle: Equatable, Codable {
         backgroundRadius: Double = 6,
         backgroundPaddingX: Double = 10,
         backgroundPaddingY: Double = 6,
+        numericMinWidth: Double = 0,
+        numericMinHeight: Double = 0,
         backgroundFadeOutEnabled: Bool = false,
         backgroundFadeOutAmount: Double = 0.22,
         backgroundBlurRadius: Double = 0,
@@ -703,6 +711,8 @@ struct OverlayStyle: Equatable, Codable {
         self.backgroundRadius = backgroundRadius
         self.backgroundPaddingX = backgroundPaddingX
         self.backgroundPaddingY = backgroundPaddingY
+        self.numericMinWidth = min(max(numericMinWidth, 0), 720)
+        self.numericMinHeight = min(max(numericMinHeight, 0), 360)
         self.backgroundFadeOutEnabled = backgroundFadeOutEnabled
         self.backgroundFadeOutAmount = backgroundFadeOutAmount
         self.backgroundBlurRadius = backgroundBlurRadius
@@ -805,6 +815,8 @@ struct OverlayStyle: Equatable, Codable {
         backgroundRadius = try container.decodeIfPresent(Double.self, forKey: .backgroundRadius) ?? Self.default.backgroundRadius
         backgroundPaddingX = try container.decodeIfPresent(Double.self, forKey: .backgroundPaddingX) ?? Self.default.backgroundPaddingX
         backgroundPaddingY = try container.decodeIfPresent(Double.self, forKey: .backgroundPaddingY) ?? Self.default.backgroundPaddingY
+        numericMinWidth = min(max(try container.decodeIfPresent(Double.self, forKey: .numericMinWidth) ?? Self.default.numericMinWidth, 0), 720)
+        numericMinHeight = min(max(try container.decodeIfPresent(Double.self, forKey: .numericMinHeight) ?? Self.default.numericMinHeight, 0), 360)
         backgroundFadeOutEnabled = try container.decodeIfPresent(Bool.self, forKey: .backgroundFadeOutEnabled) ?? Self.default.backgroundFadeOutEnabled
         backgroundFadeOutAmount = min(max(try container.decodeIfPresent(Double.self, forKey: .backgroundFadeOutAmount) ?? Self.default.backgroundFadeOutAmount, 0), 1)
         backgroundBlurRadius = max(try container.decodeIfPresent(Double.self, forKey: .backgroundBlurRadius) ?? Self.default.backgroundBlurRadius, 0)

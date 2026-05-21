@@ -302,6 +302,7 @@ Current implementation status:
 - Numeric overlays (heart rate, pace, calories, elapsed time, real time, distance, elevation, cadence, power, and advanced running metrics) use the dense `NumericOverlayDetailView` Inspector with Content, Layout, Typography (value), Label, Unit, Color, Background, and Effects sections matching `docs/design/overlays/numeric/numeric-overlay-ui.md`. Shared Layout uses Position/Scale/Width/Height/Opacity (no Rotation).
 - Numeric overlay defaults now standardize to `Minimal Clean` for all numeric types.
 - Numeric overlay style supports per-overlay unit option, label/unit visibility toggles, custom label text, independent label/unit positions (`top/bottom/left/right`), independent label/unit typography (`font`, `size`, `weight`), rotation, accent color, background enable/color/radius/padding plus fade-out + gaussian blur controls, and shadow enable/offset controls. New fields decode with safe defaults so existing projects and templates remain compatible.
+- Numeric overlay unit text stays on one line; inline units grow the natural text frame instead of wrapping. Layout exposes optional minimum width and height controls so text overlays can reserve extra space without shrinking content below its measured size.
 - Added-overlay rows now support per-element visibility and lock toggles with persistent model fields.
 - Visibility off hides the element in both Preview and exported overlay frames.
 - Lock on keeps the element visible but prevents Preview-canvas selection and dragging.

@@ -1,6 +1,6 @@
 # Numeric Overlay UI Design Spec
 
-Last updated: 2026-05-15 (minimal: inline unit L/R uses `unitTextAlignment` for vertical cross-axis, not label)
+Last updated: 2026-05-21 (numeric overlays expose minimum width/height and keep inline units on one line)
 
 ## Purpose
 
@@ -135,6 +135,8 @@ Implemented via the shared `OverlayLayoutInspectorRows` component. Controls:
 
 - Position X and Y numeric fields on one row (three-decimal precision).
 - Scale slider, range `0.25...4`, quantized to `0.05`, formatted `1.00x`.
+- Minimum Width slider, range `0...720` design units. `0` keeps the text-driven natural width; larger values reserve horizontal space without shrinking the rendered metric content.
+- Minimum Height slider, range `0...360` design units. `0` keeps the text-driven natural height.
 - Opacity slider, range `0...1`, displayed as a percentage. This controls `OverlayElement.opacity` and fades the whole overlay, not just its background.
 
 Anchor, Padding, and Rotation rows have been removed. Position is set numerically only.
@@ -182,6 +184,11 @@ Controls:
 - Unit font size.
 - Unit font weight.
 - Spacing slider.
+
+Rendering rules:
+
+- Unit text must remain on one line. An inline unit expands the numeric overlay's natural width instead of wrapping beneath the value when the current width is tight.
+- `Min Width` and `Min Height` reserve extra frame space for alignment, border rendering, and the minimal preset background while the natural text size remains the floor for content that is wider than the configured minimum.
 
 ## Divider Section
 
@@ -316,6 +323,7 @@ Implemented in `OverlayStyle` (2026-04-26 refactor):
 - `textAlignment` (`OverlayTextAlignment`) — leading/center/trailing alignment.
 - `accentColor` — color used by overlays that expose an accent (defaults to `foregroundColor`).
 - `backgroundEnabled`, `backgroundColor`, `backgroundRadius`, `backgroundPaddingX`, `backgroundPaddingY` — explicit background controls; the legacy `backgroundOpacity` field continues to scale the alpha and stays decoded.
+- `numericMinWidth`, `numericMinHeight` — optional text-overlay minimum frame dimensions; `0` preserves natural text sizing for legacy projects.
 - `backgroundFadeOutEnabled`, `backgroundFadeOutAmount`, `backgroundBlurRadius` — background edge fade and blur controls.
 - `borderEnabled`, `borderColor`, `borderOpacity`, `borderWidth` — shared border controls.
 - `shadowEnabled`, `shadowColor`, `shadowOffsetX`, `shadowOffsetY`, `shadowThickness` — shadow toggle plus color, direction, and thickness, in addition to existing `shadowOpacity` / `shadowRadius`.
@@ -331,7 +339,7 @@ Model-backed and rendered today (post-refactor):
 
 - Type-derived metric.
 - Formatted value preview, honoring `unitOption`, `showLabel`, `showUnit`, and `customLabel`.
-- Position X/Y, scale.
+- Position X/Y, scale, minimum width, minimum height.
 - Font name, font size, font weight.
 - Foreground/text color and accent color.
 - Background enabled / color / radius / padding X / padding Y (`.minimal` text preset uses padding + radius for the rounded background).

@@ -28,7 +28,6 @@ struct NumericOverlayDetailView: View {
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
 
-                Divider().overlay(NumericTokens.borderSubtle)
                 footerBar
             } else {
                 Spacer()
@@ -116,7 +115,19 @@ struct NumericOverlayDetailView: View {
             )
         ) {
             OverlayLayoutInspectorRows(
-                elementID: elementID
+                elementID: elementID,
+                widthBinding: Binding(
+                    get: { project.selectedOverlay(elementID)?.style.numericMinWidth ?? 0 },
+                    set: { project.setOverlayNumericMinimumSize(elementID, width: $0.rounded()) }
+                ),
+                widthRange: 0...720,
+                widthLabel: "Min Width",
+                heightBinding: Binding(
+                    get: { project.selectedOverlay(elementID)?.style.numericMinHeight ?? 0 },
+                    set: { project.setOverlayNumericMinimumSize(elementID, height: $0.rounded()) }
+                ),
+                heightRange: 0...360,
+                heightLabel: "Min Height"
             )
         }
     }
@@ -686,9 +697,6 @@ struct NumericOverlayDetailView: View {
             onLeadingTap: { project.resetOverlayStyle(elementID) },
             onTrailingTap: { project.selection = .none }
         )
-        .padding(.horizontal, NumericTokens.panelPaddingX)
-        .padding(.vertical, NumericTokens.space3)
-        .background(NumericTokens.panelBackgroundElevated)
     }
 
     private func previewValue(for element: OverlayElement) -> String {

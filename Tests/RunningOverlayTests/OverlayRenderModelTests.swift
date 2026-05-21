@@ -19,6 +19,23 @@ struct OverlayRenderModelTests {
         #expect(layout.verticalPadding == 9)
     }
 
+    @Test func numericOverlayMinimumSizeScalesWithCanvasAndElement() {
+        var style = OverlayStyle.default
+        style.numericMinWidth = 120
+        style.numericMinHeight = 44
+        let element = OverlayElement(type: .heartRate, position: CGPoint(x: 0.5, y: 0.5), scale: 1.25, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: CGSize(width: 1920, height: 1080),
+            activity: sampleActivity(),
+            elapsedTime: 5
+        )
+
+        let layout = OverlayRenderModel.textLayout(for: element, in: context)
+
+        #expect(layout.minimumWidth == 225)
+        #expect(layout.minimumHeight == 82.5)
+    }
+
     @Test func distanceTimelineLayoutUsesSharedProgressAndGeometry() {
         let element = OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.25), scale: 1, style: .default)
         let context = OverlayRenderContext(
