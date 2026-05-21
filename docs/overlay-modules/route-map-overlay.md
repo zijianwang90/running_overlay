@@ -1,6 +1,6 @@
 # Route Map Overlay Design
 
-Last updated: 2026-05-21 (independent Route Map marker controls)
+Last updated: 2026-05-21 (stable MapKit snapshot appearance)
 
 > **Inspector / UI design has its own spec.** See
 > [`docs/design/overlays/route-map/route-map-overlay-ui.md`](../design/overlays/route-map/route-map-overlay-ui.md) and
@@ -292,6 +292,13 @@ Phase G.1: Route line and marker inspector cleanup (current revision)
   独立设置样式。
 - Start 与 End marker 新增独立颜色字段；Moving marker 继续使用独立颜色字段，
   并新增与起终点一致的 style 控制。
+
+Phase G.2: Stable MapKit snapshot appearance (current revision)
+
+- `MapKitMapSnapshotProvider` 显式为每次 `MKMapSnapshotter` 请求设置
+  appearance，不再让同一项目的地图底图跟随 macOS 当前浅色 / 深色外观变化。
+- `dark` 背景样式固定请求 dark MapKit 快照；`light` / `terrain` /
+  `satellite` 固定请求 light snapshot appearance。
 
 Phase H: Route line richness, container border / glow
 

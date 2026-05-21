@@ -2,6 +2,11 @@
 
 ## 2026-05-21
 
+### Route Map MapKit Appearance Lock
+
+- Fixed MapKit snapshot appearance from Route Map background style so map backgrounds no longer switch tone when macOS changes between light and dark appearance.
+- `dark` background style now always requests a dark MapKit snapshot; `light`, `terrain`, and `satellite` keep a stable light snapshot appearance.
+
 ### Route Map Marker Control Split
 
 - Route Line `Color Mode` now owns the rendered line paint even under the Gradient route style, so Solid color swatches update the line instead of only affecting a preview marker.

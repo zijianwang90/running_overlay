@@ -39,6 +39,7 @@ final class MapKitMapSnapshotProvider: MapSnapshotProvider {
         let options = MKMapSnapshotter.Options()
         options.size = request.size
         options.mapType = mapType(for: request.backgroundStyle)
+        options.appearance = appearance(for: request.backgroundStyle)
         options.region = request.bounds.coordinateRegion(padding: 0.18)
 
         MKMapSnapshotter(options: options).start(with: DispatchQueue.global(qos: .userInitiated)) { snapshot, error in
@@ -63,6 +64,17 @@ final class MapKitMapSnapshotProvider: MapSnapshotProvider {
         case .satellite:
             .satellite
         }
+    }
+
+    private func appearance(for style: OverlayRouteMapBackgroundStyle) -> NSAppearance? {
+        let appearanceName: NSAppearance.Name
+        switch style {
+        case .dark:
+            appearanceName = .darkAqua
+        case .none, .light, .terrain, .satellite:
+            appearanceName = .aqua
+        }
+        return NSAppearance(named: appearanceName)
     }
 }
 

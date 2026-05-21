@@ -228,6 +228,9 @@ Rules:
 
 - Map background defaults are intentionally dim and low saturation. The route
   line should always read as the primary element.
+- MapKit snapshot appearance follows the selected Map Style instead of the
+  current macOS appearance: `dark` requests a dark snapshot; `light`,
+  `terrain`, and `satellite` request light snapshot appearance.
 - The Route Style preset never changes map visibility; only the Show Map
   toggle (and direct edits to `routeMapBackgroundStyle`) do.
 - The map provider is recomputed by `OverlayRenderModel.routeMapLayout`
