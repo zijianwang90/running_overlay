@@ -146,6 +146,18 @@ struct OverlayRenderModelTests {
         #expect(layout.chartHeight == 78)
     }
 
+    @Test func elevationChartSmoothingSoftensQuantizedStairStepsAndPreservesEndpoints() {
+        let samples = [100.0, 100, 100, 110, 110, 110]
+
+        let smoothed = OverlayRenderModel.smoothedElevationChartSamples(samples)
+
+        #expect(smoothed.first == samples.first)
+        #expect(smoothed.last == samples.last)
+        #expect(smoothed != samples)
+        #expect(smoothed[2] > samples[2])
+        #expect(smoothed[3] < samples[3])
+    }
+
     @Test func runningGaugeLayoutCarriesCoreMetricsAndProgress() {
         let element = OverlayElement(type: .runningGauge, position: CGPoint(x: 0.4, y: 0.6), scale: 1, style: .default)
         let context = OverlayRenderContext(

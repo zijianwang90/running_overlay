@@ -1,6 +1,6 @@
 # Elevation Chart Overlay
 
-Last updated: 2026-05-01
+Last updated: 2026-05-21
 
 The Elevation Chart overlay is a dedicated `.elevationChart` module for rendering an activity elevation profile. It is separate from Distance Timeline and Route Map, but intentionally reuses their shared inspector and stats bar infrastructure where it makes sense.
 
@@ -16,6 +16,7 @@ The Elevation Chart overlay is a dedicated `.elevationChart` module for renderin
 - Render layout: `OverlayRenderModel.elevationChartLayout`
 - Fill gradient inspector: `From` and `To` swatch strips are stacked vertically so the color editor stays within the inspector width.
 - Inspector chrome: collapsed custom section headers use the single-line separator pattern, and the Reset / Done footer reuses the shared detail footer height and button layout.
+- Smoothing: the chart renderer filters quantized elevation samples and uses curved line/area paths in both Full and Progress modes. Preview and export share the same smoothed sample set before their native path drawing.
 
 ## Presets
 
@@ -36,4 +37,3 @@ Elevation Chart uses the shared stats bar inspector/configuration surface alread
 - No bar, dot, step, or segmented chart modes.
 - Dual Area is visually two-tone; climb/descent segment coloring is deferred.
 - Remaining climb is not yet exposed as a stats metric.
-- Smoothing is stored in the model, but the first renderer still uses the sampled elevation polyline directly.

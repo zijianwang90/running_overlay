@@ -318,7 +318,7 @@ Current implementation:
 - Distance Timeline media slots use the generic `OverlayIconSlot` model; the current UI exposes it only for Distance Timeline, but the Codable data and deterministic SVG renderer are reusable by other overlay modules.
 - Distance Timeline SVG import embeds static or animated SVG source in `OverlayStyle.distanceTimeline.mediaSlot`; preview and export sample animated SVG from overlay elapsed time so rendered frames are deterministic.
 - Interval Timeline is available as a horizontal interval-workout schedule overlay that complements Interval HUD Bar: it uses existing `ActivityTimeline.laps`, renders as a compact title-free timeline rail, keeps the current lap centered and enlarged by default, and summarizes hidden repetitions for high-count workouts such as `1min x25`. See `docs/design/overlays/interval-timeline/interval-timeline-overlay-ui.md` and `docs/overlay-modules/interval-timeline-overlay.md`.
-- Elevation chart overlays render as line charts with playhead markers.
+- Elevation chart overlays render line/area charts with playhead markers; Smoothing filters quantized elevation samples and draws curved paths in both preview and export, including Progress mode.
 - Running Gauge overlays render circular ticks, a progress ring, section dividers, and core run metrics in both preview and export.
 - Route Map overlays render the route path, start marker, finish marker, and current-position marker in both preview and export.
 - `OverlayRenderModel` provides the shared layout data used by SwiftUI preview and AVFoundation export rendering.

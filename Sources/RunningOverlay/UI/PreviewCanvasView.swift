@@ -3022,25 +3022,37 @@ struct ElevationChartOverlayView: View {
 
     private func chartPath(in size: CGSize) -> Path {
         var path = Path()
-        guard layout.samples.count > 1 else {
+        let points = chartPoints(in: size)
+        guard points.count > 1 else {
             path.move(to: CGPoint(x: 0, y: size.height / 2))
             path.addLine(to: CGPoint(x: size.width, y: size.height / 2))
             return path
         }
 
-        let minValue = layout.samples.min() ?? 0
-        let maxValue = layout.samples.max() ?? minValue
-        let range = max(maxValue - minValue, 1)
-
-        for index in layout.samples.indices {
-            let x = size.width * CGFloat(index) / CGFloat(max(layout.samples.count - 1, 1))
-            let normalized = (layout.samples[index] - minValue) / range
-            let y = size.height - size.height * CGFloat(normalized)
-            if index == layout.samples.startIndex {
-                path.move(to: CGPoint(x: x, y: y))
-            } else {
-                path.addLine(to: CGPoint(x: x, y: y))
+        path.move(to: points[0])
+        guard layout.style.smoothingEnabled, points.count > 2 else {
+            for point in points.dropFirst() {
+                path.addLine(to: point)
             }
+            return path
+        }
+
+        for index in 0..<(points.count - 1) {
+            let start = points[index]
+            let end = points[index + 1]
+            let previous = index > 0 ? points[index - 1] : start
+            let next = index + 2 < points.count ? points[index + 2] : end
+            path.addCurve(
+                to: end,
+                control1: CGPoint(
+                    x: start.x + (end.x - previous.x) / 6,
+                    y: start.y + (end.y - previous.y) / 6
+                ),
+                control2: CGPoint(
+                    x: end.x - (next.x - start.x) / 6,
+                    y: end.y - (next.y - start.y) / 6
+                )
+            )
         }
 
         return path
@@ -3105,16 +3117,24 @@ struct ElevationChartOverlayView: View {
     }
 
     private func chartPoint(at progress: Double, in size: CGSize) -> CGPoint {
-        guard !layout.samples.isEmpty else {
+        let points = chartPoints(in: size)
+        guard !points.isEmpty else {
             return CGPoint(x: size.width * progress, y: size.height / 2)
         }
-        let index = min(max(Int((Double(layout.samples.count - 1) * progress).rounded()), 0), layout.samples.count - 1)
+        let index = min(max(Int((Double(points.count - 1) * progress).rounded()), 0), points.count - 1)
+        return points[index]
+    }
+
+    private func chartPoints(in size: CGSize) -> [CGPoint] {
+        guard !layout.samples.isEmpty else { return [] }
         let minValue = layout.samples.min() ?? 0
         let maxValue = layout.samples.max() ?? minValue
         let range = max(maxValue - minValue, 1)
-        let x = size.width * CGFloat(index) / CGFloat(max(layout.samples.count - 1, 1))
-        let y = size.height - size.height * CGFloat((layout.samples[index] - minValue) / range)
-        return CGPoint(x: x, y: y)
+        return layout.samples.indices.map { index in
+            let x = size.width * CGFloat(index) / CGFloat(max(layout.samples.count - 1, 1))
+            let y = size.height - size.height * CGFloat((layout.samples[index] - minValue) / range)
+            return CGPoint(x: x, y: y)
+        }
     }
 }
 

@@ -258,6 +258,7 @@ enum OverlayRenderModel {
         } else {
             visibleSamples = samples
         }
+        let renderedSamples = style.smoothingEnabled ? smoothedElevationChartSamples(visibleSamples) : visibleSamples
         let statsBarItems = elevationChartStatsBarItems(
             style: style,
             activity: context.activity,
@@ -279,7 +280,7 @@ enum OverlayRenderModel {
             chartHeight: context.scaled(max(52, (style.bigNumbersEnabled ? style.height * 0.40 : style.height - (style.statsBar.visible ? style.statsBar.height + 34 : 34)) * element.scale)),
             lineWidth: max(context.scaled(1), context.scaled(style.lineWidth * element.scale)),
             progress: progress,
-            samples: visibleSamples
+            samples: renderedSamples
         )
     }
 
@@ -1299,6 +1300,33 @@ enum OverlayRenderModel {
         return (0..<40).map { index in
             activity.elevation(at: activity.duration * Double(index) / 39) ?? 0
         }
+    }
+
+    static func smoothedElevationChartSamples(_ samples: [Double]) -> [Double] {
+        guard samples.count > 2 else { return samples }
+
+        let weights = [1.0, 2.0, 3.0, 2.0, 1.0]
+        let radius = weights.count / 2
+        var filtered = samples
+
+        // Repeated passes smooth integer-meter FIT stair steps while retaining
+        // both chart endpoints for the current-value marker and progress tip.
+        for _ in 0..<2 {
+            let source = filtered
+            for index in source.indices.dropFirst().dropLast() {
+                var weightedSum = 0.0
+                var weightSum = 0.0
+                for offset in -radius...radius {
+                    let neighbor = min(max(index + offset, source.startIndex), source.index(before: source.endIndex))
+                    let weight = weights[offset + radius]
+                    weightedSum += source[neighbor] * weight
+                    weightSum += weight
+                }
+                filtered[index] = weightedSum / weightSum
+            }
+        }
+
+        return filtered
     }
 
     private static func clampedProgress(_ progress: Double) -> Double {

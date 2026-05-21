@@ -1270,9 +1270,20 @@ struct OverlayFrameRenderer {
             }
         }
         if style.fillEnabled, style.chartStyle == .area {
-            drawElevationArea(samples: renderLayout.samples, in: chartRect, color: NSColor(style.dualAreaEnabled ? style.upperFillColor : style.fillStartColor).withAlphaComponent(style.fillOpacity))
+            drawElevationArea(
+                samples: renderLayout.samples,
+                in: chartRect,
+                color: NSColor(style.dualAreaEnabled ? style.upperFillColor : style.fillStartColor).withAlphaComponent(style.fillOpacity),
+                smoothed: style.smoothingEnabled
+            )
         }
-        drawElevationPath(samples: renderLayout.samples, in: chartRect, color: NSColor(style.lineColor).withAlphaComponent(style.lineOpacity), lineWidth: renderLayout.lineWidth)
+        drawElevationPath(
+            samples: renderLayout.samples,
+            in: chartRect,
+            color: NSColor(style.lineColor).withAlphaComponent(style.lineOpacity),
+            lineWidth: renderLayout.lineWidth,
+            smoothed: style.smoothingEnabled
+        )
 
         if style.currentMarkerEnabled {
             let marker = elevationMarkerPoint(samples: renderLayout.samples, progress: renderLayout.progress, in: chartRect)
@@ -3078,9 +3089,10 @@ struct OverlayFrameRenderer {
         NSBezierPath(roundedRect: rect, xRadius: rect.height / 2, yRadius: rect.height / 2).fill()
     }
 
-    private static func drawElevationPath(samples: [Double], in rect: CGRect, color: NSColor, lineWidth: Double) {
+    private static func drawElevationPath(samples: [Double], in rect: CGRect, color: NSColor, lineWidth: Double, smoothed: Bool) {
         let path = NSBezierPath()
-        guard samples.count > 1 else {
+        let points = elevationChartPoints(samples: samples, in: rect)
+        guard points.count > 1 else {
             path.move(to: CGPoint(x: rect.minX, y: rect.midY))
             path.line(to: CGPoint(x: rect.maxX, y: rect.midY))
             color.setStroke()
@@ -3089,20 +3101,7 @@ struct OverlayFrameRenderer {
             return
         }
 
-        let minValue = samples.min() ?? 0
-        let maxValue = samples.max() ?? minValue
-        let range = max(maxValue - minValue, 1)
-
-        for index in samples.indices {
-            let x = rect.minX + rect.width * Double(index) / Double(max(samples.count - 1, 1))
-            let normalized = (samples[index] - minValue) / range
-            let y = rect.maxY - rect.height * normalized
-            if index == samples.startIndex {
-                path.move(to: CGPoint(x: x, y: y))
-            } else {
-                path.line(to: CGPoint(x: x, y: y))
-            }
-        }
+        appendElevationChartLine(to: path, points: points, smoothed: smoothed)
 
         color.setStroke()
         path.lineWidth = lineWidth
@@ -3111,25 +3110,67 @@ struct OverlayFrameRenderer {
         path.stroke()
     }
 
-    private static func drawElevationArea(samples: [Double], in rect: CGRect, color: NSColor) {
+    private static func drawElevationArea(samples: [Double], in rect: CGRect, color: NSColor, smoothed: Bool) {
         let path = NSBezierPath()
-        guard samples.count > 1 else { return }
-
-        let minValue = samples.min() ?? 0
-        let maxValue = samples.max() ?? minValue
-        let range = max(maxValue - minValue, 1)
+        let points = elevationChartPoints(samples: samples, in: rect)
+        guard points.count > 1 else { return }
 
         path.move(to: CGPoint(x: rect.minX, y: rect.maxY))
-        for index in samples.indices {
-            let x = rect.minX + rect.width * Double(index) / Double(max(samples.count - 1, 1))
-            let normalized = (samples[index] - minValue) / range
-            let y = rect.maxY - rect.height * normalized
-            path.line(to: CGPoint(x: x, y: y))
-        }
+        path.line(to: points[0])
+        appendElevationChartLine(to: path, points: points, smoothed: smoothed, movesToFirstPoint: false)
         path.line(to: CGPoint(x: rect.maxX, y: rect.maxY))
         path.close()
         color.setFill()
         path.fill()
+    }
+
+    private static func elevationChartPoints(samples: [Double], in rect: CGRect) -> [CGPoint] {
+        guard !samples.isEmpty else { return [] }
+        let minValue = samples.min() ?? 0
+        let maxValue = samples.max() ?? minValue
+        let range = max(maxValue - minValue, 1)
+        return samples.indices.map { index in
+            let x = rect.minX + rect.width * Double(index) / Double(max(samples.count - 1, 1))
+            let normalized = (samples[index] - minValue) / range
+            let y = rect.maxY - rect.height * normalized
+            return CGPoint(x: x, y: y)
+        }
+    }
+
+    private static func appendElevationChartLine(
+        to path: NSBezierPath,
+        points: [CGPoint],
+        smoothed: Bool,
+        movesToFirstPoint: Bool = true
+    ) {
+        guard let firstPoint = points.first else { return }
+        if movesToFirstPoint {
+            path.move(to: firstPoint)
+        }
+        guard smoothed, points.count > 2 else {
+            for point in points.dropFirst() {
+                path.line(to: point)
+            }
+            return
+        }
+
+        for index in 0..<(points.count - 1) {
+            let start = points[index]
+            let end = points[index + 1]
+            let previous = index > 0 ? points[index - 1] : start
+            let next = index + 2 < points.count ? points[index + 2] : end
+            path.curve(
+                to: end,
+                controlPoint1: CGPoint(
+                    x: start.x + (end.x - previous.x) / 6,
+                    y: start.y + (end.y - previous.y) / 6
+                ),
+                controlPoint2: CGPoint(
+                    x: end.x - (next.x - start.x) / 6,
+                    y: end.y - (next.y - start.y) / 6
+                )
+            )
+        }
     }
 
     private static func elevationMarkerPoint(samples: [Double], progress: Double, in rect: CGRect) -> CGPoint {
