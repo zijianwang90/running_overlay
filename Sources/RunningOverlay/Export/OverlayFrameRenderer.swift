@@ -2533,9 +2533,14 @@ struct OverlayFrameRenderer {
 
         strokeRoutePath(points: points, layout: layout, element: element, accent: accent)
 
-        drawRouteMarker(points.first, color: .systemGreen, lineWidth: layout.lineWidth, style: element.style.routeMapStartMarkerStyle)
-        drawRouteMarker(points.last, color: .systemRed, lineWidth: layout.lineWidth, style: element.style.routeMapEndMarkerStyle)
-        drawRouteMarker(layout.projectedCurrentPoint, color: NSColor(element.style.routeMapRunnerDotColor), lineWidth: layout.lineWidth * 1.18)
+        drawRouteMarker(points.first, color: NSColor(element.style.routeMapStartMarkerColor), lineWidth: layout.lineWidth, style: element.style.routeMapStartMarkerStyle)
+        drawRouteMarker(points.last, color: NSColor(element.style.routeMapEndMarkerColor), lineWidth: layout.lineWidth, style: element.style.routeMapEndMarkerStyle)
+        drawRouteMarker(
+            layout.projectedCurrentPoint,
+            color: NSColor(element.style.routeMapRunnerDotColor),
+            lineWidth: layout.lineWidth * 1.18,
+            style: element.style.routeMapRunnerMarkerStyle
+        )
 
     }
 
@@ -2559,8 +2564,8 @@ struct OverlayFrameRenderer {
         return path
     }
 
-    private static func routeColor(for preset: OverlayRouteMapPreset, element: OverlayElement, accent: NSColor) -> NSColor {
-        if element.style.routeMapColorMode == .gradient || preset == .gradient {
+    private static func routeColor(for element: OverlayElement, accent: NSColor) -> NSColor {
+        if element.style.routeMapColorMode == .gradient {
             return NSColor(element.style.routeMapGradientMiddle)
         }
         return accent
@@ -2576,7 +2581,7 @@ struct OverlayFrameRenderer {
             return
         }
 
-        if element.style.routeMapColorMode == .gradient || layout.preset == .gradient {
+        if element.style.routeMapColorMode == .gradient {
             let start = NSColor(element.style.routeMapGradientStart)
             let middle = NSColor(element.style.routeMapGradientMiddle)
             let end = NSColor(element.style.routeMapGradientEnd)
@@ -2596,7 +2601,7 @@ struct OverlayFrameRenderer {
         }
 
         let path = routePath(points: points)
-        routeColor(for: layout.preset, element: element, accent: accent).setStroke()
+        routeColor(for: element, accent: accent).setStroke()
         path.lineWidth = layout.lineWidth
         path.lineCapStyle = .round
         path.lineJoinStyle = .round

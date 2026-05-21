@@ -1,6 +1,6 @@
 # Route Map Overlay Design
 
-Last updated: 2026-05-10 (export MapKit snapshot preload)
+Last updated: 2026-05-21 (independent Route Map marker controls)
 
 > **Inspector / UI design has its own spec.** See
 > [`docs/design/overlays/route-map/route-map-overlay-ui.md`](../design/overlays/route-map/route-map-overlay-ui.md) and
@@ -52,9 +52,10 @@ Inspector 控件需要覆盖这些维度：
 - Metric mapping: pace, heart rate, elevation, distance, elapsed time。
 - Line width: 1 px 到 24 px，随项目分辨率缩放。
 - Glow: 开关、强度、颜色、半径。
-- Start/end markers: 起点与终点可独立设置（dot / pin / flag / hidden）。
+- Start/end markers: 起点与终点可独立设置样式与颜色（dot / pin / flag /
+  hidden）。
 - Marker style (v1): dot / pin / flag.
-- Current position marker: 开关、样式、大小、尾迹长度。
+- Current position marker: 样式、颜色、大小、尾迹长度。
 - Legend (v2): hide / minimal / start+finish+distance / gradient band.
 - Map background style (v1): none / dark / light / terrain / satellite.
 - Map opacity and route opacity。
@@ -222,7 +223,8 @@ Phase C: Map snapshot abstraction
 
 Phase D: Advanced polish
 
-- 起终点/当前位置 marker 样式。Completed (hidden / dot / pin / flag, 独立 start / end)。
+- 起终点/当前位置 marker 样式。Completed (hidden / dot / pin / flag, start /
+  end / moving 独立设置)。
 - Legend 和指标色带。Partially completed (minimal / start+finish+distance / gradientBand 三种模式)。
 - Progress reveal animation。Pending.
 - 起终点隐私模糊。Pending.
@@ -282,13 +284,22 @@ Phase G: Export Map Snapshot Preload (current revision)
 - 如果 MapKit snapshot 请求失败或没有 GPS geometry，Route Map 仍回退到本地
   grid 背景，路线、marker、Stats Bar 继续正常导出。
 
+Phase G.1: Route line and marker inspector cleanup (current revision)
+
+- `Color Mode` 现在直接决定路线线条用 Solid 还是 Gradient；选择 Gradient
+  Route Style 不再覆盖 Inspector 中的 Solid 选择。
+- Markers 区域移除批量 `All Markers` 控件，Start / End / Moving marker 各自
+  独立设置样式。
+- Start 与 End marker 新增独立颜色字段；Moving marker 继续使用独立颜色字段，
+  并新增与起终点一致的 style 控制。
+
 Phase H: Route line richness, container border / glow
 
 - 实现 `RouteMapLegendItemConfig` 列表，替换固定 `legendMode`（保留兼容）。
 - 路线线宽 / 不透明度 / 虚线 / 发光 / 阴影模型字段，并在 Inspector 暴露。
 - 容器 border / glow / blend mode 字段。
 - 地图 contrast / saturation / brightness / blur 调节。
-- 单独控制起终点 marker 颜色 / 大小 / 边框 / 标签文本。
+- 单独控制 marker 大小 / 边框 / 标签文本。
 - 用 `byPace` / `byHeartRate` / `byPower` / `byElevation` 等指标驱动渐变颜色。
 
 ## 13. Open Questions

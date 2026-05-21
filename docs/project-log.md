@@ -2,6 +2,12 @@
 
 ## 2026-05-21
 
+### Route Map Marker Control Split
+
+- Route Line `Color Mode` now owns the rendered line paint even under the Gradient route style, so Solid color swatches update the line instead of only affecting a preview marker.
+- Removed the Route Map inspector's `All Markers` control and split Start, End, and Moving marker style controls; Start and End now have separate persisted color fields while Moving keeps its own color swatches and gains marker style selection.
+- Updated preview/export marker rendering plus Route Map module and UI design docs to match the independent marker controls.
+
 ### Numeric Overlay Unit Wrapping and Minimum Size
 
 - Kept `TextPresetOverlayView.metricCoreContent` unit text on one line so inline units expand a numeric overlay instead of splitting short unit strings inside a narrow unit column.

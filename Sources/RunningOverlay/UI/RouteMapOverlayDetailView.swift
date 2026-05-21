@@ -301,21 +301,39 @@ struct RouteMapOverlayDetailView: View {
 
     @ViewBuilder
     private func markersSection(_ element: OverlayElement) -> some View {
-        InspectorDenseRow(label: "All Markers") {
-            InspectorDenseSegmented(values: OverlayRouteMapMarkerStyle.allCases, selection: Binding(
-                get: { element.style.routeMapMarkerStyle },
-                set: { project.setOverlayRouteMapMarkerStyle(elementID, markerStyle: $0) }
-            )) { marker in
-                Text(marker.compactLabel)
-            }
+        markerStyleRow(label: "Start", selected: element.style.routeMapStartMarkerStyle) { marker in
+            project.setOverlayRouteMapStartMarkerStyle(elementID, markerStyle: marker)
         }
-        InspectorDenseRow(label: "Start") {
+        markerColorRow(label: "Start Color", selected: element.style.routeMapStartMarkerColor) { color in
+            project.setOverlayRouteMapStartMarkerColor(elementID, color: color)
+        }
+        markerStyleRow(label: "End", selected: element.style.routeMapEndMarkerStyle) { marker in
+            project.setOverlayRouteMapEndMarkerStyle(elementID, markerStyle: marker)
+        }
+        markerColorRow(label: "End Color", selected: element.style.routeMapEndMarkerColor) { color in
+            project.setOverlayRouteMapEndMarkerColor(elementID, color: color)
+        }
+        markerStyleRow(label: "Moving", selected: element.style.routeMapRunnerMarkerStyle) { marker in
+            project.setOverlayRouteMapRunnerMarkerStyle(elementID, markerStyle: marker)
+        }
+        markerColorRow(label: "Moving Color", selected: element.style.routeMapRunnerDotColor) { color in
+            project.setOverlayRouteMapRunnerDotColor(elementID, color: color)
+        }
+    }
+
+    @ViewBuilder
+    private func markerStyleRow(
+        label: String,
+        selected: OverlayRouteMapMarkerStyle,
+        onSelect: @escaping (OverlayRouteMapMarkerStyle) -> Void
+    ) -> some View {
+        InspectorDenseRow(label: label) {
             Menu {
                 ForEach(OverlayRouteMapMarkerStyle.allCases) { marker in
                     Button {
-                        project.setOverlayRouteMapStartMarkerStyle(elementID, markerStyle: marker)
+                        onSelect(marker)
                     } label: {
-                        if marker == element.style.routeMapStartMarkerStyle {
+                        if marker == selected {
                             Label(marker.compactLabel, systemImage: "checkmark")
                         } else {
                             Text(marker.compactLabel)
@@ -323,37 +341,25 @@ struct RouteMapOverlayDetailView: View {
                     }
                 }
             } label: {
-                InspectorDenseMenuLabel(title: element.style.routeMapStartMarkerStyle.compactLabel)
+                InspectorDenseMenuLabel(title: selected.compactLabel)
             }
             .menuStyle(.borderlessButton)
             .frame(height: NumericTokens.controlHeight)
         }
-        InspectorDenseRow(label: "End") {
-            Menu {
-                ForEach(OverlayRouteMapMarkerStyle.allCases) { marker in
-                    Button {
-                        project.setOverlayRouteMapEndMarkerStyle(elementID, markerStyle: marker)
-                    } label: {
-                        if marker == element.style.routeMapEndMarkerStyle {
-                            Label(marker.compactLabel, systemImage: "checkmark")
-                        } else {
-                            Text(marker.compactLabel)
-                        }
-                    }
-                }
-            } label: {
-                InspectorDenseMenuLabel(title: element.style.routeMapEndMarkerStyle.compactLabel)
-            }
-            .menuStyle(.borderlessButton)
-            .frame(height: NumericTokens.controlHeight)
-        }
-        InspectorDenseRow(label: "Position Color") {
+    }
+
+    @ViewBuilder
+    private func markerColorRow(
+        label: String,
+        selected: OverlayColor,
+        onSelect: @escaping (OverlayColor) -> Void
+    ) -> some View {
+        InspectorDenseRow(label: label) {
             InspectorDenseSwatchStrip(
                 presets: NumericOverlayDetailView.colorPresets,
-                selected: element.style.routeMapRunnerDotColor
-            ) { color in
-                project.setOverlayRouteMapRunnerDotColor(elementID, color: color)
-            }
+                selected: selected,
+                action: onSelect
+            )
         }
     }
 

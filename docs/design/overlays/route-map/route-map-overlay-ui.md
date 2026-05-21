@@ -84,7 +84,7 @@ Sections, in order:
    optional Contrast / Saturation / Brightness / Blur.
 5. `Route Line` — Color Mode, Solid Color, Gradient Stops, Width, Opacity,
    Dash, Glow.
-6. `Markers` — All Markers, Start Marker, Finish Marker (style / color / size /
+6. `Markers` — Start, Finish, and Moving Marker controls (style / color / size /
    border / label).
 7. `Status Bar` — Enabled (toggle accessory), Placement, Inside, Layout, Size, Width, Offset, Item Gap, Slots, Background, Dividers, Radius.
 8. `Effects` — Shadow opacity / radius, Glow opacity / radius, Background
@@ -239,7 +239,8 @@ Rules:
 Controls (v1, implemented today):
 
 - Color Mode segmented: `Solid` / `Gradient` (`OverlayRouteMapColorMode`).
-- Solid Color swatches (when `solid`) — uses `OverlayStyle.foregroundColor`.
+- Solid Color swatches (when `solid`) — uses `OverlayStyle.foregroundColor`
+  for the route line. Marker colors are configured in the Markers section.
 - Gradient Start / Mid / End swatches (when `gradient`).
 
 Controls (v2, planned per spec):
@@ -253,29 +254,33 @@ Controls (v2, planned per spec):
 
 Rules:
 
-- Color modes are mutually exclusive; switching between them is reversible
-  without losing the underlying gradient stops or solid color.
+- Color modes are mutually exclusive and own the line paint even when Route
+  Style is `Gradient`; switching between them is reversible without losing the
+  underlying gradient stops or solid color.
 - Width defaults to `5` design units, scaled by overlay scale and project DPR.
 
 ## Markers Section
 
 Controls:
 
-- All Markers segmented: `Hidden` / `Dot` / `Pin` / `Flag`. Setting this
-  writes both `routeMapStartMarkerStyle` and `routeMapEndMarkerStyle` for
-  quick symmetric edits.
-- Start Marker dropdown: same enum, drives `routeMapStartMarkerStyle` only.
-- Finish Marker dropdown: same enum, drives `routeMapEndMarkerStyle` only.
+- Start Marker dropdown: `Hidden` / `Dot` / `Pin` / `Flag`, drives
+  `routeMapStartMarkerStyle`.
+- Start Color swatches: drives `routeMapStartMarkerColor`.
+- Finish Marker dropdown: same enum, drives `routeMapEndMarkerStyle`.
+- Finish Color swatches: drives `routeMapEndMarkerColor`.
+- Moving Marker dropdown: same enum, drives `routeMapRunnerMarkerStyle`.
+- Moving Color swatches: drives `routeMapRunnerDotColor`.
 
 Controls (v2, planned per spec):
 
-- Per-marker color, size, border (color / width), icon name, label toggle and
-  label text.
+- Per-marker size, border (color / width), icon name, label toggle and label
+  text.
 
 Rules:
 
 - `Hidden` removes the marker from preview and export.
-- Start defaults to green, Finish defaults to red.
+- Start defaults to green, Finish defaults to red, and Moving defaults to
+  white.
 
 ## Status Bar Section
 

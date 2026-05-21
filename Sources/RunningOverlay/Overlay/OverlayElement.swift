@@ -318,6 +318,9 @@ struct OverlayStyle: Equatable, Codable {
     var routeMapMarkerStyle: OverlayRouteMapMarkerStyle
     var routeMapStartMarkerStyle: OverlayRouteMapMarkerStyle
     var routeMapEndMarkerStyle: OverlayRouteMapMarkerStyle
+    var routeMapRunnerMarkerStyle: OverlayRouteMapMarkerStyle
+    var routeMapStartMarkerColor: OverlayColor
+    var routeMapEndMarkerColor: OverlayColor
     var routeMapRunnerDotColor: OverlayColor
     var routeMapBackgroundStyle: OverlayRouteMapBackgroundStyle
     var routeMapLegendVisible: Bool
@@ -474,6 +477,9 @@ struct OverlayStyle: Equatable, Codable {
         routeMapMarkerStyle: .dot,
         routeMapStartMarkerStyle: .dot,
         routeMapEndMarkerStyle: .dot,
+        routeMapRunnerMarkerStyle: .dot,
+        routeMapStartMarkerColor: .green,
+        routeMapEndMarkerColor: .red,
         routeMapRunnerDotColor: .white,
         routeMapBackgroundStyle: .dark,
         routeMapLegendVisible: true,
@@ -568,6 +574,9 @@ struct OverlayStyle: Equatable, Codable {
         routeMapMarkerStyle: OverlayRouteMapMarkerStyle = .dot,
         routeMapStartMarkerStyle: OverlayRouteMapMarkerStyle = .dot,
         routeMapEndMarkerStyle: OverlayRouteMapMarkerStyle = .dot,
+        routeMapRunnerMarkerStyle: OverlayRouteMapMarkerStyle = .dot,
+        routeMapStartMarkerColor: OverlayColor = .green,
+        routeMapEndMarkerColor: OverlayColor = .red,
         routeMapRunnerDotColor: OverlayColor = .white,
         routeMapBackgroundStyle: OverlayRouteMapBackgroundStyle = .dark,
         routeMapLegendVisible: Bool = true,
@@ -660,6 +669,9 @@ struct OverlayStyle: Equatable, Codable {
         self.routeMapMarkerStyle = routeMapMarkerStyle
         self.routeMapStartMarkerStyle = routeMapStartMarkerStyle
         self.routeMapEndMarkerStyle = routeMapEndMarkerStyle
+        self.routeMapRunnerMarkerStyle = routeMapRunnerMarkerStyle
+        self.routeMapStartMarkerColor = routeMapStartMarkerColor
+        self.routeMapEndMarkerColor = routeMapEndMarkerColor
         self.routeMapRunnerDotColor = routeMapRunnerDotColor
         self.routeMapBackgroundStyle = routeMapBackgroundStyle
         self.routeMapLegendVisible = routeMapLegendVisible
@@ -764,6 +776,9 @@ struct OverlayStyle: Equatable, Codable {
         routeMapMarkerStyle = try container.decodeIfPresent(OverlayRouteMapMarkerStyle.self, forKey: .routeMapMarkerStyle) ?? Self.default.routeMapMarkerStyle
         routeMapStartMarkerStyle = try container.decodeIfPresent(OverlayRouteMapMarkerStyle.self, forKey: .routeMapStartMarkerStyle) ?? routeMapMarkerStyle
         routeMapEndMarkerStyle = try container.decodeIfPresent(OverlayRouteMapMarkerStyle.self, forKey: .routeMapEndMarkerStyle) ?? routeMapMarkerStyle
+        routeMapRunnerMarkerStyle = try container.decodeIfPresent(OverlayRouteMapMarkerStyle.self, forKey: .routeMapRunnerMarkerStyle) ?? Self.default.routeMapRunnerMarkerStyle
+        routeMapStartMarkerColor = try container.decodeIfPresent(OverlayColor.self, forKey: .routeMapStartMarkerColor) ?? Self.default.routeMapStartMarkerColor
+        routeMapEndMarkerColor = try container.decodeIfPresent(OverlayColor.self, forKey: .routeMapEndMarkerColor) ?? Self.default.routeMapEndMarkerColor
         routeMapBackgroundStyle = try container.decodeIfPresent(OverlayRouteMapBackgroundStyle.self, forKey: .routeMapBackgroundStyle) ?? Self.default.routeMapBackgroundStyle
         routeMapLegendVisible = try container.decodeIfPresent(Bool.self, forKey: .routeMapLegendVisible) ?? Self.default.routeMapLegendVisible
         routeMapLegendMode = try container.decodeIfPresent(OverlayRouteMapLegendMode.self, forKey: .routeMapLegendMode) ?? Self.default.routeMapLegendMode

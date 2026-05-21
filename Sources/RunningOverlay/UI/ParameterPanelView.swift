@@ -791,11 +791,18 @@ private struct OverlayDetailView: View {
                     range: 0...0.45,
                     display: element.style.routeMapFadeAmount <= 0.001 ? "Solid" : String(format: "%.0f%%", element.style.routeMapFadeAmount * 100)
                 )
-                InspectorSegmentedPicker(selection: routeMapMarkerStyleBinding, values: OverlayRouteMapMarkerStyle.allCases) { markerStyle in
-                    markerStyle.compactLabel
-                }
                 InspectorPickerRow(label: "Start Marker", selection: routeMapStartMarkerStyleBinding, values: OverlayRouteMapMarkerStyle.allCases) { $0.compactLabel }
                 InspectorPickerRow(label: "End Marker", selection: routeMapEndMarkerStyleBinding, values: OverlayRouteMapMarkerStyle.allCases) { $0.compactLabel }
+                InspectorPickerRow(label: "Moving Marker", selection: routeMapRunnerMarkerStyleBinding, values: OverlayRouteMapMarkerStyle.allCases) { $0.compactLabel }
+                ColorSwatchRow(label: "Start Color", presets: colorPresets, selectedColor: element.style.routeMapStartMarkerColor) { color in
+                    project.setOverlayRouteMapStartMarkerColor(elementID, color: color)
+                }
+                ColorSwatchRow(label: "End Color", presets: colorPresets, selectedColor: element.style.routeMapEndMarkerColor) { color in
+                    project.setOverlayRouteMapEndMarkerColor(elementID, color: color)
+                }
+                ColorSwatchRow(label: "Moving Color", presets: colorPresets, selectedColor: element.style.routeMapRunnerDotColor) { color in
+                    project.setOverlayRouteMapRunnerDotColor(elementID, color: color)
+                }
                 Toggle(isOn: routeMapLegendVisibleBinding) {
                     Text("Legend")
                         .font(InspectorTheme.bodyFont)
@@ -952,19 +959,19 @@ private struct OverlayDetailView: View {
         }
     }
 
-    private var routeMapMarkerStyleBinding: Binding<OverlayRouteMapMarkerStyle> {
-        Binding {
-            element?.style.routeMapMarkerStyle ?? .dot
-        } set: { newValue in
-            project.setOverlayRouteMapMarkerStyle(elementID, markerStyle: newValue)
-        }
-    }
-
     private var routeMapStartMarkerStyleBinding: Binding<OverlayRouteMapMarkerStyle> {
         Binding {
             element?.style.routeMapStartMarkerStyle ?? .dot
         } set: { newValue in
             project.setOverlayRouteMapStartMarkerStyle(elementID, markerStyle: newValue)
+        }
+    }
+
+    private var routeMapRunnerMarkerStyleBinding: Binding<OverlayRouteMapMarkerStyle> {
+        Binding {
+            element?.style.routeMapRunnerMarkerStyle ?? .dot
+        } set: { newValue in
+            project.setOverlayRouteMapRunnerMarkerStyle(elementID, markerStyle: newValue)
         }
     }
 

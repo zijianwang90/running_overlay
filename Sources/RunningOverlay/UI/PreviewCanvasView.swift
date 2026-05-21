@@ -935,13 +935,18 @@ struct RouteMapOverlayView: View {
                     routePath(points: relativePoints)
                         .stroke(routeStroke, style: StrokeStyle(lineWidth: layout.lineWidth, lineCap: .round, lineJoin: .round))
 
-                    routeMarker(relativePoints.first, color: .green, style: element.style.routeMapStartMarkerStyle)
-                    routeMarker(relativePoints.last, color: .red, style: element.style.routeMapEndMarkerStyle)
+                    routeMarker(relativePoints.first, color: Color(element.style.routeMapStartMarkerColor), style: element.style.routeMapStartMarkerStyle)
+                    routeMarker(relativePoints.last, color: Color(element.style.routeMapEndMarkerColor), style: element.style.routeMapEndMarkerStyle)
                 }
             }
 
             if showsCurrentMarker, !layout.projectedPoints.isEmpty {
-                marker(relativeCurrentPoint, color: Color(element.style.foregroundColor), sizeMultiplier: 1.18)
+                routeMarker(
+                    relativeCurrentPoint,
+                    color: Color(element.style.routeMapRunnerDotColor),
+                    style: element.style.routeMapRunnerMarkerStyle,
+                    sizeMultiplier: 1.18
+                )
             }
         }
     }
@@ -1066,7 +1071,7 @@ struct RouteMapOverlayView: View {
     }
 
     private var routeStroke: AnyShapeStyle {
-        if element.style.routeMapColorMode == .gradient || layout.preset == .gradient {
+        if element.style.routeMapColorMode == .gradient {
             return AnyShapeStyle(
                 LinearGradient(
                     colors: [
@@ -1142,17 +1147,22 @@ struct RouteMapOverlayView: View {
     }
 
     @ViewBuilder
-    private func routeMarker(_ point: CGPoint?, color: Color, style: OverlayRouteMapMarkerStyle) -> some View {
+    private func routeMarker(
+        _ point: CGPoint?,
+        color: Color,
+        style: OverlayRouteMapMarkerStyle,
+        sizeMultiplier: Double = 1
+    ) -> some View {
         if let point {
             switch style {
             case .hidden:
                 EmptyView()
             case .dot:
-                marker(point, color: color)
+                marker(point, color: color, sizeMultiplier: sizeMultiplier)
             case .pin:
                 RoutePinShape()
                     .fill(color)
-                    .frame(width: layout.lineWidth * 2.9, height: layout.lineWidth * 3.5)
+                    .frame(width: layout.lineWidth * 2.9 * sizeMultiplier, height: layout.lineWidth * 3.5 * sizeMultiplier)
                     .overlay {
                         RoutePinShape().stroke(Color.white, lineWidth: max(layout.lineWidth * 0.35, 1))
                     }
@@ -1160,7 +1170,7 @@ struct RouteMapOverlayView: View {
             case .flag:
                 RouteFlagShape()
                     .fill(color)
-                    .frame(width: layout.lineWidth * 3, height: layout.lineWidth * 3)
+                    .frame(width: layout.lineWidth * 3 * sizeMultiplier, height: layout.lineWidth * 3 * sizeMultiplier)
                     .overlay {
                         RouteFlagShape().stroke(Color.white, lineWidth: max(layout.lineWidth * 0.32, 1))
                     }

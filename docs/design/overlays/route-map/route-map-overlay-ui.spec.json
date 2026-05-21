@@ -401,21 +401,6 @@
       "icon": "mappin.and.ellipse",
       "controls": [
         {
-          "id": "allMarkers",
-          "type": "segmented",
-          "options": [
-            "hidden",
-            "dot",
-            "pin",
-            "flag"
-          ],
-          "modelPath": "OverlayStyle.routeMapMarkerStyle",
-          "writes": [
-            "routeMapStartMarkerStyle",
-            "routeMapEndMarkerStyle"
-          ]
-        },
-        {
           "id": "startMarker",
           "type": "dropdown",
           "options": [
@@ -440,12 +425,28 @@
         {
           "id": "startColor",
           "type": "swatches",
-          "modelBacked": "phaseF"
+          "modelPath": "OverlayStyle.routeMapStartMarkerColor"
         },
         {
           "id": "finishColor",
           "type": "swatches",
-          "modelBacked": "phaseF"
+          "modelPath": "OverlayStyle.routeMapEndMarkerColor"
+        },
+        {
+          "id": "movingMarker",
+          "type": "dropdown",
+          "options": [
+            "hidden",
+            "dot",
+            "pin",
+            "flag"
+          ],
+          "modelPath": "OverlayStyle.routeMapRunnerMarkerStyle"
+        },
+        {
+          "id": "movingColor",
+          "type": "swatches",
+          "modelPath": "OverlayStyle.routeMapRunnerDotColor"
         },
         {
           "id": "markerSize",

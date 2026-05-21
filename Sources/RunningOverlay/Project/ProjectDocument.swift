@@ -467,6 +467,7 @@ final class ProjectDocument: ObservableObject {
             // `docs/design/overlays/route-map/route-map-overlay-ui.md`). The default is to show
             // the dark MapKit background with a Gradient route line on top.
             style.routeMapPreset = .gradient
+            style.routeMapColorMode = .gradient
             style.routeMapProvider = .mapKit
             style.routeMapBackgroundStyle = .dark
             style.backgroundOpacity = 0.74
@@ -1922,6 +1923,30 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].style.routeMapEndMarkerStyle = markerStyle
+    }
+
+    func setOverlayRouteMapRunnerMarkerStyle(_ elementID: OverlayElement.ID, markerStyle: OverlayRouteMapMarkerStyle) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapRunnerMarkerStyle = markerStyle
+    }
+
+    func setOverlayRouteMapStartMarkerColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapStartMarkerColor = color
+    }
+
+    func setOverlayRouteMapEndMarkerColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapEndMarkerColor = color
     }
 
     func setOverlayRouteMapRunnerDotColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
