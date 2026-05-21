@@ -114,6 +114,10 @@ Background
 Effects
 ```
 
+Collapsed Elevation Chart Inspector section headers use one bottom separator only, matching the regular dense Inspector section rhythm without doubled rules between adjacent sections.
+
+The fixed Reset / Done footer reuses the shared Inspector detail footer so its button layout and height match the other overlay detail panels.
+
 ## 1. Preset Section
 
 The Preset section should not expose many redundant color variants. It should expose only structural visual presets.

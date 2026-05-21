@@ -8,7 +8,7 @@ final class FontLibraryManager {
 
     nonisolated private static let favoritesKey = "fontLibraryFavorites"
     nonisolated private static let defaultFamilyKey = "fontLibraryDefaultFamily"
-    nonisolated private static let fallbackDefaults: [String] = ["SF Pro", "Avenir Next", "Helvetica Neue", "Menlo"]
+    nonisolated private static let fallbackDefaults: [String] = ["Menlo", "PT Mono", "Monaco", "Andale Mono"]
 
     /// Nonisolated accessor so non-@MainActor types (OverlayStyle, RunningGaugeModel)
     /// can read the current default font name from UserDefaults.
@@ -66,6 +66,11 @@ final class FontLibraryManager {
         } else {
             favoriteFamilies.append(family)
         }
+    }
+
+    func restoreDefaults() {
+        favoriteFamilies = Self.fallbackDefaults
+        defaultFamily = Self.fallbackDefaults[0]
     }
 
     /// Safe fallback: returns defaults if the user clears all favorites.

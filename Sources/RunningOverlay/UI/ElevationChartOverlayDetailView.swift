@@ -26,7 +26,6 @@ struct ElevationChartOverlayDetailView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
-                Divider().overlay(NumericTokens.borderSubtle)
                 footerBar
             } else {
                 Spacer()
@@ -274,16 +273,14 @@ struct ElevationChartOverlayDetailView: View {
     }
 
     private var footerBar: some View {
-        HStack(spacing: NumericTokens.space2) {
-            Button("Reset") { project.mutateElevationChartStyle(elementID) { $0 = .default } }
-            Spacer()
-            Button("Done") { project.selection = .none }
-        }
-        .buttonStyle(.borderless)
-        .font(NumericTokens.captionFont)
-        .padding(.horizontal, NumericTokens.panelPaddingX)
-        .frame(height: 38)
-        .background(NumericTokens.panelBackgroundElevated)
+        InspectorDetailFooterBar(
+            leadingTitle: "Reset",
+            leadingSystemImage: "arrow.counterclockwise",
+            trailingTitle: "Done",
+            trailingSystemImage: "checkmark",
+            onLeadingTap: { project.mutateElevationChartStyle(elementID) { $0 = .default } },
+            onTrailingTap: { project.selection = .none }
+        )
     }
 
     private func sectionView<Content: View>(_ section: Section, @ViewBuilder content: () -> Content) -> some View {
@@ -309,7 +306,6 @@ struct ElevationChartOverlayDetailView: View {
                 if isOpen { openSections.remove(section) }
                 else { openSections.insert(section) }
             }
-            .overlay(alignment: .top) { Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1) }
             .overlay(alignment: .bottom) { Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1) }
 
             if isOpen {

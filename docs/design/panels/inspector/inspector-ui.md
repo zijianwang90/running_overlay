@@ -302,6 +302,8 @@ Behavior:
 
 - `Done` returns to the outer Inspector and keeps the overlay selected on Preview if that selection is needed for canvas handles.
 - `Reset` resets only style/layout values for the current overlay. If reset behavior is not implemented yet, omit the button.
+- Overlay detail footers use the shared `InspectorDetailFooterBar` layout: one-third secondary Reset, two-thirds primary Done, centered inside a footer whose total height matches the adjacent Preview playback row.
+- The shared footer owns its elevated background and single top separator; detail panels should not add per-overlay footer padding, backgrounds, or separate divider rows.
 
 ## Interaction Rules
 
@@ -321,6 +323,7 @@ Behavior:
 - Use `OverlayStatsBarInspectorRows` for the section body rows.
 - Current canonical icon is `tablecells` for every overlay.
 - `Enabled` must not appear as a separate first row in expanded content.
+- Collapsed Stats Bar headers use the regular single bottom separator; the shared wrapper must not add a top rule that doubles the line against the preceding section.
 - Keep one shared row set across overlays: `Placement`, `Inside`, `Layout`, `Size`, `Width`, `Offset`, `Item Gap`, `Background`, `Dividers`, `Radius`, `Value Font/Size/Weight/Color`, `Label Font/Size/Weight/Color`, and `Slot 1...4`.
 - Placement-specific rendering behavior must also stay consistent: left/right placements render vertical stack flow, and `Item Gap` affects vertical spacing in that flow.
 - Stats Bar typography is self-contained: Value and Label colors come from Stats Bar config, not outer overlay accent/foreground fallbacks.

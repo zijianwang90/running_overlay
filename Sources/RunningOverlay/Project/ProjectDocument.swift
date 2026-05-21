@@ -1713,6 +1713,14 @@ final class ProjectDocument: ObservableObject {
         next.locationText = existing.locationText
         next.showIcon = existing.showIcon
         next.metricSlots = WeatherWidgetStyle.normalizedMetricSlots(existing.metricSlots, for: preset)
+        next.slotBackgroundColor = existing.slotBackgroundColor
+        next.slotBackgroundOpacity = existing.slotBackgroundOpacity
+        next.slotSpacing = existing.slotSpacing
+        next.locationTextStyle = existing.locationTextStyle
+        next.conditionTextStyle = existing.conditionTextStyle
+        next.temperatureTextStyle = existing.temperatureTextStyle
+        next.slotTitleTextStyle = existing.slotTitleTextStyle
+        next.slotLabelTextStyle = existing.slotLabelTextStyle
         next.cachedWeather = existing.cachedWeather
         overlayLayout.elements[index].style.weatherWidget = next
     }

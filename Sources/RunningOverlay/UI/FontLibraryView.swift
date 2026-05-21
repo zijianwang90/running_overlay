@@ -71,6 +71,12 @@ struct FontLibraryView: View {
             Divider()
                 .overlay(EditorTheme.borderSubtle)
             HStack {
+                Button("Restore Defaults") {
+                    manager.restoreDefaults()
+                    searchText = ""
+                }
+                .buttonStyle(EditorSecondaryButtonStyle())
+
                 Text("\(manager.favoriteFamilies.count) fonts selected \u{2022} Default: \(manager.defaultFamily)")
                     .font(EditorTheme.captionFont)
                     .foregroundStyle(EditorTheme.textSecondary)

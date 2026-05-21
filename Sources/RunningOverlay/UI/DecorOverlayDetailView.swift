@@ -29,7 +29,6 @@ struct DecorOverlayDetailView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
-                Divider().overlay(NumericTokens.borderSubtle)
                 footerBar
             } else {
                 Spacer()
@@ -573,9 +572,6 @@ struct DecorOverlayDetailView: View {
             onLeadingTap: { project.resetOverlayStyle(elementID) },
             onTrailingTap: { project.selection = .none }
         )
-        .padding(.horizontal, NumericTokens.panelPaddingX)
-        .padding(.vertical, NumericTokens.space3)
-        .background(NumericTokens.panelBackgroundElevated)
     }
 
     private enum DecorSection: String, CaseIterable {

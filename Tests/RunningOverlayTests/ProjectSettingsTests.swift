@@ -171,4 +171,22 @@ struct ProjectSettingsTests {
             Issue.record("Expected pixels-per-second zoom")
         }
     }
+
+    @Test func fontLibraryRestoreDefaultsRestoresMonospacedFavoritesAndDefault() {
+        let manager = FontLibraryManager.shared
+        let originalFavorites = manager.favoriteFamilies
+        let originalDefault = manager.defaultFamily
+        defer {
+            manager.favoriteFamilies = originalFavorites
+            manager.defaultFamily = originalDefault
+        }
+
+        manager.favoriteFamilies = ["Avenir Next", "Helvetica Neue"]
+        manager.defaultFamily = "Helvetica Neue"
+
+        manager.restoreDefaults()
+
+        #expect(manager.favoriteFamilies == ["Menlo", "PT Mono", "Monaco", "Andale Mono"])
+        #expect(manager.defaultFamily == "Menlo")
+    }
 }

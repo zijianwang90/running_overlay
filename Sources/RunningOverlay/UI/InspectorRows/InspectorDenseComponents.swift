@@ -174,8 +174,17 @@ struct InspectorDetailFooterBar: View {
                 .buttonStyle(EditorPrimaryButtonStyle())
                 .frame(width: unitWidth * 2)
             }
+            .frame(height: NumericTokens.footerButtonHeight)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
-        .frame(height: NumericTokens.footerButtonHeight)
+        .padding(.horizontal, NumericTokens.panelPaddingX)
+        .frame(height: NumericTokens.detailFooterHeight)
+        .background(NumericTokens.panelBackgroundElevated)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(NumericTokens.borderSubtle)
+                .frame(height: 1)
+        }
     }
 }
 
@@ -362,6 +371,7 @@ enum NumericTokens {
     static let controlHeight: CGFloat = 26
     static let segmentedVisibleHeight: CGFloat = 24
     static let footerButtonHeight: CGFloat = 32
+    static let detailFooterHeight: CGFloat = EditorTheme.previewPlaybackHeight
     static let iconButtonSize: CGFloat = 28
     static let swatchSize: CGFloat = 20
     static let panelPaddingX: CGFloat = 12

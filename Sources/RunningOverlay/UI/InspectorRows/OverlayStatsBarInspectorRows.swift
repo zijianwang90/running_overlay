@@ -354,11 +354,6 @@ struct CollapsibleStatsBarInspectorSection<Content: View>: View {
         .background(NumericTokens.panelBackgroundElevated)
         .contentShape(Rectangle())
         .onTapGesture { isExpanded.toggle() }
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(NumericTokens.borderSubtle)
-                .frame(height: 1)
-        }
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(NumericTokens.borderSubtle)

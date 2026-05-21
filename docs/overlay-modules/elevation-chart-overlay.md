@@ -15,6 +15,7 @@ The Elevation Chart overlay is a dedicated `.elevationChart` module for renderin
 - Export path: `OverlayFrameRenderer.renderElevationChart`
 - Render layout: `OverlayRenderModel.elevationChartLayout`
 - Fill gradient inspector: `From` and `To` swatch strips are stacked vertically so the color editor stays within the inspector width.
+- Inspector chrome: collapsed custom section headers use the single-line separator pattern, and the Reset / Done footer reuses the shared detail footer height and button layout.
 
 ## Presets
 

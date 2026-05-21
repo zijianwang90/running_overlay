@@ -21,12 +21,12 @@ struct WeatherWidgetOverlayDetailView: View {
                         layoutInspectorSection(element)
                         presetSection(element)
                         appearanceSection(element)
+                        typographySection(element)
                         locationSection(element)
                         weatherSection(element)
                     }
                     .padding(.bottom, NumericTokens.panelPaddingY)
                 }
-                Divider().overlay(NumericTokens.borderSubtle)
                 footerBar
             } else {
                 Spacer()
@@ -37,13 +37,14 @@ struct WeatherWidgetOverlayDetailView: View {
     // MARK: - Section model
 
     private enum WeatherSection: String, CaseIterable {
-        case layout, preset, appearance, location, weather
+        case layout, preset, appearance, typography, location, weather
 
         var title: String {
             switch self {
             case .layout: "Layout"
             case .preset: "Preset"
             case .appearance: "Appearance"
+            case .typography: "Typography"
             case .location: "Location"
             case .weather: "Weather"
             }
@@ -54,6 +55,7 @@ struct WeatherWidgetOverlayDetailView: View {
             case .layout: "scope"
             case .preset: "rectangle.3.group"
             case .appearance: "paintpalette"
+            case .typography: "textformat"
             case .location: "location"
             case .weather: "cloud.sun"
             }
@@ -92,9 +94,6 @@ struct WeatherWidgetOverlayDetailView: View {
                 } else {
                     openSections.insert(section)
                 }
-            }
-            .overlay(alignment: .top) {
-                Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1)
             }
             .overlay(alignment: .bottom) {
                 Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1)
@@ -544,6 +543,133 @@ struct WeatherWidgetOverlayDetailView: View {
                     ), range: 0...1, displayText: String(format: "%.0f%%", s.dividerOpacity * 100)
                 )
             }
+            if s.preset == .dashboardBar {
+                InspectorDenseRow(label: "Slot Color") {
+                    InspectorDenseSwatchStrip(presets: colorPresets, selected: s.slotBackgroundColor) { color in
+                        project.mutateWeatherWidgetStyle(elementID) { $0.slotBackgroundColor = color }
+                    }
+                }
+                InspectorDenseSliderRow(
+                    label: "Slot Opacity", value: Binding(
+                        get: { s.slotBackgroundOpacity },
+                        set: { v in project.mutateWeatherWidgetStyleContinuous(elementID) { $0.slotBackgroundOpacity = v } }
+                    ), range: 0...1, displayText: String(format: "%.0f%%", s.slotBackgroundOpacity * 100)
+                )
+                InspectorDenseSliderRow(
+                    label: "Slot Spacing", value: Binding(
+                        get: { s.slotSpacing },
+                        set: { v in project.mutateWeatherWidgetStyleContinuous(elementID) { $0.slotSpacing = v } }
+                    ), range: 0...40, displayText: String(format: "%.0f", s.slotSpacing)
+                )
+            }
+        }
+    }
+
+    // MARK: - Typography section
+
+    private func typographySection(_ element: OverlayElement) -> some View {
+        let s = element.style.weatherWidget
+        return sectionView(.typography, element: element) {
+            textStyleRows(
+                title: "Location",
+                style: s.locationTextStyle,
+                writer: { mut in project.mutateWeatherWidgetStyle(elementID) { mut(&$0.locationTextStyle) } },
+                writerContinuous: { mut in project.mutateWeatherWidgetStyleContinuous(elementID) { mut(&$0.locationTextStyle) } }
+            )
+            textStyleRows(
+                title: "Condition",
+                style: s.conditionTextStyle,
+                writer: { mut in project.mutateWeatherWidgetStyle(elementID) { mut(&$0.conditionTextStyle) } },
+                writerContinuous: { mut in project.mutateWeatherWidgetStyleContinuous(elementID) { mut(&$0.conditionTextStyle) } }
+            )
+            textStyleRows(
+                title: "Temperature",
+                style: s.temperatureTextStyle,
+                writer: { mut in project.mutateWeatherWidgetStyle(elementID) { mut(&$0.temperatureTextStyle) } },
+                writerContinuous: { mut in project.mutateWeatherWidgetStyleContinuous(elementID) { mut(&$0.temperatureTextStyle) } }
+            )
+            textStyleRows(
+                title: "Slot Title",
+                style: s.slotTitleTextStyle,
+                writer: { mut in project.mutateWeatherWidgetStyle(elementID) { mut(&$0.slotTitleTextStyle) } },
+                writerContinuous: { mut in project.mutateWeatherWidgetStyleContinuous(elementID) { mut(&$0.slotTitleTextStyle) } }
+            )
+            textStyleRows(
+                title: "Slot Label",
+                style: s.slotLabelTextStyle,
+                writer: { mut in project.mutateWeatherWidgetStyle(elementID) { mut(&$0.slotLabelTextStyle) } },
+                writerContinuous: { mut in project.mutateWeatherWidgetStyleContinuous(elementID) { mut(&$0.slotLabelTextStyle) } }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func textStyleRows(
+        title: String,
+        style: WeatherTextStyle,
+        writer: @escaping ((inout WeatherTextStyle) -> Void) -> Void,
+        writerContinuous: @escaping ((inout WeatherTextStyle) -> Void) -> Void
+    ) -> some View {
+        InspectorDenseRow(label: title) {
+            Text("")
+                .font(NumericTokens.bodyFont)
+                .foregroundStyle(NumericTokens.textSecondary)
+        }
+        InspectorDenseRow(label: "Font") {
+            Menu {
+                ForEach(NumericOverlayDetailView.fontPresets, id: \.self) { name in
+                    Button {
+                        writer { $0.fontName = name }
+                    } label: {
+                        if name == style.fontName { Label(name, systemImage: "checkmark") }
+                        else { Text(name) }
+                    }
+                }
+            } label: {
+                InspectorDenseMenuLabel(title: style.fontName)
+            }
+            .menuStyle(.borderlessButton)
+            .frame(height: NumericTokens.controlHeight)
+        }
+        InspectorDenseSliderRow(
+            label: "Size",
+            value: Binding(
+                get: { style.fontSize },
+                set: { v in writerContinuous { $0.fontSize = v.rounded() } }
+            ),
+            range: 6...96,
+            displayText: "\(Int(style.fontSize.rounded()))"
+        )
+        InspectorDenseRow(label: "Weight") {
+            InspectorDenseSegmented(values: OverlayFontWeight.allCases, selection: Binding(
+                get: { style.fontWeight },
+                set: { v in writer { $0.fontWeight = v } }
+            )) { weight in
+                Text(weatherWeightLabel(weight)).lineLimit(1)
+            }
+        }
+        InspectorDenseRow(label: "Color") {
+            InspectorDenseSwatchStrip(presets: colorPresets, selected: style.color) { color in
+                writer { $0.color = OverlayColor(red: color.red, green: color.green, blue: color.blue, alpha: style.color.alpha) }
+            }
+        }
+        InspectorDenseSliderRow(
+            label: "Alpha",
+            value: Binding(
+                get: { style.color.alpha },
+                set: { v in writerContinuous { $0.color.alpha = v } }
+            ),
+            range: 0...1,
+            displayText: String(format: "%.0f%%", style.color.alpha * 100)
+        )
+    }
+
+    private func weatherWeightLabel(_ weight: OverlayFontWeight) -> String {
+        switch weight {
+        case .regular: "Reg"
+        case .medium: "Med"
+        case .semibold: "Semi"
+        case .bold: "Bold"
         }
     }
 

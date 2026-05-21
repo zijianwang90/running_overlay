@@ -74,6 +74,10 @@
     "iconTint": "accentBlue",
     "actions": ["back", "delete"]
   },
+  "inspectorChrome": {
+    "collapsedSectionSeparatorRule": "Elevation Chart custom section headers draw one bottom separator only.",
+    "footerRule": "Reuse InspectorDetailFooterBar so Reset and Done follow the shared one-third/two-thirds layout and adjacent Preview playback row height."
+  },
   "model": {
     "rootType": "OverlayStyle.elevationChart",
     "suggestedSwiftTypes": {

@@ -101,7 +101,8 @@
       "offline deterministic export"
     ]
   },
-  "inspectorSections": ["Layout", "Preset", "Appearance", "Location", "Weather"],
+  "inspectorSections": ["Layout", "Preset", "Appearance", "Typography", "Location", "Weather"],
+  "inspectorSectionSeparatorRule": "Collapsed Weather Widget section headers draw one bottom separator only so adjacent boundaries stay a single thin line.",
   "inspectorSectionsHiddenForV1": [
     {
       "section": "Background",
@@ -133,6 +134,7 @@
     "palette menu",
     "card opacity",
     "card radius",
+    "typography rows for location, condition, temperature, slot title, and slot label text",
     "show divider toggle",
     "divider color",
     "divider width",

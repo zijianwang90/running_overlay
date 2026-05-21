@@ -31,6 +31,7 @@ enum EditorTheme {
 
     static let panelPaddingX: CGFloat = 14
     static let panelHeaderHeight: CGFloat = 54
+    static let previewPlaybackHeight: CGFloat = 44
     static let controlHeight: CGFloat = 32
     static let compactRowHeight: CGFloat = 52
     static let mediaRowHeight: CGFloat = 72

@@ -189,6 +189,7 @@ Recommended sections:
 - Layout
 - Preset
 - Appearance
+- Typography
 - Location
 - Weather
 
@@ -205,6 +206,7 @@ Key controls:
 - Metric slots are Style-specific: Simple Card has 1 slot, Forecast Tile has 3 slots, Dashboard Bar has 3 slots, Compact Strip and Minimal Text have 0 slots. Each slot can choose `-`, Humidity, High / Low, Wind, or Feels Like. `-` leaves that slot empty.
 - Toggles for weekday, condition label, and icon visibility.
 - Accent color only when the preset uses it.
+- Collapsed Weather Widget Inspector sections use the regular single bottom header separator so adjacent rows read as one thin divider, not doubled rules.
 
 Weather Widget 1.0 intentionally does not expose the shared overlay Background, Border, or Effects modules. Those controls do not affect the custom SwiftUI weather preset renderer, so the Inspector should keep customization inside the widget's own supported surface.
 
@@ -227,7 +229,7 @@ Implemented as of 2026-05-07:
 - Preset defaults seeded with weather-app-style sample content, including `大阪, 日本`, `雨`, `13°C`, and `87% RH` for Simple Card.
 - Preset switching is centralized through a project mutator that preserves content fields and cached weather while applying new visual defaults.
 - Inspector exposes quick style buttons only for preset switching; the duplicate Preset menu is intentionally hidden in Weather Widget 1.0.
-- Inspector orders the primary setup sections as Preset, Appearance, then Location before content and metric editing.
+- Inspector orders the primary setup sections as Layout, Preset, Appearance, Typography, Location, then Weather.
 - Inspector combines Content, Temperature, Metrics, and Icon into one Weather section.
 - Inspector hides API-owned manual input fields when Open-Meteo is selected, while keeping unit/display toggles available.
 - Inspector replaces the old Humidity / High-Low / Wind / Feels Like toggles with Style-specific metric slots. Each slot chooses one of those four values, so metrics render consistently wherever the selected Style has a slot.

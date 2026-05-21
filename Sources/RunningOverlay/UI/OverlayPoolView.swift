@@ -56,9 +56,7 @@ struct OverlayPoolView: View {
 
 enum OverlayCategory: String, CaseIterable, Identifiable {
     case metrics
-    case charts
-    case route
-    case weather
+    case visuals
     case decor
 
     var id: String { rawValue }
@@ -66,9 +64,7 @@ enum OverlayCategory: String, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .metrics: "Metrics"
-        case .charts: "Charts"
-        case .route: "Route"
-        case .weather: "Weather"
+        case .visuals: "Visuals"
         case .decor: "Decor"
         }
     }
@@ -94,9 +90,7 @@ struct OverlayTileInfo: Identifiable {
         OverlayTileInfo(type: .elapsedTime, hint: "duration", systemImage: "clock", category: .metrics),
         OverlayTileInfo(type: .realTime, hint: "clock time", systemImage: "watch.analog", category: .metrics),
         OverlayTileInfo(type: .distance, hint: "km / mi", systemImage: "ruler", category: .metrics),
-        OverlayTileInfo(type: .distanceTimeline, hint: "progress", systemImage: "waveform.path.ecg", category: .charts),
         OverlayTileInfo(type: .elevation, hint: "altitude", systemImage: "mountain.2", category: .metrics),
-        OverlayTileInfo(type: .elevationChart, hint: "profile", systemImage: "chart.line.uptrend.xyaxis", category: .charts),
         OverlayTileInfo(type: .cadence, hint: "spm", systemImage: "figure.run", category: .metrics),
         OverlayTileInfo(type: .power, hint: "watts", systemImage: "bolt", category: .metrics),
         OverlayTileInfo(type: .verticalOscillation, hint: "cm", systemImage: "arrow.up.and.down", category: .metrics),
@@ -106,11 +100,13 @@ struct OverlayTileInfo: Identifiable {
         OverlayTileInfo(type: .groundContactBalance, hint: "L/R", systemImage: "scale.3d", category: .metrics),
         OverlayTileInfo(type: .temperature, hint: "°C / °F", systemImage: "thermometer", category: .metrics),
         OverlayTileInfo(type: .grade, hint: "slope %", systemImage: "arrow.up.right", category: .metrics),
-        OverlayTileInfo(type: .runningGauge, hint: "live gauge", systemImage: "gauge", category: .charts, isAccent: true),
-        OverlayTileInfo(type: .intervalHUDBar, hint: "interval HUD", systemImage: "rectangle.split.3x1", category: .charts, isAccent: true),
-        OverlayTileInfo(type: .intervalTimeline, hint: "interval plan", systemImage: "timeline.selection", category: .charts, isAccent: true),
-        OverlayTileInfo(type: .routeMap, hint: "GPS path", systemImage: "map", category: .route, isAccent: true),
-        OverlayTileInfo(type: .weatherWidget, hint: "current weather", systemImage: "cloud.sun.fill", category: .weather, isAccent: true),
+        OverlayTileInfo(type: .distanceTimeline, hint: "progress", systemImage: "waveform.path.ecg", category: .visuals),
+        OverlayTileInfo(type: .elevationChart, hint: "profile", systemImage: "chart.line.uptrend.xyaxis", category: .visuals),
+        OverlayTileInfo(type: .runningGauge, hint: "live gauge", systemImage: "gauge", category: .visuals, isAccent: true),
+        OverlayTileInfo(type: .intervalHUDBar, hint: "interval HUD", systemImage: "rectangle.split.3x1", category: .visuals, isAccent: true),
+        OverlayTileInfo(type: .intervalTimeline, hint: "interval plan", systemImage: "timeline.selection", category: .visuals, isAccent: true),
+        OverlayTileInfo(type: .routeMap, hint: "GPS path", systemImage: "map", category: .visuals, isAccent: true),
+        OverlayTileInfo(type: .weatherWidget, hint: "current weather", systemImage: "cloud.sun.fill", category: .visuals, isAccent: true),
         OverlayTileInfo(type: .decorSolidColor, hint: "shape", systemImage: "square.fill", category: .decor),
         OverlayTileInfo(type: .decorIcon, hint: "symbol", systemImage: "star", category: .decor),
         OverlayTileInfo(type: .decorText, hint: "label", systemImage: "textformat", category: .decor)

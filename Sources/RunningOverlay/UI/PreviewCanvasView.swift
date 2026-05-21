@@ -192,7 +192,7 @@ struct PreviewCanvasView: View {
 
 private enum PreviewLayout {
     static let headerHeight: CGFloat = EditorTheme.panelHeaderHeight
-    static let playbackHeight: CGFloat = 44
+    static let playbackHeight: CGFloat = EditorTheme.previewPlaybackHeight
     static let headerButtonSize: CGFloat = EditorTheme.iconButtonSize
 }
 

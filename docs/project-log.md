@@ -1,6 +1,47 @@
 # Running Overlay Project Log
 
+## 2026-05-21
+
+### Numeric Overlay Unit Wrapping and Minimum Size
+
+- Kept `TextPresetOverlayView.metricCoreContent` unit text on one line so inline units expand a numeric overlay instead of splitting short unit strings inside a narrow unit column.
+- Added `OverlayStyle.numericMinWidth` / `numericMinHeight`, scaled them through `OverlayTextRenderLayout`, and exposed `Min Width` / `Min Height` in the Numeric Overlay Layout inspector. Zero preserves legacy text-driven sizing; the minimal preset background and generic overlay frame honor reserved space.
+- Added render-model coverage for numeric minimum-size scaling and updated the numeric overlay design spec plus project requirements.
+
+### Inspector Detail Footer Unification
+
+- Centralized Reset / Done footer background, top separator, horizontal padding, one-third/two-thirds button layout, and fixed height in `InspectorDetailFooterBar`; the footer height now matches the adjacent Preview playback row through a shared theme token.
+- Migrated Elevation Chart from its local text footer to the shared footer and removed duplicate per-panel footer divider/padding wrappers from overlay detail views.
+- Removed the extra top separator from Elevation Chart custom section headers so collapsed section boundaries stay one thin rule.
+
+### Inspector Section Separator Consistency
+
+- Removed the extra top separator from Weather Widget collapsed section headers so adjacent section boundaries render as a single thin rule.
+- Removed the extra top separator from the shared `CollapsibleStatsBarInspectorSection` header so Stats Bar no longer shows a thicker rule than neighboring collapsed Inspector sections.
+
+### Font Library Restore Defaults
+
+- Added a `Restore Defaults` action to Font Library that restores the built-in favorite list and current default font, then clears the active font search so the restored rows are visible.
+- Updated the fallback favorite set for new and reset Font Library state to macOS-provided monospaced families: `Menlo` as default, followed by `PT Mono`, `Monaco`, and `Andale Mono` for steadier overlay metrics and time values.
+
+## 2026-05-19
+
+### Weather Widget: typography + slot styling
+
+- New `WeatherTextStyle` struct (`fontName`, `fontSize`, `fontWeight`, `color`) on `WeatherWidgetStyle` for each rendered text element: `locationTextStyle`, `conditionTextStyle`, `temperatureTextStyle`, `slotTitleTextStyle`, `slotLabelTextStyle`. Each preset seeds defaults matching the previous hard-coded font/foreground; design-time sizes scale by `rect.width / style.width` at render time. `applyWeatherWidgetPreset` preserves these across preset switches; decoder uses `decodeIfPresent` against preset defaults so existing projects open unchanged.
+- Dashboard Bar slots: added `slotBackgroundColor`, `slotBackgroundOpacity`, `slotSpacing` (the chip pill no longer derives its color from the palette token; spacing between chips is user-controlled).
+- Compact Strip and Dashboard Bar now apply `.frame(maxWidth: .infinity, maxHeight: .infinity)` before `weatherCardBackground`, so adjusting overlay height grows the card background instead of leaving a strip floating inside an empty selection rect.
+- Inspector: new `Typography` section in `WeatherWidgetOverlayDetailView` exposes Font / Size / Weight / Color (+ Alpha) for each of the five text elements; slot Color/Opacity/Spacing rows live under Appearance and are visible when `preset == .dashboardBar`. Uses existing `InspectorDense*` primitives directly.
+- Files: `Sources/RunningOverlay/Overlay/OverlayElement.swift`, `Sources/RunningOverlay/UI/WeatherWidgetViews.swift`, `Sources/RunningOverlay/UI/WeatherWidgetOverlayDetailView.swift`, `Sources/RunningOverlay/Project/ProjectDocument.swift`.
+
 ## 2026-05-16
+
+### Overlay Pool: collapse categories to Metrics / Visuals
+
+- `OverlayCategory` reduced from `metrics | charts | route | weather | decor` to `metrics | visuals | decor`. The four-way picker (with Route/Weather each holding a single tile) was visually unbalanced; two segments fit the actual content shape.
+- `OverlayTileInfo.all` remapped: former `.charts`, `.route`, and `.weather` tiles now use `.visuals` (Distance Timeline, Elevation Chart, Running Gauge, Interval HUD Bar, Interval Timeline, Route Map, Weather Widget). Array order reorganized so Metrics → Visuals → Decor blocks are contiguous (Distance Timeline / Elevation Chart no longer interleaved between Distance and Elevation metrics).
+- Picker filter (`$0 != .decor`) and `tiles(for:)` unchanged; Decor remains hidden. No runtime types touched — `OverlayElementType`, `OverlayPasteCategory`, style presets, and templates are unaffected.
+- File: `Sources/RunningOverlay/UI/OverlayPoolView.swift`.
 
 ### Numeric Overlay: Avg Pace and Lap Pace
 

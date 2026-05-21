@@ -1,6 +1,6 @@
 # Project Settings, Heart Rate Zones, And Font Library UI Spec
 
-Last updated: 2026-05-13
+Last updated: 2026-05-21
 
 ## Purpose
 
@@ -110,7 +110,7 @@ Structure:
 3. Search field with magnifying glass and placeholder `Search fonts`.
 4. `Favorites` grouped list.
 5. `All Fonts` grouped list.
-6. Footer with selected count and primary `Done` button.
+6. Footer with secondary `Restore Defaults`, selected count, and primary `Done` button.
 
 Rows use checkbox selection rather than a trailing-only checkmark because this screen is a management surface, not a picker menu.
 
@@ -154,7 +154,8 @@ Default behavior:
 - The default font must always be one of the favorite fonts.
 - Removing the current default from favorites should promote the first remaining favorite to default.
 - If no favorites remain, overlay pickers still use the fallback family list and the default resolves to the first fallback family.
-- The footer should include both count and default, for example `6 fonts selected • Default: SF Pro`.
+- The footer should include both count and default, for example `4 fonts selected • Default: Menlo`.
+- `Restore Defaults` resets favorites and the default font to the fallback favorite set.
 
 ## Behavior
 
@@ -162,8 +163,9 @@ Default behavior:
 - Toggling a checkbox adds or removes that family from favorites.
 - `Favorites` shows selected fonts first.
 - `All Fonts` shows searchable system font families and still reflects selected state.
-- The footer count uses the raw selected count and current default, for example `6 fonts selected • Default: SF Pro`.
-- If the user clears all favorites, overlay font pickers fall back to the default set: `SF Pro`, `Avenir Next`, `Helvetica Neue`, `Menlo`.
+- The footer count uses the raw selected count and current default, for example `4 fonts selected • Default: Menlo`.
+- If the user clears all favorites, overlay font pickers fall back to the default set: `Menlo`, `PT Mono`, `Monaco`, `Andale Mono`.
+- `Restore Defaults` clears any search filter so the restored favorites are visible immediately.
 
 ## Implementation Notes
 

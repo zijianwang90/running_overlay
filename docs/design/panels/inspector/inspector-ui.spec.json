@@ -198,6 +198,7 @@
         },
         {
           "component": "StickyFooter",
+          "layoutRule": "Use InspectorDetailFooterBar with a one-third Reset button, two-thirds Done button, elevated background, one top separator, and total height matching the adjacent Preview playback row.",
           "buttons": [
             { "label": "Reset", "style": "secondary", "displayRule": "only if reset is implemented" },
             { "label": "Done", "style": "primary", "action": "return to inspector.outer" }
@@ -248,6 +249,7 @@
       "rowsComponent": "OverlayStatsBarInspectorRows",
       "icon": "tablecells",
       "enabledTogglePlacement": "headerLeftOfChevron",
+      "headerSeparatorRule": "Use the regular single bottom separator and do not add a top rule against the preceding section.",
       "canonicalRows": [
         "Placement",
         "Inside",

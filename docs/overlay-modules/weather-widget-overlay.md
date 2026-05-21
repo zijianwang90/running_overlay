@@ -84,10 +84,13 @@ Use dense Inspector sections:
 - Layout
 - Preset
 - Appearance
+- Typography
 - Location
 - Weather
 
 Weather Widget 1.0 does not expose the shared Background, Border, or Effects inspector modules. The custom weather presets do not consume those generic overlay fields, so the user-facing customization surface is intentionally limited to fields that render reliably.
+
+Collapsed Weather Widget Inspector section headers follow the regular single-separator pattern so adjacent section boundaries stay one thin line.
 
 The Inspector exposes two explicit API fetch actions in the Location section:
 

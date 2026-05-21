@@ -3206,6 +3206,39 @@ struct WeatherPayload: Equatable, Codable {
     }
 }
 
+/// Typography for a single piece of text inside a weather widget
+/// (location, condition, temperature, slot title, slot label).
+/// `fontSize` is the design-time size at the preset's reference width;
+/// views scale it proportionally to the rendered width.
+struct WeatherTextStyle: Equatable, Codable {
+    var fontName: String
+    var fontSize: Double
+    var fontWeight: OverlayFontWeight
+    var color: OverlayColor
+
+    init(fontName: String = FontLibraryManager.currentDefaultFamily,
+         fontSize: Double,
+         fontWeight: OverlayFontWeight,
+         color: OverlayColor) {
+        self.fontName = fontName
+        self.fontSize = fontSize
+        self.fontWeight = fontWeight
+        self.color = color
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        fontName = try c.decodeIfPresent(String.self, forKey: .fontName) ?? FontLibraryManager.currentDefaultFamily
+        fontSize = try c.decodeIfPresent(Double.self, forKey: .fontSize) ?? 14
+        fontWeight = try c.decodeIfPresent(OverlayFontWeight.self, forKey: .fontWeight) ?? .medium
+        color = try c.decodeIfPresent(OverlayColor.self, forKey: .color) ?? .white
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case fontName, fontSize, fontWeight, color
+    }
+}
+
 struct WeatherWidgetStyle: Equatable, Codable {
     var preset: WeatherWidgetPreset
     var dataSource: WeatherDataSource
@@ -3243,6 +3276,14 @@ struct WeatherWidgetStyle: Equatable, Codable {
     var showConditionLabel: Bool
     var width: Double
     var height: Double
+    var slotBackgroundColor: OverlayColor
+    var slotBackgroundOpacity: Double
+    var slotSpacing: Double
+    var locationTextStyle: WeatherTextStyle
+    var conditionTextStyle: WeatherTextStyle
+    var temperatureTextStyle: WeatherTextStyle
+    var slotTitleTextStyle: WeatherTextStyle
+    var slotLabelTextStyle: WeatherTextStyle
     var cachedWeather: WeatherPayload?
 
     init(
@@ -3282,6 +3323,14 @@ struct WeatherWidgetStyle: Equatable, Codable {
         showConditionLabel: Bool,
         width: Double,
         height: Double,
+        slotBackgroundColor: OverlayColor,
+        slotBackgroundOpacity: Double,
+        slotSpacing: Double,
+        locationTextStyle: WeatherTextStyle,
+        conditionTextStyle: WeatherTextStyle,
+        temperatureTextStyle: WeatherTextStyle,
+        slotTitleTextStyle: WeatherTextStyle,
+        slotLabelTextStyle: WeatherTextStyle,
         cachedWeather: WeatherPayload?
     ) {
         self.preset = preset
@@ -3320,6 +3369,14 @@ struct WeatherWidgetStyle: Equatable, Codable {
         self.showConditionLabel = showConditionLabel
         self.width = width
         self.height = height
+        self.slotBackgroundColor = slotBackgroundColor
+        self.slotBackgroundOpacity = slotBackgroundOpacity
+        self.slotSpacing = slotSpacing
+        self.locationTextStyle = locationTextStyle
+        self.conditionTextStyle = conditionTextStyle
+        self.temperatureTextStyle = temperatureTextStyle
+        self.slotTitleTextStyle = slotTitleTextStyle
+        self.slotLabelTextStyle = slotLabelTextStyle
         self.cachedWeather = cachedWeather
     }
 
@@ -3343,7 +3400,14 @@ struct WeatherWidgetStyle: Equatable, Codable {
                 cardBackgroundOpacity: 0.92, cardCornerRadius: 10,
                 dividerEnabled: true, dividerColor: .white, dividerThickness: 1, dividerOpacity: 0.34,
                 palette: .blueGlass, iconSize: 54, showIcon: true,
-                showConditionLabel: true, width: 300, height: 110, cachedWeather: nil
+                showConditionLabel: true, width: 300, height: 110,
+                slotBackgroundColor: .white, slotBackgroundOpacity: 0.16, slotSpacing: 10,
+                locationTextStyle: WeatherTextStyle(fontSize: 19, fontWeight: .bold, color: .white),
+                conditionTextStyle: WeatherTextStyle(fontSize: 26, fontWeight: .semibold, color: .white),
+                temperatureTextStyle: WeatherTextStyle(fontSize: 33, fontWeight: .bold, color: .white),
+                slotTitleTextStyle: WeatherTextStyle(fontSize: 15, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.72)),
+                slotLabelTextStyle: WeatherTextStyle(fontSize: 15, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.72)),
+                cachedWeather: nil
             )
         case .compactStrip:
             WeatherWidgetStyle(
@@ -3361,7 +3425,14 @@ struct WeatherWidgetStyle: Equatable, Codable {
                 cardBackgroundOpacity: 0.96, cardCornerRadius: 28,
                 dividerEnabled: true, dividerColor: OverlayColor(red: 0.20, green: 0.34, blue: 0.52, alpha: 1), dividerThickness: 1, dividerOpacity: 0.15,
                 palette: .lightGlass, iconSize: 32, showIcon: true,
-                showConditionLabel: true, width: 220, height: 56, cachedWeather: nil
+                showConditionLabel: true, width: 220, height: 56,
+                slotBackgroundColor: OverlayColor(red: 0.20, green: 0.34, blue: 0.52, alpha: 1), slotBackgroundOpacity: 0.10, slotSpacing: 10,
+                locationTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .medium, color: OverlayColor(red: 0.25, green: 0.37, blue: 0.52, alpha: 0.78)),
+                conditionTextStyle: WeatherTextStyle(fontSize: 12, fontWeight: .semibold, color: OverlayColor(red: 0.08, green: 0.17, blue: 0.29, alpha: 0.86)),
+                temperatureTextStyle: WeatherTextStyle(fontSize: 28, fontWeight: .bold, color: OverlayColor(red: 0.08, green: 0.17, blue: 0.29, alpha: 1)),
+                slotTitleTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .semibold, color: OverlayColor(red: 0.25, green: 0.37, blue: 0.52, alpha: 0.78)),
+                slotLabelTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .semibold, color: OverlayColor(red: 0.08, green: 0.17, blue: 0.29, alpha: 1)),
+                cachedWeather: nil
             )
         case .forecastTile:
             WeatherWidgetStyle(
@@ -3379,7 +3450,14 @@ struct WeatherWidgetStyle: Equatable, Codable {
                 cardBackgroundOpacity: 0.88, cardCornerRadius: 16,
                 dividerEnabled: true, dividerColor: .white, dividerThickness: 1, dividerOpacity: 0.18,
                 palette: .graphite, iconSize: 54, showIcon: true,
-                showConditionLabel: false, width: 180, height: 180, cachedWeather: nil
+                showConditionLabel: false, width: 180, height: 180,
+                slotBackgroundColor: .white, slotBackgroundOpacity: 0.12, slotSpacing: 7,
+                locationTextStyle: WeatherTextStyle(fontSize: 15, fontWeight: .semibold, color: .white),
+                conditionTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .medium, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.66)),
+                temperatureTextStyle: WeatherTextStyle(fontSize: 43, fontWeight: .bold, color: .white),
+                slotTitleTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.66)),
+                slotLabelTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.66)),
+                cachedWeather: nil
             )
         case .minimalText:
             WeatherWidgetStyle(
@@ -3397,7 +3475,14 @@ struct WeatherWidgetStyle: Equatable, Codable {
                 cardBackgroundOpacity: 0, cardCornerRadius: 0,
                 dividerEnabled: true, dividerColor: .white, dividerThickness: 1, dividerOpacity: 0.2,
                 palette: .minimalWhite, iconSize: 30, showIcon: true,
-                showConditionLabel: true, width: 180, height: 110, cachedWeather: nil
+                showConditionLabel: true, width: 180, height: 110,
+                slotBackgroundColor: .black, slotBackgroundOpacity: 0.18, slotSpacing: 8,
+                locationTextStyle: WeatherTextStyle(fontSize: 15, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.76)),
+                conditionTextStyle: WeatherTextStyle(fontSize: 14, fontWeight: .medium, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.76)),
+                temperatureTextStyle: WeatherTextStyle(fontSize: 48, fontWeight: .bold, color: .white),
+                slotTitleTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.76)),
+                slotLabelTextStyle: WeatherTextStyle(fontSize: 13, fontWeight: .bold, color: .white),
+                cachedWeather: nil
             )
         case .dashboardBar:
             WeatherWidgetStyle(
@@ -3415,7 +3500,14 @@ struct WeatherWidgetStyle: Equatable, Codable {
                 cardBackgroundOpacity: 0.90, cardCornerRadius: 12,
                 dividerEnabled: true, dividerColor: .white, dividerThickness: 1, dividerOpacity: 0.18,
                 palette: .graphite, iconSize: 38, showIcon: true,
-                showConditionLabel: true, width: 560, height: 112, cachedWeather: nil
+                showConditionLabel: true, width: 560, height: 112,
+                slotBackgroundColor: .white, slotBackgroundOpacity: 0.12, slotSpacing: 10,
+                locationTextStyle: WeatherTextStyle(fontSize: 17, fontWeight: .bold, color: .white),
+                conditionTextStyle: WeatherTextStyle(fontSize: 13, fontWeight: .medium, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.66)),
+                temperatureTextStyle: WeatherTextStyle(fontSize: 46, fontWeight: .bold, color: .white),
+                slotTitleTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.66)),
+                slotLabelTextStyle: WeatherTextStyle(fontSize: 13, fontWeight: .bold, color: .white),
+                cachedWeather: nil
             )
         }
     }
@@ -3463,6 +3555,14 @@ struct WeatherWidgetStyle: Equatable, Codable {
         showConditionLabel = try c.decodeIfPresent(Bool.self, forKey: .showConditionLabel) ?? defaults.showConditionLabel
         width = try c.decodeIfPresent(Double.self, forKey: .width) ?? defaults.width
         height = try c.decodeIfPresent(Double.self, forKey: .height) ?? defaults.height
+        slotBackgroundColor = try c.decodeIfPresent(OverlayColor.self, forKey: .slotBackgroundColor) ?? defaults.slotBackgroundColor
+        slotBackgroundOpacity = try c.decodeIfPresent(Double.self, forKey: .slotBackgroundOpacity) ?? defaults.slotBackgroundOpacity
+        slotSpacing = try c.decodeIfPresent(Double.self, forKey: .slotSpacing) ?? defaults.slotSpacing
+        locationTextStyle = try c.decodeIfPresent(WeatherTextStyle.self, forKey: .locationTextStyle) ?? defaults.locationTextStyle
+        conditionTextStyle = try c.decodeIfPresent(WeatherTextStyle.self, forKey: .conditionTextStyle) ?? defaults.conditionTextStyle
+        temperatureTextStyle = try c.decodeIfPresent(WeatherTextStyle.self, forKey: .temperatureTextStyle) ?? defaults.temperatureTextStyle
+        slotTitleTextStyle = try c.decodeIfPresent(WeatherTextStyle.self, forKey: .slotTitleTextStyle) ?? defaults.slotTitleTextStyle
+        slotLabelTextStyle = try c.decodeIfPresent(WeatherTextStyle.self, forKey: .slotLabelTextStyle) ?? defaults.slotLabelTextStyle
         cachedWeather = try c.decodeIfPresent(WeatherPayload.self, forKey: .cachedWeather)
     }
 

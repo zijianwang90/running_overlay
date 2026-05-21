@@ -6,6 +6,29 @@ private extension Color {
     }
 }
 
+private extension Font.Weight {
+    init(_ overlayWeight: OverlayFontWeight) {
+        switch overlayWeight {
+        case .regular: self = .regular
+        case .medium: self = .medium
+        case .semibold: self = .semibold
+        case .bold: self = .bold
+        }
+    }
+}
+
+private func weatherFont(_ style: WeatherTextStyle, scale: Double) -> Font {
+    .custom(style.fontName, size: max(1, style.fontSize * scale)).weight(Font.Weight(style.fontWeight))
+}
+
+private extension View {
+    @ViewBuilder
+    func weatherText(_ style: WeatherTextStyle, scale: Double) -> some View {
+        self.font(weatherFont(style, scale: scale))
+            .foregroundStyle(Color(style.color))
+    }
+}
+
 // MARK: - Shared Wrapper
 
 struct OverlaySharedWeatherWidgetView: View {
@@ -38,10 +61,7 @@ private struct WeatherWidgetPresetTokens {
     var background: LinearGradient
     var strokeColor: Color
     var strokeOpacity: Double
-    var textPrimary: Color
-    var textSecondary: Color
     var divider: Color
-    var chipBackground: Color
     var shadow: Color
 
     static func resolve(_ layout: WeatherWidgetRenderLayout) -> WeatherWidgetPresetTokens {
@@ -61,10 +81,7 @@ private struct WeatherWidgetPresetTokens {
                 ),
                 strokeColor: .white,
                 strokeOpacity: 0.18,
-                textPrimary: .white,
-                textSecondary: .white.opacity(0.72),
                 divider: divider,
-                chipBackground: .white.opacity(0.16),
                 shadow: .black.opacity(0.22)
             )
         case .lightGlass:
@@ -79,10 +96,7 @@ private struct WeatherWidgetPresetTokens {
                 ),
                 strokeColor: Color(red: 0.42, green: 0.64, blue: 0.90),
                 strokeOpacity: 0.26,
-                textPrimary: Color(red: 0.08, green: 0.17, blue: 0.29),
-                textSecondary: Color(red: 0.25, green: 0.37, blue: 0.52).opacity(0.78),
                 divider: divider,
-                chipBackground: .white.opacity(0.42),
                 shadow: .black.opacity(0.12)
             )
         case .graphite:
@@ -97,10 +111,7 @@ private struct WeatherWidgetPresetTokens {
                 ),
                 strokeColor: .white,
                 strokeOpacity: 0.16,
-                textPrimary: .white,
-                textSecondary: .white.opacity(0.66),
                 divider: divider,
-                chipBackground: .white.opacity(0.12),
                 shadow: .black.opacity(0.25)
             )
         case .minimalWhite:
@@ -108,10 +119,7 @@ private struct WeatherWidgetPresetTokens {
                 background: LinearGradient(colors: [.clear, .clear], startPoint: .top, endPoint: .bottom),
                 strokeColor: .clear,
                 strokeOpacity: 0,
-                textPrimary: .white,
-                textSecondary: .white.opacity(0.76),
                 divider: divider,
-                chipBackground: .black.opacity(0.18),
                 shadow: .black.opacity(0.45)
             )
         case .presetDefault:
@@ -169,14 +177,14 @@ private struct SimpleCardWeatherView: View {
     let layout: WeatherWidgetRenderLayout
 
     private var tokens: WeatherWidgetPresetTokens { .resolve(layout) }
+    private var scale: Double { layout.rect.width / layout.style.width }
 
     var body: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: scaled(7)) {
                 if layout.style.showConditionLabel {
                     Text(layout.conditionLabel)
-                        .font(.system(size: scaled(26), weight: .semibold))
-                        .foregroundStyle(tokens.textPrimary)
+                        .weatherText(layout.style.conditionTextStyle, scale: scale)
                         .lineLimit(1)
                         .minimumScaleFactor(0.72)
                 }
@@ -200,28 +208,24 @@ private struct SimpleCardWeatherView: View {
             VStack(alignment: .leading, spacing: scaled(3)) {
                 if layout.style.showLocation {
                     Text(layout.locationText)
-                        .font(.system(size: scaled(19), weight: .bold))
-                        .foregroundStyle(tokens.textPrimary)
+                        .weatherText(layout.style.locationTextStyle, scale: scale)
                         .lineLimit(1)
                         .minimumScaleFactor(0.65)
                 }
 
                 if layout.style.showWeekday, !layout.weekdayText.isEmpty {
                     Text(layout.weekdayText)
-                        .font(.system(size: scaled(10), weight: .medium))
-                        .foregroundStyle(tokens.textSecondary)
+                        .weatherText(layout.style.slotTitleTextStyle, scale: scale)
                 }
 
                 Text(layout.temperatureFormatted)
-                    .font(.system(size: scaled(33), weight: .bold))
-                    .foregroundStyle(tokens.textPrimary)
+                    .weatherText(layout.style.temperatureTextStyle, scale: scale)
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
 
                 if let metric = layout.metricSlots.first {
                     Text(inlineMetricText(metric))
-                        .font(.system(size: scaled(15), weight: .semibold))
-                        .foregroundStyle(tokens.textSecondary)
+                        .weatherText(layout.style.slotLabelTextStyle, scale: scale)
                 }
             }
             .padding(.leading, scaled(16))
@@ -232,7 +236,7 @@ private struct SimpleCardWeatherView: View {
     }
 
     private func scaled(_ value: Double) -> Double {
-        value * layout.rect.width / layout.style.width
+        value * scale
     }
 
     private var dividerThickness: Double {
@@ -250,6 +254,7 @@ private struct CompactStripWeatherView: View {
     let layout: WeatherWidgetRenderLayout
 
     private var tokens: WeatherWidgetPresetTokens { .resolve(layout) }
+    private var scale: Double { layout.rect.width / layout.style.width }
 
     var body: some View {
         HStack(spacing: scaled(10)) {
@@ -258,22 +263,19 @@ private struct CompactStripWeatherView: View {
             }
 
             Text(layout.temperatureFormatted)
-                .font(.system(size: scaled(28), weight: .bold))
-                .foregroundStyle(tokens.textPrimary)
+                .weatherText(layout.style.temperatureTextStyle, scale: scale)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
 
             VStack(alignment: .leading, spacing: scaled(1)) {
                 if layout.style.showConditionLabel {
                     Text(layout.conditionLabel)
-                        .font(.system(size: scaled(12), weight: .semibold))
-                        .foregroundStyle(tokens.textPrimary.opacity(0.86))
+                        .weatherText(layout.style.conditionTextStyle, scale: scale)
                         .lineLimit(1)
                 }
                 if layout.style.showLocation, !layout.locationText.isEmpty {
                     Text(layout.locationText)
-                        .font(.system(size: scaled(11), weight: .medium))
-                        .foregroundStyle(tokens.textSecondary)
+                        .weatherText(layout.style.locationTextStyle, scale: scale)
                         .lineLimit(1)
                 }
             }
@@ -281,11 +283,12 @@ private struct CompactStripWeatherView: View {
             Spacer(minLength: 0)
         }
         .padding(.horizontal, scaled(16))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .weatherCardBackground(layout: layout, tokens: tokens)
     }
 
     private func scaled(_ value: Double) -> Double {
-        value * layout.rect.width / layout.style.width
+        value * scale
     }
 }
 
@@ -295,13 +298,13 @@ private struct ForecastTileWeatherView: View {
     let layout: WeatherWidgetRenderLayout
 
     private var tokens: WeatherWidgetPresetTokens { .resolve(layout) }
+    private var scale: Double { layout.rect.width / layout.style.width }
 
     var body: some View {
         VStack(spacing: 0) {
             if layout.style.showLocation {
                 Text(layout.locationText)
-                    .font(.system(size: scaled(15), weight: .semibold))
-                    .foregroundStyle(tokens.textPrimary)
+                    .weatherText(layout.style.locationTextStyle, scale: scale)
                     .lineLimit(1)
                     .minimumScaleFactor(0.68)
                     .padding(.top, scaled(15))
@@ -309,8 +312,7 @@ private struct ForecastTileWeatherView: View {
 
             if layout.style.showWeekday, !layout.weekdayText.isEmpty {
                 Text(layout.weekdayText)
-                    .font(.system(size: scaled(11), weight: .medium))
-                    .foregroundStyle(tokens.textSecondary)
+                    .weatherText(layout.style.slotTitleTextStyle, scale: scale)
                     .padding(.top, scaled(2))
             }
 
@@ -329,8 +331,7 @@ private struct ForecastTileWeatherView: View {
             }
 
             Text(layout.temperatureFormatted)
-                .font(.system(size: scaled(43), weight: .bold))
-                .foregroundStyle(tokens.textPrimary)
+                .weatherText(layout.style.temperatureTextStyle, scale: scale)
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
                 .padding(.top, scaled(4))
@@ -351,7 +352,10 @@ private struct ForecastTileWeatherView: View {
                             .fill(tokens.divider)
                             .frame(width: dividerThickness, height: scaled(18))
                     }
-                    metricText(inlineMetricText(metric))
+                    Text(inlineMetricText(metric))
+                        .weatherText(layout.style.slotLabelTextStyle, scale: scale)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                         .frame(maxWidth: .infinity)
                 }
             }
@@ -362,16 +366,8 @@ private struct ForecastTileWeatherView: View {
         .weatherCardBackground(layout: layout, tokens: tokens)
     }
 
-    private func metricText(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: scaled(11), weight: .semibold))
-            .foregroundStyle(tokens.textSecondary)
-            .lineLimit(1)
-            .minimumScaleFactor(0.75)
-    }
-
     private func scaled(_ value: Double) -> Double {
-        value * layout.rect.width / layout.style.width
+        value * scale
     }
 
     private var dividerLine: some View {
@@ -395,21 +391,20 @@ private struct MinimalTextWeatherView: View {
     let layout: WeatherWidgetRenderLayout
 
     private var tokens: WeatherWidgetPresetTokens { .resolve(layout) }
+    private var scale: Double { layout.rect.width / layout.style.width }
 
     var body: some View {
         VStack(alignment: .leading, spacing: scaled(4)) {
             if layout.style.showLocation {
                 Text(layout.locationText)
-                    .font(.system(size: scaled(15), weight: .semibold))
-                    .foregroundStyle(tokens.textSecondary)
+                    .weatherText(layout.style.locationTextStyle, scale: scale)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
 
             HStack(alignment: .center, spacing: scaled(7)) {
                 Text(layout.temperatureFormatted)
-                    .font(.system(size: scaled(48), weight: .bold))
-                    .foregroundStyle(tokens.textPrimary)
+                    .weatherText(layout.style.temperatureTextStyle, scale: scale)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
 
@@ -420,8 +415,7 @@ private struct MinimalTextWeatherView: View {
 
             if layout.style.showConditionLabel {
                 Text(layout.conditionLabel)
-                    .font(.system(size: scaled(14), weight: .medium))
-                    .foregroundStyle(tokens.textSecondary)
+                    .weatherText(layout.style.conditionTextStyle, scale: scale)
                     .lineLimit(1)
             }
         }
@@ -430,7 +424,7 @@ private struct MinimalTextWeatherView: View {
     }
 
     private func scaled(_ value: Double) -> Double {
-        value * layout.rect.width / layout.style.width
+        value * scale
     }
 }
 
@@ -440,21 +434,20 @@ private struct DashboardBarWeatherView: View {
     let layout: WeatherWidgetRenderLayout
 
     private var tokens: WeatherWidgetPresetTokens { .resolve(layout) }
+    private var scale: Double { layout.rect.width / layout.style.width }
 
     var body: some View {
         HStack(spacing: scaled(16)) {
             VStack(alignment: .leading, spacing: scaled(3)) {
                 if layout.style.showLocation {
                     Text(layout.locationText)
-                        .font(.system(size: scaled(17), weight: .bold))
-                        .foregroundStyle(tokens.textPrimary)
+                        .weatherText(layout.style.locationTextStyle, scale: scale)
                         .lineLimit(1)
                         .minimumScaleFactor(0.62)
                 }
                 if layout.style.showConditionLabel {
                     Text(layout.conditionLabel)
-                        .font(.system(size: scaled(13), weight: .medium))
-                        .foregroundStyle(tokens.textSecondary)
+                        .weatherText(layout.style.conditionTextStyle, scale: scale)
                         .lineLimit(1)
                 }
             }
@@ -465,44 +458,42 @@ private struct DashboardBarWeatherView: View {
             }
 
             Text(layout.temperatureFormatted)
-                .font(.system(size: scaled(46), weight: .bold))
-                .foregroundStyle(tokens.textPrimary)
+                .weatherText(layout.style.temperatureTextStyle, scale: scale)
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
 
             Spacer(minLength: 0)
 
-            HStack(spacing: scaled(10)) {
+            HStack(spacing: scaled(layout.style.slotSpacing)) {
                 ForEach(Array(layout.metricSlots.enumerated()), id: \.offset) { _, metric in
                     metricChip(label: metric.label, value: metric.value)
                 }
             }
         }
         .padding(.horizontal, scaled(20))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .weatherCardBackground(layout: layout, tokens: tokens)
     }
 
     private func metricChip(label: String, value: String) -> some View {
         VStack(spacing: scaled(4)) {
             Text(label)
-                .font(.system(size: scaled(11), weight: .semibold))
-                .foregroundStyle(tokens.textSecondary)
+                .weatherText(layout.style.slotTitleTextStyle, scale: scale)
                 .lineLimit(1)
                 .minimumScaleFactor(0.68)
             Text(value)
-                .font(.system(size: scaled(13), weight: .bold))
-                .foregroundStyle(tokens.textPrimary)
+                .weatherText(layout.style.slotLabelTextStyle, scale: scale)
                 .lineLimit(1)
                 .minimumScaleFactor(0.58)
         }
         .padding(.horizontal, scaled(8))
         .frame(width: scaled(68), height: scaled(58))
-        .background(tokens.chipBackground)
+        .background(Color(layout.style.slotBackgroundColor).opacity(layout.style.slotBackgroundOpacity))
         .clipShape(RoundedRectangle(cornerRadius: scaled(8), style: .continuous))
     }
 
     private func scaled(_ value: Double) -> Double {
-        value * layout.rect.width / layout.style.width
+        value * scale
     }
 }
 
