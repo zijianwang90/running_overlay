@@ -170,6 +170,15 @@ struct ExportRenderPlan: Equatable {
         )
     }
 
+    private static func topLeadingRect(for element: OverlayElement, size: CGSize, canvasSize: CGSize) -> CGRect {
+        CGRect(
+            x: canvasSize.width * element.position.x,
+            y: canvasSize.height * element.position.y,
+            width: size.width,
+            height: size.height
+        )
+    }
+
     private static func estimatedTextRect(for element: OverlayElement, context: OverlayRenderContext) -> CGRect {
         let layout = OverlayRenderModel.textLayout(for: element, in: context)
         let valueWidth = max(CGFloat(layout.value.count) * layout.fontSize * 0.62, layout.fontSize * 2)
@@ -177,7 +186,11 @@ struct ExportRenderPlan: Equatable {
         let unitWidth = max(CGFloat(layout.components.unit.count) * layout.unitFontSize * 0.52, 0)
         let width = valueWidth + labelWidth + unitWidth + layout.horizontalPadding * 2 + layout.labelSpacing + layout.unitSpacing
         let height = max(layout.fontSize, layout.labelFontSize + layout.unitFontSize) + layout.verticalPadding * 2
-        return centeredRect(for: element, size: CGSize(width: width, height: height), canvasSize: context.canvasSize)
+        let size = CGSize(width: width, height: height)
+        if element.type.isNumericOverlay {
+            return topLeadingRect(for: element, size: size, canvasSize: context.canvasSize)
+        }
+        return centeredRect(for: element, size: size, canvasSize: context.canvasSize)
     }
 
     private static func overlayItemsByBatchingNumericOverlays(
@@ -1307,11 +1320,32 @@ private struct SwiftUIOverlayFrameView: View {
                         )
                     }
                 }
-                .position(x: size.width * element.position.x, y: size.height * element.position.y)
+                .exportOverlayPosition(for: element, canvasSize: size)
             }
         }
         .frame(width: size.width, height: size.height)
         .compositingGroup()
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func exportOverlayPosition(for element: OverlayElement, canvasSize: CGSize) -> some View {
+        if element.type.isNumericOverlay {
+            self
+                .alignmentGuide(HorizontalAlignment.center) { _ in
+                    canvasSize.width * (0.5 - element.position.x)
+                }
+                .alignmentGuide(VerticalAlignment.center) { _ in
+                    canvasSize.height * (0.5 - element.position.y)
+                }
+        } else {
+            self
+                .position(
+                    x: canvasSize.width * element.position.x,
+                    y: canvasSize.height * element.position.y
+                )
+        }
     }
 }
 

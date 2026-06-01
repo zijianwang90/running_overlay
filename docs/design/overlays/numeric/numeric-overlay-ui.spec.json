@@ -147,6 +147,9 @@
     "elapsedTime": ["hh:mm:ss", "mm:ss", "seconds"],
     "realTime": ["12-hour", "24-hour"]
   },
+  "metricSemantics": {
+    "elapsedTime": "active elapsed time; subtract FIT timerPaused annotated spans from current FIT elapsed time, freezing while the playhead is inside a timer-paused span"
+  },
   "modelBackedToday": [
     "type-derived metric",
     "formatted value preview",
@@ -177,7 +180,8 @@
   ],
   "renderingRules": [
     "Unit text remains on one line and inline units grow the numeric overlay natural width instead of wrapping.",
-    "numericMinWidth and numericMinHeight reserve additional frame space; zero preserves text-driven natural sizing."
+    "numericMinWidth and numericMinHeight reserve additional frame space while keeping content pinned to the top-leading corner; zero preserves text-driven natural sizing.",
+    "Numeric preview and SwiftUI export interpret position as the top-leading corner; value and label rows resolve to leading alignment, inline units grow rightward while preserving unit anchor controls, and preview placement must avoid async content-size measurement; drag tracks top-leading coordinates directly without center-based snap/clamp jitter."
   ],
   "recommendedComponents": [
     "NumericOverlayDetailView",

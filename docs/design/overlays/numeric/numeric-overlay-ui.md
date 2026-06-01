@@ -120,6 +120,7 @@ Other numeric overlays should expose only relevant unit choices:
 
 Elapsed Time formatting rules:
 
+- Elapsed Time uses active elapsed time: current FIT elapsed time minus any `timerPaused` annotated spans that have occurred so far. While the playhead is inside a timer-paused span, the displayed value freezes at the pause start value.
 - `hh:mm:ss` always renders a fixed three-part clock with zero-padded hours/minutes/seconds (for example, `00:10:00`).
 - `mm:ss` renders `MM:SS`.
 - `seconds` renders rounded whole seconds.
@@ -148,7 +149,7 @@ Controls:
 - Font dropdown.
 - Font Size slider with numeric value (value text only).
 - Weight segmented control: `Regular`, `Medium`, `Semibold`, `Bold`.
-- Align segmented control (left / center / right) — backed by `OverlayStyle.textAlignment`. Independent from `labelTextAlignment`; the SwiftUI views anchor the outer VStack on `.leading` and let each row apply its own `frame(maxWidth: .infinity, alignment:)` so changing one alignment does not move the other row.
+- Align segmented control (left / center / right) — backed by `OverlayStyle.textAlignment` for saved style compatibility. Numeric overlay rendering resolves value, label, and unit rows to leading alignment so the left edge stays fixed while dynamic content grows to the right.
 
 Model mapping:
 
@@ -165,7 +166,7 @@ Controls:
 - `Enable Label` toggle in section header accessory.
 - Label text field.
 - Position segmented control: `Top`, `Bottom`, `Left`, `Right`.
-- Align/Anchor segmented control: three options interpreted by position. Row label is `Align` when the label is stacked above/below the value (left / center / right) and `Anchor` when it sits to the side (top / middle / bottom). Backed by `OverlayStyle.labelTextAlignment` (`.leading / .center / .trailing` reused for both axes).
+- Align/Anchor segmented control: three options interpreted by position. Row label is `Align` when the label is stacked above/below the value (left / center / right) and `Anchor` when it sits to the side (top / middle / bottom). Backed by `OverlayStyle.labelTextAlignment` (`.leading / .center / .trailing` reused for both axes) for compatibility, while numeric preview/export resolves label placement to leading alignment.
 - Label color swatches.
 - Label opacity slider.
 - Label font family.
@@ -178,7 +179,7 @@ Controls:
 
 - `Enable Unit` toggle in section header accessory.
 - Position segmented control: `Top`, `Bottom`, `Left`, `Right`.
-- Align segmented control (left / center / right) — backed by `OverlayStyle.unitTextAlignment`. Independent from both `labelTextAlignment` and `textAlignment` (value): the SwiftUI views anchor the outer VStack on `.leading` and let the unit row apply its own `frame(maxWidth: .infinity, alignment:)`. Only takes visual effect when the unit sits on its own line (`unitPosition == .top`/`.bottom` in the stacked metric layouts, or always in the `bigNumber` preset); inline unit positions stay baseline-glued to the value. In the `minimal` preset, the middle row applies `textAlignment` only to the value’s flexible slot so changing value align does not slide an inline unit with the whole row. When the unit is on the **left or right** of the value, the value+unit cluster uses `unitTextAlignment` for vertical cross-axis alignment so it does not follow the label’s side-anchor setting.
+- Align/Anchor segmented control — backed by `OverlayStyle.unitTextAlignment`. When the unit is above/below the value it controls horizontal row alignment; when the unit is left/right of the value it controls vertical anchoring (top / middle / bottom) of the inline unit beside the value. Inline units stay baseline-glued to the value horizontally and grow the overlay to the right.
 - Color swatch + Alpha.
 - Unit font family.
 - Unit font size.
@@ -188,7 +189,8 @@ Controls:
 Rendering rules:
 
 - Unit text must remain on one line. An inline unit expands the numeric overlay's natural width instead of wrapping beneath the value when the current width is tight.
-- `Min Width` and `Min Height` reserve extra frame space for alignment, border rendering, and the minimal preset background while the natural text size remains the floor for content that is wider than the configured minimum.
+- `Min Width` and `Min Height` reserve extra frame space for border rendering and the minimal preset background while the content remains pinned to the top-leading corner.
+- Numeric overlay `position` is interpreted as the top-leading corner in preview and SwiftUI export. Dynamic values, labels, and units keep their left edge fixed and extend rightward as content becomes wider. Preview placement must not depend on async content-size measurement; drag tracks the normalized top-leading coordinate directly so the overlay follows the pointer without center-based snap/clamp jitter.
 
 ## Divider Section
 

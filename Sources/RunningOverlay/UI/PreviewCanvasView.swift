@@ -95,10 +95,11 @@ struct PreviewCanvasView: View {
                                     )
                                 }
                             )
-                            .position(
-                                x: canvasSize.width * displayPos.x,
-                                y: canvasSize.height * displayPos.y
-                            )
+                            .modifier(PreviewOverlayPositionModifier(
+                                elementType: element.type,
+                                canvasSize: canvasSize,
+                                position: displayPos
+                            ))
                             .gesture(
                                 DragGesture(minimumDistance: 2)
                                     .onChanged { value in
@@ -113,14 +114,25 @@ struct PreviewCanvasView: View {
                                             x: start.x + value.translation.width / max(canvasSize.width, 1),
                                             y: start.y + value.translation.height / max(canvasSize.height, 1)
                                         )
-                                        let snapResult = PreviewSnapResolver().snap(
-                                            movingElementID: element.id,
-                                            proposedPosition: proposedPosition,
-                                            currentFrame: overlayFrames[element.id],
-                                            overlayFrames: overlayFrames,
-                                            canvasSize: canvasSize,
-                                            guidesEnabled: project.showPreviewGuides
-                                        )
+                                        let snapResult: PreviewSnapResult
+                                        if element.type.isNumericOverlay {
+                                            snapResult = PreviewSnapResult(
+                                                position: CGPoint(
+                                                    x: min(max(proposedPosition.x, 0), 1),
+                                                    y: min(max(proposedPosition.y, 0), 1)
+                                                ),
+                                                lines: []
+                                            )
+                                        } else {
+                                            snapResult = PreviewSnapResolver().snap(
+                                                movingElementID: element.id,
+                                                proposedPosition: proposedPosition,
+                                                currentFrame: overlayFrames[element.id],
+                                                overlayFrames: overlayFrames,
+                                                canvasSize: canvasSize,
+                                                guidesEnabled: project.showPreviewGuides
+                                            )
+                                        }
                                         liveDragPosition = (element.id, snapResult.position)
                                         activeSnapLines = snapResult.lines
                                     }
@@ -683,6 +695,30 @@ private struct PreviewSelectionAffordance: View {
             .stroke(EditorTheme.accentBlue.opacity(0.92), lineWidth: 1.4)
             .padding(-5)
             .allowsHitTesting(false)
+    }
+}
+
+private struct PreviewOverlayPositionModifier: ViewModifier {
+    let elementType: OverlayElementType
+    let canvasSize: CGSize
+    let position: CGPoint
+
+    func body(content: Content) -> some View {
+        if elementType.isNumericOverlay {
+            content
+                .alignmentGuide(HorizontalAlignment.center) { _ in
+                    canvasSize.width * (0.5 - position.x)
+                }
+                .alignmentGuide(VerticalAlignment.center) { _ in
+                    canvasSize.height * (0.5 - position.y)
+                }
+        } else {
+            content
+                .position(
+                    x: canvasSize.width * position.x,
+                    y: canvasSize.height * position.y
+                )
+        }
     }
 }
 
@@ -1280,7 +1316,7 @@ struct TextPresetOverlayView: View {
                 serifEditorialView
             }
         }
-        .frame(minWidth: layout.minimumWidth, minHeight: layout.minimumHeight)
+        .frame(minWidth: layout.minimumWidth, minHeight: layout.minimumHeight, alignment: .topLeading)
         .foregroundStyle(overlayGroupForegroundColor)
         .monospacedDigit()
         .overlayGenericBorder(element: element, cornerRadius: layout.cornerRadius)
@@ -1292,7 +1328,7 @@ struct TextPresetOverlayView: View {
     @ViewBuilder
     private var minimalCleanView: some View {
         metricCoreContent
-        .frame(minWidth: layout.minimumWidth, minHeight: layout.minimumHeight)
+        .frame(minWidth: layout.minimumWidth, minHeight: layout.minimumHeight, alignment: .topLeading)
         .padding(.horizontal, element.style.backgroundEnabled ? layout.horizontalPadding : 0)
         .padding(.vertical, element.style.backgroundEnabled ? layout.verticalPadding : 0)
         .background {
