@@ -47,6 +47,14 @@ struct ActivityTimeline: Equatable, Codable {
         startDate.addingTimeInterval(clampedElapsedTime(elapsedTime))
     }
 
+    func activeElapsedTime(at elapsedTime: TimeInterval) -> TimeInterval {
+        let t = clampedElapsedTime(elapsedTime)
+        let pausedTime = mergedTimerPausedSegments(upTo: t).reduce(0) { total, segment in
+            total + max(segment.end - segment.start, 0)
+        }
+        return max(t - pausedTime, 0)
+    }
+
     func annotatedSegment(at elapsedTime: TimeInterval) -> ActivityAnnotatedSegment? {
         let t = clampedElapsedTime(elapsedTime)
         return annotatedSegments.first { segment in
@@ -286,6 +294,34 @@ struct ActivityTimeline: Equatable, Codable {
 
     private func clampedElapsedTime(_ elapsedTime: TimeInterval) -> TimeInterval {
         min(max(elapsedTime, 0), duration)
+    }
+
+    private func mergedTimerPausedSegments(upTo elapsedTime: TimeInterval) -> [(start: TimeInterval, end: TimeInterval)] {
+        let intervals = annotatedSegments
+            .filter { $0.kind == .timerPaused }
+            .compactMap { segment -> (start: TimeInterval, end: TimeInterval)? in
+                let start = min(max(segment.startElapsedTime, 0), elapsedTime)
+                let end = min(max(segment.endElapsedTime, 0), elapsedTime)
+                guard end > start else { return nil }
+                return (start, end)
+            }
+            .sorted { $0.start < $1.start }
+
+        guard var current = intervals.first else {
+            return []
+        }
+
+        var merged: [(start: TimeInterval, end: TimeInterval)] = []
+        for interval in intervals.dropFirst() {
+            if interval.start <= current.end {
+                current.end = max(current.end, interval.end)
+            } else {
+                merged.append(current)
+                current = interval
+            }
+        }
+        merged.append(current)
+        return merged
     }
 
     private func interpolateOptional(_ before: Double?, _ after: Double?, progress: Double) -> Double? {

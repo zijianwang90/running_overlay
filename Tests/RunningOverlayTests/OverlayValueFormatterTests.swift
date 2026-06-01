@@ -46,6 +46,27 @@ struct OverlayValueFormatterTests {
         #expect(OverlayValueFormatter.formatDuration(3661) == "01:01:01")
     }
 
+    @Test func elapsedTimeOverlayExcludesTimerPausedSegments() {
+        let startDate = Date(timeIntervalSince1970: 0)
+        let activity = ActivityTimeline(
+            startDate: startDate,
+            duration: 300,
+            distanceMeters: 1000,
+            records: [],
+            laps: [],
+            annotatedSegments: [
+                ActivityAnnotatedSegment(kind: .timerPaused, startElapsedTime: 60, endElapsedTime: 120),
+                ActivityAnnotatedSegment(kind: .timerPaused, startElapsedTime: 180, endElapsedTime: 210)
+            ]
+        )
+
+        #expect(activity.activeElapsedTime(at: 50) == 50)
+        #expect(activity.activeElapsedTime(at: 90) == 60)
+        #expect(activity.activeElapsedTime(at: 150) == 90)
+        #expect(activity.activeElapsedTime(at: 240) == 150)
+        #expect(OverlayValueFormatter.value(for: .elapsedTime, activity: activity, elapsedTime: 240) == "00:02:30")
+    }
+
     @Test func formatsHeartRateZoneComponents() {
         let startDate = Date(timeIntervalSince1970: 0)
         let activity = ActivityTimeline(
@@ -77,7 +98,7 @@ struct OverlayValueFormatterTests {
         let startDate = Date(timeIntervalSince1970: 0)
         let activity = ActivityTimeline(
             startDate: startDate,
-            duration: 60,
+            duration: 120,
             distanceMeters: 1000,
             records: [
                 ActivityRecord(

@@ -133,7 +133,7 @@ enum OverlayValueFormatter {
             return OverlayValueComponents(
                 label: resolvedLabel("Elapsed Time"),
                 shortLabel: "TIME",
-                value: formatDuration(elapsedTime, option: unitOption),
+                value: formatDuration(activity.activeElapsedTime(at: elapsedTime), option: unitOption),
                 unit: ""
             )
         case .realTime:
