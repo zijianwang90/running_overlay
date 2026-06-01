@@ -19,6 +19,7 @@ struct PreviewCanvasView: View {
     @State private var dragStartPositions: [OverlayElement.ID: CGPoint] = [:]
     // Live position during drag — local state only, not written to document until drag ends.
     @State private var liveDragPosition: (id: OverlayElement.ID, pos: CGPoint)?
+    @State private var dragGrabOffsets: [OverlayElement.ID: CGSize] = [:]
     @State private var overlayFrames: [OverlayElement.ID: CGRect] = [:]
     @State private var activeSnapLines: [PreviewSnapLine] = []
 
@@ -101,27 +102,44 @@ struct PreviewCanvasView: View {
                                 position: displayPos
                             ))
                             .gesture(
-                                DragGesture(minimumDistance: 2)
+                                DragGesture(minimumDistance: 2, coordinateSpace: .named(PreviewCanvasCoordinateSpace.name))
                                     .onChanged { value in
                                         guard !element.isLocked else { return }
                                         // Capture start position and select exactly once per gesture.
                                         if dragStartPositions[element.id] == nil {
                                             dragStartPositions[element.id] = element.position
+                                            if element.type.isNumericOverlay,
+                                               let frame = overlayFrames[element.id] {
+                                                dragGrabOffsets[element.id] = CGSize(
+                                                    width: value.startLocation.x - frame.minX,
+                                                    height: value.startLocation.y - frame.minY
+                                                )
+                                            }
                                             project.selectOverlay(element.id)
                                         }
                                         guard let start = dragStartPositions[element.id] else { return }
-                                        let proposedPosition = CGPoint(
-                                            x: start.x + value.translation.width / max(canvasSize.width, 1),
-                                            y: start.y + value.translation.height / max(canvasSize.height, 1)
-                                        )
+                                        let proposedPosition: CGPoint
+                                        if element.type.isNumericOverlay,
+                                           let grabOffset = dragGrabOffsets[element.id] {
+                                            proposedPosition = CGPoint(
+                                                x: (value.location.x - grabOffset.width) / max(canvasSize.width, 1),
+                                                y: (value.location.y - grabOffset.height) / max(canvasSize.height, 1)
+                                            )
+                                        } else {
+                                            proposedPosition = CGPoint(
+                                                x: start.x + value.translation.width / max(canvasSize.width, 1),
+                                                y: start.y + value.translation.height / max(canvasSize.height, 1)
+                                            )
+                                        }
                                         let snapResult: PreviewSnapResult
                                         if element.type.isNumericOverlay {
-                                            snapResult = PreviewSnapResult(
-                                                position: CGPoint(
-                                                    x: min(max(proposedPosition.x, 0), 1),
-                                                    y: min(max(proposedPosition.y, 0), 1)
-                                                ),
-                                                lines: []
+                                            snapResult = PreviewSnapResolver().snapTopLeading(
+                                                movingElementID: element.id,
+                                                proposedPosition: proposedPosition,
+                                                currentFrame: overlayFrames[element.id],
+                                                overlayFrames: overlayFrames,
+                                                canvasSize: canvasSize,
+                                                guidesEnabled: project.showPreviewGuides
                                             )
                                         } else {
                                             snapResult = PreviewSnapResolver().snap(
@@ -143,6 +161,7 @@ struct PreviewCanvasView: View {
                                         }
                                         liveDragPosition = nil
                                         dragStartPositions[element.id] = nil
+                                        dragGrabOffsets[element.id] = nil
                                         activeSnapLines = []
                                         project.finishContinuousEdit()
                                     }
@@ -356,6 +375,62 @@ private struct PreviewSnapResolver {
         )
     }
 
+    func snapTopLeading(
+        movingElementID: OverlayElement.ID,
+        proposedPosition: CGPoint,
+        currentFrame: CGRect?,
+        overlayFrames: [OverlayElement.ID: CGRect],
+        canvasSize: CGSize,
+        guidesEnabled: Bool
+    ) -> PreviewSnapResult {
+        guard canvasSize.width > 0, canvasSize.height > 0, let currentFrame, !currentFrame.isEmpty else {
+            return PreviewSnapResult(position: clampNormalized(proposedPosition), lines: [])
+        }
+
+        var proposedFrame = CGRect(
+            x: proposedPosition.x * canvasSize.width,
+            y: proposedPosition.y * canvasSize.height,
+            width: currentFrame.width,
+            height: currentFrame.height
+        )
+        var lines: [PreviewSnapLine] = []
+
+        if let match = bestMatch(
+            movingAnchors: xAnchors(for: proposedFrame),
+            targets: xTargets(
+                movingElementID: movingElementID,
+                overlayFrames: overlayFrames,
+                canvasSize: canvasSize,
+                guidesEnabled: guidesEnabled
+            )
+        ) {
+            proposedFrame.origin.x += match.delta
+            lines.append(PreviewSnapLine(axis: .vertical, position: match.targetPosition))
+        }
+
+        if let match = bestMatch(
+            movingAnchors: yAnchors(for: proposedFrame),
+            targets: yTargets(
+                movingElementID: movingElementID,
+                overlayFrames: overlayFrames,
+                canvasSize: canvasSize,
+                guidesEnabled: guidesEnabled
+            )
+        ) {
+            proposedFrame.origin.y += match.delta
+            lines.append(PreviewSnapLine(axis: .horizontal, position: match.targetPosition))
+        }
+
+        let clampedOrigin = clampOrigin(proposedFrame.origin, frameSize: currentFrame.size, canvasSize: canvasSize)
+        return PreviewSnapResult(
+            position: CGPoint(
+                x: clampedOrigin.x / canvasSize.width,
+                y: clampedOrigin.y / canvasSize.height
+            ),
+            lines: lines
+        )
+    }
+
     private struct Anchor {
         let position: CGFloat
     }
@@ -480,6 +555,13 @@ private struct PreviewSnapResolver {
         return CGPoint(
             x: min(max(center.x, minX), maxX),
             y: min(max(center.y, minY), maxY)
+        )
+    }
+
+    private func clampOrigin(_ origin: CGPoint, frameSize: CGSize, canvasSize: CGSize) -> CGPoint {
+        CGPoint(
+            x: min(max(origin.x, 0), max(0, canvasSize.width - frameSize.width)),
+            y: min(max(origin.y, 0), max(0, canvasSize.height - frameSize.height))
         )
     }
 }

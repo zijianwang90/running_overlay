@@ -190,7 +190,7 @@ Rendering rules:
 
 - Unit text must remain on one line. An inline unit expands the numeric overlay's natural width instead of wrapping beneath the value when the current width is tight.
 - `Min Width` and `Min Height` reserve extra frame space for border rendering and the minimal preset background while the content remains pinned to the top-leading corner.
-- Numeric overlay `position` is interpreted as the top-leading corner in preview and SwiftUI export. Dynamic values, labels, and units keep their left edge fixed and extend rightward as content becomes wider. Preview placement must not depend on async content-size measurement; drag tracks the normalized top-leading coordinate directly so the overlay follows the pointer without center-based snap/clamp jitter.
+- Numeric overlay `position` is interpreted as the top-leading corner in preview and SwiftUI export. Dynamic values, labels, and units keep their left edge fixed and extend rightward as content becomes wider. Preview placement must not depend on async content-size measurement; drag computes top-leading position from canvas-coordinate pointer location plus the initial grab offset, and uses a top-leading snap/clamp path so edge snapping still works.
 
 ## Divider Section
 
