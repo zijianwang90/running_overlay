@@ -17,6 +17,7 @@ struct OverlayRenderModelTests {
         #expect(layout.fontSize == 42)
         #expect(layout.horizontalPadding == 15)
         #expect(layout.verticalPadding == 9)
+        #expect(layout.iconSystemName == "heart")
     }
 
     @Test func numericOverlayMinimumSizeScalesWithCanvasAndElement() {
@@ -34,6 +35,53 @@ struct OverlayRenderModelTests {
 
         #expect(layout.minimumWidth == 225)
         #expect(layout.minimumHeight == 82.5)
+    }
+
+    @Test func numericOverlayForcesMinimalStyleAndDisablesDivider() {
+        var style = OverlayStyle.default
+        style.textPreset = .splitLabel
+        style.dividerEnabled = true
+        style.dividerThickness = 4
+        let element = OverlayElement(type: .pace, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleActivity(),
+            elapsedTime: 5
+        )
+
+        let layout = OverlayRenderModel.textLayout(for: element, in: context)
+
+        #expect(layout.preset == .minimal)
+        #expect(layout.dividerEnabled == false)
+    }
+
+    @Test func numericOverlayIconLayoutScalesFromStyle() {
+        var style = OverlayStyle.default
+        style.iconEnabled = true
+        style.iconSystemName = "bolt"
+        style.iconPosition = .top
+        style.iconTextAlignment = .trailing
+        style.iconSize = 24
+        style.iconSpacing = 6
+        style.iconColor = .yellow
+        style.iconOpacity = 0.65
+        let element = OverlayElement(type: .power, position: CGPoint(x: 0.5, y: 0.5), scale: 1.25, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: CGSize(width: 1920, height: 1080),
+            activity: sampleActivity(),
+            elapsedTime: 5
+        )
+
+        let layout = OverlayRenderModel.textLayout(for: element, in: context)
+
+        #expect(layout.iconEnabled)
+        #expect(layout.iconSystemName == "bolt")
+        #expect(layout.iconPosition == .top)
+        #expect(layout.iconTextAlignment == .trailing)
+        #expect(layout.iconSize == 45)
+        #expect(layout.iconSpacing == 11.25)
+        #expect(layout.iconColor == .yellow)
+        #expect(layout.iconOpacity == 0.65)
     }
 
     @Test func distanceTimelineLayoutUsesSharedProgressAndGeometry() {

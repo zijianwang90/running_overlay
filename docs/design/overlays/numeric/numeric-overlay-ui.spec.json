@@ -1,6 +1,6 @@
 {
   "name": "Numeric Overlay UI",
-  "updated": "2026-05-21",
+  "updated": "2026-06-02",
   "references": {
     "mockup": "./numeric-overlay.png",
     "relatedInspectorSpec": "../../panels/inspector/inspector-ui.md",
@@ -15,7 +15,17 @@
     "distance",
     "elevation",
     "cadence",
-    "power"
+    "power",
+    "avgPace",
+    "lapPace",
+    "heartRateZone",
+    "verticalOscillation",
+    "groundContactTime",
+    "strideLength",
+    "verticalRatio",
+    "groundContactBalance",
+    "temperature",
+    "grade"
   ],
   "excludedOverlayTypes": [
     "distanceTimeline",
@@ -53,6 +63,12 @@
     "valuePreview": "{formattedOverlayValue}",
     "actions": ["back", "delete"]
   },
+  "renderStyle": {
+    "mode": "minimalCleanOnly",
+    "stylePresetPicker": false,
+    "dividerControls": false,
+    "legacyFieldsDecoded": ["OverlayStyle.textPreset", "OverlayStyle.dividerEnabled", "OverlayStyle.dividerColor", "OverlayStyle.dividerThickness", "OverlayStyle.dividerOpacity"]
+  },
   "sections": [
     {
       "id": "content",
@@ -60,22 +76,18 @@
       "controls": [
         { "id": "metric", "type": "dropdown", "value": "{metric}", "modelBacked": "future if metric can differ from OverlayElementType" },
         { "id": "units", "type": "dropdown", "value": "{unitOption}", "requiredWhen": "metric has more than one unit option" },
-        { "id": "formatPreview", "type": "readout", "value": "{formattedOverlayValue}", "modelBacked": true },
-        { "id": "showLabel", "type": "toggle", "modelBacked": false },
-        { "id": "showUnit", "type": "toggle", "modelBacked": false },
-        { "id": "labelText", "type": "textField", "modelBacked": false }
+        { "id": "formatPreview", "type": "readout", "value": "{formattedOverlayValue}", "modelBacked": true }
       ]
     },
     {
       "id": "layout",
       "title": "Layout",
       "controls": [
-        { "id": "anchor", "type": "grid3x3", "modelBacked": false },
         { "id": "position", "type": "numberPair", "labels": ["X", "Y"], "modelPaths": ["OverlayElement.position.x", "OverlayElement.position.y"] },
         { "id": "scale", "type": "slider", "modelPath": "OverlayElement.scale" },
         { "id": "minimumWidth", "type": "slider", "range": [0, 720], "modelPath": "OverlayStyle.numericMinWidth" },
         { "id": "minimumHeight", "type": "slider", "range": [0, 360], "modelPath": "OverlayStyle.numericMinHeight" },
-        { "id": "rotation", "type": "numberOrSlider", "modelBacked": false }
+        { "id": "opacity", "type": "slider", "range": [0, 1], "modelPath": "OverlayElement.opacity" }
       ]
     },
     {
@@ -85,15 +97,54 @@
         { "id": "font", "type": "dropdown", "modelPath": "OverlayStyle.fontName" },
         { "id": "fontSize", "type": "slider", "modelPath": "OverlayStyle.fontSize" },
         { "id": "fontWeight", "type": "segmented", "options": ["Regular", "Medium", "Semibold", "Bold"], "modelPath": "OverlayStyle.fontWeight" },
-        { "id": "alignment", "type": "iconSegmented", "options": ["left", "center", "right"], "modelBacked": false }
+        { "id": "alignment", "type": "iconSegmented", "options": ["left", "center", "right"], "modelPath": "OverlayStyle.textAlignment" },
+        { "id": "textColor", "type": "swatches", "modelPath": "OverlayStyle.valueColor" },
+        { "id": "textOpacity", "type": "slider", "range": [0, 1], "modelPath": "OverlayStyle.valueOpacity" }
       ]
     },
     {
-      "id": "color",
-      "title": "Color",
+      "id": "label",
+      "title": "Label",
       "controls": [
-        { "id": "textColor", "type": "swatches", "modelPath": "OverlayStyle.foregroundColor" },
-        { "id": "accentColor", "type": "swatches", "modelBacked": false, "optional": true }
+        { "id": "showLabel", "type": "toggle", "modelPath": "OverlayStyle.showLabel" },
+        { "id": "labelText", "type": "textField", "modelPath": "OverlayStyle.customLabel" },
+        { "id": "labelPosition", "type": "segmented", "options": ["top", "bottom", "leading", "trailing"], "modelPath": "OverlayStyle.labelPosition" },
+        { "id": "labelAlignment", "type": "iconSegmented", "modelPath": "OverlayStyle.labelTextAlignment" },
+        { "id": "labelColor", "type": "swatches", "modelPath": "OverlayStyle.labelColor" },
+        { "id": "labelOpacity", "type": "slider", "range": [0, 1], "modelPath": "OverlayStyle.labelOpacity" },
+        { "id": "labelFont", "type": "dropdown", "modelPath": "OverlayStyle.labelFontName" },
+        { "id": "labelFontSize", "type": "slider", "modelPath": "OverlayStyle.labelFontSize" },
+        { "id": "labelFontWeight", "type": "segmented", "modelPath": "OverlayStyle.labelFontWeight" },
+        { "id": "labelSpacing", "type": "slider", "modelPath": "OverlayStyle.labelSpacing" }
+      ]
+    },
+    {
+      "id": "unit",
+      "title": "Unit",
+      "controls": [
+        { "id": "showUnit", "type": "toggle", "modelPath": "OverlayStyle.showUnit" },
+        { "id": "unitPosition", "type": "segmented", "options": ["top", "bottom", "leading", "trailing"], "modelPath": "OverlayStyle.unitPosition" },
+        { "id": "unitAlignment", "type": "iconSegmented", "modelPath": "OverlayStyle.unitTextAlignment" },
+        { "id": "unitColor", "type": "swatches", "modelPath": "OverlayStyle.unitColor" },
+        { "id": "unitOpacity", "type": "slider", "range": [0, 1], "modelPath": "OverlayStyle.unitOpacity" },
+        { "id": "unitFont", "type": "dropdown", "modelPath": "OverlayStyle.unitFontName" },
+        { "id": "unitFontSize", "type": "slider", "modelPath": "OverlayStyle.unitFontSize" },
+        { "id": "unitFontWeight", "type": "segmented", "modelPath": "OverlayStyle.unitFontWeight" },
+        { "id": "unitSpacing", "type": "slider", "modelPath": "OverlayStyle.unitSpacing" }
+      ]
+    },
+    {
+      "id": "icon",
+      "title": "Icon",
+      "controls": [
+        { "id": "showIcon", "type": "toggle", "modelPath": "OverlayStyle.iconEnabled" },
+        { "id": "sfSymbol", "type": "textFieldOrMenu", "modelPath": "OverlayStyle.iconSystemName" },
+        { "id": "iconPosition", "type": "segmented", "options": ["top", "bottom", "leading", "trailing"], "modelPath": "OverlayStyle.iconPosition" },
+        { "id": "iconAlignment", "type": "iconSegmented", "modelPath": "OverlayStyle.iconTextAlignment" },
+        { "id": "iconSize", "type": "slider", "range": [8, 96], "modelPath": "OverlayStyle.iconSize" },
+        { "id": "iconColor", "type": "swatches", "modelPath": "OverlayStyle.iconColor" },
+        { "id": "iconOpacity", "type": "slider", "range": [0, 1], "modelPath": "OverlayStyle.iconOpacity" },
+        { "id": "iconSpacing", "type": "slider", "range": [0, 60], "modelPath": "OverlayStyle.iconSpacing" }
       ]
     },
     {
@@ -153,35 +204,31 @@
   "modelBackedToday": [
     "type-derived metric",
     "formatted value preview",
+    "SF Symbol icon name/position/alignment/size/color/opacity/spacing",
     "position x/y",
     "scale",
     "numeric minimum width/height",
     "font name",
     "font size",
     "font weight",
-    "foreground/text color",
+    "value/label/unit/icon color and opacity",
     "background opacity",
     "shadow opacity",
     "shadow radius"
   ],
   "modelGaps": [
     "metric reassignment independent of OverlayElementType",
-    "unit preference per overlay",
-    "show label",
-    "show unit",
-    "custom label text",
     "rotation",
-    "text alignment",
-    "background enabled flag",
-    "background color",
-    "background radius",
-    "background padding x/y",
-    "accent color"
+    "metric reassignment without creating a new OverlayElement"
   ],
   "renderingRules": [
+    "Numeric Overlay 1.0 uses the Minimal Clean render path only; the Inspector does not expose a style preset picker.",
+    "Divider rendering and divider controls are disabled for numeric overlays even when legacy divider fields decode as enabled.",
+    "Numeric icons use SF Symbols via OverlayStyle.iconSystemName; each metric gets a default from OverlayElementType.defaultNumericIconSystemName and users can override it.",
+    "Icon position and alignment follow the same top/bottom/left/right plus align/anchor pattern as Label and Unit.",
     "Unit text remains on one line and inline units grow the numeric overlay natural width instead of wrapping.",
     "numericMinWidth and numericMinHeight reserve additional frame space while keeping content pinned to the top-leading corner; zero preserves text-driven natural sizing.",
-    "Numeric preview and SwiftUI export interpret position as the top-leading corner; value and label rows resolve to leading alignment, inline units grow rightward while preserving unit anchor controls, and preview placement must avoid async content-size measurement; drag computes top-leading coordinates from canvas pointer location plus grab offset and preserves edge snapping through a top-leading snap/clamp path."
+    "Numeric preview and SwiftUI export interpret position as the top-leading corner; value and label rows resolve to leading alignment, inline units and icons grow rightward while preserving anchor controls, and preview placement must avoid async content-size measurement; drag computes top-leading coordinates from canvas pointer location plus grab offset and preserves edge snapping through a top-leading snap/clamp path."
   ],
   "recommendedComponents": [
     "NumericOverlayDetailView",

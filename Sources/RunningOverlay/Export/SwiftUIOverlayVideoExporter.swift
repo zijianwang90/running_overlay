@@ -184,8 +184,18 @@ struct ExportRenderPlan: Equatable {
         let valueWidth = max(CGFloat(layout.value.count) * layout.fontSize * 0.62, layout.fontSize * 2)
         let labelWidth = max(CGFloat(layout.components.label.count) * layout.labelFontSize * 0.52, 0)
         let unitWidth = max(CGFloat(layout.components.unit.count) * layout.unitFontSize * 0.52, 0)
-        let width = valueWidth + labelWidth + unitWidth + layout.horizontalPadding * 2 + layout.labelSpacing + layout.unitSpacing
-        let height = max(layout.fontSize, layout.labelFontSize + layout.unitFontSize) + layout.verticalPadding * 2
+        var width = valueWidth + labelWidth + unitWidth + layout.horizontalPadding * 2 + layout.labelSpacing + layout.unitSpacing
+        var height = max(layout.fontSize, layout.labelFontSize + layout.unitFontSize) + layout.verticalPadding * 2
+        if layout.iconEnabled {
+            switch layout.iconPosition {
+            case .leading, .trailing:
+                width += layout.iconSize + layout.iconSpacing
+                height = max(height, layout.iconSize + layout.verticalPadding * 2)
+            case .top, .bottom:
+                width = max(width, layout.iconSize + layout.horizontalPadding * 2)
+                height += layout.iconSize + layout.iconSpacing
+            }
+        }
         let size = CGSize(width: width, height: height)
         if element.type.isNumericOverlay {
             return topLeadingRect(for: element, size: size, canvasSize: context.canvasSize)

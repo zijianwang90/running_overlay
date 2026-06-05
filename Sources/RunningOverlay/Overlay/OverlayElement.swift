@@ -142,6 +142,39 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         isNumericOverlay ? .minimal : nil
     }
 
+    var defaultNumericIconSystemName: String {
+        switch self {
+        case .heartRate: "heart"
+        case .heartRateZone: "heart.text.square.fill"
+        case .pace, .avgPace: "speedometer"
+        case .lapPace: "flag.checkered"
+        case .calories: "flame"
+        case .elapsedTime: "clock"
+        case .realTime: "watch.analog"
+        case .distance: "ruler"
+        case .elevation: "mountain.2"
+        case .cadence: "figure.run"
+        case .power: "bolt"
+        case .verticalOscillation: "arrow.up.and.down"
+        case .groundContactTime: "timer"
+        case .strideLength: "arrow.left.and.right"
+        case .verticalRatio: "percent"
+        case .groundContactBalance: "scale.3d"
+        case .temperature: "thermometer"
+        case .grade: "arrow.up.right"
+        case .distanceTimeline: "waveform.path.ecg"
+        case .elevationChart: "chart.line.uptrend.xyaxis"
+        case .runningGauge: "gauge"
+        case .intervalHUDBar: "rectangle.split.3x1"
+        case .intervalTimeline: "timeline.selection"
+        case .routeMap: "map"
+        case .weatherWidget: "cloud.sun.fill"
+        case .decorSolidColor: "square.fill"
+        case .decorIcon: "star"
+        case .decorText: "textformat"
+        }
+    }
+
     var pasteCategory: OverlayPasteCategory {
         if isNumericOverlay {
             return .numeric
@@ -376,6 +409,14 @@ struct OverlayStyle: Equatable, Codable {
     var unitFontSize: Double
     var unitFontWeight: OverlayFontWeight
     var unitSpacing: Double
+    var iconEnabled: Bool
+    var iconSystemName: String
+    var iconPosition: OverlayTextAttachmentPosition
+    var iconTextAlignment: OverlayTextAlignment
+    var iconSize: Double
+    var iconColor: OverlayColor
+    var iconOpacity: Double
+    var iconSpacing: Double
     var rotationDegrees: Double
     var textAlignment: OverlayTextAlignment
     /// Alignment of the numeric overlay label text. Interpreted in the context
@@ -517,6 +558,14 @@ struct OverlayStyle: Equatable, Codable {
         unitFontSize: 20,
         unitFontWeight: .medium,
         unitSpacing: 8,
+        iconEnabled: true,
+        iconSystemName: "",
+        iconPosition: .leading,
+        iconTextAlignment: .center,
+        iconSize: 22,
+        iconColor: .white,
+        iconOpacity: 1,
+        iconSpacing: 8,
         rotationDegrees: 0,
         textAlignment: .leading,
         labelTextAlignment: .leading,
@@ -614,6 +663,14 @@ struct OverlayStyle: Equatable, Codable {
         unitFontSize: Double = 20,
         unitFontWeight: OverlayFontWeight = .medium,
         unitSpacing: Double = 8,
+        iconEnabled: Bool = true,
+        iconSystemName: String = "",
+        iconPosition: OverlayTextAttachmentPosition = .leading,
+        iconTextAlignment: OverlayTextAlignment = .center,
+        iconSize: Double = 22,
+        iconColor: OverlayColor = .white,
+        iconOpacity: Double = 1,
+        iconSpacing: Double = 8,
         rotationDegrees: Double = 0,
         textAlignment: OverlayTextAlignment = .leading,
         labelTextAlignment: OverlayTextAlignment = .leading,
@@ -709,6 +766,14 @@ struct OverlayStyle: Equatable, Codable {
         self.unitFontSize = unitFontSize
         self.unitFontWeight = unitFontWeight
         self.unitSpacing = max(unitSpacing, 0)
+        self.iconEnabled = iconEnabled
+        self.iconSystemName = iconSystemName.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.iconPosition = iconPosition
+        self.iconTextAlignment = iconTextAlignment
+        self.iconSize = min(max(iconSize, 8), 96)
+        self.iconColor = iconColor
+        self.iconOpacity = min(max(iconOpacity, 0), 1)
+        self.iconSpacing = min(max(iconSpacing, 0), 60)
         self.rotationDegrees = rotationDegrees
         self.textAlignment = textAlignment
         self.labelTextAlignment = labelTextAlignment
@@ -816,6 +881,15 @@ struct OverlayStyle: Equatable, Codable {
         unitFontSize = try container.decodeIfPresent(Double.self, forKey: .unitFontSize) ?? Self.default.unitFontSize
         unitFontWeight = try container.decodeIfPresent(OverlayFontWeight.self, forKey: .unitFontWeight) ?? Self.default.unitFontWeight
         unitSpacing = max(try container.decodeIfPresent(Double.self, forKey: .unitSpacing) ?? Self.default.unitSpacing, 0)
+        iconEnabled = try container.decodeIfPresent(Bool.self, forKey: .iconEnabled) ?? Self.default.iconEnabled
+        let decodedIconName = try container.decodeIfPresent(String.self, forKey: .iconSystemName) ?? Self.default.iconSystemName
+        iconSystemName = decodedIconName.trimmingCharacters(in: .whitespacesAndNewlines)
+        iconPosition = try container.decodeIfPresent(OverlayTextAttachmentPosition.self, forKey: .iconPosition) ?? Self.default.iconPosition
+        iconTextAlignment = try container.decodeIfPresent(OverlayTextAlignment.self, forKey: .iconTextAlignment) ?? Self.default.iconTextAlignment
+        iconSize = min(max(try container.decodeIfPresent(Double.self, forKey: .iconSize) ?? Self.default.iconSize, 8), 96)
+        iconColor = try container.decodeIfPresent(OverlayColor.self, forKey: .iconColor) ?? foregroundColor
+        iconOpacity = min(max(try container.decodeIfPresent(Double.self, forKey: .iconOpacity) ?? Self.default.iconOpacity, 0), 1)
+        iconSpacing = min(max(try container.decodeIfPresent(Double.self, forKey: .iconSpacing) ?? Self.default.iconSpacing, 0), 60)
         rotationDegrees = try container.decodeIfPresent(Double.self, forKey: .rotationDegrees) ?? Self.default.rotationDegrees
         textAlignment = try container.decodeIfPresent(OverlayTextAlignment.self, forKey: .textAlignment) ?? Self.default.textAlignment
         labelTextAlignment = try container.decodeIfPresent(OverlayTextAlignment.self, forKey: .labelTextAlignment) ?? Self.default.labelTextAlignment

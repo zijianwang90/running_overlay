@@ -19,6 +19,16 @@ struct ProjectDocumentUndoTests {
         #expect(project.overlayLayout.elements.count == 1)
     }
 
+    @Test func addedNumericOverlayUsesMetricDefaultIcon() {
+        let project = ProjectDocument()
+
+        project.addOverlayElement(.elevation)
+
+        let element = project.overlayLayout.elements[0]
+        #expect(element.style.iconEnabled)
+        #expect(element.style.iconSystemName == "mountain.2")
+    }
+
     @Test func undoRestoresDeletedOverlay() {
         let project = ProjectDocument()
 

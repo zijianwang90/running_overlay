@@ -19,7 +19,8 @@ struct OverlayRenderContext {
 enum OverlayRenderModel {
     static func textLayout(for element: OverlayElement, in context: OverlayRenderContext) -> OverlayTextRenderLayout {
         let fontSize = context.scaled(element.style.fontSize * element.scale)
-        let metrics = textMetrics(for: element.style.textPreset, fontSize: fontSize, scale: element.scale, context: context, element: element)
+        let preset: OverlayTextPreset = element.type.isNumericOverlay ? .minimal : element.style.textPreset
+        let metrics = textMetrics(for: preset, fontSize: fontSize, scale: element.scale, context: context, element: element)
         let components = OverlayValueFormatter.components(for: element, activity: context.activity, elapsedTime: context.elapsedTime)
         let unifiedTextBaseColor: OverlayColor? = {
             guard element.type == .heartRateZone,
@@ -34,7 +35,7 @@ enum OverlayRenderModel {
         return OverlayTextRenderLayout(
             value: OverlayValueFormatter.value(for: element, activity: context.activity, elapsedTime: context.elapsedTime),
             components: components,
-            preset: element.style.textPreset,
+            preset: preset,
             fontSize: fontSize,
             labelFontSize: context.scaled(element.style.labelFontSize * element.scale),
             unitFontSize: context.scaled(element.style.unitFontSize * element.scale),
@@ -46,6 +47,16 @@ enum OverlayRenderModel {
             unitPosition: element.style.unitPosition,
             labelSpacing: context.scaled(element.style.labelSpacing * element.scale),
             unitSpacing: context.scaled(element.style.unitSpacing * element.scale),
+            iconEnabled: element.type.isNumericOverlay && element.style.iconEnabled,
+            iconSystemName: element.style.iconSystemName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? element.type.defaultNumericIconSystemName
+                : element.style.iconSystemName,
+            iconPosition: element.style.iconPosition,
+            iconTextAlignment: element.style.iconTextAlignment,
+            iconSize: context.scaled(element.style.iconSize * element.scale),
+            iconColor: element.style.iconColor,
+            iconOpacity: element.style.iconOpacity,
+            iconSpacing: context.scaled(element.style.iconSpacing * element.scale),
             horizontalPadding: metrics.horizontalPadding,
             verticalPadding: metrics.verticalPadding,
             minimumWidth: context.scaled(element.style.numericMinWidth * element.scale),
@@ -59,7 +70,7 @@ enum OverlayRenderModel {
             labelTextAlignment: element.type.isNumericOverlay ? .leading : element.style.labelTextAlignment,
             valueTextAlignment: element.type.isNumericOverlay ? .leading : element.style.textAlignment,
             unitTextAlignment: element.style.unitTextAlignment,
-            dividerEnabled: element.style.dividerEnabled,
+            dividerEnabled: element.type.isNumericOverlay ? false : element.style.dividerEnabled,
             dividerColor: element.style.dividerColor,
             dividerThickness: context.scaled(element.style.dividerThickness * element.scale),
             dividerOpacity: element.style.dividerOpacity,
@@ -1544,6 +1555,14 @@ struct OverlayTextRenderLayout {
     var unitPosition: OverlayTextAttachmentPosition
     var labelSpacing: Double
     var unitSpacing: Double
+    var iconEnabled: Bool
+    var iconSystemName: String
+    var iconPosition: OverlayTextAttachmentPosition
+    var iconTextAlignment: OverlayTextAlignment
+    var iconSize: Double
+    var iconColor: OverlayColor
+    var iconOpacity: Double
+    var iconSpacing: Double
     var horizontalPadding: Double
     var verticalPadding: Double
     var minimumWidth: Double

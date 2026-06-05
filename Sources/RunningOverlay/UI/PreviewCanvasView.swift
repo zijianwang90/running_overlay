@@ -1877,6 +1877,14 @@ struct TextPresetOverlayView: View {
         alignmentForFrame(layout.unitTextAlignment)
     }
 
+    private var iconStackFrameAlignment: Alignment {
+        alignmentForFrame(layout.iconTextAlignment)
+    }
+
+    private var iconVAlignment: VerticalAlignment {
+        verticalAlignment(layout.iconTextAlignment)
+    }
+
     private func horizontalAlignment(_ a: OverlayTextAlignment) -> HorizontalAlignment {
         switch a {
         case .leading: .leading
@@ -1971,6 +1979,55 @@ struct TextPresetOverlayView: View {
 
     @ViewBuilder
     private var metricCoreContent: some View {
+        let showIcon = layout.iconEnabled && !layout.iconSystemName.isEmpty
+        if showIcon {
+            switch layout.iconPosition {
+            case .top:
+                VStack(alignment: .leading, spacing: 0) {
+                    metricIconView
+                        .frame(maxWidth: .infinity, alignment: iconStackFrameAlignment)
+                        .padding(.bottom, layout.iconSpacing)
+                    metricTextContent
+                }
+                .fixedSize(horizontal: true, vertical: false)
+            case .bottom:
+                VStack(alignment: .leading, spacing: 0) {
+                    metricTextContent
+                    metricIconView
+                        .frame(maxWidth: .infinity, alignment: iconStackFrameAlignment)
+                        .padding(.top, layout.iconSpacing)
+                }
+                .fixedSize(horizontal: true, vertical: false)
+            case .leading:
+                HStack(alignment: iconVAlignment, spacing: 0) {
+                    metricIconView
+                        .padding(.trailing, layout.iconSpacing)
+                    metricTextContent
+                }
+                .fixedSize(horizontal: true, vertical: false)
+            case .trailing:
+                HStack(alignment: iconVAlignment, spacing: 0) {
+                    metricTextContent
+                    metricIconView
+                        .padding(.leading, layout.iconSpacing)
+                }
+                .fixedSize(horizontal: true, vertical: false)
+            }
+        } else {
+            metricTextContent
+        }
+    }
+
+    private var metricIconView: some View {
+        Image(systemName: layout.iconSystemName)
+            .font(.system(size: layout.iconSize, weight: .medium))
+            .foregroundStyle(iconTextColor)
+            .frame(width: layout.iconSize, height: layout.iconSize)
+            .fixedSize(horizontal: true, vertical: true)
+    }
+
+    @ViewBuilder
+    private var metricTextContent: some View {
         let label = Text(layout.components.label)
             .font(labelFont)
             .tracking(layout.labelFontSize * 0.10)
@@ -2086,6 +2143,13 @@ struct TextPresetOverlayView: View {
             return Color(base).opacity(element.style.unitOpacity)
         }
         return Color(element.style.unitColor).opacity(element.style.unitOpacity)
+    }
+
+    private var iconTextColor: Color {
+        if heartRateZoneTextPaletteActive, let base = layout.unifiedTextBaseColor {
+            return Color(base).opacity(layout.iconOpacity)
+        }
+        return Color(layout.iconColor).opacity(layout.iconOpacity)
     }
 }
 

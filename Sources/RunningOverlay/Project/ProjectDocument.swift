@@ -560,6 +560,7 @@ final class ProjectDocument: ObservableObject {
         }
         if let recommended = type.defaultNumericPreset {
             style.textPreset = recommended
+            style.iconSystemName = type.defaultNumericIconSystemName
             if let tokens = recommended.recommendedTokens {
                 style.fontName = tokens.fontName
                 style.fontWeight = tokens.fontWeight
@@ -2068,6 +2069,25 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.showUnit = showUnit
     }
 
+    func setOverlayIconEnabled(_ elementID: OverlayElement.ID, enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.iconEnabled = enabled
+    }
+
+    func setOverlayIconSystemName(_ elementID: OverlayElement.ID, systemName: String) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        let trimmed = systemName.trimmingCharacters(in: .whitespacesAndNewlines)
+        overlayLayout.elements[index].style.iconSystemName = trimmed.isEmpty
+            ? overlayLayout.elements[index].type.defaultNumericIconSystemName
+            : trimmed
+    }
+
     func setOverlayTextColorsFollowHeartRateZones(_ elementID: OverlayElement.ID, _ enabled: Bool) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
@@ -2092,6 +2112,12 @@ final class ProjectDocument: ObservableObject {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
         overlayLayout.elements[index].style.unitPosition = position
+    }
+
+    func setOverlayIconPosition(_ elementID: OverlayElement.ID, position: OverlayTextAttachmentPosition) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.iconPosition = position
     }
 
     func setOverlayLabelFontName(_ elementID: OverlayElement.ID, fontName: String) {
@@ -2140,6 +2166,30 @@ final class ProjectDocument: ObservableObject {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
         overlayLayout.elements[index].style.unitSpacing = min(max(spacing, 0), 60)
+    }
+
+    func setOverlayIconSize(_ elementID: OverlayElement.ID, size: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.iconSize = min(max(size, 8), 96)
+    }
+
+    func setOverlayIconColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.iconColor = color
+    }
+
+    func setOverlayIconOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.iconOpacity = min(max(opacity, 0), 1)
+    }
+
+    func setOverlayIconSpacing(_ elementID: OverlayElement.ID, spacing: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.iconSpacing = min(max(spacing, 0), 60)
     }
 
     func setOverlayPosition(_ elementID: OverlayElement.ID, position: CGPoint) {
@@ -2208,6 +2258,12 @@ final class ProjectDocument: ObservableObject {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
         overlayLayout.elements[index].style.unitTextAlignment = alignment
+    }
+
+    func setOverlayIconTextAlignment(_ elementID: OverlayElement.ID, alignment: OverlayTextAlignment) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.iconTextAlignment = alignment
     }
 
     func setOverlayDividerEnabled(_ elementID: OverlayElement.ID, enabled: Bool) {

@@ -1,12 +1,14 @@
 # Numeric Overlay UI Design Spec
 
-Last updated: 2026-05-21 (numeric overlays expose minimum width/height and keep inline units on one line)
+Last updated: 2026-06-02 (1.0 adds configurable SF Symbol icons)
 
 ## Purpose
 
 Numeric Overlay is the reusable Inspector detail template for overlays that display a single numeric or numeric-like metric value. It should replace one-off Pace-style detail layouts with a dense, consistent editing surface.
 
 This spec guides all numeric overlay development, including UI, model mapping, formatting, unit selection, background styling, and implementation gaps.
+
+Numeric Overlay 1.0 intentionally uses one render style: Minimal Clean. The Inspector does not expose text style presets or divider controls. Existing `OverlayStyle.textPreset` and `divider*` fields remain decodable for old projects/templates, but numeric preview/export ignores divider rendering and resolves numeric metrics through the Minimal Clean render path.
 
 ## Design Reference
 
@@ -71,7 +73,7 @@ Sections:
 3. `Typography` (value only)
 4. `Label`
 5. `Unit`
-6. `Divider` (replaces former `Color` — the accent swatch was repurposed as the divider color)
+6. `Icon`
 7. `Background`
 8. `Border`
 9. `Effects`
@@ -129,6 +131,7 @@ Implementation rule:
 
 - If a metric has only one unit, the Units row can be read-only or omitted.
 - Do not show a unit menu with fake choices that do not change formatting.
+- Do not show a Style or Preset selector for numeric overlays in 1.0.
 
 ## Layout Section
 
@@ -190,24 +193,26 @@ Rendering rules:
 
 - Unit text must remain on one line. An inline unit expands the numeric overlay's natural width instead of wrapping beneath the value when the current width is tight.
 - `Min Width` and `Min Height` reserve extra frame space for border rendering and the minimal preset background while the content remains pinned to the top-leading corner.
-- Numeric overlay `position` is interpreted as the top-leading corner in preview and SwiftUI export. Dynamic values, labels, and units keep their left edge fixed and extend rightward as content becomes wider. Preview placement must not depend on async content-size measurement; drag computes top-leading position from canvas-coordinate pointer location plus the initial grab offset, and uses a top-leading snap/clamp path so edge snapping still works.
+- Numeric overlay `position` is interpreted as the top-leading corner in preview and SwiftUI export. Dynamic values, labels, units, and icons keep their left edge fixed and extend rightward as content becomes wider. Preview placement must not depend on async content-size measurement; drag computes top-leading position from canvas-coordinate pointer location plus the initial grab offset, and uses a top-leading snap/clamp path so edge snapping still works.
 
-## Divider Section
+## Icon Section
 
-Controls (project-wide divider quad — keep parity with Stats Bar dividers):
+Controls:
 
-- `Enable Divider` toggle in section header accessory.
-- Color swatch strip → `OverlayStyle.dividerColor`.
-- Thickness slider (0…16) → `OverlayStyle.dividerThickness`.
-- Alpha slider (0…100%) → `OverlayStyle.dividerOpacity`.
+- `Enable Icon` toggle in section header accessory.
+- SF Symbol name text field. Empty values reset to the metric's default symbol.
+- Preset menu with the metric default plus common running/metric symbols.
+- Position segmented control: `Top`, `Bottom`, `Left`, `Right`.
+- Align/Anchor segmented control — backed by `OverlayStyle.iconTextAlignment`. When the icon is above/below the text block it controls horizontal alignment; when the icon is left/right of the text block it controls vertical anchoring (top / middle / bottom).
+- Size slider.
+- Color swatch + Alpha.
+- Spacing slider.
 
-Applies only to presets that draw a divider element: `pillBadge` (vertical 1pt), `splitLabel` (horizontal accent line), `racingStripe` (left vertical stripe), `editorial` (bottom accent rule), `sportWatch` (upper + lower rules). Position/orientation is preset-owned; the inspector only exposes color/thickness/alpha/visibility.
+Rendering rules:
 
-For presets without a divider concept (`minimal`, `minimalLabel`, `metricCard`, `bigNumber`, `neonGlow`, `digitalWatch`) the entire section greys out and the toggle stays disabled — see `presetSupportsDivider` in `NumericOverlayDetailView`.
-
-The standalone "Color" section was retired: its only remaining live control was the Accent swatch, whose only consumer was the divider color in `splitLabel`/`editorial`/`racingStripe`/`pillBadge`. Those presets now read `dividerColor` directly, so the model field `accentColor` remains (kept for backwards-compatible decode and for non-divider presets like `neonGlow` / `digitalWatch` that still use it for glow/value tinting) but has no Inspector surface.
-
-`OverlayPresetTokens` carries an optional `DividerTokens` per preset so `applyOverlayTextPreset` snaps `dividerEnabled/Color/Thickness/Opacity` to match the preset's intended look; presets without a divider write `dividerEnabled = false`.
+- Numeric Overlay 1.0 uses SF Symbols only for this icon slot.
+- Each numeric metric gets a default symbol from `OverlayElementType.defaultNumericIconSystemName` when added from the Overlay Pool; users can override `OverlayStyle.iconSystemName`. Empty or legacy-missing `iconSystemName` values resolve through the element type's default symbol at render time.
+- Icons wrap the whole numeric text block, not just the value row, so label/unit layout remains independent.
 
 ## Background Section
 
@@ -321,9 +326,10 @@ Implemented in `OverlayStyle` (2026-04-26 refactor):
 - `labelPosition`, `unitPosition` — top/bottom/left/right placement around the numeric value.
 - `labelFontName` / `labelFontSize` / `labelFontWeight` — label-only typography controls.
 - `unitFontName` / `unitFontSize` / `unitFontWeight` — unit-only typography controls.
-- `rotationDegrees` — rotation in degrees applied at render time.
+- `iconEnabled`, `iconSystemName`, `iconPosition`, `iconTextAlignment`, `iconSize`, `iconColor`, `iconOpacity`, `iconSpacing` — SF Symbol icon controls for numeric overlays.
+- `rotationDegrees` — legacy field retained for decode compatibility; Numeric Overlay 1.0 does not expose rotation controls.
 - `textAlignment` (`OverlayTextAlignment`) — leading/center/trailing alignment.
-- `accentColor` — color used by overlays that expose an accent (defaults to `foregroundColor`).
+- `accentColor` — legacy field retained for decode compatibility; Numeric Overlay 1.0 does not expose accent controls.
 - `backgroundEnabled`, `backgroundColor`, `backgroundRadius`, `backgroundPaddingX`, `backgroundPaddingY` — explicit background controls; the legacy `backgroundOpacity` field continues to scale the alpha and stays decoded.
 - `numericMinWidth`, `numericMinHeight` — optional text-overlay minimum frame dimensions; `0` preserves natural text sizing for legacy projects.
 - `backgroundFadeOutEnabled`, `backgroundFadeOutAmount`, `backgroundBlurRadius` — background edge fade and blur controls.
@@ -331,7 +337,7 @@ Implemented in `OverlayStyle` (2026-04-26 refactor):
 - `shadowEnabled`, `shadowColor`, `shadowOffsetX`, `shadowOffsetY`, `shadowThickness` — shadow toggle plus color, direction, and thickness, in addition to existing `shadowOpacity` / `shadowRadius`.
 - `glowEnabled`, `glowColor`, `glowIntensity` — foreground glow controls shared by detail panels.
 
-`OverlayElementType.isNumericOverlay` and `OverlayElementType.defaultUnitOption` provide the unit defaults applied by `ProjectDocument.addOverlayElement` and used to filter the unit menu.
+`OverlayElementType.isNumericOverlay`, `OverlayElementType.defaultUnitOption`, and `OverlayElementType.defaultNumericIconSystemName` provide the unit/icon defaults applied by `ProjectDocument.addOverlayElement` and used to filter the unit menu. Numeric preview/export forces the Minimal Clean render path and disables divider rendering, regardless of decoded `textPreset` or `dividerEnabled` values.
 
 Still routed through metric type (no separate model field):
 
@@ -393,4 +399,4 @@ Do not duplicate one detail view per metric. Metric-specific behavior should be 
 - Single-unit metrics do not show fake unit menus.
 - Background toggle and background controls are present in the design, but implementation only enables model-backed controls.
 - The panel is visibly denser than the earlier Pace implementation and avoids large cards or loose vertical gaps.
-- The formatted preview updates when metric/unit/style choices change.
+- The formatted preview updates when metric/unit, typography, and icon choices change.

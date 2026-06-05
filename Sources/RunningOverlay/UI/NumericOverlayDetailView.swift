@@ -20,7 +20,7 @@ struct NumericOverlayDetailView: View {
                         sectionView(.typography, element: element) { typographySection(element) }
                         sectionView(.label, element: element, accessory: { labelEnabledToggle(element) }) { labelSection(element) }
                         sectionView(.unit, element: element, accessory: { unitEnabledToggle(element) }) { unitSection(element) }
-                        sectionView(.divider, element: element, accessory: { dividerEnabledToggle(element) }) { dividerSection(element) }
+                        sectionView(.icon, element: element, accessory: { iconEnabledToggle(element) }) { iconSection(element) }
                         OverlayBackgroundInspectorModule(elementID: elementID, element: element)
                         OverlayBorderInspectorModule(elementID: elementID, element: element)
                         OverlayEffectsInspectorModule(elementID: elementID, element: element)
@@ -40,25 +40,6 @@ struct NumericOverlayDetailView: View {
     @ViewBuilder
     private func contentSection(_ element: OverlayElement) -> some View {
         let units = OverlayUnitOption.options(for: element.type)
-        InspectorDenseRow(label: "Style") {
-            Menu {
-                ForEach(OverlayTextPreset.numericPresets) { preset in
-                    Button {
-                        project.applyOverlayTextPreset(elementID, textPreset: preset)
-                    } label: {
-                        if preset == element.style.textPreset {
-                            Label(preset.compactDisplayLabel, systemImage: "checkmark")
-                        } else {
-                            Text(preset.compactDisplayLabel)
-                        }
-                    }
-                }
-            } label: {
-                InspectorDenseMenuLabel(title: element.style.textPreset.compactDisplayLabel)
-            }
-            .menuStyle(.borderlessButton)
-            .frame(height: NumericTokens.controlHeight)
-        }
         if units.isEmpty {
             EmptyView()
         } else if units.count > 1 {
@@ -359,6 +340,117 @@ struct NumericOverlayDetailView: View {
     }
 
     @ViewBuilder
+    private func iconSection(_ element: OverlayElement) -> some View {
+        let isEnabled = element.style.iconEnabled
+        InspectorDenseRow(label: "Symbol") {
+            HStack(spacing: NumericTokens.space2) {
+                TextField(element.type.defaultNumericIconSystemName, text: Binding(
+                    get: { element.style.iconSystemName },
+                    set: { project.setOverlayIconSystemName(elementID, systemName: $0) }
+                ), onCommit: { project.finishContinuousEdit() })
+                .textFieldStyle(.plain)
+                .font(NumericTokens.bodyFont)
+                .padding(.horizontal, NumericTokens.space2)
+                .frame(height: NumericTokens.controlHeight)
+                .background(NumericTokens.controlBackground)
+                .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
+                .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
+
+                Menu {
+                    Button {
+                        project.setOverlayIconSystemName(elementID, systemName: element.type.defaultNumericIconSystemName)
+                    } label: {
+                        Label("Metric Default", systemImage: element.type.defaultNumericIconSystemName)
+                    }
+                    Divider()
+                    ForEach(NumericOverlayDetailView.iconSymbolPresets, id: \.self) { name in
+                        Button {
+                            project.setOverlayIconSystemName(elementID, systemName: name)
+                        } label: {
+                            if name == element.style.iconSystemName {
+                                Label(name, systemImage: "checkmark")
+                            } else {
+                                Label(name, systemImage: name)
+                            }
+                        }
+                    }
+                } label: {
+                    Image(systemName: element.style.iconSystemName.isEmpty ? element.type.defaultNumericIconSystemName : element.style.iconSystemName)
+                        .frame(width: NumericTokens.controlHeight, height: NumericTokens.controlHeight)
+                        .background(NumericTokens.controlBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
+                        .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
+                }
+                .menuStyle(.borderlessButton)
+                .frame(width: NumericTokens.controlHeight, height: NumericTokens.controlHeight)
+            }
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.5)
+        }
+        InspectorDenseRow(label: "Position") {
+            InspectorDenseSegmented(values: OverlayTextAttachmentPosition.allCases, selection: Binding(
+                get: { element.style.iconPosition },
+                set: { project.setOverlayIconPosition(elementID, position: $0) }
+            )) { position in
+                Text(position.compactInspectorLabel)
+                    .lineLimit(1)
+            }
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.5)
+        }
+        InspectorDenseRow(label: alignRowLabel(for: element.style.iconPosition)) {
+            InspectorDenseSegmented(values: OverlayTextAlignment.allCases, selection: Binding(
+                get: { element.style.iconTextAlignment },
+                set: { project.setOverlayIconTextAlignment(elementID, alignment: $0) }
+            )) { alignment in
+                Image(systemName: alignSystemImage(for: alignment, position: element.style.iconPosition))
+            }
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.5)
+        }
+        InspectorDenseSliderRow(
+            label: "Size",
+            value: Binding(
+                get: { element.style.iconSize },
+                set: { project.setOverlayIconSize(elementID, size: $0.rounded()) }
+            ),
+            range: 8...96,
+            displayText: "\(Int(element.style.iconSize.rounded()))",
+            isEnabled: isEnabled
+        )
+        InspectorDenseRow(label: "Color") {
+            InspectorDenseSwatchStrip(
+                presets: NumericOverlayDetailView.colorPresets,
+                selected: element.style.iconColor
+            ) { color in
+                project.setOverlayIconColor(elementID, color: color)
+            }
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.5)
+        }
+        InspectorDenseSliderRow(
+            label: "Alpha",
+            value: Binding(
+                get: { element.style.iconOpacity },
+                set: { project.setOverlayIconOpacity(elementID, opacity: $0.quantizedNumeric(to: 0.05)) }
+            ),
+            range: 0...1,
+            displayText: String(format: "%.0f%%", element.style.iconOpacity * 100),
+            isEnabled: isEnabled
+        )
+        InspectorDenseSliderRow(
+            label: "Spacing",
+            value: Binding(
+                get: { element.style.iconSpacing },
+                set: { project.setOverlayIconSpacing(elementID, spacing: $0.quantizedNumeric(to: 0.5)) }
+            ),
+            range: 0...60,
+            displayText: String(format: "%.1f", element.style.iconSpacing),
+            isEnabled: isEnabled
+        )
+    }
+
+    @ViewBuilder
     private func fontEditorRows(
         fontName: Binding<String>,
         fontSize: Binding<Double>,
@@ -401,46 +493,6 @@ struct NumericOverlayDetailView: View {
             .disabled(!isEnabled)
             .opacity(isEnabled ? 1 : 0.5)
         }
-    }
-
-    @ViewBuilder
-    private func dividerSection(_ element: OverlayElement) -> some View {
-        // The divider is only meaningful for presets that actually draw one
-        // (splitLabel, racingStripe, editorial, pillBadge, sportWatch). Other
-        // presets keep the controls visible but inert so the section retains
-        // its place in the layout and users get a hint about applicability.
-        let supports = presetSupportsDivider(element.style.textPreset)
-        let isEnabled = supports && element.style.dividerEnabled
-        InspectorDenseRow(label: "Color") {
-            InspectorDenseSwatchStrip(
-                presets: NumericOverlayDetailView.colorPresets,
-                selected: element.style.dividerColor
-            ) { color in
-                project.setOverlayDividerColor(elementID, color: color)
-            }
-            .disabled(!isEnabled)
-            .opacity(isEnabled ? 1 : 0.5)
-        }
-        InspectorDenseSliderRow(
-            label: "Thickness",
-            value: Binding(
-                get: { element.style.dividerThickness },
-                set: { project.setOverlayDividerThickness(elementID, thickness: $0.quantizedNumeric(to: 0.5)) }
-            ),
-            range: 0...16,
-            displayText: String(format: "%.1f", element.style.dividerThickness),
-            isEnabled: isEnabled
-        )
-        InspectorDenseSliderRow(
-            label: "Alpha",
-            value: Binding(
-                get: { element.style.dividerOpacity },
-                set: { project.setOverlayDividerOpacity(elementID, opacity: $0.quantizedNumeric(to: 0.05)) }
-            ),
-            range: 0...1,
-            displayText: String(format: "%.0f%%", element.style.dividerOpacity * 100),
-            isEnabled: isEnabled
-        )
     }
 
     @ViewBuilder
@@ -664,17 +716,14 @@ struct NumericOverlayDetailView: View {
     }
 
     @ViewBuilder
-    private func dividerEnabledToggle(_ element: OverlayElement) -> some View {
-        let supports = presetSupportsDivider(element.style.textPreset)
+    private func iconEnabledToggle(_ element: OverlayElement) -> some View {
         Toggle("", isOn: Binding(
-            get: { element.style.dividerEnabled },
-            set: { project.setOverlayDividerEnabled(elementID, enabled: $0) }
+            get: { element.style.iconEnabled },
+            set: { project.setOverlayIconEnabled(elementID, enabled: $0) }
         ))
         .toggleStyle(.switch)
         .controlSize(.mini)
         .labelsHidden()
-        .disabled(!supports)
-        .opacity(supports ? 1 : 0.5)
     }
 
     @ViewBuilder
@@ -713,6 +762,13 @@ struct NumericOverlayDetailView: View {
         ("Yellow", .yellow), ("Green", .green), ("Blue", .blue), ("Cyan", .cyan),
         ("Purple", .purple), ("Pink", .pink)
     ]
+    static let iconSymbolPresets: [String] = [
+        "heart", "heart.fill", "heart.text.square.fill", "speedometer", "timer",
+        "clock", "watch.analog", "flag.checkered", "flame", "flame.fill",
+        "ruler", "mountain.2", "figure.run", "bolt", "bolt.fill",
+        "arrow.up.and.down", "arrow.left.and.right", "percent", "scale.3d",
+        "thermometer", "arrow.up.right", "location.fill", "map", "waveform.path.ecg"
+    ]
 }
 
 // MARK: - Header
@@ -741,7 +797,7 @@ struct NumericOverlayHeader: View {
                 RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
                     .fill(NumericTokens.controlBackground)
                     .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                Image(systemName: element.type.numericIcon)
+                Image(systemName: element.type.defaultNumericIconSystemName)
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(NumericTokens.textPrimary)
             }
@@ -795,7 +851,7 @@ enum NumericSection: String, CaseIterable {
     case typography
     case label
     case unit
-    case divider
+    case icon
     case background
     case effects
 
@@ -806,7 +862,7 @@ enum NumericSection: String, CaseIterable {
         case .typography: "Value"
         case .label: "Label"
         case .unit: "Unit"
-        case .divider: "Divider"
+        case .icon: "Icon"
         case .background: "Background"
         case .effects: "Shadow"
         }
@@ -819,7 +875,7 @@ enum NumericSection: String, CaseIterable {
         case .typography: "textformat"
         case .label: "textformat.abc"
         case .unit: "character.textbox"
-        case .divider: "minus"
+        case .icon: "star"
         case .background: "rectangle.fill"
         case .effects: "square.fill.on.square.fill"
         }
@@ -827,17 +883,6 @@ enum NumericSection: String, CaseIterable {
 }
 
 private extension NumericOverlayDetailView {
-    /// Whether a given preset actually renders a divider element. Mirrors the
-    /// `divider` field in `OverlayPresetTokens` — keep these in sync.
-    func presetSupportsDivider(_ preset: OverlayTextPreset) -> Bool {
-        switch preset {
-        case .pillBadge, .splitLabel, .racingStripe, .editorial, .sportWatch:
-            true
-        default:
-            false
-        }
-    }
-
     /// Row label for the label-alignment segmented control — flips between
     /// horizontal and vertical wording so the meaning is obvious for a
     /// stacked vs. side-attached label.
@@ -866,12 +911,6 @@ private extension NumericOverlayDetailView {
     }
 }
 
-extension OverlayTextPreset {
-    var compactDisplayLabel: String {
-        label.components(separatedBy: " / ").first ?? label
-    }
-}
-
 private extension OverlayTextAttachmentPosition {
     var compactInspectorLabel: String {
         switch self {
@@ -890,41 +929,6 @@ private extension OverlayFontWeight {
         case .medium: "Med"
         case .semibold: "Semi"
         case .bold: "Bold"
-        }
-    }
-}
-
-extension OverlayElementType {
-    var numericIcon: String {
-        switch self {
-        case .heartRate: "heart"
-        case .heartRateZone: "heart.text.square.fill"
-        case .pace, .avgPace: "speedometer"
-        case .lapPace: "flag.checkered"
-        case .calories: "flame"
-        case .elapsedTime: "clock"
-        case .realTime: "watch.analog"
-        case .distance: "ruler"
-        case .elevation: "mountain.2"
-        case .cadence: "figure.run"
-        case .power: "bolt"
-        case .distanceTimeline: "waveform.path.ecg"
-        case .elevationChart: "chart.line.uptrend.xyaxis"
-        case .runningGauge: "gauge"
-        case .intervalHUDBar: "rectangle.split.3x1"
-        case .intervalTimeline: "timeline.selection"
-        case .routeMap: "map"
-        case .verticalOscillation: "arrow.up.and.down"
-        case .groundContactTime: "timer"
-        case .strideLength: "arrow.left.and.right"
-        case .verticalRatio: "percent"
-        case .groundContactBalance: "scale.3d"
-        case .temperature: "thermometer"
-        case .grade: "arrow.up.right"
-        case .decorSolidColor: "square.fill"
-        case .decorIcon: "star"
-        case .decorText: "textformat"
-        case .weatherWidget: "cloud.sun.fill"
         }
     }
 }
