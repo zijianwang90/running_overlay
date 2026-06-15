@@ -9,6 +9,16 @@
 - Default picker browsing now starts with sport-relevant symbols, while typed search still scans the full catalog. Renderability checks are cached so repeated searches do not recreate `NSImage` probes for the same symbol names.
 - Added catalog tests for full resource loading, sport-first default browsing, full-catalog search, case-insensitive search, renderable picker results, and numeric metric default icon coverage.
 
+### Interval Timeline explicit modes and segment filters
+
+- Removed the user-facing `Max Full` threshold behavior: Centered and Full are now explicit modes, and Full no longer auto-falls back to a centered window for high lap counts.
+- Added Full mode segment layout selection with `Equal` as the default and `Duration` preserving the previous duration-proportional geometry; current segment emphasis still affects current height in either Full layout.
+- Added independent Timeline toggles for WU, Rest, and CD segments. Filtering is applied before layout, and hidden current segments no longer receive current emphasis while the marker falls back to the nearest visible segment.
+- Kept old `maxFullSegments` project data decode-compatible without writing it back in new encoded styles.
+- Simplified Centered overflow rendering to ellipsis-only edge hints. Removed WU/CD ghost endpoint labels and `xN` count boxes from preview/export, renamed the Inspector control to `Overflow Hint`, and kept old `overflowPillsEnabled` project data decode-compatible.
+- Added `Full + Equal` current width control: the Current `Width` slider starts at `Equal` and can enlarge the current segment's target share while preserving equal-width behavior at the minimum.
+- Replaced the old Interval Timeline label mode with direct label controls. Current segments now independently support distance and time rows set to Off, Live, or Remain, while non-current neighbor labels can show either distance or time. Old `primaryLabelMode` and `durationLabelsEnabled` project data remains decode-compatible but is not written back.
+
 ## 2026-05-21
 
 ### Route Map MapKit Appearance Lock

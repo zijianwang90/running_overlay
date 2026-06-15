@@ -1,6 +1,6 @@
 {
   "name": "Interval Timeline Overlay UI",
-  "updated": "2026-05-14",
+  "updated": "2026-06-15",
   "appliesToOverlayTypes": ["intervalTimeline"],
   "purpose": "Horizontal interval-workout schedule overlay that complements the current-interval HUD by showing surrounding workout progress.",
   "dataSources": {
@@ -13,24 +13,30 @@
     "background": "translucent near-black rounded strip",
     "track": "horizontal sequence of lap segments",
     "currentSegment": "larger, brighter, centered by default, with live progress fill",
-    "edgeOverflow": "WU ··· [xN] on the left and [xN] ··· CD on the right, with square bordered hidden-count boxes",
+    "edgeOverflow": "low-contrast ··· hints on the left and/or right when hidden segments exist; no WU/CD ghost labels or xN count boxes",
     "marker": "upward NOW marker in a reserved marker lane below the rail, aligned to live progress or current segment center, without changing rail or segment geometry",
     "railDots": "optional line-and-dot decoration rail; spacing controls vertical distance from segments, dots control size/color/alpha, and the line controls width/color",
     "excludedFromRuntime": ["design-board title badge", "overlay title text", "legend", "mode switch controls"]
   },
   "lapKindMapping": {
-    "warmup": { "label": "WU", "defaultColor": "blue" },
-    "active": { "label": "distanceOrRUN", "defaultColor": "orange" },
-    "rest": { "label": "R", "defaultColor": "green" },
-    "cooldown": { "label": "CD", "defaultColor": "purple" },
-    "unknown": { "label": "LAP", "defaultColor": "slate" }
+    "warmup": { "defaultColor": "blue" },
+    "active": { "defaultColor": "orange" },
+    "rest": { "defaultColor": "green" },
+    "cooldown": { "defaultColor": "purple" },
+    "unknown": { "defaultColor": "slate" }
+  },
+  "labelModel": {
+    "currentDistanceLabelMode": ["hidden", "elapsed", "remaining"],
+    "currentTimeLabelMode": ["hidden", "elapsed", "remaining"],
+    "neighborLabelMode": ["distance", "time"],
+    "description": "Current distance and current time are independent rows and can be shown together. Non-current segments show one selected metric."
   },
   "layoutModes": [
     {
       "id": "centeredWindow",
       "default": true,
       "description": "Keep current lap centered and show a fixed number of neighboring laps.",
-      "overflow": "hidden previous/next laps are summarized with clipped-count pills"
+      "overflow": "hidden previous/next laps are summarized with ellipsis hints"
     },
     {
       "id": "fullSchedule",
@@ -48,15 +54,23 @@
     "height": 64,
     "mode": "centeredWindow",
     "visibleNeighbors": 3,
-    "maxFullSegments": 12,
+    "fullSegmentLayoutMode": "equal",
+    "showsWarmupSegments": true,
+    "showsRestSegments": true,
+    "showsCooldownSegments": true,
     "segmentHeight": 30,
     "currentSegmentHeightScale": 1.35,
+    "fullEqualCurrentSegmentWidthFraction": 0,
     "minSegmentWidth": 54,
     "segmentGap": 4,
     "backgroundOpacity": 0.78,
     "cornerRadius": 8,
     "edgeFadeEnabled": true,
     "currentProgressEnabled": true,
+    "currentDistanceLabelMode": "elapsed",
+    "currentTimeLabelMode": "remaining",
+    "neighborLabelMode": "distance",
+    "overflowHintEnabled": true,
     "markerEnabled": true,
     "markerLabel": "NOW",
     "markerPosition": "liveProgress",
@@ -79,11 +93,11 @@
     },
     {
       "title": "Timeline",
-      "fields": ["mode", "visibleNeighbors", "maxFullSegments", "proportionalWidth", "minSegmentWidth", "segmentGap"]
+      "fields": ["mode", "fullSegmentLayoutMode", "visibleNeighbors", "showsWarmupSegments", "showsRestSegments", "showsCooldownSegments", "minSegmentWidth", "segmentGap"]
     },
     {
       "title": "Current",
-      "fields": ["currentSegmentHeightScale", "currentProgressEnabled", "markerEnabled", "markerLabel", "markerPosition", "markerColor", "markerFontSize", "markerFontWeight"]
+      "fields": ["currentSegmentHeightScale", "currentSegmentWidthFraction", "fullEqualCurrentSegmentWidthFraction", "currentProgressEnabled", "markerEnabled", "markerLabel", "markerPosition", "markerColor", "markerFontSize", "markerFontWeight"]
     },
     {
       "title": "Rail",
@@ -91,7 +105,7 @@
     },
     {
       "title": "Labels",
-      "fields": ["primaryLabelMode", "durationLabelsEnabled", "repCounterEnabled", "overflowPillsEnabled", "fontFamily", "fontSize", "fontWeight"]
+      "fields": ["currentDistanceLabelMode", "currentTimeLabelMode", "neighborLabelMode", "repCounterEnabled", "overflowHintEnabled", "fontFamily", "fontSize", "fontWeight"]
     },
     {
       "title": "Colors",
@@ -107,13 +121,17 @@
     }
   ],
   "readabilityRules": [
-    "When lap count exceeds maxFullSegments, default to centeredWindow.",
+    "Default mode is centeredWindow for high-repetition readability.",
+    "Full Schedule always shows all enabled segments and never automatically falls back to centeredWindow.",
+    "Full Schedule supports equal-width and duration-proportional segment layout.",
+    "Full Schedule Equal layout uses equal widths at the Current Width minimum and can enlarge the current segment as the slider increases.",
+    "WU, Rest, and CD visibility toggles filter segment kinds before layout.",
     "Current segment remains visually centered in centeredWindow mode.",
-    "Labels never overlap; hide duration before shrinking primary labels below readable size.",
+    "Labels are configured directly: current distance and current time can be hidden or set to live/remaining, while non-current labels use distance or time.",
     "For high-repeat workouts such as 1min x25, show nearby context and summarize hidden repetitions at both edges.",
     "Marker toggling must not move the rail, marker lane, or segment layout.",
     "Marker triangle and label must stay inside the background and border.",
-    "WU/CD endpoint context keeps reserved space even when overflowPillsEnabled is false.",
+    "Overflow hints use compact ellipsis-only edge space and do not render WU/CD endpoint labels.",
     "Rail spacing expands rendered background height so the rail remains inside the background.",
     "Overlay bounds must remain stable when current lap changes."
   ],

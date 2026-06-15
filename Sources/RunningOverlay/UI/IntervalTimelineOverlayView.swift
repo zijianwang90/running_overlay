@@ -16,11 +16,10 @@ struct IntervalTimelineOverlayView: View {
             }
 
             ZStack(alignment: .topLeading) {
-                ghostEdgeLabels
                 ForEach(layout.segments) { segment in
                     segmentView(segment)
                 }
-                overflowPills
+                overflowHints
                 if layout.style.markerEnabled {
                     markerView
                 }
@@ -29,41 +28,13 @@ struct IntervalTimelineOverlayView: View {
         .frame(width: layout.rect.width, height: layout.rect.height)
     }
 
-    private var ghostEdgeLabels: some View {
-        ZStack(alignment: .topLeading) {
-            if layout.leftOverflowCount > 0 {
-                ghostLabel(kind: "WU", duration: "15:00", color: layout.style.warmupColor)
-                    .position(x: layout.overflowGhostInset, y: layout.contentRect.midY - layout.rect.minY)
-            }
-            if layout.rightOverflowCount > 0 {
-                ghostLabel(kind: "CD", duration: "10:00", color: layout.style.cooldownColor)
-                    .position(x: layout.rect.width - layout.overflowGhostInset, y: layout.contentRect.midY - layout.rect.minY)
-            }
-        }
-    }
-
-    private func ghostLabel(kind: String, duration: String, color: OverlayColor) -> some View {
-        VStack(spacing: 1 * element.scale) {
-            Text(kind)
-                .font(.custom(element.style.fontName, size: layout.ghostFontSize).weight(.bold))
-            Text(duration)
-                .font(.custom(element.style.fontName, size: layout.ghostFontSize * 0.82).weight(.semibold))
-                .monospacedDigit()
-        }
-        .foregroundStyle(Color(intervalTimeline: color).opacity(0.55))
-    }
-
-    private var overflowPills: some View {
+    private var overflowHints: some View {
         let midY = layout.contentRect.midY - layout.rect.minY
         return ZStack(alignment: .topLeading) {
-            if layout.style.overflowPillsEnabled && layout.leftOverflowCount > 0 {
+            if layout.style.overflowHintEnabled && layout.leftOverflowCount > 0 {
                 ellipsis().position(x: layout.overflowEllipsisInset, y: midY)
-                overflowPill("x\(layout.leftOverflowCount)")
-                    .position(x: layout.overflowPillInset, y: midY)
             }
-            if layout.style.overflowPillsEnabled && layout.rightOverflowCount > 0 {
-                overflowPill("x\(layout.rightOverflowCount)")
-                    .position(x: layout.rect.width - layout.overflowPillInset, y: midY)
+            if layout.style.overflowHintEnabled && layout.rightOverflowCount > 0 {
                 ellipsis().position(x: layout.rect.width - layout.overflowEllipsisInset, y: midY)
             }
         }
@@ -73,16 +44,6 @@ struct IntervalTimelineOverlayView: View {
         Text("···")
             .font(.custom(element.style.fontName, size: layout.labelFontSize * 0.95).weight(.bold))
             .foregroundStyle(Color(intervalTimeline: element.style.foregroundColor).opacity(0.50))
-    }
-
-    private func overflowPill(_ text: String) -> some View {
-        Text(text)
-            .font(.custom(element.style.fontName, size: layout.pillFontSize).weight(.bold))
-            .foregroundStyle(Color(intervalTimeline: element.style.foregroundColor).opacity(0.82))
-            .frame(width: layout.overflowPillSize.width, height: layout.overflowPillSize.height)
-            .background(Color.black.opacity(0.30))
-            .clipShape(RoundedRectangle(cornerRadius: 5 * element.scale))
-            .overlay(RoundedRectangle(cornerRadius: 5 * element.scale).stroke(Color.white.opacity(0.46), lineWidth: 1.4))
     }
 
     private func segmentView(_ segment: IntervalTimelineSegmentLayout) -> some View {
@@ -113,16 +74,14 @@ struct IntervalTimelineOverlayView: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                 }
-                Text(segment.label)
-                    .font(.custom(element.style.fontName, size: segment.isCurrent ? layout.labelFontSize * 1.08 : layout.labelFontSize).weight(.bold))
-                    .foregroundStyle(Color.white.opacity(0.96))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.64)
-                if layout.style.durationLabelsEnabled {
-                    Text(segment.durationText)
-                        .font(.custom(element.style.fontName, size: layout.durationFontSize).weight(.semibold))
+                ForEach(Array(segment.labelLines.enumerated()), id: \.offset) { offset, line in
+                    Text(line)
+                        .font(.custom(
+                            element.style.fontName,
+                            size: offset == 0 && segment.isCurrent ? layout.labelFontSize * 1.08 : (offset == 0 ? layout.labelFontSize : layout.durationFontSize)
+                        ).weight(offset == 0 ? .bold : .semibold))
                         .monospacedDigit()
-                        .foregroundStyle(Color.white.opacity(0.86))
+                        .foregroundStyle(Color.white.opacity(offset == 0 ? 0.96 : 0.86))
                         .lineLimit(1)
                         .minimumScaleFactor(0.64)
                 }

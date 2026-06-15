@@ -545,7 +545,6 @@ struct OverlayRenderModelTests {
         var style = OverlayStyle.default
         style.intervalTimeline.mode = .centeredWindow
         style.intervalTimeline.visibleNeighbors = 2
-        style.intervalTimeline.primaryLabelMode = .kind
         let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
         let context = OverlayRenderContext(
             canvasSize: OverlayRenderContext.referenceCanvasSize,
@@ -560,7 +559,7 @@ struct OverlayRenderModelTests {
         #expect(layout.rightOverflowCount > 0)
         let current = layout.segments.first { $0.isCurrent }
         #expect(current?.kind == .active)
-        #expect(current?.label == "1min")
+        #expect(current?.labelLines.last == "0:25")
         #expect(layout.repText == "Rep 14 / 25")
         if let current {
             #expect(abs(current.rect.midX - layout.markerX) > 0)
@@ -571,7 +570,6 @@ struct OverlayRenderModelTests {
     @Test func intervalTimelineFullScheduleShowsAllSmallWorkouts() {
         var style = OverlayStyle.default
         style.intervalTimeline.mode = .fullSchedule
-        style.intervalTimeline.maxFullSegments = 12
         let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
         let context = OverlayRenderContext(
             canvasSize: OverlayRenderContext.referenceCanvasSize,
@@ -586,6 +584,133 @@ struct OverlayRenderModelTests {
         #expect(layout.rightOverflowCount == 0)
         #expect(layout.segments.map(\.kind) == [.active, .rest, .active])
         #expect(layout.segments.first(where: \.isCurrent)?.kind == .rest)
+    }
+
+    @Test func intervalTimelineFullScheduleDoesNotAutoCenterLargeWorkouts() {
+        var style = OverlayStyle.default
+        style.intervalTimeline.mode = .fullSchedule
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: repeatedIntervalActivity(repCount: 7),
+            elapsedTime: 30 + 3 * 120 + 20
+        )
+
+        let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
+
+        #expect(layout.segments.count == 15)
+        #expect(layout.leftOverflowCount == 0)
+        #expect(layout.rightOverflowCount == 0)
+    }
+
+    @Test func intervalTimelineFullScheduleSupportsEqualAndDurationWidths() throws {
+        var equalStyle = OverlayStyle.default
+        equalStyle.intervalTimeline.mode = .fullSchedule
+        equalStyle.intervalTimeline.fullSegmentLayoutMode = .equal
+        equalStyle.intervalTimeline.currentSegmentHeightScale = 1.6
+
+        var durationStyle = equalStyle
+        durationStyle.intervalTimeline.fullSegmentLayoutMode = .duration
+        var boostedEqualStyle = equalStyle
+        boostedEqualStyle.intervalTimeline.fullEqualCurrentSegmentWidthFraction = 0.4
+
+        let equalElement = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: equalStyle)
+        let durationElement = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: durationStyle)
+        let boostedEqualElement = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: boostedEqualStyle)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: repeatedIntervalActivity(repCount: 3),
+            elapsedTime: 45
+        )
+
+        let equalLayout = OverlayRenderModel.intervalTimelineLayout(for: equalElement, in: context)
+        let durationLayout = OverlayRenderModel.intervalTimelineLayout(for: durationElement, in: context)
+        let boostedEqualLayout = OverlayRenderModel.intervalTimelineLayout(for: boostedEqualElement, in: context)
+        let equalFirstWidth = try #require(equalLayout.segments.first?.rect.width)
+        let equalLastWidth = try #require(equalLayout.segments.last?.rect.width)
+        let durationFirstWidth = try #require(durationLayout.segments.first?.rect.width)
+        let durationSecondWidth = try #require(durationLayout.segments.dropFirst().first?.rect.width)
+        let current = try #require(equalLayout.segments.first { $0.isCurrent })
+        let nonCurrent = try #require(equalLayout.segments.first { !$0.isCurrent })
+        let boostedCurrent = try #require(boostedEqualLayout.segments.first { $0.isCurrent })
+        let boostedNonCurrent = try #require(boostedEqualLayout.segments.first { !$0.isCurrent })
+
+        #expect(abs(equalFirstWidth - equalLastWidth) < 0.001)
+        #expect(durationSecondWidth > durationFirstWidth)
+        #expect(current.rect.height > nonCurrent.rect.height)
+        #expect(boostedCurrent.rect.width > boostedNonCurrent.rect.width)
+    }
+
+    @Test func intervalTimelineCurrentLabelsCanShowRemainingDistanceAndElapsedTime() {
+        var style = OverlayStyle.default
+        style.intervalTimeline.currentDistanceLabelMode = .remaining
+        style.intervalTimeline.currentTimeLabelMode = .elapsed
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 25
+        )
+
+        let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
+        let current = layout.segments.first { $0.isCurrent }
+
+        #expect(current?.labelLines == ["150m", "0:25"])
+    }
+
+    @Test func intervalTimelineNeighborLabelsCanShowTime() {
+        var style = OverlayStyle.default
+        style.intervalTimeline.mode = .fullSchedule
+        style.intervalTimeline.neighborLabelMode = .time
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 50
+        )
+
+        let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
+        let rest = layout.segments.first { $0.kind == .rest }
+
+        #expect(rest?.labelLines == ["1:00"])
+    }
+
+    @Test func intervalTimelineVisibilityTogglesFilterWarmupRestAndCooldown() {
+        var style = OverlayStyle.default
+        style.intervalTimeline.mode = .fullSchedule
+        style.intervalTimeline.showsWarmupSegments = false
+        style.intervalTimeline.showsRestSegments = false
+        style.intervalTimeline.showsCooldownSegments = false
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: repeatedIntervalActivity(repCount: 2),
+            elapsedTime: 45
+        )
+
+        let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
+
+        #expect(layout.segments.map(\.kind) == [.active, .active])
+        #expect(layout.leftOverflowCount == 0)
+        #expect(layout.rightOverflowCount == 0)
+    }
+
+    @Test func intervalTimelineHiddenCurrentSegmentUsesMarkerFallback() throws {
+        var style = OverlayStyle.default
+        style.intervalTimeline.mode = .fullSchedule
+        style.intervalTimeline.showsWarmupSegments = false
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: repeatedIntervalActivity(repCount: 2),
+            elapsedTime: 10
+        )
+
+        let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
+        let firstSegment = try #require(layout.segments.first)
+
+        #expect(layout.segments.allSatisfy { !$0.isCurrent })
+        #expect(abs(layout.markerX - firstSegment.rect.midX) < 0.001)
     }
 
     @Test func intervalTimelineMarkerToggleDoesNotMoveRailOrSegments() throws {
@@ -615,11 +740,11 @@ struct OverlayRenderModelTests {
         #expect(enabledFirstRect == disabledFirstRect)
     }
 
-    @Test func intervalTimelineReservesEdgeContextWhenOverflowPillsAreHidden() {
+    @Test func intervalTimelineDoesNotReserveOverflowSpaceWhenHintIsHidden() {
         var style = OverlayStyle.default
         style.intervalTimeline.mode = .centeredWindow
         style.intervalTimeline.visibleNeighbors = 2
-        style.intervalTimeline.overflowPillsEnabled = false
+        style.intervalTimeline.overflowHintEnabled = false
         let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
         let context = OverlayRenderContext(
             canvasSize: OverlayRenderContext.referenceCanvasSize,
@@ -631,15 +756,15 @@ struct OverlayRenderModelTests {
 
         #expect(layout.leftOverflowCount > 0)
         #expect(layout.rightOverflowCount > 0)
-        #expect(layout.segments.first?.rect.minX ?? 0 > layout.contentRect.minX + 44)
-        #expect(layout.segments.last?.rect.maxX ?? 0 < layout.contentRect.maxX - 44)
+        #expect(abs((layout.segments.first?.rect.minX ?? 0) - layout.contentRect.minX) < 0.001)
+        #expect(abs((layout.segments.last?.rect.maxX ?? 0) - layout.contentRect.maxX) < 0.001)
     }
 
-    @Test func intervalTimelineOverflowPillClustersDoNotOverlapSegments() {
+    @Test func intervalTimelineOverflowHintsReserveCompactEdgeSpace() {
         var style = OverlayStyle.default
         style.intervalTimeline.mode = .centeredWindow
         style.intervalTimeline.visibleNeighbors = 2
-        style.intervalTimeline.overflowPillsEnabled = true
+        style.intervalTimeline.overflowHintEnabled = true
         let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
         let context = OverlayRenderContext(
             canvasSize: OverlayRenderContext.referenceCanvasSize,
@@ -651,8 +776,10 @@ struct OverlayRenderModelTests {
 
         #expect(layout.leftOverflowCount > 0)
         #expect(layout.rightOverflowCount > 0)
-        #expect(layout.segments.first?.rect.minX ?? 0 >= layout.contentRect.minX + 70)
-        #expect(layout.segments.last?.rect.maxX ?? 0 <= layout.contentRect.maxX - 70)
+        #expect(layout.segments.first?.rect.minX ?? 0 >= layout.contentRect.minX + 30)
+        #expect(layout.segments.first?.rect.minX ?? 0 <= layout.contentRect.minX + 42)
+        #expect(layout.segments.last?.rect.maxX ?? 0 <= layout.contentRect.maxX - 30)
+        #expect(layout.segments.last?.rect.maxX ?? 0 >= layout.contentRect.maxX - 42)
     }
 
     @Test func intervalTimelineMarkerLaneKeepsMarkerInsideBackground() {
@@ -703,10 +830,28 @@ struct OverlayRenderModelTests {
         """.utf8)
 
         let style = try JSONDecoder().decode(IntervalTimelineStyle.self, from: data)
+        let encoded = try JSONEncoder().encode(style)
+        let encodedString = try #require(String(data: encoded, encoding: .utf8))
 
         #expect(style.markerColor == .white)
         #expect(style.markerFontSize == IntervalTimelineStyle.default.markerFontSize)
-        #expect(style.overflowPillsEnabled == true)
+        #expect(style.overflowHintEnabled == true)
+        #expect(style.fullSegmentLayoutMode == .equal)
+        #expect(style.fullEqualCurrentSegmentWidthFraction == 0)
+        #expect(style.showsWarmupSegments == true)
+        #expect(style.showsRestSegments == true)
+        #expect(style.showsCooldownSegments == true)
+        #expect(style.currentDistanceLabelMode == .elapsed)
+        #expect(style.currentTimeLabelMode == .remaining)
+        #expect(style.neighborLabelMode == .distance)
+        #expect(!encodedString.contains("maxFullSegments"))
+        #expect(!encodedString.contains("overflowPillsEnabled"))
+        #expect(!encodedString.contains("primaryLabelMode"))
+        #expect(!encodedString.contains("durationLabelsEnabled"))
+        #expect(encodedString.contains("currentDistanceLabelMode"))
+        #expect(encodedString.contains("currentTimeLabelMode"))
+        #expect(encodedString.contains("neighborLabelMode"))
+        #expect(encodedString.contains("overflowHintEnabled"))
     }
 
     @MainActor

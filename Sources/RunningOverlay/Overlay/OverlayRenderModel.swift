@@ -508,41 +508,33 @@ enum OverlayRenderModel {
         let laps = context.activity.laps
         let t = min(max(context.elapsedTime, 0), context.activity.duration)
         let currentIndex = laps.indices.last { laps[$0].startElapsedTime <= t } ?? laps.indices.first
-        let shouldCenter = style.mode == .centeredWindow || laps.count > style.maxFullSegments
+        let visibleSourceLaps = laps.enumerated().filter { _, lap in
+            intervalTimelineIncludes(lap: lap, style: style)
+        }
+        let currentFilteredOffset = currentIndex.flatMap { index in
+            visibleSourceLaps.firstIndex { $0.offset == index }
+        }
+        let anchorOffset = currentFilteredOffset ?? intervalTimelineNearestVisibleOffset(to: t, in: visibleSourceLaps.map(\.element))
+        let shouldCenter = style.mode == .centeredWindow
         let visibleRange: Range<Int>
-        if laps.isEmpty {
+        if visibleSourceLaps.isEmpty {
             visibleRange = 0..<0
-        } else if shouldCenter, let currentIndex {
+        } else if shouldCenter, let anchorOffset {
             let neighbors = max(style.visibleNeighbors, 0)
-            let start = max(currentIndex - neighbors, 0)
-            let end = min(currentIndex + neighbors + 1, laps.count)
+            let start = max(anchorOffset - neighbors, 0)
+            let end = min(anchorOffset + neighbors + 1, visibleSourceLaps.count)
             visibleRange = start..<end
         } else {
-            visibleRange = 0..<laps.count
+            visibleRange = 0..<visibleSourceLaps.count
         }
 
-        let visibleLaps = visibleRange.map { laps[$0] }
+        let visibleLaps = visibleRange.map { visibleSourceLaps[$0].element }
         let leftOverflow = max(visibleRange.lowerBound, 0)
-        let rightOverflow = max(laps.count - visibleRange.upperBound, 0)
-        let ghostEdgeInsetUnscaled = 14.0
-        let ellipsisInsetUnscaled = 38.0
-        let pillCenterInsetUnscaled = 64.0
-        let pillWidthUnscaled = 36.0
-        let pillHeightUnscaled = 26.0
-        let pillToSegmentGapUnscaled = 12.0
-        let ghostInset = context.scaled(ghostEdgeInsetUnscaled * element.scale)
-        let ellipsisInset = context.scaled(ellipsisInsetUnscaled * element.scale)
-        let pillInset = context.scaled(pillCenterInsetUnscaled * element.scale)
-        let pillSize = CGSize(
-            width: context.scaled(pillWidthUnscaled * element.scale),
-            height: context.scaled(pillHeightUnscaled * element.scale)
-        )
-        let pillRightEdgeFromRectEdge = pillInset + pillSize.width / 2
-        let pillToSegmentGap = context.scaled(pillToSegmentGapUnscaled * element.scale)
-        let edgeOnlyWidth = context.scaled(46 * element.scale)
-        let overflowClusterWidth = max(pillRightEdgeFromRectEdge + pillToSegmentGap - horizontalPadding, 0)
-        let leadingOverflowWidth = leftOverflow > 0 ? (style.overflowPillsEnabled ? overflowClusterWidth : edgeOnlyWidth) : 0
-        let trailingOverflowWidth = rightOverflow > 0 ? (style.overflowPillsEnabled ? overflowClusterWidth : edgeOnlyWidth) : 0
+        let rightOverflow = max(visibleSourceLaps.count - visibleRange.upperBound, 0)
+        let overflowHintWidth = style.overflowHintEnabled ? context.scaled(36 * element.scale) : 0
+        let leadingOverflowWidth = leftOverflow > 0 ? overflowHintWidth : 0
+        let trailingOverflowWidth = rightOverflow > 0 ? overflowHintWidth : 0
+        let ellipsisInset = horizontalPadding + overflowHintWidth / 2
         let segmentArea = CGRect(
             x: contentRect.minX + leadingOverflowWidth,
             y: contentRect.minY,
@@ -554,7 +546,7 @@ enum OverlayRenderModel {
         let currentHeight = currentHeightCap
         let minWidth = context.scaled(style.minSegmentWidth * element.scale)
         let currentProgress = clampedProgress(context.activity.lapProgress(at: t, byDistance: false))
-        let currentVisibleOffset = currentIndex.flatMap { visibleRange.contains($0) ? $0 - visibleRange.lowerBound : nil }
+        let currentVisibleOffset = currentFilteredOffset.flatMap { visibleRange.contains($0) ? $0 - visibleRange.lowerBound : nil }
 
         let segmentWidths = intervalTimelineSegmentWidths(
             laps: visibleLaps,
@@ -578,8 +570,13 @@ enum OverlayRenderModel {
                 id: lap.id,
                 lapIndex: lap.lapIndex,
                 rect: rect,
-                label: intervalTimelineLabel(for: lap, mode: style.primaryLabelMode),
-                durationText: intervalTimelineDuration(lap.totalElapsedTime),
+                labelLines: intervalTimelineLabelLines(
+                    for: lap,
+                    isCurrent: isCurrent,
+                    style: style,
+                    activity: context.activity,
+                    elapsedTime: t
+                ),
                 kind: lap.kind,
                 color: intervalTimelineColor(for: lap.kind, style: style),
                 opacity: isCurrent ? 1 : (completed ? style.completedOpacity : style.futureOpacity),
@@ -590,6 +587,11 @@ enum OverlayRenderModel {
         }
 
         let currentSegment = segments.first(where: \.isCurrent)
+        let fallbackMarkerSegment = anchorOffset.flatMap { anchor -> IntervalTimelineSegmentLayout? in
+            let index = anchor - visibleRange.lowerBound
+            guard visibleRange.contains(anchor), segments.indices.contains(index) else { return nil }
+            return segments[index]
+        }
         let markerX: Double
         if let currentSegment {
             switch style.markerPosition {
@@ -598,6 +600,8 @@ enum OverlayRenderModel {
             case .segmentCenter:
                 markerX = currentSegment.rect.midX
             }
+        } else if let fallbackMarkerSegment {
+            markerX = fallbackMarkerSegment.rect.midX
         } else {
             markerX = segmentArea.midX
         }
@@ -619,14 +623,36 @@ enum OverlayRenderModel {
             repText: style.repCounterEnabled ? intervalTimelineRepText(activity: context.activity, currentIndex: currentIndex) : nil,
             labelFontSize: context.scaled(16 * element.scale),
             durationFontSize: context.scaled(12 * element.scale),
-            pillFontSize: context.scaled(11 * element.scale),
-            ghostFontSize: context.scaled(12 * element.scale),
             cornerRadius: context.scaled(element.style.backgroundRadius * element.scale),
-            overflowGhostInset: ghostInset,
-            overflowEllipsisInset: ellipsisInset,
-            overflowPillInset: pillInset,
-            overflowPillSize: pillSize
+            overflowEllipsisInset: ellipsisInset
         )
+    }
+
+    private static func intervalTimelineIncludes(lap: LapRecord, style: IntervalTimelineStyle) -> Bool {
+        switch lap.kind {
+        case .warmup:
+            return style.showsWarmupSegments
+        case .rest:
+            return style.showsRestSegments
+        case .cooldown:
+            return style.showsCooldownSegments
+        case .active, .unknown:
+            return true
+        }
+    }
+
+    private static func intervalTimelineNearestVisibleOffset(to elapsedTime: TimeInterval, in laps: [LapRecord]) -> Int? {
+        guard !laps.isEmpty else { return nil }
+        return laps.indices.min { lhs, rhs in
+            intervalTimelineDistance(from: elapsedTime, to: laps[lhs]) < intervalTimelineDistance(from: elapsedTime, to: laps[rhs])
+        }
+    }
+
+    private static func intervalTimelineDistance(from elapsedTime: TimeInterval, to lap: LapRecord) -> TimeInterval {
+        if lap.startElapsedTime <= elapsedTime, elapsedTime <= lap.endElapsedTime {
+            return 0
+        }
+        return min(abs(elapsedTime - lap.startElapsedTime), abs(elapsedTime - lap.endElapsedTime))
     }
 
     private static func intervalTimelineSegmentWidths(
@@ -662,6 +688,30 @@ enum OverlayRenderModel {
             return Array(repeating: base, count: laps.count)
         }
 
+        if style.fullSegmentLayoutMode == .equal {
+            var base = max(minWidth, usableWidth / Double(laps.count))
+            let total = base * Double(laps.count)
+            if total > usableWidth {
+                base = usableWidth / Double(laps.count)
+            }
+            if let currentOffset, laps.indices.contains(currentOffset), laps.count > 1 {
+                let fraction = min(max(style.fullEqualCurrentSegmentWidthFraction, 0), 0.65)
+                guard fraction > 0 else {
+                    return Array(repeating: base, count: laps.count)
+                }
+                var currentWidth = max(base, usableWidth * fraction)
+                var othersWidth = max(minWidth, (usableWidth - currentWidth) / Double(laps.count - 1))
+                let total = currentWidth + othersWidth * Double(laps.count - 1)
+                if total > usableWidth {
+                    let scale = usableWidth / total
+                    currentWidth *= scale
+                    othersWidth *= scale
+                }
+                return laps.indices.map { $0 == currentOffset ? currentWidth : othersWidth }
+            }
+            return Array(repeating: base, count: laps.count)
+        }
+
         let totalDuration = max(laps.map(\.totalElapsedTime).reduce(0, +), 1)
         var widths = laps.map { max(minWidth, usableWidth * ($0.totalElapsedTime / totalDuration)) }
         let sum = widths.reduce(0, +)
@@ -672,17 +722,65 @@ enum OverlayRenderModel {
         return widths
     }
 
-    private static func intervalTimelineLabel(for lap: LapRecord, mode: IntervalTimelineLabelMode) -> String {
-        if mode == .distance, lap.kind == .active, lap.totalDistanceMeters > 0 {
-            return formatDistanceMeters(lap.totalDistanceMeters).replacingOccurrences(of: " ", with: "")
+    private static func intervalTimelineLabelLines(
+        for lap: LapRecord,
+        isCurrent: Bool,
+        style: IntervalTimelineStyle,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval
+    ) -> [String] {
+        if isCurrent {
+            return intervalTimelineCurrentLabelLines(
+                for: lap,
+                style: style,
+                activity: activity,
+                elapsedTime: elapsedTime
+            )
         }
-        switch lap.kind {
-        case .warmup: return "WU"
-        case .active: return "1min"
-        case .rest: return "R"
-        case .cooldown: return "CD"
-        case .unknown: return "LAP"
+
+        switch style.neighborLabelMode {
+        case .distance:
+            return [intervalTimelineDistanceText(lap.totalDistanceMeters)]
+        case .time:
+            return [intervalTimelineDuration(lap.totalElapsedTime)]
         }
+    }
+
+    private static func intervalTimelineCurrentLabelLines(
+        for lap: LapRecord,
+        style: IntervalTimelineStyle,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval
+    ) -> [String] {
+        var lines: [String] = []
+
+        switch style.currentDistanceLabelMode {
+        case .hidden:
+            break
+        case .elapsed:
+            let progress = clampedProgress(activity.lapProgress(at: elapsedTime, byDistance: true))
+            lines.append(intervalTimelineDistanceText(lap.totalDistanceMeters * progress))
+        case .remaining:
+            let progress = clampedProgress(activity.lapProgress(at: elapsedTime, byDistance: true))
+            lines.append(intervalTimelineDistanceText(max(lap.totalDistanceMeters * (1 - progress), 0)))
+        }
+
+        switch style.currentTimeLabelMode {
+        case .hidden:
+            break
+        case .elapsed:
+            let progress = clampedProgress(activity.lapProgress(at: elapsedTime, byDistance: false))
+            lines.append(intervalTimelineDuration(lap.totalElapsedTime * progress))
+        case .remaining:
+            let progress = clampedProgress(activity.lapProgress(at: elapsedTime, byDistance: false))
+            lines.append(intervalTimelineDuration(max(lap.totalElapsedTime * (1 - progress), 0)))
+        }
+
+        return lines
+    }
+
+    private static func intervalTimelineDistanceText(_ meters: Double) -> String {
+        formatDistanceMeters(meters).replacingOccurrences(of: " ", with: "")
     }
 
     private static func intervalTimelineDuration(_ duration: TimeInterval) -> String {

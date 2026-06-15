@@ -131,6 +131,14 @@ struct IntervalTimelineOverlayDetailView: View {
                 set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.mode = value } }
             )) { Text($0.label).tag($0) }
         }
+        if style.mode == .fullSchedule {
+            InspectorDenseRow(label: "Layout") {
+                InspectorDenseSegmented(values: IntervalTimelineFullSegmentLayoutMode.allCases, selection: Binding(
+                    get: { style.fullSegmentLayoutMode },
+                    set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.fullSegmentLayoutMode = value } }
+                )) { Text($0.label).tag($0) }
+            }
+        }
         InspectorDenseSliderRow(
             label: "Neighbors",
             value: Binding(
@@ -140,15 +148,30 @@ struct IntervalTimelineOverlayDetailView: View {
             range: 1...8,
             displayText: "\(style.visibleNeighbors)"
         )
-        InspectorDenseSliderRow(
-            label: "Max Full",
-            value: Binding(
-                get: { Double(style.maxFullSegments) },
-                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.maxFullSegments = min(max(Int(value.rounded()), 4), 30) } }
-            ),
-            range: 4...30,
-            displayText: "\(style.maxFullSegments)"
-        )
+        InspectorDenseRow(label: "Rest") {
+            Toggle("", isOn: Binding(
+                get: { style.showsRestSegments },
+                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.showsRestSegments = value } }
+            ))
+            .labelsHidden()
+            .tint(NumericTokens.accentBlue)
+        }
+        InspectorDenseRow(label: "WU") {
+            Toggle("", isOn: Binding(
+                get: { style.showsWarmupSegments },
+                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.showsWarmupSegments = value } }
+            ))
+            .labelsHidden()
+            .tint(NumericTokens.accentBlue)
+        }
+        InspectorDenseRow(label: "CD") {
+            Toggle("", isOn: Binding(
+                get: { style.showsCooldownSegments },
+                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.showsCooldownSegments = value } }
+            ))
+            .labelsHidden()
+            .tint(NumericTokens.accentBlue)
+        }
         InspectorDenseSliderRow(
             label: "Segment Gap",
             value: timelineBinding(\.segmentGap, current: style),
@@ -165,6 +188,7 @@ struct IntervalTimelineOverlayDetailView: View {
 
     @ViewBuilder
     private func currentRows(_ style: IntervalTimelineStyle) -> some View {
+        let usesFullEqualWidth = style.mode == .fullSchedule && style.fullSegmentLayoutMode == .equal
         InspectorDenseSliderRow(
             label: "Emphasis",
             value: timelineBinding(\.currentSegmentHeightScale, current: style),
@@ -173,9 +197,11 @@ struct IntervalTimelineOverlayDetailView: View {
         )
         InspectorDenseSliderRow(
             label: "Width",
-            value: timelineBinding(\.currentSegmentWidthFraction, current: style),
-            range: 0.15...0.5,
-            displayText: String(format: "%.0f%%", style.currentSegmentWidthFraction * 100)
+            value: usesFullEqualWidth ? timelineBinding(\.fullEqualCurrentSegmentWidthFraction, current: style) : timelineBinding(\.currentSegmentWidthFraction, current: style),
+            range: usesFullEqualWidth ? 0...0.65 : 0.15...0.5,
+            displayText: usesFullEqualWidth && style.fullEqualCurrentSegmentWidthFraction <= 0.005
+                ? "Equal"
+                : String(format: "%.0f%%", (usesFullEqualWidth ? style.fullEqualCurrentSegmentWidthFraction : style.currentSegmentWidthFraction) * 100)
         )
         InspectorDenseRow(label: "Progress") {
             Toggle("", isOn: Binding(
@@ -249,19 +275,23 @@ struct IntervalTimelineOverlayDetailView: View {
 
     @ViewBuilder
     private func labelRows(_ style: IntervalTimelineStyle) -> some View {
-        InspectorDenseRow(label: "Label Mode") {
-            InspectorDenseSegmented(values: IntervalTimelineLabelMode.allCases, selection: Binding(
-                get: { style.primaryLabelMode },
-                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.primaryLabelMode = value } }
+        InspectorDenseRow(label: "Current Dist") {
+            InspectorDenseSegmented(values: IntervalTimelineCurrentLabelMetricMode.allCases, selection: Binding(
+                get: { style.currentDistanceLabelMode },
+                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.currentDistanceLabelMode = value } }
             )) { Text($0.label).tag($0) }
         }
-        InspectorDenseRow(label: "Duration") {
-            Toggle("", isOn: Binding(
-                get: { style.durationLabelsEnabled },
-                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.durationLabelsEnabled = value } }
-            ))
-            .labelsHidden()
-            .tint(NumericTokens.accentBlue)
+        InspectorDenseRow(label: "Current Time") {
+            InspectorDenseSegmented(values: IntervalTimelineCurrentLabelMetricMode.allCases, selection: Binding(
+                get: { style.currentTimeLabelMode },
+                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.currentTimeLabelMode = value } }
+            )) { Text($0.label).tag($0) }
+        }
+        InspectorDenseRow(label: "Neighbor") {
+            InspectorDenseSegmented(values: IntervalTimelineNeighborLabelMode.allCases, selection: Binding(
+                get: { style.neighborLabelMode },
+                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.neighborLabelMode = value } }
+            )) { Text($0.label).tag($0) }
         }
         InspectorDenseRow(label: "Rep Counter") {
             Toggle("", isOn: Binding(
@@ -271,10 +301,10 @@ struct IntervalTimelineOverlayDetailView: View {
             .labelsHidden()
             .tint(NumericTokens.accentBlue)
         }
-        InspectorDenseRow(label: "Overflow Pills") {
+        InspectorDenseRow(label: "Overflow Hint") {
             Toggle("", isOn: Binding(
-                get: { style.overflowPillsEnabled },
-                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.overflowPillsEnabled = value } }
+                get: { style.overflowHintEnabled },
+                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.overflowHintEnabled = value } }
             ))
             .labelsHidden()
             .tint(NumericTokens.accentBlue)

@@ -28,16 +28,46 @@ enum IntervalTimelineMarkerPosition: String, CaseIterable, Identifiable, Codable
     }
 }
 
-enum IntervalTimelineLabelMode: String, CaseIterable, Identifiable, Codable {
-    case kind
-    case distance
+enum IntervalTimelineCurrentLabelMetricMode: String, CaseIterable, Identifiable, Codable {
+    case hidden
+    case elapsed
+    case remaining
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
-        case .kind: "Kind"
+        case .hidden: "Off"
+        case .elapsed: "Live"
+        case .remaining: "Remain"
+        }
+    }
+}
+
+enum IntervalTimelineNeighborLabelMode: String, CaseIterable, Identifiable, Codable {
+    case distance
+    case time
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
         case .distance: "Distance"
+        case .time: "Time"
+        }
+    }
+}
+
+enum IntervalTimelineFullSegmentLayoutMode: String, CaseIterable, Identifiable, Codable {
+    case equal
+    case duration
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .equal: "Equal"
+        case .duration: "Duration"
         }
     }
 }
@@ -47,10 +77,14 @@ struct IntervalTimelineStyle: Equatable, Codable {
     var height: Double
     var mode: IntervalTimelineMode
     var visibleNeighbors: Int
-    var maxFullSegments: Int
+    var fullSegmentLayoutMode: IntervalTimelineFullSegmentLayoutMode
+    var showsRestSegments: Bool
+    var showsWarmupSegments: Bool
+    var showsCooldownSegments: Bool
     var segmentHeight: Double
     var currentSegmentHeightScale: Double
     var currentSegmentWidthFraction: Double
+    var fullEqualCurrentSegmentWidthFraction: Double
     var minSegmentWidth: Double
     var segmentGap: Double
     var segmentCornerRadius: Double
@@ -63,10 +97,11 @@ struct IntervalTimelineStyle: Equatable, Codable {
     var markerFontSize: Double
     var markerFontWeight: OverlayFontWeight
     var markerFontName: String
-    var primaryLabelMode: IntervalTimelineLabelMode
-    var durationLabelsEnabled: Bool
+    var currentDistanceLabelMode: IntervalTimelineCurrentLabelMetricMode
+    var currentTimeLabelMode: IntervalTimelineCurrentLabelMetricMode
+    var neighborLabelMode: IntervalTimelineNeighborLabelMode
     var repCounterEnabled: Bool
-    var overflowPillsEnabled: Bool
+    var overflowHintEnabled: Bool
     var warmupColor: OverlayColor
     var activeColor: OverlayColor
     var restColor: OverlayColor
@@ -80,10 +115,14 @@ struct IntervalTimelineStyle: Equatable, Codable {
         height: 64,
         mode: .centeredWindow,
         visibleNeighbors: 3,
-        maxFullSegments: 12,
+        fullSegmentLayoutMode: .equal,
+        showsRestSegments: true,
+        showsWarmupSegments: true,
+        showsCooldownSegments: true,
         segmentHeight: 30,
         currentSegmentHeightScale: 1.35,
         currentSegmentWidthFraction: 0.28,
+        fullEqualCurrentSegmentWidthFraction: 0,
         minSegmentWidth: 54,
         segmentGap: 4,
         segmentCornerRadius: 6,
@@ -96,10 +135,11 @@ struct IntervalTimelineStyle: Equatable, Codable {
         markerFontSize: 11,
         markerFontWeight: .bold,
         markerFontName: "",
-        primaryLabelMode: .distance,
-        durationLabelsEnabled: true,
+        currentDistanceLabelMode: .elapsed,
+        currentTimeLabelMode: .remaining,
+        neighborLabelMode: .distance,
         repCounterEnabled: true,
-        overflowPillsEnabled: true,
+        overflowHintEnabled: true,
         warmupColor: .blue,
         activeColor: .orange,
         restColor: .green,
@@ -114,10 +154,14 @@ struct IntervalTimelineStyle: Equatable, Codable {
         height: Double,
         mode: IntervalTimelineMode,
         visibleNeighbors: Int,
-        maxFullSegments: Int,
+        fullSegmentLayoutMode: IntervalTimelineFullSegmentLayoutMode,
+        showsRestSegments: Bool,
+        showsWarmupSegments: Bool,
+        showsCooldownSegments: Bool,
         segmentHeight: Double,
         currentSegmentHeightScale: Double,
         currentSegmentWidthFraction: Double,
+        fullEqualCurrentSegmentWidthFraction: Double,
         minSegmentWidth: Double,
         segmentGap: Double,
         segmentCornerRadius: Double,
@@ -130,10 +174,11 @@ struct IntervalTimelineStyle: Equatable, Codable {
         markerFontSize: Double,
         markerFontWeight: OverlayFontWeight,
         markerFontName: String,
-        primaryLabelMode: IntervalTimelineLabelMode,
-        durationLabelsEnabled: Bool,
+        currentDistanceLabelMode: IntervalTimelineCurrentLabelMetricMode,
+        currentTimeLabelMode: IntervalTimelineCurrentLabelMetricMode,
+        neighborLabelMode: IntervalTimelineNeighborLabelMode,
         repCounterEnabled: Bool,
-        overflowPillsEnabled: Bool,
+        overflowHintEnabled: Bool,
         warmupColor: OverlayColor,
         activeColor: OverlayColor,
         restColor: OverlayColor,
@@ -146,10 +191,14 @@ struct IntervalTimelineStyle: Equatable, Codable {
         self.height = height
         self.mode = mode
         self.visibleNeighbors = visibleNeighbors
-        self.maxFullSegments = maxFullSegments
+        self.fullSegmentLayoutMode = fullSegmentLayoutMode
+        self.showsRestSegments = showsRestSegments
+        self.showsWarmupSegments = showsWarmupSegments
+        self.showsCooldownSegments = showsCooldownSegments
         self.segmentHeight = segmentHeight
         self.currentSegmentHeightScale = currentSegmentHeightScale
         self.currentSegmentWidthFraction = currentSegmentWidthFraction
+        self.fullEqualCurrentSegmentWidthFraction = fullEqualCurrentSegmentWidthFraction
         self.minSegmentWidth = minSegmentWidth
         self.segmentGap = segmentGap
         self.segmentCornerRadius = segmentCornerRadius
@@ -162,10 +211,11 @@ struct IntervalTimelineStyle: Equatable, Codable {
         self.markerFontSize = markerFontSize
         self.markerFontWeight = markerFontWeight
         self.markerFontName = markerFontName
-        self.primaryLabelMode = primaryLabelMode
-        self.durationLabelsEnabled = durationLabelsEnabled
+        self.currentDistanceLabelMode = currentDistanceLabelMode
+        self.currentTimeLabelMode = currentTimeLabelMode
+        self.neighborLabelMode = neighborLabelMode
         self.repCounterEnabled = repCounterEnabled
-        self.overflowPillsEnabled = overflowPillsEnabled
+        self.overflowHintEnabled = overflowHintEnabled
         self.warmupColor = warmupColor
         self.activeColor = activeColor
         self.restColor = restColor
@@ -182,10 +232,15 @@ struct IntervalTimelineStyle: Equatable, Codable {
         height = try c.decodeIfPresent(Double.self, forKey: .height) ?? base.height
         mode = try c.decodeIfPresent(IntervalTimelineMode.self, forKey: .mode) ?? base.mode
         visibleNeighbors = try c.decodeIfPresent(Int.self, forKey: .visibleNeighbors) ?? base.visibleNeighbors
-        maxFullSegments = try c.decodeIfPresent(Int.self, forKey: .maxFullSegments) ?? base.maxFullSegments
+        fullSegmentLayoutMode = try c.decodeIfPresent(IntervalTimelineFullSegmentLayoutMode.self, forKey: .fullSegmentLayoutMode) ?? base.fullSegmentLayoutMode
+        showsRestSegments = try c.decodeIfPresent(Bool.self, forKey: .showsRestSegments) ?? base.showsRestSegments
+        showsWarmupSegments = try c.decodeIfPresent(Bool.self, forKey: .showsWarmupSegments) ?? base.showsWarmupSegments
+        showsCooldownSegments = try c.decodeIfPresent(Bool.self, forKey: .showsCooldownSegments) ?? base.showsCooldownSegments
+        _ = try c.decodeIfPresent(Int.self, forKey: .maxFullSegments)
         segmentHeight = try c.decodeIfPresent(Double.self, forKey: .segmentHeight) ?? base.segmentHeight
         currentSegmentHeightScale = try c.decodeIfPresent(Double.self, forKey: .currentSegmentHeightScale) ?? base.currentSegmentHeightScale
         currentSegmentWidthFraction = try c.decodeIfPresent(Double.self, forKey: .currentSegmentWidthFraction) ?? base.currentSegmentWidthFraction
+        fullEqualCurrentSegmentWidthFraction = try c.decodeIfPresent(Double.self, forKey: .fullEqualCurrentSegmentWidthFraction) ?? base.fullEqualCurrentSegmentWidthFraction
         minSegmentWidth = try c.decodeIfPresent(Double.self, forKey: .minSegmentWidth) ?? base.minSegmentWidth
         segmentGap = try c.decodeIfPresent(Double.self, forKey: .segmentGap) ?? base.segmentGap
         segmentCornerRadius = try c.decodeIfPresent(Double.self, forKey: .segmentCornerRadius) ?? base.segmentCornerRadius
@@ -198,10 +253,15 @@ struct IntervalTimelineStyle: Equatable, Codable {
         markerFontSize = try c.decodeIfPresent(Double.self, forKey: .markerFontSize) ?? base.markerFontSize
         markerFontWeight = try c.decodeIfPresent(OverlayFontWeight.self, forKey: .markerFontWeight) ?? base.markerFontWeight
         markerFontName = try c.decodeIfPresent(String.self, forKey: .markerFontName) ?? base.markerFontName
-        primaryLabelMode = try c.decodeIfPresent(IntervalTimelineLabelMode.self, forKey: .primaryLabelMode) ?? base.primaryLabelMode
-        durationLabelsEnabled = try c.decodeIfPresent(Bool.self, forKey: .durationLabelsEnabled) ?? base.durationLabelsEnabled
+        currentDistanceLabelMode = try c.decodeIfPresent(IntervalTimelineCurrentLabelMetricMode.self, forKey: .currentDistanceLabelMode) ?? base.currentDistanceLabelMode
+        currentTimeLabelMode = try c.decodeIfPresent(IntervalTimelineCurrentLabelMetricMode.self, forKey: .currentTimeLabelMode) ?? base.currentTimeLabelMode
+        neighborLabelMode = try c.decodeIfPresent(IntervalTimelineNeighborLabelMode.self, forKey: .neighborLabelMode) ?? base.neighborLabelMode
+        _ = try c.decodeIfPresent(String.self, forKey: .primaryLabelMode)
+        _ = try c.decodeIfPresent(Bool.self, forKey: .durationLabelsEnabled)
         repCounterEnabled = try c.decodeIfPresent(Bool.self, forKey: .repCounterEnabled) ?? base.repCounterEnabled
-        overflowPillsEnabled = try c.decodeIfPresent(Bool.self, forKey: .overflowPillsEnabled) ?? base.overflowPillsEnabled
+        overflowHintEnabled = try c.decodeIfPresent(Bool.self, forKey: .overflowHintEnabled)
+            ?? c.decodeIfPresent(Bool.self, forKey: .overflowPillsEnabled)
+            ?? base.overflowHintEnabled
         warmupColor = try c.decodeIfPresent(OverlayColor.self, forKey: .warmupColor) ?? base.warmupColor
         activeColor = try c.decodeIfPresent(OverlayColor.self, forKey: .activeColor) ?? base.activeColor
         restColor = try c.decodeIfPresent(OverlayColor.self, forKey: .restColor) ?? base.restColor
@@ -209,6 +269,89 @@ struct IntervalTimelineStyle: Equatable, Codable {
         unknownColor = try c.decodeIfPresent(OverlayColor.self, forKey: .unknownColor) ?? base.unknownColor
         completedOpacity = try c.decodeIfPresent(Double.self, forKey: .completedOpacity) ?? base.completedOpacity
         futureOpacity = try c.decodeIfPresent(Double.self, forKey: .futureOpacity) ?? base.futureOpacity
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(width, forKey: .width)
+        try c.encode(height, forKey: .height)
+        try c.encode(mode, forKey: .mode)
+        try c.encode(visibleNeighbors, forKey: .visibleNeighbors)
+        try c.encode(fullSegmentLayoutMode, forKey: .fullSegmentLayoutMode)
+        try c.encode(showsRestSegments, forKey: .showsRestSegments)
+        try c.encode(showsWarmupSegments, forKey: .showsWarmupSegments)
+        try c.encode(showsCooldownSegments, forKey: .showsCooldownSegments)
+        try c.encode(segmentHeight, forKey: .segmentHeight)
+        try c.encode(currentSegmentHeightScale, forKey: .currentSegmentHeightScale)
+        try c.encode(currentSegmentWidthFraction, forKey: .currentSegmentWidthFraction)
+        try c.encode(fullEqualCurrentSegmentWidthFraction, forKey: .fullEqualCurrentSegmentWidthFraction)
+        try c.encode(minSegmentWidth, forKey: .minSegmentWidth)
+        try c.encode(segmentGap, forKey: .segmentGap)
+        try c.encode(segmentCornerRadius, forKey: .segmentCornerRadius)
+        try c.encode(edgeFadeEnabled, forKey: .edgeFadeEnabled)
+        try c.encode(currentProgressEnabled, forKey: .currentProgressEnabled)
+        try c.encode(markerEnabled, forKey: .markerEnabled)
+        try c.encode(markerLabel, forKey: .markerLabel)
+        try c.encode(markerPosition, forKey: .markerPosition)
+        try c.encode(markerColor, forKey: .markerColor)
+        try c.encode(markerFontSize, forKey: .markerFontSize)
+        try c.encode(markerFontWeight, forKey: .markerFontWeight)
+        try c.encode(markerFontName, forKey: .markerFontName)
+        try c.encode(currentDistanceLabelMode, forKey: .currentDistanceLabelMode)
+        try c.encode(currentTimeLabelMode, forKey: .currentTimeLabelMode)
+        try c.encode(neighborLabelMode, forKey: .neighborLabelMode)
+        try c.encode(repCounterEnabled, forKey: .repCounterEnabled)
+        try c.encode(overflowHintEnabled, forKey: .overflowHintEnabled)
+        try c.encode(warmupColor, forKey: .warmupColor)
+        try c.encode(activeColor, forKey: .activeColor)
+        try c.encode(restColor, forKey: .restColor)
+        try c.encode(cooldownColor, forKey: .cooldownColor)
+        try c.encode(unknownColor, forKey: .unknownColor)
+        try c.encode(completedOpacity, forKey: .completedOpacity)
+        try c.encode(futureOpacity, forKey: .futureOpacity)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case width
+        case height
+        case mode
+        case visibleNeighbors
+        case maxFullSegments
+        case fullSegmentLayoutMode
+        case showsRestSegments
+        case showsWarmupSegments
+        case showsCooldownSegments
+        case segmentHeight
+        case currentSegmentHeightScale
+        case currentSegmentWidthFraction
+        case fullEqualCurrentSegmentWidthFraction
+        case minSegmentWidth
+        case segmentGap
+        case segmentCornerRadius
+        case edgeFadeEnabled
+        case currentProgressEnabled
+        case markerEnabled
+        case markerLabel
+        case markerPosition
+        case markerColor
+        case markerFontSize
+        case markerFontWeight
+        case markerFontName
+        case currentDistanceLabelMode
+        case currentTimeLabelMode
+        case neighborLabelMode
+        case primaryLabelMode
+        case durationLabelsEnabled
+        case repCounterEnabled
+        case overflowHintEnabled
+        case overflowPillsEnabled
+        case warmupColor
+        case activeColor
+        case restColor
+        case cooldownColor
+        case unknownColor
+        case completedOpacity
+        case futureOpacity
     }
 }
 
@@ -228,21 +371,15 @@ struct IntervalTimelineRenderLayout: Equatable {
     var repText: String?
     var labelFontSize: Double
     var durationFontSize: Double
-    var pillFontSize: Double
-    var ghostFontSize: Double
     var cornerRadius: Double
-    var overflowGhostInset: Double
     var overflowEllipsisInset: Double
-    var overflowPillInset: Double
-    var overflowPillSize: CGSize
 }
 
 struct IntervalTimelineSegmentLayout: Identifiable, Equatable {
     var id: UUID
     var lapIndex: Int
     var rect: CGRect
-    var label: String
-    var durationText: String
+    var labelLines: [String]
     var kind: LapKind
     var color: OverlayColor
     var opacity: Double
