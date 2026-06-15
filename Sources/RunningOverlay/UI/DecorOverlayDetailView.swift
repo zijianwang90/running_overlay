@@ -8,7 +8,6 @@ struct DecorOverlayDetailView: View {
     let elementID: OverlayElement.ID
 
     @State private var openSections: Set<DecorSection> = Set(DecorSection.allCases)
-    @State private var sfSymbolSearchText: String = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -137,22 +136,30 @@ struct DecorOverlayDetailView: View {
 
         switch r.asset {
         case .sfSymbol, .none:
-            // Symbol name field
-            InspectorDenseRow(label: "Symbol Name") {
-                TextField("e.g. heart.fill", text: Binding(
-                    get: { sfSymbolSearchText.isEmpty ? (r.asset.symbolName ?? "star.fill") : sfSymbolSearchText },
-                    set: { newName in
-                        sfSymbolSearchText = newName
-                        if !newName.isEmpty {
-                            let weight = r.asset.symbolWeight ?? .medium
-                            let scale = r.asset.symbolScale ?? .large
-                            project.setDecorIconAsset(elementID, asset: .sfSymbol(name: newName, weight: weight, scale: scale))
+            InspectorDenseRow(label: "Symbol") {
+                SFSymbolPicker(
+                    symbolName: Binding(
+                        get: { r.asset.symbolName ?? "star.fill" },
+                        set: { newName in
+                            project.setDecorIconAsset(elementID, asset: .sfSymbol(
+                                name: newName,
+                                weight: r.asset.symbolWeight ?? .medium,
+                                scale: r.asset.symbolScale ?? .large
+                            ))
                         }
+                    ),
+                    placeholder: "star.fill",
+                    defaultSymbolName: "star.fill",
+                    onSubmit: { project.finishContinuousEdit() },
+                    onDefault: {
+                        project.setDecorIconAsset(elementID, asset: .sfSymbol(
+                            name: "star.fill",
+                            weight: r.asset.symbolWeight ?? .medium,
+                            scale: r.asset.symbolScale ?? .large
+                        ))
+                        project.finishContinuousEdit()
                     }
-                ))
-                .textFieldStyle(.roundedBorder)
-                .font(NumericTokens.captionFont)
-                .frame(maxWidth: 220)
+                )
             }
 
             // Weight picker
@@ -192,34 +199,6 @@ struct DecorOverlayDetailView: View {
                     ),
                     label: { scale in Text(scale.label).font(.system(size: 10, weight: .medium)) }
                 )
-            }
-
-            // Common symbols grid
-            InspectorDenseRow(label: "Common") {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 8), spacing: 4) {
-                    ForEach(commonSFSymbols, id: \.self) { name in
-                        Button {
-                            sfSymbolSearchText = name
-                            project.setDecorIconAsset(elementID, asset: .sfSymbol(
-                                name: name,
-                                weight: r.asset.symbolWeight ?? .medium,
-                                scale: r.asset.symbolScale ?? .large
-                            ))
-                        } label: {
-                            Image(systemName: name)
-                                .font(.system(size: 14))
-                                .frame(width: 26, height: 26)
-                                .background(
-                                    (r.asset.symbolName ?? "") == name
-                                        ? NumericTokens.accentBlue.opacity(0.25)
-                                        : Color.clear
-                                )
-                                .clipShape(RoundedRectangle(cornerRadius: 4))
-                        }
-                        .buttonStyle(.plain)
-                        .help(name)
-                    }
-                }
             }
 
         case .bundledSVG:
@@ -673,17 +652,6 @@ struct DecorOverlayDetailView: View {
         }
     }
 
-    private let commonSFSymbols: [String] = [
-        "star.fill", "heart.fill", "circle.fill", "square.fill",
-        "flame.fill", "bolt.fill", "figure.run", "figure.walk",
-        "mountain.2.fill", "leaf.fill", "drop.fill", "sun.max.fill",
-        "moon.fill", "cloud.fill", "location.fill", "flag.fill",
-        "arrow.up", "crown.fill", "sparkles", "music.note",
-        "camera.fill", "film.fill", "video.fill", "play.fill",
-        "pause.fill", "stop.fill", "record.circle", "timer",
-        "speedometer", "gauge.open.with.lines.needle.33percent",
-        "shoe.fill", "figure.outdoor.cycle", "figure.pool.swim",
-    ]
 }
 
 private extension IconAsset {

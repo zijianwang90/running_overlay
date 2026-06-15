@@ -138,7 +138,7 @@
       "title": "Icon",
       "controls": [
         { "id": "showIcon", "type": "toggle", "modelPath": "OverlayStyle.iconEnabled" },
-        { "id": "sfSymbol", "type": "textFieldOrMenu", "modelPath": "OverlayStyle.iconSystemName" },
+        { "id": "sfSymbol", "type": "sfSymbolPicker", "modelPath": "OverlayStyle.iconSystemName" },
         { "id": "iconPosition", "type": "segmented", "options": ["top", "bottom", "leading", "trailing"], "modelPath": "OverlayStyle.iconPosition" },
         { "id": "iconAlignment", "type": "iconSegmented", "modelPath": "OverlayStyle.iconTextAlignment" },
         { "id": "iconSize", "type": "slider", "range": [8, 96], "modelPath": "OverlayStyle.iconSize" },
@@ -224,7 +224,7 @@
   "renderingRules": [
     "Numeric Overlay 1.0 uses the Minimal Clean render path only; the Inspector does not expose a style preset picker.",
     "Divider rendering and divider controls are disabled for numeric overlays even when legacy divider fields decode as enabled.",
-    "Numeric icons use SF Symbols via OverlayStyle.iconSystemName; each metric gets a default from OverlayElementType.defaultNumericIconSystemName and users can override it.",
+    "Numeric icons use SF Symbols via OverlayStyle.iconSystemName; each metric gets a default from OverlayElementType.defaultNumericIconSystemName and users can override it through direct text entry or the shared searchable SFSymbolPicker backed by the bundled CoreGlyphs-derived symbol name catalog. Blank browsing starts with sport-relevant symbols; typed search scans the full catalog.",
     "Icon position and alignment follow the same top/bottom/left/right plus align/anchor pattern as Label and Unit.",
     "Unit text remains on one line and inline units grow the numeric overlay natural width instead of wrapping.",
     "numericMinWidth and numericMinHeight reserve additional frame space while keeping content pinned to the top-leading corner; zero preserves text-driven natural sizing.",

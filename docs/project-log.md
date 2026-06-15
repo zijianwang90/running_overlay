@@ -1,5 +1,14 @@
 # Running Overlay Project Log
 
+## 2026-06-15
+
+### Shared SF Symbol Picker
+
+- Added a shared `SFSymbolPicker` for Numeric Overlay icons and Decor Icon SF Symbol assets, replacing fixed preset/common symbol lists with direct text entry plus a searchable popover grid.
+- Added `SFSymbolCatalog`, backed by a bundled `Resources/SFSymbols/symbols.json` name catalog generated from public CoreGlyphs symbol order data. Picker results filter through current macOS renderability while preserving manual entry for newer SF Symbols.
+- Default picker browsing now starts with sport-relevant symbols, while typed search still scans the full catalog. Renderability checks are cached so repeated searches do not recreate `NSImage` probes for the same symbol names.
+- Added catalog tests for full resource loading, sport-first default browsing, full-catalog search, case-insensitive search, renderable picker results, and numeric metric default icon coverage.
+
 ## 2026-05-21
 
 ### Route Map MapKit Appearance Lock

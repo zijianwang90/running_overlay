@@ -1,6 +1,6 @@
 # Numeric Overlay UI Design Spec
 
-Last updated: 2026-06-02 (1.0 adds configurable SF Symbol icons)
+Last updated: 2026-06-15 (SF Symbol browser picker)
 
 ## Purpose
 
@@ -200,8 +200,7 @@ Rendering rules:
 Controls:
 
 - `Enable Icon` toggle in section header accessory.
-- SF Symbol name text field. Empty values reset to the metric's default symbol.
-- Preset menu with the metric default plus common running/metric symbols.
+- SF Symbol picker with editable name field, current-symbol preview button, searchable popover grid, sport-first default browsing order, recent symbols, and a metric-default reset action. Empty values reset to the metric's default symbol through the project setter; manual names remain accepted for newer SF Symbols not yet in the bundled catalog.
 - Position segmented control: `Top`, `Bottom`, `Left`, `Right`.
 - Align/Anchor segmented control — backed by `OverlayStyle.iconTextAlignment`. When the icon is above/below the text block it controls horizontal alignment; when the icon is left/right of the text block it controls vertical anchoring (top / middle / bottom).
 - Size slider.
@@ -211,7 +210,7 @@ Controls:
 Rendering rules:
 
 - Numeric Overlay 1.0 uses SF Symbols only for this icon slot.
-- Each numeric metric gets a default symbol from `OverlayElementType.defaultNumericIconSystemName` when added from the Overlay Pool; users can override `OverlayStyle.iconSystemName`. Empty or legacy-missing `iconSystemName` values resolve through the element type's default symbol at render time.
+- Each numeric metric gets a default symbol from `OverlayElementType.defaultNumericIconSystemName` when added from the Overlay Pool; users can override `OverlayStyle.iconSystemName`. The picker grid is backed by the shared bundled `SFSymbolCatalog` name list generated from the public CoreGlyphs SF Symbol order catalog; blank search opens to sport-relevant symbols first, typed search scans the full catalog, and renderability checks are cached while typed names remain valid input. Empty or legacy-missing `iconSystemName` values resolve through the element type's default symbol at render time.
 - Icons wrap the whole numeric text block, not just the value row, so label/unit layout remains independent.
 
 ## Background Section

@@ -343,47 +343,20 @@ struct NumericOverlayDetailView: View {
     private func iconSection(_ element: OverlayElement) -> some View {
         let isEnabled = element.style.iconEnabled
         InspectorDenseRow(label: "Symbol") {
-            HStack(spacing: NumericTokens.space2) {
-                TextField(element.type.defaultNumericIconSystemName, text: Binding(
+            SFSymbolPicker(
+                symbolName: Binding(
                     get: { element.style.iconSystemName },
                     set: { project.setOverlayIconSystemName(elementID, systemName: $0) }
-                ), onCommit: { project.finishContinuousEdit() })
-                .textFieldStyle(.plain)
-                .font(NumericTokens.bodyFont)
-                .padding(.horizontal, NumericTokens.space2)
-                .frame(height: NumericTokens.controlHeight)
-                .background(NumericTokens.controlBackground)
-                .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-
-                Menu {
-                    Button {
-                        project.setOverlayIconSystemName(elementID, systemName: element.type.defaultNumericIconSystemName)
-                    } label: {
-                        Label("Metric Default", systemImage: element.type.defaultNumericIconSystemName)
-                    }
-                    Divider()
-                    ForEach(NumericOverlayDetailView.iconSymbolPresets, id: \.self) { name in
-                        Button {
-                            project.setOverlayIconSystemName(elementID, systemName: name)
-                        } label: {
-                            if name == element.style.iconSystemName {
-                                Label(name, systemImage: "checkmark")
-                            } else {
-                                Label(name, systemImage: name)
-                            }
-                        }
-                    }
-                } label: {
-                    Image(systemName: element.style.iconSystemName.isEmpty ? element.type.defaultNumericIconSystemName : element.style.iconSystemName)
-                        .frame(width: NumericTokens.controlHeight, height: NumericTokens.controlHeight)
-                        .background(NumericTokens.controlBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                        .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
+                ),
+                placeholder: element.type.defaultNumericIconSystemName,
+                defaultSymbolName: element.type.defaultNumericIconSystemName,
+                defaultLabel: "Metric Default",
+                onSubmit: { project.finishContinuousEdit() },
+                onDefault: {
+                    project.setOverlayIconSystemName(elementID, systemName: element.type.defaultNumericIconSystemName)
+                    project.finishContinuousEdit()
                 }
-                .menuStyle(.borderlessButton)
-                .frame(width: NumericTokens.controlHeight, height: NumericTokens.controlHeight)
-            }
+            )
             .disabled(!isEnabled)
             .opacity(isEnabled ? 1 : 0.5)
         }
@@ -761,13 +734,6 @@ struct NumericOverlayDetailView: View {
         ("White", .white), ("Black", .black), ("Red", .red), ("Orange", .orange),
         ("Yellow", .yellow), ("Green", .green), ("Blue", .blue), ("Cyan", .cyan),
         ("Purple", .purple), ("Pink", .pink)
-    ]
-    static let iconSymbolPresets: [String] = [
-        "heart", "heart.fill", "heart.text.square.fill", "speedometer", "timer",
-        "clock", "watch.analog", "flag.checkered", "flame", "flame.fill",
-        "ruler", "mountain.2", "figure.run", "bolt", "bolt.fill",
-        "arrow.up.and.down", "arrow.left.and.right", "percent", "scale.3d",
-        "thermometer", "arrow.up.right", "location.fill", "map", "waveform.path.ecg"
     ]
 }
 
