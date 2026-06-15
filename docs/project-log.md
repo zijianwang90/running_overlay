@@ -9,6 +9,13 @@
 - Default picker browsing now starts with sport-relevant symbols, while typed search still scans the full catalog. Renderability checks are cached so repeated searches do not recreate `NSImage` probes for the same symbol names.
 - Added catalog tests for full resource loading, sport-first default browsing, full-catalog search, case-insensitive search, renderable picker results, and numeric metric default icon coverage.
 
+### Templates Pool Empty Apply Confirmation
+
+- Applying a built-in or user template from an empty overlay layout now skips the replacement confirmation dialog and applies immediately.
+- Existing overlay layouts still show the destructive replacement confirmation before being cleared.
+- Files: `Sources/RunningOverlay/UI/TemplatePoolView.swift`, `docs/development.md`, `docs/design/panels/media-pool/media-pool-ui.md`.
+- Verification: `swift test --filter OverlayTemplateTests`.
+
 ## 2026-05-21
 
 ### Route Map MapKit Appearance Lock

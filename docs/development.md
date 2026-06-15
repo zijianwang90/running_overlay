@@ -423,7 +423,7 @@ Current implementation:
 - Applying a template routes through `ProjectDocument.registerUndoPoint()` so the previous overlay layout can be restored with undo.
 - Template management lives in the left `Templates` Pool and has been removed from Project Settings. The pool uses compact name-only rows, built-in templates (`Easy Run`, `Interval Workout`, `Race`), user-template context menus, an icon-only import footer button, and a primary `Save Current as Template` footer button.
 - `Easy Run` is the first authored built-in template and loads from `Sources/RunningOverlay/Resources/Templates/EasyRun.rotemplate`; `Interval Workout` and `Race` are still generated from code-defined first-pass element mappings.
-- Applying any template from Templates Pool confirms, then clears and replaces the current overlay layout.
+- Applying a template from Templates Pool confirms before replacing existing overlays; when the current overlay layout is empty, it applies immediately without a replacement confirmation.
 
 Open engineering decisions:
 
