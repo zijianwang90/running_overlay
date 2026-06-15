@@ -23,7 +23,7 @@ struct TemplatePoolView: View {
                         VStack(spacing: 0) {
                             ForEach(BuiltInOverlayTemplate.all) { template in
                                 TemplatePoolRow(title: template.name) {
-                                    pendingBuiltInApply = template
+                                    applyBuiltInTemplate(template)
                                 }
                             }
                         }
@@ -43,7 +43,7 @@ struct TemplatePoolView: View {
                             VStack(spacing: 0) {
                                 ForEach(project.overlayTemplates) { template in
                                     TemplatePoolRow(title: template.name) {
-                                        pendingUserApply = template
+                                        applyUserTemplate(template)
                                     }
                                     .contextMenu {
                                         Button {
@@ -212,6 +212,24 @@ struct TemplatePoolView: View {
     private func beginRename(_ template: OverlayTemplate) {
         renameText = template.name
         renamingTemplate = template
+    }
+
+    private func applyBuiltInTemplate(_ template: BuiltInOverlayTemplate) {
+        guard !project.overlayLayout.elements.isEmpty else {
+            project.applyBuiltInOverlayTemplate(template)
+            return
+        }
+
+        pendingBuiltInApply = template
+    }
+
+    private func applyUserTemplate(_ template: OverlayTemplate) {
+        guard !project.overlayLayout.elements.isEmpty else {
+            project.applyOverlayTemplate(template.id)
+            return
+        }
+
+        pendingUserApply = template
     }
 }
 

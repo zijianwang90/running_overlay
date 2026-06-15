@@ -19,6 +19,13 @@
 - Added `Full + Equal` current width control: the Current `Width` slider starts at `Equal` and can enlarge the current segment's target share while preserving equal-width behavior at the minimum.
 - Replaced the old Interval Timeline label mode with direct label controls. Current segments now independently support distance and time rows set to Off, Live, or Remain, while non-current neighbor labels can show either distance or time. Old `primaryLabelMode` and `durationLabelsEnabled` project data remains decode-compatible but is not written back.
 
+### Templates Pool Empty Apply Confirmation
+
+- Applying a built-in or user template from an empty overlay layout now skips the replacement confirmation dialog and applies immediately.
+- Existing overlay layouts still show the destructive replacement confirmation before being cleared.
+- Files: `Sources/RunningOverlay/UI/TemplatePoolView.swift`, `docs/development.md`, `docs/design/panels/media-pool/media-pool-ui.md`.
+- Verification: `swift test --filter OverlayTemplateTests`.
+
 ## 2026-05-21
 
 ### Route Map MapKit Appearance Lock
