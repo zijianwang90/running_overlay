@@ -26,10 +26,13 @@
     "unknown": { "defaultColor": "slate" }
   },
   "labelModel": {
-    "currentDistanceLabelMode": ["hidden", "elapsed", "remaining"],
-    "currentTimeLabelMode": ["hidden", "elapsed", "remaining"],
+    "currentWorkDistanceLabelMode": ["hidden", "elapsed", "remaining"],
+    "currentWorkTimeLabelMode": ["hidden", "elapsed", "remaining"],
+    "currentRestKindLabelEnabled": [true, false],
+    "currentRestDistanceLabelMode": ["hidden", "elapsed", "remaining"],
+    "currentRestTimeLabelMode": ["hidden", "elapsed", "remaining"],
     "neighborLabelMode": ["hidden", "distance", "time"],
-    "description": "Current distance and current time are independent rows and can be shown together. Non-current segments can hide text or show one selected metric."
+    "description": "Current active laps use Work distance/time rows. Current non-active laps use Rest kind/distance/time rows. Non-current segments can hide text or show one selected metric."
   },
   "layoutModes": [
     {
@@ -67,8 +70,11 @@
     "cornerRadius": 8,
     "edgeFadeEnabled": true,
     "currentProgressEnabled": true,
-    "currentDistanceLabelMode": "elapsed",
-    "currentTimeLabelMode": "remaining",
+    "currentWorkDistanceLabelMode": "elapsed",
+    "currentWorkTimeLabelMode": "remaining",
+    "currentRestKindLabelEnabled": true,
+    "currentRestDistanceLabelMode": "hidden",
+    "currentRestTimeLabelMode": "remaining",
     "neighborLabelMode": "distance",
     "overflowHintEnabled": true,
     "markerEnabled": true,
@@ -105,7 +111,7 @@
     },
     {
       "title": "Labels",
-      "fields": ["currentDistanceLabelMode", "currentTimeLabelMode", "neighborLabelMode", "repCounterEnabled", "overflowHintEnabled", "fontFamily", "fontSize", "fontWeight"]
+      "fields": ["currentWorkDistanceLabelMode", "currentWorkTimeLabelMode", "currentRestKindLabelEnabled", "currentRestDistanceLabelMode", "currentRestTimeLabelMode", "neighborLabelMode", "repCounterEnabled", "overflowHintEnabled", "fontFamily", "fontSize", "fontWeight"]
     },
     {
       "title": "Colors",
@@ -127,7 +133,7 @@
     "Full Schedule Equal layout uses equal widths at the Current Width minimum and can enlarge the current segment as the slider increases.",
     "WU, Rest, and CD visibility toggles filter segment kinds before layout.",
     "Current segment remains visually centered in centeredWindow mode.",
-    "Labels are configured directly: current distance and current time can be hidden or set to live/remaining, while non-current labels can be hidden or set to distance/time.",
+    "Labels are configured directly: current active laps and current non-active laps have separate distance/time settings, rest-like current laps can show kind text, and non-current labels can be hidden or set to distance/time.",
     "For high-repeat workouts such as 1min x25, show nearby context and summarize hidden repetitions at both edges.",
     "Marker toggling must not move the rail, marker lane, or segment layout.",
     "Marker triangle and label must stay inside the background and border.",

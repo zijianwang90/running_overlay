@@ -696,8 +696,8 @@ struct OverlayRenderModelTests {
 
     @Test func intervalTimelineCurrentLabelsCanShowRemainingDistanceAndElapsedTime() {
         var style = OverlayStyle.default
-        style.intervalTimeline.currentDistanceLabelMode = .remaining
-        style.intervalTimeline.currentTimeLabelMode = .elapsed
+        style.intervalTimeline.currentWorkDistanceLabelMode = .remaining
+        style.intervalTimeline.currentWorkTimeLabelMode = .elapsed
         let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
         let context = OverlayRenderContext(
             canvasSize: OverlayRenderContext.referenceCanvasSize,
@@ -709,6 +709,41 @@ struct OverlayRenderModelTests {
         let current = layout.segments.first { $0.isCurrent }
 
         #expect(current?.labelLines == ["150m", "0:25"])
+    }
+
+    @Test func intervalTimelineCurrentRestLabelsUseSeparateSettings() {
+        var style = OverlayStyle.default
+        style.intervalTimeline.mode = .fullSchedule
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 130
+        )
+
+        let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
+        let current = layout.segments.first { $0.isCurrent }
+
+        #expect(current?.kind == .rest)
+        #expect(current?.labelLines == ["Rest", "0:30"])
+    }
+
+    @Test func intervalTimelineCurrentRestDistanceCanBeEnabledIndependently() {
+        var style = OverlayStyle.default
+        style.intervalTimeline.mode = .fullSchedule
+        style.intervalTimeline.currentRestDistanceLabelMode = .remaining
+        style.intervalTimeline.currentRestTimeLabelMode = .hidden
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 130
+        )
+
+        let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
+        let current = layout.segments.first { $0.isCurrent }
+
+        #expect(current?.labelLines == ["Rest", "30m"])
     }
 
     @Test func intervalTimelineNeighborLabelsCanShowTime() {
@@ -910,15 +945,23 @@ struct OverlayRenderModelTests {
         #expect(style.showsWarmupSegments == true)
         #expect(style.showsRestSegments == true)
         #expect(style.showsCooldownSegments == true)
-        #expect(style.currentDistanceLabelMode == .elapsed)
-        #expect(style.currentTimeLabelMode == .remaining)
+        #expect(style.currentWorkDistanceLabelMode == .elapsed)
+        #expect(style.currentWorkTimeLabelMode == .remaining)
+        #expect(style.currentRestKindLabelEnabled == true)
+        #expect(style.currentRestDistanceLabelMode == .hidden)
+        #expect(style.currentRestTimeLabelMode == .remaining)
         #expect(style.neighborLabelMode == .distance)
         #expect(!encodedString.contains("maxFullSegments"))
         #expect(!encodedString.contains("overflowPillsEnabled"))
         #expect(!encodedString.contains("primaryLabelMode"))
         #expect(!encodedString.contains("durationLabelsEnabled"))
-        #expect(encodedString.contains("currentDistanceLabelMode"))
-        #expect(encodedString.contains("currentTimeLabelMode"))
+        #expect(!encodedString.contains("currentDistanceLabelMode"))
+        #expect(!encodedString.contains("currentTimeLabelMode"))
+        #expect(encodedString.contains("currentWorkDistanceLabelMode"))
+        #expect(encodedString.contains("currentWorkTimeLabelMode"))
+        #expect(encodedString.contains("currentRestKindLabelEnabled"))
+        #expect(encodedString.contains("currentRestDistanceLabelMode"))
+        #expect(encodedString.contains("currentRestTimeLabelMode"))
         #expect(encodedString.contains("neighborLabelMode"))
         #expect(encodedString.contains("overflowHintEnabled"))
     }

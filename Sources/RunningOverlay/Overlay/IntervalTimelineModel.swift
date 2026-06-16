@@ -99,8 +99,11 @@ struct IntervalTimelineStyle: Equatable, Codable {
     var markerFontSize: Double
     var markerFontWeight: OverlayFontWeight
     var markerFontName: String
-    var currentDistanceLabelMode: IntervalTimelineCurrentLabelMetricMode
-    var currentTimeLabelMode: IntervalTimelineCurrentLabelMetricMode
+    var currentWorkDistanceLabelMode: IntervalTimelineCurrentLabelMetricMode
+    var currentWorkTimeLabelMode: IntervalTimelineCurrentLabelMetricMode
+    var currentRestKindLabelEnabled: Bool
+    var currentRestDistanceLabelMode: IntervalTimelineCurrentLabelMetricMode
+    var currentRestTimeLabelMode: IntervalTimelineCurrentLabelMetricMode
     var neighborLabelMode: IntervalTimelineNeighborLabelMode
     var repCounterEnabled: Bool
     var overflowHintEnabled: Bool
@@ -137,8 +140,11 @@ struct IntervalTimelineStyle: Equatable, Codable {
         markerFontSize: 11,
         markerFontWeight: .bold,
         markerFontName: "",
-        currentDistanceLabelMode: .elapsed,
-        currentTimeLabelMode: .remaining,
+        currentWorkDistanceLabelMode: .elapsed,
+        currentWorkTimeLabelMode: .remaining,
+        currentRestKindLabelEnabled: true,
+        currentRestDistanceLabelMode: .hidden,
+        currentRestTimeLabelMode: .remaining,
         neighborLabelMode: .distance,
         repCounterEnabled: true,
         overflowHintEnabled: true,
@@ -176,8 +182,11 @@ struct IntervalTimelineStyle: Equatable, Codable {
         markerFontSize: Double,
         markerFontWeight: OverlayFontWeight,
         markerFontName: String,
-        currentDistanceLabelMode: IntervalTimelineCurrentLabelMetricMode,
-        currentTimeLabelMode: IntervalTimelineCurrentLabelMetricMode,
+        currentWorkDistanceLabelMode: IntervalTimelineCurrentLabelMetricMode,
+        currentWorkTimeLabelMode: IntervalTimelineCurrentLabelMetricMode,
+        currentRestKindLabelEnabled: Bool,
+        currentRestDistanceLabelMode: IntervalTimelineCurrentLabelMetricMode,
+        currentRestTimeLabelMode: IntervalTimelineCurrentLabelMetricMode,
         neighborLabelMode: IntervalTimelineNeighborLabelMode,
         repCounterEnabled: Bool,
         overflowHintEnabled: Bool,
@@ -213,8 +222,11 @@ struct IntervalTimelineStyle: Equatable, Codable {
         self.markerFontSize = markerFontSize
         self.markerFontWeight = markerFontWeight
         self.markerFontName = markerFontName
-        self.currentDistanceLabelMode = currentDistanceLabelMode
-        self.currentTimeLabelMode = currentTimeLabelMode
+        self.currentWorkDistanceLabelMode = currentWorkDistanceLabelMode
+        self.currentWorkTimeLabelMode = currentWorkTimeLabelMode
+        self.currentRestKindLabelEnabled = currentRestKindLabelEnabled
+        self.currentRestDistanceLabelMode = currentRestDistanceLabelMode
+        self.currentRestTimeLabelMode = currentRestTimeLabelMode
         self.neighborLabelMode = neighborLabelMode
         self.repCounterEnabled = repCounterEnabled
         self.overflowHintEnabled = overflowHintEnabled
@@ -255,8 +267,19 @@ struct IntervalTimelineStyle: Equatable, Codable {
         markerFontSize = try c.decodeIfPresent(Double.self, forKey: .markerFontSize) ?? base.markerFontSize
         markerFontWeight = try c.decodeIfPresent(OverlayFontWeight.self, forKey: .markerFontWeight) ?? base.markerFontWeight
         markerFontName = try c.decodeIfPresent(String.self, forKey: .markerFontName) ?? base.markerFontName
-        currentDistanceLabelMode = try c.decodeIfPresent(IntervalTimelineCurrentLabelMetricMode.self, forKey: .currentDistanceLabelMode) ?? base.currentDistanceLabelMode
-        currentTimeLabelMode = try c.decodeIfPresent(IntervalTimelineCurrentLabelMetricMode.self, forKey: .currentTimeLabelMode) ?? base.currentTimeLabelMode
+        let legacyCurrentDistance = try c.decodeIfPresent(IntervalTimelineCurrentLabelMetricMode.self, forKey: .currentDistanceLabelMode)
+        let legacyCurrentTime = try c.decodeIfPresent(IntervalTimelineCurrentLabelMetricMode.self, forKey: .currentTimeLabelMode)
+        currentWorkDistanceLabelMode = try c.decodeIfPresent(IntervalTimelineCurrentLabelMetricMode.self, forKey: .currentWorkDistanceLabelMode)
+            ?? legacyCurrentDistance
+            ?? base.currentWorkDistanceLabelMode
+        currentWorkTimeLabelMode = try c.decodeIfPresent(IntervalTimelineCurrentLabelMetricMode.self, forKey: .currentWorkTimeLabelMode)
+            ?? legacyCurrentTime
+            ?? base.currentWorkTimeLabelMode
+        currentRestKindLabelEnabled = try c.decodeIfPresent(Bool.self, forKey: .currentRestKindLabelEnabled) ?? base.currentRestKindLabelEnabled
+        currentRestDistanceLabelMode = try c.decodeIfPresent(IntervalTimelineCurrentLabelMetricMode.self, forKey: .currentRestDistanceLabelMode) ?? base.currentRestDistanceLabelMode
+        currentRestTimeLabelMode = try c.decodeIfPresent(IntervalTimelineCurrentLabelMetricMode.self, forKey: .currentRestTimeLabelMode)
+            ?? legacyCurrentTime
+            ?? base.currentRestTimeLabelMode
         neighborLabelMode = try c.decodeIfPresent(IntervalTimelineNeighborLabelMode.self, forKey: .neighborLabelMode) ?? base.neighborLabelMode
         _ = try c.decodeIfPresent(String.self, forKey: .primaryLabelMode)
         _ = try c.decodeIfPresent(Bool.self, forKey: .durationLabelsEnabled)
@@ -299,8 +322,11 @@ struct IntervalTimelineStyle: Equatable, Codable {
         try c.encode(markerFontSize, forKey: .markerFontSize)
         try c.encode(markerFontWeight, forKey: .markerFontWeight)
         try c.encode(markerFontName, forKey: .markerFontName)
-        try c.encode(currentDistanceLabelMode, forKey: .currentDistanceLabelMode)
-        try c.encode(currentTimeLabelMode, forKey: .currentTimeLabelMode)
+        try c.encode(currentWorkDistanceLabelMode, forKey: .currentWorkDistanceLabelMode)
+        try c.encode(currentWorkTimeLabelMode, forKey: .currentWorkTimeLabelMode)
+        try c.encode(currentRestKindLabelEnabled, forKey: .currentRestKindLabelEnabled)
+        try c.encode(currentRestDistanceLabelMode, forKey: .currentRestDistanceLabelMode)
+        try c.encode(currentRestTimeLabelMode, forKey: .currentRestTimeLabelMode)
         try c.encode(neighborLabelMode, forKey: .neighborLabelMode)
         try c.encode(repCounterEnabled, forKey: .repCounterEnabled)
         try c.encode(overflowHintEnabled, forKey: .overflowHintEnabled)
@@ -339,6 +365,11 @@ struct IntervalTimelineStyle: Equatable, Codable {
         case markerFontSize
         case markerFontWeight
         case markerFontName
+        case currentWorkDistanceLabelMode
+        case currentWorkTimeLabelMode
+        case currentRestKindLabelEnabled
+        case currentRestDistanceLabelMode
+        case currentRestTimeLabelMode
         case currentDistanceLabelMode
         case currentTimeLabelMode
         case neighborLabelMode

@@ -6,24 +6,29 @@ struct IntervalTimelineOverlayView: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: layout.cornerRadius)
-                .fill(Color(intervalTimeline: element.style.backgroundColor).opacity(element.style.backgroundEnabled ? element.style.backgroundOpacity : 0))
-                .intervalTimelineShadow(element: element)
-
-            if element.style.borderEnabled {
+            if element.style.backgroundEnabled {
                 RoundedRectangle(cornerRadius: layout.cornerRadius)
-                    .stroke(Color(intervalTimeline: element.style.borderColor).opacity(element.style.borderOpacity), lineWidth: element.style.borderWidth)
+                    .fill(Color(intervalTimeline: element.style.backgroundColor).opacity(element.style.backgroundOpacity))
+                    .intervalTimelineShadow(element: element, isEnabled: true)
             }
 
             ZStack(alignment: .topLeading) {
-                ForEach(layout.segments) { segment in
-                    segmentView(segment)
+                if element.style.borderEnabled {
+                    RoundedRectangle(cornerRadius: layout.cornerRadius)
+                        .stroke(Color(intervalTimeline: element.style.borderColor).opacity(element.style.borderOpacity), lineWidth: element.style.borderWidth)
                 }
-                overflowHints
-                if layout.style.markerEnabled {
-                    markerView
+
+                ZStack(alignment: .topLeading) {
+                    ForEach(layout.segments) { segment in
+                        segmentView(segment)
+                    }
+                    overflowHints
+                    if layout.style.markerEnabled {
+                        markerView
+                    }
                 }
             }
+            .intervalTimelineShadow(element: element, isEnabled: !element.style.backgroundEnabled)
         }
         .frame(width: layout.rect.width, height: layout.rect.height)
     }
@@ -133,10 +138,10 @@ private extension Color {
 }
 
 private extension View {
-    func intervalTimelineShadow(element: OverlayElement) -> some View {
+    func intervalTimelineShadow(element: OverlayElement, isEnabled: Bool) -> some View {
         self
             .shadow(
-                color: Color(intervalTimeline: element.style.shadowColor).opacity(element.style.shadowEnabled ? element.style.shadowOpacity : 0),
+                color: Color(intervalTimeline: element.style.shadowColor).opacity(isEnabled && element.style.shadowEnabled ? element.style.shadowOpacity : 0),
                 radius: element.style.shadowRadius,
                 x: element.style.shadowOffsetX,
                 y: element.style.shadowOffsetY

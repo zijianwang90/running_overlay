@@ -88,8 +88,11 @@ struct IntervalTimelineStyle: Equatable, Codable {
     var markerColor: OverlayColor
     var markerFontSize: Double
     var markerFontWeight: OverlayFontWeight
-    var currentDistanceLabelMode: IntervalTimelineCurrentLabelMetricMode
-    var currentTimeLabelMode: IntervalTimelineCurrentLabelMetricMode
+    var currentWorkDistanceLabelMode: IntervalTimelineCurrentLabelMetricMode
+    var currentWorkTimeLabelMode: IntervalTimelineCurrentLabelMetricMode
+    var currentRestKindLabelEnabled: Bool
+    var currentRestDistanceLabelMode: IntervalTimelineCurrentLabelMetricMode
+    var currentRestTimeLabelMode: IntervalTimelineCurrentLabelMetricMode
     var neighborLabelMode: IntervalTimelineNeighborLabelMode
     var repCounterEnabled: Bool
     var overflowHintEnabled: Bool
@@ -127,7 +130,7 @@ Important rules:
 - In `centeredWindow`, the current segment's width is a fixed fraction of the segment area (`currentSegmentWidthFraction`, default `0.28`). Remaining laps share the leftover width evenly. The current segment communicates *position in the overall workout*, not the lap's individual duration. The progress fill inside the current segment is overall workout progress (`elapsedTime / activity.duration`), not lap progress.
 - Timeline visibility controls filter WU, Rest, and CD independently before layout. If the current playback lap is filtered out, no segment is marked current; the marker falls back to the nearest visible segment or the segment area midpoint when none are visible.
 - In `fullSchedule`, `fullSegmentLayoutMode` controls segment widths. `Equal` distributes enabled segments evenly by default; `fullEqualCurrentSegmentWidthFraction` lets the Current Width slider give the active segment a larger target share, with `0` meaning equal-width. `Duration` uses duration-proportional widths. Current segment emphasis still affects the current segment's height in both layouts.
-- Segment labels are user-configurable instead of kind-mode driven. Current labels expose independent distance and time rows, each set to `Off`, `Live`, or `Remain`; enabled rows can be shown together. Neighbor labels can be hidden or use one selected metric for non-current segments: `Off`, `Distance`, or `Time`.
+- Segment labels are user-configurable instead of kind-mode driven. Current `active` laps use Work distance/time settings. Current non-active laps use Rest kind/distance/time settings, so rest segments can show `Rest` and remaining time while hiding distance. Neighbor labels can be hidden or use one selected metric for non-current segments: `Off`, `Distance`, or `Time`.
 
 ## Inspector
 

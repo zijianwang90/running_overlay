@@ -275,16 +275,36 @@ struct IntervalTimelineOverlayDetailView: View {
 
     @ViewBuilder
     private func labelRows(_ style: IntervalTimelineStyle) -> some View {
-        InspectorDenseRow(label: "Current Dist") {
+        InspectorDenseRow(label: "Work Dist") {
             InspectorDenseSegmented(values: IntervalTimelineCurrentLabelMetricMode.allCases, selection: Binding(
-                get: { style.currentDistanceLabelMode },
-                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.currentDistanceLabelMode = value } }
+                get: { style.currentWorkDistanceLabelMode },
+                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.currentWorkDistanceLabelMode = value } }
             )) { Text($0.label).tag($0) }
         }
-        InspectorDenseRow(label: "Current Time") {
+        InspectorDenseRow(label: "Work Time") {
             InspectorDenseSegmented(values: IntervalTimelineCurrentLabelMetricMode.allCases, selection: Binding(
-                get: { style.currentTimeLabelMode },
-                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.currentTimeLabelMode = value } }
+                get: { style.currentWorkTimeLabelMode },
+                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.currentWorkTimeLabelMode = value } }
+            )) { Text($0.label).tag($0) }
+        }
+        InspectorDenseRow(label: "Rest Kind") {
+            Toggle("", isOn: Binding(
+                get: { style.currentRestKindLabelEnabled },
+                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.currentRestKindLabelEnabled = value } }
+            ))
+            .labelsHidden()
+            .tint(NumericTokens.accentBlue)
+        }
+        InspectorDenseRow(label: "Rest Dist") {
+            InspectorDenseSegmented(values: IntervalTimelineCurrentLabelMetricMode.allCases, selection: Binding(
+                get: { style.currentRestDistanceLabelMode },
+                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.currentRestDistanceLabelMode = value } }
+            )) { Text($0.label).tag($0) }
+        }
+        InspectorDenseRow(label: "Rest Time") {
+            InspectorDenseSegmented(values: IntervalTimelineCurrentLabelMetricMode.allCases, selection: Binding(
+                get: { style.currentRestTimeLabelMode },
+                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.currentRestTimeLabelMode = value } }
             )) { Text($0.label).tag($0) }
         }
         InspectorDenseRow(label: "Neighbor") {

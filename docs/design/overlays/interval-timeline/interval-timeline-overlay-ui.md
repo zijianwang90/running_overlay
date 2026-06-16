@@ -52,8 +52,11 @@ Use existing `ActivityTimeline.laps` and `LapRecord.kind`:
 
 Labels no longer use a `kind` / `distance` mode. The Labels inspector controls visible text directly:
 
-- `Current Dist`: `Off`, `Live`, or `Remain`.
-- `Current Time`: `Off`, `Live`, or `Remain`.
+- `Work Dist`: `Off`, `Live`, or `Remain` for current `active` laps.
+- `Work Time`: `Off`, `Live`, or `Remain` for current `active` laps.
+- `Rest Kind`: on/off kind text for current non-active laps (`Rest`, `WU`, `CD`, or `Lap`).
+- `Rest Dist`: `Off`, `Live`, or `Remain` for current non-active laps.
+- `Rest Time`: `Off`, `Live`, or `Remain` for current non-active laps.
 - `Neighbor`: `Off`, `Distance`, or `Time` for non-current segments.
 
 Time labels use lap elapsed or remaining time formatted as `m:ss` or `h:mm:ss`. Distance labels use lap distance values formatted in meters or kilometers. Current distance uses distance progress when available.
@@ -134,7 +137,7 @@ Recommended sections:
 - **Timeline**: Mode (`Centered`, `Full`, `Compressed Sets`), Full layout (`Equal` / `Duration`), visible neighbors, WU/Rest/CD visibility toggles, min segment width, segment gap.
 - **Current**: emphasis scale, current progress toggle, playhead marker toggle, marker label (`NOW`), marker position (`live progress` / `segment center`), marker color, marker size, marker weight.
 - **Rail**: rail toggle, vertical spacing from segment row, dot size, dot alpha, dot color, line width, line color.
-- **Labels**: current distance (`Off` / `Live` / `Remain`), current time (`Off` / `Live` / `Remain`), neighbor metric (`Off` / `Distance` / `Time`), rep counter, overflow hint, typography.
+- **Labels**: work distance/time, rest kind/distance/time, neighbor metric (`Off` / `Distance` / `Time`), rep counter, overflow hint, typography.
 - **Colors**: per-kind colors for warmup, active, rest, cooldown, unknown; completed opacity; future opacity.
 - **Background**: reuse shared background controls.
 - **Border & Effects**: reuse shared border/effects controls.
@@ -150,8 +153,11 @@ Recommended sections:
 | Full layout | Equal |
 | Show WU / Rest / CD | on |
 | Overflow hint | on |
-| Current distance label | Live |
-| Current time label | Remain |
+| Work distance label | Live |
+| Work time label | Remain |
+| Rest kind label | on |
+| Rest distance label | Off |
+| Rest time label | Remain |
 | Neighbor label | Distance |
 | Segment height | 30 pt |
 | Current segment height scale | 1.35 |

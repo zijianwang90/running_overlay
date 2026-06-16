@@ -755,8 +755,21 @@ enum OverlayRenderModel {
         elapsedTime: TimeInterval
     ) -> [String] {
         var lines: [String] = []
+        let distanceMode: IntervalTimelineCurrentLabelMetricMode
+        let timeMode: IntervalTimelineCurrentLabelMetricMode
 
-        switch style.currentDistanceLabelMode {
+        if lap.kind == .active {
+            distanceMode = style.currentWorkDistanceLabelMode
+            timeMode = style.currentWorkTimeLabelMode
+        } else {
+            if style.currentRestKindLabelEnabled {
+                lines.append(intervalTimelineKindText(for: lap.kind))
+            }
+            distanceMode = style.currentRestDistanceLabelMode
+            timeMode = style.currentRestTimeLabelMode
+        }
+
+        switch distanceMode {
         case .hidden:
             break
         case .elapsed:
@@ -767,7 +780,7 @@ enum OverlayRenderModel {
             lines.append(intervalTimelineDistanceText(max(lap.totalDistanceMeters * (1 - progress), 0)))
         }
 
-        switch style.currentTimeLabelMode {
+        switch timeMode {
         case .hidden:
             break
         case .elapsed:
@@ -779,6 +792,16 @@ enum OverlayRenderModel {
         }
 
         return lines
+    }
+
+    private static func intervalTimelineKindText(for kind: LapKind) -> String {
+        switch kind {
+        case .warmup: "WU"
+        case .active: "Work"
+        case .rest: "Rest"
+        case .cooldown: "CD"
+        case .unknown: "Lap"
+        }
     }
 
     private static func intervalTimelineDistanceText(_ meters: Double) -> String {

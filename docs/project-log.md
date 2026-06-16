@@ -7,6 +7,8 @@
 - Added `Off` to the Interval Timeline `Neighbor` label control so non-current segments can render without any text while current segment labels remain independently configurable.
 - Updated interval timeline docs/spec and render-model coverage for hidden neighbor labels.
 - Limited the Interval Timeline rep counter to active laps only, so warmup, rest, cooldown, and unknown current segments no longer display `Rep n / total`.
+- Split current segment label controls into Work and Rest groups. Current active laps use Work Dist/Time settings, while current non-active laps can show kind text plus independent Rest Dist/Time settings.
+- Fixed Interval Timeline shadows when the background is hidden by applying the shadow to the rendered content layer in preview and export, while preserving background-layer shadows when the background is visible.
 
 ### Easy Run Default Template
 
