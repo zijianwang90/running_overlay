@@ -8,6 +8,12 @@ Weather Widget Overlay is a simple weather-app-style overlay for showing the day
 
 The visual implementation and first API fetch pass are in place. The component renders with local preset styling plus a shared SwiftUI weather icon family, and it can cache Open-Meteo historical weather from either activity GPS or current device location.
 
+When a Weather Widget is first added, it starts from activity-location
+Open-Meteo data rather than baked-in sample content. If the current FIT activity
+has a GPS route, the app automatically fetches historical weather for the
+activity start point. Until that request succeeds, or when no route/API data is
+available, weather fields render neutral `--` placeholders.
+
 ## Design References
 
 ![Weather widget preset board](./weather-widget-presets.png)
@@ -216,7 +222,7 @@ Weather Widget 1.0 intentionally does not expose the shared overlay Background, 
 - The icon set should be implemented once and reused by every preset.
 - Preview and export must share the same render layout.
 - API-backed weather must be cached before export so videos are reproducible offline.
-- Fetching weather must be explicit and reversible: successful fetches write `cachedWeather`, switch the source to Open-Meteo, and update the visible location from reverse geocoding.
+- Fetching weather from Inspector actions must be explicit and reversible: successful fetches write `cachedWeather`, switch the source to Open-Meteo, and update the visible location from reverse geocoding. The initial fetch on newly added widgets is automatic and does not create a separate undo step.
 
 ## Current Implementation
 
@@ -226,7 +232,7 @@ Implemented as of 2026-05-07:
 - SwiftUI preset rendering for Simple Card, Compact Strip, Forecast Tile, Minimal Text, and Dashboard Bar.
 - Shared SwiftUI weather icon family using custom shapes instead of SF Symbols in the main preview/export path.
 - Production weather icons are now bundled SVG assets resolved from `WeatherCondition.bundledSVGName`, preserving the same visual family while making the icons reusable outside the Weather Widget view code.
-- Preset defaults seeded with weather-app-style sample content, including `大阪, 日本`, `雨`, `13°C`, and `87% RH` for Simple Card.
+- Newly added widgets start with Open-Meteo selected, no sample city text, and placeholder weather fields until activity-location weather is cached.
 - Preset switching is centralized through a project mutator that preserves content fields and cached weather while applying new visual defaults.
 - Inspector exposes quick style buttons only for preset switching; the duplicate Preset menu is intentionally hidden in Weather Widget 1.0.
 - Inspector orders the primary setup sections as Layout, Preset, Appearance, Typography, Location, then Weather.

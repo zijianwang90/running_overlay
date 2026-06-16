@@ -284,6 +284,25 @@ struct OverlayRenderModelTests {
         #expect(hiddenSlotLayout.metricSlots.isEmpty)
     }
 
+    @Test func weatherWidgetOpenMeteoWithoutCacheUsesPlaceholders() {
+        var style = OverlayStyle.default
+        style.weatherWidget = .preset(.simpleCard)
+        style.weatherWidget.dataSource = .openMeteo
+        style.weatherWidget.locationText = ""
+        style.weatherWidget.cachedWeather = nil
+        style.weatherWidget.metricSlots = [.humidity]
+        let element = OverlayElement(type: .weatherWidget, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(canvasSize: OverlayRenderContext.referenceCanvasSize, activity: sampleWeatherActivity(), elapsedTime: 5)
+
+        let layout = OverlayRenderModel.weatherWidgetLayout(for: element, in: context)
+
+        #expect(layout.temperatureFormatted == "--")
+        #expect(layout.locationText == "--")
+        #expect(layout.conditionLabel == "--")
+        #expect(layout.humidityFormatted == "--")
+        #expect(layout.metricSlots.map(\.value) == ["--"])
+    }
+
     @Test func weatherWidgetLayoutUsesOverridesAndFahrenheitFormatting() {
         var style = OverlayStyle.default
         style.weatherWidget = .preset(.dashboardBar)

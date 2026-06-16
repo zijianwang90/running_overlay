@@ -2,6 +2,15 @@
 
 ## 2026-06-15
 
+### Weather Widget Initial API Data
+
+- Changed newly added Weather Widget overlays to start in Open-Meteo mode with no built-in sample city text or sample weather values.
+- Adding a Weather Widget now automatically requests historical weather for the current FIT activity's first GPS route point when a route is available.
+- Preview/export render `--` placeholders for Open-Meteo weather fields until a cached payload is available, instead of falling back to demo values such as Osaka/13°C.
+- Manual Inspector fetches still create undo history, while the automatic initial fetch updates the new widget without adding a separate undo step.
+- Added coverage for the new placeholder state and default Weather Widget add behavior.
+- Verification: `swift test`.
+
 ### SwiftUI Preview SF Pro Weight Logging
 
 - Fixed repeated SwiftUI console diagnostics from overlay preview text when the configured font family is `SF Pro` or `SF Pro Display` and a weight such as medium/semibold/bold is applied.

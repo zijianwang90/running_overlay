@@ -97,6 +97,12 @@ The Inspector exposes two explicit API fetch actions in the Location section:
 - Activity Location: fetches Open-Meteo historical weather for the activity start date using the first FIT GPS route point. Disabled when the activity has no GPS route.
 - Current Location: fetches Open-Meteo historical weather for the activity start date using the user's current device location. This requires macOS location permission.
 
+New Weather Widget overlays start in the Open-Meteo source with no baked-in
+sample city or sample weather values. When the activity has a FIT GPS route,
+adding the widget automatically requests historical weather for the activity
+start point. Until a payload is cached, preview/export render `--` placeholders
+for weather fields instead of falling back to demo content.
+
 ## Implementation Plan
 
 ### Data Model (`OverlayElement.swift`)
@@ -145,7 +151,7 @@ width / height: Double
 cachedWeather: WeatherPayload?     // nil = not yet fetched; round-trips through Codable project snapshot
 ```
 
-Static factory `WeatherWidgetStyle.preset(_ preset:)` — sets width/height and visual defaults per preset while leaving content fields at defaults.
+Static factory `WeatherWidgetStyle.preset(_ preset:)` — sets width/height and visual defaults per preset while leaving content fields at defaults. `ProjectDocument.defaultOverlayStyle(for:)` switches newly added Weather Widget overlays to Open-Meteo with empty location text and no cached payload so the first render uses placeholders until the automatic activity-location fetch succeeds.
 
 `cachedWeather` lives inside `WeatherWidgetStyle` (not on `ProjectDocument`) so it serialises with the project and makes export offline-deterministic once fetched.
 
@@ -210,9 +216,10 @@ mutateWeatherWidgetStyleContinuous(_ id:, _ mutate:)     // registerContinuousUn
 applyWeatherWidgetPreset(_ id:, preset:)                 // replaces visual/dimension defaults; preserves content fields + cachedWeather
 fetchWeatherForActivityLocation(_ id:)                   // uses first FIT GPS route point
 fetchWeatherForCurrentLocation(_ id:)                    // uses CoreLocation current device coordinate
+fetchWeatherForNewWeatherWidget(_ id:)                   // automatic activity-location fetch without an undo step
 ```
 
-Also update `defaultOverlayStyle(for:)` to set `style.weatherWidget = .preset(.simpleCard)` for `.weatherWidget`.
+Also update `defaultOverlayStyle(for:)` to set `style.weatherWidget = .preset(.simpleCard)` for `.weatherWidget`, then switch the new widget to `.openMeteo` with empty `locationText` and `cachedWeather = nil`.
 
 ### Routing
 

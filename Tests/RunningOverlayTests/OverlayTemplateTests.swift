@@ -257,6 +257,17 @@ struct OverlayTemplateTests {
         #expect(abs(updated.width - Double(WeatherWidgetPreset.dashboardBar.defaultSize.width)) < 0.001)
     }
 
+    @Test func addedWeatherWidgetStartsWithAPIPlaceholderState() throws {
+        let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: temporaryTemplateURL()))
+
+        project.addOverlayElement(.weatherWidget)
+
+        let style = try #require(project.overlayLayout.elements.first?.style.weatherWidget)
+        #expect(style.dataSource == .openMeteo)
+        #expect(style.locationText.isEmpty)
+        #expect(style.cachedWeather == nil)
+    }
+
     @Test func applyOverlayTemplateIsUndoable() throws {
         let storeURL = temporaryTemplateURL()
         defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }

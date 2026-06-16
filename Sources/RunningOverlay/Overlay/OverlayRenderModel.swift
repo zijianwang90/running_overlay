@@ -1713,8 +1713,10 @@ extension OverlayRenderModel {
         let windKph: Double?
         let feelsLikeCelsius: Double?
         let resolvedLocation: String?
+        let isMissingAPIWeather: Bool
 
         if style.dataSource == .openMeteo, let cached = style.cachedWeather {
+            isMissingAPIWeather = false
             condition = cached.condition
             temperatureCelsius = cached.temperatureCelsius
             humidity = cached.humidity
@@ -1724,6 +1726,7 @@ extension OverlayRenderModel {
             feelsLikeCelsius = cached.feelsLikeCelsius
             resolvedLocation = cached.resolvedLocation
         } else {
+            isMissingAPIWeather = style.dataSource == .openMeteo
             condition = style.manualCondition
             switch style.dataSource {
             case .fitTemperature:
@@ -1740,12 +1743,12 @@ extension OverlayRenderModel {
         }
 
         let unit = style.temperatureUnit
-        let tempStr = unit.formatted(temperatureCelsius)
-        let highStr = highCelsius.map { unit.formatted($0) } ?? ""
-        let lowStr = lowCelsius.map { unit.formatted($0) } ?? ""
-        let humidityStr = humidity.map { "\(Int($0.rounded()))%" } ?? ""
-        let windStr = windKph.map { "\(String(format: "%.0f", $0)) km/h" } ?? ""
-        let feelsLikeStr = feelsLikeCelsius.map { unit.formatted($0) } ?? ""
+        let tempStr = isMissingAPIWeather ? weatherPlaceholder : unit.formatted(temperatureCelsius)
+        let highStr = isMissingAPIWeather ? weatherPlaceholder : highCelsius.map { unit.formatted($0) } ?? ""
+        let lowStr = isMissingAPIWeather ? weatherPlaceholder : lowCelsius.map { unit.formatted($0) } ?? ""
+        let humidityStr = isMissingAPIWeather ? weatherPlaceholder : humidity.map { "\(Int($0.rounded()))%" } ?? ""
+        let windStr = isMissingAPIWeather ? weatherPlaceholder : windKph.map { "\(String(format: "%.0f", $0)) km/h" } ?? ""
+        let feelsLikeStr = isMissingAPIWeather ? weatherPlaceholder : feelsLikeCelsius.map { unit.formatted($0) } ?? ""
         let metricSlots = resolvedMetricSlots(
             style: style,
             highFormatted: highStr,
@@ -1756,7 +1759,9 @@ extension OverlayRenderModel {
         )
 
         let location: String
-        if !style.locationText.isEmpty {
+        if isMissingAPIWeather {
+            location = style.showLocation ? weatherPlaceholder : ""
+        } else if !style.locationText.isEmpty {
             location = style.locationText
         } else if let resolved = resolvedLocation {
             location = resolved
@@ -1786,7 +1791,7 @@ extension OverlayRenderModel {
             feelsLikeFormatted: feelsLikeStr,
             locationText: location,
             weekdayText: weekday,
-            conditionLabel: resolvedConditionLabel(style: style, condition: condition, location: location),
+            conditionLabel: isMissingAPIWeather ? weatherPlaceholder : resolvedConditionLabel(style: style, condition: condition, location: location),
             sfSymbolName: condition.sfSymbolName,
             iconTint: condition.iconTint,
             iconSize: context.scaled(style.iconSize * element.scale),
@@ -1794,6 +1799,8 @@ extension OverlayRenderModel {
             metricSlots: metricSlots
         )
     }
+
+    private static var weatherPlaceholder: String { "--" }
 
     private static func resolvedMetricSlots(
         style: WeatherWidgetStyle,
@@ -1838,6 +1845,9 @@ extension OverlayRenderModel {
     }
 
     private static func metricValue(_ value: String, suffix: String) -> String {
+        if value == weatherPlaceholder {
+            return weatherPlaceholder
+        }
         let suffix = suffix.trimmingCharacters(in: .whitespacesAndNewlines)
         return suffix.isEmpty ? value : "\(value) \(suffix)"
     }
