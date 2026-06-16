@@ -52,6 +52,25 @@ struct OverlayTemplateTests {
         #expect(style.textPreset == .minimal)
         #expect(style.gaugePreset == .minimalSport)
         #expect(style.distanceTimeline.preset == .minimal)
+        #expect(style.iconColorsFollowHeartRateZones == false)
+        #expect(style.valueColorsFollowHeartRateZones == false)
+        #expect(style.labelColorsFollowHeartRateZones == false)
+        #expect(style.unitColorsFollowHeartRateZones == false)
+    }
+
+    @Test func overlayStyleLegacyTextZoneColorFlagSeedsPerRoleTextFlags() throws {
+        let json = """
+        {
+          "textColorsFollowHeartRateZones": true
+        }
+        """
+
+        let style = try JSONDecoder().decode(OverlayStyle.self, from: Data(json.utf8))
+
+        #expect(style.textColorsFollowHeartRateZones == true)
+        #expect(style.valueColorsFollowHeartRateZones == true)
+        #expect(style.labelColorsFollowHeartRateZones == true)
+        #expect(style.unitColorsFollowHeartRateZones == true)
     }
 
     @Test func intervalHUDBarStyleDecodesOlderFieldsWithDefaults() throws {

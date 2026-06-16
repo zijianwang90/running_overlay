@@ -417,6 +417,22 @@ struct OverlayStyle: Equatable, Codable {
     var iconColor: OverlayColor
     var iconOpacity: Double
     var iconSpacing: Double
+    /// When true and the overlay is `.heartRate` or `.heartRateZone`, the
+    /// numeric icon paints from `HRZonePalette` for the active zone instead of
+    /// the static icon swatch. Ignored for all other overlay types.
+    var iconColorsFollowHeartRateZones: Bool
+    /// When true and the overlay is `.heartRate` or `.heartRateZone`, the
+    /// numeric value text paints from `HRZonePalette` for the active zone
+    /// instead of the value swatch. Ignored for all other overlay types.
+    var valueColorsFollowHeartRateZones: Bool
+    /// When true and the overlay is `.heartRate` or `.heartRateZone`, the
+    /// numeric label text paints from `HRZonePalette` for the active zone
+    /// instead of the label swatch. Ignored for all other overlay types.
+    var labelColorsFollowHeartRateZones: Bool
+    /// When true and the overlay is `.heartRate` or `.heartRateZone`, the
+    /// numeric unit text paints from `HRZonePalette` for the active zone
+    /// instead of the unit swatch. Ignored for all other overlay types.
+    var unitColorsFollowHeartRateZones: Bool
     var rotationDegrees: Double
     var textAlignment: OverlayTextAlignment
     /// Alignment of the numeric overlay label text. Interpreted in the context
@@ -566,6 +582,10 @@ struct OverlayStyle: Equatable, Codable {
         iconColor: .white,
         iconOpacity: 1,
         iconSpacing: 8,
+        iconColorsFollowHeartRateZones: false,
+        valueColorsFollowHeartRateZones: false,
+        labelColorsFollowHeartRateZones: false,
+        unitColorsFollowHeartRateZones: false,
         rotationDegrees: 0,
         textAlignment: .leading,
         labelTextAlignment: .leading,
@@ -671,6 +691,10 @@ struct OverlayStyle: Equatable, Codable {
         iconColor: OverlayColor = .white,
         iconOpacity: Double = 1,
         iconSpacing: Double = 8,
+        iconColorsFollowHeartRateZones: Bool = false,
+        valueColorsFollowHeartRateZones: Bool = false,
+        labelColorsFollowHeartRateZones: Bool = false,
+        unitColorsFollowHeartRateZones: Bool = false,
         rotationDegrees: Double = 0,
         textAlignment: OverlayTextAlignment = .leading,
         labelTextAlignment: OverlayTextAlignment = .leading,
@@ -774,6 +798,10 @@ struct OverlayStyle: Equatable, Codable {
         self.iconColor = iconColor
         self.iconOpacity = min(max(iconOpacity, 0), 1)
         self.iconSpacing = min(max(iconSpacing, 0), 60)
+        self.iconColorsFollowHeartRateZones = iconColorsFollowHeartRateZones
+        self.valueColorsFollowHeartRateZones = valueColorsFollowHeartRateZones
+        self.labelColorsFollowHeartRateZones = labelColorsFollowHeartRateZones
+        self.unitColorsFollowHeartRateZones = unitColorsFollowHeartRateZones
         self.rotationDegrees = rotationDegrees
         self.textAlignment = textAlignment
         self.labelTextAlignment = labelTextAlignment
@@ -890,6 +918,11 @@ struct OverlayStyle: Equatable, Codable {
         iconColor = try container.decodeIfPresent(OverlayColor.self, forKey: .iconColor) ?? foregroundColor
         iconOpacity = min(max(try container.decodeIfPresent(Double.self, forKey: .iconOpacity) ?? Self.default.iconOpacity, 0), 1)
         iconSpacing = min(max(try container.decodeIfPresent(Double.self, forKey: .iconSpacing) ?? Self.default.iconSpacing, 0), 60)
+        iconColorsFollowHeartRateZones = try container.decodeIfPresent(Bool.self, forKey: .iconColorsFollowHeartRateZones) ?? Self.default.iconColorsFollowHeartRateZones
+        let legacyTextColorsFollowHeartRateZones = try container.decodeIfPresent(Bool.self, forKey: .textColorsFollowHeartRateZones) ?? Self.default.textColorsFollowHeartRateZones
+        valueColorsFollowHeartRateZones = try container.decodeIfPresent(Bool.self, forKey: .valueColorsFollowHeartRateZones) ?? legacyTextColorsFollowHeartRateZones
+        labelColorsFollowHeartRateZones = try container.decodeIfPresent(Bool.self, forKey: .labelColorsFollowHeartRateZones) ?? legacyTextColorsFollowHeartRateZones
+        unitColorsFollowHeartRateZones = try container.decodeIfPresent(Bool.self, forKey: .unitColorsFollowHeartRateZones) ?? legacyTextColorsFollowHeartRateZones
         rotationDegrees = try container.decodeIfPresent(Double.self, forKey: .rotationDegrees) ?? Self.default.rotationDegrees
         textAlignment = try container.decodeIfPresent(OverlayTextAlignment.self, forKey: .textAlignment) ?? Self.default.textAlignment
         labelTextAlignment = try container.decodeIfPresent(OverlayTextAlignment.self, forKey: .labelTextAlignment) ?? Self.default.labelTextAlignment
@@ -921,7 +954,7 @@ struct OverlayStyle: Equatable, Codable {
         glowEnabled = try container.decodeIfPresent(Bool.self, forKey: .glowEnabled) ?? Self.default.glowEnabled
         glowColor = try container.decodeIfPresent(OverlayColor.self, forKey: .glowColor) ?? Self.default.glowColor
         glowIntensity = min(max(try container.decodeIfPresent(Double.self, forKey: .glowIntensity) ?? Self.default.glowIntensity, 0), 1)
-        textColorsFollowHeartRateZones = try container.decodeIfPresent(Bool.self, forKey: .textColorsFollowHeartRateZones) ?? Self.default.textColorsFollowHeartRateZones
+        textColorsFollowHeartRateZones = legacyTextColorsFollowHeartRateZones
         distanceTimeline = try container.decodeIfPresent(DistanceTimelineStyle.self, forKey: .distanceTimeline) ?? .default
         elevationChart = try container.decodeIfPresent(ElevationChartStyle.self, forKey: .elevationChart) ?? .default
         if let storedGauge = try container.decodeIfPresent(RunningGaugeStyle.self, forKey: .gauge) {

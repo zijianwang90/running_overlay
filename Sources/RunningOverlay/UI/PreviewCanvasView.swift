@@ -2111,42 +2111,47 @@ struct TextPresetOverlayView: View {
         .fixedSize(horizontal: true, vertical: false)
     }
 
+    private var dynamicHeartRateZoneColor: OverlayColor? {
+        layout.dynamicHeartRateZoneColor
+    }
+
     private var heartRateZoneTextPaletteActive: Bool {
-        element.type == .heartRateZone
-            && element.style.textColorsFollowHeartRateZones
-            && layout.unifiedTextBaseColor != nil
+        dynamicHeartRateZoneColor != nil
+            && (layout.valueColorsFollowHeartRateZones
+                || layout.labelColorsFollowHeartRateZones
+                || layout.unitColorsFollowHeartRateZones)
     }
 
     private var overlayGroupForegroundColor: Color {
-        if heartRateZoneTextPaletteActive, let base = layout.unifiedTextBaseColor {
+        if layout.valueColorsFollowHeartRateZones, let base = dynamicHeartRateZoneColor {
             return Color(base).opacity(element.style.valueOpacity)
         }
         return Color(element.style.foregroundColor)
     }
 
     private var valueTextColor: Color {
-        if heartRateZoneTextPaletteActive, let base = layout.unifiedTextBaseColor {
+        if layout.valueColorsFollowHeartRateZones, let base = dynamicHeartRateZoneColor {
             return Color(base).opacity(element.style.valueOpacity)
         }
         return Color(element.style.valueColor).opacity(element.style.valueOpacity)
     }
 
     private var labelTextColor: Color {
-        if heartRateZoneTextPaletteActive, let base = layout.unifiedTextBaseColor {
+        if layout.labelColorsFollowHeartRateZones, let base = dynamicHeartRateZoneColor {
             return Color(base).opacity(element.style.labelOpacity)
         }
         return Color(element.style.labelColor).opacity(element.style.labelOpacity)
     }
 
     private var unitTextColor: Color {
-        if heartRateZoneTextPaletteActive, let base = layout.unifiedTextBaseColor {
+        if layout.unitColorsFollowHeartRateZones, let base = dynamicHeartRateZoneColor {
             return Color(base).opacity(element.style.unitOpacity)
         }
         return Color(element.style.unitColor).opacity(element.style.unitOpacity)
     }
 
     private var iconTextColor: Color {
-        if heartRateZoneTextPaletteActive, let base = layout.unifiedTextBaseColor {
+        if layout.iconColorsFollowHeartRateZones, let base = dynamicHeartRateZoneColor {
             return Color(base).opacity(layout.iconOpacity)
         }
         return Color(layout.iconColor).opacity(layout.iconOpacity)

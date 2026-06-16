@@ -128,14 +128,22 @@ struct OverlayFrameRenderer {
     private static func renderTextElement(_ element: OverlayElement, renderContext: OverlayRenderContext, cache: inout OverlayRenderCache) {
         let renderLayout = OverlayRenderModel.textLayout(for: element, in: renderContext)
         var drawElement = element
-        if element.type == .heartRateZone,
-           element.style.textColorsFollowHeartRateZones,
-           let base = renderLayout.unifiedTextBaseColor {
-            drawElement.style.foregroundColor = base
+        if drawElement.style.iconColorsFollowHeartRateZones,
+           let base = renderLayout.dynamicHeartRateZoneColor {
+            drawElement.style.iconColor = base
+        }
+        if drawElement.style.valueColorsFollowHeartRateZones,
+           let base = renderLayout.dynamicHeartRateZoneColor {
             drawElement.style.valueColor = base
+            drawElement.style.foregroundColor = base
+        }
+        if drawElement.style.labelColorsFollowHeartRateZones,
+           let base = renderLayout.dynamicHeartRateZoneColor {
             drawElement.style.labelColor = base
+        }
+        if drawElement.style.unitColorsFollowHeartRateZones,
+           let base = renderLayout.dynamicHeartRateZoneColor {
             drawElement.style.unitColor = base
-            drawElement.style.accentColor = base
         }
         guard renderLayout.preset == .minimal else {
             renderPresetTextElement(drawElement, renderLayout: renderLayout, renderContext: renderContext)
@@ -174,14 +182,23 @@ struct OverlayFrameRenderer {
         renderContext: OverlayRenderContext
     ) {
         var element = incoming
-        if incoming.type == .heartRateZone,
-           incoming.style.textColorsFollowHeartRateZones,
-           let base = renderLayout.unifiedTextBaseColor {
+        if incoming.style.iconColorsFollowHeartRateZones,
+           let base = renderLayout.dynamicHeartRateZoneColor {
+            element.style.iconColor = base
+        }
+        if incoming.style.valueColorsFollowHeartRateZones,
+           let base = renderLayout.dynamicHeartRateZoneColor {
             element.style.valueColor = base
-            element.style.labelColor = base
-            element.style.unitColor = base
             element.style.foregroundColor = base
             element.style.accentColor = base
+        }
+        if incoming.style.labelColorsFollowHeartRateZones,
+           let base = renderLayout.dynamicHeartRateZoneColor {
+            element.style.labelColor = base
+        }
+        if incoming.style.unitColorsFollowHeartRateZones,
+           let base = renderLayout.dynamicHeartRateZoneColor {
+            element.style.unitColor = base
         }
         let colors = TextPresetColors(
             foreground: NSColor(element.style.foregroundColor),

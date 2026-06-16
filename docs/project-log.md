@@ -2,6 +2,20 @@
 
 ## 2026-06-16
 
+### Numeric Overlay Heart Rate Icon Zone Tint
+
+- Added `OverlayStyle.iconColorsFollowHeartRateZones` for Numeric Overlay `heartRate` and `heartRateZone` elements, with a new Inspector `Icon → Zone Color` checkbox that keeps manual icon swatches unchanged when disabled.
+- `OverlayRenderModel.textLayout` now resolves `dynamicHeartRateZoneColor` from the current heart-rate sample and shared `HRZonePalette`, so SwiftUI preview and CoreGraphics export both consume the same zone-color decision without changing icon layout or `SFSymbolPicker`.
+- Added regression coverage for independent icon-vs-text zone coloring and legacy-style decoding defaults.
+- Verification: `swift test --filter OverlayRenderModelTests`, `swift test --filter OverlayTemplateTests`.
+
+### Numeric Overlay Per-Role Heart Rate Zone Tint
+
+- Split the old text-wide heart-rate zone color behavior into per-role flags for value, label, and unit: `valueColorsFollowHeartRateZones`, `labelColorsFollowHeartRateZones`, and `unitColorsFollowHeartRateZones`.
+- Numeric Overlay Inspector now exposes separate `Zone Color` toggles in the Value, Label, Unit, and Icon sections for `heartRate` and `heartRateZone`, so each role can opt into dynamic zone tint independently.
+- Kept backward compatibility for old project/template JSON: decoding legacy `textColorsFollowHeartRateZones = true` seeds all three new text-role flags to `true`.
+- Verification: `swift test --filter OverlayRenderModelTests`, `swift test --filter OverlayTemplateTests`.
+
 ### Easy Run Default Template
 
 - Replaced the bundled `EasyRun.rotemplate` resource with the current local user template named `Template`, so the Built-in Templates `Easy Run` row applies that authored layout.

@@ -2110,6 +2110,33 @@ final class ProjectDocument: ObservableObject {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
         overlayLayout.elements[index].style.textColorsFollowHeartRateZones = enabled
+        overlayLayout.elements[index].style.valueColorsFollowHeartRateZones = enabled
+        overlayLayout.elements[index].style.labelColorsFollowHeartRateZones = enabled
+        overlayLayout.elements[index].style.unitColorsFollowHeartRateZones = enabled
+    }
+
+    func setOverlayIconColorsFollowHeartRateZones(_ elementID: OverlayElement.ID, _ enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.iconColorsFollowHeartRateZones = enabled
+    }
+
+    func setOverlayValueColorsFollowHeartRateZones(_ elementID: OverlayElement.ID, _ enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.valueColorsFollowHeartRateZones = enabled
+    }
+
+    func setOverlayLabelColorsFollowHeartRateZones(_ elementID: OverlayElement.ID, _ enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.labelColorsFollowHeartRateZones = enabled
+    }
+
+    func setOverlayUnitColorsFollowHeartRateZones(_ elementID: OverlayElement.ID, _ enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.unitColorsFollowHeartRateZones = enabled
     }
 
     func setOverlayCustomLabel(_ elementID: OverlayElement.ID, label: String) {
