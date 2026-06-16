@@ -2,6 +2,12 @@
 
 ## 2026-06-16
 
+### Interval Timeline Neighbor Label Off
+
+- Added `Off` to the Interval Timeline `Neighbor` label control so non-current segments can render without any text while current segment labels remain independently configurable.
+- Updated interval timeline docs/spec and render-model coverage for hidden neighbor labels.
+- Limited the Interval Timeline rep counter to active laps only, so warmup, rest, cooldown, and unknown current segments no longer display `Rep n / total`.
+
 ### Easy Run Default Template
 
 - Replaced the bundled `EasyRun.rotemplate` resource with the current local user template named `Template`, so the Built-in Templates `Easy Run` row applies that authored layout.

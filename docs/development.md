@@ -324,7 +324,7 @@ Current implementation:
 - Interval Timeline is available as a horizontal interval-workout schedule overlay that complements Interval HUD Bar: it uses existing `ActivityTimeline.laps`, renders as a compact title-free timeline rail, keeps the current lap centered and enlarged by default, and summarizes hidden repetitions for high-count workouts such as `1min x25`. See `docs/design/overlays/interval-timeline/interval-timeline-overlay-ui.md` and `docs/overlay-modules/interval-timeline-overlay.md`.
 - Interval Timeline modes are explicit: Centered shows a neighbor window, while Full shows all enabled segments. Full mode supports Equal and Duration segment layouts, and Timeline controls can independently hide WU, Rest, and CD segments.
 - In Full + Equal mode, the Current Width slider starts at `Equal` and can increase the current segment's target share without changing the default equal-width layout.
-- Interval Timeline labels are direct display settings: Current Dist and Current Time can each be Off, Live, or Remain, and non-current neighbor labels can show either distance or time.
+- Interval Timeline labels are direct display settings: Current Dist and Current Time can each be Off, Live, or Remain, and non-current neighbor labels can be Off, Distance, or Time.
 - Interval Timeline centered overflow uses compact `···` edge hints only; WU/CD ghost labels and `xN` hidden-count boxes are not rendered.
 - Elevation chart overlays render line/area charts with playhead markers; Smoothing filters quantized elevation samples and draws curved paths in both preview and export, including Progress mode.
 - Running Gauge overlays render circular ticks, a progress ring, section dividers, and core run metrics in both preview and export.

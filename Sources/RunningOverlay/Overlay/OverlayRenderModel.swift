@@ -739,6 +739,8 @@ enum OverlayRenderModel {
         }
 
         switch style.neighborLabelMode {
+        case .hidden:
+            return []
         case .distance:
             return [intervalTimelineDistanceText(lap.totalDistanceMeters)]
         case .time:
@@ -801,15 +803,14 @@ enum OverlayRenderModel {
         let activeLaps = activity.laps.filter { $0.kind == .active }
         guard !activeLaps.isEmpty else { return nil }
         guard let currentIndex, activity.laps.indices.contains(currentIndex) else {
-            return "Rep 1 / \(activeLaps.count)"
+            return nil
         }
         let lap = activity.laps[currentIndex]
         if lap.kind == .active,
            let activeIndex = activeLaps.firstIndex(where: { $0.id == lap.id }) {
             return "Rep \(activeIndex + 1) / \(activeLaps.count)"
         }
-        let completed = activeLaps.filter { $0.endElapsedTime <= lap.startElapsedTime }.count
-        return "Rep \(min(completed + 1, activeLaps.count)) / \(activeLaps.count)"
+        return nil
     }
 
     private static func scaled(_ text: IntervalHUDBarTextStyle, scale: Double, context: OverlayRenderContext) -> IntervalHUDBarTextStyle {

@@ -45,6 +45,7 @@ enum IntervalTimelineCurrentLabelMetricMode: String, CaseIterable, Identifiable,
 }
 
 enum IntervalTimelineNeighborLabelMode: String, CaseIterable, Identifiable, Codable {
+    case hidden
     case distance
     case time
 
@@ -52,6 +53,7 @@ enum IntervalTimelineNeighborLabelMode: String, CaseIterable, Identifiable, Coda
 
     var label: String {
         switch self {
+        case .hidden: "Off"
         case .distance: "Distance"
         case .time: "Time"
         }

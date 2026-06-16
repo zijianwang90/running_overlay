@@ -603,6 +603,40 @@ struct OverlayRenderModelTests {
         #expect(layout.rightOverflowCount == 0)
         #expect(layout.segments.map(\.kind) == [.active, .rest, .active])
         #expect(layout.segments.first(where: \.isCurrent)?.kind == .rest)
+        #expect(layout.repText == nil)
+    }
+
+    @Test func intervalTimelineRepCounterOnlyShowsForActiveCurrentLap() {
+        var style = OverlayStyle.default
+        style.intervalTimeline.mode = .fullSchedule
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let activity = repeatedIntervalActivity(repCount: 3)
+        let warmupContext = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: activity,
+            elapsedTime: 10
+        )
+        let activeContext = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: activity,
+            elapsedTime: 45
+        )
+        let cooldownContext = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: activity,
+            elapsedTime: activity.duration - 10
+        )
+
+        let warmupLayout = OverlayRenderModel.intervalTimelineLayout(for: element, in: warmupContext)
+        let activeLayout = OverlayRenderModel.intervalTimelineLayout(for: element, in: activeContext)
+        let cooldownLayout = OverlayRenderModel.intervalTimelineLayout(for: element, in: cooldownContext)
+
+        #expect(warmupLayout.segments.first(where: \.isCurrent)?.kind == .warmup)
+        #expect(warmupLayout.repText == nil)
+        #expect(activeLayout.segments.first(where: \.isCurrent)?.kind == .active)
+        #expect(activeLayout.repText == "Rep 1 / 3")
+        #expect(cooldownLayout.segments.first(where: \.isCurrent)?.kind == .cooldown)
+        #expect(cooldownLayout.repText == nil)
     }
 
     @Test func intervalTimelineFullScheduleDoesNotAutoCenterLargeWorkouts() {
@@ -692,6 +726,22 @@ struct OverlayRenderModelTests {
         let rest = layout.segments.first { $0.kind == .rest }
 
         #expect(rest?.labelLines == ["1:00"])
+    }
+
+    @Test func intervalTimelineNeighborLabelsCanBeHidden() {
+        var style = OverlayStyle.default
+        style.intervalTimeline.mode = .fullSchedule
+        style.intervalTimeline.neighborLabelMode = .hidden
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 50
+        )
+
+        let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
+
+        #expect(layout.segments.filter { !$0.isCurrent }.allSatisfy { $0.labelLines.isEmpty })
     }
 
     @Test func intervalTimelineVisibilityTogglesFilterWarmupRestAndCooldown() {

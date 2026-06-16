@@ -28,8 +28,8 @@
   "labelModel": {
     "currentDistanceLabelMode": ["hidden", "elapsed", "remaining"],
     "currentTimeLabelMode": ["hidden", "elapsed", "remaining"],
-    "neighborLabelMode": ["distance", "time"],
-    "description": "Current distance and current time are independent rows and can be shown together. Non-current segments show one selected metric."
+    "neighborLabelMode": ["hidden", "distance", "time"],
+    "description": "Current distance and current time are independent rows and can be shown together. Non-current segments can hide text or show one selected metric."
   },
   "layoutModes": [
     {
@@ -127,7 +127,7 @@
     "Full Schedule Equal layout uses equal widths at the Current Width minimum and can enlarge the current segment as the slider increases.",
     "WU, Rest, and CD visibility toggles filter segment kinds before layout.",
     "Current segment remains visually centered in centeredWindow mode.",
-    "Labels are configured directly: current distance and current time can be hidden or set to live/remaining, while non-current labels use distance or time.",
+    "Labels are configured directly: current distance and current time can be hidden or set to live/remaining, while non-current labels can be hidden or set to distance/time.",
     "For high-repeat workouts such as 1min x25, show nearby context and summarize hidden repetitions at both edges.",
     "Marker toggling must not move the rail, marker lane, or segment layout.",
     "Marker triangle and label must stay inside the background and border.",

@@ -32,7 +32,7 @@ Baseline layout:
 
 - Background: translucent near-black rounded strip with optional blur/fade edges.
 - Track: one horizontal bar composed of lap segments.
-- Segment labels: current segment can show live/remaining lap distance and live/remaining lap time as independent rows; non-current segments show either distance or time.
+- Segment labels: current segment can show live/remaining lap distance and live/remaining lap time as independent rows; non-current segments can show distance, time, or no text.
 - Current segment: taller, brighter, slightly wider, with border/glow and a progress fill inside the segment.
 - Playhead: small upward marker below the rail and `NOW` label under the marker. A marker lane is always reserved in the overlay bounds so the marker stays inside the background and border. Toggling marker visibility must not move the segment row, rail, or marker lane.
 - Decoration rail: optional line-and-dot progress decoration below the segment row and inside the background. `Spacing` controls the vertical distance from the segment row to the rail and expands the background height; dots expose size, color, and alpha, while the rail line exposes width and color.
@@ -54,7 +54,7 @@ Labels no longer use a `kind` / `distance` mode. The Labels inspector controls v
 
 - `Current Dist`: `Off`, `Live`, or `Remain`.
 - `Current Time`: `Off`, `Live`, or `Remain`.
-- `Neighbor`: `Distance` or `Time` for non-current segments.
+- `Neighbor`: `Off`, `Distance`, or `Time` for non-current segments.
 
 Time labels use lap elapsed or remaining time formatted as `m:ss` or `h:mm:ss`. Distance labels use lap distance values formatted in meters or kilometers. Current distance uses distance progress when available.
 
@@ -123,7 +123,7 @@ For high-count workouts:
 - Do not render all labels at once when segment width would fall below the readable minimum.
 - Default mode remains Centered Window so high-repetition workouts open in a readable nearby-context layout.
 - Hidden previous/next laps are represented by low-contrast `···` hints and edge fades.
-- The current lap index and active repetition counter should be available as optional text: `#18`, `Rep 9 / 25`, or `RUN 9 / 25`.
+- The active repetition counter should be available as optional text, e.g. `Rep 9 / 25`. It is shown only while the current lap is `active`; warmup, rest, cooldown, and unknown laps do not display a rep counter.
 - WU, Rest, and CD can each be hidden from the timeline. Filtering happens before Centered neighbor selection or Full layout. If the current lap is hidden, no segment receives current emphasis and the marker falls back to the nearest visible segment.
 
 ## Inspector Surface
@@ -134,7 +134,7 @@ Recommended sections:
 - **Timeline**: Mode (`Centered`, `Full`, `Compressed Sets`), Full layout (`Equal` / `Duration`), visible neighbors, WU/Rest/CD visibility toggles, min segment width, segment gap.
 - **Current**: emphasis scale, current progress toggle, playhead marker toggle, marker label (`NOW`), marker position (`live progress` / `segment center`), marker color, marker size, marker weight.
 - **Rail**: rail toggle, vertical spacing from segment row, dot size, dot alpha, dot color, line width, line color.
-- **Labels**: current distance (`Off` / `Live` / `Remain`), current time (`Off` / `Live` / `Remain`), neighbor metric (`Distance` / `Time`), rep counter, overflow hint, typography.
+- **Labels**: current distance (`Off` / `Live` / `Remain`), current time (`Off` / `Live` / `Remain`), neighbor metric (`Off` / `Distance` / `Time`), rep counter, overflow hint, typography.
 - **Colors**: per-kind colors for warmup, active, rest, cooldown, unknown; completed opacity; future opacity.
 - **Background**: reuse shared background controls.
 - **Border & Effects**: reuse shared border/effects controls.
