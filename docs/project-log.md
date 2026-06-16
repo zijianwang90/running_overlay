@@ -2,6 +2,14 @@
 
 ## 2026-06-15
 
+### SwiftUI Preview SF Pro Weight Logging
+
+- Fixed repeated SwiftUI console diagnostics from overlay preview text when the configured font family is `SF Pro` or `SF Pro Display` and a weight such as medium/semibold/bold is applied.
+- Added a shared SwiftUI overlay font helper that treats macOS system UI font family aliases as `Font.system(size:weight:)`, while keeping custom font families on `Font.custom(...).weight(...)`.
+- Routed Weather Widget, Interval HUD Bar, Interval Timeline, Preview Canvas numeric/stat labels, Distance Timeline, Running Gauge, Route Map, and Elevation Chart preview text through the helper so system UI fonts no longer trigger `Unable to update Font Descriptor's weight` logs during redraw.
+- Documented that custom font weight controls depend on the selected font family providing matching weight faces; single-weight families such as Monaco may not visibly change for every weight option.
+- Verification: `swift test`.
+
 ### Shared SF Symbol Picker
 
 - Added a shared `SFSymbolPicker` for Numeric Overlay icons and Decor Icon SF Symbol assets, replacing fixed preset/common symbol lists with direct text entry plus a searchable popover grid.

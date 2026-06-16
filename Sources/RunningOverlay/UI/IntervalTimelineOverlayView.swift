@@ -45,9 +45,9 @@ struct IntervalTimelineOverlayView: View {
     private func ghostLabel(kind: String, duration: String, color: OverlayColor) -> some View {
         VStack(spacing: 1 * element.scale) {
             Text(kind)
-                .font(.custom(element.style.fontName, size: layout.ghostFontSize).weight(.bold))
+                .font(.overlayFont(family: element.style.fontName, size: layout.ghostFontSize, weight: .bold))
             Text(duration)
-                .font(.custom(element.style.fontName, size: layout.ghostFontSize * 0.82).weight(.semibold))
+                .font(.overlayFont(family: element.style.fontName, size: layout.ghostFontSize * 0.82, weight: .semibold))
                 .monospacedDigit()
         }
         .foregroundStyle(Color(intervalTimeline: color).opacity(0.55))
@@ -71,13 +71,13 @@ struct IntervalTimelineOverlayView: View {
 
     private func ellipsis() -> some View {
         Text("···")
-            .font(.custom(element.style.fontName, size: layout.labelFontSize * 0.95).weight(.bold))
+            .font(.overlayFont(family: element.style.fontName, size: layout.labelFontSize * 0.95, weight: .bold))
             .foregroundStyle(Color(intervalTimeline: element.style.foregroundColor).opacity(0.50))
     }
 
     private func overflowPill(_ text: String) -> some View {
         Text(text)
-            .font(.custom(element.style.fontName, size: layout.pillFontSize).weight(.bold))
+            .font(.overlayFont(family: element.style.fontName, size: layout.pillFontSize, weight: .bold))
             .foregroundStyle(Color(intervalTimeline: element.style.foregroundColor).opacity(0.82))
             .frame(width: layout.overflowPillSize.width, height: layout.overflowPillSize.height)
             .background(Color.black.opacity(0.30))
@@ -108,19 +108,19 @@ struct IntervalTimelineOverlayView: View {
             VStack(spacing: 1 * element.scale) {
                 if segment.isCurrent, let repText = layout.repText {
                     Text(repText)
-                        .font(.custom(element.style.fontName, size: max(layout.durationFontSize * 0.82, 8)).weight(.semibold))
+                        .font(.overlayFont(family: element.style.fontName, size: max(layout.durationFontSize * 0.82, 8), weight: .semibold))
                         .foregroundStyle(Color.white.opacity(0.78))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                 }
                 Text(segment.label)
-                    .font(.custom(element.style.fontName, size: segment.isCurrent ? layout.labelFontSize * 1.08 : layout.labelFontSize).weight(.bold))
+                    .font(.overlayFont(family: element.style.fontName, size: segment.isCurrent ? layout.labelFontSize * 1.08 : layout.labelFontSize, weight: .bold))
                     .foregroundStyle(Color.white.opacity(0.96))
                     .lineLimit(1)
                     .minimumScaleFactor(0.64)
                 if layout.style.durationLabelsEnabled {
                     Text(segment.durationText)
-                        .font(.custom(element.style.fontName, size: layout.durationFontSize).weight(.semibold))
+                        .font(.overlayFont(family: element.style.fontName, size: layout.durationFontSize, weight: .semibold))
                         .monospacedDigit()
                         .foregroundStyle(Color.white.opacity(0.86))
                         .lineLimit(1)
@@ -142,7 +142,7 @@ struct IntervalTimelineOverlayView: View {
                 .fill(Color(intervalTimeline: layout.style.markerColor).opacity(0.92))
                 .frame(width: 10 * element.scale, height: layout.markerTriangleHeight)
             Text(layout.markerLabel)
-                .font(.custom(layout.style.markerFontName.isEmpty ? element.style.fontName : layout.style.markerFontName, size: layout.style.markerFontSize * element.scale).weight(layout.style.markerFontWeight.swiftUIFontWeight))
+                .font(.overlayFont(family: layout.style.markerFontName.isEmpty ? element.style.fontName : layout.style.markerFontName, size: layout.style.markerFontSize * element.scale, weight: layout.style.markerFontWeight.swiftUIFontWeight))
                 .foregroundStyle(Color(intervalTimeline: layout.style.markerColor).opacity(0.88))
                 .frame(height: layout.markerLabelHeight)
                 .lineLimit(1)

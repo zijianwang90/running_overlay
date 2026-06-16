@@ -892,13 +892,13 @@ private struct SharedStatsBarContentView: View {
     private func itemView(_ item: SharedStatsBarItemData) -> some View {
         VStack(alignment: .center, spacing: 1) {
             Text(item.value + (item.unit.isEmpty ? "" : " \(item.unit)"))
-                .font(.custom(valueFontName, size: valueFontSize).weight(Font.Weight(valueFontWeight)))
+                .font(.overlayFont(family: valueFontName, size: valueFontSize, weight: Font.Weight(valueFontWeight)))
                 .foregroundStyle(valueColor)
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Text(item.label.uppercased())
-                .font(.custom(labelFontName, size: labelFontSize).weight(Font.Weight(labelFontWeight)))
+                .font(.overlayFont(family: labelFontName, size: labelFontSize, weight: Font.Weight(labelFontWeight)))
                 .foregroundStyle(labelColor)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
@@ -1038,7 +1038,7 @@ struct RouteMapOverlayView: View {
 
                 if layout.projectedPoints.isEmpty {
                     Text("NO GPS")
-                        .font(.custom(element.style.fontName, size: max(layout.rect.width * 0.09, 10)).weight(.semibold))
+                        .font(.overlayFont(family: element.style.fontName, size: max(layout.rect.width * 0.09, 10), weight: .semibold))
                         .foregroundStyle(Color(element.style.foregroundColor).opacity(0.72))
                 } else {
                     routePath(points: relativePoints)
@@ -1464,12 +1464,12 @@ struct TextPresetOverlayView: View {
         let accent = Color(element.style.accentColor)
         let valueAndUnit = HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.14) {
             Text(layout.components.value)
-                .font(.custom(element.style.fontName, size: layout.fontSize * 0.92).weight(.bold))
+                .font(.overlayFont(family: element.style.fontName, size: layout.fontSize * 0.92, weight: .bold))
                 .tracking(-layout.fontSize * 0.009)
                 .foregroundStyle(valueTextColor)
             if element.style.showUnit, !layout.components.unit.isEmpty {
                 Text(layout.components.unit)
-                    .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
+                    .font(.overlayFont(family: element.style.fontName, size: layout.unitFontSize, weight: .medium))
                     .foregroundStyle(unitTextColor)
             }
         }
@@ -1477,7 +1477,7 @@ struct TextPresetOverlayView: View {
             if element.style.showLabel, !layout.components.label.isEmpty {
                 HStack(alignment: labelVAlignment, spacing: layout.fontSize * 0.32) {
                     Text(layout.components.label.uppercased())
-                        .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.medium))
+                        .font(.overlayFont(family: element.style.fontName, size: layout.labelFontSize, weight: .medium))
                         .tracking(layout.labelFontSize * 0.10)
                         .foregroundStyle(labelTextColor)
                         .multilineTextAlignment(labelTextAlignmentSwiftUI)
@@ -1515,7 +1515,7 @@ struct TextPresetOverlayView: View {
         VStack(alignment: .leading, spacing: layout.fontSize * 0.10) {
             if element.style.showLabel, !layout.components.label.isEmpty {
                 Text(layout.components.label.uppercased())
-                    .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.semibold))
+                    .font(.overlayFont(family: element.style.fontName, size: layout.labelFontSize, weight: .semibold))
                     .tracking(layout.labelFontSize * 0.18)
                     .foregroundStyle(labelColor)
                     .multilineTextAlignment(labelTextAlignmentSwiftUI)
@@ -1531,13 +1531,13 @@ struct TextPresetOverlayView: View {
             // frame alignment. The user wants unit-align to behave independently
             // from value-align — sharing an HStack would glue them together.
             Text(layout.components.value)
-                .font(.custom(element.style.fontName, size: layout.fontSize).weight(.bold))
+                .font(.overlayFont(family: element.style.fontName, size: layout.fontSize, weight: .bold))
                 .tracking(-layout.fontSize * 0.012)
                 .foregroundStyle(valueTextColor)
                 .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
             if element.style.showUnit, !layout.components.unit.isEmpty {
                 Text(layout.components.unit)
-                    .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
+                    .font(.overlayFont(family: element.style.fontName, size: layout.unitFontSize, weight: .medium))
                     .foregroundStyle(unitTextColor)
                     .frame(maxWidth: .infinity, alignment: unitStackFrameAlignment)
             }
@@ -1550,14 +1550,14 @@ struct TextPresetOverlayView: View {
         let accent = Color(element.style.accentColor)
         HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.14) {
             Text(layout.components.value)
-                .font(.custom(element.style.fontName, size: layout.fontSize).weight(.bold))
+                .font(.overlayFont(family: element.style.fontName, size: layout.fontSize, weight: .bold))
                 .tracking(-layout.fontSize * 0.010)
                 .foregroundStyle(valueTextColor)
                 .shadow(color: accent.opacity(0.80), radius: layout.fontSize * 0.34)
                 .shadow(color: accent.opacity(0.36), radius: layout.fontSize * 0.62)
             if element.style.showUnit, !layout.components.unit.isEmpty {
                 Text(layout.components.unit)
-                    .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.semibold))
+                    .font(.overlayFont(family: element.style.fontName, size: layout.unitFontSize, weight: .semibold))
                     .foregroundStyle(unitTextColor)
                     .shadow(color: accent.opacity(0.65), radius: layout.fontSize * 0.24)
             }
@@ -1576,20 +1576,20 @@ struct TextPresetOverlayView: View {
         VStack(alignment: .leading, spacing: layout.fontSize * 0.10) {
             if element.style.showLabel, !layout.components.label.isEmpty {
                 Text(layout.components.label.uppercased())
-                    .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.bold))
+                    .font(.overlayFont(family: element.style.fontName, size: layout.labelFontSize, weight: .bold))
                     .tracking(layout.labelFontSize * 0.10)
                     .foregroundStyle(labelColor)
                     .multilineTextAlignment(labelTextAlignmentSwiftUI)
                     .frame(maxWidth: .infinity, alignment: labelStackFrameAlignment)
             }
             Text(layout.components.value)
-                .font(.custom(element.style.fontName, size: layout.fontSize).weight(.bold))
+                .font(.overlayFont(family: element.style.fontName, size: layout.fontSize, weight: .bold))
                 .tracking(-layout.fontSize * 0.010)
                 .foregroundStyle(valueTextColor)
                 .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
             if element.style.showUnit, !layout.components.unit.isEmpty {
                 Text(layout.components.unit)
-                    .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
+                    .font(.overlayFont(family: element.style.fontName, size: layout.unitFontSize, weight: .medium))
                     .foregroundStyle(unitTextColor)
                     .frame(maxWidth: .infinity, alignment: unitStackFrameAlignment)
             }
@@ -1620,20 +1620,20 @@ struct TextPresetOverlayView: View {
         VStack(alignment: .leading, spacing: layout.fontSize * 0.04) {
             if element.style.showLabel, !layout.components.label.isEmpty {
                 Text(layout.components.label.uppercased())
-                    .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.bold))
+                    .font(.overlayFont(family: element.style.fontName, size: layout.labelFontSize, weight: .bold))
                     .tracking(layout.labelFontSize * 0.18)
                     .foregroundStyle(labelColor)
                     .multilineTextAlignment(labelTextAlignmentSwiftUI)
                     .frame(maxWidth: .infinity, alignment: labelStackFrameAlignment)
             }
             Text(layout.components.value)
-                .font(.custom(element.style.fontName, size: layout.fontSize).weight(.heavy))
+                .font(.overlayFont(family: element.style.fontName, size: layout.fontSize, weight: .heavy))
                 .tracking(-layout.fontSize * 0.018)
                 .foregroundStyle(valueTextColor)
                 .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
             if element.style.showUnit, !layout.components.unit.isEmpty {
                 Text(layout.components.unit)
-                    .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
+                    .font(.overlayFont(family: element.style.fontName, size: layout.unitFontSize, weight: .medium))
                     .foregroundStyle(unitTextColor)
                     .frame(maxWidth: .infinity, alignment: unitStackFrameAlignment)
             }
@@ -1695,13 +1695,13 @@ struct TextPresetOverlayView: View {
         VStack(alignment: .leading, spacing: layout.fontSize * 0.06) {
             if element.style.showLabel, !layout.components.label.isEmpty {
                 Text(layout.components.label.uppercased())
-                    .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.regular))
+                    .font(.overlayFont(family: element.style.fontName, size: layout.labelFontSize, weight: .regular))
                     .tracking(layout.labelFontSize * 0.12)
                     .foregroundStyle(heartRateZoneTextPaletteActive ? labelTextColor : foreground.opacity(0.28))
             }
             HStack(alignment: .firstTextBaseline, spacing: layout.fontSize * 0.18) {
                 Text(layout.components.value)
-                    .font(.custom(element.style.fontName, size: layout.fontSize).weight(.light))
+                    .font(.overlayFont(family: element.style.fontName, size: layout.fontSize, weight: .light))
                     .tracking(-layout.fontSize * 0.02)
                     .foregroundStyle(
                         heartRateZoneTextPaletteActive
@@ -1710,7 +1710,7 @@ struct TextPresetOverlayView: View {
                     )
                 if element.style.showUnit, !layout.components.unit.isEmpty {
                     Text(layout.components.unit)
-                        .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.regular))
+                        .font(.overlayFont(family: element.style.fontName, size: layout.unitFontSize, weight: .regular))
                         .foregroundStyle(heartRateZoneTextPaletteActive ? unitTextColor : foreground.opacity(0.30))
                 }
             }
@@ -1728,17 +1728,17 @@ struct TextPresetOverlayView: View {
             VStack(alignment: .leading, spacing: layout.fontSize * 0.06) {
                 if element.style.showLabel, !layout.components.label.isEmpty {
                     Text(layout.components.label.uppercased())
-                        .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.regular))
+                        .font(.overlayFont(family: element.style.fontName, size: layout.labelFontSize, weight: .regular))
                         .tracking(layout.labelFontSize * 0.12)
                         .foregroundStyle(heartRateZoneTextPaletteActive ? labelTextColor : foreground.opacity(0.32))
                 }
                 Text(layout.components.value)
-                    .font(.custom(element.style.fontName, size: layout.fontSize).weight(.bold))
+                    .font(.overlayFont(family: element.style.fontName, size: layout.fontSize, weight: .bold))
                     .tracking(-layout.fontSize * 0.05)
                     .foregroundStyle(valueTextColor)
                 if element.style.showUnit, !layout.components.unit.isEmpty {
                     Text(layout.components.unit)
-                        .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.regular))
+                        .font(.overlayFont(family: element.style.fontName, size: layout.unitFontSize, weight: .regular))
                         .foregroundStyle(heartRateZoneTextPaletteActive ? unitTextColor : foreground.opacity(0.38))
                 }
             }
@@ -1752,12 +1752,12 @@ struct TextPresetOverlayView: View {
         VStack(alignment: .leading, spacing: layout.fontSize * 0.05) {
             if element.style.showLabel, !layout.components.label.isEmpty {
                 Text(layout.components.label.uppercased())
-                    .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.bold))
+                    .font(.overlayFont(family: element.style.fontName, size: layout.labelFontSize, weight: .bold))
                     .tracking(layout.labelFontSize * 0.16)
                     .foregroundStyle(heartRateZoneTextPaletteActive ? labelTextColor : accent)
             }
             Text(layout.components.value)
-                .font(.custom(element.style.fontName, size: layout.fontSize).weight(.heavy))
+                .font(.overlayFont(family: element.style.fontName, size: layout.fontSize, weight: .heavy))
                 .tracking(-layout.fontSize * 0.06)
                 .foregroundStyle(valueTextColor)
             if element.style.showUnit, !layout.components.unit.isEmpty {
@@ -1769,7 +1769,7 @@ struct TextPresetOverlayView: View {
                         .fill(accent)
                         .frame(width: max(layout.fontSize * 0.14, 4), height: max(layout.fontSize * 0.14, 4))
                     Text(layout.components.unit)
-                        .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.regular))
+                        .font(.overlayFont(family: element.style.fontName, size: layout.unitFontSize, weight: .regular))
                         .foregroundStyle(heartRateZoneTextPaletteActive ? unitTextColor : foreground.opacity(0.35))
                 }
             }
@@ -1806,17 +1806,17 @@ struct TextPresetOverlayView: View {
 
     private var valueText: Text {
         Text(layout.components.value)
-            .font(.custom(element.style.fontName, size: layout.fontSize).weight(Font.Weight(element.style.fontWeight)))
+            .font(.overlayFont(family: element.style.fontName, size: layout.fontSize, weight: Font.Weight(element.style.fontWeight)))
             .foregroundColor(valueTextColor)
     }
 
     private var unitText: Text {
         Text(layout.components.unit)
-            .font(.custom(layout.unitFontName, size: layout.unitFontSize).weight(Font.Weight(layout.unitFontWeight)))
+            .font(.overlayFont(family: layout.unitFontName, size: layout.unitFontSize, weight: Font.Weight(layout.unitFontWeight)))
     }
 
     private var labelFont: Font {
-        .custom(layout.labelFontName, size: layout.labelFontSize).weight(Font.Weight(layout.labelFontWeight))
+        .overlayFont(family: layout.labelFontName, size: layout.labelFontSize, weight: Font.Weight(layout.labelFontWeight))
     }
 
     private var background: Color {
@@ -1920,10 +1920,10 @@ struct TextPresetOverlayView: View {
     @ViewBuilder
     private var bigNumberView: some View {
         let value = Text(layout.components.value)
-            .font(.custom(element.style.fontName, size: layout.fontSize * 1.95).weight(.bold))
+            .font(.overlayFont(family: element.style.fontName, size: layout.fontSize * 1.95, weight: .bold))
             .foregroundStyle(valueTextColor)
         let unit = Text(layout.components.unit)
-            .font(.custom(element.style.fontName, size: layout.unitFontSize * 1.25).weight(.bold))
+            .font(.overlayFont(family: element.style.fontName, size: layout.unitFontSize * 1.25, weight: .bold))
             .foregroundStyle(unitTextColor)
         let label = Text(layout.components.label)
             .font(labelFont)
@@ -2034,12 +2034,12 @@ struct TextPresetOverlayView: View {
             .foregroundStyle(labelTextColor)
             .multilineTextAlignment(labelTextAlignmentSwiftUI)
         let unit = Text(layout.components.unit)
-            .font(.custom(layout.unitFontName, size: layout.unitFontSize).weight(Font.Weight(layout.unitFontWeight)))
+            .font(.overlayFont(family: layout.unitFontName, size: layout.unitFontSize, weight: Font.Weight(layout.unitFontWeight)))
             .foregroundStyle(unitTextColor)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
         let value = Text(layout.components.value)
-            .font(.custom(element.style.fontName, size: layout.fontSize).weight(.semibold))
+            .font(.overlayFont(family: element.style.fontName, size: layout.fontSize, weight: .semibold))
             .tracking(-layout.fontSize * 0.012)
             .foregroundStyle(valueTextColor)
         let showLabel = element.style.showLabel && !layout.components.label.isEmpty
@@ -2270,13 +2270,13 @@ struct RunningGaugeOverlayView: View {
         VStack(spacing: max(region.unitFontSize * 0.10, 1)) {
             if config.showLabel {
                 Text(label)
-                    .font(.custom(style.fontName, size: region.labelFontSize).weight(swiftFontWeight(config.labelWeight)))
+                    .font(.overlayFont(family: style.fontName, size: region.labelFontSize, weight: swiftFontWeight(config.labelWeight)))
                     .foregroundStyle(labelColor)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
             Text(region.components.value)
-                .font(.custom(style.fontName, size: region.valueFontSize).weight(swiftFontWeight(config.valueWeight)))
+                .font(.overlayFont(family: style.fontName, size: region.valueFontSize, weight: swiftFontWeight(config.valueWeight)))
                 .foregroundStyle(valueColor)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
@@ -2289,7 +2289,7 @@ struct RunningGaugeOverlayView: View {
                 )
             if config.showUnit, !region.components.unit.isEmpty {
                 Text(region.components.unit)
-                    .font(.custom(style.fontName, size: region.unitFontSize).weight(.medium))
+                    .font(.overlayFont(family: style.fontName, size: region.unitFontSize, weight: .medium))
                     .foregroundStyle(labelColor)
                     .lineLimit(1)
             }
@@ -2675,7 +2675,7 @@ struct DistanceTimelineOverlayView: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 if layout.style.showLabel {
                     Text(layout.label.uppercased())
-                        .font(.custom(layout.style.labelFontName, size: layout.labelFontSize).weight(Font.Weight(layout.style.labelFontWeight)))
+                        .font(.overlayFont(family: layout.style.labelFontName, size: layout.labelFontSize, weight: Font.Weight(layout.style.labelFontWeight)))
                         .foregroundStyle(Color(distanceTimeline: layout.style.labelColor))
                 }
                 Spacer(minLength: 6)
@@ -2683,7 +2683,7 @@ struct DistanceTimelineOverlayView: View {
             HStack(alignment: .firstTextBaseline, spacing: 0) {
                 if layout.style.showValue {
                     Text(layout.valueText)
-                        .font(.custom(element.style.fontName, size: valueFontSize).weight(valueWeight))
+                        .font(.overlayFont(family: element.style.fontName, size: valueFontSize, weight: valueWeight))
                         .foregroundStyle(valueColor)
                         .monospacedDigit()
                         .lineLimit(1)
@@ -2693,7 +2693,7 @@ struct DistanceTimelineOverlayView: View {
                     HStack(alignment: .firstTextBaseline, spacing: scaled(layout.style.customValueSpacing)) {
                         ForEach(Array(layout.customValues.enumerated()), id: \.offset) { _, item in
                             Text(item.value.isEmpty ? item.label : item.value)
-                                .font(.custom(element.style.fontName, size: scaled(layout.style.customValueFontSize)).weight(.semibold))
+                                .font(.overlayFont(family: element.style.fontName, size: scaled(layout.style.customValueFontSize), weight: .semibold))
                                 .foregroundStyle(Color(distanceTimeline: layout.style.customValueColor).opacity(layout.style.customValueOpacity))
                                 .monospacedDigit()
                                 .lineLimit(1)
@@ -2769,7 +2769,7 @@ struct DistanceTimelineOverlayView: View {
             textLineHeight: textH
         ) + textH / 2
         let pt = markerDisplayPoint(track: track)
-        let axisFont = Font.custom(layout.style.axisLabelFontName, size: layout.unitFontSize).weight(Font.Weight(layout.style.axisLabelFontWeight))
+        let axisFont = Font.overlayFont(family: layout.style.axisLabelFontName, size: layout.unitFontSize, weight: Font.Weight(layout.style.axisLabelFontWeight))
         return Text(layout.markerDistanceText)
             .font(axisFont)
             .foregroundStyle(Color(distanceTimeline: layout.style.axisLabelColor))
@@ -2782,7 +2782,7 @@ struct DistanceTimelineOverlayView: View {
     private var axisLabels: some View {
         let track = localRect(layout.trackRect)
         let textH = CGFloat(layout.unitFontSize * 1.3)
-        let axisFont = Font.custom(layout.style.axisLabelFontName, size: layout.unitFontSize).weight(Font.Weight(layout.style.axisLabelFontWeight))
+        let axisFont = Font.overlayFont(family: layout.style.axisLabelFontName, size: layout.unitFontSize, weight: Font.Weight(layout.style.axisLabelFontWeight))
         let axisColor = Color(distanceTimeline: layout.style.axisLabelColor)
         return ZStack {
             if layout.style.showAxisLabels {
@@ -3116,14 +3116,14 @@ struct ElevationChartOverlayView: View {
                 if layout.style.bigNumbersEnabled {
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
                         Text(layout.bigNumberText.value)
-                            .font(.custom(element.style.fontName, size: layout.valueFontSize).weight(.semibold))
+                            .font(.overlayFont(family: element.style.fontName, size: layout.valueFontSize, weight: .semibold))
                             .foregroundStyle(Color(element.style.foregroundColor))
                             .monospacedDigit()
                         Text(layout.bigNumberText.unit)
-                            .font(.custom(element.style.fontName, size: layout.unitFontSize).weight(.medium))
+                            .font(.overlayFont(family: element.style.fontName, size: layout.unitFontSize, weight: .medium))
                             .foregroundStyle(Color(element.style.foregroundColor).opacity(0.86))
                         Text(layout.bigNumberText.shortLabel)
-                            .font(.custom(element.style.fontName, size: layout.labelFontSize).weight(.medium))
+                            .font(.overlayFont(family: element.style.fontName, size: layout.labelFontSize, weight: .medium))
                             .foregroundStyle(Color(element.style.foregroundColor).opacity(0.62))
                             .padding(.leading, 2)
                     }
@@ -3262,7 +3262,7 @@ struct ElevationChartOverlayView: View {
                 .position(point)
             if layout.style.markerLabelEnabled {
                 Text(layout.label)
-                    .font(.custom(element.style.fontName, size: max(layout.labelFontSize, 9)).weight(.semibold))
+                    .font(.overlayFont(family: element.style.fontName, size: max(layout.labelFontSize, 9), weight: .semibold))
                     .foregroundStyle(.white)
                     .monospacedDigit()
                     .padding(.horizontal, 7)
@@ -3284,7 +3284,7 @@ struct ElevationChartOverlayView: View {
             Text("m")
                 .position(x: size.width - 10, y: 8)
         }
-        .font(.custom(element.style.fontName, size: max(layout.labelFontSize * 0.78, 8)).weight(.medium))
+        .font(.overlayFont(family: element.style.fontName, size: max(layout.labelFontSize * 0.78, 8), weight: .medium))
         .foregroundStyle(Color(element.style.foregroundColor).opacity(0.58))
     }
 

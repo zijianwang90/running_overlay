@@ -174,12 +174,12 @@ struct IntervalHUDBarOverlayView: View {
     private var phaseCell: some View {
         VStack(spacing: 3) {
             Text(layout.phaseLabel)
-                .font(.custom(layout.phaseText.fontName, size: layout.phaseText.fontSize).weight(layout.phaseText.fontWeight.swiftUIFontWeight))
+                .font(.overlayFont(family: layout.phaseText.fontName, size: layout.phaseText.fontSize, weight: layout.phaseText.fontWeight.swiftUIFontWeight))
                 .foregroundStyle(Color(intervalHUD: layout.phaseColor))
                 .monospacedDigit()
                 .lineLimit(1)
             Text(layout.phaseDetail)
-                .font(.custom(layout.phaseDetailText.fontName, size: layout.phaseDetailText.fontSize).weight(layout.phaseDetailText.fontWeight.swiftUIFontWeight))
+                .font(.overlayFont(family: layout.phaseDetailText.fontName, size: layout.phaseDetailText.fontSize, weight: layout.phaseDetailText.fontWeight.swiftUIFontWeight))
                 .foregroundStyle(Color(intervalHUD: element.style.foregroundColor).opacity(0.88))
                 .monospacedDigit()
                 .lineLimit(1)
@@ -190,16 +190,16 @@ struct IntervalHUDBarOverlayView: View {
     private var remainingCell: some View {
         VStack(spacing: 3) {
             Text(layout.remainingPrimaryText)
-                .font(.custom(layout.primaryValueText.fontName, size: layout.primaryValueText.fontSize).weight(layout.primaryValueText.fontWeight.swiftUIFontWeight))
+                .font(.overlayFont(family: layout.primaryValueText.fontName, size: layout.primaryValueText.fontSize, weight: layout.primaryValueText.fontWeight.swiftUIFontWeight))
                 .foregroundStyle(Color(intervalHUD: element.style.foregroundColor))
                 .monospacedDigit()
                 .lineLimit(1)
             HStack(spacing: 6) {
                 Text(layout.remainingPrimaryLabel)
-                    .font(.custom(layout.labelText.fontName, size: layout.labelText.fontSize).weight(layout.labelText.fontWeight.swiftUIFontWeight))
+                    .font(.overlayFont(family: layout.labelText.fontName, size: layout.labelText.fontSize, weight: layout.labelText.fontWeight.swiftUIFontWeight))
                     .foregroundStyle(Color(intervalHUD: element.style.labelColor).opacity(0.72))
                 Text(layout.remainingSecondaryText)
-                    .font(.custom(layout.metricUnitText.fontName, size: layout.metricUnitText.fontSize).weight(layout.metricUnitText.fontWeight.swiftUIFontWeight))
+                    .font(.overlayFont(family: layout.metricUnitText.fontName, size: layout.metricUnitText.fontSize, weight: layout.metricUnitText.fontWeight.swiftUIFontWeight))
                     .foregroundStyle(Color(intervalHUD: element.style.labelColor).opacity(0.72))
                     .monospacedDigit()
             }
@@ -211,11 +211,11 @@ struct IntervalHUDBarOverlayView: View {
     private func mainCell(label: String, value: String) -> some View {
         VStack(spacing: 4) {
             Text(label)
-                .font(.custom(layout.labelText.fontName, size: layout.labelText.fontSize).weight(layout.labelText.fontWeight.swiftUIFontWeight))
+                .font(.overlayFont(family: layout.labelText.fontName, size: layout.labelText.fontSize, weight: layout.labelText.fontWeight.swiftUIFontWeight))
                 .foregroundStyle(Color(intervalHUD: element.style.labelColor).opacity(0.66))
                 .lineLimit(1)
             Text(value)
-                .font(.custom(layout.primaryValueText.fontName, size: layout.primaryValueText.fontSize * 0.86).weight(layout.primaryValueText.fontWeight.swiftUIFontWeight))
+                .font(.overlayFont(family: layout.primaryValueText.fontName, size: layout.primaryValueText.fontSize * 0.86, weight: layout.primaryValueText.fontWeight.swiftUIFontWeight))
                 .foregroundStyle(Color(intervalHUD: element.style.foregroundColor))
                 .monospacedDigit()
                 .lineLimit(1)
@@ -226,18 +226,18 @@ struct IntervalHUDBarOverlayView: View {
     private func metricCell(_ item: IntervalHUDBarMetricItem) -> some View {
         VStack(spacing: 4) {
             Text(item.label)
-                .font(.custom(layout.labelText.fontName, size: layout.labelText.fontSize).weight(layout.labelText.fontWeight.swiftUIFontWeight))
+                .font(.overlayFont(family: layout.labelText.fontName, size: layout.labelText.fontSize, weight: layout.labelText.fontWeight.swiftUIFontWeight))
                 .foregroundStyle(Color(intervalHUD: element.style.labelColor).opacity(0.66))
                 .lineLimit(1)
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(item.value)
-                    .font(.custom(layout.metricValueText.fontName, size: layout.metricValueText.fontSize).weight(layout.metricValueText.fontWeight.swiftUIFontWeight))
+                    .font(.overlayFont(family: layout.metricValueText.fontName, size: layout.metricValueText.fontSize, weight: layout.metricValueText.fontWeight.swiftUIFontWeight))
                     .foregroundStyle(Color(intervalHUD: item.accentColor ?? element.style.foregroundColor))
                     .monospacedDigit()
                     .lineLimit(1)
                 if !item.unit.isEmpty {
                     Text(item.unit)
-                        .font(.custom(layout.metricUnitText.fontName, size: layout.metricUnitText.fontSize).weight(layout.metricUnitText.fontWeight.swiftUIFontWeight))
+                        .font(.overlayFont(family: layout.metricUnitText.fontName, size: layout.metricUnitText.fontSize, weight: layout.metricUnitText.fontWeight.swiftUIFontWeight))
                         .foregroundStyle(Color(intervalHUD: element.style.unitColor).opacity(0.76))
                         .lineLimit(1)
                 }
@@ -438,7 +438,7 @@ struct IntervalHUDBarOverlayView: View {
                 .fill(Color(intervalHUD: marker.color).opacity(0.78))
                 .frame(width: max(1.2 * element.scale, 1), height: thresholdMarkerLineHeight)
             Text(marker.valueText)
-                .font(.custom(layout.metricUnitText.fontName, size: zoneMarkerValueFontSize(marker)).weight(layout.metricUnitText.fontWeight.swiftUIFontWeight))
+                .font(.overlayFont(family: layout.metricUnitText.fontName, size: zoneMarkerValueFontSize(marker), weight: layout.metricUnitText.fontWeight.swiftUIFontWeight))
                 .foregroundStyle(Color(intervalHUD: marker.color).opacity(0.78))
                 .lineLimit(1)
         }
@@ -447,7 +447,7 @@ struct IntervalHUDBarOverlayView: View {
 
     private func zoneMarkerValue(_ marker: IntervalHUDBarZoneMarker) -> some View {
         Text(marker.valueText)
-            .font(.custom(layout.metricUnitText.fontName, size: zoneMarkerValueFontSize(marker)).weight(layout.metricUnitText.fontWeight.swiftUIFontWeight))
+            .font(.overlayFont(family: layout.metricUnitText.fontName, size: zoneMarkerValueFontSize(marker), weight: layout.metricUnitText.fontWeight.swiftUIFontWeight))
             .foregroundStyle(Color(intervalHUD: marker.color))
             .monospacedDigit()
             .lineLimit(1)
