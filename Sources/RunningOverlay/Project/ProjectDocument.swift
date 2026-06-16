@@ -436,6 +436,9 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements.append(element)
         selection = .overlayElement(element.id)
         statusMessage = "Added \(type.label) overlay."
+        if type == .weatherWidget {
+            fetchWeatherForNewWeatherWidget(element.id)
+        }
     }
 
     private func makeOverlayElement(type: OverlayElementType, position: CGPoint, scale: Double) -> OverlayElement {
@@ -499,6 +502,9 @@ final class ProjectDocument: ObservableObject {
         }
         if type == .weatherWidget {
             style.weatherWidget = WeatherWidgetStyle.preset(.simpleCard)
+            style.weatherWidget.dataSource = .openMeteo
+            style.weatherWidget.locationText = ""
+            style.weatherWidget.cachedWeather = nil
         }
         if type == .intervalHUDBar {
             style.intervalHUDBar = .default
@@ -1728,14 +1734,22 @@ final class ProjectDocument: ObservableObject {
     }
 
     func fetchWeatherForActivityLocation(_ elementID: OverlayElement.ID) {
-        fetchWeather(elementID, mode: .activityLocation)
+        fetchWeather(elementID, mode: .activityLocation, registersUndo: true)
     }
 
     func fetchWeatherForCurrentLocation(_ elementID: OverlayElement.ID) {
-        fetchWeather(elementID, mode: .currentLocation)
+        fetchWeather(elementID, mode: .currentLocation, registersUndo: true)
     }
 
-    private func fetchWeather(_ elementID: OverlayElement.ID, mode: WeatherFetchLocationMode) {
+    private func fetchWeatherForNewWeatherWidget(_ elementID: OverlayElement.ID) {
+        guard activity.routePoints.first != nil else {
+            statusMessage = "Added Weather Widget overlay. Weather unavailable until the FIT route has GPS."
+            return
+        }
+        fetchWeather(elementID, mode: .activityLocation, registersUndo: false)
+    }
+
+    private func fetchWeather(_ elementID: OverlayElement.ID, mode: WeatherFetchLocationMode, registersUndo: Bool) {
         guard overlayLayout.elements.contains(where: { $0.id == elementID }) else {
             return
         }
@@ -1765,15 +1779,19 @@ final class ProjectDocument: ObservableObject {
                 )
                 payload.resolvedLocation = await resolvedLocation
                 payload.fetchLocationMode = mode
-                applyFetchedWeatherPayload(payload, to: elementID)
+                applyFetchedWeatherPayload(payload, to: elementID, registersUndo: registersUndo)
             } catch {
-                statusMessage = "Weather fetch failed: \(error.localizedDescription)"
+                statusMessage = registersUndo
+                    ? "Weather fetch failed: \(error.localizedDescription)"
+                    : "Weather unavailable; showing placeholders."
             }
         }
     }
 
-    private func applyFetchedWeatherPayload(_ payload: WeatherPayload, to elementID: OverlayElement.ID) {
-        registerUndoPoint()
+    private func applyFetchedWeatherPayload(_ payload: WeatherPayload, to elementID: OverlayElement.ID, registersUndo: Bool) {
+        if registersUndo {
+            registerUndoPoint()
+        }
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
         overlayLayout.elements[index].style.weatherWidget.dataSource = .openMeteo
         overlayLayout.elements[index].style.weatherWidget.cachedWeather = payload

@@ -8,7 +8,7 @@ final class FontLibraryManager {
 
     nonisolated private static let favoritesKey = "fontLibraryFavorites"
     nonisolated private static let defaultFamilyKey = "fontLibraryDefaultFamily"
-    nonisolated private static let fallbackDefaults: [String] = ["Menlo", "PT Mono", "Monaco", "Andale Mono"]
+    nonisolated private static let fallbackDefaults: [String] = ["PT Mono", "Monaco", "Menlo", "Andale Mono"]
 
     /// Nonisolated accessor so non-@MainActor types (OverlayStyle, RunningGaugeModel)
     /// can read the current default font name from UserDefaults.

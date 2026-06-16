@@ -6,19 +6,8 @@ private extension Color {
     }
 }
 
-private extension Font.Weight {
-    init(_ overlayWeight: OverlayFontWeight) {
-        switch overlayWeight {
-        case .regular: self = .regular
-        case .medium: self = .medium
-        case .semibold: self = .semibold
-        case .bold: self = .bold
-        }
-    }
-}
-
 private func weatherFont(_ style: WeatherTextStyle, scale: Double) -> Font {
-    .custom(style.fontName, size: max(1, style.fontSize * scale)).weight(Font.Weight(style.fontWeight))
+    .overlayFont(family: style.fontName, size: max(1, style.fontSize * scale), overlayWeight: style.fontWeight)
 }
 
 private extension View {

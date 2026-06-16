@@ -186,7 +186,7 @@ struct ProjectSettingsTests {
 
         manager.restoreDefaults()
 
-        #expect(manager.favoriteFamilies == ["Menlo", "PT Mono", "Monaco", "Andale Mono"])
-        #expect(manager.defaultFamily == "Menlo")
+        #expect(manager.favoriteFamilies == ["PT Mono", "Monaco", "Menlo", "Andale Mono"])
+        #expect(manager.defaultFamily == "PT Mono")
     }
 }

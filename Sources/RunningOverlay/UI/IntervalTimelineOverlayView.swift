@@ -42,7 +42,7 @@ struct IntervalTimelineOverlayView: View {
 
     private func ellipsis() -> some View {
         Text("···")
-            .font(.custom(element.style.fontName, size: layout.labelFontSize * 0.95).weight(.bold))
+            .font(.overlayFont(family: element.style.fontName, size: layout.labelFontSize * 0.95, weight: .bold))
             .foregroundStyle(Color(intervalTimeline: element.style.foregroundColor).opacity(0.50))
     }
 
@@ -69,17 +69,18 @@ struct IntervalTimelineOverlayView: View {
             VStack(spacing: 1 * element.scale) {
                 if segment.isCurrent, let repText = layout.repText {
                     Text(repText)
-                        .font(.custom(element.style.fontName, size: max(layout.durationFontSize * 0.82, 8)).weight(.semibold))
+                        .font(.overlayFont(family: element.style.fontName, size: max(layout.durationFontSize * 0.82, 8), weight: .semibold))
                         .foregroundStyle(Color.white.opacity(0.78))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                 }
                 ForEach(Array(segment.labelLines.enumerated()), id: \.offset) { offset, line in
                     Text(line)
-                        .font(.custom(
-                            element.style.fontName,
-                            size: offset == 0 && segment.isCurrent ? layout.labelFontSize * 1.08 : (offset == 0 ? layout.labelFontSize : layout.durationFontSize)
-                        ).weight(offset == 0 ? .bold : .semibold))
+                        .font(.overlayFont(
+                            family: element.style.fontName,
+                            size: offset == 0 && segment.isCurrent ? layout.labelFontSize * 1.08 : (offset == 0 ? layout.labelFontSize : layout.durationFontSize),
+                            weight: offset == 0 ? .bold : .semibold
+                        ))
                         .monospacedDigit()
                         .foregroundStyle(Color.white.opacity(offset == 0 ? 0.96 : 0.86))
                         .lineLimit(1)
@@ -101,7 +102,11 @@ struct IntervalTimelineOverlayView: View {
                 .fill(Color(intervalTimeline: layout.style.markerColor).opacity(0.92))
                 .frame(width: 10 * element.scale, height: layout.markerTriangleHeight)
             Text(layout.markerLabel)
-                .font(.custom(layout.style.markerFontName.isEmpty ? element.style.fontName : layout.style.markerFontName, size: layout.style.markerFontSize * element.scale).weight(layout.style.markerFontWeight.swiftUIFontWeight))
+                .font(.overlayFont(
+                    family: layout.style.markerFontName.isEmpty ? element.style.fontName : layout.style.markerFontName,
+                    size: layout.style.markerFontSize * element.scale,
+                    overlayWeight: layout.style.markerFontWeight
+                ))
                 .foregroundStyle(Color(intervalTimeline: layout.style.markerColor).opacity(0.88))
                 .frame(height: layout.markerLabelHeight)
                 .lineLimit(1)
@@ -136,16 +141,5 @@ private extension View {
                 x: element.style.shadowOffsetX,
                 y: element.style.shadowOffsetY
             )
-    }
-}
-
-private extension OverlayFontWeight {
-    var swiftUIFontWeight: Font.Weight {
-        switch self {
-        case .regular: .regular
-        case .medium: .medium
-        case .semibold: .semibold
-        case .bold: .bold
-        }
     }
 }

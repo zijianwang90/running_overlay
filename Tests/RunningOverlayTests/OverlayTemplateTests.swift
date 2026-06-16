@@ -257,6 +257,17 @@ struct OverlayTemplateTests {
         #expect(abs(updated.width - Double(WeatherWidgetPreset.dashboardBar.defaultSize.width)) < 0.001)
     }
 
+    @Test func addedWeatherWidgetStartsWithAPIPlaceholderState() throws {
+        let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: temporaryTemplateURL()))
+
+        project.addOverlayElement(.weatherWidget)
+
+        let style = try #require(project.overlayLayout.elements.first?.style.weatherWidget)
+        #expect(style.dataSource == .openMeteo)
+        #expect(style.locationText.isEmpty)
+        #expect(style.cachedWeather == nil)
+    }
+
     @Test func applyOverlayTemplateIsUndoable() throws {
         let storeURL = temporaryTemplateURL()
         defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }
@@ -342,10 +353,15 @@ struct OverlayTemplateTests {
 
         project.applyBuiltInOverlayTemplate(easyRun)
 
-        #expect(project.overlayLayout.elements.map(\.type) == [.pace, .heartRate, .cadence, .routeMap, .distanceTimeline])
-        #expect(project.overlayLayout.elements.first?.position.x == 0.2102358908061998)
-        #expect(project.overlayLayout.elements.first?.position.y == 0.9049159976211716)
-        #expect(project.overlayLayout.elements.first?.style.textPreset == .splitLabel)
+        #expect(project.overlayLayout.elements.map(\.type) == [.pace, .heartRate, .cadence, .routeMap, .distanceTimeline, .elapsedTime, .realTime, .power, .weatherWidget])
+        #expect(project.overlayLayout.elements.first?.position.x == 0.030665921145385626)
+        #expect(project.overlayLayout.elements.first?.position.y == 0.7390206334260655)
+        #expect(project.overlayLayout.elements.first?.style.textPreset == .minimal)
+        #expect(project.overlayLayout.elements.first?.style.fontName == "Monaco")
+        #expect(project.overlayLayout.elements.first?.style.labelFontName == "PT Mono")
+        #expect(project.overlayLayout.elements.first?.style.unitFontName == "PT Mono")
+        #expect(project.overlayLayout.elements.last?.style.weatherWidget.locationTextStyle.fontName == "PT Mono")
+        #expect(project.overlayLayout.elements.last?.style.weatherWidget.temperatureTextStyle.fontName == "PT Mono")
     }
 
     private func temporaryTemplateURL() -> URL {
