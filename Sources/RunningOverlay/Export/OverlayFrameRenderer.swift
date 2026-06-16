@@ -1677,11 +1677,19 @@ struct OverlayFrameRenderer {
         let rect = layout.rect
 
         if element.style.backgroundEnabled {
-            drawRoundedRect(
-                rect,
-                color: NSColor(element.style.backgroundColor).withAlphaComponent(element.style.backgroundOpacity),
-                cornerRadius: layout.cornerRadius
-            )
+            drawIntervalTimelineContainerBackground(element: element, rect: rect, cornerRadius: layout.cornerRadius)
+        } else if element.style.shadowEnabled,
+                  element.style.shadowOpacity > 0,
+                  element.style.shadowRadius > 0 {
+            setIntervalTimelineShadow(element: element)
+        }
+        defer {
+            if !element.style.backgroundEnabled,
+               element.style.shadowEnabled,
+               element.style.shadowOpacity > 0,
+               element.style.shadowRadius > 0 {
+                NSGraphicsContext.current?.cgContext.restoreGState()
+            }
         }
         if element.style.borderEnabled {
             strokeRoundedRect(
@@ -1700,34 +1708,31 @@ struct OverlayFrameRenderer {
                 strokeRoundedRect(segment.rect, color: NSColor.white.withAlphaComponent(0.74), cornerRadius: layout.style.segmentCornerRadius * element.scale, lineWidth: 1.4 * element.scale)
             }
 
-            let lineCount = segment.isCurrent && layout.repText != nil ? 3 : (layout.style.durationLabelsEnabled ? 2 : 1)
+            let lineCount = (segment.isCurrent && layout.repText != nil ? 1 : 0) + segment.labelLines.count
+            guard lineCount > 0 else { continue }
             let lineHeight = max(segment.rect.height / Double(lineCount + 1), layout.durationFontSize)
             var textY = segment.rect.midY - lineHeight * Double(lineCount) / 2
             if segment.isCurrent, let repText = layout.repText {
                 drawIntervalTimelineText(repText, in: CGRect(x: segment.rect.minX + 3, y: textY, width: segment.rect.width - 6, height: lineHeight), fontName: element.style.fontName, fontSize: max(layout.durationFontSize * 0.82, 8), weight: .semibold, color: NSColor.white.withAlphaComponent(0.78), alignment: .center)
                 textY += lineHeight
             }
-            drawIntervalTimelineText(segment.label, in: CGRect(x: segment.rect.minX + 3, y: textY, width: segment.rect.width - 6, height: lineHeight), fontName: element.style.fontName, fontSize: segment.isCurrent ? layout.labelFontSize * 1.08 : layout.labelFontSize, weight: .bold, color: NSColor.white.withAlphaComponent(0.96), alignment: .center)
-            if layout.style.durationLabelsEnabled {
-                textY += lineHeight
-                drawIntervalTimelineText(segment.durationText, in: CGRect(x: segment.rect.minX + 3, y: textY, width: segment.rect.width - 6, height: lineHeight), fontName: element.style.fontName, fontSize: layout.durationFontSize, weight: .semibold, color: NSColor.white.withAlphaComponent(0.86), alignment: .center)
+            for (offset, line) in segment.labelLines.enumerated() {
+                if offset > 0 {
+                    textY += lineHeight
+                }
+                let isPrimary = offset == 0
+                let fontSize = isPrimary ? (segment.isCurrent ? layout.labelFontSize * 1.08 : layout.labelFontSize) : layout.durationFontSize
+                let weight: OverlayFontWeight = isPrimary ? .bold : .semibold
+                let alpha = isPrimary ? 0.96 : 0.86
+                drawIntervalTimelineText(line, in: CGRect(x: segment.rect.minX + 3, y: textY, width: segment.rect.width - 6, height: lineHeight), fontName: element.style.fontName, fontSize: fontSize, weight: weight, color: NSColor.white.withAlphaComponent(alpha), alignment: .center)
             }
         }
 
-        if layout.leftOverflowCount > 0 {
-            drawIntervalTimelineGhostLabel("WU", duration: "15:00", center: CGPoint(x: rect.minX + 18 * element.scale, y: layout.contentRect.midY), color: NSColor(layout.style.warmupColor), layout: layout, element: element)
+        if layout.style.overflowHintEnabled && layout.leftOverflowCount > 0 {
+            drawIntervalTimelineText("···", in: CGRect(x: rect.minX + layout.overflowEllipsisInset - 15 * element.scale, y: layout.contentRect.midY - 10 * element.scale, width: 30 * element.scale, height: 20 * element.scale), fontName: element.style.fontName, fontSize: layout.labelFontSize * 0.95, weight: .bold, color: NSColor(element.style.foregroundColor).withAlphaComponent(0.50), alignment: .center)
         }
-        if layout.rightOverflowCount > 0 {
-            drawIntervalTimelineGhostLabel("CD", duration: "10:00", center: CGPoint(x: rect.maxX - 18 * element.scale, y: layout.contentRect.midY), color: NSColor(layout.style.cooldownColor), layout: layout, element: element)
-        }
-
-        if layout.style.overflowPillsEnabled && layout.leftOverflowCount > 0 {
-            drawIntervalTimelineText("···", in: CGRect(x: layout.contentRect.minX + 35 * element.scale, y: layout.contentRect.midY - 10 * element.scale, width: 30 * element.scale, height: 20 * element.scale), fontName: element.style.fontName, fontSize: layout.labelFontSize * 0.95, weight: .bold, color: NSColor(element.style.foregroundColor).withAlphaComponent(0.50), alignment: .center)
-            drawIntervalTimelinePill("x\(layout.leftOverflowCount)", center: CGPoint(x: layout.contentRect.minX + 84 * element.scale, y: layout.contentRect.midY), layout: layout, element: element)
-        }
-        if layout.style.overflowPillsEnabled && layout.rightOverflowCount > 0 {
-            drawIntervalTimelinePill("x\(layout.rightOverflowCount)", center: CGPoint(x: layout.contentRect.maxX - 84 * element.scale, y: layout.contentRect.midY), layout: layout, element: element)
-            drawIntervalTimelineText("···", in: CGRect(x: layout.contentRect.maxX - 65 * element.scale, y: layout.contentRect.midY - 10 * element.scale, width: 30 * element.scale, height: 20 * element.scale), fontName: element.style.fontName, fontSize: layout.labelFontSize * 0.95, weight: .bold, color: NSColor(element.style.foregroundColor).withAlphaComponent(0.50), alignment: .center)
+        if layout.style.overflowHintEnabled && layout.rightOverflowCount > 0 {
+            drawIntervalTimelineText("···", in: CGRect(x: rect.maxX - layout.overflowEllipsisInset - 15 * element.scale, y: layout.contentRect.midY - 10 * element.scale, width: 30 * element.scale, height: 20 * element.scale), fontName: element.style.fontName, fontSize: layout.labelFontSize * 0.95, weight: .bold, color: NSColor(element.style.foregroundColor).withAlphaComponent(0.50), alignment: .center)
         }
 
         if layout.style.markerEnabled {
@@ -1757,18 +1762,30 @@ struct OverlayFrameRenderer {
         }
     }
 
-    private static func drawIntervalTimelinePill(_ text: String, center: CGPoint, layout: IntervalTimelineRenderLayout, element: OverlayElement) {
-        let rect = CGRect(x: center.x - 20 * element.scale, y: center.y - 14 * element.scale, width: 40 * element.scale, height: 28 * element.scale)
-        drawRoundedRect(rect, color: NSColor.black.withAlphaComponent(0.30), cornerRadius: 5 * element.scale)
-        strokeRoundedRect(rect, color: NSColor.white.withAlphaComponent(0.46), cornerRadius: 5 * element.scale, lineWidth: 1.4)
-        drawIntervalTimelineText(text, in: rect, fontName: element.style.fontName, fontSize: layout.pillFontSize, weight: .bold, color: NSColor(element.style.foregroundColor).withAlphaComponent(0.82), alignment: .center)
+    private static func drawIntervalTimelineContainerBackground(element: OverlayElement, rect: CGRect, cornerRadius: Double) {
+        let path = NSBezierPath(roundedRect: rect, xRadius: cornerRadius, yRadius: cornerRadius)
+        let color = NSColor(element.style.backgroundColor).withAlphaComponent(element.style.backgroundOpacity)
+        if element.style.shadowEnabled, element.style.shadowOpacity > 0, element.style.shadowRadius > 0 {
+            setIntervalTimelineShadow(element: element)
+            color.setFill()
+            path.fill()
+            NSGraphicsContext.current?.cgContext.restoreGState()
+        } else {
+            color.setFill()
+            path.fill()
+        }
     }
 
-    private static func drawIntervalTimelineGhostLabel(_ label: String, duration: String, center: CGPoint, color: NSColor, layout: IntervalTimelineRenderLayout, element: OverlayElement) {
-        let height = layout.ghostFontSize * 2.05
-        let rect = CGRect(x: center.x - 26 * element.scale, y: center.y - height / 2, width: 52 * element.scale, height: height)
-        drawIntervalTimelineText(label, in: CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: layout.ghostFontSize), fontName: element.style.fontName, fontSize: layout.ghostFontSize, weight: .bold, color: color.withAlphaComponent(0.55), alignment: .center)
-        drawIntervalTimelineText(duration, in: CGRect(x: rect.minX, y: rect.minY + layout.ghostFontSize, width: rect.width, height: layout.ghostFontSize), fontName: element.style.fontName, fontSize: layout.ghostFontSize * 0.82, weight: .semibold, color: color.withAlphaComponent(0.55), alignment: .center)
+    private static func setIntervalTimelineShadow(element: OverlayElement) {
+        let thickness = min(max(element.style.shadowThickness, 1), 4)
+        let shadowOpacity = min(element.style.shadowOpacity * (1 + (thickness - 1) * 0.16), 1)
+        let shadowRadius = element.style.shadowRadius * (1 + (thickness - 1) * 0.10)
+        NSGraphicsContext.current?.cgContext.saveGState()
+        NSGraphicsContext.current?.cgContext.setShadow(
+            offset: CGSize(width: element.style.shadowOffsetX, height: element.style.shadowOffsetY),
+            blur: shadowRadius,
+            color: NSColor(element.style.shadowColor).withAlphaComponent(shadowOpacity).cgColor
+        )
     }
 
     private static func drawIntervalTimelineText(_ text: String, in rect: CGRect, fontName: String, fontSize: Double, weight: OverlayFontWeight, color: NSColor, alignment: NSTextAlignment) {

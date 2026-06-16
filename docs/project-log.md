@@ -16,6 +16,14 @@
 - Kept backward compatibility for old project/template JSON: decoding legacy `textColorsFollowHeartRateZones = true` seeds all three new text-role flags to `true`.
 - Verification: `swift test --filter OverlayRenderModelTests`, `swift test --filter OverlayTemplateTests`.
 
+### Interval Timeline Neighbor Label Off
+
+- Added `Off` to the Interval Timeline `Neighbor` label control so non-current segments can render without any text while current segment labels remain independently configurable.
+- Updated interval timeline docs/spec and render-model coverage for hidden neighbor labels.
+- Limited the Interval Timeline rep counter to active laps only, so warmup, rest, cooldown, and unknown current segments no longer display `Rep n / total`.
+- Split current segment label controls into Work and Rest groups. Current active laps use Work Dist/Time settings, while current non-active laps can show kind text plus independent Rest Dist/Time settings.
+- Fixed Interval Timeline shadows when the background is hidden by applying the shadow to the rendered content layer in preview and export, while preserving background-layer shadows when the background is visible.
+
 ### Easy Run Default Template
 
 - Replaced the bundled `EasyRun.rotemplate` resource with the current local user template named `Template`, so the Built-in Templates `Easy Run` row applies that authored layout.
@@ -48,6 +56,16 @@
 - Added `SFSymbolCatalog`, backed by a bundled `Resources/SFSymbols/symbols.json` name catalog generated from public CoreGlyphs symbol order data. Picker results filter through current macOS renderability while preserving manual entry for newer SF Symbols.
 - Default picker browsing now starts with sport-relevant symbols, while typed search still scans the full catalog. Renderability checks are cached so repeated searches do not recreate `NSImage` probes for the same symbol names.
 - Added catalog tests for full resource loading, sport-first default browsing, full-catalog search, case-insensitive search, renderable picker results, and numeric metric default icon coverage.
+
+### Interval Timeline explicit modes and segment filters
+
+- Removed the user-facing `Max Full` threshold behavior: Centered and Full are now explicit modes, and Full no longer auto-falls back to a centered window for high lap counts.
+- Added Full mode segment layout selection with `Equal` as the default and `Duration` preserving the previous duration-proportional geometry; current segment emphasis still affects current height in either Full layout.
+- Added independent Timeline toggles for WU, Rest, and CD segments. Filtering is applied before layout, and hidden current segments no longer receive current emphasis while the marker falls back to the nearest visible segment.
+- Kept old `maxFullSegments` project data decode-compatible without writing it back in new encoded styles.
+- Simplified Centered overflow rendering to ellipsis-only edge hints. Removed WU/CD ghost endpoint labels and `xN` count boxes from preview/export, renamed the Inspector control to `Overflow Hint`, and kept old `overflowPillsEnabled` project data decode-compatible.
+- Added `Full + Equal` current width control: the Current `Width` slider starts at `Equal` and can enlarge the current segment's target share while preserving equal-width behavior at the minimum.
+- Replaced the old Interval Timeline label mode with direct label controls. Current segments now independently support distance and time rows set to Off, Live, or Remain, while non-current neighbor labels can show either distance or time. Old `primaryLabelMode` and `durationLabelsEnabled` project data remains decode-compatible but is not written back.
 
 ### Templates Pool Empty Apply Confirmation
 
