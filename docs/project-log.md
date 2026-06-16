@@ -1,5 +1,14 @@
 # Running Overlay Project Log
 
+## 2026-06-16
+
+### Easy Run Default Template
+
+- Replaced the bundled `EasyRun.rotemplate` resource with the current local user template named `Template`, so the Built-in Templates `Easy Run` row applies that authored layout.
+- Renamed the bundled Easy Run template payload from `Template` to `Easy Run` and normalized its font references to the default Font Library families: `PT Mono` and `Monaco`.
+- Updated the fresh-install Font Library default set to `PT Mono`, `Monaco`, `Menlo`, and `Andale Mono`, with `PT Mono` as the default family.
+- Verification: `swift test --filter OverlayTemplateTests`, `swift test --filter ProjectSettingsTests`.
+
 ## 2026-06-15
 
 ### Weather Widget Initial API Data
