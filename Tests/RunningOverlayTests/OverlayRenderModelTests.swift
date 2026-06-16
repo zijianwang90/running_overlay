@@ -84,6 +84,153 @@ struct OverlayRenderModelTests {
         #expect(layout.iconOpacity == 0.65)
     }
 
+    @MainActor
+    @Test func heartRateIconCanFollowZoneColorIndependentlyFromText() {
+        let prefs = HeartRateZonePreferences.shared
+        let oldCount = prefs.zoneCount
+        let oldZones = prefs.zones
+        let oldThresholdHR = prefs.thresholdHR
+        let oldThresholdPace = prefs.thresholdPaceSecPerKm
+        defer {
+            prefs.zoneCount = oldCount
+            prefs.zones = oldZones
+            prefs.thresholdHR = oldThresholdHR
+            prefs.thresholdPaceSecPerKm = oldThresholdPace
+        }
+
+        prefs.zoneCount = .five
+        prefs.zones = [
+            HeartRateZone(minHR: 90, maxHR: 105),
+            HeartRateZone(minHR: 106, maxHR: 115),
+            HeartRateZone(minHR: 116, maxHR: 125),
+            HeartRateZone(minHR: 126, maxHR: 135),
+            HeartRateZone(minHR: 136, maxHR: 160),
+            HeartRateZone()
+        ]
+
+        var style = OverlayStyle.default
+        style.iconColorsFollowHeartRateZones = true
+        style.valueColorsFollowHeartRateZones = false
+        style.labelColorsFollowHeartRateZones = false
+        style.unitColorsFollowHeartRateZones = false
+        style.iconColor = .white
+        let element = OverlayElement(type: .heartRate, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleActivity(),
+            elapsedTime: 5
+        )
+
+        let layout = OverlayRenderModel.textLayout(for: element, in: context)
+
+        #expect(layout.dynamicHeartRateZoneColor == HRZonePalette.overlayColor(forIndex: 1))
+        #expect(layout.iconColorsFollowHeartRateZones)
+        #expect(layout.valueColorsFollowHeartRateZones == false)
+        #expect(layout.labelColorsFollowHeartRateZones == false)
+        #expect(layout.unitColorsFollowHeartRateZones == false)
+        #expect(layout.iconColor == .white)
+    }
+
+    @MainActor
+    @Test func heartRateZoneTextRolesCanResolveZoneColorIndependently() {
+        let prefs = HeartRateZonePreferences.shared
+        let oldCount = prefs.zoneCount
+        let oldZones = prefs.zones
+        let oldThresholdHR = prefs.thresholdHR
+        let oldThresholdPace = prefs.thresholdPaceSecPerKm
+        defer {
+            prefs.zoneCount = oldCount
+            prefs.zones = oldZones
+            prefs.thresholdHR = oldThresholdHR
+            prefs.thresholdPaceSecPerKm = oldThresholdPace
+        }
+
+        prefs.zoneCount = .five
+        prefs.zones = [
+            HeartRateZone(minHR: 90, maxHR: 105),
+            HeartRateZone(minHR: 106, maxHR: 115),
+            HeartRateZone(minHR: 116, maxHR: 125),
+            HeartRateZone(minHR: 126, maxHR: 135),
+            HeartRateZone(minHR: 136, maxHR: 160),
+            HeartRateZone()
+        ]
+
+        var style = OverlayStyle.default
+        style.iconColorsFollowHeartRateZones = true
+        style.valueColorsFollowHeartRateZones = true
+        style.labelColorsFollowHeartRateZones = false
+        style.unitColorsFollowHeartRateZones = true
+        let element = OverlayElement(type: .heartRateZone, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleActivity(),
+            elapsedTime: 5
+        )
+
+        let layout = OverlayRenderModel.textLayout(for: element, in: context)
+
+        #expect(layout.dynamicHeartRateZoneColor == HRZonePalette.overlayColor(forIndex: 1))
+        #expect(layout.valueColorsFollowHeartRateZones)
+        #expect(layout.labelColorsFollowHeartRateZones == false)
+        #expect(layout.unitColorsFollowHeartRateZones)
+    }
+
+    @MainActor
+    @Test func heartRateIconZoneColorFallsBackWhenHeartRateUnavailable() {
+        let prefs = HeartRateZonePreferences.shared
+        let oldCount = prefs.zoneCount
+        let oldZones = prefs.zones
+        let oldThresholdHR = prefs.thresholdHR
+        let oldThresholdPace = prefs.thresholdPaceSecPerKm
+        defer {
+            prefs.zoneCount = oldCount
+            prefs.zones = oldZones
+            prefs.thresholdHR = oldThresholdHR
+            prefs.thresholdPaceSecPerKm = oldThresholdPace
+        }
+
+        prefs.zoneCount = .five
+        prefs.zones = [
+            HeartRateZone(minHR: 90, maxHR: 105),
+            HeartRateZone(minHR: 106, maxHR: 115),
+            HeartRateZone(minHR: 116, maxHR: 125),
+            HeartRateZone(minHR: 126, maxHR: 135),
+            HeartRateZone(minHR: 136, maxHR: 160),
+            HeartRateZone()
+        ]
+
+        var style = OverlayStyle.default
+        style.iconColorsFollowHeartRateZones = true
+        let element = OverlayElement(type: .heartRate, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: ActivityTimeline(
+                startDate: Date(timeIntervalSince1970: 1_000),
+                duration: 10,
+                distanceMeters: 100,
+                records: [
+                    ActivityRecord(
+                        elapsedTime: 0,
+                        timestamp: Date(timeIntervalSince1970: 1_000),
+                        distanceMeters: 0,
+                        heartRate: nil,
+                        paceSecondsPerKilometer: nil,
+                        elevationMeters: 100,
+                        cadence: nil,
+                        powerWatts: nil,
+                        calories: nil
+                    )
+                ],
+                laps: []
+            ),
+            elapsedTime: 0
+        )
+
+        let layout = OverlayRenderModel.textLayout(for: element, in: context)
+
+        #expect(layout.dynamicHeartRateZoneColor == nil)
+    }
+
     @Test func distanceTimelineLayoutUsesSharedProgressAndGeometry() {
         let element = OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.25), scale: 1, style: .default)
         let context = OverlayRenderContext(

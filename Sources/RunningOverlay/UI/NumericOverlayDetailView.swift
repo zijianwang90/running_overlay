@@ -67,18 +67,6 @@ struct NumericOverlayDetailView: View {
                 InspectorDenseReadout(text: only.label)
             }
         }
-        if element.type == .heartRateZone {
-            InspectorDenseRow(label: "Zone colors") {
-                Toggle(
-                    "Match zone colors for text",
-                    isOn: Binding(
-                        get: { element.style.textColorsFollowHeartRateZones },
-                        set: { project.setOverlayTextColorsFollowHeartRateZones(elementID, $0) }
-                    )
-                )
-                .toggleStyle(.checkbox)
-            }
-        }
         InspectorDenseRow(label: "Format Preview") {
             InspectorDenseReadout(text: previewValue(for: element), isNumeric: true)
         }
@@ -168,6 +156,18 @@ struct NumericOverlayDetailView: View {
                 project.setOverlayValueColor(elementID, color: color)
             }
         }
+        if supportsHeartRateZoneColoring(element) {
+            InspectorDenseRow(label: "Zone Color") {
+                Toggle(
+                    "Follow HR zones for value",
+                    isOn: Binding(
+                        get: { element.style.valueColorsFollowHeartRateZones },
+                        set: { project.setOverlayValueColorsFollowHeartRateZones(elementID, $0) }
+                    )
+                )
+                .toggleStyle(.checkbox)
+            }
+        }
         InspectorDenseSliderRow(
             label: "Alpha",
             value: Binding(
@@ -227,6 +227,20 @@ struct NumericOverlayDetailView: View {
             }
             .disabled(!isEnabled)
             .opacity(isEnabled ? 1 : 0.5)
+        }
+        if supportsHeartRateZoneColoring(element) {
+            InspectorDenseRow(label: "Zone Color") {
+                Toggle(
+                    "Follow HR zones for label",
+                    isOn: Binding(
+                        get: { element.style.labelColorsFollowHeartRateZones },
+                        set: { project.setOverlayLabelColorsFollowHeartRateZones(elementID, $0) }
+                    )
+                )
+                .toggleStyle(.checkbox)
+                .disabled(!isEnabled)
+                .opacity(isEnabled ? 1 : 0.5)
+            }
         }
         InspectorDenseSliderRow(
             label: "Alpha",
@@ -301,6 +315,20 @@ struct NumericOverlayDetailView: View {
             }
             .disabled(!isEnabled)
             .opacity(isEnabled ? 1 : 0.5)
+        }
+        if supportsHeartRateZoneColoring(element) {
+            InspectorDenseRow(label: "Zone Color") {
+                Toggle(
+                    "Follow HR zones for unit",
+                    isOn: Binding(
+                        get: { element.style.unitColorsFollowHeartRateZones },
+                        set: { project.setOverlayUnitColorsFollowHeartRateZones(elementID, $0) }
+                    )
+                )
+                .toggleStyle(.checkbox)
+                .disabled(!isEnabled)
+                .opacity(isEnabled ? 1 : 0.5)
+            }
         }
         InspectorDenseSliderRow(
             label: "Alpha",
@@ -400,6 +428,20 @@ struct NumericOverlayDetailView: View {
             }
             .disabled(!isEnabled)
             .opacity(isEnabled ? 1 : 0.5)
+        }
+        if supportsHeartRateZoneColoring(element) {
+            InspectorDenseRow(label: "Zone Color") {
+                Toggle(
+                    "Follow HR zones for icon",
+                    isOn: Binding(
+                        get: { element.style.iconColorsFollowHeartRateZones },
+                        set: { project.setOverlayIconColorsFollowHeartRateZones(elementID, $0) }
+                    )
+                )
+                .toggleStyle(.checkbox)
+                .disabled(!isEnabled)
+                .opacity(isEnabled ? 1 : 0.5)
+            }
         }
         InspectorDenseSliderRow(
             label: "Alpha",
@@ -697,6 +739,10 @@ struct NumericOverlayDetailView: View {
         .toggleStyle(.switch)
         .controlSize(.mini)
         .labelsHidden()
+    }
+
+    private func supportsHeartRateZoneColoring(_ element: OverlayElement) -> Bool {
+        element.type == .heartRate || element.type == .heartRateZone
     }
 
     @ViewBuilder

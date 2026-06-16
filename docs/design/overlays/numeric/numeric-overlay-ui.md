@@ -1,6 +1,6 @@
 # Numeric Overlay UI Design Spec
 
-Last updated: 2026-06-15 (SF Symbol browser picker)
+Last updated: 2026-06-16 (per-role HR zone tint)
 
 ## Purpose
 
@@ -19,7 +19,7 @@ Numeric Overlay 1.0 intentionally uses one render style: Minimal Clean. The Insp
 Use this template for these `OverlayElementType` values:
 
 - `heartRate`
-- `heartRateZone` — same Inspector sections as other metrics; adds **Zone colors → Match zone colors for text** (`OverlayStyle.textColorsFollowHeartRateZones`). When enabled, preview and export paint value/label/unit from the active zone’s entry in the shared `HRZonePalette` (see Project Settings → Heart Rate Zones). When disabled, typography behaves like any other numeric overlay. This type is **not** available as an Interval HUD Bar metric slot (the HUD keeps its own `heartRateZone` / `hrDrop` metrics).
+- `heartRateZone` — same Inspector sections as other metrics, but value / label / unit / icon each optionally follow the active heart-rate zone color through independent toggles. This type is **not** available as an Interval HUD Bar metric slot (the HUD keeps its own `heartRateZone` / `hrDrop` metrics).
 - `pace` — instantaneous speed-derived pace at the playhead.
 - `avgPace` — cumulative session average (elapsed ÷ distance); same Inspector and unit options as `pace`.
 - `lapPace` — running average within the current lap (in-lap elapsed ÷ in-lap distance).
@@ -153,6 +153,7 @@ Controls:
 - Font Size slider with numeric value (value text only).
 - Weight segmented control: `Regular`, `Medium`, `Semibold`, `Bold`.
 - Align segmented control (left / center / right) — backed by `OverlayStyle.textAlignment` for saved style compatibility. Numeric overlay rendering resolves value, label, and unit rows to leading alignment so the left edge stays fixed while dynamic content grows to the right.
+- `Zone Color` checkbox for `heartRate` and `heartRateZone` only. Backed by `OverlayStyle.valueColorsFollowHeartRateZones`.
 
 Model mapping:
 
@@ -171,6 +172,7 @@ Controls:
 - Position segmented control: `Top`, `Bottom`, `Left`, `Right`.
 - Align/Anchor segmented control: three options interpreted by position. Row label is `Align` when the label is stacked above/below the value (left / center / right) and `Anchor` when it sits to the side (top / middle / bottom). Backed by `OverlayStyle.labelTextAlignment` (`.leading / .center / .trailing` reused for both axes) for compatibility, while numeric preview/export resolves label placement to leading alignment.
 - Label color swatches.
+- `Zone Color` checkbox for `heartRate` and `heartRateZone` only. Backed by `OverlayStyle.labelColorsFollowHeartRateZones`.
 - Label opacity slider.
 - Label font family.
 - Label font size.
@@ -184,6 +186,7 @@ Controls:
 - Position segmented control: `Top`, `Bottom`, `Left`, `Right`.
 - Align/Anchor segmented control — backed by `OverlayStyle.unitTextAlignment`. When the unit is above/below the value it controls horizontal row alignment; when the unit is left/right of the value it controls vertical anchoring (top / middle / bottom) of the inline unit beside the value. Inline units stay baseline-glued to the value horizontally and grow the overlay to the right.
 - Color swatch + Alpha.
+- `Zone Color` checkbox for `heartRate` and `heartRateZone` only. Backed by `OverlayStyle.unitColorsFollowHeartRateZones`.
 - Unit font family.
 - Unit font size.
 - Unit font weight.
@@ -205,6 +208,7 @@ Controls:
 - Align/Anchor segmented control — backed by `OverlayStyle.iconTextAlignment`. When the icon is above/below the text block it controls horizontal alignment; when the icon is left/right of the text block it controls vertical anchoring (top / middle / bottom).
 - Size slider.
 - Color swatch + Alpha.
+- `Zone Color` checkbox for `heartRate` and `heartRateZone` only. Backed by `OverlayStyle.iconColorsFollowHeartRateZones`. When enabled, the icon tint resolves from the active HR zone color; when disabled, the icon uses the manual swatch like any other metric.
 - Spacing slider.
 
 Rendering rules:
@@ -212,6 +216,7 @@ Rendering rules:
 - Numeric Overlay 1.0 uses SF Symbols only for this icon slot.
 - Each numeric metric gets a default symbol from `OverlayElementType.defaultNumericIconSystemName` when added from the Overlay Pool; users can override `OverlayStyle.iconSystemName`. The picker grid is backed by the shared bundled `SFSymbolCatalog` name list generated from the public CoreGlyphs SF Symbol order catalog; blank search opens to sport-relevant symbols first, typed search scans the full catalog, and renderability checks are cached while typed names remain valid input. Empty or legacy-missing `iconSystemName` values resolve through the element type's default symbol at render time.
 - Icons wrap the whole numeric text block, not just the value row, so label/unit layout remains independent.
+- `heartRate` and `heartRateZone` can optionally tint value, label, unit, and icon from the shared `HRZonePalette` independently. Each role keeps its own manual swatch as the fallback when the toggle is off or the current timeline sample does not resolve to a valid heart-rate zone.
 
 ## Background Section
 

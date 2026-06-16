@@ -22,16 +22,7 @@ enum OverlayRenderModel {
         let preset: OverlayTextPreset = element.type.isNumericOverlay ? .minimal : element.style.textPreset
         let metrics = textMetrics(for: preset, fontSize: fontSize, scale: element.scale, context: context, element: element)
         let components = OverlayValueFormatter.components(for: element, activity: context.activity, elapsedTime: context.elapsedTime)
-        let unifiedTextBaseColor: OverlayColor? = {
-            guard element.type == .heartRateZone,
-                  element.style.textColorsFollowHeartRateZones else { return nil }
-            let snapshot = HeartRateZonePreferences.currentSnapshot()
-            let visibleZones = Array(snapshot.zones.prefix(snapshot.zoneCount))
-            guard let hr = context.activity.heartRate(at: context.elapsedTime),
-                  let zoneIndex = resolvedHeartRateZoneIndex(heartRate: hr, zones: visibleZones)
-            else { return nil }
-            return HRZonePalette.overlayColor(forIndex: zoneIndex)
-        }()
+        let dynamicHeartRateZoneColor = resolvedHeartRateZoneBaseColor(for: element, in: context)
         return OverlayTextRenderLayout(
             value: OverlayValueFormatter.value(for: element, activity: context.activity, elapsedTime: context.elapsedTime),
             components: components,
@@ -57,6 +48,10 @@ enum OverlayRenderModel {
             iconColor: element.style.iconColor,
             iconOpacity: element.style.iconOpacity,
             iconSpacing: context.scaled(element.style.iconSpacing * element.scale),
+            iconColorsFollowHeartRateZones: element.style.iconColorsFollowHeartRateZones,
+            valueColorsFollowHeartRateZones: element.style.valueColorsFollowHeartRateZones,
+            labelColorsFollowHeartRateZones: element.style.labelColorsFollowHeartRateZones,
+            unitColorsFollowHeartRateZones: element.style.unitColorsFollowHeartRateZones,
             horizontalPadding: metrics.horizontalPadding,
             verticalPadding: metrics.verticalPadding,
             minimumWidth: context.scaled(element.style.numericMinWidth * element.scale),
@@ -74,8 +69,27 @@ enum OverlayRenderModel {
             dividerColor: element.style.dividerColor,
             dividerThickness: context.scaled(element.style.dividerThickness * element.scale),
             dividerOpacity: element.style.dividerOpacity,
-            unifiedTextBaseColor: unifiedTextBaseColor
+            dynamicHeartRateZoneColor: dynamicHeartRateZoneColor
         )
+    }
+
+    private static func resolvedHeartRateZoneBaseColor(
+        for element: OverlayElement,
+        in context: OverlayRenderContext
+    ) -> OverlayColor? {
+        guard element.type == .heartRate || element.type == .heartRateZone else { return nil }
+        guard element.style.textColorsFollowHeartRateZones
+            || element.style.iconColorsFollowHeartRateZones
+            || element.style.valueColorsFollowHeartRateZones
+            || element.style.labelColorsFollowHeartRateZones
+            || element.style.unitColorsFollowHeartRateZones
+        else { return nil }
+        let snapshot = HeartRateZonePreferences.currentSnapshot()
+        let visibleZones = Array(snapshot.zones.prefix(snapshot.zoneCount))
+        guard let heartRate = context.activity.heartRate(at: context.elapsedTime),
+              let zoneIndex = resolvedHeartRateZoneIndex(heartRate: heartRate, zones: visibleZones)
+        else { return nil }
+        return HRZonePalette.overlayColor(forIndex: zoneIndex)
     }
 
     static func distanceTimelineLayout(for element: OverlayElement, in context: OverlayRenderContext) -> OverlayDistanceTimelineRenderLayout {
@@ -1563,6 +1577,10 @@ struct OverlayTextRenderLayout {
     var iconColor: OverlayColor
     var iconOpacity: Double
     var iconSpacing: Double
+    var iconColorsFollowHeartRateZones: Bool
+    var valueColorsFollowHeartRateZones: Bool
+    var labelColorsFollowHeartRateZones: Bool
+    var unitColorsFollowHeartRateZones: Bool
     var horizontalPadding: Double
     var verticalPadding: Double
     var minimumWidth: Double
@@ -1580,11 +1598,9 @@ struct OverlayTextRenderLayout {
     var dividerColor: OverlayColor
     var dividerThickness: Double
     var dividerOpacity: Double
-    /// When non-nil, numeric preset views and export use this RGB for text
-    /// (per-role opacity still applies) instead of `valueColor` / `labelColor` /
-    /// `unitColor`. Set for `.heartRateZone` when zone-colored text is enabled
-    /// and a zone resolves for the current HR.
-    var unifiedTextBaseColor: OverlayColor?
+    /// When non-nil, heart-rate-derived icon tint can use this RGB while
+    /// keeping `iconOpacity` from the static style.
+    var dynamicHeartRateZoneColor: OverlayColor?
 }
 
 struct OverlayDistanceTimelineRenderLayout {
