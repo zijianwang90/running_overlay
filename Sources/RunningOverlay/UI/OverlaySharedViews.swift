@@ -100,3 +100,15 @@ struct OverlaySharedIntervalTimelineView: View {
         )
     }
 }
+
+struct OverlaySharedZoneEdgeBarView: View {
+    let element: OverlayElement
+    let layout: ZoneEdgeBarRenderLayout
+
+    var body: some View {
+        ZoneEdgeBarOverlayView(
+            element: element,
+            layout: layout
+        )
+    }
+}

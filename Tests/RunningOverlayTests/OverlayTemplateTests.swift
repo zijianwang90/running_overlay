@@ -106,6 +106,24 @@ struct OverlayTemplateTests {
         #expect(style.metricUnitText == IntervalHUDBarStyle.default.metricUnitText)
     }
 
+    @Test func overlayStyleDecodesMissingZoneEdgeBarWithDefaults() throws {
+        let json = """
+        {
+          "fontName": "SF Pro",
+          "fontSize": 28,
+          "fontWeight": "semibold",
+          "foregroundColor": { "red": 1, "green": 1, "blue": 1, "alpha": 1 },
+          "backgroundOpacity": 0.22,
+          "shadowOpacity": 0.35,
+          "shadowRadius": 4
+        }
+        """
+
+        let style = try JSONDecoder().decode(OverlayStyle.self, from: Data(json.utf8))
+
+        #expect(style.zoneEdgeBar == ZoneEdgeBarStyle.default)
+    }
+
     @Test func distanceTimelineIconSlotPersistsEmbeddedSVG() throws {
         var style = OverlayStyle.default
         style.distanceTimeline = .preset(.sport)

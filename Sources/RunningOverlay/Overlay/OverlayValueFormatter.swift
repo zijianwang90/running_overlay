@@ -183,6 +183,8 @@ enum OverlayValueFormatter {
             return OverlayValueComponents(label: "Interval HUD Bar", shortLabel: "INTERVAL", value: "", unit: "")
         case .intervalTimeline:
             return OverlayValueComponents(label: "Interval Timeline", shortLabel: "TIMELINE", value: "", unit: "")
+        case .zoneEdgeBar:
+            return OverlayValueComponents(label: "Zone Edge Bar", shortLabel: "ZONE", value: "", unit: "")
         case .routeMap:
             return OverlayValueComponents(label: "Route Map", shortLabel: "ROUTE", value: "\(activity.routePoints.count)", unit: "pts")
         case .verticalOscillation:

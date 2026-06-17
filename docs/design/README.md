@@ -54,6 +54,8 @@ This directory stores implementation-facing product design references for Runnin
 - [Interval Timeline Overlay UI Spec](./overlays/interval-timeline/interval-timeline-overlay-ui.md): horizontal interval-workout schedule overlay with centered current-lap window and high-repetition handling.
 - [Interval Timeline Overlay UI Structured Spec](./overlays/interval-timeline/interval-timeline-overlay-ui.spec.json): machine-readable layout modes, defaults, inspector sections, and readability rules.
 - [Interval Timeline mockup](./overlays/interval-timeline/interval-timeline-overlay-mockup.png): visual reference for centered current-lap timeline, clipped repetitions, and NOW marker.
+- [Zone Edge Bar Overlay UI Spec](./overlays/zone-edge-bar/zone-edge-bar-overlay-ui.md): independent HR/pace zone strip for edge-pinned or free placement.
+- [Zone Edge Bar Overlay UI Structured Spec](./overlays/zone-edge-bar/zone-edge-bar-overlay-ui.spec.json): machine-readable placement, defaults, marker, and inspector rules.
 - [Weather Widget Overlay UI Spec](./overlays/weather-widget/weather-widget-overlay-ui.md): weather-app-style overlay presets, location/temperature content rules, and shared condition icon guidance.
 - [Weather Widget Overlay UI Structured Spec](./overlays/weather-widget/weather-widget-overlay-ui.spec.json): machine-readable weather widget presets, fields, icon set, and data strategy.
 - [Weather Widget preset board](./overlays/weather-widget/weather-widget-presets.png): five visual directions for weather app plugin-style overlays.

@@ -2,6 +2,19 @@
 
 ## 2026-06-16
 
+### Zone Edge Bar Overlay
+
+- Added `OverlayElementType.zoneEdgeBar` as a Visuals overlay named Zone Edge Bar, with HR/Pace metric selection, edge/free placement, horizontal/vertical rendering, active-zone emphasis, current-value marker, threshold `T` marker, border, glow, and shared Effects shadow.
+- Wired preview, SwiftUI export, and legacy PNG rendering through `OverlayRenderModel.zoneEdgeBarLayout(for:in:)`, `OverlaySharedZoneEdgeBarView`, and direct AppKit drawing.
+- Added a dedicated Zone Edge Bar Inspector with Layout, Zone Bar, Markers, Appearance, Border, and Effects sections.
+- Added tests for HR and pace marker behavior, all edge placements, default-backed style decoding, and PNG renderer output.
+- Added module and design docs under `docs/overlay-modules/zone-edge-bar-overlay.md` and `docs/design/overlays/zone-edge-bar/`.
+- Fixed preview and SwiftUI export positioning so edge-placement Zone Edge Bars are centered on their computed video-edge rect instead of the overlay's default center position.
+- Aligned the threshold `T` marker line with the zone bar/progress centerline in both SwiftUI preview/export and AppKit PNG rendering.
+- Changed new Zone Edge Bars to default to a flush edge position, exposed signed Vertical/Horizontal Position adjustment for edge placement, and expanded the preview hit-test frame so Free placement can be dragged reliably.
+- Removed the read-only Appearance section, moved bar-local Border controls into Zone Bar, and limited the shared Effects section to Shadow by hiding unsupported shared Glow and Fade Out rows.
+- Verification: `swift test`.
+
 ### Easy Run Default Template
 
 - Replaced the bundled `EasyRun.rotemplate` resource with the current local user template named `Template`, so the Built-in Templates `Easy Run` row applies that authored layout.

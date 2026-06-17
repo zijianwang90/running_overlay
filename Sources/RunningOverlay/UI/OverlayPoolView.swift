@@ -105,6 +105,7 @@ struct OverlayTileInfo: Identifiable {
         OverlayTileInfo(type: .runningGauge, hint: "live gauge", systemImage: "gauge", category: .visuals, isAccent: true),
         OverlayTileInfo(type: .intervalHUDBar, hint: "interval HUD", systemImage: "rectangle.split.3x1", category: .visuals, isAccent: true),
         OverlayTileInfo(type: .intervalTimeline, hint: "interval plan", systemImage: "timeline.selection", category: .visuals, isAccent: true),
+        OverlayTileInfo(type: .zoneEdgeBar, hint: "HR / Pace zones", systemImage: "rectangle.compress.vertical", category: .visuals, isAccent: true),
         OverlayTileInfo(type: .routeMap, hint: "GPS path", systemImage: "map", category: .visuals, isAccent: true),
         OverlayTileInfo(type: .weatherWidget, hint: "current weather", systemImage: "cloud.sun.fill", category: .visuals, isAccent: true),
         OverlayTileInfo(type: .decorSolidColor, hint: "shape", systemImage: "square.fill", category: .decor),

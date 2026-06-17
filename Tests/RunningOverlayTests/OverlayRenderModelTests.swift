@@ -560,6 +560,137 @@ struct OverlayRenderModelTests {
         #expect(!IntervalHUDBarMetric.numericCases.contains(.hrDrop))
     }
 
+    @MainActor
+    @Test func zoneEdgeBarHeartRateUsesSharedZonesAndThresholdMarker() throws {
+        let prefs = HeartRateZonePreferences.shared
+        let oldCount = prefs.zoneCount
+        let oldZones = prefs.zones
+        let oldThresholdHR = prefs.thresholdHR
+        let oldThresholdPace = prefs.thresholdPaceSecPerKm
+        defer {
+            prefs.zoneCount = oldCount
+            prefs.zones = oldZones
+            prefs.thresholdHR = oldThresholdHR
+            prefs.thresholdPaceSecPerKm = oldThresholdPace
+        }
+        prefs.zoneCount = .five
+        prefs.zones = [
+            HeartRateZone(),
+            HeartRateZone(minHR: 120, maxHR: 139),
+            HeartRateZone(minHR: 140, maxHR: 160),
+            HeartRateZone(minHR: 161, maxHR: 180),
+            HeartRateZone(minHR: 181, maxHR: 200),
+            HeartRateZone()
+        ]
+        prefs.thresholdHR = 170
+
+        var style = OverlayStyle.default
+        style.zoneEdgeBar.metric = .heartRate
+        style.zoneEdgeBar.edge = .bottom
+        let element = OverlayElement(type: .zoneEdgeBar, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 50
+        )
+
+        let layout = OverlayRenderModel.zoneEdgeBarLayout(for: element, in: context)
+
+        #expect(layout.zoneSegments.count == 5)
+        #expect(layout.activeZoneIndex == 3)
+        #expect(layout.zoneMarker?.zoneIndex == 3)
+        #expect(layout.zoneMarker?.valueText == "170 bpm")
+        #expect(layout.thresholdZoneMarker?.zoneIndex == 3)
+        #expect(layout.thresholdZoneMarker?.valueText == "T")
+        #expect(layout.markerSide == .above)
+        #expect(layout.barRect.maxY == layout.rect.maxY)
+    }
+
+    @MainActor
+    @Test func zoneEdgeBarPaceSkipsZeroCurrentMarkerAndKeepsThreshold() throws {
+        let prefs = HeartRateZonePreferences.shared
+        let oldCount = prefs.zoneCount
+        let oldZones = prefs.zones
+        let oldThresholdHR = prefs.thresholdHR
+        let oldThresholdPace = prefs.thresholdPaceSecPerKm
+        defer {
+            prefs.zoneCount = oldCount
+            prefs.zones = oldZones
+            prefs.thresholdHR = oldThresholdHR
+            prefs.thresholdPaceSecPerKm = oldThresholdPace
+        }
+        prefs.zoneCount = .five
+        prefs.zones = [
+            HeartRateZone(minPaceSecPerKm: 400, maxPaceSecPerKm: 600),
+            HeartRateZone(minPaceSecPerKm: 330, maxPaceSecPerKm: 399),
+            HeartRateZone(minPaceSecPerKm: 280, maxPaceSecPerKm: 329),
+            HeartRateZone(minPaceSecPerKm: 240, maxPaceSecPerKm: 279),
+            HeartRateZone(minPaceSecPerKm: 180, maxPaceSecPerKm: 239),
+            HeartRateZone()
+        ]
+        prefs.thresholdPaceSecPerKm = 250
+
+        var style = OverlayStyle.default
+        style.zoneEdgeBar.metric = .pace
+        style.zoneEdgeBar.edge = .top
+        let element = OverlayElement(type: .zoneEdgeBar, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: zeroPaceIntervalActivity(),
+            elapsedTime: 50
+        )
+
+        let layout = OverlayRenderModel.zoneEdgeBarLayout(for: element, in: context)
+
+        #expect(layout.activeZoneIndex == nil)
+        #expect(layout.zoneMarker == nil)
+        #expect(layout.thresholdZoneMarker?.zoneIndex == 3)
+        #expect(layout.thresholdZoneMarker?.valueText == "T")
+        #expect(layout.markerSide == .below)
+        #expect(layout.barRect.minY == layout.rect.minY)
+    }
+
+    @Test func zoneEdgeBarEdgeLayoutPinsToAllVideoEdges() {
+        var style = OverlayStyle.default
+        style.zoneEdgeBar.length = 300
+        style.zoneEdgeBar.thickness = 10
+        style.zoneEdgeBar.edgeInset = 20
+        let canvas = OverlayRenderContext.referenceCanvasSize
+        let activity = sampleIntervalActivity()
+
+        func layout(edge: ZoneEdgeBarEdge) -> ZoneEdgeBarRenderLayout {
+            var s = style
+            s.zoneEdgeBar.edge = edge
+            let element = OverlayElement(type: .zoneEdgeBar, position: CGPoint(x: 0.1, y: 0.9), scale: 1, style: s)
+            return OverlayRenderModel.zoneEdgeBarLayout(
+                for: element,
+                in: OverlayRenderContext(canvasSize: canvas, activity: activity, elapsedTime: 50)
+            )
+        }
+
+        let top = layout(edge: .top)
+        #expect(top.orientation == .horizontal)
+        #expect(top.rect.minY == 20)
+        #expect(abs(top.rect.midX - canvas.width / 2) < 0.0001)
+
+        let bottom = layout(edge: .bottom)
+        #expect(bottom.orientation == .horizontal)
+        #expect(abs(bottom.rect.maxY - (canvas.height - 20)) < 0.0001)
+        #expect(abs(bottom.rect.midX - canvas.width / 2) < 0.0001)
+
+        let left = layout(edge: .left)
+        #expect(left.orientation == .vertical)
+        #expect(left.rect.minX == 20)
+        #expect(abs(left.rect.midY - canvas.height / 2) < 0.0001)
+        #expect(left.markerSide == .trailing)
+
+        let right = layout(edge: .right)
+        #expect(right.orientation == .vertical)
+        #expect(abs(right.rect.maxX - (canvas.width - 20)) < 0.0001)
+        #expect(abs(right.rect.midY - canvas.height / 2) < 0.0001)
+        #expect(right.markerSide == .leading)
+    }
+
     @Test func intervalTimelineCentersCurrentLapAndSummarizesOverflow() {
         var style = OverlayStyle.default
         style.intervalTimeline.mode = .centeredWindow
@@ -778,6 +909,38 @@ struct OverlayRenderModelTests {
                 layout: layout,
                 activity: sampleRouteActivity(),
                 elapsedTime: 5,
+                renderGuides: false
+            )
+        )
+
+        let data = try Data(contentsOf: outputURL)
+        #expect(data.starts(with: [0x89, 0x50, 0x4E, 0x47]))
+        #expect(data.count > 100)
+    }
+
+    @MainActor
+    @Test func overlayFrameRendererWritesZoneEdgeBarPNG() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.removeItem(at: directory)
+        }
+
+        var style = OverlayStyle.default
+        style.zoneEdgeBar.metric = .heartRate
+        style.zoneEdgeBar.edge = .right
+        style.zoneEdgeBar.glowEnabled = true
+        let outputURL = directory.appendingPathComponent("zone-edge-bar.png")
+        let layout = OverlayLayout(elements: [
+            OverlayElement(type: .zoneEdgeBar, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        ])
+        try OverlayFrameRenderer.renderPNG(
+            to: outputURL,
+            request: OverlayFrameRenderRequest(
+                size: CGSize(width: 640, height: 360),
+                layout: layout,
+                activity: ProjectDocument.calibrationActivity(),
+                elapsedTime: 1.5,
                 renderGuides: false
             )
         )

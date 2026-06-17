@@ -544,6 +544,18 @@ final class ProjectDocument: ObservableObject {
             style.shadowOpacity = 0.34
             style.shadowRadius = 10
         }
+        if type == .zoneEdgeBar {
+            style.zoneEdgeBar = .default
+            style.backgroundEnabled = false
+            style.borderEnabled = false
+            style.shadowEnabled = true
+            style.shadowColor = .black
+            style.shadowOpacity = 0.34
+            style.shadowRadius = 8
+            style.shadowOffsetX = 0
+            style.shadowOffsetY = 2
+            style.shadowThickness = 1
+        }
         if type == .decorText {
             style.decor = DecorStyle(
                 shape: .rectangle,
@@ -1695,6 +1707,18 @@ final class ProjectDocument: ObservableObject {
         mutate(&overlayLayout.elements[index].style.intervalTimeline)
     }
 
+    func mutateZoneEdgeBarStyle(_ elementID: OverlayElement.ID, _ mutate: (inout ZoneEdgeBarStyle) -> Void) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.zoneEdgeBar)
+    }
+
+    func mutateZoneEdgeBarStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout ZoneEdgeBarStyle) -> Void) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.zoneEdgeBar)
+    }
+
     func applyWeatherWidgetPreset(_ elementID: OverlayElement.ID, preset: WeatherWidgetPreset) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
@@ -2486,6 +2510,18 @@ final class ProjectDocument: ObservableObject {
             style.routeMapBackgroundStyle = .dark
             style.backgroundOpacity = 0.74
             style.foregroundColor = .cyan
+        }
+        if type == .zoneEdgeBar {
+            style.zoneEdgeBar = .default
+            style.backgroundEnabled = false
+            style.borderEnabled = false
+            style.shadowEnabled = true
+            style.shadowColor = .black
+            style.shadowOpacity = 0.34
+            style.shadowRadius = 8
+            style.shadowOffsetX = 0
+            style.shadowOffsetY = 2
+            style.shadowThickness = 1
         }
         overlayLayout.elements[index].style = style
         overlayLayout.elements[index].scale = 1.0

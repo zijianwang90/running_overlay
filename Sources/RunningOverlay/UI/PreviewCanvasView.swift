@@ -97,10 +97,13 @@ struct PreviewCanvasView: View {
                                 }
                             )
                             .modifier(PreviewOverlayPositionModifier(
-                                elementType: element.type,
+                                element: element,
                                 canvasSize: canvasSize,
-                                position: displayPos
+                                position: displayPos,
+                                sampleTime: project.layerDataSampleTime,
+                                activity: project.activity
                             ))
+                            .contentShape(Rectangle())
                             .gesture(
                                 DragGesture(minimumDistance: 2, coordinateSpace: .named(PreviewCanvasCoordinateSpace.name))
                                     .onChanged { value in
@@ -728,6 +731,11 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
                     element: element,
                     layout: OverlayRenderModel.intervalTimelineLayout(for: element, in: renderContext)
                 )
+            case .zoneEdgeBar:
+                OverlaySharedZoneEdgeBarView(
+                    element: element,
+                    layout: OverlayRenderModel.zoneEdgeBarLayout(for: element, in: renderContext)
+                )
             case .routeMap:
                 OverlaySharedRouteMapView(
                     element: element,
@@ -781,12 +789,14 @@ private struct PreviewSelectionAffordance: View {
 }
 
 private struct PreviewOverlayPositionModifier: ViewModifier {
-    let elementType: OverlayElementType
+    let element: OverlayElement
     let canvasSize: CGSize
     let position: CGPoint
+    let sampleTime: TimeInterval
+    let activity: ActivityTimeline
 
     func body(content: Content) -> some View {
-        if elementType.isNumericOverlay {
+        if element.type.isNumericOverlay {
             content
                 .alignmentGuide(HorizontalAlignment.center) { _ in
                     canvasSize.width * (0.5 - position.x)
@@ -796,11 +806,23 @@ private struct PreviewOverlayPositionModifier: ViewModifier {
                 }
         } else {
             content
-                .position(
-                    x: canvasSize.width * position.x,
-                    y: canvasSize.height * position.y
-                )
+                .position(resolvedPosition)
         }
+    }
+
+    private var resolvedPosition: CGPoint {
+        guard element.type == .zoneEdgeBar else {
+            return CGPoint(
+                x: canvasSize.width * position.x,
+                y: canvasSize.height * position.y
+            )
+        }
+
+        var positionedElement = element
+        positionedElement.position = position
+        let context = OverlayRenderContext(canvasSize: canvasSize, activity: activity, elapsedTime: sampleTime)
+        let rect = OverlayRenderModel.zoneEdgeBarLayout(for: positionedElement, in: context).rect
+        return CGPoint(x: rect.midX, y: rect.midY)
     }
 }
 

@@ -473,6 +473,55 @@ enum OverlayRenderModel {
         )
     }
 
+    static func zoneEdgeBarLayout(for element: OverlayElement, in context: OverlayRenderContext) -> ZoneEdgeBarRenderLayout {
+        let style = element.style.zoneEdgeBar
+        let orientation: ZoneEdgeBarOrientation = style.placement == .edge
+            ? (style.edge == .left || style.edge == .right ? .vertical : .horizontal)
+            : style.orientation
+        let barLength = context.scaled(style.length * element.scale)
+        let barThickness = context.scaled(style.thickness * element.scale)
+        let markerText = scaled(style.markerText, scale: element.scale, context: context)
+        let markerPad = zoneEdgeBarMarkerPad(style: style, markerText: markerText, thickness: barThickness)
+        let markerSide = zoneEdgeBarMarkerSide(style: style, orientation: orientation)
+        let size: CGSize
+        if orientation == .horizontal {
+            size = CGSize(width: barLength, height: barThickness + markerPad)
+        } else {
+            size = CGSize(width: barThickness + markerPad, height: barLength)
+        }
+        let rect = zoneEdgeBarRect(for: element, style: style, size: size, canvasSize: context.canvasSize, context: context)
+        let barRect = zoneEdgeBarInnerBarRect(rect: rect, thickness: barThickness, markerSide: markerSide, orientation: orientation)
+        let snapshot = HeartRateZonePreferences.currentSnapshot()
+        let t = min(max(context.elapsedTime, 0), context.activity.duration)
+        let currentHR = context.activity.heartRate(at: t)
+        let currentPace = context.activity.pace(at: t)
+        let activeZoneIndex = zoneEdgeBarActiveZoneIndex(
+            metric: style.metric,
+            heartRate: currentHR,
+            paceSecondsPerKm: currentPace,
+            snapshot: snapshot
+        )
+
+        return ZoneEdgeBarRenderLayout(
+            style: style,
+            rect: rect,
+            barRect: barRect,
+            orientation: orientation,
+            markerSide: markerSide,
+            zoneSegments: intervalZoneSegments(snapshot: snapshot),
+            activeZoneIndex: activeZoneIndex,
+            zoneMarker: zoneEdgeBarMarker(
+                style: style,
+                heartRate: currentHR,
+                paceSecondsPerKm: currentPace,
+                snapshot: snapshot,
+                zoneIndex: activeZoneIndex
+            ),
+            thresholdZoneMarker: zoneEdgeBarThresholdMarker(style: style, snapshot: snapshot),
+            markerText: markerText
+        )
+    }
+
     static func intervalTimelineLayout(for element: OverlayElement, in context: OverlayRenderContext) -> IntervalTimelineRenderLayout {
         var style = element.style.intervalTimeline
         let kindPalette = IntervalKindColorPreferences.currentSnapshot()
@@ -916,6 +965,156 @@ enum OverlayRenderModel {
         case .none, .lapProgress:
             return nil
         }
+    }
+
+    private static func zoneEdgeBarActiveZoneIndex(
+        metric: ZoneEdgeBarMetric,
+        heartRate: Int?,
+        paceSecondsPerKm: Double?,
+        snapshot: HeartRateZoneSnapshot
+    ) -> Int? {
+        let visibleZones = Array(snapshot.zones.prefix(snapshot.zoneCount))
+        switch metric {
+        case .heartRate:
+            guard let heartRate else { return nil }
+            return resolvedHeartRateZoneIndex(heartRate: heartRate, zones: visibleZones)
+        case .pace:
+            guard let paceSecondsPerKm, paceSecondsPerKm > 0 else { return nil }
+            return resolvedPaceZoneIndex(paceSecondsPerKm: paceSecondsPerKm, zones: visibleZones)
+        }
+    }
+
+    private static func zoneEdgeBarMarker(
+        style: ZoneEdgeBarStyle,
+        heartRate: Int?,
+        paceSecondsPerKm: Double?,
+        snapshot: HeartRateZoneSnapshot,
+        zoneIndex: Int?
+    ) -> IntervalHUDBarZoneMarker? {
+        guard style.markerEnabled,
+              let zoneIndex,
+              zoneIndex >= 0,
+              zoneIndex < snapshot.zoneCount,
+              zoneIndex < snapshot.zones.count
+        else { return nil }
+
+        let zone = snapshot.zones[zoneIndex]
+        switch style.metric {
+        case .heartRate:
+            guard let heartRate else { return nil }
+            return IntervalHUDBarZoneMarker(
+                role: .current,
+                zoneIndex: zoneIndex,
+                fractionInZone: heartRateFraction(heartRate, zone: zone),
+                valueText: "\(heartRate) bpm",
+                color: HRZonePalette.overlayColor(forIndex: zoneIndex)
+            )
+        case .pace:
+            guard let paceSecondsPerKm, paceSecondsPerKm > 0 else { return nil }
+            return IntervalHUDBarZoneMarker(
+                role: .current,
+                zoneIndex: zoneIndex,
+                fractionInZone: paceFraction(paceSecondsPerKm, zone: zone),
+                valueText: formatPace(secondsPerKm: paceSecondsPerKm, paceUnit: snapshot.paceUnit),
+                color: HRZonePalette.overlayColor(forIndex: zoneIndex)
+            )
+        }
+    }
+
+    private static func zoneEdgeBarThresholdMarker(
+        style: ZoneEdgeBarStyle,
+        snapshot: HeartRateZoneSnapshot
+    ) -> IntervalHUDBarZoneMarker? {
+        guard style.thresholdMarkerEnabled else { return nil }
+        let visibleZones = Array(snapshot.zones.prefix(snapshot.zoneCount))
+        switch style.metric {
+        case .heartRate:
+            guard let thresholdHR = snapshot.thresholdHR,
+                  let zoneIndex = resolvedHeartRateZoneIndex(heartRate: thresholdHR, zones: visibleZones),
+                  zoneIndex >= 0,
+                  zoneIndex < snapshot.zones.count
+            else { return nil }
+            let zone = snapshot.zones[zoneIndex]
+            return IntervalHUDBarZoneMarker(
+                role: .threshold,
+                zoneIndex: zoneIndex,
+                fractionInZone: heartRateFraction(thresholdHR, zone: zone),
+                valueText: "T",
+                color: HRZonePalette.overlayColor(forIndex: zoneIndex)
+            )
+        case .pace:
+            guard let thresholdPace = snapshot.thresholdPaceSecPerKm,
+                  thresholdPace > 0,
+                  let zoneIndex = resolvedPaceZoneIndex(paceSecondsPerKm: Double(thresholdPace), zones: visibleZones),
+                  zoneIndex >= 0,
+                  zoneIndex < snapshot.zones.count
+            else { return nil }
+            let zone = snapshot.zones[zoneIndex]
+            return IntervalHUDBarZoneMarker(
+                role: .threshold,
+                zoneIndex: zoneIndex,
+                fractionInZone: paceFraction(Double(thresholdPace), zone: zone),
+                valueText: "T",
+                color: HRZonePalette.overlayColor(forIndex: zoneIndex)
+            )
+        }
+    }
+
+    private static func zoneEdgeBarMarkerSide(style: ZoneEdgeBarStyle, orientation: ZoneEdgeBarOrientation) -> ZoneEdgeBarMarkerSide {
+        if style.placement == .edge {
+            switch style.edge {
+            case .top: return .below
+            case .bottom: return .above
+            case .left: return .trailing
+            case .right: return .leading
+            }
+        }
+        return orientation == .horizontal ? .above : .trailing
+    }
+
+    private static func zoneEdgeBarMarkerPad(style: ZoneEdgeBarStyle, markerText: IntervalHUDBarTextStyle, thickness: Double) -> Double {
+        guard style.markerEnabled || style.thresholdMarkerEnabled else { return 0 }
+        let valueHeight = style.markerShowsValue ? max(markerText.fontSize, 9) + 6 : 0
+        let currentPad = max(thickness * 0.9, 8) + valueHeight + (style.markerShowsValue ? 5 : 3)
+        let thresholdPad = max(thickness * 1.35, 10) + max(markerText.fontSize * 0.72, 7) + 6
+        return max(currentPad, thresholdPad)
+    }
+
+    private static func zoneEdgeBarRect(
+        for element: OverlayElement,
+        style: ZoneEdgeBarStyle,
+        size: CGSize,
+        canvasSize: CGSize,
+        context: OverlayRenderContext
+    ) -> CGRect {
+        guard style.placement == .edge else {
+            return centeredRect(for: element, size: size, canvasSize: canvasSize)
+        }
+        let inset = context.scaled(style.edgeInset * element.scale)
+        switch style.edge {
+        case .top:
+            return CGRect(x: (canvasSize.width - size.width) / 2, y: inset, width: size.width, height: size.height)
+        case .bottom:
+            return CGRect(x: (canvasSize.width - size.width) / 2, y: canvasSize.height - inset - size.height, width: size.width, height: size.height)
+        case .left:
+            return CGRect(x: inset, y: (canvasSize.height - size.height) / 2, width: size.width, height: size.height)
+        case .right:
+            return CGRect(x: canvasSize.width - inset - size.width, y: (canvasSize.height - size.height) / 2, width: size.width, height: size.height)
+        }
+    }
+
+    private static func zoneEdgeBarInnerBarRect(
+        rect: CGRect,
+        thickness: Double,
+        markerSide: ZoneEdgeBarMarkerSide,
+        orientation: ZoneEdgeBarOrientation
+    ) -> CGRect {
+        if orientation == .horizontal {
+            let y = markerSide == .above ? rect.maxY - thickness : rect.minY
+            return CGRect(x: rect.minX, y: y, width: rect.width, height: thickness)
+        }
+        let x = markerSide == .leading ? rect.maxX - thickness : rect.minX
+        return CGRect(x: x, y: rect.minY, width: thickness, height: rect.height)
     }
 
     private static func formatPace(secondsPerKm: Double, paceUnit: PaceUnit) -> String {
