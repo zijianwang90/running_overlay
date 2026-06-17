@@ -120,6 +120,11 @@ struct DistanceTimelineOverlayDetailView: View {
                 project.mutateDistanceTimelineStyle(elementID) { $0.showValue = newValue }
             }
         }
+        InspectorDenseRow(label: "Total Distance") {
+            toggle(style.showTotalDistance) { newValue in
+                project.mutateDistanceTimelineStyle(elementID) { $0.showTotalDistance = newValue }
+            }
+        }
         InspectorDenseRow(label: "Units") {
             InspectorDenseSegmented(values: DistanceTimelineUnitSystem.allCases, selection: Binding(
                 get: { style.valueUnitSystem },
@@ -180,7 +185,7 @@ struct DistanceTimelineOverlayDetailView: View {
                 let custom = style.customValues[safe: index] ?? .empty
                 InspectorDenseRow(label: "Custom \(index + 1)") {
                     Menu {
-                        ForEach(RouteMapStatsMetric.allCases) { metric in
+                        ForEach(RouteMapStatsMetric.selectableCases) { metric in
                             Button {
                                 project.mutateDistanceTimelineStyle(elementID) { $0.setCustomValueMetric(metric, at: index) }
                             } label: {

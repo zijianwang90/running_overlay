@@ -209,6 +209,7 @@ Dense and Splits progress must render as a continuous solid fill. Their technica
 Controls:
 
 - Value toggle.
+- Total Distance toggle. When enabled, Value renders `current / total unit`; when disabled, it renders only `current unit`.
 - Unit system: Metric / Imperial.
 - Font family, primary value size, weight, and text color.
 - Progress Gap controls the vertical distance between the Value block and the progress track.
@@ -221,6 +222,8 @@ Controls:
 - Custom value font size, color, and opacity, independent from the primary Value settings.
 
 When Value is disabled, the overlay can be used as a pure distance timeline with only axis/progress/labels/stats.
+
+Stats Bar placement must use the complete rendered content bounds, including Axis and Marker labels. Top, bottom, left, and right bars stay adjacent to content without covering it. Inside controls whether the bar shares the Distance Timeline background and border; it does not place the bar over the progress area.
 
 ## Label
 

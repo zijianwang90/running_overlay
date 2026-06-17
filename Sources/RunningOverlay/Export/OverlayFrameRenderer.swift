@@ -1042,7 +1042,7 @@ struct OverlayFrameRenderer {
     private static func drawDistanceTimelineStatsBar(_ layout: OverlayDistanceTimelineRenderLayout, element: OverlayElement, foreground: NSColor, accent: NSColor) {
         guard !layout.statsBarItems.isEmpty else { return }
         let config = layout.style.statsBar
-        let rect = distanceTimelineStatsBarRect(layout, config: config)
+        guard let rect = layout.distanceTimelineStatsBarRect() else { return }
         drawSharedStatsBar(
             rect: rect,
             items: layout.statsBarItems,
@@ -1090,103 +1090,17 @@ struct OverlayFrameRenderer {
         )
     }
 
-    private static func distanceTimelineStatsBarRect(_ layout: OverlayDistanceTimelineRenderLayout, config: DistanceTimelineStatsBarConfig) -> CGRect {
-        let scale = distanceTimelineStyleScale(layout)
-        let baseHeight = config.height * scale
-        let autoWidth = config.placement.isVertical ? max(min(config.height * scale, layout.rect.width * 0.34), distanceTimelineStatsBarMinimumVerticalWidth(layout)) : layout.rect.width
-        let width = config.width > 0 ? min(config.width * scale, layout.rect.width * 1.4) : autoWidth
-        let height = config.placement.isVertical ? max(baseHeight, distanceTimelineStatsBarMinimumVerticalHeight(layout)) : baseHeight
-        let offsetX = config.offsetX * scale
-        let offsetY = config.offsetY * scale
-        let centeredX = layout.rect.minX + (layout.rect.width - width) / 2 + offsetX
-        if config.inside {
-            switch config.placement {
-            case .topAttached, .insideTop:
-                let paddingY = layout.style.paddingY * scale
-                let naturalY = layout.rect.minY + paddingY + offsetY
-                let safeY = layout.trackRect.minY - height - offsetY
-                return CGRect(x: centeredX, y: min(naturalY, max(safeY, layout.rect.minY + paddingY)), width: width, height: height)
-            case .bottomAttached, .insideBottom:
-                let paddingY = layout.style.paddingY * scale
-                let naturalY = layout.rect.maxY - height - paddingY - offsetY
-                let safeY = layout.trackRect.maxY + offsetY
-                return CGRect(x: centeredX, y: max(naturalY, safeY), width: width, height: height)
-            case .leftAttached:
-                return CGRect(x: layout.rect.minX + layout.style.paddingX * scale + offsetX, y: layout.rect.minY + (layout.rect.height - height) / 2 + offsetY, width: width, height: height)
-            case .rightAttached:
-                return CGRect(x: layout.rect.maxX - width - layout.style.paddingX * scale - offsetX, y: layout.rect.minY + (layout.rect.height - height) / 2 + offsetY, width: width, height: height)
-            }
-        }
-        switch config.placement {
-        case .topAttached, .insideTop:
-            return CGRect(x: centeredX, y: layout.rect.minY - height - offsetY, width: width, height: height)
-        case .bottomAttached, .insideBottom:
-            return CGRect(x: centeredX, y: layout.rect.maxY + offsetY, width: width, height: height)
-        case .leftAttached:
-            return CGRect(x: layout.rect.minX - width - offsetX, y: layout.rect.minY + (layout.rect.height - height) / 2 + offsetY, width: width, height: height)
-        case .rightAttached:
-            return CGRect(x: layout.rect.maxX + offsetX, y: layout.rect.minY + (layout.rect.height - height) / 2 + offsetY, width: width, height: height)
-        }
-    }
-
     private static func distanceTimelineStyleScale(_ layout: OverlayDistanceTimelineRenderLayout) -> Double {
-        layout.rect.width / max(layout.style.width, 1)
-    }
-
-    private static func distanceTimelineStatsBarMinimumVerticalHeight(_ layout: OverlayDistanceTimelineRenderLayout) -> Double {
-        let count = max(layout.statsBarItems.count, 1)
-        let gap = layout.style.statsBar.itemSpacing * distanceTimelineStyleScale(layout)
-        let rowHeight = layout.percentFontSize * 1.25 + max(layout.unitFontSize * 0.72, 7) + 8 * distanceTimelineStyleScale(layout)
-        return Double(count) * rowHeight + Double(max(count - 1, 0)) * gap
-    }
-
-    private static func distanceTimelineStatsBarMinimumVerticalWidth(_ layout: OverlayDistanceTimelineRenderLayout) -> Double {
-        let valueFont = layout.percentFontSize
-        let labelFont = max(layout.unitFontSize * 0.72, 7)
-        let maxValueWidth = layout.statsBarItems.map {
-            Double(($0.value + ($0.unit.isEmpty ? "" : " \($0.unit)")).count) * valueFont * 0.62
-        }.max() ?? 0
-        let maxLabelWidth = layout.statsBarItems.map {
-            Double($0.label.uppercased().count) * labelFont * 0.58
-        }.max() ?? 0
-        return max(maxValueWidth, maxLabelWidth) + 20 * distanceTimelineStyleScale(layout)
+        layout.distanceTimelineStyleScale
     }
 
     private static func distanceTimelineBackgroundRect(_ layout: OverlayDistanceTimelineRenderLayout) -> CGRect {
-        var rect = layout.rect
         let scale = distanceTimelineStyleScale(layout)
         let pad = 6 * scale
-        if layout.style.showAxisLabels || layout.style.showDistancePoints || (layout.style.markerDistanceLabelEnabled && layout.style.currentMarkerEnabled) {
-            let textH = CGFloat(layout.unitFontSize * 1.3)
-            func unionBand(placement: DistanceTimelineAxisLabelTrackPlacement, gap: CGFloat) {
-                let yTop = layout.style.distanceTimelineAxisLabelTextTopY(
-                    trackRect: layout.trackRect,
-                    placement: placement,
-                    scaledGap: gap,
-                    textLineHeight: textH
-                )
-                let labels = CGRect(
-                    x: layout.rect.minX,
-                    y: yTop - layout.unitFontSize * 0.15,
-                    width: layout.rect.width,
-                    height: layout.unitFontSize * 1.7
-                ).insetBy(dx: -pad, dy: -pad * 0.5)
-                rect = rect.union(labels)
-            }
-            if layout.style.showAxisLabels {
-                unionBand(placement: layout.style.axisEndpointLabelPlacement, gap: CGFloat(layout.style.distancePointOffset * scale))
-            }
-            if layout.style.showDistancePoints, !layout.distancePointLabels.isEmpty {
-                unionBand(placement: layout.style.axisMidpointLabelPlacement, gap: CGFloat(layout.style.midpointAxisLabelOffset * scale))
-            }
-            if layout.style.markerDistanceLabelEnabled, layout.style.currentMarkerEnabled {
-                unionBand(placement: layout.style.markerDistanceLabelPlacement, gap: CGFloat(layout.style.markerDistanceLabelOffset * scale))
-            }
-        }
+        var rect = layout.distanceTimelineContentBounds(axisPadding: pad)
         if layout.style.statsBar.visible,
            layout.style.statsBar.inside,
-           !layout.statsBarItems.isEmpty {
-            let statsRect = distanceTimelineStatsBarRect(layout, config: layout.style.statsBar)
+           let statsRect = layout.distanceTimelineStatsBarRect() {
             rect = rect.union(statsRect.insetBy(dx: -pad, dy: -pad))
         }
         return rect

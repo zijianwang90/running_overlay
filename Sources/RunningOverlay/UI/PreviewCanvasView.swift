@@ -96,6 +96,9 @@ struct PreviewCanvasView: View {
                                     )
                                 }
                             )
+                            // `position` expands its layout container to the canvas proposal. Define
+                            // the hit shape first so taps and drags remain limited to rendered content.
+                            .contentShape(Rectangle())
                             .modifier(PreviewOverlayPositionModifier(
                                 element: element,
                                 canvasSize: canvasSize,
@@ -103,7 +106,6 @@ struct PreviewCanvasView: View {
                                 sampleTime: project.layerDataSampleTime,
                                 activity: project.activity
                             ))
-                            .contentShape(Rectangle())
                             .gesture(
                                 DragGesture(minimumDistance: 2, coordinateSpace: .named(PreviewCanvasCoordinateSpace.name))
                                     .onChanged { value in
@@ -2643,36 +2645,8 @@ struct DistanceTimelineOverlayView: View {
     }
 
     private var backgroundLocalRect: CGRect {
-        var rect = CGRect(origin: .zero, size: layout.rect.size)
-        let track = localRect(layout.trackRect)
         let pad = scaled(6)
-        if layout.style.showAxisLabels || layout.style.showDistancePoints || (layout.style.markerDistanceLabelEnabled && layout.style.currentMarkerEnabled) {
-            let textH = CGFloat(layout.unitFontSize * 1.3)
-            func unionBand(placement: DistanceTimelineAxisLabelTrackPlacement, gap: CGFloat) {
-                let yTop = layout.style.distanceTimelineAxisLabelTextTopY(
-                    trackRect: track,
-                    placement: placement,
-                    scaledGap: gap,
-                    textLineHeight: textH
-                )
-                let labels = CGRect(
-                    x: 0,
-                    y: yTop - layout.unitFontSize * 0.15,
-                    width: layout.rect.width,
-                    height: layout.unitFontSize * 1.7
-                ).insetBy(dx: -pad, dy: -pad * 0.5)
-                rect = rect.union(labels)
-            }
-            if layout.style.showAxisLabels {
-                unionBand(placement: layout.style.axisEndpointLabelPlacement, gap: CGFloat(scaled(layout.style.distancePointOffset)))
-            }
-            if layout.style.showDistancePoints, !layout.distancePointLabels.isEmpty {
-                unionBand(placement: layout.style.axisMidpointLabelPlacement, gap: CGFloat(scaled(layout.style.midpointAxisLabelOffset)))
-            }
-            if layout.style.markerDistanceLabelEnabled, layout.style.currentMarkerEnabled {
-                unionBand(placement: layout.style.markerDistanceLabelPlacement, gap: CGFloat(scaled(layout.style.markerDistanceLabelOffset)))
-            }
-        }
+        var rect = localRect(layout.distanceTimelineContentBounds(axisPadding: pad))
         if layout.style.statsBar.visible,
            layout.style.statsBar.inside,
            let statsRect = statsBarDisplayRect {
@@ -2946,25 +2920,11 @@ struct DistanceTimelineOverlayView: View {
     }
 
     private var statsBarDisplayRect: CGRect? {
-        let config = layout.style.statsBar
-        guard layout.style.statsBar.visible, !layout.statsBarItems.isEmpty else { return nil }
-        let barHeight = scaled(config.height)
-        let isVertical = config.placement.isVertical
-        let autoWidth = isVertical ? max(min(scaled(config.height), layout.rect.width * 0.34), scaled(76)) : layout.rect.width
-        let barWidth = config.width > 0 ? min(scaled(config.width), layout.rect.width * 1.4) : autoWidth
-        let finalHeight = isVertical ? max(barHeight, statsBarMinimumVerticalHeight) : barHeight
-        return statsBarLocalRect(width: barWidth, height: finalHeight, placement: config.placement)
-    }
-
-    private var statsBarMinimumVerticalHeight: Double {
-        let count = max(layout.statsBarItems.count, 1)
-        let valueHeight = layout.percentFontSize * 1.25
-        let labelHeight = max(layout.unitFontSize * 0.72, 7)
-        return Double(count) * (valueHeight + labelHeight + scaled(8)) + Double(max(count - 1, 0)) * scaled(layout.style.statsBar.itemSpacing)
+        layout.distanceTimelineStatsBarRect().map(localRect)
     }
 
     private var styleScale: Double {
-        layout.rect.width / max(layout.style.width, 1)
+        layout.distanceTimelineStyleScale
     }
 
     private func scaled(_ value: Double) -> Double {
@@ -3004,36 +2964,6 @@ struct DistanceTimelineOverlayView: View {
             path.addLine(to: point)
         }
         return path
-    }
-
-    private func statsBarLocalRect(width: Double, height: Double, placement: RouteMapStatsBarPlacement) -> CGRect {
-        let config = layout.style.statsBar
-        let offsetX = scaled(config.offsetX)
-        let offsetY = scaled(config.offsetY)
-        let centeredX = (layout.rect.width - width) / 2 + offsetX
-        let track = localRect(layout.trackRect)
-        if config.inside {
-            return switch placement {
-            case .topAttached, .insideTop:
-                CGRect(x: centeredX, y: min(scaled(layout.style.paddingY) + offsetY, max(track.minY - height - offsetY, scaled(layout.style.paddingY))), width: width, height: height)
-            case .bottomAttached, .insideBottom:
-                CGRect(x: centeredX, y: max(layout.rect.height - height - scaled(layout.style.paddingY) - offsetY, track.maxY + offsetY), width: width, height: height)
-            case .leftAttached:
-                CGRect(x: scaled(layout.style.paddingX) + offsetX, y: (layout.rect.height - height) / 2 + offsetY, width: width, height: height)
-            case .rightAttached:
-                CGRect(x: layout.rect.width - width - scaled(layout.style.paddingX) - offsetX, y: (layout.rect.height - height) / 2 + offsetY, width: width, height: height)
-            }
-        }
-        return switch placement {
-        case .topAttached, .insideTop:
-            CGRect(x: centeredX, y: -height - offsetY, width: width, height: height)
-        case .bottomAttached, .insideBottom:
-            CGRect(x: centeredX, y: layout.rect.height + offsetY, width: width, height: height)
-        case .leftAttached:
-            CGRect(x: -width - offsetX, y: (layout.rect.height - height) / 2 + offsetY, width: width, height: height)
-        case .rightAttached:
-            CGRect(x: layout.rect.width + offsetX, y: (layout.rect.height - height) / 2 + offsetY, width: width, height: height)
-        }
     }
 
     private func tickMarks(in size: CGSize) -> Path {

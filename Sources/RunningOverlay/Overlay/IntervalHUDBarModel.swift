@@ -221,7 +221,11 @@ enum IntervalHUDBarMetric: String, CaseIterable, Identifiable, Codable {
     }
 
     static var numericCases: [IntervalHUDBarMetric] {
-        allCases.filter { $0.elementType?.isNumericOverlay == true }
+        selectableCases
+    }
+
+    static var selectableCases: [IntervalHUDBarMetric] {
+        ActivityMetricCatalog.selectableElementTypes.compactMap(Self.init(elementType:))
     }
 
     var defaultUnitOption: OverlayUnitOption {
@@ -230,6 +234,30 @@ enum IntervalHUDBarMetric: String, CaseIterable, Identifiable, Codable {
 
     var unitOptions: [OverlayUnitOption] {
         elementType.map(OverlayUnitOption.options(for:)) ?? []
+    }
+
+    init?(elementType: OverlayElementType) {
+        switch elementType {
+        case .heartRate: self = .heartRate
+        case .pace: self = .pace
+        case .avgPace: self = .avgPace
+        case .lapPace: self = .lapPace
+        case .calories: self = .calories
+        case .elapsedTime: self = .elapsedTime
+        case .realTime: self = .realTime
+        case .distance: self = .distance
+        case .elevation: self = .elevation
+        case .cadence: self = .cadence
+        case .power: self = .power
+        case .verticalOscillation: self = .verticalOscillation
+        case .groundContactTime: self = .groundContactTime
+        case .strideLength: self = .strideLength
+        case .verticalRatio: self = .verticalRatio
+        case .groundContactBalance: self = .groundContactBalance
+        case .temperature: self = .temperature
+        case .grade: self = .grade
+        default: return nil
+        }
     }
 }
 

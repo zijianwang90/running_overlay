@@ -324,6 +324,9 @@ Current implementation status:
 - Timeline ruler hover data appears above the time scale, not under the cursor, with an arrow pointing to the hovered ruler position.
 - A muted red playhead with a small downward-pointing triangle inside the ruler band is shown on timeline tracks. The vertical line starts from inside the ruler and extends down through the visible tracks; neither the line nor the triangle is allowed to extend above the ruler.
 - The Distance Timeline overlay renders a configurable compact progress module with minimal, dense, sport, splits, glass, neon, lower-third, and route presets.
+- Distance Timeline Value can show either `current / total unit` or only `current unit`; existing projects default to showing total distance.
+- Distance Timeline Stats Bars must remain outside progress, axis-label, and marker-label content in every placement. Inside mode groups the bar with the timeline background/border without overlaying that content.
+- Activity metric dropdowns for composite overlays must use the shared activity metric catalog so new numeric activity metrics can surface consistently in Distance Timeline custom values, Stats Bar slots, Running Gauge regions, and Interval HUD Bar metric rows.
 - Distance Timeline presets can control value/label/percent content, background, border, padding, track height, ticks, current marker, glow, fade amount, media slot for applicable presets, route elevation underlay, and GPS sampled route geometry for the route preset.
 - Distance Timeline media slots support system icons plus embedded static or animated SVG assets. Embedded SVG assets must persist through overlay templates and render deterministically in preview and export.
 - The live elevation chart overlay renders as a compact line chart with a playhead marker.

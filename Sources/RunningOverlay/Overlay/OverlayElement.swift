@@ -206,6 +206,12 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+enum ActivityMetricCatalog {
+    static let selectableElementTypes: [OverlayElementType] = OverlayElementType.allCases.filter {
+        $0.isNumericOverlay && $0 != .heartRateZone
+    }
+}
+
 enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
     case bpm
     case paceMetric
@@ -1538,6 +1544,7 @@ struct DistanceTimelineStyle: Equatable, Codable {
     var width: Double
     var height: Double
     var showValue: Bool
+    var showTotalDistance: Bool
     var valueUnitSystem: DistanceTimelineUnitSystem
     var customValuesEnabled: Bool
     var customValues: [DistanceTimelineCustomValue]
@@ -1615,6 +1622,7 @@ struct DistanceTimelineStyle: Equatable, Codable {
         width: Double,
         height: Double,
         showValue: Bool = true,
+        showTotalDistance: Bool = true,
         valueUnitSystem: DistanceTimelineUnitSystem = .metric,
         customValuesEnabled: Bool = false,
         customValues: [DistanceTimelineCustomValue] = Array(repeating: .empty, count: 4),
@@ -1682,6 +1690,7 @@ struct DistanceTimelineStyle: Equatable, Codable {
         self.width = width
         self.height = height
         self.showValue = showValue
+        self.showTotalDistance = showTotalDistance
         self.valueUnitSystem = valueUnitSystem
         self.customValuesEnabled = customValuesEnabled
         self.customValues = Array(customValues.prefix(4)) + Array(repeating: .empty, count: max(0, 4 - customValues.count))
@@ -1756,6 +1765,7 @@ struct DistanceTimelineStyle: Equatable, Codable {
         width = try c.decodeIfPresent(Double.self, forKey: .width) ?? base.width
         height = try c.decodeIfPresent(Double.self, forKey: .height) ?? base.height
         showValue = try c.decodeIfPresent(Bool.self, forKey: .showValue) ?? true
+        showTotalDistance = try c.decodeIfPresent(Bool.self, forKey: .showTotalDistance) ?? true
         valueUnitSystem = try c.decodeIfPresent(DistanceTimelineUnitSystem.self, forKey: .valueUnitSystem) ?? .metric
         customValuesEnabled = try c.decodeIfPresent(Bool.self, forKey: .customValuesEnabled) ?? false
         let decodedCustomValues = try c.decodeIfPresent([DistanceTimelineCustomValue].self, forKey: .customValues) ?? base.customValues
@@ -1843,6 +1853,7 @@ struct DistanceTimelineStyle: Equatable, Codable {
         case width
         case height
         case showValue
+        case showTotalDistance
         case valueUnitSystem
         case customValuesEnabled
         case customValues
@@ -2335,45 +2346,100 @@ enum OverlayRouteMapContainerPreset: String, CaseIterable, Identifiable, Codable
 
 enum RouteMapStatsMetric: String, CaseIterable, Identifiable, Codable {
     case progress
-    case distance
-    case pace
-    case elapsedTime
     case heartRate
+    case pace
+    case avgPace
+    case lapPace
+    case calories
+    case elapsedTime
+    case realTime
+    case distance
     case elevation
-    case grade
     case cadence
     case power
-    case calories
+    case verticalOscillation
+    case groundContactTime
+    case strideLength
+    case verticalRatio
+    case groundContactBalance
+    case temperature
+    case grade
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
         case .progress: "Progress"
-        case .distance: "Distance"
-        case .pace: "Pace"
-        case .elapsedTime: "Time"
         case .heartRate: "Heart Rate"
+        case .pace: "Pace"
+        case .avgPace: "Avg Pace"
+        case .lapPace: "Lap Pace"
+        case .calories: "Calories"
+        case .elapsedTime: "Time"
+        case .realTime: "Real Time"
+        case .distance: "Distance"
         case .elevation: "Elevation"
-        case .grade: "Grade"
         case .cadence: "Cadence"
         case .power: "Power"
-        case .calories: "Calories"
+        case .verticalOscillation: "Vertical Oscillation"
+        case .groundContactTime: "Ground Contact Time"
+        case .strideLength: "Stride Length"
+        case .verticalRatio: "Vertical Ratio"
+        case .groundContactBalance: "GCT Balance"
+        case .temperature: "Temperature"
+        case .grade: "Grade"
         }
     }
 
     var elementType: OverlayElementType {
         switch self {
         case .progress: .distance
-        case .distance: .distance
-        case .pace: .pace
-        case .elapsedTime: .elapsedTime
         case .heartRate: .heartRate
+        case .pace: .pace
+        case .avgPace: .avgPace
+        case .lapPace: .lapPace
+        case .calories: .calories
+        case .elapsedTime: .elapsedTime
+        case .realTime: .realTime
+        case .distance: .distance
         case .elevation: .elevation
-        case .grade: .grade
         case .cadence: .cadence
         case .power: .power
-        case .calories: .calories
+        case .verticalOscillation: .verticalOscillation
+        case .groundContactTime: .groundContactTime
+        case .strideLength: .strideLength
+        case .verticalRatio: .verticalRatio
+        case .groundContactBalance: .groundContactBalance
+        case .temperature: .temperature
+        case .grade: .grade
+        }
+    }
+
+    static var selectableCases: [RouteMapStatsMetric] {
+        [.progress] + ActivityMetricCatalog.selectableElementTypes.compactMap(Self.init(elementType:))
+    }
+
+    init?(elementType: OverlayElementType) {
+        switch elementType {
+        case .heartRate: self = .heartRate
+        case .pace: self = .pace
+        case .avgPace: self = .avgPace
+        case .lapPace: self = .lapPace
+        case .calories: self = .calories
+        case .elapsedTime: self = .elapsedTime
+        case .realTime: self = .realTime
+        case .distance: self = .distance
+        case .elevation: self = .elevation
+        case .cadence: self = .cadence
+        case .power: self = .power
+        case .verticalOscillation: self = .verticalOscillation
+        case .groundContactTime: self = .groundContactTime
+        case .strideLength: self = .strideLength
+        case .verticalRatio: self = .verticalRatio
+        case .groundContactBalance: self = .groundContactBalance
+        case .temperature: self = .temperature
+        case .grade: self = .grade
+        default: return nil
         }
     }
 }

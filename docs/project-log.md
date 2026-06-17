@@ -1,5 +1,25 @@
 # Running Overlay Project Log
 
+## 2026-06-17
+
+### Distance Timeline Optional Total Distance
+
+- Added a persisted Value `Total Distance` toggle to Distance Timeline. Enabled renders `current / total unit`; disabled renders only the current activity distance and unit.
+- Kept the default enabled for backward compatibility and added render-layout plus template round-trip regression coverage.
+
+### Distance Timeline Stats Bar Positioning
+
+- Moved Distance Timeline Stats Bars outside the complete rendered content bounds, including Axis and Marker labels, for top, bottom, left, and right placements.
+- Changed Inside to control shared background/border grouping only; it no longer places the Stats Bar over progress or axis content.
+- Unified Preview and Export around the same Stats Bar frame calculation and added layout regression coverage.
+
+### Shared Activity Metric Picker Catalog
+
+- Added `ActivityMetricCatalog.selectableElementTypes` as the shared source for activity metric picker menus.
+- Routed Distance Timeline Custom Values, shared Stats Bar slots, Running Gauge regions, and Interval HUD Bar metric/add menus through catalog-derived selectable cases instead of independent menu lists.
+- Expanded Stats Bar metrics and Running Gauge metrics to cover the current shared activity metric set, including Avg Pace, Lap Pace, running dynamics metrics, Temperature, and Grade where they were missing.
+- Added regression coverage that verifies all metric picker enum bridges match the shared catalog.
+
 ## 2026-06-16
 
 ### Route Map Dot-Only Marker Scope
@@ -12,6 +32,7 @@
 
 - Fixed preview canvas empty-area clicks so tapping outside every visible overlay clears the current widget selection even when transparent overlay hit-test regions intercept the old background tap handler.
 - Replaced the background-only tap handler with a coordinate-aware `SpatialTapGesture` that checks tracked overlay frames before clearing selection.
+- Corrected the overlay modifier order so `contentShape` is resolved against rendered overlay content before `position` expands the layout container to the full canvas. This prevents the topmost overlay from intercepting every blank-area click and makes empty-area deselection work with multiple overlays present.
 
 ### Route Map Container Control Cleanup
 

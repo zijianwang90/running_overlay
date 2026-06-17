@@ -173,7 +173,9 @@ enum OverlayRenderModel {
             value: String(format: "%.2f", totalDistance),
             unit: unit
         )
-        let valueText = "\(distanceComponents.value) / \(totalComponents.value) \(totalComponents.unit)"
+        let valueText = style.showTotalDistance
+            ? "\(distanceComponents.value) / \(totalComponents.value) \(totalComponents.unit)"
+            : "\(distanceComponents.value) \(distanceComponents.unit)"
         let markerDistanceText = "\(distanceComponents.value) \(unit)"
         let distancePointLabels = style.showDistancePoints && style.distancePointCount > 0
             ? Self.distancePointLabels(totalDistance: totalDistance, unit: unit, count: style.distancePointCount)
@@ -1950,6 +1952,129 @@ struct OverlayDistanceTimelineRenderLayout {
     var elevationSamples: [Double]
     var routePoints: [CGPoint]
     var routeCurrentPoint: CGPoint?
+}
+
+extension OverlayDistanceTimelineRenderLayout {
+    var distanceTimelineStyleScale: Double {
+        rect.width / max(style.width, 1)
+    }
+
+    func distanceTimelineContentBounds(axisPadding: Double = 0) -> CGRect {
+        var bounds = rect
+        let scale = distanceTimelineStyleScale
+        let textHeight = unitFontSize * 1.3
+
+        func unionBand(
+            placement: DistanceTimelineAxisLabelTrackPlacement,
+            gap: Double
+        ) {
+            let top = style.distanceTimelineAxisLabelTextTopY(
+                trackRect: trackRect,
+                placement: placement,
+                scaledGap: gap,
+                textLineHeight: textHeight
+            )
+            let band = CGRect(
+                x: rect.minX,
+                y: top - unitFontSize * 0.15,
+                width: rect.width,
+                height: unitFontSize * 1.7
+            ).insetBy(dx: -axisPadding, dy: -axisPadding * 0.5)
+            bounds = bounds.union(band)
+        }
+
+        if style.showAxisLabels {
+            unionBand(
+                placement: style.axisEndpointLabelPlacement,
+                gap: style.distancePointOffset * scale
+            )
+        }
+        if style.showDistancePoints, !distancePointLabels.isEmpty {
+            unionBand(
+                placement: style.axisMidpointLabelPlacement,
+                gap: style.midpointAxisLabelOffset * scale
+            )
+        }
+        if style.markerDistanceLabelEnabled, style.currentMarkerEnabled {
+            unionBand(
+                placement: style.markerDistanceLabelPlacement,
+                gap: style.markerDistanceLabelOffset * scale
+            )
+        }
+        return bounds
+    }
+
+    func distanceTimelineStatsBarRect() -> CGRect? {
+        guard style.statsBar.visible, !statsBarItems.isEmpty else { return nil }
+
+        let config = style.statsBar
+        let scale = distanceTimelineStyleScale
+        let baseHeight = config.height * scale
+        let autoWidth = config.placement.isVertical
+            ? max(min(baseHeight, rect.width * 0.34), distanceTimelineStatsBarMinimumVerticalWidth)
+            : rect.width
+        let width = config.width > 0 ? min(config.width * scale, rect.width * 1.4) : autoWidth
+        let height = config.placement.isVertical
+            ? max(baseHeight, distanceTimelineStatsBarMinimumVerticalHeight)
+            : baseHeight
+        let offsetX = config.offsetX * scale
+        let offsetY = config.offsetY * scale
+        let attachmentGap = 6 * scale
+        let contentBounds = distanceTimelineContentBounds()
+        let centeredX = rect.minX + (rect.width - width) / 2 + offsetX
+
+        return switch config.placement {
+        case .topAttached, .insideTop:
+            CGRect(
+                x: centeredX,
+                y: contentBounds.minY - attachmentGap - height - offsetY,
+                width: width,
+                height: height
+            )
+        case .bottomAttached, .insideBottom:
+            CGRect(
+                x: centeredX,
+                y: contentBounds.maxY + attachmentGap + offsetY,
+                width: width,
+                height: height
+            )
+        case .leftAttached:
+            CGRect(
+                x: contentBounds.minX - attachmentGap - width - offsetX,
+                y: contentBounds.midY - height / 2 + offsetY,
+                width: width,
+                height: height
+            )
+        case .rightAttached:
+            CGRect(
+                x: contentBounds.maxX + attachmentGap + offsetX,
+                y: contentBounds.midY - height / 2 + offsetY,
+                width: width,
+                height: height
+            )
+        }
+    }
+
+    private var distanceTimelineStatsBarMinimumVerticalHeight: Double {
+        let count = max(statsBarItems.count, 1)
+        let gap = style.statsBar.itemSpacing * distanceTimelineStyleScale
+        let rowHeight = percentFontSize * 1.25
+            + max(unitFontSize * 0.72, 7)
+            + 8 * distanceTimelineStyleScale
+        return Double(count) * rowHeight + Double(max(count - 1, 0)) * gap
+    }
+
+    private var distanceTimelineStatsBarMinimumVerticalWidth: Double {
+        let valueFont = percentFontSize
+        let labelFont = max(unitFontSize * 0.72, 7)
+        let maxValueWidth = statsBarItems.map {
+            Double(($0.value + ($0.unit.isEmpty ? "" : " \($0.unit)")).count) * valueFont * 0.62
+        }.max() ?? 0
+        let maxLabelWidth = statsBarItems.map {
+            Double($0.label.uppercased().count) * labelFont * 0.58
+        }.max() ?? 0
+        return max(maxValueWidth, maxLabelWidth) + 20 * distanceTimelineStyleScale
+    }
 }
 
 struct OverlayDistanceTimelineStatsBarItemLayout {

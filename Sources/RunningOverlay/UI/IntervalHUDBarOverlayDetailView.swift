@@ -432,7 +432,7 @@ struct IntervalHUDBarOverlayDetailView: View {
         ForEach(Array(style.metricSlots.enumerated()), id: \.element.id) { index, slot in
             InspectorDenseRow(label: "Metric \(index + 1)") {
                 Menu {
-                    ForEach(IntervalHUDBarMetric.numericCases) { metric in
+                    ForEach(IntervalHUDBarMetric.selectableCases) { metric in
                         Button {
                             project.mutateIntervalHUDBarStyle(elementID) { hud in
                                 guard index < hud.metricSlots.count else { return }
@@ -494,7 +494,7 @@ struct IntervalHUDBarOverlayDetailView: View {
 
         InspectorDenseRow(label: "Add") {
             Menu {
-                ForEach(IntervalHUDBarMetric.numericCases) { metric in
+                ForEach(IntervalHUDBarMetric.selectableCases) { metric in
                     Button(metric.label) {
                         project.mutateIntervalHUDBarStyle(elementID) { hud in
                             hud.metricSlots.append(IntervalHUDBarMetricSlot(metric: metric))

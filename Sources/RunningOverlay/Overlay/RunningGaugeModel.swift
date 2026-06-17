@@ -7,11 +7,13 @@ import Foundation
 /// `OverlayElementType` so the existing `OverlayValueFormatter` can resolve
 /// label/value/unit components for each region.
 enum OverlayGaugeMetric: String, CaseIterable, Identifiable, Codable {
+    case heartRate
     case distance
     case pace
+    case avgPace
+    case lapPace
     case elapsedTime
     case realTime
-    case heartRate
     case power
     case cadence
     case elevation
@@ -28,11 +30,13 @@ enum OverlayGaugeMetric: String, CaseIterable, Identifiable, Codable {
 
     var label: String {
         switch self {
+        case .heartRate: "Heart Rate"
         case .distance: "Distance"
         case .pace: "Pace"
+        case .avgPace: "Avg Pace"
+        case .lapPace: "Lap Pace"
         case .elapsedTime: "Elapsed Time"
         case .realTime: "Real Time"
-        case .heartRate: "Heart Rate"
         case .power: "Power"
         case .cadence: "Cadence"
         case .elevation: "Elevation"
@@ -49,11 +53,13 @@ enum OverlayGaugeMetric: String, CaseIterable, Identifiable, Codable {
 
     var compactLabel: String {
         switch self {
+        case .heartRate: "HR"
         case .distance: "DISTANCE"
         case .pace: "PACE"
+        case .avgPace: "AVG"
+        case .lapPace: "LAP"
         case .elapsedTime: "TIME"
         case .realTime: "CLOCK"
-        case .heartRate: "HR"
         case .power: "POWER"
         case .cadence: "CADENCE"
         case .elevation: "ELEV"
@@ -72,11 +78,13 @@ enum OverlayGaugeMetric: String, CaseIterable, Identifiable, Codable {
     /// shared `OverlayValueFormatter.components(for:activity:elapsedTime:)`.
     var elementType: OverlayElementType {
         switch self {
+        case .heartRate: .heartRate
         case .distance: .distance
         case .pace: .pace
+        case .avgPace: .avgPace
+        case .lapPace: .lapPace
         case .elapsedTime: .elapsedTime
         case .realTime: .realTime
-        case .heartRate: .heartRate
         case .power: .power
         case .cadence: .cadence
         case .elevation: .elevation
@@ -95,11 +103,13 @@ enum OverlayGaugeMetric: String, CaseIterable, Identifiable, Codable {
     /// when a region's `valueColor` is left at its default.
     var defaultAccent: OverlayColor {
         switch self {
+        case .heartRate: .red
         case .distance: .green
         case .pace: .blue
+        case .avgPace: .blue
+        case .lapPace: .blue
         case .elapsedTime: .yellow
         case .realTime: .white
-        case .heartRate: .red
         case .power: .purple
         case .cadence: .cyan
         case .elevation: .orange
@@ -111,6 +121,34 @@ enum OverlayGaugeMetric: String, CaseIterable, Identifiable, Codable {
         case .groundContactBalance: .white
         case .temperature: .orange
         case .grade: .green
+        }
+    }
+
+    static var selectableCases: [OverlayGaugeMetric] {
+        ActivityMetricCatalog.selectableElementTypes.compactMap(Self.init(elementType:))
+    }
+
+    init?(elementType: OverlayElementType) {
+        switch elementType {
+        case .heartRate: self = .heartRate
+        case .pace: self = .pace
+        case .avgPace: self = .avgPace
+        case .lapPace: self = .lapPace
+        case .calories: self = .calories
+        case .elapsedTime: self = .elapsedTime
+        case .realTime: self = .realTime
+        case .distance: self = .distance
+        case .elevation: self = .elevation
+        case .cadence: self = .cadence
+        case .power: self = .power
+        case .verticalOscillation: self = .verticalOscillation
+        case .groundContactTime: self = .groundContactTime
+        case .strideLength: self = .strideLength
+        case .verticalRatio: self = .verticalRatio
+        case .groundContactBalance: self = .groundContactBalance
+        case .temperature: self = .temperature
+        case .grade: self = .grade
+        default: return nil
         }
     }
 }

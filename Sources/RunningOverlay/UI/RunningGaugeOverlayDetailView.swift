@@ -142,7 +142,7 @@ struct RunningGaugeOverlayDetailView: View {
         InspectorDenseRow(label: region.region.label) {
             HStack(spacing: NumericTokens.space2) {
                 Menu {
-                    ForEach(OverlayGaugeMetric.allCases) { metric in
+                    ForEach(OverlayGaugeMetric.selectableCases) { metric in
                         Button {
                             project.updateOverlayGaugeRegion(elementID, region: region.region) { config in
                                 config.metric = metric

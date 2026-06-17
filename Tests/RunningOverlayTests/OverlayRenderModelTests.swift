@@ -253,6 +253,21 @@ struct OverlayRenderModelTests {
         #expect(layout.trackRect.height == 6)
     }
 
+    @Test func distanceTimelineCanHideTotalDistanceFromValue() {
+        var style = OverlayStyle.default
+        style.distanceTimeline.showTotalDistance = false
+        let element = OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.25), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleActivity(),
+            elapsedTime: 5
+        )
+
+        let layout = OverlayRenderModel.distanceTimelineLayout(for: element, in: context)
+
+        #expect(layout.valueText == "0.05 km")
+    }
+
     @Test func distanceTimelineDistanceAxisLabelModeFormatsOriginWithUnit() {
         var style = OverlayStyle.default
         style.distanceTimeline.axisLabelMode = .distance
@@ -277,6 +292,47 @@ struct OverlayRenderModelTests {
         let textH: CGFloat = 13
         #expect(style.distanceTimelineAxisLabelTextTopY(trackRect: track, placement: .below, scaledGap: gap, textLineHeight: textH) == track.maxY + gap)
         #expect(style.distanceTimelineAxisLabelTextTopY(trackRect: track, placement: .above, scaledGap: gap, textLineHeight: textH) == track.minY - gap - textH)
+    }
+
+    @Test func distanceTimelineBottomStatsBarClearsAxisLabelsInsideAndOutside() throws {
+        var style = OverlayStyle.default
+        style.distanceTimeline.showAxisLabels = true
+        style.distanceTimeline.showDistancePoints = true
+        style.distanceTimeline.statsBar.visible = true
+        style.distanceTimeline.statsBar.placement = .bottomAttached
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleActivity(),
+            elapsedTime: 5
+        )
+
+        var element = OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.25), scale: 1, style: style)
+        var layout = OverlayRenderModel.distanceTimelineLayout(for: element, in: context)
+        let outsideRect = try #require(layout.distanceTimelineStatsBarRect())
+        #expect(outsideRect.minY > layout.distanceTimelineContentBounds().maxY)
+
+        element.style.distanceTimeline.statsBar.inside = true
+        layout = OverlayRenderModel.distanceTimelineLayout(for: element, in: context)
+        let insideRect = try #require(layout.distanceTimelineStatsBarRect())
+        #expect(insideRect.minY > layout.distanceTimelineContentBounds().maxY)
+        #expect(insideRect == outsideRect)
+    }
+
+    @Test func distanceTimelineSideStatsBarsClearMainContent() throws {
+        var style = OverlayStyle.default
+        style.distanceTimeline.statsBar.visible = true
+        style.distanceTimeline.statsBar.placement = .rightAttached
+        let element = OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.25), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleActivity(),
+            elapsedTime: 5
+        )
+
+        let layout = OverlayRenderModel.distanceTimelineLayout(for: element, in: context)
+        let statsRect = try #require(layout.distanceTimelineStatsBarRect())
+
+        #expect(statsRect.minX > layout.distanceTimelineContentBounds().maxX)
     }
 
     @Test func distanceTimelinePresetLayoutIncludesSportMediaSlotAndRouteElevation() {
@@ -700,11 +756,21 @@ struct OverlayRenderModelTests {
 
     @Test func intervalHUDBarMetricsIncludeAllNumericOverlayTypes() {
         let intervalMetricTypes = Set(IntervalHUDBarMetric.numericCases.compactMap(\.elementType))
-        let numericTypes = Set(OverlayElementType.allCases.filter { $0.isNumericOverlay && $0 != .heartRateZone })
+        let numericTypes = Set(ActivityMetricCatalog.selectableElementTypes)
 
         #expect(intervalMetricTypes == numericTypes)
         #expect(!IntervalHUDBarMetric.numericCases.contains(.heartRateZone))
         #expect(!IntervalHUDBarMetric.numericCases.contains(.hrDrop))
+    }
+
+    @Test func metricPickersShareActivityMetricCatalog() {
+        let catalogTypes = ActivityMetricCatalog.selectableElementTypes
+
+        #expect(RouteMapStatsMetric.selectableCases.first == .progress)
+        #expect(RouteMapStatsMetric.selectableCases.dropFirst().map(\.elementType) == catalogTypes)
+        #expect(OverlayGaugeMetric.selectableCases.map(\.elementType) == catalogTypes)
+        #expect(IntervalHUDBarMetric.selectableCases.compactMap(\.elementType) == catalogTypes)
+        #expect(SharedStatsBarInspectorUI.metrics == RouteMapStatsMetric.selectableCases)
     }
 
     @MainActor
