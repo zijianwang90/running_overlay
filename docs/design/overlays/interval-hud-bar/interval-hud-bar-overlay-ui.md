@@ -183,7 +183,7 @@ Implemented Inspector sections:
 
 The last four sections must stay in this order: `Divider`, `Background`, `Border`, `Effects`. `Background`, `Border`, and `Effects` reuse the shared Inspector components. `Divider` uses the shared overlay divider model fields so the renderer, preview, and export stay aligned.
 
-Background Padding expands the rendered HUD background and border bounds in preview and export. It also contributes to HUD interior padding: X padding moves all HUD cells and the bottom bar inward; Y padding increases top and bottom interior space.
+Background Padding expands the rendered HUD background and border bounds in preview and export only. It must not affect HUD cell layout, text scale, or bottom-bar layout.
 
 Bottom Bar Spacing is the vertical gap between the data cell row and the bottom bar. `0` places the bottom bar directly against the data row layout area; increasing the value moves the data row and bottom bar farther apart. The renderer preserves the requested spacing first, then compresses top/bottom padding when the HUD is short. If the HUD still cannot fit the data row and bar, the rendered gap is capped so content remains inside the background container.
 

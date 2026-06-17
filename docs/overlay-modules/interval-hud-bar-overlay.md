@@ -82,7 +82,7 @@ Inspector sections:
 
 The final four sections stay in the canonical order `Divider`, `Background`, `Border`, `Effects`; `Background`, `Border`, and `Effects` are the shared components used by other overlays.
 
-Background padding expands the HUD background and border bounds in preview and export, and also contributes to the HUD cell/bottom-bar interior padding. Shadow follows the shared Effects fields (`shadowColor`, opacity, radius, offset, thickness): it is container-level when Background is enabled, and content-level when both Background and Border are disabled.
+Background padding expands the HUD background and border bounds in preview and export without changing the HUD cell or bottom-bar layout. Shadow follows the shared Effects fields (`shadowColor`, opacity, radius, offset, thickness): it is container-level when Background is enabled, and content-level when both Background and Border are disabled.
 
 Bottom Bar Spacing is a real gap between the data row and bottom bar: `0` keeps them adjacent, and larger values separate them farther. The layout preserves requested spacing before compressing top/bottom padding on short HUDs; only when the data row and bar still cannot fit is spacing capped. Zone Marker is drawn as a floating overlay and never reserves layout height, so enabling it does not move the data row, bar, or background.
 
@@ -113,7 +113,7 @@ Heart-rate and pace zone modes read global `HeartRateZonePreferences`.
 
 Bottom Bar Spacing controls the vertical gap between the HUD content cells and the bottom bar in both preview and export.
 
-Shared Background Padding is honored in both preview and export: X/Y padding expands the rendered background and border bounds, and also moves HUD cells/bottom bar inward to preserve interior breathing room.
+Shared Background Padding is honored in both preview and export: X/Y padding expands the rendered background and border bounds only. It must not move, shrink, or scale HUD cells, text, or the bottom bar.
 
 Zone modes support an Active Zone Width setting. Equal width keeps Z1-Z5/Z6 evenly divided; expanded width lets the active zone occupy up to 50% of the bar, with inactive zones sharing the remaining space evenly.
 

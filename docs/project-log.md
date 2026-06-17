@@ -4376,3 +4376,23 @@ Files changed:
 - `Sources/RunningOverlay/UI/InspectorRows/OverlayBackgroundInspectorRows.swift`
 - `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
 - `Tests/RunningOverlayTests/OverlayRenderModelTests.swift`
+
+### Interval HUD Background Padding Isolation (2026-06-17)
+
+Summary:
+
+- Changed Interval HUD Bar so shared Background Padding only expands the rendered background and border bounds.
+- Removed Background Padding from Interval HUD Bar content inset calculations in both preview and export, preventing text/cell layout from shrinking when X/Y padding changes.
+- Updated Interval HUD Bar docs to state that Background Padding must not move, shrink, or scale internal HUD content.
+
+Verification:
+
+- `swift test`
+- `git diff --check`
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/IntervalHUDBarOverlayView.swift`
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `docs/design/overlays/interval-hud-bar/interval-hud-bar-overlay-ui.md`
+- `docs/overlay-modules/interval-hud-bar-overlay.md`

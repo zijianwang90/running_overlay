@@ -1425,15 +1425,13 @@ struct OverlayFrameRenderer {
             }
         }
 
-        let horizontalPadding = element.style.backgroundPaddingX * element.scale
-        let verticalPadding = element.style.backgroundPaddingY * element.scale
         let hasVisibleBottomBar = style.bottomBarEnabled && style.bottomBarMode != .none
         let bottomBarContentHeight = hasVisibleBottomBar ? layout.barHeight : 0
         let verticalLayout = intervalHUDVerticalLayout(
             layout: layout,
             rect: rect,
-            desiredTopPadding: rect.height * 0.06 + verticalPadding,
-            desiredBottomPadding: rect.height * 0.12 + verticalPadding,
+            desiredTopPadding: rect.height * 0.06,
+            desiredBottomPadding: rect.height * 0.12,
             bottomBarContentHeight: bottomBarContentHeight,
             hasVisibleBottomBar: hasVisibleBottomBar
         )
@@ -1448,7 +1446,7 @@ struct OverlayFrameRenderer {
         let contentH = hasVisibleBottomBar
             ? max(contentBottom - contentY, 1)
             : rect.height * 0.72
-        let contentInset = rect.width * 0.04 + horizontalPadding
+        let contentInset = rect.width * 0.04
         let contentRect = CGRect(
             x: rect.minX + contentInset,
             y: contentY,
@@ -1513,9 +1511,9 @@ struct OverlayFrameRenderer {
 
         guard hasVisibleBottomBar else { return }
         let barRect = CGRect(
-            x: rect.minX + rect.width * 0.04 + horizontalPadding,
+            x: rect.minX + rect.width * 0.04,
             y: barY,
-            width: max(rect.width * 0.92 - horizontalPadding * 2, 1),
+            width: max(rect.width * 0.92, 1),
             height: layout.barHeight
         )
         switch style.bottomBarMode {

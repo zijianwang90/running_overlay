@@ -138,15 +138,15 @@ struct IntervalHUDBarOverlayView: View {
     }
 
     private var horizontalContentPadding: Double {
-        layout.rect.width * 0.035 + element.style.backgroundPaddingX * element.scale
+        layout.rect.width * 0.035
     }
 
     private var topContentPadding: Double {
-        layout.rect.height * 0.06 + element.style.backgroundPaddingY * element.scale
+        layout.rect.height * 0.06
     }
 
     private var bottomContentPadding: Double {
-        layout.rect.height * 0.12 + element.style.backgroundPaddingY * element.scale
+        layout.rect.height * 0.12
     }
 
     private var bottomBarContentHeight: Double {
