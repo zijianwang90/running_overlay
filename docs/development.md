@@ -327,6 +327,7 @@ Current implementation:
 - In Full + Equal mode, the Current Width slider starts at `Equal` and can increase the current segment's target share without changing the default equal-width layout.
 - Interval Timeline labels are direct display settings: current active laps use Work Dist/Time, current non-active laps use Rest Kind/Dist/Time, and non-current neighbor labels can be Off, Distance, or Time.
 - Interval Timeline centered overflow uses compact `···` edge hints only; WU/CD ghost labels and `xN` hidden-count boxes are not rendered.
+- Zone Edge Bar is available as an independent HR/pace zone overlay for edge-pinned or free placement. It reads Project Settings HR/pace zones and thresholds, renders current and threshold markers, supports horizontal and vertical bars, and shares the HR-zone palette used by Project Settings and Interval HUD Bar. See `docs/design/overlays/zone-edge-bar/zone-edge-bar-overlay-ui.md` and `docs/overlay-modules/zone-edge-bar-overlay.md`.
 - Elevation chart overlays render line/area charts with playhead markers; Smoothing filters quantized elevation samples and draws curved paths in both preview and export, including Progress mode.
 - Running Gauge overlays render circular ticks, a progress ring, section dividers, and core run metrics in both preview and export.
 - Route Map overlays render the route path, start marker, finish marker, and current-position marker in both preview and export.
@@ -469,7 +470,7 @@ Pending:
 - Export now uses a single SwiftUI-based renderer path that rasterizes shared overlay views (`ImageRenderer`) on each frame and encodes transparent MOV output.
 - Preview and export invoke the same shared overlay view entry points (`OverlaySharedTextPresetView`, `OverlaySharedDistanceTimelineView`, `OverlaySharedRouteMapView`) and differ only by `isInteractive` flags.
 - Route Map export resolves its `MapSnapshotRequest` from the same layout inputs as preview, preloads matching `NSImage` snapshots before frame rendering, and supplies them to `OverlaySharedRouteMapView` so `ImageRenderer` does not depend on asynchronous view tasks for the map background.
-- Shared entry points now also include elevation chart, running gauge, and Interval HUD Bar (`OverlaySharedElevationChartView`, `OverlaySharedRunningGaugeView`, `OverlaySharedIntervalHUDBarView`) so SwiftUI export covers current overlay controls on the same component path.
+- Shared entry points now also include elevation chart, running gauge, Interval HUD Bar, and Zone Edge Bar (`OverlaySharedElevationChartView`, `OverlaySharedRunningGaugeView`, `OverlaySharedIntervalHUDBarView`, `OverlaySharedZoneEdgeBarView`) so SwiftUI export covers current overlay controls on the same component path.
 - Interval HUD Bar style decodes missing newer fields from defaults, allowing early HUD project snapshots to load after the ordered metrics, remaining-primary, and typography controls were added.
 - `SwiftUIOverlayVideoExporter` removes its old per-type fallback drawing implementations and keeps only the shared component path used by preview.
 - `Export Test Frame` renders a PNG through the same SwiftUI export rasterization path at the current playhead position.

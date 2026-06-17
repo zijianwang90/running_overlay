@@ -148,6 +148,8 @@ struct ExportRenderPlan: Equatable {
             return OverlayRenderModel.intervalHUDBarLayout(for: element, in: context).rect
         case .intervalTimeline:
             return OverlayRenderModel.intervalTimelineLayout(for: element, in: context).rect
+        case .zoneEdgeBar:
+            return OverlayRenderModel.zoneEdgeBarLayout(for: element, in: context).rect
         case .weatherWidget:
             return OverlayRenderModel.weatherWidgetLayout(for: element, in: context).rect
         case .decorSolidColor:
@@ -1302,6 +1304,11 @@ private struct SwiftUIOverlayFrameView: View {
                             element: element,
                             layout: OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
                         )
+                    case .zoneEdgeBar:
+                        OverlaySharedZoneEdgeBarView(
+                            element: element,
+                            layout: OverlayRenderModel.zoneEdgeBarLayout(for: element, in: context)
+                        )
                     case .decorSolidColor:
                         OverlaySharedDecorSolidColorView(
                             element: element,
@@ -1330,7 +1337,7 @@ private struct SwiftUIOverlayFrameView: View {
                         )
                     }
                 }
-                .exportOverlayPosition(for: element, canvasSize: size)
+                .exportOverlayPosition(for: element, in: context, canvasSize: size)
             }
         }
         .frame(width: size.width, height: size.height)
@@ -1340,7 +1347,7 @@ private struct SwiftUIOverlayFrameView: View {
 
 private extension View {
     @ViewBuilder
-    func exportOverlayPosition(for element: OverlayElement, canvasSize: CGSize) -> some View {
+    func exportOverlayPosition(for element: OverlayElement, in context: OverlayRenderContext, canvasSize: CGSize) -> some View {
         if element.type.isNumericOverlay {
             self
                 .alignmentGuide(HorizontalAlignment.center) { _ in
@@ -1351,11 +1358,20 @@ private extension View {
                 }
         } else {
             self
-                .position(
-                    x: canvasSize.width * element.position.x,
-                    y: canvasSize.height * element.position.y
-                )
+                .position(resolvedExportOverlayPosition(for: element, in: context, canvasSize: canvasSize))
         }
+    }
+
+    private func resolvedExportOverlayPosition(for element: OverlayElement, in context: OverlayRenderContext, canvasSize: CGSize) -> CGPoint {
+        guard element.type == .zoneEdgeBar else {
+            return CGPoint(
+                x: canvasSize.width * element.position.x,
+                y: canvasSize.height * element.position.y
+            )
+        }
+
+        let rect = OverlayRenderModel.zoneEdgeBarLayout(for: element, in: context).rect
+        return CGPoint(x: rect.midX, y: rect.midY)
     }
 }
 

@@ -116,6 +116,8 @@ struct OverlayFrameRenderer {
             renderIntervalHUDBar(element, renderContext: renderContext)
         case .intervalTimeline:
             renderIntervalTimeline(element, renderContext: renderContext)
+        case .zoneEdgeBar:
+            renderZoneEdgeBar(element, renderContext: renderContext)
         case .routeMap:
             renderRouteMap(element, renderContext: renderContext)
         case .weatherWidget:
@@ -1776,6 +1778,87 @@ struct OverlayFrameRenderer {
         }
     }
 
+    private static func renderZoneEdgeBar(_ element: OverlayElement, renderContext: OverlayRenderContext) {
+        let layout = OverlayRenderModel.zoneEdgeBarLayout(for: element, in: renderContext)
+        let style = layout.style
+        let segments = layout.zoneSegments
+        guard !segments.isEmpty else { return }
+
+        if element.style.shadowEnabled, element.style.shadowOpacity > 0, element.style.shadowRadius > 0 {
+            NSGraphicsContext.current?.cgContext.saveGState()
+            NSGraphicsContext.current?.cgContext.setShadow(
+                offset: CGSize(width: element.style.shadowOffsetX, height: element.style.shadowOffsetY),
+                blur: element.style.shadowRadius,
+                color: NSColor(element.style.shadowColor).withAlphaComponent(element.style.shadowOpacity).cgColor
+            )
+        }
+        defer {
+            if element.style.shadowEnabled, element.style.shadowOpacity > 0, element.style.shadowRadius > 0 {
+                NSGraphicsContext.current?.cgContext.restoreGState()
+            }
+        }
+
+        let frames = OverlayRenderModel.intervalZoneSegmentFrames(
+            segmentCount: segments.count,
+            activeIndex: layout.activeZoneIndex,
+            activeWidthShare: style.activeZoneWidthShare
+        )
+        let zoneRects = zoneEdgeBarZoneRects(
+            frames: frames,
+            segments: segments,
+            layout: layout,
+            element: element
+        )
+        let barRect = layout.barRect
+        let crossThickness = layout.orientation == .horizontal ? barRect.height : barRect.width
+        let cornerRadius = min(max(style.cornerRadius * element.scale, 0), crossThickness / 2)
+
+        if style.glowEnabled,
+           let activeIndex = layout.activeZoneIndex,
+           let activeSegment = segments.first(where: { $0.index == activeIndex }),
+           let activeRect = zoneRects.first(where: { $0.index == activeIndex })?.rect {
+            NSGraphicsContext.current?.cgContext.saveGState()
+            NSGraphicsContext.current?.cgContext.setShadow(
+                offset: .zero,
+                blur: crossThickness * 2.4,
+                color: NSColor(activeSegment.color).withAlphaComponent(style.glowIntensity).cgColor
+            )
+            NSColor(activeSegment.color).withAlphaComponent(style.glowIntensity).setFill()
+            NSBezierPath(
+                roundedRect: activeRect,
+                xRadius: min(cornerRadius, activeRect.width / 2, activeRect.height / 2),
+                yRadius: min(cornerRadius, activeRect.width / 2, activeRect.height / 2)
+            ).fill()
+            NSGraphicsContext.current?.cgContext.restoreGState()
+        }
+
+        for segment in segments {
+            guard let segmentRect = zoneRects.first(where: { $0.index == segment.index })?.rect else { continue }
+            let isActive = segment.index == layout.activeZoneIndex
+            NSColor(segment.color).withAlphaComponent(isActive ? 1 : style.inactiveZoneOpacity).setFill()
+            let r = min(cornerRadius, segmentRect.width / 2, segmentRect.height / 2)
+            NSBezierPath(roundedRect: segmentRect, xRadius: r, yRadius: r).fill()
+        }
+
+        if style.borderEnabled, style.borderOpacity > 0, style.borderWidth > 0 {
+            strokeRoundedRect(
+                barRect,
+                color: NSColor(style.borderColor).withAlphaComponent(style.borderOpacity),
+                cornerRadius: cornerRadius,
+                lineWidth: max(style.borderWidth * element.scale, 0.5)
+            )
+        }
+
+        if let marker = layout.thresholdZoneMarker,
+           let markerRect = zoneRects.first(where: { $0.index == marker.zoneIndex })?.rect {
+            drawZoneEdgeBarMarker(marker, zoneRect: markerRect, layout: layout, element: element)
+        }
+        if let marker = layout.zoneMarker,
+           let markerRect = zoneRects.first(where: { $0.index == marker.zoneIndex })?.rect {
+            drawZoneEdgeBarMarker(marker, zoneRect: markerRect, layout: layout, element: element)
+        }
+    }
+
     private static func setIntervalTimelineShadow(element: OverlayElement) {
         let thickness = min(max(element.style.shadowThickness, 1), 4)
         let shadowOpacity = min(element.style.shadowOpacity * (1 + (thickness - 1) * 0.16), 1)
@@ -1977,6 +2060,147 @@ struct OverlayFrameRenderer {
             )
             return IntervalHUDExportZoneRect(index: segment.index, rect: rect)
         }
+    }
+
+    private static func zoneEdgeBarZoneRects(
+        frames: [IntervalHUDBarZoneSegmentFrame],
+        segments: [IntervalHUDBarZoneSegment],
+        layout: ZoneEdgeBarRenderLayout,
+        element: OverlayElement
+    ) -> [IntervalHUDExportZoneRect] {
+        let segmentCount = min(frames.count, segments.count)
+        guard segmentCount > 0 else { return [] }
+        let style = layout.style
+        let barRect = layout.barRect
+        let length = layout.orientation == .horizontal ? barRect.width : barRect.height
+        let crossThickness = layout.orientation == .horizontal ? barRect.height : barRect.width
+        let requestedGap = max(style.zoneSegmentGap * element.scale, 0)
+        let maxGap = segmentCount > 1 ? max(length / Double(segmentCount - 1) * 0.18, 0) : 0
+        let gap = min(requestedGap, maxGap)
+        let usableLength = max(length - gap * Double(max(segmentCount - 1, 0)), 1)
+
+        return (0..<segmentCount).map { position in
+            let frame = frames[position]
+            let segment = segments[position]
+            let isActive = segment.index == layout.activeZoneIndex
+            let thickness = isActive ? crossThickness * max(style.activeZoneHeightScale, 1) : crossThickness
+            let positionOffset = Double(position) * gap
+            let segmentLength = max(usableLength * frame.width, 0)
+            let rect: CGRect
+            if layout.orientation == .horizontal {
+                rect = CGRect(
+                    x: barRect.minX + usableLength * frame.start + positionOffset,
+                    y: barRect.midY - thickness / 2,
+                    width: segmentLength,
+                    height: thickness
+                )
+            } else {
+                rect = CGRect(
+                    x: barRect.midX - thickness / 2,
+                    y: barRect.maxY - usableLength * (frame.start + frame.width) - positionOffset,
+                    width: thickness,
+                    height: segmentLength
+                )
+            }
+            return IntervalHUDExportZoneRect(index: segment.index, rect: rect)
+        }
+    }
+
+    private static func drawZoneEdgeBarMarker(
+        _ marker: IntervalHUDBarZoneMarker,
+        zoneRect: CGRect,
+        layout: ZoneEdgeBarRenderLayout,
+        element: OverlayElement
+    ) {
+        let barRect = layout.barRect
+        let style = layout.style
+        let crossThickness = layout.orientation == .horizontal ? barRect.height : barRect.width
+        let color = NSColor(marker.color)
+        let isThreshold = marker.role == .threshold
+        let gap = max(crossThickness * 0.35, 3)
+        let font = layout.markerText
+
+        if layout.orientation == .horizontal {
+            let x = zoneRect.minX + zoneRect.width * marker.fractionInZone
+            if isThreshold {
+                let lineHeight = max(crossThickness * 1.35, 10)
+                let lineWidth = max(1.2 * element.scale, 1)
+                let lineY = barRect.midY - lineHeight / 2
+                drawRoundedRect(
+                    CGRect(x: x - lineWidth / 2, y: lineY, width: lineWidth, height: lineHeight),
+                    color: color.withAlphaComponent(0.78),
+                    cornerRadius: lineWidth / 2
+                )
+                let textStyle = IntervalHUDBarTextStyle(fontName: font.fontName, fontSize: max(font.fontSize * 0.72, 7), fontWeight: font.fontWeight)
+                let labelY = layout.markerSide == .above ? lineY - textStyle.fontSize - 4 : lineY + lineHeight + 2
+                drawCenteredText(marker.valueText, in: CGRect(x: x - 12, y: labelY, width: 24, height: textStyle.fontSize + 4), textStyle: textStyle, color: color.withAlphaComponent(0.78))
+                return
+            }
+            let arrowW = max(crossThickness * 1.35, 12)
+            let arrowH = max(crossThickness * 0.9, 8)
+            let triangle = NSBezierPath()
+            if layout.markerSide == .above {
+                let baseY = barRect.minY - gap - arrowH
+                triangle.move(to: CGPoint(x: x - arrowW / 2, y: baseY))
+                triangle.line(to: CGPoint(x: x + arrowW / 2, y: baseY))
+                triangle.line(to: CGPoint(x: x, y: baseY + arrowH))
+                if style.markerShowsValue {
+                    drawCenteredText(marker.valueText, in: CGRect(x: x - 42, y: baseY - font.fontSize - 6, width: 84, height: font.fontSize + 4), textStyle: font, color: color)
+                }
+            } else {
+                let tipY = barRect.maxY + gap
+                triangle.move(to: CGPoint(x: x, y: tipY))
+                triangle.line(to: CGPoint(x: x + arrowW / 2, y: tipY + arrowH))
+                triangle.line(to: CGPoint(x: x - arrowW / 2, y: tipY + arrowH))
+                if style.markerShowsValue {
+                    drawCenteredText(marker.valueText, in: CGRect(x: x - 42, y: tipY + arrowH + 2, width: 84, height: font.fontSize + 4), textStyle: font, color: color)
+                }
+            }
+            triangle.close()
+            color.setFill()
+            triangle.fill()
+            return
+        }
+
+        let y = zoneRect.maxY - zoneRect.height * marker.fractionInZone
+        if isThreshold {
+            let lineLength = max(crossThickness * 1.35, 10)
+            let lineHeight = max(1.2 * element.scale, 1)
+            let lineX = barRect.midX - lineLength / 2
+            drawRoundedRect(
+                CGRect(x: lineX, y: y - lineHeight / 2, width: lineLength, height: lineHeight),
+                color: color.withAlphaComponent(0.78),
+                cornerRadius: lineHeight / 2
+            )
+            let textStyle = IntervalHUDBarTextStyle(fontName: font.fontName, fontSize: max(font.fontSize * 0.72, 7), fontWeight: font.fontWeight)
+            let labelX = layout.markerSide == .leading ? lineX - 20 : lineX + lineLength + 2
+            drawCenteredText(marker.valueText, in: CGRect(x: labelX, y: y - textStyle.fontSize / 2 - 2, width: 18, height: textStyle.fontSize + 4), textStyle: textStyle, color: color.withAlphaComponent(0.78))
+            return
+        }
+
+        let arrowW = max(crossThickness * 0.9, 8)
+        let arrowH = max(crossThickness * 1.35, 12)
+        let triangle = NSBezierPath()
+        if layout.markerSide == .leading {
+            let tipX = barRect.minX - gap
+            triangle.move(to: CGPoint(x: tipX, y: y))
+            triangle.line(to: CGPoint(x: tipX - arrowW, y: y - arrowH / 2))
+            triangle.line(to: CGPoint(x: tipX - arrowW, y: y + arrowH / 2))
+            if style.markerShowsValue {
+                drawCenteredText(marker.valueText, in: CGRect(x: tipX - arrowW - 86, y: y - font.fontSize / 2 - 2, width: 84, height: font.fontSize + 4), textStyle: font, color: color)
+            }
+        } else {
+            let tipX = barRect.maxX + gap
+            triangle.move(to: CGPoint(x: tipX, y: y))
+            triangle.line(to: CGPoint(x: tipX + arrowW, y: y - arrowH / 2))
+            triangle.line(to: CGPoint(x: tipX + arrowW, y: y + arrowH / 2))
+            if style.markerShowsValue {
+                drawCenteredText(marker.valueText, in: CGRect(x: tipX + arrowW + 2, y: y - font.fontSize / 2 - 2, width: 84, height: font.fontSize + 4), textStyle: font, color: color)
+            }
+        }
+        triangle.close()
+        color.setFill()
+        triangle.fill()
     }
 
     private static func drawIntervalHUDContainerBackground(element: OverlayElement, rect: CGRect) {

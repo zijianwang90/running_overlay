@@ -1,0 +1,71 @@
+{
+  "name": "Zone Edge Bar Overlay",
+  "lastUpdated": "2026-06-16",
+  "elementType": "zoneEdgeBar",
+  "defaultName": "Zone Edge Bar",
+  "dataSources": {
+    "zones": "HeartRateZonePreferences.currentSnapshot()",
+    "metrics": ["heartRate", "pace"],
+    "thresholds": ["thresholdHR", "thresholdPaceSecPerKm"]
+  },
+  "placement": {
+    "modes": ["edge", "free"],
+    "edges": ["top", "bottom", "left", "right"],
+    "freeOrientations": ["horizontal", "vertical"],
+    "edgeBehavior": "Pins the bar to the selected video edge at edgeInset 0 and centers on the opposite axis; edgeInset is exposed as a signed position adjustment.",
+    "verticalOrder": "Z1 at bottom, highest zone at top"
+  },
+  "defaults": {
+    "metric": "heartRate",
+    "placement": "edge",
+    "edge": "bottom",
+    "orientation": "horizontal",
+    "length": 780,
+    "thickness": 10,
+    "edgeInset": 0,
+    "activeZoneWidthShare": 0,
+    "activeZoneHeightScale": 1,
+    "zoneSegmentGap": 2,
+    "cornerRadius": 5,
+    "inactiveZoneOpacity": 0.55,
+    "borderEnabled": true,
+    "borderOpacity": 0.12,
+    "borderWidth": 1,
+    "glowEnabled": false,
+    "glowIntensity": 0.45,
+    "markerEnabled": true,
+    "markerShowsValue": true,
+    "thresholdMarkerEnabled": true
+  },
+  "inspector": {
+    "sections": ["Layout", "Zone Bar", "Markers", "Effects"],
+    "zoneBarRows": [
+      "Metric",
+      "Placement",
+      "Edge",
+      "Orientation",
+      "Length",
+      "Thickness",
+      "Vertical Position / Horizontal Position",
+      "Active Zone Width",
+      "Active Zone Height",
+      "Zone Gap",
+      "Inactive Opacity",
+      "Corner Radius",
+      "Border",
+      "Border Color",
+      "Border Width",
+      "Border Opacity",
+      "Glow",
+      "Glow Intensity"
+    ],
+    "markerRows": ["Current Marker", "Marker Value", "Threshold Marker"],
+    "effectsRows": ["Shadow", "Shadow Color", "Shadow Opacity", "Shadow Radius", "Shadow Thickness", "Shadow Offset"]
+  },
+  "rendering": {
+    "preview": "OverlaySharedZoneEdgeBarView",
+    "layout": "OverlayRenderModel.zoneEdgeBarLayout(for:in:)",
+    "export": ["SwiftUIOverlayVideoExporter", "OverlayFrameRenderer"],
+    "paceZeroBehavior": "Hide current marker when current pace is 0 or invalid; threshold marker remains eligible."
+  }
+}
