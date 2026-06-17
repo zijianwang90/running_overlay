@@ -1,6 +1,6 @@
 # Route Map Overlay Design
 
-Last updated: 2026-05-21 (stable MapKit snapshot appearance)
+Last updated: 2026-06-16 (Route Map container controls cleanup)
 
 > **Inspector / UI design has its own spec.** See
 > [`docs/design/overlays/route-map/route-map-overlay-ui.md`](../design/overlays/route-map/route-map-overlay-ui.md) and
@@ -52,10 +52,9 @@ Inspector 控件需要覆盖这些维度：
 - Metric mapping: pace, heart rate, elevation, distance, elapsed time。
 - Line width: 1 px 到 24 px，随项目分辨率缩放。
 - Glow: 开关、强度、颜色、半径。
-- Start/end markers: 起点与终点可独立设置样式与颜色（dot / pin / flag /
-  hidden）。
-- Marker style (v1): dot / pin / flag.
-- Current position marker: 样式、颜色、大小、尾迹长度。
+- Start/end markers: 起点与终点可独立开关并设置颜色；开启时当前版本统一渲染为 dot。End marker color defaults to a 3x3 black/white checkerboard finish preset.
+- Marker style (current scope): dot / hidden only. Pin / flag artwork is deferred.
+- Current position marker: 可独立开关并设置颜色；开启时当前版本统一渲染为 dot。
 - Legend (v2): hide / minimal / start+finish+distance / gradient band.
 - Map background style (v1): none / dark / light / terrain / satellite.
 - Map opacity and route opacity。
@@ -223,8 +222,8 @@ Phase C: Map snapshot abstraction
 
 Phase D: Advanced polish
 
-- 起终点/当前位置 marker 样式。Completed (hidden / dot / pin / flag, start /
-  end / moving 独立设置)。
+- 起终点/当前位置 marker 显示。Completed for current scope (start / end /
+  moving 独立开关；开启时统一渲染 dot)。Pin / flag marker artwork is deferred.
 - Legend 和指标色带。Partially completed (minimal / start+finish+distance / gradientBand 三种模式)。
 - Progress reveal animation。Pending.
 - 起终点隐私模糊。Pending.
@@ -237,7 +236,7 @@ Phase E: Container presets, map dim controls, edge fade fix (current revision)
   edgeFade / fadeAmount / mapOpacity / shadow 默认值。
 - 新增 `OverlayStyle.routeMapMapOpacity` (默认 0.72)，preview 与 export 共同消费。
 - Inspector 用新的分组布局 (Preset / Layout / Container / Background Map /
-  Route Line / Markers / Legend / Effects)，与
+  Route Line / Markers / Stats Bar / shared Background / Border / Effects)，与
   `docs/design/overlays/route-map/route-map-overlay-ui.spec.json` 对齐。
 - **Bug fix**: Edge Fade "Fade Out" 在 SwiftUI preview 中无效。根本原因：
   `RouteMapMaskRenderer` 输出的是灰度 CGImage（无 alpha 通道），
@@ -251,9 +250,12 @@ Phase E: Container presets, map dim controls, edge fade fix (current revision)
   边界而几乎不渐变，四角却完全变黑。修复：方形 shape 改用"最短边距"像素
   迭代算法——`gray = min(distance_to_each_edge) / fadeWidth`，保证四边
   均匀渐变且圆角自然剪切（像素值=0 的区域保持不变）。
-- **新增**: Container 区域增加 Border 开关（`routeMapBorderVisible`）。
-  默认开启（兼容旧项目）；关闭后 preview 和 export 均不绘制非选中态边框线；
-  选中状态的 accent 选框不受影响。Preset 区域移除了无实际效果的 Distance 行。
+- **Cleanup**: Container 区域只保留 Shape 与尺寸控制。Corner Radius 改由共享
+  Background `Radius` 驱动；Border 改由共享 Border 模块驱动；Edge Fade /
+  Softness 改由共享 Effects 的 Background Fade Out / Fade Amount 驱动。
+- **Bug fix**: Route Map 容器底色现在遵守共享 Background 开关。关闭 Background
+  时无底图 Route Map 变为透明；Background Map 的 MapKit / grid 图层仍由
+  `Show Map` 单独控制。
 
 Phase F: Stats Bar (current revision)
 

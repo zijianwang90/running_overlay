@@ -2,6 +2,24 @@
 
 ## 2026-06-16
 
+### Route Map Dot-Only Marker Scope
+
+- Replaced Start / End / Moving marker style dropdowns with visibility switches for the current Route Map iteration.
+- Preview and export now render any visible Route Map marker as a dot; legacy `.pin` and `.flag` marker values remain loadable but are visually normalized to dot until marker artwork is revisited.
+- Added a Route Map End Color checkerboard preset as the first End marker swatch and default; preview and export render it as a 3x3 black/white checkerboard dot.
+
+### Preview Canvas Empty Tap Deselection
+
+- Fixed preview canvas empty-area clicks so tapping outside every visible overlay clears the current widget selection even when transparent overlay hit-test regions intercept the old background tap handler.
+- Replaced the background-only tap handler with a coordinate-aware `SpatialTapGesture` that checks tracked overlay frames before clearing selection.
+
+### Route Map Container Control Cleanup
+
+- Removed Route Map-specific Corner Radius, Edge Mode, Border, Edge Softness, and duplicate Effects controls from the Route Map detail panel; container-specific controls now cover only shape and size.
+- Routed square corner radius through shared Background `Radius`, route-map edge fade through shared Effects `Fade Out` / `Fade Amount`, and route-map border rendering through the shared Border module in preview and export.
+- Fixed shared Background toggling for Route Map: turning it off now removes the no-map container fill while leaving the Background Map layer controlled by its own Show Map toggle.
+- Kept legacy Route Map setters and container presets compatible by mirroring their values into the shared Background / Border / Effects fields used by preview and export.
+
 ### Numeric Overlay Heart Rate Icon Zone Tint
 
 - Added `OverlayStyle.iconColorsFollowHeartRateZones` for Numeric Overlay `heartRate` and `heartRateZone` elements, with a new Inspector `Icon → Zone Color` checkbox that keeps manual icon swatches unchanged when disabled.

@@ -200,8 +200,13 @@ struct InspectorDenseSwatchStrip: View {
                     action(preset.color)
                 } label: {
                     RoundedRectangle(cornerRadius: 5)
-                        .fill(Color(numericOverlay: preset.color))
+                        .fill(preset.color.isRouteMapEndCheckerboard ? Color.clear : Color(numericOverlay: preset.color))
                         .frame(width: NumericTokens.swatchSize, height: NumericTokens.swatchSize)
+                        .overlay {
+                            if preset.color.isRouteMapEndCheckerboard {
+                                RouteMapCheckerboardSwatch(cornerRadius: 5)
+                            }
+                        }
                         .overlay(
                             RoundedRectangle(cornerRadius: 5)
                                 .stroke(preset.color == selected ? NumericTokens.accentBlue : NumericTokens.borderStrong, lineWidth: preset.color == selected ? 2 : 1)
@@ -219,11 +224,19 @@ struct InspectorDenseSwatchStrip: View {
             }
 
             Button {
-                InspectorDenseColorPanelPresenter.shared.present(color: selected, onChange: action)
+                InspectorDenseColorPanelPresenter.shared.present(
+                    color: selected.isRouteMapEndCheckerboard ? .white : selected,
+                    onChange: action
+                )
             } label: {
                 RoundedRectangle(cornerRadius: 5)
-                    .fill(Color(numericOverlay: selected))
+                    .fill(selected.isRouteMapEndCheckerboard ? Color.clear : Color(numericOverlay: selected))
                     .frame(width: NumericTokens.swatchSize, height: NumericTokens.swatchSize)
+                    .overlay {
+                        if selected.isRouteMapEndCheckerboard {
+                            RouteMapCheckerboardSwatch(cornerRadius: 5)
+                        }
+                    }
                     .overlay(
                         RoundedRectangle(cornerRadius: 5)
                             .stroke(NumericTokens.borderStrong, lineWidth: 1)
@@ -242,9 +255,39 @@ struct InspectorDenseSwatchStrip: View {
     }
 
     private var compactPresets: [(name: String, color: OverlayColor)] {
+        if presets.contains(where: { $0.color.isRouteMapEndCheckerboard }) {
+            return Array(presets.prefix(7))
+        }
         let preferred: [OverlayColor] = [.white, .black, .red, .yellow, .green, .blue]
         return preferred.compactMap { color in
             presets.first { $0.color == color }
+        }
+    }
+}
+
+struct RouteMapCheckerboardSwatch: View {
+    var cornerRadius: CGFloat
+
+    var body: some View {
+        GeometryReader { proxy in
+            let cellWidth = proxy.size.width / 3
+            let cellHeight = proxy.size.height / 3
+            ZStack {
+                Color.white
+                ForEach(0..<3, id: \.self) { row in
+                    ForEach(0..<3, id: \.self) { column in
+                        if (row + column).isMultiple(of: 2) {
+                            Color.black
+                                .frame(width: cellWidth, height: cellHeight)
+                                .position(
+                                    x: cellWidth * (CGFloat(column) + 0.5),
+                                    y: cellHeight * (CGFloat(row) + 0.5)
+                                )
+                        }
+                    }
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         }
     }
 }

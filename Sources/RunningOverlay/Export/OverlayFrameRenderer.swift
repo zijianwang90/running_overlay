@@ -2399,13 +2399,6 @@ struct OverlayFrameRenderer {
     private static func renderRouteMap(_ element: OverlayElement, renderContext: OverlayRenderContext) {
         let layout = OverlayRenderModel.routeMapLayout(for: element, in: renderContext)
         let accent = NSColor(element.style.foregroundColor)
-        let backgroundOpacity: Double = switch layout.preset {
-        case .glow: max(element.style.backgroundOpacity, 0.34)
-        default:
-            element.style.routeMapBackgroundStyle == .none
-                ? element.style.backgroundOpacity
-                : max(element.style.backgroundOpacity, 0.72)
-        }
 
         let shouldUseFadeMask = layout.edgeFade == .fadeOut && layout.fadeAmount > 0.001
         let clipMask = shouldUseFadeMask ? RouteMapMaskRenderer.makeCGMask(
@@ -2419,16 +2412,16 @@ struct OverlayFrameRenderer {
         if let cgContext = NSGraphicsContext.current?.cgContext, let clipMask, shouldUseFadeMask {
             cgContext.saveGState()
             cgContext.clip(to: layout.rect, mask: clipMask)
-            drawRouteMapContent(element: element, layout: layout, accent: accent, backgroundOpacity: backgroundOpacity)
+            drawRouteMapContent(element: element, layout: layout, accent: accent)
             cgContext.restoreGState()
         } else {
             NSGraphicsContext.saveGraphicsState()
             RouteMapMaskRenderer.shapePath(shape: layout.shape, rect: layout.rect, cornerRadius: layout.cornerRadius).addClip()
-            drawRouteMapContent(element: element, layout: layout, accent: accent, backgroundOpacity: backgroundOpacity)
+            drawRouteMapContent(element: element, layout: layout, accent: accent)
             NSGraphicsContext.restoreGraphicsState()
         }
 
-        strokeRouteMapBorder(layout: layout, isSelected: false)
+        strokeRouteMapBorder(element: element, layout: layout, isSelected: false)
 
         if let statsBar = layout.statsBarLayout {
             drawRouteMapStatsBar(layout: statsBar)
@@ -2760,11 +2753,14 @@ struct OverlayFrameRenderer {
     private static func drawRouteMapContent(
         element: OverlayElement,
         layout: OverlayRouteMapRenderLayout,
-        accent: NSColor,
-        backgroundOpacity: Double
+        accent: NSColor
     ) {
-        NSColor.black.withAlphaComponent(backgroundOpacity).setFill()
-        RouteMapMaskRenderer.shapePath(shape: layout.shape, rect: layout.rect, cornerRadius: layout.cornerRadius).fill()
+        if element.style.backgroundEnabled {
+            NSColor(element.style.backgroundColor)
+                .withAlphaComponent(element.style.backgroundOpacity)
+                .setFill()
+            RouteMapMaskRenderer.shapePath(shape: layout.shape, rect: layout.rect, cornerRadius: layout.cornerRadius).fill()
+        }
 
         if element.style.routeMapBackgroundStyle != .none {
             drawMapGrid(in: layout.rect, style: element.style.routeMapBackgroundStyle, opacity: layout.mapOpacity)
@@ -2802,22 +2798,25 @@ struct OverlayFrameRenderer {
 
         strokeRoutePath(points: points, layout: layout, element: element, accent: accent)
 
-        drawRouteMarker(points.first, color: NSColor(element.style.routeMapStartMarkerColor), lineWidth: layout.lineWidth, style: element.style.routeMapStartMarkerStyle)
-        drawRouteMarker(points.last, color: NSColor(element.style.routeMapEndMarkerColor), lineWidth: layout.lineWidth, style: element.style.routeMapEndMarkerStyle)
+        drawRouteMarker(points.first, color: element.style.routeMapStartMarkerColor, lineWidth: layout.lineWidth, style: element.style.routeMapStartMarkerStyle)
+        drawRouteMarker(points.last, color: element.style.routeMapEndMarkerColor, lineWidth: layout.lineWidth, style: element.style.routeMapEndMarkerStyle)
         drawRouteMarker(
             layout.projectedCurrentPoint,
-            color: NSColor(element.style.routeMapRunnerDotColor),
+            color: element.style.routeMapRunnerDotColor,
             lineWidth: layout.lineWidth * 1.18,
             style: element.style.routeMapRunnerMarkerStyle
         )
 
     }
 
-    private static func strokeRouteMapBorder(layout: OverlayRouteMapRenderLayout, isSelected: Bool) {
-        guard isSelected || layout.borderVisible else { return }
+    private static func strokeRouteMapBorder(element: OverlayElement, layout: OverlayRouteMapRenderLayout, isSelected: Bool) {
+        guard isSelected || element.style.borderEnabled else { return }
         let border = RouteMapMaskRenderer.shapePath(shape: layout.shape, rect: layout.rect, cornerRadius: layout.cornerRadius)
-        (isSelected ? NSColor.controlAccentColor.withAlphaComponent(0.85) : NSColor.white.withAlphaComponent(0.16)).setStroke()
-        border.lineWidth = isSelected ? 2 : 1
+        let color = isSelected
+            ? NSColor.controlAccentColor.withAlphaComponent(0.85)
+            : NSColor(element.style.borderColor).withAlphaComponent(element.style.borderOpacity)
+        color.setStroke()
+        border.lineWidth = isSelected ? 2 : element.style.borderWidth * element.scale
         border.stroke()
     }
 
@@ -2895,59 +2894,50 @@ struct OverlayFrameRenderer {
         return NSColor(red: red, green: green, blue: blue, alpha: alpha)
     }
 
-    private static func drawRouteMarker(_ point: CGPoint?, color: NSColor, lineWidth: Double, style: OverlayRouteMapMarkerStyle = .dot) {
+    private static func drawRouteMarker(_ point: CGPoint?, color: OverlayColor, lineWidth: Double, style: OverlayRouteMapMarkerStyle = .dot) {
         guard let point else {
             return
         }
-        let path: NSBezierPath
         switch style {
         case .hidden:
             return
-        case .dot:
-            let diameter = lineWidth * 2.7
-            let rect = CGRect(x: point.x - diameter / 2, y: point.y - diameter / 2, width: diameter, height: diameter)
-            path = NSBezierPath(ovalIn: rect)
-        case .pin:
-            let width = lineWidth * 2.9
-            let height = lineWidth * 3.5
-            let rect = CGRect(x: point.x - width / 2, y: point.y - height / 2, width: width, height: height)
-            path = routePinPath(in: rect)
-        case .flag:
-            let side = lineWidth * 3
-            let rect = CGRect(x: point.x - side / 2, y: point.y - side / 2, width: side, height: side)
-            path = routeFlagPath(in: rect)
+        case .dot, .pin, .flag:
+            break
         }
 
-        color.setFill()
-        path.fill()
+        let diameter = lineWidth * 2.7
+        let rect = CGRect(x: point.x - diameter / 2, y: point.y - diameter / 2, width: diameter, height: diameter)
+        let path = NSBezierPath(ovalIn: rect)
+        if color.isRouteMapEndCheckerboard {
+            drawCheckerboardFill(in: rect, clippedTo: path)
+        } else {
+            NSColor(color).setFill()
+            path.fill()
+        }
         NSColor.white.setStroke()
         path.lineWidth = max(lineWidth * 0.35, 1)
         path.stroke()
     }
 
-    private static func routePinPath(in rect: CGRect) -> NSBezierPath {
-        let path = NSBezierPath()
-        let radius = min(rect.width, rect.height) * 0.34
-        let center = CGPoint(x: rect.midX, y: rect.minY + radius + 1)
-        path.appendArc(withCenter: center, radius: radius, startAngle: 0, endAngle: 360)
-        path.move(to: CGPoint(x: rect.midX, y: rect.maxY))
-        path.line(to: CGPoint(x: rect.midX - radius * 0.72, y: rect.midY))
-        path.line(to: CGPoint(x: rect.midX + radius * 0.72, y: rect.midY))
-        path.close()
-        return path
-    }
-
-    private static func routeFlagPath(in rect: CGRect) -> NSBezierPath {
-        let path = NSBezierPath()
-        path.move(to: CGPoint(x: rect.minX + rect.width * 0.24, y: rect.maxY))
-        path.line(to: CGPoint(x: rect.minX + rect.width * 0.24, y: rect.minY + rect.height * 0.15))
-        path.line(to: CGPoint(x: rect.maxX, y: rect.minY + rect.height * 0.24))
-        path.line(to: CGPoint(x: rect.minX + rect.width * 0.24, y: rect.minY + rect.height * 0.50))
-        path.line(to: CGPoint(x: rect.minX + rect.width * 0.42, y: rect.minY + rect.height * 0.62))
-        path.line(to: CGPoint(x: rect.minX, y: rect.minY + rect.height * 0.62))
-        path.line(to: CGPoint(x: rect.minX + rect.width * 0.24, y: rect.minY + rect.height * 0.50))
-        path.close()
-        return path
+    private static func drawCheckerboardFill(in rect: CGRect, clippedTo path: NSBezierPath) {
+        NSGraphicsContext.saveGraphicsState()
+        path.addClip()
+        NSColor.white.setFill()
+        rect.fill()
+        NSColor.black.setFill()
+        let cellWidth = rect.width / 3
+        let cellHeight = rect.height / 3
+        for row in 0..<3 {
+            for column in 0..<3 where (row + column).isMultiple(of: 2) {
+                CGRect(
+                    x: rect.minX + CGFloat(column) * cellWidth,
+                    y: rect.minY + CGFloat(row) * cellHeight,
+                    width: cellWidth,
+                    height: cellHeight
+                ).fill()
+            }
+        }
+        NSGraphicsContext.restoreGraphicsState()
     }
 
     private static func drawMapGrid(in rect: CGRect, style: OverlayRouteMapBackgroundStyle, opacity: Double) {

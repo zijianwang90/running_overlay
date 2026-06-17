@@ -545,7 +545,7 @@ struct OverlayStyle: Equatable, Codable {
         routeMapEndMarkerStyle: .dot,
         routeMapRunnerMarkerStyle: .dot,
         routeMapStartMarkerColor: .green,
-        routeMapEndMarkerColor: .red,
+        routeMapEndMarkerColor: .routeMapEndCheckerboard,
         routeMapRunnerDotColor: .white,
         routeMapBackgroundStyle: .dark,
         routeMapLegendVisible: true,
@@ -655,7 +655,7 @@ struct OverlayStyle: Equatable, Codable {
         routeMapEndMarkerStyle: OverlayRouteMapMarkerStyle = .dot,
         routeMapRunnerMarkerStyle: OverlayRouteMapMarkerStyle = .dot,
         routeMapStartMarkerColor: OverlayColor = .green,
-        routeMapEndMarkerColor: OverlayColor = .red,
+        routeMapEndMarkerColor: OverlayColor = .routeMapEndCheckerboard,
         routeMapRunnerDotColor: OverlayColor = .white,
         routeMapBackgroundStyle: OverlayRouteMapBackgroundStyle = .dark,
         routeMapLegendVisible: Bool = true,
@@ -2246,9 +2246,8 @@ enum OverlayRouteMapBackgroundStyle: String, CaseIterable, Identifiable, Codable
 
 /// Container visual preset for the Route Map overlay. Selecting a preset
 /// writes a bundle of defaults onto the element (`routeMapShape`,
-/// `routeMapEdgeFade`, `routeMapFadeAmount`, `routeMapMapOpacity`,
-/// `shadowEnabled`, `shadowOpacity`, `shadowRadius`,
-/// `shadowOffsetX`, `shadowOffsetY`).
+/// shared background fade fields, `routeMapMapOpacity`, `shadowEnabled`,
+/// `shadowOpacity`, `shadowRadius`, `shadowOffsetX`, `shadowOffsetY`).
 ///
 /// See `docs/design/overlays/route-map/route-map-overlay-ui.md` and
 /// `docs/design/overlays/route-map/route-map-overlay-ui.spec.json` for the table of values each
@@ -2885,6 +2884,11 @@ struct OverlayColor: Equatable, Hashable, Codable {
     static let cyan = OverlayColor(red: 0.25, green: 0.75, blue: 1, alpha: 1)
     static let purple = OverlayColor(red: 0.56, green: 0.28, blue: 1, alpha: 1)
     static let pink = OverlayColor(red: 1, green: 0.28, blue: 0.43, alpha: 1)
+    static let routeMapEndCheckerboard = OverlayColor(red: -1, green: -1, blue: -1, alpha: 1)
+
+    var isRouteMapEndCheckerboard: Bool {
+        self == .routeMapEndCheckerboard
+    }
 }
 
 // MARK: - Decor Text Support Types

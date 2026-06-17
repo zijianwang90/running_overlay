@@ -793,13 +793,13 @@ private struct OverlayDetailView: View {
                     range: 0...0.45,
                     display: element.style.routeMapFadeAmount <= 0.001 ? "Solid" : String(format: "%.0f%%", element.style.routeMapFadeAmount * 100)
                 )
-                InspectorPickerRow(label: "Start Marker", selection: routeMapStartMarkerStyleBinding, values: OverlayRouteMapMarkerStyle.allCases) { $0.compactLabel }
-                InspectorPickerRow(label: "End Marker", selection: routeMapEndMarkerStyleBinding, values: OverlayRouteMapMarkerStyle.allCases) { $0.compactLabel }
-                InspectorPickerRow(label: "Moving Marker", selection: routeMapRunnerMarkerStyleBinding, values: OverlayRouteMapMarkerStyle.allCases) { $0.compactLabel }
+                routeMapMarkerToggleRow(label: "Start Marker", isOn: routeMapStartMarkerVisibleBinding)
+                routeMapMarkerToggleRow(label: "End Marker", isOn: routeMapEndMarkerVisibleBinding)
+                routeMapMarkerToggleRow(label: "Moving Marker", isOn: routeMapRunnerMarkerVisibleBinding)
                 ColorSwatchRow(label: "Start Color", presets: colorPresets, selectedColor: element.style.routeMapStartMarkerColor) { color in
                     project.setOverlayRouteMapStartMarkerColor(elementID, color: color)
                 }
-                ColorSwatchRow(label: "End Color", presets: colorPresets, selectedColor: element.style.routeMapEndMarkerColor) { color in
+                ColorSwatchRow(label: "End Color", presets: routeMapEndMarkerColorPresets, selectedColor: element.style.routeMapEndMarkerColor) { color in
                     project.setOverlayRouteMapEndMarkerColor(elementID, color: color)
                 }
                 ColorSwatchRow(label: "Moving Color", presets: colorPresets, selectedColor: element.style.routeMapRunnerDotColor) { color in
@@ -905,6 +905,10 @@ private struct OverlayDetailView: View {
         ("Pink", .pink)
     ]
 
+    private var routeMapEndMarkerColorPresets: [(name: String, color: OverlayColor)] {
+        [("Checker", .routeMapEndCheckerboard)] + colorPresets
+    }
+
     private var fontSizeBinding: Binding<Double> {
         Binding {
             element?.style.fontSize ?? 28
@@ -945,6 +949,15 @@ private struct OverlayDetailView: View {
         }
     }
 
+    private func routeMapMarkerToggleRow(label: String, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            Text(label)
+                .font(InspectorTheme.bodyFont)
+                .foregroundStyle(InspectorTheme.textSecondary)
+        }
+        .toggleStyle(.switch)
+    }
+
     private var routeMapColorModeBinding: Binding<OverlayRouteMapColorMode> {
         Binding {
             element?.style.routeMapColorMode ?? .solid
@@ -961,27 +974,27 @@ private struct OverlayDetailView: View {
         }
     }
 
-    private var routeMapStartMarkerStyleBinding: Binding<OverlayRouteMapMarkerStyle> {
+    private var routeMapStartMarkerVisibleBinding: Binding<Bool> {
         Binding {
-            element?.style.routeMapStartMarkerStyle ?? .dot
+            element?.style.routeMapStartMarkerStyle != .hidden
         } set: { newValue in
-            project.setOverlayRouteMapStartMarkerStyle(elementID, markerStyle: newValue)
+            project.setOverlayRouteMapStartMarkerStyle(elementID, markerStyle: newValue ? .dot : .hidden)
         }
     }
 
-    private var routeMapRunnerMarkerStyleBinding: Binding<OverlayRouteMapMarkerStyle> {
+    private var routeMapRunnerMarkerVisibleBinding: Binding<Bool> {
         Binding {
-            element?.style.routeMapRunnerMarkerStyle ?? .dot
+            element?.style.routeMapRunnerMarkerStyle != .hidden
         } set: { newValue in
-            project.setOverlayRouteMapRunnerMarkerStyle(elementID, markerStyle: newValue)
+            project.setOverlayRouteMapRunnerMarkerStyle(elementID, markerStyle: newValue ? .dot : .hidden)
         }
     }
 
-    private var routeMapEndMarkerStyleBinding: Binding<OverlayRouteMapMarkerStyle> {
+    private var routeMapEndMarkerVisibleBinding: Binding<Bool> {
         Binding {
-            element?.style.routeMapEndMarkerStyle ?? .dot
+            element?.style.routeMapEndMarkerStyle != .hidden
         } set: { newValue in
-            project.setOverlayRouteMapEndMarkerStyle(elementID, markerStyle: newValue)
+            project.setOverlayRouteMapEndMarkerStyle(elementID, markerStyle: newValue ? .dot : .hidden)
         }
     }
 
@@ -1383,6 +1396,7 @@ private struct ColorSwatchRow: View {
             }
         }
     }
+
 }
 
 private struct ColorSwatchButton: View {
@@ -1394,8 +1408,14 @@ private struct ColorSwatchButton: View {
     var body: some View {
         Button(action: action) {
             Circle()
-                .fill(Color(color))
+                .fill(color.isRouteMapEndCheckerboard ? Color.clear : Color(color))
                 .frame(width: 22, height: 22)
+                .overlay {
+                    if color.isRouteMapEndCheckerboard {
+                        RouteMapCheckerboardSwatch(cornerRadius: 11)
+                            .clipShape(Circle())
+                    }
+                }
                 .overlay {
                     Circle()
                         .stroke(isSelected ? InspectorTheme.accentBlue : InspectorTheme.borderStrong, lineWidth: isSelected ? 3 : 1)

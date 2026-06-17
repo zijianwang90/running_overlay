@@ -734,9 +734,9 @@
         "routeMapEdgeFade": "solid",
         "routeMapEndMarkerColor": {
           "alpha": 1,
-          "blue": 0.2,
-          "green": 0.24,
-          "red": 1
+          "blue": -1,
+          "green": -1,
+          "red": -1
         },
         "routeMapEndMarkerStyle": "dot",
         "routeMapFadeAmount": 0.22,
@@ -1723,9 +1723,9 @@
         "routeMapEdgeFade": "solid",
         "routeMapEndMarkerColor": {
           "alpha": 1,
-          "blue": 0.2,
-          "green": 0.24,
-          "red": 1
+          "blue": -1,
+          "green": -1,
+          "red": -1
         },
         "routeMapEndMarkerStyle": "dot",
         "routeMapFadeAmount": 0.22,
@@ -2712,9 +2712,9 @@
         "routeMapEdgeFade": "solid",
         "routeMapEndMarkerColor": {
           "alpha": 1,
-          "blue": 0.2,
-          "green": 0.24,
-          "red": 1
+          "blue": -1,
+          "green": -1,
+          "red": -1
         },
         "routeMapEndMarkerStyle": "dot",
         "routeMapFadeAmount": 0.22,
@@ -3701,9 +3701,9 @@
         "routeMapEdgeFade": "solid",
         "routeMapEndMarkerColor": {
           "alpha": 1,
-          "blue": 0.2,
-          "green": 0.24,
-          "red": 1
+          "blue": -1,
+          "green": -1,
+          "red": -1
         },
         "routeMapEndMarkerStyle": "hidden",
         "routeMapFadeAmount": 0.22,
@@ -4690,9 +4690,9 @@
         "routeMapEdgeFade": "solid",
         "routeMapEndMarkerColor": {
           "alpha": 1,
-          "blue": 0.2,
-          "green": 0.24,
-          "red": 1
+          "blue": -1,
+          "green": -1,
+          "red": -1
         },
         "routeMapEndMarkerStyle": "dot",
         "routeMapFadeAmount": 0.22,
@@ -5679,9 +5679,9 @@
         "routeMapEdgeFade": "solid",
         "routeMapEndMarkerColor": {
           "alpha": 1,
-          "blue": 0.2,
-          "green": 0.24,
-          "red": 1
+          "blue": -1,
+          "green": -1,
+          "red": -1
         },
         "routeMapEndMarkerStyle": "dot",
         "routeMapFadeAmount": 0.22,
@@ -6668,9 +6668,9 @@
         "routeMapEdgeFade": "solid",
         "routeMapEndMarkerColor": {
           "alpha": 1,
-          "blue": 0.2,
-          "green": 0.24,
-          "red": 1
+          "blue": -1,
+          "green": -1,
+          "red": -1
         },
         "routeMapEndMarkerStyle": "dot",
         "routeMapFadeAmount": 0.22,
@@ -7657,9 +7657,9 @@
         "routeMapEdgeFade": "solid",
         "routeMapEndMarkerColor": {
           "alpha": 1,
-          "blue": 0.2,
-          "green": 0.24,
-          "red": 1
+          "blue": -1,
+          "green": -1,
+          "red": -1
         },
         "routeMapEndMarkerStyle": "dot",
         "routeMapFadeAmount": 0.22,
@@ -8646,9 +8646,9 @@
         "routeMapEdgeFade": "solid",
         "routeMapEndMarkerColor": {
           "alpha": 1,
-          "blue": 0.2,
-          "green": 0.24,
-          "red": 1
+          "blue": -1,
+          "green": -1,
+          "red": -1
         },
         "routeMapEndMarkerStyle": "dot",
         "routeMapFadeAmount": 0.22,

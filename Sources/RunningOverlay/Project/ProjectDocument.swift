@@ -1392,7 +1392,9 @@ final class ProjectDocument: ObservableObject {
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
             return
         }
-        overlayLayout.elements[index].style.routeMapCornerRadius = min(max(radius, 0), 120)
+        let clamped = min(max(radius, 0), 120)
+        overlayLayout.elements[index].style.routeMapCornerRadius = clamped
+        overlayLayout.elements[index].style.backgroundRadius = clamped
     }
 
     func setOverlayRouteMapEdgeFade(_ elementID: OverlayElement.ID, edgeFade: OverlayRouteMapEdgeFade) {
@@ -1401,6 +1403,7 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].style.routeMapEdgeFade = edgeFade
+        overlayLayout.elements[index].style.backgroundFadeOutEnabled = edgeFade == .fadeOut
     }
 
     func setOverlayRouteMapFadeAmount(_ elementID: OverlayElement.ID, amount: Double) {
@@ -1408,7 +1411,9 @@ final class ProjectDocument: ObservableObject {
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
             return
         }
-        overlayLayout.elements[index].style.routeMapFadeAmount = min(max(amount, 0), 0.45)
+        let clamped = min(max(amount, 0), 0.45)
+        overlayLayout.elements[index].style.routeMapFadeAmount = clamped
+        overlayLayout.elements[index].style.backgroundFadeOutAmount = clamped
     }
 
     /// Apply a Route Map container preset (Square / Circle × Hard / Gradient
@@ -1426,6 +1431,8 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.routeMapShape = containerPreset.shape
         overlayLayout.elements[index].style.routeMapEdgeFade = containerPreset.edgeFade
         overlayLayout.elements[index].style.routeMapFadeAmount = containerPreset.fadeAmount
+        overlayLayout.elements[index].style.backgroundFadeOutEnabled = containerPreset.edgeFade == .fadeOut
+        overlayLayout.elements[index].style.backgroundFadeOutAmount = containerPreset.fadeAmount
         overlayLayout.elements[index].style.routeMapMapOpacity = containerPreset.mapOpacity
         overlayLayout.elements[index].style.shadowEnabled = containerPreset.shadowEnabled
         overlayLayout.elements[index].style.shadowOpacity = containerPreset.shadowOpacity
@@ -1448,6 +1455,7 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].style.routeMapBorderVisible = isVisible
+        overlayLayout.elements[index].style.borderEnabled = isVisible
     }
 
     func setOverlayRouteMapEdgeSoftness(_ elementID: OverlayElement.ID, amount: Double) {
@@ -1458,6 +1466,8 @@ final class ProjectDocument: ObservableObject {
         let clamped = min(max(amount, 0), 0.45)
         overlayLayout.elements[index].style.routeMapFadeAmount = clamped
         overlayLayout.elements[index].style.routeMapEdgeFade = clamped > 0 ? .fadeOut : .solid
+        overlayLayout.elements[index].style.backgroundFadeOutAmount = clamped
+        overlayLayout.elements[index].style.backgroundFadeOutEnabled = clamped > 0
     }
 
     func setOverlayRouteMapColorMode(_ elementID: OverlayElement.ID, colorMode: OverlayRouteMapColorMode) {

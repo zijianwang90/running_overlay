@@ -194,10 +194,12 @@ struct PreviewCanvasView: View {
                         overlayFrames = frames
                     }
                     .contentShape(Rectangle())
-                    .onTapGesture {
-                        project.clearMediaPoolPreview()
-                        project.clearSelection()
-                    }
+                    .simultaneousGesture(
+                        SpatialTapGesture(coordinateSpace: .named(PreviewCanvasCoordinateSpace.name))
+                            .onEnded { value in
+                                handleCanvasTap(at: value.location)
+                            }
+                    )
                 }
                 .frame(width: proxy.size.width, height: canvasAvailableSize.height)
 
@@ -220,6 +222,22 @@ struct PreviewCanvasView: View {
         }
 
         return CGSize(width: availableSize.height * aspectRatio, height: availableSize.height)
+    }
+
+    private func handleCanvasTap(at location: CGPoint) {
+        let visibleElementIDs = Set(project.overlayLayout.elements.filter(\.isVisible).map(\.id))
+        if !visibleElementIDs.isEmpty && overlayFrames.isEmpty {
+            return
+        }
+
+        let hitPadding: CGFloat = 4
+        let didHitOverlay = overlayFrames.contains { id, frame in
+            visibleElementIDs.contains(id) && frame.insetBy(dx: -hitPadding, dy: -hitPadding).contains(location)
+        }
+
+        guard !didHitOverlay else { return }
+        project.clearMediaPoolPreview()
+        project.clearSelection()
     }
 
 }
@@ -1023,10 +1041,15 @@ struct RouteMapOverlayView: View {
                 }
             }
             .overlay {
-                if showsContainerEffects && (isSelected || layout.borderVisible) {
+                if showsContainerEffects && isSelected {
                     shapeStroke(
-                        color: isSelected ? Color.accentColor.opacity(0.85) : Color.white.opacity(0.16),
-                        lineWidth: isSelected ? 2 : 1
+                        color: Color.accentColor.opacity(0.85),
+                        lineWidth: 2
+                    )
+                } else if showsContainerEffects && element.style.borderEnabled {
+                    shapeStroke(
+                        color: Color(element.style.borderColor).opacity(element.style.borderOpacity),
+                        lineWidth: element.style.borderWidth * element.scale
                     )
                 }
             }
@@ -1045,7 +1068,7 @@ struct RouteMapOverlayView: View {
         ZStack {
             if showsBaseContent {
                 RoundedRectangle(cornerRadius: layout.cornerRadius)
-                    .fill(background)
+                    .fill(containerBackground)
                     .overlay {
                         if let resolvedMapSnapshot, layout.provider == .mapKit {
                             Image(nsImage: resolvedMapSnapshot)
@@ -1075,15 +1098,15 @@ struct RouteMapOverlayView: View {
                     routePath(points: relativePoints)
                         .stroke(routeStroke, style: StrokeStyle(lineWidth: layout.lineWidth, lineCap: .round, lineJoin: .round))
 
-                    routeMarker(relativePoints.first, color: Color(element.style.routeMapStartMarkerColor), style: element.style.routeMapStartMarkerStyle)
-                    routeMarker(relativePoints.last, color: Color(element.style.routeMapEndMarkerColor), style: element.style.routeMapEndMarkerStyle)
+                    routeMarker(relativePoints.first, color: element.style.routeMapStartMarkerColor, style: element.style.routeMapStartMarkerStyle)
+                    routeMarker(relativePoints.last, color: element.style.routeMapEndMarkerColor, style: element.style.routeMapEndMarkerStyle)
                 }
             }
 
             if showsCurrentMarker, !layout.projectedPoints.isEmpty {
                 routeMarker(
                     relativeCurrentPoint,
-                    color: Color(element.style.routeMapRunnerDotColor),
+                    color: element.style.routeMapRunnerDotColor,
                     style: element.style.routeMapRunnerMarkerStyle,
                     sizeMultiplier: 1.18
                 )
@@ -1187,26 +1210,28 @@ struct RouteMapOverlayView: View {
         layout.projectedCurrentPoint.map { CGPoint(x: $0.x - layout.rect.minX, y: $0.y - layout.rect.minY) }
     }
 
+    private var containerBackground: Color {
+        guard element.style.backgroundEnabled else {
+            return Color.clear
+        }
+        return background
+    }
+
     private var background: Color {
         if element.style.routeMapBackgroundStyle == .none {
-            return Color.black.opacity(element.style.backgroundOpacity)
+            return Color(element.style.backgroundColor).opacity(element.style.backgroundOpacity)
         }
         switch element.style.routeMapBackgroundStyle {
         case .light:
-            return Color.white.opacity(max(element.style.backgroundOpacity, 0.48))
+            return Color(element.style.backgroundColor).opacity(element.style.backgroundOpacity)
         case .terrain:
-            return Color(red: 0.13, green: 0.17, blue: 0.13).opacity(max(element.style.backgroundOpacity, 0.66))
+            return Color(element.style.backgroundColor).opacity(element.style.backgroundOpacity)
         case .satellite:
-            return Color(red: 0.05, green: 0.07, blue: 0.06).opacity(max(element.style.backgroundOpacity, 0.74))
+            return Color(element.style.backgroundColor).opacity(element.style.backgroundOpacity)
         case .none:
-            switch layout.preset {
-            case .glow:
-                return Color.black.opacity(max(element.style.backgroundOpacity, 0.34))
-            default:
-                return Color.black.opacity(element.style.backgroundOpacity)
-            }
+            return Color(element.style.backgroundColor).opacity(element.style.backgroundOpacity)
         case .dark:
-            return Color(red: 0.08, green: 0.10, blue: 0.11).opacity(max(element.style.backgroundOpacity, 0.72))
+            return Color(element.style.backgroundColor).opacity(element.style.backgroundOpacity)
         }
     }
 
@@ -1274,11 +1299,18 @@ struct RouteMapOverlayView: View {
     }
 
     @ViewBuilder
-    private func marker(_ point: CGPoint?, color: Color, sizeMultiplier: Double = 1) -> some View {
+    private func marker(_ point: CGPoint?, color: OverlayColor, sizeMultiplier: Double = 1) -> some View {
         if let point {
+            let diameter = layout.lineWidth * 2.7 * sizeMultiplier
             Circle()
-                .fill(color)
-                .frame(width: layout.lineWidth * 2.7 * sizeMultiplier, height: layout.lineWidth * 2.7 * sizeMultiplier)
+                .fill(color.isRouteMapEndCheckerboard ? Color.clear : Color(color))
+                .frame(width: diameter, height: diameter)
+                .overlay {
+                    if color.isRouteMapEndCheckerboard {
+                        RouteMapCheckerboardSwatch(cornerRadius: diameter / 2)
+                            .clipShape(Circle())
+                    }
+                }
                 .overlay {
                     Circle().stroke(Color.white, lineWidth: max(layout.lineWidth * 0.45, 1))
                 }
@@ -1289,7 +1321,7 @@ struct RouteMapOverlayView: View {
     @ViewBuilder
     private func routeMarker(
         _ point: CGPoint?,
-        color: Color,
+        color: OverlayColor,
         style: OverlayRouteMapMarkerStyle,
         sizeMultiplier: Double = 1
     ) -> some View {
@@ -1297,55 +1329,10 @@ struct RouteMapOverlayView: View {
             switch style {
             case .hidden:
                 EmptyView()
-            case .dot:
+            case .dot, .pin, .flag:
                 marker(point, color: color, sizeMultiplier: sizeMultiplier)
-            case .pin:
-                RoutePinShape()
-                    .fill(color)
-                    .frame(width: layout.lineWidth * 2.9 * sizeMultiplier, height: layout.lineWidth * 3.5 * sizeMultiplier)
-                    .overlay {
-                        RoutePinShape().stroke(Color.white, lineWidth: max(layout.lineWidth * 0.35, 1))
-                    }
-                    .position(point)
-            case .flag:
-                RouteFlagShape()
-                    .fill(color)
-                    .frame(width: layout.lineWidth * 3 * sizeMultiplier, height: layout.lineWidth * 3 * sizeMultiplier)
-                    .overlay {
-                        RouteFlagShape().stroke(Color.white, lineWidth: max(layout.lineWidth * 0.32, 1))
-                    }
-                    .position(point)
             }
         }
-    }
-}
-
-private struct RoutePinShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let radius = min(rect.width, rect.height) * 0.34
-        let center = CGPoint(x: rect.midX, y: rect.minY + radius + 1)
-        path.addArc(center: center, radius: radius, startAngle: .degrees(0), endAngle: .degrees(360), clockwise: false)
-        path.move(to: CGPoint(x: rect.midX, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.midX - radius * 0.72, y: rect.midY))
-        path.addLine(to: CGPoint(x: rect.midX + radius * 0.72, y: rect.midY))
-        path.closeSubpath()
-        return path
-    }
-}
-
-private struct RouteFlagShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: rect.minX + rect.width * 0.24, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.24, y: rect.minY + rect.height * 0.15))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + rect.height * 0.24))
-        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.24, y: rect.minY + rect.height * 0.50))
-        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.42, y: rect.minY + rect.height * 0.62))
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + rect.height * 0.62))
-        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.24, y: rect.minY + rect.height * 0.50))
-        path.closeSubpath()
-        return path
     }
 }
 
@@ -1483,7 +1470,6 @@ struct TextPresetOverlayView: View {
     @ViewBuilder
     private var pillView: some View {
         let foreground = Color(element.style.foregroundColor)
-        let accent = Color(element.style.accentColor)
         let valueAndUnit = HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.14) {
             Text(layout.components.value)
                 .font(.overlayFont(family: element.style.fontName, size: layout.fontSize * 0.92, weight: .bold))

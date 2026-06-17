@@ -24,7 +24,6 @@ struct RouteMapOverlayDetailView: View {
                         sectionView(.routeLine) { routeLineSection(element) }
                         sectionView(.markers) { markersSection(element) }
                         routeMapStatsBarInspectorSection(element)
-                        sectionView(.effects) { effectsSection(element) }
                         OverlayBackgroundInspectorModule(elementID: elementID, element: element)
                         OverlayBorderInspectorModule(elementID: elementID, element: element)
                         OverlayEffectsInspectorModule(elementID: elementID, element: element)
@@ -144,54 +143,7 @@ struct RouteMapOverlayDetailView: View {
                 range: 120...720,
                 displayText: "\(Int(element.style.routeMapHeight.rounded())) pt"
             )
-            InspectorDenseSliderRow(
-                label: "Corner Radius",
-                value: Binding(
-                    get: { element.style.routeMapCornerRadius },
-                    set: { project.setOverlayRouteMapCornerRadius(elementID, radius: $0.quantizedRouteMap(to: 2)) }
-                ),
-                range: 0...80,
-                displayText: element.style.routeMapCornerRadius < 1
-                    ? "Sharp"
-                    : "\(Int(element.style.routeMapCornerRadius.rounded())) pt"
-            )
         }
-
-        InspectorDenseRow(label: "Edge Mode") {
-            InspectorDenseSegmented(values: OverlayRouteMapEdgeFade.allCases, selection: Binding(
-                get: { element.style.routeMapEdgeFade },
-                set: { project.setOverlayRouteMapEdgeFade(elementID, edgeFade: $0) }
-            )) { mode in
-                Text(mode.compactLabel)
-            }
-        }
-
-        InspectorDenseRow(label: "Border") {
-            Toggle("", isOn: Binding(
-                get: { element.style.routeMapBorderVisible },
-                set: { project.setOverlayRouteMapBorderVisible(elementID, isVisible: $0) }
-            ))
-            .toggleStyle(.switch)
-            .controlSize(.mini)
-            .labelsHidden()
-        }
-
-        let softnessEnabled = element.style.routeMapEdgeFade == .fadeOut
-        InspectorDenseSliderRow(
-            label: "Edge Softness",
-            value: Binding(
-                get: { element.style.routeMapFadeAmount },
-                set: { project.setOverlayRouteMapEdgeSoftness(elementID, amount: $0.quantizedRouteMap(to: 0.01)) }
-            ),
-            // Allow up to 85% softness so the box can dissolve into the
-            // background like the design mockup. The mask renderer caps at
-            // the same value internally.
-            range: 0...0.85,
-            displayText: element.style.routeMapFadeAmount <= 0.001
-                ? "Solid"
-                : String(format: "%.0f%%", element.style.routeMapFadeAmount * 100),
-            isEnabled: softnessEnabled
-        )
     }
 
     @ViewBuilder
@@ -301,20 +253,20 @@ struct RouteMapOverlayDetailView: View {
 
     @ViewBuilder
     private func markersSection(_ element: OverlayElement) -> some View {
-        markerStyleRow(label: "Start", selected: element.style.routeMapStartMarkerStyle) { marker in
-            project.setOverlayRouteMapStartMarkerStyle(elementID, markerStyle: marker)
+        markerVisibilityRow(label: "Start", isVisible: element.style.routeMapStartMarkerStyle != .hidden) { isVisible in
+            project.setOverlayRouteMapStartMarkerStyle(elementID, markerStyle: isVisible ? .dot : .hidden)
         }
         markerColorRow(label: "Start Color", selected: element.style.routeMapStartMarkerColor) { color in
             project.setOverlayRouteMapStartMarkerColor(elementID, color: color)
         }
-        markerStyleRow(label: "End", selected: element.style.routeMapEndMarkerStyle) { marker in
-            project.setOverlayRouteMapEndMarkerStyle(elementID, markerStyle: marker)
+        markerVisibilityRow(label: "End", isVisible: element.style.routeMapEndMarkerStyle != .hidden) { isVisible in
+            project.setOverlayRouteMapEndMarkerStyle(elementID, markerStyle: isVisible ? .dot : .hidden)
         }
-        markerColorRow(label: "End Color", selected: element.style.routeMapEndMarkerColor) { color in
+        markerColorRow(label: "End Color", presets: endMarkerColorPresets, selected: element.style.routeMapEndMarkerColor) { color in
             project.setOverlayRouteMapEndMarkerColor(elementID, color: color)
         }
-        markerStyleRow(label: "Moving", selected: element.style.routeMapRunnerMarkerStyle) { marker in
-            project.setOverlayRouteMapRunnerMarkerStyle(elementID, markerStyle: marker)
+        markerVisibilityRow(label: "Moving", isVisible: element.style.routeMapRunnerMarkerStyle != .hidden) { isVisible in
+            project.setOverlayRouteMapRunnerMarkerStyle(elementID, markerStyle: isVisible ? .dot : .hidden)
         }
         markerColorRow(label: "Moving Color", selected: element.style.routeMapRunnerDotColor) { color in
             project.setOverlayRouteMapRunnerDotColor(elementID, color: color)
@@ -322,45 +274,38 @@ struct RouteMapOverlayDetailView: View {
     }
 
     @ViewBuilder
-    private func markerStyleRow(
+    private func markerVisibilityRow(
         label: String,
-        selected: OverlayRouteMapMarkerStyle,
-        onSelect: @escaping (OverlayRouteMapMarkerStyle) -> Void
+        isVisible: Bool,
+        onSet: @escaping (Bool) -> Void
     ) -> some View {
         InspectorDenseRow(label: label) {
-            Menu {
-                ForEach(OverlayRouteMapMarkerStyle.allCases) { marker in
-                    Button {
-                        onSelect(marker)
-                    } label: {
-                        if marker == selected {
-                            Label(marker.compactLabel, systemImage: "checkmark")
-                        } else {
-                            Text(marker.compactLabel)
-                        }
-                    }
-                }
-            } label: {
-                InspectorDenseMenuLabel(title: selected.compactLabel)
-            }
-            .menuStyle(.borderlessButton)
-            .frame(height: NumericTokens.controlHeight)
+            Toggle("", isOn: Binding(get: { isVisible }, set: { newValue in
+                onSet(newValue)
+            }))
+                .toggleStyle(.switch)
+                .controlSize(.mini)
         }
     }
 
     @ViewBuilder
     private func markerColorRow(
         label: String,
+        presets: [(name: String, color: OverlayColor)] = NumericOverlayDetailView.colorPresets,
         selected: OverlayColor,
         onSelect: @escaping (OverlayColor) -> Void
     ) -> some View {
         InspectorDenseRow(label: label) {
             InspectorDenseSwatchStrip(
-                presets: NumericOverlayDetailView.colorPresets,
+                presets: presets,
                 selected: selected,
                 action: onSelect
             )
         }
+    }
+
+    private var endMarkerColorPresets: [(name: String, color: OverlayColor)] {
+        [("Checker", .routeMapEndCheckerboard)] + NumericOverlayDetailView.colorPresets
     }
 
     @ViewBuilder
@@ -440,28 +385,6 @@ struct RouteMapOverlayDetailView: View {
             onSetSlotMetric: { project.setOverlayRouteMapStatsBarSlotMetric(elementID, slotIndex: $0, metric: $1) },
             onSetSlotVisible: { project.setOverlayRouteMapStatsBarSlotVisible(elementID, slotIndex: $0, isVisible: $1) },
             onSetInside: { project.setOverlayRouteMapStatsBarInside(elementID, isInside: $0) }
-        )
-    }
-
-    @ViewBuilder
-    private func effectsSection(_ element: OverlayElement) -> some View {
-        InspectorDenseSliderRow(
-            label: "Shadow Opacity",
-            value: Binding(
-                get: { element.style.shadowOpacity },
-                set: { project.setOverlayShadowOpacity(elementID, opacity: $0.quantizedRouteMap(to: 0.05)) }
-            ),
-            range: 0...1,
-            displayText: String(format: "%.0f%%", element.style.shadowOpacity * 100)
-        )
-        InspectorDenseSliderRow(
-            label: "Shadow Radius",
-            value: Binding(
-                get: { element.style.shadowRadius },
-                set: { project.setOverlayShadowRadius(elementID, radius: $0.rounded()) }
-            ),
-            range: 0...24,
-            displayText: "\(Int(element.style.shadowRadius.rounded()))"
         )
     }
 
@@ -625,7 +548,6 @@ enum RouteMapSection: String, CaseIterable {
     case routeLine
     case markers
     case legend
-    case effects
 
     var title: String {
         switch self {
@@ -636,7 +558,6 @@ enum RouteMapSection: String, CaseIterable {
         case .routeLine: "Route Line"
         case .markers: "Markers"
         case .legend: "Stats Bar"
-        case .effects: "Effects"
         }
     }
 
@@ -649,7 +570,6 @@ enum RouteMapSection: String, CaseIterable {
         case .routeLine: "scribble.variable"
         case .markers: "mappin.and.ellipse"
         case .legend: "list.dash"
-        case .effects: "sparkles"
         }
     }
 }

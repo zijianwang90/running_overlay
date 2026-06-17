@@ -78,8 +78,7 @@ Sections, in order:
 
 1. `Preset` — Route Style Preset (line appearance only) + Distance readout.
 2. `Layout` — Position X/Y, Scale, Width, Height, Opacity.
-3. `Container` — Shape, Width, Height (or Size for circle), Corner Radius
-   (square only), Edge Mode, Edge Softness, Border.
+3. `Container` — Shape, Width, Height (or Size for circle).
 4. `Background Map` — Show Map (header toggle), Map Style, Map Opacity,
    optional Contrast / Saturation / Brightness / Blur.
 5. `Route Line` — Color Mode, Solid Color, Gradient Stops, Width, Opacity,
@@ -87,8 +86,7 @@ Sections, in order:
 6. `Markers` — Start, Finish, and Moving Marker controls (style / color / size /
    border / label).
 7. `Status Bar` — Enabled (toggle accessory), Placement, Inside, Layout, Size, Width, Offset, Item Gap, Slots, Background, Dividers, Radius.
-8. `Effects` — Shadow opacity / radius, Glow opacity / radius, Background
-   opacity (container fill).
+8. Shared `Effects` — Shadow, Glow, and Background Fade Out controls.
 
 Each section renders as a compact collapsible group:
 
@@ -123,10 +121,14 @@ style) and `.none`.
 
 `OverlayRouteMapContainerPreset` is still exposed via
 `ProjectDocument.setOverlayRouteMapContainerPreset` for one-click recipes
-in templates and unit tests. It writes Shape / Edge Mode / Edge Softness /
+in templates and unit tests. It writes Shape / shared Effects fade /
 Map Opacity / Shadow defaults onto the element as a single undo edit. The
-Inspector no longer renders a dropdown for it because the per-field
-controls below cover the same surface area without conflict.
+legacy edge fields are kept for decoding compatibility, but the live
+preview/export path reads the shared Background / Border / Effects fields.
+The Inspector no longer renders a dropdown for it because the per-field
+controls below cover the same surface area without conflict. The Inspector
+Container section no longer exposes edge, border, or corner-radius controls;
+those are owned by the shared Background / Border / Effects modules.
 
 | Preset id | Shape | Edge Mode | Edge Softness | Map Opacity | Shadow |
 | --- | --- | --- | ---: | ---: | --- |
@@ -157,7 +159,6 @@ Model mapping:
 
 - `OverlayElement.position.x`, `OverlayElement.position.y`.
 - `OverlayElement.scale`.
-- `OverlayStyle.backgroundOpacity` (re-used as overall container alpha).
 
 ## Container Section
 
@@ -168,37 +169,21 @@ Controls:
 - Height slider (square only), range `120...720` pt, quantized to 4 pt.
 - Size slider (circle only), range `120...600` pt, quantized to 4 pt — drives
   both `routeMapWidth` and `routeMapHeight` symmetrically.
-- Corner Radius slider (square only), range `0...80` pt, quantized to 2 pt.
-  Display rule: show `Sharp` when `< 1`, otherwise `NN pt`. Default `12`.
-  Maps to `OverlayStyle.routeMapCornerRadius`. The setter is
-  `setOverlayRouteMapCornerRadius`.
-- Edge Mode segmented: `Hard` / `Gradient` (`OverlayRouteMapEdgeFade`).
-- Edge Softness slider, range `0...0.85`, quantized to `0.01`. Display rule:
-  show `Solid` when `<= 0.001`, otherwise `NN%`. Disabled when Edge Mode is
-  `Hard`. The setter is `setOverlayRouteMapEdgeSoftness`. When Corner Radius
-  is set, the rounded corners are naturally included in the mask clip so the
-  fade follows the rounded shape boundary.
-- Border Enabled toggle (planned).
-- Border Color swatches (planned).
-- Border Width slider, range `0...4` (planned).
 
 Rules:
 
-- When Edge Mode is `gradient`, the alpha mask defined in `RouteMapMaskRenderer`
-  draws a single radial vignette clipped to the container outline so the fade
-  reaches the corners of a rectangle without a hard step. Three-stop gradient
-  (`white → white → black` at locations `[0, 0.45, 1]`) keeps the inner
-  region punchy while letting the outer ring fall off gradually.
-- The mask renderer caps Edge Softness at `0.85` so the box never collapses
-  to nothing.
 - Switching Shape to `Circle` collapses Width and Height to the shorter edge
   so the editor handles stay in sync with the rendered diameter. Square
   preserves the previous Width / Height.
 - The new `routeMapWidth` / `routeMapHeight` fields default to `320` / `240`
   (4:3) and are the ground truth for the rendered container size. The
   legacy `OverlayElement.scale` continues to scale on top.
-- Border defaults to off when Edge Mode is `gradient` (the soft edge already
-  reads as a vignette; a 1 px stroke would clash).
+- Square corner radius is driven by shared Background `Radius`
+  (`OverlayStyle.backgroundRadius`), not a Route Map-specific field.
+- Edge fade is driven by shared Effects `Fade Out` / `Fade Amount`
+  (`OverlayStyle.backgroundFadeOutEnabled` / `backgroundFadeOutAmount`).
+- Container border is driven by the shared Border module
+  (`OverlayStyle.borderEnabled`, color, opacity, width).
 
 ## Background Map Section
 
@@ -228,6 +213,10 @@ Rules:
 
 - Map background defaults are intentionally dim and low saturation. The route
   line should always read as the primary element.
+- The Background Map section controls the MapKit/grid map layer only. The
+  shared Background module controls the container fill behind that map; turning
+  shared Background off makes the no-map container transparent but does not
+  hide a MapKit background when Show Map is on.
 - MapKit snapshot appearance follows the selected Map Style instead of the
   current macOS appearance: `dark` requests a dark snapshot; `light`,
   `terrain`, and `satellite` request light snapshot appearance.
@@ -266,18 +255,30 @@ Rules:
 
 Controls:
 
-- Start Marker dropdown: `Hidden` / `Dot` / `Pin` / `Flag`, drives
-  `routeMapStartMarkerStyle`.
+- Start Marker switch: on writes `routeMapStartMarkerStyle = .dot`; off writes
+  `.hidden`.
 - Start Color swatches: drives `routeMapStartMarkerColor`.
-- Finish Marker dropdown: same enum, drives `routeMapEndMarkerStyle`.
-- Finish Color swatches: drives `routeMapEndMarkerColor`.
-- Moving Marker dropdown: same enum, drives `routeMapRunnerMarkerStyle`.
+- Finish Marker switch: on writes `routeMapEndMarkerStyle = .dot`; off writes
+  `.hidden`.
+- Finish Color swatches: drives `routeMapEndMarkerColor`; the first swatch and
+  default value are a 3x3 black/white checkerboard finish marker preset.
+- Moving Marker switch: on writes `routeMapRunnerMarkerStyle = .dot`; off writes
+  `.hidden`.
 - Moving Color swatches: drives `routeMapRunnerDotColor`.
+
+Rules:
+
+- The current version only renders dot markers. Legacy `.pin` / `.flag` values
+  remain decode-compatible but are normalized visually to dot in preview and
+  export.
+- The checkerboard preset is scoped to End / Finish marker color only. It is
+  stored as `OverlayColor.routeMapEndCheckerboard` and rendered as a
+  3x3 black/white checkerboard dot in preview and export.
 
 Controls (v2, planned per spec):
 
-- Per-marker size, border (color / width), icon name, label toggle and label
-  text.
+- Pin / flag marker artwork, per-marker size, border (color / width), icon
+  name, label toggle and label text.
 
 Rules:
 
@@ -428,21 +429,15 @@ legacy migration inputs only. On decode, map old `routeMapLegendVisible` to
 Inspector. If an older document used `gradientBand`, migrate to a Status Bar
 with route metrics and keep route gradient controls in the Route Line section.
 
-## Effects Section
+## Shared Background / Border / Effects
 
-Controls (v1, implemented today):
+Route Map uses the shared modules below the Route Map-specific sections:
 
-- Shadow Opacity slider, range `0...1`, formatted as percentage.
-- Shadow Radius slider, range `0...24`.
-- Background slider — drives container fill alpha
-  (`OverlayStyle.backgroundOpacity`), used by gradient edges to keep a soft
-  fill.
-
-Controls (v2, planned per spec):
-
-- Shadow Color, Shadow Offset X / Y.
-- Glow toggle, color, opacity, radius.
-- Blend Mode dropdown.
+- Background: fill enabled, color, opacity, radius, padding, blur.
+- Border: enabled, color, opacity, thickness.
+- Effects: shadow, glow, and Background Fade Out / Fade Amount. The fade mask
+  is clipped to the Route Map shape and uses Background `Radius` for square
+  maps.
 
 ## Footer
 
@@ -482,7 +477,7 @@ Inspector width:
 Currently model-backed (post 2026-04-27 Phase E.1):
 
 - `routeMapPreset` (route line aesthetic only — no longer encodes "show map").
-- `routeMapShape`, `routeMapEdgeFade`, `routeMapFadeAmount`.
+- `routeMapShape`.
 - `routeMapWidth`, `routeMapHeight` — independent container dimensions, used
   by both shapes (circle takes the shorter edge as the diameter).
 - `routeMapColorMode`, `routeMapGradientStart/Middle/End`,
@@ -503,19 +498,21 @@ Currently model-backed (post 2026-04-27 Phase E.1):
 - `routeMapLegendVisible`, `routeMapLegendMode` are legacy migration fields only.
 - `OverlayElement.position`, `OverlayElement.scale`,
   `OverlayStyle.rotationDegrees`.
-- `OverlayStyle.backgroundOpacity` (container fill alpha).
-- `OverlayStyle.shadowOpacity`, `OverlayStyle.shadowRadius`.
+- Shared Background fields: `backgroundEnabled`, `backgroundColor`,
+  `backgroundOpacity`, `backgroundRadius`, `backgroundBlurRadius`, padding.
+- Shared Border fields: `borderEnabled`, `borderColor`, `borderOpacity`,
+  `borderWidth`.
+- Shared Effects fields: `shadow*`, `glow*`,
+  `backgroundFadeOutEnabled`, `backgroundFadeOutAmount`.
 - `routeMapContainerPreset` — used by templates / setters as a one-click
   bundle. The Inspector no longer renders a dropdown for it.
 - `routeMapMapOpacity` — explicit map snapshot alpha.
 
 Planned (Phase F, not yet implemented):
 
-- Border (`enabled` / `color` / `opacity` / `width`).
-- Glow (`enabled` / `color` / `opacity` / `radius`).
 - Map adjustments (`contrast` / `saturation` / `brightness` / `blur`).
 - Route line (`width` / `opacity` / `dash` / `glow` / `gradientMetric`).
-- Per-marker color / size / border / label.
+- Per-marker size / border / label.
 - Status Bar style preset enum.
 - Status Bar slot label override editing in inspector.
 - Glow / blend mode container effects.
@@ -528,7 +525,7 @@ move the corresponding entry from `modelGaps` into `modelBackedToday`.
 - All four container variants (Square Hard / Circle Hard / Square Gradient /
   Circle Gradient) remain reproducible via
   `setOverlayRouteMapContainerPreset` (used by templates and tests), and via
-  the per-field controls in the Inspector.
+  the shared Background / Border / Effects controls in the Inspector.
 - Map Opacity is a model-backed slider; the value is honored by both preview
   and exporter.
 - Show Map is a header toggle in the Background Map section. Toggling it off
@@ -540,10 +537,12 @@ move the corresponding entry from `modelGaps` into `modelBackedToday`.
 - The whole projected route is visible inside the map container — no
   polyline segment clips outside `contentRect`. Verified by
   `routeMapLayoutProjectsGpsRouteAndCurrentPoint`.
-- Edge Softness has visual effect from `0%` to `85%`, transitions from a
-  hard edge through a vignette to a soft fade-out.
-- Route Line, Markers, Status Bar, and Effects controls live in their own
-  collapsible sections.
+- Shared Effects Fade Amount has visual effect from `0%` to `85%` for Route
+  Map containers, transitioning from a hard edge through a vignette to a soft
+  fade-out.
+- Route Line, Markers, and Status Bar controls live in Route Map-specific
+  collapsible sections; Background, Border, and Effects use the shared modules
+  below them.
 - Inspector width 460 px renders without text clipping.
 - Disabling Status Bar hides every Status Bar control row beneath it and removes the data strip from preview/export.
 - Status Bar supports at least 1–4 configurable metric slots, with default Distance / Pace / Time enabled and Heart Rate disabled.
