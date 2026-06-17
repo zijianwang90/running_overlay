@@ -1,8 +1,27 @@
 import Foundation
+import AppKit
 import Testing
 @testable import RunningOverlay
 
 struct OverlayRenderModelTests {
+    @Test func featherMaskFadesFromTransparentEdgeToOpaqueCenter() throws {
+        let image = try #require(OverlayFeatherMaskRenderer.makeCGMask(
+            size: CGSize(width: 100, height: 60),
+            cornerRadius: 12,
+            fadeAmount: 0.35
+        ))
+        let bitmap = NSBitmapImageRep(cgImage: image)
+
+        func white(_ x: Int, _ y: Int) -> CGFloat {
+            bitmap.colorAt(x: x, y: y)?.whiteComponent ?? 0
+        }
+
+        #expect(white(50, 30) > 0.98)
+        #expect(white(0, 30) < 0.05)
+        #expect(white(8, 30) > white(0, 30))
+        #expect(white(24, 30) > white(8, 30))
+    }
+
     @Test func scalesTextLayoutFromReferenceCanvas() {
         let element = OverlayElement(type: .heartRate, position: CGPoint(x: 0.25, y: 0.75), scale: 1, style: .default)
         let context = OverlayRenderContext(
@@ -544,11 +563,12 @@ struct OverlayRenderModelTests {
         #expect(layout.projectedPoints.count == 3)
         #expect(layout.projectedCurrentPoint != nil)
         #expect(layout.progress == 0.5)
-        // Default container size moved to 320 × 240 (4:3) so the user can
-        // resize either axis independently. Square shape is no longer
-        // forced to 1:1 — see `OverlayStyle.routeMapWidth/Height`.
-        #expect(layout.rect.width == 320)
-        #expect(layout.rect.height == 240)
+        // The shared background padding expands the visible map container
+        // while preserving the base 320 × 240 route content area.
+        #expect(layout.rect.width == 340)
+        #expect(layout.rect.height == 252)
+        #expect(abs(Double(layout.contentRect.width) - 262.4) < 0.001)
+        #expect(abs(Double(layout.contentRect.height) - 182.4) < 0.001)
         // Centering fix: every projected point and the current point must
         // stay inside `contentRect` (so the rendered stroke stays inside
         // the visible map box). We expand by a 1pt tolerance to absorb

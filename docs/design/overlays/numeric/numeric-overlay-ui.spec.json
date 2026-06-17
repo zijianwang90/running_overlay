@@ -155,7 +155,8 @@
         { "id": "backgroundColor", "type": "swatches", "modelPath": "OverlayStyle.backgroundColor" },
         { "id": "backgroundOpacity", "type": "slider", "modelPath": "OverlayStyle.backgroundOpacity" },
         { "id": "backgroundRadius", "type": "slider", "modelPath": "OverlayStyle.backgroundRadius" },
-        { "id": "backgroundPadding", "type": "numberPair", "labels": ["X", "Y"], "modelPaths": ["OverlayStyle.backgroundPaddingX", "OverlayStyle.backgroundPaddingY"] },
+        { "id": "backgroundPaddingX", "type": "slider", "range": [0, 80], "modelPath": "OverlayStyle.backgroundPaddingX" },
+        { "id": "backgroundPaddingY", "type": "slider", "range": [0, 80], "modelPath": "OverlayStyle.backgroundPaddingY" },
         { "id": "backgroundBlur", "type": "slider", "modelPath": "OverlayStyle.backgroundBlurRadius" }
       ]
     },

@@ -697,6 +697,11 @@ Border
 Border Opacity
 ```
 
+The rendered chart container consumes the shared `OverlayStyle` Background,
+Border, and Effects fields. Shared Background Padding expands the background
+and border bounds in preview and export; chart inner padding remains controlled
+by the Elevation Chart-specific chart padding fields.
+
 Default:
 
 ```swift
@@ -760,7 +765,7 @@ First version should include:
 - Dual Area toggle and two gradient groups
 - Current marker
 - Optional min / max labels
-- Background opacity / corner radius / border
+- Shared Background opacity / corner radius / padding / border
 - Optional Status Bar with 1–4 configurable slots
 ```
 

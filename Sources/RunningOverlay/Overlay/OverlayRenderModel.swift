@@ -1400,11 +1400,23 @@ enum OverlayRenderModel {
         let designHeight = element.style.routeMapHeight
         let width = context.scaled(designWidth * element.scale)
         let height = context.scaled(designHeight * element.scale)
+        let backgroundPadX = element.style.backgroundEnabled
+            ? context.scaled(element.style.backgroundPaddingX * element.scale)
+            : 0
+        let backgroundPadY = element.style.backgroundEnabled
+            ? context.scaled(element.style.backgroundPaddingY * element.scale)
+            : 0
         // Circles ignore aspect: take the shorter edge as the diameter so the
         // user can drag the bounding box wider/taller without distorting the
         // circular window.
         let side = min(width, height)
-        let mapSize = mapShape == .circle ? CGSize(width: side, height: side) : CGSize(width: width, height: height)
+        let mapSize: CGSize
+        if mapShape == .circle {
+            let paddedSide = side + max(backgroundPadX, backgroundPadY) * 2
+            mapSize = CGSize(width: paddedSide, height: paddedSide)
+        } else {
+            mapSize = CGSize(width: width + backgroundPadX * 2, height: height + backgroundPadY * 2)
+        }
         // Padding scales with the box size so wider boxes still keep the
         // route well inside the visible map. The minimum keeps tiny boxes
         // (≤120 pt) from squashing the route to the center.
@@ -1584,7 +1596,9 @@ enum OverlayRenderModel {
             )
         }() : nil
 
-        var routeContentRect = mapRect.insetBy(dx: padding, dy: padding)
+        let contentInsetX = padding + (mapShape == .circle ? max(backgroundPadX, backgroundPadY) : backgroundPadX)
+        let contentInsetY = padding + (mapShape == .circle ? max(backgroundPadX, backgroundPadY) : backgroundPadY)
+        var routeContentRect = mapRect.insetBy(dx: contentInsetX, dy: contentInsetY)
         if let statsBar = statsBarLayout, statsBar.isInside {
             // Reserve chart area so inside Stats Bar never covers route geometry.
             let reserved = statsBar.rect.height + context.scaled(6 * element.scale)

@@ -433,11 +433,13 @@ with route metrics and keep route gradient controls in the Route Line section.
 
 Route Map uses the shared modules below the Route Map-specific sections:
 
-- Background: fill enabled, color, opacity, radius, padding, blur.
+- Background: fill enabled, color, opacity, radius, padding, blur. Padding
+  expands the rendered map container while the route content rect reserves the
+  same amount so the polyline does not spread outward with the background.
 - Border: enabled, color, opacity, thickness.
 - Effects: shadow, glow, and Background Fade Out / Fade Amount. The fade mask
-  is clipped to the Route Map shape and uses Background `Radius` for square
-  maps.
+  is clipped to the Route Map shape; square maps use the shared feather mask so
+  rounded corners stay rounded at large fade amounts.
 
 ## Footer
 
@@ -500,6 +502,7 @@ Currently model-backed (post 2026-04-27 Phase E.1):
   `OverlayStyle.rotationDegrees`.
 - Shared Background fields: `backgroundEnabled`, `backgroundColor`,
   `backgroundOpacity`, `backgroundRadius`, `backgroundBlurRadius`, padding.
+  Padding is part of the rendered container size.
 - Shared Border fields: `borderEnabled`, `borderColor`, `borderOpacity`,
   `borderWidth`.
 - Shared Effects fields: `shadow*`, `glow*`,
@@ -539,7 +542,8 @@ move the corresponding entry from `modelGaps` into `modelBackedToday`.
   `routeMapLayoutProjectsGpsRouteAndCurrentPoint`.
 - Shared Effects Fade Amount has visual effect from `0%` to `85%` for Route
   Map containers, transitioning from a hard edge through a vignette to a soft
-  fade-out.
+  fade-out. Square containers preserve rounded corners by using the shared
+  feather mask.
 - Route Line, Markers, and Status Bar controls live in Route Map-specific
   collapsible sections; Background, Border, and Effects use the shared modules
   below them.

@@ -228,7 +228,7 @@ Controls:
 - Background color swatch.
 - Opacity slider. This controls background-only alpha; whole-overlay opacity lives in Layout.
 - Radius slider.
-- Padding X and Padding Y fields or compact steppers.
+- Padding X and Padding Y sliders.
 - Gaussian Blur slider.
 
 Model mapping:
@@ -262,14 +262,14 @@ Model mapping:
 - `OverlayStyle.shadowEnabled` toggles drawing.
 - `OverlayStyle.shadowColor`, `shadowOpacity`, `shadowRadius`, `shadowThickness`, `shadowOffsetX`, and `shadowOffsetY` drive the rendered shadow.
 - `OverlayStyle.glowEnabled`, `glowColor`, and `glowIntensity` drive the foreground glow.
-- `OverlayStyle.backgroundFadeOutEnabled` and `backgroundFadeOutAmount` drive optional edge fade for the background only.
+- `OverlayStyle.backgroundFadeOutEnabled` and `backgroundFadeOutAmount` drive optional edge fade for the background only. Preview and export use the shared distance-field feather mask so the background alpha reaches transparent at the rounded edge instead of relying on a clipped blur mask.
 
 Rendering rules:
 
 - When background is enabled, shadow targets the background/container where the overlay has a background surface.
 - When background is disabled, shadow targets the internal foreground elements.
 - Glow targets foreground/internal elements.
-- Fade Out targets only the background; when background is disabled, Fade Out has no visual effect.
+- Fade Out targets only the background; when background is disabled, Fade Out has no visual effect. It does not apply backdrop/video blur or fade foreground text/icons.
 
 ## Border Section
 

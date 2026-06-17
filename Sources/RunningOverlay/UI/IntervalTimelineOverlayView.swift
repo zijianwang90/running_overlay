@@ -7,8 +7,18 @@ struct IntervalTimelineOverlayView: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             if element.style.backgroundEnabled {
-                RoundedRectangle(cornerRadius: layout.cornerRadius)
-                    .fill(Color(intervalTimeline: element.style.backgroundColor).opacity(element.style.backgroundOpacity))
+                OverlayFeatheredBackground(
+                    isSelected: false,
+                    backgroundEnabled: element.style.backgroundEnabled,
+                    color: Color(intervalTimeline: element.style.backgroundColor),
+                    opacity: element.style.backgroundOpacity,
+                    cornerRadius: layout.cornerRadius,
+                    fadeEnabled: element.style.backgroundFadeOutEnabled,
+                    fadeAmount: element.style.backgroundFadeOutAmount,
+                    blurRadius: element.style.backgroundBlurRadius
+                )
+                    .frame(width: backgroundLocalRect.width, height: backgroundLocalRect.height)
+                    .position(x: backgroundLocalRect.midX, y: backgroundLocalRect.midY)
                     .intervalTimelineShadow(element: element, isEnabled: true)
             }
 
@@ -16,6 +26,8 @@ struct IntervalTimelineOverlayView: View {
                 if element.style.borderEnabled {
                     RoundedRectangle(cornerRadius: layout.cornerRadius)
                         .stroke(Color(intervalTimeline: element.style.borderColor).opacity(element.style.borderOpacity), lineWidth: element.style.borderWidth)
+                        .frame(width: backgroundLocalRect.width, height: backgroundLocalRect.height)
+                        .position(x: backgroundLocalRect.midX, y: backgroundLocalRect.midY)
                 }
 
                 ZStack(alignment: .topLeading) {
@@ -31,6 +43,17 @@ struct IntervalTimelineOverlayView: View {
             .intervalTimelineShadow(element: element, isEnabled: !element.style.backgroundEnabled)
         }
         .frame(width: layout.rect.width, height: layout.rect.height)
+    }
+
+    private var backgroundLocalRect: CGRect {
+        let padX = element.style.backgroundPaddingX * element.scale
+        let padY = element.style.backgroundPaddingY * element.scale
+        return CGRect(
+            x: -padX,
+            y: -padY,
+            width: layout.rect.width + padX * 2,
+            height: layout.rect.height + padY * 2
+        )
     }
 
     private var overflowHints: some View {

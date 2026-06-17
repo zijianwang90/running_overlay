@@ -146,7 +146,7 @@ Primary sections:
 - Background
 - Border & Effects
 
-Shared modules should be reused for Layout, Background, Border, and Effects.
+Shared modules should be reused for Layout, Background, Border, and Effects. Background Padding expands the rendered background and border bounds in preview and export without moving the timeline segments.
 
 ## Implementation Phases
 

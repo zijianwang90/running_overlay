@@ -2,6 +2,20 @@
 
 ## 2026-06-17
 
+### Shared Background Fade Feather Mask
+
+- Replaced the generic background Fade Out preview mask with a reusable distance-field feather mask so rounded background edges fade smoothly to transparent instead of being clipped with a hard boundary.
+- Adjusted the feather ramp to blend between outer and inner rounded rectangles, preserving rounded corners even when the fade width is larger than the background radius.
+- Reused the same mask in CoreGraphics export for numeric text preset backgrounds, Distance Timeline shared backgrounds, Interval Timeline backgrounds, and Interval HUD Bar backgrounds.
+- Fixed several shared Effects cases where `backgroundFadeOutEnabled/backgroundFadeOutAmount` were exposed in the Inspector but not consumed by the preview/export background renderer.
+- Wired shared Background `Padding X/Y` into Distance Timeline preview/export background bounds and changed the shared Padding controls from compact numeric fields to sliders.
+- Added regression coverage for the generated mask alpha ramp.
+- Verification: `swift test`.
+
+### Distance Timeline Progress Gap Anchoring
+
+- Fixed Distance Timeline Value rendering so `Progress Gap` only changes the vertical distance to the progress bar. The Value row now stays anchored to the top of its slot instead of drifting downward as the gap grows.
+
 ### Distance Timeline Optional Total Distance
 
 - Added a persisted Value `Total Distance` toggle to Distance Timeline. Enabled renders `current / total unit`; disabled renders only the current activity distance and unit.
@@ -4333,3 +4347,32 @@ Files changed:
 - `docs/design/overlays/interval-hud-bar/interval-hud-bar-overlay-ui.spec.json`
 - `docs/overlay-modules/interval-hud-bar-overlay.md`
 - `docs/project-log.md`
+
+### Visual Background Consistency Pass (2026-06-17)
+
+Summary:
+
+- Unified shared Background fade-out rendering around a generic feather mask so rounded backgrounds keep soft corners instead of hard or pointed fade edges.
+- Fixed Distance Timeline, Interval Timeline, Interval HUD Bar, Route Map, and Elevation Chart preview/export paths so shared Background Padding expands the rendered background and border bounds consistently.
+- Route Map square Fade Out now uses the shared feather mask; shared Background Padding expands the map container while the route content rect reserves the same padding so route geometry does not spread outward.
+- Elevation Chart now consumes the shared Background/Border/Effects fields for its outer container. Running Gauge no longer exposes shared Background/Border modules because its rendered background is the Dial-specific circular surface.
+- Changed shared Background Padding controls to sliders and updated route map layout coverage for the padded container size.
+
+Verification:
+
+- `swift test`
+- `git diff --check`
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/OverlayFeatherMaskRenderer.swift`
+- `Sources/RunningOverlay/UI/OverlayFeatheredBackground.swift`
+- `Sources/RunningOverlay/Overlay/OverlayRenderModel.swift`
+- `Sources/RunningOverlay/Overlay/RouteMapOverlay.swift`
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `Sources/RunningOverlay/UI/IntervalHUDBarOverlayView.swift`
+- `Sources/RunningOverlay/UI/IntervalTimelineOverlayView.swift`
+- `Sources/RunningOverlay/UI/RunningGaugeOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/InspectorRows/OverlayBackgroundInspectorRows.swift`
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `Tests/RunningOverlayTests/OverlayRenderModelTests.swift`

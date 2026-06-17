@@ -256,6 +256,9 @@ Phase E: Container presets, map dim controls, edge fade fix (current revision)
 - **Bug fix**: Route Map 容器底色现在遵守共享 Background 开关。关闭 Background
   时无底图 Route Map 变为透明；Background Map 的 MapKit / grid 图层仍由
   `Show Map` 单独控制。
+- **Bug fix**: Route Map 方形容器的 Fade Out 改用通用 feather mask，避免大
+  fade amount 下圆角退化成尖角；共享 Background Padding 现在会扩大地图容器，
+  同时 route content rect 反向预留该 padding，避免路线本体随背景一起外扩。
 
 Phase F: Stats Bar (current revision)
 

@@ -7,45 +7,71 @@ struct IntervalHUDBarOverlayView: View {
     private var style: IntervalHUDBarStyle { layout.style }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                ForEach(Array(cells.enumerated()), id: \.element.id) { index, cell in
-                    if index > 0 {
-                        divider
+        ZStack {
+            if element.style.backgroundEnabled {
+                OverlayFeatheredBackground(
+                    isSelected: false,
+                    backgroundEnabled: element.style.backgroundEnabled,
+                    color: Color(intervalHUD: element.style.backgroundColor),
+                    opacity: element.style.backgroundOpacity,
+                    cornerRadius: element.style.backgroundRadius,
+                    fadeEnabled: element.style.backgroundFadeOutEnabled,
+                    fadeAmount: element.style.backgroundFadeOutAmount,
+                    blurRadius: element.style.backgroundBlurRadius
+                )
+                .frame(width: backgroundLocalRect.width, height: backgroundLocalRect.height)
+                .position(x: backgroundLocalRect.midX, y: backgroundLocalRect.midY)
+                .intervalHUDLayeredShadow(element: element, isEnabled: true)
+            }
+
+            VStack(spacing: 0) {
+                HStack(spacing: 0) {
+                    ForEach(Array(cells.enumerated()), id: \.element.id) { index, cell in
+                        if index > 0 {
+                            divider
+                        }
+                        cellView(cell)
+                            .frame(maxWidth: .infinity)
                     }
-                    cellView(cell)
-                        .frame(maxWidth: .infinity)
                 }
-            }
-            .padding(.horizontal, horizontalContentPadding)
-            .frame(height: mainContentHeight)
-
-            if hasVisibleBottomBar {
-                Spacer()
-                    .frame(height: effectiveBottomBarSpacing)
-            }
-
-            bottomBar
                 .padding(.horizontal, horizontalContentPadding)
+                .frame(height: mainContentHeight)
+
+                if hasVisibleBottomBar {
+                    Spacer()
+                        .frame(height: effectiveBottomBarSpacing)
+                }
+
+                bottomBar
+                    .padding(.horizontal, horizontalContentPadding)
+            }
+            .padding(.top, verticalLayout.topPadding)
+            .padding(.bottom, verticalLayout.bottomPadding)
+            .intervalHUDLayeredShadow(
+                element: element,
+                isEnabled: !element.style.backgroundEnabled && !element.style.borderEnabled
+            )
         }
-        .padding(.top, verticalLayout.topPadding)
-        .padding(.bottom, verticalLayout.bottomPadding)
-        .intervalHUDLayeredShadow(
-            element: element,
-            isEnabled: !element.style.backgroundEnabled && !element.style.borderEnabled
-        )
         .frame(width: layout.rect.width, height: layout.rect.height)
-        .background(
-            RoundedRectangle(cornerRadius: element.style.backgroundRadius)
-                .fill(Color(intervalHUD: element.style.backgroundColor).opacity(element.style.backgroundEnabled ? element.style.backgroundOpacity : 0))
-                .intervalHUDLayeredShadow(element: element, isEnabled: element.style.backgroundEnabled)
-        )
         .overlay {
             if element.style.borderEnabled {
                 RoundedRectangle(cornerRadius: element.style.backgroundRadius)
                     .stroke(Color(intervalHUD: element.style.borderColor).opacity(element.style.borderOpacity), lineWidth: element.style.borderWidth)
+                    .frame(width: backgroundLocalRect.width, height: backgroundLocalRect.height)
+                    .position(x: backgroundLocalRect.midX, y: backgroundLocalRect.midY)
             }
         }
+    }
+
+    private var backgroundLocalRect: CGRect {
+        let padX = element.style.backgroundPaddingX * element.scale
+        let padY = element.style.backgroundPaddingY * element.scale
+        return CGRect(
+            x: -padX,
+            y: -padY,
+            width: layout.rect.width + padX * 2,
+            height: layout.rect.height + padY * 2
+        )
     }
 
     private var mainContentHeight: Double {

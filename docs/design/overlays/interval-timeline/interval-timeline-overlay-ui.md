@@ -139,7 +139,9 @@ Recommended sections:
 - **Rail**: rail toggle, vertical spacing from segment row, dot size, dot alpha, dot color, line width, line color.
 - **Labels**: work distance/time, rest kind/distance/time, neighbor metric (`Off` / `Distance` / `Time`), rep counter, overflow hint, typography.
 - **Colors**: per-kind colors for warmup, active, rest, cooldown, unknown; completed opacity; future opacity.
-- **Background**: reuse shared background controls.
+- **Background**: reuse shared background controls. Padding expands the
+  background/border bounds in preview and export while keeping segment layout
+  stable.
 - **Border & Effects**: reuse shared border/effects controls.
 
 ## First-Version Defaults

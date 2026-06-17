@@ -213,7 +213,7 @@ struct OverlayFrameRenderer {
         case .minimal:
             return
         case .pillBadge:
-            drawRoundedRect(rect, color: colors.background, cornerRadius: rect.height / 2)
+            drawTextPresetBackground(rect, element: element, cornerRadius: rect.height / 2)
             let label = renderLayout.components.shortLabel
             let labelSize = textSize(label, for: element, fontSize: renderLayout.labelFontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY)
             let valueSize = textSize(renderLayout.components.value, for: element, fontSize: renderLayout.fontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY)
@@ -231,7 +231,7 @@ struct OverlayFrameRenderer {
             drawText(renderLayout.components.value, for: element, fontSize: renderLayout.fontSize, in: CGRect(x: dividerX + renderLayout.horizontalPadding * 0.65, y: rect.midY - valueSize.height / 2, width: valueSize.width, height: valueSize.height), renderLayout: renderLayout)
             drawText(renderLayout.components.unit, for: element, fontSize: renderLayout.unitFontSize, in: CGRect(x: rect.maxX - renderLayout.horizontalPadding - textSize(renderLayout.components.unit, for: element, fontSize: renderLayout.unitFontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY).width, y: rect.midY - renderLayout.unitFontSize * 0.48, width: rect.width, height: renderLayout.unitFontSize * 1.25), renderLayout: renderLayout)
         case .metricCard:
-            drawRoundedRect(rect, color: colors.background, cornerRadius: renderLayout.cornerRadius)
+            drawTextPresetBackground(rect, element: element, cornerRadius: renderLayout.cornerRadius)
             drawText(renderLayout.components.label, for: element, fontSize: renderLayout.labelFontSize, in: CGRect(x: rect.minX + renderLayout.horizontalPadding, y: rect.minY + renderLayout.verticalPadding, width: rect.width, height: renderLayout.labelFontSize * 1.25), renderLayout: renderLayout)
             let baselineY = rect.minY + renderLayout.verticalPadding + renderLayout.labelFontSize * 1.35
             drawText(renderLayout.components.value, for: element, fontSize: renderLayout.fontSize, in: CGRect(x: rect.minX + renderLayout.horizontalPadding, y: baselineY, width: rect.width, height: renderLayout.fontSize * 1.25), renderLayout: renderLayout)
@@ -276,7 +276,7 @@ struct OverlayFrameRenderer {
                 )
             }
         case .sportWatch:
-            drawRoundedRect(rect, color: colors.background, cornerRadius: renderLayout.cornerRadius)
+            drawTextPresetBackground(rect, element: element, cornerRadius: renderLayout.cornerRadius)
             strokeRoundedRect(rect, color: colors.foreground.withAlphaComponent(0.35), cornerRadius: renderLayout.cornerRadius, lineWidth: max(renderLayout.fontSize / 28, 1))
             drawText(renderLayout.components.shortLabel, for: element, fontSize: renderLayout.labelFontSize, in: CGRect(x: rect.minX, y: rect.minY + renderLayout.verticalPadding, width: rect.width, height: renderLayout.labelFontSize * 1.25), renderLayout: renderLayout, alignment: .center)
             if renderLayout.dividerEnabled {
@@ -418,7 +418,7 @@ struct OverlayFrameRenderer {
         colors: TextPresetColors
     ) {
         let labelColor = NSColor(element.style.labelColor).withAlphaComponent(element.style.labelOpacity)
-        drawRoundedRect(rect, color: colors.background, cornerRadius: renderLayout.cornerRadius)
+        drawTextPresetBackground(rect, element: element, cornerRadius: renderLayout.cornerRadius)
         strokeRoundedRect(rect, color: colors.foreground.withAlphaComponent(0.14), cornerRadius: renderLayout.cornerRadius, lineWidth: 1)
         let stripeWidth = renderLayout.dividerEnabled ? max(renderLayout.dividerThickness * 2.4, 4) : 0
         let stripeRect = CGRect(
@@ -521,7 +521,7 @@ struct OverlayFrameRenderer {
         colors: TextPresetColors
     ) {
         let accent = NSColor(element.style.accentColor)
-        drawRoundedRect(rect, color: colors.background, cornerRadius: renderLayout.cornerRadius)
+        drawTextPresetBackground(rect, element: element, cornerRadius: renderLayout.cornerRadius)
         strokeRoundedRect(rect, color: accent.withAlphaComponent(0.70), cornerRadius: renderLayout.cornerRadius, lineWidth: 1)
         var cursorY = rect.minY + renderLayout.verticalPadding
         if element.style.showLabel, !renderLayout.components.label.isEmpty {
@@ -765,10 +765,15 @@ struct OverlayFrameRenderer {
         let style = renderLayout.style
         let accent = NSColor(style.fillColor)
         let foreground = NSColor(element.style.foregroundColor)
-        let backgroundRect = distanceTimelineBackgroundRect(renderLayout)
+        let backgroundRect = distanceTimelineBackgroundRect(renderLayout, element: element)
 
         if style.backgroundEnabled {
-            drawRoundedRect(backgroundRect, color: NSColor(style.backgroundColor).withAlphaComponent(style.backgroundOpacity), cornerRadius: renderLayout.cornerRadius)
+            drawOverlayBackground(
+                backgroundRect,
+                color: NSColor(element.style.backgroundColor).withAlphaComponent(element.style.backgroundOpacity),
+                cornerRadius: renderLayout.cornerRadius,
+                element: element
+            )
         }
         if style.borderEnabled {
             strokeRoundedRect(
@@ -1094,14 +1099,15 @@ struct OverlayFrameRenderer {
         layout.distanceTimelineStyleScale
     }
 
-    private static func distanceTimelineBackgroundRect(_ layout: OverlayDistanceTimelineRenderLayout) -> CGRect {
+    private static func distanceTimelineBackgroundRect(_ layout: OverlayDistanceTimelineRenderLayout, element: OverlayElement) -> CGRect {
         let scale = distanceTimelineStyleScale(layout)
-        let pad = 6 * scale
-        var rect = layout.distanceTimelineContentBounds(axisPadding: pad)
+        let padX = element.style.backgroundPaddingX * scale
+        let padY = element.style.backgroundPaddingY * scale
+        var rect = layout.distanceTimelineContentBounds().insetBy(dx: -padX, dy: -padY)
         if layout.style.statsBar.visible,
            layout.style.statsBar.inside,
            let statsRect = layout.distanceTimelineStatsBarRect() {
-            rect = rect.union(statsRect.insetBy(dx: -pad, dy: -pad))
+            rect = rect.union(statsRect.insetBy(dx: -padX, dy: -padY))
         }
         return rect
     }
@@ -1151,18 +1157,26 @@ struct OverlayFrameRenderer {
     ) {
         let renderLayout = OverlayRenderModel.elevationChartLayout(for: element, in: renderContext)
         let style = renderLayout.style
-        if style.backgroundEnabled {
-            drawRoundedRect(
-                renderLayout.rect,
-                color: NSColor(style.backgroundColor).withAlphaComponent(style.backgroundOpacity),
-                cornerRadius: renderLayout.cornerRadius
+        let backgroundRect = renderLayout.rect.insetBy(
+            dx: -renderContext.scaled(element.style.backgroundPaddingX * element.scale),
+            dy: -renderContext.scaled(element.style.backgroundPaddingY * element.scale)
+        )
+        let backgroundCornerRadius = renderContext.scaled(element.style.backgroundRadius * element.scale)
+        if element.style.backgroundEnabled {
+            drawOverlayBackground(
+                backgroundRect,
+                color: NSColor(element.style.backgroundColor).withAlphaComponent(element.style.backgroundOpacity),
+                cornerRadius: backgroundCornerRadius,
+                element: element
             )
-            if style.borderEnabled {
-                let border = NSBezierPath(roundedRect: renderLayout.rect.insetBy(dx: 0.5, dy: 0.5), xRadius: renderLayout.cornerRadius, yRadius: renderLayout.cornerRadius)
-                border.lineWidth = 1
-                NSColor.white.withAlphaComponent(style.borderOpacity).setStroke()
-                border.stroke()
-            }
+        }
+        if element.style.borderEnabled {
+            strokeRoundedRect(
+                backgroundRect.insetBy(dx: 0.5, dy: 0.5),
+                color: NSColor(element.style.borderColor).withAlphaComponent(element.style.borderOpacity),
+                cornerRadius: backgroundCornerRadius,
+                lineWidth: element.style.borderWidth
+            )
         }
 
         let chartRect = CGRect(
@@ -1383,13 +1397,17 @@ struct OverlayFrameRenderer {
         let layout = OverlayRenderModel.intervalHUDBarLayout(for: element, in: renderContext)
         let style = layout.style
         let rect = layout.rect
+        let backgroundRect = rect.insetBy(
+            dx: -element.style.backgroundPaddingX * element.scale,
+            dy: -element.style.backgroundPaddingY * element.scale
+        )
 
         if element.style.backgroundEnabled {
-            drawIntervalHUDContainerBackground(element: element, rect: rect)
+            drawIntervalHUDContainerBackground(element: element, rect: backgroundRect)
         }
         if element.style.borderEnabled {
             NSColor(element.style.borderColor).withAlphaComponent(element.style.borderOpacity).setStroke()
-            let border = NSBezierPath(roundedRect: rect, xRadius: element.style.backgroundRadius, yRadius: element.style.backgroundRadius)
+            let border = NSBezierPath(roundedRect: backgroundRect, xRadius: element.style.backgroundRadius, yRadius: element.style.backgroundRadius)
             border.lineWidth = element.style.borderWidth
             border.stroke()
         }
@@ -1591,9 +1609,13 @@ struct OverlayFrameRenderer {
     private static func renderIntervalTimeline(_ element: OverlayElement, renderContext: OverlayRenderContext) {
         let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: renderContext)
         let rect = layout.rect
+        let backgroundRect = rect.insetBy(
+            dx: -element.style.backgroundPaddingX * element.scale,
+            dy: -element.style.backgroundPaddingY * element.scale
+        )
 
         if element.style.backgroundEnabled {
-            drawIntervalTimelineContainerBackground(element: element, rect: rect, cornerRadius: layout.cornerRadius)
+            drawIntervalTimelineContainerBackground(element: element, rect: backgroundRect, cornerRadius: layout.cornerRadius)
         } else if element.style.shadowEnabled,
                   element.style.shadowOpacity > 0,
                   element.style.shadowRadius > 0 {
@@ -1609,7 +1631,7 @@ struct OverlayFrameRenderer {
         }
         if element.style.borderEnabled {
             strokeRoundedRect(
-                rect,
+                backgroundRect,
                 color: NSColor(element.style.borderColor).withAlphaComponent(element.style.borderOpacity),
                 cornerRadius: layout.cornerRadius,
                 lineWidth: element.style.borderWidth
@@ -1679,16 +1701,13 @@ struct OverlayFrameRenderer {
     }
 
     private static func drawIntervalTimelineContainerBackground(element: OverlayElement, rect: CGRect, cornerRadius: Double) {
-        let path = NSBezierPath(roundedRect: rect, xRadius: cornerRadius, yRadius: cornerRadius)
         let color = NSColor(element.style.backgroundColor).withAlphaComponent(element.style.backgroundOpacity)
         if element.style.shadowEnabled, element.style.shadowOpacity > 0, element.style.shadowRadius > 0 {
             setIntervalTimelineShadow(element: element)
-            color.setFill()
-            path.fill()
+            drawOverlayBackground(rect, color: color, cornerRadius: cornerRadius, element: element)
             NSGraphicsContext.current?.cgContext.restoreGState()
         } else {
-            color.setFill()
-            path.fill()
+            drawOverlayBackground(rect, color: color, cornerRadius: cornerRadius, element: element)
         }
     }
 
@@ -2118,11 +2137,6 @@ struct OverlayFrameRenderer {
     }
 
     private static func drawIntervalHUDContainerBackground(element: OverlayElement, rect: CGRect) {
-        let path = NSBezierPath(
-            roundedRect: rect,
-            xRadius: element.style.backgroundRadius,
-            yRadius: element.style.backgroundRadius
-        )
         let color = NSColor(element.style.backgroundColor).withAlphaComponent(element.style.backgroundOpacity)
         if element.style.shadowEnabled, element.style.shadowOpacity > 0, element.style.shadowRadius > 0 {
             let thickness = min(max(element.style.shadowThickness, 1), 4)
@@ -2134,12 +2148,10 @@ struct OverlayFrameRenderer {
                 blur: shadowRadius,
                 color: NSColor(element.style.shadowColor).withAlphaComponent(shadowOpacity).cgColor
             )
-            color.setFill()
-            path.fill()
+            drawOverlayBackground(rect, color: color, cornerRadius: element.style.backgroundRadius, element: element)
             NSGraphicsContext.current?.cgContext.restoreGState()
         } else {
-            color.setFill()
-            path.fill()
+            drawOverlayBackground(rect, color: color, cornerRadius: element.style.backgroundRadius, element: element)
         }
     }
 
@@ -3170,12 +3182,13 @@ struct OverlayFrameRenderer {
         if let backgroundCornerRadius {
             let baseColor = NSColor(element.style.backgroundColor)
             let opacity = element.style.backgroundEnabled ? element.style.backgroundOpacity : 0
-            baseColor.withAlphaComponent(opacity).setFill()
-            NSBezierPath(
-                roundedRect: CGRect(x: 0, y: 0, width: rect.width * scale, height: rect.height * scale),
-                xRadius: backgroundCornerRadius * scale,
-                yRadius: backgroundCornerRadius * scale
-            ).fill()
+            drawOverlayBackground(
+                CGRect(x: 0, y: 0, width: rect.width * scale, height: rect.height * scale),
+                color: baseColor.withAlphaComponent(opacity),
+                cornerRadius: backgroundCornerRadius * scale,
+                fadeEnabled: element.style.backgroundFadeOutEnabled,
+                fadeAmount: element.style.backgroundFadeOutAmount
+            )
         }
 
         NSAttributedString(
@@ -3221,8 +3234,60 @@ struct OverlayFrameRenderer {
     private static func drawRoundedBackground(_ rect: CGRect, element: OverlayElement, cornerRadius: Double) {
         let baseColor = NSColor(element.style.backgroundColor)
         let opacity = element.style.backgroundEnabled ? element.style.backgroundOpacity : 0
-        baseColor.withAlphaComponent(opacity).setFill()
-        NSBezierPath(roundedRect: rect, xRadius: cornerRadius, yRadius: cornerRadius).fill()
+        drawOverlayBackground(
+            rect,
+            color: baseColor.withAlphaComponent(opacity),
+            cornerRadius: cornerRadius,
+            element: element
+        )
+    }
+
+    private static func drawTextPresetBackground(_ rect: CGRect, element: OverlayElement, cornerRadius: Double) {
+        guard element.style.backgroundEnabled else { return }
+        drawOverlayBackground(
+            rect,
+            color: NSColor(element.style.backgroundColor).withAlphaComponent(element.style.backgroundOpacity),
+            cornerRadius: cornerRadius,
+            element: element
+        )
+    }
+
+    private static func drawOverlayBackground(_ rect: CGRect, color: NSColor, cornerRadius: Double, element: OverlayElement) {
+        drawOverlayBackground(
+            rect,
+            color: color,
+            cornerRadius: cornerRadius,
+            fadeEnabled: element.style.backgroundFadeOutEnabled,
+            fadeAmount: element.style.backgroundFadeOutAmount
+        )
+    }
+
+    private static func drawOverlayBackground(
+        _ rect: CGRect,
+        color: NSColor,
+        cornerRadius: Double,
+        fadeEnabled: Bool,
+        fadeAmount: Double
+    ) {
+        guard fadeEnabled,
+              fadeAmount > 0.001,
+              rect.width > 1,
+              rect.height > 1,
+              let context = NSGraphicsContext.current?.cgContext,
+              let mask = OverlayFeatherMaskRenderer.makeCGMask(
+                  size: rect.size,
+                  cornerRadius: cornerRadius,
+                  fadeAmount: fadeAmount
+              ) else {
+            drawRoundedRect(rect, color: color, cornerRadius: cornerRadius)
+            return
+        }
+
+        context.saveGState()
+        context.clip(to: rect, mask: mask)
+        color.setFill()
+        context.fill(rect)
+        context.restoreGState()
     }
 
     private static func drawRoundedRect(_ rect: CGRect, color: NSColor, cornerRadius: Double) {

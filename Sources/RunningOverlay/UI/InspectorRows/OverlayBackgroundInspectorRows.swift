@@ -118,14 +118,20 @@ struct OverlayBackgroundInspectorRows: View {
             displayText: "\(Int(radius.rounded()))",
             isEnabled: isOn
         )
-        InspectorDenseRow(label: "Padding") {
-            InspectorDenseAxisField(axis: "X", value: Binding(get: { paddingX }, set: onSetPaddingX), precision: 0)
-                .disabled(!isOn)
-            InspectorDenseAxisField(axis: "Y", value: Binding(get: { paddingY }, set: onSetPaddingY), precision: 0)
-                .disabled(!isOn)
-        }
-        .opacity(isOn ? 1 : 0.5)
-        .disabled(!isOn)
+        InspectorDenseSliderRow(
+            label: "Padding X",
+            value: Binding(get: { paddingX }, set: onSetPaddingX),
+            range: 0...80,
+            displayText: "\(Int(paddingX.rounded()))",
+            isEnabled: isOn
+        )
+        InspectorDenseSliderRow(
+            label: "Padding Y",
+            value: Binding(get: { paddingY }, set: onSetPaddingY),
+            range: 0...80,
+            displayText: "\(Int(paddingY.rounded()))",
+            isEnabled: isOn
+        )
         InspectorDenseSliderRow(
             label: "Blur",
             value: Binding(get: { blur }, set: onSetBlur),

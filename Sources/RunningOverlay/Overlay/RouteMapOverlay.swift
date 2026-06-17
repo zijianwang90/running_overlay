@@ -261,6 +261,14 @@ enum RouteMapMaskRenderer {
             context.setFillColor(gray: 1, alpha: 1)
             shapePath(shape: shape, rect: rect, cornerRadius: cornerRadius).fill()
         case .fadeOut:
+            if shape == .square,
+               let mask = OverlayFeatherMaskRenderer.makeCGMask(
+                   size: CGSize(width: width, height: height),
+                   cornerRadius: cornerRadius,
+                   fadeAmount: min(max(fadeAmount, 0), Self.maxFadeAmount)
+               ) {
+                return mask
+            }
             drawFadeMask(
                 in: context,
                 shape: shape,

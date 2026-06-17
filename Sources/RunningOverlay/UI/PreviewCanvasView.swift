@@ -1429,36 +1429,16 @@ struct TextPresetOverlayView: View {
                 RoundedRectangle(cornerRadius: layout.cornerRadius)
                     .fill(Color.accentColor.opacity(0.45))
             } else if element.style.backgroundEnabled {
-                GeometryReader { proxy in
-                    let bgShape = RoundedRectangle(cornerRadius: layout.cornerRadius)
-                    let blurMix = min(max(layout.backgroundBlurRadius / 24, 0), 1)
-                    let fadeRadius = max(min(proxy.size.width, proxy.size.height) * 0.5 * layout.backgroundFadeOutAmount, 0)
-
-                    ZStack {
-                        // Backdrop blur layer so blur is visible over video.
-                        if layout.backgroundBlurRadius > 0.01 {
-                            bgShape
-                                .fill(.ultraThinMaterial)
-                                .opacity(blurMix)
-                        }
-
-                        bgShape
-                            .fill(Color(element.style.backgroundColor).opacity(element.style.backgroundOpacity))
-                    }
-                    .mask {
-                        if layout.backgroundFadeOutEnabled && fadeRadius > 0.5 {
-                            // Four-edge fade: shrink + blur the alpha mask so
-                            // all sides/corners fade toward transparent.
-                            RoundedRectangle(cornerRadius: layout.cornerRadius)
-                                .fill(Color.white)
-                                .padding(fadeRadius)
-                                .blur(radius: fadeRadius)
-                        } else {
-                            RoundedRectangle(cornerRadius: layout.cornerRadius)
-                                .fill(Color.white)
-                        }
-                    }
-                }
+                OverlayFeatheredBackground(
+                    isSelected: false,
+                    backgroundEnabled: element.style.backgroundEnabled,
+                    color: Color(element.style.backgroundColor),
+                    opacity: element.style.backgroundOpacity,
+                    cornerRadius: layout.cornerRadius,
+                    fadeEnabled: layout.backgroundFadeOutEnabled,
+                    fadeAmount: layout.backgroundFadeOutAmount,
+                    blurRadius: layout.backgroundBlurRadius
+                )
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
@@ -1505,13 +1485,17 @@ struct TextPresetOverlayView: View {
         .padding(.horizontal, layout.horizontalPadding)
         .padding(.vertical, layout.verticalPadding)
         .background(
-            Group {
-                if isSelected {
-                    Capsule().fill(Color.accentColor.opacity(0.45))
-                } else if element.style.backgroundEnabled {
-                    Capsule().fill(Color(element.style.backgroundColor).opacity(element.style.backgroundOpacity))
-                }
-            }
+            OverlayFeatheredBackground(
+                isSelected: isSelected,
+                backgroundEnabled: element.style.backgroundEnabled,
+                color: Color(element.style.backgroundColor),
+                opacity: element.style.backgroundOpacity,
+                cornerRadius: layout.cornerRadius,
+                usesCapsuleRadius: true,
+                fadeEnabled: layout.backgroundFadeOutEnabled,
+                fadeAmount: layout.backgroundFadeOutAmount,
+                blurRadius: layout.backgroundBlurRadius
+            )
         )
         .overlay(
             Capsule().stroke(foreground.opacity(0.16), lineWidth: 1)
@@ -1829,12 +1813,17 @@ struct TextPresetOverlayView: View {
         .overlayFont(family: layout.labelFontName, size: layout.labelFontSize, weight: Font.Weight(layout.labelFontWeight))
     }
 
-    private var background: Color {
-        if isSelected {
-            return Color.accentColor.opacity(0.45)
-        }
-        guard element.style.backgroundEnabled else { return Color.clear }
-        return Color(element.style.backgroundColor).opacity(element.style.backgroundOpacity)
+    private var background: some View {
+        OverlayFeatheredBackground(
+            isSelected: isSelected,
+            backgroundEnabled: element.style.backgroundEnabled,
+            color: Color(element.style.backgroundColor),
+            opacity: element.style.backgroundOpacity,
+            cornerRadius: layout.cornerRadius,
+            fadeEnabled: layout.backgroundFadeOutEnabled,
+            fadeAmount: layout.backgroundFadeOutAmount,
+            blurRadius: layout.backgroundBlurRadius
+        )
     }
 
     private var divider: some View {
@@ -2568,8 +2557,16 @@ struct DistanceTimelineOverlayView: View {
         ZStack {
             if element.style.backgroundEnabled {
                 let background = backgroundLocalRect
-                RoundedRectangle(cornerRadius: layout.cornerRadius)
-                    .fill(Color(element.style.backgroundColor).opacity(element.style.backgroundOpacity))
+                OverlayFeatheredBackground(
+                    isSelected: false,
+                    backgroundEnabled: element.style.backgroundEnabled,
+                    color: Color(element.style.backgroundColor),
+                    opacity: element.style.backgroundOpacity,
+                    cornerRadius: layout.cornerRadius,
+                    fadeEnabled: element.style.backgroundFadeOutEnabled,
+                    fadeAmount: element.style.backgroundFadeOutAmount,
+                    blurRadius: element.style.backgroundBlurRadius
+                )
                     .frame(width: background.width, height: background.height)
                     .position(x: background.midX, y: background.midY)
             }
@@ -2645,19 +2642,20 @@ struct DistanceTimelineOverlayView: View {
     }
 
     private var backgroundLocalRect: CGRect {
-        let pad = scaled(6)
-        var rect = localRect(layout.distanceTimelineContentBounds(axisPadding: pad))
+        let padX = scaled(element.style.backgroundPaddingX)
+        let padY = scaled(element.style.backgroundPaddingY)
+        var rect = localRect(layout.distanceTimelineContentBounds()).insetBy(dx: -padX, dy: -padY)
         if layout.style.statsBar.visible,
            layout.style.statsBar.inside,
            let statsRect = statsBarDisplayRect {
-            rect = rect.union(statsRect.insetBy(dx: -pad, dy: -pad))
+            rect = rect.union(statsRect.insetBy(dx: -padX, dy: -padY))
         }
         return rect
     }
 
     private var valueLayer: some View {
         let content = localRect(layout.contentRect)
-        let align: Alignment = layout.style.preset == .lowerThird ? .leading : .leading
+        let valueSlotHeight = max(layout.trackRect.minY - layout.contentRect.minY - 2, layout.valueFontSize * 1.2)
         return VStack(alignment: .leading, spacing: scaled(layout.style.labelValueSpacing)) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 if layout.style.showLabel {
@@ -2694,8 +2692,8 @@ struct DistanceTimelineOverlayView: View {
             .fixedSize(horizontal: true, vertical: false)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(width: content.width, height: max(layout.trackRect.minY - layout.contentRect.minY - 2, layout.valueFontSize * 1.2), alignment: align)
-        .position(x: content.midX, y: content.minY + max(layout.trackRect.minY - layout.contentRect.minY, layout.valueFontSize * 1.2) / 2)
+        .frame(width: content.width, height: valueSlotHeight, alignment: .topLeading)
+        .position(x: content.midX, y: content.minY + valueSlotHeight / 2)
     }
 
     private var progressLayer: some View {
@@ -3046,13 +3044,25 @@ struct ElevationChartOverlayView: View {
 
     var body: some View {
         ZStack {
-            if layout.style.backgroundEnabled {
-                RoundedRectangle(cornerRadius: layout.cornerRadius)
-                    .fill(Color(layout.style.backgroundColor).opacity(layout.style.backgroundOpacity))
-                if layout.style.borderEnabled {
-                    RoundedRectangle(cornerRadius: layout.cornerRadius)
-                        .stroke(Color.white.opacity(layout.style.borderOpacity), lineWidth: 1)
-                }
+            if element.style.backgroundEnabled {
+                OverlayFeatheredBackground(
+                    isSelected: false,
+                    backgroundEnabled: element.style.backgroundEnabled,
+                    color: Color(element.style.backgroundColor),
+                    opacity: element.style.backgroundOpacity,
+                    cornerRadius: sharedBackgroundCornerRadius,
+                    fadeEnabled: element.style.backgroundFadeOutEnabled,
+                    fadeAmount: element.style.backgroundFadeOutAmount,
+                    blurRadius: element.style.backgroundBlurRadius
+                )
+                .frame(width: backgroundLocalRect.width, height: backgroundLocalRect.height)
+                .position(x: backgroundLocalRect.midX, y: backgroundLocalRect.midY)
+            }
+            if element.style.borderEnabled {
+                RoundedRectangle(cornerRadius: sharedBackgroundCornerRadius)
+                    .stroke(Color(element.style.borderColor).opacity(element.style.borderOpacity), lineWidth: element.style.borderWidth)
+                    .frame(width: backgroundLocalRect.width, height: backgroundLocalRect.height)
+                    .position(x: backgroundLocalRect.midX, y: backgroundLocalRect.midY)
             }
 
             VStack(alignment: .leading, spacing: layout.verticalPadding) {
@@ -3143,6 +3153,21 @@ struct ElevationChartOverlayView: View {
             thickness: element.style.shadowThickness
         )
         .overlayForegroundGlow(element: element)
+    }
+
+    private var backgroundLocalRect: CGRect {
+        let padX = element.style.backgroundPaddingX * element.scale
+        let padY = element.style.backgroundPaddingY * element.scale
+        return CGRect(
+            x: -padX,
+            y: -padY,
+            width: layout.rect.width + padX * 2,
+            height: layout.rect.height + padY * 2
+        )
+    }
+
+    private var sharedBackgroundCornerRadius: Double {
+        element.style.backgroundRadius * element.scale
     }
 
     private func chartPath(in size: CGSize) -> Path {
