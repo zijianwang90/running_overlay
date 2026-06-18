@@ -1,6 +1,6 @@
 # Elevation Chart Overlay UI Design Spec
 
-Last updated: 2026-04-29
+Last updated: 2026-06-18
 
 ## Purpose
 
@@ -39,16 +39,18 @@ Elevation Chart Container
 Do **not** create separate presets that are only color changes. The previous concepts such as "green gradient", "blue gradient", and "sunset gradient" should be unified into one configurable style:
 
 ```text
-Gradient Area Chart
+Premium Gradient Area Chart
 ```
 
 The user can change gradient colors, line color, fill opacity, and background settings to create different looks.
 
-Keep the following style families:
+Keep a compact set of premium visual families:
 
-1. `Gradient Area` — default elevation chart style. One line + gradient area fill.
-2. `Dual Area` — same chart, but the area can use two visual regions/colors, controlled by a setting.
-3. `Big Numbers` — chart plus stronger large elevation numbers; still uses a normal elevation chart as the base.
+1. `Premium Gradient` — default elevation chart style. White line + soft gradient area fill.
+2. `Dark Terrain` — same area chart, with a dual-tone terrain fill.
+3. `Tech Glow` — cyan HUD-style line/fill treatment with optional grid and glow.
+4. `Minimal White` — line-only treatment for low-clutter footage.
+5. `Big Elevation` — chart plus stronger large elevation numbers; still uses a normal elevation chart as the base.
 
 Do **not** implement these as dedicated first-version styles:
 
@@ -79,7 +81,9 @@ Implemented in the Swift app as a dedicated `.elevationChart` overlay path:
 - Export renderer: `OverlayFrameRenderer.renderElevationChart`.
 - Render layout: `OverlayRenderModel.elevationChartLayout`.
 
-Current implementation keeps the first-version surface focused: structural presets, line/fill controls, current marker, optional axis/grid, big number emphasis, background/effects, and the reusable stats bar. `Dual Area` currently maps to a two-tone area treatment; slope-based climb/descent segmentation remains a later renderer enhancement.
+Current implementation keeps the first-version surface focused: compact visual presets, line/fill controls, current marker, optional axis/grid, big elevation emphasis, shared background/effects, and the reusable stats bar. `Dark Terrain` currently maps to a two-tone area treatment split around current progress; slope-based climb/descent segmentation remains a later renderer enhancement.
+
+The design draft includes card-background tokens, but the app implementation intentionally keeps Elevation Chart on the existing shared Background, Border, and Effects modules. That preserves consistency with Distance Timeline, Route Map, and the rest of the overlay editor.
 
 ## Header
 
@@ -128,11 +132,13 @@ The Preset section should not expose many redundant color variants. It should ex
 enum ElevationChartPreset: String, Codable, CaseIterable {
     case gradientArea
     case dualArea
+    case techGlow
+    case minimalWhite
     case bigNumbers
 }
 ```
 
-### Preset: Gradient Area
+### Preset: Premium Gradient
 
 Default, most general style.
 
@@ -148,10 +154,10 @@ preset = .gradientArea
 chartStyle = .area
 lineColor = #FFFFFF
 lineWidth = 2.5
-lineOpacity = 0.95
+lineOpacity = 0.96
 fillEnabled = true
 fillGradientColors = [#37D67A, #2F80ED]
-fillOpacity = 0.42
+fillOpacity = 0.40
 dualAreaEnabled = false
 bigNumbersEnabled = false
 ```
@@ -160,7 +166,7 @@ In the inspector, the fill gradient editor presents `From` and `To` as stacked
 swatch rows. Each row owns one color stop, keeping the color controls compact
 inside the fixed-width edit panel.
 
-### Preset: Dual Area
+### Preset: Dark Terrain
 
 This is not a separate chart type. It enables a dual visual region inside the same area chart.
 
@@ -181,14 +187,45 @@ lineColor = #FFFFFF
 lineWidth = 2.5
 fillEnabled = true
 dualAreaEnabled = true
-dualAreaMode = .splitByBaseline
-upperFillGradientColors = [#FFD166, #F97316]
-lowerFillGradientColors = [#2F80ED, #38BDF8]
-dualAreaBaseline = .averageElevation
+upperFillGradientColors = [#37D67A, #2F80ED]
+lowerFillGradientColors = [#F97316, #2F80ED]
 bigNumbersEnabled = false
 ```
 
-### Preset: Big Numbers
+### Preset: Tech Glow
+
+HUD-style variant for night footage or tech overlays.
+
+Default values:
+
+```swift
+preset = .techGlow
+chartStyle = .area
+lineColor = #38BDF8
+lineWidth = 2.5
+fillEnabled = true
+fillGradientColors = [#38BDF8, #2F80ED]
+gridEnabled = true
+glowEnabled = true
+```
+
+### Preset: Minimal White
+
+Line-only variant for footage where the chart should stay quiet and secondary.
+
+Default values:
+
+```swift
+preset = .minimalWhite
+chartStyle = .lineOnly
+lineColor = #FFFFFF
+fillEnabled = false
+markerLabelEnabled = false
+axisLabelsEnabled = false
+statusBar.enabled = false
+```
+
+### Preset: Big Elevation
 
 Large number emphasis while keeping the elevation chart visible.
 
@@ -203,12 +240,12 @@ preset = .bigNumbers
 chartStyle = .area
 bigNumbersEnabled = true
 bigNumberMetric = .currentElevation
-bigNumberPosition = .topLeft
-bigNumberFontSize = 42
-bigNumberUnitFontSize = 17
-fillOpacity = 0.28
+bigNumberFontName = FontLibraryManager.currentDefaultFamily
+bigNumberFontWeight = .semibold
+bigNumberFontSize = 58
+fillOpacity = 0.34
 lineWidth = 2.2
-statusBar.enabled = false
+statusBar.enabled = true
 ```
 
 ## 2. Layout Section
@@ -282,8 +319,10 @@ Default:
 
 ```swift
 smoothingEnabled = true
-smoothingAmount = 0.55
+smoothingAmount = 0.85
 ```
+
+`smoothingAmount` is exposed as the `Smoothness` slider. It controls sample-level filtering strength; the curved path renderer still handles geometry, but the slider is what reduces visible integer-meter stair steps in the elevation data. At `1.0`, the renderer uses the strongest display-only smoothing and is allowed to deviate from individual quantized samples to achieve a visually continuous curve.
 
 ### Sampling
 
@@ -523,21 +562,23 @@ Rules:
 
 - Grid should be off by default.
 - Labels should be optional because this overlay is usually small.
-- Big Numbers preset may disable most labels to avoid clutter.
+- Big Elevation preset may disable most labels to avoid clutter.
 
-## 7. Big Numbers Section
+## 7. Big Elevation Section
 
 This can appear as a sub-section inside Chart or as a collapsible group inside Axis & Labels.
 
 Controls:
 
 ```text
-Big Numbers Enabled
+Big Elevation Enabled
 Primary Metric
 Secondary Metric
 Position
 Show Unit
 Show Label
+Font
+Weight
 Font Size
 Unit Font Size
 Opacity
@@ -592,12 +633,15 @@ Show compact metrics under or over the chart, such as Elevation Gain, Current El
 
 Status Bar should be reusable and visually consistent with Route Map's Status Bar. The app implementation reuses the same inspector/configuration family already shared by Route Map and Distance Timeline, so Elevation Chart inherits placement, layout, size, typography, dividers, background, and slot editing behavior.
 
+Elevation Chart treats `Inside` as card grouping, not chart overlay. When `Inside` is on, the stats bar sits inside the chart card at the bottom and the chart reserves vertical clearance above it. When `Inside` is off, the stats bar is attached below the card and is not covered by the shared Background/Border surface.
+
 ### Status Bar Controls
 
 ```text
 Enabled
 Preset
 Position
+Inside
 Layout
 Background
 Background Opacity
@@ -743,9 +787,9 @@ glowEnabled = false
 
 1. This component is for elevation charts only. Do not include route map rendering.
 2. Do not include bar, dot, step, or segmented chart style options in the first version.
-3. Color variants should be created by adjustable gradient colors, not by redundant presets.
+3. Color variants should usually be created by adjustable gradient colors; presets should stay limited to meaningful visual families.
 4. `Dual Area` is a configurable option on the area chart.
-5. `Big Numbers` is a visual emphasis mode, not a different chart data type.
+5. `Big Elevation` is a visual emphasis mode, not a different chart data type.
 6. Status Bar is optional and should reuse the Route Map Status Bar approach.
 7. The chart must remain readable on video backgrounds.
 8. Default labels should be minimal; advanced labels can be enabled by the user.
@@ -757,9 +801,11 @@ glowEnabled = false
 First version should include:
 
 ```text
-- Gradient Area preset
-- Dual Area preset
-- Big Numbers preset
+- Premium Gradient preset
+- Dark Terrain preset
+- Tech Glow preset
+- Minimal White preset
+- Big Elevation preset
 - Line color / width / opacity
 - Fill gradient colors / opacity
 - Dual Area toggle and two gradient groups
@@ -772,11 +818,13 @@ First version should include:
 Implemented first-version mapping:
 
 ```text
-Gradient Area -> .gradientArea preset
-Dual Area -> .dualArea preset + dualAreaEnabled
-Big Numbers -> .bigNumbers preset + bigNumbersEnabled
+Premium Gradient -> .gradientArea preset
+Dark Terrain -> .dualArea preset + dualAreaEnabled
+Tech Glow -> .techGlow preset + glowEnabled + gridEnabled
+Minimal White -> .minimalWhite preset + lineOnly + hidden stats bar
+Big Elevation -> .bigNumbers preset + bigNumbersEnabled
 Layout -> shared OverlayLayoutInspectorRows
-Status Bar -> shared OverlayStatsBarInspectorRows / DistanceTimelineStatsBarConfig
+Status Bar -> shared OverlayStatsBarInspectorRows / DistanceTimelineStatsBarConfig, including the Inside toggle
 ```
 
 Second version can add:

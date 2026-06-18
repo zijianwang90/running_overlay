@@ -413,7 +413,55 @@ struct OverlayRenderModelTests {
         #expect(layout.samples == [100, 110])
         #expect(layout.style.preset == .gradientArea)
         #expect(layout.statsBarItems.count == 3)
-        #expect(layout.chartHeight == 78)
+        #expect(layout.chartHeight == 146)
+    }
+
+    @Test func elevationChartInsideStatsBarReservesChartClearance() {
+        var style = OverlayStyle.default
+        style.elevationChart.statsBar.inside = true
+        let element = OverlayElement(type: .elevationChart, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleActivity(),
+            elapsedTime: 5
+        )
+
+        let layout = OverlayRenderModel.elevationChartLayout(for: element, in: context)
+
+        #expect(layout.style.statsBar.inside)
+        #expect(layout.chartHeight == 82)
+    }
+
+    @Test func elevationChartPresetsExposePremiumVisualVariants() {
+        #expect(ElevationChartPreset.allCases.map(\.rawValue) == [
+            "gradientArea",
+            "dualArea",
+            "techGlow",
+            "minimalWhite",
+            "bigNumbers",
+        ])
+
+        let premium = ElevationChartStyle.preset(.gradientArea)
+        #expect(premium.preset.label == "Premium Gradient")
+        #expect(premium.lineColor == .white)
+        #expect(premium.lineWidth == 2.5)
+        #expect(premium.fillOpacity == 0.40)
+        #expect(premium.smoothingEnabled)
+        #expect(premium.smoothingAmount == 0.85)
+        #expect(premium.bigNumberFontName.isEmpty == false)
+        #expect(premium.bigNumberFontWeight == .semibold)
+
+        let techGlow = ElevationChartStyle.preset(.techGlow)
+        #expect(techGlow.preset.label == "Tech Glow")
+        #expect(techGlow.glowEnabled)
+        #expect(techGlow.gridEnabled)
+        #expect(techGlow.markerColor == .cyan)
+
+        let minimal = ElevationChartStyle.preset(.minimalWhite)
+        #expect(minimal.preset.label == "Minimal White")
+        #expect(minimal.chartStyle == .lineOnly)
+        #expect(minimal.fillEnabled == false)
+        #expect(minimal.statsBar.visible == false)
     }
 
     @Test func elevationChartSmoothingSoftensQuantizedStairStepsAndPreservesEndpoints() {
@@ -426,6 +474,56 @@ struct OverlayRenderModelTests {
         #expect(smoothed != samples)
         #expect(smoothed[2] > samples[2])
         #expect(smoothed[3] < samples[3])
+    }
+
+    @Test func elevationChartSmoothingAmountControlsFilterStrength() {
+        let samples = [100.0, 100, 100, 110, 110, 110]
+
+        let unsmoothed = OverlayRenderModel.smoothedElevationChartSamples(samples, amount: 0)
+        let light = OverlayRenderModel.smoothedElevationChartSamples(samples, amount: 0.25)
+        let strong = OverlayRenderModel.smoothedElevationChartSamples(samples, amount: 1)
+
+        #expect(unsmoothed == samples)
+        #expect(strong.first == samples.first)
+        #expect(strong.last == samples.last)
+        #expect(strong[2] > light[2])
+        #expect(strong[3] < light[3])
+    }
+
+    @Test func elevationChartFullSmoothnessSuppressesHighFrequencyStairSteps() {
+        let samples = (0..<40).map { index in
+            100.0 + Double(index) * 0.25 + (index.isMultiple(of: 2) ? 1.0 : -1.0)
+        }
+
+        let light = OverlayRenderModel.smoothedElevationChartSamples(samples, amount: 0.25)
+        let full = OverlayRenderModel.smoothedElevationChartSamples(samples, amount: 1)
+        let originalRoughness = adjacentRoughness(samples)
+        let lightRoughness = adjacentRoughness(light)
+        let fullRoughness = adjacentRoughness(full)
+
+        #expect(full.first == samples.first)
+        #expect(full.last == samples.last)
+        #expect(lightRoughness < originalRoughness)
+        #expect(fullRoughness < lightRoughness * 0.45)
+    }
+
+    @Test func elevationChartStyleDecodesLegacySmoothingWithoutAmount() throws {
+        let json = #"{"preset":"gradientArea","smoothingEnabled":true}"#.data(using: .utf8)!
+
+        let style = try JSONDecoder().decode(ElevationChartStyle.self, from: json)
+
+        #expect(style.preset == .gradientArea)
+        #expect(style.smoothingEnabled)
+        #expect(style.smoothingAmount == ElevationChartStyle.preset(.gradientArea).smoothingAmount)
+        #expect(style.bigNumberFontName == ElevationChartStyle.preset(.gradientArea).bigNumberFontName)
+        #expect(style.bigNumberFontWeight == ElevationChartStyle.preset(.gradientArea).bigNumberFontWeight)
+    }
+
+    private func adjacentRoughness(_ samples: [Double]) -> Double {
+        guard samples.count > 1 else { return 0 }
+        return zip(samples, samples.dropFirst()).reduce(0) { total, pair in
+            total + abs(pair.1 - pair.0)
+        }
     }
 
     @Test func runningGaugeLayoutCarriesCoreMetricsAndProgress() {

@@ -1181,7 +1181,7 @@ struct OverlayFrameRenderer {
 
         let chartRect = CGRect(
             x: renderLayout.rect.minX + renderLayout.horizontalPadding,
-            y: renderLayout.rect.maxY - renderLayout.verticalPadding - renderLayout.chartHeight - (style.statsBar.visible ? renderContext.scaled(style.statsBar.height * element.scale + 8) : 0),
+            y: renderLayout.rect.minY + renderLayout.verticalPadding,
             width: renderLayout.rect.width - renderLayout.horizontalPadding * 2,
             height: renderLayout.chartHeight
         )
@@ -1190,17 +1190,17 @@ struct OverlayFrameRenderer {
             let value = renderLayout.bigNumberText.value + (renderLayout.bigNumberText.unit.isEmpty ? "" : " \(renderLayout.bigNumberText.unit)")
             drawGaugePlainText(
                 value,
-                fontName: element.style.fontName,
+                fontName: style.bigNumberFontName,
                 fontSize: renderLayout.valueFontSize,
                 color: NSColor(element.style.foregroundColor),
                 rect: CGRect(x: renderLayout.rect.minX, y: renderLayout.rect.minY + renderLayout.verticalPadding, width: renderLayout.rect.width, height: renderLayout.valueFontSize * 1.2),
                 alignment: .center,
-                weight: .semibold,
+                weight: nsFontWeight(style.bigNumberFontWeight),
                 monospacedDigits: true
             )
             drawGaugePlainText(
                 renderLayout.bigNumberText.shortLabel,
-                fontName: element.style.fontName,
+                fontName: style.bigNumberFontName,
                 fontSize: renderLayout.labelFontSize,
                 color: NSColor(element.style.foregroundColor).withAlphaComponent(0.62),
                 rect: CGRect(x: renderLayout.rect.minX, y: renderLayout.rect.minY + renderLayout.verticalPadding + renderLayout.valueFontSize * 1.05, width: renderLayout.rect.width, height: renderLayout.labelFontSize * 1.4),
@@ -1217,10 +1217,41 @@ struct OverlayFrameRenderer {
             }
         }
         if style.fillEnabled, style.chartStyle == .area {
-            drawElevationArea(
+            if style.dualAreaEnabled {
+                drawElevationArea(
+                    samples: renderLayout.samples,
+                    in: chartRect,
+                    startColor: NSColor(style.upperFillColor).withAlphaComponent(style.fillOpacity),
+                    endColor: NSColor(style.fillEndColor).withAlphaComponent(max(style.fillOpacity * 0.15, 0.04)),
+                    smoothed: style.smoothingEnabled
+                )
+                let splitX = chartRect.minX + chartRect.width * min(max(renderLayout.progress, 0), 1)
+                NSGraphicsContext.saveGraphicsState()
+                NSBezierPath(rect: CGRect(x: splitX, y: chartRect.minY, width: chartRect.maxX - splitX, height: chartRect.height)).addClip()
+                drawElevationArea(
+                    samples: renderLayout.samples,
+                    in: chartRect,
+                    startColor: NSColor(style.lowerFillColor).withAlphaComponent(style.fillOpacity),
+                    endColor: NSColor(style.fillEndColor).withAlphaComponent(max(style.fillOpacity * 0.15, 0.04)),
+                    smoothed: style.smoothingEnabled
+                )
+                NSGraphicsContext.restoreGraphicsState()
+            } else {
+                drawElevationArea(
+                    samples: renderLayout.samples,
+                    in: chartRect,
+                    startColor: NSColor(style.fillStartColor).withAlphaComponent(style.fillOpacity),
+                    endColor: NSColor(style.fillEndColor).withAlphaComponent(max(style.fillOpacity * 0.15, 0.04)),
+                    smoothed: style.smoothingEnabled
+                )
+            }
+        }
+        if style.glowEnabled {
+            drawElevationPath(
                 samples: renderLayout.samples,
                 in: chartRect,
-                color: NSColor(style.dualAreaEnabled ? style.upperFillColor : style.fillStartColor).withAlphaComponent(style.fillOpacity),
+                color: NSColor(style.lineColor).withAlphaComponent(style.glowOpacity),
+                lineWidth: renderLayout.lineWidth + 7,
                 smoothed: style.smoothingEnabled
             )
         }
@@ -1234,21 +1265,67 @@ struct OverlayFrameRenderer {
 
         if style.currentMarkerEnabled {
             let marker = elevationMarkerPoint(samples: renderLayout.samples, progress: renderLayout.progress, in: chartRect)
-            drawLine(from: CGPoint(x: marker.x, y: chartRect.minY), to: CGPoint(x: marker.x, y: chartRect.maxY), color: NSColor.white.withAlphaComponent(0.28), lineWidth: 1)
+            if !style.bigNumbersEnabled {
+                let cursor = NSBezierPath()
+                cursor.move(to: CGPoint(x: marker.x, y: chartRect.minY))
+                cursor.line(to: CGPoint(x: marker.x, y: chartRect.maxY))
+                cursor.lineWidth = 1
+                cursor.setLineDash([3, 4], count: 2, phase: 0)
+                NSColor.white.withAlphaComponent(0.28).setStroke()
+                cursor.stroke()
+            }
+            NSColor(style.markerColor).withAlphaComponent(0.20).setFill()
+            NSBezierPath(ovalIn: CGRect(x: marker.x - 13.5, y: marker.y - 13.5, width: 27, height: 27)).fill()
             NSColor(style.markerColor).setFill()
-            NSBezierPath(ovalIn: CGRect(x: marker.x - 5, y: marker.y - 5, width: 10, height: 10)).fill()
+            NSBezierPath(ovalIn: CGRect(x: marker.x - 4, y: marker.y - 4, width: 8, height: 8)).fill()
             NSColor.white.withAlphaComponent(0.9).setStroke()
-            let ring = NSBezierPath(ovalIn: CGRect(x: marker.x - 6, y: marker.y - 6, width: 12, height: 12))
+            let ring = NSBezierPath(ovalIn: CGRect(x: marker.x - 6.5, y: marker.y - 6.5, width: 13, height: 13))
             ring.lineWidth = 2
             ring.stroke()
+            if style.markerLabelEnabled {
+                let label = renderLayout.label.replacingOccurrences(of: "Elevation ", with: "")
+                let fontSize = max(renderLayout.labelFontSize * 0.92, renderContext.scaled(10 * element.scale))
+                let font = NSFont(name: element.style.fontName, size: fontSize) ?? .systemFont(ofSize: fontSize, weight: .semibold)
+                let labelSize = (label as NSString).size(withAttributes: [.font: font])
+                let tooltipSize = CGSize(width: max(labelSize.width + 16, 48), height: max(labelSize.height + 10, 24))
+                let tooltipX = min(max(marker.x - tooltipSize.width / 2, chartRect.minX), chartRect.maxX - tooltipSize.width)
+                let tooltipY = max(marker.y - tooltipSize.height - 10, chartRect.minY + 2)
+                let tooltipRect = CGRect(origin: CGPoint(x: tooltipX, y: tooltipY), size: tooltipSize)
+                NSColor.black.withAlphaComponent(0.68).setFill()
+                NSBezierPath(roundedRect: tooltipRect, xRadius: 7, yRadius: 7).fill()
+                NSColor.white.withAlphaComponent(0.16).setStroke()
+                let border = NSBezierPath(roundedRect: tooltipRect, xRadius: 7, yRadius: 7)
+                border.lineWidth = 1
+                border.stroke()
+                drawGaugePlainText(
+                    label,
+                    fontName: element.style.fontName,
+                    fontSize: fontSize,
+                    color: .white,
+                    rect: tooltipRect.insetBy(dx: 8, dy: 4),
+                    alignment: .center,
+                    weight: .semibold,
+                    monospacedDigits: true
+                )
+            }
         }
 
         if style.statsBar.visible, !renderLayout.statsBarItems.isEmpty {
+            let availableStatsWidth = renderLayout.rect.width - renderLayout.horizontalPadding * 2
+            let statsWidth = style.statsBar.width > 0
+                ? min(renderContext.scaled(style.statsBar.width * element.scale), availableStatsWidth)
+                : availableStatsWidth
+            let statsHeight = renderContext.scaled(style.statsBar.height * element.scale)
+            let statsOffsetX = renderContext.scaled(style.statsBar.offsetX * element.scale)
+            let statsOffsetY = renderContext.scaled(style.statsBar.offsetY * element.scale)
+            let statsY = style.statsBar.inside
+                ? renderLayout.rect.maxY - renderLayout.verticalPadding - statsHeight + statsOffsetY
+                : renderLayout.rect.maxY + renderContext.scaled(8 * element.scale) + statsOffsetY
             let statsRect = CGRect(
-                x: renderLayout.rect.minX + renderLayout.horizontalPadding,
-                y: renderLayout.rect.maxY - renderLayout.verticalPadding - renderContext.scaled(style.statsBar.height * element.scale),
-                width: renderLayout.rect.width - renderLayout.horizontalPadding * 2,
-                height: renderContext.scaled(style.statsBar.height * element.scale)
+                x: renderLayout.rect.midX - statsWidth / 2 + statsOffsetX,
+                y: statsY,
+                width: statsWidth,
+                height: statsHeight
             )
             drawSharedStatsBar(
                 rect: statsRect,
@@ -1262,7 +1339,7 @@ struct OverlayFrameRenderer {
                 labelFontWeight: style.statsBar.labelFontWeight,
                 labelColor: NSColor(style.statsBar.labelColor),
                 backgroundOpacity: style.statsBar.backgroundOpacity,
-                cornerRadius: style.statsBar.cornerRadius,
+                cornerRadius: style.statsBar.inside ? 0 : style.statsBar.cornerRadius,
                 dividerOpacity: style.statsBar.dividerOpacity,
                 itemSpacing: style.statsBar.itemSpacing,
                 stacked: style.statsBar.placement.isVertical || style.statsBar.layoutMode == .stack
@@ -3329,7 +3406,7 @@ struct OverlayFrameRenderer {
         path.stroke()
     }
 
-    private static func drawElevationArea(samples: [Double], in rect: CGRect, color: NSColor, smoothed: Bool) {
+    private static func drawElevationArea(samples: [Double], in rect: CGRect, startColor: NSColor, endColor: NSColor, smoothed: Bool) {
         let path = NSBezierPath()
         let points = elevationChartPoints(samples: samples, in: rect)
         guard points.count > 1 else { return }
@@ -3339,8 +3416,10 @@ struct OverlayFrameRenderer {
         appendElevationChartLine(to: path, points: points, smoothed: smoothed, movesToFirstPoint: false)
         path.line(to: CGPoint(x: rect.maxX, y: rect.maxY))
         path.close()
-        color.setFill()
-        path.fill()
+        NSGraphicsContext.saveGraphicsState()
+        path.addClip()
+        NSGradient(starting: startColor, ending: endColor)?.draw(from: CGPoint(x: rect.midX, y: rect.minY), to: CGPoint(x: rect.midX, y: rect.maxY), options: [])
+        NSGraphicsContext.restoreGraphicsState()
     }
 
     private static func elevationChartPoints(samples: [Double], in rect: CGRect) -> [CGPoint] {

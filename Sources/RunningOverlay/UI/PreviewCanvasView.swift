@@ -3069,14 +3069,14 @@ struct ElevationChartOverlayView: View {
                 if layout.style.bigNumbersEnabled {
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
                         Text(layout.bigNumberText.value)
-                            .font(.overlayFont(family: element.style.fontName, size: layout.valueFontSize, weight: .semibold))
+                            .font(.overlayFont(family: layout.style.bigNumberFontName, size: layout.valueFontSize, overlayWeight: layout.style.bigNumberFontWeight))
                             .foregroundStyle(Color(element.style.foregroundColor))
                             .monospacedDigit()
                         Text(layout.bigNumberText.unit)
-                            .font(.overlayFont(family: element.style.fontName, size: layout.unitFontSize, weight: .medium))
+                            .font(.overlayFont(family: layout.style.bigNumberFontName, size: layout.unitFontSize, overlayWeight: layout.style.bigNumberFontWeight))
                             .foregroundStyle(Color(element.style.foregroundColor).opacity(0.86))
                         Text(layout.bigNumberText.shortLabel)
-                            .font(.overlayFont(family: element.style.fontName, size: layout.labelFontSize, weight: .medium))
+                            .font(.overlayFont(family: layout.style.bigNumberFontName, size: layout.labelFontSize, weight: .medium))
                             .foregroundStyle(Color(element.style.foregroundColor).opacity(0.62))
                             .padding(.leading, 2)
                     }
@@ -3092,23 +3092,26 @@ struct ElevationChartOverlayView: View {
                         if layout.style.fillEnabled && layout.style.chartStyle == .area {
                             if layout.style.dualAreaEnabled {
                                 areaPath(in: proxy.size)
-                                    .fill(LinearGradient(
-                                        colors: [Color(layout.style.upperFillColor).opacity(layout.style.fillOpacity), Color(layout.style.lowerFillColor).opacity(layout.style.fillOpacity * 0.72)],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    ))
+                                    .fill(elevationFillGradient(start: layout.style.upperFillColor, end: layout.style.fillEndColor))
+                                areaPath(in: proxy.size)
+                                    .fill(elevationFillGradient(start: layout.style.lowerFillColor, end: layout.style.fillEndColor))
+                                    .mask(alignment: .leading) {
+                                        Rectangle()
+                                            .frame(width: proxy.size.width * max(0, min(1, 1 - layout.progress)))
+                                            .offset(x: proxy.size.width * max(0, min(1, layout.progress)))
+                                    }
                             } else {
                                 areaPath(in: proxy.size)
-                                    .fill(LinearGradient(
-                                        colors: [Color(layout.style.fillStartColor).opacity(layout.style.fillOpacity), Color(layout.style.fillEndColor).opacity(layout.style.fillOpacity * 0.72)],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    ))
+                                    .fill(elevationFillGradient(start: layout.style.fillStartColor, end: layout.style.fillEndColor))
                             }
+                        }
+                        if layout.style.glowEnabled {
+                            chartPath(in: proxy.size)
+                                .stroke(Color(layout.style.lineColor).opacity(layout.style.glowOpacity), style: StrokeStyle(lineWidth: layout.lineWidth + 7, lineCap: .round, lineJoin: .round))
+                                .blur(radius: 5)
                         }
                         chartPath(in: proxy.size)
                             .stroke(Color(layout.style.lineColor).opacity(layout.style.lineOpacity), style: StrokeStyle(lineWidth: layout.lineWidth, lineCap: .round, lineJoin: .round))
-                            .shadow(color: Color(layout.style.lineColor).opacity(layout.style.glowEnabled ? layout.style.glowOpacity : 0), radius: layout.style.glowEnabled ? 6 : 0)
                         if layout.style.currentMarkerEnabled {
                             marker(in: proxy.size)
                         }
@@ -3118,29 +3121,19 @@ struct ElevationChartOverlayView: View {
                     }
                 }
                 .frame(height: layout.chartHeight)
-
-                if layout.style.statsBar.visible, !layout.statsBarItems.isEmpty {
-                    SharedStatsBarContentView(
-                        items: layout.statsBarItems.map { .init(value: $0.value, unit: $0.unit, label: $0.label) },
-                        stacked: layout.style.statsBar.placement.isVertical || layout.style.statsBar.layoutMode == .stack,
-                        itemSpacing: layout.style.statsBar.itemSpacing,
-                        dividerOpacity: layout.style.statsBar.dividerOpacity,
-                        cornerRadius: layout.style.statsBar.cornerRadius,
-                        backgroundOpacity: layout.style.statsBar.backgroundOpacity,
-                        valueFontName: layout.style.statsBar.valueFontName,
-                        valueFontWeight: layout.style.statsBar.valueFontWeight,
-                        valueColor: Color(layout.style.statsBar.valueColor),
-                        labelFontName: layout.style.statsBar.labelFontName,
-                        labelFontWeight: layout.style.statsBar.labelFontWeight,
-                        labelColor: Color(layout.style.statsBar.labelColor),
-                        valueFontSize: layout.style.statsBar.valueFontSize,
-                        labelFontSize: layout.style.statsBar.labelFontSize
-                    )
-                    .frame(height: layout.style.statsBar.height)
-                }
             }
             .padding(.horizontal, layout.horizontalPadding)
             .padding(.vertical, layout.verticalPadding)
+            .frame(width: layout.rect.width, height: layout.rect.height, alignment: .topLeading)
+
+            if statsBarVisible {
+                statsBarContent
+                    .frame(width: statsBarWidth, height: layout.style.statsBar.height)
+                    .position(
+                        x: layout.rect.width / 2 + layout.style.statsBar.offsetX,
+                        y: statsBarCenterY + layout.style.statsBar.offsetY
+                    )
+            }
         }
         .frame(width: layout.rect.width, height: layout.rect.height)
         .overlayLayeredShadow(
@@ -3168,6 +3161,53 @@ struct ElevationChartOverlayView: View {
 
     private var sharedBackgroundCornerRadius: Double {
         element.style.backgroundRadius * element.scale
+    }
+
+    private var statsBarVisible: Bool {
+        layout.style.statsBar.visible && !layout.statsBarItems.isEmpty
+    }
+
+    private var statsBarWidth: Double {
+        let availableWidth = layout.rect.width - layout.horizontalPadding * 2
+        guard layout.style.statsBar.width > 0 else { return availableWidth }
+        return min(layout.style.statsBar.width, availableWidth)
+    }
+
+    private var statsBarCenterY: Double {
+        if layout.style.statsBar.inside {
+            return layout.rect.height - layout.verticalPadding - layout.style.statsBar.height / 2
+        }
+        return layout.rect.height + 8 + layout.style.statsBar.height / 2
+    }
+
+    private var statsBarContent: some View {
+        SharedStatsBarContentView(
+            items: layout.statsBarItems.map { .init(value: $0.value, unit: $0.unit, label: $0.label) },
+            stacked: layout.style.statsBar.placement.isVertical || layout.style.statsBar.layoutMode == .stack,
+            itemSpacing: layout.style.statsBar.itemSpacing,
+            dividerOpacity: layout.style.statsBar.dividerOpacity,
+            cornerRadius: layout.style.statsBar.inside ? 0 : layout.style.statsBar.cornerRadius,
+            backgroundOpacity: layout.style.statsBar.backgroundOpacity,
+            valueFontName: layout.style.statsBar.valueFontName,
+            valueFontWeight: layout.style.statsBar.valueFontWeight,
+            valueColor: Color(layout.style.statsBar.valueColor),
+            labelFontName: layout.style.statsBar.labelFontName,
+            labelFontWeight: layout.style.statsBar.labelFontWeight,
+            labelColor: Color(layout.style.statsBar.labelColor),
+            valueFontSize: layout.style.statsBar.valueFontSize,
+            labelFontSize: layout.style.statsBar.labelFontSize
+        )
+    }
+
+    private func elevationFillGradient(start: OverlayColor, end: OverlayColor) -> LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(start).opacity(layout.style.fillOpacity),
+                Color(end).opacity(max(layout.style.fillOpacity * 0.15, 0.04))
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
     }
 
     private func chartPath(in size: CGSize) -> Path {
@@ -3219,26 +3259,41 @@ struct ElevationChartOverlayView: View {
     private func marker(in size: CGSize) -> some View {
         let point = chartPoint(at: layout.progress, in: size)
         return ZStack {
-            Rectangle()
-                .fill(Color.white.opacity(0.28))
-                .frame(width: 1, height: size.height)
-                .position(x: point.x, y: size.height / 2)
+            if !layout.style.bigNumbersEnabled {
+                VerticalDashedLine()
+                    .stroke(Color.white.opacity(0.28), style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
+                    .frame(width: 1, height: size.height)
+                    .position(x: point.x, y: size.height / 2)
+            }
+            Circle()
+                .fill(Color(layout.style.markerColor).opacity(0.24))
+                .frame(width: 27, height: 27)
+                .blur(radius: 6)
+                .position(point)
             Circle()
                 .fill(Color(layout.style.markerColor))
-                .frame(width: 12, height: 12)
-                .overlay(Circle().stroke(Color.white.opacity(0.9), lineWidth: 2))
+                .frame(width: 8, height: 8)
+                .overlay(Circle().stroke(Color.white.opacity(0.95), lineWidth: 2).frame(width: 13, height: 13))
                 .position(point)
             if layout.style.markerLabelEnabled {
-                Text(layout.label)
-                    .font(.overlayFont(family: element.style.fontName, size: max(layout.labelFontSize, 9), weight: .semibold))
+                Text(markerLabelText)
+                    .font(.overlayFont(family: element.style.fontName, size: max(layout.labelFontSize * 0.92, 10), weight: .semibold))
                     .foregroundStyle(.white)
                     .monospacedDigit()
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 4)
-                    .background(RoundedRectangle(cornerRadius: 5).fill(Color(layout.style.markerColor).opacity(0.92)))
-                    .position(x: min(max(point.x, 26), size.width - 26), y: max(point.y - 22, 10))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(
+                        RoundedRectangle(cornerRadius: 7)
+                            .fill(Color.black.opacity(0.68))
+                            .overlay(RoundedRectangle(cornerRadius: 7).stroke(Color.white.opacity(0.16), lineWidth: 1))
+                    )
+                    .position(x: min(max(point.x, 28), size.width - 28), y: max(point.y - 25, 12))
             }
         }
+    }
+
+    private var markerLabelText: String {
+        layout.label.replacingOccurrences(of: "Elevation ", with: "")
     }
 
     private func axisLabels(in size: CGSize) -> some View {
@@ -3285,6 +3340,15 @@ struct ElevationChartOverlayView: View {
             let y = size.height - size.height * CGFloat((layout.samples[index] - minValue) / range)
             return CGPoint(x: x, y: y)
         }
+    }
+}
+
+private struct VerticalDashedLine: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+        return path
     }
 }
 
