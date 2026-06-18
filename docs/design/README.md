@@ -36,6 +36,8 @@ This directory stores implementation-facing product design references for Runnin
 - [Project Settings and Font Library mockup](./panels/project-settings/project-settings-font-library.png): shared visual reference for both modals.
 - [Heart Rate Zones mockup](./panels/project-settings/heart-rate-zones.png): simplified HR/pace zone configuration sheet reference.
 - [Font Library inline default mockup](./panels/project-settings/font-library-default-inline.png): default font action shown inline after the favorite family name.
+- [Export UI Spec](./panels/export/export-ui.md): production export dialog with destination, output summary, encoding controls, advanced diagnostics, and footer actions.
+- [Export UI Structured Spec](./panels/export/export-ui.spec.json): machine-readable export dialog hierarchy, controls, states, and non-goals.
 
 ## Overlays
 

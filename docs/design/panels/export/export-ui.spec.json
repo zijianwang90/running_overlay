@@ -1,0 +1,182 @@
+{
+  "name": "Export UI",
+  "lastUpdated": "2026-06-18",
+  "surface": {
+    "presentation": "dark macOS utility modal",
+    "recommendedSize": {
+      "width": 680,
+      "minimumContentWidth": 620
+    },
+    "entryPoint": "Sources/RunningOverlay/UI/ExportDialogView.swift"
+  },
+  "hierarchy": [
+    "header",
+    "destination",
+    "outputSummary",
+    "encoding",
+    "advanced",
+    "status",
+    "footer"
+  ],
+  "header": {
+    "title": "Export Overlays",
+    "subtitle": "Transparent MOV overlay with alpha channel",
+    "alignment": "leading"
+  },
+  "destination": {
+    "label": "Destination",
+    "controls": [
+      {
+        "type": "textField",
+        "value": "abbreviated destination path",
+        "editable": true
+      },
+      {
+        "type": "secondaryButton",
+        "label": "Choose...",
+        "icon": "folder"
+      }
+    ],
+    "validation": {
+      "showInline": true,
+      "examples": [
+        "Folder does not exist. It will be created if possible.",
+        "Destination is not writable. Choose another folder."
+      ]
+    }
+  },
+  "outputSummary": {
+    "title": "Output",
+    "help": {
+      "icon": "exclamationmark.circle",
+      "placement": "afterSectionTitle",
+      "tooltip": "1080p currently provides the best export time. 5 fps is usually the best-balanced layer data refresh rate for speed and visual quality. Higher data FPS and 4K export significantly increase render time with the current implementation."
+    },
+    "style": "grouped read-only rows",
+    "rows": [
+      {
+        "label": "Format",
+        "value": "Transparent MOV"
+      },
+      {
+        "label": "Resolution",
+        "valueSource": "project.settings.resolution.label",
+        "example": "1080p 16:9"
+      },
+      {
+        "label": "Frame Rate",
+        "valueSource": "project.settings.frameRate.label",
+        "example": "30 fps"
+      },
+      {
+        "label": "Data FPS",
+        "valueSource": "project.settings.layerDataFrameRate.label",
+        "example": "5 fps"
+      }
+    ],
+    "numericStyle": "monospaced digits"
+  },
+  "encoding": {
+    "title": "Encoding",
+    "help": {
+      "icon": "exclamationmark.circle",
+      "placement": "afterSectionTitle",
+      "tooltip": "Transparent overlay export requires alpha-capable codecs. HEVC keeps file size controlled but is significantly slower. ProRes exports much faster but creates much larger files."
+    },
+    "style": "grouped editable rows",
+    "rows": [
+      {
+        "label": "Codec",
+        "control": "picker",
+        "valueSource": "project.settings.exportCodec",
+        "optionsSource": "ProjectExportCodec.allCases"
+      },
+      {
+        "label": "Bitrate",
+        "control": "slider",
+        "valueSource": "project.settings.bitrateMbps",
+        "range": {
+          "min": 5,
+          "max": 100
+        },
+        "valueFormat": "%d Mbps",
+        "valueAlignment": "right"
+      }
+    ]
+  },
+  "advanced": {
+    "label": "Advanced",
+    "defaultState": "collapsed",
+    "style": "disclosure with grouped secondary actions",
+    "groups": [
+      {
+        "title": "Diagnostics",
+        "actions": [
+          "Export Test Frame",
+          "Export Test Clip",
+          "Export Overlay JSON"
+        ]
+      },
+      {
+        "title": "Project Snapshot",
+        "actions": [
+          "Save Snapshot",
+          "Restore Snapshot"
+        ]
+      },
+      {
+        "title": "Full Activity",
+        "actions": [
+          "Export Full Activity"
+        ]
+      }
+    ],
+    "primaryButtonsAllowed": false
+  },
+  "footer": {
+    "divider": true,
+    "leftStatus": "optional validation or exporting status",
+    "actions": [
+      {
+        "label": "Cancel",
+        "style": "secondary",
+        "alignment": "right"
+      },
+      {
+        "label": "Export",
+        "style": "primary",
+        "keyboardShortcut": "defaultAction",
+        "alignment": "right"
+      }
+    ],
+    "onlyPrimaryAction": "Export"
+  },
+  "sectionHelpIcons": {
+    "size": "14-16 px",
+    "hitTarget": "at least 28x28 px",
+    "foreground": "textMuted",
+    "hoverForeground": "textSecondary",
+    "behavior": "native macOS tooltip via .help(...)",
+    "persistentCopy": false
+  },
+  "exportingState": {
+    "when": "project.isExporting == true",
+    "disabled": [
+      "destination",
+      "codec",
+      "bitrate",
+      "advancedActions",
+      "export"
+    ],
+    "statusText": "Exporting...",
+    "progressIndicator": "thin footer-adjacent indicator when progress is available"
+  },
+  "nonGoals": [
+    "export preset management",
+    "batch export",
+    "queue management",
+    "cloud share destinations",
+    "new codec options beyond ProjectExportCodec",
+    "moving project settings out of Project Settings"
+  ]
+}

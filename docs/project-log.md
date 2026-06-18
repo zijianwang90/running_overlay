@@ -2,6 +2,13 @@
 
 ## 2026-06-18
 
+### Export Dialog Production UI
+
+- Reworked the export dialog into a production modal with destination, read-only output summary, encoding settings, collapsed advanced diagnostics, and a footer-only primary Export action.
+- Added Output and Encoding help icons with native hover tooltips covering 1080p/4K render-time tradeoffs, 5 fps layer data guidance, and alpha-capable codec speed/file-size tradeoffs.
+- Added the Export UI design spec and structured spec under `docs/design/panels/export/`.
+- Verification: `swift build`, `python3 -m json.tool docs/design/panels/export/export-ui.spec.json`, `git diff --check`.
+
 ### Overlay Font Weight Face Resolution
 
 - Fixed custom font weight rendering by resolving font families through AppKit to concrete weighted PostScript faces before creating SwiftUI preview fonts.
