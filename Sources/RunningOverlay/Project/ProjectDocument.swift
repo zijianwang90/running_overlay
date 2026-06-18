@@ -5,6 +5,8 @@ import UniformTypeIdentifiers
 
 @MainActor
 final class ProjectDocument: ObservableObject {
+    private static let lastUsedOverlayTemplateKey = "overlayTemplate.lastUsed"
+
     @Published var settings = ProjectSettings()
     @Published var activity = ActivityTimeline.empty
     @Published var mediaItems: [MediaItem] = []
@@ -31,11 +33,13 @@ final class ProjectDocument: ObservableObject {
     @Published var mediaPoolPreviewSourceTime: TimeInterval = 0
     @Published var fitSourceName: String = ""
     @Published var statusMessage = "Ready to import a FIT file."
+    @Published var toastMessage: String?
     @Published var isTimelineCollapsed = false
     @Published private(set) var canUndo = false
     @Published private(set) var canRedo = false
 
     private let overlayTemplateStore: OverlayTemplateStore
+    private let userDefaults: UserDefaults
     private(set) var projectURL: URL?
     private var exportTask: Task<Void, Never>?
     private var undoStack: [ProjectSnapshot] = []
@@ -43,8 +47,12 @@ final class ProjectDocument: ObservableObject {
     private var activeUndoSnapshot: ProjectSnapshot?
     private var copiedOverlayConfiguration: CopiedOverlayConfiguration?
 
-    init(overlayTemplateStore: OverlayTemplateStore = OverlayTemplateStore()) {
+    init(
+        overlayTemplateStore: OverlayTemplateStore = OverlayTemplateStore(),
+        userDefaults: UserDefaults = .standard
+    ) {
         self.overlayTemplateStore = overlayTemplateStore
+        self.userDefaults = userDefaults
         loadOverlayTemplates()
         IconAssetResolver.configure(userAssets: userAssets, projectURL: projectURL)
     }
@@ -85,17 +93,28 @@ final class ProjectDocument: ObservableObject {
         do {
             print("[RunningOverlay] Importing FIT file: \(url.path)")
             registerUndoPoint()
-            activity = try FitFileParser.parse(url: url)
-            fitSourceName = url.lastPathComponent
-            timeline.fitStartTime = 0
-            timeline.playhead = timeline.fitStartTime
-            statusMessage = "Loaded FIT: \(url.lastPathComponent), \(formatDuration(activity.duration)), \(formatDistance(activity.distanceMeters))."
+            let parsedActivity = try FitFileParser.parse(url: url)
+            finishFitImport(activity: parsedActivity, sourceName: url.lastPathComponent)
             print("[RunningOverlay] FIT import succeeded: \(url.lastPathComponent), duration=\(formatDuration(activity.duration)), distance=\(formatDistance(activity.distanceMeters)), records=\(activity.records.count)")
         } catch {
             statusMessage = "FIT import failed: \(error.localizedDescription)"
             print("[RunningOverlay] FIT import failed: \(url.path)")
             print("[RunningOverlay] Error: \(error.localizedDescription)")
             print("[RunningOverlay] Debug: \(String(reflecting: error))")
+        }
+    }
+
+    func finishFitImport(activity importedActivity: ActivityTimeline, sourceName: String) {
+        activity = importedActivity
+        fitSourceName = sourceName
+        timeline.fitStartTime = 0
+        timeline.playhead = timeline.fitStartTime
+
+        let importSummary = "Loaded FIT: \(sourceName), \(formatDuration(importedActivity.duration)), \(formatDistance(importedActivity.distanceMeters))."
+        if let appliedTemplateName = applyLastUsedOverlayTemplateAfterFitImport() {
+            statusMessage = "\(importSummary) Applied template: \(appliedTemplateName)."
+        } else {
+            statusMessage = importSummary
         }
     }
 
@@ -2663,25 +2682,63 @@ final class ProjectDocument: ObservableObject {
             statusMessage = "Overlay template not found."
             return
         }
-        registerUndoPoint()
-        overlayLayout = template.layout
-        selection = .none
-        statusMessage = "Applied overlay template: \(template.name)."
+        applyUserOverlayTemplate(template, registersUndo: true, remembersLastUsed: true, showsToast: true)
     }
 
     func applyBuiltInOverlayTemplate(_ template: BuiltInOverlayTemplate) {
+        _ = applyBuiltInOverlayTemplate(
+            template,
+            registersUndo: true,
+            remembersLastUsed: true,
+            showsToast: true
+        )
+    }
+
+    @discardableResult
+    private func applyUserOverlayTemplate(
+        _ template: OverlayTemplate,
+        registersUndo: Bool,
+        remembersLastUsed: Bool,
+        showsToast: Bool
+    ) -> Bool {
+        applyOverlayTemplateLayout(
+            template.layout,
+            name: template.name,
+            registersUndo: registersUndo,
+            showsToast: showsToast
+        )
+        if remembersLastUsed {
+            rememberLastUsedOverlayTemplate(.user(id: template.id))
+        }
+        return true
+    }
+
+    @discardableResult
+    private func applyBuiltInOverlayTemplate(
+        _ template: BuiltInOverlayTemplate,
+        registersUndo: Bool,
+        remembersLastUsed: Bool,
+        showsToast: Bool
+    ) -> Bool {
         if let resourceTemplate = loadBuiltInOverlayTemplateResource(template) {
-            applyOverlayTemplateLayout(resourceTemplate.layout, name: template.name)
-            return
+            applyOverlayTemplateLayout(
+                resourceTemplate.layout,
+                name: template.name,
+                registersUndo: registersUndo,
+                showsToast: showsToast
+            )
+            if remembersLastUsed {
+                rememberLastUsedOverlayTemplate(.builtIn(id: template.id))
+            }
+            return true
         }
 
         guard !template.elements.isEmpty else {
             statusMessage = "Built-in template not found: \(template.name)."
-            return
+            return false
         }
 
-        registerUndoPoint()
-        overlayLayout = OverlayLayout(
+        let layout = OverlayLayout(
             elements: template.elements.map { entry in
                 makeOverlayElement(
                     type: entry.type,
@@ -2690,15 +2747,100 @@ final class ProjectDocument: ObservableObject {
                 )
             }
         )
-        selection = .none
-        statusMessage = "Applied overlay template: \(template.name)."
+        applyOverlayTemplateLayout(
+            layout,
+            name: template.name,
+            registersUndo: registersUndo,
+            showsToast: showsToast
+        )
+        if remembersLastUsed {
+            rememberLastUsedOverlayTemplate(.builtIn(id: template.id))
+        }
+        return true
     }
 
-    private func applyOverlayTemplateLayout(_ layout: OverlayLayout, name: String) {
-        registerUndoPoint()
+    private func applyOverlayTemplateLayout(
+        _ layout: OverlayLayout,
+        name: String,
+        registersUndo: Bool,
+        showsToast: Bool
+    ) {
+        if registersUndo {
+            registerUndoPoint()
+        }
         overlayLayout = layout
         selection = .none
         statusMessage = "Applied overlay template: \(name)."
+        if showsToast {
+            showToast("Template applied: \(name)")
+        }
+    }
+
+    private func applyLastUsedOverlayTemplateAfterFitImport() -> String? {
+        let lastUsedTemplate = lastUsedOverlayTemplate()
+        if let lastUsedTemplate,
+           applyRememberedOverlayTemplate(lastUsedTemplate, showsToast: true) {
+            return lastUsedTemplate.displayName(in: self)
+        }
+
+        guard let easyRun = BuiltInOverlayTemplate.defaultTemplate else {
+            return nil
+        }
+        return applyBuiltInOverlayTemplate(
+            easyRun,
+            registersUndo: false,
+            remembersLastUsed: false,
+            showsToast: true
+        ) ? easyRun.name : nil
+    }
+
+    private func applyRememberedOverlayTemplate(
+        _ reference: LastUsedOverlayTemplateReference,
+        showsToast: Bool
+    ) -> Bool {
+        switch reference {
+        case .builtIn(let id):
+            guard let template = BuiltInOverlayTemplate.all.first(where: { $0.id == id }) else {
+                return false
+            }
+            return applyBuiltInOverlayTemplate(
+                template,
+                registersUndo: false,
+                remembersLastUsed: false,
+                showsToast: showsToast
+            )
+        case .user(let id):
+            guard let template = overlayTemplates.first(where: { $0.id == id }) else {
+                return false
+            }
+            return applyUserOverlayTemplate(
+                template,
+                registersUndo: false,
+                remembersLastUsed: false,
+                showsToast: showsToast
+            )
+        }
+    }
+
+    private func rememberLastUsedOverlayTemplate(_ reference: LastUsedOverlayTemplateReference) {
+        guard let data = try? JSONEncoder().encode(reference) else { return }
+        userDefaults.set(data, forKey: Self.lastUsedOverlayTemplateKey)
+    }
+
+    private func lastUsedOverlayTemplate() -> LastUsedOverlayTemplateReference? {
+        guard let data = userDefaults.data(forKey: Self.lastUsedOverlayTemplateKey) else {
+            return nil
+        }
+        return try? JSONDecoder().decode(LastUsedOverlayTemplateReference.self, from: data)
+    }
+
+    private func showToast(_ message: String) {
+        toastMessage = message
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(2))
+            guard self?.toastMessage == message else { return }
+            self?.toastMessage = nil
+        }
     }
 
     private func loadBuiltInOverlayTemplateResource(_ template: BuiltInOverlayTemplate) -> OverlayTemplate? {
@@ -3557,6 +3699,54 @@ struct PreviewMedia: Equatable {
         self.clipStartTime = clipStartTime
         self.clipID = clipID
         self.syncsToSourceTime = syncsToSourceTime
+    }
+}
+
+private enum LastUsedOverlayTemplateReference: Codable, Equatable {
+    case builtIn(id: String)
+    case user(id: UUID)
+
+    private enum CodingKeys: String, CodingKey {
+        case kind
+        case id
+    }
+
+    private enum Kind: String, Codable {
+        case builtIn
+        case user
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let kind = try container.decode(Kind.self, forKey: .kind)
+        switch kind {
+        case .builtIn:
+            self = .builtIn(id: try container.decode(String.self, forKey: .id))
+        case .user:
+            self = .user(id: try container.decode(UUID.self, forKey: .id))
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .builtIn(let id):
+            try container.encode(Kind.builtIn, forKey: .kind)
+            try container.encode(id, forKey: .id)
+        case .user(let id):
+            try container.encode(Kind.user, forKey: .kind)
+            try container.encode(id, forKey: .id)
+        }
+    }
+
+    @MainActor
+    func displayName(in project: ProjectDocument) -> String? {
+        switch self {
+        case .builtIn(let id):
+            BuiltInOverlayTemplate.all.first { $0.id == id }?.name
+        case .user(let id):
+            project.overlayTemplates.first { $0.id == id }?.name
+        }
     }
 }
 

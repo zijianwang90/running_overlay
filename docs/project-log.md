@@ -4364,6 +4364,28 @@ Files changed:
 - `docs/overlay-modules/interval-hud-bar-overlay.md`
 - `docs/project-log.md`
 
+### FIT Import Auto Template (2026-06-18)
+
+Summary:
+
+- FIT import now automatically applies the user's last applied overlay template after the activity is loaded.
+- New users, or users whose remembered template is unavailable, fall back to the bundled `Easy Run` template.
+- Template application now shows a short toast message, and manual template application updates the remembered template preference.
+
+Verification:
+
+- `swift test`
+- `git diff --check`
+
+Files changed:
+
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Sources/RunningOverlay/UI/MainEditorView.swift`
+- `Sources/RunningOverlay/Overlay/OverlayTemplate.swift`
+- `Tests/RunningOverlayTests/OverlayTemplateTests.swift`
+- `docs/development.md`
+- `docs/project-log.md`
+
 ### Visual Background Consistency Pass (2026-06-17)
 
 Summary:

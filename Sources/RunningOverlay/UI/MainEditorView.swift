@@ -60,6 +60,14 @@ struct MainEditorView: View {
             statusBar
         }
         .background(EditorTheme.appBackground)
+        .overlay(alignment: .top) {
+            if let toastMessage = project.toastMessage {
+                EditorToastView(message: toastMessage)
+                    .padding(.top, EditorTheme.panelHeaderHeight + 12)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeOut(duration: 0.18), value: project.toastMessage)
         .sheet(isPresented: $project.showingProjectSettings) {
             ProjectSettingsView()
                 .environmentObject(project)
@@ -190,6 +198,23 @@ struct MainEditorView: View {
             return true
         }
         return responder is NSTextField
+    }
+}
+
+private struct EditorToastView: View {
+    var message: String
+
+    var body: some View {
+        Text(message)
+            .font(EditorTheme.bodyFont.weight(.semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.black.opacity(0.82))
+            )
+            .shadow(color: .black.opacity(0.24), radius: 12, y: 6)
     }
 }
 

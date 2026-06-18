@@ -127,6 +127,10 @@ struct BuiltInOverlayTemplate: Identifiable, Equatable {
             ]
         )
     ]
+
+    static var defaultTemplate: BuiltInOverlayTemplate? {
+        all.first { $0.id == "easyRun" }
+    }
 }
 
 struct OverlayTemplateElement: Codable, Equatable {

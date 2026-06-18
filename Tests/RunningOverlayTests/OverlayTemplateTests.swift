@@ -404,9 +404,107 @@ struct OverlayTemplateTests {
         #expect(project.overlayLayout.elements.last?.style.weatherWidget.temperatureTextStyle.fontName == "PT Mono")
     }
 
+    @Test func fitImportAppliesEasyRunTemplateWhenNoTemplateWasUsedBefore() throws {
+        let storeURL = temporaryTemplateURL()
+        let (defaults, defaultsSuiteName) = temporaryUserDefaults()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+            defaults.removePersistentDomain(forName: defaultsSuiteName)
+        }
+
+        let project = ProjectDocument(
+            overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL),
+            userDefaults: defaults
+        )
+
+        project.finishFitImport(activity: sampleActivity(), sourceName: "morning.fit")
+
+        #expect(project.overlayLayout.elements.map(\.type) == [.pace, .heartRate, .cadence, .routeMap, .distanceTimeline, .elapsedTime, .realTime, .power, .weatherWidget])
+        #expect(project.statusMessage.contains("Applied template: Easy Run"))
+        #expect(project.toastMessage == "Template applied: Easy Run")
+    }
+
+    @Test func fitImportAppliesLastUsedBuiltInTemplate() throws {
+        let storeURL = temporaryTemplateURL()
+        let (defaults, defaultsSuiteName) = temporaryUserDefaults()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+            defaults.removePersistentDomain(forName: defaultsSuiteName)
+        }
+
+        let project = ProjectDocument(
+            overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL),
+            userDefaults: defaults
+        )
+        let race = try #require(BuiltInOverlayTemplate.all.first { $0.id == "race" })
+        project.applyBuiltInOverlayTemplate(race)
+        project.overlayLayout = .empty
+
+        project.finishFitImport(activity: sampleActivity(), sourceName: "race.fit")
+
+        #expect(project.overlayLayout.elements.map(\.type) == [.distanceTimeline, .runningGauge, .routeMap, .pace])
+        #expect(project.statusMessage.contains("Applied template: Race"))
+        #expect(project.toastMessage == "Template applied: Race")
+    }
+
+    @Test func fitImportAppliesLastUsedUserTemplate() throws {
+        let storeURL = temporaryTemplateURL()
+        let (defaults, defaultsSuiteName) = temporaryUserDefaults()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+            defaults.removePersistentDomain(forName: defaultsSuiteName)
+        }
+
+        let project = ProjectDocument(
+            overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL),
+            userDefaults: defaults
+        )
+        let template = OverlayTemplate(
+            name: "My Daily Run",
+            elements: [
+                OverlayTemplateElement(
+                    type: .distance,
+                    positionX: 0.2,
+                    positionY: 0.3,
+                    scale: 1.4,
+                    style: .default
+                )
+            ]
+        )
+        project.overlayTemplates = [template]
+        project.applyOverlayTemplate(template.id)
+        project.overlayLayout = .empty
+
+        project.finishFitImport(activity: sampleActivity(), sourceName: "daily.fit")
+
+        #expect(project.overlayLayout.elements.count == 1)
+        #expect(project.overlayLayout.elements[0].type == .distance)
+        #expect(project.overlayLayout.elements[0].position.x == 0.2)
+        #expect(project.overlayLayout.elements[0].scale == 1.4)
+        #expect(project.statusMessage.contains("Applied template: My Daily Run"))
+        #expect(project.toastMessage == "Template applied: My Daily Run")
+    }
+
     private func temporaryTemplateURL() -> URL {
         FileManager.default.temporaryDirectory
             .appendingPathComponent("RunningOverlayTests-\(UUID().uuidString)", isDirectory: true)
             .appendingPathComponent("OverlayTemplates.json")
+    }
+
+    private func temporaryUserDefaults() -> (UserDefaults, String) {
+        let suiteName = "RunningOverlayTests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        return (defaults, suiteName)
+    }
+
+    private func sampleActivity() -> ActivityTimeline {
+        ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 1_000),
+            duration: 600,
+            distanceMeters: 2_000,
+            records: [],
+            laps: []
+        )
     }
 }
