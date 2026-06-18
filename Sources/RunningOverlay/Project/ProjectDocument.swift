@@ -2105,6 +2105,14 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.unitOption = unitOption
     }
 
+    func setOverlayElevationDisplayMode(_ elementID: OverlayElement.ID, mode: OverlayElevationDisplayMode) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.elevationDisplayMode = mode
+    }
+
     func setOverlayShowLabel(_ elementID: OverlayElement.ID, showLabel: Bool) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {

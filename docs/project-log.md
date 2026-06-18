@@ -1,5 +1,14 @@
 # Running Overlay Project Log
 
+## 2026-06-18
+
+### Elevation Numeric Overlay: Current vs Gain
+
+- Added `OverlayStyle.elevationDisplayMode` with `current` and `gain` options for the Elevation numeric overlay.
+- Numeric Overlay Inspector `Content` section now shows a `Mode` menu for Elevation. `Current` keeps the existing live altitude behavior; `Gain` renders cumulative ascent up to the current playhead time, while reusing the same meter/feet unit menu.
+- Added formatter coverage for both modes and a legacy decode assertion that old project/template JSON still defaults Elevation to `current`.
+- Verification: `swift test --filter OverlayValueFormatterTests`, `swift test --filter OverlayTemplateTests`.
+
 ## 2026-06-17
 
 ### Shared Background Fade Feather Mask

@@ -1,6 +1,6 @@
 # Running Overlay Development Guide
 
-Last updated: 2026-06-16
+Last updated: 2026-06-18
 
 ## 1. Engineering Principles
 
@@ -282,6 +282,7 @@ Current implementation:
 - Inspector supports selected overlay font family, font weight, font size (value text), scale, color presets, independent label/unit controls, and advanced background controls.
 - SwiftUI overlay previews route configurable text through the shared overlay font helper. macOS system UI font family aliases such as `SF Pro` and `SF Pro Display` render with `Font.system(size:weight:)` to avoid SwiftUI font descriptor weight diagnostics. Custom font families still use `Font.custom(...).weight(...)`; visible weight changes depend on whether that family provides matching weight faces, so single-weight families such as Monaco may not visibly respond to every weight option.
 - Numeric overlays (heart rate, pace, calories, elapsed time, real time, distance, elevation, cadence, power) use the dense `NumericOverlayDetailView` Inspector defined in `docs/design/overlays/numeric/numeric-overlay-ui.md`. `ParameterPanelView` routes these `OverlayElementType` values through the new view; other overlay types continue to use `OverlayDetailView`.
+- The Elevation numeric overlay supports `OverlayStyle.elevationDisplayMode` so the same tile can show either live altitude (`current`) or cumulative ascent to the current playhead (`gain`) while keeping the existing meter/feet unit switch.
 - Numeric Overlay 1.0 removes the numeric style preset picker and divider controls. Numeric preview/export always uses the Minimal Clean render path and disables divider rendering even if old project/template data decodes `textPreset` or `dividerEnabled`.
 - Numeric Overlay 1.0 supports a configurable SF Symbol icon attachment. `OverlayElementType.defaultNumericIconSystemName` seeds each newly added metric, while `OverlayStyle.iconEnabled`, `iconSystemName`, `iconPosition`, `iconTextAlignment`, `iconSize`, `iconColor`, `iconOpacity`, and `iconSpacing` drive the Inspector and shared SwiftUI preview/export path. Numeric Icon and Decor Icon SF Symbol selection share `SFSymbolPicker`, which keeps direct text entry but adds a searchable bundled SF Symbol name catalog generated from public CoreGlyphs symbol order data, sport-first default browsing, cached renderability checks, current-symbol preview, recent symbols, and default reset.
 - Heart-rate-related numeric overlays can now tint value, label, unit, and icon independently through `OverlayStyle.valueColorsFollowHeartRateZones`, `labelColorsFollowHeartRateZones`, `unitColorsFollowHeartRateZones`, and `iconColorsFollowHeartRateZones`. `OverlayRenderModel.textLayout` resolves a shared `dynamicHeartRateZoneColor` from the current heart rate sample and `HRZonePalette`, then preview/export consume that render-model field without changing layout or picker behavior.

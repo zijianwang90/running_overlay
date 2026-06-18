@@ -32,7 +32,14 @@ enum OverlayValueFormatter {
     static func components(for element: OverlayElement, activity: ActivityTimeline, elapsedTime: TimeInterval) -> OverlayValueComponents {
         let type = element.type
         let unit = type.isNumericOverlay ? element.style.unitOption : type.defaultUnitOption
-        return components(for: type, unit: unit, customLabel: element.style.customLabel, activity: activity, elapsedTime: elapsedTime)
+        return components(
+            for: type,
+            unit: unit,
+            elevationDisplayMode: element.style.elevationDisplayMode,
+            customLabel: element.style.customLabel,
+            activity: activity,
+            elapsedTime: elapsedTime
+        )
     }
 
     static func formatDuration(_ elapsedTime: TimeInterval) -> String {
@@ -61,6 +68,7 @@ enum OverlayValueFormatter {
     private static func components(
         for type: OverlayElementType,
         unit unitOption: OverlayUnitOption,
+        elevationDisplayMode: OverlayElevationDisplayMode = .current,
         customLabel: String,
         activity: ActivityTimeline,
         elapsedTime: TimeInterval
@@ -154,10 +162,23 @@ enum OverlayValueFormatter {
         case .distanceTimeline:
             return OverlayValueComponents(label: "Distance", shortLabel: "DIST", value: String(format: "%.2f / %.2f", activity.distance(at: elapsedTime) / 1000, activity.distanceMeters / 1000), unit: "km")
         case .elevation:
-            let formatted = formatElevationComponents(meters: activity.elevation(at: elapsedTime), option: unitOption)
+            let elevationValue: Double?
+            let defaultLabel: String
+            let shortLabel: String
+            switch elevationDisplayMode {
+            case .current:
+                elevationValue = activity.elevation(at: elapsedTime)
+                defaultLabel = "Elevation"
+                shortLabel = "ELEV"
+            case .gain:
+                elevationValue = activity.elevationGain(at: elapsedTime)
+                defaultLabel = "Elevation Gain"
+                shortLabel = "GAIN"
+            }
+            let formatted = formatElevationComponents(meters: elevationValue, option: unitOption)
             return OverlayValueComponents(
-                label: resolvedLabel("Elevation"),
-                shortLabel: "ELEV",
+                label: resolvedLabel(defaultLabel),
+                shortLabel: shortLabel,
                 value: formatted.value,
                 unit: formatted.unit
             )

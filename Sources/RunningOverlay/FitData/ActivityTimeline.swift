@@ -96,6 +96,30 @@ struct ActivityTimeline: Equatable, Codable {
         interpolatedValue(at: elapsedTime, keyPath: \.elevationMeters)
     }
 
+    func elevationGain(at elapsedTime: TimeInterval) -> Double? {
+        let t = clampedElapsedTime(elapsedTime)
+        let points = records
+            .filter { $0.elapsedTime <= t && $0.elevationMeters != nil }
+            .map { ($0.elapsedTime, $0.elevationMeters!) }
+        guard var previous = points.first else { return nil }
+
+        var gain = 0.0
+        for point in points.dropFirst() {
+            gain += max(point.1 - previous.1, 0)
+            previous = point
+        }
+
+        if let next = records.first(where: { $0.elapsedTime > t && $0.elevationMeters != nil }),
+           let current = elevation(at: t),
+           t > previous.0 {
+            let nextElevation = next.elevationMeters!
+            let cappedCurrent = min(max(current, min(previous.1, nextElevation)), max(previous.1, nextElevation))
+            gain += max(cappedCurrent - previous.1, 0)
+        }
+
+        return gain
+    }
+
     func cadence(at elapsedTime: TimeInterval) -> Int? {
         interpolatedValue(at: elapsedTime, keyPath: \.cadence).map { Int($0.rounded()) }
     }

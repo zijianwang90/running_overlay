@@ -133,9 +133,56 @@ struct OverlayValueFormatterTests {
         elevationElement.style.unitOption = .elevationFeet
         #expect(OverlayValueFormatter.value(for: elevationElement, activity: activity, elapsedTime: 30) == "328 ft")
 
+        elevationElement.style.elevationDisplayMode = .gain
+        elevationElement.style.unitOption = .elevationMeters
+        #expect(OverlayValueFormatter.value(for: elevationElement, activity: activity, elapsedTime: 30) == "0 m")
+
         var elapsed = OverlayElement(type: .elapsedTime, position: CGPoint(x: 0, y: 0), scale: 1, style: .default)
         elapsed.style.unitOption = .durationSeconds
         #expect(OverlayValueFormatter.value(for: elapsed, activity: activity, elapsedTime: 65) == "65")
+    }
+
+    @Test func elevationOverlayCanSwitchBetweenCurrentAndGain() {
+        let startDate = Date(timeIntervalSince1970: 0)
+        let activity = ActivityTimeline(
+            startDate: startDate,
+            duration: 30,
+            distanceMeters: 1000,
+            records: [
+                ActivityRecord(
+                    elapsedTime: 0, timestamp: startDate, distanceMeters: 0,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: 100,
+                    cadence: nil, powerWatts: nil, calories: nil
+                ),
+                ActivityRecord(
+                    elapsedTime: 10, timestamp: startDate.addingTimeInterval(10), distanceMeters: 300,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: 110,
+                    cadence: nil, powerWatts: nil, calories: nil
+                ),
+                ActivityRecord(
+                    elapsedTime: 20, timestamp: startDate.addingTimeInterval(20), distanceMeters: 700,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: 105,
+                    cadence: nil, powerWatts: nil, calories: nil
+                ),
+                ActivityRecord(
+                    elapsedTime: 30, timestamp: startDate.addingTimeInterval(30), distanceMeters: 1000,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: 125,
+                    cadence: nil, powerWatts: nil, calories: nil
+                )
+            ],
+            laps: []
+        )
+
+        var element = OverlayElement(type: .elevation, position: .zero, scale: 1, style: .default)
+        element.style.unitOption = .elevationMeters
+
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 25) == "115 m")
+
+        element.style.elevationDisplayMode = .gain
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 25) == "20 m")
+        let components = OverlayValueFormatter.components(for: element, activity: activity, elapsedTime: 25)
+        #expect(components.label == "Elevation Gain")
+        #expect(components.shortLabel == "GAIN")
     }
 
     @Test func numericOverlayHonorsLabelAndUnitFlags() {
