@@ -1,5 +1,10 @@
 import SwiftUI
 
+private enum ExportDialogLayout {
+    static let trailingColumnWidth: CGFloat = 360
+    static let bitrateValueWidth: CGFloat = 72
+}
+
 struct ExportDialogView: View {
     @EnvironmentObject private var project: ProjectDocument
     @Environment(\.dismiss) private var dismiss
@@ -7,6 +12,7 @@ struct ExportDialogView: View {
     @State private var destinationURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Movies")
     @State private var didInitializeDestination = false
     @State private var isAdvancedExpanded = false
+    @State private var activeHelpTooltip: ExportHelpTooltipState?
 
     private let outputHelpText = "1080p currently provides the best export time. 5 fps is usually the best-balanced layer data refresh rate for speed and visual quality. Higher data FPS and 4K export significantly increase render time with the current implementation."
     private let encodingHelpText = "Transparent overlay export requires alpha-capable codecs. HEVC keeps file size controlled but is significantly slower. ProRes exports much faster but creates much larger files."
@@ -27,7 +33,25 @@ struct ExportDialogView: View {
             footer
         }
         .frame(width: 680)
+        .coordinateSpace(name: "exportDialog")
         .background(EditorTheme.panelBackground)
+        .overlay(alignment: .topLeading) {
+            if let activeHelpTooltip {
+                let maxX = CGFloat(680 - 300)
+                let clampedX = min(max(activeHelpTooltip.anchor.minX, 12), maxX)
+
+                ExportHelpTooltip(text: activeHelpTooltip.text)
+                    .frame(maxWidth: 300, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .offset(
+                        x: clampedX,
+                        y: activeHelpTooltip.anchor.maxY + 8
+                    )
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.12), value: activeHelpTooltip?.text)
         .onAppear {
             initializeDestinationIfNeeded()
         }
@@ -81,7 +105,11 @@ struct ExportDialogView: View {
 
     private var outputSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ExportSectionHeader(title: "Output", helpText: outputHelpText)
+            ExportSectionHeader(
+                title: "Output",
+                helpText: outputHelpText,
+                activeHelpTooltip: $activeHelpTooltip
+            )
 
             SettingsGroupBox {
                 ExportReadOnlyRow(label: "Format", value: "Transparent MOV")
@@ -97,7 +125,11 @@ struct ExportDialogView: View {
 
     private var encodingSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ExportSectionHeader(title: "Encoding", helpText: encodingHelpText)
+            ExportSectionHeader(
+                title: "Encoding",
+                helpText: encodingHelpText,
+                activeHelpTooltip: $activeHelpTooltip
+            )
 
             SettingsGroupBox {
                 SettingsRow(leading: { rowLabel("Codec") }) {
@@ -107,7 +139,7 @@ struct ExportDialogView: View {
                         }
                     }
                     .labelsHidden()
-                    .frame(width: 190)
+                    .frame(width: ExportDialogLayout.trailingColumnWidth, alignment: .trailing)
                     .disabled(project.isExporting)
                 }
                 dividerRow
@@ -126,9 +158,9 @@ struct ExportDialogView: View {
                         Text("\(Int(project.settings.bitrateMbps)) Mbps")
                             .font(EditorTheme.numericFont)
                             .foregroundStyle(EditorTheme.textPrimary)
-                            .frame(width: 72, alignment: .trailing)
+                            .frame(width: ExportDialogLayout.bitrateValueWidth, alignment: .trailing)
                     }
-                    .frame(width: 360)
+                    .frame(width: ExportDialogLayout.trailingColumnWidth)
                 }
             }
         }
@@ -297,24 +329,87 @@ struct ExportDialogView: View {
     }
 }
 
+private struct ExportHelpTooltipState: Equatable {
+    let text: String
+    let anchor: CGRect
+}
+
 private struct ExportSectionHeader: View {
     let title: String
     let helpText: String
+    @Binding var activeHelpTooltip: ExportHelpTooltipState?
 
     var body: some View {
         HStack(spacing: 6) {
             Text(title)
                 .font(EditorTheme.sectionTitleFont)
                 .foregroundStyle(EditorTheme.textMuted)
-            Image(systemName: "exclamationmark.circle")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(EditorTheme.textMuted)
-                .frame(width: 28, height: 28)
-                .help(helpText)
-                .accessibilityLabel(Text("\(title) export help"))
+            ExportHelpIcon(helpText: helpText, activeHelpTooltip: $activeHelpTooltip)
             Spacer()
         }
         .frame(height: 28)
+    }
+}
+
+private struct ExportHelpIcon: View {
+    let helpText: String
+    @Binding var activeHelpTooltip: ExportHelpTooltipState?
+    @State private var isHovering = false
+    @State private var anchor = CGRect.zero
+
+    var body: some View {
+        Image(systemName: "exclamationmark.circle")
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(isHovering ? EditorTheme.textSecondary : EditorTheme.textMuted)
+            .frame(width: 28, height: 28)
+            .contentShape(Rectangle())
+            .accessibilityLabel(Text("Export help"))
+            .onHover { hovering in
+                isHovering = hovering
+                if hovering {
+                    activeHelpTooltip = ExportHelpTooltipState(text: helpText, anchor: anchor)
+                } else if activeHelpTooltip?.text == helpText {
+                    activeHelpTooltip = nil
+                }
+            }
+            .background {
+                GeometryReader { proxy in
+                    Color.clear
+                        .onAppear {
+                            updateAnchor(proxy.frame(in: .named("exportDialog")))
+                        }
+                        .onChange(of: proxy.size) { _, _ in
+                            updateAnchor(proxy.frame(in: .named("exportDialog")))
+                        }
+                }
+            }
+    }
+
+    private func updateAnchor(_ frame: CGRect) {
+        guard frame != .zero else { return }
+        anchor = frame
+        if isHovering {
+            activeHelpTooltip = ExportHelpTooltipState(text: helpText, anchor: frame)
+        }
+    }
+}
+
+private struct ExportHelpTooltip: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(EditorTheme.captionFont)
+            .foregroundStyle(EditorTheme.textPrimary)
+            .multilineTextAlignment(.leading)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(EditorTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(EditorTheme.borderSubtle, lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.28), radius: 10, y: 4)
     }
 }
 
@@ -331,6 +426,7 @@ private struct ExportReadOnlyRow: View {
             Text(value)
                 .font(EditorTheme.numericFont)
                 .foregroundStyle(EditorTheme.textPrimary)
+                .frame(width: ExportDialogLayout.trailingColumnWidth, alignment: .trailing)
         })
     }
 }

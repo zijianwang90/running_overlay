@@ -2,6 +2,12 @@
 
 ## 2026-06-18
 
+### Export Dialog: Help Tooltips And Codec Alignment
+
+- Fixed Output/Encoding help icons to show a hover tooltip panel with the export guidance text (native tooltips do not work reliably in sheets).
+- Aligned Codec picker, Output values, and Bitrate label to a shared trailing column width.
+- Verification: `swift build`.
+
 ### Project Settings: Remove Encoding Section
 
 - Removed the `Encoding` / `Bitrate` section from Project Settings; codec and bitrate remain editable in the export dialog.

@@ -164,7 +164,8 @@ Rules:
 - Size: `14-16 px`.
 - Foreground: `textMuted`, changing to `textSecondary` on hover.
 - Hit target: at least `28 x 28 px`.
-- Provide `.help(...)` so native macOS tooltip behavior works.
+- Hovering the info icon shows a compact floating help panel with the section guidance. Render the panel outside the scroll view so it is not clipped.
+- Native AppKit `toolTip` and SwiftUI `.help` are unreliable inside sheets, so use an explicit hover tooltip view.
 - Do not show persistent explanatory text in the dialog by default.
 
 ## Advanced Section
