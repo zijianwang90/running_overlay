@@ -1,6 +1,6 @@
 {
   "name": "Project Settings, Heart Rate Zones, And Font Library",
-  "lastUpdated": "2026-05-21",
+  "lastUpdated": "2026-06-18",
   "surfaces": {
     "projectSettings": {
       "presentation": "dark macOS modal",
@@ -23,17 +23,6 @@
               "label": "Layer Data FPS",
               "control": "dropdown",
               "value": "5 fps"
-            }
-          ]
-        },
-        {
-          "title": "Encoding",
-          "rows": [
-            {
-              "label": "Bitrate",
-              "control": "slider",
-              "value": "30 Mbps",
-              "valueAlignment": "right"
             }
           ]
         },

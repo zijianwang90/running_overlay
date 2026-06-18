@@ -2,6 +2,12 @@
 
 ## 2026-06-18
 
+### Project Settings: Remove Encoding Section
+
+- Removed the `Encoding` / `Bitrate` section from Project Settings; codec and bitrate remain editable in the export dialog.
+- Updated the Project Settings design spec and structured spec to match.
+- Verification: `swift build`.
+
 ### Export Dialog Production UI
 
 - Reworked the export dialog into a production modal with destination, read-only output summary, encoding settings, collapsed advanced diagnostics, and a footer-only primary Export action.

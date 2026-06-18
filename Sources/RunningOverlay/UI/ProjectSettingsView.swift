@@ -22,12 +22,6 @@ struct ProjectSettingsView: View {
                         videoSection
                     }
 
-                    // MARK: - Encoding
-                    SettingsSectionHeader(title: "Encoding")
-                    SettingsGroupBox {
-                        bitrateSection
-                    }
-
                     // MARK: - Typography
                     SettingsSectionHeader(title: "Typography")
                     SettingsGroupBox {
@@ -145,30 +139,6 @@ struct ProjectSettingsView: View {
                 .frame(width: 160)
             }
         }
-    }
-
-    // MARK: - Encoding
-
-    private var bitrateSection: some View {
-        SettingsRow(
-            leading: { dropdownLabel("Bitrate") },
-            trailing: {
-                HStack(spacing: 8) {
-                    Slider(
-                        value: Binding(
-                            get: { project.settings.bitrateMbps },
-                            set: { project.settings.bitrateMbps = $0.rounded() }
-                        ),
-                        in: 5...100
-                    )
-                    .tint(EditorTheme.accentBlue)
-                    Text("\(Int(project.settings.bitrateMbps)) Mbps")
-                        .font(EditorTheme.numericFont)
-                        .foregroundStyle(EditorTheme.textPrimary)
-                        .frame(width: 64, alignment: .trailing)
-                }
-            }
-        )
     }
 
     // MARK: - Typography

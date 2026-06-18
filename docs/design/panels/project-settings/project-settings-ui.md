@@ -1,6 +1,6 @@
 # Project Settings, Heart Rate Zones, And Font Library UI Spec
 
-Last updated: 2026-05-21
+Last updated: 2026-06-18
 
 ## Purpose
 
@@ -35,13 +35,11 @@ The settings modal should include only the current project export/settings contr
    - `Resolution` dropdown with `1080p 16:9`.
    - `Frame Rate` dropdown with `30 fps`.
    - `Layer Data FPS` dropdown with `5 fps`.
-2. `Encoding`
-   - `Bitrate` slider with blue filled track, knob, and right-aligned value `30 Mbps`.
-3. `Typography`
+2. `Typography`
    - `Font Library` row.
    - Caption: `Choose fonts shown in overlay menus.`
    - Right secondary button: `Manage...`.
-4. `Physiology`
+3. `Physiology`
    - `Heart Rate Zones` row.
    - Caption: `Configure HR and pace ranges for overlays.`
    - Right secondary button: `Configure...`.

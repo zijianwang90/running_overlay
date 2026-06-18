@@ -153,7 +153,7 @@ Rules:
 - Keep the codec menu and bitrate slider editable because they are currently export-specific project settings.
 - Right-align the bitrate value as `30 Mbps`.
 - Use a filled blue slider track where practical.
-- Values update the same project settings used by Project Settings.
+- Values update project settings; encoding controls live only in the export dialog, not Project Settings.
 
 ## Section Help Icons
 
