@@ -94,7 +94,7 @@
         "background": "ElevationChartBackgroundConfig",
         "effects": "ElevationChartEffectsConfig"
       },
-      "ElevationChartPreset": ["gradientArea", "dualArea", "bigNumbers"],
+      "ElevationChartPreset": ["gradientArea", "dualArea", "techGlow", "minimalWhite", "bigNumbers"],
       "ElevationChartStyle": ["area", "lineOnly"],
       "ElevationProgressMode": ["fullProfile", "progressToCurrent"],
       "ElevationDualAreaMode": ["splitByBaseline", "climbDescent"],
@@ -138,7 +138,7 @@
     "chart": {
       "chartStyle": "area",
       "smoothingEnabled": true,
-      "smoothingAmount": 0.55,
+      "smoothingAmount": 0.85,
       "samplingMode": "auto",
       "maxPointCount": 240,
       "progressMode": "fullProfile",
@@ -315,7 +315,7 @@
           "id": "elevationChartPreset",
           "type": "segmentedOrDropdown",
           "modelPath": "preset",
-          "options": ["gradientArea", "dualArea", "bigNumbers"],
+          "options": ["gradientArea", "dualArea", "techGlow", "minimalWhite", "bigNumbers"],
           "notes": "Presets initialize parameters only; all fields remain editable."
         }
       ]
@@ -394,7 +394,7 @@
     },
     {
       "id": "bigNumbers",
-      "title": "Big Numbers",
+      "title": "Big Elevation",
       "icon": "number",
       "controls": [
         { "id": "enabled", "type": "toggle", "modelPath": "bigNumbers.enabled" },
@@ -402,6 +402,8 @@
         { "id": "position", "type": "dropdown", "modelPath": "bigNumbers.position", "options": ["topLeft", "topRight", "bottomLeft", "bottomRight", "center"], "enabledWhen": "bigNumbers.enabled" },
         { "id": "showUnit", "type": "toggle", "modelPath": "bigNumbers.showUnit", "enabledWhen": "bigNumbers.enabled" },
         { "id": "showLabel", "type": "toggle", "modelPath": "bigNumbers.showLabel", "enabledWhen": "bigNumbers.enabled" },
+        { "id": "fontName", "type": "fontMenu", "modelPath": "bigNumbers.fontName", "enabledWhen": "bigNumbers.enabled" },
+        { "id": "fontWeight", "type": "segmented", "modelPath": "bigNumbers.fontWeight", "options": ["regular", "medium", "semibold", "bold"], "enabledWhen": "bigNumbers.enabled" },
         { "id": "fontSize", "type": "sliderWithNumber", "modelPath": "bigNumbers.fontSize", "range": [20, 80], "enabledWhen": "bigNumbers.enabled" },
         { "id": "unitFontSize", "type": "sliderWithNumber", "modelPath": "bigNumbers.unitFontSize", "range": [8, 32], "enabledWhen": "bigNumbers.enabled" }
       ]
@@ -465,20 +467,38 @@
       "bigNumbers.enabled": false,
       "statusBar.enabled": true
     },
+    "techGlow": {
+      "lineAndFill.dualAreaEnabled": false,
+      "axis.gridEnabled": true,
+      "effects.glowEnabled": true,
+      "lineAndFill.fillGradientColors": ["#38BDF8", "#2F80ED"],
+      "bigNumbers.enabled": false,
+      "statusBar.enabled": true
+    },
+    "minimalWhite": {
+      "chart.style": "lineOnly",
+      "lineAndFill.fillEnabled": false,
+      "markers.labelEnabled": false,
+      "axis.labelsEnabled": false,
+      "bigNumbers.enabled": false,
+      "statusBar.enabled": false
+    },
     "bigNumbers": {
       "bigNumbers.enabled": true,
       "bigNumbers.primaryMetric": "currentElevation",
       "bigNumbers.position": "topLeft",
-      "bigNumbers.fontSize": 42,
-      "lineAndFill.fillOpacity": 0.28,
-      "statusBar.enabled": false
+      "bigNumbers.fontName": "FontLibraryManager.currentDefaultFamily",
+      "bigNumbers.fontWeight": "semibold",
+      "bigNumbers.fontSize": 58,
+      "lineAndFill.fillOpacity": 0.34,
+      "statusBar.enabled": true
     }
   },
   "implementationNotes": [
     "Implement as a dedicated ElevationChart overlay type, not as DistanceTimeline content.",
     "Gradient colors are user-editable; do not create separate color-only presets.",
     "Dual Area is an option on the area chart renderer.",
-    "Big Numbers is an emphasis layer over the chart, not a separate data visualization type.",
+    "Big Elevation is an emphasis layer over the chart, not a separate data visualization type.",
     "Status Bar should share code or configuration patterns with Route Map Status Bar where possible.",
     "Do not expose bar, dot, step, or segmented chart options in this version.",
     "Selection outline belongs to the editor only and must not be exported."

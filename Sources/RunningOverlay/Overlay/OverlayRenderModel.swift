@@ -285,13 +285,19 @@ enum OverlayRenderModel {
         } else {
             visibleSamples = samples
         }
-        let renderedSamples = style.smoothingEnabled ? smoothedElevationChartSamples(visibleSamples) : visibleSamples
+        let renderedSamples = style.smoothingEnabled
+            ? smoothedElevationChartSamples(visibleSamples, amount: style.smoothingAmount)
+            : visibleSamples
         let statsBarItems = elevationChartStatsBarItems(
             style: style,
             activity: context.activity,
             elapsedTime: context.elapsedTime,
             progress: progress
         )
+        let statsBarConsumesChartSpace = style.statsBar.visible && style.statsBar.inside
+        let chartVerticalReserve = statsBarConsumesChartSpace
+            ? style.chartPaddingY * 2 + style.statsBar.height + 8
+            : style.chartPaddingY * 2
         return OverlayElevationChartRenderLayout(
             style: style,
             bigNumberText: elevationBigNumber(style: style, activity: context.activity, elapsedTime: context.elapsedTime),
@@ -304,7 +310,7 @@ enum OverlayRenderModel {
             horizontalPadding: context.scaled(style.chartPaddingX * element.scale),
             verticalPadding: context.scaled(style.chartPaddingY * element.scale),
             cornerRadius: context.scaled(style.cornerRadius * element.scale),
-            chartHeight: context.scaled(max(52, (style.bigNumbersEnabled ? style.height * 0.40 : style.height - (style.statsBar.visible ? style.statsBar.height + 34 : 34)) * element.scale)),
+            chartHeight: context.scaled(max(52, (style.bigNumbersEnabled ? style.height * 0.40 : style.height - chartVerticalReserve) * element.scale)),
             lineWidth: max(context.scaled(1), context.scaled(style.lineWidth * element.scale)),
             progress: progress,
             samples: renderedSamples
@@ -1664,16 +1670,23 @@ enum OverlayRenderModel {
         }
     }
 
-    static func smoothedElevationChartSamples(_ samples: [Double]) -> [Double] {
-        guard samples.count > 2 else { return samples }
+    static func smoothedElevationChartSamples(_ samples: [Double], amount: Double = 0.85) -> [Double] {
+        let clampedAmount = min(max(amount, 0), 1)
+        guard samples.count > 2, clampedAmount > 0 else { return samples }
 
-        let weights = [1.0, 2.0, 3.0, 2.0, 1.0]
-        let radius = weights.count / 2
+        let maxRadius = min(28, max(2, (samples.count - 1) / 2))
+        let radius = min(maxRadius, max(2, Int((2 + clampedAmount * 18).rounded())))
+        let sigma = max(1, Double(radius) * 0.45)
+        let weights = (-radius...radius).map { offset in
+            exp(-pow(Double(offset), 2) / (2 * pow(sigma, 2)))
+        }
+        let passCount = max(1, Int((1 + clampedAmount * 5).rounded()))
         var filtered = samples
 
-        // Repeated passes smooth integer-meter FIT stair steps while retaining
-        // both chart endpoints for the current-value marker and progress tip.
-        for _ in 0..<2 {
+        // Wide repeated Gaussian passes smooth integer-meter FIT stair steps.
+        // Endpoints stay fixed so current-value markers and progress tips do
+        // not drift away from the activity sample range.
+        for _ in 0..<passCount {
             let source = filtered
             for index in source.indices.dropFirst().dropLast() {
                 var weightedSum = 0.0
@@ -1688,7 +1701,9 @@ enum OverlayRenderModel {
             }
         }
 
-        return filtered
+        return zip(samples, filtered).map { original, smoothed in
+            original + (smoothed - original) * clampedAmount
+        }
     }
 
     private static func clampedProgress(_ progress: Double) -> Double {

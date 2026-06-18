@@ -1035,15 +1035,19 @@ enum DistanceTimelinePreset: String, CaseIterable, Identifiable, Codable {
 enum ElevationChartPreset: String, CaseIterable, Identifiable, Codable {
     case gradientArea
     case dualArea
+    case techGlow
+    case minimalWhite
     case bigNumbers
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
-        case .gradientArea: "Gradient Area"
-        case .dualArea: "Dual Area"
-        case .bigNumbers: "Big Numbers"
+        case .gradientArea: "Premium Gradient"
+        case .dualArea: "Dark Terrain"
+        case .techGlow: "Tech Glow"
+        case .minimalWhite: "Minimal White"
+        case .bigNumbers: "Big Elevation"
         }
     }
 }
@@ -1100,6 +1104,7 @@ struct ElevationChartStyle: Equatable, Codable {
     var height: Double
     var chartStyle: ElevationChartRenderStyle
     var smoothingEnabled: Bool
+    var smoothingAmount: Double
     var progressMode: ElevationChartProgressMode
     var chartPaddingX: Double
     var chartPaddingY: Double
@@ -1121,6 +1126,8 @@ struct ElevationChartStyle: Equatable, Codable {
     var bigNumbersEnabled: Bool
     var bigNumberMetric: ElevationChartBigMetric
     var bigNumberFontSize: Double
+    var bigNumberFontName: String
+    var bigNumberFontWeight: OverlayFontWeight
     var backgroundEnabled: Bool
     var backgroundColor: OverlayColor
     var backgroundOpacity: Double
@@ -1140,19 +1147,20 @@ struct ElevationChartStyle: Equatable, Codable {
         var style = ElevationChartStyle(
             preset: preset,
             width: 420,
-            height: preset == .bigNumbers ? 190 : 170,
+            height: preset == .bigNumbers ? 190 : 178,
             chartStyle: .area,
             smoothingEnabled: true,
+            smoothingAmount: 0.85,
             progressMode: .fullProfile,
-            chartPaddingX: 14,
-            chartPaddingY: 10,
+            chartPaddingX: 18,
+            chartPaddingY: 16,
             lineColor: .white,
             lineWidth: preset == .bigNumbers ? 2.2 : 2.5,
-            lineOpacity: 0.95,
+            lineOpacity: 0.96,
             fillEnabled: true,
             fillStartColor: .green,
             fillEndColor: .blue,
-            fillOpacity: preset == .bigNumbers ? 0.28 : 0.42,
+            fillOpacity: preset == .bigNumbers ? 0.34 : 0.40,
             dualAreaEnabled: false,
             upperFillColor: .orange,
             lowerFillColor: .cyan,
@@ -1163,16 +1171,18 @@ struct ElevationChartStyle: Equatable, Codable {
             axisLabelsEnabled: true,
             bigNumbersEnabled: preset == .bigNumbers,
             bigNumberMetric: .currentElevation,
-            bigNumberFontSize: 42,
+            bigNumberFontSize: preset == .bigNumbers ? 58 : 42,
+            bigNumberFontName: FontLibraryManager.currentDefaultFamily,
+            bigNumberFontWeight: .semibold,
             backgroundEnabled: true,
             backgroundColor: .black,
-            backgroundOpacity: 0.50,
-            cornerRadius: 16,
+            backgroundOpacity: 0.42,
+            cornerRadius: 18,
             borderEnabled: true,
-            borderOpacity: 0.12,
+            borderOpacity: 0.10,
             shadowEnabled: true,
             shadowOpacity: 0.28,
-            shadowRadius: 14,
+            shadowRadius: 18,
             glowEnabled: false,
             glowOpacity: 0.25,
             statsBar: ElevationChartStyle.defaultStatsBar
@@ -1182,19 +1192,62 @@ struct ElevationChartStyle: Equatable, Codable {
             break
         case .dualArea:
             style.dualAreaEnabled = true
-            style.fillStartColor = OverlayColor.yellow
-            style.fillEndColor = OverlayColor.red
-            style.markerColor = OverlayColor.red
+            style.fillStartColor = OverlayColor.orange
+            style.fillEndColor = OverlayColor(red: 0.18, green: 0.26, blue: 0.34, alpha: 1)
+            style.upperFillColor = OverlayColor.green
+            style.lowerFillColor = OverlayColor.orange
+            style.markerColor = OverlayColor.orange
+            style.backgroundOpacity = 0.50
+            style.shadowOpacity = 0.30
             style.statsBar.slots = [
                 DistanceTimelineStatsBarSlot(metric: .distance, visible: true, customLabel: ""),
                 DistanceTimelineStatsBarSlot(metric: .elevation, visible: true, customLabel: "ELEV"),
                 DistanceTimelineStatsBarSlot(metric: .elapsedTime, visible: true, customLabel: ""),
                 DistanceTimelineStatsBarSlot(metric: .grade, visible: false, customLabel: ""),
             ]
-        case .bigNumbers:
-            style.statsBar.visible = false
+        case .techGlow:
+            style.lineColor = OverlayColor.cyan
+            style.fillStartColor = OverlayColor.cyan
+            style.fillEndColor = OverlayColor.blue
+            style.markerColor = OverlayColor.cyan
+            style.gridEnabled = true
+            style.glowEnabled = true
+            style.glowOpacity = 0.45
+            style.backgroundOpacity = 0.46
+            style.borderOpacity = 0.12
+            style.shadowOpacity = 0.32
+            style.shadowRadius = 20
+            style.statsBar.backgroundOpacity = 0.50
+        case .minimalWhite:
+            style.chartStyle = .lineOnly
+            style.fillEnabled = false
+            style.markerColor = .white
             style.markerLabelEnabled = false
             style.axisLabelsEnabled = false
+            style.gridEnabled = false
+            style.statsBar.visible = false
+            style.backgroundOpacity = 0.28
+            style.borderEnabled = false
+            style.shadowOpacity = 0.22
+            style.shadowRadius = 14
+        case .bigNumbers:
+            style.statsBar.visible = true
+            style.statsBar.height = 46
+            style.statsBar.backgroundOpacity = 0.38
+            style.statsBar.valueFontSize = 18
+            style.statsBar.labelFontSize = 9
+            style.statsBar.slots = [
+                DistanceTimelineStatsBarSlot(metric: .distance, visible: true, customLabel: ""),
+                DistanceTimelineStatsBarSlot(metric: .elapsedTime, visible: true, customLabel: ""),
+                DistanceTimelineStatsBarSlot(metric: .elevation, visible: false, customLabel: "ELEV"),
+                DistanceTimelineStatsBarSlot(metric: .grade, visible: false, customLabel: ""),
+            ]
+            style.markerLabelEnabled = false
+            style.axisLabelsEnabled = false
+            style.backgroundOpacity = 0.44
+            style.shadowOpacity = 0.30
+            style.chartPaddingX = 18
+            style.chartPaddingY = 14
         }
         return style
     }
@@ -1205,13 +1258,13 @@ struct ElevationChartStyle: Equatable, Codable {
         inside: false,
         layoutMode: .equalColumns,
         width: 0,
-        height: 58,
+        height: 56,
         offsetX: 0,
         offsetY: 0,
         itemSpacing: 0,
-        backgroundOpacity: 0.62,
-        dividerOpacity: 0.14,
-        cornerRadius: 12,
+        backgroundOpacity: 0.48,
+        dividerOpacity: 0.12,
+        cornerRadius: 10,
         valueFontSize: 22,
         labelFontSize: 10,
         slots: [
@@ -1230,6 +1283,145 @@ struct ElevationChartStyle: Equatable, Codable {
     mutating func setStatsBarVisible(_ visible: Bool, at index: Int) {
         guard statsBar.slots.indices.contains(index) else { return }
         statsBar.slots[index].visible = visible
+    }
+}
+
+extension ElevationChartStyle {
+    private enum CodingKeys: String, CodingKey {
+        case preset
+        case width
+        case height
+        case chartStyle
+        case smoothingEnabled
+        case smoothingAmount
+        case progressMode
+        case chartPaddingX
+        case chartPaddingY
+        case lineColor
+        case lineWidth
+        case lineOpacity
+        case fillEnabled
+        case fillStartColor
+        case fillEndColor
+        case fillOpacity
+        case dualAreaEnabled
+        case upperFillColor
+        case lowerFillColor
+        case currentMarkerEnabled
+        case markerColor
+        case markerLabelEnabled
+        case gridEnabled
+        case axisLabelsEnabled
+        case bigNumbersEnabled
+        case bigNumberMetric
+        case bigNumberFontSize
+        case bigNumberFontName
+        case bigNumberFontWeight
+        case backgroundEnabled
+        case backgroundColor
+        case backgroundOpacity
+        case cornerRadius
+        case borderEnabled
+        case borderOpacity
+        case shadowEnabled
+        case shadowOpacity
+        case shadowRadius
+        case glowEnabled
+        case glowOpacity
+        case statsBar
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let decodedPreset = try container.decodeIfPresent(ElevationChartPreset.self, forKey: .preset) ?? .gradientArea
+        let defaults = ElevationChartStyle.preset(decodedPreset)
+
+        preset = decodedPreset
+        width = try container.decodeIfPresent(Double.self, forKey: .width) ?? defaults.width
+        height = try container.decodeIfPresent(Double.self, forKey: .height) ?? defaults.height
+        chartStyle = try container.decodeIfPresent(ElevationChartRenderStyle.self, forKey: .chartStyle) ?? defaults.chartStyle
+        smoothingEnabled = try container.decodeIfPresent(Bool.self, forKey: .smoothingEnabled) ?? defaults.smoothingEnabled
+        smoothingAmount = min(max(try container.decodeIfPresent(Double.self, forKey: .smoothingAmount) ?? defaults.smoothingAmount, 0), 1)
+        progressMode = try container.decodeIfPresent(ElevationChartProgressMode.self, forKey: .progressMode) ?? defaults.progressMode
+        chartPaddingX = try container.decodeIfPresent(Double.self, forKey: .chartPaddingX) ?? defaults.chartPaddingX
+        chartPaddingY = try container.decodeIfPresent(Double.self, forKey: .chartPaddingY) ?? defaults.chartPaddingY
+        lineColor = try container.decodeIfPresent(OverlayColor.self, forKey: .lineColor) ?? defaults.lineColor
+        lineWidth = try container.decodeIfPresent(Double.self, forKey: .lineWidth) ?? defaults.lineWidth
+        lineOpacity = try container.decodeIfPresent(Double.self, forKey: .lineOpacity) ?? defaults.lineOpacity
+        fillEnabled = try container.decodeIfPresent(Bool.self, forKey: .fillEnabled) ?? defaults.fillEnabled
+        fillStartColor = try container.decodeIfPresent(OverlayColor.self, forKey: .fillStartColor) ?? defaults.fillStartColor
+        fillEndColor = try container.decodeIfPresent(OverlayColor.self, forKey: .fillEndColor) ?? defaults.fillEndColor
+        fillOpacity = try container.decodeIfPresent(Double.self, forKey: .fillOpacity) ?? defaults.fillOpacity
+        dualAreaEnabled = try container.decodeIfPresent(Bool.self, forKey: .dualAreaEnabled) ?? defaults.dualAreaEnabled
+        upperFillColor = try container.decodeIfPresent(OverlayColor.self, forKey: .upperFillColor) ?? defaults.upperFillColor
+        lowerFillColor = try container.decodeIfPresent(OverlayColor.self, forKey: .lowerFillColor) ?? defaults.lowerFillColor
+        currentMarkerEnabled = try container.decodeIfPresent(Bool.self, forKey: .currentMarkerEnabled) ?? defaults.currentMarkerEnabled
+        markerColor = try container.decodeIfPresent(OverlayColor.self, forKey: .markerColor) ?? defaults.markerColor
+        markerLabelEnabled = try container.decodeIfPresent(Bool.self, forKey: .markerLabelEnabled) ?? defaults.markerLabelEnabled
+        gridEnabled = try container.decodeIfPresent(Bool.self, forKey: .gridEnabled) ?? defaults.gridEnabled
+        axisLabelsEnabled = try container.decodeIfPresent(Bool.self, forKey: .axisLabelsEnabled) ?? defaults.axisLabelsEnabled
+        bigNumbersEnabled = try container.decodeIfPresent(Bool.self, forKey: .bigNumbersEnabled) ?? defaults.bigNumbersEnabled
+        bigNumberMetric = try container.decodeIfPresent(ElevationChartBigMetric.self, forKey: .bigNumberMetric) ?? defaults.bigNumberMetric
+        bigNumberFontSize = try container.decodeIfPresent(Double.self, forKey: .bigNumberFontSize) ?? defaults.bigNumberFontSize
+        bigNumberFontName = try container.decodeIfPresent(String.self, forKey: .bigNumberFontName) ?? defaults.bigNumberFontName
+        bigNumberFontWeight = try container.decodeIfPresent(OverlayFontWeight.self, forKey: .bigNumberFontWeight) ?? defaults.bigNumberFontWeight
+        backgroundEnabled = try container.decodeIfPresent(Bool.self, forKey: .backgroundEnabled) ?? defaults.backgroundEnabled
+        backgroundColor = try container.decodeIfPresent(OverlayColor.self, forKey: .backgroundColor) ?? defaults.backgroundColor
+        backgroundOpacity = try container.decodeIfPresent(Double.self, forKey: .backgroundOpacity) ?? defaults.backgroundOpacity
+        cornerRadius = try container.decodeIfPresent(Double.self, forKey: .cornerRadius) ?? defaults.cornerRadius
+        borderEnabled = try container.decodeIfPresent(Bool.self, forKey: .borderEnabled) ?? defaults.borderEnabled
+        borderOpacity = try container.decodeIfPresent(Double.self, forKey: .borderOpacity) ?? defaults.borderOpacity
+        shadowEnabled = try container.decodeIfPresent(Bool.self, forKey: .shadowEnabled) ?? defaults.shadowEnabled
+        shadowOpacity = try container.decodeIfPresent(Double.self, forKey: .shadowOpacity) ?? defaults.shadowOpacity
+        shadowRadius = try container.decodeIfPresent(Double.self, forKey: .shadowRadius) ?? defaults.shadowRadius
+        glowEnabled = try container.decodeIfPresent(Bool.self, forKey: .glowEnabled) ?? defaults.glowEnabled
+        glowOpacity = try container.decodeIfPresent(Double.self, forKey: .glowOpacity) ?? defaults.glowOpacity
+        statsBar = try container.decodeIfPresent(DistanceTimelineStatsBarConfig.self, forKey: .statsBar) ?? defaults.statsBar
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(preset, forKey: .preset)
+        try container.encode(width, forKey: .width)
+        try container.encode(height, forKey: .height)
+        try container.encode(chartStyle, forKey: .chartStyle)
+        try container.encode(smoothingEnabled, forKey: .smoothingEnabled)
+        try container.encode(smoothingAmount, forKey: .smoothingAmount)
+        try container.encode(progressMode, forKey: .progressMode)
+        try container.encode(chartPaddingX, forKey: .chartPaddingX)
+        try container.encode(chartPaddingY, forKey: .chartPaddingY)
+        try container.encode(lineColor, forKey: .lineColor)
+        try container.encode(lineWidth, forKey: .lineWidth)
+        try container.encode(lineOpacity, forKey: .lineOpacity)
+        try container.encode(fillEnabled, forKey: .fillEnabled)
+        try container.encode(fillStartColor, forKey: .fillStartColor)
+        try container.encode(fillEndColor, forKey: .fillEndColor)
+        try container.encode(fillOpacity, forKey: .fillOpacity)
+        try container.encode(dualAreaEnabled, forKey: .dualAreaEnabled)
+        try container.encode(upperFillColor, forKey: .upperFillColor)
+        try container.encode(lowerFillColor, forKey: .lowerFillColor)
+        try container.encode(currentMarkerEnabled, forKey: .currentMarkerEnabled)
+        try container.encode(markerColor, forKey: .markerColor)
+        try container.encode(markerLabelEnabled, forKey: .markerLabelEnabled)
+        try container.encode(gridEnabled, forKey: .gridEnabled)
+        try container.encode(axisLabelsEnabled, forKey: .axisLabelsEnabled)
+        try container.encode(bigNumbersEnabled, forKey: .bigNumbersEnabled)
+        try container.encode(bigNumberMetric, forKey: .bigNumberMetric)
+        try container.encode(bigNumberFontSize, forKey: .bigNumberFontSize)
+        try container.encode(bigNumberFontName, forKey: .bigNumberFontName)
+        try container.encode(bigNumberFontWeight, forKey: .bigNumberFontWeight)
+        try container.encode(backgroundEnabled, forKey: .backgroundEnabled)
+        try container.encode(backgroundColor, forKey: .backgroundColor)
+        try container.encode(backgroundOpacity, forKey: .backgroundOpacity)
+        try container.encode(cornerRadius, forKey: .cornerRadius)
+        try container.encode(borderEnabled, forKey: .borderEnabled)
+        try container.encode(borderOpacity, forKey: .borderOpacity)
+        try container.encode(shadowEnabled, forKey: .shadowEnabled)
+        try container.encode(shadowOpacity, forKey: .shadowOpacity)
+        try container.encode(shadowRadius, forKey: .shadowRadius)
+        try container.encode(glowEnabled, forKey: .glowEnabled)
+        try container.encode(glowOpacity, forKey: .glowOpacity)
+        try container.encode(statsBar, forKey: .statsBar)
     }
 }
 

@@ -1,6 +1,31 @@
 # Running Overlay Project Log
 
+## 2026-06-18
+
+### Elevation Chart Big Elevation Typography
+
+- Added dedicated Big Elevation font family and font weight fields on `ElevationChartStyle`.
+- Exposed `Font` and `Weight` controls in the Big Elevation inspector section.
+- Updated preview and export renderers so Big Elevation value, unit, and label use the dedicated font family instead of the overlay's global font.
+- Added decode fallback coverage so older elevation chart styles without Big Elevation font fields continue to open with preset defaults.
+- Verification: `swift test --filter OverlayRenderModelTests/elevationChart`; `swift test`; `git diff --check`.
+
+### Elevation Chart Smoothness Slider
+
+- Added `ElevationChartStyle.smoothingAmount` and exposed it as a `Smoothness` slider in the Chart inspector.
+- Changed elevation smoothing from a fixed two-pass filter to slider-controlled repeated filtering, preserving endpoints while reducing integer-meter stair-step artifacts more aggressively at high values.
+- Strengthened 100% smoothness to use a wide display-only Gaussian filter so it prioritizes a visually continuous curve instead of passing through every quantized elevation sample.
+- Added legacy decoding fallback so existing project/template data without `smoothingAmount` opens with the preset default.
+- Verification: `swift test --filter OverlayRenderModelTests/elevationChart`; `swift test`; `git diff --check`.
+
 ## 2026-06-17
+
+### Elevation Chart Stats Bar Positioning
+
+- Changed Elevation Chart Stats Bar `Inside` behavior so the bar is inside the chart card but no longer overlays the elevation line or filled area.
+- Changed outside Stats Bar placement so the bar attaches below the chart card instead of remaining partially inside the shared background surface.
+- Aligned preview and export positioning around the same card-relative chart and stats bar frames.
+- Verification: `swift test --filter OverlayRenderModelTests/elevationChart`.
 
 ### Shared Background Fade Feather Mask
 
@@ -4346,6 +4371,36 @@ Files changed:
 - `docs/design/overlays/interval-hud-bar/interval-hud-bar-overlay-ui.md`
 - `docs/design/overlays/interval-hud-bar/interval-hud-bar-overlay-ui.spec.json`
 - `docs/overlay-modules/interval-hud-bar-overlay.md`
+- `docs/project-log.md`
+
+### Elevation Chart Visual Refinement (2026-06-17)
+
+Summary:
+
+- Refined Elevation Chart presets into five premium visual families: Premium Gradient, Dark Terrain, Tech Glow, Minimal White, and Big Elevation.
+- Updated preview and export rendering with softer area gradients, optional dual-tone terrain fill, glow-enabled line rendering, dashed current cursor, layered marker dots, and compact value-only marker tooltips.
+- Kept Elevation Chart on the shared Background, Border, Effects, Layout, and Stats Bar systems instead of adding a separate card-background implementation.
+- Added the Elevation Chart Stats Bar Inside option and kept the stats bar on the shared configuration/rendering path used by Route Map and Distance Timeline.
+- Updated Elevation Chart docs and spec files to match the current preset surface and shared-component decisions.
+
+Verification:
+
+- `swift test --filter OverlayRenderModelTests/elevationChart`
+- `swift test`
+- `git diff --check`
+- `python3 -m json.tool docs/design/overlays/elevation-chart/elevation-chart-overlay-ui.spec.json >/dev/null`
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/OverlayElement.swift`
+- `Sources/RunningOverlay/Overlay/OverlayRenderModel.swift`
+- `Sources/RunningOverlay/UI/ElevationChartOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `Tests/RunningOverlayTests/OverlayRenderModelTests.swift`
+- `docs/design/overlays/elevation-chart/elevation-chart-overlay-ui.md`
+- `docs/design/overlays/elevation-chart/elevation-chart-overlay-ui.spec.json`
+- `docs/overlay-modules/elevation-chart-overlay.md`
 - `docs/project-log.md`
 
 ### Visual Background Consistency Pass (2026-06-17)

@@ -119,6 +119,14 @@ struct ElevationChartOverlayDetailView: View {
             InspectorDenseSegmented(values: ElevationChartRenderStyle.allCases, selection: elevationBinding(\.chartStyle, of: style)) { Text($0.label) }
         }
         InspectorDenseRow(label: "Smoothing") { toggle(style.smoothingEnabled) { set(\.smoothingEnabled, to: $0) } }
+        InspectorDenseSliderRow(
+            label: "Smoothness",
+            value: elevationBinding(\.smoothingAmount, of: style, continuous: true),
+            range: 0...1,
+            displayText: percent(style.smoothingAmount)
+        )
+        .disabled(!style.smoothingEnabled)
+        .opacity(style.smoothingEnabled ? 1 : 0.5)
         InspectorDenseRow(label: "Progress") {
             InspectorDenseSegmented(values: ElevationChartProgressMode.allCases, selection: elevationBinding(\.progressMode, of: style)) { Text($0.label) }
         }
@@ -181,6 +189,28 @@ struct ElevationChartOverlayDetailView: View {
         InspectorDenseRow(label: "Metric") {
             InspectorDenseSegmented(values: ElevationChartBigMetric.allCases, selection: elevationBinding(\.bigNumberMetric, of: style)) { Text($0.label) }
         }
+        InspectorDenseRow(label: "Font") {
+            Menu {
+                ForEach(NumericOverlayDetailView.fontPresets, id: \.self) { name in
+                    Button {
+                        set(\.bigNumberFontName, to: name)
+                    } label: {
+                        if name == style.bigNumberFontName {
+                            Label(name, systemImage: "checkmark")
+                        } else {
+                            Text(name)
+                        }
+                    }
+                }
+            } label: {
+                InspectorDenseMenuLabel(title: style.bigNumberFontName)
+            }
+            .menuStyle(.borderlessButton)
+            .frame(height: NumericTokens.controlHeight)
+        }
+        InspectorDenseRow(label: "Weight") {
+            InspectorDenseSegmented(values: OverlayFontWeight.allCases, selection: elevationBinding(\.bigNumberFontWeight, of: style)) { Text($0.label) }
+        }
         InspectorDenseSliderRow(label: "Size", value: elevationBinding(\.bigNumberFontSize, of: style, continuous: true), range: 24...84, displayText: "\(Int(style.bigNumberFontSize))")
     }
 
@@ -228,6 +258,7 @@ struct ElevationChartOverlayDetailView: View {
                 ),
                 slots: config.slots.map { ($0.metric, $0.visible) },
                 availableMetrics: SharedStatsBarInspectorUI.metrics,
+                inside: config.inside,
                 extraLayout: .init(
                     width: config.width,
                     offsetX: config.offsetX,
@@ -245,7 +276,8 @@ struct ElevationChartOverlayDetailView: View {
                 onSetDividerOpacity: { value in setStats { $0.dividerOpacity = value } },
                 onSetCornerRadius: { value in setStats { $0.cornerRadius = value.rounded() } },
                 onSetSlotMetric: { index, metric in project.mutateElevationChartStyle(elementID) { $0.setStatsBarMetric(metric, at: index) } },
-                onSetSlotVisible: { index, visible in project.mutateElevationChartStyle(elementID) { $0.setStatsBarVisible(visible, at: index) } }
+                onSetSlotVisible: { index, visible in project.mutateElevationChartStyle(elementID) { $0.setStatsBarVisible(visible, at: index) } },
+                onSetInside: { value in setStats { $0.inside = value } }
             )
         }
     }
@@ -381,7 +413,7 @@ private enum Section: CaseIterable, Hashable {
         case .lineFill: "Line & Fill"
         case .markers: "Markers"
         case .axis: "Axis & Labels"
-        case .bigNumbers: "Big Numbers"
+        case .bigNumbers: "Big Elevation"
         case .statsBar: "Stats Bar"
         case .background: "Background"
         case .effects: "Effects"
