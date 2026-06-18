@@ -348,6 +348,20 @@ enum OverlayTextAttachmentPosition: String, CaseIterable, Identifiable, Codable 
     }
 }
 
+enum OverlayElevationDisplayMode: String, CaseIterable, Identifiable, Codable {
+    case current
+    case gain
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .current: "Current"
+        case .gain: "Gain"
+        }
+    }
+}
+
 struct OverlayStyle: Equatable, Codable {
     var textPreset: OverlayTextPreset
     var gaugePreset: OverlayGaugePreset
@@ -408,6 +422,7 @@ struct OverlayStyle: Equatable, Codable {
 
     // Numeric Overlay additions (see docs/design/overlays/numeric/numeric-overlay-ui.md)
     var unitOption: OverlayUnitOption
+    var elevationDisplayMode: OverlayElevationDisplayMode
     var showLabel: Bool
     var showUnit: Bool
     var customLabel: String
@@ -576,6 +591,7 @@ struct OverlayStyle: Equatable, Codable {
         shadowOpacity: 0.35,
         shadowRadius: 4,
         unitOption: .paceMetric,
+        elevationDisplayMode: .current,
         showLabel: false,
         showUnit: true,
         customLabel: "",
@@ -686,6 +702,7 @@ struct OverlayStyle: Equatable, Codable {
         shadowOpacity: Double,
         shadowRadius: Double,
         unitOption: OverlayUnitOption = .paceMetric,
+        elevationDisplayMode: OverlayElevationDisplayMode = .current,
         showLabel: Bool = false,
         showUnit: Bool = true,
         customLabel: String = "",
@@ -794,6 +811,7 @@ struct OverlayStyle: Equatable, Codable {
         self.shadowOpacity = shadowOpacity
         self.shadowRadius = shadowRadius
         self.unitOption = unitOption
+        self.elevationDisplayMode = elevationDisplayMode
         self.showLabel = showLabel
         self.showUnit = showUnit
         self.customLabel = customLabel
@@ -914,6 +932,7 @@ struct OverlayStyle: Equatable, Codable {
         shadowOpacity = try container.decodeIfPresent(Double.self, forKey: .shadowOpacity) ?? Self.default.shadowOpacity
         shadowRadius = try container.decodeIfPresent(Double.self, forKey: .shadowRadius) ?? Self.default.shadowRadius
         unitOption = try container.decodeIfPresent(OverlayUnitOption.self, forKey: .unitOption) ?? Self.default.unitOption
+        elevationDisplayMode = try container.decodeIfPresent(OverlayElevationDisplayMode.self, forKey: .elevationDisplayMode) ?? Self.default.elevationDisplayMode
         showLabel = try container.decodeIfPresent(Bool.self, forKey: .showLabel) ?? Self.default.showLabel
         showUnit = try container.decodeIfPresent(Bool.self, forKey: .showUnit) ?? Self.default.showUnit
         customLabel = try container.decodeIfPresent(String.self, forKey: .customLabel) ?? Self.default.customLabel

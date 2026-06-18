@@ -56,6 +56,7 @@ struct OverlayTemplateTests {
         #expect(style.valueColorsFollowHeartRateZones == false)
         #expect(style.labelColorsFollowHeartRateZones == false)
         #expect(style.unitColorsFollowHeartRateZones == false)
+        #expect(style.elevationDisplayMode == .current)
     }
 
     @Test func overlayStyleLegacyTextZoneColorFlagSeedsPerRoleTextFlags() throws {

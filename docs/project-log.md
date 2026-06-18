@@ -2,6 +2,20 @@
 
 ## 2026-06-18
 
+### Overlay Font Weight Face Resolution
+
+- Fixed custom font weight rendering by resolving font families through AppKit to concrete weighted PostScript faces before creating SwiftUI preview fonts.
+- Updated export text drawing to use the same resolver instead of treating family names such as `JetBrains Mono` as direct PostScript names.
+- Preserved the selected font weight when applying monospaced digit features in export.
+- Verification: `swift build`, `swift test --filter OverlayFontResolverTests`, `git diff --check`.
+
+### Elevation Numeric Overlay: Current vs Gain
+
+- Added `OverlayStyle.elevationDisplayMode` with `current` and `gain` options for the Elevation numeric overlay.
+- Numeric Overlay Inspector `Content` section now shows a `Mode` menu for Elevation. `Current` keeps the existing live altitude behavior; `Gain` renders cumulative ascent up to the current playhead time, while reusing the same meter/feet unit menu.
+- Added formatter coverage for both modes and a legacy decode assertion that old project/template JSON still defaults Elevation to `current`.
+- Verification: `swift test --filter OverlayValueFormatterTests`, `swift test --filter OverlayTemplateTests`.
+
 ### Elevation Chart Big Elevation Typography
 
 - Added dedicated Big Elevation font family and font weight fields on `ElevationChartStyle`.

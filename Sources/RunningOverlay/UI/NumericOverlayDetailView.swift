@@ -67,6 +67,27 @@ struct NumericOverlayDetailView: View {
                 InspectorDenseReadout(text: only.label)
             }
         }
+        if element.type == .elevation {
+            InspectorDenseRow(label: "Mode") {
+                Menu {
+                    ForEach(OverlayElevationDisplayMode.allCases) { mode in
+                        Button {
+                            project.setOverlayElevationDisplayMode(elementID, mode: mode)
+                        } label: {
+                            if mode == element.style.elevationDisplayMode {
+                                Label(mode.label, systemImage: "checkmark")
+                            } else {
+                                Text(mode.label)
+                            }
+                        }
+                    }
+                } label: {
+                    InspectorDenseMenuLabel(title: element.style.elevationDisplayMode.label)
+                }
+                .menuStyle(.borderlessButton)
+                .frame(height: NumericTokens.controlHeight)
+            }
+        }
         InspectorDenseRow(label: "Format Preview") {
             InspectorDenseReadout(text: previewValue(for: element), isNumeric: true)
         }

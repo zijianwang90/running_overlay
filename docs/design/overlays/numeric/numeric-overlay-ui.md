@@ -1,6 +1,6 @@
 # Numeric Overlay UI Design Spec
 
-Last updated: 2026-06-16 (per-role HR zone tint)
+Last updated: 2026-06-18 (elevation current vs gain)
 
 ## Purpose
 
@@ -93,6 +93,7 @@ Do not use large card containers for every row.
 | Control | Example | Requirement |
 | --- | --- | --- |
 | `Units` dropdown | `Metric (min/km)` | Required for metrics with unit variants. |
+| `Mode` dropdown | `Current` / `Gain` | Required for Elevation only. |
 | `Format Preview` readout | `13'49" / km` | Always visible and model-backed through formatter. |
 
 ### Unit Selection
@@ -132,6 +133,7 @@ Implementation rule:
 - If a metric has only one unit, the Units row can be read-only or omitted.
 - Do not show a unit menu with fake choices that do not change formatting.
 - Do not show a Style or Preset selector for numeric overlays in 1.0.
+- Elevation adds a separate `Mode` menu backed by `OverlayStyle.elevationDisplayMode`: `Current` shows the live altitude at the playhead; `Gain` shows cumulative ascent up to the current playhead time.
 
 ## Layout Section
 
@@ -326,6 +328,7 @@ Inspector width:
 Implemented in `OverlayStyle` (2026-04-26 refactor):
 
 - `unitOption` (`OverlayUnitOption`) — per-overlay unit preference, decoded with default fallback for legacy projects.
+- `elevationDisplayMode` (`OverlayElevationDisplayMode`) — `current` or `gain` for the Elevation numeric overlay; defaults to `current`.
 - `showLabel`, `showUnit`, `customLabel` — control label/unit visibility and override label text.
 - `labelPosition`, `unitPosition` — top/bottom/left/right placement around the numeric value.
 - `labelFontName` / `labelFontSize` / `labelFontWeight` — label-only typography controls.

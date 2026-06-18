@@ -1885,7 +1885,7 @@ struct OverlayFrameRenderer {
         paragraph.lineBreakMode = .byTruncatingTail
         let fontWeight = nsFontWeight(weight)
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont(name: fontName, size: fontSize) ?? NSFont.systemFont(ofSize: fontSize, weight: fontWeight),
+            .font: OverlayFontResolver.appKitFont(family: fontName, size: fontSize, weight: fontWeight),
             .foregroundColor: color,
             .paragraphStyle: paragraph
         ]
@@ -2273,11 +2273,7 @@ struct OverlayFrameRenderer {
 
     private static func intervalHUDFont(_ textStyle: IntervalHUDBarTextStyle) -> NSFont {
         let weight = nsFontWeight(textStyle.fontWeight)
-        let descriptor = NSFontDescriptor(fontAttributes: [
-            .family: textStyle.fontName,
-            .traits: [NSFontDescriptor.TraitKey.weight: weight.rawValue]
-        ])
-        return NSFont(descriptor: descriptor, size: textStyle.fontSize) ?? NSFont.monospacedDigitSystemFont(ofSize: textStyle.fontSize, weight: weight)
+        return OverlayFontResolver.appKitFont(family: textStyle.fontName, size: textStyle.fontSize, weight: weight)
     }
 
     private static func nsFontWeight(_ weight: OverlayFontWeight) -> NSFont.Weight {
@@ -2370,10 +2366,8 @@ struct OverlayFrameRenderer {
     ) {
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.alignment = alignment
-        var font = NSFont(name: fontName, size: fontSize) ?? .systemFont(ofSize: fontSize, weight: weight)
+        var font = OverlayFontResolver.appKitFont(family: fontName, size: fontSize, weight: weight)
         if monospacedDigits {
-            font = NSFontManager.shared.font(withFamily: font.familyName ?? font.fontName,
-                                             traits: [], weight: 5, size: fontSize) ?? font
             // monospaced digits feature
             let descriptor = font.fontDescriptor.addingAttributes([
                 .featureSettings: [
@@ -3162,7 +3156,7 @@ struct OverlayFrameRenderer {
     }
 
     fileprivate static func textAttributes(for element: OverlayElement, fontSize: Double, shadowRadius: Double, shadowOffsetY: Double) -> [NSAttributedString.Key: Any] {
-        let font = NSFont(name: element.style.fontName, size: fontSize) ?? .systemFont(ofSize: fontSize, weight: nsFontWeight(element.style.fontWeight))
+        let font = OverlayFontResolver.appKitFont(family: element.style.fontName, size: fontSize, weight: nsFontWeight(element.style.fontWeight))
         var attributes: [NSAttributedString.Key: Any] = [
             .font: font,
             .foregroundColor: NSColor(element.style.foregroundColor)
@@ -3578,7 +3572,7 @@ struct OverlayFrameRenderer {
     ) {
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.alignment = alignment
-        let font = NSFont(name: fontName ?? element.style.fontName, size: fontSize) ?? .systemFont(ofSize: fontSize, weight: weight)
+        let font = OverlayFontResolver.appKitFont(family: fontName ?? element.style.fontName, size: fontSize, weight: weight)
         NSAttributedString(
             string: text,
             attributes: [
