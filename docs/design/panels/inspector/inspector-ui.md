@@ -159,6 +159,11 @@ Row content:
 - Delete icon button.
 - Chevron indicating the row opens detail.
 
+Icon color:
+
+- Added Overlays row icons and Overlay Detail header icons use `text.primary`.
+- Do not tint individual overlay type icons blue; reserve `accent.blue` for primary actions, selected controls, and focus/selection affordances.
+
 Row behavior:
 
 - Clicking the row body opens the Overlay Detail screen for that element.

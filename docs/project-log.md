@@ -9,6 +9,12 @@
 - Added the Export UI design spec and structured spec under `docs/design/panels/export/`.
 - Verification: `swift build`, `python3 -m json.tool docs/design/panels/export/export-ui.spec.json`, `git diff --check`.
 
+### Inspector Overlay Icon Color
+
+- Changed Added Overlays row icons and Overlay Detail header icons to use the primary text color instead of tinting featured Route Map and Running Gauge icons blue.
+- Updated the Inspector UI design spec to reserve accent blue for actions, selection, and focus affordances rather than overlay type icons.
+- Verification: `swift build`, `git diff --check`.
+
 ### Overlay Font Weight Face Resolution
 
 - Fixed custom font weight rendering by resolving font families through AppKit to concrete weighted PostScript faces before creating SwiftUI preview fonts.

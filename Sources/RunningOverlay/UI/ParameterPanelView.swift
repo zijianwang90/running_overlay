@@ -586,7 +586,7 @@ private struct OverlayElementRow: View {
         HStack(spacing: InspectorTheme.space3) {
             Image(systemName: element.type.inspectorIcon)
                 .font(.system(size: 19, weight: .medium))
-                .foregroundStyle(element.type.isFeaturedOverlay ? InspectorTheme.accentBlue : InspectorTheme.textPrimary)
+                .foregroundStyle(InspectorTheme.textPrimary)
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 3) {
@@ -1108,7 +1108,7 @@ private struct OverlayDetailHeader: View {
                     .fill(InspectorTheme.controlBackground)
                 Image(systemName: element.type.inspectorIcon)
                     .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(element.type.isFeaturedOverlay ? InspectorTheme.accentBlue : InspectorTheme.textPrimary)
+                    .foregroundStyle(InspectorTheme.textPrimary)
             }
             .frame(width: 46, height: 46)
             .overlay(InspectorRoundedBorder())
@@ -1576,9 +1576,6 @@ private extension OverlayElementType {
         }
     }
 
-    var isFeaturedOverlay: Bool {
-        self == .runningGauge || self == .routeMap
-    }
 }
 
 private extension OverlayFontWeight {
