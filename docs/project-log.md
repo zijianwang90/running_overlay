@@ -1,5 +1,15 @@
 # Running Overlay Project Log
 
+## 2026-06-19
+
+### FIT Workout Structure Detection
+
+- Replaced the fixed 3.5 m/s lap classification threshold with sequence-based workout structure analysis for Normal vs Structured activities.
+- Added internal Structured subtypes for interval, steady plan, and generic laps; slow repeated intervals such as 400m reps now classify work/rest laps without requiring fast absolute pace.
+- Added a FIT information menu for `Auto`, `Normal`, and `Structured` session-level overrides. Overrides are current-session state and do not change template application.
+- Updated timeline FIT rendering to color structured lap phases beyond interval-only workouts.
+- Verification: `swift build`, `swift test --filter WorkoutStructureAnalyzerTests`, `swift test --filter FitFileParserTests`, `swift test --filter TimelineModelTests`, `swift test`.
+
 ## 2026-06-18
 
 ### Export Dialog: Help Tooltips And Codec Alignment

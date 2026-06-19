@@ -158,6 +158,7 @@ Current implementation:
 - Developer field definitions are read and skipped so standard fields in files with developer data remain parseable.
 - Record elapsed times are normalized after parsing with the final activity start date so overlay values sample the correct FIT record over time.
 - Timer start/stop events are parsed into `ActivityAnnotatedSegment` pause spans. These spans stay on the real elapsed-time axis and are available to timeline UI without changing video alignment.
+- FIT lap classification runs through `WorkoutStructureAnalyzer`, which infers Normal vs Structured workouts from the full lap sequence instead of a fixed absolute speed threshold. Structured workouts keep an internal subtype (`interval`, `steadyPlan`, or `genericLaps`) while the import UI exposes only `Auto`, `Normal`, and `Structured`.
 - Compressed timestamp headers are accepted only enough to route to local message definitions; full compressed timestamp reconstruction is not implemented yet.
 - Broad FIT profile coverage, CRC validation, deeper pause semantics for data sampling, and timezone/device drift handling are still pending.
 
@@ -209,7 +210,7 @@ Current implementation:
 - Timeline shows a default empty `Layer 1` track when no clips exist but FIT or media context exists.
 - Timeline drawing separates the label column from the central lane area with distinct backgrounds and a vertical divider.
 - Timeline styling follows `docs/design/panels/timeline/timeline-ui.md` and `docs/design/panels/timeline/timeline-ui.spec.json`, including compact header controls, dark alternating lane bands, subtle ruler ticks, square-adjacent clip joins with dark splice borders, and compact hover info pills.
-- FIT track rendering uses the existing `ActivityTimeline.laps` / `LapRecord.kind` interval classification to color WU, RUN, REST, and CD phases for interval workouts, while steady activities keep the default green FIT bar and timer-paused spans remain gray overlays.
+- FIT track rendering uses `ActivityTimeline.workoutStructure` and `LapRecord.kind` to color WU, RUN, REST, CD, and generic lap phases for Structured workouts, while Normal activities keep the default green FIT bar and timer-paused spans remain gray overlays.
 - Dropping a media item creates or moves a timeline clip at the drop location.
 - Media drag-over highlights the target layer, and the AppKit timeline exposes only one new layer drop target beyond existing layers.
 - `TimelineClip` stores `startTime` and `alignmentOffset` separately.

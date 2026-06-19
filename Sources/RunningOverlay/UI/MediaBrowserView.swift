@@ -162,27 +162,7 @@ struct MediaBrowserView: View {
                 .padding(.bottom, !project.mediaItems.isEmpty && project.activity.duration > 0 ? 4 : 8)
 
                 if !project.mediaItems.isEmpty && project.activity.duration > 0 {
-                    HStack(spacing: 5) {
-                        Circle()
-                            .fill(EditorTheme.successGreen)
-                            .frame(width: 6, height: 6)
-                        Text(project.fitSourceName.isEmpty ? "FIT loaded" : project.fitSourceName)
-                            .font(EditorTheme.captionFont)
-                            .foregroundStyle(EditorTheme.textMuted)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Button {
-                            project.importFitFile()
-                        } label: {
-                            Text("Replace")
-                                .font(EditorTheme.captionFont)
-                                .foregroundStyle(EditorTheme.textMuted)
-                                .underline()
-                        }
-                        .buttonStyle(.plain)
-                        .help("Replace the current FIT file")
-                    }
+                    fitStatusRow
                     .padding(.horizontal, 12)
                     .padding(.bottom, 8)
                 }
@@ -194,6 +174,86 @@ struct MediaBrowserView: View {
             }
         }
         .background(EditorTheme.panelBackground)
+    }
+
+    private var fitStatusRow: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(EditorTheme.successGreen)
+                .frame(width: 6, height: 6)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(project.fitSourceName.isEmpty ? "FIT loaded" : project.fitSourceName)
+                    .font(EditorTheme.captionFont)
+                    .foregroundStyle(EditorTheme.textMuted)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Text(project.workoutStructureSummary)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(EditorTheme.textMuted.opacity(0.85))
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Menu {
+                ForEach(WorkoutStructureSelection.allCases) { selection in
+                    Button {
+                        project.setWorkoutStructureSelection(selection)
+                    } label: {
+                        if project.workoutStructureSelection == selection {
+                            Label(selection.label, systemImage: "checkmark")
+                        } else {
+                            Text(selection.label)
+                        }
+                    }
+                }
+            } label: {
+                Text(project.workoutStructureSelection.label)
+                    .font(EditorTheme.captionFont)
+                    .foregroundStyle(EditorTheme.textSecondary)
+            }
+            .menuStyle(.borderlessButton)
+            .frame(width: 78)
+            .help("Workout type")
+
+            Button {
+                project.importFitFile()
+            } label: {
+                Text("Replace")
+                    .font(EditorTheme.captionFont)
+                    .foregroundStyle(EditorTheme.textMuted)
+                    .underline()
+            }
+            .buttonStyle(.plain)
+            .help("Replace the current FIT file")
+        }
+    }
+
+    private var workoutStructureMenuRow: some View {
+        HStack(spacing: 8) {
+            Text(project.workoutStructureSummary)
+                .font(EditorTheme.captionFont)
+                .foregroundStyle(EditorTheme.textMuted)
+                .lineLimit(1)
+            Menu {
+                ForEach(WorkoutStructureSelection.allCases) { selection in
+                    Button {
+                        project.setWorkoutStructureSelection(selection)
+                    } label: {
+                        if project.workoutStructureSelection == selection {
+                            Label(selection.label, systemImage: "checkmark")
+                        } else {
+                            Text(selection.label)
+                        }
+                    }
+                }
+            } label: {
+                Text(project.workoutStructureSelection.label)
+                    .font(EditorTheme.captionFont)
+            }
+            .menuStyle(.borderlessButton)
+            .frame(width: 78)
+            .help("Workout type")
+        }
     }
 
     private var mediaList: some View {
@@ -722,16 +782,22 @@ struct MediaBrowserView: View {
         VStack(spacing: 8) {
             Spacer()
             StepIndicator(currentStep: .videos)
-            Button {
-                project.importFitFile()
-            } label: {
-                Text("Replace FIT")
-                    .font(EditorTheme.captionFont)
-                    .foregroundStyle(EditorTheme.textMuted)
-                    .underline()
+            VStack(spacing: 2) {
+                Button {
+                    project.importFitFile()
+                } label: {
+                    Text("Replace FIT")
+                        .font(EditorTheme.captionFont)
+                        .foregroundStyle(EditorTheme.textMuted)
+                        .underline()
+                }
+                .buttonStyle(.plain)
+                .help("Replace the current FIT file")
+
+                if project.activity.duration > 0 {
+                    workoutStructureMenuRow
+                }
             }
-            .buttonStyle(.plain)
-            .help("Replace the current FIT file")
             .padding(.bottom, EditorTheme.space2)
             Image(systemName: "video.badge.plus")
                 .font(.system(size: 32))

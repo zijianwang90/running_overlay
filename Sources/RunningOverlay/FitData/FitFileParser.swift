@@ -83,15 +83,17 @@ struct FitFileParser {
                 .sorted { $0.elapsedTime < $1.elapsedTime }
             let duration = sessionElapsedTime ?? max(normalizedRecords.map(\.elapsedTime).max() ?? 0, 1)
             let distance = sessionDistanceMeters ?? records.compactMap(\.distanceMeters).max() ?? 0
-            let lapRecords = buildLapRecords(startDate: startDate, totalLaps: rawLaps.count)
+            let lapRecords = buildLapRecords(startDate: startDate)
+            let workoutResult = WorkoutStructureAnalyzer.analyze(laps: lapRecords)
             let annotatedSegments = buildAnnotatedSegments(startDate: startDate, duration: duration)
             return ActivityTimeline(
                 startDate: startDate,
                 duration: duration,
                 distanceMeters: distance,
                 records: normalizedRecords,
-                laps: lapRecords,
-                annotatedSegments: annotatedSegments
+                laps: workoutResult.laps,
+                annotatedSegments: annotatedSegments,
+                workoutStructure: workoutResult.analysis
             )
         }
 
@@ -103,7 +105,8 @@ struct FitFileParser {
                 distanceMeters: sessionDistanceMeters ?? 0,
                 records: [],
                 laps: [],
-                annotatedSegments: annotatedSegments
+                annotatedSegments: annotatedSegments,
+                workoutStructure: .normalAuto
             )
         }
 
@@ -341,7 +344,7 @@ struct FitFileParser {
         }
     }
 
-    private func buildLapRecords(startDate: Date, totalLaps: Int) -> [LapRecord] {
+    private func buildLapRecords(startDate: Date) -> [LapRecord] {
         guard !rawLaps.isEmpty else { return [] }
         var result: [LapRecord] = []
         var cumulativeDistance = 0.0
@@ -356,7 +359,6 @@ struct FitFileParser {
             }
             let endElapsed = startElapsed + raw.totalElapsedTime
             let pace = raw.avgSpeedMS.map { $0 > 0 ? 1000 / $0 : 0 }
-            let kind = lapKind(index: index, total: rawLaps.count, avgSpeedMS: raw.avgSpeedMS)
             result.append(LapRecord(
                 lapIndex: index,
                 startElapsedTime: startElapsed,
@@ -370,7 +372,7 @@ struct FitFileParser {
                 avgCadenceSPM: raw.avgCadenceStrides,
                 avgPowerWatts: raw.avgPowerWatts,
                 totalAscent: raw.totalAscent,
-                kind: kind
+                kind: .unknown
             ))
             cumulativeDistance += raw.totalDistanceMeters
             cumulativeTime = endElapsed
@@ -409,14 +411,6 @@ struct FitFileParser {
         }
 
         return segments
-    }
-
-    private func lapKind(index: Int, total: Int, avgSpeedMS: Double?) -> LapKind {
-        let speed = avgSpeedMS ?? 0
-        // First and last laps are warmup/cooldown if they are slow jogs
-        if index == 0, speed < 3.5 { return .warmup }
-        if index == total - 1, speed < 3.5 { return .cooldown }
-        return speed >= 3.5 ? .active : .rest
     }
 
     private func fitDate(_ timestamp: UInt32) -> Date {

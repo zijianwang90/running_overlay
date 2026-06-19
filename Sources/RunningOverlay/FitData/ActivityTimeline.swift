@@ -8,6 +8,64 @@ enum LapKind: String, Equatable, Codable {
     case unknown
 }
 
+enum WorkoutStructureKind: String, Equatable, Codable {
+    case normal
+    case structured
+}
+
+enum WorkoutStructureSubtype: String, Equatable, Codable {
+    case none
+    case interval
+    case steadyPlan
+    case genericLaps
+
+    var displayName: String {
+        switch self {
+        case .none: "none"
+        case .interval: "interval"
+        case .steadyPlan: "steady plan"
+        case .genericLaps: "laps"
+        }
+    }
+}
+
+enum WorkoutStructureSource: String, Equatable, Codable {
+    case auto
+    case userOverride
+}
+
+enum WorkoutStructureSelection: String, CaseIterable, Identifiable {
+    case auto
+    case normal
+    case structured
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .auto: "Auto"
+        case .normal: "Normal"
+        case .structured: "Structured"
+        }
+    }
+}
+
+struct WorkoutStructureAnalysis: Equatable, Codable {
+    var kind: WorkoutStructureKind
+    var subtype: WorkoutStructureSubtype
+    var source: WorkoutStructureSource
+    var confidence: Double
+    var reason: String
+
+    static let normalAuto = WorkoutStructureAnalysis(
+        kind: .normal,
+        subtype: .none,
+        source: .auto,
+        confidence: 1,
+        reason: "No structured lap pattern detected."
+    )
+}
+
 struct LapRecord: Identifiable, Equatable, Codable {
     var id = UUID()
     var lapIndex: Int
@@ -32,6 +90,46 @@ struct ActivityTimeline: Equatable, Codable {
     var records: [ActivityRecord]
     var laps: [LapRecord]
     var annotatedSegments: [ActivityAnnotatedSegment] = []
+    var workoutStructure: WorkoutStructureAnalysis = .normalAuto
+
+    init(
+        startDate: Date,
+        duration: TimeInterval,
+        distanceMeters: Double,
+        records: [ActivityRecord],
+        laps: [LapRecord],
+        annotatedSegments: [ActivityAnnotatedSegment] = [],
+        workoutStructure: WorkoutStructureAnalysis = .normalAuto
+    ) {
+        self.startDate = startDate
+        self.duration = duration
+        self.distanceMeters = distanceMeters
+        self.records = records
+        self.laps = laps
+        self.annotatedSegments = annotatedSegments
+        self.workoutStructure = workoutStructure
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case startDate
+        case duration
+        case distanceMeters
+        case records
+        case laps
+        case annotatedSegments
+        case workoutStructure
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        startDate = try container.decode(Date.self, forKey: .startDate)
+        duration = try container.decode(TimeInterval.self, forKey: .duration)
+        distanceMeters = try container.decode(Double.self, forKey: .distanceMeters)
+        records = try container.decode([ActivityRecord].self, forKey: .records)
+        laps = try container.decode([LapRecord].self, forKey: .laps)
+        annotatedSegments = try container.decodeIfPresent([ActivityAnnotatedSegment].self, forKey: .annotatedSegments) ?? []
+        workoutStructure = try container.decodeIfPresent(WorkoutStructureAnalysis.self, forKey: .workoutStructure) ?? .normalAuto
+    }
 
     var endDate: Date {
         startDate.addingTimeInterval(duration)
@@ -41,6 +139,27 @@ struct ActivityTimeline: Equatable, Codable {
         let activeCount = laps.filter { $0.kind == .active }.count
         let restCount = laps.filter { $0.kind == .rest }.count
         return activeCount >= 2 && restCount >= 1
+    }
+
+    func applyingWorkoutStructureSelection(_ selection: WorkoutStructureSelection) -> ActivityTimeline {
+        let result = WorkoutStructureAnalyzer.analyze(
+            laps: laps,
+            source: selection == .auto ? .auto : .userOverride,
+            forcedKind: {
+                switch selection {
+                case .auto:
+                    nil
+                case .normal:
+                    .normal
+                case .structured:
+                    .structured
+                }
+            }()
+        )
+        var copy = self
+        copy.laps = result.laps
+        copy.workoutStructure = result.analysis
+        return copy
     }
 
     func timestamp(at elapsedTime: TimeInterval) -> Date {
@@ -364,7 +483,8 @@ struct ActivityTimeline: Equatable, Codable {
         distanceMeters: 0,
         records: [],
         laps: [],
-        annotatedSegments: []
+        annotatedSegments: [],
+        workoutStructure: .normalAuto
     )
 }
 

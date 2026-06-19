@@ -249,7 +249,7 @@ private final class TimelineCanvasNSView: NSView {
     private var tracks: [TimelineTrack] = []
     private var activityDuration: TimeInterval = 0
     private var activityLaps: [LapRecord] = []
-    private var isIntervalWorkout = false
+    private var showsStructuredWorkout = false
     private var activitySegments: [ActivityAnnotatedSegment] = []
     private var fitStartTime: TimeInterval = 0
     private var playhead: TimeInterval = 0
@@ -360,7 +360,7 @@ private final class TimelineCanvasNSView: NSView {
         tracks = timeline.tracks
         activityDuration = activity.duration
         activityLaps = activity.laps
-        isIntervalWorkout = activity.isIntervalWorkout
+        showsStructuredWorkout = activity.workoutStructure.kind == .structured
         activitySegments = activity.annotatedSegments
         fitStartTime = timeline.fitStartTime
         playhead = timeline.playhead
@@ -794,7 +794,7 @@ private final class TimelineCanvasNSView: NSView {
         let fitRects = fitTrackRects()
         for fitRect in fitRects {
             let path = roundedPath(fitRect, radius: 4)
-            if isIntervalWorkout {
+            if showsStructuredWorkout {
                 drawIntervalFitTrack(in: fitRect, clippedBy: path)
             } else {
                 NSColor.timelineFitGreen.withAlphaComponent(0.9).setFill()
@@ -1234,7 +1234,7 @@ private final class TimelineCanvasNSView: NSView {
     }
 
     private func lapHit(at point: CGPoint) -> LapRecord? {
-        guard isIntervalWorkout,
+        guard showsStructuredWorkout,
               activityDuration > 0,
               point.y >= rulerHeight,
               point.y <= rulerHeight + fitTrackHeight else {

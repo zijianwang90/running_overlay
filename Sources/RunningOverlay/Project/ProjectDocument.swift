@@ -32,6 +32,7 @@ final class ProjectDocument: ObservableObject {
     @Published var mediaPoolPreviewItemID: MediaItem.ID?
     @Published var mediaPoolPreviewSourceTime: TimeInterval = 0
     @Published var fitSourceName: String = ""
+    @Published var workoutStructureSelection: WorkoutStructureSelection = .auto
     @Published var statusMessage = "Ready to import a FIT file."
     @Published var toastMessage: String?
     @Published var isTimelineCollapsed = false
@@ -55,6 +56,16 @@ final class ProjectDocument: ObservableObject {
         self.userDefaults = userDefaults
         loadOverlayTemplates()
         IconAssetResolver.configure(userAssets: userAssets, projectURL: projectURL)
+    }
+
+    var workoutStructureSummary: String {
+        let analysis = activity.workoutStructure
+        let kind = analysis.kind == .structured ? "Structured" : "Normal"
+        let source = analysis.source == .auto ? "auto" : "manual"
+        guard analysis.kind == .structured, analysis.subtype != .none else {
+            return "\(kind) · \(source)"
+        }
+        return "\(kind) · \(analysis.subtype.displayName) · \(source)"
     }
 
     func assetURL(for assetID: UUID) -> URL? {
@@ -94,6 +105,7 @@ final class ProjectDocument: ObservableObject {
             print("[RunningOverlay] Importing FIT file: \(url.path)")
             registerUndoPoint()
             let parsedActivity = try FitFileParser.parse(url: url)
+            workoutStructureSelection = .auto
             finishFitImport(activity: parsedActivity, sourceName: url.lastPathComponent)
             print("[RunningOverlay] FIT import succeeded: \(url.lastPathComponent), duration=\(formatDuration(activity.duration)), distance=\(formatDistance(activity.distanceMeters)), records=\(activity.records.count)")
         } catch {
@@ -106,6 +118,7 @@ final class ProjectDocument: ObservableObject {
 
     func finishFitImport(activity importedActivity: ActivityTimeline, sourceName: String) {
         activity = importedActivity
+        workoutStructureSelection = .auto
         fitSourceName = sourceName
         timeline.fitStartTime = 0
         timeline.playhead = timeline.fitStartTime
@@ -116,6 +129,14 @@ final class ProjectDocument: ObservableObject {
         } else {
             statusMessage = importSummary
         }
+    }
+
+    func setWorkoutStructureSelection(_ selection: WorkoutStructureSelection) {
+        guard activity.duration > 0 else { return }
+        registerUndoPoint()
+        workoutStructureSelection = selection
+        activity = activity.applyingWorkoutStructureSelection(selection)
+        statusMessage = "Workout type set to \(workoutStructureSummary)."
     }
 
     func importVideos() {
@@ -3570,6 +3591,7 @@ final class ProjectDocument: ObservableObject {
         ProjectSnapshot(
             settings: settings,
             activity: activity,
+            workoutStructureSelection: workoutStructureSelection,
             mediaItems: mediaItems,
             mediaFolders: mediaFolders,
             timeline: timeline,
@@ -3582,6 +3604,7 @@ final class ProjectDocument: ObservableObject {
     private func restore(_ snapshot: ProjectSnapshot) {
         settings = snapshot.settings
         activity = snapshot.activity
+        workoutStructureSelection = snapshot.workoutStructureSelection
         mediaItems = snapshot.mediaItems
         mediaFolders = snapshot.mediaFolders
         timeline = snapshot.timeline
@@ -3606,6 +3629,7 @@ final class ProjectDocument: ObservableObject {
     private func restorePersistentSnapshot(_ snapshot: ProjectPerformanceSnapshot) {
         settings = snapshot.settings
         activity = snapshot.activity
+        workoutStructureSelection = .auto
         mediaItems = snapshot.mediaItems
         mediaFolders = snapshot.mediaFolders
         timeline = snapshot.timeline
@@ -3636,6 +3660,7 @@ final class ProjectDocument: ObservableObject {
 private struct ProjectSnapshot: Equatable {
     var settings: ProjectSettings
     var activity: ActivityTimeline
+    var workoutStructureSelection: WorkoutStructureSelection
     var mediaItems: [MediaItem]
     var mediaFolders: [MediaFolder]
     var timeline: TimelineModel
