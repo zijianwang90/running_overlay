@@ -407,8 +407,10 @@ User templates:
 - Right-clicking a user template row opens a context menu:
   - `Rename`
   - `Duplicate`
+  - `Update Template`
   - `Export...`
   - `Delete`
+- Update Template should confirm before overwriting the saved template with the current overlay setup.
 - Delete should confirm before removing the template.
 
 Template application:

@@ -2,6 +2,12 @@
 
 ## 2026-06-19
 
+### User Template Update Action
+
+- Added a user-template context-menu action to update a saved template from the current overlay setup after confirmation.
+- Preserved the template id, name, and creation timestamp while replacing its saved layout contents and reference resolution.
+- Verification: `swift test --filter OverlayTemplateTests`.
+
 ### FIT Workout Structure Detection
 
 - Replaced the fixed 3.5 m/s lap classification threshold with sequence-based workout structure analysis for Normal vs Structured activities.

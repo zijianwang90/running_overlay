@@ -355,12 +355,23 @@ struct OverlayTemplateTests {
         project.renameOverlayTemplate(saved.id, to: "Long Run")
         #expect(project.overlayTemplates.first?.name == "Long Run")
 
+        let renamed = try #require(project.overlayTemplates.first)
+        let createdAt = renamed.createdAt
+        project.addOverlayElement(.pace)
+        project.updateOverlayTemplateFromCurrentSetup(saved.id)
+        let updated = try #require(project.overlayTemplates.first)
+        #expect(updated.id == saved.id)
+        #expect(updated.name == "Long Run")
+        #expect(updated.createdAt == createdAt)
+        #expect(updated.elements.map(\.type) == [.distance, .pace])
+
         project.duplicateOverlayTemplate(saved.id)
         #expect(project.overlayTemplates.count == 2)
         #expect(project.overlayTemplates[0].name == "Long Run Copy")
 
         let loadedProject = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
         #expect(loadedProject.overlayTemplates.map(\.name) == ["Long Run Copy", "Long Run"])
+        #expect(loadedProject.overlayTemplates[1].elements.map(\.type) == [.distance, .pace])
     }
 
     @Test func builtInOverlayTemplateReplacesLayoutAndIsUndoable() throws {

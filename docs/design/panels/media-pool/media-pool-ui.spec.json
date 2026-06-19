@@ -348,9 +348,11 @@
       "contextMenu": [
         "Rename",
         "Duplicate",
+        "Update Template",
         "Export...",
         "Delete"
       ],
+      "updateRule": "confirm before overwriting selected user template contents with the current overlay setup",
       "deleteRule": "confirm before deleting",
       "exportRule": "export selected template as standalone shareable template file"
     },

@@ -2698,6 +2698,29 @@ final class ProjectDocument: ObservableObject {
         saveOverlayTemplate(named: nextOverlayTemplateName(base: "Template"))
     }
 
+    func updateOverlayTemplateFromCurrentSetup(_ templateID: OverlayTemplate.ID) {
+        guard !overlayLayout.elements.isEmpty else {
+            statusMessage = "Add overlay elements before updating a template."
+            return
+        }
+        guard let index = overlayTemplates.firstIndex(where: { $0.id == templateID }) else {
+            statusMessage = "Overlay template not found."
+            return
+        }
+
+        let existingTemplate = overlayTemplates[index]
+        overlayTemplates[index] = OverlayTemplate(
+            id: existingTemplate.id,
+            name: existingTemplate.name,
+            createdAt: existingTemplate.createdAt,
+            updatedAt: Date(),
+            referenceResolution: overlayTemplateReferenceResolution,
+            elements: overlayLayout.elements.map(OverlayTemplateElement.init(element:))
+        )
+        persistOverlayTemplates()
+        statusMessage = "Updated overlay template: \(existingTemplate.name)."
+    }
+
     func applyOverlayTemplate(_ templateID: OverlayTemplate.ID) {
         guard let template = overlayTemplates.first(where: { $0.id == templateID }) else {
             statusMessage = "Overlay template not found."
