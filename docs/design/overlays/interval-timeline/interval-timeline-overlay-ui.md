@@ -34,7 +34,7 @@ Baseline layout:
 - Track: one horizontal bar composed of lap segments.
 - Segment labels: current segment can show live/remaining lap distance and live/remaining lap time as independent rows; non-current segments can show distance, time, or no text.
 - Current segment: taller, brighter, slightly wider, with border/glow and a progress fill inside the segment.
-- Playhead: small upward marker below the rail and `NOW` label under the marker. A marker lane is always reserved in the overlay bounds so the marker stays inside the background and border. Toggling marker visibility must not move the segment row, rail, or marker lane.
+- Playhead: small upward marker below the rail and optional text label under the marker. The default label is `NOW`, but users can edit it or hide the text while keeping the triangle marker visible. A marker lane is always reserved in the overlay bounds so the marker stays inside the background and border. Toggling marker visibility or marker text visibility must not move the segment row, rail, or marker lane.
 - Decoration rail: optional line-and-dot progress decoration below the segment row and inside the background. `Spacing` controls the vertical distance from the segment row to the rail and expands the background height; dots expose size, color, and alpha, while the rail line exposes width and color.
 - Edge treatment: left/right fade masks plus optional `···` overflow hints when many laps are omitted. The runtime no longer renders WU/CD ghost endpoint labels or `xN` hidden-count boxes, because hidden counts are segment counts rather than repeated-set counts.
 
@@ -135,7 +135,7 @@ Recommended sections:
 
 - **Layout**: shared Position, Scale, Width, Height, Opacity.
 - **Timeline**: Mode (`Centered`, `Full`, `Compressed Sets`), Full layout (`Equal` / `Duration`), visible neighbors, WU/Rest/CD visibility toggles, min segment width, segment gap.
-- **Current**: emphasis scale, current progress toggle, playhead marker toggle, marker label (`NOW`), marker position (`live progress` / `segment center`), marker color, marker size, marker weight.
+- **Current**: emphasis scale, current progress toggle, playhead marker toggle, marker text toggle, editable marker text (`NOW` by default), marker position (`live progress` / `segment center`), marker color, marker size, marker weight.
 - **Rail**: rail toggle, vertical spacing from segment row, dot size, dot alpha, dot color, line width, line color.
 - **Labels**: work distance/time, rest kind/distance/time, neighbor metric (`Off` / `Distance` / `Time`), rep counter, overflow hint, typography.
 - **Colors**: per-kind colors for warmup, active, rest, cooldown, unknown; completed opacity; future opacity.
@@ -168,7 +168,7 @@ Recommended sections:
 | Corner radius | 8 pt |
 | Edge fade | on |
 | Current progress | on |
-| Marker | on, label `NOW`, white 11 pt bold |
+| Marker | on, text on, label `NOW`, white 11 pt bold |
 | Rail | on, 5 pt below segments, 5 pt dot size, white dots at 0.36 alpha, slate 5 pt line |
 
 ## Implementation Notes

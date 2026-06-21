@@ -219,6 +219,28 @@ struct IntervalTimelineOverlayDetailView: View {
             .labelsHidden()
             .tint(NumericTokens.accentBlue)
         }
+        InspectorDenseRow(label: "Marker Text") {
+            Toggle("", isOn: Binding(
+                get: { style.markerLabelEnabled },
+                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.markerLabelEnabled = value } }
+            ))
+            .labelsHidden()
+            .tint(NumericTokens.accentBlue)
+        }
+        .opacity(style.markerEnabled ? 1 : 0.5)
+        .disabled(!style.markerEnabled)
+        InspectorDenseRow(label: "Text") {
+            TextField("NOW", text: Binding(
+                get: { style.markerLabel },
+                set: { value in project.mutateIntervalTimelineStyle(elementID) { $0.markerLabel = String(value.prefix(24)) } }
+            ))
+            .textFieldStyle(.plain)
+            .font(NumericTokens.bodyFont)
+            .foregroundStyle(NumericTokens.textPrimary)
+            .multilineTextAlignment(.trailing)
+        }
+        .opacity(style.markerEnabled && style.markerLabelEnabled ? 1 : 0.5)
+        .disabled(!style.markerEnabled || !style.markerLabelEnabled)
         InspectorDenseRow(label: "Marker Pos") {
             InspectorDenseSegmented(values: IntervalTimelineMarkerPosition.allCases, selection: Binding(
                 get: { style.markerPosition },

@@ -83,6 +83,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
     var edgeFadeEnabled: Bool
     var currentProgressEnabled: Bool
     var markerEnabled: Bool
+    var markerLabelEnabled: Bool
     var markerLabel: String
     var markerPosition: IntervalTimelineMarkerPosition
     var markerColor: OverlayColor
@@ -121,8 +122,8 @@ Important rules:
 - The render path must be deterministic from `elapsedTime`, style, and activity data.
 - Do not store transient scroll offset in UI state for export-visible behavior.
 - Overlay bounds must not jump when the current lap changes.
-- The `NOW` marker lives in a reserved marker lane directly below the current segment. Enabling or disabling it must not change `contentRect`, segment rects, or the marker lane position.
-- The marker renders just below the segment row, remains inside the background and border, and supports marker color, font size, and font weight controls.
+- The marker lives in a reserved marker lane directly below the current segment. Enabling/disabling the marker or marker text must not change `contentRect`, segment rects, or the marker lane position.
+- The marker renders just below the segment row, remains inside the background and border, and supports marker color, font size, font weight, editable text, and text visibility controls. The default marker text is `NOW`.
 - Overflow context is intentionally minimal: hidden laps render only as a low-contrast `···` hint at the left and/or right edge. WU/CD endpoint ghost labels and `xN` hidden-count pills are not rendered because the count represents hidden segments, not repeated sets.
 - Overflow hint geometry is computed in the layout (`overflowEllipsisInset`) so SwiftUI preview and CoreGraphics export consume identical positions. The hint reserves a compact edge width before the first/last visible segment; disabling the hint removes that reserved space.
 - The overlay background height is derived from the actual stacked content (segments → marker → bottom padding). This keeps the bottom flush with the marker label.

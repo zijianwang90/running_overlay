@@ -1728,20 +1728,22 @@ struct OverlayFrameRenderer {
             triangle.close()
             NSColor(layout.style.markerColor).withAlphaComponent(0.92).setFill()
             triangle.fill()
-            drawIntervalTimelineText(
-                layout.markerLabel,
-                in: CGRect(
-                    x: layout.markerX - 32 * element.scale,
-                    y: markerTop + layout.markerTriangleHeight + 2 * element.scale,
-                    width: 64 * element.scale,
-                    height: layout.markerLabelHeight
-                ),
-                fontName: layout.style.markerFontName.isEmpty ? element.style.fontName : layout.style.markerFontName,
-                fontSize: layout.style.markerFontSize * element.scale,
-                weight: layout.style.markerFontWeight,
-                color: NSColor(layout.style.markerColor).withAlphaComponent(0.88),
-                alignment: .center
-            )
+            if layout.style.markerLabelEnabled {
+                drawIntervalTimelineText(
+                    layout.markerLabel,
+                    in: CGRect(
+                        x: layout.markerX - 32 * element.scale,
+                        y: markerTop + layout.markerTriangleHeight + 2 * element.scale,
+                        width: 64 * element.scale,
+                        height: layout.markerLabelHeight
+                    ),
+                    fontName: layout.style.markerFontName.isEmpty ? element.style.fontName : layout.style.markerFontName,
+                    fontSize: layout.style.markerFontSize * element.scale,
+                    weight: layout.style.markerFontWeight,
+                    color: NSColor(layout.style.markerColor).withAlphaComponent(0.88),
+                    alignment: .center
+                )
+            }
         }
     }
 

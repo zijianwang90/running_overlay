@@ -907,6 +907,24 @@ struct OverlayRenderModelTests {
         #expect(markerBottom < layout.rect.maxY - 1)
     }
 
+    @Test func intervalTimelineMarkerTextCanBeCustomizedAndHidden() {
+        var style = OverlayStyle.default
+        style.intervalTimeline.markerLabel = "LIVE"
+        style.intervalTimeline.markerLabelEnabled = false
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: repeatedIntervalActivity(repCount: 2),
+            elapsedTime: 45
+        )
+
+        let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
+
+        #expect(layout.markerLabel == "LIVE")
+        #expect(layout.style.markerLabelEnabled == false)
+        #expect(layout.style.markerEnabled == true)
+    }
+
     @Test func intervalTimelineStyleDecodesOlderRailAndMarkerFieldsWithDefaults() throws {
         let data = Data("""
         {
@@ -938,6 +956,7 @@ struct OverlayRenderModelTests {
         let encodedString = try #require(String(data: encoded, encoding: .utf8))
 
         #expect(style.markerColor == .white)
+        #expect(style.markerLabelEnabled == true)
         #expect(style.markerFontSize == IntervalTimelineStyle.default.markerFontSize)
         #expect(style.overflowHintEnabled == true)
         #expect(style.fullSegmentLayoutMode == .equal)
@@ -963,6 +982,7 @@ struct OverlayRenderModelTests {
         #expect(encodedString.contains("currentRestDistanceLabelMode"))
         #expect(encodedString.contains("currentRestTimeLabelMode"))
         #expect(encodedString.contains("neighborLabelMode"))
+        #expect(encodedString.contains("markerLabelEnabled"))
         #expect(encodedString.contains("overflowHintEnabled"))
     }
 

@@ -4267,3 +4267,27 @@ Files changed:
 - `docs/design/overlays/interval-hud-bar/interval-hud-bar-overlay-ui.spec.json`
 - `docs/overlay-modules/interval-hud-bar-overlay.md`
 - `docs/project-log.md`
+
+### Interval Timeline Marker Text Controls (2026-06-19)
+
+Summary:
+
+- Added separate Interval Timeline marker text visibility so the playhead triangle can remain visible while the `NOW` label is hidden.
+- Exposed editable marker text in the Interval Timeline Inspector, with `NOW` remaining the default/fallback label.
+- Updated SwiftUI preview and CoreGraphics export so marker text visibility and custom labels render consistently.
+
+Verification:
+
+- `swift test`
+- `git diff --check`
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/IntervalTimelineModel.swift`
+- `Sources/RunningOverlay/UI/IntervalTimelineOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/IntervalTimelineOverlayView.swift`
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `Tests/RunningOverlayTests/OverlayRenderModelTests.swift`
+- `docs/design/overlays/interval-timeline/interval-timeline-overlay-ui.md`
+- `docs/design/overlays/interval-timeline/interval-timeline-overlay-ui.spec.json`
+- `docs/overlay-modules/interval-timeline-overlay.md`

@@ -100,21 +100,23 @@ struct IntervalTimelineOverlayView: View {
 
     private var markerView: some View {
         let x = layout.markerX - layout.rect.minX
-        let stackHeight = layout.markerTriangleHeight + 2 * element.scale + layout.markerLabelHeight
+        let stackHeight = layout.markerTriangleHeight + (layout.style.markerLabelEnabled ? 2 * element.scale + layout.markerLabelHeight : 0)
         let y = layout.markerTopY - layout.rect.minY + stackHeight / 2
         return VStack(spacing: 2 * element.scale) {
             IntervalTimelineMarkerTriangle()
                 .fill(Color(intervalTimeline: layout.style.markerColor).opacity(0.92))
                 .frame(width: 10 * element.scale, height: layout.markerTriangleHeight)
-            Text(layout.markerLabel)
-                .font(.overlayFont(
-                    family: layout.style.markerFontName.isEmpty ? element.style.fontName : layout.style.markerFontName,
-                    size: layout.style.markerFontSize * element.scale,
-                    overlayWeight: layout.style.markerFontWeight
-                ))
-                .foregroundStyle(Color(intervalTimeline: layout.style.markerColor).opacity(0.88))
-                .frame(height: layout.markerLabelHeight)
-                .lineLimit(1)
+            if layout.style.markerLabelEnabled {
+                Text(layout.markerLabel)
+                    .font(.overlayFont(
+                        family: layout.style.markerFontName.isEmpty ? element.style.fontName : layout.style.markerFontName,
+                        size: layout.style.markerFontSize * element.scale,
+                        overlayWeight: layout.style.markerFontWeight
+                    ))
+                    .foregroundStyle(Color(intervalTimeline: layout.style.markerColor).opacity(0.88))
+                    .frame(height: layout.markerLabelHeight)
+                    .lineLimit(1)
+            }
         }
         .position(x: x, y: y)
     }
