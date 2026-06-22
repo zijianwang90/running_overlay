@@ -245,7 +245,7 @@
         "enabled",
         "intensity"
       ],
-      "bottomBarSpacing": "Adjusts vertical gap between HUD content cells and the bottom bar. Zero is adjacent; larger values move the row and bar farther apart. Rendered layout preserves spacing before compressing top/bottom padding, then caps spacing only if required to keep the data row and bar inside the background.",
+      "bottomBarSpacing": "Adjusts vertical gap between HUD content cells and the bottom bar. Zero is adjacent; larger values expand the rendered HUD height by the same amount so the data row is not compressed.",
       "bottomBarBorder": [
         "enabled",
         "color",

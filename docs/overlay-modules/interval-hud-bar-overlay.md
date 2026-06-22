@@ -84,7 +84,7 @@ The final four sections stay in the canonical order `Divider`, `Background`, `Bo
 
 Background padding expands the HUD background and border bounds in preview and export without changing the HUD cell or bottom-bar layout. Shadow follows the shared Effects fields (`shadowColor`, opacity, radius, offset, thickness): it is container-level when Background is enabled, and content-level when both Background and Border are disabled.
 
-Bottom Bar Spacing is a real gap between the data row and bottom bar: `0` keeps them adjacent, and larger values separate them farther. The layout preserves requested spacing before compressing top/bottom padding on short HUDs; only when the data row and bar still cannot fit is spacing capped. Zone Marker is drawn as a floating overlay and never reserves layout height, so enabling it does not move the data row, bar, or background.
+Bottom Bar Spacing is a real gap between the data row and bottom bar: `0` keeps them adjacent, and larger values separate them farther. Spacing expands the rendered HUD height by the same amount instead of taking height from the data row, so the upper data layer stays visually stable while the outer HUD grows or shrinks. Zone Marker is drawn as a floating overlay and never reserves layout height, so enabling it does not move the data row, bar, or background.
 
 ## REST HR Drop
 

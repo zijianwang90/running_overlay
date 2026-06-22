@@ -813,6 +813,31 @@ struct OverlayRenderModelTests {
         #expect(disabledLayout.thresholdZoneMarker == nil)
     }
 
+    @Test func intervalHUDBarBottomBarSpacingExpandsHUDHeight() {
+        var style = OverlayStyle.default
+        style.intervalHUDBar.height = 116
+        style.intervalHUDBar.bottomBarEnabled = true
+        style.intervalHUDBar.bottomBarMode = .lapProgress
+
+        style.intervalHUDBar.bottomBarSpacing = 0
+        let compactElement = OverlayElement(type: .intervalHUDBar, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+
+        style.intervalHUDBar.bottomBarSpacing = 24
+        let expandedElement = OverlayElement(type: .intervalHUDBar, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 50
+        )
+        let compactLayout = OverlayRenderModel.intervalHUDBarLayout(for: compactElement, in: context)
+        let expandedLayout = OverlayRenderModel.intervalHUDBarLayout(for: expandedElement, in: context)
+
+        #expect(abs(compactLayout.baseHeight - expandedLayout.baseHeight) < 0.0001)
+        #expect(abs(Double(compactLayout.rect.height) - compactLayout.baseHeight) < 0.0001)
+        #expect(abs(Double(expandedLayout.rect.height) - (expandedLayout.baseHeight + 24)) < 0.0001)
+    }
+
     @Test func intervalHUDBarZoneSegmentFramesSupportActiveZoneEmphasis() {
         let equalFrames = OverlayRenderModel.intervalZoneSegmentFrames(
             segmentCount: 5,

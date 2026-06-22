@@ -4528,3 +4528,27 @@ Files changed:
 - `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
 - `docs/design/overlays/interval-hud-bar/interval-hud-bar-overlay-ui.md`
 - `docs/overlay-modules/interval-hud-bar-overlay.md`
+
+### Interval HUD Bottom Bar Spacing Isolation (2026-06-19)
+
+Summary:
+
+- Changed Interval HUD Bar so Bottom Bar Spacing expands or shrinks the rendered HUD height instead of taking space from the upper data row.
+- Kept preview/export layout aligned by carrying the HUD base height through the shared render layout and using it for data-row sizing and internal dividers.
+- Updated Interval HUD Bar docs to describe spacing as outer HUD height growth rather than data-row compression.
+
+Verification:
+
+- `swift test`
+- `git diff --check`
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/IntervalHUDBarModel.swift`
+- `Sources/RunningOverlay/Overlay/OverlayRenderModel.swift`
+- `Sources/RunningOverlay/UI/IntervalHUDBarOverlayView.swift`
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `Tests/RunningOverlayTests/OverlayRenderModelTests.swift`
+- `docs/design/overlays/interval-hud-bar/interval-hud-bar-overlay-ui.md`
+- `docs/design/overlays/interval-hud-bar/interval-hud-bar-overlay-ui.spec.json`
+- `docs/overlay-modules/interval-hud-bar-overlay.md`

@@ -89,14 +89,15 @@ struct IntervalHUDBarOverlayView: View {
     private var verticalLayout: IntervalHUDBarVerticalLayout {
         let desiredTopPadding = topContentPadding
         let desiredBottomPadding = bottomContentPadding
-        let minimumTopPadding = max(layout.rect.height * 0.025, 2)
-        let minimumBottomPadding = max(layout.rect.height * 0.025, 2)
+        let layoutHeight = verticalLayoutBasisHeight
+        let minimumTopPadding = max(layoutHeight * 0.025, 2)
+        let minimumBottomPadding = max(layoutHeight * 0.025, 2)
         let requestedSpacing = hasVisibleBottomBar ? max(style.bottomBarSpacing, 0) : 0
         let minimumContentHeight = minimumMainContentHeight
         let bottomHeight = bottomBarContentHeight
-        let desiredTotal = desiredTopPadding + minimumContentHeight + requestedSpacing + bottomHeight + desiredBottomPadding
+        let desiredTotal = desiredTopPadding + minimumContentHeight + bottomHeight + desiredBottomPadding
 
-        guard hasVisibleBottomBar, desiredTotal > layout.rect.height else {
+        guard hasVisibleBottomBar, desiredTotal > layoutHeight else {
             return IntervalHUDBarVerticalLayout(
                 topPadding: desiredTopPadding,
                 bottomPadding: desiredBottomPadding,
@@ -104,7 +105,7 @@ struct IntervalHUDBarOverlayView: View {
             )
         }
 
-        let availablePadding = layout.rect.height - minimumContentHeight - requestedSpacing - bottomHeight
+        let availablePadding = layoutHeight - minimumContentHeight - bottomHeight
         if availablePadding >= minimumTopPadding + minimumBottomPadding {
             let desiredPadding = max(desiredTopPadding + desiredBottomPadding, 1)
             let topShare = desiredTopPadding / desiredPadding
@@ -117,16 +118,15 @@ struct IntervalHUDBarOverlayView: View {
             )
         }
 
-        let maxSpacing = max(layout.rect.height - minimumTopPadding - minimumBottomPadding - minimumContentHeight - bottomHeight, 0)
         return IntervalHUDBarVerticalLayout(
             topPadding: minimumTopPadding,
             bottomPadding: minimumBottomPadding,
-            spacing: min(requestedSpacing, maxSpacing)
+            spacing: requestedSpacing
         )
     }
 
     private var minimumMainContentHeight: Double {
-        max(layout.rect.height * 0.30, min(maxTextStackHeight + 4, layout.rect.height * 0.58))
+        max(verticalLayoutBasisHeight * 0.30, min(maxTextStackHeight + 4, verticalLayoutBasisHeight * 0.58))
     }
 
     private var maxTextStackHeight: Double {
@@ -142,11 +142,15 @@ struct IntervalHUDBarOverlayView: View {
     }
 
     private var topContentPadding: Double {
-        layout.rect.height * 0.06
+        verticalLayoutBasisHeight * 0.06
     }
 
     private var bottomContentPadding: Double {
-        layout.rect.height * 0.12
+        verticalLayoutBasisHeight * 0.12
+    }
+
+    private var verticalLayoutBasisHeight: Double {
+        max(layout.baseHeight, 1)
     }
 
     private var bottomBarContentHeight: Double {
@@ -161,7 +165,7 @@ struct IntervalHUDBarOverlayView: View {
     private var divider: some View {
         Rectangle()
             .fill(Color(intervalHUD: element.style.dividerColor).opacity(element.style.dividerEnabled ? element.style.dividerOpacity : 0))
-            .frame(width: max(element.style.dividerThickness, 0.5), height: layout.rect.height * 0.48)
+            .frame(width: max(element.style.dividerThickness, 0.5), height: verticalLayoutBasisHeight * 0.48)
             .padding(.horizontal, layout.rect.width * 0.025)
     }
 

@@ -185,7 +185,7 @@ The last four sections must stay in this order: `Divider`, `Background`, `Border
 
 Background Padding expands the rendered HUD background and border bounds in preview and export only. It must not affect HUD cell layout, text scale, or bottom-bar layout.
 
-Bottom Bar Spacing is the vertical gap between the data cell row and the bottom bar. `0` places the bottom bar directly against the data row layout area; increasing the value moves the data row and bottom bar farther apart. The renderer preserves the requested spacing first, then compresses top/bottom padding when the HUD is short. If the HUD still cannot fit the data row and bar, the rendered gap is capped so content remains inside the background container.
+Bottom Bar Spacing is the vertical gap between the data cell row and the bottom bar. `0` places the bottom bar directly against the data row layout area; increasing the value expands the rendered HUD height by the same amount so the data row is not compressed. Reducing the value shrinks only that extra gap and outer HUD height.
 
 Zone Marker is a floating overlay anchored to the current value position on the zone bar. It does not reserve layout height, move the bottom bar, change spacing, or resize the data row. Above and Below placements may overlap HUD text or extend beyond the background container.
 
