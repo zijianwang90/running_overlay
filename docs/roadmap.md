@@ -181,9 +181,9 @@ Completed so far:
 - Added a dedicated `docs/overlay-modules/` documentation area.
 - Drafted the Route Map Overlay design, including styles, GPS data needs, map API options, rendering architecture, caching, privacy, template behavior, and implementation phases.
 - Extended FIT parsing and activity records with GPS latitude/longitude.
-- Added the Route Map overlay type with Minimal, Gradient, Glow, and MapKit presets.
+- Added the Route Map overlay type with independent map background, route color mode, and Glow controls.
 - Added preview/export route rendering with start, finish, and current-position markers.
-- Added MapKit snapshot provider scaffolding and preview-time MapKit snapshot loading for the MapKit preset.
+- Added MapKit snapshot provider scaffolding and preview-time MapKit snapshot loading for enabled map backgrounds.
 - Retired the early Lap List overlay module in favor of the Interval HUD Bar direction — see `docs/overlay-modules/retired-lap-overlays.md` and `docs/overlay-modules/interval-hud-bar-overlay.md`.
 
 Pending:

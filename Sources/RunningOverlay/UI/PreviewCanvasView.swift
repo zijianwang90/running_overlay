@@ -1091,7 +1091,7 @@ struct RouteMapOverlayView: View {
                     routePath(points: relativePoints)
                         .stroke(Color.black.opacity(0.55), style: StrokeStyle(lineWidth: layout.lineWidth + 3, lineCap: .round, lineJoin: .round))
 
-                    if layout.preset == .glow {
+                    if layout.glowEnabled {
                         routePath(points: relativePoints)
                             .stroke(Color(element.style.foregroundColor).opacity(0.55), style: StrokeStyle(lineWidth: layout.lineWidth * 2.3, lineCap: .round, lineJoin: .round))
                             .blur(radius: layout.glowRadius)

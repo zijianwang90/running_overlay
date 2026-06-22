@@ -365,7 +365,6 @@ enum OverlayElevationDisplayMode: String, CaseIterable, Identifiable, Codable {
 struct OverlayStyle: Equatable, Codable {
     var textPreset: OverlayTextPreset
     var gaugePreset: OverlayGaugePreset
-    var routeMapPreset: OverlayRouteMapPreset
     var routeMapProvider: OverlayRouteMapProvider
     var routeMapShape: OverlayRouteMapShape
     var routeMapEdgeFade: OverlayRouteMapEdgeFade
@@ -552,7 +551,6 @@ struct OverlayStyle: Equatable, Codable {
     static let `default` = OverlayStyle(
         textPreset: .minimal,
         gaugePreset: .minimalSport,
-        routeMapPreset: .minimal,
         routeMapProvider: .none,
         routeMapShape: .square,
         routeMapEdgeFade: .solid,
@@ -663,7 +661,6 @@ struct OverlayStyle: Equatable, Codable {
     init(
         textPreset: OverlayTextPreset = .minimal,
         gaugePreset: OverlayGaugePreset = .minimalSport,
-        routeMapPreset: OverlayRouteMapPreset = .minimal,
         routeMapProvider: OverlayRouteMapProvider = .none,
         routeMapShape: OverlayRouteMapShape = .square,
         routeMapEdgeFade: OverlayRouteMapEdgeFade = .solid,
@@ -772,7 +769,6 @@ struct OverlayStyle: Equatable, Codable {
     ) {
         self.textPreset = textPreset
         self.gaugePreset = gaugePreset
-        self.routeMapPreset = routeMapPreset
         self.routeMapProvider = routeMapProvider
         self.routeMapShape = routeMapShape
         self.routeMapEdgeFade = routeMapEdgeFade
@@ -884,16 +880,6 @@ struct OverlayStyle: Equatable, Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         textPreset = try container.decodeIfPresent(OverlayTextPreset.self, forKey: .textPreset) ?? Self.default.textPreset
         gaugePreset = try container.decodeIfPresent(OverlayGaugePreset.self, forKey: .gaugePreset) ?? Self.default.gaugePreset
-        // Legacy templates may have stored `routeMapPreset = "mapKit"` when
-        // the preset enum doubled as a "show map" trigger. We migrate any
-        // unknown raw value (including "mapKit") to `.gradient`, and rely on
-        // `routeMapBackgroundStyle` to drive map visibility going forward.
-        if let raw = try container.decodeIfPresent(String.self, forKey: .routeMapPreset),
-           let preset = OverlayRouteMapPreset(rawValue: raw) {
-            routeMapPreset = preset
-        } else {
-            routeMapPreset = Self.default.routeMapPreset
-        }
         routeMapProvider = try container.decodeIfPresent(OverlayRouteMapProvider.self, forKey: .routeMapProvider) ?? Self.default.routeMapProvider
         routeMapShape = try container.decodeIfPresent(OverlayRouteMapShape.self, forKey: .routeMapShape) ?? Self.default.routeMapShape
         routeMapEdgeFade = try container.decodeIfPresent(OverlayRouteMapEdgeFade.self, forKey: .routeMapEdgeFade) ?? Self.default.routeMapEdgeFade
@@ -2333,27 +2319,6 @@ extension DistanceTimelineStyle {
             trackRect.maxY + scaledGap
         case .above:
             trackRect.minY - scaledGap - textLineHeight
-        }
-    }
-}
-
-enum OverlayRouteMapPreset: String, CaseIterable, Identifiable, Codable {
-    case minimal
-    case gradient
-    case glow
-
-    var id: String { rawValue }
-
-    /// Display label. Route Style now describes the polyline appearance only;
-    /// whether a map background is rendered is a separate decision driven by
-    /// `OverlayStyle.routeMapBackgroundStyle` (and the dedicated "Show Map"
-    /// toggle in the Inspector). The legacy `mapKit` case is migrated to
-    /// `gradient` on decode for backward compatibility.
-    var label: String {
-        switch self {
-        case .minimal: "Minimal / 极简轨迹"
-        case .gradient: "Gradient / 渐变轨迹"
-        case .glow: "Glow / 发光轨迹"
         }
     }
 }

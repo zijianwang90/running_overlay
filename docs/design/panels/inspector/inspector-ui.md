@@ -270,7 +270,7 @@ Implementation mapping:
 
 - Text overlays map to `OverlayTextPreset`: Minimal, Pill Badge, Metric Card, Big Number, Sport Watch, Split Label.
 - Running Gauge maps to `OverlayGaugePreset`: Minimal Sport, High Contrast, Trail Adventure, Tech Future, Retro Digital.
-- Route Map maps to `OverlayRouteMapPreset`: Minimal, Gradient, Glow, MapKit.
+- Route Map does not expose a preset; line color mode and Glow live in the Route Line section.
 - Existing style supports font name, font size, font weight, foreground color, background opacity, shadow opacity, and shadow radius.
 
 For v1, use existing model-backed controls first:

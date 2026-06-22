@@ -298,8 +298,8 @@ Current implementation:
 - Running Gauge is available as a composite circular dashboard overlay with distance, elapsed time, pace, and heart rate in one module.
 - Running Gauge supports Minimal Sport, High Contrast, Trail Adventure, Tech Future, and Retro Digital style presets through the Inspector.
 - Route Map is available as a featured overlay module backed by FIT GPS latitude/longitude when present.
-- Route Map supports Minimal, Gradient, Glow, and MapKit presets through the Inspector.
-- Route Map preview attempts a MapKit snapshot for the MapKit preset and falls back to a local dark grid when a snapshot is unavailable.
+- Route Map exposes line color mode and Glow controls through the Inspector.
+- Route Map preview attempts a MapKit snapshot when the map background is enabled and falls back to a local dark grid when a snapshot is unavailable.
 - Route Map export preloads MapKit snapshots once before MOV/PNG rasterization and passes them into the shared SwiftUI Route Map view as static render assets; if snapshot loading fails, export falls back to the local route/map grid.
 - Inspector supports normalized X/Y position entry plus shadow opacity and radius controls.
 - Up and down arrow keys nudge the selected overlay element vertically by one percent of the preview canvas.

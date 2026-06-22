@@ -763,7 +763,6 @@
         "routeMapLegendVisible": true,
         "routeMapMapOpacity": 0.72,
         "routeMapMarkerStyle": "dot",
-        "routeMapPreset": "minimal",
         "routeMapProvider": "none",
         "routeMapRunnerDotColor": {
           "alpha": 1,
@@ -1752,7 +1751,6 @@
         "routeMapLegendVisible": true,
         "routeMapMapOpacity": 0.72,
         "routeMapMarkerStyle": "dot",
-        "routeMapPreset": "minimal",
         "routeMapProvider": "none",
         "routeMapRunnerDotColor": {
           "alpha": 1,
@@ -2741,7 +2739,6 @@
         "routeMapLegendVisible": true,
         "routeMapMapOpacity": 0.72,
         "routeMapMarkerStyle": "dot",
-        "routeMapPreset": "minimal",
         "routeMapProvider": "none",
         "routeMapRunnerDotColor": {
           "alpha": 1,
@@ -3730,7 +3727,6 @@
         "routeMapLegendVisible": true,
         "routeMapMapOpacity": 0.92,
         "routeMapMarkerStyle": "hidden",
-        "routeMapPreset": "gradient",
         "routeMapProvider": "mapKit",
         "routeMapRunnerDotColor": {
           "alpha": 1,
@@ -4719,7 +4715,6 @@
         "routeMapLegendVisible": true,
         "routeMapMapOpacity": 0.72,
         "routeMapMarkerStyle": "dot",
-        "routeMapPreset": "minimal",
         "routeMapProvider": "none",
         "routeMapRunnerDotColor": {
           "alpha": 1,
@@ -5708,7 +5703,6 @@
         "routeMapLegendVisible": true,
         "routeMapMapOpacity": 0.72,
         "routeMapMarkerStyle": "dot",
-        "routeMapPreset": "minimal",
         "routeMapProvider": "none",
         "routeMapRunnerDotColor": {
           "alpha": 1,
@@ -6697,7 +6691,6 @@
         "routeMapLegendVisible": true,
         "routeMapMapOpacity": 0.72,
         "routeMapMarkerStyle": "dot",
-        "routeMapPreset": "minimal",
         "routeMapProvider": "none",
         "routeMapRunnerDotColor": {
           "alpha": 1,
@@ -7686,7 +7679,6 @@
         "routeMapLegendVisible": true,
         "routeMapMapOpacity": 0.72,
         "routeMapMarkerStyle": "dot",
-        "routeMapPreset": "minimal",
         "routeMapProvider": "none",
         "routeMapRunnerDotColor": {
           "alpha": 1,
@@ -8675,7 +8667,6 @@
         "routeMapLegendVisible": true,
         "routeMapMapOpacity": 0.72,
         "routeMapMarkerStyle": "dot",
-        "routeMapPreset": "minimal",
         "routeMapProvider": "none",
         "routeMapRunnerDotColor": {
           "alpha": 1,

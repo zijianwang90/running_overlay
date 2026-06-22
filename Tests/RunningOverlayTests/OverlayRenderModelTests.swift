@@ -664,7 +664,7 @@ struct OverlayRenderModelTests {
 
     @Test func routeMapLayoutProjectsGpsRouteAndCurrentPoint() {
         var style = OverlayStyle.default
-        style.routeMapPreset = .glow
+        style.glowEnabled = true
         let element = OverlayElement(type: .routeMap, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
         let context = OverlayRenderContext(
             canvasSize: OverlayRenderContext.referenceCanvasSize,
@@ -675,6 +675,7 @@ struct OverlayRenderModelTests {
         let layout = OverlayRenderModel.routeMapLayout(for: element, in: context)
 
         #expect(layout.geometry?.points.count == 3)
+        #expect(layout.glowEnabled)
         #expect(layout.projectedPoints.count == 3)
         #expect(layout.projectedCurrentPoint != nil)
         #expect(layout.progress == 0.5)
@@ -701,7 +702,6 @@ struct OverlayRenderModelTests {
 
     @Test func routeMapSnapshotRequestUsesSharedLayoutInputs() throws {
         var style = OverlayStyle.default
-        style.routeMapPreset = .gradient
         style.routeMapBackgroundStyle = .satellite
         let element = OverlayElement(type: .routeMap, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
         let context = OverlayRenderContext(
@@ -715,7 +715,6 @@ struct OverlayRenderModelTests {
 
         #expect(request.bounds == layout.geometry?.bounds)
         #expect(request.size == layout.rect.size)
-        #expect(request.style == .gradient)
         #expect(request.backgroundStyle == .satellite)
     }
 
@@ -1527,7 +1526,7 @@ struct OverlayRenderModelTests {
         }
 
         var style = OverlayStyle.default
-        style.routeMapPreset = .glow
+        style.glowEnabled = true
         style.foregroundColor = .cyan
         let outputURL = directory.appendingPathComponent("route-map.png")
         let layout = OverlayLayout(elements: [

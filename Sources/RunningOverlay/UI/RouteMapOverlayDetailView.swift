@@ -17,7 +17,6 @@ struct RouteMapOverlayDetailView: View {
 
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
-                        sectionView(.preset) { presetSection(element) }
                         layoutInspectorSection(element)
                         sectionView(.container) { containerSection(element) }
                         sectionView(.backgroundMap, accessory: { showMapToggle(element) }) { backgroundMapSection(element) }
@@ -39,34 +38,6 @@ struct RouteMapOverlayDetailView: View {
     }
 
     // MARK: - Sections
-
-    @ViewBuilder
-    private func presetSection(_ element: OverlayElement) -> some View {
-        // The Route Style preset describes the polyline appearance only.
-        // Container shape / edge controls live in the Container section
-        // below; map visibility lives in the Background Map section. The
-        // legacy "Container Preset" row was removed because it duplicated
-        // those individual controls.
-        InspectorDenseRow(label: "Route Style") {
-            Menu {
-                ForEach(OverlayRouteMapPreset.allCases) { preset in
-                    Button {
-                        project.setOverlayRouteMapPreset(elementID, routeMapPreset: preset)
-                    } label: {
-                        if preset == element.style.routeMapPreset {
-                            Label(preset.compactLabel, systemImage: "checkmark")
-                        } else {
-                            Text(preset.compactLabel)
-                        }
-                    }
-                }
-            } label: {
-                InspectorDenseMenuLabel(title: element.style.routeMapPreset.compactLabel)
-            }
-            .menuStyle(.borderlessButton)
-            .frame(height: NumericTokens.controlHeight)
-        }
-    }
 
     @ViewBuilder
     private func layoutInspectorSection(_ element: OverlayElement) -> some View {
@@ -248,6 +219,16 @@ struct RouteMapOverlayDetailView: View {
                     project.setOverlayRouteMapGradientEnd(elementID, color: color)
                 }
             }
+        }
+
+        InspectorDenseRow(label: "Glow") {
+            Toggle("", isOn: Binding(
+                get: { element.style.glowEnabled },
+                set: { project.setOverlayGlowEnabled(elementID, enabled: $0) }
+            ))
+            .toggleStyle(.switch)
+            .controlSize(.mini)
+            .labelsHidden()
         }
     }
 
@@ -541,7 +522,6 @@ struct RouteMapOverlayHeader: View {
 // MARK: - Section enum
 
 enum RouteMapSection: String, CaseIterable {
-    case preset
     case layout
     case container
     case backgroundMap
@@ -551,7 +531,6 @@ enum RouteMapSection: String, CaseIterable {
 
     var title: String {
         switch self {
-        case .preset: "Preset"
         case .layout: "Layout"
         case .container: "Container"
         case .backgroundMap: "Background Map"
@@ -563,7 +542,6 @@ enum RouteMapSection: String, CaseIterable {
 
     var systemImage: String {
         switch self {
-        case .preset: "wand.and.stars"
         case .layout: "scope"
         case .container: "rectangle.dashed"
         case .backgroundMap: "map"

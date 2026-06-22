@@ -46,7 +46,7 @@ Last updated: 2026-06-16 (Route Map container controls cleanup)
 
 Inspector 控件需要覆盖这些维度：
 
-- Route style: Minimal, Gradient, Glow, Dashed, Map。
+- Route line: solid / gradient color mode, plus a Glow switch in Route Line.
 - Route color: 固定色、渐变色、按指标映射。
 - Route color mode: solid / gradient (3-stop configurable colors).
 - Metric mapping: pace, heart rate, elevation, distance, elapsed time。
@@ -119,7 +119,6 @@ struct RouteGeometry: Equatable {
 建议新增：
 
 - `OverlayElementType.routeMap`
-- `OverlayRouteMapPreset`
 - `OverlayRouteMapStyle`
 - `OverlayRouteMapRenderLayout`
 - `RouteGeometryBuilder`
@@ -133,7 +132,7 @@ struct RouteGeometry: Equatable {
 3. 计算 route bounds 和目标 aspect ratio。
 4. 将经纬度投影到 2D overlay rect。Map Style 使用 Web Mercator；无底图样式可以用同一投影保证一致。
 5. 按当前 elapsed time 拆分 completed route 和 remaining route。
-6. 根据 preset 绘制底图、路线、进度点、起终点、legend。
+6. 根据独立的 map / line / marker / stats bar 设置绘制底图、路线、进度点、起终点、legend。
 7. 导出时在 `OverlayFrameRenderer` 中复用相同 layout 和 geometry cache。
 
 ## 8. Animation Behavior
@@ -235,7 +234,7 @@ Phase E: Container presets, map dim controls, edge fade fix (current revision)
   `squareGradientEdge` / `circleGradientEdge`，每个预设对应一组 shape /
   edgeFade / fadeAmount / mapOpacity / shadow 默认值。
 - 新增 `OverlayStyle.routeMapMapOpacity` (默认 0.72)，preview 与 export 共同消费。
-- Inspector 用新的分组布局 (Preset / Layout / Container / Background Map /
+- Inspector 用新的分组布局 (Layout / Container / Background Map /
   Route Line / Markers / Stats Bar / shared Background / Border / Effects)，与
   `docs/design/overlays/route-map/route-map-overlay-ui.spec.json` 对齐。
 - **Bug fix**: Edge Fade "Fade Out" 在 SwiftUI preview 中无效。根本原因：

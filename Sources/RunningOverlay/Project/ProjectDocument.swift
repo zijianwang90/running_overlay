@@ -506,11 +506,6 @@ final class ProjectDocument: ObservableObject {
             style.showUnit = false
         }
         if type == .routeMap {
-            // Route Style preset describes the polyline appearance only; map
-            // visibility is driven by `routeMapBackgroundStyle` (see
-            // `docs/design/overlays/route-map/route-map-overlay-ui.md`). The default is to show
-            // the dark MapKit background with a Gradient route line on top.
-            style.routeMapPreset = .gradient
             style.routeMapColorMode = .gradient
             style.routeMapProvider = .mapKit
             style.routeMapBackgroundStyle = .dark
@@ -1366,14 +1361,6 @@ final class ProjectDocument: ObservableObject {
             }
             mutate(&gauge.regions[regionIndex])
         }
-    }
-
-    func setOverlayRouteMapPreset(_ elementID: OverlayElement.ID, routeMapPreset: OverlayRouteMapPreset) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.routeMapPreset = routeMapPreset
     }
 
     /// Toggle the map background visibility. Off → `.none`, on → restore the
@@ -2644,7 +2631,6 @@ final class ProjectDocument: ObservableObject {
             style.showUnit = false
         }
         if type == .routeMap {
-            style.routeMapPreset = .gradient
             style.routeMapProvider = .mapKit
             style.routeMapBackgroundStyle = .dark
             style.backgroundOpacity = 0.74

@@ -1631,7 +1631,6 @@ enum OverlayRenderModel {
         }
 
         return OverlayRouteMapRenderLayout(
-            preset: element.style.routeMapPreset,
             provider: provider,
             rect: mapRect,
             contentRect: routeContentRect,
@@ -1641,6 +1640,7 @@ enum OverlayRenderModel {
             fadeAmount: element.style.backgroundFadeOutAmount,
             borderVisible: element.style.borderEnabled,
             lineWidth: max(context.scaled(4 * element.scale), 1.5),
+            glowEnabled: element.style.glowEnabled,
             glowRadius: context.scaled(11 * element.scale),
             mapOpacity: element.style.routeMapMapOpacity,
             progress: clampedProgress(progress),

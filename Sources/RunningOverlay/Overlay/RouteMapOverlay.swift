@@ -9,7 +9,6 @@ protocol MapSnapshotProvider {
 struct MapSnapshotRequest: Hashable {
     var bounds: RouteBounds
     var size: CGSize
-    var style: OverlayRouteMapPreset
     var backgroundStyle: OverlayRouteMapBackgroundStyle
 }
 
@@ -28,7 +27,6 @@ enum RouteMapSnapshotRequestBuilder {
         return MapSnapshotRequest(
             bounds: geometry.bounds,
             size: layout.rect.size,
-            style: layout.preset,
             backgroundStyle: element.style.routeMapBackgroundStyle
         )
     }
@@ -154,7 +152,6 @@ struct OverlayRouteMapStatsBarLayout {
 }
 
 struct OverlayRouteMapRenderLayout {
-    var preset: OverlayRouteMapPreset
     var provider: OverlayRouteMapProvider
     var rect: CGRect
     var contentRect: CGRect
@@ -164,6 +161,7 @@ struct OverlayRouteMapRenderLayout {
     var fadeAmount: Double
     var borderVisible: Bool
     var lineWidth: Double
+    var glowEnabled: Bool
     var glowRadius: Double
     var mapOpacity: Double
     var progress: Double

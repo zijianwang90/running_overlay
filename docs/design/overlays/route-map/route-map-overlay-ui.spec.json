@@ -66,42 +66,6 @@
   },
   "sections": [
     {
-      "id": "preset",
-      "title": "Preset",
-      "icon": "wand.and.stars",
-      "controls": [
-        {
-          "id": "routeStylePreset",
-          "type": "dropdown",
-          "modelPath": "OverlayStyle.routeMapPreset",
-          "options": [
-            "minimal",
-            "gradient",
-            "glow"
-          ],
-          "modelBacked": true,
-          "notes": [
-            "Describes the polyline appearance only.",
-            "No longer encodes 'show map' — that toggle lives on the Background Map section header.",
-            "Legacy 'mapKit' value is migrated to 'gradient' on decode."
-          ]
-        },
-        {
-          "id": "distanceReadout",
-          "type": "readout",
-          "modelPath": "ActivityTimeline.distanceMeters",
-          "displayRule": "{distance / 1000 with 2 decimals} km, '—' when zero"
-        }
-      ],
-      "removedControls": [
-        {
-          "id": "containerPreset",
-          "removedAt": "2026-04-27",
-          "reason": "Conflicted with the Container section's individual controls. Still callable via ProjectDocument.setOverlayRouteMapContainerPreset for templates and tests."
-        }
-      ]
-    },
-    {
       "id": "layout",
       "title": "Layout",
       "icon": "scope",
@@ -361,8 +325,8 @@
         },
         {
           "id": "glow",
-          "type": "toggleAndSliders",
-          "modelBacked": "phaseF"
+          "type": "toggle",
+          "modelPath": "OverlayStyle.glowEnabled"
         },
         {
           "id": "shadow",
@@ -778,7 +742,6 @@
     }
   },
   "modelBackedToday": [
-    "routeMapPreset (line aesthetic only — no longer encodes 'show map')",
     "routeMapShape",
     "routeMapWidth",
     "routeMapHeight",
@@ -802,11 +765,12 @@
     "routeMapContainerPreset (template / test API; not in Inspector)",
     "routeMapMapOpacity",
     "routeMapLegendVisible / routeMapLegendMode (legacy migration only)",
-    "routeMapStatsBar.visible / placement / inside / layoutMode / height / width / offsetX / offsetY / itemSpacing / backgroundOpacity / dividerOpacity / cornerRadius / slots"
+    "routeMapStatsBar.visible / placement / inside / layoutMode / height / width / offsetX / offsetY / itemSpacing / backgroundOpacity / dividerOpacity / cornerRadius / slots",
+    "glowEnabled"
   ],
   "modelGapsPhaseE": [],
   "modelGapsPhaseF": [
-    "glowEnabled / glowColor / glowOpacity / glowRadius",
+    "glowColor / glowOpacity / glowRadius",
     "mapContrast / mapSaturation / mapBrightness / mapBlur",
     "routeLine width / opacity / dash / glow / shadow",
     "routeLine gradientMetric (byPace / byHeartRate / byPower / byElevation)",

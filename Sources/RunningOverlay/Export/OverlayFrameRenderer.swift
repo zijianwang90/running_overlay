@@ -2785,7 +2785,7 @@ struct OverlayFrameRenderer {
         shadowPath.lineJoinStyle = .round
         shadowPath.stroke()
 
-        if layout.preset == .glow {
+        if layout.glowEnabled {
             let glowPath = routePath(points: points)
             accent.withAlphaComponent(0.42).setStroke()
             glowPath.lineWidth = layout.lineWidth * 2.5

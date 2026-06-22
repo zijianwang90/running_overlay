@@ -877,8 +877,6 @@ private struct OverlayDetailView: View {
             InspectorPickerRow(label: "Preset", selection: textPresetBinding, values: OverlayTextPreset.numericPresets) { $0.compactLabel }
         } else if element.type == .runningGauge {
             InspectorPickerRow(label: "Preset", selection: gaugePresetBinding, values: OverlayGaugePreset.allCases) { $0.compactLabel }
-        } else if element.type == .routeMap {
-            InspectorPickerRow(label: "Preset", selection: routeMapPresetBinding, values: OverlayRouteMapPreset.allCases) { $0.compactLabel }
         }
     }
 
@@ -930,14 +928,6 @@ private struct OverlayDetailView: View {
             element?.style.gaugePreset ?? .minimalSport
         } set: { newValue in
             project.setOverlayGaugePreset(elementID, gaugePreset: newValue)
-        }
-    }
-
-    private var routeMapPresetBinding: Binding<OverlayRouteMapPreset> {
-        Binding {
-            element?.style.routeMapPreset ?? .minimal
-        } set: { newValue in
-            project.setOverlayRouteMapPreset(elementID, routeMapPreset: newValue)
         }
     }
 
@@ -1596,12 +1586,6 @@ private extension OverlayTextPreset {
 }
 
 private extension OverlayGaugePreset {
-    var compactLabel: String {
-        label.components(separatedBy: " / ").first ?? label
-    }
-}
-
-extension OverlayRouteMapPreset {
     var compactLabel: String {
         label.components(separatedBy: " / ").first ?? label
     }

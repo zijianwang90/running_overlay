@@ -459,10 +459,10 @@ Current implementation status:
 - FIT timer pause spans should be represented as non-destructive activity annotations on the FIT layer. Paused spans use a muted gray color and a hover tooltip labeled `Timer Paused`, while keeping the underlying timeline based on real elapsed time so video alignment is not shifted. Interval lap phase spans also expose English hover tooltips with lap kind, lap number, elapsed range, and duration.
 - `ActivityTimeline` exposes route points and interpolated current route point lookup.
 - Route Map can be added from the overlay library.
-- Inspector exposes Minimal, Gradient, Glow, and MapKit route styles.
+- Inspector exposes Route Line color mode and Glow controls.
 - Preview and export render route path, start marker, finish marker, and current-position marker.
-- MapKit is the first provider abstraction and the preview attempts `MKMapSnapshotter` for the MapKit preset.
-- When MapKit snapshot loading is unavailable, the MapKit preset falls back to a local dark grid background.
+- MapKit is the first provider abstraction and the preview attempts `MKMapSnapshotter` when the map background is enabled.
+- When MapKit snapshot loading is unavailable, Route Map falls back to a local dark grid background.
 - Route Map and Distance Timeline share one Stats Bar inspector component and one full control set; Enabled is in the section header, and all row controls are aligned between modules.
 - Route Map Stats Bar inside mode reserves map content padding for the bar lane (route geometry does not render underneath the bar).
 - Route Map Stats Bar on left/right edges renders as top-to-bottom stack, and `Item Gap` is applied as vertical spacing.

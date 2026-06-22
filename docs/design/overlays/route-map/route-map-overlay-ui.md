@@ -76,17 +76,15 @@ Rules:
 
 Sections, in order:
 
-1. `Preset` — Route Style Preset (line appearance only) + Distance readout.
-2. `Layout` — Position X/Y, Scale, Width, Height, Opacity.
-3. `Container` — Shape, Width, Height (or Size for circle).
-4. `Background Map` — Show Map (header toggle), Map Style, Map Opacity,
+1. `Layout` — Position X/Y, Scale, Width, Height, Opacity.
+2. `Container` — Shape, Width, Height (or Size for circle).
+3. `Background Map` — Show Map (header toggle), Map Style, Map Opacity,
    optional Contrast / Saturation / Brightness / Blur.
-5. `Route Line` — Color Mode, Solid Color, Gradient Stops, Width, Opacity,
-   Dash, Glow.
-6. `Markers` — Start, Finish, and Moving Marker controls (style / color / size /
+4. `Route Line` — Color Mode, Solid Color, Gradient Stops, Glow.
+5. `Markers` — Start, Finish, and Moving Marker controls (style / color / size /
    border / label).
-7. `Status Bar` — Enabled (toggle accessory), Placement, Inside, Layout, Size, Width, Offset, Item Gap, Slots, Background, Dividers, Radius.
-8. Shared `Effects` — Shadow, Glow, and Background Fade Out controls.
+6. `Status Bar` — Enabled (toggle accessory), Placement, Inside, Layout, Size, Width, Offset, Item Gap, Slots, Background, Dividers, Radius.
+7. Shared `Effects` — Shadow, Glow, and Background Fade Out controls.
 
 Each section renders as a compact collapsible group:
 
@@ -98,19 +96,11 @@ Each section renders as a compact collapsible group:
 
 Do not use one-row card containers. Row gap is 6 px, section gap is 8 px.
 
-## Preset Section
+## Route Line Controls
 
-The Preset section is now a thin starting point that bundles a single
-high-level decision: which route line aesthetic to use. Container shape,
-edges, map background, and effects each live in their own section so the
-inspector never has two controls fighting for the same field.
-
-### Route Style Preset
-
-Dropdown: `OverlayRouteMapPreset` — `minimal`, `gradient`, `glow`. The
-preset describes the **line** appearance only (solid color vs. gradient
-stops, glow / shadow defaults). It does **not** decide whether the map
-background is rendered.
+Route Map no longer shows a top-level Preset section. Line appearance is
+configured directly in Route Line: `routeMapColorMode` selects solid or
+gradient color, and `OverlayStyle.glowEnabled` toggles the route glow.
 
 To show or hide the map background, use the `Show Map` toggle in the
 Background Map section header — the toggle flips
@@ -234,6 +224,7 @@ Controls (v1, implemented today):
 - Solid Color swatches (when `solid`) — uses `OverlayStyle.foregroundColor`
   for the route line. Marker colors are configured in the Markers section.
 - Gradient Start / Mid / End swatches (when `gradient`).
+- Glow switch (`OverlayStyle.glowEnabled`).
 
 Controls (v2, planned per spec):
 
@@ -241,7 +232,7 @@ Controls (v2, planned per spec):
 - Width slider, range `1...24`.
 - Opacity slider, range `0...1`.
 - Dash toggle + dash pattern editor.
-- Glow toggle + color + opacity + radius.
+- Glow color + opacity + radius.
 - Shadow toggle + opacity + radius.
 
 Rules:
@@ -478,7 +469,6 @@ Inspector width:
 
 Currently model-backed (post 2026-04-27 Phase E.1):
 
-- `routeMapPreset` (route line aesthetic only — no longer encodes "show map").
 - `routeMapShape`.
 - `routeMapWidth`, `routeMapHeight` — independent container dimensions, used
   by both shapes (circle takes the shorter edge as the diameter).

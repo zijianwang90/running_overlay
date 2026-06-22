@@ -176,7 +176,7 @@
         {
           "component": "StyleSection",
           "controls": [
-            { "type": "preset", "label": "Preset", "modelPath": "OverlayStyle.textPreset|gaugePreset|routeMapPreset" },
+            { "type": "preset", "label": "Preset", "modelPath": "OverlayStyle.textPreset|gaugePreset" },
             { "type": "select", "label": "Font", "modelPath": "OverlayStyle.fontName" },
             { "type": "slider", "label": "Font Size", "modelPath": "OverlayStyle.fontSize" },
             { "type": "segmented", "label": "Weight", "modelPath": "OverlayStyle.fontWeight" },

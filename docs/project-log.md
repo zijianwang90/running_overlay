@@ -4616,3 +4616,33 @@ Files changed:
 - `Tests/RunningOverlayTests/OverlayTemplateTests.swift`
 - `docs/design/overlays/weather-widget/weather-widget-overlay-ui.md`
 - `docs/overlay-modules/weather-widget-overlay.md`
+
+### Route Map Glow Toggle Simplification (2026-06-22)
+
+Summary:
+
+- Removed the Route Map Inspector's top-level Preset section and legacy Route Style dropdown.
+- Added a Glow switch directly inside Route Line, backed by `OverlayStyle.glowEnabled`.
+- Deleted the unused `routeMapPreset` model field, enum, setter, snapshot request field, template entries, and docs references.
+- Updated preview/export rendering to use the Glow switch directly.
+
+Verification:
+
+- `swift test`
+- `git diff --check`
+
+Files changed:
+
+- `Sources/RunningOverlay/UI/RouteMapOverlayDetailView.swift`
+- `Sources/RunningOverlay/UI/ParameterPanelView.swift`
+- `Sources/RunningOverlay/Overlay/RouteMapOverlay.swift`
+- `Sources/RunningOverlay/Overlay/OverlayRenderModel.swift`
+- `Sources/RunningOverlay/UI/PreviewCanvasView.swift`
+- `Sources/RunningOverlay/Export/OverlayFrameRenderer.swift`
+- `Sources/RunningOverlay/Overlay/OverlayElement.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Tests/RunningOverlayTests/OverlayRenderModelTests.swift`
+- `Tests/RunningOverlayTests/OverlayTemplateTests.swift`
+- `docs/design/overlays/route-map/route-map-overlay-ui.md`
+- `docs/design/overlays/route-map/route-map-overlay-ui.spec.json`
+- `docs/overlay-modules/route-map-overlay.md`
