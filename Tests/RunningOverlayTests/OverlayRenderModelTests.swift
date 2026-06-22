@@ -552,10 +552,10 @@ struct OverlayRenderModelTests {
         #expect(layout.style.stylePreset == .roadRun)
     }
 
-    @Test func weatherWidgetLayoutHonorsFITManualAndOpenMeteoSources() {
+    @Test func weatherWidgetLayoutHonorsManualOpenMeteoAndFITTemperatureOverride() {
         var style = OverlayStyle.default
         style.weatherWidget = .preset(.simpleCard)
-        style.weatherWidget.dataSource = .fitTemperature
+        style.weatherWidget.useFITTemperature = true
         style.weatherWidget.manualTemperatureCelsius = 13
         style.weatherWidget.manualCondition = .rain
         style.weatherWidget.locationText = "大阪, 日本"
@@ -580,7 +580,7 @@ struct OverlayRenderModelTests {
         #expect(fitLayout.conditionLabel == "雨")
 
         var manualStyle = style
-        manualStyle.weatherWidget.dataSource = .manual
+        manualStyle.weatherWidget.useFITTemperature = false
         let manualElement = OverlayElement(type: .weatherWidget, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: manualStyle)
         let manualLayout = OverlayRenderModel.weatherWidgetLayout(for: manualElement, in: context)
         #expect(manualLayout.temperatureFormatted == "13°C")
@@ -591,12 +591,17 @@ struct OverlayRenderModelTests {
         apiStyle.weatherWidget.metricSlots = [.humidity]
         let apiElement = OverlayElement(type: .weatherWidget, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: apiStyle)
         let apiLayout = OverlayRenderModel.weatherWidgetLayout(for: apiElement, in: context)
-        #expect(apiLayout.temperatureFormatted == "30°C")
+        #expect(apiLayout.temperatureFormatted == "15°C")
         #expect(apiLayout.condition == .sunny)
         #expect(apiLayout.humidityFormatted == "10%")
         #expect(apiLayout.windFormatted == "4 km/h")
         #expect(apiLayout.metricSlots.map(\.kind) == [.humidity])
         #expect(apiLayout.metricSlots.map(\.value) == ["10% RH"])
+
+        apiStyle.weatherWidget.useFITTemperature = false
+        let apiOnlyElement = OverlayElement(type: .weatherWidget, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: apiStyle)
+        let apiOnlyLayout = OverlayRenderModel.weatherWidgetLayout(for: apiOnlyElement, in: context)
+        #expect(apiOnlyLayout.temperatureFormatted == "30°C")
 
         apiStyle.weatherWidget.metricSlots = [.none]
         let hiddenSlotElement = OverlayElement(type: .weatherWidget, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: apiStyle)

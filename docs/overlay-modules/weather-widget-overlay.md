@@ -113,7 +113,9 @@ Add all new types in a `// MARK: - Weather Widget` section at the bottom of the 
 
 **`WeatherTemperatureUnit` enum** — `celsius`, `fahrenheit`. Defaults to system locale. Method `formatted(_ celsius: Double) -> String`.
 
-**`WeatherDataSource` enum** — `fitTemperature` (Phase 1), `manual` (Phase 1), `openMeteo` (Phase 2).
+**`WeatherDataSource` enum** — `manual`, `openMeteo`. Legacy `fitTemperature` decodes to `manual` with `useFITTemperature = true`.
+
+**`WeatherWidgetStyle.useFITTemperature`** — when true and FIT records include temperature, overrides API/manual temperature at the current playhead.
 
 **`WeatherMetricSlotValue` enum** — `none`, `humidity`, `highLow`, `wind`, `feelsLike`. Used by Style-specific metric slots; `none` displays as `-` in the Inspector and renders no metric content.
 
@@ -166,7 +168,7 @@ Static factory `WeatherWidgetStyle.preset(_ preset:)` — sets width/height and 
 
 **`weatherWidgetLayout(for:in:)` static func**:
 1. Scale width/height by `element.scale` and `context.canvasScale`; compute `rect` via `centeredRect(for:size:canvasSize:)`.
-2. Resolve temperature: `.fitTemperature` → `context.activity.temperature(at: elapsedTime) ?? manual`; `.openMeteo` → `cachedWeather?.temperatureCelsius ?? manual`; `.manual` → manual value.
+2. Resolve temperature: base value from manual or cached Open-Meteo payload; if `useFITTemperature` and FIT has temperature at the playhead, override with FIT value.
 3. Resolve condition via the same precedence chain.
 4. Format all display strings (unit conversion, weekday from `activity.startDate`, optional fields).
 5. Pure function — no networking, no side effects.

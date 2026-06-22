@@ -2202,7 +2202,7 @@ extension OverlayRenderModel {
         let rect = centeredRect(for: element, size: CGSize(width: w, height: h), canvasSize: context.canvasSize)
 
         let condition: WeatherCondition
-        let temperatureCelsius: Double
+        var temperatureCelsius: Double
         let humidity: Double?
         let highCelsius: Double?
         let lowCelsius: Double?
@@ -2224,18 +2224,17 @@ extension OverlayRenderModel {
         } else {
             isMissingAPIWeather = style.dataSource == .openMeteo
             condition = style.manualCondition
-            switch style.dataSource {
-            case .fitTemperature:
-                temperatureCelsius = context.activity.temperature(at: context.elapsedTime) ?? style.manualTemperatureCelsius
-            case .manual, .openMeteo:
-                temperatureCelsius = style.manualTemperatureCelsius
-            }
+            temperatureCelsius = style.manualTemperatureCelsius
             humidity = style.manualHumidity
             highCelsius = style.manualHigh
             lowCelsius = style.manualLow
             windKph = style.manualWind
             feelsLikeCelsius = style.manualFeelsLike
             resolvedLocation = style.showLocation && !style.locationText.isEmpty ? style.locationText : nil
+        }
+
+        if style.useFITTemperature, let fitTemperature = context.activity.temperature(at: context.elapsedTime) {
+            temperatureCelsius = fitTemperature
         }
 
         let unit = style.temperatureUnit

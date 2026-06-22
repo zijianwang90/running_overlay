@@ -3466,12 +3466,14 @@ enum WeatherTemperatureUnit: String, CaseIterable, Identifiable, Equatable, Coda
     }
 }
 
-enum WeatherDataSource: String, CaseIterable, Identifiable, Equatable, Codable {
+enum WeatherDataSource: String, Identifiable, Equatable, Codable {
     case fitTemperature
     case manual
     case openMeteo
 
     var id: String { rawValue }
+
+    static let inspectorCases: [WeatherDataSource] = [.manual, .openMeteo]
 
     var label: String {
         switch self {
@@ -3658,6 +3660,7 @@ struct WeatherTextStyle: Equatable, Codable {
 struct WeatherWidgetStyle: Equatable, Codable {
     var preset: WeatherWidgetPreset
     var dataSource: WeatherDataSource
+    var useFITTemperature: Bool
     var manualCondition: WeatherCondition
     var manualTemperatureCelsius: Double
     var manualHumidity: Double
@@ -3705,6 +3708,7 @@ struct WeatherWidgetStyle: Equatable, Codable {
     init(
         preset: WeatherWidgetPreset,
         dataSource: WeatherDataSource,
+        useFITTemperature: Bool = false,
         manualCondition: WeatherCondition,
         manualTemperatureCelsius: Double,
         manualHumidity: Double,
@@ -3751,6 +3755,7 @@ struct WeatherWidgetStyle: Equatable, Codable {
     ) {
         self.preset = preset
         self.dataSource = dataSource
+        self.useFITTemperature = useFITTemperature
         self.manualCondition = manualCondition
         self.manualTemperatureCelsius = manualTemperatureCelsius
         self.manualHumidity = manualHumidity
@@ -3802,7 +3807,7 @@ struct WeatherWidgetStyle: Equatable, Codable {
         switch presetValue {
         case .simpleCard:
             WeatherWidgetStyle(
-                preset: .simpleCard, dataSource: .fitTemperature,
+                preset: .simpleCard, dataSource: .manual,
                 manualCondition: .rain, manualTemperatureCelsius: 13,
                 manualHumidity: 87, manualHigh: 16, manualLow: 11,
                 manualWind: 12, manualFeelsLike: 21,
@@ -3827,7 +3832,7 @@ struct WeatherWidgetStyle: Equatable, Codable {
             )
         case .compactStrip:
             WeatherWidgetStyle(
-                preset: .compactStrip, dataSource: .fitTemperature,
+                preset: .compactStrip, dataSource: .manual,
                 manualCondition: .rain, manualTemperatureCelsius: 13,
                 manualHumidity: 87, manualHigh: 16, manualLow: 11,
                 manualWind: 0, manualFeelsLike: 0,
@@ -3852,7 +3857,7 @@ struct WeatherWidgetStyle: Equatable, Codable {
             )
         case .forecastTile:
             WeatherWidgetStyle(
-                preset: .forecastTile, dataSource: .fitTemperature,
+                preset: .forecastTile, dataSource: .manual,
                 manualCondition: .partlyCloudy, manualTemperatureCelsius: 13,
                 manualHumidity: 87, manualHigh: 16, manualLow: 11,
                 manualWind: 0, manualFeelsLike: 0,
@@ -3877,7 +3882,7 @@ struct WeatherWidgetStyle: Equatable, Codable {
             )
         case .minimalText:
             WeatherWidgetStyle(
-                preset: .minimalText, dataSource: .fitTemperature,
+                preset: .minimalText, dataSource: .manual,
                 manualCondition: .cloudy, manualTemperatureCelsius: 13,
                 manualHumidity: 50, manualHigh: 16, manualLow: 11,
                 manualWind: 0, manualFeelsLike: 0,
@@ -3902,7 +3907,7 @@ struct WeatherWidgetStyle: Equatable, Codable {
             )
         case .dashboardBar:
             WeatherWidgetStyle(
-                preset: .dashboardBar, dataSource: .fitTemperature,
+                preset: .dashboardBar, dataSource: .manual,
                 manualCondition: .rain, manualTemperatureCelsius: 13,
                 manualHumidity: 87, manualHigh: 16, manualLow: 11,
                 manualWind: 9, manualFeelsLike: 12,
@@ -3932,7 +3937,15 @@ struct WeatherWidgetStyle: Equatable, Codable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let defaults = WeatherWidgetStyle.preset(try c.decodeIfPresent(WeatherWidgetPreset.self, forKey: .preset) ?? .simpleCard)
         preset = try c.decodeIfPresent(WeatherWidgetPreset.self, forKey: .preset) ?? defaults.preset
-        dataSource = try c.decodeIfPresent(WeatherDataSource.self, forKey: .dataSource) ?? defaults.dataSource
+        let decodedDataSource = try c.decodeIfPresent(WeatherDataSource.self, forKey: .dataSource) ?? defaults.dataSource
+        switch decodedDataSource {
+        case .fitTemperature:
+            dataSource = .manual
+        default:
+            dataSource = decodedDataSource
+        }
+        useFITTemperature = try c.decodeIfPresent(Bool.self, forKey: .useFITTemperature)
+            ?? (decodedDataSource == .fitTemperature)
         manualCondition = try c.decodeIfPresent(WeatherCondition.self, forKey: .manualCondition) ?? defaults.manualCondition
         manualTemperatureCelsius = try c.decodeIfPresent(Double.self, forKey: .manualTemperatureCelsius) ?? defaults.manualTemperatureCelsius
         manualHumidity = try c.decodeIfPresent(Double.self, forKey: .manualHumidity) ?? defaults.manualHumidity

@@ -20,10 +20,10 @@ struct WeatherWidgetOverlayDetailView: View {
                     VStack(spacing: NumericTokens.sectionGap) {
                         layoutInspectorSection(element)
                         presetSection(element)
-                        appearanceSection(element)
-                        typographySection(element)
                         locationSection(element)
                         weatherSection(element)
+                        appearanceSection(element)
+                        typographySection(element)
                     }
                     .padding(.bottom, NumericTokens.panelPaddingY)
                 }
@@ -37,7 +37,7 @@ struct WeatherWidgetOverlayDetailView: View {
     // MARK: - Section model
 
     private enum WeatherSection: String, CaseIterable {
-        case layout, preset, appearance, typography, location, weather
+        case layout, preset, location, weather, appearance, typography
 
         var title: String {
             switch self {
@@ -216,9 +216,20 @@ struct WeatherWidgetOverlayDetailView: View {
                     }
                 }
             }
+        }
+    }
+
+    // MARK: - Weather section
+
+    private func weatherSection(_ element: OverlayElement) -> some View {
+        let s = element.style.weatherWidget
+        let usesAPI = s.dataSource == .openMeteo
+        let metricSlots = s.normalizedMetricSlots()
+        let hasFITTemperature = project.activity.hasTemperatureData
+        return sectionView(.weather, element: element) {
             InspectorDenseRow(label: "Data Source") {
                 Menu {
-                    ForEach(WeatherDataSource.allCases) { ds in
+                    ForEach(WeatherDataSource.inspectorCases) { ds in
                         Button {
                             project.mutateWeatherWidgetStyle(elementID) { $0.dataSource = ds }
                         } label: {
@@ -230,16 +241,20 @@ struct WeatherWidgetOverlayDetailView: View {
                     InspectorDenseMenuLabel(title: s.dataSource.label)
                 }
             }
-        }
-    }
 
-    // MARK: - Weather section
+            if hasFITTemperature {
+                InspectorDenseRow(label: "Use FIT Temperature") {
+                    Toggle("", isOn: Binding(
+                        get: { s.useFITTemperature },
+                        set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.useFITTemperature = v } }
+                    ))
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+                    .labelsHidden()
+                    .tint(NumericTokens.accentBlue)
+                }
+            }
 
-    private func weatherSection(_ element: OverlayElement) -> some View {
-        let s = element.style.weatherWidget
-        let usesAPI = s.dataSource == .openMeteo
-        let metricSlots = s.normalizedMetricSlots()
-        return sectionView(.weather, element: element) {
             if usesAPI {
                 InspectorDenseRow(label: "Condition") {
                     Text("From API")

@@ -205,6 +205,44 @@ struct OverlayTemplateTests {
         #expect(decoded.weatherWidget.cachedWeather?.resolvedLocation == "大阪, 日本")
     }
 
+    @Test func weatherWidgetStyleDecodesLegacyFitTemperatureDataSource() throws {
+        let json = """
+        {
+          "weatherWidget": {
+            "preset": "simpleCard",
+            "dataSource": "fitTemperature",
+            "manualCondition": "rain",
+            "manualTemperatureCelsius": 13,
+            "manualHumidity": 87,
+            "manualHigh": 16,
+            "manualLow": 11,
+            "manualWind": 9,
+            "manualFeelsLike": 12,
+            "temperatureUnit": "celsius",
+            "locationText": "大阪, 日本",
+            "showLocation": true,
+            "showWeekday": true,
+            "showHumidity": true,
+            "showHighLow": false,
+            "showWind": false,
+            "showFeelsLike": false,
+            "cardBackgroundColor": { "red": 0, "green": 0, "blue": 0, "alpha": 1 },
+            "cardBackgroundOpacity": 0.6,
+            "cardCornerRadius": 10,
+            "iconSize": 36,
+            "showConditionLabel": true,
+            "width": 300,
+            "height": 110
+          }
+        }
+        """
+
+        let decoded = try JSONDecoder().decode(OverlayStyle.self, from: Data(json.utf8))
+
+        #expect(decoded.weatherWidget.dataSource == .manual)
+        #expect(decoded.weatherWidget.useFITTemperature == true)
+    }
+
     @Test func weatherWidgetStyleDecodesLegacyWeatherFieldsWithDefaults() throws {
         let json = """
         {

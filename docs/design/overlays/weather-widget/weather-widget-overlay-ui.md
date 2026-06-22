@@ -194,21 +194,20 @@ Recommended sections:
 
 - Layout
 - Preset
-- Appearance
-- Typography
 - Location
 - Weather
+- Appearance
+- Typography
 
 Key controls:
 
 - Style picker: icon buttons for Simple Card, Compact Strip, Forecast Tile, Minimal Text, Dashboard Bar. Do not show a duplicate text-only Preset menu in Weather Widget 1.0.
-- Palette, card opacity, corner radius, show divider, divider color, divider width, and divider opacity. Divider color/width/opacity are visible only when Show Divider is on.
 - Location fetch actions: activity GPS start location and current device location.
 - Location text fields.
-- Data source picker: FIT Temperature, Manual, Open-Meteo API.
-- Weather section combines the former Content, Temperature, Metrics, and Icon sections.
-- Manual/FIT mode: condition picker, optional label override, manual temperature, unit, Style-specific metric slots, and manual values for selected slot metrics.
-- Open-Meteo mode: API-owned condition/temperature/metric text inputs are hidden; keep unit, Style-specific metric slot assignment, and display toggles only.
+- Data source picker (Manual, Open-Meteo API) lives in the Weather section.
+- When the loaded FIT activity includes temperature records, Weather exposes a **Use FIT Temperature** toggle. When enabled, FIT temperature overrides the API or manual temperature at the current playhead for more accurate on-run readings.
+- Manual mode: condition picker, optional label override, manual temperature, unit, Style-specific metric slots, and manual values for selected slot metrics.
+- Open-Meteo mode: API-owned condition/temperature/metric text inputs are hidden; keep unit, Style-specific metric slot assignment, display toggles, and optional FIT temperature override.
 - Metric slots are Style-specific: Simple Card has 1 slot, Forecast Tile has 3 slots, Dashboard Bar has 3 slots, Compact Strip and Minimal Text have 0 slots. Each slot can choose `-`, Humidity, High / Low, Wind, or Feels Like. `-` leaves that slot empty.
 - Toggles for weekday, condition label, and icon visibility.
 - Accent color only when the preset uses it.

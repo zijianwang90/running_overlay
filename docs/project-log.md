@@ -4576,3 +4576,27 @@ Files changed:
 - `docs/design/overlays/interval-hud-bar/interval-hud-bar-overlay-ui.md`
 - `docs/design/overlays/interval-hud-bar/interval-hud-bar-overlay-ui.spec.json`
 - `docs/overlay-modules/interval-hud-bar-overlay.md`
+
+### Weather Widget Inspector + FIT Temperature Override (2026-06-21)
+
+Summary:
+
+- Moved Location and Weather inspector sections directly under Preset; Data Source now lives in Weather instead of Preset.
+- Removed FIT Temperature as a standalone data source. Added **Use FIT Temperature** toggle when the loaded FIT activity includes temperature records; when enabled, FIT temperature overrides Open-Meteo or manual temperature at the playhead.
+- After FIT import auto-applies the last-used template, Open-Meteo weather widgets trigger an immediate activity-location fetch without clobbering the import status message.
+
+Verification:
+
+- `swift test`
+
+Files changed:
+
+- `Sources/RunningOverlay/Overlay/OverlayElement.swift`
+- `Sources/RunningOverlay/Overlay/OverlayRenderModel.swift`
+- `Sources/RunningOverlay/FitData/ActivityTimeline.swift`
+- `Sources/RunningOverlay/UI/WeatherWidgetOverlayDetailView.swift`
+- `Sources/RunningOverlay/Project/ProjectDocument.swift`
+- `Tests/RunningOverlayTests/OverlayRenderModelTests.swift`
+- `Tests/RunningOverlayTests/OverlayTemplateTests.swift`
+- `docs/design/overlays/weather-widget/weather-widget-overlay-ui.md`
+- `docs/overlay-modules/weather-widget-overlay.md`

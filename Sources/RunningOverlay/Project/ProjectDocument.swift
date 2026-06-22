@@ -126,6 +126,7 @@ final class ProjectDocument: ObservableObject {
         let importSummary = "Loaded FIT: \(sourceName), \(formatDuration(importedActivity.duration)), \(formatDistance(importedActivity.distanceMeters))."
         if let appliedTemplateName = applyLastUsedOverlayTemplateAfterFitImport() {
             statusMessage = "\(importSummary) Applied template: \(appliedTemplateName)."
+            refreshOpenMeteoWeatherWidgetsAfterFitImport()
         } else {
             statusMessage = importSummary
         }
@@ -1775,6 +1776,7 @@ final class ProjectDocument: ObservableObject {
         let existing = overlayLayout.elements[index].style.weatherWidget
         var next = WeatherWidgetStyle.preset(preset)
         next.dataSource = existing.dataSource
+        next.useFITTemperature = existing.useFITTemperature
         next.manualCondition = existing.manualCondition
         next.manualTemperatureCelsius = existing.manualTemperatureCelsius
         next.manualHumidity = existing.manualHumidity
@@ -1815,21 +1817,41 @@ final class ProjectDocument: ObservableObject {
         fetchWeather(elementID, mode: .currentLocation, registersUndo: true)
     }
 
-    private func fetchWeatherForNewWeatherWidget(_ elementID: OverlayElement.ID) {
-        guard activity.routePoints.first != nil else {
-            statusMessage = "Added Weather Widget overlay. Weather unavailable until the FIT route has GPS."
-            return
+    private func refreshOpenMeteoWeatherWidgetsAfterFitImport() {
+        let weatherWidgetIDs = overlayLayout.elements
+            .filter { $0.type == .weatherWidget && $0.style.weatherWidget.dataSource == .openMeteo }
+            .map(\.id)
+        guard !weatherWidgetIDs.isEmpty else { return }
+
+        for elementID in weatherWidgetIDs {
+            fetchWeatherForNewWeatherWidget(elementID, updatesStatusMessage: false)
         }
-        fetchWeather(elementID, mode: .activityLocation, registersUndo: false)
     }
 
-    private func fetchWeather(_ elementID: OverlayElement.ID, mode: WeatherFetchLocationMode, registersUndo: Bool) {
+    private func fetchWeatherForNewWeatherWidget(_ elementID: OverlayElement.ID, updatesStatusMessage: Bool = true) {
+        guard activity.routePoints.first != nil else {
+            if updatesStatusMessage {
+                statusMessage = "Added Weather Widget overlay. Weather unavailable until the FIT route has GPS."
+            }
+            return
+        }
+        fetchWeather(elementID, mode: .activityLocation, registersUndo: false, updatesStatusMessage: updatesStatusMessage)
+    }
+
+    private func fetchWeather(
+        _ elementID: OverlayElement.ID,
+        mode: WeatherFetchLocationMode,
+        registersUndo: Bool,
+        updatesStatusMessage: Bool = true
+    ) {
         guard overlayLayout.elements.contains(where: { $0.id == elementID }) else {
             return
         }
 
         let activity = activity
-        statusMessage = "Fetching weather from \(mode.label)..."
+        if updatesStatusMessage {
+            statusMessage = "Fetching weather from \(mode.label)..."
+        }
 
         Task {
             do {
@@ -1853,16 +1875,23 @@ final class ProjectDocument: ObservableObject {
                 )
                 payload.resolvedLocation = await resolvedLocation
                 payload.fetchLocationMode = mode
-                applyFetchedWeatherPayload(payload, to: elementID, registersUndo: registersUndo)
+                applyFetchedWeatherPayload(payload, to: elementID, registersUndo: registersUndo, updatesStatusMessage: updatesStatusMessage)
             } catch {
-                statusMessage = registersUndo
-                    ? "Weather fetch failed: \(error.localizedDescription)"
-                    : "Weather unavailable; showing placeholders."
+                if updatesStatusMessage {
+                    statusMessage = registersUndo
+                        ? "Weather fetch failed: \(error.localizedDescription)"
+                        : "Weather unavailable; showing placeholders."
+                }
             }
         }
     }
 
-    private func applyFetchedWeatherPayload(_ payload: WeatherPayload, to elementID: OverlayElement.ID, registersUndo: Bool) {
+    private func applyFetchedWeatherPayload(
+        _ payload: WeatherPayload,
+        to elementID: OverlayElement.ID,
+        registersUndo: Bool,
+        updatesStatusMessage: Bool = true
+    ) {
         if registersUndo {
             registerUndoPoint()
         }
@@ -1872,7 +1901,9 @@ final class ProjectDocument: ObservableObject {
         if let location = payload.resolvedLocation, !location.isEmpty {
             overlayLayout.elements[index].style.weatherWidget.locationText = location
         }
-        statusMessage = "Weather updated from \(payload.fetchLocationMode?.label ?? "Open-Meteo")."
+        if updatesStatusMessage {
+            statusMessage = "Weather updated from \(payload.fetchLocationMode?.label ?? "Open-Meteo")."
+        }
     }
 
     func setDecorShape(_ elementID: OverlayElement.ID, shape: DecorShape) {

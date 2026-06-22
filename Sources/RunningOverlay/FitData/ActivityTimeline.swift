@@ -131,6 +131,10 @@ struct ActivityTimeline: Equatable, Codable {
         workoutStructure = try container.decodeIfPresent(WorkoutStructureAnalysis.self, forKey: .workoutStructure) ?? .normalAuto
     }
 
+    var hasTemperatureData: Bool {
+        records.contains { $0.temperatureCelsius != nil }
+    }
+
     var endDate: Date {
         startDate.addingTimeInterval(duration)
     }
