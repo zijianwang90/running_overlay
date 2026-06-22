@@ -524,6 +524,7 @@ struct HeartRateZoneSnapshot: Equatable {
 struct IntervalHUDBarRenderLayout {
     var style: IntervalHUDBarStyle
     var rect: CGRect
+    var baseHeight: Double
     var phaseLabel: String
     var phaseDetail: String
     var phaseColor: OverlayColor

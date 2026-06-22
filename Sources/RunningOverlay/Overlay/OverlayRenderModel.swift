@@ -421,7 +421,11 @@ enum OverlayRenderModel {
     static func intervalHUDBarLayout(for element: OverlayElement, in context: OverlayRenderContext) -> IntervalHUDBarRenderLayout {
         let style = element.style.intervalHUDBar
         let width = context.scaled(style.width * element.scale)
-        let height = context.scaled(style.height * element.scale)
+        let baseHeight = context.scaled(style.height * element.scale)
+        let bottomBarSpacing = style.bottomBarEnabled && style.bottomBarMode != .none
+            ? max(style.bottomBarSpacing, 0)
+            : 0
+        let height = baseHeight + bottomBarSpacing
         let rect = centeredRect(for: element, size: CGSize(width: width, height: height), canvasSize: context.canvasSize)
         let lap = context.activity.currentLap(at: context.elapsedTime)
         let t = min(max(context.elapsedTime, 0), context.activity.duration)
@@ -446,6 +450,7 @@ enum OverlayRenderModel {
         return IntervalHUDBarRenderLayout(
             style: style,
             rect: rect,
+            baseHeight: baseHeight,
             phaseLabel: phaseLabel(lap?.kind ?? .unknown),
             phaseDetail: phaseDetail(
                 style: style,

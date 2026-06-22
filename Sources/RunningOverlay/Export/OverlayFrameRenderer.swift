@@ -1507,8 +1507,8 @@ struct OverlayFrameRenderer {
         let verticalLayout = intervalHUDVerticalLayout(
             layout: layout,
             rect: rect,
-            desiredTopPadding: rect.height * 0.06,
-            desiredBottomPadding: rect.height * 0.12,
+            desiredTopPadding: layout.baseHeight * 0.06,
+            desiredBottomPadding: layout.baseHeight * 0.12,
             bottomBarContentHeight: bottomBarContentHeight,
             hasVisibleBottomBar: hasVisibleBottomBar
         )
@@ -1546,7 +1546,7 @@ struct OverlayFrameRenderer {
                 height: contentRect.height
             )
             if columnIndex > 0 {
-                drawIntervalHUDDivider(element: element, x: columnRect.minX, rect: rect)
+                drawIntervalHUDDivider(element: element, x: columnRect.minX, rect: rect, height: layout.baseHeight)
             }
             columnIndex += 1
             return columnRect
@@ -1977,7 +1977,8 @@ struct OverlayFrameRenderer {
             layout.phaseText.fontSize + layout.phaseDetailText.fontSize + 3,
             layout.metricValueText.fontSize + max(layout.labelText.fontSize, layout.metricUnitText.fontSize) + 4
         )
-        return max(rect.height * 0.30, min(maxTextStackHeight + 4, rect.height * 0.58))
+        let layoutHeight = max(layout.baseHeight, 1)
+        return max(layoutHeight * 0.30, min(maxTextStackHeight + 4, layoutHeight * 0.58))
     }
 
     private static func intervalHUDVerticalLayout(
@@ -1988,13 +1989,14 @@ struct OverlayFrameRenderer {
         bottomBarContentHeight: Double,
         hasVisibleBottomBar: Bool
     ) -> IntervalHUDExportVerticalLayout {
-        let minimumTopPadding = max(rect.height * 0.025, 2)
-        let minimumBottomPadding = max(rect.height * 0.025, 2)
+        let layoutHeight = max(layout.baseHeight, 1)
+        let minimumTopPadding = max(layoutHeight * 0.025, 2)
+        let minimumBottomPadding = max(layoutHeight * 0.025, 2)
         let requestedSpacing = hasVisibleBottomBar ? max(layout.style.bottomBarSpacing, 0) : 0
         let minimumContentHeight = intervalHUDMinimumMainContentHeight(layout: layout, rect: rect)
-        let desiredTotal = desiredTopPadding + minimumContentHeight + requestedSpacing + bottomBarContentHeight + desiredBottomPadding
+        let desiredTotal = desiredTopPadding + minimumContentHeight + bottomBarContentHeight + desiredBottomPadding
 
-        guard hasVisibleBottomBar, desiredTotal > rect.height else {
+        guard hasVisibleBottomBar, desiredTotal > layoutHeight else {
             return IntervalHUDExportVerticalLayout(
                 topPadding: desiredTopPadding,
                 bottomPadding: desiredBottomPadding,
@@ -2002,7 +2004,7 @@ struct OverlayFrameRenderer {
             )
         }
 
-        let availablePadding = rect.height - minimumContentHeight - requestedSpacing - bottomBarContentHeight
+        let availablePadding = layoutHeight - minimumContentHeight - bottomBarContentHeight
         if availablePadding >= minimumTopPadding + minimumBottomPadding {
             let desiredPadding = max(desiredTopPadding + desiredBottomPadding, 1)
             let topShare = desiredTopPadding / desiredPadding
@@ -2015,11 +2017,10 @@ struct OverlayFrameRenderer {
             )
         }
 
-        let maxSpacing = max(rect.height - minimumTopPadding - minimumBottomPadding - minimumContentHeight - bottomBarContentHeight, 0)
         return IntervalHUDExportVerticalLayout(
             topPadding: minimumTopPadding,
             bottomPadding: minimumBottomPadding,
-            spacing: min(requestedSpacing, maxSpacing)
+            spacing: requestedSpacing
         )
     }
 
@@ -2242,14 +2243,14 @@ struct OverlayFrameRenderer {
         )
     }
 
-    private static func drawIntervalHUDDivider(element: OverlayElement, x: Double, rect: CGRect) {
+    private static func drawIntervalHUDDivider(element: OverlayElement, x: Double, rect: CGRect, height: Double) {
         guard element.style.dividerEnabled else { return }
         NSColor(element.style.dividerColor).withAlphaComponent(element.style.dividerOpacity).setFill()
         CGRect(
             x: x - element.style.dividerThickness / 2,
-            y: rect.minY + rect.height * 0.22,
+            y: rect.minY + height * 0.22,
             width: max(element.style.dividerThickness, 0.5),
-            height: rect.height * 0.46
+            height: height * 0.46
         ).fill()
     }
 
