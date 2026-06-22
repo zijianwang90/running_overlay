@@ -3432,6 +3432,33 @@ enum WeatherCondition: String, CaseIterable, Identifiable, Equatable, Codable {
         default: .cloudy
         }
     }
+
+    static func fromOpenWeather(id: Int, icon: String?) -> WeatherCondition {
+        switch id {
+        case 200..<300:
+            .thunder
+        case 300..<400:
+            .rain
+        case 500, 501, 520, 521:
+            .rain
+        case 502, 503, 504, 511, 522, 531:
+            .heavyRain
+        case 600..<700:
+            .snow
+        case 701, 711, 721, 731, 741, 751, 761, 762:
+            .fog
+        case 771, 781:
+            .wind
+        case 800:
+            icon?.hasSuffix("n") == true ? .clearNight : .sunny
+        case 801:
+            .partlyCloudy
+        case 802...804:
+            .cloudy
+        default:
+            .cloudy
+        }
+    }
 }
 
 enum WeatherTemperatureUnit: String, CaseIterable, Identifiable, Equatable, Codable {
@@ -3470,16 +3497,27 @@ enum WeatherDataSource: String, Identifiable, Equatable, Codable {
     case fitTemperature
     case manual
     case openMeteo
+    case openWeather
 
     var id: String { rawValue }
 
-    static let inspectorCases: [WeatherDataSource] = [.manual, .openMeteo]
+    static let inspectorCases: [WeatherDataSource] = [.manual, .openMeteo, .openWeather]
 
     var label: String {
         switch self {
         case .fitTemperature: "FIT Temperature"
         case .manual: "Manual"
         case .openMeteo: "Open-Meteo API"
+        case .openWeather: "OpenWeather API"
+        }
+    }
+
+    var isAPI: Bool {
+        switch self {
+        case .openMeteo, .openWeather:
+            true
+        case .fitTemperature, .manual:
+            false
         }
     }
 }

@@ -113,7 +113,7 @@ Add all new types in a `// MARK: - Weather Widget` section at the bottom of the 
 
 **`WeatherTemperatureUnit` enum** — `celsius`, `fahrenheit`. Defaults to system locale. Method `formatted(_ celsius: Double) -> String`.
 
-**`WeatherDataSource` enum** — `manual`, `openMeteo`. Legacy `fitTemperature` decodes to `manual` with `useFITTemperature = true`.
+**`WeatherDataSource` enum** — `manual`, `openMeteo`, `openWeather`. Legacy `fitTemperature` decodes to `manual` with `useFITTemperature = true`.
 
 **`WeatherWidgetStyle.useFITTemperature`** — when true and FIT records include temperature, overrides API/manual temperature at the current playhead.
 
@@ -206,7 +206,7 @@ New file following `NumericOverlayDetailView` structure. Use `InspectorDense*` p
 | Layout | `OverlayLayoutInspectorRows` with position/scale/width/height bindings |
 Shared `OverlayBackgroundInspectorModule`, `OverlayBorderInspectorModule`, and `OverlayEffectsInspectorModule` are intentionally omitted for Weather Widget 1.0.
 
-When `dataSource == .openMeteo`, Weather hides manual value text inputs because condition, temperature, and metric values are owned by the cached API payload. Unit and metric slot assignments remain editable.
+When `dataSource` is an API source, Weather hides manual value text inputs because condition, temperature, and metric values are owned by the cached API payload. Unit and metric slot assignments remain editable.
 
 Footer: Reset / Done.
 
@@ -230,11 +230,13 @@ Also update `defaultOverlayStyle(for:)` to set `style.weatherWidget = .preset(.s
 
 ### Phase 2: WeatherFetcher (`Sources/RunningOverlay/Weather/WeatherFetcher.swift`)
 
-`WeatherFetcher` with `static func fetch(latitude:longitude:date:resolvedLocation:) async throws -> WeatherPayload`:
+`WeatherFetcher` supports two API providers:
 
 - Queries historical weather for the activity date (Open-Meteo archive API, free, no key required): `https://archive-api.open-meteo.com/v1/archive?latitude=…&start_date=…&end_date=…&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=auto`
 - Pick the hour matching activity start time; derive daily H/L from full hourly array.
 - Map WMO codes to `WeatherCondition` via `fromWMO(_:)`.
+- Optional OpenWeather support uses One Call 3.0 Time Machine with the activity timestamp and metric units: `https://api.openweathermap.org/data/3.0/onecall/timemachine?lat=…&lon=…&dt=…&appid=…&units=metric`. The API key is stored in Project Settings under Weather. OpenWeather timestamp responses provide current temperature, condition, humidity, wind, and feels-like values; high/low remain unavailable unless a future daily summary call is added.
+- Map OpenWeather condition ids and day/night icon ids to `WeatherCondition` via `fromOpenWeather(id:icon:)`.
 - `WeatherLocationResolver` provides the two coordinate sources: first FIT route point or current CoreLocation location.
 - Reverse geocoding fills `resolvedLocation`; if reverse geocoding fails, coordinates are used as a readable fallback.
 - API failures are non-destructive: ProjectDocument keeps the previous cached/manual fields and reports the failure in `statusMessage`.
@@ -277,7 +279,7 @@ Implemented:
 - Inspector now provides quick Styles icon buttons without a duplicate Preset menu, and orders setup as Preset, Appearance, then Location.
 - Inspector combines Content, Temperature, Metrics, and Icon into one Weather section.
 - Inspector exposes Style-specific metric slot menus instead of separate Humidity / High-Low / Wind / Feels Like toggles. Selecting `-` leaves that slot empty.
-- Inspector hides manual value inputs in Open-Meteo mode, removes Icon Size from user-facing controls, and adds `showIcon`.
+- Inspector hides manual value inputs in API modes, removes Icon Size from user-facing controls, and adds `showIcon`.
 - Inspector provides editable condition label override in manual/FIT mode, palette selection in Appearance, and divider visibility/color/width/opacity controls.
 - Inspector omits shared Background, Border, and Effects modules for Weather Widget 1.0 because they do not affect the custom SwiftUI preset renderer.
 - Appearance no longer exposes Card Color; card surfaces are palette-owned for Weather Widget 1.0.

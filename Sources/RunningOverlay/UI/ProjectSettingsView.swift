@@ -39,6 +39,12 @@ struct ProjectSettingsView: View {
                     SettingsGroupBox {
                         intervalColorsSection
                     }
+
+                    // MARK: - Weather
+                    SettingsSectionHeader(title: "Weather")
+                    SettingsGroupBox {
+                        weatherSection
+                    }
                 }
             }
 
@@ -84,6 +90,29 @@ struct ProjectSettingsView: View {
                     showingIntervalColors = true
                 }
                 .buttonStyle(EditorSecondaryButtonStyle())
+            }
+        )
+    }
+
+    // MARK: - Weather
+
+    private var weatherSection: some View {
+        SettingsRow(
+            leading: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("OpenWeather API Key")
+                        .font(EditorTheme.bodyStrongFont)
+                        .foregroundStyle(EditorTheme.textPrimary)
+                    Text("Used when a Weather overlay selects OpenWeather API.")
+                        .font(EditorTheme.captionFont)
+                        .foregroundStyle(EditorTheme.textSecondary)
+                }
+            },
+            trailing: {
+                SecureField("API key", text: $project.settings.openWeatherAPIKey)
+                    .textFieldStyle(.roundedBorder)
+                    .font(EditorTheme.bodyFont)
+                    .frame(width: 220)
             }
         )
     }

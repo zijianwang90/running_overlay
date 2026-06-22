@@ -1819,7 +1819,7 @@ final class ProjectDocument: ObservableObject {
 
     private func refreshOpenMeteoWeatherWidgetsAfterFitImport() {
         let weatherWidgetIDs = overlayLayout.elements
-            .filter { $0.type == .weatherWidget && $0.style.weatherWidget.dataSource == .openMeteo }
+            .filter { $0.type == .weatherWidget && $0.style.weatherWidget.dataSource.isAPI }
             .map(\.id)
         guard !weatherWidgetIDs.isEmpty else { return }
 
@@ -1844,13 +1844,15 @@ final class ProjectDocument: ObservableObject {
         registersUndo: Bool,
         updatesStatusMessage: Bool = true
     ) {
-        guard overlayLayout.elements.contains(where: { $0.id == elementID }) else {
+        guard let element = overlayLayout.elements.first(where: { $0.id == elementID }) else {
             return
         }
+        let dataSource = element.style.weatherWidget.dataSource
 
         let activity = activity
+        let openWeatherAPIKey = settings.openWeatherAPIKey
         if updatesStatusMessage {
-            statusMessage = "Fetching weather from \(mode.label)..."
+            statusMessage = "Fetching \(dataSource.label) weather from \(mode.label)..."
         }
 
         Task {
@@ -1867,15 +1869,35 @@ final class ProjectDocument: ObservableObject {
                     latitude: coordinate.latitude,
                     longitude: coordinate.longitude
                 )
-                var payload = try await WeatherFetcher.fetch(
-                    latitude: coordinate.latitude,
-                    longitude: coordinate.longitude,
-                    date: activity.startDate,
-                    resolvedLocation: nil
-                )
+                var payload: WeatherPayload
+                switch dataSource {
+                case .openMeteo:
+                    payload = try await WeatherFetcher.fetch(
+                        latitude: coordinate.latitude,
+                        longitude: coordinate.longitude,
+                        date: activity.startDate,
+                        resolvedLocation: nil
+                    )
+                case .openWeather:
+                    payload = try await WeatherFetcher.fetchOpenWeather(
+                        latitude: coordinate.latitude,
+                        longitude: coordinate.longitude,
+                        date: activity.startDate,
+                        apiKey: openWeatherAPIKey,
+                        resolvedLocation: nil
+                    )
+                case .fitTemperature, .manual:
+                    return
+                }
                 payload.resolvedLocation = await resolvedLocation
                 payload.fetchLocationMode = mode
-                applyFetchedWeatherPayload(payload, to: elementID, registersUndo: registersUndo, updatesStatusMessage: updatesStatusMessage)
+                applyFetchedWeatherPayload(
+                    payload,
+                    dataSource: dataSource,
+                    to: elementID,
+                    registersUndo: registersUndo,
+                    updatesStatusMessage: updatesStatusMessage
+                )
             } catch {
                 if updatesStatusMessage {
                     statusMessage = registersUndo
@@ -1888,6 +1910,7 @@ final class ProjectDocument: ObservableObject {
 
     private func applyFetchedWeatherPayload(
         _ payload: WeatherPayload,
+        dataSource: WeatherDataSource,
         to elementID: OverlayElement.ID,
         registersUndo: Bool,
         updatesStatusMessage: Bool = true
@@ -1896,13 +1919,13 @@ final class ProjectDocument: ObservableObject {
             registerUndoPoint()
         }
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.weatherWidget.dataSource = .openMeteo
+        overlayLayout.elements[index].style.weatherWidget.dataSource = dataSource
         overlayLayout.elements[index].style.weatherWidget.cachedWeather = payload
         if let location = payload.resolvedLocation, !location.isEmpty {
             overlayLayout.elements[index].style.weatherWidget.locationText = location
         }
         if updatesStatusMessage {
-            statusMessage = "Weather updated from \(payload.fetchLocationMode?.label ?? "Open-Meteo")."
+            statusMessage = "Weather updated from \(dataSource.label) · \(payload.fetchLocationMode?.label ?? "Activity Location")."
         }
     }
 

@@ -6,10 +6,10 @@ Last updated: 2026-05-07
 
 Weather Widget Overlay is a simple weather-app-style overlay for showing the day-of-run weather context on exported running videos. It should feel like a compact weather app plugin rather than a sport-specific performance module.
 
-The visual implementation and first API fetch pass are in place. The component renders with local preset styling plus a shared SwiftUI weather icon family, and it can cache Open-Meteo historical weather from either activity GPS or current device location.
+The visual implementation and API fetch pass are in place. The component renders with local preset styling plus a shared SwiftUI weather icon family, and it can cache historical weather from either activity GPS or current device location. Open-Meteo remains the default no-key provider; OpenWeather is available when an API key is configured in Project Settings.
 
 When a Weather Widget is first added, it starts from activity-location
-Open-Meteo data rather than baked-in sample content. If the current FIT activity
+API data rather than baked-in sample content. If the current FIT activity
 has a GPS route, the app automatically fetches historical weather for the
 activity start point. Until that request succeeds, or when no route/API data is
 available, weather fields render neutral `--` placeholders.
@@ -178,9 +178,10 @@ Phase 1 can be manual/FIT-first:
 - If FIT temperature is absent, use manual temperature.
 - Condition, high/low, humidity, wind, and feels-like values can be manual fields.
 
-Phase 2 can add weather API support:
+API support:
 
 - Query historical weather for the activity date (Open-Meteo archive API), not current forecast. Running data is always past events; a forecast is meaningless.
+- Optionally query OpenWeather One Call 3.0 Time Machine when the overlay data source is OpenWeather API and the Project Settings Weather section has an API key.
 - Offer two explicit fetch choices:
   - Activity Location: use the first GPS route point from the FIT activity.
   - Current Location: use the user's current device location through CoreLocation.
@@ -204,10 +205,10 @@ Key controls:
 - Style picker: icon buttons for Simple Card, Compact Strip, Forecast Tile, Minimal Text, Dashboard Bar. Do not show a duplicate text-only Preset menu in Weather Widget 1.0.
 - Location fetch actions: activity GPS start location and current device location.
 - Location text fields.
-- Data source picker (Manual, Open-Meteo API) lives in the Weather section.
+- Data source picker (Manual, Open-Meteo API, OpenWeather API) lives in the Weather section.
 - When the loaded FIT activity includes temperature records, Weather exposes a **Use FIT Temperature** toggle. When enabled, FIT temperature overrides the API or manual temperature at the current playhead for more accurate on-run readings.
 - Manual mode: condition picker, optional label override, manual temperature, unit, Style-specific metric slots, and manual values for selected slot metrics.
-- Open-Meteo mode: API-owned condition/temperature/metric text inputs are hidden; keep unit, Style-specific metric slot assignment, display toggles, and optional FIT temperature override.
+- API modes: API-owned condition/temperature/metric text inputs are hidden; keep unit, Style-specific metric slot assignment, display toggles, and optional FIT temperature override. OpenWeather mode disables fetch buttons until an OpenWeather API key is set in Project Settings.
 - Metric slots are Style-specific: Simple Card has 1 slot, Forecast Tile has 3 slots, Dashboard Bar has 3 slots, Compact Strip and Minimal Text have 0 slots. Each slot can choose `-`, Humidity, High / Low, Wind, or Feels Like. `-` leaves that slot empty.
 - Toggles for weekday, condition label, and icon visibility.
 - Accent color only when the preset uses it.
@@ -221,7 +222,7 @@ Weather Widget 1.0 intentionally does not expose the shared overlay Background, 
 - The icon set should be implemented once and reused by every preset.
 - Preview and export must share the same render layout.
 - API-backed weather must be cached before export so videos are reproducible offline.
-- Fetching weather from Inspector actions must be explicit and reversible: successful fetches write `cachedWeather`, switch the source to Open-Meteo, and update the visible location from reverse geocoding. The initial fetch on newly added widgets is automatic and does not create a separate undo step.
+- Fetching weather from Inspector actions must be explicit and reversible: successful fetches write `cachedWeather`, keep the selected API source, and update the visible location from reverse geocoding. The initial fetch on newly added widgets is automatic and does not create a separate undo step.
 
 ## Current Implementation
 
@@ -236,7 +237,7 @@ Implemented as of 2026-05-07:
 - Inspector exposes quick style buttons only for preset switching; the duplicate Preset menu is intentionally hidden in Weather Widget 1.0.
 - Inspector orders the primary setup sections as Layout, Preset, Appearance, Typography, Location, then Weather.
 - Inspector combines Content, Temperature, Metrics, and Icon into one Weather section.
-- Inspector hides API-owned manual input fields when Open-Meteo is selected, while keeping unit/display toggles available.
+- Inspector hides API-owned manual input fields when an API source is selected, while keeping unit/display toggles available.
 - Inspector replaces the old Humidity / High-Low / Wind / Feels Like toggles with Style-specific metric slots. Each slot chooses one of those four values, so metrics render consistently wherever the selected Style has a slot.
 - Inspector exposes condition label override in manual/FIT mode, palette selection in Appearance, and editable divider visibility/color/width/opacity.
 - Inspector removes Icon Size from the user-facing 1.0 controls and adds a Show Icon toggle.
@@ -249,7 +250,8 @@ Implemented as of 2026-05-07:
 - Metric slot menus include `-`; selected empty slots do not render any metric content.
 - Feels Like slots render as `Feels 12°C` in inline metric rows; Dashboard Bar keeps `Feels` as the chip label and the temperature as the chip value.
 - Open-Meteo historical fetcher parses hourly temperature, humidity, apparent temperature, WMO weather code, and wind speed; the chosen hour follows the activity start time.
-- FIT/manual temperature resolution, explicit `°C` / `°F` formatting, and Open-Meteo cache usage only when the data source is Open-Meteo.
+- OpenWeather historical fetcher uses One Call 3.0 Time Machine with metric units; timestamp responses provide condition, temperature, humidity, wind, and feels-like values.
+- FIT/manual temperature resolution, explicit `°C` / `°F` formatting, and API cache usage only when the data source is an API provider.
 - Optional cached metrics still respect the widget visibility toggles.
 
 Remaining:
@@ -261,4 +263,4 @@ Remaining:
 
 - **Condition label localization**: Auto-localized from activity coordinates (FIT GPS), not system locale. Every display field is user-editable; manual values override auto-localized ones.
 - **Temperature unit default**: Follows system locale (°C or °F), with a per-widget override in Inspector.
-- **API weather data**: Always historical weather for the activity date (Open-Meteo archive API). Running is always a past event; forecasts are not meaningful.
+- **API weather data**: Always historical weather for the activity date. Open-Meteo archive API is the no-key default; OpenWeather One Call 3.0 Time Machine is optional when a key is configured. Running is always a past event; forecasts are not meaningful.

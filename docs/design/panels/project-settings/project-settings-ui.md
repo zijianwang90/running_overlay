@@ -1,6 +1,6 @@
 # Project Settings, Heart Rate Zones, And Font Library UI Spec
 
-Last updated: 2026-06-18
+Last updated: 2026-06-22
 
 ## Purpose
 
@@ -43,6 +43,13 @@ The settings modal should include only the current project export/settings contr
    - `Heart Rate Zones` row.
    - Caption: `Configure HR and pace ranges for overlays.`
    - Right secondary button: `Configure...`.
+4. `Intervals`
+   - `Interval Colors` row.
+   - Caption: `Set the colors used for Warm Up, Active, Rest, and Cool Down.`
+   - Right secondary button: `Configure...`.
+5. `Weather`
+   - `OpenWeather API Key` secure text field.
+   - Caption: `Used when a Weather overlay selects OpenWeather API.`
 
 The modal footer contains a right-aligned primary `Done` button.
 

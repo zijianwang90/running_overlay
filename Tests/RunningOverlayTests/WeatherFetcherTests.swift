@@ -15,6 +15,35 @@ struct WeatherFetcherTests {
         #expect(text.contains("timezone=auto"))
     }
 
+    @Test func openWeatherTimeMachineURLUsesTimestampMetricUnitsAndAPIKey() throws {
+        let date = Date(timeIntervalSince1970: 1_776_000_000)
+        let url = try WeatherFetcher.openWeatherTimeMachineURL(
+            latitude: 34.6937,
+            longitude: 135.5023,
+            date: date,
+            apiKey: "abc123"
+        )
+        let text = url.absoluteString
+
+        #expect(text.contains("api.openweathermap.org/data/3.0/onecall/timemachine"))
+        #expect(text.contains("lat=34.69370"))
+        #expect(text.contains("lon=135.50230"))
+        #expect(text.contains("dt=1776000000"))
+        #expect(text.contains("appid=abc123"))
+        #expect(text.contains("units=metric"))
+    }
+
+    @Test func openWeatherURLRequiresAPIKey() throws {
+        #expect(throws: WeatherFetchError.missingOpenWeatherAPIKey) {
+            _ = try WeatherFetcher.openWeatherTimeMachineURL(
+                latitude: 34.6937,
+                longitude: 135.5023,
+                date: Date(timeIntervalSince1970: 1_776_000_000),
+                apiKey: " "
+            )
+        }
+    }
+
     @Test func payloadParsesClosestHourAndDailyTemperatureRange() throws {
         let response = OpenMeteoArchiveResponse(
             hourly: .init(
@@ -40,6 +69,37 @@ struct WeatherFetcherTests {
         #expect(payload.windKph == 12)
         #expect(payload.feelsLikeCelsius == 12)
         #expect(payload.resolvedLocation == "Osaka, Japan")
+    }
+
+    @Test func openWeatherPayloadParsesMetricWeatherData() throws {
+        let response = OpenWeatherTimeMachineResponse(data: [
+            .init(
+                temp: 14.4,
+                feelsLike: 13.1,
+                humidity: 82,
+                windSpeed: 3.5,
+                weather: [.init(id: 500, icon: "10d")]
+            )
+        ])
+        let targetDate = Date(timeIntervalSince1970: 1_776_000_000)
+
+        let payload = try WeatherFetcher.payload(from: response, targetDate: targetDate, resolvedLocation: "Osaka, Japan")
+
+        #expect(payload.condition == .rain)
+        #expect(payload.temperatureCelsius == 14.4)
+        #expect(payload.feelsLikeCelsius == 13.1)
+        #expect(payload.humidity == 82)
+        #expect(abs((payload.windKph ?? 0) - 12.6) < 0.0001)
+        #expect(payload.highTemperatureCelsius == nil)
+        #expect(payload.lowTemperatureCelsius == nil)
+        #expect(payload.resolvedLocation == "Osaka, Japan")
+    }
+
+    @Test func openWeatherConditionMapsClearNightIcon() {
+        #expect(WeatherCondition.fromOpenWeather(id: 800, icon: "01n") == .clearNight)
+        #expect(WeatherCondition.fromOpenWeather(id: 800, icon: "01d") == .sunny)
+        #expect(WeatherCondition.fromOpenWeather(id: 804, icon: "04d") == .cloudy)
+        #expect(WeatherCondition.fromOpenWeather(id: 771, icon: nil) == .wind)
     }
 
     @Test func activityLocationResolverUsesFirstRoutePoint() throws {

@@ -94,6 +94,7 @@
     "phase1": ["FIT temperature when available", "manual fallback temperature", "manual condition and secondary metrics"],
     "phase2": [
       "Open-Meteo historical API by activity timestamp",
+      "OpenWeather One Call 3.0 Time Machine by activity timestamp when an API key is configured",
       "activity-location fetch by first FIT GPS route point",
       "current-location fetch by CoreLocation device coordinate",
       "reverse-geocoded location text",
@@ -128,7 +129,7 @@
     "manual temperature field",
     "temperature unit menu",
     "style-specific metric slot menus",
-    "manual humidity, high/low, wind, feels-like fields for selected slots outside Open-Meteo mode",
+    "manual humidity, high/low, wind, feels-like fields for selected slots outside API modes",
     "show icon toggle",
     "condition label toggle",
     "palette menu",
@@ -154,8 +155,12 @@
       "reason": "Icon size is preset-owned in Weather Widget 1.0."
     },
     {
-      "control": "manual API-owned text inputs in Open-Meteo mode",
+      "control": "manual API-owned text inputs in API modes",
       "reason": "When the widget uses API data, condition, temperature, and metric values come from cached weather payloads."
+    },
+    {
+      "control": "OpenWeather fetch buttons",
+      "reason": "OpenWeather requires an API key configured in Project Settings."
     }
   ],
   "metricSlots": {
@@ -187,8 +192,9 @@
     "weather widget should become a dedicated overlay type, not only a numeric temperature preset",
     "preview and export must share the same render layout",
     "API-backed weather must be cached before export",
-    "fetch actions write cachedWeather, switch dataSource to Open-Meteo, and update locationText from reverse geocoding",
+    "fetch actions write cachedWeather, preserve the selected API dataSource, and update locationText from reverse geocoding",
     "Open-Meteo archive request uses temperature_2m, relative_humidity_2m, apparent_temperature, weather_code, and wind_speed_10m",
+    "OpenWeather One Call 3.0 Time Machine request uses lat, lon, dt, appid, and units=metric",
     "SwiftUI preview/export uses the shared bundled PNG weather icon family",
     "Core Graphics direct weather rendering is no longer a target for parity"
   ]

@@ -2211,7 +2211,7 @@ extension OverlayRenderModel {
         let resolvedLocation: String?
         let isMissingAPIWeather: Bool
 
-        if style.dataSource == .openMeteo, let cached = style.cachedWeather {
+        if style.dataSource.isAPI, let cached = style.cachedWeather {
             isMissingAPIWeather = false
             condition = cached.condition
             temperatureCelsius = cached.temperatureCelsius
@@ -2222,7 +2222,7 @@ extension OverlayRenderModel {
             feelsLikeCelsius = cached.feelsLikeCelsius
             resolvedLocation = cached.resolvedLocation
         } else {
-            isMissingAPIWeather = style.dataSource == .openMeteo
+            isMissingAPIWeather = style.dataSource.isAPI
             condition = style.manualCondition
             temperatureCelsius = style.manualTemperatureCelsius
             humidity = style.manualHumidity

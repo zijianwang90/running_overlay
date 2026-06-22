@@ -4,6 +4,27 @@ import Testing
 
 @MainActor
 struct ProjectSettingsTests {
+    @Test func decodesLegacySettingsWithoutOpenWeatherKey() throws {
+        let json = #"{"resolution":"1920x1080","frameRate":"30","layerDataFrameRate":"5"}"#.data(using: .utf8)!
+
+        let settings = try JSONDecoder().decode(ProjectSettings.self, from: json)
+
+        #expect(settings.resolution == .hd1080)
+        #expect(settings.frameRate == .fps30)
+        #expect(settings.layerDataFrameRate == .fps5)
+        #expect(settings.openWeatherAPIKey == "")
+    }
+
+    @Test func openWeatherAPIKeyRoundTrips() throws {
+        var settings = ProjectSettings()
+        settings.openWeatherAPIKey = "abc123"
+
+        let data = try JSONEncoder().encode(settings)
+        let decoded = try JSONDecoder().decode(ProjectSettings.self, from: data)
+
+        #expect(decoded.openWeatherAPIKey == "abc123")
+    }
+
     @Test func layerDataSampleTimeUsesConfiguredFrameRate() {
         let project = ProjectDocument()
         project.activity = ActivityTimeline(

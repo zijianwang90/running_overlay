@@ -8,6 +8,21 @@ struct ProjectSettings: Equatable, Codable {
     var disabledPreviewTrackNames: Set<String> = []
     var bitrateMbps: Double = 30
     var exportCodec: ProjectExportCodec = .hevcWithAlpha
+    var openWeatherAPIKey: String = ""
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        resolution = try c.decodeIfPresent(ProjectResolution.self, forKey: .resolution) ?? .hd1080
+        frameRate = try c.decodeIfPresent(ProjectFrameRate.self, forKey: .frameRate) ?? .fps30
+        layerDataFrameRate = try c.decodeIfPresent(ProjectLayerDataFrameRate.self, forKey: .layerDataFrameRate) ?? .fps5
+        previewTrackName = try c.decodeIfPresent(String.self, forKey: .previewTrackName)
+        disabledPreviewTrackNames = try c.decodeIfPresent(Set<String>.self, forKey: .disabledPreviewTrackNames) ?? []
+        bitrateMbps = try c.decodeIfPresent(Double.self, forKey: .bitrateMbps) ?? 30
+        exportCodec = try c.decodeIfPresent(ProjectExportCodec.self, forKey: .exportCodec) ?? .hevcWithAlpha
+        openWeatherAPIKey = try c.decodeIfPresent(String.self, forKey: .openWeatherAPIKey) ?? ""
+    }
 }
 
 struct ProjectResolution: Identifiable, Hashable, Codable {

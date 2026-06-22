@@ -603,6 +603,12 @@ struct OverlayRenderModelTests {
         let apiOnlyLayout = OverlayRenderModel.weatherWidgetLayout(for: apiOnlyElement, in: context)
         #expect(apiOnlyLayout.temperatureFormatted == "30°C")
 
+        apiStyle.weatherWidget.dataSource = .openWeather
+        let openWeatherElement = OverlayElement(type: .weatherWidget, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: apiStyle)
+        let openWeatherLayout = OverlayRenderModel.weatherWidgetLayout(for: openWeatherElement, in: context)
+        #expect(openWeatherLayout.temperatureFormatted == "30°C")
+        #expect(openWeatherLayout.condition == .sunny)
+
         apiStyle.weatherWidget.metricSlots = [.none]
         let hiddenSlotElement = OverlayElement(type: .weatherWidget, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: apiStyle)
         let hiddenSlotLayout = OverlayRenderModel.weatherWidgetLayout(for: hiddenSlotElement, in: context)
@@ -626,6 +632,12 @@ struct OverlayRenderModelTests {
         #expect(layout.conditionLabel == "--")
         #expect(layout.humidityFormatted == "--")
         #expect(layout.metricSlots.map(\.value) == ["--"])
+
+        style.weatherWidget.dataSource = .openWeather
+        let openWeatherElement = OverlayElement(type: .weatherWidget, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let openWeatherLayout = OverlayRenderModel.weatherWidgetLayout(for: openWeatherElement, in: context)
+        #expect(openWeatherLayout.temperatureFormatted == "--")
+        #expect(openWeatherLayout.conditionLabel == "--")
     }
 
     @Test func weatherWidgetLayoutUsesOverridesAndFahrenheitFormatting() {

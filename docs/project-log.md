@@ -2,6 +2,13 @@
 
 ## 2026-06-22
 
+### Weather Widget OpenWeather API Source
+
+- Added optional OpenWeather API support for Weather Widget overlays using One Call 3.0 Time Machine with the activity timestamp and metric units.
+- Added an OpenWeather API key field to the lower-right Project Settings modal under a new Weather section.
+- Generalized Weather Widget API cache rendering so Open-Meteo and OpenWeather both use cached `WeatherPayload` values for preview/export.
+- Verification: `swift test`.
+
 ### Weather Widget PNG Icon Refresh
 
 - Replaced the bundled Weather Widget SVG icon set with transparent 512 x 512 PNG assets generated from the supplied glossy weather icons.

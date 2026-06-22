@@ -223,9 +223,10 @@ struct WeatherWidgetOverlayDetailView: View {
 
     private func weatherSection(_ element: OverlayElement) -> some View {
         let s = element.style.weatherWidget
-        let usesAPI = s.dataSource == .openMeteo
+        let usesAPI = s.dataSource.isAPI
         let metricSlots = s.normalizedMetricSlots()
         let hasFITTemperature = project.activity.hasTemperatureData
+        let hasOpenWeatherKey = !project.settings.openWeatherAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         return sectionView(.weather, element: element) {
             InspectorDenseRow(label: "Data Source") {
                 Menu {
@@ -257,9 +258,16 @@ struct WeatherWidgetOverlayDetailView: View {
 
             if usesAPI {
                 InspectorDenseRow(label: "Condition") {
-                    Text("From API")
+                    Text("From \(s.dataSource.label)")
                         .font(NumericTokens.bodyFont)
                         .foregroundStyle(NumericTokens.textSecondary)
+                }
+                if s.dataSource == .openWeather, !hasOpenWeatherKey {
+                    InspectorDenseRow(label: "API Key") {
+                        Text("Set in Project Settings")
+                            .font(NumericTokens.bodyFont)
+                            .foregroundStyle(EditorTheme.warningYellow)
+                    }
                 }
             } else {
                 InspectorDenseRow(label: "Condition") {
@@ -451,6 +459,8 @@ struct WeatherWidgetOverlayDetailView: View {
     private func locationSection(_ element: OverlayElement) -> some View {
         let s = element.style.weatherWidget
         let hasActivityLocation = project.activity.routePoints.first != nil
+        let hasOpenWeatherKey = !project.settings.openWeatherAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let canFetchSelectedAPI = s.dataSource != .openWeather || hasOpenWeatherKey
         return sectionView(.location, element: element) {
             InspectorDenseRow(label: "API Fetch") {
                 HStack(spacing: 6) {
@@ -462,8 +472,8 @@ struct WeatherWidgetOverlayDetailView: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.mini)
-                    .disabled(!hasActivityLocation)
-                    .help("Fetch weather by the activity's GPS start position")
+                    .disabled(!hasActivityLocation || !canFetchSelectedAPI)
+                    .help(fetchHelpText(base: "Fetch weather by the activity's GPS start position", dataSource: s.dataSource, hasOpenWeatherKey: hasOpenWeatherKey))
 
                     Button {
                         project.fetchWeatherForCurrentLocation(elementID)
@@ -473,7 +483,8 @@ struct WeatherWidgetOverlayDetailView: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.mini)
-                    .help("Fetch weather by the current device location")
+                    .disabled(!canFetchSelectedAPI)
+                    .help(fetchHelpText(base: "Fetch weather by the current device location", dataSource: s.dataSource, hasOpenWeatherKey: hasOpenWeatherKey))
                 }
             }
             InspectorDenseRow(label: "Location") {
@@ -496,6 +507,13 @@ struct WeatherWidgetOverlayDetailView: View {
                 )).toggleStyle(.switch).controlSize(.mini).labelsHidden().tint(NumericTokens.accentBlue)
             }
         }
+    }
+
+    private func fetchHelpText(base: String, dataSource: WeatherDataSource, hasOpenWeatherKey: Bool) -> String {
+        if dataSource == .openWeather, !hasOpenWeatherKey {
+            return "Add an OpenWeather API key in Project Settings first."
+        }
+        return base
     }
 
     // MARK: - Appearance section

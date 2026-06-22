@@ -17,9 +17,11 @@ enum WeatherFetchLocationMode: String, CaseIterable, Identifiable, Equatable, Co
 
 enum WeatherFetchError: LocalizedError, Equatable {
     case missingActivityLocation
+    case missingOpenWeatherAPIKey
     case invalidURL
     case invalidHTTPStatus(Int)
     case missingHourlyData
+    case missingOpenWeatherData
     case currentLocationUnavailable
     case currentLocationDenied
 
@@ -27,12 +29,16 @@ enum WeatherFetchError: LocalizedError, Equatable {
         switch self {
         case .missingActivityLocation:
             "Activity route has no GPS position."
+        case .missingOpenWeatherAPIKey:
+            "OpenWeather API key is missing. Add it in Project Settings."
         case .invalidURL:
             "Could not build the weather API URL."
         case .invalidHTTPStatus(let status):
             "Weather API returned HTTP \(status)."
         case .missingHourlyData:
             "Weather API response did not include usable hourly data."
+        case .missingOpenWeatherData:
+            "OpenWeather response did not include usable weather data."
         case .currentLocationUnavailable:
             "Current location is unavailable."
         case .currentLocationDenied:
@@ -68,6 +74,31 @@ struct OpenMeteoArchiveResponse: Decodable, Equatable {
     }
 }
 
+struct OpenWeatherTimeMachineResponse: Decodable, Equatable {
+    var data: [WeatherData]
+
+    struct WeatherData: Decodable, Equatable {
+        var temp: Double?
+        var feelsLike: Double?
+        var humidity: Double?
+        var windSpeed: Double?
+        var weather: [WeatherConditionData]?
+
+        enum CodingKeys: String, CodingKey {
+            case temp
+            case feelsLike = "feels_like"
+            case humidity
+            case windSpeed = "wind_speed"
+            case weather
+        }
+    }
+
+    struct WeatherConditionData: Decodable, Equatable {
+        var id: Int
+        var icon: String?
+    }
+}
+
 enum WeatherFetcher {
     static func fetch(latitude: Double, longitude: Double, date: Date, resolvedLocation: String?) async throws -> WeatherPayload {
         let url = try archiveURL(latitude: latitude, longitude: longitude, date: date)
@@ -100,6 +131,46 @@ enum WeatherFetcher {
         return url
     }
 
+    static func fetchOpenWeather(
+        latitude: Double,
+        longitude: Double,
+        date: Date,
+        apiKey: String,
+        resolvedLocation: String?
+    ) async throws -> WeatherPayload {
+        let url = try openWeatherTimeMachineURL(latitude: latitude, longitude: longitude, date: date, apiKey: apiKey)
+        let (data, response) = try await URLSession.shared.data(from: url)
+        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+            throw WeatherFetchError.invalidHTTPStatus(http.statusCode)
+        }
+
+        let decoded = try JSONDecoder().decode(OpenWeatherTimeMachineResponse.self, from: data)
+        return try payload(from: decoded, targetDate: date, resolvedLocation: resolvedLocation)
+    }
+
+    static func openWeatherTimeMachineURL(latitude: Double, longitude: Double, date: Date, apiKey: String) throws -> URL {
+        let trimmedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedKey.isEmpty else {
+            throw WeatherFetchError.missingOpenWeatherAPIKey
+        }
+
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "api.openweathermap.org"
+        components.path = "/data/3.0/onecall/timemachine"
+        components.queryItems = [
+            URLQueryItem(name: "lat", value: String(format: "%.5f", latitude)),
+            URLQueryItem(name: "lon", value: String(format: "%.5f", longitude)),
+            URLQueryItem(name: "dt", value: String(Int(date.timeIntervalSince1970.rounded()))),
+            URLQueryItem(name: "appid", value: trimmedKey),
+            URLQueryItem(name: "units", value: "metric")
+        ]
+        guard let url = components.url else {
+            throw WeatherFetchError.invalidURL
+        }
+        return url
+    }
+
     static func payload(from response: OpenMeteoArchiveResponse, targetDate: Date, resolvedLocation: String?) throws -> WeatherPayload {
         let hourly = response.hourly
         guard !hourly.time.isEmpty, !hourly.temperature2m.isEmpty else {
@@ -123,6 +194,29 @@ enum WeatherFetcher {
             lowTemperatureCelsius: temperatures.min(),
             windKph: hourly.windSpeed10m?[safe: bestIndex] ?? nil,
             feelsLikeCelsius: hourly.apparentTemperature?[safe: bestIndex] ?? nil,
+            resolvedLocation: resolvedLocation,
+            sourceDate: targetDate,
+            fetchLocationMode: nil
+        )
+    }
+
+    static func payload(from response: OpenWeatherTimeMachineResponse, targetDate: Date, resolvedLocation: String?) throws -> WeatherPayload {
+        guard let data = response.data.first, let temperature = data.temp else {
+            throw WeatherFetchError.missingOpenWeatherData
+        }
+
+        let weather = data.weather?.first
+        let condition = weather.map { WeatherCondition.fromOpenWeather(id: $0.id, icon: $0.icon) } ?? .cloudy
+        let windKph = data.windSpeed.map { $0 * 3.6 }
+
+        return WeatherPayload(
+            condition: condition,
+            temperatureCelsius: temperature,
+            humidity: data.humidity,
+            highTemperatureCelsius: nil,
+            lowTemperatureCelsius: nil,
+            windKph: windKph,
+            feelsLikeCelsius: data.feelsLike,
             resolvedLocation: resolvedLocation,
             sourceDate: targetDate,
             fetchLocationMode: nil
