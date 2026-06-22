@@ -93,6 +93,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
     var edgeFadeEnabled: Bool
     var currentProgressEnabled: Bool
     var markerEnabled: Bool
+    var markerLabelEnabled: Bool
     var markerLabel: String
     var markerPosition: IntervalTimelineMarkerPosition
     var markerColor: OverlayColor
@@ -134,6 +135,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
         edgeFadeEnabled: true,
         currentProgressEnabled: true,
         markerEnabled: true,
+        markerLabelEnabled: true,
         markerLabel: "NOW",
         markerPosition: .liveProgress,
         markerColor: .white,
@@ -176,6 +178,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
         edgeFadeEnabled: Bool,
         currentProgressEnabled: Bool,
         markerEnabled: Bool,
+        markerLabelEnabled: Bool,
         markerLabel: String,
         markerPosition: IntervalTimelineMarkerPosition,
         markerColor: OverlayColor,
@@ -216,6 +219,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
         self.edgeFadeEnabled = edgeFadeEnabled
         self.currentProgressEnabled = currentProgressEnabled
         self.markerEnabled = markerEnabled
+        self.markerLabelEnabled = markerLabelEnabled
         self.markerLabel = markerLabel
         self.markerPosition = markerPosition
         self.markerColor = markerColor
@@ -261,6 +265,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
         edgeFadeEnabled = try c.decodeIfPresent(Bool.self, forKey: .edgeFadeEnabled) ?? base.edgeFadeEnabled
         currentProgressEnabled = try c.decodeIfPresent(Bool.self, forKey: .currentProgressEnabled) ?? base.currentProgressEnabled
         markerEnabled = try c.decodeIfPresent(Bool.self, forKey: .markerEnabled) ?? base.markerEnabled
+        markerLabelEnabled = try c.decodeIfPresent(Bool.self, forKey: .markerLabelEnabled) ?? base.markerLabelEnabled
         markerLabel = try c.decodeIfPresent(String.self, forKey: .markerLabel) ?? base.markerLabel
         markerPosition = try c.decodeIfPresent(IntervalTimelineMarkerPosition.self, forKey: .markerPosition) ?? base.markerPosition
         markerColor = try c.decodeIfPresent(OverlayColor.self, forKey: .markerColor) ?? base.markerColor
@@ -316,6 +321,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
         try c.encode(edgeFadeEnabled, forKey: .edgeFadeEnabled)
         try c.encode(currentProgressEnabled, forKey: .currentProgressEnabled)
         try c.encode(markerEnabled, forKey: .markerEnabled)
+        try c.encode(markerLabelEnabled, forKey: .markerLabelEnabled)
         try c.encode(markerLabel, forKey: .markerLabel)
         try c.encode(markerPosition, forKey: .markerPosition)
         try c.encode(markerColor, forKey: .markerColor)
@@ -359,6 +365,7 @@ struct IntervalTimelineStyle: Equatable, Codable {
         case edgeFadeEnabled
         case currentProgressEnabled
         case markerEnabled
+        case markerLabelEnabled
         case markerLabel
         case markerPosition
         case markerColor
