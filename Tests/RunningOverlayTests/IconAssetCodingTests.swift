@@ -42,6 +42,21 @@ struct IconAssetCodingTests {
         try roundTrip(.bundledSVG(name: "running"))
     }
 
+    @Test func bundledImageRoundTrips() throws {
+        try roundTrip(.bundledImage(name: "weather-sunny", fileExtension: "png"))
+    }
+
+    @Test func bundledImageUsesDefaultExtensionWhenAbsent() throws {
+        let json = #"{"kind":"bundledImage","name":"weather-sunny"}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(IconAsset.self, from: json)
+        guard case let .bundledImage(name, fileExtension) = decoded else {
+            Issue.record("Expected .bundledImage, got \(decoded)")
+            return
+        }
+        #expect(name == "weather-sunny")
+        #expect(fileExtension == "png")
+    }
+
     private func roundTrip(_ asset: IconAsset) throws {
         let data = try JSONEncoder().encode(asset)
         let back = try JSONDecoder().decode(IconAsset.self, from: data)
@@ -82,6 +97,15 @@ struct IconRenderingTests {
         )
         let coverage = try drawAndCount(request: request, canvasSide: 32)
         #expect(coverage == 0)
+    }
+
+    @Test func bundledImageDrawsPixels() throws {
+        let request = IconRenderRequest(
+            asset: .bundledImage(name: "weather-sunny"),
+            rect: CGRect(x: 0, y: 0, width: 96, height: 96)
+        )
+        let coverage = try drawAndCount(request: request, canvasSide: 96)
+        #expect(coverage > 200)
     }
 
     @Test func aspectFitRectPreservesAspectInsideHostRect() {

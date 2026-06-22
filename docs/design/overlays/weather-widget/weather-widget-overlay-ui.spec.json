@@ -59,19 +59,19 @@
     "optional": ["location", "weekday", "humidity", "highTemperature", "lowTemperature", "wind", "feelsLike"]
   },
   "iconSet": {
-    "baseGrid": "64x64",
+    "baseGrid": "512x512",
     "conditions": ["sunny", "clearNight", "partlyCloudy", "cloudy", "rain", "heavyRain", "thunder", "snow", "fog", "wind"],
     "productionAssets": [
-      "Sources/RunningOverlay/Resources/Icons/weather-sunny.svg",
-      "Sources/RunningOverlay/Resources/Icons/weather-clear-night.svg",
-      "Sources/RunningOverlay/Resources/Icons/weather-partly-cloudy.svg",
-      "Sources/RunningOverlay/Resources/Icons/weather-cloudy.svg",
-      "Sources/RunningOverlay/Resources/Icons/weather-rain.svg",
-      "Sources/RunningOverlay/Resources/Icons/weather-heavy-rain.svg",
-      "Sources/RunningOverlay/Resources/Icons/weather-thunder.svg",
-      "Sources/RunningOverlay/Resources/Icons/weather-snow.svg",
-      "Sources/RunningOverlay/Resources/Icons/weather-fog.svg",
-      "Sources/RunningOverlay/Resources/Icons/weather-wind.svg"
+      "Sources/RunningOverlay/Resources/Icons/weather-sunny.png",
+      "Sources/RunningOverlay/Resources/Icons/weather-clear-night.png",
+      "Sources/RunningOverlay/Resources/Icons/weather-partly-cloudy.png",
+      "Sources/RunningOverlay/Resources/Icons/weather-cloudy.png",
+      "Sources/RunningOverlay/Resources/Icons/weather-rain.png",
+      "Sources/RunningOverlay/Resources/Icons/weather-heavy-rain.png",
+      "Sources/RunningOverlay/Resources/Icons/weather-thunder.png",
+      "Sources/RunningOverlay/Resources/Icons/weather-snow.png",
+      "Sources/RunningOverlay/Resources/Icons/weather-fog.png",
+      "Sources/RunningOverlay/Resources/Icons/weather-wind.png"
     ],
     "rules": [
       "all icons use the same family and optical weight",
@@ -189,7 +189,7 @@
     "API-backed weather must be cached before export",
     "fetch actions write cachedWeather, switch dataSource to Open-Meteo, and update locationText from reverse geocoding",
     "Open-Meteo archive request uses temperature_2m, relative_humidity_2m, apparent_temperature, weather_code, and wind_speed_10m",
-    "SwiftUI preview/export uses the shared custom weather icon family",
-    "Core Graphics PNG weather rendering is deprecated and no longer a target for parity"
+    "SwiftUI preview/export uses the shared bundled PNG weather icon family",
+    "Core Graphics direct weather rendering is no longer a target for parity"
   ]
 }

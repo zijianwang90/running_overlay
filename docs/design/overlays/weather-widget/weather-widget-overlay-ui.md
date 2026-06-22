@@ -154,10 +154,10 @@ Initial conditions to cover:
 
 Implementation assets:
 
-- Weather Widget now ships standard `64 x 64` SVG assets under `Sources/RunningOverlay/Resources/Icons/`.
-- File names are `weather-sunny.svg`, `weather-clear-night.svg`, `weather-partly-cloudy.svg`, `weather-cloudy.svg`, `weather-rain.svg`, `weather-heavy-rain.svg`, `weather-thunder.svg`, `weather-snow.svg`, `weather-fog.svg`, and `weather-wind.svg`.
-- The component resolves icons through `WeatherCondition.bundledSVGName` and `IconView(asset: .bundledSVG(...), preserveSVGColors: true)`.
-- `weather-icon-set.png` remains the design board/reference; SVG files are the production assets used by the widget.
+- Weather Widget now ships transparent `512 x 512` PNG assets under `Sources/RunningOverlay/Resources/Icons/`.
+- File names are `weather-sunny.png`, `weather-clear-night.png`, `weather-partly-cloudy.png`, `weather-cloudy.png`, `weather-rain.png`, `weather-heavy-rain.png`, `weather-thunder.png`, `weather-snow.png`, `weather-fog.png`, and `weather-wind.png`.
+- The component resolves icons through `WeatherCondition.bundledImageName` and `IconView(asset: .bundledImage(...))`.
+- `weather-icon-set.png` remains the design board/reference; PNG files are the production assets used by the widget.
 
 ## Visual Rules
 
@@ -230,7 +230,7 @@ Implemented as of 2026-05-07:
 - Dedicated Weather Widget overlay model and five presets.
 - SwiftUI preset rendering for Simple Card, Compact Strip, Forecast Tile, Minimal Text, and Dashboard Bar.
 - Shared SwiftUI weather icon family using custom shapes instead of SF Symbols in the main preview/export path.
-- Production weather icons are now bundled SVG assets resolved from `WeatherCondition.bundledSVGName`, preserving the same visual family while making the icons reusable outside the Weather Widget view code.
+- Production weather icons are now bundled transparent PNG assets resolved from `WeatherCondition.bundledImageName`, preserving the same visual family while making the icons reusable outside the Weather Widget view code.
 - Newly added widgets start with Open-Meteo selected, no sample city text, and placeholder weather fields until activity-location weather is cached.
 - Preset switching is centralized through a project mutator that preserves content fields and cached weather while applying new visual defaults.
 - Inspector exposes quick style buttons only for preset switching; the duplicate Preset menu is intentionally hidden in Weather Widget 1.0.

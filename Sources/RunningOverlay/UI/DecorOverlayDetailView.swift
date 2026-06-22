@@ -201,7 +201,7 @@ struct DecorOverlayDetailView: View {
                 )
             }
 
-        case .bundledSVG:
+        case .bundledSVG, .bundledImage:
             // Bundled SVG name display
             let name = r.asset.bundledSVGName ?? ""
             if name.isEmpty {
@@ -647,6 +647,7 @@ struct DecorOverlayDetailView: View {
         switch asset {
         case .sfSymbol: .sfSymbol
         case .bundledSVG: .bundledSVG
+        case .bundledImage: .bundledSVG
         case .userStaticSVG, .userLottie: .upload
         case .none: .sfSymbol
         }

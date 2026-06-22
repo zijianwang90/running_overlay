@@ -504,7 +504,7 @@ private struct WeatherConditionIconView: View {
 
     var body: some View {
         IconView(
-            asset: .bundledSVG(name: condition.bundledSVGName),
+            asset: .bundledImage(name: condition.bundledImageName),
             rect: CGRect(origin: .zero, size: CGSize(width: size, height: size)),
             preserveSVGColors: true
         )

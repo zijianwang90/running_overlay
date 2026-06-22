@@ -1,5 +1,14 @@
 # Running Overlay Project Log
 
+## 2026-06-22
+
+### Weather Widget PNG Icon Refresh
+
+- Replaced the bundled Weather Widget SVG icon set with transparent 512 x 512 PNG assets generated from the supplied glossy weather icons.
+- Added a shared `IconAsset.bundledImage` render path and switched `WeatherConditionIconView` to resolve weather icons through `WeatherCondition.bundledImageName`.
+- Updated Weather Widget module and design docs to describe the PNG production assets.
+- Verification: `swift test`.
+
 ## 2026-06-19
 
 ### User Template Update Action

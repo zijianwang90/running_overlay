@@ -13,7 +13,8 @@ import Foundation
 // embedded inside any `OverlayStyle` field without polluting the namespace,
 // and can be diffed by SwiftUI's `@Equatable` view tracking.
 //
-// **Phase C scope**: SF Symbols and bundled SVG paths are wired end-to-end.
+// **Phase C scope**: SF Symbols, bundled SVG, and bundled raster image paths
+// are wired end-to-end.
 // User-uploaded SVG resolution waits on the Phase E `UserAssetStore`. Lottie
 // (`userLottie`) is reserved in the data model so existing projects stay
 // forward-compatible, but its renderer is a stub — adding `lottie-spm` and
@@ -91,12 +92,15 @@ enum IconContentMode: String, CaseIterable, Identifiable, Codable {
 ///   `lottie-spm` once the dependency lands (Phase C6).
 /// - `bundledSVG` — looks up a `.svg` file shipped under
 ///   `Resources/Icons/<name>.svg`.
+/// - `bundledImage` — looks up a raster image file shipped under
+///   `Resources/Icons/<name>.<fileExtension>`.
 enum IconAsset: Equatable, Codable {
     case none
     case sfSymbol(name: String, weight: SymbolWeight = .regular, scale: SymbolScale = .medium)
     case userStaticSVG(assetID: UUID)
     case userLottie(assetID: UUID)
     case bundledSVG(name: String)
+    case bundledImage(name: String, fileExtension: String = "png")
 
     // MARK: Codable
     //
@@ -111,11 +115,13 @@ enum IconAsset: Equatable, Codable {
         case userStaticSVG
         case userLottie
         case bundledSVG
+        case bundledImage
     }
 
     private enum CodingKeys: String, CodingKey {
         case kind
         case name
+        case fileExtension
         case weight
         case scale
         case assetID
@@ -140,6 +146,10 @@ enum IconAsset: Equatable, Codable {
         case .bundledSVG(let name):
             try c.encode(Kind.bundledSVG, forKey: .kind)
             try c.encode(name, forKey: .name)
+        case .bundledImage(let name, let fileExtension):
+            try c.encode(Kind.bundledImage, forKey: .kind)
+            try c.encode(name, forKey: .name)
+            try c.encode(fileExtension, forKey: .fileExtension)
         }
     }
 
@@ -163,6 +173,10 @@ enum IconAsset: Equatable, Codable {
         case .bundledSVG:
             let name = try c.decode(String.self, forKey: .name)
             self = .bundledSVG(name: name)
+        case .bundledImage:
+            let name = try c.decode(String.self, forKey: .name)
+            let fileExtension = try c.decodeIfPresent(String.self, forKey: .fileExtension) ?? "png"
+            self = .bundledImage(name: name, fileExtension: fileExtension)
         }
     }
 }

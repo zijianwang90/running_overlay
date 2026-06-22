@@ -3389,7 +3389,7 @@ enum WeatherCondition: String, CaseIterable, Identifiable, Equatable, Codable {
         }
     }
 
-    var bundledSVGName: String {
+    var bundledImageName: String {
         switch self {
         case .sunny: "weather-sunny"
         case .clearNight: "weather-clear-night"

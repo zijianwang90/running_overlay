@@ -94,6 +94,12 @@ struct IconView: View {
                 } else {
                     Color.clear
                 }
+            case .bundledImage(let name, let fileExtension):
+                if let image = IconAssetResolver.bundledImage(name: name, fileExtension: fileExtension) {
+                    rasterImageView(image)
+                } else {
+                    Color.clear
+                }
             case .userStaticSVG(let id):
                 if let url = IconAssetResolver.userAssetURL(id: id),
                    let image = NSImage(contentsOf: url) {
@@ -169,6 +175,10 @@ enum IconRenderer {
             drawSFSymbol(name: name, weight: weight, scale: scale, request: request)
         case .bundledSVG(let name):
             if let image = IconAssetResolver.bundledSVGImage(name: name) {
+                drawNSImage(image, request: request)
+            }
+        case .bundledImage(let name, let fileExtension):
+            if let image = IconAssetResolver.bundledImage(name: name, fileExtension: fileExtension) {
                 drawNSImage(image, request: request)
             }
         case .userStaticSVG(let id):
@@ -280,6 +290,15 @@ enum IconAssetResolver {
     static func bundledSVGImage(name: String) -> NSImage? {
         guard let url = Bundle.module.url(forResource: name, withExtension: "svg", subdirectory: "Icons")
             ?? Bundle.module.url(forResource: name, withExtension: "svg")
+        else { return nil }
+        return NSImage(contentsOf: url)
+    }
+
+    /// Resolve a bundled raster image by base name and extension. Looks under
+    /// `Resources/Icons/` in the executable's resource bundle.
+    static func bundledImage(name: String, fileExtension: String = "png") -> NSImage? {
+        guard let url = Bundle.module.url(forResource: name, withExtension: fileExtension, subdirectory: "Icons")
+            ?? Bundle.module.url(forResource: name, withExtension: fileExtension)
         else { return nil }
         return NSImage(contentsOf: url)
     }

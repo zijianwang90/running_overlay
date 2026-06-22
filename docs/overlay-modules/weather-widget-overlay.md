@@ -64,18 +64,18 @@ Weather Widget uses production SVG icons, not cropped bitmap slices, so the icon
 
 Assets live under `Sources/RunningOverlay/Resources/Icons/`:
 
-- `weather-sunny.svg`
-- `weather-clear-night.svg`
-- `weather-partly-cloudy.svg`
-- `weather-cloudy.svg`
-- `weather-rain.svg`
-- `weather-heavy-rain.svg`
-- `weather-thunder.svg`
-- `weather-snow.svg`
-- `weather-fog.svg`
-- `weather-wind.svg`
+- `weather-sunny.png`
+- `weather-clear-night.png`
+- `weather-partly-cloudy.png`
+- `weather-cloudy.png`
+- `weather-rain.png`
+- `weather-heavy-rain.png`
+- `weather-thunder.png`
+- `weather-snow.png`
+- `weather-fog.png`
+- `weather-wind.png`
 
-`WeatherCondition.bundledSVGName` maps each condition to the bundled file name, and `WeatherConditionIconView` renders via the shared `IconView` bundled SVG path with `preserveSVGColors: true`.
+`WeatherCondition.bundledImageName` maps each condition to the bundled file name, and `WeatherConditionIconView` renders via the shared `IconView` bundled raster image path.
 
 ## Inspector
 
@@ -178,7 +178,7 @@ Static factory `WeatherWidgetStyle.preset(_ preset:)` — sets width/height and 
 **New file** `Sources/RunningOverlay/UI/WeatherWidgetOverlayViews.swift`:
 
 - `WeatherWidgetOverlayView: View` — switches on `layout.style.preset`, dispatches to five private sub-views: `SimpleCardPresetView`, `CompactStripPresetView`, `ForecastTilePresetView`, `MinimalTextPresetView`, `DashboardBarPresetView`.
-- Shared sub-component `WeatherConditionIconView(condition:size:)` — renders the bundled weather SVG for each condition; reused by all presets.
+- Shared sub-component `WeatherConditionIconView(condition:size:)` — renders the bundled weather PNG for each condition; reused by all presets.
 - Thin `OverlaySharedWeatherWidgetView` wrapper to match the project's existing naming convention.
 
 **`PreviewCanvasView.swift`** — add case in the per-type dispatch:
@@ -271,7 +271,7 @@ Implemented:
 - `WeatherFetcher` queries Open-Meteo historical hourly weather with current field names (`weather_code`, `relative_humidity_2m`, `apparent_temperature`, `wind_speed_10m`) and converts the result into `WeatherPayload`.
 - Inspector has two API fetch buttons: activity GPS start location and current device location. A successful fetch switches the widget source to Open-Meteo, stores the payload in `cachedWeather`, and updates `locationText` from reverse geocoding.
 - Five presets render in SwiftUI through `OverlaySharedWeatherWidgetView`: `simpleCard`, `compactStrip`, `forecastTile`, `minimalText`, and `dashboardBar`.
-- The active SwiftUI preview/export path uses bundled SVG weather icons, so conditions no longer rely on mixed SF Symbol silhouettes.
+- The active SwiftUI preview/export path uses bundled transparent PNG weather icons, so conditions no longer rely on mixed SF Symbol silhouettes.
 - Preset defaults now use app-like visual treatments instead of black-card variants: blue Simple Card, light Compact Strip, dark Forecast Tile, transparent Minimal Text, and graphite Dashboard Bar.
 - `ProjectDocument.applyWeatherWidgetPreset` applies preset visual defaults while preserving content fields and cached weather data.
 - Inspector now provides quick Styles icon buttons without a duplicate Preset menu, and orders setup as Preset, Appearance, then Location.
