@@ -1,6 +1,39 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+repo_search() {
+  local insensitive=false
+  if [[ "${1:-}" == "-i" ]]; then
+    insensitive=true
+    shift
+  fi
+  local pattern=$1
+  shift
+  if command -v rg >/dev/null 2>&1; then
+    if $insensitive; then
+      rg -n -i "$pattern" "$@"
+    else
+      rg -n "$pattern" "$@"
+    fi
+  else
+    if $insensitive; then
+      grep -R -n -i -E "$pattern" "$@"
+    else
+      grep -R -n -E "$pattern" "$@"
+    fi
+  fi
+}
+
+repo_query() {
+  local pattern=$1
+  shift
+  if command -v rg >/dev/null 2>&1; then
+    rg -q "$pattern" "$@"
+  else
+    grep -q -E "$pattern" "$@"
+  fi
+}
+
 required_files=(
   AGENTS.md
   LICENSE
@@ -106,36 +139,36 @@ if find Sources Tests -type f \( -name '*.ttf' -o -name '*.otf' \) -print -quit 
   exit 1
 fi
 
-if rg -n 'URLSession|URLRequest|CLGeocoder|CLLocationManager|api\.openweathermap\.org|archive-api\.open-meteo\.com' Sources >/dev/null; then
-  if ! rg -q 'Open-Meteo|OpenWeather|macOS location and geocoding' PRIVACY.md; then
+if repo_search 'URLSession|URLRequest|CLGeocoder|CLLocationManager|api\.openweathermap\.org|archive-api\.open-meteo\.com' Sources >/dev/null; then
+  if ! repo_query 'Open-Meteo|OpenWeather|macOS location and geocoding' PRIVACY.md; then
     echo "PRIVACY.md must document current weather and location network behavior." >&2
     exit 1
   fi
 fi
 
-if rg -n -i 'Sentry|Firebase|Crashlytics|analytics|telemetry upload' Sources Package.swift >/dev/null; then
-  if ! rg -q 'analytics|telemetry|crash-reporting' PRIVACY.md; then
+if repo_search -i 'Sentry|Firebase|Crashlytics|analytics|telemetry upload' Sources Package.swift >/dev/null; then
+  if ! repo_query 'analytics|telemetry|crash-reporting' PRIVACY.md; then
     echo "PRIVACY.md must document analytics, telemetry, or crash-reporting behavior." >&2
     exit 1
   fi
 fi
 
-rg -q 'macOS Keychain' PRIVACY.md || {
+repo_query 'macOS Keychain' PRIVACY.md || {
   echo "PRIVACY.md must document credential storage." >&2
   exit 1
 }
 
-rg -q '@zijianwang90' .github/CODEOWNERS || {
+repo_query '@zijianwang90' .github/CODEOWNERS || {
   echo "CODEOWNERS must name the repository maintainer." >&2
   exit 1
 }
 
-rg -q 'package-ecosystem: "github-actions"' .github/dependabot.yml || {
+repo_query 'package-ecosystem: "github-actions"' .github/dependabot.yml || {
   echo "Dependabot must monitor GitHub Actions." >&2
   exit 1
 }
 
-rg -q 'package-ecosystem: "swift"' .github/dependabot.yml || {
+repo_query 'package-ecosystem: "swift"' .github/dependabot.yml || {
   echo "Dependabot must monitor Swift packages." >&2
   exit 1
 }
