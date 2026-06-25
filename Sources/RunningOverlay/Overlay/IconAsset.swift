@@ -17,8 +17,6 @@ import Foundation
 // end-to-end. Legacy Lottie descriptors decode as `.none` because animated
 // rendering was never reliable in the offscreen export path.
 //
-// See `~/.claude/plans/overlay-pool-solid-color-layout-bg-effe-shiny-pudding.md`.
-
 /// Symbol weight options for SF Symbols. Subset of `NSFont.Weight` chosen
 /// to mirror what the SwiftUI inspector exposes.
 enum SymbolWeight: String, CaseIterable, Identifiable, Codable {

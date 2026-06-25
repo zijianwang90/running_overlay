@@ -1,8 +1,8 @@
 # Running Overlay Agent Guide
 
 This is the canonical instruction file for humans and AI agents contributing
-to Running Overlay. Tool-specific instruction files must point here instead of
-duplicating these rules.
+to Running Overlay. Do not add tool-specific instruction files that duplicate
+these rules.
 
 ## Project
 

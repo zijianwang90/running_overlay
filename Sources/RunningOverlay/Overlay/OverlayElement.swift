@@ -114,8 +114,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     }
 
     /// Decor overlays are activity-data-independent visual elements
-    /// (Solid Color shapes, Icons, free-form Text). See
-    /// `~/.claude/plans/overlay-pool-solid-color-layout-bg-effe-shiny-pudding.md`.
+    /// (Solid Color shapes, Icons, free-form Text).
     var isDecorOverlay: Bool {
         switch self {
         case .decorSolidColor, .decorIcon, .decorText: true

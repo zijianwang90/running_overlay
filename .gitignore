@@ -117,6 +117,6 @@ Exports/
 !Tests/RunningOverlayTests/Fixtures/Activities/
 !Tests/RunningOverlayTests/Fixtures/Activities/*.fit
 
-# Python (e.g. Cursor project hooks under .cursor/hooks/)
+# Python tooling
 __pycache__/
 *.py[cod]
