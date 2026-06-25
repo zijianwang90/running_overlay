@@ -555,6 +555,7 @@ struct OverlayRenderModelTests {
     @Test func weatherWidgetLayoutHonorsManualOpenMeteoAndFITTemperatureOverride() {
         var style = OverlayStyle.default
         style.weatherWidget = .preset(.simpleCard)
+        style.weatherWidget.temperatureUnit = .celsius
         style.weatherWidget.useFITTemperature = true
         style.weatherWidget.manualTemperatureCelsius = 13
         style.weatherWidget.manualCondition = .rain
