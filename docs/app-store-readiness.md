@@ -9,6 +9,8 @@ This document tracks the first Mac App Store submission path for Running Overlay
 - Target channel: Mac App Store first submission.
 - Target scope: existing core app capabilities, including FIT import, video import, timeline editing, overlay design, Route Map, Weather Widget, and transparent MOV export.
 - Development branch: `develop` after integration of the App Store readiness work.
+- Bundle identifier: `io.github.zijianwang90.runningoverlay`.
+- Keychain service: `io.github.zijianwang90.runningoverlay.credentials`.
 
 ## Implemented Packaging Files
 
@@ -16,7 +18,8 @@ This document tracks the first Mac App Store submission path for Running Overlay
 - `AppStore/RunningOverlay.entitlements`: App Sandbox, user-selected file read/write access, outbound network client access, and location entitlement for explicit current-location weather fetches.
 - `AppStore/PrivacyInfo.xcprivacy`: privacy manifest declaring no tracking and no collected data, plus required-reason API declarations for file timestamps and app-scoped user defaults.
 - `AppStore/Assets.xcassets`: placeholder app icon and accent color catalog. Production icon image files still need final design assets.
-- `Config/AppStore.xcconfig`: release defaults for bundle id, marketing version, build number, deployment target, and signing placeholders.
+- `Config/AppStore.xcconfig`: release defaults for the selected bundle id,
+  marketing version, build number, deployment target, and signing placeholders.
 - `scripts/build-appstore-app.sh`: builds the SwiftPM release executable, assembles a macOS `.app`, copies resources and the privacy manifest, and signs with entitlements.
 - `scripts/archive-appstore-app.sh`: creates a local `.xcarchive`-shaped artifact from the packaged app for preflight inspection.
 - `scripts/validate-appstore-config.sh`: validates plist/json syntax and reports placeholder account/product values.
@@ -65,7 +68,8 @@ The current repository still uses Swift Package Manager as the source-of-truth b
 
 ## Remaining Release Blockers
 
-- Replace `com.example.RunningOverlay` with the registered bundle id and fill the Apple Developer Team ID.
+- Register `io.github.zijianwang90.runningoverlay` in the Apple Developer
+  account and fill the Apple Developer Team ID after membership activation.
 - Add production app icon PNGs for all macOS icon slots.
 - Decide whether final submission uses an Xcode app target or the script-built bundle promoted into an App Store Connect-compatible archive.
 - Run privacy report / App Store validation with the final dependency graph, Keychain behavior, and signing identity.

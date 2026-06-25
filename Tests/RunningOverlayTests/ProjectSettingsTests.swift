@@ -4,6 +4,13 @@ import Testing
 
 @MainActor
 struct ProjectSettingsTests {
+    @Test func keychainServiceMatchesReleaseBundleIdentifier() {
+        #expect(
+            KeychainCredentialStore.serviceIdentifier
+                == "io.github.zijianwang90.runningoverlay.credentials"
+        )
+    }
+
     @Test func decodesLegacySettingsWithoutOpenWeatherKey() throws {
         let json = #"{"resolution":"1920x1080","frameRate":"30","layerDataFrameRate":"5"}"#.data(using: .utf8)!
 

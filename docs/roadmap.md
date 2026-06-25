@@ -267,11 +267,13 @@ Completed so far:
 - Added local validation, app bundle packaging, and archive-shape scripts.
 - Added `docs/app-store-readiness.md` to track metadata, privacy, and release
   blockers.
+- Selected `io.github.zijianwang90.runningoverlay` as the release Bundle ID and
+  aligned the Keychain service under the same identifier namespace.
 
 Pending:
 
-- Replace placeholder bundle id/team/signing values with real Apple Developer
-  account settings.
+- Register the selected bundle id and fill the team/signing values after Apple
+  Developer Program membership activation.
 - Add production macOS app icon images and App Store screenshots.
 - Decide whether final upload will use a full Xcode app target/Organizer archive
   or a promoted script-built package.

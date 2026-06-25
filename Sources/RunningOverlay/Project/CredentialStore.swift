@@ -22,11 +22,12 @@ enum CredentialStoreError: LocalizedError {
 }
 
 struct KeychainCredentialStore: CredentialStore {
+    static let serviceIdentifier = "io.github.zijianwang90.runningoverlay.credentials"
     static let openWeatherAccount = "openweather-api-key"
 
     private let service: String
 
-    init(service: String = "com.running-overlay.credentials") {
+    init(service: String = serviceIdentifier) {
         self.service = service
     }
 
