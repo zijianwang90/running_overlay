@@ -1,10 +1,19 @@
 {
   "name": "Project Settings, Heart Rate Zones, And Font Library",
-  "lastUpdated": "2026-06-22",
+  "lastUpdated": "2026-06-25",
   "surfaces": {
     "projectSettings": {
       "presentation": "dark macOS modal",
       "title": "Project Settings",
+      "sizePoints": {
+        "width": 640,
+        "height": 620
+      },
+      "layout": {
+        "videoControlWidth": 200,
+        "openWeatherAPIKeyFieldWidth": 240,
+        "rule": "Preserve comfortable separation between leading copy and trailing controls."
+      },
       "sections": [
         {
           "title": "Video",
@@ -66,7 +75,9 @@
               "label": "OpenWeather API Key",
               "caption": "Stored in macOS Keychain and used only for OpenWeather requests.",
               "control": "secureTextField",
-              "placeholder": "API key"
+              "placeholder": "API key",
+              "persistence": "save to macOS Keychain whenever the field value changes",
+              "separateSaveButton": false
             }
           ]
         }

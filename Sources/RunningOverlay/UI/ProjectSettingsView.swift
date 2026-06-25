@@ -1,6 +1,11 @@
 import SwiftUI
 
 struct ProjectSettingsView: View {
+    private static let modalWidth: CGFloat = 640
+    private static let modalHeight: CGFloat = 620
+    private static let trailingControlWidth: CGFloat = 200
+    private static let apiKeyFieldWidth: CGFloat = 240
+
     @EnvironmentObject private var project: ProjectDocument
     @Environment(\.dismiss) private var dismiss
     @State private var showingFontLibrary = false
@@ -52,9 +57,6 @@ struct ProjectSettingsView: View {
             HStack {
                 Spacer()
                 Button("Done") {
-                    if openWeatherAPIKeyDraft != project.openWeatherAPIKey {
-                        project.setOpenWeatherAPIKey(openWeatherAPIKeyDraft)
-                    }
                     dismiss()
                 }
                 .keyboardShortcut(.defaultAction)
@@ -62,10 +64,14 @@ struct ProjectSettingsView: View {
             }
         }
         .padding(24)
-        .frame(width: 520, height: 620)
+        .frame(width: Self.modalWidth, height: Self.modalHeight)
         .background(EditorTheme.panelBackground)
         .onAppear {
             openWeatherAPIKeyDraft = project.openWeatherAPIKey
+        }
+        .onChange(of: openWeatherAPIKeyDraft) { _, newValue in
+            guard newValue != project.openWeatherAPIKey else { return }
+            project.setOpenWeatherAPIKey(newValue)
         }
         .sheet(isPresented: $showingFontLibrary) {
             FontLibraryView()
@@ -116,20 +122,10 @@ struct ProjectSettingsView: View {
                 }
             },
             trailing: {
-                HStack(spacing: 8) {
-                    SecureField("API key", text: $openWeatherAPIKeyDraft)
-                        .textFieldStyle(.roundedBorder)
-                        .font(EditorTheme.bodyFont)
-                        .frame(width: 160)
-                        .onSubmit {
-                            project.setOpenWeatherAPIKey(openWeatherAPIKeyDraft)
-                        }
-                    Button("Save") {
-                        project.setOpenWeatherAPIKey(openWeatherAPIKeyDraft)
-                    }
-                    .buttonStyle(EditorSecondaryButtonStyle())
-                    .disabled(openWeatherAPIKeyDraft == project.openWeatherAPIKey)
-                }
+                SecureField("API key", text: $openWeatherAPIKeyDraft)
+                    .textFieldStyle(.roundedBorder)
+                    .font(EditorTheme.bodyFont)
+                    .frame(width: Self.apiKeyFieldWidth)
             }
         )
     }
@@ -166,7 +162,7 @@ struct ProjectSettingsView: View {
                     ForEach(ProjectResolution.presets) { r in Text(r.label).tag(r) }
                 }
                 .labelsHidden()
-                .frame(width: 160)
+                .frame(width: Self.trailingControlWidth)
             }
             dividerRow
             SettingsRow(leading: { dropdownLabel("Frame Rate") }) {
@@ -174,7 +170,7 @@ struct ProjectSettingsView: View {
                     ForEach(ProjectFrameRate.presets) { f in Text(f.label).tag(f) }
                 }
                 .labelsHidden()
-                .frame(width: 160)
+                .frame(width: Self.trailingControlWidth)
             }
             dividerRow
             SettingsRow(leading: { dropdownLabel("Layer Data FPS") }) {
@@ -182,7 +178,7 @@ struct ProjectSettingsView: View {
                     ForEach(ProjectLayerDataFrameRate.presets) { f in Text(f.label).tag(f) }
                 }
                 .labelsHidden()
-                .frame(width: 160)
+                .frame(width: Self.trailingControlWidth)
             }
         }
     }

@@ -1,6 +1,6 @@
 # Project Settings, Heart Rate Zones, And Font Library UI Spec
 
-Last updated: 2026-06-22
+Last updated: 2026-06-25
 
 ## Purpose
 
@@ -50,8 +50,18 @@ The settings modal should include only the current project export/settings contr
 5. `Weather`
    - `OpenWeather API Key` secure text field.
    - Caption: `Stored in macOS Keychain and used only for OpenWeather requests.`
+   - Persist edits directly to Keychain as the field changes; do not show a
+     separate `Save` button.
 
 The modal footer contains a right-aligned primary `Done` button.
+
+Layout sizing:
+
+- Use a `640 × 620 pt` modal so section copy and trailing controls have
+  comfortable separation.
+- Keep Video dropdowns aligned to a shared `200 pt` trailing width.
+- Give the OpenWeather secure field `240 pt` of width. The caption should
+  retain enough leading space to remain readable without crowding the field.
 
 Do not add unrelated settings such as project name, theme, notifications, hotkeys, opacity, or background controls unless those features are implemented and explicitly added to the settings model.
 
