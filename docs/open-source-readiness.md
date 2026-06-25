@@ -1,6 +1,6 @@
 # Open-Source Readiness
 
-Last reviewed: 2026-06-24
+Last reviewed: 2026-06-25
 
 ## Repository Status
 
@@ -18,6 +18,7 @@ Completed controls:
 - contribution, security, and conduct policies;
 - deterministic build, test, visual regression, and audit commands;
 - GitHub Actions validation;
+- weekly Dependabot checks for GitHub Actions and Swift packages;
 - synthetic FIT and visual test fixtures;
 - issue and pull request templates;
 - current-tree scan for credentials, sensitive file types, absolute developer
@@ -35,15 +36,16 @@ Before changing repository visibility:
    assets listed in `docs/assets-and-licenses.md` under MIT.
 4. Review Git author email visibility and old commit metadata. No credential
    patterns were found, but public Git history is permanent.
-5. Configure GitHub settings:
+5. Immediately after making the repository public, configure GitHub settings:
    - enable private vulnerability reporting;
-   - enable secret scanning and push protection when available;
+   - enable secret scanning and push protection;
    - create the labels listed in `docs/issue-labels.md`;
-   - protect `develop` and `main`;
+   - protect `main`;
    - require the CI check before merge;
    - disable force pushes and branch deletion for protected branches.
-6. Set `develop` as the contribution target and keep `main` release-only, in
-   line with the repository branch policy.
+6. After final integration, use `main` as the default contribution target and
+   remove the long-lived `develop` branch. All subsequent changes should use
+   short-lived branches and pull requests.
 7. Publish an initial release only after release packaging and end-user
    installation instructions are separately verified.
 

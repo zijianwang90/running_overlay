@@ -27,6 +27,7 @@ required_files=(
   docs/project-log/2026-06.md
   docs/testing.md
   .github/workflows/ci.yml
+  .github/dependabot.yml
   .github/CODEOWNERS
   .github/ISSUE_TEMPLATE/documentation.yml
 )
@@ -126,6 +127,16 @@ rg -q 'macOS Keychain' PRIVACY.md || {
 
 rg -q '@zijianwang90' .github/CODEOWNERS || {
   echo "CODEOWNERS must name the repository maintainer." >&2
+  exit 1
+}
+
+rg -q 'package-ecosystem: "github-actions"' .github/dependabot.yml || {
+  echo "Dependabot must monitor GitHub Actions." >&2
+  exit 1
+}
+
+rg -q 'package-ecosystem: "swift"' .github/dependabot.yml || {
+  echo "Dependabot must monitor Swift packages." >&2
   exit 1
 }
 
