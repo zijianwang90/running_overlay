@@ -1216,6 +1216,14 @@ struct OverlayFrameRenderer {
                 drawLine(from: CGPoint(x: chartRect.minX, y: y), to: CGPoint(x: chartRect.maxX, y: y), color: NSColor.white.withAlphaComponent(0.14), lineWidth: 1)
             }
         }
+        if style.axisLineEnabled {
+            drawLine(
+                from: CGPoint(x: chartRect.minX, y: chartRect.minY),
+                to: CGPoint(x: chartRect.minX, y: chartRect.maxY),
+                color: NSColor(element.style.foregroundColor).withAlphaComponent(0.22),
+                lineWidth: 1
+            )
+        }
         if style.fillEnabled, style.chartStyle == .area {
             if style.dualAreaEnabled {
                 drawElevationArea(
@@ -1265,7 +1273,7 @@ struct OverlayFrameRenderer {
 
         if style.currentMarkerEnabled {
             let marker = elevationMarkerPoint(samples: renderLayout.samples, progress: renderLayout.progress, in: chartRect)
-            if !style.bigNumbersEnabled {
+            if !style.bigNumbersEnabled, style.markerPlayheadLineEnabled, marker.x > chartRect.minX + 1.5 {
                 let cursor = NSBezierPath()
                 cursor.move(to: CGPoint(x: marker.x, y: chartRect.minY))
                 cursor.line(to: CGPoint(x: marker.x, y: chartRect.maxY))

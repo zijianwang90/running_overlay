@@ -69,6 +69,10 @@ Do not add unrelated settings such as project name, theme, notifications, hotkey
 
 The Heart Rate Zones sheet configures the global HR and pace zone profile used by physiology-aware overlays.
 
+Fresh installs start with a complete six-zone HR and pace profile, including
+threshold values, so physiology-aware overlays are usable before the user
+customizes the profile. Existing saved preferences always take precedence.
+
 Functional scope is intentionally limited to the controls already present in the app:
 
 - Zone count segmented control: `5` / `6`.

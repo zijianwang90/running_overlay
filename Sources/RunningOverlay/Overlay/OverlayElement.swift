@@ -1119,6 +1119,9 @@ enum ElevationChartBigMetric: String, CaseIterable, Identifiable, Codable {
 }
 
 struct ElevationChartStyle: Equatable, Codable {
+    static let widthRange: ClosedRange<Double> = 220...1200
+    static let heightRange: ClosedRange<Double> = 72...320
+
     var preset: ElevationChartPreset
     var width: Double
     var height: Double
@@ -1140,8 +1143,10 @@ struct ElevationChartStyle: Equatable, Codable {
     var lowerFillColor: OverlayColor
     var currentMarkerEnabled: Bool
     var markerColor: OverlayColor
+    var markerPlayheadLineEnabled: Bool
     var markerLabelEnabled: Bool
     var gridEnabled: Bool
+    var axisLineEnabled: Bool
     var axisLabelsEnabled: Bool
     var bigNumbersEnabled: Bool
     var bigNumberMetric: ElevationChartBigMetric
@@ -1186,8 +1191,10 @@ struct ElevationChartStyle: Equatable, Codable {
             lowerFillColor: .cyan,
             currentMarkerEnabled: true,
             markerColor: .blue,
+            markerPlayheadLineEnabled: true,
             markerLabelEnabled: true,
             gridEnabled: false,
+            axisLineEnabled: true,
             axisLabelsEnabled: true,
             bigNumbersEnabled: preset == .bigNumbers,
             bigNumberMetric: .currentElevation,
@@ -1243,6 +1250,8 @@ struct ElevationChartStyle: Equatable, Codable {
             style.fillEnabled = false
             style.markerColor = .white
             style.markerLabelEnabled = false
+            style.markerPlayheadLineEnabled = false
+            style.axisLineEnabled = false
             style.axisLabelsEnabled = false
             style.gridEnabled = false
             style.statsBar.visible = false
@@ -1263,6 +1272,7 @@ struct ElevationChartStyle: Equatable, Codable {
                 DistanceTimelineStatsBarSlot(metric: .grade, visible: false, customLabel: ""),
             ]
             style.markerLabelEnabled = false
+            style.axisLineEnabled = false
             style.axisLabelsEnabled = false
             style.backgroundOpacity = 0.44
             style.shadowOpacity = 0.30
@@ -1329,8 +1339,10 @@ extension ElevationChartStyle {
         case lowerFillColor
         case currentMarkerEnabled
         case markerColor
+        case markerPlayheadLineEnabled
         case markerLabelEnabled
         case gridEnabled
+        case axisLineEnabled
         case axisLabelsEnabled
         case bigNumbersEnabled
         case bigNumberMetric
@@ -1357,8 +1369,14 @@ extension ElevationChartStyle {
         let defaults = ElevationChartStyle.preset(decodedPreset)
 
         preset = decodedPreset
-        width = try container.decodeIfPresent(Double.self, forKey: .width) ?? defaults.width
-        height = try container.decodeIfPresent(Double.self, forKey: .height) ?? defaults.height
+        width = min(
+            max(try container.decodeIfPresent(Double.self, forKey: .width) ?? defaults.width, Self.widthRange.lowerBound),
+            Self.widthRange.upperBound
+        )
+        height = min(
+            max(try container.decodeIfPresent(Double.self, forKey: .height) ?? defaults.height, Self.heightRange.lowerBound),
+            Self.heightRange.upperBound
+        )
         chartStyle = try container.decodeIfPresent(ElevationChartRenderStyle.self, forKey: .chartStyle) ?? defaults.chartStyle
         smoothingEnabled = try container.decodeIfPresent(Bool.self, forKey: .smoothingEnabled) ?? defaults.smoothingEnabled
         smoothingAmount = min(max(try container.decodeIfPresent(Double.self, forKey: .smoothingAmount) ?? defaults.smoothingAmount, 0), 1)
@@ -1377,8 +1395,10 @@ extension ElevationChartStyle {
         lowerFillColor = try container.decodeIfPresent(OverlayColor.self, forKey: .lowerFillColor) ?? defaults.lowerFillColor
         currentMarkerEnabled = try container.decodeIfPresent(Bool.self, forKey: .currentMarkerEnabled) ?? defaults.currentMarkerEnabled
         markerColor = try container.decodeIfPresent(OverlayColor.self, forKey: .markerColor) ?? defaults.markerColor
+        markerPlayheadLineEnabled = try container.decodeIfPresent(Bool.self, forKey: .markerPlayheadLineEnabled) ?? defaults.markerPlayheadLineEnabled
         markerLabelEnabled = try container.decodeIfPresent(Bool.self, forKey: .markerLabelEnabled) ?? defaults.markerLabelEnabled
         gridEnabled = try container.decodeIfPresent(Bool.self, forKey: .gridEnabled) ?? defaults.gridEnabled
+        axisLineEnabled = try container.decodeIfPresent(Bool.self, forKey: .axisLineEnabled) ?? defaults.axisLineEnabled
         axisLabelsEnabled = try container.decodeIfPresent(Bool.self, forKey: .axisLabelsEnabled) ?? defaults.axisLabelsEnabled
         bigNumbersEnabled = try container.decodeIfPresent(Bool.self, forKey: .bigNumbersEnabled) ?? defaults.bigNumbersEnabled
         bigNumberMetric = try container.decodeIfPresent(ElevationChartBigMetric.self, forKey: .bigNumberMetric) ?? defaults.bigNumberMetric
@@ -1422,8 +1442,10 @@ extension ElevationChartStyle {
         try container.encode(lowerFillColor, forKey: .lowerFillColor)
         try container.encode(currentMarkerEnabled, forKey: .currentMarkerEnabled)
         try container.encode(markerColor, forKey: .markerColor)
+        try container.encode(markerPlayheadLineEnabled, forKey: .markerPlayheadLineEnabled)
         try container.encode(markerLabelEnabled, forKey: .markerLabelEnabled)
         try container.encode(gridEnabled, forKey: .gridEnabled)
+        try container.encode(axisLineEnabled, forKey: .axisLineEnabled)
         try container.encode(axisLabelsEnabled, forKey: .axisLabelsEnabled)
         try container.encode(bigNumbersEnabled, forKey: .bigNumbersEnabled)
         try container.encode(bigNumberMetric, forKey: .bigNumberMetric)

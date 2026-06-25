@@ -1,6 +1,6 @@
 # Elevation Chart Overlay
 
-Last updated: 2026-06-18
+Last updated: 2026-06-25
 
 The Elevation Chart overlay is a dedicated `.elevationChart` module for rendering an activity elevation profile. It is separate from Distance Timeline and Route Map, but intentionally reuses their shared inspector and stats bar infrastructure where it makes sense.
 
@@ -17,6 +17,10 @@ The Elevation Chart overlay is a dedicated `.elevationChart` module for renderin
 - Fill gradient inspector: `From` and `To` swatch strips are stacked vertically so the color editor stays within the inspector width.
 - Inspector chrome: collapsed custom section headers use the single-line separator pattern, and the Reset / Done footer reuses the shared detail footer height and button layout.
 - Smoothing: the chart renderer filters quantized elevation samples and uses curved line/area paths in both Full and Progress modes. The `Smoothness` slider controls filter strength from 0 to 100 percent. At 100 percent, the overlay uses a wide display-only Gaussian filter to prioritize a visually continuous curve over passing through every integer-meter sample. Preview and export share the same smoothed sample set before their native path drawing.
+- Bottom-strip sizing: layout width supports `220...1200` design points and height supports `72...320`. Compact heights reduce vertical chart padding proportionally instead of forcing the earlier 52-point chart minimum, allowing a wide, low elevation profile to sit along the bottom of a 1280-point reference canvas without covering as much footage.
+- Dimension decoding clamps imported or legacy values to the supported range so malformed templates cannot create an unusable chart frame.
+- Axis & Labels: `Grid`, `Axis Line`, and `Labels` toggles control the horizontal grid, left Y-axis stroke, and min/max/unit labels. Preview and export share the same axis-line rendering. The current-marker playhead guide is suppressed on the chart's left edge so it does not duplicate the optional Y-axis line.
+- Markers: `Current`, `Playhead Line`, `Marker Color`, and `Value Label` control the current-position marker. `Playhead Line` toggles the vertical dashed guide that tracks playback progress.
 
 ## Presets
 

@@ -3083,6 +3083,10 @@ struct ElevationChartOverlayView: View {
                             gridPath(in: proxy.size)
                                 .stroke(Color.white.opacity(0.14), lineWidth: 1)
                         }
+                        if layout.style.axisLineEnabled {
+                            axisLine(in: proxy.size)
+                                .stroke(Color(element.style.foregroundColor).opacity(0.22), lineWidth: 1)
+                        }
                         if layout.style.fillEnabled && layout.style.chartStyle == .area {
                             if layout.style.dualAreaEnabled {
                                 areaPath(in: proxy.size)
@@ -3253,7 +3257,7 @@ struct ElevationChartOverlayView: View {
     private func marker(in size: CGSize) -> some View {
         let point = chartPoint(at: layout.progress, in: size)
         return ZStack {
-            if !layout.style.bigNumbersEnabled {
+            if showsMarkerPlayheadLine(at: point) {
                 VerticalDashedLine()
                     .stroke(Color.white.opacity(0.28), style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
                     .frame(width: 1, height: size.height)
@@ -3290,6 +3294,13 @@ struct ElevationChartOverlayView: View {
         layout.label.replacingOccurrences(of: "Elevation ", with: "")
     }
 
+    private func showsMarkerPlayheadLine(at point: CGPoint) -> Bool {
+        guard layout.style.markerPlayheadLineEnabled, !layout.style.bigNumbersEnabled else { return false }
+        // Hide the playhead guide on the chart's left edge so it does not duplicate
+        // (or masquerade as) the optional Y-axis line.
+        return point.x > 1.5
+    }
+
     private func axisLabels(in size: CGSize) -> some View {
         let minValue = layout.samples.min() ?? 0
         let maxValue = layout.samples.max() ?? minValue
@@ -3312,6 +3323,13 @@ struct ElevationChartOverlayView: View {
             path.move(to: CGPoint(x: 0, y: y))
             path.addLine(to: CGPoint(x: size.width, y: y))
         }
+        return path
+    }
+
+    private func axisLine(in size: CGSize) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: 0, y: size.height))
         return path
     }
 

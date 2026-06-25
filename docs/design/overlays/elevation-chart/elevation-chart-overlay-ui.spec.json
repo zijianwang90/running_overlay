@@ -186,6 +186,7 @@
     "axis": {
       "gridEnabled": false,
       "gridOpacity": 0.12,
+      "axisLineEnabled": true,
       "baselineEnabled": false,
       "minMaxLabelsEnabled": false,
       "startEndLabelsEnabled": false,
@@ -371,6 +372,7 @@
       "icon": "mappin.and.ellipse",
       "controls": [
         { "id": "currentMarker", "type": "markerEditor", "modelPath": "markers.current" },
+        { "id": "playheadLineEnabled", "type": "toggle", "modelPath": "markers.current.playheadLineEnabled", "enabledWhen": "markers.current.enabled" },
         { "id": "minMarker", "type": "markerEditor", "modelPath": "markers.min" },
         { "id": "maxMarker", "type": "markerEditor", "modelPath": "markers.max" },
         { "id": "startMarker", "type": "markerEditor", "modelPath": "markers.start" },
@@ -384,6 +386,7 @@
       "controls": [
         { "id": "gridEnabled", "type": "toggle", "modelPath": "axis.gridEnabled" },
         { "id": "gridOpacity", "type": "sliderWithNumber", "modelPath": "axis.gridOpacity", "range": [0, 1], "enabledWhen": "axis.gridEnabled" },
+        { "id": "axisLineEnabled", "type": "toggle", "modelPath": "axis.axisLineEnabled" },
         { "id": "baselineEnabled", "type": "toggle", "modelPath": "axis.baselineEnabled" },
         { "id": "minMaxLabelsEnabled", "type": "toggle", "modelPath": "axis.minMaxLabelsEnabled" },
         { "id": "startEndLabelsEnabled", "type": "toggle", "modelPath": "axis.startEndLabelsEnabled" },

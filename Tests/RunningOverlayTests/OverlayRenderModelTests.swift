@@ -432,6 +432,35 @@ struct OverlayRenderModelTests {
         #expect(layout.chartHeight == 82)
     }
 
+    @Test func elevationChartSupportsWideCompactBottomStripLayout() {
+        var style = OverlayStyle.default
+        style.elevationChart.width = ElevationChartStyle.widthRange.upperBound
+        style.elevationChart.height = ElevationChartStyle.heightRange.lowerBound
+        let element = OverlayElement(type: .elevationChart, position: CGPoint(x: 0.5, y: 0.9), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleActivity(),
+            elapsedTime: 5
+        )
+
+        let layout = OverlayRenderModel.elevationChartLayout(for: element, in: context)
+
+        #expect(layout.rect.width == 1200)
+        #expect(layout.rect.height == 72)
+        #expect(abs(layout.verticalPadding - 7.2) < 0.001)
+        #expect(abs(layout.chartHeight - 57.6) < 0.001)
+        #expect(layout.chartHeight + layout.verticalPadding * 2 <= layout.rect.height)
+    }
+
+    @Test func elevationChartStyleClampsDecodedDimensionsToSupportedRange() throws {
+        let json = #"{"preset":"gradientArea","width":2000,"height":20}"#.data(using: .utf8)!
+
+        let style = try JSONDecoder().decode(ElevationChartStyle.self, from: json)
+
+        #expect(style.width == ElevationChartStyle.widthRange.upperBound)
+        #expect(style.height == ElevationChartStyle.heightRange.lowerBound)
+    }
+
     @Test func elevationChartPresetsExposePremiumVisualVariants() {
         #expect(ElevationChartPreset.allCases.map(\.rawValue) == [
             "gradientArea",
@@ -461,7 +490,28 @@ struct OverlayRenderModelTests {
         #expect(minimal.preset.label == "Minimal White")
         #expect(minimal.chartStyle == .lineOnly)
         #expect(minimal.fillEnabled == false)
+        #expect(minimal.axisLineEnabled == false)
+        #expect(minimal.markerPlayheadLineEnabled == false)
         #expect(minimal.statsBar.visible == false)
+    }
+
+    @Test func elevationChartStyleDecodesLegacyAxisWithoutLineToggle() throws {
+        let json = #"{"preset":"gradientArea","gridEnabled":true,"axisLabelsEnabled":true}"#.data(using: .utf8)!
+
+        let style = try JSONDecoder().decode(ElevationChartStyle.self, from: json)
+
+        #expect(style.gridEnabled)
+        #expect(style.axisLabelsEnabled)
+        #expect(style.axisLineEnabled == ElevationChartStyle.preset(.gradientArea).axisLineEnabled)
+    }
+
+    @Test func elevationChartStyleDecodesLegacyMarkerWithoutPlayheadLineToggle() throws {
+        let json = #"{"preset":"gradientArea","currentMarkerEnabled":true}"#.data(using: .utf8)!
+
+        let style = try JSONDecoder().decode(ElevationChartStyle.self, from: json)
+
+        #expect(style.currentMarkerEnabled)
+        #expect(style.markerPlayheadLineEnabled == ElevationChartStyle.preset(.gradientArea).markerPlayheadLineEnabled)
     }
 
     @Test func elevationChartSmoothingSoftensQuantizedStairStepsAndPreservesEndpoints() {

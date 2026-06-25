@@ -4,6 +4,45 @@ import Testing
 
 @MainActor
 struct ProjectSettingsTests {
+    @Test func freshInstallUsesBundledHeartRateAndPaceZones() {
+        let suiteName = "RunningOverlayTests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let snapshot = HeartRateZonePreferences.snapshot(defaults: defaults)
+
+        #expect(snapshot.zoneCount == 6)
+        #expect(snapshot.paceUnit == .minPerKm)
+        #expect(snapshot.thresholdHR == 168)
+        #expect(snapshot.thresholdPaceSecPerKm == 239)
+        #expect(snapshot.zones.map(\.minHR) == [0, 134, 152, 161, 172, 178])
+        #expect(snapshot.zones.map(\.maxHR) == [134, 151, 160, 171, 178, 250])
+        #expect(snapshot.zones.map(\.minPaceSecPerKm) == [332, 272, 256, 234, 215, nil])
+        #expect(snapshot.zones.map(\.maxPaceSecPerKm) == [nil, 332, 271, 255, 233, 215])
+    }
+
+    @Test func savedHeartRateZonesTakePrecedenceOverBundledDefaults() throws {
+        let suiteName = "RunningOverlayTests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let savedZones = [
+            HeartRateZone(minHR: 100, maxHR: 120, minPaceSecPerKm: 360, maxPaceSecPerKm: 420)
+        ]
+        defaults.set(try JSONEncoder().encode(savedZones), forKey: "heartRateZones.zones")
+        defaults.set(5, forKey: "heartRateZones.zoneCount")
+        defaults.set(PaceUnit.minPerMile.rawValue, forKey: "heartRateZones.paceUnit")
+
+        let snapshot = HeartRateZonePreferences.snapshot(defaults: defaults)
+
+        #expect(snapshot.zoneCount == 5)
+        #expect(snapshot.paceUnit == .minPerMile)
+        #expect(snapshot.zones[0] == savedZones[0])
+        #expect(snapshot.thresholdHR == nil)
+        #expect(snapshot.thresholdPaceSecPerKm == nil)
+    }
+
     @Test func keychainServiceMatchesReleaseBundleIdentifier() {
         #expect(
             KeychainCredentialStore.serviceIdentifier

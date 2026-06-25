@@ -294,10 +294,22 @@ enum OverlayRenderModel {
             elapsedTime: context.elapsedTime,
             progress: progress
         )
+        let compactVerticalPadding = min(style.chartPaddingY, max(6, style.height * 0.10))
         let statsBarConsumesChartSpace = style.statsBar.visible && style.statsBar.inside
         let chartVerticalReserve = statsBarConsumesChartSpace
-            ? style.chartPaddingY * 2 + style.statsBar.height + 8
-            : style.chartPaddingY * 2
+            ? style.statsBar.height + 8
+            : 0
+        let valueFontSize = style.bigNumbersEnabled && style.height < 140
+            ? min(style.bigNumberFontSize, max(18, style.height * 0.28))
+            : style.bigNumberFontSize
+        let chartHeight: Double
+        if style.bigNumbersEnabled {
+            chartHeight = style.height < 140
+                ? max(style.height - compactVerticalPadding * 3 - valueFontSize * 1.25 - chartVerticalReserve, 1)
+                : max(style.height * 0.40 - chartVerticalReserve, 1)
+        } else {
+            chartHeight = max(style.height - compactVerticalPadding * 2 - chartVerticalReserve, 1)
+        }
         return OverlayElevationChartRenderLayout(
             style: style,
             bigNumberText: elevationBigNumber(style: style, activity: context.activity, elapsedTime: context.elapsedTime),
@@ -305,12 +317,12 @@ enum OverlayRenderModel {
             statsBarItems: statsBarItems,
             rect: rect,
             labelFontSize: context.scaled(max(10, element.style.fontSize * 0.38 * element.scale)),
-            valueFontSize: context.scaled(max(18, style.bigNumberFontSize * element.scale)),
-            unitFontSize: context.scaled(max(10, style.bigNumberFontSize * 0.38 * element.scale)),
+            valueFontSize: context.scaled(max(18, valueFontSize * element.scale)),
+            unitFontSize: context.scaled(max(10, valueFontSize * 0.38 * element.scale)),
             horizontalPadding: context.scaled(style.chartPaddingX * element.scale),
-            verticalPadding: context.scaled(style.chartPaddingY * element.scale),
+            verticalPadding: context.scaled(compactVerticalPadding * element.scale),
             cornerRadius: context.scaled(style.cornerRadius * element.scale),
-            chartHeight: context.scaled(max(52, (style.bigNumbersEnabled ? style.height * 0.40 : style.height - chartVerticalReserve) * element.scale)),
+            chartHeight: context.scaled(chartHeight * element.scale),
             lineWidth: max(context.scaled(1), context.scaled(style.lineWidth * element.scale)),
             progress: progress,
             samples: renderedSamples

@@ -83,6 +83,57 @@ final class HeartRateZonePreferences {
     nonisolated private static let thresholdHRKey = "heartRateZones.thresholdHR"
     nonisolated private static let thresholdPaceKey = "heartRateZones.thresholdPaceSecPerKm"
 
+    nonisolated static var defaultSnapshot: HeartRateZoneSnapshot {
+        HeartRateZoneSnapshot(
+            zoneCount: HRZoneCount.six.rawValue,
+            paceUnit: .minPerKm,
+            zones: [
+                HeartRateZone(
+                    id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+                    minHR: 0,
+                    maxHR: 134,
+                    minPaceSecPerKm: 332
+                ),
+                HeartRateZone(
+                    id: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
+                    minHR: 134,
+                    maxHR: 151,
+                    minPaceSecPerKm: 272,
+                    maxPaceSecPerKm: 332
+                ),
+                HeartRateZone(
+                    id: UUID(uuidString: "00000000-0000-0000-0000-000000000003")!,
+                    minHR: 152,
+                    maxHR: 160,
+                    minPaceSecPerKm: 256,
+                    maxPaceSecPerKm: 271
+                ),
+                HeartRateZone(
+                    id: UUID(uuidString: "00000000-0000-0000-0000-000000000004")!,
+                    minHR: 161,
+                    maxHR: 171,
+                    minPaceSecPerKm: 234,
+                    maxPaceSecPerKm: 255
+                ),
+                HeartRateZone(
+                    id: UUID(uuidString: "00000000-0000-0000-0000-000000000005")!,
+                    minHR: 172,
+                    maxHR: 178,
+                    minPaceSecPerKm: 215,
+                    maxPaceSecPerKm: 233
+                ),
+                HeartRateZone(
+                    id: UUID(uuidString: "00000000-0000-0000-0000-000000000006")!,
+                    minHR: 178,
+                    maxHR: 250,
+                    maxPaceSecPerKm: 215
+                )
+            ],
+            thresholdHR: 168,
+            thresholdPaceSecPerKm: 239
+        )
+    }
+
     var zoneCount: HRZoneCount {
         didSet { UserDefaults.standard.set(zoneCount.rawValue, forKey: Self.zoneCountKey) }
     }
@@ -122,23 +173,12 @@ final class HeartRateZonePreferences {
     }
 
     private init() {
-        let storedCount = UserDefaults.standard.object(forKey: Self.zoneCountKey) as? Int
-        zoneCount = storedCount.flatMap(HRZoneCount.init(rawValue:)) ?? .five
-
-        let storedUnit = UserDefaults.standard.string(forKey: Self.paceUnitKey)
-        paceUnit = storedUnit.flatMap(PaceUnit.init(rawValue:)) ?? .minPerKm
-
-        if let data = UserDefaults.standard.data(forKey: Self.zonesKey),
-           let decoded = try? JSONDecoder().decode([HeartRateZone].self, from: data) {
-            var padded = decoded
-            while padded.count < 6 { padded.append(HeartRateZone()) }
-            zones = Array(padded.prefix(6))
-        } else {
-            zones = HeartRateZone.emptySlots()
-        }
-
-        thresholdHR = UserDefaults.standard.object(forKey: Self.thresholdHRKey) as? Int
-        thresholdPaceSecPerKm = UserDefaults.standard.object(forKey: Self.thresholdPaceKey) as? Int
+        let snapshot = Self.snapshot(defaults: .standard)
+        zoneCount = HRZoneCount(rawValue: snapshot.zoneCount) ?? .six
+        paceUnit = snapshot.paceUnit
+        zones = snapshot.zones
+        thresholdHR = snapshot.thresholdHR
+        thresholdPaceSecPerKm = snapshot.thresholdPaceSecPerKm
     }
 
     /// Clears HR + pace values within the currently-visible zone range, leaving the rest untouched.
@@ -149,20 +189,22 @@ final class HeartRateZonePreferences {
     }
 
     nonisolated static func currentSnapshot() -> HeartRateZoneSnapshot {
-        let defaults = UserDefaults.standard
+        snapshot(defaults: .standard)
+    }
+
+    nonisolated static func snapshot(defaults: UserDefaults) -> HeartRateZoneSnapshot {
+        guard let data = defaults.data(forKey: zonesKey),
+              let decoded = try? JSONDecoder().decode([HeartRateZone].self, from: data) else {
+            return defaultSnapshot
+        }
+
         let storedCount = defaults.object(forKey: zoneCountKey) as? Int
         let zoneCount = storedCount.flatMap(HRZoneCount.init(rawValue:))?.rawValue ?? HRZoneCount.five.rawValue
         let storedUnit = defaults.string(forKey: paceUnitKey)
         let paceUnit = storedUnit.flatMap(PaceUnit.init(rawValue:)) ?? .minPerKm
-        let zones: [HeartRateZone]
-        if let data = defaults.data(forKey: zonesKey),
-           let decoded = try? JSONDecoder().decode([HeartRateZone].self, from: data) {
-            var padded = decoded
-            while padded.count < 6 { padded.append(HeartRateZone()) }
-            zones = Array(padded.prefix(6))
-        } else {
-            zones = HeartRateZone.emptySlots()
-        }
+        var padded = decoded
+        while padded.count < 6 { padded.append(HeartRateZone()) }
+        let zones = Array(padded.prefix(6))
         let thresholdHR = defaults.object(forKey: thresholdHRKey) as? Int
         let thresholdPaceSecPerKm = defaults.object(forKey: thresholdPaceKey) as? Int
         return HeartRateZoneSnapshot(

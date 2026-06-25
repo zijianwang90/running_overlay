@@ -537,6 +537,7 @@ Controls:
 ```text
 Show Grid
 Grid Opacity
+Show Axis Line
 Show Baseline
 Show Min / Max Labels
 Show Start / End Labels
@@ -550,6 +551,7 @@ Default:
 ```swift
 gridEnabled = false
 gridOpacity = 0.12
+axisLineEnabled = true
 baselineEnabled = false
 minMaxLabelsEnabled = false
 startEndLabelsEnabled = false

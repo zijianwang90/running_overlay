@@ -105,9 +105,9 @@ struct ElevationChartOverlayDetailView: View {
             OverlayLayoutInspectorRows(
                 elementID: elementID,
                 widthBinding: elevationBinding(\.width, of: style, continuous: true),
-                widthRange: 220...720,
+                widthRange: ElevationChartStyle.widthRange,
                 heightBinding: elevationBinding(\.height, of: style, continuous: true),
-                heightRange: 110...320
+                heightRange: ElevationChartStyle.heightRange
             )
         }
     }
@@ -169,6 +169,11 @@ struct ElevationChartOverlayDetailView: View {
     private func markersSection(_ element: OverlayElement) -> some View {
         let style = element.style.elevationChart
         InspectorDenseRow(label: "Current") { toggle(style.currentMarkerEnabled) { set(\.currentMarkerEnabled, to: $0) } }
+        InspectorDenseRow(label: "Playhead Line") {
+            toggle(style.markerPlayheadLineEnabled) { set(\.markerPlayheadLineEnabled, to: $0) }
+        }
+        .opacity(style.currentMarkerEnabled ? 1 : 0.5)
+        .disabled(!style.currentMarkerEnabled)
         InspectorDenseRow(label: "Marker Color") {
             InspectorDenseSwatchStrip(presets: colorPresets, selected: style.markerColor) { set(\.markerColor, to: $0) }
         }
@@ -179,6 +184,7 @@ struct ElevationChartOverlayDetailView: View {
     private func axisSection(_ element: OverlayElement) -> some View {
         let style = element.style.elevationChart
         InspectorDenseRow(label: "Grid") { toggle(style.gridEnabled) { set(\.gridEnabled, to: $0) } }
+        InspectorDenseRow(label: "Axis Line") { toggle(style.axisLineEnabled) { set(\.axisLineEnabled, to: $0) } }
         InspectorDenseRow(label: "Labels") { toggle(style.axisLabelsEnabled) { set(\.axisLabelsEnabled, to: $0) } }
     }
 
