@@ -310,22 +310,92 @@ enum OverlayRenderModel {
         } else {
             chartHeight = max(style.height - compactVerticalPadding * 2 - chartVerticalReserve, 1)
         }
+        let scaledHorizontalPadding = context.scaled(style.chartPaddingX * element.scale)
+        let scaledVerticalPadding = context.scaled(compactVerticalPadding * element.scale)
+        let statsBarLayout = elevationChartStatsBarLayout(
+            style: style,
+            items: statsBarItems,
+            rect: rect,
+            horizontalPadding: scaledHorizontalPadding,
+            verticalPadding: scaledVerticalPadding,
+            context: context,
+            element: element
+        )
         return OverlayElevationChartRenderLayout(
             style: style,
             bigNumberText: elevationBigNumber(style: style, activity: context.activity, elapsedTime: context.elapsedTime),
             label: OverlayValueFormatter.value(for: element.type, activity: context.activity, elapsedTime: context.elapsedTime),
             statsBarItems: statsBarItems,
+            statsBarLayout: statsBarLayout,
             rect: rect,
             labelFontSize: context.scaled(max(10, element.style.fontSize * 0.38 * element.scale)),
             valueFontSize: context.scaled(max(18, valueFontSize * element.scale)),
             unitFontSize: context.scaled(max(10, valueFontSize * 0.38 * element.scale)),
-            horizontalPadding: context.scaled(style.chartPaddingX * element.scale),
-            verticalPadding: context.scaled(compactVerticalPadding * element.scale),
+            horizontalPadding: scaledHorizontalPadding,
+            verticalPadding: scaledVerticalPadding,
             cornerRadius: context.scaled(style.cornerRadius * element.scale),
             chartHeight: context.scaled(chartHeight * element.scale),
             lineWidth: max(context.scaled(1), context.scaled(style.lineWidth * element.scale)),
             progress: progress,
             samples: renderedSamples
+        )
+    }
+
+    /// Builds the scaled, card-local Stats Bar layout for an elevation chart.
+    /// All geometry is expressed in the same scaled space as the chart card so
+    /// preview (fitted canvas) and export (project resolution) stay
+    /// proportionally identical. The chart card already reserves space for the
+    /// inside bar via `chartVerticalReserve` in design-point space; this method
+    /// only positions the rendered bar.
+    private static func elevationChartStatsBarLayout(
+        style: ElevationChartStyle,
+        items: [OverlayDistanceTimelineStatsBarItemLayout],
+        rect: CGRect,
+        horizontalPadding: Double,
+        verticalPadding: Double,
+        context: OverlayRenderContext,
+        element: OverlayElement
+    ) -> OverlayElevationChartStatsBarLayout? {
+        let config = style.statsBar
+        guard config.visible, !items.isEmpty else { return nil }
+
+        let available = max(rect.width - horizontalPadding * 2, 1)
+        let width = config.width > 0
+            ? min(context.scaled(config.width * element.scale), available)
+            : available
+        let height = context.scaled(config.height * element.scale)
+        let offsetX = context.scaled(config.offsetX * element.scale)
+        let offsetY = context.scaled(config.offsetY * element.scale)
+        let outsideGap = context.scaled(8 * element.scale)
+
+        let centerX = rect.width / 2 + offsetX
+        let centerY = config.inside
+            ? rect.height - verticalPadding - height / 2 + offsetY
+            : rect.height + outsideGap + height / 2 + offsetY
+
+        let localRect = CGRect(
+            x: centerX - width / 2,
+            y: centerY - height / 2,
+            width: width,
+            height: height
+        )
+
+        return OverlayElevationChartStatsBarLayout(
+            rect: localRect,
+            items: items,
+            stacked: config.placement.isVertical || config.layoutMode == .stack,
+            itemSpacing: context.scaled(config.itemSpacing * element.scale),
+            dividerOpacity: config.dividerOpacity,
+            cornerRadius: config.inside ? 0 : context.scaled(config.cornerRadius * element.scale),
+            backgroundOpacity: config.backgroundOpacity,
+            valueFontName: config.valueFontName,
+            valueFontSize: context.scaled(config.valueFontSize * element.scale),
+            valueFontWeight: config.valueFontWeight,
+            valueColor: config.valueColor,
+            labelFontName: config.labelFontName,
+            labelFontSize: context.scaled(config.labelFontSize * element.scale),
+            labelFontWeight: config.labelFontWeight,
+            labelColor: config.labelColor
         )
     }
 
@@ -2129,11 +2199,34 @@ struct OverlayDistanceTimelineStatsBarItemLayout {
     var unit: String
 }
 
+/// Scaled, card-local layout for the Elevation Chart Stats Bar. Built once in
+/// the render model so preview and SwiftUI export share identical geometry and
+/// typography instead of reading raw design-point values from the style.
+struct OverlayElevationChartStatsBarLayout {
+    /// Bar frame in the elevation chart card's local (already scaled) space.
+    var rect: CGRect
+    var items: [OverlayDistanceTimelineStatsBarItemLayout]
+    var stacked: Bool
+    var itemSpacing: Double
+    var dividerOpacity: Double
+    var cornerRadius: Double
+    var backgroundOpacity: Double
+    var valueFontName: String
+    var valueFontSize: Double
+    var valueFontWeight: OverlayFontWeight
+    var valueColor: OverlayColor
+    var labelFontName: String
+    var labelFontSize: Double
+    var labelFontWeight: OverlayFontWeight
+    var labelColor: OverlayColor
+}
+
 struct OverlayElevationChartRenderLayout {
     var style: ElevationChartStyle
     var bigNumberText: OverlayValueComponents
     var label: String
     var statsBarItems: [OverlayDistanceTimelineStatsBarItemLayout]
+    var statsBarLayout: OverlayElevationChartStatsBarLayout?
     var rect: CGRect
     var labelFontSize: Double
     var valueFontSize: Double

@@ -3124,13 +3124,10 @@ struct ElevationChartOverlayView: View {
             .padding(.vertical, layout.verticalPadding)
             .frame(width: layout.rect.width, height: layout.rect.height, alignment: .topLeading)
 
-            if statsBarVisible {
-                statsBarContent
-                    .frame(width: statsBarWidth, height: layout.style.statsBar.height)
-                    .position(
-                        x: layout.rect.width / 2 + layout.style.statsBar.offsetX,
-                        y: statsBarCenterY + layout.style.statsBar.offsetY
-                    )
+            if let statsBar = layout.statsBarLayout {
+                statsBarContent(statsBar)
+                    .frame(width: statsBar.rect.width, height: statsBar.rect.height)
+                    .position(x: statsBar.rect.midX, y: statsBar.rect.midY)
             }
         }
         .frame(width: layout.rect.width, height: layout.rect.height)
@@ -3161,39 +3158,22 @@ struct ElevationChartOverlayView: View {
         element.style.backgroundRadius * element.scale
     }
 
-    private var statsBarVisible: Bool {
-        layout.style.statsBar.visible && !layout.statsBarItems.isEmpty
-    }
-
-    private var statsBarWidth: Double {
-        let availableWidth = layout.rect.width - layout.horizontalPadding * 2
-        guard layout.style.statsBar.width > 0 else { return availableWidth }
-        return min(layout.style.statsBar.width, availableWidth)
-    }
-
-    private var statsBarCenterY: Double {
-        if layout.style.statsBar.inside {
-            return layout.rect.height - layout.verticalPadding - layout.style.statsBar.height / 2
-        }
-        return layout.rect.height + 8 + layout.style.statsBar.height / 2
-    }
-
-    private var statsBarContent: some View {
+    private func statsBarContent(_ statsBar: OverlayElevationChartStatsBarLayout) -> some View {
         SharedStatsBarContentView(
-            items: layout.statsBarItems.map { .init(value: $0.value, unit: $0.unit, label: $0.label) },
-            stacked: layout.style.statsBar.placement.isVertical || layout.style.statsBar.layoutMode == .stack,
-            itemSpacing: layout.style.statsBar.itemSpacing,
-            dividerOpacity: layout.style.statsBar.dividerOpacity,
-            cornerRadius: layout.style.statsBar.inside ? 0 : layout.style.statsBar.cornerRadius,
-            backgroundOpacity: layout.style.statsBar.backgroundOpacity,
-            valueFontName: layout.style.statsBar.valueFontName,
-            valueFontWeight: layout.style.statsBar.valueFontWeight,
-            valueColor: Color(layout.style.statsBar.valueColor),
-            labelFontName: layout.style.statsBar.labelFontName,
-            labelFontWeight: layout.style.statsBar.labelFontWeight,
-            labelColor: Color(layout.style.statsBar.labelColor),
-            valueFontSize: layout.style.statsBar.valueFontSize,
-            labelFontSize: layout.style.statsBar.labelFontSize
+            items: statsBar.items.map { .init(value: $0.value, unit: $0.unit, label: $0.label) },
+            stacked: statsBar.stacked,
+            itemSpacing: statsBar.itemSpacing,
+            dividerOpacity: statsBar.dividerOpacity,
+            cornerRadius: statsBar.cornerRadius,
+            backgroundOpacity: statsBar.backgroundOpacity,
+            valueFontName: statsBar.valueFontName,
+            valueFontWeight: statsBar.valueFontWeight,
+            valueColor: Color(statsBar.valueColor),
+            labelFontName: statsBar.labelFontName,
+            labelFontWeight: statsBar.labelFontWeight,
+            labelColor: Color(statsBar.labelColor),
+            valueFontSize: statsBar.valueFontSize,
+            labelFontSize: statsBar.labelFontSize
         )
     }
 

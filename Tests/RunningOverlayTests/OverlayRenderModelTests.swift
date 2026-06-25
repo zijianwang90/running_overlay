@@ -432,6 +432,71 @@ struct OverlayRenderModelTests {
         #expect(layout.chartHeight == 82)
     }
 
+    @Test func elevationChartStatsBarLayoutScalesWithCanvasSize() throws {
+        var style = OverlayStyle.default
+        style.elevationChart.statsBar.visible = true
+        style.elevationChart.statsBar.height = 44
+        style.elevationChart.statsBar.valueFontSize = 18
+        style.elevationChart.statsBar.labelFontSize = 10
+        style.elevationChart.statsBar.itemSpacing = 8
+        let element = OverlayElement(type: .elevationChart, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let activity = sampleActivity()
+
+        let hd = OverlayRenderModel.elevationChartLayout(
+            for: element,
+            in: OverlayRenderContext(canvasSize: OverlayRenderContext.referenceCanvasSize, activity: activity, elapsedTime: 5)
+        )
+        let half = OverlayRenderModel.elevationChartLayout(
+            for: element,
+            in: OverlayRenderContext(canvasSize: CGSize(width: 640, height: 360), activity: activity, elapsedTime: 5)
+        )
+
+        let hdBar = try #require(hd.statsBarLayout)
+        let halfBar = try #require(half.statsBarLayout)
+
+        // 640x360 is exactly half the 1280x720 reference, so every scaled
+        // stats bar dimension and font must be exactly twice the half-size value.
+        #expect(abs(hdBar.rect.width - halfBar.rect.width * 2) < 0.001)
+        #expect(abs(hdBar.rect.height - halfBar.rect.height * 2) < 0.001)
+        #expect(abs(hdBar.valueFontSize - halfBar.valueFontSize * 2) < 0.001)
+        #expect(abs(hdBar.labelFontSize - halfBar.labelFontSize * 2) < 0.001)
+        #expect(abs(hdBar.itemSpacing - halfBar.itemSpacing * 2) < 0.001)
+    }
+
+    @Test func elevationChartStatsBarLayoutAbsentWhenHidden() {
+        var style = OverlayStyle.default
+        style.elevationChart.statsBar.visible = false
+        let element = OverlayElement(type: .elevationChart, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleActivity(),
+            elapsedTime: 5
+        )
+
+        let layout = OverlayRenderModel.elevationChartLayout(for: element, in: context)
+
+        #expect(layout.statsBarLayout == nil)
+    }
+
+    @Test func elevationChartStatsBarLayoutPositionsInsideAboveCardBottom() {
+        var style = OverlayStyle.default
+        style.elevationChart.statsBar.visible = true
+        style.elevationChart.statsBar.inside = true
+        let element = OverlayElement(type: .elevationChart, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleActivity(),
+            elapsedTime: 5
+        )
+
+        let layout = OverlayRenderModel.elevationChartLayout(for: element, in: context)
+        let bar = layout.statsBarLayout
+
+        #expect(bar != nil)
+        // Inside bar sits within the card and clears the bottom padding.
+        #expect((bar?.rect.maxY ?? .greatestFiniteMagnitude) <= layout.rect.height - layout.verticalPadding + 0.001)
+    }
+
     @Test func elevationChartSupportsWideCompactBottomStripLayout() {
         var style = OverlayStyle.default
         style.elevationChart.width = ElevationChartStyle.widthRange.upperBound
