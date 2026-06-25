@@ -13,6 +13,7 @@ The Elevation Chart overlay is a dedicated `.elevationChart` module for renderin
 - Stats bar controls: shared `CollapsibleStatsBarInspectorSection` and `OverlayStatsBarInspectorRows`
 - Preview path: `PreviewCanvasView.ElevationChartOverlayView`
 - Export path: `SwiftUIOverlayVideoExporter` via the shared `OverlaySharedElevationChartView` (same SwiftUI component as preview). The legacy `OverlayFrameRenderer.renderElevationChart` CoreGraphics path is retained only for `OverlayFrameRenderer` PNG/test rendering and is not used by production MOV export.
+- Export static-fill cache: in the per-overlay export path, full-profile charts bake their static geometry once and re-render only the current-position marker per frame via `ElevationChartLayerVisibility` (base / line / dual-area lower-fill / marker layers). See `docs/development/export.md` for eligibility, the dual-area crop, and parity verification. The shared `OverlaySharedElevationChartView` accepts an optional `visibility` that defaults to the full preview appearance, so preview and normal export are unchanged.
 - Render layout: `OverlayRenderModel.elevationChartLayout`
 - Fill gradient inspector: `From` and `To` swatch strips are stacked vertically so the color editor stays within the inspector width.
 - Inspector chrome: collapsed custom section headers use the single-line separator pattern, and the Reset / Done footer reuses the shared detail footer height and button layout.

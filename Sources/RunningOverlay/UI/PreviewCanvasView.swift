@@ -3035,10 +3035,11 @@ private struct DistanceTimelineTriangleMarkerShape: Shape {
 struct ElevationChartOverlayView: View {
     let element: OverlayElement
     let layout: OverlayElevationChartRenderLayout
+    var visibility = ElevationChartLayerVisibility()
 
     var body: some View {
         ZStack {
-            if element.style.backgroundEnabled {
+            if visibility.showsContainerChrome, element.style.backgroundEnabled {
                 OverlayFeatheredBackground(
                     isSelected: false,
                     backgroundEnabled: element.style.backgroundEnabled,
@@ -3052,7 +3053,7 @@ struct ElevationChartOverlayView: View {
                 .frame(width: backgroundLocalRect.width, height: backgroundLocalRect.height)
                 .position(x: backgroundLocalRect.midX, y: backgroundLocalRect.midY)
             }
-            if element.style.borderEnabled {
+            if visibility.showsContainerChrome, element.style.borderEnabled {
                 RoundedRectangle(cornerRadius: sharedBackgroundCornerRadius)
                     .stroke(Color(element.style.borderColor).opacity(element.style.borderOpacity), lineWidth: element.style.borderWidth)
                     .frame(width: backgroundLocalRect.width, height: backgroundLocalRect.height)
@@ -3060,7 +3061,7 @@ struct ElevationChartOverlayView: View {
             }
 
             VStack(alignment: .leading, spacing: layout.verticalPadding) {
-                if layout.style.bigNumbersEnabled {
+                if visibility.showsBigNumbers, layout.style.bigNumbersEnabled {
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
                         Text(layout.bigNumberText.value)
                             .font(.overlayFont(family: layout.style.bigNumberFontName, size: layout.valueFontSize, overlayWeight: layout.style.bigNumberFontWeight))
@@ -3079,41 +3080,30 @@ struct ElevationChartOverlayView: View {
 
                 GeometryReader { proxy in
                     ZStack(alignment: .leading) {
-                        if layout.style.gridEnabled {
+                        if visibility.showsGrid, layout.style.gridEnabled {
                             gridPath(in: proxy.size)
                                 .stroke(Color.white.opacity(0.14), lineWidth: 1)
                         }
-                        if layout.style.axisLineEnabled {
+                        if visibility.showsAxisLine, layout.style.axisLineEnabled {
                             axisLine(in: proxy.size)
                                 .stroke(Color(element.style.foregroundColor).opacity(0.22), lineWidth: 1)
                         }
                         if layout.style.fillEnabled && layout.style.chartStyle == .area {
-                            if layout.style.dualAreaEnabled {
-                                areaPath(in: proxy.size)
-                                    .fill(elevationFillGradient(start: layout.style.upperFillColor, end: layout.style.fillEndColor))
-                                areaPath(in: proxy.size)
-                                    .fill(elevationFillGradient(start: layout.style.lowerFillColor, end: layout.style.fillEndColor))
-                                    .mask(alignment: .leading) {
-                                        Rectangle()
-                                            .frame(width: proxy.size.width * max(0, min(1, 1 - layout.progress)))
-                                            .offset(x: proxy.size.width * max(0, min(1, layout.progress)))
-                                    }
-                            } else {
-                                areaPath(in: proxy.size)
-                                    .fill(elevationFillGradient(start: layout.style.fillStartColor, end: layout.style.fillEndColor))
-                            }
+                            fillLayers(in: proxy.size)
                         }
-                        if layout.style.glowEnabled {
+                        if visibility.showsLine, layout.style.glowEnabled {
                             chartPath(in: proxy.size)
                                 .stroke(Color(layout.style.lineColor).opacity(layout.style.glowOpacity), style: StrokeStyle(lineWidth: layout.lineWidth + 7, lineCap: .round, lineJoin: .round))
                                 .blur(radius: 5)
                         }
-                        chartPath(in: proxy.size)
-                            .stroke(Color(layout.style.lineColor).opacity(layout.style.lineOpacity), style: StrokeStyle(lineWidth: layout.lineWidth, lineCap: .round, lineJoin: .round))
-                        if layout.style.currentMarkerEnabled {
+                        if visibility.showsLine {
+                            chartPath(in: proxy.size)
+                                .stroke(Color(layout.style.lineColor).opacity(layout.style.lineOpacity), style: StrokeStyle(lineWidth: layout.lineWidth, lineCap: .round, lineJoin: .round))
+                        }
+                        if visibility.showsMarker, layout.style.currentMarkerEnabled {
                             marker(in: proxy.size)
                         }
-                        if layout.style.axisLabelsEnabled {
+                        if visibility.showsAxisLabels, layout.style.axisLabelsEnabled {
                             axisLabels(in: proxy.size)
                         }
                     }
@@ -3124,7 +3114,7 @@ struct ElevationChartOverlayView: View {
             .padding(.vertical, layout.verticalPadding)
             .frame(width: layout.rect.width, height: layout.rect.height, alignment: .topLeading)
 
-            if let statsBar = layout.statsBarLayout {
+            if visibility.showsStatsBar, let statsBar = layout.statsBarLayout {
                 statsBarContent(statsBar)
                     .frame(width: statsBar.rect.width, height: statsBar.rect.height)
                     .position(x: statsBar.rect.midX, y: statsBar.rect.midY)
@@ -3133,14 +3123,59 @@ struct ElevationChartOverlayView: View {
         .frame(width: layout.rect.width, height: layout.rect.height)
         .overlayLayeredShadow(
             color: Color(element.style.shadowColor),
-            isEnabled: element.style.shadowEnabled,
+            isEnabled: visibility.appliesOuterEffects && element.style.shadowEnabled,
             opacity: element.style.shadowOpacity,
             radius: element.style.shadowRadius,
             x: element.style.shadowOffsetX,
             y: element.style.shadowOffsetY,
             thickness: element.style.shadowThickness
         )
-        .overlayForegroundGlow(element: element)
+        .overlayForegroundGlow(element: visibility.appliesOuterEffects ? element : effectsDisabledElement)
+    }
+
+    /// Element copy with foreground glow disabled, used when baking static
+    /// export layers so the outer glow is applied only once (on the base
+    /// layer) rather than re-applied by every cached sub-layer.
+    private var effectsDisabledElement: OverlayElement {
+        var copy = element
+        copy.style.glowEnabled = false
+        return copy
+    }
+
+    @ViewBuilder
+    private func fillLayers(in size: CGSize) -> some View {
+        switch visibility.fillMode {
+        case .none:
+            EmptyView()
+        case .baseFill:
+            if layout.style.dualAreaEnabled {
+                areaPath(in: size)
+                    .fill(elevationFillGradient(start: layout.style.upperFillColor, end: layout.style.fillEndColor))
+            } else {
+                areaPath(in: size)
+                    .fill(elevationFillGradient(start: layout.style.fillStartColor, end: layout.style.fillEndColor))
+            }
+        case .lowerOnly:
+            if layout.style.dualAreaEnabled {
+                areaPath(in: size)
+                    .fill(elevationFillGradient(start: layout.style.lowerFillColor, end: layout.style.fillEndColor))
+            }
+        case .standard:
+            if layout.style.dualAreaEnabled {
+                areaPath(in: size)
+                    .fill(elevationFillGradient(start: layout.style.upperFillColor, end: layout.style.fillEndColor))
+                areaPath(in: size)
+                    .fill(elevationFillGradient(start: layout.style.lowerFillColor, end: layout.style.fillEndColor))
+                    .mask(alignment: .leading) {
+                        Rectangle()
+                            .frame(width: size.width * max(0, min(1, 1 - layout.progress)))
+                            .offset(x: size.width * max(0, min(1, layout.progress)))
+                    }
+            } else {
+                areaPath(in: size)
+                    .fill(elevationFillGradient(start: layout.style.fillStartColor, end: layout.style.fillEndColor))
+            }
+        }
     }
 
     private var backgroundLocalRect: CGRect {

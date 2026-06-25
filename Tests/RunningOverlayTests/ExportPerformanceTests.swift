@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Testing
 @testable import RunningOverlay
@@ -521,6 +522,108 @@ struct ExportPerformanceTests {
         #expect(samples[0].clipElapsed == 0)
         #expect(samples[0].activityElapsed == 5)
         #expect(samples[0].sampleElapsed == 1)
+    }
+
+    @Test func elevationChartStaticFillCacheEligibilityRespectsConstraints() {
+        let context = OverlayRenderContext(canvasSize: CGSize(width: 1280, height: 720), activity: sampleRouteActivity(), elapsedTime: 0)
+        let eligible = dualAreaElevationElement()
+        #expect(ExportRenderPlan.canUseElevationChartStaticFillCache(for: eligible, context: context))
+
+        var progressMode = eligible
+        progressMode.style.elevationChart.progressMode = .progressToCurrent
+        #expect(!ExportRenderPlan.canUseElevationChartStaticFillCache(for: progressMode, context: context))
+
+        var bigNumbers = eligible
+        bigNumbers.style.elevationChart.bigNumbersEnabled = true
+        #expect(!ExportRenderPlan.canUseElevationChartStaticFillCache(for: bigNumbers, context: context))
+
+        var statsBar = eligible
+        statsBar.style.elevationChart.statsBar.visible = true
+        #expect(!ExportRenderPlan.canUseElevationChartStaticFillCache(for: statsBar, context: context))
+
+        var glow = eligible
+        glow.style.glowEnabled = true
+        #expect(!ExportRenderPlan.canUseElevationChartStaticFillCache(for: glow, context: context))
+
+        var noFill = eligible
+        noFill.style.elevationChart.fillEnabled = false
+        #expect(!ExportRenderPlan.canUseElevationChartStaticFillCache(for: noFill, context: context))
+    }
+
+    @Test func elevationChartCutXMapsProgressToColumn() throws {
+        let dummy = try #require(makeDummyImage())
+        let cache = ExportElevationChartStaticFillCache(
+            overlayID: UUID(),
+            renderRect: CGRect(x: 100, y: 50, width: 600, height: 400),
+            backLayer: dummy,
+            lowerLayer: dummy,
+            lineLayer: dummy,
+            isDual: true,
+            canvasWidth: 1280,
+            positionX: 0.5,
+            cardWidth: 480,
+            horizontalPadding: 24,
+            chartAreaWidth: 432
+        )
+        // Chart area left in canvas = 1280*0.5 - 480/2 + 24 = 640 - 240 + 24 = 424.
+        // renderRect.minX = 100, so column 0 of the image sits at canvas x = 100.
+        let atZero = SwiftUIOverlayVideoExporter.elevationChartCutXInImage(progress: 0, cache: cache)
+        #expect(abs(atZero - (424.0 - 100.0)) < 0.001)
+        let atHalf = SwiftUIOverlayVideoExporter.elevationChartCutXInImage(progress: 0.5, cache: cache)
+        #expect(abs(atHalf - (424.0 + 432.0 * 0.5 - 100.0)) < 0.001)
+        let atFull = SwiftUIOverlayVideoExporter.elevationChartCutXInImage(progress: 1, cache: cache)
+        #expect(abs(atFull - (424.0 + 432.0 - 100.0)) < 0.001)
+        // Out-of-range progress clamps to [0, 1].
+        #expect(abs(SwiftUIOverlayVideoExporter.elevationChartCutXInImage(progress: -1, cache: cache) - atZero) < 0.001)
+        #expect(abs(SwiftUIOverlayVideoExporter.elevationChartCutXInImage(progress: 2, cache: cache) - atFull) < 0.001)
+    }
+
+    @Test func elevationChartStaticFillParityMatchesFullRender() async throws {
+        let element = dualAreaElevationElement()
+        let canvasSize = CGSize(width: 1280, height: 720)
+        let activity = sampleRouteActivity()
+
+        for elapsed in [0.0, 2.5, 5.0, 7.5, 10.0] {
+            let result = try await SwiftUIOverlayVideoExporter.elevationChartStaticFillParity(
+                element: element,
+                canvasSize: canvasSize,
+                activity: activity,
+                elapsedTime: elapsed
+            )
+            // The cached composite must be a near-exact reproduction of the full
+            // single-pass render; differences come only from sub-pixel anti-
+            // aliasing at the dual-area boundary.
+            #expect(result.meanAbsDiff < 0.6, "elapsed \(elapsed) progress \(result.progress) mean \(result.meanAbsDiff) max \(result.maxAbsDiff)")
+            #expect(result.maxAbsDiff < 96, "elapsed \(elapsed) progress \(result.progress) mean \(result.meanAbsDiff) max \(result.maxAbsDiff)")
+        }
+    }
+
+    private func dualAreaElevationElement() -> OverlayElement {
+        var style = OverlayStyle.default
+        style.glowEnabled = false
+        style.shadowEnabled = true
+        style.backgroundEnabled = true
+        style.elevationChart.progressMode = .fullProfile
+        style.elevationChart.chartStyle = .area
+        style.elevationChart.fillEnabled = true
+        style.elevationChart.dualAreaEnabled = true
+        style.elevationChart.bigNumbersEnabled = false
+        style.elevationChart.currentMarkerEnabled = true
+        style.elevationChart.statsBar.visible = false
+        return OverlayElement(type: .elevationChart, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+    }
+
+    private func makeDummyImage() -> CGImage? {
+        let context = CGContext(
+            data: nil,
+            width: 1,
+            height: 1,
+            bitsPerComponent: 8,
+            bytesPerRow: 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
+        )
+        return context?.makeImage()
     }
 
     private func sampleRouteActivity() -> ActivityTimeline {
