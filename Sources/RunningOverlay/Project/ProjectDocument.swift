@@ -1918,6 +1918,12 @@ final class ProjectDocument: ObservableObject {
                     statusMessage = registersUndo
                         ? "Weather fetch failed: \(error.localizedDescription)"
                         : "Weather unavailable; showing placeholders."
+                    if error as? WeatherFetchError == .openWeatherUnauthorized {
+                        showToast(
+                            "OpenWeather 401: the API key or One Call 4.0 subscription may still be activating. Verify the key, subscribe to One Call 4.0, or use Open-Meteo.",
+                            duration: 6
+                        )
+                    }
                 }
             }
         }
@@ -2946,10 +2952,10 @@ final class ProjectDocument: ObservableObject {
         return try? JSONDecoder().decode(LastUsedOverlayTemplateReference.self, from: data)
     }
 
-    private func showToast(_ message: String) {
+    private func showToast(_ message: String, duration: TimeInterval = 2) {
         toastMessage = message
         Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(2))
+            try? await Task.sleep(for: .seconds(duration))
             guard self?.toastMessage == message else { return }
             self?.toastMessage = nil
         }

@@ -208,6 +208,9 @@ private struct EditorToastView: View {
         Text(message)
             .font(EditorTheme.bodyFont.weight(.semibold))
             .foregroundStyle(.white)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: 560)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .background(

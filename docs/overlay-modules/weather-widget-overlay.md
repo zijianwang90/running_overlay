@@ -246,7 +246,8 @@ Also update `defaultOverlayStyle(for:)` to set `style.weatherWidget = .preset(.s
 - OpenWeather HTTP 401 responses explain that One Call 4.0 requires a separate
   subscription, that a new key or subscription may still be activating, that
   the first 1,000 calls per day are free, and that Open-Meteo is available as
-  the no-key alternative.
+  the no-key alternative. User-triggered 401 failures also raise a prominent,
+  multi-line toast instead of relying only on the bottom status bar.
 - Map OpenWeather condition ids and day/night icon ids to `WeatherCondition` via `fromOpenWeather(id:icon:)`.
 - `WeatherLocationResolver` provides the two coordinate sources: first FIT route point or current CoreLocation location.
 - Reverse geocoding fills `resolvedLocation`; if reverse geocoding fails, coordinates are used as a readable fallback.
