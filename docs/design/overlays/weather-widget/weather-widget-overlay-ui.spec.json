@@ -94,7 +94,7 @@
     "phase1": ["FIT temperature when available", "manual fallback temperature", "manual condition and secondary metrics"],
     "phase2": [
       "Open-Meteo historical API by activity timestamp",
-      "OpenWeather One Call 3.0 Time Machine by activity timestamp when an API key is configured",
+      "OpenWeather One Call 4.0 one-hour timeline by activity timestamp when an API key is configured",
       "activity-location fetch by first FIT GPS route point",
       "current-location fetch by CoreLocation device coordinate",
       "reverse-geocoded location text",
@@ -194,7 +194,8 @@
     "API-backed weather must be cached before export",
     "fetch actions write cachedWeather, preserve the selected API dataSource, and update locationText from reverse geocoding",
     "Open-Meteo archive request uses temperature_2m, relative_humidity_2m, apparent_temperature, weather_code, and wind_speed_10m",
-    "OpenWeather One Call 3.0 Time Machine request uses lat, lon, dt, appid, and units=metric",
+    "OpenWeather One Call 4.0 one-hour timeline request uses lat, lon, start, cnt=1, appid, and units=metric",
+    "OpenWeather HTTP 401 explains that a new key or subscription may still be activating, the One Call 4.0 subscription, the first 1,000 free calls per day, and the Open-Meteo fallback",
     "SwiftUI preview/export uses the shared bundled PNG weather icon family",
     "Core Graphics direct weather rendering is no longer a target for parity"
   ]

@@ -15,9 +15,9 @@ struct WeatherFetcherTests {
         #expect(text.contains("timezone=auto"))
     }
 
-    @Test func openWeatherTimeMachineURLUsesTimestampMetricUnitsAndAPIKey() throws {
+    @Test func openWeatherTimelineURLUsesTimestampMetricUnitsAndAPIKey() throws {
         let date = Date(timeIntervalSince1970: 1_776_000_000)
-        let url = try WeatherFetcher.openWeatherTimeMachineURL(
+        let url = try WeatherFetcher.openWeatherTimelineURL(
             latitude: 34.6937,
             longitude: 135.5023,
             date: date,
@@ -25,23 +25,36 @@ struct WeatherFetcherTests {
         )
         let text = url.absoluteString
 
-        #expect(text.contains("api.openweathermap.org/data/3.0/onecall/timemachine"))
+        #expect(text.contains("api.openweathermap.org/data/4.0/onecall/timeline/1h"))
         #expect(text.contains("lat=34.69370"))
         #expect(text.contains("lon=135.50230"))
-        #expect(text.contains("dt=1776000000"))
+        #expect(text.contains("start=1776000000"))
+        #expect(text.contains("cnt=1"))
         #expect(text.contains("appid=abc123"))
         #expect(text.contains("units=metric"))
     }
 
     @Test func openWeatherURLRequiresAPIKey() throws {
         #expect(throws: WeatherFetchError.missingOpenWeatherAPIKey) {
-            _ = try WeatherFetcher.openWeatherTimeMachineURL(
+            _ = try WeatherFetcher.openWeatherTimelineURL(
                 latitude: 34.6937,
                 longitude: 135.5023,
                 date: Date(timeIntervalSince1970: 1_776_000_000),
                 apiKey: " "
             )
         }
+    }
+
+    @Test func openWeather401ExplainsSubscriptionAndFallback() {
+        let error = WeatherFetcher.openWeatherHTTPError(statusCode: 401)
+        let message = error.errorDescription ?? ""
+
+        #expect(error == .openWeatherUnauthorized)
+        #expect(message.contains("may still be activating"))
+        #expect(message.contains("One Call 4.0"))
+        #expect(message.contains("1,000 calls per day are free"))
+        #expect(message.contains("Open-Meteo API"))
+        #expect(WeatherFetcher.openWeatherHTTPError(statusCode: 429) == .invalidHTTPStatus(429))
     }
 
     @Test func payloadParsesClosestHourAndDailyTemperatureRange() throws {
@@ -72,7 +85,7 @@ struct WeatherFetcherTests {
     }
 
     @Test func openWeatherPayloadParsesMetricWeatherData() throws {
-        let response = OpenWeatherTimeMachineResponse(data: [
+        let response = OpenWeatherTimelineResponse(data: [
             .init(
                 temp: 14.4,
                 feelsLike: 13.1,

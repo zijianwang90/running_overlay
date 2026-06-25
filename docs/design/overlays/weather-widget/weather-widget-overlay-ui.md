@@ -181,7 +181,7 @@ Phase 1 can be manual/FIT-first:
 API support:
 
 - Query historical weather for the activity date (Open-Meteo archive API), not current forecast. Running data is always past events; a forecast is meaningless.
-- Optionally query OpenWeather One Call 3.0 Time Machine when the overlay data source is OpenWeather API and the Project Settings Weather section has an API key.
+- Optionally query the OpenWeather One Call 4.0 one-hour timeline when the overlay data source is OpenWeather API and the Project Settings Weather section has an API key.
 - Offer two explicit fetch choices:
   - Activity Location: use the first GPS route point from the FIT activity.
   - Current Location: use the user's current device location through CoreLocation.
@@ -250,7 +250,8 @@ Implemented as of 2026-05-07:
 - Metric slot menus include `-`; selected empty slots do not render any metric content.
 - Feels Like slots render as `Feels 12°C` in inline metric rows; Dashboard Bar keeps `Feels` as the chip label and the temperature as the chip value.
 - Open-Meteo historical fetcher parses hourly temperature, humidity, apparent temperature, WMO weather code, and wind speed; the chosen hour follows the activity start time.
-- OpenWeather historical fetcher uses One Call 3.0 Time Machine with metric units; timestamp responses provide condition, temperature, humidity, wind, and feels-like values.
+- OpenWeather historical fetcher uses the One Call 4.0 one-hour timeline with metric units; timestamp responses provide condition, temperature, humidity, wind, and feels-like values.
+- OpenWeather authorization failures tell the user that a new key or subscription may still be activating, ask them to enable One Call 4.0, note that the first 1,000 calls per day are free, and suggest Open-Meteo as the no-key fallback.
 - FIT/manual temperature resolution, explicit `°C` / `°F` formatting, and API cache usage only when the data source is an API provider.
 - Optional cached metrics still respect the widget visibility toggles.
 
@@ -263,4 +264,4 @@ Remaining:
 
 - **Condition label localization**: Auto-localized from activity coordinates (FIT GPS), not system locale. Every display field is user-editable; manual values override auto-localized ones.
 - **Temperature unit default**: Follows system locale (°C or °F), with a per-widget override in Inspector.
-- **API weather data**: Always historical weather for the activity date. Open-Meteo archive API is the no-key default; OpenWeather One Call 3.0 Time Machine is optional when a key is configured. Running is always a past event; forecasts are not meaningful.
+- **API weather data**: Always historical weather for the activity date. Open-Meteo archive API is the no-key default; the OpenWeather One Call 4.0 one-hour timeline is optional when a key is configured. Running is always a past event; forecasts are not meaningful.

@@ -18,6 +18,7 @@ enum WeatherFetchLocationMode: String, CaseIterable, Identifiable, Equatable, Co
 enum WeatherFetchError: LocalizedError, Equatable {
     case missingActivityLocation
     case missingOpenWeatherAPIKey
+    case openWeatherUnauthorized
     case invalidURL
     case invalidHTTPStatus(Int)
     case missingHourlyData
@@ -31,6 +32,8 @@ enum WeatherFetchError: LocalizedError, Equatable {
             "Activity route has no GPS position."
         case .missingOpenWeatherAPIKey:
             "OpenWeather API key is missing. Add it in Project Settings."
+        case .openWeatherUnauthorized:
+            "OpenWeather access was denied. A new API key or One Call subscription may still be activating. Otherwise, subscribe to One Call 4.0 (the first 1,000 calls per day are free), verify the key, or switch this widget to Open-Meteo API."
         case .invalidURL:
             "Could not build the weather API URL."
         case .invalidHTTPStatus(let status):
@@ -74,7 +77,7 @@ struct OpenMeteoArchiveResponse: Decodable, Equatable {
     }
 }
 
-struct OpenWeatherTimeMachineResponse: Decodable, Equatable {
+struct OpenWeatherTimelineResponse: Decodable, Equatable {
     var data: [WeatherData]
 
     struct WeatherData: Decodable, Equatable {
@@ -138,17 +141,21 @@ enum WeatherFetcher {
         apiKey: String,
         resolvedLocation: String?
     ) async throws -> WeatherPayload {
-        let url = try openWeatherTimeMachineURL(latitude: latitude, longitude: longitude, date: date, apiKey: apiKey)
+        let url = try openWeatherTimelineURL(latitude: latitude, longitude: longitude, date: date, apiKey: apiKey)
         let (data, response) = try await URLSession.shared.data(from: url)
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-            throw WeatherFetchError.invalidHTTPStatus(http.statusCode)
+            throw openWeatherHTTPError(statusCode: http.statusCode)
         }
 
-        let decoded = try JSONDecoder().decode(OpenWeatherTimeMachineResponse.self, from: data)
+        let decoded = try JSONDecoder().decode(OpenWeatherTimelineResponse.self, from: data)
         return try payload(from: decoded, targetDate: date, resolvedLocation: resolvedLocation)
     }
 
-    static func openWeatherTimeMachineURL(latitude: Double, longitude: Double, date: Date, apiKey: String) throws -> URL {
+    static func openWeatherHTTPError(statusCode: Int) -> WeatherFetchError {
+        statusCode == 401 ? .openWeatherUnauthorized : .invalidHTTPStatus(statusCode)
+    }
+
+    static func openWeatherTimelineURL(latitude: Double, longitude: Double, date: Date, apiKey: String) throws -> URL {
         let trimmedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedKey.isEmpty else {
             throw WeatherFetchError.missingOpenWeatherAPIKey
@@ -157,11 +164,12 @@ enum WeatherFetcher {
         var components = URLComponents()
         components.scheme = "https"
         components.host = "api.openweathermap.org"
-        components.path = "/data/3.0/onecall/timemachine"
+        components.path = "/data/4.0/onecall/timeline/1h"
         components.queryItems = [
             URLQueryItem(name: "lat", value: String(format: "%.5f", latitude)),
             URLQueryItem(name: "lon", value: String(format: "%.5f", longitude)),
-            URLQueryItem(name: "dt", value: String(Int(date.timeIntervalSince1970.rounded()))),
+            URLQueryItem(name: "start", value: String(Int(date.timeIntervalSince1970.rounded()))),
+            URLQueryItem(name: "cnt", value: "1"),
             URLQueryItem(name: "appid", value: trimmedKey),
             URLQueryItem(name: "units", value: "metric")
         ]
@@ -200,7 +208,7 @@ enum WeatherFetcher {
         )
     }
 
-    static func payload(from response: OpenWeatherTimeMachineResponse, targetDate: Date, resolvedLocation: String?) throws -> WeatherPayload {
+    static func payload(from response: OpenWeatherTimelineResponse, targetDate: Date, resolvedLocation: String?) throws -> WeatherPayload {
         guard let data = response.data.first, let temperature = data.temp else {
             throw WeatherFetchError.missingOpenWeatherData
         }
