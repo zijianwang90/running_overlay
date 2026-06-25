@@ -16,6 +16,10 @@ for sandbox and signing preflight.
   be replaced by real Apple Developer account values before submission.
 - Keep signing certificates, provisioning profiles, archives, API keys, and
   other release secrets out of the repository.
+- The app-bundle build copies the PolyForm Shield license, commercial
+  licensing notice, trademark policy, and third-party notices into
+  `Contents/Resources/Legal/`. Do not remove those files from distributed
+  builds.
 
 ## Preflight Commands
 

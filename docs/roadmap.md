@@ -261,7 +261,8 @@ Completed so far:
 
 - Created the `codex/app-store-readiness` branch in a sibling worktree.
 - Integrated the App Store readiness work into `develop` alongside the
-  open-source repository structure and Keychain-based OpenWeather credentials.
+  source-available repository structure and Keychain-based OpenWeather
+  credentials.
 - Added App Store bundle metadata, sandbox entitlements, privacy manifest, asset
   catalog placeholders, and release xcconfig.
 - Added local validation, app bundle packaging, and archive-shape scripts.

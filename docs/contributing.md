@@ -46,9 +46,14 @@ who opens the pull request remains responsible for:
 
 Do not submit unreviewed bulk-generated changes.
 
-No separate contributor license agreement is required. By submitting a
-contribution, you represent that you have the right to provide it under the
-repository's MIT License.
+All contributors must read and accept the repository
+[Contributor License Agreement](../CLA.md). By submitting a pull request and
+affirming its CLA checkbox, you grant the project owner the rights needed to
+distribute the contribution under the PolyForm Shield license and separate
+commercial licenses while retaining ownership of your contribution.
+
+Do not submit a contribution if you cannot make the representations in the
+CLA, including employer authorization and third-party provenance.
 
 ## Tests
 

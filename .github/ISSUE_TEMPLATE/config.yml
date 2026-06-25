@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Commercial licensing
+    url: https://github.com/zijianwang90/running_overlay/blob/main/COMMERCIAL-LICENSE.md
+    about: Ask about licensing Running Overlay for a competing product or service.
   - name: Security report
     url: https://github.com/zijianwang90/running_overlay/security/advisories/new
     about: Report vulnerabilities privately. Do not include secrets or private activity data in public issues.

@@ -7,8 +7,15 @@ require "uri"
 root = Pathname.new(__dir__).parent
 failures = []
 
-Dir[root.join("**/*.md")].sort.each do |file|
-  source = Pathname.new(file)
+markdown_files = IO.popen(
+  ["git", "-C", root.to_s, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "*.md"],
+  &:read
+).split("\0").sort
+
+markdown_files.each do |relative_file|
+  source = root.join(relative_file)
+  next unless source.file?
+
   content = source.read
 
   content.scan(/\[[^\]]*\]\(([^)]+)\)/).flatten.each do |raw_target|

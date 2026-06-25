@@ -8,7 +8,8 @@ Running Overlay is currently maintained by
 Before merging a pull request, maintainers should confirm:
 
 - the change is focused and its acceptance criteria are satisfied;
-- `./scripts/check.sh` and `./scripts/open-source-audit.sh` pass;
+- the contributor affirmed the repository CLA in the pull request;
+- `./scripts/check.sh` and `./scripts/publication-audit.sh` pass;
 - new behavior and bug fixes have appropriate tests;
 - GUI-visible changes include manual or visual verification;
 - relevant requirements, architecture, development, and monthly project-log
@@ -28,6 +29,7 @@ Focused maintainer review is required for:
 - network access, weather providers, Keychain, analytics, crash reporting, or
   other privacy/security behavior;
 - dependencies, copied assets, fonts, fixtures, generated code, and licensing;
+- CLA, commercial-license, trademark, or repository-license terms;
 - CI, release automation, signing, notarization, and legal/policy files.
 
 High-risk pull requests must explain affected data flows, compatibility risks,
@@ -47,7 +49,8 @@ pushes and deletion should be disabled for both protected branches.
 Before a source or binary release:
 
 - run the repository checks on the release commit;
-- verify license, privacy, security, and third-party notices;
+- verify the PolyForm Shield license, commercial licensing path, CLA, trademark
+  policy, privacy, security, and third-party notices;
 - confirm release artifacts contain required legal files;
 - verify signing/notarization separately when distributing a macOS app bundle;
 - publish release notes that identify compatibility or data-handling changes.

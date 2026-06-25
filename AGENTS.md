@@ -42,7 +42,7 @@ Use the repository commands instead of inventing one-off validation flows:
 ./scripts/test.sh FilterName       # focused test
 ./scripts/visual-test.sh           # visual regression tests
 ./scripts/check-doc-links.rb       # local Markdown links
-./scripts/open-source-audit.sh     # repository publication checks
+./scripts/publication-audit.sh     # source-publication and licensing checks
 ```
 
 If `just` is installed, the equivalent commands are `just check`,

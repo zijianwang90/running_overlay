@@ -37,6 +37,9 @@ repo_query() {
 required_files=(
   AGENTS.md
   LICENSE
+  COMMERCIAL-LICENSE.md
+  TRADEMARKS.md
+  CLA.md
   README.md
   CONTRIBUTING.md
   PRIVACY.md
@@ -47,7 +50,7 @@ required_files=(
   THIRD_PARTY_NOTICES.md
   docs/index.md
   docs/assets-and-licenses.md
-  docs/open-source-readiness.md
+  docs/source-available-readiness.md
   docs/development/overview.md
   docs/development/app-and-import.md
   docs/development/timeline.md
@@ -67,7 +70,7 @@ required_files=(
 
 for file in "${required_files[@]}"; do
   if [[ ! -f "$file" ]]; then
-    echo "Missing required open-source file: $file" >&2
+    echo "Missing required publication file: $file" >&2
     exit 1
   fi
 done
@@ -129,7 +132,7 @@ while IFS= read -r path; do
 done < <(git ls-files)
 
 if git grep -n -I -E '/Users/[^/]+/|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' -- \
-  ':!scripts/open-source-audit.sh'; then
+  ':!scripts/publication-audit.sh'; then
   echo "Machine-specific path or private key marker detected." >&2
   exit 1
 fi
@@ -163,6 +166,28 @@ repo_query '@zijianwang90' .github/CODEOWNERS || {
   exit 1
 }
 
+repo_query '^# PolyForm Shield License 1\.0\.0$' LICENSE || {
+  echo "LICENSE must contain PolyForm Shield License 1.0.0." >&2
+  exit 1
+}
+
+repo_query '^Required Notice: Copyright 2026 Zijian Wang\.$' LICENSE || {
+  echo "LICENSE must identify the project copyright owner." >&2
+  exit 1
+}
+
+repo_query 'Contributor License Agreement' .github/pull_request_template.md || {
+  echo "Pull requests must require CLA affirmation." >&2
+  exit 1
+}
+
+if repo_search 'MIT License|repository MIT license|under MIT' \
+  README.md CONTRIBUTING.md LICENSE docs/assets-and-licenses.md \
+  docs/contributing.md docs/source-available-readiness.md; then
+  echo "Active licensing documentation still references MIT." >&2
+  exit 1
+fi
+
 repo_query 'package-ecosystem: "github-actions"' .github/dependabot.yml || {
   echo "Dependabot must monitor GitHub Actions." >&2
   exit 1
@@ -173,4 +198,4 @@ repo_query 'package-ecosystem: "swift"' .github/dependabot.yml || {
   exit 1
 }
 
-echo "Open-source repository audit passed."
+echo "Source-publication repository audit passed."

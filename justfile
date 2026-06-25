@@ -25,4 +25,4 @@ update-snapshots:
     UPDATE_VISUAL_SNAPSHOTS=1 ./scripts/visual-test.sh
 
 audit:
-    ./scripts/open-source-audit.sh
+    ./scripts/publication-audit.sh

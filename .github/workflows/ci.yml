@@ -29,5 +29,5 @@ jobs:
         run: swift build -c release --product RunningOverlay
       - name: Visual regression
         run: ./scripts/visual-test.sh
-      - name: Open-source audit
-        run: ./scripts/open-source-audit.sh
+      - name: Publication audit
+        run: ./scripts/publication-audit.sh

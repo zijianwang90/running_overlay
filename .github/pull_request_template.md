@@ -26,6 +26,7 @@ List exact commands and results:
 
 ## Safety and Provenance
 
+- [ ] I have read and accept the [Contributor License Agreement](../CLA.md)
 - [ ] No secrets, private data, or machine-specific paths
 - [ ] New fixtures are synthetic or explicitly licensed
 - [ ] New third-party assets/dependencies include license provenance
