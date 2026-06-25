@@ -1,6 +1,5 @@
 import AppKit
 import CoreGraphics
-import Lottie
 import SwiftUI
 
 // MARK: - IconRendering
@@ -11,11 +10,6 @@ import SwiftUI
 // SwiftUI preview path and the offscreen `CGContext` export path on macOS
 // 15+, so this module stays dependency-free for SVG.
 //
-// Lottie support is deliberately stubbed in `IconRenderer.draw` and
-// `IconView`; adding the `lottie-spm` dependency happens in Phase C6 once
-// we have a parallel smoke test that confirms Lottie's CALayer renderer
-// plays inside a non-window-backed offscreen `CGContext` during export.
-//
 // Two parallel render paths share one request struct:
 //   • `IconView`        — SwiftUI view, used by live preview & ImageRenderer
 //                         export
@@ -23,8 +17,8 @@ import SwiftUI
 //                         CGContext renderer (kept for future flexibility,
 //                         e.g., custom video composition without SwiftUI)
 //
-// The contract is component-agnostic: rect + asset + tint + animationTime
-// → pixels. Decor Icon (Phase D) is the first consumer; DistanceTimeline
+// The contract is component-agnostic: rect + asset + tint → pixels.
+// Decor Icon (Phase D) is the first consumer; DistanceTimeline
 // lower-third / RunningGauge / numeric overlay leading icons can plug in
 // later without per-component duplication.
 
@@ -34,15 +28,11 @@ struct IconRenderRequest {
     var asset: IconAsset
     var rect: CGRect
     /// Tint color. SF Symbols always honor this. SVGs honor it when
-    /// `preserveSVGColors` is false. Lottie is unaffected.
+    /// `preserveSVGColors` is false.
     var tint: NSColor?
     /// When true, multicolor SVG fills are preserved instead of being
     /// flattened to the tint. SF Symbols ignore this flag.
     var preserveSVGColors: Bool = false
-    /// Lottie playback time (seconds). Ignored by all other asset kinds.
-    /// Driven by the host element's elapsed activity time so animation
-    /// progress is deterministic across export and preview.
-    var animationTime: TimeInterval = 0
     /// Aspect-fit policy applied when the asset's intrinsic aspect doesn't
     /// match `rect`. SF Symbols are configured for `.fit`-like behavior
     /// natively, so this primarily affects raster/SVG paths.
@@ -68,15 +58,13 @@ struct IconView: View {
         rect: CGRect,
         tint: NSColor? = nil,
         preserveSVGColors: Bool = false,
-        contentMode: IconContentMode = .fit,
-        animationTime: TimeInterval = 0
+        contentMode: IconContentMode = .fit
     ) {
         self.request = IconRenderRequest(
             asset: asset,
             rect: rect,
             tint: tint,
             preserveSVGColors: preserveSVGColors,
-            animationTime: animationTime,
             contentMode: contentMode
         )
     }
@@ -107,13 +95,6 @@ struct IconView: View {
                 } else {
                     Color.clear
                 }
-            case .userLottie(let id):
-                if let url = IconAssetResolver.userAssetURL(id: id),
-                   let anim = LottieAnimation.filepath(url.path) {
-                    lottieView(animation: anim)
-                } else {
-                    Color.clear
-                }
             }
         }
         .frame(width: request.rect.width, height: request.rect.height)
@@ -132,11 +113,6 @@ struct IconView: View {
         } else {
             img
         }
-    }
-
-    @ViewBuilder
-    private func lottieView(animation: LottieAnimation) -> some View {
-        LottieView(animation: animation)
     }
 
     @ViewBuilder
@@ -186,31 +162,7 @@ enum IconRenderer {
                let image = NSImage(contentsOf: url) {
                 drawNSImage(image, request: request)
             }
-        case .userLottie(let id):
-            if let url = IconAssetResolver.userAssetURL(id: id),
-               let animation = LottieAnimation.filepath(url.path) {
-                drawLottie(animation: animation, request: request)
-            }
         }
-    }
-
-    private static func drawLottie(
-        animation: LottieAnimation,
-        request: IconRenderRequest
-    ) {
-        let config = LottieConfiguration(renderingEngine: .mainThread)
-        let view = LottieAnimationView(animation: animation, configuration: config)
-        view.frame = CGRect(origin: .zero, size: request.rect.size)
-        let fraction = animation.duration > 0
-            ? min(max(request.animationTime / animation.duration, 0), 1)
-            : 0
-        view.currentProgress = fraction
-        view.layoutSubtreeIfNeeded()
-        // Best-effort: the mainThread engine renders via CoreGraphics
-        // only when the view has a window. The export pipeline uses the
-        // SwiftUI IconView path (LottieView) which works correctly.
-        view.display()
-        view.layer?.render(in: NSGraphicsContext.current!.cgContext)
     }
 
     private static func drawSFSymbol(

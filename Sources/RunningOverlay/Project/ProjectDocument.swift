@@ -32,6 +32,7 @@ final class ProjectDocument: ObservableObject {
     @Published var mediaPoolPreviewItemID: MediaItem.ID?
     @Published var mediaPoolPreviewSourceTime: TimeInterval = 0
     @Published var fitSourceName: String = ""
+    @Published private(set) var openWeatherAPIKey = ""
     @Published var workoutStructureSelection: WorkoutStructureSelection = .auto
     @Published var statusMessage = "Ready to import a FIT file."
     @Published var toastMessage: String?
@@ -41,6 +42,7 @@ final class ProjectDocument: ObservableObject {
 
     private let overlayTemplateStore: OverlayTemplateStore
     private let userDefaults: UserDefaults
+    private let credentialStore: any CredentialStore
     private(set) var projectURL: URL?
     private var exportTask: Task<Void, Never>?
     private var undoStack: [ProjectSnapshot] = []
@@ -50,12 +52,38 @@ final class ProjectDocument: ObservableObject {
 
     init(
         overlayTemplateStore: OverlayTemplateStore = OverlayTemplateStore(),
-        userDefaults: UserDefaults = .standard
+        userDefaults: UserDefaults = .standard,
+        credentialStore: any CredentialStore = KeychainCredentialStore()
     ) {
         self.overlayTemplateStore = overlayTemplateStore
         self.userDefaults = userDefaults
+        self.credentialStore = credentialStore
+        do {
+            openWeatherAPIKey = try credentialStore.value(
+                for: KeychainCredentialStore.openWeatherAccount
+            ) ?? ""
+        } catch {
+            openWeatherAPIKey = ""
+            print("[RunningOverlay] Could not read OpenWeather API key from Keychain: \(error.localizedDescription)")
+        }
         loadOverlayTemplates()
         IconAssetResolver.configure(userAssets: userAssets, projectURL: projectURL)
+    }
+
+    func setOpenWeatherAPIKey(_ value: String) {
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            try credentialStore.setValue(
+                normalized.isEmpty ? nil : normalized,
+                for: KeychainCredentialStore.openWeatherAccount
+            )
+            openWeatherAPIKey = normalized
+            statusMessage = normalized.isEmpty
+                ? "OpenWeather API key removed from Keychain."
+                : "OpenWeather API key saved in Keychain."
+        } catch {
+            statusMessage = "Could not update OpenWeather API key: \(error.localizedDescription)"
+        }
     }
 
     var workoutStructureSummary: String {
@@ -1837,7 +1865,7 @@ final class ProjectDocument: ObservableObject {
         let dataSource = element.style.weatherWidget.dataSource
 
         let activity = activity
-        let openWeatherAPIKey = settings.openWeatherAPIKey
+        let openWeatherAPIKey = self.openWeatherAPIKey
         if updatesStatusMessage {
             statusMessage = "Fetching \(dataSource.label) weather from \(mode.label)..."
         }
@@ -3264,8 +3292,9 @@ final class ProjectDocument: ObservableObject {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             let snapshot = try decoder.decode(ProjectPerformanceSnapshot.self, from: data)
-            restorePersistentSnapshot(snapshot)
-            statusMessage = "Project snapshot restored: \(inputURL.lastPathComponent)."
+            let credentialMessage = restorePersistentSnapshot(snapshot)
+            statusMessage = credentialMessage
+                ?? "Project snapshot restored: \(inputURL.lastPathComponent)."
         } catch {
             statusMessage = "Project snapshot restore failed: \(error.localizedDescription)"
             print("[RunningOverlay] Project snapshot restore failed: \(String(reflecting: error))")
@@ -3689,8 +3718,10 @@ final class ProjectDocument: ObservableObject {
         )
     }
 
-    private func restorePersistentSnapshot(_ snapshot: ProjectPerformanceSnapshot) {
+    private func restorePersistentSnapshot(_ snapshot: ProjectPerformanceSnapshot) -> String? {
+        let credentialMessage = migrateLegacyOpenWeatherAPIKeyIfNeeded(from: snapshot.settings)
         settings = snapshot.settings
+        settings.removeLegacyCredentials()
         activity = snapshot.activity
         workoutStructureSelection = .auto
         mediaItems = snapshot.mediaItems
@@ -3712,6 +3743,26 @@ final class ProjectDocument: ObservableObject {
         undoStack.removeAll()
         redoStack.removeAll()
         updateUndoRedoFlags()
+        return credentialMessage
+    }
+
+    private func migrateLegacyOpenWeatherAPIKeyIfNeeded(from settings: ProjectSettings) -> String? {
+        let legacyKey = settings.legacyOpenWeatherAPIKey?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !legacyKey.isEmpty else { return nil }
+
+        do {
+            try credentialStore.setValue(
+                legacyKey,
+                for: KeychainCredentialStore.openWeatherAccount
+            )
+            openWeatherAPIKey = legacyKey
+            return "Project restored. Migrated its OpenWeather API key to Keychain."
+        } catch {
+            openWeatherAPIKey = legacyKey
+            print("[RunningOverlay] Could not migrate OpenWeather API key to Keychain: \(error.localizedDescription)")
+            return "Project restored. Its legacy OpenWeather API key is available for this session but could not be saved to Keychain."
+        }
     }
 
     private func updateUndoRedoFlags() {

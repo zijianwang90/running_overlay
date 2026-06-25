@@ -13,12 +13,9 @@ import Foundation
 // embedded inside any `OverlayStyle` field without polluting the namespace,
 // and can be diffed by SwiftUI's `@Equatable` view tracking.
 //
-// **Phase C scope**: SF Symbols, bundled SVG, and bundled raster image paths
-// are wired end-to-end.
-// User-uploaded SVG resolution waits on the Phase E `UserAssetStore`. Lottie
-// (`userLottie`) is reserved in the data model so existing projects stay
-// forward-compatible, but its renderer is a stub — adding `lottie-spm` and
-// the animation path is gated on a Phase C6 smoke test.
+// SF Symbols, bundled SVG/raster images, and user-uploaded SVGs are wired
+// end-to-end. Legacy Lottie descriptors decode as `.none` because animated
+// rendering was never reliable in the offscreen export path.
 //
 // See `~/.claude/plans/overlay-pool-solid-color-layout-bg-effe-shiny-pudding.md`.
 
@@ -88,8 +85,6 @@ enum IconContentMode: String, CaseIterable, Identifiable, Codable {
 ///   `SymbolConfiguration`.
 /// - `userStaticSVG` — points at a `.svg` file owned by `UserAssetStore`
 ///   (Phase E). Resolves to a file URL via the project's asset index.
-/// - `userLottie` — points at a `.json` Lottie asset; rendered through
-///   `lottie-spm` once the dependency lands (Phase C6).
 /// - `bundledSVG` — looks up a `.svg` file shipped under
 ///   `Resources/Icons/<name>.svg`.
 /// - `bundledImage` — looks up a raster image file shipped under
@@ -98,7 +93,6 @@ enum IconAsset: Equatable, Codable {
     case none
     case sfSymbol(name: String, weight: SymbolWeight = .regular, scale: SymbolScale = .medium)
     case userStaticSVG(assetID: UUID)
-    case userLottie(assetID: UUID)
     case bundledSVG(name: String)
     case bundledImage(name: String, fileExtension: String = "png")
 
@@ -140,9 +134,6 @@ enum IconAsset: Equatable, Codable {
         case .userStaticSVG(let id):
             try c.encode(Kind.userStaticSVG, forKey: .kind)
             try c.encode(id, forKey: .assetID)
-        case .userLottie(let id):
-            try c.encode(Kind.userLottie, forKey: .kind)
-            try c.encode(id, forKey: .assetID)
         case .bundledSVG(let name):
             try c.encode(Kind.bundledSVG, forKey: .kind)
             try c.encode(name, forKey: .name)
@@ -168,8 +159,9 @@ enum IconAsset: Equatable, Codable {
             let id = try c.decode(UUID.self, forKey: .assetID)
             self = .userStaticSVG(assetID: id)
         case .userLottie:
-            let id = try c.decode(UUID.self, forKey: .assetID)
-            self = .userLottie(assetID: id)
+            // Compatibility with project/template data created while Lottie
+            // was experimental. The unsupported asset becomes an empty slot.
+            self = .none
         case .bundledSVG:
             let name = try c.decode(String.self, forKey: .name)
             self = .bundledSVG(name: name)

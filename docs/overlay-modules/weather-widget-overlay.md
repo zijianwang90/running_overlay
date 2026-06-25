@@ -235,7 +235,14 @@ Also update `defaultOverlayStyle(for:)` to set `style.weatherWidget = .preset(.s
 - Queries historical weather for the activity date (Open-Meteo archive API, free, no key required): `https://archive-api.open-meteo.com/v1/archive?latitude=…&start_date=…&end_date=…&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=auto`
 - Pick the hour matching activity start time; derive daily H/L from full hourly array.
 - Map WMO codes to `WeatherCondition` via `fromWMO(_:)`.
-- Optional OpenWeather support uses One Call 3.0 Time Machine with the activity timestamp and metric units: `https://api.openweathermap.org/data/3.0/onecall/timemachine?lat=…&lon=…&dt=…&appid=…&units=metric`. The API key is stored in Project Settings under Weather. OpenWeather timestamp responses provide current temperature, condition, humidity, wind, and feels-like values; high/low remain unavailable unless a future daily summary call is added.
+- Optional OpenWeather support uses One Call 3.0 Time Machine with the activity
+  timestamp and metric units:
+  `https://api.openweathermap.org/data/3.0/onecall/timemachine?lat=…&lon=…&dt=…&appid=…&units=metric`.
+  The API key is entered in Project Settings and stored in macOS Keychain; it
+  is not included in project snapshots or templates. OpenWeather timestamp
+  responses provide current temperature, condition, humidity, wind, and
+  feels-like values; high/low remain unavailable unless a future daily summary
+  call is added.
 - Map OpenWeather condition ids and day/night icon ids to `WeatherCondition` via `fromOpenWeather(id:icon:)`.
 - `WeatherLocationResolver` provides the two coordinate sources: first FIT route point or current CoreLocation location.
 - Reverse geocoding fills `resolvedLocation`; if reverse geocoding fails, coordinates are used as a readable fallback.

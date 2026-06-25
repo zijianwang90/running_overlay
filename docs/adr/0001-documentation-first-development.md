@@ -2,6 +2,8 @@
 
 Date: 2026-04-24
 
+Amended: 2026-06-25
+
 ## Status
 
 Accepted
@@ -17,10 +19,12 @@ The project will maintain product and engineering documentation from the beginni
 Required documents:
 
 - `docs/requirements.md` for user-facing product requirements.
-- `docs/development.md` for implementation workflow and engineering notes.
+- `docs/development.md` as the index for subsystem-focused implementation
+  workflow and engineering guides under `docs/development/`.
 - `docs/architecture.md` for subsystem boundaries and data flow.
 - `docs/roadmap.md` for milestone status.
-- `docs/project-log.md` for chronological work history.
+- `docs/project-log.md` as the index for monthly chronological work-history
+  archives under `docs/project-log/`.
 - `docs/adr/` for decisions that affect future implementation.
 
 Every meaningful development step should update the relevant documentation in the same step as code changes.
@@ -36,4 +40,7 @@ Benefits:
 Costs:
 
 - Each development step has a small documentation overhead.
-- Documents must be kept concise enough to remain useful.
+- Index documents must remain concise enough to route contributors without
+  loading unrelated context.
+- Large development guides and project logs must be split by subsystem and
+  month respectively.

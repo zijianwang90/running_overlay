@@ -3,6 +3,12 @@ import Testing
 @testable import RunningOverlay
 
 struct OverlayFontResolverTests {
+    @Test func digitalWatchPresetUsesAvailableSystemFont() throws {
+        let font = try #require(NSFont(name: PresetFontName.digitalWatch, size: 40))
+        #expect(font.isFixedPitch)
+        #expect(OverlayTextPreset.digitalWatch.recommendedTokens?.fontName == PresetFontName.digitalWatch)
+    }
+
     @Test func resolvesJetBrainsMonoWeightedFacesWhenInstalled() {
         guard NSFontManager.shared.availableMembers(ofFontFamily: "JetBrains Mono") != nil else {
             return

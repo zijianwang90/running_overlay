@@ -54,7 +54,10 @@ New projects default to 5 fps so exports reuse more overlay frames while still p
 
 Project Settings also exposes the Font Library used by overlay font menus. The Font Library can restore its favorite fonts and default family to the default monospaced overlay set: `PT Mono`, `Monaco`, `Menlo`, and `Andale Mono`, with `PT Mono` as the default.
 
-Project Settings includes a Weather section with an OpenWeather API key field. Weather overlays use this key only when their data source is set to OpenWeather API; Open-Meteo remains available without a key.
+Project Settings includes a Weather section with an OpenWeather API key field.
+The key is stored in macOS Keychain and excluded from project snapshots and
+templates. Weather overlays use it only when their data source is OpenWeather
+API; Open-Meteo remains available without a key.
 
 Open questions:
 

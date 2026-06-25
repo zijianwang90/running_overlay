@@ -1,0 +1,56 @@
+name: Feature request
+description: Propose a scoped capability with testable acceptance criteria.
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or contributor problem should be solved?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: "- [ ] …\n- [ ] …"
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: What should explicitly remain outside this change?
+  - type: dropdown
+    id: subsystem
+    attributes:
+      label: Primary subsystem
+      options:
+        - FIT data
+        - Media import and alignment
+        - Timeline
+        - Overlay rendering
+        - Preview
+        - Export
+        - Project persistence
+        - Contributor tooling and documentation
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Suggested validation
+      description: Tests, fixtures, screenshots, or performance checks that would prove completion.
+  - type: checkboxes
+    id: agent
+    attributes:
+      label: Agent readiness
+      options:
+        - label: The task has bounded scope and does not depend on private files or credentials.

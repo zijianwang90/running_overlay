@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Cursor project hook: remind agents to keep docs/project-log.md current.
+Cursor project hook: remind agents to keep the monthly project log current.
 
 - sessionStart: inject standing policy into conversation context.
 - postToolUse (Write | StrReplace): nudge after substantive path edits.
@@ -14,15 +14,15 @@ import sys
 SESSION_CONTEXT = (
     "Running Overlay — project log: After substantive changes under "
     "`Sources/`, `Tests/`, `Package.swift`, or `docs/` (except when the only "
-    "edit is `docs/project-log.md` itself), append a dated `## YYYY-MM-DD` "
-    "section to `docs/project-log.md` following the existing bullet style.\n\n"
-    "仓库约定：完成有用户可见影响的改动后，在 `docs/project-log.md` 顶部按日期追加记录；"
+    "edit is the project log itself), append a dated `## YYYY-MM-DD` section "
+    "to the current monthly file linked from `docs/project-log.md`.\n\n"
+    "仓库约定：完成有用户可见影响的改动后，在 `docs/project-log.md` 所链接的当月日志中追加记录；"
     "若本轮只维护了 project-log 可略过。"
 )
 
 POST_NUDGE = (
     "Project log: this edit touches tracked paths — if the change is substantive, "
-    "append a brief dated entry to `docs/project-log.md` when you wrap up."
+    "append a brief dated entry to the current monthly project log."
 )
 
 
@@ -53,7 +53,7 @@ def _should_nudge_for_path(path: str, data: dict) -> bool:
     if not _under_workspace(path, data):
         return False
     n = _norm(path)
-    if "docs/project-log.md" in n:
+    if "/docs/project-log/" in n or n.endswith("/docs/project-log.md"):
         return False
     if "/.cursor/hooks/" in n:
         return False

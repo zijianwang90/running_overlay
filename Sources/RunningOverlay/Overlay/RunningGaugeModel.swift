@@ -730,7 +730,7 @@ extension RunningGaugeStyle {
             dividerColor: .green,
             dividerOpacity: 0.28,
             dividerWidth: 1,
-            fontName: BundledFontName.digitalWatch,
+            fontName: PresetFontName.digitalWatch,
             monospacedDigits: true,
             primaryFontWeight: .medium,
             secondaryFontWeight: .medium,

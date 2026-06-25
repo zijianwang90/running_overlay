@@ -16,7 +16,6 @@ struct RunningOverlayApp: App {
         }
         benchmarkCommand = parsedBenchmarkCommand
 
-        BundledFonts.registerAll()
         NSApplication.shared.setActivationPolicy(benchmarkCommand == nil ? .regular : .prohibited)
         NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
         if let benchmarkCommand {

@@ -17,7 +17,7 @@ Icon?
 .build/
 .swiftpm/
 Packages/
-Package.resolved
+# Commit Package.resolved when external package dependencies are present.
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
 DerivedData/
@@ -68,6 +68,24 @@ coverage/
 tmp/
 temp/
 
+# Credentials and local environment
+.env
+.env.*
+!.env.example
+*.cer
+*.certSigningRequest
+*.crt
+*.csr
+*.der
+*.key
+*.pem
+*.p8
+*.p12
+*.mobileprovision
+*.provisionprofile
+*.xcarchive
+*.xcarchive/
+
 # Claude Code
 .claude/settings.local.json
 .claude/worktrees/
@@ -77,7 +95,27 @@ temp/
 # Local sample fixtures or exports that should stay out of version control.
 ExampleData/local/
 Exports/
-*.fit.local
+*.fit
+*.FIT
+*.gpx
+*.GPX
+*.tcx
+*.TCX
+*.mov
+*.MOV
+*.mp4
+*.MP4
+*.m4v
+*.M4V
+*.avi
+*.AVI
+*.mkv
+*.MKV
+*.zip
+
+# Explicitly public synthetic fixtures.
+!Tests/RunningOverlayTests/Fixtures/Activities/
+!Tests/RunningOverlayTests/Fixtures/Activities/*.fit
 
 # Python (e.g. Cursor project hooks under .cursor/hooks/)
 __pycache__/

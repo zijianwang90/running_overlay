@@ -1,0 +1,47 @@
+name: Documentation issue
+description: Report missing, incorrect, unclear, or outdated project documentation.
+title: "[Docs]: "
+labels: ["documentation", "needs-triage"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Documentation area
+      options:
+        - README and getting started
+        - Contributor and AI-agent guidance
+        - Product requirements
+        - Architecture and development guides
+        - Overlay module or UI design docs
+        - Testing, fixtures, or visual snapshots
+        - Privacy, security, support, or licensing
+        - Project log or ADR
+    validations:
+      required: true
+  - type: input
+    id: location
+    attributes:
+      label: Document or URL
+      description: Point to the affected file, section, or link.
+      placeholder: docs/architecture.md#timeline
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Explain what is missing, incorrect, unclear, or outdated.
+    validations:
+      required: true
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Suggested improvement
+      description: Describe the correction or structure you expect.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Data safety
+      options:
+        - label: I removed private paths, credentials, GPS traces, health data, and private media from this report.
+          required: true

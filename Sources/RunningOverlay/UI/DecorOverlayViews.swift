@@ -115,7 +115,7 @@ struct OverlaySharedDecorIconView: View {
     }
 }
 
-/// Renders an `IconAsset` (SF Symbol, bundled SVG/image, user SVG, or Lottie)
+/// Renders an `IconAsset` (SF Symbol, bundled SVG/image, or user SVG)
 /// inside the element's bounding box. Shadow, glow, and border are applied
 /// via the same `OverlayStyle` fields used by numeric overlays.
 struct DecorIconOverlayView: View {

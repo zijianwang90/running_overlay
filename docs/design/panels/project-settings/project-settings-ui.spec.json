@@ -64,7 +64,7 @@
           "rows": [
             {
               "label": "OpenWeather API Key",
-              "caption": "Used when a Weather overlay selects OpenWeather API.",
+              "caption": "Stored in macOS Keychain and used only for OpenWeather requests.",
               "control": "secureTextField",
               "placeholder": "API key"
             }
