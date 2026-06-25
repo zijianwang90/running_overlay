@@ -93,6 +93,7 @@ temp/
 
 # Project-specific local artifacts
 # Local sample fixtures or exports that should stay out of version control.
+build/
 ExampleData/local/
 Exports/
 *.fit

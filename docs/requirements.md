@@ -612,7 +612,35 @@ Open questions:
 - Complex color grading or audio editing.
 - Full template marketplace.
 
-## 15. Glossary
+## 15. Mac App Store Release Requirements
+
+The first App Store submission should preserve the existing core workflow:
+
+- Import user-selected FIT files and videos.
+- Design overlays locally.
+- Optionally fetch MapKit route snapshots and Open-Meteo or user-configured
+  OpenWeather historical weather.
+- Export transparent MOV overlay clips to a user-selected destination.
+
+Privacy and review requirements:
+
+- The app must run in the macOS App Sandbox for App Store distribution.
+- User FIT files, videos, templates, and export destinations must be accessed
+  through explicit user selection. The app must not scan arbitrary user folders.
+- Source videos and FIT files must remain local unless a future feature clearly
+  asks the user to upload them.
+- Open-Meteo, OpenWeather, and MapKit network calls are outbound helper
+  requests for optional overlay data, not tracking or analytics.
+- The optional OpenWeather API key must remain in the macOS Keychain, must not
+  be encoded into project files or templates, and may be sent only to
+  OpenWeather when that provider is selected.
+- Current device location may be requested only after the user explicitly chooses
+  the current-location weather action.
+- The privacy manifest and App Store privacy labels must be updated whenever
+  collected data, tracking behavior, required-reason API use, location use, or
+  third-party SDK behavior changes.
+
+## 16. Glossary
 
 - FIT file: Activity data file format commonly produced by Garmin and other sports devices.
 - Master timeline: The activity timeline derived from the FIT file.

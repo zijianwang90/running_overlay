@@ -12,9 +12,10 @@ load only the conventions relevant to their task.
 | Engineering principles, technology, modules, and core models | [Overview](development/overview.md) |
 | App bootstrap, FIT import, and media import | [App Bootstrap and Data Import](development/app-and-import.md) |
 | Tracks, clips, timing edits, and timeline interaction | [Timeline](development/timeline.md) |
-| Overlay editing, preview behavior, and templates | [Overlays and Preview](development/overlays-and-preview.md) |
-| Project persistence, undo, and redo | [Persistence](development/persistence.md) |
-| Video rendering, diagnostics, and performance direction | [Export](development/export.md) |
+| Overlay models, preview rendering, fonts, icons, and weather | [Overlays and Preview](development/overlays-and-preview.md) |
+| Project snapshots, templates, settings, and credentials | [Persistence](development/persistence.md) |
+| Export pipeline, codecs, profiling, and benchmarks | [Export](development/export.md) |
+| App Store packaging, sandboxing, signing, and privacy manifests | [Release](development/release.md) |
 | Reliability, testing strategy, and documentation rules | [Quality](development/quality.md) |
 
 ## Reading Rules

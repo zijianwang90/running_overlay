@@ -32,6 +32,7 @@ entries in `project-log.md`.
 | Fixtures and snapshots | `docs/testing.md` |
 | Security and privacy | `docs/security.md` |
 | User data and network behavior | `PRIVACY.md` |
+| Mac App Store packaging and submission | `docs/development/release.md`, `docs/app-store-readiness.md` |
 | Maintainer and support policy | `MAINTAINERS.md`, `SUPPORT.md` |
 | Asset and dependency licensing | `docs/assets-and-licenses.md` |
 | Publication readiness | `docs/open-source-readiness.md` |

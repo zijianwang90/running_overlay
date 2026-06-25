@@ -21,7 +21,9 @@ required_files=(
   docs/development/overlays-and-preview.md
   docs/development/persistence.md
   docs/development/export.md
+  docs/development/release.md
   docs/development/quality.md
+  docs/app-store-readiness.md
   docs/project-log/2026-06.md
   docs/testing.md
   .github/workflows/ci.yml
