@@ -3,6 +3,8 @@ import Foundation
 
 enum WeatherFetchLocationMode: String, CaseIterable, Identifiable, Equatable, Codable {
     case activityLocation
+    // Retained only so projects created before current-location weather was
+    // removed can still decode their cached payload provenance.
     case currentLocation
 
     var id: String { rawValue }
@@ -23,8 +25,6 @@ enum WeatherFetchError: LocalizedError, Equatable {
     case invalidHTTPStatus(Int)
     case missingHourlyData
     case missingOpenWeatherData
-    case currentLocationUnavailable
-    case currentLocationDenied
 
     var errorDescription: String? {
         switch self {
@@ -42,10 +42,6 @@ enum WeatherFetchError: LocalizedError, Equatable {
             "Weather API response did not include usable hourly data."
         case .missingOpenWeatherData:
             "OpenWeather response did not include usable weather data."
-        case .currentLocationUnavailable:
-            "Current location is unavailable."
-        case .currentLocationDenied:
-            "Location permission is denied."
         }
     }
 }
@@ -263,69 +259,12 @@ enum WeatherFetcher {
     }
 }
 
-@MainActor
-final class CurrentLocationProvider: NSObject, CLLocationManagerDelegate {
-    static let shared = CurrentLocationProvider()
-
-    private let manager = CLLocationManager()
-    private var continuation: CheckedContinuation<CLLocation, Error>?
-
-    override private init() {
-        super.init()
-        manager.delegate = self
-        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-    }
-
-    func requestCurrentLocation() async throws -> CLLocation {
-        guard CLLocationManager.locationServicesEnabled() else {
-            throw WeatherFetchError.currentLocationUnavailable
-        }
-
-        let status = manager.authorizationStatus
-        if status == .denied || status == .restricted {
-            throw WeatherFetchError.currentLocationDenied
-        }
-
-        return try await withCheckedThrowingContinuation { continuation in
-            self.continuation = continuation
-            if status == .notDetermined {
-                manager.requestWhenInUseAuthorization()
-            }
-            manager.requestLocation()
-        }
-    }
-
-    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        Task { @MainActor in
-            guard let location = locations.last else {
-                continuation?.resume(throwing: WeatherFetchError.currentLocationUnavailable)
-                continuation = nil
-                return
-            }
-            continuation?.resume(returning: location)
-            continuation = nil
-        }
-    }
-
-    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        Task { @MainActor in
-            continuation?.resume(throwing: error)
-            continuation = nil
-        }
-    }
-}
-
 enum WeatherLocationResolver {
     static func activityStartCoordinate(from activity: ActivityTimeline) throws -> WeatherCoordinate {
         guard let point = activity.routePoints.first else {
             throw WeatherFetchError.missingActivityLocation
         }
         return WeatherCoordinate(latitude: point.latitude, longitude: point.longitude)
-    }
-
-    static func currentCoordinate() async throws -> WeatherCoordinate {
-        let location = try await CurrentLocationProvider.shared.requestCurrentLocation()
-        return WeatherCoordinate(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
     }
 
     static func displayName(latitude: Double, longitude: Double) async -> String? {

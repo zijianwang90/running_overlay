@@ -634,8 +634,8 @@ Privacy and review requirements:
 - The optional OpenWeather API key must remain in the macOS Keychain, must not
   be encoded into project files or templates, and may be sent only to
   OpenWeather when that provider is selected.
-- Current device location may be requested only after the user explicitly chooses
-  the current-location weather action.
+- Weather lookup coordinates come from the imported FIT activity. The app must
+  not request the Mac's current location.
 - The privacy manifest and App Store privacy labels must be updated whenever
   collected data, tracking behavior, required-reason API use, location use, or
   third-party SDK behavior changes.

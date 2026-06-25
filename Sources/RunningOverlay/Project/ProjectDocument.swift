@@ -1825,11 +1825,7 @@ final class ProjectDocument: ObservableObject {
     }
 
     func fetchWeatherForActivityLocation(_ elementID: OverlayElement.ID) {
-        fetchWeather(elementID, mode: .activityLocation, registersUndo: true)
-    }
-
-    func fetchWeatherForCurrentLocation(_ elementID: OverlayElement.ID) {
-        fetchWeather(elementID, mode: .currentLocation, registersUndo: true)
+        fetchWeather(elementID, registersUndo: true)
     }
 
     private func refreshOpenMeteoWeatherWidgetsAfterFitImport() {
@@ -1850,12 +1846,11 @@ final class ProjectDocument: ObservableObject {
             }
             return
         }
-        fetchWeather(elementID, mode: .activityLocation, registersUndo: false, updatesStatusMessage: updatesStatusMessage)
+        fetchWeather(elementID, registersUndo: false, updatesStatusMessage: updatesStatusMessage)
     }
 
     private func fetchWeather(
         _ elementID: OverlayElement.ID,
-        mode: WeatherFetchLocationMode,
         registersUndo: Bool,
         updatesStatusMessage: Bool = true
     ) {
@@ -1867,18 +1862,12 @@ final class ProjectDocument: ObservableObject {
         let activity = activity
         let openWeatherAPIKey = self.openWeatherAPIKey
         if updatesStatusMessage {
-            statusMessage = "Fetching \(dataSource.label) weather from \(mode.label)..."
+            statusMessage = "Fetching \(dataSource.label) weather from Activity Location..."
         }
 
         Task {
             do {
-                let coordinate: WeatherCoordinate
-                switch mode {
-                case .activityLocation:
-                    coordinate = try WeatherLocationResolver.activityStartCoordinate(from: activity)
-                case .currentLocation:
-                    coordinate = try await WeatherLocationResolver.currentCoordinate()
-                }
+                let coordinate = try WeatherLocationResolver.activityStartCoordinate(from: activity)
 
                 async let resolvedLocation = WeatherLocationResolver.displayName(
                     latitude: coordinate.latitude,
@@ -1905,7 +1894,7 @@ final class ProjectDocument: ObservableObject {
                     return
                 }
                 payload.resolvedLocation = await resolvedLocation
-                payload.fetchLocationMode = mode
+                payload.fetchLocationMode = .activityLocation
                 applyFetchedWeatherPayload(
                     payload,
                     dataSource: dataSource,

@@ -35,7 +35,6 @@ Phase 2:
 
 - Activity start timestamp.
 - GPS start point from FIT (used for coordinate-based localization and weather lookup).
-- Current device location from CoreLocation when the user explicitly chooses the current-location fetch option.
 - Historical weather from Open-Meteo archive API (activity date, not current forecast). Cached into the project for export determinism.
 
 ## Rendering Model
@@ -92,10 +91,9 @@ Weather Widget 1.0 does not expose the shared Background, Border, or Effects ins
 
 Collapsed Weather Widget Inspector section headers follow the regular single-separator pattern so adjacent section boundaries stay one thin line.
 
-The Inspector exposes two explicit API fetch actions in the Location section:
+The Inspector exposes one explicit API fetch action in the Location section:
 
 - Activity Location: fetches Open-Meteo historical weather for the activity start date using the first FIT GPS route point. Disabled when the activity has no GPS route.
-- Current Location: fetches Open-Meteo historical weather for the activity start date using the user's current device location. This requires macOS location permission.
 
 New Weather Widget overlays start in the Open-Meteo source with no baked-in
 sample city or sample weather values. When the activity has a FIT GPS route,
@@ -129,7 +127,7 @@ Each preset also defines metric slot count and defaults:
 - `minimalText`: 0 slots
 - `dashboardBar`: 3 slots, default `humidity, wind, feelsLike`
 
-**`WeatherFetchLocationMode` enum** — `activityLocation`, `currentLocation`; stored on fetched payloads so the cache records which API entry point produced it.
+**`WeatherFetchLocationMode` enum** — `activityLocation` is the active fetch mode. The legacy `currentLocation` raw value remains decodable so older project caches stay compatible.
 
 **`WeatherPayload` struct** (Equatable, Codable) — cached result from FIT or API: `condition, temperatureCelsius, humidity?, highTemperatureCelsius?, lowTemperatureCelsius?, windKph?, feelsLikeCelsius?, resolvedLocation?, sourceDate?, fetchLocationMode?`
 
@@ -217,7 +215,6 @@ mutateWeatherWidgetStyle(_ id:, _ mutate:)               // registerUndoPoint
 mutateWeatherWidgetStyleContinuous(_ id:, _ mutate:)     // registerContinuousUndoPoint
 applyWeatherWidgetPreset(_ id:, preset:)                 // replaces visual/dimension defaults; preserves content fields + cachedWeather
 fetchWeatherForActivityLocation(_ id:)                   // uses first FIT GPS route point
-fetchWeatherForCurrentLocation(_ id:)                    // uses CoreLocation current device coordinate
 fetchWeatherForNewWeatherWidget(_ id:)                   // automatic activity-location fetch without an undo step
 ```
 
@@ -249,7 +246,7 @@ Also update `defaultOverlayStyle(for:)` to set `style.weatherWidget = .preset(.s
   the no-key alternative. User-triggered 401 failures also raise a prominent,
   multi-line toast instead of relying only on the bottom status bar.
 - Map OpenWeather condition ids and day/night icon ids to `WeatherCondition` via `fromOpenWeather(id:icon:)`.
-- `WeatherLocationResolver` provides the two coordinate sources: first FIT route point or current CoreLocation location.
+- `WeatherLocationResolver` uses the first FIT route point and reverse geocodes it into readable location text.
 - Reverse geocoding fills `resolvedLocation`; if reverse geocoding fails, coordinates are used as a readable fallback.
 - API failures are non-destructive: ProjectDocument keeps the previous cached/manual fields and reports the failure in `statusMessage`.
 - Private `OpenMeteoResponse: Decodable` struct for JSON decoding.
@@ -283,7 +280,7 @@ Implemented:
 - `WeatherWidgetStyle.metricSlots` replaces the old global metric visibility behavior in rendering. Each Style exposes its own slot count, and every slot can choose `-`, Humidity, High / Low, Wind, or Feels Like.
 - Inline metric rows render Feels Like as `Feels 12°C` so the secondary temperature is not confused with the current temperature; Dashboard Bar keeps `Feels` as the chip label and the temperature as the chip value.
 - `WeatherFetcher` queries Open-Meteo historical hourly weather with current field names (`weather_code`, `relative_humidity_2m`, `apparent_temperature`, `wind_speed_10m`) and converts the result into `WeatherPayload`.
-- Inspector has two API fetch buttons: activity GPS start location and current device location. A successful fetch switches the widget source to Open-Meteo, stores the payload in `cachedWeather`, and updates `locationText` from reverse geocoding.
+- Inspector has one API fetch button for the activity GPS start location. A successful fetch stores the selected provider payload in `cachedWeather` and updates `locationText` from reverse geocoding.
 - Five presets render in SwiftUI through `OverlaySharedWeatherWidgetView`: `simpleCard`, `compactStrip`, `forecastTile`, `minimalText`, and `dashboardBar`.
 - The active SwiftUI preview/export path uses bundled transparent PNG weather icons, so conditions no longer rely on mixed SF Symbol silhouettes.
 - Preset defaults now use app-like visual treatments instead of black-card variants: blue Simple Card, light Compact Strip, dark Forecast Tile, transparent Minimal Text, and graphite Dashboard Bar.

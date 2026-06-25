@@ -14,8 +14,8 @@ This document tracks the first Mac App Store submission path for Running Overlay
 
 ## Implemented Packaging Files
 
-- `AppStore/Info.plist`: app bundle metadata, macOS 15 minimum, App Store video category, ATS default-deny arbitrary loads, and CoreLocation usage copy.
-- `AppStore/RunningOverlay.entitlements`: App Sandbox, user-selected file read/write access, outbound network client access, and location entitlement for explicit current-location weather fetches.
+- `AppStore/Info.plist`: app bundle metadata, macOS 15 minimum, App Store video category, and ATS default-deny arbitrary loads.
+- `AppStore/RunningOverlay.entitlements`: App Sandbox, user-selected file read/write access, and outbound network client access.
 - `AppStore/PrivacyInfo.xcprivacy`: privacy manifest declaring no tracking and no collected data, plus required-reason API declarations for file timestamps and app-scoped user defaults.
 - `AppStore/Assets.xcassets`: production Running Overlay app icon in all ten
   macOS icon slots plus the app accent color.
@@ -64,7 +64,7 @@ same source and resource tree.
 - Local storage: user overlay templates are stored as JSON under Application Support.
 - Network: Open-Meteo and optional user-configured OpenWeather historical weather requests, plus MapKit snapshot requests, are outbound only.
 - Credentials: the optional OpenWeather API key is stored in the user's macOS Keychain, excluded from project snapshots/templates, and sent only to OpenWeather when that provider is selected.
-- Location: current device location is requested only when the user explicitly chooses current-location weather. Activity-location weather uses GPS coordinates from the imported FIT file.
+- Location: weather lookup uses GPS coordinates from the imported FIT file. The app does not request the Mac's current location.
 - Tracking/ads: none.
 - User content upload: source videos and FIT files are not uploaded by the app.
 

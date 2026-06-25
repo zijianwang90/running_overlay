@@ -6,7 +6,7 @@ Last updated: 2026-05-07
 
 Weather Widget Overlay is a simple weather-app-style overlay for showing the day-of-run weather context on exported running videos. It should feel like a compact weather app plugin rather than a sport-specific performance module.
 
-The visual implementation and API fetch pass are in place. The component renders with local preset styling plus a shared SwiftUI weather icon family, and it can cache historical weather from either activity GPS or current device location. Open-Meteo remains the default no-key provider; OpenWeather is available when an API key is configured in Project Settings.
+The visual implementation and API fetch pass are in place. The component renders with local preset styling plus a shared SwiftUI weather icon family, and it caches historical weather from the FIT activity GPS location. Open-Meteo remains the default no-key provider; OpenWeather is available when an API key is configured in Project Settings.
 
 When a Weather Widget is first added, it starts from activity-location
 API data rather than baked-in sample content. If the current FIT activity
@@ -182,9 +182,7 @@ API support:
 
 - Query historical weather for the activity date (Open-Meteo archive API), not current forecast. Running data is always past events; a forecast is meaningless.
 - Optionally query the OpenWeather One Call 4.0 one-hour timeline when the overlay data source is OpenWeather API and the Project Settings Weather section has an API key.
-- Offer two explicit fetch choices:
-  - Activity Location: use the first GPS route point from the FIT activity.
-  - Current Location: use the user's current device location through CoreLocation.
+- Use the first GPS route point from the FIT activity for explicit weather fetches.
 - Auto-localize condition labels from activity coordinates (e.g. Japan → Japanese labels), not from system locale. All fields remain user-editable.
 - Cache resolved weather data in the project to make export deterministic.
 - Keep API failures non-destructive by falling back to manual fields.
@@ -203,7 +201,7 @@ Recommended sections:
 Key controls:
 
 - Style picker: icon buttons for Simple Card, Compact Strip, Forecast Tile, Minimal Text, Dashboard Bar. Do not show a duplicate text-only Preset menu in Weather Widget 1.0.
-- Location fetch actions: activity GPS start location and current device location.
+- Location fetch action: activity GPS start location.
 - Location text fields.
 - Data source picker (Manual, Open-Meteo API, OpenWeather API) lives in the Weather section.
 - When the loaded FIT activity includes temperature records, Weather exposes a **Use FIT Temperature** toggle. When enabled, FIT temperature overrides the API or manual temperature at the current playhead for more accurate on-run readings.
@@ -241,7 +239,7 @@ Implemented as of 2026-05-07:
 - Inspector replaces the old Humidity / High-Low / Wind / Feels Like toggles with Style-specific metric slots. Each slot chooses one of those four values, so metrics render consistently wherever the selected Style has a slot.
 - Inspector exposes condition label override in manual/FIT mode, palette selection in Appearance, and editable divider visibility/color/width/opacity.
 - Inspector removes Icon Size from the user-facing 1.0 controls and adds a Show Icon toggle.
-- Inspector exposes two API fetch buttons in Location: one for the first activity GPS point, one for current device location.
+- Inspector exposes one API fetch button in Location for the first activity GPS point.
 - Inspector no longer shows the shared Background, Border, or Effects modules for Weather Widget 1.0; the supported styling surface is limited to preset, palette, card opacity, corner radius, dividers, icon visibility, and field visibility.
 - Simple Card tightens its left visual block so the vertical divider no longer floats in an empty center column.
 - Forecast Tile renders configurable horizontal and vertical dividers around its metric area.
@@ -258,7 +256,6 @@ Implemented as of 2026-05-07:
 Remaining:
 
 - Fully localized condition labels from coordinates beyond the current location-text heuristic.
-- Packaged-app location usage copy, if CoreLocation requires an app-bundle prompt string.
 
 ## Resolved Decisions
 

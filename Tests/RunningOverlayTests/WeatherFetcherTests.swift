@@ -3,6 +3,15 @@ import Testing
 @testable import RunningOverlay
 
 struct WeatherFetcherTests {
+    @Test func legacyCurrentLocationFetchModeStillDecodes() throws {
+        let decoded = try JSONDecoder().decode(
+            WeatherFetchLocationMode.self,
+            from: Data(#""currentLocation""#.utf8)
+        )
+
+        #expect(decoded == .currentLocation)
+    }
+
     @Test func archiveURLUsesOpenMeteoHistoricalHourlyFields() throws {
         let date = Date(timeIntervalSince1970: 1_776_000_000)
         let url = try WeatherFetcher.archiveURL(latitude: 34.6937, longitude: 135.5023, date: date)

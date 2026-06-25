@@ -147,8 +147,8 @@ if find Sources Tests -type f \( -name '*.ttf' -o -name '*.otf' \) -print -quit 
 fi
 
 if repo_search 'URLSession|URLRequest|CLGeocoder|CLLocationManager|api\.openweathermap\.org|archive-api\.open-meteo\.com' Sources >/dev/null; then
-  if ! repo_query 'Open-Meteo|OpenWeather|macOS location and geocoding' PRIVACY.md; then
-    echo "PRIVACY.md must document current weather and location network behavior." >&2
+  if ! repo_query 'Open-Meteo|OpenWeather|geocoding services' PRIVACY.md; then
+    echo "PRIVACY.md must document current weather and geocoding network behavior." >&2
     exit 1
   fi
 fi

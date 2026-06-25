@@ -463,29 +463,16 @@ struct WeatherWidgetOverlayDetailView: View {
         let canFetchSelectedAPI = s.dataSource != .openWeather || hasOpenWeatherKey
         return sectionView(.location, element: element) {
             InspectorDenseRow(label: "API Fetch") {
-                HStack(spacing: 6) {
-                    Button {
-                        project.fetchWeatherForActivityLocation(elementID)
-                    } label: {
-                        Image(systemName: "figure.run")
-                            .frame(width: 16, height: 16)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.mini)
-                    .disabled(!hasActivityLocation || !canFetchSelectedAPI)
-                    .help(fetchHelpText(base: "Fetch weather by the activity's GPS start position", dataSource: s.dataSource, hasOpenWeatherKey: hasOpenWeatherKey))
-
-                    Button {
-                        project.fetchWeatherForCurrentLocation(elementID)
-                    } label: {
-                        Image(systemName: "location.fill")
-                            .frame(width: 16, height: 16)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.mini)
-                    .disabled(!canFetchSelectedAPI)
-                    .help(fetchHelpText(base: "Fetch weather by the current device location", dataSource: s.dataSource, hasOpenWeatherKey: hasOpenWeatherKey))
+                Button {
+                    project.fetchWeatherForActivityLocation(elementID)
+                } label: {
+                    Image(systemName: "figure.run")
+                        .frame(width: 16, height: 16)
                 }
+                .buttonStyle(.bordered)
+                .controlSize(.mini)
+                .disabled(!hasActivityLocation || !canFetchSelectedAPI)
+                .help(fetchHelpText(base: "Fetch weather by the activity's GPS start position", dataSource: s.dataSource, hasOpenWeatherKey: hasOpenWeatherKey))
             }
             InspectorDenseRow(label: "Location") {
                 TextField("e.g. Osaka, Japan", text: Binding(

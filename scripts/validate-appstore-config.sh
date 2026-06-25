@@ -8,6 +8,16 @@ plutil -lint \
   "$ROOT_DIR/AppStore/RunningOverlay.entitlements" \
   "$ROOT_DIR/AppStore/PrivacyInfo.xcprivacy" >/dev/null
 
+if /usr/libexec/PlistBuddy -c "Print :NSLocationWhenInUseUsageDescription" "$ROOT_DIR/AppStore/Info.plist" >/dev/null 2>&1; then
+  echo "AppStore/Info.plist must not declare current-location usage." >&2
+  exit 1
+fi
+
+if /usr/libexec/PlistBuddy -c "Print :com.apple.security.personal-information.location" "$ROOT_DIR/AppStore/RunningOverlay.entitlements" >/dev/null 2>&1; then
+  echo "AppStore/RunningOverlay.entitlements must not request location access." >&2
+  exit 1
+fi
+
 python3 -m json.tool "$ROOT_DIR/AppStore/Assets.xcassets/Contents.json" >/dev/null
 python3 -m json.tool "$ROOT_DIR/AppStore/Assets.xcassets/AccentColor.colorset/Contents.json" >/dev/null
 python3 -m json.tool "$ROOT_DIR/AppStore/Assets.xcassets/AppIcon.appiconset/Contents.json" >/dev/null
