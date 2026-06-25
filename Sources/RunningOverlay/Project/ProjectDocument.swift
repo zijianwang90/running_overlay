@@ -502,7 +502,7 @@ final class ProjectDocument: ObservableObject {
         style.labelFontName = defaultFont
         style.unitFontName = defaultFont
         style.unitOption = type.defaultUnitOption
-        if type == .heartRateZone {
+        if type == .heartRateZone || type == .date {
             style.showUnit = false
         }
         if type == .routeMap {
@@ -2627,7 +2627,7 @@ final class ProjectDocument: ObservableObject {
         let type = overlayLayout.elements[index].type
         var style = OverlayStyle.default
         style.unitOption = type.defaultUnitOption
-        if type == .heartRateZone {
+        if type == .heartRateZone || type == .date {
             style.showUnit = false
         }
         if type == .routeMap {

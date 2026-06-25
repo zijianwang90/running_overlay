@@ -108,6 +108,8 @@ The selected option shows a checkmark.
 
 Other numeric overlays should expose only relevant unit choices:
 
+- Date exposes a `Format` menu instead of `Units`: `YYYY-MM-DD`, `YYYY/MM/DD`, `MM/DD/YYYY`, `MM-DD`, `MM/DD`, and abbreviated `Month D`. It reads the activity timestamp at the current playhead, matching Real Time's source.
+
 | Metric | Suggested units |
 | --- | --- |
 | Heart Rate | `bpm` |

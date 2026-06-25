@@ -41,6 +41,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     case calories
     case elapsedTime
     case realTime
+    case date
     case distance
     case distanceTimeline
     case elevation
@@ -76,6 +77,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         case .calories: "Calories"
         case .elapsedTime: "Elapsed Time"
         case .realTime: "Real Time"
+        case .date: "Date"
         case .distance: "Distance"
         case .distanceTimeline: "Distance Timeline"
         case .elevation: "Elevation"
@@ -125,7 +127,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     /// See `docs/design/overlays/numeric/numeric-overlay-ui.md`.
     var isNumericOverlay: Bool {
         switch self {
-        case .heartRate, .heartRateZone, .pace, .avgPace, .lapPace, .calories, .elapsedTime, .realTime,
+        case .heartRate, .heartRateZone, .pace, .avgPace, .lapPace, .calories, .elapsedTime, .realTime, .date,
              .distance, .elevation, .cadence, .power,
              .verticalOscillation, .groundContactTime, .strideLength,
              .verticalRatio, .groundContactBalance, .temperature, .grade:
@@ -154,6 +156,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         case .calories: "flame"
         case .elapsedTime: "clock"
         case .realTime: "watch.analog"
+        case .date: "calendar"
         case .distance: "ruler"
         case .elevation: "mountain.2"
         case .cadence: "figure.run"
@@ -208,7 +211,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
 
 enum ActivityMetricCatalog {
     static let selectableElementTypes: [OverlayElementType] = OverlayElementType.allCases.filter {
-        $0.isNumericOverlay && $0 != .heartRateZone
+        $0.isNumericOverlay && $0 != .heartRateZone && $0 != .date
     }
 }
 
@@ -230,6 +233,12 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
     case durationSeconds
     case clock24Hour
     case clock12Hour
+    case dateYMDHyphen
+    case dateYMDSlash
+    case dateMDYSlash
+    case dateMDHyphen
+    case dateMDSlash
+    case dateMonthDay
     case oscillationMillimeters
     case oscillationCentimeters
     case contactTimeMilliseconds
@@ -261,6 +270,12 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
         case .durationSeconds: "seconds"
         case .clock24Hour: "24-hour"
         case .clock12Hour: "12-hour"
+        case .dateYMDHyphen: "YYYY-MM-DD"
+        case .dateYMDSlash: "YYYY/MM/DD"
+        case .dateMDYSlash: "MM/DD/YYYY"
+        case .dateMDHyphen: "MM-DD"
+        case .dateMDSlash: "MM/DD"
+        case .dateMonthDay: "Month D"
         case .oscillationMillimeters: "Millimeters (mm)"
         case .oscillationCentimeters: "Centimeters (cm)"
         case .contactTimeMilliseconds: "Milliseconds (ms)"
@@ -285,6 +300,7 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
         case .calories: [.kcal]
         case .elapsedTime: [.durationHMS, .durationMS, .durationSeconds]
         case .realTime: [.clock24Hour, .clock12Hour]
+        case .date: [.dateYMDHyphen, .dateYMDSlash, .dateMDYSlash, .dateMDHyphen, .dateMDSlash, .dateMonthDay]
         case .verticalOscillation: [.oscillationCentimeters, .oscillationMillimeters]
         case .groundContactTime: [.contactTimeMilliseconds]
         case .strideLength: [.strideLengthMeters]

@@ -89,6 +89,7 @@ struct OverlayTileInfo: Identifiable {
         OverlayTileInfo(type: .calories, hint: "kcal", systemImage: "flame", category: .metrics),
         OverlayTileInfo(type: .elapsedTime, hint: "duration", systemImage: "clock", category: .metrics),
         OverlayTileInfo(type: .realTime, hint: "clock time", systemImage: "watch.analog", category: .metrics),
+        OverlayTileInfo(type: .date, hint: "year / month / day", systemImage: "calendar", category: .metrics),
         OverlayTileInfo(type: .distance, hint: "km / mi", systemImage: "ruler", category: .metrics),
         OverlayTileInfo(type: .elevation, hint: "altitude", systemImage: "mountain.2", category: .metrics),
         OverlayTileInfo(type: .cadence, hint: "spm", systemImage: "figure.run", category: .metrics),

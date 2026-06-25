@@ -46,6 +46,30 @@ struct OverlayValueFormatterTests {
         #expect(OverlayValueFormatter.formatDuration(3661) == "01:01:01")
     }
 
+    @Test func formatsActivityDateWithCommonStyles() {
+        let timestamp = Date(timeIntervalSince1970: 1_718_452_800) // 2024-06-15 12:00:00 UTC
+        let activity = ActivityTimeline(
+            startDate: timestamp,
+            duration: 0,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        var element = OverlayElement(type: .date, position: .zero, scale: 1, style: .default)
+
+        element.style.unitOption = .dateYMDHyphen
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 0) == "2024-06-15")
+
+        element.style.unitOption = .dateMDYSlash
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 0) == "06/15/2024")
+
+        element.style.unitOption = .dateMDSlash
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 0) == "06/15")
+
+        element.style.unitOption = .dateMonthDay
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 0) == "Jun 15")
+    }
+
     @Test func elapsedTimeOverlayExcludesTimerPausedSegments() {
         let startDate = Date(timeIntervalSince1970: 0)
         let activity = ActivityTimeline(

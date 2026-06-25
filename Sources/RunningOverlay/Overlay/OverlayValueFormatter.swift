@@ -151,6 +151,13 @@ enum OverlayValueFormatter {
                 value: formatRealTime(activity.timestamp(at: elapsedTime), option: unitOption),
                 unit: ""
             )
+        case .date:
+            return OverlayValueComponents(
+                label: resolvedLabel("Date"),
+                shortLabel: "DATE",
+                value: formatDate(activity.timestamp(at: elapsedTime), option: unitOption),
+                unit: ""
+            )
         case .distance:
             let formatted = formatDistanceComponents(meters: activity.distance(at: elapsedTime), option: unitOption)
             return OverlayValueComponents(
@@ -291,6 +298,20 @@ enum OverlayValueFormatter {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = option == .clock12Hour ? "h:mm:ss a" : "HH:mm:ss"
+        return formatter.string(from: date)
+    }
+
+    private static func formatDate(_ date: Date, option: OverlayUnitOption) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = switch option {
+        case .dateYMDSlash: "yyyy/MM/dd"
+        case .dateMDYSlash: "MM/dd/yyyy"
+        case .dateMDHyphen: "MM-dd"
+        case .dateMDSlash: "MM/dd"
+        case .dateMonthDay: "MMM d"
+        default: "yyyy-MM-dd"
+        }
         return formatter.string(from: date)
     }
 

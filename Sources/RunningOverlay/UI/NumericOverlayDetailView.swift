@@ -43,7 +43,7 @@ struct NumericOverlayDetailView: View {
         if units.isEmpty {
             EmptyView()
         } else if units.count > 1 {
-            InspectorDenseRow(label: "Units") {
+            InspectorDenseRow(label: element.type == .date ? "Format" : "Units") {
                 Menu {
                     ForEach(units) { unit in
                         Button {
@@ -63,7 +63,7 @@ struct NumericOverlayDetailView: View {
                 .frame(height: NumericTokens.controlHeight)
             }
         } else if let only = units.first {
-            InspectorDenseRow(label: "Units") {
+            InspectorDenseRow(label: element.type == .date ? "Format" : "Units") {
                 InspectorDenseReadout(text: only.label)
             }
         }

@@ -1,5 +1,13 @@
 # Running Overlay Project Log
 
+## 2026-06-24
+
+### Numeric Overlay Date Component
+
+- Added a Date tile under Overlay Pool → Metrics. It uses the activity timestamp at the current playhead and shares the standard Numeric Overlay inspector, rendering, drag/layout, typography, icon, background, border, and effects behavior.
+- Added six common date display formats: `YYYY-MM-DD`, `YYYY/MM/DD`, `MM/DD/YYYY`, `MM-DD`, `MM/DD`, and abbreviated `Month D`.
+- Added formatter coverage for year-month-day and month-day output and kept Date out of composite activity-metric pickers such as Running Gauge, Route Map stats, and Interval HUD Bar.
+
 ## 2026-06-22
 
 ### Weather Widget OpenWeather API Source

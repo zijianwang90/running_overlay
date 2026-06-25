@@ -76,6 +76,7 @@
       "controls": [
         { "id": "metric", "type": "dropdown", "value": "{metric}", "modelBacked": "future if metric can differ from OverlayElementType" },
         { "id": "units", "type": "dropdown", "value": "{unitOption}", "requiredWhen": "metric has more than one unit option" },
+        { "id": "dateFormat", "type": "dropdown", "value": "{unitOption}", "visibleWhen": "metric is Date", "options": ["YYYY-MM-DD", "YYYY/MM/DD", "MM/DD/YYYY", "MM-DD", "MM/DD", "Month D"] },
         { "id": "formatPreview", "type": "readout", "value": "{formattedOverlayValue}", "modelBacked": true }
       ]
     },
