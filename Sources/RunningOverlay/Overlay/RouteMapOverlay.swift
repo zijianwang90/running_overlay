@@ -84,6 +84,32 @@ enum MapSnapshotError: LocalizedError {
     }
 }
 
+private final class MapSnapshotImageBox: @unchecked Sendable {
+    let image: NSImage?
+
+    init(_ image: NSImage?) {
+        self.image = image
+    }
+}
+
+extension MapSnapshotProvider {
+    func snapshotImage(for request: MapSnapshotRequest) async -> NSImage? {
+        let box = await withCheckedContinuation { (continuation: CheckedContinuation<MapSnapshotImageBox, Never>) in
+            snapshot(for: request) { snapshotResult in
+                let image: NSImage?
+                switch snapshotResult {
+                case .success(let loaded):
+                    image = loaded
+                case .failure:
+                    image = nil
+                }
+                continuation.resume(returning: MapSnapshotImageBox(image))
+            }
+        }
+        return box.image
+    }
+}
+
 enum RouteGeometryBuilder {
     static func geometry(from activity: ActivityTimeline) -> RouteGeometry? {
         let points = cleaned(points: activity.routePoints)

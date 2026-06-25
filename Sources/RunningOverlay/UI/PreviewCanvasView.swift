@@ -1169,13 +1169,7 @@ struct RouteMapOverlayView: View {
         }
 
         let provider = MapKitMapSnapshotProvider()
-        let result = await withCheckedContinuation { continuation in
-            provider.snapshot(for: request) { result in
-                continuation.resume(returning: result)
-            }
-        }
-
-        if case .success(let image) = result {
+        if let image = await provider.snapshotImage(for: request) {
             mapSnapshot = image
         }
     }

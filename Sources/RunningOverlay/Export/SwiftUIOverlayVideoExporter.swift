@@ -435,14 +435,14 @@ struct SwiftUIOverlayVideoExporter {
             size: size
         )
 
-        let frameView = SwiftUIOverlayFrameView(
-            size: size,
-            overlays: supportedOverlays,
-            activity: activity,
-            elapsedTime: elapsedTime,
-            routeMapSnapshots: routeMapSnapshots
-        )
         guard let cgImage = await MainActor.run(body: {
+            let frameView = SwiftUIOverlayFrameView(
+                size: size,
+                overlays: supportedOverlays,
+                activity: activity,
+                elapsedTime: elapsedTime,
+                routeMapSnapshots: routeMapSnapshots
+            )
             let renderer = ImageRenderer(content: frameView)
             renderer.isOpaque = false
             renderer.proposedSize = ProposedViewSize(width: size.width, height: size.height)
@@ -870,12 +870,7 @@ struct SwiftUIOverlayVideoExporter {
             if Task.isCancelled {
                 return snapshots
             }
-            let result = await withCheckedContinuation { continuation in
-                provider.snapshot(for: request) { result in
-                    continuation.resume(returning: result)
-                }
-            }
-            if case .success(let image) = result {
+            if let image = await provider.snapshotImage(for: request) {
                 snapshots[request] = image
             }
         }
@@ -954,15 +949,15 @@ struct SwiftUIOverlayVideoExporter {
         elapsedTime: TimeInterval,
         routeMapSnapshots: [MapSnapshotRequest: NSImage]
     ) async throws -> CGImage {
-        let frameView = SwiftUIOverlayFrameView(
-            size: size,
-            overlays: overlays,
-            activity: activity,
-            elapsedTime: elapsedTime,
-            routeMapSnapshots: routeMapSnapshots
-        )
         guard let cgImage = await MainActor.run(body: {
             autoreleasepool {
+                let frameView = SwiftUIOverlayFrameView(
+                    size: size,
+                    overlays: overlays,
+                    activity: activity,
+                    elapsedTime: elapsedTime,
+                    routeMapSnapshots: routeMapSnapshots
+                )
                 let renderer = ImageRenderer(content: frameView)
                 renderer.isOpaque = false
                 renderer.proposedSize = ProposedViewSize(width: size.width, height: size.height)
@@ -987,16 +982,16 @@ struct SwiftUIOverlayVideoExporter {
             return nil
         }
 
-        let layerView = SwiftUIOverlayLayerView(
-            canvasSize: size,
-            renderRect: renderRect,
-            overlays: overlays,
-            activity: activity,
-            elapsedTime: elapsedTime,
-            routeMapSnapshots: routeMapSnapshots
-        )
         guard let cgImage = await MainActor.run(body: {
             autoreleasepool {
+                let layerView = SwiftUIOverlayLayerView(
+                    canvasSize: size,
+                    renderRect: renderRect,
+                    overlays: overlays,
+                    activity: activity,
+                    elapsedTime: elapsedTime,
+                    routeMapSnapshots: routeMapSnapshots
+                )
                 let renderer = ImageRenderer(content: layerView)
                 renderer.isOpaque = false
                 renderer.proposedSize = ProposedViewSize(width: renderRect.width, height: renderRect.height)
@@ -1024,19 +1019,19 @@ struct SwiftUIOverlayVideoExporter {
             return nil
         }
 
-        let layerView = SwiftUIRouteMapLayerView(
-            canvasSize: size,
-            renderRect: renderRect,
-            element: element,
-            activity: activity,
-            elapsedTime: elapsedTime,
-            routeMapSnapshots: routeMapSnapshots,
-            showsBaseContent: showsBaseContent,
-            showsCurrentMarker: showsCurrentMarker,
-            showsContainerEffects: showsContainerEffects
-        )
         guard let cgImage = await MainActor.run(body: {
             autoreleasepool {
+                let layerView = SwiftUIRouteMapLayerView(
+                    canvasSize: size,
+                    renderRect: renderRect,
+                    element: element,
+                    activity: activity,
+                    elapsedTime: elapsedTime,
+                    routeMapSnapshots: routeMapSnapshots,
+                    showsBaseContent: showsBaseContent,
+                    showsCurrentMarker: showsCurrentMarker,
+                    showsContainerEffects: showsContainerEffects
+                )
                 let renderer = ImageRenderer(content: layerView)
                 renderer.isOpaque = false
                 renderer.proposedSize = ProposedViewSize(width: renderRect.width, height: renderRect.height)

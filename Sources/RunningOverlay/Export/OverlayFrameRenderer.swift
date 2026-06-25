@@ -2185,7 +2185,7 @@ struct OverlayFrameRenderer {
             )
             let textStyle = IntervalHUDBarTextStyle(fontName: font.fontName, fontSize: max(font.fontSize * 0.72, 7), fontWeight: font.fontWeight)
             let labelX = layout.markerSide == .leading ? lineX - 20 : lineX + lineLength + 2
-            drawCenteredText(marker.valueText, in: CGRect(x: labelX, y: y - textStyle.fontSize / 2 - 2, width: 18, height: textStyle.fontSize + 4), textStyle: textStyle, color: color.withAlphaComponent(0.78))
+            drawCenteredText(marker.valueText, in: CGRect(x: labelX, y: y - CGFloat(textStyle.fontSize) / 2 - 2, width: 18, height: CGFloat(textStyle.fontSize) + 4), textStyle: textStyle, color: color.withAlphaComponent(0.78))
             return
         }
 
@@ -2198,7 +2198,7 @@ struct OverlayFrameRenderer {
             triangle.line(to: CGPoint(x: tipX - arrowW, y: y - arrowH / 2))
             triangle.line(to: CGPoint(x: tipX - arrowW, y: y + arrowH / 2))
             if style.markerShowsValue {
-                drawCenteredText(marker.valueText, in: CGRect(x: tipX - arrowW - 86, y: y - font.fontSize / 2 - 2, width: 84, height: font.fontSize + 4), textStyle: font, color: color)
+                drawCenteredText(marker.valueText, in: CGRect(x: tipX - arrowW - 86, y: y - CGFloat(font.fontSize) / 2 - 2, width: 84, height: CGFloat(font.fontSize) + 4), textStyle: font, color: color)
             }
         } else {
             let tipX = barRect.maxX + gap
@@ -2206,7 +2206,7 @@ struct OverlayFrameRenderer {
             triangle.line(to: CGPoint(x: tipX + arrowW, y: y - arrowH / 2))
             triangle.line(to: CGPoint(x: tipX + arrowW, y: y + arrowH / 2))
             if style.markerShowsValue {
-                drawCenteredText(marker.valueText, in: CGRect(x: tipX + arrowW + 2, y: y - font.fontSize / 2 - 2, width: 84, height: font.fontSize + 4), textStyle: font, color: color)
+                drawCenteredText(marker.valueText, in: CGRect(x: tipX + arrowW + 2, y: y - CGFloat(font.fontSize) / 2 - 2, width: 84, height: CGFloat(font.fontSize) + 4), textStyle: font, color: color)
             }
         }
         triangle.close()
