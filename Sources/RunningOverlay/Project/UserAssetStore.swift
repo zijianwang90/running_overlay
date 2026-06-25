@@ -16,6 +16,8 @@ struct UserAsset: Codable, Equatable, Identifiable {
     enum Kind: String, Codable, Equatable {
         case svg
         case font
+        /// Legacy value retained so older project snapshots remain decodable.
+        /// No UI or renderer creates or consumes this asset kind.
         case lottie
     }
 }

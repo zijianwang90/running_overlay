@@ -226,7 +226,7 @@ struct WeatherWidgetOverlayDetailView: View {
         let usesAPI = s.dataSource.isAPI
         let metricSlots = s.normalizedMetricSlots()
         let hasFITTemperature = project.activity.hasTemperatureData
-        let hasOpenWeatherKey = !project.settings.openWeatherAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasOpenWeatherKey = !project.openWeatherAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         return sectionView(.weather, element: element) {
             InspectorDenseRow(label: "Data Source") {
                 Menu {
@@ -459,7 +459,7 @@ struct WeatherWidgetOverlayDetailView: View {
     private func locationSection(_ element: OverlayElement) -> some View {
         let s = element.style.weatherWidget
         let hasActivityLocation = project.activity.routePoints.first != nil
-        let hasOpenWeatherKey = !project.settings.openWeatherAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasOpenWeatherKey = !project.openWeatherAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         let canFetchSelectedAPI = s.dataSource != .openWeather || hasOpenWeatherKey
         return sectionView(.location, element: element) {
             InspectorDenseRow(label: "API Fetch") {

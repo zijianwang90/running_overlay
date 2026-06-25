@@ -13,15 +13,11 @@ let package = Package(
             targets: ["RunningOverlay"]
         )
     ],
-    dependencies: [
-        .package(url: "https://github.com/airbnb/lottie-ios.git", from: "4.5.0")
-    ],
+    dependencies: [],
     targets: [
         .executableTarget(
             name: "RunningOverlay",
-            dependencies: [
-                .product(name: "Lottie", package: "lottie-ios")
-            ],
+            dependencies: [],
             path: "Sources/RunningOverlay",
             resources: [
                 .process("Resources")
@@ -29,10 +25,7 @@ let package = Package(
         ),
         .testTarget(
             name: "RunningOverlayTests",
-            dependencies: [
-                "RunningOverlay",
-                .product(name: "Lottie", package: "lottie-ios")
-            ],
+            dependencies: ["RunningOverlay"],
             path: "Tests/RunningOverlayTests",
             resources: [
                 .copy("Fixtures")

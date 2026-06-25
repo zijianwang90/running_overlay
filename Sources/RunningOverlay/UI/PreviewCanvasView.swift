@@ -1645,10 +1645,10 @@ struct TextPresetOverlayView: View {
     @ViewBuilder
     private var digitalWatchView: some View {
         let accent = Color(element.style.accentColor)
-        // Brian Cavalier's HTML5 digital-clock uses BankGothic Medium with
-        // saturated green + a soft glow to fake the LCD look. We do the same
-        // here: bundled BankGothic for the value, intensified accent halo.
-        let digitalFont = BundledFontName.digitalWatch
+        // Menlo Bold provides stable monospaced digits on every supported
+        // macOS version. Wide tracking and the layered accent glow preserve
+        // the compact electronic instrument-panel character.
+        let digitalFont = PresetFontName.digitalWatch
         VStack(alignment: .leading, spacing: layout.fontSize * 0.10) {
             if element.style.showLabel, !layout.components.label.isEmpty {
                 Text(layout.components.label.uppercased())

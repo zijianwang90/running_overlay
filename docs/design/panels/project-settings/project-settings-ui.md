@@ -49,7 +49,7 @@ The settings modal should include only the current project export/settings contr
    - Right secondary button: `Configure...`.
 5. `Weather`
    - `OpenWeather API Key` secure text field.
-   - Caption: `Used when a Weather overlay selects OpenWeather API.`
+   - Caption: `Stored in macOS Keychain and used only for OpenWeather requests.`
 
 The modal footer contains a right-aligned primary `Done` button.
 

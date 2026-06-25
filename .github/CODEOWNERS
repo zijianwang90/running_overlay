@@ -1,0 +1,14 @@
+# Default review owner.
+* @zijianwang90
+
+# Policy, security, release, and dependency changes require maintainer review.
+/.github/ @zijianwang90
+/scripts/ @zijianwang90
+/LICENSE @zijianwang90
+/PRIVACY.md @zijianwang90
+/SECURITY.md @zijianwang90
+/SUPPORT.md @zijianwang90
+/MAINTAINERS.md @zijianwang90
+/THIRD_PARTY_NOTICES.md @zijianwang90
+/Package.swift @zijianwang90
+/Sources/RunningOverlay/Project/CredentialStore.swift @zijianwang90

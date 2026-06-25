@@ -6,6 +6,7 @@ struct ProjectSettingsView: View {
     @State private var showingFontLibrary = false
     @State private var showingHeartRateZones = false
     @State private var showingIntervalColors = false
+    @State private var openWeatherAPIKeyDraft = ""
 
     var body: some View {
         VStack(spacing: 20) {
@@ -51,6 +52,9 @@ struct ProjectSettingsView: View {
             HStack {
                 Spacer()
                 Button("Done") {
+                    if openWeatherAPIKeyDraft != project.openWeatherAPIKey {
+                        project.setOpenWeatherAPIKey(openWeatherAPIKeyDraft)
+                    }
                     dismiss()
                 }
                 .keyboardShortcut(.defaultAction)
@@ -60,6 +64,9 @@ struct ProjectSettingsView: View {
         .padding(24)
         .frame(width: 520, height: 620)
         .background(EditorTheme.panelBackground)
+        .onAppear {
+            openWeatherAPIKeyDraft = project.openWeatherAPIKey
+        }
         .sheet(isPresented: $showingFontLibrary) {
             FontLibraryView()
         }
@@ -103,16 +110,26 @@ struct ProjectSettingsView: View {
                     Text("OpenWeather API Key")
                         .font(EditorTheme.bodyStrongFont)
                         .foregroundStyle(EditorTheme.textPrimary)
-                    Text("Used when a Weather overlay selects OpenWeather API.")
+                    Text("Stored in macOS Keychain and used only for OpenWeather requests.")
                         .font(EditorTheme.captionFont)
                         .foregroundStyle(EditorTheme.textSecondary)
                 }
             },
             trailing: {
-                SecureField("API key", text: $project.settings.openWeatherAPIKey)
-                    .textFieldStyle(.roundedBorder)
-                    .font(EditorTheme.bodyFont)
-                    .frame(width: 220)
+                HStack(spacing: 8) {
+                    SecureField("API key", text: $openWeatherAPIKeyDraft)
+                        .textFieldStyle(.roundedBorder)
+                        .font(EditorTheme.bodyFont)
+                        .frame(width: 160)
+                        .onSubmit {
+                            project.setOpenWeatherAPIKey(openWeatherAPIKeyDraft)
+                        }
+                    Button("Save") {
+                        project.setOpenWeatherAPIKey(openWeatherAPIKeyDraft)
+                    }
+                    .buttonStyle(EditorSecondaryButtonStyle())
+                    .disabled(openWeatherAPIKeyDraft == project.openWeatherAPIKey)
+                }
             }
         )
     }

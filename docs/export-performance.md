@@ -211,10 +211,11 @@ The CSV file contains the same comparison-oriented metrics in a spreadsheet
 shape: one `summary` row followed by one `segment` row per exported segment.
 Use it to compare before/after exports from the same project snapshot.
 
-For the third benchmark round, compare against the first and second runs:
+For the third benchmark round, compare against the first and second local
+profiling artifacts:
 
-- v1 baseline: `/Users/codywang/Documents/Video Production/0509 纽约/Test/export_profile_20260511_132440_578.json`
-- v2 layered fallback regression: `/Users/codywang/Documents/Video Production/0509 纽约/Test2/export_profile_20260511_135450_510.json`
+- v1 baseline: `<benchmark-output>/v1/export_profile.json`
+- v2 layered fallback regression: `<benchmark-output>/v2/export_profile.json`
 - Expected v3 behavior: `renderPath=fullFrameSingleLayer` for the current real
   project, `fullFrameFallbackCount` equal to segment count, and draw timing back
   near the v1 baseline instead of the v2 segment 9 spike.
@@ -246,11 +247,11 @@ and that exported overlay positions match the editor preview.
 
 ## Fixed Benchmark Fixture
 
-All export-performance rounds after Test9 use this project snapshot as the
-benchmark fixture:
+Export-performance rounds should use the same local, privacy-safe project
+snapshot as the benchmark fixture:
 
 ```bash
-/Users/codywang/Documents/Video Production/0509 纽约/running_overlay_project_snapshot.json
+<benchmark-fixtures>/running_overlay_project_snapshot.json
 ```
 
 Run the benchmark through the non-interactive app entry point and write each
@@ -258,9 +259,12 @@ round to a new numbered directory:
 
 ```bash
 swift run RunningOverlay \
-  --benchmark-export "/Users/codywang/Documents/Video Production/0509 纽约/running_overlay_project_snapshot.json" \
-  --benchmark-output "/Users/codywang/Documents/Video Production/0509 纽约/Test10"
+  --benchmark-export "<benchmark-fixtures>/running_overlay_project_snapshot.json" \
+  --benchmark-output "<benchmark-output>/round-10"
 ```
+
+Do not commit benchmark snapshots that contain private FIT data, GPS traces,
+media paths, or user assets.
 
 The Test9 automated benchmark produced:
 

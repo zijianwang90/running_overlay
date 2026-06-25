@@ -12,17 +12,78 @@ struct ProjectSettingsTests {
         #expect(settings.resolution == .hd1080)
         #expect(settings.frameRate == .fps30)
         #expect(settings.layerDataFrameRate == .fps5)
-        #expect(settings.openWeatherAPIKey == "")
+        #expect(settings.legacyOpenWeatherAPIKey == nil)
     }
 
-    @Test func openWeatherAPIKeyRoundTrips() throws {
-        var settings = ProjectSettings()
-        settings.openWeatherAPIKey = "abc123"
+    @Test func legacyOpenWeatherAPIKeyDecodesButDoesNotEncode() throws {
+        let legacyJSON = #"{"resolution":"1920x1080","frameRate":"30","layerDataFrameRate":"5","openWeatherAPIKey":"abc123"}"#.data(using: .utf8)!
+        let settings = try JSONDecoder().decode(ProjectSettings.self, from: legacyJSON)
 
         let data = try JSONEncoder().encode(settings)
-        let decoded = try JSONDecoder().decode(ProjectSettings.self, from: data)
+        let encoded = try #require(String(data: data, encoding: .utf8))
 
-        #expect(decoded.openWeatherAPIKey == "abc123")
+        #expect(settings.legacyOpenWeatherAPIKey == "abc123")
+        #expect(!encoded.contains("openWeatherAPIKey"))
+        #expect(!encoded.contains("abc123"))
+    }
+
+    @Test func projectLoadsAndUpdatesOpenWeatherKeyThroughCredentialStore() {
+        let store = TestCredentialStore(values: [
+            KeychainCredentialStore.openWeatherAccount: "stored-key"
+        ])
+        let project = ProjectDocument(credentialStore: store)
+
+        #expect(project.openWeatherAPIKey == "stored-key")
+
+        project.setOpenWeatherAPIKey(" new-key ")
+        #expect(project.openWeatherAPIKey == "new-key")
+        #expect(store.values[KeychainCredentialStore.openWeatherAccount] == "new-key")
+
+        project.setOpenWeatherAPIKey(" ")
+        #expect(project.openWeatherAPIKey.isEmpty)
+        #expect(store.values[KeychainCredentialStore.openWeatherAccount] == nil)
+    }
+
+    @Test func restoringLegacySnapshotMigratesOpenWeatherKeyAndRemovesItOnResave() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("running-overlay-key-migration-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let legacyURL = directory.appendingPathComponent("legacy.json")
+        let resavedURL = directory.appendingPathComponent("resaved.json")
+        let snapshot = ProjectPerformanceSnapshot(
+            settings: ProjectSettings(),
+            activity: .empty,
+            mediaItems: [],
+            mediaFolders: [],
+            timeline: .empty,
+            overlayElements: [],
+            userAssets: [],
+            fitSourceName: ""
+        )
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let encoded = try encoder.encode(snapshot)
+        var object = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        var settings = try #require(object["settings"] as? [String: Any])
+        settings["openWeatherAPIKey"] = "legacy-secret"
+        object["settings"] = settings
+        try JSONSerialization.data(withJSONObject: object).write(to: legacyURL)
+
+        let store = TestCredentialStore()
+        let project = ProjectDocument(credentialStore: store)
+        project.restoreProjectSnapshot(from: legacyURL)
+
+        #expect(project.openWeatherAPIKey == "legacy-secret")
+        #expect(store.values[KeychainCredentialStore.openWeatherAccount] == "legacy-secret")
+        #expect(project.settings.legacyOpenWeatherAPIKey == nil)
+        #expect(project.statusMessage.contains("Migrated"))
+
+        project.saveProjectSnapshot(to: resavedURL)
+        let resaved = try #require(String(data: Data(contentsOf: resavedURL), encoding: .utf8))
+        #expect(!resaved.contains("openWeatherAPIKey"))
+        #expect(!resaved.contains("legacy-secret"))
     }
 
     @Test func layerDataSampleTimeUsesConfiguredFrameRate() {
@@ -209,5 +270,21 @@ struct ProjectSettingsTests {
 
         #expect(manager.favoriteFamilies == ["PT Mono", "Monaco", "Menlo", "Andale Mono"])
         #expect(manager.defaultFamily == "PT Mono")
+    }
+}
+
+private final class TestCredentialStore: CredentialStore {
+    var values: [String: String]
+
+    init(values: [String: String] = [:]) {
+        self.values = values
+    }
+
+    func value(for account: String) throws -> String? {
+        values[account]
+    }
+
+    func setValue(_ value: String?, for account: String) throws {
+        values[account] = value
     }
 }

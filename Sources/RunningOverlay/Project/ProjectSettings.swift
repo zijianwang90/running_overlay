@@ -1,6 +1,17 @@
 import Foundation
 
 struct ProjectSettings: Equatable, Codable {
+    private enum CodingKeys: String, CodingKey {
+        case resolution
+        case frameRate
+        case layerDataFrameRate
+        case previewTrackName
+        case disabledPreviewTrackNames
+        case bitrateMbps
+        case exportCodec
+        case openWeatherAPIKey
+    }
+
     var resolution: ProjectResolution = .hd1080
     var frameRate: ProjectFrameRate = .fps30
     var layerDataFrameRate: ProjectLayerDataFrameRate = .fps5
@@ -8,7 +19,7 @@ struct ProjectSettings: Equatable, Codable {
     var disabledPreviewTrackNames: Set<String> = []
     var bitrateMbps: Double = 30
     var exportCodec: ProjectExportCodec = .hevcWithAlpha
-    var openWeatherAPIKey: String = ""
+    private(set) var legacyOpenWeatherAPIKey: String?
 
     init() {}
 
@@ -21,7 +32,24 @@ struct ProjectSettings: Equatable, Codable {
         disabledPreviewTrackNames = try c.decodeIfPresent(Set<String>.self, forKey: .disabledPreviewTrackNames) ?? []
         bitrateMbps = try c.decodeIfPresent(Double.self, forKey: .bitrateMbps) ?? 30
         exportCodec = try c.decodeIfPresent(ProjectExportCodec.self, forKey: .exportCodec) ?? .hevcWithAlpha
-        openWeatherAPIKey = try c.decodeIfPresent(String.self, forKey: .openWeatherAPIKey) ?? ""
+        legacyOpenWeatherAPIKey = try c.decodeIfPresent(String.self, forKey: .openWeatherAPIKey)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(resolution, forKey: .resolution)
+        try c.encode(frameRate, forKey: .frameRate)
+        try c.encode(layerDataFrameRate, forKey: .layerDataFrameRate)
+        try c.encodeIfPresent(previewTrackName, forKey: .previewTrackName)
+        try c.encode(disabledPreviewTrackNames, forKey: .disabledPreviewTrackNames)
+        try c.encode(bitrateMbps, forKey: .bitrateMbps)
+        try c.encode(exportCodec, forKey: .exportCodec)
+        // Credentials are stored in the macOS Keychain. Keep the legacy coding
+        // key decodable for migration, but never write it into project data.
+    }
+
+    mutating func removeLegacyCredentials() {
+        legacyOpenWeatherAPIKey = nil
     }
 }
 

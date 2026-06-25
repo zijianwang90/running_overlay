@@ -34,8 +34,10 @@ struct IconAssetCodingTests {
         try roundTrip(.userStaticSVG(assetID: UUID()))
     }
 
-    @Test func userLottieRoundTrips() throws {
-        try roundTrip(.userLottie(assetID: UUID()))
+    @Test func legacyUserLottieDecodesAsNone() throws {
+        let json = #"{"kind":"userLottie","assetID":"00000000-0000-0000-0000-000000000001"}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(IconAsset.self, from: json)
+        #expect(decoded == .none)
     }
 
     @Test func bundledSVGRoundTrips() throws {

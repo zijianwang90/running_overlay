@@ -3041,7 +3041,7 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
             )
         case .digitalWatch:
             return OverlayPresetTokens(
-                fontName: BundledFontName.digitalWatch,
+                fontName: PresetFontName.digitalWatch,
                 fontWeight: .medium,
                 fontSize: 40,
                 textAlignment: .leading,
@@ -3135,9 +3135,9 @@ struct OverlayColor: Equatable, Hashable, Codable {
 
 // MARK: - Decor Text Support Types
 
-/// Font reference for the Decor Text element. Bundled fonts map to
-/// names registered by `BundledFonts`; system fonts use PostScript family
-/// names; user-uploaded fonts resolve via the `UserAssetStore`.
+/// Font reference for the Decor Text element. The bundled case remains
+/// decodable for compatibility with early project files; new content uses
+/// system fonts or future user-uploaded font assets.
 enum DecorFontRef: Equatable, Codable {
     case bundled(name: String)
     case system(family: String)

@@ -98,8 +98,10 @@ struct WorkoutStructureAnalyzerTests {
     }
 
     @Test func parsesProvidedSlowIntervalFitSampleWhenAvailable() throws {
-        let url = URL(fileURLWithPath: "/Users/codywang/Desktop/running_overlay/Test 400x8/478318880247284213.fit")
-        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        guard let path = ProcessInfo.processInfo.environment["RUNNING_OVERLAY_INTERVAL_FIT_SAMPLE"] else {
+            return
+        }
+        let url = URL(fileURLWithPath: path)
 
         let activity = try FitFileParser.parse(url: url)
 

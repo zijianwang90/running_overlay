@@ -219,7 +219,7 @@ struct DecorOverlayDetailView: View {
                 .toggleStyle(.switch)
             }
 
-        case .userStaticSVG, .userLottie:
+        case .userStaticSVG:
             InspectorDenseRow(label: "Asset") { Text("User upload — Phase E").font(NumericTokens.captionFont).foregroundStyle(NumericTokens.textSecondary) }
         }
     }
@@ -315,7 +315,7 @@ struct DecorOverlayDetailView: View {
     private func textFontSection(_ element: OverlayElement) -> some View {
         let r = DecorTextResolved(from: element.style.decor)
         let fontIdx = switch r.font {
-        case .system: 0
+        case .system(let family): family == PresetFontName.digitalWatch ? 1 : 0
         case .bundled: 1
         case .userAsset: 2
         }
@@ -326,19 +326,22 @@ struct DecorOverlayDetailView: View {
                     switch idx {
                     case 0: project.setDecorTextFont(elementID, font: .system(family: FontLibraryManager.shared.defaultFamily))
                     case 1:
-                        let first = BundledFonts.availableFontNames.first ?? FontLibraryManager.shared.defaultFamily
-                        project.setDecorTextFont(elementID, font: .bundled(name: first))
+                        project.setDecorTextFont(
+                            elementID,
+                            font: .system(family: PresetFontName.digitalWatch)
+                        )
                     default: break
                     }
                 }
             )) {
                 Text("System").tag(0)
-                Text("Bundled").tag(1)
+                Text("Digital").tag(1)
                 Text("Upload").tag(2).disabled(true)
             }
             .pickerStyle(.segmented)
         }
-        if case .system = r.font {
+        if case .system(let selectedFamily) = r.font,
+           selectedFamily != PresetFontName.digitalWatch {
             let families = FontLibraryManager.shared.effectiveFavorites
             InspectorDenseRow(label: "Family") {
                 Picker("", selection: Binding(
@@ -355,20 +358,15 @@ struct DecorOverlayDetailView: View {
                 .frame(maxWidth: 200)
             }
         }
-        if case .bundled(let name) = r.font {
-            let names = BundledFonts.availableFontNames
-            if !names.isEmpty {
-                InspectorDenseRow(label: "Name") {
-                    Picker("", selection: Binding(
-                        get: { name },
-                        set: { project.setDecorTextFont(elementID, font: .bundled(name: $0)) }
-                    )) {
-                        ForEach(names, id: \.self) { n in
-                            Text(n).tag(n)
-                        }
-                    }
-                    .frame(maxWidth: 200)
+        if case .bundled = r.font {
+            InspectorDenseRow(label: "Legacy Font") {
+                Button("Use Menlo Digital") {
+                    project.setDecorTextFont(
+                        elementID,
+                        font: .system(family: PresetFontName.digitalWatch)
+                    )
                 }
+                .buttonStyle(.bordered)
             }
         }
         InspectorDenseSliderRow(
@@ -648,7 +646,7 @@ struct DecorOverlayDetailView: View {
         case .sfSymbol: .sfSymbol
         case .bundledSVG: .bundledSVG
         case .bundledImage: .bundledSVG
-        case .userStaticSVG, .userLottie: .upload
+        case .userStaticSVG: .upload
         case .none: .sfSymbol
         }
     }
