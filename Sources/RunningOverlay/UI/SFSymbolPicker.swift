@@ -198,8 +198,8 @@ enum SFSymbolCatalog {
     }
 
     private static func loadSymbolNames() -> [String] {
-        let resourceURL = Bundle.module.url(forResource: "symbols", withExtension: "json")
-            ?? Bundle.module.url(forResource: "symbols", withExtension: "json", subdirectory: "SFSymbols")
+        let resourceURL = Bundle.runningOverlayResources.url(forResource: "symbols", withExtension: "json")
+            ?? Bundle.runningOverlayResources.url(forResource: "symbols", withExtension: "json", subdirectory: "SFSymbols")
         guard let url = resourceURL,
               let data = try? Data(contentsOf: url),
               let decoded = try? JSONDecoder().decode([String].self, from: data)

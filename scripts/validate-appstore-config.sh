@@ -12,9 +12,42 @@ python3 -m json.tool "$ROOT_DIR/AppStore/Assets.xcassets/Contents.json" >/dev/nu
 python3 -m json.tool "$ROOT_DIR/AppStore/Assets.xcassets/AccentColor.colorset/Contents.json" >/dev/null
 python3 -m json.tool "$ROOT_DIR/AppStore/Assets.xcassets/AppIcon.appiconset/Contents.json" >/dev/null
 
-if rg -n "DEVELOPMENT_TEAM =\\s*$|support URL|privacy policy URL|TODO" "$ROOT_DIR/AppStore" "$ROOT_DIR/Config" "$ROOT_DIR/docs/app-store-readiness.md" >/tmp/running-overlay-appstore-placeholders.txt; then
+for spec in \
+  "icon_16x16.png:16" \
+  "icon_16x16@2x.png:32" \
+  "icon_32x32.png:32" \
+  "icon_32x32@2x.png:64" \
+  "icon_128x128.png:128" \
+  "icon_128x128@2x.png:256" \
+  "icon_256x256.png:256" \
+  "icon_256x256@2x.png:512" \
+  "icon_512x512.png:512" \
+  "icon_512x512@2x.png:1024"; do
+  filename="${spec%%:*}"
+  expected="${spec##*:}"
+  path="$ROOT_DIR/AppStore/Assets.xcassets/AppIcon.appiconset/$filename"
+  width="$(/usr/bin/sips -g pixelWidth "$path" 2>/dev/null | /usr/bin/awk '/pixelWidth/ {print $2}')"
+  height="$(/usr/bin/sips -g pixelHeight "$path" 2>/dev/null | /usr/bin/awk '/pixelHeight/ {print $2}')"
+  if [[ "$width" != "$expected" || "$height" != "$expected" ]]; then
+    echo "Invalid AppIcon size for $filename: ${width}x${height}, expected ${expected}x${expected}." >&2
+    exit 1
+  fi
+done
+
+/usr/bin/xcrun xcodebuild -project "$ROOT_DIR/RunningOverlay.xcodeproj" -list >/dev/null
+
+placeholder_pattern="DEVELOPMENT_TEAM =[[:space:]]*$|support URL|privacy policy URL|TODO"
+if [[ -x /opt/homebrew/bin/rg ]]; then
+  placeholder_search=(/opt/homebrew/bin/rg -n "$placeholder_pattern")
+elif [[ -x /usr/local/bin/rg ]]; then
+  placeholder_search=(/usr/local/bin/rg -n "$placeholder_pattern")
+else
+  placeholder_search=(/usr/bin/grep -R -n -E "$placeholder_pattern")
+fi
+
+if "${placeholder_search[@]}" "$ROOT_DIR/AppStore" "$ROOT_DIR/Config" "$ROOT_DIR/docs/app-store-readiness.md" >/tmp/running-overlay-appstore-placeholders.txt; then
   echo "App Store placeholders still need product/account values:"
-  cat /tmp/running-overlay-appstore-placeholders.txt
+  /bin/cat /tmp/running-overlay-appstore-placeholders.txt
 fi
 
 echo "App Store configuration files are syntactically valid."

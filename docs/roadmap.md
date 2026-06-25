@@ -270,12 +270,15 @@ Completed so far:
   blockers.
 - Selected `io.github.zijianwang90.runningoverlay` as the release Bundle ID and
   aligned the Keychain service under the same identifier namespace.
+- Added a native Xcode macOS Application target and shared scheme that produce
+  a standard universal `.xcarchive` with the sandbox, privacy manifest,
+  resources, and legal notices.
+- Added the production Running Overlay icon in every required macOS AppIcon
+  slot.
 
 Pending:
 
 - Register the selected bundle id and fill the team/signing values after Apple
   Developer Program membership activation.
-- Add production macOS app icon images and App Store screenshots.
-- Decide whether final upload will use a full Xcode app target/Organizer archive
-  or a promoted script-built package.
+- Prepare App Store screenshots.
 - Complete sandbox, privacy report, and App Store Connect validation.

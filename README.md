@@ -66,6 +66,15 @@ cd running_overlay
 swift run RunningOverlay
 ```
 
+Open `RunningOverlay.xcodeproj` to build or archive the native macOS app target.
+Before Apple Developer signing is configured, an unsigned local build can be
+verified with:
+
+```sh
+xcodebuild -project RunningOverlay.xcodeproj -scheme RunningOverlay \
+  -configuration Debug CODE_SIGNING_ALLOWED=NO build
+```
+
 Run the complete validation suite:
 
 ```sh

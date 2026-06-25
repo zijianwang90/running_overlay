@@ -17,9 +17,15 @@ This document tracks the first Mac App Store submission path for Running Overlay
 - `AppStore/Info.plist`: app bundle metadata, macOS 15 minimum, App Store video category, ATS default-deny arbitrary loads, and CoreLocation usage copy.
 - `AppStore/RunningOverlay.entitlements`: App Sandbox, user-selected file read/write access, outbound network client access, and location entitlement for explicit current-location weather fetches.
 - `AppStore/PrivacyInfo.xcprivacy`: privacy manifest declaring no tracking and no collected data, plus required-reason API declarations for file timestamps and app-scoped user defaults.
-- `AppStore/Assets.xcassets`: placeholder app icon and accent color catalog. Production icon image files still need final design assets.
+- `AppStore/Assets.xcassets`: production Running Overlay app icon in all ten
+  macOS icon slots plus the app accent color.
 - `Config/AppStore.xcconfig`: release defaults for the selected bundle id,
   marketing version, build number, deployment target, and signing placeholders.
+- `RunningOverlay.xcodeproj`: native macOS Application target with a shared
+  scheme, Debug/Release configurations, App Sandbox entitlements, privacy
+  manifest, resources, legal notices, and Archive support.
+- `scripts/generate-xcode-project.rb`: deterministic project generator using
+  the SwiftPM source/resource directories as the source list.
 - `scripts/build-appstore-app.sh`: builds the SwiftPM release executable, assembles a macOS `.app`, copies resources and the privacy manifest, and signs with entitlements.
 - `scripts/archive-appstore-app.sh`: creates a local `.xcarchive`-shaped artifact from the packaged app for preflight inspection.
 - `scripts/validate-appstore-config.sh`: validates plist/json syntax and reports placeholder account/product values.
@@ -29,9 +35,13 @@ This document tracks the first Mac App Store submission path for Running Overlay
 Local ad-hoc package validation:
 
 ```sh
+scripts/generate-xcode-project.rb
 scripts/validate-appstore-config.sh
-scripts/build-appstore-app.sh
-scripts/archive-appstore-app.sh
+xcodebuild -project RunningOverlay.xcodeproj -scheme RunningOverlay \
+  -configuration Debug CODE_SIGNING_ALLOWED=NO build
+xcodebuild -project RunningOverlay.xcodeproj -scheme RunningOverlay \
+  -configuration Release -archivePath /tmp/RunningOverlay.xcarchive \
+  CODE_SIGNING_ALLOWED=NO archive
 ```
 
 Distribution signing requires real Apple Developer account values:
@@ -44,7 +54,9 @@ RUNNING_OVERLAY_SIGN_IDENTITY="3rd Party Mac Developer Application: Your Company
 scripts/build-appstore-app.sh
 ```
 
-The current repository still uses Swift Package Manager as the source-of-truth build graph. A full Xcode app target should be added before final App Store Connect upload if the release process needs Organizer validation/export instead of the current script-built bundle.
+The Xcode target is the App Store release path. SwiftPM remains the normal
+development and test path, and the project generator keeps both paths on the
+same source and resource tree.
 
 ## Privacy Inventory
 
@@ -64,14 +76,13 @@ The current repository still uses Swift Package Manager as the source-of-truth b
 - Description draft: Running Overlay helps runners and video creators turn FIT activity data into transparent video overlays for editors such as Final Cut Pro, DaVinci Resolve, and Premiere.
 - Keywords draft: `running,FIT,overlay,video,telemetry,Garmin,route,weather`.
 - Review notes should explain how to import a FIT file, import one or more videos, match clips on the timeline, add overlays, and export alpha-capable MOV files.
-- Privacy policy URL, support URL, marketing URL, copyright owner, production screenshots, and final app icon are still required.
+- Privacy policy URL, support URL, marketing URL, copyright owner, and
+  production screenshots are still required.
 
 ## Remaining Release Blockers
 
 - Register `io.github.zijianwang90.runningoverlay` in the Apple Developer
   account and fill the Apple Developer Team ID after membership activation.
-- Add production app icon PNGs for all macOS icon slots.
-- Decide whether final submission uses an Xcode app target or the script-built bundle promoted into an App Store Connect-compatible archive.
 - Run privacy report / App Store validation with the final dependency graph, Keychain behavior, and signing identity.
 - Complete manual sandbox QA for file import, video import, template import/export, weather, MapKit, and MOV export.
 - Prepare final App Store screenshots, privacy policy, support URL, review notes, and sample review assets.

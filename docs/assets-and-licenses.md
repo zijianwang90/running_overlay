@@ -36,6 +36,10 @@ documented.
 - Weather condition PNGs under
   `Sources/RunningOverlay/Resources/Icons/` are project assets contributed by
   the repository owner and distributed under the repository license.
+- The Running Overlay AppIcon renditions under
+  `AppStore/Assets.xcassets/AppIcon.appiconset/` are derived from artwork
+  supplied by the repository owner and distributed under the repository
+  license.
 - Design mockups under `docs/design/` are project documentation assets and
   are distributed under the repository license.
 - Product screenshots under `docs/assets/screenshots/` are project

@@ -240,8 +240,8 @@ enum IconAssetResolver {
     /// Resolve a bundled SVG by base name (no extension). Looks under
     /// `Resources/Icons/` in the executable's resource bundle.
     static func bundledSVGImage(name: String) -> NSImage? {
-        guard let url = Bundle.module.url(forResource: name, withExtension: "svg", subdirectory: "Icons")
-            ?? Bundle.module.url(forResource: name, withExtension: "svg")
+        guard let url = Bundle.runningOverlayResources.url(forResource: name, withExtension: "svg", subdirectory: "Icons")
+            ?? Bundle.runningOverlayResources.url(forResource: name, withExtension: "svg")
         else { return nil }
         return NSImage(contentsOf: url)
     }
@@ -249,8 +249,8 @@ enum IconAssetResolver {
     /// Resolve a bundled raster image by base name and extension. Looks under
     /// `Resources/Icons/` in the executable's resource bundle.
     static func bundledImage(name: String, fileExtension: String = "png") -> NSImage? {
-        guard let url = Bundle.module.url(forResource: name, withExtension: fileExtension, subdirectory: "Icons")
-            ?? Bundle.module.url(forResource: name, withExtension: fileExtension)
+        guard let url = Bundle.runningOverlayResources.url(forResource: name, withExtension: fileExtension, subdirectory: "Icons")
+            ?? Bundle.runningOverlayResources.url(forResource: name, withExtension: fileExtension)
         else { return nil }
         return NSImage(contentsOf: url)
     }

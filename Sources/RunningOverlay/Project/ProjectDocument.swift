@@ -2966,12 +2966,12 @@ final class ProjectDocument: ObservableObject {
             return nil
         }
 
-        let url = Bundle.module.url(
+        let url = Bundle.runningOverlayResources.url(
                 forResource: resourceName,
                 withExtension: OverlayTemplateStore.fileExtension,
                 subdirectory: "Templates"
               )
-            ?? Bundle.module.url(
+            ?? Bundle.runningOverlayResources.url(
                 forResource: resourceName,
                 withExtension: OverlayTemplateStore.fileExtension
             )

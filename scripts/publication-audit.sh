@@ -62,6 +62,10 @@ required_files=(
   docs/app-store-readiness.md
   docs/project-log/2026-06.md
   docs/testing.md
+  RunningOverlay.xcodeproj/project.pbxproj
+  RunningOverlay.xcodeproj/xcshareddata/xcschemes/RunningOverlay.xcscheme
+  AppStore/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x.png
+  scripts/generate-xcode-project.rb
   .github/workflows/ci.yml
   .github/dependabot.yml
   .github/CODEOWNERS
