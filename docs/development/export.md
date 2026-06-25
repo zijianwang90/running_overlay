@@ -1,5 +1,17 @@
 # Export Development
 
+## Sandboxed Destination Access
+
+- Export destinations must use the URL returned directly by `NSOpenPanel`;
+  rebuilding a URL from displayed path text loses the sandbox authorization
+  context.
+- The suggested destination may point to the first source video's folder, but
+  it is not writable until the user explicitly selects a destination folder.
+- `SecurityScopedURLAccess` keeps access active for the complete asynchronous
+  export task and for synchronous diagnostic JSON writes.
+- Do not stop security-scoped access until all frame writes, profiling files,
+  and `AVAssetWriter` completion work have finished.
+
 ### Phase 6: Export
 
 - Status: first-pass implementation completed.

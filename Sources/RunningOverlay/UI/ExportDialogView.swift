@@ -9,7 +9,8 @@ struct ExportDialogView: View {
     @EnvironmentObject private var project: ProjectDocument
     @Environment(\.dismiss) private var dismiss
     @State private var destination = "~/Movies"
-    @State private var destinationURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Movies")
+    @State private var destinationURL: URL?
+    @State private var suggestedDestinationURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Movies")
     @State private var didInitializeDestination = false
     @State private var isAdvancedExpanded = false
     @State private var activeHelpTooltip: ExportHelpTooltipState?
@@ -77,19 +78,20 @@ struct ExportDialogView: View {
                 .foregroundStyle(EditorTheme.textMuted)
 
             HStack(spacing: 10) {
-                TextField("Destination", text: $destination)
-                    .textFieldStyle(.plain)
+                Text(destination)
                     .font(EditorTheme.bodyFont)
                     .foregroundStyle(EditorTheme.textPrimary)
                     .padding(.horizontal, 12)
                     .frame(height: EditorTheme.controlHeight)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .background(EditorTheme.surfaceControl)
                     .clipShape(RoundedRectangle(cornerRadius: EditorTheme.controlRadius))
                     .overlay {
                         RoundedRectangle(cornerRadius: EditorTheme.controlRadius)
                             .stroke(EditorTheme.borderSubtle, lineWidth: 1)
                     }
-                    .disabled(project.isExporting)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
 
                 Button {
                     chooseDestination()
@@ -190,19 +192,19 @@ struct ExportDialogView: View {
                 SettingsGroupBox {
                     advancedGroup(title: "Diagnostics") {
                         Button("Export Test Frame") {
-                            performExportAction { project.exportTestFrame(to: destinationURL) }
+                            performExportAction { project.exportTestFrame(to: $0) }
                         }
                         .buttonStyle(EditorSecondaryButtonStyle())
                         .disabled(project.isExporting)
 
                         Button("Export Test Clip") {
-                            performExportAction { project.exportTestClip(to: destinationURL) }
+                            performExportAction { project.exportTestClip(to: $0) }
                         }
                         .buttonStyle(EditorSecondaryButtonStyle())
                         .disabled(project.isExporting)
 
                         Button("Export Overlay JSON") {
-                            performExportAction { project.exportCurrentOverlayConfigurationJSON(to: destinationURL) }
+                            performExportAction { project.exportCurrentOverlayConfigurationJSON(to: $0) }
                         }
                         .buttonStyle(EditorSecondaryButtonStyle())
                         .disabled(project.isExporting)
@@ -228,7 +230,7 @@ struct ExportDialogView: View {
 
                     advancedGroup(title: "Full Activity") {
                         Button("Export Full Activity") {
-                            performExportAction { project.exportFullActivityOverlay(to: destinationURL) }
+                            performExportAction { project.exportFullActivityOverlay(to: $0) }
                         }
                         .buttonStyle(EditorSecondaryButtonStyle())
                         .disabled(project.isExporting)
@@ -253,7 +255,7 @@ struct ExportDialogView: View {
             .buttonStyle(EditorSecondaryButtonStyle())
 
             Button("Export") {
-                performExportAction { project.exportOverlays(to: destinationURL) }
+                performExportAction { project.exportOverlays(to: $0) }
             }
             .buttonStyle(EditorPrimaryButtonStyle())
             .keyboardShortcut(.defaultAction)
@@ -294,22 +296,27 @@ struct ExportDialogView: View {
             .padding(.leading, 14)
     }
 
-    private func chooseDestination() {
+    @discardableResult
+    private func chooseDestination() -> URL? {
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.canCreateDirectories = true
         panel.allowsMultipleSelection = false
-        panel.directoryURL = destinationURL
+        panel.directoryURL = destinationURL ?? suggestedDestinationURL
         if panel.runModal() == .OK, let url = panel.url {
             destinationURL = url
             destination = displayPath(for: url)
+            return url
         }
+        return nil
     }
 
-    private func performExportAction(_ action: () -> Void) {
-        destinationURL = URL(fileURLWithPath: (destination as NSString).expandingTildeInPath)
-        action()
+    private func performExportAction(_ action: (URL) -> Void) {
+        guard let destinationURL = destinationURL ?? chooseDestination() else {
+            return
+        }
+        action(destinationURL)
         dismiss()
     }
 
@@ -319,7 +326,7 @@ struct ExportDialogView: View {
         }
 
         let defaultURL = project.defaultExportDestinationURL
-        destinationURL = defaultURL
+        suggestedDestinationURL = defaultURL
         destination = displayPath(for: defaultURL)
         didInitializeDestination = true
     }

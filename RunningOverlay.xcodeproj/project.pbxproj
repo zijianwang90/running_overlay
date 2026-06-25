@@ -37,6 +37,7 @@
 		8862070F994FC309368F8C59 /* IntervalKindColorPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E9B66243E00697AEA0DFD4C /* IntervalKindColorPreferences.swift */; };
 		17332B0B06DA7222384224E7 /* ProjectDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD29E12DEC96C0190E385249 /* ProjectDocument.swift */; };
 		CF4CA719D540AFDAE0B6E4FD /* ProjectSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D2419C941377E081BBD8ED4 /* ProjectSettings.swift */; };
+		E5F333668A4C5FF99B660EDA /* SecurityScopedURLAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7606100D21E01FDB106BBF9A /* SecurityScopedURLAccess.swift */; };
 		AB840A15AD4B2EE164ABD7C3 /* UserAssetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFE8BD2F41AD8E4D8AADF542 /* UserAssetStore.swift */; };
 		BEC8055C7BC88AC23222F4FE /* TimelineModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD49E47BFAA48FB08BCA443D /* TimelineModel.swift */; };
 		7B0C594338A3E4F1DFE69CAC /* DecorOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F09A3B41E722847AA2B105 /* DecorOverlayDetailView.swift */; };
@@ -145,6 +146,7 @@
 		9E9B66243E00697AEA0DFD4C /* IntervalKindColorPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Project/IntervalKindColorPreferences.swift"; sourceTree = SOURCE_ROOT; };
 		AD29E12DEC96C0190E385249 /* ProjectDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Project/ProjectDocument.swift"; sourceTree = SOURCE_ROOT; };
 		2D2419C941377E081BBD8ED4 /* ProjectSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Project/ProjectSettings.swift"; sourceTree = SOURCE_ROOT; };
+		7606100D21E01FDB106BBF9A /* SecurityScopedURLAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Project/SecurityScopedURLAccess.swift"; sourceTree = SOURCE_ROOT; };
 		EFE8BD2F41AD8E4D8AADF542 /* UserAssetStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Project/UserAssetStore.swift"; sourceTree = SOURCE_ROOT; };
 		FD49E47BFAA48FB08BCA443D /* TimelineModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Timeline/TimelineModel.swift"; sourceTree = SOURCE_ROOT; };
 		04F09A3B41E722847AA2B105 /* DecorOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/DecorOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
@@ -254,6 +256,7 @@
 			9E9B66243E00697AEA0DFD4C /* IntervalKindColorPreferences.swift */,
 			AD29E12DEC96C0190E385249 /* ProjectDocument.swift */,
 			2D2419C941377E081BBD8ED4 /* ProjectSettings.swift */,
+			7606100D21E01FDB106BBF9A /* SecurityScopedURLAccess.swift */,
 			EFE8BD2F41AD8E4D8AADF542 /* UserAssetStore.swift */,
 			FD49E47BFAA48FB08BCA443D /* TimelineModel.swift */,
 			04F09A3B41E722847AA2B105 /* DecorOverlayDetailView.swift */,
@@ -389,6 +392,7 @@
 			8862070F994FC309368F8C59 /* IntervalKindColorPreferences.swift in Sources */,
 			17332B0B06DA7222384224E7 /* ProjectDocument.swift in Sources */,
 			CF4CA719D540AFDAE0B6E4FD /* ProjectSettings.swift in Sources */,
+			E5F333668A4C5FF99B660EDA /* SecurityScopedURLAccess.swift in Sources */,
 			AB840A15AD4B2EE164ABD7C3 /* UserAssetStore.swift in Sources */,
 			BEC8055C7BC88AC23222F4FE /* TimelineModel.swift in Sources */,
 			7B0C594338A3E4F1DFE69CAC /* DecorOverlayDetailView.swift in Sources */,

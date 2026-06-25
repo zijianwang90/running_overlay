@@ -3214,16 +3214,18 @@ final class ProjectDocument: ObservableObject {
     func exportCurrentOverlayConfigurationJSON(to destinationURL: URL) {
         let outputURL = destinationURL.appendingPathComponent("overlay_configuration.json")
         do {
-            try FileManager.default.createDirectory(at: destinationURL, withIntermediateDirectories: true)
-            let snapshot = OverlayTemplate(
-                name: "Current Overlay Configuration",
-                layout: overlayLayout,
-                referenceResolution: overlayTemplateReferenceResolution
-            )
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(snapshot)
-            try data.write(to: outputURL)
+            try SecurityScopedURLAccess.withAccess(to: destinationURL) {
+                try FileManager.default.createDirectory(at: destinationURL, withIntermediateDirectories: true)
+                let snapshot = OverlayTemplate(
+                    name: "Current Overlay Configuration",
+                    layout: overlayLayout,
+                    referenceResolution: overlayTemplateReferenceResolution
+                )
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                let data = try encoder.encode(snapshot)
+                try data.write(to: outputURL)
+            }
             statusMessage = "Overlay configuration exported: \(outputURL.lastPathComponent)."
         } catch {
             statusMessage = "Overlay configuration export failed: \(error.localizedDescription)"
@@ -3306,15 +3308,17 @@ final class ProjectDocument: ObservableObject {
 
         Task {
             do {
-                try FileManager.default.createDirectory(at: destinationURL, withIntermediateDirectories: true)
-                try? FileManager.default.removeItem(at: outputURL)
-                try await SwiftUIOverlayVideoExporter.exportFramePNG(
-                    overlayLayout: overlayLayout,
-                    activity: exportActivity,
-                    elapsedTime: quantizedLayerDataTime(for: sampleTime),
-                    size: CGSize(width: settings.resolution.width, height: settings.resolution.height),
-                    outputURL: outputURL
-                )
+                try await SecurityScopedURLAccess.withAccess(to: destinationURL) {
+                    try FileManager.default.createDirectory(at: destinationURL, withIntermediateDirectories: true)
+                    try? FileManager.default.removeItem(at: outputURL)
+                    try await SwiftUIOverlayVideoExporter.exportFramePNG(
+                        overlayLayout: overlayLayout,
+                        activity: exportActivity,
+                        elapsedTime: quantizedLayerDataTime(for: sampleTime),
+                        size: CGSize(width: settings.resolution.width, height: settings.resolution.height),
+                        outputURL: outputURL
+                    )
+                }
                 statusMessage = "Test frame exported: \(outputURL.lastPathComponent)."
             } catch {
                 statusMessage = "Test frame export failed: \(error.localizedDescription)"
@@ -3595,8 +3599,10 @@ final class ProjectDocument: ObservableObject {
 
         exportTask = Task {
             do {
-                try await SwiftUIOverlayVideoExporter.export(job: job) { [weak self] progress in
-                    self?.updateExportProgress(progress)
+                try await SecurityScopedURLAccess.withAccess(to: job.destinationURL) {
+                    try await SwiftUIOverlayVideoExporter.export(job: job) { [weak self] progress in
+                        self?.updateExportProgress(progress)
+                    }
                 }
                 exportProgress?.markCompleted()
                 statusMessage = completedMessage

@@ -85,4 +85,6 @@ same source and resource tree.
   account and fill the Apple Developer Team ID after membership activation.
 - Run privacy report / App Store validation with the final dependency graph, Keychain behavior, and signing identity.
 - Complete manual sandbox QA for file import, video import, template import/export, weather, MapKit, and MOV export.
+- Confirm clip, full-activity, test-frame, test-clip, and overlay-JSON exports
+  succeed after selecting a destination folder in the sandboxed app.
 - Prepare final App Store screenshots, privacy policy, support URL, review notes, and sample review assets.
