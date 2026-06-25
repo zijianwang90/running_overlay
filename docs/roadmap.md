@@ -156,7 +156,7 @@ Completed so far:
 - Standalone `.rotemplate` import/export.
 - Template management moved from Project Settings into the left `Templates` Pool.
 - Built-in templates: `Easy Run`, `Interval Workout`, and `Race`.
-- `Easy Run` now loads from the bundled `EasyRun.rotemplate` resource; `Interval Workout` and `Race` remain generated first-pass built-ins.
+- `Easy Run` now loads from the bundled `EasyRun.rotemplate` resource; `Interval Workout` and `Race` load from bundled `IntervalWorkout.rotemplate` and `Race.rotemplate` resources.
 - Confirmation before any template replaces the current overlay layout.
 - Compact user-template row context actions for rename, duplicate, export, and delete.
 

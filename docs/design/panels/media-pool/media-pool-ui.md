@@ -392,9 +392,8 @@ Built-in templates:
 Initial built-in template contents:
 
 - `Easy Run`: bundled from `Sources/RunningOverlay/Resources/Templates/EasyRun.rotemplate`.
-- `Interval Workout`: Interval HUD Bar, Elapsed Time, Pace, Heart Rate.
-- `Race`: Distance Timeline, Running Gauge, Route Map, Pace.
-- `Interval Workout` and `Race` are first-pass placeholder mappings. Each element should receive a reasonable normalized position so templates do not stack every overlay at center.
+- `Interval Workout`: bundled from `Sources/RunningOverlay/Resources/Templates/IntervalWorkout.rotemplate`.
+- `Race`: bundled from `Sources/RunningOverlay/Resources/Templates/Race.rotemplate`.
 
 User templates:
 

@@ -425,7 +425,7 @@ Current implementation status:
 - Templates are persisted as JSON under Application Support.
 - Users can apply, delete, import, and export local templates.
 - Applying a template replaces the current overlay layout and participates in project undo/redo.
-- The `Easy Run` built-in template loads from the bundled `EasyRun.rotemplate` resource; generated built-in mappings are used for the remaining first-pass built-ins.
+- The `Easy Run` built-in template loads from the bundled `EasyRun.rotemplate` resource; `Interval Workout` and `Race` load from bundled `IntervalWorkout.rotemplate` and `Race.rotemplate` resources.
 - Saved template JSON includes schema version, name, timestamps, reference project resolution, and overlay elements.
 
 Open questions:

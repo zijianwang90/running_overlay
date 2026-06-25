@@ -331,13 +331,15 @@
       {
         "id": "intervalWorkout",
         "name": "Interval Workout",
-        "elements": ["intervalHUDBar", "elapsedTime", "pace", "heartRate"],
+        "resource": "Sources/RunningOverlay/Resources/Templates/IntervalWorkout.rotemplate",
+        "elements": ["routeMap", "elapsedTime", "realTime", "weatherWidget", "intervalHUDBar", "intervalTimeline"],
         "actions": ["applyWithConfirmation"]
       },
       {
         "id": "race",
         "name": "Race",
-        "elements": ["distanceTimeline", "runningGauge", "routeMap", "pace"],
+        "resource": "Sources/RunningOverlay/Resources/Templates/Race.rotemplate",
+        "elements": ["pace", "heartRate", "cadence", "routeMap", "distanceTimeline", "elapsedTime", "realTime", "power", "weatherWidget", "zoneEdgeBar"],
         "actions": ["applyWithConfirmation"]
       }
     ],

@@ -109,22 +109,14 @@ struct BuiltInOverlayTemplate: Identifiable, Equatable {
         BuiltInOverlayTemplate(
             id: "intervalWorkout",
             name: "Interval Workout",
-            elements: [
-                Element(type: .intervalHUDBar, positionX: 0.5, positionY: 0.82, scale: 1.0),
-                Element(type: .elapsedTime, positionX: 0.5, positionY: 0.16, scale: 1.0),
-                Element(type: .pace, positionX: 0.78, positionY: 0.16, scale: 1.0),
-                Element(type: .heartRate, positionX: 0.22, positionY: 0.16, scale: 1.0)
-            ]
+            elements: [],
+            resourceName: "IntervalWorkout"
         ),
         BuiltInOverlayTemplate(
             id: "race",
             name: "Race",
-            elements: [
-                Element(type: .distanceTimeline, positionX: 0.5, positionY: 0.86, scale: 1.0),
-                Element(type: .runningGauge, positionX: 0.18, positionY: 0.25, scale: 1.0),
-                Element(type: .routeMap, positionX: 0.82, positionY: 0.26, scale: 0.9),
-                Element(type: .pace, positionX: 0.82, positionY: 0.82, scale: 1.0)
-            ]
+            elements: [],
+            resourceName: "Race"
         )
     ]
 

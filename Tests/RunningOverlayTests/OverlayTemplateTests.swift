@@ -422,7 +422,10 @@ struct OverlayTemplateTests {
         let race = try #require(BuiltInOverlayTemplate.all.first { $0.id == "race" })
 
         project.applyBuiltInOverlayTemplate(race)
-        #expect(project.overlayLayout.elements.map(\.type) == [.distanceTimeline, .runningGauge, .routeMap, .pace])
+        #expect(project.overlayLayout.elements.map(\.type) == [
+            .pace, .heartRate, .cadence, .routeMap, .distanceTimeline,
+            .elapsedTime, .realTime, .power, .weatherWidget, .zoneEdgeBar
+        ])
         #expect(project.overlayLayout.elements.first?.id != originalID)
         #expect(project.selection == .none)
 
@@ -451,6 +454,39 @@ struct OverlayTemplateTests {
         #expect(project.overlayLayout.elements.first?.style.unitFontName == "PT Mono")
         #expect(project.overlayLayout.elements.last?.style.weatherWidget.locationTextStyle.fontName == "PT Mono")
         #expect(project.overlayLayout.elements.last?.style.weatherWidget.temperatureTextStyle.fontName == "PT Mono")
+    }
+
+    @Test func intervalWorkoutBuiltInTemplateLoadsBundledTemplateFile() throws {
+        let storeURL = temporaryTemplateURL()
+        defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }
+
+        let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
+        let intervalWorkout = try #require(BuiltInOverlayTemplate.all.first { $0.id == "intervalWorkout" })
+
+        project.applyBuiltInOverlayTemplate(intervalWorkout)
+
+        #expect(project.overlayLayout.elements.map(\.type) == [
+            .routeMap, .elapsedTime, .realTime, .weatherWidget, .intervalHUDBar, .intervalTimeline
+        ])
+        #expect(project.overlayLayout.elements.first?.position.x == 0.110546875)
+        #expect(project.overlayLayout.elements.last?.type == .intervalTimeline)
+    }
+
+    @Test func raceBuiltInTemplateLoadsBundledTemplateFile() throws {
+        let storeURL = temporaryTemplateURL()
+        defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }
+
+        let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
+        let race = try #require(BuiltInOverlayTemplate.all.first { $0.id == "race" })
+
+        project.applyBuiltInOverlayTemplate(race)
+
+        #expect(project.overlayLayout.elements.map(\.type) == [
+            .pace, .heartRate, .cadence, .routeMap, .distanceTimeline,
+            .elapsedTime, .realTime, .power, .weatherWidget, .zoneEdgeBar
+        ])
+        #expect(project.overlayLayout.elements.first?.position.x == 0.030665921145385626)
+        #expect(project.overlayLayout.elements.last?.type == .zoneEdgeBar)
     }
 
     @Test func fitImportAppliesEasyRunTemplateWhenNoTemplateWasUsedBefore() throws {
@@ -491,7 +527,10 @@ struct OverlayTemplateTests {
 
         project.finishFitImport(activity: sampleActivity(), sourceName: "race.fit")
 
-        #expect(project.overlayLayout.elements.map(\.type) == [.distanceTimeline, .runningGauge, .routeMap, .pace])
+        #expect(project.overlayLayout.elements.map(\.type) == [
+            .pace, .heartRate, .cadence, .routeMap, .distanceTimeline,
+            .elapsedTime, .realTime, .power, .weatherWidget, .zoneEdgeBar
+        ])
         #expect(project.statusMessage.contains("Applied template: Race"))
         #expect(project.toastMessage == "Template applied: Race")
     }
