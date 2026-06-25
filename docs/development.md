@@ -567,3 +567,28 @@ For each development step:
 - Update `docs/architecture.md` if data flow, rendering flow, or subsystem responsibilities change.
 - Add or update an ADR when a decision would be expensive to reverse.
 - Add an entry to `docs/project-log.md` with date, summary, files changed, and verification performed.
+
+## 8. Mac App Store Packaging
+
+The App Store readiness worktree adds release packaging files under `AppStore/`,
+`Config/`, and `scripts/`. SwiftPM remains the source-of-truth build graph for
+normal development, while `scripts/build-appstore-app.sh` assembles a macOS app
+bundle for sandbox/signing preflight.
+
+Release configuration rules:
+
+- Keep App Store-only bundle metadata in `AppStore/Info.plist`.
+- Keep sandbox permissions in `AppStore/RunningOverlay.entitlements`.
+- Keep privacy declarations in `AppStore/PrivacyInfo.xcprivacy` and update them
+  whenever file access, network services, location use, analytics, or third-party
+  SDK behavior changes.
+- Use `Config/AppStore.xcconfig` for product defaults and placeholders that must
+  be replaced by real Apple Developer account values before submission.
+- Run `scripts/validate-appstore-config.sh` before release work to catch plist,
+  JSON, and unresolved-placeholder issues.
+- Run `scripts/build-appstore-app.sh` for local app-bundle verification. Without
+  `RUNNING_OVERLAY_SIGN_IDENTITY`, the script uses ad-hoc signing only and is not
+  suitable for App Store upload.
+
+Current App Store submission blockers are tracked in
+`docs/app-store-readiness.md`.

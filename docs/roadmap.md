@@ -246,3 +246,31 @@ Status: not started
 - Error handling.
 - Test fixtures.
 - Export verification.
+
+## Milestone 8: Mac App Store Readiness
+
+Status: in progress
+
+- Prepare a sandboxed, signed macOS app bundle for first Mac App Store submission.
+- Add bundle metadata, entitlements, privacy manifest, release configuration, and
+  App Store readiness documentation.
+- Preserve the SwiftPM development workflow while adding a release packaging
+  path.
+
+Completed so far:
+
+- Created the `codex/app-store-readiness` branch in a sibling worktree.
+- Added App Store bundle metadata, sandbox entitlements, privacy manifest, asset
+  catalog placeholders, and release xcconfig.
+- Added local validation, app bundle packaging, and archive-shape scripts.
+- Added `docs/app-store-readiness.md` to track metadata, privacy, and release
+  blockers.
+
+Pending:
+
+- Replace placeholder bundle id/team/signing values with real Apple Developer
+  account settings.
+- Add production macOS app icon images and App Store screenshots.
+- Decide whether final upload will use a full Xcode app target/Organizer archive
+  or a promoted script-built package.
+- Complete sandbox, privacy report, and App Store Connect validation.

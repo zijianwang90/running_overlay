@@ -1,5 +1,21 @@
 # Running Overlay Project Log
 
+## 2026-06-22
+
+### Mac App Store Readiness Bootstrap
+
+- Created the `codex/app-store-readiness` branch in the sibling worktree
+  `/Users/codywang/Documents/Projects/running_overlay_appstore`.
+- Added App Store bundle metadata, sandbox entitlements, privacy manifest,
+  placeholder asset catalog entries, and release xcconfig defaults.
+- Added validation, app bundle packaging, and local archive-shape scripts for
+  release preflight while the project remains SwiftPM-first.
+- Added `docs/app-store-readiness.md` and updated requirements, development
+  guide, and roadmap with App Store privacy, sandbox, and release blockers.
+- Verification: `scripts/validate-appstore-config.sh`, `swift test`,
+  `scripts/build-appstore-app.sh`, `scripts/archive-appstore-app.sh`,
+  `git diff --check`.
+
 ## 2026-06-19
 
 ### User Template Update Action
