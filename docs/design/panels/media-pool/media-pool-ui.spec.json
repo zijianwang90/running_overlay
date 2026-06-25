@@ -339,7 +339,7 @@
         "id": "race",
         "name": "Race",
         "resource": "Sources/RunningOverlay/Resources/Templates/Race.rotemplate",
-        "elements": ["pace", "heartRate", "cadence", "routeMap", "distanceTimeline", "elapsedTime", "realTime", "power", "weatherWidget", "zoneEdgeBar"],
+        "elements": ["pace", "heartRate", "cadence", "routeMap", "distanceTimeline", "elapsedTime", "realTime", "power", "weatherWidget", "zoneEdgeBar", "elevationChart"],
         "actions": ["applyWithConfirmation"]
       }
     ],

@@ -424,7 +424,7 @@ struct OverlayTemplateTests {
         project.applyBuiltInOverlayTemplate(race)
         #expect(project.overlayLayout.elements.map(\.type) == [
             .pace, .heartRate, .cadence, .routeMap, .distanceTimeline,
-            .elapsedTime, .realTime, .power, .weatherWidget, .zoneEdgeBar
+            .elapsedTime, .realTime, .power, .weatherWidget, .zoneEdgeBar, .elevationChart
         ])
         #expect(project.overlayLayout.elements.first?.id != originalID)
         #expect(project.selection == .none)
@@ -483,10 +483,11 @@ struct OverlayTemplateTests {
 
         #expect(project.overlayLayout.elements.map(\.type) == [
             .pace, .heartRate, .cadence, .routeMap, .distanceTimeline,
-            .elapsedTime, .realTime, .power, .weatherWidget, .zoneEdgeBar
+            .elapsedTime, .realTime, .power, .weatherWidget, .zoneEdgeBar, .elevationChart
         ])
         #expect(project.overlayLayout.elements.first?.position.x == 0.030665921145385626)
-        #expect(project.overlayLayout.elements.last?.type == .zoneEdgeBar)
+        #expect(project.overlayLayout.elements.last?.type == .elevationChart)
+        #expect(project.overlayLayout.elements.last?.position.y == 0.9108545647558387)
     }
 
     @Test func fitImportAppliesEasyRunTemplateWhenNoTemplateWasUsedBefore() throws {
@@ -529,7 +530,7 @@ struct OverlayTemplateTests {
 
         #expect(project.overlayLayout.elements.map(\.type) == [
             .pace, .heartRate, .cadence, .routeMap, .distanceTimeline,
-            .elapsedTime, .realTime, .power, .weatherWidget, .zoneEdgeBar
+            .elapsedTime, .realTime, .power, .weatherWidget, .zoneEdgeBar, .elevationChart
         ])
         #expect(project.statusMessage.contains("Applied template: Race"))
         #expect(project.toastMessage == "Template applied: Race")
