@@ -84,7 +84,7 @@ enum MapSnapshotError: LocalizedError {
     }
 }
 
-private final class MapSnapshotImageBox: @unchecked Sendable {
+final class MapSnapshotImageBox: @unchecked Sendable {
     let image: NSImage?
 
     init(_ image: NSImage?) {
@@ -92,9 +92,17 @@ private final class MapSnapshotImageBox: @unchecked Sendable {
     }
 }
 
+final class RouteMapSnapshotCache: @unchecked Sendable {
+    let snapshots: [MapSnapshotRequest: NSImage]
+
+    init(_ snapshots: [MapSnapshotRequest: NSImage] = [:]) {
+        self.snapshots = snapshots
+    }
+}
+
 extension MapSnapshotProvider {
-    func snapshotImage(for request: MapSnapshotRequest) async -> NSImage? {
-        let box = await withCheckedContinuation { (continuation: CheckedContinuation<MapSnapshotImageBox, Never>) in
+    func snapshotImage(for request: MapSnapshotRequest) async -> MapSnapshotImageBox {
+        await withCheckedContinuation { (continuation: CheckedContinuation<MapSnapshotImageBox, Never>) in
             snapshot(for: request) { snapshotResult in
                 let image: NSImage?
                 switch snapshotResult {
@@ -106,7 +114,6 @@ extension MapSnapshotProvider {
                 continuation.resume(returning: MapSnapshotImageBox(image))
             }
         }
-        return box.image
     }
 }
 

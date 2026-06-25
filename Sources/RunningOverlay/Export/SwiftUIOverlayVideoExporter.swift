@@ -441,7 +441,7 @@ struct SwiftUIOverlayVideoExporter {
                 overlays: supportedOverlays,
                 activity: activity,
                 elapsedTime: elapsedTime,
-                routeMapSnapshots: routeMapSnapshots
+                routeMapSnapshots: routeMapSnapshots.snapshots
             )
             let renderer = ImageRenderer(content: frameView)
             renderer.isOpaque = false
@@ -468,7 +468,7 @@ struct SwiftUIOverlayVideoExporter {
         staticLayer: CGImage?,
         staticRenderDuration: TimeInterval,
         routeMapStaticLayerCache: [UUID: ExportOverlayRenderedImage],
-        routeMapSnapshots: [MapSnapshotRequest: NSImage],
+        routeMapSnapshots: RouteMapSnapshotCache,
         progress: @escaping @MainActor (OverlayExportProgress) -> Void
     ) async throws -> OverlayExportSegmentProfile {
         let outputURL = outputURL(for: segment, destinationURL: job.destinationURL)
@@ -853,7 +853,7 @@ struct SwiftUIOverlayVideoExporter {
         overlays: [OverlayElement],
         activity: ActivityTimeline,
         size: CGSize
-    ) async -> [MapSnapshotRequest: NSImage] {
+    ) async -> RouteMapSnapshotCache {
         let context = OverlayRenderContext(canvasSize: size, activity: activity, elapsedTime: 0)
         let requests = Set(overlays.compactMap { element -> MapSnapshotRequest? in
             guard element.type == .routeMap else { return nil }
@@ -861,20 +861,20 @@ struct SwiftUIOverlayVideoExporter {
             return RouteMapSnapshotRequestBuilder.request(for: element, layout: layout)
         })
         guard !requests.isEmpty else {
-            return [:]
+            return RouteMapSnapshotCache()
         }
 
         let provider = MapKitMapSnapshotProvider()
         var snapshots: [MapSnapshotRequest: NSImage] = [:]
         for request in requests {
             if Task.isCancelled {
-                return snapshots
+                return RouteMapSnapshotCache(snapshots)
             }
-            if let image = await provider.snapshotImage(for: request) {
+            if let image = await provider.snapshotImage(for: request).image {
                 snapshots[request] = image
             }
         }
-        return snapshots
+        return RouteMapSnapshotCache(snapshots)
     }
 
     private static func summarizeFrameTimings(_ timings: [ExportFrameTiming]) -> ExportFrameTimingSummary {
@@ -947,7 +947,7 @@ struct SwiftUIOverlayVideoExporter {
         overlays: [OverlayElement],
         activity: ActivityTimeline,
         elapsedTime: TimeInterval,
-        routeMapSnapshots: [MapSnapshotRequest: NSImage]
+        routeMapSnapshots: RouteMapSnapshotCache
     ) async throws -> CGImage {
         guard let cgImage = await MainActor.run(body: {
             autoreleasepool {
@@ -956,7 +956,7 @@ struct SwiftUIOverlayVideoExporter {
                     overlays: overlays,
                     activity: activity,
                     elapsedTime: elapsedTime,
-                    routeMapSnapshots: routeMapSnapshots
+                    routeMapSnapshots: routeMapSnapshots.snapshots
                 )
                 let renderer = ImageRenderer(content: frameView)
                 renderer.isOpaque = false
@@ -976,7 +976,7 @@ struct SwiftUIOverlayVideoExporter {
         overlays: [OverlayElement],
         activity: ActivityTimeline,
         elapsedTime: TimeInterval,
-        routeMapSnapshots: [MapSnapshotRequest: NSImage]
+        routeMapSnapshots: RouteMapSnapshotCache
     ) async throws -> CGImage? {
         guard !overlays.isEmpty, renderRect.width > 0, renderRect.height > 0 else {
             return nil
@@ -990,7 +990,7 @@ struct SwiftUIOverlayVideoExporter {
                     overlays: overlays,
                     activity: activity,
                     elapsedTime: elapsedTime,
-                    routeMapSnapshots: routeMapSnapshots
+                    routeMapSnapshots: routeMapSnapshots.snapshots
                 )
                 let renderer = ImageRenderer(content: layerView)
                 renderer.isOpaque = false
@@ -1010,7 +1010,7 @@ struct SwiftUIOverlayVideoExporter {
         element: OverlayElement,
         activity: ActivityTimeline,
         elapsedTime: TimeInterval,
-        routeMapSnapshots: [MapSnapshotRequest: NSImage],
+        routeMapSnapshots: RouteMapSnapshotCache,
         showsBaseContent: Bool,
         showsCurrentMarker: Bool,
         showsContainerEffects: Bool
@@ -1027,7 +1027,7 @@ struct SwiftUIOverlayVideoExporter {
                     element: element,
                     activity: activity,
                     elapsedTime: elapsedTime,
-                    routeMapSnapshots: routeMapSnapshots,
+                    routeMapSnapshots: routeMapSnapshots.snapshots,
                     showsBaseContent: showsBaseContent,
                     showsCurrentMarker: showsCurrentMarker,
                     showsContainerEffects: showsContainerEffects
