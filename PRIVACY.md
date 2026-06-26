@@ -34,9 +34,9 @@ overlay or triggers a weather refresh.
   activity date, and requested weather fields.
 - OpenWeather requests receive latitude, longitude, activity timestamp,
   requested units, and the user's OpenWeather API key.
-- macOS geocoding services may be used to resolve the FIT activity coordinate
-  into a readable place name. Running Overlay does not request the Mac's
-  current location.
+- macOS geocoding services may be used to turn the selected FIT activity's
+  coordinates into a readable place name. Running Overlay does not use macOS
+  Location Services to request the Mac's current device location.
 
 Source videos, preview frames, exported overlays, complete FIT files, heart-rate
 streams, cadence, pace, power, and layout templates are not uploaded to the

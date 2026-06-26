@@ -199,7 +199,7 @@ New file following `NumericOverlayDetailView` structure. Use `InspectorDense*` p
 |---|---|
 | Preset | Compact Styles icon buttons over all presets → `applyWeatherWidgetPreset`; no duplicate text-only Preset menu in 1.0 |
 | Appearance | Palette, card opacity, corner radius, show divider, divider color, divider width, divider opacity |
-| Location | API fetch buttons for activity/current location; TextField for `locationText`; toggles for showLocation, showWeekday |
+| Location | API fetch button for activity GPS start location; TextField for `locationText`; toggles for showLocation, showWeekday |
 | Weather | Combined content/temperature/metric/icon controls: condition, manual values, unit, Style-specific metric slots, showIcon, showConditionLabel |
 | Layout | `OverlayLayoutInspectorRows` with position/scale/width/height bindings |
 Shared `OverlayBackgroundInspectorModule`, `OverlayBorderInspectorModule`, and `OverlayEffectsInspectorModule` are intentionally omitted for Weather Widget 1.0.
@@ -301,7 +301,7 @@ Implemented:
 Remaining:
 
 - Add broader WMO edge-case tests beyond the initial parser/URL coverage.
-- Add an app-bundle location usage description if the packaged macOS app needs a custom permission prompt.
+- Keep the packaged app free of location permission prompts while weather lookup uses only imported FIT coordinates.
 - Expand automatic localization beyond the current location-text heuristic.
 
 ## Resolved Decisions
