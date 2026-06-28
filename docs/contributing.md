@@ -18,7 +18,7 @@ Clone the repository and validate the checkout:
 
 ## Workflow
 
-1. Start from the latest `develop`.
+1. Start from the latest `main`.
 2. Choose an issue with explicit acceptance criteria, or discuss larger work
    before implementation.
 3. Use a short-lived branch. Independent large features should use a sibling
@@ -29,8 +29,8 @@ Clone the repository and validate the checkout:
 7. Run `./scripts/check.sh` and any relevant focused or visual tests.
 8. Open a pull request using the repository template.
 
-`main` is reserved for release-ready code. Normal contributions target
-`develop`.
+All contributions target `main` through pull requests. Keep `main` protected,
+release-ready, and free of direct commits.
 
 ## AI-Assisted Contributions
 

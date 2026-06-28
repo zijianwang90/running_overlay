@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Security fixes are applied to the latest development and release branches.
+Security fixes are applied to the latest protected release-ready branch.
 Pre-release builds may change without backward compatibility guarantees.
 
 ## Reporting
