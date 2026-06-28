@@ -2,6 +2,7 @@ import Foundation
 
 @main
 enum RunningOverlayMain {
+    @MainActor
     static func main() {
         do {
             if let command = try HeadlessBenchmarkCommand.parse() {

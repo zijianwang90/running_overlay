@@ -13,7 +13,7 @@ enum SecurityScopedURLAccess {
     }
 
     @MainActor
-    static func withAccess<T>(
+    static func withAccess<T: Sendable>(
         to url: URL,
         _ operation: () async throws -> T
     ) async rethrows -> T {

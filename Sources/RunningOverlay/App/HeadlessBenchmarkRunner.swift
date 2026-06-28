@@ -5,6 +5,7 @@ import Foundation
 /// `ImageRenderer` and other MainActor SwiftUI work executes reliably from
 /// `swift run RunningOverlay --benchmark-export …` without launching the editor.
 enum HeadlessBenchmarkRunner {
+    @MainActor
     static func run(_ command: HeadlessBenchmarkCommand) -> Int32 {
         let app = NSApplication.shared
         app.setActivationPolicy(.prohibited)
