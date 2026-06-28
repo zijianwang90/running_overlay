@@ -43,12 +43,21 @@ Initial settings:
   - 60
 - Layer data update frame rate presets:
   - 1 fps
+  - 2 fps
   - 5 fps
   - 10 fps
   - 15 fps
   - 30 fps
 
-The layer data update frame rate controls how often FIT-derived values change in overlay preview and export. It is separate from the project video frame rate: a 30 fps project can still update data values at 1, 5, 10, or 15 fps when the user wants a less jittery data layer.
+The layer data update frame rate controls how often FIT-derived values change in overlay preview and export. It is separate from the project video frame rate: a 30 fps project can still update data values at 1, 2, 5, 10, or 15 fps when the user wants a less jittery data layer.
+New projects default to 5 fps so exports reuse more overlay frames while still preserving the configured video frame rate.
+
+Project Settings also exposes the Font Library used by overlay font menus. The Font Library can restore its favorite fonts and default family to the default monospaced overlay set: `PT Mono`, `Monaco`, `Menlo`, and `Andale Mono`, with `PT Mono` as the default.
+
+Project Settings includes a Weather section with an OpenWeather API key field.
+The key is stored in macOS Keychain and excluded from project snapshots and
+templates. Weather overlays use it only when their data source is OpenWeather
+API; Open-Meteo remains available without a key.
 
 Open questions:
 
@@ -73,7 +82,7 @@ Layout interaction requirements:
 
 - The media browser, preview, and inspector widths are adjustable by dragging their boundaries.
 - The media browser default width is 380 px with a 300 px minimum.
-- The inspector default width is 400 px with a 320 px minimum.
+- The inspector default width is 460 px with a 460 px minimum.
 - Media Pool width must remain stable across all media operations; importing, matching, or filtering media must not change the Media Pool pane width.
 - Inspector width must remain stable when switching between outer/detail/editing states or when selecting a timeline clip; internal Inspector hierarchy changes must not resize the right pane.
 - Resizable split panes should keep stable minimum widths so dense controls and row labels do not collapse.
@@ -150,7 +159,7 @@ Current implementation status:
 - While dragging media over the timeline, the target layer is highlighted.
 - When dragging below existing layers, exactly one new layer drop target is exposed.
 - Manually placed media is marked as aligned by manual placement.
-- Existing timeline clips can be dragged horizontally to adjust their timeline position.
+- Existing timeline clips can be dragged horizontally to adjust their timeline position. For timestamp-matched media, dragging changes the clip offset while preserving the automatic matched start; for manually placed media, dragging changes the editable aligned time while preserving the offset.
 - The timeline uses project time, not only activity elapsed time, so video clips can start before the FIT activity begins or continue after the FIT activity ends.
 - The FIT activity is shown as an independent `FIT` layer whose span represents activity elapsed `00:00` through activity finish.
 - The FIT layer defaults to filling the timeline when there are no out-of-range clips, but videos with real timestamps before start or after finish can extend the project timeline to the left or right.
@@ -164,6 +173,7 @@ Current implementation status:
 - Timeline zooming keeps the current playhead in view and recenters the view on the playhead when zoom changes.
 - The timeline header includes per-track preview enable/disable controls in an eye-icon menu. The previous explicit preview-track picker has been removed; preview track auto-selection is implicit, and users only need to toggle individual track visibility.
 - The timeline header includes an icon-only collapse/expand toggle. Collapsed mode hides gaps without video; for a single layer, clips are displayed back-to-back, and for multiple layers, FIT-only regions with no video on any layer are hidden while overlapping video spans remain aligned.
+- In collapsed mode, the FIT layer should only draw green FIT blocks where the visible video span overlaps the FIT activity range. Video-only spans outside the activity should remain empty above the clip.
 - The timeline collapse state is communicated by the header control style; the timeline must not introduce a separate `Gaps hidden` status row/band.
 - When the timeline is collapsed, playback skips hidden empty regions and continues at the next video span.
 - When the timeline is collapsed, existing video clips cannot be dragged horizontally; users must expand the timeline before timing edits that depend on full time context.
@@ -227,7 +237,7 @@ When a timeline clip is selected:
 
 - Show clip position fine-tuning controls.
 - Fine-tuning is relative to the app's current best FIT-to-video alignment.
-- Provide numeric second-based inputs for clip start and alignment offset.
+- Provide numeric second-based inputs for manually placed clip aligned time and alignment offset. Timestamp-matched clips show the automatic matched start as read-only and expose offset as the adjustment control.
 - Double-clicking timing field labels should reset the corresponding value to its default.
 - Provide an action: "Apply to all clips in this layer".
 - The action applies the same offset to all clips in the currently selected timeline layer.
@@ -296,9 +306,11 @@ Current implementation status:
 - This includes segmented controls in Overlay Pool and dense detail inspectors (Numeric Overlay, Running Gauge, and Route Map).
 - Clicking an add tile creates the overlay and opens its detail editor.
 - Selected overlay elements expose current value, normalized position, scale, preset, font family, font weight, font size, foreground color, background opacity, shadow opacity, and shadow radius controls in the Inspector detail state.
-- Numeric overlays (heart rate, pace, calories, elapsed time, real time, distance, elevation, cadence, power, and advanced running metrics) use the dense `NumericOverlayDetailView` Inspector with Content, Layout, Typography (value), Label, Unit, Color, Background, and Effects sections matching `docs/design/overlays/numeric/numeric-overlay-ui.md`. Shared Layout uses Position/Scale/Width/Height/Opacity (no Rotation).
+- Numeric overlays (heart rate, pace, calories, elapsed time, real time, date, distance, elevation, cadence, power, and advanced running metrics) use the dense `NumericOverlayDetailView` Inspector with Content, Layout, Typography (value), Label, Unit, Color, Background, and Effects sections matching `docs/design/overlays/numeric/numeric-overlay-ui.md`. Shared Layout uses Position/Scale/Width/Height/Opacity (no Rotation).
+- The Date numeric overlay uses the activity timestamp at the current playhead and offers common year-month-day and month-day formats: `YYYY-MM-DD`, `YYYY/MM/DD`, `MM/DD/YYYY`, `MM-DD`, `MM/DD`, and abbreviated `Month D`.
 - Numeric overlay defaults now standardize to `Minimal Clean` for all numeric types.
 - Numeric overlay style supports per-overlay unit option, label/unit visibility toggles, custom label text, independent label/unit positions (`top/bottom/left/right`), independent label/unit typography (`font`, `size`, `weight`), rotation, accent color, background enable/color/radius/padding plus fade-out + gaussian blur controls, and shadow enable/offset controls. New fields decode with safe defaults so existing projects and templates remain compatible.
+- Numeric overlay unit text stays on one line; inline units grow the natural text frame instead of wrapping. Layout exposes optional minimum width and height controls so text overlays can reserve extra space without shrinking content below its measured size.
 - Added-overlay rows now support per-element visibility and lock toggles with persistent model fields.
 - Visibility off hides the element in both Preview and exported overlay frames.
 - Lock on keeps the element visible but prevents Preview-canvas selection and dragging.
@@ -306,7 +318,7 @@ Current implementation status:
 - Property paste is limited to the same overlay category (for example, numeric -> numeric only).
 - Selected text overlays expose a built-in style picker as the first Inspector control, with Minimal, Pill Badge, Metric Card, Big Number, Sport Watch, Split Label, Inline Ghost, Accent Bar, Sport Neon, and Serif Editorial presets.
 - Numeric overlay presets carry recommended typography tokens (value font family/weight/size, label/unit visibility, label/unit defaults, background, accent color); selecting a preset snaps those fields so the overlay matches the design intent without further tuning.
-- Selected Running Gauge overlays use the dense `RunningGaugeOverlayDetailView` Inspector with eleven sections that share the exact tokens, row heights, controls, and section disclosure behavior of `NumericOverlayDetailView`: Style Preset, Position & Scale, Data Layout, Region Settings, Dial, Ring, Ticks, Dividers, Typography, Color, Effects.
+- Selected Running Gauge overlays use the dense `RunningGaugeOverlayDetailView` Inspector with eleven sections that share the exact tokens, row heights, controls, and section disclosure behavior of `NumericOverlayDetailView`: Style Preset, Position & Scale, Data Layout, Region Settings, Dial, Ring, Ticks, Dividers, Typography, Color, Effects. Running Gauge does not expose shared Background/Border modules because its renderer consumes the Dial background controls instead of the generic overlay background fields.
   - Style Preset offers Minimal Sport, High Contrast Sport, Road Run, Trail Adventure, Future Tech, Retro Digital, and Premium Glass; selecting a preset reseeds the gauge sub-style without touching the user's data layout / region bindings.
   - Data Layout offers seven layout presets (Top / Bottom, Top / Middle / Bottom, Three Zones, Top + Two Middle + Bottom, Top + Three Middle + Bottom, Four Zones, Five Zones); choosing a layout regenerates the recommended per-region metric defaults.
   - Region Settings lists every visible region with an inline metric picker (Distance, Pace, Elapsed Time, Real Time, Heart Rate, Power, Cadence, Elevation, Calories) and an expandable per-region drawer for Custom Label, Show Label / Show Unit, Value Size, Value Weight, and Value Color.
@@ -318,10 +330,14 @@ Current implementation status:
 - Timeline ruler hover data appears above the time scale, not under the cursor, with an arrow pointing to the hovered ruler position.
 - A muted red playhead with a small downward-pointing triangle inside the ruler band is shown on timeline tracks. The vertical line starts from inside the ruler and extends down through the visible tracks; neither the line nor the triangle is allowed to extend above the ruler.
 - The Distance Timeline overlay renders a configurable compact progress module with minimal, dense, sport, splits, glass, neon, lower-third, and route presets.
+- Distance Timeline Value can show either `current / total unit` or only `current unit`; existing projects default to showing total distance.
+- Distance Timeline Stats Bars must remain outside progress, axis-label, and marker-label content in every placement. Inside mode groups the bar with the timeline background/border without overlaying that content.
+- Activity metric dropdowns for composite overlays must use the shared activity metric catalog so new numeric activity metrics can surface consistently in Distance Timeline custom values, Stats Bar slots, Running Gauge regions, and Interval HUD Bar metric rows.
 - Distance Timeline presets can control value/label/percent content, background, border, padding, track height, ticks, current marker, glow, fade amount, media slot for applicable presets, route elevation underlay, and GPS sampled route geometry for the route preset.
 - Distance Timeline media slots support system icons plus embedded static or animated SVG assets. Embedded SVG assets must persist through overlay templates and render deterministically in preview and export.
 - The live elevation chart overlay renders as a compact line chart with a playhead marker.
 - The Running Gauge overlay renders a circular dashboard with a configurable dial background, optional outer ring, optional tick marks (count + major-every), optional progress ring (with mode: distance target / elapsed time / HR zone / power zone / pace intensity / custom), optional divider lines, and per-region data text. The active layout preset (one of seven) determines which regions are rendered, and each region independently binds a metric (Distance / Pace / Elapsed Time / Real Time / Heart Rate / Power / Cadence / Elevation / Calories), label visibility, unit visibility, value font scale/weight, and value color. Preview and export share the same `RunningGaugeLayoutEngine` region-frame and divider-segment helpers.
+- The Zone Edge Bar overlay renders a thin HR/pace zone strip using Project Settings heart-rate/pace zones and threshold values. It supports Top/Bottom/Left/Right edge placement with signed edge-position adjustment, or free horizontal/vertical placement, active-zone emphasis, current-value marker, optional marker value, threshold `T` marker, bar-local border, bar-local glow, and shared Effects shadow. Vertical bars render Z1 at the bottom and the highest visible zone at the top.
 - Overlay preview and export share the same render layout model for sampled values, normalized positions, base element dimensions, font sizes, padding, progress, and chart samples.
 - Text presets are stored with overlay style data and render consistently in preview, calibration PNGs, and transparent video export.
 - Gauge presets are stored with overlay style data and render consistently in preview, calibration PNGs, and transparent video export.
@@ -409,7 +425,7 @@ Current implementation status:
 - Templates are persisted as JSON under Application Support.
 - Users can apply, delete, import, and export local templates.
 - Applying a template replaces the current overlay layout and participates in project undo/redo.
-- The `Easy Run` built-in template loads from the bundled `EasyRun.rotemplate` resource; generated built-in mappings are used for the remaining first-pass built-ins.
+- The `Easy Run` built-in template loads from the bundled `EasyRun.rotemplate` resource; `Interval Workout` and `Race` load from bundled `IntervalWorkout.rotemplate` and `Race.rotemplate` resources.
 - Saved template JSON includes schema version, name, timestamps, reference project resolution, and overlay elements.
 
 Open questions:
@@ -444,12 +460,13 @@ Open questions:
 Current implementation status:
 
 - FIT record parsing reads `position_lat` and `position_long` into activity records.
+- FIT timer pause spans should be represented as non-destructive activity annotations on the FIT layer. Paused spans use a muted gray color and a hover tooltip labeled `Timer Paused`, while keeping the underlying timeline based on real elapsed time so video alignment is not shifted. Interval lap phase spans also expose English hover tooltips with lap kind, lap number, elapsed range, and duration.
 - `ActivityTimeline` exposes route points and interpolated current route point lookup.
 - Route Map can be added from the overlay library.
-- Inspector exposes Minimal, Gradient, Glow, and MapKit route styles.
+- Inspector exposes Route Line color mode and Glow controls.
 - Preview and export render route path, start marker, finish marker, and current-position marker.
-- MapKit is the first provider abstraction and the preview attempts `MKMapSnapshotter` for the MapKit preset.
-- When MapKit snapshot loading is unavailable, the MapKit preset falls back to a local dark grid background.
+- MapKit is the first provider abstraction and the preview attempts `MKMapSnapshotter` when the map background is enabled.
+- When MapKit snapshot loading is unavailable, Route Map falls back to a local dark grid background.
 - Route Map and Distance Timeline share one Stats Bar inspector component and one full control set; Enabled is in the section header, and all row controls are aligned between modules.
 - Route Map Stats Bar inside mode reserves map content padding for the bar lane (route geometry does not render underneath the bar).
 - Route Map Stats Bar on left/right edges renders as top-to-bottom stack, and `Item Gap` is applied as vertical spacing.
@@ -508,6 +525,7 @@ Export behavior:
 
 - When an export is active, the toolbar shows a progress control in the upper-right area.
 - Clicking the progress control shows a popover with overall progress and per-output progress rows.
+- The export queue inside the progress popover has a fixed-height scrollable area so large batch exports do not push the popover beyond the screen.
 - The progress popover allows cancelling the active export.
 - After the user cancels export, the export queue/progress popover state clears immediately instead of lingering in a failed or partial state.
 - Batch export one overlay clip for each video segment on the timeline.
@@ -518,10 +536,24 @@ Export behavior:
 - `Export Test Frame` renders a PNG at the current playhead position through the SwiftUI shared-component rasterization path.
 - Main `Export` always uses the SwiftUI shared-component rasterization path (legacy export mode removed).
 - `Export Overlay JSON` writes the current `OverlayLayout` configuration to JSON for inspection, debugging, and reproducible style snapshots.
+- `Save Project Snapshot` writes a JSON snapshot of the current exportable project state for repeatable performance testing.
+- `Restore Project Snapshot` replaces the current project with a saved snapshot and clears runtime-only state such as selection, playback, export progress, and undo/redo history.
+- `swift run RunningOverlay --benchmark-export <snapshot.json>` runs a non-interactive benchmark export from a project snapshot, creates a timestamped output folder in the current working directory by default, writes MOV/profile artifacts there, and exits without requiring editor interaction.
+- `--benchmark-output <directory>` overrides the automated benchmark output directory.
 - Test clip/frame sampling time must use the same playhead-to-activity conversion and Layer Data FPS quantization path as preview (`activityElapsed(atProjectTime:)` + quantization).
 - Test frame PNG orientation must match preview/export coordinates (no vertical inversion in the saved image).
 - Text preset accent colors in export must come from each overlay style's accent color instead of system accent defaults.
 - Activity data is sampled from the FIT timeline for each segment using the configured Layer Data FPS cadence.
+- Adjacent video frames that resolve to the same quantized Layer Data sample may reuse the previous rendered overlay image while still writing one pixel buffer per output frame.
+- Export may cache a static decor layer and render dynamic overlays into a padded union rect when that rect covers less than most of the canvas.
+- If the dynamic rect reaches the full-frame fallback threshold, export must use a single full-frame render/draw path rather than layered drawing.
+- If the dynamic rect reaches the full-frame threshold but individual dynamic overlay rects remain small enough in aggregate, export may render those overlays separately into padded local images and composite them in one pixel-buffer pass.
+- Per-overlay and dynamic-region export compositing must convert SwiftUI top-left overlay rects into pixel-buffer draw rects so exported overlay positions match the editor preview.
+- In the per-overlay path, eligible Route Map overlays may cache the static route-map base once per export task and render only the current marker per sampled frame; this must be disabled when route-map stats bar content is visible.
+- Full-frame fallback should render the full overlay frame directly, without the cropped layer wrapper used for dynamic-region rendering.
+- Long-running export rendering should release temporary rendering and CGContext objects promptly to reduce per-segment outliers.
+- Each completed export task writes task-level profiling files (`export_profile_<timestamp>.json` and `.csv`) into the destination folder; the files include summary totals, per-segment metrics, static/dynamic layer timings, render path, dynamic render rect, overlay counts, full-frame fallback count, per-overlay render metrics, and frame-level outlier metrics.
+- Profiling JSON records each segment's 10 slowest frames with frame index, clip time, sample time, render reuse flag, render duration, draw duration, and frame duration.
 - Export rendering scales overlay dimensions from the 720p preview reference so text, padding, and graphic sizes remain proportional at 1080p, 2K, and 4K output sizes.
 - Exported text should be antialiased through supersampled rendering before compositing into the final transparent frame, especially for large colored timer overlays.
 - Exported distance timeline and elevation chart elements should match their preview counterparts instead of falling back to static text; Distance Timeline export uses the same preset-aware layout as preview.
@@ -539,8 +571,16 @@ Future requirements:
 - Alpha codec selection.
 - Per-track or per-camera export selection.
 - Export performance optimizations:
+  - Task-level JSON/CSV profiling artifacts for comparing export speed across repeatable project snapshots.
+  - Static/dynamic layer rendering with padded dynamic-region rendering when overlays occupy only part of the canvas.
+  - Full-frame fallback must preserve the original one-render, one-draw cost model when region rendering is not applicable.
+  - Direct full-frame rendering and prompt temporary object cleanup for reducing renderer jitter in long exports.
+  - Frame-level outlier profiling for identifying render/draw stalls inside otherwise normal segments.
+  - Per-overlay render composition for full-frame-union layouts whose individual overlay bounds are still small.
+  - Static/dynamic Route Map splitting so map background and route strokes are reused while only the current marker updates, gated by visual-alignment tests.
+  - Numeric overlay batching in the per-overlay export path when multiple simple numeric overlays fit in a small padded union rect, reducing `ImageRenderer` calls without changing preview/export visuals.
   - Incremental frame rendering with static-layer caching so unchanged overlay layers are reused across adjacent frames.
-  - Per-overlay dirty-region rendering and composition to avoid full-canvas redraw on every frame.
+  - Per-overlay dirty-region change detection to avoid rerendering overlay bounds whose sampled output did not change.
   - Optional adaptive layer data sampling for slowly changing metrics during long exports.
   - Optional hardware-accelerated compositing path (Metal/Core Image) for large resolutions and long clips.
   - Export telemetry output (frame encode time, render time, dropped/slow frames) for profiling and regression tracking.
@@ -572,11 +612,38 @@ Open questions:
 - Complex color grading or audio editing.
 - Full template marketplace.
 
-## 15. Glossary
+## 15. Mac App Store Release Requirements
+
+The first App Store submission should preserve the existing core workflow:
+
+- Import user-selected FIT files and videos.
+- Design overlays locally.
+- Optionally fetch MapKit route snapshots and Open-Meteo or user-configured
+  OpenWeather historical weather.
+- Export transparent MOV overlay clips to a user-selected destination.
+
+Privacy and review requirements:
+
+- The app must run in the macOS App Sandbox for App Store distribution.
+- User FIT files, videos, templates, and export destinations must be accessed
+  through explicit user selection. The app must not scan arbitrary user folders.
+- Source videos and FIT files must remain local unless a future feature clearly
+  asks the user to upload them.
+- Open-Meteo, OpenWeather, and MapKit network calls are outbound helper
+  requests for optional overlay data, not tracking or analytics.
+- The optional OpenWeather API key must remain in the macOS Keychain, must not
+  be encoded into project files or templates, and may be sent only to
+  OpenWeather when that provider is selected.
+- Weather lookup coordinates come from the imported FIT activity. The app must
+  not request the Mac's current location.
+- The privacy manifest and App Store privacy labels must be updated whenever
+  collected data, tracking behavior, required-reason API use, location use, or
+  third-party SDK behavior changes.
+
+## 16. Glossary
 
 - FIT file: Activity data file format commonly produced by Garmin and other sports devices.
 - Master timeline: The activity timeline derived from the FIT file.
 - Source video: User-imported camera video.
 - Overlay clip: Exported transparent video containing only data graphics.
 - Camera/source group: A set of clips believed to come from the same recording device or camera angle.
-

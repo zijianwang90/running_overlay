@@ -19,6 +19,16 @@ struct ProjectDocumentUndoTests {
         #expect(project.overlayLayout.elements.count == 1)
     }
 
+    @Test func addedNumericOverlayUsesMetricDefaultIcon() {
+        let project = ProjectDocument()
+
+        project.addOverlayElement(.elevation)
+
+        let element = project.overlayLayout.elements[0]
+        #expect(element.style.iconEnabled)
+        #expect(element.style.iconSystemName == "mountain.2")
+    }
+
     @Test func undoRestoresDeletedOverlay() {
         let project = ProjectDocument()
 
@@ -62,6 +72,139 @@ struct ProjectDocumentUndoTests {
         #expect(project.timeline.tracks[0].clips.count == 1)
     }
 
+    @Test func changingPausedVisibleClipOffsetKeepsSourceFrameStill() {
+        let project = ProjectDocument()
+        project.activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 0),
+            duration: 100,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        let clip = TimelineClip(
+            mediaItemID: nil,
+            title: "clip.mov",
+            startTime: 10,
+            duration: 20,
+            alignmentOffset: 0,
+            cameraGroupID: "Camera A"
+        )
+        project.timeline = TimelineModel(tracks: [
+            TimelineTrack(name: "Camera A", clips: [clip])
+        ])
+        project.setPlayhead(15)
+
+        project.setSelectedClipOffset(clip.id, offset: 3)
+
+        #expect(project.timeline.clip(with: clip.id)?.effectiveStartTime == 13)
+        #expect(project.timeline.playhead == 18)
+    }
+
+    @Test func changingPlayingClipOffsetDoesNotMovePlayhead() {
+        let project = ProjectDocument()
+        project.activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 0),
+            duration: 100,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        let clip = TimelineClip(
+            mediaItemID: nil,
+            title: "clip.mov",
+            startTime: 10,
+            duration: 20,
+            alignmentOffset: 0,
+            cameraGroupID: "Camera A"
+        )
+        project.timeline = TimelineModel(tracks: [
+            TimelineTrack(name: "Camera A", clips: [clip])
+        ])
+        project.setPlayhead(15)
+        project.isPlaying = true
+
+        project.setSelectedClipOffset(clip.id, offset: 3)
+
+        #expect(project.timeline.clip(with: clip.id)?.effectiveStartTime == 13)
+        #expect(project.timeline.playhead == 15)
+    }
+
+    @Test func draggingAutoMatchedClipUpdatesOffsetOnly() throws {
+        let project = ProjectDocument()
+        project.activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 0),
+            duration: 100,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        let media = MediaItem(
+            displayName: "auto.mov",
+            fileURL: nil,
+            duration: 20,
+            inferredStartDate: Date(timeIntervalSince1970: 10),
+            cameraGroupID: "Camera A",
+            alignmentStatus: .aligned(source: "timestamp")
+        )
+        let clip = TimelineClip(
+            mediaItemID: media.id,
+            title: media.displayName,
+            startTime: 10,
+            duration: 20,
+            alignmentOffset: 0,
+            cameraGroupID: "Camera A"
+        )
+        project.mediaItems = [media]
+        project.timeline = TimelineModel(tracks: [
+            TimelineTrack(name: "Camera A", clips: [clip])
+        ])
+
+        project.moveTimelineClipFromDrag(clip.id, toEffectiveStartTime: 13)
+
+        let moved = try #require(project.timeline.clip(with: clip.id))
+        #expect(moved.startTime == 10)
+        #expect(moved.alignmentOffset == 3)
+        #expect(moved.effectiveStartTime == 13)
+    }
+
+    @Test func draggingManuallyPlacedClipUpdatesAlignedTimeOnly() throws {
+        let project = ProjectDocument()
+        project.activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 0),
+            duration: 100,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        let media = MediaItem(
+            displayName: "manual.mov",
+            fileURL: nil,
+            duration: 20,
+            inferredStartDate: nil,
+            cameraGroupID: "Camera A",
+            alignmentStatus: .aligned(source: "manual")
+        )
+        let clip = TimelineClip(
+            mediaItemID: media.id,
+            title: media.displayName,
+            startTime: 10,
+            duration: 20,
+            alignmentOffset: 2,
+            cameraGroupID: "Camera A"
+        )
+        project.mediaItems = [media]
+        project.timeline = TimelineModel(tracks: [
+            TimelineTrack(name: "Camera A", clips: [clip])
+        ])
+
+        project.moveTimelineClipFromDrag(clip.id, toEffectiveStartTime: 15)
+
+        let moved = try #require(project.timeline.clip(with: clip.id))
+        #expect(moved.startTime == 13)
+        #expect(moved.alignmentOffset == 2)
+        #expect(moved.effectiveStartTime == 15)
+    }
+
     @Test func matchingMediaToNewLayerUsesTimestampAndIsUndoable() throws {
         let project = ProjectDocument()
         project.activity = ActivityTimeline(
@@ -94,7 +237,7 @@ struct ProjectDocumentUndoTests {
         #expect(project.mediaItems[0].cameraGroupID == "Camera A")
     }
 
-    @Test func mediaTagsAndDeletionAreUndoable() throws {
+    @Test func mediaFoldersAndDeletionAreUndoable() throws {
         let project = ProjectDocument()
         project.activity = ActivityTimeline(
             startDate: Date(timeIntervalSince1970: 0),
@@ -114,15 +257,30 @@ struct ProjectDocumentUndoTests {
         project.mediaItems = [media]
         project.placeMediaItem(media.id, onTrack: "Camera A", at: 5)
 
-        project.setMediaTag(.red, for: [media.id])
-        #expect(project.mediaItems[0].tag == .red)
+        let folderID = project.createMediaFolder(name: "B-Roll", containing: [media.id])
+        #expect(project.mediaFolders.count == 1)
+        #expect(project.mediaItems[0].folderID == folderID)
+
+        project.moveMediaItems([media.id], toFolder: nil)
+        #expect(project.mediaItems[0].folderID == nil)
+
+        project.undo()
+        #expect(project.mediaItems[0].folderID == folderID)
+
+        project.deleteMediaFolder(folderID)
+        #expect(project.mediaFolders.isEmpty)
+        #expect(project.mediaItems[0].folderID == nil)
+
+        project.undo()
+        #expect(project.mediaFolders.count == 1)
+        #expect(project.mediaItems[0].folderID == folderID)
 
         project.deleteMediaItems([media.id])
         #expect(project.mediaItems.isEmpty)
         #expect(project.timeline.tracks.isEmpty)
 
         project.undo()
-        #expect(project.mediaItems[0].tag == .red)
+        #expect(project.mediaItems[0].folderID == folderID)
         #expect(project.timeline.tracks[0].clips.count == 1)
     }
 
@@ -154,6 +312,79 @@ struct ProjectDocumentUndoTests {
         #expect(project.activePreviewMedia() == nil)
         #expect(!project.isPreviewingMediaPoolItem)
         #expect(!project.isPlaying)
+    }
+
+    @Test func placeMediaItemRejectsOverlap() throws {
+        let project = ProjectDocument()
+        project.activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 0),
+            duration: 100,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        let mediaA = MediaItem(
+            displayName: "a.mov",
+            fileURL: nil,
+            duration: 10,
+            inferredStartDate: nil,
+            cameraGroupID: "Camera A",
+            alignmentStatus: .needsManualPlacement
+        )
+        let mediaB = MediaItem(
+            displayName: "b.mov",
+            fileURL: nil,
+            duration: 10,
+            inferredStartDate: nil,
+            cameraGroupID: "Camera A",
+            alignmentStatus: .needsManualPlacement
+        )
+        project.mediaItems = [mediaA, mediaB]
+        project.placeMediaItem(mediaA.id, onTrack: "Camera A", at: 5)
+        #expect(project.timeline.tracks.first?.clips.count == 1)
+
+        project.placeMediaItem(mediaB.id, onTrack: "Camera A", at: 10)
+        #expect(project.timeline.tracks.first?.clips.count == 1)
+        #expect(project.statusMessage.contains("overlap"))
+        #expect(project.statusMessage.contains("Match to New Layer"))
+
+        project.placeMediaItem(mediaB.id, onTrack: "Camera A", at: 20)
+        #expect(project.timeline.tracks.first?.clips.count == 2)
+    }
+
+    @Test func matchMediaItemsSkipsOverlappingItems() throws {
+        let project = ProjectDocument()
+        project.activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 0),
+            duration: 100,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        let baseDate = Date(timeIntervalSince1970: 10)
+        let mediaA = MediaItem(
+            displayName: "a.mov",
+            fileURL: nil,
+            duration: 10,
+            inferredStartDate: baseDate,
+            cameraGroupID: "Camera A",
+            alignmentStatus: .readyToMatch(source: "timestamp")
+        )
+        let mediaB = MediaItem(
+            displayName: "b.mov",
+            fileURL: nil,
+            duration: 10,
+            inferredStartDate: baseDate.addingTimeInterval(5),
+            cameraGroupID: "Camera A",
+            alignmentStatus: .readyToMatch(source: "timestamp")
+        )
+        project.mediaItems = [mediaA, mediaB]
+
+        project.matchMediaItemsToCurrentLayer([mediaA.id, mediaB.id])
+
+        #expect(project.timeline.tracks.first?.clips.count == 1)
+        #expect(project.statusMessage.contains("skipped 1"))
+        #expect(project.statusMessage.contains("Match to New Layer"))
     }
 
     @Test func forwardPlaybackRateCyclesUpToEightX() {

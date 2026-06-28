@@ -248,6 +248,9 @@ private final class TimelineCanvasNSView: NSView {
     private weak var project: ProjectDocument?
     private var tracks: [TimelineTrack] = []
     private var activityDuration: TimeInterval = 0
+    private var activityLaps: [LapRecord] = []
+    private var showsStructuredWorkout = false
+    private var activitySegments: [ActivityAnnotatedSegment] = []
     private var fitStartTime: TimeInterval = 0
     private var playhead: TimeInterval = 0
     private var visibleStartTime: TimeInterval = 0
@@ -259,13 +262,14 @@ private final class TimelineCanvasNSView: NSView {
     private var draggingClipID: TimelineClip.ID?
     private var dragInitialStart: TimeInterval = 0
     private var dragCurrentStart: TimeInterval = 0
-    private var isDraggingFitAxis = false
-    private var dragInitialFitStart: TimeInterval = 0
     private var hoverPoint: CGPoint?
     private var isMediaDragActive = false
     private var mediaDropTargetTrackName: String?
     private var trackingArea: NSTrackingArea?
+    nonisolated(unsafe) private var keyEventMonitor: Any?
 
+    private let hoverScrubKeyCode: CGKeyCode = 8
+    private let minimumScrubTimeDelta: TimeInterval = 0.0001
     private let rulerScaleHeight: CGFloat = 28
     private let fitTrackHeight: CGFloat = 44
     private let trackHeight: CGFloat = 44
@@ -275,8 +279,32 @@ private final class TimelineCanvasNSView: NSView {
     private let playheadLineWidth: CGFloat = 2
     private let playheadHeadSize = CGSize(width: 12, height: 8)
 
-    weak var hostScrollView: NSScrollView?
+    weak var hostScrollView: NSScrollView? {
+        didSet {
+            registerScrollObserver()
+        }
+    }
     var onHoverChange: ((TimelineHoverInfo?) -> Void)?
+
+    private var scrollOffsetX: CGFloat {
+        hostScrollView?.documentVisibleRect.origin.x ?? 0
+    }
+
+    private func registerScrollObserver() {
+        NotificationCenter.default.removeObserver(self, name: NSView.boundsDidChangeNotification, object: nil)
+        guard let clip = hostScrollView?.contentView else { return }
+        clip.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(scrollViewDidScroll(_:)),
+            name: NSView.boundsDidChangeNotification,
+            object: clip
+        )
+    }
+
+    @objc private func scrollViewDidScroll(_ notification: Notification) {
+        needsDisplay = true
+    }
 
     private var rulerHeight: CGFloat { rulerScaleHeight }
 
@@ -302,6 +330,13 @@ private final class TimelineCanvasNSView: NSView {
         nil
     }
 
+    deinit {
+        if let keyEventMonitor {
+            NSEvent.removeMonitor(keyEventMonitor)
+        }
+        NotificationCenter.default.removeObserver(self)
+    }
+
     var displayTracks: [TimelineTrack] {
         if tracks.isEmpty, mediaItemsAreAvailable {
             return [TimelineTrack(name: "Layer 1", clips: [])]
@@ -324,6 +359,9 @@ private final class TimelineCanvasNSView: NSView {
         self.project = project
         tracks = timeline.tracks
         activityDuration = activity.duration
+        activityLaps = activity.laps
+        showsStructuredWorkout = activity.workoutStructure.kind == .structured
+        activitySegments = activity.annotatedSegments
         fitStartTime = timeline.fitStartTime
         playhead = timeline.playhead
         mediaItemsAreAvailable = hasMediaItems
@@ -337,7 +375,10 @@ private final class TimelineCanvasNSView: NSView {
         let displayBounds = timeline.displayBounds(activityDuration: activity.duration, collapsed: isCollapsed)
         visibleStartTime = displayBounds.lowerBound
         visibleEndTime = displayBounds.upperBound
-        pixelsPerSecond = resolvePixelsPerSecond(zoom: timeline.zoom, viewportWidth: viewportSize.width)
+        let fitPixelsPerSecond = resolvePixelsPerSecond(zoom: .fit, viewportWidth: viewportSize.width)
+        project.fitPixelsPerSecond = fitPixelsPerSecond
+        let rawPixelsPerSecond = resolvePixelsPerSecond(zoom: timeline.zoom, viewportWidth: viewportSize.width)
+        pixelsPerSecond = max(rawPixelsPerSecond, fitPixelsPerSecond)
 
         let visibleDuration = max(visibleEndTime - visibleStartTime, 1)
         let timelineWidth = max(
@@ -364,11 +405,43 @@ private final class TimelineCanvasNSView: NSView {
     }
 
     override func keyDown(with event: NSEvent) {
+        if event.keyCode == hoverScrubKeyCode {
+            return
+        }
         if event.keyCode == 51 || event.keyCode == 117 {
             project?.deleteSelectedItem()
             return
         }
         super.keyDown(with: event)
+    }
+
+    override func keyUp(with event: NSEvent) {
+        if event.keyCode == hoverScrubKeyCode {
+            return
+        }
+        super.keyUp(with: event)
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window == nil {
+            if let keyEventMonitor {
+                NSEvent.removeMonitor(keyEventMonitor)
+                self.keyEventMonitor = nil
+            }
+            return
+        }
+        guard keyEventMonitor == nil else {
+            return
+        }
+        keyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
+            guard let self,
+                  event.keyCode == self.hoverScrubKeyCode,
+                  self.isMouseOverTimeline else {
+                return event
+            }
+            return nil
+        }
     }
 
     override func updateTrackingAreas() {
@@ -401,13 +474,91 @@ private final class TimelineCanvasNSView: NSView {
         if activityDuration > 0 || !tracks.isEmpty {
             drawPlayhead()
         }
+        drawStickyLabelColumn()
+    }
+
+    private func drawStickyLabelColumn() {
+        let offsetX = scrollOffsetX
+        guard offsetX > 0 else {
+            return
+        }
+        let columnWidth = labelWidth + contentPadding
+
+        let rulerCornerRect = CGRect(x: offsetX, y: 0, width: columnWidth, height: rulerHeight)
+        NSColor.editorPanelHeader.setFill()
+        rulerCornerRect.fill()
+
+        let belowRect = CGRect(
+            x: offsetX,
+            y: rulerHeight,
+            width: columnWidth,
+            height: max(bounds.height - rulerHeight, 0)
+        )
+        NSColor.timelineLabelColumnBackground.setFill()
+        belowRect.fill()
+
+        NSColor.editorBorderSubtle.setStroke()
+        NSBezierPath.strokeLine(
+            from: CGPoint(x: offsetX + columnWidth - 0.5, y: 0),
+            to: CGPoint(x: offsetX + columnWidth - 0.5, y: bounds.height)
+        )
+        NSBezierPath.strokeLine(
+            from: CGPoint(x: offsetX, y: rulerHeight - 0.5),
+            to: CGPoint(x: offsetX + columnWidth, y: rulerHeight - 0.5)
+        )
+
+        if activityDuration > 0 {
+            let y = rulerHeight
+            NSColor.editorBorderSubtle.withAlphaComponent(0.55).setStroke()
+            NSBezierPath.strokeLine(
+                from: CGPoint(x: offsetX, y: y + fitTrackHeight - 0.5),
+                to: CGPoint(x: offsetX + columnWidth - 1, y: y + fitTrackHeight - 0.5)
+            )
+            drawText(
+                "FIT",
+                at: CGPoint(x: offsetX + 10, y: y + 16),
+                color: .editorTextPrimary,
+                font: .systemFont(ofSize: 11, weight: .semibold)
+            )
+        }
+
+        for (index, track) in displayTracks.enumerated() {
+            let y = trackStartY + CGFloat(index) * (trackHeight + trackGap)
+            NSColor.editorBorderSubtle.withAlphaComponent(0.55).setStroke()
+            NSBezierPath.strokeLine(
+                from: CGPoint(x: offsetX, y: y + trackHeight - 0.5),
+                to: CGPoint(x: offsetX + columnWidth - 1, y: y + trackHeight - 0.5)
+            )
+            drawText(
+                track.name,
+                at: CGPoint(x: offsetX + 10, y: y + 16),
+                color: .editorTextPrimary,
+                font: .systemFont(ofSize: 11, weight: .medium)
+            )
+        }
     }
 
     override func mouseMoved(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
+        if scrubPlayheadIfNeeded(at: point) {
+            return
+        }
+
         let inRuler = point.y <= rulerHeight && activityDuration > 0
-        hoverPoint = inRuler ? point : nil
-        if inRuler, let project {
+        let pauseHit = activitySegmentHit(at: point)
+        let lapHit = pauseHit == nil ? lapHit(at: point) : nil
+        hoverPoint = inRuler || pauseHit != nil || lapHit != nil ? point : nil
+        if let pauseHit {
+            let scrollOffsetX = hostScrollView?.documentVisibleRect.origin.x ?? 0
+            let visibleX = point.x - scrollOffsetX
+            let text = "\(pauseHit.kind.label) • \(formatDuration(pauseHit.startElapsedTime))-\(formatDuration(pauseHit.endElapsedTime)) • \(formatDuration(pauseHit.duration))"
+            onHoverChange?(TimelineHoverInfo(visibleX: visibleX, text: text))
+        } else if let lapHit {
+            let scrollOffsetX = hostScrollView?.documentVisibleRect.origin.x ?? 0
+            let visibleX = point.x - scrollOffsetX
+            let text = "\(lapKindTitle(lapHit.kind)) #\(lapHit.lapIndex + 1) • \(formatDuration(lapHit.startElapsedTime))-\(formatDuration(lapHit.endElapsedTime)) • \(formatDuration(lapHit.totalElapsedTime))"
+            onHoverChange?(TimelineHoverInfo(visibleX: visibleX, text: text))
+        } else if inRuler, let project {
             let scrollOffsetX = hostScrollView?.documentVisibleRect.origin.x ?? 0
             let visibleX = point.x - scrollOffsetX
             let projectTime = time(atX: point.x)
@@ -439,8 +590,6 @@ private final class TimelineCanvasNSView: NSView {
         }
 
         if fitTrackRects().contains(where: { $0.contains(point) }) {
-            isDraggingFitAxis = true
-            dragInitialFitStart = fitStartTime
             return
         }
 
@@ -459,15 +608,12 @@ private final class TimelineCanvasNSView: NSView {
     override func mouseDragged(with event: NSEvent) {
         guard let project else { return }
         let point = convert(event.locationInWindow, from: nil)
-        if point.y <= rulerHeight {
-            project.setPlayhead(time(atX: point.x))
+        if scrubPlayheadIfNeeded(at: point) {
             return
         }
 
-        if isDraggingFitAxis {
-            let delta = Double(event.deltaX) / max(pixelsPerSecond, 0.001)
-            fitStartTime += delta
-            needsDisplay = true
+        if point.y <= rulerHeight {
+            project.setPlayhead(time(atX: point.x))
             return
         }
 
@@ -480,15 +626,41 @@ private final class TimelineCanvasNSView: NSView {
     }
 
     override func mouseUp(with event: NSEvent) {
-        if isDraggingFitAxis {
-            project?.moveFitStart(to: fitStartTime)
-        }
         if let draggingClipID {
-            project?.moveClip(draggingClipID, toEffectiveStartTime: dragCurrentStart)
+            project?.moveTimelineClipFromDrag(draggingClipID, toEffectiveStartTime: dragCurrentStart)
         }
-        isDraggingFitAxis = false
         draggingClipID = nil
         project?.finishContinuousEdit()
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        guard point.y >= trackStartY else {
+            return
+        }
+        let trackSpan = trackHeight + trackGap
+        let index = Int((point.y - trackStartY) / trackSpan)
+        guard index >= 0, index < tracks.count else {
+            return
+        }
+        let trackName = tracks[index].name
+        let menu = NSMenu()
+        let item = NSMenuItem(
+            title: "Delete \(trackName)",
+            action: #selector(deleteTrackMenuAction(_:)),
+            keyEquivalent: ""
+        )
+        item.target = self
+        item.representedObject = trackName
+        menu.addItem(item)
+        NSMenu.popUpContextMenu(menu, with: event, for: self)
+    }
+
+    @objc private func deleteTrackMenuAction(_ sender: NSMenuItem) {
+        guard let trackName = sender.representedObject as? String else {
+            return
+        }
+        project?.removeTrack(named: trackName)
     }
 
     override func scrollWheel(with event: NSEvent) {
@@ -622,8 +794,13 @@ private final class TimelineCanvasNSView: NSView {
         let fitRects = fitTrackRects()
         for fitRect in fitRects {
             let path = roundedPath(fitRect, radius: 4)
-            NSColor.timelineFitGreen.withAlphaComponent(0.9).setFill()
-            path.fill()
+            if showsStructuredWorkout {
+                drawIntervalFitTrack(in: fitRect, clippedBy: path)
+            } else {
+                NSColor.timelineFitGreen.withAlphaComponent(0.9).setFill()
+                path.fill()
+            }
+            drawActivitySegments(in: fitRect, clippedBy: path)
             NSColor.timelineSpliceBorder.withAlphaComponent(0.9).setStroke()
             path.lineWidth = isCollapsed ? 1.3 : 1
             path.stroke()
@@ -631,6 +808,34 @@ private final class TimelineCanvasNSView: NSView {
         if let fitRect = fitRects.first {
             drawText("00:00", in: fitRect.insetBy(dx: 8, dy: 6), color: .white, font: .systemFont(ofSize: 11, weight: .medium), lineBreakMode: .byTruncatingTail)
         }
+    }
+
+    private func drawIntervalFitTrack(in fitRect: CGRect, clippedBy clipPath: NSBezierPath) {
+        NSGraphicsContext.saveGraphicsState()
+        clipPath.addClip()
+        NSColor.timelineFitGreen.withAlphaComponent(0.9).setFill()
+        fitRect.fill()
+        for lap in activityLaps where lap.endElapsedTime > lap.startElapsedTime {
+            let color = lapKindColor(lap.kind).withAlphaComponent(0.92)
+            color.setFill()
+            for rect in lapRects(lap).map({ $0.intersection(fitRect) }) where !rect.isNull && rect.width > 0 {
+                rect.fill()
+            }
+        }
+        NSGraphicsContext.restoreGraphicsState()
+    }
+
+    private func drawActivitySegments(in fitRect: CGRect, clippedBy clipPath: NSBezierPath) {
+        NSGraphicsContext.saveGraphicsState()
+        clipPath.addClip()
+        for segment in activitySegments where segment.duration > 0 {
+            let color = activitySegmentColor(segment)
+            for rect in activitySegmentRects(segment).map({ $0.intersection(fitRect) }) where !rect.isNull && rect.width > 0 {
+                color.withAlphaComponent(0.92).setFill()
+                rect.fill()
+            }
+        }
+        NSGraphicsContext.restoreGraphicsState()
     }
 
     private func drawTimelineSections() {
@@ -863,6 +1068,49 @@ private final class TimelineCanvasNSView: NSView {
         mediaDropTargetTrackName = trackName(atY: point.y)
     }
 
+    private func scrubPlayheadIfNeeded(at point: CGPoint) -> Bool {
+        guard isHoverScrubKeyPressed,
+              hasTimelineContent,
+              draggingClipID == nil,
+              !isMediaDragActive,
+              timelineTimeAreaContains(point) else {
+            return false
+        }
+
+        hoverPoint = nil
+        onHoverChange?(nil)
+        let scrubTime = time(atX: point.x)
+        guard abs(scrubTime - playhead) >= minimumScrubTimeDelta else {
+            return true
+        }
+        project?.clearMediaPoolPreview()
+        playhead = scrubTime
+        project?.setPlayhead(scrubTime)
+        needsDisplay = true
+        return true
+    }
+
+    private var isHoverScrubKeyPressed: Bool {
+        CGEventSource.keyState(.combinedSessionState, key: hoverScrubKeyCode)
+    }
+
+    private func timelineTimeAreaContains(_ point: CGPoint) -> Bool {
+        let timelineStartX = labelWidth + contentPadding
+        return point.x >= timelineStartX
+            && point.x <= bounds.maxX
+            && point.y >= 0
+            && point.y <= bounds.maxY
+    }
+
+    private var isMouseOverTimeline: Bool {
+        guard let window else {
+            return false
+        }
+        let pointInWindow = window.mouseLocationOutsideOfEventStream
+        let point = convert(pointInWindow, from: nil)
+        return bounds.contains(point)
+    }
+
     private func time(atX x: CGFloat) -> TimeInterval {
         let timelineStartX = labelWidth + contentPadding
         let displayTime = visibleStartTime + Double(x - timelineStartX) / max(pixelsPerSecond, 0.001)
@@ -897,9 +1145,18 @@ private final class TimelineCanvasNSView: NSView {
             let timeline = TimelineModel(tracks: tracks, zoom: .fit, playhead: playhead, fitStartTime: fitStartTime)
             let segments = timeline.collapsedDisplaySegments()
             if !segments.isEmpty {
-                return segments.map { segment in
-                    let startX = labelWidth + contentPadding + CGFloat((segment.displayStartTime - visibleStartTime) * pixelsPerSecond)
-                    let width = CGFloat(max(segment.displayEndTime - segment.displayStartTime, 0) * pixelsPerSecond)
+                let fitEndTime = fitStartTime + max(activityDuration, 0)
+                return segments.compactMap { segment in
+                    let start = max(segment.projectStartTime, fitStartTime)
+                    let end = min(segment.projectEndTime, fitEndTime)
+                    guard end > start else {
+                        return nil
+                    }
+
+                    let displayStart = segment.displayStartTime + start - segment.projectStartTime
+                    let displayEnd = segment.displayStartTime + end - segment.projectStartTime
+                    let startX = labelWidth + contentPadding + CGFloat((displayStart - visibleStartTime) * pixelsPerSecond)
+                    let width = CGFloat(max(displayEnd - displayStart, 0) * pixelsPerSecond)
                     return CGRect(x: startX, y: y + 8, width: max(width, 2), height: fitTrackHeight - 16)
                 }
             }
@@ -908,6 +1165,119 @@ private final class TimelineCanvasNSView: NSView {
         let startX = x(forProjectTime: fitStartTime)
         let endX = x(forProjectTime: fitStartTime + max(activityDuration, 0))
         return [CGRect(x: startX, y: y + 8, width: max(endX - startX, 54), height: fitTrackHeight - 16)]
+    }
+
+    private func activitySegmentRects(_ segment: ActivityAnnotatedSegment) -> [CGRect] {
+        let projectStart = fitStartTime + segment.startElapsedTime
+        let projectEnd = fitStartTime + segment.endElapsedTime
+        let y = rulerHeight + 8
+        let height = fitTrackHeight - 16
+
+        if isCollapsed {
+            let timeline = TimelineModel(tracks: tracks, zoom: .fit, playhead: playhead, fitStartTime: fitStartTime)
+            return timeline.collapsedDisplaySegments().compactMap { displaySegment in
+                let start = max(projectStart, displaySegment.projectStartTime)
+                let end = min(projectEnd, displaySegment.projectEndTime)
+                guard end > start else {
+                    return nil
+                }
+                let displayStart = displaySegment.displayStartTime + start - displaySegment.projectStartTime
+                let displayEnd = displaySegment.displayStartTime + end - displaySegment.projectStartTime
+                let x = labelWidth + contentPadding + CGFloat((displayStart - visibleStartTime) * pixelsPerSecond)
+                let width = CGFloat((displayEnd - displayStart) * pixelsPerSecond)
+                return CGRect(x: x, y: y, width: max(width, 2), height: height)
+            }
+        }
+
+        let startX = x(forProjectTime: projectStart)
+        let endX = x(forProjectTime: projectEnd)
+        return [CGRect(x: startX, y: y, width: max(endX - startX, 2), height: height)]
+    }
+
+    private func lapRects(_ lap: LapRecord) -> [CGRect] {
+        let projectStart = fitStartTime + max(lap.startElapsedTime, 0)
+        let projectEnd = fitStartTime + min(lap.endElapsedTime, activityDuration)
+        let y = rulerHeight + 8
+        let height = fitTrackHeight - 16
+        guard projectEnd > projectStart else {
+            return []
+        }
+
+        if isCollapsed {
+            let timeline = TimelineModel(tracks: tracks, zoom: .fit, playhead: playhead, fitStartTime: fitStartTime)
+            return timeline.collapsedDisplaySegments().compactMap { displaySegment in
+                let start = max(projectStart, displaySegment.projectStartTime)
+                let end = min(projectEnd, displaySegment.projectEndTime)
+                guard end > start else {
+                    return nil
+                }
+                let displayStart = displaySegment.displayStartTime + start - displaySegment.projectStartTime
+                let displayEnd = displaySegment.displayStartTime + end - displaySegment.projectStartTime
+                let x = labelWidth + contentPadding + CGFloat((displayStart - visibleStartTime) * pixelsPerSecond)
+                let width = CGFloat((displayEnd - displayStart) * pixelsPerSecond)
+                return CGRect(x: x, y: y, width: max(width, 2), height: height)
+            }
+        }
+
+        let startX = x(forProjectTime: projectStart)
+        let endX = x(forProjectTime: projectEnd)
+        return [CGRect(x: startX, y: y, width: max(endX - startX, 2), height: height)]
+    }
+
+    private func activitySegmentHit(at point: CGPoint) -> ActivityAnnotatedSegment? {
+        guard activityDuration > 0, point.y >= rulerHeight, point.y <= rulerHeight + fitTrackHeight else {
+            return nil
+        }
+        return activitySegments.first { segment in
+            activitySegmentRects(segment).contains { $0.contains(point) }
+        }
+    }
+
+    private func lapHit(at point: CGPoint) -> LapRecord? {
+        guard showsStructuredWorkout,
+              activityDuration > 0,
+              point.y >= rulerHeight,
+              point.y <= rulerHeight + fitTrackHeight else {
+            return nil
+        }
+        return activityLaps.first { lap in
+            lapRects(lap).contains { $0.contains(point) }
+        }
+    }
+
+    private func lapKindColor(_ kind: LapKind) -> NSColor {
+        let palette = IntervalKindColorPreferences.currentSnapshot()
+        if let color = palette.color(for: kind) {
+            return NSColor(
+                srgbRed: CGFloat(color.red),
+                green: CGFloat(color.green),
+                blue: CGFloat(color.blue),
+                alpha: CGFloat(color.alpha)
+            )
+        }
+        return .timelineFitGreen
+    }
+
+    private func lapKindTitle(_ kind: LapKind) -> String {
+        switch kind {
+        case .warmup:
+            "Warm Up"
+        case .active:
+            "Run"
+        case .rest:
+            "Rest"
+        case .cooldown:
+            "Cool Down"
+        case .unknown:
+            "Lap"
+        }
+    }
+
+    private func activitySegmentColor(_ segment: ActivityAnnotatedSegment) -> NSColor {
+        switch segment.kind {
+        case .timerPaused:
+            .timelineFitPausedGray
+        }
     }
 
     private func roundedPath(_ rect: CGRect, radius: CGFloat) -> NSBezierPath {

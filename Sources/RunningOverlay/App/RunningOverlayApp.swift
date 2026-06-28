@@ -1,12 +1,10 @@
 import AppKit
 import SwiftUI
 
-@main
 struct RunningOverlayApp: App {
     @StateObject private var project = ProjectDocument()
 
     init() {
-        BundledFonts.registerAll()
         NSApplication.shared.setActivationPolicy(.regular)
         NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
         DispatchQueue.main.async {
@@ -19,7 +17,7 @@ struct RunningOverlayApp: App {
             MainEditorView()
                 .environmentObject(project)
                 .preferredColorScheme(.dark)
-                .frame(minWidth: 1180, minHeight: 760)
+                .frame(minWidth: 1300, minHeight: 760)
         }
         .windowStyle(.titleBar)
         .commands {
@@ -76,6 +74,11 @@ struct RunningOverlayApp: App {
                     project.zoomTimelineOut()
                 }
                 .keyboardShortcut("-", modifiers: [.command])
+
+                Button("Toggle Fit Zoom") {
+                    project.toggleTimelineFitZoom()
+                }
+                .keyboardShortcut("z", modifiers: [.shift])
             }
         }
     }

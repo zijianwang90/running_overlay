@@ -20,14 +20,12 @@ struct ElevationChartOverlayDetailView: View {
                         sectionView(.axis) { axisSection(element) }
                         sectionView(.bigNumbers) { bigNumbersSection(element) }
                         statsBarSection(element)
-                        sectionView(.background) { backgroundSection(element) }
-                        sectionView(.effects) { effectsSection(element) }
                         OverlayBackgroundInspectorModule(elementID: elementID, element: element)
                         OverlayBorderInspectorModule(elementID: elementID, element: element)
                         OverlayEffectsInspectorModule(elementID: elementID, element: element)
                     }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
-                Divider().overlay(NumericTokens.borderSubtle)
                 footerBar
             } else {
                 Spacer()
@@ -107,10 +105,9 @@ struct ElevationChartOverlayDetailView: View {
             OverlayLayoutInspectorRows(
                 elementID: elementID,
                 widthBinding: elevationBinding(\.width, of: style, continuous: true),
-                widthRange: 220...720,
+                widthRange: ElevationChartStyle.widthRange,
                 heightBinding: elevationBinding(\.height, of: style, continuous: true),
-                heightRange: 110...320,
-                opacityBinding: elevationBinding(\.backgroundOpacity, of: style, continuous: true)
+                heightRange: ElevationChartStyle.heightRange
             )
         }
     }
@@ -122,6 +119,14 @@ struct ElevationChartOverlayDetailView: View {
             InspectorDenseSegmented(values: ElevationChartRenderStyle.allCases, selection: elevationBinding(\.chartStyle, of: style)) { Text($0.label) }
         }
         InspectorDenseRow(label: "Smoothing") { toggle(style.smoothingEnabled) { set(\.smoothingEnabled, to: $0) } }
+        InspectorDenseSliderRow(
+            label: "Smoothness",
+            value: elevationBinding(\.smoothingAmount, of: style, continuous: true),
+            range: 0...1,
+            displayText: percent(style.smoothingAmount)
+        )
+        .disabled(!style.smoothingEnabled)
+        .opacity(style.smoothingEnabled ? 1 : 0.5)
         InspectorDenseRow(label: "Progress") {
             InspectorDenseSegmented(values: ElevationChartProgressMode.allCases, selection: elevationBinding(\.progressMode, of: style)) { Text($0.label) }
         }
@@ -140,18 +145,35 @@ struct ElevationChartOverlayDetailView: View {
         InspectorDenseSliderRow(label: "Line Width", value: elevationBinding(\.lineWidth, of: style, continuous: true), range: 0.5...8, displayText: String(format: "%.1f", style.lineWidth))
         InspectorDenseSliderRow(label: "Line Opacity", value: elevationBinding(\.lineOpacity, of: style, continuous: true), range: 0...1, displayText: percent(style.lineOpacity))
         InspectorDenseRow(label: "Fill") { toggle(style.fillEnabled) { set(\.fillEnabled, to: $0) } }
-        InspectorDenseRow(label: "Gradient") {
-            InspectorDenseSwatchStrip(presets: colorPresets, selected: style.fillStartColor) { set(\.fillStartColor, to: $0) }
-            InspectorDenseSwatchStrip(presets: colorPresets, selected: style.fillEndColor) { set(\.fillEndColor, to: $0) }
+        InspectorDenseRow(label: "Gradient", minHeight: 68) {
+            VStack(alignment: .trailing, spacing: 6) {
+                gradientColorRow(label: "From", selected: style.fillStartColor) { set(\.fillStartColor, to: $0) }
+                gradientColorRow(label: "To", selected: style.fillEndColor) { set(\.fillEndColor, to: $0) }
+            }
         }
         InspectorDenseSliderRow(label: "Fill Opacity", value: elevationBinding(\.fillOpacity, of: style, continuous: true), range: 0...1, displayText: percent(style.fillOpacity))
         InspectorDenseRow(label: "Dual Area") { toggle(style.dualAreaEnabled) { set(\.dualAreaEnabled, to: $0) } }
+    }
+
+    private func gradientColorRow(label: String, selected: OverlayColor, action: @escaping (OverlayColor) -> Void) -> some View {
+        HStack(spacing: NumericTokens.space2) {
+            Text(label)
+                .font(NumericTokens.captionFont)
+                .foregroundStyle(NumericTokens.textMuted)
+                .frame(width: 28, alignment: .trailing)
+            InspectorDenseSwatchStrip(presets: colorPresets, selected: selected, action: action)
+        }
     }
 
     @ViewBuilder
     private func markersSection(_ element: OverlayElement) -> some View {
         let style = element.style.elevationChart
         InspectorDenseRow(label: "Current") { toggle(style.currentMarkerEnabled) { set(\.currentMarkerEnabled, to: $0) } }
+        InspectorDenseRow(label: "Playhead Line") {
+            toggle(style.markerPlayheadLineEnabled) { set(\.markerPlayheadLineEnabled, to: $0) }
+        }
+        .opacity(style.currentMarkerEnabled ? 1 : 0.5)
+        .disabled(!style.currentMarkerEnabled)
         InspectorDenseRow(label: "Marker Color") {
             InspectorDenseSwatchStrip(presets: colorPresets, selected: style.markerColor) { set(\.markerColor, to: $0) }
         }
@@ -162,6 +184,7 @@ struct ElevationChartOverlayDetailView: View {
     private func axisSection(_ element: OverlayElement) -> some View {
         let style = element.style.elevationChart
         InspectorDenseRow(label: "Grid") { toggle(style.gridEnabled) { set(\.gridEnabled, to: $0) } }
+        InspectorDenseRow(label: "Axis Line") { toggle(style.axisLineEnabled) { set(\.axisLineEnabled, to: $0) } }
         InspectorDenseRow(label: "Labels") { toggle(style.axisLabelsEnabled) { set(\.axisLabelsEnabled, to: $0) } }
     }
 
@@ -171,6 +194,28 @@ struct ElevationChartOverlayDetailView: View {
         InspectorDenseRow(label: "Enabled") { toggle(style.bigNumbersEnabled) { set(\.bigNumbersEnabled, to: $0) } }
         InspectorDenseRow(label: "Metric") {
             InspectorDenseSegmented(values: ElevationChartBigMetric.allCases, selection: elevationBinding(\.bigNumberMetric, of: style)) { Text($0.label) }
+        }
+        InspectorDenseRow(label: "Font") {
+            Menu {
+                ForEach(NumericOverlayDetailView.fontPresets, id: \.self) { name in
+                    Button {
+                        set(\.bigNumberFontName, to: name)
+                    } label: {
+                        if name == style.bigNumberFontName {
+                            Label(name, systemImage: "checkmark")
+                        } else {
+                            Text(name)
+                        }
+                    }
+                }
+            } label: {
+                InspectorDenseMenuLabel(title: style.bigNumberFontName)
+            }
+            .menuStyle(.borderlessButton)
+            .frame(height: NumericTokens.controlHeight)
+        }
+        InspectorDenseRow(label: "Weight") {
+            InspectorDenseSegmented(values: OverlayFontWeight.allCases, selection: elevationBinding(\.bigNumberFontWeight, of: style)) { Text($0.label) }
         }
         InspectorDenseSliderRow(label: "Size", value: elevationBinding(\.bigNumberFontSize, of: style, continuous: true), range: 24...84, displayText: "\(Int(style.bigNumberFontSize))")
     }
@@ -219,6 +264,7 @@ struct ElevationChartOverlayDetailView: View {
                 ),
                 slots: config.slots.map { ($0.metric, $0.visible) },
                 availableMetrics: SharedStatsBarInspectorUI.metrics,
+                inside: config.inside,
                 extraLayout: .init(
                     width: config.width,
                     offsetX: config.offsetX,
@@ -236,7 +282,8 @@ struct ElevationChartOverlayDetailView: View {
                 onSetDividerOpacity: { value in setStats { $0.dividerOpacity = value } },
                 onSetCornerRadius: { value in setStats { $0.cornerRadius = value.rounded() } },
                 onSetSlotMetric: { index, metric in project.mutateElevationChartStyle(elementID) { $0.setStatsBarMetric(metric, at: index) } },
-                onSetSlotVisible: { index, visible in project.mutateElevationChartStyle(elementID) { $0.setStatsBarVisible(visible, at: index) } }
+                onSetSlotVisible: { index, visible in project.mutateElevationChartStyle(elementID) { $0.setStatsBarVisible(visible, at: index) } },
+                onSetInside: { value in setStats { $0.inside = value } }
             )
         }
     }
@@ -264,16 +311,14 @@ struct ElevationChartOverlayDetailView: View {
     }
 
     private var footerBar: some View {
-        HStack(spacing: NumericTokens.space2) {
-            Button("Reset") { project.mutateElevationChartStyle(elementID) { $0 = .default } }
-            Spacer()
-            Button("Done") { project.selection = .none }
-        }
-        .buttonStyle(.borderless)
-        .font(NumericTokens.captionFont)
-        .padding(.horizontal, NumericTokens.panelPaddingX)
-        .frame(height: 38)
-        .background(NumericTokens.panelBackgroundElevated)
+        InspectorDetailFooterBar(
+            leadingTitle: "Reset",
+            leadingSystemImage: "arrow.counterclockwise",
+            trailingTitle: "Done",
+            trailingSystemImage: "checkmark",
+            onLeadingTap: { project.mutateElevationChartStyle(elementID) { $0 = .default } },
+            onTrailingTap: { project.selection = .none }
+        )
     }
 
     private func sectionView<Content: View>(_ section: Section, @ViewBuilder content: () -> Content) -> some View {
@@ -299,7 +344,6 @@ struct ElevationChartOverlayDetailView: View {
                 if isOpen { openSections.remove(section) }
                 else { openSections.insert(section) }
             }
-            .overlay(alignment: .top) { Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1) }
             .overlay(alignment: .bottom) { Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1) }
 
             if isOpen {
@@ -375,7 +419,7 @@ private enum Section: CaseIterable, Hashable {
         case .lineFill: "Line & Fill"
         case .markers: "Markers"
         case .axis: "Axis & Labels"
-        case .bigNumbers: "Big Numbers"
+        case .bigNumbers: "Big Elevation"
         case .statsBar: "Stats Bar"
         case .background: "Background"
         case .effects: "Effects"

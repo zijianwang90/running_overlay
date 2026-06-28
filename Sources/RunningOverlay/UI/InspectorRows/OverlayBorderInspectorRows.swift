@@ -71,7 +71,6 @@ struct CollapsibleBorderInspectorSection<Content: View>: View {
                 }
             }
         }
-        .overlay(RoundedRectangle(cornerRadius: 0).stroke(NumericTokens.borderSubtle, lineWidth: 1))
     }
 }
 

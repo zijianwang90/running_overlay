@@ -386,15 +386,14 @@ Built-in templates:
 - Row content: template name only.
 - No leading icon.
 - No trailing apply button.
-- Clicking the row applies the template after confirmation.
+- Clicking the row applies the template immediately when no overlays exist, or after confirmation when replacing existing overlays.
 - Built-in rows do not expose rename, duplicate, export, or delete actions.
 
 Initial built-in template contents:
 
 - `Easy Run`: bundled from `Sources/RunningOverlay/Resources/Templates/EasyRun.rotemplate`.
-- `Interval Workout`: Elapsed Time, Pace, Heart Rate, Lap Live.
-- `Race`: Distance Timeline, Running Gauge, Route Map, Pace.
-- `Interval Workout` and `Race` are first-pass placeholder mappings. Each element should receive a reasonable normalized position so templates do not stack every overlay at center.
+- `Interval Workout`: bundled from `Sources/RunningOverlay/Resources/Templates/IntervalWorkout.rotemplate`.
+- `Race`: bundled from `Sources/RunningOverlay/Resources/Templates/Race.rotemplate`.
 
 User templates:
 
@@ -403,18 +402,20 @@ User templates:
 - User template rows use the same compact 28-30 px plain text row treatment as built-in templates.
 - No leading icon.
 - No trailing ellipsis or visible action button.
-- Clicking the row applies the template after confirmation.
+- Clicking the row applies the template immediately when no overlays exist, or after confirmation when replacing existing overlays.
 - Right-clicking a user template row opens a context menu:
   - `Rename`
   - `Duplicate`
+  - `Update Template`
   - `Export...`
   - `Delete`
+- Update Template should confirm before overwriting the saved template with the current overlay setup.
 - Delete should confirm before removing the template.
 
 Template application:
 
-- Applying any built-in or user template always clears the current overlay layout and replaces it with the chosen template.
-- The UI must show a confirmation before replacing current overlays.
+- Applying any built-in or user template clears the current overlay layout and replaces it with the chosen template.
+- The UI must show a confirmation before replacing current overlays; if the current overlay layout is empty, apply the template directly without showing a replacement confirmation.
 - Confirmation copy should make replacement explicit, e.g. `Replace current overlays with "Race"?`
 - Applying a template should register an undo point through `ProjectDocument`.
 - After applying, prefer clearing selection so the user sees the whole applied layout before editing individual overlays.

@@ -20,7 +20,7 @@ struct NumericOverlayDetailView: View {
                         sectionView(.typography, element: element) { typographySection(element) }
                         sectionView(.label, element: element, accessory: { labelEnabledToggle(element) }) { labelSection(element) }
                         sectionView(.unit, element: element, accessory: { unitEnabledToggle(element) }) { unitSection(element) }
-                        sectionView(.color, element: element) { colorSection(element) }
+                        sectionView(.icon, element: element, accessory: { iconEnabledToggle(element) }) { iconSection(element) }
                         OverlayBackgroundInspectorModule(elementID: elementID, element: element)
                         OverlayBorderInspectorModule(elementID: elementID, element: element)
                         OverlayEffectsInspectorModule(elementID: elementID, element: element)
@@ -28,7 +28,6 @@ struct NumericOverlayDetailView: View {
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
 
-                Divider().overlay(NumericTokens.borderSubtle)
                 footerBar
             } else {
                 Spacer()
@@ -41,27 +40,10 @@ struct NumericOverlayDetailView: View {
     @ViewBuilder
     private func contentSection(_ element: OverlayElement) -> some View {
         let units = OverlayUnitOption.options(for: element.type)
-        InspectorDenseRow(label: "Style") {
-            Menu {
-                ForEach(OverlayTextPreset.numericPresets) { preset in
-                    Button {
-                        project.applyOverlayTextPreset(elementID, textPreset: preset)
-                    } label: {
-                        if preset == element.style.textPreset {
-                            Label(preset.compactDisplayLabel, systemImage: "checkmark")
-                        } else {
-                            Text(preset.compactDisplayLabel)
-                        }
-                    }
-                }
-            } label: {
-                InspectorDenseMenuLabel(title: element.style.textPreset.compactDisplayLabel)
-            }
-            .menuStyle(.borderlessButton)
-            .frame(height: NumericTokens.controlHeight)
-        }
-        if units.count > 1 {
-            InspectorDenseRow(label: "Units") {
+        if units.isEmpty {
+            EmptyView()
+        } else if units.count > 1 {
+            InspectorDenseRow(label: element.type == .date ? "Format" : "Units") {
                 Menu {
                     ForEach(units) { unit in
                         Button {
@@ -81,8 +63,29 @@ struct NumericOverlayDetailView: View {
                 .frame(height: NumericTokens.controlHeight)
             }
         } else if let only = units.first {
-            InspectorDenseRow(label: "Units") {
+            InspectorDenseRow(label: element.type == .date ? "Format" : "Units") {
                 InspectorDenseReadout(text: only.label)
+            }
+        }
+        if element.type == .elevation {
+            InspectorDenseRow(label: "Mode") {
+                Menu {
+                    ForEach(OverlayElevationDisplayMode.allCases) { mode in
+                        Button {
+                            project.setOverlayElevationDisplayMode(elementID, mode: mode)
+                        } label: {
+                            if mode == element.style.elevationDisplayMode {
+                                Label(mode.label, systemImage: "checkmark")
+                            } else {
+                                Text(mode.label)
+                            }
+                        }
+                    }
+                } label: {
+                    InspectorDenseMenuLabel(title: element.style.elevationDisplayMode.label)
+                }
+                .menuStyle(.borderlessButton)
+                .frame(height: NumericTokens.controlHeight)
             }
         }
         InspectorDenseRow(label: "Format Preview") {
@@ -103,10 +106,18 @@ struct NumericOverlayDetailView: View {
         ) {
             OverlayLayoutInspectorRows(
                 elementID: elementID,
-                opacityBinding: Binding(
-                    get: { project.selectedOverlay(elementID)?.style.backgroundOpacity ?? 0 },
-                    set: { project.setOverlayBackgroundOpacity(elementID, opacity: $0.quantizedNumeric(to: 0.05)) }
-                )
+                widthBinding: Binding(
+                    get: { project.selectedOverlay(elementID)?.style.numericMinWidth ?? 0 },
+                    set: { project.setOverlayNumericMinimumSize(elementID, width: $0.rounded()) }
+                ),
+                widthRange: 0...720,
+                widthLabel: "Min Width",
+                heightBinding: Binding(
+                    get: { project.selectedOverlay(elementID)?.style.numericMinHeight ?? 0 },
+                    set: { project.setOverlayNumericMinimumSize(elementID, height: $0.rounded()) }
+                ),
+                heightRange: 0...360,
+                heightLabel: "Min Height"
             )
         }
     }
@@ -146,7 +157,16 @@ struct NumericOverlayDetailView: View {
                 get: { element.style.fontWeight },
                 set: { project.setOverlayFontWeight(elementID, fontWeight: $0) }
             )) { weight in
-                Text(weight.label)
+                Text(weight.compactInspectorLabel)
+                    .lineLimit(1)
+            }
+        }
+        InspectorDenseRow(label: "Align") {
+            InspectorDenseSegmented(values: OverlayTextAlignment.allCases, selection: Binding(
+                get: { element.style.textAlignment },
+                set: { project.setOverlayTextAlignment(elementID, alignment: $0) }
+            )) { alignment in
+                Image(systemName: alignment.systemImage)
             }
         }
         InspectorDenseRow(label: "Color") {
@@ -155,6 +175,18 @@ struct NumericOverlayDetailView: View {
                 selected: element.style.valueColor
             ) { color in
                 project.setOverlayValueColor(elementID, color: color)
+            }
+        }
+        if supportsHeartRateZoneColoring(element) {
+            InspectorDenseRow(label: "Zone Color") {
+                Toggle(
+                    "Follow HR zones for value",
+                    isOn: Binding(
+                        get: { element.style.valueColorsFollowHeartRateZones },
+                        set: { project.setOverlayValueColorsFollowHeartRateZones(elementID, $0) }
+                    )
+                )
+                .toggleStyle(.checkbox)
             }
         }
         InspectorDenseSliderRow(
@@ -191,7 +223,18 @@ struct NumericOverlayDetailView: View {
                 get: { element.style.labelPosition },
                 set: { project.setOverlayLabelPosition(elementID, position: $0) }
             )) { position in
-                Text(position.label)
+                Text(position.compactInspectorLabel)
+                    .lineLimit(1)
+            }
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.5)
+        }
+        InspectorDenseRow(label: alignRowLabel(for: element.style.labelPosition)) {
+            InspectorDenseSegmented(values: OverlayTextAlignment.allCases, selection: Binding(
+                get: { element.style.labelTextAlignment },
+                set: { project.setOverlayLabelTextAlignment(elementID, alignment: $0) }
+            )) { alignment in
+                Image(systemName: alignSystemImage(for: alignment, position: element.style.labelPosition))
             }
             .disabled(!isEnabled)
             .opacity(isEnabled ? 1 : 0.5)
@@ -205,6 +248,20 @@ struct NumericOverlayDetailView: View {
             }
             .disabled(!isEnabled)
             .opacity(isEnabled ? 1 : 0.5)
+        }
+        if supportsHeartRateZoneColoring(element) {
+            InspectorDenseRow(label: "Zone Color") {
+                Toggle(
+                    "Follow HR zones for label",
+                    isOn: Binding(
+                        get: { element.style.labelColorsFollowHeartRateZones },
+                        set: { project.setOverlayLabelColorsFollowHeartRateZones(elementID, $0) }
+                    )
+                )
+                .toggleStyle(.checkbox)
+                .disabled(!isEnabled)
+                .opacity(isEnabled ? 1 : 0.5)
+            }
         }
         InspectorDenseSliderRow(
             label: "Alpha",
@@ -251,7 +308,21 @@ struct NumericOverlayDetailView: View {
                 get: { element.style.unitPosition },
                 set: { project.setOverlayUnitPosition(elementID, position: $0) }
             )) { position in
-                Text(position.label)
+                Text(position.compactInspectorLabel)
+                    .lineLimit(1)
+            }
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.5)
+        }
+        // Unit alignment is independent from label and value. Top/bottom: own
+        // row horizontal align. Left/right of value: vertical align in the row
+        // (minimal preset); baseline still ties unit to the value horizontally.
+        InspectorDenseRow(label: alignRowLabel(for: element.style.unitPosition)) {
+            InspectorDenseSegmented(values: OverlayTextAlignment.allCases, selection: Binding(
+                get: { element.style.unitTextAlignment },
+                set: { project.setOverlayUnitTextAlignment(elementID, alignment: $0) }
+            )) { alignment in
+                Image(systemName: alignSystemImage(for: alignment, position: element.style.unitPosition))
             }
             .disabled(!isEnabled)
             .opacity(isEnabled ? 1 : 0.5)
@@ -265,6 +336,20 @@ struct NumericOverlayDetailView: View {
             }
             .disabled(!isEnabled)
             .opacity(isEnabled ? 1 : 0.5)
+        }
+        if supportsHeartRateZoneColoring(element) {
+            InspectorDenseRow(label: "Zone Color") {
+                Toggle(
+                    "Follow HR zones for unit",
+                    isOn: Binding(
+                        get: { element.style.unitColorsFollowHeartRateZones },
+                        set: { project.setOverlayUnitColorsFollowHeartRateZones(elementID, $0) }
+                    )
+                )
+                .toggleStyle(.checkbox)
+                .disabled(!isEnabled)
+                .opacity(isEnabled ? 1 : 0.5)
+            }
         }
         InspectorDenseSliderRow(
             label: "Alpha",
@@ -299,6 +384,104 @@ struct NumericOverlayDetailView: View {
             ),
             range: 0...60,
             displayText: String(format: "%.1f", element.style.unitSpacing),
+            isEnabled: isEnabled
+        )
+    }
+
+    @ViewBuilder
+    private func iconSection(_ element: OverlayElement) -> some View {
+        let isEnabled = element.style.iconEnabled
+        InspectorDenseRow(label: "Symbol") {
+            SFSymbolPicker(
+                symbolName: Binding(
+                    get: { element.style.iconSystemName },
+                    set: { project.setOverlayIconSystemName(elementID, systemName: $0) }
+                ),
+                placeholder: element.type.defaultNumericIconSystemName,
+                defaultSymbolName: element.type.defaultNumericIconSystemName,
+                defaultLabel: "Metric Default",
+                onSubmit: { project.finishContinuousEdit() },
+                onDefault: {
+                    project.setOverlayIconSystemName(elementID, systemName: element.type.defaultNumericIconSystemName)
+                    project.finishContinuousEdit()
+                }
+            )
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.5)
+        }
+        InspectorDenseRow(label: "Position") {
+            InspectorDenseSegmented(values: OverlayTextAttachmentPosition.allCases, selection: Binding(
+                get: { element.style.iconPosition },
+                set: { project.setOverlayIconPosition(elementID, position: $0) }
+            )) { position in
+                Text(position.compactInspectorLabel)
+                    .lineLimit(1)
+            }
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.5)
+        }
+        InspectorDenseRow(label: alignRowLabel(for: element.style.iconPosition)) {
+            InspectorDenseSegmented(values: OverlayTextAlignment.allCases, selection: Binding(
+                get: { element.style.iconTextAlignment },
+                set: { project.setOverlayIconTextAlignment(elementID, alignment: $0) }
+            )) { alignment in
+                Image(systemName: alignSystemImage(for: alignment, position: element.style.iconPosition))
+            }
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.5)
+        }
+        InspectorDenseSliderRow(
+            label: "Size",
+            value: Binding(
+                get: { element.style.iconSize },
+                set: { project.setOverlayIconSize(elementID, size: $0.rounded()) }
+            ),
+            range: 8...96,
+            displayText: "\(Int(element.style.iconSize.rounded()))",
+            isEnabled: isEnabled
+        )
+        InspectorDenseRow(label: "Color") {
+            InspectorDenseSwatchStrip(
+                presets: NumericOverlayDetailView.colorPresets,
+                selected: element.style.iconColor
+            ) { color in
+                project.setOverlayIconColor(elementID, color: color)
+            }
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.5)
+        }
+        if supportsHeartRateZoneColoring(element) {
+            InspectorDenseRow(label: "Zone Color") {
+                Toggle(
+                    "Follow HR zones for icon",
+                    isOn: Binding(
+                        get: { element.style.iconColorsFollowHeartRateZones },
+                        set: { project.setOverlayIconColorsFollowHeartRateZones(elementID, $0) }
+                    )
+                )
+                .toggleStyle(.checkbox)
+                .disabled(!isEnabled)
+                .opacity(isEnabled ? 1 : 0.5)
+            }
+        }
+        InspectorDenseSliderRow(
+            label: "Alpha",
+            value: Binding(
+                get: { element.style.iconOpacity },
+                set: { project.setOverlayIconOpacity(elementID, opacity: $0.quantizedNumeric(to: 0.05)) }
+            ),
+            range: 0...1,
+            displayText: String(format: "%.0f%%", element.style.iconOpacity * 100),
+            isEnabled: isEnabled
+        )
+        InspectorDenseSliderRow(
+            label: "Spacing",
+            value: Binding(
+                get: { element.style.iconSpacing },
+                set: { project.setOverlayIconSpacing(elementID, spacing: $0.quantizedNumeric(to: 0.5)) }
+            ),
+            range: 0...60,
+            displayText: String(format: "%.1f", element.style.iconSpacing),
             isEnabled: isEnabled
         )
     }
@@ -340,25 +523,11 @@ struct NumericOverlayDetailView: View {
         )
         InspectorDenseRow(label: "Weight") {
             InspectorDenseSegmented(values: OverlayFontWeight.allCases, selection: fontWeight) { weight in
-                Text(weight.label)
+                Text(weight.compactInspectorLabel)
+                    .lineLimit(1)
             }
             .disabled(!isEnabled)
             .opacity(isEnabled ? 1 : 0.5)
-        }
-    }
-
-    @ViewBuilder
-    private func colorSection(_ element: OverlayElement) -> some View {
-        let accentEnabled = accentApplies(to: element.style.textPreset)
-        InspectorDenseRow(label: "Accent") {
-            InspectorDenseSwatchStrip(
-                presets: NumericOverlayDetailView.colorPresets,
-                selected: element.style.accentColor
-            ) { color in
-                project.setOverlayAccentColor(elementID, color: color)
-            }
-            .disabled(!accentEnabled)
-            .opacity(accentEnabled ? 1 : 0.5)
         }
     }
 
@@ -583,6 +752,21 @@ struct NumericOverlayDetailView: View {
     }
 
     @ViewBuilder
+    private func iconEnabledToggle(_ element: OverlayElement) -> some View {
+        Toggle("", isOn: Binding(
+            get: { element.style.iconEnabled },
+            set: { project.setOverlayIconEnabled(elementID, enabled: $0) }
+        ))
+        .toggleStyle(.switch)
+        .controlSize(.mini)
+        .labelsHidden()
+    }
+
+    private func supportsHeartRateZoneColoring(_ element: OverlayElement) -> Bool {
+        element.type == .heartRate || element.type == .heartRateZone
+    }
+
+    @ViewBuilder
     private func shadowEnabledToggle(_ element: OverlayElement) -> some View {
         Toggle("", isOn: Binding(
             get: { element.style.shadowEnabled },
@@ -602,9 +786,6 @@ struct NumericOverlayDetailView: View {
             onLeadingTap: { project.resetOverlayStyle(elementID) },
             onTrailingTap: { project.selection = .none }
         )
-        .padding(.horizontal, NumericTokens.panelPaddingX)
-        .padding(.vertical, NumericTokens.space3)
-        .background(NumericTokens.panelBackgroundElevated)
     }
 
     private func previewValue(for element: OverlayElement) -> String {
@@ -615,7 +796,7 @@ struct NumericOverlayDetailView: View {
         )
     }
 
-    static let fontPresets = ["SF Pro", "Avenir Next", "Helvetica Neue", "Menlo"]
+    static var fontPresets: [String] { FontLibraryManager.shared.effectiveFavorites }
     static let colorPresets: [(name: String, color: OverlayColor)] = [
         ("White", .white), ("Black", .black), ("Red", .red), ("Orange", .orange),
         ("Yellow", .yellow), ("Green", .green), ("Blue", .blue), ("Cyan", .cyan),
@@ -649,7 +830,7 @@ struct NumericOverlayHeader: View {
                 RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
                     .fill(NumericTokens.controlBackground)
                     .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                Image(systemName: element.type.numericIcon)
+                Image(systemName: element.type.defaultNumericIconSystemName)
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(NumericTokens.textPrimary)
             }
@@ -703,7 +884,7 @@ enum NumericSection: String, CaseIterable {
     case typography
     case label
     case unit
-    case color
+    case icon
     case background
     case effects
 
@@ -714,7 +895,7 @@ enum NumericSection: String, CaseIterable {
         case .typography: "Value"
         case .label: "Label"
         case .unit: "Unit"
-        case .color: "Color"
+        case .icon: "Icon"
         case .background: "Background"
         case .effects: "Shadow"
         }
@@ -727,7 +908,7 @@ enum NumericSection: String, CaseIterable {
         case .typography: "textformat"
         case .label: "textformat.abc"
         case .unit: "character.textbox"
-        case .color: "paintpalette"
+        case .icon: "star"
         case .background: "rectangle.fill"
         case .effects: "square.fill.on.square.fill"
         }
@@ -735,48 +916,52 @@ enum NumericSection: String, CaseIterable {
 }
 
 private extension NumericOverlayDetailView {
-    func accentApplies(to preset: OverlayTextPreset) -> Bool {
-        switch preset {
-        case .splitLabel, .neonGlow, .racingStripe, .editorial, .digitalWatch, .accentBar, .sportNeon:
-            true
-        default:
-            false
+    /// Row label for the label-alignment segmented control — flips between
+    /// horizontal and vertical wording so the meaning is obvious for a
+    /// stacked vs. side-attached label.
+    func alignRowLabel(for position: OverlayTextAttachmentPosition) -> String {
+        switch position {
+        case .top, .bottom: "Align"
+        case .leading, .trailing: "Anchor"
+        }
+    }
+
+    func alignSystemImage(for alignment: OverlayTextAlignment, position: OverlayTextAttachmentPosition) -> String {
+        switch position {
+        case .top, .bottom:
+            switch alignment {
+            case .leading: "text.alignleft"
+            case .center: "text.aligncenter"
+            case .trailing: "text.alignright"
+            }
+        case .leading, .trailing:
+            switch alignment {
+            case .leading: "arrow.up.to.line"
+            case .center: "minus"
+            case .trailing: "arrow.down.to.line"
+            }
         }
     }
 }
 
-extension OverlayTextPreset {
-    var compactDisplayLabel: String {
-        label.components(separatedBy: " / ").first ?? label
+private extension OverlayTextAttachmentPosition {
+    var compactInspectorLabel: String {
+        switch self {
+        case .top: "Top"
+        case .bottom: "Bot"
+        case .leading: "Left"
+        case .trailing: "Right"
+        }
     }
 }
 
-extension OverlayElementType {
-    var numericIcon: String {
+private extension OverlayFontWeight {
+    var compactInspectorLabel: String {
         switch self {
-        case .heartRate: "heart"
-        case .pace: "speedometer"
-        case .calories: "flame"
-        case .elapsedTime: "clock"
-        case .realTime: "watch.analog"
-        case .distance: "ruler"
-        case .elevation: "mountain.2"
-        case .cadence: "figure.run"
-        case .power: "bolt"
-        case .distanceTimeline: "waveform.path.ecg"
-        case .elevationChart: "chart.line.uptrend.xyaxis"
-        case .runningGauge: "gauge"
-        case .routeMap: "map"
-        case .verticalOscillation: "arrow.up.and.down"
-        case .groundContactTime: "timer"
-        case .strideLength: "arrow.left.and.right"
-        case .verticalRatio: "percent"
-        case .groundContactBalance: "scale.3d"
-        case .temperature: "thermometer"
-        case .grade: "arrow.up.right"
-        case .lapList: "list.number"
-        case .lapCard: "rectangle.badge.checkmark"
-        case .lapLive: "stopwatch"
+        case .regular: "Reg"
+        case .medium: "Med"
+        case .semibold: "Semi"
+        case .bold: "Bold"
         }
     }
 }

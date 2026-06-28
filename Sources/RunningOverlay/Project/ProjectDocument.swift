@@ -5,10 +5,15 @@ import UniformTypeIdentifiers
 
 @MainActor
 final class ProjectDocument: ObservableObject {
+    private static let lastUsedOverlayTemplateKey = "overlayTemplate.lastUsed"
+
     @Published var settings = ProjectSettings()
     @Published var activity = ActivityTimeline.empty
     @Published var mediaItems: [MediaItem] = []
-    @Published var timeline = TimelineModel.empty
+    @Published var mediaFolders: [MediaFolder] = []
+    @Published var timeline = TimelineModel.empty {
+        didSet { rememberNonFitZoom() }
+    }
     @Published var overlayLayout = OverlayLayout.empty
     @Published var selection: EditorSelection = .none
     @Published var isPlaying = false
@@ -16,26 +21,101 @@ final class ProjectDocument: ObservableObject {
     @Published var showingProjectSettings = false
     @Published var showingExportDialog = false
     @Published var overlayTemplates: [OverlayTemplate] = []
+    @Published var userAssets: [UserAsset] = [] {
+        didSet { IconAssetResolver.configure(userAssets: userAssets, projectURL: projectURL) }
+    }
     @Published var showPreviewGuides = false
+    @Published var previewFitMode: PreviewFitMode = .fit
+    @Published var previewCanvasBackground: Color = EditorTheme.appBackground
     @Published var isExporting = false
     @Published var exportProgress: ExportProgressState?
     @Published var mediaPoolPreviewItemID: MediaItem.ID?
     @Published var mediaPoolPreviewSourceTime: TimeInterval = 0
+    @Published var fitSourceName: String = ""
+    @Published private(set) var openWeatherAPIKey = ""
+    @Published var workoutStructureSelection: WorkoutStructureSelection = .auto
     @Published var statusMessage = "Ready to import a FIT file."
+    @Published var toastMessage: String?
     @Published var isTimelineCollapsed = false
     @Published private(set) var canUndo = false
     @Published private(set) var canRedo = false
 
     private let overlayTemplateStore: OverlayTemplateStore
+    private let userDefaults: UserDefaults
+    private let credentialStore: any CredentialStore
+    private(set) var projectURL: URL?
     private var exportTask: Task<Void, Never>?
     private var undoStack: [ProjectSnapshot] = []
     private var redoStack: [ProjectSnapshot] = []
     private var activeUndoSnapshot: ProjectSnapshot?
     private var copiedOverlayConfiguration: CopiedOverlayConfiguration?
 
-    init(overlayTemplateStore: OverlayTemplateStore = OverlayTemplateStore()) {
+    init(
+        overlayTemplateStore: OverlayTemplateStore = OverlayTemplateStore(),
+        userDefaults: UserDefaults = .standard,
+        credentialStore: any CredentialStore = KeychainCredentialStore()
+    ) {
         self.overlayTemplateStore = overlayTemplateStore
+        self.userDefaults = userDefaults
+        self.credentialStore = credentialStore
+        do {
+            openWeatherAPIKey = try credentialStore.value(
+                for: KeychainCredentialStore.openWeatherAccount
+            ) ?? ""
+        } catch {
+            openWeatherAPIKey = ""
+            print("[RunningOverlay] Could not read OpenWeather API key from Keychain: \(error.localizedDescription)")
+        }
         loadOverlayTemplates()
+        IconAssetResolver.configure(userAssets: userAssets, projectURL: projectURL)
+    }
+
+    func setOpenWeatherAPIKey(_ value: String) {
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            try credentialStore.setValue(
+                normalized.isEmpty ? nil : normalized,
+                for: KeychainCredentialStore.openWeatherAccount
+            )
+            openWeatherAPIKey = normalized
+            statusMessage = normalized.isEmpty
+                ? "OpenWeather API key removed from Keychain."
+                : "OpenWeather API key saved in Keychain."
+        } catch {
+            statusMessage = "Could not update OpenWeather API key: \(error.localizedDescription)"
+        }
+    }
+
+    var workoutStructureSummary: String {
+        let analysis = activity.workoutStructure
+        let kind = analysis.kind == .structured ? "Structured" : "Normal"
+        let source = analysis.source == .auto ? "auto" : "manual"
+        guard analysis.kind == .structured, analysis.subtype != .none else {
+            return "\(kind) · \(source)"
+        }
+        return "\(kind) · \(analysis.subtype.displayName) · \(source)"
+    }
+
+    func assetURL(for assetID: UUID) -> URL? {
+        guard let asset = userAssets.first(where: { $0.id == assetID }) else { return nil }
+        return UserAssetStore.url(for: asset, projectURL: projectURL)
+    }
+
+    func importUserAsset(kind: UserAsset.Kind, allowedContentTypes: [UTType]) {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = allowedContentTypes
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            let asset = try UserAssetStore.import(url: url, kind: kind, projectURL: projectURL)
+            registerUndoPoint()
+            userAssets.append(asset)
+        } catch {
+            statusMessage = "Failed to import asset: \(error.localizedDescription)"
+        }
     }
 
     func importFitFile() {
@@ -52,10 +132,9 @@ final class ProjectDocument: ObservableObject {
         do {
             print("[RunningOverlay] Importing FIT file: \(url.path)")
             registerUndoPoint()
-            activity = try FitFileParser.parse(url: url)
-            timeline.fitStartTime = 0
-            timeline.playhead = timeline.fitStartTime
-            statusMessage = "Loaded FIT: \(url.lastPathComponent), \(formatDuration(activity.duration)), \(formatDistance(activity.distanceMeters))."
+            let parsedActivity = try FitFileParser.parse(url: url)
+            workoutStructureSelection = .auto
+            finishFitImport(activity: parsedActivity, sourceName: url.lastPathComponent)
             print("[RunningOverlay] FIT import succeeded: \(url.lastPathComponent), duration=\(formatDuration(activity.duration)), distance=\(formatDistance(activity.distanceMeters)), records=\(activity.records.count)")
         } catch {
             statusMessage = "FIT import failed: \(error.localizedDescription)"
@@ -63,6 +142,30 @@ final class ProjectDocument: ObservableObject {
             print("[RunningOverlay] Error: \(error.localizedDescription)")
             print("[RunningOverlay] Debug: \(String(reflecting: error))")
         }
+    }
+
+    func finishFitImport(activity importedActivity: ActivityTimeline, sourceName: String) {
+        activity = importedActivity
+        workoutStructureSelection = .auto
+        fitSourceName = sourceName
+        timeline.fitStartTime = 0
+        timeline.playhead = timeline.fitStartTime
+
+        let importSummary = "Loaded FIT: \(sourceName), \(formatDuration(importedActivity.duration)), \(formatDistance(importedActivity.distanceMeters))."
+        if let appliedTemplateName = applyLastUsedOverlayTemplateAfterFitImport() {
+            statusMessage = "\(importSummary) Applied template: \(appliedTemplateName)."
+            refreshOpenMeteoWeatherWidgetsAfterFitImport()
+        } else {
+            statusMessage = importSummary
+        }
+    }
+
+    func setWorkoutStructureSelection(_ selection: WorkoutStructureSelection) {
+        guard activity.duration > 0 else { return }
+        registerUndoPoint()
+        workoutStructureSelection = selection
+        activity = activity.applyingWorkoutStructureSelection(selection)
+        statusMessage = "Workout type set to \(workoutStructureSummary)."
     }
 
     func importVideos() {
@@ -89,7 +192,7 @@ final class ProjectDocument: ObservableObject {
         importVideoURLs(urls, replacingExisting: true)
     }
 
-    func importVideoURLs(_ urls: [URL], replacingExisting: Bool = false) {
+    func importVideoURLs(_ urls: [URL], replacingExisting: Bool = false, intoFolder folderID: MediaFolder.ID? = nil) {
         let videoURLs = urls.filter(Self.isSupportedVideoURL)
         guard !videoURLs.isEmpty else {
             statusMessage = "No supported video files were found."
@@ -98,6 +201,10 @@ final class ProjectDocument: ObservableObject {
 
         statusMessage = "Importing \(videoURLs.count) video file(s)..."
         let currentActivity = activity
+        let targetFolderID: MediaFolder.ID? = {
+            guard let folderID, mediaFolders.contains(where: { $0.id == folderID }) else { return nil }
+            return folderID
+        }()
 
         Task {
             let imported = await withTaskGroup(of: MediaItem.self) { group in
@@ -114,8 +221,19 @@ final class ProjectDocument: ObservableObject {
                 return items.sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
             }
 
+            let stampedImported: [MediaItem]
+            if let targetFolderID {
+                stampedImported = imported.map {
+                    var item = $0
+                    item.folderID = targetFolderID
+                    return item
+                }
+            } else {
+                stampedImported = imported
+            }
+
             registerUndoPoint()
-            let importedMediaItems = replacingExisting ? imported : mediaItems + imported
+            let importedMediaItems = replacingExisting ? stampedImported : mediaItems + stampedImported
             mediaItems = importedMediaItems
 
             if replacingExisting {
@@ -123,14 +241,15 @@ final class ProjectDocument: ObservableObject {
                 mediaPoolPreviewItemID = nil
             }
 
-            let matchableCount = imported.filter {
+            let matchableCount = stampedImported.filter {
                 if case .readyToMatch = $0.alignmentStatus {
                     return true
                 }
                 return false
             }.count
             let matchableSuffix = matchableCount > 0 ? ", \(matchableCount) ready for auto-match" : ""
-            statusMessage = "Imported \(imported.count) video file(s) to media pool\(matchableSuffix)."
+            let destination = targetFolderID.flatMap { id in mediaFolders.first { $0.id == id }?.name }.map { " into \"\($0)\"" } ?? ""
+            statusMessage = "Imported \(stampedImported.count) video file(s)\(destination)\(matchableSuffix)."
         }
     }
 
@@ -258,16 +377,77 @@ final class ProjectDocument: ObservableObject {
         }
     }
 
+    /// Cached "fit" pixels-per-second reported by the timeline canvas during its
+    /// most recent render. Used as the lower bound for zoom so the slider can
+    /// never produce a view that is smaller than Fit.
+    var fitPixelsPerSecond: Double = 1
+
+    /// Remembered px/s from the most recent non-fit zoom. Drives the Shift+Z
+    /// toggle: when at Fit, expand back to this value; when zoomed in, collapse
+    /// to Fit and keep this as the "go back" value.
+    private var lastNonFitPixelsPerSecond: Double?
+
+    private static let defaultToggleZoomMultiplier = 5.0
+
+    private func rememberNonFitZoom() {
+        if case .pixelsPerSecond(let value) = timeline.zoom, value > fitPixelsPerSecond {
+            lastNonFitPixelsPerSecond = value
+        }
+    }
+
+    func toggleTimelineFitZoom() {
+        var updatedTimeline = timeline
+        switch timeline.zoom {
+        case .fit:
+            let fallback = max(fitPixelsPerSecond * Self.defaultToggleZoomMultiplier, Self.minimumTimelinePixelsPerSecond)
+            let target = lastNonFitPixelsPerSecond ?? fallback
+            let clamped = min(max(target, zoomLowerBound), Self.maximumTimelinePixelsPerSecond)
+            updatedTimeline.zoom = .pixelsPerSecond(clamped)
+        case .pixelsPerSecond:
+            updatedTimeline.zoom = .fit
+        }
+        timeline = updatedTimeline
+    }
+
     func zoomTimelineIn() {
         var updatedTimeline = timeline
-        updatedTimeline.zoomIn()
+        let current = currentPixelsPerSecond
+        let next = min(current * 1.35, Self.maximumTimelinePixelsPerSecond)
+        if next <= zoomLowerBound * 1.001 {
+            updatedTimeline.zoom = .fit
+        } else {
+            updatedTimeline.zoom = .pixelsPerSecond(next)
+        }
         timeline = updatedTimeline
     }
 
     func zoomTimelineOut() {
         var updatedTimeline = timeline
-        updatedTimeline.zoomOut()
+        switch timeline.zoom {
+        case .fit:
+            return
+        case .pixelsPerSecond(let value):
+            let next = value / 1.35
+            if next <= zoomLowerBound * 1.001 {
+                updatedTimeline.zoom = .fit
+            } else {
+                updatedTimeline.zoom = .pixelsPerSecond(next)
+            }
+        }
         timeline = updatedTimeline
+    }
+
+    private var zoomLowerBound: Double {
+        max(fitPixelsPerSecond, Self.minimumTimelinePixelsPerSecond)
+    }
+
+    private var currentPixelsPerSecond: Double {
+        switch timeline.zoom {
+        case .fit:
+            return fitPixelsPerSecond
+        case .pixelsPerSecond(let value):
+            return max(value, fitPixelsPerSecond)
+        }
     }
 
     var timelineZoomSliderValue: Double {
@@ -275,7 +455,10 @@ final class ProjectDocument: ObservableObject {
         case .fit:
             return 0
         case .pixelsPerSecond(let value):
-            return Self.sliderValue(forPixelsPerSecond: value)
+            if value <= fitPixelsPerSecond {
+                return 0
+            }
+            return Self.sliderValue(forPixelsPerSecond: value, fit: zoomLowerBound)
         }
     }
 
@@ -308,10 +491,10 @@ final class ProjectDocument: ObservableObject {
 
     func setTimelineZoomSliderValue(_ value: Double) {
         var updatedTimeline = timeline
-        if value <= 2 {
+        if value <= Self.zoomSliderFitThreshold {
             updatedTimeline.zoom = .fit
         } else {
-            updatedTimeline.zoom = .pixelsPerSecond(Self.pixelsPerSecond(forSliderValue: value))
+            updatedTimeline.zoom = .pixelsPerSecond(Self.pixelsPerSecond(forSliderValue: value, fit: zoomLowerBound))
         }
         timeline = updatedTimeline
     }
@@ -322,6 +505,9 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements.append(element)
         selection = .overlayElement(element.id)
         statusMessage = "Added \(type.label) overlay."
+        if type == .weatherWidget {
+            fetchWeatherForNewWeatherWidget(element.id)
+        }
     }
 
     private func makeOverlayElement(type: OverlayElementType, position: CGPoint, scale: Double) -> OverlayElement {
@@ -330,6 +516,7 @@ final class ProjectDocument: ObservableObject {
             type: type,
             position: position,
             scale: scale,
+            opacity: 1,
             isVisible: true,
             isLocked: false,
             style: style
@@ -338,20 +525,124 @@ final class ProjectDocument: ObservableObject {
 
     private func defaultOverlayStyle(for type: OverlayElementType) -> OverlayStyle {
         var style = OverlayStyle.default
+        let defaultFont = FontLibraryManager.shared.defaultFamily
+        style.fontName = defaultFont
+        style.labelFontName = defaultFont
+        style.unitFontName = defaultFont
         style.unitOption = type.defaultUnitOption
+        if type == .heartRateZone || type == .date {
+            style.showUnit = false
+        }
         if type == .routeMap {
-            // Route Style preset describes the polyline appearance only; map
-            // visibility is driven by `routeMapBackgroundStyle` (see
-            // `docs/design/overlays/route-map/route-map-overlay-ui.md`). The default is to show
-            // the dark MapKit background with a Gradient route line on top.
-            style.routeMapPreset = .gradient
+            style.routeMapColorMode = .gradient
             style.routeMapProvider = .mapKit
             style.routeMapBackgroundStyle = .dark
             style.backgroundOpacity = 0.74
             style.foregroundColor = .cyan
         }
+        if type == .decorSolidColor {
+            style.decor = DecorStyle(
+                shape: .roundedRectangle,
+                fillColor: .white,
+                width: 240,
+                height: 80,
+                cornerRadius: 12
+            )
+            style.backgroundEnabled = false
+        }
+        if type == .decorIcon {
+            style.decor = DecorStyle(
+                shape: .roundedRectangle,
+                fillColor: OverlayColor(red: 0, green: 0, blue: 0, alpha: 0),
+                width: 80,
+                height: 80,
+                cornerRadius: 0,
+                iconAsset: .sfSymbol(name: "star.fill", weight: .medium, scale: .large),
+                iconTint: .white,
+                iconPreserveSVGColors: false,
+                iconContentMode: .fit
+            )
+            style.backgroundEnabled = false
+        }
+        if type == .weatherWidget {
+            style.weatherWidget = WeatherWidgetStyle.preset(.simpleCard)
+            style.weatherWidget.dataSource = .openMeteo
+            style.weatherWidget.locationText = ""
+            style.weatherWidget.cachedWeather = nil
+        }
+        if type == .intervalHUDBar {
+            style.intervalHUDBar = .default
+            style.foregroundColor = .white
+            style.labelColor = .white
+            style.unitColor = .white
+            style.backgroundEnabled = true
+            style.backgroundColor = .black
+            style.backgroundOpacity = 0.72
+            style.backgroundRadius = 10
+            style.borderEnabled = true
+            style.borderColor = .white
+            style.borderOpacity = 0.18
+            style.borderWidth = 1
+            style.dividerEnabled = true
+            style.dividerColor = .white
+            style.dividerThickness = 1
+            style.dividerOpacity = 0.28
+            style.shadowEnabled = true
+            style.shadowOpacity = 0.34
+            style.shadowRadius = 8
+        }
+        if type == .intervalTimeline {
+            style.intervalTimeline = .default
+            style.foregroundColor = .white
+            style.labelColor = .white
+            style.unitColor = .white
+            style.backgroundEnabled = true
+            style.backgroundColor = .black
+            style.backgroundOpacity = 0.78
+            style.backgroundRadius = 10
+            style.borderEnabled = true
+            style.borderColor = .white
+            style.borderOpacity = 0.16
+            style.borderWidth = 1
+            style.shadowEnabled = true
+            style.shadowOpacity = 0.34
+            style.shadowRadius = 10
+        }
+        if type == .zoneEdgeBar {
+            style.zoneEdgeBar = .default
+            style.backgroundEnabled = false
+            style.borderEnabled = false
+            style.shadowEnabled = true
+            style.shadowColor = .black
+            style.shadowOpacity = 0.34
+            style.shadowRadius = 8
+            style.shadowOffsetX = 0
+            style.shadowOffsetY = 2
+            style.shadowThickness = 1
+        }
+        if type == .decorText {
+            style.decor = DecorStyle(
+                shape: .rectangle,
+                fillColor: OverlayColor(red: 0, green: 0, blue: 0, alpha: 0),
+                width: 320,
+                height: 60,
+                cornerRadius: 0,
+                textContent: "Hello",
+                textFont: .system(family: FontLibraryManager.shared.defaultFamily),
+                textSize: 36,
+                textAlignment: .center,
+                textLineHeight: 1.2,
+                textLetterSpacing: 0,
+                textFillMode: .solid(color: .white),
+                textStrokeWidth: 0,
+                textStrokeColor: .white,
+                textAutoFit: false
+            )
+            style.backgroundEnabled = false
+        }
         if let recommended = type.defaultNumericPreset {
             style.textPreset = recommended
+            style.iconSystemName = type.defaultNumericIconSystemName
             if let tokens = recommended.recommendedTokens {
                 style.fontName = tokens.fontName
                 style.fontWeight = tokens.fontWeight
@@ -397,14 +688,39 @@ final class ProjectDocument: ObservableObject {
         timeline.clip(with: clipID)
     }
 
+    func isAutoMatchedClip(_ clipID: TimelineClip.ID) -> Bool {
+        guard let mediaItemID = timeline.clip(with: clipID)?.mediaItemID,
+              let mediaItem = mediaItems.first(where: { $0.id == mediaItemID }) else {
+            return false
+        }
+        switch mediaItem.alignmentStatus {
+        case .aligned(let source):
+            return source != "manual"
+        case .readyToMatch:
+            return true
+        case .needsManualPlacement:
+            return false
+        }
+    }
+
     func placeMediaItem(_ mediaItemID: MediaItem.ID, onTrack trackName: String, at elapsedTime: TimeInterval) {
         guard let mediaIndex = mediaItems.firstIndex(where: { $0.id == mediaItemID }) else {
             statusMessage = "Could not place media: item not found."
             return
         }
 
-        registerUndoPoint()
         let mediaItem = mediaItems[mediaIndex]
+        if timeline.wouldClipOverlap(
+            mediaItemID: mediaItem.id,
+            trackName: trackName,
+            startTime: elapsedTime,
+            duration: mediaItem.duration
+        ) {
+            statusMessage = "Cannot place \"\(mediaItem.displayName)\" on \(trackName): it overlaps an existing clip. Try \"Match to New Layer\" instead."
+            return
+        }
+
+        registerUndoPoint()
         var updatedTimeline = timeline
         guard let clipID = updatedTimeline.addOrMoveClip(
             mediaItem: mediaItem,
@@ -431,15 +747,80 @@ final class ProjectDocument: ObservableObject {
         matchMediaItems(mediaItemIDs, toTrackName: timeline.nextLayerName())
     }
 
-    func setMediaTag(_ tag: MediaTag?, for mediaItemIDs: Set<MediaItem.ID>) {
+    @discardableResult
+    func createMediaFolder(name: String = "New Folder", containing mediaItemIDs: Set<MediaItem.ID> = []) -> MediaFolder.ID {
+        registerUndoPoint()
+        let folder = MediaFolder(name: uniqueFolderName(from: name))
+        mediaFolders.append(folder)
+        if !mediaItemIDs.isEmpty {
+            for index in mediaItems.indices where mediaItemIDs.contains(mediaItems[index].id) {
+                mediaItems[index].folderID = folder.id
+            }
+            statusMessage = "Created folder \"\(folder.name)\" with \(mediaItemIDs.count) item(s)."
+        } else {
+            statusMessage = "Created folder \"\(folder.name)\"."
+        }
+        return folder.id
+    }
+
+    func renameMediaFolder(_ folderID: MediaFolder.ID, to newName: String) {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              let index = mediaFolders.firstIndex(where: { $0.id == folderID }),
+              mediaFolders[index].name != trimmed else {
+            return
+        }
+        registerUndoPoint()
+        mediaFolders[index].name = uniqueFolderName(from: trimmed, excluding: folderID)
+        statusMessage = "Renamed folder to \"\(mediaFolders[index].name)\"."
+    }
+
+    func deleteMediaFolder(_ folderID: MediaFolder.ID) {
+        guard let folderIndex = mediaFolders.firstIndex(where: { $0.id == folderID }) else {
+            return
+        }
+        registerUndoPoint()
+        let folderName = mediaFolders[folderIndex].name
+        for index in mediaItems.indices where mediaItems[index].folderID == folderID {
+            mediaItems[index].folderID = nil
+        }
+        mediaFolders.remove(at: folderIndex)
+        statusMessage = "Deleted folder \"\(folderName)\". Contained items returned to the root."
+    }
+
+    func moveMediaItems(_ mediaItemIDs: Set<MediaItem.ID>, toFolder folderID: MediaFolder.ID?) {
         guard !mediaItemIDs.isEmpty else {
+            return
+        }
+        if let folderID, !mediaFolders.contains(where: { $0.id == folderID }) {
+            return
+        }
+        let changed = mediaItems.contains { mediaItemIDs.contains($0.id) && $0.folderID != folderID }
+        guard changed else {
             return
         }
         registerUndoPoint()
         for index in mediaItems.indices where mediaItemIDs.contains(mediaItems[index].id) {
-            mediaItems[index].tag = tag
+            mediaItems[index].folderID = folderID
         }
-        statusMessage = tag.map { "Tagged \(mediaItemIDs.count) media item(s) as \($0.label)." } ?? "Cleared tag from \(mediaItemIDs.count) media item(s)."
+        if let folderID, let folder = mediaFolders.first(where: { $0.id == folderID }) {
+            statusMessage = "Moved \(mediaItemIDs.count) item(s) to \"\(folder.name)\"."
+        } else {
+            statusMessage = "Moved \(mediaItemIDs.count) item(s) to the root."
+        }
+    }
+
+    private func uniqueFolderName(from name: String, excluding folderID: MediaFolder.ID? = nil) -> String {
+        let base = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "New Folder" : name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let existing = Set(mediaFolders.filter { $0.id != folderID }.map(\.name))
+        if !existing.contains(base) {
+            return base
+        }
+        var counter = 2
+        while existing.contains("\(base) \(counter)") {
+            counter += 1
+        }
+        return "\(base) \(counter)"
     }
 
     func deleteMediaItems(_ mediaItemIDs: Set<MediaItem.ID>) {
@@ -465,8 +846,12 @@ final class ProjectDocument: ObservableObject {
 
     func setSelectedClipOffset(_ clipID: TimelineClip.ID, offset: TimeInterval) {
         registerContinuousUndoPoint()
+        let pausedSourceTime = stationarySourceTime(for: clipID)
         var updatedTimeline = timeline
         updatedTimeline.setClipOffset(clipID, offset: offset, activityDuration: activity.duration)
+        if let pausedSourceTime, let updatedClip = updatedTimeline.clip(with: clipID) {
+            updatedTimeline.playhead = updatedClip.effectiveStartTime + pausedSourceTime
+        }
         timeline = updatedTimeline
     }
 
@@ -475,6 +860,14 @@ final class ProjectDocument: ObservableObject {
         var updatedTimeline = timeline
         updatedTimeline.moveClip(clipID, toEffectiveStartTime: effectiveStartTime, activityDuration: activity.duration)
         timeline = updatedTimeline
+    }
+
+    func moveTimelineClipFromDrag(_ clipID: TimelineClip.ID, toEffectiveStartTime effectiveStartTime: TimeInterval) {
+        if isAutoMatchedClip(clipID), let clip = timeline.clip(with: clipID) {
+            setSelectedClipOffset(clipID, offset: effectiveStartTime - clip.startTime)
+        } else {
+            moveClip(clipID, toEffectiveStartTime: effectiveStartTime)
+        }
     }
 
     func setClipDuration(_ clipID: TimelineClip.ID, duration: TimeInterval) {
@@ -492,6 +885,24 @@ final class ProjectDocument: ObservableObject {
         statusMessage = "Moved FIT axis to \(formatSignedDuration(startTime))."
     }
 
+    func removeTrack(named name: String) {
+        guard timeline.tracks.contains(where: { $0.name == name }) else {
+            return
+        }
+        registerUndoPoint()
+        var updatedTimeline = timeline
+        updatedTimeline.removeTrack(named: name)
+        timeline = updatedTimeline
+        if settings.previewTrackName == name {
+            settings.previewTrackName = nil
+        }
+        settings.disabledPreviewTrackNames.remove(name)
+        if case .timelineClip(let clipID) = selection, timeline.clip(with: clipID) == nil {
+            selection = .none
+        }
+        statusMessage = "Deleted timeline layer: \(name)."
+    }
+
     func renameTrack(containing clipID: TimelineClip.ID, to name: String) {
         registerUndoPoint()
         var updatedTimeline = timeline
@@ -506,6 +917,17 @@ final class ProjectDocument: ObservableObject {
     func finishContinuousEdit() {
         activeUndoSnapshot = nil
         updateUndoRedoFlags()
+    }
+
+    private func stationarySourceTime(for clipID: TimelineClip.ID) -> TimeInterval? {
+        guard !isPlaying, let clip = timeline.clip(with: clipID) else {
+            return nil
+        }
+        let sourceTime = timeline.playhead - clip.effectiveStartTime
+        guard sourceTime >= 0, sourceTime <= clip.duration else {
+            return nil
+        }
+        return sourceTime
     }
 
     func applyOffsetToCurrentLayer(for clipID: TimelineClip.ID) {
@@ -701,6 +1123,7 @@ final class ProjectDocument: ObservableObject {
 
         registerUndoPoint()
         overlayLayout.elements[index].scale = copiedOverlayConfiguration.scale
+        overlayLayout.elements[index].opacity = copiedOverlayConfiguration.opacity
         overlayLayout.elements[index].isVisible = copiedOverlayConfiguration.isVisible
         overlayLayout.elements[index].isLocked = copiedOverlayConfiguration.isLocked
         overlayLayout.elements[index].style = copiedOverlayConfiguration.style
@@ -742,6 +1165,14 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].scale = min(max(scale, 0.25), 4)
+    }
+
+    func setOverlayOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].opacity = min(max(opacity, 0), 1)
     }
 
     func setOverlayFontSize(_ elementID: OverlayElement.ID, fontSize: Double) {
@@ -875,6 +1306,19 @@ final class ProjectDocument: ObservableObject {
         style.backgroundRadius = tokens.backgroundRadius
         if let accent = tokens.accentColor {
             style.accentColor = accent
+            if textPreset == .splitLabel || textPreset == .racingStripe || textPreset == .editorial {
+                style.labelColor = accent
+            }
+        }
+        if let divider = tokens.divider {
+            style.dividerEnabled = true
+            style.dividerColor = divider.color
+            style.dividerThickness = divider.thickness
+            style.dividerOpacity = divider.opacity
+        } else {
+            // Preset has no built-in divider; collapse the section by default.
+            // The user can still toggle it on if they want a custom one.
+            style.dividerEnabled = false
         }
         overlayLayout.elements[index].style = style
     }
@@ -947,14 +1391,6 @@ final class ProjectDocument: ObservableObject {
         }
     }
 
-    func setOverlayRouteMapPreset(_ elementID: OverlayElement.ID, routeMapPreset: OverlayRouteMapPreset) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.routeMapPreset = routeMapPreset
-    }
-
     /// Toggle the map background visibility. Off → `.none`, on → restore the
     /// previously selected map style (or `.dark` if the previous value was
     /// already `.none`). Map provider is recomputed by the layout from the
@@ -1012,7 +1448,9 @@ final class ProjectDocument: ObservableObject {
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
             return
         }
-        overlayLayout.elements[index].style.routeMapCornerRadius = min(max(radius, 0), 120)
+        let clamped = min(max(radius, 0), 120)
+        overlayLayout.elements[index].style.routeMapCornerRadius = clamped
+        overlayLayout.elements[index].style.backgroundRadius = clamped
     }
 
     func setOverlayRouteMapEdgeFade(_ elementID: OverlayElement.ID, edgeFade: OverlayRouteMapEdgeFade) {
@@ -1021,6 +1459,7 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].style.routeMapEdgeFade = edgeFade
+        overlayLayout.elements[index].style.backgroundFadeOutEnabled = edgeFade == .fadeOut
     }
 
     func setOverlayRouteMapFadeAmount(_ elementID: OverlayElement.ID, amount: Double) {
@@ -1028,7 +1467,9 @@ final class ProjectDocument: ObservableObject {
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
             return
         }
-        overlayLayout.elements[index].style.routeMapFadeAmount = min(max(amount, 0), 0.45)
+        let clamped = min(max(amount, 0), 0.45)
+        overlayLayout.elements[index].style.routeMapFadeAmount = clamped
+        overlayLayout.elements[index].style.backgroundFadeOutAmount = clamped
     }
 
     /// Apply a Route Map container preset (Square / Circle × Hard / Gradient
@@ -1046,6 +1487,8 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.routeMapShape = containerPreset.shape
         overlayLayout.elements[index].style.routeMapEdgeFade = containerPreset.edgeFade
         overlayLayout.elements[index].style.routeMapFadeAmount = containerPreset.fadeAmount
+        overlayLayout.elements[index].style.backgroundFadeOutEnabled = containerPreset.edgeFade == .fadeOut
+        overlayLayout.elements[index].style.backgroundFadeOutAmount = containerPreset.fadeAmount
         overlayLayout.elements[index].style.routeMapMapOpacity = containerPreset.mapOpacity
         overlayLayout.elements[index].style.shadowEnabled = containerPreset.shadowEnabled
         overlayLayout.elements[index].style.shadowOpacity = containerPreset.shadowOpacity
@@ -1068,6 +1511,7 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].style.routeMapBorderVisible = isVisible
+        overlayLayout.elements[index].style.borderEnabled = isVisible
     }
 
     func setOverlayRouteMapEdgeSoftness(_ elementID: OverlayElement.ID, amount: Double) {
@@ -1078,6 +1522,8 @@ final class ProjectDocument: ObservableObject {
         let clamped = min(max(amount, 0), 0.45)
         overlayLayout.elements[index].style.routeMapFadeAmount = clamped
         overlayLayout.elements[index].style.routeMapEdgeFade = clamped > 0 ? .fadeOut : .solid
+        overlayLayout.elements[index].style.backgroundFadeOutAmount = clamped
+        overlayLayout.elements[index].style.backgroundFadeOutEnabled = clamped > 0
     }
 
     func setOverlayRouteMapColorMode(_ elementID: OverlayElement.ID, colorMode: OverlayRouteMapColorMode) {
@@ -1279,40 +1725,345 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.routeMapStatsBar.blurRadius = min(max(radius, 0), 32)
     }
 
-    func mutateLapListStyle(_ elementID: OverlayElement.ID, _ mutate: (inout LapListStyle) -> Void) {
+    func mutateDecorStyle(_ elementID: OverlayElement.ID, _ mutate: (inout DecorStyle) -> Void) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.lapList)
+        mutate(&overlayLayout.elements[index].style.decor)
     }
 
-    func mutateLapListStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout LapListStyle) -> Void) {
+    func mutateDecorStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout DecorStyle) -> Void) {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.lapList)
+        mutate(&overlayLayout.elements[index].style.decor)
     }
 
-    func mutateLapCardStyle(_ elementID: OverlayElement.ID, _ mutate: (inout LapCardStyle) -> Void) {
+    func mutateWeatherWidgetStyle(_ elementID: OverlayElement.ID, _ mutate: (inout WeatherWidgetStyle) -> Void) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.lapCard)
+        mutate(&overlayLayout.elements[index].style.weatherWidget)
     }
 
-    func mutateLapCardStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout LapCardStyle) -> Void) {
+    func mutateWeatherWidgetStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout WeatherWidgetStyle) -> Void) {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.lapCard)
+        mutate(&overlayLayout.elements[index].style.weatherWidget)
     }
 
-    func mutateLapLiveStyle(_ elementID: OverlayElement.ID, _ mutate: (inout LapLiveStyle) -> Void) {
+    func mutateIntervalHUDBarStyle(_ elementID: OverlayElement.ID, _ mutate: (inout IntervalHUDBarStyle) -> Void) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.lapLive)
+        mutate(&overlayLayout.elements[index].style.intervalHUDBar)
     }
 
-    func mutateLapLiveStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout LapLiveStyle) -> Void) {
+    func mutateIntervalHUDBarStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout IntervalHUDBarStyle) -> Void) {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.lapLive)
+        mutate(&overlayLayout.elements[index].style.intervalHUDBar)
+    }
+
+    func mutateIntervalTimelineStyle(_ elementID: OverlayElement.ID, _ mutate: (inout IntervalTimelineStyle) -> Void) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.intervalTimeline)
+    }
+
+    func mutateIntervalTimelineStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout IntervalTimelineStyle) -> Void) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.intervalTimeline)
+    }
+
+    func mutateZoneEdgeBarStyle(_ elementID: OverlayElement.ID, _ mutate: (inout ZoneEdgeBarStyle) -> Void) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.zoneEdgeBar)
+    }
+
+    func mutateZoneEdgeBarStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout ZoneEdgeBarStyle) -> Void) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.zoneEdgeBar)
+    }
+
+    func applyWeatherWidgetPreset(_ elementID: OverlayElement.ID, preset: WeatherWidgetPreset) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        let existing = overlayLayout.elements[index].style.weatherWidget
+        var next = WeatherWidgetStyle.preset(preset)
+        next.dataSource = existing.dataSource
+        next.useFITTemperature = existing.useFITTemperature
+        next.manualCondition = existing.manualCondition
+        next.manualTemperatureCelsius = existing.manualTemperatureCelsius
+        next.manualHumidity = existing.manualHumidity
+        next.manualHigh = existing.manualHigh
+        next.manualLow = existing.manualLow
+        next.manualWind = existing.manualWind
+        next.manualFeelsLike = existing.manualFeelsLike
+        next.conditionLabelOverride = existing.conditionLabelOverride
+        next.humiditySuffix = existing.humiditySuffix
+        next.humidityMetricLabel = existing.humidityMetricLabel
+        next.windMetricLabel = existing.windMetricLabel
+        next.feelsLikeMetricLabel = existing.feelsLikeMetricLabel
+        next.dividerEnabled = existing.dividerEnabled
+        next.dividerColor = existing.dividerColor
+        next.dividerThickness = existing.dividerThickness
+        next.dividerOpacity = existing.dividerOpacity
+        next.temperatureUnit = existing.temperatureUnit
+        next.locationText = existing.locationText
+        next.showIcon = existing.showIcon
+        next.metricSlots = WeatherWidgetStyle.normalizedMetricSlots(existing.metricSlots, for: preset)
+        next.slotBackgroundColor = existing.slotBackgroundColor
+        next.slotBackgroundOpacity = existing.slotBackgroundOpacity
+        next.slotSpacing = existing.slotSpacing
+        next.locationTextStyle = existing.locationTextStyle
+        next.conditionTextStyle = existing.conditionTextStyle
+        next.temperatureTextStyle = existing.temperatureTextStyle
+        next.slotTitleTextStyle = existing.slotTitleTextStyle
+        next.slotLabelTextStyle = existing.slotLabelTextStyle
+        next.cachedWeather = existing.cachedWeather
+        overlayLayout.elements[index].style.weatherWidget = next
+    }
+
+    func fetchWeatherForActivityLocation(_ elementID: OverlayElement.ID) {
+        fetchWeather(elementID, registersUndo: true)
+    }
+
+    private func refreshOpenMeteoWeatherWidgetsAfterFitImport() {
+        let weatherWidgetIDs = overlayLayout.elements
+            .filter { $0.type == .weatherWidget && $0.style.weatherWidget.dataSource.isAPI }
+            .map(\.id)
+        guard !weatherWidgetIDs.isEmpty else { return }
+
+        for elementID in weatherWidgetIDs {
+            fetchWeatherForNewWeatherWidget(elementID, updatesStatusMessage: false)
+        }
+    }
+
+    private func fetchWeatherForNewWeatherWidget(_ elementID: OverlayElement.ID, updatesStatusMessage: Bool = true) {
+        guard activity.routePoints.first != nil else {
+            if updatesStatusMessage {
+                statusMessage = "Added Weather Widget overlay. Weather unavailable until the FIT route has GPS."
+            }
+            return
+        }
+        fetchWeather(elementID, registersUndo: false, updatesStatusMessage: updatesStatusMessage)
+    }
+
+    private func fetchWeather(
+        _ elementID: OverlayElement.ID,
+        registersUndo: Bool,
+        updatesStatusMessage: Bool = true
+    ) {
+        guard let element = overlayLayout.elements.first(where: { $0.id == elementID }) else {
+            return
+        }
+        let dataSource = element.style.weatherWidget.dataSource
+
+        let activity = activity
+        let openWeatherAPIKey = self.openWeatherAPIKey
+        if updatesStatusMessage {
+            statusMessage = "Fetching \(dataSource.label) weather from Activity Location..."
+        }
+
+        Task {
+            do {
+                let coordinate = try WeatherLocationResolver.activityStartCoordinate(from: activity)
+
+                async let resolvedLocation = WeatherLocationResolver.displayName(
+                    latitude: coordinate.latitude,
+                    longitude: coordinate.longitude
+                )
+                var payload: WeatherPayload
+                switch dataSource {
+                case .openMeteo:
+                    payload = try await WeatherFetcher.fetch(
+                        latitude: coordinate.latitude,
+                        longitude: coordinate.longitude,
+                        date: activity.startDate,
+                        resolvedLocation: nil
+                    )
+                case .openWeather:
+                    payload = try await WeatherFetcher.fetchOpenWeather(
+                        latitude: coordinate.latitude,
+                        longitude: coordinate.longitude,
+                        date: activity.startDate,
+                        apiKey: openWeatherAPIKey,
+                        resolvedLocation: nil
+                    )
+                case .fitTemperature, .manual:
+                    return
+                }
+                payload.resolvedLocation = await resolvedLocation
+                payload.fetchLocationMode = .activityLocation
+                applyFetchedWeatherPayload(
+                    payload,
+                    dataSource: dataSource,
+                    to: elementID,
+                    registersUndo: registersUndo,
+                    updatesStatusMessage: updatesStatusMessage
+                )
+            } catch {
+                if updatesStatusMessage {
+                    statusMessage = registersUndo
+                        ? "Weather fetch failed: \(error.localizedDescription)"
+                        : "Weather unavailable; showing placeholders."
+                    if error as? WeatherFetchError == .openWeatherUnauthorized {
+                        showToast(
+                            "OpenWeather 401: the API key or One Call 4.0 subscription may still be activating. Verify the key, subscribe to One Call 4.0, or use Open-Meteo.",
+                            duration: 6
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private func applyFetchedWeatherPayload(
+        _ payload: WeatherPayload,
+        dataSource: WeatherDataSource,
+        to elementID: OverlayElement.ID,
+        registersUndo: Bool,
+        updatesStatusMessage: Bool = true
+    ) {
+        if registersUndo {
+            registerUndoPoint()
+        }
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.weatherWidget.dataSource = dataSource
+        overlayLayout.elements[index].style.weatherWidget.cachedWeather = payload
+        if let location = payload.resolvedLocation, !location.isEmpty {
+            overlayLayout.elements[index].style.weatherWidget.locationText = location
+        }
+        if updatesStatusMessage {
+            statusMessage = "Weather updated from \(dataSource.label) · \(payload.fetchLocationMode?.label ?? "Activity Location")."
+        }
+    }
+
+    func setDecorShape(_ elementID: OverlayElement.ID, shape: DecorShape) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.shape = shape
+        if shape == .circle {
+            let side = min(overlayLayout.elements[index].style.decor.width,
+                           overlayLayout.elements[index].style.decor.height)
+            overlayLayout.elements[index].style.decor.width = side
+            overlayLayout.elements[index].style.decor.height = side
+        }
+    }
+
+    func setDecorFillColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.fillColor = color
+    }
+
+    func setDecorSize(_ elementID: OverlayElement.ID, width: Double? = nil, height: Double? = nil) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        if let width {
+            overlayLayout.elements[index].style.decor.width = min(max(width, 4), 4096)
+        }
+        if let height {
+            overlayLayout.elements[index].style.decor.height = min(max(height, 4), 4096)
+        }
+        if overlayLayout.elements[index].style.decor.shape == .circle {
+            let side = min(overlayLayout.elements[index].style.decor.width,
+                           overlayLayout.elements[index].style.decor.height)
+            overlayLayout.elements[index].style.decor.width = side
+            overlayLayout.elements[index].style.decor.height = side
+        }
+    }
+
+    func setDecorCornerRadius(_ elementID: OverlayElement.ID, radius: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.cornerRadius = min(max(radius, 0), 512)
+    }
+
+    func setDecorIconAsset(_ elementID: OverlayElement.ID, asset: IconAsset) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.iconAsset = asset
+    }
+
+    func setDecorIconTint(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.iconTint = color
+    }
+
+    func setDecorIconPreserveSVGColors(_ elementID: OverlayElement.ID, enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.iconPreserveSVGColors = enabled
+    }
+
+    func setDecorIconContentMode(_ elementID: OverlayElement.ID, mode: IconContentMode) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.iconContentMode = mode
+    }
+
+    // MARK: Decor Text mutators
+
+    func setDecorTextContent(_ elementID: OverlayElement.ID, content: String) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.textContent = content
+    }
+
+    func setDecorTextFont(_ elementID: OverlayElement.ID, font: DecorFontRef) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.textFont = font
+    }
+
+    func setDecorTextSize(_ elementID: OverlayElement.ID, size: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.textSize = min(max(size, 4), 512)
+    }
+
+    func setDecorTextAlignment(_ elementID: OverlayElement.ID, alignment: DecorTextAlignment) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.textAlignment = alignment
+    }
+
+    func setDecorTextLineHeight(_ elementID: OverlayElement.ID, lineHeight: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.textLineHeight = min(max(lineHeight, 0.5), 8)
+    }
+
+    func setDecorTextLetterSpacing(_ elementID: OverlayElement.ID, spacing: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.textLetterSpacing = min(max(spacing, -20), 80)
+    }
+
+    func setDecorTextFillMode(_ elementID: OverlayElement.ID, fillMode: DecorTextFill) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.textFillMode = fillMode
+    }
+
+    func setDecorTextStrokeWidth(_ elementID: OverlayElement.ID, width: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.textStrokeWidth = min(max(width, 0), 60)
+    }
+
+    func setDecorTextStrokeColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.textStrokeColor = color
+    }
+
+    func setDecorTextAutoFit(_ elementID: OverlayElement.ID, enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.decor.textAutoFit = enabled
     }
 
     func setOverlayRouteMapStartMarkerStyle(_ elementID: OverlayElement.ID, markerStyle: OverlayRouteMapMarkerStyle) {
@@ -1329,6 +2080,30 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].style.routeMapEndMarkerStyle = markerStyle
+    }
+
+    func setOverlayRouteMapRunnerMarkerStyle(_ elementID: OverlayElement.ID, markerStyle: OverlayRouteMapMarkerStyle) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapRunnerMarkerStyle = markerStyle
+    }
+
+    func setOverlayRouteMapStartMarkerColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapStartMarkerColor = color
+    }
+
+    func setOverlayRouteMapEndMarkerColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapEndMarkerColor = color
     }
 
     func setOverlayRouteMapRunnerDotColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
@@ -1434,6 +2209,14 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.unitOption = unitOption
     }
 
+    func setOverlayElevationDisplayMode(_ elementID: OverlayElement.ID, mode: OverlayElevationDisplayMode) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.elevationDisplayMode = mode
+    }
+
     func setOverlayShowLabel(_ elementID: OverlayElement.ID, showLabel: Bool) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
@@ -1448,6 +2231,58 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].style.showUnit = showUnit
+    }
+
+    func setOverlayIconEnabled(_ elementID: OverlayElement.ID, enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.iconEnabled = enabled
+    }
+
+    func setOverlayIconSystemName(_ elementID: OverlayElement.ID, systemName: String) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        let trimmed = systemName.trimmingCharacters(in: .whitespacesAndNewlines)
+        overlayLayout.elements[index].style.iconSystemName = trimmed.isEmpty
+            ? overlayLayout.elements[index].type.defaultNumericIconSystemName
+            : trimmed
+    }
+
+    func setOverlayTextColorsFollowHeartRateZones(_ elementID: OverlayElement.ID, _ enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.textColorsFollowHeartRateZones = enabled
+        overlayLayout.elements[index].style.valueColorsFollowHeartRateZones = enabled
+        overlayLayout.elements[index].style.labelColorsFollowHeartRateZones = enabled
+        overlayLayout.elements[index].style.unitColorsFollowHeartRateZones = enabled
+    }
+
+    func setOverlayIconColorsFollowHeartRateZones(_ elementID: OverlayElement.ID, _ enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.iconColorsFollowHeartRateZones = enabled
+    }
+
+    func setOverlayValueColorsFollowHeartRateZones(_ elementID: OverlayElement.ID, _ enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.valueColorsFollowHeartRateZones = enabled
+    }
+
+    func setOverlayLabelColorsFollowHeartRateZones(_ elementID: OverlayElement.ID, _ enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.labelColorsFollowHeartRateZones = enabled
+    }
+
+    func setOverlayUnitColorsFollowHeartRateZones(_ elementID: OverlayElement.ID, _ enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.unitColorsFollowHeartRateZones = enabled
     }
 
     func setOverlayCustomLabel(_ elementID: OverlayElement.ID, label: String) {
@@ -1468,6 +2303,12 @@ final class ProjectDocument: ObservableObject {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
         overlayLayout.elements[index].style.unitPosition = position
+    }
+
+    func setOverlayIconPosition(_ elementID: OverlayElement.ID, position: OverlayTextAttachmentPosition) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.iconPosition = position
     }
 
     func setOverlayLabelFontName(_ elementID: OverlayElement.ID, fontName: String) {
@@ -1516,6 +2357,30 @@ final class ProjectDocument: ObservableObject {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
         overlayLayout.elements[index].style.unitSpacing = min(max(spacing, 0), 60)
+    }
+
+    func setOverlayIconSize(_ elementID: OverlayElement.ID, size: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.iconSize = min(max(size, 8), 96)
+    }
+
+    func setOverlayIconColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.iconColor = color
+    }
+
+    func setOverlayIconOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.iconOpacity = min(max(opacity, 0), 1)
+    }
+
+    func setOverlayIconSpacing(_ elementID: OverlayElement.ID, spacing: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.iconSpacing = min(max(spacing, 0), 60)
     }
 
     func setOverlayPosition(_ elementID: OverlayElement.ID, position: CGPoint) {
@@ -1574,6 +2439,48 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.accentColor = color
     }
 
+    func setOverlayLabelTextAlignment(_ elementID: OverlayElement.ID, alignment: OverlayTextAlignment) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.labelTextAlignment = alignment
+    }
+
+    func setOverlayUnitTextAlignment(_ elementID: OverlayElement.ID, alignment: OverlayTextAlignment) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.unitTextAlignment = alignment
+    }
+
+    func setOverlayIconTextAlignment(_ elementID: OverlayElement.ID, alignment: OverlayTextAlignment) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.iconTextAlignment = alignment
+    }
+
+    func setOverlayDividerEnabled(_ elementID: OverlayElement.ID, enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.dividerEnabled = enabled
+    }
+
+    func setOverlayDividerColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.dividerColor = color
+    }
+
+    func setOverlayDividerThickness(_ elementID: OverlayElement.ID, thickness: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.dividerThickness = min(max(thickness, 0), 16)
+    }
+
+    func setOverlayDividerOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        overlayLayout.elements[index].style.dividerOpacity = min(max(opacity, 0), 1)
+    }
+
     func setOverlayBackgroundEnabled(_ elementID: OverlayElement.ID, enabled: Bool) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
@@ -1608,6 +2515,19 @@ final class ProjectDocument: ObservableObject {
         }
         if let y {
             overlayLayout.elements[index].style.backgroundPaddingY = max(0, min(y, 80))
+        }
+    }
+
+    func setOverlayNumericMinimumSize(_ elementID: OverlayElement.ID, width: Double? = nil, height: Double? = nil) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        if let width {
+            overlayLayout.elements[index].style.numericMinWidth = min(max(width, 0), 720)
+        }
+        if let height {
+            overlayLayout.elements[index].style.numericMinHeight = min(max(height, 0), 360)
         }
     }
 
@@ -1730,12 +2650,26 @@ final class ProjectDocument: ObservableObject {
         let type = overlayLayout.elements[index].type
         var style = OverlayStyle.default
         style.unitOption = type.defaultUnitOption
+        if type == .heartRateZone || type == .date {
+            style.showUnit = false
+        }
         if type == .routeMap {
-            style.routeMapPreset = .gradient
             style.routeMapProvider = .mapKit
             style.routeMapBackgroundStyle = .dark
             style.backgroundOpacity = 0.74
             style.foregroundColor = .cyan
+        }
+        if type == .zoneEdgeBar {
+            style.zoneEdgeBar = .default
+            style.backgroundEnabled = false
+            style.borderEnabled = false
+            style.shadowEnabled = true
+            style.shadowColor = .black
+            style.shadowOpacity = 0.34
+            style.shadowRadius = 8
+            style.shadowOffsetX = 0
+            style.shadowOffsetY = 2
+            style.shadowThickness = 1
         }
         overlayLayout.elements[index].style = style
         overlayLayout.elements[index].scale = 1.0
@@ -1827,30 +2761,91 @@ final class ProjectDocument: ObservableObject {
         saveOverlayTemplate(named: nextOverlayTemplateName(base: "Template"))
     }
 
+    func updateOverlayTemplateFromCurrentSetup(_ templateID: OverlayTemplate.ID) {
+        guard !overlayLayout.elements.isEmpty else {
+            statusMessage = "Add overlay elements before updating a template."
+            return
+        }
+        guard let index = overlayTemplates.firstIndex(where: { $0.id == templateID }) else {
+            statusMessage = "Overlay template not found."
+            return
+        }
+
+        let existingTemplate = overlayTemplates[index]
+        overlayTemplates[index] = OverlayTemplate(
+            id: existingTemplate.id,
+            name: existingTemplate.name,
+            createdAt: existingTemplate.createdAt,
+            updatedAt: Date(),
+            referenceResolution: overlayTemplateReferenceResolution,
+            elements: overlayLayout.elements.map(OverlayTemplateElement.init(element:))
+        )
+        persistOverlayTemplates()
+        statusMessage = "Updated overlay template: \(existingTemplate.name)."
+    }
+
     func applyOverlayTemplate(_ templateID: OverlayTemplate.ID) {
         guard let template = overlayTemplates.first(where: { $0.id == templateID }) else {
             statusMessage = "Overlay template not found."
             return
         }
-        registerUndoPoint()
-        overlayLayout = template.layout
-        selection = .none
-        statusMessage = "Applied overlay template: \(template.name)."
+        applyUserOverlayTemplate(template, registersUndo: true, remembersLastUsed: true, showsToast: true)
     }
 
     func applyBuiltInOverlayTemplate(_ template: BuiltInOverlayTemplate) {
+        _ = applyBuiltInOverlayTemplate(
+            template,
+            registersUndo: true,
+            remembersLastUsed: true,
+            showsToast: true
+        )
+    }
+
+    @discardableResult
+    private func applyUserOverlayTemplate(
+        _ template: OverlayTemplate,
+        registersUndo: Bool,
+        remembersLastUsed: Bool,
+        showsToast: Bool
+    ) -> Bool {
+        applyOverlayTemplateLayout(
+            template.layout,
+            name: template.name,
+            registersUndo: registersUndo,
+            showsToast: showsToast
+        )
+        if remembersLastUsed {
+            rememberLastUsedOverlayTemplate(.user(id: template.id))
+        }
+        return true
+    }
+
+    @discardableResult
+    private func applyBuiltInOverlayTemplate(
+        _ template: BuiltInOverlayTemplate,
+        registersUndo: Bool,
+        remembersLastUsed: Bool,
+        showsToast: Bool
+    ) -> Bool {
         if let resourceTemplate = loadBuiltInOverlayTemplateResource(template) {
-            applyOverlayTemplateLayout(resourceTemplate.layout, name: template.name)
-            return
+            applyOverlayTemplateLayout(
+                resourceTemplate.layout,
+                name: template.name,
+                registersUndo: registersUndo,
+                showsToast: showsToast
+            )
+            if remembersLastUsed {
+                rememberLastUsedOverlayTemplate(.builtIn(id: template.id))
+            }
+            return true
         }
 
         guard !template.elements.isEmpty else {
             statusMessage = "Built-in template not found: \(template.name)."
-            return
+            return false
         }
 
-        registerUndoPoint()
-        overlayLayout = OverlayLayout(
+        let layout = OverlayLayout(
             elements: template.elements.map { entry in
                 makeOverlayElement(
                     type: entry.type,
@@ -1859,15 +2854,100 @@ final class ProjectDocument: ObservableObject {
                 )
             }
         )
-        selection = .none
-        statusMessage = "Applied overlay template: \(template.name)."
+        applyOverlayTemplateLayout(
+            layout,
+            name: template.name,
+            registersUndo: registersUndo,
+            showsToast: showsToast
+        )
+        if remembersLastUsed {
+            rememberLastUsedOverlayTemplate(.builtIn(id: template.id))
+        }
+        return true
     }
 
-    private func applyOverlayTemplateLayout(_ layout: OverlayLayout, name: String) {
-        registerUndoPoint()
+    private func applyOverlayTemplateLayout(
+        _ layout: OverlayLayout,
+        name: String,
+        registersUndo: Bool,
+        showsToast: Bool
+    ) {
+        if registersUndo {
+            registerUndoPoint()
+        }
         overlayLayout = layout
         selection = .none
         statusMessage = "Applied overlay template: \(name)."
+        if showsToast {
+            showToast("Template applied: \(name)")
+        }
+    }
+
+    private func applyLastUsedOverlayTemplateAfterFitImport() -> String? {
+        let lastUsedTemplate = lastUsedOverlayTemplate()
+        if let lastUsedTemplate,
+           applyRememberedOverlayTemplate(lastUsedTemplate, showsToast: true) {
+            return lastUsedTemplate.displayName(in: self)
+        }
+
+        guard let easyRun = BuiltInOverlayTemplate.defaultTemplate else {
+            return nil
+        }
+        return applyBuiltInOverlayTemplate(
+            easyRun,
+            registersUndo: false,
+            remembersLastUsed: false,
+            showsToast: true
+        ) ? easyRun.name : nil
+    }
+
+    private func applyRememberedOverlayTemplate(
+        _ reference: LastUsedOverlayTemplateReference,
+        showsToast: Bool
+    ) -> Bool {
+        switch reference {
+        case .builtIn(let id):
+            guard let template = BuiltInOverlayTemplate.all.first(where: { $0.id == id }) else {
+                return false
+            }
+            return applyBuiltInOverlayTemplate(
+                template,
+                registersUndo: false,
+                remembersLastUsed: false,
+                showsToast: showsToast
+            )
+        case .user(let id):
+            guard let template = overlayTemplates.first(where: { $0.id == id }) else {
+                return false
+            }
+            return applyUserOverlayTemplate(
+                template,
+                registersUndo: false,
+                remembersLastUsed: false,
+                showsToast: showsToast
+            )
+        }
+    }
+
+    private func rememberLastUsedOverlayTemplate(_ reference: LastUsedOverlayTemplateReference) {
+        guard let data = try? JSONEncoder().encode(reference) else { return }
+        userDefaults.set(data, forKey: Self.lastUsedOverlayTemplateKey)
+    }
+
+    private func lastUsedOverlayTemplate() -> LastUsedOverlayTemplateReference? {
+        guard let data = userDefaults.data(forKey: Self.lastUsedOverlayTemplateKey) else {
+            return nil
+        }
+        return try? JSONDecoder().decode(LastUsedOverlayTemplateReference.self, from: data)
+    }
+
+    private func showToast(_ message: String, duration: TimeInterval = 2) {
+        toastMessage = message
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(duration))
+            guard self?.toastMessage == message else { return }
+            self?.toastMessage = nil
+        }
     }
 
     private func loadBuiltInOverlayTemplateResource(_ template: BuiltInOverlayTemplate) -> OverlayTemplate? {
@@ -1875,12 +2955,12 @@ final class ProjectDocument: ObservableObject {
             return nil
         }
 
-        let url = Bundle.module.url(
+        let url = Bundle.runningOverlayResources.url(
                 forResource: resourceName,
                 withExtension: OverlayTemplateStore.fileExtension,
                 subdirectory: "Templates"
               )
-            ?? Bundle.module.url(
+            ?? Bundle.runningOverlayResources.url(
                 forResource: resourceName,
                 withExtension: OverlayTemplateStore.fileExtension
             )
@@ -2134,20 +3214,87 @@ final class ProjectDocument: ObservableObject {
     func exportCurrentOverlayConfigurationJSON(to destinationURL: URL) {
         let outputURL = destinationURL.appendingPathComponent("overlay_configuration.json")
         do {
-            try FileManager.default.createDirectory(at: destinationURL, withIntermediateDirectories: true)
-            let snapshot = OverlayTemplate(
-                name: "Current Overlay Configuration",
-                layout: overlayLayout,
-                referenceResolution: overlayTemplateReferenceResolution
-            )
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(snapshot)
-            try data.write(to: outputURL)
+            try SecurityScopedURLAccess.withAccess(to: destinationURL) {
+                try FileManager.default.createDirectory(at: destinationURL, withIntermediateDirectories: true)
+                let snapshot = OverlayTemplate(
+                    name: "Current Overlay Configuration",
+                    layout: overlayLayout,
+                    referenceResolution: overlayTemplateReferenceResolution
+                )
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                let data = try encoder.encode(snapshot)
+                try data.write(to: outputURL)
+            }
             statusMessage = "Overlay configuration exported: \(outputURL.lastPathComponent)."
         } catch {
             statusMessage = "Overlay configuration export failed: \(error.localizedDescription)"
             print("[RunningOverlay] Overlay configuration export failed: \(String(reflecting: error))")
+        }
+    }
+
+    func saveProjectSnapshot() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = "running_overlay_project_snapshot.json"
+
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return
+        }
+        saveProjectSnapshot(to: url)
+    }
+
+    func restoreProjectSnapshot() {
+        guard !isExporting else {
+            statusMessage = "Cancel the active export before restoring a project snapshot."
+            return
+        }
+
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return
+        }
+        restoreProjectSnapshot(from: url)
+    }
+
+    func saveProjectSnapshot(to outputURL: URL) {
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(makePersistentSnapshot())
+            try FileManager.default.createDirectory(at: outputURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try data.write(to: outputURL)
+            statusMessage = "Project snapshot saved: \(outputURL.lastPathComponent)."
+        } catch {
+            statusMessage = "Project snapshot save failed: \(error.localizedDescription)"
+            print("[RunningOverlay] Project snapshot save failed: \(String(reflecting: error))")
+        }
+    }
+
+    func restoreProjectSnapshot(from inputURL: URL) {
+        guard !isExporting else {
+            statusMessage = "Cancel the active export before restoring a project snapshot."
+            return
+        }
+
+        do {
+            let data = try Data(contentsOf: inputURL)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let snapshot = try decoder.decode(ProjectPerformanceSnapshot.self, from: data)
+            let credentialMessage = restorePersistentSnapshot(snapshot)
+            statusMessage = credentialMessage
+                ?? "Project snapshot restored: \(inputURL.lastPathComponent)."
+        } catch {
+            statusMessage = "Project snapshot restore failed: \(error.localizedDescription)"
+            print("[RunningOverlay] Project snapshot restore failed: \(String(reflecting: error))")
         }
     }
 
@@ -2161,15 +3308,17 @@ final class ProjectDocument: ObservableObject {
 
         Task {
             do {
-                try FileManager.default.createDirectory(at: destinationURL, withIntermediateDirectories: true)
-                try? FileManager.default.removeItem(at: outputURL)
-                try await SwiftUIOverlayVideoExporter.exportFramePNG(
-                    overlayLayout: overlayLayout,
-                    activity: exportActivity,
-                    elapsedTime: quantizedLayerDataTime(for: sampleTime),
-                    size: CGSize(width: settings.resolution.width, height: settings.resolution.height),
-                    outputURL: outputURL
-                )
+                try await SecurityScopedURLAccess.withAccess(to: destinationURL) {
+                    try FileManager.default.createDirectory(at: destinationURL, withIntermediateDirectories: true)
+                    try? FileManager.default.removeItem(at: outputURL)
+                    try await SwiftUIOverlayVideoExporter.exportFramePNG(
+                        overlayLayout: overlayLayout,
+                        activity: exportActivity,
+                        elapsedTime: quantizedLayerDataTime(for: sampleTime),
+                        size: CGSize(width: settings.resolution.width, height: settings.resolution.height),
+                        outputURL: outputURL
+                    )
+                }
                 statusMessage = "Test frame exported: \(outputURL.lastPathComponent)."
             } catch {
                 statusMessage = "Test frame export failed: \(error.localizedDescription)"
@@ -2274,6 +3423,8 @@ final class ProjectDocument: ObservableObject {
         var updatedTimeline = timeline
         var lastClipID: TimelineClip.ID?
         var matchedCount = 0
+        var skippedIDs: [MediaItem.ID] = []
+        var skippedNames: [String] = []
 
         for mediaIndex in mediaItems.indices where targetIDs.contains(mediaItems[mediaIndex].id) {
             let mediaItem = mediaItems[mediaIndex]
@@ -2285,6 +3436,17 @@ final class ProjectDocument: ObservableObject {
             } else {
                 startTime = timeline.playhead
                 source = "manual"
+            }
+
+            if updatedTimeline.wouldClipOverlap(
+                mediaItemID: mediaItem.id,
+                trackName: trackName,
+                startTime: startTime,
+                duration: mediaItem.duration
+            ) {
+                skippedIDs.append(mediaItem.id)
+                skippedNames.append(mediaItem.displayName)
+                continue
             }
 
             if let clipID = updatedTimeline.addOrMoveClip(
@@ -2304,7 +3466,60 @@ final class ProjectDocument: ObservableObject {
         if let lastClipID {
             selection = .timelineClip(lastClipID)
         }
-        statusMessage = "Matched \(matchedCount) media item(s) to \(trackName)."
+        let summary: String
+        if matchedCount == 0 {
+            summary = "No items matched to \(trackName): \(skippedNames.count) overlap existing clip(s). Try \"Match to New Layer\"."
+        } else if skippedNames.isEmpty {
+            summary = "Matched \(matchedCount) media item(s) to \(trackName)."
+        } else {
+            summary = "Matched \(matchedCount) media item(s) to \(trackName); skipped \(skippedNames.count) due to overlap. Try \"Match to New Layer\" for those."
+        }
+        statusMessage = summary
+
+        if !skippedIDs.isEmpty {
+            let skippedSet = Set(skippedIDs)
+            let names = skippedNames
+            let matched = matchedCount
+            let layerName = trackName
+            DispatchQueue.main.async { [weak self] in
+                self?.presentOverlapSkippedAlert(
+                    matchedCount: matched,
+                    skippedNames: names,
+                    trackName: layerName,
+                    skippedIDs: skippedSet
+                )
+            }
+        }
+    }
+
+    private func presentOverlapSkippedAlert(
+        matchedCount: Int,
+        skippedNames: [String],
+        trackName: String,
+        skippedIDs: Set<MediaItem.ID>
+    ) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        if matchedCount == 0 {
+            alert.messageText = "No items placed on \(trackName)"
+        } else {
+            alert.messageText = "\(skippedNames.count) item(s) skipped on \(trackName)"
+        }
+
+        let preview = skippedNames.prefix(5).map { "• \($0)" }.joined(separator: "\n")
+        let suffix = skippedNames.count > 5 ? "\n…and \(skippedNames.count - 5) more" : ""
+        let intro = matchedCount == 0
+            ? "These media items overlap clips already on \(trackName) and were not placed:"
+            : "Matched \(matchedCount) item(s); these overlap clips already on \(trackName) and were not placed:"
+        alert.informativeText = "\(intro)\n\n\(preview)\(suffix)\n\nPlace the skipped item(s) on a brand-new layer?"
+
+        alert.addButton(withTitle: "Match to New Layer")
+        alert.addButton(withTitle: "Cancel")
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            matchMediaItemsToNewLayer(skippedIDs)
+        }
     }
 
     private static func isSupportedVideoURL(_ url: URL) -> Bool {
@@ -2384,8 +3599,10 @@ final class ProjectDocument: ObservableObject {
 
         exportTask = Task {
             do {
-                try await SwiftUIOverlayVideoExporter.export(job: job) { [weak self] progress in
-                    self?.updateExportProgress(progress)
+                try await SecurityScopedURLAccess.withAccess(to: job.destinationURL) {
+                    try await SwiftUIOverlayVideoExporter.export(job: job) { [weak self] progress in
+                        self?.updateExportProgress(progress)
+                    }
                 }
                 exportProgress?.markCompleted()
                 statusMessage = completedMessage
@@ -2414,23 +3631,27 @@ final class ProjectDocument: ObservableObject {
         statusMessage = progress.message
     }
 
-    private static let zoomSliderFitThreshold = 2.0
-    private static let zoomSliderMaximum = 100.0
-    private static let minimumTimelinePixelsPerSecond = 0.25
-    private static let maximumTimelinePixelsPerSecond = 200.0
+    static let zoomSliderFitThreshold = 2.0
+    static let zoomSliderMaximum = 100.0
+    static let minimumTimelinePixelsPerSecond = 0.25
+    static let maximumTimelinePixelsPerSecond = 200.0
 
-    private static func pixelsPerSecond(forSliderValue sliderValue: Double) -> Double {
+    private static func pixelsPerSecond(forSliderValue sliderValue: Double, fit: Double) -> Double {
         let normalized = min(
             max((sliderValue - zoomSliderFitThreshold) / (zoomSliderMaximum - zoomSliderFitThreshold), 0),
             1
         )
-        return minimumTimelinePixelsPerSecond
-            + pow(normalized, 2) * (maximumTimelinePixelsPerSecond - minimumTimelinePixelsPerSecond)
+        let floor = max(fit, minimumTimelinePixelsPerSecond)
+        let ceiling = max(maximumTimelinePixelsPerSecond, floor)
+        return floor + pow(normalized, 2) * (ceiling - floor)
     }
 
-    private static func sliderValue(forPixelsPerSecond pixelsPerSecond: Double) -> Double {
+    private static func sliderValue(forPixelsPerSecond pixelsPerSecond: Double, fit: Double) -> Double {
+        let floor = max(fit, minimumTimelinePixelsPerSecond)
+        let ceiling = max(maximumTimelinePixelsPerSecond, floor)
+        guard ceiling > floor else { return 0 }
         let normalized = min(
-            max((pixelsPerSecond - minimumTimelinePixelsPerSecond) / (maximumTimelinePixelsPerSecond - minimumTimelinePixelsPerSecond), 0),
+            max((pixelsPerSecond - floor) / (ceiling - floor), 0),
             1
         )
         return zoomSliderFitThreshold + sqrt(normalized) * (zoomSliderMaximum - zoomSliderFitThreshold)
@@ -2463,9 +3684,12 @@ final class ProjectDocument: ObservableObject {
         ProjectSnapshot(
             settings: settings,
             activity: activity,
+            workoutStructureSelection: workoutStructureSelection,
             mediaItems: mediaItems,
+            mediaFolders: mediaFolders,
             timeline: timeline,
             overlayLayout: overlayLayout,
+            userAssets: userAssets,
             selection: selection
         )
     }
@@ -2473,10 +3697,73 @@ final class ProjectDocument: ObservableObject {
     private func restore(_ snapshot: ProjectSnapshot) {
         settings = snapshot.settings
         activity = snapshot.activity
+        workoutStructureSelection = snapshot.workoutStructureSelection
         mediaItems = snapshot.mediaItems
+        mediaFolders = snapshot.mediaFolders
         timeline = snapshot.timeline
         overlayLayout = snapshot.overlayLayout
+        userAssets = snapshot.userAssets
         selection = snapshot.selection
+    }
+
+    private func makePersistentSnapshot() -> ProjectPerformanceSnapshot {
+        ProjectPerformanceSnapshot(
+            settings: settings,
+            activity: activity,
+            mediaItems: mediaItems,
+            mediaFolders: mediaFolders,
+            timeline: timeline,
+            overlayElements: overlayLayout.elements.map(OverlayTemplateElement.init(element:)),
+            userAssets: userAssets,
+            fitSourceName: fitSourceName
+        )
+    }
+
+    private func restorePersistentSnapshot(_ snapshot: ProjectPerformanceSnapshot) -> String? {
+        let credentialMessage = migrateLegacyOpenWeatherAPIKeyIfNeeded(from: snapshot.settings)
+        settings = snapshot.settings
+        settings.removeLegacyCredentials()
+        activity = snapshot.activity
+        workoutStructureSelection = .auto
+        mediaItems = snapshot.mediaItems
+        mediaFolders = snapshot.mediaFolders
+        timeline = snapshot.timeline
+        overlayLayout = OverlayLayout(elements: snapshot.overlayElements.map(\.overlayElement))
+        userAssets = snapshot.userAssets
+        fitSourceName = snapshot.fitSourceName
+
+        selection = .none
+        isPlaying = false
+        playbackRate = 1
+        mediaPoolPreviewItemID = nil
+        mediaPoolPreviewSourceTime = 0
+        exportProgress = nil
+        exportTask = nil
+        isExporting = false
+        activeUndoSnapshot = nil
+        undoStack.removeAll()
+        redoStack.removeAll()
+        updateUndoRedoFlags()
+        return credentialMessage
+    }
+
+    private func migrateLegacyOpenWeatherAPIKeyIfNeeded(from settings: ProjectSettings) -> String? {
+        let legacyKey = settings.legacyOpenWeatherAPIKey?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !legacyKey.isEmpty else { return nil }
+
+        do {
+            try credentialStore.setValue(
+                legacyKey,
+                for: KeychainCredentialStore.openWeatherAccount
+            )
+            openWeatherAPIKey = legacyKey
+            return "Project restored. Migrated its OpenWeather API key to Keychain."
+        } catch {
+            openWeatherAPIKey = legacyKey
+            print("[RunningOverlay] Could not migrate OpenWeather API key to Keychain: \(error.localizedDescription)")
+            return "Project restored. Its legacy OpenWeather API key is available for this session but could not be saved to Keychain."
+        }
     }
 
     private func updateUndoRedoFlags() {
@@ -2488,15 +3775,31 @@ final class ProjectDocument: ObservableObject {
 private struct ProjectSnapshot: Equatable {
     var settings: ProjectSettings
     var activity: ActivityTimeline
+    var workoutStructureSelection: WorkoutStructureSelection
     var mediaItems: [MediaItem]
+    var mediaFolders: [MediaFolder]
     var timeline: TimelineModel
     var overlayLayout: OverlayLayout
+    var userAssets: [UserAsset]
     var selection: EditorSelection
+}
+
+struct ProjectPerformanceSnapshot: Codable, Equatable {
+    var schemaVersion: Int = 1
+    var settings: ProjectSettings
+    var activity: ActivityTimeline
+    var mediaItems: [MediaItem]
+    var mediaFolders: [MediaFolder]
+    var timeline: TimelineModel
+    var overlayElements: [OverlayTemplateElement]
+    var userAssets: [UserAsset]
+    var fitSourceName: String
 }
 
 private struct CopiedOverlayConfiguration {
     var category: OverlayPasteCategory
     var scale: Double
+    var opacity: Double
     var isVisible: Bool
     var isLocked: Bool
     var style: OverlayStyle
@@ -2504,6 +3807,7 @@ private struct CopiedOverlayConfiguration {
     init(element: OverlayElement) {
         category = element.type.pasteCategory
         scale = element.scale
+        opacity = element.opacity
         isVisible = element.isVisible
         isLocked = element.isLocked
         style = element.style
@@ -2535,6 +3839,54 @@ struct PreviewMedia: Equatable {
         self.clipStartTime = clipStartTime
         self.clipID = clipID
         self.syncsToSourceTime = syncsToSourceTime
+    }
+}
+
+private enum LastUsedOverlayTemplateReference: Codable, Equatable {
+    case builtIn(id: String)
+    case user(id: UUID)
+
+    private enum CodingKeys: String, CodingKey {
+        case kind
+        case id
+    }
+
+    private enum Kind: String, Codable {
+        case builtIn
+        case user
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let kind = try container.decode(Kind.self, forKey: .kind)
+        switch kind {
+        case .builtIn:
+            self = .builtIn(id: try container.decode(String.self, forKey: .id))
+        case .user:
+            self = .user(id: try container.decode(UUID.self, forKey: .id))
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .builtIn(let id):
+            try container.encode(Kind.builtIn, forKey: .kind)
+            try container.encode(id, forKey: .id)
+        case .user(let id):
+            try container.encode(Kind.user, forKey: .kind)
+            try container.encode(id, forKey: .id)
+        }
+    }
+
+    @MainActor
+    func displayName(in project: ProjectDocument) -> String? {
+        switch self {
+        case .builtIn(let id):
+            BuiltInOverlayTemplate.all.first { $0.id == id }?.name
+        case .user(let id):
+            project.overlayTemplates.first { $0.id == id }?.name
+        }
     }
 }
 

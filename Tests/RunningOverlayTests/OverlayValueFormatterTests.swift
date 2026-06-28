@@ -46,11 +46,83 @@ struct OverlayValueFormatterTests {
         #expect(OverlayValueFormatter.formatDuration(3661) == "01:01:01")
     }
 
-    @Test func numericOverlayHonorsUnitOption() {
+    @Test func formatsActivityDateWithCommonStyles() {
+        let timestamp = Date(timeIntervalSince1970: 1_718_452_800) // 2024-06-15 12:00:00 UTC
+        let activity = ActivityTimeline(
+            startDate: timestamp,
+            duration: 0,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        var element = OverlayElement(type: .date, position: .zero, scale: 1, style: .default)
+
+        element.style.unitOption = .dateYMDHyphen
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 0) == "2024-06-15")
+
+        element.style.unitOption = .dateMDYSlash
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 0) == "06/15/2024")
+
+        element.style.unitOption = .dateMDSlash
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 0) == "06/15")
+
+        element.style.unitOption = .dateMonthDay
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 0) == "Jun 15")
+    }
+
+    @Test func elapsedTimeOverlayExcludesTimerPausedSegments() {
+        let startDate = Date(timeIntervalSince1970: 0)
+        let activity = ActivityTimeline(
+            startDate: startDate,
+            duration: 300,
+            distanceMeters: 1000,
+            records: [],
+            laps: [],
+            annotatedSegments: [
+                ActivityAnnotatedSegment(kind: .timerPaused, startElapsedTime: 60, endElapsedTime: 120),
+                ActivityAnnotatedSegment(kind: .timerPaused, startElapsedTime: 180, endElapsedTime: 210)
+            ]
+        )
+
+        #expect(activity.activeElapsedTime(at: 50) == 50)
+        #expect(activity.activeElapsedTime(at: 90) == 60)
+        #expect(activity.activeElapsedTime(at: 150) == 90)
+        #expect(activity.activeElapsedTime(at: 240) == 150)
+        #expect(OverlayValueFormatter.value(for: .elapsedTime, activity: activity, elapsedTime: 240) == "00:02:30")
+    }
+
+    @Test func formatsHeartRateZoneComponents() {
         let startDate = Date(timeIntervalSince1970: 0)
         let activity = ActivityTimeline(
             startDate: startDate,
             duration: 60,
+            distanceMeters: 1000,
+            records: [
+                ActivityRecord(
+                    elapsedTime: 0,
+                    timestamp: startDate,
+                    distanceMeters: 0,
+                    heartRate: 120,
+                    paceSecondsPerKilometer: nil,
+                    elevationMeters: nil,
+                    cadence: nil,
+                    powerWatts: nil,
+                    calories: nil
+                )
+            ],
+            laps: []
+        )
+        let components = OverlayValueFormatter.components(for: .heartRateZone, activity: activity, elapsedTime: 0)
+        #expect(components.label == "HR Zone")
+        #expect(components.shortLabel == "ZONE")
+        #expect(components.unit == "")
+    }
+
+    @Test func numericOverlayHonorsUnitOption() {
+        let startDate = Date(timeIntervalSince1970: 0)
+        let activity = ActivityTimeline(
+            startDate: startDate,
+            duration: 120,
             distanceMeters: 1000,
             records: [
                 ActivityRecord(
@@ -85,9 +157,56 @@ struct OverlayValueFormatterTests {
         elevationElement.style.unitOption = .elevationFeet
         #expect(OverlayValueFormatter.value(for: elevationElement, activity: activity, elapsedTime: 30) == "328 ft")
 
+        elevationElement.style.elevationDisplayMode = .gain
+        elevationElement.style.unitOption = .elevationMeters
+        #expect(OverlayValueFormatter.value(for: elevationElement, activity: activity, elapsedTime: 30) == "0 m")
+
         var elapsed = OverlayElement(type: .elapsedTime, position: CGPoint(x: 0, y: 0), scale: 1, style: .default)
         elapsed.style.unitOption = .durationSeconds
         #expect(OverlayValueFormatter.value(for: elapsed, activity: activity, elapsedTime: 65) == "65")
+    }
+
+    @Test func elevationOverlayCanSwitchBetweenCurrentAndGain() {
+        let startDate = Date(timeIntervalSince1970: 0)
+        let activity = ActivityTimeline(
+            startDate: startDate,
+            duration: 30,
+            distanceMeters: 1000,
+            records: [
+                ActivityRecord(
+                    elapsedTime: 0, timestamp: startDate, distanceMeters: 0,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: 100,
+                    cadence: nil, powerWatts: nil, calories: nil
+                ),
+                ActivityRecord(
+                    elapsedTime: 10, timestamp: startDate.addingTimeInterval(10), distanceMeters: 300,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: 110,
+                    cadence: nil, powerWatts: nil, calories: nil
+                ),
+                ActivityRecord(
+                    elapsedTime: 20, timestamp: startDate.addingTimeInterval(20), distanceMeters: 700,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: 105,
+                    cadence: nil, powerWatts: nil, calories: nil
+                ),
+                ActivityRecord(
+                    elapsedTime: 30, timestamp: startDate.addingTimeInterval(30), distanceMeters: 1000,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: 125,
+                    cadence: nil, powerWatts: nil, calories: nil
+                )
+            ],
+            laps: []
+        )
+
+        var element = OverlayElement(type: .elevation, position: .zero, scale: 1, style: .default)
+        element.style.unitOption = .elevationMeters
+
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 25) == "115 m")
+
+        element.style.elevationDisplayMode = .gain
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 25) == "20 m")
+        let components = OverlayValueFormatter.components(for: element, activity: activity, elapsedTime: 25)
+        #expect(components.label == "Elevation Gain")
+        #expect(components.shortLabel == "GAIN")
     }
 
     @Test func numericOverlayHonorsLabelAndUnitFlags() {
@@ -116,5 +235,75 @@ struct OverlayValueFormatterTests {
         element.style.customLabel = ""
         element.style.showUnit = true
         #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 5) == "120 bpm")
+    }
+
+    @Test func avgPaceUsesCumulativeSessionAverage() {
+        let startDate = Date(timeIntervalSince1970: 0)
+        let activity = ActivityTimeline(
+            startDate: startDate,
+            duration: 60,
+            distanceMeters: 1000,
+            records: [
+                ActivityRecord(
+                    elapsedTime: 0, timestamp: startDate, distanceMeters: 0,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil,
+                    cadence: nil, powerWatts: nil, calories: nil
+                ),
+                ActivityRecord(
+                    elapsedTime: 60, timestamp: startDate.addingTimeInterval(60), distanceMeters: 1000,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil,
+                    cadence: nil, powerWatts: nil, calories: nil
+                )
+            ],
+            laps: []
+        )
+
+        #expect(activity.avgPace(at: 60) == 60)
+        #expect(activity.avgPace(at: 0) == nil)
+        #expect(OverlayValueFormatter.value(for: .avgPace, activity: activity, elapsedTime: 60) == "1'00\"/km")
+        #expect(OverlayValueFormatter.value(for: .avgPace, activity: activity, elapsedTime: 0) == "--'--\"/km")
+    }
+
+    @Test func lapPaceUsesRunningAverageWithinCurrentLap() {
+        let startDate = Date(timeIntervalSince1970: 0)
+        let activity = ActivityTimeline(
+            startDate: startDate,
+            duration: 200,
+            distanceMeters: 500,
+            records: [
+                ActivityRecord(
+                    elapsedTime: 0, timestamp: startDate, distanceMeters: 0,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil,
+                    cadence: nil, powerWatts: nil, calories: nil
+                ),
+                ActivityRecord(
+                    elapsedTime: 100, timestamp: startDate.addingTimeInterval(100), distanceMeters: 200,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil,
+                    cadence: nil, powerWatts: nil, calories: nil
+                ),
+                ActivityRecord(
+                    elapsedTime: 160, timestamp: startDate.addingTimeInterval(160), distanceMeters: 360,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil,
+                    cadence: nil, powerWatts: nil, calories: nil
+                ),
+                ActivityRecord(
+                    elapsedTime: 200, timestamp: startDate.addingTimeInterval(200), distanceMeters: 500,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil,
+                    cadence: nil, powerWatts: nil, calories: nil
+                )
+            ],
+            laps: [
+                LapRecord(
+                    lapIndex: 0, startElapsedTime: 100, endElapsedTime: 200,
+                    startDistanceMeters: 200, totalDistanceMeters: 300, totalElapsedTime: 100,
+                    avgPaceSecondsPerKm: nil, avgHeartRate: nil, maxHeartRate: nil,
+                    avgCadenceSPM: nil, avgPowerWatts: nil, totalAscent: nil, kind: .active
+                )
+            ]
+        )
+
+        #expect(activity.lapPace(at: 99) == nil)
+        #expect(activity.lapPace(at: 160) == 375)
+        #expect(OverlayValueFormatter.value(for: .lapPace, activity: activity, elapsedTime: 160) == "6'15\"/km")
     }
 }

@@ -126,7 +126,7 @@ Completed so far:
 - Shared preview/export rendering for text style presets.
 - Shared preview/export rendering for Running Gauge presets.
 - Extended numeric overlay types: vertical oscillation, ground contact time, stride length, vertical ratio, ground contact balance, temperature, grade.
-- Lap List chart overlay: teleprompter-style scrolling lap course with current-lap highlight, progress bar, fade, and configurable columns.
+- Retired the early Lap List, Lap Card, and Lap Live prototypes so the next interval-training UI can be built around the Interval HUD Bar design.
 
 Pending:
 
@@ -156,7 +156,7 @@ Completed so far:
 - Standalone `.rotemplate` import/export.
 - Template management moved from Project Settings into the left `Templates` Pool.
 - Built-in templates: `Easy Run`, `Interval Workout`, and `Race`.
-- `Easy Run` now loads from the bundled `EasyRun.rotemplate` resource; `Interval Workout` and `Race` remain generated first-pass built-ins.
+- `Easy Run` now loads from the bundled `EasyRun.rotemplate` resource; `Interval Workout` and `Race` load from bundled `IntervalWorkout.rotemplate` and `Race.rotemplate` resources.
 - Confirmation before any template replaces the current overlay layout.
 - Compact user-template row context actions for rename, duplicate, export, and delete.
 
@@ -181,10 +181,10 @@ Completed so far:
 - Added a dedicated `docs/overlay-modules/` documentation area.
 - Drafted the Route Map Overlay design, including styles, GPS data needs, map API options, rendering architecture, caching, privacy, template behavior, and implementation phases.
 - Extended FIT parsing and activity records with GPS latitude/longitude.
-- Added the Route Map overlay type with Minimal, Gradient, Glow, and MapKit presets.
+- Added the Route Map overlay type with independent map background, route color mode, and Glow controls.
 - Added preview/export route rendering with start, finish, and current-position markers.
-- Added MapKit snapshot provider scaffolding and preview-time MapKit snapshot loading for the MapKit preset.
-- Added Lap List overlay module — see `docs/overlay-modules/lap-list-overlay.md`.
+- Added MapKit snapshot provider scaffolding and preview-time MapKit snapshot loading for enabled map backgrounds.
+- Retired the early Lap List overlay module in favor of the Interval HUD Bar direction — see `docs/overlay-modules/retired-lap-overlays.md` and `docs/overlay-modules/interval-hud-bar-overlay.md`.
 
 Pending:
 
@@ -246,3 +246,39 @@ Status: not started
 - Error handling.
 - Test fixtures.
 - Export verification.
+
+## Milestone 8: Mac App Store Readiness
+
+Status: in progress
+
+- Prepare a sandboxed, signed macOS app bundle for first Mac App Store submission.
+- Add bundle metadata, entitlements, privacy manifest, release configuration, and
+  App Store readiness documentation.
+- Preserve the SwiftPM development workflow while adding a release packaging
+  path.
+
+Completed so far:
+
+- Created the `codex/app-store-readiness` branch in a sibling worktree.
+- Integrated the App Store readiness work into `develop` alongside the
+  source-available repository structure and Keychain-based OpenWeather
+  credentials.
+- Added App Store bundle metadata, sandbox entitlements, privacy manifest, asset
+  catalog placeholders, and release xcconfig.
+- Added local validation, app bundle packaging, and archive-shape scripts.
+- Added `docs/app-store-readiness.md` to track metadata, privacy, and release
+  blockers.
+- Selected `io.github.zijianwang90.runningoverlay` as the release Bundle ID and
+  aligned the Keychain service under the same identifier namespace.
+- Added a native Xcode macOS Application target and shared scheme that produce
+  a standard universal `.xcarchive` with the sandbox, privacy manifest,
+  resources, and legal notices.
+- Added the production Running Overlay icon in every required macOS AppIcon
+  slot.
+
+Pending:
+
+- Register the selected bundle id and fill the team/signing values after Apple
+  Developer Program membership activation.
+- Prepare App Store screenshots.
+- Complete sandbox, privacy report, and App Store Connect validation.

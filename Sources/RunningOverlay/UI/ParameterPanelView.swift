@@ -18,14 +18,18 @@ struct ParameterPanelView: View {
                         ElevationChartOverlayDetailView(elementID: elementID)
                     } else if element.type == .runningGauge {
                         RunningGaugeOverlayDetailView(elementID: elementID)
+                    } else if element.type == .intervalHUDBar {
+                        IntervalHUDBarOverlayDetailView(elementID: elementID)
+                    } else if element.type == .intervalTimeline {
+                        IntervalTimelineOverlayDetailView(elementID: elementID)
+                    } else if element.type == .zoneEdgeBar {
+                        ZoneEdgeBarOverlayDetailView(elementID: elementID)
                     } else if element.type == .routeMap {
                         RouteMapOverlayDetailView(elementID: elementID)
-                    } else if element.type == .lapList {
-                        LapListOverlayDetailView(elementID: elementID)
-                    } else if element.type == .lapCard {
-                        LapCardOverlayDetailView(elementID: elementID)
-                    } else if element.type == .lapLive {
-                        LapLiveOverlayDetailView(elementID: elementID)
+                    } else if element.type == .weatherWidget {
+                        WeatherWidgetOverlayDetailView(elementID: elementID)
+                    } else if element.type.isDecorOverlay {
+                        DecorOverlayDetailView(elementID: elementID)
                     } else {
                         OverlayDetailView(elementID: elementID)
                     }
@@ -67,13 +71,22 @@ struct ClipInspectorView: View {
                     InspectorReadOnlyRow(label: "Clip", value: clip.title)
                     InspectorTextRow(label: "Camera", text: cameraBinding)
 
-                    InspectorNumberRow(
-                        label: "Start",
-                        value: startBinding,
-                        precision: 2,
-                        suffix: "s",
-                        reset: resetStart
-                    )
+                    if project.isAutoMatchedClip(clipID) {
+                        InspectorReadOnlyRow(
+                            label: "Auto Matched Start",
+                            value: formatSeconds(clip.startTime),
+                            systemImage: nil,
+                            isNumeric: true
+                        )
+                    } else {
+                        InspectorNumberRow(
+                            label: "Aligned Time",
+                            value: startBinding,
+                            precision: 2,
+                            suffix: "s",
+                            reset: resetStart
+                        )
+                    }
 
                     InspectorNumberRow(
                         label: "Offset",
@@ -168,13 +181,20 @@ private struct ClipDetailView: View {
                                     .multilineTextAlignment(.trailing)
                             }
 
-                            InspectorDetailNumberRow(
-                                label: "Start",
-                                value: startBinding,
-                                precision: 2,
-                                suffix: "s",
-                                reset: resetStart
-                            )
+                            if project.isAutoMatchedClip(clipID) {
+                                InspectorDetailReadOnlyValueRow(
+                                    label: "Auto Matched Start",
+                                    value: formatSeconds(clip.startTime)
+                                )
+                            } else {
+                                InspectorDetailNumberRow(
+                                    label: "Aligned Time",
+                                    value: startBinding,
+                                    precision: 2,
+                                    suffix: "s",
+                                    reset: resetStart
+                                )
+                            }
 
                             InspectorDetailNumberRow(
                                 label: "Offset",
@@ -242,6 +262,10 @@ private struct ClipDetailView: View {
         project.setSelectedClipOffset(clipID, offset: 0)
         project.finishContinuousEdit()
     }
+}
+
+private func formatSeconds(_ seconds: TimeInterval) -> String {
+    String(format: "%.2f s", seconds)
 }
 
 private struct ClipDetailHeader: View {
@@ -399,16 +423,14 @@ private struct InspectorDetailNumberRow: View {
     var body: some View {
         InspectorDetailRow(label: label) {
             HStack(spacing: InspectorTheme.space2) {
-                TextField(label, value: $value, format: .number.precision(.fractionLength(precision)))
-                    .textFieldStyle(.plain)
-                    .font(NumericTokens.numericFont)
-                    .foregroundStyle(NumericTokens.textPrimary)
-                    .monospacedDigit()
-                    .multilineTextAlignment(.trailing)
-                    .onSubmit {
-                        project.finishContinuousEdit()
-                        NSApp.keyWindow?.makeFirstResponder(nil)
-                    }
+                InspectorBufferedNumberField(
+                    label: label,
+                    value: $value,
+                    precision: precision,
+                    font: NumericTokens.numericFont,
+                    textColor: NumericTokens.textPrimary,
+                    onCommit: project.finishContinuousEdit
+                )
 
                 if let suffix {
                     Text(suffix)
@@ -426,6 +448,21 @@ private struct InspectorDetailNumberRow: View {
             reset?()
         }
         .help(reset == nil ? "" : "Double-click to reset")
+    }
+}
+
+private struct InspectorDetailReadOnlyValueRow: View {
+    var label: String
+    var value: String
+
+    var body: some View {
+        InspectorDetailRow(label: label) {
+            Text(value)
+                .font(NumericTokens.numericFont)
+                .foregroundStyle(NumericTokens.textPrimary)
+                .monospacedDigit()
+                .lineLimit(1)
+        }
     }
 }
 
@@ -549,7 +586,7 @@ private struct OverlayElementRow: View {
         HStack(spacing: InspectorTheme.space3) {
             Image(systemName: element.type.inspectorIcon)
                 .font(.system(size: 19, weight: .medium))
-                .foregroundStyle(element.type.isFeaturedOverlay ? InspectorTheme.accentBlue : InspectorTheme.textPrimary)
+                .foregroundStyle(InspectorTheme.textPrimary)
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 3) {
@@ -580,6 +617,91 @@ private struct OverlayElementRow: View {
             activity: project.activity,
             elapsedTime: project.layerDataSampleTime
         )
+    }
+}
+
+private struct InspectorBufferedNumberField: View {
+    var label: String
+    @Binding var value: Double
+    var precision: Int
+    var font: Font
+    var textColor: Color
+    var onCommit: () -> Void
+
+    @FocusState private var isFocused: Bool
+    @State private var text = ""
+
+    var body: some View {
+        TextField(label, text: $text)
+            .textFieldStyle(.plain)
+            .font(font)
+            .foregroundStyle(textColor)
+            .monospacedDigit()
+            .multilineTextAlignment(.trailing)
+            .focused($isFocused)
+            .onAppear {
+                text = formatted(value)
+            }
+            .onChange(of: value) { _, newValue in
+                guard !isFocused else {
+                    return
+                }
+                text = formatted(newValue)
+            }
+            .onChange(of: text) { _, newText in
+                guard isFocused, let parsed = parsedValue(from: newText) else {
+                    return
+                }
+                updateValueIfNeeded(parsed)
+            }
+            .onChange(of: isFocused) { _, focused in
+                if focused {
+                    text = editableText(for: value)
+                } else {
+                    commitText()
+                }
+            }
+            .onSubmit {
+                commitText()
+                NSApp.keyWindow?.makeFirstResponder(nil)
+            }
+    }
+
+    private func commitText() {
+        if let parsed = parsedValue(from: text) {
+            updateValueIfNeeded(parsed)
+        }
+        text = formatted(value)
+        onCommit()
+    }
+
+    private func parsedValue(from text: String) -> Double? {
+        let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
+        guard !normalized.isEmpty else {
+            return nil
+        }
+        return Double(normalized)
+    }
+
+    private func editableText(for value: Double) -> String {
+        let formattedValue = formatted(value)
+        return formattedValue.hasSuffix(".00") ? String(formattedValue.dropLast(3)) : formattedValue
+    }
+
+    private func formatted(_ value: Double) -> String {
+        String(format: "%.\(precision)f", value)
+    }
+
+    private func updateValueIfNeeded(_ parsed: Double) {
+        guard roundedForPrecision(parsed) != roundedForPrecision(value) else {
+            return
+        }
+        value = parsed
+    }
+
+    private func roundedForPrecision(_ value: Double) -> Double {
+        let scale = pow(10, Double(precision))
+        return (value * scale).rounded() / scale
     }
 }
 
@@ -671,11 +793,18 @@ private struct OverlayDetailView: View {
                     range: 0...0.45,
                     display: element.style.routeMapFadeAmount <= 0.001 ? "Solid" : String(format: "%.0f%%", element.style.routeMapFadeAmount * 100)
                 )
-                InspectorSegmentedPicker(selection: routeMapMarkerStyleBinding, values: OverlayRouteMapMarkerStyle.allCases) { markerStyle in
-                    markerStyle.compactLabel
+                routeMapMarkerToggleRow(label: "Start Marker", isOn: routeMapStartMarkerVisibleBinding)
+                routeMapMarkerToggleRow(label: "End Marker", isOn: routeMapEndMarkerVisibleBinding)
+                routeMapMarkerToggleRow(label: "Moving Marker", isOn: routeMapRunnerMarkerVisibleBinding)
+                ColorSwatchRow(label: "Start Color", presets: colorPresets, selectedColor: element.style.routeMapStartMarkerColor) { color in
+                    project.setOverlayRouteMapStartMarkerColor(elementID, color: color)
                 }
-                InspectorPickerRow(label: "Start Marker", selection: routeMapStartMarkerStyleBinding, values: OverlayRouteMapMarkerStyle.allCases) { $0.compactLabel }
-                InspectorPickerRow(label: "End Marker", selection: routeMapEndMarkerStyleBinding, values: OverlayRouteMapMarkerStyle.allCases) { $0.compactLabel }
+                ColorSwatchRow(label: "End Color", presets: routeMapEndMarkerColorPresets, selectedColor: element.style.routeMapEndMarkerColor) { color in
+                    project.setOverlayRouteMapEndMarkerColor(elementID, color: color)
+                }
+                ColorSwatchRow(label: "Moving Color", presets: colorPresets, selectedColor: element.style.routeMapRunnerDotColor) { color in
+                    project.setOverlayRouteMapRunnerDotColor(elementID, color: color)
+                }
                 Toggle(isOn: routeMapLegendVisibleBinding) {
                     Text("Legend")
                         .font(InspectorTheme.bodyFont)
@@ -748,8 +877,6 @@ private struct OverlayDetailView: View {
             InspectorPickerRow(label: "Preset", selection: textPresetBinding, values: OverlayTextPreset.numericPresets) { $0.compactLabel }
         } else if element.type == .runningGauge {
             InspectorPickerRow(label: "Preset", selection: gaugePresetBinding, values: OverlayGaugePreset.allCases) { $0.compactLabel }
-        } else if element.type == .routeMap {
-            InspectorPickerRow(label: "Preset", selection: routeMapPresetBinding, values: OverlayRouteMapPreset.allCases) { $0.compactLabel }
         }
     }
 
@@ -761,12 +888,7 @@ private struct OverlayDetailView: View {
         )
     }
 
-    private let fontPresets = [
-        "SF Pro",
-        "Avenir Next",
-        "Helvetica Neue",
-        "Menlo"
-    ]
+    private var fontPresets: [String] { FontLibraryManager.shared.effectiveFavorites }
 
     private let colorPresets: [(name: String, color: OverlayColor)] = [
         ("White", .white),
@@ -780,6 +902,10 @@ private struct OverlayDetailView: View {
         ("Purple", .purple),
         ("Pink", .pink)
     ]
+
+    private var routeMapEndMarkerColorPresets: [(name: String, color: OverlayColor)] {
+        [("Checker", .routeMapEndCheckerboard)] + colorPresets
+    }
 
     private var fontSizeBinding: Binding<Double> {
         Binding {
@@ -805,20 +931,21 @@ private struct OverlayDetailView: View {
         }
     }
 
-    private var routeMapPresetBinding: Binding<OverlayRouteMapPreset> {
-        Binding {
-            element?.style.routeMapPreset ?? .minimal
-        } set: { newValue in
-            project.setOverlayRouteMapPreset(elementID, routeMapPreset: newValue)
-        }
-    }
-
     private var routeMapShapeBinding: Binding<OverlayRouteMapShape> {
         Binding {
             element?.style.routeMapShape ?? .square
         } set: { newValue in
             project.setOverlayRouteMapShape(elementID, shape: newValue)
         }
+    }
+
+    private func routeMapMarkerToggleRow(label: String, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            Text(label)
+                .font(InspectorTheme.bodyFont)
+                .foregroundStyle(InspectorTheme.textSecondary)
+        }
+        .toggleStyle(.switch)
     }
 
     private var routeMapColorModeBinding: Binding<OverlayRouteMapColorMode> {
@@ -837,27 +964,27 @@ private struct OverlayDetailView: View {
         }
     }
 
-    private var routeMapMarkerStyleBinding: Binding<OverlayRouteMapMarkerStyle> {
+    private var routeMapStartMarkerVisibleBinding: Binding<Bool> {
         Binding {
-            element?.style.routeMapMarkerStyle ?? .dot
+            element?.style.routeMapStartMarkerStyle != .hidden
         } set: { newValue in
-            project.setOverlayRouteMapMarkerStyle(elementID, markerStyle: newValue)
+            project.setOverlayRouteMapStartMarkerStyle(elementID, markerStyle: newValue ? .dot : .hidden)
         }
     }
 
-    private var routeMapStartMarkerStyleBinding: Binding<OverlayRouteMapMarkerStyle> {
+    private var routeMapRunnerMarkerVisibleBinding: Binding<Bool> {
         Binding {
-            element?.style.routeMapStartMarkerStyle ?? .dot
+            element?.style.routeMapRunnerMarkerStyle != .hidden
         } set: { newValue in
-            project.setOverlayRouteMapStartMarkerStyle(elementID, markerStyle: newValue)
+            project.setOverlayRouteMapRunnerMarkerStyle(elementID, markerStyle: newValue ? .dot : .hidden)
         }
     }
 
-    private var routeMapEndMarkerStyleBinding: Binding<OverlayRouteMapMarkerStyle> {
+    private var routeMapEndMarkerVisibleBinding: Binding<Bool> {
         Binding {
-            element?.style.routeMapEndMarkerStyle ?? .dot
+            element?.style.routeMapEndMarkerStyle != .hidden
         } set: { newValue in
-            project.setOverlayRouteMapEndMarkerStyle(elementID, markerStyle: newValue)
+            project.setOverlayRouteMapEndMarkerStyle(elementID, markerStyle: newValue ? .dot : .hidden)
         }
     }
 
@@ -895,7 +1022,7 @@ private struct OverlayDetailView: View {
 
     private var fontNameBinding: Binding<String> {
         Binding {
-            element?.style.fontName ?? "SF Pro"
+            element?.style.fontName ?? FontLibraryManager.shared.defaultFamily
         } set: { newValue in
             project.setOverlayFontName(elementID, fontName: newValue)
         }
@@ -971,7 +1098,7 @@ private struct OverlayDetailHeader: View {
                     .fill(InspectorTheme.controlBackground)
                 Image(systemName: element.type.inspectorIcon)
                     .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(element.type.isFeaturedOverlay ? InspectorTheme.accentBlue : InspectorTheme.textPrimary)
+                    .foregroundStyle(InspectorTheme.textPrimary)
             }
             .frame(width: 46, height: 46)
             .overlay(InspectorRoundedBorder())
@@ -1156,16 +1283,14 @@ private struct InspectorNumberRow: View {
                 }
                 .help(reset == nil ? "" : "Double-click to reset")
 
-            TextField(label, value: $value, format: .number.precision(.fractionLength(precision)))
-                .textFieldStyle(.plain)
-                .font(InspectorTheme.numericFont)
-                .foregroundStyle(InspectorTheme.textPrimary)
-                .monospacedDigit()
-                .multilineTextAlignment(.trailing)
-                .onSubmit {
-                    project.finishContinuousEdit()
-                    NSApp.keyWindow?.makeFirstResponder(nil)
-                }
+            InspectorBufferedNumberField(
+                label: label,
+                value: $value,
+                precision: precision,
+                font: InspectorTheme.numericFont,
+                textColor: InspectorTheme.textPrimary,
+                onCommit: project.finishContinuousEdit
+            )
 
             if let suffix {
                 Text(suffix)
@@ -1261,6 +1386,7 @@ private struct ColorSwatchRow: View {
             }
         }
     }
+
 }
 
 private struct ColorSwatchButton: View {
@@ -1272,8 +1398,14 @@ private struct ColorSwatchButton: View {
     var body: some View {
         Button(action: action) {
             Circle()
-                .fill(Color(color))
+                .fill(color.isRouteMapEndCheckerboard ? Color.clear : Color(color))
                 .frame(width: 22, height: 22)
+                .overlay {
+                    if color.isRouteMapEndCheckerboard {
+                        RouteMapCheckerboardSwatch(cornerRadius: 11)
+                            .clipShape(Circle())
+                    }
+                }
                 .overlay {
                     Circle()
                         .stroke(isSelected ? InspectorTheme.accentBlue : InspectorTheme.borderStrong, lineWidth: isSelected ? 3 : 1)
@@ -1434,9 +1566,6 @@ private extension OverlayElementType {
         }
     }
 
-    var isFeaturedOverlay: Bool {
-        self == .runningGauge || self == .routeMap
-    }
 }
 
 private extension OverlayFontWeight {
@@ -1457,12 +1586,6 @@ private extension OverlayTextPreset {
 }
 
 private extension OverlayGaugePreset {
-    var compactLabel: String {
-        label.components(separatedBy: " / ").first ?? label
-    }
-}
-
-extension OverlayRouteMapPreset {
     var compactLabel: String {
         label.components(separatedBy: " / ").first ?? label
     }

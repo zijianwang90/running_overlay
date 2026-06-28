@@ -8,8 +8,66 @@ enum LapKind: String, Equatable, Codable {
     case unknown
 }
 
-struct LapRecord: Identifiable, Equatable {
-    let id = UUID()
+enum WorkoutStructureKind: String, Equatable, Codable {
+    case normal
+    case structured
+}
+
+enum WorkoutStructureSubtype: String, Equatable, Codable {
+    case none
+    case interval
+    case steadyPlan
+    case genericLaps
+
+    var displayName: String {
+        switch self {
+        case .none: "none"
+        case .interval: "interval"
+        case .steadyPlan: "steady plan"
+        case .genericLaps: "laps"
+        }
+    }
+}
+
+enum WorkoutStructureSource: String, Equatable, Codable {
+    case auto
+    case userOverride
+}
+
+enum WorkoutStructureSelection: String, CaseIterable, Identifiable {
+    case auto
+    case normal
+    case structured
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .auto: "Auto"
+        case .normal: "Normal"
+        case .structured: "Structured"
+        }
+    }
+}
+
+struct WorkoutStructureAnalysis: Equatable, Codable {
+    var kind: WorkoutStructureKind
+    var subtype: WorkoutStructureSubtype
+    var source: WorkoutStructureSource
+    var confidence: Double
+    var reason: String
+
+    static let normalAuto = WorkoutStructureAnalysis(
+        kind: .normal,
+        subtype: .none,
+        source: .auto,
+        confidence: 1,
+        reason: "No structured lap pattern detected."
+    )
+}
+
+struct LapRecord: Identifiable, Equatable, Codable {
+    var id = UUID()
     var lapIndex: Int
     var startElapsedTime: TimeInterval
     var endElapsedTime: TimeInterval
@@ -25,19 +83,106 @@ struct LapRecord: Identifiable, Equatable {
     var kind: LapKind
 }
 
-struct ActivityTimeline: Equatable {
+struct ActivityTimeline: Equatable, Codable {
     var startDate: Date
     var duration: TimeInterval
     var distanceMeters: Double
     var records: [ActivityRecord]
     var laps: [LapRecord]
+    var annotatedSegments: [ActivityAnnotatedSegment] = []
+    var workoutStructure: WorkoutStructureAnalysis = .normalAuto
+
+    init(
+        startDate: Date,
+        duration: TimeInterval,
+        distanceMeters: Double,
+        records: [ActivityRecord],
+        laps: [LapRecord],
+        annotatedSegments: [ActivityAnnotatedSegment] = [],
+        workoutStructure: WorkoutStructureAnalysis = .normalAuto
+    ) {
+        self.startDate = startDate
+        self.duration = duration
+        self.distanceMeters = distanceMeters
+        self.records = records
+        self.laps = laps
+        self.annotatedSegments = annotatedSegments
+        self.workoutStructure = workoutStructure
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case startDate
+        case duration
+        case distanceMeters
+        case records
+        case laps
+        case annotatedSegments
+        case workoutStructure
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        startDate = try container.decode(Date.self, forKey: .startDate)
+        duration = try container.decode(TimeInterval.self, forKey: .duration)
+        distanceMeters = try container.decode(Double.self, forKey: .distanceMeters)
+        records = try container.decode([ActivityRecord].self, forKey: .records)
+        laps = try container.decode([LapRecord].self, forKey: .laps)
+        annotatedSegments = try container.decodeIfPresent([ActivityAnnotatedSegment].self, forKey: .annotatedSegments) ?? []
+        workoutStructure = try container.decodeIfPresent(WorkoutStructureAnalysis.self, forKey: .workoutStructure) ?? .normalAuto
+    }
+
+    var hasTemperatureData: Bool {
+        records.contains { $0.temperatureCelsius != nil }
+    }
 
     var endDate: Date {
         startDate.addingTimeInterval(duration)
     }
 
+    var isIntervalWorkout: Bool {
+        let activeCount = laps.filter { $0.kind == .active }.count
+        let restCount = laps.filter { $0.kind == .rest }.count
+        return activeCount >= 2 && restCount >= 1
+    }
+
+    func applyingWorkoutStructureSelection(_ selection: WorkoutStructureSelection) -> ActivityTimeline {
+        let result = WorkoutStructureAnalyzer.analyze(
+            laps: laps,
+            source: selection == .auto ? .auto : .userOverride,
+            forcedKind: {
+                switch selection {
+                case .auto:
+                    nil
+                case .normal:
+                    .normal
+                case .structured:
+                    .structured
+                }
+            }()
+        )
+        var copy = self
+        copy.laps = result.laps
+        copy.workoutStructure = result.analysis
+        return copy
+    }
+
     func timestamp(at elapsedTime: TimeInterval) -> Date {
         startDate.addingTimeInterval(clampedElapsedTime(elapsedTime))
+    }
+
+    func activeElapsedTime(at elapsedTime: TimeInterval) -> TimeInterval {
+        let t = clampedElapsedTime(elapsedTime)
+        let pausedTime = mergedTimerPausedSegments(upTo: t).reduce(0) { total, segment in
+            total + max(segment.end - segment.start, 0)
+        }
+        return max(t - pausedTime, 0)
+    }
+
+    func annotatedSegment(at elapsedTime: TimeInterval) -> ActivityAnnotatedSegment? {
+        let t = clampedElapsedTime(elapsedTime)
+        return annotatedSegments.first { segment in
+            t >= segment.startElapsedTime && t < segment.endElapsedTime
+        }
     }
 
     func distance(at elapsedTime: TimeInterval) -> Double {
@@ -52,8 +197,50 @@ struct ActivityTimeline: Equatable {
         interpolatedValue(at: elapsedTime, keyPath: \.paceSecondsPerKilometer)
     }
 
+    /// Cumulative session average: elapsed / (distance km). Matches watch Avg Pace.
+    func avgPace(at elapsedTime: TimeInterval) -> Double? {
+        let t = clampedElapsedTime(elapsedTime)
+        let meters = distance(at: elapsedTime)
+        guard t > 0, meters > 0 else { return nil }
+        return t / (meters / 1000.0)
+    }
+
+    /// Running average within the current lap (updates during the lap).
+    func lapPace(at elapsedTime: TimeInterval) -> Double? {
+        guard let lap = currentLap(at: elapsedTime) else { return nil }
+        let t = clampedElapsedTime(elapsedTime)
+        let inLapTime = t - lap.startElapsedTime
+        let inLapDistance = distance(at: elapsedTime) - lap.startDistanceMeters
+        guard inLapTime > 0, inLapDistance > 0 else { return nil }
+        return inLapTime / (inLapDistance / 1000.0)
+    }
+
     func elevation(at elapsedTime: TimeInterval) -> Double? {
         interpolatedValue(at: elapsedTime, keyPath: \.elevationMeters)
+    }
+
+    func elevationGain(at elapsedTime: TimeInterval) -> Double? {
+        let t = clampedElapsedTime(elapsedTime)
+        let points = records
+            .filter { $0.elapsedTime <= t && $0.elevationMeters != nil }
+            .map { ($0.elapsedTime, $0.elevationMeters!) }
+        guard var previous = points.first else { return nil }
+
+        var gain = 0.0
+        for point in points.dropFirst() {
+            gain += max(point.1 - previous.1, 0)
+            previous = point
+        }
+
+        if let next = records.first(where: { $0.elapsedTime > t && $0.elevationMeters != nil }),
+           let current = elevation(at: t),
+           t > previous.0 {
+            let nextElevation = next.elevationMeters!
+            let cappedCurrent = min(max(current, min(previous.1, nextElevation)), max(previous.1, nextElevation))
+            gain += max(cappedCurrent - previous.1, 0)
+        }
+
+        return gain
     }
 
     func cadence(at elapsedTime: TimeInterval) -> Int? {
@@ -256,6 +443,34 @@ struct ActivityTimeline: Equatable {
         min(max(elapsedTime, 0), duration)
     }
 
+    private func mergedTimerPausedSegments(upTo elapsedTime: TimeInterval) -> [(start: TimeInterval, end: TimeInterval)] {
+        let intervals = annotatedSegments
+            .filter { $0.kind == .timerPaused }
+            .compactMap { segment -> (start: TimeInterval, end: TimeInterval)? in
+                let start = min(max(segment.startElapsedTime, 0), elapsedTime)
+                let end = min(max(segment.endElapsedTime, 0), elapsedTime)
+                guard end > start else { return nil }
+                return (start, end)
+            }
+            .sorted { $0.start < $1.start }
+
+        guard var current = intervals.first else {
+            return []
+        }
+
+        var merged: [(start: TimeInterval, end: TimeInterval)] = []
+        for interval in intervals.dropFirst() {
+            if interval.start <= current.end {
+                current.end = max(current.end, interval.end)
+            } else {
+                merged.append(current)
+                current = interval
+            }
+        }
+        merged.append(current)
+        return merged
+    }
+
     private func interpolateOptional(_ before: Double?, _ after: Double?, progress: Double) -> Double? {
         guard let before else {
             return after
@@ -271,12 +486,36 @@ struct ActivityTimeline: Equatable {
         duration: 0,
         distanceMeters: 0,
         records: [],
-        laps: []
+        laps: [],
+        annotatedSegments: [],
+        workoutStructure: .normalAuto
     )
 }
 
-struct ActivityRecord: Identifiable, Equatable {
-    let id = UUID()
+enum ActivityAnnotatedSegmentKind: String, Equatable, Codable {
+    case timerPaused
+
+    var label: String {
+        switch self {
+        case .timerPaused:
+            "Timer Paused"
+        }
+    }
+}
+
+struct ActivityAnnotatedSegment: Identifiable, Equatable, Codable {
+    var id = UUID()
+    var kind: ActivityAnnotatedSegmentKind
+    var startElapsedTime: TimeInterval
+    var endElapsedTime: TimeInterval
+
+    var duration: TimeInterval {
+        max(endElapsedTime - startElapsedTime, 0)
+    }
+}
+
+struct ActivityRecord: Identifiable, Equatable, Codable {
+    var id = UUID()
     var elapsedTime: TimeInterval
     var timestamp: Date
     var distanceMeters: Double?

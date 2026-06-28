@@ -4,6 +4,7 @@ struct TemplatePoolView: View {
     @EnvironmentObject private var project: ProjectDocument
     @State private var pendingBuiltInApply: BuiltInOverlayTemplate?
     @State private var pendingUserApply: OverlayTemplate?
+    @State private var pendingUpdate: OverlayTemplate?
     @State private var pendingDelete: OverlayTemplate?
     @State private var renamingTemplate: OverlayTemplate?
     @State private var renameText = ""
@@ -23,7 +24,7 @@ struct TemplatePoolView: View {
                         VStack(spacing: 0) {
                             ForEach(BuiltInOverlayTemplate.all) { template in
                                 TemplatePoolRow(title: template.name) {
-                                    pendingBuiltInApply = template
+                                    applyBuiltInTemplate(template)
                                 }
                             }
                         }
@@ -43,7 +44,7 @@ struct TemplatePoolView: View {
                             VStack(spacing: 0) {
                                 ForEach(project.overlayTemplates) { template in
                                     TemplatePoolRow(title: template.name) {
-                                        pendingUserApply = template
+                                        applyUserTemplate(template)
                                     }
                                     .contextMenu {
                                         Button {
@@ -56,6 +57,12 @@ struct TemplatePoolView: View {
                                         } label: {
                                             Label("Duplicate", systemImage: "doc.on.doc")
                                         }
+                                        Button {
+                                            pendingUpdate = template
+                                        } label: {
+                                            Label("Update Template", systemImage: "arrow.triangle.2.circlepath")
+                                        }
+                                        .disabled(project.overlayLayout.elements.isEmpty)
                                         Button {
                                             project.exportOverlayTemplateFile(template.id)
                                         } label: {
@@ -120,6 +127,26 @@ struct TemplatePoolView: View {
             }
         } message: {
             Text("This will clear the current overlay layout and apply the selected template.")
+        }
+        .confirmationDialog(
+            "Update \(pendingUpdate?.name ?? "this template") with the current setup?",
+            isPresented: Binding(
+                get: { pendingUpdate != nil },
+                set: { if !$0 { pendingUpdate = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let pendingUpdate {
+                Button("Update Template", role: .destructive) {
+                    project.updateOverlayTemplateFromCurrentSetup(pendingUpdate.id)
+                    self.pendingUpdate = nil
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                pendingUpdate = nil
+            }
+        } message: {
+            Text("This overwrites the saved template with the current overlay setup.")
         }
         .confirmationDialog(
             "Delete \(pendingDelete?.name ?? "this template")?",
@@ -212,6 +239,24 @@ struct TemplatePoolView: View {
     private func beginRename(_ template: OverlayTemplate) {
         renameText = template.name
         renamingTemplate = template
+    }
+
+    private func applyBuiltInTemplate(_ template: BuiltInOverlayTemplate) {
+        guard !project.overlayLayout.elements.isEmpty else {
+            project.applyBuiltInOverlayTemplate(template)
+            return
+        }
+
+        pendingBuiltInApply = template
+    }
+
+    private func applyUserTemplate(_ template: OverlayTemplate) {
+        guard !project.overlayLayout.elements.isEmpty else {
+            project.applyOverlayTemplate(template.id)
+            return
+        }
+
+        pendingUserApply = template
     }
 }
 

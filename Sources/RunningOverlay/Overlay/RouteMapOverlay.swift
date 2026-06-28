@@ -9,8 +9,27 @@ protocol MapSnapshotProvider {
 struct MapSnapshotRequest: Hashable {
     var bounds: RouteBounds
     var size: CGSize
-    var style: OverlayRouteMapPreset
     var backgroundStyle: OverlayRouteMapBackgroundStyle
+}
+
+enum RouteMapSnapshotRequestBuilder {
+    static func request(
+        for element: OverlayElement,
+        layout: OverlayRouteMapRenderLayout
+    ) -> MapSnapshotRequest? {
+        guard layout.provider == .mapKit,
+              element.style.routeMapBackgroundStyle != .none,
+              let geometry = layout.geometry,
+              layout.rect.width > 1,
+              layout.rect.height > 1 else {
+            return nil
+        }
+        return MapSnapshotRequest(
+            bounds: geometry.bounds,
+            size: layout.rect.size,
+            backgroundStyle: element.style.routeMapBackgroundStyle
+        )
+    }
 }
 
 final class MapKitMapSnapshotProvider: MapSnapshotProvider {
@@ -18,6 +37,7 @@ final class MapKitMapSnapshotProvider: MapSnapshotProvider {
         let options = MKMapSnapshotter.Options()
         options.size = request.size
         options.mapType = mapType(for: request.backgroundStyle)
+        options.appearance = appearance(for: request.backgroundStyle)
         options.region = request.bounds.coordinateRegion(padding: 0.18)
 
         MKMapSnapshotter(options: options).start(with: DispatchQueue.global(qos: .userInitiated)) { snapshot, error in
@@ -43,6 +63,17 @@ final class MapKitMapSnapshotProvider: MapSnapshotProvider {
             .satellite
         }
     }
+
+    private func appearance(for style: OverlayRouteMapBackgroundStyle) -> NSAppearance? {
+        let appearanceName: NSAppearance.Name
+        switch style {
+        case .dark:
+            appearanceName = .darkAqua
+        case .none, .light, .terrain, .satellite:
+            appearanceName = .aqua
+        }
+        return NSAppearance(named: appearanceName)
+    }
 }
 
 enum MapSnapshotError: LocalizedError {
@@ -50,6 +81,39 @@ enum MapSnapshotError: LocalizedError {
 
     var errorDescription: String? {
         "MapKit did not return a map snapshot."
+    }
+}
+
+final class MapSnapshotImageBox: @unchecked Sendable {
+    let image: NSImage?
+
+    init(_ image: NSImage?) {
+        self.image = image
+    }
+}
+
+final class RouteMapSnapshotCache: @unchecked Sendable {
+    let snapshots: [MapSnapshotRequest: NSImage]
+
+    init(_ snapshots: [MapSnapshotRequest: NSImage] = [:]) {
+        self.snapshots = snapshots
+    }
+}
+
+extension MapSnapshotProvider {
+    func snapshotImage(for request: MapSnapshotRequest) async -> MapSnapshotImageBox {
+        await withCheckedContinuation { (continuation: CheckedContinuation<MapSnapshotImageBox, Never>) in
+            snapshot(for: request) { snapshotResult in
+                let image: NSImage?
+                switch snapshotResult {
+                case .success(let loaded):
+                    image = loaded
+                case .failure:
+                    image = nil
+                }
+                continuation.resume(returning: MapSnapshotImageBox(image))
+            }
+        }
     }
 }
 
@@ -121,7 +185,6 @@ struct OverlayRouteMapStatsBarLayout {
 }
 
 struct OverlayRouteMapRenderLayout {
-    var preset: OverlayRouteMapPreset
     var provider: OverlayRouteMapProvider
     var rect: CGRect
     var contentRect: CGRect
@@ -131,6 +194,7 @@ struct OverlayRouteMapRenderLayout {
     var fadeAmount: Double
     var borderVisible: Bool
     var lineWidth: Double
+    var glowEnabled: Bool
     var glowRadius: Double
     var mapOpacity: Double
     var progress: Double
@@ -228,6 +292,14 @@ enum RouteMapMaskRenderer {
             context.setFillColor(gray: 1, alpha: 1)
             shapePath(shape: shape, rect: rect, cornerRadius: cornerRadius).fill()
         case .fadeOut:
+            if shape == .square,
+               let mask = OverlayFeatherMaskRenderer.makeCGMask(
+                   size: CGSize(width: width, height: height),
+                   cornerRadius: cornerRadius,
+                   fadeAmount: min(max(fadeAmount, 0), Self.maxFadeAmount)
+               ) {
+                return mask
+            }
             drawFadeMask(
                 in: context,
                 shape: shape,

@@ -123,6 +123,7 @@ Panel rules:
 
 - Size: 30x30 px.
 - Background appears on hover or active state.
+- For utility controls in compact app chrome (for example the status bar settings button), a borderless icon-only variant is allowed to avoid forcing taller bars.
 - Use SF Symbols if no icon library is present.
 - Every icon-only button needs `.help(...)` and accessibility label.
 - Disabled state: muted foreground, no strong fill.

@@ -1,0 +1,791 @@
+import CoreGraphics
+import Foundation
+import Testing
+@testable import RunningOverlay
+
+@MainActor
+struct ExportPerformanceTests {
+    @Test func projectSnapshotRoundTripsExportableStateAndClearsRuntimeState() throws {
+        let tempDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("running-overlay-snapshot-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+        let snapshotURL = tempDirectory.appendingPathComponent("running_overlay_project_snapshot.json")
+
+        let source = ProjectDocument()
+        source.settings.resolution = .vertical1080
+        source.settings.frameRate = .fps60
+        source.settings.layerDataFrameRate = .fps5
+        source.settings.bitrateMbps = 42
+        source.settings.exportCodec = .proRes4444
+        source.activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 100),
+            duration: 12,
+            distanceMeters: 3000,
+            records: [
+                ActivityRecord(
+                    elapsedTime: 0,
+                    timestamp: Date(timeIntervalSince1970: 100),
+                    distanceMeters: 0,
+                    heartRate: 140,
+                    paceSecondsPerKilometer: 300,
+                    elevationMeters: 10,
+                    cadence: 170,
+                    powerWatts: 250,
+                    calories: 0
+                )
+            ],
+            laps: []
+        )
+        let mediaID = UUID()
+        source.mediaItems = [
+            MediaItem(
+                id: mediaID,
+                displayName: "camera.mov",
+                fileURL: URL(fileURLWithPath: "/tmp/camera.mov"),
+                duration: 12,
+                inferredStartDate: Date(timeIntervalSince1970: 100),
+                cameraGroupID: "Camera A",
+                alignmentStatus: .aligned(source: "timestamp")
+            )
+        ]
+        source.mediaFolders = [MediaFolder(name: "Race")]
+        source.timeline = TimelineModel(
+            tracks: [
+                TimelineTrack(name: "Camera A", clips: [
+                    TimelineClip(
+                        mediaItemID: mediaID,
+                        title: "camera.mov",
+                        startTime: 0,
+                        duration: 12,
+                        alignmentOffset: 0,
+                        cameraGroupID: "Camera A"
+                    )
+                ])
+            ],
+            zoom: .pixelsPerSecond(12),
+            playhead: 3,
+            fitStartTime: 1
+        )
+        source.overlayLayout = OverlayLayout(elements: [
+            OverlayElement(type: .heartRate, position: CGPoint(x: 0.4, y: 0.6), scale: 1.2, style: .default)
+        ])
+        source.userAssets = [
+            UserAsset(id: UUID(), kind: .svg, originalName: "icon.svg", sha256: "abc123", fileExtension: "svg")
+        ]
+        source.fitSourceName = "activity.fit"
+        source.saveProjectSnapshot(to: snapshotURL)
+
+        let restored = ProjectDocument()
+        restored.addOverlayElement(.pace)
+        restored.selection = .overlayElement(restored.overlayLayout.elements[0].id)
+        restored.isPlaying = true
+        restored.playbackRate = 2
+        restored.mediaPoolPreviewItemID = mediaID
+        restored.mediaPoolPreviewSourceTime = 4
+        restored.exportProgress = ExportProgressState(
+            title: "Export",
+            items: [ExportProgressItem(index: 0, name: "camera.mov", progress: 0.5, status: .exporting)]
+        )
+        #expect(restored.canUndo)
+
+        restored.restoreProjectSnapshot(from: snapshotURL)
+
+        #expect(restored.settings.resolution == .vertical1080)
+        #expect(restored.settings.frameRate == .fps60)
+        #expect(restored.settings.layerDataFrameRate == .fps5)
+        #expect(restored.settings.bitrateMbps == 42)
+        #expect(restored.settings.exportCodec == .proRes4444)
+        #expect(restored.activity.duration == 12)
+        #expect(restored.mediaItems.first?.displayName == "camera.mov")
+        #expect(restored.mediaItems.first?.fileURL?.path == "/tmp/camera.mov")
+        #expect(restored.mediaFolders.first?.name == "Race")
+        #expect(restored.timeline.tracks.first?.clips.first?.title == "camera.mov")
+        #expect(restored.timeline.playhead == 3)
+        #expect(restored.overlayLayout.elements.first?.type == .heartRate)
+        #expect(restored.userAssets.first?.originalName == "icon.svg")
+        #expect(restored.fitSourceName == "activity.fit")
+        #expect(restored.selection == .none)
+        #expect(!restored.isPlaying)
+        #expect(restored.playbackRate == 1)
+        #expect(restored.mediaPoolPreviewItemID == nil)
+        #expect(restored.mediaPoolPreviewSourceTime == 0)
+        #expect(restored.exportProgress == nil)
+        #expect(!restored.canUndo)
+        #expect(!restored.canRedo)
+    }
+
+    @Test func exportProfileJSONAndCSVRepresentWholeExportWithSegments() throws {
+        let segment = OverlayExportSegmentProfile(
+            segmentIndex: 0,
+            segmentName: "camera.mov",
+            outputFileName: "camera_swiftui_overlay.mov",
+            duration: 3,
+            frameCount: 90,
+            renderedFrameCount: 30,
+            reusedFrameCount: 60,
+            reuseRate: 2.0 / 3.0,
+            totalDuration: 6,
+            imageRenderDuration: 4,
+            pixelBufferDrawDuration: 1,
+            staticRenderDuration: 0.75,
+            dynamicRenderDuration: 3.25,
+            staticDrawDuration: 0.4,
+            dynamicDrawDuration: 0.6,
+            dynamicRenderAreaRatio: 0.25,
+            staticLayerCacheHitCount: 90,
+            dynamicRenderCount: 30,
+            appendDuration: 0.5,
+            writerWaitDuration: 0.25,
+            averageFrameDuration: 6.0 / 90.0,
+            renderPath: .layeredRegion,
+            dynamicRenderRectX: 100,
+            dynamicRenderRectY: 200,
+            dynamicRenderRectWidth: 640,
+            dynamicRenderRectHeight: 360,
+            dynamicOverlayCount: 2,
+            staticOverlayCount: 1,
+            fullFrameFallbackCount: 0,
+            renderDurationP50: 0.08,
+            renderDurationP95: 0.12,
+            renderDurationMax: 0.2,
+            drawDurationP50: 0.01,
+            drawDurationP95: 0.02,
+            drawDurationMax: 0.04,
+            frameDurationP50: 0.09,
+            frameDurationP95: 0.14,
+            frameDurationMax: 0.24,
+            slowFrameThreshold: 0.28,
+            slowFrameCount: 1,
+            slowFrames: [
+                OverlayExportSlowFrameProfile(
+                    frameIndex: 12,
+                    clipElapsed: 0.4,
+                    sampleElapsed: 0.4,
+                    reusedRender: false,
+                    renderDuration: 0.2,
+                    drawDuration: 0.04,
+                    frameDuration: 0.24
+                )
+            ],
+            overlayRenderPathEnabled: true,
+            overlayRenderAreaRatio: 0.18,
+            overlayRenderCount: 60,
+            overlayDrawCount: 180,
+            overlayProfiles: [
+                OverlayExportOverlayProfile(
+                    overlayID: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+                    overlayType: .heartRate,
+                    renderRectX: 100,
+                    renderRectY: 200,
+                    renderRectWidth: 300,
+                    renderRectHeight: 200,
+                    renderAreaRatio: 0.06,
+                    renderCount: 30,
+                    renderDuration: 1.5,
+                    drawCount: 90,
+                    drawDuration: 0.3
+                ),
+                OverlayExportOverlayProfile(
+                    overlayID: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
+                    overlayType: .pace,
+                    renderRectX: 420,
+                    renderRectY: 200,
+                    renderRectWidth: 300,
+                    renderRectHeight: 400,
+                    renderAreaRatio: 0.12,
+                    renderCount: 30,
+                    renderDuration: 1.75,
+                    drawCount: 90,
+                    drawDuration: 0.3
+                )
+            ]
+        )
+        let profile = OverlayExportProfile(
+            startedAt: Date(timeIntervalSince1970: 100),
+            completedAt: Date(timeIntervalSince1970: 106),
+            settings: ProjectSettings(),
+            segments: [segment]
+        )
+
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(profile)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let decoded = try decoder.decode(OverlayExportProfile.self, from: data)
+
+        #expect(decoded.segmentCount == 1)
+        #expect(decoded.schemaVersion == 5)
+        #expect(decoded.totalFrameCount == 90)
+        #expect(decoded.renderedFrameCount == 30)
+        #expect(decoded.reusedFrameCount == 60)
+        #expect(decoded.reuseRate == 2.0 / 3.0)
+        #expect(decoded.staticRenderDuration == 0.75)
+        #expect(decoded.dynamicRenderDuration == 3.25)
+        #expect(decoded.staticDrawDuration == 0.4)
+        #expect(decoded.dynamicDrawDuration == 0.6)
+        #expect(decoded.dynamicRenderAreaRatio == 0.25)
+        #expect(decoded.staticLayerCacheHitCount == 90)
+        #expect(decoded.dynamicRenderCount == 30)
+        #expect(decoded.renderPath == .layeredRegion)
+        #expect(decoded.dynamicRenderRectX == 100)
+        #expect(decoded.dynamicRenderRectY == 200)
+        #expect(decoded.dynamicRenderRectWidth == 640)
+        #expect(decoded.dynamicRenderRectHeight == 360)
+        #expect(decoded.dynamicOverlayCount == 2)
+        #expect(decoded.staticOverlayCount == 1)
+        #expect(decoded.fullFrameFallbackCount == 0)
+        #expect(decoded.renderDurationP50 == 0.08)
+        #expect(abs(decoded.renderDurationP95 - 0.12) < 0.000001)
+        #expect(decoded.renderDurationMax == 0.2)
+        #expect(decoded.drawDurationP50 == 0.01)
+        #expect(decoded.drawDurationP95 == 0.02)
+        #expect(decoded.drawDurationMax == 0.04)
+        #expect(decoded.frameDurationP50 == 0.09)
+        #expect(decoded.frameDurationP95 == 0.14)
+        #expect(decoded.frameDurationMax == 0.24)
+        #expect(decoded.slowFrameThreshold == 0.28)
+        #expect(decoded.slowFrameCount == 1)
+        #expect(decoded.overlayRenderPathEnabledCount == 1)
+        #expect(decoded.overlayRenderAreaRatio == 0.18)
+        #expect(decoded.overlayRenderCount == 60)
+        #expect(decoded.overlayDrawCount == 180)
+        #expect(decoded.segments.first?.slowFrames.first?.frameIndex == 12)
+        #expect(decoded.segments.first?.overlayProfiles.count == 2)
+        #expect(decoded.segments.first?.overlayProfiles.first?.overlayType == .heartRate)
+        #expect(decoded.segments.first?.segmentName == "camera.mov")
+
+        let csv = profile.csvString()
+        #expect(csv.contains("\"rowType\",\"segmentIndex\",\"segmentName\""))
+        #expect(csv.contains("\"staticRenderDuration\",\"dynamicRenderDuration\""))
+        #expect(csv.contains("\"dynamicRenderAreaRatio\",\"staticLayerCacheHitCount\",\"dynamicRenderCount\""))
+        #expect(csv.contains("\"renderPath\",\"dynamicRenderRectX\",\"dynamicRenderRectY\""))
+        #expect(csv.contains("\"dynamicOverlayCount\",\"staticOverlayCount\",\"fullFrameFallbackCount\""))
+        #expect(csv.contains("\"renderDurationP50\",\"renderDurationP95\",\"renderDurationMax\""))
+        #expect(csv.contains("\"frameDurationP50\",\"frameDurationP95\",\"frameDurationMax\""))
+        #expect(csv.contains("\"slowFrameThreshold\",\"slowFrameCount\""))
+        #expect(csv.contains("\"overlayRenderPathEnabled\",\"overlayRenderAreaRatio\",\"overlayRenderCount\",\"overlayDrawCount\""))
+        #expect(csv.contains("\"summary\""))
+        #expect(csv.contains("\"segment\",\"0\",\"camera.mov\",\"camera_swiftui_overlay.mov\""))
+    }
+
+    @Test func renderPlanSeparatesStaticAndDynamicOverlays() {
+        let activity = ActivityTimeline.empty
+        let staticOverlay = OverlayElement(type: .decorSolidColor, position: CGPoint(x: 0.2, y: 0.2), scale: 1, style: .default)
+        let dynamicOverlay = OverlayElement(type: .heartRate, position: CGPoint(x: 0.7, y: 0.7), scale: 1, style: .default)
+
+        let plan = ExportRenderPlan(
+            overlays: [staticOverlay, dynamicOverlay],
+            canvasSize: CGSize(width: 1920, height: 1080),
+            activity: activity
+        )
+
+        #expect(plan.staticOverlays.map(\.type) == [.decorSolidColor])
+        #expect(plan.dynamicOverlays.map(\.type) == [.heartRate])
+        #expect(plan.dynamicRenderRect.width > 0)
+        #expect(plan.dynamicRenderRect.height > 0)
+        #expect(plan.dynamicRenderAreaRatio < 0.85)
+        #expect(!plan.usesFullFrameDynamicRender)
+        #expect(plan.renderPath == .layeredRegion)
+    }
+
+    @Test func renderPlanDynamicUnionIncludesSafePadding() throws {
+        let activity = ActivityTimeline.empty
+        let element = OverlayElement(type: .runningGauge, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: .default)
+        let canvasSize = CGSize(width: 1920, height: 1080)
+        let context = OverlayRenderContext(canvasSize: canvasSize, activity: activity, elapsedTime: 0)
+        let rawRect = try #require(ExportRenderPlan.renderRect(for: element, context: context))
+
+        let plan = ExportRenderPlan(overlays: [element], canvasSize: canvasSize, activity: activity)
+
+        #expect(plan.dynamicRenderRect.minX <= max(rawRect.minX - ExportRenderPlan.safePadding, 0))
+        #expect(plan.dynamicRenderRect.minY <= max(rawRect.minY - ExportRenderPlan.safePadding, 0))
+        #expect(plan.dynamicRenderRect.maxX >= min(rawRect.maxX + ExportRenderPlan.safePadding, canvasSize.width))
+        #expect(plan.dynamicRenderRect.maxY >= min(rawRect.maxY + ExportRenderPlan.safePadding, canvasSize.height))
+    }
+
+    @Test func renderPlanFallsBackToFullFrameForLargeDynamicArea() {
+        var style = OverlayStyle.default
+        style.routeMapWidth = 1280
+        style.routeMapHeight = 720
+        let element = OverlayElement(type: .routeMap, position: CGPoint(x: 0.5, y: 0.5), scale: 2.0, style: style)
+        let canvasSize = CGSize(width: 1280, height: 720)
+
+        let plan = ExportRenderPlan(overlays: [element], canvasSize: canvasSize, activity: .empty)
+
+        #expect(plan.usesFullFrameDynamicRender)
+        #expect(plan.renderPath == .fullFrameSingleLayer)
+        #expect(plan.dynamicRenderRect == CGRect(origin: .zero, size: canvasSize))
+        #expect(plan.dynamicRenderAreaRatio == 1)
+        #expect(plan.overlayRenderAreaRatio >= ExportRenderPlan.perOverlayAreaThreshold)
+        #expect(!plan.usesPerOverlayRender)
+    }
+
+    @Test func renderPlanUsesPerOverlayPathWhenFullFrameUnionHasSmallIndividualAreas() {
+        let first = OverlayElement(type: .heartRate, position: CGPoint(x: 0.05, y: 0.1), scale: 1, style: .default)
+        let second = OverlayElement(type: .pace, position: CGPoint(x: 0.95, y: 0.9), scale: 1, style: .default)
+        let canvasSize = CGSize(width: 1280, height: 720)
+
+        let plan = ExportRenderPlan(overlays: [first, second], canvasSize: canvasSize, activity: .empty)
+
+        #expect(plan.usesFullFrameDynamicRender)
+        #expect(plan.usesPerOverlayRender)
+        #expect(plan.renderPath == .perOverlay)
+        #expect(plan.dynamicRenderRect == CGRect(origin: .zero, size: canvasSize))
+        #expect(plan.dynamicRenderAreaRatio == 1)
+        #expect(plan.overlayRenderItems.count == 2)
+        #expect(plan.overlayRenderAreaRatio < ExportRenderPlan.perOverlayAreaThreshold)
+    }
+
+    @Test func renderPlanBatchesNearbyNumericOverlays() throws {
+        let overlays = [
+            OverlayElement(type: .heartRate, position: CGPoint(x: 0.12, y: 0.86), scale: 1, style: .default),
+            OverlayElement(type: .pace, position: CGPoint(x: 0.24, y: 0.86), scale: 1, style: .default),
+            OverlayElement(type: .cadence, position: CGPoint(x: 0.36, y: 0.86), scale: 1, style: .default),
+            OverlayElement(type: .routeMap, position: CGPoint(x: 0.82, y: 0.18), scale: 1, style: .default)
+        ]
+
+        let plan = ExportRenderPlan(overlays: overlays, canvasSize: CGSize(width: 1280, height: 720), activity: sampleRouteActivity())
+        let batch = try #require(plan.overlayRenderItems.first { $0.elements.count == 3 })
+
+        #expect(batch.elements.map(\.type) == [.heartRate, .pace, .cadence])
+        #expect(plan.overlayRenderItems.count < plan.dynamicOverlays.count)
+        #expect(plan.overlayRenderAreaRatio < ExportRenderPlan.perOverlayAreaThreshold)
+    }
+
+    @Test func renderPlanDoesNotBatchNumericOverlaysWhenUnionIsTooLarge() {
+        let overlays = [
+            OverlayElement(type: .heartRate, position: CGPoint(x: 0.05, y: 0.08), scale: 1, style: .default),
+            OverlayElement(type: .pace, position: CGPoint(x: 0.95, y: 0.92), scale: 1, style: .default)
+        ]
+
+        let plan = ExportRenderPlan(overlays: overlays, canvasSize: CGSize(width: 1280, height: 720), activity: .empty)
+
+        #expect(plan.overlayRenderItems.count == 2)
+        #expect(plan.overlayRenderItems.allSatisfy { $0.elements.count == 1 })
+    }
+
+    @Test func renderPlanDoesNotBatchComplexOverlaysWithNumericOverlays() {
+        let overlays = [
+            OverlayElement(type: .heartRate, position: CGPoint(x: 0.12, y: 0.86), scale: 1, style: .default),
+            OverlayElement(type: .pace, position: CGPoint(x: 0.24, y: 0.86), scale: 1, style: .default),
+            OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.2), scale: 1, style: .default)
+        ]
+
+        let plan = ExportRenderPlan(overlays: overlays, canvasSize: CGSize(width: 1280, height: 720), activity: sampleRouteActivity())
+
+        #expect(plan.overlayRenderItems.contains { $0.elements.map(\.type) == [.heartRate, .pace] })
+        #expect(plan.overlayRenderItems.contains { $0.elements.map(\.type) == [.distanceTimeline] })
+    }
+
+    @Test func renderPlanEnablesRouteMapStaticCacheOnlyWithoutStatsBar() {
+        var style = OverlayStyle.default
+        style.routeMapProvider = .mapKit
+        style.routeMapStatsBar.visible = false
+        let element = OverlayElement(type: .routeMap, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(canvasSize: CGSize(width: 1280, height: 720), activity: sampleRouteActivity(), elapsedTime: 0)
+
+        #expect(ExportRenderPlan.canUseRouteMapStaticCache(for: element, context: context))
+
+        var statsStyle = style
+        statsStyle.routeMapStatsBar.visible = true
+        let statsElement = OverlayElement(type: .routeMap, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: statsStyle)
+
+        #expect(!ExportRenderPlan.canUseRouteMapStaticCache(for: statsElement, context: context))
+    }
+
+    @Test func topLeftOverlayRectsConvertToPixelBufferDrawRects() {
+        let canvasSize = CGSize(width: 1920, height: 1080)
+
+        #expect(SwiftUIOverlayVideoExporter.pixelBufferDrawRect(
+            forTopLeftRect: CGRect(x: 100, y: 80, width: 300, height: 200),
+            canvasSize: canvasSize
+        ) == CGRect(x: 100, y: 800, width: 300, height: 200))
+
+        #expect(SwiftUIOverlayVideoExporter.pixelBufferDrawRect(
+            forTopLeftRect: CGRect(x: 100, y: 800, width: 300, height: 200),
+            canvasSize: canvasSize
+        ) == CGRect(x: 100, y: 80, width: 300, height: 200))
+    }
+
+    @Test func benchmarkCommandParsesSnapshotAndOutputArguments() throws {
+        let parsed = try ExportBenchmarkCommand.parse(arguments: [
+            "RunningOverlay",
+            "--benchmark-export",
+            "running_overlay_project_snapshot.json",
+            "--benchmark-output",
+            "BenchmarkOut"
+        ])
+        let command = try #require(parsed)
+
+        #expect(command.snapshotURL.path.hasSuffix("/running_overlay_project_snapshot.json"))
+        #expect(command.outputDirectory?.path.hasSuffix("/BenchmarkOut") == true)
+    }
+
+    @Test func benchmarkCommandReturnsNilWithoutBenchmarkFlag() throws {
+        let command = try ExportBenchmarkCommand.parse(arguments: ["RunningOverlay"])
+
+        #expect(command == nil)
+    }
+
+    @Test func elevationBenchmarkCommandParsesFitTemplateAndWindow() throws {
+        let parsed = try ElevationBenchmarkCommand.parse(arguments: [
+            "RunningOverlay",
+            "--benchmark-elevation",
+            "/tmp/activity.fit",
+            "--template",
+            "/tmp/template.rotemplate",
+            "--start",
+            "10",
+            "--duration",
+            "30",
+            "--benchmark-output",
+            "ElevOut"
+        ])
+        let command = try #require(parsed)
+
+        #expect(command.fitURL.path == "/tmp/activity.fit")
+        #expect(command.templateURL.path == "/tmp/template.rotemplate")
+        #expect(command.startSeconds == 10)
+        #expect(command.durationSeconds == 30)
+        #expect(command.outputDirectory?.path.hasSuffix("/ElevOut") == true)
+    }
+
+    @Test func headlessBenchmarkCommandPrefersElevationOverSnapshot() throws {
+        let parsed = try HeadlessBenchmarkCommand.parse(arguments: [
+            "RunningOverlay",
+            "--benchmark-elevation",
+            "/tmp/activity.fit",
+            "--template",
+            "/tmp/template.rotemplate",
+            "--benchmark-export",
+            "ignored.json"
+        ])
+
+        guard case .elevation(let elevation) = parsed else {
+            Issue.record("Expected elevation benchmark command")
+            return
+        }
+        #expect(elevation.fitURL.path == "/tmp/activity.fit")
+    }
+
+    @Test func renderPlanKeepsFullFrameForDispersedLayoutsWithHighPerOverlayCost() {
+        let overlays = multiWidgetBenchmarkLayout()
+        let plan = ExportRenderPlan(
+            overlays: overlays,
+            canvasSize: CGSize(width: 1920, height: 1080),
+            activity: sampleRouteActivity()
+        )
+
+        #expect(plan.usesFullFrameDynamicRender)
+        #expect(plan.overlayRenderAreaRatio >= ExportRenderPlan.perOverlayAreaThreshold)
+        #expect(plan.estimatedPerOverlayRenderCost >= ExportRenderPlan.perOverlayDispersedSumAreaThreshold)
+        #expect(!plan.usesPerOverlayRender)
+        #expect(plan.renderPath == .fullFrameSingleLayer)
+    }
+
+    @Test func renderPlanUsesPerOverlayForChartHeavyDispersedLayouts() {
+        var chartStyle = OverlayStyle.default
+        chartStyle.elevationChart.progressMode = .fullProfile
+        chartStyle.elevationChart.chartStyle = .area
+        chartStyle.elevationChart.fillEnabled = true
+        chartStyle.elevationChart.bigNumbersEnabled = false
+        chartStyle.elevationChart.statsBar.visible = false
+        chartStyle.glowEnabled = false
+
+        let overlays = [
+            OverlayElement(type: .elevationChart, position: CGPoint(x: 0.25, y: 0.25), scale: 1, style: chartStyle),
+            OverlayElement(type: .elevationChart, position: CGPoint(x: 0.75, y: 0.25), scale: 1, style: chartStyle),
+            OverlayElement(type: .elevationChart, position: CGPoint(x: 0.25, y: 0.75), scale: 1, style: chartStyle),
+            OverlayElement(type: .elevationChart, position: CGPoint(x: 0.75, y: 0.75), scale: 1, style: chartStyle)
+        ]
+        let plan = ExportRenderPlan(
+            overlays: overlays,
+            canvasSize: CGSize(width: 1920, height: 1080),
+            activity: sampleRouteActivity()
+        )
+
+        #expect(plan.usesFullFrameDynamicRender)
+        #expect(plan.estimatedPerOverlayRenderCost < ExportRenderPlan.perOverlayDispersedSumAreaThreshold)
+        #expect(plan.usesPerOverlayRender)
+        #expect(plan.renderPath == .perOverlay)
+    }
+
+    @Test func exportProfileAggregatesFullFrameFallbackDiagnostics() {
+        let segment = OverlayExportSegmentProfile(
+            segmentIndex: 0,
+            segmentName: "camera.mov",
+            outputFileName: "camera_swiftui_overlay.mov",
+            duration: 1,
+            frameCount: 30,
+            renderedFrameCount: 10,
+            reusedFrameCount: 20,
+            reuseRate: 2.0 / 3.0,
+            totalDuration: 5,
+            imageRenderDuration: 3,
+            pixelBufferDrawDuration: 2,
+            staticRenderDuration: 0,
+            dynamicRenderDuration: 3,
+            staticDrawDuration: 0,
+            dynamicDrawDuration: 2,
+            dynamicRenderAreaRatio: 1,
+            staticLayerCacheHitCount: 0,
+            dynamicRenderCount: 10,
+            appendDuration: 0.1,
+            writerWaitDuration: 0.1,
+            averageFrameDuration: 5.0 / 30.0,
+            renderPath: .fullFrameSingleLayer,
+            dynamicRenderRectX: 0,
+            dynamicRenderRectY: 0,
+            dynamicRenderRectWidth: 1920,
+            dynamicRenderRectHeight: 1080,
+            dynamicOverlayCount: 6,
+            staticOverlayCount: 0,
+            fullFrameFallbackCount: 1,
+            renderDurationP50: 0.07,
+            renderDurationP95: 0.18,
+            renderDurationMax: 0.3,
+            drawDurationP50: 0.01,
+            drawDurationP95: 0.03,
+            drawDurationMax: 0.05,
+            frameDurationP50: 0.08,
+            frameDurationP95: 0.2,
+            frameDurationMax: 0.35,
+            slowFrameThreshold: 0.4,
+            slowFrameCount: 2
+        )
+
+        let profile = OverlayExportProfile(
+            startedAt: Date(timeIntervalSince1970: 100),
+            completedAt: Date(timeIntervalSince1970: 105),
+            settings: ProjectSettings(),
+            segments: [segment]
+        )
+
+        #expect(profile.renderPath == .fullFrameSingleLayer)
+        #expect(profile.staticLayerCacheHitCount == 0)
+        #expect(profile.fullFrameFallbackCount == 1)
+        #expect(profile.dynamicRenderRectWidth == 1920)
+        #expect(profile.dynamicRenderRectHeight == 1080)
+        #expect(profile.dynamicOverlayCount == 6)
+        #expect(profile.staticOverlayCount == 0)
+        #expect(profile.renderDurationP95 == 0.18)
+        #expect(profile.drawDurationMax == 0.05)
+        #expect(profile.frameDurationMax == 0.35)
+        #expect(profile.slowFrameCount == 2)
+    }
+
+    @Test func frameSamplingMarksRepeatedLayerDataFramesReusable() {
+        let samples = SwiftUIOverlayVideoExporter.frameSamples(
+            segment: OverlayExportSegment(startTime: 0, duration: 1, sourceFileName: "clip.mov"),
+            frameRate: 30,
+            activityDuration: 10,
+            layerDataFrameRate: 10,
+            fitStartTime: 0
+        )
+
+        #expect(samples.count == 30)
+        #expect(samples.filter(\.reusesPreviousRender).count == 20)
+        #expect(samples[0].sampleElapsed == 0)
+        #expect(samples[1].sampleElapsed == 0)
+        #expect(samples[3].sampleElapsed == 0.1)
+    }
+
+    @Test func frameSamplingKeepsUniqueFramesWhenLayerDataIsAtLeastVideoRate() {
+        let samples = SwiftUIOverlayVideoExporter.frameSamples(
+            segment: OverlayExportSegment(startTime: 5, duration: 1, sourceFileName: "clip.mov"),
+            frameRate: 5,
+            activityDuration: 10,
+            layerDataFrameRate: 30,
+            fitStartTime: 4
+        )
+
+        #expect(samples.count == 5)
+        #expect(samples.filter(\.reusesPreviousRender).isEmpty)
+        #expect(samples[0].clipElapsed == 0)
+        #expect(samples[0].activityElapsed == 5)
+        #expect(samples[0].sampleElapsed == 1)
+    }
+
+    @Test func elevationChartStaticFillCacheEligibilityRespectsConstraints() {
+        let context = OverlayRenderContext(canvasSize: CGSize(width: 1280, height: 720), activity: sampleRouteActivity(), elapsedTime: 0)
+        let eligible = dualAreaElevationElement()
+        #expect(ExportRenderPlan.canUseElevationChartStaticFillCache(for: eligible, context: context))
+
+        var progressMode = eligible
+        progressMode.style.elevationChart.progressMode = .progressToCurrent
+        #expect(!ExportRenderPlan.canUseElevationChartStaticFillCache(for: progressMode, context: context))
+
+        var bigNumbers = eligible
+        bigNumbers.style.elevationChart.bigNumbersEnabled = true
+        #expect(!ExportRenderPlan.canUseElevationChartStaticFillCache(for: bigNumbers, context: context))
+
+        var statsBar = eligible
+        statsBar.style.elevationChart.statsBar.visible = true
+        #expect(!ExportRenderPlan.canUseElevationChartStaticFillCache(for: statsBar, context: context))
+
+        var glow = eligible
+        glow.style.glowEnabled = true
+        #expect(!ExportRenderPlan.canUseElevationChartStaticFillCache(for: glow, context: context))
+
+        var noFill = eligible
+        noFill.style.elevationChart.fillEnabled = false
+        #expect(!ExportRenderPlan.canUseElevationChartStaticFillCache(for: noFill, context: context))
+    }
+
+    @Test func elevationChartCutXMapsProgressToColumn() throws {
+        let dummy = try #require(makeDummyImage())
+        let cache = ExportElevationChartStaticFillCache(
+            overlayID: UUID(),
+            renderRect: CGRect(x: 100, y: 50, width: 600, height: 400),
+            backLayer: dummy,
+            lowerLayer: dummy,
+            lineLayer: dummy,
+            isDual: true,
+            canvasWidth: 1280,
+            positionX: 0.5,
+            cardWidth: 480,
+            horizontalPadding: 24,
+            chartAreaWidth: 432
+        )
+        // Chart area left in canvas = 1280*0.5 - 480/2 + 24 = 640 - 240 + 24 = 424.
+        // renderRect.minX = 100, so column 0 of the image sits at canvas x = 100.
+        let atZero = SwiftUIOverlayVideoExporter.elevationChartCutXInImage(progress: 0, cache: cache)
+        #expect(abs(atZero - (424.0 - 100.0)) < 0.001)
+        let atHalf = SwiftUIOverlayVideoExporter.elevationChartCutXInImage(progress: 0.5, cache: cache)
+        #expect(abs(atHalf - (424.0 + 432.0 * 0.5 - 100.0)) < 0.001)
+        let atFull = SwiftUIOverlayVideoExporter.elevationChartCutXInImage(progress: 1, cache: cache)
+        #expect(abs(atFull - (424.0 + 432.0 - 100.0)) < 0.001)
+        // Out-of-range progress clamps to [0, 1].
+        #expect(abs(SwiftUIOverlayVideoExporter.elevationChartCutXInImage(progress: -1, cache: cache) - atZero) < 0.001)
+        #expect(abs(SwiftUIOverlayVideoExporter.elevationChartCutXInImage(progress: 2, cache: cache) - atFull) < 0.001)
+    }
+
+    @Test func elevationChartStaticFillParityMatchesFullRender() async throws {
+        let element = dualAreaElevationElement()
+        let canvasSize = CGSize(width: 1280, height: 720)
+        let activity = sampleRouteActivity()
+
+        for elapsed in [0.0, 2.5, 5.0, 7.5, 10.0] {
+            let result = try await SwiftUIOverlayVideoExporter.elevationChartStaticFillParity(
+                element: element,
+                canvasSize: canvasSize,
+                activity: activity,
+                elapsedTime: elapsed
+            )
+            // The cached composite must be a near-exact reproduction of the full
+            // single-pass render; differences come only from sub-pixel anti-
+            // aliasing at the dual-area boundary.
+            #expect(result.meanAbsDiff < 0.6, "elapsed \(elapsed) progress \(result.progress) mean \(result.meanAbsDiff) max \(result.maxAbsDiff)")
+            #expect(result.maxAbsDiff < 96, "elapsed \(elapsed) progress \(result.progress) mean \(result.meanAbsDiff) max \(result.maxAbsDiff)")
+        }
+    }
+
+    private func dualAreaElevationElement() -> OverlayElement {
+        var style = OverlayStyle.default
+        style.glowEnabled = false
+        style.shadowEnabled = true
+        style.backgroundEnabled = true
+        style.elevationChart.progressMode = .fullProfile
+        style.elevationChart.chartStyle = .area
+        style.elevationChart.fillEnabled = true
+        style.elevationChart.dualAreaEnabled = true
+        style.elevationChart.bigNumbersEnabled = false
+        style.elevationChart.currentMarkerEnabled = true
+        style.elevationChart.statsBar.visible = false
+        return OverlayElement(type: .elevationChart, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+    }
+
+    private func makeDummyImage() -> CGImage? {
+        let context = CGContext(
+            data: nil,
+            width: 1,
+            height: 1,
+            bitsPerComponent: 8,
+            bytesPerRow: 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
+        )
+        return context?.makeImage()
+    }
+
+    /// Layout modeled on the local four-chart benchmark template: many small
+    /// widgets spread across a 1080p canvas with four full-profile charts.
+    private func multiWidgetBenchmarkLayout() -> [OverlayElement] {
+        var chartStyle = OverlayStyle.default
+        chartStyle.elevationChart.progressMode = .fullProfile
+        chartStyle.elevationChart.chartStyle = .area
+        chartStyle.elevationChart.fillEnabled = true
+        chartStyle.elevationChart.bigNumbersEnabled = false
+        chartStyle.elevationChart.statsBar.visible = false
+        chartStyle.glowEnabled = false
+
+        return [
+            OverlayElement(type: .pace, position: CGPoint(x: 0.031, y: 0.739), scale: 0.75, style: .default),
+            OverlayElement(type: .heartRate, position: CGPoint(x: 0.031, y: 0.792), scale: 0.75, style: .default),
+            OverlayElement(type: .cadence, position: CGPoint(x: 0.030, y: 0.847), scale: 0.75, style: .default),
+            OverlayElement(type: .routeMap, position: CGPoint(x: 0.879, y: 0.195), scale: 0.75, style: .default),
+            OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.069), scale: 1, style: .default),
+            OverlayElement(type: .elapsedTime, position: CGPoint(x: 0.856, y: 0.844), scale: 1, style: .default),
+            OverlayElement(type: .realTime, position: CGPoint(x: 0.856, y: 0.901), scale: 1, style: .default),
+            OverlayElement(type: .power, position: CGPoint(x: 0.029, y: 0.905), scale: 0.75, style: .default),
+            OverlayElement(type: .weatherWidget, position: CGPoint(x: 0.895, y: 0.756), scale: 0.75, style: .default),
+            OverlayElement(type: .zoneEdgeBar, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: .default),
+            OverlayElement(type: .elevationChart, position: CGPoint(x: 0.5, y: 0.911), scale: 1, style: chartStyle),
+            OverlayElement(type: .elevationChart, position: CGPoint(x: 0.213, y: 0.269), scale: 1, style: chartStyle),
+            OverlayElement(type: .elevationChart, position: CGPoint(x: 0.641, y: 0.318), scale: 1, style: chartStyle),
+            OverlayElement(type: .elevationChart, position: CGPoint(x: 0.259, y: 0.565), scale: 1, style: chartStyle)
+        ]
+    }
+
+    private func sampleRouteActivity() -> ActivityTimeline {
+        let startDate = Date(timeIntervalSince1970: 2_000)
+        return ActivityTimeline(
+            startDate: startDate,
+            duration: 10,
+            distanceMeters: 1000,
+            records: [
+                ActivityRecord(
+                    elapsedTime: 0,
+                    timestamp: startDate,
+                    distanceMeters: 0,
+                    heartRate: 100,
+                    paceSecondsPerKilometer: 300,
+                    elevationMeters: 10,
+                    cadence: nil,
+                    powerWatts: nil,
+                    calories: nil,
+                    latitude: 40.7500,
+                    longitude: -73.9850
+                ),
+                ActivityRecord(
+                    elapsedTime: 5,
+                    timestamp: startDate.addingTimeInterval(5),
+                    distanceMeters: 500,
+                    heartRate: 120,
+                    paceSecondsPerKilometer: 280,
+                    elevationMeters: 14,
+                    cadence: nil,
+                    powerWatts: nil,
+                    calories: nil,
+                    latitude: 40.7525,
+                    longitude: -73.9835
+                ),
+                ActivityRecord(
+                    elapsedTime: 10,
+                    timestamp: startDate.addingTimeInterval(10),
+                    distanceMeters: 1000,
+                    heartRate: 140,
+                    paceSecondsPerKilometer: 260,
+                    elevationMeters: 18,
+                    cadence: nil,
+                    powerWatts: nil,
+                    calories: nil,
+                    latitude: 40.7550,
+                    longitude: -73.9800
+                )
+            ],
+            laps: []
+        )
+    }
+}

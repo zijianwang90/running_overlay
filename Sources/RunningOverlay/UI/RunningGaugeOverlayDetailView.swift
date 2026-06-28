@@ -34,14 +34,10 @@ struct RunningGaugeOverlayDetailView: View {
                         sectionView(.typography) { typographySection(element) }
                         sectionView(.color) { colorSection(element) }
                         sectionView(.effects) { effectsSection(element) }
-                        OverlayBackgroundInspectorModule(elementID: elementID, element: element)
-                        OverlayBorderInspectorModule(elementID: elementID, element: element)
-                        OverlayEffectsInspectorModule(elementID: elementID, element: element)
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
 
-                Divider().overlay(NumericTokens.borderSubtle)
                 footerBar
             } else {
                 Spacer()
@@ -88,11 +84,7 @@ struct RunningGaugeOverlayDetailView: View {
             )
         ) {
             OverlayLayoutInspectorRows(
-                elementID: elementID,
-                opacityBinding: Binding(
-                    get: { element.style.backgroundOpacity },
-                    set: { project.setOverlayBackgroundOpacity(elementID, opacity: ($0 / 0.05).rounded() * 0.05) }
-                )
+                elementID: elementID
             )
         }
     }
@@ -147,7 +139,7 @@ struct RunningGaugeOverlayDetailView: View {
         InspectorDenseRow(label: region.region.label) {
             HStack(spacing: NumericTokens.space2) {
                 Menu {
-                    ForEach(OverlayGaugeMetric.allCases) { metric in
+                    ForEach(OverlayGaugeMetric.selectableCases) { metric in
                         Button {
                             project.updateOverlayGaugeRegion(elementID, region: region.region) { config in
                                 config.metric = metric
@@ -692,9 +684,6 @@ struct RunningGaugeOverlayDetailView: View {
             onLeadingTap: { project.resetOverlayStyle(elementID) },
             onTrailingTap: { project.selection = .none }
         )
-        .padding(.horizontal, NumericTokens.panelPaddingX)
-        .padding(.vertical, NumericTokens.space3)
-        .background(NumericTokens.panelBackgroundElevated)
     }
 }
 

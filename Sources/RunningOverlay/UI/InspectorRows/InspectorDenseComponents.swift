@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct InspectorDenseRow<Trailing: View>: View {
     var label: String
@@ -173,8 +174,17 @@ struct InspectorDetailFooterBar: View {
                 .buttonStyle(EditorPrimaryButtonStyle())
                 .frame(width: unitWidth * 2)
             }
+            .frame(height: NumericTokens.footerButtonHeight)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
-        .frame(height: NumericTokens.footerButtonHeight)
+        .padding(.horizontal, NumericTokens.panelPaddingX)
+        .frame(height: NumericTokens.detailFooterHeight)
+        .background(NumericTokens.panelBackgroundElevated)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(NumericTokens.borderSubtle)
+                .frame(height: 1)
+        }
     }
 }
 
@@ -185,13 +195,18 @@ struct InspectorDenseSwatchStrip: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            ForEach(presets, id: \.name) { preset in
+            ForEach(compactPresets, id: \.name) { preset in
                 Button {
                     action(preset.color)
                 } label: {
                     RoundedRectangle(cornerRadius: 5)
-                        .fill(Color(numericOverlay: preset.color))
+                        .fill(preset.color.isRouteMapEndCheckerboard ? Color.clear : Color(numericOverlay: preset.color))
                         .frame(width: NumericTokens.swatchSize, height: NumericTokens.swatchSize)
+                        .overlay {
+                            if preset.color.isRouteMapEndCheckerboard {
+                                RouteMapCheckerboardSwatch(cornerRadius: 5)
+                            }
+                        }
                         .overlay(
                             RoundedRectangle(cornerRadius: 5)
                                 .stroke(preset.color == selected ? NumericTokens.accentBlue : NumericTokens.borderStrong, lineWidth: preset.color == selected ? 2 : 1)
@@ -207,9 +222,118 @@ struct InspectorDenseSwatchStrip: View {
                 .buttonStyle(.plain)
                 .help(preset.name)
             }
-            Spacer(minLength: 0)
+
+            Button {
+                InspectorDenseColorPanelPresenter.shared.present(
+                    color: selected.isRouteMapEndCheckerboard ? .white : selected,
+                    onChange: action
+                )
+            } label: {
+                RoundedRectangle(cornerRadius: 5)
+                    .fill(selected.isRouteMapEndCheckerboard ? Color.clear : Color(numericOverlay: selected))
+                    .frame(width: NumericTokens.swatchSize, height: NumericTokens.swatchSize)
+                    .overlay {
+                        if selected.isRouteMapEndCheckerboard {
+                            RouteMapCheckerboardSwatch(cornerRadius: 5)
+                        }
+                    }
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 5)
+                            .stroke(NumericTokens.borderStrong, lineWidth: 1)
+                    )
+                    .overlay {
+                        Image(systemName: "eyedropper")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(selected == .white || selected == .yellow ? Color.black.opacity(0.72) : Color.white.opacity(0.88))
+                    }
+            }
+            .buttonStyle(.plain)
+            .help("Custom Color")
         }
+        .frame(height: NumericTokens.controlHeight)
         .frame(maxWidth: .infinity, alignment: .trailing)
+    }
+
+    private var compactPresets: [(name: String, color: OverlayColor)] {
+        if presets.contains(where: { $0.color.isRouteMapEndCheckerboard }) {
+            return Array(presets.prefix(7))
+        }
+        let preferred: [OverlayColor] = [.white, .black, .red, .yellow, .green, .blue]
+        return preferred.compactMap { color in
+            presets.first { $0.color == color }
+        }
+    }
+}
+
+struct RouteMapCheckerboardSwatch: View {
+    var cornerRadius: CGFloat
+
+    var body: some View {
+        GeometryReader { proxy in
+            let cellWidth = proxy.size.width / 3
+            let cellHeight = proxy.size.height / 3
+            ZStack {
+                Color.white
+                ForEach(0..<3, id: \.self) { row in
+                    ForEach(0..<3, id: \.self) { column in
+                        if (row + column).isMultiple(of: 2) {
+                            Color.black
+                                .frame(width: cellWidth, height: cellHeight)
+                                .position(
+                                    x: cellWidth * (CGFloat(column) + 0.5),
+                                    y: cellHeight * (CGFloat(row) + 0.5)
+                                )
+                        }
+                    }
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+        }
+    }
+}
+
+@MainActor
+private final class InspectorDenseColorPanelPresenter: NSObject {
+    static let shared = InspectorDenseColorPanelPresenter()
+
+    private var onChange: ((OverlayColor) -> Void)?
+
+    func present(color: OverlayColor, onChange: @escaping (OverlayColor) -> Void) {
+        self.onChange = onChange
+        let panel = NSColorPanel.shared
+        panel.setTarget(self)
+        panel.setAction(#selector(colorChanged(_:)))
+        panel.isContinuous = true
+        panel.showsAlpha = true
+        panel.color = NSColor(overlayColor: color)
+        panel.makeKeyAndOrderFront(nil)
+    }
+
+    @objc private func colorChanged(_ sender: NSColorPanel) {
+        onChange?(OverlayColor(sender.color))
+    }
+}
+
+private extension OverlayColor {
+    init(_ color: NSColor) {
+        let nsColor = color.usingColorSpace(.deviceRGB) ?? .white
+        self.init(
+            red: Double(nsColor.redComponent),
+            green: Double(nsColor.greenComponent),
+            blue: Double(nsColor.blueComponent),
+            alpha: Double(nsColor.alphaComponent)
+        )
+    }
+}
+
+private extension NSColor {
+    convenience init(overlayColor: OverlayColor) {
+        self.init(
+            deviceRed: overlayColor.red,
+            green: overlayColor.green,
+            blue: overlayColor.blue,
+            alpha: overlayColor.alpha
+        )
     }
 }
 
@@ -290,6 +414,7 @@ enum NumericTokens {
     static let controlHeight: CGFloat = 26
     static let segmentedVisibleHeight: CGFloat = 24
     static let footerButtonHeight: CGFloat = 32
+    static let detailFooterHeight: CGFloat = EditorTheme.previewPlaybackHeight
     static let iconButtonSize: CGFloat = 28
     static let swatchSize: CGFloat = 20
     static let panelPaddingX: CGFloat = 12

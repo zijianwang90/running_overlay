@@ -1,0 +1,337 @@
+{
+  "name": "Interval HUD Bar Overlay UI",
+  "lastUpdated": "2026-05-13",
+  "appliesToOverlayTypes": [
+    "intervalHUDBar"
+  ],
+  "mockups": {
+    "primary": "./interval-hud-bar.png"
+  },
+  "purpose": "Wide interval-training HUD showing current rep, phase, remaining work, live metrics, and optional lap/zone bar.",
+  "scope": {
+    "include": [
+      "rep count",
+      "phase",
+      "phase distance",
+      "time left",
+      "distance left",
+      "heart-rate zone",
+      "current heart rate",
+      "current pace",
+      "current power",
+      "REST heart-rate drop",
+      "bottom bar modes: none, lap progress, HR zones, pace zones"
+    ],
+    "excludeV1": [
+      "target pace",
+      "FIT workout-step parser",
+      "manual workout plan editor",
+      "zone profile management",
+      "rep transition animation"
+    ]
+  },
+  "dataSources": {
+    "interval": "ActivityTimeline.laps and LapRecord.kind",
+    "liveMetrics": "ActivityTimeline sample methods at elapsed time",
+    "zones": "HeartRateZonePreferences",
+    "recovery": [
+      "ActivityTimeline.recoveryPeakHR(at:)",
+      "ActivityTimeline.recoveryDrop(at:)",
+      "ActivityTimeline.recoveryDropPercent(at:)"
+    ]
+  },
+  "repRules": {
+    "total": "count active laps only",
+    "work": "current active lap ordinal among active laps",
+    "rest": "next active rep number after the completed work lap",
+    "warmupCooldown": "not counted as reps",
+    "beforeFirstWork": "-- / total"
+  },
+  "phaseLabels": {
+    "warmup": "WU",
+    "active": "WORK",
+    "rest": "REST",
+    "cooldown": "CD",
+    "unknown": "LAP"
+  },
+  "layout": {
+    "shape": "single horizontal rounded HUD",
+    "mainBlocks": [
+      "REP",
+      "PHASE",
+      "REMAINING",
+      "METRICS"
+    ],
+    "remainingPrimary": [
+      "time",
+      "distance"
+    ],
+    "separators": "thin vertical separators between main blocks",
+    "bottomBarPlacement": "inside the same container near bottom edge",
+    "nestedCards": false
+  },
+  "metrics": {
+    "mode": "orderedAddDeleteList",
+    "fixedSlotCount": false,
+    "allowDuplicates": true,
+    "dividerBetweenEveryMetric": true,
+    "layoutRule": "Enabled REP, PHASE, REMAINING, HR ZONE, and every configured metric use equal-width cells. Empty metric space is not reserved when the metric list is empty.",
+    "availableMetrics": [
+      "heartRate",
+      "pace",
+      "calories",
+      "elapsedTime",
+      "realTime",
+      "distance",
+      "elevation",
+      "cadence",
+      "power",
+      "verticalOscillation",
+      "groundContactTime",
+      "strideLength",
+      "verticalRatio",
+      "groundContactBalance",
+      "temperature",
+      "grade"
+    ],
+    "numericOverlayCoverage": "All OverlayElementType values where isNumericOverlay is true are available as Interval HUD Bar metrics.",
+    "defaultMetricSlots": [
+      "heartRate",
+      "pace"
+    ]
+  },
+  "hudCells": {
+    "rep": {
+      "enabled": true
+    },
+    "currentTraining": {
+      "enabled": true,
+      "detailModes": ["time", "distance"],
+      "restDetailModes": ["time", "distance"]
+    },
+    "remaining": {
+      "enabled": true,
+      "primaryModes": ["time", "distance"]
+    },
+    "hrZone": {
+      "enabled": true,
+      "displayModes": ["heartRateZone", "hrDropAtRest"],
+      "hrDropAtRest": "Show HR Zone during training and switch to HR Drop only while the current lap kind is REST.",
+      "hrDropModePlacement": "HR Drop bpm/% control lives under the HR Zone settings."
+    }
+  },
+  "bottomBar": {
+    "enabled": true,
+    "modes": [
+      "lapProgress",
+      "heartRateZones",
+      "paceZones"
+    ],
+    "sharedControls": {
+      "spacing": "Vertical gap between HUD content cells and the bottom bar.",
+      "cornerRadius": "Applies to every bottom bar mode; zero supports square progress bars.",
+      "border": {
+        "enabled": true,
+        "controls": ["Color", "Width", "Opacity"],
+        "scope": "Bottom bar strip only, separate from the outer HUD container border."
+      }
+    },
+    "lapProgress": {
+      "track": "dark neutral",
+      "fill": "current phase color",
+      "label": "LAP PROGRESS",
+      "progressModes": ["time", "distance"],
+      "glow": "Glow highlights the completed portion. Intensity is editable; color follows the current phase."
+    },
+    "heartRateZones": {
+      "label": "HR ZONES",
+      "segments": [
+        "Z1",
+        "Z2",
+        "Z3",
+        "Z4",
+        "Z5",
+        "Z6"
+      ],
+      "marker": "active segment uses full opacity; inactive segment opacity is user-adjustable and must remain readable on the black HUD background",
+      "inactiveOpacity": "Adjustable opacity for non-active segments.",
+      "activeZoneWidth": "Equal width by default; optionally expand the active segment up to 50% of the full bar, with inactive segments sharing the remaining width evenly.",
+      "activeZoneHeight": "Active segment can render 1x to 2x the base bar height, centered on the bar centerline without changing layout height.",
+      "zoneGap": "Adjustable visual gap between adjacent zone segments.",
+      "cornerRadius": "Adjustable bottom bar radius; zero supports square progress bars.",
+      "zoneMarker": {
+        "shape": "single solid filled triangle",
+        "positions": ["Above", "Below"],
+        "visibility": "can be hidden completely",
+        "valueLabel": "optional current HR value, colored with the active zone"
+      },
+      "thresholdMarker": "Optional subtle vertical tick on the bar with a small T label below it when Threshold HR is configured and falls inside a visible zone.",
+      "colorSource": "shared HR zone palette",
+      "glow": "Glow highlights the active segment. Intensity is editable; color follows the active zone."
+    },
+    "paceZones": {
+      "label": "PACE ZONES",
+      "visualPattern": "same segmented strip as HR zones",
+      "activeZoneWidth": "Same as HR Zones.",
+      "zoneMarker": "Single solid marker points at the current pace inside the matched pace segment; value label is optional. Current marker is hidden when pace is zero or invalid.",
+      "thresholdMarker": "Optional subtle vertical tick on the bar with a small T label below it when Threshold Pace is configured and falls inside a visible pace zone.",
+      "colorSource": "shared HR zone palette",
+      "glow": "Glow highlights the active segment. Intensity is editable; color follows the active zone."
+    }
+  },
+  "recovery": {
+    "restMetric": "HR DROP",
+    "dropModes": [
+      "bpm",
+      "percent"
+    ],
+    "bpmExample": "-18 bpm",
+    "percentExample": "10%"
+  },
+  "typography": {
+    "roles": [
+      "labels",
+      "primaryValues",
+      "phase",
+      "phaseDetail",
+      "metricValues",
+      "metricUnits"
+    ],
+    "controlsPerRole": [
+      "fontFamily",
+      "fontSize",
+      "fontWeight"
+    ],
+    "guidance": "Expose every role independently so users can tune high-emphasis data separately from compact labels and unit suffixes."
+  },
+  "colors": {
+    "phase": {
+      "WORK": "orange",
+      "REST": "blue",
+      "WU": "teal",
+      "CD": "purple",
+      "LAP": "fitGreen"
+    },
+    "hrZones": {
+      "Z1": "blue",
+      "Z2": "cyan",
+      "Z3": "green",
+      "Z4": "yellow",
+      "Z5": "orange",
+      "Z6": "red"
+    },
+    "sharedPaletteRequired": true
+  },
+  "inspector": {
+    "sections": [
+      "Layout",
+      "HUD Bar",
+      "Metrics",
+      "Bottom Bar",
+      "Typography",
+      "Divider",
+      "Background",
+      "Border",
+      "Effects"
+    ],
+    "controls": {
+      "bottomBarMode": [
+        "Lap Progress",
+        "HR Zones",
+        "Pace Zones"
+      ],
+      "bottomBarEnabled": "Section-header switch in the Bottom Bar header, before the disclosure chevron.",
+      "bottomBarGlow": [
+        "enabled",
+        "intensity"
+      ],
+      "bottomBarSpacing": "Adjusts vertical gap between HUD content cells and the bottom bar. Zero is adjacent; larger values expand the rendered HUD height by the same amount so the data row is not compressed.",
+      "bottomBarBorder": [
+        "enabled",
+        "color",
+        "width",
+        "opacity"
+      ],
+      "bottomBarZoneControls": [
+        "Active Zone Width",
+        "Active Zone Height",
+        "Zone Gap",
+        "Inactive Opacity",
+        "Zone Marker",
+        "Marker Position",
+        "Marker Value",
+        "Threshold Marker"
+      ],
+      "bottomBarBelowMarkerClearance": "Zone Marker floats outside bottom-bar layout and never reserves height. Above/Below markers may overlap HUD text or extend beyond the background without changing other component positions.",
+      "metricUnits": "Each Metrics row stores its own unit option when the selected Numeric Overlay metric supports multiple units.",
+      "hrDropMode": [
+        "bpm",
+        "%"
+      ],
+      "remainingPrimary": [
+        "Time",
+        "Distance"
+      ],
+      "hudCellToggles": [
+        "Rep",
+        "Current Training",
+        "Remaining",
+        "HR Zone"
+      ],
+      "currentTrainingDetail": [
+        "Time Left",
+        "Distance Left"
+      ],
+      "restCurrentTrainingDetail": [
+        "Time Left",
+        "Distance Left"
+      ],
+      "zoneDisplayMode": [
+        "HR Zone",
+        "HR Drop at Rest"
+      ],
+      "metricSlots": {
+        "type": "orderedAddDeleteList",
+        "options": [
+          "heartRate",
+          "pace",
+          "calories",
+          "elapsedTime",
+          "realTime",
+          "distance",
+          "elevation",
+          "cadence",
+          "power",
+          "verticalOscillation",
+          "groundContactTime",
+          "strideLength",
+          "verticalRatio",
+          "groundContactBalance",
+          "temperature",
+          "grade"
+        ],
+        "allowDuplicates": true,
+        "maxItems": null
+      },
+      "typographyRoles": [
+        "Labels",
+        "Primary",
+        "Phase",
+        "Phase Detail",
+        "Metric Value",
+        "Metric Unit"
+      ],
+      "sharedModules": [
+        "OverlayBackgroundInspectorModule",
+        "OverlayBorderInspectorModule",
+        "OverlayEffectsInspectorModule"
+      ],
+      "effectsBehavior": {
+        "shadowTarget": "outerHudContainerWithBackground; fullHudContentGroupWithoutBackgroundOrBorder",
+        "shadowRequiresBackground": false,
+        "previewExportParity": true
+      }
+    },
+    "sectionOrderRequirement": "The final four sections are Divider, Background, Border, Effects. Background, Border, and Effects must use shared inspector modules."
+  }
+}

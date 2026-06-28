@@ -1,46 +1,55 @@
 import SwiftUI
 
 struct ProjectSettingsView: View {
+    private static let modalWidth: CGFloat = 640
+    private static let modalHeight: CGFloat = 620
+    private static let trailingControlWidth: CGFloat = 200
+    private static let apiKeyFieldWidth: CGFloat = 240
+
     @EnvironmentObject private var project: ProjectDocument
     @Environment(\.dismiss) private var dismiss
+    @State private var showingFontLibrary = false
+    @State private var showingHeartRateZones = false
+    @State private var showingIntervalColors = false
+    @State private var openWeatherAPIKeyDraft = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(spacing: 20) {
             Text("Project Settings")
                 .font(EditorTheme.panelTitleFont)
                 .foregroundStyle(EditorTheme.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .center)
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    Picker("Resolution", selection: $project.settings.resolution) {
-                        ForEach(ProjectResolution.presets) { resolution in
-                            Text(resolution.label).tag(resolution)
-                        }
+                VStack(alignment: .leading, spacing: 16) {
+                    // MARK: - Video
+                    SettingsSectionHeader(title: "Video")
+                    SettingsGroupBox {
+                        videoSection
                     }
 
-                    Picker("Frame Rate", selection: $project.settings.frameRate) {
-                        ForEach(ProjectFrameRate.presets) { frameRate in
-                            Text(frameRate.label).tag(frameRate)
-                        }
+                    // MARK: - Typography
+                    SettingsSectionHeader(title: "Typography")
+                    SettingsGroupBox {
+                        typographySection
                     }
 
-                    Picker("Layer Data FPS", selection: $project.settings.layerDataFrameRate) {
-                        ForEach(ProjectLayerDataFrameRate.presets) { frameRate in
-                            Text(frameRate.label).tag(frameRate)
-                        }
+                    // MARK: - Physiology
+                    SettingsSectionHeader(title: "Physiology")
+                    SettingsGroupBox {
+                        heartRateZonesSection
                     }
 
-                    HStack {
-                        Text("Bitrate")
-                        Slider(
-                            value: Binding(
-                                get: { project.settings.bitrateMbps },
-                                set: { project.settings.bitrateMbps = $0.rounded() }
-                            ),
-                            in: 5...100
-                        )
-                        Text("\(Int(project.settings.bitrateMbps)) Mbps")
-                            .frame(width: 72, alignment: .trailing)
+                    // MARK: - Intervals
+                    SettingsSectionHeader(title: "Intervals")
+                    SettingsGroupBox {
+                        intervalColorsSection
+                    }
+
+                    // MARK: - Weather
+                    SettingsSectionHeader(title: "Weather")
+                    SettingsGroupBox {
+                        weatherSection
                     }
                 }
             }
@@ -55,7 +64,159 @@ struct ProjectSettingsView: View {
             }
         }
         .padding(24)
-        .frame(width: 520, height: 620)
+        .frame(width: Self.modalWidth, height: Self.modalHeight)
         .background(EditorTheme.panelBackground)
+        .onAppear {
+            openWeatherAPIKeyDraft = project.openWeatherAPIKey
+        }
+        .onChange(of: openWeatherAPIKeyDraft) { _, newValue in
+            guard newValue != project.openWeatherAPIKey else { return }
+            project.setOpenWeatherAPIKey(newValue)
+        }
+        .sheet(isPresented: $showingFontLibrary) {
+            FontLibraryView()
+        }
+        .sheet(isPresented: $showingHeartRateZones) {
+            HeartRateZonesView()
+        }
+        .sheet(isPresented: $showingIntervalColors) {
+            IntervalKindColorsView()
+        }
+    }
+
+    // MARK: - Intervals
+
+    private var intervalColorsSection: some View {
+        SettingsRow(
+            leading: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Interval Colors")
+                        .font(EditorTheme.bodyStrongFont)
+                        .foregroundStyle(EditorTheme.textPrimary)
+                    Text("Set the colors used for Warm Up, Active, Rest, and Cool Down.")
+                        .font(EditorTheme.captionFont)
+                        .foregroundStyle(EditorTheme.textSecondary)
+                }
+            },
+            trailing: {
+                Button("Configure…") {
+                    showingIntervalColors = true
+                }
+                .buttonStyle(EditorSecondaryButtonStyle())
+            }
+        )
+    }
+
+    // MARK: - Weather
+
+    private var weatherSection: some View {
+        SettingsRow(
+            leading: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("OpenWeather API Key")
+                        .font(EditorTheme.bodyStrongFont)
+                        .foregroundStyle(EditorTheme.textPrimary)
+                    Text("Stored in macOS Keychain and used only for OpenWeather requests.")
+                        .font(EditorTheme.captionFont)
+                        .foregroundStyle(EditorTheme.textSecondary)
+                }
+            },
+            trailing: {
+                SecureField("API key", text: $openWeatherAPIKeyDraft)
+                    .textFieldStyle(.roundedBorder)
+                    .font(EditorTheme.bodyFont)
+                    .frame(width: Self.apiKeyFieldWidth)
+            }
+        )
+    }
+
+    // MARK: - Physiology
+
+    private var heartRateZonesSection: some View {
+        SettingsRow(
+            leading: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Heart Rate Zones")
+                        .font(EditorTheme.bodyStrongFont)
+                        .foregroundStyle(EditorTheme.textPrimary)
+                    Text("Configure HR and pace ranges for overlays.")
+                        .font(EditorTheme.captionFont)
+                        .foregroundStyle(EditorTheme.textSecondary)
+                }
+            },
+            trailing: {
+                Button("Configure…") {
+                    showingHeartRateZones = true
+                }
+                .buttonStyle(EditorSecondaryButtonStyle())
+            }
+        )
+    }
+
+    // MARK: - Video
+
+    private var videoSection: some View {
+        VStack(spacing: 0) {
+            SettingsRow(leading: { dropdownLabel("Resolution") }) {
+                Picker("", selection: $project.settings.resolution) {
+                    ForEach(ProjectResolution.presets) { r in Text(r.label).tag(r) }
+                }
+                .labelsHidden()
+                .frame(width: Self.trailingControlWidth)
+            }
+            dividerRow
+            SettingsRow(leading: { dropdownLabel("Frame Rate") }) {
+                Picker("", selection: $project.settings.frameRate) {
+                    ForEach(ProjectFrameRate.presets) { f in Text(f.label).tag(f) }
+                }
+                .labelsHidden()
+                .frame(width: Self.trailingControlWidth)
+            }
+            dividerRow
+            SettingsRow(leading: { dropdownLabel("Layer Data FPS") }) {
+                Picker("", selection: $project.settings.layerDataFrameRate) {
+                    ForEach(ProjectLayerDataFrameRate.presets) { f in Text(f.label).tag(f) }
+                }
+                .labelsHidden()
+                .frame(width: Self.trailingControlWidth)
+            }
+        }
+    }
+
+    // MARK: - Typography
+
+    private var typographySection: some View {
+        SettingsRow(
+            leading: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Font Library")
+                        .font(EditorTheme.bodyStrongFont)
+                        .foregroundStyle(EditorTheme.textPrimary)
+                    Text("Choose fonts shown in overlay menus.")
+                        .font(EditorTheme.captionFont)
+                        .foregroundStyle(EditorTheme.textSecondary)
+                }
+            },
+            trailing: {
+                Button("Manage…") {
+                    showingFontLibrary = true
+                }
+                .buttonStyle(EditorSecondaryButtonStyle())
+            }
+        )
+    }
+
+    // MARK: - Helpers
+
+    private func dropdownLabel(_ text: String) -> some View {
+        Text(text)
+            .font(EditorTheme.bodyFont)
+            .foregroundStyle(EditorTheme.textPrimary)
+    }
+
+    private var dividerRow: some View {
+        Divider()
+            .overlay(EditorTheme.borderSubtle)
+            .padding(.leading, 14)
     }
 }

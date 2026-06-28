@@ -19,12 +19,14 @@ struct OverlayRenderContext {
 enum OverlayRenderModel {
     static func textLayout(for element: OverlayElement, in context: OverlayRenderContext) -> OverlayTextRenderLayout {
         let fontSize = context.scaled(element.style.fontSize * element.scale)
-        let metrics = textMetrics(for: element.style.textPreset, fontSize: fontSize, scale: element.scale, context: context, element: element)
+        let preset: OverlayTextPreset = element.type.isNumericOverlay ? .minimal : element.style.textPreset
+        let metrics = textMetrics(for: preset, fontSize: fontSize, scale: element.scale, context: context, element: element)
         let components = OverlayValueFormatter.components(for: element, activity: context.activity, elapsedTime: context.elapsedTime)
+        let dynamicHeartRateZoneColor = resolvedHeartRateZoneBaseColor(for: element, in: context)
         return OverlayTextRenderLayout(
             value: OverlayValueFormatter.value(for: element, activity: context.activity, elapsedTime: context.elapsedTime),
             components: components,
-            preset: element.style.textPreset,
+            preset: preset,
             fontSize: fontSize,
             labelFontSize: context.scaled(element.style.labelFontSize * element.scale),
             unitFontSize: context.scaled(element.style.unitFontSize * element.scale),
@@ -36,15 +38,58 @@ enum OverlayRenderModel {
             unitPosition: element.style.unitPosition,
             labelSpacing: context.scaled(element.style.labelSpacing * element.scale),
             unitSpacing: context.scaled(element.style.unitSpacing * element.scale),
+            iconEnabled: element.type.isNumericOverlay && element.style.iconEnabled,
+            iconSystemName: element.style.iconSystemName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? element.type.defaultNumericIconSystemName
+                : element.style.iconSystemName,
+            iconPosition: element.style.iconPosition,
+            iconTextAlignment: element.style.iconTextAlignment,
+            iconSize: context.scaled(element.style.iconSize * element.scale),
+            iconColor: element.style.iconColor,
+            iconOpacity: element.style.iconOpacity,
+            iconSpacing: context.scaled(element.style.iconSpacing * element.scale),
+            iconColorsFollowHeartRateZones: element.style.iconColorsFollowHeartRateZones,
+            valueColorsFollowHeartRateZones: element.style.valueColorsFollowHeartRateZones,
+            labelColorsFollowHeartRateZones: element.style.labelColorsFollowHeartRateZones,
+            unitColorsFollowHeartRateZones: element.style.unitColorsFollowHeartRateZones,
             horizontalPadding: metrics.horizontalPadding,
             verticalPadding: metrics.verticalPadding,
+            minimumWidth: context.scaled(element.style.numericMinWidth * element.scale),
+            minimumHeight: context.scaled(element.style.numericMinHeight * element.scale),
             cornerRadius: metrics.cornerRadius,
             backgroundFadeOutEnabled: element.style.backgroundFadeOutEnabled,
             backgroundFadeOutAmount: element.style.backgroundFadeOutAmount,
             backgroundBlurRadius: context.scaled(element.style.backgroundBlurRadius),
             shadowRadius: context.scaled(element.style.shadowRadius),
-            shadowOffsetY: context.scaled(element.style.shadowOffsetY)
+            shadowOffsetY: context.scaled(element.style.shadowOffsetY),
+            labelTextAlignment: element.type.isNumericOverlay ? .leading : element.style.labelTextAlignment,
+            valueTextAlignment: element.type.isNumericOverlay ? .leading : element.style.textAlignment,
+            unitTextAlignment: element.style.unitTextAlignment,
+            dividerEnabled: element.type.isNumericOverlay ? false : element.style.dividerEnabled,
+            dividerColor: element.style.dividerColor,
+            dividerThickness: context.scaled(element.style.dividerThickness * element.scale),
+            dividerOpacity: element.style.dividerOpacity,
+            dynamicHeartRateZoneColor: dynamicHeartRateZoneColor
         )
+    }
+
+    private static func resolvedHeartRateZoneBaseColor(
+        for element: OverlayElement,
+        in context: OverlayRenderContext
+    ) -> OverlayColor? {
+        guard element.type == .heartRate || element.type == .heartRateZone else { return nil }
+        guard element.style.textColorsFollowHeartRateZones
+            || element.style.iconColorsFollowHeartRateZones
+            || element.style.valueColorsFollowHeartRateZones
+            || element.style.labelColorsFollowHeartRateZones
+            || element.style.unitColorsFollowHeartRateZones
+        else { return nil }
+        let snapshot = HeartRateZonePreferences.currentSnapshot()
+        let visibleZones = Array(snapshot.zones.prefix(snapshot.zoneCount))
+        guard let heartRate = context.activity.heartRate(at: context.elapsedTime),
+              let zoneIndex = resolvedHeartRateZoneIndex(heartRate: heartRate, zones: visibleZones)
+        else { return nil }
+        return HRZonePalette.overlayColor(forIndex: zoneIndex)
     }
 
     static func distanceTimelineLayout(for element: OverlayElement, in context: OverlayRenderContext) -> OverlayDistanceTimelineRenderLayout {
@@ -128,12 +173,13 @@ enum OverlayRenderModel {
             value: String(format: "%.2f", totalDistance),
             unit: unit
         )
-        let valueText = "\(distanceComponents.value) / \(totalComponents.value) \(totalComponents.unit)"
-        let distancePointLabels = distancePointLabels(
-            totalDistance: totalDistance,
-            unit: unit,
-            count: style.distancePointCount
-        )
+        let valueText = style.showTotalDistance
+            ? "\(distanceComponents.value) / \(totalComponents.value) \(totalComponents.unit)"
+            : "\(distanceComponents.value) \(distanceComponents.unit)"
+        let markerDistanceText = "\(distanceComponents.value) \(unit)"
+        let distancePointLabels = style.showDistancePoints && style.distancePointCount > 0
+            ? Self.distancePointLabels(totalDistance: totalDistance, unit: unit, count: style.distancePointCount)
+            : []
         let statsBarItems = distanceStatsBarItems(
             style: style,
             activity: context.activity,
@@ -152,9 +198,10 @@ enum OverlayRenderModel {
                 elapsedTime: context.elapsedTime,
                 progress: clamped
             ),
-            startText: style.axisLabelMode == .startFinish ? "START" : "0",
+            startText: style.axisLabelMode == .startFinish ? "START" : "0 \(unit)",
             finishText: style.axisLabelMode == .startFinish ? "FINISH" : "\(totalComponents.value) \(unit)",
             distancePointLabels: distancePointLabels,
+            markerDistanceText: markerDistanceText,
             statsBarItems: statsBarItems,
             rect: rect,
             contentRect: contentRect,
@@ -238,28 +285,117 @@ enum OverlayRenderModel {
         } else {
             visibleSamples = samples
         }
+        let renderedSamples = style.smoothingEnabled
+            ? smoothedElevationChartSamples(visibleSamples, amount: style.smoothingAmount)
+            : visibleSamples
         let statsBarItems = elevationChartStatsBarItems(
             style: style,
             activity: context.activity,
             elapsedTime: context.elapsedTime,
             progress: progress
         )
+        let compactVerticalPadding = min(style.chartPaddingY, max(6, style.height * 0.10))
+        let statsBarConsumesChartSpace = style.statsBar.visible && style.statsBar.inside
+        let chartVerticalReserve = statsBarConsumesChartSpace
+            ? style.statsBar.height + 8
+            : 0
+        let valueFontSize = style.bigNumbersEnabled && style.height < 140
+            ? min(style.bigNumberFontSize, max(18, style.height * 0.28))
+            : style.bigNumberFontSize
+        let chartHeight: Double
+        if style.bigNumbersEnabled {
+            chartHeight = style.height < 140
+                ? max(style.height - compactVerticalPadding * 3 - valueFontSize * 1.25 - chartVerticalReserve, 1)
+                : max(style.height * 0.40 - chartVerticalReserve, 1)
+        } else {
+            chartHeight = max(style.height - compactVerticalPadding * 2 - chartVerticalReserve, 1)
+        }
+        let scaledHorizontalPadding = context.scaled(style.chartPaddingX * element.scale)
+        let scaledVerticalPadding = context.scaled(compactVerticalPadding * element.scale)
+        let statsBarLayout = elevationChartStatsBarLayout(
+            style: style,
+            items: statsBarItems,
+            rect: rect,
+            horizontalPadding: scaledHorizontalPadding,
+            verticalPadding: scaledVerticalPadding,
+            context: context,
+            element: element
+        )
         return OverlayElevationChartRenderLayout(
             style: style,
             bigNumberText: elevationBigNumber(style: style, activity: context.activity, elapsedTime: context.elapsedTime),
             label: OverlayValueFormatter.value(for: element.type, activity: context.activity, elapsedTime: context.elapsedTime),
             statsBarItems: statsBarItems,
+            statsBarLayout: statsBarLayout,
             rect: rect,
             labelFontSize: context.scaled(max(10, element.style.fontSize * 0.38 * element.scale)),
-            valueFontSize: context.scaled(max(18, style.bigNumberFontSize * element.scale)),
-            unitFontSize: context.scaled(max(10, style.bigNumberFontSize * 0.38 * element.scale)),
-            horizontalPadding: context.scaled(style.chartPaddingX * element.scale),
-            verticalPadding: context.scaled(style.chartPaddingY * element.scale),
+            valueFontSize: context.scaled(max(18, valueFontSize * element.scale)),
+            unitFontSize: context.scaled(max(10, valueFontSize * 0.38 * element.scale)),
+            horizontalPadding: scaledHorizontalPadding,
+            verticalPadding: scaledVerticalPadding,
             cornerRadius: context.scaled(style.cornerRadius * element.scale),
-            chartHeight: context.scaled(max(52, (style.bigNumbersEnabled ? style.height * 0.40 : style.height - (style.statsBar.visible ? style.statsBar.height + 34 : 34)) * element.scale)),
+            chartHeight: context.scaled(chartHeight * element.scale),
             lineWidth: max(context.scaled(1), context.scaled(style.lineWidth * element.scale)),
             progress: progress,
-            samples: visibleSamples
+            samples: renderedSamples
+        )
+    }
+
+    /// Builds the scaled, card-local Stats Bar layout for an elevation chart.
+    /// All geometry is expressed in the same scaled space as the chart card so
+    /// preview (fitted canvas) and export (project resolution) stay
+    /// proportionally identical. The chart card already reserves space for the
+    /// inside bar via `chartVerticalReserve` in design-point space; this method
+    /// only positions the rendered bar.
+    private static func elevationChartStatsBarLayout(
+        style: ElevationChartStyle,
+        items: [OverlayDistanceTimelineStatsBarItemLayout],
+        rect: CGRect,
+        horizontalPadding: Double,
+        verticalPadding: Double,
+        context: OverlayRenderContext,
+        element: OverlayElement
+    ) -> OverlayElevationChartStatsBarLayout? {
+        let config = style.statsBar
+        guard config.visible, !items.isEmpty else { return nil }
+
+        let available = max(rect.width - horizontalPadding * 2, 1)
+        let width = config.width > 0
+            ? min(context.scaled(config.width * element.scale), available)
+            : available
+        let height = context.scaled(config.height * element.scale)
+        let offsetX = context.scaled(config.offsetX * element.scale)
+        let offsetY = context.scaled(config.offsetY * element.scale)
+        let outsideGap = context.scaled(8 * element.scale)
+
+        let centerX = rect.width / 2 + offsetX
+        let centerY = config.inside
+            ? rect.height - verticalPadding - height / 2 + offsetY
+            : rect.height + outsideGap + height / 2 + offsetY
+
+        let localRect = CGRect(
+            x: centerX - width / 2,
+            y: centerY - height / 2,
+            width: width,
+            height: height
+        )
+
+        return OverlayElevationChartStatsBarLayout(
+            rect: localRect,
+            items: items,
+            stacked: config.placement.isVertical || config.layoutMode == .stack,
+            itemSpacing: context.scaled(config.itemSpacing * element.scale),
+            dividerOpacity: config.dividerOpacity,
+            cornerRadius: config.inside ? 0 : context.scaled(config.cornerRadius * element.scale),
+            backgroundOpacity: config.backgroundOpacity,
+            valueFontName: config.valueFontName,
+            valueFontSize: context.scaled(config.valueFontSize * element.scale),
+            valueFontWeight: config.valueFontWeight,
+            valueColor: config.valueColor,
+            labelFontName: config.labelFontName,
+            labelFontSize: context.scaled(config.labelFontSize * element.scale),
+            labelFontWeight: config.labelFontWeight,
+            labelColor: config.labelColor
         )
     }
 
@@ -364,6 +500,970 @@ enum OverlayRenderModel {
         )
     }
 
+    static func intervalHUDBarLayout(for element: OverlayElement, in context: OverlayRenderContext) -> IntervalHUDBarRenderLayout {
+        let style = element.style.intervalHUDBar
+        let width = context.scaled(style.width * element.scale)
+        let baseHeight = context.scaled(style.height * element.scale)
+        let bottomBarSpacing = style.bottomBarEnabled && style.bottomBarMode != .none
+            ? max(style.bottomBarSpacing, 0)
+            : 0
+        let height = baseHeight + bottomBarSpacing
+        let rect = centeredRect(for: element, size: CGSize(width: width, height: height), canvasSize: context.canvasSize)
+        let lap = context.activity.currentLap(at: context.elapsedTime)
+        let t = min(max(context.elapsedTime, 0), context.activity.duration)
+        let lapEnd = lap?.endElapsedTime ?? max(context.activity.duration, 1)
+        let remainingTime = max(lapEnd - t, 0)
+        let remainingDistance = max((lap?.startDistanceMeters ?? 0) + (lap?.totalDistanceMeters ?? context.activity.distanceMeters) - context.activity.distance(at: t), 0)
+        let progress = context.activity.lapProgress(at: t, byDistance: style.progressMode == .distance)
+        let zoneSnapshot = HeartRateZonePreferences.currentSnapshot()
+        let currentHR = context.activity.heartRate(at: t)
+        let currentPace = context.activity.pace(at: t)
+        let activeZoneIndex = resolvedZoneIndex(heartRate: currentHR, paceSecondsPerKm: currentPace, snapshot: zoneSnapshot)
+        let bottomBarActiveZoneIndex = resolvedBottomBarZoneIndex(
+            mode: style.bottomBarMode,
+            heartRate: currentHR,
+            paceSecondsPerKm: currentPace,
+            snapshot: zoneSnapshot
+        )
+        let phaseColor = lapKindColor(lap?.kind ?? .unknown, activeZoneIndex: activeZoneIndex)
+        let remainingTimeText = formatDuration(remainingTime)
+        let remainingDistanceText = formatDistanceMeters(remainingDistance)
+
+        return IntervalHUDBarRenderLayout(
+            style: style,
+            rect: rect,
+            baseHeight: baseHeight,
+            phaseLabel: phaseLabel(lap?.kind ?? .unknown),
+            phaseDetail: phaseDetail(
+                style: style,
+                lap: lap,
+                remainingTimeText: remainingTimeText,
+                remainingDistanceText: remainingDistanceText
+            ),
+            phaseColor: phaseColor,
+            repText: repText(activity: context.activity, lap: lap),
+            remainingTimeText: remainingTimeText,
+            remainingDistanceText: remainingDistanceText,
+            remainingPrimaryLabel: "LEFT",
+            remainingPrimaryText: style.remainingPrimary == .time ? remainingTimeText : remainingDistanceText,
+            remainingSecondaryText: style.remainingPrimary == .time ? remainingDistanceText : remainingTimeText,
+            progress: clampedProgress(progress),
+            zoneItem: intervalZoneItem(
+                style: style,
+                activity: context.activity,
+                elapsedTime: t,
+                zoneIndex: activeZoneIndex
+            ),
+            metricItems: intervalMetricItems(
+                style: style,
+                activity: context.activity,
+                elapsedTime: t,
+                zoneIndex: activeZoneIndex,
+                zoneSnapshot: zoneSnapshot
+            ),
+            zoneSegments: intervalZoneSegments(snapshot: zoneSnapshot),
+            activeZoneIndex: activeZoneIndex,
+            bottomBarActiveZoneIndex: bottomBarActiveZoneIndex,
+            zoneMarker: intervalZoneMarker(
+                style: style,
+                heartRate: currentHR,
+                paceSecondsPerKm: currentPace,
+                snapshot: zoneSnapshot,
+                zoneIndex: bottomBarActiveZoneIndex
+            ),
+            thresholdZoneMarker: intervalThresholdZoneMarker(style: style, snapshot: zoneSnapshot),
+            labelText: scaled(style.labelText, scale: element.scale, context: context),
+            primaryValueText: scaled(style.primaryValueText, scale: element.scale, context: context),
+            phaseText: scaled(style.phaseText, scale: element.scale, context: context),
+            phaseDetailText: scaled(style.phaseDetailText, scale: element.scale, context: context),
+            metricValueText: scaled(style.metricValueText, scale: element.scale, context: context),
+            metricUnitText: scaled(style.metricUnitText, scale: element.scale, context: context),
+            barHeight: context.scaled(10 * element.scale)
+        )
+    }
+
+    static func zoneEdgeBarLayout(for element: OverlayElement, in context: OverlayRenderContext) -> ZoneEdgeBarRenderLayout {
+        let style = element.style.zoneEdgeBar
+        let orientation: ZoneEdgeBarOrientation = style.placement == .edge
+            ? (style.edge == .left || style.edge == .right ? .vertical : .horizontal)
+            : style.orientation
+        let barLength = context.scaled(style.length * element.scale)
+        let barThickness = context.scaled(style.thickness * element.scale)
+        let markerText = scaled(style.markerText, scale: element.scale, context: context)
+        let markerPad = zoneEdgeBarMarkerPad(style: style, markerText: markerText, thickness: barThickness)
+        let markerSide = zoneEdgeBarMarkerSide(style: style, orientation: orientation)
+        let size: CGSize
+        if orientation == .horizontal {
+            size = CGSize(width: barLength, height: barThickness + markerPad)
+        } else {
+            size = CGSize(width: barThickness + markerPad, height: barLength)
+        }
+        let rect = zoneEdgeBarRect(for: element, style: style, size: size, canvasSize: context.canvasSize, context: context)
+        let barRect = zoneEdgeBarInnerBarRect(rect: rect, thickness: barThickness, markerSide: markerSide, orientation: orientation)
+        let snapshot = HeartRateZonePreferences.currentSnapshot()
+        let t = min(max(context.elapsedTime, 0), context.activity.duration)
+        let currentHR = context.activity.heartRate(at: t)
+        let currentPace = context.activity.pace(at: t)
+        let activeZoneIndex = zoneEdgeBarActiveZoneIndex(
+            metric: style.metric,
+            heartRate: currentHR,
+            paceSecondsPerKm: currentPace,
+            snapshot: snapshot
+        )
+
+        return ZoneEdgeBarRenderLayout(
+            style: style,
+            rect: rect,
+            barRect: barRect,
+            orientation: orientation,
+            markerSide: markerSide,
+            zoneSegments: intervalZoneSegments(snapshot: snapshot),
+            activeZoneIndex: activeZoneIndex,
+            zoneMarker: zoneEdgeBarMarker(
+                style: style,
+                heartRate: currentHR,
+                paceSecondsPerKm: currentPace,
+                snapshot: snapshot,
+                zoneIndex: activeZoneIndex
+            ),
+            thresholdZoneMarker: zoneEdgeBarThresholdMarker(style: style, snapshot: snapshot),
+            markerText: markerText
+        )
+    }
+
+    static func intervalTimelineLayout(for element: OverlayElement, in context: OverlayRenderContext) -> IntervalTimelineRenderLayout {
+        var style = element.style.intervalTimeline
+        let kindPalette = IntervalKindColorPreferences.currentSnapshot()
+        style.warmupColor = kindPalette.warmup
+        style.activeColor = kindPalette.active
+        style.restColor = kindPalette.rest
+        style.cooldownColor = kindPalette.cooldown
+        let width = context.scaled(style.width * element.scale)
+        let markerTriangleHeight = context.scaled(6 * element.scale)
+        let markerStackSpacing = context.scaled(2 * element.scale)
+        let markerLabelHeight = context.scaled(max(style.markerFontSize * 1.4, 14) * element.scale)
+        let markerGap = context.scaled(4 * element.scale)
+        let markerBottomPadding = context.scaled(4 * element.scale)
+        let markerStackHeight = markerTriangleHeight + markerStackSpacing + markerLabelHeight
+        let horizontalPadding = context.scaled(16 * element.scale)
+        let verticalPadding = context.scaled(6 * element.scale)
+        let segmentAreaHeight = context.scaled(style.height * element.scale)
+        let innerSegmentHeight = max(segmentAreaHeight - verticalPadding * 2, 1)
+        let normalHeightCap = min(context.scaled(style.segmentHeight * element.scale), innerSegmentHeight)
+        let currentHeightCap = min(normalHeightCap * style.currentSegmentHeightScale, innerSegmentHeight)
+        let segmentMidYRel = verticalPadding + innerSegmentHeight / 2
+        let currentBottomRel = segmentMidYRel + currentHeightCap / 2
+        let markerTopYRel = currentBottomRel + markerGap
+        let markerBottomRel = markerTopYRel + markerStackHeight
+        let height = markerBottomRel + markerBottomPadding
+        let rect = centeredRect(for: element, size: CGSize(width: width, height: height), canvasSize: context.canvasSize)
+        let contentRect = CGRect(
+            x: rect.minX + horizontalPadding,
+            y: rect.minY + verticalPadding,
+            width: max(rect.width - horizontalPadding * 2, 1),
+            height: innerSegmentHeight
+        )
+        let laps = context.activity.laps
+        let t = min(max(context.elapsedTime, 0), context.activity.duration)
+        let currentIndex = laps.indices.last { laps[$0].startElapsedTime <= t } ?? laps.indices.first
+        let visibleSourceLaps = laps.enumerated().filter { _, lap in
+            intervalTimelineIncludes(lap: lap, style: style)
+        }
+        let currentFilteredOffset = currentIndex.flatMap { index in
+            visibleSourceLaps.firstIndex { $0.offset == index }
+        }
+        let anchorOffset = currentFilteredOffset ?? intervalTimelineNearestVisibleOffset(to: t, in: visibleSourceLaps.map(\.element))
+        let shouldCenter = style.mode == .centeredWindow
+        let visibleRange: Range<Int>
+        if visibleSourceLaps.isEmpty {
+            visibleRange = 0..<0
+        } else if shouldCenter, let anchorOffset {
+            let neighbors = max(style.visibleNeighbors, 0)
+            let start = max(anchorOffset - neighbors, 0)
+            let end = min(anchorOffset + neighbors + 1, visibleSourceLaps.count)
+            visibleRange = start..<end
+        } else {
+            visibleRange = 0..<visibleSourceLaps.count
+        }
+
+        let visibleLaps = visibleRange.map { visibleSourceLaps[$0].element }
+        let leftOverflow = max(visibleRange.lowerBound, 0)
+        let rightOverflow = max(visibleSourceLaps.count - visibleRange.upperBound, 0)
+        let overflowHintWidth = style.overflowHintEnabled ? context.scaled(36 * element.scale) : 0
+        let leadingOverflowWidth = leftOverflow > 0 ? overflowHintWidth : 0
+        let trailingOverflowWidth = rightOverflow > 0 ? overflowHintWidth : 0
+        let ellipsisInset = horizontalPadding + overflowHintWidth / 2
+        let segmentArea = CGRect(
+            x: contentRect.minX + leadingOverflowWidth,
+            y: contentRect.minY,
+            width: max(contentRect.width - leadingOverflowWidth - trailingOverflowWidth, 1),
+            height: contentRect.height
+        )
+        let gap = context.scaled(style.segmentGap * element.scale)
+        let normalHeight = normalHeightCap
+        let currentHeight = currentHeightCap
+        let minWidth = context.scaled(style.minSegmentWidth * element.scale)
+        let currentProgress = clampedProgress(context.activity.lapProgress(at: t, byDistance: false))
+        let currentVisibleOffset = currentFilteredOffset.flatMap { visibleRange.contains($0) ? $0 - visibleRange.lowerBound : nil }
+
+        let segmentWidths = intervalTimelineSegmentWidths(
+            laps: visibleLaps,
+            currentOffset: currentVisibleOffset,
+            style: style,
+            availableWidth: segmentArea.width,
+            gap: gap,
+            minWidth: minWidth,
+            centered: shouldCenter
+        )
+        var cursorX = segmentArea.minX
+        var segments: [IntervalTimelineSegmentLayout] = []
+        for (offset, lap) in visibleLaps.enumerated() {
+            let width = segmentWidths.indices.contains(offset) ? segmentWidths[offset] : minWidth
+            let isCurrent = currentVisibleOffset == offset
+            let h = isCurrent ? currentHeight : normalHeight
+            let y = segmentArea.midY - h / 2
+            let rect = CGRect(x: cursorX, y: y, width: width, height: h)
+            let completed = lap.endElapsedTime <= t
+            segments.append(IntervalTimelineSegmentLayout(
+                id: lap.id,
+                lapIndex: lap.lapIndex,
+                rect: rect,
+                labelLines: intervalTimelineLabelLines(
+                    for: lap,
+                    isCurrent: isCurrent,
+                    style: style,
+                    activity: context.activity,
+                    elapsedTime: t
+                ),
+                kind: lap.kind,
+                color: intervalTimelineColor(for: lap.kind, style: style),
+                opacity: isCurrent ? 1 : (completed ? style.completedOpacity : style.futureOpacity),
+                isCurrent: isCurrent,
+                isCompleted: completed
+            ))
+            cursorX += width + gap
+        }
+
+        let currentSegment = segments.first(where: \.isCurrent)
+        let fallbackMarkerSegment = anchorOffset.flatMap { anchor -> IntervalTimelineSegmentLayout? in
+            let index = anchor - visibleRange.lowerBound
+            guard visibleRange.contains(anchor), segments.indices.contains(index) else { return nil }
+            return segments[index]
+        }
+        let markerX: Double
+        if let currentSegment {
+            switch style.markerPosition {
+            case .liveProgress:
+                markerX = currentSegment.rect.minX + currentSegment.rect.width * clampedProgress(currentProgress)
+            case .segmentCenter:
+                markerX = currentSegment.rect.midX
+            }
+        } else if let fallbackMarkerSegment {
+            markerX = fallbackMarkerSegment.rect.midX
+        } else {
+            markerX = segmentArea.midX
+        }
+        let markerTopY = rect.minY + markerTopYRel
+
+        return IntervalTimelineRenderLayout(
+            style: style,
+            rect: rect,
+            contentRect: contentRect,
+            segments: segments,
+            leftOverflowCount: leftOverflow,
+            rightOverflowCount: rightOverflow,
+            currentProgress: currentProgress,
+            markerX: markerX,
+            markerTopY: markerTopY,
+            markerTriangleHeight: markerTriangleHeight,
+            markerLabelHeight: markerLabelHeight,
+            markerLabel: style.markerLabel.isEmpty ? "NOW" : style.markerLabel,
+            repText: style.repCounterEnabled ? intervalTimelineRepText(activity: context.activity, currentIndex: currentIndex) : nil,
+            labelFontSize: context.scaled(16 * element.scale),
+            durationFontSize: context.scaled(12 * element.scale),
+            cornerRadius: context.scaled(element.style.backgroundRadius * element.scale),
+            overflowEllipsisInset: ellipsisInset
+        )
+    }
+
+    private static func intervalTimelineIncludes(lap: LapRecord, style: IntervalTimelineStyle) -> Bool {
+        switch lap.kind {
+        case .warmup:
+            return style.showsWarmupSegments
+        case .rest:
+            return style.showsRestSegments
+        case .cooldown:
+            return style.showsCooldownSegments
+        case .active, .unknown:
+            return true
+        }
+    }
+
+    private static func intervalTimelineNearestVisibleOffset(to elapsedTime: TimeInterval, in laps: [LapRecord]) -> Int? {
+        guard !laps.isEmpty else { return nil }
+        return laps.indices.min { lhs, rhs in
+            intervalTimelineDistance(from: elapsedTime, to: laps[lhs]) < intervalTimelineDistance(from: elapsedTime, to: laps[rhs])
+        }
+    }
+
+    private static func intervalTimelineDistance(from elapsedTime: TimeInterval, to lap: LapRecord) -> TimeInterval {
+        if lap.startElapsedTime <= elapsedTime, elapsedTime <= lap.endElapsedTime {
+            return 0
+        }
+        return min(abs(elapsedTime - lap.startElapsedTime), abs(elapsedTime - lap.endElapsedTime))
+    }
+
+    private static func intervalTimelineSegmentWidths(
+        laps: [LapRecord],
+        currentOffset: Int?,
+        style: IntervalTimelineStyle,
+        availableWidth: Double,
+        gap: Double,
+        minWidth: Double,
+        centered: Bool
+    ) -> [Double] {
+        guard !laps.isEmpty else { return [] }
+        let totalGap = gap * Double(max(laps.count - 1, 0))
+        let usableWidth = max(availableWidth - totalGap, 1)
+        if centered {
+            let fraction = min(max(style.currentSegmentWidthFraction, 0.1), 0.6)
+            if let currentOffset, laps.indices.contains(currentOffset), laps.count > 1 {
+                var currentWidth = max(minWidth, usableWidth * fraction)
+                var othersWidth = max(minWidth, (usableWidth - currentWidth) / Double(laps.count - 1))
+                let total = currentWidth + othersWidth * Double(laps.count - 1)
+                if total > usableWidth {
+                    let scale = usableWidth / total
+                    currentWidth *= scale
+                    othersWidth *= scale
+                }
+                return laps.indices.map { $0 == currentOffset ? currentWidth : othersWidth }
+            }
+            var base = max(minWidth, usableWidth / Double(laps.count))
+            let total = base * Double(laps.count)
+            if total > usableWidth {
+                base = usableWidth / Double(laps.count)
+            }
+            return Array(repeating: base, count: laps.count)
+        }
+
+        if style.fullSegmentLayoutMode == .equal {
+            var base = max(minWidth, usableWidth / Double(laps.count))
+            let total = base * Double(laps.count)
+            if total > usableWidth {
+                base = usableWidth / Double(laps.count)
+            }
+            if let currentOffset, laps.indices.contains(currentOffset), laps.count > 1 {
+                let fraction = min(max(style.fullEqualCurrentSegmentWidthFraction, 0), 0.65)
+                guard fraction > 0 else {
+                    return Array(repeating: base, count: laps.count)
+                }
+                var currentWidth = max(base, usableWidth * fraction)
+                var othersWidth = max(minWidth, (usableWidth - currentWidth) / Double(laps.count - 1))
+                let total = currentWidth + othersWidth * Double(laps.count - 1)
+                if total > usableWidth {
+                    let scale = usableWidth / total
+                    currentWidth *= scale
+                    othersWidth *= scale
+                }
+                return laps.indices.map { $0 == currentOffset ? currentWidth : othersWidth }
+            }
+            return Array(repeating: base, count: laps.count)
+        }
+
+        let totalDuration = max(laps.map(\.totalElapsedTime).reduce(0, +), 1)
+        var widths = laps.map { max(minWidth, usableWidth * ($0.totalElapsedTime / totalDuration)) }
+        let sum = widths.reduce(0, +)
+        if sum > usableWidth {
+            let factor = usableWidth / sum
+            widths = widths.map { $0 * factor }
+        }
+        return widths
+    }
+
+    private static func intervalTimelineLabelLines(
+        for lap: LapRecord,
+        isCurrent: Bool,
+        style: IntervalTimelineStyle,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval
+    ) -> [String] {
+        if isCurrent {
+            return intervalTimelineCurrentLabelLines(
+                for: lap,
+                style: style,
+                activity: activity,
+                elapsedTime: elapsedTime
+            )
+        }
+
+        switch style.neighborLabelMode {
+        case .hidden:
+            return []
+        case .distance:
+            return [intervalTimelineDistanceText(lap.totalDistanceMeters)]
+        case .time:
+            return [intervalTimelineDuration(lap.totalElapsedTime)]
+        }
+    }
+
+    private static func intervalTimelineCurrentLabelLines(
+        for lap: LapRecord,
+        style: IntervalTimelineStyle,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval
+    ) -> [String] {
+        var lines: [String] = []
+        let distanceMode: IntervalTimelineCurrentLabelMetricMode
+        let timeMode: IntervalTimelineCurrentLabelMetricMode
+
+        if lap.kind == .active {
+            distanceMode = style.currentWorkDistanceLabelMode
+            timeMode = style.currentWorkTimeLabelMode
+        } else {
+            if style.currentRestKindLabelEnabled {
+                lines.append(intervalTimelineKindText(for: lap.kind))
+            }
+            distanceMode = style.currentRestDistanceLabelMode
+            timeMode = style.currentRestTimeLabelMode
+        }
+
+        switch distanceMode {
+        case .hidden:
+            break
+        case .elapsed:
+            let progress = clampedProgress(activity.lapProgress(at: elapsedTime, byDistance: true))
+            lines.append(intervalTimelineDistanceText(lap.totalDistanceMeters * progress))
+        case .remaining:
+            let progress = clampedProgress(activity.lapProgress(at: elapsedTime, byDistance: true))
+            lines.append(intervalTimelineDistanceText(max(lap.totalDistanceMeters * (1 - progress), 0)))
+        }
+
+        switch timeMode {
+        case .hidden:
+            break
+        case .elapsed:
+            let progress = clampedProgress(activity.lapProgress(at: elapsedTime, byDistance: false))
+            lines.append(intervalTimelineDuration(lap.totalElapsedTime * progress))
+        case .remaining:
+            let progress = clampedProgress(activity.lapProgress(at: elapsedTime, byDistance: false))
+            lines.append(intervalTimelineDuration(max(lap.totalElapsedTime * (1 - progress), 0)))
+        }
+
+        return lines
+    }
+
+    private static func intervalTimelineKindText(for kind: LapKind) -> String {
+        switch kind {
+        case .warmup: "WU"
+        case .active: "Work"
+        case .rest: "Rest"
+        case .cooldown: "CD"
+        case .unknown: "Lap"
+        }
+    }
+
+    private static func intervalTimelineDistanceText(_ meters: Double) -> String {
+        formatDistanceMeters(meters).replacingOccurrences(of: " ", with: "")
+    }
+
+    private static func intervalTimelineDuration(_ duration: TimeInterval) -> String {
+        formatDuration(duration)
+    }
+
+    private static func intervalTimelineColor(for kind: LapKind, style: IntervalTimelineStyle) -> OverlayColor {
+        switch kind {
+        case .warmup: style.warmupColor
+        case .active: style.activeColor
+        case .rest: style.restColor
+        case .cooldown: style.cooldownColor
+        case .unknown: style.unknownColor
+        }
+    }
+
+    private static func intervalTimelineRepText(activity: ActivityTimeline, currentIndex: Int?) -> String? {
+        let activeLaps = activity.laps.filter { $0.kind == .active }
+        guard !activeLaps.isEmpty else { return nil }
+        guard let currentIndex, activity.laps.indices.contains(currentIndex) else {
+            return nil
+        }
+        let lap = activity.laps[currentIndex]
+        if lap.kind == .active,
+           let activeIndex = activeLaps.firstIndex(where: { $0.id == lap.id }) {
+            return "Rep \(activeIndex + 1) / \(activeLaps.count)"
+        }
+        return nil
+    }
+
+    private static func scaled(_ text: IntervalHUDBarTextStyle, scale: Double, context: OverlayRenderContext) -> IntervalHUDBarTextStyle {
+        IntervalHUDBarTextStyle(
+            fontName: text.fontName,
+            fontSize: context.scaled(text.fontSize * scale),
+            fontWeight: text.fontWeight
+        )
+    }
+
+    private static func intervalMetricItems(
+        style: IntervalHUDBarStyle,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval,
+        zoneIndex: Int?,
+        zoneSnapshot: HeartRateZoneSnapshot
+    ) -> [IntervalHUDBarMetricItem] {
+        style.metricSlots.compactMap { slot in
+            switch slot.metric {
+            case .heartRateZone, .hrDrop:
+                return nil
+            case .heartRate, .pace, .avgPace, .lapPace, .calories, .elapsedTime, .realTime, .distance, .elevation, .cadence, .power, .verticalOscillation, .groundContactTime, .strideLength, .verticalRatio, .groundContactBalance, .temperature, .grade:
+                guard let elementType = slot.metric.elementType else { return nil }
+                let components = OverlayValueFormatter.components(
+                    for: elementType,
+                    unit: slot.unitOption,
+                    activity: activity,
+                    elapsedTime: elapsedTime
+                )
+                return IntervalHUDBarMetricItem(
+                    metric: slot.metric,
+                    label: components.shortLabel.uppercased(),
+                    value: components.value,
+                    unit: components.unit,
+                    accentColor: nil
+                )
+            }
+        }
+    }
+
+    private static func intervalZoneItem(
+        style: IntervalHUDBarStyle,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval,
+        zoneIndex: Int?
+    ) -> IntervalHUDBarMetricItem? {
+        guard style.showsZone else { return nil }
+        if style.zoneDisplayMode == .hrDropAtRest,
+           activity.currentLap(at: elapsedTime)?.kind == .rest {
+            switch style.hrDropMode {
+            case .bpm:
+                let drop = activity.recoveryDrop(at: elapsedTime).map(String.init) ?? "--"
+                return IntervalHUDBarMetricItem(metric: .hrDrop, label: "HR DROP", value: drop, unit: "bpm", accentColor: nil)
+            case .percent:
+                let drop = activity.recoveryDropPercent(at: elapsedTime).map { "\(Int($0.rounded()))" } ?? "--"
+                return IntervalHUDBarMetricItem(metric: .hrDrop, label: "HR DROP", value: drop, unit: "%", accentColor: nil)
+            }
+        }
+        return IntervalHUDBarMetricItem(
+            metric: .heartRateZone,
+            label: "ZONE",
+            value: zoneIndex.map { "Z\($0 + 1)" } ?? "--",
+            unit: "",
+            accentColor: zoneIndex.map(HRZonePalette.overlayColor(forIndex:))
+        )
+    }
+
+    private static func intervalZoneSegments(snapshot: HeartRateZoneSnapshot) -> [IntervalHUDBarZoneSegment] {
+        (0..<snapshot.zoneCount).map { index in
+            IntervalHUDBarZoneSegment(
+                index: index,
+                label: "Z\(index + 1)",
+                color: HRZonePalette.overlayColor(forIndex: index)
+            )
+        }
+    }
+
+    private static func resolvedZoneIndex(heartRate: Int?, paceSecondsPerKm: Double?, snapshot: HeartRateZoneSnapshot) -> Int? {
+        let visibleZones = Array(snapshot.zones.prefix(snapshot.zoneCount))
+        if let heartRate,
+           let hrIndex = resolvedHeartRateZoneIndex(heartRate: heartRate, zones: visibleZones) {
+            return hrIndex
+        }
+        guard let pace = paceSecondsPerKm, pace > 0 else { return nil }
+        return resolvedPaceZoneIndex(paceSecondsPerKm: pace, zones: visibleZones)
+    }
+
+    private static func resolvedBottomBarZoneIndex(
+        mode: IntervalHUDBarBottomBarMode,
+        heartRate: Int?,
+        paceSecondsPerKm: Double?,
+        snapshot: HeartRateZoneSnapshot
+    ) -> Int? {
+        let visibleZones = Array(snapshot.zones.prefix(snapshot.zoneCount))
+        switch mode {
+        case .heartRateZones:
+            guard let heartRate else { return nil }
+            return resolvedHeartRateZoneIndex(heartRate: heartRate, zones: visibleZones)
+        case .paceZones:
+            guard let paceSecondsPerKm, paceSecondsPerKm > 0 else { return nil }
+            return resolvedPaceZoneIndex(paceSecondsPerKm: paceSecondsPerKm, zones: visibleZones)
+        case .none, .lapProgress:
+            return nil
+        }
+    }
+
+    private static func resolvedHeartRateZoneIndex(heartRate: Int, zones: [HeartRateZone]) -> Int? {
+        zones.firstIndex { zone in
+            let minHR = zone.minHR ?? Int.min
+            let maxHR = zone.maxHR ?? Int.max
+            return heartRate >= minHR && heartRate <= maxHR && (zone.minHR != nil || zone.maxHR != nil)
+        }
+    }
+
+    private static func resolvedPaceZoneIndex(paceSecondsPerKm: Double, zones: [HeartRateZone]) -> Int? {
+        zones.firstIndex { zone in
+            guard zone.minPaceSecPerKm != nil || zone.maxPaceSecPerKm != nil else { return false }
+            let a = Double(zone.minPaceSecPerKm ?? Int.min)
+            let b = Double(zone.maxPaceSecPerKm ?? Int.max)
+            return paceSecondsPerKm >= min(a, b) && paceSecondsPerKm <= max(a, b)
+        }
+    }
+
+    private static func intervalZoneMarker(
+        style: IntervalHUDBarStyle,
+        heartRate: Int?,
+        paceSecondsPerKm: Double?,
+        snapshot: HeartRateZoneSnapshot,
+        zoneIndex: Int?
+    ) -> IntervalHUDBarZoneMarker? {
+        guard style.zoneMarkerEnabled,
+              style.bottomBarMode == .heartRateZones || style.bottomBarMode == .paceZones,
+              let zoneIndex,
+              zoneIndex >= 0,
+              zoneIndex < snapshot.zoneCount,
+              zoneIndex < snapshot.zones.count
+        else { return nil }
+
+        let zone = snapshot.zones[zoneIndex]
+        switch style.bottomBarMode {
+        case .heartRateZones:
+            guard let heartRate else { return nil }
+            return IntervalHUDBarZoneMarker(
+                role: .current,
+                zoneIndex: zoneIndex,
+                fractionInZone: heartRateFraction(heartRate, zone: zone),
+                valueText: "\(heartRate) bpm",
+                color: HRZonePalette.overlayColor(forIndex: zoneIndex)
+            )
+        case .paceZones:
+            guard let paceSecondsPerKm, paceSecondsPerKm > 0 else { return nil }
+            return IntervalHUDBarZoneMarker(
+                role: .current,
+                zoneIndex: zoneIndex,
+                fractionInZone: paceFraction(paceSecondsPerKm, zone: zone),
+                valueText: formatPace(secondsPerKm: paceSecondsPerKm, paceUnit: snapshot.paceUnit),
+                color: HRZonePalette.overlayColor(forIndex: zoneIndex)
+            )
+        case .none, .lapProgress:
+            return nil
+        }
+    }
+
+    private static func intervalThresholdZoneMarker(
+        style: IntervalHUDBarStyle,
+        snapshot: HeartRateZoneSnapshot
+    ) -> IntervalHUDBarZoneMarker? {
+        guard style.thresholdZoneMarkerEnabled,
+              style.bottomBarMode == .heartRateZones || style.bottomBarMode == .paceZones
+        else { return nil }
+        let visibleZones = Array(snapshot.zones.prefix(snapshot.zoneCount))
+        switch style.bottomBarMode {
+        case .heartRateZones:
+            guard let thresholdHR = snapshot.thresholdHR,
+                  let zoneIndex = resolvedHeartRateZoneIndex(heartRate: thresholdHR, zones: visibleZones),
+                  zoneIndex >= 0,
+                  zoneIndex < snapshot.zones.count
+            else { return nil }
+            let zone = snapshot.zones[zoneIndex]
+            return IntervalHUDBarZoneMarker(
+                role: .threshold,
+                zoneIndex: zoneIndex,
+                fractionInZone: heartRateFraction(thresholdHR, zone: zone),
+                valueText: "T",
+                color: HRZonePalette.overlayColor(forIndex: zoneIndex)
+            )
+        case .paceZones:
+            guard let thresholdPace = snapshot.thresholdPaceSecPerKm,
+                  thresholdPace > 0,
+                  let zoneIndex = resolvedPaceZoneIndex(paceSecondsPerKm: Double(thresholdPace), zones: visibleZones),
+                  zoneIndex >= 0,
+                  zoneIndex < snapshot.zones.count
+            else { return nil }
+            let zone = snapshot.zones[zoneIndex]
+            return IntervalHUDBarZoneMarker(
+                role: .threshold,
+                zoneIndex: zoneIndex,
+                fractionInZone: paceFraction(Double(thresholdPace), zone: zone),
+                valueText: "T",
+                color: HRZonePalette.overlayColor(forIndex: zoneIndex)
+            )
+        case .none, .lapProgress:
+            return nil
+        }
+    }
+
+    private static func zoneEdgeBarActiveZoneIndex(
+        metric: ZoneEdgeBarMetric,
+        heartRate: Int?,
+        paceSecondsPerKm: Double?,
+        snapshot: HeartRateZoneSnapshot
+    ) -> Int? {
+        let visibleZones = Array(snapshot.zones.prefix(snapshot.zoneCount))
+        switch metric {
+        case .heartRate:
+            guard let heartRate else { return nil }
+            return resolvedHeartRateZoneIndex(heartRate: heartRate, zones: visibleZones)
+        case .pace:
+            guard let paceSecondsPerKm, paceSecondsPerKm > 0 else { return nil }
+            return resolvedPaceZoneIndex(paceSecondsPerKm: paceSecondsPerKm, zones: visibleZones)
+        }
+    }
+
+    private static func zoneEdgeBarMarker(
+        style: ZoneEdgeBarStyle,
+        heartRate: Int?,
+        paceSecondsPerKm: Double?,
+        snapshot: HeartRateZoneSnapshot,
+        zoneIndex: Int?
+    ) -> IntervalHUDBarZoneMarker? {
+        guard style.markerEnabled,
+              let zoneIndex,
+              zoneIndex >= 0,
+              zoneIndex < snapshot.zoneCount,
+              zoneIndex < snapshot.zones.count
+        else { return nil }
+
+        let zone = snapshot.zones[zoneIndex]
+        switch style.metric {
+        case .heartRate:
+            guard let heartRate else { return nil }
+            return IntervalHUDBarZoneMarker(
+                role: .current,
+                zoneIndex: zoneIndex,
+                fractionInZone: heartRateFraction(heartRate, zone: zone),
+                valueText: "\(heartRate) bpm",
+                color: HRZonePalette.overlayColor(forIndex: zoneIndex)
+            )
+        case .pace:
+            guard let paceSecondsPerKm, paceSecondsPerKm > 0 else { return nil }
+            return IntervalHUDBarZoneMarker(
+                role: .current,
+                zoneIndex: zoneIndex,
+                fractionInZone: paceFraction(paceSecondsPerKm, zone: zone),
+                valueText: formatPace(secondsPerKm: paceSecondsPerKm, paceUnit: snapshot.paceUnit),
+                color: HRZonePalette.overlayColor(forIndex: zoneIndex)
+            )
+        }
+    }
+
+    private static func zoneEdgeBarThresholdMarker(
+        style: ZoneEdgeBarStyle,
+        snapshot: HeartRateZoneSnapshot
+    ) -> IntervalHUDBarZoneMarker? {
+        guard style.thresholdMarkerEnabled else { return nil }
+        let visibleZones = Array(snapshot.zones.prefix(snapshot.zoneCount))
+        switch style.metric {
+        case .heartRate:
+            guard let thresholdHR = snapshot.thresholdHR,
+                  let zoneIndex = resolvedHeartRateZoneIndex(heartRate: thresholdHR, zones: visibleZones),
+                  zoneIndex >= 0,
+                  zoneIndex < snapshot.zones.count
+            else { return nil }
+            let zone = snapshot.zones[zoneIndex]
+            return IntervalHUDBarZoneMarker(
+                role: .threshold,
+                zoneIndex: zoneIndex,
+                fractionInZone: heartRateFraction(thresholdHR, zone: zone),
+                valueText: "T",
+                color: HRZonePalette.overlayColor(forIndex: zoneIndex)
+            )
+        case .pace:
+            guard let thresholdPace = snapshot.thresholdPaceSecPerKm,
+                  thresholdPace > 0,
+                  let zoneIndex = resolvedPaceZoneIndex(paceSecondsPerKm: Double(thresholdPace), zones: visibleZones),
+                  zoneIndex >= 0,
+                  zoneIndex < snapshot.zones.count
+            else { return nil }
+            let zone = snapshot.zones[zoneIndex]
+            return IntervalHUDBarZoneMarker(
+                role: .threshold,
+                zoneIndex: zoneIndex,
+                fractionInZone: paceFraction(Double(thresholdPace), zone: zone),
+                valueText: "T",
+                color: HRZonePalette.overlayColor(forIndex: zoneIndex)
+            )
+        }
+    }
+
+    private static func zoneEdgeBarMarkerSide(style: ZoneEdgeBarStyle, orientation: ZoneEdgeBarOrientation) -> ZoneEdgeBarMarkerSide {
+        if style.placement == .edge {
+            switch style.edge {
+            case .top: return .below
+            case .bottom: return .above
+            case .left: return .trailing
+            case .right: return .leading
+            }
+        }
+        return orientation == .horizontal ? .above : .trailing
+    }
+
+    private static func zoneEdgeBarMarkerPad(style: ZoneEdgeBarStyle, markerText: IntervalHUDBarTextStyle, thickness: Double) -> Double {
+        guard style.markerEnabled || style.thresholdMarkerEnabled else { return 0 }
+        let valueHeight = style.markerShowsValue ? max(markerText.fontSize, 9) + 6 : 0
+        let currentPad = max(thickness * 0.9, 8) + valueHeight + (style.markerShowsValue ? 5 : 3)
+        let thresholdPad = max(thickness * 1.35, 10) + max(markerText.fontSize * 0.72, 7) + 6
+        return max(currentPad, thresholdPad)
+    }
+
+    private static func zoneEdgeBarRect(
+        for element: OverlayElement,
+        style: ZoneEdgeBarStyle,
+        size: CGSize,
+        canvasSize: CGSize,
+        context: OverlayRenderContext
+    ) -> CGRect {
+        guard style.placement == .edge else {
+            return centeredRect(for: element, size: size, canvasSize: canvasSize)
+        }
+        let inset = context.scaled(style.edgeInset * element.scale)
+        switch style.edge {
+        case .top:
+            return CGRect(x: (canvasSize.width - size.width) / 2, y: inset, width: size.width, height: size.height)
+        case .bottom:
+            return CGRect(x: (canvasSize.width - size.width) / 2, y: canvasSize.height - inset - size.height, width: size.width, height: size.height)
+        case .left:
+            return CGRect(x: inset, y: (canvasSize.height - size.height) / 2, width: size.width, height: size.height)
+        case .right:
+            return CGRect(x: canvasSize.width - inset - size.width, y: (canvasSize.height - size.height) / 2, width: size.width, height: size.height)
+        }
+    }
+
+    private static func zoneEdgeBarInnerBarRect(
+        rect: CGRect,
+        thickness: Double,
+        markerSide: ZoneEdgeBarMarkerSide,
+        orientation: ZoneEdgeBarOrientation
+    ) -> CGRect {
+        if orientation == .horizontal {
+            let y = markerSide == .above ? rect.maxY - thickness : rect.minY
+            return CGRect(x: rect.minX, y: y, width: rect.width, height: thickness)
+        }
+        let x = markerSide == .leading ? rect.maxX - thickness : rect.minX
+        return CGRect(x: x, y: rect.minY, width: thickness, height: rect.height)
+    }
+
+    private static func formatPace(secondsPerKm: Double, paceUnit: PaceUnit) -> String {
+        "\(PaceConversion.format(secondsPerKm: Int(secondsPerKm.rounded()), unit: paceUnit)) \(paceUnit.label)"
+    }
+
+    private static func heartRateFraction(_ heartRate: Int, zone: HeartRateZone) -> Double {
+        guard let minHR = zone.minHR,
+              let maxHR = zone.maxHR,
+              maxHR > minHR
+        else { return 0.5 }
+        return clampedProgress(Double(heartRate - minHR) / Double(maxHR - minHR))
+    }
+
+    private static func paceFraction(_ paceSecondsPerKm: Double, zone: HeartRateZone) -> Double {
+        guard let minPace = zone.minPaceSecPerKm,
+              let maxPace = zone.maxPaceSecPerKm,
+              minPace != maxPace
+        else { return 0.5 }
+        let lower = Double(min(minPace, maxPace))
+        let upper = Double(max(minPace, maxPace))
+        return clampedProgress((paceSecondsPerKm - lower) / (upper - lower))
+    }
+
+    static func intervalZoneSegmentFrames(
+        segmentCount: Int,
+        activeIndex: Int?,
+        activeWidthShare: Double
+    ) -> [IntervalHUDBarZoneSegmentFrame] {
+        guard segmentCount > 0 else { return [] }
+        let equalWidth = 1 / Double(segmentCount)
+        let requestedActiveWidth = min(max(activeWidthShare, 0), 0.5)
+        guard let activeIndex,
+              activeIndex >= 0,
+              activeIndex < segmentCount,
+              requestedActiveWidth > equalWidth
+        else {
+            return (0..<segmentCount).map { index in
+                IntervalHUDBarZoneSegmentFrame(index: index, start: Double(index) * equalWidth, width: equalWidth)
+            }
+        }
+
+        let inactiveWidth = (1 - requestedActiveWidth) / Double(max(segmentCount - 1, 1))
+        var cursor = 0.0
+        return (0..<segmentCount).map { index in
+            let width = index == activeIndex ? requestedActiveWidth : inactiveWidth
+            defer { cursor += width }
+            return IntervalHUDBarZoneSegmentFrame(index: index, start: cursor, width: width)
+        }
+    }
+
+    private static func repText(activity: ActivityTimeline, lap: LapRecord?) -> String {
+        let activeLaps = activity.laps.filter { $0.kind == .active }
+        guard !activeLaps.isEmpty else { return "-- / --" }
+        guard let lap else { return "1 / \(activeLaps.count)" }
+        if lap.kind == .active,
+           let index = activeLaps.firstIndex(where: { $0.id == lap.id }) {
+            return "\(index + 1) / \(activeLaps.count)"
+        }
+        let completed = activeLaps.filter { $0.endElapsedTime <= lap.startElapsedTime }.count
+        return "\(min(completed + 1, activeLaps.count)) / \(activeLaps.count)"
+    }
+
+    private static func phaseLabel(_ kind: LapKind) -> String {
+        switch kind {
+        case .warmup: "WU"
+        case .active: "WORK"
+        case .rest: "REST"
+        case .cooldown: "CD"
+        case .unknown: "LAP"
+        }
+    }
+
+    private static func phaseDetail(
+        style: IntervalHUDBarStyle,
+        lap: LapRecord?,
+        remainingTimeText: String,
+        remainingDistanceText: String
+    ) -> String {
+        guard lap != nil else { return "" }
+        let mode = lap?.kind == .rest ? style.restPhaseDetailMode : style.phaseDetailMode
+        switch mode {
+        case .time:
+            return remainingTimeText
+        case .distance:
+            return remainingDistanceText
+        }
+    }
+
+    private static func lapKindColor(_ kind: LapKind, activeZoneIndex: Int?) -> OverlayColor {
+        if kind == .active, let activeZoneIndex {
+            return HRZonePalette.overlayColor(forIndex: activeZoneIndex)
+        }
+        if let color = IntervalKindColorPreferences.currentSnapshot().color(for: kind) {
+            return color
+        }
+        // Only .unknown reaches here — keep the existing green fallback.
+        return OverlayColor(red: 0.25, green: 0.82, blue: 0.38, alpha: 1)
+    }
+
+    private static func formatDuration(_ duration: TimeInterval) -> String {
+        let total = max(Int(duration.rounded()), 0)
+        let hours = total / 3600
+        let minutes = (total % 3600) / 60
+        let seconds = total % 60
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        }
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    private static func formatDistanceMeters(_ meters: Double) -> String {
+        if meters >= 1000 {
+            return String(format: "%.2f km", meters / 1000)
+        }
+        return "\(Int(meters.rounded())) m"
+    }
+
     private static func computeGaugeProgress(style: RunningGaugeStyle, context: OverlayRenderContext) -> Double {
         switch style.progressMode {
         case .none:
@@ -393,11 +1493,23 @@ enum OverlayRenderModel {
         let designHeight = element.style.routeMapHeight
         let width = context.scaled(designWidth * element.scale)
         let height = context.scaled(designHeight * element.scale)
+        let backgroundPadX = element.style.backgroundEnabled
+            ? context.scaled(element.style.backgroundPaddingX * element.scale)
+            : 0
+        let backgroundPadY = element.style.backgroundEnabled
+            ? context.scaled(element.style.backgroundPaddingY * element.scale)
+            : 0
         // Circles ignore aspect: take the shorter edge as the diameter so the
         // user can drag the bounding box wider/taller without distorting the
         // circular window.
         let side = min(width, height)
-        let mapSize = mapShape == .circle ? CGSize(width: side, height: side) : CGSize(width: width, height: height)
+        let mapSize: CGSize
+        if mapShape == .circle {
+            let paddedSide = side + max(backgroundPadX, backgroundPadY) * 2
+            mapSize = CGSize(width: paddedSide, height: paddedSide)
+        } else {
+            mapSize = CGSize(width: width + backgroundPadX * 2, height: height + backgroundPadY * 2)
+        }
         // Padding scales with the box size so wider boxes still keep the
         // route well inside the visible map. The minimum keeps tiny boxes
         // (≤120 pt) from squashing the route to the center.
@@ -556,7 +1668,7 @@ enum OverlayRenderModel {
                 isInside: isInside,
                 containerRect: mapRect,
                 containerShape: mapShape,
-                containerCornerRadius: mapShape == .circle ? 0 : context.scaled(element.style.routeMapCornerRadius * element.scale),
+                containerCornerRadius: mapShape == .circle ? 0 : context.scaled(element.style.backgroundRadius * element.scale),
                 backgroundOpacity: statsBarConfig.backgroundOpacity,
                 blurRadius: context.scaled(statsBarConfig.blurRadius * element.scale),
                 dividerOpacity: statsBarConfig.dividerOpacity,
@@ -577,7 +1689,9 @@ enum OverlayRenderModel {
             )
         }() : nil
 
-        var routeContentRect = mapRect.insetBy(dx: padding, dy: padding)
+        let contentInsetX = padding + (mapShape == .circle ? max(backgroundPadX, backgroundPadY) : backgroundPadX)
+        let contentInsetY = padding + (mapShape == .circle ? max(backgroundPadX, backgroundPadY) : backgroundPadY)
+        var routeContentRect = mapRect.insetBy(dx: contentInsetX, dy: contentInsetY)
         if let statsBar = statsBarLayout, statsBar.isInside {
             // Reserve chart area so inside Stats Bar never covers route geometry.
             let reserved = statsBar.rect.height + context.scaled(6 * element.scale)
@@ -599,16 +1713,16 @@ enum OverlayRenderModel {
         }
 
         return OverlayRouteMapRenderLayout(
-            preset: element.style.routeMapPreset,
             provider: provider,
             rect: mapRect,
             contentRect: routeContentRect,
-            cornerRadius: mapShape == .circle ? 0 : context.scaled(element.style.routeMapCornerRadius * element.scale),
+            cornerRadius: mapShape == .circle ? 0 : context.scaled(element.style.backgroundRadius * element.scale),
             shape: mapShape,
-            edgeFade: element.style.routeMapEdgeFade,
-            fadeAmount: element.style.routeMapFadeAmount,
-            borderVisible: element.style.routeMapBorderVisible,
+            edgeFade: element.style.backgroundEnabled && element.style.backgroundFadeOutEnabled ? .fadeOut : .solid,
+            fadeAmount: element.style.backgroundFadeOutAmount,
+            borderVisible: element.style.borderEnabled,
             lineWidth: max(context.scaled(4 * element.scale), 1.5),
+            glowEnabled: element.style.glowEnabled,
             glowRadius: context.scaled(11 * element.scale),
             mapOpacity: element.style.routeMapMapOpacity,
             progress: clampedProgress(progress),
@@ -616,359 +1730,6 @@ enum OverlayRenderModel {
             currentPoint: context.activity.routePoint(at: context.elapsedTime),
             statsBarLayout: statsBarLayout
         )
-    }
-
-    static func lapListLayout(for element: OverlayElement, in context: OverlayRenderContext) -> LapListRenderLayout {
-        let s = element.style.lapList
-        let laps = context.activity.laps
-        let currentLap = context.activity.currentLap(at: context.elapsedTime)
-        let currentIndex = currentLap.flatMap { lap in laps.firstIndex(where: { $0.id == lap.id }) } ?? 0
-
-        let rowH = context.scaled(s.rowHeight * element.scale)
-        let spacing = context.scaled(s.rowSpacing * element.scale)
-        let visibleCount = s.visibleRowCount
-        let totalH = rowH * Double(visibleCount) + spacing * Double(max(visibleCount - 1, 0))
-        let width = context.scaled(280 * element.scale)
-        let rect = centeredRect(for: element, size: CGSize(width: width, height: totalH), canvasSize: context.canvasSize)
-
-        // Determine which lap indices are visible.
-        // The current lap sits at the anchor row (top=0, center=mid, bottom=last).
-        let anchorRow: Int
-        switch s.currentRowAnchor {
-        case .top: anchorRow = 0
-        case .center: anchorRow = visibleCount / 2
-        case .bottom: anchorRow = visibleCount - 1
-        }
-        let firstVisibleIndex = currentIndex - anchorRow
-
-        var rows: [LapListRowRenderLayout] = []
-        for slot in 0..<visibleCount {
-            let lapIndex = firstVisibleIndex + slot
-            guard lapIndex >= 0, lapIndex < laps.count else { continue }
-            let lap = laps[lapIndex]
-            let isCurrent = lapIndex == currentIndex
-            let rowY = rect.minY + Double(slot) * (rowH + spacing)
-            let rowRect = CGRect(x: rect.minX, y: rowY, width: width, height: rowH)
-
-            let distanceFromCurrent = abs(slot - anchorRow)
-            let opacity: Double
-            if s.fadeEnabled && distanceFromCurrent > 0 {
-                let fraction = Double(distanceFromCurrent) / Double(max(anchorRow, visibleCount - 1 - anchorRow, 1))
-                opacity = max(1.0 - (1.0 - s.fadeMinOpacity) * fraction, s.fadeMinOpacity)
-            } else {
-                opacity = 1.0
-            }
-
-            let progress: Double
-            if isCurrent {
-                progress = context.activity.lapProgress(at: context.elapsedTime, byDistance: s.progressMode == .distance)
-            } else if lapIndex < currentIndex {
-                progress = 1.0
-            } else {
-                progress = 0.0
-            }
-
-            let texts = s.columns.filter(\.visible).map { col -> String in
-                lapColumnText(col.metric, lap: lap, activity: context.activity,
-                              elapsedTime: context.elapsedTime, isCurrent: isCurrent)
-            }
-
-            rows.append(LapListRowRenderLayout(
-                lapRecord: lap,
-                rowRect: rowRect,
-                progressFraction: progress,
-                isCurrent: isCurrent,
-                rowOpacity: opacity,
-                columnTexts: texts
-            ))
-        }
-
-        let fontSize = context.scaled(max(10, (s.rowHeight * 0.38) * element.scale))
-        return LapListRenderLayout(
-            rect: rect,
-            rows: rows,
-            rowHeight: rowH,
-            rowCornerRadius: context.scaled(s.rowCornerRadius * element.scale),
-            rowSpacing: spacing,
-            backgroundOpacity: s.backgroundOpacity,
-            progressColor: s.progressColor,
-            progressOpacity: s.progressOpacity,
-            progressBarEnabled: s.progressBarEnabled,
-            fontSize: fontSize,
-            columns: s.columns.filter(\.visible)
-        )
-    }
-
-    private static func lapColumnText(
-        _ metric: LapColumnMetric,
-        lap: LapRecord,
-        activity: ActivityTimeline,
-        elapsedTime: TimeInterval,
-        isCurrent: Bool
-    ) -> String {
-        switch metric {
-        case .lapNumber:
-            return "#\(lap.lapIndex + 1)"
-        case .lapKind:
-            switch lap.kind {
-            case .warmup: return "WU"
-            case .active: return "RUN"
-            case .rest: return "REST"
-            case .cooldown: return "CD"
-            case .unknown: return "LAP"
-            }
-        case .distance:
-            let meters = lap.totalDistanceMeters
-            return meters >= 1000
-                ? String(format: "%.2f km", meters / 1000)
-                : String(format: "%.0f m", meters)
-        case .elapsedTime:
-            let t = isCurrent ? activity.lapElapsedTime(at: elapsedTime) : lap.totalElapsedTime
-            let secs = Int(t.rounded())
-            return String(format: "%d:%02d", secs / 60, secs % 60)
-        case .pace:
-            guard let p = lap.avgPaceSecondsPerKm else { return "--" }
-            let secs = Int(p.rounded())
-            return String(format: "%d'%02d\"", secs / 60, secs % 60)
-        case .heartRate:
-            return lap.avgHeartRate.map { "\($0) bpm" } ?? "--"
-        case .cadence:
-            return lap.avgCadenceSPM.map { "\($0) spm" } ?? "--"
-        case .power:
-            return lap.avgPowerWatts.map { "\($0) W" } ?? "--"
-        case .ascent:
-            return lap.totalAscent.map { "\($0) m" } ?? "--"
-        }
-    }
-
-    static func lapCardLayout(for element: OverlayElement, in context: OverlayRenderContext) -> LapCardRenderLayout {
-        let s = element.style.lapCard
-        let lastActive = context.activity.lastActiveLap(at: context.elapsedTime)
-        let currentLap = context.activity.currentLap(at: context.elapsedTime)
-        let isRestLap = currentLap?.kind == .rest
-
-        let rowH = context.scaled(26 * element.scale)
-        let hPad = context.scaled(12 * element.scale)
-        let vPad = context.scaled(10 * element.scale)
-        let fontSize = context.scaled(13 * element.scale)
-        let width = context.scaled(s.cardWidth * element.scale)
-
-        var columnRows: [(label: String, value: String)] = []
-        if let lap = lastActive {
-            columnRows = s.columns.filter(\.visible).map { cfg in
-                (cfg.column.label, lapCardColumnText(cfg.column, lap: lap))
-            }
-        }
-
-        var recoveryRows: [(label: String, value: String)] = []
-        var recoveryProgress: Double? = nil
-        if isRestLap && s.showRecoverySection {
-            recoveryRows = s.recoveryMetrics.map { metric in
-                recoveryMetricRow(metric, activity: context.activity,
-                                  elapsedTime: context.elapsedTime, targetHR: s.recoveryTargetHR)
-            }
-            if s.recoveryProgressEnabled && s.recoveryTargetHR > 0 {
-                if let peak = context.activity.recoveryPeakHR(at: context.elapsedTime),
-                   let current = context.activity.heartRate(at: context.elapsedTime),
-                   peak > s.recoveryTargetHR {
-                    let drop = Double(peak - current)
-                    let needed = Double(peak - s.recoveryTargetHR)
-                    recoveryProgress = min(max(drop / needed, 0), 1)
-                }
-            }
-        }
-
-        let headerH = context.scaled(22 * element.scale)
-        let statRows = columnRows.count
-        let recRows = recoveryRows.count
-        let dividerH = (recRows > 0) ? context.scaled(6 * element.scale) : 0
-        let recHeaderH = (recRows > 0) ? context.scaled(16 * element.scale) : 0
-        let totalH = vPad + headerH + Double(statRows) * rowH + dividerH + recHeaderH + Double(recRows) * rowH + vPad
-
-        let rect = centeredRect(for: element, size: CGSize(width: width, height: totalH), canvasSize: context.canvasSize)
-        return LapCardRenderLayout(
-            rect: rect,
-            headerText: lastActive.map { "#\($0.lapIndex + 1) \(lapKindShort($0.kind))" } ?? "No Lap",
-            columnRows: columnRows,
-            showRecoverySection: isRestLap && s.showRecoverySection && !recoveryRows.isEmpty,
-            recoveryRows: recoveryRows,
-            recoveryProgress: recoveryProgress,
-            backgroundOpacity: s.backgroundOpacity,
-            cornerRadius: context.scaled(s.cornerRadius * element.scale),
-            fontSize: fontSize,
-            rowHeight: rowH,
-            horizontalPadding: hPad,
-            verticalPadding: vPad,
-            progressColor: s.progressColor,
-            headerHeight: headerH,
-            dividerHeight: dividerH,
-            recoveryHeaderHeight: recHeaderH
-        )
-    }
-
-    static func lapLiveLayout(for element: OverlayElement, in context: OverlayRenderContext) -> LapLiveRenderLayout {
-        let s = element.style.lapLive
-        let currentLap = context.activity.currentLap(at: context.elapsedTime)
-        let lapKind = currentLap?.kind ?? .unknown
-        let isRest = lapKind == .rest
-
-        let hPad = context.scaled(12 * element.scale)
-        let vPad = context.scaled(10 * element.scale)
-        let rowH = context.scaled(28 * element.scale)
-        let headerH = context.scaled(20 * element.scale)
-        let progressH = (s.showProgressBar && !isRest) ? context.scaled(6 * element.scale) : 0
-        let fontSize = context.scaled(13 * element.scale)
-        let width = context.scaled(s.cardWidth * element.scale)
-
-        var metricRows: [(label: String, value: String)] = []
-        var recoveryRows: [(label: String, value: String)] = []
-        var recoveryProgress: Double? = nil
-        let isHidden = isRest && s.restMode == .hidden
-
-        if !isRest {
-            metricRows = s.activeMetrics.filter(\.visible).map { cfg in
-                lapLiveMetricRow(cfg.metric, activity: context.activity, elapsedTime: context.elapsedTime)
-            }
-        } else if s.restMode == .recovery {
-            recoveryRows = s.recoveryMetrics.map { metric in
-                recoveryMetricRow(metric, activity: context.activity,
-                                  elapsedTime: context.elapsedTime, targetHR: s.recoveryTargetHR)
-            }
-            if s.recoveryProgressEnabled && s.recoveryTargetHR > 0 {
-                if let peak = context.activity.recoveryPeakHR(at: context.elapsedTime),
-                   let current = context.activity.heartRate(at: context.elapsedTime),
-                   peak > s.recoveryTargetHR {
-                    let drop = Double(peak - current)
-                    let needed = Double(peak - s.recoveryTargetHR)
-                    recoveryProgress = min(max(drop / needed, 0), 1)
-                }
-            }
-        }
-
-        let activeCount = isRest ? 0 : metricRows.count
-        let recCount = isRest ? recoveryRows.count : 0
-        let recHeaderH = recCount > 0 ? context.scaled(14 * element.scale) : 0
-        let totalH = isHidden ? 0
-            : vPad + headerH + progressH + Double(activeCount) * rowH + recHeaderH + Double(recCount) * rowH + vPad
-
-        let lapProgress = context.activity.lapProgress(at: context.elapsedTime,
-                                                       byDistance: s.progressMode == .distance)
-        let lapHeader: String
-        if let lap = currentLap {
-            lapHeader = "#\(lap.lapIndex + 1) \(lapKindShort(lap.kind))"
-        } else {
-            lapHeader = "--"
-        }
-
-        let rect = centeredRect(for: element, size: CGSize(width: width, height: totalH), canvasSize: context.canvasSize)
-        return LapLiveRenderLayout(
-            rect: rect,
-            headerText: lapHeader,
-            lapKind: lapKind,
-            isHidden: isHidden,
-            isRestMode: isRest,
-            metricRows: metricRows,
-            progressFraction: lapProgress,
-            showProgressBar: s.showProgressBar && !isRest,
-            progressBarHeight: progressH,
-            recoveryRows: recoveryRows,
-            recoveryHeaderHeight: recHeaderH,
-            recoveryProgress: recoveryProgress,
-            backgroundOpacity: s.backgroundOpacity,
-            cornerRadius: context.scaled(s.cornerRadius * element.scale),
-            fontSize: fontSize,
-            rowHeight: rowH,
-            horizontalPadding: hPad,
-            verticalPadding: vPad,
-            headerHeight: headerH,
-            progressColor: s.progressColor,
-            progressOpacity: s.progressOpacity
-        )
-    }
-
-    private static func lapCardColumnText(_ column: LapCardColumn, lap: LapRecord) -> String {
-        switch column {
-        case .lapNumber: return "#\(lap.lapIndex + 1)"
-        case .lapKind: return lapKindShort(lap.kind)
-        case .distance:
-            let m = lap.totalDistanceMeters
-            return m >= 1000 ? String(format: "%.2f km", m / 1000) : String(format: "%.0f m", m)
-        case .elapsedTime:
-            let secs = Int(lap.totalElapsedTime.rounded())
-            return String(format: "%d:%02d", secs / 60, secs % 60)
-        case .pace:
-            guard let p = lap.avgPaceSecondsPerKm else { return "--" }
-            let secs = Int(p.rounded())
-            return String(format: "%d'%02d\"", secs / 60, secs % 60)
-        case .avgHR: return lap.avgHeartRate.map { "\($0) bpm" } ?? "--"
-        case .maxHR: return lap.maxHeartRate.map { "\($0) bpm" } ?? "--"
-        case .cadence: return lap.avgCadenceSPM.map { "\($0) spm" } ?? "--"
-        case .power: return lap.avgPowerWatts.map { "\($0) W" } ?? "--"
-        case .ascent: return lap.totalAscent.map { "\($0) m" } ?? "--"
-        }
-    }
-
-    private static func lapKindShort(_ kind: LapKind) -> String {
-        switch kind {
-        case .warmup: return "WU"
-        case .active: return "RUN"
-        case .rest: return "REST"
-        case .cooldown: return "CD"
-        case .unknown: return "LAP"
-        }
-    }
-
-    private static func recoveryMetricRow(
-        _ metric: RecoveryMetric,
-        activity: ActivityTimeline,
-        elapsedTime: TimeInterval,
-        targetHR: Int
-    ) -> (label: String, value: String) {
-        switch metric {
-        case .peakHR:
-            return (metric.label, activity.recoveryPeakHR(at: elapsedTime).map { "\($0) bpm" } ?? "--")
-        case .currentHR:
-            return (metric.label, activity.heartRate(at: elapsedTime).map { "\($0) bpm" } ?? "--")
-        case .hrDrop:
-            return (metric.label, activity.recoveryDrop(at: elapsedTime).map { "\($0) bpm↓" } ?? "--")
-        case .hrDropPercent:
-            return (metric.label, activity.recoveryDropPercent(at: elapsedTime).map { String(format: "%.0f%%", $0) } ?? "--")
-        case .restElapsedTime:
-            let t = activity.lapElapsedTime(at: elapsedTime)
-            let secs = Int(t.rounded())
-            return (metric.label, String(format: "%d:%02d", secs / 60, secs % 60))
-        case .targetHRGap:
-            guard targetHR > 0 else { return (metric.label, "--") }
-            return (metric.label, activity.recoveryGapToTarget(at: elapsedTime, targetHR: targetHR).map { "\($0) bpm" } ?? "--")
-        }
-    }
-
-    private static func lapLiveMetricRow(
-        _ metric: LapLiveMetric,
-        activity: ActivityTimeline,
-        elapsedTime: TimeInterval
-    ) -> (label: String, value: String) {
-        switch metric {
-        case .lapElapsedTime:
-            let t = activity.lapElapsedTime(at: elapsedTime)
-            let secs = Int(t.rounded())
-            return (metric.label, String(format: "%d:%02d", secs / 60, secs % 60))
-        case .lapDistance:
-            guard let cur = activity.currentLap(at: elapsedTime) else { return (metric.label, "--") }
-            let d = activity.distance(at: elapsedTime) - cur.startDistanceMeters
-            return (metric.label, d >= 1000 ? String(format: "%.2f km", d / 1000) : String(format: "%.0f m", d))
-        case .pace:
-            let v = activity.pace(at: elapsedTime).map { p -> String in
-                let secs = Int(p.rounded()); return String(format: "%d'%02d\"", secs / 60, secs % 60)
-            } ?? "--"
-            return (metric.label, v)
-        case .heartRate:
-            return (metric.label, activity.heartRate(at: elapsedTime).map { "\($0) bpm" } ?? "--")
-        case .power:
-            return (metric.label, activity.power(at: elapsedTime).map { "\($0) W" } ?? "--")
-        case .cadence:
-            return (metric.label, activity.cadence(at: elapsedTime).map { "\($0) spm" } ?? "--")
-        }
     }
 
     static func centeredRect(for element: OverlayElement, contentSize: CGSize, textSize: CGSize, context: OverlayRenderContext) -> CGRect {
@@ -993,6 +1754,42 @@ enum OverlayRenderModel {
         }
         return (0..<40).map { index in
             activity.elevation(at: activity.duration * Double(index) / 39) ?? 0
+        }
+    }
+
+    static func smoothedElevationChartSamples(_ samples: [Double], amount: Double = 0.85) -> [Double] {
+        let clampedAmount = min(max(amount, 0), 1)
+        guard samples.count > 2, clampedAmount > 0 else { return samples }
+
+        let maxRadius = min(28, max(2, (samples.count - 1) / 2))
+        let radius = min(maxRadius, max(2, Int((2 + clampedAmount * 18).rounded())))
+        let sigma = max(1, Double(radius) * 0.45)
+        let weights = (-radius...radius).map { offset in
+            exp(-pow(Double(offset), 2) / (2 * pow(sigma, 2)))
+        }
+        let passCount = max(1, Int((1 + clampedAmount * 5).rounded()))
+        var filtered = samples
+
+        // Wide repeated Gaussian passes smooth integer-meter FIT stair steps.
+        // Endpoints stay fixed so current-value markers and progress tips do
+        // not drift away from the activity sample range.
+        for _ in 0..<passCount {
+            let source = filtered
+            for index in source.indices.dropFirst().dropLast() {
+                var weightedSum = 0.0
+                var weightSum = 0.0
+                for offset in -radius...radius {
+                    let neighbor = min(max(index + offset, source.startIndex), source.index(before: source.endIndex))
+                    let weight = weights[offset + radius]
+                    weightedSum += source[neighbor] * weight
+                    weightSum += weight
+                }
+                filtered[index] = weightedSum / weightSum
+            }
+        }
+
+        return zip(samples, filtered).map { original, smoothed in
+            original + (smoothed - original) * clampedAmount
         }
     }
 
@@ -1091,6 +1888,109 @@ enum OverlayRenderModel {
             return (fontSize * 0.22, fontSize * 0.25, context.scaled(0), context.scaled(0), context.scaled(0))
         }
     }
+
+    /// Resolve final pixel dimensions for a Decor Solid Color element.
+    /// Width and height come from `DecorStyle`; `element.scale` plus the
+    /// canvas DPR (`context.scaled`) bring design units into pixel space.
+    /// Circle collapses both edges to the shorter side so a non-square
+    /// bounding box still renders as a circle until the user resizes.
+    static func decorSolidColorLayout(
+        for element: OverlayElement,
+        in context: OverlayRenderContext
+    ) -> DecorSolidColorRenderLayout {
+        let s = element.style.decor
+        let w = context.scaled(s.width * element.scale)
+        let h = context.scaled(s.height * element.scale)
+        let size: CGSize
+        switch s.shape {
+        case .circle:
+            let side = min(w, h)
+            size = CGSize(width: side, height: side)
+        default:
+            size = CGSize(width: w, height: h)
+        }
+        return DecorSolidColorRenderLayout(
+            shape: s.shape,
+            size: size,
+            fillColor: s.fillColor,
+            cornerRadius: context.scaled(s.cornerRadius * element.scale)
+        )
+    }
+
+    static func decorIconLayout(
+        for element: OverlayElement,
+        in context: OverlayRenderContext
+    ) -> DecorIconRenderLayout {
+        let s = element.style.decor
+        let r = DecorIconResolved(from: s)
+        let w = context.scaled(s.width * element.scale)
+        let h = context.scaled(s.height * element.scale)
+        return DecorIconRenderLayout(
+            size: CGSize(width: w, height: h),
+            iconAsset: r.asset,
+            iconTint: r.tint,
+            iconPreserveSVGColors: r.preserveSVGColors,
+            iconContentMode: r.contentMode
+        )
+    }
+
+    static func decorTextLayout(
+        for element: OverlayElement,
+        in context: OverlayRenderContext
+    ) -> DecorTextRenderLayout {
+        let s = element.style.decor
+        let r = DecorTextResolved(from: s)
+        let w = context.scaled(s.width * element.scale)
+        let h = context.scaled(s.height * element.scale)
+        let fs = context.scaled(r.size * element.scale)
+        return DecorTextRenderLayout(
+            size: CGSize(width: w, height: h),
+            content: r.content,
+            font: r.font,
+            fontSize: fs,
+            alignment: r.alignment,
+            lineHeight: r.lineHeight,
+            letterSpacing: context.scaled(r.letterSpacing * element.scale),
+            fillMode: r.fillMode,
+            strokeWidth: context.scaled(r.strokeWidth * element.scale),
+            strokeColor: r.strokeColor,
+            autoFit: r.autoFit
+        )
+    }
+}
+
+/// Pixel-space layout for a Decor Solid Color element. Returned by
+/// `OverlayRenderModel.decorSolidColorLayout(for:in:)` and consumed by both
+/// the live preview view and the SwiftUI export pipeline.
+struct DecorSolidColorRenderLayout {
+    var shape: DecorShape
+    var size: CGSize
+    var fillColor: OverlayColor
+    var cornerRadius: Double
+}
+
+/// Pixel-space layout for a Decor Icon element.
+struct DecorIconRenderLayout {
+    var size: CGSize
+    var iconAsset: IconAsset
+    var iconTint: OverlayColor
+    var iconPreserveSVGColors: Bool
+    var iconContentMode: IconContentMode
+}
+
+/// Pixel-space layout for a Decor Text element.
+struct DecorTextRenderLayout {
+    var size: CGSize
+    var content: String
+    var font: DecorFontRef
+    var fontSize: Double
+    var alignment: DecorTextAlignment
+    var lineHeight: Double
+    var letterSpacing: Double
+    var fillMode: DecorTextFill
+    var strokeWidth: Double
+    var strokeColor: OverlayColor
+    var autoFit: Bool
 }
 
 struct OverlayTextRenderLayout {
@@ -1108,14 +2008,38 @@ struct OverlayTextRenderLayout {
     var unitPosition: OverlayTextAttachmentPosition
     var labelSpacing: Double
     var unitSpacing: Double
+    var iconEnabled: Bool
+    var iconSystemName: String
+    var iconPosition: OverlayTextAttachmentPosition
+    var iconTextAlignment: OverlayTextAlignment
+    var iconSize: Double
+    var iconColor: OverlayColor
+    var iconOpacity: Double
+    var iconSpacing: Double
+    var iconColorsFollowHeartRateZones: Bool
+    var valueColorsFollowHeartRateZones: Bool
+    var labelColorsFollowHeartRateZones: Bool
+    var unitColorsFollowHeartRateZones: Bool
     var horizontalPadding: Double
     var verticalPadding: Double
+    var minimumWidth: Double
+    var minimumHeight: Double
     var cornerRadius: Double
     var backgroundFadeOutEnabled: Bool
     var backgroundFadeOutAmount: Double
     var backgroundBlurRadius: Double
     var shadowRadius: Double
     var shadowOffsetY: Double
+    var labelTextAlignment: OverlayTextAlignment
+    var valueTextAlignment: OverlayTextAlignment
+    var unitTextAlignment: OverlayTextAlignment
+    var dividerEnabled: Bool
+    var dividerColor: OverlayColor
+    var dividerThickness: Double
+    var dividerOpacity: Double
+    /// When non-nil, heart-rate-derived icon tint can use this RGB while
+    /// keeping `iconOpacity` from the static style.
+    var dynamicHeartRateZoneColor: OverlayColor?
 }
 
 struct OverlayDistanceTimelineRenderLayout {
@@ -1127,6 +2051,7 @@ struct OverlayDistanceTimelineRenderLayout {
     var startText: String
     var finishText: String
     var distancePointLabels: [String]
+    var markerDistanceText: String
     var statsBarItems: [OverlayDistanceTimelineStatsBarItemLayout]
     var rect: CGRect
     var contentRect: CGRect
@@ -1145,10 +2070,155 @@ struct OverlayDistanceTimelineRenderLayout {
     var routeCurrentPoint: CGPoint?
 }
 
+extension OverlayDistanceTimelineRenderLayout {
+    var distanceTimelineStyleScale: Double {
+        rect.width / max(style.width, 1)
+    }
+
+    func distanceTimelineContentBounds(axisPadding: Double = 0) -> CGRect {
+        var bounds = rect
+        let scale = distanceTimelineStyleScale
+        let textHeight = unitFontSize * 1.3
+
+        func unionBand(
+            placement: DistanceTimelineAxisLabelTrackPlacement,
+            gap: Double
+        ) {
+            let top = style.distanceTimelineAxisLabelTextTopY(
+                trackRect: trackRect,
+                placement: placement,
+                scaledGap: gap,
+                textLineHeight: textHeight
+            )
+            let band = CGRect(
+                x: rect.minX,
+                y: top - unitFontSize * 0.15,
+                width: rect.width,
+                height: unitFontSize * 1.7
+            ).insetBy(dx: -axisPadding, dy: -axisPadding * 0.5)
+            bounds = bounds.union(band)
+        }
+
+        if style.showAxisLabels {
+            unionBand(
+                placement: style.axisEndpointLabelPlacement,
+                gap: style.distancePointOffset * scale
+            )
+        }
+        if style.showDistancePoints, !distancePointLabels.isEmpty {
+            unionBand(
+                placement: style.axisMidpointLabelPlacement,
+                gap: style.midpointAxisLabelOffset * scale
+            )
+        }
+        if style.markerDistanceLabelEnabled, style.currentMarkerEnabled {
+            unionBand(
+                placement: style.markerDistanceLabelPlacement,
+                gap: style.markerDistanceLabelOffset * scale
+            )
+        }
+        return bounds
+    }
+
+    func distanceTimelineStatsBarRect() -> CGRect? {
+        guard style.statsBar.visible, !statsBarItems.isEmpty else { return nil }
+
+        let config = style.statsBar
+        let scale = distanceTimelineStyleScale
+        let baseHeight = config.height * scale
+        let autoWidth = config.placement.isVertical
+            ? max(min(baseHeight, rect.width * 0.34), distanceTimelineStatsBarMinimumVerticalWidth)
+            : rect.width
+        let width = config.width > 0 ? min(config.width * scale, rect.width * 1.4) : autoWidth
+        let height = config.placement.isVertical
+            ? max(baseHeight, distanceTimelineStatsBarMinimumVerticalHeight)
+            : baseHeight
+        let offsetX = config.offsetX * scale
+        let offsetY = config.offsetY * scale
+        let attachmentGap = 6 * scale
+        let contentBounds = distanceTimelineContentBounds()
+        let centeredX = rect.minX + (rect.width - width) / 2 + offsetX
+
+        return switch config.placement {
+        case .topAttached, .insideTop:
+            CGRect(
+                x: centeredX,
+                y: contentBounds.minY - attachmentGap - height - offsetY,
+                width: width,
+                height: height
+            )
+        case .bottomAttached, .insideBottom:
+            CGRect(
+                x: centeredX,
+                y: contentBounds.maxY + attachmentGap + offsetY,
+                width: width,
+                height: height
+            )
+        case .leftAttached:
+            CGRect(
+                x: contentBounds.minX - attachmentGap - width - offsetX,
+                y: contentBounds.midY - height / 2 + offsetY,
+                width: width,
+                height: height
+            )
+        case .rightAttached:
+            CGRect(
+                x: contentBounds.maxX + attachmentGap + offsetX,
+                y: contentBounds.midY - height / 2 + offsetY,
+                width: width,
+                height: height
+            )
+        }
+    }
+
+    private var distanceTimelineStatsBarMinimumVerticalHeight: Double {
+        let count = max(statsBarItems.count, 1)
+        let gap = style.statsBar.itemSpacing * distanceTimelineStyleScale
+        let rowHeight = percentFontSize * 1.25
+            + max(unitFontSize * 0.72, 7)
+            + 8 * distanceTimelineStyleScale
+        return Double(count) * rowHeight + Double(max(count - 1, 0)) * gap
+    }
+
+    private var distanceTimelineStatsBarMinimumVerticalWidth: Double {
+        let valueFont = percentFontSize
+        let labelFont = max(unitFontSize * 0.72, 7)
+        let maxValueWidth = statsBarItems.map {
+            Double(($0.value + ($0.unit.isEmpty ? "" : " \($0.unit)")).count) * valueFont * 0.62
+        }.max() ?? 0
+        let maxLabelWidth = statsBarItems.map {
+            Double($0.label.uppercased().count) * labelFont * 0.58
+        }.max() ?? 0
+        return max(maxValueWidth, maxLabelWidth) + 20 * distanceTimelineStyleScale
+    }
+}
+
 struct OverlayDistanceTimelineStatsBarItemLayout {
     var label: String
     var value: String
     var unit: String
+}
+
+/// Scaled, card-local layout for the Elevation Chart Stats Bar. Built once in
+/// the render model so preview and SwiftUI export share identical geometry and
+/// typography instead of reading raw design-point values from the style.
+struct OverlayElevationChartStatsBarLayout {
+    /// Bar frame in the elevation chart card's local (already scaled) space.
+    var rect: CGRect
+    var items: [OverlayDistanceTimelineStatsBarItemLayout]
+    var stacked: Bool
+    var itemSpacing: Double
+    var dividerOpacity: Double
+    var cornerRadius: Double
+    var backgroundOpacity: Double
+    var valueFontName: String
+    var valueFontSize: Double
+    var valueFontWeight: OverlayFontWeight
+    var valueColor: OverlayColor
+    var labelFontName: String
+    var labelFontSize: Double
+    var labelFontWeight: OverlayFontWeight
+    var labelColor: OverlayColor
 }
 
 struct OverlayElevationChartRenderLayout {
@@ -1156,6 +2226,7 @@ struct OverlayElevationChartRenderLayout {
     var bigNumberText: OverlayValueComponents
     var label: String
     var statsBarItems: [OverlayDistanceTimelineStatsBarItemLayout]
+    var statsBarLayout: OverlayElevationChartStatsBarLayout?
     var rect: CGRect
     var labelFontSize: Double
     var valueFontSize: Double
@@ -1200,74 +2271,225 @@ struct OverlayRunningGaugeRenderLayout {
     var preset: OverlayGaugePreset { style.stylePreset }
 }
 
-// MARK: - Lap List
+// MARK: - Weather Widget
 
-struct LapListRowRenderLayout {
-    var lapRecord: LapRecord
-    var rowRect: CGRect
-    var progressFraction: Double
-    var isCurrent: Bool
-    var rowOpacity: Double
-    var columnTexts: [String]
+struct WeatherWidgetRenderLayout {
+    var style: WeatherWidgetStyle
+    var rect: CGRect
+    var condition: WeatherCondition
+    var temperatureFormatted: String
+    var highFormatted: String
+    var lowFormatted: String
+    var humidityFormatted: String
+    var windFormatted: String
+    var feelsLikeFormatted: String
+    var locationText: String
+    var weekdayText: String
+    var conditionLabel: String
+    var sfSymbolName: String
+    var iconTint: OverlayColor
+    var iconSize: Double
+    var fontSize: Double
+    var metricSlots: [WeatherMetricSlotRender]
 }
 
-struct LapListRenderLayout {
-    var rect: CGRect
-    var rows: [LapListRowRenderLayout]
-    var rowHeight: Double
-    var rowCornerRadius: Double
-    var rowSpacing: Double
-    var backgroundOpacity: Double
-    var progressColor: OverlayColor
-    var progressOpacity: Double
-    var progressBarEnabled: Bool
-    var fontSize: Double
-    var columns: [LapListColumn]
+struct WeatherMetricSlotRender: Equatable {
+    var kind: WeatherMetricSlotValue
+    var label: String
+    var value: String
 }
 
-// MARK: - Lap Card
+extension OverlayRenderModel {
+    static func weatherWidgetLayout(for element: OverlayElement, in context: OverlayRenderContext) -> WeatherWidgetRenderLayout {
+        let style = element.style.weatherWidget
+        let w = context.scaled(style.width * element.scale)
+        let h = context.scaled(style.height * element.scale)
+        let rect = centeredRect(for: element, size: CGSize(width: w, height: h), canvasSize: context.canvasSize)
 
-struct LapCardRenderLayout {
-    var rect: CGRect
-    var headerText: String
-    var columnRows: [(label: String, value: String)]
-    var showRecoverySection: Bool
-    var recoveryRows: [(label: String, value: String)]
-    var recoveryProgress: Double?
-    var backgroundOpacity: Double
-    var cornerRadius: Double
-    var fontSize: Double
-    var rowHeight: Double
-    var horizontalPadding: Double
-    var verticalPadding: Double
-    var progressColor: OverlayColor
-    var headerHeight: Double
-    var dividerHeight: Double
-    var recoveryHeaderHeight: Double
-}
+        let condition: WeatherCondition
+        var temperatureCelsius: Double
+        let humidity: Double?
+        let highCelsius: Double?
+        let lowCelsius: Double?
+        let windKph: Double?
+        let feelsLikeCelsius: Double?
+        let resolvedLocation: String?
+        let isMissingAPIWeather: Bool
 
-// MARK: - Lap Live
+        if style.dataSource.isAPI, let cached = style.cachedWeather {
+            isMissingAPIWeather = false
+            condition = cached.condition
+            temperatureCelsius = cached.temperatureCelsius
+            humidity = cached.humidity
+            highCelsius = cached.highTemperatureCelsius
+            lowCelsius = cached.lowTemperatureCelsius
+            windKph = cached.windKph
+            feelsLikeCelsius = cached.feelsLikeCelsius
+            resolvedLocation = cached.resolvedLocation
+        } else {
+            isMissingAPIWeather = style.dataSource.isAPI
+            condition = style.manualCondition
+            temperatureCelsius = style.manualTemperatureCelsius
+            humidity = style.manualHumidity
+            highCelsius = style.manualHigh
+            lowCelsius = style.manualLow
+            windKph = style.manualWind
+            feelsLikeCelsius = style.manualFeelsLike
+            resolvedLocation = style.showLocation && !style.locationText.isEmpty ? style.locationText : nil
+        }
 
-struct LapLiveRenderLayout {
-    var rect: CGRect
-    var headerText: String
-    var lapKind: LapKind
-    var isHidden: Bool
-    var isRestMode: Bool
-    var metricRows: [(label: String, value: String)]
-    var progressFraction: Double
-    var showProgressBar: Bool
-    var progressBarHeight: Double
-    var recoveryRows: [(label: String, value: String)]
-    var recoveryHeaderHeight: Double
-    var recoveryProgress: Double?
-    var backgroundOpacity: Double
-    var cornerRadius: Double
-    var fontSize: Double
-    var rowHeight: Double
-    var horizontalPadding: Double
-    var verticalPadding: Double
-    var headerHeight: Double
-    var progressColor: OverlayColor
-    var progressOpacity: Double
+        if style.useFITTemperature, let fitTemperature = context.activity.temperature(at: context.elapsedTime) {
+            temperatureCelsius = fitTemperature
+        }
+
+        let unit = style.temperatureUnit
+        let tempStr = isMissingAPIWeather ? weatherPlaceholder : unit.formatted(temperatureCelsius)
+        let highStr = isMissingAPIWeather ? weatherPlaceholder : highCelsius.map { unit.formatted($0) } ?? ""
+        let lowStr = isMissingAPIWeather ? weatherPlaceholder : lowCelsius.map { unit.formatted($0) } ?? ""
+        let humidityStr = isMissingAPIWeather ? weatherPlaceholder : humidity.map { "\(Int($0.rounded()))%" } ?? ""
+        let windStr = isMissingAPIWeather ? weatherPlaceholder : windKph.map { "\(String(format: "%.0f", $0)) km/h" } ?? ""
+        let feelsLikeStr = isMissingAPIWeather ? weatherPlaceholder : feelsLikeCelsius.map { unit.formatted($0) } ?? ""
+        let metricSlots = resolvedMetricSlots(
+            style: style,
+            highFormatted: highStr,
+            lowFormatted: lowStr,
+            humidityFormatted: humidityStr,
+            windFormatted: windStr,
+            feelsLikeFormatted: feelsLikeStr
+        )
+
+        let location: String
+        if isMissingAPIWeather {
+            location = style.showLocation ? weatherPlaceholder : ""
+        } else if !style.locationText.isEmpty {
+            location = style.locationText
+        } else if let resolved = resolvedLocation {
+            location = resolved
+        } else {
+            location = ""
+        }
+
+        var weekday = ""
+        if style.showWeekday {
+            let df = DateFormatter()
+            df.locale = Locale(identifier: localeIdentifier(for: location))
+            df.dateFormat = "EEEE"
+            weekday = df.string(from: context.activity.startDate)
+        }
+
+        let fontSize = context.scaled(max(10, style.width * 0.04 * element.scale))
+
+        return WeatherWidgetRenderLayout(
+            style: style,
+            rect: rect,
+            condition: condition,
+            temperatureFormatted: tempStr,
+            highFormatted: highStr,
+            lowFormatted: lowStr,
+            humidityFormatted: humidityStr,
+            windFormatted: windStr,
+            feelsLikeFormatted: feelsLikeStr,
+            locationText: location,
+            weekdayText: weekday,
+            conditionLabel: isMissingAPIWeather ? weatherPlaceholder : resolvedConditionLabel(style: style, condition: condition, location: location),
+            sfSymbolName: condition.sfSymbolName,
+            iconTint: condition.iconTint,
+            iconSize: context.scaled(style.iconSize * element.scale),
+            fontSize: fontSize,
+            metricSlots: metricSlots
+        )
+    }
+
+    private static var weatherPlaceholder: String { "--" }
+
+    private static func resolvedMetricSlots(
+        style: WeatherWidgetStyle,
+        highFormatted: String,
+        lowFormatted: String,
+        humidityFormatted: String,
+        windFormatted: String,
+        feelsLikeFormatted: String
+    ) -> [WeatherMetricSlotRender] {
+        style.normalizedMetricSlots().compactMap { slot in
+            let value: String
+            switch slot {
+            case .none:
+                value = ""
+            case .humidity:
+                value = metricValue(humidityFormatted, suffix: style.humiditySuffix)
+            case .highLow:
+                value = highFormatted.isEmpty || lowFormatted.isEmpty ? "" : "H \(highFormatted) / L \(lowFormatted)"
+            case .wind:
+                value = windFormatted
+            case .feelsLike:
+                value = feelsLikeFormatted
+            }
+            guard !value.isEmpty else { return nil }
+            return WeatherMetricSlotRender(kind: slot, label: metricLabel(for: slot, style: style), value: value)
+        }
+    }
+
+    private static func metricLabel(for slot: WeatherMetricSlotValue, style: WeatherWidgetStyle) -> String {
+        switch slot {
+        case .none:
+            return slot.compactLabel
+        case .humidity:
+            return style.humidityMetricLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? slot.compactLabel : style.humidityMetricLabel
+        case .wind:
+            return style.windMetricLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? slot.compactLabel : style.windMetricLabel
+        case .feelsLike:
+            return style.feelsLikeMetricLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? slot.compactLabel : style.feelsLikeMetricLabel
+        case .highLow:
+            return slot.compactLabel
+        }
+    }
+
+    private static func metricValue(_ value: String, suffix: String) -> String {
+        if value == weatherPlaceholder {
+            return weatherPlaceholder
+        }
+        let suffix = suffix.trimmingCharacters(in: .whitespacesAndNewlines)
+        return suffix.isEmpty ? value : "\(value) \(suffix)"
+    }
+
+    private static func localeIdentifier(for location: String) -> String {
+        let lowercased = location.lowercased()
+        if location.contains("日本") || lowercased.contains("japan") {
+            return "ja_JP"
+        }
+        if location.contains("中国") || lowercased.contains("china") {
+            return "zh_CN"
+        }
+        if location.contains("台灣") || location.contains("台湾") || lowercased.contains("taiwan") {
+            return "zh_Hant_TW"
+        }
+        return Locale.current.identifier
+    }
+
+    private static func localizedConditionLabel(_ condition: WeatherCondition, location: String) -> String {
+        let lowercased = location.lowercased()
+        if location.contains("日本") || lowercased.contains("japan") {
+            switch condition {
+            case .sunny: return "晴"
+            case .clearNight: return "晴夜"
+            case .partlyCloudy: return "晴曇"
+            case .cloudy: return "曇"
+            case .rain: return "雨"
+            case .heavyRain: return "大雨"
+            case .thunder: return "雷雨"
+            case .snow: return "雪"
+            case .fog: return "霧"
+            case .wind: return "風"
+            }
+        }
+        return condition.label
+    }
+
+    private static func resolvedConditionLabel(style: WeatherWidgetStyle, condition: WeatherCondition, location: String) -> String {
+        let override = style.conditionLabelOverride.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !override.isEmpty {
+            return override
+        }
+        return localizedConditionLabel(condition, location: location)
+    }
 }

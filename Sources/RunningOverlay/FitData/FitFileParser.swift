@@ -26,10 +26,21 @@ struct FitFileParser {
     private var definitions: [UInt8: FitDefinitionMessage] = [:]
     private var records: [ActivityRecord] = []
     private var rawLaps: [RawLap] = []
+    private var timerEvents: [TimerEvent] = []
     private var sessionStartDate: Date?
     private var sessionElapsedTime: TimeInterval?
     private var sessionDistanceMeters: Double?
     private var sessionCalories: Double?
+
+    private struct TimerEvent {
+        enum EventType {
+            case start
+            case stop
+        }
+
+        var timestamp: Date
+        var type: EventType
+    }
 
     private struct RawLap {
         var startTimestamp: Date?
@@ -72,23 +83,30 @@ struct FitFileParser {
                 .sorted { $0.elapsedTime < $1.elapsedTime }
             let duration = sessionElapsedTime ?? max(normalizedRecords.map(\.elapsedTime).max() ?? 0, 1)
             let distance = sessionDistanceMeters ?? records.compactMap(\.distanceMeters).max() ?? 0
-            let lapRecords = buildLapRecords(startDate: startDate, totalLaps: rawLaps.count)
+            let lapRecords = buildLapRecords(startDate: startDate)
+            let workoutResult = WorkoutStructureAnalyzer.analyze(laps: lapRecords)
+            let annotatedSegments = buildAnnotatedSegments(startDate: startDate, duration: duration)
             return ActivityTimeline(
                 startDate: startDate,
                 duration: duration,
                 distanceMeters: distance,
                 records: normalizedRecords,
-                laps: lapRecords
+                laps: workoutResult.laps,
+                annotatedSegments: annotatedSegments,
+                workoutStructure: workoutResult.analysis
             )
         }
 
         if let startDate = sessionStartDate, let elapsed = sessionElapsedTime {
+            let annotatedSegments = buildAnnotatedSegments(startDate: startDate, duration: elapsed)
             return ActivityTimeline(
                 startDate: startDate,
                 duration: elapsed,
                 distanceMeters: sessionDistanceMeters ?? 0,
                 records: [],
-                laps: []
+                laps: [],
+                annotatedSegments: annotatedSegments,
+                workoutStructure: .normalAuto
             )
         }
 
@@ -213,6 +231,10 @@ struct FitFileParser {
             if let lap = makeLap(from: fieldValues, architecture: definition.architecture) {
                 rawLaps.append(lap)
             }
+        case 21:
+            if let event = makeTimerEvent(from: fieldValues, architecture: definition.architecture) {
+                timerEvents.append(event)
+            }
         default:
             break
         }
@@ -243,7 +265,9 @@ struct FitFileParser {
         let distance = uint32(fields[5], architecture: architecture).flatMap(validUInt32).map { Double($0) / 100 }
         let speed = uint16(fields[6], architecture: architecture).flatMap(validUInt16).map { Double($0) / 1000 }
         let heartRate = fields[3].flatMap(uint8).flatMap(validUInt8).map(Int.init)
-        let cadence = fields[4].flatMap(uint8).flatMap(validUInt8).map(Int.init)
+        let cadenceInt = fields[4].flatMap(uint8).flatMap(validUInt8).map(Double.init)
+        let cadenceFrac = fields[53].flatMap(uint8).flatMap(validUInt8).map { Double($0) / 128.0 } ?? 0
+        let cadence = cadenceInt.map { Int((($0 + cadenceFrac) * 2).rounded()) }  // strides→spm
         let altitude = uint16(fields[2], architecture: architecture).flatMap(validUInt16).map { Double($0) / 5 - 500 }
         let power = uint16(fields[7], architecture: architecture).flatMap(validUInt16).map(Int.init)
         let calories = uint16(fields[33], architecture: architecture).flatMap(validUInt16).map(Double.init) ?? sessionCalories
@@ -284,7 +308,9 @@ struct FitFileParser {
         let avgSpeed = uint16(fields[13], architecture: architecture).flatMap(validUInt16).map { Double($0) / 1000 }
         let avgHR = fields[15].flatMap(uint8).flatMap(validUInt8).map(Int.init)
         let maxHR = fields[16].flatMap(uint8).flatMap(validUInt8).map(Int.init)
-        let cadence = fields[17].flatMap(uint8).flatMap(validUInt8).map { Int($0) * 2 }  // strides→spm
+        let cadenceInt = fields[17].flatMap(uint8).flatMap(validUInt8).map(Double.init)
+        let cadenceFrac = fields[58].flatMap(uint8).flatMap(validUInt8).map { Double($0) / 128.0 } ?? 0
+        let cadence = cadenceInt.map { Int((($0 + cadenceFrac) * 2).rounded()) }  // strides→spm
         let power = uint16(fields[19], architecture: architecture).flatMap(validUInt16).flatMap { $0 == 0 ? nil : Int($0) }
         let ascent = uint16(fields[21], architecture: architecture).flatMap(validUInt16).map(Int.init)
         return RawLap(
@@ -300,7 +326,25 @@ struct FitFileParser {
         )
     }
 
-    private func buildLapRecords(startDate: Date, totalLaps: Int) -> [LapRecord] {
+    private func makeTimerEvent(from fields: [UInt8: Data], architecture: FitArchitecture) -> TimerEvent? {
+        guard let rawTimestamp = uint32(fields[253], architecture: architecture).flatMap(validUInt32),
+              let event = fields[0].flatMap(uint8).flatMap(validUInt8),
+              event == 0,
+              let eventType = fields[1].flatMap(uint8).flatMap(validUInt8) else {
+            return nil
+        }
+
+        switch eventType {
+        case 0:
+            return TimerEvent(timestamp: fitDate(rawTimestamp), type: .start)
+        case 1, 4:
+            return TimerEvent(timestamp: fitDate(rawTimestamp), type: .stop)
+        default:
+            return nil
+        }
+    }
+
+    private func buildLapRecords(startDate: Date) -> [LapRecord] {
         guard !rawLaps.isEmpty else { return [] }
         var result: [LapRecord] = []
         var cumulativeDistance = 0.0
@@ -315,7 +359,6 @@ struct FitFileParser {
             }
             let endElapsed = startElapsed + raw.totalElapsedTime
             let pace = raw.avgSpeedMS.map { $0 > 0 ? 1000 / $0 : 0 }
-            let kind = lapKind(index: index, total: rawLaps.count, avgSpeedMS: raw.avgSpeedMS)
             result.append(LapRecord(
                 lapIndex: index,
                 startElapsedTime: startElapsed,
@@ -329,7 +372,7 @@ struct FitFileParser {
                 avgCadenceSPM: raw.avgCadenceStrides,
                 avgPowerWatts: raw.avgPowerWatts,
                 totalAscent: raw.totalAscent,
-                kind: kind
+                kind: .unknown
             ))
             cumulativeDistance += raw.totalDistanceMeters
             cumulativeTime = endElapsed
@@ -337,12 +380,37 @@ struct FitFileParser {
         return result
     }
 
-    private func lapKind(index: Int, total: Int, avgSpeedMS: Double?) -> LapKind {
-        let speed = avgSpeedMS ?? 0
-        // First and last laps are warmup/cooldown if they are slow jogs
-        if index == 0, speed < 3.5 { return .warmup }
-        if index == total - 1, speed < 3.5 { return .cooldown }
-        return speed >= 3.5 ? .active : .rest
+    private func buildAnnotatedSegments(startDate: Date, duration: TimeInterval) -> [ActivityAnnotatedSegment] {
+        let sortedEvents = timerEvents.sorted { $0.timestamp < $1.timestamp }
+        var segments: [ActivityAnnotatedSegment] = []
+        var pauseStart: TimeInterval?
+
+        for event in sortedEvents {
+            let elapsed = min(max(event.timestamp.timeIntervalSince(startDate), 0), duration)
+            switch event.type {
+            case .stop:
+                pauseStart = elapsed
+            case .start:
+                if let start = pauseStart, elapsed > start {
+                    segments.append(ActivityAnnotatedSegment(
+                        kind: .timerPaused,
+                        startElapsedTime: start,
+                        endElapsedTime: elapsed
+                    ))
+                }
+                pauseStart = nil
+            }
+        }
+
+        if let start = pauseStart, duration > start {
+            segments.append(ActivityAnnotatedSegment(
+                kind: .timerPaused,
+                startElapsedTime: start,
+                endElapsedTime: duration
+            ))
+        }
+
+        return segments
     }
 
     private func fitDate(_ timestamp: UInt32) -> Date {

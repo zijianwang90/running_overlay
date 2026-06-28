@@ -31,6 +31,13 @@ This directory stores implementation-facing product design references for Runnin
 - [Inspector UI Structured Spec](./panels/inspector/inspector-ui.spec.json): machine-readable Inspector state, component, and token definitions.
 - [Inspector outer mockup](./panels/inspector/inspector-outer.png): legacy Inspector outer reference; current Inspector outer manages added overlays while add-overlay tiles live in Overlay Pool.
 - [Overlay detail mockup](./panels/inspector/overlay-detail-running-gauge.png): detail editor state after selecting an overlay.
+- [Project Settings, Heart Rate Zones, and Font Library UI Spec](./panels/project-settings/project-settings-ui.md): grouped settings modal, HR/pace zone sheet, and font favorite management sheet.
+- [Project Settings, Heart Rate Zones, and Font Library Structured Spec](./panels/project-settings/project-settings-ui.spec.json): machine-readable settings, physiology zone, and font library layout rules.
+- [Project Settings and Font Library mockup](./panels/project-settings/project-settings-font-library.png): shared visual reference for both modals.
+- [Heart Rate Zones mockup](./panels/project-settings/heart-rate-zones.png): simplified HR/pace zone configuration sheet reference.
+- [Font Library inline default mockup](./panels/project-settings/font-library-default-inline.png): default font action shown inline after the favorite family name.
+- [Export UI Spec](./panels/export/export-ui.md): production export dialog with destination, output summary, encoding controls, advanced diagnostics, and footer actions.
+- [Export UI Structured Spec](./panels/export/export-ui.spec.json): machine-readable export dialog hierarchy, controls, states, and non-goals.
 
 ## Overlays
 
@@ -42,3 +49,16 @@ This directory stores implementation-facing product design references for Runnin
 - [Distance Timeline Overlay UI Spec](./overlays/distance-timeline/distance-timeline-overlay-ui.md): progress/timeline overlay style system, custom media slots, variants, and Inspector controls.
 - [Distance Timeline Overlay UI Structured Spec](./overlays/distance-timeline/distance-timeline-overlay-ui.spec.json): machine-readable style variants, customization fields, and model gaps.
 - [Distance Timeline style board](./overlays/distance-timeline/distance-timeline-overlay-styles.png): eight style directions for distance progress overlays.
+- [Interval HUD Bar Overlay UI Spec](./overlays/interval-hud-bar/interval-hud-bar-overlay-ui.md): horizontal interval-training HUD with rep, phase, remaining work, live metrics, HR drop, and lap/zone bar modes.
+- [Interval HUD Bar Overlay UI Structured Spec](./overlays/interval-hud-bar/interval-hud-bar-overlay-ui.spec.json): machine-readable Interval HUD Bar content, bottom bar, recovery, and inspector rules.
+- [Interval HUD Bar mockup](./overlays/interval-hud-bar/interval-hud-bar.png): visual reference for WORK, REST, and HR zone bar states.
+- [Interval HUD Bar zone marker mockup](./overlays/interval-hud-bar/interval-hud-bar-zone-marker.png): visual reference for active zone width and current HR/pace marker controls.
+- [Interval Timeline Overlay UI Spec](./overlays/interval-timeline/interval-timeline-overlay-ui.md): horizontal interval-workout schedule overlay with centered current-lap window and high-repetition handling.
+- [Interval Timeline Overlay UI Structured Spec](./overlays/interval-timeline/interval-timeline-overlay-ui.spec.json): machine-readable layout modes, defaults, inspector sections, and readability rules.
+- [Interval Timeline mockup](./overlays/interval-timeline/interval-timeline-overlay-mockup.png): visual reference for centered current-lap timeline, clipped repetitions, and NOW marker.
+- [Zone Edge Bar Overlay UI Spec](./overlays/zone-edge-bar/zone-edge-bar-overlay-ui.md): independent HR/pace zone strip for edge-pinned or free placement.
+- [Zone Edge Bar Overlay UI Structured Spec](./overlays/zone-edge-bar/zone-edge-bar-overlay-ui.spec.json): machine-readable placement, defaults, marker, and inspector rules.
+- [Weather Widget Overlay UI Spec](./overlays/weather-widget/weather-widget-overlay-ui.md): weather-app-style overlay presets, location/temperature content rules, and shared condition icon guidance.
+- [Weather Widget Overlay UI Structured Spec](./overlays/weather-widget/weather-widget-overlay-ui.spec.json): machine-readable weather widget presets, fields, icon set, and data strategy.
+- [Weather Widget preset board](./overlays/weather-widget/weather-widget-presets.png): five visual directions for weather app plugin-style overlays.
+- [Weather Widget icon set](./overlays/weather-widget/weather-icon-set.png): unified weather condition icon family reference.

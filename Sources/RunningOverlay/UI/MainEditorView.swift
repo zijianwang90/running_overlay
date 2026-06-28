@@ -1,4 +1,5 @@
 import AppKit
+import QuartzCore
 import SwiftUI
 
 struct MainEditorView: View {
@@ -6,11 +7,12 @@ struct MainEditorView: View {
     @State private var showingExportProgress = false
     @State private var activePool: PoolKind = .media
     @State private var mediaPoolWidth: CGFloat = 380
-    @State private var inspectorWidth: CGFloat = 400
+    @State private var inspectorWidth: CGFloat = 460
+    @State private var lastPlaybackTickTime: CFTimeInterval?
 
     private static let mediaPoolMinWidth: CGFloat = 300
     private static let mediaPoolMaxWidth: CGFloat = 720
-    private static let inspectorMinWidth: CGFloat = 320
+    private static let inspectorMinWidth: CGFloat = 460
     private static let inspectorMaxWidth: CGFloat = 720
     private static let previewMinWidth: CGFloat = 520
 
@@ -58,6 +60,14 @@ struct MainEditorView: View {
             statusBar
         }
         .background(EditorTheme.appBackground)
+        .overlay(alignment: .top) {
+            if let toastMessage = project.toastMessage {
+                EditorToastView(message: toastMessage)
+                    .padding(.top, EditorTheme.panelHeaderHeight + 12)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeOut(duration: 0.18), value: project.toastMessage)
         .sheet(isPresented: $project.showingProjectSettings) {
             ProjectSettingsView()
                 .environmentObject(project)
@@ -111,10 +121,20 @@ struct MainEditorView: View {
             project.deleteSelectedItem()
             return .handled
         }
-        .onReceive(Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()) { _ in
-            if !project.isPreviewingMediaPoolItem, project.previewMediaAtPlayhead() == nil {
-                project.advancePlayback(by: 1.0 / 30.0)
+        .onReceive(Timer.publish(every: 1.0 / 60.0, on: .main, in: .common).autoconnect()) { _ in
+            let shouldDrive = project.isPlaying
+                && !project.isPreviewingMediaPoolItem
+                && project.previewMediaAtPlayhead() == nil
+            guard shouldDrive else {
+                lastPlaybackTickTime = nil
+                return
             }
+            let now = CACurrentMediaTime()
+            defer { lastPlaybackTickTime = now }
+            guard let last = lastPlaybackTickTime else { return }
+            // Cap delta so a long stall doesn't fling the playhead forward.
+            let delta = min(max(now - last, 0), 0.25)
+            project.advancePlayback(by: delta)
         }
     }
 
@@ -154,8 +174,12 @@ struct MainEditorView: View {
                 project.showingProjectSettings = true
             } label: {
                 Image(systemName: "gearshape")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(EditorTheme.textSecondary)
+                    .frame(width: 24, height: 24)
             }
-            .buttonStyle(EditorIconButtonStyle())
+            .buttonStyle(.plain)
+            .contentShape(Rectangle())
             .help("Project Settings")
         }
         .font(EditorTheme.captionFont)
@@ -174,6 +198,26 @@ struct MainEditorView: View {
             return true
         }
         return responder is NSTextField
+    }
+}
+
+private struct EditorToastView: View {
+    var message: String
+
+    var body: some View {
+        Text(message)
+            .font(EditorTheme.bodyFont.weight(.semibold))
+            .foregroundStyle(.white)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: 560)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.black.opacity(0.82))
+            )
+            .shadow(color: .black.opacity(0.24), radius: 12, y: 6)
     }
 }
 
@@ -206,6 +250,8 @@ private struct ExportProgressPopover: View {
     @EnvironmentObject private var project: ProjectDocument
     let progress: ExportProgressState
 
+    private static let queueHeight: CGFloat = 220
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -234,24 +280,28 @@ private struct ExportProgressPopover: View {
                     .foregroundStyle(EditorTheme.dangerRed)
             }
 
-            VStack(spacing: 8) {
-                ForEach(progress.items) { item in
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(item.name)
-                                .lineLimit(1)
-                            Spacer()
-                            Text(item.status.rawValue)
-                                .foregroundStyle(statusColor(item.status))
-                            Text("\(Int((item.progress * 100).rounded()))%")
-                                .monospacedDigit()
-                                .frame(width: 42, alignment: .trailing)
+            ScrollView {
+                VStack(spacing: 8) {
+                    ForEach(progress.items) { item in
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(item.name)
+                                    .lineLimit(1)
+                                Spacer()
+                                Text(item.status.rawValue)
+                                    .foregroundStyle(statusColor(item.status))
+                                Text("\(Int((item.progress * 100).rounded()))%")
+                                    .monospacedDigit()
+                                    .frame(width: 42, alignment: .trailing)
+                            }
+                            .font(.caption)
+                            ProgressView(value: item.progress)
                         }
-                        .font(.caption)
-                        ProgressView(value: item.progress)
                     }
                 }
+                .padding(.trailing, 6)
             }
+            .frame(height: Self.queueHeight)
         }
         .padding(14)
         .frame(width: 360)

@@ -22,7 +22,7 @@ struct OverlayPoolView: View {
                 HStack {
                     Spacer()
                     Picker("", selection: $activeCategory) {
-                        ForEach(OverlayCategory.allCases) { category in
+                        ForEach(OverlayCategory.allCases.filter { $0 != .decor }) { category in
                             Text(category.label)
                                 .font(EditorTheme.bodyStrongFont)
                                 .tag(category)
@@ -56,16 +56,16 @@ struct OverlayPoolView: View {
 
 enum OverlayCategory: String, CaseIterable, Identifiable {
     case metrics
-    case charts
-    case route
+    case visuals
+    case decor
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
         case .metrics: "Metrics"
-        case .charts: "Charts"
-        case .route: "Route"
+        case .visuals: "Visuals"
+        case .decor: "Decor"
         }
     }
 }
@@ -82,14 +82,16 @@ struct OverlayTileInfo: Identifiable {
 
     static let all: [OverlayTileInfo] = [
         OverlayTileInfo(type: .heartRate, hint: "bpm", systemImage: "heart", category: .metrics),
+        OverlayTileInfo(type: .heartRateZone, hint: "Z1–Z6", systemImage: "heart.text.square.fill", category: .metrics),
         OverlayTileInfo(type: .pace, hint: "min/km", systemImage: "timer", category: .metrics),
+        OverlayTileInfo(type: .avgPace, hint: "avg", systemImage: "speedometer", category: .metrics),
+        OverlayTileInfo(type: .lapPace, hint: "lap", systemImage: "flag.checkered", category: .metrics),
         OverlayTileInfo(type: .calories, hint: "kcal", systemImage: "flame", category: .metrics),
         OverlayTileInfo(type: .elapsedTime, hint: "duration", systemImage: "clock", category: .metrics),
         OverlayTileInfo(type: .realTime, hint: "clock time", systemImage: "watch.analog", category: .metrics),
+        OverlayTileInfo(type: .date, hint: "year / month / day", systemImage: "calendar", category: .metrics),
         OverlayTileInfo(type: .distance, hint: "km / mi", systemImage: "ruler", category: .metrics),
-        OverlayTileInfo(type: .distanceTimeline, hint: "progress", systemImage: "waveform.path.ecg", category: .charts),
         OverlayTileInfo(type: .elevation, hint: "altitude", systemImage: "mountain.2", category: .metrics),
-        OverlayTileInfo(type: .elevationChart, hint: "profile", systemImage: "chart.line.uptrend.xyaxis", category: .charts),
         OverlayTileInfo(type: .cadence, hint: "spm", systemImage: "figure.run", category: .metrics),
         OverlayTileInfo(type: .power, hint: "watts", systemImage: "bolt", category: .metrics),
         OverlayTileInfo(type: .verticalOscillation, hint: "cm", systemImage: "arrow.up.and.down", category: .metrics),
@@ -99,11 +101,17 @@ struct OverlayTileInfo: Identifiable {
         OverlayTileInfo(type: .groundContactBalance, hint: "L/R", systemImage: "scale.3d", category: .metrics),
         OverlayTileInfo(type: .temperature, hint: "°C / °F", systemImage: "thermometer", category: .metrics),
         OverlayTileInfo(type: .grade, hint: "slope %", systemImage: "arrow.up.right", category: .metrics),
-        OverlayTileInfo(type: .runningGauge, hint: "live gauge", systemImage: "gauge", category: .charts, isAccent: true),
-        OverlayTileInfo(type: .routeMap, hint: "GPS path", systemImage: "map", category: .route, isAccent: true),
-        OverlayTileInfo(type: .lapList, hint: "lap teleprompter", systemImage: "list.number", category: .charts, isAccent: true),
-        OverlayTileInfo(type: .lapCard, hint: "lap recap card", systemImage: "rectangle.badge.checkmark", category: .charts, isAccent: true),
-        OverlayTileInfo(type: .lapLive, hint: "live lap HUD", systemImage: "stopwatch", category: .charts, isAccent: true)
+        OverlayTileInfo(type: .distanceTimeline, hint: "progress", systemImage: "waveform.path.ecg", category: .visuals),
+        OverlayTileInfo(type: .elevationChart, hint: "profile", systemImage: "chart.line.uptrend.xyaxis", category: .visuals),
+        OverlayTileInfo(type: .runningGauge, hint: "live gauge", systemImage: "gauge", category: .visuals, isAccent: true),
+        OverlayTileInfo(type: .intervalHUDBar, hint: "interval HUD", systemImage: "rectangle.split.3x1", category: .visuals, isAccent: true),
+        OverlayTileInfo(type: .intervalTimeline, hint: "interval plan", systemImage: "timeline.selection", category: .visuals, isAccent: true),
+        OverlayTileInfo(type: .zoneEdgeBar, hint: "HR / Pace zones", systemImage: "rectangle.compress.vertical", category: .visuals, isAccent: true),
+        OverlayTileInfo(type: .routeMap, hint: "GPS path", systemImage: "map", category: .visuals, isAccent: true),
+        OverlayTileInfo(type: .weatherWidget, hint: "current weather", systemImage: "cloud.sun.fill", category: .visuals, isAccent: true),
+        OverlayTileInfo(type: .decorSolidColor, hint: "shape", systemImage: "square.fill", category: .decor),
+        OverlayTileInfo(type: .decorIcon, hint: "symbol", systemImage: "star", category: .decor),
+        OverlayTileInfo(type: .decorText, hint: "label", systemImage: "textformat", category: .decor)
     ]
 
     static func tiles(for category: OverlayCategory) -> [OverlayTileInfo] {

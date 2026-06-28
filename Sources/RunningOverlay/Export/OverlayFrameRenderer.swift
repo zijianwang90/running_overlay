@@ -93,7 +93,10 @@ struct OverlayFrameRenderer {
 
         for element in request.layout.elements where element.isVisible {
             let renderContext = OverlayRenderContext(canvasSize: request.size, activity: request.activity, elapsedTime: request.elapsedTime)
+            context.saveGState()
+            context.setAlpha(CGFloat(element.opacity))
             renderElement(element, renderContext: renderContext, cache: &cache)
+            context.restoreGState()
         }
     }
 
@@ -109,14 +112,16 @@ struct OverlayFrameRenderer {
             renderElevationChart(element, renderContext: renderContext, cache: &cache)
         case .runningGauge:
             renderRunningGauge(element, renderContext: renderContext)
+        case .intervalHUDBar:
+            renderIntervalHUDBar(element, renderContext: renderContext)
+        case .intervalTimeline:
+            renderIntervalTimeline(element, renderContext: renderContext)
+        case .zoneEdgeBar:
+            renderZoneEdgeBar(element, renderContext: renderContext)
         case .routeMap:
             renderRouteMap(element, renderContext: renderContext)
-        case .lapList:
-            renderLapList(element, renderContext: renderContext)
-        case .lapCard:
-            renderLapCard(element, renderContext: renderContext)
-        case .lapLive:
-            renderLapLive(element, renderContext: renderContext)
+        case .weatherWidget:
+            renderWeatherWidget(element, renderContext: renderContext)
         default:
             renderTextElement(element, renderContext: renderContext, cache: &cache)
         }
@@ -124,15 +129,33 @@ struct OverlayFrameRenderer {
 
     private static func renderTextElement(_ element: OverlayElement, renderContext: OverlayRenderContext, cache: inout OverlayRenderCache) {
         let renderLayout = OverlayRenderModel.textLayout(for: element, in: renderContext)
+        var drawElement = element
+        if drawElement.style.iconColorsFollowHeartRateZones,
+           let base = renderLayout.dynamicHeartRateZoneColor {
+            drawElement.style.iconColor = base
+        }
+        if drawElement.style.valueColorsFollowHeartRateZones,
+           let base = renderLayout.dynamicHeartRateZoneColor {
+            drawElement.style.valueColor = base
+            drawElement.style.foregroundColor = base
+        }
+        if drawElement.style.labelColorsFollowHeartRateZones,
+           let base = renderLayout.dynamicHeartRateZoneColor {
+            drawElement.style.labelColor = base
+        }
+        if drawElement.style.unitColorsFollowHeartRateZones,
+           let base = renderLayout.dynamicHeartRateZoneColor {
+            drawElement.style.unitColor = base
+        }
         guard renderLayout.preset == .minimal else {
-            renderPresetTextElement(element, renderLayout: renderLayout, renderContext: renderContext)
+            renderPresetTextElement(drawElement, renderLayout: renderLayout, renderContext: renderContext)
             return
         }
 
-        let layout = cache.textLayout(for: element, text: renderLayout.value, fontSize: renderLayout.fontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY)
+        let layout = cache.textLayout(for: drawElement, text: renderLayout.value, fontSize: renderLayout.fontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY)
         let textSize = layout.size
         let rect = OverlayRenderModel.centeredRect(
-            for: element,
+            for: drawElement,
             contentSize: CGSize(width: renderLayout.horizontalPadding * 2, height: renderLayout.verticalPadding * 2),
             textSize: textSize,
             context: renderContext
@@ -140,7 +163,7 @@ struct OverlayFrameRenderer {
 
         drawSupersampledText(
             renderLayout.value,
-            for: element,
+            for: drawElement,
             fontSize: renderLayout.fontSize,
             shadowRadius: renderLayout.shadowRadius,
             shadowOffsetY: renderLayout.shadowOffsetY,
@@ -156,10 +179,29 @@ struct OverlayFrameRenderer {
     }
 
     private static func renderPresetTextElement(
-        _ element: OverlayElement,
+        _ incoming: OverlayElement,
         renderLayout: OverlayTextRenderLayout,
         renderContext: OverlayRenderContext
     ) {
+        var element = incoming
+        if incoming.style.iconColorsFollowHeartRateZones,
+           let base = renderLayout.dynamicHeartRateZoneColor {
+            element.style.iconColor = base
+        }
+        if incoming.style.valueColorsFollowHeartRateZones,
+           let base = renderLayout.dynamicHeartRateZoneColor {
+            element.style.valueColor = base
+            element.style.foregroundColor = base
+            element.style.accentColor = base
+        }
+        if incoming.style.labelColorsFollowHeartRateZones,
+           let base = renderLayout.dynamicHeartRateZoneColor {
+            element.style.labelColor = base
+        }
+        if incoming.style.unitColorsFollowHeartRateZones,
+           let base = renderLayout.dynamicHeartRateZoneColor {
+            element.style.unitColor = base
+        }
         let colors = TextPresetColors(
             foreground: NSColor(element.style.foregroundColor),
             background: NSColor.black.withAlphaComponent(element.style.backgroundOpacity),
@@ -171,17 +213,25 @@ struct OverlayFrameRenderer {
         case .minimal:
             return
         case .pillBadge:
-            drawRoundedRect(rect, color: colors.background, cornerRadius: rect.height / 2)
+            drawTextPresetBackground(rect, element: element, cornerRadius: rect.height / 2)
             let label = renderLayout.components.shortLabel
             let labelSize = textSize(label, for: element, fontSize: renderLayout.labelFontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY)
             let valueSize = textSize(renderLayout.components.value, for: element, fontSize: renderLayout.fontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY)
             let dividerX = rect.minX + renderLayout.horizontalPadding + labelSize.width + renderLayout.horizontalPadding * 0.65
             drawText(label, for: element, fontSize: renderLayout.labelFontSize, in: CGRect(x: rect.minX + renderLayout.horizontalPadding, y: rect.midY - labelSize.height / 2, width: labelSize.width, height: labelSize.height), renderLayout: renderLayout)
-            drawRoundedRect(CGRect(x: dividerX, y: rect.midY - renderLayout.fontSize * 0.45, width: max(renderContext.scaled(1), 1), height: renderLayout.fontSize * 0.9), color: colors.foreground.withAlphaComponent(0.32), cornerRadius: 0)
+            if renderLayout.dividerEnabled {
+                drawRoundedRect(
+                    CGRect(x: dividerX, y: rect.midY - renderLayout.fontSize * 0.45,
+                           width: max(renderLayout.dividerThickness, 1),
+                           height: renderLayout.fontSize * 0.9),
+                    color: NSColor(renderLayout.dividerColor).withAlphaComponent(renderLayout.dividerOpacity),
+                    cornerRadius: 0
+                )
+            }
             drawText(renderLayout.components.value, for: element, fontSize: renderLayout.fontSize, in: CGRect(x: dividerX + renderLayout.horizontalPadding * 0.65, y: rect.midY - valueSize.height / 2, width: valueSize.width, height: valueSize.height), renderLayout: renderLayout)
             drawText(renderLayout.components.unit, for: element, fontSize: renderLayout.unitFontSize, in: CGRect(x: rect.maxX - renderLayout.horizontalPadding - textSize(renderLayout.components.unit, for: element, fontSize: renderLayout.unitFontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY).width, y: rect.midY - renderLayout.unitFontSize * 0.48, width: rect.width, height: renderLayout.unitFontSize * 1.25), renderLayout: renderLayout)
         case .metricCard:
-            drawRoundedRect(rect, color: colors.background, cornerRadius: renderLayout.cornerRadius)
+            drawTextPresetBackground(rect, element: element, cornerRadius: renderLayout.cornerRadius)
             drawText(renderLayout.components.label, for: element, fontSize: renderLayout.labelFontSize, in: CGRect(x: rect.minX + renderLayout.horizontalPadding, y: rect.minY + renderLayout.verticalPadding, width: rect.width, height: renderLayout.labelFontSize * 1.25), renderLayout: renderLayout)
             let baselineY = rect.minY + renderLayout.verticalPadding + renderLayout.labelFontSize * 1.35
             drawText(renderLayout.components.value, for: element, fontSize: renderLayout.fontSize, in: CGRect(x: rect.minX + renderLayout.horizontalPadding, y: baselineY, width: rect.width, height: renderLayout.fontSize * 1.25), renderLayout: renderLayout)
@@ -189,20 +239,73 @@ struct OverlayFrameRenderer {
             drawText(renderLayout.components.unit, for: element, fontSize: renderLayout.unitFontSize, in: CGRect(x: rect.minX + renderLayout.horizontalPadding + valueWidth + renderLayout.horizontalPadding * 0.35, y: baselineY + renderLayout.fontSize * 0.28, width: rect.width, height: renderLayout.unitFontSize * 1.25), renderLayout: renderLayout)
         case .bigNumber:
             let valueFontSize = renderLayout.fontSize * 1.95
-            drawText(renderLayout.components.value, for: element, fontSize: valueFontSize, in: CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: valueFontSize * 1.08), renderLayout: renderLayout)
-            drawText(renderLayout.components.unit, for: element, fontSize: renderLayout.unitFontSize * 1.25, in: CGRect(x: rect.minX, y: rect.maxY - renderLayout.unitFontSize * 1.55, width: rect.width, height: renderLayout.unitFontSize * 1.45), renderLayout: renderLayout, alignment: .center)
+            // Label was previously dropped from this preset's draw path —
+            // honor `showLabel` so the inspector toggle and customLabel field
+            // actually take effect. Position-aware: top stacks above the value,
+            // bottom stacks below it. Side-attached labels are uncommon for a
+            // big number preset; we still respect leading/trailing but render
+            // them as top/bottom respectively to keep the layout legible.
+            var valueY = rect.minY
+            let showLabel = element.style.showLabel && !renderLayout.components.label.isEmpty
+            let labelColor = NSColor(element.style.labelColor).withAlphaComponent(element.style.labelOpacity)
+            let labelAlignment = nsTextAlignment(renderLayout.labelTextAlignment)
+            let valueAlignment = nsTextAlignment(renderLayout.valueTextAlignment)
+            if showLabel && (renderLayout.labelPosition == .top || renderLayout.labelPosition == .leading) {
+                drawText(
+                    renderLayout.components.label,
+                    for: element,
+                    fontSize: renderLayout.labelFontSize,
+                    in: CGRect(x: rect.minX, y: valueY, width: rect.width, height: renderLayout.labelFontSize * 1.25),
+                    renderLayout: renderLayout,
+                    color: labelColor,
+                    alignment: labelAlignment
+                )
+                valueY += renderLayout.labelFontSize * 1.4 + renderLayout.labelSpacing
+            }
+            drawText(renderLayout.components.value, for: element, fontSize: valueFontSize, in: CGRect(x: rect.minX, y: valueY, width: rect.width, height: valueFontSize * 1.08), renderLayout: renderLayout, alignment: valueAlignment)
+            drawText(renderLayout.components.unit, for: element, fontSize: renderLayout.unitFontSize * 1.25, in: CGRect(x: rect.minX, y: rect.maxY - renderLayout.unitFontSize * 1.55, width: rect.width, height: renderLayout.unitFontSize * 1.45), renderLayout: renderLayout, alignment: nsTextAlignment(renderLayout.unitTextAlignment))
+            if showLabel && (renderLayout.labelPosition == .bottom || renderLayout.labelPosition == .trailing) {
+                drawText(
+                    renderLayout.components.label,
+                    for: element,
+                    fontSize: renderLayout.labelFontSize,
+                    in: CGRect(x: rect.minX, y: rect.maxY - renderLayout.labelFontSize * 1.25, width: rect.width, height: renderLayout.labelFontSize * 1.25),
+                    renderLayout: renderLayout,
+                    color: labelColor,
+                    alignment: labelAlignment
+                )
+            }
         case .sportWatch:
-            drawRoundedRect(rect, color: colors.background, cornerRadius: renderLayout.cornerRadius)
+            drawTextPresetBackground(rect, element: element, cornerRadius: renderLayout.cornerRadius)
             strokeRoundedRect(rect, color: colors.foreground.withAlphaComponent(0.35), cornerRadius: renderLayout.cornerRadius, lineWidth: max(renderLayout.fontSize / 28, 1))
             drawText(renderLayout.components.shortLabel, for: element, fontSize: renderLayout.labelFontSize, in: CGRect(x: rect.minX, y: rect.minY + renderLayout.verticalPadding, width: rect.width, height: renderLayout.labelFontSize * 1.25), renderLayout: renderLayout, alignment: .center)
-            drawRoundedRect(CGRect(x: rect.minX + renderLayout.horizontalPadding, y: rect.minY + renderLayout.verticalPadding + renderLayout.labelFontSize * 1.45, width: rect.width - renderLayout.horizontalPadding * 2, height: max(renderLayout.fontSize / 26, 1)), color: colors.foreground.withAlphaComponent(0.28), cornerRadius: 0)
+            if renderLayout.dividerEnabled {
+                drawRoundedRect(CGRect(x: rect.minX + renderLayout.horizontalPadding, y: rect.minY + renderLayout.verticalPadding + renderLayout.labelFontSize * 1.45, width: rect.width - renderLayout.horizontalPadding * 2, height: max(renderLayout.dividerThickness, 1)), color: NSColor(renderLayout.dividerColor).withAlphaComponent(renderLayout.dividerOpacity), cornerRadius: 0)
+            }
             drawText(renderLayout.components.value, for: element, fontSize: renderLayout.fontSize, in: CGRect(x: rect.minX, y: rect.midY - renderLayout.fontSize * 0.55, width: rect.width, height: renderLayout.fontSize * 1.25), renderLayout: renderLayout, alignment: .center)
-            drawRoundedRect(CGRect(x: rect.minX + renderLayout.horizontalPadding, y: rect.maxY - renderLayout.verticalPadding - renderLayout.labelFontSize * 1.55, width: rect.width - renderLayout.horizontalPadding * 2, height: max(renderLayout.fontSize / 26, 1)), color: colors.foreground.withAlphaComponent(0.28), cornerRadius: 0)
+            if renderLayout.dividerEnabled {
+                drawRoundedRect(CGRect(x: rect.minX + renderLayout.horizontalPadding, y: rect.maxY - renderLayout.verticalPadding - renderLayout.labelFontSize * 1.55, width: rect.width - renderLayout.horizontalPadding * 2, height: max(renderLayout.dividerThickness, 1)), color: NSColor(renderLayout.dividerColor).withAlphaComponent(renderLayout.dividerOpacity), cornerRadius: 0)
+            }
             drawText(renderLayout.components.unit, for: element, fontSize: renderLayout.labelFontSize, in: CGRect(x: rect.minX, y: rect.maxY - renderLayout.verticalPadding - renderLayout.labelFontSize * 1.2, width: rect.width, height: renderLayout.labelFontSize * 1.25), renderLayout: renderLayout, alignment: .center)
         case .splitLabel:
             let label = renderLayout.components.shortLabel.map(String.init).joined(separator: " ")
-            drawText(label, for: element, fontSize: renderLayout.labelFontSize, in: CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: renderLayout.labelFontSize * 1.35), renderLayout: renderLayout)
-            drawRoundedRect(CGRect(x: rect.minX, y: rect.minY + renderLayout.labelFontSize * 1.55, width: renderLayout.fontSize * 3.5, height: max(renderLayout.fontSize / 18, 2)), color: NSColor(element.style.accentColor), cornerRadius: 0)
+            drawText(
+                label,
+                for: element,
+                fontSize: renderLayout.labelFontSize,
+                in: CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: renderLayout.labelFontSize * 1.35),
+                renderLayout: renderLayout,
+                color: NSColor(element.style.labelColor).withAlphaComponent(element.style.labelOpacity)
+            )
+            if renderLayout.dividerEnabled {
+                drawRoundedRect(
+                    CGRect(x: rect.minX, y: rect.minY + renderLayout.labelFontSize * 1.55,
+                           width: renderLayout.fontSize * 3.5,
+                           height: max(renderLayout.dividerThickness, 1)),
+                    color: NSColor(renderLayout.dividerColor).withAlphaComponent(renderLayout.dividerOpacity),
+                    cornerRadius: 0
+                )
+            }
             let valueFontSize = renderLayout.fontSize * 1.45
             drawText(renderLayout.components.value, for: element, fontSize: valueFontSize, in: CGRect(x: rect.minX, y: rect.minY + renderLayout.labelFontSize * 1.85, width: rect.width, height: valueFontSize * 1.18), renderLayout: renderLayout)
             let valueWidth = textSize(renderLayout.components.value, for: element, fontSize: valueFontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY).width
@@ -314,17 +417,20 @@ struct OverlayFrameRenderer {
         rect: CGRect,
         colors: TextPresetColors
     ) {
-        drawRoundedRect(rect, color: colors.background, cornerRadius: renderLayout.cornerRadius)
+        let labelColor = NSColor(element.style.labelColor).withAlphaComponent(element.style.labelOpacity)
+        drawTextPresetBackground(rect, element: element, cornerRadius: renderLayout.cornerRadius)
         strokeRoundedRect(rect, color: colors.foreground.withAlphaComponent(0.14), cornerRadius: renderLayout.cornerRadius, lineWidth: 1)
-        let stripeWidth = max(renderLayout.fontSize * 0.12, 4)
+        let stripeWidth = renderLayout.dividerEnabled ? max(renderLayout.dividerThickness * 2.4, 4) : 0
         let stripeRect = CGRect(
             x: rect.minX + renderLayout.horizontalPadding,
             y: rect.minY + renderLayout.verticalPadding,
             width: stripeWidth,
             height: rect.height - renderLayout.verticalPadding * 2
         )
-        drawRoundedRect(stripeRect, color: NSColor(element.style.accentColor), cornerRadius: 2)
-        let textOriginX = stripeRect.maxX + renderLayout.fontSize * 0.34
+        if renderLayout.dividerEnabled {
+            drawRoundedRect(stripeRect, color: NSColor(renderLayout.dividerColor).withAlphaComponent(renderLayout.dividerOpacity), cornerRadius: 2)
+        }
+        let textOriginX = stripeRect.maxX + (renderLayout.dividerEnabled ? renderLayout.fontSize * 0.34 : 0)
         let labelY = rect.minY + renderLayout.verticalPadding
         if element.style.showLabel, !renderLayout.components.label.isEmpty {
             drawText(
@@ -333,7 +439,7 @@ struct OverlayFrameRenderer {
                 fontSize: renderLayout.labelFontSize,
                 in: CGRect(x: textOriginX, y: labelY, width: rect.width, height: renderLayout.labelFontSize * 1.25),
                 renderLayout: renderLayout,
-                color: colors.foreground
+                color: labelColor
             )
         }
         let valueY = labelY + renderLayout.labelFontSize * 1.40
@@ -364,6 +470,7 @@ struct OverlayFrameRenderer {
         colors: TextPresetColors
     ) {
         let accent = NSColor(element.style.accentColor)
+        let labelColor = NSColor(element.style.labelColor).withAlphaComponent(element.style.labelOpacity)
         var cursorY = rect.minY
         if element.style.showLabel, !renderLayout.components.label.isEmpty {
             drawText(
@@ -372,7 +479,7 @@ struct OverlayFrameRenderer {
                 fontSize: renderLayout.labelFontSize,
                 in: CGRect(x: rect.minX, y: cursorY, width: rect.width, height: renderLayout.labelFontSize * 1.25),
                 renderLayout: renderLayout,
-                color: accent
+                color: labelColor
             )
             cursorY += renderLayout.labelFontSize * 1.45
         }
@@ -395,11 +502,16 @@ struct OverlayFrameRenderer {
             )
         }
         cursorY += renderLayout.fontSize * 1.15
-        drawRoundedRect(
-            CGRect(x: rect.minX, y: cursorY + renderLayout.fontSize * 0.04, width: renderLayout.fontSize * 2.2, height: 3),
-            color: accent,
-            cornerRadius: 0
-        )
+        if renderLayout.dividerEnabled {
+            drawRoundedRect(
+                CGRect(x: rect.minX, y: cursorY + renderLayout.fontSize * 0.04,
+                       width: renderLayout.fontSize * 2.2,
+                       height: max(renderLayout.dividerThickness, 1)),
+                color: NSColor(renderLayout.dividerColor).withAlphaComponent(renderLayout.dividerOpacity),
+                cornerRadius: 0
+            )
+        }
+        _ = accent  // accent reserved for future glow/decor; divider now owns the bottom rule
     }
 
     private static func renderDigitalWatch(
@@ -409,7 +521,7 @@ struct OverlayFrameRenderer {
         colors: TextPresetColors
     ) {
         let accent = NSColor(element.style.accentColor)
-        drawRoundedRect(rect, color: colors.background, cornerRadius: renderLayout.cornerRadius)
+        drawTextPresetBackground(rect, element: element, cornerRadius: renderLayout.cornerRadius)
         strokeRoundedRect(rect, color: accent.withAlphaComponent(0.70), cornerRadius: renderLayout.cornerRadius, lineWidth: 1)
         var cursorY = rect.minY + renderLayout.verticalPadding
         if element.style.showLabel, !renderLayout.components.label.isEmpty {
@@ -653,10 +765,15 @@ struct OverlayFrameRenderer {
         let style = renderLayout.style
         let accent = NSColor(style.fillColor)
         let foreground = NSColor(element.style.foregroundColor)
-        let backgroundRect = distanceTimelineBackgroundRect(renderLayout)
+        let backgroundRect = distanceTimelineBackgroundRect(renderLayout, element: element)
 
         if style.backgroundEnabled {
-            drawRoundedRect(backgroundRect, color: NSColor(style.backgroundColor).withAlphaComponent(style.backgroundOpacity), cornerRadius: renderLayout.cornerRadius)
+            drawOverlayBackground(
+                backgroundRect,
+                color: NSColor(element.style.backgroundColor).withAlphaComponent(element.style.backgroundOpacity),
+                cornerRadius: renderLayout.cornerRadius,
+                element: element
+            )
         }
         if style.borderEnabled {
             strokeRoundedRect(
@@ -700,6 +817,9 @@ struct OverlayFrameRenderer {
 
         if style.showAxisLabels || style.showDistancePoints {
             drawDistanceTimelineAxisLabels(renderLayout, element: element, foreground: foreground)
+        }
+        if style.markerDistanceLabelEnabled, style.currentMarkerEnabled {
+            drawDistanceTimelineMarkerDistanceLabel(renderLayout, element: element)
         }
 
         if style.statsBar.visible {
@@ -800,18 +920,50 @@ struct OverlayFrameRenderer {
             drawDistanceTimelineTicks(track, count: max(layout.style.tickDensity, 2), color: foreground.withAlphaComponent(0.52))
         }
         if layout.style.currentMarkerEnabled {
-            let markerSize = track.height * 2.2
-            let markerCenter: CGPoint
-            if layout.style.preset == .route {
-                markerCenter = layout.routeCurrentPoint ?? progressedDistanceTimelineRoutePoints(layout).last ?? CGPoint(x: track.minX + track.width * layout.progress, y: track.midY)
-            } else {
-                markerCenter = CGPoint(x: track.minX + track.width * layout.progress, y: track.midY)
-            }
+            let markerSize = track.height * 2.2 * layout.style.currentMarkerSizeMultiplier
+            let markerCenter = distanceTimelineMarkerCenter(layout)
             NSColor.black.withAlphaComponent(0.38).setFill()
             NSBezierPath(ovalIn: CGRect(x: markerCenter.x - markerSize / 2, y: markerCenter.y - markerSize / 2, width: markerSize, height: markerSize)).fill()
             NSColor(layout.style.currentMarkerColor).setFill()
             drawDistanceTimelineMarker(style: layout.style.currentMarkerStyle, center: markerCenter, size: markerSize * 0.72)
         }
+    }
+
+    private static func distanceTimelineMarkerCenter(_ layout: OverlayDistanceTimelineRenderLayout) -> CGPoint {
+        let track = layout.trackRect
+        if layout.style.preset == .route {
+            return layout.routeCurrentPoint ?? progressedDistanceTimelineRoutePoints(layout).last
+                ?? CGPoint(x: track.minX + track.width * layout.progress, y: track.midY)
+        }
+        return CGPoint(x: track.minX + track.width * layout.progress, y: track.midY)
+    }
+
+    private static func drawDistanceTimelineMarkerDistanceLabel(
+        _ layout: OverlayDistanceTimelineRenderLayout,
+        element: OverlayElement
+    ) {
+        let scale = distanceTimelineStyleScale(layout)
+        let gap = CGFloat(layout.style.markerDistanceLabelOffset * scale)
+        let fontSize = layout.unitFontSize
+        let textH = CGFloat(fontSize * 1.3)
+        let yTop = layout.style.distanceTimelineAxisLabelTextTopY(
+            trackRect: layout.trackRect,
+            placement: layout.style.markerDistanceLabelPlacement,
+            scaledGap: gap,
+            textLineHeight: textH
+        )
+        let center = distanceTimelineMarkerCenter(layout)
+        let color = NSColor(layout.style.axisLabelColor)
+        drawPlainText(
+            layout.markerDistanceText,
+            element: element,
+            fontSize: fontSize,
+            color: color,
+            rect: CGRect(x: center.x - 70, y: yTop, width: 140, height: fontSize * 1.3),
+            alignment: .center,
+            weight: nsFontWeight(layout.style.axisLabelFontWeight),
+            fontName: layout.style.axisLabelFontName
+        )
     }
 
     private static func drawDistanceTimelineMarker(style: DistanceTimelineMarkerStyle, center: CGPoint, size: Double) {
@@ -861,27 +1013,41 @@ struct OverlayFrameRenderer {
     }
 
     private static func drawDistanceTimelineAxisLabels(_ layout: OverlayDistanceTimelineRenderLayout, element: OverlayElement, foreground: NSColor) {
+        guard layout.style.showAxisLabels || layout.style.showDistancePoints else { return }
         let color = NSColor(layout.style.axisLabelColor)
         let fontSize = layout.unitFontSize
+        let scale = distanceTimelineStyleScale(layout)
+        let textH = CGFloat(fontSize * 1.3)
         if layout.style.showAxisLabels {
-            let y = layout.trackRect.maxY + layout.style.distancePointOffset * distanceTimelineStyleScale(layout)
-            drawPlainText(layout.startText, element: element, fontSize: fontSize, color: color, rect: CGRect(x: layout.trackRect.minX, y: y, width: layout.trackRect.width / 2, height: fontSize * 1.3), alignment: .left, weight: nsFontWeight(layout.style.axisLabelFontWeight), fontName: layout.style.axisLabelFontName)
-            drawPlainText(layout.finishText, element: element, fontSize: fontSize, color: color, rect: CGRect(x: layout.trackRect.midX, y: y, width: layout.trackRect.width / 2, height: fontSize * 1.3), alignment: .right, weight: nsFontWeight(layout.style.axisLabelFontWeight), fontName: layout.style.axisLabelFontName)
+            let gapEndpoints = CGFloat(layout.style.distancePointOffset * scale)
+            let yEndpoints = layout.style.distanceTimelineAxisLabelTextTopY(
+                trackRect: layout.trackRect,
+                placement: layout.style.axisEndpointLabelPlacement,
+                scaledGap: gapEndpoints,
+                textLineHeight: textH
+            )
+            drawPlainText(layout.startText, element: element, fontSize: fontSize, color: color, rect: CGRect(x: layout.trackRect.minX, y: yEndpoints, width: layout.trackRect.width / 2, height: fontSize * 1.3), alignment: .left, weight: nsFontWeight(layout.style.axisLabelFontWeight), fontName: layout.style.axisLabelFontName)
+            drawPlainText(layout.finishText, element: element, fontSize: fontSize, color: color, rect: CGRect(x: layout.trackRect.midX, y: yEndpoints, width: layout.trackRect.width / 2, height: fontSize * 1.3), alignment: .right, weight: nsFontWeight(layout.style.axisLabelFontWeight), fontName: layout.style.axisLabelFontName)
         }
-        if layout.style.showDistancePoints {
-            let denominator = Double(layout.distancePointLabels.count + 1)
-            let y = layout.trackRect.maxY + layout.style.distancePointOffset * distanceTimelineStyleScale(layout)
-            for (index, label) in layout.distancePointLabels.enumerated() {
-                let centerX = layout.trackRect.minX + layout.trackRect.width * Double(index + 1) / denominator
-                drawPlainText(label, element: element, fontSize: fontSize, color: color, rect: CGRect(x: centerX - 45, y: y, width: 90, height: fontSize * 1.3), alignment: .center, weight: nsFontWeight(layout.style.axisLabelFontWeight), fontName: layout.style.axisLabelFontName)
-            }
+        guard layout.style.showDistancePoints, !layout.distancePointLabels.isEmpty else { return }
+        let gapMid = CGFloat(layout.style.midpointAxisLabelOffset * scale)
+        let yMidpoints = layout.style.distanceTimelineAxisLabelTextTopY(
+            trackRect: layout.trackRect,
+            placement: layout.style.axisMidpointLabelPlacement,
+            scaledGap: gapMid,
+            textLineHeight: textH
+        )
+        let denominator = Double(layout.distancePointLabels.count + 1)
+        for (index, label) in layout.distancePointLabels.enumerated() {
+            let centerX = layout.trackRect.minX + layout.trackRect.width * Double(index + 1) / denominator
+            drawPlainText(label, element: element, fontSize: fontSize, color: color, rect: CGRect(x: centerX - 45, y: yMidpoints, width: 90, height: fontSize * 1.3), alignment: .center, weight: nsFontWeight(layout.style.axisLabelFontWeight), fontName: layout.style.axisLabelFontName)
         }
     }
 
     private static func drawDistanceTimelineStatsBar(_ layout: OverlayDistanceTimelineRenderLayout, element: OverlayElement, foreground: NSColor, accent: NSColor) {
         guard !layout.statsBarItems.isEmpty else { return }
         let config = layout.style.statsBar
-        let rect = distanceTimelineStatsBarRect(layout, config: config)
+        guard let rect = layout.distanceTimelineStatsBarRect() else { return }
         drawSharedStatsBar(
             rect: rect,
             items: layout.statsBarItems,
@@ -929,87 +1095,19 @@ struct OverlayFrameRenderer {
         )
     }
 
-    private static func distanceTimelineStatsBarRect(_ layout: OverlayDistanceTimelineRenderLayout, config: DistanceTimelineStatsBarConfig) -> CGRect {
-        let scale = distanceTimelineStyleScale(layout)
-        let baseHeight = config.height * scale
-        let autoWidth = config.placement.isVertical ? max(min(config.height * scale, layout.rect.width * 0.34), distanceTimelineStatsBarMinimumVerticalWidth(layout)) : layout.rect.width
-        let width = config.width > 0 ? min(config.width * scale, layout.rect.width * 1.4) : autoWidth
-        let height = config.placement.isVertical ? max(baseHeight, distanceTimelineStatsBarMinimumVerticalHeight(layout)) : baseHeight
-        let offsetX = config.offsetX * scale
-        let offsetY = config.offsetY * scale
-        let centeredX = layout.rect.minX + (layout.rect.width - width) / 2 + offsetX
-        if config.inside {
-            switch config.placement {
-            case .topAttached, .insideTop:
-                let paddingY = layout.style.paddingY * scale
-                let naturalY = layout.rect.minY + paddingY + offsetY
-                let safeY = layout.trackRect.minY - height - offsetY
-                return CGRect(x: centeredX, y: min(naturalY, max(safeY, layout.rect.minY + paddingY)), width: width, height: height)
-            case .bottomAttached, .insideBottom:
-                let paddingY = layout.style.paddingY * scale
-                let naturalY = layout.rect.maxY - height - paddingY - offsetY
-                let safeY = layout.trackRect.maxY + offsetY
-                return CGRect(x: centeredX, y: max(naturalY, safeY), width: width, height: height)
-            case .leftAttached:
-                return CGRect(x: layout.rect.minX + layout.style.paddingX * scale + offsetX, y: layout.rect.minY + (layout.rect.height - height) / 2 + offsetY, width: width, height: height)
-            case .rightAttached:
-                return CGRect(x: layout.rect.maxX - width - layout.style.paddingX * scale - offsetX, y: layout.rect.minY + (layout.rect.height - height) / 2 + offsetY, width: width, height: height)
-            }
-        }
-        switch config.placement {
-        case .topAttached, .insideTop:
-            return CGRect(x: centeredX, y: layout.rect.minY - height - offsetY, width: width, height: height)
-        case .bottomAttached, .insideBottom:
-            return CGRect(x: centeredX, y: layout.rect.maxY + offsetY, width: width, height: height)
-        case .leftAttached:
-            return CGRect(x: layout.rect.minX - width - offsetX, y: layout.rect.minY + (layout.rect.height - height) / 2 + offsetY, width: width, height: height)
-        case .rightAttached:
-            return CGRect(x: layout.rect.maxX + offsetX, y: layout.rect.minY + (layout.rect.height - height) / 2 + offsetY, width: width, height: height)
-        }
-    }
-
     private static func distanceTimelineStyleScale(_ layout: OverlayDistanceTimelineRenderLayout) -> Double {
-        layout.rect.width / max(layout.style.width, 1)
+        layout.distanceTimelineStyleScale
     }
 
-    private static func distanceTimelineStatsBarMinimumVerticalHeight(_ layout: OverlayDistanceTimelineRenderLayout) -> Double {
-        let count = max(layout.statsBarItems.count, 1)
-        let gap = layout.style.statsBar.itemSpacing * distanceTimelineStyleScale(layout)
-        let rowHeight = layout.percentFontSize * 1.25 + max(layout.unitFontSize * 0.72, 7) + 8 * distanceTimelineStyleScale(layout)
-        return Double(count) * rowHeight + Double(max(count - 1, 0)) * gap
-    }
-
-    private static func distanceTimelineStatsBarMinimumVerticalWidth(_ layout: OverlayDistanceTimelineRenderLayout) -> Double {
-        let valueFont = layout.percentFontSize
-        let labelFont = max(layout.unitFontSize * 0.72, 7)
-        let maxValueWidth = layout.statsBarItems.map {
-            Double(($0.value + ($0.unit.isEmpty ? "" : " \($0.unit)")).count) * valueFont * 0.62
-        }.max() ?? 0
-        let maxLabelWidth = layout.statsBarItems.map {
-            Double($0.label.uppercased().count) * labelFont * 0.58
-        }.max() ?? 0
-        return max(maxValueWidth, maxLabelWidth) + 20 * distanceTimelineStyleScale(layout)
-    }
-
-    private static func distanceTimelineBackgroundRect(_ layout: OverlayDistanceTimelineRenderLayout) -> CGRect {
-        var rect = layout.rect
+    private static func distanceTimelineBackgroundRect(_ layout: OverlayDistanceTimelineRenderLayout, element: OverlayElement) -> CGRect {
         let scale = distanceTimelineStyleScale(layout)
-        let pad = 6 * scale
-        if layout.style.showAxisLabels || layout.style.showDistancePoints {
-            let y = layout.trackRect.maxY + layout.style.distancePointOffset * scale
-            let labels = CGRect(
-                x: layout.rect.minX,
-                y: y - layout.unitFontSize * 0.85,
-                width: layout.rect.width,
-                height: layout.unitFontSize * 1.7
-            ).insetBy(dx: -pad, dy: -pad * 0.5)
-            rect = rect.union(labels)
-        }
+        let padX = element.style.backgroundPaddingX * scale
+        let padY = element.style.backgroundPaddingY * scale
+        var rect = layout.distanceTimelineContentBounds().insetBy(dx: -padX, dy: -padY)
         if layout.style.statsBar.visible,
            layout.style.statsBar.inside,
-           !layout.statsBarItems.isEmpty {
-            let statsRect = distanceTimelineStatsBarRect(layout, config: layout.style.statsBar)
-            rect = rect.union(statsRect.insetBy(dx: -pad, dy: -pad))
+           let statsRect = layout.distanceTimelineStatsBarRect() {
+            rect = rect.union(statsRect.insetBy(dx: -padX, dy: -padY))
         }
         return rect
     }
@@ -1059,23 +1157,31 @@ struct OverlayFrameRenderer {
     ) {
         let renderLayout = OverlayRenderModel.elevationChartLayout(for: element, in: renderContext)
         let style = renderLayout.style
-        if style.backgroundEnabled {
-            drawRoundedRect(
-                renderLayout.rect,
-                color: NSColor(style.backgroundColor).withAlphaComponent(style.backgroundOpacity),
-                cornerRadius: renderLayout.cornerRadius
+        let backgroundRect = renderLayout.rect.insetBy(
+            dx: -renderContext.scaled(element.style.backgroundPaddingX * element.scale),
+            dy: -renderContext.scaled(element.style.backgroundPaddingY * element.scale)
+        )
+        let backgroundCornerRadius = renderContext.scaled(element.style.backgroundRadius * element.scale)
+        if element.style.backgroundEnabled {
+            drawOverlayBackground(
+                backgroundRect,
+                color: NSColor(element.style.backgroundColor).withAlphaComponent(element.style.backgroundOpacity),
+                cornerRadius: backgroundCornerRadius,
+                element: element
             )
-            if style.borderEnabled {
-                let border = NSBezierPath(roundedRect: renderLayout.rect.insetBy(dx: 0.5, dy: 0.5), xRadius: renderLayout.cornerRadius, yRadius: renderLayout.cornerRadius)
-                border.lineWidth = 1
-                NSColor.white.withAlphaComponent(style.borderOpacity).setStroke()
-                border.stroke()
-            }
+        }
+        if element.style.borderEnabled {
+            strokeRoundedRect(
+                backgroundRect.insetBy(dx: 0.5, dy: 0.5),
+                color: NSColor(element.style.borderColor).withAlphaComponent(element.style.borderOpacity),
+                cornerRadius: backgroundCornerRadius,
+                lineWidth: element.style.borderWidth
+            )
         }
 
         let chartRect = CGRect(
             x: renderLayout.rect.minX + renderLayout.horizontalPadding,
-            y: renderLayout.rect.maxY - renderLayout.verticalPadding - renderLayout.chartHeight - (style.statsBar.visible ? renderContext.scaled(style.statsBar.height * element.scale + 8) : 0),
+            y: renderLayout.rect.minY + renderLayout.verticalPadding,
             width: renderLayout.rect.width - renderLayout.horizontalPadding * 2,
             height: renderLayout.chartHeight
         )
@@ -1084,17 +1190,17 @@ struct OverlayFrameRenderer {
             let value = renderLayout.bigNumberText.value + (renderLayout.bigNumberText.unit.isEmpty ? "" : " \(renderLayout.bigNumberText.unit)")
             drawGaugePlainText(
                 value,
-                fontName: element.style.fontName,
+                fontName: style.bigNumberFontName,
                 fontSize: renderLayout.valueFontSize,
                 color: NSColor(element.style.foregroundColor),
                 rect: CGRect(x: renderLayout.rect.minX, y: renderLayout.rect.minY + renderLayout.verticalPadding, width: renderLayout.rect.width, height: renderLayout.valueFontSize * 1.2),
                 alignment: .center,
-                weight: .semibold,
+                weight: nsFontWeight(style.bigNumberFontWeight),
                 monospacedDigits: true
             )
             drawGaugePlainText(
                 renderLayout.bigNumberText.shortLabel,
-                fontName: element.style.fontName,
+                fontName: style.bigNumberFontName,
                 fontSize: renderLayout.labelFontSize,
                 color: NSColor(element.style.foregroundColor).withAlphaComponent(0.62),
                 rect: CGRect(x: renderLayout.rect.minX, y: renderLayout.rect.minY + renderLayout.verticalPadding + renderLayout.valueFontSize * 1.05, width: renderLayout.rect.width, height: renderLayout.labelFontSize * 1.4),
@@ -1110,28 +1216,124 @@ struct OverlayFrameRenderer {
                 drawLine(from: CGPoint(x: chartRect.minX, y: y), to: CGPoint(x: chartRect.maxX, y: y), color: NSColor.white.withAlphaComponent(0.14), lineWidth: 1)
             }
         }
-        if style.fillEnabled, style.chartStyle == .area {
-            drawElevationArea(samples: renderLayout.samples, in: chartRect, color: NSColor(style.dualAreaEnabled ? style.upperFillColor : style.fillStartColor).withAlphaComponent(style.fillOpacity))
+        if style.axisLineEnabled {
+            drawLine(
+                from: CGPoint(x: chartRect.minX, y: chartRect.minY),
+                to: CGPoint(x: chartRect.minX, y: chartRect.maxY),
+                color: NSColor(element.style.foregroundColor).withAlphaComponent(0.22),
+                lineWidth: 1
+            )
         }
-        drawElevationPath(samples: renderLayout.samples, in: chartRect, color: NSColor(style.lineColor).withAlphaComponent(style.lineOpacity), lineWidth: renderLayout.lineWidth)
+        if style.fillEnabled, style.chartStyle == .area {
+            if style.dualAreaEnabled {
+                drawElevationArea(
+                    samples: renderLayout.samples,
+                    in: chartRect,
+                    startColor: NSColor(style.upperFillColor).withAlphaComponent(style.fillOpacity),
+                    endColor: NSColor(style.fillEndColor).withAlphaComponent(max(style.fillOpacity * 0.15, 0.04)),
+                    smoothed: style.smoothingEnabled
+                )
+                let splitX = chartRect.minX + chartRect.width * min(max(renderLayout.progress, 0), 1)
+                NSGraphicsContext.saveGraphicsState()
+                NSBezierPath(rect: CGRect(x: splitX, y: chartRect.minY, width: chartRect.maxX - splitX, height: chartRect.height)).addClip()
+                drawElevationArea(
+                    samples: renderLayout.samples,
+                    in: chartRect,
+                    startColor: NSColor(style.lowerFillColor).withAlphaComponent(style.fillOpacity),
+                    endColor: NSColor(style.fillEndColor).withAlphaComponent(max(style.fillOpacity * 0.15, 0.04)),
+                    smoothed: style.smoothingEnabled
+                )
+                NSGraphicsContext.restoreGraphicsState()
+            } else {
+                drawElevationArea(
+                    samples: renderLayout.samples,
+                    in: chartRect,
+                    startColor: NSColor(style.fillStartColor).withAlphaComponent(style.fillOpacity),
+                    endColor: NSColor(style.fillEndColor).withAlphaComponent(max(style.fillOpacity * 0.15, 0.04)),
+                    smoothed: style.smoothingEnabled
+                )
+            }
+        }
+        if style.glowEnabled {
+            drawElevationPath(
+                samples: renderLayout.samples,
+                in: chartRect,
+                color: NSColor(style.lineColor).withAlphaComponent(style.glowOpacity),
+                lineWidth: renderLayout.lineWidth + 7,
+                smoothed: style.smoothingEnabled
+            )
+        }
+        drawElevationPath(
+            samples: renderLayout.samples,
+            in: chartRect,
+            color: NSColor(style.lineColor).withAlphaComponent(style.lineOpacity),
+            lineWidth: renderLayout.lineWidth,
+            smoothed: style.smoothingEnabled
+        )
 
         if style.currentMarkerEnabled {
             let marker = elevationMarkerPoint(samples: renderLayout.samples, progress: renderLayout.progress, in: chartRect)
-            drawLine(from: CGPoint(x: marker.x, y: chartRect.minY), to: CGPoint(x: marker.x, y: chartRect.maxY), color: NSColor.white.withAlphaComponent(0.28), lineWidth: 1)
+            if !style.bigNumbersEnabled, style.markerPlayheadLineEnabled, marker.x > chartRect.minX + 1.5 {
+                let cursor = NSBezierPath()
+                cursor.move(to: CGPoint(x: marker.x, y: chartRect.minY))
+                cursor.line(to: CGPoint(x: marker.x, y: chartRect.maxY))
+                cursor.lineWidth = 1
+                cursor.setLineDash([3, 4], count: 2, phase: 0)
+                NSColor.white.withAlphaComponent(0.28).setStroke()
+                cursor.stroke()
+            }
+            NSColor(style.markerColor).withAlphaComponent(0.20).setFill()
+            NSBezierPath(ovalIn: CGRect(x: marker.x - 13.5, y: marker.y - 13.5, width: 27, height: 27)).fill()
             NSColor(style.markerColor).setFill()
-            NSBezierPath(ovalIn: CGRect(x: marker.x - 5, y: marker.y - 5, width: 10, height: 10)).fill()
+            NSBezierPath(ovalIn: CGRect(x: marker.x - 4, y: marker.y - 4, width: 8, height: 8)).fill()
             NSColor.white.withAlphaComponent(0.9).setStroke()
-            let ring = NSBezierPath(ovalIn: CGRect(x: marker.x - 6, y: marker.y - 6, width: 12, height: 12))
+            let ring = NSBezierPath(ovalIn: CGRect(x: marker.x - 6.5, y: marker.y - 6.5, width: 13, height: 13))
             ring.lineWidth = 2
             ring.stroke()
+            if style.markerLabelEnabled {
+                let label = renderLayout.label.replacingOccurrences(of: "Elevation ", with: "")
+                let fontSize = max(renderLayout.labelFontSize * 0.92, renderContext.scaled(10 * element.scale))
+                let font = NSFont(name: element.style.fontName, size: fontSize) ?? .systemFont(ofSize: fontSize, weight: .semibold)
+                let labelSize = (label as NSString).size(withAttributes: [.font: font])
+                let tooltipSize = CGSize(width: max(labelSize.width + 16, 48), height: max(labelSize.height + 10, 24))
+                let tooltipX = min(max(marker.x - tooltipSize.width / 2, chartRect.minX), chartRect.maxX - tooltipSize.width)
+                let tooltipY = max(marker.y - tooltipSize.height - 10, chartRect.minY + 2)
+                let tooltipRect = CGRect(origin: CGPoint(x: tooltipX, y: tooltipY), size: tooltipSize)
+                NSColor.black.withAlphaComponent(0.68).setFill()
+                NSBezierPath(roundedRect: tooltipRect, xRadius: 7, yRadius: 7).fill()
+                NSColor.white.withAlphaComponent(0.16).setStroke()
+                let border = NSBezierPath(roundedRect: tooltipRect, xRadius: 7, yRadius: 7)
+                border.lineWidth = 1
+                border.stroke()
+                drawGaugePlainText(
+                    label,
+                    fontName: element.style.fontName,
+                    fontSize: fontSize,
+                    color: .white,
+                    rect: tooltipRect.insetBy(dx: 8, dy: 4),
+                    alignment: .center,
+                    weight: .semibold,
+                    monospacedDigits: true
+                )
+            }
         }
 
         if style.statsBar.visible, !renderLayout.statsBarItems.isEmpty {
+            let availableStatsWidth = renderLayout.rect.width - renderLayout.horizontalPadding * 2
+            let statsWidth = style.statsBar.width > 0
+                ? min(renderContext.scaled(style.statsBar.width * element.scale), availableStatsWidth)
+                : availableStatsWidth
+            let statsHeight = renderContext.scaled(style.statsBar.height * element.scale)
+            let statsOffsetX = renderContext.scaled(style.statsBar.offsetX * element.scale)
+            let statsOffsetY = renderContext.scaled(style.statsBar.offsetY * element.scale)
+            let statsY = style.statsBar.inside
+                ? renderLayout.rect.maxY - renderLayout.verticalPadding - statsHeight + statsOffsetY
+                : renderLayout.rect.maxY + renderContext.scaled(8 * element.scale) + statsOffsetY
             let statsRect = CGRect(
-                x: renderLayout.rect.minX + renderLayout.horizontalPadding,
-                y: renderLayout.rect.maxY - renderLayout.verticalPadding - renderContext.scaled(style.statsBar.height * element.scale),
-                width: renderLayout.rect.width - renderLayout.horizontalPadding * 2,
-                height: renderContext.scaled(style.statsBar.height * element.scale)
+                x: renderLayout.rect.midX - statsWidth / 2 + statsOffsetX,
+                y: statsY,
+                width: statsWidth,
+                height: statsHeight
             )
             drawSharedStatsBar(
                 rect: statsRect,
@@ -1145,7 +1347,7 @@ struct OverlayFrameRenderer {
                 labelFontWeight: style.statsBar.labelFontWeight,
                 labelColor: NSColor(style.statsBar.labelColor),
                 backgroundOpacity: style.statsBar.backgroundOpacity,
-                cornerRadius: style.statsBar.cornerRadius,
+                cornerRadius: style.statsBar.inside ? 0 : style.statsBar.cornerRadius,
                 dividerOpacity: style.statsBar.dividerOpacity,
                 itemSpacing: style.statsBar.itemSpacing,
                 stacked: style.statsBar.placement.isVertical || style.statsBar.layoutMode == .stack
@@ -1153,209 +1355,54 @@ struct OverlayFrameRenderer {
         }
     }
 
-    private static func renderLapList(_ element: OverlayElement, renderContext: OverlayRenderContext) {
-        let layout = OverlayRenderModel.lapListLayout(for: element, in: renderContext)
-        let fgColor = NSColor(element.style.foregroundColor)
+    private static func renderWeatherWidget(_ element: OverlayElement, renderContext: OverlayRenderContext) {
+        let layout = OverlayRenderModel.weatherWidgetLayout(for: element, in: renderContext)
+        let rect = layout.rect
 
-        for row in layout.rows {
-            let bg = NSColor.black.withAlphaComponent(layout.backgroundOpacity * row.rowOpacity)
-            let path = NSBezierPath(roundedRect: row.rowRect, xRadius: layout.rowCornerRadius, yRadius: layout.rowCornerRadius)
-            bg.setFill()
-            path.fill()
-
-            if layout.progressBarEnabled && row.progressFraction > 0 {
-                let barWidth = row.rowRect.width * row.progressFraction
-                let barRect = CGRect(x: row.rowRect.minX, y: row.rowRect.minY, width: barWidth, height: row.rowRect.height)
-                let progressBg = NSColor(layout.progressColor).withAlphaComponent(layout.progressOpacity * row.rowOpacity)
-                let barPath = NSBezierPath(roundedRect: barRect, xRadius: layout.rowCornerRadius, yRadius: layout.rowCornerRadius)
-                progressBg.setFill()
-                barPath.fill()
-            }
-
-            if row.isCurrent {
-                let borderColor = fgColor.withAlphaComponent(0.55 * row.rowOpacity)
-                let borderPath = NSBezierPath(roundedRect: row.rowRect.insetBy(dx: 0.5, dy: 0.5), xRadius: layout.rowCornerRadius, yRadius: layout.rowCornerRadius)
-                borderPath.lineWidth = 1
-                borderColor.setStroke()
-                borderPath.stroke()
-            }
-
-            let textColor = fgColor.withAlphaComponent(row.rowOpacity)
-            let padding: Double = layout.rowHeight * 0.25
-            let contentRect = row.rowRect.insetBy(dx: padding, dy: 0)
-            let columnCount = row.columnTexts.count
-            guard columnCount > 0 else { continue }
-            let colWidth = contentRect.width / Double(columnCount)
-
-            for (i, text) in row.columnTexts.enumerated() {
-                let colRect = CGRect(
-                    x: contentRect.minX + Double(i) * colWidth,
-                    y: contentRect.minY,
-                    width: colWidth,
-                    height: contentRect.height
-                )
-                let font = NSFont(name: element.style.fontName, size: layout.fontSize)
-                    ?? .systemFont(ofSize: layout.fontSize, weight: nsFontWeight(element.style.fontWeight))
-                let attrs: [NSAttributedString.Key: Any] = [
-                    .font: font,
-                    .foregroundColor: textColor
-                ]
-                let str = NSAttributedString(string: text, attributes: attrs)
-                let strSize = str.size()
-                let textX = i == 0 ? colRect.minX : colRect.midX - strSize.width / 2
-                let textY = colRect.midY - strSize.height / 2
-                str.draw(at: CGPoint(x: textX, y: textY))
-            }
-        }
-    }
-
-    private static func renderLapCard(_ element: OverlayElement, renderContext: OverlayRenderContext) {
-        let layout = OverlayRenderModel.lapCardLayout(for: element, in: renderContext)
-        let fgColor = NSColor(element.style.foregroundColor)
-        let bg = NSColor.black.withAlphaComponent(layout.backgroundOpacity)
-        let cardPath = NSBezierPath(roundedRect: layout.rect, xRadius: layout.cornerRadius, yRadius: layout.cornerRadius)
+        let bg = NSColor(layout.style.cardBackgroundColor).withAlphaComponent(layout.style.cardBackgroundOpacity)
         bg.setFill()
-        cardPath.fill()
+        NSBezierPath(roundedRect: rect, xRadius: layout.style.cardCornerRadius, yRadius: layout.style.cardCornerRadius).fill()
 
-        let font = NSFont(name: element.style.fontName, size: layout.fontSize)
-            ?? .systemFont(ofSize: layout.fontSize, weight: nsFontWeight(element.style.fontWeight))
-        let smallFont = NSFont(name: element.style.fontName, size: layout.fontSize * 0.78)
-            ?? .systemFont(ofSize: layout.fontSize * 0.78)
+        let fg = NSColor.white
+        let fgMuted = NSColor.white.withAlphaComponent(0.65)
 
-        var curY = layout.rect.minY + layout.verticalPadding
-
-        // Header
-        let headerAttrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: fgColor]
-        let headerStr = NSAttributedString(string: layout.headerText, attributes: headerAttrs)
-        headerStr.draw(at: CGPoint(x: layout.rect.minX + layout.horizontalPadding, y: curY))
-        curY += layout.headerHeight
-
-        // Stat rows
-        for (label, value) in layout.columnRows {
-            let labelAttrs: [NSAttributedString.Key: Any] = [.font: smallFont, .foregroundColor: fgColor.withAlphaComponent(0.6)]
-            let valueAttrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: fgColor]
-            let labelStr = NSAttributedString(string: label, attributes: labelAttrs)
-            let valueStr = NSAttributedString(string: value, attributes: valueAttrs)
-            let rowY = curY + (layout.rowHeight - layout.fontSize) / 2
-            labelStr.draw(at: CGPoint(x: layout.rect.minX + layout.horizontalPadding, y: rowY))
-            let valueSize = valueStr.size()
-            valueStr.draw(at: CGPoint(x: layout.rect.maxX - layout.horizontalPadding - valueSize.width, y: rowY))
-            curY += layout.rowHeight
-        }
-
-        // Recovery section
-        if layout.showRecoverySection {
-            curY += layout.dividerHeight / 2
-            let divRect = CGRect(x: layout.rect.minX + layout.horizontalPadding, y: curY,
-                                 width: layout.rect.width - layout.horizontalPadding * 2, height: 1)
-            NSColor(element.style.foregroundColor).withAlphaComponent(0.25).setFill()
-            NSBezierPath(rect: divRect).fill()
-            curY += layout.dividerHeight / 2
-
-            let recHeaderAttrs: [NSAttributedString.Key: Any] = [.font: smallFont, .foregroundColor: fgColor.withAlphaComponent(0.55)]
-            NSAttributedString(string: "Recovery", attributes: recHeaderAttrs)
-                .draw(at: CGPoint(x: layout.rect.minX + layout.horizontalPadding, y: curY))
-            curY += layout.recoveryHeaderHeight
-
-            for (label, value) in layout.recoveryRows {
-                let labelAttrs: [NSAttributedString.Key: Any] = [.font: smallFont, .foregroundColor: fgColor.withAlphaComponent(0.6)]
-                let valueAttrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor(element.style.accentColor)]
-                let labelStr = NSAttributedString(string: label, attributes: labelAttrs)
-                let valueStr = NSAttributedString(string: value, attributes: valueAttrs)
-                let rowY = curY + (layout.rowHeight - layout.fontSize) / 2
-                labelStr.draw(at: CGPoint(x: layout.rect.minX + layout.horizontalPadding, y: rowY))
-                let valueSize = valueStr.size()
-                valueStr.draw(at: CGPoint(x: layout.rect.maxX - layout.horizontalPadding - valueSize.width, y: rowY))
-                curY += layout.rowHeight
-            }
-
-            if let progress = layout.recoveryProgress, progress > 0 {
-                let barH = layout.fontSize * 0.4
-                let barRect = CGRect(x: layout.rect.minX + layout.horizontalPadding, y: curY,
-                                     width: (layout.rect.width - layout.horizontalPadding * 2) * progress, height: barH)
-                NSColor(layout.progressColor).withAlphaComponent(0.55).setFill()
-                NSBezierPath(roundedRect: barRect, xRadius: barH / 2, yRadius: barH / 2).fill()
+        // Icon
+        if layout.style.showIcon, let symbol = NSImage(systemSymbolName: layout.sfSymbolName, accessibilityDescription: nil) {
+            let cfg = NSImage.SymbolConfiguration(pointSize: layout.iconSize, weight: .regular)
+            if let configured = symbol.withSymbolConfiguration(cfg) {
+                let iconColor = NSColor(layout.iconTint)
+                let tinted = NSImage(size: configured.size)
+                tinted.lockFocus()
+                iconColor.setFill()
+                NSRect(origin: .zero, size: configured.size).fill(using: .sourceAtop)
+                configured.draw(in: NSRect(origin: .zero, size: configured.size), from: .zero, operation: .sourceOver, fraction: 1)
+                tinted.unlockFocus()
+                let iconRect = CGRect(x: rect.minX + 12, y: rect.midY - layout.iconSize / 2, width: layout.iconSize, height: layout.iconSize)
+                tinted.draw(in: iconRect, from: .zero, operation: .sourceOver, fraction: 1)
             }
         }
-    }
 
-    private static func renderLapLive(_ element: OverlayElement, renderContext: OverlayRenderContext) {
-        let layout = OverlayRenderModel.lapLiveLayout(for: element, in: renderContext)
-        guard !layout.isHidden else { return }
+        let textX = layout.style.showIcon ? rect.minX + layout.iconSize + 24 : rect.minX + 16
 
-        let fgColor = NSColor(element.style.foregroundColor)
-        let accentColor = NSColor(element.style.accentColor)
-        let bg = NSColor.black.withAlphaComponent(layout.backgroundOpacity)
-        let cardPath = NSBezierPath(roundedRect: layout.rect, xRadius: layout.cornerRadius, yRadius: layout.cornerRadius)
-        bg.setFill()
-        cardPath.fill()
+        // Temperature
+        let tempFont = NSFont.systemFont(ofSize: layout.fontSize * 1.6, weight: .bold)
+        let tempAttrs: [NSAttributedString.Key: Any] = [.font: tempFont, .foregroundColor: fg]
+        let tempSize = (layout.temperatureFormatted as NSString).size(withAttributes: tempAttrs)
+        (layout.temperatureFormatted as NSString).draw(at: CGPoint(x: textX, y: rect.midY - tempSize.height / 2), withAttributes: tempAttrs)
 
-        let font = NSFont(name: element.style.fontName, size: layout.fontSize)
-            ?? .systemFont(ofSize: layout.fontSize, weight: nsFontWeight(element.style.fontWeight))
-        let smallFont = NSFont(name: element.style.fontName, size: layout.fontSize * 0.78)
-            ?? .systemFont(ofSize: layout.fontSize * 0.78)
-
-        var curY = layout.rect.minY + layout.verticalPadding
-
-        // Header
-        let headerAttrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: fgColor]
-        NSAttributedString(string: layout.headerText, attributes: headerAttrs)
-            .draw(at: CGPoint(x: layout.rect.minX + layout.horizontalPadding, y: curY))
-        curY += layout.headerHeight
-
-        // Progress bar
-        if layout.showProgressBar && layout.progressFraction > 0 {
-            let trackRect = CGRect(x: layout.rect.minX, y: curY,
-                                   width: layout.rect.width, height: layout.progressBarHeight)
-            NSColor.black.withAlphaComponent(0.3).setFill()
-            NSBezierPath(rect: trackRect).fill()
-            let fillRect = CGRect(x: trackRect.minX, y: trackRect.minY,
-                                  width: trackRect.width * layout.progressFraction, height: trackRect.height)
-            NSColor(layout.progressColor).withAlphaComponent(layout.progressOpacity).setFill()
-            NSBezierPath(rect: fillRect).fill()
-            curY += layout.progressBarHeight
+        // Condition label
+        if layout.style.showConditionLabel {
+            let condFont = NSFont.systemFont(ofSize: layout.fontSize * 0.7, weight: .regular)
+            let condAttrs: [NSAttributedString.Key: Any] = [.font: condFont, .foregroundColor: fgMuted]
+            let condX = textX + tempSize.width + 8
+            (layout.conditionLabel as NSString).draw(at: CGPoint(x: condX, y: rect.midY - condFont.pointSize / 2), withAttributes: condAttrs)
         }
 
-        // Active metric rows
-        for (label, value) in layout.metricRows {
-            let labelAttrs: [NSAttributedString.Key: Any] = [.font: smallFont, .foregroundColor: fgColor.withAlphaComponent(0.6)]
-            let valueAttrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: fgColor]
-            let labelStr = NSAttributedString(string: label, attributes: labelAttrs)
-            let valueStr = NSAttributedString(string: value, attributes: valueAttrs)
-            let rowY = curY + (layout.rowHeight - layout.fontSize) / 2
-            labelStr.draw(at: CGPoint(x: layout.rect.minX + layout.horizontalPadding, y: rowY))
-            let vSize = valueStr.size()
-            valueStr.draw(at: CGPoint(x: layout.rect.maxX - layout.horizontalPadding - vSize.width, y: rowY))
-            curY += layout.rowHeight
-        }
-
-        // Recovery section (rest mode)
-        if layout.isRestMode && !layout.recoveryRows.isEmpty {
-            if layout.recoveryHeaderHeight > 0 {
-                let recHeaderAttrs: [NSAttributedString.Key: Any] = [.font: smallFont, .foregroundColor: fgColor.withAlphaComponent(0.55)]
-                NSAttributedString(string: "Recovery", attributes: recHeaderAttrs)
-                    .draw(at: CGPoint(x: layout.rect.minX + layout.horizontalPadding, y: curY))
-                curY += layout.recoveryHeaderHeight
-            }
-            for (label, value) in layout.recoveryRows {
-                let labelAttrs: [NSAttributedString.Key: Any] = [.font: smallFont, .foregroundColor: fgColor.withAlphaComponent(0.6)]
-                let valueAttrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: accentColor]
-                let labelStr = NSAttributedString(string: label, attributes: labelAttrs)
-                let valueStr = NSAttributedString(string: value, attributes: valueAttrs)
-                let rowY = curY + (layout.rowHeight - layout.fontSize) / 2
-                labelStr.draw(at: CGPoint(x: layout.rect.minX + layout.horizontalPadding, y: rowY))
-                let vSize = valueStr.size()
-                valueStr.draw(at: CGPoint(x: layout.rect.maxX - layout.horizontalPadding - vSize.width, y: rowY))
-                curY += layout.rowHeight
-            }
-
-            if let progress = layout.recoveryProgress, progress > 0 {
-                let barH = layout.fontSize * 0.35
-                let barRect = CGRect(x: layout.rect.minX + layout.horizontalPadding, y: curY,
-                                     width: (layout.rect.width - layout.horizontalPadding * 2) * progress, height: barH)
-                NSColor(layout.progressColor).withAlphaComponent(0.55).setFill()
-                NSBezierPath(roundedRect: barRect, xRadius: barH / 2, yRadius: barH / 2).fill()
-            }
+        // Location
+        if !layout.locationText.isEmpty {
+            let locFont = NSFont.systemFont(ofSize: layout.fontSize * 0.75, weight: .medium)
+            let locAttrs: [NSAttributedString.Key: Any] = [.font: locFont, .foregroundColor: fgMuted]
+            (layout.locationText as NSString).draw(at: CGPoint(x: textX, y: rect.minY + 8), withAttributes: locAttrs)
         }
     }
 
@@ -1428,6 +1475,824 @@ struct OverlayFrameRenderer {
         // Data regions
         for region in layout.regions {
             drawGaugeRegion(region, style: style)
+        }
+    }
+
+    private static func renderIntervalHUDBar(_ element: OverlayElement, renderContext: OverlayRenderContext) {
+        let layout = OverlayRenderModel.intervalHUDBarLayout(for: element, in: renderContext)
+        let style = layout.style
+        let rect = layout.rect
+        let backgroundRect = rect.insetBy(
+            dx: -element.style.backgroundPaddingX * element.scale,
+            dy: -element.style.backgroundPaddingY * element.scale
+        )
+
+        if element.style.backgroundEnabled {
+            drawIntervalHUDContainerBackground(element: element, rect: backgroundRect)
+        }
+        if element.style.borderEnabled {
+            NSColor(element.style.borderColor).withAlphaComponent(element.style.borderOpacity).setStroke()
+            let border = NSBezierPath(roundedRect: backgroundRect, xRadius: element.style.backgroundRadius, yRadius: element.style.backgroundRadius)
+            border.lineWidth = element.style.borderWidth
+            border.stroke()
+        }
+        let contentShadowEnabled = !element.style.backgroundEnabled
+            && !element.style.borderEnabled
+            && element.style.shadowEnabled
+            && element.style.shadowOpacity > 0
+            && element.style.shadowRadius > 0
+        if contentShadowEnabled {
+            setIntervalHUDLayeredShadow(element: element)
+        }
+        defer {
+            if contentShadowEnabled {
+                NSGraphicsContext.current?.cgContext.restoreGState()
+            }
+        }
+
+        let hasVisibleBottomBar = style.bottomBarEnabled && style.bottomBarMode != .none
+        let bottomBarContentHeight = hasVisibleBottomBar ? layout.barHeight : 0
+        let verticalLayout = intervalHUDVerticalLayout(
+            layout: layout,
+            rect: rect,
+            desiredTopPadding: layout.baseHeight * 0.06,
+            desiredBottomPadding: layout.baseHeight * 0.12,
+            bottomBarContentHeight: bottomBarContentHeight,
+            hasVisibleBottomBar: hasVisibleBottomBar
+        )
+        let bottomPadding = verticalLayout.bottomPadding
+        let contentY = rect.minY + verticalLayout.topPadding
+        let barY = rect.maxY
+            - bottomPadding
+            - layout.barHeight
+        let contentBottom = hasVisibleBottomBar
+            ? barY - verticalLayout.spacing
+            : rect.maxY - bottomPadding
+        let contentH = hasVisibleBottomBar
+            ? max(contentBottom - contentY, 1)
+            : rect.height * 0.72
+        let contentInset = rect.width * 0.04
+        let contentRect = CGRect(
+            x: rect.minX + contentInset,
+            y: contentY,
+            width: rect.width - contentInset * 2,
+            height: contentH
+        )
+        let fixedColumnCount = (style.showsRep ? 1 : 0)
+            + (style.showsPhase ? 1 : 0)
+            + (style.showsRemaining ? 1 : 0)
+            + (layout.zoneItem == nil ? 0 : 1)
+        let columnCount = max(fixedColumnCount + layout.metricItems.count, 1)
+        let columnWidth = contentRect.width / Double(columnCount)
+        var columnIndex = 0
+
+        func nextColumnRect() -> CGRect {
+            let columnRect = CGRect(
+                x: contentRect.minX + Double(columnIndex) * columnWidth,
+                y: contentRect.minY,
+                width: columnWidth,
+                height: contentRect.height
+            )
+            if columnIndex > 0 {
+                drawIntervalHUDDivider(element: element, x: columnRect.minX, rect: rect, height: layout.baseHeight)
+            }
+            columnIndex += 1
+            return columnRect
+        }
+
+        if style.showsRep {
+            let columnRect = nextColumnRect()
+            drawCenteredText("REP", in: columnRect.offsetBy(dx: 0, dy: -contentH * 0.22), textStyle: layout.labelText, color: .white.withAlphaComponent(0.64))
+            drawCenteredText(layout.repText, in: columnRect.offsetBy(dx: 0, dy: contentH * 0.08), textStyle: layout.primaryValueText, color: .white)
+        }
+        if style.showsPhase {
+            let columnRect = nextColumnRect()
+            drawCenteredText(layout.phaseLabel, in: columnRect.offsetBy(dx: 0, dy: -contentH * 0.10), textStyle: layout.phaseText, color: NSColor(layout.phaseColor))
+            drawCenteredText(layout.phaseDetail, in: columnRect.offsetBy(dx: 0, dy: contentH * 0.24), textStyle: layout.phaseDetailText, color: .white.withAlphaComponent(0.78))
+        }
+        if style.showsRemaining {
+            let columnRect = nextColumnRect()
+            drawCenteredText(layout.remainingPrimaryLabel, in: columnRect.offsetBy(dx: 0, dy: -contentH * 0.22), textStyle: layout.labelText, color: .white.withAlphaComponent(0.64))
+            drawCenteredText(layout.remainingPrimaryText, in: columnRect.offsetBy(dx: 0, dy: contentH * 0.08), textStyle: layout.primaryValueText, color: .white)
+            drawCenteredText(layout.remainingSecondaryText, in: columnRect.offsetBy(dx: 0, dy: contentH * 0.28), textStyle: layout.metricUnitText, color: .white.withAlphaComponent(0.70))
+        }
+        if let zoneItem = layout.zoneItem {
+            let columnRect = nextColumnRect()
+            drawCenteredText(zoneItem.label, in: columnRect.offsetBy(dx: 0, dy: -contentH * 0.22), textStyle: layout.labelText, color: .white.withAlphaComponent(0.64))
+            let value = zoneItem.unit.isEmpty ? zoneItem.value : "\(zoneItem.value) \(zoneItem.unit)"
+            drawCenteredText(value, in: columnRect.offsetBy(dx: 0, dy: contentH * 0.08), textStyle: layout.metricValueText, color: NSColor(zoneItem.accentColor ?? element.style.foregroundColor))
+        }
+        for item in layout.metricItems {
+            let itemRect = nextColumnRect()
+            drawCenteredText(item.label, in: itemRect.offsetBy(dx: 0, dy: -contentH * 0.22), textStyle: layout.labelText, color: .white.withAlphaComponent(0.64))
+            let value = item.unit.isEmpty ? item.value : "\(item.value) \(item.unit)"
+            drawCenteredText(value, in: itemRect.offsetBy(dx: 0, dy: contentH * 0.08), textStyle: layout.metricValueText, color: NSColor(item.accentColor ?? element.style.foregroundColor))
+        }
+
+        if columnCount == 1, columnIndex == 0 {
+            let columnRect = nextColumnRect()
+            drawCenteredText(layout.phaseLabel, in: columnRect.offsetBy(dx: 0, dy: -contentH * 0.10), textStyle: layout.phaseText, color: NSColor(layout.phaseColor))
+        }
+
+        guard hasVisibleBottomBar else { return }
+        let barRect = CGRect(
+            x: rect.minX + rect.width * 0.04,
+            y: barY,
+            width: max(rect.width * 0.92, 1),
+            height: layout.barHeight
+        )
+        switch style.bottomBarMode {
+        case .none:
+            break
+        case .lapProgress:
+            NSColor(style.trackColor).withAlphaComponent(style.trackOpacity).setFill()
+            let cornerRadius = intervalHUDBottomBarCornerRadius(style: style, element: element, height: barRect.height)
+            NSBezierPath(roundedRect: barRect, xRadius: cornerRadius, yRadius: cornerRadius).fill()
+            let fillRect = CGRect(x: barRect.minX, y: barRect.minY, width: max(barRect.width * layout.progress, 0), height: barRect.height)
+            if style.bottomBarGlowEnabled {
+                NSGraphicsContext.current?.cgContext.saveGState()
+                NSGraphicsContext.current?.cgContext.setShadow(
+                    offset: .zero,
+                    blur: barRect.height * 1.8,
+                    color: NSColor(layout.phaseColor).withAlphaComponent(style.bottomBarGlowIntensity).cgColor
+                )
+            }
+            NSColor(layout.phaseColor).setFill()
+            NSBezierPath(roundedRect: fillRect, xRadius: cornerRadius, yRadius: cornerRadius).fill()
+            if style.bottomBarGlowEnabled {
+                NSGraphicsContext.current?.cgContext.restoreGState()
+            }
+            strokeIntervalHUDBottomBarBorder(style: style, element: element, rect: barRect, cornerRadius: cornerRadius)
+        case .heartRateZones, .paceZones:
+            let segments = layout.zoneSegments
+            guard !segments.isEmpty else { return }
+            let frames = OverlayRenderModel.intervalZoneSegmentFrames(
+                segmentCount: segments.count,
+                activeIndex: layout.bottomBarActiveZoneIndex,
+                activeWidthShare: style.activeZoneWidthShare
+            )
+            let zoneRects = intervalHUDZoneRects(
+                frames: frames,
+                segments: segments,
+                barRect: barRect,
+                activeIndex: layout.bottomBarActiveZoneIndex,
+                style: style,
+                element: element
+            )
+            let cornerRadius = intervalHUDBottomBarCornerRadius(style: style, element: element, height: barRect.height)
+            if style.bottomBarGlowEnabled,
+               let activeIndex = layout.bottomBarActiveZoneIndex,
+               let activeSegment = segments.first(where: { $0.index == activeIndex }),
+               let activeRect = zoneRects.first(where: { $0.index == activeIndex })?.rect {
+                NSGraphicsContext.current?.cgContext.saveGState()
+                NSGraphicsContext.current?.cgContext.setShadow(
+                    offset: .zero,
+                    blur: barRect.height * 2.4,
+                    color: NSColor(activeSegment.color).withAlphaComponent(style.bottomBarGlowIntensity).cgColor
+                )
+                NSColor(activeSegment.color)
+                    .withAlphaComponent(style.bottomBarGlowIntensity)
+                    .setFill()
+                NSBezierPath(roundedRect: activeRect, xRadius: min(cornerRadius, activeRect.height / 2), yRadius: min(cornerRadius, activeRect.height / 2)).fill()
+                NSGraphicsContext.current?.cgContext.restoreGState()
+            }
+            for segment in segments {
+                guard let segmentRect = zoneRects.first(where: { $0.index == segment.index })?.rect else { continue }
+                let isActive = segment.index == layout.bottomBarActiveZoneIndex
+                NSColor(segment.color)
+                    .withAlphaComponent(isActive ? 1 : style.inactiveZoneOpacity)
+                    .setFill()
+                let segmentCornerRadius = min(cornerRadius, segmentRect.height / 2, segmentRect.width / 2)
+                NSBezierPath(roundedRect: segmentRect, xRadius: segmentCornerRadius, yRadius: segmentCornerRadius).fill()
+            }
+            strokeIntervalHUDBottomBarBorder(style: style, element: element, rect: barRect, cornerRadius: cornerRadius)
+            if let marker = layout.thresholdZoneMarker,
+               let markerRect = zoneRects.first(where: { $0.index == marker.zoneIndex }) {
+                drawIntervalHUDZoneMarker(
+                    marker,
+                    zoneRect: markerRect.rect,
+                    barRect: barRect,
+                    style: style,
+                    textStyle: layout.metricUnitText
+                )
+            }
+            if let marker = layout.zoneMarker,
+               let markerRect = zoneRects.first(where: { $0.index == marker.zoneIndex }) {
+                drawIntervalHUDZoneMarker(
+                    marker,
+                    zoneRect: markerRect.rect,
+                    barRect: barRect,
+                    style: style,
+                    textStyle: layout.metricUnitText
+                )
+            }
+        }
+    }
+
+    private static func renderIntervalTimeline(_ element: OverlayElement, renderContext: OverlayRenderContext) {
+        let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: renderContext)
+        let rect = layout.rect
+        let backgroundRect = rect.insetBy(
+            dx: -element.style.backgroundPaddingX * element.scale,
+            dy: -element.style.backgroundPaddingY * element.scale
+        )
+
+        if element.style.backgroundEnabled {
+            drawIntervalTimelineContainerBackground(element: element, rect: backgroundRect, cornerRadius: layout.cornerRadius)
+        } else if element.style.shadowEnabled,
+                  element.style.shadowOpacity > 0,
+                  element.style.shadowRadius > 0 {
+            setIntervalTimelineShadow(element: element)
+        }
+        defer {
+            if !element.style.backgroundEnabled,
+               element.style.shadowEnabled,
+               element.style.shadowOpacity > 0,
+               element.style.shadowRadius > 0 {
+                NSGraphicsContext.current?.cgContext.restoreGState()
+            }
+        }
+        if element.style.borderEnabled {
+            strokeRoundedRect(
+                backgroundRect,
+                color: NSColor(element.style.borderColor).withAlphaComponent(element.style.borderOpacity),
+                cornerRadius: layout.cornerRadius,
+                lineWidth: element.style.borderWidth
+            )
+        }
+
+        for segment in layout.segments {
+            drawRoundedRect(segment.rect, color: NSColor(segment.color).withAlphaComponent(segment.opacity), cornerRadius: layout.style.segmentCornerRadius * element.scale)
+            if segment.isCurrent && layout.style.currentProgressEnabled {
+                let progressRect = CGRect(x: segment.rect.minX, y: segment.rect.minY, width: segment.rect.width * layout.currentProgress, height: segment.rect.height)
+                drawRoundedRect(progressRect, color: NSColor.white.withAlphaComponent(0.30), cornerRadius: layout.style.segmentCornerRadius * element.scale)
+                strokeRoundedRect(segment.rect, color: NSColor.white.withAlphaComponent(0.74), cornerRadius: layout.style.segmentCornerRadius * element.scale, lineWidth: 1.4 * element.scale)
+            }
+
+            let lineCount = (segment.isCurrent && layout.repText != nil ? 1 : 0) + segment.labelLines.count
+            guard lineCount > 0 else { continue }
+            let lineHeight = max(segment.rect.height / Double(lineCount + 1), layout.durationFontSize)
+            var textY = segment.rect.midY - lineHeight * Double(lineCount) / 2
+            if segment.isCurrent, let repText = layout.repText {
+                drawIntervalTimelineText(repText, in: CGRect(x: segment.rect.minX + 3, y: textY, width: segment.rect.width - 6, height: lineHeight), fontName: element.style.fontName, fontSize: max(layout.durationFontSize * 0.82, 8), weight: .semibold, color: NSColor.white.withAlphaComponent(0.78), alignment: .center)
+                textY += lineHeight
+            }
+            for (offset, line) in segment.labelLines.enumerated() {
+                if offset > 0 {
+                    textY += lineHeight
+                }
+                let isPrimary = offset == 0
+                let fontSize = isPrimary ? (segment.isCurrent ? layout.labelFontSize * 1.08 : layout.labelFontSize) : layout.durationFontSize
+                let weight: OverlayFontWeight = isPrimary ? .bold : .semibold
+                let alpha = isPrimary ? 0.96 : 0.86
+                drawIntervalTimelineText(line, in: CGRect(x: segment.rect.minX + 3, y: textY, width: segment.rect.width - 6, height: lineHeight), fontName: element.style.fontName, fontSize: fontSize, weight: weight, color: NSColor.white.withAlphaComponent(alpha), alignment: .center)
+            }
+        }
+
+        if layout.style.overflowHintEnabled && layout.leftOverflowCount > 0 {
+            drawIntervalTimelineText("···", in: CGRect(x: rect.minX + layout.overflowEllipsisInset - 15 * element.scale, y: layout.contentRect.midY - 10 * element.scale, width: 30 * element.scale, height: 20 * element.scale), fontName: element.style.fontName, fontSize: layout.labelFontSize * 0.95, weight: .bold, color: NSColor(element.style.foregroundColor).withAlphaComponent(0.50), alignment: .center)
+        }
+        if layout.style.overflowHintEnabled && layout.rightOverflowCount > 0 {
+            drawIntervalTimelineText("···", in: CGRect(x: rect.maxX - layout.overflowEllipsisInset - 15 * element.scale, y: layout.contentRect.midY - 10 * element.scale, width: 30 * element.scale, height: 20 * element.scale), fontName: element.style.fontName, fontSize: layout.labelFontSize * 0.95, weight: .bold, color: NSColor(element.style.foregroundColor).withAlphaComponent(0.50), alignment: .center)
+        }
+
+        if layout.style.markerEnabled {
+            let markerTop = layout.markerTopY
+            let markerWidth = 10 * element.scale
+            let triangle = NSBezierPath()
+            triangle.move(to: CGPoint(x: layout.markerX, y: markerTop))
+            triangle.line(to: CGPoint(x: layout.markerX + markerWidth / 2, y: markerTop + layout.markerTriangleHeight))
+            triangle.line(to: CGPoint(x: layout.markerX - markerWidth / 2, y: markerTop + layout.markerTriangleHeight))
+            triangle.close()
+            NSColor(layout.style.markerColor).withAlphaComponent(0.92).setFill()
+            triangle.fill()
+            if layout.style.markerLabelEnabled {
+                drawIntervalTimelineText(
+                    layout.markerLabel,
+                    in: CGRect(
+                        x: layout.markerX - 32 * element.scale,
+                        y: markerTop + layout.markerTriangleHeight + 2 * element.scale,
+                        width: 64 * element.scale,
+                        height: layout.markerLabelHeight
+                    ),
+                    fontName: layout.style.markerFontName.isEmpty ? element.style.fontName : layout.style.markerFontName,
+                    fontSize: layout.style.markerFontSize * element.scale,
+                    weight: layout.style.markerFontWeight,
+                    color: NSColor(layout.style.markerColor).withAlphaComponent(0.88),
+                    alignment: .center
+                )
+            }
+        }
+    }
+
+    private static func drawIntervalTimelineContainerBackground(element: OverlayElement, rect: CGRect, cornerRadius: Double) {
+        let color = NSColor(element.style.backgroundColor).withAlphaComponent(element.style.backgroundOpacity)
+        if element.style.shadowEnabled, element.style.shadowOpacity > 0, element.style.shadowRadius > 0 {
+            setIntervalTimelineShadow(element: element)
+            drawOverlayBackground(rect, color: color, cornerRadius: cornerRadius, element: element)
+            NSGraphicsContext.current?.cgContext.restoreGState()
+        } else {
+            drawOverlayBackground(rect, color: color, cornerRadius: cornerRadius, element: element)
+        }
+    }
+
+    private static func renderZoneEdgeBar(_ element: OverlayElement, renderContext: OverlayRenderContext) {
+        let layout = OverlayRenderModel.zoneEdgeBarLayout(for: element, in: renderContext)
+        let style = layout.style
+        let segments = layout.zoneSegments
+        guard !segments.isEmpty else { return }
+
+        if element.style.shadowEnabled, element.style.shadowOpacity > 0, element.style.shadowRadius > 0 {
+            NSGraphicsContext.current?.cgContext.saveGState()
+            NSGraphicsContext.current?.cgContext.setShadow(
+                offset: CGSize(width: element.style.shadowOffsetX, height: element.style.shadowOffsetY),
+                blur: element.style.shadowRadius,
+                color: NSColor(element.style.shadowColor).withAlphaComponent(element.style.shadowOpacity).cgColor
+            )
+        }
+        defer {
+            if element.style.shadowEnabled, element.style.shadowOpacity > 0, element.style.shadowRadius > 0 {
+                NSGraphicsContext.current?.cgContext.restoreGState()
+            }
+        }
+
+        let frames = OverlayRenderModel.intervalZoneSegmentFrames(
+            segmentCount: segments.count,
+            activeIndex: layout.activeZoneIndex,
+            activeWidthShare: style.activeZoneWidthShare
+        )
+        let zoneRects = zoneEdgeBarZoneRects(
+            frames: frames,
+            segments: segments,
+            layout: layout,
+            element: element
+        )
+        let barRect = layout.barRect
+        let crossThickness = layout.orientation == .horizontal ? barRect.height : barRect.width
+        let cornerRadius = min(max(style.cornerRadius * element.scale, 0), crossThickness / 2)
+
+        if style.glowEnabled,
+           let activeIndex = layout.activeZoneIndex,
+           let activeSegment = segments.first(where: { $0.index == activeIndex }),
+           let activeRect = zoneRects.first(where: { $0.index == activeIndex })?.rect {
+            NSGraphicsContext.current?.cgContext.saveGState()
+            NSGraphicsContext.current?.cgContext.setShadow(
+                offset: .zero,
+                blur: crossThickness * 2.4,
+                color: NSColor(activeSegment.color).withAlphaComponent(style.glowIntensity).cgColor
+            )
+            NSColor(activeSegment.color).withAlphaComponent(style.glowIntensity).setFill()
+            NSBezierPath(
+                roundedRect: activeRect,
+                xRadius: min(cornerRadius, activeRect.width / 2, activeRect.height / 2),
+                yRadius: min(cornerRadius, activeRect.width / 2, activeRect.height / 2)
+            ).fill()
+            NSGraphicsContext.current?.cgContext.restoreGState()
+        }
+
+        for segment in segments {
+            guard let segmentRect = zoneRects.first(where: { $0.index == segment.index })?.rect else { continue }
+            let isActive = segment.index == layout.activeZoneIndex
+            NSColor(segment.color).withAlphaComponent(isActive ? 1 : style.inactiveZoneOpacity).setFill()
+            let r = min(cornerRadius, segmentRect.width / 2, segmentRect.height / 2)
+            NSBezierPath(roundedRect: segmentRect, xRadius: r, yRadius: r).fill()
+        }
+
+        if style.borderEnabled, style.borderOpacity > 0, style.borderWidth > 0 {
+            strokeRoundedRect(
+                barRect,
+                color: NSColor(style.borderColor).withAlphaComponent(style.borderOpacity),
+                cornerRadius: cornerRadius,
+                lineWidth: max(style.borderWidth * element.scale, 0.5)
+            )
+        }
+
+        if let marker = layout.thresholdZoneMarker,
+           let markerRect = zoneRects.first(where: { $0.index == marker.zoneIndex })?.rect {
+            drawZoneEdgeBarMarker(marker, zoneRect: markerRect, layout: layout, element: element)
+        }
+        if let marker = layout.zoneMarker,
+           let markerRect = zoneRects.first(where: { $0.index == marker.zoneIndex })?.rect {
+            drawZoneEdgeBarMarker(marker, zoneRect: markerRect, layout: layout, element: element)
+        }
+    }
+
+    private static func setIntervalTimelineShadow(element: OverlayElement) {
+        let thickness = min(max(element.style.shadowThickness, 1), 4)
+        let shadowOpacity = min(element.style.shadowOpacity * (1 + (thickness - 1) * 0.16), 1)
+        let shadowRadius = element.style.shadowRadius * (1 + (thickness - 1) * 0.10)
+        NSGraphicsContext.current?.cgContext.saveGState()
+        NSGraphicsContext.current?.cgContext.setShadow(
+            offset: CGSize(width: element.style.shadowOffsetX, height: element.style.shadowOffsetY),
+            blur: shadowRadius,
+            color: NSColor(element.style.shadowColor).withAlphaComponent(shadowOpacity).cgColor
+        )
+    }
+
+    private static func drawIntervalTimelineText(_ text: String, in rect: CGRect, fontName: String, fontSize: Double, weight: OverlayFontWeight, color: NSColor, alignment: NSTextAlignment) {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = alignment
+        paragraph.lineBreakMode = .byTruncatingTail
+        let fontWeight = nsFontWeight(weight)
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: OverlayFontResolver.appKitFont(family: fontName, size: fontSize, weight: fontWeight),
+            .foregroundColor: color,
+            .paragraphStyle: paragraph
+        ]
+        NSAttributedString(string: text, attributes: attributes).draw(in: rect)
+    }
+
+    private static func drawIntervalHUDZoneMarker(
+        _ marker: IntervalHUDBarZoneMarker,
+        zoneRect: CGRect,
+        barRect: CGRect,
+        style: IntervalHUDBarStyle,
+        textStyle: IntervalHUDBarTextStyle
+    ) {
+        let x = zoneRect.minX + zoneRect.width * marker.fractionInZone
+        let isThreshold = marker.role == .threshold
+        if isThreshold {
+            let color = NSColor(marker.color).withAlphaComponent(0.78)
+            let lineHeight = max(barRect.height * 1.35, 10)
+            let lineWidth = max(1.2, barRect.height * 0.12)
+            let lineRect = CGRect(
+                x: x - lineWidth / 2,
+                y: barRect.midY - lineHeight / 2,
+                width: lineWidth,
+                height: lineHeight
+            )
+            drawRoundedRect(lineRect, color: color, cornerRadius: lineWidth / 2)
+            let labelStyle = IntervalHUDBarTextStyle(
+                fontName: textStyle.fontName,
+                fontSize: max(textStyle.fontSize * 0.72, 7),
+                fontWeight: textStyle.fontWeight
+            )
+            drawCenteredText(
+                marker.valueText,
+                in: CGRect(x: x - 12, y: lineRect.maxY + 2, width: 24, height: labelStyle.fontSize + 4),
+                textStyle: labelStyle,
+                color: color
+            )
+            return
+        }
+        let arrowW = isThreshold ? max(barRect.height * 0.95, 7) : max(barRect.height * 1.35, 8)
+        let arrowH = isThreshold ? max(barRect.height * 0.62, 5) : max(barRect.height * 0.9, 6)
+        let gap = style.zoneMarkerPosition == .below ? max(barRect.height * 0.55, 4) : max(barRect.height * 0.35, 3)
+        let color = NSColor(marker.color)
+        let triangle = NSBezierPath()
+
+        switch isThreshold ? IntervalHUDBarZoneMarkerPosition.below : style.zoneMarkerPosition {
+        case .above:
+            let baseY = barRect.minY - gap - arrowH
+            triangle.move(to: CGPoint(x: x - arrowW / 2, y: baseY))
+            triangle.line(to: CGPoint(x: x + arrowW / 2, y: baseY))
+            triangle.line(to: CGPoint(x: x, y: baseY + arrowH))
+            if style.zoneMarkerShowsValue {
+                let labelRect = CGRect(
+                    x: x - 42,
+                    y: baseY - textStyle.fontSize - 6,
+                    width: 84,
+                    height: textStyle.fontSize + 4
+                )
+                drawCenteredText(marker.valueText, in: labelRect, textStyle: textStyle, color: color)
+            }
+        case .below:
+            let belowGap = isThreshold ? max(barRect.height * 0.20, 3) : gap
+            let baseY = barRect.maxY + belowGap + arrowH
+            triangle.move(to: CGPoint(x: x, y: baseY - arrowH))
+            triangle.line(to: CGPoint(x: x + arrowW / 2, y: baseY))
+            triangle.line(to: CGPoint(x: x - arrowW / 2, y: baseY))
+            if isThreshold || style.zoneMarkerShowsValue {
+                let labelHeight = isThreshold ? max(textStyle.fontSize * 0.86, 8) + 4 : textStyle.fontSize + 4
+                let labelRect = CGRect(
+                    x: x - (isThreshold ? 14 : 42),
+                    y: baseY + 2,
+                    width: isThreshold ? 28 : 84,
+                    height: labelHeight
+                )
+                let labelStyle = isThreshold
+                    ? IntervalHUDBarTextStyle(fontName: textStyle.fontName, fontSize: max(textStyle.fontSize * 0.86, 8), fontWeight: textStyle.fontWeight)
+                    : textStyle
+                drawCenteredText(marker.valueText, in: labelRect, textStyle: labelStyle, color: color)
+            }
+        }
+        triangle.close()
+        color.setFill()
+        triangle.fill()
+    }
+
+    private static func intervalHUDMinimumMainContentHeight(layout: IntervalHUDBarRenderLayout, rect: CGRect) -> Double {
+        let maxTextStackHeight = max(
+            layout.primaryValueText.fontSize + layout.labelText.fontSize + 4,
+            layout.phaseText.fontSize + layout.phaseDetailText.fontSize + 3,
+            layout.metricValueText.fontSize + max(layout.labelText.fontSize, layout.metricUnitText.fontSize) + 4
+        )
+        let layoutHeight = max(layout.baseHeight, 1)
+        return max(layoutHeight * 0.30, min(maxTextStackHeight + 4, layoutHeight * 0.58))
+    }
+
+    private static func intervalHUDVerticalLayout(
+        layout: IntervalHUDBarRenderLayout,
+        rect: CGRect,
+        desiredTopPadding: Double,
+        desiredBottomPadding: Double,
+        bottomBarContentHeight: Double,
+        hasVisibleBottomBar: Bool
+    ) -> IntervalHUDExportVerticalLayout {
+        let layoutHeight = max(layout.baseHeight, 1)
+        let minimumTopPadding = max(layoutHeight * 0.025, 2)
+        let minimumBottomPadding = max(layoutHeight * 0.025, 2)
+        let requestedSpacing = hasVisibleBottomBar ? max(layout.style.bottomBarSpacing, 0) : 0
+        let minimumContentHeight = intervalHUDMinimumMainContentHeight(layout: layout, rect: rect)
+        let desiredTotal = desiredTopPadding + minimumContentHeight + bottomBarContentHeight + desiredBottomPadding
+
+        guard hasVisibleBottomBar, desiredTotal > layoutHeight else {
+            return IntervalHUDExportVerticalLayout(
+                topPadding: desiredTopPadding,
+                bottomPadding: desiredBottomPadding,
+                spacing: requestedSpacing
+            )
+        }
+
+        let availablePadding = layoutHeight - minimumContentHeight - bottomBarContentHeight
+        if availablePadding >= minimumTopPadding + minimumBottomPadding {
+            let desiredPadding = max(desiredTopPadding + desiredBottomPadding, 1)
+            let topShare = desiredTopPadding / desiredPadding
+            let topPadding = max(minimumTopPadding, availablePadding * topShare)
+            let bottomPadding = max(minimumBottomPadding, availablePadding - topPadding)
+            return IntervalHUDExportVerticalLayout(
+                topPadding: topPadding,
+                bottomPadding: bottomPadding,
+                spacing: requestedSpacing
+            )
+        }
+
+        return IntervalHUDExportVerticalLayout(
+            topPadding: minimumTopPadding,
+            bottomPadding: minimumBottomPadding,
+            spacing: requestedSpacing
+        )
+    }
+
+    private static func intervalHUDBottomBarCornerRadius(style: IntervalHUDBarStyle, element: OverlayElement, height: Double) -> Double {
+        min(max(style.bottomBarCornerRadius * element.scale, 0), height)
+    }
+
+    private static func strokeIntervalHUDBottomBarBorder(style: IntervalHUDBarStyle, element: OverlayElement, rect: CGRect, cornerRadius: Double) {
+        guard style.bottomBarBorderEnabled,
+              style.bottomBarBorderOpacity > 0,
+              style.bottomBarBorderWidth > 0
+        else { return }
+        strokeRoundedRect(
+            rect,
+            color: NSColor(style.bottomBarBorderColor).withAlphaComponent(style.bottomBarBorderOpacity),
+            cornerRadius: cornerRadius,
+            lineWidth: style.bottomBarBorderWidth * element.scale
+        )
+    }
+
+    private static func intervalHUDZoneRects(
+        frames: [IntervalHUDBarZoneSegmentFrame],
+        segments: [IntervalHUDBarZoneSegment],
+        barRect: CGRect,
+        activeIndex: Int?,
+        style: IntervalHUDBarStyle,
+        element: OverlayElement
+    ) -> [IntervalHUDExportZoneRect] {
+        let segmentCount = min(frames.count, segments.count)
+        guard segmentCount > 0 else { return [] }
+        let requestedGap = max(style.zoneSegmentGap * element.scale, 0)
+        let maxGap = segmentCount > 1 ? max(barRect.width / Double(segmentCount - 1) * 0.18, 0) : 0
+        let gap = min(requestedGap, maxGap)
+        let usableWidth = max(barRect.width - gap * Double(max(segmentCount - 1, 0)), 1)
+        return (0..<segmentCount).map { position in
+            let frame = frames[position]
+            let segment = segments[position]
+            let isActive = segment.index == activeIndex
+            let height = isActive ? barRect.height * max(style.activeZoneHeightScale, 1) : barRect.height
+            let positionOffset = Double(position) * gap
+            let rect = CGRect(
+                x: barRect.minX + usableWidth * frame.start + positionOffset,
+                y: barRect.midY - height / 2,
+                width: max(usableWidth * frame.width, 0),
+                height: height
+            )
+            return IntervalHUDExportZoneRect(index: segment.index, rect: rect)
+        }
+    }
+
+    private static func zoneEdgeBarZoneRects(
+        frames: [IntervalHUDBarZoneSegmentFrame],
+        segments: [IntervalHUDBarZoneSegment],
+        layout: ZoneEdgeBarRenderLayout,
+        element: OverlayElement
+    ) -> [IntervalHUDExportZoneRect] {
+        let segmentCount = min(frames.count, segments.count)
+        guard segmentCount > 0 else { return [] }
+        let style = layout.style
+        let barRect = layout.barRect
+        let length = layout.orientation == .horizontal ? barRect.width : barRect.height
+        let crossThickness = layout.orientation == .horizontal ? barRect.height : barRect.width
+        let requestedGap = max(style.zoneSegmentGap * element.scale, 0)
+        let maxGap = segmentCount > 1 ? max(length / Double(segmentCount - 1) * 0.18, 0) : 0
+        let gap = min(requestedGap, maxGap)
+        let usableLength = max(length - gap * Double(max(segmentCount - 1, 0)), 1)
+
+        return (0..<segmentCount).map { position in
+            let frame = frames[position]
+            let segment = segments[position]
+            let isActive = segment.index == layout.activeZoneIndex
+            let thickness = isActive ? crossThickness * max(style.activeZoneHeightScale, 1) : crossThickness
+            let positionOffset = Double(position) * gap
+            let segmentLength = max(usableLength * frame.width, 0)
+            let rect: CGRect
+            if layout.orientation == .horizontal {
+                rect = CGRect(
+                    x: barRect.minX + usableLength * frame.start + positionOffset,
+                    y: barRect.midY - thickness / 2,
+                    width: segmentLength,
+                    height: thickness
+                )
+            } else {
+                rect = CGRect(
+                    x: barRect.midX - thickness / 2,
+                    y: barRect.maxY - usableLength * (frame.start + frame.width) - positionOffset,
+                    width: thickness,
+                    height: segmentLength
+                )
+            }
+            return IntervalHUDExportZoneRect(index: segment.index, rect: rect)
+        }
+    }
+
+    private static func drawZoneEdgeBarMarker(
+        _ marker: IntervalHUDBarZoneMarker,
+        zoneRect: CGRect,
+        layout: ZoneEdgeBarRenderLayout,
+        element: OverlayElement
+    ) {
+        let barRect = layout.barRect
+        let style = layout.style
+        let crossThickness = layout.orientation == .horizontal ? barRect.height : barRect.width
+        let color = NSColor(marker.color)
+        let isThreshold = marker.role == .threshold
+        let gap = max(crossThickness * 0.35, 3)
+        let font = layout.markerText
+
+        if layout.orientation == .horizontal {
+            let x = zoneRect.minX + zoneRect.width * marker.fractionInZone
+            if isThreshold {
+                let lineHeight = max(crossThickness * 1.35, 10)
+                let lineWidth = max(1.2 * element.scale, 1)
+                let lineY = barRect.midY - lineHeight / 2
+                drawRoundedRect(
+                    CGRect(x: x - lineWidth / 2, y: lineY, width: lineWidth, height: lineHeight),
+                    color: color.withAlphaComponent(0.78),
+                    cornerRadius: lineWidth / 2
+                )
+                let textStyle = IntervalHUDBarTextStyle(fontName: font.fontName, fontSize: max(font.fontSize * 0.72, 7), fontWeight: font.fontWeight)
+                let labelY = layout.markerSide == .above ? lineY - textStyle.fontSize - 4 : lineY + lineHeight + 2
+                drawCenteredText(marker.valueText, in: CGRect(x: x - 12, y: labelY, width: 24, height: textStyle.fontSize + 4), textStyle: textStyle, color: color.withAlphaComponent(0.78))
+                return
+            }
+            let arrowW = max(crossThickness * 1.35, 12)
+            let arrowH = max(crossThickness * 0.9, 8)
+            let triangle = NSBezierPath()
+            if layout.markerSide == .above {
+                let baseY = barRect.minY - gap - arrowH
+                triangle.move(to: CGPoint(x: x - arrowW / 2, y: baseY))
+                triangle.line(to: CGPoint(x: x + arrowW / 2, y: baseY))
+                triangle.line(to: CGPoint(x: x, y: baseY + arrowH))
+                if style.markerShowsValue {
+                    drawCenteredText(marker.valueText, in: CGRect(x: x - 42, y: baseY - font.fontSize - 6, width: 84, height: font.fontSize + 4), textStyle: font, color: color)
+                }
+            } else {
+                let tipY = barRect.maxY + gap
+                triangle.move(to: CGPoint(x: x, y: tipY))
+                triangle.line(to: CGPoint(x: x + arrowW / 2, y: tipY + arrowH))
+                triangle.line(to: CGPoint(x: x - arrowW / 2, y: tipY + arrowH))
+                if style.markerShowsValue {
+                    drawCenteredText(marker.valueText, in: CGRect(x: x - 42, y: tipY + arrowH + 2, width: 84, height: font.fontSize + 4), textStyle: font, color: color)
+                }
+            }
+            triangle.close()
+            color.setFill()
+            triangle.fill()
+            return
+        }
+
+        let y = zoneRect.maxY - zoneRect.height * marker.fractionInZone
+        if isThreshold {
+            let lineLength = max(crossThickness * 1.35, 10)
+            let lineHeight = max(1.2 * element.scale, 1)
+            let lineX = barRect.midX - lineLength / 2
+            drawRoundedRect(
+                CGRect(x: lineX, y: y - lineHeight / 2, width: lineLength, height: lineHeight),
+                color: color.withAlphaComponent(0.78),
+                cornerRadius: lineHeight / 2
+            )
+            let textStyle = IntervalHUDBarTextStyle(fontName: font.fontName, fontSize: max(font.fontSize * 0.72, 7), fontWeight: font.fontWeight)
+            let labelX = layout.markerSide == .leading ? lineX - 20 : lineX + lineLength + 2
+            drawCenteredText(marker.valueText, in: CGRect(x: labelX, y: y - CGFloat(textStyle.fontSize) / 2 - 2, width: 18, height: CGFloat(textStyle.fontSize) + 4), textStyle: textStyle, color: color.withAlphaComponent(0.78))
+            return
+        }
+
+        let arrowW = max(crossThickness * 0.9, 8)
+        let arrowH = max(crossThickness * 1.35, 12)
+        let triangle = NSBezierPath()
+        if layout.markerSide == .leading {
+            let tipX = barRect.minX - gap
+            triangle.move(to: CGPoint(x: tipX, y: y))
+            triangle.line(to: CGPoint(x: tipX - arrowW, y: y - arrowH / 2))
+            triangle.line(to: CGPoint(x: tipX - arrowW, y: y + arrowH / 2))
+            if style.markerShowsValue {
+                drawCenteredText(marker.valueText, in: CGRect(x: tipX - arrowW - 86, y: y - CGFloat(font.fontSize) / 2 - 2, width: 84, height: CGFloat(font.fontSize) + 4), textStyle: font, color: color)
+            }
+        } else {
+            let tipX = barRect.maxX + gap
+            triangle.move(to: CGPoint(x: tipX, y: y))
+            triangle.line(to: CGPoint(x: tipX + arrowW, y: y - arrowH / 2))
+            triangle.line(to: CGPoint(x: tipX + arrowW, y: y + arrowH / 2))
+            if style.markerShowsValue {
+                drawCenteredText(marker.valueText, in: CGRect(x: tipX + arrowW + 2, y: y - CGFloat(font.fontSize) / 2 - 2, width: 84, height: CGFloat(font.fontSize) + 4), textStyle: font, color: color)
+            }
+        }
+        triangle.close()
+        color.setFill()
+        triangle.fill()
+    }
+
+    private static func drawIntervalHUDContainerBackground(element: OverlayElement, rect: CGRect) {
+        let color = NSColor(element.style.backgroundColor).withAlphaComponent(element.style.backgroundOpacity)
+        if element.style.shadowEnabled, element.style.shadowOpacity > 0, element.style.shadowRadius > 0 {
+            let thickness = min(max(element.style.shadowThickness, 1), 4)
+            let shadowOpacity = min(element.style.shadowOpacity * (1 + (thickness - 1) * 0.16), 1)
+            let shadowRadius = element.style.shadowRadius * (1 + (thickness - 1) * 0.10)
+            NSGraphicsContext.current?.cgContext.saveGState()
+            NSGraphicsContext.current?.cgContext.setShadow(
+                offset: CGSize(width: element.style.shadowOffsetX, height: element.style.shadowOffsetY),
+                blur: shadowRadius,
+                color: NSColor(element.style.shadowColor).withAlphaComponent(shadowOpacity).cgColor
+            )
+            drawOverlayBackground(rect, color: color, cornerRadius: element.style.backgroundRadius, element: element)
+            NSGraphicsContext.current?.cgContext.restoreGState()
+        } else {
+            drawOverlayBackground(rect, color: color, cornerRadius: element.style.backgroundRadius, element: element)
+        }
+    }
+
+    private static func setIntervalHUDLayeredShadow(element: OverlayElement) {
+        let thickness = min(max(element.style.shadowThickness, 1), 4)
+        let shadowOpacity = min(element.style.shadowOpacity * (1 + (thickness - 1) * 0.16), 1)
+        let shadowRadius = element.style.shadowRadius * (1 + (thickness - 1) * 0.10)
+        NSGraphicsContext.current?.cgContext.saveGState()
+        NSGraphicsContext.current?.cgContext.setShadow(
+            offset: CGSize(width: element.style.shadowOffsetX, height: element.style.shadowOffsetY),
+            blur: shadowRadius,
+            color: NSColor(element.style.shadowColor).withAlphaComponent(shadowOpacity).cgColor
+        )
+    }
+
+    private static func drawIntervalHUDDivider(element: OverlayElement, x: Double, rect: CGRect, height: Double) {
+        guard element.style.dividerEnabled else { return }
+        NSColor(element.style.dividerColor).withAlphaComponent(element.style.dividerOpacity).setFill()
+        CGRect(
+            x: x - element.style.dividerThickness / 2,
+            y: rect.minY + height * 0.22,
+            width: max(element.style.dividerThickness, 0.5),
+            height: height * 0.46
+        ).fill()
+    }
+
+    private static func drawCenteredText(_ text: String, in rect: CGRect, textStyle: IntervalHUDBarTextStyle, color: NSColor) {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: intervalHUDFont(textStyle),
+            .foregroundColor: color,
+            .paragraphStyle: paragraph
+        ]
+        let size = (text as NSString).size(withAttributes: attrs)
+        let drawRect = CGRect(
+            x: rect.minX,
+            y: rect.midY - size.height / 2,
+            width: rect.width,
+            height: size.height
+        )
+        (text as NSString).draw(in: drawRect, withAttributes: attrs)
+    }
+
+    private static func intervalHUDFont(_ textStyle: IntervalHUDBarTextStyle) -> NSFont {
+        let weight = nsFontWeight(textStyle.fontWeight)
+        return OverlayFontResolver.appKitFont(family: textStyle.fontName, size: textStyle.fontSize, weight: weight)
+    }
+
+    private static func nsFontWeight(_ weight: OverlayFontWeight) -> NSFont.Weight {
+        switch weight {
+        case .regular: .regular
+        case .medium: .medium
+        case .semibold: .semibold
+        case .bold: .bold
         }
     }
 
@@ -1512,10 +2377,8 @@ struct OverlayFrameRenderer {
     ) {
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.alignment = alignment
-        var font = NSFont(name: fontName, size: fontSize) ?? .systemFont(ofSize: fontSize, weight: weight)
+        var font = OverlayFontResolver.appKitFont(family: fontName, size: fontSize, weight: weight)
         if monospacedDigits {
-            font = NSFontManager.shared.font(withFamily: font.familyName ?? font.fontName,
-                                             traits: [], weight: 5, size: fontSize) ?? font
             // monospaced digits feature
             let descriptor = font.fontDescriptor.addingAttributes([
                 .featureSettings: [
@@ -1539,25 +2402,9 @@ struct OverlayFrameRenderer {
         ).draw(in: rect)
     }
 
-    private static func nsFontWeight(_ weight: OverlayFontWeight) -> NSFont.Weight {
-        switch weight {
-        case .regular: .regular
-        case .medium: .medium
-        case .semibold: .semibold
-        case .bold: .bold
-        }
-    }
-
     private static func renderRouteMap(_ element: OverlayElement, renderContext: OverlayRenderContext) {
         let layout = OverlayRenderModel.routeMapLayout(for: element, in: renderContext)
         let accent = NSColor(element.style.foregroundColor)
-        let backgroundOpacity: Double = switch layout.preset {
-        case .glow: max(element.style.backgroundOpacity, 0.34)
-        default:
-            element.style.routeMapBackgroundStyle == .none
-                ? element.style.backgroundOpacity
-                : max(element.style.backgroundOpacity, 0.72)
-        }
 
         let shouldUseFadeMask = layout.edgeFade == .fadeOut && layout.fadeAmount > 0.001
         let clipMask = shouldUseFadeMask ? RouteMapMaskRenderer.makeCGMask(
@@ -1571,16 +2418,16 @@ struct OverlayFrameRenderer {
         if let cgContext = NSGraphicsContext.current?.cgContext, let clipMask, shouldUseFadeMask {
             cgContext.saveGState()
             cgContext.clip(to: layout.rect, mask: clipMask)
-            drawRouteMapContent(element: element, layout: layout, accent: accent, backgroundOpacity: backgroundOpacity)
+            drawRouteMapContent(element: element, layout: layout, accent: accent)
             cgContext.restoreGState()
         } else {
             NSGraphicsContext.saveGraphicsState()
             RouteMapMaskRenderer.shapePath(shape: layout.shape, rect: layout.rect, cornerRadius: layout.cornerRadius).addClip()
-            drawRouteMapContent(element: element, layout: layout, accent: accent, backgroundOpacity: backgroundOpacity)
+            drawRouteMapContent(element: element, layout: layout, accent: accent)
             NSGraphicsContext.restoreGraphicsState()
         }
 
-        strokeRouteMapBorder(layout: layout, isSelected: false)
+        strokeRouteMapBorder(element: element, layout: layout, isSelected: false)
 
         if let statsBar = layout.statsBarLayout {
             drawRouteMapStatsBar(layout: statsBar)
@@ -1912,11 +2759,14 @@ struct OverlayFrameRenderer {
     private static func drawRouteMapContent(
         element: OverlayElement,
         layout: OverlayRouteMapRenderLayout,
-        accent: NSColor,
-        backgroundOpacity: Double
+        accent: NSColor
     ) {
-        NSColor.black.withAlphaComponent(backgroundOpacity).setFill()
-        RouteMapMaskRenderer.shapePath(shape: layout.shape, rect: layout.rect, cornerRadius: layout.cornerRadius).fill()
+        if element.style.backgroundEnabled {
+            NSColor(element.style.backgroundColor)
+                .withAlphaComponent(element.style.backgroundOpacity)
+                .setFill()
+            RouteMapMaskRenderer.shapePath(shape: layout.shape, rect: layout.rect, cornerRadius: layout.cornerRadius).fill()
+        }
 
         if element.style.routeMapBackgroundStyle != .none {
             drawMapGrid(in: layout.rect, style: element.style.routeMapBackgroundStyle, opacity: layout.mapOpacity)
@@ -1943,7 +2793,7 @@ struct OverlayFrameRenderer {
         shadowPath.lineJoinStyle = .round
         shadowPath.stroke()
 
-        if layout.preset == .glow {
+        if layout.glowEnabled {
             let glowPath = routePath(points: points)
             accent.withAlphaComponent(0.42).setStroke()
             glowPath.lineWidth = layout.lineWidth * 2.5
@@ -1954,17 +2804,25 @@ struct OverlayFrameRenderer {
 
         strokeRoutePath(points: points, layout: layout, element: element, accent: accent)
 
-        drawRouteMarker(points.first, color: .systemGreen, lineWidth: layout.lineWidth, style: element.style.routeMapStartMarkerStyle)
-        drawRouteMarker(points.last, color: .systemRed, lineWidth: layout.lineWidth, style: element.style.routeMapEndMarkerStyle)
-        drawRouteMarker(layout.projectedCurrentPoint, color: NSColor(element.style.routeMapRunnerDotColor), lineWidth: layout.lineWidth * 1.18)
+        drawRouteMarker(points.first, color: element.style.routeMapStartMarkerColor, lineWidth: layout.lineWidth, style: element.style.routeMapStartMarkerStyle)
+        drawRouteMarker(points.last, color: element.style.routeMapEndMarkerColor, lineWidth: layout.lineWidth, style: element.style.routeMapEndMarkerStyle)
+        drawRouteMarker(
+            layout.projectedCurrentPoint,
+            color: element.style.routeMapRunnerDotColor,
+            lineWidth: layout.lineWidth * 1.18,
+            style: element.style.routeMapRunnerMarkerStyle
+        )
 
     }
 
-    private static func strokeRouteMapBorder(layout: OverlayRouteMapRenderLayout, isSelected: Bool) {
-        guard isSelected || layout.borderVisible else { return }
+    private static func strokeRouteMapBorder(element: OverlayElement, layout: OverlayRouteMapRenderLayout, isSelected: Bool) {
+        guard isSelected || element.style.borderEnabled else { return }
         let border = RouteMapMaskRenderer.shapePath(shape: layout.shape, rect: layout.rect, cornerRadius: layout.cornerRadius)
-        (isSelected ? NSColor.controlAccentColor.withAlphaComponent(0.85) : NSColor.white.withAlphaComponent(0.16)).setStroke()
-        border.lineWidth = isSelected ? 2 : 1
+        let color = isSelected
+            ? NSColor.controlAccentColor.withAlphaComponent(0.85)
+            : NSColor(element.style.borderColor).withAlphaComponent(element.style.borderOpacity)
+        color.setStroke()
+        border.lineWidth = isSelected ? 2 : element.style.borderWidth * element.scale
         border.stroke()
     }
 
@@ -1980,8 +2838,8 @@ struct OverlayFrameRenderer {
         return path
     }
 
-    private static func routeColor(for preset: OverlayRouteMapPreset, element: OverlayElement, accent: NSColor) -> NSColor {
-        if element.style.routeMapColorMode == .gradient || preset == .gradient {
+    private static func routeColor(for element: OverlayElement, accent: NSColor) -> NSColor {
+        if element.style.routeMapColorMode == .gradient {
             return NSColor(element.style.routeMapGradientMiddle)
         }
         return accent
@@ -1997,7 +2855,7 @@ struct OverlayFrameRenderer {
             return
         }
 
-        if element.style.routeMapColorMode == .gradient || layout.preset == .gradient {
+        if element.style.routeMapColorMode == .gradient {
             let start = NSColor(element.style.routeMapGradientStart)
             let middle = NSColor(element.style.routeMapGradientMiddle)
             let end = NSColor(element.style.routeMapGradientEnd)
@@ -2017,7 +2875,7 @@ struct OverlayFrameRenderer {
         }
 
         let path = routePath(points: points)
-        routeColor(for: layout.preset, element: element, accent: accent).setStroke()
+        routeColor(for: element, accent: accent).setStroke()
         path.lineWidth = layout.lineWidth
         path.lineCapStyle = .round
         path.lineJoinStyle = .round
@@ -2042,59 +2900,50 @@ struct OverlayFrameRenderer {
         return NSColor(red: red, green: green, blue: blue, alpha: alpha)
     }
 
-    private static func drawRouteMarker(_ point: CGPoint?, color: NSColor, lineWidth: Double, style: OverlayRouteMapMarkerStyle = .dot) {
+    private static func drawRouteMarker(_ point: CGPoint?, color: OverlayColor, lineWidth: Double, style: OverlayRouteMapMarkerStyle = .dot) {
         guard let point else {
             return
         }
-        let path: NSBezierPath
         switch style {
         case .hidden:
             return
-        case .dot:
-            let diameter = lineWidth * 2.7
-            let rect = CGRect(x: point.x - diameter / 2, y: point.y - diameter / 2, width: diameter, height: diameter)
-            path = NSBezierPath(ovalIn: rect)
-        case .pin:
-            let width = lineWidth * 2.9
-            let height = lineWidth * 3.5
-            let rect = CGRect(x: point.x - width / 2, y: point.y - height / 2, width: width, height: height)
-            path = routePinPath(in: rect)
-        case .flag:
-            let side = lineWidth * 3
-            let rect = CGRect(x: point.x - side / 2, y: point.y - side / 2, width: side, height: side)
-            path = routeFlagPath(in: rect)
+        case .dot, .pin, .flag:
+            break
         }
 
-        color.setFill()
-        path.fill()
+        let diameter = lineWidth * 2.7
+        let rect = CGRect(x: point.x - diameter / 2, y: point.y - diameter / 2, width: diameter, height: diameter)
+        let path = NSBezierPath(ovalIn: rect)
+        if color.isRouteMapEndCheckerboard {
+            drawCheckerboardFill(in: rect, clippedTo: path)
+        } else {
+            NSColor(color).setFill()
+            path.fill()
+        }
         NSColor.white.setStroke()
         path.lineWidth = max(lineWidth * 0.35, 1)
         path.stroke()
     }
 
-    private static func routePinPath(in rect: CGRect) -> NSBezierPath {
-        let path = NSBezierPath()
-        let radius = min(rect.width, rect.height) * 0.34
-        let center = CGPoint(x: rect.midX, y: rect.minY + radius + 1)
-        path.appendArc(withCenter: center, radius: radius, startAngle: 0, endAngle: 360)
-        path.move(to: CGPoint(x: rect.midX, y: rect.maxY))
-        path.line(to: CGPoint(x: rect.midX - radius * 0.72, y: rect.midY))
-        path.line(to: CGPoint(x: rect.midX + radius * 0.72, y: rect.midY))
-        path.close()
-        return path
-    }
-
-    private static func routeFlagPath(in rect: CGRect) -> NSBezierPath {
-        let path = NSBezierPath()
-        path.move(to: CGPoint(x: rect.minX + rect.width * 0.24, y: rect.maxY))
-        path.line(to: CGPoint(x: rect.minX + rect.width * 0.24, y: rect.minY + rect.height * 0.15))
-        path.line(to: CGPoint(x: rect.maxX, y: rect.minY + rect.height * 0.24))
-        path.line(to: CGPoint(x: rect.minX + rect.width * 0.24, y: rect.minY + rect.height * 0.50))
-        path.line(to: CGPoint(x: rect.minX + rect.width * 0.42, y: rect.minY + rect.height * 0.62))
-        path.line(to: CGPoint(x: rect.minX, y: rect.minY + rect.height * 0.62))
-        path.line(to: CGPoint(x: rect.minX + rect.width * 0.24, y: rect.minY + rect.height * 0.50))
-        path.close()
-        return path
+    private static func drawCheckerboardFill(in rect: CGRect, clippedTo path: NSBezierPath) {
+        NSGraphicsContext.saveGraphicsState()
+        path.addClip()
+        NSColor.white.setFill()
+        rect.fill()
+        NSColor.black.setFill()
+        let cellWidth = rect.width / 3
+        let cellHeight = rect.height / 3
+        for row in 0..<3 {
+            for column in 0..<3 where (row + column).isMultiple(of: 2) {
+                CGRect(
+                    x: rect.minX + CGFloat(column) * cellWidth,
+                    y: rect.minY + CGFloat(row) * cellHeight,
+                    width: cellWidth,
+                    height: cellHeight
+                ).fill()
+            }
+        }
+        NSGraphicsContext.restoreGraphicsState()
     }
 
     private static func drawMapGrid(in rect: CGRect, style: OverlayRouteMapBackgroundStyle, opacity: Double) {
@@ -2189,6 +3038,17 @@ struct OverlayFrameRenderer {
         )
     }
 
+    /// Maps the cross-platform `OverlayTextAlignment` to AppKit's
+    /// `NSTextAlignment`. Used by preset paths that need to honor user-driven
+    /// label / value alignment in the export renderer.
+    private static func nsTextAlignment(_ a: OverlayTextAlignment) -> NSTextAlignment {
+        switch a {
+        case .leading: .left
+        case .center: .center
+        case .trailing: .right
+        }
+    }
+
     private static func presetTextRect(for element: OverlayElement, renderLayout: OverlayTextRenderLayout, renderContext: OverlayRenderContext) -> CGRect {
         let labelSize = textSize(renderLayout.components.label, for: element, fontSize: renderLayout.labelFontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY)
         let shortLabelSize = textSize(renderLayout.components.shortLabel, for: element, fontSize: renderLayout.labelFontSize, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY)
@@ -2213,7 +3073,13 @@ struct OverlayFrameRenderer {
         case .bigNumber:
             let bigValueSize = textSize(renderLayout.components.value, for: element, fontSize: renderLayout.fontSize * 1.95, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY)
             let bigUnitSize = textSize(renderLayout.components.unit, for: element, fontSize: renderLayout.unitFontSize * 1.25, shadowRadius: renderLayout.shadowRadius, shadowOffsetY: renderLayout.shadowOffsetY)
-            size = CGSize(width: max(bigValueSize.width, bigUnitSize.width), height: bigValueSize.height + bigUnitSize.height * 0.95)
+            let labelExtra = (element.style.showLabel && !renderLayout.components.label.isEmpty)
+                ? labelSize.height + renderLayout.labelSpacing
+                : 0
+            size = CGSize(
+                width: max(bigValueSize.width, bigUnitSize.width, labelSize.width),
+                height: bigValueSize.height + bigUnitSize.height * 0.95 + labelExtra
+            )
         case .sportWatch:
             size = CGSize(
                 width: max(valueSize.width + renderLayout.horizontalPadding * 2, renderLayout.fontSize * 3.2),
@@ -2301,7 +3167,7 @@ struct OverlayFrameRenderer {
     }
 
     fileprivate static func textAttributes(for element: OverlayElement, fontSize: Double, shadowRadius: Double, shadowOffsetY: Double) -> [NSAttributedString.Key: Any] {
-        let font = NSFont(name: element.style.fontName, size: fontSize) ?? .systemFont(ofSize: fontSize, weight: nsFontWeight(element.style.fontWeight))
+        let font = OverlayFontResolver.appKitFont(family: element.style.fontName, size: fontSize, weight: nsFontWeight(element.style.fontWeight))
         var attributes: [NSAttributedString.Key: Any] = [
             .font: font,
             .foregroundColor: NSColor(element.style.foregroundColor)
@@ -2396,12 +3262,13 @@ struct OverlayFrameRenderer {
         if let backgroundCornerRadius {
             let baseColor = NSColor(element.style.backgroundColor)
             let opacity = element.style.backgroundEnabled ? element.style.backgroundOpacity : 0
-            baseColor.withAlphaComponent(opacity).setFill()
-            NSBezierPath(
-                roundedRect: CGRect(x: 0, y: 0, width: rect.width * scale, height: rect.height * scale),
-                xRadius: backgroundCornerRadius * scale,
-                yRadius: backgroundCornerRadius * scale
-            ).fill()
+            drawOverlayBackground(
+                CGRect(x: 0, y: 0, width: rect.width * scale, height: rect.height * scale),
+                color: baseColor.withAlphaComponent(opacity),
+                cornerRadius: backgroundCornerRadius * scale,
+                fadeEnabled: element.style.backgroundFadeOutEnabled,
+                fadeAmount: element.style.backgroundFadeOutAmount
+            )
         }
 
         NSAttributedString(
@@ -2447,8 +3314,60 @@ struct OverlayFrameRenderer {
     private static func drawRoundedBackground(_ rect: CGRect, element: OverlayElement, cornerRadius: Double) {
         let baseColor = NSColor(element.style.backgroundColor)
         let opacity = element.style.backgroundEnabled ? element.style.backgroundOpacity : 0
-        baseColor.withAlphaComponent(opacity).setFill()
-        NSBezierPath(roundedRect: rect, xRadius: cornerRadius, yRadius: cornerRadius).fill()
+        drawOverlayBackground(
+            rect,
+            color: baseColor.withAlphaComponent(opacity),
+            cornerRadius: cornerRadius,
+            element: element
+        )
+    }
+
+    private static func drawTextPresetBackground(_ rect: CGRect, element: OverlayElement, cornerRadius: Double) {
+        guard element.style.backgroundEnabled else { return }
+        drawOverlayBackground(
+            rect,
+            color: NSColor(element.style.backgroundColor).withAlphaComponent(element.style.backgroundOpacity),
+            cornerRadius: cornerRadius,
+            element: element
+        )
+    }
+
+    private static func drawOverlayBackground(_ rect: CGRect, color: NSColor, cornerRadius: Double, element: OverlayElement) {
+        drawOverlayBackground(
+            rect,
+            color: color,
+            cornerRadius: cornerRadius,
+            fadeEnabled: element.style.backgroundFadeOutEnabled,
+            fadeAmount: element.style.backgroundFadeOutAmount
+        )
+    }
+
+    private static func drawOverlayBackground(
+        _ rect: CGRect,
+        color: NSColor,
+        cornerRadius: Double,
+        fadeEnabled: Bool,
+        fadeAmount: Double
+    ) {
+        guard fadeEnabled,
+              fadeAmount > 0.001,
+              rect.width > 1,
+              rect.height > 1,
+              let context = NSGraphicsContext.current?.cgContext,
+              let mask = OverlayFeatherMaskRenderer.makeCGMask(
+                  size: rect.size,
+                  cornerRadius: cornerRadius,
+                  fadeAmount: fadeAmount
+              ) else {
+            drawRoundedRect(rect, color: color, cornerRadius: cornerRadius)
+            return
+        }
+
+        context.saveGState()
+        context.clip(to: rect, mask: mask)
+        color.setFill()
+        context.fill(rect)
+        context.restoreGState()
     }
 
     private static func drawRoundedRect(_ rect: CGRect, color: NSColor, cornerRadius: Double) {
@@ -2477,9 +3396,10 @@ struct OverlayFrameRenderer {
         NSBezierPath(roundedRect: rect, xRadius: rect.height / 2, yRadius: rect.height / 2).fill()
     }
 
-    private static func drawElevationPath(samples: [Double], in rect: CGRect, color: NSColor, lineWidth: Double) {
+    private static func drawElevationPath(samples: [Double], in rect: CGRect, color: NSColor, lineWidth: Double, smoothed: Bool) {
         let path = NSBezierPath()
-        guard samples.count > 1 else {
+        let points = elevationChartPoints(samples: samples, in: rect)
+        guard points.count > 1 else {
             path.move(to: CGPoint(x: rect.minX, y: rect.midY))
             path.line(to: CGPoint(x: rect.maxX, y: rect.midY))
             color.setStroke()
@@ -2488,20 +3408,7 @@ struct OverlayFrameRenderer {
             return
         }
 
-        let minValue = samples.min() ?? 0
-        let maxValue = samples.max() ?? minValue
-        let range = max(maxValue - minValue, 1)
-
-        for index in samples.indices {
-            let x = rect.minX + rect.width * Double(index) / Double(max(samples.count - 1, 1))
-            let normalized = (samples[index] - minValue) / range
-            let y = rect.maxY - rect.height * normalized
-            if index == samples.startIndex {
-                path.move(to: CGPoint(x: x, y: y))
-            } else {
-                path.line(to: CGPoint(x: x, y: y))
-            }
-        }
+        appendElevationChartLine(to: path, points: points, smoothed: smoothed)
 
         color.setStroke()
         path.lineWidth = lineWidth
@@ -2510,25 +3417,69 @@ struct OverlayFrameRenderer {
         path.stroke()
     }
 
-    private static func drawElevationArea(samples: [Double], in rect: CGRect, color: NSColor) {
+    private static func drawElevationArea(samples: [Double], in rect: CGRect, startColor: NSColor, endColor: NSColor, smoothed: Bool) {
         let path = NSBezierPath()
-        guard samples.count > 1 else { return }
+        let points = elevationChartPoints(samples: samples, in: rect)
+        guard points.count > 1 else { return }
 
+        path.move(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.line(to: points[0])
+        appendElevationChartLine(to: path, points: points, smoothed: smoothed, movesToFirstPoint: false)
+        path.line(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.close()
+        NSGraphicsContext.saveGraphicsState()
+        path.addClip()
+        NSGradient(starting: startColor, ending: endColor)?.draw(from: CGPoint(x: rect.midX, y: rect.minY), to: CGPoint(x: rect.midX, y: rect.maxY), options: [])
+        NSGraphicsContext.restoreGraphicsState()
+    }
+
+    private static func elevationChartPoints(samples: [Double], in rect: CGRect) -> [CGPoint] {
+        guard !samples.isEmpty else { return [] }
         let minValue = samples.min() ?? 0
         let maxValue = samples.max() ?? minValue
         let range = max(maxValue - minValue, 1)
-
-        path.move(to: CGPoint(x: rect.minX, y: rect.maxY))
-        for index in samples.indices {
+        return samples.indices.map { index in
             let x = rect.minX + rect.width * Double(index) / Double(max(samples.count - 1, 1))
             let normalized = (samples[index] - minValue) / range
             let y = rect.maxY - rect.height * normalized
-            path.line(to: CGPoint(x: x, y: y))
+            return CGPoint(x: x, y: y)
         }
-        path.line(to: CGPoint(x: rect.maxX, y: rect.maxY))
-        path.close()
-        color.setFill()
-        path.fill()
+    }
+
+    private static func appendElevationChartLine(
+        to path: NSBezierPath,
+        points: [CGPoint],
+        smoothed: Bool,
+        movesToFirstPoint: Bool = true
+    ) {
+        guard let firstPoint = points.first else { return }
+        if movesToFirstPoint {
+            path.move(to: firstPoint)
+        }
+        guard smoothed, points.count > 2 else {
+            for point in points.dropFirst() {
+                path.line(to: point)
+            }
+            return
+        }
+
+        for index in 0..<(points.count - 1) {
+            let start = points[index]
+            let end = points[index + 1]
+            let previous = index > 0 ? points[index - 1] : start
+            let next = index + 2 < points.count ? points[index + 2] : end
+            path.curve(
+                to: end,
+                controlPoint1: CGPoint(
+                    x: start.x + (end.x - previous.x) / 6,
+                    y: start.y + (end.y - previous.y) / 6
+                ),
+                controlPoint2: CGPoint(
+                    x: end.x - (next.x - start.x) / 6,
+                    y: end.y - (next.y - start.y) / 6
+                )
+            )
+        }
     }
 
     private static func elevationMarkerPoint(samples: [Double], progress: Double, in rect: CGRect) -> CGPoint {
@@ -2632,7 +3583,7 @@ struct OverlayFrameRenderer {
     ) {
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.alignment = alignment
-        let font = NSFont(name: fontName ?? element.style.fontName, size: fontSize) ?? .systemFont(ofSize: fontSize, weight: weight)
+        let font = OverlayFontResolver.appKitFont(family: fontName ?? element.style.fontName, size: fontSize, weight: weight)
         NSAttributedString(
             string: text,
             attributes: [
@@ -2759,6 +3710,17 @@ private struct TextPresetColors {
     var foreground: NSColor
     var background: NSColor
     var accent: NSColor
+}
+
+private struct IntervalHUDExportVerticalLayout {
+    var topPadding: Double
+    var bottomPadding: Double
+    var spacing: Double
+}
+
+private struct IntervalHUDExportZoneRect {
+    var index: Int
+    var rect: CGRect
 }
 
 private struct TextLayoutKey: Hashable {

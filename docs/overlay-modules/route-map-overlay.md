@@ -1,6 +1,6 @@
 # Route Map Overlay Design
 
-Last updated: 2026-04-28 (Stats Bar unified inspector)
+Last updated: 2026-06-16 (Route Map container controls cleanup)
 
 > **Inspector / UI design has its own spec.** See
 > [`docs/design/overlays/route-map/route-map-overlay-ui.md`](../design/overlays/route-map/route-map-overlay-ui.md) and
@@ -46,15 +46,15 @@ Last updated: 2026-04-28 (Stats Bar unified inspector)
 
 Inspector 控件需要覆盖这些维度：
 
-- Route style: Minimal, Gradient, Glow, Dashed, Map。
+- Route line: solid / gradient color mode, plus a Glow switch in Route Line.
 - Route color: 固定色、渐变色、按指标映射。
 - Route color mode: solid / gradient (3-stop configurable colors).
 - Metric mapping: pace, heart rate, elevation, distance, elapsed time。
 - Line width: 1 px 到 24 px，随项目分辨率缩放。
 - Glow: 开关、强度、颜色、半径。
-- Start/end markers: 起点与终点可独立设置（dot / pin / flag / hidden）。
-- Marker style (v1): dot / pin / flag.
-- Current position marker: 开关、样式、大小、尾迹长度。
+- Start/end markers: 起点与终点可独立开关并设置颜色；开启时当前版本统一渲染为 dot。End marker color defaults to a 3x3 black/white checkerboard finish preset.
+- Marker style (current scope): dot / hidden only. Pin / flag artwork is deferred.
+- Current position marker: 可独立开关并设置颜色；开启时当前版本统一渲染为 dot。
 - Legend (v2): hide / minimal / start+finish+distance / gradient band.
 - Map background style (v1): none / dark / light / terrain / satellite.
 - Map opacity and route opacity。
@@ -119,7 +119,6 @@ struct RouteGeometry: Equatable {
 建议新增：
 
 - `OverlayElementType.routeMap`
-- `OverlayRouteMapPreset`
 - `OverlayRouteMapStyle`
 - `OverlayRouteMapRenderLayout`
 - `RouteGeometryBuilder`
@@ -133,7 +132,7 @@ struct RouteGeometry: Equatable {
 3. 计算 route bounds 和目标 aspect ratio。
 4. 将经纬度投影到 2D overlay rect。Map Style 使用 Web Mercator；无底图样式可以用同一投影保证一致。
 5. 按当前 elapsed time 拆分 completed route 和 remaining route。
-6. 根据 preset 绘制底图、路线、进度点、起终点、legend。
+6. 根据独立的 map / line / marker / stats bar 设置绘制底图、路线、进度点、起终点、legend。
 7. 导出时在 `OverlayFrameRenderer` 中复用相同 layout 和 geometry cache。
 
 ## 8. Animation Behavior
@@ -216,12 +215,14 @@ Phase C: Map snapshot abstraction
 
 - 定义 `MapSnapshotProvider`。Completed.
 - 接入首个地图 provider。MapKit preview snapshot loading completed.
-- 实现缓存层和失败降级。Pending.
+- 导出前冻结当前 MapKit 快照并传入共享 SwiftUI 渲染组件。Completed.
+- 实现持久化缓存层和失败降级。Partially completed（导出内存快照缓存已完成；跨会话磁盘缓存仍待实现）。
 - 支持用户自定义地图 API/Mapbox endpoint。Pending.
 
 Phase D: Advanced polish
 
-- 起终点/当前位置 marker 样式。Completed (hidden / dot / pin / flag, 独立 start / end)。
+- 起终点/当前位置 marker 显示。Completed for current scope (start / end /
+  moving 独立开关；开启时统一渲染 dot)。Pin / flag marker artwork is deferred.
 - Legend 和指标色带。Partially completed (minimal / start+finish+distance / gradientBand 三种模式)。
 - Progress reveal animation。Pending.
 - 起终点隐私模糊。Pending.
@@ -233,8 +234,8 @@ Phase E: Container presets, map dim controls, edge fade fix (current revision)
   `squareGradientEdge` / `circleGradientEdge`，每个预设对应一组 shape /
   edgeFade / fadeAmount / mapOpacity / shadow 默认值。
 - 新增 `OverlayStyle.routeMapMapOpacity` (默认 0.72)，preview 与 export 共同消费。
-- Inspector 用新的分组布局 (Preset / Layout / Container / Background Map /
-  Route Line / Markers / Legend / Effects)，与
+- Inspector 用新的分组布局 (Layout / Container / Background Map /
+  Route Line / Markers / Stats Bar / shared Background / Border / Effects)，与
   `docs/design/overlays/route-map/route-map-overlay-ui.spec.json` 对齐。
 - **Bug fix**: Edge Fade "Fade Out" 在 SwiftUI preview 中无效。根本原因：
   `RouteMapMaskRenderer` 输出的是灰度 CGImage（无 alpha 通道），
@@ -248,9 +249,15 @@ Phase E: Container presets, map dim controls, edge fade fix (current revision)
   边界而几乎不渐变，四角却完全变黑。修复：方形 shape 改用"最短边距"像素
   迭代算法——`gray = min(distance_to_each_edge) / fadeWidth`，保证四边
   均匀渐变且圆角自然剪切（像素值=0 的区域保持不变）。
-- **新增**: Container 区域增加 Border 开关（`routeMapBorderVisible`）。
-  默认开启（兼容旧项目）；关闭后 preview 和 export 均不绘制非选中态边框线；
-  选中状态的 accent 选框不受影响。Preset 区域移除了无实际效果的 Distance 行。
+- **Cleanup**: Container 区域只保留 Shape 与尺寸控制。Corner Radius 改由共享
+  Background `Radius` 驱动；Border 改由共享 Border 模块驱动；Edge Fade /
+  Softness 改由共享 Effects 的 Background Fade Out / Fade Amount 驱动。
+- **Bug fix**: Route Map 容器底色现在遵守共享 Background 开关。关闭 Background
+  时无底图 Route Map 变为透明；Background Map 的 MapKit / grid 图层仍由
+  `Show Map` 单独控制。
+- **Bug fix**: Route Map 方形容器的 Fade Out 改用通用 feather mask，避免大
+  fade amount 下圆角退化成尖角；共享 Background Padding 现在会扩大地图容器，
+  同时 route content rect 反向预留该 padding，避免路线本体随背景一起外扩。
 
 Phase F: Stats Bar (current revision)
 
@@ -267,13 +274,43 @@ Phase F: Stats Bar (current revision)
 - `Inside` 模式下 Stats Bar 背景不再使用 bar 自身圆角，改为按外层容器形状/圆角裁切，实现与容器底边（或顶边）一体化视觉。
 - Stats Bar 位于 Left/Right 时，渲染强制使用纵向堆叠（top-to-bottom），并将 `Item Gap` 作为纵向行间距。
 
-Phase G: Route line richness, container border / glow
+Phase G: Export Map Snapshot Preload (current revision)
+
+- 新增共享的 `RouteMapSnapshotRequestBuilder`，Preview 和 Export 都从同一份
+  `OverlayRouteMapRenderLayout` 输入生成 `MapSnapshotRequest`，避免两条路径的
+  bounds / size / style 逻辑分叉。
+- `SwiftUIOverlayVideoExporter` 在 MOV 和 PNG 导出前收集所有可见 Route Map
+  overlay 的 snapshot request，使用 `MapKitMapSnapshotProvider` 预取一次
+  `NSImage`，并在整次导出中复用。
+- `OverlaySharedRouteMapView` / `RouteMapOverlayView` 支持注入静态地图快照。
+  导出路径把预取图片直接传入 SwiftUI 树，因此 `ImageRenderer` 不再依赖
+  `RouteMapOverlayView.task` 的异步加载时序。
+- 如果 MapKit snapshot 请求失败或没有 GPS geometry，Route Map 仍回退到本地
+  grid 背景，路线、marker、Stats Bar 继续正常导出。
+
+Phase G.1: Route line and marker inspector cleanup (current revision)
+
+- `Color Mode` 现在直接决定路线线条用 Solid 还是 Gradient；选择 Gradient
+  Route Style 不再覆盖 Inspector 中的 Solid 选择。
+- Markers 区域移除批量 `All Markers` 控件，Start / End / Moving marker 各自
+  独立设置样式。
+- Start 与 End marker 新增独立颜色字段；Moving marker 继续使用独立颜色字段，
+  并新增与起终点一致的 style 控制。
+
+Phase G.2: Stable MapKit snapshot appearance (current revision)
+
+- `MapKitMapSnapshotProvider` 显式为每次 `MKMapSnapshotter` 请求设置
+  appearance，不再让同一项目的地图底图跟随 macOS 当前浅色 / 深色外观变化。
+- `dark` 背景样式固定请求 dark MapKit 快照；`light` / `terrain` /
+  `satellite` 固定请求 light snapshot appearance。
+
+Phase H: Route line richness, container border / glow
 
 - 实现 `RouteMapLegendItemConfig` 列表，替换固定 `legendMode`（保留兼容）。
 - 路线线宽 / 不透明度 / 虚线 / 发光 / 阴影模型字段，并在 Inspector 暴露。
 - 容器 border / glow / blend mode 字段。
 - 地图 contrast / saturation / brightness / blur 调节。
-- 单独控制起终点 marker 颜色 / 大小 / 边框 / 标签文本。
+- 单独控制 marker 大小 / 边框 / 标签文本。
 - 用 `byPace` / `byHeartRate` / `byPower` / `byElevation` 等指标驱动渐变颜色。
 
 ## 13. Open Questions

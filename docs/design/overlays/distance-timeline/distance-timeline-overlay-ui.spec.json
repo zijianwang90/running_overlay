@@ -1,6 +1,6 @@
 {
   "name": "Distance Timeline Overlay UI",
-  "updated": "2026-04-28 (shared stats bar renderer alignment)",
+  "updated": "2026-04-30 (axis: separate start/finish vs more points; marker label & size; per-band offsets)",
   "references": {
     "styleBoard": "./distance-timeline-overlay-styles.png",
     "relatedModuleSpec": "../../../overlay-modules/distance-timeline-overlay.md",
@@ -97,18 +97,25 @@
     "rules": ["label is a separate section following Numeric overlay label behavior", "labelValueSpacing controls vertical distance between label and value"]
   },
   "axisLabels": {
-    "controls": ["enabled", "mode", "showDistancePoints", "distancePointDensity", "distancePointGap", "font", "size", "weight", "color"],
+    "controls": ["showStartFinish", "axisEndpointPlacement", "startFinishOffset", "showMorePoints", "mode", "distancePointDensity", "axisMidpointPlacement", "midpointOffset", "font", "size", "weight", "color"],
     "modes": ["startFinish", "distance"],
+    "axisLabelTrackPlacement": ["below", "above"],
     "rules": [
-      "start/finish or distance endpoint labels render below the progress axis using distancePointGap",
-      "distancePointGap remains editable when showDistancePoints is false because endpoint labels use it",
-      "additional distance points are optional and density-controlled"
+      "showAxisLabels toggles start/finish pair only; showDistancePoints toggles intermediate distance labels only",
+      "axisEndpointPlacement and axisMidpointPlacement independently choose below or above the progress track",
+      "start/finish offset is stored as distancePointOffset for JSON compatibility; midpointAxisLabelOffset is separate",
+      "distance mode origin uses the same unit suffix as other distance labels",
+      "intermediate distance labels require More Points on and density greater than zero"
     ]
   },
   "progressMarker": {
-    "controls": ["enabled", "style", "color"],
+    "controls": ["enabled", "style", "color", "markerSizeMultiplier", "markerDistanceLabelEnabled", "markerDistanceLabelPlacement", "markerDistanceLabelOffset"],
     "styles": ["dot", "pill", "triangle"],
-    "rules": ["marker color is independent from progress fill color", "marker styles render as vector-native shapes in preview and export; SVG marker assets are not supported yet"]
+    "rules": [
+      "marker color is independent from progress fill color",
+      "marker styles render as vector-native shapes in preview and export; SVG marker assets are not supported yet",
+      "marker distance label shows current activity distance with axis typography and requires Marker enabled"
+    ]
   },
   "statsBar": {
     "controls": ["enabled", "placement", "inside", "layout", "width", "height", "offsetX", "offsetY", "itemSpacing", "backgroundOpacity", "dividerOpacity", "cornerRadius", "slots"],

@@ -331,13 +331,15 @@
       {
         "id": "intervalWorkout",
         "name": "Interval Workout",
-        "elements": ["elapsedTime", "pace", "heartRate", "lapLive"],
+        "resource": "Sources/RunningOverlay/Resources/Templates/IntervalWorkout.rotemplate",
+        "elements": ["routeMap", "elapsedTime", "realTime", "weatherWidget", "intervalHUDBar", "intervalTimeline"],
         "actions": ["applyWithConfirmation"]
       },
       {
         "id": "race",
         "name": "Race",
-        "elements": ["distanceTimeline", "runningGauge", "routeMap", "pace"],
+        "resource": "Sources/RunningOverlay/Resources/Templates/Race.rotemplate",
+        "elements": ["pace", "heartRate", "cadence", "routeMap", "distanceTimeline", "elapsedTime", "realTime", "power", "weatherWidget", "zoneEdgeBar", "elevationChart"],
         "actions": ["applyWithConfirmation"]
       }
     ],
@@ -348,9 +350,11 @@
       "contextMenu": [
         "Rename",
         "Duplicate",
+        "Update Template",
         "Export...",
         "Delete"
       ],
+      "updateRule": "confirm before overwriting selected user template contents with the current overlay setup",
       "deleteRule": "confirm before deleting",
       "exportRule": "export selected template as standalone shareable template file"
     },

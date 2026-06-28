@@ -1,6 +1,6 @@
 # Timeline UI Design Spec
 
-Last updated: 2026-04-28
+Last updated: 2026-05-10
 
 ## Purpose
 
@@ -41,6 +41,7 @@ Existing behavior to preserve:
 - Collapse/expand toggle for hiding gaps without video.
 - Zoom slider with nonlinear mapping and `Fit` label.
 - Ruler seeking and hover data.
+- `C`-held hover scrubbing that moves the playhead to the hovered timeline time without clicking.
 - FIT layer shown independently above video tracks.
 - FIT layer can be dragged horizontally to align activity data.
 - Video clips can be dragged horizontally in expanded mode.
@@ -127,15 +128,21 @@ The FIT track represents the activity data layer.
 
 Visual:
 
-- Green bar spanning activity duration.
+- Green bar spanning activity duration for steady activities.
+- Interval workouts use lap-kind colors on the FIT bar: WU, RUN, REST, CD, and unknown laps map to distinct phase colors sourced from `LapRecord.kind`.
+- Timer-paused spans overlay the FIT bar in muted gray above steady or interval phase colors, but remain below the FIT track outer border so their visual height matches adjacent phase blocks.
 - Start block or label near the beginning, e.g. `00:00`.
 - Dark block borders consistent with clip splice edges.
 
 Behavior:
 
-- The FIT layer can be dragged horizontally to change `fitStartTime`.
+- The FIT layer is currently not draggable in the timeline UI.
+- Hovering a gray pause span shows `Timer Paused` with the pause elapsed range and duration.
+- Hovering an interval phase span shows the English lap kind, lap number, elapsed range, and duration.
 - The design should hint that it is an alignable axis, not a normal video clip.
 - In collapsed mode, FIT-only regions without video may be hidden according to current model behavior.
+- In collapsed mode, video-only regions outside the FIT activity range must not draw a FIT block.
+- FIT track span colors are lap-kind driven for intervals and annotation-overridden for pause spans, without changing timeline alignment semantics.
 
 ## Video Tracks And Clips
 
@@ -211,6 +218,7 @@ Rules:
 ## Interaction Rules
 
 - Ruler click/drag seeks the playhead.
+- Holding `C` while moving the mouse over the timeline time area scrubs the playhead to the hovered time, matching DaVinci-style hover scrubbing. The timeline should consume `C` key-down/key-up events while the mouse is over the timeline so macOS does not play invalid-key feedback during hover scrub.
 - Clip click selects the clip.
 - Expanded-mode clip drag changes effective start time.
 - Collapsed-mode clip drag is disabled, but selection still works.

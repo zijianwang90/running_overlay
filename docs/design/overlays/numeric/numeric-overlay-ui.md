@@ -1,12 +1,14 @@
 # Numeric Overlay UI Design Spec
 
-Last updated: 2026-04-29 (shared background/effects inspector modules)
+Last updated: 2026-06-18 (elevation current vs gain)
 
 ## Purpose
 
 Numeric Overlay is the reusable Inspector detail template for overlays that display a single numeric or numeric-like metric value. It should replace one-off Pace-style detail layouts with a dense, consistent editing surface.
 
 This spec guides all numeric overlay development, including UI, model mapping, formatting, unit selection, background styling, and implementation gaps.
+
+Numeric Overlay 1.0 intentionally uses one render style: Minimal Clean. The Inspector does not expose text style presets or divider controls. Existing `OverlayStyle.textPreset` and `divider*` fields remain decodable for old projects/templates, but numeric preview/export ignores divider rendering and resolves numeric metrics through the Minimal Clean render path.
 
 ## Design Reference
 
@@ -17,7 +19,10 @@ This spec guides all numeric overlay development, including UI, model mapping, f
 Use this template for these `OverlayElementType` values:
 
 - `heartRate`
-- `pace`
+- `heartRateZone` — same Inspector sections as other metrics, but value / label / unit / icon each optionally follow the active heart-rate zone color through independent toggles. This type is **not** available as an Interval HUD Bar metric slot (the HUD keeps its own `heartRateZone` / `hrDrop` metrics).
+- `pace` — instantaneous speed-derived pace at the playhead.
+- `avgPace` — cumulative session average (elapsed ÷ distance); same Inspector and unit options as `pace`.
+- `lapPace` — running average within the current lap (in-lap elapsed ÷ in-lap distance).
 - `calories`
 - `elapsedTime`
 - `realTime`
@@ -68,7 +73,7 @@ Sections:
 3. `Typography` (value only)
 4. `Label`
 5. `Unit`
-6. `Color`
+6. `Icon`
 7. `Background`
 8. `Border`
 9. `Effects`
@@ -88,6 +93,7 @@ Do not use large card containers for every row.
 | Control | Example | Requirement |
 | --- | --- | --- |
 | `Units` dropdown | `Metric (min/km)` | Required for metrics with unit variants. |
+| `Mode` dropdown | `Current` / `Gain` | Required for Elevation only. |
 | `Format Preview` readout | `13'49" / km` | Always visible and model-backed through formatter. |
 
 ### Unit Selection
@@ -102,10 +108,13 @@ The selected option shows a checkmark.
 
 Other numeric overlays should expose only relevant unit choices:
 
+- Date exposes a `Format` menu instead of `Units`: `YYYY-MM-DD`, `YYYY/MM/DD`, `MM/DD/YYYY`, `MM-DD`, `MM/DD`, and abbreviated `Month D`. It reads the activity timestamp at the current playhead, matching Real Time's source.
+
 | Metric | Suggested units |
 | --- | --- |
 | Heart Rate | `bpm` |
 | Pace | `Metric (min/km)`, `Imperial (min/mi)`, `Rowing (min/500m)` |
+| Avg Pace / Lap Pace | Same as Pace |
 | Distance | `Metric (km)`, `Imperial (mi)`, `Meters (m)` |
 | Elevation | `Metric (m)`, `Imperial (ft)` |
 | Power | `watts` |
@@ -116,6 +125,7 @@ Other numeric overlays should expose only relevant unit choices:
 
 Elapsed Time formatting rules:
 
+- Elapsed Time uses active elapsed time: current FIT elapsed time minus any `timerPaused` annotated spans that have occurred so far. While the playhead is inside a timer-paused span, the displayed value freezes at the pause start value.
 - `hh:mm:ss` always renders a fixed three-part clock with zero-padded hours/minutes/seconds (for example, `00:10:00`).
 - `mm:ss` renders `MM:SS`.
 - `seconds` renders rounded whole seconds.
@@ -124,6 +134,8 @@ Implementation rule:
 
 - If a metric has only one unit, the Units row can be read-only or omitted.
 - Do not show a unit menu with fake choices that do not change formatting.
+- Do not show a Style or Preset selector for numeric overlays in 1.0.
+- Elevation adds a separate `Mode` menu backed by `OverlayStyle.elevationDisplayMode`: `Current` shows the live altitude at the playhead; `Gain` shows cumulative ascent up to the current playhead time.
 
 ## Layout Section
 
@@ -131,7 +143,9 @@ Implemented via the shared `OverlayLayoutInspectorRows` component. Controls:
 
 - Position X and Y numeric fields on one row (three-decimal precision).
 - Scale slider, range `0.25...4`, quantized to `0.05`, formatted `1.00x`.
-- Opacity slider, range `0...1`, displayed as a percentage.
+- Minimum Width slider, range `0...720` design units. `0` keeps the text-driven natural width; larger values reserve horizontal space without shrinking the rendered metric content.
+- Minimum Height slider, range `0...360` design units. `0` keeps the text-driven natural height.
+- Opacity slider, range `0...1`, displayed as a percentage. This controls `OverlayElement.opacity` and fades the whole overlay, not just its background.
 
 Anchor, Padding, and Rotation rows have been removed. Position is set numerically only.
 
@@ -142,13 +156,15 @@ Controls:
 - Font dropdown.
 - Font Size slider with numeric value (value text only).
 - Weight segmented control: `Regular`, `Medium`, `Semibold`, `Bold`.
+- Align segmented control (left / center / right) — backed by `OverlayStyle.textAlignment` for saved style compatibility. Numeric overlay rendering resolves value, label, and unit rows to leading alignment so the left edge stays fixed while dynamic content grows to the right.
+- `Zone Color` checkbox for `heartRate` and `heartRateZone` only. Backed by `OverlayStyle.valueColorsFollowHeartRateZones`.
 
 Model mapping:
 
 - Existing model supports `OverlayStyle.fontName`.
 - Existing model supports `OverlayStyle.fontSize`.
 - Existing model supports `OverlayStyle.fontWeight`.
-- Alignment control is removed (the previous control had no rendering effect).
+- `OverlayStyle.textAlignment` is the value alignment (the Align row above writes to it).
 - Typography size no longer scales label/unit; label and unit are edited in their own sections.
 
 ## Label Section
@@ -158,6 +174,10 @@ Controls:
 - `Enable Label` toggle in section header accessory.
 - Label text field.
 - Position segmented control: `Top`, `Bottom`, `Left`, `Right`.
+- Align/Anchor segmented control: three options interpreted by position. Row label is `Align` when the label is stacked above/below the value (left / center / right) and `Anchor` when it sits to the side (top / middle / bottom). Backed by `OverlayStyle.labelTextAlignment` (`.leading / .center / .trailing` reused for both axes) for compatibility, while numeric preview/export resolves label placement to leading alignment.
+- Label color swatches.
+- `Zone Color` checkbox for `heartRate` and `heartRateZone` only. Backed by `OverlayStyle.labelColorsFollowHeartRateZones`.
+- Label opacity slider.
 - Label font family.
 - Label font size.
 - Label font weight.
@@ -168,21 +188,39 @@ Controls:
 
 - `Enable Unit` toggle in section header accessory.
 - Position segmented control: `Top`, `Bottom`, `Left`, `Right`.
+- Align/Anchor segmented control — backed by `OverlayStyle.unitTextAlignment`. When the unit is above/below the value it controls horizontal row alignment; when the unit is left/right of the value it controls vertical anchoring (top / middle / bottom) of the inline unit beside the value. Inline units stay baseline-glued to the value horizontally and grow the overlay to the right.
+- Color swatch + Alpha.
+- `Zone Color` checkbox for `heartRate` and `heartRateZone` only. Backed by `OverlayStyle.unitColorsFollowHeartRateZones`.
 - Unit font family.
 - Unit font size.
 - Unit font weight.
+- Spacing slider.
 
-## Color Section
+Rendering rules:
+
+- Unit text must remain on one line. An inline unit expands the numeric overlay's natural width instead of wrapping beneath the value when the current width is tight.
+- `Min Width` and `Min Height` reserve extra frame space for border rendering and the minimal preset background while the content remains pinned to the top-leading corner.
+- Numeric overlay `position` is interpreted as the top-leading corner in preview and SwiftUI export. Dynamic values, labels, units, and icons keep their left edge fixed and extend rightward as content becomes wider. Preview placement must not depend on async content-size measurement; drag computes top-leading position from canvas-coordinate pointer location plus the initial grab offset, and uses a top-leading snap/clamp path so edge snapping still works.
+
+## Icon Section
 
 Controls:
 
-- Text color swatches.
-- Optional accent color swatches if the selected preset uses an accent.
+- `Enable Icon` toggle in section header accessory.
+- SF Symbol picker with editable name field, current-symbol preview button, searchable popover grid, sport-first default browsing order, recent symbols, and a metric-default reset action. Empty values reset to the metric's default symbol through the project setter; manual names remain accepted for newer SF Symbols not yet in the bundled catalog.
+- Position segmented control: `Top`, `Bottom`, `Left`, `Right`.
+- Align/Anchor segmented control — backed by `OverlayStyle.iconTextAlignment`. When the icon is above/below the text block it controls horizontal alignment; when the icon is left/right of the text block it controls vertical anchoring (top / middle / bottom).
+- Size slider.
+- Color swatch + Alpha.
+- `Zone Color` checkbox for `heartRate` and `heartRateZone` only. Backed by `OverlayStyle.iconColorsFollowHeartRateZones`. When enabled, the icon tint resolves from the active HR zone color; when disabled, the icon uses the manual swatch like any other metric.
+- Spacing slider.
 
-Model mapping:
+Rendering rules:
 
-- Existing model supports `OverlayStyle.foregroundColor`.
-- Accent color is a future field unless model support is added.
+- Numeric Overlay 1.0 uses SF Symbols only for this icon slot.
+- Each numeric metric gets a default symbol from `OverlayElementType.defaultNumericIconSystemName` when added from the Overlay Pool; users can override `OverlayStyle.iconSystemName`. The picker grid is backed by the shared bundled `SFSymbolCatalog` name list generated from the public CoreGlyphs SF Symbol order catalog; blank search opens to sport-relevant symbols first, typed search scans the full catalog, and renderability checks are cached while typed names remain valid input. Empty or legacy-missing `iconSystemName` values resolve through the element type's default symbol at render time.
+- Icons wrap the whole numeric text block, not just the value row, so label/unit layout remains independent.
+- `heartRate` and `heartRateZone` can optionally tint value, label, unit, and icon from the shared `HRZonePalette` independently. Each role keeps its own manual swatch as the fallback when the toggle is off or the current timeline sample does not resolve to a valid heart-rate zone.
 
 ## Background Section
 
@@ -192,9 +230,9 @@ Controls:
 
 - `Enable Background` toggle.
 - Background color swatch.
-- Opacity slider.
+- Opacity slider. This controls background-only alpha; whole-overlay opacity lives in Layout.
 - Radius slider.
-- Padding X and Padding Y fields or compact steppers.
+- Padding X and Padding Y sliders.
 - Gaussian Blur slider.
 
 Model mapping:
@@ -228,14 +266,14 @@ Model mapping:
 - `OverlayStyle.shadowEnabled` toggles drawing.
 - `OverlayStyle.shadowColor`, `shadowOpacity`, `shadowRadius`, `shadowThickness`, `shadowOffsetX`, and `shadowOffsetY` drive the rendered shadow.
 - `OverlayStyle.glowEnabled`, `glowColor`, and `glowIntensity` drive the foreground glow.
-- `OverlayStyle.backgroundFadeOutEnabled` and `backgroundFadeOutAmount` drive optional edge fade for the background only.
+- `OverlayStyle.backgroundFadeOutEnabled` and `backgroundFadeOutAmount` drive optional edge fade for the background only. Preview and export use the shared distance-field feather mask so the background alpha reaches transparent at the rounded edge instead of relying on a clipped blur mask.
 
 Rendering rules:
 
 - When background is enabled, shadow targets the background/container where the overlay has a background surface.
 - When background is disabled, shadow targets the internal foreground elements.
 - Glow targets foreground/internal elements.
-- Fade Out targets only the background; when background is disabled, Fade Out has no visual effect.
+- Fade Out targets only the background; when background is disabled, Fade Out has no visual effect. It does not apply backdrop/video blur or fade foreground text/icons.
 
 ## Border Section
 
@@ -282,29 +320,33 @@ Rules:
 
 Inspector width:
 
-- Default: 400 px.
-- Minimum: 320 px.
-- Numeric Overlay must remain usable at 380-400 px without text clipping.
+- Default: 460 px.
+- Minimum: 460 px.
+- Numeric Overlay must remain usable at 460 px without text clipping.
+- Dense segmented controls with four options use compact labels in the Inspector (`Bot` for Bottom, `Reg` / `Med` / `Semi` / `Bold` for font weight) so Label and Unit sections do not overflow at the minimum width.
 
 ## Model Gaps
 
 Implemented in `OverlayStyle` (2026-04-26 refactor):
 
 - `unitOption` (`OverlayUnitOption`) — per-overlay unit preference, decoded with default fallback for legacy projects.
+- `elevationDisplayMode` (`OverlayElevationDisplayMode`) — `current` or `gain` for the Elevation numeric overlay; defaults to `current`.
 - `showLabel`, `showUnit`, `customLabel` — control label/unit visibility and override label text.
 - `labelPosition`, `unitPosition` — top/bottom/left/right placement around the numeric value.
 - `labelFontName` / `labelFontSize` / `labelFontWeight` — label-only typography controls.
 - `unitFontName` / `unitFontSize` / `unitFontWeight` — unit-only typography controls.
-- `rotationDegrees` — rotation in degrees applied at render time.
+- `iconEnabled`, `iconSystemName`, `iconPosition`, `iconTextAlignment`, `iconSize`, `iconColor`, `iconOpacity`, `iconSpacing` — SF Symbol icon controls for numeric overlays.
+- `rotationDegrees` — legacy field retained for decode compatibility; Numeric Overlay 1.0 does not expose rotation controls.
 - `textAlignment` (`OverlayTextAlignment`) — leading/center/trailing alignment.
-- `accentColor` — color used by overlays that expose an accent (defaults to `foregroundColor`).
+- `accentColor` — legacy field retained for decode compatibility; Numeric Overlay 1.0 does not expose accent controls.
 - `backgroundEnabled`, `backgroundColor`, `backgroundRadius`, `backgroundPaddingX`, `backgroundPaddingY` — explicit background controls; the legacy `backgroundOpacity` field continues to scale the alpha and stays decoded.
+- `numericMinWidth`, `numericMinHeight` — optional text-overlay minimum frame dimensions; `0` preserves natural text sizing for legacy projects.
 - `backgroundFadeOutEnabled`, `backgroundFadeOutAmount`, `backgroundBlurRadius` — background edge fade and blur controls.
 - `borderEnabled`, `borderColor`, `borderOpacity`, `borderWidth` — shared border controls.
 - `shadowEnabled`, `shadowColor`, `shadowOffsetX`, `shadowOffsetY`, `shadowThickness` — shadow toggle plus color, direction, and thickness, in addition to existing `shadowOpacity` / `shadowRadius`.
 - `glowEnabled`, `glowColor`, `glowIntensity` — foreground glow controls shared by detail panels.
 
-`OverlayElementType.isNumericOverlay` and `OverlayElementType.defaultUnitOption` provide the unit defaults applied by `ProjectDocument.addOverlayElement` and used to filter the unit menu.
+`OverlayElementType.isNumericOverlay`, `OverlayElementType.defaultUnitOption`, and `OverlayElementType.defaultNumericIconSystemName` provide the unit/icon defaults applied by `ProjectDocument.addOverlayElement` and used to filter the unit menu. Numeric preview/export forces the Minimal Clean render path and disables divider rendering, regardless of decoded `textPreset` or `dividerEnabled` values.
 
 Still routed through metric type (no separate model field):
 
@@ -314,7 +356,7 @@ Model-backed and rendered today (post-refactor):
 
 - Type-derived metric.
 - Formatted value preview, honoring `unitOption`, `showLabel`, `showUnit`, and `customLabel`.
-- Position X/Y, scale.
+- Position X/Y, scale, minimum width, minimum height.
 - Font name, font size, font weight.
 - Foreground/text color and accent color.
 - Background enabled / color / radius / padding X / padding Y (`.minimal` text preset uses padding + radius for the rounded background).
@@ -366,4 +408,4 @@ Do not duplicate one detail view per metric. Metric-specific behavior should be 
 - Single-unit metrics do not show fake unit menus.
 - Background toggle and background controls are present in the design, but implementation only enables model-backed controls.
 - The panel is visibly denser than the earlier Pace implementation and avoids large cards or loose vertical gaps.
-- The formatted preview updates when metric/unit/style choices change.
+- The formatted preview updates when metric/unit, typography, and icon choices change.

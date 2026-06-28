@@ -272,7 +272,7 @@ enum SharedStatsBarInspectorUI {
     static let heightRange: ClosedRange<Double> = 32...120
     static let heightLabel = "Size"
     static let cornerRadiusRange: ClosedRange<Double> = 0...32
-    static let metrics = RouteMapStatsMetric.allCases
+    static let metrics = RouteMapStatsMetric.selectableCases
 }
 
 extension OverlayStatsBarInspectorRows {
@@ -354,11 +354,6 @@ struct CollapsibleStatsBarInspectorSection<Content: View>: View {
         .background(NumericTokens.panelBackgroundElevated)
         .contentShape(Rectangle())
         .onTapGesture { isExpanded.toggle() }
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(NumericTokens.borderSubtle)
-                .frame(height: 1)
-        }
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(NumericTokens.borderSubtle)

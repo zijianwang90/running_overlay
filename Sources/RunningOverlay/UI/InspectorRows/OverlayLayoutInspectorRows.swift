@@ -17,8 +17,7 @@ struct OverlayLayoutInspectorRows: View {
     var heightRange: ClosedRange<Double> = 52...720
     var heightLabel: String = "Height"
 
-    /// Opacity row is part of the canonical layout surface.
-    var opacityBinding: Binding<Double>
+    /// Opacity row is part of the canonical layout surface and applies to the whole element.
     var opacityRange: ClosedRange<Double> = 0...1
     var opacityLabel: String = "Opacity"
     var opacityDisplay: (Double) -> String = { String(format: "%.0f%%", $0 * 100) }
@@ -78,9 +77,12 @@ struct OverlayLayoutInspectorRows: View {
             }
             InspectorDenseSliderRow(
                 label: opacityLabel,
-                value: opacityBinding,
+                value: Binding(
+                    get: { element.opacity },
+                    set: { project.setOverlayOpacity(elementID, opacity: $0.quantizedNumeric(to: 0.05)) }
+                ),
                 range: opacityRange,
-                displayText: opacityDisplay(opacityBinding.wrappedValue)
+                displayText: opacityDisplay(element.opacity)
             )
         }
     }

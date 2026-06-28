@@ -25,10 +25,21 @@ enum OverlayValueFormatter {
         components(for: type, unit: type.defaultUnitOption, customLabel: "", activity: activity, elapsedTime: elapsedTime)
     }
 
+    static func components(for type: OverlayElementType, unit: OverlayUnitOption, activity: ActivityTimeline, elapsedTime: TimeInterval) -> OverlayValueComponents {
+        components(for: type, unit: unit, customLabel: "", activity: activity, elapsedTime: elapsedTime)
+    }
+
     static func components(for element: OverlayElement, activity: ActivityTimeline, elapsedTime: TimeInterval) -> OverlayValueComponents {
         let type = element.type
         let unit = type.isNumericOverlay ? element.style.unitOption : type.defaultUnitOption
-        return components(for: type, unit: unit, customLabel: element.style.customLabel, activity: activity, elapsedTime: elapsedTime)
+        return components(
+            for: type,
+            unit: unit,
+            elevationDisplayMode: element.style.elevationDisplayMode,
+            customLabel: element.style.customLabel,
+            activity: activity,
+            elapsedTime: elapsedTime
+        )
     }
 
     static func formatDuration(_ elapsedTime: TimeInterval) -> String {
@@ -57,6 +68,7 @@ enum OverlayValueFormatter {
     private static func components(
         for type: OverlayElementType,
         unit unitOption: OverlayUnitOption,
+        elevationDisplayMode: OverlayElevationDisplayMode = .current,
         customLabel: String,
         activity: ActivityTimeline,
         elapsedTime: TimeInterval
@@ -74,13 +86,49 @@ enum OverlayValueFormatter {
                 value: activity.heartRate(at: elapsedTime).map(String.init) ?? "--",
                 unit: "bpm"
             )
-        case .pace:
-            let pace = activity.pace(at: elapsedTime).map { formatPaceComponents($0, option: unitOption) }
+        case .heartRateZone:
+            let snapshot = HeartRateZonePreferences.currentSnapshot()
+            let visibleZones = Array(snapshot.zones.prefix(snapshot.zoneCount))
+            let zoneText: String = {
+                guard let hr = activity.heartRate(at: elapsedTime) else { return "--" }
+                if let idx = visibleZones.firstIndex(where: { zone in
+                    let minHR = zone.minHR ?? Int.min
+                    let maxHR = zone.maxHR ?? Int.max
+                    return hr >= minHR && hr <= maxHR && (zone.minHR != nil || zone.maxHR != nil)
+                }) {
+                    return "Z\(idx + 1)"
+                }
+                return "--"
+            }()
             return OverlayValueComponents(
-                label: resolvedLabel("Pace"),
-                shortLabel: "PACE",
-                value: pace?.value ?? "--'--\"",
-                unit: pace?.unit ?? defaultPaceUnit(for: unitOption)
+                label: resolvedLabel("HR Zone"),
+                shortLabel: "ZONE",
+                value: zoneText,
+                unit: ""
+            )
+        case .pace:
+            return paceOverlayComponents(
+                secondsPerKm: activity.pace(at: elapsedTime),
+                unitOption: unitOption,
+                resolvedLabel: resolvedLabel,
+                defaultLabel: "Pace",
+                shortLabel: "PACE"
+            )
+        case .avgPace:
+            return paceOverlayComponents(
+                secondsPerKm: activity.avgPace(at: elapsedTime),
+                unitOption: unitOption,
+                resolvedLabel: resolvedLabel,
+                defaultLabel: "Avg Pace",
+                shortLabel: "AVG"
+            )
+        case .lapPace:
+            return paceOverlayComponents(
+                secondsPerKm: activity.lapPace(at: elapsedTime),
+                unitOption: unitOption,
+                resolvedLabel: resolvedLabel,
+                defaultLabel: "Lap Pace",
+                shortLabel: "LAP"
             )
         case .calories:
             return OverlayValueComponents(
@@ -93,7 +141,7 @@ enum OverlayValueFormatter {
             return OverlayValueComponents(
                 label: resolvedLabel("Elapsed Time"),
                 shortLabel: "TIME",
-                value: formatDuration(elapsedTime, option: unitOption),
+                value: formatDuration(activity.activeElapsedTime(at: elapsedTime), option: unitOption),
                 unit: ""
             )
         case .realTime:
@@ -101,6 +149,13 @@ enum OverlayValueFormatter {
                 label: resolvedLabel("Real Time"),
                 shortLabel: "TIME",
                 value: formatRealTime(activity.timestamp(at: elapsedTime), option: unitOption),
+                unit: ""
+            )
+        case .date:
+            return OverlayValueComponents(
+                label: resolvedLabel("Date"),
+                shortLabel: "DATE",
+                value: formatDate(activity.timestamp(at: elapsedTime), option: unitOption),
                 unit: ""
             )
         case .distance:
@@ -114,10 +169,23 @@ enum OverlayValueFormatter {
         case .distanceTimeline:
             return OverlayValueComponents(label: "Distance", shortLabel: "DIST", value: String(format: "%.2f / %.2f", activity.distance(at: elapsedTime) / 1000, activity.distanceMeters / 1000), unit: "km")
         case .elevation:
-            let formatted = formatElevationComponents(meters: activity.elevation(at: elapsedTime), option: unitOption)
+            let elevationValue: Double?
+            let defaultLabel: String
+            let shortLabel: String
+            switch elevationDisplayMode {
+            case .current:
+                elevationValue = activity.elevation(at: elapsedTime)
+                defaultLabel = "Elevation"
+                shortLabel = "ELEV"
+            case .gain:
+                elevationValue = activity.elevationGain(at: elapsedTime)
+                defaultLabel = "Elevation Gain"
+                shortLabel = "GAIN"
+            }
+            let formatted = formatElevationComponents(meters: elevationValue, option: unitOption)
             return OverlayValueComponents(
-                label: resolvedLabel("Elevation"),
-                shortLabel: "ELEV",
+                label: resolvedLabel(defaultLabel),
+                shortLabel: shortLabel,
                 value: formatted.value,
                 unit: formatted.unit
             )
@@ -139,6 +207,12 @@ enum OverlayValueFormatter {
             )
         case .runningGauge:
             return OverlayValueComponents(label: "Running Gauge", shortLabel: "GAUGE", value: String(format: "%.2f", activity.distance(at: elapsedTime) / 1000), unit: "km")
+        case .intervalHUDBar:
+            return OverlayValueComponents(label: "Interval HUD Bar", shortLabel: "INTERVAL", value: "", unit: "")
+        case .intervalTimeline:
+            return OverlayValueComponents(label: "Interval Timeline", shortLabel: "TIMELINE", value: "", unit: "")
+        case .zoneEdgeBar:
+            return OverlayValueComponents(label: "Zone Edge Bar", shortLabel: "ZONE", value: "", unit: "")
         case .routeMap:
             return OverlayValueComponents(label: "Route Map", shortLabel: "ROUTE", value: "\(activity.routePoints.count)", unit: "pts")
         case .verticalOscillation:
@@ -191,8 +265,8 @@ enum OverlayValueFormatter {
                 value: g.map { String(format: "%+.1f", $0) } ?? "--",
                 unit: "%"
             )
-        case .lapList, .lapCard, .lapLive:
-            return OverlayValueComponents(label: "", shortLabel: "", value: "", unit: "")
+        case .decorSolidColor, .decorIcon, .decorText, .weatherWidget:
+            return OverlayValueComponents(label: type.label, shortLabel: "", value: "", unit: "")
         }
     }
 
@@ -227,6 +301,20 @@ enum OverlayValueFormatter {
         return formatter.string(from: date)
     }
 
+    private static func formatDate(_ date: Date, option: OverlayUnitOption) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = switch option {
+        case .dateYMDSlash: "yyyy/MM/dd"
+        case .dateMDYSlash: "MM/dd/yyyy"
+        case .dateMDHyphen: "MM-dd"
+        case .dateMDSlash: "MM/dd"
+        case .dateMonthDay: "MMM d"
+        default: "yyyy-MM-dd"
+        }
+        return formatter.string(from: date)
+    }
+
     private static func formatDistanceComponents(meters: Double, option: OverlayUnitOption) -> (value: String, unit: String) {
         switch option {
         case .distanceMiles:
@@ -248,6 +336,22 @@ enum OverlayValueFormatter {
         default:
             return ("\(Int(meters.rounded()))", "m")
         }
+    }
+
+    private static func paceOverlayComponents(
+        secondsPerKm: Double?,
+        unitOption: OverlayUnitOption,
+        resolvedLabel: (String) -> String,
+        defaultLabel: String,
+        shortLabel: String
+    ) -> OverlayValueComponents {
+        let pace = secondsPerKm.map { formatPaceComponents($0, option: unitOption) }
+        return OverlayValueComponents(
+            label: resolvedLabel(defaultLabel),
+            shortLabel: shortLabel,
+            value: pace?.value ?? "--'--\"",
+            unit: pace?.unit ?? defaultPaceUnit(for: unitOption)
+        )
     }
 
     private static func defaultPaceUnit(for option: OverlayUnitOption) -> String {

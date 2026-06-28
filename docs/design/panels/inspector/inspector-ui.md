@@ -1,6 +1,6 @@
 # Inspector UI Design Spec
 
-Last updated: 2026-04-29
+Last updated: 2026-04-30
 
 ## Purpose
 
@@ -124,7 +124,7 @@ Top to bottom:
 2. `Added Overlays` section
 3. Optional footer hint
 
-Inspector default width is 400 px with a 320 px minimum, and the panel is user-resizable by dragging its leading split divider. The Inspector must keep its current width across every internal state change — outer state, overlay detail, timeline clip selection, and any future state. The horizontal layout uses a custom `HStack` + `HorizontalResizeHandle` (not SwiftUI `HSplitView`) so widths are stored in `@State` and cannot be reset by child intrinsic-size or identity changes. The design mockup is square only for reference output; implementation should use a right-panel layout.
+Inspector default width is 460 px with a 460 px minimum, and the panel is user-resizable by dragging its leading split divider. The Inspector must keep its current width across every internal state change — outer state, overlay detail, timeline clip selection, and any future state. The horizontal layout uses a custom `HStack` + `HorizontalResizeHandle` (not SwiftUI `HSplitView`) so widths are stored in `@State` and cannot be reset by child intrinsic-size or identity changes. The app window minimum width must be large enough to contain the left pool minimum, preview minimum, Inspector minimum, and split handles without compressing the Inspector below its stored width. The design mockup is square only for reference output; implementation should use a right-panel layout.
 
 ### Header
 
@@ -159,6 +159,11 @@ Row content:
 - Delete icon button.
 - Chevron indicating the row opens detail.
 
+Icon color:
+
+- Added Overlays row icons and Overlay Detail header icons use `text.primary`.
+- Do not tint individual overlay type icons blue; reserve `accent.blue` for primary actions, selected controls, and focus/selection affordances.
+
 Row behavior:
 
 - Clicking the row body opens the Overlay Detail screen for that element.
@@ -185,7 +190,7 @@ The detail screen appears when `project.selection == .overlayElement(elementID)`
 - Identify the selected overlay.
 - Provide direct editing controls for that overlay.
 - Provide a return path to the outer Inspector.
-- Expose delete and done actions.
+- Expose destructive delete from the detail header.
 - Use [Numeric Overlay UI](../../overlays/numeric/numeric-overlay-ui.md) for single-value numeric metric overlays instead of building one-off Pace, Heart Rate, Distance, Power, Cadence, Calories, Elevation, Elapsed Time, or Real Time panels.
 
 ### Layout
@@ -197,7 +202,7 @@ Top to bottom:
 3. `Position & Size` section
 4. `Style` section
 5. `Animation` section
-6. Sticky action footer
+6. Optional sticky footer for non-destructive actions only
 
 ### Detail Header
 
@@ -213,6 +218,7 @@ Behavior:
 
 - Back returns to the outer Inspector and clears overlay detail focus if needed.
 - Trash deletes the overlay and returns to the outer Inspector.
+- Overlay detail views should not place a secondary delete button in the footer; all destructive overlay deletion belongs in the top header bar.
 - The header value should use the same formatter as the Preview and Added Overlays row.
 
 ### Content Section
@@ -264,7 +270,7 @@ Implementation mapping:
 
 - Text overlays map to `OverlayTextPreset`: Minimal, Pill Badge, Metric Card, Big Number, Sport Watch, Split Label.
 - Running Gauge maps to `OverlayGaugePreset`: Minimal Sport, High Contrast, Trail Adventure, Tech Future, Retro Digital.
-- Route Map maps to `OverlayRouteMapPreset`: Minimal, Gradient, Glow, MapKit.
+- Route Map does not expose a preset; line color mode and Glow live in the Route Line section.
 - Existing style supports font name, font size, font weight, foreground color, background opacity, shadow opacity, and shadow radius.
 
 For v1, use existing model-backed controls first:
@@ -301,6 +307,8 @@ Behavior:
 
 - `Done` returns to the outer Inspector and keeps the overlay selected on Preview if that selection is needed for canvas handles.
 - `Reset` resets only style/layout values for the current overlay. If reset behavior is not implemented yet, omit the button.
+- Overlay detail footers use the shared `InspectorDetailFooterBar` layout: one-third secondary Reset, two-thirds primary Done, centered inside a footer whose total height matches the adjacent Preview playback row.
+- The shared footer owns its elevated background and single top separator; detail panels should not add per-overlay footer padding, backgrounds, or separate divider rows.
 
 ## Interaction Rules
 
@@ -320,6 +328,7 @@ Behavior:
 - Use `OverlayStatsBarInspectorRows` for the section body rows.
 - Current canonical icon is `tablecells` for every overlay.
 - `Enabled` must not appear as a separate first row in expanded content.
+- Collapsed Stats Bar headers use the regular single bottom separator; the shared wrapper must not add a top rule that doubles the line against the preceding section.
 - Keep one shared row set across overlays: `Placement`, `Inside`, `Layout`, `Size`, `Width`, `Offset`, `Item Gap`, `Background`, `Dividers`, `Radius`, `Value Font/Size/Weight/Color`, `Label Font/Size/Weight/Color`, and `Slot 1...4`.
 - Placement-specific rendering behavior must also stay consistent: left/right placements render vertical stack flow, and `Item Gap` affects vertical spacing in that flow.
 - Stats Bar typography is self-contained: Value and Label colors come from Stats Bar config, not outer overlay accent/foreground fallbacks.
@@ -332,6 +341,7 @@ Behavior:
 - Use `CollapsibleLayoutInspectorSection` for section chrome: title, icon (`scope`), and disclosure behavior.
 - Use `OverlayLayoutInspectorRows` for the body rows.
 - Canonical row set is fixed: `Position`, `Scale`, `Width`, `Height`, `Opacity`.
+- Layout `Opacity` is element-level opacity (`OverlayElement.opacity`) and must fade the whole rendered overlay in preview and export. Background-only transparency belongs in the shared Background module.
 - `Rotation` is not part of Layout and must not be shown in this section.
 - For square overlays such as Running Gauge, `Width` and `Height` can be hidden.
 - Section ordering rule:
@@ -358,6 +368,8 @@ Behavior:
 - New overlay detail panels must append Background, Border, and Effects after overlay-specific sections, in that order.
 - Distance Timeline must not keep its legacy local `Background & Border` or local `Effects` sections once the shared modules are present.
 - Shared module headers use the same row background, toggle placement, and chevron placement as other collapsible detail sections; disclosure changes are immediate without animation.
+- Shared Background, Border, and Effects modules use the same header/body separator model as regular detail sections and must not add an extra full-section outer stroke that changes the left edge while expanding.
+- Dense color swatch strips show a short mainstream preset set plus a trailing fixed-size custom color button that opens the shared system color panel; they must not embed a system color well or impose a long preset-list width as the row minimum because narrow Inspectors should clip neither section headers nor row labels.
 
 ## SwiftUI Implementation Guidance
 

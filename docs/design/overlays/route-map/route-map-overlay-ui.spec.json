@@ -66,42 +66,6 @@
   },
   "sections": [
     {
-      "id": "preset",
-      "title": "Preset",
-      "icon": "wand.and.stars",
-      "controls": [
-        {
-          "id": "routeStylePreset",
-          "type": "dropdown",
-          "modelPath": "OverlayStyle.routeMapPreset",
-          "options": [
-            "minimal",
-            "gradient",
-            "glow"
-          ],
-          "modelBacked": true,
-          "notes": [
-            "Describes the polyline appearance only.",
-            "No longer encodes 'show map' — that toggle lives on the Background Map section header.",
-            "Legacy 'mapKit' value is migrated to 'gradient' on decode."
-          ]
-        },
-        {
-          "id": "distanceReadout",
-          "type": "readout",
-          "modelPath": "ActivityTimeline.distanceMeters",
-          "displayRule": "{distance / 1000 with 2 decimals} km, '—' when zero"
-        }
-      ],
-      "removedControls": [
-        {
-          "id": "containerPreset",
-          "removedAt": "2026-04-27",
-          "reason": "Conflicted with the Container section's individual controls. Still callable via ProjectDocument.setOverlayRouteMapContainerPreset for templates and tests."
-        }
-      ]
-    },
-    {
       "id": "layout",
       "title": "Layout",
       "icon": "scope",
@@ -199,56 +163,32 @@
           "modelBacked": true,
           "visibleWhen": "shape == circle",
           "displayRule": "NN pt"
-        },
+        }
+      ],
+      "removedControls": [
         {
           "id": "cornerRadius",
-          "type": "slider",
-          "modelBacked": "phaseF",
-          "visibleWhen": "shape == square"
+          "removedAt": "2026-06-16",
+          "replacement": "Shared Background Radius",
+          "modelPath": "OverlayStyle.backgroundRadius"
         },
         {
           "id": "edgeMode",
-          "type": "segmented",
-          "options": [
-            "hard",
-            "gradient"
-          ],
-          "modelPath": "OverlayStyle.routeMapEdgeFade",
-          "writeNotes": "Edge Softness slider sets this implicitly via setOverlayRouteMapEdgeSoftness"
+          "removedAt": "2026-06-16",
+          "replacement": "Shared Effects Fade Out",
+          "modelPath": "OverlayStyle.backgroundFadeOutEnabled"
         },
         {
           "id": "edgeSoftness",
-          "type": "slider",
-          "range": [
-            0.0,
-            0.85
-          ],
-          "step": 0.01,
-          "modelPath": "OverlayStyle.routeMapFadeAmount",
-          "modelBacked": true,
-          "enabledWhen": "edgeMode == gradient",
-          "displayRule": "<= 0.001 -> 'Solid', else NN%",
-          "implementation": "RouteMapMaskRenderer draws a single radial vignette clipped to the container outline (3-stop white→white→black gradient at locations [0, 0.45, 1])."
+          "removedAt": "2026-06-16",
+          "replacement": "Shared Effects Fade Amount",
+          "modelPath": "OverlayStyle.backgroundFadeOutAmount"
         },
         {
-          "id": "borderEnabled",
-          "type": "toggle",
-          "modelBacked": "phaseF"
-        },
-        {
-          "id": "borderColor",
-          "type": "swatches",
-          "modelBacked": "phaseF"
-        },
-        {
-          "id": "borderOpacity",
-          "type": "slider",
-          "modelBacked": "phaseF"
-        },
-        {
-          "id": "borderWidth",
-          "type": "slider",
-          "modelBacked": "phaseF"
+          "id": "border",
+          "removedAt": "2026-06-16",
+          "replacement": "Shared Border module",
+          "modelPath": "OverlayStyle.borderEnabled / borderColor / borderOpacity / borderWidth"
         }
       ]
     },
@@ -385,8 +325,8 @@
         },
         {
           "id": "glow",
-          "type": "toggleAndSliders",
-          "modelBacked": "phaseF"
+          "type": "toggle",
+          "modelPath": "OverlayStyle.glowEnabled"
         },
         {
           "id": "shadow",
@@ -401,51 +341,48 @@
       "icon": "mappin.and.ellipse",
       "controls": [
         {
-          "id": "allMarkers",
-          "type": "segmented",
-          "options": [
-            "hidden",
-            "dot",
-            "pin",
-            "flag"
-          ],
-          "modelPath": "OverlayStyle.routeMapMarkerStyle",
-          "writes": [
-            "routeMapStartMarkerStyle",
-            "routeMapEndMarkerStyle"
-          ]
-        },
-        {
           "id": "startMarker",
-          "type": "dropdown",
+          "type": "toggle",
           "options": [
             "hidden",
-            "dot",
-            "pin",
-            "flag"
+            "dot"
           ],
           "modelPath": "OverlayStyle.routeMapStartMarkerStyle"
         },
         {
           "id": "finishMarker",
-          "type": "dropdown",
+          "type": "toggle",
           "options": [
             "hidden",
-            "dot",
-            "pin",
-            "flag"
+            "dot"
           ],
           "modelPath": "OverlayStyle.routeMapEndMarkerStyle"
         },
         {
           "id": "startColor",
           "type": "swatches",
-          "modelBacked": "phaseF"
+          "modelPath": "OverlayStyle.routeMapStartMarkerColor"
         },
         {
           "id": "finishColor",
           "type": "swatches",
-          "modelBacked": "phaseF"
+          "specialFirstPreset": "checkerboard3x3",
+          "default": "checkerboard3x3",
+          "modelPath": "OverlayStyle.routeMapEndMarkerColor"
+        },
+        {
+          "id": "movingMarker",
+          "type": "toggle",
+          "options": [
+            "hidden",
+            "dot"
+          ],
+          "modelPath": "OverlayStyle.routeMapRunnerMarkerStyle"
+        },
+        {
+          "id": "movingColor",
+          "type": "swatches",
+          "modelPath": "OverlayStyle.routeMapRunnerDotColor"
         },
         {
           "id": "markerSize",
@@ -805,12 +742,12 @@
     }
   },
   "modelBackedToday": [
-    "routeMapPreset (line aesthetic only — no longer encodes 'show map')",
     "routeMapShape",
     "routeMapWidth",
     "routeMapHeight",
-    "routeMapEdgeFade (driven by Edge Softness)",
-    "routeMapFadeAmount",
+    "OverlayStyle.backgroundRadius (square route-map corner radius)",
+    "OverlayStyle.backgroundFadeOutEnabled / backgroundFadeOutAmount (route-map edge fade)",
+    "OverlayStyle.borderEnabled / borderColor / borderOpacity / borderWidth (route-map border)",
     "routeMapColorMode",
     "routeMapGradientStart / Middle / End",
     "OverlayStyle.foregroundColor (solid route color)",
@@ -828,16 +765,17 @@
     "routeMapContainerPreset (template / test API; not in Inspector)",
     "routeMapMapOpacity",
     "routeMapLegendVisible / routeMapLegendMode (legacy migration only)",
-    "routeMapStatsBar.visible / placement / inside / layoutMode / height / width / offsetX / offsetY / itemSpacing / backgroundOpacity / dividerOpacity / cornerRadius / slots"
+    "routeMapStatsBar.visible / placement / inside / layoutMode / height / width / offsetX / offsetY / itemSpacing / backgroundOpacity / dividerOpacity / cornerRadius / slots",
+    "glowEnabled"
   ],
   "modelGapsPhaseE": [],
   "modelGapsPhaseF": [
-    "borderEnabled / borderColor / borderOpacity / borderWidth",
-    "glowEnabled / glowColor / glowOpacity / glowRadius",
+    "glowColor / glowOpacity / glowRadius",
     "mapContrast / mapSaturation / mapBrightness / mapBlur",
     "routeLine width / opacity / dash / glow / shadow",
     "routeLine gradientMetric (byPace / byHeartRate / byPower / byElevation)",
-    "per-marker color / size / border / label",
+    "pin / flag marker artwork",
+    "per-marker size / border / label",
     "shadow color / shadow offsetX / shadow offsetY explicit (offsets exist, color is fixed)",
     "container blend mode",
     "Status Bar slot label override editing in inspector",
@@ -845,7 +783,8 @@
   ],
   "sharedStatsBarRenderer": {
     "preview": "PreviewCanvasView.SharedStatsBarContentView",
-    "export": "OverlayFrameRenderer.drawSharedStatsBar",
+    "export": "SwiftUIOverlayVideoExporter via OverlaySharedRouteMapView",
+    "mapSnapshotExport": "SwiftUIOverlayVideoExporter preloads MapKit NSImage snapshots from RouteMapSnapshotRequestBuilder and injects them into RouteMapOverlayView; failed snapshots fall back to the local grid.",
     "baseline": "Distance Timeline stats bar rendering behavior",
     "rules": [
       "Route Map and Distance Timeline use the same stats bar rendering pipeline.",

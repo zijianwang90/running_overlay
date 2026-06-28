@@ -11,6 +11,7 @@ struct OverlayElement: Identifiable, Equatable {
     var type: OverlayElementType
     var position: CGPoint
     var scale: Double
+    var opacity: Double = 1
     var isVisible: Bool = true
     var isLocked: Bool = false
     var style: OverlayStyle
@@ -21,18 +22,26 @@ enum OverlayPasteCategory: String, Equatable {
     case distanceTimeline
     case elevationChart
     case runningGauge
+    case intervalHUDBar
+    case intervalTimeline
+    case zoneEdgeBar
     case routeMap
-    case lapList
-    case lapCard
-    case lapLive
+    case weather
 }
 
 enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     case heartRate
+    /// Current HR zone label (`Z1`…`Zn`) from Project Settings heart-rate zones.
+    /// Same numeric overlay styling as `.heartRate` plus an optional mode that
+    /// tints all text with the active zone’s palette color.
+    case heartRateZone
     case pace
+    case avgPace
+    case lapPace
     case calories
     case elapsedTime
     case realTime
+    case date
     case distance
     case distanceTimeline
     case elevation
@@ -40,10 +49,10 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     case cadence
     case power
     case runningGauge
+    case intervalHUDBar
+    case intervalTimeline
+    case zoneEdgeBar
     case routeMap
-    case lapList
-    case lapCard
-    case lapLive
     case verticalOscillation
     case groundContactTime
     case strideLength
@@ -51,16 +60,24 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     case groundContactBalance
     case temperature
     case grade
+    case weatherWidget
+    case decorSolidColor
+    case decorIcon
+    case decorText
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
         case .heartRate: "Heart Rate"
+        case .heartRateZone: "HR Zone"
         case .pace: "Pace"
+        case .avgPace: "Avg Pace"
+        case .lapPace: "Lap Pace"
         case .calories: "Calories"
         case .elapsedTime: "Elapsed Time"
         case .realTime: "Real Time"
+        case .date: "Date"
         case .distance: "Distance"
         case .distanceTimeline: "Distance Timeline"
         case .elevation: "Elevation"
@@ -68,10 +85,10 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         case .cadence: "Cadence"
         case .power: "Power"
         case .runningGauge: "Running Gauge"
+        case .intervalHUDBar: "Interval HUD Bar"
+        case .intervalTimeline: "Interval Timeline"
+        case .zoneEdgeBar: "Zone Edge Bar"
         case .routeMap: "Route Map"
-        case .lapList: "Lap List"
-        case .lapCard: "Lap Card"
-        case .lapLive: "Lap Live"
         case .verticalOscillation: "Vertical Oscillation"
         case .groundContactTime: "Ground Contact Time"
         case .strideLength: "Stride Length"
@@ -79,15 +96,29 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         case .groundContactBalance: "GCT Balance"
         case .temperature: "Temperature"
         case .grade: "Grade"
+        case .weatherWidget: "Weather Widget"
+        case .decorSolidColor: "Solid Color"
+        case .decorIcon: "Icon"
+        case .decorText: "Text"
         }
     }
 
     var supportsTextPresets: Bool {
         switch self {
-        case .distanceTimeline, .elevationChart, .runningGauge, .routeMap, .lapList, .lapCard, .lapLive:
+        case .distanceTimeline, .elevationChart, .runningGauge, .intervalHUDBar, .intervalTimeline, .zoneEdgeBar, .routeMap,
+             .weatherWidget, .decorSolidColor, .decorIcon, .decorText:
             false
         default:
             true
+        }
+    }
+
+    /// Decor overlays are activity-data-independent visual elements
+    /// (Solid Color shapes, Icons, free-form Text).
+    var isDecorOverlay: Bool {
+        switch self {
+        case .decorSolidColor, .decorIcon, .decorText: true
+        default: false
         }
     }
 
@@ -95,7 +126,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     /// See `docs/design/overlays/numeric/numeric-overlay-ui.md`.
     var isNumericOverlay: Bool {
         switch self {
-        case .heartRate, .pace, .calories, .elapsedTime, .realTime,
+        case .heartRate, .heartRateZone, .pace, .avgPace, .lapPace, .calories, .elapsedTime, .realTime, .date,
              .distance, .elevation, .cadence, .power,
              .verticalOscillation, .groundContactTime, .strideLength,
              .verticalRatio, .groundContactBalance, .temperature, .grade:
@@ -115,6 +146,41 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         isNumericOverlay ? .minimal : nil
     }
 
+    var defaultNumericIconSystemName: String {
+        switch self {
+        case .heartRate: "heart"
+        case .heartRateZone: "heart.text.square.fill"
+        case .pace, .avgPace: "speedometer"
+        case .lapPace: "flag.checkered"
+        case .calories: "flame"
+        case .elapsedTime: "clock"
+        case .realTime: "watch.analog"
+        case .date: "calendar"
+        case .distance: "ruler"
+        case .elevation: "mountain.2"
+        case .cadence: "figure.run"
+        case .power: "bolt"
+        case .verticalOscillation: "arrow.up.and.down"
+        case .groundContactTime: "timer"
+        case .strideLength: "arrow.left.and.right"
+        case .verticalRatio: "percent"
+        case .groundContactBalance: "scale.3d"
+        case .temperature: "thermometer"
+        case .grade: "arrow.up.right"
+        case .distanceTimeline: "waveform.path.ecg"
+        case .elevationChart: "chart.line.uptrend.xyaxis"
+        case .runningGauge: "gauge"
+        case .intervalHUDBar: "rectangle.split.3x1"
+        case .intervalTimeline: "timeline.selection"
+        case .zoneEdgeBar: "rectangle.compress.vertical"
+        case .routeMap: "map"
+        case .weatherWidget: "cloud.sun.fill"
+        case .decorSolidColor: "square.fill"
+        case .decorIcon: "star"
+        case .decorText: "textformat"
+        }
+    }
+
     var pasteCategory: OverlayPasteCategory {
         if isNumericOverlay {
             return .numeric
@@ -126,17 +192,25 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
             return .elevationChart
         case .runningGauge:
             return .runningGauge
+        case .intervalHUDBar:
+            return .intervalHUDBar
+        case .intervalTimeline:
+            return .intervalTimeline
+        case .zoneEdgeBar:
+            return .zoneEdgeBar
         case .routeMap:
             return .routeMap
-        case .lapList:
-            return .lapList
-        case .lapCard:
-            return .lapCard
-        case .lapLive:
-            return .lapLive
+        case .weatherWidget:
+            return .weather
         default:
             return .numeric
         }
+    }
+}
+
+enum ActivityMetricCatalog {
+    static let selectableElementTypes: [OverlayElementType] = OverlayElementType.allCases.filter {
+        $0.isNumericOverlay && $0 != .heartRateZone && $0 != .date
     }
 }
 
@@ -158,6 +232,12 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
     case durationSeconds
     case clock24Hour
     case clock12Hour
+    case dateYMDHyphen
+    case dateYMDSlash
+    case dateMDYSlash
+    case dateMDHyphen
+    case dateMDSlash
+    case dateMonthDay
     case oscillationMillimeters
     case oscillationCentimeters
     case contactTimeMilliseconds
@@ -189,6 +269,12 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
         case .durationSeconds: "seconds"
         case .clock24Hour: "24-hour"
         case .clock12Hour: "12-hour"
+        case .dateYMDHyphen: "YYYY-MM-DD"
+        case .dateYMDSlash: "YYYY/MM/DD"
+        case .dateMDYSlash: "MM/DD/YYYY"
+        case .dateMDHyphen: "MM-DD"
+        case .dateMDSlash: "MM/DD"
+        case .dateMonthDay: "Month D"
         case .oscillationMillimeters: "Millimeters (mm)"
         case .oscillationCentimeters: "Centimeters (cm)"
         case .contactTimeMilliseconds: "Milliseconds (ms)"
@@ -204,7 +290,8 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
     static func options(for type: OverlayElementType) -> [OverlayUnitOption] {
         switch type {
         case .heartRate: [.bpm]
-        case .pace: [.paceMetric, .paceImperial, .paceRowing]
+        case .heartRateZone: []
+        case .pace, .avgPace, .lapPace: [.paceMetric, .paceImperial, .paceRowing]
         case .distance: [.distanceKilometers, .distanceMiles, .distanceMeters]
         case .elevation: [.elevationMeters, .elevationFeet]
         case .power: [.watts]
@@ -212,6 +299,7 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
         case .calories: [.kcal]
         case .elapsedTime: [.durationHMS, .durationMS, .durationSeconds]
         case .realTime: [.clock24Hour, .clock12Hour]
+        case .date: [.dateYMDHyphen, .dateYMDSlash, .dateMDYSlash, .dateMDHyphen, .dateMDSlash, .dateMonthDay]
         case .verticalOscillation: [.oscillationCentimeters, .oscillationMillimeters]
         case .groundContactTime: [.contactTimeMilliseconds]
         case .strideLength: [.strideLengthMeters]
@@ -219,13 +307,17 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
         case .groundContactBalance: [.balancePercent]
         case .temperature: [.temperatureCelsius, .temperatureFahrenheit]
         case .grade: [.gradePercent]
-        case .distanceTimeline, .elevationChart, .runningGauge, .routeMap, .lapList, .lapCard, .lapLive:
+        case .distanceTimeline, .elevationChart, .runningGauge, .intervalHUDBar, .intervalTimeline, .zoneEdgeBar, .routeMap,
+             .weatherWidget, .decorSolidColor, .decorIcon, .decorText:
             []
         }
     }
 
     static func defaultOption(for type: OverlayElementType) -> OverlayUnitOption {
-        options(for: type).first ?? .bpm
+        if let first = options(for: type).first {
+            return first
+        }
+        return .bpm
     }
 }
 
@@ -271,10 +363,23 @@ enum OverlayTextAttachmentPosition: String, CaseIterable, Identifiable, Codable 
     }
 }
 
+enum OverlayElevationDisplayMode: String, CaseIterable, Identifiable, Codable {
+    case current
+    case gain
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .current: "Current"
+        case .gain: "Gain"
+        }
+    }
+}
+
 struct OverlayStyle: Equatable, Codable {
     var textPreset: OverlayTextPreset
     var gaugePreset: OverlayGaugePreset
-    var routeMapPreset: OverlayRouteMapPreset
     var routeMapProvider: OverlayRouteMapProvider
     var routeMapShape: OverlayRouteMapShape
     var routeMapEdgeFade: OverlayRouteMapEdgeFade
@@ -286,6 +391,9 @@ struct OverlayStyle: Equatable, Codable {
     var routeMapMarkerStyle: OverlayRouteMapMarkerStyle
     var routeMapStartMarkerStyle: OverlayRouteMapMarkerStyle
     var routeMapEndMarkerStyle: OverlayRouteMapMarkerStyle
+    var routeMapRunnerMarkerStyle: OverlayRouteMapMarkerStyle
+    var routeMapStartMarkerColor: OverlayColor
+    var routeMapEndMarkerColor: OverlayColor
     var routeMapRunnerDotColor: OverlayColor
     var routeMapBackgroundStyle: OverlayRouteMapBackgroundStyle
     var routeMapLegendVisible: Bool
@@ -328,6 +436,7 @@ struct OverlayStyle: Equatable, Codable {
 
     // Numeric Overlay additions (see docs/design/overlays/numeric/numeric-overlay-ui.md)
     var unitOption: OverlayUnitOption
+    var elevationDisplayMode: OverlayElevationDisplayMode
     var showLabel: Bool
     var showUnit: Bool
     var customLabel: String
@@ -341,14 +450,65 @@ struct OverlayStyle: Equatable, Codable {
     var unitFontSize: Double
     var unitFontWeight: OverlayFontWeight
     var unitSpacing: Double
+    var iconEnabled: Bool
+    var iconSystemName: String
+    var iconPosition: OverlayTextAttachmentPosition
+    var iconTextAlignment: OverlayTextAlignment
+    var iconSize: Double
+    var iconColor: OverlayColor
+    var iconOpacity: Double
+    var iconSpacing: Double
+    /// When true and the overlay is `.heartRate` or `.heartRateZone`, the
+    /// numeric icon paints from `HRZonePalette` for the active zone instead of
+    /// the static icon swatch. Ignored for all other overlay types.
+    var iconColorsFollowHeartRateZones: Bool
+    /// When true and the overlay is `.heartRate` or `.heartRateZone`, the
+    /// numeric value text paints from `HRZonePalette` for the active zone
+    /// instead of the value swatch. Ignored for all other overlay types.
+    var valueColorsFollowHeartRateZones: Bool
+    /// When true and the overlay is `.heartRate` or `.heartRateZone`, the
+    /// numeric label text paints from `HRZonePalette` for the active zone
+    /// instead of the label swatch. Ignored for all other overlay types.
+    var labelColorsFollowHeartRateZones: Bool
+    /// When true and the overlay is `.heartRate` or `.heartRateZone`, the
+    /// numeric unit text paints from `HRZonePalette` for the active zone
+    /// instead of the unit swatch. Ignored for all other overlay types.
+    var unitColorsFollowHeartRateZones: Bool
     var rotationDegrees: Double
     var textAlignment: OverlayTextAlignment
+    /// Alignment of the numeric overlay label text. Interpreted in the context
+    /// of `labelPosition`: when the label sits above/below the value the field
+    /// controls horizontal alignment (left/center/right); when it sits to the
+    /// left or right of the value it controls vertical alignment
+    /// (top/middle/bottom). Three discrete options; reuses `OverlayTextAlignment`.
+    var labelTextAlignment: OverlayTextAlignment
+    /// Alignment of the numeric overlay unit text. Interpreted in the context
+    /// of `unitPosition`: when the unit sits above/below the value it controls
+    /// horizontal alignment on its own row; when it sits to the left or right
+    /// of the value (minimal preset) it controls vertical alignment of the unit
+    /// relative to the value in that row. Reuses `OverlayTextAlignment`. Inline
+    /// positions still baseline-lock to the value for horizontal layout; the
+    /// `bigNumber` preset keeps the unit under the value with horizontal align.
+    var unitTextAlignment: OverlayTextAlignment
     var accentColor: OverlayColor
+    /// Numeric overlay divider — the decorative line that appears between the
+    /// value and the label in presets that include one (splitLabel, editorial,
+    /// pillBadge, racingStripe, sportWatch). Position/orientation is owned by
+    /// the preset; these four fields control its visibility and style and
+    /// follow the project-wide divider quad convention.
+    var dividerEnabled: Bool
+    var dividerColor: OverlayColor
+    var dividerThickness: Double
+    var dividerOpacity: Double
     var backgroundEnabled: Bool
     var backgroundColor: OverlayColor
     var backgroundRadius: Double
     var backgroundPaddingX: Double
     var backgroundPaddingY: Double
+    /// Optional minimum frame for numeric text overlays in design units.
+    /// Zero keeps the overlay sized from its rendered text.
+    var numericMinWidth: Double
+    var numericMinHeight: Double
     var backgroundFadeOutEnabled: Bool
     var backgroundFadeOutAmount: Double
     var backgroundBlurRadius: Double
@@ -364,6 +524,10 @@ struct OverlayStyle: Equatable, Codable {
     var glowEnabled: Bool
     var glowColor: OverlayColor
     var glowIntensity: Double
+    /// When true and the overlay is `.heartRateZone`, value/label/unit text
+    /// paint from `HRZonePalette` for the active zone instead of the
+    /// per-role swatches. Ignored for all other overlay types.
+    var textColorsFollowHeartRateZones: Bool
 
     /// Distance Timeline configuration. Used only by `.distanceTimeline`.
     /// See `docs/overlay-modules/distance-timeline-overlay.md`.
@@ -383,19 +547,25 @@ struct OverlayStyle: Equatable, Codable {
     /// default so existing projects are unaffected.
     var routeMapStatsBar: OverlayRouteMapStatsBarConfig
 
-    /// Lap list overlay configuration. Only used by `.lapList` elements.
-    var lapList: LapListStyle
+    /// Decor element configuration. Used by `.decorSolidColor`, `.decorIcon`,
+    /// `.decorText`. See `DecorStyle`.
+    var decor: DecorStyle
 
-    /// Lap card overlay configuration. Only used by `.lapCard` elements.
-    var lapCard: LapCardStyle
+    /// Weather Widget configuration. Used only by `.weatherWidget`.
+    var weatherWidget: WeatherWidgetStyle
 
-    /// Lap live overlay configuration. Only used by `.lapLive` elements.
-    var lapLive: LapLiveStyle
+    /// Interval HUD Bar configuration. Used only by `.intervalHUDBar`.
+    var intervalHUDBar: IntervalHUDBarStyle
+
+    /// Interval Timeline configuration. Used only by `.intervalTimeline`.
+    var intervalTimeline: IntervalTimelineStyle
+
+    /// Zone Edge Bar configuration. Used only by `.zoneEdgeBar`.
+    var zoneEdgeBar: ZoneEdgeBarStyle
 
     static let `default` = OverlayStyle(
         textPreset: .minimal,
         gaugePreset: .minimalSport,
-        routeMapPreset: .minimal,
         routeMapProvider: .none,
         routeMapShape: .square,
         routeMapEdgeFade: .solid,
@@ -407,6 +577,9 @@ struct OverlayStyle: Equatable, Codable {
         routeMapMarkerStyle: .dot,
         routeMapStartMarkerStyle: .dot,
         routeMapEndMarkerStyle: .dot,
+        routeMapRunnerMarkerStyle: .dot,
+        routeMapStartMarkerColor: .green,
+        routeMapEndMarkerColor: .routeMapEndCheckerboard,
         routeMapRunnerDotColor: .white,
         routeMapBackgroundStyle: .dark,
         routeMapLegendVisible: true,
@@ -417,7 +590,7 @@ struct OverlayStyle: Equatable, Codable {
         routeMapWidth: 320,
         routeMapHeight: 240,
         routeMapCornerRadius: 12,
-        fontName: "SF Pro",
+        fontName: FontLibraryManager.currentDefaultFamily,
         fontSize: 28,
         fontWeight: .semibold,
         foregroundColor: .white,
@@ -431,27 +604,48 @@ struct OverlayStyle: Equatable, Codable {
         shadowOpacity: 0.35,
         shadowRadius: 4,
         unitOption: .paceMetric,
+        elevationDisplayMode: .current,
         showLabel: false,
         showUnit: true,
         customLabel: "",
         labelPosition: .top,
         unitPosition: .trailing,
-        labelFontName: "SF Pro",
+        labelFontName: FontLibraryManager.currentDefaultFamily,
         labelFontSize: 16,
         labelFontWeight: .medium,
         labelSpacing: 8,
-        unitFontName: "SF Pro",
+        unitFontName: FontLibraryManager.currentDefaultFamily,
         unitFontSize: 20,
         unitFontWeight: .medium,
         unitSpacing: 8,
+        iconEnabled: true,
+        iconSystemName: "",
+        iconPosition: .leading,
+        iconTextAlignment: .center,
+        iconSize: 22,
+        iconColor: .white,
+        iconOpacity: 1,
+        iconSpacing: 8,
+        iconColorsFollowHeartRateZones: false,
+        valueColorsFollowHeartRateZones: false,
+        labelColorsFollowHeartRateZones: false,
+        unitColorsFollowHeartRateZones: false,
         rotationDegrees: 0,
         textAlignment: .leading,
+        labelTextAlignment: .leading,
+        unitTextAlignment: .leading,
         accentColor: .blue,
+        dividerEnabled: true,
+        dividerColor: .white,
+        dividerThickness: 2,
+        dividerOpacity: 0.85,
         backgroundEnabled: true,
         backgroundColor: .black,
         backgroundRadius: 6,
         backgroundPaddingX: 10,
         backgroundPaddingY: 6,
+        numericMinWidth: 0,
+        numericMinHeight: 0,
         backgroundFadeOutEnabled: false,
         backgroundFadeOutAmount: 0.22,
         backgroundBlurRadius: 0,
@@ -467,19 +661,21 @@ struct OverlayStyle: Equatable, Codable {
         glowEnabled: false,
         glowColor: .white,
         glowIntensity: 0,
+        textColorsFollowHeartRateZones: false,
         distanceTimeline: .default,
         elevationChart: .default,
         gauge: RunningGaugeStyle.default,
         routeMapStatsBar: .default,
-        lapList: .default,
-        lapCard: .default,
-        lapLive: .default
+        decor: .default,
+        weatherWidget: .preset(.simpleCard),
+        intervalHUDBar: .default,
+        intervalTimeline: .default,
+        zoneEdgeBar: .default
     )
 
     init(
         textPreset: OverlayTextPreset = .minimal,
         gaugePreset: OverlayGaugePreset = .minimalSport,
-        routeMapPreset: OverlayRouteMapPreset = .minimal,
         routeMapProvider: OverlayRouteMapProvider = .none,
         routeMapShape: OverlayRouteMapShape = .square,
         routeMapEdgeFade: OverlayRouteMapEdgeFade = .solid,
@@ -491,6 +687,9 @@ struct OverlayStyle: Equatable, Codable {
         routeMapMarkerStyle: OverlayRouteMapMarkerStyle = .dot,
         routeMapStartMarkerStyle: OverlayRouteMapMarkerStyle = .dot,
         routeMapEndMarkerStyle: OverlayRouteMapMarkerStyle = .dot,
+        routeMapRunnerMarkerStyle: OverlayRouteMapMarkerStyle = .dot,
+        routeMapStartMarkerColor: OverlayColor = .green,
+        routeMapEndMarkerColor: OverlayColor = .routeMapEndCheckerboard,
         routeMapRunnerDotColor: OverlayColor = .white,
         routeMapBackgroundStyle: OverlayRouteMapBackgroundStyle = .dark,
         routeMapLegendVisible: Bool = true,
@@ -515,27 +714,48 @@ struct OverlayStyle: Equatable, Codable {
         shadowOpacity: Double,
         shadowRadius: Double,
         unitOption: OverlayUnitOption = .paceMetric,
+        elevationDisplayMode: OverlayElevationDisplayMode = .current,
         showLabel: Bool = false,
         showUnit: Bool = true,
         customLabel: String = "",
         labelPosition: OverlayTextAttachmentPosition = .top,
         unitPosition: OverlayTextAttachmentPosition = .trailing,
-        labelFontName: String = "SF Pro",
+        labelFontName: String = FontLibraryManager.currentDefaultFamily,
         labelFontSize: Double = 16,
         labelFontWeight: OverlayFontWeight = .medium,
         labelSpacing: Double = 8,
-        unitFontName: String = "SF Pro",
+        unitFontName: String = FontLibraryManager.currentDefaultFamily,
         unitFontSize: Double = 20,
         unitFontWeight: OverlayFontWeight = .medium,
         unitSpacing: Double = 8,
+        iconEnabled: Bool = true,
+        iconSystemName: String = "",
+        iconPosition: OverlayTextAttachmentPosition = .leading,
+        iconTextAlignment: OverlayTextAlignment = .center,
+        iconSize: Double = 22,
+        iconColor: OverlayColor = .white,
+        iconOpacity: Double = 1,
+        iconSpacing: Double = 8,
+        iconColorsFollowHeartRateZones: Bool = false,
+        valueColorsFollowHeartRateZones: Bool = false,
+        labelColorsFollowHeartRateZones: Bool = false,
+        unitColorsFollowHeartRateZones: Bool = false,
         rotationDegrees: Double = 0,
         textAlignment: OverlayTextAlignment = .leading,
+        labelTextAlignment: OverlayTextAlignment = .leading,
+        unitTextAlignment: OverlayTextAlignment = .leading,
         accentColor: OverlayColor = .blue,
+        dividerEnabled: Bool = true,
+        dividerColor: OverlayColor = .white,
+        dividerThickness: Double = 2,
+        dividerOpacity: Double = 0.85,
         backgroundEnabled: Bool = true,
         backgroundColor: OverlayColor = .black,
         backgroundRadius: Double = 6,
         backgroundPaddingX: Double = 10,
         backgroundPaddingY: Double = 6,
+        numericMinWidth: Double = 0,
+        numericMinHeight: Double = 0,
         backgroundFadeOutEnabled: Bool = false,
         backgroundFadeOutAmount: Double = 0.22,
         backgroundBlurRadius: Double = 0,
@@ -551,17 +771,19 @@ struct OverlayStyle: Equatable, Codable {
         glowEnabled: Bool = false,
         glowColor: OverlayColor = .white,
         glowIntensity: Double = 0,
+        textColorsFollowHeartRateZones: Bool = false,
         distanceTimeline: DistanceTimelineStyle = .default,
         elevationChart: ElevationChartStyle = .default,
         gauge: RunningGaugeStyle = .default,
         routeMapStatsBar: OverlayRouteMapStatsBarConfig = .default,
-        lapList: LapListStyle = .default,
-        lapCard: LapCardStyle = .default,
-        lapLive: LapLiveStyle = .default
+        decor: DecorStyle = .default,
+        weatherWidget: WeatherWidgetStyle = .preset(.simpleCard),
+        intervalHUDBar: IntervalHUDBarStyle = .default,
+        intervalTimeline: IntervalTimelineStyle = .default,
+        zoneEdgeBar: ZoneEdgeBarStyle = .default
     ) {
         self.textPreset = textPreset
         self.gaugePreset = gaugePreset
-        self.routeMapPreset = routeMapPreset
         self.routeMapProvider = routeMapProvider
         self.routeMapShape = routeMapShape
         self.routeMapEdgeFade = routeMapEdgeFade
@@ -573,6 +795,9 @@ struct OverlayStyle: Equatable, Codable {
         self.routeMapMarkerStyle = routeMapMarkerStyle
         self.routeMapStartMarkerStyle = routeMapStartMarkerStyle
         self.routeMapEndMarkerStyle = routeMapEndMarkerStyle
+        self.routeMapRunnerMarkerStyle = routeMapRunnerMarkerStyle
+        self.routeMapStartMarkerColor = routeMapStartMarkerColor
+        self.routeMapEndMarkerColor = routeMapEndMarkerColor
         self.routeMapRunnerDotColor = routeMapRunnerDotColor
         self.routeMapBackgroundStyle = routeMapBackgroundStyle
         self.routeMapLegendVisible = routeMapLegendVisible
@@ -597,6 +822,7 @@ struct OverlayStyle: Equatable, Codable {
         self.shadowOpacity = shadowOpacity
         self.shadowRadius = shadowRadius
         self.unitOption = unitOption
+        self.elevationDisplayMode = elevationDisplayMode
         self.showLabel = showLabel
         self.showUnit = showUnit
         self.customLabel = customLabel
@@ -610,14 +836,34 @@ struct OverlayStyle: Equatable, Codable {
         self.unitFontSize = unitFontSize
         self.unitFontWeight = unitFontWeight
         self.unitSpacing = max(unitSpacing, 0)
+        self.iconEnabled = iconEnabled
+        self.iconSystemName = iconSystemName.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.iconPosition = iconPosition
+        self.iconTextAlignment = iconTextAlignment
+        self.iconSize = min(max(iconSize, 8), 96)
+        self.iconColor = iconColor
+        self.iconOpacity = min(max(iconOpacity, 0), 1)
+        self.iconSpacing = min(max(iconSpacing, 0), 60)
+        self.iconColorsFollowHeartRateZones = iconColorsFollowHeartRateZones
+        self.valueColorsFollowHeartRateZones = valueColorsFollowHeartRateZones
+        self.labelColorsFollowHeartRateZones = labelColorsFollowHeartRateZones
+        self.unitColorsFollowHeartRateZones = unitColorsFollowHeartRateZones
         self.rotationDegrees = rotationDegrees
         self.textAlignment = textAlignment
+        self.labelTextAlignment = labelTextAlignment
+        self.unitTextAlignment = unitTextAlignment
         self.accentColor = accentColor
+        self.dividerEnabled = dividerEnabled
+        self.dividerColor = dividerColor
+        self.dividerThickness = min(max(dividerThickness, 0), 16)
+        self.dividerOpacity = min(max(dividerOpacity, 0), 1)
         self.backgroundEnabled = backgroundEnabled
         self.backgroundColor = backgroundColor
         self.backgroundRadius = backgroundRadius
         self.backgroundPaddingX = backgroundPaddingX
         self.backgroundPaddingY = backgroundPaddingY
+        self.numericMinWidth = min(max(numericMinWidth, 0), 720)
+        self.numericMinHeight = min(max(numericMinHeight, 0), 360)
         self.backgroundFadeOutEnabled = backgroundFadeOutEnabled
         self.backgroundFadeOutAmount = backgroundFadeOutAmount
         self.backgroundBlurRadius = backgroundBlurRadius
@@ -633,29 +879,22 @@ struct OverlayStyle: Equatable, Codable {
         self.glowEnabled = glowEnabled
         self.glowColor = glowColor
         self.glowIntensity = glowIntensity
+        self.textColorsFollowHeartRateZones = textColorsFollowHeartRateZones
         self.distanceTimeline = distanceTimeline
         self.elevationChart = elevationChart
         self.gauge = gauge
         self.routeMapStatsBar = routeMapStatsBar
-        self.lapList = lapList
-        self.lapCard = lapCard
-        self.lapLive = lapLive
+        self.decor = decor
+        self.weatherWidget = weatherWidget
+        self.intervalHUDBar = intervalHUDBar
+        self.intervalTimeline = intervalTimeline
+        self.zoneEdgeBar = zoneEdgeBar
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         textPreset = try container.decodeIfPresent(OverlayTextPreset.self, forKey: .textPreset) ?? Self.default.textPreset
         gaugePreset = try container.decodeIfPresent(OverlayGaugePreset.self, forKey: .gaugePreset) ?? Self.default.gaugePreset
-        // Legacy templates may have stored `routeMapPreset = "mapKit"` when
-        // the preset enum doubled as a "show map" trigger. We migrate any
-        // unknown raw value (including "mapKit") to `.gradient`, and rely on
-        // `routeMapBackgroundStyle` to drive map visibility going forward.
-        if let raw = try container.decodeIfPresent(String.self, forKey: .routeMapPreset),
-           let preset = OverlayRouteMapPreset(rawValue: raw) {
-            routeMapPreset = preset
-        } else {
-            routeMapPreset = Self.default.routeMapPreset
-        }
         routeMapProvider = try container.decodeIfPresent(OverlayRouteMapProvider.self, forKey: .routeMapProvider) ?? Self.default.routeMapProvider
         routeMapShape = try container.decodeIfPresent(OverlayRouteMapShape.self, forKey: .routeMapShape) ?? Self.default.routeMapShape
         routeMapEdgeFade = try container.decodeIfPresent(OverlayRouteMapEdgeFade.self, forKey: .routeMapEdgeFade) ?? Self.default.routeMapEdgeFade
@@ -667,6 +906,9 @@ struct OverlayStyle: Equatable, Codable {
         routeMapMarkerStyle = try container.decodeIfPresent(OverlayRouteMapMarkerStyle.self, forKey: .routeMapMarkerStyle) ?? Self.default.routeMapMarkerStyle
         routeMapStartMarkerStyle = try container.decodeIfPresent(OverlayRouteMapMarkerStyle.self, forKey: .routeMapStartMarkerStyle) ?? routeMapMarkerStyle
         routeMapEndMarkerStyle = try container.decodeIfPresent(OverlayRouteMapMarkerStyle.self, forKey: .routeMapEndMarkerStyle) ?? routeMapMarkerStyle
+        routeMapRunnerMarkerStyle = try container.decodeIfPresent(OverlayRouteMapMarkerStyle.self, forKey: .routeMapRunnerMarkerStyle) ?? Self.default.routeMapRunnerMarkerStyle
+        routeMapStartMarkerColor = try container.decodeIfPresent(OverlayColor.self, forKey: .routeMapStartMarkerColor) ?? Self.default.routeMapStartMarkerColor
+        routeMapEndMarkerColor = try container.decodeIfPresent(OverlayColor.self, forKey: .routeMapEndMarkerColor) ?? Self.default.routeMapEndMarkerColor
         routeMapBackgroundStyle = try container.decodeIfPresent(OverlayRouteMapBackgroundStyle.self, forKey: .routeMapBackgroundStyle) ?? Self.default.routeMapBackgroundStyle
         routeMapLegendVisible = try container.decodeIfPresent(Bool.self, forKey: .routeMapLegendVisible) ?? Self.default.routeMapLegendVisible
         routeMapLegendMode = try container.decodeIfPresent(OverlayRouteMapLegendMode.self, forKey: .routeMapLegendMode) ?? Self.default.routeMapLegendMode
@@ -691,6 +933,7 @@ struct OverlayStyle: Equatable, Codable {
         shadowOpacity = try container.decodeIfPresent(Double.self, forKey: .shadowOpacity) ?? Self.default.shadowOpacity
         shadowRadius = try container.decodeIfPresent(Double.self, forKey: .shadowRadius) ?? Self.default.shadowRadius
         unitOption = try container.decodeIfPresent(OverlayUnitOption.self, forKey: .unitOption) ?? Self.default.unitOption
+        elevationDisplayMode = try container.decodeIfPresent(OverlayElevationDisplayMode.self, forKey: .elevationDisplayMode) ?? Self.default.elevationDisplayMode
         showLabel = try container.decodeIfPresent(Bool.self, forKey: .showLabel) ?? Self.default.showLabel
         showUnit = try container.decodeIfPresent(Bool.self, forKey: .showUnit) ?? Self.default.showUnit
         customLabel = try container.decodeIfPresent(String.self, forKey: .customLabel) ?? Self.default.customLabel
@@ -704,14 +947,36 @@ struct OverlayStyle: Equatable, Codable {
         unitFontSize = try container.decodeIfPresent(Double.self, forKey: .unitFontSize) ?? Self.default.unitFontSize
         unitFontWeight = try container.decodeIfPresent(OverlayFontWeight.self, forKey: .unitFontWeight) ?? Self.default.unitFontWeight
         unitSpacing = max(try container.decodeIfPresent(Double.self, forKey: .unitSpacing) ?? Self.default.unitSpacing, 0)
+        iconEnabled = try container.decodeIfPresent(Bool.self, forKey: .iconEnabled) ?? Self.default.iconEnabled
+        let decodedIconName = try container.decodeIfPresent(String.self, forKey: .iconSystemName) ?? Self.default.iconSystemName
+        iconSystemName = decodedIconName.trimmingCharacters(in: .whitespacesAndNewlines)
+        iconPosition = try container.decodeIfPresent(OverlayTextAttachmentPosition.self, forKey: .iconPosition) ?? Self.default.iconPosition
+        iconTextAlignment = try container.decodeIfPresent(OverlayTextAlignment.self, forKey: .iconTextAlignment) ?? Self.default.iconTextAlignment
+        iconSize = min(max(try container.decodeIfPresent(Double.self, forKey: .iconSize) ?? Self.default.iconSize, 8), 96)
+        iconColor = try container.decodeIfPresent(OverlayColor.self, forKey: .iconColor) ?? foregroundColor
+        iconOpacity = min(max(try container.decodeIfPresent(Double.self, forKey: .iconOpacity) ?? Self.default.iconOpacity, 0), 1)
+        iconSpacing = min(max(try container.decodeIfPresent(Double.self, forKey: .iconSpacing) ?? Self.default.iconSpacing, 0), 60)
+        iconColorsFollowHeartRateZones = try container.decodeIfPresent(Bool.self, forKey: .iconColorsFollowHeartRateZones) ?? Self.default.iconColorsFollowHeartRateZones
+        let legacyTextColorsFollowHeartRateZones = try container.decodeIfPresent(Bool.self, forKey: .textColorsFollowHeartRateZones) ?? Self.default.textColorsFollowHeartRateZones
+        valueColorsFollowHeartRateZones = try container.decodeIfPresent(Bool.self, forKey: .valueColorsFollowHeartRateZones) ?? legacyTextColorsFollowHeartRateZones
+        labelColorsFollowHeartRateZones = try container.decodeIfPresent(Bool.self, forKey: .labelColorsFollowHeartRateZones) ?? legacyTextColorsFollowHeartRateZones
+        unitColorsFollowHeartRateZones = try container.decodeIfPresent(Bool.self, forKey: .unitColorsFollowHeartRateZones) ?? legacyTextColorsFollowHeartRateZones
         rotationDegrees = try container.decodeIfPresent(Double.self, forKey: .rotationDegrees) ?? Self.default.rotationDegrees
         textAlignment = try container.decodeIfPresent(OverlayTextAlignment.self, forKey: .textAlignment) ?? Self.default.textAlignment
+        labelTextAlignment = try container.decodeIfPresent(OverlayTextAlignment.self, forKey: .labelTextAlignment) ?? Self.default.labelTextAlignment
+        unitTextAlignment = try container.decodeIfPresent(OverlayTextAlignment.self, forKey: .unitTextAlignment) ?? Self.default.unitTextAlignment
         accentColor = try container.decodeIfPresent(OverlayColor.self, forKey: .accentColor) ?? Self.default.accentColor
+        dividerEnabled = try container.decodeIfPresent(Bool.self, forKey: .dividerEnabled) ?? Self.default.dividerEnabled
+        dividerColor = try container.decodeIfPresent(OverlayColor.self, forKey: .dividerColor) ?? Self.default.dividerColor
+        dividerThickness = min(max(try container.decodeIfPresent(Double.self, forKey: .dividerThickness) ?? Self.default.dividerThickness, 0), 16)
+        dividerOpacity = min(max(try container.decodeIfPresent(Double.self, forKey: .dividerOpacity) ?? Self.default.dividerOpacity, 0), 1)
         backgroundEnabled = try container.decodeIfPresent(Bool.self, forKey: .backgroundEnabled) ?? Self.default.backgroundEnabled
         backgroundColor = try container.decodeIfPresent(OverlayColor.self, forKey: .backgroundColor) ?? Self.default.backgroundColor
         backgroundRadius = try container.decodeIfPresent(Double.self, forKey: .backgroundRadius) ?? Self.default.backgroundRadius
         backgroundPaddingX = try container.decodeIfPresent(Double.self, forKey: .backgroundPaddingX) ?? Self.default.backgroundPaddingX
         backgroundPaddingY = try container.decodeIfPresent(Double.self, forKey: .backgroundPaddingY) ?? Self.default.backgroundPaddingY
+        numericMinWidth = min(max(try container.decodeIfPresent(Double.self, forKey: .numericMinWidth) ?? Self.default.numericMinWidth, 0), 720)
+        numericMinHeight = min(max(try container.decodeIfPresent(Double.self, forKey: .numericMinHeight) ?? Self.default.numericMinHeight, 0), 360)
         backgroundFadeOutEnabled = try container.decodeIfPresent(Bool.self, forKey: .backgroundFadeOutEnabled) ?? Self.default.backgroundFadeOutEnabled
         backgroundFadeOutAmount = min(max(try container.decodeIfPresent(Double.self, forKey: .backgroundFadeOutAmount) ?? Self.default.backgroundFadeOutAmount, 0), 1)
         backgroundBlurRadius = max(try container.decodeIfPresent(Double.self, forKey: .backgroundBlurRadius) ?? Self.default.backgroundBlurRadius, 0)
@@ -727,6 +992,7 @@ struct OverlayStyle: Equatable, Codable {
         glowEnabled = try container.decodeIfPresent(Bool.self, forKey: .glowEnabled) ?? Self.default.glowEnabled
         glowColor = try container.decodeIfPresent(OverlayColor.self, forKey: .glowColor) ?? Self.default.glowColor
         glowIntensity = min(max(try container.decodeIfPresent(Double.self, forKey: .glowIntensity) ?? Self.default.glowIntensity, 0), 1)
+        textColorsFollowHeartRateZones = legacyTextColorsFollowHeartRateZones
         distanceTimeline = try container.decodeIfPresent(DistanceTimelineStyle.self, forKey: .distanceTimeline) ?? .default
         elevationChart = try container.decodeIfPresent(ElevationChartStyle.self, forKey: .elevationChart) ?? .default
         if let storedGauge = try container.decodeIfPresent(RunningGaugeStyle.self, forKey: .gauge) {
@@ -738,9 +1004,11 @@ struct OverlayStyle: Equatable, Codable {
             gauge = RunningGaugeStyle.preset(gaugePreset)
         }
         routeMapStatsBar = try container.decodeIfPresent(OverlayRouteMapStatsBarConfig.self, forKey: .routeMapStatsBar) ?? .default
-        lapList = try container.decodeIfPresent(LapListStyle.self, forKey: .lapList) ?? .default
-        lapCard = try container.decodeIfPresent(LapCardStyle.self, forKey: .lapCard) ?? .default
-        lapLive = try container.decodeIfPresent(LapLiveStyle.self, forKey: .lapLive) ?? .default
+        decor = try container.decodeIfPresent(DecorStyle.self, forKey: .decor) ?? .default
+        weatherWidget = try container.decodeIfPresent(WeatherWidgetStyle.self, forKey: .weatherWidget) ?? .preset(.simpleCard)
+        intervalHUDBar = try container.decodeIfPresent(IntervalHUDBarStyle.self, forKey: .intervalHUDBar) ?? .default
+        intervalTimeline = try container.decodeIfPresent(IntervalTimelineStyle.self, forKey: .intervalTimeline) ?? .default
+        zoneEdgeBar = try container.decodeIfPresent(ZoneEdgeBarStyle.self, forKey: .zoneEdgeBar) ?? .default
     }
 }
 
@@ -787,15 +1055,19 @@ enum DistanceTimelinePreset: String, CaseIterable, Identifiable, Codable {
 enum ElevationChartPreset: String, CaseIterable, Identifiable, Codable {
     case gradientArea
     case dualArea
+    case techGlow
+    case minimalWhite
     case bigNumbers
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
-        case .gradientArea: "Gradient Area"
-        case .dualArea: "Dual Area"
-        case .bigNumbers: "Big Numbers"
+        case .gradientArea: "Premium Gradient"
+        case .dualArea: "Dark Terrain"
+        case .techGlow: "Tech Glow"
+        case .minimalWhite: "Minimal White"
+        case .bigNumbers: "Big Elevation"
         }
     }
 }
@@ -847,11 +1119,15 @@ enum ElevationChartBigMetric: String, CaseIterable, Identifiable, Codable {
 }
 
 struct ElevationChartStyle: Equatable, Codable {
+    static let widthRange: ClosedRange<Double> = 220...1200
+    static let heightRange: ClosedRange<Double> = 72...320
+
     var preset: ElevationChartPreset
     var width: Double
     var height: Double
     var chartStyle: ElevationChartRenderStyle
     var smoothingEnabled: Bool
+    var smoothingAmount: Double
     var progressMode: ElevationChartProgressMode
     var chartPaddingX: Double
     var chartPaddingY: Double
@@ -867,12 +1143,16 @@ struct ElevationChartStyle: Equatable, Codable {
     var lowerFillColor: OverlayColor
     var currentMarkerEnabled: Bool
     var markerColor: OverlayColor
+    var markerPlayheadLineEnabled: Bool
     var markerLabelEnabled: Bool
     var gridEnabled: Bool
+    var axisLineEnabled: Bool
     var axisLabelsEnabled: Bool
     var bigNumbersEnabled: Bool
     var bigNumberMetric: ElevationChartBigMetric
     var bigNumberFontSize: Double
+    var bigNumberFontName: String
+    var bigNumberFontWeight: OverlayFontWeight
     var backgroundEnabled: Bool
     var backgroundColor: OverlayColor
     var backgroundOpacity: Double
@@ -892,39 +1172,44 @@ struct ElevationChartStyle: Equatable, Codable {
         var style = ElevationChartStyle(
             preset: preset,
             width: 420,
-            height: preset == .bigNumbers ? 190 : 170,
+            height: preset == .bigNumbers ? 190 : 178,
             chartStyle: .area,
             smoothingEnabled: true,
+            smoothingAmount: 0.85,
             progressMode: .fullProfile,
-            chartPaddingX: 14,
-            chartPaddingY: 10,
+            chartPaddingX: 18,
+            chartPaddingY: 16,
             lineColor: .white,
             lineWidth: preset == .bigNumbers ? 2.2 : 2.5,
-            lineOpacity: 0.95,
+            lineOpacity: 0.96,
             fillEnabled: true,
             fillStartColor: .green,
             fillEndColor: .blue,
-            fillOpacity: preset == .bigNumbers ? 0.28 : 0.42,
+            fillOpacity: preset == .bigNumbers ? 0.34 : 0.40,
             dualAreaEnabled: false,
             upperFillColor: .orange,
             lowerFillColor: .cyan,
             currentMarkerEnabled: true,
             markerColor: .blue,
+            markerPlayheadLineEnabled: true,
             markerLabelEnabled: true,
             gridEnabled: false,
+            axisLineEnabled: true,
             axisLabelsEnabled: true,
             bigNumbersEnabled: preset == .bigNumbers,
             bigNumberMetric: .currentElevation,
-            bigNumberFontSize: 42,
+            bigNumberFontSize: preset == .bigNumbers ? 58 : 42,
+            bigNumberFontName: FontLibraryManager.currentDefaultFamily,
+            bigNumberFontWeight: .semibold,
             backgroundEnabled: true,
             backgroundColor: .black,
-            backgroundOpacity: 0.50,
-            cornerRadius: 16,
+            backgroundOpacity: 0.42,
+            cornerRadius: 18,
             borderEnabled: true,
-            borderOpacity: 0.12,
+            borderOpacity: 0.10,
             shadowEnabled: true,
             shadowOpacity: 0.28,
-            shadowRadius: 14,
+            shadowRadius: 18,
             glowEnabled: false,
             glowOpacity: 0.25,
             statsBar: ElevationChartStyle.defaultStatsBar
@@ -934,19 +1219,65 @@ struct ElevationChartStyle: Equatable, Codable {
             break
         case .dualArea:
             style.dualAreaEnabled = true
-            style.fillStartColor = OverlayColor.yellow
-            style.fillEndColor = OverlayColor.red
-            style.markerColor = OverlayColor.red
+            style.fillStartColor = OverlayColor.orange
+            style.fillEndColor = OverlayColor(red: 0.18, green: 0.26, blue: 0.34, alpha: 1)
+            style.upperFillColor = OverlayColor.green
+            style.lowerFillColor = OverlayColor.orange
+            style.markerColor = OverlayColor.orange
+            style.backgroundOpacity = 0.50
+            style.shadowOpacity = 0.30
             style.statsBar.slots = [
                 DistanceTimelineStatsBarSlot(metric: .distance, visible: true, customLabel: ""),
                 DistanceTimelineStatsBarSlot(metric: .elevation, visible: true, customLabel: "ELEV"),
                 DistanceTimelineStatsBarSlot(metric: .elapsedTime, visible: true, customLabel: ""),
                 DistanceTimelineStatsBarSlot(metric: .grade, visible: false, customLabel: ""),
             ]
-        case .bigNumbers:
-            style.statsBar.visible = false
+        case .techGlow:
+            style.lineColor = OverlayColor.cyan
+            style.fillStartColor = OverlayColor.cyan
+            style.fillEndColor = OverlayColor.blue
+            style.markerColor = OverlayColor.cyan
+            style.gridEnabled = true
+            style.glowEnabled = true
+            style.glowOpacity = 0.45
+            style.backgroundOpacity = 0.46
+            style.borderOpacity = 0.12
+            style.shadowOpacity = 0.32
+            style.shadowRadius = 20
+            style.statsBar.backgroundOpacity = 0.50
+        case .minimalWhite:
+            style.chartStyle = .lineOnly
+            style.fillEnabled = false
+            style.markerColor = .white
             style.markerLabelEnabled = false
+            style.markerPlayheadLineEnabled = false
+            style.axisLineEnabled = false
             style.axisLabelsEnabled = false
+            style.gridEnabled = false
+            style.statsBar.visible = false
+            style.backgroundOpacity = 0.28
+            style.borderEnabled = false
+            style.shadowOpacity = 0.22
+            style.shadowRadius = 14
+        case .bigNumbers:
+            style.statsBar.visible = true
+            style.statsBar.height = 46
+            style.statsBar.backgroundOpacity = 0.38
+            style.statsBar.valueFontSize = 18
+            style.statsBar.labelFontSize = 9
+            style.statsBar.slots = [
+                DistanceTimelineStatsBarSlot(metric: .distance, visible: true, customLabel: ""),
+                DistanceTimelineStatsBarSlot(metric: .elapsedTime, visible: true, customLabel: ""),
+                DistanceTimelineStatsBarSlot(metric: .elevation, visible: false, customLabel: "ELEV"),
+                DistanceTimelineStatsBarSlot(metric: .grade, visible: false, customLabel: ""),
+            ]
+            style.markerLabelEnabled = false
+            style.axisLineEnabled = false
+            style.axisLabelsEnabled = false
+            style.backgroundOpacity = 0.44
+            style.shadowOpacity = 0.30
+            style.chartPaddingX = 18
+            style.chartPaddingY = 14
         }
         return style
     }
@@ -957,13 +1288,13 @@ struct ElevationChartStyle: Equatable, Codable {
         inside: false,
         layoutMode: .equalColumns,
         width: 0,
-        height: 58,
+        height: 56,
         offsetX: 0,
         offsetY: 0,
         itemSpacing: 0,
-        backgroundOpacity: 0.62,
-        dividerOpacity: 0.14,
-        cornerRadius: 12,
+        backgroundOpacity: 0.48,
+        dividerOpacity: 0.12,
+        cornerRadius: 10,
         valueFontSize: 22,
         labelFontSize: 10,
         slots: [
@@ -982,6 +1313,157 @@ struct ElevationChartStyle: Equatable, Codable {
     mutating func setStatsBarVisible(_ visible: Bool, at index: Int) {
         guard statsBar.slots.indices.contains(index) else { return }
         statsBar.slots[index].visible = visible
+    }
+}
+
+extension ElevationChartStyle {
+    private enum CodingKeys: String, CodingKey {
+        case preset
+        case width
+        case height
+        case chartStyle
+        case smoothingEnabled
+        case smoothingAmount
+        case progressMode
+        case chartPaddingX
+        case chartPaddingY
+        case lineColor
+        case lineWidth
+        case lineOpacity
+        case fillEnabled
+        case fillStartColor
+        case fillEndColor
+        case fillOpacity
+        case dualAreaEnabled
+        case upperFillColor
+        case lowerFillColor
+        case currentMarkerEnabled
+        case markerColor
+        case markerPlayheadLineEnabled
+        case markerLabelEnabled
+        case gridEnabled
+        case axisLineEnabled
+        case axisLabelsEnabled
+        case bigNumbersEnabled
+        case bigNumberMetric
+        case bigNumberFontSize
+        case bigNumberFontName
+        case bigNumberFontWeight
+        case backgroundEnabled
+        case backgroundColor
+        case backgroundOpacity
+        case cornerRadius
+        case borderEnabled
+        case borderOpacity
+        case shadowEnabled
+        case shadowOpacity
+        case shadowRadius
+        case glowEnabled
+        case glowOpacity
+        case statsBar
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let decodedPreset = try container.decodeIfPresent(ElevationChartPreset.self, forKey: .preset) ?? .gradientArea
+        let defaults = ElevationChartStyle.preset(decodedPreset)
+
+        preset = decodedPreset
+        width = min(
+            max(try container.decodeIfPresent(Double.self, forKey: .width) ?? defaults.width, Self.widthRange.lowerBound),
+            Self.widthRange.upperBound
+        )
+        height = min(
+            max(try container.decodeIfPresent(Double.self, forKey: .height) ?? defaults.height, Self.heightRange.lowerBound),
+            Self.heightRange.upperBound
+        )
+        chartStyle = try container.decodeIfPresent(ElevationChartRenderStyle.self, forKey: .chartStyle) ?? defaults.chartStyle
+        smoothingEnabled = try container.decodeIfPresent(Bool.self, forKey: .smoothingEnabled) ?? defaults.smoothingEnabled
+        smoothingAmount = min(max(try container.decodeIfPresent(Double.self, forKey: .smoothingAmount) ?? defaults.smoothingAmount, 0), 1)
+        progressMode = try container.decodeIfPresent(ElevationChartProgressMode.self, forKey: .progressMode) ?? defaults.progressMode
+        chartPaddingX = try container.decodeIfPresent(Double.self, forKey: .chartPaddingX) ?? defaults.chartPaddingX
+        chartPaddingY = try container.decodeIfPresent(Double.self, forKey: .chartPaddingY) ?? defaults.chartPaddingY
+        lineColor = try container.decodeIfPresent(OverlayColor.self, forKey: .lineColor) ?? defaults.lineColor
+        lineWidth = try container.decodeIfPresent(Double.self, forKey: .lineWidth) ?? defaults.lineWidth
+        lineOpacity = try container.decodeIfPresent(Double.self, forKey: .lineOpacity) ?? defaults.lineOpacity
+        fillEnabled = try container.decodeIfPresent(Bool.self, forKey: .fillEnabled) ?? defaults.fillEnabled
+        fillStartColor = try container.decodeIfPresent(OverlayColor.self, forKey: .fillStartColor) ?? defaults.fillStartColor
+        fillEndColor = try container.decodeIfPresent(OverlayColor.self, forKey: .fillEndColor) ?? defaults.fillEndColor
+        fillOpacity = try container.decodeIfPresent(Double.self, forKey: .fillOpacity) ?? defaults.fillOpacity
+        dualAreaEnabled = try container.decodeIfPresent(Bool.self, forKey: .dualAreaEnabled) ?? defaults.dualAreaEnabled
+        upperFillColor = try container.decodeIfPresent(OverlayColor.self, forKey: .upperFillColor) ?? defaults.upperFillColor
+        lowerFillColor = try container.decodeIfPresent(OverlayColor.self, forKey: .lowerFillColor) ?? defaults.lowerFillColor
+        currentMarkerEnabled = try container.decodeIfPresent(Bool.self, forKey: .currentMarkerEnabled) ?? defaults.currentMarkerEnabled
+        markerColor = try container.decodeIfPresent(OverlayColor.self, forKey: .markerColor) ?? defaults.markerColor
+        markerPlayheadLineEnabled = try container.decodeIfPresent(Bool.self, forKey: .markerPlayheadLineEnabled) ?? defaults.markerPlayheadLineEnabled
+        markerLabelEnabled = try container.decodeIfPresent(Bool.self, forKey: .markerLabelEnabled) ?? defaults.markerLabelEnabled
+        gridEnabled = try container.decodeIfPresent(Bool.self, forKey: .gridEnabled) ?? defaults.gridEnabled
+        axisLineEnabled = try container.decodeIfPresent(Bool.self, forKey: .axisLineEnabled) ?? defaults.axisLineEnabled
+        axisLabelsEnabled = try container.decodeIfPresent(Bool.self, forKey: .axisLabelsEnabled) ?? defaults.axisLabelsEnabled
+        bigNumbersEnabled = try container.decodeIfPresent(Bool.self, forKey: .bigNumbersEnabled) ?? defaults.bigNumbersEnabled
+        bigNumberMetric = try container.decodeIfPresent(ElevationChartBigMetric.self, forKey: .bigNumberMetric) ?? defaults.bigNumberMetric
+        bigNumberFontSize = try container.decodeIfPresent(Double.self, forKey: .bigNumberFontSize) ?? defaults.bigNumberFontSize
+        bigNumberFontName = try container.decodeIfPresent(String.self, forKey: .bigNumberFontName) ?? defaults.bigNumberFontName
+        bigNumberFontWeight = try container.decodeIfPresent(OverlayFontWeight.self, forKey: .bigNumberFontWeight) ?? defaults.bigNumberFontWeight
+        backgroundEnabled = try container.decodeIfPresent(Bool.self, forKey: .backgroundEnabled) ?? defaults.backgroundEnabled
+        backgroundColor = try container.decodeIfPresent(OverlayColor.self, forKey: .backgroundColor) ?? defaults.backgroundColor
+        backgroundOpacity = try container.decodeIfPresent(Double.self, forKey: .backgroundOpacity) ?? defaults.backgroundOpacity
+        cornerRadius = try container.decodeIfPresent(Double.self, forKey: .cornerRadius) ?? defaults.cornerRadius
+        borderEnabled = try container.decodeIfPresent(Bool.self, forKey: .borderEnabled) ?? defaults.borderEnabled
+        borderOpacity = try container.decodeIfPresent(Double.self, forKey: .borderOpacity) ?? defaults.borderOpacity
+        shadowEnabled = try container.decodeIfPresent(Bool.self, forKey: .shadowEnabled) ?? defaults.shadowEnabled
+        shadowOpacity = try container.decodeIfPresent(Double.self, forKey: .shadowOpacity) ?? defaults.shadowOpacity
+        shadowRadius = try container.decodeIfPresent(Double.self, forKey: .shadowRadius) ?? defaults.shadowRadius
+        glowEnabled = try container.decodeIfPresent(Bool.self, forKey: .glowEnabled) ?? defaults.glowEnabled
+        glowOpacity = try container.decodeIfPresent(Double.self, forKey: .glowOpacity) ?? defaults.glowOpacity
+        statsBar = try container.decodeIfPresent(DistanceTimelineStatsBarConfig.self, forKey: .statsBar) ?? defaults.statsBar
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(preset, forKey: .preset)
+        try container.encode(width, forKey: .width)
+        try container.encode(height, forKey: .height)
+        try container.encode(chartStyle, forKey: .chartStyle)
+        try container.encode(smoothingEnabled, forKey: .smoothingEnabled)
+        try container.encode(smoothingAmount, forKey: .smoothingAmount)
+        try container.encode(progressMode, forKey: .progressMode)
+        try container.encode(chartPaddingX, forKey: .chartPaddingX)
+        try container.encode(chartPaddingY, forKey: .chartPaddingY)
+        try container.encode(lineColor, forKey: .lineColor)
+        try container.encode(lineWidth, forKey: .lineWidth)
+        try container.encode(lineOpacity, forKey: .lineOpacity)
+        try container.encode(fillEnabled, forKey: .fillEnabled)
+        try container.encode(fillStartColor, forKey: .fillStartColor)
+        try container.encode(fillEndColor, forKey: .fillEndColor)
+        try container.encode(fillOpacity, forKey: .fillOpacity)
+        try container.encode(dualAreaEnabled, forKey: .dualAreaEnabled)
+        try container.encode(upperFillColor, forKey: .upperFillColor)
+        try container.encode(lowerFillColor, forKey: .lowerFillColor)
+        try container.encode(currentMarkerEnabled, forKey: .currentMarkerEnabled)
+        try container.encode(markerColor, forKey: .markerColor)
+        try container.encode(markerPlayheadLineEnabled, forKey: .markerPlayheadLineEnabled)
+        try container.encode(markerLabelEnabled, forKey: .markerLabelEnabled)
+        try container.encode(gridEnabled, forKey: .gridEnabled)
+        try container.encode(axisLineEnabled, forKey: .axisLineEnabled)
+        try container.encode(axisLabelsEnabled, forKey: .axisLabelsEnabled)
+        try container.encode(bigNumbersEnabled, forKey: .bigNumbersEnabled)
+        try container.encode(bigNumberMetric, forKey: .bigNumberMetric)
+        try container.encode(bigNumberFontSize, forKey: .bigNumberFontSize)
+        try container.encode(bigNumberFontName, forKey: .bigNumberFontName)
+        try container.encode(bigNumberFontWeight, forKey: .bigNumberFontWeight)
+        try container.encode(backgroundEnabled, forKey: .backgroundEnabled)
+        try container.encode(backgroundColor, forKey: .backgroundColor)
+        try container.encode(backgroundOpacity, forKey: .backgroundOpacity)
+        try container.encode(cornerRadius, forKey: .cornerRadius)
+        try container.encode(borderEnabled, forKey: .borderEnabled)
+        try container.encode(borderOpacity, forKey: .borderOpacity)
+        try container.encode(shadowEnabled, forKey: .shadowEnabled)
+        try container.encode(shadowOpacity, forKey: .shadowOpacity)
+        try container.encode(shadowRadius, forKey: .shadowRadius)
+        try container.encode(glowEnabled, forKey: .glowEnabled)
+        try container.encode(glowOpacity, forKey: .glowOpacity)
+        try container.encode(statsBar, forKey: .statsBar)
     }
 }
 
@@ -1104,6 +1586,21 @@ enum DistanceTimelineAxisLabelMode: String, CaseIterable, Identifiable, Codable 
     }
 }
 
+/// Vertical placement of distance timeline axis text relative to the progress track (+Y is downward).
+enum DistanceTimelineAxisLabelTrackPlacement: String, CaseIterable, Identifiable, Codable, Sendable {
+    case below
+    case above
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .below: "Below"
+        case .above: "Above"
+        }
+    }
+}
+
 enum DistanceTimelineMarkerStyle: String, CaseIterable, Identifiable, Codable {
     case dot
     case pill
@@ -1186,11 +1683,11 @@ struct DistanceTimelineStatsBarConfig: Equatable, Codable {
         backgroundOpacity: 0.72,
         dividerOpacity: 0.12,
         cornerRadius: 8,
-        valueFontName: "SF Pro Display",
+        valueFontName: FontLibraryManager.currentDefaultFamily,
         valueFontSize: 30,
         valueFontWeight: .semibold,
         valueColor: .white,
-        labelFontName: "SF Pro Display",
+        labelFontName: FontLibraryManager.currentDefaultFamily,
         labelFontSize: 10,
         labelFontWeight: .medium,
         labelColor: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.58),
@@ -1215,11 +1712,11 @@ struct DistanceTimelineStatsBarConfig: Equatable, Codable {
         backgroundOpacity: Double,
         dividerOpacity: Double,
         cornerRadius: Double,
-        valueFontName: String = "SF Pro Display",
+        valueFontName: String = FontLibraryManager.currentDefaultFamily,
         valueFontSize: Double = 30,
         valueFontWeight: OverlayFontWeight = .semibold,
         valueColor: OverlayColor = .white,
-        labelFontName: String = "SF Pro Display",
+        labelFontName: String = FontLibraryManager.currentDefaultFamily,
         labelFontSize: Double = 10,
         labelFontWeight: OverlayFontWeight = .medium,
         labelColor: OverlayColor = OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.58),
@@ -1281,6 +1778,7 @@ struct DistanceTimelineStyle: Equatable, Codable {
     var width: Double
     var height: Double
     var showValue: Bool
+    var showTotalDistance: Bool
     var valueUnitSystem: DistanceTimelineUnitSystem
     var customValuesEnabled: Bool
     var customValues: [DistanceTimelineCustomValue]
@@ -1297,6 +1795,7 @@ struct DistanceTimelineStyle: Equatable, Codable {
     var labelFontWeight: OverlayFontWeight
     var labelColor: OverlayColor
     var labelValueSpacing: Double
+    /// Start / finish axis text (START/FINISH or distance endpoints).
     var showAxisLabels: Bool
     var axisLabelMode: DistanceTimelineAxisLabelMode
     var axisLabelOffset: Double
@@ -1304,9 +1803,18 @@ struct DistanceTimelineStyle: Equatable, Codable {
     var axisLabelFontSize: Double
     var axisLabelFontWeight: OverlayFontWeight
     var axisLabelColor: OverlayColor
+    /// Intermediate distance tick labels along the track.
     var showDistancePoints: Bool
     var distancePointCount: Int
+    /// Vertical gap from the track edge for start/finish axis labels (same key as legacy `distancePointOffset` in JSON).
     var distancePointOffset: Double
+    var midpointAxisLabelOffset: Double
+    var axisEndpointLabelPlacement: DistanceTimelineAxisLabelTrackPlacement
+    var axisMidpointLabelPlacement: DistanceTimelineAxisLabelTrackPlacement
+    var markerDistanceLabelEnabled: Bool
+    var markerDistanceLabelPlacement: DistanceTimelineAxisLabelTrackPlacement
+    var markerDistanceLabelOffset: Double
+    var currentMarkerSizeMultiplier: Double
     var statsBar: DistanceTimelineStatsBarConfig
     var backgroundEnabled: Bool
     var backgroundColor: OverlayColor
@@ -1348,6 +1856,7 @@ struct DistanceTimelineStyle: Equatable, Codable {
         width: Double,
         height: Double,
         showValue: Bool = true,
+        showTotalDistance: Bool = true,
         valueUnitSystem: DistanceTimelineUnitSystem = .metric,
         customValuesEnabled: Bool = false,
         customValues: [DistanceTimelineCustomValue] = Array(repeating: .empty, count: 4),
@@ -1359,7 +1868,7 @@ struct DistanceTimelineStyle: Equatable, Codable {
         valueProgressSpacing: Double = 8,
         showLabel: Bool,
         label: String,
-        labelFontName: String = "SF Pro",
+        labelFontName: String = FontLibraryManager.currentDefaultFamily,
         labelFontSize: Double = 12,
         labelFontWeight: OverlayFontWeight = .medium,
         labelColor: OverlayColor = .white,
@@ -1367,13 +1876,20 @@ struct DistanceTimelineStyle: Equatable, Codable {
         showAxisLabels: Bool = false,
         axisLabelMode: DistanceTimelineAxisLabelMode = .startFinish,
         axisLabelOffset: Double = 14,
-        axisLabelFontName: String = "SF Pro",
+        axisLabelFontName: String = FontLibraryManager.currentDefaultFamily,
         axisLabelFontSize: Double = 11,
         axisLabelFontWeight: OverlayFontWeight = .medium,
         axisLabelColor: OverlayColor = .white,
         showDistancePoints: Bool = false,
         distancePointCount: Int = 3,
         distancePointOffset: Double = 34,
+        midpointAxisLabelOffset: Double = 34,
+        axisEndpointLabelPlacement: DistanceTimelineAxisLabelTrackPlacement = .below,
+        axisMidpointLabelPlacement: DistanceTimelineAxisLabelTrackPlacement = .below,
+        markerDistanceLabelEnabled: Bool = false,
+        markerDistanceLabelPlacement: DistanceTimelineAxisLabelTrackPlacement = .above,
+        markerDistanceLabelOffset: Double = 12,
+        currentMarkerSizeMultiplier: Double = 1,
         statsBar: DistanceTimelineStatsBarConfig = .default,
         backgroundEnabled: Bool,
         backgroundColor: OverlayColor,
@@ -1408,6 +1924,7 @@ struct DistanceTimelineStyle: Equatable, Codable {
         self.width = width
         self.height = height
         self.showValue = showValue
+        self.showTotalDistance = showTotalDistance
         self.valueUnitSystem = valueUnitSystem
         self.customValuesEnabled = customValuesEnabled
         self.customValues = Array(customValues.prefix(4)) + Array(repeating: .empty, count: max(0, 4 - customValues.count))
@@ -1434,6 +1951,13 @@ struct DistanceTimelineStyle: Equatable, Codable {
         self.showDistancePoints = showDistancePoints
         self.distancePointCount = min(max(distancePointCount, 0), 12)
         self.distancePointOffset = distancePointOffset
+        self.midpointAxisLabelOffset = midpointAxisLabelOffset
+        self.axisEndpointLabelPlacement = axisEndpointLabelPlacement
+        self.axisMidpointLabelPlacement = axisMidpointLabelPlacement
+        self.markerDistanceLabelEnabled = markerDistanceLabelEnabled
+        self.markerDistanceLabelPlacement = markerDistanceLabelPlacement
+        self.markerDistanceLabelOffset = markerDistanceLabelOffset
+        self.currentMarkerSizeMultiplier = min(max(currentMarkerSizeMultiplier, 0.25), 4)
         self.statsBar = statsBar
         self.backgroundEnabled = backgroundEnabled
         self.backgroundColor = backgroundColor
@@ -1475,6 +1999,7 @@ struct DistanceTimelineStyle: Equatable, Codable {
         width = try c.decodeIfPresent(Double.self, forKey: .width) ?? base.width
         height = try c.decodeIfPresent(Double.self, forKey: .height) ?? base.height
         showValue = try c.decodeIfPresent(Bool.self, forKey: .showValue) ?? true
+        showTotalDistance = try c.decodeIfPresent(Bool.self, forKey: .showTotalDistance) ?? true
         valueUnitSystem = try c.decodeIfPresent(DistanceTimelineUnitSystem.self, forKey: .valueUnitSystem) ?? .metric
         customValuesEnabled = try c.decodeIfPresent(Bool.self, forKey: .customValuesEnabled) ?? false
         let decodedCustomValues = try c.decodeIfPresent([DistanceTimelineCustomValue].self, forKey: .customValues) ?? base.customValues
@@ -1495,15 +2020,26 @@ struct DistanceTimelineStyle: Equatable, Codable {
         showAxisLabels = try c.decodeIfPresent(Bool.self, forKey: .showAxisLabels)
             ?? legacy.decodeIfPresent(Bool.self, forKey: .showStartFinishLabels)
             ?? base.showAxisLabels
+        showDistancePoints = try c.decodeIfPresent(Bool.self, forKey: .showDistancePoints) ?? base.showDistancePoints
+
         axisLabelMode = try c.decodeIfPresent(DistanceTimelineAxisLabelMode.self, forKey: .axisLabelMode) ?? base.axisLabelMode
         axisLabelOffset = try c.decodeIfPresent(Double.self, forKey: .axisLabelOffset) ?? base.axisLabelOffset
         axisLabelFontName = try c.decodeIfPresent(String.self, forKey: .axisLabelFontName) ?? base.axisLabelFontName
         axisLabelFontSize = try c.decodeIfPresent(Double.self, forKey: .axisLabelFontSize) ?? base.axisLabelFontSize
         axisLabelFontWeight = try c.decodeIfPresent(OverlayFontWeight.self, forKey: .axisLabelFontWeight) ?? base.axisLabelFontWeight
         axisLabelColor = try c.decodeIfPresent(OverlayColor.self, forKey: .axisLabelColor) ?? base.axisLabelColor
-        showDistancePoints = try c.decodeIfPresent(Bool.self, forKey: .showDistancePoints) ?? base.showDistancePoints
+
         distancePointCount = min(max(try c.decodeIfPresent(Int.self, forKey: .distancePointCount) ?? base.distancePointCount, 0), 12)
-        distancePointOffset = try c.decodeIfPresent(Double.self, forKey: .distancePointOffset) ?? base.distancePointOffset
+        let legacySharedGap = try c.decodeIfPresent(Double.self, forKey: .distancePointOffset) ?? base.distancePointOffset
+        distancePointOffset = legacySharedGap
+        midpointAxisLabelOffset = try c.decodeIfPresent(Double.self, forKey: .midpointAxisLabelOffset) ?? legacySharedGap
+        axisEndpointLabelPlacement = try c.decodeIfPresent(DistanceTimelineAxisLabelTrackPlacement.self, forKey: .axisEndpointLabelPlacement) ?? base.axisEndpointLabelPlacement
+        axisMidpointLabelPlacement = try c.decodeIfPresent(DistanceTimelineAxisLabelTrackPlacement.self, forKey: .axisMidpointLabelPlacement) ?? base.axisMidpointLabelPlacement
+        markerDistanceLabelEnabled = try c.decodeIfPresent(Bool.self, forKey: .markerDistanceLabelEnabled) ?? base.markerDistanceLabelEnabled
+        markerDistanceLabelPlacement = try c.decodeIfPresent(DistanceTimelineAxisLabelTrackPlacement.self, forKey: .markerDistanceLabelPlacement) ?? base.markerDistanceLabelPlacement
+        markerDistanceLabelOffset = try c.decodeIfPresent(Double.self, forKey: .markerDistanceLabelOffset) ?? base.markerDistanceLabelOffset
+        let decodedMarkerScale = try c.decodeIfPresent(Double.self, forKey: .currentMarkerSizeMultiplier) ?? base.currentMarkerSizeMultiplier
+        currentMarkerSizeMultiplier = min(max(decodedMarkerScale, 0.25), 4)
         statsBar = try c.decodeIfPresent(DistanceTimelineStatsBarConfig.self, forKey: .statsBar) ?? base.statsBar
         backgroundEnabled = try c.decodeIfPresent(Bool.self, forKey: .backgroundEnabled) ?? base.backgroundEnabled
         backgroundColor = try c.decodeIfPresent(OverlayColor.self, forKey: .backgroundColor) ?? base.backgroundColor
@@ -1551,6 +2087,7 @@ struct DistanceTimelineStyle: Equatable, Codable {
         case width
         case height
         case showValue
+        case showTotalDistance
         case valueUnitSystem
         case customValuesEnabled
         case customValues
@@ -1577,6 +2114,13 @@ struct DistanceTimelineStyle: Equatable, Codable {
         case showDistancePoints
         case distancePointCount
         case distancePointOffset
+        case midpointAxisLabelOffset
+        case axisEndpointLabelPlacement
+        case axisMidpointLabelPlacement
+        case markerDistanceLabelEnabled
+        case markerDistanceLabelPlacement
+        case markerDistanceLabelOffset
+        case currentMarkerSizeMultiplier
         case statsBar
         case backgroundEnabled
         case backgroundColor
@@ -1783,6 +2327,7 @@ struct DistanceTimelineStyle: Equatable, Codable {
             style.height = 102
             style.showLabel = true
             style.showAxisLabels = true
+            style.showDistancePoints = false
             style.axisLabelMode = .startFinish
             style.backgroundOpacity = 0.58
             style.borderEnabled = true
@@ -1798,23 +2343,19 @@ struct DistanceTimelineStyle: Equatable, Codable {
     }
 }
 
-enum OverlayRouteMapPreset: String, CaseIterable, Identifiable, Codable {
-    case minimal
-    case gradient
-    case glow
-
-    var id: String { rawValue }
-
-    /// Display label. Route Style now describes the polyline appearance only;
-    /// whether a map background is rendered is a separate decision driven by
-    /// `OverlayStyle.routeMapBackgroundStyle` (and the dedicated "Show Map"
-    /// toggle in the Inspector). The legacy `mapKit` case is migrated to
-    /// `gradient` on decode for backward compatibility.
-    var label: String {
-        switch self {
-        case .minimal: "Minimal / 极简轨迹"
-        case .gradient: "Gradient / 渐变轨迹"
-        case .glow: "Glow / 发光轨迹"
+extension DistanceTimelineStyle {
+    /// Top edge Y of the axis label text band (layout coordinates, +Y downward), aligned with export `drawPlainText` rects.
+    func distanceTimelineAxisLabelTextTopY(
+        trackRect: CGRect,
+        placement: DistanceTimelineAxisLabelTrackPlacement,
+        scaledGap: CGFloat,
+        textLineHeight: CGFloat
+    ) -> CGFloat {
+        switch placement {
+        case .below:
+            trackRect.maxY + scaledGap
+        case .above:
+            trackRect.minY - scaledGap - textLineHeight
         }
     }
 }
@@ -1929,9 +2470,8 @@ enum OverlayRouteMapBackgroundStyle: String, CaseIterable, Identifiable, Codable
 
 /// Container visual preset for the Route Map overlay. Selecting a preset
 /// writes a bundle of defaults onto the element (`routeMapShape`,
-/// `routeMapEdgeFade`, `routeMapFadeAmount`, `routeMapMapOpacity`,
-/// `shadowEnabled`, `shadowOpacity`, `shadowRadius`,
-/// `shadowOffsetX`, `shadowOffsetY`).
+/// shared background fade fields, `routeMapMapOpacity`, `shadowEnabled`,
+/// `shadowOpacity`, `shadowRadius`, `shadowOffsetX`, `shadowOffsetY`).
 ///
 /// See `docs/design/overlays/route-map/route-map-overlay-ui.md` and
 /// `docs/design/overlays/route-map/route-map-overlay-ui.spec.json` for the table of values each
@@ -2019,45 +2559,100 @@ enum OverlayRouteMapContainerPreset: String, CaseIterable, Identifiable, Codable
 
 enum RouteMapStatsMetric: String, CaseIterable, Identifiable, Codable {
     case progress
-    case distance
-    case pace
-    case elapsedTime
     case heartRate
+    case pace
+    case avgPace
+    case lapPace
+    case calories
+    case elapsedTime
+    case realTime
+    case distance
     case elevation
-    case grade
     case cadence
     case power
-    case calories
+    case verticalOscillation
+    case groundContactTime
+    case strideLength
+    case verticalRatio
+    case groundContactBalance
+    case temperature
+    case grade
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
         case .progress: "Progress"
-        case .distance: "Distance"
-        case .pace: "Pace"
-        case .elapsedTime: "Time"
         case .heartRate: "Heart Rate"
+        case .pace: "Pace"
+        case .avgPace: "Avg Pace"
+        case .lapPace: "Lap Pace"
+        case .calories: "Calories"
+        case .elapsedTime: "Time"
+        case .realTime: "Real Time"
+        case .distance: "Distance"
         case .elevation: "Elevation"
-        case .grade: "Grade"
         case .cadence: "Cadence"
         case .power: "Power"
-        case .calories: "Calories"
+        case .verticalOscillation: "Vertical Oscillation"
+        case .groundContactTime: "Ground Contact Time"
+        case .strideLength: "Stride Length"
+        case .verticalRatio: "Vertical Ratio"
+        case .groundContactBalance: "GCT Balance"
+        case .temperature: "Temperature"
+        case .grade: "Grade"
         }
     }
 
     var elementType: OverlayElementType {
         switch self {
         case .progress: .distance
-        case .distance: .distance
-        case .pace: .pace
-        case .elapsedTime: .elapsedTime
         case .heartRate: .heartRate
+        case .pace: .pace
+        case .avgPace: .avgPace
+        case .lapPace: .lapPace
+        case .calories: .calories
+        case .elapsedTime: .elapsedTime
+        case .realTime: .realTime
+        case .distance: .distance
         case .elevation: .elevation
-        case .grade: .grade
         case .cadence: .cadence
         case .power: .power
-        case .calories: .calories
+        case .verticalOscillation: .verticalOscillation
+        case .groundContactTime: .groundContactTime
+        case .strideLength: .strideLength
+        case .verticalRatio: .verticalRatio
+        case .groundContactBalance: .groundContactBalance
+        case .temperature: .temperature
+        case .grade: .grade
+        }
+    }
+
+    static var selectableCases: [RouteMapStatsMetric] {
+        [.progress] + ActivityMetricCatalog.selectableElementTypes.compactMap(Self.init(elementType:))
+    }
+
+    init?(elementType: OverlayElementType) {
+        switch elementType {
+        case .heartRate: self = .heartRate
+        case .pace: self = .pace
+        case .avgPace: self = .avgPace
+        case .lapPace: self = .lapPace
+        case .calories: self = .calories
+        case .elapsedTime: self = .elapsedTime
+        case .realTime: self = .realTime
+        case .distance: self = .distance
+        case .elevation: self = .elevation
+        case .cadence: self = .cadence
+        case .power: self = .power
+        case .verticalOscillation: self = .verticalOscillation
+        case .groundContactTime: self = .groundContactTime
+        case .strideLength: self = .strideLength
+        case .verticalRatio: self = .verticalRatio
+        case .groundContactBalance: self = .groundContactBalance
+        case .temperature: self = .temperature
+        case .grade: self = .grade
+        default: return nil
         }
     }
 }
@@ -2174,11 +2769,11 @@ struct OverlayRouteMapStatsBarConfig: Equatable, Codable {
         blurRadius: 0,
         dividerOpacity: 0.12,
         cornerRadius: 0,
-        valueFontName: "SF Pro Display",
+        valueFontName: FontLibraryManager.currentDefaultFamily,
         valueFontSize: 30,
         valueFontWeight: .semibold,
         valueColor: .white,
-        labelFontName: "SF Pro Display",
+        labelFontName: FontLibraryManager.currentDefaultFamily,
         labelFontSize: 10,
         labelFontWeight: .medium,
         labelColor: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.58),
@@ -2204,11 +2799,11 @@ struct OverlayRouteMapStatsBarConfig: Equatable, Codable {
         blurRadius: Double = 0,
         dividerOpacity: Double = 0.12,
         cornerRadius: Double = 0,
-        valueFontName: String = "SF Pro Display",
+        valueFontName: String = FontLibraryManager.currentDefaultFamily,
         valueFontSize: Double = 30,
         valueFontWeight: OverlayFontWeight = .semibold,
         valueColor: OverlayColor = .white,
-        labelFontName: String = "SF Pro Display",
+        labelFontName: String = FontLibraryManager.currentDefaultFamily,
         labelFontSize: Double = 10,
         labelFontWeight: OverlayFontWeight = .medium,
         labelColor: OverlayColor = OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.58),
@@ -2353,7 +2948,7 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .minimal:
             return OverlayPresetTokens(
-                fontName: "SF Pro",
+                fontName: FontLibraryManager.currentDefaultFamily,
                 fontWeight: .semibold,
                 fontSize: 34,
                 textAlignment: .leading,
@@ -2367,7 +2962,7 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
             )
         case .minimalLabel:
             return OverlayPresetTokens(
-                fontName: "SF Pro",
+                fontName: FontLibraryManager.currentDefaultFamily,
                 fontWeight: .semibold,
                 fontSize: 34,
                 textAlignment: .leading,
@@ -2381,7 +2976,7 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
             )
         case .pillBadge:
             return OverlayPresetTokens(
-                fontName: "SF Pro",
+                fontName: FontLibraryManager.currentDefaultFamily,
                 fontWeight: .bold,
                 fontSize: 32,
                 textAlignment: .leading,
@@ -2391,11 +2986,12 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
                 backgroundColor: .black,
                 backgroundOpacity: 0.48,
                 backgroundRadius: 999,
-                accentColor: blue
+                accentColor: blue,
+                divider: DividerTokens(color: .white, thickness: 1, opacity: 0.32)
             )
         case .metricCard:
             return OverlayPresetTokens(
-                fontName: "SF Pro",
+                fontName: FontLibraryManager.currentDefaultFamily,
                 fontWeight: .bold,
                 fontSize: 42,
                 textAlignment: .leading,
@@ -2409,7 +3005,7 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
             )
         case .bigNumber:
             return OverlayPresetTokens(
-                fontName: "SF Pro",
+                fontName: FontLibraryManager.currentDefaultFamily,
                 fontWeight: .bold,
                 fontSize: 82,
                 textAlignment: .trailing,
@@ -2423,7 +3019,7 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
             )
         case .splitLabel:
             return OverlayPresetTokens(
-                fontName: "SF Pro",
+                fontName: FontLibraryManager.currentDefaultFamily,
                 fontWeight: .bold,
                 fontSize: 42,
                 textAlignment: .leading,
@@ -2433,11 +3029,12 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
                 backgroundColor: nil,
                 backgroundOpacity: nil,
                 backgroundRadius: 0,
-                accentColor: blue
+                accentColor: blue,
+                divider: DividerTokens(color: blue, thickness: 2, opacity: 1)
             )
         case .neonGlow:
             return OverlayPresetTokens(
-                fontName: "SF Pro",
+                fontName: FontLibraryManager.currentDefaultFamily,
                 fontWeight: .bold,
                 fontSize: 42,
                 textAlignment: .leading,
@@ -2451,7 +3048,7 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
             )
         case .racingStripe:
             return OverlayPresetTokens(
-                fontName: "SF Pro",
+                fontName: FontLibraryManager.currentDefaultFamily,
                 fontWeight: .bold,
                 fontSize: 40,
                 textAlignment: .leading,
@@ -2461,11 +3058,12 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
                 backgroundColor: .black,
                 backgroundOpacity: 0.50,
                 backgroundRadius: 12,
-                accentColor: orange
+                accentColor: orange,
+                divider: DividerTokens(color: orange, thickness: 5, opacity: 1)
             )
         case .editorial:
             return OverlayPresetTokens(
-                fontName: "SF Pro",
+                fontName: FontLibraryManager.currentDefaultFamily,
                 fontWeight: .bold,
                 fontSize: 64,
                 textAlignment: .leading,
@@ -2475,11 +3073,12 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
                 backgroundColor: nil,
                 backgroundOpacity: nil,
                 backgroundRadius: 0,
-                accentColor: yellow
+                accentColor: yellow,
+                divider: DividerTokens(color: yellow, thickness: 3, opacity: 1)
             )
         case .digitalWatch:
             return OverlayPresetTokens(
-                fontName: BundledFontName.digitalWatch,
+                fontName: PresetFontName.digitalWatch,
                 fontWeight: .medium,
                 fontSize: 40,
                 textAlignment: .leading,
@@ -2515,6 +3114,19 @@ struct OverlayPresetTokens {
     var backgroundOpacity: Double?
     var backgroundRadius: Double
     var accentColor: OverlayColor?
+    /// Divider defaults for this preset. `nil` means "this preset has no
+    /// built-in divider" — `applyOverlayTextPreset` will write
+    /// `dividerEnabled = false` so the divider section stays inert until the
+    /// user re-enables it. Presets that DO render a divider should supply a
+    /// `DividerTokens` matching their hard-coded visual so users see no
+    /// regression after switching to the preset.
+    var divider: DividerTokens?
+}
+
+struct DividerTokens {
+    var color: OverlayColor
+    var thickness: Double
+    var opacity: Double
 }
 
 enum OverlayFontWeight: String, CaseIterable, Identifiable, Codable {
@@ -2551,311 +3163,911 @@ struct OverlayColor: Equatable, Hashable, Codable {
     static let cyan = OverlayColor(red: 0.25, green: 0.75, blue: 1, alpha: 1)
     static let purple = OverlayColor(red: 0.56, green: 0.28, blue: 1, alpha: 1)
     static let pink = OverlayColor(red: 1, green: 0.28, blue: 0.43, alpha: 1)
+    static let routeMapEndCheckerboard = OverlayColor(red: -1, green: -1, blue: -1, alpha: 1)
+
+    var isRouteMapEndCheckerboard: Bool {
+        self == .routeMapEndCheckerboard
+    }
 }
 
-// MARK: - Lap List
+// MARK: - Decor Text Support Types
 
-enum LapProgressMode: String, Equatable, Codable {
-    case distance
-    case time
+/// Font reference for the Decor Text element. The bundled case remains
+/// decodable for compatibility with early project files; new content uses
+/// system fonts or future user-uploaded font assets.
+enum DecorFontRef: Equatable, Codable {
+    case bundled(name: String)
+    case system(family: String)
+    case userAsset(id: UUID)
 }
 
-enum LapListAnchor: String, CaseIterable, Identifiable, Equatable, Codable {
-    case top
-    case center
-    case bottom
+/// Gradient specification for text fill (Phase F6).
+struct GradientSpec: Equatable, Codable {
+    var stops: [GradientStop]
+    var direction: GradientDirection
+    enum GradientDirection: String, CaseIterable, Identifiable, Codable {
+        case topToBottom, leftToRight, bottomLeftToTopRight, topLeftToBottomRight
+        var id: String { rawValue }
+    }
+    struct GradientStop: Equatable, Codable {
+        var position: Double  // 0...1
+        var color: OverlayColor
+    }
+}
+
+/// Fill mode for Decor Text: solid color or gradient.
+enum DecorTextFill: Equatable, Codable {
+    case solid(color: OverlayColor)
+    case gradient(GradientSpec)
+}
+
+/// Text alignment options for the decor text block.
+enum DecorTextAlignment: String, CaseIterable, Identifiable, Codable {
+    case leading, center, trailing
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .leading: "Leading"
+        case .center: "Center"
+        case .trailing: "Trailing"
+        }
+    }
+}
+
+// MARK: - Decor
+
+/// Shape variants offered by the Solid Color decor element. Circle is a
+/// degenerate ellipse where width == height; the renderer collapses to the
+/// shorter side and the inspector keeps the controls in lockstep.
+enum DecorShape: String, CaseIterable, Identifiable, Codable {
+    case rectangle
+    case roundedRectangle
+    case circle
+    case capsule
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
-        case .top: "Top / 顶部"
-        case .center: "Center / 居中"
-        case .bottom: "Bottom / 底部"
+        case .rectangle: "Rectangle"
+        case .roundedRectangle: "Rounded"
+        case .circle: "Circle"
+        case .capsule: "Capsule"
         }
     }
-}
 
-enum LapColumnMetric: String, CaseIterable, Identifiable, Equatable, Codable {
-    case lapNumber
-    case lapKind
-    case distance
-    case elapsedTime
-    case pace
-    case heartRate
-    case cadence
-    case power
-    case ascent
-
-    var id: String { rawValue }
-
-    var label: String {
+    var systemImage: String {
         switch self {
-        case .lapNumber: "Lap #"
-        case .lapKind: "Type"
-        case .distance: "Distance"
-        case .elapsedTime: "Time"
-        case .pace: "Pace"
-        case .heartRate: "HR"
-        case .cadence: "Cadence"
-        case .power: "Power"
-        case .ascent: "Ascent"
+        case .rectangle: "square"
+        case .roundedRectangle: "square.dashed"
+        case .circle: "circle"
+        case .capsule: "capsule"
         }
     }
 }
 
-struct LapListColumn: Identifiable, Equatable, Codable {
-    var metric: LapColumnMetric
-    var visible: Bool
-
-    var id: String { metric.rawValue }
-}
-
-struct LapListStyle: Equatable, Codable {
-    var visibleRowCount: Int
-    var currentRowAnchor: LapListAnchor
-    var fadeEnabled: Bool
-    var fadeMinOpacity: Double
-    var progressBarEnabled: Bool
-    var progressMode: LapProgressMode
-    var progressColor: OverlayColor
-    var progressOpacity: Double
-    var showCompletedMark: Bool
-    var rowHeight: Double
-    var rowCornerRadius: Double
-    var rowSpacing: Double
-    var backgroundOpacity: Double
-    var columns: [LapListColumn]
-
-    static let `default` = LapListStyle(
-        visibleRowCount: 5,
-        currentRowAnchor: .center,
-        fadeEnabled: true,
-        fadeMinOpacity: 0.25,
-        progressBarEnabled: true,
-        progressMode: .distance,
-        progressColor: .blue,
-        progressOpacity: 0.35,
-        showCompletedMark: false,
-        rowHeight: 36,
-        rowCornerRadius: 4,
-        rowSpacing: 2,
-        backgroundOpacity: 0.75,
-        columns: [
-            LapListColumn(metric: .lapNumber, visible: true),
-            LapListColumn(metric: .lapKind, visible: true),
-            LapListColumn(metric: .distance, visible: true),
-            LapListColumn(metric: .elapsedTime, visible: true),
-            LapListColumn(metric: .pace, visible: true),
-            LapListColumn(metric: .heartRate, visible: false),
-            LapListColumn(metric: .cadence, visible: false),
-            LapListColumn(metric: .power, visible: false),
-            LapListColumn(metric: .ascent, visible: false),
-        ]
-    )
-}
-
-// MARK: - Recovery Metric
-
-/// Metrics that can be displayed in the recovery section of Lap Card / Lap Live
-/// when the current lap kind is `.rest`.
-enum RecoveryMetric: String, CaseIterable, Identifiable, Equatable, Codable {
-    /// Peak HR recorded since the start of the current rest lap.
-    case peakHR
-    /// Current interpolated heart rate.
-    case currentHR
-    /// bpm dropped from the rest-lap peak to now.
-    case hrDrop
-    /// Percentage of peak HR that has been shed (drop / peak × 100).
-    case hrDropPercent
-    /// Time elapsed in the current rest lap (mm:ss).
-    case restElapsedTime
-    /// How many bpm the current HR is still above a user-configured target.
-    case targetHRGap
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .peakHR: "Peak HR"
-        case .currentHR: "HR Now"
-        case .hrDrop: "HR Drop"
-        case .hrDropPercent: "Drop %"
-        case .restElapsedTime: "Rest Time"
-        case .targetHRGap: "→ Target"
-        }
-    }
-}
-
-// MARK: - Lap Card
-
-/// Columns shown in a Lap Card recap — superset of `LapColumnMetric` with `maxHR`.
-enum LapCardColumn: String, CaseIterable, Identifiable, Equatable, Codable {
-    case lapNumber
-    case lapKind
-    case distance
-    case elapsedTime
-    case pace
-    case avgHR
-    case maxHR
-    case cadence
-    case power
-    case ascent
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .lapNumber: "Lap #"
-        case .lapKind: "Type"
-        case .distance: "Distance"
-        case .elapsedTime: "Time"
-        case .pace: "Avg Pace"
-        case .avgHR: "Avg HR"
-        case .maxHR: "Max HR"
-        case .cadence: "Cadence"
-        case .power: "Power"
-        case .ascent: "Ascent"
-        }
-    }
-}
-
-struct LapCardColumnConfig: Identifiable, Equatable, Codable {
-    var column: LapCardColumn
-    var visible: Bool
-
-    var id: String { column.rawValue }
-}
-
-struct LapCardStyle: Equatable, Codable {
-    /// Width of the card in design units (before element.scale).
-    var cardWidth: Double
+/// Sub-struct holding all decor element style fields. Per project convention
+/// (mirrors `gauge`, `distanceTimeline`, etc.) decor fields live in
+/// their own namespace so they don't pollute numeric overlay storage. Future
+/// decor element types (Icon, Text) will extend this same struct.
+struct DecorStyle: Equatable, Codable {
+    /// Active solid-color shape variant.
+    var shape: DecorShape
+    /// Fill color drawn into the shape path.
+    var fillColor: OverlayColor
+    /// Width in design units (before `element.scale` is applied).
+    var width: Double
+    var height: Double
     var cornerRadius: Double
-    var backgroundOpacity: Double
-    /// Ordered list of stat columns to display.
-    var columns: [LapCardColumnConfig]
-    /// When true, a recovery HR section is appended during rest laps.
-    var showRecoverySection: Bool
-    /// Recovery metrics shown in the recovery section.
-    var recoveryMetrics: [RecoveryMetric]
-    /// Target HR for `.targetHRGap`. 0 means the metric is disabled.
-    var recoveryTargetHR: Int
-    /// Show a recovery-progress bar toward the target HR.
-    var recoveryProgressEnabled: Bool
-    var progressColor: OverlayColor
 
-    static let `default` = LapCardStyle(
-        cardWidth: 280,
-        cornerRadius: 8,
-        backgroundOpacity: 0.80,
-        columns: [
-            LapCardColumnConfig(column: .lapNumber, visible: true),
-            LapCardColumnConfig(column: .lapKind, visible: true),
-            LapCardColumnConfig(column: .distance, visible: true),
-            LapCardColumnConfig(column: .elapsedTime, visible: true),
-            LapCardColumnConfig(column: .pace, visible: true),
-            LapCardColumnConfig(column: .avgHR, visible: true),
-            LapCardColumnConfig(column: .maxHR, visible: false),
-            LapCardColumnConfig(column: .cadence, visible: false),
-            LapCardColumnConfig(column: .power, visible: false),
-            LapCardColumnConfig(column: .ascent, visible: false),
-        ],
-        showRecoverySection: true,
-        recoveryMetrics: [.currentHR, .hrDrop, .hrDropPercent, .restElapsedTime],
-        recoveryTargetHR: 0,
-        recoveryProgressEnabled: false,
-        progressColor: .blue
+    // Icon (optional for backward compat)
+    var iconAsset: IconAsset?
+    var iconTint: OverlayColor?
+    var iconPreserveSVGColors: Bool?
+    var iconContentMode: IconContentMode?
+
+    // Text (optional for backward compat)
+    var textContent: String?
+    var textFont: DecorFontRef?
+    var textSize: Double?
+    var textAlignment: DecorTextAlignment?
+    var textLineHeight: Double?
+    var textLetterSpacing: Double?
+    var textFillMode: DecorTextFill?
+    var textStrokeWidth: Double?
+    var textStrokeColor: OverlayColor?
+    var textAutoFit: Bool?
+
+    static let `default` = DecorStyle(
+        shape: .rectangle,
+        fillColor: .white,
+        width: 240,
+        height: 80,
+        cornerRadius: 12,
+        iconAsset: nil,
+        iconTint: nil,
+        iconPreserveSVGColors: nil,
+        iconContentMode: nil,
+        textContent: nil,
+        textFont: nil,
+        textSize: nil,
+        textAlignment: nil,
+        textLineHeight: nil,
+        textLetterSpacing: nil,
+        textFillMode: nil,
+        textStrokeWidth: nil,
+        textStrokeColor: nil,
+        textAutoFit: nil
     )
 }
 
-// MARK: - Lap Live
 
-/// Metrics shown in the active-lap panel of Lap Live.
-enum LapLiveMetric: String, CaseIterable, Identifiable, Equatable, Codable {
-    case lapElapsedTime
-    case lapDistance
-    case pace
-    case heartRate
-    case power
-    case cadence
+    /// Resolved text fields for a decor element, coalescing nil optionals.
+    struct DecorTextResolved {
+        var content: String
+        var font: DecorFontRef
+        var size: Double
+        var alignment: DecorTextAlignment
+        var lineHeight: Double
+        var letterSpacing: Double
+        var fillMode: DecorTextFill
+        var strokeWidth: Double
+        var strokeColor: OverlayColor
+        var autoFit: Bool
+
+        init(from style: DecorStyle) {
+            content = style.textContent ?? "Hello"
+            font = style.textFont ?? .system(family: FontLibraryManager.currentDefaultFamily)
+            size = style.textSize ?? 36
+            alignment = style.textAlignment ?? .center
+            lineHeight = style.textLineHeight ?? 1.2
+            letterSpacing = style.textLetterSpacing ?? 0
+            fillMode = style.textFillMode ?? .solid(color: .white)
+            strokeWidth = style.textStrokeWidth ?? 0
+            strokeColor = style.textStrokeColor ?? .white
+            autoFit = style.textAutoFit ?? false
+        }
+    }
+
+    /// Resolved icon fields for a decor element, coalescing nil optionals
+    /// to their sensible defaults.
+    struct DecorIconResolved {
+        var asset: IconAsset
+        var tint: OverlayColor
+        var preserveSVGColors: Bool
+        var contentMode: IconContentMode
+
+        init(from style: DecorStyle) {
+            asset = style.iconAsset ?? .none
+            tint = style.iconTint ?? .white
+            preserveSVGColors = style.iconPreserveSVGColors ?? false
+            contentMode = style.iconContentMode ?? .fit
+        }
+    }
+
+// MARK: - Weather Widget
+
+enum WeatherCondition: String, CaseIterable, Identifiable, Equatable, Codable {
+    case sunny
+    case clearNight
+    case partlyCloudy
+    case cloudy
+    case rain
+    case heavyRain
+    case thunder
+    case snow
+    case fog
+    case wind
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
-        case .lapElapsedTime: "Lap Time"
-        case .lapDistance: "Lap Dist"
-        case .pace: "Pace"
-        case .heartRate: "HR"
-        case .power: "Power"
-        case .cadence: "Cadence"
+        case .sunny: "Sunny"
+        case .clearNight: "Clear Night"
+        case .partlyCloudy: "Partly Cloudy"
+        case .cloudy: "Cloudy"
+        case .rain: "Rain"
+        case .heavyRain: "Heavy Rain"
+        case .thunder: "Thunderstorm"
+        case .snow: "Snow"
+        case .fog: "Fog"
+        case .wind: "Wind"
+        }
+    }
+
+    var sfSymbolName: String {
+        switch self {
+        case .sunny: "sun.max.fill"
+        case .clearNight: "moon.stars.fill"
+        case .partlyCloudy: "cloud.sun.fill"
+        case .cloudy: "cloud.fill"
+        case .rain: "cloud.drizzle.fill"
+        case .heavyRain: "cloud.heavyrain.fill"
+        case .thunder: "cloud.bolt.fill"
+        case .snow: "snowflake"
+        case .fog: "cloud.fog.fill"
+        case .wind: "wind"
+        }
+    }
+
+    var bundledImageName: String {
+        switch self {
+        case .sunny: "weather-sunny"
+        case .clearNight: "weather-clear-night"
+        case .partlyCloudy: "weather-partly-cloudy"
+        case .cloudy: "weather-cloudy"
+        case .rain: "weather-rain"
+        case .heavyRain: "weather-heavy-rain"
+        case .thunder: "weather-thunder"
+        case .snow: "weather-snow"
+        case .fog: "weather-fog"
+        case .wind: "weather-wind"
+        }
+    }
+
+    var iconTint: OverlayColor {
+        switch self {
+        case .sunny: OverlayColor(red: 1, green: 0.8, blue: 0.2, alpha: 1)
+        case .clearNight: OverlayColor(red: 0.4, green: 0.5, blue: 1, alpha: 1)
+        case .partlyCloudy: OverlayColor(red: 0.55, green: 0.55, blue: 0.55, alpha: 1)
+        case .cloudy: OverlayColor(red: 0.45, green: 0.45, blue: 0.45, alpha: 1)
+        case .rain: OverlayColor(red: 0.3, green: 0.6, blue: 1, alpha: 1)
+        case .heavyRain: OverlayColor(red: 0.2, green: 0.4, blue: 0.9, alpha: 1)
+        case .thunder: OverlayColor(red: 0.8, green: 0.6, blue: 0.1, alpha: 1)
+        case .snow: OverlayColor(red: 0.75, green: 0.85, blue: 1, alpha: 1)
+        case .fog: OverlayColor(red: 0.55, green: 0.55, blue: 0.6, alpha: 1)
+        case .wind: OverlayColor(red: 0.5, green: 0.7, blue: 0.75, alpha: 1)
+        }
+    }
+
+    static func fromWMO(_ code: Int) -> WeatherCondition {
+        switch code {
+        case 0, 1: .sunny
+        case 2: .partlyCloudy
+        case 3: .cloudy
+        case 45, 48: .fog
+        case 51, 53, 55, 56, 57, 61, 63, 65: .rain
+        case 66, 67, 80, 81, 82: .heavyRain
+        case 71, 73, 75, 77, 85, 86: .snow
+        case 95, 96, 99: .thunder
+        default: .cloudy
+        }
+    }
+
+    static func fromOpenWeather(id: Int, icon: String?) -> WeatherCondition {
+        switch id {
+        case 200..<300:
+            .thunder
+        case 300..<400:
+            .rain
+        case 500, 501, 520, 521:
+            .rain
+        case 502, 503, 504, 511, 522, 531:
+            .heavyRain
+        case 600..<700:
+            .snow
+        case 701, 711, 721, 731, 741, 751, 761, 762:
+            .fog
+        case 771, 781:
+            .wind
+        case 800:
+            icon?.hasSuffix("n") == true ? .clearNight : .sunny
+        case 801:
+            .partlyCloudy
+        case 802...804:
+            .cloudy
+        default:
+            .cloudy
         }
     }
 }
 
-enum LapLiveRestMode: String, CaseIterable, Identifiable, Equatable, Codable {
-    /// Show the full recovery metrics section.
-    case recovery
-    /// Show a minimal condensed view (lap number + rest time only).
-    case minimal
-    /// Hide the overlay entirely during rest laps.
-    case hidden
+enum WeatherTemperatureUnit: String, CaseIterable, Identifiable, Equatable, Codable {
+    case celsius
+    case fahrenheit
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
-        case .recovery: "Recovery Panel"
-        case .minimal: "Minimal"
-        case .hidden: "Hide"
+        case .celsius: "Celsius (°C)"
+        case .fahrenheit: "Fahrenheit (°F)"
+        }
+    }
+
+    var shortLabel: String {
+        switch self {
+        case .celsius: "°C"
+        case .fahrenheit: "°F"
+        }
+    }
+
+    static func systemDefault() -> WeatherTemperatureUnit {
+        Locale.current.measurementSystem == .us ? .fahrenheit : .celsius
+    }
+
+    func formatted(_ celsiusValue: Double) -> String {
+        switch self {
+        case .celsius: return "\(Int(celsiusValue.rounded()))°C"
+        case .fahrenheit: return "\(Int((celsiusValue * 9 / 5 + 32).rounded()))°F"
         }
     }
 }
 
-struct LapLiveMetricConfig: Identifiable, Equatable, Codable {
-    var metric: LapLiveMetric
-    var visible: Bool
+enum WeatherDataSource: String, Identifiable, Equatable, Codable {
+    case fitTemperature
+    case manual
+    case openMeteo
+    case openWeather
 
-    var id: String { metric.rawValue }
+    var id: String { rawValue }
+
+    static let inspectorCases: [WeatherDataSource] = [.manual, .openMeteo, .openWeather]
+
+    var label: String {
+        switch self {
+        case .fitTemperature: "FIT Temperature"
+        case .manual: "Manual"
+        case .openMeteo: "Open-Meteo API"
+        case .openWeather: "OpenWeather API"
+        }
+    }
+
+    var isAPI: Bool {
+        switch self {
+        case .openMeteo, .openWeather:
+            true
+        case .fitTemperature, .manual:
+            false
+        }
+    }
 }
 
-struct LapLiveStyle: Equatable, Codable {
-    var cardWidth: Double
-    var cornerRadius: Double
-    var backgroundOpacity: Double
-    /// Metrics visible in active-lap mode.
-    var activeMetrics: [LapLiveMetricConfig]
-    /// Show a progress bar for the current lap.
-    var showProgressBar: Bool
-    var progressMode: LapProgressMode
-    var progressColor: OverlayColor
-    var progressOpacity: Double
-    /// What to display when the current lap kind is `.rest`.
-    var restMode: LapLiveRestMode
-    /// Recovery metrics shown when restMode == .recovery.
-    var recoveryMetrics: [RecoveryMetric]
-    var recoveryTargetHR: Int
-    var recoveryProgressEnabled: Bool
+enum WeatherMetricSlotValue: String, CaseIterable, Identifiable, Equatable, Hashable, Codable {
+    case none
+    case humidity
+    case highLow
+    case wind
+    case feelsLike
 
-    static let `default` = LapLiveStyle(
-        cardWidth: 240,
-        cornerRadius: 8,
-        backgroundOpacity: 0.80,
-        activeMetrics: [
-            LapLiveMetricConfig(metric: .lapElapsedTime, visible: true),
-            LapLiveMetricConfig(metric: .lapDistance, visible: true),
-            LapLiveMetricConfig(metric: .pace, visible: true),
-            LapLiveMetricConfig(metric: .heartRate, visible: true),
-            LapLiveMetricConfig(metric: .power, visible: false),
-            LapLiveMetricConfig(metric: .cadence, visible: false),
-        ],
-        showProgressBar: true,
-        progressMode: .distance,
-        progressColor: .blue,
-        progressOpacity: 0.35,
-        restMode: .recovery,
-        recoveryMetrics: [.currentHR, .hrDrop, .hrDropPercent, .restElapsedTime],
-        recoveryTargetHR: 0,
-        recoveryProgressEnabled: false
-    )
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .none: "-"
+        case .humidity: "Humidity"
+        case .highLow: "High / Low"
+        case .wind: "Wind"
+        case .feelsLike: "Feels Like"
+        }
+    }
+
+    var compactLabel: String {
+        switch self {
+        case .none: "-"
+        case .humidity: "RH"
+        case .highLow: "H/L"
+        case .wind: "Wind"
+        case .feelsLike: "Feels"
+        }
+    }
+}
+
+enum WeatherWidgetPreset: String, CaseIterable, Identifiable, Equatable, Codable {
+    case simpleCard
+    case compactStrip
+    case forecastTile
+    case minimalText
+    case dashboardBar
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .simpleCard: "Simple Card"
+        case .compactStrip: "Compact Strip"
+        case .forecastTile: "Forecast Tile"
+        case .minimalText: "Minimal Text"
+        case .dashboardBar: "Dashboard Bar"
+        }
+    }
+
+    var defaultSize: CGSize {
+        switch self {
+        case .simpleCard: CGSize(width: 300, height: 110)
+        case .compactStrip: CGSize(width: 220, height: 56)
+        case .forecastTile: CGSize(width: 180, height: 180)
+        case .minimalText: CGSize(width: 160, height: 92)
+        case .dashboardBar: CGSize(width: 560, height: 112)
+        }
+    }
+
+    var metricSlotCount: Int {
+        switch self {
+        case .simpleCard: 1
+        case .compactStrip: 0
+        case .forecastTile: 3
+        case .minimalText: 0
+        case .dashboardBar: 3
+        }
+    }
+
+    var defaultMetricSlots: [WeatherMetricSlotValue] {
+        switch self {
+        case .simpleCard:
+            [.humidity]
+        case .compactStrip, .minimalText:
+            []
+        case .forecastTile:
+            [.highLow, .humidity, .wind]
+        case .dashboardBar:
+            [.humidity, .wind, .feelsLike]
+        }
+    }
+}
+
+enum WeatherWidgetPalette: String, CaseIterable, Identifiable, Equatable, Codable {
+    case presetDefault
+    case blueGlass
+    case lightGlass
+    case graphite
+    case minimalWhite
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .presetDefault: "Preset Default"
+        case .blueGlass: "Blue Glass"
+        case .lightGlass: "Light Glass"
+        case .graphite: "Graphite"
+        case .minimalWhite: "Minimal White"
+        }
+    }
+}
+
+struct WeatherPayload: Equatable, Codable {
+    var condition: WeatherCondition
+    var temperatureCelsius: Double
+    var humidity: Double?
+    var highTemperatureCelsius: Double?
+    var lowTemperatureCelsius: Double?
+    var windKph: Double?
+    var feelsLikeCelsius: Double?
+    var resolvedLocation: String?
+    var sourceDate: Date?
+    var fetchLocationMode: WeatherFetchLocationMode?
+
+    init(
+        condition: WeatherCondition,
+        temperatureCelsius: Double,
+        humidity: Double?,
+        highTemperatureCelsius: Double?,
+        lowTemperatureCelsius: Double?,
+        windKph: Double?,
+        feelsLikeCelsius: Double?,
+        resolvedLocation: String?,
+        sourceDate: Date?,
+        fetchLocationMode: WeatherFetchLocationMode? = nil
+    ) {
+        self.condition = condition
+        self.temperatureCelsius = temperatureCelsius
+        self.humidity = humidity
+        self.highTemperatureCelsius = highTemperatureCelsius
+        self.lowTemperatureCelsius = lowTemperatureCelsius
+        self.windKph = windKph
+        self.feelsLikeCelsius = feelsLikeCelsius
+        self.resolvedLocation = resolvedLocation
+        self.sourceDate = sourceDate
+        self.fetchLocationMode = fetchLocationMode
+    }
+}
+
+/// Typography for a single piece of text inside a weather widget
+/// (location, condition, temperature, slot title, slot label).
+/// `fontSize` is the design-time size at the preset's reference width;
+/// views scale it proportionally to the rendered width.
+struct WeatherTextStyle: Equatable, Codable {
+    var fontName: String
+    var fontSize: Double
+    var fontWeight: OverlayFontWeight
+    var color: OverlayColor
+
+    init(fontName: String = FontLibraryManager.currentDefaultFamily,
+         fontSize: Double,
+         fontWeight: OverlayFontWeight,
+         color: OverlayColor) {
+        self.fontName = fontName
+        self.fontSize = fontSize
+        self.fontWeight = fontWeight
+        self.color = color
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        fontName = try c.decodeIfPresent(String.self, forKey: .fontName) ?? FontLibraryManager.currentDefaultFamily
+        fontSize = try c.decodeIfPresent(Double.self, forKey: .fontSize) ?? 14
+        fontWeight = try c.decodeIfPresent(OverlayFontWeight.self, forKey: .fontWeight) ?? .medium
+        color = try c.decodeIfPresent(OverlayColor.self, forKey: .color) ?? .white
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case fontName, fontSize, fontWeight, color
+    }
+}
+
+struct WeatherWidgetStyle: Equatable, Codable {
+    var preset: WeatherWidgetPreset
+    var dataSource: WeatherDataSource
+    var useFITTemperature: Bool
+    var manualCondition: WeatherCondition
+    var manualTemperatureCelsius: Double
+    var manualHumidity: Double
+    var manualHigh: Double
+    var manualLow: Double
+    var manualWind: Double
+    var manualFeelsLike: Double
+    var conditionLabelOverride: String
+    var humiditySuffix: String
+    var humidityMetricLabel: String
+    var windMetricLabel: String
+    var feelsLikeMetricLabel: String
+    var temperatureUnit: WeatherTemperatureUnit
+    var locationText: String
+    var showLocation: Bool
+    var showWeekday: Bool
+    var showHumidity: Bool
+    var showHighLow: Bool
+    var showWind: Bool
+    var showFeelsLike: Bool
+    var metricSlots: [WeatherMetricSlotValue]
+    var cardBackgroundColor: OverlayColor
+    var cardBackgroundOpacity: Double
+    var cardCornerRadius: Double
+    var dividerEnabled: Bool
+    var dividerColor: OverlayColor
+    var dividerThickness: Double
+    var dividerOpacity: Double
+    var palette: WeatherWidgetPalette
+    var iconSize: Double
+    var showIcon: Bool
+    var showConditionLabel: Bool
+    var width: Double
+    var height: Double
+    var slotBackgroundColor: OverlayColor
+    var slotBackgroundOpacity: Double
+    var slotSpacing: Double
+    var locationTextStyle: WeatherTextStyle
+    var conditionTextStyle: WeatherTextStyle
+    var temperatureTextStyle: WeatherTextStyle
+    var slotTitleTextStyle: WeatherTextStyle
+    var slotLabelTextStyle: WeatherTextStyle
+    var cachedWeather: WeatherPayload?
+
+    init(
+        preset: WeatherWidgetPreset,
+        dataSource: WeatherDataSource,
+        useFITTemperature: Bool = false,
+        manualCondition: WeatherCondition,
+        manualTemperatureCelsius: Double,
+        manualHumidity: Double,
+        manualHigh: Double,
+        manualLow: Double,
+        manualWind: Double,
+        manualFeelsLike: Double,
+        conditionLabelOverride: String,
+        humiditySuffix: String,
+        humidityMetricLabel: String,
+        windMetricLabel: String,
+        feelsLikeMetricLabel: String,
+        temperatureUnit: WeatherTemperatureUnit,
+        locationText: String,
+        showLocation: Bool,
+        showWeekday: Bool,
+        showHumidity: Bool,
+        showHighLow: Bool,
+        showWind: Bool,
+        showFeelsLike: Bool,
+        metricSlots: [WeatherMetricSlotValue],
+        cardBackgroundColor: OverlayColor,
+        cardBackgroundOpacity: Double,
+        cardCornerRadius: Double,
+        dividerEnabled: Bool,
+        dividerColor: OverlayColor,
+        dividerThickness: Double,
+        dividerOpacity: Double,
+        palette: WeatherWidgetPalette,
+        iconSize: Double,
+        showIcon: Bool,
+        showConditionLabel: Bool,
+        width: Double,
+        height: Double,
+        slotBackgroundColor: OverlayColor,
+        slotBackgroundOpacity: Double,
+        slotSpacing: Double,
+        locationTextStyle: WeatherTextStyle,
+        conditionTextStyle: WeatherTextStyle,
+        temperatureTextStyle: WeatherTextStyle,
+        slotTitleTextStyle: WeatherTextStyle,
+        slotLabelTextStyle: WeatherTextStyle,
+        cachedWeather: WeatherPayload?
+    ) {
+        self.preset = preset
+        self.dataSource = dataSource
+        self.useFITTemperature = useFITTemperature
+        self.manualCondition = manualCondition
+        self.manualTemperatureCelsius = manualTemperatureCelsius
+        self.manualHumidity = manualHumidity
+        self.manualHigh = manualHigh
+        self.manualLow = manualLow
+        self.manualWind = manualWind
+        self.manualFeelsLike = manualFeelsLike
+        self.conditionLabelOverride = conditionLabelOverride
+        self.humiditySuffix = humiditySuffix
+        self.humidityMetricLabel = humidityMetricLabel
+        self.windMetricLabel = windMetricLabel
+        self.feelsLikeMetricLabel = feelsLikeMetricLabel
+        self.temperatureUnit = temperatureUnit
+        self.locationText = locationText
+        self.showLocation = showLocation
+        self.showWeekday = showWeekday
+        self.showHumidity = showHumidity
+        self.showHighLow = showHighLow
+        self.showWind = showWind
+        self.showFeelsLike = showFeelsLike
+        self.metricSlots = Self.normalizedMetricSlots(metricSlots, for: preset)
+        self.cardBackgroundColor = cardBackgroundColor
+        self.cardBackgroundOpacity = cardBackgroundOpacity
+        self.cardCornerRadius = cardCornerRadius
+        self.dividerEnabled = dividerEnabled
+        self.dividerColor = dividerColor
+        self.dividerThickness = dividerThickness
+        self.dividerOpacity = dividerOpacity
+        self.palette = palette
+        self.iconSize = iconSize
+        self.showIcon = showIcon
+        self.showConditionLabel = showConditionLabel
+        self.width = width
+        self.height = height
+        self.slotBackgroundColor = slotBackgroundColor
+        self.slotBackgroundOpacity = slotBackgroundOpacity
+        self.slotSpacing = slotSpacing
+        self.locationTextStyle = locationTextStyle
+        self.conditionTextStyle = conditionTextStyle
+        self.temperatureTextStyle = temperatureTextStyle
+        self.slotTitleTextStyle = slotTitleTextStyle
+        self.slotLabelTextStyle = slotLabelTextStyle
+        self.cachedWeather = cachedWeather
+    }
+
+    static let `default` = WeatherWidgetStyle.preset(.simpleCard)
+
+    static func preset(_ presetValue: WeatherWidgetPreset) -> WeatherWidgetStyle {
+        switch presetValue {
+        case .simpleCard:
+            WeatherWidgetStyle(
+                preset: .simpleCard, dataSource: .manual,
+                manualCondition: .rain, manualTemperatureCelsius: 13,
+                manualHumidity: 87, manualHigh: 16, manualLow: 11,
+                manualWind: 12, manualFeelsLike: 21,
+                conditionLabelOverride: "", humiditySuffix: "RH",
+                humidityMetricLabel: "RH", windMetricLabel: "Wind", feelsLikeMetricLabel: "Feels",
+                temperatureUnit: .systemDefault(), locationText: "大阪, 日本",
+                showLocation: true, showWeekday: true, showHumidity: true,
+                showHighLow: false, showWind: false, showFeelsLike: false,
+                metricSlots: WeatherWidgetPreset.simpleCard.defaultMetricSlots,
+                cardBackgroundColor: OverlayColor(red: 0.30, green: 0.62, blue: 1.0, alpha: 1),
+                cardBackgroundOpacity: 0.92, cardCornerRadius: 10,
+                dividerEnabled: true, dividerColor: .white, dividerThickness: 1, dividerOpacity: 0.34,
+                palette: .blueGlass, iconSize: 54, showIcon: true,
+                showConditionLabel: true, width: 300, height: 110,
+                slotBackgroundColor: .white, slotBackgroundOpacity: 0.16, slotSpacing: 10,
+                locationTextStyle: WeatherTextStyle(fontSize: 19, fontWeight: .bold, color: .white),
+                conditionTextStyle: WeatherTextStyle(fontSize: 26, fontWeight: .semibold, color: .white),
+                temperatureTextStyle: WeatherTextStyle(fontSize: 33, fontWeight: .bold, color: .white),
+                slotTitleTextStyle: WeatherTextStyle(fontSize: 15, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.72)),
+                slotLabelTextStyle: WeatherTextStyle(fontSize: 15, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.72)),
+                cachedWeather: nil
+            )
+        case .compactStrip:
+            WeatherWidgetStyle(
+                preset: .compactStrip, dataSource: .manual,
+                manualCondition: .rain, manualTemperatureCelsius: 13,
+                manualHumidity: 87, manualHigh: 16, manualLow: 11,
+                manualWind: 0, manualFeelsLike: 0,
+                conditionLabelOverride: "", humiditySuffix: "RH",
+                humidityMetricLabel: "RH", windMetricLabel: "Wind", feelsLikeMetricLabel: "Feels",
+                temperatureUnit: .systemDefault(), locationText: "Osaka",
+                showLocation: true, showWeekday: false, showHumidity: false,
+                showHighLow: false, showWind: false, showFeelsLike: false,
+                metricSlots: WeatherWidgetPreset.compactStrip.defaultMetricSlots,
+                cardBackgroundColor: OverlayColor(red: 0.90, green: 0.96, blue: 1.0, alpha: 1),
+                cardBackgroundOpacity: 0.96, cardCornerRadius: 28,
+                dividerEnabled: true, dividerColor: OverlayColor(red: 0.20, green: 0.34, blue: 0.52, alpha: 1), dividerThickness: 1, dividerOpacity: 0.15,
+                palette: .lightGlass, iconSize: 32, showIcon: true,
+                showConditionLabel: true, width: 220, height: 56,
+                slotBackgroundColor: OverlayColor(red: 0.20, green: 0.34, blue: 0.52, alpha: 1), slotBackgroundOpacity: 0.10, slotSpacing: 10,
+                locationTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .medium, color: OverlayColor(red: 0.25, green: 0.37, blue: 0.52, alpha: 0.78)),
+                conditionTextStyle: WeatherTextStyle(fontSize: 12, fontWeight: .semibold, color: OverlayColor(red: 0.08, green: 0.17, blue: 0.29, alpha: 0.86)),
+                temperatureTextStyle: WeatherTextStyle(fontSize: 28, fontWeight: .bold, color: OverlayColor(red: 0.08, green: 0.17, blue: 0.29, alpha: 1)),
+                slotTitleTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .semibold, color: OverlayColor(red: 0.25, green: 0.37, blue: 0.52, alpha: 0.78)),
+                slotLabelTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .semibold, color: OverlayColor(red: 0.08, green: 0.17, blue: 0.29, alpha: 1)),
+                cachedWeather: nil
+            )
+        case .forecastTile:
+            WeatherWidgetStyle(
+                preset: .forecastTile, dataSource: .manual,
+                manualCondition: .partlyCloudy, manualTemperatureCelsius: 13,
+                manualHumidity: 87, manualHigh: 16, manualLow: 11,
+                manualWind: 0, manualFeelsLike: 0,
+                conditionLabelOverride: "", humiditySuffix: "RH",
+                humidityMetricLabel: "RH", windMetricLabel: "Wind", feelsLikeMetricLabel: "Feels",
+                temperatureUnit: .systemDefault(), locationText: "大阪, 日本",
+                showLocation: true, showWeekday: true, showHumidity: true,
+                showHighLow: true, showWind: false, showFeelsLike: false,
+                metricSlots: WeatherWidgetPreset.forecastTile.defaultMetricSlots,
+                cardBackgroundColor: OverlayColor(red: 0.12, green: 0.18, blue: 0.25, alpha: 1),
+                cardBackgroundOpacity: 0.88, cardCornerRadius: 16,
+                dividerEnabled: true, dividerColor: .white, dividerThickness: 1, dividerOpacity: 0.18,
+                palette: .graphite, iconSize: 54, showIcon: true,
+                showConditionLabel: false, width: 180, height: 180,
+                slotBackgroundColor: .white, slotBackgroundOpacity: 0.12, slotSpacing: 7,
+                locationTextStyle: WeatherTextStyle(fontSize: 15, fontWeight: .semibold, color: .white),
+                conditionTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .medium, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.66)),
+                temperatureTextStyle: WeatherTextStyle(fontSize: 43, fontWeight: .bold, color: .white),
+                slotTitleTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.66)),
+                slotLabelTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.66)),
+                cachedWeather: nil
+            )
+        case .minimalText:
+            WeatherWidgetStyle(
+                preset: .minimalText, dataSource: .manual,
+                manualCondition: .cloudy, manualTemperatureCelsius: 13,
+                manualHumidity: 50, manualHigh: 16, manualLow: 11,
+                manualWind: 0, manualFeelsLike: 0,
+                conditionLabelOverride: "", humiditySuffix: "RH",
+                humidityMetricLabel: "RH", windMetricLabel: "Wind", feelsLikeMetricLabel: "Feels",
+                temperatureUnit: .systemDefault(), locationText: "大阪, 日本",
+                showLocation: true, showWeekday: false, showHumidity: false,
+                showHighLow: false, showWind: false, showFeelsLike: false,
+                metricSlots: WeatherWidgetPreset.minimalText.defaultMetricSlots,
+                cardBackgroundColor: OverlayColor(red: 0, green: 0, blue: 0, alpha: 1),
+                cardBackgroundOpacity: 0, cardCornerRadius: 0,
+                dividerEnabled: true, dividerColor: .white, dividerThickness: 1, dividerOpacity: 0.2,
+                palette: .minimalWhite, iconSize: 30, showIcon: true,
+                showConditionLabel: true, width: 180, height: 110,
+                slotBackgroundColor: .black, slotBackgroundOpacity: 0.18, slotSpacing: 8,
+                locationTextStyle: WeatherTextStyle(fontSize: 15, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.76)),
+                conditionTextStyle: WeatherTextStyle(fontSize: 14, fontWeight: .medium, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.76)),
+                temperatureTextStyle: WeatherTextStyle(fontSize: 48, fontWeight: .bold, color: .white),
+                slotTitleTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.76)),
+                slotLabelTextStyle: WeatherTextStyle(fontSize: 13, fontWeight: .bold, color: .white),
+                cachedWeather: nil
+            )
+        case .dashboardBar:
+            WeatherWidgetStyle(
+                preset: .dashboardBar, dataSource: .manual,
+                manualCondition: .rain, manualTemperatureCelsius: 13,
+                manualHumidity: 87, manualHigh: 16, manualLow: 11,
+                manualWind: 9, manualFeelsLike: 12,
+                conditionLabelOverride: "", humiditySuffix: "RH",
+                humidityMetricLabel: "RH", windMetricLabel: "Wind", feelsLikeMetricLabel: "Feels",
+                temperatureUnit: .systemDefault(), locationText: "大阪, 日本",
+                showLocation: true, showWeekday: false, showHumidity: true,
+                showHighLow: false, showWind: true, showFeelsLike: true,
+                metricSlots: WeatherWidgetPreset.dashboardBar.defaultMetricSlots,
+                cardBackgroundColor: OverlayColor(red: 0.12, green: 0.14, blue: 0.17, alpha: 1),
+                cardBackgroundOpacity: 0.90, cardCornerRadius: 12,
+                dividerEnabled: true, dividerColor: .white, dividerThickness: 1, dividerOpacity: 0.18,
+                palette: .graphite, iconSize: 38, showIcon: true,
+                showConditionLabel: true, width: 560, height: 112,
+                slotBackgroundColor: .white, slotBackgroundOpacity: 0.12, slotSpacing: 10,
+                locationTextStyle: WeatherTextStyle(fontSize: 17, fontWeight: .bold, color: .white),
+                conditionTextStyle: WeatherTextStyle(fontSize: 13, fontWeight: .medium, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.66)),
+                temperatureTextStyle: WeatherTextStyle(fontSize: 46, fontWeight: .bold, color: .white),
+                slotTitleTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.66)),
+                slotLabelTextStyle: WeatherTextStyle(fontSize: 13, fontWeight: .bold, color: .white),
+                cachedWeather: nil
+            )
+        }
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let defaults = WeatherWidgetStyle.preset(try c.decodeIfPresent(WeatherWidgetPreset.self, forKey: .preset) ?? .simpleCard)
+        preset = try c.decodeIfPresent(WeatherWidgetPreset.self, forKey: .preset) ?? defaults.preset
+        let decodedDataSource = try c.decodeIfPresent(WeatherDataSource.self, forKey: .dataSource) ?? defaults.dataSource
+        switch decodedDataSource {
+        case .fitTemperature:
+            dataSource = .manual
+        default:
+            dataSource = decodedDataSource
+        }
+        useFITTemperature = try c.decodeIfPresent(Bool.self, forKey: .useFITTemperature)
+            ?? (decodedDataSource == .fitTemperature)
+        manualCondition = try c.decodeIfPresent(WeatherCondition.self, forKey: .manualCondition) ?? defaults.manualCondition
+        manualTemperatureCelsius = try c.decodeIfPresent(Double.self, forKey: .manualTemperatureCelsius) ?? defaults.manualTemperatureCelsius
+        manualHumidity = try c.decodeIfPresent(Double.self, forKey: .manualHumidity) ?? defaults.manualHumidity
+        manualHigh = try c.decodeIfPresent(Double.self, forKey: .manualHigh) ?? defaults.manualHigh
+        manualLow = try c.decodeIfPresent(Double.self, forKey: .manualLow) ?? defaults.manualLow
+        manualWind = try c.decodeIfPresent(Double.self, forKey: .manualWind) ?? defaults.manualWind
+        manualFeelsLike = try c.decodeIfPresent(Double.self, forKey: .manualFeelsLike) ?? defaults.manualFeelsLike
+        conditionLabelOverride = try c.decodeIfPresent(String.self, forKey: .conditionLabelOverride) ?? defaults.conditionLabelOverride
+        humiditySuffix = try c.decodeIfPresent(String.self, forKey: .humiditySuffix) ?? defaults.humiditySuffix
+        humidityMetricLabel = try c.decodeIfPresent(String.self, forKey: .humidityMetricLabel) ?? defaults.humidityMetricLabel
+        windMetricLabel = try c.decodeIfPresent(String.self, forKey: .windMetricLabel) ?? defaults.windMetricLabel
+        feelsLikeMetricLabel = try c.decodeIfPresent(String.self, forKey: .feelsLikeMetricLabel) ?? defaults.feelsLikeMetricLabel
+        temperatureUnit = try c.decodeIfPresent(WeatherTemperatureUnit.self, forKey: .temperatureUnit) ?? defaults.temperatureUnit
+        locationText = try c.decodeIfPresent(String.self, forKey: .locationText) ?? defaults.locationText
+        showLocation = try c.decodeIfPresent(Bool.self, forKey: .showLocation) ?? defaults.showLocation
+        showWeekday = try c.decodeIfPresent(Bool.self, forKey: .showWeekday) ?? defaults.showWeekday
+        showHumidity = try c.decodeIfPresent(Bool.self, forKey: .showHumidity) ?? defaults.showHumidity
+        showHighLow = try c.decodeIfPresent(Bool.self, forKey: .showHighLow) ?? defaults.showHighLow
+        showWind = try c.decodeIfPresent(Bool.self, forKey: .showWind) ?? defaults.showWind
+        showFeelsLike = try c.decodeIfPresent(Bool.self, forKey: .showFeelsLike) ?? defaults.showFeelsLike
+        metricSlots = Self.normalizedMetricSlots(
+            try c.decodeIfPresent([WeatherMetricSlotValue].self, forKey: .metricSlots)
+                ?? Self.legacyMetricSlots(showHumidity: showHumidity, showHighLow: showHighLow, showWind: showWind, showFeelsLike: showFeelsLike, fallback: defaults.metricSlots),
+            for: preset
+        )
+        cardBackgroundColor = try c.decodeIfPresent(OverlayColor.self, forKey: .cardBackgroundColor) ?? defaults.cardBackgroundColor
+        cardBackgroundOpacity = try c.decodeIfPresent(Double.self, forKey: .cardBackgroundOpacity) ?? defaults.cardBackgroundOpacity
+        cardCornerRadius = try c.decodeIfPresent(Double.self, forKey: .cardCornerRadius) ?? defaults.cardCornerRadius
+        dividerEnabled = try c.decodeIfPresent(Bool.self, forKey: .dividerEnabled) ?? defaults.dividerEnabled
+        dividerColor = try c.decodeIfPresent(OverlayColor.self, forKey: .dividerColor) ?? defaults.dividerColor
+        dividerThickness = try c.decodeIfPresent(Double.self, forKey: .dividerThickness) ?? defaults.dividerThickness
+        dividerOpacity = try c.decodeIfPresent(Double.self, forKey: .dividerOpacity) ?? defaults.dividerOpacity
+        palette = try c.decodeIfPresent(WeatherWidgetPalette.self, forKey: .palette) ?? defaults.palette
+        iconSize = try c.decodeIfPresent(Double.self, forKey: .iconSize) ?? defaults.iconSize
+        showIcon = try c.decodeIfPresent(Bool.self, forKey: .showIcon) ?? true
+        showConditionLabel = try c.decodeIfPresent(Bool.self, forKey: .showConditionLabel) ?? defaults.showConditionLabel
+        width = try c.decodeIfPresent(Double.self, forKey: .width) ?? defaults.width
+        height = try c.decodeIfPresent(Double.self, forKey: .height) ?? defaults.height
+        slotBackgroundColor = try c.decodeIfPresent(OverlayColor.self, forKey: .slotBackgroundColor) ?? defaults.slotBackgroundColor
+        slotBackgroundOpacity = try c.decodeIfPresent(Double.self, forKey: .slotBackgroundOpacity) ?? defaults.slotBackgroundOpacity
+        slotSpacing = try c.decodeIfPresent(Double.self, forKey: .slotSpacing) ?? defaults.slotSpacing
+        locationTextStyle = try c.decodeIfPresent(WeatherTextStyle.self, forKey: .locationTextStyle) ?? defaults.locationTextStyle
+        conditionTextStyle = try c.decodeIfPresent(WeatherTextStyle.self, forKey: .conditionTextStyle) ?? defaults.conditionTextStyle
+        temperatureTextStyle = try c.decodeIfPresent(WeatherTextStyle.self, forKey: .temperatureTextStyle) ?? defaults.temperatureTextStyle
+        slotTitleTextStyle = try c.decodeIfPresent(WeatherTextStyle.self, forKey: .slotTitleTextStyle) ?? defaults.slotTitleTextStyle
+        slotLabelTextStyle = try c.decodeIfPresent(WeatherTextStyle.self, forKey: .slotLabelTextStyle) ?? defaults.slotLabelTextStyle
+        cachedWeather = try c.decodeIfPresent(WeatherPayload.self, forKey: .cachedWeather)
+    }
+
+    func normalizedMetricSlots() -> [WeatherMetricSlotValue] {
+        Self.normalizedMetricSlots(metricSlots, for: preset)
+    }
+
+    static func normalizedMetricSlots(_ slots: [WeatherMetricSlotValue], for preset: WeatherWidgetPreset) -> [WeatherMetricSlotValue] {
+        let count = preset.metricSlotCount
+        guard count > 0 else { return [] }
+        let seed = slots.isEmpty ? preset.defaultMetricSlots : slots
+        var normalized = Array(seed.prefix(count))
+        while normalized.count < count {
+            normalized.append(preset.defaultMetricSlots[safe: normalized.count] ?? .humidity)
+        }
+        return normalized
+    }
+
+    private static func legacyMetricSlots(
+        showHumidity: Bool,
+        showHighLow: Bool,
+        showWind: Bool,
+        showFeelsLike: Bool,
+        fallback: [WeatherMetricSlotValue]
+    ) -> [WeatherMetricSlotValue] {
+        var slots: [WeatherMetricSlotValue] = []
+        if showHumidity { slots.append(.humidity) }
+        if showHighLow { slots.append(.highLow) }
+        if showWind { slots.append(.wind) }
+        if showFeelsLike { slots.append(.feelsLike) }
+        return slots.isEmpty ? fallback : slots
+    }
+}
+
+private extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
+    }
 }

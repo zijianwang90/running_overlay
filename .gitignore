@@ -3,6 +3,10 @@
 .AppleDouble
 .LSOverride
 Icon?
+!Sources/RunningOverlay/Resources/Icons/
+!Sources/RunningOverlay/Resources/Icons/**
+!Tests/RunningOverlayTests/Fixtures/Icons/
+!Tests/RunningOverlayTests/Fixtures/Icons/**
 ._*
 .Spotlight-V100
 .Trashes
@@ -13,7 +17,7 @@ Icon?
 .build/
 .swiftpm/
 Packages/
-Package.resolved
+# Commit Package.resolved when external package dependencies are present.
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
 DerivedData/
@@ -64,6 +68,25 @@ coverage/
 tmp/
 temp/
 
+# Credentials and local environment
+.env
+.env.*
+!.env.example
+Config/LocalSigning.xcconfig
+*.cer
+*.certSigningRequest
+*.crt
+*.csr
+*.der
+*.key
+*.pem
+*.p8
+*.p12
+*.mobileprovision
+*.provisionprofile
+*.xcarchive
+*.xcarchive/
+
 # Claude Code
 .claude/settings.local.json
 .claude/worktrees/
@@ -71,6 +94,31 @@ temp/
 
 # Project-specific local artifacts
 # Local sample fixtures or exports that should stay out of version control.
+build/
 ExampleData/local/
 Exports/
-*.fit.local
+*.fit
+*.FIT
+*.gpx
+*.GPX
+*.tcx
+*.TCX
+*.mov
+*.MOV
+*.mp4
+*.MP4
+*.m4v
+*.M4V
+*.avi
+*.AVI
+*.mkv
+*.MKV
+*.zip
+
+# Explicitly public synthetic fixtures.
+!Tests/RunningOverlayTests/Fixtures/Activities/
+!Tests/RunningOverlayTests/Fixtures/Activities/*.fit
+
+# Python tooling
+__pycache__/
+*.py[cod]

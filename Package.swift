@@ -13,9 +13,11 @@ let package = Package(
             targets: ["RunningOverlay"]
         )
     ],
+    dependencies: [],
     targets: [
         .executableTarget(
             name: "RunningOverlay",
+            dependencies: [],
             path: "Sources/RunningOverlay",
             resources: [
                 .process("Resources")
@@ -24,7 +26,10 @@ let package = Package(
         .testTarget(
             name: "RunningOverlayTests",
             dependencies: ["RunningOverlay"],
-            path: "Tests/RunningOverlayTests"
+            path: "Tests/RunningOverlayTests",
+            resources: [
+                .copy("Fixtures")
+            ]
         )
     ]
 )

@@ -209,6 +209,7 @@ Dense and Splits progress must render as a continuous solid fill. Their technica
 Controls:
 
 - Value toggle.
+- Total Distance toggle. When enabled, Value renders `current / total unit`; when disabled, it renders only `current unit`.
 - Unit system: Metric / Imperial.
 - Font family, primary value size, weight, and text color.
 - Progress Gap controls the vertical distance between the Value block and the progress track.
@@ -221,6 +222,8 @@ Controls:
 - Custom value font size, color, and opacity, independent from the primary Value settings.
 
 When Value is disabled, the overlay can be used as a pure distance timeline with only axis/progress/labels/stats.
+
+Stats Bar placement must use the complete rendered content bounds, including Axis and Marker labels. Top, bottom, left, and right bars stay adjacent to content without covering it. Inside controls whether the bar shares the Distance Timeline background and border; it does not place the bar over the progress area.
 
 ## Label
 
@@ -237,15 +240,15 @@ Controls:
 
 Controls:
 
-- Enabled toggle.
-- Mode: `Start / Finish` or `Distance`.
-- More distance points toggle.
-- Distance point density.
-- Point Gap controls the vertical distance from the progress axis for start/finish endpoint labels and intermediate distance points.
-- Point Gap remains editable even when More Points is off because endpoint labels use it too.
-- Font family, size, weight, and color apply to endpoint labels and intermediate distance point labels.
+- **Start / Finish** toggle: shows or hides the endpoint axis pair only.
+- **Start / End Side** and **Start / End Offset**: placement (`Below` / `Above` the track) and gap from the track edge for that pair (JSON field `distancePointOffset` stores this offset for compatibility).
+- **More Points** toggle: shows or hides intermediate distance tick labels.
+- Mode: `Start / Finish` or `Distance` (Distance mode formats the origin as `0 <unit>` to match other distance labels, e.g. `0 km`).
+- **Density** (0 = no intermediate labels when More Points is on).
+- **Midpoints Side** and **Midpoints Offset**: independent placement and gap for intermediate labels (`midpointAxisLabelOffset`).
+- **Axis** typography (font, size, weight, color) applies to start/finish text, midpoint tick text, and the optional marker distance label; typography rows stay enabled when any of those features is on.
 
-Start/finish text and distance labels should sit below the axis, not on top of or centered over the track.
+Axis labels must not be centered on top of the track bar; they sit in a band on the chosen side of the track. Endpoint labels align to the progress track edges in preview and export (leading edge for the start label, trailing edge for the finish label). Background and selection bounds grow to include whichever label bands are active.
 
 ## Progress Marker
 
@@ -254,6 +257,9 @@ Controls:
 - Marker toggle.
 - Marker style: dot, pill, or triangle. These are rendered as vector-native shapes in preview and export; SVG marker assets are not part of this control yet.
 - Marker color, independent from progress fill color.
+- **Marker Size**: scales the marker graphic (export and preview use the same multiplier).
+- **Marker Label** toggle: when Marker is on, shows the **current distance** (e.g. `2.40 km`) near the playhead position, using Axis typography.
+- **Label Side** and **Label Offset** for that distance text (`markerDistanceLabelPlacement`, `markerDistanceLabelOffset`), independent from axis start/finish and midpoints.
 
 ## Stats Bar
 

@@ -7,6 +7,8 @@ struct OverlayEffectsInspectorModule: View {
 
     let elementID: OverlayElement.ID
     let element: OverlayElement
+    var showsGlowControls = true
+    var showsFadeOutControls = true
     @State private var isExpanded = true
 
     var body: some View {
@@ -25,6 +27,8 @@ struct OverlayEffectsInspectorModule: View {
                 glowIntensity: element.style.glowIntensity,
                 fadeOutEnabled: element.style.backgroundFadeOutEnabled,
                 fadeAmount: element.style.backgroundFadeOutAmount,
+                showsGlowControls: showsGlowControls,
+                showsFadeOutControls: showsFadeOutControls,
                 onSetShadowEnabled: { project.setOverlayShadowEnabled(elementID, enabled: $0) },
                 onSetShadowColor: { project.setOverlayShadowColor(elementID, color: $0) },
                 onSetShadowOpacity: { project.setOverlayShadowOpacity(elementID, opacity: $0.quantizedNumeric(to: 0.05)) },
@@ -80,7 +84,6 @@ struct CollapsibleEffectsInspectorSection<Content: View>: View {
                 }
             }
         }
-        .overlay(RoundedRectangle(cornerRadius: 0).stroke(NumericTokens.borderSubtle, lineWidth: 1))
     }
 }
 
@@ -98,6 +101,8 @@ struct OverlayEffectsInspectorRows: View {
     let glowIntensity: Double
     let fadeOutEnabled: Bool
     let fadeAmount: Double
+    var showsGlowControls = true
+    var showsFadeOutControls = true
 
     let onSetShadowEnabled: (Bool) -> Void
     let onSetShadowColor: (OverlayColor) -> Void
@@ -154,39 +159,43 @@ struct OverlayEffectsInspectorRows: View {
         .opacity(shadowEnabled ? 1 : 0.5)
         .disabled(!shadowEnabled)
 
-        InspectorDenseRow(label: "Glow") {
-            Toggle("", isOn: Binding(get: { glowEnabled }, set: onSetGlowEnabled))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-                .labelsHidden()
+        if showsGlowControls {
+            InspectorDenseRow(label: "Glow") {
+                Toggle("", isOn: Binding(get: { glowEnabled }, set: onSetGlowEnabled))
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+                    .labelsHidden()
+            }
+            InspectorDenseRow(label: "Glow Color") {
+                InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: glowColor, action: onSetGlowColor)
+                    .disabled(!glowEnabled)
+                    .opacity(glowEnabled ? 1 : 0.5)
+            }
+            InspectorDenseSliderRow(
+                label: "Glow Intensity",
+                value: Binding(get: { glowIntensity }, set: onSetGlowIntensity),
+                range: 0...1,
+                displayText: String(format: "%.0f%%", glowIntensity * 100),
+                isEnabled: glowEnabled
+            )
         }
-        InspectorDenseRow(label: "Glow Color") {
-            InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: glowColor, action: onSetGlowColor)
-                .disabled(!glowEnabled)
-                .opacity(glowEnabled ? 1 : 0.5)
-        }
-        InspectorDenseSliderRow(
-            label: "Glow Intensity",
-            value: Binding(get: { glowIntensity }, set: onSetGlowIntensity),
-            range: 0...1,
-            displayText: String(format: "%.0f%%", glowIntensity * 100),
-            isEnabled: glowEnabled
-        )
 
-        InspectorDenseRow(label: "Fade Out") {
-            Toggle("", isOn: Binding(get: { fadeOutEnabled }, set: onSetFadeOutEnabled))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-                .labelsHidden()
-                .disabled(!backgroundEnabled)
-                .opacity(backgroundEnabled ? 1 : 0.5)
+        if showsFadeOutControls {
+            InspectorDenseRow(label: "Fade Out") {
+                Toggle("", isOn: Binding(get: { fadeOutEnabled }, set: onSetFadeOutEnabled))
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+                    .labelsHidden()
+                    .disabled(!backgroundEnabled)
+                    .opacity(backgroundEnabled ? 1 : 0.5)
+            }
+            InspectorDenseSliderRow(
+                label: "Fade Amount",
+                value: Binding(get: { fadeAmount }, set: onSetFadeAmount),
+                range: 0...1,
+                displayText: String(format: "%.0f%%", fadeAmount * 100),
+                isEnabled: backgroundEnabled && fadeOutEnabled
+            )
         }
-        InspectorDenseSliderRow(
-            label: "Fade Amount",
-            value: Binding(get: { fadeAmount }, set: onSetFadeAmount),
-            range: 0...1,
-            displayText: String(format: "%.0f%%", fadeAmount * 100),
-            isEnabled: backgroundEnabled && fadeOutEnabled
-        )
     }
 }
