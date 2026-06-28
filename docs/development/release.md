@@ -73,7 +73,7 @@ packaging. The Xcode archive remains the App Store upload path.
 Current submission blockers and metadata drafts are tracked in
 `docs/app-store-readiness.md`.
 
-## GitHub Release Candidate Tags
+## GitHub Release Tags
 
 The first public version is `0.1.0`. Use release-candidate tags to validate the
 GitHub release path before creating the final `v0.1.0` tag:
@@ -84,13 +84,15 @@ git tag -a v0.1.0-rc.1 -m "Running Overlay v0.1.0-rc.1"
 git push origin v0.1.0-rc.1
 ```
 
-The `Release Candidate` workflow accepts only tags matching `v*-rc.*`. It
-verifies that the tag's marketing version matches `Config/AppStore.xcconfig`,
-runs the full check, visual regression, publication audit, App Store
-configuration validation, optimized SwiftPM product build, Developer ID
-signing, Apple notarization, stapling, and Gatekeeper validation, then creates a
-draft GitHub pre-release with a macOS arm64 zip and a SHA-256 checksum. The zip
-keeps the repository-oriented asset name, while the app bundle inside is
+The `Release` workflow accepts release-candidate tags matching `v*-rc.*` and
+final release tags matching `vMAJOR.MINOR.PATCH`. It verifies that the tag's
+marketing version matches `Config/AppStore.xcconfig`, runs the full check,
+visual regression, publication audit, App Store configuration validation,
+optimized SwiftPM product build, Developer ID signing, Apple notarization,
+stapling, and Gatekeeper validation, then uploads a macOS arm64 zip and a
+SHA-256 checksum. Release-candidate tags create draft pre-releases; final tags
+create published releases marked as latest. The zip keeps the
+repository-oriented asset name, while the app bundle inside is
 `Running Overlay Studio.app`.
 
 GitHub release candidates use a Developer ID Application certificate and App
@@ -108,9 +110,11 @@ git tag -a v0.1.0 -m "Running Overlay v0.1.0"
 git push origin v0.1.0
 ```
 
-If only App Store metadata changes are required, do not create a new source tag.
-Increment `CFBundleVersion` as needed for App Store uploads while keeping the
-same `CFBundleShortVersionString` and source commit.
+Only create the final source tag after the release-candidate artifact has been
+downloaded and accepted. If only App Store metadata changes are required after
+the final source tag, do not create a new source tag. Increment
+`CFBundleVersion` as needed for App Store uploads while keeping the same
+`CFBundleShortVersionString` and source commit.
 
 Required GitHub Actions secrets for notarized release assets:
 
