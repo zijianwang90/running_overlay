@@ -28,6 +28,11 @@ and tests; both build paths compile the same files under
 - Keep all ten macOS icon renditions in
   `AppStore/Assets.xcassets/AppIcon.appiconset`; the 1024 px
   `icon_512x512@2x.png` rendition is the production master.
+- `scripts/build-appstore-app.sh` packages the SwiftPM-built executable as
+  `Running Overlay Studio.app` and converts the AppIcon renditions into
+  `Contents/Resources/AppIcon.icns` so GitHub Release downloads show the
+  production Finder icon and product name. Keep the internal executable,
+  target, and module name as `RunningOverlay`.
 - Keep signing certificates, provisioning profiles, archives, API keys, and
   other release secrets out of the repository.
 - The app-bundle build copies the PolyForm Shield license, commercial
@@ -61,9 +66,9 @@ Apple Developer team is available. For App Store upload, copy
 `DEVELOPMENT_TEAM`, select the registered App ID in Xcode, archive without
 `CODE_SIGNING_ALLOWED=NO`, then validate and distribute through Organizer.
 
-The older `scripts/build-appstore-app.sh` and
-`scripts/archive-appstore-app.sh` remain useful for SwiftPM-based bundle
-preflight, but the Xcode archive is the release/upload path.
+The `scripts/build-appstore-app.sh` and `scripts/archive-appstore-app.sh`
+commands remain useful for SwiftPM-based bundle preflight and GitHub Release
+packaging. The Xcode archive remains the App Store upload path.
 
 Current submission blockers and metadata drafts are tracked in
 `docs/app-store-readiness.md`.
@@ -84,7 +89,9 @@ verifies that the tag's marketing version matches `Config/AppStore.xcconfig`,
 runs the full check, visual regression, publication audit, App Store
 configuration validation, optimized SwiftPM product build, Developer ID
 signing, Apple notarization, stapling, and Gatekeeper validation, then creates a
-draft GitHub pre-release with a macOS arm64 zip and a SHA-256 checksum.
+draft GitHub pre-release with a macOS arm64 zip and a SHA-256 checksum. The zip
+keeps the repository-oriented asset name, while the app bundle inside is
+`Running Overlay Studio.app`.
 
 GitHub release candidates use a Developer ID Application certificate and App
 Store Connect API key stored in GitHub Actions secrets. Do not commit signing
