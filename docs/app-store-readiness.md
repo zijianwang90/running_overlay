@@ -7,6 +7,7 @@ This document tracks the first Mac App Store submission path for Running Overlay
 ## Current Release Target
 
 - Target channel: Mac App Store first submission.
+- First public version: `0.1.0`.
 - Target scope: existing core app capabilities, including FIT import, video import, timeline editing, overlay design, Route Map, Weather Widget, and transparent MOV export.
 - Development branch: `develop` after integration of the App Store readiness work.
 - App Store name: `Running Overlay Studio`.
@@ -33,6 +34,8 @@ This document tracks the first Mac App Store submission path for Running Overlay
 - `scripts/build-appstore-app.sh`: builds the SwiftPM release executable, assembles a macOS `.app`, copies resources and the privacy manifest, and signs with entitlements.
 - `scripts/archive-appstore-app.sh`: creates a local `.xcarchive`-shaped artifact from the packaged app for preflight inspection.
 - `scripts/validate-appstore-config.sh`: validates plist/json syntax and reports placeholder account/product values.
+- `.github/workflows/release.yml`: validates `v*-rc.*` tags and creates draft
+  GitHub pre-releases for source-snapshot release-candidate checks.
 
 ## Build And Signing
 

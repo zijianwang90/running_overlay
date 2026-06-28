@@ -67,3 +67,38 @@ preflight, but the Xcode archive is the release/upload path.
 
 Current submission blockers and metadata drafts are tracked in
 `docs/app-store-readiness.md`.
+
+## GitHub Release Candidate Tags
+
+The first public version is `0.1.0`. Use release-candidate tags to validate the
+GitHub release path before creating the final `v0.1.0` tag:
+
+```sh
+git checkout main
+git tag -a v0.1.0-rc.1 -m "Running Overlay v0.1.0-rc.1"
+git push origin v0.1.0-rc.1
+```
+
+The `Release Candidate` workflow accepts only tags matching `v*-rc.*`. It
+verifies that the tag's marketing version matches `Config/AppStore.xcconfig`,
+runs the full check, visual regression, publication audit, App Store
+configuration validation, and optimized SwiftPM product build, then creates a
+draft GitHub pre-release.
+
+GitHub release candidates are source snapshots and release-process checks. They
+do not attach unsigned or non-notarized app bundles. Distribution-signed builds
+remain tied to the Xcode archive and App Store Connect flow.
+
+If an RC fails because code changes are needed, fix the issue, merge the new
+commit to `main`, and create the next RC tag, for example `v0.1.0-rc.2`. When
+the App Store submission build is accepted without further code changes, create
+the final `v0.1.0` tag on the same commit:
+
+```sh
+git tag -a v0.1.0 -m "Running Overlay v0.1.0"
+git push origin v0.1.0
+```
+
+If only App Store metadata changes are required, do not create a new source tag.
+Increment `CFBundleVersion` as needed for App Store uploads while keeping the
+same `CFBundleShortVersionString` and source commit.
