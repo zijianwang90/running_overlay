@@ -1,6 +1,6 @@
 # Numeric Overlay UI Design Spec
 
-Last updated: 2026-06-18 (elevation current vs gain)
+Last updated: 2026-06-28 (temperature FIT source toggle)
 
 ## Purpose
 
@@ -30,6 +30,7 @@ Use this template for these `OverlayElementType` values:
 - `elevation`
 - `cadence`
 - `power`
+- `temperature` — reads interpolated FIT temperature by default when available, with an Inspector toggle to disable the FIT temperature source.
 
 Do not use this template as-is for `distanceTimeline`, `elevationChart`, `runningGauge`, or `routeMap`. Those overlays may share lower-level controls, but they need chart/gauge/map-specific layouts.
 
@@ -122,6 +123,7 @@ Other numeric overlays should expose only relevant unit choices:
 | Calories | `kcal` |
 | Elapsed Time | `hh:mm:ss`, `mm:ss`, `seconds` |
 | Real Time | `12-hour`, `24-hour` |
+| Temperature | `Celsius (°C)`, `Fahrenheit (°F)` |
 
 Elapsed Time formatting rules:
 
@@ -136,6 +138,7 @@ Implementation rule:
 - Do not show a unit menu with fake choices that do not change formatting.
 - Do not show a Style or Preset selector for numeric overlays in 1.0.
 - Elevation adds a separate `Mode` menu backed by `OverlayStyle.elevationDisplayMode`: `Current` shows the live altitude at the playhead; `Gain` shows cumulative ascent up to the current playhead time.
+- Temperature shows `Use FIT Temperature` when the imported activity contains FIT temperature samples. The toggle is backed by `OverlayStyle.useFITTemperature`, defaults on for compatibility, and makes the temperature value display `--` when disabled.
 
 ## Layout Section
 

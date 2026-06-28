@@ -2217,6 +2217,14 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.elevationDisplayMode = mode
     }
 
+    func setOverlayUseFITTemperature(_ elementID: OverlayElement.ID, enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.useFITTemperature = enabled
+    }
+
     func setOverlayShowLabel(_ elementID: OverlayElement.ID, showLabel: Bool) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {

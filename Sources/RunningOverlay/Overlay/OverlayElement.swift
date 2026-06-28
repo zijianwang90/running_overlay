@@ -437,6 +437,7 @@ struct OverlayStyle: Equatable, Codable {
     // Numeric Overlay additions (see docs/design/overlays/numeric/numeric-overlay-ui.md)
     var unitOption: OverlayUnitOption
     var elevationDisplayMode: OverlayElevationDisplayMode
+    var useFITTemperature: Bool
     var showLabel: Bool
     var showUnit: Bool
     var customLabel: String
@@ -605,6 +606,7 @@ struct OverlayStyle: Equatable, Codable {
         shadowRadius: 4,
         unitOption: .paceMetric,
         elevationDisplayMode: .current,
+        useFITTemperature: true,
         showLabel: false,
         showUnit: true,
         customLabel: "",
@@ -715,6 +717,7 @@ struct OverlayStyle: Equatable, Codable {
         shadowRadius: Double,
         unitOption: OverlayUnitOption = .paceMetric,
         elevationDisplayMode: OverlayElevationDisplayMode = .current,
+        useFITTemperature: Bool = true,
         showLabel: Bool = false,
         showUnit: Bool = true,
         customLabel: String = "",
@@ -823,6 +826,7 @@ struct OverlayStyle: Equatable, Codable {
         self.shadowRadius = shadowRadius
         self.unitOption = unitOption
         self.elevationDisplayMode = elevationDisplayMode
+        self.useFITTemperature = useFITTemperature
         self.showLabel = showLabel
         self.showUnit = showUnit
         self.customLabel = customLabel
@@ -934,6 +938,7 @@ struct OverlayStyle: Equatable, Codable {
         shadowRadius = try container.decodeIfPresent(Double.self, forKey: .shadowRadius) ?? Self.default.shadowRadius
         unitOption = try container.decodeIfPresent(OverlayUnitOption.self, forKey: .unitOption) ?? Self.default.unitOption
         elevationDisplayMode = try container.decodeIfPresent(OverlayElevationDisplayMode.self, forKey: .elevationDisplayMode) ?? Self.default.elevationDisplayMode
+        useFITTemperature = try container.decodeIfPresent(Bool.self, forKey: .useFITTemperature) ?? Self.default.useFITTemperature
         showLabel = try container.decodeIfPresent(Bool.self, forKey: .showLabel) ?? Self.default.showLabel
         showUnit = try container.decodeIfPresent(Bool.self, forKey: .showUnit) ?? Self.default.showUnit
         customLabel = try container.decodeIfPresent(String.self, forKey: .customLabel) ?? Self.default.customLabel

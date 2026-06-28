@@ -166,6 +166,41 @@ struct OverlayValueFormatterTests {
         #expect(OverlayValueFormatter.value(for: elapsed, activity: activity, elapsedTime: 65) == "65")
     }
 
+    @Test func temperatureOverlayCanToggleFITTemperatureSource() {
+        let startDate = Date(timeIntervalSince1970: 0)
+        let activity = ActivityTimeline(
+            startDate: startDate,
+            duration: 60,
+            distanceMeters: 0,
+            records: [
+                ActivityRecord(
+                    elapsedTime: 0, timestamp: startDate, distanceMeters: 0,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil,
+                    cadence: nil, powerWatts: nil, calories: nil,
+                    temperatureCelsius: 10
+                ),
+                ActivityRecord(
+                    elapsedTime: 60, timestamp: startDate.addingTimeInterval(60), distanceMeters: 0,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil,
+                    cadence: nil, powerWatts: nil, calories: nil,
+                    temperatureCelsius: 20
+                )
+            ],
+            laps: []
+        )
+
+        var element = OverlayElement(type: .temperature, position: .zero, scale: 1, style: .default)
+        element.style.unitOption = .temperatureCelsius
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 30) == "15° °C")
+
+        element.style.useFITTemperature = false
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 30) == "-- °C")
+
+        element.style.useFITTemperature = true
+        element.style.unitOption = .temperatureFahrenheit
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 30) == "59° °F")
+    }
+
     @Test func elevationOverlayCanSwitchBetweenCurrentAndGain() {
         let startDate = Date(timeIntervalSince1970: 0)
         let activity = ActivityTimeline(
