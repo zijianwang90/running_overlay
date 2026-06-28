@@ -88,6 +88,18 @@ struct NumericOverlayDetailView: View {
                 .frame(height: NumericTokens.controlHeight)
             }
         }
+        if element.type == .temperature, project.activity.hasTemperatureData {
+            InspectorDenseRow(label: "Use FIT Temperature") {
+                Toggle("", isOn: Binding(
+                    get: { element.style.useFITTemperature },
+                    set: { project.setOverlayUseFITTemperature(elementID, enabled: $0) }
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .labelsHidden()
+                .tint(NumericTokens.accentBlue)
+            }
+        }
         InspectorDenseRow(label: "Format Preview") {
             InspectorDenseReadout(text: previewValue(for: element), isNumeric: true)
         }

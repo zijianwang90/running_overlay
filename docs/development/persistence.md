@@ -13,6 +13,10 @@ Current implementation:
 - The app sets a regular activation policy at launch, and timeline mouse-down activates the app and makes the timeline canvas first responder.
 - Overlay add/delete, timeline clip delete, and core overlay/timeline edits register undo snapshots.
 - Continuous edits use a begin/end style snapshot so drag and slider gestures can undo as a single operation.
+- Imported overlay templates are normalized before entering the local library:
+  name conflicts receive the next `Copy` name and template UUID conflicts are
+  replaced with a fresh UUID so SwiftUI list identity, apply, rename, duplicate,
+  export, and delete actions always target one row.
 
 Pending:
 

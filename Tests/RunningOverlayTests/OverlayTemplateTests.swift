@@ -412,6 +412,33 @@ struct OverlayTemplateTests {
         #expect(loadedProject.overlayTemplates[1].elements.map(\.type) == [.distance, .pace])
     }
 
+    @Test func importingExistingTemplateAssignsUniqueLibraryIdentity() throws {
+        let storeURL = temporaryTemplateURL()
+        defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }
+
+        let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
+        project.addOverlayElement(.distance)
+        project.saveOverlayTemplate(named: "Long Run")
+        let original = try #require(project.overlayTemplates.first)
+
+        let exportURL = storeURL.deletingLastPathComponent().appendingPathComponent("LongRun.rotemplate")
+        try OverlayTemplateStore(fileURL: storeURL).exportTemplate(original, to: exportURL)
+
+        try project.importOverlayTemplate(from: exportURL)
+
+        #expect(project.overlayTemplates.count == 2)
+        #expect(project.overlayTemplates.map(\.name) == ["Long Run Copy", "Long Run"])
+        #expect(Set(project.overlayTemplates.map(\.id)).count == 2)
+
+        let imported = try #require(project.overlayTemplates.first)
+        project.applyOverlayTemplate(imported.id)
+        #expect(project.overlayLayout.elements.map(\.type) == [.distance])
+
+        let loadedProject = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
+        #expect(loadedProject.overlayTemplates.count == 2)
+        #expect(Set(loadedProject.overlayTemplates.map(\.id)).count == 2)
+    }
+
     @Test func builtInOverlayTemplateReplacesLayoutAndIsUndoable() throws {
         let storeURL = temporaryTemplateURL()
         defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }

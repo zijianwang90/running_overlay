@@ -36,6 +36,7 @@ enum OverlayValueFormatter {
             for: type,
             unit: unit,
             elevationDisplayMode: element.style.elevationDisplayMode,
+            useFITTemperature: element.style.useFITTemperature,
             customLabel: element.style.customLabel,
             activity: activity,
             elapsedTime: elapsedTime
@@ -69,6 +70,7 @@ enum OverlayValueFormatter {
         for type: OverlayElementType,
         unit unitOption: OverlayUnitOption,
         elevationDisplayMode: OverlayElevationDisplayMode = .current,
+        useFITTemperature: Bool = true,
         customLabel: String,
         activity: ActivityTimeline,
         elapsedTime: TimeInterval
@@ -256,7 +258,8 @@ enum OverlayValueFormatter {
                 unit: "%"
             )
         case .temperature:
-            return formatTemperature(activity.temperature(at: elapsedTime), option: unitOption, resolvedLabel: resolvedLabel)
+            let celsius = useFITTemperature ? activity.temperature(at: elapsedTime) : nil
+            return formatTemperature(celsius, option: unitOption, resolvedLabel: resolvedLabel)
         case .grade:
             let g = activity.grade(at: elapsedTime)
             return OverlayValueComponents(

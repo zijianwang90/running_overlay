@@ -2217,6 +2217,14 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.elevationDisplayMode = mode
     }
 
+    func setOverlayUseFITTemperature(_ elementID: OverlayElement.ID, enabled: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.useFITTemperature = enabled
+    }
+
     func setOverlayShowLabel(_ elementID: OverlayElement.ID, showLabel: Bool) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
@@ -3013,7 +3021,8 @@ final class ProjectDocument: ObservableObject {
                 createdAt: now,
                 updatedAt: now,
                 referenceResolution: template.referenceResolution,
-                elements: template.elements
+                elements: template.elements,
+                assets: template.assets
             ),
             at: 0
         )
@@ -3042,17 +3051,24 @@ final class ProjectDocument: ObservableObject {
         }
 
         do {
-            var template = try overlayTemplateStore.loadTemplateFile(from: url)
-            if overlayTemplates.contains(where: { $0.name.localizedCaseInsensitiveCompare(template.name) == .orderedSame }) {
-                template.name = nextOverlayTemplateName(base: "\(template.name) Copy")
-            }
-            overlayTemplates.insert(template, at: 0)
-            persistOverlayTemplates()
-            statusMessage = "Imported overlay template: \(template.name)."
+            try importOverlayTemplate(from: url)
         } catch {
             statusMessage = "Overlay template import failed: \(error.localizedDescription)"
             print("[RunningOverlay] Overlay template import failed: \(String(reflecting: error))")
         }
+    }
+
+    func importOverlayTemplate(from url: URL) throws {
+        var template = try overlayTemplateStore.loadTemplateFile(from: url)
+        if overlayTemplates.contains(where: { $0.name.localizedCaseInsensitiveCompare(template.name) == .orderedSame }) {
+            template.name = nextOverlayTemplateName(base: "\(template.name) Copy")
+        }
+        while overlayTemplates.contains(where: { $0.id == template.id }) {
+            template.id = UUID()
+        }
+        overlayTemplates.insert(template, at: 0)
+        persistOverlayTemplates()
+        statusMessage = "Imported overlay template: \(template.name)."
     }
 
     func exportOverlayTemplateFile(_ templateID: OverlayTemplate.ID) {
