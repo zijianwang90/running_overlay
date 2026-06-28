@@ -27,8 +27,20 @@ enum SwiftUIOverlayExportError: LocalizedError {
 struct ExportRenderPlan: Equatable {
     static let dynamicFullFrameAreaThreshold: Double = 0.85
     static let perOverlayAreaThreshold: Double = 0.85
+    /// When the dynamic union triggers full-frame fallback because widgets are
+    /// far apart, per-overlay rendering may still win if every overlay stays
+    /// small and the summed padded areas remain bounded.
+    static let perOverlayMaxIndividualAreaThreshold: Double = 0.55
+    static let perOverlayDispersedSumAreaThreshold: Double = 2.5
+    /// Fixed per-item ImageRenderer overhead expressed as a fraction of a
+    /// full-canvas render. Stops dispersed layouts with many widgets from
+    /// selecting per-overlay when summed rect area alone looks acceptable.
+    static let perOverlayItemOverhead: Double = 0.10
     static let numericBatchAreaThreshold: Double = 0.45
     static let safePadding: CGFloat = 96
+
+    /// Runtime kill switch for elevation chart static fill cache benchmarks.
+    nonisolated(unsafe) static var elevationChartStaticFillCacheEnabled = true
 
     var canvasSize: CGSize
     var allOverlays: [OverlayElement]
@@ -39,6 +51,10 @@ struct ExportRenderPlan: Equatable {
     var usesFullFrameDynamicRender: Bool
     var overlayRenderItems: [ExportOverlayRenderItem]
     var overlayRenderAreaRatio: Double
+    /// Largest single padded overlay rect as a fraction of the canvas area.
+    var maxIndividualOverlayAreaRatio: Double
+    /// Sum of padded overlay areas plus per-item ImageRenderer overhead.
+    var estimatedPerOverlayRenderCost: Double
     var usesPerOverlayRender: Bool
     var renderPath: OverlayExportRenderPath {
         if usesPerOverlayRender {
@@ -98,15 +114,29 @@ struct ExportRenderPlan: Equatable {
             canvasRect: canvasRect
         )
         overlayRenderItems = overlayItems
-        overlayRenderAreaRatio = canvasRect.width > 0 && canvasRect.height > 0
-            ? overlayItems.map { Double(($0.renderRect.width * $0.renderRect.height) / (canvasRect.width * canvasRect.height)) }.reduce(0, +)
+        let canvasArea = canvasRect.width * canvasRect.height
+        overlayRenderAreaRatio = canvasArea > 0
+            ? overlayItems.map { Double(($0.renderRect.width * $0.renderRect.height) / canvasArea) }.reduce(0, +)
             : 0
+        maxIndividualOverlayAreaRatio = canvasArea > 0
+            ? overlayItems.map { Double(($0.renderRect.width * $0.renderRect.height) / canvasArea) }.max() ?? 0
+            : 0
+        estimatedPerOverlayRenderCost = overlayRenderAreaRatio
+            + Double(overlayItems.count) * Self.perOverlayItemOverhead
+        let cacheEligibleChartCount = overlayItems.filter { item in
+            item.elements.count == 1
+                && Self.canUseElevationChartStaticFillCache(for: item.elements[0], context: context)
+        }.count
+        let qualifiesForDispersedPerOverlay = overlayItems.count >= 2
+            && cacheEligibleChartCount >= 2
+            && maxIndividualOverlayAreaRatio < Self.perOverlayMaxIndividualAreaThreshold
+            && estimatedPerOverlayRenderCost < Self.perOverlayDispersedSumAreaThreshold
         usesPerOverlayRender = usesFullFrameDynamicRender
             && staticOverlays.isEmpty
             && !dynamicOverlays.isEmpty
             && individualOverlayItems.count == dynamicOverlays.count
             && overlayItems.map(\.elements.count).reduce(0, +) == dynamicOverlays.count
-            && overlayRenderAreaRatio < Self.perOverlayAreaThreshold
+            && (overlayRenderAreaRatio < Self.perOverlayAreaThreshold || qualifiesForDispersedPerOverlay)
     }
 
     static func isStaticOverlay(_ element: OverlayElement) -> Bool {
@@ -137,6 +167,9 @@ struct ExportRenderPlan: Equatable {
     /// stats bar (data text changes per frame), and the shared foreground glow
     /// (applied to the whole composite, which the layered cache cannot match).
     static func canUseElevationChartStaticFillCache(for element: OverlayElement, context: OverlayRenderContext) -> Bool {
+        guard elevationChartStaticFillCacheEnabled else {
+            return false
+        }
         guard element.type == .elevationChart else {
             return false
         }

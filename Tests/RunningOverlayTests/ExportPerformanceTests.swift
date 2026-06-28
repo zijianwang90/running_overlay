@@ -428,6 +428,89 @@ struct ExportPerformanceTests {
         #expect(command == nil)
     }
 
+    @Test func elevationBenchmarkCommandParsesFitTemplateAndWindow() throws {
+        let parsed = try ElevationBenchmarkCommand.parse(arguments: [
+            "RunningOverlay",
+            "--benchmark-elevation",
+            "/tmp/activity.fit",
+            "--template",
+            "/tmp/template.rotemplate",
+            "--start",
+            "10",
+            "--duration",
+            "30",
+            "--benchmark-output",
+            "ElevOut"
+        ])
+        let command = try #require(parsed)
+
+        #expect(command.fitURL.path == "/tmp/activity.fit")
+        #expect(command.templateURL.path == "/tmp/template.rotemplate")
+        #expect(command.startSeconds == 10)
+        #expect(command.durationSeconds == 30)
+        #expect(command.outputDirectory?.path.hasSuffix("/ElevOut") == true)
+    }
+
+    @Test func headlessBenchmarkCommandPrefersElevationOverSnapshot() throws {
+        let parsed = try HeadlessBenchmarkCommand.parse(arguments: [
+            "RunningOverlay",
+            "--benchmark-elevation",
+            "/tmp/activity.fit",
+            "--template",
+            "/tmp/template.rotemplate",
+            "--benchmark-export",
+            "ignored.json"
+        ])
+
+        guard case .elevation(let elevation) = parsed else {
+            Issue.record("Expected elevation benchmark command")
+            return
+        }
+        #expect(elevation.fitURL.path == "/tmp/activity.fit")
+    }
+
+    @Test func renderPlanKeepsFullFrameForDispersedLayoutsWithHighPerOverlayCost() {
+        let overlays = multiWidgetBenchmarkLayout()
+        let plan = ExportRenderPlan(
+            overlays: overlays,
+            canvasSize: CGSize(width: 1920, height: 1080),
+            activity: sampleRouteActivity()
+        )
+
+        #expect(plan.usesFullFrameDynamicRender)
+        #expect(plan.overlayRenderAreaRatio >= ExportRenderPlan.perOverlayAreaThreshold)
+        #expect(plan.estimatedPerOverlayRenderCost >= ExportRenderPlan.perOverlayDispersedSumAreaThreshold)
+        #expect(!plan.usesPerOverlayRender)
+        #expect(plan.renderPath == .fullFrameSingleLayer)
+    }
+
+    @Test func renderPlanUsesPerOverlayForChartHeavyDispersedLayouts() {
+        var chartStyle = OverlayStyle.default
+        chartStyle.elevationChart.progressMode = .fullProfile
+        chartStyle.elevationChart.chartStyle = .area
+        chartStyle.elevationChart.fillEnabled = true
+        chartStyle.elevationChart.bigNumbersEnabled = false
+        chartStyle.elevationChart.statsBar.visible = false
+        chartStyle.glowEnabled = false
+
+        let overlays = [
+            OverlayElement(type: .elevationChart, position: CGPoint(x: 0.25, y: 0.25), scale: 1, style: chartStyle),
+            OverlayElement(type: .elevationChart, position: CGPoint(x: 0.75, y: 0.25), scale: 1, style: chartStyle),
+            OverlayElement(type: .elevationChart, position: CGPoint(x: 0.25, y: 0.75), scale: 1, style: chartStyle),
+            OverlayElement(type: .elevationChart, position: CGPoint(x: 0.75, y: 0.75), scale: 1, style: chartStyle)
+        ]
+        let plan = ExportRenderPlan(
+            overlays: overlays,
+            canvasSize: CGSize(width: 1920, height: 1080),
+            activity: sampleRouteActivity()
+        )
+
+        #expect(plan.usesFullFrameDynamicRender)
+        #expect(plan.estimatedPerOverlayRenderCost < ExportRenderPlan.perOverlayDispersedSumAreaThreshold)
+        #expect(plan.usesPerOverlayRender)
+        #expect(plan.renderPath == .perOverlay)
+    }
+
     @Test func exportProfileAggregatesFullFrameFallbackDiagnostics() {
         let segment = OverlayExportSegmentProfile(
             segmentIndex: 0,
@@ -624,6 +707,35 @@ struct ExportPerformanceTests {
             bitmapInfo: CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
         )
         return context?.makeImage()
+    }
+
+    /// Layout modeled on the local four-chart benchmark template: many small
+    /// widgets spread across a 1080p canvas with four full-profile charts.
+    private func multiWidgetBenchmarkLayout() -> [OverlayElement] {
+        var chartStyle = OverlayStyle.default
+        chartStyle.elevationChart.progressMode = .fullProfile
+        chartStyle.elevationChart.chartStyle = .area
+        chartStyle.elevationChart.fillEnabled = true
+        chartStyle.elevationChart.bigNumbersEnabled = false
+        chartStyle.elevationChart.statsBar.visible = false
+        chartStyle.glowEnabled = false
+
+        return [
+            OverlayElement(type: .pace, position: CGPoint(x: 0.031, y: 0.739), scale: 0.75, style: .default),
+            OverlayElement(type: .heartRate, position: CGPoint(x: 0.031, y: 0.792), scale: 0.75, style: .default),
+            OverlayElement(type: .cadence, position: CGPoint(x: 0.030, y: 0.847), scale: 0.75, style: .default),
+            OverlayElement(type: .routeMap, position: CGPoint(x: 0.879, y: 0.195), scale: 0.75, style: .default),
+            OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.069), scale: 1, style: .default),
+            OverlayElement(type: .elapsedTime, position: CGPoint(x: 0.856, y: 0.844), scale: 1, style: .default),
+            OverlayElement(type: .realTime, position: CGPoint(x: 0.856, y: 0.901), scale: 1, style: .default),
+            OverlayElement(type: .power, position: CGPoint(x: 0.029, y: 0.905), scale: 0.75, style: .default),
+            OverlayElement(type: .weatherWidget, position: CGPoint(x: 0.895, y: 0.756), scale: 0.75, style: .default),
+            OverlayElement(type: .zoneEdgeBar, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: .default),
+            OverlayElement(type: .elevationChart, position: CGPoint(x: 0.5, y: 0.911), scale: 1, style: chartStyle),
+            OverlayElement(type: .elevationChart, position: CGPoint(x: 0.213, y: 0.269), scale: 1, style: chartStyle),
+            OverlayElement(type: .elevationChart, position: CGPoint(x: 0.641, y: 0.318), scale: 1, style: chartStyle),
+            OverlayElement(type: .elevationChart, position: CGPoint(x: 0.259, y: 0.565), scale: 1, style: chartStyle)
+        ]
     }
 
     private func sampleRouteActivity() -> ActivityTimeline {

@@ -7,8 +7,10 @@
 
 /* Begin PBXBuildFile section */
 		6C37E615226F1B8FF494BE59 /* ExportBenchmarkCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FBA4A29449DD6E1B2E8BE72 /* ExportBenchmarkCommand.swift */; };
+		16FF772A3969374092F731BB /* HeadlessBenchmarkRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC559EBBA7D6CBFBD0ABE110 /* HeadlessBenchmarkRunner.swift */; };
 		BA70C27C166C867DFE129725 /* PresetFonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 461C22D4050609BA14549233 /* PresetFonts.swift */; };
 		FD596E89332F89187293F2C5 /* RunningOverlayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B3635999AFC1DB74B38849 /* RunningOverlayApp.swift */; };
+		C36F7A0AC35EBA570ACD3ABD /* RunningOverlayMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422C715ABE853E6DD27F309B /* RunningOverlayMain.swift */; };
 		FA54CF995BF15CB92457EDE4 /* RunningOverlayResources.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7025C2B0CBE7516EC095F597 /* RunningOverlayResources.swift */; };
 		E8D8B2ED4D1412381D917843 /* OverlayExportModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2731A5ED488BF53C7B40BA18 /* OverlayExportModels.swift */; };
 		9617DAAA67E9FE5BF2EB14DB /* OverlayFrameRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E11E7DC676C38E49C1E1C3B1 /* OverlayFrameRenderer.swift */; };
@@ -116,8 +118,10 @@
 
 /* Begin PBXFileReference section */
 		7FBA4A29449DD6E1B2E8BE72 /* ExportBenchmarkCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/ExportBenchmarkCommand.swift"; sourceTree = SOURCE_ROOT; };
+		EC559EBBA7D6CBFBD0ABE110 /* HeadlessBenchmarkRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/HeadlessBenchmarkRunner.swift"; sourceTree = SOURCE_ROOT; };
 		461C22D4050609BA14549233 /* PresetFonts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/PresetFonts.swift"; sourceTree = SOURCE_ROOT; };
 		E4B3635999AFC1DB74B38849 /* RunningOverlayApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/RunningOverlayApp.swift"; sourceTree = SOURCE_ROOT; };
+		422C715ABE853E6DD27F309B /* RunningOverlayMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/RunningOverlayMain.swift"; sourceTree = SOURCE_ROOT; };
 		7025C2B0CBE7516EC095F597 /* RunningOverlayResources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/RunningOverlayResources.swift"; sourceTree = SOURCE_ROOT; };
 		2731A5ED488BF53C7B40BA18 /* OverlayExportModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/OverlayExportModels.swift"; sourceTree = SOURCE_ROOT; };
 		E11E7DC676C38E49C1E1C3B1 /* OverlayFrameRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/OverlayFrameRenderer.swift"; sourceTree = SOURCE_ROOT; };
@@ -226,8 +230,10 @@
 		870B3294C0CBD48AF6BBCC1B = {isa = PBXGroup; children = (8309DD304D804F9D7F6302F5, 50F0FC3AFD5FBC981B5A0DDD, 805D39FC15AEDC4AD0E4E917, B6561938591A059DEBBCECA2, 62C2857EEBBA20131483F32E, 615B463D1028E4E24B674CF7); sourceTree = "<group>"; };
 		8309DD304D804F9D7F6302F5 /* Sources */ = {isa = PBXGroup; children = (
 			7FBA4A29449DD6E1B2E8BE72 /* ExportBenchmarkCommand.swift */,
+			EC559EBBA7D6CBFBD0ABE110 /* HeadlessBenchmarkRunner.swift */,
 			461C22D4050609BA14549233 /* PresetFonts.swift */,
 			E4B3635999AFC1DB74B38849 /* RunningOverlayApp.swift */,
+			422C715ABE853E6DD27F309B /* RunningOverlayMain.swift */,
 			7025C2B0CBE7516EC095F597 /* RunningOverlayResources.swift */,
 			2731A5ED488BF53C7B40BA18 /* OverlayExportModels.swift */,
 			E11E7DC676C38E49C1E1C3B1 /* OverlayFrameRenderer.swift */,
@@ -362,8 +368,10 @@
 /* Begin PBXSourcesBuildPhase section */
 		F612CD2E22E187AC48B5913C /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			6C37E615226F1B8FF494BE59 /* ExportBenchmarkCommand.swift in Sources */,
+			16FF772A3969374092F731BB /* HeadlessBenchmarkRunner.swift in Sources */,
 			BA70C27C166C867DFE129725 /* PresetFonts.swift in Sources */,
 			FD596E89332F89187293F2C5 /* RunningOverlayApp.swift in Sources */,
+			C36F7A0AC35EBA570ACD3ABD /* RunningOverlayMain.swift in Sources */,
 			FA54CF995BF15CB92457EDE4 /* RunningOverlayResources.swift in Sources */,
 			E8D8B2ED4D1412381D917843 /* OverlayExportModels.swift in Sources */,
 			9617DAAA67E9FE5BF2EB14DB /* OverlayFrameRenderer.swift in Sources */,
