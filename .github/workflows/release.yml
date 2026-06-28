@@ -1,9 +1,9 @@
-name: Release Candidate
+name: Release
 
 on:
   push:
     tags:
-      - "v*-rc.*"
+      - "v*"
 
 permissions:
   contents: write
@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  draft-prerelease:
+  github-release:
     runs-on: macos-15
     timeout-minutes: 60
     steps:
@@ -28,21 +28,26 @@ jobs:
           gh --version
           xcrun notarytool --version
 
-      - name: Validate release-candidate tag and version
+      - name: Validate release tag and version
         run: |
           set -euo pipefail
 
           tag="${GITHUB_REF_NAME}"
           case "$tag" in
-            v*-rc.*) ;;
+            v*-rc.*)
+              release_kind="rc"
+              marketing_version="${tag#v}"
+              marketing_version="${marketing_version%%-rc.*}"
+              ;;
+            v[0-9]*.[0-9]*.[0-9]*)
+              release_kind="final"
+              marketing_version="${tag#v}"
+              ;;
             *)
-              echo "Release-candidate workflow only accepts tags like v0.1.0-rc.1." >&2
+              echo "Release workflow only accepts tags like v0.1.0 or v0.1.0-rc.1." >&2
               exit 1
               ;;
           esac
-
-          version="${tag#v}"
-          marketing_version="${version%%-rc.*}"
 
           if ! [[ "$marketing_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Invalid marketing version parsed from tag: $marketing_version" >&2
@@ -64,6 +69,7 @@ jobs:
 
           {
             echo "tag=$tag"
+            echo "release_kind=$release_kind"
             echo "marketing_version=$marketing_version"
           } >> "$GITHUB_OUTPUT"
         id: version
@@ -192,34 +198,58 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p build/release
+          if [[ "${{ steps.version.outputs.release_kind }}" == "rc" ]]; then
+            release_label="release-candidate snapshot"
+            release_scope="draft pre-release"
+          else
+            release_label="stable release"
+            release_scope="public release"
+          fi
           {
-            printf 'Running Overlay %s is a release-candidate snapshot for version %s.\n\n' "${{ steps.version.outputs.tag }}" "${{ steps.version.outputs.marketing_version }}"
-            printf 'This draft pre-release is created from tag `%s` after build, test, visual-regression, publication-audit, App Store configuration, Developer ID signing, notarization, stapling, Gatekeeper, and optimized release-product checks pass.\n\n' "${{ steps.version.outputs.tag }}"
+            printf 'Running Overlay %s is a %s for version %s.\n\n' "${{ steps.version.outputs.tag }}" "$release_label" "${{ steps.version.outputs.marketing_version }}"
+            printf 'This %s is created from tag `%s` after build, test, visual-regression, publication-audit, App Store configuration, Developer ID signing, notarization, stapling, Gatekeeper, and optimized release-product checks pass.\n\n' "$release_scope" "${{ steps.version.outputs.tag }}"
             printf '## Assets\n\n'
             printf -- '- `%s`: notarized macOS arm64 app bundle built from `%s`.\n' "$zip_name" "${{ steps.version.outputs.tag }}"
             printf -- '- `%s`: SHA-256 checksum for the zip.\n\n' "$sha_name"
             printf 'The downloadable app is signed with Developer ID Application, notarized by Apple, stapled, and verified with `spctl`.\n'
           } > build/release/notes.md
 
-      - name: Create draft pre-release
+      - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
           if gh release view "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
-            gh release edit "${{ steps.version.outputs.tag }}" \
-              --draft \
-              --prerelease \
-              --title "Running Overlay ${{ steps.version.outputs.tag }}" \
-              --notes-file build/release/notes.md
+            if [[ "${{ steps.version.outputs.release_kind }}" == "rc" ]]; then
+              gh release edit "${{ steps.version.outputs.tag }}" \
+                --draft \
+                --prerelease \
+                --title "Running Overlay ${{ steps.version.outputs.tag }}" \
+                --notes-file build/release/notes.md
+            else
+              gh release edit "${{ steps.version.outputs.tag }}" \
+                --draft=false \
+                --prerelease=false \
+                --latest \
+                --title "Running Overlay ${{ steps.version.outputs.tag }}" \
+                --notes-file build/release/notes.md
+            fi
           else
-            gh release create "${{ steps.version.outputs.tag }}" \
-              --verify-tag \
-              --draft \
-              --prerelease \
-              --title "Running Overlay ${{ steps.version.outputs.tag }}" \
-              --notes-file build/release/notes.md
+            if [[ "${{ steps.version.outputs.release_kind }}" == "rc" ]]; then
+              gh release create "${{ steps.version.outputs.tag }}" \
+                --verify-tag \
+                --draft \
+                --prerelease \
+                --title "Running Overlay ${{ steps.version.outputs.tag }}" \
+                --notes-file build/release/notes.md
+            else
+              gh release create "${{ steps.version.outputs.tag }}" \
+                --verify-tag \
+                --latest \
+                --title "Running Overlay ${{ steps.version.outputs.tag }}" \
+                --notes-file build/release/notes.md
+            fi
           fi
 
           gh release upload "${{ steps.version.outputs.tag }}" \
