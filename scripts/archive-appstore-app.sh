@@ -5,9 +5,11 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 APP_PATH="$("$ROOT_DIR/scripts/build-appstore-app.sh")"
 ARCHIVE_DIR="$ROOT_DIR/build/AppStore/RunningOverlay.xcarchive"
 APP_INFO_PLIST="$APP_PATH/Contents/Info.plist"
+APP_BUNDLE_BASENAME="$(basename "$APP_PATH")"
 BUNDLE_ID="$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP_INFO_PLIST")"
 MARKETING_VERSION="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_INFO_PLIST")"
 BUILD_NUMBER="$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP_INFO_PLIST")"
+DISPLAY_NAME="$(/usr/libexec/PlistBuddy -c "Print :CFBundleDisplayName" "$APP_INFO_PLIST")"
 SIGNING_IDENTITY="${RUNNING_OVERLAY_SIGN_IDENTITY:-Ad Hoc}"
 
 rm -rf "$ARCHIVE_DIR"
@@ -22,7 +24,7 @@ cat > "$ARCHIVE_DIR/Info.plist" <<PLIST
 	<key>ApplicationProperties</key>
 	<dict>
 		<key>ApplicationPath</key>
-		<string>Applications/RunningOverlay.app</string>
+		<string>Applications/$APP_BUNDLE_BASENAME</string>
 		<key>ArchiveVersion</key>
 		<integer>2</integer>
 		<key>CFBundleIdentifier</key>
@@ -39,7 +41,7 @@ cat > "$ARCHIVE_DIR/Info.plist" <<PLIST
 	<key>CreationDate</key>
 	<date>2026-06-22T00:00:00Z</date>
 	<key>Name</key>
-	<string>RunningOverlay</string>
+	<string>$DISPLAY_NAME</string>
 	<key>SchemeName</key>
 	<string>RunningOverlay</string>
 </dict>

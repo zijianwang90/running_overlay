@@ -34,8 +34,10 @@ This document tracks the first Mac App Store submission path for Running Overlay
 - `scripts/build-appstore-app.sh`: builds the SwiftPM release executable, assembles a macOS `.app`, copies resources and the privacy manifest, and signs with entitlements.
 - `scripts/archive-appstore-app.sh`: creates a local `.xcarchive`-shaped artifact from the packaged app for preflight inspection.
 - `scripts/validate-appstore-config.sh`: validates plist/json syntax and reports placeholder account/product values.
-- `.github/workflows/release.yml`: validates `v*-rc.*` tags and creates draft
-  GitHub pre-releases for source-snapshot release-candidate checks.
+- `.github/workflows/release.yml`: validates `v*-rc.*` tags, signs the app with
+  Developer ID, submits it for Apple notarization, staples the result, verifies
+  Gatekeeper acceptance, and creates draft GitHub pre-releases with macOS arm64
+  zip assets plus SHA-256 checksums.
 
 ## Build And Signing
 
@@ -101,6 +103,9 @@ same source and resource tree.
   account and keep the Apple Developer Team ID in ignored
   `Config/LocalSigning.xcconfig`.
 - Run privacy report / App Store validation with the final dependency graph, Keychain behavior, and signing identity.
+- Verify the GitHub Release notarization workflow with the final Developer ID
+  and App Store Connect API secrets before promoting a release candidate to a
+  stable tag.
 - Complete manual sandbox QA for file import, video import, template import/export, weather, MapKit, and MOV export.
 - Confirm clip, full-activity, test-frame, test-clip, and overlay-JSON exports
   succeed after selecting a destination folder in the sandboxed app.
