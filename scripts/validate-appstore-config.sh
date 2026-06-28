@@ -46,7 +46,21 @@ done
 
 /usr/bin/xcrun xcodebuild -project "$ROOT_DIR/RunningOverlay.xcodeproj" -list >/dev/null
 
-placeholder_pattern="DEVELOPMENT_TEAM =[[:space:]]*$|support URL|privacy policy URL|TODO"
+effective_team="$(
+  /usr/bin/xcrun xcodebuild \
+    -project "$ROOT_DIR/RunningOverlay.xcodeproj" \
+    -scheme RunningOverlay \
+    -configuration Release \
+    -showBuildSettings 2>/dev/null |
+    /usr/bin/awk -F= '/^[[:space:]]*DEVELOPMENT_TEAM[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print $2; exit}'
+)"
+
+if [[ -z "$effective_team" ]]; then
+  echo "App Store placeholder still needs product/account value:"
+  echo "$ROOT_DIR/Config/AppStore.xcconfig:8:DEVELOPMENT_TEAM ="
+fi
+
+placeholder_pattern="support URL|privacy policy URL|TODO"
 if [[ -x /opt/homebrew/bin/rg ]]; then
   placeholder_search=(/opt/homebrew/bin/rg -n "$placeholder_pattern")
 elif [[ -x /usr/local/bin/rg ]]; then

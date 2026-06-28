@@ -8,12 +8,19 @@ and tests; both build paths compile the same files under
 ## Release Configuration
 
 - Keep App Store-only bundle metadata in `AppStore/Info.plist`.
+- Keep `CFBundleDisplayName` and `CFBundleName` aligned with the App Store
+  Connect product name. The internal target, executable, and module name can
+  remain `RunningOverlay`.
 - Keep sandbox permissions in `AppStore/RunningOverlay.entitlements`.
 - Keep privacy declarations in `AppStore/PrivacyInfo.xcprivacy`. Update them
   whenever file access, network services, location use, credential handling,
   analytics, or third-party SDK behavior changes.
 - Use `Config/AppStore.xcconfig` for product defaults and placeholders that must
   be replaced by real Apple Developer account values before submission.
+- Keep account-specific signing overrides in ignored
+  `Config/LocalSigning.xcconfig`. Copy
+  `Config/LocalSigning.xcconfig.example`, set `DEVELOPMENT_TEAM`, and let
+  `Config/AppStore.xcconfig` include it locally.
 - Regenerate `RunningOverlay.xcodeproj` with
   `scripts/generate-xcode-project.rb` after adding or removing Swift source
   files, bundled resources, or legal notices. The shared `RunningOverlay`
@@ -49,10 +56,10 @@ xcodebuild \
 ```
 
 The unsigned commands verify the complete app and archive structure before an
-Apple Developer team is available. For App Store upload, set `DEVELOPMENT_TEAM`
-in `Config/AppStore.xcconfig`, select the registered App ID in Xcode, archive
-without `CODE_SIGNING_ALLOWED=NO`, then validate and distribute through
-Organizer.
+Apple Developer team is available. For App Store upload, copy
+`Config/LocalSigning.xcconfig.example` to `Config/LocalSigning.xcconfig`, set
+`DEVELOPMENT_TEAM`, select the registered App ID in Xcode, archive without
+`CODE_SIGNING_ALLOWED=NO`, then validate and distribute through Organizer.
 
 The older `scripts/build-appstore-app.sh` and
 `scripts/archive-appstore-app.sh` remain useful for SwiftPM-based bundle

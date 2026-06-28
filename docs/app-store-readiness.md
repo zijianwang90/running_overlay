@@ -1,6 +1,6 @@
 # Mac App Store Readiness
 
-Last updated: 2026-06-25
+Last updated: 2026-06-27
 
 This document tracks the first Mac App Store submission path for Running Overlay.
 
@@ -9,6 +9,7 @@ This document tracks the first Mac App Store submission path for Running Overlay
 - Target channel: Mac App Store first submission.
 - Target scope: existing core app capabilities, including FIT import, video import, timeline editing, overlay design, Route Map, Weather Widget, and transparent MOV export.
 - Development branch: `develop` after integration of the App Store readiness work.
+- App Store name: `Running Overlay Studio`.
 - Bundle identifier: `io.github.zijianwang90.runningoverlay`.
 - Keychain service: `io.github.zijianwang90.runningoverlay.credentials`.
 
@@ -20,7 +21,10 @@ This document tracks the first Mac App Store submission path for Running Overlay
 - `AppStore/Assets.xcassets`: production Running Overlay app icon in all ten
   macOS icon slots plus the app accent color.
 - `Config/AppStore.xcconfig`: release defaults for the selected bundle id,
-  marketing version, build number, deployment target, and signing placeholders.
+  marketing version, build number, deployment target, and a local signing
+  include.
+- `Config/LocalSigning.xcconfig.example`: template for ignored local Apple
+  Developer Team and signing overrides.
 - `RunningOverlay.xcodeproj`: native macOS Application target with a shared
   scheme, Debug/Release configurations, App Sandbox entitlements, privacy
   manifest, resources, legal notices, and Archive support.
@@ -44,7 +48,16 @@ xcodebuild -project RunningOverlay.xcodeproj -scheme RunningOverlay \
   CODE_SIGNING_ALLOWED=NO archive
 ```
 
-Distribution signing requires real Apple Developer account values:
+Distribution signing requires real Apple Developer account values. For the
+Xcode archive path, copy `Config/LocalSigning.xcconfig.example` to ignored
+`Config/LocalSigning.xcconfig` and set the Apple Developer Team ID:
+
+```xcconfig
+DEVELOPMENT_TEAM = YOURTEAMID
+CODE_SIGN_STYLE = Automatic
+```
+
+The legacy SwiftPM bundle scripts can also be signed with environment values:
 
 ```sh
 RUNNING_OVERLAY_BUNDLE_ID="com.yourcompany.RunningOverlay" \
@@ -73,7 +86,7 @@ same source and resource tree.
 - Category: Photo & Video.
 - Secondary category candidate: Sports.
 - Subtitle draft: `Sports data overlays for running videos`.
-- Description draft: Running Overlay helps runners and video creators turn FIT activity data into transparent video overlays for editors such as Final Cut Pro, DaVinci Resolve, and Premiere.
+- Description draft: Running Overlay Studio helps runners and video creators turn FIT activity data into transparent video overlays for editors such as Final Cut Pro, DaVinci Resolve, and Premiere.
 - Keywords draft: `running,FIT,overlay,video,telemetry,Garmin,route,weather`.
 - Review notes should explain how to import a FIT file, import one or more videos, match clips on the timeline, add overlays, and export alpha-capable MOV files.
 - Privacy policy URL, support URL, marketing URL, copyright owner, and
@@ -82,7 +95,8 @@ same source and resource tree.
 ## Remaining Release Blockers
 
 - Register `io.github.zijianwang90.runningoverlay` in the Apple Developer
-  account and fill the Apple Developer Team ID after membership activation.
+  account and keep the Apple Developer Team ID in ignored
+  `Config/LocalSigning.xcconfig`.
 - Run privacy report / App Store validation with the final dependency graph, Keychain behavior, and signing identity.
 - Complete manual sandbox QA for file import, video import, template import/export, weather, MapKit, and MOV export.
 - Confirm clip, full-activity, test-frame, test-clip, and overlay-JSON exports
