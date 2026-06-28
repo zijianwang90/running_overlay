@@ -15,7 +15,7 @@ concurrency:
 jobs:
   draft-prerelease:
     runs-on: macos-15
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
         with:
@@ -26,6 +26,7 @@ jobs:
           swift --version
           xcodebuild -version
           gh --version
+          xcrun notarytool --version
 
       - name: Validate release-candidate tag and version
         run: |
@@ -77,23 +78,151 @@ jobs:
       - name: Build release product
         run: swift build -c release --product RunningOverlay
 
+      - name: Import Developer ID certificate
+        env:
+          DEVELOPER_ID_APPLICATION_CERTIFICATE_P12: ${{ secrets.DEVELOPER_ID_APPLICATION_CERTIFICATE_P12 }}
+          DEVELOPER_ID_APPLICATION_CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_APPLICATION_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${DEVELOPER_ID_APPLICATION_CERTIFICATE_P12}" ]]; then
+            echo "Missing DEVELOPER_ID_APPLICATION_CERTIFICATE_P12 secret." >&2
+            exit 1
+          fi
+          if [[ -z "${DEVELOPER_ID_APPLICATION_CERTIFICATE_PASSWORD}" ]]; then
+            echo "Missing DEVELOPER_ID_APPLICATION_CERTIFICATE_PASSWORD secret." >&2
+            exit 1
+          fi
+
+          certificate_path="$RUNNER_TEMP/developer-id-application.p12"
+          keychain_path="$RUNNER_TEMP/release-signing.keychain-db"
+          keychain_password="$(uuidgen)"
+
+          printf '%s' "$DEVELOPER_ID_APPLICATION_CERTIFICATE_P12" | base64 -D > "$certificate_path"
+
+          security create-keychain -p "$keychain_password" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security unlock-keychain -p "$keychain_password" "$keychain_path"
+          security import "$certificate_path" \
+            -P "$DEVELOPER_ID_APPLICATION_CERTIFICATE_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$keychain_path"
+          security list-keychains -d user -s "$keychain_path" $(security list-keychains -d user | sed 's/[ "]//g')
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$keychain_password" "$keychain_path"
+          security find-identity -v -p codesigning "$keychain_path"
+
+      - name: Build signed app bundle
+        env:
+          RUNNING_OVERLAY_SIGN_IDENTITY: ${{ secrets.DEVELOPER_ID_APPLICATION_SIGNING_IDENTITY }}
+          RUNNING_OVERLAY_MARKETING_VERSION: ${{ steps.version.outputs.marketing_version }}
+          RUNNING_OVERLAY_BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${RUNNING_OVERLAY_SIGN_IDENTITY}" ]]; then
+            echo "Missing DEVELOPER_ID_APPLICATION_SIGNING_IDENTITY secret." >&2
+            exit 1
+          fi
+
+          app_path="$(scripts/build-appstore-app.sh)"
+          echo "app_path=$app_path" >> "$GITHUB_ENV"
+          codesign --display --verbose=2 "$app_path"
+
+      - name: Notarize and staple app
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+        run: |
+          set -euo pipefail
+
+          for secret_name in ASC_KEY_ID ASC_ISSUER_ID ASC_API_KEY_P8; do
+            if [[ -z "${!secret_name}" ]]; then
+              echo "Missing ${secret_name} secret." >&2
+              exit 1
+            fi
+          done
+
+          api_key_path="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_API_KEY_P8" > "$api_key_path"
+
+          notarization_zip="$RUNNER_TEMP/RunningOverlay-notarization.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$app_path" "$notarization_zip"
+
+          xcrun notarytool submit "$notarization_zip" \
+            --key "$api_key_path" \
+            --key-id "$ASC_KEY_ID" \
+            --issuer "$ASC_ISSUER_ID" \
+            --wait
+
+          xcrun stapler staple "$app_path"
+          xcrun stapler validate "$app_path"
+          spctl -a -vv "$app_path"
+
+      - name: Package release assets
+        run: |
+          set -euo pipefail
+
+          asset_dir="build/release"
+          tag="${{ steps.version.outputs.tag }}"
+          zip_name="RunningOverlay-${tag}-macOS-arm64.zip"
+          sha_name="${zip_name}.sha256"
+
+          rm -rf "$asset_dir"
+          mkdir -p "$asset_dir"
+
+          ditto -c -k --sequesterRsrc --keepParent "$app_path" "$asset_dir/$zip_name"
+          (
+            cd "$asset_dir"
+            shasum -a 256 "$zip_name" > "$sha_name"
+          )
+
+          {
+            echo "asset_dir=$asset_dir"
+            echo "zip_name=$zip_name"
+            echo "sha_name=$sha_name"
+          } >> "$GITHUB_ENV"
+
+          ls -lh "$asset_dir"
+          cat "$asset_dir/$sha_name"
+
       - name: Prepare release notes
         run: |
           set -euo pipefail
           mkdir -p build/release
           {
-            printf 'Running Overlay %s is a release-candidate source snapshot for version %s.\n\n' "${{ steps.version.outputs.tag }}" "${{ steps.version.outputs.marketing_version }}"
-            printf 'This draft pre-release is created from tag `%s` after build, test, visual-regression, publication-audit, and App Store configuration checks pass.\n\n' "${{ steps.version.outputs.tag }}"
-            printf 'Distribution-signed App Store builds are produced through the Xcode archive and App Store Connect flow from the same release commit. This GitHub pre-release intentionally does not attach an unsigned or non-notarized app bundle.\n'
+            printf 'Running Overlay %s is a release-candidate snapshot for version %s.\n\n' "${{ steps.version.outputs.tag }}" "${{ steps.version.outputs.marketing_version }}"
+            printf 'This draft pre-release is created from tag `%s` after build, test, visual-regression, publication-audit, App Store configuration, Developer ID signing, notarization, stapling, Gatekeeper, and optimized release-product checks pass.\n\n' "${{ steps.version.outputs.tag }}"
+            printf '## Assets\n\n'
+            printf -- '- `%s`: notarized macOS arm64 app bundle built from `%s`.\n' "$zip_name" "${{ steps.version.outputs.tag }}"
+            printf -- '- `%s`: SHA-256 checksum for the zip.\n\n' "$sha_name"
+            printf 'The downloadable app is signed with Developer ID Application, notarized by Apple, stapled, and verified with `spctl`.\n'
           } > build/release/notes.md
 
       - name: Create draft pre-release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ steps.version.outputs.tag }}" \
-            --verify-tag \
-            --draft \
-            --prerelease \
-            --title "Running Overlay ${{ steps.version.outputs.tag }}" \
-            --notes-file build/release/notes.md
+          set -euo pipefail
+
+          if gh release view "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            gh release edit "${{ steps.version.outputs.tag }}" \
+              --draft \
+              --prerelease \
+              --title "Running Overlay ${{ steps.version.outputs.tag }}" \
+              --notes-file build/release/notes.md
+          else
+            gh release create "${{ steps.version.outputs.tag }}" \
+              --verify-tag \
+              --draft \
+              --prerelease \
+              --title "Running Overlay ${{ steps.version.outputs.tag }}" \
+              --notes-file build/release/notes.md
+          fi
+
+          gh release upload "${{ steps.version.outputs.tag }}" \
+            "$asset_dir/$zip_name" \
+            "$asset_dir/$sha_name" \
+            --clobber
