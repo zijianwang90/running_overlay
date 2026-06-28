@@ -8,7 +8,7 @@
 
 **Tech Stack:** Swift 6, SwiftUI (`ImageRenderer`), `OverlayRenderModel`, Swift Testing, `./scripts/check.sh`, local `--benchmark-export` snapshots.
 
-**Branch:** `feature/elevation-chart-export-optimization` from `develop` (sibling worktree per `AGENTS.md`).
+**Branch:** `feature/elevation-chart-export-optimization` from `main` (sibling worktree per `AGENTS.md`).
 
 **Human review required:** export render-path changes, timing-domain sampling, visual parity.
 

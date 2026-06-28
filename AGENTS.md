@@ -14,8 +14,7 @@ with source video and exports transparent sports-data overlay videos.
 - Package manager: Swift Package Manager
 - Minimum platform: macOS 15
 - Tests: Swift Testing
-- Default development branch: `develop`
-- Release branch: `main`
+- Default branch: `main`
 
 ## Start Here
 
@@ -83,10 +82,10 @@ If `just` is installed, the equivalent commands are `just check`,
 
 ## Branches And Worktrees
 
-- Small fixes may be made directly on `develop`.
-- New independent features branch from `develop` and use a sibling worktree.
+- Start all changes from the latest `main`.
 - Use short-lived branches and merge through pull requests.
-- `main` is reserved for release-ready code.
+- Independent large features should use a sibling worktree.
+- Keep `main` protected and release-ready; do not commit directly to it.
 - Never rewrite contributor history or discard unrelated working-tree changes.
 
 ## Definition Of Done

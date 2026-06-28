@@ -9,7 +9,7 @@ This document tracks the first Mac App Store submission path for Running Overlay
 - Target channel: Mac App Store first submission.
 - First public version: `0.1.0`.
 - Target scope: existing core app capabilities, including FIT import, video import, timeline editing, overlay design, Route Map, Weather Widget, and transparent MOV export.
-- Development branch: `develop` after integration of the App Store readiness work.
+- Default branch: `main`; all changes land through pull requests.
 - App Store name: `Running Overlay Studio`.
 - Bundle identifier: `io.github.zijianwang90.runningoverlay`.
 - Keychain service: `io.github.zijianwang90.runningoverlay.credentials`.

@@ -31,7 +31,7 @@ Completed controls:
 
 Before changing repository visibility:
 
-1. Merge the readiness branch into `develop`.
+1. Merge the readiness branch into `main` through a pull request.
 2. Run `./scripts/check.sh`, `./scripts/visual-test.sh`, and
    `./scripts/publication-audit.sh` on the merge commit.
 3. Confirm the repository owner is intentionally licensing the repository
@@ -47,9 +47,8 @@ Before changing repository visibility:
    - protect `main`;
    - require the CI check before merge;
    - disable force pushes and branch deletion for protected branches.
-7. After final integration, use `main` as the default contribution target and
-   remove the long-lived `develop` branch. All subsequent changes should use
-   short-lived branches and pull requests.
+7. Use `main` as the default contribution target. All subsequent changes
+   should use short-lived branches and pull requests.
 8. Publish an initial release only after release packaging and end-user
    installation instructions are separately verified.
 

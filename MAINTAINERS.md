@@ -41,8 +41,9 @@ Do not merge draft pull requests, failing required checks, unresolved review
 threads, unrelated generated diffs, or changes without a clear summary.
 Exceptions require a maintainer to document the reason and remaining risk.
 
-Normal contributions target `develop`. `main` remains release-only. Force
-pushes and deletion should be disabled for both protected branches.
+Normal contributions target `main` through pull requests. Keep `main`
+protected and release-ready. Force pushes and deletion should be disabled for
+protected branches.
 
 ## Release Policy
 
