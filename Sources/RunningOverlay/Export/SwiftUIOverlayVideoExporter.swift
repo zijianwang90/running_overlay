@@ -27,8 +27,20 @@ enum SwiftUIOverlayExportError: LocalizedError {
 struct ExportRenderPlan: Equatable {
     static let dynamicFullFrameAreaThreshold: Double = 0.85
     static let perOverlayAreaThreshold: Double = 0.85
+    /// When the dynamic union triggers full-frame fallback because widgets are
+    /// far apart, per-overlay rendering may still win if every overlay stays
+    /// small and the summed padded areas remain bounded.
+    static let perOverlayMaxIndividualAreaThreshold: Double = 0.55
+    static let perOverlayDispersedSumAreaThreshold: Double = 2.5
+    /// Fixed per-item ImageRenderer overhead expressed as a fraction of a
+    /// full-canvas render. Stops dispersed layouts with many widgets from
+    /// selecting per-overlay when summed rect area alone looks acceptable.
+    static let perOverlayItemOverhead: Double = 0.10
     static let numericBatchAreaThreshold: Double = 0.45
     static let safePadding: CGFloat = 96
+
+    /// Runtime kill switch for elevation chart static fill cache benchmarks.
+    nonisolated(unsafe) static var elevationChartStaticFillCacheEnabled = true
 
     var canvasSize: CGSize
     var allOverlays: [OverlayElement]
@@ -39,6 +51,10 @@ struct ExportRenderPlan: Equatable {
     var usesFullFrameDynamicRender: Bool
     var overlayRenderItems: [ExportOverlayRenderItem]
     var overlayRenderAreaRatio: Double
+    /// Largest single padded overlay rect as a fraction of the canvas area.
+    var maxIndividualOverlayAreaRatio: Double
+    /// Sum of padded overlay areas plus per-item ImageRenderer overhead.
+    var estimatedPerOverlayRenderCost: Double
     var usesPerOverlayRender: Bool
     var renderPath: OverlayExportRenderPath {
         if usesPerOverlayRender {
@@ -89,7 +105,8 @@ struct ExportRenderPlan: Equatable {
                 id: element.id,
                 elements: [element],
                 renderRect: paddedOverlayRect,
-                usesRouteMapStaticCache: Self.canUseRouteMapStaticCache(for: element, context: context)
+                usesRouteMapStaticCache: Self.canUseRouteMapStaticCache(for: element, context: context),
+                usesElevationChartStaticFillCache: Self.canUseElevationChartStaticFillCache(for: element, context: context)
             )
         }
         let overlayItems = Self.overlayItemsByBatchingNumericOverlays(
@@ -97,15 +114,29 @@ struct ExportRenderPlan: Equatable {
             canvasRect: canvasRect
         )
         overlayRenderItems = overlayItems
-        overlayRenderAreaRatio = canvasRect.width > 0 && canvasRect.height > 0
-            ? overlayItems.map { Double(($0.renderRect.width * $0.renderRect.height) / (canvasRect.width * canvasRect.height)) }.reduce(0, +)
+        let canvasArea = canvasRect.width * canvasRect.height
+        overlayRenderAreaRatio = canvasArea > 0
+            ? overlayItems.map { Double(($0.renderRect.width * $0.renderRect.height) / canvasArea) }.reduce(0, +)
             : 0
+        maxIndividualOverlayAreaRatio = canvasArea > 0
+            ? overlayItems.map { Double(($0.renderRect.width * $0.renderRect.height) / canvasArea) }.max() ?? 0
+            : 0
+        estimatedPerOverlayRenderCost = overlayRenderAreaRatio
+            + Double(overlayItems.count) * Self.perOverlayItemOverhead
+        let cacheEligibleChartCount = overlayItems.filter { item in
+            item.elements.count == 1
+                && Self.canUseElevationChartStaticFillCache(for: item.elements[0], context: context)
+        }.count
+        let qualifiesForDispersedPerOverlay = overlayItems.count >= 2
+            && cacheEligibleChartCount >= 2
+            && maxIndividualOverlayAreaRatio < Self.perOverlayMaxIndividualAreaThreshold
+            && estimatedPerOverlayRenderCost < Self.perOverlayDispersedSumAreaThreshold
         usesPerOverlayRender = usesFullFrameDynamicRender
             && staticOverlays.isEmpty
             && !dynamicOverlays.isEmpty
             && individualOverlayItems.count == dynamicOverlays.count
             && overlayItems.map(\.elements.count).reduce(0, +) == dynamicOverlays.count
-            && overlayRenderAreaRatio < Self.perOverlayAreaThreshold
+            && (overlayRenderAreaRatio < Self.perOverlayAreaThreshold || qualifiesForDispersedPerOverlay)
     }
 
     static func isStaticOverlay(_ element: OverlayElement) -> Bool {
@@ -123,6 +154,43 @@ struct ExportRenderPlan: Equatable {
         }
         let layout = OverlayRenderModel.routeMapLayout(for: element, in: context)
         return layout.geometry != nil && (layout.statsBarLayout?.items.isEmpty ?? true)
+    }
+
+    /// Whether a full-profile elevation chart can use the static fill cache:
+    /// the chart geometry (grid, axis, area fill, line) is identical on every
+    /// frame, so it is baked once and only the cheap current-position marker is
+    /// re-rendered per frame. The dual-area progress boundary is reproduced by
+    /// cropping a baked lower-fill layer, so dual area is eligible too.
+    ///
+    /// Excludes charts whose per-frame content cannot be reduced to the marker:
+    /// progress-to-current mode (geometry grows), big numbers and a visible
+    /// stats bar (data text changes per frame), and the shared foreground glow
+    /// (applied to the whole composite, which the layered cache cannot match).
+    static func canUseElevationChartStaticFillCache(for element: OverlayElement, context: OverlayRenderContext) -> Bool {
+        guard elevationChartStaticFillCacheEnabled else {
+            return false
+        }
+        guard element.type == .elevationChart else {
+            return false
+        }
+        let style = element.style.elevationChart
+        guard style.progressMode == .fullProfile else {
+            return false
+        }
+        guard style.fillEnabled, style.chartStyle == .area else {
+            return false
+        }
+        guard !style.bigNumbersEnabled else {
+            return false
+        }
+        guard !element.style.glowEnabled else {
+            return false
+        }
+        let layout = OverlayRenderModel.elevationChartLayout(for: element, in: context)
+        guard layout.statsBarLayout == nil else {
+            return false
+        }
+        return true
     }
 
     static func isNumericBatchCandidate(_ element: OverlayElement) -> Bool {
@@ -265,6 +333,7 @@ struct ExportOverlayRenderItem: Equatable {
     var elements: [OverlayElement]
     var renderRect: CGRect
     var usesRouteMapStaticCache: Bool
+    var usesElevationChartStaticFillCache = false
 
     var element: OverlayElement {
         elements[0]
@@ -304,6 +373,31 @@ private struct ExportOverlayRenderedImage {
     var overlayID: UUID
     var cgImage: CGImage
     var renderRect: CGRect
+}
+
+/// Baked static layers for a full-profile elevation chart. The chart geometry
+/// is identical every frame, so the background chrome, grid, axis, base fill,
+/// and line are rendered once. Only the current-position marker is rendered per
+/// frame. For dual-area charts the lower fill is baked separately and cropped
+/// to the right of the playback boundary each frame, reproducing the moving
+/// two-tone split without re-rasterizing the chart.
+struct ExportElevationChartStaticFillCache {
+    var overlayID: UUID
+    var renderRect: CGRect
+    /// Chrome + grid + axis line + base (upper/single) fill. No line, marker, or labels.
+    var backLayer: CGImage
+    /// Dual-area lower fill only (full width). `nil` for single-area charts.
+    var lowerLayer: CGImage?
+    /// Chart line + glow only.
+    var lineLayer: CGImage
+    var isDual: Bool
+    /// Geometry used to map the playback progress to a pixel column in the
+    /// baked layer images (all in design points == pixels at export scale 1).
+    var canvasWidth: Double
+    var positionX: Double
+    var cardWidth: Double
+    var horizontalPadding: Double
+    var chartAreaWidth: Double
 }
 
 private struct ExportOverlayRenderStats {
@@ -384,6 +478,21 @@ struct SwiftUIOverlayVideoExporter {
             ? 0
             : Date().timeIntervalSince(routeMapStaticLayerStartedAt)
 
+        let elevationChartStaticLayerStartedAt = Date()
+        var elevationChartStaticFillCache: [UUID: ExportElevationChartStaticFillCache] = [:]
+        if renderPlan.usesPerOverlayRender {
+            for item in renderPlan.overlayRenderItems where item.usesElevationChartStaticFillCache {
+                elevationChartStaticFillCache[item.id] = try await buildElevationChartStaticFillCache(
+                    item: item,
+                    canvasSize: renderPlan.canvasSize,
+                    activity: job.activity
+                )
+            }
+        }
+        let elevationChartStaticRenderDuration = elevationChartStaticFillCache.isEmpty
+            ? 0
+            : Date().timeIntervalSince(elevationChartStaticLayerStartedAt)
+
         var segmentProfiles: [OverlayExportSegmentProfile] = []
 
         for (index, segment) in job.segments.enumerated() {
@@ -398,8 +507,9 @@ struct SwiftUIOverlayVideoExporter {
                 job: job,
                 renderPlan: renderPlan,
                 staticLayer: staticLayer,
-                staticRenderDuration: index == 0 ? staticRenderDuration + routeMapStaticRenderDuration : 0,
+                staticRenderDuration: index == 0 ? staticRenderDuration + routeMapStaticRenderDuration + elevationChartStaticRenderDuration : 0,
                 routeMapStaticLayerCache: routeMapStaticLayerCache,
+                elevationChartStaticFillCache: elevationChartStaticFillCache,
                 routeMapSnapshots: routeMapSnapshots,
                 progress: progress
             )
@@ -468,6 +578,7 @@ struct SwiftUIOverlayVideoExporter {
         staticLayer: CGImage?,
         staticRenderDuration: TimeInterval,
         routeMapStaticLayerCache: [UUID: ExportOverlayRenderedImage],
+        elevationChartStaticFillCache: [UUID: ExportElevationChartStaticFillCache],
         routeMapSnapshots: RouteMapSnapshotCache,
         progress: @escaping @MainActor (OverlayExportProgress) -> Void
     ) async throws -> OverlayExportSegmentProfile {
@@ -604,6 +715,36 @@ struct SwiftUIOverlayVideoExporter {
                                 showsContainerEffects: false
                             ) else {
                                 throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce a route map marker image.")
+                            }
+                            renderedImage = markerImage
+                        } else if item.usesElevationChartStaticFillCache, let cache = elevationChartStaticFillCache[item.id] {
+                            let progressContext = OverlayRenderContext(
+                                canvasSize: renderPlan.canvasSize,
+                                activity: job.activity,
+                                elapsedTime: sample.sampleElapsed
+                            )
+                            let progress = OverlayRenderModel.elevationChartLayout(for: item.element, in: progressContext).progress
+                            guard let markerImage = try await renderElevationChartLayer(
+                                size: renderPlan.canvasSize,
+                                renderRect: item.renderRect,
+                                element: item.element,
+                                activity: job.activity,
+                                elapsedTime: sample.sampleElapsed,
+                                visibility: elevationChartMarkerVisibility
+                            ) else {
+                                throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce an elevation chart marker image.")
+                            }
+                            let draws = elevationChartCompositeDrawList(
+                                cache: cache,
+                                markerImage: markerImage,
+                                progress: progress
+                            )
+                            for draw in draws.dropLast() {
+                                renderedImages.append(ExportOverlayRenderedImage(
+                                    overlayID: item.id,
+                                    cgImage: draw.0,
+                                    renderRect: draw.1
+                                ))
                             }
                             renderedImage = markerImage
                         } else {
@@ -1044,6 +1185,206 @@ struct SwiftUIOverlayVideoExporter {
         return cgImage
     }
 
+    private static func renderElevationChartLayer(
+        size: CGSize,
+        renderRect: CGRect,
+        element: OverlayElement,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval,
+        visibility: ElevationChartLayerVisibility
+    ) async throws -> CGImage? {
+        guard renderRect.width > 0, renderRect.height > 0 else {
+            return nil
+        }
+
+        guard let cgImage = await MainActor.run(body: {
+            autoreleasepool {
+                let layerView = SwiftUIElevationChartLayerView(
+                    canvasSize: size,
+                    renderRect: renderRect,
+                    element: element,
+                    activity: activity,
+                    elapsedTime: elapsedTime,
+                    visibility: visibility
+                )
+                let renderer = ImageRenderer(content: layerView)
+                renderer.isOpaque = false
+                renderer.proposedSize = ProposedViewSize(width: renderRect.width, height: renderRect.height)
+                renderer.scale = 1
+                return renderer.cgImage
+            }
+        }) else {
+            throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce an elevation chart layer image.")
+        }
+        return cgImage
+    }
+
+    /// Visibility for the static base layer: chrome, grid, axis line, and the
+    /// base (upper/single) fill. Outer effects (shadow/glow) are applied here
+    /// so the composite keeps a single drop shadow.
+    static let elevationChartBaseVisibility = ElevationChartLayerVisibility(
+        showsContainerChrome: true,
+        showsGrid: true,
+        showsAxisLine: true,
+        showsAxisLabels: false,
+        fillMode: .baseFill,
+        showsLine: false,
+        showsMarker: false,
+        showsStatsBar: false,
+        showsBigNumbers: false,
+        appliesOuterEffects: true
+    )
+
+    /// Visibility for the dual-area lower fill layer (fill only, nothing else).
+    static let elevationChartLowerVisibility = ElevationChartLayerVisibility(
+        showsContainerChrome: false,
+        showsGrid: false,
+        showsAxisLine: false,
+        showsAxisLabels: false,
+        fillMode: .lowerOnly,
+        showsLine: false,
+        showsMarker: false,
+        showsStatsBar: false,
+        showsBigNumbers: false,
+        appliesOuterEffects: false
+    )
+
+    /// Visibility for the static line layer (line + glow only).
+    static let elevationChartLineVisibility = ElevationChartLayerVisibility(
+        showsContainerChrome: false,
+        showsGrid: false,
+        showsAxisLine: false,
+        showsAxisLabels: false,
+        fillMode: .none,
+        showsLine: true,
+        showsMarker: false,
+        showsStatsBar: false,
+        showsBigNumbers: false,
+        appliesOuterEffects: false
+    )
+
+    /// Visibility for the per-frame dynamic layer: current marker plus axis
+    /// labels (labels sit above the marker to match the standard z-order).
+    static let elevationChartMarkerVisibility = ElevationChartLayerVisibility(
+        showsContainerChrome: false,
+        showsGrid: false,
+        showsAxisLine: false,
+        showsAxisLabels: true,
+        fillMode: .none,
+        showsLine: false,
+        showsMarker: true,
+        showsStatsBar: false,
+        showsBigNumbers: false,
+        appliesOuterEffects: false
+    )
+
+    /// Pixel column (from the left edge of the baked layer image) where the
+    /// dual-area playback boundary falls, matching the live mask at
+    /// `chartAreaWidth * progress`. All inputs are design points, which equal
+    /// pixels because export renders at scale 1.
+    static func elevationChartCutXInImage(
+        progress: Double,
+        cache: ExportElevationChartStaticFillCache
+    ) -> Double {
+        let clamped = max(0, min(1, progress))
+        let cardLeft = cache.canvasWidth * cache.positionX - cache.cardWidth / 2
+        let chartAreaLeft = cardLeft + cache.horizontalPadding
+        return chartAreaLeft + cache.chartAreaWidth * clamped - cache.renderRect.minX
+    }
+
+    /// Ordered draw list compositing the baked static layers with the dynamic
+    /// marker for a given progress: base, dual-area lower fill cropped to the
+    /// right of the boundary, line, then marker.
+    static func elevationChartCompositeDrawList(
+        cache: ExportElevationChartStaticFillCache,
+        markerImage: CGImage,
+        progress: Double
+    ) -> [(CGImage, CGRect)] {
+        var draws: [(CGImage, CGRect)] = [(cache.backLayer, cache.renderRect)]
+        if cache.isDual, let lower = cache.lowerLayer {
+            let imageWidth = lower.width
+            let cutX = elevationChartCutXInImage(progress: progress, cache: cache)
+            let cutPixel = max(0, min(imageWidth, Int(cutX.rounded())))
+            if cutPixel < imageWidth {
+                let cropRect = CGRect(x: cutPixel, y: 0, width: imageWidth - cutPixel, height: lower.height)
+                if let cropped = lower.cropping(to: cropRect) {
+                    let destRect = CGRect(
+                        x: cache.renderRect.minX + Double(cutPixel),
+                        y: cache.renderRect.minY,
+                        width: Double(imageWidth - cutPixel),
+                        height: cache.renderRect.height
+                    )
+                    draws.append((cropped, destRect))
+                }
+            }
+        }
+        draws.append((cache.lineLayer, cache.renderRect))
+        draws.append((markerImage, cache.renderRect))
+        return draws
+    }
+
+    private static func buildElevationChartStaticFillCache(
+        item: ExportOverlayRenderItem,
+        canvasSize: CGSize,
+        activity: ActivityTimeline
+    ) async throws -> ExportElevationChartStaticFillCache {
+        let element = item.element
+        let context = OverlayRenderContext(canvasSize: canvasSize, activity: activity, elapsedTime: 0)
+        let layout = OverlayRenderModel.elevationChartLayout(for: element, in: context)
+        let isDual = element.style.elevationChart.dualAreaEnabled
+
+        guard let backLayer = try await renderElevationChartLayer(
+            size: canvasSize,
+            renderRect: item.renderRect,
+            element: element,
+            activity: activity,
+            elapsedTime: 0,
+            visibility: elevationChartBaseVisibility
+        ) else {
+            throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce an elevation chart base layer.")
+        }
+
+        var lowerLayer: CGImage?
+        if isDual {
+            guard let lower = try await renderElevationChartLayer(
+                size: canvasSize,
+                renderRect: item.renderRect,
+                element: element,
+                activity: activity,
+                elapsedTime: 0,
+                visibility: elevationChartLowerVisibility
+            ) else {
+                throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce an elevation chart lower-fill layer.")
+            }
+            lowerLayer = lower
+        }
+
+        guard let lineLayer = try await renderElevationChartLayer(
+            size: canvasSize,
+            renderRect: item.renderRect,
+            element: element,
+            activity: activity,
+            elapsedTime: 0,
+            visibility: elevationChartLineVisibility
+        ) else {
+            throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce an elevation chart line layer.")
+        }
+
+        return ExportElevationChartStaticFillCache(
+            overlayID: item.id,
+            renderRect: item.renderRect,
+            backLayer: backLayer,
+            lowerLayer: lowerLayer,
+            lineLayer: lineLayer,
+            isDual: isDual,
+            canvasWidth: canvasSize.width,
+            positionX: element.position.x,
+            cardWidth: layout.rect.width,
+            horizontalPadding: layout.horizontalPadding,
+            chartAreaWidth: layout.rect.width - layout.horizontalPadding * 2
+        )
+    }
+
     private static func clear(pixelBuffer: CVPixelBuffer, size: CGSize) throws {
         CVPixelBufferLockBaseAddress(pixelBuffer, [])
         defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, []) }
@@ -1141,6 +1482,105 @@ struct SwiftUIOverlayVideoExporter {
             width: rect.width,
             height: rect.height
         )
+    }
+
+    /// Composites an ordered draw list (top-left rects) into a fresh canvas-sized
+    /// premultiplied BGRA buffer, mirroring `clearAndDraw(cgImages:)`. Returned as
+    /// raw bytes for parity comparison in tests.
+    static func rasterizeCanvas(draws: [(CGImage, CGRect)], canvasSize: CGSize) -> [UInt8]? {
+        let width = Int(canvasSize.width)
+        let height = Int(canvasSize.height)
+        guard width > 0, height > 0 else { return nil }
+        let bytesPerRow = width * 4
+        var data = [UInt8](repeating: 0, count: bytesPerRow * height)
+        let success = data.withUnsafeMutableBytes { rawBuffer -> Bool in
+            guard let context = CGContext(
+                data: rawBuffer.baseAddress,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: bytesPerRow,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
+            ) else {
+                return false
+            }
+            context.clear(CGRect(origin: .zero, size: canvasSize))
+            for (cgImage, rect) in draws {
+                context.draw(cgImage, in: pixelBufferDrawRect(forTopLeftRect: rect, canvasSize: canvasSize))
+            }
+            return true
+        }
+        return success ? data : nil
+    }
+
+    /// Mean and max per-byte difference between the static-fill-cache composite
+    /// and a full single-pass render of the same elevation chart at a given
+    /// elapsed time. Test seam for verifying export pixel parity.
+    static func elevationChartStaticFillParity(
+        element: OverlayElement,
+        canvasSize: CGSize,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval
+    ) async throws -> (meanAbsDiff: Double, maxAbsDiff: Int, progress: Double) {
+        let baseContext = OverlayRenderContext(canvasSize: canvasSize, activity: activity, elapsedTime: 0)
+        guard let rawRect = ExportRenderPlan.renderRect(for: element, context: baseContext) else {
+            throw SwiftUIOverlayExportError.noSupportedOverlays
+        }
+        let canvasRect = CGRect(origin: .zero, size: canvasSize)
+        let renderRect = rawRect
+            .insetBy(dx: -ExportRenderPlan.safePadding, dy: -ExportRenderPlan.safePadding)
+            .intersection(canvasRect)
+            .integral
+        let item = ExportOverlayRenderItem(
+            id: element.id,
+            elements: [element],
+            renderRect: renderRect,
+            usesRouteMapStaticCache: false,
+            usesElevationChartStaticFillCache: true
+        )
+        let cache = try await buildElevationChartStaticFillCache(item: item, canvasSize: canvasSize, activity: activity)
+
+        guard let reference = try await renderLayer(
+            size: canvasSize,
+            renderRect: renderRect,
+            overlays: [element],
+            activity: activity,
+            elapsedTime: elapsedTime,
+            routeMapSnapshots: RouteMapSnapshotCache()
+        ) else {
+            throw SwiftUIOverlayExportError.appendFailed("Reference render produced no image.")
+        }
+        guard let markerImage = try await renderElevationChartLayer(
+            size: canvasSize,
+            renderRect: renderRect,
+            element: element,
+            activity: activity,
+            elapsedTime: elapsedTime,
+            visibility: elevationChartMarkerVisibility
+        ) else {
+            throw SwiftUIOverlayExportError.appendFailed("Marker render produced no image.")
+        }
+        let progress = OverlayRenderModel.elevationChartLayout(
+            for: element,
+            in: OverlayRenderContext(canvasSize: canvasSize, activity: activity, elapsedTime: elapsedTime)
+        ).progress
+        let composite = elevationChartCompositeDrawList(cache: cache, markerImage: markerImage, progress: progress)
+
+        guard let referenceBuffer = rasterizeCanvas(draws: [(reference, renderRect)], canvasSize: canvasSize),
+              let compositeBuffer = rasterizeCanvas(draws: composite, canvasSize: canvasSize) else {
+            throw SwiftUIOverlayExportError.cannotCreatePixelBuffer
+        }
+
+        var total = 0.0
+        var maxDiff = 0
+        let count = min(referenceBuffer.count, compositeBuffer.count)
+        for index in 0..<count {
+            let diff = abs(Int(referenceBuffer[index]) - Int(compositeBuffer[index]))
+            total += Double(diff)
+            if diff > maxDiff { maxDiff = diff }
+        }
+        return (total / Double(max(count, 1)), maxDiff, progress)
     }
 
     private static func outputURL(for segment: OverlayExportSegment, destinationURL: URL) -> URL {
@@ -1420,6 +1860,31 @@ private struct SwiftUIRouteMapLayerView: View {
                 showsBaseContent: showsBaseContent,
                 showsCurrentMarker: showsCurrentMarker,
                 showsContainerEffects: showsContainerEffects
+            )
+            .position(x: canvasSize.width * element.position.x, y: canvasSize.height * element.position.y)
+            .offset(x: -renderRect.minX, y: -renderRect.minY)
+        }
+        .frame(width: renderRect.width, height: renderRect.height, alignment: .topLeading)
+        .clipped()
+    }
+}
+
+private struct SwiftUIElevationChartLayerView: View {
+    let canvasSize: CGSize
+    let renderRect: CGRect
+    let element: OverlayElement
+    let activity: ActivityTimeline
+    let elapsedTime: TimeInterval
+    let visibility: ElevationChartLayerVisibility
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            let context = OverlayRenderContext(canvasSize: canvasSize, activity: activity, elapsedTime: elapsedTime)
+            let layout = OverlayRenderModel.elevationChartLayout(for: element, in: context)
+            OverlaySharedElevationChartView(
+                element: element,
+                layout: layout,
+                visibility: visibility
             )
             .position(x: canvasSize.width * element.position.x, y: canvasSize.height * element.position.y)
             .offset(x: -renderRect.minX, y: -renderRect.minY)

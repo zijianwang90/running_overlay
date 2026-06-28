@@ -51,14 +51,50 @@ struct OverlaySharedRouteMapView: View {
     }
 }
 
+/// How the elevation chart area fill is drawn for a given render pass. Used by
+/// the SwiftUI export static-fill cache to bake reusable layers. `.standard`
+/// reproduces the normal preview/export appearance and is the default.
+enum ElevationChartFillRenderMode {
+    /// Normal appearance: single fill, or dual-area upper plus progress-masked
+    /// lower fill.
+    case standard
+    /// Base fill drawn full width with no progress mask: dual-area draws the
+    /// upper fill only; single-area draws its single fill.
+    case baseFill
+    /// Dual-area lower fill only, full width, no mask, nothing else. Composited
+    /// (cropped to the right of progress) on top of the base fill so the line
+    /// layer can still sit above it.
+    case lowerOnly
+    /// No area fill at all (used by the dynamic marker layer).
+    case none
+}
+
+/// Per-layer visibility used to bake static export layers and render the cheap
+/// dynamic marker layer. Defaults reproduce the full preview appearance so the
+/// live preview and normal export paths are unaffected.
+struct ElevationChartLayerVisibility: Equatable {
+    var showsContainerChrome = true
+    var showsGrid = true
+    var showsAxisLine = true
+    var showsAxisLabels = true
+    var fillMode: ElevationChartFillRenderMode = .standard
+    var showsLine = true
+    var showsMarker = true
+    var showsStatsBar = true
+    var showsBigNumbers = true
+    var appliesOuterEffects = true
+}
+
 struct OverlaySharedElevationChartView: View {
     let element: OverlayElement
     let layout: OverlayElevationChartRenderLayout
+    var visibility = ElevationChartLayerVisibility()
 
     var body: some View {
         ElevationChartOverlayView(
             element: element,
-            layout: layout
+            layout: layout,
+            visibility: visibility
         )
     }
 }
