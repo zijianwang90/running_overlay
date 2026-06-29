@@ -80,7 +80,7 @@ Current implementation:
 - Interval Timeline labels are direct display settings: current active laps use Work Dist/Time, current non-active laps use Rest Kind/Dist/Time, and non-current neighbor labels can be Off, Distance, or Time.
 - Interval Timeline centered overflow uses compact `···` edge hints only; WU/CD ghost labels and `xN` hidden-count boxes are not rendered.
 - Zone Edge Bar is available as an independent HR/pace zone overlay for edge-pinned or free placement. It reads Project Settings HR/pace zones and thresholds, renders current and threshold markers, supports horizontal and vertical bars, and shares the HR-zone palette used by Project Settings and Interval HUD Bar. See `docs/design/overlays/zone-edge-bar/zone-edge-bar-overlay-ui.md` and `docs/overlay-modules/zone-edge-bar-overlay.md`.
-- Elevation chart overlays render line/area charts with playhead markers; Smoothing filters quantized elevation samples and draws curved paths in both preview and export, including Progress mode.
+- Elevation chart overlays render line/area charts with playhead markers; Smoothing filters quantized elevation samples and draws curved paths in both preview and export, including Progress mode. Current marker sizes are resolved in `OverlayRenderModel` from the shared canvas scale and the marker size multiplier so preview and SwiftUI export remain proportional.
 - Running Gauge overlays render circular ticks, a progress ring, section dividers, and core run metrics in both preview and export.
 - Route Map overlays render the route path, start marker, finish marker, and current-position marker in both preview and export.
 - `OverlayRenderModel` provides the shared layout data used by SwiftUI preview and AVFoundation export rendering.

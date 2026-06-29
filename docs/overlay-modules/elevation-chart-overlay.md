@@ -21,7 +21,7 @@ The Elevation Chart overlay is a dedicated `.elevationChart` module for renderin
 - Bottom-strip sizing: layout width supports `220...1200` design points and height supports `72...320`. Compact heights reduce vertical chart padding proportionally instead of forcing the earlier 52-point chart minimum, allowing a wide, low elevation profile to sit along the bottom of a 1280-point reference canvas without covering as much footage.
 - Dimension decoding clamps imported or legacy values to the supported range so malformed templates cannot create an unusable chart frame.
 - Axis & Labels: `Grid`, `Axis Line`, and `Labels` toggles control the horizontal grid, left Y-axis stroke, and min/max/unit labels. Preview and export share the same axis-line rendering. The current-marker playhead guide is suppressed on the chart's left edge so it does not duplicate the optional Y-axis line.
-- Markers: `Current`, `Playhead Line`, `Marker Color`, and `Value Label` control the current-position marker. `Playhead Line` toggles the vertical dashed guide that tracks playback progress.
+- Markers: `Current`, `Playhead Line`, `Marker Color`, `Size`, and `Value Label` control the current-position marker. `Size` scales the marker from the shared render model so preview and SwiftUI export stay proportional at different canvas resolutions. `Playhead Line` toggles the vertical dashed guide that tracks playback progress.
 
 ## Presets
 

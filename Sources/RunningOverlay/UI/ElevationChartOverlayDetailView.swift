@@ -177,7 +177,18 @@ struct ElevationChartOverlayDetailView: View {
         InspectorDenseRow(label: "Marker Color") {
             InspectorDenseSwatchStrip(presets: colorPresets, selected: style.markerColor) { set(\.markerColor, to: $0) }
         }
+        .opacity(style.currentMarkerEnabled ? 1 : 0.5)
+        .disabled(!style.currentMarkerEnabled)
+        InspectorDenseSliderRow(
+            label: "Size",
+            value: elevationBinding(\.markerSizeMultiplier, of: style, continuous: true),
+            range: 0.25...4,
+            displayText: String(format: "%.2f×", style.markerSizeMultiplier),
+            isEnabled: style.currentMarkerEnabled
+        )
         InspectorDenseRow(label: "Value Label") { toggle(style.markerLabelEnabled) { set(\.markerLabelEnabled, to: $0) } }
+            .opacity(style.currentMarkerEnabled ? 1 : 0.5)
+            .disabled(!style.currentMarkerEnabled)
     }
 
     @ViewBuilder

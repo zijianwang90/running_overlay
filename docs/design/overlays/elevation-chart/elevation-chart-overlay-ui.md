@@ -1,6 +1,6 @@
 # Elevation Chart Overlay UI Design Spec
 
-Last updated: 2026-06-18
+Last updated: 2026-06-29
 
 ## Purpose
 
@@ -473,14 +473,16 @@ Controls:
 
 ```text
 Current Marker
-Min Marker
-Max Marker
-Start Marker
-End Marker
+Playhead Line
+Marker Color
 Marker Size
-Marker Style
-Marker Label
+Value Label
 ```
+
+`Marker Size` is a multiplier (`markerSizeMultiplier`) over the default
+current-marker halo, dot, ring, stroke, and glow sizes. The renderer resolves
+the final sizes from the shared 1280x720 canvas scale in `OverlayRenderModel`
+so fitted preview and SwiftUI export remain proportional.
 
 ### Marker Config
 
@@ -518,6 +520,7 @@ Default:
 currentMarker.enabled = true
 currentMarker.style = .ring
 currentMarker.size = 9
+currentMarker.sizeMultiplier = 1
 currentMarker.fillColor = accentBlue
 currentMarker.borderColor = white
 currentMarker.borderWidth = 2

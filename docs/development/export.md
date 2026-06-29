@@ -67,7 +67,7 @@
   data.
 - Distance Timeline static/dynamic SwiftUI splitting was benchmarked and reverted after Test10/Test11 because the additional SwiftUI render passes increased `imageRenderDuration` more than the reduced draw cost helped.
 - `ImageRenderer` and pixel-buffer CGContext operations run inside autorelease boundaries to reduce temporary object buildup during long exports.
-- Each completed export task writes `export_profile_<timestamp>.json` and `export_profile_<timestamp>.csv` into the destination folder with whole-export totals, per-segment timing/reuse metrics, static/dynamic layer metrics, render-path diagnostics, per-overlay render metrics, and frame-level outlier metrics.
+- Debug builds write `export_profile_<timestamp>.json` and `export_profile_<timestamp>.csv` into the destination folder after each completed export task with whole-export totals, per-segment timing/reuse metrics, static/dynamic layer metrics, render-path diagnostics, per-overlay render metrics, and frame-level outlier metrics. Production builds do not write these profiling sidecar files.
 - Export profiling stores per-segment render/draw/frame p50, p95, max, slow-frame count, and the 10 slowest frame samples in JSON so benchmark outliers can be tied back to frame index and `sampleElapsed`.
 
 Pending:

@@ -463,6 +463,29 @@ struct OverlayRenderModelTests {
         #expect(abs(hdBar.itemSpacing - halfBar.itemSpacing * 2) < 0.001)
     }
 
+    @Test func elevationChartCurrentMarkerScalesWithCanvasSizeAndMultiplier() {
+        var style = OverlayStyle.default
+        style.elevationChart.markerSizeMultiplier = 1.5
+        let element = OverlayElement(type: .elevationChart, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let activity = sampleActivity()
+
+        let hd = OverlayRenderModel.elevationChartLayout(
+            for: element,
+            in: OverlayRenderContext(canvasSize: OverlayRenderContext.referenceCanvasSize, activity: activity, elapsedTime: 5)
+        )
+        let half = OverlayRenderModel.elevationChartLayout(
+            for: element,
+            in: OverlayRenderContext(canvasSize: CGSize(width: 640, height: 360), activity: activity, elapsedTime: 5)
+        )
+
+        #expect(abs(hd.markerHaloSize - 40.5) < 0.001)
+        #expect(abs(hd.markerDotSize - 12) < 0.001)
+        #expect(abs(hd.markerRingSize - 19.5) < 0.001)
+        #expect(abs(hd.markerHaloSize - half.markerHaloSize * 2) < 0.001)
+        #expect(abs(hd.markerDotSize - half.markerDotSize * 2) < 0.001)
+        #expect(abs(hd.markerRingSize - half.markerRingSize * 2) < 0.001)
+    }
+
     @Test func elevationChartStatsBarLayoutAbsentWhenHidden() {
         var style = OverlayStyle.default
         style.elevationChart.statsBar.visible = false
@@ -576,7 +599,19 @@ struct OverlayRenderModelTests {
         let style = try JSONDecoder().decode(ElevationChartStyle.self, from: json)
 
         #expect(style.currentMarkerEnabled)
+        #expect(style.markerSizeMultiplier == 1)
         #expect(style.markerPlayheadLineEnabled == ElevationChartStyle.preset(.gradientArea).markerPlayheadLineEnabled)
+    }
+
+    @Test func elevationChartStyleClampsDecodedMarkerSizeMultiplier() throws {
+        let small = #"{"preset":"gradientArea","markerSizeMultiplier":0.01}"#.data(using: .utf8)!
+        let large = #"{"preset":"gradientArea","markerSizeMultiplier":9}"#.data(using: .utf8)!
+
+        let smallStyle = try JSONDecoder().decode(ElevationChartStyle.self, from: small)
+        let largeStyle = try JSONDecoder().decode(ElevationChartStyle.self, from: large)
+
+        #expect(smallStyle.markerSizeMultiplier == 0.25)
+        #expect(largeStyle.markerSizeMultiplier == 4)
     }
 
     @Test func elevationChartSmoothingSoftensQuantizedStairStepsAndPreservesEndpoints() {

@@ -336,6 +336,11 @@ enum OverlayRenderModel {
             cornerRadius: context.scaled(style.cornerRadius * element.scale),
             chartHeight: context.scaled(chartHeight * element.scale),
             lineWidth: max(context.scaled(1), context.scaled(style.lineWidth * element.scale)),
+            markerHaloSize: context.scaled(27 * element.scale * style.markerSizeMultiplier),
+            markerDotSize: context.scaled(8 * element.scale * style.markerSizeMultiplier),
+            markerRingSize: context.scaled(13 * element.scale * style.markerSizeMultiplier),
+            markerRingStrokeWidth: max(context.scaled(2 * element.scale * style.markerSizeMultiplier), 0.5),
+            markerGlowBlurRadius: context.scaled(6 * element.scale * style.markerSizeMultiplier),
             progress: progress,
             samples: renderedSamples
         )
@@ -2236,6 +2241,11 @@ struct OverlayElevationChartRenderLayout {
     var cornerRadius: Double
     var chartHeight: Double
     var lineWidth: Double
+    var markerHaloSize: Double
+    var markerDotSize: Double
+    var markerRingSize: Double
+    var markerRingStrokeWidth: Double
+    var markerGlowBlurRadius: Double
     var progress: Double
     var samples: [Double]
 }

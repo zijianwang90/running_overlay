@@ -1,6 +1,6 @@
 {
   "name": "Elevation Chart Overlay UI",
-  "updated": "2026-04-29",
+  "updated": "2026-06-29",
   "references": {
     "designDoc": "./elevation-chart-overlay-ui.md",
     "relatedRouteMapStatusBarSpec": "../route-map/route-map-overlay-ui.spec.json",
@@ -373,6 +373,7 @@
       "controls": [
         { "id": "currentMarker", "type": "markerEditor", "modelPath": "markers.current" },
         { "id": "playheadLineEnabled", "type": "toggle", "modelPath": "markers.current.playheadLineEnabled", "enabledWhen": "markers.current.enabled" },
+        { "id": "markerSizeMultiplier", "type": "sliderWithNumber", "modelPath": "markers.current.sizeMultiplier", "range": [0.25, 4], "enabledWhen": "markers.current.enabled" },
         { "id": "minMarker", "type": "markerEditor", "modelPath": "markers.min" },
         { "id": "maxMarker", "type": "markerEditor", "modelPath": "markers.max" },
         { "id": "startMarker", "type": "markerEditor", "modelPath": "markers.start" },

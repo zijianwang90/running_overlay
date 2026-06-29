@@ -1153,6 +1153,7 @@ struct ElevationChartStyle: Equatable, Codable {
     var lowerFillColor: OverlayColor
     var currentMarkerEnabled: Bool
     var markerColor: OverlayColor
+    var markerSizeMultiplier: Double
     var markerPlayheadLineEnabled: Bool
     var markerLabelEnabled: Bool
     var gridEnabled: Bool
@@ -1201,6 +1202,7 @@ struct ElevationChartStyle: Equatable, Codable {
             lowerFillColor: .cyan,
             currentMarkerEnabled: true,
             markerColor: .blue,
+            markerSizeMultiplier: 1,
             markerPlayheadLineEnabled: true,
             markerLabelEnabled: true,
             gridEnabled: false,
@@ -1349,6 +1351,7 @@ extension ElevationChartStyle {
         case lowerFillColor
         case currentMarkerEnabled
         case markerColor
+        case markerSizeMultiplier
         case markerPlayheadLineEnabled
         case markerLabelEnabled
         case gridEnabled
@@ -1405,6 +1408,7 @@ extension ElevationChartStyle {
         lowerFillColor = try container.decodeIfPresent(OverlayColor.self, forKey: .lowerFillColor) ?? defaults.lowerFillColor
         currentMarkerEnabled = try container.decodeIfPresent(Bool.self, forKey: .currentMarkerEnabled) ?? defaults.currentMarkerEnabled
         markerColor = try container.decodeIfPresent(OverlayColor.self, forKey: .markerColor) ?? defaults.markerColor
+        markerSizeMultiplier = min(max(try container.decodeIfPresent(Double.self, forKey: .markerSizeMultiplier) ?? defaults.markerSizeMultiplier, 0.25), 4)
         markerPlayheadLineEnabled = try container.decodeIfPresent(Bool.self, forKey: .markerPlayheadLineEnabled) ?? defaults.markerPlayheadLineEnabled
         markerLabelEnabled = try container.decodeIfPresent(Bool.self, forKey: .markerLabelEnabled) ?? defaults.markerLabelEnabled
         gridEnabled = try container.decodeIfPresent(Bool.self, forKey: .gridEnabled) ?? defaults.gridEnabled
@@ -1452,6 +1456,7 @@ extension ElevationChartStyle {
         try container.encode(lowerFillColor, forKey: .lowerFillColor)
         try container.encode(currentMarkerEnabled, forKey: .currentMarkerEnabled)
         try container.encode(markerColor, forKey: .markerColor)
+        try container.encode(markerSizeMultiplier, forKey: .markerSizeMultiplier)
         try container.encode(markerPlayheadLineEnabled, forKey: .markerPlayheadLineEnabled)
         try container.encode(markerLabelEnabled, forKey: .markerLabelEnabled)
         try container.encode(gridEnabled, forKey: .gridEnabled)
