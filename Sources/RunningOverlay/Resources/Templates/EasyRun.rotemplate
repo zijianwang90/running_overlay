@@ -894,7 +894,7 @@
             "fontSize": 26,
             "fontWeight": "semibold"
           },
-          "dataSource": "fitTemperature",
+          "dataSource": "openMeteo",
           "dividerColor": {
             "alpha": 1,
             "blue": 1,
@@ -909,7 +909,7 @@
           "humidityMetricLabel": "RH",
           "humiditySuffix": "RH",
           "iconSize": 54,
-          "locationText": "大阪, 日本",
+          "locationText": "",
           "locationTextStyle": {
             "color": {
               "alpha": 1,
@@ -921,7 +921,7 @@
             "fontSize": 19,
             "fontWeight": "bold"
           },
-          "manualCondition": "rain",
+          "manualCondition": "sunny",
           "manualFeelsLike": 21,
           "manualHigh": 16,
           "manualHumidity": 87,
@@ -984,7 +984,8 @@
           },
           "temperatureUnit": "celsius",
           "width": 300,
-          "windMetricLabel": "Wind"
+          "windMetricLabel": "Wind",
+          "cachedWeather": null
         }
       },
       "type": "pace"
@@ -1882,7 +1883,7 @@
             "fontSize": 26,
             "fontWeight": "semibold"
           },
-          "dataSource": "fitTemperature",
+          "dataSource": "openMeteo",
           "dividerColor": {
             "alpha": 1,
             "blue": 1,
@@ -1897,7 +1898,7 @@
           "humidityMetricLabel": "RH",
           "humiditySuffix": "RH",
           "iconSize": 54,
-          "locationText": "大阪, 日本",
+          "locationText": "",
           "locationTextStyle": {
             "color": {
               "alpha": 1,
@@ -1909,7 +1910,7 @@
             "fontSize": 19,
             "fontWeight": "bold"
           },
-          "manualCondition": "rain",
+          "manualCondition": "sunny",
           "manualFeelsLike": 21,
           "manualHigh": 16,
           "manualHumidity": 87,
@@ -1972,7 +1973,8 @@
           },
           "temperatureUnit": "celsius",
           "width": 300,
-          "windMetricLabel": "Wind"
+          "windMetricLabel": "Wind",
+          "cachedWeather": null
         }
       },
       "type": "heartRate"
@@ -2870,7 +2872,7 @@
             "fontSize": 26,
             "fontWeight": "semibold"
           },
-          "dataSource": "fitTemperature",
+          "dataSource": "openMeteo",
           "dividerColor": {
             "alpha": 1,
             "blue": 1,
@@ -2885,7 +2887,7 @@
           "humidityMetricLabel": "RH",
           "humiditySuffix": "RH",
           "iconSize": 54,
-          "locationText": "大阪, 日本",
+          "locationText": "",
           "locationTextStyle": {
             "color": {
               "alpha": 1,
@@ -2897,7 +2899,7 @@
             "fontSize": 19,
             "fontWeight": "bold"
           },
-          "manualCondition": "rain",
+          "manualCondition": "sunny",
           "manualFeelsLike": 21,
           "manualHigh": 16,
           "manualHumidity": 87,
@@ -2960,7 +2962,8 @@
           },
           "temperatureUnit": "celsius",
           "width": 300,
-          "windMetricLabel": "Wind"
+          "windMetricLabel": "Wind",
+          "cachedWeather": null
         }
       },
       "type": "cadence"
@@ -3858,7 +3861,7 @@
             "fontSize": 26,
             "fontWeight": "semibold"
           },
-          "dataSource": "fitTemperature",
+          "dataSource": "openMeteo",
           "dividerColor": {
             "alpha": 1,
             "blue": 1,
@@ -3873,7 +3876,7 @@
           "humidityMetricLabel": "RH",
           "humiditySuffix": "RH",
           "iconSize": 54,
-          "locationText": "大阪, 日本",
+          "locationText": "",
           "locationTextStyle": {
             "color": {
               "alpha": 1,
@@ -3885,7 +3888,7 @@
             "fontSize": 19,
             "fontWeight": "bold"
           },
-          "manualCondition": "rain",
+          "manualCondition": "sunny",
           "manualFeelsLike": 21,
           "manualHigh": 16,
           "manualHumidity": 87,
@@ -3948,7 +3951,8 @@
           },
           "temperatureUnit": "celsius",
           "width": 300,
-          "windMetricLabel": "Wind"
+          "windMetricLabel": "Wind",
+          "cachedWeather": null
         }
       },
       "type": "routeMap"
@@ -4846,7 +4850,7 @@
             "fontSize": 26,
             "fontWeight": "semibold"
           },
-          "dataSource": "fitTemperature",
+          "dataSource": "openMeteo",
           "dividerColor": {
             "alpha": 1,
             "blue": 1,
@@ -4861,7 +4865,7 @@
           "humidityMetricLabel": "RH",
           "humiditySuffix": "RH",
           "iconSize": 54,
-          "locationText": "大阪, 日本",
+          "locationText": "",
           "locationTextStyle": {
             "color": {
               "alpha": 1,
@@ -4873,7 +4877,7 @@
             "fontSize": 19,
             "fontWeight": "bold"
           },
-          "manualCondition": "rain",
+          "manualCondition": "sunny",
           "manualFeelsLike": 21,
           "manualHigh": 16,
           "manualHumidity": 87,
@@ -4936,7 +4940,8 @@
           },
           "temperatureUnit": "celsius",
           "width": 300,
-          "windMetricLabel": "Wind"
+          "windMetricLabel": "Wind",
+          "cachedWeather": null
         }
       },
       "type": "distanceTimeline"
@@ -5834,7 +5839,7 @@
             "fontSize": 26,
             "fontWeight": "semibold"
           },
-          "dataSource": "fitTemperature",
+          "dataSource": "openMeteo",
           "dividerColor": {
             "alpha": 1,
             "blue": 1,
@@ -5849,7 +5854,7 @@
           "humidityMetricLabel": "RH",
           "humiditySuffix": "RH",
           "iconSize": 54,
-          "locationText": "大阪, 日本",
+          "locationText": "",
           "locationTextStyle": {
             "color": {
               "alpha": 1,
@@ -5861,7 +5866,7 @@
             "fontSize": 19,
             "fontWeight": "bold"
           },
-          "manualCondition": "rain",
+          "manualCondition": "sunny",
           "manualFeelsLike": 21,
           "manualHigh": 16,
           "manualHumidity": 87,
@@ -5924,7 +5929,8 @@
           },
           "temperatureUnit": "celsius",
           "width": 300,
-          "windMetricLabel": "Wind"
+          "windMetricLabel": "Wind",
+          "cachedWeather": null
         }
       },
       "type": "elapsedTime"
@@ -6822,7 +6828,7 @@
             "fontSize": 26,
             "fontWeight": "semibold"
           },
-          "dataSource": "fitTemperature",
+          "dataSource": "openMeteo",
           "dividerColor": {
             "alpha": 1,
             "blue": 1,
@@ -6837,7 +6843,7 @@
           "humidityMetricLabel": "RH",
           "humiditySuffix": "RH",
           "iconSize": 54,
-          "locationText": "大阪, 日本",
+          "locationText": "",
           "locationTextStyle": {
             "color": {
               "alpha": 1,
@@ -6849,7 +6855,7 @@
             "fontSize": 19,
             "fontWeight": "bold"
           },
-          "manualCondition": "rain",
+          "manualCondition": "sunny",
           "manualFeelsLike": 21,
           "manualHigh": 16,
           "manualHumidity": 87,
@@ -6912,7 +6918,8 @@
           },
           "temperatureUnit": "celsius",
           "width": 300,
-          "windMetricLabel": "Wind"
+          "windMetricLabel": "Wind",
+          "cachedWeather": null
         }
       },
       "type": "realTime"
@@ -7810,7 +7817,7 @@
             "fontSize": 26,
             "fontWeight": "semibold"
           },
-          "dataSource": "fitTemperature",
+          "dataSource": "openMeteo",
           "dividerColor": {
             "alpha": 1,
             "blue": 1,
@@ -7825,7 +7832,7 @@
           "humidityMetricLabel": "RH",
           "humiditySuffix": "RH",
           "iconSize": 54,
-          "locationText": "大阪, 日本",
+          "locationText": "",
           "locationTextStyle": {
             "color": {
               "alpha": 1,
@@ -7837,7 +7844,7 @@
             "fontSize": 19,
             "fontWeight": "bold"
           },
-          "manualCondition": "rain",
+          "manualCondition": "sunny",
           "manualFeelsLike": 21,
           "manualHigh": 16,
           "manualHumidity": 87,
@@ -7900,7 +7907,8 @@
           },
           "temperatureUnit": "celsius",
           "width": 300,
-          "windMetricLabel": "Wind"
+          "windMetricLabel": "Wind",
+          "cachedWeather": null
         }
       },
       "type": "power"
@@ -8778,18 +8786,7 @@
         },
         "valueOpacity": 1,
         "weatherWidget": {
-          "cachedWeather": {
-            "condition": "cloudy",
-            "feelsLikeCelsius": 7.8,
-            "fetchLocationMode": "activityLocation",
-            "highTemperatureCelsius": 13.1,
-            "humidity": 35,
-            "lowTemperatureCelsius": -0.2,
-            "resolvedLocation": "Peterborough, Canada",
-            "sourceDate": 800316446,
-            "temperatureCelsius": 12,
-            "windKph": 11.3
-          },
+          "cachedWeather": null,
           "cardBackgroundColor": {
             "alpha": 1,
             "blue": 1,
@@ -8825,7 +8822,7 @@
           "humidityMetricLabel": "RH",
           "humiditySuffix": "RH",
           "iconSize": 54,
-          "locationText": "Peterborough",
+          "locationText": "",
           "locationTextStyle": {
             "color": {
               "alpha": 1,
@@ -8837,7 +8834,7 @@
             "fontSize": 19,
             "fontWeight": "bold"
           },
-          "manualCondition": "rain",
+          "manualCondition": "sunny",
           "manualFeelsLike": 21,
           "manualHigh": 16,
           "manualHumidity": 87,

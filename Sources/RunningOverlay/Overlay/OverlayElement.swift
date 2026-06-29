@@ -438,6 +438,7 @@ struct OverlayStyle: Equatable, Codable {
     var unitOption: OverlayUnitOption
     var elevationDisplayMode: OverlayElevationDisplayMode
     var useFITTemperature: Bool
+    var manualTemperatureCelsius: Double?
     var showLabel: Bool
     var showUnit: Bool
     var customLabel: String
@@ -607,6 +608,7 @@ struct OverlayStyle: Equatable, Codable {
         unitOption: .paceMetric,
         elevationDisplayMode: .current,
         useFITTemperature: true,
+        manualTemperatureCelsius: nil,
         showLabel: false,
         showUnit: true,
         customLabel: "",
@@ -718,6 +720,7 @@ struct OverlayStyle: Equatable, Codable {
         unitOption: OverlayUnitOption = .paceMetric,
         elevationDisplayMode: OverlayElevationDisplayMode = .current,
         useFITTemperature: Bool = true,
+        manualTemperatureCelsius: Double? = nil,
         showLabel: Bool = false,
         showUnit: Bool = true,
         customLabel: String = "",
@@ -827,6 +830,7 @@ struct OverlayStyle: Equatable, Codable {
         self.unitOption = unitOption
         self.elevationDisplayMode = elevationDisplayMode
         self.useFITTemperature = useFITTemperature
+        self.manualTemperatureCelsius = manualTemperatureCelsius
         self.showLabel = showLabel
         self.showUnit = showUnit
         self.customLabel = customLabel
@@ -939,6 +943,7 @@ struct OverlayStyle: Equatable, Codable {
         unitOption = try container.decodeIfPresent(OverlayUnitOption.self, forKey: .unitOption) ?? Self.default.unitOption
         elevationDisplayMode = try container.decodeIfPresent(OverlayElevationDisplayMode.self, forKey: .elevationDisplayMode) ?? Self.default.elevationDisplayMode
         useFITTemperature = try container.decodeIfPresent(Bool.self, forKey: .useFITTemperature) ?? Self.default.useFITTemperature
+        manualTemperatureCelsius = try container.decodeIfPresent(Double.self, forKey: .manualTemperatureCelsius)
         showLabel = try container.decodeIfPresent(Bool.self, forKey: .showLabel) ?? Self.default.showLabel
         showUnit = try container.decodeIfPresent(Bool.self, forKey: .showUnit) ?? Self.default.showUnit
         customLabel = try container.decodeIfPresent(String.self, forKey: .customLabel) ?? Self.default.customLabel
@@ -1031,14 +1036,14 @@ enum DistanceTimelinePreset: String, CaseIterable, Identifiable, Codable {
 
     var label: String {
         switch self {
-        case .minimal: "Minimal / 极简"
-        case .dense: "Dense / 密集技术"
-        case .sport: "Sport / 运动"
-        case .splits: "Splits / 分段刻度"
-        case .glass: "Glass / 玻璃"
-        case .neon: "Neon / 霓虹"
-        case .lowerThird: "Lower Third / 下三分之一"
-        case .route: "Route / 路线"
+        case .minimal: "Minimal"
+        case .dense: "Dense"
+        case .sport: "Sport"
+        case .splits: "Splits"
+        case .glass: "Glass"
+        case .neon: "Neon"
+        case .lowerThird: "Lower Third"
+        case .route: "Route"
         }
     }
 
@@ -2381,8 +2386,8 @@ enum OverlayRouteMapShape: String, CaseIterable, Identifiable, Codable {
 
     var label: String {
         switch self {
-        case .square: "Square / 方形"
-        case .circle: "Circle / 圆形"
+        case .square: "Square"
+        case .circle: "Circle"
         }
     }
 }
@@ -2395,8 +2400,8 @@ enum OverlayRouteMapEdgeFade: String, CaseIterable, Identifiable, Codable {
 
     var label: String {
         switch self {
-        case .solid: "Solid Edge / 实心边缘"
-        case .fadeOut: "Fade Out / 边缘渐变"
+        case .solid: "Solid Edge"
+        case .fadeOut: "Fade Out"
         }
     }
 }
@@ -2409,8 +2414,8 @@ enum OverlayRouteMapColorMode: String, CaseIterable, Identifiable, Codable {
 
     var label: String {
         switch self {
-        case .solid: "Solid / 纯色"
-        case .gradient: "Gradient / 渐变"
+        case .solid: "Solid"
+        case .gradient: "Gradient"
         }
     }
 }
@@ -2425,10 +2430,10 @@ enum OverlayRouteMapMarkerStyle: String, CaseIterable, Identifiable, Codable {
 
     var label: String {
         switch self {
-        case .hidden: "Hidden / 隐藏"
-        case .dot: "Dot / 圆点"
-        case .pin: "Pin / 定位针"
-        case .flag: "Flag / 旗帜"
+        case .hidden: "Hidden"
+        case .dot: "Dot"
+        case .pin: "Pin"
+        case .flag: "Flag"
         }
     }
 }
@@ -2442,9 +2447,9 @@ enum OverlayRouteMapLegendMode: String, CaseIterable, Identifiable, Codable {
 
     var label: String {
         switch self {
-        case .minimal: "Minimal / 仅起终点"
-        case .startFinishDistance: "With Distance / 起终点+里程"
-        case .gradientBand: "Gradient Band / 渐变色带"
+        case .minimal: "Minimal"
+        case .startFinishDistance: "With Distance"
+        case .gradientBand: "Gradient Band"
         }
     }
 }
@@ -2460,11 +2465,11 @@ enum OverlayRouteMapBackgroundStyle: String, CaseIterable, Identifiable, Codable
 
     var label: String {
         switch self {
-        case .none: "None / 无底图"
-        case .dark: "Dark / 深色"
-        case .light: "Light / 浅色"
-        case .terrain: "Terrain / 地形"
-        case .satellite: "Satellite / 卫星"
+        case .none: "None"
+        case .dark: "Dark"
+        case .light: "Light"
+        case .terrain: "Terrain"
+        case .satellite: "Satellite"
         }
     }
 
@@ -2491,10 +2496,10 @@ enum OverlayRouteMapContainerPreset: String, CaseIterable, Identifiable, Codable
 
     var label: String {
         switch self {
-        case .squareHardEdge: "Square Hard / 方形硬边界"
-        case .circleHardEdge: "Circle Hard / 圆形硬边界"
-        case .squareGradientEdge: "Square Gradient / 方形渐变"
-        case .circleGradientEdge: "Circle Gradient / 圆形渐变"
+        case .squareHardEdge: "Square Hard"
+        case .circleHardEdge: "Circle Hard"
+        case .squareGradientEdge: "Square Gradient"
+        case .circleGradientEdge: "Circle Gradient"
         }
     }
 
@@ -2878,13 +2883,13 @@ enum OverlayGaugePreset: String, CaseIterable, Identifiable, Codable {
 
     var label: String {
         switch self {
-        case .minimalSport: "Minimal Sport / 极简运动"
-        case .highContrast: "High Contrast Sport / 高对比运动"
-        case .roadRun: "Road Run / 公路跑风格"
-        case .trailAdventure: "Trail Adventure / 越野探险"
-        case .techFuture: "Future Tech / 科技未来"
-        case .retroDigital: "Retro Digital / 复古数显"
-        case .premiumGlass: "Premium Glass / 精致玻璃"
+        case .minimalSport: "Minimal Sport"
+        case .highContrast: "High Contrast Sport"
+        case .roadRun: "Road Run"
+        case .trailAdventure: "Trail Adventure"
+        case .techFuture: "Future Tech"
+        case .retroDigital: "Retro Digital"
+        case .premiumGlass: "Premium Glass"
         }
     }
 }
@@ -2915,21 +2920,21 @@ enum OverlayTextPreset: String, CaseIterable, Identifiable, Codable {
 
     var label: String {
         switch self {
-        case .minimal: "Minimal Clean / 极简干净"
-        case .minimalLabel: "Minimal Label / 极简标签"
-        case .pillBadge: "Pill / 胶囊样式"
-        case .metricCard: "Metric Card / 数据卡片"
-        case .bigNumber: "Big Number / 大数字"
-        case .splitLabel: "Split Label / 分离标签"
-        case .neonGlow: "Neon Glow / 霓虹发光"
-        case .racingStripe: "Racing Stripe / 竞速条"
-        case .editorial: "Editorial / 杂志标题风"
-        case .digitalWatch: "Digital Watch / 数字表盘风"
-        case .sportWatch: "Sport Watch / 运动手表"
-        case .inlineGhost: "Inline Ghost / 横向影子"
-        case .accentBar: "Accent Bar / 强调竖线"
-        case .sportNeon: "Sport Neon / 霓虹运动"
-        case .serifEditorial: "Serif Editorial / 衬线刊物"
+        case .minimal: "Minimal Clean"
+        case .minimalLabel: "Minimal Label"
+        case .pillBadge: "Pill"
+        case .metricCard: "Metric Card"
+        case .bigNumber: "Big Number"
+        case .splitLabel: "Split Label"
+        case .neonGlow: "Neon Glow"
+        case .racingStripe: "Racing Stripe"
+        case .editorial: "Editorial"
+        case .digitalWatch: "Digital Watch"
+        case .sportWatch: "Sport Watch"
+        case .inlineGhost: "Inline Ghost"
+        case .accentBar: "Accent Bar"
+        case .sportNeon: "Sport Neon"
+        case .serifEditorial: "Serif Editorial"
         }
     }
 
@@ -3852,13 +3857,13 @@ struct WeatherWidgetStyle: Equatable, Codable {
         switch presetValue {
         case .simpleCard:
             WeatherWidgetStyle(
-                preset: .simpleCard, dataSource: .manual,
-                manualCondition: .rain, manualTemperatureCelsius: 13,
+                preset: .simpleCard, dataSource: .openMeteo,
+                manualCondition: .sunny, manualTemperatureCelsius: 13,
                 manualHumidity: 87, manualHigh: 16, manualLow: 11,
                 manualWind: 12, manualFeelsLike: 21,
                 conditionLabelOverride: "", humiditySuffix: "RH",
                 humidityMetricLabel: "RH", windMetricLabel: "Wind", feelsLikeMetricLabel: "Feels",
-                temperatureUnit: .systemDefault(), locationText: "大阪, 日本",
+                temperatureUnit: .systemDefault(), locationText: "",
                 showLocation: true, showWeekday: true, showHumidity: true,
                 showHighLow: false, showWind: false, showFeelsLike: false,
                 metricSlots: WeatherWidgetPreset.simpleCard.defaultMetricSlots,
@@ -3877,13 +3882,13 @@ struct WeatherWidgetStyle: Equatable, Codable {
             )
         case .compactStrip:
             WeatherWidgetStyle(
-                preset: .compactStrip, dataSource: .manual,
-                manualCondition: .rain, manualTemperatureCelsius: 13,
+                preset: .compactStrip, dataSource: .openMeteo,
+                manualCondition: .sunny, manualTemperatureCelsius: 13,
                 manualHumidity: 87, manualHigh: 16, manualLow: 11,
                 manualWind: 0, manualFeelsLike: 0,
                 conditionLabelOverride: "", humiditySuffix: "RH",
                 humidityMetricLabel: "RH", windMetricLabel: "Wind", feelsLikeMetricLabel: "Feels",
-                temperatureUnit: .systemDefault(), locationText: "Osaka",
+                temperatureUnit: .systemDefault(), locationText: "",
                 showLocation: true, showWeekday: false, showHumidity: false,
                 showHighLow: false, showWind: false, showFeelsLike: false,
                 metricSlots: WeatherWidgetPreset.compactStrip.defaultMetricSlots,
@@ -3902,13 +3907,13 @@ struct WeatherWidgetStyle: Equatable, Codable {
             )
         case .forecastTile:
             WeatherWidgetStyle(
-                preset: .forecastTile, dataSource: .manual,
-                manualCondition: .partlyCloudy, manualTemperatureCelsius: 13,
+                preset: .forecastTile, dataSource: .openMeteo,
+                manualCondition: .sunny, manualTemperatureCelsius: 13,
                 manualHumidity: 87, manualHigh: 16, manualLow: 11,
                 manualWind: 0, manualFeelsLike: 0,
                 conditionLabelOverride: "", humiditySuffix: "RH",
                 humidityMetricLabel: "RH", windMetricLabel: "Wind", feelsLikeMetricLabel: "Feels",
-                temperatureUnit: .systemDefault(), locationText: "大阪, 日本",
+                temperatureUnit: .systemDefault(), locationText: "",
                 showLocation: true, showWeekday: true, showHumidity: true,
                 showHighLow: true, showWind: false, showFeelsLike: false,
                 metricSlots: WeatherWidgetPreset.forecastTile.defaultMetricSlots,
@@ -3927,13 +3932,13 @@ struct WeatherWidgetStyle: Equatable, Codable {
             )
         case .minimalText:
             WeatherWidgetStyle(
-                preset: .minimalText, dataSource: .manual,
-                manualCondition: .cloudy, manualTemperatureCelsius: 13,
+                preset: .minimalText, dataSource: .openMeteo,
+                manualCondition: .sunny, manualTemperatureCelsius: 13,
                 manualHumidity: 50, manualHigh: 16, manualLow: 11,
                 manualWind: 0, manualFeelsLike: 0,
                 conditionLabelOverride: "", humiditySuffix: "RH",
                 humidityMetricLabel: "RH", windMetricLabel: "Wind", feelsLikeMetricLabel: "Feels",
-                temperatureUnit: .systemDefault(), locationText: "大阪, 日本",
+                temperatureUnit: .systemDefault(), locationText: "",
                 showLocation: true, showWeekday: false, showHumidity: false,
                 showHighLow: false, showWind: false, showFeelsLike: false,
                 metricSlots: WeatherWidgetPreset.minimalText.defaultMetricSlots,
@@ -3952,13 +3957,13 @@ struct WeatherWidgetStyle: Equatable, Codable {
             )
         case .dashboardBar:
             WeatherWidgetStyle(
-                preset: .dashboardBar, dataSource: .manual,
-                manualCondition: .rain, manualTemperatureCelsius: 13,
+                preset: .dashboardBar, dataSource: .openMeteo,
+                manualCondition: .sunny, manualTemperatureCelsius: 13,
                 manualHumidity: 87, manualHigh: 16, manualLow: 11,
                 manualWind: 9, manualFeelsLike: 12,
                 conditionLabelOverride: "", humiditySuffix: "RH",
                 humidityMetricLabel: "RH", windMetricLabel: "Wind", feelsLikeMetricLabel: "Feels",
-                temperatureUnit: .systemDefault(), locationText: "大阪, 日本",
+                temperatureUnit: .systemDefault(), locationText: "",
                 showLocation: true, showWeekday: false, showHumidity: true,
                 showHighLow: false, showWind: true, showFeelsLike: true,
                 metricSlots: WeatherWidgetPreset.dashboardBar.defaultMetricSlots,

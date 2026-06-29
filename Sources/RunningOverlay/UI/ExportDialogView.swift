@@ -190,6 +190,7 @@ struct ExportDialogView: View {
 
             if isAdvancedExpanded {
                 SettingsGroupBox {
+                    #if DEBUG
                     advancedGroup(title: "Diagnostics") {
                         Button("Export Test Frame") {
                             performExportAction { project.exportTestFrame(to: $0) }
@@ -227,6 +228,7 @@ struct ExportDialogView: View {
                     }
 
                     dividerRow
+                    #endif
 
                     advancedGroup(title: "Full Activity") {
                         Button("Export Full Activity") {

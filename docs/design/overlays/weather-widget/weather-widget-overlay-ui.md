@@ -1,6 +1,6 @@
 # Weather Widget Overlay UI Design Spec
 
-Last updated: 2026-05-07
+Last updated: 2026-06-29
 
 ## Purpose
 
@@ -12,7 +12,8 @@ When a Weather Widget is first added, it starts from activity-location
 API data rather than baked-in sample content. If the current FIT activity
 has a GPS route, the app automatically fetches historical weather for the
 activity start point. Until that request succeeds, or when no route/API data is
-available, weather fields render neutral `--` placeholders.
+available, the widget renders a neutral Sunny condition/icon while data fields
+such as location, temperature, humidity, and wind render `--` placeholders.
 
 ## Design References
 
@@ -23,7 +24,7 @@ available, weather fields render neutral `--` placeholders.
 ## User Goals
 
 - Show the current weather condition and temperature clearly.
-- Use larger presets that can include location and country, such as `大阪, 日本`.
+- Use larger presets that can include location and country after weather data or a manual location is available.
 - Support small corner-friendly presets for videos where weather is secondary.
 - Keep weather icons visually consistent across all presets.
 - Allow future data to come from FIT temperature, a weather API, or manual fallback values.
@@ -32,13 +33,13 @@ available, weather fields render neutral `--` placeholders.
 
 Required display fields:
 
-- `condition`: weather state with auto-localized label derived from activity coordinates (not system locale), e.g. `雨` in Japan, `Rain` in US. Every field is user-overridable; manual edits take precedence over auto-localized values.
-- `temperature`: current temperature, e.g. `13°C`. Unit defaults to system locale (°C or °F), user-adjustable per widget.
+- `condition`: weather state label, e.g. `Rain`. Every field is user-overridable; manual edits take precedence over default labels.
+- `temperature`: current temperature, e.g. `13°C`, or `--` when weather data is unavailable. Unit defaults to system locale (°C or °F), user-adjustable per widget.
 
 Optional display fields:
 
-- `location`: city and country/region, e.g. `大阪, 日本`.
-- `weekday`: localized weekday, e.g. `星期四`.
+- `location`: city and country/region, or `--` when no location has been selected or resolved.
+- `weekday`: English weekday, e.g. `Thursday`.
 - `humidity`: relative humidity, e.g. `87% RH`.
 - `highTemperature`: daily high, e.g. `H 16°`.
 - `lowTemperature`: daily low, e.g. `L 11°`.
@@ -53,9 +54,9 @@ Medium rounded rectangle inspired by a clear weather app widget.
 
 Layout:
 
-- Left block: large condition label, e.g. `雨`, plus a large weather icon.
+- Left block: large condition label, e.g. `Rain`, plus a large weather icon.
 - Center divider: thin vertical rule. The left block should stay compact so the divider sits close to the icon group rather than leaving a large empty column.
-- Right block: `大阪, 日本`, weekday, large `13°C`, humidity.
+- Right block: location placeholder/data, weekday, large temperature placeholder/data, humidity.
 
 Default size target: `300 x 110`.
 

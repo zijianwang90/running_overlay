@@ -111,6 +111,7 @@
     "groups": [
       {
         "title": "Diagnostics",
+        "visibility": "debugOnly",
         "actions": [
           "Export Test Frame",
           "Export Test Clip",
@@ -119,6 +120,7 @@
       },
       {
         "title": "Project Snapshot",
+        "visibility": "debugOnly",
         "actions": [
           "Save Snapshot",
           "Restore Snapshot"

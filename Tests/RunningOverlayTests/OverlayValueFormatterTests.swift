@@ -196,9 +196,32 @@ struct OverlayValueFormatterTests {
         element.style.useFITTemperature = false
         #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 30) == "-- °C")
 
+        element.style.manualTemperatureCelsius = 7.5
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 30) == "8° °C")
+
         element.style.useFITTemperature = true
         element.style.unitOption = .temperatureFahrenheit
         #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 30) == "59° °F")
+    }
+
+    @Test func temperatureOverlayUsesManualValueWhenFITTemperatureIsMissing() {
+        let activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 0),
+            duration: 60,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+
+        var element = OverlayElement(type: .temperature, position: .zero, scale: 1, style: .default)
+        element.style.unitOption = .temperatureCelsius
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 30) == "-- °C")
+
+        element.style.manualTemperatureCelsius = -2
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 30) == "-2° °C")
+
+        element.style.unitOption = .temperatureFahrenheit
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 30) == "28° °F")
     }
 
     @Test func elevationOverlayCanSwitchBetweenCurrentAndGain() {

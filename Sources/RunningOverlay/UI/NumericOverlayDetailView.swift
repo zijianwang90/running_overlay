@@ -100,6 +100,14 @@ struct NumericOverlayDetailView: View {
                 .tint(NumericTokens.accentBlue)
             }
         }
+        if element.type == .temperature, !project.activity.hasTemperatureData || !element.style.useFITTemperature {
+            InspectorDenseRow(label: "Temperature") {
+                ManualTemperatureField(
+                    elementID: elementID,
+                    value: element.style.manualTemperatureCelsius
+                )
+            }
+        }
         InspectorDenseRow(label: "Format Preview") {
             InspectorDenseReadout(text: previewValue(for: element), isNumeric: true)
         }
@@ -814,6 +822,57 @@ struct NumericOverlayDetailView: View {
         ("Yellow", .yellow), ("Green", .green), ("Blue", .blue), ("Cyan", .cyan),
         ("Purple", .purple), ("Pink", .pink)
     ]
+}
+
+private struct ManualTemperatureField: View {
+    @EnvironmentObject private var project: ProjectDocument
+    let elementID: OverlayElement.ID
+    let value: Double?
+
+    @State private var draft = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 4) {
+            TextField("Auto", text: $draft)
+                .textFieldStyle(.roundedBorder)
+                .font(NumericTokens.bodyFont)
+                .multilineTextAlignment(.trailing)
+                .monospacedDigit()
+                .frame(width: 64)
+                .focused($focused)
+                .onSubmit(commit)
+                .onAppear { draft = formatted(value) }
+                .onChange(of: focused) { _, isFocused in
+                    if !isFocused { commit() }
+                }
+            Text("°C")
+                .font(NumericTokens.bodyFont)
+                .foregroundStyle(NumericTokens.textSecondary)
+        }
+    }
+
+    private func commit() {
+        let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            project.setOverlayManualTemperatureCelsius(elementID, temperature: nil)
+            return
+        }
+        if let parsed = Double(trimmed.replacingOccurrences(of: ",", with: ".")) {
+            project.setOverlayManualTemperatureCelsius(elementID, temperature: parsed)
+            draft = formatted(parsed)
+        } else {
+            draft = formatted(value)
+        }
+    }
+
+    private func formatted(_ value: Double?) -> String {
+        guard let value else { return "" }
+        if value.rounded() == value {
+            return String(format: "%.0f", value)
+        }
+        return String(format: "%.1f", value)
+    }
 }
 
 // MARK: - Header

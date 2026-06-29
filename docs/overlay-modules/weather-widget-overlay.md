@@ -1,6 +1,6 @@
 # Weather Widget Overlay
 
-Last updated: 2026-05-07
+Last updated: 2026-06-29
 
 ## Purpose
 
@@ -16,7 +16,7 @@ Design spec:
 ## User Goals
 
 - Show weather and temperature without requiring a full dashboard.
-- Include location/country on larger presets, for example `大阪, 日本`.
+- Include location/country on larger presets after weather data or a manual location is available.
 - Choose from simple app-like presets, including compact and large variants.
 - Keep all weather condition icons visually consistent.
 - Use FIT or manual weather data first, then support API-backed weather later.
@@ -42,7 +42,9 @@ Phase 2:
 Recommended layout pipeline:
 
 1. Resolve preset and visible fields.
-2. Resolve weather data from FIT/manual/API-cache in that order.
+2. Resolve weather data from API cache or manual fields. If API data is
+   unavailable, use a neutral Sunny condition/icon and placeholder strings for
+   location, temperature, and secondary metrics.
 3. Resolve the weather icon from the shared condition icon set.
 4. Layout fixed preset regions: icon, temperature, condition, location, and metrics.
 5. Draw optional card background and divider.

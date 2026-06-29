@@ -57,6 +57,7 @@ struct OverlayTemplateTests {
         #expect(style.labelColorsFollowHeartRateZones == false)
         #expect(style.unitColorsFollowHeartRateZones == false)
         #expect(style.elevationDisplayMode == .current)
+        #expect(style.manualTemperatureCelsius == nil)
     }
 
     @Test func overlayStyleLegacyTextZoneColorFlagSeedsPerRoleTextFlags() throws {
@@ -164,11 +165,11 @@ struct OverlayTemplateTests {
     @Test func weatherWidgetStyleRoundTripsNewFields() throws {
         var style = OverlayStyle.default
         style.weatherWidget = .preset(.dashboardBar)
-        style.weatherWidget.conditionLabelOverride = "小雨"
+        style.weatherWidget.conditionLabelOverride = "Light rain"
         style.weatherWidget.humiditySuffix = "RH"
-        style.weatherWidget.humidityMetricLabel = "湿度"
-        style.weatherWidget.windMetricLabel = "風"
-        style.weatherWidget.feelsLikeMetricLabel = "体感"
+        style.weatherWidget.humidityMetricLabel = "Humidity"
+        style.weatherWidget.windMetricLabel = "Wind"
+        style.weatherWidget.feelsLikeMetricLabel = "Feels"
         style.weatherWidget.palette = .lightGlass
         style.weatherWidget.showIcon = false
         style.weatherWidget.metricSlots = [.none, .wind, .highLow]
@@ -184,17 +185,17 @@ struct OverlayTemplateTests {
             lowTemperatureCelsius: 11,
             windKph: 9,
             feelsLikeCelsius: 12,
-            resolvedLocation: "大阪, 日本",
+            resolvedLocation: "Osaka, Japan",
             sourceDate: Date(timeIntervalSince1970: 1_000)
         )
 
         let data = try JSONEncoder().encode(style)
         let decoded = try JSONDecoder().decode(OverlayStyle.self, from: data)
 
-        #expect(decoded.weatherWidget.conditionLabelOverride == "小雨")
-        #expect(decoded.weatherWidget.humidityMetricLabel == "湿度")
-        #expect(decoded.weatherWidget.windMetricLabel == "風")
-        #expect(decoded.weatherWidget.feelsLikeMetricLabel == "体感")
+        #expect(decoded.weatherWidget.conditionLabelOverride == "Light rain")
+        #expect(decoded.weatherWidget.humidityMetricLabel == "Humidity")
+        #expect(decoded.weatherWidget.windMetricLabel == "Wind")
+        #expect(decoded.weatherWidget.feelsLikeMetricLabel == "Feels")
         #expect(decoded.weatherWidget.palette == .lightGlass)
         #expect(decoded.weatherWidget.showIcon == false)
         #expect(decoded.weatherWidget.metricSlots == [.none, .wind, .highLow])
@@ -202,7 +203,7 @@ struct OverlayTemplateTests {
         #expect(decoded.weatherWidget.dividerColor == .cyan)
         #expect(decoded.weatherWidget.dividerThickness == 3)
         #expect(decoded.weatherWidget.dividerOpacity == 0.42)
-        #expect(decoded.weatherWidget.cachedWeather?.resolvedLocation == "大阪, 日本")
+        #expect(decoded.weatherWidget.cachedWeather?.resolvedLocation == "Osaka, Japan")
     }
 
     @Test func weatherWidgetStyleDecodesLegacyFitTemperatureDataSource() throws {
@@ -219,7 +220,7 @@ struct OverlayTemplateTests {
             "manualWind": 9,
             "manualFeelsLike": 12,
             "temperatureUnit": "celsius",
-            "locationText": "大阪, 日本",
+            "locationText": "Osaka, Japan",
             "showLocation": true,
             "showWeekday": true,
             "showHumidity": true,
@@ -257,7 +258,7 @@ struct OverlayTemplateTests {
             "manualWind": 9,
             "manualFeelsLike": 12,
             "temperatureUnit": "celsius",
-            "locationText": "大阪, 日本",
+            "locationText": "Osaka, Japan",
             "showLocation": true,
             "showWeekday": true,
             "showHumidity": true,
@@ -343,6 +344,7 @@ struct OverlayTemplateTests {
         let style = try #require(project.overlayLayout.elements.first?.style.weatherWidget)
         #expect(style.dataSource == .openMeteo)
         #expect(style.locationText.isEmpty)
+        #expect(style.manualCondition == .sunny)
         #expect(style.cachedWeather == nil)
     }
 
@@ -479,8 +481,13 @@ struct OverlayTemplateTests {
         #expect(project.overlayLayout.elements.first?.style.fontName == "Monaco")
         #expect(project.overlayLayout.elements.first?.style.labelFontName == "PT Mono")
         #expect(project.overlayLayout.elements.first?.style.unitFontName == "PT Mono")
-        #expect(project.overlayLayout.elements.last?.style.weatherWidget.locationTextStyle.fontName == "PT Mono")
-        #expect(project.overlayLayout.elements.last?.style.weatherWidget.temperatureTextStyle.fontName == "PT Mono")
+        let weatherStyle = try #require(project.overlayLayout.elements.last?.style.weatherWidget)
+        #expect(weatherStyle.dataSource == .openMeteo)
+        #expect(weatherStyle.locationText.isEmpty)
+        #expect(weatherStyle.cachedWeather == nil)
+        #expect(weatherStyle.manualCondition == .sunny)
+        #expect(weatherStyle.locationTextStyle.fontName == "PT Mono")
+        #expect(weatherStyle.temperatureTextStyle.fontName == "PT Mono")
     }
 
     @Test func intervalWorkoutBuiltInTemplateLoadsBundledTemplateFile() throws {
@@ -496,6 +503,11 @@ struct OverlayTemplateTests {
             .routeMap, .elapsedTime, .realTime, .weatherWidget, .intervalHUDBar, .intervalTimeline
         ])
         #expect(project.overlayLayout.elements.first?.position.x == 0.110546875)
+        let weatherStyle = try #require(project.overlayLayout.elements.first { $0.type == .weatherWidget }?.style.weatherWidget)
+        #expect(weatherStyle.dataSource == .openMeteo)
+        #expect(weatherStyle.locationText.isEmpty)
+        #expect(weatherStyle.cachedWeather == nil)
+        #expect(weatherStyle.manualCondition == .sunny)
         #expect(project.overlayLayout.elements.last?.type == .intervalTimeline)
     }
 
@@ -515,6 +527,11 @@ struct OverlayTemplateTests {
         #expect(project.overlayLayout.elements.first?.position.x == 0.030665921145385626)
         #expect(project.overlayLayout.elements.last?.type == .elevationChart)
         #expect(project.overlayLayout.elements.last?.position.y == 0.9108545647558387)
+        let weatherStyle = try #require(project.overlayLayout.elements.first { $0.type == .weatherWidget }?.style.weatherWidget)
+        #expect(weatherStyle.dataSource == .openMeteo)
+        #expect(weatherStyle.locationText.isEmpty)
+        #expect(weatherStyle.cachedWeather == nil)
+        #expect(weatherStyle.manualCondition == .sunny)
     }
 
     @Test func fitImportAppliesEasyRunTemplateWhenNoTemplateWasUsedBefore() throws {

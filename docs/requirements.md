@@ -308,6 +308,7 @@ Current implementation status:
 - Selected overlay elements expose current value, normalized position, scale, preset, font family, font weight, font size, foreground color, background opacity, shadow opacity, and shadow radius controls in the Inspector detail state.
 - Numeric overlays (heart rate, pace, calories, elapsed time, real time, date, distance, elevation, cadence, power, and advanced running metrics) use the dense `NumericOverlayDetailView` Inspector with Content, Layout, Typography (value), Label, Unit, Color, Background, and Effects sections matching `docs/design/overlays/numeric/numeric-overlay-ui.md`. Shared Layout uses Position/Scale/Width/Height/Opacity (no Rotation).
 - The Date numeric overlay uses the activity timestamp at the current playhead and offers common year-month-day and month-day formats: `YYYY-MM-DD`, `YYYY/MM/DD`, `MM/DD/YYYY`, `MM-DD`, `MM/DD`, and abbreviated `Month D`.
+- The Temperature numeric overlay reads FIT temperature by default when available. If the activity has no FIT temperature samples, or the user disables FIT temperature for that overlay, the Inspector allows a manual Celsius value that Preview and export use as the temperature fallback.
 - Numeric overlay defaults now standardize to `Minimal Clean` for all numeric types.
 - Numeric overlay style supports per-overlay unit option, label/unit visibility toggles, custom label text, independent label/unit positions (`top/bottom/left/right`), independent label/unit typography (`font`, `size`, `weight`), rotation, accent color, background enable/color/radius/padding plus fade-out + gaussian blur controls, and shadow enable/offset controls. New fields decode with safe defaults so existing projects and templates remain compatible.
 - Numeric overlay unit text stays on one line; inline units grow the natural text frame instead of wrapping. Layout exposes optional minimum width and height controls so text overlays can reserve extra space without shrinking content below its measured size.
@@ -532,12 +533,12 @@ Export behavior:
 - Each overlay clip's start and end match the corresponding timeline video segment start and end.
 - Overlapping timeline clips are exported separately, one output file per clip.
 - Full activity export can ignore all video segments and render one overlay file covering the entire FIT activity.
-- `Export Test Clip` renders a short transparent MOV anchored to the current playhead position, using the current overlay configuration.
-- `Export Test Frame` renders a PNG at the current playhead position through the SwiftUI shared-component rasterization path.
+- In Debug builds only, `Export Test Clip` renders a short transparent MOV anchored to the current playhead position, using the current overlay configuration.
+- In Debug builds only, `Export Test Frame` renders a PNG at the current playhead position through the SwiftUI shared-component rasterization path.
 - Main `Export` always uses the SwiftUI shared-component rasterization path (legacy export mode removed).
-- `Export Overlay JSON` writes the current `OverlayLayout` configuration to JSON for inspection, debugging, and reproducible style snapshots.
-- `Save Project Snapshot` writes a JSON snapshot of the current exportable project state for repeatable performance testing.
-- `Restore Project Snapshot` replaces the current project with a saved snapshot and clears runtime-only state such as selection, playback, export progress, and undo/redo history.
+- In Debug builds only, `Export Overlay JSON` writes the current `OverlayLayout` configuration to JSON for inspection, debugging, and reproducible style snapshots.
+- In Debug builds only, `Save Project Snapshot` writes a JSON snapshot of the current exportable project state for repeatable performance testing.
+- In Debug builds only, `Restore Project Snapshot` replaces the current project with a saved snapshot and clears runtime-only state such as selection, playback, export progress, and undo/redo history.
 - `swift run RunningOverlay --benchmark-export <snapshot.json>` runs a non-interactive benchmark export from a project snapshot, creates a timestamped output folder in the current working directory by default, writes MOV/profile artifacts there, and exits without requiring editor interaction.
 - `--benchmark-output <directory>` overrides the automated benchmark output directory.
 - Test clip/frame sampling time must use the same playhead-to-activity conversion and Layer Data FPS quantization path as preview (`activityElapsed(atProjectTime:)` + quantization).
