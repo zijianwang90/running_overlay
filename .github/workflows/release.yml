@@ -67,10 +67,24 @@ jobs:
             exit 1
           fi
 
+          configured_build_number="$(
+            awk -F= '/^[[:space:]]*CURRENT_PROJECT_VERSION[[:space:]]*=/ {
+              gsub(/[[:space:]]/, "", $2)
+              print $2
+              exit
+            }' Config/AppStore.xcconfig
+          )"
+
+          if [[ -z "$configured_build_number" ]]; then
+            echo "Missing CURRENT_PROJECT_VERSION in Config/AppStore.xcconfig." >&2
+            exit 1
+          fi
+
           {
             echo "tag=$tag"
             echo "release_kind=$release_kind"
             echo "marketing_version=$marketing_version"
+            echo "build_number=$configured_build_number"
           } >> "$GITHUB_OUTPUT"
         id: version
 
@@ -123,7 +137,7 @@ jobs:
         env:
           RUNNING_OVERLAY_SIGN_IDENTITY: ${{ secrets.DEVELOPER_ID_APPLICATION_SIGNING_IDENTITY }}
           RUNNING_OVERLAY_MARKETING_VERSION: ${{ steps.version.outputs.marketing_version }}
-          RUNNING_OVERLAY_BUILD_NUMBER: ${{ github.run_number }}
+          RUNNING_OVERLAY_BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
         run: |
           set -euo pipefail
 

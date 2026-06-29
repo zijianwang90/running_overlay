@@ -55,8 +55,8 @@ Current limitations:
   entire FIT specification.
 - Video metadata varies by camera, so some clips require manual alignment.
 - HEVC-with-alpha availability depends on the Mac and selected export settings.
-- The repository currently provides source builds; packaged signed releases
-  are not available yet.
+- Source builds are available from the repository; signed macOS release
+  packages are published on GitHub Releases when a version is tagged.
 
 ## Build from Source
 
