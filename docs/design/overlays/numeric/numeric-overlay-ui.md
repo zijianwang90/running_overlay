@@ -46,7 +46,7 @@ Numeric Overlay editing should feel closer to a DaVinci Resolve inspector than t
 - Most row heights around 30-34 px, with taller adaptive rows for controls that need extra vertical space (for example, anchor grids).
 - Controls should be precise, model-backed, and fast to scan.
 
-The panel should still use Running Overlay's dark design tokens and blue accent from [App UI](../../system/app-ui.md).
+The panel should still use Running Overlay Studio's dark design tokens and blue accent from [App UI](../../system/app-ui.md).
 
 ## Header
 

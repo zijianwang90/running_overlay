@@ -1,10 +1,10 @@
-# Running Overlay Product Requirements
+# Running Overlay Studio Product Requirements
 
 Last updated: 2026-04-28 (Preview corner-handle scaling now directly updates overlay `scale`)
 
 ## 1. Product Summary
 
-Running Overlay is a native macOS application that imports one FIT activity file and multiple video files, aligns the videos to the activity timeline, lets the user design data overlay elements, and exports transparent overlay video clips matching each source video segment.
+Running Overlay Studio is a native macOS application that imports one FIT activity file and multiple video files, aligns the videos to the activity timeline, lets the user design data overlay elements, and exports transparent overlay video clips matching each source video segment.
 
 The initial product focuses on running, but the data model and UI should avoid assumptions that block cycling or other FIT-based sports later.
 

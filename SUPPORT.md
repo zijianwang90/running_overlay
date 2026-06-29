@@ -1,6 +1,6 @@
 # Support
 
-Running Overlay is maintained on a best-effort, community-oriented basis. No
+Running Overlay Studio is maintained on a best-effort, community-oriented basis. No
 response-time, compatibility, or feature-delivery service level is promised.
 
 ## Before Asking
@@ -17,7 +17,7 @@ response-time, compatibility, or feature-delivery service level is promised.
 - Use the private process in [SECURITY.md](SECURITY.md) for vulnerabilities,
   leaked credentials, or unintended disclosure of private activity data.
 
-Include the Running Overlay commit/version, macOS version, hardware
+Include the Running Overlay Studio commit/version, macOS version, hardware
 architecture, reproduction steps, expected behavior, and sanitized logs.
 
 Do not attach private source videos, FIT/GPX/TCX files, GPS traces, health

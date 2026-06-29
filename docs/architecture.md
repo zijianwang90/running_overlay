@@ -1,4 +1,4 @@
-# Running Overlay Architecture Notes
+# Running Overlay Studio Architecture Notes
 
 Last updated: 2026-06-19
 

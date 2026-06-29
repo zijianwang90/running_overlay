@@ -10,7 +10,7 @@ Accepted
 
 ## Context
 
-Running Overlay is expected to grow beyond the first brief. The app touches multiple complex areas: FIT activity data, media metadata, timeline editing, overlay layout, playback, and video export. Product behavior and engineering decisions need to stay synchronized during iterative development.
+Running Overlay Studio is expected to grow beyond the first brief. The app touches multiple complex areas: FIT activity data, media metadata, timeline editing, overlay layout, playback, and video export. Product behavior and engineering decisions need to stay synchronized during iterative development.
 
 ## Decision
 

@@ -1,4 +1,4 @@
-# Running Overlay Project Log
+# Running Overlay Studio Project Log
 
 The project log is archived by month so contributors and AI agents can load
 only the history relevant to a task.
