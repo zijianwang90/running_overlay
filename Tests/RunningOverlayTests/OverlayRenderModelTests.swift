@@ -463,6 +463,29 @@ struct OverlayRenderModelTests {
         #expect(abs(hdBar.itemSpacing - halfBar.itemSpacing * 2) < 0.001)
     }
 
+    @Test func elevationChartCurrentMarkerScalesWithCanvasSizeAndMultiplier() {
+        var style = OverlayStyle.default
+        style.elevationChart.markerSizeMultiplier = 1.5
+        let element = OverlayElement(type: .elevationChart, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let activity = sampleActivity()
+
+        let hd = OverlayRenderModel.elevationChartLayout(
+            for: element,
+            in: OverlayRenderContext(canvasSize: OverlayRenderContext.referenceCanvasSize, activity: activity, elapsedTime: 5)
+        )
+        let half = OverlayRenderModel.elevationChartLayout(
+            for: element,
+            in: OverlayRenderContext(canvasSize: CGSize(width: 640, height: 360), activity: activity, elapsedTime: 5)
+        )
+
+        #expect(abs(hd.markerHaloSize - 40.5) < 0.001)
+        #expect(abs(hd.markerDotSize - 12) < 0.001)
+        #expect(abs(hd.markerRingSize - 19.5) < 0.001)
+        #expect(abs(hd.markerHaloSize - half.markerHaloSize * 2) < 0.001)
+        #expect(abs(hd.markerDotSize - half.markerDotSize * 2) < 0.001)
+        #expect(abs(hd.markerRingSize - half.markerRingSize * 2) < 0.001)
+    }
+
     @Test func elevationChartStatsBarLayoutAbsentWhenHidden() {
         var style = OverlayStyle.default
         style.elevationChart.statsBar.visible = false
@@ -576,7 +599,19 @@ struct OverlayRenderModelTests {
         let style = try JSONDecoder().decode(ElevationChartStyle.self, from: json)
 
         #expect(style.currentMarkerEnabled)
+        #expect(style.markerSizeMultiplier == 1)
         #expect(style.markerPlayheadLineEnabled == ElevationChartStyle.preset(.gradientArea).markerPlayheadLineEnabled)
+    }
+
+    @Test func elevationChartStyleClampsDecodedMarkerSizeMultiplier() throws {
+        let small = #"{"preset":"gradientArea","markerSizeMultiplier":0.01}"#.data(using: .utf8)!
+        let large = #"{"preset":"gradientArea","markerSizeMultiplier":9}"#.data(using: .utf8)!
+
+        let smallStyle = try JSONDecoder().decode(ElevationChartStyle.self, from: small)
+        let largeStyle = try JSONDecoder().decode(ElevationChartStyle.self, from: large)
+
+        #expect(smallStyle.markerSizeMultiplier == 0.25)
+        #expect(largeStyle.markerSizeMultiplier == 4)
     }
 
     @Test func elevationChartSmoothingSoftensQuantizedStairStepsAndPreservesEndpoints() {
@@ -670,11 +705,12 @@ struct OverlayRenderModelTests {
     @Test func weatherWidgetLayoutHonorsManualOpenMeteoAndFITTemperatureOverride() {
         var style = OverlayStyle.default
         style.weatherWidget = .preset(.simpleCard)
+        style.weatherWidget.dataSource = .manual
         style.weatherWidget.temperatureUnit = .celsius
         style.weatherWidget.useFITTemperature = true
         style.weatherWidget.manualTemperatureCelsius = 13
         style.weatherWidget.manualCondition = .rain
-        style.weatherWidget.locationText = "大阪, 日本"
+        style.weatherWidget.locationText = "Osaka, Japan"
         style.weatherWidget.cachedWeather = WeatherPayload(
             condition: .sunny,
             temperatureCelsius: 30,
@@ -692,8 +728,8 @@ struct OverlayRenderModelTests {
         let fitLayout = OverlayRenderModel.weatherWidgetLayout(for: element, in: context)
         #expect(fitLayout.temperatureFormatted == "15°C")
         #expect(fitLayout.condition == .rain)
-        #expect(fitLayout.locationText == "大阪, 日本")
-        #expect(fitLayout.conditionLabel == "雨")
+        #expect(fitLayout.locationText == "Osaka, Japan")
+        #expect(fitLayout.conditionLabel == "Rain")
 
         var manualStyle = style
         manualStyle.weatherWidget.useFITTemperature = false
@@ -745,7 +781,8 @@ struct OverlayRenderModelTests {
 
         #expect(layout.temperatureFormatted == "--")
         #expect(layout.locationText == "--")
-        #expect(layout.conditionLabel == "--")
+        #expect(layout.condition == .sunny)
+        #expect(layout.conditionLabel == "Sunny")
         #expect(layout.humidityFormatted == "--")
         #expect(layout.metricSlots.map(\.value) == ["--"])
 
@@ -753,7 +790,8 @@ struct OverlayRenderModelTests {
         let openWeatherElement = OverlayElement(type: .weatherWidget, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
         let openWeatherLayout = OverlayRenderModel.weatherWidgetLayout(for: openWeatherElement, in: context)
         #expect(openWeatherLayout.temperatureFormatted == "--")
-        #expect(openWeatherLayout.conditionLabel == "--")
+        #expect(openWeatherLayout.condition == .sunny)
+        #expect(openWeatherLayout.conditionLabel == "Sunny")
     }
 
     @Test func weatherWidgetLayoutUsesOverridesAndFahrenheitFormatting() {

@@ -517,6 +517,7 @@ struct SwiftUIOverlayVideoExporter {
             await progress(OverlayExportProgress(segmentIndex: index, segmentCount: job.segments.count, segmentName: segment.sourceFileName, segmentProgress: 1))
         }
 
+        #if DEBUG
         try writeProfile(
             OverlayExportProfile(
                 startedAt: profileStartedAt,
@@ -526,6 +527,7 @@ struct SwiftUIOverlayVideoExporter {
             ),
             to: job.destinationURL
         )
+        #endif
     }
 
     static func exportFramePNG(

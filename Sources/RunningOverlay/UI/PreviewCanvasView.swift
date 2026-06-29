@@ -3280,13 +3280,17 @@ struct ElevationChartOverlayView: View {
             }
             Circle()
                 .fill(Color(layout.style.markerColor).opacity(0.24))
-                .frame(width: 27, height: 27)
-                .blur(radius: 6)
+                .frame(width: layout.markerHaloSize, height: layout.markerHaloSize)
+                .blur(radius: layout.markerGlowBlurRadius)
                 .position(point)
             Circle()
                 .fill(Color(layout.style.markerColor))
-                .frame(width: 8, height: 8)
-                .overlay(Circle().stroke(Color.white.opacity(0.95), lineWidth: 2).frame(width: 13, height: 13))
+                .frame(width: layout.markerDotSize, height: layout.markerDotSize)
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(0.95), lineWidth: layout.markerRingStrokeWidth)
+                        .frame(width: layout.markerRingSize, height: layout.markerRingSize)
+                )
                 .position(point)
             if layout.style.markerLabelEnabled {
                 Text(markerLabelText)

@@ -336,6 +336,11 @@ enum OverlayRenderModel {
             cornerRadius: context.scaled(style.cornerRadius * element.scale),
             chartHeight: context.scaled(chartHeight * element.scale),
             lineWidth: max(context.scaled(1), context.scaled(style.lineWidth * element.scale)),
+            markerHaloSize: context.scaled(27 * element.scale * style.markerSizeMultiplier),
+            markerDotSize: context.scaled(8 * element.scale * style.markerSizeMultiplier),
+            markerRingSize: context.scaled(13 * element.scale * style.markerSizeMultiplier),
+            markerRingStrokeWidth: max(context.scaled(2 * element.scale * style.markerSizeMultiplier), 0.5),
+            markerGlowBlurRadius: context.scaled(6 * element.scale * style.markerSizeMultiplier),
             progress: progress,
             samples: renderedSamples
         )
@@ -2236,6 +2241,11 @@ struct OverlayElevationChartRenderLayout {
     var cornerRadius: Double
     var chartHeight: Double
     var lineWidth: Double
+    var markerHaloSize: Double
+    var markerDotSize: Double
+    var markerRingSize: Double
+    var markerRingStrokeWidth: Double
+    var markerGlowBlurRadius: Double
     var progress: Double
     var samples: [Double]
 }
@@ -2328,7 +2338,7 @@ extension OverlayRenderModel {
             resolvedLocation = cached.resolvedLocation
         } else {
             isMissingAPIWeather = style.dataSource.isAPI
-            condition = style.manualCondition
+            condition = isMissingAPIWeather ? .sunny : style.manualCondition
             temperatureCelsius = style.manualTemperatureCelsius
             humidity = style.manualHumidity
             highCelsius = style.manualHigh
@@ -2372,7 +2382,7 @@ extension OverlayRenderModel {
         var weekday = ""
         if style.showWeekday {
             let df = DateFormatter()
-            df.locale = Locale(identifier: localeIdentifier(for: location))
+            df.locale = Locale(identifier: "en_US_POSIX")
             df.dateFormat = "EEEE"
             weekday = df.string(from: context.activity.startDate)
         }
@@ -2391,7 +2401,7 @@ extension OverlayRenderModel {
             feelsLikeFormatted: feelsLikeStr,
             locationText: location,
             weekdayText: weekday,
-            conditionLabel: isMissingAPIWeather ? weatherPlaceholder : resolvedConditionLabel(style: style, condition: condition, location: location),
+            conditionLabel: resolvedConditionLabel(style: style, condition: condition),
             sfSymbolName: condition.sfSymbolName,
             iconTint: condition.iconTint,
             iconSize: context.scaled(style.iconSize * element.scale),
@@ -2452,44 +2462,11 @@ extension OverlayRenderModel {
         return suffix.isEmpty ? value : "\(value) \(suffix)"
     }
 
-    private static func localeIdentifier(for location: String) -> String {
-        let lowercased = location.lowercased()
-        if location.contains("日本") || lowercased.contains("japan") {
-            return "ja_JP"
-        }
-        if location.contains("中国") || lowercased.contains("china") {
-            return "zh_CN"
-        }
-        if location.contains("台灣") || location.contains("台湾") || lowercased.contains("taiwan") {
-            return "zh_Hant_TW"
-        }
-        return Locale.current.identifier
-    }
-
-    private static func localizedConditionLabel(_ condition: WeatherCondition, location: String) -> String {
-        let lowercased = location.lowercased()
-        if location.contains("日本") || lowercased.contains("japan") {
-            switch condition {
-            case .sunny: return "晴"
-            case .clearNight: return "晴夜"
-            case .partlyCloudy: return "晴曇"
-            case .cloudy: return "曇"
-            case .rain: return "雨"
-            case .heavyRain: return "大雨"
-            case .thunder: return "雷雨"
-            case .snow: return "雪"
-            case .fog: return "霧"
-            case .wind: return "風"
-            }
-        }
-        return condition.label
-    }
-
-    private static func resolvedConditionLabel(style: WeatherWidgetStyle, condition: WeatherCondition, location: String) -> String {
+    private static func resolvedConditionLabel(style: WeatherWidgetStyle, condition: WeatherCondition) -> String {
         let override = style.conditionLabelOverride.trimmingCharacters(in: .whitespacesAndNewlines)
         if !override.isEmpty {
             return override
         }
-        return localizedConditionLabel(condition, location: location)
+        return condition.label
     }
 }

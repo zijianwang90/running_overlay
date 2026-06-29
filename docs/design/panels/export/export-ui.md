@@ -178,8 +178,8 @@ Purpose:
 
 Groups:
 
-- `Diagnostics`: `Export Test Frame`, `Export Test Clip`, `Export Overlay JSON`
-- `Project Snapshot`: `Save Snapshot`, `Restore Snapshot`
+- `Diagnostics`: `Export Test Frame`, `Export Test Clip`, `Export Overlay JSON` (Debug builds only; hidden in production builds)
+- `Project Snapshot`: `Save Snapshot`, `Restore Snapshot` (Debug builds only; hidden in production builds)
 - `Full Activity`: `Export Full Activity`
 
 Rules:
@@ -187,6 +187,7 @@ Rules:
 - Use disclosure state local to the dialog.
 - Advanced actions use secondary buttons only.
 - Do not use the primary blue style inside the advanced section.
+- Hide Diagnostics and Project Snapshot actions from production builds.
 - Keep destructive or state-restoring actions visually separate from export diagnostics.
 - Disable all actions consistently while `project.isExporting` is true.
 

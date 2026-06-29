@@ -16,25 +16,25 @@ struct IntervalKindColorsView: View {
                     SettingsGroupBox {
                         colorRow(
                             title: "Warm Up",
-                            subtitle: "热身 — opening laps before the workout starts.",
+                            subtitle: "Opening laps before the workout starts.",
                             color: Binding(get: { prefs.warmupColor }, set: { prefs.warmupColor = $0 })
                         )
                         dividerRow
                         colorRow(
                             title: "Active",
-                            subtitle: "训练 — work intervals or sustained efforts.",
+                            subtitle: "Work intervals or sustained efforts.",
                             color: Binding(get: { prefs.activeColor }, set: { prefs.activeColor = $0 })
                         )
                         dividerRow
                         colorRow(
                             title: "Rest",
-                            subtitle: "休息 — recovery jogs between active reps.",
+                            subtitle: "Recovery jogs between active reps.",
                             color: Binding(get: { prefs.restColor }, set: { prefs.restColor = $0 })
                         )
                         dividerRow
                         colorRow(
                             title: "Cool Down",
-                            subtitle: "冷身 — closing laps after the workout.",
+                            subtitle: "Closing laps after the workout.",
                             color: Binding(get: { prefs.cooldownColor }, set: { prefs.cooldownColor = $0 })
                         )
                     }

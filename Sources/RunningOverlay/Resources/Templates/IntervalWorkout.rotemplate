@@ -912,7 +912,7 @@
             "fontSize": 26,
             "fontWeight": "semibold"
           },
-          "dataSource": "manual",
+          "dataSource": "openMeteo",
           "dividerColor": {
             "alpha": 1,
             "blue": 1,
@@ -927,7 +927,7 @@
           "humidityMetricLabel": "RH",
           "humiditySuffix": "RH",
           "iconSize": 54,
-          "locationText": "\u5927\u962a, \u65e5\u672c",
+          "locationText": "",
           "locationTextStyle": {
             "color": {
               "alpha": 1,
@@ -939,7 +939,7 @@
             "fontSize": 19,
             "fontWeight": "bold"
           },
-          "manualCondition": "rain",
+          "manualCondition": "sunny",
           "manualFeelsLike": 21,
           "manualHigh": 16,
           "manualHumidity": 87,
@@ -1003,7 +1003,8 @@
           "temperatureUnit": "celsius",
           "useFITTemperature": true,
           "width": 300,
-          "windMetricLabel": "Wind"
+          "windMetricLabel": "Wind",
+          "cachedWeather": null
         },
         "zoneEdgeBar": {
           "activeZoneHeightScale": 1,
@@ -1952,7 +1953,7 @@
             "fontSize": 26,
             "fontWeight": "semibold"
           },
-          "dataSource": "manual",
+          "dataSource": "openMeteo",
           "dividerColor": {
             "alpha": 1,
             "blue": 1,
@@ -1967,7 +1968,7 @@
           "humidityMetricLabel": "RH",
           "humiditySuffix": "RH",
           "iconSize": 54,
-          "locationText": "\u5927\u962a, \u65e5\u672c",
+          "locationText": "",
           "locationTextStyle": {
             "color": {
               "alpha": 1,
@@ -1979,7 +1980,7 @@
             "fontSize": 19,
             "fontWeight": "bold"
           },
-          "manualCondition": "rain",
+          "manualCondition": "sunny",
           "manualFeelsLike": 21,
           "manualHigh": 16,
           "manualHumidity": 87,
@@ -2043,7 +2044,8 @@
           "temperatureUnit": "celsius",
           "useFITTemperature": true,
           "width": 300,
-          "windMetricLabel": "Wind"
+          "windMetricLabel": "Wind",
+          "cachedWeather": null
         },
         "zoneEdgeBar": {
           "activeZoneHeightScale": 1,
@@ -2992,7 +2994,7 @@
             "fontSize": 26,
             "fontWeight": "semibold"
           },
-          "dataSource": "manual",
+          "dataSource": "openMeteo",
           "dividerColor": {
             "alpha": 1,
             "blue": 1,
@@ -3007,7 +3009,7 @@
           "humidityMetricLabel": "RH",
           "humiditySuffix": "RH",
           "iconSize": 54,
-          "locationText": "\u5927\u962a, \u65e5\u672c",
+          "locationText": "",
           "locationTextStyle": {
             "color": {
               "alpha": 1,
@@ -3019,7 +3021,7 @@
             "fontSize": 19,
             "fontWeight": "bold"
           },
-          "manualCondition": "rain",
+          "manualCondition": "sunny",
           "manualFeelsLike": 21,
           "manualHigh": 16,
           "manualHumidity": 87,
@@ -3083,7 +3085,8 @@
           "temperatureUnit": "celsius",
           "useFITTemperature": true,
           "width": 300,
-          "windMetricLabel": "Wind"
+          "windMetricLabel": "Wind",
+          "cachedWeather": null
         },
         "zoneEdgeBar": {
           "activeZoneHeightScale": 1,
@@ -4012,18 +4015,7 @@
         "valueColorsFollowHeartRateZones": false,
         "valueOpacity": 1,
         "weatherWidget": {
-          "cachedWeather": {
-            "condition": "sunny",
-            "feelsLikeCelsius": 13,
-            "fetchLocationMode": "activityLocation",
-            "highTemperatureCelsius": 20.1,
-            "humidity": 74,
-            "lowTemperatureCelsius": 12.8,
-            "resolvedLocation": "Peterborough, Canada",
-            "sourceDate": 803567853,
-            "temperatureCelsius": 16.1,
-            "windKph": 24.2
-          },
+          "cachedWeather": null,
           "cardBackgroundColor": {
             "alpha": 1,
             "blue": 1,
@@ -4059,7 +4051,7 @@
           "humidityMetricLabel": "RH",
           "humiditySuffix": "RH",
           "iconSize": 54,
-          "locationText": "Peterborough, Canada",
+          "locationText": "",
           "locationTextStyle": {
             "color": {
               "alpha": 1,
@@ -4071,7 +4063,7 @@
             "fontSize": 19,
             "fontWeight": "bold"
           },
-          "manualCondition": "rain",
+          "manualCondition": "sunny",
           "manualFeelsLike": 21,
           "manualHigh": 16,
           "manualHumidity": 87,
@@ -5094,7 +5086,7 @@
             "fontSize": 26,
             "fontWeight": "semibold"
           },
-          "dataSource": "manual",
+          "dataSource": "openMeteo",
           "dividerColor": {
             "alpha": 1,
             "blue": 1,
@@ -5109,7 +5101,7 @@
           "humidityMetricLabel": "RH",
           "humiditySuffix": "RH",
           "iconSize": 54,
-          "locationText": "\u5927\u962a, \u65e5\u672c",
+          "locationText": "",
           "locationTextStyle": {
             "color": {
               "alpha": 1,
@@ -5121,7 +5113,7 @@
             "fontSize": 19,
             "fontWeight": "bold"
           },
-          "manualCondition": "rain",
+          "manualCondition": "sunny",
           "manualFeelsLike": 21,
           "manualHigh": 16,
           "manualHumidity": 87,
@@ -5185,7 +5177,8 @@
           "temperatureUnit": "celsius",
           "useFITTemperature": false,
           "width": 300,
-          "windMetricLabel": "Wind"
+          "windMetricLabel": "Wind",
+          "cachedWeather": null
         },
         "zoneEdgeBar": {
           "activeZoneHeightScale": 1,
@@ -6134,7 +6127,7 @@
             "fontSize": 26,
             "fontWeight": "semibold"
           },
-          "dataSource": "manual",
+          "dataSource": "openMeteo",
           "dividerColor": {
             "alpha": 1,
             "blue": 1,
@@ -6149,7 +6142,7 @@
           "humidityMetricLabel": "RH",
           "humiditySuffix": "RH",
           "iconSize": 54,
-          "locationText": "\u5927\u962a, \u65e5\u672c",
+          "locationText": "",
           "locationTextStyle": {
             "color": {
               "alpha": 1,
@@ -6161,7 +6154,7 @@
             "fontSize": 19,
             "fontWeight": "bold"
           },
-          "manualCondition": "rain",
+          "manualCondition": "sunny",
           "manualFeelsLike": 21,
           "manualHigh": 16,
           "manualHumidity": 87,
@@ -6225,7 +6218,8 @@
           "temperatureUnit": "celsius",
           "useFITTemperature": false,
           "width": 300,
-          "windMetricLabel": "Wind"
+          "windMetricLabel": "Wind",
+          "cachedWeather": null
         },
         "zoneEdgeBar": {
           "activeZoneHeightScale": 1,

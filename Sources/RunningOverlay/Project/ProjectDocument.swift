@@ -2225,6 +2225,14 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.useFITTemperature = enabled
     }
 
+    func setOverlayManualTemperatureCelsius(_ elementID: OverlayElement.ID, temperature: Double?) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.manualTemperatureCelsius = temperature
+    }
+
     func setOverlayShowLabel(_ elementID: OverlayElement.ID, showLabel: Bool) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
