@@ -1,4 +1,4 @@
-# Running Overlay Roadmap
+# Running Overlay Studio Roadmap
 
 Last updated: 2026-04-24
 
@@ -273,7 +273,7 @@ Completed so far:
 - Added a native Xcode macOS Application target and shared scheme that produce
   a standard universal `.xcarchive` with the sandbox, privacy manifest,
   resources, and legal notices.
-- Added the production Running Overlay icon in every required macOS AppIcon
+- Added the production Running Overlay Studio icon in every required macOS AppIcon
   slot.
 
 Pending:

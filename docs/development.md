@@ -1,4 +1,4 @@
-# Running Overlay Development Guide
+# Running Overlay Studio Development Guide
 
 Last updated: 2026-06-25
 

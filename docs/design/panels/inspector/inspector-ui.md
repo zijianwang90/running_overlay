@@ -4,7 +4,7 @@ Last updated: 2026-04-30
 
 ## Purpose
 
-The Inspector is the right-side editing panel for overlay work in Running Overlay. It has two primary overlay states:
+The Inspector is the right-side editing panel for overlay work in Running Overlay Studio. It has two primary overlay states:
 
 1. **Inspector Outer**: no overlay detail is open. The user manages existing overlays.
 2. **Overlay Detail**: an existing overlay has been opened from the Inspector list or selected from the Preview. The user edits that overlay's content, position, size, style, and animation.

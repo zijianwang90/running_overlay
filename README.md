@@ -1,6 +1,6 @@
-# Running Overlay
+# Running Overlay Studio
 
-Running Overlay is a native macOS editor for turning FIT activity data into
+Running Overlay Studio is a native macOS editor for turning FIT activity data into
 customizable, transparent sports-data overlay videos.
 
 > **Source-available:** You may download, build, study, modify, and use Running
@@ -103,13 +103,13 @@ Run the full local validation suite with:
 ./scripts/check.sh
 ```
 
-Support is best-effort; see [SUPPORT.md](SUPPORT.md). Running Overlay handles
+Support is best-effort; see [SUPPORT.md](SUPPORT.md). Running Overlay Studio handles
 sensitive activity and location data, so review [PRIVACY.md](PRIVACY.md)
 before sharing project files or issue attachments.
 
 ## Support the Project
 
-Running Overlay is developed independently. If the project saves you time,
+Running Overlay Studio is developed independently. If the project saves you time,
 you can support its ongoing development. Buy Me a Coffee is the preferred
 option; WeChat Pay and Alipay are also available.
 
@@ -122,7 +122,7 @@ option; WeChat Pay and Alipay are also available.
   <tr>
     <td align="center" valign="middle">
       <a href="https://buymeacoffee.com/zijianwang90">
-        <strong>☕ Support Running Overlay</strong>
+        <strong>☕ Support Running Overlay Studio</strong>
       </a>
     </td>
     <td align="center">
@@ -136,16 +136,16 @@ option; WeChat Pay and Alipay are also available.
 
 ## License
 
-Running Overlay is source-available under the
+Running Overlay Studio is source-available under the
 [PolyForm Shield License 1.0.0](LICENSE). The license permits personal,
 educational, internal, and non-competing commercial use, but does not permit
-providing a product that competes with Running Overlay.
+providing a product that competes with Running Overlay Studio.
 
 - [Commercial licensing](COMMERCIAL-LICENSE.md)
 - [Trademark policy](TRADEMARKS.md)
 - [Contributor License Agreement](CLA.md)
 
-Videos and other media created with Running Overlay are not restricted by the
+Videos and other media created with Running Overlay Studio are not restricted by the
 software license.
 
 See [third-party notices](THIRD_PARTY_NOTICES.md) for dependency and asset

@@ -26,7 +26,7 @@ fix and disclosure timeline. No fixed response-time SLA is currently offered.
 
 ## Sensitive Data
 
-Running Overlay processes activity timestamps, GPS traces, local media paths,
+Running Overlay Studio processes activity timestamps, GPS traces, local media paths,
 and optional API credentials. Test cases and issue reports must use synthetic
 or intentionally public data. OpenWeather keys and signing credentials must
 never be committed.

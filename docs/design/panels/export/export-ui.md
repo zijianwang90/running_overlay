@@ -4,7 +4,7 @@ Last updated: 2026-06-18
 
 ## Purpose
 
-This spec defines the production export dialog for Running Overlay. The current export sheet is functional but still reads like a debug surface because primary export, test exports, JSON export, and project snapshot controls share the same visual priority.
+This spec defines the production export dialog for Running Overlay Studio. The current export sheet is functional but still reads like a debug surface because primary export, test exports, JSON export, and project snapshot controls share the same visual priority.
 
 The production version should make the normal export path obvious, keep project-backed settings visible, and move diagnostic actions into a lower-priority advanced area.
 
@@ -44,7 +44,7 @@ Wireframe:
 │                                                              │
 │ Destination                                                  │
 │ ┌──────────────────────────────────────────────┐ ┌────────┐ │
-│ │ ~/Movies/Running Overlay                     │ │ Choose │ │
+│ │ ~/Movies/Running Overlay Studio                     │ │ Choose │ │
 │ └──────────────────────────────────────────────┘ └────────┘ │
 │                                                              │
 │ Output  ⓘ                                                    │

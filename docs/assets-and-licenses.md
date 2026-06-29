@@ -8,7 +8,7 @@ repository are distributed under the repository
 [PolyForm Shield License 1.0.0](../LICENSE).
 
 The license is source-available rather than OSI-approved open source. It does
-not permit providing a product that competes with Running Overlay. Separate
+not permit providing a product that competes with Running Overlay Studio. Separate
 commercial licensing is described in
 [`COMMERCIAL-LICENSE.md`](../COMMERCIAL-LICENSE.md).
 
@@ -36,7 +36,7 @@ documented.
 - Weather condition PNGs under
   `Sources/RunningOverlay/Resources/Icons/` are project assets contributed by
   the repository owner and distributed under the repository license.
-- The Running Overlay AppIcon renditions under
+- The Running Overlay Studio AppIcon renditions under
   `AppStore/Assets.xcassets/AppIcon.appiconset/` are derived from artwork
   supplied by the repository owner and distributed under the repository
   license.

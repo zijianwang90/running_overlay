@@ -1,14 +1,14 @@
-# Running Overlay Contributor License Agreement
+# Running Overlay Studio Contributor License Agreement
 
 This Contributor License Agreement ("Agreement") applies to every contribution
-submitted to Running Overlay. "Project Owner" means Zijian Wang. "You" means
+submitted to Running Overlay Studio. "Project Owner" means Zijian Wang. "You" means
 the individual or legal entity making the contribution.
 
 ## 1. Contributions
 
 "Contribution" means any original work of authorship, modification, addition,
 documentation, design, test, asset, or other material that You intentionally
-submit for inclusion in Running Overlay. Material clearly marked
+submit for inclusion in Running Overlay Studio. Material clearly marked
 "Not a Contribution" is excluded.
 
 ## 2. Copyright License
@@ -19,7 +19,7 @@ of, publicly display, publicly perform, distribute, sublicense, and otherwise
 use Your Contributions.
 
 This grant includes the right to license or relicense Your Contributions,
-alone or as part of Running Overlay, under the PolyForm Shield License,
+alone or as part of Running Overlay Studio, under the PolyForm Shield License,
 commercial or proprietary licenses, future project licenses, or combinations
 of those terms.
 
@@ -33,9 +33,9 @@ Project Owner a perpetual, worldwide, non-exclusive, royalty-free patent
 license to make, have made, use, offer to sell, sell, import, and otherwise
 transfer Your Contributions, limited to patent claims You can license that are
 necessarily infringed by Your Contributions alone or in combination with
-Running Overlay.
+Running Overlay Studio.
 
-If You initiate patent litigation alleging that Running Overlay or a
+If You initiate patent litigation alleging that Running Overlay Studio or a
 Contribution infringes a patent, patent licenses granted to You for the work
 involved in that claim terminate as of the filing date.
 

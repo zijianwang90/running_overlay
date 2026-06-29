@@ -32,7 +32,7 @@
 		<false/>
 	</dict>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright © 2026 Running Overlay. All rights reserved.</string>
+	<string>Copyright © 2026 Running Overlay Studio. All rights reserved.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSSupportsAutomaticTermination</key>

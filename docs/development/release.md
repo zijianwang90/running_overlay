@@ -80,7 +80,7 @@ GitHub release path before creating the final `v0.1.0` tag:
 
 ```sh
 git checkout main
-git tag -a v0.1.0-rc.1 -m "Running Overlay v0.1.0-rc.1"
+git tag -a v0.1.0-rc.1 -m "Running Overlay Studio v0.1.0-rc.1"
 git push origin v0.1.0-rc.1
 ```
 
@@ -91,8 +91,8 @@ visual regression, publication audit, App Store configuration validation,
 optimized SwiftPM product build, Developer ID signing, Apple notarization,
 stapling, and Gatekeeper validation, then uploads a macOS arm64 zip and a
 SHA-256 checksum. Release-candidate tags create draft pre-releases; final tags
-create published releases marked as latest. The zip keeps the
-repository-oriented asset name, while the app bundle inside is
+create published releases marked as latest. The zip uses
+`RunningOverlayStudio-${tag}-macOS-arm64.zip`, while the app bundle inside is
 `Running Overlay Studio.app`.
 
 GitHub release candidates use a Developer ID Application certificate and App
@@ -106,7 +106,7 @@ the App Store submission build is accepted without further code changes, create
 the final `v0.1.0` tag on the same commit:
 
 ```sh
-git tag -a v0.1.0 -m "Running Overlay v0.1.0"
+git tag -a v0.1.0 -m "Running Overlay Studio v0.1.0"
 git push origin v0.1.0
 ```
 

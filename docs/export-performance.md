@@ -1,6 +1,6 @@
 # Export Performance Optimization
 
-This project tracks the first export-performance branch for Running Overlay.
+This project tracks the first export-performance branch for Running Overlay Studio.
 The goal is to make export speed measurable first, then reduce repeated work
 without changing visual output or export timing.
 
