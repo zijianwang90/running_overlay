@@ -1,6 +1,6 @@
-# Contributing to Running Overlay
+# Contributing to Running Overlay Studio
 
-Running Overlay welcomes human-authored and AI-assisted contributions. The
+Running Overlay Studio welcomes human-authored and AI-assisted contributions. The
 same review, testing, privacy, and licensing requirements apply to both.
 
 ## Environment

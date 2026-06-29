@@ -1,8 +1,8 @@
 # Mac App Store Readiness
 
-Last updated: 2026-06-27
+Last updated: 2026-06-28
 
-This document tracks the first Mac App Store submission path for Running Overlay.
+This document tracks the first Mac App Store submission path for Running Overlay Studio.
 
 ## Current Release Target
 
@@ -19,7 +19,7 @@ This document tracks the first Mac App Store submission path for Running Overlay
 - `AppStore/Info.plist`: app bundle metadata, macOS 15 minimum, App Store video category, and ATS default-deny arbitrary loads.
 - `AppStore/RunningOverlay.entitlements`: App Sandbox, user-selected file read/write access, and outbound network client access.
 - `AppStore/PrivacyInfo.xcprivacy`: privacy manifest declaring no tracking and no collected data, plus required-reason API declarations for file timestamps and app-scoped user defaults.
-- `AppStore/Assets.xcassets`: production Running Overlay app icon in all ten
+- `AppStore/Assets.xcassets`: production Running Overlay Studio app icon in all ten
   macOS icon slots plus the app accent color.
 - `Config/AppStore.xcconfig`: release defaults for the selected bundle id,
   marketing version, build number, deployment target, and a local signing

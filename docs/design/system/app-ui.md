@@ -1,10 +1,10 @@
-# Running Overlay App UI Design System
+# Running Overlay Studio App UI Design System
 
 Last updated: 2026-04-26
 
 ## Purpose
 
-This document defines the application-level UI direction for Running Overlay. Feature-specific specs should extend this system instead of inventing local visual styles.
+This document defines the application-level UI direction for Running Overlay Studio. Feature-specific specs should extend this system instead of inventing local visual styles.
 
 Related specs:
 
@@ -15,7 +15,7 @@ Related specs:
 
 ## Product Character
 
-Running Overlay is a focused desktop editor for aligning running activity data with video and exporting polished overlays. The UI should feel like a professional editing tool: calm, dense, precise, and fast to scan.
+Running Overlay Studio is a focused desktop editor for aligning running activity data with video and exporting polished overlays. The UI should feel like a professional editing tool: calm, dense, precise, and fast to scan.
 
 The app should not feel like a marketing site, a mobile fitness app, or a decorative dashboard. Visual polish should come from alignment, contrast, typography, and controlled interaction states.
 

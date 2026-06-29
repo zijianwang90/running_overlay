@@ -1,12 +1,12 @@
-# Running Overlay Agent Guide
+# Running Overlay Studio Agent Guide
 
 This is the canonical instruction file for humans and AI agents contributing
-to Running Overlay. Do not add tool-specific instruction files that duplicate
+to Running Overlay Studio. Do not add tool-specific instruction files that duplicate
 these rules.
 
 ## Project
 
-Running Overlay is a native macOS application that combines FIT activity data
+Running Overlay Studio is a native macOS application that combines FIT activity data
 with source video and exports transparent sports-data overlay videos.
 
 - Language: Swift 6

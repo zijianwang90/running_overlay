@@ -1,6 +1,6 @@
 # Privacy
 
-Running Overlay processes source videos and FIT activity files that may contain
+Running Overlay Studio processes source videos and FIT activity files that may contain
 private location, health, device, timestamp, and training information.
 
 ## Local Processing
@@ -10,7 +10,7 @@ exported videos are processed locally on the Mac. The current application does
 not include account login, cloud sync, advertising, analytics, telemetry
 upload, or crash-reporting services.
 
-Running Overlay reads files selected by the user and writes project snapshots,
+Running Overlay Studio reads files selected by the user and writes project snapshots,
 templates, diagnostics, and exported media only to locations selected by the
 user or to documented local application storage.
 
@@ -35,12 +35,12 @@ overlay or triggers a weather refresh.
 - OpenWeather requests receive latitude, longitude, activity timestamp,
   requested units, and the user's OpenWeather API key.
 - macOS geocoding services may be used to turn the selected FIT activity's
-  coordinates into a readable place name. Running Overlay does not use macOS
+  coordinates into a readable place name. Running Overlay Studio does not use macOS
   Location Services to request the Mac's current device location.
 
 Source videos, preview frames, exported overlays, complete FIT files, heart-rate
 streams, cadence, pace, power, and layout templates are not uploaded to the
-weather providers by Running Overlay.
+weather providers by Running Overlay Studio.
 
 Weather responses are cached in the Weather overlay configuration so preview
 and export remain deterministic without repeated requests.
@@ -52,7 +52,7 @@ It is not written to project settings, project snapshots, templates, logs, or
 test fixtures.
 
 When an older project snapshot containing an `openWeatherAPIKey` field is
-opened, Running Overlay migrates the value to Keychain. Saving the snapshot
+opened, Running Overlay Studio migrates the value to Keychain. Saving the snapshot
 again removes the legacy credential field.
 
 ## Public Issues and Contributions

@@ -1,6 +1,6 @@
 # Maintainers
 
-Running Overlay is currently maintained by
+Running Overlay Studio is currently maintained by
 [@zijianwang90](https://github.com/zijianwang90).
 
 ## Review Policy

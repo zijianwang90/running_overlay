@@ -1,6 +1,6 @@
 # Design Docs
 
-This directory stores implementation-facing product design references for Running Overlay.
+This directory stores implementation-facing product design references for Running Overlay Studio.
 
 ## How To Read
 
