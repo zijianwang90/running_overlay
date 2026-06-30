@@ -157,6 +157,29 @@ settings, activity timeline, media references, timeline clips, overlay layout,
 user assets, and FIT offset are restored from the snapshot. It prints segment
 progress to stdout and exits with a non-zero code on failure.
 
+To estimate whether clip-level parallel export is worth implementing in the
+app, run the parallel process benchmark against the same snapshot:
+
+```bash
+scripts/parallel-export-benchmark.rb \
+  running_overlay_project_snapshot.json \
+  --jobs 2 \
+  --output /path/to/parallel-export-benchmark
+```
+
+The script first runs the current serial `--benchmark-export` baseline, then
+splits exportable timeline clips across worker snapshots and launches that many
+headless exporter processes in parallel. It writes `benchmark_summary.txt`,
+`benchmark_summary.json`, per-worker logs, shard snapshots, and each worker's
+normal export profile files. Use `--skip-serial` when a fresh serial baseline is
+already available, and `--prepare-only` to verify shard balance without running
+exports.
+
+This benchmark intentionally measures multi-process clip-level parallelism
+without changing production export behavior. It is meaningful for projects with
+multiple timeline clips that export to separate MOV files; it does not measure a
+single long segment split into frame ranges.
+
 ## Profiling Files
 
 The JSON file is the canonical structured record for one completed export task.
