@@ -28,6 +28,8 @@ enum HeadlessBenchmarkRunner {
                             _ = try await ExportBenchmarkRunner.run(exportCommand)
                         case .elevation(let elevationCommand):
                             _ = try await ElevationBenchmarkRunner.run(elevationCommand)
+                        case .templateSegments(let templateSegmentsCommand):
+                            _ = try await TemplateSegmentsBenchmarkRunner.run(templateSegmentsCommand)
                         }
                     } catch {
                         fputs("[RunningOverlayBenchmark] failed: \(error.localizedDescription)\n", stderr)
@@ -47,8 +49,12 @@ enum HeadlessBenchmarkRunner {
 enum HeadlessBenchmarkCommand: Equatable {
     case export(ExportBenchmarkCommand)
     case elevation(ElevationBenchmarkCommand)
+    case templateSegments(TemplateSegmentsBenchmarkCommand)
 
     static func parse(arguments: [String] = CommandLine.arguments) throws -> HeadlessBenchmarkCommand? {
+        if let templateSegments = try TemplateSegmentsBenchmarkCommand.parse(arguments: arguments) {
+            return .templateSegments(templateSegments)
+        }
         if let elevation = try ElevationBenchmarkCommand.parse(arguments: arguments) {
             return .elevation(elevation)
         }
