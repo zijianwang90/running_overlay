@@ -58,6 +58,7 @@ Current implementation:
 - FIT import success and failure details are printed to stdout, so they are visible when launching with `swift run RunningOverlay`.
 - Developer field definitions are read and skipped so standard fields in files with developer data remain parseable.
 - Record elapsed times are normalized after parsing with the final activity start date so overlay values sample the correct FIT record over time.
+- Calories prefer direct record-level values. When a FIT file omits record calories but provides lap `total_calories`, such as some COROS exports, the parser estimates cumulative record calories from lap totals; when only session calories are available, it falls back to a linear session-total estimate.
 - Timer start/stop events are parsed into `ActivityAnnotatedSegment` pause spans. These spans stay on the real elapsed-time axis and are available to timeline UI without changing video alignment.
 - FIT lap classification runs through `WorkoutStructureAnalyzer`, which infers Normal vs Structured workouts from the full lap sequence instead of a fixed absolute speed threshold. Structured workouts keep an internal subtype (`interval`, `steadyPlan`, or `genericLaps`) while the import UI exposes only `Auto`, `Normal`, and `Structured`.
 - Compressed timestamp headers are accepted only enough to route to local message definitions; full compressed timestamp reconstruction is not implemented yet.
