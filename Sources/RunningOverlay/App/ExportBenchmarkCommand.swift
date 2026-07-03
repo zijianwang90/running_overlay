@@ -383,3 +383,199 @@ enum ElevationBenchmarkRunner {
             .appendingPathComponent("elevation_benchmark_\(stamp)", isDirectory: true)
     }
 }
+
+/// Headless benchmark driven by a real FIT file and a `.rotemplate`, with a
+/// synthetic multi-clip timeline. This isolates overlay export throughput from
+/// source-video decoding so clip-level parallel export can be measured before
+/// changing the production app exporter.
+struct TemplateSegmentsBenchmarkCommand: Equatable {
+    var fitURL: URL
+    var templateURL: URL
+    var startSeconds: TimeInterval
+    var segmentCount: Int
+    var segmentDuration: TimeInterval
+    var codec: ProjectExportCodec
+    var shardIndex: Int
+    var shardCount: Int
+    var outputDirectory: URL?
+
+    static func parse(arguments: [String] = CommandLine.arguments) throws -> TemplateSegmentsBenchmarkCommand? {
+        var fitPath: String?
+        var templatePath: String?
+        var outputPath: String?
+        var start: TimeInterval = 0
+        var segments = 10
+        var segmentDuration: TimeInterval = 10
+        var codec: ProjectExportCodec = .hevcWithAlpha
+        var shardIndex = 0
+        var shardCount = 1
+        var index = 1
+
+        while index < arguments.count {
+            let argument = arguments[index]
+            func value() throws -> String {
+                index += 1
+                guard index < arguments.count else {
+                    throw ExportBenchmarkError.missingValue(argument)
+                }
+                return arguments[index]
+            }
+            switch argument {
+            case "--benchmark-template-segments":
+                fitPath = try value()
+            case "--template":
+                templatePath = try value()
+            case "--benchmark-output":
+                outputPath = try value()
+            case "--start":
+                start = Double(try value()) ?? 0
+            case "--segments":
+                segments = Int(try value()) ?? 10
+            case "--segment-duration":
+                segmentDuration = Double(try value()) ?? 10
+            case "--codec":
+                let rawValue = try value()
+                codec = ProjectExportCodec(rawValue: rawValue) ?? .hevcWithAlpha
+            case "--shard-index":
+                shardIndex = Int(try value()) ?? 0
+            case "--shard-count":
+                shardCount = Int(try value()) ?? 1
+            default:
+                break
+            }
+            index += 1
+        }
+
+        guard let fitPath, let templatePath else {
+            return nil
+        }
+        let effectiveShardCount = max(1, shardCount)
+        let effectiveShardIndex = min(max(0, shardIndex), effectiveShardCount - 1)
+        return TemplateSegmentsBenchmarkCommand(
+            fitURL: resolvedURL(for: fitPath),
+            templateURL: resolvedURL(for: templatePath),
+            startSeconds: max(0, start),
+            segmentCount: max(1, segments),
+            segmentDuration: max(1, segmentDuration),
+            codec: codec,
+            shardIndex: effectiveShardIndex,
+            shardCount: effectiveShardCount,
+            outputDirectory: outputPath.map(resolvedURL(for:))
+        )
+    }
+
+    private static func resolvedURL(for path: String) -> URL {
+        let expanded = NSString(string: path).expandingTildeInPath
+        if expanded.hasPrefix("/") {
+            return URL(fileURLWithPath: expanded)
+        }
+        return URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            .appendingPathComponent(expanded)
+    }
+}
+
+enum TemplateSegmentsBenchmarkRunner {
+    @MainActor
+    static func run(_ command: TemplateSegmentsBenchmarkCommand) async throws -> URL {
+        let activity = try FitFileParser.parse(url: command.fitURL)
+        let template = try OverlayTemplateStore().loadTemplateFile(from: command.templateURL)
+        let elements = template.layout.elements
+
+        var settings = ProjectSettings()
+        settings.exportCodec = command.codec
+        if let reference = template.referenceResolution,
+           let match = ProjectResolution.presets.first(where: { $0.width == reference.width && $0.height == reference.height }) {
+            settings.resolution = match
+        }
+
+        let outputDirectory = try command.outputDirectory ?? defaultOutputDirectory()
+        try? FileManager.default.removeItem(at: outputDirectory)
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        let allSegments = makeSegments(
+            activityDuration: activity.duration,
+            startSeconds: command.startSeconds,
+            segmentCount: command.segmentCount,
+            segmentDuration: command.segmentDuration
+        )
+        let segments = allSegments.enumerated().compactMap { index, segment in
+            index % command.shardCount == command.shardIndex ? segment : nil
+        }
+        guard !segments.isEmpty else {
+            throw ExportBenchmarkError.noSegments
+        }
+
+        let plan = ExportRenderPlan(
+            overlays: elements,
+            canvasSize: CGSize(width: settings.resolution.width, height: settings.resolution.height),
+            activity: activity
+        )
+        let label = command.shardCount == 1
+            ? "serial"
+            : "shard \(command.shardIndex + 1)/\(command.shardCount)"
+
+        print("[TemplateSegmentsBenchmark] fit=\(command.fitURL.lastPathComponent) activityDuration=\(Int(activity.duration))s")
+        print("[TemplateSegmentsBenchmark] template=\(template.name) elements=\(elements.count)")
+        print("[TemplateSegmentsBenchmark] resolution=\(settings.resolution.width)x\(settings.resolution.height) fps=\(settings.frameRate.value) layerDataFps=\(settings.layerDataFrameRate.value) codec=\(settings.exportCodec)")
+        print("[TemplateSegmentsBenchmark] renderPath=\(plan.renderPath.rawValue) overlayRenderAreaRatio=\(String(format: "%.2f", plan.overlayRenderAreaRatio))")
+        print("[TemplateSegmentsBenchmark] \(label) segments=\(segments.count)/\(allSegments.count) segmentDuration=\(String(format: "%.1f", command.segmentDuration))s output=\(outputDirectory.path)")
+
+        let startedAt = Date()
+        let job = OverlayExportJob(
+            destinationURL: outputDirectory,
+            settings: settings,
+            activity: activity,
+            overlayLayout: OverlayLayout(elements: elements),
+            fitStartTime: 0,
+            segments: segments
+        )
+        try await SwiftUIOverlayVideoExporter.export(job: job) { _ in }
+        let wallClock = Date().timeIntervalSince(startedAt)
+
+        var lines: [String] = []
+        lines.append("Template Segments Export Benchmark")
+        lines.append("==================================")
+        lines.append("FIT: \(command.fitURL.path)")
+        lines.append("Template: \(template.name)")
+        lines.append("Mode: \(label)")
+        lines.append("Segments in this run: \(segments.count)")
+        lines.append("Total segments: \(allSegments.count)")
+        lines.append("Segment duration: \(String(format: "%.3f", command.segmentDuration)) s")
+        lines.append("Wall-clock: \(String(format: "%.3f", wallClock)) s")
+        lines.append("Output: \(outputDirectory.path)")
+        let summaryURL = outputDirectory.appendingPathComponent("template_segments_summary.txt")
+        try Data(lines.joined(separator: "\n").utf8).write(to: summaryURL)
+
+        print("[TemplateSegmentsBenchmark] completed wallClock=\(String(format: "%.3f", wallClock))s")
+        return outputDirectory
+    }
+
+    private static func makeSegments(
+        activityDuration: TimeInterval,
+        startSeconds: TimeInterval,
+        segmentCount: Int,
+        segmentDuration: TimeInterval
+    ) -> [OverlayExportSegment] {
+        let availableDuration = max(activityDuration - startSeconds, 1)
+        let effectiveDuration = min(segmentDuration, max(availableDuration / Double(segmentCount), 1))
+        return (0..<segmentCount).map { index in
+            let start = startSeconds + Double(index) * effectiveDuration
+            let remaining = max(activityDuration - start, 1)
+            return OverlayExportSegment(
+                startTime: start,
+                duration: min(effectiveDuration, remaining),
+                sourceFileName: String(format: "synthetic_clip_%02d", index + 1)
+            )
+        }
+    }
+
+    private static func defaultOutputDirectory() throws -> URL {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyyMMdd_HHmmss"
+        let stamp = formatter.string(from: Date())
+        return URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            .appendingPathComponent("template_segments_benchmark_\(stamp)", isDirectory: true)
+    }
+}

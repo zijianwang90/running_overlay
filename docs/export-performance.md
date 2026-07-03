@@ -157,6 +157,59 @@ settings, activity timeline, media references, timeline clips, overlay layout,
 user assets, and FIT offset are restored from the snapshot. It prints segment
 progress to stdout and exits with a non-zero code on failure.
 
+To estimate whether clip-level parallel export is worth implementing in the
+app, run the parallel process benchmark against the same snapshot:
+
+```bash
+scripts/parallel-export-benchmark.rb \
+  running_overlay_project_snapshot.json \
+  --jobs 2 \
+  --output /path/to/parallel-export-benchmark
+```
+
+The script first runs the current serial `--benchmark-export` baseline, then
+splits exportable timeline clips across worker snapshots and launches that many
+headless exporter processes in parallel. It writes `benchmark_summary.txt`,
+`benchmark_summary.json`, per-worker logs, shard snapshots, and each worker's
+normal export profile files. Use `--skip-serial` when a fresh serial baseline is
+already available, and `--prepare-only` to verify shard balance without running
+exports.
+
+This benchmark intentionally measures multi-process clip-level parallelism
+without changing production export behavior. It is meaningful for projects with
+multiple timeline clips that export to separate MOV files; it does not measure a
+single long segment split into frame ranges.
+
+A FIT/template-driven variant is available when no project snapshot or source
+videos should be used:
+
+```bash
+swift run RunningOverlay \
+  --benchmark-template-segments /path/to/activity.fit \
+  --template Sources/RunningOverlay/Resources/Templates/EasyRun.rotemplate \
+  --segments 10 \
+  --segment-duration 5 \
+  --codec proRes4444 \
+  --benchmark-output /path/to/output
+```
+
+Use `--shard-index` and `--shard-count` to launch multiple processes against
+disjoint synthetic segment subsets. A local 2026-06-30 run using
+`476473199387771081.fit`, the Easy Run template, 10 synthetic 5-second segments,
+and ProRes 4444 measured:
+
+| Workers | Wall-clock | Speedup |
+|---:|---:|---:|
+| 1 | 23.640 s | 1.00x |
+| 2 | 20.150 s | 1.17x |
+| 3 | 21.199 s | 1.12x |
+| 4 | 19.219 s | 1.23x |
+
+The serial profile was dominated by `imageRenderDuration` (~16.9 s of
+~22.3 s profiled export time), but cumulative render and draw time increased
+under parallel load. Treat these results as evidence for bounded low-concurrency
+clip export rather than unbounded parallelism.
+
 ## Profiling Files
 
 The JSON file is the canonical structured record for one completed export task.
