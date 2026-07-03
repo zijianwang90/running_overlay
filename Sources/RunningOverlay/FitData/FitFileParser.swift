@@ -52,6 +52,7 @@ struct FitFileParser {
         var avgCadenceStrides: Int?   // strides/min from FIT field 17
         var avgPowerWatts: Int?
         var totalAscent: Int?
+        var totalCalories: Double?
     }
 
     init(data: Data) {
@@ -83,6 +84,11 @@ struct FitFileParser {
                 .sorted { $0.elapsedTime < $1.elapsedTime }
             let duration = sessionElapsedTime ?? max(normalizedRecords.map(\.elapsedTime).max() ?? 0, 1)
             let distance = sessionDistanceMeters ?? records.compactMap(\.distanceMeters).max() ?? 0
+            let recordsWithCalories = recordsWithEstimatedCalories(
+                normalizedRecords,
+                startDate: startDate,
+                duration: duration
+            )
             let lapRecords = buildLapRecords(startDate: startDate)
             let workoutResult = WorkoutStructureAnalyzer.analyze(laps: lapRecords)
             let annotatedSegments = buildAnnotatedSegments(startDate: startDate, duration: duration)
@@ -90,7 +96,7 @@ struct FitFileParser {
                 startDate: startDate,
                 duration: duration,
                 distanceMeters: distance,
-                records: normalizedRecords,
+                records: recordsWithCalories,
                 laps: workoutResult.laps,
                 annotatedSegments: annotatedSegments,
                 workoutStructure: workoutResult.analysis
@@ -270,7 +276,7 @@ struct FitFileParser {
         let cadence = cadenceInt.map { Int((($0 + cadenceFrac) * 2).rounded()) }  // strides→spm
         let altitude = uint16(fields[2], architecture: architecture).flatMap(validUInt16).map { Double($0) / 5 - 500 }
         let power = uint16(fields[7], architecture: architecture).flatMap(validUInt16).map(Int.init)
-        let calories = uint16(fields[33], architecture: architecture).flatMap(validUInt16).map(Double.init) ?? sessionCalories
+        let calories = uint16(fields[33], architecture: architecture).flatMap(validUInt16).map(Double.init)
         let latitude = int32(fields[0], architecture: architecture).flatMap(validInt32).map(semicirclesToDegrees)
         let longitude = int32(fields[1], architecture: architecture).flatMap(validInt32).map(semicirclesToDegrees)
         let verticalOscillation = uint16(fields[39], architecture: architecture).flatMap(validUInt16).map { Double($0) / 10.0 }
@@ -313,6 +319,7 @@ struct FitFileParser {
         let cadence = cadenceInt.map { Int((($0 + cadenceFrac) * 2).rounded()) }  // strides→spm
         let power = uint16(fields[19], architecture: architecture).flatMap(validUInt16).flatMap { $0 == 0 ? nil : Int($0) }
         let ascent = uint16(fields[21], architecture: architecture).flatMap(validUInt16).map(Int.init)
+        let calories = uint16(fields[11], architecture: architecture).flatMap(validUInt16).map(Double.init)
         return RawLap(
             startTimestamp: startRaw.map(fitDate),
             totalElapsedTime: Double(elapsed) / 1000,
@@ -322,8 +329,89 @@ struct FitFileParser {
             maxHeartRate: maxHR,
             avgCadenceStrides: cadence,
             avgPowerWatts: power,
-            totalAscent: ascent
+            totalAscent: ascent,
+            totalCalories: calories
         )
+    }
+
+    private func recordsWithEstimatedCalories(
+        _ normalizedRecords: [ActivityRecord],
+        startDate: Date,
+        duration: TimeInterval
+    ) -> [ActivityRecord] {
+        guard !normalizedRecords.contains(where: { $0.calories != nil }) else {
+            return normalizedRecords
+        }
+
+        if let estimatedByLap = recordsWithLapEstimatedCalories(normalizedRecords, startDate: startDate) {
+            return estimatedByLap
+        }
+
+        guard let sessionCalories, duration > 0 else {
+            return normalizedRecords
+        }
+
+        return normalizedRecords.map { record in
+            var estimated = record
+            estimated.calories = sessionCalories * min(max(record.elapsedTime / duration, 0), 1)
+            return estimated
+        }
+    }
+
+    private func recordsWithLapEstimatedCalories(
+        _ normalizedRecords: [ActivityRecord],
+        startDate: Date
+    ) -> [ActivityRecord]? {
+        guard rawLaps.contains(where: { $0.totalCalories != nil }) else { return nil }
+
+        var segments: [CalorieEstimateSegment] = []
+        var cumulativeTime = 0.0
+        var cumulativeCalories = 0.0
+
+        for raw in rawLaps {
+            let startElapsed: TimeInterval
+            if let ts = raw.startTimestamp {
+                startElapsed = max(ts.timeIntervalSince(startDate), 0)
+            } else {
+                startElapsed = cumulativeTime
+            }
+            let endElapsed = startElapsed + raw.totalElapsedTime
+            let calories = raw.totalCalories ?? 0
+            segments.append(CalorieEstimateSegment(
+                startElapsedTime: startElapsed,
+                endElapsedTime: endElapsed,
+                startCalories: cumulativeCalories,
+                endCalories: cumulativeCalories + calories
+            ))
+            cumulativeTime = endElapsed
+            cumulativeCalories += calories
+        }
+
+        guard !segments.isEmpty, cumulativeCalories > 0 else { return nil }
+
+        return normalizedRecords.map { record in
+            var estimated = record
+            estimated.calories = estimatedCalories(at: record.elapsedTime, segments: segments)
+            return estimated
+        }
+    }
+
+    private func estimatedCalories(at elapsedTime: TimeInterval, segments: [CalorieEstimateSegment]) -> Double {
+        if elapsedTime <= segments[0].startElapsedTime {
+            return segments[0].startCalories
+        }
+
+        for segment in segments {
+            if elapsedTime <= segment.endElapsedTime {
+                guard segment.endElapsedTime > segment.startElapsedTime else {
+                    return segment.endCalories
+                }
+                let progress = (elapsedTime - segment.startElapsedTime) / (segment.endElapsedTime - segment.startElapsedTime)
+                return segment.startCalories + (segment.endCalories - segment.startCalories) * min(max(progress, 0), 1)
+            }
+        }
+
+        return segments.last?.endCalories ?? 0
     }
 
     private func makeTimerEvent(from fields: [UInt8: Data], architecture: FitArchitecture) -> TimerEvent? {
@@ -558,6 +646,13 @@ private struct FitDeveloperFieldDefinition {
     var number: UInt8
     var size: Int
     var developerDataIndex: UInt8
+}
+
+private struct CalorieEstimateSegment {
+    var startElapsedTime: TimeInterval
+    var endElapsedTime: TimeInterval
+    var startCalories: Double
+    var endCalories: Double
 }
 
 private enum FitArchitecture {
