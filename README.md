@@ -1,5 +1,14 @@
 # Running Overlay Studio
 
+<p>
+  <a href="https://apps.apple.com/app/id6785094308">
+    <img src="https://developer.apple.com/assets/elements/badges/download-on-the-mac-app-store.svg" alt="Download on the Mac App Store" height="44">
+  </a>
+</p>
+
+**Now available on the Mac App Store:**
+[Running Overlay Studio](https://apps.apple.com/app/id6785094308)
+
 Running Overlay Studio is a native macOS editor for turning FIT activity data into
 customizable, transparent sports-data overlay videos.
 
@@ -55,8 +64,10 @@ Current limitations:
   entire FIT specification.
 - Video metadata varies by camera, so some clips require manual alignment.
 - HEVC-with-alpha availability depends on the Mac and selected export settings.
-- The repository currently provides source builds; packaged signed releases
-  are not available yet.
+- Signed macOS builds are available from the
+  [Mac App Store](https://apps.apple.com/app/id6785094308). Source builds are
+  available from the repository, and release packages are published on GitHub
+  Releases when a version is tagged.
 
 ## Build from Source
 
