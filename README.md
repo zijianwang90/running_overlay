@@ -2,7 +2,7 @@
 
 <p>
   <a href="https://apps.apple.com/app/id6785094308">
-    <img src="https://developer.apple.com/assets/elements/badges/download-on-the-mac-app-store.svg" alt="Download on the Mac App Store" height="44">
+    <img src="https://toolbox.marketingtools.apple.com/api/badges/download-on-the-mac-app-store/black/en-us?size=250x83" alt="Download on the Mac App Store" height="44">
   </a>
 </p>
 
