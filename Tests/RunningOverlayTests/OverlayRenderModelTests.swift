@@ -983,6 +983,33 @@ struct OverlayRenderModelTests {
         #expect(disabledLayout.thresholdZoneMarker == nil)
     }
 
+    @Test func intervalHUDBarZoneMarkerMetricsMatchPreviewAndExportScale() {
+        let textStyle = IntervalHUDBarTextStyle(fontName: "", fontSize: 12, fontWeight: .semibold)
+
+        let current = IntervalHUDBarZoneMarkerMetrics.current(
+            barHeight: 10,
+            markerPosition: .above,
+            textStyle: textStyle
+        )
+        #expect(current.arrowWidth == 13.5)
+        #expect(current.arrowHeight == 9)
+        #expect(current.valueFontSize == 12)
+        #expect(current.valueHorizontalPadding == 5)
+        #expect(current.valueVerticalPadding == 2)
+        #expect(current.gap == 3.5)
+
+        let threshold = IntervalHUDBarZoneMarkerMetrics.threshold(
+            barHeight: 10,
+            markerScale: 2,
+            textStyle: textStyle
+        )
+        #expect(threshold.arrowWidth == 9.5)
+        #expect(threshold.arrowHeight == 6.2)
+        #expect(threshold.valueFontSize == 8.64)
+        #expect(threshold.thresholdLineHeight == 13.5)
+        #expect(threshold.thresholdLineWidth == 2.4)
+    }
+
     @Test func intervalHUDBarBottomBarSpacingExpandsHUDHeight() {
         var style = OverlayStyle.default
         style.intervalHUDBar.height = 116
@@ -1006,6 +1033,43 @@ struct OverlayRenderModelTests {
         #expect(abs(compactLayout.baseHeight - expandedLayout.baseHeight) < 0.0001)
         #expect(abs(Double(compactLayout.rect.height) - compactLayout.baseHeight) < 0.0001)
         #expect(abs(Double(expandedLayout.rect.height) - (expandedLayout.baseHeight + 24)) < 0.0001)
+    }
+
+    @Test func intervalHUDBarBackgroundGeometryScalesWithCanvasSize() {
+        var style = OverlayStyle.default
+        style.backgroundRadius = 18
+        style.backgroundPaddingX = 12
+        style.backgroundPaddingY = 8
+        style.borderWidth = 2
+        style.dividerThickness = 1.5
+        style.intervalHUDBar.bottomBarSpacing = 10
+        style.intervalHUDBar.bottomBarCornerRadius = 5
+        style.intervalHUDBar.bottomBarBorderWidth = 1
+        let element = OverlayElement(type: .intervalHUDBar, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let activity = sampleIntervalActivity()
+        let hdContext = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: activity,
+            elapsedTime: 50
+        )
+        let fourKContext = OverlayRenderContext(
+            canvasSize: CGSize(width: 3840, height: 2160),
+            activity: activity,
+            elapsedTime: 50
+        )
+
+        let hd = OverlayRenderModel.intervalHUDBarLayout(for: element, in: hdContext)
+        let fourK = OverlayRenderModel.intervalHUDBarLayout(for: element, in: fourKContext)
+        let scale = fourKContext.canvasScale / hdContext.canvasScale
+
+        #expect(abs(fourK.backgroundRadius - hd.backgroundRadius * scale) < 0.001)
+        #expect(abs(fourK.backgroundPaddingX - hd.backgroundPaddingX * scale) < 0.001)
+        #expect(abs(fourK.backgroundPaddingY - hd.backgroundPaddingY * scale) < 0.001)
+        #expect(abs(fourK.borderWidth - hd.borderWidth * scale) < 0.001)
+        #expect(abs(fourK.bottomBarSpacing - hd.bottomBarSpacing * scale) < 0.001)
+        #expect(abs(fourK.bottomBarCornerRadius - hd.bottomBarCornerRadius * scale) < 0.001)
+        #expect(abs(fourK.bottomBarBorderWidth - hd.bottomBarBorderWidth * scale) < 0.001)
+        #expect(abs(fourK.dividerThickness - hd.dividerThickness * scale) < 0.001)
     }
 
     @Test func intervalHUDBarZoneSegmentFramesSupportActiveZoneEmphasis() {
@@ -1557,11 +1621,41 @@ struct OverlayRenderModelTests {
         )
 
         let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
-        let markerBottom = layout.markerTopY + layout.markerTriangleHeight + 2 * element.scale + layout.markerLabelHeight
+        let markerBottom = layout.markerTopY + layout.markerTriangleHeight + layout.markerStackSpacing + layout.markerLabelHeight
 
         let currentSegmentBottom = layout.segments.first(where: \.isCurrent).map { $0.rect.maxY } ?? layout.contentRect.maxY
         #expect(layout.markerTopY > currentSegmentBottom)
         #expect(markerBottom < layout.rect.maxY - 1)
+    }
+
+    @Test func intervalTimelineMarkerAndBorderScaleWithCanvasSize() {
+        var style = OverlayStyle.default
+        style.intervalTimeline.markerEnabled = true
+        style.intervalTimeline.markerFontSize = 14
+        style.borderWidth = 2
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let activity = repeatedIntervalActivity(repCount: 4)
+        let hdContext = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: activity,
+            elapsedTime: 45
+        )
+        let fourKContext = OverlayRenderContext(
+            canvasSize: CGSize(width: 3840, height: 2160),
+            activity: activity,
+            elapsedTime: 45
+        )
+
+        let hd = OverlayRenderModel.intervalTimelineLayout(for: element, in: hdContext)
+        let fourK = OverlayRenderModel.intervalTimelineLayout(for: element, in: fourKContext)
+        let scale = fourKContext.canvasScale / hdContext.canvasScale
+
+        #expect(abs(fourK.markerTriangleWidth - hd.markerTriangleWidth * scale) < 0.001)
+        #expect(abs(fourK.markerTriangleHeight - hd.markerTriangleHeight * scale) < 0.001)
+        #expect(abs(fourK.markerFontSize - hd.markerFontSize * scale) < 0.001)
+        #expect(abs(fourK.markerLabelWidth - hd.markerLabelWidth * scale) < 0.001)
+        #expect(abs(fourK.borderWidth - hd.borderWidth * scale) < 0.001)
+        #expect(abs(fourK.currentSegmentBorderWidth - hd.currentSegmentBorderWidth * scale) < 0.001)
     }
 
     @Test func intervalTimelineMarkerTextCanBeCustomizedAndHidden() {

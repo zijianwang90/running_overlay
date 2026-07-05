@@ -510,7 +510,7 @@ enum OverlayRenderModel {
         let width = context.scaled(style.width * element.scale)
         let baseHeight = context.scaled(style.height * element.scale)
         let bottomBarSpacing = style.bottomBarEnabled && style.bottomBarMode != .none
-            ? max(style.bottomBarSpacing, 0)
+            ? context.scaled(max(style.bottomBarSpacing, 0) * element.scale)
             : 0
         let height = baseHeight + bottomBarSpacing
         let rect = centeredRect(for: element, size: CGSize(width: width, height: height), canvasSize: context.canvasSize)
@@ -583,7 +583,18 @@ enum OverlayRenderModel {
             phaseDetailText: scaled(style.phaseDetailText, scale: element.scale, context: context),
             metricValueText: scaled(style.metricValueText, scale: element.scale, context: context),
             metricUnitText: scaled(style.metricUnitText, scale: element.scale, context: context),
-            barHeight: context.scaled(10 * element.scale)
+            barHeight: context.scaled(10 * element.scale),
+            bottomBarSpacing: bottomBarSpacing,
+            backgroundPaddingX: context.scaled(element.style.backgroundPaddingX * element.scale),
+            backgroundPaddingY: context.scaled(element.style.backgroundPaddingY * element.scale),
+            backgroundRadius: context.scaled(element.style.backgroundRadius * element.scale),
+            borderWidth: max(context.scaled(element.style.borderWidth * element.scale), 0.5),
+            bottomBarCornerRadius: min(
+                max(context.scaled(style.bottomBarCornerRadius * element.scale), 0),
+                context.scaled(10 * element.scale)
+            ),
+            bottomBarBorderWidth: max(context.scaled(style.bottomBarBorderWidth * element.scale), 0),
+            dividerThickness: max(context.scaled(element.style.dividerThickness * element.scale), 0.5)
         )
     }
 
@@ -644,8 +655,11 @@ enum OverlayRenderModel {
         style.restColor = kindPalette.rest
         style.cooldownColor = kindPalette.cooldown
         let width = context.scaled(style.width * element.scale)
+        let markerTriangleWidth = context.scaled(10 * element.scale)
         let markerTriangleHeight = context.scaled(6 * element.scale)
         let markerStackSpacing = context.scaled(2 * element.scale)
+        let markerFontSize = context.scaled(style.markerFontSize * element.scale)
+        let markerLabelWidth = context.scaled(64 * element.scale)
         let markerLabelHeight = context.scaled(max(style.markerFontSize * 1.4, 14) * element.scale)
         let markerGap = context.scaled(4 * element.scale)
         let markerBottomPadding = context.scaled(4 * element.scale)
@@ -780,13 +794,20 @@ enum OverlayRenderModel {
             currentProgress: currentProgress,
             markerX: markerX,
             markerTopY: markerTopY,
+            markerTriangleWidth: markerTriangleWidth,
             markerTriangleHeight: markerTriangleHeight,
+            markerStackSpacing: markerStackSpacing,
+            markerFontSize: markerFontSize,
+            markerLabelWidth: markerLabelWidth,
             markerLabelHeight: markerLabelHeight,
             markerLabel: style.markerLabel.isEmpty ? "NOW" : style.markerLabel,
             repText: style.repCounterEnabled ? intervalTimelineRepText(activity: context.activity, currentIndex: currentIndex) : nil,
             labelFontSize: context.scaled(16 * element.scale),
             durationFontSize: context.scaled(12 * element.scale),
             cornerRadius: context.scaled(element.style.backgroundRadius * element.scale),
+            borderWidth: max(context.scaled(element.style.borderWidth * element.scale), 0.5),
+            segmentCornerRadius: context.scaled(style.segmentCornerRadius * element.scale),
+            currentSegmentBorderWidth: max(context.scaled(1.4 * element.scale), 0.5),
             overflowEllipsisInset: ellipsisInset
         )
     }

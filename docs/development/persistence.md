@@ -17,6 +17,11 @@ Current implementation:
   name conflicts receive the next `Copy` name and template UUID conflicts are
   replaced with a fresh UUID so SwiftUI list identity, apply, rename, duplicate,
   export, and delete actions always target one row.
+- OpenWeather credentials use macOS Keychain in bundled app builds. Local
+  `swift run RunningOverlay` launches, which do not have an app bundle
+  identifier, use an in-memory credential store to avoid development Keychain
+  access prompts. Developers can also force the in-memory store with
+  `RUNNING_OVERLAY_DISABLE_KEYCHAIN=1`.
 
 Pending:
 

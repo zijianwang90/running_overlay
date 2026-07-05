@@ -405,13 +405,20 @@ struct IntervalTimelineRenderLayout: Equatable {
     var currentProgress: Double
     var markerX: Double
     var markerTopY: Double
+    var markerTriangleWidth: Double
     var markerTriangleHeight: Double
+    var markerStackSpacing: Double
+    var markerFontSize: Double
+    var markerLabelWidth: Double
     var markerLabelHeight: Double
     var markerLabel: String
     var repText: String?
     var labelFontSize: Double
     var durationFontSize: Double
     var cornerRadius: Double
+    var borderWidth: Double
+    var segmentCornerRadius: Double
+    var currentSegmentBorderWidth: Double
     var overflowEllipsisInset: Double
 }
 

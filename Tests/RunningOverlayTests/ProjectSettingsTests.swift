@@ -50,6 +50,35 @@ struct ProjectSettingsTests {
         )
     }
 
+    @Test func defaultCredentialStoreUsesKeychainForBundledApp() {
+        let store = DefaultCredentialStore.make(
+            bundleIdentifier: "io.github.zijianwang90.runningoverlay",
+            environment: [:]
+        )
+
+        #expect(store is KeychainCredentialStore)
+    }
+
+    @Test func defaultCredentialStoreUsesMemoryWhenBundleIdentifierIsMissing() {
+        let store = DefaultCredentialStore.make(
+            bundleIdentifier: nil,
+            environment: [:]
+        )
+
+        #expect(store is InMemoryCredentialStore)
+    }
+
+    @Test func defaultCredentialStoreCanDisableKeychainWithEnvironment() {
+        let store = DefaultCredentialStore.make(
+            bundleIdentifier: "io.github.zijianwang90.runningoverlay",
+            environment: [
+                DefaultCredentialStore.disableKeychainEnvironmentKey: "1"
+            ]
+        )
+
+        #expect(store is InMemoryCredentialStore)
+    }
+
     @Test func decodesLegacySettingsWithoutOpenWeatherKey() throws {
         let json = #"{"resolution":"1920x1080","frameRate":"30","layerDataFrameRate":"5"}"#.data(using: .utf8)!
 

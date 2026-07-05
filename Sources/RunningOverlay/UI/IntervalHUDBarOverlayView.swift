@@ -14,7 +14,7 @@ struct IntervalHUDBarOverlayView: View {
                     backgroundEnabled: element.style.backgroundEnabled,
                     color: Color(intervalHUD: element.style.backgroundColor),
                     opacity: element.style.backgroundOpacity,
-                    cornerRadius: element.style.backgroundRadius,
+                    cornerRadius: layout.backgroundRadius,
                     fadeEnabled: element.style.backgroundFadeOutEnabled,
                     fadeAmount: element.style.backgroundFadeOutAmount,
                     blurRadius: element.style.backgroundBlurRadius
@@ -55,8 +55,8 @@ struct IntervalHUDBarOverlayView: View {
         .frame(width: layout.rect.width, height: layout.rect.height)
         .overlay {
             if element.style.borderEnabled {
-                RoundedRectangle(cornerRadius: element.style.backgroundRadius)
-                    .stroke(Color(intervalHUD: element.style.borderColor).opacity(element.style.borderOpacity), lineWidth: element.style.borderWidth)
+                RoundedRectangle(cornerRadius: layout.backgroundRadius)
+                    .stroke(Color(intervalHUD: element.style.borderColor).opacity(element.style.borderOpacity), lineWidth: layout.borderWidth)
                     .frame(width: backgroundLocalRect.width, height: backgroundLocalRect.height)
                     .position(x: backgroundLocalRect.midX, y: backgroundLocalRect.midY)
             }
@@ -64,8 +64,8 @@ struct IntervalHUDBarOverlayView: View {
     }
 
     private var backgroundLocalRect: CGRect {
-        let padX = element.style.backgroundPaddingX * element.scale
-        let padY = element.style.backgroundPaddingY * element.scale
+        let padX = layout.backgroundPaddingX
+        let padY = layout.backgroundPaddingY
         return CGRect(
             x: -padX,
             y: -padY,
@@ -92,7 +92,7 @@ struct IntervalHUDBarOverlayView: View {
         let layoutHeight = verticalLayoutBasisHeight
         let minimumTopPadding = max(layoutHeight * 0.025, 2)
         let minimumBottomPadding = max(layoutHeight * 0.025, 2)
-        let requestedSpacing = hasVisibleBottomBar ? max(style.bottomBarSpacing, 0) : 0
+        let requestedSpacing = hasVisibleBottomBar ? layout.bottomBarSpacing : 0
         let minimumContentHeight = minimumMainContentHeight
         let bottomHeight = bottomBarContentHeight
         let desiredTotal = desiredTopPadding + minimumContentHeight + bottomHeight + desiredBottomPadding
@@ -165,7 +165,7 @@ struct IntervalHUDBarOverlayView: View {
     private var divider: some View {
         Rectangle()
             .fill(Color(intervalHUD: element.style.dividerColor).opacity(element.style.dividerEnabled ? element.style.dividerOpacity : 0))
-            .frame(width: max(element.style.dividerThickness, 0.5), height: verticalLayoutBasisHeight * 0.48)
+            .frame(width: layout.dividerThickness, height: verticalLayoutBasisHeight * 0.48)
             .padding(.horizontal, layout.rect.width * 0.025)
     }
 
@@ -370,23 +370,25 @@ struct IntervalHUDBarOverlayView: View {
 
     private func zoneMarkerY(for marker: IntervalHUDBarZoneMarker) -> Double {
         if marker.role == .threshold {
-            let lineHeight = thresholdMarkerLineHeight
-            let labelHeight = zoneMarkerValueFontSize(marker) + 4
+            let metrics = zoneMarkerMetrics(for: marker)
+            let lineHeight = metrics.thresholdLineHeight
+            let labelHeight = metrics.valueFontSize + 4
             let markerHeight = lineHeight + 2 + labelHeight
             return layout.barHeight / 2 - lineHeight / 2 + markerHeight / 2
         }
-        let arrowHeight = zoneMarkerArrowHeight(marker)
+        let metrics = zoneMarkerMetrics(for: marker)
+        let arrowHeight = metrics.arrowHeight
         let showsValue = marker.role == .threshold || style.zoneMarkerShowsValue
-        let valueHeight = showsValue ? max(zoneMarkerValueFontSize(marker), 9) + 6 : 0
-        let markerHeight = arrowHeight + valueHeight + (showsValue ? 2 : 0)
+        let valueHeight = showsValue ? metrics.valueFontSize + metrics.valueVerticalPadding * 2 : 0
+        let markerHeight = arrowHeight + valueHeight + (showsValue ? metrics.stackSpacing : 0)
         if style.zoneMarkerPosition == .above {
-            return -zoneMarkerGap - markerHeight / 2
+            return -metrics.gap - markerHeight / 2
         }
-        return layout.barHeight + zoneMarkerGap + markerHeight / 2
+        return layout.barHeight + metrics.gap + markerHeight / 2
     }
 
     private var bottomBarCornerRadius: Double {
-        min(max(style.bottomBarCornerRadius * element.scale, 0), layout.barHeight)
+        layout.bottomBarCornerRadius
     }
 
     @ViewBuilder
@@ -395,7 +397,7 @@ struct IntervalHUDBarOverlayView: View {
             RoundedRectangle(cornerRadius: bottomBarCornerRadius)
                 .stroke(
                     Color(intervalHUD: style.bottomBarBorderColor).opacity(style.bottomBarBorderOpacity),
-                    lineWidth: max(style.bottomBarBorderWidth * element.scale, 0)
+                    lineWidth: layout.bottomBarBorderWidth
                 )
         }
     }
@@ -427,32 +429,24 @@ struct IntervalHUDBarOverlayView: View {
         }
     }
 
-    private var zoneMarkerGap: Double {
-        switch style.zoneMarkerPosition {
-        case .above:
-            max(layout.barHeight * 0.35, 3)
-        case .below:
-            max(layout.barHeight * 0.55, 4)
-        }
-    }
-
     @ViewBuilder
     private func zoneMarkerView(_ marker: IntervalHUDBarZoneMarker) -> some View {
         if marker.role == .threshold {
             thresholdZoneMarkerView(marker)
         } else {
-            VStack(spacing: 2) {
+            let metrics = zoneMarkerMetrics(for: marker)
+            VStack(spacing: metrics.stackSpacing) {
                 if style.zoneMarkerPosition == .above {
                     if style.zoneMarkerShowsValue {
                         zoneMarkerValue(marker)
                     }
                     IntervalHUDBarZoneMarkerTriangle(direction: .down)
                         .fill(Color(intervalHUD: marker.color))
-                        .frame(width: zoneMarkerArrowWidth(marker), height: zoneMarkerArrowHeight(marker))
+                        .frame(width: metrics.arrowWidth, height: metrics.arrowHeight)
                 } else {
                     IntervalHUDBarZoneMarkerTriangle(direction: .up)
                         .fill(Color(intervalHUD: marker.color))
-                        .frame(width: zoneMarkerArrowWidth(marker), height: zoneMarkerArrowHeight(marker))
+                        .frame(width: metrics.arrowWidth, height: metrics.arrowHeight)
                     if style.zoneMarkerShowsValue {
                         zoneMarkerValue(marker)
                     }
@@ -463,12 +457,13 @@ struct IntervalHUDBarOverlayView: View {
     }
 
     private func thresholdZoneMarkerView(_ marker: IntervalHUDBarZoneMarker) -> some View {
-        VStack(spacing: 2) {
+        let metrics = zoneMarkerMetrics(for: marker)
+        return VStack(spacing: metrics.stackSpacing) {
             Capsule()
                 .fill(Color(intervalHUD: marker.color).opacity(0.78))
-                .frame(width: max(1.2 * element.scale, 1), height: thresholdMarkerLineHeight)
+                .frame(width: metrics.thresholdLineWidth, height: metrics.thresholdLineHeight)
             Text(marker.valueText)
-                .font(.overlayFont(family: layout.metricUnitText.fontName, size: zoneMarkerValueFontSize(marker), weight: layout.metricUnitText.fontWeight.swiftUIFontWeight))
+                .font(.overlayFont(family: layout.metricUnitText.fontName, size: metrics.valueFontSize, weight: layout.metricUnitText.fontWeight.swiftUIFontWeight))
                 .foregroundStyle(Color(intervalHUD: marker.color).opacity(0.78))
                 .lineLimit(1)
         }
@@ -476,31 +471,27 @@ struct IntervalHUDBarOverlayView: View {
     }
 
     private func zoneMarkerValue(_ marker: IntervalHUDBarZoneMarker) -> some View {
-        Text(marker.valueText)
-            .font(.overlayFont(family: layout.metricUnitText.fontName, size: zoneMarkerValueFontSize(marker), weight: layout.metricUnitText.fontWeight.swiftUIFontWeight))
+        let metrics = zoneMarkerMetrics(for: marker)
+        return Text(marker.valueText)
+            .font(.overlayFont(family: layout.metricUnitText.fontName, size: metrics.valueFontSize, weight: layout.metricUnitText.fontWeight.swiftUIFontWeight))
             .foregroundStyle(Color(intervalHUD: marker.color))
             .monospacedDigit()
             .lineLimit(1)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 2)
+            .padding(.horizontal, metrics.valueHorizontalPadding)
+            .padding(.vertical, metrics.valueVerticalPadding)
             .background(Color.black.opacity(0.55))
-            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .clipShape(RoundedRectangle(cornerRadius: metrics.valueCornerRadius))
     }
 
-    private func zoneMarkerArrowWidth(_ marker: IntervalHUDBarZoneMarker) -> Double {
-        marker.role == .threshold ? max(layout.barHeight * 0.95, 9) : max(layout.barHeight * 1.35, 12)
-    }
-
-    private func zoneMarkerArrowHeight(_ marker: IntervalHUDBarZoneMarker) -> Double {
-        marker.role == .threshold ? max(layout.barHeight * 0.62, 6) : max(layout.barHeight * 0.9, 8)
-    }
-
-    private func zoneMarkerValueFontSize(_ marker: IntervalHUDBarZoneMarker) -> Double {
-        marker.role == .threshold ? max(layout.metricUnitText.fontSize * 0.72, 7) : max(layout.metricUnitText.fontSize, 9)
-    }
-
-    private var thresholdMarkerLineHeight: Double {
-        max(layout.barHeight * 1.35, 10)
+    private func zoneMarkerMetrics(for marker: IntervalHUDBarZoneMarker) -> IntervalHUDBarZoneMarkerMetrics {
+        if marker.role == .threshold {
+            return .threshold(barHeight: layout.barHeight, markerScale: element.scale, textStyle: layout.metricUnitText)
+        }
+        return .current(
+            barHeight: layout.barHeight,
+            markerPosition: style.zoneMarkerPosition,
+            textStyle: layout.metricUnitText
+        )
     }
 }
 

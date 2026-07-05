@@ -549,6 +549,14 @@ struct IntervalHUDBarRenderLayout {
     var metricValueText: IntervalHUDBarTextStyle
     var metricUnitText: IntervalHUDBarTextStyle
     var barHeight: Double
+    var bottomBarSpacing: Double
+    var backgroundPaddingX: Double
+    var backgroundPaddingY: Double
+    var backgroundRadius: Double
+    var borderWidth: Double
+    var bottomBarCornerRadius: Double
+    var bottomBarBorderWidth: Double
+    var dividerThickness: Double
 }
 
 struct IntervalHUDBarMetricItem: Identifiable, Equatable {
@@ -578,6 +586,69 @@ struct IntervalHUDBarZoneMarker: Equatable {
 enum IntervalHUDBarZoneMarkerRole: Equatable {
     case current
     case threshold
+}
+
+struct IntervalHUDBarZoneMarkerMetrics: Equatable {
+    var arrowWidth: Double
+    var arrowHeight: Double
+    var valueFontSize: Double
+    var valueHorizontalPadding: Double
+    var valueVerticalPadding: Double
+    var valueCornerRadius: Double
+    var stackSpacing: Double
+    var gap: Double
+    var thresholdLineHeight: Double
+    var thresholdLineWidth: Double
+
+    var valueTextStyle: IntervalHUDBarTextStyle {
+        IntervalHUDBarTextStyle(
+            fontName: textStyle.fontName,
+            fontSize: valueFontSize,
+            fontWeight: textStyle.fontWeight
+        )
+    }
+
+    private var textStyle: IntervalHUDBarTextStyle
+
+    static func current(
+        barHeight: Double,
+        markerPosition: IntervalHUDBarZoneMarkerPosition,
+        textStyle: IntervalHUDBarTextStyle
+    ) -> IntervalHUDBarZoneMarkerMetrics {
+        IntervalHUDBarZoneMarkerMetrics(
+            arrowWidth: max(barHeight * 1.35, 12),
+            arrowHeight: max(barHeight * 0.9, 8),
+            valueFontSize: max(textStyle.fontSize, 9),
+            valueHorizontalPadding: 5,
+            valueVerticalPadding: 2,
+            valueCornerRadius: 4,
+            stackSpacing: 2,
+            gap: markerPosition == .below ? max(barHeight * 0.55, 4) : max(barHeight * 0.35, 3),
+            thresholdLineHeight: max(barHeight * 1.35, 10),
+            thresholdLineWidth: 1,
+            textStyle: textStyle
+        )
+    }
+
+    static func threshold(
+        barHeight: Double,
+        markerScale: Double,
+        textStyle: IntervalHUDBarTextStyle
+    ) -> IntervalHUDBarZoneMarkerMetrics {
+        IntervalHUDBarZoneMarkerMetrics(
+            arrowWidth: max(barHeight * 0.95, 9),
+            arrowHeight: max(barHeight * 0.62, 6),
+            valueFontSize: max(textStyle.fontSize * 0.72, 7),
+            valueHorizontalPadding: 0,
+            valueVerticalPadding: 0,
+            valueCornerRadius: 0,
+            stackSpacing: 2,
+            gap: max(barHeight * 0.20, 3),
+            thresholdLineHeight: max(barHeight * 1.35, 10),
+            thresholdLineWidth: max(1.2 * markerScale, 1),
+            textStyle: textStyle
+        )
+    }
 }
 
 struct IntervalHUDBarZoneSegmentFrame: Equatable {

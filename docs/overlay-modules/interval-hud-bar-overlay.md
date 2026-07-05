@@ -82,7 +82,7 @@ Inspector sections:
 
 The final four sections stay in the canonical order `Divider`, `Background`, `Border`, `Effects`; `Background`, `Border`, and `Effects` are the shared components used by other overlays.
 
-Background padding expands the HUD background and border bounds in preview and export without changing the HUD cell or bottom-bar layout. Shadow follows the shared Effects fields (`shadowColor`, opacity, radius, offset, thickness): it is container-level when Background is enabled, and content-level when both Background and Border are disabled.
+Background padding expands the HUD background and border bounds in preview and export without changing the HUD cell or bottom-bar layout. Background padding, background radius, border width, divider thickness, bottom-bar spacing, and bottom-bar border geometry are resolved in the shared layout with canvas scaling so high-resolution exports match preview proportions. Shadow follows the shared Effects fields (`shadowColor`, opacity, radius, offset, thickness): it is container-level when Background is enabled, and content-level when both Background and Border are disabled.
 
 Bottom Bar Spacing is a real gap between the data row and bottom bar: `0` keeps them adjacent, and larger values separate them farther. Spacing expands the rendered HUD height by the same amount instead of taking height from the data row, so the upper data layer stays visually stable while the outer HUD grows or shrinks. Zone Marker is drawn as a floating overlay and never reserves layout height, so enabling it does not move the data row, bar, or background.
 
@@ -123,7 +123,7 @@ Bottom Bar Border is independent from the shared overlay Border section. It appl
 
 Zone modes also expose Inactive Opacity for non-active segments.
 
-Zone modes also support a single solid Zone Marker triangle. The marker can be hidden, placed above or below the bar, and can optionally show the current HR or pace value. Marker color follows the active zone color. It floats above the HUD layout and may overlap other HUD text or extend beyond the background.
+Zone modes also support a single solid Zone Marker triangle. The marker can be hidden, placed above or below the bar, and can optionally show the current HR or pace value. Marker color follows the active zone color. It floats above the HUD layout and may overlap other HUD text or extend beyond the background. Preview and export use the same marker metrics for arrow size, value text size, label padding, and gap placement.
 
 Zone modes also render an optional threshold marker when the corresponding global threshold is configured in Project Settings. `heartRateZones` uses `Threshold HR`; `paceZones` uses `Threshold Pace`. The threshold marker is a subtle vertical tick on the bar with a small `T` label below it, colored by the matched zone. Current pace markers are suppressed when pace is `0` or invalid so paused/resting data does not pin a misleading marker.
 

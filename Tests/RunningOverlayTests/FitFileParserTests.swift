@@ -34,9 +34,18 @@ struct FitFileParserTests {
         let activity = try parser.parse()
 
         #expect(activity.duration == 60)
+        #expect(activity.laps.count == 2)
         #expect(activity.records.map(\.calories) == [0, 40, 100])
         #expect(activity.calories(at: 15) == 20)
         #expect(activity.calories(at: 45) == 70)
+    }
+
+    @Test func skipsZeroDurationZeroDistanceLaps() throws {
+        var parser = FitFileParser(data: fitDataWithLapCaloriesOnly(includeDegenerateLap: true))
+        let activity = try parser.parse()
+
+        #expect(activity.laps.count == 2)
+        #expect(activity.laps.map(\.lapIndex) == [0, 1])
     }
 
     @Test func parsesGoProStyleRunningVideoFilenames() throws {
@@ -51,7 +60,7 @@ struct FitFileParserTests {
         #expect(components.second == 15)
     }
 
-    private func fitDataWithLapCaloriesOnly() -> Data {
+    private func fitDataWithLapCaloriesOnly(includeDegenerateLap: Bool = false) -> Data {
         let startUnix: UInt32 = 1_735_689_600
         let startFit = startUnix - 631_065_600
         var data = Data()
@@ -98,6 +107,14 @@ struct FitFileParserTests {
             appendUInt32(UInt32(distance), to: &data)
             appendUInt16(UInt16(calories), to: &data)
             appendUInt32(startFit + UInt32(startSeconds + 30), to: &data)
+        }
+        if includeDegenerateLap {
+            data.append(2)
+            appendUInt32(0, to: &data)
+            appendUInt32(0, to: &data)
+            appendUInt32(0, to: &data)
+            appendUInt16(0, to: &data)
+            appendUInt32(0, to: &data)
         }
 
         var header = Data([14, 0x10])

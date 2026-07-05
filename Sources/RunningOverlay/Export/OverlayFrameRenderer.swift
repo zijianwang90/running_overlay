@@ -1483,17 +1483,17 @@ struct OverlayFrameRenderer {
         let style = layout.style
         let rect = layout.rect
         let backgroundRect = rect.insetBy(
-            dx: -element.style.backgroundPaddingX * element.scale,
-            dy: -element.style.backgroundPaddingY * element.scale
+            dx: -layout.backgroundPaddingX,
+            dy: -layout.backgroundPaddingY
         )
 
         if element.style.backgroundEnabled {
-            drawIntervalHUDContainerBackground(element: element, rect: backgroundRect)
+            drawIntervalHUDContainerBackground(element: element, layout: layout, rect: backgroundRect)
         }
         if element.style.borderEnabled {
             NSColor(element.style.borderColor).withAlphaComponent(element.style.borderOpacity).setStroke()
-            let border = NSBezierPath(roundedRect: backgroundRect, xRadius: element.style.backgroundRadius, yRadius: element.style.backgroundRadius)
-            border.lineWidth = element.style.borderWidth
+            let border = NSBezierPath(roundedRect: backgroundRect, xRadius: layout.backgroundRadius, yRadius: layout.backgroundRadius)
+            border.lineWidth = layout.borderWidth
             border.stroke()
         }
         let contentShadowEnabled = !element.style.backgroundEnabled
@@ -1554,7 +1554,7 @@ struct OverlayFrameRenderer {
                 height: contentRect.height
             )
             if columnIndex > 0 {
-                drawIntervalHUDDivider(element: element, x: columnRect.minX, rect: rect, height: layout.baseHeight)
+                drawIntervalHUDDivider(element: element, layout: layout, x: columnRect.minX, rect: rect, height: layout.baseHeight)
             }
             columnIndex += 1
             return columnRect
@@ -1606,7 +1606,7 @@ struct OverlayFrameRenderer {
             break
         case .lapProgress:
             NSColor(style.trackColor).withAlphaComponent(style.trackOpacity).setFill()
-            let cornerRadius = intervalHUDBottomBarCornerRadius(style: style, element: element, height: barRect.height)
+            let cornerRadius = layout.bottomBarCornerRadius
             NSBezierPath(roundedRect: barRect, xRadius: cornerRadius, yRadius: cornerRadius).fill()
             let fillRect = CGRect(x: barRect.minX, y: barRect.minY, width: max(barRect.width * layout.progress, 0), height: barRect.height)
             if style.bottomBarGlowEnabled {
@@ -1622,7 +1622,7 @@ struct OverlayFrameRenderer {
             if style.bottomBarGlowEnabled {
                 NSGraphicsContext.current?.cgContext.restoreGState()
             }
-            strokeIntervalHUDBottomBarBorder(style: style, element: element, rect: barRect, cornerRadius: cornerRadius)
+            strokeIntervalHUDBottomBarBorder(style: style, layout: layout, rect: barRect, cornerRadius: cornerRadius)
         case .heartRateZones, .paceZones:
             let segments = layout.zoneSegments
             guard !segments.isEmpty else { return }
@@ -1639,7 +1639,7 @@ struct OverlayFrameRenderer {
                 style: style,
                 element: element
             )
-            let cornerRadius = intervalHUDBottomBarCornerRadius(style: style, element: element, height: barRect.height)
+            let cornerRadius = layout.bottomBarCornerRadius
             if style.bottomBarGlowEnabled,
                let activeIndex = layout.bottomBarActiveZoneIndex,
                let activeSegment = segments.first(where: { $0.index == activeIndex }),
@@ -1665,13 +1665,14 @@ struct OverlayFrameRenderer {
                 let segmentCornerRadius = min(cornerRadius, segmentRect.height / 2, segmentRect.width / 2)
                 NSBezierPath(roundedRect: segmentRect, xRadius: segmentCornerRadius, yRadius: segmentCornerRadius).fill()
             }
-            strokeIntervalHUDBottomBarBorder(style: style, element: element, rect: barRect, cornerRadius: cornerRadius)
+            strokeIntervalHUDBottomBarBorder(style: style, layout: layout, rect: barRect, cornerRadius: cornerRadius)
             if let marker = layout.thresholdZoneMarker,
                let markerRect = zoneRects.first(where: { $0.index == marker.zoneIndex }) {
                 drawIntervalHUDZoneMarker(
                     marker,
                     zoneRect: markerRect.rect,
                     barRect: barRect,
+                    element: element,
                     style: style,
                     textStyle: layout.metricUnitText
                 )
@@ -1682,6 +1683,7 @@ struct OverlayFrameRenderer {
                     marker,
                     zoneRect: markerRect.rect,
                     barRect: barRect,
+                    element: element,
                     style: style,
                     textStyle: layout.metricUnitText
                 )
@@ -1717,16 +1719,16 @@ struct OverlayFrameRenderer {
                 backgroundRect,
                 color: NSColor(element.style.borderColor).withAlphaComponent(element.style.borderOpacity),
                 cornerRadius: layout.cornerRadius,
-                lineWidth: element.style.borderWidth
+                lineWidth: layout.borderWidth
             )
         }
 
         for segment in layout.segments {
-            drawRoundedRect(segment.rect, color: NSColor(segment.color).withAlphaComponent(segment.opacity), cornerRadius: layout.style.segmentCornerRadius * element.scale)
+            drawRoundedRect(segment.rect, color: NSColor(segment.color).withAlphaComponent(segment.opacity), cornerRadius: layout.segmentCornerRadius)
             if segment.isCurrent && layout.style.currentProgressEnabled {
                 let progressRect = CGRect(x: segment.rect.minX, y: segment.rect.minY, width: segment.rect.width * layout.currentProgress, height: segment.rect.height)
-                drawRoundedRect(progressRect, color: NSColor.white.withAlphaComponent(0.30), cornerRadius: layout.style.segmentCornerRadius * element.scale)
-                strokeRoundedRect(segment.rect, color: NSColor.white.withAlphaComponent(0.74), cornerRadius: layout.style.segmentCornerRadius * element.scale, lineWidth: 1.4 * element.scale)
+                drawRoundedRect(progressRect, color: NSColor.white.withAlphaComponent(0.30), cornerRadius: layout.segmentCornerRadius)
+                strokeRoundedRect(segment.rect, color: NSColor.white.withAlphaComponent(0.74), cornerRadius: layout.segmentCornerRadius, lineWidth: layout.currentSegmentBorderWidth)
             }
 
             let lineCount = (segment.isCurrent && layout.repText != nil ? 1 : 0) + segment.labelLines.count
@@ -1758,7 +1760,7 @@ struct OverlayFrameRenderer {
 
         if layout.style.markerEnabled {
             let markerTop = layout.markerTopY
-            let markerWidth = 10 * element.scale
+            let markerWidth = layout.markerTriangleWidth
             let triangle = NSBezierPath()
             triangle.move(to: CGPoint(x: layout.markerX, y: markerTop))
             triangle.line(to: CGPoint(x: layout.markerX + markerWidth / 2, y: markerTop + layout.markerTriangleHeight))
@@ -1770,13 +1772,13 @@ struct OverlayFrameRenderer {
                 drawIntervalTimelineText(
                     layout.markerLabel,
                     in: CGRect(
-                        x: layout.markerX - 32 * element.scale,
-                        y: markerTop + layout.markerTriangleHeight + 2 * element.scale,
-                        width: 64 * element.scale,
+                        x: layout.markerX - layout.markerLabelWidth / 2,
+                        y: markerTop + layout.markerTriangleHeight + layout.markerStackSpacing,
+                        width: layout.markerLabelWidth,
                         height: layout.markerLabelHeight
                     ),
                     fontName: layout.style.markerFontName.isEmpty ? element.style.fontName : layout.style.markerFontName,
-                    fontSize: layout.style.markerFontSize * element.scale,
+                    fontSize: layout.markerFontSize,
                     weight: layout.style.markerFontWeight,
                     color: NSColor(layout.style.markerColor).withAlphaComponent(0.88),
                     alignment: .center
@@ -1906,79 +1908,106 @@ struct OverlayFrameRenderer {
         _ marker: IntervalHUDBarZoneMarker,
         zoneRect: CGRect,
         barRect: CGRect,
+        element: OverlayElement,
         style: IntervalHUDBarStyle,
         textStyle: IntervalHUDBarTextStyle
     ) {
         let x = zoneRect.minX + zoneRect.width * marker.fractionInZone
         let isThreshold = marker.role == .threshold
         if isThreshold {
+            let metrics = IntervalHUDBarZoneMarkerMetrics.threshold(
+                barHeight: barRect.height,
+                markerScale: element.scale,
+                textStyle: textStyle
+            )
             let color = NSColor(marker.color).withAlphaComponent(0.78)
-            let lineHeight = max(barRect.height * 1.35, 10)
-            let lineWidth = max(1.2, barRect.height * 0.12)
             let lineRect = CGRect(
-                x: x - lineWidth / 2,
-                y: barRect.midY - lineHeight / 2,
-                width: lineWidth,
-                height: lineHeight
+                x: x - metrics.thresholdLineWidth / 2,
+                y: barRect.midY - metrics.thresholdLineHeight / 2,
+                width: metrics.thresholdLineWidth,
+                height: metrics.thresholdLineHeight
             )
-            drawRoundedRect(lineRect, color: color, cornerRadius: lineWidth / 2)
-            let labelStyle = IntervalHUDBarTextStyle(
-                fontName: textStyle.fontName,
-                fontSize: max(textStyle.fontSize * 0.72, 7),
-                fontWeight: textStyle.fontWeight
-            )
+            drawRoundedRect(lineRect, color: color, cornerRadius: metrics.thresholdLineWidth / 2)
             drawCenteredText(
                 marker.valueText,
-                in: CGRect(x: x - 12, y: lineRect.maxY + 2, width: 24, height: labelStyle.fontSize + 4),
-                textStyle: labelStyle,
+                in: CGRect(x: x - 12, y: lineRect.maxY + metrics.stackSpacing, width: 24, height: metrics.valueFontSize + 4),
+                textStyle: metrics.valueTextStyle,
                 color: color
             )
             return
         }
-        let arrowW = isThreshold ? max(barRect.height * 0.95, 7) : max(barRect.height * 1.35, 8)
-        let arrowH = isThreshold ? max(barRect.height * 0.62, 5) : max(barRect.height * 0.9, 6)
-        let gap = style.zoneMarkerPosition == .below ? max(barRect.height * 0.55, 4) : max(barRect.height * 0.35, 3)
+        let metrics = IntervalHUDBarZoneMarkerMetrics.current(
+            barHeight: barRect.height,
+            markerPosition: style.zoneMarkerPosition,
+            textStyle: textStyle
+        )
+        let arrowW = metrics.arrowWidth
+        let arrowH = metrics.arrowHeight
+        let gap = metrics.gap
         let color = NSColor(marker.color)
         let triangle = NSBezierPath()
 
-        switch isThreshold ? IntervalHUDBarZoneMarkerPosition.below : style.zoneMarkerPosition {
+        switch style.zoneMarkerPosition {
         case .above:
             let baseY = barRect.minY - gap - arrowH
             triangle.move(to: CGPoint(x: x - arrowW / 2, y: baseY))
             triangle.line(to: CGPoint(x: x + arrowW / 2, y: baseY))
             triangle.line(to: CGPoint(x: x, y: baseY + arrowH))
             if style.zoneMarkerShowsValue {
-                let labelRect = CGRect(
-                    x: x - 42,
-                    y: baseY - textStyle.fontSize - 6,
-                    width: 84,
-                    height: textStyle.fontSize + 4
+                let labelRect = intervalHUDZoneMarkerValueRect(
+                    marker.valueText,
+                    centerX: x,
+                    bottomY: baseY - metrics.stackSpacing,
+                    metrics: metrics
                 )
-                drawCenteredText(marker.valueText, in: labelRect, textStyle: textStyle, color: color)
+                drawIntervalHUDZoneMarkerValue(marker.valueText, in: labelRect, metrics: metrics, color: color)
             }
         case .below:
-            let belowGap = isThreshold ? max(barRect.height * 0.20, 3) : gap
-            let baseY = barRect.maxY + belowGap + arrowH
+            let baseY = barRect.maxY + gap + arrowH
             triangle.move(to: CGPoint(x: x, y: baseY - arrowH))
             triangle.line(to: CGPoint(x: x + arrowW / 2, y: baseY))
             triangle.line(to: CGPoint(x: x - arrowW / 2, y: baseY))
-            if isThreshold || style.zoneMarkerShowsValue {
-                let labelHeight = isThreshold ? max(textStyle.fontSize * 0.86, 8) + 4 : textStyle.fontSize + 4
-                let labelRect = CGRect(
-                    x: x - (isThreshold ? 14 : 42),
-                    y: baseY + 2,
-                    width: isThreshold ? 28 : 84,
-                    height: labelHeight
+            if style.zoneMarkerShowsValue {
+                let labelRect = intervalHUDZoneMarkerValueRect(
+                    marker.valueText,
+                    centerX: x,
+                    topY: baseY + metrics.stackSpacing,
+                    metrics: metrics
                 )
-                let labelStyle = isThreshold
-                    ? IntervalHUDBarTextStyle(fontName: textStyle.fontName, fontSize: max(textStyle.fontSize * 0.86, 8), fontWeight: textStyle.fontWeight)
-                    : textStyle
-                drawCenteredText(marker.valueText, in: labelRect, textStyle: labelStyle, color: color)
+                drawIntervalHUDZoneMarkerValue(marker.valueText, in: labelRect, metrics: metrics, color: color)
             }
         }
         triangle.close()
         color.setFill()
         triangle.fill()
+    }
+
+    private static func intervalHUDZoneMarkerValueRect(
+        _ text: String,
+        centerX: Double,
+        topY: Double? = nil,
+        bottomY: Double? = nil,
+        metrics: IntervalHUDBarZoneMarkerMetrics
+    ) -> CGRect {
+        let size = intervalHUDTextSize(text, textStyle: metrics.valueTextStyle)
+        let width = size.width + metrics.valueHorizontalPadding * 2
+        let height = size.height + metrics.valueVerticalPadding * 2
+        let y = topY ?? ((bottomY ?? 0) - height)
+        return CGRect(x: centerX - width / 2, y: y, width: width, height: height)
+    }
+
+    private static func drawIntervalHUDZoneMarkerValue(
+        _ text: String,
+        in rect: CGRect,
+        metrics: IntervalHUDBarZoneMarkerMetrics,
+        color: NSColor
+    ) {
+        drawRoundedRect(
+            rect,
+            color: .black.withAlphaComponent(0.55),
+            cornerRadius: metrics.valueCornerRadius
+        )
+        drawCenteredText(text, in: rect, textStyle: metrics.valueTextStyle, color: color)
     }
 
     private static func intervalHUDMinimumMainContentHeight(layout: IntervalHUDBarRenderLayout, rect: CGRect) -> Double {
@@ -2002,7 +2031,7 @@ struct OverlayFrameRenderer {
         let layoutHeight = max(layout.baseHeight, 1)
         let minimumTopPadding = max(layoutHeight * 0.025, 2)
         let minimumBottomPadding = max(layoutHeight * 0.025, 2)
-        let requestedSpacing = hasVisibleBottomBar ? max(layout.style.bottomBarSpacing, 0) : 0
+        let requestedSpacing = hasVisibleBottomBar ? layout.bottomBarSpacing : 0
         let minimumContentHeight = intervalHUDMinimumMainContentHeight(layout: layout, rect: rect)
         let desiredTotal = desiredTopPadding + minimumContentHeight + bottomBarContentHeight + desiredBottomPadding
 
@@ -2034,20 +2063,16 @@ struct OverlayFrameRenderer {
         )
     }
 
-    private static func intervalHUDBottomBarCornerRadius(style: IntervalHUDBarStyle, element: OverlayElement, height: Double) -> Double {
-        min(max(style.bottomBarCornerRadius * element.scale, 0), height)
-    }
-
-    private static func strokeIntervalHUDBottomBarBorder(style: IntervalHUDBarStyle, element: OverlayElement, rect: CGRect, cornerRadius: Double) {
+    private static func strokeIntervalHUDBottomBarBorder(style: IntervalHUDBarStyle, layout: IntervalHUDBarRenderLayout, rect: CGRect, cornerRadius: Double) {
         guard style.bottomBarBorderEnabled,
               style.bottomBarBorderOpacity > 0,
-              style.bottomBarBorderWidth > 0
+              layout.bottomBarBorderWidth > 0
         else { return }
         strokeRoundedRect(
             rect,
             color: NSColor(style.bottomBarBorderColor).withAlphaComponent(style.bottomBarBorderOpacity),
             cornerRadius: cornerRadius,
-            lineWidth: style.bottomBarBorderWidth * element.scale
+            lineWidth: layout.bottomBarBorderWidth
         )
     }
 
@@ -2222,7 +2247,7 @@ struct OverlayFrameRenderer {
         triangle.fill()
     }
 
-    private static func drawIntervalHUDContainerBackground(element: OverlayElement, rect: CGRect) {
+    private static func drawIntervalHUDContainerBackground(element: OverlayElement, layout: IntervalHUDBarRenderLayout, rect: CGRect) {
         let color = NSColor(element.style.backgroundColor).withAlphaComponent(element.style.backgroundOpacity)
         if element.style.shadowEnabled, element.style.shadowOpacity > 0, element.style.shadowRadius > 0 {
             let thickness = min(max(element.style.shadowThickness, 1), 4)
@@ -2234,10 +2259,10 @@ struct OverlayFrameRenderer {
                 blur: shadowRadius,
                 color: NSColor(element.style.shadowColor).withAlphaComponent(shadowOpacity).cgColor
             )
-            drawOverlayBackground(rect, color: color, cornerRadius: element.style.backgroundRadius, element: element)
+            drawOverlayBackground(rect, color: color, cornerRadius: layout.backgroundRadius, element: element)
             NSGraphicsContext.current?.cgContext.restoreGState()
         } else {
-            drawOverlayBackground(rect, color: color, cornerRadius: element.style.backgroundRadius, element: element)
+            drawOverlayBackground(rect, color: color, cornerRadius: layout.backgroundRadius, element: element)
         }
     }
 
@@ -2253,13 +2278,13 @@ struct OverlayFrameRenderer {
         )
     }
 
-    private static func drawIntervalHUDDivider(element: OverlayElement, x: Double, rect: CGRect, height: Double) {
+    private static func drawIntervalHUDDivider(element: OverlayElement, layout: IntervalHUDBarRenderLayout, x: Double, rect: CGRect, height: Double) {
         guard element.style.dividerEnabled else { return }
         NSColor(element.style.dividerColor).withAlphaComponent(element.style.dividerOpacity).setFill()
         CGRect(
-            x: x - element.style.dividerThickness / 2,
+            x: x - layout.dividerThickness / 2,
             y: rect.minY + height * 0.22,
-            width: max(element.style.dividerThickness, 0.5),
+            width: layout.dividerThickness,
             height: height * 0.46
         ).fill()
     }
@@ -2280,6 +2305,13 @@ struct OverlayFrameRenderer {
             height: size.height
         )
         (text as NSString).draw(in: drawRect, withAttributes: attrs)
+    }
+
+    private static func intervalHUDTextSize(_ text: String, textStyle: IntervalHUDBarTextStyle) -> CGSize {
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: intervalHUDFont(textStyle)
+        ]
+        return (text as NSString).size(withAttributes: attrs)
     }
 
     private static func intervalHUDFont(_ textStyle: IntervalHUDBarTextStyle) -> NSFont {

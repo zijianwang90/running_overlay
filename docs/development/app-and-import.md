@@ -82,6 +82,7 @@ Current implementation:
 - File-picker imports replace the current media browser contents; Finder drops append supported video files.
 - Imported videos stay in the media pool until the user explicitly matches them or drags them to the timeline.
 - Items with inferred timestamps near the FIT activity are marked ready for timestamp matching instead of being placed automatically.
+- Replacing the FIT after videos have already been imported recalculates each video's timestamp match status against the new activity and automatically places timestamp-matched videos on their camera-group timeline tracks when they do not overlap existing clips.
 - Media browser rows support multi-selection, select-all-visible, tag filtering, right-click tag assignment, explicit matching to the current layer or a new layer, and deletion from the media pool.
 - The media browser includes filename search plus real status chips for `All`, `Ready`, and `Aligned`; filter changes prune selections that are no longer visible.
 - The media browser captures Command+A while active to select all visible filtered media rows without showing a system focus ring.

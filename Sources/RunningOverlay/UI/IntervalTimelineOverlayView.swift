@@ -25,7 +25,7 @@ struct IntervalTimelineOverlayView: View {
             ZStack(alignment: .topLeading) {
                 if element.style.borderEnabled {
                     RoundedRectangle(cornerRadius: layout.cornerRadius)
-                        .stroke(Color(intervalTimeline: element.style.borderColor).opacity(element.style.borderOpacity), lineWidth: element.style.borderWidth)
+                        .stroke(Color(intervalTimeline: element.style.borderColor).opacity(element.style.borderOpacity), lineWidth: layout.borderWidth)
                         .frame(width: backgroundLocalRect.width, height: backgroundLocalRect.height)
                         .position(x: backgroundLocalRect.midX, y: backgroundLocalRect.midY)
                 }
@@ -77,19 +77,19 @@ struct IntervalTimelineOverlayView: View {
     private func segmentView(_ segment: IntervalTimelineSegmentLayout) -> some View {
         let localRect = segment.rect.offsetBy(dx: -layout.rect.minX, dy: -layout.rect.minY)
         return ZStack {
-            RoundedRectangle(cornerRadius: layout.style.segmentCornerRadius * element.scale)
+            RoundedRectangle(cornerRadius: layout.segmentCornerRadius)
                 .fill(Color(intervalTimeline: segment.color).opacity(segment.opacity))
                 .overlay(alignment: .leading) {
                     if segment.isCurrent && layout.style.currentProgressEnabled {
-                        RoundedRectangle(cornerRadius: layout.style.segmentCornerRadius * element.scale)
+                        RoundedRectangle(cornerRadius: layout.segmentCornerRadius)
                             .fill(Color.white.opacity(0.30))
                             .frame(width: localRect.width * layout.currentProgress)
                     }
                 }
                 .overlay {
                     if segment.isCurrent {
-                        RoundedRectangle(cornerRadius: layout.style.segmentCornerRadius * element.scale)
-                            .stroke(Color.white.opacity(0.74), lineWidth: 1.4 * element.scale)
+                        RoundedRectangle(cornerRadius: layout.segmentCornerRadius)
+                            .stroke(Color.white.opacity(0.74), lineWidth: layout.currentSegmentBorderWidth)
                     }
                 }
                 .shadow(color: Color(intervalTimeline: segment.color).opacity(segment.isCurrent ? 0.45 : 0), radius: 10 * element.scale)
@@ -123,17 +123,17 @@ struct IntervalTimelineOverlayView: View {
 
     private var markerView: some View {
         let x = layout.markerX - layout.rect.minX
-        let stackHeight = layout.markerTriangleHeight + (layout.style.markerLabelEnabled ? 2 * element.scale + layout.markerLabelHeight : 0)
+        let stackHeight = layout.markerTriangleHeight + (layout.style.markerLabelEnabled ? layout.markerStackSpacing + layout.markerLabelHeight : 0)
         let y = layout.markerTopY - layout.rect.minY + stackHeight / 2
-        return VStack(spacing: 2 * element.scale) {
+        return VStack(spacing: layout.markerStackSpacing) {
             IntervalTimelineMarkerTriangle()
                 .fill(Color(intervalTimeline: layout.style.markerColor).opacity(0.92))
-                .frame(width: 10 * element.scale, height: layout.markerTriangleHeight)
+                .frame(width: layout.markerTriangleWidth, height: layout.markerTriangleHeight)
             if layout.style.markerLabelEnabled {
                 Text(layout.markerLabel)
                     .font(.overlayFont(
                         family: layout.style.markerFontName.isEmpty ? element.style.fontName : layout.style.markerFontName,
-                        size: layout.style.markerFontSize * element.scale,
+                        size: layout.markerFontSize,
                         overlayWeight: layout.style.markerFontWeight
                     ))
                     .foregroundStyle(Color(intervalTimeline: layout.style.markerColor).opacity(0.88))

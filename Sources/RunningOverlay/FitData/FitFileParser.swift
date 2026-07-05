@@ -368,7 +368,7 @@ struct FitFileParser {
         var cumulativeTime = 0.0
         var cumulativeCalories = 0.0
 
-        for raw in rawLaps {
+        for raw in rawLaps where !isDegenerateLap(raw) {
             let startElapsed: TimeInterval
             if let ts = raw.startTimestamp {
                 startElapsed = max(ts.timeIntervalSince(startDate), 0)
@@ -438,7 +438,7 @@ struct FitFileParser {
         var cumulativeDistance = 0.0
         var cumulativeTime = 0.0
 
-        for (index, raw) in rawLaps.enumerated() {
+        for raw in rawLaps where !isDegenerateLap(raw) {
             let startElapsed: TimeInterval
             if let ts = raw.startTimestamp {
                 startElapsed = max(ts.timeIntervalSince(startDate), 0)
@@ -448,7 +448,7 @@ struct FitFileParser {
             let endElapsed = startElapsed + raw.totalElapsedTime
             let pace = raw.avgSpeedMS.map { $0 > 0 ? 1000 / $0 : 0 }
             result.append(LapRecord(
-                lapIndex: index,
+                lapIndex: result.count,
                 startElapsedTime: startElapsed,
                 endElapsedTime: endElapsed,
                 startDistanceMeters: cumulativeDistance,
@@ -466,6 +466,10 @@ struct FitFileParser {
             cumulativeTime = endElapsed
         }
         return result
+    }
+
+    private func isDegenerateLap(_ lap: RawLap) -> Bool {
+        lap.totalElapsedTime <= 0 && lap.totalDistanceMeters <= 0
     }
 
     private func buildAnnotatedSegments(startDate: Date, duration: TimeInterval) -> [ActivityAnnotatedSegment] {
