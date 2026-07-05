@@ -983,6 +983,33 @@ struct OverlayRenderModelTests {
         #expect(disabledLayout.thresholdZoneMarker == nil)
     }
 
+    @Test func intervalHUDBarZoneMarkerMetricsMatchPreviewAndExportScale() {
+        let textStyle = IntervalHUDBarTextStyle(fontName: "", fontSize: 12, fontWeight: .semibold)
+
+        let current = IntervalHUDBarZoneMarkerMetrics.current(
+            barHeight: 10,
+            markerPosition: .above,
+            textStyle: textStyle
+        )
+        #expect(current.arrowWidth == 13.5)
+        #expect(current.arrowHeight == 9)
+        #expect(current.valueFontSize == 12)
+        #expect(current.valueHorizontalPadding == 5)
+        #expect(current.valueVerticalPadding == 2)
+        #expect(current.gap == 3.5)
+
+        let threshold = IntervalHUDBarZoneMarkerMetrics.threshold(
+            barHeight: 10,
+            markerScale: 2,
+            textStyle: textStyle
+        )
+        #expect(threshold.arrowWidth == 9.5)
+        #expect(threshold.arrowHeight == 6.2)
+        #expect(threshold.valueFontSize == 8.64)
+        #expect(threshold.thresholdLineHeight == 13.5)
+        #expect(threshold.thresholdLineWidth == 2.4)
+    }
+
     @Test func intervalHUDBarBottomBarSpacingExpandsHUDHeight() {
         var style = OverlayStyle.default
         style.intervalHUDBar.height = 116

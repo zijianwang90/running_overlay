@@ -1672,6 +1672,7 @@ struct OverlayFrameRenderer {
                     marker,
                     zoneRect: markerRect.rect,
                     barRect: barRect,
+                    element: element,
                     style: style,
                     textStyle: layout.metricUnitText
                 )
@@ -1682,6 +1683,7 @@ struct OverlayFrameRenderer {
                     marker,
                     zoneRect: markerRect.rect,
                     barRect: barRect,
+                    element: element,
                     style: style,
                     textStyle: layout.metricUnitText
                 )
@@ -1906,79 +1908,106 @@ struct OverlayFrameRenderer {
         _ marker: IntervalHUDBarZoneMarker,
         zoneRect: CGRect,
         barRect: CGRect,
+        element: OverlayElement,
         style: IntervalHUDBarStyle,
         textStyle: IntervalHUDBarTextStyle
     ) {
         let x = zoneRect.minX + zoneRect.width * marker.fractionInZone
         let isThreshold = marker.role == .threshold
         if isThreshold {
+            let metrics = IntervalHUDBarZoneMarkerMetrics.threshold(
+                barHeight: barRect.height,
+                markerScale: element.scale,
+                textStyle: textStyle
+            )
             let color = NSColor(marker.color).withAlphaComponent(0.78)
-            let lineHeight = max(barRect.height * 1.35, 10)
-            let lineWidth = max(1.2, barRect.height * 0.12)
             let lineRect = CGRect(
-                x: x - lineWidth / 2,
-                y: barRect.midY - lineHeight / 2,
-                width: lineWidth,
-                height: lineHeight
+                x: x - metrics.thresholdLineWidth / 2,
+                y: barRect.midY - metrics.thresholdLineHeight / 2,
+                width: metrics.thresholdLineWidth,
+                height: metrics.thresholdLineHeight
             )
-            drawRoundedRect(lineRect, color: color, cornerRadius: lineWidth / 2)
-            let labelStyle = IntervalHUDBarTextStyle(
-                fontName: textStyle.fontName,
-                fontSize: max(textStyle.fontSize * 0.72, 7),
-                fontWeight: textStyle.fontWeight
-            )
+            drawRoundedRect(lineRect, color: color, cornerRadius: metrics.thresholdLineWidth / 2)
             drawCenteredText(
                 marker.valueText,
-                in: CGRect(x: x - 12, y: lineRect.maxY + 2, width: 24, height: labelStyle.fontSize + 4),
-                textStyle: labelStyle,
+                in: CGRect(x: x - 12, y: lineRect.maxY + metrics.stackSpacing, width: 24, height: metrics.valueFontSize + 4),
+                textStyle: metrics.valueTextStyle,
                 color: color
             )
             return
         }
-        let arrowW = isThreshold ? max(barRect.height * 0.95, 7) : max(barRect.height * 1.35, 8)
-        let arrowH = isThreshold ? max(barRect.height * 0.62, 5) : max(barRect.height * 0.9, 6)
-        let gap = style.zoneMarkerPosition == .below ? max(barRect.height * 0.55, 4) : max(barRect.height * 0.35, 3)
+        let metrics = IntervalHUDBarZoneMarkerMetrics.current(
+            barHeight: barRect.height,
+            markerPosition: style.zoneMarkerPosition,
+            textStyle: textStyle
+        )
+        let arrowW = metrics.arrowWidth
+        let arrowH = metrics.arrowHeight
+        let gap = metrics.gap
         let color = NSColor(marker.color)
         let triangle = NSBezierPath()
 
-        switch isThreshold ? IntervalHUDBarZoneMarkerPosition.below : style.zoneMarkerPosition {
+        switch style.zoneMarkerPosition {
         case .above:
             let baseY = barRect.minY - gap - arrowH
             triangle.move(to: CGPoint(x: x - arrowW / 2, y: baseY))
             triangle.line(to: CGPoint(x: x + arrowW / 2, y: baseY))
             triangle.line(to: CGPoint(x: x, y: baseY + arrowH))
             if style.zoneMarkerShowsValue {
-                let labelRect = CGRect(
-                    x: x - 42,
-                    y: baseY - textStyle.fontSize - 6,
-                    width: 84,
-                    height: textStyle.fontSize + 4
+                let labelRect = intervalHUDZoneMarkerValueRect(
+                    marker.valueText,
+                    centerX: x,
+                    bottomY: baseY - metrics.stackSpacing,
+                    metrics: metrics
                 )
-                drawCenteredText(marker.valueText, in: labelRect, textStyle: textStyle, color: color)
+                drawIntervalHUDZoneMarkerValue(marker.valueText, in: labelRect, metrics: metrics, color: color)
             }
         case .below:
-            let belowGap = isThreshold ? max(barRect.height * 0.20, 3) : gap
-            let baseY = barRect.maxY + belowGap + arrowH
+            let baseY = barRect.maxY + gap + arrowH
             triangle.move(to: CGPoint(x: x, y: baseY - arrowH))
             triangle.line(to: CGPoint(x: x + arrowW / 2, y: baseY))
             triangle.line(to: CGPoint(x: x - arrowW / 2, y: baseY))
-            if isThreshold || style.zoneMarkerShowsValue {
-                let labelHeight = isThreshold ? max(textStyle.fontSize * 0.86, 8) + 4 : textStyle.fontSize + 4
-                let labelRect = CGRect(
-                    x: x - (isThreshold ? 14 : 42),
-                    y: baseY + 2,
-                    width: isThreshold ? 28 : 84,
-                    height: labelHeight
+            if style.zoneMarkerShowsValue {
+                let labelRect = intervalHUDZoneMarkerValueRect(
+                    marker.valueText,
+                    centerX: x,
+                    topY: baseY + metrics.stackSpacing,
+                    metrics: metrics
                 )
-                let labelStyle = isThreshold
-                    ? IntervalHUDBarTextStyle(fontName: textStyle.fontName, fontSize: max(textStyle.fontSize * 0.86, 8), fontWeight: textStyle.fontWeight)
-                    : textStyle
-                drawCenteredText(marker.valueText, in: labelRect, textStyle: labelStyle, color: color)
+                drawIntervalHUDZoneMarkerValue(marker.valueText, in: labelRect, metrics: metrics, color: color)
             }
         }
         triangle.close()
         color.setFill()
         triangle.fill()
+    }
+
+    private static func intervalHUDZoneMarkerValueRect(
+        _ text: String,
+        centerX: Double,
+        topY: Double? = nil,
+        bottomY: Double? = nil,
+        metrics: IntervalHUDBarZoneMarkerMetrics
+    ) -> CGRect {
+        let size = intervalHUDTextSize(text, textStyle: metrics.valueTextStyle)
+        let width = size.width + metrics.valueHorizontalPadding * 2
+        let height = size.height + metrics.valueVerticalPadding * 2
+        let y = topY ?? ((bottomY ?? 0) - height)
+        return CGRect(x: centerX - width / 2, y: y, width: width, height: height)
+    }
+
+    private static func drawIntervalHUDZoneMarkerValue(
+        _ text: String,
+        in rect: CGRect,
+        metrics: IntervalHUDBarZoneMarkerMetrics,
+        color: NSColor
+    ) {
+        drawRoundedRect(
+            rect,
+            color: .black.withAlphaComponent(0.55),
+            cornerRadius: metrics.valueCornerRadius
+        )
+        drawCenteredText(text, in: rect, textStyle: metrics.valueTextStyle, color: color)
     }
 
     private static func intervalHUDMinimumMainContentHeight(layout: IntervalHUDBarRenderLayout, rect: CGRect) -> Double {
@@ -2280,6 +2309,13 @@ struct OverlayFrameRenderer {
             height: size.height
         )
         (text as NSString).draw(in: drawRect, withAttributes: attrs)
+    }
+
+    private static func intervalHUDTextSize(_ text: String, textStyle: IntervalHUDBarTextStyle) -> CGSize {
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: intervalHUDFont(textStyle)
+        ]
+        return (text as NSString).size(withAttributes: attrs)
     }
 
     private static func intervalHUDFont(_ textStyle: IntervalHUDBarTextStyle) -> NSFont {

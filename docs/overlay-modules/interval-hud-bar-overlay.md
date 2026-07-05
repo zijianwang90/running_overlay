@@ -123,7 +123,7 @@ Bottom Bar Border is independent from the shared overlay Border section. It appl
 
 Zone modes also expose Inactive Opacity for non-active segments.
 
-Zone modes also support a single solid Zone Marker triangle. The marker can be hidden, placed above or below the bar, and can optionally show the current HR or pace value. Marker color follows the active zone color. It floats above the HUD layout and may overlap other HUD text or extend beyond the background.
+Zone modes also support a single solid Zone Marker triangle. The marker can be hidden, placed above or below the bar, and can optionally show the current HR or pace value. Marker color follows the active zone color. It floats above the HUD layout and may overlap other HUD text or extend beyond the background. Preview and export use the same marker metrics for arrow size, value text size, label padding, and gap placement.
 
 Zone modes also render an optional threshold marker when the corresponding global threshold is configured in Project Settings. `heartRateZones` uses `Threshold HR`; `paceZones` uses `Threshold Pace`. The threshold marker is a subtle vertical tick on the bar with a small `T` label below it, colored by the matched zone. Current pace markers are suppressed when pace is `0` or invalid so paused/resting data does not pin a misleading marker.
 
