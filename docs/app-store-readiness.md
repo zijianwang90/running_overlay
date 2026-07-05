@@ -1,13 +1,13 @@
 # Mac App Store Readiness
 
-Last updated: 2026-06-28
+Last updated: 2026-07-05
 
 This document tracks the first Mac App Store submission path for Running Overlay Studio.
 
 ## Current Release Target
 
 - Target channel: Mac App Store first submission.
-- Current release version: `0.1.1`.
+- Current release version: `0.1.2`.
 - Target scope: existing core app capabilities, including FIT import, video import, timeline editing, overlay design, Route Map, Weather Widget, and transparent MOV export.
 - Default branch: `main`; all changes land through pull requests.
 - App Store name: `Running Overlay Studio`.
