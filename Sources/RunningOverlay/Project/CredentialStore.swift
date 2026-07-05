@@ -6,6 +6,37 @@ protocol CredentialStore {
     func setValue(_ value: String?, for account: String) throws
 }
 
+enum DefaultCredentialStore {
+    static let disableKeychainEnvironmentKey = "RUNNING_OVERLAY_DISABLE_KEYCHAIN"
+
+    static func make(
+        bundleIdentifier: String? = Bundle.main.bundleIdentifier,
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> any CredentialStore {
+        if environment[disableKeychainEnvironmentKey] == "1" || bundleIdentifier == nil {
+            return InMemoryCredentialStore()
+        }
+        return KeychainCredentialStore()
+    }
+}
+
+final class InMemoryCredentialStore: CredentialStore {
+    private var values: [String: String] = [:]
+
+    func value(for account: String) throws -> String? {
+        values[account]
+    }
+
+    func setValue(_ value: String?, for account: String) throws {
+        let normalized = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if normalized.isEmpty {
+            values[account] = nil
+        } else {
+            values[account] = normalized
+        }
+    }
+}
+
 enum CredentialStoreError: LocalizedError {
     case unexpectedStatus(OSStatus)
     case invalidStoredData

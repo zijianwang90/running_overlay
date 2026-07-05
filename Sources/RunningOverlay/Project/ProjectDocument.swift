@@ -53,7 +53,7 @@ final class ProjectDocument: ObservableObject {
     init(
         overlayTemplateStore: OverlayTemplateStore = OverlayTemplateStore(),
         userDefaults: UserDefaults = .standard,
-        credentialStore: any CredentialStore = KeychainCredentialStore()
+        credentialStore: any CredentialStore = DefaultCredentialStore.make()
     ) {
         self.overlayTemplateStore = overlayTemplateStore
         self.userDefaults = userDefaults
