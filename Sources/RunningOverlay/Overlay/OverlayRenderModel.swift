@@ -644,8 +644,11 @@ enum OverlayRenderModel {
         style.restColor = kindPalette.rest
         style.cooldownColor = kindPalette.cooldown
         let width = context.scaled(style.width * element.scale)
+        let markerTriangleWidth = context.scaled(10 * element.scale)
         let markerTriangleHeight = context.scaled(6 * element.scale)
         let markerStackSpacing = context.scaled(2 * element.scale)
+        let markerFontSize = context.scaled(style.markerFontSize * element.scale)
+        let markerLabelWidth = context.scaled(64 * element.scale)
         let markerLabelHeight = context.scaled(max(style.markerFontSize * 1.4, 14) * element.scale)
         let markerGap = context.scaled(4 * element.scale)
         let markerBottomPadding = context.scaled(4 * element.scale)
@@ -780,13 +783,20 @@ enum OverlayRenderModel {
             currentProgress: currentProgress,
             markerX: markerX,
             markerTopY: markerTopY,
+            markerTriangleWidth: markerTriangleWidth,
             markerTriangleHeight: markerTriangleHeight,
+            markerStackSpacing: markerStackSpacing,
+            markerFontSize: markerFontSize,
+            markerLabelWidth: markerLabelWidth,
             markerLabelHeight: markerLabelHeight,
             markerLabel: style.markerLabel.isEmpty ? "NOW" : style.markerLabel,
             repText: style.repCounterEnabled ? intervalTimelineRepText(activity: context.activity, currentIndex: currentIndex) : nil,
             labelFontSize: context.scaled(16 * element.scale),
             durationFontSize: context.scaled(12 * element.scale),
             cornerRadius: context.scaled(element.style.backgroundRadius * element.scale),
+            borderWidth: max(context.scaled(element.style.borderWidth * element.scale), 0.5),
+            segmentCornerRadius: context.scaled(style.segmentCornerRadius * element.scale),
+            currentSegmentBorderWidth: max(context.scaled(1.4 * element.scale), 0.5),
             overflowEllipsisInset: ellipsisInset
         )
     }

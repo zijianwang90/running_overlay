@@ -1719,16 +1719,16 @@ struct OverlayFrameRenderer {
                 backgroundRect,
                 color: NSColor(element.style.borderColor).withAlphaComponent(element.style.borderOpacity),
                 cornerRadius: layout.cornerRadius,
-                lineWidth: element.style.borderWidth
+                lineWidth: layout.borderWidth
             )
         }
 
         for segment in layout.segments {
-            drawRoundedRect(segment.rect, color: NSColor(segment.color).withAlphaComponent(segment.opacity), cornerRadius: layout.style.segmentCornerRadius * element.scale)
+            drawRoundedRect(segment.rect, color: NSColor(segment.color).withAlphaComponent(segment.opacity), cornerRadius: layout.segmentCornerRadius)
             if segment.isCurrent && layout.style.currentProgressEnabled {
                 let progressRect = CGRect(x: segment.rect.minX, y: segment.rect.minY, width: segment.rect.width * layout.currentProgress, height: segment.rect.height)
-                drawRoundedRect(progressRect, color: NSColor.white.withAlphaComponent(0.30), cornerRadius: layout.style.segmentCornerRadius * element.scale)
-                strokeRoundedRect(segment.rect, color: NSColor.white.withAlphaComponent(0.74), cornerRadius: layout.style.segmentCornerRadius * element.scale, lineWidth: 1.4 * element.scale)
+                drawRoundedRect(progressRect, color: NSColor.white.withAlphaComponent(0.30), cornerRadius: layout.segmentCornerRadius)
+                strokeRoundedRect(segment.rect, color: NSColor.white.withAlphaComponent(0.74), cornerRadius: layout.segmentCornerRadius, lineWidth: layout.currentSegmentBorderWidth)
             }
 
             let lineCount = (segment.isCurrent && layout.repText != nil ? 1 : 0) + segment.labelLines.count
@@ -1760,7 +1760,7 @@ struct OverlayFrameRenderer {
 
         if layout.style.markerEnabled {
             let markerTop = layout.markerTopY
-            let markerWidth = 10 * element.scale
+            let markerWidth = layout.markerTriangleWidth
             let triangle = NSBezierPath()
             triangle.move(to: CGPoint(x: layout.markerX, y: markerTop))
             triangle.line(to: CGPoint(x: layout.markerX + markerWidth / 2, y: markerTop + layout.markerTriangleHeight))
@@ -1772,13 +1772,13 @@ struct OverlayFrameRenderer {
                 drawIntervalTimelineText(
                     layout.markerLabel,
                     in: CGRect(
-                        x: layout.markerX - 32 * element.scale,
-                        y: markerTop + layout.markerTriangleHeight + 2 * element.scale,
-                        width: 64 * element.scale,
+                        x: layout.markerX - layout.markerLabelWidth / 2,
+                        y: markerTop + layout.markerTriangleHeight + layout.markerStackSpacing,
+                        width: layout.markerLabelWidth,
                         height: layout.markerLabelHeight
                     ),
                     fontName: layout.style.markerFontName.isEmpty ? element.style.fontName : layout.style.markerFontName,
-                    fontSize: layout.style.markerFontSize * element.scale,
+                    fontSize: layout.markerFontSize,
                     weight: layout.style.markerFontWeight,
                     color: NSColor(layout.style.markerColor).withAlphaComponent(0.88),
                     alignment: .center

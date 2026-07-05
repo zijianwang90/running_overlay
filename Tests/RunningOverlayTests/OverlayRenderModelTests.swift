@@ -1584,11 +1584,41 @@ struct OverlayRenderModelTests {
         )
 
         let layout = OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
-        let markerBottom = layout.markerTopY + layout.markerTriangleHeight + 2 * element.scale + layout.markerLabelHeight
+        let markerBottom = layout.markerTopY + layout.markerTriangleHeight + layout.markerStackSpacing + layout.markerLabelHeight
 
         let currentSegmentBottom = layout.segments.first(where: \.isCurrent).map { $0.rect.maxY } ?? layout.contentRect.maxY
         #expect(layout.markerTopY > currentSegmentBottom)
         #expect(markerBottom < layout.rect.maxY - 1)
+    }
+
+    @Test func intervalTimelineMarkerAndBorderScaleWithCanvasSize() {
+        var style = OverlayStyle.default
+        style.intervalTimeline.markerEnabled = true
+        style.intervalTimeline.markerFontSize = 14
+        style.borderWidth = 2
+        let element = OverlayElement(type: .intervalTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let activity = repeatedIntervalActivity(repCount: 4)
+        let hdContext = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: activity,
+            elapsedTime: 45
+        )
+        let fourKContext = OverlayRenderContext(
+            canvasSize: CGSize(width: 3840, height: 2160),
+            activity: activity,
+            elapsedTime: 45
+        )
+
+        let hd = OverlayRenderModel.intervalTimelineLayout(for: element, in: hdContext)
+        let fourK = OverlayRenderModel.intervalTimelineLayout(for: element, in: fourKContext)
+        let scale = fourKContext.canvasScale / hdContext.canvasScale
+
+        #expect(abs(fourK.markerTriangleWidth - hd.markerTriangleWidth * scale) < 0.001)
+        #expect(abs(fourK.markerTriangleHeight - hd.markerTriangleHeight * scale) < 0.001)
+        #expect(abs(fourK.markerFontSize - hd.markerFontSize * scale) < 0.001)
+        #expect(abs(fourK.markerLabelWidth - hd.markerLabelWidth * scale) < 0.001)
+        #expect(abs(fourK.borderWidth - hd.borderWidth * scale) < 0.001)
+        #expect(abs(fourK.currentSegmentBorderWidth - hd.currentSegmentBorderWidth * scale) < 0.001)
     }
 
     @Test func intervalTimelineMarkerTextCanBeCustomizedAndHidden() {
