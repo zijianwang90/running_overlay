@@ -151,12 +151,17 @@ final class ProjectDocument: ObservableObject {
         timeline.fitStartTime = 0
         timeline.playhead = timeline.fitStartTime
 
+        let matchSummary = refreshMediaAlignmentAfterFitImport()
         let importSummary = "Loaded FIT: \(sourceName), \(formatDuration(importedActivity.duration)), \(formatDistance(importedActivity.distanceMeters))."
         if let appliedTemplateName = applyLastUsedOverlayTemplateAfterFitImport() {
-            statusMessage = "\(importSummary) Applied template: \(appliedTemplateName)."
+            statusMessage = [importSummary, matchSummary, "Applied template: \(appliedTemplateName)."]
+                .compactMap { $0 }
+                .joined(separator: " ")
             refreshOpenMeteoWeatherWidgetsAfterFitImport()
         } else {
-            statusMessage = importSummary
+            statusMessage = [importSummary, matchSummary]
+                .compactMap { $0 }
+                .joined(separator: " ")
         }
     }
 
@@ -3432,6 +3437,105 @@ final class ProjectDocument: ObservableObject {
             return previewTrackName
         }
         return timeline.tracks.first?.name ?? "Layer 1"
+    }
+
+    private func refreshMediaAlignmentAfterFitImport() -> String? {
+        guard !mediaItems.isEmpty else { return nil }
+
+        var readyIDs: [MediaItem.ID] = []
+        for index in mediaItems.indices {
+            let status = timestampAlignmentStatus(
+                for: mediaItems[index].inferredStartDate,
+                activity: activity
+            )
+            mediaItems[index].alignmentStatus = status
+            if case .readyToMatch = status {
+                readyIDs.append(mediaItems[index].id)
+            }
+        }
+
+        guard !readyIDs.isEmpty else {
+            return "No existing video timestamps match this FIT."
+        }
+
+        let result = autoMatchTimestampMediaAfterFitImport(Set(readyIDs))
+        if result.matchedCount == readyIDs.count {
+            return "Auto-matched \(result.matchedCount) existing video(s)."
+        }
+        if result.matchedCount > 0 {
+            return "Auto-matched \(result.matchedCount) existing video(s); \(result.skippedCount) still need placement."
+        }
+        return "\(readyIDs.count) existing video(s) are ready for auto-match."
+    }
+
+    private func autoMatchTimestampMediaAfterFitImport(_ mediaItemIDs: Set<MediaItem.ID>) -> (matchedCount: Int, skippedCount: Int) {
+        var updatedTimeline = timeline
+        var matchedCount = 0
+        var skippedCount = 0
+        var lastClipID: TimelineClip.ID?
+
+        let orderedIndexes = mediaItems.indices
+            .filter { mediaItemIDs.contains(mediaItems[$0].id) }
+            .sorted { lhs, rhs in
+                let lhsDate = mediaItems[lhs].inferredStartDate ?? .distantPast
+                let rhsDate = mediaItems[rhs].inferredStartDate ?? .distantPast
+                if lhsDate == rhsDate {
+                    return mediaItems[lhs].displayName.localizedStandardCompare(mediaItems[rhs].displayName) == .orderedAscending
+                }
+                return lhsDate < rhsDate
+            }
+
+        for mediaIndex in orderedIndexes {
+            guard let inferredStartDate = mediaItems[mediaIndex].inferredStartDate else {
+                skippedCount += 1
+                continue
+            }
+
+            let mediaItem = mediaItems[mediaIndex]
+            let trackName = mediaItem.cameraGroupID
+            let startTime = timeline.fitStartTime + inferredStartDate.timeIntervalSince(activity.startDate)
+            if updatedTimeline.wouldClipOverlap(
+                mediaItemID: mediaItem.id,
+                trackName: trackName,
+                startTime: startTime,
+                duration: mediaItem.duration
+            ) {
+                skippedCount += 1
+                continue
+            }
+
+            if let clipID = updatedTimeline.addOrMoveClip(
+                mediaItem: mediaItem,
+                trackName: trackName,
+                startTime: startTime,
+                activity: activity
+            ) {
+                mediaItems[mediaIndex].alignmentStatus = .aligned(source: "timestamp")
+                mediaItems[mediaIndex].cameraGroupID = trackName
+                lastClipID = clipID
+                matchedCount += 1
+            }
+        }
+
+        timeline = updatedTimeline
+        if let lastClipID {
+            selection = .timelineClip(lastClipID)
+        }
+        return (matchedCount, skippedCount)
+    }
+
+    private func timestampAlignmentStatus(for date: Date?, activity: ActivityTimeline) -> AlignmentStatus {
+        guard let date else {
+            return .needsManualPlacement
+        }
+
+        let tolerance: TimeInterval = 12 * 60 * 60
+        let earliest = activity.startDate.addingTimeInterval(-tolerance)
+        let latest = activity.endDate.addingTimeInterval(tolerance)
+        if date >= earliest && date <= latest {
+            return .readyToMatch(source: "timestamp")
+        }
+        return .needsManualPlacement
     }
 
     private func matchMediaItems(_ mediaItemIDs: Set<MediaItem.ID>, toTrackName trackName: String) {

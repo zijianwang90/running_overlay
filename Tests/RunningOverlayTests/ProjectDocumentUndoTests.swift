@@ -387,6 +387,43 @@ struct ProjectDocumentUndoTests {
         #expect(project.statusMessage.contains("Match to New Layer"))
     }
 
+    @Test func replacingFitAutoMatchesExistingTimestampedVideos() {
+        let project = ProjectDocument()
+        project.activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 10_000),
+            duration: 100,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        let correctStart = Date(timeIntervalSince1970: 1_000)
+        let media = MediaItem(
+            displayName: "clip.mov",
+            fileURL: nil,
+            duration: 12,
+            inferredStartDate: correctStart.addingTimeInterval(30),
+            cameraGroupID: "Camera A",
+            alignmentStatus: .needsManualPlacement
+        )
+        project.mediaItems = [media]
+
+        project.finishFitImport(
+            activity: ActivityTimeline(
+                startDate: correctStart,
+                duration: 120,
+                distanceMeters: 0,
+                records: [],
+                laps: []
+            ),
+            sourceName: "correct.fit"
+        )
+
+        #expect(project.mediaItems.first?.alignmentStatus == .aligned(source: "timestamp"))
+        #expect(project.timeline.tracks.first?.name == "Camera A")
+        #expect(project.timeline.tracks.first?.clips.first?.effectiveStartTime == 30)
+        #expect(project.statusMessage.contains("Auto-matched 1 existing video"))
+    }
+
     @Test func forwardPlaybackRateCyclesUpToEightX() {
         let project = ProjectDocument()
 
