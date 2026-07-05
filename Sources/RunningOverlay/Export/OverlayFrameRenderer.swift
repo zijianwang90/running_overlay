@@ -1483,17 +1483,17 @@ struct OverlayFrameRenderer {
         let style = layout.style
         let rect = layout.rect
         let backgroundRect = rect.insetBy(
-            dx: -element.style.backgroundPaddingX * element.scale,
-            dy: -element.style.backgroundPaddingY * element.scale
+            dx: -layout.backgroundPaddingX,
+            dy: -layout.backgroundPaddingY
         )
 
         if element.style.backgroundEnabled {
-            drawIntervalHUDContainerBackground(element: element, rect: backgroundRect)
+            drawIntervalHUDContainerBackground(element: element, layout: layout, rect: backgroundRect)
         }
         if element.style.borderEnabled {
             NSColor(element.style.borderColor).withAlphaComponent(element.style.borderOpacity).setStroke()
-            let border = NSBezierPath(roundedRect: backgroundRect, xRadius: element.style.backgroundRadius, yRadius: element.style.backgroundRadius)
-            border.lineWidth = element.style.borderWidth
+            let border = NSBezierPath(roundedRect: backgroundRect, xRadius: layout.backgroundRadius, yRadius: layout.backgroundRadius)
+            border.lineWidth = layout.borderWidth
             border.stroke()
         }
         let contentShadowEnabled = !element.style.backgroundEnabled
@@ -1554,7 +1554,7 @@ struct OverlayFrameRenderer {
                 height: contentRect.height
             )
             if columnIndex > 0 {
-                drawIntervalHUDDivider(element: element, x: columnRect.minX, rect: rect, height: layout.baseHeight)
+                drawIntervalHUDDivider(element: element, layout: layout, x: columnRect.minX, rect: rect, height: layout.baseHeight)
             }
             columnIndex += 1
             return columnRect
@@ -1606,7 +1606,7 @@ struct OverlayFrameRenderer {
             break
         case .lapProgress:
             NSColor(style.trackColor).withAlphaComponent(style.trackOpacity).setFill()
-            let cornerRadius = intervalHUDBottomBarCornerRadius(style: style, element: element, height: barRect.height)
+            let cornerRadius = layout.bottomBarCornerRadius
             NSBezierPath(roundedRect: barRect, xRadius: cornerRadius, yRadius: cornerRadius).fill()
             let fillRect = CGRect(x: barRect.minX, y: barRect.minY, width: max(barRect.width * layout.progress, 0), height: barRect.height)
             if style.bottomBarGlowEnabled {
@@ -1622,7 +1622,7 @@ struct OverlayFrameRenderer {
             if style.bottomBarGlowEnabled {
                 NSGraphicsContext.current?.cgContext.restoreGState()
             }
-            strokeIntervalHUDBottomBarBorder(style: style, element: element, rect: barRect, cornerRadius: cornerRadius)
+            strokeIntervalHUDBottomBarBorder(style: style, layout: layout, rect: barRect, cornerRadius: cornerRadius)
         case .heartRateZones, .paceZones:
             let segments = layout.zoneSegments
             guard !segments.isEmpty else { return }
@@ -1639,7 +1639,7 @@ struct OverlayFrameRenderer {
                 style: style,
                 element: element
             )
-            let cornerRadius = intervalHUDBottomBarCornerRadius(style: style, element: element, height: barRect.height)
+            let cornerRadius = layout.bottomBarCornerRadius
             if style.bottomBarGlowEnabled,
                let activeIndex = layout.bottomBarActiveZoneIndex,
                let activeSegment = segments.first(where: { $0.index == activeIndex }),
@@ -1665,7 +1665,7 @@ struct OverlayFrameRenderer {
                 let segmentCornerRadius = min(cornerRadius, segmentRect.height / 2, segmentRect.width / 2)
                 NSBezierPath(roundedRect: segmentRect, xRadius: segmentCornerRadius, yRadius: segmentCornerRadius).fill()
             }
-            strokeIntervalHUDBottomBarBorder(style: style, element: element, rect: barRect, cornerRadius: cornerRadius)
+            strokeIntervalHUDBottomBarBorder(style: style, layout: layout, rect: barRect, cornerRadius: cornerRadius)
             if let marker = layout.thresholdZoneMarker,
                let markerRect = zoneRects.first(where: { $0.index == marker.zoneIndex }) {
                 drawIntervalHUDZoneMarker(
@@ -2031,7 +2031,7 @@ struct OverlayFrameRenderer {
         let layoutHeight = max(layout.baseHeight, 1)
         let minimumTopPadding = max(layoutHeight * 0.025, 2)
         let minimumBottomPadding = max(layoutHeight * 0.025, 2)
-        let requestedSpacing = hasVisibleBottomBar ? max(layout.style.bottomBarSpacing, 0) : 0
+        let requestedSpacing = hasVisibleBottomBar ? layout.bottomBarSpacing : 0
         let minimumContentHeight = intervalHUDMinimumMainContentHeight(layout: layout, rect: rect)
         let desiredTotal = desiredTopPadding + minimumContentHeight + bottomBarContentHeight + desiredBottomPadding
 
@@ -2063,20 +2063,16 @@ struct OverlayFrameRenderer {
         )
     }
 
-    private static func intervalHUDBottomBarCornerRadius(style: IntervalHUDBarStyle, element: OverlayElement, height: Double) -> Double {
-        min(max(style.bottomBarCornerRadius * element.scale, 0), height)
-    }
-
-    private static func strokeIntervalHUDBottomBarBorder(style: IntervalHUDBarStyle, element: OverlayElement, rect: CGRect, cornerRadius: Double) {
+    private static func strokeIntervalHUDBottomBarBorder(style: IntervalHUDBarStyle, layout: IntervalHUDBarRenderLayout, rect: CGRect, cornerRadius: Double) {
         guard style.bottomBarBorderEnabled,
               style.bottomBarBorderOpacity > 0,
-              style.bottomBarBorderWidth > 0
+              layout.bottomBarBorderWidth > 0
         else { return }
         strokeRoundedRect(
             rect,
             color: NSColor(style.bottomBarBorderColor).withAlphaComponent(style.bottomBarBorderOpacity),
             cornerRadius: cornerRadius,
-            lineWidth: style.bottomBarBorderWidth * element.scale
+            lineWidth: layout.bottomBarBorderWidth
         )
     }
 
@@ -2251,7 +2247,7 @@ struct OverlayFrameRenderer {
         triangle.fill()
     }
 
-    private static func drawIntervalHUDContainerBackground(element: OverlayElement, rect: CGRect) {
+    private static func drawIntervalHUDContainerBackground(element: OverlayElement, layout: IntervalHUDBarRenderLayout, rect: CGRect) {
         let color = NSColor(element.style.backgroundColor).withAlphaComponent(element.style.backgroundOpacity)
         if element.style.shadowEnabled, element.style.shadowOpacity > 0, element.style.shadowRadius > 0 {
             let thickness = min(max(element.style.shadowThickness, 1), 4)
@@ -2263,10 +2259,10 @@ struct OverlayFrameRenderer {
                 blur: shadowRadius,
                 color: NSColor(element.style.shadowColor).withAlphaComponent(shadowOpacity).cgColor
             )
-            drawOverlayBackground(rect, color: color, cornerRadius: element.style.backgroundRadius, element: element)
+            drawOverlayBackground(rect, color: color, cornerRadius: layout.backgroundRadius, element: element)
             NSGraphicsContext.current?.cgContext.restoreGState()
         } else {
-            drawOverlayBackground(rect, color: color, cornerRadius: element.style.backgroundRadius, element: element)
+            drawOverlayBackground(rect, color: color, cornerRadius: layout.backgroundRadius, element: element)
         }
     }
 
@@ -2282,13 +2278,13 @@ struct OverlayFrameRenderer {
         )
     }
 
-    private static func drawIntervalHUDDivider(element: OverlayElement, x: Double, rect: CGRect, height: Double) {
+    private static func drawIntervalHUDDivider(element: OverlayElement, layout: IntervalHUDBarRenderLayout, x: Double, rect: CGRect, height: Double) {
         guard element.style.dividerEnabled else { return }
         NSColor(element.style.dividerColor).withAlphaComponent(element.style.dividerOpacity).setFill()
         CGRect(
-            x: x - element.style.dividerThickness / 2,
+            x: x - layout.dividerThickness / 2,
             y: rect.minY + height * 0.22,
-            width: max(element.style.dividerThickness, 0.5),
+            width: layout.dividerThickness,
             height: height * 0.46
         ).fill()
     }

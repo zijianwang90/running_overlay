@@ -14,7 +14,7 @@ struct IntervalHUDBarOverlayView: View {
                     backgroundEnabled: element.style.backgroundEnabled,
                     color: Color(intervalHUD: element.style.backgroundColor),
                     opacity: element.style.backgroundOpacity,
-                    cornerRadius: element.style.backgroundRadius,
+                    cornerRadius: layout.backgroundRadius,
                     fadeEnabled: element.style.backgroundFadeOutEnabled,
                     fadeAmount: element.style.backgroundFadeOutAmount,
                     blurRadius: element.style.backgroundBlurRadius
@@ -55,8 +55,8 @@ struct IntervalHUDBarOverlayView: View {
         .frame(width: layout.rect.width, height: layout.rect.height)
         .overlay {
             if element.style.borderEnabled {
-                RoundedRectangle(cornerRadius: element.style.backgroundRadius)
-                    .stroke(Color(intervalHUD: element.style.borderColor).opacity(element.style.borderOpacity), lineWidth: element.style.borderWidth)
+                RoundedRectangle(cornerRadius: layout.backgroundRadius)
+                    .stroke(Color(intervalHUD: element.style.borderColor).opacity(element.style.borderOpacity), lineWidth: layout.borderWidth)
                     .frame(width: backgroundLocalRect.width, height: backgroundLocalRect.height)
                     .position(x: backgroundLocalRect.midX, y: backgroundLocalRect.midY)
             }
@@ -64,8 +64,8 @@ struct IntervalHUDBarOverlayView: View {
     }
 
     private var backgroundLocalRect: CGRect {
-        let padX = element.style.backgroundPaddingX * element.scale
-        let padY = element.style.backgroundPaddingY * element.scale
+        let padX = layout.backgroundPaddingX
+        let padY = layout.backgroundPaddingY
         return CGRect(
             x: -padX,
             y: -padY,
@@ -92,7 +92,7 @@ struct IntervalHUDBarOverlayView: View {
         let layoutHeight = verticalLayoutBasisHeight
         let minimumTopPadding = max(layoutHeight * 0.025, 2)
         let minimumBottomPadding = max(layoutHeight * 0.025, 2)
-        let requestedSpacing = hasVisibleBottomBar ? max(style.bottomBarSpacing, 0) : 0
+        let requestedSpacing = hasVisibleBottomBar ? layout.bottomBarSpacing : 0
         let minimumContentHeight = minimumMainContentHeight
         let bottomHeight = bottomBarContentHeight
         let desiredTotal = desiredTopPadding + minimumContentHeight + bottomHeight + desiredBottomPadding
@@ -165,7 +165,7 @@ struct IntervalHUDBarOverlayView: View {
     private var divider: some View {
         Rectangle()
             .fill(Color(intervalHUD: element.style.dividerColor).opacity(element.style.dividerEnabled ? element.style.dividerOpacity : 0))
-            .frame(width: max(element.style.dividerThickness, 0.5), height: verticalLayoutBasisHeight * 0.48)
+            .frame(width: layout.dividerThickness, height: verticalLayoutBasisHeight * 0.48)
             .padding(.horizontal, layout.rect.width * 0.025)
     }
 
@@ -388,7 +388,7 @@ struct IntervalHUDBarOverlayView: View {
     }
 
     private var bottomBarCornerRadius: Double {
-        min(max(style.bottomBarCornerRadius * element.scale, 0), layout.barHeight)
+        layout.bottomBarCornerRadius
     }
 
     @ViewBuilder
@@ -397,7 +397,7 @@ struct IntervalHUDBarOverlayView: View {
             RoundedRectangle(cornerRadius: bottomBarCornerRadius)
                 .stroke(
                     Color(intervalHUD: style.bottomBarBorderColor).opacity(style.bottomBarBorderOpacity),
-                    lineWidth: max(style.bottomBarBorderWidth * element.scale, 0)
+                    lineWidth: layout.bottomBarBorderWidth
                 )
         }
     }

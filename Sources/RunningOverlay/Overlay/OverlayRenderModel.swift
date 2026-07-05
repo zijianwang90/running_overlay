@@ -510,7 +510,7 @@ enum OverlayRenderModel {
         let width = context.scaled(style.width * element.scale)
         let baseHeight = context.scaled(style.height * element.scale)
         let bottomBarSpacing = style.bottomBarEnabled && style.bottomBarMode != .none
-            ? max(style.bottomBarSpacing, 0)
+            ? context.scaled(max(style.bottomBarSpacing, 0) * element.scale)
             : 0
         let height = baseHeight + bottomBarSpacing
         let rect = centeredRect(for: element, size: CGSize(width: width, height: height), canvasSize: context.canvasSize)
@@ -583,7 +583,18 @@ enum OverlayRenderModel {
             phaseDetailText: scaled(style.phaseDetailText, scale: element.scale, context: context),
             metricValueText: scaled(style.metricValueText, scale: element.scale, context: context),
             metricUnitText: scaled(style.metricUnitText, scale: element.scale, context: context),
-            barHeight: context.scaled(10 * element.scale)
+            barHeight: context.scaled(10 * element.scale),
+            bottomBarSpacing: bottomBarSpacing,
+            backgroundPaddingX: context.scaled(element.style.backgroundPaddingX * element.scale),
+            backgroundPaddingY: context.scaled(element.style.backgroundPaddingY * element.scale),
+            backgroundRadius: context.scaled(element.style.backgroundRadius * element.scale),
+            borderWidth: max(context.scaled(element.style.borderWidth * element.scale), 0.5),
+            bottomBarCornerRadius: min(
+                max(context.scaled(style.bottomBarCornerRadius * element.scale), 0),
+                context.scaled(10 * element.scale)
+            ),
+            bottomBarBorderWidth: max(context.scaled(style.bottomBarBorderWidth * element.scale), 0),
+            dividerThickness: max(context.scaled(element.style.dividerThickness * element.scale), 0.5)
         )
     }
 

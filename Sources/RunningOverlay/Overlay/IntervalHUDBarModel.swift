@@ -549,6 +549,14 @@ struct IntervalHUDBarRenderLayout {
     var metricValueText: IntervalHUDBarTextStyle
     var metricUnitText: IntervalHUDBarTextStyle
     var barHeight: Double
+    var bottomBarSpacing: Double
+    var backgroundPaddingX: Double
+    var backgroundPaddingY: Double
+    var backgroundRadius: Double
+    var borderWidth: Double
+    var bottomBarCornerRadius: Double
+    var bottomBarBorderWidth: Double
+    var dividerThickness: Double
 }
 
 struct IntervalHUDBarMetricItem: Identifiable, Equatable {

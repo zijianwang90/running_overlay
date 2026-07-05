@@ -1035,6 +1035,43 @@ struct OverlayRenderModelTests {
         #expect(abs(Double(expandedLayout.rect.height) - (expandedLayout.baseHeight + 24)) < 0.0001)
     }
 
+    @Test func intervalHUDBarBackgroundGeometryScalesWithCanvasSize() {
+        var style = OverlayStyle.default
+        style.backgroundRadius = 18
+        style.backgroundPaddingX = 12
+        style.backgroundPaddingY = 8
+        style.borderWidth = 2
+        style.dividerThickness = 1.5
+        style.intervalHUDBar.bottomBarSpacing = 10
+        style.intervalHUDBar.bottomBarCornerRadius = 5
+        style.intervalHUDBar.bottomBarBorderWidth = 1
+        let element = OverlayElement(type: .intervalHUDBar, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let activity = sampleIntervalActivity()
+        let hdContext = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: activity,
+            elapsedTime: 50
+        )
+        let fourKContext = OverlayRenderContext(
+            canvasSize: CGSize(width: 3840, height: 2160),
+            activity: activity,
+            elapsedTime: 50
+        )
+
+        let hd = OverlayRenderModel.intervalHUDBarLayout(for: element, in: hdContext)
+        let fourK = OverlayRenderModel.intervalHUDBarLayout(for: element, in: fourKContext)
+        let scale = fourKContext.canvasScale / hdContext.canvasScale
+
+        #expect(abs(fourK.backgroundRadius - hd.backgroundRadius * scale) < 0.001)
+        #expect(abs(fourK.backgroundPaddingX - hd.backgroundPaddingX * scale) < 0.001)
+        #expect(abs(fourK.backgroundPaddingY - hd.backgroundPaddingY * scale) < 0.001)
+        #expect(abs(fourK.borderWidth - hd.borderWidth * scale) < 0.001)
+        #expect(abs(fourK.bottomBarSpacing - hd.bottomBarSpacing * scale) < 0.001)
+        #expect(abs(fourK.bottomBarCornerRadius - hd.bottomBarCornerRadius * scale) < 0.001)
+        #expect(abs(fourK.bottomBarBorderWidth - hd.bottomBarBorderWidth * scale) < 0.001)
+        #expect(abs(fourK.dividerThickness - hd.dividerThickness * scale) < 0.001)
+    }
+
     @Test func intervalHUDBarZoneSegmentFramesSupportActiveZoneEmphasis() {
         let equalFrames = OverlayRenderModel.intervalZoneSegmentFrames(
             segmentCount: 5,
