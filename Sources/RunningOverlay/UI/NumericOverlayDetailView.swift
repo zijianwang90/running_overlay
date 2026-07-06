@@ -39,6 +39,9 @@ struct NumericOverlayDetailView: View {
 
     @ViewBuilder
     private func contentSection(_ element: OverlayElement) -> some View {
+        if element.type == .customNumeric {
+            customNumericContentSection(element)
+        } else {
         let units = OverlayUnitOption.options(for: element.type)
         if units.isEmpty {
             EmptyView()
@@ -108,9 +111,76 @@ struct NumericOverlayDetailView: View {
                 )
             }
         }
+        }
         InspectorDenseRow(label: "Format Preview") {
             InspectorDenseReadout(text: previewValue(for: element), isNumeric: true)
         }
+    }
+
+    @ViewBuilder
+    private func customNumericContentSection(_ element: OverlayElement) -> some View {
+        InspectorDenseRow(label: "Value") {
+            Menu {
+                ForEach(customNumericFields(for: element)) { field in
+                    Button {
+                        project.setOverlayCustomNumericField(elementID, field: field)
+                    } label: {
+                        if field == element.style.customNumericField {
+                            Label(field.label, systemImage: "checkmark")
+                        } else {
+                            Text(field.label)
+                        }
+                    }
+                }
+            } label: {
+                InspectorDenseMenuLabel(title: element.style.customNumericField.label)
+            }
+            .menuStyle(.borderlessButton)
+            .frame(height: NumericTokens.controlHeight)
+        }
+        InspectorDenseRow(label: "Format") {
+            Menu {
+                ForEach(CustomNumericFormat.allCases) { format in
+                    Button {
+                        project.setOverlayCustomNumericFormat(elementID, format: format)
+                    } label: {
+                        if format == element.style.customNumericFormat {
+                            Label(format.label, systemImage: "checkmark")
+                        } else {
+                            Text(format.label)
+                        }
+                    }
+                }
+            } label: {
+                InspectorDenseMenuLabel(title: element.style.customNumericFormat.label)
+            }
+            .menuStyle(.borderlessButton)
+            .frame(height: NumericTokens.controlHeight)
+        }
+        if element.style.customNumericFormat.supportsPrecision {
+            InspectorDenseSliderRow(
+                label: "Decimals",
+                value: Binding(
+                    get: { Double(element.style.customNumericPrecision) },
+                    set: { project.setOverlayCustomNumericPrecision(elementID, precision: Int($0.rounded())) }
+                ),
+                range: 0...8,
+                displayText: "\(element.style.customNumericPrecision)"
+            )
+        }
+    }
+
+    private func customNumericFields(for element: OverlayElement) -> [CustomNumericField] {
+        var fields = CustomNumericField.builtInCases
+        let dynamicFields = Set(project.activity.records.flatMap { $0.genericFields.keys })
+            .subtracting(CustomNumericField.recordFieldIDsCoveredByFixedNumericOverlays)
+            .sorted()
+            .map(CustomNumericField.record)
+        fields.append(contentsOf: dynamicFields)
+        if !fields.contains(element.style.customNumericField) {
+            fields.append(element.style.customNumericField)
+        }
+        return fields
     }
 
     @ViewBuilder
@@ -323,6 +393,23 @@ struct NumericOverlayDetailView: View {
     @ViewBuilder
     private func unitSection(_ element: OverlayElement) -> some View {
         let isEnabled = element.style.showUnit
+        if element.type == .customNumeric {
+            InspectorDenseRow(label: "Text") {
+                TextField("Unit", text: Binding(
+                    get: { element.style.customUnit },
+                    set: { project.setOverlayCustomUnit(elementID, unit: $0) }
+                ), onCommit: { project.finishContinuousEdit() })
+                .textFieldStyle(.plain)
+                .font(NumericTokens.bodyFont)
+                .padding(.horizontal, NumericTokens.space2)
+                .frame(height: NumericTokens.controlHeight)
+                .background(NumericTokens.controlBackground)
+                .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
+                .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
+                .disabled(!isEnabled)
+                .opacity(isEnabled ? 1 : 0.5)
+            }
+        }
         InspectorDenseRow(label: "Position") {
             InspectorDenseSegmented(values: OverlayTextAttachmentPosition.allCases, selection: Binding(
                 get: { element.style.unitPosition },

@@ -533,6 +533,7 @@ struct ActivityRecord: Identifiable, Equatable, Codable {
     var groundContactBalance: Double?
     var temperatureCelsius: Double?
     var gradePercent: Double?
+    var genericFields: [String: Double]
 
     init(
         elapsedTime: TimeInterval,
@@ -551,7 +552,8 @@ struct ActivityRecord: Identifiable, Equatable, Codable {
         strideLengthM: Double? = nil,
         groundContactBalance: Double? = nil,
         temperatureCelsius: Double? = nil,
-        gradePercent: Double? = nil
+        gradePercent: Double? = nil,
+        genericFields: [String: Double] = [:]
     ) {
         self.elapsedTime = elapsedTime
         self.timestamp = timestamp
@@ -570,6 +572,52 @@ struct ActivityRecord: Identifiable, Equatable, Codable {
         self.groundContactBalance = groundContactBalance
         self.temperatureCelsius = temperatureCelsius
         self.gradePercent = gradePercent
+        self.genericFields = genericFields
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case elapsedTime
+        case timestamp
+        case distanceMeters
+        case heartRate
+        case paceSecondsPerKilometer
+        case elevationMeters
+        case cadence
+        case powerWatts
+        case calories
+        case latitude
+        case longitude
+        case verticalOscillationMM
+        case groundContactTimeMS
+        case strideLengthM
+        case groundContactBalance
+        case temperatureCelsius
+        case gradePercent
+        case genericFields
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        elapsedTime = try container.decode(TimeInterval.self, forKey: .elapsedTime)
+        timestamp = try container.decode(Date.self, forKey: .timestamp)
+        distanceMeters = try container.decodeIfPresent(Double.self, forKey: .distanceMeters)
+        heartRate = try container.decodeIfPresent(Int.self, forKey: .heartRate)
+        paceSecondsPerKilometer = try container.decodeIfPresent(Double.self, forKey: .paceSecondsPerKilometer)
+        elevationMeters = try container.decodeIfPresent(Double.self, forKey: .elevationMeters)
+        cadence = try container.decodeIfPresent(Int.self, forKey: .cadence)
+        powerWatts = try container.decodeIfPresent(Int.self, forKey: .powerWatts)
+        calories = try container.decodeIfPresent(Double.self, forKey: .calories)
+        latitude = try container.decodeIfPresent(Double.self, forKey: .latitude)
+        longitude = try container.decodeIfPresent(Double.self, forKey: .longitude)
+        verticalOscillationMM = try container.decodeIfPresent(Double.self, forKey: .verticalOscillationMM)
+        groundContactTimeMS = try container.decodeIfPresent(Double.self, forKey: .groundContactTimeMS)
+        strideLengthM = try container.decodeIfPresent(Double.self, forKey: .strideLengthM)
+        groundContactBalance = try container.decodeIfPresent(Double.self, forKey: .groundContactBalance)
+        temperatureCelsius = try container.decodeIfPresent(Double.self, forKey: .temperatureCelsius)
+        gradePercent = try container.decodeIfPresent(Double.self, forKey: .gradePercent)
+        genericFields = try container.decodeIfPresent([String: Double].self, forKey: .genericFields) ?? [:]
     }
 }
 

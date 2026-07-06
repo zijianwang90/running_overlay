@@ -31,6 +31,9 @@ Use this template for these `OverlayElementType` values:
 - `cadence`
 - `power`
 - `temperature` — reads interpolated FIT temperature by default when available, with an Inspector toggle to disable the FIT temperature source and a manual Celsius fallback when FIT temperature is unavailable or disabled.
+- `customNumeric` — one reusable numeric tile whose Content section lets the
+  user choose the displayed FIT-derived value, formatting category, decimal
+  precision, label, and unit text.
 
 Do not use this template as-is for `distanceTimeline`, `elevationChart`, `runningGauge`, or `routeMap`. Those overlays may share lower-level controls, but they need chart/gauge/map-specific layouts.
 
@@ -95,6 +98,9 @@ Do not use large card containers for every row.
 | --- | --- | --- |
 | `Units` dropdown | `Metric (min/km)` | Required for metrics with unit variants. |
 | `Mode` dropdown | `Current` / `Gain` | Required for Elevation only. |
+| `Value` dropdown | `Heart Rate` | Required for Custom Numeric only. |
+| `Format` dropdown | `Number` / `Integer` / `Duration` | Required for Custom Numeric only. |
+| `Decimals` slider | `2` | Required for Custom Numeric formats that support precision. |
 | `Format Preview` readout | `13'49" / km` | Always visible and model-backed through formatter. |
 
 ### Unit Selection
@@ -139,6 +145,41 @@ Implementation rule:
 - Do not show a Style or Preset selector for numeric overlays in 1.0.
 - Elevation adds a separate `Mode` menu backed by `OverlayStyle.elevationDisplayMode`: `Current` shows the live altitude at the playhead; `Gain` shows cumulative ascent up to the current playhead time.
 - Temperature shows `Use FIT Temperature` when the imported activity contains FIT temperature samples. The toggle is backed by `OverlayStyle.useFITTemperature` and defaults on for compatibility. When the imported activity has no FIT temperature samples, or when the toggle is off, the Content section exposes a manual Celsius temperature field backed by `OverlayStyle.manualTemperatureCelsius`; an empty manual field renders the no-data placeholder.
+
+### Custom Numeric Value
+
+Custom Numeric exposes one `Value` menu instead of deriving the value from
+`OverlayElementType`. The menu avoids values that already have their own
+fixed Numeric Overlay tile or inspector mode. Built-in friendly values are
+limited to sampled numeric values without a dedicated numeric overlay, currently
+latitude and longitude.
+
+The menu also appends generic values discovered in the imported FIT activity's
+`record` messages after filtering standard record fields already represented by
+fixed Numeric Overlays, such as heart rate, distance, speed-derived pace,
+elevation, cadence, power, calories, run-dynamics fields, temperature, grade,
+and timestamp. Remaining standard scalar numeric record fields use fallback
+labels such as `record.field_87`. Developer record fields use raw unsigned
+fallback labels such as `record.developer_3.field_12` because the current
+parser does not yet consume FIT `field_description` metadata for developer
+field type, scale, offset, name, or unit. Lap and session fields are
+intentionally excluded from Custom Numeric because they are summary data rather
+than playhead-sampled record data.
+
+Custom Numeric format categories:
+
+- `Number` — fixed decimal value using the Decimals control.
+- `Integer` — rounded whole number.
+- `Duration` — `hh:mm:ss`.
+- `Clock Time` — timestamp fields render `HH:mm:ss`.
+- `Date` — timestamp fields render `YYYY-MM-DD`.
+- `Pace` — seconds-per-kilometer values render `M'SS"`.
+- `Percent` — fixed decimal value; percent-like fields keep `%` in the unit.
+- `Coordinate` — fixed decimal latitude/longitude using the Decimals control.
+
+Changing `Value` resets the format, decimals, and unit text to that field's
+defaults. The label text updates only when it is empty or still equal to the
+previous field's default label, so user-entered labels are preserved.
 
 ## Layout Section
 
@@ -190,6 +231,7 @@ Controls:
 Controls:
 
 - `Enable Unit` toggle in section header accessory.
+- Text field for Custom Numeric only. Empty text is allowed and renders no unit suffix.
 - Position segmented control: `Top`, `Bottom`, `Left`, `Right`.
 - Align/Anchor segmented control — backed by `OverlayStyle.unitTextAlignment`. When the unit is above/below the value it controls horizontal row alignment; when the unit is left/right of the value it controls vertical anchoring (top / middle / bottom) of the inline unit beside the value. Inline units stay baseline-glued to the value horizontally and grow the overlay to the right.
 - Color swatch + Alpha.
@@ -334,6 +376,7 @@ Implemented in `OverlayStyle` (2026-04-26 refactor):
 
 - `unitOption` (`OverlayUnitOption`) — per-overlay unit preference, decoded with default fallback for legacy projects.
 - `elevationDisplayMode` (`OverlayElevationDisplayMode`) — `current` or `gain` for the Elevation numeric overlay; defaults to `current`.
+- `customNumericField`, `customNumericFormat`, `customNumericPrecision`, `customUnit` — Custom Numeric value selection, format category, decimal precision, and free-form unit suffix.
 - `showLabel`, `showUnit`, `customLabel` — control label/unit visibility and override label text.
 - `labelPosition`, `unitPosition` — top/bottom/left/right placement around the numeric value.
 - `labelFontName` / `labelFontSize` / `labelFontWeight` — label-only typography controls.
@@ -349,11 +392,7 @@ Implemented in `OverlayStyle` (2026-04-26 refactor):
 - `shadowEnabled`, `shadowColor`, `shadowOffsetX`, `shadowOffsetY`, `shadowThickness` — shadow toggle plus color, direction, and thickness, in addition to existing `shadowOpacity` / `shadowRadius`.
 - `glowEnabled`, `glowColor`, `glowIntensity` — foreground glow controls shared by detail panels.
 
-`OverlayElementType.isNumericOverlay`, `OverlayElementType.defaultUnitOption`, and `OverlayElementType.defaultNumericIconSystemName` provide the unit/icon defaults applied by `ProjectDocument.addOverlayElement` and used to filter the unit menu. Numeric preview/export forces the Minimal Clean render path and disables divider rendering, regardless of decoded `textPreset` or `dividerEnabled` values.
-
-Still routed through metric type (no separate model field):
-
-- Metric reassignment independent of `OverlayElementType` (changing the metric requires creating a new element).
+`OverlayElementType.isNumericOverlay`, `OverlayElementType.defaultUnitOption`, and `OverlayElementType.defaultNumericIconSystemName` provide the unit/icon defaults applied by `ProjectDocument.addOverlayElement` and used to filter the unit menu. Numeric preview/export forces the Minimal Clean render path and disables divider rendering, regardless of decoded `textPreset` or `dividerEnabled` values. Fixed numeric overlays remain routed through metric type; only `customNumeric` stores a separate selected value field.
 
 Model-backed and rendered today (post-refactor):
 
