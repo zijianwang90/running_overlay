@@ -1131,6 +1131,25 @@ struct OverlayRenderModelTests {
         #expect(distance?.unit == "mi")
     }
 
+    @Test func intervalHUDBarLapPaceRoundsAcrossMinuteBoundary() {
+        var style = OverlayStyle.default
+        style.intervalHUDBar.metricSlots = [
+            IntervalHUDBarMetricSlot(metric: .lapPace)
+        ]
+        let element = OverlayElement(type: .intervalHUDBar, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: lapPaceBoundaryActivity(),
+            elapsedTime: 239.6
+        )
+
+        let layout = OverlayRenderModel.intervalHUDBarLayout(for: element, in: context)
+
+        let lapPace = layout.metricItems.first { $0.metric == .lapPace }
+        #expect(lapPace?.value == "4'00\"")
+        #expect(lapPace?.unit == "/km")
+    }
+
     @Test func intervalHUDBarMetricsIncludeAllNumericOverlayTypes() {
         let intervalMetricTypes = Set(IntervalHUDBarMetric.numericCases.compactMap(\.elementType))
         let numericTypes = Set(ActivityMetricCatalog.selectableElementTypes)
@@ -2071,6 +2090,22 @@ struct OverlayRenderModelTests {
         distance += 120
         records.append(ActivityRecord(elapsedTime: elapsed, timestamp: startDate.addingTimeInterval(elapsed), distanceMeters: distance, heartRate: 125, paceSecondsPerKilometer: 360, elevationMeters: nil, cadence: nil, powerWatts: nil, calories: nil))
         return ActivityTimeline(startDate: startDate, duration: elapsed, distanceMeters: distance, records: records, laps: laps)
+    }
+
+    private func lapPaceBoundaryActivity() -> ActivityTimeline {
+        let startDate = Date(timeIntervalSince1970: 5_000)
+        return ActivityTimeline(
+            startDate: startDate,
+            duration: 300,
+            distanceMeters: 1000,
+            records: [
+                ActivityRecord(elapsedTime: 0, timestamp: startDate, distanceMeters: 0, heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil, cadence: nil, powerWatts: nil, calories: nil),
+                ActivityRecord(elapsedTime: 239.6, timestamp: startDate.addingTimeInterval(239.6), distanceMeters: 1000, heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil, cadence: nil, powerWatts: nil, calories: nil)
+            ],
+            laps: [
+                LapRecord(lapIndex: 0, startElapsedTime: 0, endElapsedTime: 300, startDistanceMeters: 0, totalDistanceMeters: 1000, totalElapsedTime: 300, avgPaceSecondsPerKm: nil, avgHeartRate: nil, maxHeartRate: nil, avgCadenceSPM: nil, avgPowerWatts: nil, totalAscent: nil, kind: .active)
+            ]
+        )
     }
 
     private func sampleWeatherActivity() -> ActivityTimeline {
