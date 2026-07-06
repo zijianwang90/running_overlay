@@ -365,6 +365,37 @@ struct OverlayValueFormatterTests {
         #expect(OverlayValueFormatter.value(for: .lapPace, activity: activity, elapsedTime: 160) == "6'15\"/km")
     }
 
+    @Test func lapPaceRoundsAcrossMinuteBoundary() {
+        let startDate = Date(timeIntervalSince1970: 0)
+        let activity = ActivityTimeline(
+            startDate: startDate,
+            duration: 300,
+            distanceMeters: 1000,
+            records: [
+                ActivityRecord(
+                    elapsedTime: 0, timestamp: startDate, distanceMeters: 0,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil,
+                    cadence: nil, powerWatts: nil, calories: nil
+                ),
+                ActivityRecord(
+                    elapsedTime: 239.6, timestamp: startDate.addingTimeInterval(239.6), distanceMeters: 1000,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil,
+                    cadence: nil, powerWatts: nil, calories: nil
+                )
+            ],
+            laps: [
+                LapRecord(
+                    lapIndex: 0, startElapsedTime: 0, endElapsedTime: 300,
+                    startDistanceMeters: 0, totalDistanceMeters: 1000, totalElapsedTime: 300,
+                    avgPaceSecondsPerKm: nil, avgHeartRate: nil, maxHeartRate: nil,
+                    avgCadenceSPM: nil, avgPowerWatts: nil, totalAscent: nil, kind: .active
+                )
+            ]
+        )
+
+        #expect(OverlayValueFormatter.value(for: .lapPace, activity: activity, elapsedTime: 239.6) == "4'00\"/km")
+    }
+
     @Test func customNumericFormatsRepresentativeFields() {
         let startDate = Date(timeIntervalSince1970: 1_718_452_800)
         let activity = ActivityTimeline(

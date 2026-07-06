@@ -598,8 +598,9 @@ enum OverlayValueFormatter {
             secondsPerUnit = secondsPerKilometer
             unit = "/km"
         }
-        let minutes = Int(secondsPerUnit) / 60
-        let seconds = Int(secondsPerUnit.rounded()) % 60
+        let totalSeconds = Int(secondsPerUnit.rounded())
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
         return (String(format: "%d'%02d\"", minutes, seconds), unit)
     }
 }
