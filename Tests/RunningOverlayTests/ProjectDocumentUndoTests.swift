@@ -29,6 +29,94 @@ struct ProjectDocumentUndoTests {
         #expect(element.style.iconSystemName == "mountain.2")
     }
 
+    @Test func addedCustomNumericOverlayUsesFieldDefaults() {
+        let project = ProjectDocument()
+
+        project.addOverlayElement(.customNumeric)
+
+        let element = project.overlayLayout.elements[0]
+        #expect(element.type == .customNumeric)
+        #expect(element.type.isNumericOverlay)
+        #expect(element.style.iconSystemName == "number")
+        #expect(element.style.customNumericField == .latitude)
+        #expect(element.style.customNumericFormat == .coordinate)
+        #expect(element.style.customNumericPrecision == 5)
+        #expect(element.style.customUnit == "")
+        #expect(element.style.customLabel == "Latitude")
+    }
+
+    @Test func changingCustomNumericFieldAndFormatIsUndoable() {
+        let project = ProjectDocument()
+        project.addOverlayElement(.customNumeric)
+        let elementID = project.overlayLayout.elements[0].id
+
+        project.setOverlayCustomNumericField(elementID, field: .longitude)
+        project.setOverlayCustomNumericFormat(elementID, format: .number)
+        project.setOverlayCustomNumericPrecision(elementID, precision: 4)
+        project.finishContinuousEdit()
+        project.setOverlayCustomUnit(elementID, unit: "deg")
+        project.finishContinuousEdit()
+
+        #expect(project.overlayLayout.elements[0].style.customNumericField == .longitude)
+        #expect(project.overlayLayout.elements[0].style.customNumericPrecision == 4)
+        #expect(project.overlayLayout.elements[0].style.customUnit == "deg")
+
+        project.undo()
+        #expect(project.overlayLayout.elements[0].style.customUnit == "")
+        project.undo()
+        #expect(project.overlayLayout.elements[0].style.customNumericPrecision == 5)
+        project.undo()
+        #expect(project.overlayLayout.elements[0].style.customNumericFormat == .coordinate)
+        project.undo()
+        #expect(project.overlayLayout.elements[0].style.customNumericField == .latitude)
+        #expect(project.overlayLayout.elements[0].style.customUnit == "")
+    }
+
+    @Test func customNumericBuiltInMenuExcludesFixedNumericOverlayFields() {
+        #expect(CustomNumericField.builtInCases == [.latitude, .longitude])
+        #expect(CustomNumericField.recordFieldIDsCoveredByFixedNumericOverlays.contains("record.field_3"))
+        #expect(CustomNumericField.recordFieldIDsCoveredByFixedNumericOverlays.contains("record.field_5"))
+        #expect(!CustomNumericField.recordFieldIDsCoveredByFixedNumericOverlays.contains("record.field_0"))
+        #expect(!CustomNumericField.recordFieldIDsCoveredByFixedNumericOverlays.contains("record.field_1"))
+    }
+
+    @Test func customNumericDynamicFieldUsesFallbackDefaults() {
+        let project = ProjectDocument()
+        project.addOverlayElement(.customNumeric)
+        let elementID = project.overlayLayout.elements[0].id
+
+        project.setOverlayCustomNumericField(elementID, field: .record("record.field_87"))
+
+        let style = project.overlayLayout.elements[0].style
+        #expect(style.customNumericField == .record("record.field_87"))
+        #expect(style.customNumericFormat == .number)
+        #expect(style.customNumericPrecision == 2)
+        #expect(style.customUnit == "")
+        #expect(style.customLabel == "record.field_87")
+    }
+
+    @Test func customNumericStyleCodableRoundTripsAndDefaults() throws {
+        var style = OverlayStyle.default
+        style.customNumericField = .record("record.field_87")
+        style.customNumericFormat = .coordinate
+        style.customNumericPrecision = 6
+        style.customUnit = "deg"
+
+        let encoded = try JSONEncoder().encode(style)
+        let decoded = try JSONDecoder().decode(OverlayStyle.self, from: encoded)
+
+        #expect(decoded.customNumericField == .record("record.field_87"))
+        #expect(decoded.customNumericFormat == .coordinate)
+        #expect(decoded.customNumericPrecision == 6)
+        #expect(decoded.customUnit == "deg")
+
+        let oldStyle = try JSONDecoder().decode(OverlayStyle.self, from: Data("{}".utf8))
+        #expect(oldStyle.customNumericField == .latitude)
+        #expect(oldStyle.customNumericFormat == .coordinate)
+        #expect(oldStyle.customNumericPrecision == 5)
+        #expect(oldStyle.customUnit == "")
+    }
+
     @Test func undoRestoresDeletedOverlay() {
         let project = ProjectDocument()
 

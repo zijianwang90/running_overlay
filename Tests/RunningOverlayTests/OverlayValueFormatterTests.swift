@@ -364,4 +364,117 @@ struct OverlayValueFormatterTests {
         #expect(activity.lapPace(at: 160) == 375)
         #expect(OverlayValueFormatter.value(for: .lapPace, activity: activity, elapsedTime: 160) == "6'15\"/km")
     }
+
+    @Test func customNumericFormatsRepresentativeFields() {
+        let startDate = Date(timeIntervalSince1970: 1_718_452_800)
+        let activity = ActivityTimeline(
+            startDate: startDate,
+            duration: 120,
+            distanceMeters: 1000,
+            records: [
+                ActivityRecord(
+                    elapsedTime: 0, timestamp: startDate, distanceMeters: 0,
+                    heartRate: 100, paceSecondsPerKilometer: 300, elevationMeters: 100,
+                    cadence: 170, powerWatts: 200, calories: 0,
+                    latitude: 43.641, longitude: -79.389,
+                    verticalOscillationMM: 80, groundContactTimeMS: 240,
+                    strideLengthM: 1.1, groundContactBalance: 50.1,
+                    temperatureCelsius: 18, gradePercent: 1.2
+                ),
+                ActivityRecord(
+                    elapsedTime: 120, timestamp: startDate.addingTimeInterval(120), distanceMeters: 1000,
+                    heartRate: 140, paceSecondsPerKilometer: 360, elevationMeters: 110,
+                    cadence: 180, powerWatts: 260, calories: 60,
+                    latitude: 43.642, longitude: -79.388,
+                    verticalOscillationMM: 90, groundContactTimeMS: 260,
+                    strideLengthM: 1.3, groundContactBalance: 50.5,
+                    temperatureCelsius: 20, gradePercent: 2.2
+                )
+            ],
+            laps: []
+        )
+
+        var element = OverlayElement(type: .customNumeric, position: .zero, scale: 1, style: .default)
+        element.style.showUnit = true
+
+        element.style.customNumericField = .heartRate
+        element.style.customNumericFormat = .integer
+        element.style.customUnit = "beats"
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 60) == "120 beats")
+
+        element.style.customNumericField = .distance
+        element.style.customNumericFormat = .number
+        element.style.customNumericPrecision = 1
+        element.style.customUnit = "m"
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 60) == "500.0 m")
+
+        element.style.customNumericField = .elapsedTime
+        element.style.customNumericFormat = .duration
+        element.style.customUnit = ""
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 65) == "00:01:05")
+
+        element.style.customNumericField = .timestamp
+        element.style.customNumericFormat = .clockTime
+        let clockFormatter = DateFormatter()
+        clockFormatter.locale = Locale(identifier: "en_US_POSIX")
+        clockFormatter.dateFormat = "HH:mm:ss"
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 0) == clockFormatter.string(from: startDate))
+
+        element.style.customNumericFormat = .date
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 0) == dateFormatter.string(from: startDate))
+
+        element.style.customNumericField = .latitude
+        element.style.customNumericFormat = .coordinate
+        element.style.customNumericPrecision = 3
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 60) == "43.642")
+    }
+
+    @Test func customNumericMissingDataPreservesUnit() {
+        let activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 0),
+            duration: 60,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        var element = OverlayElement(type: .customNumeric, position: .zero, scale: 1, style: .default)
+        element.style.customNumericField = .temperature
+        element.style.customUnit = "C"
+
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 10) == "-- C")
+    }
+
+    @Test func customNumericCanDisplayGenericRecordField() {
+        let startDate = Date(timeIntervalSince1970: 0)
+        let activity = ActivityTimeline(
+            startDate: startDate,
+            duration: 10,
+            distanceMeters: 0,
+            records: [
+                ActivityRecord(
+                    elapsedTime: 0, timestamp: startDate, distanceMeters: nil,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil,
+                    cadence: nil, powerWatts: nil, calories: nil,
+                    genericFields: ["record.field_87": 10]
+                ),
+                ActivityRecord(
+                    elapsedTime: 10, timestamp: startDate.addingTimeInterval(10), distanceMeters: nil,
+                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil,
+                    cadence: nil, powerWatts: nil, calories: nil,
+                    genericFields: ["record.field_87": 20]
+                )
+            ],
+            laps: []
+        )
+        var element = OverlayElement(type: .customNumeric, position: .zero, scale: 1, style: .default)
+        element.style.customNumericField = .record("record.field_87")
+        element.style.customNumericFormat = .number
+        element.style.customNumericPrecision = 1
+        element.style.customUnit = ""
+
+        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 5) == "15.0")
+    }
 }

@@ -535,6 +535,14 @@ final class ProjectDocument: ObservableObject {
         style.labelFontName = defaultFont
         style.unitFontName = defaultFont
         style.unitOption = type.defaultUnitOption
+        if type == .customNumeric {
+            let field = style.customNumericField
+            style.customNumericField = field
+            style.customNumericFormat = field.defaultFormat
+            style.customNumericPrecision = field.defaultPrecision
+            style.customUnit = field.defaultUnit
+            style.customLabel = field.label
+        }
         if type == .heartRateZone || type == .date {
             style.showUnit = false
         }
@@ -2212,6 +2220,46 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].style.unitOption = unitOption
+    }
+
+    func setOverlayCustomNumericField(_ elementID: OverlayElement.ID, field: CustomNumericField) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        let previousField = overlayLayout.elements[index].style.customNumericField
+        let currentLabel = overlayLayout.elements[index].style.customLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+        overlayLayout.elements[index].style.customNumericField = field
+        overlayLayout.elements[index].style.customNumericFormat = field.defaultFormat
+        overlayLayout.elements[index].style.customNumericPrecision = field.defaultPrecision
+        overlayLayout.elements[index].style.customUnit = field.defaultUnit
+        if currentLabel.isEmpty || currentLabel == previousField.label {
+            overlayLayout.elements[index].style.customLabel = field.label
+        }
+    }
+
+    func setOverlayCustomNumericFormat(_ elementID: OverlayElement.ID, format: CustomNumericFormat) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.customNumericFormat = format
+    }
+
+    func setOverlayCustomNumericPrecision(_ elementID: OverlayElement.ID, precision: Int) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.customNumericPrecision = min(max(precision, 0), 8)
+    }
+
+    func setOverlayCustomUnit(_ elementID: OverlayElement.ID, unit: String) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.customUnit = unit.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     func setOverlayElevationDisplayMode(_ elementID: OverlayElement.ID, mode: OverlayElevationDisplayMode) {

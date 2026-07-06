@@ -219,16 +219,23 @@ struct FitFileParser {
             offset += field.size
         }
 
+        var developerFieldValues: [FitDeveloperFieldDefinition: Data] = [:]
         for field in definition.developerFields {
             guard offset + field.size <= dataEnd else {
                 throw FitFileParserError.malformedData(offset: offset, reason: "Developer field \(field.number) exceeds FIT data section.")
             }
+            developerFieldValues[field] = data[offset..<offset + field.size]
             offset += field.size
         }
 
         switch definition.globalMessageNumber {
         case 20:
-            if let record = makeActivityRecord(from: fieldValues, architecture: definition.architecture) {
+            if let record = makeActivityRecord(
+                from: fieldValues,
+                definitions: definition.fields,
+                developerFields: developerFieldValues,
+                architecture: definition.architecture
+            ) {
                 records.append(record)
             }
         case 18:
@@ -261,7 +268,12 @@ struct FitFileParser {
         }
     }
 
-    private func makeActivityRecord(from fields: [UInt8: Data], architecture: FitArchitecture) -> ActivityRecord? {
+    private func makeActivityRecord(
+        from fields: [UInt8: Data],
+        definitions: [FitFieldDefinition],
+        developerFields: [FitDeveloperFieldDefinition: Data],
+        architecture: FitArchitecture
+    ) -> ActivityRecord? {
         guard let rawTimestamp = uint32(fields[253], architecture: architecture), rawTimestamp != UInt32.max else {
             return nil
         }
@@ -285,6 +297,12 @@ struct FitFileParser {
         let groundContactBalance = parseGroundContactBalance(fields[30])
         let temperature = int8(fields[13]).flatMap(validInt8).map(Double.init)
         let grade = int16(fields[9], architecture: architecture).flatMap(validInt16).map { Double($0) / 100.0 }
+        let genericFields = genericRecordFields(
+            fields: fields,
+            definitions: definitions,
+            developerFields: developerFields,
+            architecture: architecture
+        )
 
         return ActivityRecord(
             elapsedTime: max(timestamp.timeIntervalSince(startDate), 0),
@@ -303,7 +321,8 @@ struct FitFileParser {
             strideLengthM: strideLength,
             groundContactBalance: groundContactBalance,
             temperatureCelsius: temperature,
-            gradePercent: grade
+            gradePercent: grade,
+            genericFields: genericFields
         )
     }
 
@@ -584,8 +603,37 @@ struct FitFileParser {
         }
     }
 
+    private func uint64(_ data: Data?, architecture: FitArchitecture) -> UInt64? {
+        guard let data, data.count >= 8 else { return nil }
+        let bytes = Array(data.prefix(8))
+        switch architecture {
+        case .littleEndian:
+            return UInt64(bytes[0])
+                | UInt64(bytes[1]) << 8
+                | UInt64(bytes[2]) << 16
+                | UInt64(bytes[3]) << 24
+                | UInt64(bytes[4]) << 32
+                | UInt64(bytes[5]) << 40
+                | UInt64(bytes[6]) << 48
+                | UInt64(bytes[7]) << 56
+        case .bigEndian:
+            return UInt64(bytes[0]) << 56
+                | UInt64(bytes[1]) << 48
+                | UInt64(bytes[2]) << 40
+                | UInt64(bytes[3]) << 32
+                | UInt64(bytes[4]) << 24
+                | UInt64(bytes[5]) << 16
+                | UInt64(bytes[6]) << 8
+                | UInt64(bytes[7])
+        }
+    }
+
     private func int32(_ data: Data?, architecture: FitArchitecture) -> Int32? {
         uint32(data, architecture: architecture).map { Int32(bitPattern: $0) }
+    }
+
+    private func int64(_ data: Data?, architecture: FitArchitecture) -> Int64? {
+        uint64(data, architecture: architecture).map { Int64(bitPattern: $0) }
     }
 
     private func validUInt8(_ value: UInt8) -> UInt8? {
@@ -621,6 +669,85 @@ struct FitFileParser {
         value == Int16.max ? nil : value
     }
 
+    private func genericRecordFields(
+        fields: [UInt8: Data],
+        definitions: [FitFieldDefinition],
+        developerFields: [FitDeveloperFieldDefinition: Data],
+        architecture: FitArchitecture
+    ) -> [String: Double] {
+        var result: [String: Double] = [:]
+        for definition in definitions {
+            guard let data = fields[definition.number],
+                  let value = genericNumericValue(data, baseType: definition.baseType, architecture: architecture) else {
+                continue
+            }
+            result["record.field_\(definition.number)"] = value
+        }
+        for (definition, data) in developerFields {
+            guard let value = unsignedIntegerValue(data, architecture: architecture) else {
+                continue
+            }
+            result["record.developer_\(definition.developerDataIndex).field_\(definition.number)"] = value
+        }
+        return result
+    }
+
+    private func genericNumericValue(_ data: Data, baseType: UInt8, architecture: FitArchitecture) -> Double? {
+        switch baseType & 0x1F {
+        case 0x00, 0x02, 0x0A, 0x0D: // enum, uint8, uint8z, byte
+            guard data.count == 1, let raw = uint8(data), raw != UInt8.max else { return nil }
+            return Double(raw)
+        case 0x01:
+            guard data.count == 1, let raw = int8(data).flatMap(validInt8) else { return nil }
+            return Double(raw)
+        case 0x03:
+            guard data.count == 2, let raw = int16(data, architecture: architecture).flatMap(validInt16) else { return nil }
+            return Double(raw)
+        case 0x04, 0x0B:
+            guard data.count == 2, let raw = uint16(data, architecture: architecture).flatMap(validUInt16) else { return nil }
+            return Double(raw)
+        case 0x05:
+            guard data.count == 4, let raw = int32(data, architecture: architecture).flatMap(validInt32) else { return nil }
+            return Double(raw)
+        case 0x06, 0x0C:
+            guard data.count == 4, let raw = uint32(data, architecture: architecture).flatMap(validUInt32) else { return nil }
+            return Double(raw)
+        case 0x08:
+            guard data.count == 4 else { return nil }
+            let bits = uint32(data, architecture: architecture)
+            guard let bits, bits != UInt32.max else { return nil }
+            let value = Float32(bitPattern: bits)
+            return value.isFinite ? Double(value) : nil
+        case 0x09:
+            guard data.count == 8, let bits = uint64(data, architecture: architecture), bits != UInt64.max else { return nil }
+            let value = Double(bitPattern: bits)
+            return value.isFinite ? value : nil
+        case 0x0E:
+            guard data.count == 8, let raw = int64(data, architecture: architecture), raw != Int64.max else { return nil }
+            return Double(raw)
+        case 0x0F:
+            guard data.count == 8, let raw = uint64(data, architecture: architecture), raw != UInt64.max else { return nil }
+            return Double(raw)
+        default:
+            return nil
+        }
+    }
+
+    private func unsignedIntegerValue(_ data: Data, architecture: FitArchitecture) -> Double? {
+        switch data.count {
+        case 1:
+            return data.first.map(Double.init)
+        case 2:
+            return uint16(data, architecture: architecture).map(Double.init)
+        case 4:
+            return uint32(data, architecture: architecture).map(Double.init)
+        case 8:
+            return uint64(data, architecture: architecture).map(Double.init)
+        default:
+            return nil
+        }
+    }
+
     private func parseGroundContactBalance(_ data: Data?) -> Double? {
         guard let raw = data.flatMap(uint8), raw != UInt8.max else { return nil }
         let pct = Double(raw & 0x7F)
@@ -646,7 +773,7 @@ private struct FitFieldDefinition {
     var baseType: UInt8
 }
 
-private struct FitDeveloperFieldDefinition {
+private struct FitDeveloperFieldDefinition: Hashable {
     var number: UInt8
     var size: Int
     var developerDataIndex: UInt8

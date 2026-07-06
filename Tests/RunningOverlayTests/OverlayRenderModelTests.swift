@@ -39,6 +39,27 @@ struct OverlayRenderModelTests {
         #expect(layout.iconSystemName == "heart")
     }
 
+    @Test func customNumericTextLayoutUsesSelectedFieldComponents() {
+        var style = OverlayStyle.default
+        style.customNumericField = .distance
+        style.customNumericFormat = .number
+        style.customNumericPrecision = 1
+        style.customUnit = "m"
+        let element = OverlayElement(type: .customNumeric, position: CGPoint(x: 0.25, y: 0.75), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleActivity(),
+            elapsedTime: 5
+        )
+
+        let layout = OverlayRenderModel.textLayout(for: element, in: context)
+
+        #expect(layout.value == "50.0 m")
+        #expect(layout.components.label == "Distance")
+        #expect(layout.components.unit == "m")
+        #expect(layout.preset == .minimal)
+    }
+
     @Test func numericOverlayMinimumSizeScalesWithCanvasAndElement() {
         var style = OverlayStyle.default
         style.numericMinWidth = 120

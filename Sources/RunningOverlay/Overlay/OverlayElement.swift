@@ -60,6 +60,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     case groundContactBalance
     case temperature
     case grade
+    case customNumeric
     case weatherWidget
     case decorSolidColor
     case decorIcon
@@ -96,6 +97,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         case .groundContactBalance: "GCT Balance"
         case .temperature: "Temperature"
         case .grade: "Grade"
+        case .customNumeric: "Custom Numeric"
         case .weatherWidget: "Weather Widget"
         case .decorSolidColor: "Solid Color"
         case .decorIcon: "Icon"
@@ -129,7 +131,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         case .heartRate, .heartRateZone, .pace, .avgPace, .lapPace, .calories, .elapsedTime, .realTime, .date,
              .distance, .elevation, .cadence, .power,
              .verticalOscillation, .groundContactTime, .strideLength,
-             .verticalRatio, .groundContactBalance, .temperature, .grade:
+             .verticalRatio, .groundContactBalance, .temperature, .grade, .customNumeric:
             true
         default:
             false
@@ -167,6 +169,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         case .groundContactBalance: "scale.3d"
         case .temperature: "thermometer"
         case .grade: "arrow.up.right"
+        case .customNumeric: "number"
         case .distanceTimeline: "waveform.path.ecg"
         case .elevationChart: "chart.line.uptrend.xyaxis"
         case .runningGauge: "gauge"
@@ -210,7 +213,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
 
 enum ActivityMetricCatalog {
     static let selectableElementTypes: [OverlayElementType] = OverlayElementType.allCases.filter {
-        $0.isNumericOverlay && $0 != .heartRateZone && $0 != .date
+        $0.isNumericOverlay && $0 != .heartRateZone && $0 != .date && $0 != .customNumeric
     }
 }
 
@@ -307,6 +310,7 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
         case .groundContactBalance: [.balancePercent]
         case .temperature: [.temperatureCelsius, .temperatureFahrenheit]
         case .grade: [.gradePercent]
+        case .customNumeric: []
         case .distanceTimeline, .elevationChart, .runningGauge, .intervalHUDBar, .intervalTimeline, .zoneEdgeBar, .routeMap,
              .weatherWidget, .decorSolidColor, .decorIcon, .decorText:
             []
@@ -377,6 +381,275 @@ enum OverlayElevationDisplayMode: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+enum CustomNumericFormat: String, CaseIterable, Identifiable, Codable {
+    case number
+    case integer
+    case duration
+    case clockTime
+    case date
+    case pace
+    case percent
+    case coordinate
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .number: "Number"
+        case .integer: "Integer"
+        case .duration: "Duration"
+        case .clockTime: "Clock Time"
+        case .date: "Date"
+        case .pace: "Pace"
+        case .percent: "Percent"
+        case .coordinate: "Coordinate"
+        }
+    }
+
+    var supportsPrecision: Bool {
+        switch self {
+        case .number, .percent, .coordinate:
+            true
+        case .integer, .duration, .clockTime, .date, .pace:
+            false
+        }
+    }
+}
+
+enum CustomNumericField: Equatable, Identifiable, Codable {
+    case timestamp
+    case elapsedTime
+    case distance
+    case heartRate
+    case heartRateZone
+    case pace
+    case avgPace
+    case lapPace
+    case elevation
+    case elevationGain
+    case cadence
+    case power
+    case calories
+    case latitude
+    case longitude
+    case verticalOscillation
+    case groundContactTime
+    case strideLength
+    case verticalRatio
+    case groundContactBalance
+    case temperature
+    case grade
+    case record(String)
+
+    var id: String { rawValue }
+
+    var rawValue: String {
+        switch self {
+        case .timestamp: "timestamp"
+        case .elapsedTime: "elapsedTime"
+        case .distance: "distance"
+        case .heartRate: "heartRate"
+        case .heartRateZone: "heartRateZone"
+        case .pace: "pace"
+        case .avgPace: "avgPace"
+        case .lapPace: "lapPace"
+        case .elevation: "elevation"
+        case .elevationGain: "elevationGain"
+        case .cadence: "cadence"
+        case .power: "power"
+        case .calories: "calories"
+        case .latitude: "latitude"
+        case .longitude: "longitude"
+        case .verticalOscillation: "verticalOscillation"
+        case .groundContactTime: "groundContactTime"
+        case .strideLength: "strideLength"
+        case .verticalRatio: "verticalRatio"
+        case .groundContactBalance: "groundContactBalance"
+        case .temperature: "temperature"
+        case .grade: "grade"
+        case .record(let id): id
+        }
+    }
+
+    init(rawValue: String) {
+        switch rawValue {
+        case "timestamp": self = .timestamp
+        case "elapsedTime": self = .elapsedTime
+        case "distance": self = .distance
+        case "heartRate": self = .heartRate
+        case "heartRateZone": self = .heartRateZone
+        case "pace": self = .pace
+        case "avgPace": self = .avgPace
+        case "lapPace": self = .lapPace
+        case "elevation": self = .elevation
+        case "elevationGain": self = .elevationGain
+        case "cadence": self = .cadence
+        case "power": self = .power
+        case "calories": self = .calories
+        case "latitude": self = .latitude
+        case "longitude": self = .longitude
+        case "verticalOscillation": self = .verticalOscillation
+        case "groundContactTime": self = .groundContactTime
+        case "strideLength": self = .strideLength
+        case "verticalRatio": self = .verticalRatio
+        case "groundContactBalance": self = .groundContactBalance
+        case "temperature": self = .temperature
+        case "grade": self = .grade
+        default: self = .record(rawValue)
+        }
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        self.init(rawValue: try container.decode(String.self))
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
+
+    static let builtInCases: [CustomNumericField] = [
+        .latitude,
+        .longitude
+    ]
+
+    static let recordFieldIDsCoveredByFixedNumericOverlays: Set<String> = [
+        "record.field_2",   // elevation
+        "record.field_3",   // heart rate / HR zone
+        "record.field_4",   // cadence
+        "record.field_5",   // distance
+        "record.field_6",   // speed-derived pace
+        "record.field_7",   // power
+        "record.field_9",   // grade
+        "record.field_13",  // temperature
+        "record.field_30",  // ground contact balance
+        "record.field_33",  // calories
+        "record.field_39",  // vertical oscillation
+        "record.field_41",  // ground contact time
+        "record.field_53",  // fractional cadence
+        "record.field_84",  // stride length
+        "record.field_253"  // timestamp
+    ]
+
+    var label: String {
+        switch self {
+        case .timestamp: "Timestamp"
+        case .elapsedTime: "Elapsed Time"
+        case .distance: "Distance"
+        case .heartRate: "Heart Rate"
+        case .heartRateZone: "HR Zone"
+        case .pace: "Pace"
+        case .avgPace: "Avg Pace"
+        case .lapPace: "Lap Pace"
+        case .elevation: "Elevation"
+        case .elevationGain: "Elevation Gain"
+        case .cadence: "Cadence"
+        case .power: "Power"
+        case .calories: "Calories"
+        case .latitude: "Latitude"
+        case .longitude: "Longitude"
+        case .verticalOscillation: "Vertical Oscillation"
+        case .groundContactTime: "Ground Contact Time"
+        case .strideLength: "Stride Length"
+        case .verticalRatio: "Vertical Ratio"
+        case .groundContactBalance: "GCT Balance"
+        case .temperature: "Temperature"
+        case .grade: "Grade"
+        case .record(let id): id
+        }
+    }
+
+    var shortLabel: String {
+        switch self {
+        case .timestamp: "TIME"
+        case .elapsedTime: "TIME"
+        case .distance: "DIST"
+        case .heartRate: "HR"
+        case .heartRateZone: "ZONE"
+        case .pace: "PACE"
+        case .avgPace: "AVG"
+        case .lapPace: "LAP"
+        case .elevation: "ELEV"
+        case .elevationGain: "GAIN"
+        case .cadence: "CAD"
+        case .power: "PWR"
+        case .calories: "CAL"
+        case .latitude: "LAT"
+        case .longitude: "LON"
+        case .verticalOscillation: "OSC"
+        case .groundContactTime: "GCT"
+        case .strideLength: "STRIDE"
+        case .verticalRatio: "VR"
+        case .groundContactBalance: "BAL"
+        case .temperature: "TEMP"
+        case .grade: "GRD"
+        case .record(let id): id.uppercased()
+        }
+    }
+
+    var defaultFormat: CustomNumericFormat {
+        switch self {
+        case .timestamp:
+            .clockTime
+        case .elapsedTime:
+            .duration
+        case .heartRate, .cadence, .power, .calories:
+            .integer
+        case .pace, .avgPace, .lapPace:
+            .pace
+        case .latitude, .longitude:
+            .coordinate
+        case .verticalRatio, .grade:
+            .percent
+        case .record:
+            .number
+        default:
+            .number
+        }
+    }
+
+    var defaultPrecision: Int {
+        switch self {
+        case .distance:
+            2
+        case .latitude, .longitude:
+            5
+        case .strideLength:
+            2
+        case .verticalRatio, .groundContactBalance, .grade:
+            1
+        case .verticalOscillation, .groundContactTime, .temperature:
+            1
+        case .record:
+            2
+        default:
+            0
+        }
+    }
+
+    var defaultUnit: String {
+        switch self {
+        case .distance: "m"
+        case .heartRate: "bpm"
+        case .pace, .avgPace, .lapPace: "/km"
+        case .elevation, .elevationGain: "m"
+        case .cadence: "spm"
+        case .power: "W"
+        case .calories: "kcal"
+        case .verticalOscillation: "mm"
+        case .groundContactTime: "ms"
+        case .strideLength: "m"
+        case .verticalRatio, .groundContactBalance, .grade: "%"
+        case .temperature: "C"
+        case .timestamp, .elapsedTime, .heartRateZone, .latitude, .longitude:
+            ""
+        case .record:
+            ""
+        }
+    }
+}
+
 struct OverlayStyle: Equatable, Codable {
     var textPreset: OverlayTextPreset
     var gaugePreset: OverlayGaugePreset
@@ -439,6 +712,10 @@ struct OverlayStyle: Equatable, Codable {
     var elevationDisplayMode: OverlayElevationDisplayMode
     var useFITTemperature: Bool
     var manualTemperatureCelsius: Double?
+    var customNumericField: CustomNumericField
+    var customNumericFormat: CustomNumericFormat
+    var customNumericPrecision: Int
+    var customUnit: String
     var showLabel: Bool
     var showUnit: Bool
     var customLabel: String
@@ -609,6 +886,10 @@ struct OverlayStyle: Equatable, Codable {
         elevationDisplayMode: .current,
         useFITTemperature: true,
         manualTemperatureCelsius: nil,
+        customNumericField: .latitude,
+        customNumericFormat: .coordinate,
+        customNumericPrecision: 5,
+        customUnit: "",
         showLabel: false,
         showUnit: true,
         customLabel: "",
@@ -721,6 +1002,10 @@ struct OverlayStyle: Equatable, Codable {
         elevationDisplayMode: OverlayElevationDisplayMode = .current,
         useFITTemperature: Bool = true,
         manualTemperatureCelsius: Double? = nil,
+        customNumericField: CustomNumericField = .latitude,
+        customNumericFormat: CustomNumericFormat = .coordinate,
+        customNumericPrecision: Int = 5,
+        customUnit: String = "",
         showLabel: Bool = false,
         showUnit: Bool = true,
         customLabel: String = "",
@@ -831,6 +1116,10 @@ struct OverlayStyle: Equatable, Codable {
         self.elevationDisplayMode = elevationDisplayMode
         self.useFITTemperature = useFITTemperature
         self.manualTemperatureCelsius = manualTemperatureCelsius
+        self.customNumericField = customNumericField
+        self.customNumericFormat = customNumericFormat
+        self.customNumericPrecision = min(max(customNumericPrecision, 0), 8)
+        self.customUnit = customUnit.trimmingCharacters(in: .whitespacesAndNewlines)
         self.showLabel = showLabel
         self.showUnit = showUnit
         self.customLabel = customLabel
@@ -944,6 +1233,11 @@ struct OverlayStyle: Equatable, Codable {
         elevationDisplayMode = try container.decodeIfPresent(OverlayElevationDisplayMode.self, forKey: .elevationDisplayMode) ?? Self.default.elevationDisplayMode
         useFITTemperature = try container.decodeIfPresent(Bool.self, forKey: .useFITTemperature) ?? Self.default.useFITTemperature
         manualTemperatureCelsius = try container.decodeIfPresent(Double.self, forKey: .manualTemperatureCelsius)
+        customNumericField = try container.decodeIfPresent(CustomNumericField.self, forKey: .customNumericField) ?? Self.default.customNumericField
+        customNumericFormat = try container.decodeIfPresent(CustomNumericFormat.self, forKey: .customNumericFormat) ?? customNumericField.defaultFormat
+        customNumericPrecision = min(max(try container.decodeIfPresent(Int.self, forKey: .customNumericPrecision) ?? customNumericField.defaultPrecision, 0), 8)
+        customUnit = (try container.decodeIfPresent(String.self, forKey: .customUnit) ?? customNumericField.defaultUnit)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         showLabel = try container.decodeIfPresent(Bool.self, forKey: .showLabel) ?? Self.default.showLabel
         showUnit = try container.decodeIfPresent(Bool.self, forKey: .showUnit) ?? Self.default.showUnit
         customLabel = try container.decodeIfPresent(String.self, forKey: .customLabel) ?? Self.default.customLabel

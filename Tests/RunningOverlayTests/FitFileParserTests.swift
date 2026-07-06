@@ -48,6 +48,15 @@ struct FitFileParserTests {
         #expect(activity.laps.map(\.lapIndex) == [0, 1])
     }
 
+    @Test func preservesGenericRecordNumericFields() throws {
+        var parser = FitFileParser(data: fitDataWithGenericRecordField())
+        let activity = try parser.parse()
+
+        #expect(activity.records.count == 2)
+        #expect(activity.records[0].genericFields["record.field_87"] == 123)
+        #expect(activity.records[1].genericFields["record.field_87"] == 223)
+    }
+
     @Test func parsesGoProStyleRunningVideoFilenames() throws {
         let date = try #require(FilenameDateParser.date(from: "PRO_VID_20260425_083915_00_001"))
         let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
@@ -115,6 +124,42 @@ struct FitFileParserTests {
             appendUInt32(0, to: &data)
             appendUInt16(0, to: &data)
             appendUInt32(0, to: &data)
+        }
+
+        var header = Data([14, 0x10])
+        appendUInt16(0, to: &header)
+        appendUInt32(UInt32(data.count), to: &header)
+        header.append(contentsOf: ".FIT".utf8)
+        header.append(contentsOf: [0, 0])
+        header.append(data)
+        return header
+    }
+
+    private func fitDataWithGenericRecordField() -> Data {
+        let startUnix: UInt32 = 1_735_689_600
+        let startFit = startUnix - 631_065_600
+        var data = Data()
+
+        let sessionFields: [(UInt8, UInt8, UInt8)] = [
+            (2, 4, 0x86),
+            (7, 4, 0x86),
+            (9, 4, 0x86),
+        ]
+        data.append(fitDefinition(local: 0, globalMessage: 18, fields: sessionFields))
+        data.append(0)
+        appendUInt32(startFit, to: &data)
+        appendUInt32(10_000, to: &data)
+        appendUInt32(1_000, to: &data)
+
+        let recordFields: [(UInt8, UInt8, UInt8)] = [
+            (253, 4, 0x86),
+            (87, 2, 0x84),
+        ]
+        data.append(fitDefinition(local: 1, globalMessage: 20, fields: recordFields))
+        for (seconds, value) in [(0, 123), (10, 223)] {
+            data.append(1)
+            appendUInt32(startFit + UInt32(seconds), to: &data)
+            appendUInt16(UInt16(value), to: &data)
         }
 
         var header = Data([14, 0x10])
