@@ -36,6 +36,12 @@
   },
   "layout": [
     {
+      "component": "TimelineSplitSizing",
+      "defaultHeight": 110,
+      "minHeight": 96,
+      "rule": "Start compact so the upper Media Pool, Preview, and Inspector region gets more vertical space; users can drag the timeline taller."
+    },
+    {
       "component": "TimelineHeader",
       "left": [
         { "type": "label", "text": "Preview" },

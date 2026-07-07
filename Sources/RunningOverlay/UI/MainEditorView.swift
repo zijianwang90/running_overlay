@@ -15,6 +15,8 @@ struct MainEditorView: View {
     private static let inspectorMinWidth: CGFloat = 460
     private static let inspectorMaxWidth: CGFloat = 720
     private static let previewMinWidth: CGFloat = 520
+    private static let timelineMinHeight: CGFloat = 96
+    private static let timelineIdealHeight: CGFloat = 110
 
     var body: some View {
         VStack(spacing: 0) {
@@ -53,7 +55,7 @@ struct MainEditorView: View {
                 .splitResizeCursor(.resizeUpDown, edge: .bottom, thickness: 18)
 
                 TimelineView()
-                    .frame(minHeight: 120, idealHeight: 130)
+                    .frame(minHeight: Self.timelineMinHeight, idealHeight: Self.timelineIdealHeight)
                     .splitResizeCursor(.resizeUpDown, edge: .top, thickness: 18)
             }
 
