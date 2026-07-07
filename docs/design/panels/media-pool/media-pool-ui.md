@@ -61,6 +61,7 @@ Prefer reusing shared tokens from `inspector-ui.md`. Media-specific values:
 | `overlay.tileHeight`        | `56-64 px`  | Overlay Pool add tiles                  |
 | `overlay.categoryHeight`    | `24 px`     | Metrics/Charts/Route segmented control  |
 | `template.rowHeight`        | `28-30 px`  | Templates Pool row height               |
+| `template.footerHeight`     | `44 px`     | Templates Pool sticky footer, matching Preview playback bar |
 | `template.footerButton`     | `32 px`     | Templates Pool import/save actions      |
 
 
@@ -427,6 +428,7 @@ Template application:
 Footer:
 
 - Sticky footer at the bottom of Templates Pool.
+- Footer height matches the Preview bottom playback bar height.
 - One horizontal row:
   - Left: small square secondary import button, 32x32 px, icon-only (`tray.and.arrow.down` or `square.and.arrow.down`), help text `Import Template`.
   - Right: long blue primary button, height 32 px, label `Save Current as Template`, plus icon, fills remaining width.

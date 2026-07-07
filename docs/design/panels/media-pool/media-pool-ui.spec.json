@@ -67,6 +67,7 @@
       "overlayTileMaxHeight": 64,
       "overlayCategoryHeight": 24,
       "templateRowHeight": 30,
+      "templateFooterHeight": 44,
       "templateFooterButton": 32,
       "markDot": 9,
       "menuRadius": 8
@@ -372,6 +373,8 @@
     },
     "footer": {
       "layout": "sticky bottom horizontal row",
+      "height": 44,
+      "heightRule": "match Preview playback bar height",
       "importButton": {
         "placement": "left",
         "style": "secondary icon-only square",
