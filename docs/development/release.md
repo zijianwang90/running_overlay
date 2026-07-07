@@ -95,6 +95,16 @@ create published releases marked as latest. The zip uses
 `RunningOverlayStudio-${tag}-macOS-arm64.zip`, while the app bundle inside is
 `Running Overlay Studio.app`.
 
+Every GitHub Release must have handwritten notes committed before the tag is
+pushed. Add `docs/releases/${tag}.md`, for example
+`docs/releases/v0.1.3.md`, using the established release-page structure:
+opening release sentence with marketing version and build number, a concise
+summary paragraph, `## Highlights` grouped by user-facing area, and `## Assets`
+that names both `RunningOverlayStudio-${tag}-macOS-arm64.zip` and
+`RunningOverlayStudio-${tag}-macOS-arm64.zip.sha256`. The release workflow fails
+when the matching note file is missing, empty, or does not mention the uploaded
+zip and checksum asset names.
+
 GitHub release candidates use a Developer ID Application certificate and App
 Store Connect API key stored in GitHub Actions secrets. Do not commit signing
 certificates, `.p8` keys, notarization credentials, temporary keychains, or
