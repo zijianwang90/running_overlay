@@ -18,6 +18,10 @@ struct ExportDialogView: View {
     private let outputHelpText = "1080p currently provides the best export time. 5 fps is usually the best-balanced layer data refresh rate for speed and visual quality. Higher data FPS and 4K export significantly increase render time with the current implementation."
     private let encodingHelpText = "Transparent overlay export requires alpha-capable codecs. HEVC keeps file size controlled but is significantly slower. ProRes exports much faster but creates much larger files."
 
+    private var exportResolutionPresets: [ProjectResolution] {
+        ProjectResolution.exportPresets(matching: project.settings.resolution)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ScrollView {
@@ -116,7 +120,16 @@ struct ExportDialogView: View {
             SettingsGroupBox {
                 ExportReadOnlyRow(label: "Format", value: "Transparent MOV")
                 dividerRow
-                ExportReadOnlyRow(label: "Resolution", value: project.settings.resolution.label)
+                SettingsRow(leading: { rowLabel("Resolution") }) {
+                    Picker("", selection: $project.settings.resolution) {
+                        ForEach(exportResolutionPresets) { resolution in
+                            Text(resolution.label).tag(resolution)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: ExportDialogLayout.trailingColumnWidth, alignment: .trailing)
+                    .disabled(project.isExporting)
+                }
                 dividerRow
                 ExportReadOnlyRow(label: "Frame Rate", value: project.settings.frameRate.label)
                 dividerRow

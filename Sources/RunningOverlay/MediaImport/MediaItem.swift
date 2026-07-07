@@ -31,4 +31,15 @@ enum AlignmentStatus: Equatable, Codable {
             "Needs placement"
         }
     }
+
+    var helpText: String {
+        switch self {
+        case .readyToMatch:
+            "Ready to match FIT timestamps"
+        case .aligned:
+            "Already on the timeline"
+        case .needsManualPlacement:
+            "Needs manual placement"
+        }
+    }
 }

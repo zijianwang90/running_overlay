@@ -760,6 +760,14 @@ final class ProjectDocument: ObservableObject {
         matchMediaItems(mediaItemIDs, toTrackName: timeline.nextLayerName())
     }
 
+    func matchMediaItems(_ mediaItemIDs: Set<MediaItem.ID>, toLayer trackName: String) {
+        guard timeline.tracks.contains(where: { $0.name == trackName }) else {
+            statusMessage = "Layer \"\(trackName)\" does not exist."
+            return
+        }
+        matchMediaItems(mediaItemIDs, toTrackName: trackName)
+    }
+
     @discardableResult
     func createMediaFolder(name: String = "New Folder", containing mediaItemIDs: Set<MediaItem.ID> = []) -> MediaFolder.ID {
         registerUndoPoint()
@@ -2768,13 +2776,14 @@ final class ProjectDocument: ObservableObject {
     func deleteSelectedItem() {
         switch selection {
         case .timelineClip(let clipID):
-            guard timeline.clip(with: clipID) != nil else {
+            guard let clip = timeline.clip(with: clipID) else {
                 return
             }
             registerUndoPoint()
             var updatedTimeline = timeline
             updatedTimeline.deleteClip(clipID)
             timeline = updatedTimeline
+            refreshMediaAlignmentAfterTimelineClipDeletion(mediaItemID: clip.mediaItemID)
             selection = .none
             statusMessage = "Deleted timeline clip."
         case .overlayElement(let elementID):
@@ -3584,6 +3593,17 @@ final class ProjectDocument: ObservableObject {
             return .readyToMatch(source: "timestamp")
         }
         return .needsManualPlacement
+    }
+
+    private func refreshMediaAlignmentAfterTimelineClipDeletion(mediaItemID: MediaItem.ID?) {
+        guard let mediaItemID,
+              let mediaIndex = mediaItems.firstIndex(where: { $0.id == mediaItemID }) else {
+            return
+        }
+        mediaItems[mediaIndex].alignmentStatus = timestampAlignmentStatus(
+            for: mediaItems[mediaIndex].inferredStartDate,
+            activity: activity
+        )
     }
 
     private func matchMediaItems(_ mediaItemIDs: Set<MediaItem.ID>, toTrackName trackName: String) {

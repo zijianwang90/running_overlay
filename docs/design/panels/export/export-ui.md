@@ -120,23 +120,27 @@ Validation examples:
 
 ## Output Section
 
-This section summarizes project-backed export facts that users need to verify but should not edit here if they already live in Project Settings.
+This section summarizes project-backed export facts and lets users adjust the
+export resolution without changing the project's landscape or portrait
+orientation.
 
 Rows:
 
 - `Format`: `Transparent MOV`
-- `Resolution`: current project setting, e.g. `1080p 16:9`
+- `Resolution`: picker backed by `project.settings.resolution`, filtered to the
+  current project orientation. Landscape projects show `720p 16:9`, `1080p
+  16:9`, and `4K 16:9`; portrait projects show the matching `9:16` presets.
 - `Frame Rate`: current project setting, e.g. `30 fps`
 - `Data FPS`: current project setting, e.g. `5 fps`
 
 Rules:
 
-- Render as a grouped read-only box.
+- Render as a grouped box with resolution editable and the other rows read-only.
 - Show a compact info icon after the `Output` section title.
 - The info icon uses a circle plus exclamation mark or the closest SF Symbol, such as `exclamationmark.circle`.
 - Hovering the info icon shows export performance guidance: `1080p currently provides the best export time. 5 fps is usually the best-balanced layer data refresh rate for speed and visual quality. Higher data FPS and 4K export significantly increase render time with the current implementation.`
-- Use monospaced digits for numeric values.
-- Do not duplicate Project Settings controls for resolution, frame rate, or layer data FPS unless they become directly editable in the export model.
+- Use monospaced digits for read-only numeric values.
+- Keep frame rate and layer data FPS read-only in the export dialog.
 
 ## Encoding Section
 
