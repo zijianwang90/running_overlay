@@ -211,22 +211,34 @@ jobs:
       - name: Prepare release notes
         run: |
           set -euo pipefail
+
           mkdir -p build/release
-          if [[ "${{ steps.version.outputs.release_kind }}" == "rc" ]]; then
-            release_label="release-candidate snapshot"
-            release_scope="draft pre-release"
-          else
-            release_label="stable release"
-            release_scope="public release"
+
+          notes_source="docs/releases/${{ steps.version.outputs.tag }}.md"
+          notes_output="build/release/notes.md"
+
+          if [[ ! -f "$notes_source" ]]; then
+            echo "Missing release notes file: $notes_source" >&2
+            echo "Create handwritten GitHub Release notes before pushing the tag." >&2
+            exit 1
           fi
-          {
-            printf 'Running Overlay Studio %s is a %s for version %s.\n\n' "${{ steps.version.outputs.tag }}" "$release_label" "${{ steps.version.outputs.marketing_version }}"
-            printf 'This %s is created from tag `%s` after build, test, visual-regression, publication-audit, App Store configuration, Developer ID signing, notarization, stapling, Gatekeeper, and optimized release-product checks pass.\n\n' "$release_scope" "${{ steps.version.outputs.tag }}"
-            printf '## Assets\n\n'
-            printf -- '- `%s`: notarized macOS arm64 app bundle built from `%s`.\n' "$zip_name" "${{ steps.version.outputs.tag }}"
-            printf -- '- `%s`: SHA-256 checksum for the zip.\n\n' "$sha_name"
-            printf 'The downloadable app is signed with Developer ID Application, notarized by Apple, stapled, and verified with `spctl`.\n'
-          } > build/release/notes.md
+
+          if [[ ! -s "$notes_source" ]]; then
+            echo "Release notes file is empty: $notes_source" >&2
+            exit 1
+          fi
+
+          cp "$notes_source" "$notes_output"
+
+          if ! grep -Fq "$zip_name" "$notes_output"; then
+            echo "Release notes must mention uploaded asset: $zip_name" >&2
+            exit 1
+          fi
+
+          if ! grep -Fq "$sha_name" "$notes_output"; then
+            echo "Release notes must mention uploaded checksum: $sha_name" >&2
+            exit 1
+          fi
 
       - name: Create GitHub release
         env:
