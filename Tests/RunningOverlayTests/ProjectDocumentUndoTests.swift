@@ -160,6 +160,80 @@ struct ProjectDocumentUndoTests {
         #expect(project.timeline.tracks[0].clips.count == 1)
     }
 
+    @Test func deletingTimestampMatchedClipReturnsMediaStatusToReadyToMatch() throws {
+        let project = ProjectDocument()
+        project.activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 100),
+            duration: 100,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        let media = MediaItem(
+            displayName: "clip.mov",
+            fileURL: nil,
+            duration: 10,
+            inferredStartDate: Date(timeIntervalSince1970: 120),
+            cameraGroupID: "Layer 1",
+            alignmentStatus: .aligned(source: "timestamp")
+        )
+        let clip = TimelineClip(
+            mediaItemID: media.id,
+            title: media.displayName,
+            startTime: 20,
+            duration: media.duration,
+            alignmentOffset: 0,
+            cameraGroupID: "Layer 1"
+        )
+        project.mediaItems = [media]
+        project.timeline = TimelineModel(tracks: [TimelineTrack(name: "Layer 1", clips: [clip])])
+        project.selection = .timelineClip(clip.id)
+
+        project.deleteSelectedItem()
+
+        #expect(project.timeline.tracks.isEmpty)
+        #expect(project.mediaItems[0].alignmentStatus == .readyToMatch(source: "timestamp"))
+
+        project.undo()
+        #expect(project.timeline.tracks.first?.clips.first?.id == clip.id)
+        #expect(project.mediaItems[0].alignmentStatus == .aligned(source: "timestamp"))
+    }
+
+    @Test func deletingManuallyPlacedClipReturnsMediaStatusToNeedsManualPlacement() throws {
+        let project = ProjectDocument()
+        project.activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 100),
+            duration: 100,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        let media = MediaItem(
+            displayName: "manual.mov",
+            fileURL: nil,
+            duration: 10,
+            inferredStartDate: nil,
+            cameraGroupID: "Layer 1",
+            alignmentStatus: .aligned(source: "manual")
+        )
+        let clip = TimelineClip(
+            mediaItemID: media.id,
+            title: media.displayName,
+            startTime: 20,
+            duration: media.duration,
+            alignmentOffset: 0,
+            cameraGroupID: "Layer 1"
+        )
+        project.mediaItems = [media]
+        project.timeline = TimelineModel(tracks: [TimelineTrack(name: "Layer 1", clips: [clip])])
+        project.selection = .timelineClip(clip.id)
+
+        project.deleteSelectedItem()
+
+        #expect(project.timeline.tracks.isEmpty)
+        #expect(project.mediaItems[0].alignmentStatus == .needsManualPlacement)
+    }
+
     @Test func changingPausedVisibleClipOffsetKeepsSourceFrameStill() {
         let project = ProjectDocument()
         project.activity = ActivityTimeline(
@@ -323,6 +397,64 @@ struct ProjectDocumentUndoTests {
         project.undo()
         #expect(project.timeline.tracks.isEmpty)
         #expect(project.mediaItems[0].cameraGroupID == "Camera A")
+    }
+
+    @Test func mediaAlignmentStatusHelpTextExplainsStatusDots() {
+        #expect(AlignmentStatus.readyToMatch(source: "timestamp").helpText == "Ready to match FIT timestamps")
+        #expect(AlignmentStatus.aligned(source: "timestamp").helpText == "Already on the timeline")
+        #expect(AlignmentStatus.needsManualPlacement.helpText == "Needs manual placement")
+    }
+
+    @Test func matchingMediaToExistingLayerUsesSelectedLayerAndIsUndoable() throws {
+        let project = ProjectDocument()
+        project.activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 100),
+            duration: 100,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        let existingMedia = MediaItem(
+            displayName: "existing.mov",
+            fileURL: nil,
+            duration: 5,
+            cameraGroupID: "Layer 2",
+            alignmentStatus: .aligned(source: "manual")
+        )
+        let media = MediaItem(
+            displayName: "clip.mov",
+            fileURL: nil,
+            duration: 10,
+            inferredStartDate: Date(timeIntervalSince1970: 120),
+            cameraGroupID: "Camera A",
+            alignmentStatus: .readyToMatch(source: "timestamp")
+        )
+        let existingClip = TimelineClip(
+            mediaItemID: existingMedia.id,
+            title: existingMedia.displayName,
+            startTime: 60,
+            duration: existingMedia.duration,
+            alignmentOffset: 0,
+            cameraGroupID: "Layer 2"
+        )
+        project.mediaItems = [existingMedia, media]
+        project.timeline = TimelineModel(tracks: [
+            TimelineTrack(name: "Layer 1", clips: []),
+            TimelineTrack(name: "Layer 2", clips: [existingClip])
+        ])
+
+        project.matchMediaItems([media.id], toLayer: "Layer 2")
+
+        let targetTrack = try #require(project.timeline.tracks.first { $0.name == "Layer 2" })
+        let matchedClip = try #require(targetTrack.clips.first { $0.mediaItemID == media.id })
+        #expect(matchedClip.startTime == 20)
+        #expect(project.mediaItems[1].cameraGroupID == "Layer 2")
+        #expect(project.statusMessage.contains("Matched 1 media item(s) to Layer 2"))
+
+        project.undo()
+        let restoredTrack = try #require(project.timeline.tracks.first { $0.name == "Layer 2" })
+        #expect(!restoredTrack.clips.contains { $0.mediaItemID == media.id })
+        #expect(project.mediaItems[1].cameraGroupID == "Camera A")
     }
 
     @Test func mediaFoldersAndDeletionAreUndoable() throws {

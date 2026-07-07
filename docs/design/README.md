@@ -14,6 +14,7 @@ This directory stores implementation-facing product design references for Runnin
 
 - [App UI Design System](./system/app-ui.md): application-level visual language, tokens, layout principles, and interaction standards.
 - [App UI Structured Spec](./system/app-ui.spec.json): machine-readable app-level token and component guidance.
+- [HIG UI Validation Workflow](./hig-ui-validation.md): process for running Apple HIG skill-based UI reviews against the macOS app.
 
 ## Panels
 

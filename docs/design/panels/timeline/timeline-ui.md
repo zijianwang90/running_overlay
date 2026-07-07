@@ -61,6 +61,13 @@ Top to bottom:
 4. Video layers.
 5. Optional drop target lane during media drag.
 
+Startup sizing:
+
+- The app should start with a compact timeline height so the Media Pool,
+  Preview, and Inspector get more vertical space.
+- Default timeline split height is about 110 pt, with a 96 pt minimum; users can
+  drag the split taller when they need to inspect more tracks.
+
 Left to right:
 
 1. Fixed label column.

@@ -373,6 +373,7 @@ struct MediaBrowserView: View {
                 project.matchMediaItemsToNewLayer(mediaIDs(inFolder: folder.id))
             }
             .disabled(mediaIDs(inFolder: folder.id).isEmpty)
+            matchToLayerMenu(for: mediaIDs(inFolder: folder.id))
             Divider()
             Button("Rename Folder") { beginRenaming(folderID: folder.id) }
             Button("Delete Folder") { project.deleteMediaFolder(folder.id) }
@@ -423,6 +424,7 @@ struct MediaBrowserView: View {
                 Button("Match to New Layer") {
                     project.matchMediaItemsToNewLayer(actionIDs(for: item))
                 }
+                matchToLayerMenu(for: actionIDs(for: item))
                 Divider()
                 Menu("Add to Folder") {
                     Button("New Folder from Selection") {
@@ -462,6 +464,22 @@ struct MediaBrowserView: View {
             .onDrop(of: [.fileURL], isTargeted: nil) { providers in
                 importDroppedVideoFiles(providers, intoFolder: nil)
             }
+    }
+
+    @ViewBuilder
+    private func matchToLayerMenu(for mediaItemIDs: Set<MediaItem.ID>) -> some View {
+        Menu("Match to Layer") {
+            if project.timeline.tracks.isEmpty {
+                Text("No Layers")
+            } else {
+                ForEach(project.timeline.tracks) { track in
+                    Button(track.name) {
+                        project.matchMediaItems(mediaItemIDs, toLayer: track.name)
+                    }
+                }
+            }
+        }
+        .disabled(mediaItemIDs.isEmpty || project.timeline.tracks.isEmpty)
     }
 
     private func importVideoURLs(_ urls: [URL], intoFolder folderID: MediaFolder.ID?) {
@@ -1136,8 +1154,10 @@ private struct MediaStatusDot: View {
                     .stroke(stroke, lineWidth: max(size * 0.08, 1))
             }
             .frame(width: size, height: size)
-            .help(status.label)
-            .accessibilityLabel(status.label)
+            .frame(width: 18, height: 18)
+            .contentShape(Rectangle())
+            .help(status.helpText)
+            .accessibilityLabel(status.helpText)
     }
 
     private var fill: Color {

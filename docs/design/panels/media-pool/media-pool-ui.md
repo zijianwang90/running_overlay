@@ -61,6 +61,7 @@ Prefer reusing shared tokens from `inspector-ui.md`. Media-specific values:
 | `overlay.tileHeight`        | `56-64 px`  | Overlay Pool add tiles                  |
 | `overlay.categoryHeight`    | `24 px`     | Metrics/Charts/Route segmented control  |
 | `template.rowHeight`        | `28-30 px`  | Templates Pool row height               |
+| `template.footerHeight`     | `44 px`     | Templates Pool sticky footer, matching Preview playback bar |
 | `template.footerButton`     | `32 px`     | Templates Pool import/save actions      |
 
 
@@ -96,6 +97,7 @@ Existing behavior to preserve:
 - Context menu actions:
   - `Auto Match to Current Layer`
   - `Match to New Layer`
+  - `Match to Layer`
   - `Mark`
   - `Select All`
   - `Delete from Media Pool`
@@ -204,7 +206,9 @@ Each row contains:
 - Primary filename.
 - Secondary duration.
 - Secondary capture date/time.
-- Right-side alignment status dot. Hovering the dot shows the full status label, e.g. `Aligned by timestamp`.
+- Right-side alignment status dot. Hovering the dot shows the status help text,
+  such as `Ready to match FIT timestamps` for yellow, `Already on the timeline`
+  for green, or `Needs manual placement` for muted gray.
 - Do not show a trailing more/ellipsis affordance unless it opens a visible row action menu.
 
 Example filenames:
@@ -230,7 +234,7 @@ Text:
 
 - Filename: 13 px semibold, primary text.
 - Metadata: 11-12 px regular, secondary text.
-- Alignment status dot: 8-9 px circular indicator using success/warning/muted status color, with the full status label exposed as hover help and accessibility text.
+- Alignment status dot: 8-9 px circular indicator using success/warning/muted status color, with a larger hover target and the full status help text exposed as hover help and accessibility text.
 - Use monospaced digits for duration if it improves scanning.
 
 ## Context Menu
@@ -241,11 +245,12 @@ Menu items:
 
 1. `Auto Match to Current Layer`
 2. `Match to New Layer`
-3. Separator
-4. `Mark` with chevron and submenu
-5. Separator
-6. `Select All`
-7. `Delete from Media Pool`
+3. `Match to Layer` with chevron and submenu of existing timeline layers
+4. Separator
+5. `Mark` with chevron and submenu
+6. Separator
+7. `Select All`
+8. `Delete from Media Pool`
 
 Mark submenu:
 
@@ -423,6 +428,7 @@ Template application:
 Footer:
 
 - Sticky footer at the bottom of Templates Pool.
+- Footer height matches the Preview bottom playback bar height.
 - One horizontal row:
   - Left: small square secondary import button, 32x32 px, icon-only (`tray.and.arrow.down` or `square.and.arrow.down`), help text `Import Template`.
   - Right: long blue primary button, height 32 px, label `Save Current as Template`, plus icon, fills remaining width.

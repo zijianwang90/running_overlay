@@ -90,6 +90,20 @@ struct ProjectSettingsTests {
         #expect(settings.legacyOpenWeatherAPIKey == nil)
     }
 
+    @Test func exportResolutionPresetsKeepLandscapeOrientation() {
+        let presets = ProjectResolution.exportPresets(matching: .hd1080)
+
+        #expect(presets == [.hd720, .hd1080, .uhd4k])
+        #expect(presets.allSatisfy { $0.isLandscape })
+    }
+
+    @Test func exportResolutionPresetsKeepPortraitOrientation() {
+        let presets = ProjectResolution.exportPresets(matching: .vertical1080)
+
+        #expect(presets == [.vertical720, .vertical1080, .vertical4k])
+        #expect(!presets.contains { $0.isLandscape })
+    }
+
     @Test func legacyOpenWeatherAPIKeyDecodesButDoesNotEncode() throws {
         let legacyJSON = #"{"resolution":"1920x1080","frameRate":"30","layerDataFrameRate":"5","openWeatherAPIKey":"abc123"}"#.data(using: .utf8)!
         let settings = try JSONDecoder().decode(ProjectSettings.self, from: legacyJSON)

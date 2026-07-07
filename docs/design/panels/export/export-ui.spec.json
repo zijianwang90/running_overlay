@@ -52,7 +52,7 @@
       "placement": "afterSectionTitle",
       "tooltip": "1080p currently provides the best export time. 5 fps is usually the best-balanced layer data refresh rate for speed and visual quality. Higher data FPS and 4K export significantly increase render time with the current implementation."
     },
-    "style": "grouped read-only rows",
+    "style": "grouped rows with editable resolution",
     "rows": [
       {
         "label": "Format",
@@ -60,8 +60,12 @@
       },
       {
         "label": "Resolution",
-        "valueSource": "project.settings.resolution.label",
-        "example": "1080p 16:9"
+        "control": "picker",
+        "valueSource": "project.settings.resolution",
+        "optionsSource": "ProjectResolution.exportPresets(matching: project.settings.resolution)",
+        "orientationRule": "Only show presets matching the current landscape or portrait orientation.",
+        "landscapeOptions": ["720p 16:9", "1080p 16:9", "4K 16:9"],
+        "portraitOptions": ["720p 9:16", "1080p 9:16", "4K 9:16"]
       },
       {
         "label": "Frame Rate",

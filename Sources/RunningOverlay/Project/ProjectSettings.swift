@@ -80,6 +80,18 @@ struct ProjectResolution: Identifiable, Hashable, Codable {
         .vertical720, .vertical1080, .vertical1440, .vertical4k
     ]
 
+    static func exportPresets(matching orientation: ProjectResolution) -> [ProjectResolution] {
+        let exportPresets: [ProjectResolution] = [
+            .hd720, .hd1080, .uhd4k,
+            .vertical720, .vertical1080, .vertical4k
+        ]
+        return exportPresets.filter { $0.isLandscape == orientation.isLandscape }
+    }
+
+    var isLandscape: Bool {
+        width >= height
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         let id = try container.decode(String.self)

@@ -12,7 +12,8 @@
 Current implementation:
 
 - Media browser items can be dragged onto timeline tracks.
-- Selected media browser items can be matched from the right-click menu to the current timeline layer or to a new layer.
+- Selected media browser items can be matched from the right-click menu to the
+  current timeline layer, to a new layer, or to a chosen existing layer.
 - Timeline shows a default empty `Layer 1` track when no clips exist but FIT or media context exists.
 - Timeline drawing separates the label column from the central lane area with distinct backgrounds and a vertical divider.
 - Timeline styling follows `docs/design/panels/timeline/timeline-ui.md` and `docs/design/panels/timeline/timeline-ui.spec.json`, including compact header controls, dark alternating lane bands, subtle ruler ticks, square-adjacent clip joins with dark splice borders, and compact hover info pills.
@@ -56,6 +57,10 @@ Current implementation:
 - Split-view boundary cursor hints are implemented with transparent AppKit cursor rect views that do not intercept drag events.
 - `ProjectDocument.layerDataSampleTime` maps project playhead time through `fitStartTime`, then quantizes by `settings.layerDataFrameRate` before FIT-derived overlay values are read.
 - Selected clips expose a dense detail Inspector for camera/track renaming, start time, and offset. Duration editing is intentionally hidden until trim-length adjustment is needed.
+- Deleting a timeline clip refreshes the linked Media Pool item's alignment
+  status: timestamp-matchable media returns to the yellow ready-to-match state,
+  while media without a usable timestamp returns to the muted manual-placement
+  state.
 
 Pending:
 

@@ -67,6 +67,7 @@
       "overlayTileMaxHeight": 64,
       "overlayCategoryHeight": 24,
       "templateRowHeight": 30,
+      "templateFooterHeight": 44,
       "templateFooterButton": 32,
       "markDot": 9,
       "menuRadius": 8
@@ -171,7 +172,7 @@
       { "slot": "primary", "type": "filename", "modelPath": "MediaItem.displayName" },
       { "slot": "secondary", "type": "duration", "modelPath": "MediaItem.duration" },
       { "slot": "secondary", "type": "captureDate", "modelPath": "MediaItem.inferredStartDate" },
-      { "slot": "trailing", "type": "alignmentStatusDot", "modelPath": "MediaItem.alignmentStatus", "help": "MediaItem.alignmentStatus.label" },
+      { "slot": "trailing", "type": "alignmentStatusDot", "modelPath": "MediaItem.alignmentStatus", "help": "MediaItem.alignmentStatus.helpText" },
       { "slot": "mark", "type": "colorDotOrStripe", "optional": true, "help": "MediaTag.label" }
     ],
     "states": {
@@ -186,6 +187,11 @@
     "items": [
       { "label": "Auto Match to Current Layer", "action": "project.matchMediaItemsToCurrentLayer(actionIDs)" },
       { "label": "Match to New Layer", "action": "project.matchMediaItemsToNewLayer(actionIDs)" },
+      {
+        "label": "Match to Layer",
+        "submenuSource": "project.timeline.tracks",
+        "submenuItem": { "label": "TimelineTrack.name", "action": "project.matchMediaItems(actionIDs, toLayer: TimelineTrack.name)" }
+      },
       { "type": "separator" },
       {
         "label": "Mark",
@@ -367,6 +373,8 @@
     },
     "footer": {
       "layout": "sticky bottom horizontal row",
+      "height": 44,
+      "heightRule": "match Preview playback bar height",
       "importButton": {
         "placement": "left",
         "style": "secondary icon-only square",

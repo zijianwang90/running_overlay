@@ -227,7 +227,7 @@ struct TemplatePoolView: View {
             .help(project.overlayLayout.elements.isEmpty ? "Add overlays before saving a template" : "Save Current as Template")
         }
         .padding(.horizontal, EditorTheme.panelPaddingX)
-        .padding(.vertical, EditorTheme.space3)
+        .frame(height: EditorTheme.previewPlaybackHeight)
         .background(EditorTheme.panelHeader)
         .overlay(alignment: .top) {
             Rectangle()
