@@ -24,6 +24,8 @@ enum OverlayPasteCategory: String, Equatable {
     case runningGauge
     case intervalHUDBar
     case intervalTimeline
+    case intervalCountdown
+    case intervalWorkSummary
     case zoneEdgeBar
     case routeMap
     case weather
@@ -51,6 +53,8 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     case runningGauge
     case intervalHUDBar
     case intervalTimeline
+    case intervalCountdown
+    case intervalWorkSummary
     case zoneEdgeBar
     case routeMap
     case verticalOscillation
@@ -88,6 +92,8 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         case .runningGauge: "Running Gauge"
         case .intervalHUDBar: "Interval HUD Bar"
         case .intervalTimeline: "Interval Timeline"
+        case .intervalCountdown: "Interval Countdown"
+        case .intervalWorkSummary: "Interval Work Summary"
         case .zoneEdgeBar: "Zone Edge Bar"
         case .routeMap: "Route Map"
         case .verticalOscillation: "Vertical Oscillation"
@@ -107,7 +113,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
 
     var supportsTextPresets: Bool {
         switch self {
-        case .distanceTimeline, .elevationChart, .runningGauge, .intervalHUDBar, .intervalTimeline, .zoneEdgeBar, .routeMap,
+        case .distanceTimeline, .elevationChart, .runningGauge, .intervalHUDBar, .intervalTimeline, .intervalCountdown, .intervalWorkSummary, .zoneEdgeBar, .routeMap,
              .weatherWidget, .decorSolidColor, .decorIcon, .decorText:
             false
         default:
@@ -175,6 +181,8 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         case .runningGauge: "gauge"
         case .intervalHUDBar: "rectangle.split.3x1"
         case .intervalTimeline: "timeline.selection"
+        case .intervalCountdown: "timer.circle"
+        case .intervalWorkSummary: "flag.checkered.2.crossed"
         case .zoneEdgeBar: "rectangle.compress.vertical"
         case .routeMap: "map"
         case .weatherWidget: "cloud.sun.fill"
@@ -199,6 +207,10 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
             return .intervalHUDBar
         case .intervalTimeline:
             return .intervalTimeline
+        case .intervalCountdown:
+            return .intervalCountdown
+        case .intervalWorkSummary:
+            return .intervalWorkSummary
         case .zoneEdgeBar:
             return .zoneEdgeBar
         case .routeMap:
@@ -311,7 +323,7 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
         case .temperature: [.temperatureCelsius, .temperatureFahrenheit]
         case .grade: [.gradePercent]
         case .customNumeric: []
-        case .distanceTimeline, .elevationChart, .runningGauge, .intervalHUDBar, .intervalTimeline, .zoneEdgeBar, .routeMap,
+        case .distanceTimeline, .elevationChart, .runningGauge, .intervalHUDBar, .intervalTimeline, .intervalCountdown, .intervalWorkSummary, .zoneEdgeBar, .routeMap,
              .weatherWidget, .decorSolidColor, .decorIcon, .decorText:
             []
         }
@@ -839,6 +851,12 @@ struct OverlayStyle: Equatable, Codable {
     /// Interval Timeline configuration. Used only by `.intervalTimeline`.
     var intervalTimeline: IntervalTimelineStyle
 
+    /// Interval Countdown configuration. Used only by `.intervalCountdown`.
+    var intervalCountdown: IntervalCountdownStyle
+
+    /// Interval Work Summary configuration. Used only by `.intervalWorkSummary`.
+    var intervalWorkSummary: IntervalWorkSummaryStyle
+
     /// Zone Edge Bar configuration. Used only by `.zoneEdgeBar`.
     var zoneEdgeBar: ZoneEdgeBarStyle
 
@@ -955,6 +973,8 @@ struct OverlayStyle: Equatable, Codable {
         weatherWidget: .preset(.simpleCard),
         intervalHUDBar: .default,
         intervalTimeline: .default,
+        intervalCountdown: .default,
+        intervalWorkSummary: .default,
         zoneEdgeBar: .default
     )
 
@@ -1071,6 +1091,8 @@ struct OverlayStyle: Equatable, Codable {
         weatherWidget: WeatherWidgetStyle = .preset(.simpleCard),
         intervalHUDBar: IntervalHUDBarStyle = .default,
         intervalTimeline: IntervalTimelineStyle = .default,
+        intervalCountdown: IntervalCountdownStyle = .default,
+        intervalWorkSummary: IntervalWorkSummaryStyle = .default,
         zoneEdgeBar: ZoneEdgeBarStyle = .default
     ) {
         self.textPreset = textPreset
@@ -1185,6 +1207,8 @@ struct OverlayStyle: Equatable, Codable {
         self.weatherWidget = weatherWidget
         self.intervalHUDBar = intervalHUDBar
         self.intervalTimeline = intervalTimeline
+        self.intervalCountdown = intervalCountdown
+        self.intervalWorkSummary = intervalWorkSummary
         self.zoneEdgeBar = zoneEdgeBar
     }
 
@@ -1312,6 +1336,8 @@ struct OverlayStyle: Equatable, Codable {
         weatherWidget = try container.decodeIfPresent(WeatherWidgetStyle.self, forKey: .weatherWidget) ?? .preset(.simpleCard)
         intervalHUDBar = try container.decodeIfPresent(IntervalHUDBarStyle.self, forKey: .intervalHUDBar) ?? .default
         intervalTimeline = try container.decodeIfPresent(IntervalTimelineStyle.self, forKey: .intervalTimeline) ?? .default
+        intervalCountdown = try container.decodeIfPresent(IntervalCountdownStyle.self, forKey: .intervalCountdown) ?? .default
+        intervalWorkSummary = try container.decodeIfPresent(IntervalWorkSummaryStyle.self, forKey: .intervalWorkSummary) ?? .default
         zoneEdgeBar = try container.decodeIfPresent(ZoneEdgeBarStyle.self, forKey: .zoneEdgeBar) ?? .default
     }
 }

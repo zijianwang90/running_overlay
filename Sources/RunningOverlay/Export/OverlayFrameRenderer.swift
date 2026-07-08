@@ -116,6 +116,10 @@ struct OverlayFrameRenderer {
             renderIntervalHUDBar(element, renderContext: renderContext)
         case .intervalTimeline:
             renderIntervalTimeline(element, renderContext: renderContext)
+        case .intervalCountdown:
+            renderIntervalCountdown(element, renderContext: renderContext)
+        case .intervalWorkSummary:
+            renderIntervalWorkSummary(element, renderContext: renderContext)
         case .zoneEdgeBar:
             renderZoneEdgeBar(element, renderContext: renderContext)
         case .routeMap:
@@ -1688,6 +1692,242 @@ struct OverlayFrameRenderer {
                     textStyle: layout.metricUnitText
                 )
             }
+        }
+    }
+
+    private static func renderIntervalCountdown(_ element: OverlayElement, renderContext: OverlayRenderContext) {
+        let layout = OverlayRenderModel.intervalCountdownLayout(for: element, in: renderContext)
+        let rect = layout.rect
+        let backgroundRect = rect.insetBy(dx: -layout.backgroundPaddingX, dy: -layout.backgroundPaddingY)
+        let context = NSGraphicsContext.current?.cgContext
+
+        if element.style.backgroundEnabled {
+            context?.saveGState()
+            if element.style.shadowEnabled {
+                context?.setShadow(
+                    offset: CGSize(width: layout.shadowOffsetX, height: layout.shadowOffsetY),
+                    blur: layout.shadowRadius,
+                    color: NSColor(element.style.shadowColor).withAlphaComponent(element.style.shadowOpacity).cgColor
+                )
+            }
+            NSColor(element.style.backgroundColor).withAlphaComponent(element.style.backgroundOpacity).setFill()
+            NSBezierPath(
+                roundedRect: backgroundRect,
+                xRadius: min(layout.backgroundRadius, backgroundRect.width / 2),
+                yRadius: min(layout.backgroundRadius, backgroundRect.height / 2)
+            ).fill()
+            context?.restoreGState()
+        }
+
+        if element.style.borderEnabled {
+            NSColor(element.style.borderColor).withAlphaComponent(element.style.borderOpacity).setStroke()
+            let border = NSBezierPath(
+                roundedRect: backgroundRect,
+                xRadius: min(layout.backgroundRadius, backgroundRect.width / 2),
+                yRadius: min(layout.backgroundRadius, backgroundRect.height / 2)
+            )
+            border.lineWidth = layout.borderWidth
+            border.stroke()
+        }
+
+        context?.saveGState()
+        if !element.style.backgroundEnabled && element.style.shadowEnabled {
+            context?.setShadow(
+                offset: CGSize(width: layout.shadowOffsetX, height: layout.shadowOffsetY),
+                blur: layout.shadowRadius,
+                color: NSColor(element.style.shadowColor).withAlphaComponent(element.style.shadowOpacity).cgColor
+            )
+        }
+
+        let ringRect = rect.insetBy(dx: layout.ringWidth, dy: layout.ringWidth)
+        NSColor(layout.style.trackColor).withAlphaComponent(layout.style.trackOpacity).setStroke()
+        let track = NSBezierPath(ovalIn: ringRect)
+        track.lineWidth = layout.ringWidth
+        track.lineCapStyle = layout.style.roundedLineCap ? .round : .butt
+        track.stroke()
+
+        let progress = NSBezierPath()
+        progress.appendArc(
+            withCenter: CGPoint(x: ringRect.midX, y: ringRect.midY),
+            radius: min(ringRect.width, ringRect.height) / 2,
+            startAngle: 90,
+            endAngle: 90 - 360 * layout.progress,
+            clockwise: true
+        )
+        progress.lineWidth = layout.ringWidth
+        progress.lineCapStyle = layout.style.roundedLineCap ? .round : .butt
+        NSColor(layout.ringColor).setStroke()
+        progress.stroke()
+
+        drawIntervalCountdownText(layout)
+        context?.restoreGState()
+    }
+
+    private static func drawIntervalCountdownText(_ layout: IntervalCountdownRenderLayout) {
+        let spacing = max(layout.rect.width * 0.008, 1)
+        let itemSizes = layout.textItems.map { item -> CGSize in
+            let font = OverlayFontResolver.appKitFont(
+                family: item.style.fontName,
+                size: item.fontSize,
+                weight: nsFontWeight(item.style.fontWeight)
+            )
+            return (item.text as NSString).size(withAttributes: [.font: font])
+        }
+        let totalHeight = itemSizes.reduce(0) { $0 + $1.height } + spacing * Double(max(layout.textItems.count - 1, 0))
+        var y = layout.rect.midY - totalHeight / 2
+        for (index, item) in layout.textItems.enumerated() {
+            let itemHeight = itemSizes[index].height
+            drawGaugePlainText(
+                item.text,
+                fontName: item.style.fontName,
+                fontSize: item.fontSize,
+                color: NSColor(item.color),
+                rect: CGRect(
+                    x: layout.rect.midX - layout.innerDiameter / 2,
+                    y: y,
+                    width: layout.innerDiameter,
+                    height: itemHeight
+                ),
+                alignment: .center,
+                weight: nsFontWeight(item.style.fontWeight),
+                monospacedDigits: item.role == .countdown
+            )
+            y += itemHeight + spacing
+        }
+    }
+
+    private static func renderIntervalWorkSummary(_ element: OverlayElement, renderContext: OverlayRenderContext) {
+        let layout = OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: renderContext)
+        guard layout.isVisible else { return }
+        let rect = layout.rect
+        let context = NSGraphicsContext.current?.cgContext
+
+        if element.style.backgroundEnabled {
+            context?.saveGState()
+            if element.style.shadowEnabled {
+                context?.setShadow(
+                    offset: CGSize(width: layout.shadowOffsetX, height: layout.shadowOffsetY),
+                    blur: layout.shadowRadius,
+                    color: NSColor(element.style.shadowColor).withAlphaComponent(element.style.shadowOpacity).cgColor
+                )
+            }
+            NSColor(element.style.backgroundColor).withAlphaComponent(element.style.backgroundOpacity).setFill()
+            NSBezierPath(
+                roundedRect: rect,
+                xRadius: min(layout.backgroundRadius, rect.width / 2),
+                yRadius: min(layout.backgroundRadius, rect.height / 2)
+            ).fill()
+            context?.restoreGState()
+        }
+
+        if element.style.borderEnabled {
+            NSColor(element.style.borderColor).withAlphaComponent(element.style.borderOpacity).setStroke()
+            let border = NSBezierPath(
+                roundedRect: rect,
+                xRadius: min(layout.backgroundRadius, rect.width / 2),
+                yRadius: min(layout.backgroundRadius, rect.height / 2)
+            )
+            border.lineWidth = layout.borderWidth
+            border.stroke()
+        }
+
+        context?.saveGState()
+        if !element.style.backgroundEnabled && element.style.shadowEnabled {
+            context?.setShadow(
+                offset: CGSize(width: layout.shadowOffsetX, height: layout.shadowOffsetY),
+                blur: layout.shadowRadius,
+                color: NSColor(element.style.shadowColor).withAlphaComponent(element.style.shadowOpacity).cgColor
+            )
+        }
+
+        let content = rect.insetBy(dx: layout.backgroundPaddingX, dy: layout.backgroundPaddingY)
+        if let labelStyle = layout.textItems[.componentLabel],
+           labelStyle.style.isVisible,
+           !layout.componentLabel.isEmpty {
+            drawGaugePlainText(
+                layout.componentLabel.uppercased(),
+                fontName: labelStyle.style.fontName,
+                fontSize: labelStyle.fontSize,
+                color: NSColor(labelStyle.color),
+                rect: CGRect(x: content.minX, y: content.minY, width: content.width, height: labelStyle.fontSize * 1.2),
+                alignment: .left,
+                weight: nsFontWeight(labelStyle.style.fontWeight),
+                monospacedDigits: false
+            )
+        }
+
+        drawIntervalWorkSummaryMetric(
+            layout.primary,
+            valueStyle: layout.textItems[.primaryValue],
+            labelStyle: layout.textItems[.primaryLabel],
+            rect: CGRect(x: content.minX, y: content.minY + content.height * 0.20, width: content.width, height: content.height * 0.45),
+            valueScale: 1,
+            alignment: .center
+        )
+
+        let secondary = layout.secondaryItems
+        if !secondary.isEmpty {
+            let row = CGRect(x: content.minX, y: content.minY + content.height * 0.66, width: content.width, height: content.height * 0.28)
+            let cellWidth = row.width / Double(secondary.count)
+            for (index, item) in secondary.enumerated() {
+                let cell = CGRect(x: row.minX + Double(index) * cellWidth, y: row.minY, width: cellWidth, height: row.height)
+                drawIntervalWorkSummaryMetric(
+                    item,
+                    valueStyle: layout.textItems[.secondaryValue],
+                    labelStyle: layout.textItems[.secondaryLabel],
+                    rect: cell,
+                    valueScale: 1,
+                    alignment: .center
+                )
+                if layout.style.dividerEnabled && index < secondary.count - 1 {
+                    NSColor(layout.style.dividerColor).withAlphaComponent(layout.style.dividerOpacity).setFill()
+                    CGRect(
+                        x: cell.maxX - max(layout.style.dividerWidth, 0.5) / 2,
+                        y: row.minY + row.height * 0.12,
+                        width: max(layout.style.dividerWidth, 0.5),
+                        height: row.height * 0.76
+                    ).fill()
+                }
+            }
+        }
+
+        context?.restoreGState()
+    }
+
+    private static func drawIntervalWorkSummaryMetric(
+        _ item: IntervalWorkSummaryMetricItem,
+        valueStyle: IntervalWorkSummaryRenderLayout.TextItem?,
+        labelStyle: IntervalWorkSummaryRenderLayout.TextItem?,
+        rect: CGRect,
+        valueScale: Double,
+        alignment: NSTextAlignment
+    ) {
+        if let valueStyle {
+            let text = item.unit.isEmpty ? item.value : "\(item.value) \(item.unit)"
+            drawGaugePlainText(
+                text,
+                fontName: valueStyle.style.fontName,
+                fontSize: valueStyle.fontSize * valueScale,
+                color: NSColor(valueStyle.color),
+                rect: CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: rect.height * 0.68),
+                alignment: alignment,
+                weight: nsFontWeight(valueStyle.style.fontWeight),
+                monospacedDigits: true
+            )
+        }
+        if let labelStyle,
+           labelStyle.style.isVisible,
+           item.labelVisible {
+            drawGaugePlainText(
+                item.label,
+                fontName: labelStyle.style.fontName,
+                fontSize: labelStyle.fontSize,
+                color: NSColor(labelStyle.color),
+                rect: CGRect(x: rect.minX, y: rect.minY + rect.height * 0.60, width: rect.width, height: rect.height * 0.35),
+                alignment: alignment,
+                weight: nsFontWeight(labelStyle.style.fontWeight),
+                monospacedDigits: false
+            )
         }
     }
 

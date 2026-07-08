@@ -598,6 +598,144 @@ enum OverlayRenderModel {
         )
     }
 
+    static func intervalCountdownLayout(for element: OverlayElement, in context: OverlayRenderContext) -> IntervalCountdownRenderLayout {
+        let style = element.style.intervalCountdown
+        let size = context.scaled(style.size * element.scale)
+        let rect = centeredRect(for: element, size: CGSize(width: size, height: size), canvasSize: context.canvasSize)
+        let t = min(max(context.elapsedTime, 0), context.activity.duration)
+        let lap = context.activity.currentLap(at: t)
+        let kind = lap?.kind ?? .unknown
+        let groupColor = intervalCountdownGroupColor(for: kind)
+        let ringColor = style.fillColorMode == .followGroupColor ? groupColor : style.fillCustomColor
+        let lapEnd = lap?.endElapsedTime ?? max(context.activity.duration, 1)
+        let remainingTime = max(lapEnd - t, 0)
+        let elapsedProgress = context.activity.lapProgress(at: t, byDistance: false)
+        let remainingProgress = 1 - clampedProgress(elapsedProgress)
+        let countdown = formatDuration(remainingTime)
+        let phase = phaseLabel(kind)
+        let rep = repText(activity: context.activity, lap: lap)
+        let ringWidth = max(context.scaled(style.ringWidth * element.scale), 1)
+        let innerDiameter = max(size - ringWidth * 3.6, 1)
+
+        func resolvedTextItem(
+            role: IntervalCountdownTextRole,
+            text: String?,
+            style textStyle: IntervalCountdownTextStyle
+        ) -> IntervalCountdownRenderLayout.TextItem? {
+            guard role == .countdown || textStyle.isVisible else { return nil }
+            guard let text, !text.isEmpty else { return nil }
+            let color = textStyle.colorMode == .followGroupColor ? groupColor : textStyle.customColor
+            return IntervalCountdownRenderLayout.TextItem(
+                role: role,
+                text: text,
+                style: textStyle,
+                color: color,
+                fontSize: context.scaled(textStyle.fontSize * element.scale)
+            )
+        }
+
+        let textItems = [
+            resolvedTextItem(role: .helper, text: "CURRENT SET", style: style.helperText),
+            resolvedTextItem(role: .phase, text: phase, style: style.phaseText),
+            resolvedTextItem(role: .rep, text: rep, style: style.repText),
+            resolvedTextItem(role: .countdown, text: countdown, style: style.countdownText),
+            resolvedTextItem(role: .caption, text: "remaining", style: style.captionText),
+        ].compactMap { $0 }
+
+        return IntervalCountdownRenderLayout(
+            style: style,
+            rect: rect,
+            progress: clampedProgress(remainingProgress),
+            ringColor: ringColor,
+            lapKind: kind,
+            countdownText: countdown,
+            phaseText: phase,
+            repText: rep,
+            textItems: textItems,
+            ringWidth: ringWidth,
+            innerDiameter: innerDiameter,
+            backgroundPaddingX: context.scaled(element.style.backgroundPaddingX * element.scale),
+            backgroundPaddingY: context.scaled(element.style.backgroundPaddingY * element.scale),
+            backgroundRadius: context.scaled(element.style.backgroundRadius * element.scale),
+            borderWidth: max(context.scaled(element.style.borderWidth * element.scale), 0.5),
+            shadowRadius: context.scaled(element.style.shadowRadius),
+            shadowOffsetX: context.scaled(element.style.shadowOffsetX),
+            shadowOffsetY: context.scaled(element.style.shadowOffsetY)
+        )
+    }
+
+    static func intervalWorkSummaryLayout(for element: OverlayElement, in context: OverlayRenderContext) -> IntervalWorkSummaryRenderLayout {
+        let style = element.style.intervalWorkSummary
+        let width = context.scaled(style.width * element.scale)
+        let height = context.scaled(style.height * element.scale)
+        let rect = centeredRect(for: element, size: CGSize(width: width, height: height), canvasSize: context.canvasSize)
+        let t = min(max(context.elapsedTime, 0), context.activity.duration)
+        let completedLap = context.activity.lastActiveLap(at: t)
+        let isInDisplayWindow = completedLap.map { lap in
+            let age = t - lap.endElapsedTime
+            return age >= 0 && age <= max(style.displayDuration, 0)
+        } ?? false
+        let groupColor = intervalCountdownGroupColor(for: .active)
+        let accentColor = style.accentColorMode == .followGroupColor ? groupColor : style.accentCustomColor
+        let primary = intervalWorkSummaryMetricItem(
+            metric: style.primaryMetric,
+            lap: completedLap,
+            unitSystem: style.unitSystem,
+            customLabel: "",
+            labelVisible: style.primaryLabelVisible
+        )
+        let secondaryItems = style.normalizedSecondarySlots
+            .prefix(3)
+            .filter(\.isVisible)
+            .map { slot in
+                intervalWorkSummaryMetricItem(
+                    metric: slot.metric,
+                    lap: completedLap,
+                    unitSystem: style.unitSystem,
+                    customLabel: slot.customLabel,
+                    labelVisible: slot.labelVisible
+                )
+            }
+
+        func textItem(_ role: IntervalWorkSummaryTextRole) -> IntervalWorkSummaryRenderLayout.TextItem? {
+            let textStyle = style.textStyle(for: role)
+            guard !role.isHideable || textStyle.isVisible else { return nil }
+            let color = textStyle.colorMode == .followGroupColor ? accentColor : textStyle.customColor
+            return IntervalWorkSummaryRenderLayout.TextItem(
+                role: role,
+                style: textStyle,
+                color: color,
+                fontSize: context.scaled(textStyle.fontSize * element.scale)
+            )
+        }
+
+        let textItems = Dictionary(
+            uniqueKeysWithValues: IntervalWorkSummaryTextRole.allCases.compactMap { role in
+                textItem(role).map { (role, $0) }
+            }
+        )
+
+        return IntervalWorkSummaryRenderLayout(
+            style: style,
+            rect: rect,
+            isVisible: isInDisplayWindow,
+            completedLap: completedLap,
+            groupColor: groupColor,
+            accentColor: accentColor,
+            componentLabel: style.componentLabel,
+            primary: primary,
+            secondaryItems: secondaryItems,
+            textItems: textItems,
+            backgroundPaddingX: context.scaled(element.style.backgroundPaddingX * element.scale),
+            backgroundPaddingY: context.scaled(element.style.backgroundPaddingY * element.scale),
+            backgroundRadius: context.scaled(element.style.backgroundRadius * element.scale),
+            borderWidth: max(context.scaled(element.style.borderWidth * element.scale), 0.5),
+            shadowRadius: context.scaled(element.style.shadowRadius),
+            shadowOffsetX: context.scaled(element.style.shadowOffsetX),
+            shadowOffsetY: context.scaled(element.style.shadowOffsetY)
+        )
+    }
+
     static func zoneEdgeBarLayout(for element: OverlayElement, in context: OverlayRenderContext) -> ZoneEdgeBarRenderLayout {
         let style = element.style.zoneEdgeBar
         let orientation: ZoneEdgeBarOrientation = style.placement == .edge
@@ -1472,6 +1610,13 @@ enum OverlayRenderModel {
         return OverlayColor(red: 0.25, green: 0.82, blue: 0.38, alpha: 1)
     }
 
+    private static func intervalCountdownGroupColor(for kind: LapKind) -> OverlayColor {
+        if let color = IntervalKindColorPreferences.currentSnapshot().color(for: kind) {
+            return color
+        }
+        return OverlayColor(red: 0.25, green: 0.82, blue: 0.38, alpha: 1)
+    }
+
     private static func formatDuration(_ duration: TimeInterval) -> String {
         let total = max(Int(duration.rounded()), 0)
         let hours = total / 3600
@@ -1481,6 +1626,82 @@ enum OverlayRenderModel {
             return String(format: "%d:%02d:%02d", hours, minutes, seconds)
         }
         return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    private static func intervalWorkSummaryMetricItem(
+        metric: IntervalWorkSummaryMetric,
+        lap: LapRecord?,
+        unitSystem: IntervalWorkSummaryUnitSystem,
+        customLabel: String,
+        labelVisible: Bool
+    ) -> IntervalWorkSummaryMetricItem {
+        let valueAndUnit = intervalWorkSummaryValue(metric: metric, lap: lap, unitSystem: unitSystem)
+        let label = customLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? metric.shortLabel
+            : customLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+        return IntervalWorkSummaryMetricItem(
+            metric: metric,
+            value: valueAndUnit.value,
+            unit: valueAndUnit.unit,
+            label: label,
+            labelVisible: labelVisible
+        )
+    }
+
+    private static func intervalWorkSummaryValue(
+        metric: IntervalWorkSummaryMetric,
+        lap: LapRecord?,
+        unitSystem: IntervalWorkSummaryUnitSystem
+    ) -> (value: String, unit: String) {
+        guard let lap else {
+            switch metric {
+            case .lapTime:
+                return ("--:--", "")
+            case .lapPace:
+                return ("--:--", unitSystem == .imperial ? "/mi" : "/km")
+            case .lapDistance:
+                return ("--", unitSystem == .imperial ? "mi" : "m")
+            case .avgHeartRate, .maxHeartRate:
+                return ("--", "bpm")
+            case .avgPower:
+                return ("--", "W")
+            case .avgCadence:
+                return ("--", "spm")
+            }
+        }
+
+        switch metric {
+        case .lapTime:
+            return (formatDuration(lap.totalElapsedTime), "")
+        case .lapPace:
+            let paceSecondsPerKm = lap.avgPaceSecondsPerKm ?? {
+                guard lap.totalDistanceMeters > 0 else { return nil }
+                return lap.totalElapsedTime / (lap.totalDistanceMeters / 1000)
+            }()
+            guard let paceSecondsPerKm, paceSecondsPerKm > 0 else {
+                return ("--:--", unitSystem == .imperial ? "/mi" : "/km")
+            }
+            let paceUnit: PaceUnit = unitSystem == .imperial ? .minPerMile : .minPerKm
+            return (PaceConversion.format(secondsPerKm: Int(paceSecondsPerKm.rounded()), unit: paceUnit), paceUnit.label)
+        case .lapDistance:
+            switch unitSystem {
+            case .metric:
+                if lap.totalDistanceMeters >= 1000 {
+                    return (String(format: "%.2f", lap.totalDistanceMeters / 1000), "km")
+                }
+                return ("\(Int(lap.totalDistanceMeters.rounded()))", "m")
+            case .imperial:
+                return (String(format: "%.2f", lap.totalDistanceMeters / 1609.344), "mi")
+            }
+        case .avgHeartRate:
+            return (lap.avgHeartRate.map(String.init) ?? "--", "bpm")
+        case .maxHeartRate:
+            return (lap.maxHeartRate.map(String.init) ?? "--", "bpm")
+        case .avgPower:
+            return (lap.avgPowerWatts.map(String.init) ?? "--", "W")
+        case .avgCadence:
+            return (lap.avgCadenceSPM.map(String.init) ?? "--", "spm")
+        }
     }
 
     private static func formatDistanceMeters(_ meters: Double) -> String {
