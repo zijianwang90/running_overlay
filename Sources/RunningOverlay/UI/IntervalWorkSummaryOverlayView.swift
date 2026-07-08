@@ -42,7 +42,7 @@ struct IntervalWorkSummaryOverlayView: View {
                 Text(layout.componentLabel.uppercased())
                     .font(font(labelStyle))
                     .foregroundStyle(Color(numericOverlay: labelStyle.color))
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .center)
                     .lineLimit(1)
                     .padding(.bottom, 8)
             }

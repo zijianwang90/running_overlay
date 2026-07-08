@@ -19,7 +19,7 @@ metrics.
 ## Layout
 
 - The component uses a single rounded rectangle container.
-- A small optional component label sits at the top-left. It must not use a
+- A small optional component label sits centered at the top. It must not use a
   trailing rule or decorative line.
 - The primary metric is required and centered. Default: `Lap Time`.
 - Secondary metrics are optional. Users can show zero, one, two, or three

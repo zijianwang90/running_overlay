@@ -1850,7 +1850,7 @@ struct OverlayFrameRenderer {
                 fontSize: labelStyle.fontSize,
                 color: NSColor(labelStyle.color),
                 rect: CGRect(x: content.minX, y: content.minY, width: content.width, height: labelStyle.fontSize * 1.2),
-                alignment: .left,
+                alignment: .center,
                 weight: nsFontWeight(labelStyle.style.fontWeight),
                 monospacedDigits: false
             )
