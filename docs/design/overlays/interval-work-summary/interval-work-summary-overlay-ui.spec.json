@@ -1,0 +1,113 @@
+{
+  "component": "Interval Work Summary",
+  "overlayType": "intervalWorkSummary",
+  "category": "interval",
+  "intent": "Show the just-completed work lap summary for a short event window.",
+  "visualPrinciples": [
+    "simple",
+    "direct",
+    "high contrast",
+    "minimal decoration",
+    "consistent with Interval Countdown"
+  ],
+  "trigger": {
+    "source": "ActivityTimeline.laps",
+    "lapKind": "active",
+    "event": "lapEnd",
+    "defaultDisplayDurationSeconds": 6,
+    "outsideWindowBehavior": "renderEmpty"
+  },
+  "layout": {
+    "container": "roundedRectangle",
+    "defaultSize": {
+      "width": 560,
+      "height": 260
+    },
+    "label": {
+      "text": "WORK SUMMARY",
+      "position": "topLeading",
+      "visibleByDefault": true,
+      "decorativeTrailingRule": false
+    },
+    "primaryMetric": {
+      "required": true,
+      "default": "lapTime",
+      "position": "center",
+      "labelVisibleByDefault": true
+    },
+    "secondaryMetrics": {
+      "maxCount": 3,
+      "default": [
+        "lapPace",
+        "lapDistance",
+        "avgHeartRate"
+      ],
+      "countConfigurable": true,
+      "labelVisiblePerSlot": true
+    }
+  },
+  "metrics": [
+    "lapTime",
+    "lapPace",
+    "lapDistance",
+    "avgHeartRate",
+    "maxHeartRate",
+    "avgPower",
+    "avgCadence"
+  ],
+  "textCustomization": {
+    "roles": [
+      "componentLabel",
+      "primaryValue",
+      "primaryLabel",
+      "secondaryValue",
+      "secondaryLabel"
+    ],
+    "properties": [
+      "fontFamily",
+      "fontSize",
+      "fontWeight",
+      "colorMode",
+      "customColor"
+    ],
+    "colorModes": [
+      "followGroupColor",
+      "customColor"
+    ],
+    "hideable": {
+      "componentLabel": true,
+      "primaryValue": false,
+      "primaryLabel": true,
+      "secondaryValue": false,
+      "secondaryLabel": true
+    }
+  },
+  "effects": {
+    "usesSharedBackgroundInspector": true,
+    "usesSharedBorderInspector": true,
+    "usesSharedEffectsInspector": true,
+    "shadowRule": {
+      "backgroundEnabled": "shadow applies to background only",
+      "backgroundDisabled": "shadow applies to visible content"
+    },
+    "localGlow": false
+  },
+  "inspector": {
+    "style": "denseRows",
+    "sections": [
+      "Layout",
+      "Timing",
+      "Content",
+      "Text",
+      "Background",
+      "Border",
+      "Effects"
+    ],
+    "controlRules": [
+      "Use InspectorDenseRow for toggles, menus, segmented controls, and swatches.",
+      "Use InspectorDenseSliderRow for numeric values.",
+      "Use mini switches aligned to the trailing edge.",
+      "Do not use loose VStack-native controls inside sections."
+    ]
+  }
+}
