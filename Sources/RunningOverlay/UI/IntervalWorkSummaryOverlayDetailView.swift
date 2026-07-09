@@ -149,6 +149,11 @@ struct IntervalWorkSummaryOverlayDetailView: View {
                 .foregroundStyle(NumericTokens.textPrimary)
                 .multilineTextAlignment(.trailing)
         }
+        InspectorDenseRow(label: "Label Align") {
+            InspectorDenseSegmented(values: OverlayTextAlignment.allCases, selection: labelAlignmentBinding(current: style)) {
+                Text($0.label).tag($0)
+            }
+        }
         InspectorDenseRow(label: "Accent") {
             InspectorDenseSegmented(values: IntervalCountdownColorMode.allCases, selection: styleBinding(\.accentColorMode, current: style)) {
                 Text($0.label).tag($0)
@@ -320,6 +325,13 @@ struct IntervalWorkSummaryOverlayDetailView: View {
         Binding(
             get: { current[keyPath: keyPath] },
             set: { value in project.mutateIntervalWorkSummaryStyleContinuous(elementID) { $0[keyPath: keyPath] = value } }
+        )
+    }
+
+    private func labelAlignmentBinding(current: IntervalWorkSummaryStyle) -> Binding<OverlayTextAlignment> {
+        Binding(
+            get: { current.resolvedComponentLabelAlignment },
+            set: { value in project.mutateIntervalWorkSummaryStyleContinuous(elementID) { $0.componentLabelAlignment = value } }
         )
     }
 

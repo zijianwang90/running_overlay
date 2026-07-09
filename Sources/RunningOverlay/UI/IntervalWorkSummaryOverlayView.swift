@@ -42,7 +42,7 @@ struct IntervalWorkSummaryOverlayView: View {
                 Text(layout.componentLabel.uppercased())
                     .font(font(labelStyle))
                     .foregroundStyle(Color(numericOverlay: labelStyle.color))
-                    .frame(maxWidth: .infinity, alignment: .center)
+                    .frame(maxWidth: .infinity, alignment: labelAlignment(layout.style.resolvedComponentLabelAlignment))
                     .lineLimit(1)
                     .padding(.bottom, 8)
             }
@@ -140,6 +140,14 @@ struct IntervalWorkSummaryOverlayView: View {
 
     private func font(_ item: IntervalWorkSummaryRenderLayout.TextItem, scale: Double) -> Font {
         .overlayFont(family: item.style.fontName, size: max(item.fontSize * scale, 6), overlayWeight: item.style.fontWeight)
+    }
+
+    private func labelAlignment(_ alignment: OverlayTextAlignment) -> Alignment {
+        switch alignment {
+        case .leading: .leading
+        case .center: .center
+        case .trailing: .trailing
+        }
     }
 }
 

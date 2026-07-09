@@ -162,6 +162,7 @@ struct IntervalWorkSummaryStyle: Equatable, Codable {
     var displayDuration: Double
     var unitSystem: IntervalWorkSummaryUnitSystem
     var componentLabel: String
+    var componentLabelAlignment: OverlayTextAlignment?
     var primaryMetric: IntervalWorkSummaryMetric
     var primaryLabelVisible: Bool
     var secondarySlots: [IntervalWorkSummarySlot]
@@ -183,6 +184,7 @@ struct IntervalWorkSummaryStyle: Equatable, Codable {
         displayDuration: 6,
         unitSystem: .metric,
         componentLabel: "WORK SUMMARY",
+        componentLabelAlignment: .center,
         primaryMetric: .lapTime,
         primaryLabelVisible: true,
         secondarySlots: [
@@ -211,6 +213,10 @@ struct IntervalWorkSummaryStyle: Equatable, Codable {
         case .secondaryValue: secondaryValueText
         case .secondaryLabel: secondaryLabelText
         }
+    }
+
+    var resolvedComponentLabelAlignment: OverlayTextAlignment {
+        componentLabelAlignment ?? .center
     }
 
     mutating func setTextStyle(_ textStyle: IntervalWorkSummaryTextStyle, for role: IntervalWorkSummaryTextRole) {

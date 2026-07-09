@@ -19,8 +19,8 @@ metrics.
 ## Layout
 
 - The component uses a single rounded rectangle container.
-- A small optional component label sits centered at the top. It must not use a
-  trailing rule or decorative line.
+- A small optional component label sits at the top. Users can align it left,
+  center, or right. It must not use a trailing rule or decorative line.
 - The primary metric is required and centered. Default: `Lap Time`.
 - Secondary metrics are optional. Users can show zero, one, two, or three
   secondary cells. Default: `Lap Pace`, `Lap Distance`, `Avg Heart Rate`.
@@ -46,6 +46,7 @@ metrics.
   - secondary value
   - secondary label
 - Component label and metric labels can be hidden.
+- Component label alignment is configurable: left, center, or right.
 - Primary value is always visible.
 - Color modes:
   - follow group color

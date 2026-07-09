@@ -151,16 +151,19 @@ struct OverlayTemplateTests {
         #expect(oldStyle.intervalWorkSummary.primaryMetric == .lapTime)
         #expect(oldStyle.intervalWorkSummary.secondarySlots.map(\.metric) == [.lapPace, .lapDistance, .avgHeartRate])
         #expect(oldStyle.intervalWorkSummary.componentLabelText.colorMode == .followGroupColor)
+        #expect(oldStyle.intervalWorkSummary.resolvedComponentLabelAlignment == .center)
 
         var style = OverlayStyle.default
         style.intervalWorkSummary.displayDuration = 8
         style.intervalWorkSummary.primaryMetric = .lapPace
+        style.intervalWorkSummary.componentLabelAlignment = .trailing
         style.intervalWorkSummary.secondarySlots[0].customLabel = "BEST"
         let data = try JSONEncoder().encode(style)
         let encoded = String(decoding: data, as: UTF8.self)
 
         #expect(encoded.contains("intervalWorkSummary"))
         #expect(encoded.contains("lapPace"))
+        #expect(encoded.contains("trailing"))
         #expect(encoded.contains("BEST"))
     }
 

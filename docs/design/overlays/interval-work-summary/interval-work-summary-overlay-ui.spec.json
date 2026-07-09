@@ -25,7 +25,13 @@
     },
     "label": {
       "text": "WORK SUMMARY",
-      "position": "topCenter",
+      "position": "top",
+      "alignmentOptions": [
+        "left",
+        "center",
+        "right"
+      ],
+      "defaultAlignment": "center",
       "visibleByDefault": true,
       "decorativeTrailingRule": false
     },
