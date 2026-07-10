@@ -217,45 +217,65 @@ struct IntervalWorkSummaryOverlayDetailView: View {
     @ViewBuilder
     private func textRows(_ style: IntervalWorkSummaryStyle) -> some View {
         ForEach(IntervalWorkSummaryTextRole.allCases) { role in
-            textRoleRows(role, style: style.textStyle(for: role))
+            textRoleGroup(role, style: style.textStyle(for: role))
+        }
+    }
+
+    private func textRoleGroup(_ role: IntervalWorkSummaryTextRole, style: IntervalWorkSummaryTextStyle) -> some View {
+        VStack(spacing: 0) {
+            textGroupHeader(role.label)
+            textRoleRows(role, style: style)
         }
     }
 
     @ViewBuilder
     private func textRoleRows(_ role: IntervalWorkSummaryTextRole, style: IntervalWorkSummaryTextStyle) -> some View {
         if role.isHideable {
-            InspectorDenseRow(label: "\(role.label) Visible") {
+            InspectorDenseRow(label: "Visible") {
                 miniToggle(textVisibilityBinding(role, current: currentStyle))
             }
         }
-        InspectorDenseRow(label: "\(role.label) Font") {
+        InspectorDenseRow(label: "Font") {
             fontMenu(selected: style.fontName) { fontName in
                 updateTextStyle(role) { $0.fontName = fontName }
             }
         }
         InspectorDenseSliderRow(
-            label: "\(role.label) Size",
+            label: "Size",
             value: textBinding(role, \.fontSize, current: style),
             range: 8...120,
             displayText: "\(Int(style.fontSize.rounded()))"
         )
-        InspectorDenseRow(label: "\(role.label) Weight") {
+        InspectorDenseRow(label: "Weight") {
             InspectorDenseSegmented(values: OverlayFontWeight.allCases, selection: textBinding(role, \.fontWeight, current: style)) {
                 Text($0.label).tag($0)
             }
         }
-        InspectorDenseRow(label: "\(role.label) Color") {
+        InspectorDenseRow(label: "Color") {
             InspectorDenseSegmented(values: IntervalCountdownColorMode.allCases, selection: textBinding(role, \.colorMode, current: style)) {
                 Text($0.label).tag($0)
             }
         }
         if style.colorMode == .customColor {
-            InspectorDenseRow(label: "\(role.label) Custom") {
+            InspectorDenseRow(label: "Custom") {
                 InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: style.customColor) { color in
                     updateTextStyle(role) { $0.customColor = color }
                 }
             }
         }
+    }
+
+    private func textGroupHeader(_ title: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(NumericTokens.textPrimary)
+            Spacer()
+        }
+        .frame(height: 32)
+        .padding(.horizontal, NumericTokens.panelPaddingX)
+        .background(NumericTokens.panelBackground)
+        .overlay(alignment: .bottom) { Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1) }
     }
 
     private var currentStyle: IntervalWorkSummaryStyle {

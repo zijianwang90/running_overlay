@@ -73,3 +73,7 @@ metrics.
 - Use dense slider rows with right-side numeric readouts.
 - Use segmented controls for color mode and metric selection where space allows;
   use dense menus for longer metric lists.
+- Group Text controls by role: Summary Label, Primary Value, Primary Label,
+  Secondary Value, and Secondary Label.
+- Inside each Text role group, use short row labels: Visible, Font, Size,
+  Weight, Color, and Custom. Do not prefix each row with the role name.

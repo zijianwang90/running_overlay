@@ -30,6 +30,8 @@ workout videos: one primary metric plus up to three secondary metrics.
 - Component label, primary label, and secondary labels are hideable.
 - Primary value and secondary values remain visible when their metric slot is
   visible.
+- Text controls are grouped by text role, with short row labels inside each
+  group to avoid wrapping in the narrow inspector.
 
 ## Export Notes
 
