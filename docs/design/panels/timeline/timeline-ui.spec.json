@@ -1,6 +1,6 @@
 {
   "name": "Timeline UI",
-  "updated": "2026-05-10",
+  "updated": "2026-07-13",
   "references": {
     "mockup": "./timeline.png",
     "relatedStyleSpec": "../../system/app-ui.md"
@@ -91,6 +91,14 @@
         "fill": "timeline.clipBlue",
         "rules": ["white border replaces splice border on selected clip", "border must not overpower clip fill or playhead"]
       }
+    },
+    {
+      "component": "TimelineMarqueeSelection",
+      "style": {
+        "fill": "timeline.dropTargetBorder at 14% opacity",
+        "border": "1 px dashed timeline.dropTargetBorder"
+      },
+      "rule": "Starts from empty timeline time-area space, including below the final video lane, and live-selects every intersecting clip across layers."
     }
   ],
   "preserveBehavior": [
@@ -112,12 +120,13 @@
     "rulerClickDrag": "seek playhead",
     "cHeldHoverScrub": "while C is held, mouse movement over the timeline time area seeks the playhead to the hovered time; C key-down/key-up events are consumed while the mouse is over the timeline to avoid macOS invalid-key feedback",
     "clipClick": "select clip",
+    "marqueeDrag": "drag from empty timeline time-area space, including below the final video lane, to select every intersecting clip across layers",
     "clipDragExpanded": "move effective start time",
     "clipDragCollapsed": "disabled; selection still works",
     "fitTrackDrag": "change TimelineModel.fitStartTime",
     "zoom": "Command-scroll, pinch, shortcuts, and slider",
     "playback": "scroll timeline to keep playhead visible",
-    "delete": "Delete/Forward Delete remove selected timeline clip when canvas has focus"
+    "delete": "Delete/Forward Delete remove all selected timeline clips as one undoable edit when canvas has focus"
   },
   "recommendedComponents": [
     "TimelinePanel",
@@ -130,6 +139,7 @@
     "TimelineLabelColumn",
     "TimelineFitTrack",
     "TimelineClipBlock",
+    "TimelineMarqueeSelection",
     "TimelinePlayhead",
     "TimelineDropTarget",
     "TimelineHoverInfoPill"

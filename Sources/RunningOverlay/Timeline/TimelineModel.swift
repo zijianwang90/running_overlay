@@ -188,6 +188,16 @@ struct TimelineModel: Equatable, Codable {
         tracks.removeAll { $0.clips.isEmpty }
     }
 
+    mutating func deleteClips(_ clipIDs: Set<TimelineClip.ID>) {
+        guard !clipIDs.isEmpty else {
+            return
+        }
+        for trackIndex in tracks.indices {
+            tracks[trackIndex].clips.removeAll { clipIDs.contains($0.id) }
+        }
+        tracks.removeAll { $0.clips.isEmpty }
+    }
+
     mutating func deleteClips(forMediaItemIDs mediaItemIDs: Set<MediaItem.ID>) {
         guard !mediaItemIDs.isEmpty else {
             return

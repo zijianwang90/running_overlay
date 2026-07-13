@@ -258,6 +258,22 @@ struct TimelineModelTests {
         #expect(timeline.clip(with: clip.id) == nil)
     }
 
+    @Test func deleteClipsRemovesSelectionAcrossTracksAndEmptyTracks() {
+        let first = TimelineClip(mediaItemID: nil, title: "a.mov", startTime: 0, duration: 5, alignmentOffset: 0, cameraGroupID: "Camera A")
+        let second = TimelineClip(mediaItemID: nil, title: "b.mov", startTime: 5, duration: 5, alignmentOffset: 0, cameraGroupID: "Camera A")
+        let third = TimelineClip(mediaItemID: nil, title: "c.mov", startTime: 0, duration: 5, alignmentOffset: 0, cameraGroupID: "Camera B")
+        var timeline = TimelineModel(tracks: [
+            TimelineTrack(name: "Camera A", clips: [first, second]),
+            TimelineTrack(name: "Camera B", clips: [third])
+        ])
+
+        timeline.deleteClips([first.id, third.id])
+
+        #expect(timeline.tracks.count == 1)
+        #expect(timeline.tracks[0].name == "Camera A")
+        #expect(timeline.tracks[0].clips.map(\.id) == [second.id])
+    }
+
     private func activityWithLaps(_ laps: [LapRecord]) -> ActivityTimeline {
         ActivityTimeline(
             startDate: Date(timeIntervalSince1970: 0),

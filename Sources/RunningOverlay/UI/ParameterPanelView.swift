@@ -8,6 +8,8 @@ struct ParameterPanelView: View {
             switch project.selection {
             case .timelineClip(let clipID):
                 ClipDetailView(clipID: clipID)
+            case .timelineClips:
+                InspectorOuterView()
             case .overlayElement(let elementID):
                 if let element = project.selectedOverlay(elementID) {
                     if element.type.isNumericOverlay {

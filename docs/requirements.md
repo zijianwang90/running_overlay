@@ -205,6 +205,7 @@ Requirements:
   - Left Arrow / Right Arrow: step the timeline playhead backward or forward by one project frame.
 - Timeline should expose a visible zoom slider in the timeline header.
 - Timeline should expose a collapse/expand control next to the zoom slider for hiding and restoring no-video gaps.
+- Dragging from empty timeline time-area space, including the workspace below the last video track, draws a marquee that selects every intersecting timeline clip across tracks.
 - Resizable region dividers should show resize cursors on hover.
 
 Current implementation status:
@@ -223,7 +224,7 @@ Future requirements:
 Editing history requirements:
 
 - User editing operations should support undo and redo.
-- Pressing Delete or Forward Delete should delete the selected timeline clip or selected overlay element.
+- Pressing Delete or Forward Delete should delete the selected timeline clip(s) or selected overlay element. Deleting multiple timeline clips is one undoable edit.
 - Delete and Forward Delete should work when focus is inside the AppKit timeline canvas.
 - The app should activate and become keyboard-focused when the user clicks inside the timeline so shortcuts are delivered to the app rather than another foreground app.
 - Undo and redo should be project-level and apply consistently across timeline and overlay editing.
