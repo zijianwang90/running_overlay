@@ -137,6 +137,30 @@ struct OverlaySharedIntervalTimelineView: View {
     }
 }
 
+struct OverlaySharedIntervalCountdownView: View {
+    let element: OverlayElement
+    let layout: IntervalCountdownRenderLayout
+
+    var body: some View {
+        IntervalCountdownOverlayView(
+            element: element,
+            layout: layout
+        )
+    }
+}
+
+struct OverlaySharedIntervalWorkSummaryView: View {
+    let element: OverlayElement
+    let layout: IntervalWorkSummaryRenderLayout
+
+    var body: some View {
+        IntervalWorkSummaryOverlayView(
+            element: element,
+            layout: layout
+        )
+    }
+}
+
 struct OverlaySharedZoneEdgeBarView: View {
     let element: OverlayElement
     let layout: ZoneEdgeBarRenderLayout

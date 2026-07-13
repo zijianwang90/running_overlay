@@ -9,6 +9,8 @@ Current module notes:
 - [Route Map Overlay](route-map-overlay.md)
 - [Interval HUD Bar Overlay](interval-hud-bar-overlay.md)
 - [Interval Timeline Overlay](interval-timeline-overlay.md)
+- [Interval Countdown Overlay](interval-countdown-overlay.md)
+- [Interval Work Summary Overlay](interval-work-summary-overlay.md)
 - [Zone Edge Bar Overlay](zone-edge-bar-overlay.md)
 - [Distance Timeline Overlay](distance-timeline-overlay.md)
 - [Elevation Chart Overlay](elevation-chart-overlay.md)

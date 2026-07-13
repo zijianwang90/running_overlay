@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1672" height="941" viewBox="0 0 1672 941">
+  <defs>
+    <radialGradient id="stageGlow" cx="48%" cy="38%" r="62%">
+      <stop offset="0%" stop-color="#1B2630"/>
+      <stop offset="55%" stop-color="#10161B"/>
+      <stop offset="100%" stop-color="#0B0F12"/>
+    </radialGradient>
+    <filter id="softShadow" x="-35%" y="-35%" width="170%" height="170%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#000000" flood-opacity="0.42"/>
+    </filter>
+    <filter id="ringGlowOrange" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#FF7A2F" flood-opacity="0.48"/>
+    </filter>
+    <filter id="ringGlowBlue" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#2F8CFF" flood-opacity="0.44"/>
+    </filter>
+    <filter id="ringGlowTeal" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#35D5C7" flood-opacity="0.42"/>
+    </filter>
+    <linearGradient id="previewFrame" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#20262C"/>
+      <stop offset="100%" stop-color="#0E1317"/>
+    </linearGradient>
+    <style>
+      .ui { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif; }
+      .mono { font-family: "SF Mono", "Menlo", "Monaco", monospace; }
+      .title { fill: #F3F6F8; font-size: 34px; font-weight: 650; }
+      .subtitle { fill: #B6BEC7; font-size: 16px; font-weight: 420; }
+      .note { fill: #8C98A4; font-size: 15px; font-weight: 420; }
+      .label { fill: #B6BEC7; font-size: 14px; font-weight: 650; letter-spacing: 1.4px; }
+      .smallLabel { fill: #AAB4BE; font-size: 12px; font-weight: 650; letter-spacing: 1.2px; }
+      .time { fill: #F3F6F8; font-size: 74px; font-weight: 720; }
+      .smallTime { fill: #F3F6F8; font-size: 35px; font-weight: 720; }
+      .caption { fill: #7E8893; font-size: 13px; font-weight: 450; }
+      .panelText { fill: #CFD6DD; font-size: 15px; font-weight: 520; }
+      .phase { font-size: 16px; font-weight: 740; letter-spacing: 1.8px; }
+      .work { fill: #FF7A2F; }
+      .rest { fill: #2F8CFF; }
+      .warmup { fill: #35D5C7; }
+    </style>
+  </defs>
+
+  <rect width="1672" height="941" fill="url(#stageGlow)"/>
+  <rect x="52" y="52" width="1568" height="837" rx="28" fill="#101418" stroke="#2B3238"/>
+  <text class="ui title" x="96" y="116">Interval Countdown / 组别倒计时</text>
+  <text class="ui subtitle" x="96" y="149">一个单一职责的小组件：显示当前 workout 组别的剩余时间，圆环用该组别颜色显示剩余进度。</text>
+
+  <g transform="translate(96 196)">
+    <rect x="0" y="0" width="1040" height="610" rx="18" fill="url(#previewFrame)" stroke="#2B3238"/>
+    <rect x="36" y="36" width="968" height="538" rx="12" fill="#12171C" stroke="#242B31"/>
+    <path d="M36 430 C176 340 268 372 380 286 C516 182 618 244 744 158 C840 92 922 112 1004 70 L1004 574 L36 574 Z" fill="#18222B"/>
+    <path d="M36 474 C178 398 287 418 411 338 C540 254 646 296 778 222 C877 166 944 182 1004 150 L1004 574 L36 574 Z" fill="#101820"/>
+    <path d="M36 404 C170 362 254 276 380 302 C486 324 572 408 704 326 C818 254 874 192 1004 210" fill="none" stroke="#32404A" stroke-width="3" opacity="0.75"/>
+    <path d="M36 494 C188 448 294 470 420 396 C548 320 638 346 770 286 C870 242 930 260 1004 236" fill="none" stroke="#24313B" stroke-width="3" opacity="0.9"/>
+
+    <g transform="translate(522 290)" filter="url(#softShadow)">
+      <circle r="172" fill="#0B0F12" opacity="0.74" stroke="#2B3238" stroke-width="1.5"/>
+      <circle r="142" fill="none" stroke="#2A3036" stroke-width="18" stroke-linecap="round"/>
+      <circle r="142" fill="none" stroke="#FF7A2F" stroke-width="18" stroke-linecap="round"
+              stroke-dasharray="625 267" transform="rotate(-90)" filter="url(#ringGlowOrange)"/>
+      <circle r="109" fill="#111820" opacity="0.88"/>
+      <text class="ui label" x="0" y="-64" text-anchor="middle">CURRENT SET</text>
+      <text class="ui phase work" x="0" y="-37" text-anchor="middle">WORK 5 / 10</text>
+      <text class="mono time" x="0" y="35" text-anchor="middle">0:42</text>
+      <text class="ui caption" x="0" y="68" text-anchor="middle">remaining</text>
+    </g>
+
+    <g transform="translate(744 114)">
+      <rect x="0" y="0" width="220" height="66" rx="8" fill="#0B0F12" opacity="0.64" stroke="#2B3238"/>
+      <circle cx="34" cy="33" r="10" fill="#FF7A2F"/>
+      <text class="ui panelText" x="56" y="29">Phase color</text>
+      <text class="ui caption" x="56" y="49">来自用户设定的组别颜色</text>
+    </g>
+  </g>
+
+  <g transform="translate(1182 216)">
+    <text class="ui label" x="0" y="0">DEFAULT SHAPE</text>
+    <text class="ui subtitle" x="0" y="31">默认只保留必要信息，不做复杂 preset。</text>
+
+    <g transform="translate(0 84)">
+      <rect x="0" y="0" width="346" height="92" rx="10" fill="#15191D" stroke="#2B3238"/>
+      <circle cx="48" cy="46" r="24" fill="none" stroke="#2A3036" stroke-width="7"/>
+      <circle cx="48" cy="46" r="24" fill="none" stroke="#FF7A2F" stroke-width="7" stroke-linecap="round"
+              stroke-dasharray="92 59" transform="rotate(-90 48 46)"/>
+      <text class="ui phase work" x="94" y="37">WORK</text>
+      <text class="ui caption" x="94" y="60">高强度组，圆环为橙色</text>
+      <text class="mono smallTime" x="286" y="57" text-anchor="middle">0:42</text>
+    </g>
+
+    <g transform="translate(0 196)">
+      <rect x="0" y="0" width="346" height="92" rx="10" fill="#15191D" stroke="#2B3238"/>
+      <circle cx="48" cy="46" r="24" fill="none" stroke="#2A3036" stroke-width="7"/>
+      <circle cx="48" cy="46" r="24" fill="none" stroke="#2F8CFF" stroke-width="7" stroke-linecap="round"
+              stroke-dasharray="62 89" transform="rotate(-90 48 46)" filter="url(#ringGlowBlue)"/>
+      <text class="ui phase rest" x="94" y="37">REST</text>
+      <text class="ui caption" x="94" y="60">恢复组，颜色跟随用户配置</text>
+      <text class="mono smallTime" x="286" y="57" text-anchor="middle">0:24</text>
+    </g>
+
+    <g transform="translate(0 308)">
+      <rect x="0" y="0" width="346" height="92" rx="10" fill="#15191D" stroke="#2B3238"/>
+      <circle cx="48" cy="46" r="24" fill="none" stroke="#2A3036" stroke-width="7"/>
+      <circle cx="48" cy="46" r="24" fill="none" stroke="#35D5C7" stroke-width="7" stroke-linecap="round"
+              stroke-dasharray="118 33" transform="rotate(-90 48 46)" filter="url(#ringGlowTeal)"/>
+      <text class="ui phase warmup" x="94" y="37">WARMUP</text>
+      <text class="ui caption" x="94" y="60">热身或冷身也使用同一规则</text>
+      <text class="mono smallTime" x="286" y="57" text-anchor="middle">8:12</text>
+    </g>
+
+    <g transform="translate(0 456)">
+      <text class="ui smallLabel" x="0" y="0">CONTENT RULES</text>
+      <text class="ui note" x="0" y="32">1. 中央时间 = 当前组别剩余时间</text>
+      <text class="ui note" x="0" y="60">2. 圆环长度 = 当前组别剩余比例</text>
+      <text class="ui note" x="0" y="88">3. 圆环颜色 = 当前 LapRecord.kind 颜色</text>
+      <text class="ui note" x="0" y="116">4. 标签可隐藏，时间和进度为核心</text>
+    </g>
+  </g>
+</svg>

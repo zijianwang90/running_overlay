@@ -22,6 +22,10 @@ struct ParameterPanelView: View {
                         IntervalHUDBarOverlayDetailView(elementID: elementID)
                     } else if element.type == .intervalTimeline {
                         IntervalTimelineOverlayDetailView(elementID: elementID)
+                    } else if element.type == .intervalCountdown {
+                        IntervalCountdownOverlayDetailView(elementID: elementID)
+                    } else if element.type == .intervalWorkSummary {
+                        IntervalWorkSummaryOverlayDetailView(elementID: elementID)
                     } else if element.type == .zoneEdgeBar {
                         ZoneEdgeBarOverlayDetailView(elementID: elementID)
                     } else if element.type == .routeMap {

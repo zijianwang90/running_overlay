@@ -216,6 +216,10 @@ struct ExportRenderPlan: Equatable {
             return OverlayRenderModel.intervalHUDBarLayout(for: element, in: context).rect
         case .intervalTimeline:
             return OverlayRenderModel.intervalTimelineLayout(for: element, in: context).rect
+        case .intervalCountdown:
+            return OverlayRenderModel.intervalCountdownLayout(for: element, in: context).rect
+        case .intervalWorkSummary:
+            return OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: context).rect
         case .zoneEdgeBar:
             return OverlayRenderModel.zoneEdgeBarLayout(for: element, in: context).rect
         case .weatherWidget:
@@ -1740,6 +1744,16 @@ private struct SwiftUIOverlayFrameView: View {
                         OverlaySharedIntervalTimelineView(
                             element: element,
                             layout: OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
+                        )
+                    case .intervalCountdown:
+                        OverlaySharedIntervalCountdownView(
+                            element: element,
+                            layout: OverlayRenderModel.intervalCountdownLayout(for: element, in: context)
+                        )
+                    case .intervalWorkSummary:
+                        OverlaySharedIntervalWorkSummaryView(
+                            element: element,
+                            layout: OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: context)
                         )
                     case .zoneEdgeBar:
                         OverlaySharedZoneEdgeBarView(

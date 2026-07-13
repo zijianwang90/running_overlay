@@ -127,6 +127,46 @@ struct OverlayTemplateTests {
         #expect(style.metricUnitText == IntervalHUDBarStyle.default.metricUnitText)
     }
 
+    @Test func intervalCountdownStyleDecodesFromOlderOverlayStyleAndEncodes() throws {
+        let oldStyle = try JSONDecoder().decode(OverlayStyle.self, from: Data("{}".utf8))
+
+        #expect(oldStyle.intervalCountdown.size == IntervalCountdownStyle.default.size)
+        #expect(oldStyle.intervalCountdown.countdownText.isVisible)
+        #expect(oldStyle.intervalCountdown.phaseText.colorMode == .followGroupColor)
+
+        var style = OverlayStyle.default
+        style.intervalCountdown.helperText.isVisible = false
+        style.intervalCountdown.countdownText.colorMode = .followGroupColor
+        let data = try JSONEncoder().encode(style)
+        let encoded = String(decoding: data, as: UTF8.self)
+
+        #expect(encoded.contains("intervalCountdown"))
+        #expect(encoded.contains("followGroupColor"))
+    }
+
+    @Test func intervalWorkSummaryStyleDecodesFromOlderOverlayStyleAndEncodes() throws {
+        let oldStyle = try JSONDecoder().decode(OverlayStyle.self, from: Data("{}".utf8))
+
+        #expect(oldStyle.intervalWorkSummary.width == IntervalWorkSummaryStyle.default.width)
+        #expect(oldStyle.intervalWorkSummary.primaryMetric == .lapTime)
+        #expect(oldStyle.intervalWorkSummary.secondarySlots.map(\.metric) == [.lapPace, .lapDistance, .avgHeartRate])
+        #expect(oldStyle.intervalWorkSummary.componentLabelText.colorMode == .followGroupColor)
+        #expect(oldStyle.intervalWorkSummary.resolvedComponentLabelAlignment == .center)
+
+        var style = OverlayStyle.default
+        style.intervalWorkSummary.displayDuration = 8
+        style.intervalWorkSummary.primaryMetric = .lapPace
+        style.intervalWorkSummary.componentLabelAlignment = .trailing
+        style.intervalWorkSummary.secondarySlots[0].customLabel = "BEST"
+        let data = try JSONEncoder().encode(style)
+        let encoded = String(decoding: data, as: UTF8.self)
+
+        #expect(encoded.contains("intervalWorkSummary"))
+        #expect(encoded.contains("lapPace"))
+        #expect(encoded.contains("trailing"))
+        #expect(encoded.contains("BEST"))
+    }
+
     @Test func overlayStyleDecodesMissingZoneEdgeBarWithDefaults() throws {
         let json = """
         {
