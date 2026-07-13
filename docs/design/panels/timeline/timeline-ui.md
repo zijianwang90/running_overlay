@@ -165,6 +165,7 @@ Clip visual:
 Selection:
 
 - Selected clip uses a crisp 2 px white border around the clip block.
+- Multiple clips selected by a marquee each use the same crisp white border.
 - Selection border should not overpower the clip fill or playhead.
 
 Track background:
@@ -227,6 +228,8 @@ Rules:
 - Ruler click/drag seeks the playhead.
 - Holding `C` while moving the mouse over the timeline time area scrubs the playhead to the hovered time, matching DaVinci-style hover scrubbing. The timeline should consume `C` key-down/key-up events while the mouse is over the timeline so macOS does not play invalid-key feedback during hover scrub.
 - Clip click selects the clip.
+- Dragging from empty timeline time-area space, including below the final video lane, draws a translucent blue marquee with a dashed blue edge; every clip intersecting the marquee is selected across layers.
+- Releasing a marquee commits the multi-selection. Delete and Forward Delete remove all selected clips in one undoable edit.
 - Expanded-mode clip drag changes effective start time.
 - Collapsed-mode clip drag is disabled, but selection still works.
 - FIT track drag changes FIT alignment.

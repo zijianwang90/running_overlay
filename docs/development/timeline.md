@@ -32,6 +32,7 @@ Current implementation:
 - The AppKit timeline handles self-drawn ruler, ruler hover data, tracks, clips, playhead, clip dragging, ruler seeking, `C`-held hover scrubbing, media drop, and Command-scroll zoom.
 - The AppKit timeline draws a muted-red playhead with a small downward-pointing triangle inside the ruler band; the triangle's tip connects to a thin vertical line that extends from the ruler through the visible tracks, and neither part is allowed to extend above the ruler.
 - Selected timeline clips draw a 2 px white border on top of their blue fill, replacing the default dark splice border for the selected block only.
+- Dragging from empty timeline time-area space, including below the last video track, draws a translucent blue marquee and live-selects every intersecting clip across tracks. The selection commits to `ProjectDocument` on mouse-up, and Delete or Forward Delete removes the selected clips as one undoable edit while refreshing their linked Media Pool alignment states.
 - The ruler hover info pill draws in a reserved band above the time scale as a rounded panel with a small downward-pointing arrow on its bottom edge whose tip aligns with the hovered ruler position.
 - AppKit timeline inputs are passed as explicit SwiftUI values so FIT import, playhead, zoom, selection, and media changes reliably refresh the timeline.
 - Timeline model time is project time. `TimelineModel.fitStartTime` maps project time back to FIT activity elapsed time.

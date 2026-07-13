@@ -743,6 +743,20 @@ final class ProjectDocument: ObservableObject {
         selection = .timelineClip(clipID)
     }
 
+    func selectClips(_ clipIDs: Set<TimelineClip.ID>) {
+        let existingClipIDs = clipIDs.filter { timeline.clip(with: $0) != nil }
+        switch existingClipIDs.count {
+        case 0:
+            selection = .none
+        case 1:
+            if let clipID = existingClipIDs.first {
+                selection = .timelineClip(clipID)
+            }
+        default:
+            selection = .timelineClips(existingClipIDs)
+        }
+    }
+
     func selectedClip(_ clipID: TimelineClip.ID) -> TimelineClip? {
         timeline.clip(with: clipID)
     }
@@ -905,9 +919,7 @@ final class ProjectDocument: ObservableObject {
         var updatedTimeline = timeline
         updatedTimeline.deleteClips(forMediaItemIDs: mediaItemIDs)
         timeline = updatedTimeline
-        if case .timelineClip(let clipID) = selection, timeline.clip(with: clipID) == nil {
-            selection = .none
-        }
+        reconcileTimelineSelection()
         statusMessage = "Deleted \(mediaItemIDs.count) media item(s) from the media pool."
     }
 
@@ -964,9 +976,7 @@ final class ProjectDocument: ObservableObject {
             settings.previewTrackName = nil
         }
         settings.disabledPreviewTrackNames.remove(name)
-        if case .timelineClip(let clipID) = selection, timeline.clip(with: clipID) == nil {
-            selection = .none
-        }
+        reconcileTimelineSelection()
         statusMessage = "Deleted timeline layer: \(name)."
     }
 
@@ -2846,21 +2856,33 @@ final class ProjectDocument: ObservableObject {
     func deleteSelectedItem() {
         switch selection {
         case .timelineClip(let clipID):
-            guard let clip = timeline.clip(with: clipID) else {
-                return
-            }
-            registerUndoPoint()
-            var updatedTimeline = timeline
-            updatedTimeline.deleteClip(clipID)
-            timeline = updatedTimeline
-            refreshMediaAlignmentAfterTimelineClipDeletion(mediaItemID: clip.mediaItemID)
-            selection = .none
-            statusMessage = "Deleted timeline clip."
+            deleteTimelineClips([clipID])
+        case .timelineClips(let clipIDs):
+            deleteTimelineClips(clipIDs)
         case .overlayElement(let elementID):
             deleteOverlay(elementID)
         case .none:
             break
         }
+    }
+
+    private func deleteTimelineClips(_ clipIDs: Set<TimelineClip.ID>) {
+        let clips = clipIDs.compactMap { timeline.clip(with: $0) }
+        guard !clips.isEmpty else {
+            return
+        }
+
+        registerUndoPoint()
+        var updatedTimeline = timeline
+        updatedTimeline.deleteClips(Set(clips.map(\.id)))
+        timeline = updatedTimeline
+        for mediaItemID in Set(clips.compactMap(\.mediaItemID)) {
+            refreshMediaAlignmentAfterTimelineClipDeletion(mediaItemID: mediaItemID)
+        }
+        selection = .none
+        statusMessage = clips.count == 1
+            ? "Deleted timeline clip."
+            : "Deleted \(clips.count) timeline clips."
     }
 
     func saveOverlayTemplate(named name: String) {
@@ -3676,6 +3698,19 @@ final class ProjectDocument: ObservableObject {
         )
     }
 
+    private func reconcileTimelineSelection() {
+        switch selection {
+        case .timelineClip(let clipID):
+            if timeline.clip(with: clipID) == nil {
+                selection = .none
+            }
+        case .timelineClips(let clipIDs):
+            selectClips(clipIDs)
+        case .overlayElement, .none:
+            break
+        }
+    }
+
     private func matchMediaItems(_ mediaItemIDs: Set<MediaItem.ID>, toTrackName trackName: String) {
         let targetIDs = mediaItemIDs.filter { id in
             mediaItems.contains { $0.id == id }
@@ -4083,6 +4118,7 @@ private struct CopiedOverlayConfiguration {
 enum EditorSelection: Equatable {
     case none
     case timelineClip(TimelineClip.ID)
+    case timelineClips(Set<TimelineClip.ID>)
     case overlayElement(OverlayElement.ID)
 }
 

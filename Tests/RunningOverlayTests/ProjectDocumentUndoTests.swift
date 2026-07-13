@@ -160,6 +160,91 @@ struct ProjectDocumentUndoTests {
         #expect(project.timeline.tracks[0].clips.count == 1)
     }
 
+    @Test func deletingMarqueeSelectedClipsIsOneUndoableEdit() {
+        let project = ProjectDocument()
+        project.activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 100),
+            duration: 100,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        let timestampMedia = MediaItem(
+            displayName: "timestamp.mov",
+            fileURL: nil,
+            duration: 10,
+            inferredStartDate: Date(timeIntervalSince1970: 120),
+            cameraGroupID: "Layer 1",
+            alignmentStatus: .aligned(source: "timestamp")
+        )
+        let manualMedia = MediaItem(
+            displayName: "manual.mov",
+            fileURL: nil,
+            duration: 10,
+            inferredStartDate: nil,
+            cameraGroupID: "Layer 2",
+            alignmentStatus: .aligned(source: "manual")
+        )
+        let retainedMedia = MediaItem(
+            displayName: "retained.mov",
+            fileURL: nil,
+            duration: 10,
+            inferredStartDate: Date(timeIntervalSince1970: 140),
+            cameraGroupID: "Layer 1",
+            alignmentStatus: .aligned(source: "timestamp")
+        )
+        let timestampClip = TimelineClip(
+            mediaItemID: timestampMedia.id,
+            title: timestampMedia.displayName,
+            startTime: 20,
+            duration: 10,
+            alignmentOffset: 0,
+            cameraGroupID: "Layer 1"
+        )
+        let manualClip = TimelineClip(
+            mediaItemID: manualMedia.id,
+            title: manualMedia.displayName,
+            startTime: 20,
+            duration: 10,
+            alignmentOffset: 0,
+            cameraGroupID: "Layer 2"
+        )
+        let retainedClip = TimelineClip(
+            mediaItemID: retainedMedia.id,
+            title: retainedMedia.displayName,
+            startTime: 40,
+            duration: 10,
+            alignmentOffset: 0,
+            cameraGroupID: "Layer 1"
+        )
+        let selectedClipIDs: Set<TimelineClip.ID> = [timestampClip.id, manualClip.id]
+        project.mediaItems = [timestampMedia, manualMedia, retainedMedia]
+        project.timeline = TimelineModel(tracks: [
+            TimelineTrack(name: "Layer 1", clips: [timestampClip, retainedClip]),
+            TimelineTrack(name: "Layer 2", clips: [manualClip])
+        ])
+        project.selectClips(selectedClipIDs)
+
+        project.deleteSelectedItem()
+
+        #expect(project.timeline.clip(with: timestampClip.id) == nil)
+        #expect(project.timeline.clip(with: manualClip.id) == nil)
+        #expect(project.timeline.clip(with: retainedClip.id) != nil)
+        #expect(project.mediaItems[0].alignmentStatus == .readyToMatch(source: "timestamp"))
+        #expect(project.mediaItems[1].alignmentStatus == .needsManualPlacement)
+        #expect(project.mediaItems[2].alignmentStatus == .aligned(source: "timestamp"))
+        #expect(project.selection == .none)
+
+        project.undo()
+
+        #expect(project.timeline.clip(with: timestampClip.id) != nil)
+        #expect(project.timeline.clip(with: manualClip.id) != nil)
+        #expect(project.timeline.clip(with: retainedClip.id) != nil)
+        #expect(project.mediaItems[0].alignmentStatus == .aligned(source: "timestamp"))
+        #expect(project.mediaItems[1].alignmentStatus == .aligned(source: "manual"))
+        #expect(project.selection == .timelineClips(selectedClipIDs))
+    }
+
     @Test func deletingTimestampMatchedClipReturnsMediaStatusToReadyToMatch() throws {
         let project = ProjectDocument()
         project.activity = ActivityTimeline(

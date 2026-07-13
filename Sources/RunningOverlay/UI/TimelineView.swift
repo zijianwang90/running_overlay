@@ -195,6 +195,17 @@ private struct TimelineHoverInfo {
     let text: String
 }
 
+enum TimelineMarqueeGeometry {
+    static func startRegion(in bounds: CGRect, timelineStartX: CGFloat, trackStartY: CGFloat) -> CGRect {
+        CGRect(
+            x: timelineStartX,
+            y: trackStartY,
+            width: max(bounds.maxX - timelineStartX, 0),
+            height: max(bounds.maxY - trackStartY, 0)
+        )
+    }
+}
+
 private struct RulerHoverTooltip: View {
     let info: TimelineHoverInfo
 
@@ -255,13 +266,15 @@ private final class TimelineCanvasNSView: NSView {
     private var playhead: TimeInterval = 0
     private var visibleStartTime: TimeInterval = 0
     private var visibleEndTime: TimeInterval = 1
-    private var selectedClipID: TimelineClip.ID?
+    private var selectedClipIDs: Set<TimelineClip.ID> = []
     private var mediaItemsAreAvailable = false
     private var isCollapsed = false
     private var pixelsPerSecond: Double = 1
     private var draggingClipID: TimelineClip.ID?
     private var dragInitialStart: TimeInterval = 0
     private var dragCurrentStart: TimeInterval = 0
+    private var marqueeAnchor: CGPoint?
+    private var marqueeCurrentPoint: CGPoint?
     private var hoverPoint: CGPoint?
     private var isMediaDragActive = false
     private var mediaDropTargetTrackName: String?
@@ -366,12 +379,16 @@ private final class TimelineCanvasNSView: NSView {
         playhead = timeline.playhead
         mediaItemsAreAvailable = hasMediaItems
         self.isCollapsed = isCollapsed
-        selectedClipID = {
-            if case .timelineClip(let clipID) = selection {
-                return clipID
+        if marqueeAnchor == nil {
+            switch selection {
+            case .timelineClip(let clipID):
+                selectedClipIDs = [clipID]
+            case .timelineClips(let clipIDs):
+                selectedClipIDs = clipIDs
+            case .overlayElement, .none:
+                selectedClipIDs = []
             }
-            return nil
-        }()
+        }
         let displayBounds = timeline.displayBounds(activityDuration: activity.duration, collapsed: isCollapsed)
         visibleStartTime = displayBounds.lowerBound
         visibleEndTime = displayBounds.upperBound
@@ -471,6 +488,7 @@ private final class TimelineCanvasNSView: NSView {
             drawFitTrack()
         }
         drawTracks()
+        drawMarqueeSelection()
         if activityDuration > 0 || !tracks.isEmpty {
             drawPlayhead()
         }
@@ -602,6 +620,11 @@ private final class TimelineCanvasNSView: NSView {
             }
         } else {
             project.clearSelection()
+            selectedClipIDs = []
+            if marqueeStartRegion.contains(point) {
+                marqueeAnchor = point
+                marqueeCurrentPoint = point
+            }
         }
     }
 
@@ -609,6 +632,13 @@ private final class TimelineCanvasNSView: NSView {
         guard let project else { return }
         let point = convert(event.locationInWindow, from: nil)
         if scrubPlayheadIfNeeded(at: point) {
+            return
+        }
+
+        if marqueeAnchor != nil {
+            marqueeCurrentPoint = point
+            selectedClipIDs = clipsIntersectingMarquee()
+            needsDisplay = true
             return
         }
 
@@ -626,6 +656,13 @@ private final class TimelineCanvasNSView: NSView {
     }
 
     override func mouseUp(with event: NSEvent) {
+        if marqueeAnchor != nil {
+            project?.selectClips(selectedClipIDs)
+            marqueeAnchor = nil
+            marqueeCurrentPoint = nil
+            needsDisplay = true
+            return
+        }
         if let draggingClipID {
             project?.moveTimelineClipFromDrag(draggingClipID, toEffectiveStartTime: dragCurrentStart)
         }
@@ -931,7 +968,7 @@ private final class TimelineCanvasNSView: NSView {
         let x = x(forProjectTime: effectiveStart)
         let width = max(CGFloat(clip.duration * pixelsPerSecond), 1)
         let rect = CGRect(x: x, y: y + 6, width: width, height: trackHeight - 12)
-        let isSelected = clip.id == selectedClipID
+        let isSelected = selectedClipIDs.contains(clip.id)
         let color = isSelected ? NSColor.timelineClipBlue : NSColor.timelineClipBlue.withAlphaComponent(0.72)
         let roundedCorners = clipRoundedCorners(for: clip, in: track)
         let fillPath = roundedPath(rect, radius: 4, corners: roundedCorners)
@@ -1039,18 +1076,80 @@ private final class TimelineCanvasNSView: NSView {
         for (index, track) in displayTracks.enumerated() {
             let y = trackStartY + CGFloat(index) * (trackHeight + trackGap)
             for clip in track.clips {
-                let rect = CGRect(
-                    x: x(forProjectTime: clip.effectiveStartTime),
-                    y: y + 6,
-                    width: max(CGFloat(clip.duration * pixelsPerSecond), 1),
-                    height: trackHeight - 12
-                )
+                let rect = clipRect(clip, trackY: y)
                 if rect.contains(point) {
                     return (track, clip)
                 }
             }
         }
         return nil
+    }
+
+    private func clipRect(_ clip: TimelineClip, trackY: CGFloat) -> CGRect {
+        CGRect(
+            x: x(forProjectTime: clip.effectiveStartTime),
+            y: trackY + 6,
+            width: max(CGFloat(clip.duration * pixelsPerSecond), 1),
+            height: trackHeight - 12
+        )
+    }
+
+    private var marqueeStartRegion: CGRect {
+        let timelineStartX = labelWidth + contentPadding
+        return TimelineMarqueeGeometry.startRegion(
+            in: bounds,
+            timelineStartX: timelineStartX,
+            trackStartY: trackStartY
+        )
+    }
+
+    private var marqueeRect: CGRect? {
+        guard let marqueeAnchor, let marqueeCurrentPoint else {
+            return nil
+        }
+        let timelineStartX = labelWidth + contentPadding
+        let start = CGPoint(
+            x: max(marqueeAnchor.x, timelineStartX),
+            y: max(marqueeAnchor.y, trackStartY)
+        )
+        let current = CGPoint(
+            x: max(marqueeCurrentPoint.x, timelineStartX),
+            y: max(marqueeCurrentPoint.y, trackStartY)
+        )
+        return CGRect(
+            x: min(start.x, current.x),
+            y: min(start.y, current.y),
+            width: abs(current.x - start.x),
+            height: abs(current.y - start.y)
+        )
+    }
+
+    private func clipsIntersectingMarquee() -> Set<TimelineClip.ID> {
+        guard let marqueeRect, marqueeRect.width > 2 || marqueeRect.height > 2 else {
+            return []
+        }
+        var clipIDs: Set<TimelineClip.ID> = []
+        for (index, track) in displayTracks.enumerated() {
+            let y = trackStartY + CGFloat(index) * (trackHeight + trackGap)
+            for clip in track.clips where clipRect(clip, trackY: y).intersects(marqueeRect) {
+                clipIDs.insert(clip.id)
+            }
+        }
+        return clipIDs
+    }
+
+    private func drawMarqueeSelection() {
+        guard let marqueeRect, marqueeRect.width > 2 || marqueeRect.height > 2 else {
+            return
+        }
+        NSColor.timelineDropTargetBorder.withAlphaComponent(0.14).setFill()
+        marqueeRect.fill()
+
+        NSColor.timelineDropTargetBorder.withAlphaComponent(0.9).setStroke()
+        let path = NSBezierPath(rect: marqueeRect.insetBy(dx: 0.5, dy: 0.5))
+        path.setLineDash([5, 3], count: 2, phase: 0)
+        path.lineWidth = 1
+        path.stroke()
     }
 
     private func trackName(atY y: CGFloat) -> String? {
