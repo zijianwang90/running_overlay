@@ -751,6 +751,16 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
                     element: element,
                     layout: OverlayRenderModel.intervalTimelineLayout(for: element, in: renderContext)
                 )
+            case .intervalCountdown:
+                OverlaySharedIntervalCountdownView(
+                    element: element,
+                    layout: OverlayRenderModel.intervalCountdownLayout(for: element, in: renderContext)
+                )
+            case .intervalWorkSummary:
+                OverlaySharedIntervalWorkSummaryView(
+                    element: element,
+                    layout: OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: renderContext)
+                )
             case .zoneEdgeBar:
                 OverlaySharedZoneEdgeBarView(
                     element: element,

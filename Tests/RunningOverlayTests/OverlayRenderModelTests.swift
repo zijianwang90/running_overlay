@@ -1171,6 +1171,101 @@ struct OverlayRenderModelTests {
         #expect(lapPace?.unit == "/km")
     }
 
+    @MainActor
+    @Test func intervalCountdownLayoutUsesCurrentLapRemainingTimeAndGroupColor() {
+        var style = OverlayStyle.default
+        style.intervalCountdown.fillColorMode = .followGroupColor
+        let element = OverlayElement(type: .intervalCountdown, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 40
+        )
+
+        let layout = OverlayRenderModel.intervalCountdownLayout(for: element, in: context)
+
+        #expect(layout.countdownText == "1:00")
+        #expect(layout.phaseText == "WORK")
+        #expect(layout.repText == "1 / 2")
+        #expect(layout.progress == 0.6)
+        #expect(layout.ringColor == IntervalKindColorPreferences.currentSnapshot().color(for: .active))
+        #expect(layout.textItems.contains { $0.role == .countdown && $0.text == "1:00" })
+    }
+
+    @Test func intervalCountdownCanHideEveryTextRoleExceptCountdown() {
+        var style = OverlayStyle.default
+        style.intervalCountdown.helperText.isVisible = false
+        style.intervalCountdown.phaseText.isVisible = false
+        style.intervalCountdown.repText.isVisible = false
+        style.intervalCountdown.captionText.isVisible = false
+        let element = OverlayElement(type: .intervalCountdown, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 120
+        )
+
+        let layout = OverlayRenderModel.intervalCountdownLayout(for: element, in: context)
+
+        #expect(layout.textItems.map(\.role) == [.countdown])
+        #expect(layout.countdownText == "0:40")
+        #expect(layout.lapKind == .rest)
+    }
+
+    @MainActor
+    @Test func intervalWorkSummaryShowsCompletedActiveLapInsideDisplayWindow() {
+        var style = OverlayStyle.default
+        style.intervalWorkSummary = .default
+        let element = OverlayElement(type: .intervalWorkSummary, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 103
+        )
+
+        let layout = OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: context)
+
+        #expect(layout.isVisible)
+        #expect(layout.completedLap?.lapIndex == 0)
+        #expect(layout.primary.value == "1:40")
+        #expect(layout.primary.label == "LAP TIME")
+        #expect(layout.secondaryItems.map(\.label) == ["PACE", "DIST", "HR"])
+        #expect(layout.secondaryItems[0].value == "4:20")
+        #expect(layout.secondaryItems[0].unit == "min/km")
+        #expect(layout.secondaryItems[1].value == "200")
+        #expect(layout.secondaryItems[1].unit == "m")
+        #expect(layout.secondaryItems[2].value == "165")
+        #expect(layout.secondaryItems[2].unit == "bpm")
+        #expect(layout.accentColor == IntervalKindColorPreferences.currentSnapshot().color(for: .active))
+    }
+
+    @Test func intervalWorkSummaryHidesOutsideDisplayWindowAndRespectsSlotVisibility() {
+        var style = OverlayStyle.default
+        style.intervalWorkSummary.displayDuration = 6
+        style.intervalWorkSummary.secondarySlots[0].isVisible = false
+        style.intervalWorkSummary.secondarySlots[1].customLabel = "METERS"
+        style.intervalWorkSummary.secondarySlots[2].labelVisible = false
+        let element = OverlayElement(type: .intervalWorkSummary, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let inside = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 103
+        )
+        let outside = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 107
+        )
+
+        let insideLayout = OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: inside)
+        let outsideLayout = OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: outside)
+
+        #expect(insideLayout.isVisible)
+        #expect(insideLayout.secondaryItems.map(\.label) == ["METERS", "HR"])
+        #expect(insideLayout.secondaryItems.last?.labelVisible == false)
+        #expect(!outsideLayout.isVisible)
+    }
+
     @Test func intervalHUDBarMetricsIncludeAllNumericOverlayTypes() {
         let intervalMetricTypes = Set(IntervalHUDBarMetric.numericCases.compactMap(\.elementType))
         let numericTypes = Set(ActivityMetricCatalog.selectableElementTypes)
@@ -1869,6 +1964,37 @@ struct OverlayRenderModelTests {
     }
 
     @MainActor
+    @Test func overlayFrameRendererWritesIntervalCountdownPNG() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.removeItem(at: directory)
+        }
+
+        var style = OverlayStyle.default
+        style.intervalCountdown = .default
+        style.backgroundRadius = 172
+        let outputURL = directory.appendingPathComponent("interval-countdown.png")
+        let layout = OverlayLayout(elements: [
+            OverlayElement(type: .intervalCountdown, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        ])
+        try OverlayFrameRenderer.renderPNG(
+            to: outputURL,
+            request: OverlayFrameRenderRequest(
+                size: CGSize(width: 640, height: 360),
+                layout: layout,
+                activity: sampleIntervalActivity(),
+                elapsedTime: 40,
+                renderGuides: false
+            )
+        )
+
+        let data = try Data(contentsOf: outputURL)
+        #expect(data.starts(with: [0x89, 0x50, 0x4E, 0x47]))
+        #expect(data.count > 100)
+    }
+
+    @MainActor
     @Test func overlayFrameRendererWritesDistanceTimelineAnimatedSVGSlotPNG() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -1954,6 +2080,43 @@ struct OverlayRenderModelTests {
                 activity: ProjectDocument.calibrationActivity(),
                 elapsedTime: 1.5,
                 renderGuides: true
+            )
+        )
+
+        let data = try Data(contentsOf: outputURL)
+        #expect(data.starts(with: [0x89, 0x50, 0x4E, 0x47]))
+        #expect(data.count > 100)
+    }
+
+    @MainActor
+    @Test func overlayFrameRendererWritesIntervalWorkSummaryPNG() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.removeItem(at: directory)
+        }
+
+        var style = OverlayStyle.default
+        style.intervalWorkSummary = .default
+        style.backgroundEnabled = true
+        style.backgroundColor = .black
+        style.backgroundOpacity = 0.76
+        style.backgroundRadius = 24
+        style.backgroundPaddingX = 38
+        style.backgroundPaddingY = 26
+        style.borderEnabled = true
+        let outputURL = directory.appendingPathComponent("interval-work-summary.png")
+        let layout = OverlayLayout(elements: [
+            OverlayElement(type: .intervalWorkSummary, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        ])
+        try OverlayFrameRenderer.renderPNG(
+            to: outputURL,
+            request: OverlayFrameRenderRequest(
+                size: CGSize(width: 640, height: 360),
+                layout: layout,
+                activity: sampleIntervalActivity(),
+                elapsedTime: 103,
+                renderGuides: false
             )
         )
 

@@ -621,6 +621,52 @@ final class ProjectDocument: ObservableObject {
             style.shadowOpacity = 0.34
             style.shadowRadius = 10
         }
+        if type == .intervalCountdown {
+            style.intervalCountdown = .default
+            style.backgroundEnabled = true
+            style.backgroundColor = .black
+            style.backgroundOpacity = 0.74
+            style.backgroundRadius = 172
+            style.backgroundPaddingX = 0
+            style.backgroundPaddingY = 0
+            style.borderEnabled = true
+            style.borderColor = .white
+            style.borderOpacity = 0.16
+            style.borderWidth = 1
+            style.shadowEnabled = true
+            style.shadowColor = .black
+            style.shadowOpacity = 0.42
+            style.shadowRadius = 18
+            style.shadowOffsetX = 0
+            style.shadowOffsetY = 8
+            style.shadowThickness = 1
+            style.glowEnabled = false
+            style.glowColor = .white
+            style.glowIntensity = 0
+        }
+        if type == .intervalWorkSummary {
+            style.intervalWorkSummary = .default
+            style.backgroundEnabled = true
+            style.backgroundColor = .black
+            style.backgroundOpacity = 0.76
+            style.backgroundRadius = 24
+            style.backgroundPaddingX = 38
+            style.backgroundPaddingY = 26
+            style.borderEnabled = true
+            style.borderColor = .white
+            style.borderOpacity = 0.18
+            style.borderWidth = 1
+            style.shadowEnabled = true
+            style.shadowColor = .black
+            style.shadowOpacity = 0.38
+            style.shadowRadius = 16
+            style.shadowOffsetX = 0
+            style.shadowOffsetY = 8
+            style.shadowThickness = 1
+            style.glowEnabled = false
+            style.glowColor = .white
+            style.glowIntensity = 0
+        }
         if type == .zoneEdgeBar {
             style.zoneEdgeBar = .default
             style.backgroundEnabled = false
@@ -1802,6 +1848,30 @@ final class ProjectDocument: ObservableObject {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
         mutate(&overlayLayout.elements[index].style.intervalTimeline)
+    }
+
+    func mutateIntervalCountdownStyle(_ elementID: OverlayElement.ID, _ mutate: (inout IntervalCountdownStyle) -> Void) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.intervalCountdown)
+    }
+
+    func mutateIntervalCountdownStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout IntervalCountdownStyle) -> Void) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.intervalCountdown)
+    }
+
+    func mutateIntervalWorkSummaryStyle(_ elementID: OverlayElement.ID, _ mutate: (inout IntervalWorkSummaryStyle) -> Void) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.intervalWorkSummary)
+    }
+
+    func mutateIntervalWorkSummaryStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout IntervalWorkSummaryStyle) -> Void) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
+        mutate(&overlayLayout.elements[index].style.intervalWorkSummary)
     }
 
     func mutateZoneEdgeBarStyle(_ elementID: OverlayElement.ID, _ mutate: (inout ZoneEdgeBarStyle) -> Void) {

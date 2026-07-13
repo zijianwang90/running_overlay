@@ -218,6 +218,10 @@ enum OverlayValueFormatter {
             return OverlayValueComponents(label: "Interval HUD Bar", shortLabel: "INTERVAL", value: "", unit: "")
         case .intervalTimeline:
             return OverlayValueComponents(label: "Interval Timeline", shortLabel: "TIMELINE", value: "", unit: "")
+        case .intervalCountdown:
+            return OverlayValueComponents(label: "Interval Countdown", shortLabel: "TIMER", value: "", unit: "")
+        case .intervalWorkSummary:
+            return OverlayValueComponents(label: "Interval Work Summary", shortLabel: "SUMMARY", value: "", unit: "")
         case .zoneEdgeBar:
             return OverlayValueComponents(label: "Zone Edge Bar", shortLabel: "ZONE", value: "", unit: "")
         case .routeMap:

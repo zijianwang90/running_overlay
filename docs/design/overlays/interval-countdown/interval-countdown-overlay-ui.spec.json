@@ -1,0 +1,294 @@
+{
+  "name": "Interval Countdown Overlay UI",
+  "lastUpdated": "2026-07-08",
+  "appliesToOverlayTypes": [
+    "intervalCountdown"
+  ],
+  "defaultName": "Interval Countdown",
+  "mockups": {
+    "primary": "./interval-countdown-overlay-concept.png",
+    "source": "./interval-countdown-overlay-concept.svg"
+  },
+  "purpose": "Compact circular countdown for the current structured-workout segment.",
+  "scope": {
+    "include": [
+      "current-segment remaining time",
+      "single circular progress ring",
+      "current group color resolution",
+      "optional phase, rep, helper, and caption text",
+      "independent typography controls per text role",
+      "ring-local glow",
+      "shared background, border, shadow, and glow behavior"
+    ],
+    "excludeV1": [
+      "multi-metric cells",
+      "full workout timeline",
+      "complex preset board",
+      "manual workout plan editor",
+      "separate interval color palette when project interval colors are available"
+    ]
+  },
+  "dataSources": {
+    "interval": "ActivityTimeline.laps and LapRecord.kind",
+    "remainingTime": "Current LapRecord end time minus current activity elapsed time.",
+    "progress": "Current segment remaining fraction, clamped to 0...1.",
+    "groupColors": "Existing interval color settings for warmup, active/work, rest, cooldown, and unknown."
+  },
+  "content": {
+    "requiredRoles": [
+      "countdownTime"
+    ],
+    "optionalRoles": [
+      "helperLabel",
+      "phaseLabel",
+      "repLabel",
+      "caption"
+    ],
+    "visibilityRules": {
+      "countdownTime": "Always visible; no hide toggle.",
+      "helperLabel": "Hideable.",
+      "phaseLabel": "Hideable.",
+      "repLabel": "Hideable.",
+      "caption": "Hideable.",
+      "layoutWhenHidden": "Hidden optional roles do not reserve layout rows. Remaining visible content recenters in the inner circle while countdownTime stays dominant."
+    },
+    "phaseLabels": {
+      "warmup": "WU",
+      "active": "WORK",
+      "rest": "REST",
+      "cooldown": "CD",
+      "unknown": "LAP"
+    },
+    "repRules": {
+      "total": "Count active laps only.",
+      "active": "Current active lap ordinal among active laps.",
+      "rest": "Most recent or next active rep context, consistent with Interval HUD Bar semantics.",
+      "warmupCooldown": "No rep label unless implementation has a clear structured-workout rep context."
+    }
+  },
+  "layout": {
+    "shape": "circular overlay",
+    "defaultSize": 344,
+    "minimumSize": 160,
+    "maximumSize": 720,
+    "innerContent": "Centered stack inside progress ring.",
+    "progressStartAngle": -90,
+    "progressDirection": "clockwise",
+    "jitterPrevention": "Use tabular or monospaced digits for countdownTime."
+  },
+  "progressRing": {
+    "track": {
+      "color": "#2A3036",
+      "opacity": 1
+    },
+    "fill": {
+      "colorMode": [
+        "followGroupColor",
+        "customColor"
+      ],
+      "defaultColorMode": "followGroupColor",
+      "customColor": "#FF7A2F",
+      "sourceWhenFollowing": "Current LapRecord.kind resolved through interval group colors."
+    },
+    "width": {
+      "default": 18,
+      "range": [
+        4,
+        48
+      ]
+    },
+    "lineCap": [
+      "round",
+      "butt"
+    ],
+    "localGlow": {
+      "enabled": true,
+      "defaultEnabled": true,
+      "defaultIntensity": 0.45,
+      "color": "progress fill color",
+      "target": "progress fill only",
+      "doesNotAffect": [
+        "track",
+        "background",
+        "countdownTime",
+        "helperLabel",
+        "phaseLabel",
+        "repLabel",
+        "caption"
+      ]
+    }
+  },
+  "typography": {
+    "roles": {
+      "countdownTime": {
+        "hideable": false,
+        "defaultFontFamily": "systemMonospaced",
+        "defaultFontSize": 74,
+        "defaultFontWeight": "bold",
+        "defaultColorMode": "customColor",
+        "defaultCustomColor": "#F3F6F8"
+      },
+      "helperLabel": {
+        "hideable": true,
+        "defaultVisible": true,
+        "defaultFontFamily": "system",
+        "defaultFontSize": 14,
+        "defaultFontWeight": "semibold",
+        "defaultColorMode": "customColor",
+        "defaultCustomColor": "#B6BEC7"
+      },
+      "phaseLabel": {
+        "hideable": true,
+        "defaultVisible": true,
+        "defaultFontFamily": "system",
+        "defaultFontSize": 16,
+        "defaultFontWeight": "bold",
+        "defaultColorMode": "followGroupColor",
+        "defaultCustomColor": "#FF7A2F"
+      },
+      "repLabel": {
+        "hideable": true,
+        "defaultVisible": true,
+        "defaultFontFamily": "system",
+        "defaultFontSize": 16,
+        "defaultFontWeight": "bold",
+        "defaultColorMode": "followGroupColor",
+        "defaultCustomColor": "#FF7A2F"
+      },
+      "caption": {
+        "hideable": true,
+        "defaultVisible": true,
+        "defaultFontFamily": "system",
+        "defaultFontSize": 13,
+        "defaultFontWeight": "regular",
+        "defaultColorMode": "customColor",
+        "defaultCustomColor": "#7E8893"
+      }
+    },
+    "controlsPerRole": [
+      "visible when role is hideable",
+      "fontFamily",
+      "fontSize",
+      "fontWeight",
+      "colorMode: followGroupColor/customColor",
+      "customColor when colorMode is customColor"
+    ],
+    "colorModeRules": {
+      "followGroupColor": "Use current interval group color resolved from LapRecord.kind.",
+      "customColor": "Use one fixed user-selected color for that text role.",
+      "countdownTime": "Supports both color modes but remains visible."
+    }
+  },
+  "colors": {
+    "groupColorKinds": [
+      "warmup",
+      "active",
+      "rest",
+      "cooldown",
+      "unknown"
+    ],
+    "defaults": {
+      "warmup": "#35D5C7",
+      "active": "#FF7A2F",
+      "rest": "#2F8CFF",
+      "cooldown": "#A985FF",
+      "unknown": "#51C96B"
+    },
+    "source": "Reuse Project Settings interval colors and helpers shared with Interval HUD Bar and Interval Timeline."
+  },
+  "backgroundBorderEffects": {
+    "sharedModules": [
+      "OverlayBackgroundInspectorModule",
+      "OverlayBorderInspectorModule",
+      "OverlayEffectsInspectorModule"
+    ],
+    "background": {
+      "enabledByDefault": true,
+      "shape": "circle or rounded square bounds matching the circular component; renderer should visually read as a circular dark backing.",
+      "paddingRule": "Background padding expands background and border bounds only; it must not scale, move, or compress ring or text.",
+      "disabledBehavior": "No synthetic card/backing is drawn; ring and text render as foreground parts over video."
+    },
+    "shadow": {
+      "usesSharedFields": [
+        "shadowEnabled",
+        "shadowColor",
+        "shadowOpacity",
+        "shadowRadius",
+        "shadowThickness",
+        "shadowOffsetX",
+        "shadowOffsetY"
+      ],
+      "targetWhenBackgroundEnabled": "background surface only",
+      "targetWhenBackgroundDisabled": "all visible internal parts: progress track, progress fill, countdownTime, helperLabel, phaseLabel, repLabel, caption",
+      "previewExportParity": true
+    },
+    "globalGlow": {
+      "usesSharedFields": [
+        "glowEnabled",
+        "glowColor",
+        "glowIntensity"
+      ],
+      "targetWhenBackgroundDisabled": "all visible internal parts glow together, including text, progress track, and progress fill",
+      "targetWhenBackgroundEnabled": "foreground content group inside the background",
+      "relationshipToRingLocalGlow": "Global glow and Progress Ring Glow are separate effects. If both are enabled, progress fill receives both the group glow and the ring-local glow."
+    },
+    "fadeOut": {
+      "target": "background only",
+      "disabledWhenBackgroundDisabled": true
+    }
+  },
+  "inspector": {
+    "sections": [
+      "Layout",
+      "Countdown",
+      "Progress Ring",
+      "Text",
+      "Background",
+      "Border",
+      "Effects"
+    ],
+    "sectionOrderRequirement": "The final three sections are Background, Border, Effects and must reuse shared inspector modules.",
+    "controls": {
+      "countdown": [
+        "Time format",
+        "Show helper label",
+        "Show phase label",
+        "Show rep label",
+        "Show caption"
+      ],
+      "progressRing": [
+        "Ring width",
+        "Track color",
+        "Track opacity",
+        "Fill color mode",
+        "Fill custom color",
+        "Line cap",
+        "Ring Glow",
+        "Ring Glow Intensity"
+      ],
+      "text": "Expose one row/group per typography role with visibility when applicable, font family, size, weight, color mode, and custom color.",
+      "background": "Shared OverlayBackgroundInspectorModule.",
+      "border": "Shared OverlayBorderInspectorModule.",
+      "effects": "Shared OverlayEffectsInspectorModule. Shadow and global glow targets follow background-enabled rules in this spec."
+    }
+  },
+  "rendering": {
+    "previewExportSharedLayout": true,
+    "progressClamping": "Clamp remaining fraction to 0...1.",
+    "fallbackState": "When there is no current lap, show 0:00 or --:-- based on existing interval overlay empty-state conventions, and use unknown group color.",
+    "animation": "Countdown and progress ring update at Layer Data FPS.",
+    "accessibility": "Inspector controls must label every icon-only color/follow toggle and expose current role names."
+  },
+  "acceptanceCriteria": [
+    "Countdown time is always visible and remains centered when every optional text role is hidden.",
+    "Each text role can independently change font family, size, weight, color mode, and custom color.",
+    "Each hideable text role can be hidden without reserving blank layout space.",
+    "Follow Group Color resolves text and progress fill colors from the current LapRecord.kind.",
+    "Progress Ring Glow affects only the progress fill.",
+    "With Background enabled and Shadow enabled, only the background surface casts a shadow.",
+    "With Background disabled and Shadow enabled, all visible internal parts cast shadow.",
+    "With Background disabled and shared/global Glow enabled, all visible internal parts glow together.",
+    "If ring-local glow and shared/global glow are both enabled, the progress fill receives both effects without changing layout.",
+    "Preview and export match for ring geometry, text placement, shadow target, and glow target."
+  ]
+}

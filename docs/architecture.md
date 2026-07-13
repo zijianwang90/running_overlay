@@ -109,7 +109,7 @@ Current overlay element types:
 | Category | Types |
 |---|---|
 | Metrics | heartRate, heartRateZone, pace, avgPace, lapPace, distance, elapsedTime, realTime, elevation, cadence, power, calories, verticalOscillation, groundContactTime, strideLength, verticalRatio, groundContactBalance, temperature, grade |
-| Charts | distanceTimeline, elevationChart, runningGauge, intervalHUDBar |
+| Charts | distanceTimeline, elevationChart, runningGauge, intervalHUDBar, intervalTimeline, intervalCountdown, intervalWorkSummary, zoneEdgeBar |
 | Route | routeMap |
 
 ### Preview

@@ -22,8 +22,10 @@
 		C53F6DF5BB62E9FC94359ADE /* MediaMetadataReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB3706EF933E51DD56E3DB3F /* MediaMetadataReader.swift */; };
 		EEEBA1A96FC70758DD156808 /* IconAsset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E06F18B36B9DAE8DC661028 /* IconAsset.swift */; };
 		0B32EE4EA8C52B6E11C07173 /* IconRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D4454531541307D02CC99F0 /* IconRendering.swift */; };
+		505201F7D9C9F935ED2F5D62 /* IntervalCountdownModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2892B738A4CD3E15BEDEA7 /* IntervalCountdownModel.swift */; };
 		19EF8C93CE9BDC13CEE820A0 /* IntervalHUDBarModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0DD0817C755BB15C06D4DD3 /* IntervalHUDBarModel.swift */; };
 		8751FDC9C7AB471F9B391322 /* IntervalTimelineModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21CF32B5539498AB91DE004D /* IntervalTimelineModel.swift */; };
+		2F0A3DB53175A09573057E7C /* IntervalWorkSummaryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5907BD991E0F8D08BE042CA1 /* IntervalWorkSummaryModel.swift */; };
 		5D185D174F6F58964E511D8D /* OverlayElement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 022324E020F9CA428D605BAE /* OverlayElement.swift */; };
 		01B113FB4F931C0073DA43CE /* OverlayFeatherMaskRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3607C65FDA8E44A18DECC13A /* OverlayFeatherMaskRenderer.swift */; };
 		E15FD3E37F356CAFF7DD61B7 /* OverlayIconRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC0A8D78A8E37DB1A156545 /* OverlayIconRenderer.swift */; };
@@ -56,11 +58,15 @@
 		C033652F4E55099F5BFA3418 /* OverlayEffectsInspectorRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F732C14C95002025A9D48FF /* OverlayEffectsInspectorRows.swift */; };
 		25935657E2143409B2D0E469 /* OverlayLayoutInspectorRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8736D5E831C9EE425287BB6D /* OverlayLayoutInspectorRows.swift */; };
 		A0FF617C52D36B4FF31C39AE /* OverlayStatsBarInspectorRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D9EE4ED81769B01C36DA41 /* OverlayStatsBarInspectorRows.swift */; };
+		06A30F76446BD08927E6D355 /* IntervalCountdownOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B836FD4CC7F87A6AD4596542 /* IntervalCountdownOverlayDetailView.swift */; };
+		0D7F6B1982D3BCBC5F553761 /* IntervalCountdownOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE50469A5760A9B81B787E07 /* IntervalCountdownOverlayView.swift */; };
 		59057771567BF600457FE55B /* IntervalHUDBarOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED495F8E0375E698C9AE25EC /* IntervalHUDBarOverlayDetailView.swift */; };
 		3C1EB60523EB722D4E914941 /* IntervalHUDBarOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DF81FCBA7DDAC8828808FF3 /* IntervalHUDBarOverlayView.swift */; };
 		D4D9EA12459E9948AEB8C3D8 /* IntervalKindColorsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B329E5D3E300ED44D0E15D95 /* IntervalKindColorsView.swift */; };
 		88D3D200D4A8E505130D40B9 /* IntervalTimelineOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D87F4F7E16312D32C2782A67 /* IntervalTimelineOverlayDetailView.swift */; };
 		293A9CF426D6F848BDE2BD2C /* IntervalTimelineOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7099F69CD31D3AF815E16DC4 /* IntervalTimelineOverlayView.swift */; };
+		15DB68476C82B3EDD53DAE55 /* IntervalWorkSummaryOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BBB67605AA7C66C4CA3D73A /* IntervalWorkSummaryOverlayDetailView.swift */; };
+		9B04AA4B103D38834395511D /* IntervalWorkSummaryOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97DCDD349415E0AF7D2795AD /* IntervalWorkSummaryOverlayView.swift */; };
 		16BE9082B25E4DC867510C8D /* MainEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 201DF00A012914ACC6A5ECF7 /* MainEditorView.swift */; };
 		7C006B80FEEA0C8C7631C5FD /* MediaBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48DB45C477FB52D74EE4588E /* MediaBrowserView.swift */; };
 		10EBE9F553F1190D6EAC144E /* NumericOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6DD4C828B0CFC04F18CC7F5 /* NumericOverlayDetailView.swift */; };
@@ -133,8 +139,10 @@
 		FB3706EF933E51DD56E3DB3F /* MediaMetadataReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/MediaImport/MediaMetadataReader.swift"; sourceTree = SOURCE_ROOT; };
 		7E06F18B36B9DAE8DC661028 /* IconAsset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/IconAsset.swift"; sourceTree = SOURCE_ROOT; };
 		4D4454531541307D02CC99F0 /* IconRendering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/IconRendering.swift"; sourceTree = SOURCE_ROOT; };
+		BB2892B738A4CD3E15BEDEA7 /* IntervalCountdownModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/IntervalCountdownModel.swift"; sourceTree = SOURCE_ROOT; };
 		B0DD0817C755BB15C06D4DD3 /* IntervalHUDBarModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/IntervalHUDBarModel.swift"; sourceTree = SOURCE_ROOT; };
 		21CF32B5539498AB91DE004D /* IntervalTimelineModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/IntervalTimelineModel.swift"; sourceTree = SOURCE_ROOT; };
+		5907BD991E0F8D08BE042CA1 /* IntervalWorkSummaryModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/IntervalWorkSummaryModel.swift"; sourceTree = SOURCE_ROOT; };
 		022324E020F9CA428D605BAE /* OverlayElement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/OverlayElement.swift"; sourceTree = SOURCE_ROOT; };
 		3607C65FDA8E44A18DECC13A /* OverlayFeatherMaskRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/OverlayFeatherMaskRenderer.swift"; sourceTree = SOURCE_ROOT; };
 		8AC0A8D78A8E37DB1A156545 /* OverlayIconRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/OverlayIconRenderer.swift"; sourceTree = SOURCE_ROOT; };
@@ -167,11 +175,15 @@
 		8F732C14C95002025A9D48FF /* OverlayEffectsInspectorRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/InspectorRows/OverlayEffectsInspectorRows.swift"; sourceTree = SOURCE_ROOT; };
 		8736D5E831C9EE425287BB6D /* OverlayLayoutInspectorRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/InspectorRows/OverlayLayoutInspectorRows.swift"; sourceTree = SOURCE_ROOT; };
 		E6D9EE4ED81769B01C36DA41 /* OverlayStatsBarInspectorRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/InspectorRows/OverlayStatsBarInspectorRows.swift"; sourceTree = SOURCE_ROOT; };
+		B836FD4CC7F87A6AD4596542 /* IntervalCountdownOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/IntervalCountdownOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
+		AE50469A5760A9B81B787E07 /* IntervalCountdownOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/IntervalCountdownOverlayView.swift"; sourceTree = SOURCE_ROOT; };
 		ED495F8E0375E698C9AE25EC /* IntervalHUDBarOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/IntervalHUDBarOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
 		8DF81FCBA7DDAC8828808FF3 /* IntervalHUDBarOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/IntervalHUDBarOverlayView.swift"; sourceTree = SOURCE_ROOT; };
 		B329E5D3E300ED44D0E15D95 /* IntervalKindColorsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/IntervalKindColorsView.swift"; sourceTree = SOURCE_ROOT; };
 		D87F4F7E16312D32C2782A67 /* IntervalTimelineOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/IntervalTimelineOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
 		7099F69CD31D3AF815E16DC4 /* IntervalTimelineOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/IntervalTimelineOverlayView.swift"; sourceTree = SOURCE_ROOT; };
+		4BBB67605AA7C66C4CA3D73A /* IntervalWorkSummaryOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/IntervalWorkSummaryOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
+		97DCDD349415E0AF7D2795AD /* IntervalWorkSummaryOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/IntervalWorkSummaryOverlayView.swift"; sourceTree = SOURCE_ROOT; };
 		201DF00A012914ACC6A5ECF7 /* MainEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/MainEditorView.swift"; sourceTree = SOURCE_ROOT; };
 		48DB45C477FB52D74EE4588E /* MediaBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/MediaBrowserView.swift"; sourceTree = SOURCE_ROOT; };
 		F6DD4C828B0CFC04F18CC7F5 /* NumericOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/NumericOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
@@ -245,8 +257,10 @@
 			FB3706EF933E51DD56E3DB3F /* MediaMetadataReader.swift */,
 			7E06F18B36B9DAE8DC661028 /* IconAsset.swift */,
 			4D4454531541307D02CC99F0 /* IconRendering.swift */,
+			BB2892B738A4CD3E15BEDEA7 /* IntervalCountdownModel.swift */,
 			B0DD0817C755BB15C06D4DD3 /* IntervalHUDBarModel.swift */,
 			21CF32B5539498AB91DE004D /* IntervalTimelineModel.swift */,
+			5907BD991E0F8D08BE042CA1 /* IntervalWorkSummaryModel.swift */,
 			022324E020F9CA428D605BAE /* OverlayElement.swift */,
 			3607C65FDA8E44A18DECC13A /* OverlayFeatherMaskRenderer.swift */,
 			8AC0A8D78A8E37DB1A156545 /* OverlayIconRenderer.swift */,
@@ -279,11 +293,15 @@
 			8F732C14C95002025A9D48FF /* OverlayEffectsInspectorRows.swift */,
 			8736D5E831C9EE425287BB6D /* OverlayLayoutInspectorRows.swift */,
 			E6D9EE4ED81769B01C36DA41 /* OverlayStatsBarInspectorRows.swift */,
+			B836FD4CC7F87A6AD4596542 /* IntervalCountdownOverlayDetailView.swift */,
+			AE50469A5760A9B81B787E07 /* IntervalCountdownOverlayView.swift */,
 			ED495F8E0375E698C9AE25EC /* IntervalHUDBarOverlayDetailView.swift */,
 			8DF81FCBA7DDAC8828808FF3 /* IntervalHUDBarOverlayView.swift */,
 			B329E5D3E300ED44D0E15D95 /* IntervalKindColorsView.swift */,
 			D87F4F7E16312D32C2782A67 /* IntervalTimelineOverlayDetailView.swift */,
 			7099F69CD31D3AF815E16DC4 /* IntervalTimelineOverlayView.swift */,
+			4BBB67605AA7C66C4CA3D73A /* IntervalWorkSummaryOverlayDetailView.swift */,
+			97DCDD349415E0AF7D2795AD /* IntervalWorkSummaryOverlayView.swift */,
 			201DF00A012914ACC6A5ECF7 /* MainEditorView.swift */,
 			48DB45C477FB52D74EE4588E /* MediaBrowserView.swift */,
 			F6DD4C828B0CFC04F18CC7F5 /* NumericOverlayDetailView.swift */,
@@ -383,8 +401,10 @@
 			C53F6DF5BB62E9FC94359ADE /* MediaMetadataReader.swift in Sources */,
 			EEEBA1A96FC70758DD156808 /* IconAsset.swift in Sources */,
 			0B32EE4EA8C52B6E11C07173 /* IconRendering.swift in Sources */,
+			505201F7D9C9F935ED2F5D62 /* IntervalCountdownModel.swift in Sources */,
 			19EF8C93CE9BDC13CEE820A0 /* IntervalHUDBarModel.swift in Sources */,
 			8751FDC9C7AB471F9B391322 /* IntervalTimelineModel.swift in Sources */,
+			2F0A3DB53175A09573057E7C /* IntervalWorkSummaryModel.swift in Sources */,
 			5D185D174F6F58964E511D8D /* OverlayElement.swift in Sources */,
 			01B113FB4F931C0073DA43CE /* OverlayFeatherMaskRenderer.swift in Sources */,
 			E15FD3E37F356CAFF7DD61B7 /* OverlayIconRenderer.swift in Sources */,
@@ -417,11 +437,15 @@
 			C033652F4E55099F5BFA3418 /* OverlayEffectsInspectorRows.swift in Sources */,
 			25935657E2143409B2D0E469 /* OverlayLayoutInspectorRows.swift in Sources */,
 			A0FF617C52D36B4FF31C39AE /* OverlayStatsBarInspectorRows.swift in Sources */,
+			06A30F76446BD08927E6D355 /* IntervalCountdownOverlayDetailView.swift in Sources */,
+			0D7F6B1982D3BCBC5F553761 /* IntervalCountdownOverlayView.swift in Sources */,
 			59057771567BF600457FE55B /* IntervalHUDBarOverlayDetailView.swift in Sources */,
 			3C1EB60523EB722D4E914941 /* IntervalHUDBarOverlayView.swift in Sources */,
 			D4D9EA12459E9948AEB8C3D8 /* IntervalKindColorsView.swift in Sources */,
 			88D3D200D4A8E505130D40B9 /* IntervalTimelineOverlayDetailView.swift in Sources */,
 			293A9CF426D6F848BDE2BD2C /* IntervalTimelineOverlayView.swift in Sources */,
+			15DB68476C82B3EDD53DAE55 /* IntervalWorkSummaryOverlayDetailView.swift in Sources */,
+			9B04AA4B103D38834395511D /* IntervalWorkSummaryOverlayView.swift in Sources */,
 			16BE9082B25E4DC867510C8D /* MainEditorView.swift in Sources */,
 			7C006B80FEEA0C8C7631C5FD /* MediaBrowserView.swift in Sources */,
 			10EBE9F553F1190D6EAC144E /* NumericOverlayDetailView.swift in Sources */,

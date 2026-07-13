@@ -57,6 +57,10 @@ This directory stores implementation-facing product design references for Runnin
 - [Interval Timeline Overlay UI Spec](./overlays/interval-timeline/interval-timeline-overlay-ui.md): horizontal interval-workout schedule overlay with centered current-lap window and high-repetition handling.
 - [Interval Timeline Overlay UI Structured Spec](./overlays/interval-timeline/interval-timeline-overlay-ui.spec.json): machine-readable layout modes, defaults, inspector sections, and readability rules.
 - [Interval Timeline mockup](./overlays/interval-timeline/interval-timeline-overlay-mockup.png): visual reference for centered current-lap timeline, clipped repetitions, and NOW marker.
+- [Interval Countdown Overlay UI Concept](./overlays/interval-countdown/interval-countdown-overlay-ui.md): compact circular current-segment countdown concept for interval workouts.
+- [Interval Countdown Overlay UI Structured Spec](./overlays/interval-countdown/interval-countdown-overlay-ui.spec.json): machine-readable text, progress-ring, color, shadow, and glow rules for the circular countdown overlay.
+- [Interval Work Summary Overlay UI Concept](./overlays/interval-work-summary/interval-work-summary-overlay-ui.md): compact post-work-lap summary card with one primary metric and up to three secondary metrics.
+- [Interval Work Summary Overlay UI Structured Spec](./overlays/interval-work-summary/interval-work-summary-overlay-ui.spec.json): machine-readable trigger, metric, typography, timing, and inspector rules for the work summary overlay.
 - [Zone Edge Bar Overlay UI Spec](./overlays/zone-edge-bar/zone-edge-bar-overlay-ui.md): independent HR/pace zone strip for edge-pinned or free placement.
 - [Zone Edge Bar Overlay UI Structured Spec](./overlays/zone-edge-bar/zone-edge-bar-overlay-ui.spec.json): machine-readable placement, defaults, marker, and inspector rules.
 - [Weather Widget Overlay UI Spec](./overlays/weather-widget/weather-widget-overlay-ui.md): weather-app-style overlay presets, location/temperature content rules, and shared condition icon guidance.
