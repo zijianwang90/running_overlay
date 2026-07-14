@@ -1747,12 +1747,13 @@ struct OverlayFrameRenderer {
         track.stroke()
 
         let progress = NSBezierPath()
+        let isClockwise = layout.style.resolvedRingDirection == .clockwise
         progress.appendArc(
             withCenter: CGPoint(x: ringRect.midX, y: ringRect.midY),
             radius: min(ringRect.width, ringRect.height) / 2,
             startAngle: 90,
-            endAngle: 90 - 360 * layout.progress,
-            clockwise: true
+            endAngle: isClockwise ? 90 - 360 * layout.progress : 90 + 360 * layout.progress,
+            clockwise: isClockwise
         )
         progress.lineWidth = layout.ringWidth
         progress.lineCapStyle = layout.style.roundedLineCap ? .round : .butt

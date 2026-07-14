@@ -160,6 +160,16 @@ struct IntervalCountdownOverlayDetailView: View {
                 }
             }
         }
+        InspectorDenseRow(label: "Direction") {
+            InspectorDenseSegmented(
+                values: IntervalCountdownRingDirection.allCases,
+                selection: ringDirectionBinding(current: style)
+            ) {
+                Text($0.label)
+                    .tag($0)
+                    .help($0.progressDescription)
+            }
+        }
         InspectorDenseRow(label: "Rounded Ends") {
             miniToggle(styleBinding(\.roundedLineCap, current: style))
         }
@@ -266,6 +276,15 @@ struct IntervalCountdownOverlayDetailView: View {
         Binding(
             get: { current[keyPath: keyPath] },
             set: { value in project.mutateIntervalCountdownStyleContinuous(elementID) { $0[keyPath: keyPath] = value } }
+        )
+    }
+
+    private func ringDirectionBinding(current: IntervalCountdownStyle) -> Binding<IntervalCountdownRingDirection> {
+        Binding(
+            get: { current.resolvedRingDirection },
+            set: { direction in
+                project.mutateIntervalCountdownStyle(elementID) { $0.ringDirection = direction }
+            }
         )
     }
 

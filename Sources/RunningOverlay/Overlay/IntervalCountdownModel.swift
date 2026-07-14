@@ -14,6 +14,27 @@ enum IntervalCountdownColorMode: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+enum IntervalCountdownRingDirection: String, CaseIterable, Identifiable, Codable {
+    case clockwise
+    case counterclockwise
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .clockwise: "Clockwise"
+        case .counterclockwise: "Counterclockwise"
+        }
+    }
+
+    var progressDescription: String {
+        switch self {
+        case .clockwise: "Full to Empty"
+        case .counterclockwise: "Empty to Full"
+        }
+    }
+}
+
 enum IntervalCountdownTextRole: String, CaseIterable, Identifiable, Codable {
     case helper
     case phase
@@ -104,6 +125,9 @@ struct IntervalCountdownStyle: Equatable, Codable {
     var trackOpacity: Double
     var fillColorMode: IntervalCountdownColorMode
     var fillCustomColor: OverlayColor
+    /// `nil` preserves the original clockwise remaining-time behavior for
+    /// projects and templates saved before this control existed.
+    var ringDirection: IntervalCountdownRingDirection?
     var roundedLineCap: Bool
     var ringGlowEnabled: Bool
     var ringGlowIntensity: Double
@@ -120,6 +144,7 @@ struct IntervalCountdownStyle: Equatable, Codable {
         trackOpacity: 1,
         fillColorMode: .followGroupColor,
         fillCustomColor: .orange,
+        ringDirection: .clockwise,
         roundedLineCap: true,
         ringGlowEnabled: true,
         ringGlowIntensity: 0.45,
@@ -129,6 +154,10 @@ struct IntervalCountdownStyle: Equatable, Codable {
         countdownText: .defaultFor(role: .countdown),
         captionText: .defaultFor(role: .caption)
     )
+
+    var resolvedRingDirection: IntervalCountdownRingDirection {
+        ringDirection ?? .clockwise
+    }
 
     mutating func setTextStyle(_ textStyle: IntervalCountdownTextStyle, for role: IntervalCountdownTextRole) {
         switch role {

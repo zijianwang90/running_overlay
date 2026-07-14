@@ -73,7 +73,13 @@
     "maximumSize": 720,
     "innerContent": "Centered stack inside progress ring.",
     "progressStartAngle": -90,
-    "progressDirection": "clockwise",
+    "progressDirection": {
+      "default": "clockwise",
+      "options": {
+        "clockwise": "Draw the remaining fraction clockwise from the top; starts Full and reaches Empty.",
+        "counterclockwise": "Draw the elapsed fraction counterclockwise from the top; starts Empty and reaches Full."
+      }
+    },
     "jitterPrevention": "Use tabular or monospaced digits for countdownTime."
   },
   "progressRing": {
@@ -88,7 +94,14 @@
       ],
       "defaultColorMode": "followGroupColor",
       "customColor": "#FF7A2F",
-      "sourceWhenFollowing": "Current LapRecord.kind resolved through interval group colors."
+      "sourceWhenFollowing": "Current LapRecord.kind resolved through interval group colors.",
+      "direction": {
+        "control": "Direction",
+        "options": [
+          "Clockwise",
+          "Counterclockwise"
+        ]
+      }
     },
     "width": {
       "default": 18,

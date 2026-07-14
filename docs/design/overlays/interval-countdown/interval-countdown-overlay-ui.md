@@ -70,6 +70,8 @@ Rules:
 - Fill color follows the current interval group color by default.
 - Fill color may use a custom single color if the user disables following the
   group color.
+- Direction offers two paired countdown treatments: clockwise `Full to Empty`
+  is the default; counterclockwise `Empty to Full` fills the elapsed portion.
 - Ring width is adjustable.
 - Ring-local glow is controlled separately from shared overlay glow. It applies
   only to the progress fill, not the track, background, or text.
@@ -119,6 +121,7 @@ Keep the first version intentionally small:
 - Ring width.
 - Progress ring color mode.
 - Progress ring custom color.
+- Progress ring direction (`Clockwise` / `Counterclockwise`).
 - Progress ring glow toggle and intensity.
 - Show / hide phase label.
 - Show / hide rep label.

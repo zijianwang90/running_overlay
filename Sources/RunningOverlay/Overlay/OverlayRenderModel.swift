@@ -611,6 +611,9 @@ enum OverlayRenderModel {
         let remainingTime = max(lapEnd - t, 0)
         let elapsedProgress = context.activity.lapProgress(at: t, byDistance: false)
         let remainingProgress = 1 - clampedProgress(elapsedProgress)
+        let ringProgress = style.resolvedRingDirection == .clockwise
+            ? remainingProgress
+            : elapsedProgress
         let countdown = formatDuration(remainingTime)
         let phase = phaseLabel(kind)
         let rep = repText(activity: context.activity, lap: lap)
@@ -645,7 +648,7 @@ enum OverlayRenderModel {
         return IntervalCountdownRenderLayout(
             style: style,
             rect: rect,
-            progress: clampedProgress(remainingProgress),
+            progress: clampedProgress(ringProgress),
             ringColor: ringColor,
             lapKind: kind,
             countdownText: countdown,

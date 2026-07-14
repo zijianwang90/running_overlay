@@ -1188,8 +1188,25 @@ struct OverlayRenderModelTests {
         #expect(layout.phaseText == "WORK")
         #expect(layout.repText == "1 / 2")
         #expect(layout.progress == 0.6)
+        #expect(layout.style.resolvedRingDirection == .clockwise)
         #expect(layout.ringColor == IntervalKindColorPreferences.currentSnapshot().color(for: .active))
         #expect(layout.textItems.contains { $0.role == .countdown && $0.text == "1:00" })
+    }
+
+    @Test func intervalCountdownCounterclockwiseDirectionFillsElapsedTime() {
+        var style = OverlayStyle.default
+        style.intervalCountdown.ringDirection = .counterclockwise
+        let element = OverlayElement(type: .intervalCountdown, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 40
+        )
+
+        let layout = OverlayRenderModel.intervalCountdownLayout(for: element, in: context)
+
+        #expect(layout.progress == 0.4)
+        #expect(layout.style.resolvedRingDirection == .counterclockwise)
     }
 
     @Test func intervalCountdownCanHideEveryTextRoleExceptCountdown() {

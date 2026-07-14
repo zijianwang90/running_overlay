@@ -33,7 +33,8 @@ Design references:
 - Helper, phase, rep, and caption text can be hidden independently.
 - Every text role has independent font family, size, weight, and color mode.
 - Text and ring fill color modes are `Follow Group` or `Custom`.
-- Progress is the current segment's remaining fraction.
+- The `Direction` control selects clockwise `Full to Empty` (the default) or
+  counterclockwise `Empty to Full`. Both modes use the current segment only.
 - Ring-local glow applies only to the progress fill.
 - Shared/global Glow applies to the foreground content group.
 - When Background is enabled, Shadow targets the background surface only.
