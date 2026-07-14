@@ -73,6 +73,9 @@ packaging. The Xcode archive remains the App Store upload path.
 Current submission blockers and metadata drafts are tracked in
 `docs/app-store-readiness.md`.
 
+Mac App Store marketing captures use the deterministic layout, copy, source
+handling, and export workflow in `docs/app-store-screenshot-template.md`.
+
 ## GitHub Release Tags
 
 The first public version is `0.1.0`. Use release-candidate tags to validate the

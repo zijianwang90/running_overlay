@@ -109,4 +109,6 @@ same source and resource tree.
 - Complete manual sandbox QA for file import, video import, template import/export, weather, MapKit, and MOV export.
 - Confirm clip, full-activity, test-frame, test-clip, and overlay-JSON exports
   succeed after selecting a destination folder in the sandboxed app.
-- Prepare final App Store screenshots, privacy policy, support URL, review notes, and sample review assets.
+- Complete focused human review and App Store Connect upload of the generated
+  en-US screenshots under `AppStore/Screenshots/v0.1.4/en-US/desktop@2x/`.
+- Prepare the privacy policy, support URL, review notes, and sample review assets.
