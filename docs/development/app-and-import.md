@@ -54,6 +54,12 @@ Current implementation:
 
 - `Sources/RunningOverlay/FitData/FitFileParser.swift` contains a focused first-pass FIT parser.
 - `ProjectDocument.importFitFile()` opens a native macOS file picker and loads the selected `.fit` file.
+- Local `swift run` debugging can bypass the FIT and video file pickers with
+  `swift run RunningOverlay --fit <fit-path> --video <video-path>`. Either flag
+  can be omitted, and paths may be absolute, relative to the current working
+  directory, or start with `~`.
+- Command-line startup imports use the same `ProjectDocument.importFitURL()`
+  and `ProjectDocument.importVideoURLs()` paths as interactive imports.
 - The parser currently handles standard FIT definition/data messages and extracts record/session fields needed for the initial timeline.
 - FIT import success and failure details are printed to stdout, so they are visible when launching with `swift run RunningOverlay`.
 - Developer field definitions are read and skipped so standard fields in files with developer data remain parseable.

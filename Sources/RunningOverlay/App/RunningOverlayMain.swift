@@ -9,8 +9,9 @@ enum RunningOverlayMain {
                 let exitCode = HeadlessBenchmarkRunner.run(command)
                 exit(exitCode)
             }
+            RunningOverlayLaunchConfiguration.command = try AppLaunchCommand.parse()
         } catch {
-            fputs("[RunningOverlayBenchmark] \(error.localizedDescription)\n", stderr)
+            fputs("[RunningOverlay] \(error.localizedDescription)\n", stderr)
             exit(2)
         }
 

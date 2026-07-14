@@ -2,11 +2,24 @@ import AppKit
 import SwiftUI
 
 struct RunningOverlayApp: App {
-    @StateObject private var project = ProjectDocument()
+    @StateObject private var project: ProjectDocument
 
     init() {
+        let project = ProjectDocument()
+        _project = StateObject(wrappedValue: project)
+
         NSApplication.shared.setActivationPolicy(.regular)
         NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
+
+        if let launchCommand = RunningOverlayLaunchConfiguration.command {
+            if let fitURL = launchCommand.fitURL {
+                project.importFitURL(fitURL)
+            }
+            if let videoURL = launchCommand.videoURL {
+                project.importVideoURLs([videoURL], replacingExisting: true)
+            }
+        }
+
         DispatchQueue.main.async {
             NSApplication.shared.activate(ignoringOtherApps: false)
         }

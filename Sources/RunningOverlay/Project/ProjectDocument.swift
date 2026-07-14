@@ -144,6 +144,10 @@ final class ProjectDocument: ObservableObject {
             return
         }
 
+        importFitURL(url)
+    }
+
+    func importFitURL(_ url: URL) {
         do {
             print("[RunningOverlay] Importing FIT file: \(url.path)")
             registerUndoPoint()
