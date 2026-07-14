@@ -4,6 +4,28 @@ import Testing
 
 @MainActor
 struct ProjectDocumentUndoTests {
+    @Test func projectAspectRatioAndResolutionChangesAreUndoable() {
+        let project = ProjectDocument()
+
+        project.setProjectAspectRatio(.portrait3x4)
+        project.setProjectResolution(.portrait3x4_1440)
+
+        #expect(project.settings.aspectRatio == .portrait3x4)
+        #expect(project.settings.resolution == .portrait3x4_1440)
+
+        project.undo()
+        #expect(project.settings.aspectRatio == .portrait3x4)
+        #expect(project.settings.resolution == .portrait3x4_1080)
+
+        project.undo()
+        #expect(project.settings.aspectRatio == .landscape16x9)
+        #expect(project.settings.resolution == .hd1080)
+
+        project.redo()
+        #expect(project.settings.aspectRatio == .portrait3x4)
+        #expect(project.settings.resolution == .portrait3x4_1080)
+    }
+
     @Test func undoRedoRestoresAddedOverlay() {
         let project = ProjectDocument()
 

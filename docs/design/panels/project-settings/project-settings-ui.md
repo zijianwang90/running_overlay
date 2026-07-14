@@ -1,6 +1,6 @@
 # Project Settings, Heart Rate Zones, And Font Library UI Spec
 
-Last updated: 2026-06-25
+Last updated: 2026-07-13
 
 ## Purpose
 
@@ -32,7 +32,10 @@ Heart Rate Zones reference:
 The settings modal should include only the current project export/settings controls:
 
 1. `Video`
-   - `Resolution` dropdown with `1080p 16:9`.
+   - `Aspect Ratio` dropdown before resolution, with Landscape `16:9`, `4:3`,
+     `1:1` and Portrait `9:16`, `3:4`, `1:1` choices.
+   - `Resolution` dropdown filtered to the selected aspect ratio, defaulting to
+     `1080p - 1920 x 1080`.
    - `Frame Rate` dropdown with `30 fps`.
    - `Layer Data FPS` dropdown with `5 fps`.
 2. `Typography`
@@ -60,6 +63,8 @@ Layout sizing:
 - Use a `640 × 620 pt` modal so section copy and trailing controls have
   comfortable separation.
 - Keep Video dropdowns aligned to a shared `200 pt` trailing width.
+- Changing Aspect Ratio should preserve the current 720p, 1080p, 1440p, or
+  2160p short-edge tier and immediately update the Resolution selection.
 - Give the OpenWeather secure field `240 pt` of width. The caption should
   retain enough leading space to remain readable without crowding the field.
 

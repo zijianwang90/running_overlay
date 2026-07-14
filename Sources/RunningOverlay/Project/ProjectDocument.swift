@@ -86,6 +86,21 @@ final class ProjectDocument: ObservableObject {
         }
     }
 
+    func setProjectAspectRatio(_ aspectRatio: ProjectAspectRatio) {
+        guard settings.aspectRatio != aspectRatio else { return }
+        registerUndoPoint()
+        settings.setAspectRatio(aspectRatio)
+    }
+
+    func setProjectResolution(_ resolution: ProjectResolution) {
+        guard settings.resolution != resolution,
+              settings.aspectRatio.matches(resolution) else {
+            return
+        }
+        registerUndoPoint()
+        settings.resolution = resolution
+    }
+
     var workoutStructureSummary: String {
         let analysis = activity.workoutStructure
         let kind = analysis.kind == .structured ? "Structured" : "Normal"

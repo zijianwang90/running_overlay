@@ -38,6 +38,8 @@
 - `renderPNG` now supports the same post-render vertical row flip option used by MOV export, so test frame outputs match preview orientation.
 - Text preset export accent color now resolves from `element.style.accentColor` rather than `NSColor.controlAccentColor`.
 - Apply project frame rate, resolution, bitrate, and Layer Data FPS.
+- Treat project aspect ratio as fixed during export. The export dialog displays
+  it read-only and offers only resolution presets compatible with that ratio.
 - Generate output filenames with `_overlay.mov`.
 - `ProjectDocument` owns structured export progress state for overall and per-output progress.
 - The toolbar displays export progress while exporting; clicking the progress control opens a persistent popover with item-level progress.

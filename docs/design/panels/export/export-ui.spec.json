@@ -1,6 +1,6 @@
 {
   "name": "Export UI",
-  "lastUpdated": "2026-06-18",
+  "lastUpdated": "2026-07-13",
   "surface": {
     "presentation": "dark macOS utility modal",
     "recommendedSize": {
@@ -59,13 +59,17 @@
         "value": "Transparent MOV"
       },
       {
+        "label": "Aspect Ratio",
+        "control": "readOnly",
+        "valueSource": "project.settings.aspectRatio.label",
+        "editingRule": "Aspect ratio can only be changed in Project Settings."
+      },
+      {
         "label": "Resolution",
         "control": "picker",
         "valueSource": "project.settings.resolution",
-        "optionsSource": "ProjectResolution.exportPresets(matching: project.settings.resolution)",
-        "orientationRule": "Only show presets matching the current landscape or portrait orientation.",
-        "landscapeOptions": ["720p 16:9", "1080p 16:9", "4K 16:9"],
-        "portraitOptions": ["720p 9:16", "1080p 9:16", "4K 9:16"]
+        "optionsSource": "ProjectResolution.presets(for: project.settings.aspectRatio)",
+        "aspectRatioRule": "Only show the 720p, 1080p, 1440p, and 2160p presets matching the project aspect ratio."
       },
       {
         "label": "Frame Rate",

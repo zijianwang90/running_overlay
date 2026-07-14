@@ -84,24 +84,74 @@ struct ProjectSettingsTests {
 
         let settings = try JSONDecoder().decode(ProjectSettings.self, from: json)
 
+        #expect(settings.aspectRatio == .landscape16x9)
         #expect(settings.resolution == .hd1080)
         #expect(settings.frameRate == .fps30)
         #expect(settings.layerDataFrameRate == .fps5)
         #expect(settings.legacyOpenWeatherAPIKey == nil)
     }
 
-    @Test func exportResolutionPresetsKeepLandscapeOrientation() {
-        let presets = ProjectResolution.exportPresets(matching: .hd1080)
-
-        #expect(presets == [.hd720, .hd1080, .uhd4k])
-        #expect(presets.allSatisfy { $0.isLandscape })
+    @Test func aspectRatioPresetsExposeThreeLandscapeAndThreePortraitChoices() {
+        #expect(ProjectAspectRatio.allCases.count == 6)
+        #expect(ProjectAspectRatio.landscapePresets == [
+            .landscape16x9, .landscape4x3, .landscape1x1
+        ])
+        #expect(ProjectAspectRatio.portraitPresets == [
+            .portrait9x16, .portrait3x4, .portrait1x1
+        ])
     }
 
-    @Test func exportResolutionPresetsKeepPortraitOrientation() {
-        let presets = ProjectResolution.exportPresets(matching: .vertical1080)
+    @Test func resolutionPresetsMatchEveryAspectRatio() {
+        for aspectRatio in ProjectAspectRatio.allCases {
+            let presets = ProjectResolution.presets(for: aspectRatio)
 
-        #expect(presets == [.vertical720, .vertical1080, .vertical4k])
-        #expect(!presets.contains { $0.isLandscape })
+            #expect(presets.count == 4)
+            #expect(presets.allSatisfy { aspectRatio.matches($0) })
+            #expect(presets.map(\.shortEdge) == [720, 1080, 1440, 2160])
+        }
+    }
+
+    @Test func changingAspectRatioPreservesResolutionTier() {
+        var settings = ProjectSettings()
+
+        settings.setAspectRatio(.portrait3x4)
+
+        #expect(settings.aspectRatio == .portrait3x4)
+        #expect(settings.resolution == .portrait3x4_1080)
+
+        settings.setAspectRatio(.portrait1x1)
+
+        #expect(settings.aspectRatio == .portrait1x1)
+        #expect(settings.resolution == .square1080)
+    }
+
+    @Test func settingResolutionDirectlyInfersAspectRatioWhenNeeded() {
+        var settings = ProjectSettings()
+
+        settings.resolution = .vertical1080
+
+        #expect(settings.aspectRatio == .portrait9x16)
+    }
+
+    @Test func squarePortraitAspectRatioRoundTripsWithoutChangingResolution() throws {
+        var settings = ProjectSettings()
+        settings.setAspectRatio(.portrait1x1)
+        settings.resolution = .square1440
+
+        let data = try JSONEncoder().encode(settings)
+        let restored = try JSONDecoder().decode(ProjectSettings.self, from: data)
+
+        #expect(restored.aspectRatio == .portrait1x1)
+        #expect(restored.resolution == .square1440)
+    }
+
+    @Test func decodingMismatchedAspectRatioNormalizesResolutionTier() throws {
+        let json = #"{"aspectRatio":"portrait3x4","resolution":"1920x1080"}"#.data(using: .utf8)!
+
+        let settings = try JSONDecoder().decode(ProjectSettings.self, from: json)
+
+        #expect(settings.aspectRatio == .portrait3x4)
+        #expect(settings.resolution == .portrait3x4_1080)
     }
 
     @Test func legacyOpenWeatherAPIKeyDecodesButDoesNotEncode() throws {

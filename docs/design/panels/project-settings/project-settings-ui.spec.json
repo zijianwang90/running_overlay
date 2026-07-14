@@ -1,6 +1,6 @@
 {
   "name": "Project Settings, Heart Rate Zones, And Font Library",
-  "lastUpdated": "2026-06-25",
+  "lastUpdated": "2026-07-13",
   "surfaces": {
     "projectSettings": {
       "presentation": "dark macOS modal",
@@ -19,9 +19,24 @@
           "title": "Video",
           "rows": [
             {
+              "label": "Aspect Ratio",
+              "control": "dropdown",
+              "value": "16:9 Landscape",
+              "options": [
+                "16:9 Landscape",
+                "4:3 Landscape",
+                "1:1 Landscape",
+                "9:16 Portrait",
+                "3:4 Portrait",
+                "1:1 Portrait"
+              ],
+              "selectionBehavior": "Preserve the current short-edge resolution tier and select the matching resolution preset."
+            },
+            {
               "label": "Resolution",
               "control": "dropdown",
-              "value": "1080p 16:9"
+              "value": "1080p - 1920 x 1080",
+              "optionsSource": "ProjectResolution.presets(for: project.settings.aspectRatio)"
             },
             {
               "label": "Frame Rate",

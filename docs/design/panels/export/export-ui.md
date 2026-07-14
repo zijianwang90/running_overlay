@@ -121,21 +121,23 @@ Validation examples:
 ## Output Section
 
 This section summarizes project-backed export facts and lets users adjust the
-export resolution without changing the project's landscape or portrait
-orientation.
+export resolution without changing the project's selected aspect ratio.
 
 Rows:
 
 - `Format`: `Transparent MOV`
+- `Aspect Ratio`: read-only `project.settings.aspectRatio`, for example `4:3
+  Landscape`.
 - `Resolution`: picker backed by `project.settings.resolution`, filtered to the
-  current project orientation. Landscape projects show `720p 16:9`, `1080p
-  16:9`, and `4K 16:9`; portrait projects show the matching `9:16` presets.
+  current project aspect ratio. Each ratio offers 720p, 1080p, 1440p, and 2160p
+  short-edge tiers.
 - `Frame Rate`: current project setting, e.g. `30 fps`
 - `Data FPS`: current project setting, e.g. `5 fps`
 
 Rules:
 
-- Render as a grouped box with resolution editable and the other rows read-only.
+- Render as a grouped box with resolution editable and aspect ratio plus the
+  other rows read-only.
 - Show a compact info icon after the `Output` section title.
 - The info icon uses a circle plus exclamation mark or the closest SF Symbol, such as `exclamationmark.circle`.
 - Hovering the info icon shows export performance guidance: `1080p currently provides the best export time. 5 fps is usually the best-balanced layer data refresh rate for speed and visual quality. Higher data FPS and 4K export significantly increase render time with the current implementation.`
