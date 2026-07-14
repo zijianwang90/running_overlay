@@ -14,6 +14,7 @@
     "include": [
       "current-segment remaining time",
       "single circular progress ring",
+      "center time or distance value with elapsed or remaining direction",
       "current group color resolution",
       "optional phase, rep, helper, and caption text",
       "independent typography controls per text role",
@@ -31,12 +32,13 @@
   "dataSources": {
     "interval": "ActivityTimeline.laps and LapRecord.kind",
     "remainingTime": "Current LapRecord end time minus current activity elapsed time.",
-    "progress": "Current segment remaining fraction, clamped to 0...1.",
+    "centerDistance": "Current activity distance minus the current LapRecord start distance, clamped to the current lap total distance.",
+    "progress": "Current segment remaining fraction or elapsed fraction, selected by ring direction and clamped to 0...1.",
     "groupColors": "Existing interval color settings for warmup, active/work, rest, cooldown, and unknown."
   },
   "content": {
     "requiredRoles": [
-      "countdownTime"
+      "centerValue"
     ],
     "optionalRoles": [
       "helperLabel",
@@ -45,7 +47,7 @@
       "caption"
     ],
     "visibilityRules": {
-      "countdownTime": "Always visible; no hide toggle.",
+      "centerValue": "Always visible; no hide toggle. It can resolve time or distance in elapsed or remaining direction.",
       "helperLabel": "Hideable.",
       "phaseLabel": "Hideable.",
       "repLabel": "Hideable.",
@@ -80,7 +82,29 @@
         "counterclockwise": "Draw the elapsed fraction counterclockwise from the top; starts Empty and reaches Full."
       }
     },
-    "jitterPrevention": "Use tabular or monospaced digits for countdownTime."
+    "jitterPrevention": "Use tabular or monospaced digits for centerValue."
+  },
+  "centerValue": {
+    "metricOptions": [
+      "time",
+      "distance"
+    ],
+    "defaultMetric": "time",
+    "directionOptions": [
+      "remaining",
+      "elapsed"
+    ],
+    "defaultDirection": "remaining",
+    "labels": {
+      "remaining": "End to 0",
+      "elapsed": "0 to End"
+    },
+    "captionRules": {
+      "timeRemaining": "remaining",
+      "timeElapsed": "elapsed",
+      "distanceRemaining": "distance left",
+      "distanceElapsed": "distance"
+    }
   },
   "progressRing": {
     "track": {
@@ -253,7 +277,7 @@
   "inspector": {
     "sections": [
       "Layout",
-      "Countdown",
+      "Center Value",
       "Progress Ring",
       "Text",
       "Background",
@@ -262,12 +286,9 @@
     ],
     "sectionOrderRequirement": "The final three sections are Background, Border, Effects and must reuse shared inspector modules.",
     "controls": {
-      "countdown": [
-        "Time format",
-        "Show helper label",
-        "Show phase label",
-        "Show rep label",
-        "Show caption"
+      "centerValue": [
+        "Metric",
+        "Value Direction"
       ],
       "progressRing": [
         "Ring width",
@@ -275,11 +296,12 @@
         "Track opacity",
         "Fill color mode",
         "Fill custom color",
+        "Direction",
         "Line cap",
         "Ring Glow",
         "Ring Glow Intensity"
       ],
-      "text": "Expose one row/group per typography role with visibility when applicable, font family, size, weight, color mode, and custom color.",
+      "text": "Expose one group per typography role. Hideable-role visibility uses a mini switch in the trailing group header; rows use short Font, Size, Weight, Color, and Custom labels.",
       "background": "Shared OverlayBackgroundInspectorModule.",
       "border": "Shared OverlayBorderInspectorModule.",
       "effects": "Shared OverlayEffectsInspectorModule. Shadow and global glow targets follow background-enabled rules in this spec."
@@ -287,13 +309,15 @@
   },
   "rendering": {
     "previewExportSharedLayout": true,
-    "progressClamping": "Clamp remaining fraction to 0...1.",
+    "progressClamping": "Clamp the direction-resolved remaining or elapsed fraction to 0...1.",
+    "centerValueCompatibility": "Projects and templates without center metric or value direction use Time and End to 0.",
     "fallbackState": "When there is no current lap, show 0:00 or --:-- based on existing interval overlay empty-state conventions, and use unknown group color.",
     "animation": "Countdown and progress ring update at Layer Data FPS.",
     "accessibility": "Inspector controls must label every icon-only color/follow toggle and expose current role names."
   },
   "acceptanceCriteria": [
-    "Countdown time is always visible and remains centered when every optional text role is hidden.",
+    "Center value is always visible and remains centered when every optional text role is hidden.",
+    "Center value supports time or distance with either End to 0 or 0 to End direction.",
     "Each text role can independently change font family, size, weight, color mode, and custom color.",
     "Each hideable text role can be hidden without reserving blank layout space.",
     "Follow Group Color resolves text and progress fill colors from the current LapRecord.kind.",

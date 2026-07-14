@@ -1209,6 +1209,39 @@ struct OverlayRenderModelTests {
         #expect(layout.style.resolvedRingDirection == .counterclockwise)
     }
 
+    @Test func intervalCountdownCenterValueSupportsTimeAndDistanceDirections() {
+        var style = OverlayStyle.default
+        style.intervalCountdown.centerMetric = .time
+        style.intervalCountdown.centerValueDirection = .elapsed
+        let timeElement = OverlayElement(type: .intervalCountdown, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let context = OverlayRenderContext(
+            canvasSize: OverlayRenderContext.referenceCanvasSize,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 40
+        )
+
+        let elapsedTimeLayout = OverlayRenderModel.intervalCountdownLayout(for: timeElement, in: context)
+
+        #expect(elapsedTimeLayout.countdownText == "0:40")
+        #expect(elapsedTimeLayout.textItems.contains { $0.role == .caption && $0.text == "elapsed" })
+
+        style.intervalCountdown.centerMetric = .distance
+        style.intervalCountdown.centerValueDirection = .elapsed
+        let element = OverlayElement(type: .intervalCountdown, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+
+        let elapsedLayout = OverlayRenderModel.intervalCountdownLayout(for: element, in: context)
+
+        #expect(elapsedLayout.countdownText == "80 m")
+        #expect(elapsedLayout.textItems.contains { $0.role == .caption && $0.text == "distance" })
+
+        style.intervalCountdown.centerValueDirection = .remaining
+        let remainingElement = OverlayElement(type: .intervalCountdown, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+        let remainingLayout = OverlayRenderModel.intervalCountdownLayout(for: remainingElement, in: context)
+
+        #expect(remainingLayout.countdownText == "120 m")
+        #expect(remainingLayout.textItems.contains { $0.role == .caption && $0.text == "distance left" })
+    }
+
     @Test func intervalCountdownCanHideEveryTextRoleExceptCountdown() {
         var style = OverlayStyle.default
         style.intervalCountdown.helperText.isVisible = false

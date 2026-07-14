@@ -29,9 +29,12 @@ Design references:
 
 ## Behavior
 
-- The center countdown text is always visible.
+- The center value is always visible and supports current-segment time or
+  distance in either `End to 0` or `0 to End` direction.
 - Helper, phase, rep, and caption text can be hidden independently.
 - Every text role has independent font family, size, weight, and color mode.
+- Text inspector roles are grouped; each hideable role exposes its visibility
+  switch in the trailing group header.
 - Text and ring fill color modes are `Follow Group` or `Custom`.
 - The `Direction` control selects clockwise `Full to Empty` (the default) or
   counterclockwise `Empty to Full`. Both modes use the current segment only.
@@ -45,7 +48,7 @@ Design references:
 Inspector sections:
 
 1. `Layout`
-2. `Countdown`
+2. `Center Value`
 3. `Progress Ring`
 4. `Text`
 5. `Background`

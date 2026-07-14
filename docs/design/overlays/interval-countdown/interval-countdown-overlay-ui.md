@@ -28,8 +28,9 @@ Structured implementation guide:
 
 ## Content And Visibility
 
-The center countdown time is the only required text. Every other text role can
-be hidden independently:
+The center value is the only required text. It can show the current segment's
+time or distance, in either `End to 0` or `0 to End` direction. Every other
+text role can be hidden independently:
 
 - Phase label, such as `WORK`, `REST`, `WU`, or `CD`.
 - Rep label, such as `5 / 10`.
@@ -58,6 +59,10 @@ Text color mode supports:
 The countdown time also supports these typography and color controls, but it is
 not hideable. Use tabular or monospaced digits by default to prevent layout
 jitter during countdown updates.
+
+In the Text inspector, group controls by role: Helper, Phase, Rep, Countdown,
+and Caption. A hideable role puts its Visible mini switch in the trailing group
+header; the rows beneath use only Font, Size, Weight, Color, and Custom labels.
 
 ## Progress Ring
 
@@ -118,6 +123,8 @@ Glow behavior:
 Keep the first version intentionally small:
 
 - Size.
+- Center value metric (`Time` / `Distance`).
+- Center value direction (`End to 0` / `0 to End`).
 - Ring width.
 - Progress ring color mode.
 - Progress ring custom color.
@@ -136,7 +143,7 @@ Keep the first version intentionally small:
 Recommended Inspector sections:
 
 1. `Layout`
-2. `Countdown`
+2. `Center Value`
 3. `Progress Ring`
 4. `Text`
 5. `Background`
