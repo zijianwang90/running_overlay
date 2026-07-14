@@ -25,9 +25,16 @@ files for Final Cut Pro, DaVinci Resolve, Premiere Pro, or another editor.
 > but project formats and UI behavior may still change before the first stable
 > release.
 
-![Interval workout template with route, weather, interval timeline, and HUD overlays](docs/assets/screenshots/interval-workout-editor.jpg)
+## From Footage to Finished Overlay
 
-![Easy run template with distance timeline, route map, weather, and metric overlays](docs/assets/screenshots/easy-run-editor.jpg)
+<p align="center">
+  <img src="AppStore/Screenshots/v0.1.4/en-US/desktop/01-import-and-align.png" alt="Batch-import running footage and align every clip to FIT activity time" width="100%">
+</p>
+
+<p align="center">
+  <img src="AppStore/Screenshots/v0.1.4/en-US/desktop/02-overlay-editor.png" alt="Design data-rich running overlays with a real-time video preview" width="49%">
+  <img src="AppStore/Screenshots/v0.1.4/en-US/desktop/03-transparent-export.png" alt="Export transparent alpha-channel MOV overlays" width="49%">
+</p>
 
 ## Highlights
 

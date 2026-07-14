@@ -33,6 +33,7 @@ entries in `project-log.md`.
 | Security and privacy | `docs/security.md` |
 | User data and network behavior | `PRIVACY.md` |
 | Mac App Store packaging and submission | `docs/development/release.md`, `docs/app-store-readiness.md` |
+| App Store marketing screenshots | `docs/app-store-screenshot-template.md` |
 | Maintainer and support policy | `MAINTAINERS.md`, `SUPPORT.md` |
 | Project, commercial, contributor, and trademark licensing | `LICENSE`, `COMMERCIAL-LICENSE.md`, `CLA.md`, `TRADEMARKS.md` |
 | Asset and dependency licensing | `docs/assets-and-licenses.md` |

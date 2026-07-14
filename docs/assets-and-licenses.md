@@ -45,6 +45,11 @@ documented.
 - Product screenshots under `docs/assets/screenshots/` are project
   documentation assets supplied by the repository owner and distributed under
   the repository license.
+- App Store source captures and rendered marketing screenshots under
+  `AppStore/Screenshots/` are supplied by the repository owner or generated
+  from those captures and are distributed under the repository license. The
+  reusable telemetry background was generated specifically for this project
+  with OpenAI image generation and contains no third-party artwork.
 - Donation QR images under `docs/assets/donations/` are supplied by the
   repository owner solely to receive voluntary project support. They contain
   personal payment identifiers and are not licensed for reuse or redistribution

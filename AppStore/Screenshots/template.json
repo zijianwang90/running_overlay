@@ -1,0 +1,31 @@
+{
+  "canvas": {
+    "width": 2880,
+    "height": 1800,
+    "background": "AppStore/Screenshots/template/telemetry-background.png"
+  },
+  "output_root": "AppStore/Screenshots/v0.1.4/en-US",
+  "brand": "Running Overlay Studio",
+  "app_icon": "AppStore/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x.png",
+  "app_icon_corner_radius": 25,
+  "slides": [
+    {
+      "filename": "01-import-and-align.png",
+      "source": "AppStore/Screenshots/sources/en-US/01-import-and-align.png",
+      "headline": "Every Clip. Perfectly Aligned.",
+      "subtitle": "Batch-import your footage and sync it to FIT time in one click."
+    },
+    {
+      "filename": "02-overlay-editor.png",
+      "source": "AppStore/Screenshots/sources/en-US/02-overlay-editor.png",
+      "headline": "Your Run, Layered Beautifully.",
+      "subtitle": "Design data-rich overlays and preview every detail in real time."
+    },
+    {
+      "filename": "03-transparent-export.png",
+      "source": "AppStore/Screenshots/sources/en-US/03-transparent-export.png",
+      "headline": "Transparent. Ready to Finish.",
+      "subtitle": "Export alpha-channel MOV overlays for your favorite editor."
+    }
+  ]
+}
