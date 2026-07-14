@@ -4227,6 +4227,12 @@ struct ExportProgressState: Equatable {
         items.filter { $0.status == .completed }.count
     }
 
+    var isCompleted: Bool {
+        !items.isEmpty
+            && failureMessage == nil
+            && items.allSatisfy { $0.status == .completed }
+    }
+
     mutating func update(_ progress: OverlayExportProgress) {
         for index in items.indices {
             if items[index].index < progress.segmentIndex, items[index].status != .completed {
@@ -4240,6 +4246,7 @@ struct ExportProgressState: Equatable {
     }
 
     mutating func markCompleted() {
+        failureMessage = nil
         for index in items.indices {
             items[index].progress = 1
             items[index].status = .completed

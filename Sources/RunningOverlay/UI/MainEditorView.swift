@@ -231,17 +231,22 @@ private struct ExportProgressButton: View {
         Button {
             isPresented.toggle()
         } label: {
-            HStack(spacing: 6) {
-                ProgressView(value: progress.overallProgress)
-                    .controlSize(.small)
-                    .frame(width: 68)
-                Text("\(Int((progress.overallProgress * 100).rounded()))%")
-                    .font(.caption.monospacedDigit())
-                    .frame(width: 34, alignment: .trailing)
+            if progress.isCompleted {
+                Label("Export Complete", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(EditorTheme.successGreen)
+            } else {
+                HStack(spacing: 6) {
+                    ProgressView(value: progress.overallProgress)
+                        .controlSize(.small)
+                        .frame(width: 68)
+                    Text("\(Int((progress.overallProgress * 100).rounded()))%")
+                        .font(.caption.monospacedDigit())
+                        .frame(width: 34, alignment: .trailing)
+                }
             }
         }
         .buttonStyle(EditorSecondaryButtonStyle())
-        .help("Export Progress")
+        .help(progress.isCompleted ? "Export Complete" : "Export Progress")
         .popover(isPresented: $isPresented, arrowEdge: .bottom) {
             ExportProgressPopover(progress: progress)
         }
@@ -274,7 +279,13 @@ private struct ExportProgressPopover: View {
                 }
             }
 
-            ProgressView(value: progress.overallProgress)
+            if progress.isCompleted {
+                Label("Export complete", systemImage: "checkmark.circle.fill")
+                    .font(EditorTheme.bodyStrongFont)
+                    .foregroundStyle(EditorTheme.successGreen)
+            } else {
+                ProgressView(value: progress.overallProgress)
+            }
 
             if let failureMessage = progress.failureMessage {
                 Text(failureMessage)
