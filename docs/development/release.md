@@ -97,7 +97,7 @@ create published releases marked as latest. The zip uses
 
 Every GitHub Release must have handwritten notes committed before the tag is
 pushed. Add `docs/releases/${tag}.md`, for example
-`docs/releases/v0.1.3.md`, using the established release-page structure:
+`docs/releases/v0.1.4.md`, using the established release-page structure:
 opening release sentence with marketing version and build number, a concise
 summary paragraph, `## Highlights` grouped by user-facing area, and `## Assets`
 that names both `RunningOverlayStudio-${tag}-macOS-arm64.zip` and
