@@ -113,7 +113,7 @@
       "Use InspectorDenseRow for toggles, menus, segmented controls, and swatches.",
       "Use InspectorDenseSliderRow for numeric values.",
       "Use mini switches aligned to the trailing edge.",
-      "Group Text controls by text role and use short row labels inside each group.",
+      "Group Text controls by text role and place hideable-role visibility toggles in the trailing group header.",
       "Do not prefix every Text row label with the role name.",
       "Do not use loose VStack-native controls inside sections."
     ],
@@ -125,8 +125,8 @@
         "Secondary Value",
         "Secondary Label"
       ],
+      "header": "Show each role name as a group header. Hideable roles place their Visible mini switch in the trailing header.",
       "rowLabels": [
-        "Visible",
         "Font",
         "Size",
         "Weight",

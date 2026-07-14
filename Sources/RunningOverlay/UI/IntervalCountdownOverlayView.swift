@@ -46,6 +46,7 @@ struct IntervalCountdownOverlayView: View {
                     style: StrokeStyle(lineWidth: layout.ringWidth, lineCap: lineCap)
                 )
                 .rotationEffect(.degrees(-90))
+                .scaleEffect(x: layout.style.resolvedRingDirection == .counterclockwise ? -1 : 1, y: 1)
                 .intervalCountdownRingGlow(layout: layout)
 
             innerText

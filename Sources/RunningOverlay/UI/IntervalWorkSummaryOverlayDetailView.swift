@@ -223,18 +223,16 @@ struct IntervalWorkSummaryOverlayDetailView: View {
 
     private func textRoleGroup(_ role: IntervalWorkSummaryTextRole, style: IntervalWorkSummaryTextStyle) -> some View {
         VStack(spacing: 0) {
-            textGroupHeader(role.label)
+            textGroupHeader(
+                role.label,
+                visibility: role.isHideable ? textVisibilityBinding(role, current: currentStyle) : nil
+            )
             textRoleRows(role, style: style)
         }
     }
 
     @ViewBuilder
     private func textRoleRows(_ role: IntervalWorkSummaryTextRole, style: IntervalWorkSummaryTextStyle) -> some View {
-        if role.isHideable {
-            InspectorDenseRow(label: "Visible") {
-                miniToggle(textVisibilityBinding(role, current: currentStyle))
-            }
-        }
         InspectorDenseRow(label: "Font") {
             fontMenu(selected: style.fontName) { fontName in
                 updateTextStyle(role) { $0.fontName = fontName }
@@ -265,12 +263,15 @@ struct IntervalWorkSummaryOverlayDetailView: View {
         }
     }
 
-    private func textGroupHeader(_ title: String) -> some View {
+    private func textGroupHeader(_ title: String, visibility: Binding<Bool>?) -> some View {
         HStack {
             Text(title)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(NumericTokens.textPrimary)
             Spacer()
+            if let visibility {
+                miniToggle(visibility)
+            }
         }
         .frame(height: 32)
         .padding(.horizontal, NumericTokens.panelPaddingX)

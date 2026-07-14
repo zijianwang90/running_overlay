@@ -7,6 +7,10 @@
 Current implementation:
 
 - `ProjectDocument` owns a project snapshot undo/redo stack.
+- Project settings persist aspect ratio separately from resolution. Older
+  snapshots that contain only resolution infer their aspect ratio during
+  decoding, while mismatched saved values normalize to the nearest compatible
+  short-edge resolution tier.
 - `Command-Z` and `Shift-Command-Z` are wired to project undo and redo.
 - Delete and Forward Delete remove the selected timeline clip or overlay element.
 - The AppKit timeline canvas handles Delete and Forward Delete directly when it has focus.

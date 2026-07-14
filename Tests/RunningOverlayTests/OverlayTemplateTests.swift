@@ -133,15 +133,24 @@ struct OverlayTemplateTests {
         #expect(oldStyle.intervalCountdown.size == IntervalCountdownStyle.default.size)
         #expect(oldStyle.intervalCountdown.countdownText.isVisible)
         #expect(oldStyle.intervalCountdown.phaseText.colorMode == .followGroupColor)
+        #expect(oldStyle.intervalCountdown.resolvedRingDirection == .clockwise)
+        #expect(oldStyle.intervalCountdown.resolvedCenterMetric == .time)
+        #expect(oldStyle.intervalCountdown.resolvedCenterValueDirection == .remaining)
 
         var style = OverlayStyle.default
         style.intervalCountdown.helperText.isVisible = false
         style.intervalCountdown.countdownText.colorMode = .followGroupColor
+        style.intervalCountdown.ringDirection = .counterclockwise
+        style.intervalCountdown.centerMetric = .distance
+        style.intervalCountdown.centerValueDirection = .elapsed
         let data = try JSONEncoder().encode(style)
         let encoded = String(decoding: data, as: UTF8.self)
 
         #expect(encoded.contains("intervalCountdown"))
         #expect(encoded.contains("followGroupColor"))
+        #expect(encoded.contains("counterclockwise"))
+        #expect(encoded.contains("distance"))
+        #expect(encoded.contains("elapsed"))
     }
 
     @Test func intervalWorkSummaryStyleDecodesFromOlderOverlayStyleAndEncodes() throws {

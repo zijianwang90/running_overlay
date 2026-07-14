@@ -19,7 +19,7 @@ struct ExportDialogView: View {
     private let encodingHelpText = "Transparent overlay export requires alpha-capable codecs. HEVC keeps file size controlled but is significantly slower. ProRes exports much faster but creates much larger files."
 
     private var exportResolutionPresets: [ProjectResolution] {
-        ProjectResolution.exportPresets(matching: project.settings.resolution)
+        ProjectResolution.presets(for: project.settings.aspectRatio)
     }
 
     var body: some View {
@@ -120,8 +120,10 @@ struct ExportDialogView: View {
             SettingsGroupBox {
                 ExportReadOnlyRow(label: "Format", value: "Transparent MOV")
                 dividerRow
+                ExportReadOnlyRow(label: "Aspect Ratio", value: project.settings.aspectRatio.label)
+                dividerRow
                 SettingsRow(leading: { rowLabel("Resolution") }) {
-                    Picker("", selection: $project.settings.resolution) {
+                    Picker("", selection: resolutionBinding) {
                         ForEach(exportResolutionPresets) { resolution in
                             Text(resolution.label).tag(resolution)
                         }
@@ -179,6 +181,13 @@ struct ExportDialogView: View {
                 }
             }
         }
+    }
+
+    private var resolutionBinding: Binding<ProjectResolution> {
+        Binding(
+            get: { project.settings.resolution },
+            set: { project.setProjectResolution($0) }
+        )
     }
 
     private var advancedSection: some View {

@@ -14,6 +14,55 @@ enum IntervalCountdownColorMode: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+enum IntervalCountdownRingDirection: String, CaseIterable, Identifiable, Codable {
+    case clockwise
+    case counterclockwise
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .clockwise: "Clockwise"
+        case .counterclockwise: "Counterclockwise"
+        }
+    }
+
+    var progressDescription: String {
+        switch self {
+        case .clockwise: "Full to Empty"
+        case .counterclockwise: "Empty to Full"
+        }
+    }
+}
+
+enum IntervalCountdownCenterMetric: String, CaseIterable, Identifiable, Codable {
+    case time
+    case distance
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .time: "Time"
+        case .distance: "Distance"
+        }
+    }
+}
+
+enum IntervalCountdownValueDirection: String, CaseIterable, Identifiable, Codable {
+    case remaining
+    case elapsed
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .remaining: "End to 0"
+        case .elapsed: "0 to End"
+        }
+    }
+}
+
 enum IntervalCountdownTextRole: String, CaseIterable, Identifiable, Codable {
     case helper
     case phase
@@ -99,11 +148,19 @@ struct IntervalCountdownTextStyle: Equatable, Codable {
 
 struct IntervalCountdownStyle: Equatable, Codable {
     var size: Double
+    /// `nil` preserves the original time-based center value for projects and
+    /// templates saved before this control existed.
+    var centerMetric: IntervalCountdownCenterMetric?
+    /// `nil` preserves the original end-to-zero center value direction.
+    var centerValueDirection: IntervalCountdownValueDirection?
     var ringWidth: Double
     var trackColor: OverlayColor
     var trackOpacity: Double
     var fillColorMode: IntervalCountdownColorMode
     var fillCustomColor: OverlayColor
+    /// `nil` preserves the original clockwise remaining-time behavior for
+    /// projects and templates saved before this control existed.
+    var ringDirection: IntervalCountdownRingDirection?
     var roundedLineCap: Bool
     var ringGlowEnabled: Bool
     var ringGlowIntensity: Double
@@ -115,11 +172,14 @@ struct IntervalCountdownStyle: Equatable, Codable {
 
     static let `default` = IntervalCountdownStyle(
         size: 344,
+        centerMetric: .time,
+        centerValueDirection: .remaining,
         ringWidth: 18,
         trackColor: OverlayColor(red: 0.16, green: 0.19, blue: 0.21, alpha: 1),
         trackOpacity: 1,
         fillColorMode: .followGroupColor,
         fillCustomColor: .orange,
+        ringDirection: .clockwise,
         roundedLineCap: true,
         ringGlowEnabled: true,
         ringGlowIntensity: 0.45,
@@ -129,6 +189,18 @@ struct IntervalCountdownStyle: Equatable, Codable {
         countdownText: .defaultFor(role: .countdown),
         captionText: .defaultFor(role: .caption)
     )
+
+    var resolvedRingDirection: IntervalCountdownRingDirection {
+        ringDirection ?? .clockwise
+    }
+
+    var resolvedCenterMetric: IntervalCountdownCenterMetric {
+        centerMetric ?? .time
+    }
+
+    var resolvedCenterValueDirection: IntervalCountdownValueDirection {
+        centerValueDirection ?? .remaining
+    }
 
     mutating func setTextStyle(_ textStyle: IntervalCountdownTextStyle, for role: IntervalCountdownTextRole) {
         switch role {

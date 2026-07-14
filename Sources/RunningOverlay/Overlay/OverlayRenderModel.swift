@@ -609,9 +609,30 @@ enum OverlayRenderModel {
         let ringColor = style.fillColorMode == .followGroupColor ? groupColor : style.fillCustomColor
         let lapEnd = lap?.endElapsedTime ?? max(context.activity.duration, 1)
         let remainingTime = max(lapEnd - t, 0)
-        let elapsedProgress = context.activity.lapProgress(at: t, byDistance: false)
-        let remainingProgress = 1 - clampedProgress(elapsedProgress)
-        let countdown = formatDuration(remainingTime)
+        let elapsedTime = max(t - (lap?.startElapsedTime ?? 0), 0)
+        let elapsedTimeProgress = context.activity.lapProgress(at: t, byDistance: false)
+        let remainingTimeProgress = 1 - clampedProgress(elapsedTimeProgress)
+        let ringProgress = style.resolvedRingDirection == .clockwise
+            ? remainingTimeProgress
+            : elapsedTimeProgress
+        let totalDistance = lap?.totalDistanceMeters ?? context.activity.distanceMeters
+        let elapsedDistance = min(
+            max(context.activity.distance(at: t) - (lap?.startDistanceMeters ?? 0), 0),
+            totalDistance
+        )
+        let remainingDistance = max(totalDistance - elapsedDistance, 0)
+        let centerValue = intervalCountdownCenterValue(
+            metric: style.resolvedCenterMetric,
+            direction: style.resolvedCenterValueDirection,
+            elapsedTime: elapsedTime,
+            remainingTime: remainingTime,
+            elapsedDistance: elapsedDistance,
+            remainingDistance: remainingDistance
+        )
+        let caption = intervalCountdownCaption(
+            metric: style.resolvedCenterMetric,
+            direction: style.resolvedCenterValueDirection
+        )
         let phase = phaseLabel(kind)
         let rep = repText(activity: context.activity, lap: lap)
         let ringWidth = max(context.scaled(style.ringWidth * element.scale), 1)
@@ -638,17 +659,17 @@ enum OverlayRenderModel {
             resolvedTextItem(role: .helper, text: "CURRENT SET", style: style.helperText),
             resolvedTextItem(role: .phase, text: phase, style: style.phaseText),
             resolvedTextItem(role: .rep, text: rep, style: style.repText),
-            resolvedTextItem(role: .countdown, text: countdown, style: style.countdownText),
-            resolvedTextItem(role: .caption, text: "remaining", style: style.captionText),
+            resolvedTextItem(role: .countdown, text: centerValue, style: style.countdownText),
+            resolvedTextItem(role: .caption, text: caption, style: style.captionText),
         ].compactMap { $0 }
 
         return IntervalCountdownRenderLayout(
             style: style,
             rect: rect,
-            progress: clampedProgress(remainingProgress),
+            progress: clampedProgress(ringProgress),
             ringColor: ringColor,
             lapKind: kind,
-            countdownText: countdown,
+            countdownText: centerValue,
             phaseText: phase,
             repText: rep,
             textItems: textItems,
@@ -1709,6 +1730,38 @@ enum OverlayRenderModel {
             return String(format: "%.2f km", meters / 1000)
         }
         return "\(Int(meters.rounded())) m"
+    }
+
+    private static func intervalCountdownCenterValue(
+        metric: IntervalCountdownCenterMetric,
+        direction: IntervalCountdownValueDirection,
+        elapsedTime: TimeInterval,
+        remainingTime: TimeInterval,
+        elapsedDistance: Double,
+        remainingDistance: Double
+    ) -> String {
+        switch (metric, direction) {
+        case (.time, .remaining):
+            formatDuration(remainingTime)
+        case (.time, .elapsed):
+            formatDuration(elapsedTime)
+        case (.distance, .remaining):
+            formatDistanceMeters(remainingDistance)
+        case (.distance, .elapsed):
+            formatDistanceMeters(elapsedDistance)
+        }
+    }
+
+    private static func intervalCountdownCaption(
+        metric: IntervalCountdownCenterMetric,
+        direction: IntervalCountdownValueDirection
+    ) -> String {
+        switch (metric, direction) {
+        case (.time, .remaining): "remaining"
+        case (.time, .elapsed): "elapsed"
+        case (.distance, .remaining): "distance left"
+        case (.distance, .elapsed): "distance"
+        }
     }
 
     private static func computeGaugeProgress(style: RunningGaugeStyle, context: OverlayRenderContext) -> Double {

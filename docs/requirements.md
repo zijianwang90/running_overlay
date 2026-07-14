@@ -19,7 +19,7 @@ Given a completed activity and one or more videos recorded during that activity,
 3. App reads activity data from the FIT file and derives the master activity timeline.
 4. App reads video metadata, timecode, creation time, and filename time patterns and keeps imported videos in the media pool.
 5. User explicitly matches selected media to the current layer or a new layer, or manually drags media onto the timeline.
-6. User configures project resolution and frame rate.
+6. User configures project aspect ratio, resolution, and frame rate.
 7. User designs data overlay elements in the video preview.
 8. User exports one transparent overlay clip per timeline video segment.
 
@@ -29,9 +29,15 @@ The main interface has a small gear icon in the lower-right corner. Clicking it 
 
 Initial settings:
 
-- Timeline resolution presets:
+- Project aspect ratio presets, selected before resolution:
+  - Landscape: 16:9, 4:3, 1:1
+  - Portrait: 9:16, 3:4, 1:1
+- Resolution presets for the selected aspect ratio:
   - 16:9: 1280x720, 1920x1080, 2560x1440, 3840x2160
   - 9:16: 720x1280, 1080x1920, 1440x2560, 2160x3840
+  - 4:3: 960x720, 1440x1080, 1920x1440, 2880x2160
+  - 3:4: 720x960, 1080x1440, 1440x1920, 2160x2880
+  - 1:1: 720x720, 1080x1080, 1440x1440, 2160x2160
 - Project frame rate presets:
   - 23.976
   - 24
@@ -51,6 +57,11 @@ Initial settings:
 
 The layer data update frame rate controls how often FIT-derived values change in overlay preview and export. It is separate from the project video frame rate: a 30 fps project can still update data values at 1, 2, 5, 10, or 15 fps when the user wants a less jittery data layer.
 New projects default to 5 fps so exports reuse more overlay frames while still preserving the configured video frame rate.
+
+Changing project aspect ratio keeps the current short-edge resolution tier
+where possible. The two 1:1 choices produce the same square dimensions but
+preserve the user's landscape or portrait workflow intent. Legacy project data
+without an explicit aspect-ratio field infers it from the saved resolution.
 
 Project Settings also exposes the Font Library used by overlay font menus. The Font Library can restore its favorite fonts and default family to the default monospaced overlay set: `PT Mono`, `Monaco`, `Menlo`, and `Andale Mono`, with `PT Mono` as the default.
 

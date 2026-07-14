@@ -157,9 +157,21 @@ struct ProjectSettingsView: View {
 
     private var videoSection: some View {
         VStack(spacing: 0) {
+            SettingsRow(leading: { dropdownLabel("Aspect Ratio") }) {
+                Picker("", selection: aspectRatioBinding) {
+                    ForEach(ProjectAspectRatio.allCases) { aspectRatio in
+                        Text(aspectRatio.label).tag(aspectRatio)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: Self.trailingControlWidth)
+            }
+            dividerRow
             SettingsRow(leading: { dropdownLabel("Resolution") }) {
-                Picker("", selection: $project.settings.resolution) {
-                    ForEach(ProjectResolution.presets) { r in Text(r.label).tag(r) }
+                Picker("", selection: resolutionBinding) {
+                    ForEach(ProjectResolution.presets(for: project.settings.aspectRatio)) { resolution in
+                        Text(resolution.label).tag(resolution)
+                    }
                 }
                 .labelsHidden()
                 .frame(width: Self.trailingControlWidth)
@@ -207,6 +219,20 @@ struct ProjectSettingsView: View {
     }
 
     // MARK: - Helpers
+
+    private var aspectRatioBinding: Binding<ProjectAspectRatio> {
+        Binding(
+            get: { project.settings.aspectRatio },
+            set: { project.setProjectAspectRatio($0) }
+        )
+    }
+
+    private var resolutionBinding: Binding<ProjectResolution> {
+        Binding(
+            get: { project.settings.resolution },
+            set: { project.setProjectResolution($0) }
+        )
+    }
 
     private func dropdownLabel(_ text: String) -> some View {
         Text(text)

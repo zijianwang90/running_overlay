@@ -5,7 +5,7 @@ struct IntervalCountdownOverlayDetailView: View {
     let elementID: OverlayElement.ID
 
     @State private var layoutOpen = true
-    @State private var countdownOpen = true
+    @State private var centerValueOpen = true
     @State private var progressOpen = true
     @State private var textOpen = true
 
@@ -24,8 +24,8 @@ struct IntervalCountdownOverlayDetailView: View {
                                 heightRange: 160...720
                             )
                         }
-                        section("Countdown", systemImage: "timer", isOpen: $countdownOpen) {
-                            visibilityRows(element.style.intervalCountdown)
+                        section("Center Value", systemImage: "number.circle", isOpen: $centerValueOpen) {
+                            centerValueRows(element.style.intervalCountdown)
                         }
                         section("Progress Ring", systemImage: "circle.dashed", isOpen: $progressOpen) {
                             progressRows(element.style.intervalCountdown)
@@ -126,10 +126,21 @@ struct IntervalCountdownOverlayDetailView: View {
     }
 
     @ViewBuilder
-    private func visibilityRows(_ style: IntervalCountdownStyle) -> some View {
-        ForEach(IntervalCountdownTextRole.allCases.filter(\.isHideable)) { role in
-            InspectorDenseRow(label: role.label) {
-                miniToggle(textVisibilityBinding(role, current: style))
+    private func centerValueRows(_ style: IntervalCountdownStyle) -> some View {
+        InspectorDenseRow(label: "Metric") {
+            InspectorDenseSegmented(
+                values: IntervalCountdownCenterMetric.allCases,
+                selection: centerMetricBinding(current: style)
+            ) {
+                Text($0.label).tag($0)
+            }
+        }
+        InspectorDenseRow(label: "Value Direction") {
+            InspectorDenseSegmented(
+                values: IntervalCountdownValueDirection.allCases,
+                selection: centerValueDirectionBinding(current: style)
+            ) {
+                Text($0.label).tag($0)
             }
         }
     }
@@ -160,6 +171,16 @@ struct IntervalCountdownOverlayDetailView: View {
                 }
             }
         }
+        InspectorDenseRow(label: "Direction") {
+            InspectorDenseSegmented(
+                values: IntervalCountdownRingDirection.allCases,
+                selection: ringDirectionBinding(current: style)
+            ) {
+                Text($0.label)
+                    .tag($0)
+                    .help($0.progressDescription)
+            }
+        }
         InspectorDenseRow(label: "Rounded Ends") {
             miniToggle(styleBinding(\.roundedLineCap, current: style))
         }
@@ -178,45 +199,66 @@ struct IntervalCountdownOverlayDetailView: View {
     @ViewBuilder
     private func textRows(_ style: IntervalCountdownStyle) -> some View {
         ForEach(IntervalCountdownTextRole.allCases) { role in
-            textRoleRows(role, style: style.textStyle(for: role))
+            textRoleGroup(role, style: style.textStyle(for: role))
+        }
+    }
+
+    private func textRoleGroup(_ role: IntervalCountdownTextRole, style: IntervalCountdownTextStyle) -> some View {
+        VStack(spacing: 0) {
+            textGroupHeader(
+                role.label,
+                visibility: role.isHideable ? textVisibilityBinding(role, current: currentStyle) : nil
+            )
+            textRoleRows(role, style: style)
         }
     }
 
     @ViewBuilder
     private func textRoleRows(_ role: IntervalCountdownTextRole, style: IntervalCountdownTextStyle) -> some View {
-        if role.isHideable {
-            InspectorDenseRow(label: "\(role.label) Visible") {
-                miniToggle(textVisibilityBinding(role, current: currentStyle))
-            }
-        }
-        InspectorDenseRow(label: "\(role.label) Font") {
+        InspectorDenseRow(label: "Font") {
             fontMenu(selected: style.fontName) { fontName in
                 updateTextStyle(role) { $0.fontName = fontName }
             }
         }
         InspectorDenseSliderRow(
-            label: "\(role.label) Size",
+            label: "Size",
             value: textBinding(role, \.fontSize, current: style),
             range: 8...120,
             displayText: "\(Int(style.fontSize.rounded()))"
         )
-        InspectorDenseRow(label: "\(role.label) Weight") {
+        InspectorDenseRow(label: "Weight") {
             InspectorDenseSegmented(values: OverlayFontWeight.allCases, selection: textBinding(role, \.fontWeight, current: style)) {
                 Text($0.label).tag($0)
             }
         }
-        InspectorDenseRow(label: "\(role.label) Color") {
+        InspectorDenseRow(label: "Color") {
             InspectorDenseSegmented(values: IntervalCountdownColorMode.allCases, selection: textBinding(role, \.colorMode, current: style)) {
                 Text($0.label).tag($0)
             }
         }
         if style.colorMode == .customColor {
-            InspectorDenseRow(label: "\(role.label) Custom") {
+            InspectorDenseRow(label: "Custom") {
                 InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: style.customColor) { color in
                     updateTextStyle(role) { $0.customColor = color }
                 }
             }
         }
+    }
+
+    private func textGroupHeader(_ title: String, visibility: Binding<Bool>?) -> some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(NumericTokens.textPrimary)
+            Spacer()
+            if let visibility {
+                miniToggle(visibility)
+            }
+        }
+        .frame(height: 32)
+        .padding(.horizontal, NumericTokens.panelPaddingX)
+        .background(NumericTokens.panelBackground)
+        .overlay(alignment: .bottom) { Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1) }
     }
 
     private var currentStyle: IntervalCountdownStyle {
@@ -266,6 +308,33 @@ struct IntervalCountdownOverlayDetailView: View {
         Binding(
             get: { current[keyPath: keyPath] },
             set: { value in project.mutateIntervalCountdownStyleContinuous(elementID) { $0[keyPath: keyPath] = value } }
+        )
+    }
+
+    private func ringDirectionBinding(current: IntervalCountdownStyle) -> Binding<IntervalCountdownRingDirection> {
+        Binding(
+            get: { current.resolvedRingDirection },
+            set: { direction in
+                project.mutateIntervalCountdownStyle(elementID) { $0.ringDirection = direction }
+            }
+        )
+    }
+
+    private func centerMetricBinding(current: IntervalCountdownStyle) -> Binding<IntervalCountdownCenterMetric> {
+        Binding(
+            get: { current.resolvedCenterMetric },
+            set: { metric in
+                project.mutateIntervalCountdownStyle(elementID) { $0.centerMetric = metric }
+            }
+        )
+    }
+
+    private func centerValueDirectionBinding(current: IntervalCountdownStyle) -> Binding<IntervalCountdownValueDirection> {
+        Binding(
+            get: { current.resolvedCenterValueDirection },
+            set: { direction in
+                project.mutateIntervalCountdownStyle(elementID) { $0.centerValueDirection = direction }
+            }
         )
     }
 

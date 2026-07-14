@@ -39,6 +39,7 @@ struct ExportProgressTests {
         state.markCompleted()
         #expect(state.completedCount == 2)
         #expect(state.overallProgress == 1)
+        #expect(state.isCompleted)
     }
 
     @Test func exportProgressCanMarkQueuedItemsCancelled() {
@@ -55,5 +56,6 @@ struct ExportProgressTests {
         #expect(state.failureMessage == "Cancelled")
         #expect(state.items[0].status == .cancelled)
         #expect(state.items[1].status == .cancelled)
+        #expect(!state.isCompleted)
     }
 }

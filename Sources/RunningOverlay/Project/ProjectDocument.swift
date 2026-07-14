@@ -86,6 +86,21 @@ final class ProjectDocument: ObservableObject {
         }
     }
 
+    func setProjectAspectRatio(_ aspectRatio: ProjectAspectRatio) {
+        guard settings.aspectRatio != aspectRatio else { return }
+        registerUndoPoint()
+        settings.setAspectRatio(aspectRatio)
+    }
+
+    func setProjectResolution(_ resolution: ProjectResolution) {
+        guard settings.resolution != resolution,
+              settings.aspectRatio.matches(resolution) else {
+            return
+        }
+        registerUndoPoint()
+        settings.resolution = resolution
+    }
+
     var workoutStructureSummary: String {
         let analysis = activity.workoutStructure
         let kind = analysis.kind == .structured ? "Structured" : "Normal"
@@ -129,6 +144,10 @@ final class ProjectDocument: ObservableObject {
             return
         }
 
+        importFitURL(url)
+    }
+
+    func importFitURL(_ url: URL) {
         do {
             print("[RunningOverlay] Importing FIT file: \(url.path)")
             registerUndoPoint()
@@ -4208,6 +4227,12 @@ struct ExportProgressState: Equatable {
         items.filter { $0.status == .completed }.count
     }
 
+    var isCompleted: Bool {
+        !items.isEmpty
+            && failureMessage == nil
+            && items.allSatisfy { $0.status == .completed }
+    }
+
     mutating func update(_ progress: OverlayExportProgress) {
         for index in items.indices {
             if items[index].index < progress.segmentIndex, items[index].status != .completed {
@@ -4221,6 +4246,7 @@ struct ExportProgressState: Equatable {
     }
 
     mutating func markCompleted() {
+        failureMessage = nil
         for index in items.indices {
             items[index].progress = 1
             items[index].status = .completed

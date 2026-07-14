@@ -6,6 +6,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		857BEEBF82BA872B5706828F /* AppLaunchCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F90D93448DFB9B9FE10A6C4 /* AppLaunchCommand.swift */; };
 		6C37E615226F1B8FF494BE59 /* ExportBenchmarkCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FBA4A29449DD6E1B2E8BE72 /* ExportBenchmarkCommand.swift */; };
 		16FF772A3969374092F731BB /* HeadlessBenchmarkRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC559EBBA7D6CBFBD0ABE110 /* HeadlessBenchmarkRunner.swift */; };
 		BA70C27C166C867DFE129725 /* PresetFonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 461C22D4050609BA14549233 /* PresetFonts.swift */; };
@@ -123,6 +124,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		3F90D93448DFB9B9FE10A6C4 /* AppLaunchCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/AppLaunchCommand.swift"; sourceTree = SOURCE_ROOT; };
 		7FBA4A29449DD6E1B2E8BE72 /* ExportBenchmarkCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/ExportBenchmarkCommand.swift"; sourceTree = SOURCE_ROOT; };
 		EC559EBBA7D6CBFBD0ABE110 /* HeadlessBenchmarkRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/HeadlessBenchmarkRunner.swift"; sourceTree = SOURCE_ROOT; };
 		461C22D4050609BA14549233 /* PresetFonts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/PresetFonts.swift"; sourceTree = SOURCE_ROOT; };
@@ -241,6 +243,7 @@
 /* Begin PBXGroup section */
 		870B3294C0CBD48AF6BBCC1B = {isa = PBXGroup; children = (8309DD304D804F9D7F6302F5, 50F0FC3AFD5FBC981B5A0DDD, 805D39FC15AEDC4AD0E4E917, B6561938591A059DEBBCECA2, 62C2857EEBBA20131483F32E, 615B463D1028E4E24B674CF7); sourceTree = "<group>"; };
 		8309DD304D804F9D7F6302F5 /* Sources */ = {isa = PBXGroup; children = (
+			3F90D93448DFB9B9FE10A6C4 /* AppLaunchCommand.swift */,
 			7FBA4A29449DD6E1B2E8BE72 /* ExportBenchmarkCommand.swift */,
 			EC559EBBA7D6CBFBD0ABE110 /* HeadlessBenchmarkRunner.swift */,
 			461C22D4050609BA14549233 /* PresetFonts.swift */,
@@ -385,6 +388,7 @@
 
 /* Begin PBXSourcesBuildPhase section */
 		F612CD2E22E187AC48B5913C /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
+			857BEEBF82BA872B5706828F /* AppLaunchCommand.swift in Sources */,
 			6C37E615226F1B8FF494BE59 /* ExportBenchmarkCommand.swift in Sources */,
 			16FF772A3969374092F731BB /* HeadlessBenchmarkRunner.swift in Sources */,
 			BA70C27C166C867DFE129725 /* PresetFonts.swift in Sources */,
