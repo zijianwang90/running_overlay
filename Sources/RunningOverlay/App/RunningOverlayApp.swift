@@ -15,8 +15,8 @@ struct RunningOverlayApp: App {
             if let fitURL = launchCommand.fitURL {
                 project.importFitURL(fitURL)
             }
-            if let videoURL = launchCommand.videoURL {
-                project.importVideoURLs([videoURL], replacingExisting: true)
+            if !launchCommand.videoURLs.isEmpty {
+                project.importVideoURLs(launchCommand.videoURLs, replacingExisting: true)
             }
         }
 

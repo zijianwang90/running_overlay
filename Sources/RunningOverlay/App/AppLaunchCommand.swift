@@ -2,11 +2,11 @@ import Foundation
 
 struct AppLaunchCommand: Equatable {
     var fitURL: URL?
-    var videoURL: URL?
+    var videoURLs: [URL]
 
     static func parse(arguments: [String] = CommandLine.arguments) throws -> AppLaunchCommand? {
         var fitPath: String?
-        var videoPath: String?
+        var videoPaths: [String] = []
         var index = 1
 
         while index < arguments.count {
@@ -15,20 +15,20 @@ struct AppLaunchCommand: Equatable {
             case "--fit":
                 fitPath = try value(after: argument, arguments: arguments, index: &index)
             case "--video":
-                videoPath = try value(after: argument, arguments: arguments, index: &index)
+                videoPaths.append(try value(after: argument, arguments: arguments, index: &index))
             default:
                 break
             }
             index += 1
         }
 
-        guard fitPath != nil || videoPath != nil else {
+        guard fitPath != nil || !videoPaths.isEmpty else {
             return nil
         }
 
         return AppLaunchCommand(
             fitURL: fitPath.map(resolvedURL(for:)),
-            videoURL: videoPath.map(resolvedURL(for:))
+            videoURLs: videoPaths.map(resolvedURL(for:))
         )
     }
 

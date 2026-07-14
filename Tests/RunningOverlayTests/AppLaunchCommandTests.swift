@@ -8,12 +8,13 @@ struct AppLaunchCommandTests {
         let parsed = try AppLaunchCommand.parse(arguments: [
             "RunningOverlay",
             "--fit", "Fixtures/run.fit",
-            "--video", "/tmp/run video.mp4"
+            "--video", "/tmp/run video.mp4",
+            "--video", "/tmp/finish.mov"
         ])
         let command = try #require(parsed)
 
         #expect(command.fitURL?.path.hasSuffix("/Fixtures/run.fit") == true)
-        #expect(command.videoURL?.path == "/tmp/run video.mp4")
+        #expect(command.videoURLs.map(\.path) == ["/tmp/run video.mp4", "/tmp/finish.mov"])
     }
 
     @Test func supportsEitherLaunchFileIndependently() throws {
@@ -27,9 +28,9 @@ struct AppLaunchCommandTests {
         let videoOnly = try #require(parsedVideo)
 
         #expect(fitOnly.fitURL?.path == FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("run.fit").path)
-        #expect(fitOnly.videoURL == nil)
+        #expect(fitOnly.videoURLs.isEmpty)
         #expect(videoOnly.fitURL == nil)
-        #expect(videoOnly.videoURL?.path.hasSuffix("/run.mov") == true)
+        #expect(videoOnly.videoURLs.first?.path.hasSuffix("/run.mov") == true)
     }
 
     @Test func returnsNilWithoutLaunchFileArguments() throws {

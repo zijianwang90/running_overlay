@@ -57,7 +57,8 @@ Current implementation:
 - Local `swift run` debugging can bypass the FIT and video file pickers with
   `swift run RunningOverlay --fit <fit-path> --video <video-path>`. Either flag
   can be omitted, and paths may be absolute, relative to the current working
-  directory, or start with `~`.
+  directory, or start with `~`. Repeat `--video <video-path>` to import multiple
+  videos in one launch.
 - Command-line startup imports use the same `ProjectDocument.importFitURL()`
   and `ProjectDocument.importVideoURLs()` paths as interactive imports.
 - The parser currently handles standard FIT definition/data messages and extracts record/session fields needed for the initial timeline.
