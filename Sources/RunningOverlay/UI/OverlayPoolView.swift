@@ -101,7 +101,7 @@ struct OverlayTileInfo: Identifiable {
         OverlayTileInfo(type: .groundContactBalance, hint: "L/R", systemImage: "scale.3d", category: .metrics),
         OverlayTileInfo(type: .temperature, hint: "°C / °F", systemImage: "thermometer", category: .metrics),
         OverlayTileInfo(type: .grade, hint: "slope %", systemImage: "arrow.up.right", category: .metrics),
-        OverlayTileInfo(type: .customNumeric, hint: "custom FIT field", systemImage: "number", category: .metrics),
+        OverlayTileInfo(type: .customNumeric, hint: "custom activity field", systemImage: "number", category: .metrics),
         OverlayTileInfo(type: .distanceTimeline, hint: "progress", systemImage: "waveform.path.ecg", category: .visuals),
         OverlayTileInfo(type: .elevationChart, hint: "profile", systemImage: "chart.line.uptrend.xyaxis", category: .visuals),
         OverlayTileInfo(type: .runningGauge, hint: "live gauge", systemImage: "gauge", category: .visuals, isAccent: true),

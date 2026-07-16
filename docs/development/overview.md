@@ -4,7 +4,7 @@
 
 - Build as a native macOS app.
 - Keep timing and data models independent from UI pixel coordinates.
-- Treat FIT parsing, media metadata parsing, timeline alignment, overlay layout, and export rendering as separate subsystems.
+- Treat activity-file parsing, media metadata parsing, timeline alignment, overlay layout, and export rendering as separate subsystems.
 - Prefer deterministic project files and serializable models early, even before the full UI is complete.
 - Update documentation in the same step as product or implementation changes.
 - Project mutations should be routed through `ProjectDocument` methods so undo/redo, persistence, and future validation can be handled consistently.
@@ -24,7 +24,7 @@ Initial recommendation for upcoming implementation:
 - Media preview and export: AVFoundation.
 - Timeline rendering UI: SwiftUI first, with AppKit interop if interaction precision requires it.
 - Default appearance: AppKit `darkAqua` with SwiftUI dark color scheme at the root view.
-- FIT parsing: evaluate existing Swift FIT libraries first; implement a focused parser only if library quality or licensing is unsuitable.
+- Activity parsing: keep focused FIT and GPX parsers behind one file-format router; evaluate external format libraries only when their quality and licensing justify the dependency.
 - Persistence: project document model encoded as JSON or a Swift-native document format during early development.
 
 Items to validate before implementation:
@@ -39,7 +39,9 @@ The implementation should evolve toward these boundaries:
 
 - `App`: app entry, window setup, commands, keyboard shortcuts.
 - `Project`: project document, settings, persistence.
-- `FitData`: FIT parsing, activity timeline, data sampling.
+- `FitData`: FIT/GPX parsing, activity timeline, data sampling. The directory
+  name remains for source compatibility even though the subsystem accepts both
+  formats.
 - `MediaImport`: video import, metadata extraction, filename time parsing.
 - `Timeline`: tracks, clips, selection, zoom, playhead, alignment offsets.
 - `Overlay`: overlay element model, layout, styling, data binding.

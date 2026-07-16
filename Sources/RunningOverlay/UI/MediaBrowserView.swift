@@ -182,7 +182,7 @@ struct MediaBrowserView: View {
                 .fill(EditorTheme.successGreen)
                 .frame(width: 6, height: 6)
             VStack(alignment: .leading, spacing: 1) {
-                Text(project.fitSourceName.isEmpty ? "FIT loaded" : project.fitSourceName)
+                Text(project.activitySourceName.isEmpty ? "Activity loaded" : project.activitySourceName)
                     .font(EditorTheme.captionFont)
                     .foregroundStyle(EditorTheme.textMuted)
                     .lineLimit(1)
@@ -216,7 +216,7 @@ struct MediaBrowserView: View {
             .help("Workout type")
 
             Button {
-                project.importFitFile()
+                project.importActivityFile()
             } label: {
                 Text("Replace")
                     .font(EditorTheme.captionFont)
@@ -224,7 +224,7 @@ struct MediaBrowserView: View {
                     .underline()
             }
             .buttonStyle(.plain)
-            .help("Replace the current FIT file")
+            .help("Replace the current activity file")
         }
     }
 
@@ -768,17 +768,17 @@ struct MediaBrowserView: View {
             Image(systemName: "waveform.path.ecg")
                 .font(.system(size: 32))
                 .foregroundStyle(EditorTheme.textMuted)
-            Text("Import FIT")
+            Text("Import Activity")
                 .font(EditorTheme.bodyStrongFont)
                 .foregroundStyle(EditorTheme.textSecondary)
-            Text("Start with running activity data")
+            Text("Choose a FIT or GPX running activity")
                 .font(EditorTheme.captionFont)
                 .foregroundStyle(EditorTheme.textMuted)
                 .multilineTextAlignment(.center)
             Button {
-                project.importFitFile()
+                project.importActivityFile()
             } label: {
-                Label("Import FIT", systemImage: "plus")
+                Label("Import Activity", systemImage: "plus")
             }
             .buttonStyle(EditorPrimaryButtonStyle())
             Text("Then import videos")
@@ -802,15 +802,15 @@ struct MediaBrowserView: View {
             StepIndicator(currentStep: .videos)
             VStack(spacing: 2) {
                 Button {
-                    project.importFitFile()
+                    project.importActivityFile()
                 } label: {
-                    Text("Replace FIT")
+                    Text("Replace Activity")
                         .font(EditorTheme.captionFont)
                         .foregroundStyle(EditorTheme.textMuted)
                         .underline()
                 }
                 .buttonStyle(.plain)
-                .help("Replace the current FIT file")
+                .help("Replace the current activity file")
 
                 if project.activity.duration > 0 {
                     workoutStructureMenuRow
@@ -912,7 +912,7 @@ struct MediaBrowserView: View {
 
     private func importDroppedVideoFiles(_ providers: [NSItemProvider], intoFolder folderID: MediaFolder.ID? = nil) -> Bool {
         guard project.activity.duration > 0 else {
-            project.statusMessage = "Import a FIT file before importing videos."
+            project.statusMessage = "Import a FIT or GPX file before importing videos."
             return false
         }
 
@@ -957,7 +957,7 @@ private struct StepIndicator: View {
 
     var body: some View {
         HStack(spacing: EditorTheme.space2) {
-            step(label: "1 FIT", state: currentStep == .fit ? .active : .complete)
+            step(label: "1 Activity", state: currentStep == .fit ? .active : .complete)
 
             Rectangle()
                 .fill(EditorTheme.borderSubtle)

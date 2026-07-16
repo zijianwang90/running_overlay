@@ -216,15 +216,15 @@
   "emptyStates": {
     "noFitNoMedia": {
       "icon": "waveform.path.ecg",
-      "title": "Import FIT",
+      "title": "Import Activity",
       "secondaryText": "Start with running activity data",
-      "primaryAction": "Import FIT",
+      "primaryAction": "Import Activity",
       "stepIndicator": [
         { "label": "FIT", "state": "active" },
         { "label": "Videos", "state": "inactive" }
       ],
       "mutedHint": "Then import videos",
-      "dropZone": "subtle dashed rounded rectangle; do not imply video drop is ready before FIT import"
+      "dropZone": "subtle dashed rounded rectangle; do not imply video drop is ready before activity import"
     },
     "fitImportedNoMedia": {
       "icon": "video.badge.plus",

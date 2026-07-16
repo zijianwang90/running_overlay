@@ -34,7 +34,7 @@ final class ProjectDocument: ObservableObject {
     @Published var fitSourceName: String = ""
     @Published private(set) var openWeatherAPIKey = ""
     @Published var workoutStructureSelection: WorkoutStructureSelection = .auto
-    @Published var statusMessage = "Ready to import a FIT file."
+    @Published var statusMessage = "Ready to import a FIT or GPX activity file."
     @Published var toastMessage: String?
     @Published var isTimelineCollapsed = false
     @Published private(set) var canUndo = false
@@ -133,9 +133,15 @@ final class ProjectDocument: ObservableObject {
         }
     }
 
-    func importFitFile() {
+    var activitySourceName: String {
+        fitSourceName
+    }
+
+    func importActivityFile() {
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.init(filenameExtension: "fit")].compactMap { $0 }
+        panel.allowedContentTypes = ActivityFileParser.supportedFilenameExtensions.compactMap {
+            UTType(filenameExtension: $0)
+        }
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.canChooseFiles = true
@@ -144,26 +150,26 @@ final class ProjectDocument: ObservableObject {
             return
         }
 
-        importFitURL(url)
+        importActivityURL(url)
     }
 
-    func importFitURL(_ url: URL) {
+    func importActivityURL(_ url: URL) {
         do {
-            print("[RunningOverlay] Importing FIT file: \(url.path)")
+            let format = ActivityFileParser.format(for: url)?.displayName ?? "activity"
+            print("[RunningOverlay] Importing \(format) activity file: \(url.path)")
+            let parsedActivity = try ActivityFileParser.parse(url: url)
             registerUndoPoint()
-            let parsedActivity = try FitFileParser.parse(url: url)
-            workoutStructureSelection = .auto
-            finishFitImport(activity: parsedActivity, sourceName: url.lastPathComponent)
-            print("[RunningOverlay] FIT import succeeded: \(url.lastPathComponent), duration=\(formatDuration(activity.duration)), distance=\(formatDistance(activity.distanceMeters)), records=\(activity.records.count)")
+            finishActivityImport(activity: parsedActivity, sourceName: url.lastPathComponent)
+            print("[RunningOverlay] \(format) import succeeded: \(url.lastPathComponent), duration=\(formatDuration(activity.duration)), distance=\(formatDistance(activity.distanceMeters)), records=\(activity.records.count)")
         } catch {
-            statusMessage = "FIT import failed: \(error.localizedDescription)"
-            print("[RunningOverlay] FIT import failed: \(url.path)")
+            statusMessage = "Activity import failed: \(error.localizedDescription)"
+            print("[RunningOverlay] Activity import failed: \(url.path)")
             print("[RunningOverlay] Error: \(error.localizedDescription)")
             print("[RunningOverlay] Debug: \(String(reflecting: error))")
         }
     }
 
-    func finishFitImport(activity importedActivity: ActivityTimeline, sourceName: String) {
+    func finishActivityImport(activity importedActivity: ActivityTimeline, sourceName: String) {
         activity = importedActivity
         workoutStructureSelection = .auto
         fitSourceName = sourceName
@@ -171,7 +177,8 @@ final class ProjectDocument: ObservableObject {
         timeline.playhead = timeline.fitStartTime
 
         let matchSummary = refreshMediaAlignmentAfterFitImport()
-        let importSummary = "Loaded FIT: \(sourceName), \(formatDuration(importedActivity.duration)), \(formatDistance(importedActivity.distanceMeters))."
+        let sourceFormat = ActivityFileFormat(rawValue: URL(fileURLWithPath: sourceName).pathExtension.lowercased())?.displayName ?? "activity"
+        let importSummary = "Loaded \(sourceFormat): \(sourceName), \(formatDuration(importedActivity.duration)), \(formatDistance(importedActivity.distanceMeters))."
         if let appliedTemplateName = applyLastUsedOverlayTemplateAfterFitImport() {
             statusMessage = [importSummary, matchSummary, "Applied template: \(appliedTemplateName)."]
                 .compactMap { $0 }
@@ -182,6 +189,19 @@ final class ProjectDocument: ObservableObject {
                 .compactMap { $0 }
                 .joined(separator: " ")
         }
+    }
+
+    // Compatibility entry points for existing tests and local tooling.
+    func importFitFile() {
+        importActivityFile()
+    }
+
+    func importFitURL(_ url: URL) {
+        importActivityURL(url)
+    }
+
+    func finishFitImport(activity importedActivity: ActivityTimeline, sourceName: String) {
+        finishActivityImport(activity: importedActivity, sourceName: sourceName)
     }
 
     func setWorkoutStructureSelection(_ selection: WorkoutStructureSelection) {
@@ -980,7 +1000,7 @@ final class ProjectDocument: ObservableObject {
         var updatedTimeline = timeline
         updatedTimeline.moveFitStart(to: startTime)
         timeline = updatedTimeline
-        statusMessage = "Moved FIT axis to \(formatSignedDuration(startTime))."
+        statusMessage = "Moved activity axis to \(formatSignedDuration(startTime))."
     }
 
     func removeTrack(named name: String) {
@@ -1962,7 +1982,7 @@ final class ProjectDocument: ObservableObject {
     private func fetchWeatherForNewWeatherWidget(_ elementID: OverlayElement.ID, updatesStatusMessage: Bool = true) {
         guard activity.routePoints.first != nil else {
             if updatesStatusMessage {
-                statusMessage = "Added Weather Widget overlay. Weather unavailable until the FIT route has GPS."
+                statusMessage = "Added Weather Widget overlay. Weather unavailable until the activity route has GPS."
             }
             return
         }
@@ -3340,7 +3360,7 @@ final class ProjectDocument: ObservableObject {
             return
         }
         guard activity.duration > 0 else {
-            statusMessage = "Import a FIT file before exporting full activity overlay."
+            statusMessage = "Import a FIT or GPX file before exporting full activity overlay."
             return
         }
 
@@ -3623,7 +3643,7 @@ final class ProjectDocument: ObservableObject {
         }
 
         guard !readyIDs.isEmpty else {
-            return "No existing video timestamps match this FIT."
+            return "No existing video timestamps match this activity."
         }
 
         let result = autoMatchTimestampMediaAfterFitImport(Set(readyIDs))
@@ -4010,7 +4030,8 @@ final class ProjectDocument: ObservableObject {
             timeline: timeline,
             overlayLayout: overlayLayout,
             userAssets: userAssets,
-            selection: selection
+            selection: selection,
+            fitSourceName: fitSourceName
         )
     }
 
@@ -4024,6 +4045,7 @@ final class ProjectDocument: ObservableObject {
         overlayLayout = snapshot.overlayLayout
         userAssets = snapshot.userAssets
         selection = snapshot.selection
+        fitSourceName = snapshot.fitSourceName
     }
 
     private func makePersistentSnapshot() -> ProjectPerformanceSnapshot {
@@ -4102,6 +4124,7 @@ private struct ProjectSnapshot: Equatable {
     var overlayLayout: OverlayLayout
     var userAssets: [UserAsset]
     var selection: EditorSelection
+    var fitSourceName: String
 }
 
 struct ProjectPerformanceSnapshot: Codable, Equatable {

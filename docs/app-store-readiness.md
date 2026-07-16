@@ -8,7 +8,7 @@ This document tracks the first Mac App Store submission path for Running Overlay
 
 - Target channel: Mac App Store first submission.
 - Current release version: `0.1.4` (build `7`).
-- Target scope: existing core app capabilities, including FIT import, video import, timeline editing, overlay design, Route Map, Weather Widget, and transparent MOV export.
+- Target scope: existing core app capabilities, including FIT/GPX activity import, video import, timeline editing, overlay design, Route Map, Weather Widget, and transparent MOV export.
 - Default branch: `main`; all changes land through pull requests.
 - App Store name: `Running Overlay Studio`.
 - Bundle identifier: `io.github.zijianwang90.runningoverlay`.
@@ -78,22 +78,22 @@ same source and resource tree.
 
 ## Privacy Inventory
 
-- User files: FIT files, source videos, SVG/icon assets, overlay templates, and export destinations are chosen through `NSOpenPanel` / `NSSavePanel`. The app should not scan arbitrary user directories.
+- User files: FIT/GPX files, source videos, SVG/icon assets, overlay templates, and export destinations are chosen through `NSOpenPanel` / `NSSavePanel`. The app should not scan arbitrary user directories.
 - Local storage: user overlay templates are stored as JSON under Application Support.
 - Network: Open-Meteo and optional user-configured OpenWeather historical weather requests, plus MapKit snapshot requests, are outbound only.
 - Credentials: the optional OpenWeather API key is stored in the user's macOS Keychain, excluded from project snapshots/templates, and sent only to OpenWeather when that provider is selected.
-- Location: weather lookup uses GPS coordinates from the imported FIT file. The app does not request the Mac's current location.
+- Location: weather lookup uses GPS coordinates from the imported activity file. The app does not request the Mac's current location.
 - Tracking/ads: none.
-- User content upload: source videos and FIT files are not uploaded by the app.
+- User content upload: source videos and FIT/GPX files are not uploaded by the app.
 
 ## App Store Connect Metadata Draft
 
 - Category: Photo & Video.
 - Secondary category candidate: Sports.
 - Subtitle draft: `Sports data overlays for running videos`.
-- Description draft: Running Overlay Studio helps runners and video creators turn FIT activity data into transparent video overlays for editors such as Final Cut Pro, DaVinci Resolve, and Premiere.
+- Description draft: Running Overlay Studio helps runners and video creators turn FIT or GPX activity data into transparent video overlays for editors such as Final Cut Pro, DaVinci Resolve, and Premiere.
 - Keywords draft: `running,FIT,overlay,video,telemetry,Garmin,route,weather`.
-- Review notes should explain how to import a FIT file, import one or more videos, match clips on the timeline, add overlays, and export alpha-capable MOV files.
+- Review notes should explain how to import a FIT or GPX file, import one or more videos, match clips on the timeline, add overlays, and export alpha-capable MOV files.
 - Privacy policy URL, support URL, marketing URL, copyright owner, and
   production screenshots are still required.
 

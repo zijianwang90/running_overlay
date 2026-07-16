@@ -10,7 +10,7 @@ load only the conventions relevant to their task.
 | Area | Document |
 |---|---|
 | Engineering principles, technology, modules, and core models | [Overview](development/overview.md) |
-| App bootstrap, FIT import, and media import | [App Bootstrap and Data Import](development/app-and-import.md) |
+| App bootstrap, activity import, and media import | [App Bootstrap and Data Import](development/app-and-import.md) |
 | Tracks, clips, timing edits, and timeline interaction | [Timeline](development/timeline.md) |
 | Overlay models, preview rendering, fonts, icons, and weather | [Overlays and Preview](development/overlays-and-preview.md) |
 | Project snapshots, templates, settings, and credentials | [Persistence](development/persistence.md) |

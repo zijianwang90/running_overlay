@@ -34,13 +34,13 @@ Current implementation:
 - Selected timeline clips draw a 2 px white border on top of their blue fill, replacing the default dark splice border for the selected block only.
 - Dragging from empty timeline time-area space, including below the last video track, draws a translucent blue marquee and live-selects every intersecting clip across tracks. The selection commits to `ProjectDocument` on mouse-up, and Delete or Forward Delete removes the selected clips as one undoable edit while refreshing their linked Media Pool alignment states.
 - The ruler hover info pill draws in a reserved band above the time scale as a rounded panel with a small downward-pointing arrow on its bottom edge whose tip aligns with the hovered ruler position.
-- AppKit timeline inputs are passed as explicit SwiftUI values so FIT import, playhead, zoom, selection, and media changes reliably refresh the timeline.
-- Timeline model time is project time. `TimelineModel.fitStartTime` maps project time back to FIT activity elapsed time.
+- AppKit timeline inputs are passed as explicit SwiftUI values so activity import, playhead, zoom, selection, and media changes reliably refresh the timeline.
+- Timeline model time is project time. The compatibility field `TimelineModel.fitStartTime` maps project time back to activity elapsed time.
 - Imported video clips are placed by real timestamp relative to FIT start and are no longer clamped to `0...activity.duration`.
-- Project bounds are the union of the FIT layer span and all video clip spans, allowing pre-start and post-finish race footage.
+- Project bounds are the union of the Activity layer span and all video clip spans, allowing pre-start and post-finish race footage.
 - The AppKit timeline draws a dedicated `FIT` layer above video layers.
-- The FIT layer overlays timer-paused segments in gray and shows a `Timer Paused` hover tooltip on those spans. Interval phase blocks also show English hover tooltips with lap kind, lap number, elapsed range, and duration.
-- In collapsed mode, FIT track blocks are clipped to the actual FIT activity range, so video-only spans before start or after finish do not show a green FIT bar.
+- The Activity layer overlays FIT timer-paused segments in gray and shows a `Timer Paused` hover tooltip on those spans. Interval phase blocks also show English hover tooltips with lap kind, lap number, elapsed range, and duration.
+- In collapsed mode, activity track blocks are clipped to the actual activity range, so video-only spans before start or after finish do not show an activity bar.
 - A FIT-only project shows the activity ruler and an empty video lane before media import.
 - During playback, the scroll view keeps the playhead visible horizontally.
 - Clip dragging is previewed inside the AppKit view and committed to the project model once on mouse-up.
@@ -54,7 +54,7 @@ Current implementation:
 - Collapsed timeline rendering uses DaVinci-like joined clip edges, with square internal edges and dark borders on clip and FIT blocks instead of full-height separator lines.
 - Timeline clip labels are clipped and middle-truncated inside their blue clip blocks so filenames do not spill into adjacent timeline space.
 - Timeline clip block widths are always proportional to clip duration at the current zoom level, including fit view; labels are hidden when a clip is too narrow to contain text.
-- A completely empty project timeline draws as an empty work area without a playhead, FIT layer, or default track; the default drop lane appears only after FIT or media context exists.
+- A completely empty project timeline draws as an empty work area without a playhead, Activity layer, or default track; the default drop lane appears only after activity or media context exists.
 - Split-view boundary cursor hints are implemented with transparent AppKit cursor rect views that do not intercept drag events.
 - `ProjectDocument.layerDataSampleTime` maps project playhead time through `fitStartTime`, then quantizes by `settings.layerDataFrameRate` before FIT-derived overlay values are read.
 - Selected clips expose a dense detail Inspector for camera/track renaming, start time, and offset. Duration editing is intentionally hidden until trim-length adjustment is needed.

@@ -104,7 +104,7 @@ A pull request is ready when:
 - Keep commits reviewable and purposeful.
 - Avoid unrelated formatting or refactoring.
 - Do not rewrite shared branch history.
-- Do not commit `.build`, exports, private FIT files, videos, signing files, or
+- Do not commit `.build`, exports, private FIT/GPX files, videos, signing files, or
   local configuration.
 - Use issue references where applicable.
 

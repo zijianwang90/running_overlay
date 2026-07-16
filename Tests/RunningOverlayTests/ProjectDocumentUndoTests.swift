@@ -507,7 +507,7 @@ struct ProjectDocumentUndoTests {
     }
 
     @Test func mediaAlignmentStatusHelpTextExplainsStatusDots() {
-        #expect(AlignmentStatus.readyToMatch(source: "timestamp").helpText == "Ready to match FIT timestamps")
+        #expect(AlignmentStatus.readyToMatch(source: "timestamp").helpText == "Ready to match activity timestamps")
         #expect(AlignmentStatus.aligned(source: "timestamp").helpText == "Already on the timeline")
         #expect(AlignmentStatus.needsManualPlacement.helpText == "Needs manual placement")
     }

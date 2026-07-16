@@ -1,11 +1,11 @@
 # Privacy
 
-Running Overlay Studio processes source videos and FIT activity files that may contain
+Running Overlay Studio processes source videos and FIT or GPX activity files that may contain
 private location, health, device, timestamp, and training information.
 
 ## Local Processing
 
-Source videos, FIT files, timeline edits, overlay layouts, preview frames, and
+Source videos, FIT/GPX files, timeline edits, overlay layouts, preview frames, and
 exported videos are processed locally on the Mac. The current application does
 not include account login, cloud sync, advertising, analytics, telemetry
 upload, or crash-reporting services.
@@ -34,11 +34,11 @@ overlay or triggers a weather refresh.
   activity date, and requested weather fields.
 - OpenWeather requests receive latitude, longitude, activity timestamp,
   requested units, and the user's OpenWeather API key.
-- macOS geocoding services may be used to turn the selected FIT activity's
+- macOS geocoding services may be used to turn the selected activity's
   coordinates into a readable place name. Running Overlay Studio does not use macOS
   Location Services to request the Mac's current device location.
 
-Source videos, preview frames, exported overlays, complete FIT files, heart-rate
+Source videos, preview frames, exported overlays, complete FIT/GPX files, heart-rate
 streams, cadence, pace, power, and layout templates are not uploaded to the
 weather providers by Running Overlay Studio.
 

@@ -154,7 +154,7 @@ fixed Numeric Overlay tile or inspector mode. Built-in friendly values are
 limited to sampled numeric values without a dedicated numeric overlay, currently
 latitude and longitude.
 
-The menu also appends generic values discovered in the imported FIT activity's
+The menu also appends generic values discovered in the imported activity's
 `record` messages after filtering standard record fields already represented by
 fixed Numeric Overlays, such as heart rate, distance, speed-derived pace,
 elevation, cadence, power, calories, run-dynamics fields, temperature, grade,

@@ -16,8 +16,10 @@
 		E8D8B2ED4D1412381D917843 /* OverlayExportModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2731A5ED488BF53C7B40BA18 /* OverlayExportModels.swift */; };
 		9617DAAA67E9FE5BF2EB14DB /* OverlayFrameRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E11E7DC676C38E49C1E1C3B1 /* OverlayFrameRenderer.swift */; };
 		9768A45158F5897AD1F641BC /* SwiftUIOverlayVideoExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0841F5230ADE1B0FC520C1D5 /* SwiftUIOverlayVideoExporter.swift */; };
+		03FF01095C8FEC14A3542603 /* ActivityFileParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18A98EAA2DCB2CECBF6FFDDD /* ActivityFileParser.swift */; };
 		0895A8504615BC19C9B4867C /* ActivityTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3573FD932AB7D4977A78DFE3 /* ActivityTimeline.swift */; };
 		C6B1EC812F9197EEAC445825 /* FitFileParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1ED1F2A705794485A50E061 /* FitFileParser.swift */; };
+		DBDC85A6708ECCEDE641D46C /* GpxFileParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AB12E31F45EBB2CFAF9BF4F /* GpxFileParser.swift */; };
 		15E1BD126296D86D8A38E3B0 /* WorkoutStructureAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7506D6DFFA66FC6BB16C19CF /* WorkoutStructureAnalyzer.swift */; };
 		D157F94385602E398BF56905 /* MediaItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E1DE4E5FDCBFE818F79B98E /* MediaItem.swift */; };
 		C53F6DF5BB62E9FC94359ADE /* MediaMetadataReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB3706EF933E51DD56E3DB3F /* MediaMetadataReader.swift */; };
@@ -134,8 +136,10 @@
 		2731A5ED488BF53C7B40BA18 /* OverlayExportModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/OverlayExportModels.swift"; sourceTree = SOURCE_ROOT; };
 		E11E7DC676C38E49C1E1C3B1 /* OverlayFrameRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/OverlayFrameRenderer.swift"; sourceTree = SOURCE_ROOT; };
 		0841F5230ADE1B0FC520C1D5 /* SwiftUIOverlayVideoExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/SwiftUIOverlayVideoExporter.swift"; sourceTree = SOURCE_ROOT; };
+		18A98EAA2DCB2CECBF6FFDDD /* ActivityFileParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/FitData/ActivityFileParser.swift"; sourceTree = SOURCE_ROOT; };
 		3573FD932AB7D4977A78DFE3 /* ActivityTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/FitData/ActivityTimeline.swift"; sourceTree = SOURCE_ROOT; };
 		E1ED1F2A705794485A50E061 /* FitFileParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/FitData/FitFileParser.swift"; sourceTree = SOURCE_ROOT; };
+		1AB12E31F45EBB2CFAF9BF4F /* GpxFileParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/FitData/GpxFileParser.swift"; sourceTree = SOURCE_ROOT; };
 		7506D6DFFA66FC6BB16C19CF /* WorkoutStructureAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/FitData/WorkoutStructureAnalyzer.swift"; sourceTree = SOURCE_ROOT; };
 		3E1DE4E5FDCBFE818F79B98E /* MediaItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/MediaImport/MediaItem.swift"; sourceTree = SOURCE_ROOT; };
 		FB3706EF933E51DD56E3DB3F /* MediaMetadataReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/MediaImport/MediaMetadataReader.swift"; sourceTree = SOURCE_ROOT; };
@@ -253,8 +257,10 @@
 			2731A5ED488BF53C7B40BA18 /* OverlayExportModels.swift */,
 			E11E7DC676C38E49C1E1C3B1 /* OverlayFrameRenderer.swift */,
 			0841F5230ADE1B0FC520C1D5 /* SwiftUIOverlayVideoExporter.swift */,
+			18A98EAA2DCB2CECBF6FFDDD /* ActivityFileParser.swift */,
 			3573FD932AB7D4977A78DFE3 /* ActivityTimeline.swift */,
 			E1ED1F2A705794485A50E061 /* FitFileParser.swift */,
+			1AB12E31F45EBB2CFAF9BF4F /* GpxFileParser.swift */,
 			7506D6DFFA66FC6BB16C19CF /* WorkoutStructureAnalyzer.swift */,
 			3E1DE4E5FDCBFE818F79B98E /* MediaItem.swift */,
 			FB3706EF933E51DD56E3DB3F /* MediaMetadataReader.swift */,
@@ -398,8 +404,10 @@
 			E8D8B2ED4D1412381D917843 /* OverlayExportModels.swift in Sources */,
 			9617DAAA67E9FE5BF2EB14DB /* OverlayFrameRenderer.swift in Sources */,
 			9768A45158F5897AD1F641BC /* SwiftUIOverlayVideoExporter.swift in Sources */,
+			03FF01095C8FEC14A3542603 /* ActivityFileParser.swift in Sources */,
 			0895A8504615BC19C9B4867C /* ActivityTimeline.swift in Sources */,
 			C6B1EC812F9197EEAC445825 /* FitFileParser.swift in Sources */,
+			DBDC85A6708ECCEDE641D46C /* GpxFileParser.swift in Sources */,
 			15E1BD126296D86D8A38E3B0 /* WorkoutStructureAnalyzer.swift in Sources */,
 			D157F94385602E398BF56905 /* MediaItem.swift in Sources */,
 			C53F6DF5BB62E9FC94359ADE /* MediaMetadataReader.swift in Sources */,

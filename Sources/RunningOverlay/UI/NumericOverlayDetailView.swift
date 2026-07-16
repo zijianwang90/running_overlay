@@ -92,7 +92,7 @@ struct NumericOverlayDetailView: View {
             }
         }
         if element.type == .temperature, project.activity.hasTemperatureData {
-            InspectorDenseRow(label: "Use FIT Temperature") {
+            InspectorDenseRow(label: "Use Activity Temperature") {
                 Toggle("", isOn: Binding(
                     get: { element.style.useFITTemperature },
                     set: { project.setOverlayUseFITTemperature(elementID, enabled: $0) }

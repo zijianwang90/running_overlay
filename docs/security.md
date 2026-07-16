@@ -7,7 +7,7 @@ Pre-release builds may change without backward compatibility guarantees.
 
 ## Reporting
 
-Do not publish an unpatched vulnerability, credential, private FIT file, GPS
+Do not publish an unpatched vulnerability, credential, private FIT/GPX file, GPS
 trace, or source video in a public issue.
 
 Use GitHub's private vulnerability reporting feature for this repository. If

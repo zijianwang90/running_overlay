@@ -134,7 +134,7 @@ files or private videos for validation artifacts.
 Inspect at minimum:
 
 - Fresh launch with no project.
-- FIT imported, no media.
+- Activity imported, no media.
 - FIT and one or more videos imported.
 - Overlay added and selected.
 - Timeline zoomed, scrolled, and resized.
@@ -249,4 +249,3 @@ A HIG UI validation pass is complete when:
 - Required tests or manual checks are named.
 - Any snapshot, export, font, icon, fixture, or licensed-asset change is marked
   for human review.
-

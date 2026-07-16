@@ -180,7 +180,7 @@ Empty states should be functional and compact:
 
 Examples:
 
-- Media Pool before FIT: `Import FIT`, `Start with running activity data`.
+- Media Pool before activity data: `Import Activity`, `Choose a FIT or GPX running activity`.
 - Media Pool after FIT: `Drop videos here`, `Import Videos`.
 - Filtered list: `No media matches the current filter`.
 - Overlay list: `No overlays added yet`.

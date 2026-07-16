@@ -107,7 +107,7 @@
     "nonlinear zoom slider and Fit label",
     "ruler seeking and hover data",
     "C-held hover scrubbing moves playhead to hovered timeline time without clicking",
-    "independent non-draggable FIT layer",
+    "independent non-draggable Activity layer",
     "expanded-mode video clip horizontal drag",
     "collapsed mode hides no-video gaps",
     "collapsed mode disables existing video clip horizontal drag",

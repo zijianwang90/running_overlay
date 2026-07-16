@@ -20,7 +20,7 @@ entries in `project-log.md`.
 
 | Change area | Primary documents |
 |---|---|
-| FIT parser or workout analysis | `docs/architecture.md#fit-data`, `docs/testing.md` |
+| FIT/GPX parser or workout analysis | `docs/architecture.md#activity-data-fit-and-gpx`, `docs/testing.md` |
 | Media import and alignment | `docs/architecture.md#media-import`, `docs/architecture.md#alignment-engine` |
 | Timeline behavior | `docs/architecture.md#timeline`, `docs/design/panels/timeline/` |
 | Numeric overlays | `docs/design/overlays/numeric/`, `docs/requirements.md` |
