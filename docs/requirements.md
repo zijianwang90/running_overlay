@@ -1,12 +1,12 @@
 # Running Overlay Studio Product Requirements
 
-Last updated: 2026-04-28 (Preview corner-handle scaling now directly updates overlay `scale`)
+Last updated: 2026-07-16 (GPX activity import support)
 
 ## 1. Product Summary
 
-Running Overlay Studio is a native macOS application that imports one FIT activity file and multiple video files, aligns the videos to the activity timeline, lets the user design data overlay elements, and exports transparent overlay video clips matching each source video segment.
+Running Overlay Studio is a native macOS application that imports one FIT or GPX activity file and multiple video files, aligns the videos to the activity timeline, lets the user design data overlay elements, and exports transparent overlay video clips matching each source video segment.
 
-The initial product focuses on running, but the data model and UI should avoid assumptions that block cycling or other FIT-based sports later.
+The initial product focuses on running, but the data model and UI should avoid assumptions that block cycling or other supported activity formats later.
 
 ## 2. Core User Goal
 
@@ -14,9 +14,9 @@ Given a completed activity and one or more videos recorded during that activity,
 
 ## 3. Primary Workflow
 
-1. User imports a FIT file.
+1. User imports a FIT or GPX file.
 2. User batch-imports video files.
-3. App reads activity data from the FIT file and derives the master activity timeline.
+3. App reads the selected activity file and derives the master activity timeline.
 4. App reads video metadata, timecode, creation time, and filename time patterns and keeps imported videos in the media pool.
 5. User explicitly matches selected media to the current layer or a new layer, or manually drags media onto the timeline.
 6. User configures project aspect ratio, resolution, and frame rate.
@@ -55,7 +55,7 @@ Initial settings:
   - 15 fps
   - 30 fps
 
-The layer data update frame rate controls how often FIT-derived values change in overlay preview and export. It is separate from the project video frame rate: a 30 fps project can still update data values at 1, 2, 5, 10, or 15 fps when the user wants a less jittery data layer.
+The layer data update frame rate controls how often activity-derived values change in overlay preview and export. It is separate from the project video frame rate: a 30 fps project can still update data values at 1, 2, 5, 10, or 15 fps when the user wants a less jittery data layer.
 New projects default to 5 fps so exports reuse more overlay frames while still preserving the configured video frame rate.
 
 Changing project aspect ratio keeps the current short-edge resolution tier
@@ -104,13 +104,13 @@ Layout interaction requirements:
 - The top header bars of Media, Preview, and Inspector should use a unified header height.
 - Header icon/menu button heights across Media, Preview, and Inspector should use a unified compact control size.
 
-## 6. FIT Timeline
+## 6. Activity Timeline
 
-The FIT file defines the master timeline.
+The FIT or GPX file defines the master timeline.
 
 Requirements:
 
-- The minimum timeline range is the full FIT activity duration, fitted across the available timeline width.
+- The minimum timeline range is the full activity duration, fitted across the available timeline width.
 - The timeline ruler starts at activity start and ends at activity finish.
 - Hovering on the ruler shows basic data:
   - Activity elapsed time.
@@ -121,10 +121,13 @@ Requirements:
 
 Current implementation status:
 
-- FIT file selection is available from the toolbar and app command menu.
+- FIT/GPX activity selection is available from the Media Pool and app command menu.
 - A first-pass FIT parser reads standard record and session messages for timing, distance, heart rate, speed-derived pace, elevation, cadence, power, and calories when present.
+- A GPX parser reads timed track points, GPS coordinates, elevation, and common
+  extension values for heart rate, cadence, power, temperature, and speed. It
+  derives distance, pace, and grade within each track segment.
 - Timeline ruler hover currently displays elapsed time, real-world time, and distance.
-- After importing a FIT file, the timeline shows the full activity ruler even before videos are imported.
+- After importing an activity file, the timeline shows the full activity ruler even before videos are imported.
 
 ## 7. Video Import And Alignment
 
@@ -144,7 +147,7 @@ Current implementation status:
 - The app reads video duration and creation-date metadata through AVFoundation.
 - The app attempts filename date parsing for common patterns such as `YYYYMMDD_HHMMSS`.
 - Imported videos are listed in the media browser with duration, alignment status, tag mark, and inferred timestamp when available.
-- Videos with inferred timestamps near the FIT activity are marked as ready for timestamp matching but are not automatically placed on timeline tracks.
+- Videos with inferred timestamps near the activity are marked as ready for timestamp matching but are not automatically placed on timeline tracks.
 - Media browser rows can be selected individually, multi-selected, or all selected from the visible filtered list.
 - Media browser search should filter visible rows by filename.
 - Media browser status chips should provide real `All`, `Ready`, and `Aligned` filters.
@@ -154,7 +157,7 @@ Current implementation status:
 - The media browser supports user color tag marks from the context menu and filtering by tag from the browser header.
 - Selected media can be matched from the context menu to the current layer or to a new layer.
 - Media can be removed from the media pool from the context menu; removing media also removes timeline clips that reference it.
-- The no-media state should be FIT-first: before FIT import it should show `Import FIT`; after FIT import it should show `Import Videos`, a short explanation, drag/drop affordance, and supported-format hint.
+- The no-media state should be activity-first: before activity import it should show `Import Activity`; after FIT/GPX import it should show `Import Videos`, a short explanation, drag/drop affordance, and supported-format hint.
 
 If timestamp matching is unavailable or insufficient:
 
@@ -164,27 +167,27 @@ If timestamp matching is unavailable or insufficient:
 Current implementation status:
 
 - Media browser items can be dragged onto timeline tracks.
-- If no videos have been matched, the timeline still shows a default drop track when FIT or media context exists.
-- If no FIT or media has been imported, the timeline is completely empty and does not show a playhead, FIT layer, or fake track.
+- If no videos have been matched, the timeline still shows a default drop track when activity or media context exists.
+- If no activity or media has been imported, the timeline is completely empty and does not show a playhead, Activity layer, or fake track.
 - Dropping a media item creates or moves a timeline clip at the drop time.
 - While dragging media over the timeline, the target layer is highlighted.
 - When dragging below existing layers, exactly one new layer drop target is exposed.
 - Manually placed media is marked as aligned by manual placement.
 - Existing timeline clips can be dragged horizontally to adjust their timeline position. For timestamp-matched media, dragging changes the clip offset while preserving the automatic matched start; for manually placed media, dragging changes the editable aligned time while preserving the offset.
-- The timeline uses project time, not only activity elapsed time, so video clips can start before the FIT activity begins or continue after the FIT activity ends.
-- The FIT activity is shown as an independent `FIT` layer whose span represents activity elapsed `00:00` through activity finish.
-- The FIT layer defaults to filling the timeline when there are no out-of-range clips, but videos with real timestamps before start or after finish can extend the project timeline to the left or right.
-- The FIT layer can be dragged horizontally to manually align activity data against the imported videos.
+- The timeline uses project time, not only activity elapsed time, so video clips can start before the activity begins or continue after it ends.
+- The activity is shown as an independent `Activity` layer whose span represents activity elapsed `00:00` through activity finish.
+- The Activity layer defaults to filling the timeline when there are no out-of-range clips, but videos with real timestamps before start or after finish can extend the project timeline to the left or right.
+- The Activity layer can be dragged horizontally to manually align activity data against the imported videos.
 - The timeline interaction surface is implemented as an AppKit self-drawing view embedded in SwiftUI.
-- Empty FIT/media-ready timelines show a default `Layer 1` lane.
+- Empty activity/media-ready timelines show a default `Layer 1` lane.
 - Timeline track labels are visually separated from the central timeline lane area.
 - During playback, the timeline scrolls horizontally to keep the playhead visible.
 - Timeline zoom can be controlled by Command + Plus, Command + Minus, Command + mouse wheel/trackpad scroll, macOS trackpad pinch, and the timeline zoom slider.
 - Timeline zoom slider uses a fine-grained low-end scale so small slider movement does not jump abruptly from fit view to a large zoom value.
 - Timeline zooming keeps the current playhead in view and recenters the view on the playhead when zoom changes.
 - The timeline header includes per-track preview enable/disable controls in an eye-icon menu. The previous explicit preview-track picker has been removed; preview track auto-selection is implicit, and users only need to toggle individual track visibility.
-- The timeline header includes an icon-only collapse/expand toggle. Collapsed mode hides gaps without video; for a single layer, clips are displayed back-to-back, and for multiple layers, FIT-only regions with no video on any layer are hidden while overlapping video spans remain aligned.
-- In collapsed mode, the FIT layer should only draw green FIT blocks where the visible video span overlaps the FIT activity range. Video-only spans outside the activity should remain empty above the clip.
+- The timeline header includes an icon-only collapse/expand toggle. Collapsed mode hides gaps without video; for a single layer, clips are displayed back-to-back, and for multiple layers, activity-only regions with no video on any layer are hidden while overlapping video spans remain aligned.
+- In collapsed mode, the Activity layer should only draw activity blocks where the visible video span overlaps the activity range. Video-only spans outside the activity should remain empty above the clip.
 - The timeline collapse state is communicated by the header control style; the timeline must not introduce a separate `Gaps hidden` status row/band.
 - When the timeline is collapsed, playback skips hidden empty regions and continues at the next video span.
 - When the timeline is collapsed, existing video clips cannot be dragged horizontally; users must expand the timeline before timing edits that depend on full time context.
@@ -195,7 +198,7 @@ Current implementation status:
 
 When timestamp matching is applied:
 
-- User can still fine-tune clip position because camera time and FIT time may not match exactly.
+- User can still fine-tune clip position because camera time and activity time may not match exactly.
 - Clips inferred before activity start keep negative project positions instead of being cropped to `00:00`.
 - Clips inferred after activity finish keep their post-finish project positions instead of being cropped to activity duration.
 
@@ -248,7 +251,7 @@ The right parameter panel is context-sensitive.
 When a timeline clip is selected:
 
 - Show clip position fine-tuning controls.
-- Fine-tuning is relative to the app's current best FIT-to-video alignment.
+- Fine-tuning is relative to the app's current best activity-to-video alignment.
 - Provide numeric second-based inputs for manually placed clip aligned time and alignment offset. Timestamp-matched clips show the automatic matched start as read-only and expose offset as the adjustment control.
 - Double-clicking timing field labels should reset the corresponding value to its default.
 - Provide an action: "Apply to all clips in this layer".
@@ -320,7 +323,7 @@ Current implementation status:
 - Selected overlay elements expose current value, normalized position, scale, preset, font family, font weight, font size, foreground color, background opacity, shadow opacity, and shadow radius controls in the Inspector detail state.
 - Numeric overlays (heart rate, pace, calories, elapsed time, real time, date, distance, elevation, cadence, power, advanced running metrics, and Custom Numeric) use the dense `NumericOverlayDetailView` Inspector with Content, Layout, Typography (value), Label, Unit, Color, Background, and Effects sections matching `docs/design/overlays/numeric/numeric-overlay-ui.md`. Shared Layout uses Position/Scale/Width/Height/Opacity (no Rotation).
 - The Date numeric overlay uses the activity timestamp at the current playhead and offers common year-month-day and month-day formats: `YYYY-MM-DD`, `YYYY/MM/DD`, `MM/DD/YYYY`, `MM-DD`, `MM/DD`, and abbreviated `Month D`.
-- The Temperature numeric overlay reads FIT temperature by default when available. If the activity has no FIT temperature samples, or the user disables FIT temperature for that overlay, the Inspector allows a manual Celsius value that Preview and export use as the temperature fallback.
+- The Temperature numeric overlay reads imported activity temperature by default when available. If the activity has no temperature samples, or the user disables activity temperature for that overlay, the Inspector allows a manual Celsius value that Preview and export use as the temperature fallback.
 - Numeric overlay defaults now standardize to `Minimal Clean` for all numeric types.
 - Numeric overlay style supports per-overlay unit option, Custom Numeric value/format/decimal/unit controls, label/unit visibility toggles, custom label text, independent label/unit positions (`top/bottom/left/right`), independent label/unit typography (`font`, `size`, `weight`), rotation, accent color, background enable/color/radius/padding plus fade-out + gaussian blur controls, and shadow enable/offset controls. New fields decode with safe defaults so existing projects and templates remain compatible.
 - Numeric overlay unit text stays on one line; inline units grow the natural text frame instead of wrapping. Layout exposes optional minimum width and height controls so text overlays can reserve extra space without shrinking content below its measured size.
@@ -366,7 +369,7 @@ Future requirements:
 
 ## 10.1 Overlay Templates
 
-Overlay templates are separate from full project files. A template stores reusable overlay design configuration so a user can apply the same layout and visual style across many FIT files and video batches.
+Overlay templates are separate from full project files. A template stores reusable overlay design configuration so a user can apply the same layout and visual style across many activity files and video batches.
 
 Template goals:
 
@@ -396,7 +399,7 @@ Template contents:
 
 Template must not include:
 
-- FIT file path or parsed FIT data.
+- Activity file path or parsed activity data.
 - Video file paths or video metadata.
 - Timeline tracks or clips.
 - Current playhead.
@@ -453,7 +456,7 @@ Product requirements:
 
 - Support route-only styles that do not require network access.
 - Support a future map-backed style through a pluggable map snapshot provider.
-- Use FIT GPS latitude/longitude when available.
+- Use FIT or GPX GPS latitude/longitude when available.
 - Share preview and export rendering behavior.
 - Cache route geometry and map snapshots so export does not depend on per-frame network calls.
 - Let templates save route map style and layout, but not activity coordinates, API tokens, or cached map images.
@@ -472,8 +475,9 @@ Open questions:
 
 Current implementation status:
 
-- FIT record parsing reads `position_lat` and `position_long` into activity records.
-- FIT timer pause spans should be represented as non-destructive activity annotations on the FIT layer. Paused spans use a muted gray color and a hover tooltip labeled `Timer Paused`, while keeping the underlying timeline based on real elapsed time so video alignment is not shifted. Interval lap phase spans also expose English hover tooltips with lap kind, lap number, elapsed range, and duration.
+- FIT record parsing reads `position_lat` and `position_long`; GPX parsing reads
+  `trkpt` latitude/longitude into the same activity records.
+- FIT timer pause spans should be represented as non-destructive activity annotations on the Activity layer. Paused spans use a muted gray color and a hover tooltip labeled `Timer Paused`, while keeping the underlying timeline based on real elapsed time so video alignment is not shifted. Interval lap phase spans also expose English hover tooltips with lap kind, lap number, elapsed range, and duration.
 - `ActivityTimeline` exposes route points and interpolated current route point lookup.
 - Route Map can be added from the overlay library.
 - Inspector exposes Route Line color mode and Glow controls.
@@ -497,7 +501,7 @@ Initial playback requirements:
 - Space toggles play and pause.
 - K toggles play and pause.
 - L starts forward playback when paused; while playing, repeated L presses step forward speed through 2x, 4x, and 8x.
-- Preview playhead is tied to the FIT master timeline.
+- Preview playhead is tied to the activity master timeline.
 - Visible overlays should update according to the activity data at the playhead.
 - Video clips on timeline should preview at their aligned positions.
 - The preview area should contain playback controls below the video canvas: previous clip, stop, play/pause, and next clip. Reverse playback is not required.
@@ -544,7 +548,7 @@ Export behavior:
 - Batch export one overlay clip for each video segment on the timeline.
 - Each overlay clip's start and end match the corresponding timeline video segment start and end.
 - Overlapping timeline clips are exported separately, one output file per clip.
-- Full activity export can ignore all video segments and render one overlay file covering the entire FIT activity.
+- Full activity export can ignore all video segments and render one overlay file covering the entire activity.
 - In Debug builds only, `Export Test Clip` renders a short transparent MOV anchored to the current playhead position, using the current overlay configuration.
 - In Debug builds only, `Export Test Frame` renders a PNG at the current playhead position through the SwiftUI shared-component rasterization path.
 - Main `Export` always uses the SwiftUI shared-component rasterization path (legacy export mode removed).
@@ -556,7 +560,7 @@ Export behavior:
 - Test clip/frame sampling time must use the same playhead-to-activity conversion and Layer Data FPS quantization path as preview (`activityElapsed(atProjectTime:)` + quantization).
 - Test frame PNG orientation must match preview/export coordinates (no vertical inversion in the saved image).
 - Text preset accent colors in export must come from each overlay style's accent color instead of system accent defaults.
-- Activity data is sampled from the FIT timeline for each segment using the configured Layer Data FPS cadence.
+- Activity data is sampled from the activity timeline for each segment using the configured Layer Data FPS cadence.
 - Adjacent video frames that resolve to the same quantized Layer Data sample may reuse the previous rendered overlay image while still writing one pixel buffer per output frame.
 - Export may cache a static decor layer and render dynamic overlays into a padded union rect when that rect covers less than most of the canvas.
 - If the dynamic rect reaches the full-frame fallback threshold, export must use a single full-frame render/draw path rather than layered drawing.
@@ -604,7 +608,7 @@ The application should preserve alignment accuracy as a first-class concern.
 
 Initial targets:
 
-- FIT timestamp parsing should retain real timestamps and elapsed activity time.
+- FIT and GPX timestamp parsing should retain real timestamps and elapsed activity time.
 - Timeline placement should store offsets using time values, not rounded pixels.
 - Rendering should sample data by time, not by UI frame positions.
 - Rendering should use the same Layer Data FPS quantization as preview so exported overlay values match what the user saw while editing.
@@ -629,7 +633,7 @@ Open questions:
 
 The first App Store submission should preserve the existing core workflow:
 
-- Import user-selected FIT files and videos.
+- Import user-selected FIT/GPX activity files and videos.
 - Design overlays locally.
 - Optionally fetch MapKit route snapshots and Open-Meteo or user-configured
   OpenWeather historical weather.
@@ -638,16 +642,16 @@ The first App Store submission should preserve the existing core workflow:
 Privacy and review requirements:
 
 - The app must run in the macOS App Sandbox for App Store distribution.
-- User FIT files, videos, templates, and export destinations must be accessed
+- User FIT/GPX files, videos, templates, and export destinations must be accessed
   through explicit user selection. The app must not scan arbitrary user folders.
-- Source videos and FIT files must remain local unless a future feature clearly
+- Source videos and FIT/GPX files must remain local unless a future feature clearly
   asks the user to upload them.
 - Open-Meteo, OpenWeather, and MapKit network calls are outbound helper
   requests for optional overlay data, not tracking or analytics.
 - The optional OpenWeather API key must remain in the macOS Keychain, must not
   be encoded into project files or templates, and may be sent only to
   OpenWeather when that provider is selected.
-- Weather lookup coordinates come from the imported FIT activity. The app must
+- Weather lookup coordinates come from the imported activity. The app must
   not request the Mac's current location.
 - The privacy manifest and App Store privacy labels must be updated whenever
   collected data, tracking behavior, required-reason API use, location use, or
@@ -656,7 +660,9 @@ Privacy and review requirements:
 ## 16. Glossary
 
 - FIT file: Activity data file format commonly produced by Garmin and other sports devices.
-- Master timeline: The activity timeline derived from the FIT file.
+- GPX file: XML track format whose timed track points can provide route,
+  elevation, and extension telemetry.
+- Master timeline: The activity timeline derived from the imported activity file.
 - Source video: User-imported camera video.
 - Overlay clip: Exported transparent video containing only data graphics.
 - Camera/source group: A set of clips believed to come from the same recording device or camera angle.

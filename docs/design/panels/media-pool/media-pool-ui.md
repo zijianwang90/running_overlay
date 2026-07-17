@@ -6,7 +6,7 @@ Last updated: 2026-04-29
 
 The left-side pool panel is the source library area for project inputs, addable overlay modules, and reusable overlay layout templates. It contains three sibling modes:
 
-- `Media Pool`: imported video files and the FIT-first media import workflow.
+- `Media Pool`: imported video files and the activity-first media import workflow.
 - `Overlay Pool`: available overlay modules that can be added to the preview.
 - `Templates`: built-in and user overlay layout templates.
 
@@ -278,14 +278,14 @@ SwiftUI note:
 No FIT and no media:
 
 - Center icon: `waveform.path.ecg`
-- Title: `Import FIT`
+- Title: `Import Activity`
 - Secondary text: `Start with running activity data`
-- Primary action: `Import FIT`
+- Primary action: `Import Activity`
 - Step indicator: `1 FIT` active, `2 Videos` inactive.
 - Secondary disabled or muted hint: `Then import videos`
-- Use a subtle dashed rounded rectangle drop zone boundary, but do not imply video drop is ready before FIT import.
+- Use a subtle dashed rounded rectangle drop zone boundary, but do not imply video drop is ready before activity import.
 
-FIT imported, no media:
+Activity imported, no media:
 
 - Center icon: `video.badge.plus`
 - Text: `Drop videos here`
@@ -343,7 +343,7 @@ Tiles:
 
 Empty and disabled states:
 
-- Overlay Pool should remain available before FIT import. Layout work is valid without activity data.
+- Overlay Pool should remain available before activity import. Layout work is valid without activity data.
 - If a module depends on unavailable FIT channels, keep the tile enabled and let the preview value show its existing empty/default state.
 - Do not hide overlay types based on current FIT data unless there is a clear future compatibility rule.
 

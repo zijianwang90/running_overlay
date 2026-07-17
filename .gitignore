@@ -118,6 +118,7 @@ Exports/
 # Explicitly public synthetic fixtures.
 !Tests/RunningOverlayTests/Fixtures/Activities/
 !Tests/RunningOverlayTests/Fixtures/Activities/*.fit
+!Tests/RunningOverlayTests/Fixtures/Activities/*.gpx
 
 # Python tooling
 __pycache__/

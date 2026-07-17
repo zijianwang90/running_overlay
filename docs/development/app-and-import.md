@@ -42,27 +42,34 @@ Current implementation:
 - Media, Preview, and Inspector top headers share a unified header height and shared compact header button size tokens.
 - The initial `VSplitView` allocation favors the top editor stack more strongly by using a lower default Timeline ideal height (`180`) with a `160` minimum, while keeping the split boundary user-draggable.
 
-### Phase 2: FIT Import And Activity Timeline
+### Phase 2: Activity Import And Activity Timeline
 
 - Status: completed for first-pass import and placement.
-- Import a FIT file.
+- Import a FIT or GPX file.
 - Parse activity start/end, duration, distance, heart rate, pace, elevation, cadence, power, calories when available.
 - Show timeline ruler from activity start to end.
 - Show ruler hover data.
 
 Current implementation:
 
-- `Sources/RunningOverlay/FitData/FitFileParser.swift` contains a focused first-pass FIT parser.
-- `ProjectDocument.importFitFile()` opens a native macOS file picker and loads the selected `.fit` file.
-- Local `swift run` debugging can bypass the FIT and video file pickers with
-  `swift run RunningOverlay --fit <fit-path> --video <video-path>`. Either flag
+- `ActivityFileParser` routes `.fit` and `.gpx` inputs to focused format
+  parsers. `FitFileParser` retains FIT profile handling, while `GpxFileParser`
+  reads timed track points and common telemetry extensions.
+- `ProjectDocument.importActivityFile()` opens a native macOS file picker and
+  loads the selected FIT or GPX file through the same activity import path.
+- GPX import derives cumulative distance, pace, and grade from consecutive
+  points within a track segment. Segment gaps remain on the real elapsed-time
+  axis, but spatial jumps between segments do not inflate distance.
+- Local `swift run` debugging can bypass the activity and video file pickers with
+  `swift run RunningOverlay --activity <fit-or-gpx-path> --video <video-path>`.
+  The existing `--fit` spelling remains a compatibility alias. Either flag
   can be omitted, and paths may be absolute, relative to the current working
   directory, or start with `~`. Repeat `--video <video-path>` to import multiple
   videos in one launch.
-- Command-line startup imports use the same `ProjectDocument.importFitURL()`
+- Command-line startup imports use the same `ProjectDocument.importActivityURL()`
   and `ProjectDocument.importVideoURLs()` paths as interactive imports.
 - The parser currently handles standard FIT definition/data messages and extracts record/session fields needed for the initial timeline.
-- FIT import success and failure details are printed to stdout, so they are visible when launching with `swift run RunningOverlay`.
+- Activity import success and failure details are printed to stdout, so they are visible when launching with `swift run RunningOverlay`.
 - Developer field definitions are read and skipped so standard fields in files with developer data remain parseable.
 - Record elapsed times are normalized after parsing with the final activity start date so overlay values sample the correct FIT record over time.
 - Calories prefer direct record-level values. When a FIT file omits record calories but provides lap `total_calories`, such as some COROS exports, the parser estimates cumulative record calories from lap totals; when only session calories are available, it falls back to a linear session-total estimate.
@@ -70,6 +77,11 @@ Current implementation:
 - FIT lap classification runs through `WorkoutStructureAnalyzer`, which infers Normal vs Structured workouts from the full lap sequence instead of a fixed absolute speed threshold. Structured workouts keep an internal subtype (`interval`, `steadyPlan`, or `genericLaps`) while the import UI exposes only `Auto`, `Normal`, and `Structured`.
 - Compressed timestamp headers are accepted only enough to route to local message definitions; full compressed timestamp reconstruction is not implemented yet.
 - Broad FIT profile coverage, CRC validation, deeper pause semantics for data sampling, and timezone/device drift handling are still pending.
+- GPX route and elevation data require valid timed `trkpt` elements. GPX laps,
+  pause annotations, calories, and FIT-only running dynamics are not inferred.
+- The current route geometry model flattens GPX segment boundaries for drawing,
+  so disconnected `trkseg` sections can appear connected in Route Map even
+  though their spatial jump is excluded from activity distance.
 
 ### Phase 3: Video Import And Metadata Alignment
 
@@ -88,14 +100,14 @@ Current implementation:
 - `ProjectDocument.importVideoURLs()` is shared by file-picker import and Finder-to-media-browser drop import.
 - File-picker imports replace the current media browser contents; Finder drops append supported video files.
 - Imported videos stay in the media pool until the user explicitly matches them or drags them to the timeline.
-- Items with inferred timestamps near the FIT activity are marked ready for timestamp matching instead of being placed automatically.
-- Replacing the FIT after videos have already been imported recalculates each video's timestamp match status against the new activity and automatically places timestamp-matched videos on their camera-group timeline tracks when they do not overlap existing clips.
+- Items with inferred timestamps near the activity are marked ready for timestamp matching instead of being placed automatically.
+- Replacing the activity file after videos have already been imported recalculates each video's timestamp match status against the new activity and automatically places timestamp-matched videos on their camera-group timeline tracks when they do not overlap existing clips.
 - Media browser rows support multi-selection, select-all-visible, tag filtering, right-click tag assignment, explicit matching to the current layer or a new layer, and deletion from the media pool.
 - The media browser includes filename search plus real status chips for `All`, `Ready`, and `Aligned`; filter changes prune selections that are no longer visible.
 - The media browser captures Command+A while active to select all visible filtered media rows without showing a system focus ring.
 - The media browser row layout follows the design-system row reference with 72 px rows, 42 px thumbnail wells, compact metadata, compact alignment-status dots with hover help text, and optional mark dots.
 - The context menu Mark submenu uses circular color icons for each mark option.
-- The no-media empty state is FIT-first: before activity data is loaded it shows `Import FIT`; after a FIT is loaded it shows the drag/drop video prompt, `Import Videos`, a short matching-workflow description, and a supported-format hint. Video drops before FIT import are rejected with a status message.
+- The no-media empty state is activity-first: before activity data is loaded it shows `Import Activity`; after a FIT or GPX file is loaded it shows the drag/drop video prompt, `Import Videos`, a short matching-workflow description, and a supported-format hint. Video drops before activity import are rejected with a status message.
 - First-pass camera/source grouping uses the first filename token.
 
 Pending:

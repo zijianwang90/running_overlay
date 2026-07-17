@@ -3842,7 +3842,7 @@ enum WeatherDataSource: String, Identifiable, Equatable, Codable {
 
     var label: String {
         switch self {
-        case .fitTemperature: "FIT Temperature"
+        case .fitTemperature: "Activity Temperature"
         case .manual: "Manual"
         case .openMeteo: "Open-Meteo API"
         case .openWeather: "OpenWeather API"

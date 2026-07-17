@@ -6,10 +6,10 @@ Last updated: 2026-06-29
 
 Weather Widget Overlay is a simple weather-app-style overlay for showing the day-of-run weather context on exported running videos. It should feel like a compact weather app plugin rather than a sport-specific performance module.
 
-The visual implementation and API fetch pass are in place. The component renders with local preset styling plus a shared SwiftUI weather icon family, and it caches historical weather from the FIT activity GPS location. Open-Meteo remains the default no-key provider; OpenWeather is available when an API key is configured in Project Settings.
+The visual implementation and API fetch pass are in place. The component renders with local preset styling plus a shared SwiftUI weather icon family, and it caches historical weather from the activity GPS location. Open-Meteo remains the default no-key provider; OpenWeather is available when an API key is configured in Project Settings.
 
 When a Weather Widget is first added, it starts from activity-location
-API data rather than baked-in sample content. If the current FIT activity
+API data rather than baked-in sample content. If the current activity
 has a GPS route, the app automatically fetches historical weather for the
 activity start point. Until that request succeeds, or when no route/API data is
 available, the widget renders a neutral Sunny condition/icon while data fields
@@ -173,7 +173,7 @@ Implementation assets:
 
 ## Data Strategy
 
-Phase 1 can be manual/FIT-first:
+Phase 1 can be manual/activity-first:
 
 - Current temperature may read from FIT temperature when available.
 - If FIT temperature is absent, use manual temperature.
@@ -183,7 +183,7 @@ API support:
 
 - Query historical weather for the activity date (Open-Meteo archive API), not current forecast. Running data is always past events; a forecast is meaningless.
 - Optionally query the OpenWeather One Call 4.0 one-hour timeline when the overlay data source is OpenWeather API and the Project Settings Weather section has an API key.
-- Use the first GPS route point from the FIT activity for explicit weather fetches.
+- Use the first GPS route point from the activity for explicit weather fetches.
 - Auto-localize condition labels from activity coordinates (e.g. Japan → Japanese labels), not from system locale. All fields remain user-editable.
 - Cache resolved weather data in the project to make export deterministic.
 - Keep API failures non-destructive by falling back to manual fields.
@@ -205,7 +205,7 @@ Key controls:
 - Location fetch action: activity GPS start location.
 - Location text fields.
 - Data source picker (Manual, Open-Meteo API, OpenWeather API) lives in the Weather section.
-- When the loaded FIT activity includes temperature records, Weather exposes a **Use FIT Temperature** toggle. When enabled, FIT temperature overrides the API or manual temperature at the current playhead for more accurate on-run readings.
+- When the loaded activity includes temperature records, Weather exposes a **Use Activity Temperature** toggle. When enabled, activity temperature overrides the API or manual temperature at the current playhead for more accurate on-run readings.
 - Manual mode: condition picker, optional label override, manual temperature, unit, Style-specific metric slots, and manual values for selected slot metrics.
 - API modes: API-owned condition/temperature/metric text inputs are hidden; keep unit, Style-specific metric slot assignment, display toggles, and optional FIT temperature override. OpenWeather mode disables fetch buttons until an OpenWeather API key is set in Project Settings.
 - Metric slots are Style-specific: Simple Card has 1 slot, Forecast Tile has 3 slots, Dashboard Bar has 3 slots, Compact Strip and Minimal Text have 0 slots. Each slot can choose `-`, Humidity, High / Low, Wind, or Feels Like. `-` leaves that slot empty.

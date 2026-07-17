@@ -120,7 +120,7 @@ done
 
 while IFS= read -r path; do
   case "$path" in
-    Tests/RunningOverlayTests/Fixtures/Activities/synthetic-run.fit)
+    Tests/RunningOverlayTests/Fixtures/Activities/synthetic-run.fit|Tests/RunningOverlayTests/Fixtures/Activities/synthetic-run.gpx)
       ;;
     .env.example)
       ;;

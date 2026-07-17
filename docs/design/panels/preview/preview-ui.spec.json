@@ -86,7 +86,7 @@
   ],
   "appToolbarChange": {
     "remove": "safe guides toggle from MainEditorView.toolbar",
-    "keep": ["FIT import", "Videos import", "Export progress", "Export action"]
+    "keep": ["Activity import", "Videos import", "Export progress", "Export action"]
   },
   "interactions": {
     "safeGuides": "toggles ProjectDocument.showPreviewGuides",
@@ -109,4 +109,3 @@
     "PreviewRateMenu"
   ]
 }
-

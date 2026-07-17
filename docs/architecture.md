@@ -1,6 +1,6 @@
 # Running Overlay Studio Architecture Notes
 
-Last updated: 2026-06-19
+Last updated: 2026-07-16
 
 ## 1. Architecture Goal
 
@@ -10,8 +10,11 @@ The app should separate activity data, media timing, timeline editing, overlay d
 
 ```mermaid
 flowchart LR
-  FIT["FIT file"] --> FitParser["FIT parser"]
+  ActivityFiles["FIT or GPX file"] --> ActivityRouter["Activity file parser"]
+  ActivityRouter --> FitParser["FIT parser"]
+  ActivityRouter --> GpxParser["GPX parser"]
   FitParser --> ActivityTimeline["Activity timeline"]
+  GpxParser --> ActivityTimeline
 
   Videos["Video files"] --> MetadataReader["Media metadata reader"]
   MetadataReader --> MediaItems["Media pool items"]
@@ -35,14 +38,20 @@ flowchart LR
 
 ## 3. Subsystems
 
-### FIT Data
+### Activity Data (FIT and GPX)
 
 Responsibilities:
 
+- Route supported activity files to the FIT or GPX parser by filename extension.
 - Decode FIT records (message type 20), lap messages (message type 19), and timer start/stop events (message type 21).
+- Decode timed GPX track points, coordinates, elevation, and common track-point
+  extensions for heart rate, cadence, power, temperature, and speed.
+- Derive GPX cumulative distance, pace, and grade from consecutive points
+  within each track segment; preserve elapsed gaps while excluding spatial
+  jumps between segments from distance.
 - Preserve activity timestamps.
 - Normalize metrics into app-level records: heart rate, cadence, pace, distance, elevation, power, calories, GPS coordinates, running dynamics (vertical oscillation, ground contact time, stride length, ground contact balance), temperature, grade.
-- Parse lap structure into `LapRecord` arrays and infer Normal vs Structured workout semantics. Structured subtypes such as interval, steady plan, and generic laps drive `LapRecord.kind` classification (warmup / active / rest / cooldown / unknown) without relying on a fixed absolute speed threshold.
+- Parse FIT lap structure into `LapRecord` arrays and infer Normal vs Structured workout semantics. Structured subtypes such as interval, steady plan, and generic laps drive `LapRecord.kind` classification (warmup / active / rest / cooldown / unknown) without relying on a fixed absolute speed threshold. GPX import currently produces a normal activity without laps.
 - Preserve the workout-structure analysis on `ActivityTimeline` so import UI, timeline drawing, Interval HUD Bar, and Interval Timeline consume the same lap semantics. User-facing overrides are limited to Normal / Structured; interval remains an internal structured subtype.
 - Convert timer pauses into `ActivityAnnotatedSegment` entries that can color the FIT axis without compressing or shifting the real elapsed-time timeline.
 - Provide time-based sampling and lap-based queries (`currentLap`, `lapElapsedTime`, `lapProgress`) for UI preview and export.
@@ -142,11 +151,13 @@ Responsibilities:
 
 The app has multiple time domains:
 
-- Real timestamp: wall-clock time from FIT records or media metadata.
-- Activity elapsed time: offset from FIT activity start.
+- Real timestamp: wall-clock time from FIT/GPX records or media metadata.
+- Activity elapsed time: offset from activity start.
 - Media source time: time inside a video file.
 - Project timeline time: editable time used for video clips; it may be negative relative to FIT elapsed time.
-- FIT axis time: activity elapsed time represented by the FIT layer inside the project timeline.
+- Activity axis time: activity elapsed time represented by the Activity layer
+  inside the project timeline (the internal compatibility field remains
+  `fitStartTime`).
 - Activity annotation segment time: elapsed-time ranges, such as timer-paused spans, drawn on the FIT axis while preserving the same project-time mapping.
 - Render frame time: frame-indexed time during export.
 
@@ -154,7 +165,7 @@ Conversions must be explicit:
 
 - Real timestamp to activity elapsed time.
 - Media metadata timestamp to project timeline placement.
-- Project timeline time to FIT elapsed time through `TimelineModel.fitStartTime`.
+- Project timeline time to activity elapsed time through `TimelineModel.fitStartTime`.
 - Project timeline time to media source time.
 - Timeline time to sampled activity record.
 - Render frame index to timeline time.
@@ -164,7 +175,7 @@ Conversions must be explicit:
 The project should eventually persist:
 
 - Project settings.
-- FIT file reference and parsed summary/cache metadata.
+- Activity file reference, format, and parsed summary/cache metadata.
 - Media file references, extracted metadata, media-pool tags, and match status.
 - Timeline tracks and clip placements.
 - Overlay layout and styles.
@@ -175,6 +186,8 @@ The initial implementation can use a simple local document format, but the schem
 ## 6. Known Technical Risks
 
 - FIT parsing edge cases, including pauses, missing records, device time drift, and timezone behavior.
+- GPX edge cases, including missing timestamps, sparse tracks, segment breaks,
+  and vendor-specific extension names.
 - Video metadata inconsistency across cameras and phones.
 - Transparent MOV export codec support and alpha-channel correctness.
 - Timeline performance for long activities and high zoom levels.

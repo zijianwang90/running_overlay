@@ -124,7 +124,7 @@ without changing visual output or export timing.
   `running_overlay_project_snapshot.json`.
 - Use `Restore Project Snapshot` to replace the current editor state with that
   snapshot before running a benchmark export.
-- The snapshot stores exportable state: project settings, parsed FIT timeline,
+- The snapshot stores exportable state: project settings, parsed activity timeline,
   media references, media folders, timeline, overlay layout, user asset
   references, and FIT source name.
 - Runtime state is intentionally cleared on restore: selection, playback,

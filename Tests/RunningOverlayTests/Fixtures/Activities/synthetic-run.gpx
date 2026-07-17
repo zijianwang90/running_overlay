@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1"
+     creator="Running Overlay Studio synthetic fixture"
+     xmlns="http://www.topografix.com/GPX/1/1"
+     xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1"
+     xmlns:ros="https://example.invalid/running-overlay-test">
+  <metadata>
+    <name>Synthetic Run</name>
+    <time>2025-01-01T12:00:00Z</time>
+  </metadata>
+  <trk>
+    <name>Synthetic Run</name>
+    <trkseg>
+      <trkpt lat="43.000000" lon="-79.000000">
+        <ele>100.0</ele>
+        <time>2025-01-01T12:00:00.000Z</time>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:hr>120</gpxtpx:hr>
+            <gpxtpx:cad>168</gpxtpx:cad>
+          </gpxtpx:TrackPointExtension>
+          <ros:speed>3.0</ros:speed>
+        </extensions>
+      </trkpt>
+      <trkpt lat="43.000100" lon="-79.000000">
+        <ele>102.0</ele>
+        <time>2025-01-01T12:00:10Z</time>
+        <extensions>
+          <gpxtpx:TrackPointExtension>
+            <gpxtpx:atemp>18.5</gpxtpx:atemp>
+            <gpxtpx:hr>140</gpxtpx:hr>
+            <gpxtpx:cad>172</gpxtpx:cad>
+          </gpxtpx:TrackPointExtension>
+          <ros:power>250</ros:power>
+          <ros:sample>42</ros:sample>
+        </extensions>
+      </trkpt>
+    </trkseg>
+    <trkseg>
+      <trkpt lat="44.000000" lon="-80.000000">
+        <ele>110.0</ele>
+        <time>2025-01-01T12:00:20Z</time>
+      </trkpt>
+      <trkpt lat="44.000100" lon="-80.000000">
+        <ele>111.0</ele>
+        <time>2025-01-01T12:00:30Z</time>
+        <extensions>
+          <ros:watts>275</ros:watts>
+        </extensions>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

@@ -533,7 +533,7 @@ private final class TimelineCanvasNSView: NSView {
                 to: CGPoint(x: offsetX + columnWidth - 1, y: y + fitTrackHeight - 0.5)
             )
             drawText(
-                "FIT",
+                "Activity",
                 at: CGPoint(x: offsetX + 10, y: y + 16),
                 color: .editorTextPrimary,
                 font: .systemFont(ofSize: 11, weight: .semibold)
@@ -817,7 +817,7 @@ private final class TimelineCanvasNSView: NSView {
         labelRect.fill()
         NSColor.editorBorderSubtle.withAlphaComponent(0.55).setStroke()
         NSBezierPath.strokeLine(from: CGPoint(x: 0, y: y + fitTrackHeight - 0.5), to: CGPoint(x: timelineStartX - 1, y: y + fitTrackHeight - 0.5))
-        drawText("FIT", at: CGPoint(x: 10, y: y + 16), color: .editorTextPrimary, font: .systemFont(ofSize: 11, weight: .semibold))
+        drawText("Activity", at: CGPoint(x: 10, y: y + 16), color: .editorTextPrimary, font: .systemFont(ofSize: 11, weight: .semibold))
 
         let laneRect = CGRect(x: timelineStartX, y: y, width: max(bounds.width - timelineStartX, 1), height: fitTrackHeight)
         NSColor.timelineTrackBandA.setFill()

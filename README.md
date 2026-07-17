@@ -9,8 +9,8 @@
 **Now available on the Mac App Store:**
 [Running Overlay Studio](https://apps.apple.com/app/id6785094308)
 
-Running Overlay Studio is a native macOS editor for turning FIT activity data into
-customizable, transparent sports-data overlay videos.
+Running Overlay Studio is a native macOS editor for turning FIT or GPX activity
+data into customizable, transparent sports-data overlay videos.
 
 > **Source-available:** You may download, build, study, modify, and use Running
 > Overlay under the [PolyForm Shield License 1.0.0](LICENSE). Providing a
@@ -39,8 +39,8 @@ files for Final Cut Pro, DaVinci Resolve, Premiere Pro, or another editor.
 ## Highlights
 
 - Native macOS SwiftUI editor with timeline-based video alignment.
-- FIT metrics including pace, heart rate, distance, elevation, cadence, power,
-  calories, temperature, grade, and running dynamics when available.
+- FIT and GPX metrics including pace, heart rate, distance, elevation, cadence,
+  power, calories, temperature, grade, and running dynamics when available.
 - Route maps, distance/elevation charts, interval HUDs and timelines, running
   gauges, weather widgets, zone bars, and configurable numeric overlays.
 - Reusable built-in and user-authored overlay templates.
@@ -52,7 +52,7 @@ files for Final Cut Pro, DaVinci Resolve, Premiere Pro, or another editor.
 
 ## Workflow
 
-1. Import a FIT activity file.
+1. Import a FIT or GPX activity file.
 2. Import one or more videos and match or manually align them on the timeline.
 3. Add overlays individually or apply a reusable template.
 4. Adjust layout, typography, colors, data units, and visual effects.
@@ -62,13 +62,19 @@ files for Final Cut Pro, DaVinci Resolve, Premiere Pro, or another editor.
 
 - macOS 15 or newer
 - Swift 6 toolchain
-- A FIT file with record data for activity-driven overlays
+- A FIT or timed-track GPX file with record data for activity-driven overlays
 - H.265 alpha or ProRes 4444 support for transparent MOV export
 
 Current limitations:
 
 - FIT profile coverage is focused on fields used by the editor rather than the
   entire FIT specification.
+- GPX import requires timed track points; lap/workout structure and FIT-only
+  running dynamics are unavailable unless represented by supported GPX
+  extensions.
+- Disconnected GPX track segments preserve their timing and do not add a
+  distance jump, but Route Map currently draws imported route points as one
+  visual path.
 - Video metadata varies by camera, so some clips require manual alignment.
 - HEVC-with-alpha availability depends on the Mac and selected export settings.
 - Signed macOS builds are available from the

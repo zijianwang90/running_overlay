@@ -19,7 +19,7 @@ This design covers:
 - Timeline header controls.
 - Timeline ruler.
 - Fixed label column.
-- FIT activity layer.
+- Activity data layer.
 - Video layers and clip blocks.
 - Playhead.
 - Drag/drop targets.
@@ -42,13 +42,13 @@ Existing behavior to preserve:
 - Zoom slider with nonlinear mapping and `Fit` label.
 - Ruler seeking and hover data.
 - `C`-held hover scrubbing that moves the playhead to the hovered timeline time without clicking.
-- FIT layer shown independently above video tracks.
-- FIT layer can be dragged horizontally to align activity data.
+- Activity layer shown independently above video tracks.
+- Activity layer can be dragged horizontally to align activity data.
 - Video clips can be dragged horizontally in expanded mode.
 - Collapsed mode hides no-video gaps and disables horizontal dragging of existing video clips.
 - Red playhead spans visible timeline tracks and stays visible during playback.
 - Media drag/drop creates or moves clips and exposes one new-layer target.
-- Empty project shows no fake playhead, FIT layer, or track.
+- Empty project shows no fake playhead, Activity layer, or track.
 - FIT/media-ready empty timeline shows a default `Layer 1` drop lane.
 
 ## Layout
@@ -57,7 +57,7 @@ Top to bottom:
 
 1. Timeline header.
 2. Ruler.
-3. FIT track, when FIT activity exists.
+3. Activity track, when activity data exists.
 4. Video layers.
 5. Optional drop target lane during media drag.
 
@@ -143,12 +143,12 @@ Visual:
 
 Behavior:
 
-- The FIT layer is currently not draggable in the timeline UI.
+- The Activity layer is currently not draggable in the timeline UI.
 - Hovering a gray pause span shows `Timer Paused` with the pause elapsed range and duration.
 - Hovering an interval phase span shows the English lap kind, lap number, elapsed range, and duration.
 - The design should hint that it is an alignable axis, not a normal video clip.
 - In collapsed mode, FIT-only regions without video may be hidden according to current model behavior.
-- In collapsed mode, video-only regions outside the FIT activity range must not draw a FIT block.
+- In collapsed mode, video-only regions outside the activity range must not draw an Activity block.
 - FIT track span colors are lap-kind driven for intervals and annotation-overridden for pause spans, without changing timeline alignment semantics.
 
 ## Video Tracks And Clips

@@ -244,7 +244,7 @@ struct WeatherWidgetOverlayDetailView: View {
             }
 
             if hasFITTemperature {
-                InspectorDenseRow(label: "Use FIT Temperature") {
+                InspectorDenseRow(label: "Use Activity Temperature") {
                     Toggle("", isOn: Binding(
                         get: { s.useFITTemperature },
                         set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.useFITTemperature = v } }

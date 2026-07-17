@@ -206,7 +206,7 @@ Remove the safe guides toggle from the app-level toolbar in `MainEditorView`.
 
 App toolbar should keep:
 
-- FIT import.
+- Activity import.
 - Video import.
 - Export progress.
 - Export action.

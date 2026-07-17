@@ -12,8 +12,8 @@ struct RunningOverlayApp: App {
         NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
 
         if let launchCommand = RunningOverlayLaunchConfiguration.command {
-            if let fitURL = launchCommand.fitURL {
-                project.importFitURL(fitURL)
+            if let activityURL = launchCommand.activityURL {
+                project.importActivityURL(activityURL)
             }
             if !launchCommand.videoURLs.isEmpty {
                 project.importVideoURLs(launchCommand.videoURLs, replacingExisting: true)
@@ -49,8 +49,8 @@ struct RunningOverlayApp: App {
             }
 
             CommandGroup(after: .newItem) {
-                Button("Import FIT File...") {
-                    project.importFitFile()
+                Button("Import Activity File...") {
+                    project.importActivityFile()
                 }
                 .keyboardShortcut("i", modifiers: [.command])
 

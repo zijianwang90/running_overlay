@@ -22,11 +22,11 @@ Status: completed
 - Placeholder timeline.
 - Placeholder preview and parameter panel.
 
-## Milestone 2: FIT Timeline
+## Milestone 2: Activity Timeline
 
 Status: in progress
 
-- FIT import.
+- FIT and GPX import.
 - Activity timeline model.
 - Timeline ruler.
 - Ruler hover data.
@@ -34,6 +34,7 @@ Status: in progress
 Completed so far:
 
 - Native `.fit` file picker.
+- Native `.gpx` file picker and timed-track parser with common telemetry extensions.
 - First-pass FIT parser for standard record/session messages.
 - Activity timeline population from parsed FIT data.
 - Full-width timeline ruler hover with elapsed time, real-world time, and distance.
@@ -113,7 +114,7 @@ Status: in progress
 Completed so far:
 
 - Add overlay elements from the Inspector library.
-- Live value formatting from FIT activity data at the playhead.
+- Live value formatting from activity data at the playhead.
 - Drag overlay elements in the preview.
 - Inspector font family, font weight, font size, scale, color, and background opacity controls.
 - Text overlay built-in style picker with Minimal, Pill Badge, Metric Card, Big Number, Sport Watch, and Split Label presets.
@@ -227,7 +228,7 @@ Completed so far:
 - First-pass H.265 with alpha MOV writer.
 - ProRes 4444 export option.
 - Per-timeline-clip export, including overlapping clips.
-- Full FIT activity overlay export.
+- Full activity overlay export.
 - Project resolution, frame rate, bitrate, and Layer Data FPS applied.
 - Toolbar export progress control with click-open popover and per-output progress rows.
 - Export cancellation from the progress popover.

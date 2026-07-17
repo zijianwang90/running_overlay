@@ -33,6 +33,16 @@ struct AppLaunchCommandTests {
         #expect(videoOnly.videoURLs.first?.path.hasSuffix("/run.mov") == true)
     }
 
+    @Test func supportsGenericActivityArgumentForGPX() throws {
+        let parsed = try AppLaunchCommand.parse(arguments: [
+            "RunningOverlay", "--activity", "Fixtures/run.gpx"
+        ])
+        let command = try #require(parsed)
+
+        #expect(command.activityURL?.path.hasSuffix("/Fixtures/run.gpx") == true)
+        #expect(command.videoURLs.isEmpty)
+    }
+
     @Test func returnsNilWithoutLaunchFileArguments() throws {
         #expect(try AppLaunchCommand.parse(arguments: ["RunningOverlay"]) == nil)
     }

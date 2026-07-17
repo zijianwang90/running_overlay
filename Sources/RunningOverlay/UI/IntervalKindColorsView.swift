@@ -54,7 +54,7 @@ struct IntervalKindColorsView: View {
                 .font(EditorTheme.panelTitleFont)
                 .foregroundStyle(EditorTheme.textPrimary)
                 .frame(maxWidth: .infinity, alignment: .center)
-            Text("Shared by the FIT timeline, Interval Timeline overlay, and Interval HUD bar.")
+            Text("Shared by the activity timeline, Interval Timeline overlay, and Interval HUD bar.")
                 .font(EditorTheme.captionFont)
                 .foregroundStyle(EditorTheme.textSecondary)
                 .frame(maxWidth: .infinity, alignment: .center)
