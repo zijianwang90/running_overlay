@@ -16,6 +16,11 @@ This directory stores implementation-facing product design references for Runnin
 - [App UI Structured Spec](./system/app-ui.spec.json): machine-readable app-level token and component guidance.
 - [HIG UI Validation Workflow](./hig-ui-validation.md): process for running Apple HIG skill-based UI reviews against the macOS app.
 
+## Branding
+
+- [Brand Design References](./branding/README.md): exploratory brand artwork,
+  including the horizontal banner concept and its provenance.
+
 ## Panels
 
 - [Preview UI Spec](./panels/preview/preview-ui.md): central Preview panel layout, interactions, and component guidance.

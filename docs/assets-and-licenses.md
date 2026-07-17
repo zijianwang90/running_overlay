@@ -41,7 +41,10 @@ documented.
   supplied by the repository owner and distributed under the repository
   license.
 - Design mockups under `docs/design/` are project documentation assets and
-  are distributed under the repository license.
+  are distributed under the repository license. The horizontal banner concept
+  under `docs/design/branding/` was generated specifically for this project
+  with OpenAI image generation, using the repository App Icon as a visual
+  reference, and contains no third-party artwork.
 - Product screenshots under `docs/assets/screenshots/` are project
   documentation assets supplied by the repository owner and distributed under
   the repository license.
