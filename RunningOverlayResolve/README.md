@@ -110,6 +110,7 @@ and the optional decoded-alpha checker.
 - Signing, distribution, broad camera metadata confidence, and the remaining
   production rendering matrix are outside this development slice.
 
-See [requirements](docs/requirements.md), [architecture](docs/architecture.md),
+See the [Chinese end-to-end user guide](docs/user-guide.zh-CN.md),
+[requirements](docs/requirements.md), [architecture](docs/architecture.md),
 and [testing and host findings](docs/testing.md). The repository's root license
 and contribution rules apply to this subproject.

@@ -22,7 +22,7 @@ entries in `project-log.md`.
 |---|---|
 | FIT/GPX parser or workout analysis | `docs/architecture.md#activity-data-fit-and-gpx`, `docs/testing.md` |
 | Media import and alignment | `docs/architecture.md#media-import`, `docs/architecture.md#alignment-engine` |
-| DaVinci Resolve sibling product | `RunningOverlayResolve/README.md`, `RunningOverlayResolve/docs/architecture.md`, `docs/adr/0006-independent-resolve-live-rendering.md` |
+| DaVinci Resolve sibling product | `RunningOverlayResolve/README.md`, `RunningOverlayResolve/docs/user-guide.zh-CN.md`, `RunningOverlayResolve/docs/architecture.md`, `docs/adr/0006-independent-resolve-live-rendering.md` |
 | Timeline behavior | `docs/architecture.md#timeline`, `docs/design/panels/timeline/` |
 | Numeric overlays | `docs/design/overlays/numeric/`, `docs/requirements.md` |
 | Featured overlays | `docs/overlay-modules/README.md`, matching module and design directory |

@@ -68,6 +68,9 @@ required_files=(
   RunningOverlayResolve/docs/architecture.md
   RunningOverlayResolve/docs/requirements.md
   RunningOverlayResolve/docs/testing.md
+  RunningOverlayResolve/docs/user-guide.zh-CN.md
+  RunningOverlayResolve/fixtures/README.md
+  RunningOverlayResolve/fixtures/activity.synthetic.gpx
   RunningOverlayResolve/package.json
   RunningOverlayResolve/package-lock.json
   RunningOverlay.xcodeproj/project.pbxproj
@@ -128,7 +131,7 @@ done
 
 while IFS= read -r path; do
   case "$path" in
-    Tests/RunningOverlayTests/Fixtures/Activities/synthetic-run.fit|Tests/RunningOverlayTests/Fixtures/Activities/synthetic-run.gpx)
+    Tests/RunningOverlayTests/Fixtures/Activities/synthetic-run.fit|Tests/RunningOverlayTests/Fixtures/Activities/synthetic-run.gpx|RunningOverlayResolve/fixtures/activity.synthetic.gpx)
       ;;
     .env.example)
       ;;
