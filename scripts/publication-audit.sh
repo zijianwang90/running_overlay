@@ -61,7 +61,15 @@ required_files=(
   docs/development/quality.md
   docs/app-store-readiness.md
   docs/project-log/2026-06.md
+  docs/project-log/2026-08.md
   docs/testing.md
+  docs/adr/0006-independent-resolve-live-rendering.md
+  RunningOverlayResolve/README.md
+  RunningOverlayResolve/docs/architecture.md
+  RunningOverlayResolve/docs/requirements.md
+  RunningOverlayResolve/docs/testing.md
+  RunningOverlayResolve/package.json
+  RunningOverlayResolve/package-lock.json
   RunningOverlay.xcodeproj/project.pbxproj
   RunningOverlay.xcodeproj/xcshareddata/xcschemes/RunningOverlay.xcscheme
   AppStore/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x.png
@@ -201,5 +209,16 @@ repo_query 'package-ecosystem: "swift"' .github/dependabot.yml || {
   echo "Dependabot must monitor Swift packages." >&2
   exit 1
 }
+
+repo_query 'directory: "/RunningOverlayResolve"' .github/dependabot.yml || {
+  echo "Dependabot must monitor the Resolve subproject." >&2
+  exit 1
+}
+
+if find RunningOverlayResolve -type f -name 'WorkflowIntegration.node' \
+  -not -path 'RunningOverlayResolve/dist/*' -print -quit | grep -q .; then
+  echo "Resolve SDK WorkflowIntegration.node must not be committed or redistributed." >&2
+  exit 1
+fi
 
 echo "Source-publication repository audit passed."

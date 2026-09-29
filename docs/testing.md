@@ -63,9 +63,28 @@ Snapshots should favor deterministic Core Graphics geometry and synthetic
 data. Avoid network-backed maps, current time, locale-sensitive content, or
 fonts that differ across supported systems.
 
+## DaVinci Resolve Subproject
+
+The independent Resolve prototype uses Node's built-in test runner with
+synthetic JSON/GPX and in-memory FIT fixtures:
+
+```sh
+cd RunningOverlayResolve
+npm run check
+```
+
+Root `./scripts/check.sh` also runs this command. Resolve host behavior remains
+a separate manual test gate; automated tests must not require Resolve to be
+running or copy plugins into system/user installation directories.
+
 ## Performance Tests
 
 Performance comparisons must use a documented project snapshot with no private
 media paths or activity data. Record toolchain, hardware class, settings, and
 before/after measurements. Performance snapshots are not committed when they
 contain local source paths.
+
+The P1 Resolve host findings and remaining gates are recorded in
+[the subproject testing guide](../RunningOverlayResolve/docs/testing.md). Temporary
+solid-color videos and plugin-generated transparent PNG duration carriers are
+synthetic developer test data; they are not committed media fixtures.

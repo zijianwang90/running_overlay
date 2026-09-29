@@ -192,3 +192,20 @@ The initial implementation can use a simple local document format, but the schem
 - Transparent MOV export codec support and alpha-channel correctness.
 - Timeline performance for long activities and high zoom levels.
 - Maintaining frame-accurate export while using user-friendly timeline interactions.
+
+## 7. Independent DaVinci Resolve Product
+
+`RunningOverlayResolve/` is an independent sibling product, not an adapter
+target inside the native macOS app. It owns its activity parsing, Resolve
+Workflow UI, timeline scan, piecewise alignment, Fusion/Fuse/OFX rendering,
+packaging, and tests. It does not link `RunningOverlay`, launch the app, or use
+the app's transparent-MOV exporter.
+
+The two products share reference specifications, widget semantics, synthetic
+fixtures, and later reviewed visual golden images. Resolve-specific data flow
+and timing contracts are documented in
+[`RunningOverlayResolve/docs/architecture.md`](../RunningOverlayResolve/docs/architecture.md)
+and constrained by
+[ADR 0006](adr/0006-independent-resolve-live-rendering.md). Managed composition
+placement, immutable revisions, and local settings follow
+[ADR 0007](adr/0007-resolve-managed-overlay-workflow.md).

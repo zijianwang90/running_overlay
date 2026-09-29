@@ -1,0 +1,46 @@
+{
+  "media-a": {
+    "mediaId": "media-a",
+    "cameraGroupId": "camera-a",
+    "captureTimeCandidates": [
+      {
+        "instantUtcUs": 1767254710000000,
+        "source": "quicktime.creationdate",
+        "evidenceGroup": "container-created",
+        "reliability": "strong",
+        "recordingRole": "start",
+        "timezone": "explicit"
+      },
+      {
+        "instantUtcUs": 1767254710500000,
+        "source": "filename",
+        "evidenceGroup": "filename",
+        "reliability": "medium",
+        "recordingRole": "start",
+        "timezone": "assumed"
+      }
+    ]
+  },
+  "media-b": {
+    "mediaId": "media-b",
+    "cameraGroupId": "camera-a",
+    "captureTimeCandidates": [
+      {
+        "instantUtcUs": 1767255600000000,
+        "source": "quicktime.creationdate",
+        "evidenceGroup": "container-created",
+        "reliability": "strong",
+        "recordingRole": "start",
+        "timezone": "explicit"
+      },
+      {
+        "instantUtcUs": 1767255601000000,
+        "source": "filename",
+        "evidenceGroup": "filename",
+        "reliability": "medium",
+        "recordingRole": "start",
+        "timezone": "assumed"
+      }
+    ]
+  }
+}

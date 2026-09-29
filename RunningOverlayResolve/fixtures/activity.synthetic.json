@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "activityId": "synthetic-morning-run",
+  "startUtcUs": 1767254400000000,
+  "endUtcUs": 1767256200000000,
+  "records": [
+    {
+      "elapsedUs": 0,
+      "distanceMeters": 0,
+      "heartRateBpm": 120,
+      "paceSecondsPerKilometer": 360,
+      "cadenceSpm": 160,
+      "elevationMeters": 100,
+      "powerWatts": 210,
+      "calories": 0
+    },
+    {
+      "elapsedUs": 300000000,
+      "distanceMeters": 850,
+      "heartRateBpm": 145,
+      "paceSecondsPerKilometer": 330,
+      "cadenceSpm": 172,
+      "elevationMeters": 104,
+      "powerWatts": 245,
+      "calories": 42
+    },
+    {
+      "elapsedUs": 600000000,
+      "distanceMeters": 1780,
+      "heartRateBpm": 151,
+      "paceSecondsPerKilometer": 315,
+      "cadenceSpm": 176,
+      "elevationMeters": 109,
+      "powerWatts": 258,
+      "calories": 88
+    },
+    {
+      "elapsedUs": 1200000000,
+      "distanceMeters": 3540,
+      "heartRateBpm": 148,
+      "paceSecondsPerKilometer": 325,
+      "cadenceSpm": 174,
+      "elevationMeters": 102,
+      "powerWatts": 250,
+      "calories": 176
+    },
+    {
+      "elapsedUs": 1800000000,
+      "distanceMeters": 5280,
+      "heartRateBpm": 156,
+      "paceSecondsPerKilometer": 318,
+      "cadenceSpm": 178,
+      "elevationMeters": 106,
+      "powerWatts": 266,
+      "calories": 265
+    }
+  ],
+  "annotations": [
+    {
+      "kind": "timerPaused",
+      "startElapsedUs": 900000000,
+      "endElapsedUs": 930000000
+    }
+  ]
+}

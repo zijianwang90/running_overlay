@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Running Overlay Resolve</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="renderer.js" defer></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">RUNNING OVERLAY</p>
+        <h1>Resolve Live Overlay</h1>
+      </div>
+      <span class="prototype-pill">P1</span>
+    </header>
+
+    <main>
+      <section class="panel-section">
+        <div class="section-heading">
+          <div>
+            <h2>1. Activity</h2>
+            <p>Load a FIT or GPX file directly, or use portable activity JSON for tests.</p>
+          </div>
+          <button id="choose-activity" class="secondary">Choose</button>
+        </div>
+        <div id="activity-status" class="status-card muted">No activity loaded</div>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-heading">
+          <div>
+            <h2>2. Reference track</h2>
+            <p>Scan one non-overlapping video track and preserve every source-in.</p>
+          </div>
+        </div>
+        <div class="inline-controls">
+          <label for="track-index">Video track</label>
+          <input id="track-index" type="number" min="1" step="1" value="1">
+          <button id="scan-timeline" class="secondary">Scan</button>
+        </div>
+        <div id="timeline-status" class="status-card muted">Timeline not scanned</div>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-heading">
+          <div>
+            <h2>3. Capture times</h2>
+            <p>Ambiguous Resolve dates remain untrusted until you confirm them.</p>
+          </div>
+        </div>
+        <div id="clip-list" class="clip-list">
+          <div class="empty-state">Scan a timeline to inspect its clips.</div>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <h2>4. Camera clock calibration (optional)</h2>
+        <p>Pair camera time with the same instant in the activity. One pair corrects offset; two pairs also correct drift. Include a timezone in every time.</p>
+        <div id="camera-list"></div>
+      </section>
+      <section class="panel-section">
+        <h2>5. Overlay widgets</h2>
+        <p>Add and arrange up to four metrics. Choose a starting layout, then refine each widget in Fusion.</p>
+        <div class="inline-controls widget-controls">
+          <label for="layout-preset">Layout</label>
+          <select id="layout-preset">
+            <option value="vertical">Vertical stack</option>
+            <option value="horizontal">Horizontal row</option>
+            <option value="grid">Two-column grid</option>
+          </select>
+        </div>
+        <div id="widget-list" class="widget-list"></div>
+        <div class="inline-controls widget-controls">
+          <label for="add-widget-metric">Add metric</label>
+          <select id="add-widget-metric"></select>
+          <button id="add-widget" class="secondary">Add</button>
+        </div>
+        <p class="footnote">Reordering or changing the layout applies preset positions. Ordinary synchronization keeps your Fusion positions, styles, and animation.</p>
+      </section>
+      <section class="panel-section output-section">
+        <button id="save-settings" class="secondary">Save settings</button>
+        <button id="build-bundle" class="primary" disabled>Create / Update Overlay</button>
+        <p class="footnote">Saves settings locally and creates or updates the live Fusion widgets. Position and style stay editable in Fusion.</p>
+        <div id="build-status" class="status-card muted">Waiting for activity and timeline</div>
+      </section>
+    </main>
+  </body>
+</html>

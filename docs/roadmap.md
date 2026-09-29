@@ -1,6 +1,37 @@
 # Running Overlay Studio Roadmap
 
-Last updated: 2026-04-24
+Last updated: 2026-09-29
+
+## Sibling Product: Running Overlay Resolve
+
+Status: P1 implementation, activity-file compatibility, and four-metric editing;
+human review before merge.
+
+Implemented:
+
+- Independent FIT parsing and live Numeric Fuse rendering.
+- Read-only source/OTIO timing checks, unsupported-clip rejection, rational
+  piecewise alignment, and per-camera offset/drift calibration.
+- One-click creation/update of an owned Fusion overlay, including range changes
+  that preserve Fusion node styling and connections.
+- Local per-project/timeline settings, immutable bundle revisions, and stale-map
+  detection after editing or removing the managed overlay.
+- Compressed FIT timestamps and GPX track import, with missing metrics kept
+  unavailable through the Numeric renderer.
+- Panel add/remove/reorder for four Numeric metrics, three layout presets, and
+  independent Fusion styling and animation controls in one managed Fuse.
+- Host tests at 24/25/29.97/30/50/59.94 fps with zero and one-hour starts, plus
+  real Workflow-panel creation/update and persistence checks.
+
+Remaining product work:
+
+- Broader verified source metadata and source-time support.
+- Full widget catalog and reviewed visual parity.
+- Portable project packaging, revision cleanup, signing/distribution, and OFX.
+- Remaining production performance/color-management matrix.
+
+See [Resolve testing](../RunningOverlayResolve/docs/testing.md) for precise host
+coverage and remaining gates.
 
 ## Milestone 0: Documentation Bootstrap
 

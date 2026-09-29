@@ -1,0 +1,16 @@
+{
+  "name": "running-overlay-resolve",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Independent DaVinci Resolve live-overlay prototype",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "check": "node scripts/check.mjs && npm test",
+    "assemble": "node scripts/assemble.mjs",
+    "fixture:bundle": "node scripts/build-fixture-bundle.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

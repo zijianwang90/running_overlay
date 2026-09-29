@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://runningoverlay.example/schemas/resolve/sync-map-v1.schema.json",
+  "title": "Running Overlay Resolve Piecewise Sync Map v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "activityId", "timelineId", "timelineStartFrame", "timelineEndFrame", "frameRate", "timelineFingerprint", "segments", "diagnostics"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "activityId": { "type": "string", "minLength": 1 },
+    "timelineId": { "type": "string", "minLength": 1 },
+    "timelineStartFrame": { "type": "integer" },
+    "timelineEndFrame": { "type": "integer" },
+    "frameRate": { "$ref": "#/$defs/rational" },
+    "timelineFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["segmentId", "mediaId", "cameraGroupId", "timelineStartFrame", "timelineEndFrameExclusive", "sourceStartFrame", "activityStartUs", "activityUsPerTimelineFrame", "confidence", "evidenceSources", "clockModelSource"],
+        "properties": {
+          "segmentId": { "type": "string", "minLength": 1 },
+          "mediaId": { "type": "string", "minLength": 1 },
+          "cameraGroupId": { "type": "string", "minLength": 1 },
+          "timelineStartFrame": { "type": "integer" },
+          "timelineEndFrameExclusive": { "type": "integer" },
+          "sourceStartFrame": { "type": "integer", "minimum": 0 },
+          "activityStartUs": { "type": "integer" },
+          "activityUsPerTimelineFrame": { "$ref": "#/$defs/rational" },
+          "confidence": { "enum": ["high", "review", "locked"] },
+          "evidenceSources": { "type": "array", "items": { "type": "string" } },
+          "clockModelSource": { "type": "string" }
+        }
+      }
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "code", "message"],
+        "properties": {
+          "severity": { "enum": ["info", "warning", "error"] },
+          "code": { "type": "string" },
+          "timelineItemId": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "rational": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["numerator", "denominator"],
+      "properties": {
+        "numerator": { "type": "integer", "minimum": 1 },
+        "denominator": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

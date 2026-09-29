@@ -1,0 +1,5 @@
+dist/
+node_modules/
+workflow-plugin/WorkflowIntegration.node
+*.roresolve/
+!fixtures/activity.synthetic.gpx

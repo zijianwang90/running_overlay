@@ -19,10 +19,17 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: RunningOverlayResolve/package-lock.json
       - name: Toolchain
         run: |
           swift --version
           xcodebuild -version
+          node --version
+          npm --version
       - name: Build and test
         run: ./scripts/check.sh
       - name: Build release product

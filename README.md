@@ -16,6 +16,12 @@
 Running Overlay Studio is a native macOS editor for turning FIT or GPX activity
 data into customizable, transparent sports-data overlay videos.
 
+An early, independent DaVinci Resolve live-rendering sibling project now lives
+under [`RunningOverlayResolve/`](RunningOverlayResolve/README.md). It is testing
+in-Resolve widget editing, piecewise FIT-to-edit alignment, and final-render
+generation without intermediate transparent video. It does not depend on the
+macOS app at runtime.
+
 > **Source-available:** You may download, build, study, modify, and use Running
 > Overlay under the [PolyForm Shield License 1.0.0](LICENSE). Providing a
 > competing product or service requires a
@@ -66,6 +72,8 @@ files for Final Cut Pro, DaVinci Resolve, Premiere Pro, or another editor.
 
 - macOS 15 or newer
 - Swift 6 toolchain
+- Node.js 22 or newer for the independent Resolve prototype and repository-wide
+  validation; the macOS app itself does not require Node.js at runtime
 - A FIT or timed-track GPX file with record data for activity-driven overlays
 - H.265 alpha or ProRes 4444 support for transparent MOV export
 

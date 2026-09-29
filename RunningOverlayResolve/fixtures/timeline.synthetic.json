@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "timelineId": "synthetic-timeline",
+  "timelineName": "Morning Run Edit",
+  "timelineStartFrame": 0,
+  "timelineEndFrame": 600,
+  "frameRate": {
+    "numerator": 30000,
+    "denominator": 1001
+  },
+  "referenceVideoTrackIndex": 1,
+  "items": [
+    {
+      "timelineItemId": "timeline-item-a",
+      "mediaId": "media-a",
+      "name": "CAM_A_080510.mov",
+      "cameraGroupId": "camera-a",
+      "timelineStartFrame": 0,
+      "timelineEndFrameExclusive": 300,
+      "sourceStartFrame": 360,
+      "sourceFrameRate": {
+        "numerator": 30,
+        "denominator": 1
+      },
+      "speed": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "clipEnabled": true
+    },
+    {
+      "timelineItemId": "timeline-item-b",
+      "mediaId": "media-b",
+      "name": "CAM_A_082000.mov",
+      "cameraGroupId": "camera-a",
+      "timelineStartFrame": 300,
+      "timelineEndFrameExclusive": 600,
+      "sourceStartFrame": 0,
+      "sourceFrameRate": {
+        "numerator": 30,
+        "denominator": 1
+      },
+      "speed": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "clipEnabled": true
+    }
+  ]
+}

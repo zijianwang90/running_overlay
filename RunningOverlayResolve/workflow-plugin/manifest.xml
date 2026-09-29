@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BlackmagicDesign>
+  <Plugin>
+    <Id>com.runningoverlay.resolve</Id>
+    <Name>Running Overlay Resolve</Name>
+    <Version>0.0.2</Version>
+    <Description>Live activity-data overlays for DaVinci Resolve</Description>
+    <FilePath>main.js</FilePath>
+  </Plugin>
+</BlackmagicDesign>

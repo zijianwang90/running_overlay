@@ -1,0 +1,261 @@
+'use strict';
+
+const path = require('node:path');
+const { invariant } = require('../domain/validation');
+const { validateActivity } = require('../domain/activity');
+
+const FIT_TO_UNIX_SECONDS = 631_065_600;
+
+class FitReader {
+  constructor(buffer) {
+    invariant(Buffer.isBuffer(buffer), 'FIT input must be a Buffer');
+    this.buffer = buffer;
+    this.offset = 0;
+    this.dataEnd = 0;
+    this.definitions = new Map();
+    this.records = [];
+    this.timerEvents = [];
+    this.sessionStartFitSeconds = null;
+    this.sessionElapsedUs = null;
+    this.previousTimestampFitSeconds = null;
+  }
+
+  parse(options = {}) {
+    this.readHeader();
+    while (this.offset < this.dataEnd) this.readMessage();
+
+    const recordStarts = this.records.map((record) => record.timestampFitSeconds);
+    const startFitSeconds = this.sessionStartFitSeconds ?? Math.min(...recordStarts);
+    invariant(Number.isFinite(startFitSeconds), 'FIT file has no activity timestamp');
+    const startUtcUs = (startFitSeconds + FIT_TO_UNIX_SECONDS) * 1_000_000;
+    const records = this.records
+      .map((record) => ({
+        elapsedUs: (record.timestampFitSeconds - startFitSeconds) * 1_000_000,
+        distanceMeters: record.distanceMeters,
+        heartRateBpm: record.heartRateBpm,
+        paceSecondsPerKilometer: record.paceSecondsPerKilometer,
+        cadenceSpm: record.cadenceSpm,
+        elevationMeters: record.elevationMeters,
+        powerWatts: record.powerWatts,
+        calories: record.calories,
+      }))
+      .sort((left, right) => left.elapsedUs - right.elapsedUs);
+    invariant(records.every((record) => record.elapsedUs >= 0), 'FIT records precede the session start');
+
+    if (records.length === 0) {
+      records.push({ elapsedUs: 0 });
+    }
+    const lastRecordElapsedUs = records[records.length - 1].elapsedUs;
+    const lastTimerEventElapsedUs = this.timerEvents.reduce((latest, event) => Math.max(latest,
+      (event.timestampFitSeconds - startFitSeconds) * 1_000_000), 0);
+    const durationUs = Math.max(this.sessionElapsedUs ?? 0, lastRecordElapsedUs, lastTimerEventElapsedUs);
+    const endUtcUs = startUtcUs + durationUs;
+    const activityId = options.activityId
+      ?? `fit-${startFitSeconds}`;
+
+    return validateActivity({
+      schemaVersion: 1,
+      activityId,
+      startUtcUs,
+      endUtcUs,
+      records,
+      annotations: this.buildPauseAnnotations(startFitSeconds, durationUs),
+    });
+  }
+
+  readHeader() {
+    invariant(this.buffer.length >= 12, 'FIT file is shorter than its minimum header');
+    const headerSize = this.buffer[0];
+    invariant(headerSize === 12 || headerSize === 14, `Unsupported FIT header size ${headerSize}`);
+    invariant(this.buffer.length >= headerSize, 'FIT header is truncated');
+    invariant(this.buffer.subarray(8, 12).toString('ascii') === '.FIT', 'FIT signature is missing');
+    const dataSize = this.buffer.readUInt32LE(4);
+    this.offset = headerSize;
+    this.dataEnd = headerSize + dataSize;
+    invariant(this.dataEnd <= this.buffer.length, 'FIT data section exceeds the file length');
+  }
+
+  readMessage() {
+    const header = this.readUInt8();
+    if ((header & 0x80) !== 0) {
+      const localMessageType = (header >> 5) & 0x03;
+      const offset = header & 0x1f;
+      invariant(this.previousTimestampFitSeconds !== null, 'Compressed FIT timestamp has no preceding full timestamp');
+      const base = Math.floor(this.previousTimestampFitSeconds / 32) * 32;
+      const timestamp = base + offset + (offset < (this.previousTimestampFitSeconds % 32) ? 32 : 0);
+      invariant(timestamp <= 0xffffffff, 'Compressed FIT timestamp exceeds the FIT range');
+      this.readData(localMessageType, timestamp);
+      return;
+    }
+    const localMessageType = header & 0x0f;
+    if ((header & 0x40) !== 0) {
+      this.readDefinition(localMessageType, (header & 0x20) !== 0);
+    } else {
+      this.readData(localMessageType);
+    }
+  }
+
+  readDefinition(localMessageType, hasDeveloperFields) {
+    this.readUInt8();
+    const architecture = this.readUInt8() === 0 ? 'little' : 'big';
+    const globalMessageNumber = this.readUInt16(architecture);
+    const fieldCount = this.readUInt8();
+    const fields = [];
+    for (let index = 0; index < fieldCount; index += 1) {
+      fields.push({
+        number: this.readUInt8(),
+        size: this.readUInt8(),
+        baseType: this.readUInt8(),
+      });
+    }
+    const developerFields = [];
+    if (hasDeveloperFields) {
+      const developerFieldCount = this.readUInt8();
+      for (let index = 0; index < developerFieldCount; index += 1) {
+        developerFields.push({
+          number: this.readUInt8(),
+          size: this.readUInt8(),
+          developerDataIndex: this.readUInt8(),
+        });
+      }
+    }
+    this.definitions.set(localMessageType, { architecture, globalMessageNumber, fields, developerFields });
+  }
+
+  readData(localMessageType, compressedTimestamp = null) {
+    const definition = this.definitions.get(localMessageType);
+    invariant(definition, `FIT local message ${localMessageType} has no definition`);
+    const values = new Map();
+    for (const field of definition.fields) {
+      if (compressedTimestamp !== null && field.number === 253) {
+        invariant(field.size === 4 && field.baseType === 0x86, 'Compressed FIT timestamp field has an unsupported definition');
+        continue; // Timestamp is encoded in the header, not the data payload.
+      }
+      values.set(field.number, this.readBytes(field.size));
+    }
+    for (const field of definition.developerFields) this.readBytes(field.size);
+
+    const fullTimestamp = this.uint32(values.get(253), definition.architecture);
+    if (compressedTimestamp !== null) this.previousTimestampFitSeconds = compressedTimestamp;
+    else if (fullTimestamp !== null) this.previousTimestampFitSeconds = fullTimestamp;
+
+    if (definition.globalMessageNumber === 20) this.readRecord(values, definition.architecture, compressedTimestamp);
+    else if (definition.globalMessageNumber === 18) this.readSession(values, definition.architecture);
+    else if (definition.globalMessageNumber === 21) this.readEvent(values, definition.architecture, compressedTimestamp);
+  }
+
+  readRecord(values, architecture, compressedTimestamp = null) {
+    const timestamp = compressedTimestamp ?? this.uint32(values.get(253), architecture);
+    if (timestamp === null) return;
+    const distanceRaw = this.uint32(values.get(5), architecture);
+    const enhancedSpeedRaw = this.uint32(values.get(73), architecture);
+    const speedRaw = this.uint16(values.get(6), architecture);
+    const speedMetersPerSecond = enhancedSpeedRaw !== null
+      ? enhancedSpeedRaw / 1_000
+      : speedRaw !== null ? speedRaw / 1_000 : null;
+    const enhancedAltitudeRaw = this.uint32(values.get(78), architecture);
+    const altitudeRaw = this.uint16(values.get(2), architecture);
+    const cadence = this.uint8(values.get(4));
+    const cadenceFraction = this.uint8(values.get(53));
+
+    this.records.push({
+      timestampFitSeconds: timestamp,
+      distanceMeters: distanceRaw === null ? null : distanceRaw / 100,
+      heartRateBpm: this.uint8(values.get(3)),
+      paceSecondsPerKilometer: speedMetersPerSecond && speedMetersPerSecond > 0
+        ? 1_000 / speedMetersPerSecond
+        : null,
+      cadenceSpm: cadence === null ? null : Math.round((cadence + (cadenceFraction ?? 0) / 128) * 2),
+      elevationMeters: enhancedAltitudeRaw !== null
+        ? enhancedAltitudeRaw / 5 - 500
+        : altitudeRaw !== null ? altitudeRaw / 5 - 500 : null,
+      powerWatts: this.uint16(values.get(7), architecture),
+      calories: this.uint16(values.get(33), architecture),
+    });
+  }
+
+  readSession(values, architecture) {
+    const start = this.uint32(values.get(2), architecture);
+    const elapsedMilliseconds = this.uint32(values.get(7), architecture);
+    if (start !== null) this.sessionStartFitSeconds = start;
+    if (elapsedMilliseconds !== null) this.sessionElapsedUs = elapsedMilliseconds * 1_000;
+  }
+
+  readEvent(values, architecture, compressedTimestamp = null) {
+    const timestamp = compressedTimestamp ?? this.uint32(values.get(253), architecture);
+    const event = this.uint8(values.get(0));
+    const eventType = this.uint8(values.get(1));
+    if (timestamp === null || event !== 0 || eventType === null) return;
+    if (eventType === 0) this.timerEvents.push({ timestampFitSeconds: timestamp, type: 'start' });
+    else if (eventType === 1 || eventType === 4) this.timerEvents.push({ timestampFitSeconds: timestamp, type: 'stop' });
+  }
+
+  buildPauseAnnotations(startFitSeconds, durationUs) {
+    const events = [...this.timerEvents].sort((left, right) => left.timestampFitSeconds - right.timestampFitSeconds);
+    const annotations = [];
+    let pauseStartUs = null;
+    for (const event of events) {
+      const elapsedUs = Math.max(0, Math.min(durationUs, (event.timestampFitSeconds - startFitSeconds) * 1_000_000));
+      if (event.type === 'stop' && pauseStartUs === null) pauseStartUs = elapsedUs;
+      if (event.type === 'start' && pauseStartUs !== null) {
+        if (elapsedUs > pauseStartUs) annotations.push({ kind: 'timerPaused', startElapsedUs: pauseStartUs, endElapsedUs: elapsedUs });
+        pauseStartUs = null;
+      }
+    }
+    if (pauseStartUs !== null && durationUs > pauseStartUs) {
+      annotations.push({ kind: 'timerPaused', startElapsedUs: pauseStartUs, endElapsedUs: durationUs });
+    }
+    return annotations;
+  }
+
+  readUInt8() {
+    invariant(this.offset < this.dataEnd, 'Unexpected end of FIT data');
+    const value = this.buffer[this.offset];
+    this.offset += 1;
+    return value;
+  }
+
+  readUInt16(architecture) {
+    const bytes = this.readBytes(2);
+    return architecture === 'little' ? bytes.readUInt16LE(0) : bytes.readUInt16BE(0);
+  }
+
+  readBytes(size) {
+    invariant(this.offset + size <= this.dataEnd, `FIT field at ${this.offset} exceeds the data section`);
+    const bytes = this.buffer.subarray(this.offset, this.offset + size);
+    this.offset += size;
+    return bytes;
+  }
+
+  uint8(bytes) {
+    if (!bytes || bytes.length < 1 || bytes[0] === 0xff) return null;
+    return bytes[0];
+  }
+
+  uint16(bytes, architecture) {
+    if (!bytes || bytes.length < 2) return null;
+    const value = architecture === 'little' ? bytes.readUInt16LE(0) : bytes.readUInt16BE(0);
+    return value === 0xffff ? null : value;
+  }
+
+  uint32(bytes, architecture) {
+    if (!bytes || bytes.length < 4) return null;
+    const value = architecture === 'little' ? bytes.readUInt32LE(0) : bytes.readUInt32BE(0);
+    return value === 0xffffffff ? null : value;
+  }
+}
+
+function parseFitBuffer(buffer, options = {}) {
+  return new FitReader(buffer).parse(options);
+}
+
+function activityIdFromPath(filePath) {
+  const stem = path.basename(filePath, path.extname(filePath)).replace(/[^a-zA-Z0-9._-]+/g, '-');
+  return stem || 'fit-activity';
+}
+
+module.exports = {
+  FIT_TO_UNIX_SECONDS,
+  activityIdFromPath,
+  parseFitBuffer,
+};
