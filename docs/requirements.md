@@ -342,7 +342,7 @@ Current implementation status:
   - Typography offers Font, Monospaced Digits, and primary/secondary Weight; Color offers Primary Text, Secondary, and Accent swatch strips.
 - Space starts/stops playhead playback, and the overlay values update as playhead time changes.
 - Left and right arrows move the timeline playhead by exactly one project frame for fine timing checks.
-- Timeline ruler click/drag updates the current playhead.
+- Timeline ruler click/drag immediately updates the current playhead, including during playback, and playback continues from the selected time.
 - Timeline ruler hover data appears above the time scale, not under the cursor, with an arrow pointing to the hovered ruler position.
 - A muted red playhead with a small downward-pointing triangle inside the ruler band is shown on timeline tracks. The vertical line starts from inside the ruler and extends down through the visible tracks; neither the line nor the triangle is allowed to extend above the ruler.
 - The Distance Timeline overlay renders a configurable compact progress module with minimal, dense, sport, splits, glass, neon, lower-third, and route presets.
