@@ -3,6 +3,7 @@
 const path = require('node:path');
 const { exportTimelineInspection, inspectReferenceTrack, mappingIssueForItem } = require('./otio-inspection');
 const { invariant, reduceRational } = require('../domain/validation');
+const { filenameCaptureTime } = require('../sync/capture-time');
 
 const NTSC_RATES = new Map([
   ['23.976', { numerator: 24_000, denominator: 1_001 }],
@@ -152,6 +153,9 @@ async function scanCurrentTimeline(resolve, options = {}) {
       clipProperties: clipProperties ?? {},
       metadata: metadata ?? {},
       captureTimeCandidates: captureCandidatesFromProperties(clipProperties, metadata),
+      // Filename dates are wall-clock evidence only; timezone + confirmation
+      // remain explicit panel choices before they become UTC authority.
+      filenameCaptureTime: filenameCaptureTime(clipProperties?.['File Path'] || name),
     };
     const sourceFrameRate = sourceFrameRateFromProperties(clipProperties);
     const scannedItem = {

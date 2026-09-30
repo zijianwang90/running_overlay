@@ -1,6 +1,6 @@
 # Running Overlay Resolve Architecture
 
-Last updated: 2026-09-29
+Last updated: 2026-09-30
 
 ## Independence
 
@@ -33,11 +33,31 @@ validates activity data, scans timeline geometry, presents capture-time
 evidence, compiles sync segments, and manages the Numeric Fusion node. Only a
 narrow preload IPC surface is exposed to the renderer page.
 
+The panel uses a frameless BrowserWindow with a draggable dark header and narrow
+minimize/close IPC commands. Renderer close retains the unsaved-change guard.
+Calendar and clock/timezone selectors share `src/sync/capture-time.js` with the
+Node control plane. Filename recognition returns local date/time components,
+not capture UTC authority. Only a complete, reviewed picker value contributes a
+user confirmation; the sync compiler still consumes absolute microseconds.
+
+Named IANA zones resolve using the selected date via `Intl` and candidate UTC
+round trips. Nonexistent local times are rejected; repeated local times require
+an explicit offset. Fixed offsets preserve legacy ISO values. Saved milliseconds
+survive untouched date/clock controls. Optional `captureTimeZone`,
+`captureTimeZonesByMediaId`, and camera/activity anchor zone fields retain picker
+preferences within configuration schema 1; missing fields default safely.
+Partial picker drafts stay in the renderer across scans and are not timing
+authority. Date/clock/zone edits clear a source's confirmation.
+
 ### Resolve Adapter
 
 The adapter reads one explicit reference video track. It captures stable item
 and media IDs, record start/end, source start frame, source frame rate, enabled
 state, and media metadata snapshots. It performs no timeline mutation.
+
+It also recognizes a single valid bounded filename timestamp from the original
+media path (falling back to the item name). This remains separate from absolute
+metadata candidates and confidence evaluation, including after timeline renames.
 
 Resolve metadata is treated as evidence rather than truth. The panel will
 eventually add an independent source-file parser for QuickTime/EXIF and camera

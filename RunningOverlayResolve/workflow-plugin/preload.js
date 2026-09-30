@@ -8,4 +8,6 @@ contextBridge.exposeInMainWorld('runningOverlayAPI', {
   saveConfiguration: (payload) => ipcRenderer.invoke('configuration:save', payload),
   applyOverlay: (payload) => ipcRenderer.invoke('overlay:apply', payload),
   cleanup: () => ipcRenderer.invoke('resolve:cleanup'),
+  minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
+  closeWindow: () => ipcRenderer.invoke('window:close'),
 });

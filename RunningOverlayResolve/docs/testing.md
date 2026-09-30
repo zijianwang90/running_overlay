@@ -1,5 +1,37 @@
 # Running Overlay Resolve Testing
 
+## Capture-Time Pickers And Frameless Panel — 2026-09-30
+
+`test/capture-time.test.js` covers filename candidates and invalid/ambiguous
+tokens, recording-date timezone conversion, legacy fixed offsets and retained
+milliseconds, skipped/repeated DST hours (including a half-hour transition),
+unconfirmed filename evidence refusing sync, confirmed source-trim mapping,
+and optional timezone fields round-tripping old configurations. Adapter tests
+verify recognition from the original media filename after timeline renaming.
+
+The installed native Resolve Workflow panel opened with no macOS traffic-light
+title bar, restored the current activity/widgets, and populated all three
+filename date/time candidates. No capture confirmation or overlay update was
+applied to that user timeline during this check.
+
+In an isolated browser preview using authored synthetic activity and mocked
+Workflow persistence, the actual renderer/picker code passed timezone selection,
+batch timezone changes preserving confirmed sources, save/reload of confirmed
+times and complete clock pairs, edit invalidation, partial drafts surviving
+scans, incomplete-pair rejection, clear-pair behavior, and DST skipped/repeated
+hour selection. Screenshots verified layout. Native Electron timezone-menu
+interaction could not be reliably automated; these interaction assertions are
+browser checks, not a new native-host apply or end-to-end alignment validation.
+The browser close-confirmation attempt also blocked the automation connection;
+native dragging/minimize/close and the unsaved-change prompt need a manual check.
+No visual golden or private fixture was committed.
+
+Root `./scripts/check.sh` passed 287 Swift and 49 Node tests; SDK assembly,
+Markdown links, publication audit, and whitespace checks passed. Xcode emitted
+the existing local CoreDevice/simulator warnings without failing the macOS
+check. Focused human review of wall-time conversions and saved configuration
+compatibility remains required before merge.
+
 ## Commands
 
 ```sh

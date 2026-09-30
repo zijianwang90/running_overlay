@@ -1,6 +1,6 @@
 # Running Overlay Studio Roadmap
 
-Last updated: 2026-09-29
+Last updated: 2026-09-30
 
 ## Sibling Product: Running Overlay Resolve
 
@@ -20,6 +20,8 @@ Implemented:
   unavailable through the Numeric renderer.
 - Panel add/remove/reorder for four Numeric metrics, three layout presets, and
   independent Fusion styling and animation controls in one managed Fuse.
+- Filename capture-time candidates, calendar/clock/timezone selectors including
+  DST occurrence checks, saved timezone preferences, and a dark frameless panel.
 - Host tests at 24/25/29.97/30/50/59.94 fps with zero and one-hour starts, plus
   real Workflow-panel creation/update and persistence checks.
 

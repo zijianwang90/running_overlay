@@ -66,9 +66,10 @@ a standalone Electron launch cannot establish the host connection.
 1. Open a Resolve timeline and the Workflow panel.
 2. Choose a FIT or GPX file, or the synthetic activity JSON.
 3. Choose the reference video track and click **Scan**.
-4. Confirm the original source capture times, including their timezone. Repeated
-   edits of the same source share one confirmation.
-5. Optionally enter camera/activity clock pairs: one pair corrects offset; two
+4. Review filename date/time candidates, choose the recording timezone, and
+   confirm the original source starts. Calendar, hour/minute/second, and timezone
+   selectors replace ISO text entry. Repeated edits of a source share confirmation.
+5. Optionally select camera/activity clock pairs: one pair corrects offset; two
    separated pairs also correct drift.
 6. Add or remove metrics, use the arrow buttons to set their order, and choose a
    layout. **Save settings** preserves edits without changing the timeline.
@@ -77,6 +78,17 @@ a standalone Electron launch cannot establish the host connection.
 8. Refine each metric's controls in Fusion. Save the Resolve project to persist
    the composition. After editing the reference track, use **Create / Update**
    again; an ordinary update preserves Fusion positions, styles, and animation.
+
+Filename tokens such as `PRO_VID_20260702_184703_00_009.mp4` supply a local wall
+clock candidate, never an inferred UTC instant. Choose the camera's recording
+timezone before confirming. Named timezones use the offset for the selected
+date; skipped daylight-saving times are rejected and repeated hours need an
+explicit offset choice. Changing a time or zone clears its confirmation.
+The batch timezone button updates unconfirmed filename/manual candidates while
+preserving confirmed sources and unchanged absolute metadata candidates.
+
+The panel has a dark frameless header in place of the native macOS traffic-light
+bar. Drag the title to move it; use the header minimize and close buttons.
 
 The generated transparent still and internal Fusion carrier are setup resources,
 not rendered overlay media. Retain the plugin's Application Support directory

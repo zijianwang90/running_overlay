@@ -9,7 +9,7 @@ const { compileSyncMap, timelineFingerprint } = require('../sync/compile-sync-ma
 const { writeResolveBundle } = require('../io/render-data');
 const { contextForResolve, validateConfiguration, applyConfirmedCaptureTimes, cameraModels } = require('./configuration');
 
-const editable = (value) => JSON.stringify([value.referenceVideoTrackIndex, value.activity, value.confirmedCaptureUtcByMediaId, value.cameraAnchors, value.widgets, value.layoutPreset]);
+const editable = (value) => JSON.stringify([value.referenceVideoTrackIndex, value.activity, value.confirmedCaptureUtcByMediaId, value.cameraAnchors, value.widgets, value.layoutPreset, value.captureTimeZone, value.captureTimeZonesByMediaId]);
 class WorkflowService {
   constructor({ getResolve, store, bundleRoot, scan = scanCurrentTimeline, update = updateManagedOverlay, inspectManaged = managedOverlayIsCurrent }) {
     Object.assign(this, { getResolve, store, bundleRoot, scan, update, inspectManaged });

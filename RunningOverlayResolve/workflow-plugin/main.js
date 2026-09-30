@@ -39,6 +39,12 @@ async function chooseActivityFile() {
 }
 
 function registerHandlers() {
+  const panelWindow = (event) => {
+    if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error('Unknown panel window.');
+    return mainWindow;
+  };
+  ipcMain.handle('window:minimize', (event) => { panelWindow(event).minimize(); });
+  ipcMain.handle('window:close', (event) => { panelWindow(event).close(); });
   const service = new WorkflowService({ getResolve,
     store: new ConfigurationStore(path.join(app.getPath('userData'), 'configurations')),
     bundleRoot: path.join(app.getPath('userData'), 'bundles'),
@@ -57,12 +63,13 @@ function registerHandlers() {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
+    frame: false,
     width: 520,
     height: 760,
     minWidth: 460,
     minHeight: 620,
     useContentSize: true,
-    backgroundColor: '#15171a',
+    backgroundColor: '#282828',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

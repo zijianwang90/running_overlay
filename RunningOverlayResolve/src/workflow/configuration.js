@@ -6,6 +6,7 @@ const { validateActivity } = require('../domain/activity');
 const { invariant } = require('../domain/validation');
 const { buildCameraClockModel } = require('../sync/clock-model');
 const { normalizeWidgets, normalizeLayout } = require('../domain/widgets');
+const { validateTimeZone } = require('../sync/capture-time');
 
 function parseConfirmedDate(value) {
   invariant(typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/i.test(value), 'Capture times and anchors must include a timezone (Z or ±HH:mm).');
@@ -21,6 +22,10 @@ function validateConfiguration(value) {
   invariant(typeof value.contextId === 'string' && /^[a-f0-9]{64}$/.test(value.contextId), 'Invalid project/timeline identity.');
   invariant(Number.isSafeInteger(value.referenceVideoTrackIndex) && value.referenceVideoTrackIndex > 0, 'Choose a reference track.');
   const confirmedCaptureUtcByMediaId = {};
+  const captureTimeZonesByMediaId = {};
+  for (const [id, zone] of Object.entries(value.captureTimeZonesByMediaId ?? {})) {
+    Object.defineProperty(captureTimeZonesByMediaId, id, { value: validateTimeZone(zone), enumerable: true });
+  }
   for (const [id, date] of Object.entries(value.confirmedCaptureUtcByMediaId ?? {})) {
     parseConfirmedDate(date);
     Object.defineProperty(confirmedCaptureUtcByMediaId, id, { value: date, enumerable: true });
@@ -30,11 +35,16 @@ function validateConfiguration(value) {
     invariant(Array.isArray(anchors) && anchors.length <= 2, 'Use one or two anchors per camera.');
     const normalized = anchors.map((anchor) => ({ cameraUtcUs: parseConfirmedDate(anchor.cameraTime), fitUtcUs: parseConfirmedDate(anchor.activityTime) }));
     if (normalized.length) buildCameraClockModel(group, normalized);
-    Object.defineProperty(cameraAnchors, group, { value: anchors.map(({ cameraTime, activityTime }) => ({ cameraTime, activityTime })), enumerable: true });
+    Object.defineProperty(cameraAnchors, group, { value: anchors.map(({ cameraTime, activityTime, cameraTimeZone, activityTimeZone }) => ({
+      cameraTime, activityTime,
+      ...(cameraTimeZone ? { cameraTimeZone: validateTimeZone(cameraTimeZone) } : {}),
+      ...(activityTimeZone ? { activityTimeZone: validateTimeZone(activityTimeZone) } : {}),
+    })), enumerable: true });
   }
   return { schemaVersion: 1, contextId: value.contextId, referenceVideoTrackIndex: value.referenceVideoTrackIndex,
     activity: value.activity ? validateActivity(value.activity) : null,
     widgets: normalizeWidgets(value.widgets), layoutPreset: normalizeLayout(value.layoutPreset),
+    captureTimeZone: value.captureTimeZone == null ? null : validateTimeZone(value.captureTimeZone), captureTimeZonesByMediaId,
     confirmedCaptureUtcByMediaId, cameraAnchors,
     lastAppliedFingerprint: typeof value.lastAppliedFingerprint === 'string' ? value.lastAppliedFingerprint : null,
     managedItemId: typeof value.managedItemId === 'string' ? value.managedItemId : null,

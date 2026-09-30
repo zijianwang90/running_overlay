@@ -41,7 +41,7 @@ test('adapter scans a reference video track without mutating Resolve', async () 
   const mediaPoolItem = methodMap({
     GetUniqueId: 'media-1',
     GetClipProperty: {
-      'File Path': '/synthetic/CAM_A.mov',
+      'File Path': '/synthetic/PRO_VID_20260702_184703_00_009.mp4',
       'Date Created': '2026-01-01T08:05:10Z',
       FPS: '30',
       'Reel Name': 'Camera A',
@@ -50,7 +50,7 @@ test('adapter scans a reference video track without mutating Resolve', async () 
   });
   const timelineItem = methodMap({
     GetUniqueId: 'item-1',
-    GetName: 'CAM_A.mov',
+    GetName: 'Renamed timeline clip',
     GetStart: 100,
     GetEnd: 200,
     GetDuration: 100,
@@ -74,7 +74,7 @@ test('adapter scans a reference video track without mutating Resolve', async () 
   const resolve = methodMap({ GetProjectManager: projectManager });
 
   const { carrierTimeline } = require('../src/resolve/managed-overlay');
-  const otio = carrierTimeline('/synthetic/CAM_A.mov', 100, 30000 / 1001);
+  const otio = carrierTimeline('/synthetic/PRO_VID_20260702_184703_00_009.mp4', 100, 30000 / 1001);
   const clip = otio.tracks.children[0].children[0];
   clip.source_range.start_time = { OTIO_SCHEMA: 'RationalTime.1', value: 360, rate: 30 };
   otio.tracks.children[0].children.unshift({ OTIO_SCHEMA: 'Gap.1', source_range: { duration: { value: 100, rate: 30000 / 1001 } } });
@@ -83,5 +83,7 @@ test('adapter scans a reference video track without mutating Resolve', async () 
   assert.equal(scan.timeline.items[0].timelineEndFrameExclusive, 200);
   assert.deepEqual(scan.timeline.items[0].sourceFrameRate, { numerator: 30, denominator: 1 });
   assert.equal(scan.mediaById['media-1'].captureTimeCandidates.length, 1);
+  assert.equal(scan.mediaById['media-1'].filenameCaptureTime.hour, 18);
+  assert.equal(scan.mediaById['media-1'].filenameCaptureTime.second, 3);
   assert.deepEqual(scan.diagnostics, []);
 });

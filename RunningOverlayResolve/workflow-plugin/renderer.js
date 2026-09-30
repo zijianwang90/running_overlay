@@ -1,5 +1,7 @@
 'use strict';
-const state = { configuration: null, scan: null, fingerprint: null, busy: false, dirty: false, scanPaused: false };
+const state = { configuration: null, scan: null, fingerprint: null, busy: false, dirty: false, scanPaused: false, allowClose: false, captureDrafts: new Map(), anchorDrafts: new Map() };
+const time = window.RunningOverlayTime;
+const { createTimePicker, zoneSelect } = window.runningOverlayPickers;
 const byId = (id) => document.getElementById(id);
 const METRIC_NAMES = { heartRate: 'Heart rate', pace: 'Pace', distance: 'Distance', elapsed: 'Elapsed time' };
 function status(id, text, tone = 'muted') { const element = byId(id); element.className = `status-card ${tone}`; element.textContent = text; }
@@ -8,22 +10,32 @@ function busy(value) {
   for (const button of document.querySelectorAll('button, input, select')) button.disabled = value;
   byId('build-bundle').disabled = value || state.scanPaused || !state.configuration?.activity || !state.scan;
   if (!value && state.configuration) renderWidgets();
+  if (!value) for (const row of document.querySelectorAll('.clip-row')) row.querySelector('.capture-confirmed').disabled = !row.timePicker.valid();
+  byId('use-capture-zone').disabled = value || !state.configuration?.captureTimeZone;
 }
-function input(value, placeholder, className) {
-  const element = document.createElement('input'); element.type = 'text'; element.value = value ?? ''; element.placeholder = placeholder; element.className = className; return element;
+function markDirty(message = 'Settings changed. Save settings or Create / Update.') {
+  state.dirty = true; status('build-status', message, 'warning');
 }
-function collect() {
+function collect(strict = false) {
   if (!state.configuration) return;
   const confirmed = { ...state.configuration.confirmedCaptureUtcByMediaId };
+  const zones = { ...state.configuration.captureTimeZonesByMediaId };
   for (const row of document.querySelectorAll('.clip-row')) {
-    if (row.querySelector('.capture-confirmed').checked) confirmed[row.dataset.mediaId] = row.querySelector('.capture-input').value.trim();
+    if (row.querySelector('.capture-confirmed').checked) confirmed[row.dataset.mediaId] = row.timePicker.readISO();
     else delete confirmed[row.dataset.mediaId];
+    if (row.timePicker.hasZone()) zones[row.dataset.mediaId] = row.timePicker.readTimeZone();
+    else delete zones[row.dataset.mediaId];
   }
   const anchors = { ...state.configuration.cameraAnchors };
   for (const row of document.querySelectorAll('.camera-row')) {
-    anchors[row.dataset.cameraGroup] = [...row.querySelectorAll('.anchor-pair')].map((pair) => ({ cameraTime: pair.children[0].value.trim(), activityTime: pair.children[1].value.trim() })).filter((anchor) => anchor.cameraTime || anchor.activityTime);
+    try {
+      anchors[row.dataset.cameraGroup] = [...row.querySelectorAll('.anchor-pair')].filter((pair) => !pair.cameraPicker.isEmpty() || !pair.activityPicker.isEmpty()).map((pair) => ({
+        cameraTime: pair.cameraPicker.readISO(), activityTime: pair.activityPicker.readISO(),
+        cameraTimeZone: pair.cameraPicker.readTimeZone(), activityTimeZone: pair.activityPicker.readTimeZone(),
+      }));
+    } catch (error) { if (strict) throw new Error(`${row.dataset.cameraGroup} clock pair: ${error.message}`); }
   }
-  Object.assign(state.configuration, { confirmedCaptureUtcByMediaId: confirmed, cameraAnchors: anchors, referenceVideoTrackIndex: Number(byId('track-index').value) });
+  Object.assign(state.configuration, { confirmedCaptureUtcByMediaId: confirmed, captureTimeZonesByMediaId: zones, cameraAnchors: anchors, referenceVideoTrackIndex: Number(byId('track-index').value) });
 }
 function widgetsChanged() {
   state.dirty = true;
@@ -53,10 +65,17 @@ function renderWidgets() {
   picker.disabled = available.length === 0;
   byId('add-widget').disabled = available.length === 0;
 }
-function render() {
+function renderCaptureTimes() {
   const config = state.configuration;
-  byId('track-index').value = config.referenceVideoTrackIndex;
-  status('activity-status', config.activity ? `${config.activity.records.length} records · ${Math.round((config.activity.endUtcUs - config.activity.startUtcUs) / 60000000)} min` : 'No activity loaded', config.activity ? 'good' : 'muted');
+  const recordingZone = zoneSelect(config.captureTimeZone, 'Recording timezone for filename dates'); recordingZone.id = 'capture-zone';
+  byId('capture-zone').replaceWith(recordingZone);
+  recordingZone.addEventListener('change', () => {
+    config.captureTimeZone = recordingZone.value || null;
+    if (config.captureTimeZone) for (const row of document.querySelectorAll('.clip-row')) {
+      if (row.dataset.timeKind !== 'absolute' && !row.timePicker.hasZone() && !row.querySelector('.capture-confirmed').checked) row.timePicker.setZone(config.captureTimeZone);
+    }
+    byId('use-capture-zone').disabled = !config.captureTimeZone; markDirty();
+  });
   const list = byId('clip-list'); list.replaceChildren();
   const seen = new Set();
   for (const item of state.scan.timeline.items) {
@@ -65,30 +84,60 @@ function render() {
     const media = state.scan.mediaById[item.mediaId];
     const row = document.createElement('div'); row.className = 'clip-row'; row.dataset.mediaId = item.mediaId;
     const name = document.createElement('div'); name.className = 'clip-name'; name.textContent = item.name;
+    const saved = config.confirmedCaptureUtcByMediaId[item.mediaId];
     const candidate = media.captureTimeCandidates?.[0];
-    const field = input(config.confirmedCaptureUtcByMediaId[item.mediaId] ?? (candidate ? new Date(candidate.instantUtcUs / 1000).toISOString() : ''), 'YYYY-MM-DDTHH:mm:ssZ', 'capture-input');
-    const label = document.createElement('label'); const check = document.createElement('input'); check.type = 'checkbox'; check.className = 'capture-confirmed'; check.checked = Boolean(config.confirmedCaptureUtcByMediaId[item.mediaId]);
+    const draft = state.captureDrafts.get(item.mediaId);
+    const iso = saved ?? (candidate ? new Date(candidate.instantUtcUs / 1000).toISOString() : undefined);
+    row.dataset.timeKind = draft?.kind ?? (iso ? 'absolute' : media.filenameCaptureTime ? 'filename' : 'manual');
+    const label = document.createElement('label'); label.className = 'confirm-label';
+    const check = document.createElement('input'); check.type = 'checkbox'; check.className = 'capture-confirmed'; check.checked = Boolean(saved);
+    const picker = createTimePicker({ label: 'Original recording start', iso, parts: !iso ? media.filenameCaptureTime : undefined,
+      zone: config.captureTimeZonesByMediaId[item.mediaId] ?? (saved ? time.offsetZoneForISO(saved) : config.captureTimeZone), draft: draft?.picker,
+      onChange: (value) => {
+        check.checked = false; check.disabled = !value.valid();
+        row.dataset.timeKind = row.dataset.timeKind === 'filename' ? 'filename' : 'manual';
+        state.captureDrafts.set(item.mediaId, { kind: row.dataset.timeKind, picker: value.draft() });
+        markDirty('Capture time changed. Review and confirm it before applying.');
+      },
+    });
+    row.timePicker = picker; check.disabled = !picker.valid();
+    check.addEventListener('change', () => markDirty());
     label.append(check, document.createTextNode(' Confirm capture start'));
-    const evidence = document.createElement('div'); evidence.className = 'clip-evidence'; evidence.textContent = item.mappingIssue ?? (candidate ? `Candidate: ${candidate.source}. Confirm its recording-time meaning.` : 'Enter the capture start of the original source, including its timezone.');
-    row.append(name, field, label, evidence); list.appendChild(row);
+    const evidence = document.createElement('div'); evidence.className = 'clip-evidence';
+    evidence.textContent = item.mappingIssue ?? (saved ? 'Saved confirmed capture time.' : candidate ? `Time from ${candidate.source}; verify its recording-time meaning.` : media.filenameCaptureTime ? 'Date and clock time detected in the source filename. Choose its timezone and confirm this is the start of recording.' : 'No filename date found. Choose the original recording date, time and timezone.');
+    row.append(name, picker.element, label, evidence); list.appendChild(row);
   }
+}
+function renderCameraAnchors() {
+  const config = state.configuration;
   const cameras = byId('camera-list'); cameras.replaceChildren();
   for (const group of new Set(state.scan.timeline.items.map((item) => item.cameraGroupId))) {
     const row = document.createElement('div'); row.className = 'camera-row'; row.dataset.cameraGroup = group;
-    const label = document.createElement('div'); label.textContent = group; row.appendChild(label);
+    const label = document.createElement('div'); label.className = 'camera-name'; label.textContent = group; row.appendChild(label);
     for (let index = 0; index < 2; index++) {
       const pair = document.createElement('div'); pair.className = 'anchor-pair';
-      const anchor = config.cameraAnchors[group]?.[index];
-      pair.append(input(anchor?.cameraTime, 'Camera time (ISO + timezone)', ''), input(anchor?.activityTime, 'Matching activity time (ISO + timezone)', '')); row.appendChild(pair);
+      const heading = document.createElement('div'); heading.className = 'anchor-heading'; heading.textContent = `Clock pair ${index + 1}`;
+      const anchor = config.cameraAnchors[group]?.[index]; const draftKey = JSON.stringify([group, index]); const draft = state.anchorDrafts.get(draftKey);
+      const changed = () => { state.anchorDrafts.set(draftKey, { camera: pair.cameraPicker.draft(), activity: pair.activityPicker.draft() }); markDirty(); };
+      pair.cameraPicker = createTimePicker({ label: 'Camera clock', iso: anchor?.cameraTime, zone: anchor?.cameraTimeZone ?? (anchor ? undefined : config.captureTimeZone), draft: draft?.camera, onChange: changed });
+      pair.activityPicker = createTimePicker({ label: 'Activity clock — same instant', iso: anchor?.activityTime, zone: anchor?.activityTimeZone ?? (anchor ? undefined : config.captureTimeZone ?? 'UTC'), draft: draft?.activity, onChange: changed });
+      const clear = document.createElement('button'); clear.className = 'secondary'; clear.type = 'button'; clear.textContent = 'Clear pair'; clear.addEventListener('click', () => { pair.cameraPicker.clear(); pair.activityPicker.clear(); });
+      heading.appendChild(clear); pair.append(heading, pair.cameraPicker.element, pair.activityPicker.element); row.appendChild(pair);
     }
     cameras.appendChild(row);
   }
+}
+function render() {
+  const config = state.configuration;
+  byId('track-index').value = config.referenceVideoTrackIndex;
+  status('activity-status', config.activity ? `${config.activity.records.length} records · ${Math.round((config.activity.endUtcUs - config.activity.startUtcUs) / 60000000)} min` : 'No activity loaded', config.activity ? 'good' : 'muted');
+  renderCaptureTimes(); renderCameraAnchors();
   const errors = state.scan.diagnostics.filter((entry) => entry.severity !== 'info');
   status('timeline-status', `${state.scan.timeline.timelineName} · ${state.scan.timeline.items.length} clips${errors.length ? '\n' + errors.map((entry) => entry.message).join('\n') : ''}`, errors.length ? 'warning' : 'good');
   busy(false);
 }
 async function save() {
-  collect();
+  collect(true);
   state.configuration = await window.runningOverlayAPI.saveConfiguration(state.configuration);
   state.dirty = false;
 }
@@ -107,7 +156,7 @@ async function scan({ restore = false, silent = false } = {}) {
     state.scanPaused = false;
     const changedContext = state.configuration?.contextId !== result.contextId;
     const changed = state.fingerprint !== result.fingerprint;
-    if (changedContext || restore) state.configuration = result.configuration;
+    if (changedContext || restore) { state.configuration = result.configuration; state.captureDrafts.clear(); state.anchorDrafts.clear(); state.dirty = false; }
     state.scan = result.scan; state.fingerprint = result.fingerprint;
     if (!silent || changed || changedContext) render();
     if (changedContext) status('build-status', result.configuration.lastAppliedFingerprint ? 'Saved settings restored. Scan to check synchronization.' : 'Settings restored. Ready to synchronize.');
@@ -117,6 +166,17 @@ async function scan({ restore = false, silent = false } = {}) {
   finally { busy(false); }
 }
 window.addEventListener('DOMContentLoaded', () => {
+  byId('minimize-window').addEventListener('click', () => window.runningOverlayAPI.minimizeWindow());
+  byId('close-window').addEventListener('click', async () => {
+    if (state.busy || (state.dirty && !window.confirm('Close without saving your panel changes?'))) return;
+    state.allowClose = true; await window.runningOverlayAPI.closeWindow();
+  });
+  byId('use-capture-zone').addEventListener('click', () => {
+    const zone = state.configuration.captureTimeZone; if (!zone) return;
+    for (const row of document.querySelectorAll('.clip-row')) {
+      if (row.dataset.timeKind !== 'absolute' && !row.querySelector('.capture-confirmed').checked) row.timePicker.setZone(zone);
+    }
+  });
   byId('layout-preset').addEventListener('change', () => {
     state.configuration.layoutPreset = byId('layout-preset').value;
     widgetsChanged();
@@ -145,8 +205,8 @@ window.addEventListener('DOMContentLoaded', () => {
       const result = await window.runningOverlayAPI.chooseActivity();
       if (!result) return;
       if (!state.configuration) throw new Error('Scan an open Resolve timeline first.');
-      collect();
-      if (state.configuration.activity?.activityId !== result.activity.activityId) state.configuration.cameraAnchors = {};
+      collect(true);
+      if (state.configuration.activity?.activityId !== result.activity.activityId) { state.configuration.cameraAnchors = {}; state.anchorDrafts.clear(); }
       state.configuration.activity = result.activity;
       state.configuration = await window.runningOverlayAPI.saveConfiguration(state.configuration);
       render(); status('build-status', 'Activity saved. Create / Update to synchronize.', 'warning');
@@ -158,13 +218,11 @@ window.addEventListener('DOMContentLoaded', () => {
     busy(true); try { await save(); status('build-status', 'Settings saved. Create / Update to apply changes.', 'warning'); }
     catch (error) { status('build-status', error.message, 'error'); } finally { busy(false); }
   });
-  for (const id of ['clip-list', 'camera-list', 'track-index']) byId(id).addEventListener('input', () => {
-    state.dirty = true; status('build-status', 'Settings changed. Save settings or Create / Update.', 'warning');
-  });
+  byId('track-index').addEventListener('input', () => markDirty());
   byId('build-bundle').addEventListener('click', async () => {
     busy(true);
     try {
-      collect(); status('build-status', 'Checking the current timeline and updating the overlay…');
+      collect(true); status('build-status', 'Checking the current timeline and updating the overlay…');
       const result = await window.runningOverlayAPI.applyOverlay({ configuration: state.configuration, expectedFingerprint: state.fingerprint });
       state.configuration = result.configuration; state.dirty = false;
       status('build-status', `${result.segmentCount} segments synchronized. Adjust widgets in Fusion; save your Resolve project to keep the composition.`, 'good');
@@ -180,5 +238,5 @@ window.addEventListener('DOMContentLoaded', () => {
   scan({ restore: true }).finally(() => window.setTimeout(poll, 8000));
 });
 window.addEventListener('beforeunload', (event) => {
-  if (state.dirty || state.busy) { event.preventDefault(); event.returnValue = false; }
+  if (!state.allowClose && (state.dirty || state.busy)) { event.preventDefault(); event.returnValue = false; }
 });

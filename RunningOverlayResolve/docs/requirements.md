@@ -1,6 +1,6 @@
 # Running Overlay Resolve Requirements
 
-Last updated: 2026-09-29
+Last updated: 2026-09-30
 
 ## Product Boundary
 
@@ -53,6 +53,25 @@ data semantics, default styling, and reviewed visual examples.
   serial numbers, raw private metadata, or unrelated source paths.
 - The plugin does not reorder, move, trim, or ripple-delete user media during
   alignment.
+
+## Capture-Time Selection
+
+- Recognize one valid bounded `YYYYMMDD_HHMMSS` token in the original source
+  filename, including hyphen separators. Invalid or multiple tokens supply no
+  candidate. Filename wall time has no timezone or automatic confirmation.
+- Use a calendar and hour/minute/second and timezone selectors for source starts
+  and both sides of camera clock pairs. Do not require ISO text entry.
+- Offer a shared recording timezone and explicit batch application to unconfirmed
+  filename/manual candidates; preserve already confirmed sources and untouched
+  absolute metadata candidates.
+- Resolve named timezone offsets for the chosen date. Reject missing DST hours;
+  require an occurrence choice for repeated hours. Keep saved subsecond precision
+  until date/clock values are edited.
+- Invalidate confirmation when a source's date, clock, or timezone changes.
+  Preserve partial picker drafts during scans; reject incomplete clock pairs on
+  save/apply. Persist zone preferences with backward-compatible defaults.
+- Use a dark frameless draggable header with explicit minimize and close
+  controls. Keep the unsaved-change close guard.
 
 ## P0 Acceptance Criteria
 

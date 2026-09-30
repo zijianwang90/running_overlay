@@ -6,15 +6,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Running Overlay Resolve</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="lib/sync/capture-time.js" defer></script>
+    <script src="time-picker.js" defer></script>
     <script src="renderer.js" defer></script>
   </head>
   <body>
     <header class="app-header">
       <div>
-        <p class="eyebrow">RUNNING OVERLAY</p>
-        <h1>Resolve Live Overlay</h1>
+        <h1>Running Overlay Resolve</h1>
       </div>
-      <span class="prototype-pill">P1</span>
+      <div class="window-controls">
+        <button id="minimize-window" class="window-button" type="button" aria-label="Minimize panel" title="Minimize">−</button>
+        <button id="close-window" class="window-button" type="button" aria-label="Close panel" title="Close">×</button>
+      </div>
     </header>
 
     <main>
@@ -48,8 +52,13 @@
         <div class="section-heading">
           <div>
             <h2>3. Capture times</h2>
-            <p>Ambiguous Resolve dates remain untrusted until you confirm them.</p>
+            <p>Filename dates are filled for review. Choose the recording timezone, then confirm each original file's start.</p>
           </div>
+        </div>
+        <div class="recording-zone">
+          <label for="capture-zone">Recording timezone for filename dates</label>
+          <select id="capture-zone"><option value="">Choose timezone</option></select>
+          <button id="use-capture-zone" class="secondary" type="button">Use for unconfirmed filename times</button>
         </div>
         <div id="clip-list" class="clip-list">
           <div class="empty-state">Scan a timeline to inspect its clips.</div>
@@ -57,9 +66,11 @@
       </section>
 
       <section class="panel-section">
-        <h2>4. Camera clock calibration (optional)</h2>
-        <p>Pair camera time with the same instant in the activity. One pair corrects offset; two pairs also correct drift. Include a timezone in every time.</p>
-        <div id="camera-list"></div>
+        <details id="camera-calibration">
+          <summary>4. Camera clock calibration (optional)</summary>
+          <p class="footnote">Choose the camera and activity readings for the same instant. One pair corrects offset; two pairs also correct drift.</p>
+          <div id="camera-list"></div>
+        </details>
       </section>
       <section class="panel-section">
         <h2>5. Overlay widgets</h2>
