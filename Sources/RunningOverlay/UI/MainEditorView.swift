@@ -67,12 +67,12 @@ struct MainEditorView: View {
                     PoolModeSwitch(activePool: $activePool, compactLabels: true)
                         .frame(width: layout.mediaWidth - (EditorTheme.panelPaddingX * 2))
                 }
-    
+
                 ToolbarItemGroup(placement: .primaryAction) {
                     if let exportProgress = project.exportProgress {
                         ExportProgressButton(progress: exportProgress, isPresented: $showingExportProgress)
                     }
-    
+
                     Button {
                         project.showingExportDialog = true
                     } label: {
