@@ -20,8 +20,6 @@ struct MainEditorView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            toolbar
-
             VSplitView {
                 HStack(spacing: 0) {
                     PoolPanelView(activePool: $activePool)
@@ -62,10 +60,34 @@ struct MainEditorView: View {
             statusBar
         }
         .background(EditorTheme.appBackground)
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                PoolModeSwitch(activePool: $activePool, compactLabels: true)
+                    .frame(width: mediaPoolWidth - (EditorTheme.panelPaddingX * 2))
+            }
+
+            ToolbarItemGroup(placement: .primaryAction) {
+                if let exportProgress = project.exportProgress {
+                    ExportProgressButton(progress: exportProgress, isPresented: $showingExportProgress)
+                }
+
+                Button {
+                    project.showingExportDialog = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "square.and.arrow.up")
+                        Text("Export")
+                    }
+                }
+                .buttonStyle(EditorPrimaryButtonStyle())
+                .help("Export overlays")
+            }
+        }
+        .toolbarBackground(EditorTheme.appChrome, for: .windowToolbar)
         .overlay(alignment: .top) {
             if let toastMessage = project.toastMessage {
                 EditorToastView(message: toastMessage)
-                    .padding(.top, EditorTheme.panelHeaderHeight + 12)
+                    .padding(.top, 12)
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
@@ -137,33 +159,6 @@ struct MainEditorView: View {
             // Cap delta so a long stall doesn't fling the playhead forward.
             let delta = min(max(now - last, 0), 0.25)
             project.advancePlayback(by: delta)
-        }
-    }
-
-    private var toolbar: some View {
-        HStack(spacing: 12) {
-            PoolModeSwitch(activePool: $activePool)
-                .frame(width: mediaPoolWidth - (EditorTheme.panelPaddingX * 2))
-
-            Spacer()
-
-            if let exportProgress = project.exportProgress {
-                ExportProgressButton(progress: exportProgress, isPresented: $showingExportProgress)
-            }
-
-            Button {
-                project.showingExportDialog = true
-            } label: {
-                Label("Export", systemImage: "square.and.arrow.up")
-            }
-            .buttonStyle(EditorPrimaryButtonStyle())
-        }
-        .padding(.horizontal, 14)
-        .frame(height: EditorTheme.panelHeaderHeight)
-        .background(EditorTheme.appChrome)
-        .overlay(alignment: .bottom) {
-            Divider()
-                .overlay(EditorTheme.borderSubtle)
         }
     }
 

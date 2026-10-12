@@ -43,12 +43,13 @@ struct PreviewCanvasView: View {
                                 previewMedia: previewMedia,
                                 isPlaying: project.isPlaying,
                                 playbackRate: project.playbackRate,
+                                seekToken: project.playbackSeekToken,
                                 fitMode: project.previewFitMode
-                            ) { activityTime in
+                            ) { [seekToken = project.playbackSeekToken] activityTime in
                                 if project.isPreviewingMediaPoolItem {
                                     project.setMediaPoolPreviewSourceTime(activityTime)
                                 } else {
-                                    project.setPlayheadFromPlayback(activityTime)
+                                    project.setPlayheadFromPlayback(activityTime, seekToken: seekToken)
                                 }
                             }
                         } else {

@@ -18,6 +18,7 @@ final class ProjectDocument: ObservableObject {
     @Published var selection: EditorSelection = .none
     @Published var isPlaying = false
     @Published var playbackRate: Double = 1
+    @Published private(set) var playbackSeekToken: UInt64 = 0
     @Published var showingProjectSettings = false
     @Published var showingExportDialog = false
     @Published var overlayTemplates: [OverlayTemplate] = []
@@ -382,6 +383,11 @@ final class ProjectDocument: ObservableObject {
         timeline = updatedTimeline
     }
 
+    func seekPlayheadFromTimeline(_ projectTime: TimeInterval) {
+        setPlayhead(projectTime)
+        playbackSeekToken &+= 1
+    }
+
     func stepPlayheadByFrames(_ frameCount: Int) {
         guard frameCount != 0 else {
             return
@@ -394,8 +400,8 @@ final class ProjectDocument: ObservableObject {
         statusMessage = frameCount > 0 ? "Stepped forward \(abs(frameCount)) frame." : "Stepped back \(abs(frameCount)) frame."
     }
 
-    func setPlayheadFromPlayback(_ elapsedTime: TimeInterval) {
-        guard isPlaying else {
+    func setPlayheadFromPlayback(_ elapsedTime: TimeInterval, seekToken: UInt64) {
+        guard isPlaying, seekToken == playbackSeekToken else {
             return
         }
         if isTimelineCollapsed {

@@ -33,6 +33,14 @@ enum PoolKind: String, CaseIterable, Identifiable {
         }
     }
 
+    var toolbarLabel: String {
+        switch self {
+        case .media: "Media"
+        case .overlay: "Overlays"
+        case .templates: "Templates"
+        }
+    }
+
     var systemImage: String {
         switch self {
         case .media: "play.rectangle"
@@ -44,6 +52,7 @@ enum PoolKind: String, CaseIterable, Identifiable {
 
 struct PoolModeSwitch: View {
     @Binding var activePool: PoolKind
+    var compactLabels = false
 
     var body: some View {
         HStack(spacing: EditorTheme.space2) {
@@ -51,7 +60,7 @@ struct PoolModeSwitch: View {
                 Button {
                     activePool = pool
                 } label: {
-                    Label(pool.label, systemImage: pool.systemImage)
+                    Label(compactLabels ? pool.toolbarLabel : pool.label, systemImage: pool.systemImage)
                         .labelStyle(.titleAndIcon)
                         .font(EditorTheme.bodyStrongFont)
                         .lineLimit(1)
@@ -59,6 +68,7 @@ struct PoolModeSwitch: View {
                 }
                 .buttonStyle(PoolModeButtonStyle(isSelected: activePool == pool))
                 .help(pool.label)
+                .accessibilityLabel(pool.label)
             }
         }
     }

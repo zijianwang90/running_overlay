@@ -95,6 +95,8 @@ Layout interaction requirements:
 - The media browser default width is 380 px with a 300 px minimum.
 - The inspector default width is 460 px with a 460 px minimum.
 - Media Pool width must remain stable across all media operations; importing, matching, or filtering media must not change the Media Pool pane width.
+- The main editor opens as a single window; File > New Window is unavailable, while activity and video import remain available from the File menu.
+- The main editor's pool switch and Export action should share a compact, dark native window toolbar with the macOS window controls, without a separate empty titlebar row.
 - Inspector width must remain stable when switching between outer/detail/editing states or when selecting a timeline clip; internal Inspector hierarchy changes must not resize the right pane.
 - Resizable split panes should keep stable minimum widths so dense controls and row labels do not collapse.
 - The timeline spans the full window width instead of being constrained to the preview column.
@@ -343,7 +345,7 @@ Current implementation status:
   - Typography offers Font, Monospaced Digits, and primary/secondary Weight; Color offers Primary Text, Secondary, and Accent swatch strips.
 - Space starts/stops playhead playback, and the overlay values update as playhead time changes.
 - Left and right arrows move the timeline playhead by exactly one project frame for fine timing checks.
-- Timeline ruler click/drag updates the current playhead.
+- Timeline ruler click/drag immediately updates the current playhead, including during playback, and playback continues from the selected time.
 - Timeline ruler hover data appears above the time scale, not under the cursor, with an arrow pointing to the hovered ruler position.
 - A muted red playhead with a small downward-pointing triangle inside the ruler band is shown on timeline tracks. The vertical line starts from inside the ruler and extends down through the visible tracks; neither the line nor the triangle is allowed to extend above the ruler.
 - The Distance Timeline overlay renders a configurable compact progress module with minimal, dense, sport, splits, glass, neon, lower-third, and route presets.

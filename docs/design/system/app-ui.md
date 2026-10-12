@@ -96,6 +96,8 @@ Use 6-8 px radius for tool controls. Avoid pill-heavy styling unless the control
 
 The app is a multi-pane editor:
 
+- The native unified window toolbar uses `app.chrome` and contains the pool switch and Export beside the standard macOS window controls. Do not add a second app-level toolbar row beneath it.
+
 - Left: Pool panel with `Media Pool`, `Overlay Pool`, and `Templates` modes for import/source management, addable overlay modules, and reusable overlay layouts.
 - Center: Preview canvas and playback controls.
 - Bottom: Timeline and alignment editing.
