@@ -9,8 +9,8 @@ only the history relevant to a task.
 
 ## Archive
 
+- [2026-09](project-log/2026-09.md)
 - [2026-07](project-log/2026-07.md)
-
 - [2026-06](project-log/2026-06.md)
 - [2026-05](project-log/2026-05.md)
 - 2026-04:

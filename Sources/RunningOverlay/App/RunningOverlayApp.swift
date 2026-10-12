@@ -16,7 +16,7 @@ struct RunningOverlayApp: App {
                 project.importActivityURL(activityURL)
             }
             if !launchCommand.videoURLs.isEmpty {
-                project.importVideoURLs(launchCommand.videoURLs, replacingExisting: true)
+                project.importVideoURLs(launchCommand.videoURLs)
             }
         }
 
