@@ -26,7 +26,7 @@ struct RunningOverlayApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
+        Window("Running Overlay Studio", id: "main") {
             MainEditorView()
                 .environmentObject(project)
                 .preferredColorScheme(.dark)
@@ -34,6 +34,7 @@ struct RunningOverlayApp: App {
         }
         .windowStyle(.titleBar)
         .windowResizability(.contentMinSize)
+        .windowToolbarStyle(.unifiedCompact(showsTitle: false))
         .commands {
             CommandGroup(replacing: .undoRedo) {
                 Button("Undo") {
@@ -49,7 +50,7 @@ struct RunningOverlayApp: App {
                 .disabled(!project.canRedo)
             }
 
-            CommandGroup(after: .newItem) {
+            CommandGroup(replacing: .newItem) {
                 Button("Import Activity File...") {
                     project.importActivityFile()
                 }

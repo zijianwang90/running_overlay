@@ -280,12 +280,45 @@ struct ProjectSettingsTests {
             laps: []
         )
 
-        project.setPlayheadFromPlayback(2)
+        project.setPlayheadFromPlayback(2, seekToken: project.playbackSeekToken)
         #expect(project.timeline.playhead == 0)
 
         project.togglePlayback()
-        project.setPlayheadFromPlayback(2)
+        project.setPlayheadFromPlayback(2, seekToken: project.playbackSeekToken)
         #expect(project.timeline.playhead == 2)
+    }
+
+    @Test func rulerSeekWhilePlayingIgnoresOldVideoClockAndKeepsPlaying() {
+        let project = ProjectDocument()
+        project.activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 0),
+            duration: 20,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        project.togglePlayback()
+        project.setPlaybackRate(2)
+        let oldToken = project.playbackSeekToken
+
+        project.seekPlayheadFromTimeline(12)
+        let forwardToken = project.playbackSeekToken
+        #expect(project.timeline.playhead == 12)
+        #expect(project.isPlaying)
+        #expect(project.playbackRate == 2)
+
+        project.setPlayheadFromPlayback(2, seekToken: oldToken)
+        #expect(project.timeline.playhead == 12)
+        project.setPlayheadFromPlayback(12.1, seekToken: forwardToken)
+        #expect(project.timeline.playhead == 12.1)
+
+        project.seekPlayheadFromTimeline(4)
+        let backwardToken = project.playbackSeekToken
+        project.setPlayheadFromPlayback(12.2, seekToken: forwardToken)
+        #expect(project.timeline.playhead == 4)
+        project.setPlayheadFromPlayback(4.1, seekToken: backwardToken)
+        #expect(project.timeline.playhead == 4.1)
+        #expect(project.isPlaying)
     }
 
     @Test func playbackTimeClampsAndStopsAtActivityEnd() {
@@ -299,7 +332,7 @@ struct ProjectSettingsTests {
         )
 
         project.togglePlayback()
-        project.setPlayheadFromPlayback(8)
+        project.setPlayheadFromPlayback(8, seekToken: project.playbackSeekToken)
 
         #expect(project.timeline.playhead == 5)
         #expect(!project.isPlaying)

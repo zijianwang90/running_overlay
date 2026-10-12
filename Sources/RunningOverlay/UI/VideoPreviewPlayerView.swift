@@ -5,6 +5,7 @@ struct VideoPreviewPlayerView: NSViewRepresentable {
     var previewMedia: PreviewMedia?
     var isPlaying: Bool
     var playbackRate: Double = 1
+    var seekToken: UInt64 = 0
     var fitMode: PreviewFitMode = .fit
     var onPlaybackActivityTime: (TimeInterval) -> Void
 
@@ -17,6 +18,7 @@ struct VideoPreviewPlayerView: NSViewRepresentable {
             previewMedia: previewMedia,
             isPlaying: isPlaying,
             playbackRate: playbackRate,
+            seekToken: seekToken,
             fitMode: fitMode,
             onPlaybackActivityTime: onPlaybackActivityTime
         )
@@ -31,6 +33,9 @@ final class VideoPreviewNSView: NSView {
     private var currentClipID: TimelineClip.ID?
     private var lastPausedSeekTarget: TimeInterval = -1
     private var currentClipStartTime: TimeInterval = 0
+    private var currentSeekToken: UInt64 = 0
+    private var seekGeneration: UInt64 = 0
+    private var isSeeking = false
     private var timeObserver: Any?
     private var onPlaybackActivityTime: ((TimeInterval) -> Void)?
 
@@ -47,10 +52,14 @@ final class VideoPreviewNSView: NSView {
             queue: .main
         ) { [weak self] time in
             Task { @MainActor [weak self] in
-                guard let self, self.player.timeControlStatus == .playing else {
+                guard let self, !self.isSeeking, self.player.timeControlStatus == .playing else {
                     return
                 }
-                self.onPlaybackActivityTime?(self.currentClipStartTime + time.seconds)
+                let observedTime = time.seconds
+                let currentTime = self.player.currentTime().seconds
+                guard observedTime.isFinite, currentTime.isFinite,
+                      abs(currentTime - observedTime) <= 0.5 else { return }
+                self.onPlaybackActivityTime?(self.currentClipStartTime + observedTime)
             }
         }
     }
@@ -75,10 +84,13 @@ final class VideoPreviewNSView: NSView {
         previewMedia: PreviewMedia?,
         isPlaying: Bool,
         playbackRate: Double,
+        seekToken: UInt64,
         fitMode: PreviewFitMode,
         onPlaybackActivityTime: @escaping (TimeInterval) -> Void
     ) {
         self.onPlaybackActivityTime = onPlaybackActivityTime
+        let timelineSeekRequested = seekToken != currentSeekToken
+        currentSeekToken = seekToken
         let desiredGravity: AVLayerVideoGravity = fitMode == .fill ? .resizeAspectFill : .resizeAspect
         if playerLayer.videoGravity != desiredGravity {
             playerLayer.videoGravity = desiredGravity
@@ -89,6 +101,8 @@ final class VideoPreviewNSView: NSView {
             currentClipID = nil
             currentClipStartTime = 0
             lastPausedSeekTarget = -1
+            seekGeneration &+= 1
+            isSeeking = false
             player.pause()
             player.replaceCurrentItem(with: nil)
             return
@@ -108,7 +122,9 @@ final class VideoPreviewNSView: NSView {
 
         if isPlaying {
             let drift = abs(player.currentTime().seconds - targetTime)
-            if previewMedia.syncsToSourceTime && !clipChanged && drift > 0.35 {
+            if timelineSeekRequested && !clipChanged {
+                seek(to: targetTime)
+            } else if previewMedia.syncsToSourceTime && !clipChanged && !isSeeking && drift > 0.35 {
                 seek(to: targetTime)
             }
             let rate = Float(max(playbackRate, 1))
@@ -123,11 +139,19 @@ final class VideoPreviewNSView: NSView {
     }
 
     private func seek(to seconds: TimeInterval) {
+        seekGeneration &+= 1
+        let generation = seekGeneration
+        isSeeking = true
         player.seek(
             to: CMTime(seconds: seconds, preferredTimescale: 600),
             toleranceBefore: .zero,
             toleranceAfter: .zero
-        )
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, self.seekGeneration == generation else { return }
+                self.isSeeking = false
+            }
+        }
     }
 
     private func removeTimeObserver() {

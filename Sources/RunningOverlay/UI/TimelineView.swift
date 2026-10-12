@@ -603,7 +603,7 @@ private final class TimelineCanvasNSView: NSView {
         project.clearMediaPoolPreview()
         let point = convert(event.locationInWindow, from: nil)
         if point.y <= rulerHeight {
-            project.setPlayhead(time(atX: point.x))
+            project.seekPlayheadFromTimeline(time(atX: point.x))
             return
         }
 
@@ -643,7 +643,7 @@ private final class TimelineCanvasNSView: NSView {
         }
 
         if point.y <= rulerHeight {
-            project.setPlayhead(time(atX: point.x))
+            project.seekPlayheadFromTimeline(time(atX: point.x))
             return
         }
 
@@ -1184,7 +1184,7 @@ private final class TimelineCanvasNSView: NSView {
         }
         project?.clearMediaPoolPreview()
         playhead = scrubTime
-        project?.setPlayhead(scrubTime)
+        project?.seekPlayheadFromTimeline(scrubTime)
         needsDisplay = true
         return true
     }

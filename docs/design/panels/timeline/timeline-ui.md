@@ -225,7 +225,7 @@ Rules:
 
 ## Interaction Rules
 
-- Ruler click/drag seeks the playhead.
+- Ruler click/drag seeks the playhead immediately, including during playback; playback continues from the new position.
 - Holding `C` while moving the mouse over the timeline time area scrubs the playhead to the hovered time, matching DaVinci-style hover scrubbing. The timeline should consume `C` key-down/key-up events while the mouse is over the timeline so macOS does not play invalid-key feedback during hover scrub.
 - Clip click selects the clip.
 - Dragging from empty timeline time-area space, including below the final video lane, draws a translucent blue marquee with a dashed blue edge; every clip intersecting the marquee is selected across layers.
