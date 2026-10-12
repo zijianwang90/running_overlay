@@ -215,7 +215,8 @@ struct ExportPerformanceTests {
         let decoded = try decoder.decode(OverlayExportProfile.self, from: data)
 
         #expect(decoded.segmentCount == 1)
-        #expect(decoded.schemaVersion == 5)
+        #expect(decoded.schemaVersion == 6)
+        #expect(decoded.buildConfiguration == OverlayExportProfile.currentBuildConfiguration)
         #expect(decoded.totalFrameCount == 90)
         #expect(decoded.renderedFrameCount == 30)
         #expect(decoded.reusedFrameCount == 60)
@@ -265,8 +266,106 @@ struct ExportPerformanceTests {
         #expect(csv.contains("\"frameDurationP50\",\"frameDurationP95\",\"frameDurationMax\""))
         #expect(csv.contains("\"slowFrameThreshold\",\"slowFrameCount\""))
         #expect(csv.contains("\"overlayRenderPathEnabled\",\"overlayRenderAreaRatio\",\"overlayRenderCount\",\"overlayDrawCount\""))
+        #expect(csv.contains("\"buildConfiguration\",\"renderModelProfilingEnabled\",\"renderModelDuration\""))
         #expect(csv.contains("\"summary\""))
         #expect(csv.contains("\"segment\",\"0\",\"camera.mov\",\"camera_swiftui_overlay.mov\""))
+    }
+
+    @Test func exportProfileAggregatesRenderModelDiagnostics() {
+        func segment(index: Int, modelDuration: TimeInterval, enabled: Bool) -> OverlayExportSegmentProfile {
+            OverlayExportSegmentProfile(
+                segmentIndex: index,
+                segmentName: "clip\(index).mov",
+                outputFileName: "clip\(index)_swiftui_overlay.mov",
+                duration: 1,
+                frameCount: 30,
+                renderedFrameCount: 5,
+                reusedFrameCount: 25,
+                reuseRate: 25.0 / 30.0,
+                totalDuration: 2,
+                imageRenderDuration: 1,
+                pixelBufferDrawDuration: 0.5,
+                appendDuration: 0.1,
+                writerWaitDuration: 0,
+                averageFrameDuration: 2.0 / 30.0,
+                renderModelProfilingEnabled: enabled,
+                renderModelDuration: modelDuration
+            )
+        }
+
+        let profile = OverlayExportProfile(
+            startedAt: Date(timeIntervalSince1970: 100),
+            completedAt: Date(timeIntervalSince1970: 104),
+            settings: ProjectSettings(),
+            segments: [
+                segment(index: 0, modelDuration: 0.25, enabled: true),
+                segment(index: 1, modelDuration: 0.5, enabled: true)
+            ],
+            buildConfiguration: "release"
+        )
+
+        #expect(profile.buildConfiguration == "release")
+        #expect(profile.renderModelProfilingEnabled)
+        #expect(profile.renderModelDuration == 0.75)
+        let csvLines = profile.csvString().split(separator: "\n")
+        #expect(csvLines[1].hasSuffix("\"release\",\"true\",\"0.75\""))
+        #expect(csvLines[2].hasSuffix("\"release\",\"true\",\"0.25\""))
+    }
+
+    @Test func renderModelProbeEvaluatesEveryOverlayType() {
+        let overlays = OverlayElementType.allCases.map { type in
+            OverlayElement(type: type, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: .default)
+        }
+
+        let duration = ExportRenderModelProbe.measure(
+            overlays: overlays,
+            canvasSize: CGSize(width: 1920, height: 1080),
+            activity: sampleRouteActivity(),
+            elapsedTime: 30
+        )
+
+        #expect(duration > 0)
+    }
+
+    @Test func exportWithRenderModelProfilingRecordsModelDurationPerOverlay() async throws {
+        let destination = FileManager.default.temporaryDirectory
+            .appendingPathComponent("running-overlay-model-profile-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: destination) }
+        var settings = ProjectSettings()
+        settings.resolution = .hd720
+        settings.frameRate = .fps30
+        settings.layerDataFrameRate = .fps5
+        let job = OverlayExportJob(
+            destinationURL: destination,
+            settings: settings,
+            activity: sampleRouteActivity(),
+            overlayLayout: OverlayLayout(elements: [
+                OverlayElement(type: .heartRate, position: CGPoint(x: 0.15, y: 0.15), scale: 1, style: .default),
+                OverlayElement(type: .pace, position: CGPoint(x: 0.85, y: 0.85), scale: 1, style: .default)
+            ]),
+            segments: [OverlayExportSegment(startTime: 2, duration: 1, sourceFileName: "clip.mov")],
+            writesProfile: true,
+            profilesRenderModel: true
+        )
+
+        try await SwiftUIOverlayVideoExporter.export(job: job) { _ in }
+
+        let profileURL = try #require(
+            try FileManager.default.contentsOfDirectory(at: destination, includingPropertiesForKeys: nil)
+                .first { $0.lastPathComponent.hasPrefix("export_profile_") && $0.pathExtension == "json" }
+        )
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let profile = try decoder.decode(OverlayExportProfile.self, from: Data(contentsOf: profileURL))
+        let segment = try #require(profile.segments.first)
+
+        #expect(profile.renderModelProfilingEnabled)
+        #expect(segment.renderedFrameCount == 5)
+        #expect(segment.renderModelDuration > 0)
+        #expect(segment.imageRenderDuration > 0)
+        if segment.overlayRenderPathEnabled {
+            #expect(segment.overlayProfiles.allSatisfy { $0.renderModelDuration > 0 })
+        }
     }
 
     @Test func renderPlanSeparatesStaticAndDynamicOverlays() {
@@ -420,6 +519,35 @@ struct ExportPerformanceTests {
 
         #expect(command.snapshotURL.path.hasSuffix("/running_overlay_project_snapshot.json"))
         #expect(command.outputDirectory?.path.hasSuffix("/BenchmarkOut") == true)
+        #expect(!command.profilesRenderModel)
+    }
+
+    @Test func benchmarkCommandsParseRenderModelProfilingFlag() throws {
+        let export = try #require(try ExportBenchmarkCommand.parse(arguments: [
+            "RunningOverlay",
+            "--benchmark-export",
+            "running_overlay_project_snapshot.json",
+            "--profile-render-model"
+        ]))
+        let templateSegments = try #require(try TemplateSegmentsBenchmarkCommand.parse(arguments: [
+            "RunningOverlay",
+            "--benchmark-template-segments",
+            "activity.fit",
+            "--template",
+            "EasyRun.rotemplate",
+            "--profile-render-model"
+        ]))
+        let templateSegmentsDefault = try #require(try TemplateSegmentsBenchmarkCommand.parse(arguments: [
+            "RunningOverlay",
+            "--benchmark-template-segments",
+            "activity.fit",
+            "--template",
+            "EasyRun.rotemplate"
+        ]))
+
+        #expect(export.profilesRenderModel)
+        #expect(templateSegments.profilesRenderModel)
+        #expect(!templateSegmentsDefault.profilesRenderModel)
     }
 
     @Test func benchmarkCommandReturnsNilWithoutBenchmarkFlag() throws {

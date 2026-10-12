@@ -21,7 +21,7 @@ enum HeadlessBenchmarkRunner {
 
             func applicationDidFinishLaunching(_ notification: Notification) {
                 Task { @MainActor in
-                    defer { NSApp.stop(nil) }
+                    defer { HeadlessBenchmarkRunner.stopRunLoop() }
                     do {
                         switch command {
                         case .export(let exportCommand):
@@ -43,6 +43,28 @@ enum HeadlessBenchmarkRunner {
         app.delegate = delegate
         app.run()
         return delegate.exitCode
+    }
+
+    /// `NSApp.stop` only takes effect after the run loop handles another
+    /// event. Headless runs without a terminal may never receive one, so post
+    /// an empty application event to let `app.run()` return.
+    @MainActor
+    static func stopRunLoop() {
+        NSApp.stop(nil)
+        guard let wakeEvent = NSEvent.otherEvent(
+            with: .applicationDefined,
+            location: .zero,
+            modifierFlags: [],
+            timestamp: 0,
+            windowNumber: 0,
+            context: nil,
+            subtype: 0,
+            data1: 0,
+            data2: 0
+        ) else {
+            return
+        }
+        NSApp.postEvent(wakeEvent, atStart: true)
     }
 }
 

@@ -412,6 +412,68 @@ private struct ExportOverlayRenderStats {
     var renderDuration: TimeInterval = 0
     var drawCount = 0
     var drawDuration: TimeInterval = 0
+    var renderModelDuration: TimeInterval = 0
+}
+
+/// Evaluates the same `OverlayRenderModel` layouts that the export SwiftUI
+/// views build in their bodies, so profiling can split overlay render time
+/// into model computation and SwiftUI view/rasterization work.
+enum ExportRenderModelProbe {
+    static func measure(
+        overlays: [OverlayElement],
+        canvasSize: CGSize,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval
+    ) -> TimeInterval {
+        let startedAt = Date()
+        evaluate(overlays: overlays, canvasSize: canvasSize, activity: activity, elapsedTime: elapsedTime)
+        return Date().timeIntervalSince(startedAt)
+    }
+
+    static func evaluate(
+        overlays: [OverlayElement],
+        canvasSize: CGSize,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval
+    ) {
+        let context = OverlayRenderContext(canvasSize: canvasSize, activity: activity, elapsedTime: elapsedTime)
+        for element in overlays {
+            switch element.type {
+            case .distanceTimeline:
+                withExtendedLifetime(OverlayRenderModel.distanceTimelineLayout(for: element, in: context)) {}
+            case .routeMap:
+                let layout = OverlayRenderModel.routeMapLayout(for: element, in: context)
+                withExtendedLifetime(RouteMapSnapshotRequestBuilder.request(for: element, layout: layout)) {}
+            case .elevationChart:
+                withExtendedLifetime(OverlayRenderModel.elevationChartLayout(for: element, in: context)) {}
+            case .runningGauge:
+                withExtendedLifetime(OverlayRenderModel.runningGaugeLayout(for: element, in: context)) {}
+            case .intervalHUDBar:
+                withExtendedLifetime(OverlayRenderModel.intervalHUDBarLayout(for: element, in: context)) {}
+            case .intervalTimeline:
+                withExtendedLifetime(OverlayRenderModel.intervalTimelineLayout(for: element, in: context)) {}
+            case .intervalCountdown:
+                withExtendedLifetime(OverlayRenderModel.intervalCountdownLayout(for: element, in: context)) {}
+            case .intervalWorkSummary:
+                withExtendedLifetime(OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: context)) {}
+            case .zoneEdgeBar:
+                // The export view evaluates this layout twice: once for the
+                // view and once for its position.
+                withExtendedLifetime(OverlayRenderModel.zoneEdgeBarLayout(for: element, in: context)) {}
+                withExtendedLifetime(OverlayRenderModel.zoneEdgeBarLayout(for: element, in: context)) {}
+            case .decorSolidColor:
+                withExtendedLifetime(OverlayRenderModel.decorSolidColorLayout(for: element, in: context)) {}
+            case .decorIcon:
+                withExtendedLifetime(OverlayRenderModel.decorIconLayout(for: element, in: context)) {}
+            case .decorText:
+                withExtendedLifetime(OverlayRenderModel.decorTextLayout(for: element, in: context)) {}
+            case .weatherWidget:
+                withExtendedLifetime(OverlayRenderModel.weatherWidgetLayout(for: element, in: context)) {}
+            default:
+                withExtendedLifetime(OverlayRenderModel.textLayout(for: element, in: context)) {}
+            }
+        }
+    }
 }
 
 struct SwiftUIOverlayVideoExporter {
@@ -521,17 +583,21 @@ struct SwiftUIOverlayVideoExporter {
             await progress(OverlayExportProgress(segmentIndex: index, segmentCount: job.segments.count, segmentName: segment.sourceFileName, segmentProgress: 1))
         }
 
+        var writesProfile = job.writesProfile
         #if DEBUG
-        try writeProfile(
-            OverlayExportProfile(
-                startedAt: profileStartedAt,
-                completedAt: Date(),
-                settings: job.settings,
-                segments: segmentProfiles
-            ),
-            to: job.destinationURL
-        )
+        writesProfile = true
         #endif
+        if writesProfile {
+            try writeProfile(
+                OverlayExportProfile(
+                    startedAt: profileStartedAt,
+                    completedAt: Date(),
+                    settings: job.settings,
+                    segments: segmentProfiles
+                ),
+                to: job.destinationURL
+            )
+        }
     }
 
     static func exportFramePNG(
@@ -665,6 +731,20 @@ struct SwiftUIOverlayVideoExporter {
         })
         var overlayRenderCount = 0
         var overlayDrawCount = 0
+        var renderModelDuration: TimeInterval = 0
+        func probeRenderModel(_ overlays: [OverlayElement], elapsedTime: TimeInterval) -> TimeInterval {
+            guard job.profilesRenderModel else {
+                return 0
+            }
+            let duration = ExportRenderModelProbe.measure(
+                overlays: overlays,
+                canvasSize: renderPlan.canvasSize,
+                activity: job.activity,
+                elapsedTime: elapsedTime
+            )
+            renderModelDuration += duration
+            return duration
+        }
         var frameTimings: [ExportFrameTiming] = []
         frameTimings.reserveCapacity(frameCount)
 
@@ -700,9 +780,13 @@ struct SwiftUIOverlayVideoExporter {
                     reusedRenderForFrame = true
                 } else {
                     let renderStartedAt = Date()
+                    var frameModelProbeDuration: TimeInterval = 0
                     var renderedImages: [ExportOverlayRenderedImage] = []
                     renderedImages.reserveCapacity(renderPlan.overlayRenderItems.count)
                     for item in renderPlan.overlayRenderItems {
+                        let itemModelDuration = probeRenderModel(item.elements, elapsedTime: sample.sampleElapsed)
+                        frameModelProbeDuration += itemModelDuration
+                        overlayStats[item.id]?.renderModelDuration += itemModelDuration
                         let overlayRenderStartedAt = Date()
                         let renderedImage: CGImage
                         if item.usesRouteMapStaticCache {
@@ -776,7 +860,7 @@ struct SwiftUIOverlayVideoExporter {
                             renderRect: item.renderRect
                         ))
                     }
-                    let renderDuration = Date().timeIntervalSince(renderStartedAt)
+                    let renderDuration = Date().timeIntervalSince(renderStartedAt) - frameModelProbeDuration
                     renderDurationForFrame = renderDuration
                     dynamicRenderDuration += renderDuration
                     imageRenderDuration += renderDuration
@@ -806,6 +890,7 @@ struct SwiftUIOverlayVideoExporter {
                     reusedFrameCount += 1
                     reusedRenderForFrame = true
                 } else {
+                    _ = probeRenderModel(renderPlan.allOverlays, elapsedTime: sample.sampleElapsed)
                     let renderStartedAt = Date()
                     let renderedImage = try await renderFullFrame(
                         size: renderPlan.canvasSize,
@@ -840,6 +925,7 @@ struct SwiftUIOverlayVideoExporter {
                     reusedFrameCount += 1
                     reusedRenderForFrame = true
                 } else {
+                    _ = probeRenderModel(renderPlan.dynamicOverlays, elapsedTime: sample.sampleElapsed)
                     let renderStartedAt = Date()
                     dynamicImage = try await renderLayer(
                         size: renderPlan.canvasSize,
@@ -943,7 +1029,8 @@ struct SwiftUIOverlayVideoExporter {
                 renderCount: stats.renderCount,
                 renderDuration: stats.renderDuration,
                 drawCount: stats.drawCount,
-                drawDuration: stats.drawDuration
+                drawDuration: stats.drawDuration,
+                renderModelDuration: stats.renderModelDuration
             )
         }
         return OverlayExportSegmentProfile(
@@ -992,7 +1079,9 @@ struct SwiftUIOverlayVideoExporter {
             overlayRenderAreaRatio: overlayRenderAreaRatio,
             overlayRenderCount: overlayRenderCount,
             overlayDrawCount: overlayDrawCount,
-            overlayProfiles: overlayProfiles
+            overlayProfiles: overlayProfiles,
+            renderModelProfilingEnabled: job.profilesRenderModel,
+            renderModelDuration: renderModelDuration
         )
     }
 

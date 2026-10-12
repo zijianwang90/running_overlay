@@ -212,6 +212,31 @@ clip export rather than unbounded parallelism.
 
 ## Profiling Files
 
+UI exports write profiling files only in debug builds. All headless benchmark
+commands write them in every build configuration, and the profile's
+`buildConfiguration` field records which one produced it. Compare release
+profiles with release profiles: Swift debug builds slow app-side model code
+much more than SwiftUI and CoreGraphics framework rendering, so debug profiles
+overstate model cost.
+
+### Render Model Split
+
+Pass `--profile-render-model` to `--benchmark-export` or
+`--benchmark-template-segments` to split overlay render time:
+
+- Before each unique render, the exporter evaluates the same
+  `OverlayRenderModel` layouts that the export SwiftUI views build in their
+  bodies, and records that time as `renderModelDuration` (task, segment, and
+  per-overlay).
+- That probe time is excluded from `imageRenderDuration`, which still includes
+  the model work done inside SwiftUI view bodies. The SwiftUI view and
+  rasterization share is therefore approximately
+  `imageRenderDuration - renderModelDuration`.
+- Probe-enabled runs evaluate model layouts one extra time per unique render,
+  so compare `totalDuration` only against runs with the same setting.
+- Model work done inside shared SwiftUI view bodies, outside the
+  `OverlayRenderModel` layout functions, still counts toward the SwiftUI share.
+
 The JSON file is the canonical structured record for one completed export task.
 It contains task-level totals and a `segments` array.
 
@@ -252,13 +277,16 @@ Task-level fields include:
 - `overlayRenderAreaRatio`
 - `overlayRenderCount`
 - `overlayDrawCount`
+- `buildConfiguration` (`debug` or `release`)
+- `renderModelProfilingEnabled`
+- `renderModelDuration`
 
 Each segment records the same timing buckets plus `segmentName`,
 `outputFileName`, `duration`, `frameCount`, JSON-only `slowFrames`
 details for its 10 slowest frames, and JSON-only `overlayProfiles` details
 when the per-overlay path is available. Each overlay profile records overlay
 type, render rect, render area ratio, render count/duration, and draw
-count/duration.
+count/duration, plus `renderModelDuration` when model profiling is enabled.
 
 The CSV file contains the same comparison-oriented metrics in a spreadsheet
 shape: one `summary` row followed by one `segment` row per exported segment.
@@ -374,6 +402,57 @@ numeric overlays in the per-overlay path:
   dropped from 150,928 to 75,464.
 - A frame extracted from Test12 confirmed the overlay positions match the
   expected preview layout.
+
+## Release Build Profile Round (2026-10-11)
+
+The earlier rounds and the 5 fps default benchmark were measured with debug
+builds. This round repeated the template-segments benchmark with release
+builds and `--profile-render-model` on an Apple M3: 10 synthetic 5-second
+clips (1,500 frames at 30 fps, 250 unique renders at 5 fps Layer Data),
+1920x1080, using the committed `synthetic-run.fit` and a local real FIT file.
+
+| Run | Codec | Build | Total | Render | Model | Draw | Writer wait |
+|---|---|---|---:|---:|---:|---:|---:|
+| Real FIT, Race (full frame) | HEVC alpha | debug | 141.90 s | 90.57 s | 42.19 s | 7.91 s | 0.04 s |
+| Real FIT, Race (full frame) | HEVC alpha | release | 15.51 s | 3.61 s | n/a | 7.75 s | 2.43 s |
+| Real FIT, Interval Workout (per overlay) | HEVC alpha | release | 15.43 s | 3.80 s | n/a | 1.88 s | 7.90 s |
+| Synthetic FIT, Race (full frame) | HEVC alpha | release | 15.48 s | 2.62 s | n/a | 4.46 s | 6.55 s |
+| Real FIT, Interval Workout (per overlay) | ProRes 4444 | release | 5.64 s | 3.01 s | n/a | 1.89 s | 0.00 s |
+| Real FIT, Race (full frame) | ProRes 4444 | release | 12.35 s | 3.71 s | n/a | 7.86 s | 0.02 s |
+
+Model durations come from separate probe-enabled runs; release probe runs
+measured 0.15-0.47 s of model time per task.
+
+Findings:
+
+- Debug profiles are not representative. The same real-FIT Race export took
+  141.90 s in debug and 15.51 s in release; `OverlayRenderModel` evaluation
+  alone was 42.19 s in debug and 0.47 s in release, because the debug build
+  runs linear record scans and route geometry rebuilding unoptimized.
+- In release builds, model computation is 5-13% of overlay render time.
+  `intervalHUDBar` measured 6.7 ms per render with 0.2 ms of model work, so
+  its cost is SwiftUI view construction and rasterization.
+- Every release HEVC-with-alpha run finished in 15.4-15.5 s, regardless of
+  template, render path, or app-side render and draw time (5.7-11.4 s), with
+  the remainder spent waiting for `isReadyForMoreMediaData`. Running the
+  same export as 2 or 4 shard processes in parallel took 14.89 s and 14.99 s
+  wall-clock. HEVC-with-alpha 1080p export is bound by the hardware encoder
+  on this machine (about 100 fps), and app-side render or draw reductions do
+  not shorten it.
+- With ProRes 4444 the encoder is not the limit, and app-side work dominates.
+  The full-frame Race path spends 7.86 s of 12.35 s clearing and redrawing a
+  full-canvas image into every pixel buffer, including the 1,250 frames that
+  reuse the previous render.
+
+Implications for the next optimization work:
+
+- For HEVC with alpha, only reducing encoder work can make a large
+  difference, for example encoder speed or quality properties, or encoding
+  fewer distinct frames. Measure these before changing render code.
+- For ProRes 4444, reusing the previous pixel buffer for frames with an
+  identical Layer Data sample should remove most of the full-frame draw cost.
+- Clip-level multi-process export does not help HEVC with alpha on a single
+  media-engine machine.
 
 ## Follow-Up Directions
 
