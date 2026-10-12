@@ -36,9 +36,10 @@ Current implementation:
 - App-level UI uses the shared dark editor design tokens from `docs/design/system/app-ui.md` through `EditorTheme`.
 - Left Pool, Preview controls, Timeline, Inspector, status bar, export progress, project settings, and export dialog share dark panel/header/control colors, compact sizing, subtle borders, and system typography.
 - Resizable panes keep stable minimum widths so media controls do not collapse when selection hierarchy changes.
-- Left Pool default width is 380 px (min 300 px) and Inspector default width is 460 px (min 460 px); both panels remain user-resizable via custom drag handles.
+- Left Pool preferred width is 380 pt (min 300 pt) and Inspector preferred width is 460 pt (min 460 pt); both panels remain user-resizable via custom drag handles. `EditorPaneLayout` resolves these preferences against the actual content width, reserving 520 pt for Preview and 1 pt per divider. At the 1300 pt window minimum, the initial Left Pool resolves to 318 pt. Window shrinking temporarily reduces side panes (Left Pool first), widening restores their preferred widths, and drag limits reserve room for the other panes. The toolbar uses the resolved Left Pool width. The scene enforces its content minimum size.
 - The horizontal three-column layout in `MainEditorView` is implemented as a single `HStack` with `@State`-tracked widths (`mediaPoolWidth`, `inspectorWidth`) and custom `HorizontalResizeHandle` dividers instead of `HSplitView`. This guarantees that internal Inspector selection changes (`outer/clip/overlay detail`) and Left Pool content changes (e.g., switching Media Pool/Overlay Pool/Templates, importing media, or matching clips) cannot reset the left or right pane widths.
-- `MainEditorView` owns the active left-pool mode. The compact `Media Pool` / `Overlay Pool` / `Templates` switch sits in the top app toolbar, aligned to the left pane width, while `PoolPanelView` renders the selected pool content below. The app toolbar no longer carries global FIT/Videos import buttons.
+- The main editor uses a single-instance SwiftUI `Window` scene. The File menu's default New Window command is replaced with activity and video import commands.
+- `MainEditorView` owns the active left-pool mode. A compact `Media` / `Overlays` / `Templates` switch and Export action sit in the native unified window toolbar, beside the window controls; `PoolPanelView` renders the selected pool content below. The toolbar no longer carries global FIT/Videos import buttons.
 - Media, Preview, and Inspector top headers share a unified header height and shared compact header button size tokens.
 - The initial `VSplitView` allocation favors the top editor stack more strongly by using a lower default Timeline ideal height (`180`) with a `160` minimum, while keeping the split boundary user-draggable.
 
@@ -98,7 +99,7 @@ Current implementation:
 - `FilenameDateParser` extracts timestamps from common filename patterns.
 - `ProjectDocument.importVideos()` opens a native multi-select video file picker.
 - `ProjectDocument.importVideoURLs()` is shared by file-picker import and Finder-to-media-browser drop import.
-- File-picker imports replace the current media browser contents; Finder drops append supported video files.
+- File-picker imports and Finder drops append supported video files to the media pool without changing existing timeline clips.
 - Imported videos stay in the media pool until the user explicitly matches them or drags them to the timeline.
 - Items with inferred timestamps near the activity are marked ready for timestamp matching instead of being placed automatically.
 - Replacing the activity file after videos have already been imported recalculates each video's timestamp match status against the new activity and automatically places timestamp-matched videos on their camera-group timeline tracks when they do not overlap existing clips.

@@ -16,7 +16,7 @@ struct RunningOverlayApp: App {
                 project.importActivityURL(activityURL)
             }
             if !launchCommand.videoURLs.isEmpty {
-                project.importVideoURLs(launchCommand.videoURLs, replacingExisting: true)
+                project.importVideoURLs(launchCommand.videoURLs)
             }
         }
 
@@ -26,13 +26,15 @@ struct RunningOverlayApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
+        Window("Running Overlay Studio", id: "main") {
             MainEditorView()
                 .environmentObject(project)
                 .preferredColorScheme(.dark)
-                .frame(minWidth: 1300, minHeight: 760)
+                .frame(minWidth: EditorPaneLayout.minimumWindowWidth, minHeight: 760)
         }
         .windowStyle(.titleBar)
+        .windowResizability(.contentMinSize)
+        .windowToolbarStyle(.unifiedCompact(showsTitle: false))
         .commands {
             CommandGroup(replacing: .undoRedo) {
                 Button("Undo") {
@@ -48,7 +50,7 @@ struct RunningOverlayApp: App {
                 .disabled(!project.canRedo)
             }
 
-            CommandGroup(after: .newItem) {
+            CommandGroup(replacing: .newItem) {
                 Button("Import Activity File...") {
                     project.importActivityFile()
                 }

@@ -109,7 +109,7 @@ Existing behavior to preserve:
 
 Top to bottom:
 
-1. Top app toolbar: pool mode switch aligned to the left pane width
+1. Unified window toolbar: compact pool mode switch beside the window controls
 2. Active pool header
 3. Active pool controls
 4. Active pool content
@@ -119,7 +119,7 @@ Recommended panel width: 300-380 px. The mockup is square for design transfer on
 
 ## Pool Mode Switch
 
-The top app toolbar starts with a compact three-option switch aligned to the left pane width:
+The unified window toolbar starts with a compact three-option switch after the window controls:
 
 - `Media Pool`
 - `Overlay Pool`
@@ -127,7 +127,8 @@ The top app toolbar starts with a compact three-option switch aligned to the lef
 
 Visual rules:
 
-- Keep it in the top toolbar's left slot, above the Media/Preview/Inspector panel headers. It replaces global FIT/Videos import buttons as the primary entry point into media and overlay resources.
+- Keep it in the window toolbar, above the Media/Preview/Inspector panel headers. It replaces global FIT/Videos import buttons as the primary entry point into media and overlay resources.
+- Use the short visible labels `Media`, `Overlays`, and `Templates` so none truncate in the titlebar. Keep the full pool names in help and accessibility labels.
 - Use icon + label for both choices:
   - `Media Pool`: `play.rectangle` or another clear video/source icon.
   - `Overlay Pool`: stacked squares, sparkles, or layer icon.
@@ -150,7 +151,7 @@ Interaction:
 Recommended implementation:
 
 - Keep `@State private var activePool: PoolKind = .media` in `MainEditorView`.
-- Render `PoolModeSwitch` in the top toolbar with a width derived from `mediaPoolWidth`.
+- Render `PoolModeSwitch` in the native window toolbar with a width derived from `mediaPoolWidth`.
 - Render `MediaBrowserView` for `.media`.
 - Render `OverlayPoolView` for `.overlay`.
 - Render `TemplatePoolView` for `.templates`.
@@ -370,7 +371,7 @@ Header:
 
 Pool switch:
 
-- `Templates` is the third top-toolbar pool mode beside `Media Pool` and `Overlay Pool`.
+- `Templates` is the third window-toolbar pool mode beside `Media` and `Overlays`.
 - Keep the selected state visually consistent with the other two pool modes.
 
 Section headers:

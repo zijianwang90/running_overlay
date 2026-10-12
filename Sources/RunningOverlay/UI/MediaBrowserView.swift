@@ -483,7 +483,7 @@ struct MediaBrowserView: View {
     }
 
     private func importVideoURLs(_ urls: [URL], intoFolder folderID: MediaFolder.ID?) {
-        project.importVideoURLs(urls, replacingExisting: false, intoFolder: folderID)
+        project.importVideoURLs(urls, intoFolder: folderID)
     }
 
     private func handleDrop(providers: [NSItemProvider], targetFolderID: MediaFolder.ID?) -> Bool {
@@ -935,7 +935,7 @@ struct MediaBrowserView: View {
         }
 
         group.notify(queue: .main) {
-            project.importVideoURLs(collector.urls, replacingExisting: false, intoFolder: folderID)
+            project.importVideoURLs(collector.urls, intoFolder: folderID)
         }
         return true
     }

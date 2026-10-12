@@ -30,6 +30,7 @@ Current implementation:
 - Timeline clips use a dedicated clip detail Inspector with the same compact header, dense 34 px section-row layout, back action, and destructive delete affordance as overlay detail inspectors.
 - Timeline drawing and high-frequency interactions are handled by an AppKit `NSView` embedded in SwiftUI.
 - The AppKit timeline handles self-drawn ruler, ruler hover data, tracks, clips, playhead, clip dragging, ruler seeking, `C`-held hover scrubbing, media drop, and Command-scroll zoom.
+- Ruler seeking and `C`-held hover scrubbing publish a seek token with the new project time. The video preview seeks to that time during playback and ignores callbacks from earlier tokens, so the playhead stays at the requested position while playback continues.
 - The AppKit timeline draws a muted-red playhead with a small downward-pointing triangle inside the ruler band; the triangle's tip connects to a thin vertical line that extends from the ruler through the visible tracks, and neither part is allowed to extend above the ruler.
 - Selected timeline clips draw a 2 px white border on top of their blue fill, replacing the default dark splice border for the selected block only.
 - Dragging from empty timeline time-area space, including below the last video track, draws a translucent blue marquee and live-selects every intersecting clip across tracks. The selection commits to `ProjectDocument` on mouse-up, and Delete or Forward Delete removes the selected clips as one undoable edit while refreshing their linked Media Pool alignment states.

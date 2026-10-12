@@ -32,8 +32,8 @@ jobs:
           npm --version
       - name: Build and test
         run: ./scripts/check.sh
-      - name: Build release product
-        run: swift build -c release --product RunningOverlay
+      - name: Build and validate release app bundle
+        run: ./scripts/build-appstore-app.sh
       - name: Visual regression
         run: ./scripts/visual-test.sh
       - name: Publication audit
