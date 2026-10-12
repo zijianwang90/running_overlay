@@ -108,6 +108,7 @@ Panel rules:
 - Avoid floating cards inside panels. Use sections, rows, tiles, and dividers.
 - Empty states should stay within the panel layout and preserve tool context.
 - Resizable split panes should have stable minimum widths so controls do not collapse.
+- Resolve side-pane widths against the actual window width, reserving the Preview minimum and both dividers. At the 1300 pt content minimum, use 318 pt for the initial Left Pool, 520 pt for Preview, and 460 pt for Inspector. Dragging a divider must not overflow the window; shrinking temporarily reduces panes while retaining preferred widths for later expansion.
 
 ## Component Standards
 

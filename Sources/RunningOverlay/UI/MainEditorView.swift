@@ -10,56 +10,60 @@ struct MainEditorView: View {
     @State private var inspectorWidth: CGFloat = 460
     @State private var lastPlaybackTickTime: CFTimeInterval?
 
-    private static let mediaPoolMinWidth: CGFloat = 300
-    private static let mediaPoolMaxWidth: CGFloat = 720
-    private static let inspectorMinWidth: CGFloat = 460
-    private static let inspectorMaxWidth: CGFloat = 720
-    private static let previewMinWidth: CGFloat = 520
     private static let timelineMinHeight: CGFloat = 96
     private static let timelineIdealHeight: CGFloat = 110
 
     var body: some View {
-        VStack(spacing: 0) {
-            toolbar
+        GeometryReader { geometry in
+            let layout = EditorPaneLayout(
+                availableWidth: geometry.size.width,
+                preferredMediaWidth: mediaPoolWidth,
+                preferredInspectorWidth: inspectorWidth
+            )
+            VStack(spacing: 0) {
+                toolbar(mediaWidth: layout.mediaWidth)
 
-            VSplitView {
-                HStack(spacing: 0) {
-                    PoolPanelView(activePool: $activePool)
-                        .frame(width: mediaPoolWidth)
-                        .frame(maxHeight: .infinity)
+                VSplitView {
+                    HStack(spacing: 0) {
+                        PoolPanelView(activePool: $activePool)
+                            .frame(width: layout.mediaWidth)
+                            .frame(maxHeight: .infinity)
 
-                    HorizontalResizeHandle(
-                        width: $mediaPoolWidth,
-                        minWidth: Self.mediaPoolMinWidth,
-                        maxWidth: Self.mediaPoolMaxWidth,
-                        sign: 1
-                    )
+                        HorizontalResizeHandle(
+                            width: $mediaPoolWidth,
+                            displayedWidth: layout.mediaWidth,
+                            minWidth: EditorPaneLayout.mediaMinWidth,
+                            maxWidth: layout.mediaMaxWidth,
+                            sign: 1
+                        )
 
-                    PreviewCanvasView()
-                        .frame(minWidth: Self.previewMinWidth, minHeight: 320)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        PreviewCanvasView()
+                            .frame(minWidth: EditorPaneLayout.previewMinWidth, minHeight: 320)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                    HorizontalResizeHandle(
-                        width: $inspectorWidth,
-                        minWidth: Self.inspectorMinWidth,
-                        maxWidth: Self.inspectorMaxWidth,
-                        sign: -1
-                    )
+                        HorizontalResizeHandle(
+                            width: $inspectorWidth,
+                            displayedWidth: layout.inspectorWidth,
+                            minWidth: EditorPaneLayout.inspectorMinWidth,
+                            maxWidth: layout.inspectorMaxWidth,
+                            sign: -1
+                        )
 
-                    ParameterPanelView()
-                        .frame(width: inspectorWidth)
-                        .frame(maxHeight: .infinity)
-                        .clipped()
+                        ParameterPanelView()
+                            .frame(width: layout.inspectorWidth)
+                            .frame(maxHeight: .infinity)
+                            .clipped()
+                    }
+                    .frame(minHeight: 360, idealHeight: 800)
+                    .splitResizeCursor(.resizeUpDown, edge: .bottom, thickness: 18)
+
+                    TimelineView()
+                        .frame(minHeight: Self.timelineMinHeight, idealHeight: Self.timelineIdealHeight)
+                        .splitResizeCursor(.resizeUpDown, edge: .top, thickness: 18)
                 }
-                .frame(minHeight: 360, idealHeight: 800)
-                .splitResizeCursor(.resizeUpDown, edge: .bottom, thickness: 18)
 
-                TimelineView()
-                    .frame(minHeight: Self.timelineMinHeight, idealHeight: Self.timelineIdealHeight)
-                    .splitResizeCursor(.resizeUpDown, edge: .top, thickness: 18)
+                statusBar
             }
-
-            statusBar
         }
         .background(EditorTheme.appBackground)
         .overlay(alignment: .top) {
@@ -140,10 +144,10 @@ struct MainEditorView: View {
         }
     }
 
-    private var toolbar: some View {
+    private func toolbar(mediaWidth: CGFloat) -> some View {
         HStack(spacing: 12) {
             PoolModeSwitch(activePool: $activePool)
-                .frame(width: mediaPoolWidth - (EditorTheme.panelPaddingX * 2))
+                .frame(width: mediaWidth - (EditorTheme.panelPaddingX * 2))
 
             Spacer()
 
@@ -338,10 +342,11 @@ private struct ExportProgressPopover: View {
 }
 
 private struct HorizontalResizeHandle: View {
-    private static let visualWidth: CGFloat = 1
+    private static let visualWidth: CGFloat = EditorPaneLayout.dividerWidth
     private static let hitWidth: CGFloat = 12
 
     @Binding var width: CGFloat
+    let displayedWidth: CGFloat
     let minWidth: CGFloat
     let maxWidth: CGFloat
     let sign: CGFloat
@@ -366,9 +371,9 @@ private struct HorizontalResizeHandle: View {
                         DragGesture(minimumDistance: 0)
                             .onChanged { value in
                                 if startWidth == nil {
-                                    startWidth = width
+                                    startWidth = displayedWidth
                                 }
-                                let proposed = (startWidth ?? width) + sign * value.translation.width
+                                let proposed = (startWidth ?? displayedWidth) + sign * value.translation.width
                                 width = min(max(proposed, minWidth), maxWidth)
                             }
                             .onEnded { _ in
@@ -377,5 +382,35 @@ private struct HorizontalResizeHandle: View {
                     )
             }
         .frame(maxHeight: .infinity)
+    }
+}
+
+/// Resolves user-preferred pane widths against the actual window content width.
+/// Preferences stay intact when the window shrinks, so widening restores them.
+struct EditorPaneLayout {
+    static let mediaMinWidth: CGFloat = 300
+    static let inspectorMinWidth: CGFloat = 460
+    static let previewMinWidth: CGFloat = 520
+    static let paneMaxWidth: CGFloat = 720
+    static let dividerWidth: CGFloat = 1
+    static let minimumWindowWidth: CGFloat = 1300
+
+    let mediaWidth: CGFloat
+    let inspectorWidth: CGFloat
+    let mediaMaxWidth: CGFloat
+    let inspectorMaxWidth: CGFloat
+
+    init(availableWidth: CGFloat, preferredMediaWidth: CGFloat, preferredInspectorWidth: CGFloat) {
+        let sideBudget = availableWidth - Self.previewMinWidth - 2 * Self.dividerWidth
+        inspectorWidth = min(
+            max(preferredInspectorWidth, Self.inspectorMinWidth),
+            min(Self.paneMaxWidth, max(Self.inspectorMinWidth, sideBudget - Self.mediaMinWidth))
+        )
+        mediaWidth = min(
+            max(preferredMediaWidth, Self.mediaMinWidth),
+            min(Self.paneMaxWidth, max(Self.mediaMinWidth, sideBudget - inspectorWidth))
+        )
+        mediaMaxWidth = min(Self.paneMaxWidth, max(Self.mediaMinWidth, sideBudget - inspectorWidth))
+        inspectorMaxWidth = min(Self.paneMaxWidth, max(Self.inspectorMinWidth, sideBudget - mediaWidth))
     }
 }
