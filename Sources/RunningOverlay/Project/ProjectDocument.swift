@@ -234,14 +234,15 @@ final class ProjectDocument: ObservableObject {
             return
         }
 
-        importVideoURLs(urls, replacingExisting: true)
+        importVideoURLs(urls)
     }
 
-    func importVideoURLs(_ urls: [URL], replacingExisting: Bool = false, intoFolder folderID: MediaFolder.ID? = nil) {
+    @discardableResult
+    func importVideoURLs(_ urls: [URL], intoFolder folderID: MediaFolder.ID? = nil) -> Task<Void, Never>? {
         let videoURLs = urls.filter(Self.isSupportedVideoURL)
         guard !videoURLs.isEmpty else {
             statusMessage = "No supported video files were found."
-            return
+            return nil
         }
 
         statusMessage = "Importing \(videoURLs.count) video file(s)..."
@@ -251,7 +252,7 @@ final class ProjectDocument: ObservableObject {
             return folderID
         }()
 
-        Task {
+        return Task {
             let imported = await withTaskGroup(of: MediaItem.self) { group in
                 for url in videoURLs {
                     group.addTask {
@@ -278,13 +279,7 @@ final class ProjectDocument: ObservableObject {
             }
 
             registerUndoPoint()
-            let importedMediaItems = replacingExisting ? stampedImported : mediaItems + stampedImported
-            mediaItems = importedMediaItems
-
-            if replacingExisting {
-                timeline = TimelineModel.empty
-                mediaPoolPreviewItemID = nil
-            }
+            mediaItems += stampedImported
 
             let matchableCount = stampedImported.filter {
                 if case .readyToMatch = $0.alignmentStatus {
