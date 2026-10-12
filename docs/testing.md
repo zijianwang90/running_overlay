@@ -18,6 +18,12 @@
 ./scripts/visual-test.sh
 ```
 
+CI builds the release app bundle, and app-bundle packaging runs
+`scripts/validate-packaged-resources.swift` as a
+regression gate. It verifies Foundation resource lookup and readable template
+JSON inside the packaged app, covering resource-directory layout errors that
+source-level template tests cannot detect.
+
 ## Fixture Policy
 
 Committed fixtures must be:

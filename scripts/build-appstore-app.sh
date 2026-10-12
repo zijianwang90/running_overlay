@@ -32,9 +32,12 @@ mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$LEGAL_DIR"
 cp ".build/$BUILD_CONFIGURATION/$PRODUCT_NAME" "$MACOS_DIR/$PRODUCT_NAME"
 
 RESOURCE_BUNDLE=".build/$BUILD_CONFIGURATION/${PRODUCT_NAME}_${PRODUCT_NAME}.bundle"
-if [[ -d "$RESOURCE_BUNDLE" ]]; then
-  cp -R "$RESOURCE_BUNDLE/." "$RESOURCES_DIR/"
+if [[ ! -d "$RESOURCE_BUNDLE" ]]; then
+  echo "Missing SwiftPM resource bundle: $RESOURCE_BUNDLE" >&2
+  exit 1
 fi
+cp -R "$RESOURCE_BUNDLE" "$RESOURCES_DIR/"
+swift "$ROOT_DIR/scripts/validate-packaged-resources.swift" "$APP_DIR"
 
 cp "$PRIVACY_MANIFEST" "$RESOURCES_DIR/PrivacyInfo.xcprivacy"
 cp "$ROOT_DIR/LICENSE" "$LEGAL_DIR/LICENSE"

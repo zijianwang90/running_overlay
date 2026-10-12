@@ -33,6 +33,12 @@ and tests; both build paths compile the same files under
   `Contents/Resources/AppIcon.icns` so GitHub Release downloads show the
   production Finder icon and product name. Keep the internal executable,
   target, and module name as `RunningOverlay`.
+- Preserve `RunningOverlay_RunningOverlay.bundle` as a complete bundle under
+  the app's `Contents/Resources`. SwiftPM may produce either a flat bundle or
+  a macOS `Contents/Resources` layout; copying only its contents can nest the
+  resources outside the runtime lookup path. The bundle build runs
+  `scripts/validate-packaged-resources.swift` to load all built-in templates,
+  the symbol catalog, and weather icons through Foundation `Bundle` before signing.
 - Keep signing certificates, provisioning profiles, archives, API keys, and
   other release secrets out of the repository.
 - The app-bundle build copies the PolyForm Shield license, commercial
