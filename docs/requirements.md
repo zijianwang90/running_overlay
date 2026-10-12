@@ -144,6 +144,7 @@ Automatic placement should attempt alignment using, in priority order to be refi
 Current implementation status:
 
 - Batch video import is available from the toolbar and command menu.
+- Importing more videos appends them to the media pool and preserves existing media and timeline clips.
 - Video files can be dragged from Finder directly into the media browser to append-import them.
 - The app reads video duration and creation-date metadata through AVFoundation.
 - The app attempts filename date parsing for common patterns such as `YYYYMMDD_HHMMSS`.

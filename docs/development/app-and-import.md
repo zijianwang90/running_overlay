@@ -99,7 +99,7 @@ Current implementation:
 - `FilenameDateParser` extracts timestamps from common filename patterns.
 - `ProjectDocument.importVideos()` opens a native multi-select video file picker.
 - `ProjectDocument.importVideoURLs()` is shared by file-picker import and Finder-to-media-browser drop import.
-- File-picker imports replace the current media browser contents; Finder drops append supported video files.
+- File-picker imports and Finder drops append supported video files to the media pool without changing existing timeline clips.
 - Imported videos stay in the media pool until the user explicitly matches them or drags them to the timeline.
 - Items with inferred timestamps near the activity are marked ready for timestamp matching instead of being placed automatically.
 - Replacing the activity file after videos have already been imported recalculates each video's timestamp match status against the new activity and automatically places timestamp-matched videos on their camera-group timeline tracks when they do not overlap existing clips.

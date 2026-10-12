@@ -182,6 +182,47 @@ struct ProjectDocumentUndoTests {
         #expect(project.timeline.tracks[0].clips.count == 1)
     }
 
+    @Test func importingMoreVideosPreservesExistingMediaAndTimeline() async throws {
+        let project = ProjectDocument()
+        let existing = MediaItem(
+            displayName: "existing.mov",
+            fileURL: nil,
+            duration: 10,
+            inferredStartDate: nil,
+            cameraGroupID: "Camera A",
+            alignmentStatus: .aligned(source: "manual")
+        )
+        let clip = TimelineClip(
+            mediaItemID: existing.id,
+            title: existing.displayName,
+            startTime: 5,
+            duration: existing.duration,
+            alignmentOffset: 0,
+            cameraGroupID: "Camera A"
+        )
+        project.mediaItems = [existing]
+        project.timeline = TimelineModel(tracks: [TimelineTrack(name: "Camera A", clips: [clip])])
+        project.mediaPoolPreviewItemID = existing.id
+
+        let newVideoURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("incremental-media-\(UUID().uuidString).mov")
+        try Data().write(to: newVideoURL)
+        defer { try? FileManager.default.removeItem(at: newVideoURL) }
+
+        let importTask = try #require(project.importVideoURLs([newVideoURL]))
+        await importTask.value
+
+        #expect(project.mediaItems.count == 2)
+        #expect(project.mediaItems[0] == existing)
+        #expect(project.mediaItems[1].fileURL == newVideoURL)
+        #expect(project.timeline.tracks.first?.clips.first?.id == clip.id)
+        #expect(project.mediaPoolPreviewItemID == existing.id)
+
+        project.undo()
+        #expect(project.mediaItems == [existing])
+        #expect(project.timeline.tracks.first?.clips.first?.id == clip.id)
+    }
+
     @Test func deletingMarqueeSelectedClipsIsOneUndoableEdit() {
         let project = ProjectDocument()
         project.activity = ActivityTimeline(
