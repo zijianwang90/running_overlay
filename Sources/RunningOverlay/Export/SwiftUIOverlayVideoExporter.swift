@@ -1,5 +1,6 @@
 import AppKit
 import AVFoundation
+import VideoToolbox
 import CoreVideo
 import Foundation
 import SwiftUI
@@ -663,12 +664,21 @@ struct SwiftUIOverlayVideoExporter {
         let height = job.settings.resolution.height
         let frameRate = job.settings.frameRate.value
 
-        let outputSettings = outputSettings(
+        var outputSettings = outputSettings(
             codec: job.settings.exportCodec,
             width: width,
             height: height,
             bitrateMbps: job.settings.bitrateMbps
         )
+        if !writer.canApply(outputSettings: outputSettings, forMediaType: .video) {
+            outputSettings = Self.outputSettings(
+                codec: job.settings.exportCodec,
+                width: width,
+                height: height,
+                bitrateMbps: job.settings.bitrateMbps,
+                prioritizesEncodingSpeed: false
+            )
+        }
         let input = AVAssetWriterInput(mediaType: .video, outputSettings: outputSettings)
         input.expectsMediaDataInRealTime = false
 
@@ -1709,7 +1719,16 @@ struct SwiftUIOverlayVideoExporter {
         return pixelBuffer
     }
 
-    private static func outputSettings(codec: ProjectExportCodec, width: Int, height: Int, bitrateMbps: Double) -> [String: Any] {
+    /// HEVC with alpha export is bound by the hardware encoder, so it asks
+    /// VideoToolbox to prioritize encoding speed. See
+    /// `docs/export-performance.md` for the measured speed and quality impact.
+    static func outputSettings(
+        codec: ProjectExportCodec,
+        width: Int,
+        height: Int,
+        bitrateMbps: Double,
+        prioritizesEncodingSpeed: Bool = true
+    ) -> [String: Any] {
         var settings: [String: Any] = [
             AVVideoCodecKey: codec.avCodec,
             AVVideoWidthKey: width,
@@ -1717,9 +1736,13 @@ struct SwiftUIOverlayVideoExporter {
         ]
 
         if codec == .hevcWithAlpha {
-            settings[AVVideoCompressionPropertiesKey] = [
+            var compressionProperties: [String: Any] = [
                 AVVideoAverageBitRateKey: Int(bitrateMbps * 1_000_000)
             ]
+            if prioritizesEncodingSpeed {
+                compressionProperties[kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality as String] = true
+            }
+            settings[AVVideoCompressionPropertiesKey] = compressionProperties
         }
 
         return settings

@@ -1,6 +1,8 @@
+import AVFoundation
 import CoreGraphics
 import Foundation
 import Testing
+import VideoToolbox
 @testable import RunningOverlay
 
 @MainActor
@@ -310,6 +312,80 @@ struct ExportPerformanceTests {
         let csvLines = profile.csvString().split(separator: "\n")
         #expect(csvLines[1].hasSuffix("\"release\",\"true\",\"0.75\""))
         #expect(csvLines[2].hasSuffix("\"release\",\"true\",\"0.25\""))
+    }
+
+    @Test func hevcOutputSettingsPrioritizeEncodingSpeedAndKeepBitrate() throws {
+        let settings = SwiftUIOverlayVideoExporter.outputSettings(
+            codec: .hevcWithAlpha,
+            width: 1920,
+            height: 1080,
+            bitrateMbps: 30
+        )
+        let properties = try #require(settings[AVVideoCompressionPropertiesKey] as? [String: Any])
+
+        #expect(properties[kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality as String] as? Bool == true)
+        #expect(properties[AVVideoAverageBitRateKey] as? Int == 30_000_000)
+    }
+
+    @Test func outputSettingsFallbackAndProResOmitEncodingSpeedPriority() throws {
+        let fallback = SwiftUIOverlayVideoExporter.outputSettings(
+            codec: .hevcWithAlpha,
+            width: 1920,
+            height: 1080,
+            bitrateMbps: 30,
+            prioritizesEncodingSpeed: false
+        )
+        let fallbackProperties = try #require(fallback[AVVideoCompressionPropertiesKey] as? [String: Any])
+        let proRes = SwiftUIOverlayVideoExporter.outputSettings(
+            codec: .proRes4444,
+            width: 1920,
+            height: 1080,
+            bitrateMbps: 30
+        )
+
+        #expect(fallbackProperties[kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality as String] == nil)
+        #expect(fallbackProperties[AVVideoAverageBitRateKey] as? Int == 30_000_000)
+        #expect(proRes[AVVideoCompressionPropertiesKey] == nil)
+    }
+
+    @Test func hevcExportWithEncodingSpeedPriorityKeepsFrameCountAndDuration() async throws {
+        let destination = FileManager.default.temporaryDirectory
+            .appendingPathComponent("running-overlay-hevc-speed-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: destination) }
+        var settings = ProjectSettings()
+        settings.resolution = .hd720
+        settings.frameRate = .fps30
+        settings.exportCodec = .hevcWithAlpha
+        let job = OverlayExportJob(
+            destinationURL: destination,
+            settings: settings,
+            activity: sampleRouteActivity(),
+            overlayLayout: OverlayLayout(elements: [
+                OverlayElement(type: .heartRate, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: .default)
+            ]),
+            segments: [OverlayExportSegment(startTime: 2, duration: 1, sourceFileName: "clip.mov")]
+        )
+
+        try await SwiftUIOverlayVideoExporter.export(job: job) { _ in }
+
+        let movieURL = try #require(
+            try FileManager.default.contentsOfDirectory(at: destination, includingPropertiesForKeys: nil)
+                .first { $0.pathExtension == "mov" }
+        )
+        let asset = AVURLAsset(url: movieURL)
+        let track = try #require(try await asset.loadTracks(withMediaType: .video).first)
+        let duration = try await asset.load(.duration)
+        let reader = try AVAssetReader(asset: asset)
+        let output = AVAssetReaderTrackOutput(track: track, outputSettings: nil)
+        reader.add(output)
+        reader.startReading()
+        var sampleCount = 0
+        while let sample = output.copyNextSampleBuffer() {
+            sampleCount += CMSampleBufferGetNumSamples(sample)
+        }
+
+        #expect(sampleCount == 30)
+        #expect(abs(duration.seconds - 1) < 0.001)
     }
 
     @Test func renderModelProbeEvaluatesEveryOverlayType() {

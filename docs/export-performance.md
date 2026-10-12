@@ -7,6 +7,10 @@ without changing visual output or export timing.
 ## Current Export Path
 
 - `SwiftUIOverlayVideoExporter` exports one transparent MOV per segment.
+- HEVC-with-alpha output sets VideoToolbox
+  `PrioritizeEncodingSpeedOverQuality`, keeping the project bitrate. If
+  `AVAssetWriter.canApply(outputSettings:)` rejects it, export falls back to
+  the default encoder priority.
 - Each video frame is currently represented by a layer-data sample time derived
   from project frame rate, segment time, FIT offset, and Layer Data FPS.
 - Shared SwiftUI overlay views are rasterized with `ImageRenderer`, then drawn
@@ -453,6 +457,61 @@ Implications for the next optimization work:
   identical Layer Data sample should remove most of the full-frame draw cost.
 - Clip-level multi-process export does not help HEVC with alpha on a single
   media-engine machine.
+
+## HEVC Encoder Parameter Round (2026-10-12)
+
+The same release-build template-segments benchmark compared HEVC-with-alpha
+compression properties on the real-FIT Interval Workout export. All variants
+kept the 30 Mbps average bitrate unless noted.
+
+| Variant | Total | Writer wait |
+|---|---:|---:|
+| Baseline | 15.46 s | 8.03 s |
+| `PrioritizeEncodingSpeedOverQuality` | 10.22 s | 4.15 s |
+| `PrioritizeEncodingSpeedOverQuality` + `RealTime` | 9.98 s | 4.02 s |
+| `RealTime` | 15.73 s | 7.87 s |
+| `AllowFrameReordering=false` | 16.56 s | 9.11 s |
+| `TargetQualityForAlpha=0.5` | 15.45 s | 7.99 s |
+| `MaxKeyFrameInterval=300` | 15.57 s | 8.10 s |
+| `ExpectedFrameRate=30` | 15.47 s | 8.04 s |
+| `Quality=0.5` without average bitrate | 15.15 s | 7.59 s |
+| Append only frames whose Layer Data sample changed (variable frame rate, experiment only) | 4.18 s | 0.00 s |
+
+Quality was measured by decoding all frames of the first three clips and
+comparing them with a ProRes 4444 export of the same content, using
+premultiplied color PSNR and alpha PSNR:
+
+| Variant | Color PSNR | Alpha PSNR | Max alpha error | Output size (10 clips) |
+|---|---:|---:|---:|---:|
+| Baseline | 45.21 dB | 56.06 dB | 22/255 | 5.0 MB |
+| Encoding speed priority | 45.04 dB | 52.48 dB | 28/255 | 6.6 MB |
+| Variable frame rate | 45.18 dB | 55.98 dB | 22/255 | 1.3 MB |
+
+Encoding speed priority is now the default for HEVC with alpha. After the
+change, release benchmark totals were:
+
+| Run | Before | After |
+|---|---:|---:|
+| Real FIT, Interval Workout (per overlay) | 15.45 s | 10.24 s |
+| Real FIT, Race (full frame) | 15.49 s | 12.90 s |
+| Synthetic FIT, Interval Workout (per overlay) | 15.15-16.33 s | 10.18 s |
+| Synthetic FIT, Race (full frame) | 15.48 s | 10.37 s |
+
+The real-FIT Race export is now app-bound: its writer wait dropped to 0.04 s,
+and full-frame pixel-buffer drawing takes 8.04 s.
+
+Variable-frame-rate output was not adopted. It produces about 5 fps average
+frame rate files, which some editors may treat as constant frame rate, and it
+needs an explicit `endSession(atSourceTime:)` at the clip end to keep the
+duration exact. It needs NLE compatibility testing before it can become an
+export option.
+
+The variable-frame-rate run also showed that skipping 1,250 of 1,500
+full-frame draws only reduced Race draw time from 7.82 s to 6.58 s. Most
+full-frame draw cost is the first draw of each newly rendered `ImageRenderer`
+image rather than repeated draws of a reused image, so reusing pixel buffers
+for repeated samples would save little. Investigate the first-draw conversion
+cost instead.
 
 ## Follow-Up Directions
 

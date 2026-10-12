@@ -532,7 +532,9 @@ Initial export options:
 
 - Export format: transparent MOV overlay video.
 - Codec:
-  - H.265 with alpha.
+  - H.265 with alpha. The encoder is asked to prioritize encoding speed over
+    quality; if the encoder rejects that setting, export falls back to the
+    default encoder priority.
   - ProRes 4444.
 - Destination folder, defaulting to the folder containing the first video in the media pool and falling back to `~/Movies` when no video files are loaded.
 - Resolution: from project settings.
