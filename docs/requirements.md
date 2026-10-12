@@ -95,6 +95,7 @@ Layout interaction requirements:
 - The media browser default width is 380 px with a 300 px minimum.
 - The inspector default width is 460 px with a 460 px minimum.
 - Media Pool width must remain stable across all media operations; importing, matching, or filtering media must not change the Media Pool pane width.
+- The main editor opens as a single window; File > New Window is unavailable, while activity and video import remain available from the File menu.
 - Inspector width must remain stable when switching between outer/detail/editing states or when selecting a timeline clip; internal Inspector hierarchy changes must not resize the right pane.
 - Resizable split panes should keep stable minimum widths so dense controls and row labels do not collapse.
 - The timeline spans the full window width instead of being constrained to the preview column.

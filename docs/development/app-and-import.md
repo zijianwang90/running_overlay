@@ -39,6 +39,7 @@ Current implementation:
 - Left Pool default width is 380 px (min 300 px) and Inspector default width is 460 px (min 460 px); both panels remain user-resizable via custom drag handles.
 - The horizontal three-column layout in `MainEditorView` is implemented as a single `HStack` with `@State`-tracked widths (`mediaPoolWidth`, `inspectorWidth`) and custom `HorizontalResizeHandle` dividers instead of `HSplitView`. This guarantees that internal Inspector selection changes (`outer/clip/overlay detail`) and Left Pool content changes (e.g., switching Media Pool/Overlay Pool/Templates, importing media, or matching clips) cannot reset the left or right pane widths.
 - `MainEditorView` owns the active left-pool mode. The compact `Media Pool` / `Overlay Pool` / `Templates` switch sits in the top app toolbar, aligned to the left pane width, while `PoolPanelView` renders the selected pool content below. The app toolbar no longer carries global FIT/Videos import buttons.
+- The main editor uses a single-instance SwiftUI `Window` scene. The File menu's default New Window command is replaced with activity and video import commands.
 - Media, Preview, and Inspector top headers share a unified header height and shared compact header button size tokens.
 - The initial `VSplitView` allocation favors the top editor stack more strongly by using a lower default Timeline ideal height (`180`) with a `160` minimum, while keeping the split boundary user-draggable.
 
