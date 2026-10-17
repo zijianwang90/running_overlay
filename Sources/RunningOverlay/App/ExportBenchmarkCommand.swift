@@ -3,10 +3,12 @@ import Foundation
 struct ExportBenchmarkCommand: Equatable {
     var snapshotURL: URL
     var outputDirectory: URL?
+    var profilesRenderModel = false
 
     static func parse(arguments: [String] = CommandLine.arguments) throws -> ExportBenchmarkCommand? {
         var snapshotPath: String?
         var outputPath: String?
+        var profilesRenderModel = false
         var index = 1
 
         while index < arguments.count {
@@ -24,6 +26,8 @@ struct ExportBenchmarkCommand: Equatable {
                     throw ExportBenchmarkError.missingValue(argument)
                 }
                 outputPath = arguments[index]
+            case "--profile-render-model":
+                profilesRenderModel = true
             default:
                 break
             }
@@ -36,7 +40,8 @@ struct ExportBenchmarkCommand: Equatable {
 
         return ExportBenchmarkCommand(
             snapshotURL: resolvedURL(for: snapshotPath),
-            outputDirectory: outputPath.map(resolvedURL(for:))
+            outputDirectory: outputPath.map(resolvedURL(for:)),
+            profilesRenderModel: profilesRenderModel
         )
     }
 
@@ -91,7 +96,9 @@ enum ExportBenchmarkRunner {
             activity: snapshot.activity,
             overlayLayout: OverlayLayout(elements: snapshot.overlayElements.map(\.overlayElement)),
             fitStartTime: snapshot.timeline.fitStartTime,
-            segments: segments
+            segments: segments,
+            writesProfile: true,
+            profilesRenderModel: command.profilesRenderModel
         )
 
         print("[RunningOverlayBenchmark] snapshot=\(command.snapshotURL.path)")
@@ -285,7 +292,8 @@ enum ElevationBenchmarkRunner {
             activity: activity,
             overlayLayout: OverlayLayout(elements: elements),
             fitStartTime: fitStartTime,
-            segments: [segment]
+            segments: [segment],
+            writesProfile: true
         )
 
         print("[ElevationBenchmark] >>> run \(label) (cache=\(cacheEnabled))")
@@ -398,6 +406,7 @@ struct TemplateSegmentsBenchmarkCommand: Equatable {
     var shardIndex: Int
     var shardCount: Int
     var outputDirectory: URL?
+    var profilesRenderModel = false
 
     static func parse(arguments: [String] = CommandLine.arguments) throws -> TemplateSegmentsBenchmarkCommand? {
         var fitPath: String?
@@ -409,6 +418,7 @@ struct TemplateSegmentsBenchmarkCommand: Equatable {
         var codec: ProjectExportCodec = .hevcWithAlpha
         var shardIndex = 0
         var shardCount = 1
+        var profilesRenderModel = false
         var index = 1
 
         while index < arguments.count {
@@ -440,6 +450,8 @@ struct TemplateSegmentsBenchmarkCommand: Equatable {
                 shardIndex = Int(try value()) ?? 0
             case "--shard-count":
                 shardCount = Int(try value()) ?? 1
+            case "--profile-render-model":
+                profilesRenderModel = true
             default:
                 break
             }
@@ -460,7 +472,8 @@ struct TemplateSegmentsBenchmarkCommand: Equatable {
             codec: codec,
             shardIndex: effectiveShardIndex,
             shardCount: effectiveShardCount,
-            outputDirectory: outputPath.map(resolvedURL(for:))
+            outputDirectory: outputPath.map(resolvedURL(for:)),
+            profilesRenderModel: profilesRenderModel
         )
     }
 
@@ -527,7 +540,9 @@ enum TemplateSegmentsBenchmarkRunner {
             activity: activity,
             overlayLayout: OverlayLayout(elements: elements),
             fitStartTime: 0,
-            segments: segments
+            segments: segments,
+            writesProfile: true,
+            profilesRenderModel: command.profilesRenderModel
         )
         try await SwiftUIOverlayVideoExporter.export(job: job) { _ in }
         let wallClock = Date().timeIntervalSince(startedAt)
