@@ -90,7 +90,8 @@
       "content scrolls independently when needed",
       "avoid floating cards inside panels",
       "empty states preserve surrounding panel context",
-      "split panes keep stable minimum widths"
+      "split panes keep stable minimum widths",
+      "side pane widths and divider drag limits reserve Preview and divider space within the actual window width; preferred widths return on expansion"
     ]
   },
   "components": {

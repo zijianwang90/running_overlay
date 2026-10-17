@@ -30,9 +30,10 @@ struct RunningOverlayApp: App {
             MainEditorView()
                 .environmentObject(project)
                 .preferredColorScheme(.dark)
-                .frame(minWidth: 1300, minHeight: 760)
+                .frame(minWidth: EditorPaneLayout.minimumWindowWidth, minHeight: 760)
         }
         .windowStyle(.titleBar)
+        .windowResizability(.contentMinSize)
         .windowToolbarStyle(.unifiedCompact(showsTitle: false))
         .commands {
             CommandGroup(replacing: .undoRedo) {
