@@ -388,6 +388,117 @@ struct ExportPerformanceTests {
         #expect(abs(duration.seconds - 1) < 0.001)
     }
 
+    @Test func pixelBufferImageConverterMatchesCoreGraphicsDraw() throws {
+        let width = 64
+        let height = 32
+        let extendedSRGB = try #require(CGColorSpace(name: CGColorSpace.extendedSRGB))
+        let floatInfo = CGBitmapInfo.floatComponents.rawValue
+            | CGBitmapInfo.byteOrder16Little.rawValue
+            | CGImageAlphaInfo.premultipliedLast.rawValue
+        let source = try #require(CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 16,
+            bytesPerRow: 0,
+            space: extendedSRGB,
+            bitmapInfo: floatInfo
+        ))
+        source.setFillColor(CGColor(srgbRed: 0.2, green: 0.8, blue: 0.4, alpha: 0.6))
+        source.fill(CGRect(x: 0, y: 0, width: 40, height: 32))
+        source.setFillColor(CGColor(srgbRed: 1, green: 0.3, blue: 0.1, alpha: 1))
+        source.fillEllipse(in: CGRect(x: 30, y: 4, width: 30, height: 24))
+        let image = try #require(source.makeImage())
+
+        let converted = ExportPixelBufferImageConverter.converted(image)
+        let expected = try #require(SwiftUIOverlayVideoExporter.rasterizeCanvas(
+            draws: [(image, CGRect(x: 0, y: 0, width: width, height: height))],
+            canvasSize: CGSize(width: width, height: height)
+        ))
+        let actual = try #require(SwiftUIOverlayVideoExporter.rasterizeCanvas(
+            draws: [(converted, CGRect(x: 0, y: 0, width: width, height: height))],
+            canvasSize: CGSize(width: width, height: height)
+        ))
+
+        #expect(converted.bitsPerComponent == 8)
+        #expect(converted.bitsPerPixel == 32)
+        #expect(converted.alphaInfo == .premultipliedFirst)
+        #expect(converted.byteOrderInfo == .order32Little)
+        #expect(ExportPixelBufferImageConverter.converted(converted) === converted)
+        #expect(expected.count == actual.count)
+        let maxDifference = zip(expected, actual).map { abs(Int($0) - Int($1)) }.max() ?? 0
+        #expect(maxDifference <= 1)
+    }
+
+    @Test(arguments: [
+        OverlayExportRenderPath.fullFrameSingleLayer,
+        OverlayExportRenderPath.perOverlay,
+        OverlayExportRenderPath.layeredRegion
+    ])
+    func exportReappendsPreviousFrameForRepeatedLayerDataSamples(_ renderPath: OverlayExportRenderPath) async throws {
+        let canvasSize = CGSize(width: 1280, height: 720)
+        let overlays: [OverlayElement]
+        switch renderPath {
+        case .fullFrameSingleLayer:
+            var style = OverlayStyle.default
+            style.routeMapWidth = 1280
+            style.routeMapHeight = 720
+            // No map background, so the export does not request MapKit snapshots.
+            style.routeMapBackgroundStyle = .none
+            overlays = [OverlayElement(type: .routeMap, position: CGPoint(x: 0.5, y: 0.5), scale: 2.0, style: style)]
+        case .perOverlay:
+            overlays = [
+                OverlayElement(type: .heartRate, position: CGPoint(x: 0.1, y: 0.1), scale: 1, style: .default),
+                OverlayElement(type: .pace, position: CGPoint(x: 0.9, y: 0.9), scale: 1, style: .default)
+            ]
+        case .layeredRegion:
+            overlays = [
+                OverlayElement(type: .decorSolidColor, position: CGPoint(x: 0.2, y: 0.2), scale: 1, style: .default),
+                OverlayElement(type: .heartRate, position: CGPoint(x: 0.7, y: 0.7), scale: 1, style: .default)
+            ]
+        }
+        let plan = ExportRenderPlan(overlays: overlays, canvasSize: canvasSize, activity: sampleRouteActivity())
+        try #require(plan.renderPath == renderPath)
+
+        let destination = FileManager.default.temporaryDirectory
+            .appendingPathComponent("running-overlay-frame-reuse-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: destination) }
+        var settings = ProjectSettings()
+        settings.resolution = .hd720
+        settings.frameRate = .fps30
+        settings.layerDataFrameRate = .fps5
+        settings.exportCodec = .proRes4444
+        let job = OverlayExportJob(
+            destinationURL: destination,
+            settings: settings,
+            activity: sampleRouteActivity(),
+            overlayLayout: OverlayLayout(elements: overlays),
+            segments: [OverlayExportSegment(startTime: 2, duration: 1, sourceFileName: "clip.mov")],
+            writesProfile: true
+        )
+
+        try await SwiftUIOverlayVideoExporter.export(job: job) { _ in }
+
+        let files = try FileManager.default.contentsOfDirectory(at: destination, includingPropertiesForKeys: nil)
+        let profileURL = try #require(files.first { $0.lastPathComponent.hasPrefix("export_profile_") && $0.pathExtension == "json" })
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let segment = try #require(try decoder.decode(OverlayExportProfile.self, from: Data(contentsOf: profileURL)).segments.first)
+        #expect(segment.renderPath == renderPath)
+        #expect(segment.renderedFrameCount == 5)
+        #expect(segment.reusedFrameCount == 25)
+
+        let movieURL = try #require(files.first { $0.pathExtension == "mov" })
+        let frames = try await decodedBGRAFrames(movieURL)
+        #expect(frames.count == 30)
+        for (index, frame) in frames.enumerated() {
+            #expect(frame.contains { $0 != 0 }, "frame \(index) is empty")
+            if index % 6 != 0 {
+                #expect(frame == frames[index - index % 6], "frame \(index) differs from its Layer Data sample")
+            }
+        }
+    }
+
     @Test func renderModelProbeEvaluatesEveryOverlayType() {
         let overlays = OverlayElementType.allCases.map { type in
             OverlayElement(type: type, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: .default)
@@ -915,6 +1026,36 @@ struct ExportPerformanceTests {
 
     /// Layout modeled on the local four-chart benchmark template: many small
     /// widgets spread across a 1080p canvas with four full-profile charts.
+    private func decodedBGRAFrames(_ url: URL) async throws -> [[UInt8]] {
+        let asset = AVURLAsset(url: url)
+        let track = try #require(try await asset.loadTracks(withMediaType: .video).first)
+        let reader = try AVAssetReader(asset: asset)
+        let output = AVAssetReaderTrackOutput(
+            track: track,
+            outputSettings: [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
+        )
+        reader.add(output)
+        reader.startReading()
+        var frames: [[UInt8]] = []
+        while let sample = output.copyNextSampleBuffer() {
+            let buffer = try #require(CMSampleBufferGetImageBuffer(sample))
+            CVPixelBufferLockBaseAddress(buffer, .readOnly)
+            defer { CVPixelBufferUnlockBaseAddress(buffer, .readOnly) }
+            let base = try #require(CVPixelBufferGetBaseAddress(buffer))
+            let height = CVPixelBufferGetHeight(buffer)
+            let rowBytes = CVPixelBufferGetBytesPerRow(buffer)
+            let rowLength = CVPixelBufferGetWidth(buffer) * 4
+            var frame: [UInt8] = []
+            frame.reserveCapacity(rowLength * height)
+            for row in 0..<height {
+                let start = base.advanced(by: row * rowBytes).assumingMemoryBound(to: UInt8.self)
+                frame.append(contentsOf: UnsafeBufferPointer(start: start, count: rowLength))
+            }
+            frames.append(frame)
+        }
+        return frames
+    }
+
     private func multiWidgetBenchmarkLayout() -> [OverlayElement] {
         var chartStyle = OverlayStyle.default
         chartStyle.elevationChart.progressMode = .fullProfile

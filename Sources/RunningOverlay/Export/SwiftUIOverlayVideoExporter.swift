@@ -1,3 +1,4 @@
+import Accelerate
 import AppKit
 import AVFoundation
 import VideoToolbox
@@ -477,6 +478,70 @@ enum ExportRenderModelProbe {
     }
 }
 
+/// `ImageRenderer` produces 16-bit float extended-sRGB images. The first
+/// CoreGraphics draw of a full-canvas image into the 8-bit BGRA export pixel
+/// buffer converts every pixel through color matching, which dominated
+/// full-frame export time. vImage performs the same conversion about twice as
+/// fast, so full-frame renders are converted once into the pixel-buffer format.
+/// Smaller per-overlay images are cheaper to draw directly and are not
+/// converted. Conversion failures keep the original image.
+enum ExportPixelBufferImageConverter {
+    static let bitmapInfo = CGBitmapInfo(
+        rawValue: CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
+    )
+
+    static func converted(_ image: CGImage) -> CGImage {
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        if image.bitsPerComponent == 8,
+           image.bitsPerPixel == 32,
+           image.alphaInfo == .premultipliedFirst,
+           image.byteOrderInfo == .order32Little,
+           !image.bitmapInfo.contains(.floatComponents),
+           image.colorSpace == colorSpace {
+            return image
+        }
+        guard var format = vImage_CGImageFormat(
+            bitsPerComponent: 8,
+            bitsPerPixel: 32,
+            colorSpace: colorSpace,
+            bitmapInfo: bitmapInfo
+        ) else {
+            return image
+        }
+        var buffer = vImage_Buffer()
+        guard vImageBuffer_InitWithCGImage(&buffer, &format, nil, image, vImage_Flags(kvImageNoFlags)) == kvImageNoError else {
+            return image
+        }
+        // Wrap the BGRA buffer directly so the image keeps the pixel-buffer
+        // layout; the provider frees the buffer with the image.
+        guard let provider = CGDataProvider(
+            dataInfo: nil,
+            data: buffer.data,
+            size: buffer.rowBytes * Int(buffer.height),
+            releaseData: { _, data, _ in free(UnsafeMutableRawPointer(mutating: data)) }
+        ) else {
+            free(buffer.data)
+            return image
+        }
+        guard let converted = CGImage(
+            width: Int(buffer.width),
+            height: Int(buffer.height),
+            bitsPerComponent: 8,
+            bitsPerPixel: 32,
+            bytesPerRow: buffer.rowBytes,
+            space: colorSpace,
+            bitmapInfo: bitmapInfo,
+            provider: provider,
+            decode: nil,
+            shouldInterpolate: false,
+            intent: .defaultIntent
+        ) else {
+            return image
+        }
+        return converted
+    }
+}
+
 struct SwiftUIOverlayVideoExporter {
     static func export(job: OverlayExportJob, progress: @escaping @MainActor (OverlayExportProgress) -> Void) async throws {
         guard !job.segments.isEmpty else {
@@ -670,7 +735,10 @@ struct SwiftUIOverlayVideoExporter {
             height: height,
             bitrateMbps: job.settings.bitrateMbps
         )
-        if !writer.canApply(outputSettings: outputSettings, forMediaType: .video) {
+        // Only HEVC adds an optional encoder property, so only HEVC needs the
+        // compatibility check; it can create an encoder session per segment.
+        if job.settings.exportCodec == .hevcWithAlpha,
+           !writer.canApply(outputSettings: outputSettings, forMediaType: .video) {
             outputSettings = Self.outputSettings(
                 codec: job.settings.exportCodec,
                 width: width,
@@ -726,9 +794,7 @@ struct SwiftUIOverlayVideoExporter {
         var renderedFrameCount = 0
         var reusedFrameCount = 0
         var dynamicRenderCount = 0
-        var previousSampleElapsed: TimeInterval?
-        var previousRenderedImage: CGImage?
-        var previousOverlayImages: [ExportOverlayRenderedImage] = []
+        var previousFrame: (sampleElapsed: TimeInterval, pixelBuffer: CVPixelBuffer)?
         var overlayStats = Dictionary(uniqueKeysWithValues: renderPlan.overlayRenderItems.map {
             (
                 $0.id,
@@ -764,31 +830,25 @@ struct SwiftUIOverlayVideoExporter {
                 writer.cancelWriting()
                 throw OverlayExportError.cancelled
             }
-            let waitStartedAt = Date()
-            while !input.isReadyForMoreMediaData {
-                if Task.isCancelled {
-                    writer.cancelWriting()
-                    throw OverlayExportError.cancelled
-                }
-                try await Task.sleep(nanoseconds: 1_000_000)
-            }
-            writerWaitDuration += Date().timeIntervalSince(waitStartedAt)
-
-            guard let pixelBuffer = makePixelBuffer(from: pixelBufferPool) else {
-                throw SwiftUIOverlayExportError.cannotCreatePixelBuffer
-            }
 
             var renderDurationForFrame: TimeInterval = 0
             var drawDurationForFrame: TimeInterval = 0
             var reusedRenderForFrame = false
+            let pixelBuffer: CVPixelBuffer
+            if let previousFrame, previousFrame.sampleElapsed == sample.sampleElapsed {
+                // Writers only read appended buffers, so a repeated Layer Data sample
+                // re-appends the previous frame instead of drawing it again.
+                pixelBuffer = previousFrame.pixelBuffer
+                reusedFrameCount += 1
+                reusedRenderForFrame = true
+            } else {
+                guard let newPixelBuffer = makePixelBuffer(from: pixelBufferPool) else {
+                    throw SwiftUIOverlayExportError.cannotCreatePixelBuffer
+                }
+                pixelBuffer = newPixelBuffer
 
-            if renderPlan.usesPerOverlayRender {
-                let overlayImages: [ExportOverlayRenderedImage]
-                if previousSampleElapsed == sample.sampleElapsed, !previousOverlayImages.isEmpty {
-                    overlayImages = previousOverlayImages
-                    reusedFrameCount += 1
-                    reusedRenderForFrame = true
-                } else {
+                if renderPlan.usesPerOverlayRender {
+                    let overlayImages: [ExportOverlayRenderedImage]
                     let renderStartedAt = Date()
                     var frameModelProbeDuration: TimeInterval = 0
                     var renderedImages: [ExportOverlayRenderedImage] = []
@@ -874,32 +934,24 @@ struct SwiftUIOverlayVideoExporter {
                     renderDurationForFrame = renderDuration
                     dynamicRenderDuration += renderDuration
                     imageRenderDuration += renderDuration
-                    previousSampleElapsed = sample.sampleElapsed
-                    previousOverlayImages = renderedImages
                     overlayImages = renderedImages
                     renderedFrameCount += 1
                     dynamicRenderCount += 1
-                }
 
-                let drawStartedAt = Date()
-                try clearAndDraw(cgImages: overlayImages.map { ($0.cgImage, $0.renderRect) }, into: pixelBuffer, size: renderPlan.canvasSize)
-                let duration = Date().timeIntervalSince(drawStartedAt)
-                drawDurationForFrame += duration
-                dynamicDrawDuration += duration
-                pixelBufferDrawDuration += duration
-                overlayDrawCount += overlayImages.count
-                let drawDurationPerOverlay = overlayImages.isEmpty ? 0 : duration / Double(overlayImages.count)
-                for overlayImage in overlayImages {
-                    overlayStats[overlayImage.overlayID]?.drawCount += 1
-                    overlayStats[overlayImage.overlayID]?.drawDuration += drawDurationPerOverlay
-                }
-            } else if renderPlan.usesFullFrameDynamicRender {
-                let frameImage: CGImage
-                if previousSampleElapsed == sample.sampleElapsed, let cachedImage = previousRenderedImage {
-                    frameImage = cachedImage
-                    reusedFrameCount += 1
-                    reusedRenderForFrame = true
-                } else {
+                    let drawStartedAt = Date()
+                    try clearAndDraw(cgImages: overlayImages.map { ($0.cgImage, $0.renderRect) }, into: pixelBuffer, size: renderPlan.canvasSize)
+                    let duration = Date().timeIntervalSince(drawStartedAt)
+                    drawDurationForFrame += duration
+                    dynamicDrawDuration += duration
+                    pixelBufferDrawDuration += duration
+                    overlayDrawCount += overlayImages.count
+                    let drawDurationPerOverlay = overlayImages.isEmpty ? 0 : duration / Double(overlayImages.count)
+                    for overlayImage in overlayImages {
+                        overlayStats[overlayImage.overlayID]?.drawCount += 1
+                        overlayStats[overlayImage.overlayID]?.drawDuration += drawDurationPerOverlay
+                    }
+                } else if renderPlan.usesFullFrameDynamicRender {
+                    let frameImage: CGImage
                     _ = probeRenderModel(renderPlan.allOverlays, elapsedTime: sample.sampleElapsed)
                     let renderStartedAt = Date()
                     let renderedImage = try await renderFullFrame(
@@ -913,74 +965,79 @@ struct SwiftUIOverlayVideoExporter {
                     renderDurationForFrame = renderDuration
                     dynamicRenderDuration += renderDuration
                     imageRenderDuration += renderDuration
-                    previousSampleElapsed = sample.sampleElapsed
-                    previousRenderedImage = renderedImage
                     frameImage = renderedImage
                     renderedFrameCount += 1
                     dynamicRenderCount += 1
-                }
 
-                let drawStartedAt = Date()
-                try clearAndDraw(cgImage: frameImage, into: pixelBuffer, size: renderPlan.canvasSize)
-                let duration = Date().timeIntervalSince(drawStartedAt)
-                drawDurationForFrame += duration
-                dynamicDrawDuration += duration
-                pixelBufferDrawDuration += duration
-            } else {
-                let dynamicImage: CGImage?
-                if renderPlan.dynamicOverlays.isEmpty {
-                    dynamicImage = nil
-                } else if previousSampleElapsed == sample.sampleElapsed, let cachedDynamicImage = previousRenderedImage {
-                    dynamicImage = cachedDynamicImage
-                    reusedFrameCount += 1
-                    reusedRenderForFrame = true
-                } else {
-                    _ = probeRenderModel(renderPlan.dynamicOverlays, elapsedTime: sample.sampleElapsed)
-                    let renderStartedAt = Date()
-                    dynamicImage = try await renderLayer(
-                        size: renderPlan.canvasSize,
-                        renderRect: renderPlan.dynamicRenderRect,
-                        overlays: renderPlan.dynamicOverlays,
-                        activity: job.activity,
-                        elapsedTime: sample.sampleElapsed,
-                        routeMapSnapshots: routeMapSnapshots
-                    )
-                    let renderDuration = Date().timeIntervalSince(renderStartedAt)
-                    renderDurationForFrame = renderDuration
-                    dynamicRenderDuration += renderDuration
-                    imageRenderDuration += renderDuration
-                    if let dynamicImage {
-                        previousSampleElapsed = sample.sampleElapsed
-                        previousRenderedImage = dynamicImage
-                        previousOverlayImages = []
-                        renderedFrameCount += 1
-                        dynamicRenderCount += 1
-                    }
-                }
-
-                let clearStartedAt = Date()
-                try clear(pixelBuffer: pixelBuffer, size: CGSize(width: width, height: height))
-                let clearDuration = Date().timeIntervalSince(clearStartedAt)
-                drawDurationForFrame += clearDuration
-                pixelBufferDrawDuration += clearDuration
-                if let staticLayer {
-                    let staticDrawStartedAt = Date()
-                    try draw(cgImage: staticLayer, into: pixelBuffer, rect: CGRect(origin: .zero, size: renderPlan.canvasSize))
-                    let duration = Date().timeIntervalSince(staticDrawStartedAt)
-                    drawDurationForFrame += duration
-                    staticDrawDuration += duration
-                    pixelBufferDrawDuration += duration
-                }
-                if let dynamicImage {
-                    let dynamicDrawStartedAt = Date()
-                    try draw(cgImage: dynamicImage, into: pixelBuffer, rect: renderPlan.dynamicRenderRect)
-                    let duration = Date().timeIntervalSince(dynamicDrawStartedAt)
+                    let drawStartedAt = Date()
+                    try clearAndDraw(cgImage: frameImage, into: pixelBuffer, size: renderPlan.canvasSize)
+                    let duration = Date().timeIntervalSince(drawStartedAt)
                     drawDurationForFrame += duration
                     dynamicDrawDuration += duration
                     pixelBufferDrawDuration += duration
+                } else {
+                    let dynamicImage: CGImage?
+                    if renderPlan.dynamicOverlays.isEmpty {
+                        dynamicImage = nil
+                    } else {
+                        _ = probeRenderModel(renderPlan.dynamicOverlays, elapsedTime: sample.sampleElapsed)
+                        let renderStartedAt = Date()
+                        dynamicImage = try await renderLayer(
+                            size: renderPlan.canvasSize,
+                            renderRect: renderPlan.dynamicRenderRect,
+                            overlays: renderPlan.dynamicOverlays,
+                            activity: job.activity,
+                            elapsedTime: sample.sampleElapsed,
+                            routeMapSnapshots: routeMapSnapshots
+                        )
+                        let renderDuration = Date().timeIntervalSince(renderStartedAt)
+                        renderDurationForFrame = renderDuration
+                        dynamicRenderDuration += renderDuration
+                        imageRenderDuration += renderDuration
+                        if let dynamicImage {
+                            renderedFrameCount += 1
+                            dynamicRenderCount += 1
+                        }
+                    }
+
+                    let clearStartedAt = Date()
+                    try clear(pixelBuffer: pixelBuffer, size: CGSize(width: width, height: height))
+                    let clearDuration = Date().timeIntervalSince(clearStartedAt)
+                    drawDurationForFrame += clearDuration
+                    pixelBufferDrawDuration += clearDuration
+                    if let staticLayer {
+                        let staticDrawStartedAt = Date()
+                        try draw(cgImage: staticLayer, into: pixelBuffer, rect: CGRect(origin: .zero, size: renderPlan.canvasSize))
+                        let duration = Date().timeIntervalSince(staticDrawStartedAt)
+                        drawDurationForFrame += duration
+                        staticDrawDuration += duration
+                        pixelBufferDrawDuration += duration
+                    }
+                    if let dynamicImage {
+                        let dynamicDrawStartedAt = Date()
+                        try draw(cgImage: dynamicImage, into: pixelBuffer, rect: renderPlan.dynamicRenderRect)
+                        let duration = Date().timeIntervalSince(dynamicDrawStartedAt)
+                        drawDurationForFrame += duration
+                        dynamicDrawDuration += duration
+                        pixelBufferDrawDuration += duration
+                    }
                 }
+                previousFrame = (sample.sampleElapsed, pixelBuffer)
             }
 
+            // Wait for the writer only after rendering, so the encoder drains
+            // queued frames while the next Layer Data sample renders.
+            let waitStartedAt = Date()
+            while !input.isReadyForMoreMediaData {
+                if Task.isCancelled {
+                    writer.cancelWriting()
+                    throw OverlayExportError.cancelled
+                }
+                // Repeated frames append in bursts, so poll finely to resume
+                // as soon as the encoder accepts the next frame.
+                try await Task.sleep(nanoseconds: 100_000)
+            }
+            writerWaitDuration += Date().timeIntervalSince(waitStartedAt)
             let presentationTime = CMTime(seconds: sample.clipElapsed, preferredTimescale: 600)
             let appendStartedAt = Date()
             guard adaptor.append(pixelBuffer, withPresentationTime: presentationTime) else {
@@ -1208,7 +1265,7 @@ struct SwiftUIOverlayVideoExporter {
                 renderer.isOpaque = false
                 renderer.proposedSize = ProposedViewSize(width: size.width, height: size.height)
                 renderer.scale = 1
-                return renderer.cgImage
+                return renderer.cgImage.map(ExportPixelBufferImageConverter.converted)
             }
         }) else {
             throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce a full-frame image.")
