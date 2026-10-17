@@ -10,11 +10,24 @@ without changing visual output or export timing.
 - HEVC-with-alpha output sets VideoToolbox
   `PrioritizeEncodingSpeedOverQuality`, keeping the project bitrate. If
   `AVAssetWriter.canApply(outputSettings:)` rejects it, export falls back to
-  the default encoder priority.
+  the default encoder priority. Only HEVC runs that check, because it costs
+  about 35 ms per segment.
 - Each video frame is currently represented by a layer-data sample time derived
   from project frame rate, segment time, FIT offset, and Layer Data FPS.
 - Shared SwiftUI overlay views are rasterized with `ImageRenderer`, then drawn
   into an `AVAssetWriterInputPixelBufferAdaptor` pixel buffer.
+- Only the first video frame of each Layer Data sample is rendered and drawn.
+  Later frames with the same sample time append that same pixel buffer again;
+  writers only read appended buffers. Profile draw counts and durations
+  therefore cover rendered frames only.
+- `ImageRenderer` returns 16-bit float extended-sRGB images. The full-frame
+  path converts each render once with vImage into the 8-bit BGRA DeviceRGB
+  pixel-buffer format (`ExportPixelBufferImageConverter`) before drawing.
+  Per-overlay and layered images are drawn directly, because reading their
+  pixels for conversion costs more than CoreGraphics drawing them.
+- The loop waits for `isReadyForMoreMediaData` after rendering a frame and
+  just before appending it, polling every 0.1 ms, so the encoder drains
+  queued repeated frames while the next sample renders.
 - MOV export now separates conservative static decor overlays from dynamic
   data overlays. Static decor renders once per task, and dynamic data overlays
   render only inside their padded union rect unless that rect covers most of
@@ -24,9 +37,8 @@ without changing visual output or export timing.
   one-draw cost profile.
 - When the dynamic union rect is full-frame but each dynamic overlay has a
   reliable smaller render rect, MOV export can use the per-overlay path:
-  render each overlay into its padded local rect, cache the set for identical
-  Layer Data sample times, then draw those overlay images into one pixel buffer
-  context.
+  render each overlay into its padded local rect, then draw those overlay
+  images into one pixel buffer context.
 
 ## First Milestone
 
@@ -513,8 +525,128 @@ image rather than repeated draws of a reused image, so reusing pixel buffers
 for repeated samples would save little. Investigate the first-draw conversion
 cost instead.
 
+## First-Draw Conversion Round (2026-10-16)
+
+After HEVC encoding speed priority, the real-FIT Race export was app-bound:
+full-frame drawing took 8.04 s of 12.90 s.
+
+Diagnosis:
+
+- `ImageRenderer.cgImage` returns 16-bit half-float, premultiplied RGBA
+  images in `kCGColorSpaceExtendedSRGB` (64 bits per pixel).
+- The first CoreGraphics draw of a 1920x1080 render into the 8-bit BGRA
+  DeviceRGB pixel buffer took 30-57 ms because every pixel is converted and
+  color matched; drawing the same image again took about 0.6 ms because the
+  converted data is cached. This explains why skipping repeated draws alone
+  saved little.
+- Reading `ImageRenderer` image pixels is itself expensive, because the
+  pixels are produced lazily: about 12 ms for a full-frame image and about
+  1.7 ms for a typical per-overlay image, whether through
+  `CGDataProviderCopyData` or `vImageBuffer_InitWithCGImage`. The vImage
+  conversion itself took 0.09 s for 2,251 overlay images.
+
+Results with ProRes 4444 (app-bound), real FIT, 10 x 5-second clips:
+
+| Variant | Race (full frame) | Easy Run (per overlay) |
+|---|---:|---:|
+| Pixel-buffer reuse, CoreGraphics first draw | 11.52 s (draw 6.39 s) | 5.42 s (draw 1.39 s) |
+| Pixel-buffer reuse, vImage conversion of every render | 8.82 s (draw 0.53 s, render +3.06 s) | 8.96 s (render +4.06 s) |
+
+The adopted change:
+
+- Re-append the previous pixel buffer for frames whose Layer Data sample
+  matches the previous frame, on every render path.
+- Convert full-frame renders once with `vImageBuffer_InitWithCGImage` into the
+  pixel-buffer format; leave per-overlay and layered images to CoreGraphics.
+
+Rejected alternatives:
+
+- Rendering SwiftUI directly into the pixel-buffer `CGContext` with
+  `ImageRenderer.render(rasterizationScale:renderer:)` was slower (16.60 s of
+  render for 75 frames versus 1.12 s) and visibly changed shadows and glows,
+  for example the Distance Timeline progress marker halo. It violates
+  preview/export parity.
+- Converting per-overlay images with vImage was slower than drawing them,
+  because of the lazy pixel read cost above.
+
+Repeated-frame reuse exposed two writer-side costs on the synthetic-FIT
+Race ProRes 4444 export, which has sparse content and cheap draws (three
+interleaved runs each unless noted):
+
+| Build | Total |
+|---|---:|
+| `main` before this work | 5.65-5.72 s |
+| HEVC speed priority build | 6.03-6.07 s |
+| Pixel-buffer reuse and full-frame conversion | 6.38-6.41 s |
+| + `canApply` only for HEVC | 6.04-6.06 s (two runs) |
+| + wait for the writer just before append, polling every 0.1 ms | 5.86-5.89 s (two runs) |
+
+- `AVAssetWriter.canApply(outputSettings:forMediaType:)` cost about 35 ms per
+  segment, so it now runs only when HEVC adds the optional property.
+- Reused frames append in bursts. Waiting for writer readiness before
+  rendering left the encoder idle while the next sample rendered, and 1 ms
+  polling overshot each wait. Waiting just before append with 0.1 ms polling
+  reduced writer wait from 0.53 s to 0.33 s.
+- With the `canApply` fix and 1 ms polling, full-frame vImage conversion was
+  neutral on this sparse export (6.11-6.13 s with conversion versus
+  6.12-6.18 s without) and still
+  saved about 3.4 s on the real-FIT Race export (7.98-8.02 s versus
+  11.44-11.48 s).
+- The remaining 0.2 s gap to `main` on this export is writer wait between
+  repeated-frame bursts. Removing it would need rendering and appending to run
+  concurrently, which is not worth the restructuring for this case.
+
+Parity, decoding ProRes 4444 exports of the first three clips and comparing
+with the previous build: Interval Workout was bit-identical; Race had
+64.70 dB color PSNR and identical alpha; Easy Run had 76.43 dB color PSNR and
+identical alpha.
+
+Encoder floor: a standalone writer appending pre-drawn 1920x1080 frames in
+runs of six (5 fps Layer Data at 30 fps) took 15.09-15.14 s for 1,500 frames
+with default HEVC-with-alpha settings (99 fps), 10.34 s with encoding speed
+priority (145 fps), and 2.33 s with ProRes 4444.
+
+Final release benchmark, Apple M3, 1920x1080, 10 x 5-second clips (1,500
+frames at 30 fps, 5 fps Layer Data). `main` is the build before this work,
+"speed" adds HEVC encoding speed priority, and "final" adds this round.
+Builds were interleaved per configuration; HEVC values are the mean of two
+runs, ProRes values are single runs. Wall-clock comes from the
+template-segments benchmark summary.
+
+| FIT | Template (path) | Codec | `main` | Speed | Final | Speedup |
+|---|---|---|---:|---:|---:|---:|
+| Real | Interval Workout (per overlay) | HEVC alpha | 15.32 s | 10.19 s | 10.22 s | 1.50x |
+| Real | Race (full frame) | HEVC alpha | 15.73 s | 11.82 s | 10.61 s | 1.48x |
+| Real | Easy Run (per overlay) | HEVC alpha | 15.61 s | 10.64 s | 10.64 s | 1.47x |
+| Synthetic | Interval Workout (per overlay) | HEVC alpha | 15.07 s | 10.20 s | 10.20 s | 1.48x |
+| Synthetic | Race (full frame) | HEVC alpha | 15.37 s | 10.38 s | 10.41 s | 1.48x |
+| Synthetic | Easy Run (per overlay) | HEVC alpha | 15.27 s | 10.36 s | 10.36 s | 1.47x |
+| Real | Interval Workout (per overlay) | ProRes 4444 | 5.08 s | 5.36 s | 4.35 s | 1.17x |
+| Real | Race (full frame) | ProRes 4444 | 11.87 s | 12.20 s | 7.79 s | 1.52x |
+| Real | Easy Run (per overlay) | ProRes 4444 | 5.93 s | 6.25 s | 5.06 s | 1.17x |
+| Synthetic | Interval Workout (per overlay) | ProRes 4444 | 4.46 s | 4.74 s | 3.78 s | 1.18x |
+| Synthetic | Race (full frame) | ProRes 4444 | 5.83 s | 6.20 s | 5.94 s | 0.98x |
+| Synthetic | Easy Run (per overlay) | ProRes 4444 | 5.46 s | 5.73 s | 4.57 s | 1.20x |
+
+Every HEVC-with-alpha configuration now finishes within 3% of the measured
+10.34 s encoder floor, so default exports are encoder-bound on this machine.
+Further app-side rendering work cannot shorten them; only encoder changes,
+such as the rejected variable-frame-rate option, or hardware with more media
+engines can.
+
 ## Follow-Up Directions
 
+Default HEVC-with-alpha exports are encoder-bound after the 2026-10-16 round,
+so the directions below only shorten ProRes 4444 exports or a future
+variable-frame-rate option:
+
+- Validate variable-frame-rate output (append only changed Layer Data
+  samples, with `endSession(atSourceTime:)` at the clip end) in DaVinci
+  Resolve, Final Cut Pro, and Premiere Pro before offering it as an option.
+- Measure on Apple silicon with more media engines, where the HEVC floor may
+  be lower and app-side render time may matter again.
+- Overlap rendering of the next Layer Data sample with appending repeated
+  frames to remove the remaining writer wait between bursts.
 - Expand static-layer eligibility beyond decor overlays when a component can
   prove it is independent of `elapsedTime`.
 - Expand per-overlay eligibility to static-safe overlays once visual parity is
