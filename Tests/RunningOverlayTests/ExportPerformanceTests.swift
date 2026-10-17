@@ -388,6 +388,48 @@ struct ExportPerformanceTests {
         #expect(abs(duration.seconds - 1) < 0.001)
     }
 
+    /// Untagged exports made DaVinci Resolve read the video-range black under
+    /// transparent pixels as full range and lift the composited background.
+    @Test(arguments: ProjectExportCodec.allCases)
+    func exportTagsBT709ColorAndKeepsEmptyPixelsTransparent(_ codec: ProjectExportCodec) async throws {
+        let destination = FileManager.default.temporaryDirectory
+            .appendingPathComponent("running-overlay-color-tags-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: destination) }
+        var settings = ProjectSettings()
+        settings.resolution = .hd720
+        settings.frameRate = .fps30
+        settings.exportCodec = codec
+        let job = OverlayExportJob(
+            destinationURL: destination,
+            settings: settings,
+            activity: sampleRouteActivity(),
+            overlayLayout: OverlayLayout(elements: [
+                OverlayElement(type: .heartRate, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: .default)
+            ]),
+            segments: [OverlayExportSegment(startTime: 2, duration: 0.2, sourceFileName: "clip.mov")]
+        )
+
+        try await SwiftUIOverlayVideoExporter.export(job: job) { _ in }
+
+        let movieURL = try #require(
+            try FileManager.default.contentsOfDirectory(at: destination, includingPropertiesForKeys: nil)
+                .first { $0.pathExtension == "mov" }
+        )
+        let track = try #require(try await AVURLAsset(url: movieURL).loadTracks(withMediaType: .video).first)
+        let formatDescription = try #require(try await track.load(.formatDescriptions).first)
+        let extensions = try #require(CMFormatDescriptionGetExtensions(formatDescription) as? [String: Any])
+
+        #expect(extensions[kCMFormatDescriptionExtension_ColorPrimaries as String] as? String
+            == kCMFormatDescriptionColorPrimaries_ITU_R_709_2 as String)
+        #expect(extensions[kCMFormatDescriptionExtension_TransferFunction as String] as? String
+            == kCMFormatDescriptionTransferFunction_ITU_R_709_2 as String)
+        #expect(extensions[kCMFormatDescriptionExtension_YCbCrMatrix as String] as? String
+            == kCMFormatDescriptionYCbCrMatrix_ITU_R_709_2 as String)
+
+        let frame = try #require(try await decodedBGRAFrames(movieURL).first)
+        #expect(Array(frame[0..<4]) == [0, 0, 0, 0])
+    }
+
     @Test func pixelBufferImageConverterMatchesCoreGraphicsDraw() throws {
         let width = 64
         let height = 32
