@@ -1776,6 +1776,14 @@ struct SwiftUIOverlayVideoExporter {
         return pixelBuffer
     }
 
+    /// Both codecs tag BT.709 color so editors such as DaVinci Resolve do not
+    /// guess the levels of the video-range black under transparent pixels.
+    static let colorProperties: [String: String] = [
+        AVVideoColorPrimariesKey: AVVideoColorPrimaries_ITU_R_709_2,
+        AVVideoTransferFunctionKey: AVVideoTransferFunction_ITU_R_709_2,
+        AVVideoYCbCrMatrixKey: AVVideoYCbCrMatrix_ITU_R_709_2
+    ]
+
     /// HEVC with alpha export is bound by the hardware encoder, so it asks
     /// VideoToolbox to prioritize encoding speed. See
     /// `docs/export-performance.md` for the measured speed and quality impact.
@@ -1789,7 +1797,8 @@ struct SwiftUIOverlayVideoExporter {
         var settings: [String: Any] = [
             AVVideoCodecKey: codec.avCodec,
             AVVideoWidthKey: width,
-            AVVideoHeightKey: height
+            AVVideoHeightKey: height,
+            AVVideoColorPropertiesKey: colorProperties
         ]
 
         if codec == .hevcWithAlpha {
