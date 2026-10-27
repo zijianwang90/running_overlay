@@ -1,110 +1,68 @@
-import AppKit
 import SwiftUI
 import Testing
 @testable import RunningOverlay
 
-/// Collapsible Inspector section headers are real buttons so keyboard and VoiceOver
-/// can reach them. Their pointer behaviour must stay as it was: one click anywhere on
-/// the header row (except an accessory toggle) flips the section exactly once.
+/// Layout checks for the shared collapsible Inspector section shells.
+///
+/// These render with `ImageRenderer` and never create a window, a hosting view, a
+/// run loop, or synthetic events, so they run on a headless CI runner. Keyboard focus,
+/// Space activation, pointer clicks, and VoiceOver announcements need a live window
+/// server and an accessibility client; they are verified by hand (see the Accessibility
+/// section of `docs/design/panels/inspector/inspector-ui.md`).
 @MainActor
 struct InspectorSectionHeaderTests {
-    private final class SectionState {
-        var isExpanded = true
-        var isEnabled = false
+    private static let bodyHeight: CGFloat = 100
+    private static let width: CGFloat = 320
+
+    enum Shell: CaseIterable, Sendable {
+        case layout, effects, border, background, statsBar
     }
 
-    private struct LayoutHarness: View {
-        let state: SectionState
-        @State private var isExpanded = true
-        var body: some View {
-            CollapsibleLayoutInspectorSection(isExpanded: $isExpanded) {
-                Text("Layout body row")
-            }
-            .onChange(of: isExpanded) { _, newValue in state.isExpanded = newValue }
-        }
+    @Test(arguments: Shell.allCases)
+    func collapsedShellIsExactlyOneHeaderRowTall(_ shell: Shell) throws {
+        let collapsed = try #require(height(of: shell, isExpanded: false))
+        #expect(collapsed == Int(NumericTokens.sectionHeaderHeight))
     }
 
-    private struct BorderHarness: View {
-        let state: SectionState
-        @State private var isExpanded = true
-        @State private var isOn = false
-        var body: some View {
-            CollapsibleBorderInspectorSection(isExpanded: $isExpanded, isOn: isOn, onSetEnabled: { isOn = $0; state.isEnabled = $0 }) {
-                Text("Border body row")
-            }
-            .onChange(of: isExpanded) { _, newValue in state.isExpanded = newValue }
-        }
-    }
-
-    @Test func buttonHeaderTogglesOncePerClickAnywhereOnTheRow() {
-        let state = SectionState()
-        let window = hostingWindow(LayoutHarness(state: state))
-
-        click(window, x: 60)
-        #expect(state.isExpanded == false)
-        click(window, x: 160)
-        #expect(state.isExpanded == true)
-        click(window, x: 310)
-        #expect(state.isExpanded == false)
-    }
-
-    @Test func headerWithAccessoryTogglesOncePerClickAndLeavesTheSwitchAlone() {
-        let state = SectionState()
-        let window = hostingWindow(BorderHarness(state: state))
-
-        // Title area (inside the header Button) and the chevron (pointer-only fallback target).
-        click(window, x: 60)
-        #expect(state.isExpanded == false)
-        click(window, x: 310)
-        #expect(state.isExpanded == true)
-        #expect(state.isEnabled == false)
-    }
-
-    @Test func accessoryToggleStaysIndependentOfTheHeaderButton() {
-        let state = SectionState()
-        let window = hostingWindow(BorderHarness(state: state))
-
-        // The mini switch sits left of the chevron; clicking it must not collapse the section.
-        click(window, x: 280)
-        #expect(state.isEnabled == true)
-        #expect(state.isExpanded == true)
+    @Test(arguments: Shell.allCases)
+    func expandedStateAddsTheSectionBodyBelowTheSameHeader(_ shell: Shell) throws {
+        let collapsed = try #require(height(of: shell, isExpanded: false))
+        let expanded = try #require(height(of: shell, isExpanded: true))
+        #expect(expanded == collapsed + Int(Self.bodyHeight))
     }
 
     // MARK: Helpers
 
-    private func hostingWindow<V: View>(_ view: V) -> NSWindow {
-        let host = NSHostingView(rootView: view.frame(width: 340, height: 300, alignment: .top))
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 340, height: 300), styleMask: [.borderless], backing: .buffered, defer: false)
-        window.contentView = host
-        host.frame = NSRect(x: 0, y: 0, width: 340, height: 300)
-        window.orderFrontRegardless()
-        pump(host)
-        return window
+    private func height(of shell: Shell, isExpanded: Bool) -> Int? {
+        let renderer = ImageRenderer(
+            content: view(for: shell, isExpanded: isExpanded)
+                .frame(width: Self.width)
+                .fixedSize(horizontal: false, vertical: true)
+        )
+        renderer.scale = 1
+        return renderer.cgImage?.height
     }
 
-    private func pump(_ view: NSView) {
-        view.layoutSubtreeIfNeeded()
-        RunLoop.current.run(until: Date().addingTimeInterval(0.3))
-        view.layoutSubtreeIfNeeded()
-    }
-
-    /// Clicks at `x` within the section header (window origin is bottom-left).
-    private func click(_ window: NSWindow, x: CGFloat) {
-        let point = NSPoint(x: x, y: window.frame.height - NumericTokens.sectionHeaderHeight / 2)
-        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-            let event = NSEvent.mouseEvent(
-                with: type,
-                location: point,
-                modifierFlags: [],
-                timestamp: ProcessInfo.processInfo.systemUptime,
-                windowNumber: window.windowNumber,
-                context: nil,
-                eventNumber: 0,
-                clickCount: 1,
-                pressure: type == .leftMouseDown ? 1 : 0
-            )
-            if let event { window.sendEvent(event) }
+    private func view(for shell: Shell, isExpanded: Bool) -> AnyView {
+        let expanded = Binding<Bool>.constant(isExpanded)
+        let sectionBody = Color.red.frame(height: Self.bodyHeight)
+        switch shell {
+        case .layout:
+            return AnyView(CollapsibleLayoutInspectorSection(isExpanded: expanded) { sectionBody })
+        case .effects:
+            return AnyView(CollapsibleEffectsInspectorSection(isExpanded: expanded) { sectionBody })
+        case .border:
+            return AnyView(CollapsibleBorderInspectorSection(isExpanded: expanded, isOn: true, onSetEnabled: { _ in }) { sectionBody })
+        case .background:
+            return AnyView(CollapsibleBackgroundInspectorSection(isExpanded: expanded, isOn: true, onSetEnabled: { _ in }) { sectionBody })
+        case .statsBar:
+            return AnyView(CollapsibleStatsBarInspectorSection(
+                isExpanded: expanded,
+                title: "Stats Bar",
+                systemImage: "chart.bar",
+                isBarEnabled: true,
+                onSetBarEnabled: { _ in }
+            ) { sectionBody })
         }
-        if let content = window.contentView { pump(content) }
     }
 }
