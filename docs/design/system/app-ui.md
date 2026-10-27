@@ -111,6 +111,7 @@ Panel rules:
 - Empty states should stay within the panel layout and preserve tool context.
 - Resizable split panes should have stable minimum widths so controls do not collapse.
 - Resolve side-pane widths against the actual window width, reserving the Preview minimum and both dividers. At the 1300 pt content minimum, use 318 pt for the initial Left Pool, 520 pt for Preview, and 460 pt for Inspector. Dragging a divider must not overflow the window; shrinking temporarily reduces panes while retaining preferred widths for later expansion.
+- Hidden side panes take zero width and drop their divider. The minimum content width is the Preview minimum plus each visible pane's minimum and divider (1300 pt when both are visible). Toolbar sidebar toggles use `EditorIconButtonStyle` with `sidebar.left` / `sidebar.right`; the Pool mode switch narrows so its trailing edge still meets the pool column.
 
 ## Component Standards
 
