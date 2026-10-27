@@ -119,6 +119,21 @@ struct MainEditorView: View {
             project.increaseForwardPlaybackRate()
             return .handled
         }
+        .onKeyPress("j") {
+            guard !isTextInputFocused else { return .ignored }
+            project.decreaseForwardPlaybackRate()
+            return .handled
+        }
+        .onKeyPress(.home) {
+            guard !isTextInputFocused else { return .ignored }
+            project.movePlayheadToStart()
+            return .handled
+        }
+        .onKeyPress(.end) {
+            guard !isTextInputFocused else { return .ignored }
+            project.movePlayheadToEnd()
+            return .handled
+        }
         .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { press in
             guard !isTextInputFocused else { return .ignored }
             let direction: EditorArrowKey

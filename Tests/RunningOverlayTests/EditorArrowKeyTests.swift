@@ -41,7 +41,10 @@ struct EditorArrowKeyTests {
         project.selection = .none
         #expect(project.handleArrowKey(.right, largeStep: false))
         #expect(abs(project.timeline.playhead - 2.04) < 0.0001)
-        #expect(!project.handleArrowKey(.up, largeStep: false))
+        #expect(project.handleArrowKey(.right, largeStep: true))
+        #expect(abs(project.timeline.playhead - 2.44) < 0.0001)
+        #expect(project.handleArrowKey(.left, largeStep: true))
+        project.setPlayhead(2)
 
         project.addOverlayElement(.pace)
         let elementID = project.overlayLayout.elements[0].id
@@ -50,8 +53,11 @@ struct EditorArrowKeyTests {
         project.selection = .overlayElement(elementID)
 
         #expect(project.handleArrowKey(.left, largeStep: false))
-        #expect(abs(project.timeline.playhead - 2.0) < 0.0001)
-        #expect(!project.handleArrowKey(.down, largeStep: true))
+        #expect(abs(project.timeline.playhead - 1.96) < 0.0001)
+        // Up/Down navigate edit points instead of moving a locked overlay.
+        #expect(project.handleArrowKey(.down, largeStep: false))
+        #expect(project.timeline.playhead == 10)
+        #expect(!project.handleArrowKey(.down, largeStep: false))
         #expect(project.overlayLayout.elements[0].position == position)
     }
 }

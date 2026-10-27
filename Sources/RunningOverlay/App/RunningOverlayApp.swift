@@ -77,6 +77,32 @@ struct RunningOverlayApp: App {
                     project.increaseForwardPlaybackRate()
                 }
                 .keyboardShortcut("l", modifiers: [])
+
+                Button("Play Slower (J)") {
+                    project.decreaseForwardPlaybackRate()
+                }
+                .keyboardShortcut("j", modifiers: [])
+                .disabled(!project.isPlaying)
+
+                Divider()
+
+                // Navigation keys are handled by the editor so they keep their
+                // meaning in lists and text fields; titles show the key.
+                Button("Go to Start (Home)") {
+                    project.movePlayheadToStart()
+                }
+
+                Button("Go to End (End)") {
+                    project.movePlayheadToEnd()
+                }
+
+                Button("Previous Edit Point (Up Arrow)") {
+                    project.jumpToEditPoint(forward: false)
+                }
+
+                Button("Next Edit Point (Down Arrow)") {
+                    project.jumpToEditPoint(forward: true)
+                }
             }
 
             CommandMenu("Timeline") {
