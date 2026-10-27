@@ -1,6 +1,6 @@
 # Inspector UI Design Spec
 
-Last updated: 2026-04-30
+Last updated: 2026-10-26
 
 ## Purpose
 
@@ -379,6 +379,8 @@ The current entry points are:
 - `OverlayLibraryView`
 - `OverlayElementListView`
 - `OverlayElementInspectorView`
+
+Implementation status: the list below is the original refactor plan. The legacy `OverlayDetailView` and the single-column row primitives it used (`InspectorSliderRow`, `ColorSwatchButton`, and similar) have since been removed from `ParameterPanelView.swift`; every overlay type now has a dedicated detail view built from the `InspectorDense*` primitives in `Sources/RunningOverlay/UI/InspectorRows/`.
 
 Recommended refactor:
 
