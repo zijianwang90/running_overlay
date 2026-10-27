@@ -75,6 +75,37 @@ Open questions:
 - Whether custom resolution should be supported in the first release.
 - Whether imported video frame rates should influence the default project frame rate.
 
+## 4.1 Project Files
+
+- A project saves as a single `.roproj` file (versioned JSON). It stores
+  project settings, the parsed activity, media pool items and folders,
+  timeline tracks and clips, overlays, user asset references, and the workout
+  structure selection. Undo history, selection, and playback state are not
+  saved.
+- File menu: New Project (Command-N), Open Project (Command-O), Open Recent
+  (last 10 projects, with Clear Menu), Close (Command-W), Save (Command-S;
+  asks for a location when the project is untitled), and Save As
+  (Shift-Command-S).
+- The status bar shows the project name, followed by "Edited" while there are
+  unsaved changes; the window close button shows the standard edited dot.
+- Any undoable edit, undo, redo, or preview-track change marks the project
+  edited. Saving or opening clears it. Undoing back to the saved state still
+  counts as edited.
+- New Project, Open Project, Open Recent, opening a `.roproj` from Finder,
+  closing the window, and quitting ask Save / Cancel / Don't Save when there
+  are unsaved changes. Cancel keeps the app and project open. New and Open are
+  refused while an export is running.
+- Saving stores a bookmark for each media file so reopening the project
+  restores sandbox access and follows files that were moved or renamed on the
+  same volume. Media that still cannot be found is reported after opening,
+  with a Locate option that searches a chosen folder (recursively) for files
+  with the same names. Relinking is undoable. Missing media affects only
+  preview; overlays and timing are unchanged.
+- Files saved by a newer app version with a higher format version are refused
+  with a clear message instead of being partially loaded.
+- Custom SVG and font assets stay in the app's local asset store; a project
+  opened on another Mac does not carry them yet.
+
 ## 5. Main Layout
 
 The app follows a professional video-editing layout inspired by Final Cut Pro and DaVinci Resolve:
@@ -561,7 +592,7 @@ Export behavior:
 - Main `Export` always uses the SwiftUI shared-component rasterization path (legacy export mode removed).
 - In Debug builds only, `Export Overlay JSON` writes the current `OverlayLayout` configuration to JSON for inspection, debugging, and reproducible style snapshots.
 - In Debug builds only, `Save Project Snapshot` writes a JSON snapshot of the current exportable project state for repeatable performance testing.
-- In Debug builds only, `Restore Project Snapshot` replaces the current project with a saved snapshot and clears runtime-only state such as selection, playback, export progress, and undo/redo history.
+- In Debug builds only, `Restore Project Snapshot` replaces the current project with a saved snapshot and clears runtime-only state such as selection, playback, export progress, and undo/redo history. The restored project is untitled and marked edited, so Save cannot overwrite the previously open `.roproj`.
 - `swift run RunningOverlay --benchmark-export <snapshot.json>` runs a non-interactive benchmark export from a project snapshot, creates a timestamped output folder in the current working directory by default, writes MOV/profile artifacts there, and exits without requiring editor interaction.
 - `--benchmark-output <directory>` overrides the automated benchmark output directory.
 - Test clip/frame sampling time must use the same playhead-to-activity conversion and Layer Data FPS quantization path as preview (`activityElapsed(atProjectTime:)` + quantization).
