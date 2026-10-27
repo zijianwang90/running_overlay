@@ -18,6 +18,10 @@
 - Export dialog selects destination, bitrate, clip-based export, or full-activity export.
 - Export destination defaults to the folder containing the first video in the media pool, with `~/Movies` as the fallback before videos are loaded.
 - Render transparent MOV overlays using H.265 with alpha or ProRes 4444.
+- Both codecs tag BT.709 color primaries, transfer function, and YCbCr matrix
+  through `AVVideoColorPropertiesKey`. Untagged files let DaVinci Resolve read
+  the video-range black under fully transparent pixels as full range and
+  visibly lift the background across the whole overlay frame.
 - Batch export one overlay video for each timeline clip, including overlapping clips.
 - Full-activity export ignores video clips and renders one overlay file from FIT start to finish.
 - `Export Test Clip` renders a three-second transparent MOV around the current playhead position using the current overlay layout and active activity data (falling back to synthetic data when no activity is loaded).
