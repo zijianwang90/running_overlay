@@ -483,6 +483,7 @@ struct DecorOverlayDetailView: View {
                     .foregroundStyle(NumericTokens.textPrimary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Back")
 
             ZStack {
                 RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
@@ -522,6 +523,7 @@ struct DecorOverlayDetailView: View {
                     .foregroundStyle(NumericTokens.dangerRed)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Delete")
         }
         .padding(.horizontal, NumericTokens.panelPaddingX)
         .frame(height: EditorTheme.panelHeaderHeight)
@@ -607,6 +609,8 @@ struct DecorOverlayDetailView: View {
                         .frame(width: 18, height: 18)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(section.title)
+                .accessibilityValue(isOpen ? "Expanded" : "Collapsed")
             }
             .frame(height: NumericTokens.sectionHeaderHeight)
             .padding(.horizontal, NumericTokens.panelPaddingX)

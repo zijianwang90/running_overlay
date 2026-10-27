@@ -380,14 +380,29 @@ struct RouteMapOverlayDetailView: View {
         let isOpen = openSections.contains(section)
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: NumericTokens.space2) {
-                Image(systemName: section.systemImage)
-                    .frame(width: 16, alignment: .center)
-                    .foregroundStyle(NumericTokens.textSecondary)
-                Text(section.title)
-                    .font(NumericTokens.sectionTitleFont)
-                    .foregroundStyle(NumericTokens.textPrimary)
-                Spacer()
+                Button {
+                    if isOpen {
+                        openSections.remove(section)
+                    } else {
+                        openSections.insert(section)
+                    }
+                } label: {
+                    HStack(spacing: NumericTokens.space2) {
+                        Image(systemName: section.systemImage)
+                            .frame(width: 16, alignment: .center)
+                            .foregroundStyle(NumericTokens.textSecondary)
+                        Text(section.title)
+                            .font(NumericTokens.sectionTitleFont)
+                            .foregroundStyle(NumericTokens.textPrimary)
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(section.title)
+                .accessibilityValue(isOpen ? "Expanded" : "Collapsed")
                 accessory()
+                    .accessibilityLabel("Enable \(section.title)")
                 Image(systemName: isOpen ? "chevron.up" : "chevron.down")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(NumericTokens.textMuted)
@@ -462,6 +477,7 @@ struct RouteMapOverlayHeader: View {
             }
             .buttonStyle(.plain)
             .help("Back")
+            .accessibilityLabel("Back")
 
             ZStack {
                 RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
@@ -508,6 +524,7 @@ struct RouteMapOverlayHeader: View {
             }
             .buttonStyle(.plain)
             .help("Delete")
+            .accessibilityLabel("Delete")
         }
         .padding(.horizontal, NumericTokens.panelPaddingX)
         .frame(height: EditorTheme.panelHeaderHeight)

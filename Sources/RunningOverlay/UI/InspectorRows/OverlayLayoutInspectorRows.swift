@@ -96,24 +96,30 @@ struct CollapsibleLayoutInspectorSection<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: NumericTokens.space2) {
-                Image(systemName: "scope")
-                    .frame(width: 16, alignment: .center)
-                    .foregroundStyle(NumericTokens.textSecondary)
-                Text("Layout")
-                    .font(NumericTokens.sectionTitleFont)
-                    .foregroundStyle(NumericTokens.textPrimary)
-                Spacer()
-                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(NumericTokens.textMuted)
-                    .frame(width: 18, height: 18)
+            Button {
+                isExpanded.toggle()
+            } label: {
+                HStack(spacing: NumericTokens.space2) {
+                    Image(systemName: "scope")
+                        .frame(width: 16, alignment: .center)
+                        .foregroundStyle(NumericTokens.textSecondary)
+                    Text("Layout")
+                        .font(NumericTokens.sectionTitleFont)
+                        .foregroundStyle(NumericTokens.textPrimary)
+                    Spacer()
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(NumericTokens.textMuted)
+                        .frame(width: 18, height: 18)
+                }
+                .frame(height: NumericTokens.sectionHeaderHeight)
+                .padding(.horizontal, NumericTokens.panelPaddingX)
+                .background(NumericTokens.panelBackgroundElevated)
+                .contentShape(Rectangle())
             }
-            .frame(height: NumericTokens.sectionHeaderHeight)
-            .padding(.horizontal, NumericTokens.panelPaddingX)
-            .background(NumericTokens.panelBackgroundElevated)
-            .contentShape(Rectangle())
-            .onTapGesture { isExpanded.toggle() }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Layout")
+            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
             .overlay(alignment: .bottom) { Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1) }
 
             if isExpanded {

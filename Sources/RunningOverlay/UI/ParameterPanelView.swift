@@ -197,6 +197,7 @@ private struct ClipDetailHeader: View {
             }
             .buttonStyle(.plain)
             .help("Back")
+            .accessibilityLabel("Back")
 
             ZStack {
                 RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
@@ -238,6 +239,7 @@ private struct ClipDetailHeader: View {
             }
             .buttonStyle(.plain)
             .help("Delete Clip")
+            .accessibilityLabel("Delete Clip")
         }
         .padding(.horizontal, NumericTokens.panelPaddingX)
         .frame(height: EditorTheme.panelHeaderHeight)
