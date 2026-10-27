@@ -119,25 +119,17 @@ struct MainEditorView: View {
             project.increaseForwardPlaybackRate()
             return .handled
         }
-        .onKeyPress(.leftArrow) {
+        .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { press in
             guard !isTextInputFocused else { return .ignored }
-            project.stepPlayheadByFrames(-1)
-            return .handled
-        }
-        .onKeyPress(.rightArrow) {
-            guard !isTextInputFocused else { return .ignored }
-            project.stepPlayheadByFrames(1)
-            return .handled
-        }
-        .onKeyPress(.upArrow) {
-            guard !isTextInputFocused else { return .ignored }
-            project.nudgeSelectedOverlay(dx: 0, dy: -0.01)
-            return .handled
-        }
-        .onKeyPress(.downArrow) {
-            guard !isTextInputFocused else { return .ignored }
-            project.nudgeSelectedOverlay(dx: 0, dy: 0.01)
-            return .handled
+            let direction: EditorArrowKey
+            switch press.key {
+            case .leftArrow: direction = .left
+            case .rightArrow: direction = .right
+            case .upArrow: direction = .up
+            default: direction = .down
+            }
+            let handled = project.handleArrowKey(direction, largeStep: press.modifiers.contains(.shift))
+            return handled ? .handled : .ignored
         }
         .onKeyPress(.delete) {
             guard !isTextInputFocused else { return .ignored }

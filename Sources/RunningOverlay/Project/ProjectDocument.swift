@@ -1276,6 +1276,40 @@ final class ProjectDocument: ObservableObject {
         finishContinuousEdit()
     }
 
+    /// Routes an editor arrow key. A selected, unlocked overlay is nudged by
+    /// output pixels (10 with `largeStep`); otherwise left/right step the
+    /// playhead by one project frame. Returns whether the key was consumed.
+    @discardableResult
+    func handleArrowKey(_ direction: EditorArrowKey, largeStep: Bool) -> Bool {
+        if case .overlayElement(let elementID) = selection,
+           let element = selectedOverlay(elementID),
+           !element.isLocked {
+            let pixels = largeStep ? Self.largeOverlayNudgePixels : 1
+            let dx = pixels / Double(max(settings.resolution.width, 1))
+            let dy = pixels / Double(max(settings.resolution.height, 1))
+            switch direction {
+            case .left: nudgeSelectedOverlay(dx: -dx, dy: 0)
+            case .right: nudgeSelectedOverlay(dx: dx, dy: 0)
+            case .up: nudgeSelectedOverlay(dx: 0, dy: -dy)
+            case .down: nudgeSelectedOverlay(dx: 0, dy: dy)
+            }
+            return true
+        }
+
+        switch direction {
+        case .left:
+            stepPlayheadByFrames(-1)
+            return true
+        case .right:
+            stepPlayheadByFrames(1)
+            return true
+        case .up, .down:
+            return false
+        }
+    }
+
+    static let largeOverlayNudgePixels: Double = 10
+
     func setOverlayScale(_ elementID: OverlayElement.ID, scale: Double) {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
@@ -4163,6 +4197,13 @@ enum EditorSelection: Equatable {
     case timelineClip(TimelineClip.ID)
     case timelineClips(Set<TimelineClip.ID>)
     case overlayElement(OverlayElement.ID)
+}
+
+enum EditorArrowKey {
+    case left
+    case right
+    case up
+    case down
 }
 
 struct PreviewMedia: Equatable {
