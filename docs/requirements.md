@@ -274,6 +274,7 @@ When no timeline clip is selected:
 - Show the data overlay editor.
 - Show a list of already-added overlay elements.
 - Clicking an added overlay element in the list selects it, matching preview selection behavior.
+- While an overlay is selected and the project has two or more overlays, an Overlay switcher row above the detail view lets the user jump to any other overlay from a pop-up menu, or step to the previous / next unlocked overlay, without going back to the list.
 - Added overlay elements can be deleted from the list.
 
 When an overlay element is selected:
