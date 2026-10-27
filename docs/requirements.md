@@ -103,6 +103,15 @@ Open questions:
   preview; overlays and timing are unchanged.
 - Files saved by a newer app version with a higher format version are refused
   with a clear message instead of being partially loaded.
+- Autosave and crash recovery: while a project has unsaved changes, a recovery
+  copy is written to the app's Application Support folder every 30 seconds
+  and when the app moves to the background, only if something changed since
+  the last copy. Saving, opening a project, New Project, and quitting after
+  Save or Don't Save remove it. A copy found at launch means the app did not
+  quit normally; the user is asked to Recover or Discard it. Recovered work
+  stays edited and keeps its original project file as the Save target
+  (untitled work stays untitled). Autosave never overwrites the user's
+  project file.
 - Custom SVG and font assets stay in the app's local asset store; a project
   opened on another Mac does not carry them yet.
 

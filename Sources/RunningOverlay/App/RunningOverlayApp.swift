@@ -9,6 +9,7 @@ struct RunningOverlayApp: App {
         let project = ProjectDocument()
         _project = StateObject(wrappedValue: project)
         RunningOverlayAppDelegate.project = project
+        project.startAutosaving()
 
         NSApplication.shared.setActivationPolicy(.regular)
         NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
@@ -156,8 +157,13 @@ final class RunningOverlayAppDelegate: NSObject, NSApplicationDelegate {
     static var reopenMainWindow: (() -> Void)?
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard let project = Self.project, !project.confirmProjectCanBeReplaced() else {
-            // No project, nothing unsaved, or the user saved / chose Don't Save.
+        guard let project = Self.project else {
+            return .terminateNow
+        }
+        if project.confirmProjectCanBeReplaced() {
+            // Nothing unsaved, or the user saved or chose Don't Save, so the
+            // crash-recovery copy is no longer needed.
+            project.discardAutosave()
             return .terminateNow
         }
         if !NSApp.windows.contains(where: \.isVisible) {
@@ -174,6 +180,8 @@ final class RunningOverlayAppDelegate: NSObject, NSApplicationDelegate {
         }) else {
             return
         }
+        // Offer crash recovery before a Finder-opened project can replace it.
+        Self.project?.offerAutosaveRecoveryIfNeeded()
         Self.project?.openProjectFromSystem(url)
     }
 }
