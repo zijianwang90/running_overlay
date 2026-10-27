@@ -37,6 +37,7 @@ struct SFSymbolPicker: View {
             }
             .buttonStyle(.plain)
             .help("Browse SF Symbols")
+            .accessibilityLabel("Browse SF Symbols")
             .popover(isPresented: $isPopoverPresented, arrowEdge: .trailing) {
                 pickerPopover
             }
@@ -82,6 +83,7 @@ struct SFSymbolPicker: View {
                     .buttonStyle(.plain)
                     .foregroundStyle(NumericTokens.textMuted)
                     .help("Clear Search")
+                    .accessibilityLabel("Clear Search")
                 }
             }
             .padding(.horizontal, NumericTokens.space2)
@@ -141,6 +143,7 @@ struct SFSymbolPicker: View {
                 }
                 .buttonStyle(.plain)
                 .help(name)
+                .accessibilityLabel(name)
             }
         }
     }

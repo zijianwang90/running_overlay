@@ -168,6 +168,8 @@ struct RunningGaugeOverlayDetailView: View {
                 }
                 .buttonStyle(.plain)
                 .help(isOpen ? "Hide region settings" : "Show region settings")
+                .accessibilityLabel("Region settings")
+                .accessibilityValue(isOpen ? "Expanded" : "Collapsed")
             }
         }
     }
@@ -606,11 +608,22 @@ struct RunningGaugeOverlayDetailView: View {
         onToggleExpanded: @escaping () -> Void
     ) -> some View {
         HStack(spacing: NumericTokens.space2) {
-            Text(title)
-                .font(NumericTokens.bodyFont.weight(.medium))
-                .foregroundStyle(NumericTokens.textSecondary)
-            Spacer()
+            Button {
+                onToggleExpanded()
+            } label: {
+                HStack(spacing: NumericTokens.space2) {
+                    Text(title)
+                        .font(NumericTokens.bodyFont.weight(.medium))
+                        .foregroundStyle(NumericTokens.textSecondary)
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(title)
+            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
             gaugeToggle(isOn: isOn, set: onToggleOn)
+                .accessibilityLabel("Enable \(title)")
             Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(NumericTokens.textMuted)
@@ -637,30 +650,34 @@ struct RunningGaugeOverlayDetailView: View {
     ) -> some View {
         let isOpen = openSections.contains(section)
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: NumericTokens.space2) {
-                Image(systemName: section.systemImage)
-                    .frame(width: 16, alignment: .center)
-                    .foregroundStyle(NumericTokens.textSecondary)
-                Text(section.title)
-                    .font(NumericTokens.sectionTitleFont)
-                    .foregroundStyle(NumericTokens.textPrimary)
-                Spacer()
-                Image(systemName: isOpen ? "chevron.up" : "chevron.down")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(NumericTokens.textMuted)
-                    .frame(width: 18, height: 18)
-            }
-            .frame(height: NumericTokens.sectionHeaderHeight)
-            .padding(.horizontal, NumericTokens.panelPaddingX)
-            .background(NumericTokens.panelBackgroundElevated)
-            .contentShape(Rectangle())
-            .onTapGesture {
+            Button {
                 if isOpen {
                     openSections.remove(section)
                 } else {
                     openSections.insert(section)
                 }
+            } label: {
+                HStack(spacing: NumericTokens.space2) {
+                    Image(systemName: section.systemImage)
+                        .frame(width: 16, alignment: .center)
+                        .foregroundStyle(NumericTokens.textSecondary)
+                    Text(section.title)
+                        .font(NumericTokens.sectionTitleFont)
+                        .foregroundStyle(NumericTokens.textPrimary)
+                    Spacer()
+                    Image(systemName: isOpen ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(NumericTokens.textMuted)
+                        .frame(width: 18, height: 18)
+                }
+                .frame(height: NumericTokens.sectionHeaderHeight)
+                .padding(.horizontal, NumericTokens.panelPaddingX)
+                .background(NumericTokens.panelBackgroundElevated)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(section.title)
+            .accessibilityValue(isOpen ? "Expanded" : "Collapsed")
             .overlay(alignment: .bottom) {
                 Rectangle()
                     .fill(NumericTokens.borderSubtle)
@@ -708,6 +725,7 @@ private struct RunningGaugeOverlayHeader: View {
             }
             .buttonStyle(.plain)
             .help("Back")
+            .accessibilityLabel("Back")
 
             ZStack {
                 RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
@@ -748,6 +766,7 @@ private struct RunningGaugeOverlayHeader: View {
             }
             .buttonStyle(.plain)
             .help("Delete")
+            .accessibilityLabel("Delete")
         }
         .padding(.horizontal, NumericTokens.panelPaddingX)
         .frame(height: EditorTheme.panelHeaderHeight)

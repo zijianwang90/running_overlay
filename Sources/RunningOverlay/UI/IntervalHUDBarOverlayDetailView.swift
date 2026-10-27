@@ -84,6 +84,7 @@ struct IntervalHUDBarOverlayDetailView: View {
             }
             .buttonStyle(.plain)
             .help("Back")
+            .accessibilityLabel("Back")
 
             ZStack {
                 RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
@@ -124,6 +125,7 @@ struct IntervalHUDBarOverlayDetailView: View {
             }
             .buttonStyle(.plain)
             .help("Delete")
+            .accessibilityLabel("Delete")
         }
         .padding(.horizontal, NumericTokens.panelPaddingX)
         .frame(height: EditorTheme.panelHeaderHeight)
@@ -489,6 +491,7 @@ struct IntervalHUDBarOverlayDetailView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(NumericTokens.textSecondary)
                 .help("Remove metric")
+                .accessibilityLabel("Remove metric")
             }
         }
 
@@ -618,13 +621,23 @@ private struct IntervalHUDBarDividerInspectorModule: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: NumericTokens.space2) {
-                Image(systemName: "minus")
-                    .frame(width: 16, alignment: .center)
-                    .foregroundStyle(NumericTokens.textSecondary)
-                Text("Divider")
-                    .font(NumericTokens.sectionTitleFont)
-                    .foregroundStyle(NumericTokens.textPrimary)
-                Spacer()
+                Button {
+                    isExpanded.toggle()
+                } label: {
+                    HStack(spacing: NumericTokens.space2) {
+                        Image(systemName: "minus")
+                            .frame(width: 16, alignment: .center)
+                            .foregroundStyle(NumericTokens.textSecondary)
+                        Text("Divider")
+                            .font(NumericTokens.sectionTitleFont)
+                            .foregroundStyle(NumericTokens.textPrimary)
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Divider")
+                .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
                 Toggle("", isOn: Binding(
                     get: { element.style.dividerEnabled },
                     set: { project.setOverlayDividerEnabled(elementID, enabled: $0) }
@@ -632,6 +645,7 @@ private struct IntervalHUDBarDividerInspectorModule: View {
                 .toggleStyle(.switch)
                 .controlSize(.mini)
                 .labelsHidden()
+                .accessibilityLabel("Enable Divider")
                 Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(NumericTokens.textMuted)
@@ -715,18 +729,29 @@ private struct IntervalHUDBarInspectorSection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: NumericTokens.space2) {
-                Image(systemName: systemImage)
-                    .frame(width: 16, alignment: .center)
-                    .foregroundStyle(NumericTokens.textSecondary)
-                Text(title)
-                    .font(NumericTokens.sectionTitleFont)
-                    .foregroundStyle(NumericTokens.textPrimary)
-                Spacer()
+                Button {
+                    isExpanded.toggle()
+                } label: {
+                    HStack(spacing: NumericTokens.space2) {
+                        Image(systemName: systemImage)
+                            .frame(width: 16, alignment: .center)
+                            .foregroundStyle(NumericTokens.textSecondary)
+                        Text(title)
+                            .font(NumericTokens.sectionTitleFont)
+                            .foregroundStyle(NumericTokens.textPrimary)
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(title)
+                .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
                 if let headerToggle {
                     Toggle("", isOn: headerToggle)
                         .toggleStyle(.switch)
                         .controlSize(.mini)
                         .labelsHidden()
+                        .accessibilityLabel("Enable \(title)")
                 }
                 Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                     .font(.system(size: 11, weight: .semibold))
