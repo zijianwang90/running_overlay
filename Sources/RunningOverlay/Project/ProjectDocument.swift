@@ -1202,6 +1202,26 @@ final class ProjectDocument: ObservableObject {
         selection = .overlayElement(elementID)
     }
 
+    /// Selects the next (`step` > 0) or previous unlocked overlay in list
+    /// order, wrapping around. Locked overlays are skipped because they cannot
+    /// be edited until unlocked.
+    func selectAdjacentOverlay(_ step: Int) {
+        let candidates = overlayLayout.elements.filter { !$0.isLocked }
+        guard !candidates.isEmpty, step != 0 else { return }
+        let count = candidates.count
+        let currentIndex: Int? = {
+            guard case .overlayElement(let elementID) = selection else { return nil }
+            return candidates.firstIndex { $0.id == elementID }
+        }()
+        let nextIndex: Int
+        if let currentIndex {
+            nextIndex = ((currentIndex + step) % count + count) % count
+        } else {
+            nextIndex = step > 0 ? 0 : count - 1
+        }
+        selection = .overlayElement(candidates[nextIndex].id)
+    }
+
     func selectedOverlay(_ elementID: OverlayElement.ID) -> OverlayElement? {
         overlayLayout.elements.first { $0.id == elementID }
     }
