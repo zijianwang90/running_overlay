@@ -14,16 +14,21 @@ Running Overlay Studio reads files selected by the user and writes project snaps
 templates, diagnostics, and exported media only to locations selected by the
 user or to documented local application storage.
 
-Project snapshots may contain:
+Project files (`.roproj`) and project snapshots may contain:
 
-- local media and asset paths;
+- local media and asset paths, plus file bookmarks that let the app reopen
+  those media files;
 - parsed activity timestamps, GPS coordinates, and fitness metrics;
 - timeline and overlay configuration;
 - cached weather responses and resolved location labels.
 
-Project snapshots do not contain OpenWeather API keys in current versions.
-Treat snapshots as private activity data unless they have been intentionally
-sanitized.
+Project files and snapshots do not contain OpenWeather API keys in current
+versions. Treat them as private activity data unless they have been
+intentionally sanitized.
+
+The Open Recent menu stores the paths and bookmarks of recently saved or
+opened project files in the app's local user defaults. Clear Menu removes
+them.
 
 ## Weather and Location Requests
 

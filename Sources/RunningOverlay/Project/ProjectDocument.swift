@@ -40,6 +40,21 @@ final class ProjectDocument: ObservableObject {
     @Published var isTimelineCollapsed = false
     @Published private(set) var canUndo = false
     @Published private(set) var canRedo = false
+    /// The saved `.roproj` file backing this project; nil while untitled.
+    @Published private(set) var projectFileURL: URL?
+    @Published private(set) var hasUnsavedChanges = false {
+        didSet {
+            guard hasUnsavedChanges != oldValue else { return }
+            if hasUnsavedChanges {
+                ProcessInfo.processInfo.disableSuddenTermination()
+                ProcessInfo.processInfo.disableAutomaticTermination(Self.unsavedChangesTerminationReason)
+            } else {
+                ProcessInfo.processInfo.enableSuddenTermination()
+                ProcessInfo.processInfo.enableAutomaticTermination(Self.unsavedChangesTerminationReason)
+            }
+        }
+    }
+    @Published private(set) var recentProjectPaths: [String] = []
 
     private let overlayTemplateStore: OverlayTemplateStore
     private let userDefaults: UserDefaults
@@ -50,6 +65,9 @@ final class ProjectDocument: ObservableObject {
     private var redoStack: [ProjectSnapshot] = []
     private var activeUndoSnapshot: ProjectSnapshot?
     private var copiedOverlayConfiguration: CopiedOverlayConfiguration?
+    /// Security-scoped resources opened for the current project file and its media.
+    private var accessedProjectResourceURLs: [URL] = []
+    private static let unsavedChangesTerminationReason = "Unsaved project changes"
 
     init(
         overlayTemplateStore: OverlayTemplateStore = OverlayTemplateStore(),
@@ -69,6 +87,7 @@ final class ProjectDocument: ObservableObject {
         }
         loadOverlayTemplates()
         IconAssetResolver.configure(userAssets: userAssets, projectURL: projectURL)
+        recentProjectPaths = recentProjectStore.entries().map(\.path)
     }
 
     func setOpenWeatherAPIKey(_ value: String) {
@@ -1171,6 +1190,7 @@ final class ProjectDocument: ObservableObject {
 
     func setPreviewTrackName(_ trackName: String?) {
         settings.previewTrackName = trackName
+        hasUnsavedChanges = true
         statusMessage = trackName.map { "Preview track: \($0)." } ?? "Preview track: Auto."
     }
 
@@ -1183,6 +1203,7 @@ final class ProjectDocument: ObservableObject {
         } else {
             settings.disabledPreviewTrackNames.remove(trackName)
         }
+        hasUnsavedChanges = true
         statusMessage = disabled ? "Disabled preview track: \(trackName)." : "Enabled preview track: \(trackName)."
     }
 
@@ -3451,6 +3472,309 @@ final class ProjectDocument: ObservableObject {
         }
     }
 
+    // MARK: - Project Files
+
+    var projectDisplayName: String {
+        projectFileURL?.deletingPathExtension().lastPathComponent ?? ProjectFileFormat.untitledName
+    }
+
+    private var recentProjectStore: RecentProjectStore {
+        RecentProjectStore(userDefaults: userDefaults)
+    }
+
+    func newProject() {
+        guard ensureNoActiveExport(before: "starting a new project"),
+              confirmProjectCanBeReplaced() else {
+            return
+        }
+        resetToNewProject()
+    }
+
+    func resetToNewProject() {
+        _ = restorePersistentSnapshot(ProjectPerformanceSnapshot(
+            settings: ProjectSettings(),
+            activity: .empty,
+            mediaItems: [],
+            mediaFolders: [],
+            timeline: .empty,
+            overlayElements: [],
+            userAssets: [],
+            fitSourceName: ""
+        ))
+        replaceAccessedProjectResources(with: [])
+        projectFileURL = nil
+        hasUnsavedChanges = false
+        statusMessage = "New project."
+    }
+
+    func openProject() {
+        guard ensureNoActiveExport(before: "opening a project"),
+              confirmProjectCanBeReplaced() else {
+            return
+        }
+
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [ProjectFileFormat.contentType]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return
+        }
+        presentOpenedProject(at: url, scopedAccessURL: nil)
+    }
+
+    /// Opens a project handed over by Finder or the Dock, which already
+    /// granted sandbox access to `url`.
+    func openProjectFromSystem(_ url: URL) {
+        guard ensureNoActiveExport(before: "opening a project"),
+              confirmProjectCanBeReplaced() else {
+            return
+        }
+        presentOpenedProject(at: url, scopedAccessURL: nil)
+    }
+
+    func openRecentProject(path: String) {
+        guard let entry = recentProjectStore.entries().first(where: { $0.path == path }) else {
+            return
+        }
+        guard ensureNoActiveExport(before: "opening a project"),
+              confirmProjectCanBeReplaced() else {
+            return
+        }
+        guard let url = FileBookmark.resolve(entry.bookmark) else {
+            recentProjectStore.remove(path: path)
+            recentProjectPaths = recentProjectStore.entries().map(\.path)
+            presentProjectFileError(
+                title: "The project “\(URL(fileURLWithPath: path).lastPathComponent)” could not be found.",
+                message: "It may have been moved, renamed, or deleted. It was removed from Open Recent."
+            )
+            return
+        }
+        let scopedAccessURL = url.startAccessingSecurityScopedResource() ? url : nil
+        presentOpenedProject(at: url, scopedAccessURL: scopedAccessURL)
+    }
+
+    func clearRecentProjects() {
+        recentProjectStore.clear()
+        recentProjectPaths = []
+    }
+
+    /// Saves to the current project file, or asks for a location when untitled.
+    /// Returns whether the project was saved.
+    @discardableResult
+    func saveProject() -> Bool {
+        guard let projectFileURL else {
+            return saveProjectAs()
+        }
+        return presentSave(to: projectFileURL)
+    }
+
+    @discardableResult
+    func saveProjectAs() -> Bool {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [ProjectFileFormat.contentType]
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = "\(projectDisplayName).\(ProjectFileFormat.fileExtension)"
+
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return false
+        }
+        return presentSave(to: url)
+    }
+
+    /// Asks whether to save unsaved changes before the project is replaced or
+    /// the app quits. Returns false when the user cancels or saving fails.
+    func confirmProjectCanBeReplaced() -> Bool {
+        guard hasUnsavedChanges else {
+            return true
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "Do you want to save the changes made to “\(projectDisplayName)”?"
+        alert.informativeText = "Your changes will be lost if you don’t save them."
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: "Don’t Save")
+
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            return saveProject()
+        case .alertThirdButtonReturn:
+            return true
+        default:
+            return false
+        }
+    }
+
+    func writeProject(to url: URL) throws {
+        var snapshot = makePersistentSnapshot()
+        snapshot.mediaItems = snapshot.mediaItems.map { item in
+            var item = item
+            // Keep the previous bookmark when an offline file can't be bookmarked again.
+            if let fileURL = item.fileURL, let bookmark = FileBookmark.make(for: fileURL) {
+                item.bookmarkData = bookmark
+            }
+            return item
+        }
+        let data = try ProjectFileFormat.encode(snapshot)
+        try SecurityScopedURLAccess.withAccess(to: url) {
+            try data.write(to: url, options: .atomic)
+        }
+
+        mediaItems = snapshot.mediaItems
+        projectFileURL = url
+        hasUnsavedChanges = false
+        noteRecentProject(url)
+        statusMessage = "Saved project: \(url.lastPathComponent)."
+    }
+
+    /// Replaces the current project with the file at `url` and returns the
+    /// media items whose files could not be reached.
+    @discardableResult
+    func loadProject(from url: URL, scopedAccessURL: URL? = nil) throws -> [MediaItem.ID] {
+        let data = try SecurityScopedURLAccess.withAccess(to: url) {
+            try Data(contentsOf: url)
+        }
+        var snapshot = try ProjectFileFormat.decode(data)
+
+        var accessedURLs = scopedAccessURL.map { [$0] } ?? []
+        var offlineIDs: [MediaItem.ID] = []
+        for index in snapshot.mediaItems.indices {
+            var item = snapshot.mediaItems[index]
+            if let bookmark = item.bookmarkData, let resolvedURL = FileBookmark.resolve(bookmark) {
+                if resolvedURL.startAccessingSecurityScopedResource() {
+                    accessedURLs.append(resolvedURL)
+                }
+                item.fileURL = resolvedURL
+            }
+            if let fileURL = item.fileURL, !FileManager.default.fileExists(atPath: fileURL.path) {
+                offlineIDs.append(item.id)
+            }
+            snapshot.mediaItems[index] = item
+        }
+
+        let credentialMessage = restorePersistentSnapshot(snapshot)
+        replaceAccessedProjectResources(with: accessedURLs)
+        projectFileURL = url
+        hasUnsavedChanges = false
+        noteRecentProject(url)
+        statusMessage = credentialMessage ?? "Opened project: \(url.lastPathComponent)."
+        return offlineIDs
+    }
+
+    /// Points offline media at same-named files found under `folderURL`.
+    /// Returns how many of `mediaItemIDs` were relinked.
+    @discardableResult
+    func relinkMediaItems(_ mediaItemIDs: [MediaItem.ID], searchingIn folderURL: URL) -> Int {
+        var candidates: [String: URL] = [:]
+        let enumerator = FileManager.default.enumerator(
+            at: folderURL,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles, .skipsPackageDescendants]
+        )
+        while let url = enumerator?.nextObject() as? URL {
+            let key = url.lastPathComponent.lowercased()
+            if candidates[key] == nil {
+                candidates[key] = url
+            }
+        }
+
+        var updatedItems = mediaItems
+        var relinkedCount = 0
+        for index in updatedItems.indices where mediaItemIDs.contains(updatedItems[index].id) {
+            let name = updatedItems[index].fileURL?.lastPathComponent ?? updatedItems[index].displayName
+            guard let match = candidates[name.lowercased()] else { continue }
+            updatedItems[index].fileURL = match
+            updatedItems[index].bookmarkData = FileBookmark.make(for: match)
+            relinkedCount += 1
+        }
+
+        if relinkedCount > 0 {
+            registerUndoPoint()
+            mediaItems = updatedItems
+        }
+        statusMessage = "Relinked \(relinkedCount) of \(mediaItemIDs.count) video file(s)."
+        return relinkedCount
+    }
+
+    private func presentSave(to url: URL) -> Bool {
+        do {
+            try writeProject(to: url)
+            return true
+        } catch {
+            print("[RunningOverlay] Project save failed: \(String(reflecting: error))")
+            presentProjectFileError(
+                title: "The project “\(url.lastPathComponent)” could not be saved.",
+                message: error.localizedDescription
+            )
+            return false
+        }
+    }
+
+    private func presentOpenedProject(at url: URL, scopedAccessURL: URL?) {
+        let offlineIDs: [MediaItem.ID]
+        do {
+            offlineIDs = try loadProject(from: url, scopedAccessURL: scopedAccessURL)
+        } catch {
+            scopedAccessURL?.stopAccessingSecurityScopedResource()
+            print("[RunningOverlay] Project open failed: \(String(reflecting: error))")
+            presentProjectFileError(
+                title: "The project “\(url.lastPathComponent)” could not be opened.",
+                message: error.localizedDescription
+            )
+            return
+        }
+
+        guard !offlineIDs.isEmpty else { return }
+        let alert = NSAlert()
+        alert.messageText = offlineIDs.count == 1
+            ? "1 video file could not be found."
+            : "\(offlineIDs.count) video files could not be found."
+        alert.informativeText = "Choose a folder to search for files with the same names. Overlays and timing are unaffected; missing videos only stop showing in the preview."
+        alert.addButton(withTitle: "Locate…")
+        alert.addButton(withTitle: "Not Now")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Search Folder"
+        guard panel.runModal() == .OK, let folderURL = panel.url else { return }
+        relinkMediaItems(offlineIDs, searchingIn: folderURL)
+    }
+
+    private func presentProjectFileError(title: String, message: String) {
+        statusMessage = title
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = title
+        alert.informativeText = message
+        alert.runModal()
+    }
+
+    private func ensureNoActiveExport(before action: String) -> Bool {
+        guard !isExporting else {
+            statusMessage = "Cancel the active export before \(action)."
+            return false
+        }
+        return true
+    }
+
+    private func noteRecentProject(_ url: URL) {
+        recentProjectStore.add(url)
+        recentProjectPaths = recentProjectStore.entries().map(\.path)
+    }
+
+    private func replaceAccessedProjectResources(with urls: [URL]) {
+        for url in accessedProjectResourceURLs {
+            url.stopAccessingSecurityScopedResource()
+        }
+        accessedProjectResourceURLs = urls
+    }
+
     func saveProjectSnapshot() {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.json]
@@ -3508,6 +3832,11 @@ final class ProjectDocument: ObservableObject {
             decoder.dateDecodingStrategy = .iso8601
             let snapshot = try decoder.decode(ProjectPerformanceSnapshot.self, from: data)
             let credentialMessage = restorePersistentSnapshot(snapshot)
+            // A debug snapshot is not a project file: restore it as untitled so
+            // Save cannot overwrite the previously open project.
+            replaceAccessedProjectResources(with: [])
+            projectFileURL = nil
+            hasUnsavedChanges = true
             statusMessage = credentialMessage
                 ?? "Project snapshot restored: \(inputURL.lastPathComponent)."
         } catch {
@@ -3553,6 +3882,7 @@ final class ProjectDocument: ObservableObject {
         redoStack.append(makeSnapshot())
         restore(snapshot)
         activeUndoSnapshot = nil
+        hasUnsavedChanges = true
         statusMessage = "Undo."
         updateUndoRedoFlags()
     }
@@ -3565,6 +3895,7 @@ final class ProjectDocument: ObservableObject {
         undoStack.append(makeSnapshot())
         restore(snapshot)
         activeUndoSnapshot = nil
+        hasUnsavedChanges = true
         statusMessage = "Redo."
         updateUndoRedoFlags()
     }
@@ -4002,6 +4333,7 @@ final class ProjectDocument: ObservableObject {
         undoStack.append(makeSnapshot())
         redoStack.removeAll()
         activeUndoSnapshot = nil
+        hasUnsavedChanges = true
         updateUndoRedoFlags()
     }
 
@@ -4012,12 +4344,14 @@ final class ProjectDocument: ObservableObject {
                 redoStack.removeAll()
                 updateUndoRedoFlags()
             }
+            hasUnsavedChanges = true
             return
         }
         let snapshot = makeSnapshot()
         activeUndoSnapshot = snapshot
         undoStack.append(snapshot)
         redoStack.removeAll()
+        hasUnsavedChanges = true
         updateUndoRedoFlags()
     }
 
@@ -4058,7 +4392,8 @@ final class ProjectDocument: ObservableObject {
             timeline: timeline,
             overlayElements: overlayLayout.elements.map(OverlayTemplateElement.init(element:)),
             userAssets: userAssets,
-            fitSourceName: fitSourceName
+            fitSourceName: fitSourceName,
+            workoutStructureSelection: workoutStructureSelection
         )
     }
 
@@ -4067,7 +4402,7 @@ final class ProjectDocument: ObservableObject {
         settings = snapshot.settings
         settings.removeLegacyCredentials()
         activity = snapshot.activity
-        workoutStructureSelection = .auto
+        workoutStructureSelection = snapshot.workoutStructureSelection ?? .auto
         mediaItems = snapshot.mediaItems
         mediaFolders = snapshot.mediaFolders
         timeline = snapshot.timeline
@@ -4129,7 +4464,7 @@ private struct ProjectSnapshot: Equatable {
 }
 
 struct ProjectPerformanceSnapshot: Codable, Equatable {
-    var schemaVersion: Int = 1
+    var schemaVersion: Int = ProjectFileFormat.currentSchemaVersion
     var settings: ProjectSettings
     var activity: ActivityTimeline
     var mediaItems: [MediaItem]
@@ -4138,6 +4473,7 @@ struct ProjectPerformanceSnapshot: Codable, Equatable {
     var overlayElements: [OverlayTemplateElement]
     var userAssets: [UserAsset]
     var fitSourceName: String
+    var workoutStructureSelection: WorkoutStructureSelection? = nil
 }
 
 private struct CopiedOverlayConfiguration {

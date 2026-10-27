@@ -4,6 +4,7 @@ import SwiftUI
 
 struct MainEditorView: View {
     @EnvironmentObject private var project: ProjectDocument
+    @Environment(\.openWindow) private var openWindow
     @State private var showingExportProgress = false
     @State private var activePool: PoolKind = .media
     @State private var mediaPoolWidth: CGFloat = 380
@@ -87,6 +88,11 @@ struct MainEditorView: View {
             }
         }
         .background(EditorTheme.appBackground)
+        .background(WindowDocumentEditedState(isEdited: project.hasUnsavedChanges))
+        .navigationTitle(project.projectDisplayName)
+        .onAppear {
+            RunningOverlayAppDelegate.reopenMainWindow = { openWindow(id: "main") }
+        }
         .toolbarBackground(EditorTheme.appChrome, for: .windowToolbar)
         .overlay(alignment: .top) {
             if let toastMessage = project.toastMessage {
@@ -171,6 +177,10 @@ struct MainEditorView: View {
             Text(project.statusMessage)
                 .foregroundStyle(EditorTheme.textSecondary)
             Spacer()
+            Text(project.hasUnsavedChanges ? "\(project.projectDisplayName) — Edited" : project.projectDisplayName)
+                .foregroundStyle(EditorTheme.textMuted)
+                .lineLimit(1)
+                .help(project.projectFileURL?.path ?? "Not saved yet")
             Button {
                 project.showingProjectSettings = true
             } label: {
@@ -199,6 +209,22 @@ struct MainEditorView: View {
             return true
         }
         return responder is NSTextField
+    }
+}
+
+/// Mirrors unsaved changes onto the window's close-button dot.
+private struct WindowDocumentEditedState: NSViewRepresentable {
+    var isEdited: Bool
+
+    func makeNSView(context: Context) -> NSView {
+        NSView()
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        let isEdited = isEdited
+        DispatchQueue.main.async {
+            nsView.window?.isDocumentEdited = isEdited
+        }
     }
 }
 

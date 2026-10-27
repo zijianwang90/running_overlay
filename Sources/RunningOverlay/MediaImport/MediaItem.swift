@@ -9,6 +9,9 @@ struct MediaItem: Identifiable, Equatable, Codable {
     var cameraGroupID: String
     var alignmentStatus: AlignmentStatus
     var folderID: MediaFolder.ID? = nil
+    /// Written when the project is saved so a reopened project can regain
+    /// sandbox access to `fileURL` and follow moved files.
+    var bookmarkData: Data? = nil
 }
 
 struct MediaFolder: Identifiable, Equatable, Codable {
