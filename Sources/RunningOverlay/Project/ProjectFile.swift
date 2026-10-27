@@ -16,9 +16,9 @@ enum ProjectFileFormat {
             ?? .json
     }
 
-    static func encode(_ snapshot: ProjectPerformanceSnapshot) throws -> Data {
+    static func encode(_ snapshot: ProjectPerformanceSnapshot, prettyPrinted: Bool = true) throws -> Data {
         let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.outputFormatting = prettyPrinted ? [.prettyPrinted, .sortedKeys] : [.sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
         return try encoder.encode(snapshot)
     }
@@ -124,5 +124,56 @@ struct RecentProjectStore {
     private func save(_ entries: [Entry]) {
         guard let data = try? JSONEncoder().encode(entries) else { return }
         userDefaults.set(data, forKey: Self.storageKey)
+    }
+}
+
+/// Crash-recovery copy of the current project. It is written periodically
+/// while the project has unsaved changes and removed once those changes are
+/// saved or discarded, so a copy found at launch means the app did not quit
+/// normally.
+struct AutosaveStore: Sendable {
+    struct Info: Codable, Equatable {
+        var savedAt: Date
+        /// The project file the changes belong to; nil for an untitled project.
+        var projectPath: String?
+        var projectBookmark: Data?
+    }
+
+    let directory: URL
+
+    static var defaultDirectory: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("RunningOverlay", isDirectory: true)
+            .appendingPathComponent("Autosave", isDirectory: true)
+    }
+
+    private var projectURL: URL { directory.appendingPathComponent("Recovery.\(ProjectFileFormat.fileExtension)") }
+    private var infoURL: URL { directory.appendingPathComponent("Recovery.json") }
+
+    func write(_ projectData: Data, info: Info) throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try projectData.write(to: projectURL, options: .atomic)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        try encoder.encode(info).write(to: infoURL, options: .atomic)
+    }
+
+    func info() -> Info? {
+        guard FileManager.default.fileExists(atPath: projectURL.path),
+              let data = try? Data(contentsOf: infoURL) else {
+            return nil
+        }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try? decoder.decode(Info.self, from: data)
+    }
+
+    func readProject() throws -> Data {
+        try Data(contentsOf: projectURL)
+    }
+
+    func clear() {
+        try? FileManager.default.removeItem(at: projectURL)
+        try? FileManager.default.removeItem(at: infoURL)
     }
 }

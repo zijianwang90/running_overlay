@@ -92,6 +92,7 @@ struct MainEditorView: View {
         .navigationTitle(project.projectDisplayName)
         .onAppear {
             RunningOverlayAppDelegate.reopenMainWindow = { openWindow(id: "main") }
+            project.offerAutosaveRecoveryIfNeeded()
         }
         .toolbarBackground(EditorTheme.appChrome, for: .windowToolbar)
         .overlay(alignment: .top) {

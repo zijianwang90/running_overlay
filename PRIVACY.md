@@ -26,6 +26,11 @@ Project files and snapshots do not contain OpenWeather API keys in current
 versions. Treat them as private activity data unless they have been
 intentionally sanitized.
 
+While a project has unsaved changes, an autosave recovery copy with the same
+contents as a project file is kept in the app's Application Support folder. It
+is removed when the project is saved, another project is opened, a new project
+is started, or the app quits after Save or Don't Save.
+
 The Open Recent menu stores the paths and bookmarks of recently saved or
 opened project files in the app's local user defaults. Clear Menu removes
 them.

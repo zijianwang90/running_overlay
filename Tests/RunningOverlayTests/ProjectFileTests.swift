@@ -213,6 +213,101 @@ struct ProjectFileTests {
 }
 
 @MainActor
+struct ProjectAutosaveTests {
+    @Test func autosaveWritesOnlyWhenThereAreNewEdits() async throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+
+        let project = fixture.makeProject()
+        #expect(try await !project.autosaveIfNeeded())
+        #expect(project.pendingAutosaveRecovery == nil)
+
+        project.addOverlayElement(.pace)
+        let savedAt = Date(timeIntervalSince1970: 1_000)
+        #expect(try await project.autosaveIfNeeded(now: savedAt))
+        #expect(project.pendingAutosaveRecovery == AutosaveStore.Info(savedAt: savedAt, projectPath: nil, projectBookmark: nil))
+        #expect(try await !project.autosaveIfNeeded())
+
+        project.addOverlayElement(.heartRate)
+        #expect(try await project.autosaveIfNeeded())
+    }
+
+    @Test func savingOpeningAndNewProjectRemoveTheRecoveryCopy() async throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let url = fixture.directory.appendingPathComponent("run.roproj")
+
+        let project = fixture.makeProject()
+        project.addOverlayElement(.pace)
+        try await project.autosaveIfNeeded()
+        try project.writeProject(to: url)
+        #expect(project.pendingAutosaveRecovery == nil)
+
+        project.addOverlayElement(.heartRate)
+        try await project.autosaveIfNeeded()
+        try project.loadProject(from: url)
+        #expect(project.pendingAutosaveRecovery == nil)
+
+        project.addOverlayElement(.heartRate)
+        try await project.autosaveIfNeeded()
+        project.resetToNewProject()
+        #expect(project.pendingAutosaveRecovery == nil)
+
+        project.addOverlayElement(.heartRate)
+        try await project.autosaveIfNeeded()
+        project.discardAutosave()
+        #expect(project.pendingAutosaveRecovery == nil)
+    }
+
+    @Test func recoveryRestoresEditsAndKeepsTheOriginalFileAsSaveTarget() async throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let url = fixture.directory.appendingPathComponent("run.roproj")
+
+        let crashed = fixture.makeProject()
+        crashed.addOverlayElement(.pace)
+        try crashed.writeProject(to: url)
+        crashed.addOverlayElement(.heartRate)
+        try await crashed.autosaveIfNeeded()
+
+        let relaunched = fixture.makeProject()
+        let info = try #require(relaunched.pendingAutosaveRecovery)
+        #expect(info.projectPath == url.path)
+
+        let offline = try relaunched.recoverAutosavedProject()
+
+        #expect(offline.isEmpty)
+        #expect(relaunched.overlayLayout.elements.map(\.type) == [.pace, .heartRate])
+        #expect(relaunched.projectFileURL?.standardizedFileURL.resolvingSymlinksInPath()
+            == url.standardizedFileURL.resolvingSymlinksInPath())
+        #expect(relaunched.hasUnsavedChanges)
+        #expect(try await !relaunched.autosaveIfNeeded())
+        #expect(relaunched.pendingAutosaveRecovery != nil)
+
+        try relaunched.writeProject(to: try #require(relaunched.projectFileURL))
+        #expect(relaunched.pendingAutosaveRecovery == nil)
+        #expect(try fixture.makeProject().loadProject(from: url).isEmpty)
+    }
+
+    @Test func untitledRecoveryStaysUntitled() async throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+
+        let crashed = fixture.makeProject()
+        crashed.addOverlayElement(.distance)
+        try await crashed.autosaveIfNeeded()
+
+        let relaunched = fixture.makeProject()
+        try relaunched.recoverAutosavedProject()
+
+        #expect(relaunched.projectFileURL == nil)
+        #expect(relaunched.projectDisplayName == "Untitled")
+        #expect(relaunched.overlayLayout.elements.map(\.type) == [.distance])
+        #expect(relaunched.hasUnsavedChanges)
+    }
+}
+
+@MainActor
 private struct Fixture {
     let directory: URL
     let suiteName = "RunningOverlayTests-ProjectFile-\(UUID().uuidString)"
@@ -225,8 +320,16 @@ private struct Fixture {
         defaults = try #require(UserDefaults(suiteName: suiteName))
     }
 
+    var autosaveStore: AutosaveStore {
+        AutosaveStore(directory: directory.appendingPathComponent("Autosave", isDirectory: true))
+    }
+
     func makeProject() -> ProjectDocument {
-        ProjectDocument(userDefaults: defaults, credentialStore: InMemoryCredentialStore())
+        ProjectDocument(
+            userDefaults: defaults,
+            credentialStore: InMemoryCredentialStore(),
+            autosaveStore: autosaveStore
+        )
     }
 
     func mediaItem(named name: String, url: URL) -> MediaItem {

@@ -67,16 +67,29 @@ final class ProjectDocument: ObservableObject {
     private var copiedOverlayConfiguration: CopiedOverlayConfiguration?
     /// Security-scoped resources opened for the current project file and its media.
     private var accessedProjectResourceURLs: [URL] = []
+    private let autosaveStore: AutosaveStore
+    /// Increases on every edit so autosave writes only when content changed.
+    private var editGeneration = 0
+    private var lastAutosavedGeneration = 0
+    private var autosaveTimer: Timer?
+    private var autosaveResignObserver: NSObjectProtocol?
+    private var hasOfferedAutosaveRecovery = false
+    private var isAutosaving = false
+    /// Increases whenever the recovery copy is removed, so an in-flight
+    /// autosave can tell its copy was superseded by a save, open, or reset.
+    private var autosaveClearCount = 0
     private static let unsavedChangesTerminationReason = "Unsaved project changes"
 
     init(
         overlayTemplateStore: OverlayTemplateStore = OverlayTemplateStore(),
         userDefaults: UserDefaults = .standard,
-        credentialStore: any CredentialStore = DefaultCredentialStore.make()
+        credentialStore: any CredentialStore = DefaultCredentialStore.make(),
+        autosaveStore: AutosaveStore = AutosaveStore(directory: AutosaveStore.defaultDirectory)
     ) {
         self.overlayTemplateStore = overlayTemplateStore
         self.userDefaults = userDefaults
         self.credentialStore = credentialStore
+        self.autosaveStore = autosaveStore
         do {
             openWeatherAPIKey = try credentialStore.value(
                 for: KeychainCredentialStore.openWeatherAccount
@@ -1190,7 +1203,7 @@ final class ProjectDocument: ObservableObject {
 
     func setPreviewTrackName(_ trackName: String?) {
         settings.previewTrackName = trackName
-        hasUnsavedChanges = true
+        markEdited()
         statusMessage = trackName.map { "Preview track: \($0)." } ?? "Preview track: Auto."
     }
 
@@ -1203,7 +1216,7 @@ final class ProjectDocument: ObservableObject {
         } else {
             settings.disabledPreviewTrackNames.remove(trackName)
         }
-        hasUnsavedChanges = true
+        markEdited()
         statusMessage = disabled ? "Disabled preview track: \(trackName)." : "Enabled preview track: \(trackName)."
     }
 
@@ -3504,6 +3517,7 @@ final class ProjectDocument: ObservableObject {
         replaceAccessedProjectResources(with: [])
         projectFileURL = nil
         hasUnsavedChanges = false
+        clearAutosave()
         statusMessage = "New project."
     }
 
@@ -3609,15 +3623,7 @@ final class ProjectDocument: ObservableObject {
     }
 
     func writeProject(to url: URL) throws {
-        var snapshot = makePersistentSnapshot()
-        snapshot.mediaItems = snapshot.mediaItems.map { item in
-            var item = item
-            // Keep the previous bookmark when an offline file can't be bookmarked again.
-            if let fileURL = item.fileURL, let bookmark = FileBookmark.make(for: fileURL) {
-                item.bookmarkData = bookmark
-            }
-            return item
-        }
+        let snapshot = makeProjectFileSnapshot()
         let data = try ProjectFileFormat.encode(snapshot)
         try SecurityScopedURLAccess.withAccess(to: url) {
             try data.write(to: url, options: .atomic)
@@ -3626,6 +3632,7 @@ final class ProjectDocument: ObservableObject {
         mediaItems = snapshot.mediaItems
         projectFileURL = url
         hasUnsavedChanges = false
+        clearAutosave()
         noteRecentProject(url)
         statusMessage = "Saved project: \(url.lastPathComponent)."
     }
@@ -3637,9 +3644,179 @@ final class ProjectDocument: ObservableObject {
         let data = try SecurityScopedURLAccess.withAccess(to: url) {
             try Data(contentsOf: url)
         }
-        var snapshot = try ProjectFileFormat.decode(data)
+        let resolved = resolvingMediaAccess(in: try ProjectFileFormat.decode(data))
+        var accessedURLs = resolved.accessedURLs
+        if let scopedAccessURL {
+            accessedURLs.append(scopedAccessURL)
+        }
 
-        var accessedURLs = scopedAccessURL.map { [$0] } ?? []
+        let credentialMessage = restorePersistentSnapshot(resolved.snapshot)
+        replaceAccessedProjectResources(with: accessedURLs)
+        projectFileURL = url
+        hasUnsavedChanges = false
+        clearAutosave()
+        noteRecentProject(url)
+        statusMessage = credentialMessage ?? "Opened project: \(url.lastPathComponent)."
+        return resolved.offlineIDs
+    }
+
+    // MARK: Autosave
+
+    /// Autosaves every `interval` seconds and when the app moves to the
+    /// background, whenever there are unsaved edits not yet autosaved.
+    func startAutosaving(every interval: TimeInterval = 30) {
+        guard autosaveTimer == nil else { return }
+        autosaveTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.performAutosave() }
+        }
+        autosaveResignObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.willResignActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.performAutosave() }
+        }
+    }
+
+    /// Writes the recovery copy when there are edits since the last autosave.
+    /// Encoding and writing run off the main actor because long activities
+    /// take long enough to cause a visible hitch. Returns whether a copy was
+    /// written.
+    @discardableResult
+    func autosaveIfNeeded(now: Date = Date()) async throws -> Bool {
+        guard !isAutosaving, hasUnsavedChanges, editGeneration != lastAutosavedGeneration else {
+            return false
+        }
+        isAutosaving = true
+        defer { isAutosaving = false }
+
+        let generation = editGeneration
+        let clearCount = autosaveClearCount
+        let snapshot = makeProjectFileSnapshot()
+        let info = AutosaveStore.Info(
+            savedAt: now,
+            projectPath: projectFileURL?.path,
+            projectBookmark: projectFileURL.flatMap(FileBookmark.make(for:))
+        )
+        let store = autosaveStore
+        try await Task.detached(priority: .utility) {
+            try store.write(ProjectFileFormat.encode(snapshot, prettyPrinted: false), info: info)
+        }.value
+
+        guard autosaveClearCount == clearCount else {
+            // Saved, opened, or reset while writing: this copy is older than
+            // the state that replaced it.
+            clearAutosave()
+            return false
+        }
+        lastAutosavedGeneration = generation
+        return true
+    }
+
+    var pendingAutosaveRecovery: AutosaveStore.Info? {
+        autosaveStore.info()
+    }
+
+    /// Replaces the current project with the recovery copy. The result stays
+    /// edited and keeps its original project file, if any, as the save target.
+    @discardableResult
+    func recoverAutosavedProject() throws -> [MediaItem.ID] {
+        guard let info = autosaveStore.info() else { return [] }
+        let resolved = resolvingMediaAccess(in: try ProjectFileFormat.decode(autosaveStore.readProject()))
+        var accessedURLs = resolved.accessedURLs
+        var originalFileURL: URL?
+        if let bookmark = info.projectBookmark, let url = FileBookmark.resolve(bookmark) {
+            if url.startAccessingSecurityScopedResource() {
+                accessedURLs.append(url)
+            }
+            originalFileURL = url
+        }
+
+        let credentialMessage = restorePersistentSnapshot(resolved.snapshot)
+        replaceAccessedProjectResources(with: accessedURLs)
+        projectFileURL = originalFileURL
+        markEdited()
+        lastAutosavedGeneration = editGeneration
+        statusMessage = credentialMessage ?? "Recovered unsaved changes."
+        return resolved.offlineIDs
+    }
+
+    func discardAutosave() {
+        clearAutosave()
+    }
+
+    private func clearAutosave() {
+        autosaveClearCount &+= 1
+        autosaveStore.clear()
+    }
+
+    /// Offers the recovery copy left by an abnormal exit, once per launch.
+    func offerAutosaveRecoveryIfNeeded() {
+        guard !hasOfferedAutosaveRecovery else { return }
+        hasOfferedAutosaveRecovery = true
+        guard let info = autosaveStore.info() else { return }
+
+        let name = info.projectPath
+            .map { URL(fileURLWithPath: $0).deletingPathExtension().lastPathComponent }
+            ?? ProjectFileFormat.untitledName
+        let alert = NSAlert()
+        alert.messageText = "Recover unsaved changes to “\(name)”?"
+        alert.informativeText = "Running Overlay Studio didn’t quit normally. Your changes were last autosaved \(info.savedAt.formatted(date: .abbreviated, time: .shortened))."
+        alert.addButton(withTitle: "Recover")
+        alert.addButton(withTitle: "Discard")
+        guard alert.runModal() == .alertFirstButtonReturn else {
+            discardAutosave()
+            return
+        }
+
+        do {
+            presentOfflineMediaPrompt(try recoverAutosavedProject())
+        } catch {
+            print("[RunningOverlay] Autosave recovery failed: \(String(reflecting: error))")
+            discardAutosave()
+            presentProjectFileError(
+                title: "Unsaved changes could not be recovered.",
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    private func performAutosave() {
+        Task {
+            do {
+                try await autosaveIfNeeded()
+            } catch {
+                print("[RunningOverlay] Autosave failed: \(String(reflecting: error))")
+            }
+        }
+    }
+
+    private func markEdited() {
+        hasUnsavedChanges = true
+        editGeneration &+= 1
+    }
+
+    /// The persistent snapshot with a fresh bookmark for every reachable media file.
+    private func makeProjectFileSnapshot() -> ProjectPerformanceSnapshot {
+        var snapshot = makePersistentSnapshot()
+        snapshot.mediaItems = snapshot.mediaItems.map { item in
+            var item = item
+            // Keep the previous bookmark when an offline file can't be bookmarked again.
+            if let fileURL = item.fileURL, let bookmark = FileBookmark.make(for: fileURL) {
+                item.bookmarkData = bookmark
+            }
+            return item
+        }
+        return snapshot
+    }
+
+    /// Resolves media bookmarks, starts security-scoped access for them, and
+    /// reports media whose files cannot be found.
+    private func resolvingMediaAccess(
+        in snapshot: ProjectPerformanceSnapshot
+    ) -> (snapshot: ProjectPerformanceSnapshot, accessedURLs: [URL], offlineIDs: [MediaItem.ID]) {
+        var snapshot = snapshot
+        var accessedURLs: [URL] = []
         var offlineIDs: [MediaItem.ID] = []
         for index in snapshot.mediaItems.indices {
             var item = snapshot.mediaItems[index]
@@ -3654,14 +3831,7 @@ final class ProjectDocument: ObservableObject {
             }
             snapshot.mediaItems[index] = item
         }
-
-        let credentialMessage = restorePersistentSnapshot(snapshot)
-        replaceAccessedProjectResources(with: accessedURLs)
-        projectFileURL = url
-        hasUnsavedChanges = false
-        noteRecentProject(url)
-        statusMessage = credentialMessage ?? "Opened project: \(url.lastPathComponent)."
-        return offlineIDs
+        return (snapshot, accessedURLs, offlineIDs)
     }
 
     /// Points offline media at same-named files found under `folderURL`.
@@ -3726,7 +3896,10 @@ final class ProjectDocument: ObservableObject {
             )
             return
         }
+        presentOfflineMediaPrompt(offlineIDs)
+    }
 
+    private func presentOfflineMediaPrompt(_ offlineIDs: [MediaItem.ID]) {
         guard !offlineIDs.isEmpty else { return }
         let alert = NSAlert()
         alert.messageText = offlineIDs.count == 1
@@ -3836,7 +4009,7 @@ final class ProjectDocument: ObservableObject {
             // Save cannot overwrite the previously open project.
             replaceAccessedProjectResources(with: [])
             projectFileURL = nil
-            hasUnsavedChanges = true
+            markEdited()
             statusMessage = credentialMessage
                 ?? "Project snapshot restored: \(inputURL.lastPathComponent)."
         } catch {
@@ -3882,7 +4055,7 @@ final class ProjectDocument: ObservableObject {
         redoStack.append(makeSnapshot())
         restore(snapshot)
         activeUndoSnapshot = nil
-        hasUnsavedChanges = true
+        markEdited()
         statusMessage = "Undo."
         updateUndoRedoFlags()
     }
@@ -3895,7 +4068,7 @@ final class ProjectDocument: ObservableObject {
         undoStack.append(makeSnapshot())
         restore(snapshot)
         activeUndoSnapshot = nil
-        hasUnsavedChanges = true
+        markEdited()
         statusMessage = "Redo."
         updateUndoRedoFlags()
     }
@@ -4333,7 +4506,7 @@ final class ProjectDocument: ObservableObject {
         undoStack.append(makeSnapshot())
         redoStack.removeAll()
         activeUndoSnapshot = nil
-        hasUnsavedChanges = true
+        markEdited()
         updateUndoRedoFlags()
     }
 
@@ -4344,14 +4517,14 @@ final class ProjectDocument: ObservableObject {
                 redoStack.removeAll()
                 updateUndoRedoFlags()
             }
-            hasUnsavedChanges = true
+            markEdited()
             return
         }
         let snapshot = makeSnapshot()
         activeUndoSnapshot = snapshot
         undoStack.append(snapshot)
         redoStack.removeAll()
-        hasUnsavedChanges = true
+        markEdited()
         updateUndoRedoFlags()
     }
 
