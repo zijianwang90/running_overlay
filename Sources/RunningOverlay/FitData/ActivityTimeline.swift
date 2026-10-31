@@ -34,7 +34,7 @@ enum WorkoutStructureSource: String, Equatable, Codable {
     case userOverride
 }
 
-enum WorkoutStructureSelection: String, CaseIterable, Identifiable {
+enum WorkoutStructureSelection: String, CaseIterable, Identifiable, Codable {
     case auto
     case normal
     case structured

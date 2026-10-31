@@ -27,8 +27,34 @@ Current implementation:
   access prompts. Developers can also force the in-memory store with
   `RUNNING_OVERLAY_DISABLE_KEYCHAIN=1`.
 
+### Project Files
+
+- Status: implemented (ADR 0006).
+- `ProjectFileFormat` encodes and decodes `.roproj` files. It reads
+  `schemaVersion` first and refuses files newer than
+  `ProjectFileFormat.currentSchemaVersion`. Additive fields must be optional
+  so older files still decode; bump the version only for changes an older
+  build cannot read correctly.
+- `ProjectDocument.writeProject(to:)` and `loadProject(from:)` are the
+  UI-free entry points used by tests. `saveProject()`, `saveProjectAs()`,
+  `openProject()`, `openRecentProject(path:)`, and `newProject()` wrap them
+  with panels and alerts.
+- `hasUnsavedChanges` is set by `registerUndoPoint()`,
+  `registerContinuousUndoPoint()`, `undo()`, `redo()`, and the preview-track
+  setters, which are the only persistent mutations that skip undo. A new
+  persistent mutation that does not register an undo point must set it
+  explicitly. While it is true the app disables sudden and automatic
+  termination.
+- Saving writes a bookmark per media file (`FileBookmark`): security-scoped in
+  the sandboxed app, plain otherwise. Opening resolves each bookmark, starts
+  security-scoped access for the lifetime of the project, and reports media
+  whose files are missing. Open Recent stores bookmarks for project files in
+  user defaults (`RecentProjectStore`).
+- Opening, New Project, and Debug snapshot restore reset undo history.
+
 Pending:
 
 - Broader coverage audit for every future project mutation.
-- Persistence integration with undo state boundaries.
 - More granular labels for undo menu item names.
+- Autosave and crash recovery.
+- Carrying custom SVG and font assets inside project files.

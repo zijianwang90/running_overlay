@@ -17,7 +17,8 @@ This document tracks the first Mac App Store submission path for Running Overlay
 ## Implemented Packaging Files
 
 - `AppStore/Info.plist`: app bundle metadata, macOS 15 minimum, App Store video category, and ATS default-deny arbitrary loads.
-- `AppStore/RunningOverlay.entitlements`: App Sandbox, user-selected file read/write access, and outbound network client access.
+- `AppStore/RunningOverlay.entitlements`: App Sandbox, user-selected file read/write access, app-scoped security bookmarks (so saved projects and Open Recent can reopen media and project files), and outbound network client access.
+- `AppStore/Info.plist` also declares the exported `io.github.zijianwang90.runningoverlay.project` type (`.roproj`, conforming to `public.json`) and registers the app as its owner.
 - `AppStore/PrivacyInfo.xcprivacy`: privacy manifest declaring no tracking and no collected data, plus required-reason API declarations for file timestamps and app-scoped user defaults.
 - `AppStore/Assets.xcassets`: production Running Overlay Studio app icon in all ten
   macOS icon slots plus the app accent color.
