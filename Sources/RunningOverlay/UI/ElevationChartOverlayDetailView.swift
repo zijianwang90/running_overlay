@@ -44,6 +44,7 @@ struct ElevationChartOverlayDetailView: View {
                     .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Back")
 
             Image(systemName: "chart.line.uptrend.xyaxis")
                 .font(.system(size: 14, weight: .medium))
@@ -72,6 +73,7 @@ struct ElevationChartOverlayDetailView: View {
                     .foregroundStyle(NumericTokens.dangerRed)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Delete")
         }
         .padding(.horizontal, NumericTokens.panelPaddingX)
         .frame(height: EditorTheme.panelHeaderHeight)
@@ -335,26 +337,30 @@ struct ElevationChartOverlayDetailView: View {
     private func sectionView<Content: View>(_ section: Section, @ViewBuilder content: () -> Content) -> some View {
         let isOpen = openSections.contains(section)
         return VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: NumericTokens.space2) {
-                Image(systemName: section.icon)
-                    .frame(width: 16)
-                    .foregroundStyle(NumericTokens.textSecondary)
-                Text(section.title)
-                    .font(NumericTokens.sectionTitleFont)
-                    .foregroundStyle(NumericTokens.textPrimary)
-                Spacer()
-                Image(systemName: isOpen ? "chevron.up" : "chevron.down")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(NumericTokens.textMuted)
-            }
-            .frame(height: NumericTokens.sectionHeaderHeight)
-            .padding(.horizontal, NumericTokens.panelPaddingX)
-            .background(NumericTokens.panelBackgroundElevated)
-            .contentShape(Rectangle())
-            .onTapGesture {
+            Button {
                 if isOpen { openSections.remove(section) }
                 else { openSections.insert(section) }
+            } label: {
+                HStack(spacing: NumericTokens.space2) {
+                    Image(systemName: section.icon)
+                        .frame(width: 16)
+                        .foregroundStyle(NumericTokens.textSecondary)
+                    Text(section.title)
+                        .font(NumericTokens.sectionTitleFont)
+                        .foregroundStyle(NumericTokens.textPrimary)
+                    Spacer()
+                    Image(systemName: isOpen ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(NumericTokens.textMuted)
+                }
+                .frame(height: NumericTokens.sectionHeaderHeight)
+                .padding(.horizontal, NumericTokens.panelPaddingX)
+                .background(NumericTokens.panelBackgroundElevated)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(section.title)
+            .accessibilityValue(isOpen ? "Expanded" : "Collapsed")
             .overlay(alignment: .bottom) { Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1) }
 
             if isOpen {

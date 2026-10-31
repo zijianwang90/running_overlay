@@ -44,17 +44,28 @@ struct CollapsibleBackgroundInspectorSection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: NumericTokens.space2) {
-                Image(systemName: "rectangle.fill")
-                    .frame(width: 16, alignment: .center)
-                    .foregroundStyle(NumericTokens.textSecondary)
-                Text("Background")
-                    .font(NumericTokens.sectionTitleFont)
-                    .foregroundStyle(NumericTokens.textPrimary)
-                Spacer()
+                Button {
+                    isExpanded.toggle()
+                } label: {
+                    HStack(spacing: NumericTokens.space2) {
+                        Image(systemName: "rectangle.fill")
+                            .frame(width: 16, alignment: .center)
+                            .foregroundStyle(NumericTokens.textSecondary)
+                        Text("Background")
+                            .font(NumericTokens.sectionTitleFont)
+                            .foregroundStyle(NumericTokens.textPrimary)
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Background")
+                .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
                 Toggle("", isOn: Binding(get: { isOn }, set: onSetEnabled))
                     .toggleStyle(.switch)
                     .controlSize(.mini)
                     .labelsHidden()
+                    .accessibilityLabel("Enable Background")
                 Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(NumericTokens.textMuted)
