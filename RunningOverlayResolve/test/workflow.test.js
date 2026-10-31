@@ -48,7 +48,7 @@ test('Fusion script parameters are literal data even for delimiter and newline-c
 });
 test('duplicate ownership is refused instead of overwriting an arbitrary composition', async () => {
   const item = { GetMarkers: async () => ({ 0: { customData: 'owner' } }) };
-  await assert.rejects(findManagedOverlay({ GetTrackCount: async () => 1, GetItemListInTrack: async () => [item,item] }, 'owner'), /Multiple/);
+  await assert.rejects(findManagedOverlay({ GetTrackCount: async () => 1, GetItemListInTrack: async () => [item,item] }, 'owner'), /more than one piece/);
 });
 test('service restores configurations, detects edits before mutation, and publishes immutable revisions', async (t) => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'ro-service-test-')); t.after(() => fs.rm(root, { recursive: true, force: true }));

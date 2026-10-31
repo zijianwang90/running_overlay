@@ -4,7 +4,7 @@ const fs = require('node:fs/promises');
 const crypto = require('node:crypto');
 const { invariant } = require('../domain/validation');
 const { scanCurrentTimeline } = require('../resolve/resolve-adapter');
-const { updateManagedOverlay, managedOverlayIsCurrent, managedComposition, overlayTimeOffset } = require('../resolve/managed-overlay');
+const { updateManagedOverlay, managedOverlayIsCurrent, managedComposition, overlayTimeOffset, OVERLAY_SPLIT, OVERLAY_SPLIT_MESSAGE } = require('../resolve/managed-overlay');
 const { validOffsetSeconds } = require('../resolve/fusion-script');
 const { compileSyncMap, timelineFingerprint } = require('../sync/compile-sync-map');
 const { writeResolveBundle } = require('../io/render-data');
@@ -32,9 +32,13 @@ class WorkflowService {
     const configuration = await this.configuration(context);
     const scan = await this.scan(resolve, { referenceVideoTrackIndex: expectedContextId && expectedContextId !== context.contextId ? configuration.referenceVideoTrackIndex : trackIndex ?? configuration.referenceVideoTrackIndex });
     invariant((await contextForResolve(resolve)).contextId === context.contextId, 'Project or timeline changed while scanning. Try again.');
-    const managedIsCurrent = await this.inspectManaged(context.timeline, context.contextId, configuration, scan);
-    const timeOffset = await this.readOffsetForScan(context, configuration);
-    return { contextId: context.contextId, scan, configuration: timeOffset.configuration, timeOffset: timeOffset.value,
+    let managedIsCurrent = false; let splitOverlay = false;
+    try { managedIsCurrent = await this.inspectManaged(context.timeline, context.contextId, configuration, scan); }
+    catch (error) { if (error.code !== OVERLAY_SPLIT) throw error; splitOverlay = true; this.offsetTarget = null; }
+    const timeOffset = splitOverlay
+      ? { configuration, value: { seconds: configuration.draftTimeOffsetMs / 1000, animated: false, source: 'unavailable', error: OVERLAY_SPLIT_MESSAGE } }
+      : await this.readOffsetForScan(context, configuration);
+    return { contextId: context.contextId, scan, configuration: timeOffset.configuration, timeOffset: timeOffset.value, splitOverlay,
       fingerprint: timelineFingerprint(scan.timeline), stale: !managedIsCurrent || configuration.lastAppliedFingerprint !== timelineFingerprint(scan.timeline) };
   }
   async readOffsetForScan(context, configuration) {
@@ -91,6 +95,7 @@ class WorkflowService {
     invariant(configuration.activity, 'Choose activity data first.');
     const snapshot = await this.scanContext(configuration.referenceVideoTrackIndex);
     invariant(!snapshot.paused, 'Resolve is rendering. Wait for the export to finish before updating the overlay.');
+    invariant(!snapshot.splitOverlay, OVERLAY_SPLIT_MESSAGE);
     invariant(snapshot.fingerprint === payload.expectedFingerprint, 'The reference timeline changed. Scan again before applying.');
     const scanErrors = snapshot.scan.diagnostics.filter((entry) => entry.severity === 'error');
     invariant(scanErrors.length === 0, scanErrors.map((entry) => entry.message).join('\n'));

@@ -40,7 +40,9 @@ changes, so nudges never make the overlay stale. Offset changes are saved with
 the Resolve project and use Fusion undo; each panel write is one undo step.
 The offset applies to the whole managed overlay. Per-file differences still use
 Clip details, and per-cut offsets on split overlays are not supported until
-host validation of split Fusion clips (see the Resolve testing guide).
+host validation of split Fusion clips (see the Resolve testing guide). Until
+then a split overlay is detected and blocks updates and panel timing, because
+replacement would leave the other piece behind as a second overlay.
 
 Exposing the offset in the Edit page Inspector is not yet established. An
 experimental generator macro tests that path; until it is verified, the panel

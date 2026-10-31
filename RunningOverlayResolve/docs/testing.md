@@ -40,6 +40,12 @@ Not yet validated in Resolve; required before merge:
    **Composition Start Frame** to the generator's record start. Record whether
    the Edit Inspector shows the offset, whether the viewer updates live, and
    whether blade-cut pieces keep independent offsets and correct activity time.
+7. Split guard: blade the managed overlay. Confirm the panel warns on the next
+   scan, the primary action no longer updates, Data timing is locked, and undoing
+   the cut restores normal behavior. Record whether Resolve keeps the ownership
+   marker on one or both pieces, which piece keeps the item ID, and whether
+   `GetMediaPoolItem` identifies both pieces. `test/time-offset.test.js` covers
+   both marker outcomes with host fakes only.
 
 ## Capture-Time Pickers And Frameless Panel — 2026-09-30
 

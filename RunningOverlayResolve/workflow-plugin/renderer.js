@@ -337,6 +337,7 @@ function widgetsChanged() { if (state.configuration.managedItemId) setStatus('Wi
 function primaryState() {
   const config = state.configuration;
   if (!config || !state.scan) return { label: 'Scan timeline', run: () => scan() };
+  if (state.splitOverlay) return { label: 'Scan again after undoing the cut', run: () => scan(), quiet: true };
   if (!config.activity) return { label: 'Choose activity', run: chooseActivity };
   if (state.scan.diagnostics.some((entry) => entry.severity === 'error')) return { label: 'Scan again after fixing the timeline', run: () => scan(), quiet: true };
   const captures = captureState();
@@ -413,7 +414,7 @@ async function scan({ restore = false, silent = false, trackIndex } = {}) {
       Object.assign(state.configuration, { managedItemId, lastAppliedFingerprint, bundleDirectory });
       if (managedItemId) state.configuration.draftTimeOffsetMs = result.configuration.draftTimeOffsetMs;
     }
-    Object.assign(state, { scan: result.scan, tracks: result.scan.tracks ?? [], fingerprint: result.fingerprint, stale: result.stale });
+    Object.assign(state, { scan: result.scan, tracks: result.scan.tracks ?? [], fingerprint: result.fingerprint, stale: result.stale, splitOverlay: Boolean(result.splitOverlay) });
     if (!offsetBusy()) state.timeOffset = result.timeOffset ?? { seconds: state.configuration.draftTimeOffsetMs / 1000, source: 'draft', animated: false };
     if (!silent || changed || changedContext) render(); else { renderOffset(); renderPrimary(); }
     if (!state.autoTrackTried && !result.scan.timeline.items.length) {
@@ -422,7 +423,8 @@ async function scan({ restore = false, silent = false, trackIndex } = {}) {
       const next = state.tracks.find((track) => track.clipCount > 0 && track.name !== OVERLAY_TRACK);
       if (next) { state.configuration.referenceVideoTrackIndex = next.index; scheduleSave(); state.scanning = false; if (!silent) setBusy(false); return await scan({ trackIndex: next.index }); }
     }
-    if (changedContext) setStatus(result.configuration.managedItemId ? 'Saved settings restored.' : 'Ready.');
+    if (result.splitOverlay) setStatus(result.timeOffset.error, 'warning');
+    else if (changedContext) setStatus(result.configuration.managedItemId ? 'Saved settings restored.' : 'Ready.');
     else if (result.stale && state.configuration.managedItemId && (changed || !silent)) setStatus('The timeline changed. Update the overlay to resync its data; your timing and styles stay.', 'warning');
     else if (resumed) setStatus('Export finished. Checks resumed.');
   } catch (error) {

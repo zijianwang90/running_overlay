@@ -6,7 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { inferRecordingZone, clipSpans } = require('../src/sync/alignment-preview');
 const { dataUpdateScript, timeOffsetScript, validOffsetSeconds } = require('../src/resolve/fusion-script');
-const { overlayTimeOffset } = require('../src/resolve/managed-overlay');
+const { overlayTimeOffset, findManagedOverlay, OVERLAY_SPLIT, OVERLAY_SPLIT_MESSAGE } = require('../src/resolve/managed-overlay');
 const { ConfigurationStore, validateConfiguration, contextForResolve } = require('../src/workflow/configuration');
 const { WorkflowService } = require('../src/workflow/service');
 const activity = require('../fixtures/activity.synthetic.json');
@@ -140,4 +140,40 @@ test('an unreadable overlay offset is reported without failing the scan', async 
   assert.equal(result.timeOffset.source, 'unavailable');
   assert.equal(result.timeOffset.seconds, 0.75);
   assert.match(result.timeOffset.error, /Numeric Fuse/);
+});
+
+function overlayPiece(id, { media = 'carrier', owner = null } = {}) {
+  return { GetUniqueId: async () => id, GetMarkers: async () => owner ? { 0: { customData: owner } } : {},
+    GetMediaPoolItem: async () => ({ GetUniqueId: async () => media }), GetName: async () => 'Fusion Clip' };
+}
+const overlayTimeline = (...tracks) => ({ GetTrackCount: async () => tracks.length, GetItemListInTrack: async (_kind, track) => tracks[track - 1] });
+
+test('a split overlay is detected whether or not both pieces keep the ownership marker', async () => {
+  const owner = 'running-overlay:v1:test'; const footage = [overlayPiece('v1', { media: 'footage' })];
+  const left = overlayPiece('left', { owner });
+  await assert.rejects(findManagedOverlay(overlayTimeline(footage, [left, overlayPiece('right')]), owner, 'left'), { code: OVERLAY_SPLIT });
+  await assert.rejects(findManagedOverlay(overlayTimeline(footage, [left, overlayPiece('right', { owner })]), owner, 'left'), { code: OVERLAY_SPLIT });
+  // Another clip on the overlay track, or the same media elsewhere, is not a piece.
+  const found = await findManagedOverlay(overlayTimeline([overlayPiece('v1')], [left, overlayPiece('title', { media: 'title' })]), owner, 'left');
+  assert.equal(found.track, 2);
+});
+
+test('a split overlay blocks updates and panel timing but still scans', async (t) => {
+  const split = Object.assign(new Error(OVERLAY_SPLIT_MESSAGE), { code: OVERLAY_SPLIT });
+  const { service, context, calls } = await harness(t, { inspectManaged: async () => { throw split; }, composition: async () => { throw split; } });
+  const configuration = await service.store.save(validateConfiguration({ schemaVersion: 1, contextId: context.contextId, referenceVideoTrackIndex: 1, activity, managedItemId: 'managed-1', draftTimeOffsetMs: 750 }));
+  const result = await service.scanContext(1);
+  assert.equal(result.splitOverlay, true);
+  assert.equal(result.stale, true);
+  assert.deepEqual(result.timeOffset, { seconds: 0.75, animated: false, source: 'unavailable', error: OVERLAY_SPLIT_MESSAGE });
+  await assert.rejects(service.apply({ configuration, expectedFingerprint: result.fingerprint }), /more than one piece/);
+  assert.equal(calls.update.length, 0);
+  assert.deepEqual(await fs.readdir(service.bundleRoot).catch(() => []), [], 'no bundle revision is written');
+  await assert.rejects(service.setTimeOffset({ contextId: context.contextId, managedItemId: 'managed-1', seconds: 1 }), /more than one piece/);
+  assert.deepEqual(calls.offset, []);
+});
+
+test('an inspection failure other than a split still fails the scan', async (t) => {
+  const { service } = await harness(t, { inspectManaged: async () => { throw new Error('marker removed'); } });
+  await assert.rejects(service.scanContext(1), /marker removed/);
 });

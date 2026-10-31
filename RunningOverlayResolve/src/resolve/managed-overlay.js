@@ -8,6 +8,8 @@ const { dataUpdateScript, timeOffsetScript } = require('./fusion-script');
 const { contextForResolve } = require('../workflow/configuration');
 const FUSE_ID = 'Fuse.RunningOverlayNumeric';
 const TRACK_NAME = 'Running Overlay';
+const OVERLAY_SPLIT = 'overlay-split';
+const OVERLAY_SPLIT_MESSAGE = 'The Running Overlay clip was cut or copied into more than one piece. Undo the cut or delete the extra pieces, then update. Per-cut overlays are not supported yet.';
 const values = (object) => Array.isArray(object) ? object : Object.values(object ?? {});
 
 // A generated transparent still is only a duration carrier, never rendered overlay media.
@@ -35,17 +37,28 @@ function carrierTimeline(file, duration, fps) {
     }] }],
   } };
 }
+async function pieceKey(item) {
+  const media = await item.GetMediaPoolItem?.();
+  return media?.GetUniqueId ? `media:${await media.GetUniqueId()}` : `name:${await item.GetName?.()}`;
+}
 async function findManagedOverlay(timeline, owner, expectedItemId = null) {
-  const found = [];
+  const items = [];
   const count = Number(await timeline.GetTrackCount('video'));
   for (let track = 1; track <= count; track++) {
     for (const item of values(await timeline.GetItemListInTrack('video', track))) {
       const owned = values(await item.GetMarkers()).some((marker) => marker.customData === owner);
       if (expectedItemId && String(await item.GetUniqueId()) === expectedItemId) invariant(owned, 'The saved overlay ownership marker was removed. Restore its marker before updating.');
-      if (owned) found.push({ item, track });
+      items.push({ item, track, owned });
     }
   }
-  invariant(found.length <= 1, 'Multiple managed overlays were found. Remove the extra Running Overlay copy before updating.');
+  const found = items.filter((entry) => entry.owned);
+  // A blade cut may leave the ownership marker on only one piece, so the other
+  // piece is recognized by sharing the same source on the same track.
+  if (found.length === 1) {
+    const key = await pieceKey(found[0].item);
+    for (const entry of items) if (!entry.owned && entry.track === found[0].track && await pieceKey(entry.item) === key) found.push(entry);
+  }
+  if (found.length > 1) throw Object.assign(new Error(OVERLAY_SPLIT_MESSAGE), { code: OVERLAY_SPLIT });
   return found[0] ?? null;
 }
 async function managedOverlayIsCurrent(timeline, contextId, configuration, scan) {
@@ -185,4 +198,4 @@ async function updateManagedOverlay(resolve, { contextId, syncMap, bundleDirecto
     throw error;
   } finally { await fs.rm(backup, { force: true }); }
 }
-module.exports = { FUSE_ID, carrierTimeline, transparentPNG, findManagedOverlay, managedOverlayIsCurrent, setDataInputs, overlayTimeOffset, managedComposition, updateManagedOverlay };
+module.exports = { FUSE_ID, OVERLAY_SPLIT, OVERLAY_SPLIT_MESSAGE, carrierTimeline, transparentPNG, findManagedOverlay, managedOverlayIsCurrent, setDataInputs, overlayTimeOffset, managedComposition, updateManagedOverlay };
