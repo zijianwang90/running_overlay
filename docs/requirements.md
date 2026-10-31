@@ -217,8 +217,10 @@ Requirements:
   - Space: play/pause.
   - Command + Plus: zoom in timeline.
   - Command + Minus: zoom out timeline.
-  - Command + mouse wheel/trackpad scroll on timeline: zoom timeline.
-  - Trackpad pinch on timeline: zoom timeline.
+  - Command + mouse wheel/trackpad scroll on timeline: zoom timeline. Trackpad scrolling zooms continuously in proportion to the scroll distance; each mouse-wheel notch zooms one 1.35x step.
+  - Trackpad pinch on timeline: zoom timeline continuously in proportion to the pinch.
+  - Pinch and Command-scroll keep the time under the pointer in place; menu, keyboard, and slider zoom keep centering the playhead.
+- Right-clicking a timeline clip selects it and offers `Apply <offset> Offset to All Clips in <track>`, `Reset Offset` (disabled at zero offset), and `Delete Clip`, followed by the existing `Delete <track>` item. Right-clicking empty track space shows only `Delete <track>`. Tracks are camera angles aligned to the FIT layer, so clip actions are about each camera's offset.
   - Left Arrow / Right Arrow: step the timeline playhead backward or forward by one project frame when no unlocked overlay is selected.
   - Arrow keys with an unlocked overlay selected: move the overlay by one output pixel; Shift + Arrow moves it by ten output pixels. Each press registers one undo point.
 - Timeline should expose a visible zoom slider in the timeline header.

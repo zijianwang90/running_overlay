@@ -455,32 +455,28 @@ final class ProjectDocument: ObservableObject {
     }
 
     func zoomTimelineIn() {
-        var updatedTimeline = timeline
-        let current = currentPixelsPerSecond
-        let next = min(current * 1.35, Self.maximumTimelinePixelsPerSecond)
-        if next <= zoomLowerBound * 1.001 {
-            updatedTimeline.zoom = .fit
-        } else {
-            updatedTimeline.zoom = .pixelsPerSecond(next)
-        }
-        timeline = updatedTimeline
+        zoomTimeline(by: Self.timelineZoomStep)
     }
 
     func zoomTimelineOut() {
+        zoomTimeline(by: 1 / Self.timelineZoomStep)
+    }
+
+    /// Scales the timeline zoom by `factor` (above 1 zooms in), clamped to the
+    /// maximum and snapping to Fit at the lower bound. Trackpad pinch and
+    /// Command-scroll pass small per-event factors for continuous zooming.
+    func zoomTimeline(by factor: Double) {
+        guard factor.isFinite, factor > 0, factor != 1 else { return }
+        if case .fit = timeline.zoom, factor < 1 { return }
+        let next = min(currentPixelsPerSecond * factor, Self.maximumTimelinePixelsPerSecond)
+        let zoom: TimelineZoom = next <= zoomLowerBound * 1.001 ? .fit : .pixelsPerSecond(next)
+        guard zoom != timeline.zoom else { return }
         var updatedTimeline = timeline
-        switch timeline.zoom {
-        case .fit:
-            return
-        case .pixelsPerSecond(let value):
-            let next = value / 1.35
-            if next <= zoomLowerBound * 1.001 {
-                updatedTimeline.zoom = .fit
-            } else {
-                updatedTimeline.zoom = .pixelsPerSecond(next)
-            }
-        }
+        updatedTimeline.zoom = zoom
         timeline = updatedTimeline
     }
+
+    static let timelineZoomStep = 1.35
 
     private var zoomLowerBound: Double {
         max(fitPixelsPerSecond, Self.minimumTimelinePixelsPerSecond)
