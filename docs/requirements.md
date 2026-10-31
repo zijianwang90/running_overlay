@@ -365,6 +365,7 @@ Current implementation status:
 - Preview overlay placement and drag behavior are based on the actual fitted project canvas inside the preview panel, avoiding offset drift when split panes resize the preview area.
 - A small Preview header switch can show or hide preview safety guides, including 90%/80% safe frames and center crosshairs.
 - Selected overlays show a subtle blue selection border and small corner handles.
+- Dragging an overlay snaps to other overlays' alignment lines, and to the safe-guide lines and center crosshair while safe guides are shown; holding Command while dragging turns snapping off for free placement.
 - Dragging selected-overlay corner handles scales the overlay and writes directly to the element `scale` model value.
 
 Future requirements:
