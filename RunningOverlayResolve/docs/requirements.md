@@ -2,6 +2,14 @@
 
 Last updated: 2026-09-30
 
+## Full Product Goal
+
+The release goal is functional parity with the Mac app, tracked in the
+[feature inventory and acceptance plan](mac-app-parity.md). The P0/P1 sections
+below describe prototype milestones, not the final product scope. Resolve work
+stays on `codex/resolve-plugin-poc`; the PR remains a draft until the parity
+release gate is met.
+
 ## Product Boundary
 
 Running Overlay Resolve is a sibling product, not a bridge to Running Overlay

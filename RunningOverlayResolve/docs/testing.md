@@ -1,5 +1,36 @@
 # Running Overlay Resolve Testing
 
+## Independent Numeric Instances — 2026-10-31
+
+Fuse v6 adds elevation, cadence, power and calories and up to sixteen numeric
+instances. Node tests cover duplicate identities versus duplicate metrics,
+configuration round trips, the capacity bound and layout bounds. In Resolve
+Lua, the Fuse compiled successfully; its real formatter produced expected
+labels, values, units, zero calories and missing values for the four new
+metrics. Generated update transactions were exercised against a fake Lua
+composition: duplicate metrics received different slots, retained identities
+kept their slots after removal, and unrelated state survived.
+
+Host validation in a separate synthetic project on Resolve Studio 21.1.1:
+
+- Installed Fuse v6 and exercised the real update transaction. Adopted legacy
+  four-metric inputs with unchanged size, color and +1.25 s offset.
+- Created all eight metrics and a duplicate power instance with its own green
+  style. Exported 30 frames at 1920×1080, 30 fps, ProRes 422; inspected the image
+  with elevation 104 m, cadence 172 spm, power 246 W, calories 46 kcal, and the
+  separate green power instance also reading 246 W.
+- Removed calories and added a new calories identity. The surviving duplicate
+  retained slot 9 and its color. Ordinary resync and project save/close/reopen
+  preserved the duplicate style, slot map and timing offset.
+- Restored the original Overlay Test project without editing its timeline.
+
+The first export attempt with ProRes 4444 crashed Resolve. After reopening the
+saved test project, ProRes 422 completed normally. The cause is unresolved;
+4444/alpha output is not accepted for this increment. The synthetic test project
+is retained for reproduction. Eight-widget panel interaction and an actual v5
+project visual comparison remain manual follow-ups; migration above used v6
+with the legacy identity map removed, rather than a v5 binary side by side.
+
 ## Cut Overlay Deliver Validation — 2026-10-31
 
 Validated in Resolve Studio 21.1.1 on a duplicate of a locally edited timeline

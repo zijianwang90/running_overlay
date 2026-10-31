@@ -1,7 +1,7 @@
 'use strict';
 const path = require('node:path');
 const { invariant } = require('../domain/validation');
-const { normalizeWidgets, normalizeLayout, positionFor } = require('../domain/widgets');
+const { METRICS, normalizeWidgets, normalizeLayout, positionFor } = require('../domain/widgets');
 
 function luaString(value) {
   let equals = '';
@@ -31,8 +31,8 @@ function dataUpdateScript({ bundleDirectory, origin, token, initialize = false, 
   const assignments = Object.entries(fields).map(([key, value]) =>
     `{${luaString(key)}, ${typeof value === 'number' ? value : luaString(value)}}`).join(',\n');
   const desired = selected.map((widget, index) => {
-    const position = positionFor(layout, index);
-    return `{id=${luaString(widget.id)}, metric=${luaString(widget.metric)}, x=${position.x}, y=${position.y}}`;
+    const position = positionFor(layout, index, selected.length);
+    return `{id=${luaString(widget.id)}, metric=${luaString(widget.metric)}, metric_index=${METRICS[widget.metric]}, x=${position.x}, y=${position.y}}`;
   }).join(',\n');
   const signature = JSON.stringify([layout, selected.map((widget) => [widget.id, widget.metric])]);
   return `
@@ -43,6 +43,7 @@ local desired = { ${desired} }
 local layout_signature = ${luaString(signature)}
 local changes, created = {}, {}
 local previous_layout = comp:GetData("RunningOverlay.LayoutSignature")
+local previous_slots = comp:GetData("RunningOverlay.WidgetSlots")
 local output = comp:FindTool("MediaOut1")
 local previous_output = output and output:FindMainInput(1):GetConnectedOutput()
 local undo_started = false
@@ -82,24 +83,52 @@ local ok, message = pcall(function()
   -- A new renderer starts from the panel's draft offset. An existing renderer
   -- owns its offset, including Fusion animation; resyncs never reset it.
   if fresh then update("TimeOffset", ${initialOffset}) end
-  local prefixes = {heartRate = "HeartRate", pace = "Pace", distance = "Distance", elapsed = "Elapsed"}
-  local enabled = {}
-  for _, widget in ipairs(desired) do enabled[widget.metric] = widget end
-  if fresh or previous_layout ~= layout_signature then
-    for metric, prefix in pairs(prefixes) do
-      update(prefix .. "Enabled", enabled[metric] and 1 or 0)
+  local prefixes = {"", "Pace", "Distance", "Elapsed"}
+  for slot = 5, 16 do prefixes[slot] = "Widget" .. slot end
+  local legacy_slots = {heartRate = 1, pace = 2, distance = 3, elapsed = 4}
+  local slots = comp:GetData("RunningOverlay.WidgetSlots") or {}
+  local used = {}
+  -- On first upgrade, adopt legacy metric inputs instead of resetting their styles.
+  for _, widget in ipairs(desired) do
+    local slot = slots[widget.id]
+    if slot then
+      assert(type(slot) == "number" and slot >= 1 and slot <= 16 and slot % 1 == 0 and not used[slot], "Invalid widget slot ownership.")
+      used[slot] = widget.id
     end
   end
-  -- Keep each metric's existing style, modifiers, and position on an ordinary
-  -- resync. Reposition only when the requested layout actually changes.
-  if fresh or (previous_layout ~= layout_signature and (previous_layout or #desired > 1)) then
-    for _, widget in ipairs(desired) do
-      local prefix = widget.metric == "heartRate" and "" or prefixes[widget.metric]
+  local assigned = {}
+  for _, widget in ipairs(desired) do
+    local slot = slots[widget.id]
+    if not slot then
+      local preferred = legacy_slots[widget.metric]
+      if preferred and not used[preferred] then slot = preferred end
+      if not slot then
+        for available = 1, 16 do if not used[available] then slot = available break end end
+      end
+      assert(slot, "No numeric widget slot is available.")
+      used[slot] = widget.id
+    end
+    assigned[widget.id] = slot
+    local prefix = prefixes[slot]
+    local metric_key = prefix .. "Metric"
+    if fresh or previous_layout ~= layout_signature then
+      if node:GetInput(metric_key) ~= nil then update(metric_key, widget.metric_index)
+      else assert(widget.metric_index == (slot - 1), "Install the current Numeric Fuse and restart Resolve.") end
+    end
+    if fresh or (previous_layout ~= layout_signature and (previous_layout or #desired > 1)) then
       update(prefix .. "Position", {widget.x, widget.y})
+    end
+  end
+  if fresh or previous_layout ~= layout_signature then
+    for slot, prefix in ipairs(prefixes) do
+      local key = slot == 1 and "HeartRateEnabled" or prefix .. "Enabled"
+      if node:GetInput(key) ~= nil then update(key, used[slot] and 1 or 0)
+      else assert(not used[slot], "Install the current Numeric Fuse and restart Resolve.") end
     end
   end
   assert(output:ConnectInput("Input", node), "Could not connect the Numeric output.")
   node:SetData("RunningOverlay.ManagedNumeric", true)
+  comp:SetData("RunningOverlay.WidgetSlots", assigned)
   comp:SetData("RunningOverlay.LayoutSignature", layout_signature)
   for _, merge in pairs(comp:GetToolList(false, "Merge")) do
     if merge:GetData("RunningOverlay.ManagedMerge") then merge:Delete() end
@@ -114,6 +143,7 @@ if not ok then
   end
   for i = #created, 1, -1 do pcall(function() created[i]:Delete() end) end
   pcall(function() comp:SetData("RunningOverlay.LayoutSignature", previous_layout) end)
+  pcall(function() comp:SetData("RunningOverlay.WidgetSlots", previous_slots) end)
 end
 if undo_started then comp:EndUndo(ok) end
 comp:SetData(status_key, token .. (ok and "|ok" or "|error:" .. tostring(message)))

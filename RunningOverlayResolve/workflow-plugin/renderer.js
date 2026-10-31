@@ -11,7 +11,7 @@ const time = window.RunningOverlayTime;
 const alignment = window.RunningOverlayAlignment;
 const { createTimePicker, zoneSelect } = window.runningOverlayPickers;
 const byId = (id) => document.getElementById(id);
-const METRICS = [['heartRate', 'Heart rate'], ['pace', 'Pace'], ['distance', 'Distance'], ['elapsed', 'Time']];
+const METRICS = [['heartRate', 'Heart rate'], ['pace', 'Pace'], ['distance', 'Distance'], ['elapsed', 'Time'], ['elevation', 'Elevation'], ['cadence', 'Cadence'], ['power', 'Power'], ['calories', 'Calories']];
 const OVERLAY_TRACK = 'Running Overlay';
 const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
 
@@ -331,13 +331,32 @@ function renderWidgets() {
     chip.addEventListener('click', () => toggleMetric(metric));
     box.appendChild(chip);
   }
+  const list = document.createElement('div'); list.className = 'widget-instances';
+  for (const widget of config.widgets) {
+    const row = document.createElement('div'); row.className = 'card-row';
+    const label = document.createElement('span'); label.textContent = METRICS.find(([metric]) => metric === widget.metric)[1];
+    const actions = document.createElement('div');
+    const duplicate = document.createElement('button'); duplicate.type = 'button'; duplicate.className = 'secondary'; duplicate.textContent = 'Duplicate'; duplicate.disabled = config.widgets.length >= 16;
+    duplicate.addEventListener('click', () => {
+      config.widgets.push({ id: `numeric-${crypto.randomUUID()}`, metric: widget.metric });
+      renderWidgets(); scheduleSave(); widgetsChanged();
+    });
+    const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'secondary'; remove.textContent = 'Remove'; remove.disabled = config.widgets.length === 1;
+    remove.addEventListener('click', () => {
+      config.widgets = config.widgets.filter((candidate) => candidate.id !== widget.id);
+      renderWidgets(); scheduleSave(); widgetsChanged();
+    });
+    actions.append(duplicate, remove); row.append(label, actions); list.appendChild(row);
+  }
+  box.appendChild(list);
   for (const button of document.querySelectorAll('[data-layout]')) {
     button.setAttribute('role', 'radio'); button.setAttribute('aria-checked', String(button.dataset.layout === config.layoutPreset));
   }
 }
 function toggleMetric(metric) {
   const config = state.configuration; const existing = config.widgets.find((widget) => widget.metric === metric);
-  if (existing && config.widgets.length === 1) { setStatus('Keep at least one metric.', 'warning'); return; }
+  if (!existing && config.widgets.length >= 16) { setStatus('Keep at most sixteen widgets.', 'warning'); return; }
+  if (existing && config.widgets.filter((widget) => widget.metric !== metric).length === 0) { setStatus('Keep at least one metric.', 'warning'); return; }
   const order = METRICS.map(([key]) => key);
   config.widgets = (existing ? config.widgets.filter((widget) => widget !== existing) : [...config.widgets, { id: `numeric-${crypto.randomUUID()}`, metric }])
     .sort((left, right) => order.indexOf(left.metric) - order.indexOf(right.metric));

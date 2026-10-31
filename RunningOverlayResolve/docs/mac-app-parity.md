@@ -1,0 +1,173 @@
+# Mac App Feature Parity
+
+## Release Goal
+
+Keep Resolve development on `codex/resolve-plugin-poc`. The existing PR stays a
+draft; merge to `main` only after the parity gates below are met. This replaces
+the earlier plan to merge the usable four-metric prototype first.
+
+Parity means that users can produce the same supported overlay content and
+styles, with equivalent data semantics and reliable project handoff. Resolve
+supplies the video editor, playback, animation and final delivery workflow;
+rebuilding Studio's timeline UI is not a parity requirement. Similar feature
+names alone do not establish parity. Differences must be recorded explicitly.
+
+Baseline inspected: Mac app and Resolve code at commit `b8842cc`, 2026-10-31.
+Recheck this baseline as the Mac app changes. This is a code inventory, not a
+claim that every Mac app feature has been host-tested in Resolve.
+
+## Evidence
+
+- [Mac element catalog](../../Sources/RunningOverlay/Overlay/OverlayElement.swift):
+  34 element types, of which 21 are numeric overlays.
+- [Mac value formatting](../../Sources/RunningOverlay/Overlay/OverlayValueFormatter.swift)
+  and [render models](../../Sources/RunningOverlay/Overlay/OverlayRenderModel.swift).
+- [Mac overlay development guide](../../docs/development/overlays-and-preview.md)
+  and [module specifications](../../docs/overlay-modules/README.md).
+- [Mac activity import](../../docs/development/app-and-import.md) and
+  [template model](../../Sources/RunningOverlay/Overlay/OverlayTemplate.swift).
+- Resolve [widget catalog](../src/domain/widgets.js),
+  [activity model](../src/domain/activity.js),
+  [render bundle](../src/io/render-data.js), and
+  [Numeric Fuse](../fusion/Fuses/RunningOverlayNumeric.fuse).
+
+## Overlay Inventory
+
+“Partial” means there is a working implementation but its complete Mac style or
+value contract is not yet reproduced. “Data only” means a normalized field is
+available, but there is no selectable/rendered widget.
+
+| Mac element | Resolve status | Work required |
+|---|---|---|
+| Heart Rate | Partial | Numeric styles, units, zone coloring |
+| HR Zone | Missing | Zone settings, classification, palette |
+| Pace | Partial | Unit options and full numeric styles |
+| Avg Pace | Missing | Match Mac averaging and pause semantics |
+| Lap Pace | Missing | Lap data and Mac selection semantics |
+| Calories | Partial | Direct record widget implemented; lap/session fallback pending |
+| Elapsed Time | Partial (`elapsed`) | Match formats and pause behavior at boundaries |
+| Real Time | Missing | Explicit display timezone and clock formatting |
+| Date | Missing | Explicit timezone and date formatting |
+| Distance | Partial | Units and full numeric styles |
+| Distance Timeline | Missing | Distance progression and module renderer |
+| Elevation | Partial | Meter widget implemented; units and display modes pending |
+| Elevation Chart | Missing | Profile, cursor, range and styles |
+| Cadence | Partial | Widget implemented; activity-specific cadence semantics pending |
+| Power | Partial | Watt widget implemented; full numeric styles pending |
+| Running Gauge | Missing | Gauge metrics, ranges and presets |
+| Interval HUD Bar | Missing | Workout structure, zones and renderer |
+| Interval Timeline | Missing | Workout structure, lap timeline and renderer |
+| Interval Countdown | Missing | Work/rest phase and countdown semantics |
+| Interval Work Summary | Missing | Work-interval aggregation and styles |
+| Zone Edge Bar | Missing | Zone settings and renderer |
+| Route Map | Missing | Retained GPS geometry, markers, provider/background assets |
+| Vertical Oscillation | Missing | FIT field, conversion and formatting |
+| Ground Contact Time | Missing | FIT field and formatting |
+| Stride Length | Missing | FIT field, units and formatting |
+| Vertical Ratio | Missing | FIT field and formatting |
+| GCT Balance | Missing | FIT encoding, side semantics and formatting |
+| Temperature | Missing | FIT value/manual input, units and fallback |
+| Grade | Missing | FIT/GPX derivation and formatting |
+| Custom Numeric | Missing | Selectable source, precision, units and formats |
+| Weather Widget | Missing | Weather inputs/cache/assets and full module behavior |
+| Solid Color | Missing | Shape, fill, geometry, opacity and effects |
+| Icon | Missing | Licensed asset handling and renderer |
+| Text | Missing | Text, typography, layout and effects |
+
+Resolve now supports up to sixteen independently identified numeric instances,
+including duplicate metrics. Each identity retains a persisted renderer slot.
+Legacy heart-rate/pace/distance/elapsed inputs are adopted during upgrade. Fuse v6
+was validated with a synthetic eight-metric export and duplicate styling; see
+the testing record for the unresolved ProRes 4444 crash and migration limits.
+
+## Shared Capabilities
+
+| Area | Current Resolve behavior | Parity acceptance |
+|---|---|---|
+| Numeric styling | Position, value size, font/style, label visibility, one color per widget | Value/label/unit/icon controls, attachment positions, separate typefaces/sizes/colors/opacities, presets and effects match supported Mac fields |
+| Units and formatting | Fixed formats for four metrics | Metric-specific unit choices, precision, missing values and boundary formatting match Mac |
+| Element layout | Stack/row/grid presets; Fusion positioning | Independent instances, visibility, ordering and reusable layouts; equivalent placement at supported resolutions |
+| Activity import | FIT/GPX; limited normalized fields and timer-pause annotations | Retain fields required by all supported widgets, laps, workout structure and GPS; preserve provenance and gaps |
+| Calories | Direct record calories | Match Mac lap-total/session-total fallback, explicitly distinguishing estimates |
+| Templates | None | Save/apply/import/export reusable layouts with versioned data and asset provenance; define supported interchange with Mac templates |
+| Editing after cuts | Per-piece offset; data/layout updates refused | Apply chosen style changes across pieces without changing offsets, source mapping or animation; unsupported cases fail before mutation |
+| Project persistence | Local config plus immutable local bundles | Save/reopen, relink, missing-data diagnostics, offline use and cross-machine handoff without developer paths |
+| Preview/export | Same Fuse; short 1080p composite host check | Equivalent values/styles in viewer and Deliver; transparent output, UHD, frame-rate and color-management matrix |
+| Install/upgrade | Local SDK assembly and manual installation | Reproducible installation, compatible version checks, upgrade/recovery and documented licensing |
+| Undo | Fusion transactions | Discrete edits undo once; continuous edits follow an explicit gesture contract; verify in host |
+
+Mac-only infrastructure (App Store submission, Studio pane geometry and macOS
+security-scoped bookmarks) is not duplicated literally. Equivalent outcomes
+such as installation, editing and portable media access remain required.
+
+## Delivery Order
+
+### 1. Numeric Widgets And Styles
+
+First increment: expose elevation, cadence, power and calories using the fields
+already carried by the bundle. Preserve old projects and existing metric IDs.
+Before expanding the renderer, define stable widget instances and persistence
+so later duplicate metrics and templates do not depend on fixed metric slots.
+
+Acceptance:
+
+- Each added metric can be chosen, positioned and rendered in Resolve.
+- Synthetic records verify source values, conversions and missing samples.
+- Existing four-metric projects reopen unchanged; preview and Deliver use the
+  same inputs and formatter semantics.
+- Document the current direct-record-only calorie behavior until the separate
+  lap/session fallback increment is implemented.
+
+Subsequent increments: units/formatting, independent numeric style fields, the
+remaining numeric metrics, and presets. Use the Mac renderer and formatter as
+behavior references; do not copy undocumented assumptions into Lua.
+
+### 2. Featured Widgets And Reusable Styles
+
+Build each widget against its current module specification. Acquire its data
+prerequisites first: GPS for maps, elevation series for charts, workout/lap and
+zone models for interval widgets. Cover decor elements and weather as explicit
+work items rather than leaving them outside the parity definition.
+
+Add templates and selective style propagation across cut pieces. Style changes
+must preserve every piece's offset, timing, source origin and animation. Data
+updates after cuts remain outside the current lightweight offset workflow;
+revisit only if a parity use case requires them.
+
+Acceptance: each catalog row has synthetic data coverage, renderer coverage,
+host preview/export evidence, and documented style equivalence. Templates
+round-trip all supported fields and assets without silent loss.
+
+### 3. Data And Project Integrity
+
+Complete import semantics and recovery/portability. Define compatibility and
+asset handling before claiming cross-app template exchange. Follow the same
+real-time versus moving-time distinction as Studio.
+
+Acceptance: exercise pause boundaries, missing fields, GPS gaps, laps, estimated
+values, save/reopen, missing bundles, relink and transfer to another machine.
+No public tests depend on private activity records, GPS or media.
+
+### 4. Delivery And Release Gate
+
+Validate full-length composite and alpha-only output, common rational frame
+rates, UHD, color management and realistic widget counts. Establish concrete
+performance budgets from host measurements. Finish installation and upgrade.
+
+Before merging to main:
+
+- Every catalog row and shared capability has accepted evidence or an explicit
+  user-approved exception; blank rows are incomplete work.
+- Current docs, synthetic fixtures, focused checks and `./scripts/check.sh` pass.
+- Host validation covers save/reopen, undo, preview/export parity and migration.
+- Licensing, credentials/privacy, timing conversion, codecs and compatibility
+  receive the focused human review required by AGENTS.md.
+- Refresh the Mac baseline and account for features added during development.
+
+## Current Verified Host Coverage
+
+See [testing records](testing.md) for evidence and limits. Validated development
+behavior includes four numeric metrics, per-piece timing independence,
+playhead-following timing controls, source-frame-1004 correction at 29.97, and a
+short composite Deliver export across one ripple-edited boundary. These checks
+do not establish the release gate above.

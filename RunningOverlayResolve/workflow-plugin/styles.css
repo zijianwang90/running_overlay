@@ -154,3 +154,6 @@ details details { margin-left: 2px; }
 .window-controls { display: flex; gap: 2px; -webkit-app-region: no-drag; }
 .window-button { width: 28px; min-height: 26px; padding: 0; border: 0; background: transparent; color: var(--muted); font-size: 17px; }
 .window-button:hover:not(:disabled) { background: #484848; color: var(--text); }
+
+.widget-instances { display: grid; gap: 6px; width: 100%; margin-top: 6px; }
+.widget-instances .secondary { margin-left: 4px; font-size: 11px; }
