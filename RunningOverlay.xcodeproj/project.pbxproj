@@ -113,7 +113,6 @@
 		A39309C4376B4D66A5739C05 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 96ED5C5789B174A01557791C /* PrivacyInfo.xcprivacy */; };
 		716E9590E60B3AFA6E62BF18 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3685E330EC5277A9DD5661C6 /* Assets.xcassets */; };
 		6262490F99B595993A0E98B5 /* LICENSE in Legal */ = {isa = PBXBuildFile; fileRef = D7465EEA17CCFD11D3C3AC24 /* LICENSE */; };
-		3456B41AA54DFD2B50893F5C /* COMMERCIAL-LICENSE.md in Legal */ = {isa = PBXBuildFile; fileRef = B4B5A175FCA38F40732BD029 /* COMMERCIAL-LICENSE.md */; };
 		10DF98C90619D094091139C8 /* TRADEMARKS.md in Legal */ = {isa = PBXBuildFile; fileRef = DF586208EC8DBDDAEC7A75FA /* TRADEMARKS.md */; };
 		05DB1F8C0C7217F9822F3ECE /* THIRD_PARTY_NOTICES.md in Legal */ = {isa = PBXBuildFile; fileRef = 3BAAE8A7E36FEBDEC1609AAD /* THIRD_PARTY_NOTICES.md */; };
 /* End PBXBuildFile section */
@@ -121,7 +120,6 @@
 /* Begin PBXCopyFilesBuildPhase section */
 		67E8874AB1E1A880021CE956 /* Legal Notices */ = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = Legal; dstSubfolderSpec = 7; files = (
 			6262490F99B595993A0E98B5 /* LICENSE in Legal */,
-			3456B41AA54DFD2B50893F5C /* COMMERCIAL-LICENSE.md in Legal */,
 			10DF98C90619D094091139C8 /* TRADEMARKS.md in Legal */,
 			05DB1F8C0C7217F9822F3ECE /* THIRD_PARTY_NOTICES.md in Legal */,
 		); name = "Legal Notices"; runOnlyForDeploymentPostprocessing = 0; };
@@ -239,7 +237,6 @@
 		DFBA7AADE0868074C2861C98 /* AppStore.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/AppStore.xcconfig; sourceTree = SOURCE_ROOT; };
 		38A007151ABE87CC01A5B6E9 /* RunningOverlay.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RunningOverlay.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D7465EEA17CCFD11D3C3AC24 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = "LICENSE"; sourceTree = SOURCE_ROOT; };
-		B4B5A175FCA38F40732BD029 /* COMMERCIAL-LICENSE.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "COMMERCIAL-LICENSE.md"; sourceTree = SOURCE_ROOT; };
 		DF586208EC8DBDDAEC7A75FA /* TRADEMARKS.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "TRADEMARKS.md"; sourceTree = SOURCE_ROOT; };
 		3BAAE8A7E36FEBDEC1609AAD /* THIRD_PARTY_NOTICES.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "THIRD_PARTY_NOTICES.md"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
@@ -362,7 +359,6 @@
 		B6561938591A059DEBBCECA2 /* Config */ = {isa = PBXGroup; children = (DFBA7AADE0868074C2861C98); name = Config; sourceTree = "<group>"; };
 		62C2857EEBBA20131483F32E /* Legal */ = {isa = PBXGroup; children = (
 			D7465EEA17CCFD11D3C3AC24 /* LICENSE */,
-			B4B5A175FCA38F40732BD029 /* COMMERCIAL-LICENSE.md */,
 			DF586208EC8DBDDAEC7A75FA /* TRADEMARKS.md */,
 			3BAAE8A7E36FEBDEC1609AAD /* THIRD_PARTY_NOTICES.md */,
 		); name = Legal; sourceTree = "<group>"; };

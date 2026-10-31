@@ -41,9 +41,8 @@ and tests; both build paths compile the same files under
   the symbol catalog, and weather icons through Foundation `Bundle` before signing.
 - Keep signing certificates, provisioning profiles, archives, API keys, and
   other release secrets out of the repository.
-- The app-bundle build copies the PolyForm Shield license, commercial
-  licensing notice, trademark policy, and third-party notices into
-  `Contents/Resources/Legal/`. Do not remove those files from distributed
+- The app-bundle build copies the MIT License, trademark policy, and
+  third-party notices into `Contents/Resources/Legal/`. Do not remove those files from distributed
   builds.
 
 ## Preflight Commands
