@@ -36,17 +36,28 @@ struct CollapsibleBorderInspectorSection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: NumericTokens.space2) {
-                Image(systemName: "rectangle")
-                    .frame(width: 16, alignment: .center)
-                    .foregroundStyle(NumericTokens.textSecondary)
-                Text("Border")
-                    .font(NumericTokens.sectionTitleFont)
-                    .foregroundStyle(NumericTokens.textPrimary)
-                Spacer()
+                Button {
+                    isExpanded.toggle()
+                } label: {
+                    HStack(spacing: NumericTokens.space2) {
+                        Image(systemName: "rectangle")
+                            .frame(width: 16, alignment: .center)
+                            .foregroundStyle(NumericTokens.textSecondary)
+                        Text("Border")
+                            .font(NumericTokens.sectionTitleFont)
+                            .foregroundStyle(NumericTokens.textPrimary)
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Border")
+                .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
                 Toggle("", isOn: Binding(get: { isOn }, set: onSetEnabled))
                     .toggleStyle(.switch)
                     .controlSize(.mini)
                     .labelsHidden()
+                    .accessibilityLabel("Enable Border")
                 Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(NumericTokens.textMuted)

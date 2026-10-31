@@ -219,7 +219,8 @@ Requirements:
   - Command + Minus: zoom out timeline.
   - Command + mouse wheel/trackpad scroll on timeline: zoom timeline.
   - Trackpad pinch on timeline: zoom timeline.
-  - Left Arrow / Right Arrow: step the timeline playhead backward or forward by one project frame.
+  - Left Arrow / Right Arrow: step the timeline playhead backward or forward by one project frame when no unlocked overlay is selected.
+  - Arrow keys with an unlocked overlay selected: move the overlay by one output pixel; Shift + Arrow moves it by ten output pixels. Each press registers one undo point.
 - Timeline should expose a visible zoom slider in the timeline header.
 - Timeline should expose a collapse/expand control next to the zoom slider for hiding and restoring no-video gaps.
 - Dragging from empty timeline time-area space, including the workspace below the last video track, draws a marquee that selects every intersecting timeline clip across tracks.
@@ -345,7 +346,8 @@ Current implementation status:
   - Dial / Ring / Ticks / Dividers / Effects sections expose every renderer-consumed parameter (dial color + opacity + glass; outer ring + progress ring + progress mode + caps; tick count + major-every + opacities; divider color/opacity/width; shadow + glow). Conditional sub-rows show only when the parent toggle is on.
   - Typography offers Font, Monospaced Digits, and primary/secondary Weight; Color offers Primary Text, Secondary, and Accent swatch strips.
 - Space starts/stops playhead playback, and the overlay values update as playhead time changes.
-- Left and right arrows move the timeline playhead by exactly one project frame for fine timing checks.
+- Left and right arrows move the timeline playhead by exactly one project frame for fine timing checks when no unlocked overlay is selected.
+- With an unlocked overlay selected, all four arrow keys nudge it by one output pixel at the project resolution (ten with Shift); deselect the overlay to return arrows to frame stepping.
 - Timeline ruler click/drag immediately updates the current playhead, including during playback, and playback continues from the selected time.
 - Timeline ruler hover data appears above the time scale, not under the cursor, with an arrow pointing to the hovered ruler position.
 - A muted red playhead with a small downward-pointing triangle inside the ruler band is shown on timeline tracks. The vertical line starts from inside the ruler and extends down through the visible tracks; neither the line nor the triangle is allowed to extend above the ruler.
