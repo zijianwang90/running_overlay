@@ -18,8 +18,8 @@ RESOURCES_DIR="$CONTENTS_DIR/Resources"
 LEGAL_DIR="$RESOURCES_DIR/Legal"
 
 BUNDLE_ID="${RUNNING_OVERLAY_BUNDLE_ID:-io.github.zijianwang90.runningoverlay}"
-MARKETING_VERSION="${RUNNING_OVERLAY_MARKETING_VERSION:-0.1.5}"
-BUILD_NUMBER="${RUNNING_OVERLAY_BUILD_NUMBER:-8}"
+MARKETING_VERSION="${RUNNING_OVERLAY_MARKETING_VERSION:-0.1.6}"
+BUILD_NUMBER="${RUNNING_OVERLAY_BUILD_NUMBER:-9}"
 SIGN_IDENTITY="${RUNNING_OVERLAY_SIGN_IDENTITY:--}"
 
 cd "$ROOT_DIR"
@@ -37,7 +37,8 @@ if [[ ! -d "$RESOURCE_BUNDLE" ]]; then
   exit 1
 fi
 cp -R "$RESOURCE_BUNDLE" "$RESOURCES_DIR/"
-swift "$ROOT_DIR/scripts/validate-packaged-resources.swift" "$APP_DIR"
+# Stdout must stay the app path alone: the release workflow captures it.
+swift "$ROOT_DIR/scripts/validate-packaged-resources.swift" "$APP_DIR" >&2
 
 cp "$PRIVACY_MANIFEST" "$RESOURCES_DIR/PrivacyInfo.xcprivacy"
 cp "$ROOT_DIR/LICENSE" "$LEGAL_DIR/LICENSE"

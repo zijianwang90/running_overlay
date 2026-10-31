@@ -6,8 +6,8 @@ this directory before the tag is pushed.
 Use one Markdown file per tag:
 
 ```text
-docs/releases/v0.1.4.md
 docs/releases/v0.1.5.md
+docs/releases/v0.1.6.md
 ```
 
 The release workflow copies `docs/releases/${tag}.md` into the GitHub Release
