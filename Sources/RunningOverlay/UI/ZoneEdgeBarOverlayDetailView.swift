@@ -65,6 +65,7 @@ struct ZoneEdgeBarOverlayDetailView: View {
             }
             .buttonStyle(.plain)
             .help("Back")
+            .accessibilityLabel("Back")
 
             ZStack {
                 RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
@@ -105,6 +106,7 @@ struct ZoneEdgeBarOverlayDetailView: View {
             }
             .buttonStyle(.plain)
             .help("Delete")
+            .accessibilityLabel("Delete")
         }
         .padding(.horizontal, NumericTokens.panelPaddingX)
         .frame(height: EditorTheme.panelHeaderHeight)
@@ -370,18 +372,29 @@ private struct ZoneEdgeBarInspectorSection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: NumericTokens.space2) {
-                Image(systemName: systemImage)
-                    .frame(width: 16, alignment: .center)
-                    .foregroundStyle(NumericTokens.textSecondary)
-                Text(title)
-                    .font(NumericTokens.sectionTitleFont)
-                    .foregroundStyle(NumericTokens.textPrimary)
-                Spacer()
+                Button {
+                    isExpanded.toggle()
+                } label: {
+                    HStack(spacing: NumericTokens.space2) {
+                        Image(systemName: systemImage)
+                            .frame(width: 16, alignment: .center)
+                            .foregroundStyle(NumericTokens.textSecondary)
+                        Text(title)
+                            .font(NumericTokens.sectionTitleFont)
+                            .foregroundStyle(NumericTokens.textPrimary)
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(title)
+                .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
                 if let headerToggle {
                     Toggle("", isOn: headerToggle)
                         .toggleStyle(.switch)
                         .controlSize(.mini)
                         .labelsHidden()
+                        .accessibilityLabel("Enable \(title)")
                 }
                 Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                     .font(.system(size: 11, weight: .semibold))
