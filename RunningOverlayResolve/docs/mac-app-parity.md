@@ -78,7 +78,8 @@ Resolve now supports up to sixteen independently identified numeric instances,
 including duplicate metrics. Each identity retains a persisted renderer slot.
 Legacy heart-rate/pace/distance/elapsed inputs are adopted during upgrade. Fuse v6
 was validated with a synthetic eight-metric export and duplicate styling; see
-the testing record for the unresolved ProRes 4444 crash and migration limits.
+the testing record for the initial unreproduced crash, successful 4444 alpha
+retry, real v5/v6 comparison and remaining UI validation limits.
 
 ## Shared Capabilities
 

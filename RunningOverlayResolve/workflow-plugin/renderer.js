@@ -338,12 +338,16 @@ function renderWidgets() {
     const actions = document.createElement('div');
     const duplicate = document.createElement('button'); duplicate.type = 'button'; duplicate.className = 'secondary'; duplicate.textContent = 'Duplicate'; duplicate.disabled = config.widgets.length >= 16;
     duplicate.addEventListener('click', () => {
-      config.widgets.push({ id: `numeric-${crypto.randomUUID()}`, metric: widget.metric });
+      const current = state.configuration;
+      if (current.widgets.length >= 16) return;
+      current.widgets.push({ id: `numeric-${crypto.randomUUID()}`, metric: widget.metric });
       renderWidgets(); scheduleSave(); widgetsChanged();
     });
     const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'secondary'; remove.textContent = 'Remove'; remove.disabled = config.widgets.length === 1;
     remove.addEventListener('click', () => {
-      config.widgets = config.widgets.filter((candidate) => candidate.id !== widget.id);
+      const current = state.configuration;
+      if (current.widgets.length === 1) return;
+      current.widgets = current.widgets.filter((candidate) => candidate.id !== widget.id);
       renderWidgets(); scheduleSave(); widgetsChanged();
     });
     actions.append(duplicate, remove); row.append(label, actions); list.appendChild(row);

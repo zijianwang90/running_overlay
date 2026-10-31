@@ -24,12 +24,27 @@ Host validation in a separate synthetic project on Resolve Studio 21.1.1:
   preserved the duplicate style, slot map and timing offset.
 - Restored the original Overlay Test project without editing its timeline.
 
-The first export attempt with ProRes 4444 crashed Resolve. After reopening the
-saved test project, ProRes 422 completed normally. The cause is unresolved;
-4444/alpha output is not accepted for this increment. The synthetic test project
-is retained for reproduction. Eight-widget panel interaction and an actual v5
-project visual comparison remain manual follow-ups; migration above used v6
-with the legacy identity map removed, rather than a v5 binary side by side.
+Follow-up acceptance:
+
+- Exported the real pre-v6 user project to a separate imported clone. Loaded
+  the actual v5 Fuse and the v6 Fuse across restarts and exported the same
+  three frames at 1080p ProRes 422. Decoded RGB frames were byte-identical
+  (SHA-256 `0403b519cf382c42998fe1d96bca69f870db5488d4333b0f3b84a3d9aaee7edf`),
+  covering old values, positions, fonts, colors and offsets at that range.
+- Clicked all eight metric choices in the real Workflow panel on the clone;
+  saved configuration contained all eight metrics. A Duplicate click exposed
+  an autosave closure bug: row handlers referenced a replaced configuration.
+  Fixed handlers to resolve current state and added two regression tests running
+  the real panel code for duplicate/remove after autosave and capacity checks.
+- ProRes 4444 retry on the saved/reopened synthetic project succeeded, then
+  explicit `ExportAlpha` succeeded with `yuva444p12le`. Extracted alpha showed
+  transparent background and visible numeric glyphs. The initial crash remains
+  recorded as an unreproduced host failure, not a proven codec defect.
+- Final live Duplicate/Remove recheck was blocked when macOS denied assistive
+  access. Actual handler regression tests and real renderer instance tests pass;
+  the post-fix mouse-level check remains a limitation.
+- Restored v6 installation and original Overlay Test project. Test clones and
+  exports remain local; private project exports are ignored, not committed.
 
 ## Cut Overlay Deliver Validation — 2026-10-31
 
