@@ -190,13 +190,31 @@ The detail screen appears when `project.selection == .overlayElement(elementID)`
 - Identify the selected overlay.
 - Provide direct editing controls for that overlay.
 - Provide a return path to the outer Inspector.
+- Switch directly to another overlay without returning to the outer Inspector.
 - Expose destructive delete from the detail header.
 - Use [Numeric Overlay UI](../../overlays/numeric/numeric-overlay-ui.md) for single-value numeric metric overlays instead of building one-off Pace, Heart Rate, Distance, Power, Cadence, Calories, Elevation, Elapsed Time, or Real Time panels.
+
+### Overlay Switcher
+
+When the project has two or more overlays, an `Overlay` switcher row sits
+above every overlay detail view. It is an `InspectorDenseRow` on the elevated
+panel background containing:
+
+- an `InspectorDenseMenuLabel` pop-up showing `<n>. <type label>  (of <count>)`;
+  the menu lists every overlay in list order as `<n>. <type label>`, marking
+  the current overlay with a checkmark, locked overlays with a lock, and
+  hidden overlays with a slashed eye;
+- compact Previous / Next icon buttons that cycle through unlocked overlays
+  in list order, wrapping around.
+
+Locked overlays are disabled in the menu and skipped by Previous / Next,
+matching the rule that locked overlays must be unlocked before editing.
 
 ### Layout
 
 Top to bottom:
 
+0. Overlay switcher row (two or more overlays only)
 1. Detail header
 2. `Content` section
 3. `Position & Size` section

@@ -11,36 +11,11 @@ struct ParameterPanelView: View {
             case .timelineClips:
                 InspectorOuterView()
             case .overlayElement(let elementID):
-                if let element = project.selectedOverlay(elementID) {
-                    if element.type.isNumericOverlay {
-                        NumericOverlayDetailView(elementID: elementID)
-                    } else if element.type == .distanceTimeline {
-                        DistanceTimelineOverlayDetailView(elementID: elementID)
-                    } else if element.type == .elevationChart {
-                        ElevationChartOverlayDetailView(elementID: elementID)
-                    } else if element.type == .runningGauge {
-                        RunningGaugeOverlayDetailView(elementID: elementID)
-                    } else if element.type == .intervalHUDBar {
-                        IntervalHUDBarOverlayDetailView(elementID: elementID)
-                    } else if element.type == .intervalTimeline {
-                        IntervalTimelineOverlayDetailView(elementID: elementID)
-                    } else if element.type == .intervalCountdown {
-                        IntervalCountdownOverlayDetailView(elementID: elementID)
-                    } else if element.type == .intervalWorkSummary {
-                        IntervalWorkSummaryOverlayDetailView(elementID: elementID)
-                    } else if element.type == .zoneEdgeBar {
-                        ZoneEdgeBarOverlayDetailView(elementID: elementID)
-                    } else if element.type == .routeMap {
-                        RouteMapOverlayDetailView(elementID: elementID)
-                    } else if element.type == .weatherWidget {
-                        WeatherWidgetOverlayDetailView(elementID: elementID)
-                    } else if element.type.isDecorOverlay {
-                        DecorOverlayDetailView(elementID: elementID)
-                    } else {
-                        MissingOverlayInspectorView()
+                VStack(spacing: 0) {
+                    if project.overlayLayout.elements.count > 1 {
+                        OverlaySwitcherBar(elementID: elementID)
                     }
-                } else {
-                    MissingOverlayInspectorView()
+                    overlayDetail(elementID)
                 }
             case .none:
                 InspectorOuterView()
@@ -49,6 +24,90 @@ struct ParameterPanelView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(InspectorTheme.panelBackground)
         .foregroundStyle(InspectorTheme.textPrimary)
+    }
+
+    @ViewBuilder
+    private func overlayDetail(_ elementID: OverlayElement.ID) -> some View {
+        if let element = project.selectedOverlay(elementID) {
+            if element.type.isNumericOverlay {
+                NumericOverlayDetailView(elementID: elementID)
+            } else if element.type == .distanceTimeline {
+                DistanceTimelineOverlayDetailView(elementID: elementID)
+            } else if element.type == .elevationChart {
+                ElevationChartOverlayDetailView(elementID: elementID)
+            } else if element.type == .runningGauge {
+                RunningGaugeOverlayDetailView(elementID: elementID)
+            } else if element.type == .intervalHUDBar {
+                IntervalHUDBarOverlayDetailView(elementID: elementID)
+            } else if element.type == .intervalTimeline {
+                IntervalTimelineOverlayDetailView(elementID: elementID)
+            } else if element.type == .intervalCountdown {
+                IntervalCountdownOverlayDetailView(elementID: elementID)
+            } else if element.type == .intervalWorkSummary {
+                IntervalWorkSummaryOverlayDetailView(elementID: elementID)
+            } else if element.type == .zoneEdgeBar {
+                ZoneEdgeBarOverlayDetailView(elementID: elementID)
+            } else if element.type == .routeMap {
+                RouteMapOverlayDetailView(elementID: elementID)
+            } else if element.type == .weatherWidget {
+                WeatherWidgetOverlayDetailView(elementID: elementID)
+            } else if element.type.isDecorOverlay {
+                DecorOverlayDetailView(elementID: elementID)
+            } else {
+                MissingOverlayInspectorView()
+            }
+        } else {
+            MissingOverlayInspectorView()
+        }
+    }
+}
+
+/// Lets the Inspector jump between overlays without going back to the
+/// Added Overlays list.
+private struct OverlaySwitcherBar: View {
+    @EnvironmentObject private var project: ProjectDocument
+    let elementID: OverlayElement.ID
+
+    var body: some View {
+        let elements = project.overlayLayout.elements
+        let currentIndex = elements.firstIndex { $0.id == elementID }
+        let canStep = elements.filter { !$0.isLocked }.count > 1
+
+        InspectorDenseRow(label: "Overlay") {
+            Menu {
+                ForEach(Array(elements.enumerated()), id: \.element.id) { index, element in
+                    Button {
+                        project.openOverlayDetailFromList(element.id)
+                    } label: {
+                        Label("\(index + 1). \(element.type.label)", systemImage: menuIcon(for: element))
+                    }
+                    .disabled(element.isLocked || element.id == elementID)
+                }
+            } label: {
+                InspectorDenseMenuLabel(
+                    systemImage: currentIndex.map { elements[$0].type.inspectorIcon },
+                    title: currentIndex.map { "\($0 + 1). \(elements[$0].type.label)  (of \(elements.count))" } ?? "Overlay"
+                )
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .help("Switch Overlay")
+
+            InspectorIconButton(systemImage: "chevron.up", help: "Previous Overlay", isEnabled: canStep, compact: true) {
+                project.selectAdjacentOverlay(-1)
+            }
+            InspectorIconButton(systemImage: "chevron.down", help: "Next Overlay", isEnabled: canStep, compact: true) {
+                project.selectAdjacentOverlay(1)
+            }
+        }
+        .background(NumericTokens.panelBackgroundElevated)
+    }
+
+    private func menuIcon(for element: OverlayElement) -> String {
+        if element.id == elementID { return "checkmark" }
+        if element.isLocked { return "lock.fill" }
+        if !element.isVisible { return "eye.slash" }
+        return element.type.inspectorIcon
     }
 }
 
