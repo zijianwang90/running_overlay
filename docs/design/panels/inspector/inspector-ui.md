@@ -1,6 +1,6 @@
 # Inspector UI Design Spec
 
-Last updated: 2026-04-30
+Last updated: 2026-10-26
 
 ## Purpose
 
@@ -380,6 +380,8 @@ The current entry points are:
 - `OverlayElementListView`
 - `OverlayElementInspectorView`
 
+Implementation status: the list below is the original refactor plan. The legacy `OverlayDetailView` and the single-column row primitives it used (`InspectorSliderRow`, `ColorSwatchButton`, and similar) have since been removed from `ParameterPanelView.swift`; every overlay type now has a dedicated detail view built from the `InspectorDense*` primitives in `Sources/RunningOverlay/UI/InspectorRows/`.
+
 Recommended refactor:
 
 - Add `InspectorTheme` for tokenized colors, spacing, radii, and typography.
@@ -401,7 +403,10 @@ Keep component APIs model-oriented. Avoid view-only state that diverges from `Pr
 ## Accessibility
 
 - Minimum text contrast should pass WCAG AA on dark backgrounds.
-- Icon-only buttons need `.help(...)` and accessibility labels.
+- Icon-only buttons need `.help(...)` and accessibility labels (`.accessibilityLabel(...)`, normally the same text as the tooltip). This includes the Back/Delete buttons in each detail header (clips included), color swatches, and the SF Symbol picker buttons. `InspectorIconButton` (overlay row eye/lock/trash, Inspector Options) already applies `.accessibilityLabel(help)`, so pass a `help` string that reads well as a label; buttons built directly with `Button` must add the label themselves.
+- Collapsible section headers must be real `Button`s (`.buttonStyle(.plain)`), never a bare `.onTapGesture`, so they take keyboard focus (Tab with Full Keyboard Access on), activate with Space, and are exposed to VoiceOver as buttons. Each header sets `.accessibilityLabel(<section title>)` and `.accessibilityValue("Expanded" | "Collapsed")`, so VoiceOver announces "Layout, Expanded, button". Disclosure changes stay immediate with no animation.
+- Headers with an accessory switch (Background, Border, Stats Bar, Divider, and similar) must not nest the switch inside the header `Button`. The `Button` wraps the icon, title, and spacer; the switch is its sibling and carries its own label (`.accessibilityLabel("Enable <title>")`); a pointer-only `.onTapGesture` on the row keeps the chevron and padding clickable so the mouse hit area is the whole row except the switch.
+- Section header keyboard, pointer, and VoiceOver behavior needs a live window server, so it is checked by hand after changing a header: with Full Keyboard Access on, Tab to a header and press Space (the section toggles once); click the title, the empty space, and the chevron (each toggles once) and the accessory switch (toggles the switch only, not the section); with VoiceOver, confirm it reads the title, the expanded state, and "button". `InspectorSectionHeaderTests` only covers the window-free layout contract (collapsed shell is one header row tall; expanded adds only the body). Do not add tests that open an `NSWindow` or send synthetic events: a version that did made `swift test` time out on the GitHub macOS runner.
 - Hit targets should be at least 28x28 px for dense controls and preferably 30x30 px.
 - Selected/focused states should not rely on color alone; use border or checkmark indicators for swatches and selected cells.
 

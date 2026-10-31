@@ -59,6 +59,7 @@ struct IntervalCountdownOverlayDetailView: View {
                     .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Back")
 
             Image(systemName: "timer.circle")
                 .font(.system(size: 14, weight: .medium))
@@ -89,6 +90,7 @@ struct IntervalCountdownOverlayDetailView: View {
                     .foregroundStyle(NumericTokens.dangerRed)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Delete")
         }
         .padding(.horizontal, NumericTokens.panelPaddingX)
         .frame(height: EditorTheme.panelHeaderHeight)
@@ -98,24 +100,30 @@ struct IntervalCountdownOverlayDetailView: View {
 
     private func section<Content: View>(_ title: String, systemImage: String, isOpen: Binding<Bool>, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: NumericTokens.space2) {
-                Image(systemName: systemImage)
-                    .frame(width: 16)
-                    .foregroundStyle(NumericTokens.textSecondary)
-                Text(title)
-                    .font(NumericTokens.sectionTitleFont)
-                    .foregroundStyle(NumericTokens.textPrimary)
-                Spacer()
-                Image(systemName: isOpen.wrappedValue ? "chevron.up" : "chevron.down")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(NumericTokens.textMuted)
-                    .frame(width: 18, height: 18)
+            Button {
+                isOpen.wrappedValue.toggle()
+            } label: {
+                HStack(spacing: NumericTokens.space2) {
+                    Image(systemName: systemImage)
+                        .frame(width: 16)
+                        .foregroundStyle(NumericTokens.textSecondary)
+                    Text(title)
+                        .font(NumericTokens.sectionTitleFont)
+                        .foregroundStyle(NumericTokens.textPrimary)
+                    Spacer()
+                    Image(systemName: isOpen.wrappedValue ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(NumericTokens.textMuted)
+                        .frame(width: 18, height: 18)
+                }
+                .frame(height: NumericTokens.sectionHeaderHeight)
+                .padding(.horizontal, NumericTokens.panelPaddingX)
+                .background(NumericTokens.panelBackgroundElevated)
+                .contentShape(Rectangle())
             }
-            .frame(height: NumericTokens.sectionHeaderHeight)
-            .padding(.horizontal, NumericTokens.panelPaddingX)
-            .background(NumericTokens.panelBackgroundElevated)
-            .contentShape(Rectangle())
-            .onTapGesture { isOpen.wrappedValue.toggle() }
+            .buttonStyle(.plain)
+            .accessibilityLabel(title)
+            .accessibilityValue(isOpen.wrappedValue ? "Expanded" : "Collapsed")
             .overlay(alignment: .bottom) { Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1) }
             if isOpen.wrappedValue {
                 VStack(spacing: 0) {
