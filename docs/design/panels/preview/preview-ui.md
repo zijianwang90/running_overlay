@@ -131,6 +131,7 @@ Overlay editing affordances:
   - Visible overlays snap to each other by left/center/right and top/center/bottom alignment lines, regardless of safe-guide visibility.
   - The snap threshold is canvas-pixel based so behavior is stable across project resolutions and split-pane sizes.
   - Active snap lines should render only during drag, above guide overlays and below/around interactive overlays, and should not intercept hit testing.
+  - Holding Command while dragging bypasses snapping: the overlay follows the pointer freely (still clamped to the canvas) and no snap lines render. The modifier is read on every drag update, so pressing or releasing it mid-drag takes effect immediately.
 
 ### Bottom Playback Row
 
