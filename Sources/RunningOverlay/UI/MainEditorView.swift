@@ -89,13 +89,23 @@ struct MainEditorView: View {
         .background(EditorTheme.appBackground)
         .toolbarBackground(EditorTheme.appChrome, for: .windowToolbar)
         .overlay(alignment: .top) {
-            if let toastMessage = project.toastMessage {
-                EditorToastView(message: toastMessage)
-                    .padding(.top, 12)
+            VStack(spacing: 8) {
+                if let errorNotice = project.errorNotice {
+                    EditorErrorBannerView(message: errorNotice.message) {
+                        project.dismissErrorNotice()
+                    }
+                    .id(errorNotice.id)
                     .transition(.move(edge: .top).combined(with: .opacity))
+                }
+                if let toastMessage = project.toastMessage {
+                    EditorToastView(message: toastMessage)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
+            .padding(.top, 12)
         }
         .animation(.easeOut(duration: 0.18), value: project.toastMessage)
+        .animation(.easeOut(duration: 0.18), value: project.errorNotice)
         .sheet(isPresented: $project.showingProjectSettings) {
             ProjectSettingsView()
                 .environmentObject(project)
@@ -206,6 +216,49 @@ struct MainEditorView: View {
             return true
         }
         return responder is NSTextField
+    }
+}
+
+/// A failed action. Unlike a toast it stays until dismissed, but it does not
+/// block editing.
+private struct EditorErrorBannerView: View {
+    var message: String
+    var dismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(EditorTheme.dangerRed)
+            Text(message)
+                .font(EditorTheme.bodyFont)
+                .foregroundStyle(EditorTheme.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button(action: dismiss) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(EditorTheme.textSecondary)
+                    .frame(width: 20, height: 20)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Dismiss")
+            .accessibilityLabel("Dismiss")
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .frame(maxWidth: 560)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(EditorTheme.surfaceRaised)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(EditorTheme.dangerRed.opacity(0.6), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.3), radius: 12, y: 6)
+        .padding(.horizontal, 16)
     }
 }
 

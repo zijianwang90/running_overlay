@@ -105,6 +105,7 @@ Layout interaction requirements:
 - Empty panels should render as neutral empty work areas, not as mock content.
 - The top header bars of Media, Preview, and Inspector should use a unified header height.
 - Header icon/menu button heights across Media, Preview, and Inspector should use a unified compact control size.
+- Failed user actions (imports, exports, template file operations, clip placement conflicts, weather fetches) show a dismissible, non-blocking error banner at the top of the editor in addition to the status bar. Finished exports and completed media or activity imports also show a brief toast. See `docs/design/system/app-ui.md#feedback-levels`.
 
 ## 6. Activity Timeline
 

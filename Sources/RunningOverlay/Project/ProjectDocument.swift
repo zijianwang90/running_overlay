@@ -37,6 +37,8 @@ final class ProjectDocument: ObservableObject {
     @Published var workoutStructureSelection: WorkoutStructureSelection = .auto
     @Published var statusMessage = "Ready to import a FIT or GPX activity file."
     @Published var toastMessage: String?
+    /// The latest failed user action, shown as a banner until dismissed.
+    @Published private(set) var errorNotice: EditorErrorNotice?
     @Published var isTimelineCollapsed = false
     @Published private(set) var canUndo = false
     @Published private(set) var canRedo = false
@@ -83,7 +85,7 @@ final class ProjectDocument: ObservableObject {
                 ? "OpenWeather API key removed from Keychain."
                 : "OpenWeather API key saved in Keychain."
         } catch {
-            statusMessage = "Could not update OpenWeather API key: \(error.localizedDescription)"
+            reportError("Could not update OpenWeather API key: \(error.localizedDescription)")
         }
     }
 
@@ -130,7 +132,7 @@ final class ProjectDocument: ObservableObject {
             registerUndoPoint()
             userAssets.append(asset)
         } catch {
-            statusMessage = "Failed to import asset: \(error.localizedDescription)"
+            reportError("Failed to import asset: \(error.localizedDescription)")
         }
     }
 
@@ -163,7 +165,7 @@ final class ProjectDocument: ObservableObject {
             finishActivityImport(activity: parsedActivity, sourceName: url.lastPathComponent)
             print("[RunningOverlay] \(format) import succeeded: \(url.lastPathComponent), duration=\(formatDuration(activity.duration)), distance=\(formatDistance(activity.distanceMeters)), records=\(activity.records.count)")
         } catch {
-            statusMessage = "Activity import failed: \(error.localizedDescription)"
+            reportError("Activity import failed: \(error.localizedDescription)")
             print("[RunningOverlay] Activity import failed: \(url.path)")
             print("[RunningOverlay] Error: \(error.localizedDescription)")
             print("[RunningOverlay] Debug: \(String(reflecting: error))")
@@ -180,6 +182,7 @@ final class ProjectDocument: ObservableObject {
         let matchSummary = refreshMediaAlignmentAfterFitImport()
         let sourceFormat = ActivityFileFormat(rawValue: URL(fileURLWithPath: sourceName).pathExtension.lowercased())?.displayName ?? "activity"
         let importSummary = "Loaded \(sourceFormat): \(sourceName), \(formatDuration(importedActivity.duration)), \(formatDistance(importedActivity.distanceMeters))."
+        showToast(importSummary)
         if let appliedTemplateName = applyLastUsedOverlayTemplateAfterFitImport() {
             statusMessage = [importSummary, matchSummary, "Applied template: \(appliedTemplateName)."]
                 .compactMap { $0 }
@@ -241,7 +244,7 @@ final class ProjectDocument: ObservableObject {
     func importVideoURLs(_ urls: [URL], intoFolder folderID: MediaFolder.ID? = nil) -> Task<Void, Never>? {
         let videoURLs = urls.filter(Self.isSupportedVideoURL)
         guard !videoURLs.isEmpty else {
-            statusMessage = "No supported video files were found."
+            reportError("No supported video files were found.")
             return nil
         }
 
@@ -289,7 +292,7 @@ final class ProjectDocument: ObservableObject {
             }.count
             let matchableSuffix = matchableCount > 0 ? ", \(matchableCount) ready for auto-match" : ""
             let destination = targetFolderID.flatMap { id in mediaFolders.first { $0.id == id }?.name }.map { " into \"\($0)\"" } ?? ""
-            statusMessage = "Imported \(stampedImported.count) video file(s)\(destination)\(matchableSuffix)."
+            reportSuccess("Imported \(stampedImported.count) video file(s)\(destination)\(matchableSuffix).")
         }
     }
 
@@ -839,7 +842,7 @@ final class ProjectDocument: ObservableObject {
             startTime: elapsedTime,
             duration: mediaItem.duration
         ) {
-            statusMessage = "Cannot place \"\(mediaItem.displayName)\" on \(trackName): it overlaps an existing clip. Try \"Match to New Layer\" instead."
+            reportError("Cannot place \"\(mediaItem.displayName)\" on \(trackName): it overlaps an existing clip. Try \"Match to New Layer\" instead.")
             return
         }
 
@@ -851,7 +854,7 @@ final class ProjectDocument: ObservableObject {
             startTime: elapsedTime,
             activity: activity
         ) else {
-            statusMessage = "Could not place \(mediaItem.displayName)."
+            reportError("Could not place \(mediaItem.displayName).")
             return
         }
         timeline = updatedTimeline
@@ -1119,7 +1122,7 @@ final class ProjectDocument: ObservableObject {
     func previewMediaPoolItem(_ mediaItemID: MediaItem.ID) {
         guard let mediaItem = mediaItems.first(where: { $0.id == mediaItemID }),
               mediaItem.fileURL != nil else {
-            statusMessage = "Could not preview media: file not found."
+            reportError("Could not preview media: file not found.")
             return
         }
         mediaPoolPreviewItemID = mediaItemID
@@ -1462,7 +1465,7 @@ final class ProjectDocument: ObservableObject {
             overlayLayout.elements[index].style.distanceTimeline.mediaSlotEnabled = true
             statusMessage = "Imported icon asset: \(url.lastPathComponent)."
         } catch {
-            statusMessage = "Icon import failed: \(error.localizedDescription)"
+            reportError("Icon import failed: \(error.localizedDescription)")
         }
     }
 
@@ -2130,9 +2133,11 @@ final class ProjectDocument: ObservableObject {
                 )
             } catch {
                 if updatesStatusMessage {
-                    statusMessage = registersUndo
-                        ? "Weather fetch failed: \(error.localizedDescription)"
-                        : "Weather unavailable; showing placeholders."
+                    if registersUndo {
+                        reportError("Weather fetch failed: \(error.localizedDescription)")
+                    } else {
+                        statusMessage = "Weather unavailable; showing placeholders."
+                    }
                     if error as? WeatherFetchError == .openWeatherUnauthorized {
                         showToast(
                             "OpenWeather 401: the API key or One Call 4.0 subscription may still be activating. Verify the key, subscribe to One Call 4.0, or use Open-Meteo.",
@@ -3236,6 +3241,24 @@ final class ProjectDocument: ObservableObject {
         return try? JSONDecoder().decode(LastUsedOverlayTemplateReference.self, from: data)
     }
 
+    /// Reports a failed user action in the status bar and as a banner that
+    /// stays until dismissed, so it is not missed like status text alone.
+    func reportError(_ message: String) {
+        statusMessage = message
+        errorNotice = EditorErrorNotice(message: message)
+    }
+
+    func dismissErrorNotice() {
+        errorNotice = nil
+    }
+
+    /// Confirms an important finished action with a brief toast as well as
+    /// status text.
+    private func reportSuccess(_ message: String) {
+        statusMessage = message
+        showToast(message)
+    }
+
     private func showToast(_ message: String, duration: TimeInterval = 2) {
         toastMessage = message
         Task { @MainActor [weak self] in
@@ -3267,7 +3290,7 @@ final class ProjectDocument: ObservableObject {
         do {
             return try overlayTemplateStore.loadTemplateFile(from: url)
         } catch {
-            statusMessage = "Built-in template load failed: \(template.name)."
+            reportError("Built-in template load failed: \(template.name).")
             print("[RunningOverlay] Built-in template load failed: \(template.name), \(String(reflecting: error))")
             return nil
         }
@@ -3340,7 +3363,7 @@ final class ProjectDocument: ObservableObject {
         do {
             try importOverlayTemplate(from: url)
         } catch {
-            statusMessage = "Overlay template import failed: \(error.localizedDescription)"
+            reportError("Overlay template import failed: \(error.localizedDescription)")
             print("[RunningOverlay] Overlay template import failed: \(String(reflecting: error))")
         }
     }
@@ -3377,7 +3400,7 @@ final class ProjectDocument: ObservableObject {
             try overlayTemplateStore.exportTemplate(template, to: url)
             statusMessage = "Exported overlay template: \(template.name)."
         } catch {
-            statusMessage = "Overlay template export failed: \(error.localizedDescription)"
+            reportError("Overlay template export failed: \(error.localizedDescription)")
             print("[RunningOverlay] Overlay template export failed: \(String(reflecting: error))")
         }
     }
@@ -3531,7 +3554,7 @@ final class ProjectDocument: ObservableObject {
             }
             statusMessage = "Overlay configuration exported: \(outputURL.lastPathComponent)."
         } catch {
-            statusMessage = "Overlay configuration export failed: \(error.localizedDescription)"
+            reportError("Overlay configuration export failed: \(error.localizedDescription)")
             print("[RunningOverlay] Overlay configuration export failed: \(String(reflecting: error))")
         }
     }
@@ -3576,7 +3599,7 @@ final class ProjectDocument: ObservableObject {
             try data.write(to: outputURL)
             statusMessage = "Project snapshot saved: \(outputURL.lastPathComponent)."
         } catch {
-            statusMessage = "Project snapshot save failed: \(error.localizedDescription)"
+            reportError("Project snapshot save failed: \(error.localizedDescription)")
             print("[RunningOverlay] Project snapshot save failed: \(String(reflecting: error))")
         }
     }
@@ -3596,7 +3619,7 @@ final class ProjectDocument: ObservableObject {
             statusMessage = credentialMessage
                 ?? "Project snapshot restored: \(inputURL.lastPathComponent)."
         } catch {
-            statusMessage = "Project snapshot restore failed: \(error.localizedDescription)"
+            reportError("Project snapshot restore failed: \(error.localizedDescription)")
             print("[RunningOverlay] Project snapshot restore failed: \(String(reflecting: error))")
         }
     }
@@ -3624,7 +3647,7 @@ final class ProjectDocument: ObservableObject {
                 }
                 statusMessage = "Test frame exported: \(outputURL.lastPathComponent)."
             } catch {
-                statusMessage = "Test frame export failed: \(error.localizedDescription)"
+                reportError("Test frame export failed: \(error.localizedDescription)")
                 print("[RunningOverlay] Test frame export failed: \(String(reflecting: error))")
             }
         }
@@ -3663,7 +3686,7 @@ final class ProjectDocument: ObservableObject {
             overlayTemplates = try overlayTemplateStore.load()
         } catch {
             overlayTemplates = []
-            statusMessage = "Overlay template load failed: \(error.localizedDescription)"
+            reportError("Overlay template load failed: \(error.localizedDescription)")
             print("[RunningOverlay] Overlay template load failed: \(String(reflecting: error))")
         }
     }
@@ -3672,7 +3695,7 @@ final class ProjectDocument: ObservableObject {
         do {
             try overlayTemplateStore.save(overlayTemplates)
         } catch {
-            statusMessage = "Overlay template save failed: \(error.localizedDescription)"
+            reportError("Overlay template save failed: \(error.localizedDescription)")
             print("[RunningOverlay] Overlay template save failed: \(String(reflecting: error))")
         }
     }
@@ -4031,7 +4054,7 @@ final class ProjectDocument: ObservableObject {
                     }
                 }
                 exportProgress?.markCompleted()
-                statusMessage = completedMessage
+                reportSuccess(completedMessage)
             } catch OverlayExportError.cancelled {
                 exportProgress?.markCancelled()
                 statusMessage = "Export cancelled."
@@ -4040,7 +4063,7 @@ final class ProjectDocument: ObservableObject {
                 statusMessage = "Export cancelled."
             } catch {
                 exportProgress?.markFailed(message: error.localizedDescription)
-                statusMessage = "\(failurePrefix): \(error.localizedDescription)"
+                reportError("\(failurePrefix): \(error.localizedDescription)")
                 print("[RunningOverlay] \(failurePrefix): \(String(reflecting: error))")
             }
             isExporting = false
@@ -4241,6 +4264,11 @@ private struct CopiedOverlayConfiguration {
         isLocked = element.isLocked
         style = element.style
     }
+}
+
+struct EditorErrorNotice: Equatable, Identifiable {
+    let id = UUID()
+    var message: String
 }
 
 enum EditorSelection: Equatable {
