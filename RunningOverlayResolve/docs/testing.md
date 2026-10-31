@@ -1,5 +1,27 @@
 # Running Overlay Resolve Testing
 
+## Cut Overlay Deliver Validation — 2026-10-31
+
+Validated in Resolve Studio 21.1.1 on a duplicate of a locally edited timeline
+with two overlay pieces after a ripple delete. The duplicate and render jobs
+were removed afterwards; the original timeline and offsets were preserved.
+Private footage and exports remain local and are not repository fixtures.
+
+- Exported two 45-frame ranges spanning the cut (15 frames before, 30 after),
+  at 1920×1080, 30000/1001 fps, QuickTime ProRes 422, video only.
+- The left piece retained its existing +1 s offset. The right piece was rendered
+  once at +5 s and once at 0 s, with the sync readout enabled on the duplicate.
+- The left 15 frames were pixel-identical between exports. The right frames
+  changed, with elapsed time at the cut reading 00:45:09 versus 00:45:04;
+  the readout confirmed +5.000 s versus +0.000 s.
+- All 45 frames decoded in each export, with no black frames and visible content
+  in all four numeric widget regions. The frames immediately before and after
+  the cut were visually inspected without an overlay dropout.
+
+This validates a short composite export at one edited boundary. Full-length
+exports, alpha-only output, UHD, other frame rates, and managed color workflows
+are outside this check.
+
 ## Data Time Offset And Simplified Panel — 2026-10-17
 
 `test/time-offset.test.js` covers recording-timezone inference (preferred zone,
