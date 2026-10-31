@@ -37,9 +37,26 @@ final class ProjectDocument: ObservableObject {
     @Published var workoutStructureSelection: WorkoutStructureSelection = .auto
     @Published var statusMessage = "Ready to import a FIT or GPX activity file."
     @Published var toastMessage: String?
+    /// The latest failed user action, shown as a banner until dismissed.
+    @Published private(set) var errorNotice: EditorErrorNotice?
     @Published var isTimelineCollapsed = false
     @Published private(set) var canUndo = false
     @Published private(set) var canRedo = false
+    /// The saved `.roproj` file backing this project; nil while untitled.
+    @Published private(set) var projectFileURL: URL?
+    @Published private(set) var hasUnsavedChanges = false {
+        didSet {
+            guard hasUnsavedChanges != oldValue else { return }
+            if hasUnsavedChanges {
+                ProcessInfo.processInfo.disableSuddenTermination()
+                ProcessInfo.processInfo.disableAutomaticTermination(Self.unsavedChangesTerminationReason)
+            } else {
+                ProcessInfo.processInfo.enableSuddenTermination()
+                ProcessInfo.processInfo.enableAutomaticTermination(Self.unsavedChangesTerminationReason)
+            }
+        }
+    }
+    @Published private(set) var recentProjectPaths: [String] = []
 
     private let overlayTemplateStore: OverlayTemplateStore
     private let userDefaults: UserDefaults
@@ -50,15 +67,31 @@ final class ProjectDocument: ObservableObject {
     private var redoStack: [ProjectSnapshot] = []
     private var activeUndoSnapshot: ProjectSnapshot?
     private var copiedOverlayConfiguration: CopiedOverlayConfiguration?
+    /// Security-scoped resources opened for the current project file and its media.
+    private var accessedProjectResourceURLs: [URL] = []
+    private let autosaveStore: AutosaveStore
+    /// Increases on every edit so autosave writes only when content changed.
+    private var editGeneration = 0
+    private var lastAutosavedGeneration = 0
+    private var autosaveTimer: Timer?
+    private var autosaveResignObserver: NSObjectProtocol?
+    private var hasOfferedAutosaveRecovery = false
+    private var isAutosaving = false
+    /// Increases whenever the recovery copy is removed, so an in-flight
+    /// autosave can tell its copy was superseded by a save, open, or reset.
+    private var autosaveClearCount = 0
+    private static let unsavedChangesTerminationReason = "Unsaved project changes"
 
     init(
         overlayTemplateStore: OverlayTemplateStore = OverlayTemplateStore(),
         userDefaults: UserDefaults = .standard,
-        credentialStore: any CredentialStore = DefaultCredentialStore.make()
+        credentialStore: any CredentialStore = DefaultCredentialStore.make(),
+        autosaveStore: AutosaveStore = AutosaveStore(directory: AutosaveStore.defaultDirectory)
     ) {
         self.overlayTemplateStore = overlayTemplateStore
         self.userDefaults = userDefaults
         self.credentialStore = credentialStore
+        self.autosaveStore = autosaveStore
         do {
             openWeatherAPIKey = try credentialStore.value(
                 for: KeychainCredentialStore.openWeatherAccount
@@ -69,6 +102,7 @@ final class ProjectDocument: ObservableObject {
         }
         loadOverlayTemplates()
         IconAssetResolver.configure(userAssets: userAssets, projectURL: projectURL)
+        recentProjectPaths = recentProjectStore.entries().map(\.path)
     }
 
     func setOpenWeatherAPIKey(_ value: String) {
@@ -83,7 +117,7 @@ final class ProjectDocument: ObservableObject {
                 ? "OpenWeather API key removed from Keychain."
                 : "OpenWeather API key saved in Keychain."
         } catch {
-            statusMessage = "Could not update OpenWeather API key: \(error.localizedDescription)"
+            reportError("Could not update OpenWeather API key: \(error.localizedDescription)")
         }
     }
 
@@ -130,7 +164,7 @@ final class ProjectDocument: ObservableObject {
             registerUndoPoint()
             userAssets.append(asset)
         } catch {
-            statusMessage = "Failed to import asset: \(error.localizedDescription)"
+            reportError("Failed to import asset: \(error.localizedDescription)")
         }
     }
 
@@ -163,7 +197,7 @@ final class ProjectDocument: ObservableObject {
             finishActivityImport(activity: parsedActivity, sourceName: url.lastPathComponent)
             print("[RunningOverlay] \(format) import succeeded: \(url.lastPathComponent), duration=\(formatDuration(activity.duration)), distance=\(formatDistance(activity.distanceMeters)), records=\(activity.records.count)")
         } catch {
-            statusMessage = "Activity import failed: \(error.localizedDescription)"
+            reportError("Activity import failed: \(error.localizedDescription)")
             print("[RunningOverlay] Activity import failed: \(url.path)")
             print("[RunningOverlay] Error: \(error.localizedDescription)")
             print("[RunningOverlay] Debug: \(String(reflecting: error))")
@@ -180,6 +214,7 @@ final class ProjectDocument: ObservableObject {
         let matchSummary = refreshMediaAlignmentAfterFitImport()
         let sourceFormat = ActivityFileFormat(rawValue: URL(fileURLWithPath: sourceName).pathExtension.lowercased())?.displayName ?? "activity"
         let importSummary = "Loaded \(sourceFormat): \(sourceName), \(formatDuration(importedActivity.duration)), \(formatDistance(importedActivity.distanceMeters))."
+        showToast(importSummary)
         if let appliedTemplateName = applyLastUsedOverlayTemplateAfterFitImport() {
             statusMessage = [importSummary, matchSummary, "Applied template: \(appliedTemplateName)."]
                 .compactMap { $0 }
@@ -241,7 +276,7 @@ final class ProjectDocument: ObservableObject {
     func importVideoURLs(_ urls: [URL], intoFolder folderID: MediaFolder.ID? = nil) -> Task<Void, Never>? {
         let videoURLs = urls.filter(Self.isSupportedVideoURL)
         guard !videoURLs.isEmpty else {
-            statusMessage = "No supported video files were found."
+            reportError("No supported video files were found.")
             return nil
         }
 
@@ -289,7 +324,7 @@ final class ProjectDocument: ObservableObject {
             }.count
             let matchableSuffix = matchableCount > 0 ? ", \(matchableCount) ready for auto-match" : ""
             let destination = targetFolderID.flatMap { id in mediaFolders.first { $0.id == id }?.name }.map { " into \"\($0)\"" } ?? ""
-            statusMessage = "Imported \(stampedImported.count) video file(s)\(destination)\(matchableSuffix)."
+            reportSuccess("Imported \(stampedImported.count) video file(s)\(destination)\(matchableSuffix).")
         }
     }
 
@@ -336,6 +371,19 @@ final class ProjectDocument: ObservableObject {
             playbackRate = min(playbackRate * 2, 8)
         }
         statusMessage = playbackRate == 1 ? "Playback started." : "Playback \(Int(playbackRate))x."
+    }
+
+    /// J: halves a fast forward rate, and pauses at normal speed. Reverse
+    /// playback is not supported, so J never plays backward.
+    func decreaseForwardPlaybackRate() {
+        guard isPlaying else { return }
+        if playbackRate > 1 {
+            playbackRate = max(playbackRate / 2, 1)
+            statusMessage = playbackRate == 1 ? "Playback 1x." : "Playback \(Int(playbackRate))x."
+        } else {
+            isPlaying = false
+            statusMessage = "Playback paused."
+        }
     }
 
     func setPlaybackRate(_ rate: Double) {
@@ -397,7 +445,8 @@ final class ProjectDocument: ObservableObject {
         playbackRate = 1
         let frameDuration = 1.0 / max(settings.frameRate.value, 1)
         setPlayhead(timeline.playhead + Double(frameCount) * frameDuration)
-        statusMessage = frameCount > 0 ? "Stepped forward \(abs(frameCount)) frame." : "Stepped back \(abs(frameCount)) frame."
+        let frames = abs(frameCount) == 1 ? "1 frame" : "\(abs(frameCount)) frames"
+        statusMessage = frameCount > 0 ? "Stepped forward \(frames)." : "Stepped back \(frames)."
     }
 
     func setPlayheadFromPlayback(_ elapsedTime: TimeInterval, seekToken: UInt64) {
@@ -455,32 +504,28 @@ final class ProjectDocument: ObservableObject {
     }
 
     func zoomTimelineIn() {
-        var updatedTimeline = timeline
-        let current = currentPixelsPerSecond
-        let next = min(current * 1.35, Self.maximumTimelinePixelsPerSecond)
-        if next <= zoomLowerBound * 1.001 {
-            updatedTimeline.zoom = .fit
-        } else {
-            updatedTimeline.zoom = .pixelsPerSecond(next)
-        }
-        timeline = updatedTimeline
+        zoomTimeline(by: Self.timelineZoomStep)
     }
 
     func zoomTimelineOut() {
+        zoomTimeline(by: 1 / Self.timelineZoomStep)
+    }
+
+    /// Scales the timeline zoom by `factor` (above 1 zooms in), clamped to the
+    /// maximum and snapping to Fit at the lower bound. Trackpad pinch and
+    /// Command-scroll pass small per-event factors for continuous zooming.
+    func zoomTimeline(by factor: Double) {
+        guard factor.isFinite, factor > 0, factor != 1 else { return }
+        if case .fit = timeline.zoom, factor < 1 { return }
+        let next = min(currentPixelsPerSecond * factor, Self.maximumTimelinePixelsPerSecond)
+        let zoom: TimelineZoom = next <= zoomLowerBound * 1.001 ? .fit : .pixelsPerSecond(next)
+        guard zoom != timeline.zoom else { return }
         var updatedTimeline = timeline
-        switch timeline.zoom {
-        case .fit:
-            return
-        case .pixelsPerSecond(let value):
-            let next = value / 1.35
-            if next <= zoomLowerBound * 1.001 {
-                updatedTimeline.zoom = .fit
-            } else {
-                updatedTimeline.zoom = .pixelsPerSecond(next)
-            }
-        }
+        updatedTimeline.zoom = zoom
         timeline = updatedTimeline
     }
+
+    static let timelineZoomStep = 1.35
 
     private var zoomLowerBound: Double {
         max(fitPixelsPerSecond, Self.minimumTimelinePixelsPerSecond)
@@ -829,7 +874,7 @@ final class ProjectDocument: ObservableObject {
             startTime: elapsedTime,
             duration: mediaItem.duration
         ) {
-            statusMessage = "Cannot place \"\(mediaItem.displayName)\" on \(trackName): it overlaps an existing clip. Try \"Match to New Layer\" instead."
+            reportError("Cannot place \"\(mediaItem.displayName)\" on \(trackName): it overlaps an existing clip. Try \"Match to New Layer\" instead.")
             return
         }
 
@@ -841,7 +886,7 @@ final class ProjectDocument: ObservableObject {
             startTime: elapsedTime,
             activity: activity
         ) else {
-            statusMessage = "Could not place \(mediaItem.displayName)."
+            reportError("Could not place \(mediaItem.displayName).")
             return
         }
         timeline = updatedTimeline
@@ -1109,7 +1154,7 @@ final class ProjectDocument: ObservableObject {
     func previewMediaPoolItem(_ mediaItemID: MediaItem.ID) {
         guard let mediaItem = mediaItems.first(where: { $0.id == mediaItemID }),
               mediaItem.fileURL != nil else {
-            statusMessage = "Could not preview media: file not found."
+            reportError("Could not preview media: file not found.")
             return
         }
         mediaPoolPreviewItemID = mediaItemID
@@ -1171,6 +1216,7 @@ final class ProjectDocument: ObservableObject {
 
     func setPreviewTrackName(_ trackName: String?) {
         settings.previewTrackName = trackName
+        markEdited()
         statusMessage = trackName.map { "Preview track: \($0)." } ?? "Preview track: Auto."
     }
 
@@ -1183,6 +1229,7 @@ final class ProjectDocument: ObservableObject {
         } else {
             settings.disabledPreviewTrackNames.remove(trackName)
         }
+        markEdited()
         statusMessage = disabled ? "Disabled preview track: \(trackName)." : "Enabled preview track: \(trackName)."
     }
 
@@ -1200,6 +1247,26 @@ final class ProjectDocument: ObservableObject {
             return
         }
         selection = .overlayElement(elementID)
+    }
+
+    /// Selects the next (`step` > 0) or previous unlocked overlay in list
+    /// order, wrapping around. Locked overlays are skipped because they cannot
+    /// be edited until unlocked.
+    func selectAdjacentOverlay(_ step: Int) {
+        let candidates = overlayLayout.elements.filter { !$0.isLocked }
+        guard !candidates.isEmpty, step != 0 else { return }
+        let count = candidates.count
+        let currentIndex: Int? = {
+            guard case .overlayElement(let elementID) = selection else { return nil }
+            return candidates.firstIndex { $0.id == elementID }
+        }()
+        let nextIndex: Int
+        if let currentIndex {
+            nextIndex = ((currentIndex + step) % count + count) % count
+        } else {
+            nextIndex = step > 0 ? 0 : count - 1
+        }
+        selection = .overlayElement(candidates[nextIndex].id)
     }
 
     func selectedOverlay(_ elementID: OverlayElement.ID) -> OverlayElement? {
@@ -1296,16 +1363,57 @@ final class ProjectDocument: ObservableObject {
             return true
         }
 
+        let frameCount = largeStep ? Self.largePlayheadStepFrames : 1
         switch direction {
         case .left:
-            stepPlayheadByFrames(-1)
+            stepPlayheadByFrames(-frameCount)
             return true
         case .right:
-            stepPlayheadByFrames(1)
+            stepPlayheadByFrames(frameCount)
             return true
-        case .up, .down:
-            return false
+        case .up:
+            return jumpToEditPoint(forward: false)
+        case .down:
+            return jumpToEditPoint(forward: true)
         }
+    }
+
+    static let largePlayheadStepFrames = 10
+
+    /// Edit points are clip starts and ends on every camera track plus the
+    /// timeline bounds, in project time.
+    var timelineEditPoints: [TimeInterval] {
+        var points: Set<TimeInterval> = [timelineBounds.lowerBound, timelineBounds.upperBound]
+        for clip in timeline.tracks.flatMap(\.clips) {
+            points.insert(clip.effectiveStartTime)
+            points.insert(clip.effectiveStartTime + clip.duration)
+        }
+        return points.sorted()
+    }
+
+    /// Moves the playhead to the next or previous edit point without changing
+    /// play state. Returns false when there is none in that direction.
+    @discardableResult
+    func jumpToEditPoint(forward: Bool) -> Bool {
+        let tolerance = 0.5 / max(settings.frameRate.value, 1)
+        let playhead = timeline.playhead
+        let target = forward
+            ? timelineEditPoints.first { $0 > playhead + tolerance }
+            : timelineEditPoints.last { $0 < playhead - tolerance }
+        guard let target else { return false }
+        clearMediaPoolPreview()
+        seekPlayheadFromTimeline(target)
+        return true
+    }
+
+    func movePlayheadToStart() {
+        clearMediaPoolPreview()
+        seekPlayheadFromTimeline(timelineBounds.lowerBound)
+    }
+
+    func movePlayheadToEnd() {
+        clearMediaPoolPreview()
+        seekPlayheadFromTimeline(timelineBounds.upperBound)
     }
 
     static let largeOverlayNudgePixels: Double = 10
@@ -1411,7 +1519,7 @@ final class ProjectDocument: ObservableObject {
             overlayLayout.elements[index].style.distanceTimeline.mediaSlotEnabled = true
             statusMessage = "Imported icon asset: \(url.lastPathComponent)."
         } catch {
-            statusMessage = "Icon import failed: \(error.localizedDescription)"
+            reportError("Icon import failed: \(error.localizedDescription)")
         }
     }
 
@@ -2079,9 +2187,11 @@ final class ProjectDocument: ObservableObject {
                 )
             } catch {
                 if updatesStatusMessage {
-                    statusMessage = registersUndo
-                        ? "Weather fetch failed: \(error.localizedDescription)"
-                        : "Weather unavailable; showing placeholders."
+                    if registersUndo {
+                        reportError("Weather fetch failed: \(error.localizedDescription)")
+                    } else {
+                        statusMessage = "Weather unavailable; showing placeholders."
+                    }
                     if error as? WeatherFetchError == .openWeatherUnauthorized {
                         showToast(
                             "OpenWeather 401: the API key or One Call 4.0 subscription may still be activating. Verify the key, subscribe to One Call 4.0, or use Open-Meteo.",
@@ -2927,6 +3037,48 @@ final class ProjectDocument: ObservableObject {
         statusMessage = "Deleted overlay element."
     }
 
+    /// Copies an overlay a few output pixels down and right, stacks it directly
+    /// above the original, and selects the copy. The copy is visible and unlocked.
+    func duplicateOverlay(_ elementID: OverlayElement.ID) {
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        let original = overlayLayout.elements[index]
+        registerUndoPoint()
+        let dx = Self.duplicateOverlayOffsetPixels / Double(max(settings.resolution.width, 1))
+        let dy = Self.duplicateOverlayOffsetPixels / Double(max(settings.resolution.height, 1))
+        let copy = OverlayElement(
+            type: original.type,
+            position: CGPoint(
+                x: min(original.position.x + dx, 1),
+                y: min(original.position.y + dy, 1)
+            ),
+            scale: original.scale,
+            opacity: original.opacity,
+            isVisible: true,
+            isLocked: false,
+            style: original.style
+        )
+        overlayLayout.elements.insert(copy, at: index + 1)
+        selection = .overlayElement(copy.id)
+        statusMessage = "Duplicated \(original.type.label) overlay."
+    }
+
+    func duplicateSelectedOverlay() {
+        guard let selectedOverlayID else { return }
+        duplicateOverlay(selectedOverlayID)
+    }
+
+    var selectedOverlayID: OverlayElement.ID? {
+        guard case .overlayElement(let elementID) = selection,
+              overlayLayout.elements.contains(where: { $0.id == elementID }) else {
+            return nil
+        }
+        return elementID
+    }
+
+    static let duplicateOverlayOffsetPixels: Double = 24
+
     func deleteSelectedItem() {
         switch selection {
         case .timelineClip(let clipID):
@@ -3185,6 +3337,24 @@ final class ProjectDocument: ObservableObject {
         return try? JSONDecoder().decode(LastUsedOverlayTemplateReference.self, from: data)
     }
 
+    /// Reports a failed user action in the status bar and as a banner that
+    /// stays until dismissed, so it is not missed like status text alone.
+    func reportError(_ message: String) {
+        statusMessage = message
+        errorNotice = EditorErrorNotice(message: message)
+    }
+
+    func dismissErrorNotice() {
+        errorNotice = nil
+    }
+
+    /// Confirms an important finished action with a brief toast as well as
+    /// status text.
+    private func reportSuccess(_ message: String) {
+        statusMessage = message
+        showToast(message)
+    }
+
     private func showToast(_ message: String, duration: TimeInterval = 2) {
         toastMessage = message
         Task { @MainActor [weak self] in
@@ -3216,7 +3386,7 @@ final class ProjectDocument: ObservableObject {
         do {
             return try overlayTemplateStore.loadTemplateFile(from: url)
         } catch {
-            statusMessage = "Built-in template load failed: \(template.name)."
+            reportError("Built-in template load failed: \(template.name).")
             print("[RunningOverlay] Built-in template load failed: \(template.name), \(String(reflecting: error))")
             return nil
         }
@@ -3289,7 +3459,7 @@ final class ProjectDocument: ObservableObject {
         do {
             try importOverlayTemplate(from: url)
         } catch {
-            statusMessage = "Overlay template import failed: \(error.localizedDescription)"
+            reportError("Overlay template import failed: \(error.localizedDescription)")
             print("[RunningOverlay] Overlay template import failed: \(String(reflecting: error))")
         }
     }
@@ -3326,7 +3496,7 @@ final class ProjectDocument: ObservableObject {
             try overlayTemplateStore.exportTemplate(template, to: url)
             statusMessage = "Exported overlay template: \(template.name)."
         } catch {
-            statusMessage = "Overlay template export failed: \(error.localizedDescription)"
+            reportError("Overlay template export failed: \(error.localizedDescription)")
             print("[RunningOverlay] Overlay template export failed: \(String(reflecting: error))")
         }
     }
@@ -3480,9 +3650,472 @@ final class ProjectDocument: ObservableObject {
             }
             statusMessage = "Overlay configuration exported: \(outputURL.lastPathComponent)."
         } catch {
-            statusMessage = "Overlay configuration export failed: \(error.localizedDescription)"
+            reportError("Overlay configuration export failed: \(error.localizedDescription)")
             print("[RunningOverlay] Overlay configuration export failed: \(String(reflecting: error))")
         }
+    }
+
+    // MARK: - Project Files
+
+    var projectDisplayName: String {
+        projectFileURL?.deletingPathExtension().lastPathComponent ?? ProjectFileFormat.untitledName
+    }
+
+    private var recentProjectStore: RecentProjectStore {
+        RecentProjectStore(userDefaults: userDefaults)
+    }
+
+    func newProject() {
+        guard ensureNoActiveExport(before: "starting a new project"),
+              confirmProjectCanBeReplaced() else {
+            return
+        }
+        resetToNewProject()
+    }
+
+    func resetToNewProject() {
+        _ = restorePersistentSnapshot(ProjectPerformanceSnapshot(
+            settings: ProjectSettings(),
+            activity: .empty,
+            mediaItems: [],
+            mediaFolders: [],
+            timeline: .empty,
+            overlayElements: [],
+            userAssets: [],
+            fitSourceName: ""
+        ))
+        replaceAccessedProjectResources(with: [])
+        projectFileURL = nil
+        hasUnsavedChanges = false
+        clearAutosave()
+        statusMessage = "New project."
+    }
+
+    func openProject() {
+        guard ensureNoActiveExport(before: "opening a project"),
+              confirmProjectCanBeReplaced() else {
+            return
+        }
+
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [ProjectFileFormat.contentType]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return
+        }
+        presentOpenedProject(at: url, scopedAccessURL: nil)
+    }
+
+    /// Opens a project handed over by Finder or the Dock, which already
+    /// granted sandbox access to `url`.
+    func openProjectFromSystem(_ url: URL) {
+        guard ensureNoActiveExport(before: "opening a project"),
+              confirmProjectCanBeReplaced() else {
+            return
+        }
+        presentOpenedProject(at: url, scopedAccessURL: nil)
+    }
+
+    func openRecentProject(path: String) {
+        guard let entry = recentProjectStore.entries().first(where: { $0.path == path }) else {
+            return
+        }
+        guard ensureNoActiveExport(before: "opening a project"),
+              confirmProjectCanBeReplaced() else {
+            return
+        }
+        guard let url = FileBookmark.resolve(entry.bookmark) else {
+            recentProjectStore.remove(path: path)
+            recentProjectPaths = recentProjectStore.entries().map(\.path)
+            presentProjectFileError(
+                title: "The project “\(URL(fileURLWithPath: path).lastPathComponent)” could not be found.",
+                message: "It may have been moved, renamed, or deleted. It was removed from Open Recent."
+            )
+            return
+        }
+        let scopedAccessURL = url.startAccessingSecurityScopedResource() ? url : nil
+        presentOpenedProject(at: url, scopedAccessURL: scopedAccessURL)
+    }
+
+    func clearRecentProjects() {
+        recentProjectStore.clear()
+        recentProjectPaths = []
+    }
+
+    /// Saves to the current project file, or asks for a location when untitled.
+    /// Returns whether the project was saved.
+    @discardableResult
+    func saveProject() -> Bool {
+        guard let projectFileURL else {
+            return saveProjectAs()
+        }
+        return presentSave(to: projectFileURL)
+    }
+
+    @discardableResult
+    func saveProjectAs() -> Bool {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [ProjectFileFormat.contentType]
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = "\(projectDisplayName).\(ProjectFileFormat.fileExtension)"
+
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return false
+        }
+        return presentSave(to: url)
+    }
+
+    /// Asks whether to save unsaved changes before the project is replaced or
+    /// the app quits. Returns false when the user cancels or saving fails.
+    func confirmProjectCanBeReplaced() -> Bool {
+        guard hasUnsavedChanges else {
+            return true
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "Do you want to save the changes made to “\(projectDisplayName)”?"
+        alert.informativeText = "Your changes will be lost if you don’t save them."
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: "Don’t Save")
+
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            return saveProject()
+        case .alertThirdButtonReturn:
+            return true
+        default:
+            return false
+        }
+    }
+
+    func writeProject(to url: URL) throws {
+        let snapshot = makeProjectFileSnapshot()
+        let data = try ProjectFileFormat.encode(snapshot)
+        try SecurityScopedURLAccess.withAccess(to: url) {
+            try data.write(to: url, options: .atomic)
+        }
+
+        mediaItems = snapshot.mediaItems
+        projectFileURL = url
+        hasUnsavedChanges = false
+        clearAutosave()
+        noteRecentProject(url)
+        statusMessage = "Saved project: \(url.lastPathComponent)."
+    }
+
+    /// Replaces the current project with the file at `url` and returns the
+    /// media items whose files could not be reached.
+    @discardableResult
+    func loadProject(from url: URL, scopedAccessURL: URL? = nil) throws -> [MediaItem.ID] {
+        let data = try SecurityScopedURLAccess.withAccess(to: url) {
+            try Data(contentsOf: url)
+        }
+        let resolved = resolvingMediaAccess(in: try ProjectFileFormat.decode(data))
+        var accessedURLs = resolved.accessedURLs
+        if let scopedAccessURL {
+            accessedURLs.append(scopedAccessURL)
+        }
+
+        let credentialMessage = restorePersistentSnapshot(resolved.snapshot)
+        replaceAccessedProjectResources(with: accessedURLs)
+        projectFileURL = url
+        hasUnsavedChanges = false
+        clearAutosave()
+        noteRecentProject(url)
+        statusMessage = credentialMessage ?? "Opened project: \(url.lastPathComponent)."
+        return resolved.offlineIDs
+    }
+
+    // MARK: Autosave
+
+    /// Autosaves every `interval` seconds and when the app moves to the
+    /// background, whenever there are unsaved edits not yet autosaved.
+    func startAutosaving(every interval: TimeInterval = 30) {
+        guard autosaveTimer == nil else { return }
+        autosaveTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.performAutosave() }
+        }
+        autosaveResignObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.willResignActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.performAutosave() }
+        }
+    }
+
+    /// Writes the recovery copy when there are edits since the last autosave.
+    /// Encoding and writing run off the main actor because long activities
+    /// take long enough to cause a visible hitch. Returns whether a copy was
+    /// written.
+    @discardableResult
+    func autosaveIfNeeded(now: Date = Date()) async throws -> Bool {
+        guard !isAutosaving, hasUnsavedChanges, editGeneration != lastAutosavedGeneration else {
+            return false
+        }
+        isAutosaving = true
+        defer { isAutosaving = false }
+
+        let generation = editGeneration
+        let clearCount = autosaveClearCount
+        let snapshot = makeProjectFileSnapshot()
+        let info = AutosaveStore.Info(
+            savedAt: now,
+            projectPath: projectFileURL?.path,
+            projectBookmark: projectFileURL.flatMap(FileBookmark.make(for:))
+        )
+        let store = autosaveStore
+        try await Task.detached(priority: .utility) {
+            try store.write(ProjectFileFormat.encode(snapshot, prettyPrinted: false), info: info)
+        }.value
+
+        guard autosaveClearCount == clearCount else {
+            // Saved, opened, or reset while writing: this copy is older than
+            // the state that replaced it.
+            clearAutosave()
+            return false
+        }
+        lastAutosavedGeneration = generation
+        return true
+    }
+
+    var pendingAutosaveRecovery: AutosaveStore.Info? {
+        autosaveStore.info()
+    }
+
+    /// Replaces the current project with the recovery copy. The result stays
+    /// edited and keeps its original project file, if any, as the save target.
+    @discardableResult
+    func recoverAutosavedProject() throws -> [MediaItem.ID] {
+        guard let info = autosaveStore.info() else { return [] }
+        let resolved = resolvingMediaAccess(in: try ProjectFileFormat.decode(autosaveStore.readProject()))
+        var accessedURLs = resolved.accessedURLs
+        var originalFileURL: URL?
+        if let bookmark = info.projectBookmark, let url = FileBookmark.resolve(bookmark) {
+            if url.startAccessingSecurityScopedResource() {
+                accessedURLs.append(url)
+            }
+            originalFileURL = url
+        }
+
+        let credentialMessage = restorePersistentSnapshot(resolved.snapshot)
+        replaceAccessedProjectResources(with: accessedURLs)
+        projectFileURL = originalFileURL
+        markEdited()
+        lastAutosavedGeneration = editGeneration
+        statusMessage = credentialMessage ?? "Recovered unsaved changes."
+        return resolved.offlineIDs
+    }
+
+    func discardAutosave() {
+        clearAutosave()
+    }
+
+    private func clearAutosave() {
+        autosaveClearCount &+= 1
+        autosaveStore.clear()
+    }
+
+    /// Offers the recovery copy left by an abnormal exit, once per launch.
+    func offerAutosaveRecoveryIfNeeded() {
+        guard !hasOfferedAutosaveRecovery else { return }
+        hasOfferedAutosaveRecovery = true
+        guard let info = autosaveStore.info() else { return }
+
+        let name = info.projectPath
+            .map { URL(fileURLWithPath: $0).deletingPathExtension().lastPathComponent }
+            ?? ProjectFileFormat.untitledName
+        let alert = NSAlert()
+        alert.messageText = "Recover unsaved changes to “\(name)”?"
+        alert.informativeText = "Running Overlay Studio didn’t quit normally. Your changes were last autosaved \(info.savedAt.formatted(date: .abbreviated, time: .shortened))."
+        alert.addButton(withTitle: "Recover")
+        alert.addButton(withTitle: "Discard")
+        guard alert.runModal() == .alertFirstButtonReturn else {
+            discardAutosave()
+            return
+        }
+
+        do {
+            presentOfflineMediaPrompt(try recoverAutosavedProject())
+        } catch {
+            print("[RunningOverlay] Autosave recovery failed: \(String(reflecting: error))")
+            discardAutosave()
+            presentProjectFileError(
+                title: "Unsaved changes could not be recovered.",
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    private func performAutosave() {
+        Task {
+            do {
+                try await autosaveIfNeeded()
+            } catch {
+                print("[RunningOverlay] Autosave failed: \(String(reflecting: error))")
+            }
+        }
+    }
+
+    private func markEdited() {
+        hasUnsavedChanges = true
+        editGeneration &+= 1
+    }
+
+    /// The persistent snapshot with a fresh bookmark for every reachable media file.
+    private func makeProjectFileSnapshot() -> ProjectPerformanceSnapshot {
+        var snapshot = makePersistentSnapshot()
+        snapshot.mediaItems = snapshot.mediaItems.map { item in
+            var item = item
+            // Keep the previous bookmark when an offline file can't be bookmarked again.
+            if let fileURL = item.fileURL, let bookmark = FileBookmark.make(for: fileURL) {
+                item.bookmarkData = bookmark
+            }
+            return item
+        }
+        return snapshot
+    }
+
+    /// Resolves media bookmarks, starts security-scoped access for them, and
+    /// reports media whose files cannot be found.
+    private func resolvingMediaAccess(
+        in snapshot: ProjectPerformanceSnapshot
+    ) -> (snapshot: ProjectPerformanceSnapshot, accessedURLs: [URL], offlineIDs: [MediaItem.ID]) {
+        var snapshot = snapshot
+        var accessedURLs: [URL] = []
+        var offlineIDs: [MediaItem.ID] = []
+        for index in snapshot.mediaItems.indices {
+            var item = snapshot.mediaItems[index]
+            if let bookmark = item.bookmarkData, let resolvedURL = FileBookmark.resolve(bookmark) {
+                if resolvedURL.startAccessingSecurityScopedResource() {
+                    accessedURLs.append(resolvedURL)
+                }
+                item.fileURL = resolvedURL
+            }
+            if let fileURL = item.fileURL, !FileManager.default.fileExists(atPath: fileURL.path) {
+                offlineIDs.append(item.id)
+            }
+            snapshot.mediaItems[index] = item
+        }
+        return (snapshot, accessedURLs, offlineIDs)
+    }
+
+    /// Points offline media at same-named files found under `folderURL`.
+    /// Returns how many of `mediaItemIDs` were relinked.
+    @discardableResult
+    func relinkMediaItems(_ mediaItemIDs: [MediaItem.ID], searchingIn folderURL: URL) -> Int {
+        var candidates: [String: URL] = [:]
+        let enumerator = FileManager.default.enumerator(
+            at: folderURL,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles, .skipsPackageDescendants]
+        )
+        while let url = enumerator?.nextObject() as? URL {
+            let key = url.lastPathComponent.lowercased()
+            if candidates[key] == nil {
+                candidates[key] = url
+            }
+        }
+
+        var updatedItems = mediaItems
+        var relinkedCount = 0
+        for index in updatedItems.indices where mediaItemIDs.contains(updatedItems[index].id) {
+            let name = updatedItems[index].fileURL?.lastPathComponent ?? updatedItems[index].displayName
+            guard let match = candidates[name.lowercased()] else { continue }
+            updatedItems[index].fileURL = match
+            updatedItems[index].bookmarkData = FileBookmark.make(for: match)
+            relinkedCount += 1
+        }
+
+        if relinkedCount > 0 {
+            registerUndoPoint()
+            mediaItems = updatedItems
+        }
+        statusMessage = "Relinked \(relinkedCount) of \(mediaItemIDs.count) video file(s)."
+        return relinkedCount
+    }
+
+    private func presentSave(to url: URL) -> Bool {
+        do {
+            try writeProject(to: url)
+            return true
+        } catch {
+            print("[RunningOverlay] Project save failed: \(String(reflecting: error))")
+            presentProjectFileError(
+                title: "The project “\(url.lastPathComponent)” could not be saved.",
+                message: error.localizedDescription
+            )
+            return false
+        }
+    }
+
+    private func presentOpenedProject(at url: URL, scopedAccessURL: URL?) {
+        let offlineIDs: [MediaItem.ID]
+        do {
+            offlineIDs = try loadProject(from: url, scopedAccessURL: scopedAccessURL)
+        } catch {
+            scopedAccessURL?.stopAccessingSecurityScopedResource()
+            print("[RunningOverlay] Project open failed: \(String(reflecting: error))")
+            presentProjectFileError(
+                title: "The project “\(url.lastPathComponent)” could not be opened.",
+                message: error.localizedDescription
+            )
+            return
+        }
+        presentOfflineMediaPrompt(offlineIDs)
+    }
+
+    private func presentOfflineMediaPrompt(_ offlineIDs: [MediaItem.ID]) {
+        guard !offlineIDs.isEmpty else { return }
+        let alert = NSAlert()
+        alert.messageText = offlineIDs.count == 1
+            ? "1 video file could not be found."
+            : "\(offlineIDs.count) video files could not be found."
+        alert.informativeText = "Choose a folder to search for files with the same names. Overlays and timing are unaffected; missing videos only stop showing in the preview."
+        alert.addButton(withTitle: "Locate…")
+        alert.addButton(withTitle: "Not Now")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Search Folder"
+        guard panel.runModal() == .OK, let folderURL = panel.url else { return }
+        relinkMediaItems(offlineIDs, searchingIn: folderURL)
+    }
+
+    private func presentProjectFileError(title: String, message: String) {
+        statusMessage = title
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = title
+        alert.informativeText = message
+        alert.runModal()
+    }
+
+    private func ensureNoActiveExport(before action: String) -> Bool {
+        guard !isExporting else {
+            statusMessage = "Cancel the active export before \(action)."
+            return false
+        }
+        return true
+    }
+
+    private func noteRecentProject(_ url: URL) {
+        recentProjectStore.add(url)
+        recentProjectPaths = recentProjectStore.entries().map(\.path)
+    }
+
+    private func replaceAccessedProjectResources(with urls: [URL]) {
+        for url in accessedProjectResourceURLs {
+            url.stopAccessingSecurityScopedResource()
+        }
+        accessedProjectResourceURLs = urls
     }
 
     func saveProjectSnapshot() {
@@ -3525,7 +4158,7 @@ final class ProjectDocument: ObservableObject {
             try data.write(to: outputURL)
             statusMessage = "Project snapshot saved: \(outputURL.lastPathComponent)."
         } catch {
-            statusMessage = "Project snapshot save failed: \(error.localizedDescription)"
+            reportError("Project snapshot save failed: \(error.localizedDescription)")
             print("[RunningOverlay] Project snapshot save failed: \(String(reflecting: error))")
         }
     }
@@ -3542,10 +4175,15 @@ final class ProjectDocument: ObservableObject {
             decoder.dateDecodingStrategy = .iso8601
             let snapshot = try decoder.decode(ProjectPerformanceSnapshot.self, from: data)
             let credentialMessage = restorePersistentSnapshot(snapshot)
+            // A debug snapshot is not a project file: restore it as untitled so
+            // Save cannot overwrite the previously open project.
+            replaceAccessedProjectResources(with: [])
+            projectFileURL = nil
+            markEdited()
             statusMessage = credentialMessage
                 ?? "Project snapshot restored: \(inputURL.lastPathComponent)."
         } catch {
-            statusMessage = "Project snapshot restore failed: \(error.localizedDescription)"
+            reportError("Project snapshot restore failed: \(error.localizedDescription)")
             print("[RunningOverlay] Project snapshot restore failed: \(String(reflecting: error))")
         }
     }
@@ -3573,7 +4211,7 @@ final class ProjectDocument: ObservableObject {
                 }
                 statusMessage = "Test frame exported: \(outputURL.lastPathComponent)."
             } catch {
-                statusMessage = "Test frame export failed: \(error.localizedDescription)"
+                reportError("Test frame export failed: \(error.localizedDescription)")
                 print("[RunningOverlay] Test frame export failed: \(String(reflecting: error))")
             }
         }
@@ -3587,6 +4225,7 @@ final class ProjectDocument: ObservableObject {
         redoStack.append(makeSnapshot())
         restore(snapshot)
         activeUndoSnapshot = nil
+        markEdited()
         statusMessage = "Undo."
         updateUndoRedoFlags()
     }
@@ -3599,6 +4238,7 @@ final class ProjectDocument: ObservableObject {
         undoStack.append(makeSnapshot())
         restore(snapshot)
         activeUndoSnapshot = nil
+        markEdited()
         statusMessage = "Redo."
         updateUndoRedoFlags()
     }
@@ -3612,7 +4252,7 @@ final class ProjectDocument: ObservableObject {
             overlayTemplates = try overlayTemplateStore.load()
         } catch {
             overlayTemplates = []
-            statusMessage = "Overlay template load failed: \(error.localizedDescription)"
+            reportError("Overlay template load failed: \(error.localizedDescription)")
             print("[RunningOverlay] Overlay template load failed: \(String(reflecting: error))")
         }
     }
@@ -3621,7 +4261,7 @@ final class ProjectDocument: ObservableObject {
         do {
             try overlayTemplateStore.save(overlayTemplates)
         } catch {
-            statusMessage = "Overlay template save failed: \(error.localizedDescription)"
+            reportError("Overlay template save failed: \(error.localizedDescription)")
             print("[RunningOverlay] Overlay template save failed: \(String(reflecting: error))")
         }
     }
@@ -3980,7 +4620,7 @@ final class ProjectDocument: ObservableObject {
                     }
                 }
                 exportProgress?.markCompleted()
-                statusMessage = completedMessage
+                reportSuccess(completedMessage)
             } catch OverlayExportError.cancelled {
                 exportProgress?.markCancelled()
                 statusMessage = "Export cancelled."
@@ -3989,7 +4629,7 @@ final class ProjectDocument: ObservableObject {
                 statusMessage = "Export cancelled."
             } catch {
                 exportProgress?.markFailed(message: error.localizedDescription)
-                statusMessage = "\(failurePrefix): \(error.localizedDescription)"
+                reportError("\(failurePrefix): \(error.localizedDescription)")
                 print("[RunningOverlay] \(failurePrefix): \(String(reflecting: error))")
             }
             isExporting = false
@@ -4036,6 +4676,7 @@ final class ProjectDocument: ObservableObject {
         undoStack.append(makeSnapshot())
         redoStack.removeAll()
         activeUndoSnapshot = nil
+        markEdited()
         updateUndoRedoFlags()
     }
 
@@ -4046,12 +4687,14 @@ final class ProjectDocument: ObservableObject {
                 redoStack.removeAll()
                 updateUndoRedoFlags()
             }
+            markEdited()
             return
         }
         let snapshot = makeSnapshot()
         activeUndoSnapshot = snapshot
         undoStack.append(snapshot)
         redoStack.removeAll()
+        markEdited()
         updateUndoRedoFlags()
     }
 
@@ -4092,7 +4735,8 @@ final class ProjectDocument: ObservableObject {
             timeline: timeline,
             overlayElements: overlayLayout.elements.map(OverlayTemplateElement.init(element:)),
             userAssets: userAssets,
-            fitSourceName: fitSourceName
+            fitSourceName: fitSourceName,
+            workoutStructureSelection: workoutStructureSelection
         )
     }
 
@@ -4101,7 +4745,7 @@ final class ProjectDocument: ObservableObject {
         settings = snapshot.settings
         settings.removeLegacyCredentials()
         activity = snapshot.activity
-        workoutStructureSelection = .auto
+        workoutStructureSelection = snapshot.workoutStructureSelection ?? .auto
         mediaItems = snapshot.mediaItems
         mediaFolders = snapshot.mediaFolders
         timeline = snapshot.timeline
@@ -4163,7 +4807,7 @@ private struct ProjectSnapshot: Equatable {
 }
 
 struct ProjectPerformanceSnapshot: Codable, Equatable {
-    var schemaVersion: Int = 1
+    var schemaVersion: Int = ProjectFileFormat.currentSchemaVersion
     var settings: ProjectSettings
     var activity: ActivityTimeline
     var mediaItems: [MediaItem]
@@ -4172,6 +4816,7 @@ struct ProjectPerformanceSnapshot: Codable, Equatable {
     var overlayElements: [OverlayTemplateElement]
     var userAssets: [UserAsset]
     var fitSourceName: String
+    var workoutStructureSelection: WorkoutStructureSelection? = nil
 }
 
 private struct CopiedOverlayConfiguration {
@@ -4190,6 +4835,11 @@ private struct CopiedOverlayConfiguration {
         isLocked = element.isLocked
         style = element.style
     }
+}
+
+struct EditorErrorNotice: Equatable, Identifiable {
+    let id = UUID()
+    var message: String
 }
 
 enum EditorSelection: Equatable {

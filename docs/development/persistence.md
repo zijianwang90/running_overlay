@@ -27,8 +27,55 @@ Current implementation:
   access prompts. Developers can also force the in-memory store with
   `RUNNING_OVERLAY_DISABLE_KEYCHAIN=1`.
 
+### Project Files
+
+- Status: implemented (ADR 0006).
+- `ProjectFileFormat` encodes and decodes `.roproj` files. It reads
+  `schemaVersion` first and refuses files newer than
+  `ProjectFileFormat.currentSchemaVersion`. Additive fields must be optional
+  so older files still decode; bump the version only for changes an older
+  build cannot read correctly.
+- `ProjectDocument.writeProject(to:)` and `loadProject(from:)` are the
+  UI-free entry points used by tests. `saveProject()`, `saveProjectAs()`,
+  `openProject()`, `openRecentProject(path:)`, and `newProject()` wrap them
+  with panels and alerts.
+- `hasUnsavedChanges` is set by `registerUndoPoint()`,
+  `registerContinuousUndoPoint()`, `undo()`, `redo()`, and the preview-track
+  setters, which are the only persistent mutations that skip undo. A new
+  persistent mutation that does not register an undo point must set it
+  explicitly. While it is true the app disables sudden and automatic
+  termination.
+- Saving writes a bookmark per media file (`FileBookmark`): security-scoped in
+  the sandboxed app, plain otherwise. Opening resolves each bookmark, starts
+  security-scoped access for the lifetime of the project, and reports media
+  whose files are missing. Open Recent stores bookmarks for project files in
+  user defaults (`RecentProjectStore`).
+- Opening, New Project, and Debug snapshot restore reset undo history.
+
+### Autosave And Crash Recovery
+
+- `AutosaveStore` keeps one recovery copy (`Recovery.roproj` plus
+  `Recovery.json` with the save time and the original project's path and
+  bookmark) under Application Support. Tests inject a temporary directory.
+- `startAutosaving()` (called at app launch) triggers `autosaveIfNeeded()`
+  every 30 seconds and on `NSApplication.willResignActiveNotification`. It
+  writes only when `hasUnsavedChanges` is true and `editGeneration` changed
+  since the last copy; every `markEdited()` call advances the generation.
+- The snapshot is taken on the main actor, then compact JSON is encoded and
+  written in a detached utility task. A 5-hour, 1 Hz activity encodes to about
+  8 MB in about 120 ms (release build), which is too long to block the main
+  thread. A counter that advances whenever the copy is removed lets an
+  in-flight autosave detect a save, open, or reset that happened while it was
+  writing and discard its now-stale copy.
+- `writeProject`, `loadProject`, `resetToNewProject`, and app termination
+  after Save or Don't Save remove the copy. Recovery
+  (`recoverAutosavedProject()`) keeps it until the work is saved or
+  discarded.
+- `offerAutosaveRecoveryIfNeeded()` runs once per launch: when the editor
+  window appears, or earlier if Finder hands over a project to open.
+
 Pending:
 
 - Broader coverage audit for every future project mutation.
-- Persistence integration with undo state boundaries.
 - More granular labels for undo menu item names.
+- Carrying custom SVG and font assets inside project files.

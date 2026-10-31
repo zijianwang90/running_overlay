@@ -912,7 +912,7 @@ struct MediaBrowserView: View {
 
     private func importDroppedVideoFiles(_ providers: [NSItemProvider], intoFolder folderID: MediaFolder.ID? = nil) -> Bool {
         guard project.activity.duration > 0 else {
-            project.statusMessage = "Import a FIT or GPX file before importing videos."
+            project.reportError("Import a FIT or GPX file before importing videos.")
             return false
         }
 

@@ -130,6 +130,7 @@ private struct TimelineCanvasRepresentable: NSViewRepresentable {
             return
         }
         let zoomChanged = context.coordinator.lastZoom != nil && context.coordinator.lastZoom != timeline.zoom
+        let zoomAnchor = canvas.takeZoomAnchor()
         canvas.update(
             project: project,
             activity: activity,
@@ -139,7 +140,9 @@ private struct TimelineCanvasRepresentable: NSViewRepresentable {
             isCollapsed: isCollapsed,
             viewportSize: scrollView.contentView.bounds.size
         )
-        if zoomChanged {
+        if zoomChanged, let zoomAnchor {
+            keepTime(zoomAnchor.time, atViewportX: zoomAnchor.viewportX, in: scrollView, canvas: canvas)
+        } else if zoomChanged {
             centerPlayhead(in: scrollView, canvas: canvas)
         } else if isPlaying {
             keepPlayheadVisible(in: scrollView, canvas: canvas)
@@ -157,6 +160,15 @@ private struct TimelineCanvasRepresentable: NSViewRepresentable {
         let visibleRect = scrollView.contentView.bounds
         let maxX = max(canvas.bounds.width - visibleRect.width, 0)
         let targetX = min(max(canvas.playheadX - visibleRect.width / 2, 0), maxX)
+        scrollView.contentView.scroll(to: CGPoint(x: targetX, y: visibleRect.origin.y))
+        scrollView.reflectScrolledClipView(scrollView.contentView)
+    }
+
+    /// Scrolls so `time` stays under the pointer after a pinch or Command-scroll zoom.
+    private func keepTime(_ time: TimeInterval, atViewportX viewportX: CGFloat, in scrollView: NSScrollView, canvas: TimelineCanvasNSView) {
+        let visibleRect = scrollView.contentView.bounds
+        let maxX = max(canvas.bounds.width - visibleRect.width, 0)
+        let targetX = min(max(canvas.x(forProjectTime: time) - viewportX, 0), maxX)
         scrollView.contentView.scroll(to: CGPoint(x: targetX, y: visibleRect.origin.y))
         scrollView.reflectScrolledClipView(scrollView.contentView)
     }
@@ -276,6 +288,9 @@ private final class TimelineCanvasNSView: NSView {
     private var marqueeAnchor: CGPoint?
     private var marqueeCurrentPoint: CGPoint?
     private var hoverPoint: CGPoint?
+    /// Project time under the pointer, and its viewport position, captured
+    /// before a pointer-driven zoom so the update can keep it in place.
+    private var zoomAnchor: (time: TimeInterval, viewportX: CGFloat)?
     private var isMediaDragActive = false
     private var mediaDropTargetTrackName: String?
     private var trackingArea: NSTrackingArea?
@@ -682,6 +697,10 @@ private final class TimelineCanvasNSView: NSView {
         }
         let trackName = tracks[index].name
         let menu = NSMenu()
+        if let hit = clipHit(at: point) {
+            project?.selectClip(hit.clip.id)
+            addClipMenuItems(for: hit.clip, trackName: trackName, to: menu)
+        }
         let item = NSMenuItem(
             title: "Delete \(trackName)",
             action: #selector(deleteTrackMenuAction(_:)),
@@ -693,6 +712,46 @@ private final class TimelineCanvasNSView: NSView {
         NSMenu.popUpContextMenu(menu, with: event, for: self)
     }
 
+    private func addClipMenuItems(for clip: TimelineClip, trackName: String, to menu: NSMenu) {
+        let offset = String(format: "%+.2fs", clip.alignmentOffset)
+        let items = [
+            NSMenuItem(
+                title: "Apply \(offset) Offset to All Clips in \(trackName)",
+                action: #selector(applyOffsetToTrackMenuAction(_:)),
+                keyEquivalent: ""
+            ),
+            NSMenuItem(title: "Reset Offset", action: #selector(resetClipOffsetMenuAction(_:)), keyEquivalent: ""),
+            NSMenuItem.separator(),
+            NSMenuItem(title: "Delete Clip", action: #selector(deleteClipMenuAction(_:)), keyEquivalent: ""),
+            NSMenuItem.separator()
+        ]
+        for item in items where !item.isSeparatorItem {
+            item.target = self
+            item.representedObject = clip.id
+        }
+        // Menu validation is off so the item states below are honored.
+        menu.autoenablesItems = false
+        items[1].isEnabled = clip.alignmentOffset != 0
+        items.forEach(menu.addItem)
+    }
+
+    @objc private func applyOffsetToTrackMenuAction(_ sender: NSMenuItem) {
+        guard let clipID = sender.representedObject as? TimelineClip.ID else { return }
+        project?.applyOffsetToCurrentLayer(for: clipID)
+    }
+
+    @objc private func resetClipOffsetMenuAction(_ sender: NSMenuItem) {
+        guard let clipID = sender.representedObject as? TimelineClip.ID else { return }
+        project?.setSelectedClipOffset(clipID, offset: 0)
+        project?.finishContinuousEdit()
+    }
+
+    @objc private func deleteClipMenuAction(_ sender: NSMenuItem) {
+        guard let clipID = sender.representedObject as? TimelineClip.ID else { return }
+        project?.selectClip(clipID)
+        project?.deleteSelectedItem()
+    }
+
     @objc private func deleteTrackMenuAction(_ sender: NSMenuItem) {
         guard let trackName = sender.representedObject as? String else {
             return
@@ -702,22 +761,33 @@ private final class TimelineCanvasNSView: NSView {
 
     override func scrollWheel(with event: NSEvent) {
         if event.modifierFlags.contains(.command) {
-            if event.scrollingDeltaY > 0 {
-                project?.zoomTimelineIn()
-            } else if event.scrollingDeltaY < 0 {
-                project?.zoomTimelineOut()
-            }
+            let delta = Double(event.scrollingDeltaY)
+            guard delta != 0 else { return }
+            // Trackpads report many small precise deltas; mouse wheels report notches.
+            let factor = event.hasPreciseScrollingDeltas
+                ? exp(delta * Self.preciseScrollZoomSensitivity)
+                : (delta > 0 ? ProjectDocument.timelineZoomStep : 1 / ProjectDocument.timelineZoomStep)
+            zoom(by: factor, around: event)
             return
         }
         super.scrollWheel(with: event)
     }
 
     override func magnify(with event: NSEvent) {
-        if event.magnification > 0 {
-            project?.zoomTimelineIn()
-        } else if event.magnification < 0 {
-            project?.zoomTimelineOut()
-        }
+        zoom(by: 1 + max(Double(event.magnification), -0.9), around: event)
+    }
+
+    private static let preciseScrollZoomSensitivity = 0.01
+
+    private func zoom(by factor: Double, around event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        zoomAnchor = (time(atX: point.x), point.x - scrollOffsetX)
+        project?.zoomTimeline(by: factor)
+    }
+
+    func takeZoomAnchor() -> (time: TimeInterval, viewportX: CGFloat)? {
+        defer { zoomAnchor = nil }
+        return zoomAnchor
     }
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
@@ -1228,7 +1298,7 @@ private final class TimelineCanvasNSView: NSView {
         }
     }
 
-    private func x(forProjectTime time: TimeInterval) -> CGFloat {
+    func x(forProjectTime time: TimeInterval) -> CGFloat {
         let timeline = TimelineModel(tracks: tracks, zoom: .fit, playhead: playhead, fitStartTime: fitStartTime)
         let displayTime = timeline.displayTime(forProjectTime: time, activityDuration: activityDuration, collapsed: isCollapsed)
         return labelWidth + contentPadding + CGFloat((displayTime - visibleStartTime) * pixelsPerSecond)
