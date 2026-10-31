@@ -9,7 +9,8 @@ const { contextForResolve } = require('../workflow/configuration');
 const FUSE_ID = 'Fuse.RunningOverlayNumeric';
 const TRACK_NAME = 'Running Overlay';
 const OVERLAY_SPLIT = 'overlay-split';
-const OVERLAY_SPLIT_MESSAGE = 'The Running Overlay clip was cut or copied into more than one piece. Undo the cut or delete the extra pieces, then update. Per-cut overlays are not supported yet.';
+const OVERLAY_SPLIT_MESSAGE = 'The Running Overlay clip is in more than one piece, so it cannot be updated as one clip. Undo the cuts or delete the extra pieces to update it.';
+const OVERLAY_OFF_PIECE = 'overlay-off-piece';
 const values = (object) => Array.isArray(object) ? object : Object.values(object ?? {});
 
 // A generated transparent still is only a duration carrier, never rendered overlay media.
@@ -41,7 +42,7 @@ async function pieceKey(item) {
   const media = await item.GetMediaPoolItem?.();
   return media?.GetUniqueId ? `media:${await media.GetUniqueId()}` : `name:${await item.GetName?.()}`;
 }
-async function findManagedOverlay(timeline, owner, expectedItemId = null) {
+async function managedPieces(timeline, owner, expectedItemId = null) {
   const items = [];
   const count = Number(await timeline.GetTrackCount('video'));
   for (let track = 1; track <= count; track++) {
@@ -58,7 +59,12 @@ async function findManagedOverlay(timeline, owner, expectedItemId = null) {
     const key = await pieceKey(found[0].item);
     for (const entry of items) if (!entry.owned && entry.track === found[0].track && await pieceKey(entry.item) === key) found.push(entry);
   }
-  if (found.length > 1) throw Object.assign(new Error(OVERLAY_SPLIT_MESSAGE), { code: OVERLAY_SPLIT });
+  return found;
+}
+const splitError = () => Object.assign(new Error(OVERLAY_SPLIT_MESSAGE), { code: OVERLAY_SPLIT });
+async function findManagedOverlay(timeline, owner, expectedItemId = null) {
+  const found = await managedPieces(timeline, owner, expectedItemId);
+  if (found.length > 1) throw splitError();
   return found[0] ?? null;
 }
 async function managedOverlayIsCurrent(timeline, contextId, configuration, scan) {
@@ -112,12 +118,20 @@ async function overlayTimeOffset(comp, offsetSeconds = null) {
   invariant(Number.isFinite(seconds), 'Fusion returned an invalid data time offset.');
   return { seconds, animated: state === 'animated' };
 }
-async function managedComposition(timeline, contextId, managedItemId) {
+// Each cut piece has its own composition, so each keeps its own offset. Compositions
+// load lazily: a heavily cut overlay only touches the pieces the user visits.
+async function offsetPieces(timeline, contextId, managedItemId) {
   invariant(managedItemId, 'Create the overlay first.');
-  const found = await findManagedOverlay(timeline, `running-overlay:v1:${contextId}`, managedItemId);
-  invariant(found && String(await found.item.GetUniqueId()) === managedItemId, 'The managed overlay is missing. Update the overlay to recreate it.');
-  invariant(Number(await found.item.GetFusionCompCount()) === 1, 'The managed clip must contain exactly one Fusion composition.');
-  return found.item.GetFusionCompByIndex(1);
+  const found = await managedPieces(timeline, `running-overlay:v1:${contextId}`, managedItemId);
+  invariant(found.length > 0, 'The managed overlay is missing. Update the overlay to recreate it.');
+  if (new Set(found.map((entry) => entry.track)).size > 1) throw splitError();
+  const pieces = [];
+  for (const { item } of found) pieces.push({ id: String(await item.GetUniqueId()), start: Number(await item.GetStart()), load: async () => {
+    invariant(Number(await item.GetFusionCompCount()) === 1, 'The managed clip must contain exactly one Fusion composition.');
+    return item.GetFusionCompByIndex(1);
+  } });
+  invariant(pieces.length > 1 || pieces[0].id === managedItemId, 'The managed overlay is missing. Update the overlay to recreate it.');
+  return pieces.sort((left, right) => left.start - right.start);
 }
 async function createCarrierPoolItem(project, timeline, directory, duration, fps) {
   const pool = await project.GetMediaPool();
@@ -198,4 +212,4 @@ async function updateManagedOverlay(resolve, { contextId, syncMap, bundleDirecto
     throw error;
   } finally { await fs.rm(backup, { force: true }); }
 }
-module.exports = { FUSE_ID, OVERLAY_SPLIT, OVERLAY_SPLIT_MESSAGE, carrierTimeline, transparentPNG, findManagedOverlay, managedOverlayIsCurrent, setDataInputs, overlayTimeOffset, managedComposition, updateManagedOverlay };
+module.exports = { FUSE_ID, OVERLAY_SPLIT, OVERLAY_SPLIT_MESSAGE, OVERLAY_OFF_PIECE, carrierTimeline, transparentPNG, findManagedOverlay, managedOverlayIsCurrent, setDataInputs, overlayTimeOffset, offsetPieces, updateManagedOverlay };

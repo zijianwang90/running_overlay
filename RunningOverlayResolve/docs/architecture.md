@@ -198,8 +198,9 @@ data must be rebuilt while confirmed anchors remain intact.
 - Verify panel offset writes during Edit page playback, offset save/reopen and
   undo, Edit Inspector exposure through the experimental generator, and
   whether blade-split Fusion clips keep independent offsets and correct time.
-  Until then a split or copied managed overlay is detected by marker, or by a
-  same-track item with the same source, and blocks updates and panel timing.
+  A cut overlay is detected by marker, or by a same-track item with the same
+  source. Pieces keep their data and offsets, the panel adjusts the piece under
+  the playhead, and updates are refused. Copies on another track stay locked.
 - Measure 4K60 performance with at least ten widgets.
 - Validate alpha, color management, float image depth, and Deliver output.
 - Inspect iPhone, GoPro, DJI, and Insta360 metadata snapshots and direct source

@@ -40,12 +40,12 @@ Not yet validated in Resolve; required before merge:
    **Composition Start Frame** to the generator's record start. Record whether
    the Edit Inspector shows the offset, whether the viewer updates live, and
    whether blade-cut pieces keep independent offsets and correct activity time.
-7. Split guard: blade the managed overlay. Confirm the panel warns on the next
-   scan, the primary action no longer updates, Data timing is locked, and undoing
-   the cut restores normal behavior. Record whether Resolve keeps the ownership
-   marker on one or both pieces, which piece keeps the item ID, and whether
-   `GetMediaPoolItem` identifies both pieces. `test/time-offset.test.js` covers
-   both marker outcomes with host fakes only.
+7. Cut overlay: blade the managed overlay with the footage, then ripple delete.
+   Park on each piece and confirm the panel names it within a second, that a
+   nudge changes only that piece, that the primary action no longer updates, and
+   that undoing the cuts restores normal behavior. Resolve 21.1.1 at 29.97 keeps
+   the ownership marker and media pool item on both pieces, gives each its own
+   composition, and keeps activity time correct after a ripple delete.
 
 ## Capture-Time Pickers And Frameless Panel — 2026-09-30
 

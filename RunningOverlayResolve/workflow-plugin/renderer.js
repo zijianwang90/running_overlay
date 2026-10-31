@@ -251,6 +251,7 @@ function renderOffset() {
   hint.className = locked ? 'note warning' : 'note';
   if (offset.animated) hint.textContent = 'This offset is animated in Fusion. Edit its keyframes there.';
   else if (offset.source === 'unavailable') hint.textContent = `Timing can't be read from the overlay: ${offset.error}`;
+  else if (offset.piece) hint.textContent = `Adjusting piece ${offset.piece.index} of ${offset.piece.count}, under the playhead. Other pieces keep their own timing.`;
   else if (offset.source === 'draft') hint.textContent = 'This starting offset is used when the overlay is created. After that, adjust it while watching the overlay in Resolve.';
   else hint.textContent = 'Play or park the playhead in Resolve on a clear moment, such as the start or a stop, and nudge until the numbers change when it happens on screen. The same offset is in the overlay\'s Fusion inspector.';
 }
@@ -265,6 +266,17 @@ function setOffset(seconds) {
 }
 // Latest value wins and only one write is in flight, so dragging never queues
 // a backlog of Resolve calls.
+// Scans are too slow to follow the playhead, so a cut overlay gets its own light poll.
+async function followPlayhead() {
+  try {
+    const config = state.configuration;
+    if (state.splitOverlay && !state.busy && !document.hidden && !offsetBusy()) {
+      const result = await api.readPieceOffset({ contextId: config.contextId, managedItemId: config.managedItemId, pieceId: state.timeOffset.piece?.id ?? null });
+      if (result && state.splitOverlay && !offsetBusy()) { state.timeOffset = result; renderOffset(); }
+    }
+  } catch { /* The next scan reports host errors. */ }
+  finally { window.setTimeout(followPlayhead, 500); }
+}
 async function pumpOffset() {
   const offset = state.offset;
   if (offset.inFlight || offset.pending === null) return;
@@ -337,7 +349,7 @@ function widgetsChanged() { if (state.configuration.managedItemId) setStatus('Wi
 function primaryState() {
   const config = state.configuration;
   if (!config || !state.scan) return { label: 'Scan timeline', run: () => scan() };
-  if (state.splitOverlay) return { label: 'Scan again after undoing the cut', run: () => scan(), quiet: true };
+  if (state.splitOverlay) return { label: 'Overlay is cut · timing follows the playhead', run: () => scan(), quiet: true };
   if (!config.activity) return { label: 'Choose activity', run: chooseActivity };
   if (state.scan.diagnostics.some((entry) => entry.severity === 'error')) return { label: 'Scan again after fixing the timeline', run: () => scan(), quiet: true };
   const captures = captureState();
@@ -414,6 +426,7 @@ async function scan({ restore = false, silent = false, trackIndex } = {}) {
       Object.assign(state.configuration, { managedItemId, lastAppliedFingerprint, bundleDirectory });
       if (managedItemId) state.configuration.draftTimeOffsetMs = result.configuration.draftTimeOffsetMs;
     }
+    const wasSplit = state.splitOverlay;
     Object.assign(state, { scan: result.scan, tracks: result.scan.tracks ?? [], fingerprint: result.fingerprint, stale: result.stale, splitOverlay: Boolean(result.splitOverlay) });
     if (!offsetBusy()) state.timeOffset = result.timeOffset ?? { seconds: state.configuration.draftTimeOffsetMs / 1000, source: 'draft', animated: false };
     if (!silent || changed || changedContext) render(); else { renderOffset(); renderPrimary(); }
@@ -423,7 +436,7 @@ async function scan({ restore = false, silent = false, trackIndex } = {}) {
       const next = state.tracks.find((track) => track.clipCount > 0 && track.name !== OVERLAY_TRACK);
       if (next) { state.configuration.referenceVideoTrackIndex = next.index; scheduleSave(); state.scanning = false; if (!silent) setBusy(false); return await scan({ trackIndex: next.index }); }
     }
-    if (result.splitOverlay) setStatus(result.timeOffset.error, 'warning');
+    if (result.splitOverlay && !wasSplit) setStatus('The overlay is cut. Each piece keeps its data and its own timing. Undo the cuts to update it as one clip.');
     else if (changedContext) setStatus(result.configuration.managedItemId ? 'Saved settings restored.' : 'Ready.');
     else if (result.stale && state.configuration.managedItemId && (changed || !silent)) setStatus('The timeline changed. Update the overlay to resync its data; your timing and styles stay.', 'warning');
     else if (resumed) setStatus('Export finished. Checks resumed.');
@@ -457,6 +470,7 @@ window.addEventListener('DOMContentLoaded', () => {
     finally { window.setTimeout(poll, 8000); }
   }
   scan({ restore: true }).finally(() => window.setTimeout(poll, 8000));
+  followPlayhead();
 });
 window.addEventListener('beforeunload', (event) => {
   if (!state.allowClose && (state.saveTimer || state.busy)) { event.preventDefault(); event.returnValue = false; }

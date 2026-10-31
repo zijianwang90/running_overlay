@@ -6,7 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { inferRecordingZone, clipSpans } = require('../src/sync/alignment-preview');
 const { dataUpdateScript, timeOffsetScript, validOffsetSeconds } = require('../src/resolve/fusion-script');
-const { overlayTimeOffset, findManagedOverlay, OVERLAY_SPLIT, OVERLAY_SPLIT_MESSAGE } = require('../src/resolve/managed-overlay');
+const { overlayTimeOffset, findManagedOverlay, offsetPieces, OVERLAY_SPLIT, OVERLAY_SPLIT_MESSAGE } = require('../src/resolve/managed-overlay');
 const { ConfigurationStore, validateConfiguration, contextForResolve } = require('../src/workflow/configuration');
 const { WorkflowService } = require('../src/workflow/service');
 const activity = require('../fixtures/activity.synthetic.json');
@@ -84,7 +84,8 @@ test('configuration validates the draft offset and keeps it out of data stalenes
 
 async function harness(t, overrides = {}) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'ro-offset-test-')); t.after(() => fs.rm(root, { recursive: true, force: true }));
-  const hostTimeline = { GetUniqueId: async () => timeline.timelineId };
+  const host = { playhead: null };
+  const hostTimeline = { GetUniqueId: async () => timeline.timelineId, GetCurrentVideoItem: async () => host.playhead && { GetUniqueId: async () => host.playhead } };
   const project = { IsRenderingInProgress: async () => false, GetUniqueId: async () => 'project', GetCurrentTimeline: async () => hostTimeline };
   const resolve = { GetProjectManager: async () => ({ GetCurrentProject: async () => project }) };
   const context = await contextForResolve(resolve);
@@ -93,10 +94,10 @@ async function harness(t, overrides = {}) {
   const service = new WorkflowService({ getResolve: async () => resolve, store: new ConfigurationStore(path.join(root, 'config')), bundleRoot: path.join(root, 'bundles'),
     scan: async () => ({ timeline: structuredClone(timeline), mediaById, diagnostics: [] }), inspectManaged: async () => true,
     update: async (_resolve, value) => { calls.update.push(value); return { managedItemId: 'managed-1' }; },
-    composition: async () => { calls.composition++; return { id: 'comp' }; },
+    pieces: async () => { calls.composition++; return [{ id: 'managed-1', load: async () => ({ id: 'comp' }) }]; },
     offset: async (_comp, seconds = null) => { calls.offset.push(seconds); if (seconds !== null) fusionOffset = seconds; return { seconds: fusionOffset, animated: false }; },
     ...overrides });
-  return { service, context, calls };
+  return { service, context, calls, host };
 }
 
 test('the draft offset seeds creation, then the overlay owns and mirrors it', async (t) => {
@@ -109,14 +110,14 @@ test('the draft offset seeds creation, then the overlay owns and mirrors it', as
   assert.equal(calls.update[0].initialTimeOffsetSeconds, 2.5);
 
   const restored = await service.scanContext(1);
-  assert.deepEqual(restored.timeOffset, { seconds: 4, animated: false, source: 'overlay' });
+  assert.deepEqual(restored.timeOffset, { seconds: 4, animated: false, source: 'overlay', piece: null });
   assert.equal(restored.configuration.draftTimeOffsetMs, 4000);
   // A stale panel draft cannot overwrite the renderer's mirrored value.
   const saved = await service.saveConfiguration({ ...applied.configuration, draftTimeOffsetMs: 0 });
   assert.equal(saved.draftTimeOffsetMs, 4000);
 
   const written = await service.setTimeOffset({ contextId: context.contextId, managedItemId: 'managed-1', seconds: -1.2346 });
-  assert.deepEqual(written, { seconds: -1.235, animated: false, source: 'overlay' });
+  assert.deepEqual(written, { seconds: -1.235, animated: false, source: 'overlay', piece: null });
   assert.equal(calls.composition, 1, 'the composition handle is reused between nudges');
 });
 
@@ -158,19 +159,60 @@ test('a split overlay is detected whether or not both pieces keep the ownership 
   assert.equal(found.track, 2);
 });
 
-test('a split overlay blocks updates and panel timing but still scans', async (t) => {
+test('offset pieces are ordered, and copies on another track stay refused', async () => {
+  const owner = `running-overlay:v1:${'c'.repeat(64)}`;
+  const left = { ...overlayPiece('left', { owner }), GetStart: async () => 100 };
+  const right = { ...overlayPiece('right', { owner }), GetStart: async () => 200 };
+  const pieces = await offsetPieces(overlayTimeline([], [right, left]), 'c'.repeat(64), 'left');
+  assert.deepEqual(pieces.map((piece) => piece.id), ['left', 'right']);
+  await assert.rejects(offsetPieces(overlayTimeline([left], [right]), 'c'.repeat(64), 'left'), { code: OVERLAY_SPLIT });
+});
+
+function cutHarness(t) {
   const split = Object.assign(new Error(OVERLAY_SPLIT_MESSAGE), { code: OVERLAY_SPLIT });
-  const { service, context, calls } = await harness(t, { inspectManaged: async () => { throw split; }, composition: async () => { throw split; } });
-  const configuration = await service.store.save(validateConfiguration({ schemaVersion: 1, contextId: context.contextId, referenceVideoTrackIndex: 1, activity, managedItemId: 'managed-1', draftTimeOffsetMs: 750 }));
-  const result = await service.scanContext(1);
-  assert.equal(result.splitOverlay, true);
-  assert.equal(result.stale, true);
-  assert.deepEqual(result.timeOffset, { seconds: 0.75, animated: false, source: 'unavailable', error: OVERLAY_SPLIT_MESSAGE });
-  await assert.rejects(service.apply({ configuration, expectedFingerprint: result.fingerprint }), /more than one piece/);
+  const offsets = { left: 1, right: 2 }; const lists = { count: 0 };
+  return harness(t, { inspectManaged: async () => { throw split; },
+    pieces: async () => { lists.count++; return ['left', 'right'].map((id) => ({ id, load: async () => ({ id }) })); },
+    offset: async (comp, seconds = null) => { if (seconds !== null) offsets[comp.id] = seconds; return { seconds: offsets[comp.id], animated: false }; } })
+    .then((value) => ({ ...value, offsets, lists }));
+}
+async function savedOverlay(service, context) {
+  return service.store.save(validateConfiguration({ schemaVersion: 1, contextId: context.contextId, referenceVideoTrackIndex: 1, activity, managedItemId: 'left', draftTimeOffsetMs: 750 }));
+}
+
+test('a cut overlay adjusts only the piece under the playhead', async (t) => {
+  const { service, context, lists, host, offsets } = await cutHarness(t);
+  await savedOverlay(service, context);
+  host.playhead = 'right';
+  const scanned = await service.scanContext(1);
+  assert.equal(scanned.splitOverlay, true);
+  assert.equal(scanned.stale, false, 'pieces move with the footage');
+  assert.deepEqual(scanned.timeOffset, { seconds: 2, animated: false, source: 'overlay', piece: { id: 'right', index: 2, count: 2 } });
+  assert.equal(scanned.configuration.draftTimeOffsetMs, 750, 'a piece value is not mirrored');
+
+  const written = await service.setTimeOffset({ contextId: context.contextId, managedItemId: 'left', seconds: 5 });
+  assert.equal(written.piece.id, 'right');
+  assert.deepEqual(offsets, { left: 1, right: 5 });
+
+  const base = { contextId: context.contextId, managedItemId: 'left' };
+  assert.equal(await service.readPieceOffset({ ...base, pieceId: 'right' }), null);
+  host.playhead = 'left';
+  assert.equal((await service.readPieceOffset({ ...base, pieceId: 'right' })).seconds, 1);
+  assert.equal(lists.count, 1, 'the piece list is reused while the playhead moves');
+});
+
+test('off-piece timing is refused and a cut overlay cannot be applied', async (t) => {
+  const { service, context, calls, host, offsets } = await cutHarness(t);
+  const configuration = await savedOverlay(service, context);
+  host.playhead = 'title-above';
+  const scanned = await service.scanContext(1);
+  assert.equal(scanned.timeOffset.source, 'unavailable');
+  assert.match(scanned.timeOffset.error, /Park the playhead/);
+  await assert.rejects(service.setTimeOffset({ contextId: context.contextId, managedItemId: 'left', seconds: 9 }), /Park the playhead/);
+  assert.deepEqual(offsets, { left: 1, right: 2 });
+  await assert.rejects(service.apply({ configuration, expectedFingerprint: scanned.fingerprint }), /more than one piece/);
   assert.equal(calls.update.length, 0);
   assert.deepEqual(await fs.readdir(service.bundleRoot).catch(() => []), [], 'no bundle revision is written');
-  await assert.rejects(service.setTimeOffset({ contextId: context.contextId, managedItemId: 'managed-1', seconds: 1 }), /more than one piece/);
-  assert.deepEqual(calls.offset, []);
 });
 
 test('an inspection failure other than a split still fails the scan', async (t) => {

@@ -38,11 +38,14 @@ create a new revision per click.
 The base mapping, bundles, and timeline fingerprints are unaffected by offset
 changes, so nudges never make the overlay stale. Offset changes are saved with
 the Resolve project and use Fusion undo; each panel write is one undo step.
-The offset applies to the whole managed overlay. Per-file differences still use
-Clip details, and per-cut offsets on split overlays are not supported until
-host validation of split Fusion clips (see the Resolve testing guide). Until
-then a split overlay is detected and blocks updates and panel timing, because
-replacement would leave the other piece behind as a second overlay.
+An uncut overlay has one offset. Per-file differences still use Clip details.
+
+Cutting the overlay belongs to the editing stage, after basic alignment. Each
+piece has its own composition and keeps its source frames, so it stays correct
+through ripple edits without new data (validated in Resolve 21.1.1). The panel
+adjusts the piece under the playhead, and updates are refused while the overlay
+is cut, because replacement would leave pieces behind as a second overlay. To
+change data, widgets, or layout, undo the cuts first.
 
 Exposing the offset in the Edit page Inspector is not yet established. An
 experimental generator macro tests that path; until it is verified, the panel

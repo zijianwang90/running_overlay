@@ -4,7 +4,7 @@ const fs = require('node:fs/promises');
 const crypto = require('node:crypto');
 const { invariant } = require('../domain/validation');
 const { scanCurrentTimeline } = require('../resolve/resolve-adapter');
-const { updateManagedOverlay, managedOverlayIsCurrent, managedComposition, overlayTimeOffset, OVERLAY_SPLIT, OVERLAY_SPLIT_MESSAGE } = require('../resolve/managed-overlay');
+const { updateManagedOverlay, managedOverlayIsCurrent, offsetPieces, overlayTimeOffset, OVERLAY_SPLIT, OVERLAY_SPLIT_MESSAGE, OVERLAY_OFF_PIECE } = require('../resolve/managed-overlay');
 const { validOffsetSeconds } = require('../resolve/fusion-script');
 const { compileSyncMap, timelineFingerprint } = require('../sync/compile-sync-map');
 const { writeResolveBundle } = require('../io/render-data');
@@ -13,8 +13,8 @@ const { contextForResolve, validateConfiguration, applyConfirmedCaptureTimes, ca
 const editable = (value) => JSON.stringify([value.referenceVideoTrackIndex, value.activity, value.confirmedCaptureUtcByMediaId, value.cameraAnchors, value.widgets, value.layoutPreset, value.captureTimeZone, value.captureTimeZonesByMediaId]);
 class WorkflowService {
   constructor({ getResolve, store, bundleRoot, scan = scanCurrentTimeline, update = updateManagedOverlay, inspectManaged = managedOverlayIsCurrent,
-    composition = managedComposition, offset = overlayTimeOffset }) {
-    Object.assign(this, { getResolve, store, bundleRoot, scan, update, inspectManaged, composition, offset });
+    pieces = offsetPieces, offset = overlayTimeOffset }) {
+    Object.assign(this, { getResolve, store, bundleRoot, scan, update, inspectManaged, pieces, offset });
     this.queue = Promise.resolve();
     this.applying = false;
     this.offsetTarget = null;
@@ -35,32 +35,58 @@ class WorkflowService {
     let managedIsCurrent = false; let splitOverlay = false;
     try { managedIsCurrent = await this.inspectManaged(context.timeline, context.contextId, configuration, scan); }
     catch (error) { if (error.code !== OVERLAY_SPLIT) throw error; splitOverlay = true; this.offsetTarget = null; }
-    const timeOffset = splitOverlay
-      ? { configuration, value: { seconds: configuration.draftTimeOffsetMs / 1000, animated: false, source: 'unavailable', error: OVERLAY_SPLIT_MESSAGE } }
-      : await this.readOffsetForScan(context, configuration);
+    const timeOffset = await this.readOffsetForScan(context, configuration);
     return { contextId: context.contextId, scan, configuration: timeOffset.configuration, timeOffset: timeOffset.value, splitOverlay,
-      fingerprint: timelineFingerprint(scan.timeline), stale: !managedIsCurrent || configuration.lastAppliedFingerprint !== timelineFingerprint(scan.timeline) };
+      // Cut pieces keep their own source frames and move with the footage, so they are never stale.
+      fingerprint: timelineFingerprint(scan.timeline), stale: !splitOverlay && (!managedIsCurrent || configuration.lastAppliedFingerprint !== timelineFingerprint(scan.timeline)) };
   }
   async readOffsetForScan(context, configuration) {
     const draft = { seconds: configuration.draftTimeOffsetMs / 1000, animated: false, source: 'draft' };
     if (!configuration.managedItemId) return { configuration, value: draft };
     try {
-      const value = { ...await this.offset(await this.targetComposition(context, configuration.managedItemId)), source: 'overlay' };
+      const target = await this.offsetTargetAtPlayhead(context, configuration.managedItemId);
+      const value = { ...await this.offset(target.comp), source: 'overlay', piece: target.piece };
       const mirrored = Math.round(value.seconds * 1000);
-      // Mirror only; the renderer remains authoritative once it exists.
-      const saved = mirrored === configuration.draftTimeOffsetMs ? configuration : await this.store.save({ ...configuration, draftTimeOffsetMs: mirrored });
+      // Mirror only; the renderer remains authoritative once it exists. Cut pieces
+      // hold separate values, so there is no single value to mirror.
+      const saved = target.piece || mirrored === configuration.draftTimeOffsetMs ? configuration : await this.store.save({ ...configuration, draftTimeOffsetMs: mirrored });
       return { configuration: saved, value };
     } catch (error) {
       this.offsetTarget = null;
       return { configuration, value: { ...draft, source: 'unavailable', error: error.message } };
     }
   }
-  async targetComposition(context, managedItemId) {
+  // An uncut overlay is one target. A cut overlay's target is the piece under the
+  // playhead; the track above it wins in Resolve, so titles over the overlay hide it.
+  async offsetTargetAtPlayhead(context, managedItemId) {
     const cached = this.offsetTarget;
-    if (cached && cached.contextId === context.contextId && cached.managedItemId === managedItemId) return cached.comp;
-    const comp = await this.composition(context.timeline, context.contextId, managedItemId);
-    this.offsetTarget = { contextId: context.contextId, managedItemId, comp };
-    return comp;
+    const pieces = cached && cached.contextId === context.contextId && cached.managedItemId === managedItemId
+      ? cached.pieces : await this.pieces(context.timeline, context.contextId, managedItemId);
+    this.offsetTarget = { contextId: context.contextId, managedItemId, pieces };
+    let index = 0;
+    if (pieces.length > 1) {
+      const item = await context.timeline.GetCurrentVideoItem();
+      const id = item ? String(await item.GetUniqueId()) : null;
+      index = pieces.findIndex((piece) => piece.id === id);
+      if (index < 0) throw Object.assign(new Error('Park the playhead on a piece of the Running Overlay clip to adjust its timing.'), { code: OVERLAY_OFF_PIECE });
+    }
+    const target = pieces[index];
+    target.comp ??= await target.load();
+    return { comp: target.comp, piece: pieces.length > 1 ? { id: target.id, index: index + 1, count: pieces.length } : null };
+  }
+  // Polled only while the overlay is cut. Null means the panel already shows this piece.
+  async readPieceOffset({ contextId, managedItemId, pieceId }) {
+    if (this.applying) return null;
+    const context = await contextForResolve(await this.getResolve());
+    if (context.contextId !== contextId || await context.project.IsRenderingInProgress()) return null;
+    try {
+      const target = await this.offsetTargetAtPlayhead(context, managedItemId);
+      if (target.piece?.id === pieceId) return null;
+      return { ...await this.offset(target.comp), source: 'overlay', piece: target.piece };
+    } catch (error) {
+      if (error.code !== OVERLAY_OFF_PIECE) this.offsetTarget = null;
+      return { seconds: 0, animated: false, source: 'unavailable', error: error.message, piece: null };
+    }
   }
   // Runs outside the scan queue so dragging stays responsive, but never while an
   // apply may be replacing the managed clip.
@@ -70,7 +96,10 @@ class WorkflowService {
     const context = await contextForResolve(await this.getResolve());
     invariant(context.contextId === contextId, 'Project or timeline changed. Scan again before adjusting timing.');
     invariant(!await context.project.IsRenderingInProgress(), 'Resolve is rendering. Adjust timing after the export finishes.');
-    try { return { ...await this.offset(await this.targetComposition(context, managedItemId), value), source: 'overlay' }; }
+    try {
+      const target = await this.offsetTargetAtPlayhead(context, managedItemId);
+      return { ...await this.offset(target.comp, value), source: 'overlay', piece: target.piece };
+    }
     catch (error) { this.offsetTarget = null; throw error; }
   }
   async saveConfiguration(payload) {
