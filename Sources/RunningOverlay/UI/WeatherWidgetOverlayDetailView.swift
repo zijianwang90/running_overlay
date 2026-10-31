@@ -71,30 +71,34 @@ struct WeatherWidgetOverlayDetailView: View {
     ) -> some View {
         let isOpen = openSections.contains(section)
         return VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: NumericTokens.space2) {
-                Image(systemName: section.systemImage)
-                    .frame(width: 16, alignment: .center)
-                    .foregroundStyle(NumericTokens.textSecondary)
-                Text(section.title)
-                    .font(NumericTokens.sectionTitleFont)
-                    .foregroundStyle(NumericTokens.textPrimary)
-                Spacer()
-                Image(systemName: isOpen ? "chevron.up" : "chevron.down")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(NumericTokens.textMuted)
-                    .frame(width: 18, height: 18)
-            }
-            .frame(height: NumericTokens.sectionHeaderHeight)
-            .padding(.horizontal, NumericTokens.panelPaddingX)
-            .background(NumericTokens.panelBackgroundElevated)
-            .contentShape(Rectangle())
-            .onTapGesture {
+            Button {
                 if isOpen {
                     openSections.remove(section)
                 } else {
                     openSections.insert(section)
                 }
+            } label: {
+                HStack(spacing: NumericTokens.space2) {
+                    Image(systemName: section.systemImage)
+                        .frame(width: 16, alignment: .center)
+                        .foregroundStyle(NumericTokens.textSecondary)
+                    Text(section.title)
+                        .font(NumericTokens.sectionTitleFont)
+                        .foregroundStyle(NumericTokens.textPrimary)
+                    Spacer()
+                    Image(systemName: isOpen ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(NumericTokens.textMuted)
+                        .frame(width: 18, height: 18)
+                }
+                .frame(height: NumericTokens.sectionHeaderHeight)
+                .padding(.horizontal, NumericTokens.panelPaddingX)
+                .background(NumericTokens.panelBackgroundElevated)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(section.title)
+            .accessibilityValue(isOpen ? "Expanded" : "Collapsed")
             .overlay(alignment: .bottom) {
                 Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1)
             }
@@ -121,6 +125,7 @@ struct WeatherWidgetOverlayDetailView: View {
                     .foregroundStyle(NumericTokens.textPrimary)
             }
             .buttonStyle(.plain).help("Back")
+            .accessibilityLabel("Back")
 
             ZStack {
                 RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
@@ -156,6 +161,7 @@ struct WeatherWidgetOverlayDetailView: View {
                     .foregroundStyle(NumericTokens.textSecondary)
             }
             .buttonStyle(.plain).help("Delete")
+            .accessibilityLabel("Delete")
         }
         .padding(.horizontal, NumericTokens.panelPaddingX)
         .frame(height: EditorTheme.panelHeaderHeight)
@@ -473,6 +479,7 @@ struct WeatherWidgetOverlayDetailView: View {
                 .controlSize(.mini)
                 .disabled(!hasActivityLocation || !canFetchSelectedAPI)
                 .help(fetchHelpText(base: "Fetch weather by the activity's GPS start position", dataSource: s.dataSource, hasOpenWeatherKey: hasOpenWeatherKey))
+                .accessibilityLabel("Fetch weather")
             }
             InspectorDenseRow(label: "Location") {
                 TextField("e.g. Osaka, Japan", text: Binding(
