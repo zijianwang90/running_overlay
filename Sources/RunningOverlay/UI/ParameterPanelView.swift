@@ -62,6 +62,13 @@ struct ParameterPanelView: View {
     }
 }
 
+/// The position leads so a truncated title only loses the overlay name.
+enum OverlaySwitcherTitle {
+    static func text(index: Int, count: Int, label: String) -> String {
+        "\(index + 1) / \(count)  \(label)"
+    }
+}
+
 /// Lets the Inspector jump between overlays without going back to the
 /// Added Overlays list.
 private struct OverlaySwitcherBar: View {
@@ -73,7 +80,7 @@ private struct OverlaySwitcherBar: View {
         let currentIndex = elements.firstIndex { $0.id == elementID }
         let canStep = elements.filter { !$0.isLocked }.count > 1
 
-        InspectorDenseRow(label: "Overlay") {
+        InspectorDenseRow(label: "Overlay", minHeight: EditorTheme.panelHeaderHeight) {
             Menu {
                 ForEach(Array(elements.enumerated()), id: \.element.id) { index, element in
                     Button {
@@ -86,7 +93,9 @@ private struct OverlaySwitcherBar: View {
             } label: {
                 InspectorDenseMenuLabel(
                     systemImage: currentIndex.map { elements[$0].type.inspectorIcon },
-                    title: currentIndex.map { "\($0 + 1). \(elements[$0].type.label)  (of \(elements.count))" } ?? "Overlay"
+                    title: currentIndex.map {
+                        OverlaySwitcherTitle.text(index: $0, count: elements.count, label: elements[$0].type.label)
+                    } ?? "Overlay"
                 )
             }
             .menuStyle(.borderlessButton)

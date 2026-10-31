@@ -73,38 +73,27 @@ struct MainEditorView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .navigation) {
-                    HStack(spacing: Self.toolbarToggleSpacing) {
-                        Button {
-                            showsPoolPanel.toggle()
-                        } label: {
-                            Image(systemName: "sidebar.left")
-                        }
-                        .buttonStyle(EditorIconButtonStyle())
-                        .help(showsPoolPanel ? "Hide Pools (Control-Command-S)" : "Show Pools (Control-Command-S)")
-                        .accessibilityLabel(showsPoolPanel ? "Hide Pools" : "Show Pools")
+                    Button {
+                        showsPoolPanel.toggle()
+                    } label: {
+                        Label(showsPoolPanel ? "Hide Pools" : "Show Pools", systemImage: "sidebar.left")
+                    }
+                    .help(showsPoolPanel ? "Hide Pools (Control-Command-S)" : "Show Pools (Control-Command-S)")
+                }
 
-                        if showsPoolPanel {
-                            // Keep the switch's trailing edge on the pool column's edge.
-                            PoolModeSwitch(activePool: $activePool, compactLabels: true)
-                                .frame(width: max(
-                                    layout.mediaWidth - EditorTheme.panelPaddingX * 2
-                                        - EditorTheme.iconButtonSize - Self.toolbarToggleSpacing,
-                                    0
-                                ))
-                        }
+                if showsPoolPanel {
+                    ToolbarItem(placement: .navigation) {
+                        PoolModeSwitch(activePool: $activePool)
                     }
                 }
 
-                ToolbarItemGroup(placement: .primaryAction) {
-                    Button {
-                        showsInspector.toggle()
-                    } label: {
-                        Image(systemName: "sidebar.right")
-                    }
-                    .buttonStyle(EditorIconButtonStyle())
-                    .help(showsInspector ? "Hide Inspector (Option-Command-I)" : "Show Inspector (Option-Command-I)")
-                    .accessibilityLabel(showsInspector ? "Hide Inspector" : "Show Inspector")
+                ToolbarItem(placement: .principal) {
+                    EditorProjectStatusLabel(name: project.projectDisplayName, isEdited: project.hasUnsavedChanges)
+                        .font(EditorTheme.bodyFont)
+                        .help(project.projectFileURL?.path ?? "Not saved yet")
+                }
 
+                ToolbarItemGroup(placement: .primaryAction) {
                     if let exportProgress = project.exportProgress {
                         ExportProgressButton(progress: exportProgress, isPresented: $showingExportProgress)
                     }
@@ -112,13 +101,19 @@ struct MainEditorView: View {
                     Button {
                         project.showingExportDialog = true
                     } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "square.and.arrow.up")
-                            Text("Export")
-                        }
+                        Label("Export", systemImage: "square.and.arrow.up")
+                            .labelStyle(.titleAndIcon)
                     }
-                    .buttonStyle(EditorPrimaryButtonStyle())
+                    .buttonStyle(.borderedProminent)
+                    .tint(EditorTheme.accentBlue)
                     .help("Export overlays")
+
+                    Button {
+                        showsInspector.toggle()
+                    } label: {
+                        Label(showsInspector ? "Hide Inspector" : "Show Inspector", systemImage: "sidebar.right")
+                    }
+                    .help(showsInspector ? "Hide Inspector (Option-Command-I)" : "Show Inspector (Option-Command-I)")
                 }
             }
         }
@@ -231,8 +226,6 @@ struct MainEditorView: View {
         }
     }
 
-    private static let toolbarToggleSpacing: CGFloat = 8
-
     /// Binds a resize handle to a width stored as Double in user defaults.
     private func storedWidthBinding(_ stored: Binding<Double>) -> Binding<CGFloat> {
         Binding(get: { CGFloat(stored.wrappedValue) }, set: { stored.wrappedValue = Double($0) })
@@ -257,11 +250,8 @@ struct MainEditorView: View {
         HStack {
             Text(project.statusMessage)
                 .foregroundStyle(EditorTheme.textSecondary)
-            Spacer()
-            Text(project.hasUnsavedChanges ? "\(project.projectDisplayName) — Edited" : project.projectDisplayName)
-                .foregroundStyle(EditorTheme.textMuted)
                 .lineLimit(1)
-                .help(project.projectFileURL?.path ?? "Not saved yet")
+                .frame(maxWidth: .infinity, alignment: .leading)
             Button {
                 project.showingProjectSettings = true
             } label: {
@@ -336,7 +326,32 @@ private struct EditorErrorBannerView: View {
     }
 }
 
-/// Mirrors unsaved changes onto the window's close-button dot.
+/// The project name and edited state. "Edited" never truncates; a long name
+/// or status message gives way first.
+struct EditorProjectStatusLabel: View {
+    var name: String
+    var isEdited: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(name)
+                .foregroundStyle(EditorTheme.textSecondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .frame(maxWidth: 220, alignment: .trailing)
+                .fixedSize(horizontal: true, vertical: false)
+            if isEdited {
+                Text("Edited")
+                    .fontWeight(.semibold)
+                    .foregroundStyle(EditorTheme.textPrimary)
+                    .fixedSize()
+            }
+        }
+    }
+}
+
+/// Mirrors unsaved changes onto the window's close-button dot and routes the
+/// close button through the unsaved-changes prompt.
 private struct WindowDocumentEditedState: NSViewRepresentable {
     var isEdited: Bool
 
@@ -347,7 +362,9 @@ private struct WindowDocumentEditedState: NSViewRepresentable {
     func updateNSView(_ nsView: NSView, context: Context) {
         let isEdited = isEdited
         DispatchQueue.main.async {
-            nsView.window?.isDocumentEdited = isEdited
+            guard let window = nsView.window else { return }
+            window.isDocumentEdited = isEdited
+            EditorWindowCloseGuard.shared.install(on: window)
         }
     }
 }
@@ -513,7 +530,9 @@ private struct HorizontalResizeHandle: View {
                         }
                     }
                     .gesture(
-                        DragGesture(minimumDistance: 0)
+                        // Global space: the handle moves with the drag, so its
+                        // local space would feed that movement back as jitter.
+                        DragGesture(minimumDistance: 0, coordinateSpace: .global)
                             .onChanged { value in
                                 if startWidth == nil {
                                     startWidth = displayedWidth

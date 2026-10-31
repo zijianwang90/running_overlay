@@ -198,9 +198,11 @@ The detail screen appears when `project.selection == .overlayElement(elementID)`
 
 When the project has two or more overlays, an `Overlay` switcher row sits
 above every overlay detail view. It is an `InspectorDenseRow` on the elevated
-panel background containing:
+panel background, at the shared `panelHeaderHeight` so its bottom border lines
+up with the Media and Preview headers, containing:
 
-- an `InspectorDenseMenuLabel` pop-up showing `<n>. <type label>  (of <count>)`;
+- an `InspectorDenseMenuLabel` pop-up showing `<n> / <count>  <type label>`,
+  with the position first so truncation only affects the name;
   the menu lists every overlay in list order as `<n>. <type label>`, marking
   the current overlay with a checkmark, locked overlays with a lock, and
   hidden overlays with a slashed eye;

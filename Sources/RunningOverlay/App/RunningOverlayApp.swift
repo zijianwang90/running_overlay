@@ -118,7 +118,7 @@ struct RunningOverlayApp: App {
             // Close is restated here.
             CommandGroup(replacing: .saveItem) {
                 Button("Close") {
-                    NSApp.keyWindow?.performClose(nil)
+                    EditorWindowCloseGuard.shared.closeKeyWindow()
                 }
                 .keyboardShortcut("w", modifiers: [.command])
 
@@ -205,6 +205,10 @@ final class RunningOverlayAppDelegate: NSObject, NSApplicationDelegate {
     static var reopenMainWindow: (() -> Void)?
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        // Closing the only window quits; its prompt was already answered.
+        if EditorWindowCloseGuard.shared.closeWasConfirmed {
+            return .terminateNow
+        }
         guard let project = Self.project else {
             return .terminateNow
         }
@@ -231,5 +235,57 @@ final class RunningOverlayAppDelegate: NSObject, NSApplicationDelegate {
         // Offer crash recovery before a Finder-opened project can replace it.
         Self.project?.offerAutosaveRecoveryIfNeeded()
         Self.project?.openProjectFromSystem(url)
+    }
+}
+
+/// Runs the unsaved-changes prompt before the editor window closes, so
+/// choosing Cancel leaves the window on screen. SwiftUI owns the window's
+/// delegate, so this takes over the close button's action instead.
+@MainActor
+final class EditorWindowCloseGuard: NSObject {
+    static let shared = EditorWindowCloseGuard()
+
+    private(set) var closeWasConfirmed = false
+
+    func install(on window: NSWindow) {
+        guard let button = window.standardWindowButton(.closeButton), button.target !== self else {
+            return
+        }
+        button.target = self
+        button.action = #selector(closeButtonClicked(_:))
+    }
+
+    func closeKeyWindow() {
+        guard let window = NSApp.keyWindow else { return }
+        if window.standardWindowButton(.closeButton)?.target === self {
+            requestClose(of: window)
+        } else {
+            window.performClose(nil)
+        }
+    }
+
+    /// Calls `close` only after `confirm` allows it. Returns whether it closed.
+    @discardableResult
+    func requestClose(confirm: () -> Bool, close: () -> Void) -> Bool {
+        guard confirm() else { return false }
+        closeWasConfirmed = true
+        close()
+        return true
+    }
+
+    @objc private func closeButtonClicked(_ sender: NSButton) {
+        guard let window = sender.window else { return }
+        requestClose(of: window)
+    }
+
+    private func requestClose(of window: NSWindow) {
+        requestClose {
+            guard let project = RunningOverlayAppDelegate.project else { return true }
+            guard project.confirmProjectCanBeReplaced() else { return false }
+            project.discardAutosave()
+            return true
+        } close: {
+            window.close()
+        }
     }
 }

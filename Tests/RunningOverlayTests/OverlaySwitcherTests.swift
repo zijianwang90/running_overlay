@@ -49,4 +49,8 @@ struct OverlaySwitcherTests {
 
         #expect(project.selection == .none)
     }
+
+    @Test func titleLeadsWithPositionAndTotal() {
+        #expect(OverlaySwitcherTitle.text(index: 3, count: 14, label: "Route Map") == "4 / 14  Route Map")
+    }
 }

@@ -426,6 +426,11 @@ struct MediaBrowserView: View {
                 }
                 matchToLayerMenu(for: actionIDs(for: item))
                 Divider()
+                Button("Show in Finder") {
+                    project.showMediaItemsInFinder(actionIDs(for: item))
+                }
+                .disabled(project.mediaFileURLs(for: actionIDs(for: item)).isEmpty)
+                Divider()
                 Menu("Add to Folder") {
                     Button("New Folder from Selection") {
                         let ids = actionIDs(for: item).intersection(rootMediaIDs)

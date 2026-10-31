@@ -86,14 +86,16 @@ Open questions:
   (last 10 projects, with Clear Menu), Close (Command-W), Save (Command-S;
   asks for a location when the project is untitled), and Save As
   (Shift-Command-S).
-- The status bar shows the project name, followed by "Edited" while there are
-  unsaved changes; the window close button shows the standard edited dot.
+- The center of the window toolbar shows the project name, followed by an
+  "Edited" label that never truncates while there are unsaved changes; the
+  window close button shows the standard edited dot.
 - Any undoable edit, undo, redo, or preview-track change marks the project
   edited. Saving or opening clears it. Undoing back to the saved state still
   counts as edited.
 - New Project, Open Project, Open Recent, opening a `.roproj` from Finder,
   closing the window, and quitting ask Save / Cancel / Don't Save when there
-  are unsaved changes. Cancel keeps the app and project open. New and Open are
+  are unsaved changes. The close button and Command-W ask before the window
+  closes, so Cancel leaves it on screen with the project open. New and Open are
   refused while an export is running.
 - Saving stores a bookmark for each media file so reopening the project
   restores sandbox access and follows files that were moved or renamed on the
@@ -136,10 +138,10 @@ Layout interaction requirements:
 - The inspector default width is 460 px with a 460 px minimum.
 - Media Pool width must remain stable across all media operations; importing, matching, or filtering media must not change the Media Pool pane width.
 - The main editor opens as a single window; File > New Window is unavailable, while activity and video import remain available from the File menu.
-- The main editor's pool switch and Export action should share a compact, dark native window toolbar with the macOS window controls, without a separate empty titlebar row.
+- The main editor's pool switch, project name, and Export action should share a compact, dark native window toolbar with the macOS window controls, without a separate empty titlebar row. The leading edge holds the Pools toggle and a segmented pool switch, the center holds the project name, and the trailing edge holds Export and then the Inspector toggle.
 - Inspector width must remain stable when switching between outer/detail/editing states or when selecting a timeline clip; internal Inspector hierarchy changes must not resize the right pane.
 - Resizable split panes should keep stable minimum widths so dense controls and row labels do not collapse.
-- The left Pools panel and the right Inspector can each be hidden and shown from the View menu (Hide/Show Pools, Control-Command-S; Hide/Show Inspector, Option-Command-I) and from sidebar buttons at the leading and trailing ends of the toolbar. A hidden panel gives its width to the Preview, and the window's minimum width shrinks to the visible panes. Showing a panel in a window too narrow for it widens the window, except in full screen.
+- The left Pools panel and the right Inspector can each be hidden and shown from the View menu (Hide/Show Pools, Control-Command-S; Hide/Show Inspector, Option-Command-I) and from sidebar buttons at the far leading and far trailing ends of the toolbar. A hidden panel gives its width to the Preview, and the window's minimum width shrinks to the visible panes. Showing a panel in a window too narrow for it widens the window, except in full screen.
 - Panel visibility and dragged panel widths persist per Mac in user defaults across launches. They are editor preferences, not project data.
 - The timeline spans the full window width instead of being constrained to the preview column.
 - The upper editor area and bottom timeline height are adjustable by dragging their shared boundary.
@@ -203,6 +205,7 @@ Current implementation status:
 - The media browser supports user color tag marks from the context menu and filtering by tag from the browser header.
 - Selected media can be matched from the context menu to the current layer or to a new layer.
 - Media can be removed from the media pool from the context menu; removing media also removes timeline clips that reference it.
+- `Show in Finder` in the media item context menu reveals the clicked item, or every selected item when the clicked item is selected. Missing files raise the error banner; any files that still exist are revealed.
 - The no-media state should be activity-first: before activity import it should show `Import Activity`; after FIT/GPX import it should show `Import Videos`, a short explanation, drag/drop affordance, and supported-format hint.
 
 If timestamp matching is unavailable or insufficient:

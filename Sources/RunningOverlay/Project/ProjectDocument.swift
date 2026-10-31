@@ -3079,6 +3079,25 @@ final class ProjectDocument: ObservableObject {
 
     static let duplicateOverlayOffsetPixels: Double = 24
 
+    /// The files of `mediaItemIDs`, in media pool order. Items without a file
+    /// URL are skipped.
+    func mediaFileURLs(for mediaItemIDs: Set<MediaItem.ID>) -> [URL] {
+        mediaItems.filter { mediaItemIDs.contains($0.id) }.compactMap(\.fileURL)
+    }
+
+    func showMediaItemsInFinder(_ mediaItemIDs: Set<MediaItem.ID>) {
+        let urls = mediaFileURLs(for: mediaItemIDs)
+        let existingURLs = urls.filter { FileManager.default.fileExists(atPath: $0.path) }
+        if existingURLs.count < urls.count {
+            let missingCount = urls.count - existingURLs.count
+            reportError(missingCount == 1
+                ? "1 video file could not be found."
+                : "\(missingCount) video files could not be found.")
+        }
+        guard !existingURLs.isEmpty else { return }
+        NSWorkspace.shared.activateFileViewerSelecting(existingURLs)
+    }
+
     func deleteSelectedItem() {
         switch selection {
         case .timelineClip(let clipID):
