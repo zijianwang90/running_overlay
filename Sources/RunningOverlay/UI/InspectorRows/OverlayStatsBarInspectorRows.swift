@@ -332,17 +332,28 @@ struct CollapsibleStatsBarInspectorSection<Content: View>: View {
 
     private var header: some View {
         HStack(spacing: NumericTokens.space2) {
-            Image(systemName: systemImage)
-                .frame(width: 16, alignment: .center)
-                .foregroundStyle(NumericTokens.textSecondary)
-            Text(title)
-                .font(NumericTokens.sectionTitleFont)
-                .foregroundStyle(NumericTokens.textPrimary)
-            Spacer()
+            Button {
+                isExpanded.toggle()
+            } label: {
+                HStack(spacing: NumericTokens.space2) {
+                    Image(systemName: systemImage)
+                        .frame(width: 16, alignment: .center)
+                        .foregroundStyle(NumericTokens.textSecondary)
+                    Text(title)
+                        .font(NumericTokens.sectionTitleFont)
+                        .foregroundStyle(NumericTokens.textPrimary)
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(title)
+            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
             Toggle("", isOn: Binding(get: { isBarEnabled }, set: onSetBarEnabled))
                 .toggleStyle(.switch)
                 .controlSize(.mini)
                 .labelsHidden()
+                .accessibilityLabel("Enable \(title)")
                 .onTapGesture { }
             Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                 .font(.system(size: 11, weight: .semibold))

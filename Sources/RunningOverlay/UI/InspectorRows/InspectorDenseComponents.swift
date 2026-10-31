@@ -221,6 +221,7 @@ struct InspectorDenseSwatchStrip: View {
                 }
                 .buttonStyle(.plain)
                 .help(preset.name)
+                .accessibilityLabel(preset.name)
             }
 
             Button {
@@ -249,6 +250,7 @@ struct InspectorDenseSwatchStrip: View {
             }
             .buttonStyle(.plain)
             .help("Custom Color")
+            .accessibilityLabel("Custom Color")
         }
         .frame(height: NumericTokens.controlHeight)
         .frame(maxWidth: .infinity, alignment: .trailing)
