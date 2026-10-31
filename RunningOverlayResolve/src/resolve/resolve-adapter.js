@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('node:path');
-const { exportTimelineInspection, inspectReferenceTrack, mappingIssueForItem } = require('./otio-inspection');
+const { exportTimelineInspection, inspectReferenceTrack, mappingIssueForItem, correctedSourceStartFrame } = require('./otio-inspection');
 const { invariant, reduceRational } = require('../domain/validation');
 const { filenameCaptureTime } = require('../sync/capture-time');
 
@@ -176,6 +176,7 @@ async function scanCurrentTimeline(resolve, options = {}) {
       speed: { numerator: 1, denominator: 1 },
       clipEnabled: clipEnabled !== false,
     };
+    if (sourceFrameRate) scannedItem.sourceStartFrame = correctedSourceStartFrame(evidence, scannedItem);
     scannedItem.mappingIssue = sourceFrameRate ? mappingIssueForItem(evidence, scannedItem, clipProperties?.['File Path']) : 'Source frame rate is missing or invalid; automatic fallback is not safe.';
     if (scannedItem.mappingIssue && scannedItem.clipEnabled) diagnostics.push({ severity: 'error', code: 'unsupported-source-mapping', timelineItemId, message: `${name}: ${scannedItem.mappingIssue}` });
     items.push(scannedItem);

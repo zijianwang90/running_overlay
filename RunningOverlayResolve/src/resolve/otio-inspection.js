@@ -61,6 +61,17 @@ function inspectReferenceTrack(otio, trackIndex, timelineStartFrame, frameRate) 
   }).filter(Boolean);
 }
 
+// Resolve 21 GetSourceStartFrame can truncate one frame low at fractional rates
+// (1003 for 1004 at 29.97) while GetLeftOffset and the OTIO export stay correct.
+function correctedSourceStartFrame(evidence, item) {
+  const { numerator, denominator } = item.sourceFrameRate;
+  const matches = evidence.filter((entry) => entry.start === item.timelineStartFrame && entry.end === item.timelineEndFrameExclusive);
+  if (denominator === 1 || matches.length !== 1) return item.sourceStartFrame;
+  const frames = matches[0].sourceSeconds * numerator / denominator;
+  const nearest = Math.round(frames);
+  return Math.abs(frames - nearest) < 0.000001 && nearest === item.sourceStartFrame + 1 ? nearest : item.sourceStartFrame;
+}
+
 function mappingIssueForItem(evidence, item, sourcePath) {
   const matches = evidence.filter((entry) => entry.start === item.timelineStartFrame && entry.end === item.timelineEndFrameExclusive);
   if (matches.length !== 1) return 'Clip geometry could not be matched to Resolve timing evidence. Rescan the timeline.';
@@ -74,4 +85,4 @@ function mappingIssueForItem(evidence, item, sourcePath) {
   return null;
 }
 
-module.exports = { exportTimelineInspection, inspectReferenceTrack, mappingIssueForItem };
+module.exports = { exportTimelineInspection, inspectReferenceTrack, mappingIssueForItem, correctedSourceStartFrame };
