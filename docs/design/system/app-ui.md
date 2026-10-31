@@ -96,7 +96,7 @@ Use 6-8 px radius for tool controls. Avoid pill-heavy styling unless the control
 
 The app is a multi-pane editor:
 
-- The native unified window toolbar uses `app.chrome`. Leading: Pools toggle, then the segmented pool switch at its natural width. Center (`.principal`): project name and `Edited`; the principal item also keeps the `.primaryAction` items at the trailing edge. Trailing: export progress when active, Export (`.borderedProminent`), then the Inspector toggle. Toolbar toggles use default system toolbar buttons without custom borders. Do not add a second app-level toolbar row beneath it.
+- The native unified window toolbar uses `app.chrome`. Leading: Pools toggle, then the segmented pool switch at its natural width. Center (`.principal`): project name and `Edited` as plain text with the macOS 26 shared toolbar background hidden; the principal item also keeps the `.primaryAction` items at the trailing edge. Trailing: export progress when active, Export (`.borderedProminent`), a fixed toolbar spacer on macOS 26, then the Inspector toggle. Toolbar toggles use default system toolbar buttons without custom borders. Do not add a second app-level toolbar row beneath it.
 
 - Left: Pool panel with `Media Pool`, `Overlay Pool`, and `Templates` modes for import/source management, addable overlay modules, and reusable overlay layouts.
 - Center: Preview canvas and playback controls.

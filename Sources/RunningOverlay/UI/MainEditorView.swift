@@ -92,6 +92,7 @@ struct MainEditorView: View {
                         .font(EditorTheme.bodyFont)
                         .help(project.projectFileURL?.path ?? "Not saved yet")
                 }
+                .hidingSharedToolbarBackground()
 
                 ToolbarItemGroup(placement: .primaryAction) {
                     if let exportProgress = project.exportProgress {
@@ -101,13 +102,21 @@ struct MainEditorView: View {
                     Button {
                         project.showingExportDialog = true
                     } label: {
+                        // The default capsule inset crowds the icon and title.
                         Label("Export", systemImage: "square.and.arrow.up")
                             .labelStyle(.titleAndIcon)
+                            .padding(.horizontal, 3)
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(EditorTheme.accentBlue)
                     .help("Export overlays")
+                }
 
+                #if compiler(>=6.2)
+                EditorToolbarGroupSpacer()
+                #endif
+
+                ToolbarItem(placement: .primaryAction) {
                     Button {
                         showsInspector.toggle()
                     } label: {
@@ -325,6 +334,37 @@ private struct EditorErrorBannerView: View {
         .padding(.horizontal, 16)
     }
 }
+
+// The compiler checks keep these buildable with SDKs older than macOS 26, which
+// lack the APIs, as well as running on older systems.
+private extension ToolbarContent {
+    /// macOS 26 wraps toolbar items in a glass capsule, which suits controls but
+    /// makes plain text such as the window title look like a button.
+    @ToolbarContentBuilder
+    func hidingSharedToolbarBackground() -> some ToolbarContent {
+        #if compiler(>=6.2)
+        if #available(macOS 26, *) {
+            sharedBackgroundVisibility(.hidden)
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+}
+
+#if compiler(>=6.2)
+/// Separates trailing toolbar groups on macOS 26, where adjacent items otherwise
+/// sit tightly together.
+private struct EditorToolbarGroupSpacer: ToolbarContent {
+    var body: some ToolbarContent {
+        if #available(macOS 26, *) {
+            ToolbarSpacer(.fixed, placement: .primaryAction)
+        }
+    }
+}
+#endif
 
 /// The project name and edited state. "Edited" never truncates; a long name
 /// or status message gives way first.
