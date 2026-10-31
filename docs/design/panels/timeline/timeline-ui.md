@@ -233,8 +233,9 @@ Rules:
 - Expanded-mode clip drag changes effective start time.
 - Collapsed-mode clip drag is disabled, but selection still works.
 - FIT track drag changes FIT alignment.
-- Command-scroll and pinch zoom the timeline.
-- Zoom changes keep the playhead visible and recenter on it.
+- Command-scroll and pinch zoom the timeline continuously around the pointer: the time under the pointer stays in place. Mouse-wheel notches zoom one step each.
+- Clip context menu: `Apply <offset> Offset to All Clips in <track>`, `Reset Offset`, `Delete Clip`, separator, `Delete <track>`.
+- Menu, keyboard, and slider zoom changes keep the playhead visible and recenter on it.
 - During playback, the timeline scrolls to keep the playhead visible.
 - Delete and Forward Delete remove selected timeline clips when the canvas has focus.
 

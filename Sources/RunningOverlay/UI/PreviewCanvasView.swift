@@ -137,6 +137,8 @@ struct PreviewCanvasView: View {
                                                 y: start.y + value.translation.height / max(canvasSize.height, 1)
                                             )
                                         }
+                                        // Holding Command bypasses snapping for free placement.
+                                        let isSnappingEnabled = !NSEvent.modifierFlags.contains(.command)
                                         let snapResult: PreviewSnapResult
                                         if element.type.isNumericOverlay {
                                             snapResult = PreviewSnapResolver().snapTopLeading(
@@ -145,7 +147,8 @@ struct PreviewCanvasView: View {
                                                 currentFrame: overlayFrames[element.id],
                                                 overlayFrames: overlayFrames,
                                                 canvasSize: canvasSize,
-                                                guidesEnabled: project.showPreviewGuides
+                                                guidesEnabled: project.showPreviewGuides,
+                                                isSnappingEnabled: isSnappingEnabled
                                             )
                                         } else {
                                             snapResult = PreviewSnapResolver().snap(
@@ -154,7 +157,8 @@ struct PreviewCanvasView: View {
                                                 currentFrame: overlayFrames[element.id],
                                                 overlayFrames: overlayFrames,
                                                 canvasSize: canvasSize,
-                                                guidesEnabled: project.showPreviewGuides
+                                                guidesEnabled: project.showPreviewGuides,
+                                                isSnappingEnabled: isSnappingEnabled
                                             )
                                         }
                                         liveDragPosition = (element.id, snapResult.position)
@@ -177,17 +181,7 @@ struct PreviewCanvasView: View {
                                 project.selectOverlay(element.id)
                             }
                             .contextMenu {
-                                Button {
-                                    project.copyOverlayProperties(from: element.id)
-                                } label: {
-                                    Label("Copy Properties", systemImage: "doc.on.doc")
-                                }
-                                Button {
-                                    project.pasteOverlayProperties(to: element.id)
-                                } label: {
-                                    Label("Paste Properties", systemImage: "doc.on.clipboard")
-                                }
-                                .disabled(!project.canPasteOverlayProperties(to: element.id))
+                                OverlayElementContextMenu(element: element)
                             }
                         }
                     }
@@ -315,7 +309,7 @@ private struct PreviewOverlayFramePreferenceKey: PreferenceKey {
     }
 }
 
-private struct PreviewSnapLine: Identifiable, Equatable {
+struct PreviewSnapLine: Identifiable, Equatable {
     enum Axis: Equatable {
         case horizontal
         case vertical
@@ -329,12 +323,12 @@ private struct PreviewSnapLine: Identifiable, Equatable {
     }
 }
 
-private struct PreviewSnapResult {
+struct PreviewSnapResult {
     var position: CGPoint
     var lines: [PreviewSnapLine]
 }
 
-private struct PreviewSnapResolver {
+struct PreviewSnapResolver {
     private let threshold: CGFloat = 6
 
     func snap(
@@ -343,7 +337,8 @@ private struct PreviewSnapResolver {
         currentFrame: CGRect?,
         overlayFrames: [OverlayElement.ID: CGRect],
         canvasSize: CGSize,
-        guidesEnabled: Bool
+        guidesEnabled: Bool,
+        isSnappingEnabled: Bool = true
     ) -> PreviewSnapResult {
         guard canvasSize.width > 0, canvasSize.height > 0, let currentFrame, !currentFrame.isEmpty else {
             return PreviewSnapResult(position: clampNormalized(proposedPosition), lines: [])
@@ -363,7 +358,7 @@ private struct PreviewSnapResolver {
         var snappedCenter = proposedCenter
         var lines: [PreviewSnapLine] = []
 
-        if let match = bestMatch(
+        if isSnappingEnabled, let match = bestMatch(
             movingAnchors: xAnchors(for: proposedFrame),
             targets: xTargets(
                 movingElementID: movingElementID,
@@ -376,7 +371,7 @@ private struct PreviewSnapResolver {
             lines.append(PreviewSnapLine(axis: .vertical, position: match.targetPosition))
         }
 
-        if let match = bestMatch(
+        if isSnappingEnabled, let match = bestMatch(
             movingAnchors: yAnchors(for: proposedFrame),
             targets: yTargets(
                 movingElementID: movingElementID,
@@ -405,7 +400,8 @@ private struct PreviewSnapResolver {
         currentFrame: CGRect?,
         overlayFrames: [OverlayElement.ID: CGRect],
         canvasSize: CGSize,
-        guidesEnabled: Bool
+        guidesEnabled: Bool,
+        isSnappingEnabled: Bool = true
     ) -> PreviewSnapResult {
         guard canvasSize.width > 0, canvasSize.height > 0, let currentFrame, !currentFrame.isEmpty else {
             return PreviewSnapResult(position: clampNormalized(proposedPosition), lines: [])
@@ -419,7 +415,7 @@ private struct PreviewSnapResolver {
         )
         var lines: [PreviewSnapLine] = []
 
-        if let match = bestMatch(
+        if isSnappingEnabled, let match = bestMatch(
             movingAnchors: xAnchors(for: proposedFrame),
             targets: xTargets(
                 movingElementID: movingElementID,
@@ -432,7 +428,7 @@ private struct PreviewSnapResolver {
             lines.append(PreviewSnapLine(axis: .vertical, position: match.targetPosition))
         }
 
-        if let match = bestMatch(
+        if isSnappingEnabled, let match = bestMatch(
             movingAnchors: yAnchors(for: proposedFrame),
             targets: yTargets(
                 movingElementID: movingElementID,

@@ -75,6 +75,46 @@ Open questions:
 - Whether custom resolution should be supported in the first release.
 - Whether imported video frame rates should influence the default project frame rate.
 
+## 4.1 Project Files
+
+- A project saves as a single `.roproj` file (versioned JSON). It stores
+  project settings, the parsed activity, media pool items and folders,
+  timeline tracks and clips, overlays, user asset references, and the workout
+  structure selection. Undo history, selection, and playback state are not
+  saved.
+- File menu: New Project (Command-N), Open Project (Command-O), Open Recent
+  (last 10 projects, with Clear Menu), Close (Command-W), Save (Command-S;
+  asks for a location when the project is untitled), and Save As
+  (Shift-Command-S).
+- The status bar shows the project name, followed by "Edited" while there are
+  unsaved changes; the window close button shows the standard edited dot.
+- Any undoable edit, undo, redo, or preview-track change marks the project
+  edited. Saving or opening clears it. Undoing back to the saved state still
+  counts as edited.
+- New Project, Open Project, Open Recent, opening a `.roproj` from Finder,
+  closing the window, and quitting ask Save / Cancel / Don't Save when there
+  are unsaved changes. Cancel keeps the app and project open. New and Open are
+  refused while an export is running.
+- Saving stores a bookmark for each media file so reopening the project
+  restores sandbox access and follows files that were moved or renamed on the
+  same volume. Media that still cannot be found is reported after opening,
+  with a Locate option that searches a chosen folder (recursively) for files
+  with the same names. Relinking is undoable. Missing media affects only
+  preview; overlays and timing are unchanged.
+- Files saved by a newer app version with a higher format version are refused
+  with a clear message instead of being partially loaded.
+- Autosave and crash recovery: while a project has unsaved changes, a recovery
+  copy is written to the app's Application Support folder every 30 seconds
+  and when the app moves to the background, only if something changed since
+  the last copy. Saving, opening a project, New Project, and quitting after
+  Save or Don't Save remove it. A copy found at launch means the app did not
+  quit normally; the user is asked to Recover or Discard it. Recovered work
+  stays edited and keeps its original project file as the Save target
+  (untitled work stays untitled). Autosave never overwrites the user's
+  project file.
+- Custom SVG and font assets stay in the app's local asset store; a project
+  opened on another Mac does not carry them yet.
+
 ## 5. Main Layout
 
 The app follows a professional video-editing layout inspired by Final Cut Pro and DaVinci Resolve:
@@ -99,12 +139,15 @@ Layout interaction requirements:
 - The main editor's pool switch and Export action should share a compact, dark native window toolbar with the macOS window controls, without a separate empty titlebar row.
 - Inspector width must remain stable when switching between outer/detail/editing states or when selecting a timeline clip; internal Inspector hierarchy changes must not resize the right pane.
 - Resizable split panes should keep stable minimum widths so dense controls and row labels do not collapse.
+- The left Pools panel and the right Inspector can each be hidden and shown from the View menu (Hide/Show Pools, Control-Command-S; Hide/Show Inspector, Option-Command-I) and from sidebar buttons at the leading and trailing ends of the toolbar. A hidden panel gives its width to the Preview, and the window's minimum width shrinks to the visible panes. Showing a panel in a window too narrow for it widens the window, except in full screen.
+- Panel visibility and dragged panel widths persist per Mac in user defaults across launches. They are editor preferences, not project data.
 - The timeline spans the full window width instead of being constrained to the preview column.
 - The upper editor area and bottom timeline height are adjustable by dragging their shared boundary.
 - A new empty project starts without sample media, sample clips, sample overlay elements, or a fake activity timeline.
 - Empty panels should render as neutral empty work areas, not as mock content.
 - The top header bars of Media, Preview, and Inspector should use a unified header height.
 - Header icon/menu button heights across Media, Preview, and Inspector should use a unified compact control size.
+- Failed user actions (imports, exports, template file operations, clip placement conflicts, weather fetches) show a dismissible, non-blocking error banner at the top of the editor in addition to the status bar. Finished exports and completed media or activity imports also show a brief toast. See `docs/design/system/app-ui.md#feedback-levels`.
 
 ## 6. Activity Timeline
 
@@ -217,9 +260,16 @@ Requirements:
   - Space: play/pause.
   - Command + Plus: zoom in timeline.
   - Command + Minus: zoom out timeline.
-  - Command + mouse wheel/trackpad scroll on timeline: zoom timeline.
-  - Trackpad pinch on timeline: zoom timeline.
-  - Left Arrow / Right Arrow: step the timeline playhead backward or forward by one project frame.
+  - Command + mouse wheel/trackpad scroll on timeline: zoom timeline. Trackpad scrolling zooms continuously in proportion to the scroll distance; each mouse-wheel notch zooms one 1.35x step.
+  - Trackpad pinch on timeline: zoom timeline continuously in proportion to the pinch.
+  - Pinch and Command-scroll keep the time under the pointer in place; menu, keyboard, and slider zoom keep centering the playhead.
+- Right-clicking a timeline clip selects it and offers `Apply <offset> Offset to All Clips in <track>`, `Reset Offset` (disabled at zero offset), and `Delete Clip`, followed by the existing `Delete <track>` item. Right-clicking empty track space shows only `Delete <track>`. Tracks are camera angles aligned to the FIT layer, so clip actions are about each camera's offset.
+  - Left Arrow / Right Arrow: step the timeline playhead backward or forward by one project frame when no unlocked overlay is selected; Shift steps ten frames. Stepping pauses playback.
+  - Up Arrow / Down Arrow with no unlocked overlay selected: jump to the previous / next edit point (any clip start or end on any camera track, or the timeline start or end) without changing play state.
+  - Home / End: jump to the timeline start / end without changing play state.
+  - J / K / L: J halves a fast-forward rate and pauses at 1x (reverse playback is not supported), K toggles play/pause, L starts playback or doubles the rate up to 8x.
+  - Playback menu lists Go to Start, Go to End, and Previous / Next Edit Point with their keys in the title; these keys are handled by the editor so lists and text fields keep their own meaning for them.
+  - Arrow keys with an unlocked overlay selected: move the overlay by one output pixel; Shift + Arrow moves it by ten output pixels. Each press registers one undo point.
 - Timeline should expose a visible zoom slider in the timeline header.
 - Timeline should expose a collapse/expand control next to the zoom slider for hiding and restoring no-video gaps.
 - Dragging from empty timeline time-area space, including the workspace below the last video track, draws a marquee that selects every intersecting timeline clip across tracks.
@@ -274,6 +324,7 @@ When no timeline clip is selected:
 - Show the data overlay editor.
 - Show a list of already-added overlay elements.
 - Clicking an added overlay element in the list selects it, matching preview selection behavior.
+- While an overlay is selected and the project has two or more overlays, an Overlay switcher row above the detail view lets the user jump to any other overlay from a pop-up menu, or step to the previous / next unlocked overlay, without going back to the list.
 - Added overlay elements can be deleted from the list.
 
 When an overlay element is selected:
@@ -333,7 +384,8 @@ Current implementation status:
 - Added-overlay rows now support per-element visibility and lock toggles with persistent model fields.
 - Visibility off hides the element in both Preview and exported overlay frames.
 - Lock on keeps the element visible but prevents Preview-canvas selection and dragging.
-- Added-overlay rows and Preview overlays provide context-menu actions for copying and pasting overlay properties.
+- Added-overlay rows and Preview overlays share one context menu: `Duplicate`, `Copy Properties`, `Paste Properties`, `Hide`/`Show`, `Lock`/`Unlock`, and `Delete`.
+- `Duplicate` (also Edit > Duplicate Overlay, Command-D, for the selected overlay) inserts a visible, unlocked copy with the same type, scale, opacity, and style, offset 24 output pixels down and right, stacked directly above the original, and selects it. It registers one undo point.
 - Property paste is limited to the same overlay category (for example, numeric -> numeric only).
 - Selected text overlays expose a built-in style picker as the first Inspector control, with Minimal, Pill Badge, Metric Card, Big Number, Sport Watch, Split Label, Inline Ghost, Accent Bar, Sport Neon, and Serif Editorial presets.
 - Numeric overlay presets carry recommended typography tokens (value font family/weight/size, label/unit visibility, label/unit defaults, background, accent color); selecting a preset snaps those fields so the overlay matches the design intent without further tuning.
@@ -344,7 +396,8 @@ Current implementation status:
   - Dial / Ring / Ticks / Dividers / Effects sections expose every renderer-consumed parameter (dial color + opacity + glass; outer ring + progress ring + progress mode + caps; tick count + major-every + opacities; divider color/opacity/width; shadow + glow). Conditional sub-rows show only when the parent toggle is on.
   - Typography offers Font, Monospaced Digits, and primary/secondary Weight; Color offers Primary Text, Secondary, and Accent swatch strips.
 - Space starts/stops playhead playback, and the overlay values update as playhead time changes.
-- Left and right arrows move the timeline playhead by exactly one project frame for fine timing checks.
+- Left and right arrows move the timeline playhead by exactly one project frame for fine timing checks when no unlocked overlay is selected.
+- With an unlocked overlay selected, all four arrow keys nudge it by one output pixel at the project resolution (ten with Shift); deselect the overlay to return arrows to frame stepping.
 - Timeline ruler click/drag immediately updates the current playhead, including during playback, and playback continues from the selected time.
 - Timeline ruler hover data appears above the time scale, not under the cursor, with an arrow pointing to the hovered ruler position.
 - A muted red playhead with a small downward-pointing triangle inside the ruler band is shown on timeline tracks. The vertical line starts from inside the ruler and extends down through the visible tracks; neither the line nor the triangle is allowed to extend above the ruler.
@@ -363,12 +416,13 @@ Current implementation status:
 - Preview overlay placement and drag behavior are based on the actual fitted project canvas inside the preview panel, avoiding offset drift when split panes resize the preview area.
 - A small Preview header switch can show or hide preview safety guides, including 90%/80% safe frames and center crosshairs.
 - Selected overlays show a subtle blue selection border and small corner handles.
+- Dragging an overlay snaps to other overlays' alignment lines, and to the safe-guide lines and center crosshair while safe guides are shown; holding Command while dragging turns snapping off for free placement.
 - Dragging selected-overlay corner handles scales the overlay and writes directly to the element `scale` model value.
 
 Future requirements:
 
 - Stroke, richer chart style, and animation controls.
-- Copy/paste and grouping.
+- Clipboard copy/paste of whole overlays (Duplicate covers same-project copies), and grouping.
 
 ## 10.1 Overlay Templates
 
@@ -532,7 +586,9 @@ Initial export options:
 
 - Export format: transparent MOV overlay video.
 - Codec:
-  - H.265 with alpha.
+  - H.265 with alpha. The encoder is asked to prioritize encoding speed over
+    quality; if the encoder rejects that setting, export falls back to the
+    default encoder priority.
   - ProRes 4444.
 - Destination folder, defaulting to the folder containing the first video in the media pool and falling back to `~/Movies` when no video files are loaded.
 - Resolution: from project settings.
@@ -557,7 +613,7 @@ Export behavior:
 - Main `Export` always uses the SwiftUI shared-component rasterization path (legacy export mode removed).
 - In Debug builds only, `Export Overlay JSON` writes the current `OverlayLayout` configuration to JSON for inspection, debugging, and reproducible style snapshots.
 - In Debug builds only, `Save Project Snapshot` writes a JSON snapshot of the current exportable project state for repeatable performance testing.
-- In Debug builds only, `Restore Project Snapshot` replaces the current project with a saved snapshot and clears runtime-only state such as selection, playback, export progress, and undo/redo history.
+- In Debug builds only, `Restore Project Snapshot` replaces the current project with a saved snapshot and clears runtime-only state such as selection, playback, export progress, and undo/redo history. The restored project is untitled and marked edited, so Save cannot overwrite the previously open `.roproj`.
 - `swift run RunningOverlay --benchmark-export <snapshot.json>` runs a non-interactive benchmark export from a project snapshot, creates a timestamped output folder in the current working directory by default, writes MOV/profile artifacts there, and exits without requiring editor interaction.
 - `--benchmark-output <directory>` overrides the automated benchmark output directory.
 - Test clip/frame sampling time must use the same playhead-to-activity conversion and Layer Data FPS quantization path as preview (`activityElapsed(atProjectTime:)` + quantization).

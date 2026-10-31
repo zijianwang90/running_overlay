@@ -11,36 +11,11 @@ struct ParameterPanelView: View {
             case .timelineClips:
                 InspectorOuterView()
             case .overlayElement(let elementID):
-                if let element = project.selectedOverlay(elementID) {
-                    if element.type.isNumericOverlay {
-                        NumericOverlayDetailView(elementID: elementID)
-                    } else if element.type == .distanceTimeline {
-                        DistanceTimelineOverlayDetailView(elementID: elementID)
-                    } else if element.type == .elevationChart {
-                        ElevationChartOverlayDetailView(elementID: elementID)
-                    } else if element.type == .runningGauge {
-                        RunningGaugeOverlayDetailView(elementID: elementID)
-                    } else if element.type == .intervalHUDBar {
-                        IntervalHUDBarOverlayDetailView(elementID: elementID)
-                    } else if element.type == .intervalTimeline {
-                        IntervalTimelineOverlayDetailView(elementID: elementID)
-                    } else if element.type == .intervalCountdown {
-                        IntervalCountdownOverlayDetailView(elementID: elementID)
-                    } else if element.type == .intervalWorkSummary {
-                        IntervalWorkSummaryOverlayDetailView(elementID: elementID)
-                    } else if element.type == .zoneEdgeBar {
-                        ZoneEdgeBarOverlayDetailView(elementID: elementID)
-                    } else if element.type == .routeMap {
-                        RouteMapOverlayDetailView(elementID: elementID)
-                    } else if element.type == .weatherWidget {
-                        WeatherWidgetOverlayDetailView(elementID: elementID)
-                    } else if element.type.isDecorOverlay {
-                        DecorOverlayDetailView(elementID: elementID)
-                    } else {
-                        OverlayDetailView(elementID: elementID)
+                VStack(spacing: 0) {
+                    if project.overlayLayout.elements.count > 1 {
+                        OverlaySwitcherBar(elementID: elementID)
                     }
-                } else {
-                    OverlayDetailView(elementID: elementID)
+                    overlayDetail(elementID)
                 }
             case .none:
                 InspectorOuterView()
@@ -50,110 +25,98 @@ struct ParameterPanelView: View {
         .background(InspectorTheme.panelBackground)
         .foregroundStyle(InspectorTheme.textPrimary)
     }
+
+    @ViewBuilder
+    private func overlayDetail(_ elementID: OverlayElement.ID) -> some View {
+        if let element = project.selectedOverlay(elementID) {
+            if element.type.isNumericOverlay {
+                NumericOverlayDetailView(elementID: elementID)
+            } else if element.type == .distanceTimeline {
+                DistanceTimelineOverlayDetailView(elementID: elementID)
+            } else if element.type == .elevationChart {
+                ElevationChartOverlayDetailView(elementID: elementID)
+            } else if element.type == .runningGauge {
+                RunningGaugeOverlayDetailView(elementID: elementID)
+            } else if element.type == .intervalHUDBar {
+                IntervalHUDBarOverlayDetailView(elementID: elementID)
+            } else if element.type == .intervalTimeline {
+                IntervalTimelineOverlayDetailView(elementID: elementID)
+            } else if element.type == .intervalCountdown {
+                IntervalCountdownOverlayDetailView(elementID: elementID)
+            } else if element.type == .intervalWorkSummary {
+                IntervalWorkSummaryOverlayDetailView(elementID: elementID)
+            } else if element.type == .zoneEdgeBar {
+                ZoneEdgeBarOverlayDetailView(elementID: elementID)
+            } else if element.type == .routeMap {
+                RouteMapOverlayDetailView(elementID: elementID)
+            } else if element.type == .weatherWidget {
+                WeatherWidgetOverlayDetailView(elementID: elementID)
+            } else if element.type.isDecorOverlay {
+                DecorOverlayDetailView(elementID: elementID)
+            } else {
+                MissingOverlayInspectorView()
+            }
+        } else {
+            MissingOverlayInspectorView()
+        }
+    }
 }
 
-private struct InspectorPanel<Header: View, Content: View>: View {
-    @ViewBuilder var header: Header
-    @ViewBuilder var content: Content
+/// Lets the Inspector jump between overlays without going back to the
+/// Added Overlays list.
+private struct OverlaySwitcherBar: View {
+    @EnvironmentObject private var project: ProjectDocument
+    let elementID: OverlayElement.ID
 
+    var body: some View {
+        let elements = project.overlayLayout.elements
+        let currentIndex = elements.firstIndex { $0.id == elementID }
+        let canStep = elements.filter { !$0.isLocked }.count > 1
+
+        InspectorDenseRow(label: "Overlay") {
+            Menu {
+                ForEach(Array(elements.enumerated()), id: \.element.id) { index, element in
+                    Button {
+                        project.openOverlayDetailFromList(element.id)
+                    } label: {
+                        Label("\(index + 1). \(element.type.label)", systemImage: menuIcon(for: element))
+                    }
+                    .disabled(element.isLocked || element.id == elementID)
+                }
+            } label: {
+                InspectorDenseMenuLabel(
+                    systemImage: currentIndex.map { elements[$0].type.inspectorIcon },
+                    title: currentIndex.map { "\($0 + 1). \(elements[$0].type.label)  (of \(elements.count))" } ?? "Overlay"
+                )
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .help("Switch Overlay")
+
+            InspectorIconButton(systemImage: "chevron.up", help: "Previous Overlay", isEnabled: canStep, compact: true) {
+                project.selectAdjacentOverlay(-1)
+            }
+            InspectorIconButton(systemImage: "chevron.down", help: "Next Overlay", isEnabled: canStep, compact: true) {
+                project.selectAdjacentOverlay(1)
+            }
+        }
+        .background(NumericTokens.panelBackgroundElevated)
+    }
+
+    private func menuIcon(for element: OverlayElement) -> String {
+        if element.id == elementID { return "checkmark" }
+        if element.isLocked { return "lock.fill" }
+        if !element.isVisible { return "eye.slash" }
+        return element.type.inspectorIcon
+    }
+}
+
+private struct MissingOverlayInspectorView: View {
     var body: some View {
         VStack(spacing: 0) {
-            header
-            ScrollView {
-                content
-            }
+            InspectorHeader(title: "Inspector", status: "Missing", trailingSystemImage: "slider.horizontal.3")
+            Spacer()
         }
-    }
-}
-
-struct ClipInspectorView: View {
-    @EnvironmentObject private var project: ProjectDocument
-    let clipID: TimelineClip.ID
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: InspectorTheme.sectionGap) {
-            InspectorSection(title: "Clip Timing", systemImage: "timeline.selection") {
-                if let clip = project.selectedClip(clipID) {
-                    InspectorReadOnlyRow(label: "Clip", value: clip.title)
-                    InspectorTextRow(label: "Camera", text: cameraBinding)
-
-                    if project.isAutoMatchedClip(clipID) {
-                        InspectorReadOnlyRow(
-                            label: "Auto Matched Start",
-                            value: formatSeconds(clip.startTime),
-                            systemImage: nil,
-                            isNumeric: true
-                        )
-                    } else {
-                        InspectorNumberRow(
-                            label: "Aligned Time",
-                            value: startBinding,
-                            precision: 2,
-                            suffix: "s",
-                            reset: resetStart
-                        )
-                    }
-
-                    InspectorNumberRow(
-                        label: "Offset",
-                        value: offsetBinding,
-                        precision: 2,
-                        suffix: "s",
-                        reset: resetOffset
-                    )
-                } else {
-                    InspectorNumberRow(
-                        label: "Offset",
-                        value: offsetBinding,
-                        precision: 2,
-                        suffix: "s",
-                        reset: resetOffset
-                    )
-                }
-            }
-
-            Button {
-                project.applyOffsetToCurrentLayer(for: clipID)
-            } label: {
-                Label("Apply to all clips in this layer", systemImage: "square.stack.3d.up")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(InspectorPrimaryButtonStyle())
-        }
-    }
-
-    private var offsetBinding: Binding<Double> {
-        Binding {
-            project.selectedClip(clipID)?.alignmentOffset ?? 0
-        } set: { newValue in
-            project.setSelectedClipOffset(clipID, offset: newValue.quantized(to: 0.01))
-        }
-    }
-
-    private var startBinding: Binding<Double> {
-        Binding {
-            project.selectedClip(clipID)?.effectiveStartTime ?? 0
-        } set: { newValue in
-            project.moveClip(clipID, toEffectiveStartTime: newValue.quantized(to: 0.01))
-        }
-    }
-
-    private var cameraBinding: Binding<String> {
-        Binding {
-            project.selectedClip(clipID)?.cameraGroupID ?? ""
-        } set: { newValue in
-            project.renameTrack(containing: clipID, to: newValue)
-        }
-    }
-
-    private func resetStart() {
-        project.moveClip(clipID, toEffectiveStartTime: 0)
-        project.finishContinuousEdit()
-    }
-
-    private func resetOffset() {
-        project.setSelectedClipOffset(clipID, offset: 0)
-        project.finishContinuousEdit()
     }
 }
 
@@ -293,6 +256,7 @@ private struct ClipDetailHeader: View {
             }
             .buttonStyle(.plain)
             .help("Back")
+            .accessibilityLabel("Back")
 
             ZStack {
                 RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
@@ -334,6 +298,7 @@ private struct ClipDetailHeader: View {
             }
             .buttonStyle(.plain)
             .help("Delete Clip")
+            .accessibilityLabel("Delete Clip")
         }
         .padding(.horizontal, NumericTokens.panelPaddingX)
         .frame(height: EditorTheme.panelHeaderHeight)
@@ -574,17 +539,7 @@ private struct OverlayElementRow: View {
         .overlay(InspectorRoundedBorder())
         .opacity(element.isVisible ? 1 : 0.72)
         .contextMenu {
-            Button {
-                project.copyOverlayProperties(from: element.id)
-            } label: {
-                Label("Copy Properties", systemImage: "doc.on.doc")
-            }
-            Button {
-                project.pasteOverlayProperties(to: element.id)
-            } label: {
-                Label("Paste Properties", systemImage: "doc.on.clipboard")
-            }
-            .disabled(!project.canPasteOverlayProperties(to: element.id))
+            OverlayElementContextMenu(element: element)
         }
     }
 
@@ -711,443 +666,6 @@ private struct InspectorBufferedNumberField: View {
     }
 }
 
-private struct OverlayDetailView: View {
-    @EnvironmentObject private var project: ProjectDocument
-    let elementID: OverlayElement.ID
-
-    var body: some View {
-        VStack(spacing: 0) {
-            if let element = project.selectedOverlay(elementID) {
-                OverlayDetailHeader(element: element)
-
-                Divider()
-                    .overlay(InspectorTheme.borderSubtle)
-
-                ScrollView {
-                    VStack(alignment: .leading, spacing: InspectorTheme.sectionGap) {
-                        contentSection(element)
-                        positionSection(element)
-                        styleSection(element)
-                        OverlayBackgroundInspectorModule(elementID: elementID, element: element)
-                        OverlayBorderInspectorModule(elementID: elementID, element: element)
-                        OverlayEffectsInspectorModule(elementID: elementID, element: element)
-                    }
-                    .padding(.horizontal, InspectorTheme.panelPaddingX)
-                    .padding(.vertical, InspectorTheme.panelPaddingY)
-                }
-
-                Divider()
-                    .overlay(InspectorTheme.borderSubtle)
-
-                HStack(spacing: InspectorTheme.space3) {
-                    Button {
-                        project.selection = .none
-                    } label: {
-                        Label("Done", systemImage: "checkmark")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(InspectorPrimaryButtonStyle())
-                }
-                .padding(.horizontal, InspectorTheme.panelPaddingX)
-                .padding(.vertical, InspectorTheme.space3)
-                .background(InspectorTheme.panelBackgroundElevated)
-            } else {
-                InspectorHeader(title: "Inspector", status: "Missing", trailingSystemImage: "slider.horizontal.3")
-                Spacer()
-            }
-        }
-    }
-
-    private func contentSection(_ element: OverlayElement) -> some View {
-        InspectorSection(title: "Content", systemImage: "list.bullet.rectangle") {
-            InspectorReadOnlyRow(label: "Metric", value: element.type.label, systemImage: element.type.inspectorIcon)
-            InspectorReadOnlyRow(label: "Format Preview", value: valuePreview(for: element), isNumeric: true)
-        }
-    }
-
-    private func positionSection(_ element: OverlayElement) -> some View {
-        InspectorSection(title: "Position & Size", systemImage: "scope") {
-            HStack(spacing: InspectorTheme.space3) {
-                InspectorNumberRow(label: "X", value: positionXBinding, precision: 3)
-                InspectorNumberRow(label: "Y", value: positionYBinding, precision: 3)
-            }
-
-            InspectorSliderRow(
-                label: "Scale",
-                value: scaleBinding,
-                range: 0.25...4,
-                display: String(format: "%.2fx", element.scale)
-            )
-        }
-    }
-
-    private func styleSection(_ element: OverlayElement) -> some View {
-        InspectorSection(title: "Style", systemImage: "paintpalette") {
-            presetControl(for: element)
-
-            if element.type == .routeMap {
-                InspectorPickerRow(label: "Map Background", selection: routeMapBackgroundStyleBinding, values: OverlayRouteMapBackgroundStyle.allCases) { $0.compactLabel }
-                InspectorSegmentedPicker(selection: routeMapColorModeBinding, values: OverlayRouteMapColorMode.allCases) { colorMode in
-                    colorMode.compactLabel
-                }
-                InspectorSegmentedPicker(selection: routeMapShapeBinding, values: OverlayRouteMapShape.allCases) { shape in
-                    shape.compactLabel
-                }
-                InspectorSliderRow(
-                    label: "Edge Softness",
-                    value: routeMapEdgeSoftnessBinding,
-                    range: 0...0.45,
-                    display: element.style.routeMapFadeAmount <= 0.001 ? "Solid" : String(format: "%.0f%%", element.style.routeMapFadeAmount * 100)
-                )
-                routeMapMarkerToggleRow(label: "Start Marker", isOn: routeMapStartMarkerVisibleBinding)
-                routeMapMarkerToggleRow(label: "End Marker", isOn: routeMapEndMarkerVisibleBinding)
-                routeMapMarkerToggleRow(label: "Moving Marker", isOn: routeMapRunnerMarkerVisibleBinding)
-                ColorSwatchRow(label: "Start Color", presets: colorPresets, selectedColor: element.style.routeMapStartMarkerColor) { color in
-                    project.setOverlayRouteMapStartMarkerColor(elementID, color: color)
-                }
-                ColorSwatchRow(label: "End Color", presets: routeMapEndMarkerColorPresets, selectedColor: element.style.routeMapEndMarkerColor) { color in
-                    project.setOverlayRouteMapEndMarkerColor(elementID, color: color)
-                }
-                ColorSwatchRow(label: "Moving Color", presets: colorPresets, selectedColor: element.style.routeMapRunnerDotColor) { color in
-                    project.setOverlayRouteMapRunnerDotColor(elementID, color: color)
-                }
-                Toggle(isOn: routeMapLegendVisibleBinding) {
-                    Text("Legend")
-                        .font(InspectorTheme.bodyFont)
-                        .foregroundStyle(InspectorTheme.textSecondary)
-                }
-                .toggleStyle(.switch)
-                if element.style.routeMapLegendVisible {
-                    InspectorPickerRow(label: "Legend Style", selection: routeMapLegendModeBinding, values: OverlayRouteMapLegendMode.allCases) { $0.compactLabel }
-                }
-                if element.style.routeMapColorMode == .gradient {
-                    ColorSwatchRow(label: "Gradient Start", presets: colorPresets, selectedColor: element.style.routeMapGradientStart) { color in
-                        project.setOverlayRouteMapGradientStart(elementID, color: color)
-                    }
-                    ColorSwatchRow(label: "Gradient Mid", presets: colorPresets, selectedColor: element.style.routeMapGradientMiddle) { color in
-                        project.setOverlayRouteMapGradientMiddle(elementID, color: color)
-                    }
-                    ColorSwatchRow(label: "Gradient End", presets: colorPresets, selectedColor: element.style.routeMapGradientEnd) { color in
-                        project.setOverlayRouteMapGradientEnd(elementID, color: color)
-                    }
-                }
-            } else {
-                InspectorPickerRow(label: "Font", selection: fontNameBinding, values: fontPresets) { $0 }
-
-                InspectorSliderRow(
-                    label: "Font Size",
-                    value: fontSizeBinding,
-                    range: 12...96,
-                    display: "\(Int(element.style.fontSize.rounded()))"
-                )
-
-                InspectorSegmentedPicker(selection: fontWeightBinding, values: OverlayFontWeight.allCases) { weight in
-                    weight.shortLabel
-                }
-            }
-
-            ColorSwatchRow(
-                label: "Color",
-                presets: colorPresets,
-                selectedColor: element.style.foregroundColor
-            ) { color in
-                project.setOverlayForegroundColor(elementID, color: color)
-            }
-
-            InspectorSliderRow(
-                label: "Background",
-                value: backgroundOpacityBinding,
-                range: 0...1,
-                display: String(format: "%.0f%%", element.style.backgroundOpacity * 100)
-            )
-
-            InspectorSliderRow(
-                label: "Shadow",
-                value: shadowOpacityBinding,
-                range: 0...1,
-                display: String(format: "%.0f%%", element.style.shadowOpacity * 100)
-            )
-
-            InspectorSliderRow(
-                label: "Shadow Radius",
-                value: shadowRadiusBinding,
-                range: 0...24,
-                display: "\(Int(element.style.shadowRadius.rounded()))"
-            )
-        }
-    }
-
-    @ViewBuilder
-    private func presetControl(for element: OverlayElement) -> some View {
-        if element.type.supportsTextPresets {
-            InspectorPickerRow(label: "Preset", selection: textPresetBinding, values: OverlayTextPreset.numericPresets) { $0.compactLabel }
-        } else if element.type == .runningGauge {
-            InspectorPickerRow(label: "Preset", selection: gaugePresetBinding, values: OverlayGaugePreset.allCases) { $0.compactLabel }
-        }
-    }
-
-    private func valuePreview(for element: OverlayElement) -> String {
-        OverlayValueFormatter.value(
-            for: element.type,
-            activity: project.activity,
-            elapsedTime: project.layerDataSampleTime
-        )
-    }
-
-    private var fontPresets: [String] { FontLibraryManager.shared.effectiveFavorites }
-
-    private let colorPresets: [(name: String, color: OverlayColor)] = [
-        ("White", .white),
-        ("Black", .black),
-        ("Red", .red),
-        ("Orange", .orange),
-        ("Yellow", .yellow),
-        ("Green", .green),
-        ("Blue", .blue),
-        ("Cyan", .cyan),
-        ("Purple", .purple),
-        ("Pink", .pink)
-    ]
-
-    private var routeMapEndMarkerColorPresets: [(name: String, color: OverlayColor)] {
-        [("Checker", .routeMapEndCheckerboard)] + colorPresets
-    }
-
-    private var fontSizeBinding: Binding<Double> {
-        Binding {
-            element?.style.fontSize ?? 28
-        } set: { newValue in
-            project.setOverlayFontSize(elementID, fontSize: newValue.rounded())
-        }
-    }
-
-    private var textPresetBinding: Binding<OverlayTextPreset> {
-        Binding {
-            element?.style.textPreset ?? .minimal
-        } set: { newValue in
-            project.setOverlayTextPreset(elementID, textPreset: newValue)
-        }
-    }
-
-    private var gaugePresetBinding: Binding<OverlayGaugePreset> {
-        Binding {
-            element?.style.gaugePreset ?? .minimalSport
-        } set: { newValue in
-            project.setOverlayGaugePreset(elementID, gaugePreset: newValue)
-        }
-    }
-
-    private var routeMapShapeBinding: Binding<OverlayRouteMapShape> {
-        Binding {
-            element?.style.routeMapShape ?? .square
-        } set: { newValue in
-            project.setOverlayRouteMapShape(elementID, shape: newValue)
-        }
-    }
-
-    private func routeMapMarkerToggleRow(label: String, isOn: Binding<Bool>) -> some View {
-        Toggle(isOn: isOn) {
-            Text(label)
-                .font(InspectorTheme.bodyFont)
-                .foregroundStyle(InspectorTheme.textSecondary)
-        }
-        .toggleStyle(.switch)
-    }
-
-    private var routeMapColorModeBinding: Binding<OverlayRouteMapColorMode> {
-        Binding {
-            element?.style.routeMapColorMode ?? .solid
-        } set: { newValue in
-            project.setOverlayRouteMapColorMode(elementID, colorMode: newValue)
-        }
-    }
-
-    private var routeMapEdgeSoftnessBinding: Binding<Double> {
-        Binding {
-            element?.style.routeMapFadeAmount ?? 0.22
-        } set: { newValue in
-            project.setOverlayRouteMapEdgeSoftness(elementID, amount: newValue.quantized(to: 0.01))
-        }
-    }
-
-    private var routeMapStartMarkerVisibleBinding: Binding<Bool> {
-        Binding {
-            element?.style.routeMapStartMarkerStyle != .hidden
-        } set: { newValue in
-            project.setOverlayRouteMapStartMarkerStyle(elementID, markerStyle: newValue ? .dot : .hidden)
-        }
-    }
-
-    private var routeMapRunnerMarkerVisibleBinding: Binding<Bool> {
-        Binding {
-            element?.style.routeMapRunnerMarkerStyle != .hidden
-        } set: { newValue in
-            project.setOverlayRouteMapRunnerMarkerStyle(elementID, markerStyle: newValue ? .dot : .hidden)
-        }
-    }
-
-    private var routeMapEndMarkerVisibleBinding: Binding<Bool> {
-        Binding {
-            element?.style.routeMapEndMarkerStyle != .hidden
-        } set: { newValue in
-            project.setOverlayRouteMapEndMarkerStyle(elementID, markerStyle: newValue ? .dot : .hidden)
-        }
-    }
-
-    private var routeMapBackgroundStyleBinding: Binding<OverlayRouteMapBackgroundStyle> {
-        Binding {
-            element?.style.routeMapBackgroundStyle ?? .dark
-        } set: { newValue in
-            project.setOverlayRouteMapBackgroundStyle(elementID, backgroundStyle: newValue)
-        }
-    }
-
-    private var routeMapLegendVisibleBinding: Binding<Bool> {
-        Binding {
-            element?.style.routeMapLegendVisible ?? true
-        } set: { newValue in
-            project.setOverlayRouteMapLegendVisible(elementID, isVisible: newValue)
-        }
-    }
-
-    private var routeMapLegendModeBinding: Binding<OverlayRouteMapLegendMode> {
-        Binding {
-            element?.style.routeMapLegendMode ?? .startFinishDistance
-        } set: { newValue in
-            project.setOverlayRouteMapLegendMode(elementID, legendMode: newValue)
-        }
-    }
-
-    private var scaleBinding: Binding<Double> {
-        Binding {
-            element?.scale ?? 1
-        } set: { newValue in
-            project.setOverlayScale(elementID, scale: newValue.quantized(to: 0.05))
-        }
-    }
-
-    private var fontNameBinding: Binding<String> {
-        Binding {
-            element?.style.fontName ?? FontLibraryManager.shared.defaultFamily
-        } set: { newValue in
-            project.setOverlayFontName(elementID, fontName: newValue)
-        }
-    }
-
-    private var fontWeightBinding: Binding<OverlayFontWeight> {
-        Binding {
-            element?.style.fontWeight ?? .semibold
-        } set: { newValue in
-            project.setOverlayFontWeight(elementID, fontWeight: newValue)
-        }
-    }
-
-    private var backgroundOpacityBinding: Binding<Double> {
-        Binding {
-            element?.style.backgroundOpacity ?? 0.22
-        } set: { newValue in
-            project.setOverlayBackgroundOpacity(elementID, opacity: newValue.quantized(to: 0.05))
-        }
-    }
-
-    private var shadowOpacityBinding: Binding<Double> {
-        Binding {
-            element?.style.shadowOpacity ?? 0.35
-        } set: { newValue in
-            project.setOverlayShadowOpacity(elementID, opacity: newValue.quantized(to: 0.05))
-        }
-    }
-
-    private var shadowRadiusBinding: Binding<Double> {
-        Binding {
-            element?.style.shadowRadius ?? 4
-        } set: { newValue in
-            project.setOverlayShadowRadius(elementID, radius: newValue.rounded())
-        }
-    }
-
-    private var positionXBinding: Binding<Double> {
-        Binding {
-            Double(element?.position.x ?? 0.5)
-        } set: { newValue in
-            project.moveOverlay(elementID, to: CGPoint(x: newValue, y: element?.position.y ?? 0.5))
-            project.finishContinuousEdit()
-        }
-    }
-
-    private var positionYBinding: Binding<Double> {
-        Binding {
-            Double(element?.position.y ?? 0.5)
-        } set: { newValue in
-            project.moveOverlay(elementID, to: CGPoint(x: element?.position.x ?? 0.5, y: newValue))
-            project.finishContinuousEdit()
-        }
-    }
-
-    private var element: OverlayElement? {
-        project.overlayLayout.elements.first { $0.id == elementID }
-    }
-}
-
-private struct OverlayDetailHeader: View {
-    @EnvironmentObject private var project: ProjectDocument
-    let element: OverlayElement
-
-    var body: some View {
-        HStack(spacing: InspectorTheme.space3) {
-            InspectorIconButton(systemImage: "chevron.left", help: "Back") {
-                project.selection = .none
-            }
-
-            ZStack {
-                RoundedRectangle(cornerRadius: InspectorTheme.controlRadius)
-                    .fill(InspectorTheme.controlBackground)
-                Image(systemName: element.type.inspectorIcon)
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(InspectorTheme.textPrimary)
-            }
-            .frame(width: 46, height: 46)
-            .overlay(InspectorRoundedBorder())
-
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: InspectorTheme.space2) {
-                    Text(element.type.label)
-                        .font(InspectorTheme.titleFont)
-                        .lineLimit(1)
-                    Text("Overlay")
-                        .font(InspectorTheme.captionFont)
-                        .foregroundStyle(InspectorTheme.textSecondary)
-                        .padding(.horizontal, InspectorTheme.space2)
-                        .padding(.vertical, 3)
-                        .background(InspectorTheme.controlBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 5))
-                        .overlay(InspectorRoundedBorder(cornerRadius: 5))
-                }
-                Text(valuePreview)
-                    .font(InspectorTheme.numericFont)
-                    .foregroundStyle(InspectorTheme.textSecondary)
-            }
-
-            Spacer()
-
-            InspectorIconButton(systemImage: "trash", help: "Delete", role: .destructive) {
-                project.deleteOverlay(element.id)
-            }
-        }
-        .padding(.horizontal, InspectorTheme.panelPaddingX)
-        .padding(.vertical, InspectorTheme.space3)
-        .background(InspectorTheme.panelBackgroundElevated)
-    }
-
-    private var valuePreview: String {
-        OverlayValueFormatter.value(
-            for: element.type,
-            activity: project.activity,
-            elapsedTime: project.layerDataSampleTime
-        )
-    }
-}
-
 private struct InspectorHeader: View {
     var title: String
     var status: String
@@ -1200,235 +718,6 @@ private struct InspectorSection<Content: View>: View {
     }
 }
 
-private struct InspectorSegmentedPicker<Value: Hashable, Values: RandomAccessCollection>: View where Values.Element == Value {
-    @Binding var selection: Value
-    var values: Values
-    var title: (Value) -> String
-
-    var body: some View {
-        Picker("", selection: $selection) {
-            ForEach(Array(values), id: \.self) { value in
-                Text(title(value))
-                    .font(InspectorTheme.bodyStrongFont)
-                    .tag(value)
-            }
-        }
-        .labelsHidden()
-        .pickerStyle(.segmented)
-        .tint(InspectorTheme.accentBlue)
-        .frame(height: InspectorTheme.segmentedControlHeight)
-    }
-}
-
-private struct InspectorReadOnlyRow: View {
-    var label: String
-    var value: String
-    var systemImage: String?
-    var isNumeric = false
-
-    var body: some View {
-        HStack(spacing: InspectorTheme.space3) {
-            Text(label)
-                .font(InspectorTheme.bodyFont)
-                .foregroundStyle(InspectorTheme.textSecondary)
-            Spacer()
-            if let systemImage {
-                Image(systemName: systemImage)
-                    .foregroundStyle(InspectorTheme.textSecondary)
-            }
-            Text(value)
-                .font(isNumeric ? InspectorTheme.numericFont : InspectorTheme.bodyFont)
-                .foregroundStyle(InspectorTheme.textPrimary)
-                .lineLimit(1)
-        }
-        .frame(minHeight: InspectorTheme.controlHeight)
-        .padding(.horizontal, InspectorTheme.space3)
-        .background(InspectorTheme.controlBackground)
-        .clipShape(RoundedRectangle(cornerRadius: InspectorTheme.controlRadius))
-        .overlay(InspectorRoundedBorder())
-    }
-}
-
-private struct InspectorTextRow: View {
-    var label: String
-    @Binding var text: String
-
-    var body: some View {
-        HStack(spacing: InspectorTheme.space3) {
-            Text(label)
-                .font(InspectorTheme.bodyFont)
-                .foregroundStyle(InspectorTheme.textSecondary)
-            TextField(label, text: $text)
-                .textFieldStyle(.plain)
-                .font(InspectorTheme.bodyFont)
-                .foregroundStyle(InspectorTheme.textPrimary)
-                .padding(.horizontal, InspectorTheme.space3)
-                .frame(height: InspectorTheme.controlHeight)
-                .background(InspectorTheme.controlBackground)
-                .clipShape(RoundedRectangle(cornerRadius: InspectorTheme.controlRadius))
-                .overlay(InspectorRoundedBorder())
-        }
-    }
-}
-
-private struct InspectorNumberRow: View {
-    @EnvironmentObject private var project: ProjectDocument
-    var label: String
-    @Binding var value: Double
-    var precision: Int
-    var suffix: String?
-    var reset: (() -> Void)?
-
-    var body: some View {
-        HStack(spacing: InspectorTheme.space3) {
-            Text(label)
-                .font(InspectorTheme.bodyFont)
-                .foregroundStyle(InspectorTheme.textSecondary)
-                .onTapGesture(count: 2) {
-                    reset?()
-                }
-                .help(reset == nil ? "" : "Double-click to reset")
-
-            InspectorBufferedNumberField(
-                label: label,
-                value: $value,
-                precision: precision,
-                font: InspectorTheme.numericFont,
-                textColor: InspectorTheme.textPrimary,
-                onCommit: project.finishContinuousEdit
-            )
-
-            if let suffix {
-                Text(suffix)
-                    .font(InspectorTheme.bodyFont)
-                    .foregroundStyle(InspectorTheme.textMuted)
-            }
-        }
-        .padding(.horizontal, InspectorTheme.space3)
-        .frame(height: InspectorTheme.controlHeight)
-        .background(InspectorTheme.controlBackground)
-        .clipShape(RoundedRectangle(cornerRadius: InspectorTheme.controlRadius))
-        .overlay(InspectorRoundedBorder())
-    }
-}
-
-private struct InspectorPickerRow<Value: Hashable, Values: RandomAccessCollection>: View where Values.Element == Value {
-    var label: String
-    @Binding var selection: Value
-    var values: Values
-    var title: (Value) -> String
-
-    var body: some View {
-        HStack(spacing: InspectorTheme.space3) {
-            Text(label)
-                .font(InspectorTheme.bodyFont)
-                .foregroundStyle(InspectorTheme.textSecondary)
-            Spacer()
-            Picker(label, selection: $selection) {
-                ForEach(Array(values), id: \.self) { value in
-                    Text(title(value)).tag(value)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .frame(maxWidth: 170)
-        }
-        .frame(minHeight: InspectorTheme.controlHeight)
-    }
-}
-
-private struct InspectorSliderRow: View {
-    @EnvironmentObject private var project: ProjectDocument
-    var label: String
-    @Binding var value: Double
-    var range: ClosedRange<Double>
-    var display: String
-
-    var body: some View {
-        HStack(spacing: InspectorTheme.space3) {
-            Text(label)
-                .font(InspectorTheme.bodyFont)
-                .foregroundStyle(InspectorTheme.textSecondary)
-                .frame(width: 86, alignment: .leading)
-            Slider(
-                value: $value,
-                in: range,
-                onEditingChanged: { editing in
-                    if !editing {
-                        project.finishContinuousEdit()
-                    }
-                }
-            )
-            Text(display)
-                .font(InspectorTheme.numericFont)
-                .foregroundStyle(InspectorTheme.textSecondary)
-                .frame(width: 48, alignment: .trailing)
-        }
-        .frame(minHeight: InspectorTheme.controlHeight)
-    }
-}
-
-private struct ColorSwatchRow: View {
-    var label: String
-    var presets: [(name: String, color: OverlayColor)]
-    var selectedColor: OverlayColor
-    var action: (OverlayColor) -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: InspectorTheme.space2) {
-            Text(label)
-                .font(InspectorTheme.bodyFont)
-                .foregroundStyle(InspectorTheme.textSecondary)
-            LazyVGrid(columns: Array(repeating: GridItem(.fixed(26), spacing: InspectorTheme.space2), count: 8), spacing: InspectorTheme.space2) {
-                ForEach(presets, id: \.name) { preset in
-                    ColorSwatchButton(
-                        name: preset.name,
-                        color: preset.color,
-                        isSelected: preset.color == selectedColor
-                    ) {
-                        action(preset.color)
-                    }
-                }
-            }
-        }
-    }
-
-}
-
-private struct ColorSwatchButton: View {
-    var name: String
-    var color: OverlayColor
-    var isSelected: Bool
-    var action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Circle()
-                .fill(color.isRouteMapEndCheckerboard ? Color.clear : Color(color))
-                .frame(width: 22, height: 22)
-                .overlay {
-                    if color.isRouteMapEndCheckerboard {
-                        RouteMapCheckerboardSwatch(cornerRadius: 11)
-                            .clipShape(Circle())
-                    }
-                }
-                .overlay {
-                    Circle()
-                        .stroke(isSelected ? InspectorTheme.accentBlue : InspectorTheme.borderStrong, lineWidth: isSelected ? 3 : 1)
-                }
-                .overlay {
-                    if isSelected {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(color == .white || color == .yellow ? Color.black : Color.white)
-                    }
-                }
-        }
-        .buttonStyle(.plain)
-        .help(name)
-    }
-}
-
 private struct InspectorIconButton: View {
     var systemImage: String
     var help: String
@@ -1474,27 +763,6 @@ private struct InspectorRoundedBorder: View {
     }
 }
 
-private struct InspectorTileButtonStyle: ButtonStyle {
-    var isAccent: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .background(configuration.isPressed ? InspectorTheme.controlBackgroundPressed : (isAccent ? InspectorTheme.accentBlueSoft.opacity(0.55) : InspectorTheme.controlBackground))
-            .clipShape(RoundedRectangle(cornerRadius: InspectorTheme.controlRadius))
-            .overlay(InspectorRoundedBorder(color: isAccent ? InspectorTheme.borderStrong : InspectorTheme.borderSubtle))
-            .opacity(configuration.isPressed ? 0.88 : 1)
-    }
-}
-
-private struct InspectorRowButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .background(configuration.isPressed ? InspectorTheme.controlBackgroundPressed : InspectorTheme.controlBackground)
-            .clipShape(RoundedRectangle(cornerRadius: InspectorTheme.controlRadius))
-            .overlay(InspectorRoundedBorder())
-    }
-}
-
 private struct InspectorPrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -1509,23 +777,17 @@ private struct InspectorPrimaryButtonStyle: ButtonStyle {
 
 private enum InspectorTheme {
     static let panelBackground = EditorTheme.panelBackground
-    static let panelBackgroundElevated = EditorTheme.panelHeader
     static let controlBackground = EditorTheme.surfaceControl
-    static let controlBackgroundPressed = EditorTheme.surfacePressed
     static let borderSubtle = EditorTheme.borderSubtle
-    static let borderStrong = EditorTheme.borderStrong
     static let textPrimary = EditorTheme.textPrimary
     static let textSecondary = EditorTheme.textSecondary
     static let textMuted = EditorTheme.textMuted
     static let accentBlue = EditorTheme.accentBlue
-    static let accentBlueSoft = EditorTheme.accentBlueSoft
     static let dangerRed = EditorTheme.dangerRed
 
     static let space1 = EditorTheme.space1
     static let space2 = EditorTheme.space2
     static let space3 = EditorTheme.space3
-    static let panelPaddingX: CGFloat = 18
-    static let panelPaddingY: CGFloat = 16
     static let outerPanelPaddingX: CGFloat = 14
     static let outerPanelPaddingY: CGFloat = 14
     static let sectionGap: CGFloat = 18
@@ -1534,12 +796,10 @@ private enum InspectorTheme {
     static let iconButtonSize = EditorTheme.iconButtonSize
     static let compactIconButtonSize: CGFloat = 26
     static let tileMinHeight: CGFloat = 56
-    static let segmentedControlHeight: CGFloat = 24
     static let outerTilePaddingX: CGFloat = 10
     static let outerRowPaddingX: CGFloat = 10
     static let controlRadius = EditorTheme.controlRadius
 
-    static let titleFont = EditorTheme.panelTitleFont
     static let sectionTitleFont = EditorTheme.sectionTitleFont
     static let bodyFont = EditorTheme.bodyFont
     static let bodyStrongFont = EditorTheme.bodyStrongFont
@@ -1572,29 +832,6 @@ private extension OverlayElementType {
         }
     }
 
-}
-
-private extension OverlayFontWeight {
-    var shortLabel: String {
-        switch self {
-        case .regular: "Regular"
-        case .medium: "Medium"
-        case .semibold: "Semibold"
-        case .bold: "Bold"
-        }
-    }
-}
-
-private extension OverlayTextPreset {
-    var compactLabel: String {
-        label.components(separatedBy: " / ").first ?? label
-    }
-}
-
-private extension OverlayGaugePreset {
-    var compactLabel: String {
-        label.components(separatedBy: " / ").first ?? label
-    }
 }
 
 extension OverlayRouteMapContainerPreset {
@@ -1636,17 +873,6 @@ extension OverlayRouteMapBackgroundStyle {
 extension OverlayRouteMapLegendMode {
     var compactLabel: String {
         label.components(separatedBy: " / ").first ?? label
-    }
-}
-
-private extension Color {
-    init(_ overlayColor: OverlayColor) {
-        self.init(
-            red: overlayColor.red,
-            green: overlayColor.green,
-            blue: overlayColor.blue,
-            opacity: overlayColor.alpha
-        )
     }
 }
 

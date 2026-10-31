@@ -1,13 +1,13 @@
 # Mac App Store Readiness
 
-Last updated: 2026-07-14
+Last updated: 2026-10-26
 
 This document tracks the first Mac App Store submission path for Running Overlay Studio.
 
 ## Current Release Target
 
 - Target channel: Mac App Store first submission.
-- Current release version: `0.1.4` (build `7`).
+- Current release version: `0.1.5` (build `8`).
 - Target scope: existing core app capabilities, including FIT/GPX activity import, video import, timeline editing, overlay design, Route Map, Weather Widget, and transparent MOV export.
 - Default branch: `main`; all changes land through pull requests.
 - App Store name: `Running Overlay Studio`.
@@ -17,7 +17,8 @@ This document tracks the first Mac App Store submission path for Running Overlay
 ## Implemented Packaging Files
 
 - `AppStore/Info.plist`: app bundle metadata, macOS 15 minimum, App Store video category, and ATS default-deny arbitrary loads.
-- `AppStore/RunningOverlay.entitlements`: App Sandbox, user-selected file read/write access, and outbound network client access.
+- `AppStore/RunningOverlay.entitlements`: App Sandbox, user-selected file read/write access, app-scoped security bookmarks (so saved projects and Open Recent can reopen media and project files), and outbound network client access.
+- `AppStore/Info.plist` also declares the exported `io.github.zijianwang90.runningoverlay.project` type (`.roproj`, conforming to `public.json`) and registers the app as its owner.
 - `AppStore/PrivacyInfo.xcprivacy`: privacy manifest declaring no tracking and no collected data, plus required-reason API declarations for file timestamps and app-scoped user defaults.
 - `AppStore/Assets.xcassets`: production Running Overlay Studio app icon in all ten
   macOS icon slots plus the app accent color.

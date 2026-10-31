@@ -131,6 +131,7 @@ Overlay editing affordances:
   - Visible overlays snap to each other by left/center/right and top/center/bottom alignment lines, regardless of safe-guide visibility.
   - The snap threshold is canvas-pixel based so behavior is stable across project resolutions and split-pane sizes.
   - Active snap lines should render only during drag, above guide overlays and below/around interactive overlays, and should not intercept hit testing.
+  - Holding Command while dragging bypasses snapping: the overlay follows the pointer freely (still clamped to the canvas) and no snap lines render. The modifier is read on every drag update, so pressing or releasing it mid-drag takes effect immediately.
 
 ### Bottom Playback Row
 
@@ -177,7 +178,7 @@ Rules:
 - Dragging a selected overlay corner handle updates that overlay's `scale` continuously and commits undo grouping at drag end.
 - Overlays with visibility off are not rendered in the Preview canvas.
 - Locked overlays are rendered but cannot be selected or dragged from the Preview canvas.
-- Right-clicking a Preview overlay opens `Copy Properties` / `Paste Properties` actions that share the same category-compatibility rules as Inspector rows.
+- Right-clicking a Preview overlay opens the same context menu as Inspector rows (`Duplicate`, `Copy Properties`, `Paste Properties`, `Hide`/`Show`, `Lock`/`Unlock`, and `Delete`); paste follows the same category-compatibility rules. Hidden overlays are not on the canvas, so they are shown again from the Inspector row.
 
 ## Component Guidance
 

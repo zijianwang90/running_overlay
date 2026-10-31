@@ -42,4 +42,46 @@ struct EditorPaneLayoutTests {
         #expect(expanded.mediaWidth == 600)
         #expect(expanded.inspectorWidth == 600)
     }
+
+    @Test func hiddenPanesTakeNoWidthAndFreeSpaceForTheOtherPane() {
+        let noInspector = EditorPaneLayout(
+            availableWidth: 1000, preferredMediaWidth: 380, preferredInspectorWidth: 460,
+            showsMedia: true, showsInspector: false
+        )
+        #expect(noInspector.inspectorWidth == 0)
+        #expect(noInspector.mediaWidth == 380)
+        #expect(noInspector.mediaMaxWidth == CGFloat(1000 - 520 - 1))
+
+        let noMedia = EditorPaneLayout(
+            availableWidth: 1000, preferredMediaWidth: 380, preferredInspectorWidth: 460,
+            showsMedia: false, showsInspector: true
+        )
+        #expect(noMedia.mediaWidth == 0)
+        #expect(noMedia.inspectorWidth == 460)
+
+        let previewOnly = EditorPaneLayout(
+            availableWidth: 600, preferredMediaWidth: 380, preferredInspectorWidth: 460,
+            showsMedia: false, showsInspector: false
+        )
+        #expect(previewOnly.mediaWidth == 0)
+        #expect(previewOnly.inspectorWidth == 0)
+    }
+
+    @Test func minimumWindowWidthFollowsVisiblePanes() {
+        #expect(EditorPaneLayout.minimumWindowWidth(showsMedia: true, showsInspector: true) == EditorPaneLayout.minimumWindowWidth)
+        #expect(EditorPaneLayout.minimumWindowWidth(showsMedia: true, showsInspector: false) == CGFloat(520 + 300 + 1))
+        #expect(EditorPaneLayout.minimumWindowWidth(showsMedia: false, showsInspector: true) == CGFloat(520 + 460 + 1))
+        #expect(EditorPaneLayout.minimumWindowWidth(showsMedia: false, showsInspector: false) == 520)
+    }
+
+    @Test(arguments: [(true, false), (false, true), (false, false)])
+    func visiblePanesFitTheirMinimumWindow(showsMedia: Bool, showsInspector: Bool) {
+        let width = EditorPaneLayout.minimumWindowWidth(showsMedia: showsMedia, showsInspector: showsInspector)
+        let layout = EditorPaneLayout(
+            availableWidth: width, preferredMediaWidth: 720, preferredInspectorWidth: 720,
+            showsMedia: showsMedia, showsInspector: showsInspector
+        )
+        let dividers = CGFloat((showsMedia ? 1 : 0) + (showsInspector ? 1 : 0))
+        #expect(layout.mediaWidth + layout.inspectorWidth + 520 + dividers <= width)
+    }
 }

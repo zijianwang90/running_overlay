@@ -170,18 +170,29 @@ Conversions must be explicit:
 - Timeline time to sampled activity record.
 - Render frame index to timeline time.
 
-## 5. Project File Direction
+## 5. Project Files
 
-The project should eventually persist:
+Projects persist as single-file `.roproj` documents (see ADR 0006). The file
+is the versioned JSON encoding of `ProjectPerformanceSnapshot`, the same
+schema used by Debug snapshots and the headless export benchmark:
 
-- Project settings.
-- Activity file reference, format, and parsed summary/cache metadata.
-- Media file references, extracted metadata, media-pool tags, and match status.
+- Project settings and the workout structure selection.
+- The parsed activity timeline (the source FIT/GPX file is not needed to
+  reopen a project).
+- Media items with file URLs, extracted metadata, folder membership, match
+  status, and a bookmark per file.
 - Timeline tracks and clip placements.
-- Overlay layout and styles.
-- Export presets when introduced.
+- Overlay elements and styles.
+- User asset references (asset files live in the local asset store).
 
-The initial implementation can use a simple local document format, but the schema should be versioned from the beginning.
+`ProjectDocument` owns the file association (`projectFileURL`), the
+unsaved-changes flag, the Open Recent list, and the security-scoped resources
+opened for the current project. The app keeps one editor window; there is no
+`NSDocument`. `RunningOverlayAppDelegate` routes quitting (including closing
+the only window) through the unsaved-changes prompt and opens `.roproj` files
+handed over by Finder.
+
+Export presets are not persisted yet.
 
 ## 6. Known Technical Risks
 

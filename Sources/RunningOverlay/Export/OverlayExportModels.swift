@@ -14,6 +14,13 @@ struct OverlayExportJob {
     var fitStartTime: TimeInterval = 0
     var segments: [OverlayExportSegment]
     var renderGuides = false
+    /// Writes JSON/CSV profiling files even in release builds. Benchmarks set
+    /// this so release-build timings can be captured.
+    var writesProfile = false
+    /// Times `OverlayRenderModel` layout evaluation separately before each
+    /// unique render. Adds that model work once more per render, so keep it
+    /// off for normal exports.
+    var profilesRenderModel = false
 }
 
 struct OverlayExportProgress {
@@ -53,6 +60,7 @@ struct OverlayExportOverlayProfile: Codable, Equatable {
     var renderDuration: TimeInterval
     var drawCount: Int
     var drawDuration: TimeInterval
+    var renderModelDuration: TimeInterval = 0
 }
 
 struct OverlayExportSlowFrameProfile: Codable, Equatable {
@@ -112,10 +120,13 @@ struct OverlayExportSegmentProfile: Codable, Equatable {
     var overlayRenderCount: Int = 0
     var overlayDrawCount: Int = 0
     var overlayProfiles: [OverlayExportOverlayProfile] = []
+    var renderModelProfilingEnabled: Bool = false
+    var renderModelDuration: TimeInterval = 0
 }
 
 struct OverlayExportProfile: Codable, Equatable {
-    var schemaVersion = 5
+    var schemaVersion = 6
+    var buildConfiguration: String
     var startedAt: Date
     var completedAt: Date
     var settings: ProjectSettings
@@ -160,13 +171,30 @@ struct OverlayExportProfile: Codable, Equatable {
     var overlayRenderAreaRatio: Double
     var overlayRenderCount: Int
     var overlayDrawCount: Int
+    var renderModelProfilingEnabled: Bool
+    var renderModelDuration: TimeInterval
     var segments: [OverlayExportSegmentProfile]
 
-    init(startedAt: Date, completedAt: Date, settings: ProjectSettings, segments: [OverlayExportSegmentProfile]) {
+    static var currentBuildConfiguration: String {
+        #if DEBUG
+        "debug"
+        #else
+        "release"
+        #endif
+    }
+
+    init(
+        startedAt: Date,
+        completedAt: Date,
+        settings: ProjectSettings,
+        segments: [OverlayExportSegmentProfile],
+        buildConfiguration: String = OverlayExportProfile.currentBuildConfiguration
+    ) {
         let totalFrameCount = segments.map(\.frameCount).reduce(0, +)
         let renderedFrameCount = segments.map(\.renderedFrameCount).reduce(0, +)
         let reusedFrameCount = segments.map(\.reusedFrameCount).reduce(0, +)
 
+        self.buildConfiguration = buildConfiguration
         self.startedAt = startedAt
         self.completedAt = completedAt
         self.settings = settings
@@ -213,6 +241,8 @@ struct OverlayExportProfile: Codable, Equatable {
         self.overlayRenderAreaRatio = Self.weightedAverage(segments.map { ($0.overlayRenderAreaRatio, $0.frameCount) })
         self.overlayRenderCount = segments.map(\.overlayRenderCount).reduce(0, +)
         self.overlayDrawCount = segments.map(\.overlayDrawCount).reduce(0, +)
+        self.renderModelProfilingEnabled = segments.contains(where: \.renderModelProfilingEnabled)
+        self.renderModelDuration = segments.map(\.renderModelDuration).reduce(0, +)
         self.segments = segments
     }
 
@@ -230,7 +260,8 @@ struct OverlayExportProfile: Codable, Equatable {
             "drawDurationP50", "drawDurationP95", "drawDurationMax",
             "frameDurationP50", "frameDurationP95", "frameDurationMax",
             "slowFrameThreshold", "slowFrameCount", "overlayRenderPathEnabled",
-            "overlayRenderAreaRatio", "overlayRenderCount", "overlayDrawCount"
+            "overlayRenderAreaRatio", "overlayRenderCount", "overlayDrawCount",
+            "buildConfiguration", "renderModelProfilingEnabled", "renderModelDuration"
         ]
         let summary = csvRow([
             "summary", "", "", "", "",
@@ -273,7 +304,10 @@ struct OverlayExportProfile: Codable, Equatable {
             String(overlayRenderPathEnabledCount),
             String(overlayRenderAreaRatio),
             String(overlayRenderCount),
-            String(overlayDrawCount)
+            String(overlayDrawCount),
+            buildConfiguration,
+            String(renderModelProfilingEnabled),
+            String(renderModelDuration)
         ])
         let segmentRows = segments.map { segment in
             csvRow([
@@ -321,7 +355,10 @@ struct OverlayExportProfile: Codable, Equatable {
                 String(segment.overlayRenderPathEnabled),
                 String(segment.overlayRenderAreaRatio),
                 String(segment.overlayRenderCount),
-                String(segment.overlayDrawCount)
+                String(segment.overlayDrawCount),
+                buildConfiguration,
+                String(segment.renderModelProfilingEnabled),
+                String(segment.renderModelDuration)
             ])
         }
         return ([csvRow(header), summary] + segmentRows).joined(separator: "\n") + "\n"

@@ -111,6 +111,7 @@ Panel rules:
 - Empty states should stay within the panel layout and preserve tool context.
 - Resizable split panes should have stable minimum widths so controls do not collapse.
 - Resolve side-pane widths against the actual window width, reserving the Preview minimum and both dividers. At the 1300 pt content minimum, use 318 pt for the initial Left Pool, 520 pt for Preview, and 460 pt for Inspector. Dragging a divider must not overflow the window; shrinking temporarily reduces panes while retaining preferred widths for later expansion.
+- Hidden side panes take zero width and drop their divider. The minimum content width is the Preview minimum plus each visible pane's minimum and divider (1300 pt when both are visible). Toolbar sidebar toggles use `EditorIconButtonStyle` with `sidebar.left` / `sidebar.right`; the Pool mode switch narrows so its trailing edge still meets the pool column.
 
 ## Component Standards
 
@@ -171,6 +172,26 @@ Panel rules:
 - Context menu actions apply to the current selection when right-clicking a selected item; otherwise to the clicked item.
 - Drag/drop targets should have clear active feedback.
 - Row action buttons must not also trigger row navigation.
+
+## Feedback Levels
+
+Use one of three levels for the result of a user action:
+
+- **Error** (`ProjectDocument.reportError`): a failed import, export,
+  template file operation, clip placement, or weather fetch. It writes the
+  status bar and shows a banner at the top of the editor: raised surface, a
+  red-tinted border, a warning icon, selectable text, and a dismiss button.
+  The banner does not block editing. It stays until dismissed or replaced by
+  the next error.
+- **Important success** (`reportSuccess`, toast): finished exports and
+  completed media or activity imports. The status bar plus a dark toast that
+  disappears after about 2 seconds.
+- **Everything else**: status bar text only.
+
+Blocking alerts are reserved for decisions (unsaved changes, recovery) and
+for file operations the user is waiting on, such as a failed project save or
+open. Internal edge cases a user cannot act on (for example a stale overlay
+ID) stay in the status bar.
 
 ## Empty States
 
