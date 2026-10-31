@@ -99,6 +99,8 @@ Layout interaction requirements:
 - The main editor's pool switch and Export action should share a compact, dark native window toolbar with the macOS window controls, without a separate empty titlebar row.
 - Inspector width must remain stable when switching between outer/detail/editing states or when selecting a timeline clip; internal Inspector hierarchy changes must not resize the right pane.
 - Resizable split panes should keep stable minimum widths so dense controls and row labels do not collapse.
+- The left Pools panel and the right Inspector can each be hidden and shown from the View menu (Hide/Show Pools, Control-Command-S; Hide/Show Inspector, Option-Command-I) and from sidebar buttons at the leading and trailing ends of the toolbar. A hidden panel gives its width to the Preview, and the window's minimum width shrinks to the visible panes. Showing a panel in a window too narrow for it widens the window, except in full screen.
+- Panel visibility and dragged panel widths persist per Mac in user defaults across launches. They are editor preferences, not project data.
 - The timeline spans the full window width instead of being constrained to the preview column.
 - The upper editor area and bottom timeline height are adjustable by dragging their shared boundary.
 - A new empty project starts without sample media, sample clips, sample overlay elements, or a fake activity timeline.

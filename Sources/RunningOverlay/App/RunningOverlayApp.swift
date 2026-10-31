@@ -2,6 +2,8 @@ import AppKit
 import SwiftUI
 
 struct RunningOverlayApp: App {
+    @AppStorage(EditorLayoutDefaults.showsPoolPanelKey) private var showsPoolPanel = true
+    @AppStorage(EditorLayoutDefaults.showsInspectorKey) private var showsInspector = true
     @StateObject private var project: ProjectDocument
 
     init() {
@@ -30,7 +32,7 @@ struct RunningOverlayApp: App {
             MainEditorView()
                 .environmentObject(project)
                 .preferredColorScheme(.dark)
-                .frame(minWidth: EditorPaneLayout.minimumWindowWidth, minHeight: 760)
+                .frame(minHeight: 760)
         }
         .windowStyle(.titleBar)
         .windowResizability(.contentMinSize)
@@ -60,6 +62,18 @@ struct RunningOverlayApp: App {
                     project.importVideos()
                 }
                 .keyboardShortcut("i", modifiers: [.command, .shift])
+            }
+
+            CommandGroup(after: .sidebar) {
+                Button(showsPoolPanel ? "Hide Pools" : "Show Pools") {
+                    showsPoolPanel.toggle()
+                }
+                .keyboardShortcut("s", modifiers: [.control, .command])
+
+                Button(showsInspector ? "Hide Inspector" : "Show Inspector") {
+                    showsInspector.toggle()
+                }
+                .keyboardShortcut("i", modifiers: [.option, .command])
             }
 
             CommandMenu("Playback") {

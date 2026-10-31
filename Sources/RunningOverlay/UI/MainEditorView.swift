@@ -6,8 +6,10 @@ struct MainEditorView: View {
     @EnvironmentObject private var project: ProjectDocument
     @State private var showingExportProgress = false
     @State private var activePool: PoolKind = .media
-    @State private var mediaPoolWidth: CGFloat = 380
-    @State private var inspectorWidth: CGFloat = 460
+    @AppStorage(EditorLayoutDefaults.poolPanelWidthKey) private var storedMediaPoolWidth: Double = 380
+    @AppStorage(EditorLayoutDefaults.inspectorWidthKey) private var storedInspectorWidth: Double = 460
+    @AppStorage(EditorLayoutDefaults.showsPoolPanelKey) private var showsPoolPanel = true
+    @AppStorage(EditorLayoutDefaults.showsInspectorKey) private var showsInspector = true
     @State private var lastPlaybackTickTime: CFTimeInterval?
 
     private static let timelineMinHeight: CGFloat = 96
@@ -17,40 +19,46 @@ struct MainEditorView: View {
         GeometryReader { geometry in
             let layout = EditorPaneLayout(
                 availableWidth: geometry.size.width,
-                preferredMediaWidth: mediaPoolWidth,
-                preferredInspectorWidth: inspectorWidth
+                preferredMediaWidth: CGFloat(storedMediaPoolWidth),
+                preferredInspectorWidth: CGFloat(storedInspectorWidth),
+                showsMedia: showsPoolPanel,
+                showsInspector: showsInspector
             )
             VStack(spacing: 0) {
                 VSplitView {
                     HStack(spacing: 0) {
-                        PoolPanelView(activePool: $activePool)
-                            .frame(width: layout.mediaWidth)
-                            .frame(maxHeight: .infinity)
+                        if showsPoolPanel {
+                            PoolPanelView(activePool: $activePool)
+                                .frame(width: layout.mediaWidth)
+                                .frame(maxHeight: .infinity)
 
-                        HorizontalResizeHandle(
-                            width: $mediaPoolWidth,
-                            displayedWidth: layout.mediaWidth,
-                            minWidth: EditorPaneLayout.mediaMinWidth,
-                            maxWidth: layout.mediaMaxWidth,
-                            sign: 1
-                        )
+                            HorizontalResizeHandle(
+                                width: storedWidthBinding($storedMediaPoolWidth),
+                                displayedWidth: layout.mediaWidth,
+                                minWidth: EditorPaneLayout.mediaMinWidth,
+                                maxWidth: layout.mediaMaxWidth,
+                                sign: 1
+                            )
+                        }
 
                         PreviewCanvasView()
                             .frame(minWidth: EditorPaneLayout.previewMinWidth, minHeight: 320)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                        HorizontalResizeHandle(
-                            width: $inspectorWidth,
-                            displayedWidth: layout.inspectorWidth,
-                            minWidth: EditorPaneLayout.inspectorMinWidth,
-                            maxWidth: layout.inspectorMaxWidth,
-                            sign: -1
-                        )
+                        if showsInspector {
+                            HorizontalResizeHandle(
+                                width: storedWidthBinding($storedInspectorWidth),
+                                displayedWidth: layout.inspectorWidth,
+                                minWidth: EditorPaneLayout.inspectorMinWidth,
+                                maxWidth: layout.inspectorMaxWidth,
+                                sign: -1
+                            )
 
-                        ParameterPanelView()
-                            .frame(width: layout.inspectorWidth)
-                            .frame(maxHeight: .infinity)
-                            .clipped()
+                            ParameterPanelView()
+                                .frame(width: layout.inspectorWidth)
+                                .frame(maxHeight: .infinity)
+                                .clipped()
+                        }
                     }
                     .frame(minHeight: 360, idealHeight: 800)
                     .splitResizeCursor(.resizeUpDown, edge: .bottom, thickness: 18)
@@ -64,11 +72,38 @@ struct MainEditorView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .navigation) {
-                    PoolModeSwitch(activePool: $activePool, compactLabels: true)
-                        .frame(width: layout.mediaWidth - (EditorTheme.panelPaddingX * 2))
+                    HStack(spacing: Self.toolbarToggleSpacing) {
+                        Button {
+                            showsPoolPanel.toggle()
+                        } label: {
+                            Image(systemName: "sidebar.left")
+                        }
+                        .buttonStyle(EditorIconButtonStyle())
+                        .help(showsPoolPanel ? "Hide Pools (Control-Command-S)" : "Show Pools (Control-Command-S)")
+                        .accessibilityLabel(showsPoolPanel ? "Hide Pools" : "Show Pools")
+
+                        if showsPoolPanel {
+                            // Keep the switch's trailing edge on the pool column's edge.
+                            PoolModeSwitch(activePool: $activePool, compactLabels: true)
+                                .frame(width: max(
+                                    layout.mediaWidth - EditorTheme.panelPaddingX * 2
+                                        - EditorTheme.iconButtonSize - Self.toolbarToggleSpacing,
+                                    0
+                                ))
+                        }
+                    }
                 }
 
                 ToolbarItemGroup(placement: .primaryAction) {
+                    Button {
+                        showsInspector.toggle()
+                    } label: {
+                        Image(systemName: "sidebar.right")
+                    }
+                    .buttonStyle(EditorIconButtonStyle())
+                    .help(showsInspector ? "Hide Inspector (Option-Command-I)" : "Show Inspector (Option-Command-I)")
+                    .accessibilityLabel(showsInspector ? "Hide Inspector" : "Show Inspector")
+
                     if let exportProgress = project.exportProgress {
                         ExportProgressButton(progress: exportProgress, isPresented: $showingExportProgress)
                     }
@@ -86,6 +121,12 @@ struct MainEditorView: View {
                 }
             }
         }
+        .frame(minWidth: EditorPaneLayout.minimumWindowWidth(
+            showsMedia: showsPoolPanel,
+            showsInspector: showsInspector
+        ))
+        .onChange(of: showsPoolPanel) { _, _ in widenWindowToFitPanels() }
+        .onChange(of: showsInspector) { _, _ in widenWindowToFitPanels() }
         .background(EditorTheme.appBackground)
         .toolbarBackground(EditorTheme.appChrome, for: .windowToolbar)
         .overlay(alignment: .top) {
@@ -181,6 +222,28 @@ struct MainEditorView: View {
             let delta = min(max(now - last, 0), 0.25)
             project.advancePlayback(by: delta)
         }
+    }
+
+    private static let toolbarToggleSpacing: CGFloat = 8
+
+    /// Binds a resize handle to a width stored as Double in user defaults.
+    private func storedWidthBinding(_ stored: Binding<Double>) -> Binding<CGFloat> {
+        Binding(get: { CGFloat(stored.wrappedValue) }, set: { stored.wrappedValue = Double($0) })
+    }
+
+    /// Showing a panel in a narrow window grows the window instead of
+    /// squeezing the preview below its minimum width.
+    private func widenWindowToFitPanels() {
+        guard let window = NSApp.keyWindow, !window.styleMask.contains(.fullScreen) else { return }
+        let required = EditorPaneLayout.minimumWindowWidth(showsMedia: showsPoolPanel, showsInspector: showsInspector)
+        let shortfall = required - window.contentLayoutRect.width
+        guard shortfall > 0 else { return }
+        var frame = window.frame
+        frame.size.width += shortfall
+        if let screen = window.screen?.visibleFrame, frame.maxX > screen.maxX {
+            frame.origin.x = max(screen.minX, screen.maxX - frame.width)
+        }
+        window.setFrame(frame, display: true, animate: true)
     }
 
     private var statusBar: some View {
@@ -455,17 +518,55 @@ struct EditorPaneLayout {
     let mediaMaxWidth: CGFloat
     let inspectorMaxWidth: CGFloat
 
-    init(availableWidth: CGFloat, preferredMediaWidth: CGFloat, preferredInspectorWidth: CGFloat) {
-        let sideBudget = availableWidth - Self.previewMinWidth - 2 * Self.dividerWidth
-        inspectorWidth = min(
-            max(preferredInspectorWidth, Self.inspectorMinWidth),
-            min(Self.paneMaxWidth, max(Self.inspectorMinWidth, sideBudget - Self.mediaMinWidth))
-        )
-        mediaWidth = min(
-            max(preferredMediaWidth, Self.mediaMinWidth),
-            min(Self.paneMaxWidth, max(Self.mediaMinWidth, sideBudget - inspectorWidth))
-        )
+    /// Hidden panes resolve to zero width and give their space to the preview.
+    init(
+        availableWidth: CGFloat,
+        preferredMediaWidth: CGFloat,
+        preferredInspectorWidth: CGFloat,
+        showsMedia: Bool = true,
+        showsInspector: Bool = true
+    ) {
+        let visibleDividers = CGFloat((showsMedia ? 1 : 0) + (showsInspector ? 1 : 0))
+        let sideBudget = availableWidth - Self.previewMinWidth - visibleDividers * Self.dividerWidth
+        let mediaReserve = showsMedia ? Self.mediaMinWidth : 0
+        if showsInspector {
+            inspectorWidth = min(
+                max(preferredInspectorWidth, Self.inspectorMinWidth),
+                min(Self.paneMaxWidth, max(Self.inspectorMinWidth, sideBudget - mediaReserve))
+            )
+        } else {
+            inspectorWidth = 0
+        }
+        if showsMedia {
+            mediaWidth = min(
+                max(preferredMediaWidth, Self.mediaMinWidth),
+                min(Self.paneMaxWidth, max(Self.mediaMinWidth, sideBudget - inspectorWidth))
+            )
+        } else {
+            mediaWidth = 0
+        }
         mediaMaxWidth = min(Self.paneMaxWidth, max(Self.mediaMinWidth, sideBudget - inspectorWidth))
         inspectorMaxWidth = min(Self.paneMaxWidth, max(Self.inspectorMinWidth, sideBudget - mediaWidth))
     }
+
+    /// The window's minimum content width for the visible panes. With both
+    /// panes visible it is `minimumWindowWidth`.
+    static func minimumWindowWidth(showsMedia: Bool, showsInspector: Bool) -> CGFloat {
+        if showsMedia && showsInspector {
+            return minimumWindowWidth
+        }
+        var width = previewMinWidth
+        if showsMedia { width += mediaMinWidth + dividerWidth }
+        if showsInspector { width += inspectorMinWidth + dividerWidth }
+        return width
+    }
+}
+
+/// User-default keys for per-Mac editor layout preferences. These are UI
+/// state, not project data, so they are not saved in project files.
+enum EditorLayoutDefaults {
+    static let poolPanelWidthKey = "editor.poolPanelWidth"
+    static let inspectorWidthKey = "editor.inspectorWidth"
+    static let showsPoolPanelKey = "editor.showsPoolPanel"
+    static let showsInspectorKey = "editor.showsInspector"
 }
