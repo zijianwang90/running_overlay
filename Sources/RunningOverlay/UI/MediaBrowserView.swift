@@ -757,11 +757,20 @@ struct MediaBrowserView: View {
         }
     }
 
-    @ViewBuilder private var dropTargetPlaceholder: some View {
-        if project.activity.duration <= 0 {
-            fitImportPlaceholder
-        } else {
-            videoImportPlaceholder
+    /// Scrolls in short windows, where the fixed-height placeholder would
+    /// otherwise overflow the panel and clip its header.
+    private var dropTargetPlaceholder: some View {
+        GeometryReader { proxy in
+            ScrollView {
+                Group {
+                    if project.activity.duration <= 0 {
+                        fitImportPlaceholder
+                    } else {
+                        videoImportPlaceholder
+                    }
+                }
+                .frame(minHeight: proxy.size.height)
+            }
         }
     }
 
