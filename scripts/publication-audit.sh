@@ -61,7 +61,7 @@ required_files=(
   docs/project-log/2026-06.md
   docs/project-log/2026-08.md
   docs/testing.md
-  docs/adr/0006-independent-resolve-live-rendering.md
+  docs/adr/0008-independent-resolve-live-rendering.md
   RunningOverlayResolve/README.md
   RunningOverlayResolve/docs/architecture.md
   RunningOverlayResolve/docs/requirements.md
