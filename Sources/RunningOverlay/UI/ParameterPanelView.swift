@@ -539,17 +539,7 @@ private struct OverlayElementRow: View {
         .overlay(InspectorRoundedBorder())
         .opacity(element.isVisible ? 1 : 0.72)
         .contextMenu {
-            Button {
-                project.copyOverlayProperties(from: element.id)
-            } label: {
-                Label("Copy Properties", systemImage: "doc.on.doc")
-            }
-            Button {
-                project.pasteOverlayProperties(to: element.id)
-            } label: {
-                Label("Paste Properties", systemImage: "doc.on.clipboard")
-            }
-            .disabled(!project.canPasteOverlayProperties(to: element.id))
+            OverlayElementContextMenu(element: element)
         }
     }
 

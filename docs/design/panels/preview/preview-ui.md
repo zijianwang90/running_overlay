@@ -178,7 +178,7 @@ Rules:
 - Dragging a selected overlay corner handle updates that overlay's `scale` continuously and commits undo grouping at drag end.
 - Overlays with visibility off are not rendered in the Preview canvas.
 - Locked overlays are rendered but cannot be selected or dragged from the Preview canvas.
-- Right-clicking a Preview overlay opens `Copy Properties` / `Paste Properties` actions that share the same category-compatibility rules as Inspector rows.
+- Right-clicking a Preview overlay opens the same context menu as Inspector rows (`Duplicate`, `Copy Properties`, `Paste Properties`, `Hide`/`Show`, `Lock`/`Unlock`, and `Delete`); paste follows the same category-compatibility rules. Hidden overlays are not on the canvas, so they are shown again from the Inspector row.
 
 ## Component Guidance
 

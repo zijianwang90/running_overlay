@@ -3003,6 +3003,48 @@ final class ProjectDocument: ObservableObject {
         statusMessage = "Deleted overlay element."
     }
 
+    /// Copies an overlay a few output pixels down and right, stacks it directly
+    /// above the original, and selects the copy. The copy is visible and unlocked.
+    func duplicateOverlay(_ elementID: OverlayElement.ID) {
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        let original = overlayLayout.elements[index]
+        registerUndoPoint()
+        let dx = Self.duplicateOverlayOffsetPixels / Double(max(settings.resolution.width, 1))
+        let dy = Self.duplicateOverlayOffsetPixels / Double(max(settings.resolution.height, 1))
+        let copy = OverlayElement(
+            type: original.type,
+            position: CGPoint(
+                x: min(original.position.x + dx, 1),
+                y: min(original.position.y + dy, 1)
+            ),
+            scale: original.scale,
+            opacity: original.opacity,
+            isVisible: true,
+            isLocked: false,
+            style: original.style
+        )
+        overlayLayout.elements.insert(copy, at: index + 1)
+        selection = .overlayElement(copy.id)
+        statusMessage = "Duplicated \(original.type.label) overlay."
+    }
+
+    func duplicateSelectedOverlay() {
+        guard let selectedOverlayID else { return }
+        duplicateOverlay(selectedOverlayID)
+    }
+
+    var selectedOverlayID: OverlayElement.ID? {
+        guard case .overlayElement(let elementID) = selection,
+              overlayLayout.elements.contains(where: { $0.id == elementID }) else {
+            return nil
+        }
+        return elementID
+    }
+
+    static let duplicateOverlayOffsetPixels: Double = 24
+
     func deleteSelectedItem() {
         switch selection {
         case .timelineClip(let clipID):

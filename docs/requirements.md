@@ -344,7 +344,8 @@ Current implementation status:
 - Added-overlay rows now support per-element visibility and lock toggles with persistent model fields.
 - Visibility off hides the element in both Preview and exported overlay frames.
 - Lock on keeps the element visible but prevents Preview-canvas selection and dragging.
-- Added-overlay rows and Preview overlays provide context-menu actions for copying and pasting overlay properties.
+- Added-overlay rows and Preview overlays share one context menu: `Duplicate`, `Copy Properties`, `Paste Properties`, `Hide`/`Show`, `Lock`/`Unlock`, and `Delete`.
+- `Duplicate` (also Edit > Duplicate Overlay, Command-D, for the selected overlay) inserts a visible, unlocked copy with the same type, scale, opacity, and style, offset 24 output pixels down and right, stacked directly above the original, and selects it. It registers one undo point.
 - Property paste is limited to the same overlay category (for example, numeric -> numeric only).
 - Selected text overlays expose a built-in style picker as the first Inspector control, with Minimal, Pill Badge, Metric Card, Big Number, Sport Watch, Split Label, Inline Ghost, Accent Bar, Sport Neon, and Serif Editorial presets.
 - Numeric overlay presets carry recommended typography tokens (value font family/weight/size, label/unit visibility, label/unit defaults, background, accent color); selecting a preset snaps those fields so the overlay matches the design intent without further tuning.
@@ -381,7 +382,7 @@ Current implementation status:
 Future requirements:
 
 - Stroke, richer chart style, and animation controls.
-- Copy/paste and grouping.
+- Clipboard copy/paste of whole overlays (Duplicate covers same-project copies), and grouping.
 
 ## 10.1 Overlay Templates
 

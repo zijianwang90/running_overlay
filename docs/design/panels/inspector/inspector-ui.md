@@ -172,7 +172,7 @@ Row behavior:
 - Visibility and lock are separate hit targets with immediate model updates.
 - Visibility off hides the overlay from both Preview and export output.
 - Lock on prevents canvas selection and drag edits from Preview; list actions (unlock/delete/open detail) remain available.
-- Right-clicking an Added Overlays row opens a context menu with `Copy Properties` and `Paste Properties`.
+- Right-clicking an Added Overlays row opens the shared overlay context menu: `Duplicate`, `Copy Properties`, `Paste Properties`, `Hide`/`Show`, `Lock`/`Unlock`, and `Delete`, grouped by dividers.
 - Paste applies the copied overlay configuration to the target row only when both overlays are in the same paste category (numeric overlays can paste to numeric overlays only).
 - No sorting behavior. Do not include drag handles.
 

@@ -76,6 +76,14 @@ struct RunningOverlayApp: App {
                 .keyboardShortcut("i", modifiers: [.option, .command])
             }
 
+            CommandGroup(after: .pasteboard) {
+                Button("Duplicate Overlay") {
+                    project.duplicateSelectedOverlay()
+                }
+                .keyboardShortcut("d", modifiers: [.command])
+                .disabled(project.selectedOverlayID == nil)
+            }
+
             CommandMenu("Playback") {
                 Button(project.isPlaying ? "Pause" : "Play") {
                     project.togglePlayback()
