@@ -338,6 +338,19 @@ final class ProjectDocument: ObservableObject {
         statusMessage = playbackRate == 1 ? "Playback started." : "Playback \(Int(playbackRate))x."
     }
 
+    /// J: halves a fast forward rate, and pauses at normal speed. Reverse
+    /// playback is not supported, so J never plays backward.
+    func decreaseForwardPlaybackRate() {
+        guard isPlaying else { return }
+        if playbackRate > 1 {
+            playbackRate = max(playbackRate / 2, 1)
+            statusMessage = playbackRate == 1 ? "Playback 1x." : "Playback \(Int(playbackRate))x."
+        } else {
+            isPlaying = false
+            statusMessage = "Playback paused."
+        }
+    }
+
     func setPlaybackRate(_ rate: Double) {
         let clampedRate = min(max(rate, 1), 8)
         playbackRate = clampedRate
@@ -397,7 +410,8 @@ final class ProjectDocument: ObservableObject {
         playbackRate = 1
         let frameDuration = 1.0 / max(settings.frameRate.value, 1)
         setPlayhead(timeline.playhead + Double(frameCount) * frameDuration)
-        statusMessage = frameCount > 0 ? "Stepped forward \(abs(frameCount)) frame." : "Stepped back \(abs(frameCount)) frame."
+        let frames = abs(frameCount) == 1 ? "1 frame" : "\(abs(frameCount)) frames"
+        statusMessage = frameCount > 0 ? "Stepped forward \(frames)." : "Stepped back \(frames)."
     }
 
     func setPlayheadFromPlayback(_ elapsedTime: TimeInterval, seekToken: UInt64) {
@@ -1292,16 +1306,57 @@ final class ProjectDocument: ObservableObject {
             return true
         }
 
+        let frameCount = largeStep ? Self.largePlayheadStepFrames : 1
         switch direction {
         case .left:
-            stepPlayheadByFrames(-1)
+            stepPlayheadByFrames(-frameCount)
             return true
         case .right:
-            stepPlayheadByFrames(1)
+            stepPlayheadByFrames(frameCount)
             return true
-        case .up, .down:
-            return false
+        case .up:
+            return jumpToEditPoint(forward: false)
+        case .down:
+            return jumpToEditPoint(forward: true)
         }
+    }
+
+    static let largePlayheadStepFrames = 10
+
+    /// Edit points are clip starts and ends on every camera track plus the
+    /// timeline bounds, in project time.
+    var timelineEditPoints: [TimeInterval] {
+        var points: Set<TimeInterval> = [timelineBounds.lowerBound, timelineBounds.upperBound]
+        for clip in timeline.tracks.flatMap(\.clips) {
+            points.insert(clip.effectiveStartTime)
+            points.insert(clip.effectiveStartTime + clip.duration)
+        }
+        return points.sorted()
+    }
+
+    /// Moves the playhead to the next or previous edit point without changing
+    /// play state. Returns false when there is none in that direction.
+    @discardableResult
+    func jumpToEditPoint(forward: Bool) -> Bool {
+        let tolerance = 0.5 / max(settings.frameRate.value, 1)
+        let playhead = timeline.playhead
+        let target = forward
+            ? timelineEditPoints.first { $0 > playhead + tolerance }
+            : timelineEditPoints.last { $0 < playhead - tolerance }
+        guard let target else { return false }
+        clearMediaPoolPreview()
+        seekPlayheadFromTimeline(target)
+        return true
+    }
+
+    func movePlayheadToStart() {
+        clearMediaPoolPreview()
+        seekPlayheadFromTimeline(timelineBounds.lowerBound)
+    }
+
+    func movePlayheadToEnd() {
+        clearMediaPoolPreview()
+        seekPlayheadFromTimeline(timelineBounds.upperBound)
     }
 
     static let largeOverlayNudgePixels: Double = 10
