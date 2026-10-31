@@ -112,7 +112,9 @@ struct MainEditorView: View {
                     .help("Export overlays")
                 }
 
+                #if compiler(>=6.2)
                 EditorToolbarGroupSpacer()
+                #endif
 
                 ToolbarItem(placement: .primaryAction) {
                     Button {
@@ -352,17 +354,17 @@ private extension ToolbarContent {
     }
 }
 
+#if compiler(>=6.2)
 /// Separates trailing toolbar groups on macOS 26, where adjacent items otherwise
 /// sit tightly together.
 private struct EditorToolbarGroupSpacer: ToolbarContent {
     var body: some ToolbarContent {
-        #if compiler(>=6.2)
         if #available(macOS 26, *) {
             ToolbarSpacer(.fixed, placement: .primaryAction)
         }
-        #endif
     }
 }
+#endif
 
 /// The project name and edited state. "Edited" never truncates; a long name
 /// or status message gives way first.
