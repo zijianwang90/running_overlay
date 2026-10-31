@@ -217,6 +217,6 @@ fixtures, and later reviewed visual golden images. Resolve-specific data flow
 and timing contracts are documented in
 [`RunningOverlayResolve/docs/architecture.md`](../RunningOverlayResolve/docs/architecture.md)
 and constrained by
-[ADR 0006](adr/0006-independent-resolve-live-rendering.md). Managed composition
+[ADR 0008](adr/0008-independent-resolve-live-rendering.md). Managed composition
 placement, immutable revisions, and local settings follow
-[ADR 0007](adr/0007-resolve-managed-overlay-workflow.md).
+[ADR 0009](adr/0009-resolve-managed-overlay-workflow.md).

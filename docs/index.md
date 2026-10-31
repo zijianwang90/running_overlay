@@ -22,7 +22,7 @@ entries in `project-log.md`.
 |---|---|
 | FIT/GPX parser or workout analysis | `docs/architecture.md#activity-data-fit-and-gpx`, `docs/testing.md` |
 | Media import and alignment | `docs/architecture.md#media-import`, `docs/architecture.md#alignment-engine` |
-| DaVinci Resolve sibling product | `RunningOverlayResolve/README.md`, `RunningOverlayResolve/docs/user-guide.zh-CN.md`, `RunningOverlayResolve/docs/architecture.md`, `docs/adr/0006-independent-resolve-live-rendering.md` |
+| DaVinci Resolve sibling product | `RunningOverlayResolve/README.md`, `RunningOverlayResolve/docs/user-guide.zh-CN.md`, `RunningOverlayResolve/docs/architecture.md`, `docs/adr/0008-independent-resolve-live-rendering.md` |
 | Timeline behavior | `docs/architecture.md#timeline`, `docs/design/panels/timeline/` |
 | Numeric overlays | `docs/design/overlays/numeric/`, `docs/requirements.md` |
 | Featured overlays | `docs/overlay-modules/README.md`, matching module and design directory |
@@ -36,9 +36,9 @@ entries in `project-log.md`.
 | Mac App Store packaging and submission | `docs/development/release.md`, `docs/app-store-readiness.md` |
 | App Store marketing screenshots | `docs/app-store-screenshot-template.md` |
 | Maintainer and support policy | `MAINTAINERS.md`, `SUPPORT.md` |
-| Project, commercial, contributor, and trademark licensing | `LICENSE`, `COMMERCIAL-LICENSE.md`, `CLA.md`, `TRADEMARKS.md` |
+| Project licensing and trademarks | `LICENSE`, `TRADEMARKS.md` |
 | Asset and dependency licensing | `docs/assets-and-licenses.md` |
-| Publication readiness | `docs/source-available-readiness.md` |
+| Publication readiness | `docs/open-source-readiness.md` |
 | Issue preparation | `docs/issue-labels.md`, GitHub issue templates |
 
 ## Decision Records

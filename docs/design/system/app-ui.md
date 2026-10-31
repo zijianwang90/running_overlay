@@ -96,7 +96,7 @@ Use 6-8 px radius for tool controls. Avoid pill-heavy styling unless the control
 
 The app is a multi-pane editor:
 
-- The native unified window toolbar uses `app.chrome` and contains the pool switch and Export beside the standard macOS window controls. Do not add a second app-level toolbar row beneath it.
+- The native unified window toolbar uses `app.chrome`. Leading: Pools toggle, then the segmented pool switch at its natural width. Center (`.principal`): project name and `Edited` as plain text with the macOS 26 shared toolbar background hidden; the principal item also keeps the `.primaryAction` items at the trailing edge. Trailing: export progress when active, Export (`.borderedProminent`), a fixed toolbar spacer on macOS 26, then the Inspector toggle. Toolbar toggles use default system toolbar buttons without custom borders. Do not add a second app-level toolbar row beneath it.
 
 - Left: Pool panel with `Media Pool`, `Overlay Pool`, and `Templates` modes for import/source management, addable overlay modules, and reusable overlay layouts.
 - Center: Preview canvas and playback controls.
@@ -111,7 +111,7 @@ Panel rules:
 - Empty states should stay within the panel layout and preserve tool context.
 - Resizable split panes should have stable minimum widths so controls do not collapse.
 - Resolve side-pane widths against the actual window width, reserving the Preview minimum and both dividers. At the 1300 pt content minimum, use 318 pt for the initial Left Pool, 520 pt for Preview, and 460 pt for Inspector. Dragging a divider must not overflow the window; shrinking temporarily reduces panes while retaining preferred widths for later expansion.
-- Hidden side panes take zero width and drop their divider. The minimum content width is the Preview minimum plus each visible pane's minimum and divider (1300 pt when both are visible). Toolbar sidebar toggles use `EditorIconButtonStyle` with `sidebar.left` / `sidebar.right`; the Pool mode switch narrows so its trailing edge still meets the pool column.
+- Hidden side panes take zero width and drop their divider. The minimum content width is the Preview minimum plus each visible pane's minimum and divider (1300 pt when both are visible). Toolbar sidebar toggles use `sidebar.left` / `sidebar.right`; the pool switch hides with its panel.
 
 ## Component Standards
 

@@ -22,10 +22,8 @@ in-Resolve widget editing, piecewise FIT-to-edit alignment, and final-render
 generation without intermediate transparent video. It does not depend on the
 macOS app at runtime.
 
-> **Source-available:** You may download, build, study, modify, and use Running
-> Overlay under the [PolyForm Shield License 1.0.0](LICENSE). Providing a
-> competing product or service requires a
-> [separate commercial license](COMMERCIAL-LICENSE.md).
+> **Free and open source:** Running Overlay Studio is free on the Mac App Store,
+> and its source code is available under the [MIT License](LICENSE).
 
 Import an activity and its source videos, align them on a shared timeline,
 design reusable overlays, preview the result over video, and export alpha MOV
@@ -172,14 +170,10 @@ option; WeChat Pay and Alipay are also available.
 
 ## License
 
-Running Overlay Studio is source-available under the
-[PolyForm Shield License 1.0.0](LICENSE). The license permits personal,
-educational, internal, and non-competing commercial use, but does not permit
-providing a product that competes with Running Overlay Studio.
-
-- [Commercial licensing](COMMERCIAL-LICENSE.md)
-- [Trademark policy](TRADEMARKS.md)
-- [Contributor License Agreement](CLA.md)
+Running Overlay Studio is released under the [MIT License](LICENSE). The
+project name, application icon, branding artwork, and donation images are
+not covered by that license; see the [trademark policy](TRADEMARKS.md) and
+[asset licensing notes](docs/assets-and-licenses.md).
 
 Videos and other media created with Running Overlay Studio are not restricted by the
 software license.

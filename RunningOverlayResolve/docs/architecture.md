@@ -143,7 +143,7 @@ rendering, although each node rendered separately. High-cost or
 interaction-heavy future widget families can move to OFX without changing the
 activity or sync protocols. A future OFX renderer must read the immutable
 bundle once per instance and never call Resolve scripting APIs from its render
-callback. See [ADR 0008](../../docs/adr/0008-resolve-numeric-widget-renderer.md).
+callback. See [ADR 0010](../../docs/adr/0010-resolve-numeric-widget-renderer.md).
 
 ### Data Time Offset
 
@@ -160,7 +160,7 @@ overlay exists the Fuse input is authoritative; the panel reads it on scans and
 writes it through a small acknowledged Fusion transaction outside the scan
 queue, coalescing drags so one write is in flight. A draft offset in the panel
 configuration seeds only a newly created renderer. See
-[ADR 0009](../../docs/adr/0009-resolve-data-time-offset-in-renderer.md).
+[ADR 0011](../../docs/adr/0011-resolve-data-time-offset-in-renderer.md).
 
 `fusion/Templates/Edit/Generators/Running Overlay Numeric (Experimental).setting`
 wraps the Fuse as an Edit page generator that publishes the offset and data
@@ -254,5 +254,5 @@ An explicit `AutomaticOrigin` input keeps older manual compositions compatible
 while allowing managed clips to specify frame zero without the old sentinel
 ambiguity. Rendering continues to consume only immutable activity/sync files.
 
-See [ADR 0007](../../docs/adr/0007-resolve-managed-overlay-workflow.md) for the
+See [ADR 0009](../../docs/adr/0009-resolve-managed-overlay-workflow.md) for the
 persistence, ownership, and timeline-undo boundaries.

@@ -1,4 +1,4 @@
-# ADR 0007: Managed Resolve Compositions And Immutable Sync Revisions
+# ADR 0009: Managed Resolve Compositions And Immutable Sync Revisions
 
 Date: 2026-09-13
 

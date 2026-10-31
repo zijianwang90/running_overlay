@@ -37,9 +37,7 @@ repo_query() {
 required_files=(
   AGENTS.md
   LICENSE
-  COMMERCIAL-LICENSE.md
   TRADEMARKS.md
-  CLA.md
   README.md
   CONTRIBUTING.md
   PRIVACY.md
@@ -50,7 +48,7 @@ required_files=(
   THIRD_PARTY_NOTICES.md
   docs/index.md
   docs/assets-and-licenses.md
-  docs/source-available-readiness.md
+  docs/open-source-readiness.md
   docs/development/overview.md
   docs/development/app-and-import.md
   docs/development/timeline.md
@@ -181,25 +179,25 @@ repo_query '@zijianwang90' .github/CODEOWNERS || {
   exit 1
 }
 
-repo_query '^# PolyForm Shield License 1\.0\.0$' LICENSE || {
-  echo "LICENSE must contain PolyForm Shield License 1.0.0." >&2
+repo_query '^MIT License$' LICENSE || {
+  echo "LICENSE must contain the MIT License." >&2
   exit 1
 }
 
-repo_query '^Required Notice: Copyright 2026 Zijian Wang\.$' LICENSE || {
+repo_query '^Copyright \(c\) 2026 Zijian Wang$' LICENSE || {
   echo "LICENSE must identify the project copyright owner." >&2
   exit 1
 }
 
-repo_query 'Contributor License Agreement' .github/pull_request_template.md || {
-  echo "Pull requests must require CLA affirmation." >&2
+repo_query 'Developer Certificate of Origin' .github/pull_request_template.md || {
+  echo "Pull requests must require DCO certification." >&2
   exit 1
 }
 
-if repo_search 'MIT License|repository MIT license|under MIT' \
+if repo_search 'PolyForm|COMMERCIAL-LICENSE|Contributor License Agreement' \
   README.md CONTRIBUTING.md LICENSE docs/assets-and-licenses.md \
-  docs/contributing.md docs/source-available-readiness.md; then
-  echo "Active licensing documentation still references MIT." >&2
+  docs/contributing.md docs/open-source-readiness.md; then
+  echo "Active licensing documentation still references retired terms." >&2
   exit 1
 fi
 

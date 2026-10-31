@@ -1,4 +1,4 @@
-# ADR 0008: One Numeric Fuse For Managed Metric Widgets
+# ADR 0010: One Numeric Fuse For Managed Metric Widgets
 
 Date: 2026-09-29
 

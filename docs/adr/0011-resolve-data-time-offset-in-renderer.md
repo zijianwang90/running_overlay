@@ -1,4 +1,4 @@
-# ADR 0009: The Fusion Renderer Owns The Data Time Offset
+# ADR 0011: The Fusion Renderer Owns The Data Time Offset
 
 Date: 2026-10-17
 

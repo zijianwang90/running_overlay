@@ -1,4 +1,4 @@
-# ADR 0006: Independent Resolve Product With Live In-Host Rendering
+# ADR 0008: Independent Resolve Product With Live In-Host Rendering
 
 Date: 2026-08-16
 
