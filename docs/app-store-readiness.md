@@ -8,6 +8,7 @@ This document tracks the first Mac App Store submission path for Running Overlay
 
 - Target channel: Mac App Store first submission.
 - Current release version: `0.1.6` (build `10` for the Mac App Store; the GitHub Release is build `9`).
+- Submission status: `0.1.6` (build `10`) was submitted for App Review on 2026-10-31 and is awaiting a decision. It was archived from the same source as `main` commit `5616ff6`, which is the `v0.1.6` tag plus the toolbar and Media Pool fixes from #51.
 - Target scope: existing core app capabilities, including FIT/GPX activity import, video import, timeline editing, overlay design, Route Map, Weather Widget, and transparent MOV export.
 - Default branch: `main`; all changes land through pull requests.
 - App Store name: `Running Overlay Studio`.
