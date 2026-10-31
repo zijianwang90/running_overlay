@@ -71,6 +71,10 @@ Current implementation:
   after Save or Don't Save remove the copy. Recovery
   (`recoverAutosavedProject()`) keeps it until the work is saved or
   discarded.
+- `EditorWindowCloseGuard` takes over the close button's action, because
+  SwiftUI owns the window delegate, and runs the unsaved-changes prompt before
+  the window closes. Closing the only window then quits without a second
+  prompt.
 - `offerAutosaveRecoveryIfNeeded()` runs once per launch: when the editor
   window appears, or earlier if Finder hands over a project to open.
 

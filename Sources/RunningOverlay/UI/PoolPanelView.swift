@@ -52,48 +52,17 @@ enum PoolKind: String, CaseIterable, Identifiable {
 
 struct PoolModeSwitch: View {
     @Binding var activePool: PoolKind
-    var compactLabels = false
 
     var body: some View {
-        HStack(spacing: EditorTheme.space2) {
+        Picker("Pool", selection: $activePool) {
             ForEach(PoolKind.allCases) { pool in
-                Button {
-                    activePool = pool
-                } label: {
-                    Label(compactLabels ? pool.toolbarLabel : pool.label, systemImage: pool.systemImage)
-                        .labelStyle(.titleAndIcon)
-                        .font(EditorTheme.bodyStrongFont)
-                        .lineLimit(1)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(PoolModeButtonStyle(isSelected: activePool == pool))
-                .help(pool.label)
-                .accessibilityLabel(pool.label)
+                Label(pool.toolbarLabel, systemImage: pool.systemImage)
+                    .help(pool.label)
+                    .tag(pool)
             }
         }
-    }
-}
-
-private struct PoolModeButtonStyle: ButtonStyle {
-    var isSelected: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(isSelected ? Color.white : EditorTheme.textSecondary)
-            .padding(.horizontal, EditorTheme.space2)
-            .frame(height: 32)
-            .background(background(isPressed: configuration.isPressed))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .overlay {
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(isSelected ? EditorTheme.accentBlue : EditorTheme.borderSubtle, lineWidth: 1)
-            }
-    }
-
-    private func background(isPressed: Bool) -> Color {
-        if isPressed {
-            return EditorTheme.surfacePressed
-        }
-        return isSelected ? EditorTheme.accentBlue : EditorTheme.surfaceControl
+        .pickerStyle(.segmented)
+        .labelStyle(.titleAndIcon)
+        .labelsHidden()
     }
 }
