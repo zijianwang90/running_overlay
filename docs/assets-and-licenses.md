@@ -2,15 +2,20 @@
 
 ## Repository License
 
-Unless a file states otherwise, source code, documentation, authored test
-fixtures, project templates, design references, and image assets in this
-repository are distributed under the repository
-[PolyForm Shield License 1.0.0](../LICENSE).
+Unless this document or a file states otherwise, source code, documentation,
+authored test fixtures, project templates, design references, and image assets
+in this repository are distributed under the repository
+[MIT License](../LICENSE).
 
-The license is source-available rather than OSI-approved open source. It does
-not permit providing a product that competes with Running Overlay Studio. Separate
-commercial licensing is described in
-[`COMMERCIAL-LICENSE.md`](../COMMERCIAL-LICENSE.md).
+The following are not licensed under the MIT License:
+
+- the Running Overlay Studio name, logos, and other marks described in
+  [`TRADEMARKS.md`](../TRADEMARKS.md);
+- AppIcon renditions under `AppStore/Assets.xcassets/AppIcon.appiconset/`;
+- branding artwork under `docs/design/branding/`;
+- donation QR images under `docs/assets/donations/`.
+
+Forks and modified distributions must replace those items.
 
 Contributors must not add assets copied from products, icon packs, fonts,
 stock libraries, activity services, or media files without documenting the
@@ -38,13 +43,14 @@ documented.
   the repository owner and distributed under the repository license.
 - The Running Overlay Studio AppIcon renditions under
   `AppStore/Assets.xcassets/AppIcon.appiconset/` are derived from artwork
-  supplied by the repository owner and distributed under the repository
+  supplied by the repository owner. They are excluded from the repository
   license.
 - Design mockups under `docs/design/` are project documentation assets and
-  are distributed under the repository license. The horizontal banner concept
-  under `docs/design/branding/` was generated specifically for this project
-  with OpenAI image generation, using the repository App Icon as a visual
-  reference, and contains no third-party artwork.
+  are distributed under the repository license, except `docs/design/branding/`.
+  The horizontal banner concept under `docs/design/branding/` was generated
+  specifically for this project with OpenAI image generation, using the
+  repository App Icon as a visual reference, and contains no third-party
+  artwork.
 - Product screenshots under `docs/assets/screenshots/` are project
   documentation assets supplied by the repository owner and distributed under
   the repository license.
@@ -57,8 +63,8 @@ documented.
   repository owner solely to receive voluntary project support. They contain
   personal payment identifiers and are not licensed for reuse or redistribution
   outside this repository's support section.
-- `EasyRun.rotemplate` is an authored project template distributed under the
-  repository license.
+- `EasyRun.rotemplate`, `IntervalWorkout.rotemplate`, and `Race.rotemplate`
+  are authored project templates distributed under the repository license.
 - Test SVG, FIT, and visual snapshot fixtures are synthetic project
   assets documented in `Tests/RunningOverlayTests/Fixtures/README.md`.
 

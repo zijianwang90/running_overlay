@@ -5,5 +5,6 @@ Detailed dependency and asset provenance is maintained in
 
 Running Overlay Studio currently declares no third-party Swift package dependencies.
 
-The PolyForm Shield license governs project-owned materials as documented in
-[`LICENSE`](LICENSE). It is not a third-party dependency license.
+The MIT License in [`LICENSE`](LICENSE) governs project-owned materials as
+documented in `docs/assets-and-licenses.md`. It is not a third-party dependency
+license.

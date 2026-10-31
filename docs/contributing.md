@@ -46,14 +46,13 @@ who opens the pull request remains responsible for:
 
 Do not submit unreviewed bulk-generated changes.
 
-All contributors must read and accept the repository
-[Contributor License Agreement](../CLA.md). By submitting a pull request and
-affirming its CLA checkbox, you grant the project owner the rights needed to
-distribute the contribution under the PolyForm Shield license and separate
-commercial licenses while retaining ownership of your contribution.
+Contributions are accepted under the repository [MIT License](../LICENSE). You
+keep ownership of your work. By affirming the pull request checkbox, you
+certify the [Developer Certificate of Origin](https://developercertificate.org/):
+you have the right to submit the contribution under that license.
 
-Do not submit a contribution if you cannot make the representations in the
-CLA, including employer authorization and third-party provenance.
+Do not submit a contribution if you cannot make that certification, including
+any required employer authorization and third-party provenance.
 
 ## Tests
 

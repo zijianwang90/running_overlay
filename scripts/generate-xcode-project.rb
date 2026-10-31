@@ -19,7 +19,6 @@ resource_files = Dir.glob(File.join(root, "Sources/RunningOverlay/Resources/**/*
   .sort
 legal_files = [
   "LICENSE",
-  "COMMERCIAL-LICENSE.md",
   "TRADEMARKS.md",
   "THIRD_PARTY_NOTICES.md"
 ]

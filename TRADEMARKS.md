@@ -6,9 +6,9 @@ The name **Running Overlay Studio**, its logos, application icons, and other
 source-identifying artwork are trademarks or trade dress of Zijian Wang,
 whether or not formally registered.
 
-The software license in [`LICENSE`](LICENSE) grants copyright and patent
-permissions only. It does not grant permission to use the Running Overlay Studio
-marks except as described below.
+The MIT License in [`LICENSE`](LICENSE) does not grant permission to use the
+Running Overlay Studio marks. Those marks, including the application icon and
+branding artwork, may be used only as described below.
 
 ## Permitted Use
 

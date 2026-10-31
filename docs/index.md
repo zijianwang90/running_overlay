@@ -35,9 +35,9 @@ entries in `project-log.md`.
 | Mac App Store packaging and submission | `docs/development/release.md`, `docs/app-store-readiness.md` |
 | App Store marketing screenshots | `docs/app-store-screenshot-template.md` |
 | Maintainer and support policy | `MAINTAINERS.md`, `SUPPORT.md` |
-| Project, commercial, contributor, and trademark licensing | `LICENSE`, `COMMERCIAL-LICENSE.md`, `CLA.md`, `TRADEMARKS.md` |
+| Project licensing and trademarks | `LICENSE`, `TRADEMARKS.md` |
 | Asset and dependency licensing | `docs/assets-and-licenses.md` |
-| Publication readiness | `docs/source-available-readiness.md` |
+| Publication readiness | `docs/open-source-readiness.md` |
 | Issue preparation | `docs/issue-labels.md`, GitHub issue templates |
 
 ## Decision Records
