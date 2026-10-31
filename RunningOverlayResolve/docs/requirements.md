@@ -139,10 +139,11 @@ data semantics, default styling, and reviewed visual examples.
 
 ## Multi-Widget Numeric Editing
 
-- Let the Workflow panel add, remove, and reorder any unique selection of Heart
-  Rate, Pace, Distance, and Elapsed Time, with one to four widgets active.
+- Let the Workflow panel toggle any unique selection of Heart Rate, Pace,
+  Distance, and Elapsed Time, with one to four widgets active. Widgets follow
+  that fixed metric order.
 - Offer vertical, horizontal, and two-column grid starting positions. A changed
-  selection or preset reapplies those positions in list order.
+  selection or preset reapplies those positions in metric order.
 - Create and connect the managed renderer automatically. Users do not wire
   Fusion nodes. Each metric has its own native Fusion position and style inputs.
 - Persist the selection, order, and preset per project and timeline. Old saved
@@ -150,3 +151,21 @@ data semantics, default styling, and reviewed visual examples.
 - An ordinary synchronization keeps each active metric's position, size, color,
   font, and animation controls. Removing a metric disables its display; adding
   it again may reuse its previous Fusion styling.
+
+## Coarse Alignment And Data Time Offset
+
+- Users must not need to know each file's exact recording start. File or
+  metadata clocks, with an inferred recording timezone, give a coarse mapping
+  that the user accepts for all files in one explicit action.
+- A single data time offset in seconds corrects the shared camera/activity
+  clock difference. Positive values show later activity data. It applies after
+  segment lookup, so gaps stay transparent and each cut keeps its source-in.
+- The offset is adjustable both in the Workflow panel and in the Fusion
+  inspector of the managed overlay, while the user watches the edit. Panel
+  adjustments must not rescan the timeline, rebuild data bundles, or make the
+  overlay stale, and must stay responsive while dragging.
+- Once the overlay exists, its renderer owns the offset. Resyncs, range
+  replacement, and panel drafts must preserve it. Animated offsets are edited
+  only in Fusion.
+- The panel shows one primary action at a time, saves edits automatically, and
+  keeps per-file times and camera drift calibration as advanced options.

@@ -1,5 +1,46 @@
 # Running Overlay Resolve Testing
 
+## Data Time Offset And Simplified Panel — 2026-10-17
+
+`test/time-offset.test.js` covers recording-timezone inference (preferred zone,
+whole-hour fallback, no overlap), the alignment preview's source-in and offset
+math, the draft offset seeding only a fresh renderer, offset validation, the
+read/write Fusion transaction and its refusal to overwrite an animated offset,
+acknowledgment parsing, the configuration draft field, renderer ownership after
+creation (a stale panel draft cannot overwrite the mirror), composition handle
+reuse between nudges, refusal during apply/context switch/rendering, and an
+unreadable offset (old Fuse) reported without failing the scan. Adapter tests
+check the per-track chip data.
+
+The rebuilt panel was exercised in an isolated browser preview with the actual
+renderer, pickers, and alignment helper over a stubbed Workflow API and
+synthetic three-clip data: timezone inference, the strip, **Use file times**,
+creation with a draft offset, slider drags (25 input events coalesced into 8
+writes, final value preserved), nudges, metric toggles switching the primary
+action to **Update overlay**, and Clip details. These are browser checks, not
+host validation.
+
+Not yet validated in Resolve; required before merge:
+
+1. Install the updated Fuse (REG_Version 5) and restart Resolve. Confirm an
+   existing managed overlay gains **Data Time Offset (s)** at 0 and renders as
+   before.
+2. Create an overlay with a draft offset; confirm the Fuse starts at that value.
+3. During Edit page playback and while parked, drag the panel slider and use the
+   nudge buttons. Record responsiveness, viewer refresh, and any playback
+   stutter. Check Fusion inspector ±0.1 s/±1 s buttons and **Show Sync Readout**.
+4. Undo/redo a panel nudge; save, close, and reopen the project; run
+   **Update overlay** after a trim and after a range change. The offset must
+   survive each.
+5. Animate the offset in Fusion and confirm the panel locks its control.
+6. Experimental Edit Inspector path: copy
+   `fusion/Templates/Edit/Generators/Running Overlay Numeric (Experimental).setting`
+   into Resolve's `Fusion/Templates/Edit/Generators` directory and restart.
+   Place it above the video, point its activity/sync inputs at a bundle, and set
+   **Composition Start Frame** to the generator's record start. Record whether
+   the Edit Inspector shows the offset, whether the viewer updates live, and
+   whether blade-cut pieces keep independent offsets and correct activity time.
+
 ## Capture-Time Pickers And Frameless Panel — 2026-09-30
 
 `test/capture-time.test.js` covers filename candidates and invalid/ambiguous

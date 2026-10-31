@@ -1,0 +1,72 @@
+{
+	Tools = ordered() {
+		RunningOverlayNumericMacro = MacroOperator {
+			CtrlWZoom = false,
+			NameSet = true,
+			CustomData = {
+				-- Host experiment only: checks whether the Edit page Inspector shows the
+				-- data time offset and whether blade cuts keep independent values.
+				RunningOverlayExperiment = "edit-inspector-offset-v1",
+			},
+			Inputs = ordered() {
+				TimeOffset = InstanceInput {
+					SourceOp = "Numeric",
+					Source = "TimeOffset",
+					Name = "Data Time Offset (s)",
+					Default = 0,
+				},
+				ShowSyncReadout = InstanceInput {
+					SourceOp = "Numeric",
+					Source = "ShowSyncReadout",
+					Default = 1,
+				},
+				HeartRateEnabled = InstanceInput {
+					SourceOp = "Numeric",
+					Source = "HeartRateEnabled",
+					Default = 1,
+				},
+				Position = InstanceInput {
+					SourceOp = "Numeric",
+					Source = "Position",
+				},
+				ValueSize = InstanceInput {
+					SourceOp = "Numeric",
+					Source = "ValueSize",
+					Default = 0.065,
+				},
+				ActivityFile = InstanceInput {
+					SourceOp = "Numeric",
+					Source = "ActivityFile",
+				},
+				SyncFile = InstanceInput {
+					SourceOp = "Numeric",
+					Source = "SyncFile",
+				},
+				TimelineOriginFrame = InstanceInput {
+					SourceOp = "Numeric",
+					Source = "TimelineOriginFrame",
+					Default = 0,
+				},
+			},
+			Outputs = {
+				MainOutput1 = InstanceOutput {
+					SourceOp = "Numeric",
+					Source = "Output",
+				},
+			},
+			ViewInfo = GroupInfo { Pos = { 0, 0 } },
+			Tools = ordered() {
+				Numeric = Fuse.RunningOverlayNumeric {
+					CtrlWZoom = false,
+					Inputs = {
+						UseFrameFormatSettings = Input { Value = 1, },
+						AutomaticOrigin = Input { Value = 0, },
+						ShowSyncReadout = Input { Value = 1, },
+					},
+					ViewInfo = OperatorInfo { Pos = { 0, 0 } },
+				},
+			},
+		},
+	},
+	ActiveTool = "RunningOverlayNumericMacro",
+}

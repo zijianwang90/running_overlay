@@ -16,7 +16,7 @@ FuRegisterClass("RunningOverlayNumeric", CT_SourceTool, {
 	REG_Source_DepthCtrls = true,
 	REG_Fuse_NoEdit = false,
 	REG_Fuse_NoReload = false,
-	REG_Version = 4,
+	REG_Version = 5,
 })
 
 -- Cache only complete immutable snapshots. Several Numeric Fuse instances can
@@ -284,7 +284,43 @@ local function draw_diagnostic(image, font, style, title, detail, quality, color
 	draw_text(image, font, style, detail, 0.018, 0.045, 0.105 * y_scale, color, quality)
 end
 
+local NUDGES = {}
+
 function Create()
+	-- Sync comes first: it is the control users adjust while watching the edit.
+	-- The offset is added after segment lookup, so gaps stay transparent and
+	-- each cut keeps its own source mapping.
+	self:AddControlPage("Sync")
+	InTimeOffset = self:AddInput("Data Time Offset (s)", "TimeOffset", {
+		LINKID_DataType = "Number",
+		INPID_InputControl = "SliderControl",
+		INP_MinScale = -30,
+		INP_MaxScale = 30,
+		INP_Default = 0,
+	})
+	NUDGES = {}
+	for _, definition in ipairs({
+		{key = "OffsetBackSecond", label = "-1 s", delta = -1},
+		{key = "OffsetBackTenth", label = "-0.1 s", delta = -0.1},
+		{key = "OffsetForwardTenth", label = "+0.1 s", delta = 0.1},
+		{key = "OffsetForwardSecond", label = "+1 s", delta = 1},
+	}) do
+		local input = self:AddInput(definition.label, definition.key, {
+			LINKID_DataType = "Number",
+			INPID_InputControl = "ButtonControl",
+			INP_External = false,
+			INP_DoNotifyChanged = true,
+			INP_InitialNotify = false,
+			ICD_Width = 0.25,
+		})
+		NUDGES[input] = definition.delta
+	end
+	InShowSyncReadout = self:AddInput("Show Sync Readout", "ShowSyncReadout", {
+		LINKID_DataType = "Number",
+		INPID_InputControl = "CheckboxControl",
+		INP_Default = 0,
+	})
+
 	self:AddControlPage("Data")
 	InActivityFile = self:AddInput("Activity Data (.roactivity)", "ActivityFile", {
 		LINKID_DataType = "Text",
@@ -442,6 +478,10 @@ function NotifyChanged(input, parameter, time)
 		if value == "" then InFontStyle:SetSource(Text("Regular"), time) end
 	elseif input == InReloadData then
 		DataCache = {}
+	elseif NUDGES[input] ~= nil then
+		local current = InTimeOffset:GetSource(time).Value or 0
+		local nudged = math.floor((current + NUDGES[input]) * 1000 + 0.5) / 1000
+		InTimeOffset:SetSource(Number(nudged), time)
 	else
 		for _, controls in pairs(WidgetInputs) do
 			if input == controls.font and (not parameter or tostring(parameter.Value or "") == "") then
@@ -499,8 +539,18 @@ function Process(req)
 	local configured_origin = math.floor(InTimelineOriginFrame:GetValue(req).Value + 0.5)
 	local origin = (InAutomaticOrigin:GetValue(req).Value > 0.5 and configured_origin == 0) and data.timeline_start_frame or configured_origin
 	local timeline_frame = math.floor(req.Time + origin + 0.5)
+	local offset_seconds = InTimeOffset:GetValue(req).Value or 0
 	local elapsed_us = activity_elapsed_at_frame(data, timeline_frame)
+	if elapsed_us ~= nil then elapsed_us = elapsed_us + math.floor(offset_seconds * 1000000 + 0.5) end
 	local sample = elapsed_us and sample_activity(data, elapsed_us) or nil
+	if InShowSyncReadout:GetValue(req).Value > 0.5 then
+		local readout = elapsed_us == nil
+			and string.format("No sync segment at Resolve frame %d", timeline_frame)
+			or string.format("Activity %s.%d  ·  offset %+.3f s", format_duration(math.floor(elapsed_us / 1000000)),
+				math.floor(elapsed_us / 100000) % 10, offset_seconds)
+		local y_scale = (output.Height * output.YScale) / (output.Width * output.XScale)
+		draw_text(output, font, style, readout, 0.02, 0.045, 0.045 * y_scale, Pixel{R = 1, G = 0.85, B = 0.3, A = 1}, quality)
+	end
 	if sample ~= nil then
 		local function render_widget(metric, position, size, show_label, widget_font, widget_style, color)
 			local label, value, unit = metric_text(metric, sample, elapsed_us, data)

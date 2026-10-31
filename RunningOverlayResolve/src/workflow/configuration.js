@@ -41,8 +41,15 @@ function validateConfiguration(value) {
       ...(activityTimeZone ? { activityTimeZone: validateTimeZone(activityTimeZone) } : {}),
     })), enumerable: true });
   }
+  const draftTimeOffsetMs = value.draftTimeOffsetMs ?? 0;
+  invariant(Number.isSafeInteger(draftTimeOffsetMs) && Math.abs(draftTimeOffsetMs) <= 86_400_000, 'Data time offset must be within one day.');
+  invariant(value.activityLabel == null || (typeof value.activityLabel === 'string' && value.activityLabel.length <= 255), 'Invalid activity name.');
   return { schemaVersion: 1, contextId: value.contextId, referenceVideoTrackIndex: value.referenceVideoTrackIndex,
     activity: value.activity ? validateActivity(value.activity) : null,
+    activityLabel: value.activity && value.activityLabel ? value.activityLabel : null,
+    // Offset used when the overlay is created. Afterwards the Fusion renderer is
+    // authoritative and this value only mirrors its last known setting.
+    draftTimeOffsetMs,
     widgets: normalizeWidgets(value.widgets), layoutPreset: normalizeLayout(value.layoutPreset),
     captureTimeZone: value.captureTimeZone == null ? null : validateTimeZone(value.captureTimeZone), captureTimeZonesByMediaId,
     confirmedCaptureUtcByMediaId, cameraAnchors,

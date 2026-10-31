@@ -80,6 +80,7 @@ test('adapter scans a reference video track without mutating Resolve', async () 
   otio.tracks.children[0].children.unshift({ OTIO_SCHEMA: 'Gap.1', source_range: { duration: { value: 100, rate: 30000 / 1001 } } });
   const scan = await scanCurrentTimeline(resolve, { referenceVideoTrackIndex: 1, exportInspection: async () => otio });
   assert.equal(scan.timeline.timelineId, 'timeline-1');
+  assert.deepEqual(scan.tracks, [{ index: 1, name: 'V1', clipCount: 1 }]);
   assert.equal(scan.timeline.items[0].timelineEndFrameExclusive, 200);
   assert.deepEqual(scan.timeline.items[0].sourceFrameRate, { numerator: 30, denominator: 1 });
   assert.equal(scan.mediaById['media-1'].captureTimeCandidates.length, 1);

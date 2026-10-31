@@ -53,6 +53,8 @@ function registerHandlers() {
   ipcMain.handle('resolve:scanTimeline', (_event, request) => service.exclusive(() => service.scanContext(request?.trackIndex, request?.contextId)));
   ipcMain.handle('configuration:save', (_event, payload) => service.exclusive(() => service.saveConfiguration(payload)));
   ipcMain.handle('overlay:apply', (_event, payload) => service.exclusive(() => service.apply(payload)));
+  // Not queued behind scans: timing nudges must feel immediate while the user watches.
+  ipcMain.handle('overlay:setTimeOffset', (_event, payload) => service.setTimeOffset(payload));
   ipcMain.handle('resolve:cleanup', () => service.exclusive(async () => {
     if (initialized) WorkflowIntegration.CleanUp();
     initialized = false;

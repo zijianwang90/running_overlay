@@ -54,6 +54,7 @@ for (const marker of [
   'Choose sync.rosync, not sync-map.json',
   'RUNNING OVERLAY DATA ERROR',
   'Reload Data',
+  'Data Time Offset (s)',
 ]) {
   if (!fuse.includes(marker)) throw new Error(`Numeric Fuse is missing required marker: ${marker}`);
 }

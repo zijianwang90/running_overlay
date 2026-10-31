@@ -1,6 +1,6 @@
 # Running Overlay Resolve Architecture
 
-Last updated: 2026-09-30
+Last updated: 2026-10-17
 
 ## Independence
 
@@ -48,6 +48,21 @@ survive untouched date/clock controls. Optional `captureTimeZone`,
 preferences within configuration schema 1; missing fields default safely.
 Partial picker drafts stay in the renderer across scans and are not timing
 authority. Date/clock/zone edits clear a source's confirmation.
+
+The panel is one state-driven screen: activity, reference-track chips, time
+alignment, widgets, and a single primary action whose label follows the state
+(scan, choose activity, use file times, set missing times, create, update, up
+to date). Edits save automatically after a short debounce; only the primary
+action changes Resolve. Silent scans no longer disable form controls, and
+polling pauses while the user adjusts timing.
+
+Time alignment infers the recording timezone with
+`src/sync/alignment-preview.js` by choosing the zone that places the most
+filename clocks inside the activity (the system zone wins ties), shows clips
+against the activity on a preview strip, and accepts file or metadata times in
+one explicit **Use file times** action. Per-file pickers and camera drift pairs
+remain under **Clip details**. The strip is a preview; the sync compiler remains
+the only mapping authority.
 
 ### Resolve Adapter
 
@@ -130,6 +145,28 @@ activity or sync protocols. A future OFX renderer must read the immutable
 bundle once per instance and never call Resolve scripting APIs from its render
 callback. See [ADR 0008](../../docs/adr/0008-resolve-numeric-widget-renderer.md).
 
+### Data Time Offset
+
+The Fuse's `TimeOffset` input (seconds, Sync page first in the inspector, with
+±0.1 s and ±1 s buttons) is added to the activity time after segment lookup:
+
+```text
+activityAtFrame' = activityAtFrame + round(TimeOffset × 1,000,000)
+```
+
+Positive values show later activity data. An optional sync readout draws the
+current activity time and offset in the frame for alignment checks. Once the
+overlay exists the Fuse input is authoritative; the panel reads it on scans and
+writes it through a small acknowledged Fusion transaction outside the scan
+queue, coalescing drags so one write is in flight. A draft offset in the panel
+configuration seeds only a newly created renderer. See
+[ADR 0009](../../docs/adr/0009-resolve-data-time-offset-in-renderer.md).
+
+`fusion/Templates/Edit/Generators/Running Overlay Numeric (Experimental).setting`
+wraps the Fuse as an Edit page generator that publishes the offset and data
+inputs. It exists only to verify whether Edit Inspector controls and blade cuts
+give per-clip offsets; it is not part of the managed workflow.
+
 ## Persisted Versus Derived State
 
 Persisted authority:
@@ -137,7 +174,8 @@ Persisted authority:
 - activity file identity and normalized activity data;
 - confirmed capture-time evidence;
 - manual camera clock anchors;
-- widget parameters and scene structure.
+- widget parameters and scene structure;
+- the data time offset, held by the managed Fuse once the overlay exists.
 
 Derived/cache state:
 
@@ -157,6 +195,9 @@ data must be rebuilt while confirmed anchors remain intact.
   01:00:00:00 start to other rates, start codes, and later-starting comps.
 - Verify Fuse file access from signed installs and relinked/offline media.
 - Validate viewer crosshair behavior on Edit and Fusion pages.
+- Verify panel offset writes during Edit page playback, offset save/reopen and
+  undo, Edit Inspector exposure through the experimental generator, and
+  whether blade-split Fusion clips keep independent offsets and correct time.
 - Measure 4K60 performance with at least ten widgets.
 - Validate alpha, color management, float image depth, and Deliver output.
 - Inspect iPhone, GoPro, DJI, and Insta360 metadata snapshots and direct source

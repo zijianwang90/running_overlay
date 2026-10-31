@@ -10,8 +10,16 @@ function luaString(value) {
   return `string.sub([${equals}[x${value}]${equals}], 2)`;
 }
 
-function dataUpdateScript({ bundleDirectory, origin, token, initialize = false, widgets, layoutPreset }) {
+const MAXIMUM_OFFSET_SECONDS = 86_400;
+function validOffsetSeconds(value) {
+  invariant(typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= MAXIMUM_OFFSET_SECONDS, 'Data time offset must be within one day.');
+  // Millisecond precision keeps the Fusion value readable and deterministic.
+  return Math.round(value * 1000) / 1000;
+}
+
+function dataUpdateScript({ bundleDirectory, origin, token, initialize = false, widgets, layoutPreset, initialTimeOffsetSeconds = 0 }) {
   invariant(Number.isSafeInteger(origin), 'Invalid composition origin');
+  const initialOffset = validOffsetSeconds(initialTimeOffsetSeconds);
   const selected = normalizeWidgets(widgets);
   const layout = normalizeLayout(layoutPreset);
   const fields = {
@@ -71,6 +79,9 @@ local ok, message = pcall(function()
     end
   end
   for _, field in ipairs(fields) do update(field[1], field[2]) end
+  -- A new renderer starts from the panel's draft offset. An existing renderer
+  -- owns its offset, including Fusion animation; resyncs never reset it.
+  if fresh then update("TimeOffset", ${initialOffset}) end
   local prefixes = {heartRate = "HeartRate", pace = "Pace", distance = "Distance", elapsed = "Elapsed"}
   local enabled = {}
   for _, widget in ipairs(desired) do enabled[widget.metric] = widget end
@@ -109,4 +120,37 @@ comp:SetData(status_key, token .. (ok and "|ok" or "|error:" .. tostring(message
 `;
 }
 
-module.exports = { luaString, dataUpdateScript };
+// Reads, or sets and reads back, the managed renderer's data time offset. It is
+// a small separate transaction so dragging the panel control stays responsive.
+function timeOffsetScript({ token, offsetSeconds = null }) {
+  const requested = offsetSeconds === null ? 'nil' : String(validOffsetSeconds(offsetSeconds));
+  return `
+local status_key = "RunningOverlay.Operation"
+local token = ${luaString(token)}
+local requested = ${requested}
+local ok, result = pcall(function()
+  local node = nil
+  for _, candidate in pairs(comp:GetToolList(false, "Fuse.RunningOverlayNumeric")) do
+    if candidate:GetData("RunningOverlay.ManagedNumeric") then
+      assert(node == nil, "Multiple managed Numeric nodes need manual review.")
+      node = candidate
+    end
+  end
+  assert(node, "The managed Numeric node is missing. Update the overlay to repair it.")
+  local current = node:GetInput("TimeOffset")
+  assert(current ~= nil, "Install the current Numeric Fuse and restart Resolve.")
+  local animated = node.TimeOffset:GetConnectedOutput() ~= nil
+  if requested ~= nil then
+    assert(not animated, "The data time offset is animated in Fusion. Adjust its keyframes there.")
+    comp:StartUndo("Adjust Running Overlay timing")
+    node:SetInput("TimeOffset", requested)
+    comp:EndUndo(true)
+    current = node:GetInput("TimeOffset")
+  end
+  return string.format("%.3f|%s", current, animated and "animated" or "static")
+end)
+comp:SetData(status_key, token .. (ok and ("|ok|" .. result) or ("|error:" .. tostring(result))))
+`;
+}
+
+module.exports = { luaString, dataUpdateScript, timeOffsetScript, validOffsetSeconds };

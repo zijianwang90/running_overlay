@@ -117,6 +117,12 @@ async function scanCurrentTimeline(resolve, options = {}) {
     timeline.GetItemListInTrack('video', referenceVideoTrackIndex),
   ]);
   const frameRate = parseFrameRate(rawTimelineFrameRate);
+  // Lets the panel offer tracks by name and clip count instead of a bare index.
+  const tracks = await Promise.all(Array.from({ length: trackCount }, async (_, offset) => {
+    const index = offset + 1;
+    const [name, trackItems] = await Promise.all([timeline.GetTrackName('video', index), timeline.GetItemListInTrack('video', index)]);
+    return { index, name: String(name ?? `V${index}`), clipCount: Object.values(trackItems ?? {}).length };
+  }));
   const otio = await (options.exportInspection ?? exportTimelineInspection)(timeline);
   const evidence = inspectReferenceTrack(otio, referenceVideoTrackIndex, Number(timelineStartFrame), frameRate);
   const mediaById = {};
@@ -188,6 +194,7 @@ async function scanCurrentTimeline(resolve, options = {}) {
       referenceVideoTrackEnabled: trackEnabled !== false,
       items,
     },
+    tracks,
     mediaById,
     diagnostics,
   };

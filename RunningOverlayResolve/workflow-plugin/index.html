@@ -7,96 +7,103 @@
     <title>Running Overlay Resolve</title>
     <link rel="stylesheet" href="styles.css">
     <script src="lib/sync/capture-time.js" defer></script>
+    <script src="lib/sync/alignment-preview.js" defer></script>
     <script src="time-picker.js" defer></script>
     <script src="renderer.js" defer></script>
   </head>
   <body>
     <header class="app-header">
-      <div>
-        <h1>Running Overlay Resolve</h1>
-      </div>
+      <h1>Running Overlay</h1>
       <div class="window-controls">
+        <button id="refresh" class="window-button" type="button" aria-label="Scan timeline again" title="Scan timeline again">↻</button>
         <button id="minimize-window" class="window-button" type="button" aria-label="Minimize panel" title="Minimize">−</button>
         <button id="close-window" class="window-button" type="button" aria-label="Close panel" title="Close">×</button>
       </div>
     </header>
 
     <main>
-      <section class="panel-section">
-        <div class="section-heading">
-          <div>
-            <h2>1. Activity</h2>
-            <p>Load a FIT or GPX file directly, or use portable activity JSON for tests.</p>
+      <section class="card">
+        <div class="card-row">
+          <div class="card-text">
+            <div id="activity-name" class="card-title">No activity</div>
+            <div id="activity-meta" class="note">Choose the FIT or GPX file recorded with this video.</div>
           </div>
-          <button id="choose-activity" class="secondary">Choose</button>
+          <button id="choose-activity" class="secondary" type="button">Choose</button>
         </div>
-        <div id="activity-status" class="status-card muted">No activity loaded</div>
       </section>
 
-      <section class="panel-section">
-        <div class="section-heading">
-          <div>
-            <h2>2. Reference track</h2>
-            <p>Scan one non-overlapping video track and preserve every source-in.</p>
-          </div>
-        </div>
-        <div class="inline-controls">
-          <label for="track-index">Video track</label>
-          <input id="track-index" type="number" min="1" step="1" value="1">
-          <button id="scan-timeline" class="secondary">Scan</button>
-        </div>
-        <div id="timeline-status" class="status-card muted">Timeline not scanned</div>
+      <section class="card">
+        <h2>Video track</h2>
+        <div id="track-chips" class="chips" role="radiogroup" aria-label="Reference video track"></div>
+        <p id="timeline-status" class="note">Looking for the current timeline…</p>
       </section>
 
-      <section class="panel-section">
-        <div class="section-heading">
-          <div>
-            <h2>3. Capture times</h2>
-            <p>Filename dates are filled for review. Choose the recording timezone, then confirm each original file's start.</p>
-          </div>
+      <section class="card" id="alignment-card">
+        <div class="card-head">
+          <h2>Time alignment</h2>
+          <span id="align-badge" class="badge muted">Waiting</span>
         </div>
-        <div class="recording-zone">
-          <label for="capture-zone">Recording timezone for filename dates</label>
+        <p id="align-summary" class="note"></p>
+        <div class="zone-row">
+          <label for="capture-zone">Recording timezone</label>
           <select id="capture-zone"><option value="">Choose timezone</option></select>
-          <button id="use-capture-zone" class="secondary" type="button">Use for unconfirmed filename times</button>
         </div>
-        <div id="clip-list" class="clip-list">
-          <div class="empty-state">Scan a timeline to inspect its clips.</div>
-        </div>
-      </section>
+        <p id="zone-note" class="note"></p>
 
-      <section class="panel-section">
-        <details id="camera-calibration">
-          <summary>4. Camera clock calibration (optional)</summary>
-          <p class="footnote">Choose the camera and activity readings for the same instant. One pair corrects offset; two pairs also correct drift.</p>
-          <div id="camera-list"></div>
+        <div class="strip" aria-hidden="true">
+          <div id="strip-activity" class="strip-activity"></div>
+          <div id="strip-clips" class="strip-clips"></div>
+        </div>
+        <div class="strip-legend note"><span>Activity</span><span id="strip-caption">Clips</span></div>
+
+        <div class="offset" id="offset-group">
+          <div class="offset-head">
+            <label for="offset-slider">Data timing</label>
+            <output id="offset-value" for="offset-slider offset-input">0.000 s</output>
+          </div>
+          <div class="offset-controls">
+            <button type="button" class="secondary" data-nudge="-1" aria-label="Earlier data by 1 second">−1 s</button>
+            <button type="button" class="secondary" data-nudge="-0.1" aria-label="Earlier data by 0.1 second">−0.1</button>
+            <input id="offset-slider" type="range" min="-30" max="30" step="0.1" value="0">
+            <button type="button" class="secondary" data-nudge="0.1" aria-label="Later data by 0.1 second">+0.1</button>
+            <button type="button" class="secondary" data-nudge="1" aria-label="Later data by 1 second">+1 s</button>
+          </div>
+          <div class="offset-direction note"><span>← Earlier data</span><span>Later data →</span></div>
+          <div class="offset-exact">
+            <label for="offset-input">Exact offset</label>
+            <input id="offset-input" type="number" step="0.001" value="0">
+            <span class="note">s</span>
+          </div>
+          <p id="offset-hint" class="note">Play or park the playhead in Resolve on a clear moment, such as the start or a stop, and nudge until the numbers change when it happens on screen. The same offset is in the overlay's Fusion inspector.</p>
+        </div>
+
+        <details id="clip-details">
+          <summary>Clip details <span id="clip-count" class="note"></span></summary>
+          <p class="note">Per-file recording starts. Use these only when file times are missing or wrong.</p>
+          <div id="clip-list" class="clip-list"></div>
+          <details id="camera-calibration">
+            <summary>Camera clock drift (advanced)</summary>
+            <p class="note">Choose the camera and activity readings for the same instant. One pair corrects offset; two pairs far apart also correct drift.</p>
+            <div id="camera-list"></div>
+          </details>
         </details>
       </section>
-      <section class="panel-section">
-        <h2>5. Overlay widgets</h2>
-        <p>Add and arrange up to four metrics. Choose a starting layout, then refine each widget in Fusion.</p>
-        <div class="inline-controls widget-controls">
-          <label for="layout-preset">Layout</label>
-          <select id="layout-preset">
-            <option value="vertical">Vertical stack</option>
-            <option value="horizontal">Horizontal row</option>
-            <option value="grid">Two-column grid</option>
-          </select>
+
+      <section class="card">
+        <h2>Widgets</h2>
+        <div id="metric-chips" class="chips" aria-label="Metrics"></div>
+        <div class="segmented" role="radiogroup" aria-label="Layout">
+          <button type="button" data-layout="vertical">Stack</button>
+          <button type="button" data-layout="horizontal">Row</button>
+          <button type="button" data-layout="grid">Grid</button>
         </div>
-        <div id="widget-list" class="widget-list"></div>
-        <div class="inline-controls widget-controls">
-          <label for="add-widget-metric">Add metric</label>
-          <select id="add-widget-metric"></select>
-          <button id="add-widget" class="secondary">Add</button>
-        </div>
-        <p class="footnote">Reordering or changing the layout applies preset positions. Ordinary synchronization keeps your Fusion positions, styles, and animation.</p>
-      </section>
-      <section class="panel-section output-section">
-        <button id="save-settings" class="secondary">Save settings</button>
-        <button id="build-bundle" class="primary" disabled>Create / Update Overlay</button>
-        <p class="footnote">Saves settings locally and creates or updates the live Fusion widgets. Position and style stay editable in Fusion.</p>
-        <div id="build-status" class="status-card muted">Waiting for activity and timeline</div>
+        <p class="note">Changing metrics or layout resets preset positions on the next update. Size, font, color and exact position stay in Fusion.</p>
       </section>
     </main>
+
+    <footer class="action-bar">
+      <button id="primary-action" class="primary" type="button">Scan timeline</button>
+      <p id="build-status" class="note" aria-live="polite"></p>
+    </footer>
   </body>
 </html>

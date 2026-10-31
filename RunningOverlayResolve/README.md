@@ -63,29 +63,44 @@ a standalone Electron launch cannot establish the host connection.
 
 ## Using The Panel
 
-1. Open a Resolve timeline and the Workflow panel.
-2. Choose a FIT or GPX file, or the synthetic activity JSON.
-3. Choose the reference video track and click **Scan**.
-4. Review filename date/time candidates, choose the recording timezone, and
-   confirm the original source starts. Calendar, hour/minute/second, and timezone
-   selectors replace ISO text entry. Repeated edits of a source share confirmation.
-5. Optionally select camera/activity clock pairs: one pair corrects offset; two
-   separated pairs also correct drift.
-6. Add or remove metrics, use the arrow buttons to set their order, and choose a
-   layout. **Save settings** preserves edits without changing the timeline.
-7. Click **Create / Update Overlay**. The plugin creates the composition and
-   connects its data inputs automatically.
-8. Refine each metric's controls in Fusion. Save the Resolve project to persist
-   the composition. After editing the reference track, use **Create / Update**
-   again; an ordinary update preserves Fusion positions, styles, and animation.
+The panel is one screen with a single primary button whose label always names
+the next step. Edits save automatically; only that button changes Resolve.
+
+1. Open a Resolve timeline and the Workflow panel. The current timeline is
+   scanned automatically; use ↻ to scan again.
+2. Choose a FIT or GPX file (or the synthetic activity JSON).
+3. Pick the reference video track from the track chips. A fresh timeline with
+   no clips on V1 switches to the first track with clips once.
+4. **Time alignment** infers the recording timezone from filename clocks and the
+   activity, and shows the clips against the activity on a strip. Check the
+   zone and strip, then press **Use file times** to accept the detected times for
+   all files at once. Files without a usable time, and camera drift pairs, are
+   under **Clip details**.
+5. Toggle metrics and choose **Stack**, **Row**, or **Grid**. Size, font, color,
+   and exact position stay in Fusion.
+6. Press **Create overlay**. The plugin creates the composition and connects its
+   data inputs automatically.
+7. Play or park the playhead in Resolve on a clear moment, such as the start or
+   a stop, and adjust **Data timing** until the numbers change when it happens
+   on screen. Positive values show later activity data. The same control is the
+   **Data Time Offset (s)** input on the Numeric node's Sync page in Fusion,
+   with ±0.1 s and ±1 s buttons and an optional sync readout.
+8. Save the Resolve project. After editing the reference track, press
+   **Update overlay**; it preserves the offset, Fusion positions, styles, and
+   animation.
 
 Filename tokens such as `PRO_VID_20260702_184703_00_009.mp4` supply a local wall
-clock candidate, never an inferred UTC instant. Choose the camera's recording
-timezone before confirming. Named timezones use the offset for the selected
-date; skipped daylight-saving times are rejected and repeated hours need an
-explicit offset choice. Changing a time or zone clears its confirmation.
-The batch timezone button updates unconfirmed filename/manual candidates while
-preserving confirmed sources and unchanged absolute metadata candidates.
+clock candidate, never an inferred UTC instant. The timezone inference only
+preselects a zone; nothing is used until **Use file times** or a per-file
+confirmation. Named timezones use the offset for the selected date; skipped
+daylight-saving times are rejected and repeated hours need an explicit choice
+in Clip details. Changing a time or zone clears its confirmation.
+
+The offset applies to the whole overlay. Panel writes are refused while an
+update runs or Resolve renders; an offset animated in Fusion is edited only
+there. `fusion/Templates/Edit/Generators/` contains an experimental generator
+for checking Edit Inspector exposure of the offset; it is not part of the
+managed workflow (see the testing guide).
 
 The panel has a dark frameless header in place of the native macOS traffic-light
 bar. Drag the title to move it; use the header minimize and close buttons.
