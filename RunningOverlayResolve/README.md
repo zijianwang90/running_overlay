@@ -8,7 +8,8 @@ produce intermediate overlay videos.
 
 The Workflow panel imports FIT or GPX data or normalized activity JSON,
 checks a reference video track, and creates or updates a live Numeric overlay
-on a dedicated video track. The panel supports twenty-one numeric metrics,
+on a dedicated video track. The panel supports twenty-one numeric metrics plus solid-color, icon and text
+decor elements,
 original vector numeric icons, a minimal distance timeline and an offline route
 map with a time-driven position marker, an HR zone bar, a compact elevation
 chart, the Easy Run/Race weather card, the activity date, a configurable custom numeric field, an HR-zone label, and

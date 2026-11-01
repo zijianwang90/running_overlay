@@ -583,3 +583,15 @@ progress ring, dividers and the four regions (`DIST 0.93 km`, `PACE 5'29" /km`,
 `TIME 05:26`, `HR 146 bpm`) at 1080p ProRes 4444 alpha. Save, close and reopen
 retained metric 25, size and progress mode. The original `Overlay Test` project
 was restored.
+
+## Decor Elements — 2026-11-01
+
+v18 adds metrics 26–28 (Solid Color, Icon, Text). The Lua test covers rendering
+with `sample_activity` returning nil: rectangle geometry from the position input,
+fill color propagation, original-glyph icon selection/size and left/right text
+alignment. Only project-owned glyphs are exercised; no SF Symbols or external
+assets are used. Host evidence: the primary slot plus slots 15 and 16 in
+`RO Numeric v7 Validation` rendered a tinted rounded rectangle, the original
+Calendar glyph and `RUNNING OVERLAY` text at 1080p ProRes 4444 alpha. Save,
+close and reopen retained metrics 27/26/28 and the text content. The original
+`Overlay Test` project was restored.

@@ -8,7 +8,7 @@ const { METRICS } = require('../src/domain/widgets');
 const FUSE_NAMES = { heartRate: 'Heart Rate', pace: 'Pace', distance: 'Distance', elapsed: 'Elapsed', elevation: 'Elevation',
   cadence: 'Cadence', power: 'Power', calories: 'Calories', avgPace: 'Avg Pace', verticalOscillation: 'Vertical Oscillation',
   groundContactTime: 'Ground Contact Time', strideLength: 'Stride Length', verticalRatio: 'Vertical Ratio',
-  groundContactBalance: 'GCT Balance', temperature: 'Temperature', grade: 'Grade', realTime: 'Real Time', distanceTimeline: 'Distance Timeline', routeMap: 'Route Map', zoneEdgeBar: 'HR Zone Bar', elevationChart: 'Elevation Chart', weatherWidget: 'Weather', date: 'Date', customNumeric: 'Custom Numeric', heartRateZone: 'HR Zone', runningGauge: 'Running Gauge' };
+  groundContactBalance: 'GCT Balance', temperature: 'Temperature', grade: 'Grade', realTime: 'Real Time', distanceTimeline: 'Distance Timeline', routeMap: 'Route Map', zoneEdgeBar: 'HR Zone Bar', elevationChart: 'Elevation Chart', weatherWidget: 'Weather', date: 'Date', customNumeric: 'Custom Numeric', heartRateZone: 'HR Zone', runningGauge: 'Running Gauge', decoSolidColor: 'Solid Color', decorIcon: 'Decor Icon', decorText: 'Decor Text' };
 assert.deepEqual(Object.values(METRICS), Object.keys(METRICS).map((_, index) => index));
 const source = fs.readFileSync(path.join(__dirname, '../fusion/Fuses/RunningOverlayNumeric.fuse'), 'utf8');
 function run(code) {
@@ -526,6 +526,26 @@ hr=140;inputs.ZoneCount.value=0;inputs.Zone1Max.value=0;inputs.Zone2Min.value=20
 assert(of('text')[1].text=='--')
 NotifyChanged(inputs.Metric,{Value=HR_ZONE_METRIC})
 assert(inputs.ZoneCount.visible==true and inputs.Zone1Min.visible==true and inputs.TimelineWidth.visible==false)
+`));
+
+test('decor solid color, icon and text render without an activity sample', () => run(HOST + `
+local icon_call
+icon_shapes=function(name,left,top,size) icon_call={name=name,left=left,top=top,size=size}; return {capsule(left,top-size,size,size,0)} end
+load_data=function() return {} end
+sample_activity=function() return nil end
+inputs.ShadowEnabled.value=0
+inputs.Metric.value=DECOR_SOLID_METRIC;inputs.DecorShape.value=0;inputs.DecorFillR.value=0.2
+Process(req)
+local shapes=of('shape');assert(#shapes==1 and #shapes[1].shape.rects==1 and near(shapes[1].shape.rects[1][1],0.08-0.1))
+assert(shapes[1].color.R==0.2)
+inputs.Metric.value=DECOR_ICON_METRIC;events={};Process(req)
+assert(icon_call.name=='Heart' and near(icon_call.size,64/1280) and #of('shape')==1)
+inputs.Metric.value=DECOR_TEXT_METRIC;inputs.DecorText.value='GO';inputs.DecorAlignment.value=0;events={};Process(req)
+assert(#of('text')==1 and of('text')[1].text=='GO' and near(of('text')[1].x,0.08))
+inputs.DecorAlignment.value=2;events={};Process(req)
+assert(of('text')[1].x<0.08)
+NotifyChanged(inputs.Metric,{Value=DECOR_TEXT_METRIC})
+assert(inputs.DecorText.visible==true and inputs.DecorTextColorR.visible==true and inputs.TimelineWidth.visible==false)
 `));
 
 test('running gauge draws dial, regions and the distance progress ring', () => run(HOST + `

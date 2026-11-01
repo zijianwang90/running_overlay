@@ -16,7 +16,7 @@ FuRegisterClass("RunningOverlayNumeric", CT_SourceTool, {
 	REG_Source_DepthCtrls = true,
 	REG_Fuse_NoEdit = false,
 	REG_Fuse_NoReload = false,
-	REG_Version = 17,
+	REG_Version = 18,
 })
 
 -- Cache only complete immutable snapshots. Several Numeric Fuse instances can
@@ -695,6 +695,8 @@ end
 -- circle and "A cx cy r from to" for a clockwise arc in degrees.
 ICON_NAMES = {"Metric Default", "Heart", "Speedometer", "Ruler", "Clock", "Watch", "Mountains", "Runner", "Bolt",
 	"Flame", "Up-Down Arrow", "Timer", "Left-Right Arrow", "Percent", "Balance", "Thermometer", "Up-Right Arrow", "Calendar"}
+DECOR_ICON_NAMES = {}
+for index = 2, #ICON_NAMES do table.insert(DECOR_ICON_NAMES, ICON_NAMES[index]) end
 ICON_GLYPHS = {
 	Heart = {stroke = "M12 20.5 C6 16.3 2.5 12.6 2.5 8.6 C2.5 5.7 4.7 3.6 7.3 3.6 C9.3 3.6 11 4.8 12 6.6 C13 4.8 14.7 3.6 16.7 3.6 C19.3 3.6 21.5 5.7 21.5 8.6 C21.5 12.6 18 16.3 12 20.5 Z"},
 	Speedometer = {stroke = "A12 14 9 150 390 M12 14 L16.6 9", fill = "O12 14 1.7"},
@@ -735,6 +737,9 @@ DATE_METRIC = 22
 CUSTOM_METRIC = 23
 HR_ZONE_METRIC = 24
 GAUGE_METRIC = 25
+DECOR_SOLID_METRIC = 26
+DECOR_ICON_METRIC = 27
+DECOR_TEXT_METRIC = 28
 -- Gauge region combo order maps to the existing metric indices.
 GAUGE_METRICS = {0, 2, 1, 8, 3, 16, 6, 5, 4, 7, 9, 10, 11, 12, 13, 14, 15}
 GAUGE_METRIC_LABELS = {"Heart Rate", "Distance", "Pace", "Avg Pace", "Elapsed Time", "Real Time", "Power", "Cadence",
@@ -1031,7 +1036,8 @@ function Create()
 			{CCS_AddString = "Temperature"}, {CCS_AddString = "Grade"},
 			{CCS_AddString = "Real Time"}, {CCS_AddString = "Distance Timeline"},
 		{CCS_AddString = "Route Map"}, {CCS_AddString = "HR Zone Bar"}, {CCS_AddString = "Elevation Chart"}, {CCS_AddString = "Weather"},
-		{CCS_AddString = "Date"}, {CCS_AddString = "Custom Numeric"}, {CCS_AddString = "HR Zone"}, {CCS_AddString = "Running Gauge"},
+		{CCS_AddString = "Date"}, {CCS_AddString = "Custom Numeric"}, {CCS_AddString = "HR Zone"}, {CCS_AddString = "Running Gauge"}, {CCS_AddString = "Solid Color"},
+		{CCS_AddString = "Decor Icon"}, {CCS_AddString = "Decor Text"},
 		})
 	end
 	InMetric = metric_input("Metric", "Metric", 0)
@@ -1283,6 +1289,26 @@ function Create()
 		end
 		return z
 	end
+	local function decor_options(key, group)
+		local function number(label, suffix, default, min, max) return number_in(group, label, key .. "Decor" .. suffix, default, min, max) end
+		return {
+			shape = combo_in(group, "Shape", key .. "DecorShape", {"Rectangle", "Rounded Rectangle", "Circle"}, 0),
+			width = number("Width", "Width", 0.2, 0.005, 1),
+			height = number("Height", "Height", 0.05, 0.005, 1),
+			corner = number("Corner Radius", "Corner", 0.008, 0, 0.2),
+			fill = color_in(group, "Fill", key .. "DecorFill", {1, 1, 1, 1}, 32, true),
+			icon = combo_in(group, "Icon", key .. "DecorIcon", {"Heart", "Speedometer", "Ruler", "Clock", "Watch",
+				"Mountains", "Runner", "Bolt", "Flame", "Up-Down Arrow", "Timer", "Left-Right Arrow", "Percent",
+				"Balance", "Thermometer", "Up-Right Arrow", "Calendar"}, 0),
+			icon_size = number("Icon Size", "IconSize", 64 / 1280, 0.005, 0.4),
+			icon_color = color_in(group, "Icon Color", key .. "DecorIconColor", {1, 1, 1, 1}, 33, true),
+			text = add(group, "Text", key .. "DecorText", {
+				LINKID_DataType = "Text", INPID_InputControl = "TextEditControl", INP_DefaultText = "TEXT", TEC_Lines = 2}),
+			text_size = number("Text Size", "TextSize", 0.05, 0.005, 0.2),
+			text_color = color_in(group, "Text Color", key .. "DecorTextColor", {1, 1, 1, 1}, 34, true),
+			alignment = combo_in(group, "Text Alignment", key .. "DecorAlignment", {"Left", "Center", "Right"}, 1),
+		}
+	end
 	local function gauge_options(key, group)
 		local function number(label, suffix, default, min, max) return number_in(group, label, key .. "Gauge" .. suffix, default, min, max) end
 		local function check(label, suffix, default) return check_in(group, label, key .. "Gauge" .. suffix, default) end
@@ -1376,7 +1402,7 @@ function Create()
 		}
 	end
 	VisibilityGroups = {}
-	local primary_numeric, primary_timeline, primary_route, primary_zone, primary_elevation, primary_weather, primary_gauge = {InSize, InShowLabel}, {}, {}, {}, {}, {}, {}
+	local primary_numeric, primary_timeline, primary_route, primary_zone, primary_elevation, primary_weather, primary_gauge, primary_decor = {InSize, InShowLabel}, {}, {}, {}, {}, {}, {}, {}
 	PrimaryTextOptions = text_options("", primary_numeric)
 	PrimaryTimelineOptions = timeline_options("", primary_timeline)
 	PrimaryRouteOptions = route_options("", primary_route)
@@ -1384,7 +1410,8 @@ function Create()
 	PrimaryElevationOptions = elevation_options("", primary_elevation)
 	PrimaryWeatherOptions = weather_options("", primary_weather)
 	PrimaryGaugeOptions = gauge_options("", primary_gauge)
-	VisibilityGroups[InMetric] = {numeric = primary_numeric, timeline = primary_timeline, route = primary_route, zone = primary_zone, elevation = primary_elevation, weather = primary_weather, gauge = primary_gauge}
+	PrimaryDecorOptions = decor_options("", primary_decor)
+	VisibilityGroups[InMetric] = {numeric = primary_numeric, timeline = primary_timeline, route = primary_route, zone = primary_zone, elevation = primary_elevation, weather = primary_weather, gauge = primary_gauge, decor = primary_decor}
 	WidgetInputs = {}
 	local definitions = {
 		{key = "Pace", label = "Pace", metric = 1},
@@ -1396,7 +1423,7 @@ function Create()
 	end
 	for slot, definition in ipairs(definitions) do
 		local key = definition.key
-		local numeric, timeline, route, zone, elevation, weather, gauge = {}, {}, {}, {}, {}, {}, {}
+		local numeric, timeline, route, zone, elevation, weather, gauge, decor = {}, {}, {}, {}, {}, {}, {}, {}
 		self:AddControlPage(definition.label)
 		local controls = {}
 		controls.metric = metric_input("Metric", key .. "Metric", definition.metric)
@@ -1433,7 +1460,8 @@ function Create()
 		controls.elevation = elevation_options(key, elevation)
 		controls.weather = weather_options(key, weather)
 		controls.gauge = gauge_options(key, gauge)
-		VisibilityGroups[controls.metric] = {numeric = numeric, timeline = timeline, route = route, zone = zone, elevation = elevation, weather = weather, gauge = gauge}
+		controls.decor = decor_options(key, decor)
+		VisibilityGroups[controls.metric] = {numeric = numeric, timeline = timeline, route = route, zone = zone, elevation = elevation, weather = weather, gauge = gauge, decor = decor}
 		WidgetInputs[slot] = controls
 	end
 	-- No default metric is a timeline; NotifyChanged reveals them per slot.
@@ -1444,6 +1472,7 @@ function Create()
 		for _, input in ipairs(groups.elevation) do input:SetAttrs({IC_Visible = false}) end
 		for _, input in ipairs(groups.weather) do input:SetAttrs({IC_Visible = false}) end
 		for _, input in ipairs(groups.gauge) do input:SetAttrs({IC_Visible = false}) end
+		for _, input in ipairs(groups.decor) do input:SetAttrs({IC_Visible = false}) end
 	end
 end
 
@@ -1458,7 +1487,7 @@ function NotifyChanged(input, parameter, time)
 		DataCache = {}
 	elseif VisibilityGroups ~= nil and VisibilityGroups[input] ~= nil then
 		local metric = parameter ~= nil and math.floor((parameter.Value or 0) + 0.5) or 0
-		local kind = ({[TIMELINE_METRIC] = "timeline", [ROUTE_METRIC] = "route", [ZONE_METRIC] = "zone", [ELEVATION_METRIC] = "elevation", [WEATHER_METRIC] = "weather", [HR_ZONE_METRIC] = "zone", [GAUGE_METRIC] = "gauge"})[metric] or "numeric"
+		local kind = ({[TIMELINE_METRIC] = "timeline", [ROUTE_METRIC] = "route", [ZONE_METRIC] = "zone", [ELEVATION_METRIC] = "elevation", [WEATHER_METRIC] = "weather", [HR_ZONE_METRIC] = "zone", [GAUGE_METRIC] = "gauge", [DECOR_SOLID_METRIC] = "decor", [DECOR_ICON_METRIC] = "decor", [DECOR_TEXT_METRIC] = "decor"})[metric] or "numeric"
 		for name, controls in pairs(VisibilityGroups[input]) do
 			for _, control in ipairs(controls) do control:SetAttrs({IC_Visible = name == kind}) end
 		end
@@ -1535,7 +1564,15 @@ function Process(req)
 		local y_scale = (output.Height * output.YScale) / (output.Width * output.XScale)
 		draw_text(output, font, style, readout, 0.02, 0.045, 0.045 * y_scale, Pixel{R = 1, G = 0.85, B = 0.3, A = 1}, quality)
 	end
-	if sample ~= nil then
+	local has_decor = false
+	local function is_decor(metric)
+		return metric == DECOR_SOLID_METRIC or metric == DECOR_ICON_METRIC or metric == DECOR_TEXT_METRIC
+	end
+	if InHeartRateEnabled:GetValue(req).Value > 0.5 and is_decor(math.floor(InMetric:GetValue(req).Value + 0.5)) then has_decor = true end
+	for _, controls in ipairs(WidgetInputs) do
+		if controls.enabled:GetValue(req).Value > 0.5 and is_decor(math.floor(controls.metric:GetValue(req).Value + 0.5)) then has_decor = true end
+	end
+	if sample ~= nil or has_decor then
 		local aspect = (output.Height * output.YScale) / (output.Width * output.XScale)
 		local function value_of(input) return input:GetValue(req).Value end
 		local function color_of(inputs, alpha)
@@ -2050,6 +2087,46 @@ function Process(req)
 			if shadow ~= nil then draw_shadow(output, parts, shadow, quality) end
 			for _, item in ipairs(parts) do draw_part(output, item, item.color, 0, 0, quality) end
 		end
+		local function render_decor(metric, position, widget_font, widget_style, color, d)
+			local x, y = position.X, position.Y * aspect
+			local parts = {}
+			local function part(shape, pixel) table.insert(parts, {shapes = {shape}, color = pixel}) end
+			if metric == DECOR_SOLID_METRIC then
+				local width = math.max(value_of(d.width), 1 / output.Width)
+				local height = math.max(value_of(d.height), 1 / output.Width)
+				local kind = math.floor(value_of(d.shape) + 0.5)
+				local shape
+				if kind == 2 then
+					local side = math.min(width, height)
+					width, height = side, side
+					shape = capsule(x - width / 2, y - height / 2, width, height, side / 2)
+				elseif kind == 1 then
+					shape = capsule(x - width / 2, y - height / 2, width, height,
+						math.min(value_of(d.corner), width / 2, height / 2))
+				else
+					shape = Shape()
+					shape:AddRectangle(x - width / 2, x + width / 2, y - height / 2, y + height / 2, 0, 8)
+				end
+				part(shape, color_of(d.fill))
+			elseif metric == DECOR_ICON_METRIC then
+				local size = math.max(value_of(d.icon_size), 4 / output.Width)
+				local name = DECOR_ICON_NAMES[math.floor(value_of(d.icon) + 0.5) + 1] or "Heart"
+				for _, shape in ipairs(icon_shapes(name, x - size / 2, y + size / 2, size)) do
+					part(shape, color_of(d.icon_color))
+				end
+			elseif metric == DECOR_TEXT_METRIC then
+				local text = tostring(value_of(d.text) or ""):gsub("[\r\n]+", " ")
+				if text ~= "" then
+					local text_size = math.max(value_of(d.text_size), 0.003)
+					local width = text_width(widget_font, widget_style, text, text_size)
+					local alignment = math.floor(value_of(d.alignment) + 0.5)
+					local left = alignment == 0 and x or (alignment == 2 and x - width or x - width / 2)
+					table.insert(parts, {font = widget_font, style = widget_style, text = text, size = text_size,
+						x = left, y = y, color = color_of(d.text_color)})
+				end
+			end
+			for _, item in ipairs(parts) do draw_part(output, item, item.color, 0, 0, quality) end
+		end
 		local function render_gauge(position, widget_font, widget_style, color, g)
 			local radius = math.max(value_of(g.size), 0.01) / 2
 			local cx, cy = position.X, position.Y * aspect
@@ -2164,8 +2241,12 @@ function Process(req)
 			region(metric_at(g.bottom_metric), cx, cy - radius * 0.46, 0.22)
 			for _, item in ipairs(parts) do draw_part(output, item, item.color, 0, 0, quality) end
 		end
-		local function render_slot(metric, position, size, show_label, widget_font, widget_style, color, options, timeline, route, zone, elevation, weather, gauge)
-			if metric == TIMELINE_METRIC then
+		local function render_slot(metric, position, size, show_label, widget_font, widget_style, color, options, timeline, route, zone, elevation, weather, gauge, decor)
+			if metric == DECOR_SOLID_METRIC or metric == DECOR_ICON_METRIC or metric == DECOR_TEXT_METRIC then
+				render_decor(metric, position, widget_font, widget_style, color, decor)
+			elseif sample == nil then
+				return
+			elseif metric == TIMELINE_METRIC then
 				render_timeline(position, widget_font, widget_style, color, timeline, options)
 			elseif metric == ROUTE_METRIC then
 				render_route(position, widget_font, widget_style, route, options)
@@ -2185,13 +2266,13 @@ function Process(req)
 			render_slot(math.floor(InMetric:GetValue(req).Value + 0.5), InPosition:GetValue(req), InSize:GetValue(req).Value,
 				InShowLabel:GetValue(req).Value > 0.5, font, style,
 				Pixel{R = InR:GetValue(req).Value, G = InG:GetValue(req).Value,
-					B = InB:GetValue(req).Value, A = InA:GetValue(req).Value}, PrimaryTextOptions, PrimaryTimelineOptions, PrimaryRouteOptions, PrimaryZoneOptions, PrimaryElevationOptions, PrimaryWeatherOptions, PrimaryGaugeOptions)
+					B = InB:GetValue(req).Value, A = InA:GetValue(req).Value}, PrimaryTextOptions, PrimaryTimelineOptions, PrimaryRouteOptions, PrimaryZoneOptions, PrimaryElevationOptions, PrimaryWeatherOptions, PrimaryGaugeOptions, PrimaryDecorOptions)
 		end
 		for _, controls in ipairs(WidgetInputs) do
 			if controls.enabled:GetValue(req).Value > 0.5 then
 				local widget_font, widget_style = font_of(controls.font, controls.font_style)
 				render_slot(math.floor(controls.metric:GetValue(req).Value + 0.5), controls.position:GetValue(req), controls.size:GetValue(req).Value,
-					controls.label:GetValue(req).Value > 0.5, widget_font, widget_style, color_of(controls.color), controls.text, controls.timeline, controls.route, controls.zone, controls.elevation, controls.weather, controls.gauge)
+					controls.label:GetValue(req).Value > 0.5, widget_font, widget_style, color_of(controls.color), controls.text, controls.timeline, controls.route, controls.zone, controls.elevation, controls.weather, controls.gauge, controls.decor)
 			end
 		end
 	elseif diagnostics_enabled then

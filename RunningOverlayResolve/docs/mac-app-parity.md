@@ -70,9 +70,9 @@ available, but there is no selectable/rendered widget.
 | Grade | Implemented (v8) | FIT field; GPX derived within a segment when both elevations exist |
 | Custom Numeric | Partial (v15) | 19 record sources, number/integer/duration/clock/date/pace/percent/coordinate formats, precision and custom unit. HR-zone, lap pace, elevation gain and generic FIT fields pending |
 | Weather Widget | Partial (v14) | Open-Meteo historical fetch cached in the project, offline card render, ten conditions, °C/°F, FIT override, SimpleCard layout; forecasts/presets/geocoding pending |
-| Solid Color | Missing | Shape, fill, geometry, opacity and effects |
-| Icon | Missing | Licensed asset handling and renderer |
-| Text | Missing | Text, typography, layout and effects |
+| Solid Color | Partial (v18) | Rectangle, rounded rectangle and circle with fill/opacity, size and corner radius; borders/effects pending |
+| Icon | Partial (v18) | Original vector glyph set, tint and size; SF Symbols and user SVG/PNG assets intentionally unsupported (licensing/asset pipeline) |
+| Text | Partial (v18) | Single-line text, size, color and left/center/right alignment; font selection, multiline, stroke and auto-fit pending (Mac text is still a placeholder) |
 
 **Approved difference — missing samples (2026-10-31).** Mac interpolates across
 any run of records missing a field, however long, and holds the last value at

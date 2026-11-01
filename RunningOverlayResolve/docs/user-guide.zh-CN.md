@@ -114,6 +114,22 @@ Dividers** 分项开关，各自的颜色、透明度和线宽可调。
 - 尚未实现 Mac 的其他布局预设、七套风格预设、玻璃/发光效果和逐区域字体字号；
   刻度与进度环是矢量近似。
 
+### 装饰元素（v18）
+
+面板的 **Solid color**、**Icon**、**Text** 是不依赖数值的装饰组件，与数值组件一样
+占用独立槽位，可单独定位。它们在没有活动样本时仍会绘制。
+
+- **Solid color**：**Shape** 可选矩形、圆角矩形、圆形；**Width / Height** 为画面宽度
+  比例，**Corner Radius** 只作用于圆角矩形；**Fill** 颜色和 Alpha 控制填充。
+- **Icon**：只能从本项目自带的原始矢量字形中选择（Heart、Calendar 等 17 个），
+  **Icon Size** 和 **Icon Color** 控制大小与颜色。不使用 SF Symbols 或外部 SVG/PNG，
+  以避免再分发 Apple 图形或引入未授权资源。
+- **Text**：**Text** 输入单行文字，**Text Size**、**Text Color** 和
+  **Text Alignment**（Left / Center / Right）控制显示；字号使用宽度比例，位置以
+  文本锚点计算。字体固定为 Open Sans，多行、描边、自动缩放和逐字间距尚未实现。
+- 这三类组件都还没有 Mac 的边框、发光、混合模式等完整效果；Text 在 Mac 中本身仍是
+  占位实现，因此这里先提供可用的基础文字。
+
 ## 数值文字样式（Fuse v7）
 
 在 Fusion 中选中 Running Overlay Numeric 节点。每个实例分别提供数值字体、Value Size、颜色和 Alpha，以及以下设置：

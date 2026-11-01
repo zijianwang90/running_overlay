@@ -326,3 +326,10 @@ fallback that maps zone modes to elapsed-time progress. Four region bindings
 resolve through `metric_text`, so formatting and missing values stay consistent
 with the numeric widgets. Style inputs persist per instance; Mac style/layout
 presets and per-region typography are not yet modeled.
+
+Decor elements (metrics 26–28) share the same sixteen-slot renderer but bypass the
+activity-sample requirement: a pre-pass detects enabled decor slots and still
+runs Process when no sample exists, while `render_slot` short-circuits non-decor
+metrics. Solid shapes and text are drawn as vector parts; icons use the project's
+original 24-unit glyphs. No external asset, symbol library or network access is
+introduced.
