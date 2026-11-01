@@ -3,6 +3,7 @@
 const path = require('node:path');
 const { invariant } = require('../domain/validation');
 const { validateActivity } = require('../domain/activity');
+const { classifyLaps } = require('./workout-structure');
 
 const FIT_TO_UNIX_SECONDS = 631_065_600;
 
@@ -83,7 +84,7 @@ class FitReader {
       endUtcUs,
       records,
       annotations: this.buildPauseAnnotations(startFitSeconds, durationUs),
-      laps: this.buildLaps(startFitSeconds, durationUs, records),
+      ...this.buildLaps(startFitSeconds, durationUs, records),
     });
   }
 
@@ -240,15 +241,25 @@ class FitReader {
     if (end === null) return;
     const start = this.uint32(values.get(2), architecture);
     const distance = this.uint32(values.get(9), architecture);
+    const elapsedRaw = this.uint32(values.get(7), architecture);
+    const speedRaw = this.uint16(values.get(13), architecture);
+    const cadence = this.uint8(values.get(17));
+    const cadenceFraction = this.uint8(values.get(58));
     this.laps.push({
       startFitSeconds: start,
       endFitSeconds: end,
       distanceMeters: distance === null ? null : distance / 100,
+      totalElapsedSeconds: elapsedRaw === null ? null : elapsedRaw / 1000,
+      avgSpeedMetersPerSecond: speedRaw === null ? null : speedRaw / 1000,
+      avgHeartRateBpm: this.uint8(values.get(15)),
+      avgCadenceSpm: cadence === null ? null : Math.round((cadence + (cadenceFraction ?? 0) / 128) * 2),
+      avgPowerWatts: this.uint16(values.get(19), architecture),
+      totalAscentMeters: this.uint16(values.get(21), architecture),
     });
   }
 
   buildLaps(startFitSeconds, durationUs, records) {
-    if (this.laps.length === 0) return undefined;
+    if (this.laps.length === 0) return {};
     const distanceAt = (elapsedUs) => {
       let before = null;
       let after = null;
@@ -263,18 +274,43 @@ class FitReader {
       }
       return before?.distanceMeters ?? after?.distanceMeters ?? null;
     };
+    const clamp = (value) => Math.max(0, Math.min(durationUs, value));
     let previousEnd = startFitSeconds;
     const laps = [];
     for (const lap of [...this.laps].sort((left, right) => left.endFitSeconds - right.endFitSeconds)) {
       const start = lap.startFitSeconds ?? previousEnd;
-      previousEnd = lap.endFitSeconds;
-      const startElapsedUs = Math.max(0, Math.min(durationUs, (start - startFitSeconds) * 1_000_000));
+      const startElapsedUs = clamp((start - startFitSeconds) * 1_000_000);
+      const endElapsedUs = clamp((lap.endFitSeconds - startFitSeconds) * 1_000_000);
       const startDistanceMeters = distanceAt(startElapsedUs);
+      const endDistanceMeters = distanceAt(endElapsedUs);
+      previousEnd = lap.endFitSeconds;
       if (startDistanceMeters === null) continue;
-      laps.push({ startElapsedUs, startDistanceMeters });
+      const totalElapsedTime = lap.totalElapsedSeconds ?? (endElapsedUs - startElapsedUs) / 1_000_000;
+      const messageDistance = lap.distanceMeters ?? 0;
+      const fallbackDistance = endDistanceMeters === null ? 0 : Math.max(0, endDistanceMeters - startDistanceMeters);
+      const totalDistanceMeters = messageDistance > 0 ? messageDistance : fallbackDistance;
+      if (totalElapsedTime <= 0 && totalDistanceMeters <= 0) continue;
+      laps.push({
+        startElapsedUs,
+        endElapsedUs,
+        startDistanceMeters,
+        totalDistanceMeters,
+        totalElapsedTime,
+        avgPaceSecondsPerKilometer: lap.avgSpeedMetersPerSecond && lap.avgSpeedMetersPerSecond > 0
+          ? 1_000 / lap.avgSpeedMetersPerSecond
+          : null,
+        avgHeartRateBpm: lap.avgHeartRateBpm,
+        avgCadenceSpm: lap.avgCadenceSpm,
+        avgPowerWatts: lap.avgPowerWatts,
+        totalAscentMeters: lap.totalAscentMeters,
+        kind: 'unknown',
+      });
     }
     // Consecutive duplicate boundaries add no information.
-    return laps.filter((lap, index) => index === 0 || lap.startElapsedUs > laps[index - 1].startElapsedUs);
+    const unique = laps.filter((lap, index) => index === 0 || lap.startElapsedUs > laps[index - 1].startElapsedUs);
+    if (unique.length === 0) return {};
+    const classified = classifyLaps(unique);
+    return { laps: classified.laps, workoutStructure: classified.structure };
   }
 
   buildPauseAnnotations(startFitSeconds, durationUs) {

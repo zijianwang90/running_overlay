@@ -78,9 +78,43 @@ function validateActivity(activity) {
       invariant(lap.startDistanceMeters >= 0, `activity.laps[${index}].startDistanceMeters must be non-negative`);
       invariant(lap.startElapsedUs > previousStartUs, 'activity laps must be ordered by startElapsedUs');
       invariant(lap.startDistanceMeters >= previousDistance, 'activity lap distance must not decrease');
+      if (lap.endElapsedUs !== undefined) {
+        assertSafeInteger(lap.endElapsedUs, `activity.laps[${index}].endElapsedUs`);
+        invariant(lap.endElapsedUs >= lap.startElapsedUs && lap.endElapsedUs <= durationUs,
+          `activity.laps[${index}].endElapsedUs must follow the start and lie within the activity`);
+      }
+      for (const field of ['totalDistanceMeters', 'totalElapsedTime', 'totalAscentMeters']) {
+        if (lap[field] === undefined || lap[field] === null) continue;
+        assertFiniteNumber(lap[field], `activity.laps[${index}].${field}`);
+        invariant(lap[field] >= 0, `activity.laps[${index}].${field} must be non-negative`);
+      }
+      if (lap.avgPaceSecondsPerKilometer !== undefined && lap.avgPaceSecondsPerKilometer !== null) {
+        assertFiniteNumber(lap.avgPaceSecondsPerKilometer, `activity.laps[${index}].avgPaceSecondsPerKilometer`);
+        invariant(lap.avgPaceSecondsPerKilometer > 0, `activity.laps[${index}].avgPaceSecondsPerKilometer must be positive`);
+      }
+      for (const field of ['avgHeartRateBpm', 'avgCadenceSpm', 'avgPowerWatts']) {
+        if (lap[field] === undefined || lap[field] === null) continue;
+        assertSafeInteger(lap[field], `activity.laps[${index}].${field}`);
+        invariant(lap[field] >= 0, `activity.laps[${index}].${field} must be non-negative`);
+      }
+      if (lap.kind !== undefined) {
+        invariant(['warmup', 'active', 'rest', 'cooldown', 'unknown'].includes(lap.kind),
+          `activity.laps[${index}].kind is unsupported`);
+      }
       previousStartUs = lap.startElapsedUs;
       previousDistance = lap.startDistanceMeters;
     }
+  }
+
+  if (activity.workoutStructure !== undefined) {
+    const structure = activity.workoutStructure;
+    invariant(structure && typeof structure === 'object', 'activity.workoutStructure must be an object');
+    invariant(['normal', 'structured'].includes(structure.kind), 'unsupported workout structure kind');
+    invariant(['none', 'interval', 'steadyPlan', 'genericLaps'].includes(structure.subtype), 'unsupported workout structure subtype');
+    invariant(['auto', 'userOverride'].includes(structure.source), 'unsupported workout structure source');
+    assertFiniteNumber(structure.confidence, 'activity.workoutStructure.confidence');
+    invariant(structure.confidence >= 0 && structure.confidence <= 1, 'workout structure confidence must lie within [0, 1]');
+    assertNonEmptyString(structure.reason, 'activity.workoutStructure.reason');
   }
 
   if (activity.annotations !== undefined) {

@@ -138,10 +138,16 @@ test('independent FIT parser produces portable activity records and real-time pa
     startElapsedUs: 300_000_000,
     endElapsedUs: 330_000_000,
   }]);
-  assert.deepEqual(activity.laps, [
-    { startElapsedUs: 0, startDistanceMeters: 0 },
-    { startElapsedUs: 300_000_000, startDistanceMeters: 500 },
+  assert.deepEqual(activity.laps.map(({ kind, ...lap }) => lap), [
+    { startElapsedUs: 0, endElapsedUs: 300_000_000, startDistanceMeters: 0, totalDistanceMeters: 500,
+      totalElapsedTime: 300, avgPaceSecondsPerKilometer: null, avgHeartRateBpm: null, avgCadenceSpm: null,
+      avgPowerWatts: null, totalAscentMeters: null },
+    { startElapsedUs: 300_000_000, endElapsedUs: 600_000_000, startDistanceMeters: 500, totalDistanceMeters: 1000,
+      totalElapsedTime: 300, avgPaceSecondsPerKilometer: null, avgHeartRateBpm: null, avgCadenceSpm: null,
+      avgPowerWatts: null, totalAscentMeters: null },
   ]);
+  assert.deepEqual(activity.laps.map((lap) => lap.kind), ['unknown', 'unknown']);
+  assert.equal(activity.workoutStructure.kind, 'normal');
 });
 
 function withHeader(data) {

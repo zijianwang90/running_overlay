@@ -57,8 +57,17 @@ function serializeActivityRenderData(activity, weather = null) {
   for (const annotation of activity.annotations ?? []) {
     lines.push(`annotation\t${annotation.kind}\t${annotation.startElapsedUs}\t${annotation.endElapsedUs}`);
   }
+  const lapField = (value) => value === undefined || value === null || value === '' ? '' : encodeCell(value);
   for (const lap of activity.laps ?? []) {
-    lines.push(`lap\t${lap.startElapsedUs}\t${lap.startDistanceMeters}`);
+    lines.push(['lap', lapField(lap.startElapsedUs), lapField(lap.startDistanceMeters), lapField(lap.endElapsedUs),
+      lapField(lap.totalDistanceMeters), lapField(lap.totalElapsedTime), lapField(lap.avgPaceSecondsPerKilometer),
+      lapField(lap.avgHeartRateBpm), lapField(lap.avgCadenceSpm), lapField(lap.avgPowerWatts),
+      lapField(lap.totalAscentMeters), lapField(lap.kind)].join('\t'));
+  }
+  if (activity.workoutStructure) {
+    const structure = activity.workoutStructure;
+    lines.push(['workout', structure.kind, structure.subtype, structure.source, structure.confidence,
+      encodeCell(structure.reason)].join('\t'));
   }
   return `${lines.join('\n')}\n`;
 }
@@ -118,12 +127,27 @@ function parseActivityRenderData(text) {
     startElapsedUs: Number(line[2]),
     endElapsedUs: Number(line[3]),
   }));
+  const optionalNumber = (value) => value === undefined || value === '' ? undefined : Number(value);
+  const optionalString = (value) => value === undefined || value === '' ? undefined : value;
   const laps = lines.filter((line) => line[0] === 'lap').map((line) => ({
     startElapsedUs: Number(line[1]),
     startDistanceMeters: Number(line[2]),
+    endElapsedUs: optionalNumber(line[3]),
+    totalDistanceMeters: optionalNumber(line[4]),
+    totalElapsedTime: optionalNumber(line[5]),
+    avgPaceSecondsPerKilometer: optionalNumber(line[6]) ?? null,
+    avgHeartRateBpm: optionalNumber(line[7]) ?? null,
+    avgCadenceSpm: optionalNumber(line[8]) ?? null,
+    avgPowerWatts: optionalNumber(line[9]) ?? null,
+    totalAscentMeters: optionalNumber(line[10]) ?? null,
+    kind: optionalString(line[11]),
   }));
+  const workout = lines.find((line) => line[0] === 'workout');
+  const workoutStructure = workout ? {
+    kind: workout[1], subtype: workout[2], source: workout[3], confidence: Number(workout[4]), reason: workout[5] ?? '',
+  } : undefined;
   return validateActivity({ schemaVersion: 1, activityId, startUtcUs, endUtcUs, records, annotations,
-    ...(laps.length ? { laps } : {}) });
+    ...(laps.length ? { laps } : {}), ...(workoutStructure ? { workoutStructure } : {}) });
 }
 
 function parseWeatherRenderData(text) {

@@ -31,7 +31,8 @@ test('activity render data round-trips the portable numeric channels', () => {
     { startElapsedUs: 0, startDistanceMeters: 0 },
     { startElapsedUs: 600_000_000, startDistanceMeters: 1_500 },
   ] };
-  assert.deepEqual(parseActivityRenderData(serializeActivityRenderData(withLaps)).laps, withLaps.laps);
+  assert.deepEqual(parseActivityRenderData(serializeActivityRenderData(withLaps)).laps
+    .map(({ startElapsedUs, startDistanceMeters }) => ({ startElapsedUs, startDistanceMeters })), withLaps.laps);
   assert.throws(() => validateActivity({ ...withLaps, laps: [{ startElapsedUs: 600_000_000, startDistanceMeters: 1 },
     { startElapsedUs: 0, startDistanceMeters: 0 }] }));
   assert.throws(() => validateActivity({ ...withLaps, laps: [{ startElapsedUs: 0, startDistanceMeters: 2 },
