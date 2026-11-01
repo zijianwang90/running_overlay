@@ -32,6 +32,10 @@ test('widget choices and preset positions are deterministic and reject duplicate
   assert.equal(normalizeWidgets([{ id: 'solid-1', metric: 'decoSolidColor' }])[0].metric, 'decoSolidColor');
   assert.equal(normalizeWidgets([{ id: 'icon-1', metric: 'decorIcon' }])[0].metric, 'decorIcon');
   assert.equal(normalizeWidgets([{ id: 'text-1', metric: 'decorText' }])[0].metric, 'decorText');
+  assert.equal(normalizeWidgets([{ id: 'lap-1', metric: 'lapPace' }])[0].metric, 'lapPace');
+  for (const metric of ['intervalHUDBar', 'intervalTimeline', 'intervalCountdown', 'intervalWorkSummary']) {
+    assert.equal(normalizeWidgets([{ id: metric, metric }])[0].metric, metric);
+  }
   assert.throws(() => normalizeWidgets([]), /one and sixteen/);
   assert.equal(normalizeWidgets([{ id: 'a', metric: 'pace' }, { id: 'b', metric: 'pace' }]).length, 2);
   assert.throws(() => normalizeWidgets([{ id: 'a', metric: 'pace' }, { id: 'a', metric: 'power' }]), /unique/);

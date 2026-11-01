@@ -8,7 +8,7 @@ const { METRICS } = require('../src/domain/widgets');
 const FUSE_NAMES = { heartRate: 'Heart Rate', pace: 'Pace', distance: 'Distance', elapsed: 'Elapsed', elevation: 'Elevation',
   cadence: 'Cadence', power: 'Power', calories: 'Calories', avgPace: 'Avg Pace', verticalOscillation: 'Vertical Oscillation',
   groundContactTime: 'Ground Contact Time', strideLength: 'Stride Length', verticalRatio: 'Vertical Ratio',
-  groundContactBalance: 'GCT Balance', temperature: 'Temperature', grade: 'Grade', realTime: 'Real Time', distanceTimeline: 'Distance Timeline', routeMap: 'Route Map', zoneEdgeBar: 'HR Zone Bar', elevationChart: 'Elevation Chart', weatherWidget: 'Weather', date: 'Date', customNumeric: 'Custom Numeric', heartRateZone: 'HR Zone', runningGauge: 'Running Gauge', decoSolidColor: 'Solid Color', decorIcon: 'Decor Icon', decorText: 'Decor Text', lapPace: 'Lap Pace' };
+  groundContactBalance: 'GCT Balance', temperature: 'Temperature', grade: 'Grade', realTime: 'Real Time', distanceTimeline: 'Distance Timeline', routeMap: 'Route Map', zoneEdgeBar: 'HR Zone Bar', elevationChart: 'Elevation Chart', weatherWidget: 'Weather', date: 'Date', customNumeric: 'Custom Numeric', heartRateZone: 'HR Zone', runningGauge: 'Running Gauge', decoSolidColor: 'Solid Color', decorIcon: 'Decor Icon', decorText: 'Decor Text', lapPace: 'Lap Pace', intervalHUDBar: 'Interval HUD Bar', intervalTimeline: 'Interval Timeline', intervalCountdown: 'Interval Countdown', intervalWorkSummary: 'Interval Work Summary' };
 assert.deepEqual(Object.values(METRICS), Object.keys(METRICS).map((_, index) => index));
 const source = fs.readFileSync(path.join(__dirname, '../fusion/Fuses/RunningOverlayNumeric.fuse'), 'utf8');
 function run(code) {
@@ -119,6 +119,61 @@ _, value = metric_text(29, {distance_m = 2000}, 600000000, {pauses = {}}, 0)
 assert(value == [[--'--"]], value)
 `));
 
+
+test('interval HUD, timeline, countdown and summary read lap phase data', () => run(HOST + `
+local base_capsule=capsule
+capsule=function(...) local s=base_capsule(...);function s:OutlineOfShape() return s end;return s end
+local laps={
+ {start_us=0,end_us=300000000,start_distance_m=0,total_distance_m=1000,total_elapsed_s=300,avg_pace_spk=300,kind='warmup'},
+ {start_us=300000000,end_us=600000000,start_distance_m=1000,total_distance_m=1000,total_elapsed_s=300,avg_pace_spk=300,avg_hr=160,avg_power=250,avg_cadence=180,kind='active'},
+ {start_us=600000000,end_us=900000000,start_distance_m=2000,total_distance_m=700,total_elapsed_s=300,avg_pace_spk=420,kind='rest'},
+ {start_us=900000000,end_us=1200000000,start_distance_m=2700,total_distance_m=1000,total_elapsed_s=300,avg_pace_spk=300,avg_hr=170,kind='active'},
+ {start_us=1200000000,end_us=1500000000,start_distance_m=3700,total_distance_m=1000,total_elapsed_s=300,avg_pace_spk=330,kind='cooldown'},
+}
+load_data=function() return {timeline_start_frame=0,pauses={},total_distance_m=4700,duration_us=1500000000,laps=laps} end
+sample_activity=function() return {distance_m=1500,heart_rate=160,pace_spk=300} end
+local at=450000000
+activity_elapsed_at_frame=function() return at end
+inputs.ShadowEnabled.value=0;inputs.Widget16ShadowEnabled.value=0
+local function has(text)
+ for _,entry in ipairs(of('text')) do if entry.text==text then return true end end
+ return false
+end
+inputs.Metric.value=INTERVAL_HUD_METRIC
+Process(req)
+assert(has('WORK') and has('1 / 2') and has('2:30') and has('LEFT'))
+inputs.Metric.value=INTERVAL_TIMELINE_METRIC
+events={};Process(req)
+assert(#of('shape')>=6)
+assert(has('5:00'))
+inputs.Metric.value=INTERVAL_COUNTDOWN_METRIC
+events={};Process(req)
+assert(has('CURRENT SET') and has('WORK') and has('1 / 2') and has('2:30') and has('remaining'))
+inputs.CountdownCenterMetric.value=1;inputs.CountdownCenterDirection.value=1;events={};Process(req)
+assert(has('500 m'))
+at=601000000;events={};Process(req)
+assert(has('0 m'))
+at=601000000
+inputs.Metric.value=INTERVAL_SUMMARY_METRIC
+events={};Process(req)
+assert(has('WORK SUMMARY') and has('5:00') and has('LAP TIME'))
+assert(has([[5'00" /km]]) and has('PACE'))
+assert(has('1.00 km') and has('DIST'))
+assert(has('160 bpm') and has('HR'))
+inputs.SummarySecondary3.value=5;events={};Process(req)
+assert(has('250 W') and has('POWER'))
+inputs.SummarySecondary3.value=3
+at=700000000;events={};Process(req)
+assert(#of('text')==0)
+NotifyChanged(inputs.Metric,{Value=INTERVAL_SUMMARY_METRIC})
+assert(inputs.SummaryWidth.visible==true and inputs.CountdownSize.visible==false and inputs.HudWidth.visible==false)
+NotifyChanged(inputs.Metric,{Value=INTERVAL_HUD_METRIC})
+assert(inputs.HudWidth.visible==true and inputs.IntervalTimelineWidth.visible==false)
+NotifyChanged(inputs.Metric,{Value=INTERVAL_TIMELINE_METRIC})
+assert(inputs.IntervalTimelineWidth.visible==true and inputs.SummaryWidth.visible==false)
+NotifyChanged(inputs.Metric,{Value=INTERVAL_COUNTDOWN_METRIC})
+assert(inputs.CountdownSize.visible==true and inputs.HudWidth.visible==false)
+`));
 test('attachments measure all four sides and expand around preceding text', () => run(`
 for position=0,3 do
  local bounds={left=0,right=2,bottom=0,top=1}

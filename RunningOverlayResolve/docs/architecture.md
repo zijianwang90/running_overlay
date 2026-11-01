@@ -342,3 +342,15 @@ The immutable render snapshot carries these boundaries as `lap` rows. At render
 time the Fuse selects the latest boundary not after the current real elapsed time
 and divides in-lap elapsed time by in-lap distance. Missing laps, missing distance
 or a zero-length lap segment render as `--`, so no synthetic lap is inferred.
+
+Interval components (metrics 30–33) share the workout-structure analysis produced
+with the immutable activity snapshot. The FIT parser records each lap's distance,
+elapsed time and aggregates; the JS analyzer classifies warmup, active, rest and
+cooldown laps exactly where the Mac automatic path does. Render TSV lap rows carry
+those fields and a single workout row carries the structure decision.
+
+At render time the Fuse selects the latest lap by real elapsed time, derives
+remaining time/distance and time/distance progress, and uses the stored lap kind
+for labels and the Mac interval palette. All four components are vector-only and
+read no network or additional data. HUD zone modes, timeline windowing and
+per-role typography remain future work.

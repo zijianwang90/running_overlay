@@ -1,5 +1,34 @@
 # Running Overlay Resolve Testing
 
+## Interval Components And Workout Structure — 2026-11-01
+
+v20 adds automatic workout classification and four interval metrics (30–33). The
+FIT parser now reads lap distance, elapsed time, average pace/HR/cadence/power and
+ascent; the JS analyzer ports the Mac repeated-work-lap, steady-plan and normal
+rules, including the uniform auto-lap guard. Validation checks lap statistics and
+workout-structure enums; render TSV carries lap stats and one workout row.
+
+Tests: analyzer cases for intervals, steady plans, normal laps and auto-lap
+duration patterns; Lua tests for HUD phase/rep/remaining/progress, timeline
+segments and marker, countdown time/distance and remaining/elapsed modes, work
+summary display window, primary/secondary metrics and unit formatting, metric
+registration and Inspector visibility. All fixtures are synthetic.
+
+Host evidence: v20 installed and rendered in the independent validation project
+with a synthetic five-lap workout, 1920×1080 ProRes 4444 alpha, Time Offsets
+150/1000/150/880. At the work segment the HUD showed orange WORK, 1/2 and 2:08
+left over a partly filled progress bar; the countdown showed the same 2:08,
+CURRENT SET, WORK 1/2, clockwise remaining arc and `remaining` caption; the
+timeline showed five phase-colored segments labelled 5:00/5:00/5:00/5:00/10:00
+with the marker inside the cooldown. After the last work lap ended the summary
+showed 5:00 LAP TIME with 5'23" /km, 880 m and 170 bpm secondaries. The slot and
+activity path were restored, the validation project saved, and the original
+project reloaded.
+
+Limits: HUD HR/pace zone modes, metric slots, timeline centered window/filtering,
+summary max HR, per-role fonts, glow and borders are not implemented. The palette
+is fixed to the Mac defaults.
+
 ## Lap Pace And Lap Data — 2026-11-01
 
 v19 adds FIT lap parsing, normalized lap boundaries and the Lap Pace metric (29).

@@ -55,10 +55,10 @@ available, but there is no selectable/rendered widget.
 | Cadence | Partial | Widget implemented; activity-specific cadence semantics pending |
 | Power | Partial | Watt widget implemented; full numeric styles pending |
 | Running Gauge | Partial (v17) | Circular dial, outer ring, 60 ticks, optional distance/time progress ring, four configurable regions and dividers; the remaining seven Mac layouts, presets, glass, glow and per-region typography pending |
-| Interval HUD Bar | Missing | Workout structure, zones and renderer |
-| Interval Timeline | Missing | Workout structure, lap timeline and renderer |
-| Interval Countdown | Missing | Work/rest phase and countdown semantics |
-| Interval Work Summary | Missing | Work-interval aggregation and styles |
+| Interval HUD Bar | Partial (v20) | Phase/rep/remaining time or distance, lap progress bar and phase colors; HR/pace zone bar, metric slots and layered styling pending |
+| Interval Timeline | Partial (v20) | Full-lap proportional segments by time or distance, phase colors, labels, current segment and marker; centered window, overflow hints and filtering pending |
+| Interval Countdown | Partial (v20) | Phase-colored ring, time/distance center value, remaining/elapsed direction, phase, rep, helper and caption; per-role fonts/glow/borders pending |
+| Interval Work Summary | Partial (v20) | Last completed active lap, lap time/pace/distance/HR/power/cadence, configurable primary and three secondary slots, display window; max HR and per-role typography pending |
 | Zone Edge Bar | Partial (v12) | Five/six editable HR ranges, edge/free placement, active emphasis, current/threshold markers; pace mode and shared project physiology settings pending |
 | Route Map | Partial (v11) | FIT/GPX GPS retained; offline Mercator trace and time-driven cursor implemented; map imagery/provider, other presets and stats pending |
 | Vertical Oscillation | Implemented (v8) | cm/mm units; host export checked |
