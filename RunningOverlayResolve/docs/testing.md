@@ -1,5 +1,29 @@
 # Running Overlay Resolve Testing
 
+## Numeric Text Controls — 2026-10-31
+
+Fuse v7 adds metric-specific units/formats, custom labels, separate label/unit
+visibility, fonts, sizes, RGBA colors and four attachment positions with spacing.
+`numeric-renderer.test.js` executes the real Lua file with Fengari (development
+only): formatting and conversions, missing/zero/nonfinite pace, negative elevation,
+minute carry, UTF-8 codepoints, bounds expansion, Create input registration and
+Process consumption of separate styling/visibility on primary and slot 16.
+Host drawing primitives are mocked; this proves control wiring, not glyph appearance.
+
+After explicit installation approval, installed v7 and restarted Resolve Studio
+21.1.1. In a separate synthetic project, set and verified 61 input values across
+save/close/reopen. Rendered three 1920×1080 ProRes 4444 frames with ExportAlpha;
+ffprobe reports yuva444p12le. Inspected the extracted frame: imperial pace 8'49\",
+distance 0.57 mi, elevation 342 ft, elapsed 05:23, custom green Arial Bold label
+and blue Courier unit, plus all four attachment positions. Restored the original
+project without editing its timeline. Live viewer interaction and non-ASCII font
+glyph appearance remain unverified; export and persistence checks passed.
+Sizes/spacing remain normalized to frame width; exact SwiftUI font metrics,
+tracking, alignment options and block anchoring are not yet reproduced. Top units
+render explicitly and mm:ss carries rounded seconds correctly rather than copying
+those two current Mac implementation defects. No intermediate-version migration
+matrix is required for this unreleased first version.
+
 ## Independent Numeric Instances — 2026-10-31
 
 Fuse v6 adds elevation, cadence, power and calories and up to sixteen numeric

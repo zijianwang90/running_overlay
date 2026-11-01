@@ -85,8 +85,8 @@ retry, real v5/v6 comparison and remaining UI validation limits.
 
 | Area | Current Resolve behavior | Parity acceptance |
 |---|---|---|
-| Numeric styling | Position, value size, font/style, label visibility, one color per widget | Value/label/unit/icon controls, attachment positions, separate typefaces/sizes/colors/opacities, presets and effects match supported Mac fields |
-| Units and formatting | Fixed formats for four metrics | Metric-specific unit choices, precision, missing values and boundary formatting match Mac |
+| Numeric styling | v7 adds separate value/label/unit fonts, sizes, colors/opacity, custom labels, visibility and attachments; host persistence and export checked | Value/label/unit/icon controls, attachment positions, separate typefaces/sizes/colors/opacities, presets and effects match supported Mac fields |
+| Units and formatting | v7 metric-specific km/mi/m, pace /km /mi /500m, elevation m/ft and elapsed formats; Lua tested and imperial host export checked | Metric-specific unit choices, precision, missing values and boundary formatting match Mac |
 | Element layout | Stack/row/grid presets; Fusion positioning | Independent instances, visibility, ordering and reusable layouts; equivalent placement at supported resolutions |
 | Activity import | FIT/GPX; limited normalized fields and timer-pause annotations | Retain fields required by all supported widgets, laps, workout structure and GPS; preserve provenance and gaps |
 | Calories | Direct record calories | Match Mac lap-total/session-total fallback, explicitly distinguishing estimates |

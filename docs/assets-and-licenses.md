@@ -25,6 +25,15 @@ license and attribution requirements here.
 
 The Swift package currently declares no third-party runtime dependencies.
 
+## Resolve Test Dependencies
+
+The Resolve Node tests execute Lua through Fengari 0.1.5 (MIT). Its locked
+transitive dependencies are readline-sync 1.4.10 (MIT), sprintf-js 1.1.3
+(BSD-3-Clause) and tmp 0.2.7 (MIT). These are development-only dependencies;
+the assembly script does not copy node_modules into the Workflow plugin.
+Their upstream license files remain in the installed npm packages. No new
+font files are bundled by the numeric text controls.
+
 ## Apple Platform Resources
 
 The project references SF Symbols by symbol name and uses Apple system fonts

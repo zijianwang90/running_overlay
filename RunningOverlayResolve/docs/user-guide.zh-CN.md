@@ -2,6 +2,17 @@
 
 本指南从导入活动与视频，到校时、添加数字控件和导出，说明当前 Workflow 面板的实际流程。插件在 DaVinci Resolve 内生成实时 Fusion 叠加层；不需要运行 Running Overlay Studio，也不先导出一条带数据的透明视频。目前面板支持心率、配速、距离、运动计时、海拔、步频、功率和热量八种数字控件，尚未提供模板功能或 Studio 的完整控件目录。
 
+## 数值文字样式（Fuse v7）
+
+在 Fusion 中选中 Running Overlay Numeric 节点。每个实例分别提供数值字体、Value Size、颜色和 Alpha，以及以下设置：
+
+- **Pace Units**：min/km、min/mi、min/500m；**Distance Units**：km、mi、m；**Elevation Units**：m、ft；**Elapsed Format**：hh:mm:ss、mm:ss、seconds。只有当前 Metric 对应的设置影响输出。
+- **Custom Label**：自定义标签；空白恢复默认标签。Show Label、Show Unit 分别控制标签和单位显示。
+- **Label / Unit Font、Style、Size、Color、Alpha**：标签和单位各有独立字体、字号、颜色和透明度。空字体使用 Open Sans Regular。字体须安装在渲染机器上，且包含自定义文字对应的字形。
+- **Label / Unit Position、Spacing**：上、下、左、右及间距。先围绕数值放置单位，再围绕整体放置标签；侧边文字顶部对齐。字号和间距使用画面宽度比例，与 Value Size 一致。
+
+样式由 Fusion 保存，普通数据同步不重置这些参数。此版尚无图标、背景、阴影、模板或跨切段同步样式。v7 已在独立 Resolve 测试项目验证参数保存重开及 1080p ProRes 4444 透明导出；实时查看器交互和非 ASCII 字形显示尚未验收。首版开发中的叠加层可重新创建，不承担中间开发版本的迁移保证。
+
 ## 对齐原理：每段素材各算各的
 
 FIT 记录提供活动的绝对时间。视频素材需要确认**原始文件开始录制的绝对时间**，包括时区。Resolve 则提供这段素材放在时间线的哪一帧，以及片段从原文件的哪一帧开始使用。插件在每次同步时为每个普通速度片段计算：

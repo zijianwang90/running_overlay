@@ -16,7 +16,7 @@ FuRegisterClass("RunningOverlayNumeric", CT_SourceTool, {
 	REG_Source_DepthCtrls = true,
 	REG_Fuse_NoEdit = false,
 	REG_Fuse_NoReload = false,
-	REG_Version = 6,
+	REG_Version = 7,
 })
 
 -- Cache only complete immutable snapshots. Several Numeric Fuse instances can
@@ -217,22 +217,28 @@ local function format_duration(total_seconds)
 end
 
 local function format_pace(seconds_per_kilometer)
-	if seconds_per_kilometer == nil or seconds_per_kilometer <= 0 then return "--'--\"" end
+	if seconds_per_kilometer == nil or seconds_per_kilometer ~= seconds_per_kilometer or seconds_per_kilometer == math.huge or seconds_per_kilometer <= 0 then return "--'--\"" end
 	local seconds = math.floor(seconds_per_kilometer + 0.5)
 	return string.format("%d'%02d\"", math.floor(seconds / 60), seconds % 60)
 end
 
-local function metric_text(metric, sample, real_elapsed_us, data)
+local function metric_text(metric, sample, real_elapsed_us, data, unit_mode)
+	unit_mode = unit_mode or 0
 	if metric == 0 then
 		return "HEART RATE", sample.heart_rate and string.format("%d", math.floor(sample.heart_rate + 0.5)) or "--", "bpm"
 	elseif metric == 1 then
-		return "PACE", format_pace(sample.pace_spk), "/ km"
+		local factor = unit_mode == 1 and 1.609344 or (unit_mode == 2 and 0.5 or 1)
+		return "PACE", format_pace(sample.pace_spk and sample.pace_spk * factor), unit_mode == 1 and "/ mi" or (unit_mode == 2 and "/ 500m" or "/ km")
 	elseif metric == 2 then
-		return "DISTANCE", sample.distance_m and string.format("%.2f", sample.distance_m / 1000) or "--", "km"
+		local divisor = unit_mode == 1 and 1609.344 or (unit_mode == 2 and 1 or 1000)
+		return "DISTANCE", sample.distance_m and string.format(unit_mode == 2 and "%.0f" or "%.2f", sample.distance_m / divisor) or "--", unit_mode == 1 and "mi" or (unit_mode == 2 and "m" or "km")
 	elseif metric == 3 then
-		return "ELAPSED", format_duration(active_elapsed_us(data, real_elapsed_us) / 1000000), ""
+		local seconds = math.max(0, math.floor(active_elapsed_us(data, real_elapsed_us) / 1000000 + 0.5))
+		local value = unit_mode == 1 and string.format("%02d:%02d", math.floor(seconds / 60), seconds % 60)
+			or (unit_mode == 2 and tostring(seconds) or format_duration(seconds))
+		return "ELAPSED", value, ""
 	elseif metric == 4 then
-		return "ELEVATION", sample.elevation_m and string.format("%.0f", sample.elevation_m) or "--", "m"
+		return "ELEVATION", sample.elevation_m and string.format("%.0f", sample.elevation_m * (unit_mode == 1 and 1 / 0.3048 or 1)) or "--", unit_mode == 1 and "ft" or "m"
 	elseif metric == 5 then
 		return "CADENCE", sample.cadence and string.format("%.0f", sample.cadence) or "--", "spm"
 	elseif metric == 6 then
@@ -247,6 +253,20 @@ local function ensure_fonts()
 	if not next(FontManager:GetFontList()) then FontManager:ScanDir() end
 end
 
+local function codepoints(text)
+	local result = {}
+	local index = 1
+	while index <= #text do
+		local byte = text:byte(index)
+		local length = byte < 128 and 1 or (byte < 224 and 2 or (byte < 240 and 3 or 4))
+		local point = byte % (length == 1 and 256 or 2 ^ (7 - length))
+		for offset = 1, length - 1 do point = point * 64 + ((text:byte(index + offset) or 128) % 64) end
+		table.insert(result, point)
+		index = index + length
+	end
+	return result
+end
+
 local function add_text_shape(shape, font_metrics, text, size, x, y)
 	local matrix = Matrix4()
 	matrix:Scale(1.0 / font_metrics.Scale, 1.0 / font_metrics.Scale, 1.0)
@@ -254,8 +274,7 @@ local function add_text_shape(shape, font_metrics, text, size, x, y)
 	matrix:Move(x, y, 0)
 	local previous = nil
 	local width = 0
-	for index = 1, #text do
-		local character = text:sub(index, index):byte()
+	for _, character in ipairs(codepoints(text)) do
 		if previous ~= nil then
 			local kerning = font_metrics:CharacterKerning(previous, character) * 10 * size
 			matrix:Move(kerning, 0, 0)
@@ -285,6 +304,21 @@ local function draw_text(image, font, style, text, size, x, y, color, quality)
 	channel:ShapeFill(shape)
 	channel:PutToImage("CM_Merge", channel_style)
 	return width
+end
+
+-- Attach to the current block bounds, so label and unit never overlap each other.
+-- Bounds use Fusion's upward Y axis; side attachments align at the top.
+local function attach_text(bounds, width, height, position, spacing)
+	local x, y = bounds.left, bounds.top - height
+	if position == 0 then y = bounds.top + spacing
+	elseif position == 1 then y = bounds.bottom - spacing - height
+	elseif position == 2 then x = bounds.left - spacing - width
+	else x = bounds.right + spacing end
+	bounds.left = math.min(bounds.left, x)
+	bounds.right = math.max(bounds.right, x + width)
+	bounds.bottom = math.min(bounds.bottom, y)
+	bounds.top = math.max(bounds.top, y + height)
+	return x, y
 end
 
 local function draw_diagnostic(image, font, style, title, detail, quality, color)
@@ -434,6 +468,48 @@ function Create()
 	InHeartRateEnabled = self:AddInput("Show Heart Rate", "HeartRateEnabled", {
 		LINKID_DataType = "Number", INPID_InputControl = "CheckboxControl", INP_Default = 1,
 	})
+	local function text_options(key)
+		local function number(label, suffix, default, max)
+			return self:AddInput(label, key .. suffix, {LINKID_DataType = "Number", INPID_InputControl = "SliderControl",
+				INP_Default = default, INP_MinScale = 0, INP_MaxScale = max})
+		end
+		local function combo(label, suffix, choices, default)
+			local attributes = {LINKID_DataType = "Number", INPID_InputControl = "ComboControl", INP_Default = default or 0, INP_Integer = true}
+			for _, choice in ipairs(choices) do table.insert(attributes, {CCS_AddString = choice}) end
+			return self:AddInput(label, key .. suffix, attributes)
+		end
+		local result = {}
+		result.units = {
+			[1] = combo("Pace Units", "PaceUnits", {"min/km", "min/mi", "min/500m"}),
+			[2] = combo("Distance Units", "DistanceUnits", {"km", "mi", "m"}),
+			[3] = combo("Elapsed Format", "DurationFormat", {"hh:mm:ss", "mm:ss", "seconds"}),
+			[4] = combo("Elevation Units", "ElevationUnits", {"m", "ft"}),
+		}
+		result.custom_label = self:AddInput("Custom Label (blank = default)", key .. "CustomLabel", {
+			LINKID_DataType = "Text", INPID_InputControl = "TextEditControl", INP_DefaultText = "", TEC_Lines = 1})
+		result.show_unit = self:AddInput("Show Unit", key .. "ShowUnit", {
+			LINKID_DataType = "Number", INPID_InputControl = "CheckboxControl", INP_Default = 1})
+		for index, part in ipairs({"Label", "Unit"}) do
+			local controls = {}
+			controls.position = combo(part .. " Position", part .. "Position", {"Top", "Bottom", "Left", "Right"}, part == "Unit" and 3 or 0)
+			controls.spacing = number(part .. " Spacing", part .. "Spacing", 0.008, 0.1)
+			controls.size = number(part .. " Size", part .. "Size", 0.022, 0.2)
+			controls.font = self:AddInput(part .. " Font", key .. part .. "Font", {
+				LINKID_DataType = "Text", INPID_InputControl = "FontFileControl", IC_ControlGroup = index + 2, IC_ControlID = 0})
+			controls.style = self:AddInput(part .. " Style", key .. part .. "FontStyle", {
+				LINKID_DataType = "Text", INPID_InputControl = "FontFileControl", IC_ControlGroup = index + 2, IC_ControlID = 1})
+			controls.color = {}
+			for component, name in ipairs({"R", "G", "B", "A"}) do
+				controls.color[component] = self:AddInput(part .. " " .. name, key .. part .. name, {
+					LINKID_DataType = "Number", INPID_InputControl = "ColorControl", INP_Default = 1,
+					INP_MinScale = 0, INP_MaxScale = 1, ICS_Name = part .. " Color",
+					IC_ControlGroup = index + 10, IC_ControlID = component - 1})
+			end
+			result[part] = controls
+		end
+		return result
+	end
+	PrimaryTextOptions = text_options("")
 	WidgetInputs = {}
 	local definitions = {
 		{key = "Pace", label = "Pace", metric = 1},
@@ -479,6 +555,7 @@ function Create()
 				IC_ControlGroup = 1, IC_ControlID = index - 1,
 			})
 		end
+		controls.text = text_options(key)
 		WidgetInputs[slot] = controls
 	end
 end
@@ -566,23 +643,37 @@ function Process(req)
 		draw_text(output, font, style, readout, 0.02, 0.045, 0.045 * y_scale, Pixel{R = 1, G = 0.85, B = 0.3, A = 1}, quality)
 	end
 	if sample ~= nil then
-		local function render_widget(metric, position, size, show_label, widget_font, widget_style, color)
-			local label, value, unit = metric_text(metric, sample, elapsed_us, data)
+		local function render_widget(metric, position, size, show_label, widget_font, widget_style, color, options)
+			local unit_input = options.units[metric]
+			local label, value, unit = metric_text(metric, sample, elapsed_us, data, unit_input and unit_input:GetValue(req).Value or 0)
+			local custom = tostring(options.custom_label:GetValue(req).Value or ""):match("^%s*(.-)%s*$")
+			if custom ~= "" then label = custom end
 			local x = position.X
 			local y = position.Y * (output.Height * output.YScale) / (output.Width * output.XScale)
-			if show_label then
-				draw_text(output, widget_font, widget_style, label, size * 0.34, x, y + size * 0.52, color, quality)
-			end
 			local value_width = draw_text(output, widget_font, widget_style, value, size, x, y, color, quality)
-			if unit ~= "" then
-				draw_text(output, widget_font, widget_style, unit, size * 0.34, x + value_width + size * 0.14, y, color, quality)
+			local bounds = {left = x, right = x + value_width, bottom = y, top = y + size}
+			local function attachment(text, controls)
+				if text == "" then return end
+				local part_font = tostring(controls.font:GetValue(req).Value or "")
+				local part_style = tostring(controls.style:GetValue(req).Value or "")
+				if part_font == "" then part_font = "Open Sans" end
+				if part_style == "" then part_style = "Regular" end
+				local part_size = controls.size:GetValue(req).Value
+				local metrics = TextStyleFontMetrics(TextStyleFont(part_font, part_style))
+				local width = add_text_shape(Shape(), metrics, text, part_size, 0, 0)
+				local px, py = attach_text(bounds, width, part_size, controls.position:GetValue(req).Value, controls.spacing:GetValue(req).Value)
+				draw_text(output, part_font, part_style, text, part_size, px, py,
+					Pixel{R = controls.color[1]:GetValue(req).Value, G = controls.color[2]:GetValue(req).Value,
+						B = controls.color[3]:GetValue(req).Value, A = controls.color[4]:GetValue(req).Value}, quality)
 			end
+			if options.show_unit:GetValue(req).Value > 0.5 then attachment(unit, options.Unit) end
+			if show_label then attachment(label, options.Label) end
 		end
 		if InHeartRateEnabled:GetValue(req).Value > 0.5 then
 			render_widget(math.floor(InMetric:GetValue(req).Value + 0.5), InPosition:GetValue(req), InSize:GetValue(req).Value,
 				InShowLabel:GetValue(req).Value > 0.5, font, style,
 				Pixel{R = InR:GetValue(req).Value, G = InG:GetValue(req).Value,
-					B = InB:GetValue(req).Value, A = InA:GetValue(req).Value})
+					B = InB:GetValue(req).Value, A = InA:GetValue(req).Value}, PrimaryTextOptions)
 		end
 		for _, controls in ipairs(WidgetInputs) do
 			if controls.enabled:GetValue(req).Value > 0.5 then
@@ -593,7 +684,7 @@ function Process(req)
 				render_widget(math.floor(controls.metric:GetValue(req).Value + 0.5), controls.position:GetValue(req), controls.size:GetValue(req).Value,
 					controls.label:GetValue(req).Value > 0.5, widget_font, widget_style,
 					Pixel{R = controls.color[1]:GetValue(req).Value, G = controls.color[2]:GetValue(req).Value,
-						B = controls.color[3]:GetValue(req).Value, A = controls.color[4]:GetValue(req).Value})
+						B = controls.color[3]:GetValue(req).Value, A = controls.color[4]:GetValue(req).Value}, controls.text)
 			end
 		end
 	elseif diagnostics_enabled then
