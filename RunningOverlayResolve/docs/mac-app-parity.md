@@ -61,9 +61,9 @@ available, but there is no selectable/rendered widget.
 | Interval Work Summary | Missing | Work-interval aggregation and styles |
 | Zone Edge Bar | Missing | Zone settings and renderer |
 | Route Map | Missing | Retained GPS geometry, markers, provider/background assets |
-| Vertical Oscillation | Implemented (v8) | cm/mm units. Implemented (v8); host export checked. Mac holds the nearest sample across gaps, Resolve shows `--` |
-| Ground Contact Time | Implemented (v8) | Implemented (v8); host export checked. Mac holds the nearest sample across gaps, Resolve shows `--` |
-| Stride Length | Implemented (v8) | Meters only, as on Mac. Implemented (v8); host export checked. Mac holds the nearest sample across gaps, Resolve shows `--` |
+| Vertical Oscillation | Implemented (v8) | cm/mm units; host export checked |
+| Ground Contact Time | Implemented (v8) | Host export checked |
+| Stride Length | Implemented (v8) | Meters only, as on Mac; host export checked |
 | Vertical Ratio | Implemented (v8) | Derived from oscillation and stride; zero stride shows `--` |
 | GCT Balance | Implemented (v8) | Right-side encoding normalized to left percent; host export checked |
 | Temperature | Implemented (v8) | °C/°F; FIT, FIT-else-manual or manual source. Mac pairs FIT on/off with an optional manual value |
@@ -73,6 +73,13 @@ available, but there is no selectable/rendered widget.
 | Solid Color | Missing | Shape, fill, geometry, opacity and effects |
 | Icon | Missing | Licensed asset handling and renderer |
 | Text | Missing | Text, typography, layout and effects |
+
+**Approved difference — missing samples (2026-10-31).** Mac interpolates across
+any run of records missing a field, however long, and holds the last value at
+either end. Resolve interpolates only between adjacent records that both carry
+the field and otherwise shows `--`. The user chose to keep this: Resolve never
+displays values the activity file did not record. It applies to every
+record-based metric and counts as a user-approved exception for the release gate.
 
 Resolve now supports up to sixteen independently identified numeric instances,
 including duplicate metrics. Each identity retains a persisted renderer slot.
