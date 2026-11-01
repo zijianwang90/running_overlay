@@ -122,10 +122,10 @@ is approximated with raster bands; exact raster parity is not claimed.
 |---|---|---|
 | Numeric styling | v7 adds separate value/label/unit fonts, sizes, colors/opacity, custom labels, visibility and attachments; v9 adds layered text shadow; v10 adds original vector icons and label/unit alignment. Template fonts are approximately matched; host persistence and export checked | Value/label/unit/icon controls, attachment positions, separate typefaces/sizes/colors/opacities, presets and effects match supported Mac fields |
 | Units and formatting | v7 metric-specific km/mi/m, pace /km /mi /500m, elevation m/ft and elapsed formats; Lua tested and imperial host export checked | Metric-specific unit choices, precision, missing values and boundary formatting match Mac |
-| Element layout | Stack/row/grid presets; Fusion positioning | Independent instances, visibility, ordering and reusable layouts; equivalent placement at supported resolutions |
+| Element layout | Template positions from the Mac 1920×1080 element centers, then Fusion positioning; duplicates and off-template widgets use deterministic free slots | Independent instances, visibility, ordering and reusable layouts; equivalent placement at supported resolutions |
 | Activity import | FIT/GPX; limited normalized fields and timer-pause annotations | Retain fields required by all supported widgets, laps, workout structure and GPS; preserve provenance and gaps |
 | Calories | Direct record calories | Match Mac lap-total/session-total fallback, explicitly distinguishing estimates |
-| Templates | None | Save/apply/import/export reusable layouts with versioned data and asset provenance; define supported interchange with Mac templates |
+| Templates | Built-in Easy Run, Race and Interval Workout lists and starting positions | Custom save/apply, import/export of reusable layouts with versioned data and asset provenance; define supported interchange with Mac templates |
 | Editing after cuts | Per-piece offset; data/layout updates refused | Apply chosen style changes across pieces without changing offsets, source mapping or animation; unsupported cases fail before mutation |
 | Project persistence | Local config plus immutable local bundles | Save/reopen, relink, missing-data diagnostics, offline use and cross-machine handoff without developer paths |
 | Preview/export | Same Fuse; short 1080p composite host check | Equivalent values/styles in viewer and Deliver; transparent output, UHD, frame-rate and color-management matrix |

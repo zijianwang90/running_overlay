@@ -7,7 +7,6 @@ const METRICS = Object.freeze({ heartRate: 0, pace: 1, distance: 2, elapsed: 3, 
   verticalRatio: 12, groundContactBalance: 13, temperature: 14, grade: 15, realTime: 16,
   distanceTimeline: 17, routeMap: 18, zoneEdgeBar: 19, elevationChart: 20, weatherWidget: 21,
   date: 22, customNumeric: 23, heartRateZone: 24, runningGauge: 25, decoSolidColor: 26, decorIcon: 27, decorText: 28, lapPace: 29, intervalHUDBar: 30, intervalTimeline: 31, intervalCountdown: 32, intervalWorkSummary: 33 });
-const LAYOUTS = Object.freeze(['vertical', 'horizontal', 'grid']);
 const DEFAULT_WIDGETS = Object.freeze([{ id: 'numeric-1', metric: 'heartRate' }]);
 
 function normalizeWidgets(value) {
@@ -24,26 +23,4 @@ function normalizeWidgets(value) {
   });
 }
 
-function normalizeLayout(value) {
-  const layout = value ?? 'vertical';
-  invariant(LAYOUTS.includes(layout), 'Choose a supported overlay layout.');
-  return layout;
-}
-
-// The distance timeline is centered on its position, top center like the Mac templates.
-const TIMELINE_POSITION = Object.freeze({ x: 0.5, y: 0.931 });
-const ELEVATION_POSITION = Object.freeze({ x: 0.5, y: 0.0891454352441613 });
-const ROUTE_POSITION = Object.freeze({ x: 0.87902425, y: 0.80523365 });
-// Easy Run and Race share the same SimpleCard weather element. The template
-// stores y from the top; Fusion positions are measured from the bottom.
-const WEATHER_POSITION = Object.freeze({ x: 0.894903626, y: 0.2435767452353421 });
-
-function positionFor(layout, index, count = 4) {
-  if (count > 4) return { x: 0.05 + (index % 4) * 0.24, y: 0.86 - Math.floor(index / 4) * 0.22 };
-  if (index >= 4) return { x: 0.08 + (index % 4) * 0.23, y: 0.84 - Math.floor(index / 4) * 0.20 };
-  if (layout === 'horizontal') return { x: 0.08 + index * 0.23, y: 0.84 };
-  if (layout === 'grid') return { x: 0.08 + (index % 2) * 0.46, y: 0.84 - Math.floor(index / 2) * 0.22 };
-  return { x: 0.08, y: 0.84 - index * 0.16 };
-}
-
-module.exports = { METRICS, LAYOUTS, TIMELINE_POSITION, ROUTE_POSITION, ELEVATION_POSITION, WEATHER_POSITION, normalizeWidgets, normalizeLayout, positionFor };
+module.exports = { METRICS, normalizeWidgets };

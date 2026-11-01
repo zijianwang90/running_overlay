@@ -1,5 +1,40 @@
 # Running Overlay Resolve Testing
 
+## Built-In Templates — 2026-11-01
+
+The Workflow panel replaces the Stack/Row/Grid choices with the Mac app's
+built-in Easy Run, Race and Interval Workout templates. `src/domain/templates.js`
+holds each template's element centers from the Mac 1920×1080 `.rotemplate` files
+and flips Y to Fusion's bottom-up axis at full precision; the same file is
+loaded by the control plane and the sandboxed panel. Saved configurations
+without a template default to Easy Run, and the old `layoutPreset` field is
+ignored.
+
+Choosing a template replaces the widget list and keeps the identity of metrics
+shared with the previous template, so their Fusion slots, styles and animations
+survive. `dataUpdateScript` positions the first instance of each metric from the
+template, gives duplicates and off-template metrics deterministic free slots,
+and records the template plus widget list in `RunningOverlay.TemplateSignature`,
+so a changed selection repositions widgets on the next update. Later manual
+Fusion position edits otherwise stay authoritative.
+
+Tests: exact template inventory and order, every element metric and position
+against the Mac baseline, Race equal to Easy Run plus the zone bar and elevation
+chart, unknown template rejection, duplicate/off-template fallbacks,
+order-insensitive template matching, generated Lua position and signature
+strings, and panel handlers for template selection, shared instance identity,
+dropped widgets and the modified-list note.
+
+Host evidence: assembled and reinstalled the panel, restarted Resolve, and
+opened it on the independent validation project. The Template card showed Easy
+Run, Race and Interval Workout with Easy Run selected; selecting Race updated
+the note, left Heart Rate, Pace, Cadence, Power, Time and Clock active, and
+autosave persisted `templateId: "race"` with the eleven-widget list. That
+validation timeline has no usable source clip, so the live Fusion apply path
+was covered by generated-script tests rather than an overlay update. The
+original `Overlay Test` project was reloaded; human review remains required for
+the template positions.
+
 ## Interval Components And Workout Structure — 2026-11-01
 
 v20 adds automatic workout classification and four interval metrics (30–33). The

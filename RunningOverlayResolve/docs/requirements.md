@@ -147,17 +147,19 @@ data semantics, default styling, and reviewed visual examples.
 
 ## Multi-Widget Numeric Editing
 
-- Let the Workflow panel toggle any unique selection of Heart Rate, Pace,
-  Distance, and Elapsed Time, with one to four widgets active. Widgets follow
-  that fixed metric order.
-- Offer vertical, horizontal, and two-column grid starting positions. A changed
-  selection or preset reapplies those positions in metric order.
+- Use the Mac app's built-in Easy Run, Race, and Interval Workout templates as
+  the configuration entry point. Choosing a template replaces the widget list
+  and assigns each widget that template element's starting position.
+- Let the panel add, duplicate, or remove widgets on top of the template, with
+  one to sixteen active. Metrics shared by the old and new template keep their
+  instance identity, Fusion slot, and styling.
 - Create and connect the managed renderer automatically. Users do not wire
-  Fusion nodes. Each metric has its own native Fusion position and style inputs.
-- Persist the selection, order, and preset per project and timeline. Old saved
-  configurations default to one Heart Rate widget without a schema-version bump.
-- An ordinary synchronization keeps each active metric's position, size, color,
-  font, and animation controls. Removing a metric disables its display; adding
+  Fusion nodes. Each widget has its own native Fusion position and style inputs.
+- Persist the template, selection, and order per project and timeline. Saved
+  configurations without a template default to Easy Run without a schema-version
+  bump.
+- An ordinary synchronization keeps each active widget's position, size, color,
+  font, and animation controls. Removing a widget disables its display; adding
   it again may reuse its previous Fusion styling.
 
 ## Coarse Alignment And Data Time Offset

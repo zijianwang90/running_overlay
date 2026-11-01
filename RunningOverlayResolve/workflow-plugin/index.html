@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Running Overlay Resolve</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="lib/domain/templates.js" defer></script>
     <script src="lib/sync/capture-time.js" defer></script>
     <script src="lib/sync/alignment-preview.js" defer></script>
     <script src="time-picker.js" defer></script>
@@ -90,14 +91,13 @@
       </section>
 
       <section class="card">
+        <h2>Template</h2>
+        <div id="template-options" class="segmented" role="radiogroup" aria-label="Template"></div>
+        <p id="template-note" class="note"></p>
+        <p class="note">A template sets the widget list and its starting positions. Choosing another template replaces the list on the next update; your size, font, color and exact position edits stay in Fusion.</p>
         <h2>Widgets</h2>
         <div id="metric-chips" class="chips" aria-label="Metrics"></div>
-        <div class="segmented" role="radiogroup" aria-label="Layout">
-          <button type="button" data-layout="vertical">Stack</button>
-          <button type="button" data-layout="horizontal">Row</button>
-          <button type="button" data-layout="grid">Grid</button>
-        </div>
-        <p class="note">Changing metrics or layout resets preset positions on the next update. Size, font, color and exact position stay in Fusion.</p>
+        <p class="note">Add, duplicate or remove individual widgets. New widgets start at a free position; positions are only reset when the template or widget list changes.</p>
       </section>
 
       <section class="card">

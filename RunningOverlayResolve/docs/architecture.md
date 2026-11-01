@@ -122,12 +122,22 @@ data bundle, not rendered media. Paths in its manifest are relative.
 
 ### Fusion And Rendering
 
-The managed Numeric overlay uses one `CT_SourceTool` Fuse for up to four metrics.
-It reads immutable activity/sync data, binary-searches the current segment and
-activity record, and renders a transparent image for the requested frame.
-Heart Rate, Pace, Distance, and Elapsed Time have separate enabled, position,
-size, label, font, and color controls. Each Position is a native Point input
-with a Fusion viewer crosshair.
+The managed Numeric overlay uses one `CT_SourceTool` Fuse for up to sixteen
+instances. It reads immutable activity/sync data, binary-searches the current
+segment and activity record, and renders a transparent image for the requested
+frame. Every widget has enabled, position, size, label, font, and color controls.
+Each Position is a native Point input with a Fusion viewer crosshair.
+
+Widget configuration starts from a built-in template: Easy Run, Race or Interval
+Workout. `src/domain/templates.js` stores each Mac 1920×1080 template element
+center and converts Y from the Mac's top-down axis to Fusion's bottom-up axis.
+The panel's template choice supplies the initial widget list; `dataUpdateScript`
+gives each metric's first instance its template position, and assigns duplicates
+or off-template metrics a deterministic free slot. Switching templates keeps the
+identity of shared metrics, so their Fusion slots and styles survive. A changed
+template or widget list is recorded in `RunningOverlay.TemplateSignature` and
+repositions widgets on the next update; later position and style edits stay per
+instance in Fusion.
 
 `sync.rosync` carries the Resolve timeline start frame. A composition beginning
 at that start can use automatic origin mapping; a composition beginning later

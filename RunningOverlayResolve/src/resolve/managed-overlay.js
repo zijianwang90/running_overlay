@@ -104,9 +104,9 @@ async function runFusionOperation(comp, script, token, { attempts = 100, interva
   invariant(typeof result === 'string' && (result === `${token}|ok` || result.startsWith(`${token}|ok|`)), 'Fusion did not acknowledge the overlay update.');
   return result.slice(`${token}|ok`.length).replace(/^\|/, '');
 }
-async function setDataInputs(comp, bundleDirectory, origin, initialize = false, widgets, layoutPreset, initialTimeOffsetSeconds = 0, clockUtcOffsetHours = 0) {
+async function setDataInputs(comp, bundleDirectory, origin, initialize = false, widgets, templateId, initialTimeOffsetSeconds = 0, clockUtcOffsetHours = 0) {
   const token = crypto.randomUUID();
-  await runFusionOperation(comp, dataUpdateScript({ bundleDirectory, origin, token, initialize, widgets, layoutPreset, initialTimeOffsetSeconds, clockUtcOffsetHours }), token);
+  await runFusionOperation(comp, dataUpdateScript({ bundleDirectory, origin, token, initialize, widgets, templateId, initialTimeOffsetSeconds, clockUtcOffsetHours }), token);
 }
 // Offset reads and writes run often while the user watches the edit, so they
 // use a short poll and never rescan the timeline.
@@ -156,7 +156,7 @@ async function createCarrierPoolItem(project, timeline, directory, duration, fps
     if (staging) await pool.DeleteTimelines([staging]);
   }
 }
-async function updateManagedOverlay(resolve, { contextId, syncMap, bundleDirectory, expectedItemId = null, referenceVideoTrackIndex = 1, widgets, layoutPreset, initialTimeOffsetSeconds = 0, clockUtcOffsetHours = 0 }) {
+async function updateManagedOverlay(resolve, { contextId, syncMap, bundleDirectory, expectedItemId = null, referenceVideoTrackIndex = 1, widgets, templateId, initialTimeOffsetSeconds = 0, clockUtcOffsetHours = 0 }) {
   const context = await contextForResolve(resolve);
   invariant(context.contextId === contextId, 'The active project or timeline changed. Rescan before applying.');
   const { project, timeline } = context;
@@ -175,7 +175,7 @@ async function updateManagedOverlay(resolve, { contextId, syncMap, bundleDirecto
     const sourceStart = Number(await existing.item.GetSourceStartFrame());
     invariant(sourceStart === 0, 'The managed overlay was source-trimmed. Restore its original trim before updating.');
     const comp = await existing.item.GetFusionCompByIndex(1);
-    await setDataInputs(comp, bundleDirectory, start, false, widgets, layoutPreset, initialTimeOffsetSeconds, clockUtcOffsetHours);
+    await setDataInputs(comp, bundleDirectory, start, false, widgets, templateId, initialTimeOffsetSeconds, clockUtcOffsetHours);
     return { managedItemId: String(await existing.item.GetUniqueId()), replaced: false };
   }
 
@@ -197,7 +197,7 @@ async function updateManagedOverlay(resolve, { contextId, syncMap, bundleDirecto
     invariant(Number(await item.GetStart()) === start && Number(await item.GetEnd()) === end, 'Resolve changed the requested overlay range.');
     const comp = existing ? await item.ImportFusionComp(backup) : await item.AddFusionComp();
     invariant(comp, 'Could not initialize the overlay composition.');
-    await setDataInputs(comp, bundleDirectory, start, !existing, widgets, layoutPreset, initialTimeOffsetSeconds, clockUtcOffsetHours);
+    await setDataInputs(comp, bundleDirectory, start, !existing, widgets, templateId, initialTimeOffsetSeconds, clockUtcOffsetHours);
     invariant(await item.AddMarker(0, 'Cyan', TRACK_NAME, 'Managed live activity overlay', 1, owner), 'Could not record overlay ownership.');
     if (existing) invariant(await timeline.DeleteClips([existing.item], false), 'Could not replace the previous managed overlay.');
     committed = true;

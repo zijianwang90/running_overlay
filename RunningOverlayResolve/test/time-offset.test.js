@@ -41,7 +41,7 @@ test('alignment preview applies capture start, source-in, and the data time offs
 });
 
 test('a new renderer starts from the draft offset while resyncs never reset it', () => {
-  const script = dataUpdateScript({ bundleDirectory: '/tmp/synthetic', origin: 0, token: 't', widgets: [{ id: 'hr', metric: 'heartRate' }], layoutPreset: 'vertical', initialTimeOffsetSeconds: -2.25 });
+  const script = dataUpdateScript({ bundleDirectory: '/tmp/synthetic', origin: 0, token: 't', widgets: [{ id: 'hr', metric: 'heartRate' }], templateId: 'easyRun', initialTimeOffsetSeconds: -2.25 });
   assert.match(script, /if fresh then update\("TimeOffset", -2\.25\) end/);
   assert.equal(validOffsetSeconds(1.23456), 1.235);
   assert.throws(() => validOffsetSeconds(Number.NaN), /within one day/);

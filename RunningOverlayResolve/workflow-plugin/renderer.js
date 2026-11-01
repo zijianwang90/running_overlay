@@ -9,6 +9,7 @@ const state = {
 const api = window.runningOverlayAPI;
 const time = window.RunningOverlayTime;
 const alignment = window.RunningOverlayAlignment;
+const templateApi = window.RunningOverlayTemplates;
 const { createTimePicker, zoneSelect } = window.runningOverlayPickers;
 const byId = (id) => document.getElementById(id);
 const METRICS = [['heartRate', 'Heart rate'], ['pace', 'Pace'], ['distance', 'Distance'], ['elapsed', 'Time'], ['elevation', 'Elevation'], ['cadence', 'Cadence'], ['power', 'Power'], ['calories', 'Calories'],
@@ -325,8 +326,35 @@ function renderTracks() {
   status.className = errors.length ? 'note warning' : 'note';
   status.textContent = `${state.scan.timeline.timelineName}${errors.length ? `\n${errors.map((entry) => entry.message).join('\n')}` : ''}`;
 }
+function templateFor(id) { return templateApi.templateById(id); }
+function renderTemplates() {
+  const config = state.configuration; const box = byId('template-options'); box.replaceChildren();
+  for (const template of templateApi.TEMPLATES) {
+    const button = document.createElement('button'); button.type = 'button'; button.textContent = template.name;
+    button.setAttribute('role', 'radio');
+    button.setAttribute('aria-checked', String(template.id === config.templateId));
+    button.addEventListener('click', () => applyTemplate(template.id));
+    box.appendChild(button);
+  }
+  const template = templateFor(config.templateId);
+  const modified = !templateApi.templateMatches(template, config.widgets);
+  byId('template-note').textContent = `${template.name}: ${template.summary}${modified ? ' Widget list modified.' : ''}`;
+}
+// Replacing the template keeps the identity (and therefore the Fusion slot and
+// styles) of each metric that both templates share; other widgets are dropped.
+function applyTemplate(templateId) {
+  const config = state.configuration; const template = templateFor(templateId);
+  if (config.templateId === templateId && templateApi.templateMatches(template, config.widgets)) return;
+  const remaining = [...config.widgets]; const widgets = [];
+  for (const element of template.elements) {
+    const index = remaining.findIndex((widget) => widget.metric === element.metric);
+    widgets.push(index >= 0 ? remaining.splice(index, 1)[0] : { id: `numeric-${crypto.randomUUID()}`, metric: element.metric });
+  }
+  Object.assign(config, { templateId, widgets });
+  renderWidgets(); scheduleSave(); widgetsChanged();
+}
 function renderWidgets() {
-  const config = state.configuration; const box = byId('metric-chips'); box.replaceChildren();
+  const config = state.configuration; renderTemplates(); const box = byId('metric-chips'); box.replaceChildren();
   for (const [metric, label] of METRICS) {
     const chip = document.createElement('button'); chip.type = 'button'; chip.className = 'chip'; chip.textContent = label;
     chip.setAttribute('aria-pressed', String(config.widgets.some((widget) => widget.metric === metric)));
@@ -355,9 +383,6 @@ function renderWidgets() {
     actions.append(duplicate, remove); row.append(label, actions); list.appendChild(row);
   }
   box.appendChild(list);
-  for (const button of document.querySelectorAll('[data-layout]')) {
-    button.setAttribute('role', 'radio'); button.setAttribute('aria-checked', String(button.dataset.layout === config.layoutPreset));
-  }
 }
 function toggleMetric(metric) {
   const config = state.configuration; const existing = config.widgets.find((widget) => widget.metric === metric);
@@ -530,10 +555,6 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!weather) return;
     weather.location = event.target.value.trim().slice(0, 120) || weatherCoordinates();
     scheduleSave();
-  });
-  for (const button of document.querySelectorAll('[data-layout]')) button.addEventListener('click', () => {
-    if (!state.configuration || state.configuration.layoutPreset === button.dataset.layout) return;
-    state.configuration.layoutPreset = button.dataset.layout; renderWidgets(); scheduleSave(); widgetsChanged();
   });
   for (const button of document.querySelectorAll('[data-nudge]')) button.addEventListener('click', () => setOffset(state.timeOffset.seconds + Number(button.dataset.nudge)));
   byId('offset-slider').addEventListener('input', (event) => setOffset(Number(event.target.value)));

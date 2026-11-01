@@ -5,7 +5,8 @@ const crypto = require('node:crypto');
 const { validateActivity } = require('../domain/activity');
 const { invariant } = require('../domain/validation');
 const { buildCameraClockModel } = require('../sync/clock-model');
-const { normalizeWidgets, normalizeLayout } = require('../domain/widgets');
+const { normalizeWidgets } = require('../domain/widgets');
+const { normalizeTemplateId } = require('../domain/templates');
 const { validateTimeZone } = require('../sync/capture-time');
 const { validateWeather, isWeatherCurrent } = require('../weather/weather');
 
@@ -56,7 +57,7 @@ function validateConfiguration(value) {
     // Offset used when the overlay is created. Afterwards the Fusion renderer is
     // authoritative and this value only mirrors its last known setting.
     draftTimeOffsetMs,
-    widgets: normalizeWidgets(value.widgets), layoutPreset: normalizeLayout(value.layoutPreset),
+    widgets: normalizeWidgets(value.widgets), templateId: normalizeTemplateId(value.templateId),
     captureTimeZone: value.captureTimeZone == null ? null : validateTimeZone(value.captureTimeZone), captureTimeZonesByMediaId,
     confirmedCaptureUtcByMediaId, cameraAnchors,
     lastAppliedFingerprint: typeof value.lastAppliedFingerprint === 'string' ? value.lastAppliedFingerprint : null,

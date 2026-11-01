@@ -65,11 +65,11 @@ test('service restores configurations, detects edits before mutation, and publis
   assert.equal(restored.stale, false); assert.equal(restored.configuration.managedItemId, 'managed-1');
   const second = await reopened.apply({ configuration: first.configuration, expectedFingerprint: snapshot.fingerprint });
   assert.deepEqual(lastUpdate.widgets, [{ id: 'numeric-1', metric: 'heartRate' }]);
-  assert.equal(lastUpdate.layoutPreset, 'vertical');
+  assert.equal(lastUpdate.templateId, 'easyRun');
   assert.notEqual(first.configuration.bundleDirectory, second.configuration.bundleDirectory);
   assert.equal(await fs.readFile(path.join(first.configuration.bundleDirectory, 'sync.rosync'), 'utf8'), await fs.readFile(path.join(second.configuration.bundleDirectory, 'sync.rosync'), 'utf8'));
   const widgetEdit = await reopened.saveConfiguration({ ...second.configuration,
-    widgets: [{ id: 'numeric-1', metric: 'heartRate' }, { id: 'pace-1', metric: 'pace' }], layoutPreset: 'grid' });
+    widgets: [{ id: 'numeric-1', metric: 'heartRate' }, { id: 'pace-1', metric: 'pace' }], templateId: 'race' });
   assert.equal(widgetEdit.lastAppliedFingerprint, null);
   assert.equal((await reopened.scanContext()).stale, true);
   scanValue.timeline.items[0].timelineStartFrame++;

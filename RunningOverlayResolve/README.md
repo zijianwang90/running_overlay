@@ -15,8 +15,9 @@ map with a time-driven position marker, an HR zone bar, a compact elevation
 chart, the Easy Run/Race weather card, the activity date, a configurable custom numeric field, an HR-zone label, a circular
 running gauge, lap pace from FIT lap messages, and interval HUD, timeline,
 countdown and work-summary components driven by the detected workout structure. Up to sixteen independent instances,
-including duplicate metrics, share one Fuse. Stack, row and grid provide initial
-layouts; each instance has native Fusion position and style controls. Route Map
+including duplicate metrics, share one Fuse. The built-in Easy Run, Race and
+Interval Workout templates provide the starting widget list and positions; each
+instance then has native Fusion position and style controls. Route Map
 retains FIT/GPX GPS and segment boundaries, but does not yet provide road-map
 imagery. See the [user guide](docs/user-guide.zh-CN.md) for controls and the
 [parity inventory](docs/mac-app-parity.md) for remaining work.
@@ -86,8 +87,10 @@ the next step. Edits save automatically; only that button changes Resolve.
    zone and strip, then press **Use file times** to accept the detected times for
    all files at once. Files without a usable time, and camera drift pairs, are
    under **Clip details**.
-5. Toggle metrics and choose **Stack**, **Row**, or **Grid**. Size, font, color,
-   and exact position stay in Fusion.
+5. Choose **Easy Run**, **Race**, or **Interval Workout** for the starting
+   widget list and positions, then add, duplicate or remove widgets. Choosing
+   another template replaces the list on the next update; size, font, color and
+   exact position stay in Fusion.
 6. Press **Create overlay**. The plugin creates the composition and connects its
    data inputs automatically.
 7. Play or park the playhead in Resolve on a clear moment, such as the start or

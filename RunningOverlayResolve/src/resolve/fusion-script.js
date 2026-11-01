@@ -1,7 +1,8 @@
 'use strict';
 const path = require('node:path');
 const { invariant } = require('../domain/validation');
-const { METRICS, TIMELINE_POSITION, ROUTE_POSITION, ELEVATION_POSITION, WEATHER_POSITION, normalizeWidgets, normalizeLayout, positionFor } = require('../domain/widgets');
+const { METRICS, normalizeWidgets } = require('../domain/widgets');
+const { templateById, templateElement, fallbackPosition } = require('../domain/templates');
 
 function luaString(value) {
   let equals = '';
@@ -22,12 +23,12 @@ function validOffsetSeconds(value) {
   return Math.round(value * 1000) / 1000;
 }
 
-function dataUpdateScript({ bundleDirectory, origin, token, initialize = false, widgets, layoutPreset, initialTimeOffsetSeconds = 0, clockUtcOffsetHours = 0 }) {
+function dataUpdateScript({ bundleDirectory, origin, token, initialize = false, widgets, templateId, initialTimeOffsetSeconds = 0, clockUtcOffsetHours = 0 }) {
   invariant(Number.isSafeInteger(origin), 'Invalid composition origin');
   const initialOffset = validOffsetSeconds(initialTimeOffsetSeconds);
   const clockOffset = validClockOffsetHours(clockUtcOffsetHours);
   const selected = normalizeWidgets(widgets);
-  const layout = normalizeLayout(layoutPreset);
+  const template = templateById(templateId);
   const fields = {
     ActivityFile: path.join(bundleDirectory, 'activity.roactivity'),
     SyncFile: path.join(bundleDirectory, 'sync.rosync'),
@@ -36,19 +37,25 @@ function dataUpdateScript({ bundleDirectory, origin, token, initialize = false, 
   };
   const assignments = Object.entries(fields).map(([key, value]) =>
     `{${luaString(key)}, ${typeof value === 'number' ? value : luaString(value)}}`).join(',\n');
-  const desired = selected.map((widget, index) => {
-    const position = ({ distanceTimeline: TIMELINE_POSITION, routeMap: ROUTE_POSITION, elevationChart: ELEVATION_POSITION, weatherWidget: WEATHER_POSITION })[widget.metric] ?? positionFor(layout, index, selected.length);
+  const occurrences = new Map();
+  let fallback = 0;
+  const desired = selected.map((widget) => {
+    // The template positions the first instance of each metric; duplicates and
+    // metrics the template does not place fall back to a free slot.
+    const occurrence = occurrences.get(widget.metric) ?? 0;
+    occurrences.set(widget.metric, occurrence + 1);
+    const position = templateElement(template, widget.metric, occurrence) ?? fallbackPosition(fallback++);
     return `{id=${luaString(widget.id)}, metric=${luaString(widget.metric)}, metric_index=${METRICS[widget.metric]}, x=${position.x}, y=${position.y}}`;
   }).join(',\n');
-  const signature = JSON.stringify([layout, selected.map((widget) => [widget.id, widget.metric])]);
+  const signature = JSON.stringify([template.id, selected.map((widget) => [widget.id, widget.metric])]);
   return `
 local status_key = "RunningOverlay.Operation"
 local token = ${luaString(token)}
 local fields = { ${assignments} }
 local desired = { ${desired} }
-local layout_signature = ${luaString(signature)}
+local template_signature = ${luaString(signature)}
 local changes, created = {}, {}
-local previous_layout = comp:GetData("RunningOverlay.LayoutSignature")
+local previous_signature = comp:GetData("RunningOverlay.TemplateSignature")
 local previous_slots = comp:GetData("RunningOverlay.WidgetSlots")
 local output = comp:FindTool("MediaOut1")
 local previous_output = output and output:FindMainInput(1):GetConnectedOutput()
@@ -146,15 +153,15 @@ local ok, message = pcall(function()
     if widget.metric == "distanceTimeline" then
       assert(node:GetInput(prefix .. "TimelineWidth") ~= nil, "Install the current Numeric Fuse and restart Resolve.")
     end
-    if fresh or previous_layout ~= layout_signature then
+    if fresh or previous_signature ~= template_signature then
       if node:GetInput(metric_key) ~= nil then update(metric_key, widget.metric_index)
       else assert(widget.metric_index == (slot - 1), "Install the current Numeric Fuse and restart Resolve.") end
     end
-    if fresh or (previous_layout ~= layout_signature and (previous_layout or #desired > 1)) then
+    if fresh or (previous_signature ~= template_signature and (previous_signature or #desired > 1)) then
       update(prefix .. "Position", {widget.x, widget.y})
     end
   end
-  if fresh or previous_layout ~= layout_signature then
+  if fresh or previous_signature ~= template_signature then
     for slot, prefix in ipairs(prefixes) do
       local key = slot == 1 and "HeartRateEnabled" or prefix .. "Enabled"
       if node:GetInput(key) ~= nil then update(key, used[slot] and 1 or 0)
@@ -164,7 +171,7 @@ local ok, message = pcall(function()
   assert(output:ConnectInput("Input", node), "Could not connect the Numeric output.")
   node:SetData("RunningOverlay.ManagedNumeric", true)
   comp:SetData("RunningOverlay.WidgetSlots", assigned)
-  comp:SetData("RunningOverlay.LayoutSignature", layout_signature)
+  comp:SetData("RunningOverlay.TemplateSignature", template_signature)
   for _, merge in pairs(comp:GetToolList(false, "Merge")) do
     if merge:GetData("RunningOverlay.ManagedMerge") then merge:Delete() end
   end
@@ -177,7 +184,7 @@ if not ok then
     pcall(function() change[1]:SetInput(change[2], change[3]) end)
   end
   for i = #created, 1, -1 do pcall(function() created[i]:Delete() end) end
-  pcall(function() comp:SetData("RunningOverlay.LayoutSignature", previous_layout) end)
+  pcall(function() comp:SetData("RunningOverlay.TemplateSignature", previous_signature) end)
   pcall(function() comp:SetData("RunningOverlay.WidgetSlots", previous_slots) end)
 end
 if undo_started then comp:EndUndo(ok) end
