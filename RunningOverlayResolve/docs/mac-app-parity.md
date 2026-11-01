@@ -2,8 +2,8 @@
 
 ## Release Goal
 
-Keep Resolve development on `codex/resolve-plugin-poc`. The existing PR stays a
-draft; merge to `main` only after the parity gates below are met. This replaces
+Keep Resolve development on `codex/resolve-plugin-poc`. No pull request is open;
+open one and merge to `main` only after the parity gates below are met. This replaces
 the earlier plan to merge the usable four-metric prototype first.
 
 Parity means that users can produce the same supported overlay content and
@@ -42,7 +42,7 @@ available, but there is no selectable/rendered widget.
 | Heart Rate | Partial | Numeric styles, units, zone coloring |
 | HR Zone | Missing | Zone settings, classification, palette |
 | Pace | Partial | Unit options and full numeric styles |
-| Avg Pace | Missing | Match Mac averaging and pause semantics |
+| Avg Pace | Implemented (v8) | Real elapsed ÷ distance with pace units; host export checked |
 | Lap Pace | Missing | Lap data and Mac selection semantics |
 | Calories | Partial | Direct record widget implemented; lap/session fallback pending |
 | Elapsed Time | Partial (`elapsed`) | Match formats and pause behavior at boundaries |
@@ -61,13 +61,13 @@ available, but there is no selectable/rendered widget.
 | Interval Work Summary | Missing | Work-interval aggregation and styles |
 | Zone Edge Bar | Missing | Zone settings and renderer |
 | Route Map | Missing | Retained GPS geometry, markers, provider/background assets |
-| Vertical Oscillation | Missing | FIT field, conversion and formatting |
-| Ground Contact Time | Missing | FIT field and formatting |
-| Stride Length | Missing | FIT field, units and formatting |
-| Vertical Ratio | Missing | FIT field and formatting |
-| GCT Balance | Missing | FIT encoding, side semantics and formatting |
-| Temperature | Missing | FIT value/manual input, units and fallback |
-| Grade | Missing | FIT/GPX derivation and formatting |
+| Vertical Oscillation | Implemented (v8) | cm/mm units. Implemented (v8); host export checked. Mac holds the nearest sample across gaps, Resolve shows `--` |
+| Ground Contact Time | Implemented (v8) | Implemented (v8); host export checked. Mac holds the nearest sample across gaps, Resolve shows `--` |
+| Stride Length | Implemented (v8) | Meters only, as on Mac. Implemented (v8); host export checked. Mac holds the nearest sample across gaps, Resolve shows `--` |
+| Vertical Ratio | Implemented (v8) | Derived from oscillation and stride; zero stride shows `--` |
+| GCT Balance | Implemented (v8) | Right-side encoding normalized to left percent; host export checked |
+| Temperature | Implemented (v8) | °C/°F; FIT, FIT-else-manual or manual source. Mac pairs FIT on/off with an optional manual value |
+| Grade | Implemented (v8) | FIT field; GPX derived within a segment when both elevations exist |
 | Custom Numeric | Missing | Selectable source, precision, units and formats |
 | Weather Widget | Missing | Weather inputs/cache/assets and full module behavior |
 | Solid Color | Missing | Shape, fill, geometry, opacity and effects |

@@ -38,6 +38,12 @@ class FitReader {
         elevationMeters: record.elevationMeters,
         powerWatts: record.powerWatts,
         calories: record.calories,
+        verticalOscillationMm: record.verticalOscillationMm,
+        groundContactTimeMs: record.groundContactTimeMs,
+        strideLengthMeters: record.strideLengthMeters,
+        groundContactBalanceLeftPercent: record.groundContactBalanceLeftPercent,
+        temperatureCelsius: record.temperatureCelsius,
+        gradePercent: record.gradePercent,
       }))
       .sort((left, right) => left.elapsedUs - right.elapsedUs);
     invariant(records.every((record) => record.elapsedUs >= 0), 'FIT records precede the session start');
@@ -157,6 +163,11 @@ class FitReader {
     const altitudeRaw = this.uint16(values.get(2), architecture);
     const cadence = this.uint8(values.get(4));
     const cadenceFraction = this.uint8(values.get(53));
+    const oscillationRaw = this.uint16(values.get(39), architecture);
+    const contactTimeRaw = this.uint16(values.get(41), architecture);
+    const strideRaw = this.uint16(values.get(84), architecture);
+    const balanceRaw = this.uint8(values.get(30));
+    const gradeRaw = this.sint16(values.get(9), architecture);
 
     this.records.push({
       timestampFitSeconds: timestamp,
@@ -171,6 +182,14 @@ class FitReader {
         : altitudeRaw !== null ? altitudeRaw / 5 - 500 : null,
       powerWatts: this.uint16(values.get(7), architecture),
       calories: this.uint16(values.get(33), architecture),
+      verticalOscillationMm: oscillationRaw === null ? null : oscillationRaw / 10,
+      groundContactTimeMs: contactTimeRaw === null ? null : contactTimeRaw / 10,
+      strideLengthMeters: strideRaw === null ? null : strideRaw / 10_000,
+      // Bit 7 marks a right-side percentage; normalize to the left side.
+      groundContactBalanceLeftPercent: balanceRaw === null ? null
+        : balanceRaw & 0x80 ? 100 - (balanceRaw & 0x7f) : balanceRaw & 0x7f,
+      temperatureCelsius: this.sint8(values.get(13)),
+      gradePercent: gradeRaw === null ? null : gradeRaw / 100,
     });
   }
 
@@ -230,6 +249,17 @@ class FitReader {
   uint8(bytes) {
     if (!bytes || bytes.length < 1 || bytes[0] === 0xff) return null;
     return bytes[0];
+  }
+
+  sint8(bytes) {
+    if (!bytes || bytes.length < 1 || bytes[0] === 0x7f) return null;
+    return bytes.readInt8(0);
+  }
+
+  sint16(bytes, architecture) {
+    if (!bytes || bytes.length < 2) return null;
+    const value = architecture === 'little' ? bytes.readInt16LE(0) : bytes.readInt16BE(0);
+    return value === 0x7fff ? null : value;
   }
 
   uint16(bytes, architecture) {

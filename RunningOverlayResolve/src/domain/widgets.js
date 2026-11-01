@@ -2,7 +2,9 @@
 
 const { invariant } = require('./validation');
 
-const METRICS = Object.freeze({ heartRate: 0, pace: 1, distance: 2, elapsed: 3, elevation: 4, cadence: 5, power: 6, calories: 7 });
+const METRICS = Object.freeze({ heartRate: 0, pace: 1, distance: 2, elapsed: 3, elevation: 4, cadence: 5, power: 6, calories: 7,
+  avgPace: 8, verticalOscillation: 9, groundContactTime: 10, strideLength: 11,
+  verticalRatio: 12, groundContactBalance: 13, temperature: 14, grade: 15 });
 const LAYOUTS = Object.freeze(['vertical', 'horizontal', 'grid']);
 const DEFAULT_WIDGETS = Object.freeze([{ id: 'numeric-1', metric: 'heartRate' }]);
 

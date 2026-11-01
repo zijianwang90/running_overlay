@@ -1,5 +1,23 @@
 # Running Overlay Resolve Testing
 
+## Remaining Record-Based Numeric Metrics — 2026-10-31
+
+Fuse v8 adds Avg Pace, Vertical Oscillation, Ground Contact Time, Stride Length,
+Vertical Ratio, GCT Balance, Temperature and Grade. Node tests cover FIT field
+scales, signed temperature and grade, right-side balance normalization, invalid
+sentinels, GPX `atemp` and within-segment grade, bundle round trip through the
+extended synthetic fixture, the metric-index contract between `widgets.js` and the
+Fuse combo, and actual Lua formatting: units, rounding half away from zero for
+negative temperature, temperature source fallback, and zero denominators.
+
+Host: installed v8 and restarted Resolve Studio 21.1.1. In the separate synthetic
+project, switched nine slots to the new metrics; 67 inputs survived save/close/
+reopen. Three 1080p ProRes 4444 alpha frames exported (`yuva444p12le`). The alpha
+matte showed values matching hand interpolation of the fixture: 9'24" /mi average,
+8.5 cm, 244 ms, 1.12 m, 7.6 %, 49.8L / 50.2R, +1.0 %, manual-fallback 22 °C, and
+`--` °F for FIT-only temperature inside a fixture gap. The `°` glyph rendered,
+giving the first host evidence for non-ASCII text. Original project restored.
+
 ## Numeric Text Controls — 2026-10-31
 
 Fuse v7 adds metric-specific units/formats, custom labels, separate label/unit

@@ -75,3 +75,16 @@ test('GPX microsecond origin remains exact through a Resolve sync map', async ()
   assert.equal(activityElapsedUsAtFrame(sync, 300), 10_000_000);
   assert.equal(activityElapsedUsAtFrame(sync, 600), 20_000_000);
 });
+
+test('GPX temperature extensions and grade stay within one segment and need both elevations', () => {
+  const gpx = (points) => Buffer.from(`<?xml version="1.0"?><gpx version="1.1" xmlns:tpx="urn:tpx"><trk>${points}</trk></gpx>`);
+  const point = (lon, ele, second, temp) => `<trkpt lat="0" lon="${lon}">${ele === null ? '' : `<ele>${ele}</ele>`}`
+    + `<time>2026-01-01T08:00:${second}Z</time><extensions><tpx:atemp>${temp}</tpx:atemp></extensions></trkpt>`;
+  const activity = parseGpxBuffer(gpx(`<trkseg>${point(0, 100, '00', -3)}${point(0.001, 102, '10', 4.5)}${point(0.002, null, '20', 5)}</trkseg>`
+    + `<trkseg>${point(1, 110, '30', 6)}</trkseg>`));
+  assert.deepEqual(activity.records.map((record) => record.temperatureCelsius), [-3, 4.5, 5, 6]);
+  assert.equal(activity.records[0].gradePercent, null);
+  assert.ok(Math.abs(activity.records[1].gradePercent - 2 / 111.19 * 100) < 0.01);
+  assert.equal(activity.records[2].gradePercent, null);
+  assert.equal(activity.records[3].gradePercent, null);
+});

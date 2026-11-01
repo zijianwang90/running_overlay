@@ -11,7 +11,9 @@ const time = window.RunningOverlayTime;
 const alignment = window.RunningOverlayAlignment;
 const { createTimePicker, zoneSelect } = window.runningOverlayPickers;
 const byId = (id) => document.getElementById(id);
-const METRICS = [['heartRate', 'Heart rate'], ['pace', 'Pace'], ['distance', 'Distance'], ['elapsed', 'Time'], ['elevation', 'Elevation'], ['cadence', 'Cadence'], ['power', 'Power'], ['calories', 'Calories']];
+const METRICS = [['heartRate', 'Heart rate'], ['pace', 'Pace'], ['distance', 'Distance'], ['elapsed', 'Time'], ['elevation', 'Elevation'], ['cadence', 'Cadence'], ['power', 'Power'], ['calories', 'Calories'],
+  ['avgPace', 'Avg pace'], ['verticalOscillation', 'Vert. osc.'], ['groundContactTime', 'Contact time'], ['strideLength', 'Stride'],
+  ['verticalRatio', 'Vert. ratio'], ['groundContactBalance', 'GCT balance'], ['temperature', 'Temperature'], ['grade', 'Grade']];
 const OVERLAY_TRACK = 'Running Overlay';
 const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
 

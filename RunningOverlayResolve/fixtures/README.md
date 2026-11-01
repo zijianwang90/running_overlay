@@ -4,7 +4,8 @@ These fixtures are authored for this repository and contain no athlete,
 device, media-path, or real GPS data.
 
 - `activity.synthetic.json` describes a fictional 30-minute activity beginning
-  at a deterministic UTC instant.
+  at a deterministic UTC instant, including authored running dynamics,
+  temperature and grade values with explicit gaps.
 - `activity.synthetic.gpx` is an authored four-point fictional track with
   explicit microsecond timestamps, two track segments, sparse metrics, and
   coordinates chosen solely to verify that segment gaps add no distance.

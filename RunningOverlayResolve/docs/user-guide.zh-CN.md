@@ -1,12 +1,14 @@
 # Running Overlay Resolve 使用指南（当前开发版）
 
-本指南从导入活动与视频，到校时、添加数字控件和导出，说明当前 Workflow 面板的实际流程。插件在 DaVinci Resolve 内生成实时 Fusion 叠加层；不需要运行 Running Overlay Studio，也不先导出一条带数据的透明视频。目前面板支持心率、配速、距离、运动计时、海拔、步频、功率和热量八种数字控件，尚未提供模板功能或 Studio 的完整控件目录。
+本指南从导入活动与视频，到校时、添加数字控件和导出，说明当前 Workflow 面板的实际流程。插件在 DaVinci Resolve 内生成实时 Fusion 叠加层；不需要运行 Running Overlay Studio，也不先导出一条带数据的透明视频。目前面板支持心率、配速、平均配速、距离、运动计时、海拔、步频、功率、热量、垂直振幅、触地时间、步幅、垂直比、触地平衡、温度和坡度共十六种数字控件，尚未提供模板功能或 Studio 的完整控件目录。
 
 ## 数值文字样式（Fuse v7）
 
 在 Fusion 中选中 Running Overlay Numeric 节点。每个实例分别提供数值字体、Value Size、颜色和 Alpha，以及以下设置：
 
 - **Pace Units**：min/km、min/mi、min/500m；**Distance Units**：km、mi、m；**Elevation Units**：m、ft；**Elapsed Format**：hh:mm:ss、mm:ss、seconds。只有当前 Metric 对应的设置影响输出。
+- **Oscillation Units**：cm、mm；**Temperature Units**：Celsius、Fahrenheit。平均配速沿用 Pace Units，按真实经过时间除以距离计算，不扣除暂停。
+- **Temperature Source**：FIT、FIT（缺失时用手动值）、Manual；手动值在 **Manual Temperature (°C)** 中设置。跑步动态、温度和坡度来自 FIT 记录；GPX 只提供温度扩展字段，并在同一轨迹段、前后两点都有海拔时计算坡度。数据缺失时显示 `--`。
 - **Custom Label**：自定义标签；空白恢复默认标签。Show Label、Show Unit 分别控制标签和单位显示。
 - **Label / Unit Font、Style、Size、Color、Alpha**：标签和单位各有独立字体、字号、颜色和透明度。空字体使用 Open Sans Regular。字体须安装在渲染机器上，且包含自定义文字对应的字形。
 - **Label / Unit Position、Spacing**：上、下、左、右及间距。先围绕数值放置单位，再围绕整体放置标签；侧边文字顶部对齐。字号和间距使用画面宽度比例，与 Value Size 一致。

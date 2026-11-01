@@ -170,6 +170,7 @@ function parseGpxBuffer(input, options = {}) {
         if (['hr', 'heartrate'].includes(entry.local)) point.heartRateBpm = numeric >= 0 ? Math.round(numeric) : null;
         else if (['cad', 'cadence'].includes(entry.local)) point.cadenceSpm = numeric >= 0 ? Math.round(numeric) : null;
         else if (['power', 'watts', 'powerinwatts'].includes(entry.local)) point.powerWatts = numeric >= 0 ? Math.round(numeric) : null;
+        else if (['atemp', 'temp', 'temperature'].includes(entry.local)) point.temperatureCelsius = numeric;
         else if (entry.local === 'speed') point.speedMetersPerSecond = numeric > 0 ? numeric : null;
       }
     }
@@ -193,6 +194,9 @@ function parseGpxBuffer(input, options = {}) {
     const paceSecondsPerKilometer = entry.speedMetersPerSecond > 0 ? 1_000 / entry.speedMetersPerSecond
       : previous?.segment === entry.segment && deltaUs > 0 && segmentDistance > 0
         ? deltaUs / 1_000 / segmentDistance : null;
+    const gradePercent = previous?.segment === entry.segment && segmentDistance > 0
+      && typeof previous.elevationMeters === 'number' && typeof entry.elevationMeters === 'number'
+      ? (entry.elevationMeters - previous.elevationMeters) / segmentDistance * 100 : null;
     previous = entry;
     return {
       elapsedUs: entry.timestampUs - startUtcUs,
@@ -203,6 +207,8 @@ function parseGpxBuffer(input, options = {}) {
       elevationMeters: entry.elevationMeters ?? null,
       powerWatts: entry.powerWatts ?? null,
       calories: null,
+      temperatureCelsius: entry.temperatureCelsius ?? null,
+      gradePercent,
     };
   });
   return validateActivity({ schemaVersion: 1, activityId: options.activityId ?? `gpx-${startUtcUs}`,

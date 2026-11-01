@@ -15,6 +15,12 @@ const OPTIONAL_RECORD_FIELDS = [
   'elevationMeters',
   'powerWatts',
   'calories',
+  'verticalOscillationMm',
+  'groundContactTimeMs',
+  'strideLengthMeters',
+  'groundContactBalanceLeftPercent',
+  'temperatureCelsius',
+  'gradePercent',
 ];
 
 function validateActivity(activity) {

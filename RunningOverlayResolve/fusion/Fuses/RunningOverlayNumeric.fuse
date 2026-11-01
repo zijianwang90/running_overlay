@@ -16,7 +16,7 @@ FuRegisterClass("RunningOverlayNumeric", CT_SourceTool, {
 	REG_Source_DepthCtrls = true,
 	REG_Fuse_NoEdit = false,
 	REG_Fuse_NoReload = false,
-	REG_Version = 7,
+	REG_Version = 8,
 })
 
 -- Cache only complete immutable snapshots. Several Numeric Fuse instances can
@@ -68,6 +68,12 @@ local function read_activity(path)
 				elevation_m = tonumber(fields[7]),
 				power_w = tonumber(fields[8]),
 				calories = tonumber(fields[9]),
+				oscillation_mm = tonumber(fields[10]),
+				contact_ms = tonumber(fields[11]),
+				stride_m = tonumber(fields[12]),
+				balance_left = tonumber(fields[13]),
+				temperature_c = tonumber(fields[14]),
+				grade_pct = tonumber(fields[15]),
 			})
 		elseif fields[1] == "annotation" and fields[2] == "timerPaused" then
 			table.insert(annotations, {
@@ -195,6 +201,12 @@ local function sample_activity(data, elapsed_us)
 		elevation_m = interpolate("elevation_m"),
 		power_w = interpolate("power_w"),
 		calories = interpolate("calories"),
+		oscillation_mm = interpolate("oscillation_mm"),
+		contact_ms = interpolate("contact_ms"),
+		stride_m = interpolate("stride_m"),
+		balance_left = interpolate("balance_left"),
+		temperature_c = interpolate("temperature_c"),
+		grade_pct = interpolate("grade_pct"),
 	}
 end
 
@@ -222,13 +234,25 @@ local function format_pace(seconds_per_kilometer)
 	return string.format("%d'%02d\"", math.floor(seconds / 60), seconds % 60)
 end
 
-local function metric_text(metric, sample, real_elapsed_us, data, unit_mode)
+-- Swift rounds half away from zero; keep negative temperatures identical.
+local function round(value)
+	if value >= 0 then return math.floor(value + 0.5) end
+	return -math.floor(-value + 0.5)
+end
+
+local function pace_text(seconds_per_kilometer, unit_mode)
+	local factor = unit_mode == 1 and 1.609344 or (unit_mode == 2 and 0.5 or 1)
+	return format_pace(seconds_per_kilometer and seconds_per_kilometer * factor), unit_mode == 1 and "/ mi" or (unit_mode == 2 and "/ 500m" or "/ km")
+end
+
+-- manual_celsius is nil unless the Inspector temperature source allows it.
+local function metric_text(metric, sample, real_elapsed_us, data, unit_mode, manual_celsius, use_fit_temperature)
 	unit_mode = unit_mode or 0
 	if metric == 0 then
 		return "HEART RATE", sample.heart_rate and string.format("%d", math.floor(sample.heart_rate + 0.5)) or "--", "bpm"
 	elseif metric == 1 then
-		local factor = unit_mode == 1 and 1.609344 or (unit_mode == 2 and 0.5 or 1)
-		return "PACE", format_pace(sample.pace_spk and sample.pace_spk * factor), unit_mode == 1 and "/ mi" or (unit_mode == 2 and "/ 500m" or "/ km")
+		local value, unit = pace_text(sample.pace_spk, unit_mode)
+		return "PACE", value, unit
 	elseif metric == 2 then
 		local divisor = unit_mode == 1 and 1609.344 or (unit_mode == 2 and 1 or 1000)
 		return "DISTANCE", sample.distance_m and string.format(unit_mode == 2 and "%.0f" or "%.2f", sample.distance_m / divisor) or "--", unit_mode == 1 and "mi" or (unit_mode == 2 and "m" or "km")
@@ -245,6 +269,34 @@ local function metric_text(metric, sample, real_elapsed_us, data, unit_mode)
 		return "POWER", sample.power_w and string.format("%.0f", sample.power_w) or "--", "W"
 	elseif metric == 7 then
 		return "CALORIES", sample.calories and string.format("%.0f", sample.calories) or "--", "kcal"
+	elseif metric == 8 then
+		-- Session average over real elapsed time, as in the Mac app.
+		local seconds = real_elapsed_us / 1000000
+		local average = (seconds > 0 and sample.distance_m and sample.distance_m > 0) and seconds / (sample.distance_m / 1000) or nil
+		local value, unit = pace_text(average, unit_mode)
+		return "AVG PACE", value, unit
+	elseif metric == 9 then
+		local mm = sample.oscillation_mm
+		if unit_mode == 1 then return "VERT. OSC.", mm and string.format("%d", round(mm)) or "--", "mm" end
+		return "VERT. OSC.", mm and string.format("%.1f", mm / 10) or "--", "cm"
+	elseif metric == 10 then
+		return "GCT", sample.contact_ms and string.format("%d", round(sample.contact_ms)) or "--", "ms"
+	elseif metric == 11 then
+		return "STRIDE", sample.stride_m and string.format("%.2f", sample.stride_m) or "--", "m"
+	elseif metric == 12 then
+		local ratio = (sample.oscillation_mm and sample.stride_m and sample.stride_m > 0) and sample.oscillation_mm / (sample.stride_m * 1000) * 100 or nil
+		return "VERT. RATIO", ratio and string.format("%.1f", ratio) or "--", "%"
+	elseif metric == 13 then
+		local left = sample.balance_left
+		return "GCT BALANCE", left and string.format("%.1fL / %.1fR", left, 100 - left) or "--", "%"
+	elseif metric == 14 then
+		local celsius = (use_fit_temperature ~= false and sample.temperature_c) or manual_celsius
+		if unit_mode == 1 then
+			return "TEMP", celsius and string.format("%d°", round(celsius * 9 / 5 + 32)) or "--", "°F"
+		end
+		return "TEMP", celsius and string.format("%d°", round(celsius)) or "--", "°C"
+	elseif metric == 15 then
+		return "GRADE", sample.grade_pct and string.format("%+.1f", sample.grade_pct) or "--", "%"
 	end
 	return "UNKNOWN", "--", ""
 end
@@ -407,6 +459,10 @@ function Create()
 			{CCS_AddString = "Distance"}, {CCS_AddString = "Elapsed"},
 			{CCS_AddString = "Elevation"}, {CCS_AddString = "Cadence"},
 			{CCS_AddString = "Power"}, {CCS_AddString = "Calories"},
+			{CCS_AddString = "Avg Pace"}, {CCS_AddString = "Vertical Oscillation"},
+			{CCS_AddString = "Ground Contact Time"}, {CCS_AddString = "Stride Length"},
+			{CCS_AddString = "Vertical Ratio"}, {CCS_AddString = "GCT Balance"},
+			{CCS_AddString = "Temperature"}, {CCS_AddString = "Grade"},
 		})
 	end
 	InMetric = metric_input("Metric", "Metric", 0)
@@ -484,7 +540,13 @@ function Create()
 			[2] = combo("Distance Units", "DistanceUnits", {"km", "mi", "m"}),
 			[3] = combo("Elapsed Format", "DurationFormat", {"hh:mm:ss", "mm:ss", "seconds"}),
 			[4] = combo("Elevation Units", "ElevationUnits", {"m", "ft"}),
+			[9] = combo("Oscillation Units", "OscillationUnits", {"cm", "mm"}),
+			[14] = combo("Temperature Units", "TemperatureUnits", {"Celsius", "Fahrenheit"}),
 		}
+		result.units[8] = result.units[1]
+		result.temperature_source = combo("Temperature Source", "TemperatureSource", {"FIT", "FIT, else manual", "Manual"})
+		result.manual_temperature = self:AddInput("Manual Temperature (°C)", key .. "ManualTemperature", {LINKID_DataType = "Number",
+			INPID_InputControl = "SliderControl", INP_Default = 20, INP_MinScale = -30, INP_MaxScale = 45})
 		result.custom_label = self:AddInput("Custom Label (blank = default)", key .. "CustomLabel", {
 			LINKID_DataType = "Text", INPID_InputControl = "TextEditControl", INP_DefaultText = "", TEC_Lines = 1})
 		result.show_unit = self:AddInput("Show Unit", key .. "ShowUnit", {
@@ -645,7 +707,10 @@ function Process(req)
 	if sample ~= nil then
 		local function render_widget(metric, position, size, show_label, widget_font, widget_style, color, options)
 			local unit_input = options.units[metric]
-			local label, value, unit = metric_text(metric, sample, elapsed_us, data, unit_input and unit_input:GetValue(req).Value or 0)
+			local source = math.floor(options.temperature_source:GetValue(req).Value + 0.5)
+			local manual = source > 0 and options.manual_temperature:GetValue(req).Value or nil
+			local label, value, unit = metric_text(metric, sample, elapsed_us, data, unit_input and unit_input:GetValue(req).Value or 0,
+				manual, source < 2)
 			local custom = tostring(options.custom_label:GetValue(req).Value or ""):match("^%s*(.-)%s*$")
 			if custom ~= "" then label = custom end
 			local x = position.X

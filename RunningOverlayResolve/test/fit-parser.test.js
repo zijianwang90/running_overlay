@@ -159,3 +159,31 @@ test('timer events after the final FIT record still preserve the paused interval
   assert.equal(activity.endUtcUs - activity.startUtcUs, 10_000_000);
   assert.deepEqual(activity.annotations, [{ kind: 'timerPaused', startElapsedUs: 5_000_000, endElapsedUs: 10_000_000 }]);
 });
+
+test('FIT running dynamics, temperature and grade keep their units, signs and sentinels', () => {
+  const start = 1_136_188_800;
+  const fields = [
+    { number: 253, size: 4, baseType: 0x86 }, { number: 39, size: 2, baseType: 0x84 },
+    { number: 41, size: 2, baseType: 0x84 }, { number: 84, size: 2, baseType: 0x84 },
+    { number: 30, size: 1, baseType: 0x02 }, { number: 13, size: 1, baseType: 0x01 },
+    { number: 9, size: 2, baseType: 0x83 },
+  ];
+  const sint16 = (value) => { const buffer = Buffer.alloc(2); buffer.writeInt16LE(value); return buffer; };
+  const data = Buffer.concat([
+    definition(0, 20, fields),
+    record(0, [uint32(start), uint16(853), uint16(2_455), uint16(12_340), Buffer.from([49]), Buffer.from([0xfb]), sint16(-250)]),
+    // Bit 7 marks a right-side balance; 0x7f, 0x7fff and 0xffff are invalid.
+    record(0, [uint32(start + 1), uint16(0xffff), uint16(0xffff), uint16(0xffff), Buffer.from([0x80 | 52]), Buffer.from([0x7f]), sint16(0x7fff)]),
+  ]);
+  const [first, second] = parseFitBuffer(withHeader(data)).records;
+  assert.equal(first.verticalOscillationMm, 85.3);
+  assert.equal(first.groundContactTimeMs, 245.5);
+  assert.equal(first.strideLengthMeters, 1.234);
+  assert.equal(first.groundContactBalanceLeftPercent, 49);
+  assert.equal(first.temperatureCelsius, -5);
+  assert.equal(first.gradePercent, -2.5);
+  assert.equal(second.groundContactBalanceLeftPercent, 48);
+  for (const field of ['verticalOscillationMm', 'groundContactTimeMs', 'strideLengthMeters', 'temperatureCelsius', 'gradePercent']) {
+    assert.equal(second[field], null, field);
+  }
+});

@@ -14,6 +14,12 @@ const ACTIVITY_COLUMNS = [
   'elevationMeters',
   'powerWatts',
   'calories',
+  'verticalOscillationMm',
+  'groundContactTimeMs',
+  'strideLengthMeters',
+  'groundContactBalanceLeftPercent',
+  'temperatureCelsius',
+  'gradePercent',
 ];
 
 function encodeCell(value) {

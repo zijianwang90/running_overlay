@@ -12,7 +12,13 @@
       "cadenceSpm": 160,
       "elevationMeters": 100,
       "powerWatts": 210,
-      "calories": 0
+      "calories": 0,
+      "verticalOscillationMm": 88.0,
+      "groundContactTimeMs": 252.0,
+      "strideLengthMeters": 1.06,
+      "groundContactBalanceLeftPercent": 49.6,
+      "temperatureCelsius": 12,
+      "gradePercent": 0.0
     },
     {
       "elapsedUs": 300000000,
@@ -22,7 +28,13 @@
       "cadenceSpm": 172,
       "elevationMeters": 104,
       "powerWatts": 245,
-      "calories": 42
+      "calories": 42,
+      "verticalOscillationMm": 85.4,
+      "groundContactTimeMs": 244.0,
+      "strideLengthMeters": 1.12,
+      "groundContactBalanceLeftPercent": 49.8,
+      "temperatureCelsius": 13,
+      "gradePercent": 1.2
     },
     {
       "elapsedUs": 600000000,
@@ -32,7 +44,13 @@
       "cadenceSpm": 176,
       "elevationMeters": 109,
       "powerWatts": 258,
-      "calories": 88
+      "calories": 88,
+      "verticalOscillationMm": 84.0,
+      "groundContactTimeMs": 239.5,
+      "strideLengthMeters": 1.15,
+      "groundContactBalanceLeftPercent": 50.4,
+      "temperatureCelsius": null,
+      "gradePercent": -0.8
     },
     {
       "elapsedUs": 1200000000,
@@ -42,7 +60,13 @@
       "cadenceSpm": 174,
       "elevationMeters": 102,
       "powerWatts": 250,
-      "calories": 176
+      "calories": 176,
+      "verticalOscillationMm": 86.2,
+      "groundContactTimeMs": 241.0,
+      "strideLengthMeters": 1.13,
+      "groundContactBalanceLeftPercent": null,
+      "temperatureCelsius": 14,
+      "gradePercent": 2.5
     },
     {
       "elapsedUs": 1800000000,
@@ -52,7 +76,13 @@
       "cadenceSpm": 178,
       "elevationMeters": 106,
       "powerWatts": 266,
-      "calories": 265
+      "calories": 265,
+      "verticalOscillationMm": 83.6,
+      "groundContactTimeMs": 236.0,
+      "strideLengthMeters": 1.17,
+      "groundContactBalanceLeftPercent": 50.1,
+      "temperatureCelsius": 14,
+      "gradePercent": -1.6
     }
   ],
   "annotations": [
