@@ -16,7 +16,7 @@ FuRegisterClass("RunningOverlayNumeric", CT_SourceTool, {
 	REG_Source_DepthCtrls = true,
 	REG_Fuse_NoEdit = false,
 	REG_Fuse_NoReload = false,
-	REG_Version = 15,
+	REG_Version = 16,
 })
 
 -- Cache only complete immutable snapshots. Several Numeric Fuse instances can
@@ -515,7 +515,7 @@ local function custom_numeric_text(sample, elapsed_us, data, field, format, prec
 	else text = string.format("%." .. precision .. "f", value) end
 	return label, text, unit
 end
-local function metric_text(metric, sample, real_elapsed_us, data, unit_mode, manual_celsius, use_fit_temperature, utc_offset_hours, custom_field, custom_format, custom_precision, custom_unit)
+local function metric_text(metric, sample, real_elapsed_us, data, unit_mode, manual_celsius, use_fit_temperature, utc_offset_hours, custom_field, custom_format, custom_precision, custom_unit, zone_label)
 	unit_mode = unit_mode or 0
 	if metric == 0 then
 		return "HEART RATE", sample.heart_rate and string.format("%d", math.floor(sample.heart_rate + 0.5)) or "--", "bpm"
@@ -573,6 +573,8 @@ local function metric_text(metric, sample, real_elapsed_us, data, unit_mode, man
 		return "DATE", date_text(data.start_utc_us, real_elapsed_us, utc_offset_hours, unit_mode), ""
 	elseif metric == CUSTOM_METRIC then
 		return custom_numeric_text(sample, real_elapsed_us, data, custom_field, custom_format, custom_precision, custom_unit, utc_offset_hours)
+	elseif metric == HR_ZONE_METRIC then
+		return "HR ZONE", zone_label or "--", ""
 	end
 	return "UNKNOWN", "--", ""
 end
@@ -731,11 +733,12 @@ ELEVATION_METRIC = 20
 WEATHER_METRIC = 21
 DATE_METRIC = 22
 CUSTOM_METRIC = 23
+HR_ZONE_METRIC = 24
 WEATHER_LABELS = {sunny = "Sunny", clearNight = "Clear night", partlyCloudy = "Partly cloudy", cloudy = "Cloudy",
 	fog = "Fog", rain = "Rain", heavyRain = "Heavy rain", snow = "Snow", thunder = "Thunder", wind = "Wind"}
 -- Mac defaultNumericIconSystemName, keyed by metric index.
 DEFAULT_ICONS = {[0] = "Heart", "Speedometer", "Ruler", "Clock", "Mountains", "Runner", "Bolt", "Flame", "Speedometer",
-	"Up-Down Arrow", "Timer", "Left-Right Arrow", "Percent", "Balance", "Thermometer", "Up-Right Arrow", "Watch", [22] = "Calendar"}
+	"Up-Down Arrow", "Timer", "Left-Right Arrow", "Percent", "Balance", "Thermometer", "Up-Right Arrow", "Watch", [22] = "Calendar", [24] = "Heart"}
 
 local function parse_path(path)
 	local commands = {}
@@ -1020,7 +1023,7 @@ function Create()
 			{CCS_AddString = "Temperature"}, {CCS_AddString = "Grade"},
 			{CCS_AddString = "Real Time"}, {CCS_AddString = "Distance Timeline"},
 		{CCS_AddString = "Route Map"}, {CCS_AddString = "HR Zone Bar"}, {CCS_AddString = "Elevation Chart"}, {CCS_AddString = "Weather"},
-		{CCS_AddString = "Date"}, {CCS_AddString = "Custom Numeric"},
+		{CCS_AddString = "Date"}, {CCS_AddString = "Custom Numeric"}, {CCS_AddString = "HR Zone"},
 		})
 	end
 	InMetric = metric_input("Metric", "Metric", 0)
@@ -1410,7 +1413,7 @@ function NotifyChanged(input, parameter, time)
 		DataCache = {}
 	elseif VisibilityGroups ~= nil and VisibilityGroups[input] ~= nil then
 		local metric = parameter ~= nil and math.floor((parameter.Value or 0) + 0.5) or 0
-		local kind = ({[TIMELINE_METRIC] = "timeline", [ROUTE_METRIC] = "route", [ZONE_METRIC] = "zone", [ELEVATION_METRIC] = "elevation", [WEATHER_METRIC] = "weather"})[metric] or "numeric"
+		local kind = ({[TIMELINE_METRIC] = "timeline", [ROUTE_METRIC] = "route", [ZONE_METRIC] = "zone", [ELEVATION_METRIC] = "elevation", [WEATHER_METRIC] = "weather", [HR_ZONE_METRIC] = "zone"})[metric] or "numeric"
 		for name, controls in pairs(VisibilityGroups[input]) do
 			for _, control in ipairs(controls) do control:SetAttrs({IC_Visible = name == kind}) end
 		end
@@ -1505,14 +1508,26 @@ function Process(req)
 				opacity = value_of(shadow.opacity), radius = value_of(shadow.radius),
 				x = value_of(shadow.x), y = value_of(shadow.y), thickness = value_of(shadow.thickness)}
 		end
-		local function render_widget(metric, position, size, show_label, widget_font, widget_style, color, options)
+		local function render_widget(metric, position, size, show_label, widget_font, widget_style, color, options, zone_options)
 			local unit_input = options.units[metric]
 			local source = math.floor(options.temperature_source:GetValue(req).Value + 0.5)
 			local manual = source > 0 and options.manual_temperature:GetValue(req).Value or nil
+			local zone_label = nil
+			if metric == HR_ZONE_METRIC and zone_options ~= nil then
+				local z = zone_options
+				local count = math.floor(value_of(z.count) + 0.5) == 0 and 5 or 6
+				local ranges = {}
+				for index = 1, count do
+					ranges[index] = {math.floor(value_of(z.ranges[index][1]) + 0.5),
+						math.floor(value_of(z.ranges[index][2]) + 0.5)}
+				end
+				local zone_index = heart_rate_zone(sample.heart_rate, ranges)
+				if zone_index ~= nil then zone_label = "Z" .. zone_index end
+			end
 			local label, value, unit = metric_text(metric, sample, elapsed_us, data, unit_input and unit_input:GetValue(req).Value or 0,
 				manual, source < 2, options.clock_offset:GetValue(req).Value,
 				options.custom_field:GetValue(req).Value, options.custom_format:GetValue(req).Value,
-				options.custom_precision:GetValue(req).Value, options.custom_unit:GetValue(req).Value)
+				options.custom_precision:GetValue(req).Value, options.custom_unit:GetValue(req).Value, zone_label)
 			local custom = tostring(options.custom_label:GetValue(req).Value or ""):match("^%s*(.-)%s*$")
 			if custom ~= "" then label = custom end
 			local x = position.X
@@ -2002,7 +2017,7 @@ function Process(req)
 			elseif metric == WEATHER_METRIC then
 				render_weather(position, widget_font, widget_style, weather, options)
 			else
-				render_widget(metric, position, size, show_label, widget_font, widget_style, color, options)
+				render_widget(metric, position, size, show_label, widget_font, widget_style, color, options, zone)
 			end
 		end
 		if InHeartRateEnabled:GetValue(req).Value > 0.5 then

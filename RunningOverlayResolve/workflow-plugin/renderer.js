@@ -13,7 +13,7 @@ const { createTimePicker, zoneSelect } = window.runningOverlayPickers;
 const byId = (id) => document.getElementById(id);
 const METRICS = [['heartRate', 'Heart rate'], ['pace', 'Pace'], ['distance', 'Distance'], ['elapsed', 'Time'], ['elevation', 'Elevation'], ['cadence', 'Cadence'], ['power', 'Power'], ['calories', 'Calories'],
   ['avgPace', 'Avg pace'], ['verticalOscillation', 'Vert. osc.'], ['groundContactTime', 'Contact time'], ['strideLength', 'Stride'],
-  ['verticalRatio', 'Vert. ratio'], ['groundContactBalance', 'GCT balance'], ['temperature', 'Temperature'], ['grade', 'Grade'], ['realTime', 'Clock'], ['distanceTimeline', 'Dist. timeline'], ['routeMap', 'Route map'], ['zoneEdgeBar', 'HR zone bar'], ['elevationChart', 'Elevation chart'], ['weatherWidget', 'Weather'], ['date', 'Date'], ['customNumeric', 'Custom numeric']];
+  ['verticalRatio', 'Vert. ratio'], ['groundContactBalance', 'GCT balance'], ['temperature', 'Temperature'], ['grade', 'Grade'], ['realTime', 'Clock'], ['distanceTimeline', 'Dist. timeline'], ['routeMap', 'Route map'], ['zoneEdgeBar', 'HR zone bar'], ['elevationChart', 'Elevation chart'], ['weatherWidget', 'Weather'], ['date', 'Date'], ['customNumeric', 'Custom numeric'], ['heartRateZone', 'HR zone']];
 const OVERLAY_TRACK = 'Running Overlay';
 const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
 

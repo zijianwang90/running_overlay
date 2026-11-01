@@ -40,7 +40,7 @@ available, but there is no selectable/rendered widget.
 | Mac element | Resolve status | Work required |
 |---|---|---|
 | Heart Rate | Partial | Numeric styles, units, zone coloring |
-| HR Zone | Missing | Zone settings, classification, palette |
+| HR Zone | Partial (v16) | Numeric `Z1`…`Z6` label from the instance HR ranges and existing inclusive first-match rule; optional Mac-style text tint/palette pending |
 | Pace | Partial | Unit options and full numeric styles |
 | Avg Pace | Implemented (v8) | Real elapsed ÷ distance with pace units; host export checked |
 | Lap Pace | Missing | Lap data and Mac selection semantics |

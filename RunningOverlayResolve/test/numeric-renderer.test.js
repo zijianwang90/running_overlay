@@ -8,7 +8,7 @@ const { METRICS } = require('../src/domain/widgets');
 const FUSE_NAMES = { heartRate: 'Heart Rate', pace: 'Pace', distance: 'Distance', elapsed: 'Elapsed', elevation: 'Elevation',
   cadence: 'Cadence', power: 'Power', calories: 'Calories', avgPace: 'Avg Pace', verticalOscillation: 'Vertical Oscillation',
   groundContactTime: 'Ground Contact Time', strideLength: 'Stride Length', verticalRatio: 'Vertical Ratio',
-  groundContactBalance: 'GCT Balance', temperature: 'Temperature', grade: 'Grade', realTime: 'Real Time', distanceTimeline: 'Distance Timeline', routeMap: 'Route Map', zoneEdgeBar: 'HR Zone Bar', elevationChart: 'Elevation Chart', weatherWidget: 'Weather', date: 'Date', customNumeric: 'Custom Numeric' };
+  groundContactBalance: 'GCT Balance', temperature: 'Temperature', grade: 'Grade', realTime: 'Real Time', distanceTimeline: 'Distance Timeline', routeMap: 'Route Map', zoneEdgeBar: 'HR Zone Bar', elevationChart: 'Elevation Chart', weatherWidget: 'Weather', date: 'Date', customNumeric: 'Custom Numeric', heartRateZone: 'HR Zone' };
 assert.deepEqual(Object.values(METRICS), Object.keys(METRICS).map((_, index) => index));
 const source = fs.readFileSync(path.join(__dirname, '../fusion/Fuses/RunningOverlayNumeric.fuse'), 'utf8');
 function run(code) {
@@ -511,6 +511,21 @@ local index,f=heart_rate_zone(160,{{160,160}});assert(index==1 and f==0.5)
 local frames=zone_frames(6,2,0.4)
 assert(math.abs(frames[2].width-0.4)<1e-9 and math.abs(frames[6].start+frames[6].width-1)<1e-9)
 assert(zone_frames(6,nil,0.4)[1].width==1/6)
+`));
+
+test('HR Zone metric labels rounded bpm using the instance ranges', () => run(HOST + `
+load_data=function() return {} end
+local hr=155
+sample_activity=function() return {heart_rate=hr} end
+inputs.Metric.value=HR_ZONE_METRIC;inputs.ShowLabel.value=0;inputs.ShowUnit.value=0;inputs.IconEnabled.value=0;inputs.ShadowEnabled.value=0
+Process(req)
+assert(of('text')[1].text=='Z3')
+hr=161.5;events={};Process(req);assert(of('text')[1].text=='Z4')
+hr=nil;events={};Process(req);assert(of('text')[1].text=='--')
+hr=140;inputs.ZoneCount.value=0;inputs.Zone1Max.value=0;inputs.Zone2Min.value=200;events={};Process(req)
+assert(of('text')[1].text=='--')
+NotifyChanged(inputs.Metric,{Value=HR_ZONE_METRIC})
+assert(inputs.ZoneCount.visible==true and inputs.Zone1Min.visible==true and inputs.TimelineWidth.visible==false)
 `));
 
 test('zone bar draws active segments, threshold and inward markers on all four edges', () => run(HOST + `

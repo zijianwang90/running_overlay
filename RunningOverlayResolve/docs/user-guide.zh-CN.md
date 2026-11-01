@@ -90,6 +90,14 @@
 - 这一版的自定义数值尚未提供 HR Zone、Lap Pace、Elevation Gain 与通用 FIT 字段；
   这些依赖区间/圈数据和共享生理设置的字段留待后续组件完成。
 
+### 心率区间标签（v16）
+
+**HR Zone** 与心率数值共用同一套数值样式，显示当前心率所在的 `Z1`…`Z6`。
+区间范围来自该实例的 **Zone Count** 和 **Z1…Z6 Min/Max HR**（与 HR zone bar 相同），
+按四舍五入后的 bpm 和“两端包含、第一个匹配优先”的规则分类。默认使用 Mac 的六段
+参考范围；没有心率或没有匹配区间时显示 `--`。这一版不随区间改变文字颜色，
+也不读取 Mac 的全局生理设置。
+
 ## 数值文字样式（Fuse v7）
 
 在 Fusion 中选中 Running Overlay Numeric 节点。每个实例分别提供数值字体、Value Size、颜色和 Alpha，以及以下设置：

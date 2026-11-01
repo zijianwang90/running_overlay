@@ -560,3 +560,13 @@ both metric IDs, positions, date format and custom controls. A 1920×1080 ProRes
 produce an empty composite because the existing Process path requires a sample,
 so the midnight rollover is covered by the injection test rather than a host
 offset. The original `Overlay Test` project was reloaded afterwards.
+
+## HR Zone Label — 2026-11-01
+
+v16 adds metric 24 (HR Zone), which reuses each slot's zone count/ranges and the
+existing `heart_rate_zone` classification. The Lua test drives the real Process
+path for rounded boundaries, missing HR, narrowed five-zone ranges and Inspector
+visibility. Host evidence: slot 13 in `RO Numeric v7 Validation` rendered `Z2`
+with the Heart glyph at 1080p ProRes 4444 alpha; save, close and reopen retained
+metric 24, the enabled flag and zone range inputs. The original `Overlay Test`
+project was restored.

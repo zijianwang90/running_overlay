@@ -313,3 +313,9 @@ selects from the fields already normalized into activity records and applies
 per-instance source, format, precision and unit controls. Missing fields follow
 the documented adjacent-sample policy and render `--`; no network or additional
 activity model is involved.
+
+HR Zone (metric 24) reuses the zone count and range inputs already owned by each
+widget slot, so a text zone label and a zone bar in the same composition share
+the instance configuration. Classification delegates to the existing rounded,
+inclusive first-match helper; no global physiology store or additional data
+bundle is introduced. Active-zone text tint remains a visual-parity gap.
