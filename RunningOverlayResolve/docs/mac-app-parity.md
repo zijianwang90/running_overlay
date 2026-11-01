@@ -47,7 +47,7 @@ available, but there is no selectable/rendered widget.
 | Calories | Partial | Direct record widget implemented; lap/session fallback pending |
 | Elapsed Time | Partial (`elapsed`) | Match formats and pause behavior at boundaries |
 | Real Time | Implemented (v9) | `HH:mm:ss` or `h:mm:ss a`, seconds truncated as on Mac. Mac uses the rendering machine's timezone; Resolve uses an explicit per-instance UTC offset seeded from the recording timezone at activity start, so an activity crossing a DST change keeps one offset. Host export checked |
-| Date | Missing | Explicit timezone and date formatting |
+| Date | Implemented (v15) | Six en_US_POSIX patterns; per-instance fixed UTC offset applied to the activity instant. Host export checked |
 | Distance | Partial | Units and full numeric styles |
 | Distance Timeline | Partial (v10) | Minimal template: progress, ticks, markers, axis labels, glow and shadow implemented; other presets/stats/elevation pending |
 | Elevation | Partial | Meter widget implemented; units and display modes pending |
@@ -68,7 +68,7 @@ available, but there is no selectable/rendered widget.
 | GCT Balance | Implemented (v8) | Right-side encoding normalized to left percent; host export checked |
 | Temperature | Implemented (v8) | °C/°F; FIT, FIT-else-manual or manual source. Mac pairs FIT on/off with an optional manual value |
 | Grade | Implemented (v8) | FIT field; GPX derived within a segment when both elevations exist |
-| Custom Numeric | Missing | Selectable source, precision, units and formats |
+| Custom Numeric | Partial (v15) | 19 record sources, number/integer/duration/clock/date/pace/percent/coordinate formats, precision and custom unit. HR-zone, lap pace, elevation gain and generic FIT fields pending |
 | Weather Widget | Partial (v14) | Open-Meteo historical fetch cached in the project, offline card render, ten conditions, °C/°F, FIT override, SimpleCard layout; forecasts/presets/geocoding pending |
 | Solid Color | Missing | Shape, fill, geometry, opacity and effects |
 | Icon | Missing | Licensed asset handling and renderer |

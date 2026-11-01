@@ -8,7 +8,7 @@ const { METRICS } = require('../src/domain/widgets');
 const FUSE_NAMES = { heartRate: 'Heart Rate', pace: 'Pace', distance: 'Distance', elapsed: 'Elapsed', elevation: 'Elevation',
   cadence: 'Cadence', power: 'Power', calories: 'Calories', avgPace: 'Avg Pace', verticalOscillation: 'Vertical Oscillation',
   groundContactTime: 'Ground Contact Time', strideLength: 'Stride Length', verticalRatio: 'Vertical Ratio',
-  groundContactBalance: 'GCT Balance', temperature: 'Temperature', grade: 'Grade', realTime: 'Real Time', distanceTimeline: 'Distance Timeline', routeMap: 'Route Map', zoneEdgeBar: 'HR Zone Bar', elevationChart: 'Elevation Chart', weatherWidget: 'Weather' };
+  groundContactBalance: 'GCT Balance', temperature: 'Temperature', grade: 'Grade', realTime: 'Real Time', distanceTimeline: 'Distance Timeline', routeMap: 'Route Map', zoneEdgeBar: 'HR Zone Bar', elevationChart: 'Elevation Chart', weatherWidget: 'Weather', date: 'Date', customNumeric: 'Custom Numeric' };
 assert.deepEqual(Object.values(METRICS), Object.keys(METRICS).map((_, index) => index));
 const source = fs.readFileSync(path.join(__dirname, '../fusion/Fuses/RunningOverlayNumeric.fuse'), 'utf8');
 function run(code) {
@@ -61,6 +61,11 @@ local names = {}
 for _, choice in ipairs(inputs.Widget16Metric.attrs) do table.insert(names, choice.CCS_AddString) end
 assert(table.concat(names, ',') == ${JSON.stringify(Object.keys(METRICS).map((key) => FUSE_NAMES[key]).join(','))}, table.concat(names, ','))
 assert(inputs.Widget16TemperatureSource and inputs.Widget16ManualTemperature and inputs.Widget16OscillationUnits)
+local function combo_names(input) local out={}; for _, choice in ipairs(input.attrs) do table.insert(out, choice.CCS_AddString) end; return table.concat(out, ',') end
+assert(combo_names(inputs.Widget16DateFormat) == 'yyyy-MM-dd,yyyy/MM/dd,MM/dd/yyyy,MM-dd,MM/dd,MMM d')
+assert(combo_names(inputs.Widget16CustomFormat) == 'Number,Integer,Duration,Clock Time,Date,Pace,Percent,Coordinate')
+assert(#inputs.Widget16CustomField.attrs == 19)
+assert(inputs.Widget16CustomField.attrs[1].CCS_AddString == 'Timestamp' and inputs.Widget16CustomField.attrs[19].CCS_AddString == 'Grade (%)')
 assert(inputs.Widget16LabelSize and inputs.Widget16ElevationUnits and inputs.Widget16LabelA)
 Width=1920; Height=1080; Scale=1; XAspect=1; YAspect=1; SourceDepth=0
 local composited={}
@@ -297,8 +302,10 @@ assert(near(icons[1].top, (y - 0.01 + y + 0.04) / 2 + 11/1280), icons[1].top)
 assert(#of('shape')==1 and of('shape')[1].shape==glyph and of('shape')[1].color.A==1)
 -- Every metric has a default glyph; the Inspector glyph overrides it.
 for metric = 0, 16 do assert(ICON_GLYPHS[DEFAULT_ICONS[metric]], metric) end
+assert(DEFAULT_ICONS[22] == 'Calendar')
 for index = 2, #ICON_NAMES do assert(ICON_GLYPHS[ICON_NAMES[index]], ICON_NAMES[index]) end
 inputs.Metric.value=16; icons={}; Process(req); assert(icons[1].name=='Watch')
+inputs.Metric.value=22; icons={}; Process(req); assert(icons[1].name=='Calendar')
 inputs.IconGlyph.value=7; icons={}; Process(req); assert(icons[1].name=='Runner')
 -- Top placement aligned to the start sits one spacing above the block.
 inputs.IconPosition.value=0; inputs.IconAlignment.value=0; icons={}; Process(req)
@@ -671,3 +678,47 @@ test('weather metadata survives the activity TSV round trip', () => {
     assert(weather.location == 'Oslo' and weather.weekday == 'Thursday' and weather.sourceUtcUs == 1783016700000000)
   `);
 });
+
+test('Date and Custom Numeric use the activity instant and existing record fields', () => run(`
+local data = {start_utc_us = 1767254400000000}
+local sample = {distance_m = 1609.344, heart_rate = 148, pace_spk = 300, cadence = 174, elevation_m = 100,
+  power_w = 251, calories = 320, oscillation_mm = 88, contact_ms = 252, stride_m = 1.06, balance_left = 49.6,
+  temperature_c = 12, grade_pct = 1.5, latitude_deg = 43.653226, longitude_deg = -79.383184}
+local label, value, unit = metric_text(DATE_METRIC, sample, 0, data, 0)
+assert(label == 'DATE' and value == '2026-01-01' and unit == '')
+for mode, expected in ipairs({'2026/01/01', '01/01/2026', '01-01', '01/01', 'Jan 1'}) do
+  _, value = metric_text(DATE_METRIC, sample, 0, data, mode)
+  assert(value == expected, mode .. ' ' .. value)
+end
+_, value = metric_text(DATE_METRIC, sample, 16 * 3600000000, data, 0)
+assert(value == '2026-01-02')
+_, value = metric_text(DATE_METRIC, sample, 16 * 3600000000, data, 0, nil, nil, -8)
+assert(value == '2026-01-01')
+_, value = metric_text(DATE_METRIC, sample, 0, {}, 0)
+assert(value == '--')
+-- Distance, heart rate, pace, precision, custom unit and formats.
+_, value, unit = metric_text(CUSTOM_METRIC, sample, 0, data, 0, nil, nil, 0, 2, 0, 2)
+assert(value == '1609.34' and unit == 'm')
+_, value, unit = metric_text(CUSTOM_METRIC, sample, 0, data, 0, nil, nil, 0, 3, 1, 2)
+assert(value == '148' and unit == 'bpm')
+_, value, unit = metric_text(CUSTOM_METRIC, sample, 0, data, 0, nil, nil, 0, 4, 5, 2)
+assert(value == [[5'00"]] and unit == '/km')
+_, value, unit = metric_text(CUSTOM_METRIC, sample, 600000000, data, 0, nil, nil, 0, 5, 5, 0)
+assert(value == [[6'13"]] and unit == '/km')
+_, value, unit = metric_text(CUSTOM_METRIC, sample, 0, data, 0, nil, nil, 0, 15, 6, 1)
+assert(value == '8.3' and unit == '%')
+_, value, unit = metric_text(CUSTOM_METRIC, sample, 0, data, 0, nil, nil, 0, 1, 2, 0)
+assert(value == '00:00:00' and unit == '')
+_, value, unit = metric_text(CUSTOM_METRIC, sample, 125000000, data, 0, nil, nil, 0, 1, 2, 0)
+assert(value == '00:02:05')
+_, value, unit = metric_text(CUSTOM_METRIC, sample, 0, data, 0, nil, nil, 0, 10, 7, 4)
+assert(value == '43.6532' and unit == '')
+_, value, unit = metric_text(CUSTOM_METRIC, sample, 0, data, 0, nil, nil, 0, 2, 0, 2, 'metres')
+assert(value == '1609.34' and unit == 'metres')
+_, value, unit = metric_text(CUSTOM_METRIC, {}, 0, data, 0, nil, nil, 0, 3, 1, 2)
+assert(value == '--' and unit == 'bpm')
+_, value, unit = metric_text(CUSTOM_METRIC, sample, 0, data, 0, nil, nil, 0, 0, 4, 0)
+assert(value == '2026-01-01')
+_, value, unit = metric_text(CUSTOM_METRIC, sample, 0, data, 0, nil, nil, 8, 1, 3, 0, '')
+assert(value == '16:00:00')
+`));

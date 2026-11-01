@@ -26,6 +26,8 @@ test('widget choices and preset positions are deterministic and reject duplicate
   assert.deepEqual(positionFor('horizontal', 3), { x: 0.77, y: 0.84 });
   assert.deepEqual(require('../src/domain/widgets').WEATHER_POSITION, { x: 0.894903626, y: 0.2435767452353421 });
   assert.equal(normalizeWidgets([{ id: 'weather-1', metric: 'weatherWidget' }])[0].metric, 'weatherWidget');
+  assert.equal(normalizeWidgets([{ id: 'date-1', metric: 'date' }])[0].metric, 'date');
+  assert.equal(normalizeWidgets([{ id: 'custom-1', metric: 'customNumeric' }])[0].metric, 'customNumeric');
   assert.throws(() => normalizeWidgets([]), /one and sixteen/);
   assert.equal(normalizeWidgets([{ id: 'a', metric: 'pace' }, { id: 'b', metric: 'pace' }]).length, 2);
   assert.throws(() => normalizeWidgets([{ id: 'a', metric: 'pace' }, { id: 'a', metric: 'power' }]), /unique/);

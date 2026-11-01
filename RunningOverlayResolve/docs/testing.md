@@ -536,3 +536,27 @@ positions, and generated transaction structure. No visual golden was updated.
 Full UHD/color-managed performance and a complete Deliver export with four
 metrics remain manual release checks. Focused review should also inspect
 existing manually changed single-widget Metric controls during migration.
+
+## Date And Custom Numeric — 2026-11-01
+
+v15 adds metric 22 (Date) and 23 (Custom Numeric) to the managed Fuse. Date uses
+manual UTC civil-date arithmetic rather than `os.date`, because the Lua host
+must not depend on locale, timezone or the UTC format flag. Six date patterns
+match the Mac en_US_POSIX set, and the instance clock offset applies to the
+activity instant. Custom Numeric tests cover source order, number/integer/
+duration/clock/date/pace/percent/coordinate formatting, precision rounding,
+unit override, missing values and derived average pace/vertical ratio.
+
+The Lua suite executes the real Fuse at fixed epoch `1767254400000000`
+(2026-01-01T08:00:00Z) so date and clock assertions are deterministic. Node
+tests cover metric identity, panel/widget acceptance and Inspector combos.
+
+Host evidence: installed v15 after saving and restarting Resolve. In the
+independent `RO Numeric v7 Validation` project, slots 11 and 12 were set to Date
+and Custom Numeric (Distance, 2 decimals). Save, restart and reopen retained
+both metric IDs, positions, date format and custom controls. A 1920×1080 ProRes
+4444 alpha render showed `2026-01-01` with the Calendar glyph and
+`DISTANCE 930.51 m`; the unit and shadow rendered. Frames beyond the activity end
+produce an empty composite because the existing Process path requires a sample,
+so the midnight rollover is covered by the injection test rather than a host
+offset. The original `Overlay Test` project was reloaded afterwards.

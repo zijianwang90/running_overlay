@@ -70,6 +70,26 @@
 - 请求发送首个 GPS 坐标和活动日期到 Open-Meteo；不需要 API Key。更换活动会清除
   旧的天气缓存；修改地点文字或重新获取天气后需要 **Update overlay** 才会进入渲染。
 
+## 日期与自定义数值（v15）
+
+在 Widgets 中添加 **Date** 或 **Custom numeric**，更新后在 Fusion 对应实例中调整。
+
+- **Date**：显示当前帧对应活动时刻的日期（活动开始时间加按真实时间计算的经过时间），
+  再叠加该实例固定的 **Clock UTC Offset (h)**。**Date Format** 提供 `yyyy-MM-dd`、
+  `yyyy/MM/dd`、`MM/dd/yyyy`、`MM-dd`、`MM/dd`、`MMM d`，与 Mac 的 en_US_POSIX
+  格式一致；没有活动开始时间时显示 `--`。
+- **Custom Numeric**：**Custom Source** 选择记录字段：Timestamp、Elapsed Time、
+  Distance (m)、Heart Rate、Pace、Avg Pace、Elevation、Cadence、Power、Calories、
+  Latitude、Longitude、Vert. Osc. (mm)、GCT、Stride、Vert. Ratio、GCT Balance、
+  Temperature、Grade。**Custom Format** 支持 Number、Integer、Duration、Clock Time、
+  Date、Pace、Percent、Coordinate；**Custom Precision** 为 0–4 位小数。
+  **Custom Unit** 留空时沿用该字段的默认单位，填写后覆盖显示单位。
+  平均配速按真实经过时间除以距离计算；Vert. Ratio 由振荡和步幅推导。
+- 缺失字段保持 `--`，沿用全项目的缺失样本策略：只在前后相邻且都有值的记录之间插值，
+  不跨任意缺口伪造数值。Date、Clock Time 使用与真实时间相同的活动时刻和 UTC 偏移。
+- 这一版的自定义数值尚未提供 HR Zone、Lap Pace、Elevation Gain 与通用 FIT 字段；
+  这些依赖区间/圈数据和共享生理设置的字段留待后续组件完成。
+
 ## 数值文字样式（Fuse v7）
 
 在 Fusion 中选中 Running Overlay Numeric 节点。每个实例分别提供数值字体、Value Size、颜色和 Alpha，以及以下设置：

@@ -304,3 +304,12 @@ immutable `.roactivity` TSV alongside records, so Fusion preview and Deliver rea
 it once with the activity and never perform network access. The weather card is
 metric 21 in the existing sixteen-slot Fuse; visual controls, units, content
 visibility and the FIT temperature override persist per instance in Fusion.
+
+Date and Custom Numeric reuse the existing sixteen-slot renderer as metrics 22
+and 23 without changing earlier IDs. Both read the same immutable activity
+snapshot and the instance's fixed clock offset; date formatting is pure UTC
+arithmetic, so host locale and timezone never affect the output. Custom Numeric
+selects from the fields already normalized into activity records and applies
+per-instance source, format, precision and unit controls. Missing fields follow
+the documented adjacent-sample policy and render `--`; no network or additional
+activity model is involved.
