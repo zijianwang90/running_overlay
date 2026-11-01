@@ -10,7 +10,8 @@ The Workflow panel imports FIT or GPX data or normalized activity JSON,
 checks a reference video track, and creates or updates a live Numeric overlay
 on a dedicated video track. The panel supports seventeen numeric metrics,
 original vector numeric icons, a minimal distance timeline and an offline route
-map with a time-driven position marker. Up to sixteen independent instances,
+map with a time-driven position marker, an HR zone bar, and a compact elevation
+chart. Up to sixteen independent instances,
 including duplicate metrics, share one Fuse. Stack, row and grid provide initial
 layouts; each instance has native Fusion position and style controls. Route Map
 retains FIT/GPX GPS and segment boundaries, but does not yet provide road-map

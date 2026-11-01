@@ -16,7 +16,7 @@ FuRegisterClass("RunningOverlayNumeric", CT_SourceTool, {
 	REG_Source_DepthCtrls = true,
 	REG_Fuse_NoEdit = false,
 	REG_Fuse_NoReload = false,
-	REG_Version = 11,
+	REG_Version = 13,
 })
 
 -- Cache only complete immutable snapshots. Several Numeric Fuse instances can
@@ -167,6 +167,119 @@ local function prepare_route(records)
 	return {paths = paths, count = count}
 end
 
+-- The Mac full profile spaces valid elevation samples uniformly by index.
+-- Its Gaussian filter preserves endpoints, with fixed template strength 0.85.
+local function smooth_elevation(values)
+	if #values <= 2 then return values end
+	local amount = 0.85
+	local radius = math.min(28, math.max(2, math.floor((#values-1)/2)), math.max(2,math.floor(2+18*amount+0.5)))
+	local sigma, filtered = math.max(1, radius*0.45), {}
+	for i,v in ipairs(values) do filtered[i]=v end
+	for pass=1,math.floor(1+5*amount+0.5) do
+		local next_values={}
+		for i=1,#values do
+			local sum,weight=0,0
+			for j=-radius,radius do
+				local w=math.exp(-(j*j)/(2*sigma*sigma))
+				sum=sum+filtered[math.min(math.max(i+j,1),#values)]*w;weight=weight+w
+			end
+			next_values[i]=sum/weight
+		end
+		next_values[1],next_values[#values]=values[1],values[#values]
+		filtered=next_values
+	end
+	for i,v in ipairs(values) do filtered[i]=v+(filtered[i]-v)*amount end
+	return filtered
+end
+local function elevation_points(values, curved)
+	local points={}
+	if #values==0 then return points end
+	local low,high=values[1],values[1]
+	for _,v in ipairs(values) do low,high=math.min(low,v),math.max(high,v) end
+	for i,v in ipairs(values) do points[i]={x=(i-1)/math.max(#values-1,1),y=(v-low)/math.max(high-low,1)} end
+	-- Bound per-frame drawing cost for long recordings. Keep each bucket's min
+	-- and max in their original order, retaining endpoints and visible peaks.
+	if #points > 512 then
+		local reduced = {points[1]}
+		local bucket_count = 254
+		for bucket=1,bucket_count do
+			local first = 2 + math.floor((#points-2)*(bucket-1)/bucket_count)
+			local last = 1 + math.floor((#points-2)*bucket/bucket_count)
+			local low_index,high_index=first,first
+			for i=first,last do
+				if points[i].y < points[low_index].y then low_index=i end
+				if points[i].y > points[high_index].y then high_index=i end
+			end
+			if low_index>high_index then low_index,high_index=high_index,low_index end
+			table.insert(reduced,points[low_index])
+			if high_index~=low_index then table.insert(reduced,points[high_index]) end
+		end
+		table.insert(reduced,points[#points]);points=reduced
+	end
+	-- Flatten the same Catmull-Rom cubic used by the Mac into stable line segments.
+	-- The output is cached with the immutable activity, never rebuilt per frame.
+	if not curved or #points<=2 then return points end
+	local flat={points[1]}
+	for i=1,#points-1 do
+		local a,b,c,d=points[math.max(i-1,1)],points[i],points[i+1],points[math.min(i+2,#points)]
+		local c1={x=b.x+(c.x-a.x)/6,y=b.y+(c.y-a.y)/6}
+		local c2={x=c.x-(d.x-b.x)/6,y=c.y-(d.y-b.y)/6}
+		for step=1,6 do
+			local t=step/6;local u=1-t
+			table.insert(flat,{x=u*u*u*b.x+3*u*u*t*c1.x+3*u*t*t*c2.x+t*t*t*c.x,
+				y=math.min(math.max(u*u*u*b.y+3*u*u*t*c1.y+3*u*t*t*c2.y+t*t*t*c.y,0),1)})
+		end
+	end
+	return flat
+end
+local function clip_profile(points, boundary, keep_above)
+	local out={}
+	if #points==0 then return out end
+	local previous=points[#points]
+	local function inside(p) return keep_above and p.y>=boundary or (not keep_above and p.y<=boundary) end
+	for _,current in ipairs(points) do
+		local a,b=inside(previous),inside(current)
+		if a~=b then
+			local f=(boundary-previous.y)/(current.y-previous.y)
+			table.insert(out,{x=previous.x+(current.x-previous.x)*f,y=boundary})
+		end
+		if b then table.insert(out,current) end
+		previous=current
+	end
+	return out
+end
+local function prepare_elevation(records)
+	local values={}
+	for _,record in ipairs(records) do
+		local v=record.elevation_m
+		if type(v)=="number" and v==v and v~=math.huge and v~=-math.huge then table.insert(values,v) end
+	end
+	local smoothed=smooth_elevation(values)
+	local result={values=values,smoothed=smoothed}
+	for _,mode in ipairs({"raw","smooth"}) do
+		local points=elevation_points(mode=="raw" and values or smoothed,mode=="smooth")
+		local geometry={points=points,bands={}}
+		if #points>1 then
+			local area={{x=points[1].x,y=0}}
+			for _,point in ipairs(points) do table.insert(area,point) end
+			table.insert(area,{x=points[#points].x,y=0})
+			for band=1,24 do
+				geometry.bands[band]=clip_profile(clip_profile(area,(band-1)/24,true),band/24,false)
+			end
+		end
+		result[mode]=geometry
+	end
+	return result
+end
+local function elevation_marker(values, elapsed_us, duration_us)
+	if #values==0 then return nil end
+	local progress=math.min(math.max(elapsed_us/math.max(duration_us or 0,1000000),0),1)
+	local index=math.floor((#values-1)*progress+0.5)+1
+	local low,high=values[1],values[1]
+	for _,v in ipairs(values) do low,high=math.min(low,v),math.max(high,v) end
+	return (index-1)/math.max(#values-1,1),(values[index]-low)/math.max(high-low,1)
+end
+
 local function load_data(activity_path, sync_path)
 	activity_path = renderer_data_path(activity_path, "activity.json", "activity.roactivity")
 	sync_path = renderer_data_path(sync_path, "sync-map.json", "sync.rosync")
@@ -196,7 +309,7 @@ local function load_data(activity_path, sync_path)
 		if record.distance_m ~= nil and record.distance_m > total_distance_m then total_distance_m = record.distance_m end
 	end
 	snapshot = { records = records, pauses = annotations, start_utc_us = start_utc_us, segments = segments, timeline_start_frame = timeline_start_frame,
-		total_distance_m = total_distance_m, duration_us = records[#records].elapsed_us, route = prepare_route(records) }
+		total_distance_m = total_distance_m, duration_us = records[#records].elapsed_us, route = prepare_route(records), elevation = prepare_elevation(records) }
 	DataCache[key] = snapshot
 	return snapshot
 end
@@ -466,8 +579,8 @@ local function text_width(font, style, text, size)
 end
 
 -- A rounded-end bar; AddRectangle's corner radius does not round on Resolve 21.
-local function capsule(left, bottom, width, height)
-	local radius = math.min(width, height) / 2
+local function capsule(left, bottom, width, height, corner)
+	local radius = math.min(width / 2, height / 2, corner or math.huge)
 	local k = 0.5523 * radius
 	local right, top = left + width, bottom + height
 	local shape = Shape()
@@ -511,6 +624,8 @@ ICON_GLYPHS = {
 }
 TIMELINE_METRIC = 17
 ROUTE_METRIC = 18
+ZONE_METRIC = 19
+ELEVATION_METRIC = 20
 -- Mac defaultNumericIconSystemName, keyed by metric index.
 DEFAULT_ICONS = {[0] = "Heart", "Speedometer", "Ruler", "Clock", "Mountains", "Runner", "Bolt", "Flame", "Speedometer",
 	"Up-Down Arrow", "Timer", "Left-Right Arrow", "Percent", "Balance", "Thermometer", "Up-Right Arrow", "Watch"}
@@ -592,7 +707,7 @@ local function draw_part(image, part, color, dx, dy, quality)
 			matrix:Move(dx, dy, 0)
 			shape = shape:TransformOfShape(matrix)
 		end
-		fill_shape(image, shape, color, quality)
+		fill_shape(image, shape, color, part.sampling or quality)
 	end
 end
 
@@ -676,6 +791,30 @@ end
 -- Label and unit attach at the start of the cross axis.
 local function attach_text(bounds, width, height, position, spacing)
 	return attach_box(bounds, width, height, position, spacing, 0)
+end
+
+-- Inclusive boundaries, first matching zone wins, as in the Mac preferences.
+local HR_ZONE_COLORS = {{0.12,0.56,1}, {0.28,0.82,0.96}, {0.18,0.86,0.42}, {1,0.84,0.12}, {1,0.56,0.2}, {1,0.22,0.18}}
+local function heart_rate_zone(value, ranges)
+	if value == nil or value ~= value then return nil end
+	value = math.floor(value + 0.5)
+	for index, range in ipairs(ranges) do
+		if range[1] <= range[2] and value >= range[1] and value <= range[2] then
+			local fraction = range[2] > range[1] and (value - range[1]) / (range[2] - range[1]) or 0.5
+			return index, math.min(math.max(fraction, 0), 1)
+		end
+	end
+	return nil
+end
+local function zone_frames(count, active, share)
+	local result, cursor = {}, 0
+	share = math.min(math.max(share, 0), 0.5)
+	local expanded = active ~= nil and share > 1/count
+	for index = 1, count do
+		local width = expanded and (index == active and share or (1-share)/(count-1)) or 1/count
+		result[index] = {start = cursor, width = width}; cursor = cursor + width
+	end
+	return result
 end
 
 local function distance_point_text(value, unit)
@@ -773,7 +912,7 @@ function Create()
 			{CCS_AddString = "Vertical Ratio"}, {CCS_AddString = "GCT Balance"},
 			{CCS_AddString = "Temperature"}, {CCS_AddString = "Grade"},
 			{CCS_AddString = "Real Time"}, {CCS_AddString = "Distance Timeline"},
-		{CCS_AddString = "Route Map"},
+		{CCS_AddString = "Route Map"}, {CCS_AddString = "HR Zone Bar"}, {CCS_AddString = "Elevation Chart"},
 		})
 	end
 	InMetric = metric_input("Metric", "Metric", 0)
@@ -979,12 +1118,74 @@ function Create()
 			endpoints = check("Start / Finish Markers", "Endpoints", 0),
 		}
 	end
+	local function zone_options(key, group)
+		local function number(label, suffix, default, min, max) return number_in(group, label, key .. "Zone" .. suffix, default, min, max) end
+		local function check(label, suffix, default) return check_in(group, label, key .. "Zone" .. suffix, default) end
+		local z = {
+			count = combo_in(group, "Zone Count", key .. "ZoneCount", {"5", "6"}, 1),
+			placement = combo_in(group, "Placement", key .. "ZonePlacement", {"Bottom", "Top", "Left", "Right", "Free"}, 0),
+			orientation = combo_in(group, "Free Orientation", key .. "ZoneOrientation", {"Horizontal", "Vertical"}, 0),
+			length = number("Bar Length", "Length", 780/1280, 0.02, 1),
+			thickness = number("Bar Thickness", "Thickness", 10/1280, 0.001, 0.1),
+			inset = number("Edge Inset", "Inset", 0, 0, 0.2),
+			gap = number("Zone Gap", "Gap", 2/1280, 0, 0.02),
+			corner = number("Corner Radius", "Corner", 5/1280, 0, 0.05),
+			active_share = number("Active Width Share", "ActiveShare", 0, 0, 0.5),
+			active_height = number("Active Height Scale", "ActiveHeight", 1, 1, 3),
+			inactive = number("Inactive Opacity", "InactiveOpacity", 0.55, 0, 1),
+			marker = check("Current HR Marker", "Marker", 1),
+			show_value = check("Show HR Value", "ShowValue", 0),
+			threshold_enabled = check("Threshold Marker", "ThresholdEnabled", 1),
+			threshold = number("Threshold HR (bpm)", "Threshold", 168, 0, 300),
+			text_size = number("Marker Text Size", "TextSize", 12/1280, 0.003, 0.04),
+			labels = check("Zone Labels", "Labels", 0),
+			border = check("Bar Border", "Border", 1),
+			border_opacity = number("Border Opacity", "BorderOpacity", 0.12, 0, 1),
+			border_width = number("Border Width", "BorderWidth", 1/1280, 0.0001, 0.01),
+			glow = check("Active Zone Glow", "Glow", 0),
+			glow_intensity = number("Zone Glow Intensity", "GlowIntensity", 0.45, 0, 1),
+			ranges = {},
+		}
+		local defaults = {{0,134},{134,151},{152,160},{161,171},{172,178},{178,250}}
+		for index, range in ipairs(defaults) do
+			z.ranges[index] = {
+				number("Z" .. index .. " Min HR", index .. "Min", range[1], 0, 300),
+				number("Z" .. index .. " Max HR", index .. "Max", range[2], 0, 300),
+			}
+		end
+		return z
+	end
+	local function elevation_options(key, group)
+		local function number(label,suffix,default,min,max) return number_in(group,label,key.."Elevation"..suffix,default,min,max) end
+		local function check(label,suffix,default) return check_in(group,label,key.."Elevation"..suffix,default) end
+		return {
+			width=number("Chart Width","Width",792.886/1280,0.05,1),
+			height=number("Chart Height","Height",72/1280,0.02,0.5),
+			padding_x=number("Chart Padding X","PaddingX",18/1280,0,0.1),
+			padding_y=number("Chart Padding Y","PaddingY",7.2/1280,0,0.1),
+			smoothing=check("Smooth Profile (0.85)","Smoothing",1),
+			line_width=number("Profile Line Width","LineWidth",2.5/1280,0.0001,0.02),
+			line=color_in(group,"Profile Line Color",key.."ElevationLine",{1,1,1,0.96},21,true),
+			fill=check("Area Fill","Fill",1),
+			fill_color=color_in(group,"Area Top Color",key.."ElevationFill",{0.25,0.82,0.38},22,false),
+			lower_color=color_in(group,"Area Bottom Color",key.."ElevationLower",{0.22,0.58,1},23,false),
+			fill_opacity=number("Area Opacity","FillOpacity",0.4,0,1),
+			opacity=number("Chart Opacity","Opacity",0.85,0,1),
+			marker=check("Current Elevation Marker","Marker",1),
+			marker_size=number("Elevation Marker Scale","MarkerSize",1,0.25,4),
+			marker_color=color_in(group,"Elevation Marker Color",key.."ElevationMarker",{0.22,0.58,1},24,false),
+			guide=check("Marker Guide","Guide",0),
+			show_value=check("Elevation Value (m)","ShowValue",0),
+		}
+	end
 	VisibilityGroups = {}
-	local primary_numeric, primary_timeline, primary_route = {InSize, InShowLabel}, {}, {}
+	local primary_numeric, primary_timeline, primary_route, primary_zone, primary_elevation = {InSize, InShowLabel}, {}, {}, {}, {}
 	PrimaryTextOptions = text_options("", primary_numeric)
 	PrimaryTimelineOptions = timeline_options("", primary_timeline)
 	PrimaryRouteOptions = route_options("", primary_route)
-	VisibilityGroups[InMetric] = {numeric = primary_numeric, timeline = primary_timeline, route = primary_route}
+	PrimaryZoneOptions = zone_options("", primary_zone)
+	PrimaryElevationOptions = elevation_options("", primary_elevation)
+	VisibilityGroups[InMetric] = {numeric = primary_numeric, timeline = primary_timeline, route = primary_route, zone = primary_zone, elevation = primary_elevation}
 	WidgetInputs = {}
 	local definitions = {
 		{key = "Pace", label = "Pace", metric = 1},
@@ -996,7 +1197,7 @@ function Create()
 	end
 	for slot, definition in ipairs(definitions) do
 		local key = definition.key
-		local numeric, timeline, route = {}, {}, {}
+		local numeric, timeline, route, zone, elevation = {}, {}, {}, {}, {}
 		self:AddControlPage(definition.label)
 		local controls = {}
 		controls.metric = metric_input("Metric", key .. "Metric", definition.metric)
@@ -1029,13 +1230,17 @@ function Create()
 		controls.text = text_options(key, numeric)
 		controls.timeline = timeline_options(key, timeline)
 		controls.route = route_options(key, route)
-		VisibilityGroups[controls.metric] = {numeric = numeric, timeline = timeline, route = route}
+		controls.zone = zone_options(key, zone)
+		controls.elevation = elevation_options(key, elevation)
+		VisibilityGroups[controls.metric] = {numeric = numeric, timeline = timeline, route = route, zone = zone, elevation = elevation}
 		WidgetInputs[slot] = controls
 	end
 	-- No default metric is a timeline; NotifyChanged reveals them per slot.
 	for _, groups in pairs(VisibilityGroups) do
 		for _, input in ipairs(groups.timeline) do input:SetAttrs({IC_Visible = false}) end
 		for _, input in ipairs(groups.route) do input:SetAttrs({IC_Visible = false}) end
+		for _, input in ipairs(groups.zone) do input:SetAttrs({IC_Visible = false}) end
+		for _, input in ipairs(groups.elevation) do input:SetAttrs({IC_Visible = false}) end
 	end
 end
 
@@ -1050,11 +1255,9 @@ function NotifyChanged(input, parameter, time)
 		DataCache = {}
 	elseif VisibilityGroups ~= nil and VisibilityGroups[input] ~= nil then
 		local metric = parameter ~= nil and math.floor((parameter.Value or 0) + 0.5) or 0
+		local kind = ({[TIMELINE_METRIC] = "timeline", [ROUTE_METRIC] = "route", [ZONE_METRIC] = "zone", [ELEVATION_METRIC] = "elevation"})[metric] or "numeric"
 		for name, controls in pairs(VisibilityGroups[input]) do
-			local visible = (name == "timeline" and metric == TIMELINE_METRIC)
-				or (name == "route" and metric == ROUTE_METRIC)
-				or (name == "numeric" and metric ~= TIMELINE_METRIC and metric ~= ROUTE_METRIC)
-			for _, control in ipairs(controls) do control:SetAttrs({IC_Visible = visible}) end
+			for _, control in ipairs(controls) do control:SetAttrs({IC_Visible = name == kind}) end
 		end
 	elseif NUDGES[input] ~= nil then
 		local current = InTimeOffset:GetSource(time).Value or 0
@@ -1365,11 +1568,183 @@ function Process(req)
 			if shadow ~= nil then draw_shadow(output, parts, shadow, quality) end
 			for _, part in ipairs(parts) do draw_part(output, part, part.color, 0, 0, quality) end
 		end
-		local function render_slot(metric, position, size, show_label, widget_font, widget_style, color, options, timeline, route)
+		local function render_zone(position, widget_font, widget_style, z, options)
+			local count = math.floor(value_of(z.count) + 0.5) == 0 and 5 or 6
+			local ranges = {}
+			for index=1,count do ranges[index] = {math.floor(value_of(z.ranges[index][1])+0.5), math.floor(value_of(z.ranges[index][2])+0.5)} end
+			local active, fraction = heart_rate_zone(sample.heart_rate, ranges)
+			local frames = zone_frames(count, active, value_of(z.active_share))
+			local placement = math.floor(value_of(z.placement)+0.5)
+			local vertical = placement == 2 or placement == 3 or (placement == 4 and value_of(z.orientation)>0.5)
+			local length = math.max(1/output.Width, math.min(value_of(z.length), vertical and aspect or 1))
+			local thickness = math.max(value_of(z.thickness), 1/output.Width)
+			local inset = math.max(value_of(z.inset),0)
+			local cx, cy = position.X, position.Y*aspect
+			local sign = 1
+			if placement == 0 then cx,cy=0.5,inset+thickness/2
+			elseif placement == 1 then cx,cy,sign=0.5,aspect-inset-thickness/2,-1
+			elseif placement == 2 then cx,cy=inset+thickness/2,aspect/2
+			elseif placement == 3 then cx,cy,sign=1-inset-thickness/2,aspect/2,-1 end
+			local gap = math.min(math.max(value_of(z.gap),0), length/(count-1)*0.18)
+			local usable = math.max(length-gap*(count-1),1/output.Width)
+			local parts, active_part, rects = {}, nil, {}
+			local function tint(index, opacity)
+				local c=HR_ZONE_COLORS[index];return Pixel{R=c[1],G=c[2],B=c[3],A=opacity or 1}
+			end
+			local function rectangle(x,y,w,h,color,corner)
+				local part={shapes={capsule(x,y,w,h,corner)},color=color};table.insert(parts,part);return part
+			end
+			local function text(value,x,y,size,color)
+				local ascent,descent=font_extents(widget_font,widget_style,size)
+				table.insert(parts,{font=widget_font,style=widget_style,text=value,size=size,
+					x=x-text_width(widget_font,widget_style,value,size)/2,y=y+(descent-ascent)/2,color=color})
+			end
+			for index, frame in ipairs(frames) do
+				local start = -length/2+usable*frame.start+(index-1)*gap
+				local run = usable*frame.width
+				local thick = thickness*(index==active and math.max(value_of(z.active_height),1) or 1)
+				local x,y,w,h
+				if vertical then x,y,w,h=cx-thick/2,cy+start,thick,run
+				else x,y,w,h=cx+start,cy-thick/2,run,thick end
+				rects[index]={x=x,y=y,w=w,h=h}
+				local part=rectangle(x,y,w,h,tint(index,index==active and 1 or math.min(math.max(value_of(z.inactive),0),1)),math.max(value_of(z.corner),0))
+				if index==active then active_part=part end
+				if value_of(z.labels)>0.5 then text("Z"..index,x+w/2,y+h/2,math.min(value_of(z.text_size),thickness*0.75),Pixel{R=1,G=1,B=1,A=1}) end
+			end
+			if value_of(z.border)>0.5 then
+				local x,y,w,h=cx-length/2,cy-thickness/2,length,thickness
+				if vertical then x,y,w,h=cx-thickness/2,cy-length/2,thickness,length end
+				local border=capsule(x,y,w,h,math.max(value_of(z.corner),0))
+				table.insert(parts,{shapes={border:OutlineOfShape(math.max(value_of(z.border_width),1/output.Width),"OLT_Solid","OJT_Round",8,"SWM_Normal",8)},color=Pixel{R=1,G=1,B=1,A=value_of(z.border_opacity)}})
+			end
+			local function marker(index, f, threshold)
+				local r=rects[index];local color=tint(index,threshold and 0.78 or 1)
+				local along=vertical and r.y+r.h*f or r.x+r.w*f
+				local cross=vertical and cx or cy
+				local px,py=vertical and cross or along,vertical and along or cross
+				local text_size=math.max(value_of(z.text_size)*(threshold and 0.72 or 1),7/1280)
+				if threshold then
+					local span=math.max(thickness*1.35,10/1280)
+					if vertical then rectangle(cx-span/2,along-0.6/1280,span,1.2/1280,color)
+					else rectangle(along-0.6/1280,cy-span/2,1.2/1280,span,color) end
+					local tx,ty=px,py
+					if vertical then tx=tx+sign*(span/2+text_width(widget_font,widget_style,"T",text_size)/2+2/1280)
+					else ty=ty+sign*(span/2+text_size/2+2/1280) end
+					text("T",tx,ty,text_size,color)
+				else
+					local half=math.max(thickness*1.35,12/1280)/2
+					local high=math.max(thickness*0.9,8/1280)
+					local near=cross+sign*(thickness/2+math.max(thickness*0.35,3/1280))
+					local shape=Shape()
+					if vertical then
+						shape:MoveTo(near,along);shape:LineTo(near+sign*high,along-half);shape:LineTo(near+sign*high,along+half)
+					else
+						shape:MoveTo(along,near);shape:LineTo(along-half,near+sign*high);shape:LineTo(along+half,near+sign*high)
+					end
+					shape:Close();table.insert(parts,{shapes={shape},color=color})
+					if value_of(z.show_value)>0.5 then
+						local value=string.format("%d bpm",math.floor(sample.heart_rate+0.5))
+						local tx,ty=px,py
+						if vertical then tx=near+sign*(high+text_width(widget_font,widget_style,value,text_size)/2+4/1280)
+						else ty=near+sign*(high+text_size/2+3/1280) end
+						text(value,tx,ty,text_size,color)
+					end
+				end
+			end
+			if value_of(z.threshold_enabled)>0.5 then
+				local index, f=heart_rate_zone(value_of(z.threshold),ranges)
+				if index then marker(index,f,true) end
+			end
+			if active and value_of(z.marker)>0.5 then marker(active,fraction,false) end
+			if active_part and value_of(z.glow)>0.5 then
+				draw_layers(output,{active_part},{{opacity=value_of(z.glow_intensity),radius=thickness*1.6}},active_part.color,0,0,quality)
+			end
+			local shadow=shadow_of(options)
+			if shadow then draw_shadow(output,parts,shadow,quality) end
+			for _,part in ipairs(parts) do draw_part(output,part,part.color,0,0,quality) end
+		end
+		local function render_elevation(position,widget_font,widget_style,e,options)
+			local profile=data.elevation or {values={}}
+			local smoothing=value_of(e.smoothing)>0.5
+			local values=smoothing and profile.smoothed or profile.values
+			values=values or {}
+			local geometry=profile[smoothing and "smooth" or "raw"] or {points={},bands={}}
+			local width,height=math.max(value_of(e.width),2/output.Width),math.max(value_of(e.height),2/output.Width)
+			local padding_x,padding_y=math.min(math.max(value_of(e.padding_x),0),width*0.45),math.min(math.max(value_of(e.padding_y),0),height*0.45)
+			local left,bottom=position.X-width/2+padding_x,position.Y*aspect-height/2+padding_y
+			local w,h=width-2*padding_x,height-2*padding_y
+			local opacity=math.min(math.max(value_of(e.opacity),0),1)
+			local parts={}
+			local function polygon(points)
+				local shape=Shape()
+				for index,p in ipairs(points) do
+					if index==1 then shape:MoveTo(left+w*p.x,bottom+h*p.y) else shape:LineTo(left+w*p.x,bottom+h*p.y) end
+				end
+				shape:Close();return shape
+			end
+			local function part(shape,color,sampling) table.insert(parts,{shapes={shape},color=color,sampling=sampling}) end
+			local function text(value,x,y,size)
+				table.insert(parts,{font=widget_font,style=widget_style,text=value,size=size,
+					x=x-text_width(widget_font,widget_style,value,size)/2,y=y,color=Pixel{R=1,G=1,B=1,A=opacity}})
+			end
+			if #values==0 then
+				text("NO ELEVATION",position.X,bottom+h/2,math.min(height/4,0.018))
+			else
+				if value_of(e.fill)>0.5 and #values>1 then
+					local top_color,bottom_color=color_of(e.fill_color),color_of(e.lower_color)
+					local fill_opacity=value_of(e.fill_opacity)
+					for index,points in ipairs(geometry.bands) do
+						if #points>=3 then
+							local f=(index-0.5)/24
+							local alpha=math.max(fill_opacity*0.15,0.04)+(fill_opacity-math.max(fill_opacity*0.15,0.04))*f
+							if fill_opacity<=0 then alpha=0 end
+							part(polygon(points),Pixel{R=bottom_color.R+(top_color.R-bottom_color.R)*f,
+								G=bottom_color.G+(top_color.G-bottom_color.G)*f,B=bottom_color.B+(top_color.B-bottom_color.B)*f,A=alpha*opacity},1)
+						end
+					end
+				end
+				local line=Shape()
+				if #geometry.points==1 then line:MoveTo(left,bottom+h/2);line:LineTo(left+w,bottom+h/2)
+				else for index,p in ipairs(geometry.points) do
+					if index==1 then line:MoveTo(left+w*p.x,bottom+h*p.y) else line:LineTo(left+w*p.x,bottom+h*p.y) end
+				end end
+				local color=color_of(e.line);color.A=color.A*opacity
+				part(line:OutlineOfShape(math.max(value_of(e.line_width),0.5/output.Width),"OLT_Solid","OJT_Round",8,"SWM_Normal",8),color)
+				local mx,my=elevation_marker(values,elapsed_us,data.duration_us)
+				if mx~=nil and value_of(e.marker)>0.5 and sample.elevation_m~=nil then
+					local x,y=left+w*mx,bottom+h*my
+					local marker_color=color_of(e.marker_color,opacity)
+					local size=8/1280*value_of(e.marker_size)
+					if value_of(e.guide)>0.5 and mx>0 then
+						local guide=Shape()
+						for i=0,7 do
+							local dy=(y-bottom)*i/8
+							guide:AddRectangle(x-0.5/output.Width,x+0.5/output.Width,bottom+dy+(y-bottom)/16,bottom+dy,0,8)
+						end
+						part(guide,Pixel{R=marker_color.R,G=marker_color.G,B=marker_color.B,A=opacity*0.4})
+					end
+					part(capsule(x-size/2,y-size/2,size,size),marker_color)
+					local ring=capsule(x-size*13/16,y-size*13/16,size*13/8,size*13/8)
+					part(ring:OutlineOfShape(2/1280,"OLT_Solid","OJT_Round",8,"SWM_Normal",8),Pixel{R=1,G=1,B=1,A=opacity*0.85})
+				end
+				if value_of(e.show_value)>0.5 then
+					local value=sample.elevation_m~=nil and string.format("%d m",round(sample.elevation_m)) or "-- m"
+					text(value,position.X,bottom+h+2/1280,12/1280)
+				end
+			end
+			local shadow=shadow_of(options)
+			if shadow then draw_shadow(output,parts,shadow,quality) end
+			for _,p in ipairs(parts) do draw_part(output,p,p.color,0,0,quality) end
+		end
+		local function render_slot(metric, position, size, show_label, widget_font, widget_style, color, options, timeline, route, zone, elevation)
 			if metric == TIMELINE_METRIC then
 				render_timeline(position, widget_font, widget_style, color, timeline, options)
 			elseif metric == ROUTE_METRIC then
 				render_route(position, widget_font, widget_style, route, options)
+			elseif metric == ZONE_METRIC then
+				render_zone(position, widget_font, widget_style, zone, options)
+			elseif metric == ELEVATION_METRIC then
+				render_elevation(position, widget_font, widget_style, elevation, options)
 			else
 				render_widget(metric, position, size, show_label, widget_font, widget_style, color, options)
 			end
@@ -1378,13 +1753,13 @@ function Process(req)
 			render_slot(math.floor(InMetric:GetValue(req).Value + 0.5), InPosition:GetValue(req), InSize:GetValue(req).Value,
 				InShowLabel:GetValue(req).Value > 0.5, font, style,
 				Pixel{R = InR:GetValue(req).Value, G = InG:GetValue(req).Value,
-					B = InB:GetValue(req).Value, A = InA:GetValue(req).Value}, PrimaryTextOptions, PrimaryTimelineOptions, PrimaryRouteOptions)
+					B = InB:GetValue(req).Value, A = InA:GetValue(req).Value}, PrimaryTextOptions, PrimaryTimelineOptions, PrimaryRouteOptions, PrimaryZoneOptions, PrimaryElevationOptions)
 		end
 		for _, controls in ipairs(WidgetInputs) do
 			if controls.enabled:GetValue(req).Value > 0.5 then
 				local widget_font, widget_style = font_of(controls.font, controls.font_style)
 				render_slot(math.floor(controls.metric:GetValue(req).Value + 0.5), controls.position:GetValue(req), controls.size:GetValue(req).Value,
-					controls.label:GetValue(req).Value > 0.5, widget_font, widget_style, color_of(controls.color), controls.text, controls.timeline, controls.route)
+					controls.label:GetValue(req).Value > 0.5, widget_font, widget_style, color_of(controls.color), controls.text, controls.timeline, controls.route, controls.zone, controls.elevation)
 			end
 		end
 	elseif diagnostics_enabled then

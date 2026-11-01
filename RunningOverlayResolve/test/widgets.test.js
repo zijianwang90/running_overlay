@@ -91,3 +91,12 @@ test('route maps use an appended metric and template position with an installati
   assert.match(script, /metric_index=18, x=0\.87902425, y=0\.80523365/);
   assert.match(script, /prefix \.\. "RouteSize"/);
 });
+
+test('zone and elevation widgets append metrics and seed template effects only for new instances', () => {
+  const script=dataUpdateScript({bundleDirectory:'/tmp/synthetic',origin:0,token:'race',widgets:[{id:'zones',metric:'zoneEdgeBar'},{id:'profile',metric:'elevationChart'}]});
+  assert.match(script,/metric_index=19/);
+  assert.match(script,/metric_index=20, x=0\.5, y=0\.0891454352441613/);
+  assert.match(script,/prefix \.\. "ZoneLength"/);
+  assert.match(script,/prefix \.\. "ElevationWidth"/);
+  assert.match(script,/if fresh or not slots\[widget.id\] then\n      if widget.metric == "elevationChart" then update\(prefix \.\. "ShadowEnabled", 0\)/);
+});

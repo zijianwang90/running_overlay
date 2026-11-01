@@ -11,6 +11,42 @@
 - 路线保持北向上和比例，透明背景，无需网络或 API。当前位置按活动真实经过时间及每段 Time Offset 更新；GPX 分段和缺失坐标不会连线或跨段插值。无足够 GPS 时显示 **NO GPS**，缺失当前位置时隐藏位置点。当前离线地图没有道路/地名底图，也没有地图供应商、缩放跟随、统计栏或模板一键应用。
 - 所有组件共用最多 16 个独立实例槽位。每个实例的数值、进度条或地图设置由其 Metric 控制显示；切换类型不会修改其他实例。保存 Resolve 项目可保留样式。
 
+## 心率区间条与海拔图（v12 / v13）
+
+在 Widgets 中添加 **HR zone bar** 或 **Elevation chart**，更新后在 Fusion
+对应实例中调整。两者仍共用最多 16 个独立组件槽位；数据重同步不重置样式。
+
+### 心率区间条
+
+- **Zone Count** 选择五段或六段；**Z1…Z6 Min/Max HR** 编辑 bpm 范围。
+  默认取 Mac 的六段参考值：0–134、134–151、152–160、161–171、172–178、178–250。
+  两端均包含，重叠值归入第一个匹配区间；Min 大于 Max 的区间不参与分类。
+  五段模式使用前五段，隐藏的第六段配置保留；请按自己的区间修改范围。
+- **Placement** 选择 Bottom / Top / Left / Right / Free；边缘模式居中贴边，
+  **Edge Inset** 控制内缩，Free 使用实例 Position 和 **Free Orientation**。
+  横向 Z1 在左、纵向 Z1 在下，标记朝画面内侧。
+- **Bar Length / Thickness / Zone Gap / Corner Radius** 控制尺寸；
+  **Active Width Share / Height Scale / Inactive Opacity** 控制当前区间强调。
+- **Current HR Marker / Show HR Value** 控制当前位置及 bpm；
+  **Threshold Marker / Threshold HR** 控制 `T` 阈值；可选区间文字、边框和高亮发光。
+  缺失心率或不落在任一区间时，所有区间保持非活动样式，隐藏当前位置；阈值独立显示。
+- 这一版只支持心率，未接入配速区间。范围与阈值保存在各实例的 Fusion 设置中，
+  不与 Mac app 的全局设置同步，也不按最大心率自动计算。
+
+### 海拔图
+
+- 默认采用 Race 的底部紧凑全程面积图：白色轮廓、绿到蓝的渐变、蓝色位置点，
+  默认不画外框、底板或阴影。Position 为组件中心。
+- **Chart Width / Height / Padding X/Y** 控制范围；**Profile Line Width / Color**
+  控制轮廓；**Area Fill / Top Color / Bottom Color / Opacity** 控制渐变。
+  关闭 Area Fill 即为折线图；**Chart Opacity** 控制整体可见度。
+- **Smooth Profile (0.85)** 开关模板平滑；**Current Elevation Marker / Marker Scale /
+  Color / Marker Guide** 控制当前位置，可选 **Elevation Value (m)** 显示实时海拔。
+- 与 Mac 的全程模式一致，有效海拔样本按记录索引等间隔展开，当前位置按活动真实
+  经过时间占全程的比例选取最近样本，不按距离推进。长记录保留峰谷、端点并限制绘图量。
+  完全缺失时显示 **NO ELEVATION**；当前帧缺失海拔时隐藏位置点，数值显示 `-- m`。
+- 目前没有进度截取模式、其他预设、可调平滑强度、坐标轴或统计栏；渐变是近似绘制。
+
 ## 数值文字样式（Fuse v7）
 
 在 Fusion 中选中 Running Overlay Numeric 节点。每个实例分别提供数值字体、Value Size、颜色和 Alpha，以及以下设置：

@@ -51,7 +51,7 @@ available, but there is no selectable/rendered widget.
 | Distance | Partial | Units and full numeric styles |
 | Distance Timeline | Partial (v10) | Minimal template: progress, ticks, markers, axis labels, glow and shadow implemented; other presets/stats/elevation pending |
 | Elevation | Partial | Meter widget implemented; units and display modes pending |
-| Elevation Chart | Missing | Profile, cursor, range and styles |
+| Elevation Chart | Partial (v13) | Race full-profile smoothed gradient area, line-only, cursor, guide and meter label; other presets, progress mode, axes/stats pending |
 | Cadence | Partial | Widget implemented; activity-specific cadence semantics pending |
 | Power | Partial | Watt widget implemented; full numeric styles pending |
 | Running Gauge | Missing | Gauge metrics, ranges and presets |
@@ -59,7 +59,7 @@ available, but there is no selectable/rendered widget.
 | Interval Timeline | Missing | Workout structure, lap timeline and renderer |
 | Interval Countdown | Missing | Work/rest phase and countdown semantics |
 | Interval Work Summary | Missing | Work-interval aggregation and styles |
-| Zone Edge Bar | Missing | Zone settings and renderer |
+| Zone Edge Bar | Partial (v12) | Five/six editable HR ranges, edge/free placement, active emphasis, current/threshold markers; pace mode and shared project physiology settings pending |
 | Route Map | Partial (v11) | FIT/GPX GPS retained; offline Mercator trace and time-driven cursor implemented; map imagery/provider, other presets and stats pending |
 | Vertical Oscillation | Implemented (v8) | cm/mm units; host export checked |
 | Ground Contact Time | Implemented (v8) | Host export checked |
@@ -89,6 +89,16 @@ the testing record for the initial unreproduced crash, successful 4444 alpha
 retry, real v5/v6 comparison and remaining UI validation limits.
 
 **Visual acceptance (2026-11-01).** The user accepts approximate typography across Fusion and SwiftUI. Exact glyph rasterization and pixel matching are not a gate. Numeric icons are original project vectors, not redistributed SF Symbols. Route Map currently draws a transparent offline trace; both Mac templates use a dark MapKit snapshot, so this remains partial parity.
+
+**Race module scope (2026-11-01).** HR bars use explicit inclusive bpm ranges,
+with the first matching range winning overlaps, matching Mac classification.
+Resolve stores ranges and threshold per instance in Fusion; it does not read the
+Mac app's global preferences or infer max HR. Elevation uses full-profile sample
+index spacing, elapsed-time progress and the template's fixed 0.85 smoothing.
+Long profiles retain per-bucket extrema/endpoints with bounded drawing geometry.
+A completely missing profile shows `NO ELEVATION` rather than the Mac's synthetic
+zero profile, and missing current elevation suppresses the cursor. The gradient
+is approximated with raster bands; exact raster parity is not claimed.
 
 ## Shared Capabilities
 
@@ -127,7 +137,8 @@ order below. Race contains the nine Easy Run elements plus two:
 | Distance Timeline | Both | v10 minimal renderer; full module parity pending |
 | Route Map | Both | v11 offline trace and cursor; dark MapKit background not implemented |
 | Weather Widget | Both | Missing; needs a weather data source and background styling |
-| Zone Edge Bar, Elevation Chart | Race | Missing |
+| Zone Edge Bar | Race | v12 HR renderer; five/six ranges configured per instance in Fusion |
+| Elevation Chart | Race | v13 compact full-profile renderer; other module modes pending |
 
 Template files are large because every element stores every module's sub-style;
 they embed no route or image assets.

@@ -1,7 +1,7 @@
 'use strict';
 const path = require('node:path');
 const { invariant } = require('../domain/validation');
-const { METRICS, TIMELINE_POSITION, ROUTE_POSITION, normalizeWidgets, normalizeLayout, positionFor } = require('../domain/widgets');
+const { METRICS, TIMELINE_POSITION, ROUTE_POSITION, ELEVATION_POSITION, normalizeWidgets, normalizeLayout, positionFor } = require('../domain/widgets');
 
 function luaString(value) {
   let equals = '';
@@ -37,7 +37,7 @@ function dataUpdateScript({ bundleDirectory, origin, token, initialize = false, 
   const assignments = Object.entries(fields).map(([key, value]) =>
     `{${luaString(key)}, ${typeof value === 'number' ? value : luaString(value)}}`).join(',\n');
   const desired = selected.map((widget, index) => {
-    const position = widget.metric === 'distanceTimeline' ? TIMELINE_POSITION : widget.metric === 'routeMap' ? ROUTE_POSITION : positionFor(layout, index, selected.length);
+    const position = widget.metric === 'distanceTimeline' ? TIMELINE_POSITION : widget.metric === 'routeMap' ? ROUTE_POSITION : widget.metric === 'elevationChart' ? ELEVATION_POSITION : positionFor(layout, index, selected.length);
     return `{id=${luaString(widget.id)}, metric=${luaString(widget.metric)}, metric_index=${METRICS[widget.metric]}, x=${position.x}, y=${position.y}}`;
   }).join(',\n');
   const signature = JSON.stringify([layout, selected.map((widget) => [widget.id, widget.metric])]);
@@ -117,11 +117,24 @@ local ok, message = pcall(function()
     assigned[widget.id] = slot
     local prefix = prefixes[slot]
     local metric_key = prefix .. "Metric"
+    if fresh or not slots[widget.id] then
+      if widget.metric == "elevationChart" then update(prefix .. "ShadowEnabled", 0)
+      elseif widget.metric == "zoneEdgeBar" then
+        update(prefix .. "ShadowOpacity", 0.34)
+        update(prefix .. "ShadowBlur", 8 / 1920)
+      end
+    end
     -- A newly assigned instance starts on the activity's local clock; an existing
     -- instance keeps the offset the user chose in Fusion.
     if fresh or not slots[widget.id] then
       if node:GetInput(prefix .. "ClockUtcOffset") ~= nil then update(prefix .. "ClockUtcOffset", ${clockOffset})
       else assert(widget.metric ~= "realTime", "Install the current Numeric Fuse and restart Resolve.") end
+    end
+    if widget.metric == "elevationChart" then
+      assert(node:GetInput(prefix .. "ElevationWidth") ~= nil, "Install the current Numeric Fuse and restart Resolve.")
+    end
+    if widget.metric == "zoneEdgeBar" then
+      assert(node:GetInput(prefix .. "ZoneLength") ~= nil, "Install the current Numeric Fuse and restart Resolve.")
     end
     if widget.metric == "routeMap" then
       assert(node:GetInput(prefix .. "RouteSize") ~= nil, "Install the current Numeric Fuse and restart Resolve.")

@@ -8,7 +8,7 @@ const { METRICS } = require('../src/domain/widgets');
 const FUSE_NAMES = { heartRate: 'Heart Rate', pace: 'Pace', distance: 'Distance', elapsed: 'Elapsed', elevation: 'Elevation',
   cadence: 'Cadence', power: 'Power', calories: 'Calories', avgPace: 'Avg Pace', verticalOscillation: 'Vertical Oscillation',
   groundContactTime: 'Ground Contact Time', strideLength: 'Stride Length', verticalRatio: 'Vertical Ratio',
-  groundContactBalance: 'GCT Balance', temperature: 'Temperature', grade: 'Grade', realTime: 'Real Time', distanceTimeline: 'Distance Timeline', routeMap: 'Route Map' };
+  groundContactBalance: 'GCT Balance', temperature: 'Temperature', grade: 'Grade', realTime: 'Real Time', distanceTimeline: 'Distance Timeline', routeMap: 'Route Map', zoneEdgeBar: 'HR Zone Bar', elevationChart: 'Elevation Chart' };
 assert.deepEqual(Object.values(METRICS), Object.keys(METRICS).map((_, index) => index));
 const source = fs.readFileSync(path.join(__dirname, '../fusion/Fuses/RunningOverlayNumeric.fuse'), 'utf8');
 function run(code) {
@@ -490,4 +490,106 @@ for alignment=0,2 do
  local expected = alignment==0 and 0.024 or (alignment==1 and 0.009 or -0.006)
  assert(near(texts[2].y-texts[1].y, expected))
 end
+`));
+
+test('heart-rate zones classify rounded bpm with inclusive first-match boundaries', () => run(`
+local ranges={{0,134},{134,151},{152,160},{161,171},{172,178},{178,250}}
+assert(heart_rate_zone(134,ranges)==1)
+assert(heart_rate_zone(151.49,ranges)==2)
+assert(heart_rate_zone(151.5,ranges)==3)
+assert(heart_rate_zone(178,ranges)==5)
+assert(heart_rate_zone(nil,ranges)==nil and heart_rate_zone(300,ranges)==nil)
+assert(heart_rate_zone(150,{{160,140}})==nil)
+local index,f=heart_rate_zone(160,{{160,160}});assert(index==1 and f==0.5)
+local frames=zone_frames(6,2,0.4)
+assert(math.abs(frames[2].width-0.4)<1e-9 and math.abs(frames[6].start+frames[6].width-1)<1e-9)
+assert(zone_frames(6,nil,0.4)[1].width==1/6)
+`));
+
+test('zone bar draws active segments, threshold and inward markers on all four edges', () => run(HOST + `
+local base_capsule=capsule
+capsule=function(...) local s=base_capsule(...);function s:OutlineOfShape() return self end;return s end
+local hr=150
+load_data=function() return {} end
+sample_activity=function() return {heart_rate=hr} end
+inputs.Metric.value=ZONE_METRIC;inputs.ShadowEnabled.value=0
+Process(req)
+assert(#of('shape')==9 and #of('text')==1 and of('text')[1].text=='T')
+assert(of('shape')[1].color.A==0.55 and of('shape')[2].color.A==1)
+local bottom_tip=of('shape')[9].shape.start
+assert(bottom_tip[2]>10/1280)
+for placement=1,3 do
+ inputs.ZonePlacement.value=placement;events={};Process(req)
+ local tip=of('shape')[9].shape.start
+ if placement==1 then assert(tip[2]<1080/1920-10/1280)
+ elseif placement==2 then assert(tip[1]>10/1280)
+ else assert(tip[1]<1-10/1280) end
+end
+hr=nil;events={};Process(req)
+assert(#of('shape')==8 and of('shape')[2].color.A==0.55)
+inputs.ZoneThresholdEnabled.value=0;events={};Process(req)
+assert(#of('shape')==7 and #of('text')==0)
+inputs.ZoneCount.value=0;events={};Process(req);assert(#of('shape')==6)
+inputs.HeartRateEnabled.value=0;inputs.Widget16Enabled.value=1;inputs.Widget16Metric.value=ZONE_METRIC
+inputs.Widget16ShadowEnabled.value=0;events={};Process(req);assert(of('text')[1].text=='T')
+NotifyChanged(inputs.Widget16Metric,{Value=ZONE_METRIC})
+assert(inputs.Widget16ZoneLength.visible==true and inputs.Widget16RouteSize.visible==false and inputs.Widget16IconEnabled.visible==false)
+`));
+
+test('elevation profile caches full sample-index geometry and endpoint-preserving smoothing', () => run(`
+local records={{elapsed_us=0,elevation_m=-10,distance_m=0},{elapsed_us=5,elevation_m=90,distance_m=1},{elapsed_us=999},{elapsed_us=1000,elevation_m=10,distance_m=5000}}
+local p=prepare_elevation(records)
+assert(#p.values==3 and #p.raw.points==3 and p.raw.points[2].x==0.5)
+assert(p.smoothed[1]==-10 and p.smoothed[3]==10 and p.smoothed[2]<90)
+assert(#p.smooth.points==13 and #p.smooth.bands==24)
+local x,y=elevation_marker(p.values,500000,1000000);assert(x==0.5 and y==1)
+-- Distance and irregular timestamps do not drive the Mac full-profile cursor.
+assert(select(1,elevation_marker(p.values,1000000,1000000))==1)
+assert(select(1,elevation_marker(p.values,-1,1000000))==0)
+assert(select(1,elevation_marker(p.values,2000000,1000000))==1)
+local flat=prepare_elevation({{elevation_m=4},{elevation_m=4}})
+assert(flat.raw.points[1].y==0 and flat.raw.points[2].y==0)
+assert(#prepare_elevation({{}}).values==0)
+for _,band in ipairs(p.smooth.bands) do for _,point in ipairs(band) do assert(point.x>=0 and point.x<=1 and point.y>=0 and point.y<=1) end end
+`));
+
+test('elevation chart renders gradient bands, profile, cursor and explicit missing-data states', () => run(HOST + `
+local base_capsule=capsule
+capsule=function(...) local s=base_capsule(...);function s:OutlineOfShape() return self end;return s end
+Shape=function() local s={points={},rects={},TransformOfShape=function(self) return self end}
+ function s:MoveTo(x,y) table.insert(self.points,{x,y}) end
+ function s:LineTo(x,y) table.insert(self.points,{x,y}) end
+ function s:Close() end
+ function s:AddRectangle(...) table.insert(self.rects,{...}) end
+ function s:OutlineOfShape(w) self.width=w;return self end
+ return s end
+local profile=prepare_elevation({{elevation_m=0},{elevation_m=20},{elevation_m=10}})
+load_data=function() return {elevation=profile,duration_us=1000000} end
+local current=10
+sample_activity=function() return {elevation_m=current} end
+inputs.Metric.value=ELEVATION_METRIC;inputs.ShadowEnabled.value=0
+Process(req)
+local shapes=of('shape');assert(#shapes>3 and #of('text')==0)
+assert(shapes[1].color.A<0.34 and shapes[1].color.B>shapes[1].color.R)
+assert(shapes[#shapes-1].shape.kind=='capsule')
+inputs.ElevationFill.value=0;events={};Process(req);assert(#of('shape')==3)
+current=nil;events={};Process(req);assert(#of('shape')==1)
+inputs.ElevationShowValue.value=1;events={};Process(req);assert(of('text')[1].text=='-- m')
+profile=prepare_elevation({{}});events={};Process(req);assert(of('text')[1].text=='NO ELEVATION')
+inputs.HeartRateEnabled.value=0;inputs.Widget16Enabled.value=1;inputs.Widget16Metric.value=ELEVATION_METRIC
+inputs.Widget16ShadowEnabled.value=0;events={};Process(req);assert(of('text')[1].text=='NO ELEVATION')
+NotifyChanged(inputs.Widget16Metric,{Value=ELEVATION_METRIC})
+assert(inputs.Widget16ElevationWidth.visible==true and inputs.Widget16ZoneLength.visible==false and inputs.Widget16ValueSize.visible==false)
+NotifyChanged(inputs.Widget16Metric,{Value=ZONE_METRIC})
+assert(inputs.Widget16ElevationWidth.visible==false and inputs.Widget16ZoneLength.visible==true)
+`));
+
+test('long elevation geometry is bounded while retaining endpoints and peaks', () => run(`
+local values={} for i=1,10000 do values[i]=0 end
+values[4999]=100
+local points=elevation_points(values,false)
+assert(#points<=512 and points[1].x==0 and points[#points].x==1)
+local peak=false for _,p in ipairs(points) do if p.y==1 then peak=true end end
+assert(peak)
+assert(#elevation_points(values,true)<=3067)
 `));

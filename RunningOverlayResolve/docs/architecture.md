@@ -272,3 +272,18 @@ Route controls share the existing sixteen-slot node and shadow pipeline.
 Map imagery is not part of this increment. A future provider must prepare licensed
 assets in the control plane and bundle them for offline rendering; the trace-only
 renderer does not claim the Mac templates' MapKit background parity.
+
+## Race Zone And Elevation Modules (v12/v13)
+
+The same sixteen-slot Fuse adds HR zone bar (19) and elevation chart (20) without
+changing existing IDs. HR range/threshold and module style inputs persist per
+instance in Fusion. Classification rounds bpm and resolves inclusive overlaps in
+range order. Data sync preserves these inputs; new instances seed Race effect
+defaults. Shared/global physiology configuration and pace zones are future work.
+
+Elevation geometry is prepared once per immutable activity snapshot: valid values
+use sample-index spacing, optional fixed 0.85 Gaussian smoothing preserves
+endpoints, and bucket extrema cap drawing anchors before curve flattening and
+cached band clipping. The cursor uses real activity elapsed time/duration,
+independent of pause compression and distance, and hides for missing current
+elevation. Completely absent profiles show an explicit missing-data label.

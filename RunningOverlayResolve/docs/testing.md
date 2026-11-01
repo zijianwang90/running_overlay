@@ -1,5 +1,37 @@
 # Running Overlay Resolve Testing
 
+## Race HR Zone Bar And Elevation Chart — 2026-11-01
+
+v12 adds editable five/six HR ranges, inclusive first-match classification, edge
+and free placement/orientation, active width/height emphasis, inactive opacity,
+current/threshold markers, optional values/zone labels, border, glow and shadows.
+v13 adds cached full elevation profiles, fixed template Gaussian smoothing,
+Catmull-Rom flattening, gradient area/line-only rendering, time-driven cursor,
+guide and value label. Long profiles retain bucket extrema/endpoints and bound
+vector work to 512 anchors before curve flattening. No provider/network added.
+
+Tests execute real Lua: boundary overlaps/rounding, invalid ranges, missing HR,
+all four edge marker directions, five zones, slot 16 and Inspector switching;
+negative/constant/missing elevation, smoothing endpoints, sample-index spacing,
+time-domain cursor clamps independent of distance, gradient parts, missing-cursor
+suppression, line-only and bounded long-profile extrema. Script tests check
+appended metric IDs, installation guards, Race chart position and new-instance
+shadow defaults. Synthetic fixtures contain no private activity data.
+
+Host evidence: installed v12/v13 after saving and restarting Resolve; independent
+synthetic validation project, 1920×1080 ProRes 4444 alpha. Race-style bottom bar
+showed active zone, inward arrow and threshold T. Both components were rendered
+at activity 323.25 s and 1223.25 s via Time Offset; 189 configured inputs survived
+save/close/reopen. Frames were inspected for geometry, cursor movement and fill.
+The original project was restored. Gradient bands use single-sample fills to
+avoid antialias seams, with the outline rendered at normal quality.
+
+Limits: no live viewer undo acceptance, UHD/non-16:9 matrix or real-time long-
+activity performance measurement. These are partial module implementations:
+per-instance HR ranges, HR-only zones, full-profile elevation with fixed smoothing
+and approximate gradient; no axes/stats/progress mode. No golden images updated.
+Focused human review remains required for the visual output and time mapping.
+
 ## Numeric Icons, Distance Timeline And Offline Route — 2026-11-01
 
 v10 adds original vector numeric icons, line-box label/unit alignment, the minimal
