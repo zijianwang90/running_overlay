@@ -4,7 +4,8 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const { normalizeWidgets, normalizeLayout, positionFor } = require('../src/domain/widgets');
 const { validateConfiguration } = require('../src/workflow/configuration');
-const { dataUpdateScript } = require('../src/resolve/fusion-script');
+const { dataUpdateScript, validClockOffsetHours } = require('../src/resolve/fusion-script');
+const { clockUtcOffsetHours } = require('../src/workflow/service');
 
 const contextId = 'b'.repeat(64);
 
@@ -55,4 +56,24 @@ test('new numeric fields survive configuration round trips as independent instan
     assert.ok(position.x >= 0 && position.x <= 1 && position.y >= 0 && position.y <= 1);
   }
   assert.equal(positions.size, 16);
+});
+
+test('Real Time instances start on the activity clock and keep their Fusion offset on resync', () => {
+  const script = dataUpdateScript({ bundleDirectory: '/tmp/synthetic', origin: 0, token: 't',
+    widgets: [{ id: 'clock', metric: 'realTime' }], layoutPreset: 'vertical', clockUtcOffsetHours: -4 });
+  assert.match(script, /metric_index=16/);
+  assert.match(script, /if fresh or not slots\[widget\.id\] then\n\s+if node:GetInput\(prefix \.\. "ClockUtcOffset"\) ~= nil then update\(prefix \.\. "ClockUtcOffset", -4\)/);
+  assert.equal(validClockOffsetHours(5.75), 5.75);
+  assert.equal(validClockOffsetHours(5.7501), 5.75);
+  assert.throws(() => validClockOffsetHours(15), /between -12 and \+14/);
+  assert.throws(() => dataUpdateScript({ bundleDirectory: 'x', origin: 0, token: 't', clockUtcOffsetHours: Number.NaN }), /Clock UTC offset/);
+});
+
+test('the clock offset comes from the recording timezone at activity start, else the computer zone', () => {
+  const july = { activity: { startUtcUs: Date.UTC(2026, 6, 2, 22, 47, 3) * 1000 } };
+  const january = { activity: { startUtcUs: Date.UTC(2026, 0, 2, 12, 0, 0) * 1000 } };
+  assert.equal(clockUtcOffsetHours({ ...july, captureTimeZone: 'America/New_York' }), -4);
+  assert.equal(clockUtcOffsetHours({ ...january, captureTimeZone: 'America/New_York' }), -5);
+  assert.equal(clockUtcOffsetHours({ ...july, captureTimeZone: 'UTC+05:45' }), 5.75);
+  assert.equal(clockUtcOffsetHours({ ...july, captureTimeZone: null }, 'Asia/Shanghai'), 8);
 });

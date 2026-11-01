@@ -46,7 +46,7 @@ available, but there is no selectable/rendered widget.
 | Lap Pace | Missing | Lap data and Mac selection semantics |
 | Calories | Partial | Direct record widget implemented; lap/session fallback pending |
 | Elapsed Time | Partial (`elapsed`) | Match formats and pause behavior at boundaries |
-| Real Time | Missing | Explicit display timezone and clock formatting |
+| Real Time | Implemented (v9) | `HH:mm:ss` or `h:mm:ss a`, seconds truncated as on Mac. Mac uses the rendering machine's timezone; Resolve uses an explicit per-instance UTC offset seeded from the recording timezone at activity start, so an activity crossing a DST change keeps one offset. Host export checked |
 | Date | Missing | Explicit timezone and date formatting |
 | Distance | Partial | Units and full numeric styles |
 | Distance Timeline | Missing | Distance progression and module renderer |
@@ -85,7 +85,7 @@ retry, real v5/v6 comparison and remaining UI validation limits.
 
 | Area | Current Resolve behavior | Parity acceptance |
 |---|---|---|
-| Numeric styling | v7 adds separate value/label/unit fonts, sizes, colors/opacity, custom labels, visibility and attachments; host persistence and export checked | Value/label/unit/icon controls, attachment positions, separate typefaces/sizes/colors/opacities, presets and effects match supported Mac fields |
+| Numeric styling | v7 adds separate value/label/unit fonts, sizes, colors/opacity, custom labels, visibility and attachments; v9 adds the Mac layered text shadow (color, opacity, blur, offset, thickness) with blur calibrated against SwiftUI; host persistence and export checked | Value/label/unit/icon controls, attachment positions, separate typefaces/sizes/colors/opacities, presets and effects match supported Mac fields |
 | Units and formatting | v7 metric-specific km/mi/m, pace /km /mi /500m, elevation m/ft and elapsed formats; Lua tested and imperial host export checked | Metric-specific unit choices, precision, missing values and boundary formatting match Mac |
 | Element layout | Stack/row/grid presets; Fusion positioning | Independent instances, visibility, ordering and reusable layouts; equivalent placement at supported resolutions |
 | Activity import | FIT/GPX; limited normalized fields and timer-pause annotations | Retain fields required by all supported widgets, laps, workout structure and GPS; preserve provenance and gaps |
@@ -102,6 +102,26 @@ security-scoped bookmarks) is not duplicated literally. Equivalent outcomes
 such as installation, editing and portable media access remain required.
 
 ## Delivery Order
+
+### Template-First Priority
+
+New widget work first completes the components of the bundled Easy Run and Race
+templates (`Sources/RunningOverlay/Resources/Templates/`), ahead of the generic
+order below. Race contains the nine Easy Run elements plus two:
+
+| Template element | Templates | Resolve status |
+|---|---|---|
+| Pace, Heart Rate, Cadence, Power | Both | Numeric values available; template styles need icons (`iconEnabled`) and Monaco/PT Mono typography checks |
+| Elapsed Time | Both | Available |
+| Real Time | Both | v9 |
+| Text shadow | All but Race elevation chart | v9 for numerics; featured widgets need their own shadow pass |
+| Distance Timeline | Both | Missing |
+| Route Map | Both | Missing; needs GPS retained in import and bundle |
+| Weather Widget | Both | Missing; needs a weather data source and background styling |
+| Zone Edge Bar, Elevation Chart | Race | Missing |
+
+Template files are large because every element stores every module's sub-style;
+they embed no route or image assets.
 
 ### 1. Numeric Widgets And Styles
 

@@ -16,7 +16,7 @@ FuRegisterClass("RunningOverlayNumeric", CT_SourceTool, {
 	REG_Source_DepthCtrls = true,
 	REG_Fuse_NoEdit = false,
 	REG_Fuse_NoReload = false,
-	REG_Version = 8,
+	REG_Version = 9,
 })
 
 -- Cache only complete immutable snapshots. Several Numeric Fuse instances can
@@ -49,16 +49,19 @@ end
 local function read_activity(path)
 	local records = {}
 	local annotations = {}
+	local start_utc_us = nil
 	local file = io.open(path, "r")
-	if file == nil then return nil, nil, "Cannot open selected .roactivity file" end
+	if file == nil then return nil, nil, nil, "Cannot open selected .roactivity file" end
 	local first = file:read("*l")
 	if first ~= "ROACTIVITY\t1" then
 		file:close()
-		return nil, nil, "Unsupported activity data"
+		return nil, nil, nil, "Unsupported activity data"
 	end
 	for line in file:lines() do
 		local fields = split_tabs(line)
-		if fields[1] == "record" then
+		if fields[1] == "startUtcUs" then
+			start_utc_us = tonumber(fields[2])
+		elseif fields[1] == "record" then
 			table.insert(records, {
 				elapsed_us = tonumber(fields[2]),
 				distance_m = tonumber(fields[3]),
@@ -83,8 +86,9 @@ local function read_activity(path)
 		end
 	end
 	file:close()
-	if #records == 0 then return nil, nil, "Activity has no records" end
-	return records, annotations, nil
+	if #records == 0 then return nil, nil, nil, "Activity has no records" end
+	if start_utc_us == nil then return nil, nil, nil, "Activity data has no start time" end
+	return records, annotations, start_utc_us, nil
 end
 
 local function read_sync(path)
@@ -128,7 +132,7 @@ local function load_data(activity_path, sync_path)
 		DataCache[key] = snapshot
 		return snapshot
 	end
-	local records, annotations, activity_error = read_activity(activity_path)
+	local records, annotations, start_utc_us, activity_error = read_activity(activity_path)
 	if records == nil then
 		snapshot = { error = activity_error }
 		DataCache[key] = snapshot
@@ -140,7 +144,7 @@ local function load_data(activity_path, sync_path)
 		DataCache[key] = snapshot
 		return snapshot
 	end
-	snapshot = { records = records, pauses = annotations, segments = segments, timeline_start_frame = timeline_start_frame }
+	snapshot = { records = records, pauses = annotations, start_utc_us = start_utc_us, segments = segments, timeline_start_frame = timeline_start_frame }
 	DataCache[key] = snapshot
 	return snapshot
 end
@@ -245,8 +249,20 @@ local function pace_text(seconds_per_kilometer, unit_mode)
 	return format_pace(seconds_per_kilometer and seconds_per_kilometer * factor), unit_mode == 1 and "/ mi" or (unit_mode == 2 and "/ 500m" or "/ km")
 end
 
+-- Wall clock at the sampled instant, like the Mac app's HH:mm:ss / h:mm:ss a.
+-- Seconds truncate as DateFormatter does; the UTC offset is explicit.
+local function clock_text(utc_us, utc_offset_hours, twelve_hour)
+	local seconds = math.floor(utc_us / 1000000) + round((utc_offset_hours or 0) * 3600)
+	local day = seconds % 86400
+	local hours, minutes, remainder = math.floor(day / 3600), math.floor(day / 60) % 60, day % 60
+	if twelve_hour then
+		return string.format("%d:%02d:%02d %s", hours % 12 == 0 and 12 or hours % 12, minutes, remainder, hours < 12 and "AM" or "PM")
+	end
+	return string.format("%02d:%02d:%02d", hours, minutes, remainder)
+end
+
 -- manual_celsius is nil unless the Inspector temperature source allows it.
-local function metric_text(metric, sample, real_elapsed_us, data, unit_mode, manual_celsius, use_fit_temperature)
+local function metric_text(metric, sample, real_elapsed_us, data, unit_mode, manual_celsius, use_fit_temperature, utc_offset_hours)
 	unit_mode = unit_mode or 0
 	if metric == 0 then
 		return "HEART RATE", sample.heart_rate and string.format("%d", math.floor(sample.heart_rate + 0.5)) or "--", "bpm"
@@ -297,6 +313,9 @@ local function metric_text(metric, sample, real_elapsed_us, data, unit_mode, man
 		return "TEMP", celsius and string.format("%d°", round(celsius)) or "--", "°C"
 	elseif metric == 15 then
 		return "GRADE", sample.grade_pct and string.format("%+.1f", sample.grade_pct) or "--", "%"
+	elseif metric == 16 then
+		if data.start_utc_us == nil then return "REAL TIME", "--", "" end
+		return "REAL TIME", clock_text(data.start_utc_us + real_elapsed_us, utc_offset_hours, unit_mode == 1), ""
 	end
 	return "UNKNOWN", "--", ""
 end
@@ -356,6 +375,51 @@ local function draw_text(image, font, style, text, size, x, y, color, quality)
 	channel:ShapeFill(shape)
 	channel:PutToImage("CM_Merge", channel_style)
 	return width
+end
+
+-- Fusion Gaussian blur size per shadow radius, both as fractions of frame width.
+-- SwiftUI shadow radius is the Gaussian sigma; Resolve 21 Image:Blur measured
+-- sigma = 0.4293 * BLUR_XSize * width on a hard edge at 1920x1080.
+SHADOW_BLUR_SCALE = 1 / 0.4293
+
+-- Mirrors the Mac layered shadow: a base layer, then tighter layers as thickness grows.
+local function shadow_layers(opacity, radius, thickness)
+	thickness = math.min(math.max(thickness, 1), 4)
+	return {
+		{opacity = opacity, radius = radius},
+		{opacity = opacity * math.max(thickness - 1, 0) * 0.32, radius = radius * 0.72},
+		{opacity = opacity * math.max(thickness - 2, 0) * 0.22, radius = radius * 0.48},
+	}
+end
+
+local MERGE_OVER = {
+	MO_ApplyMode = "Merge", MO_ApplyOperator = "Over", MO_XOffset = 0.5, MO_YOffset = 0.5,
+	MO_XAxis = 0.5, MO_YAxis = 0.5, MO_XSize = 1, MO_YSize = 1, MO_Angle = 0,
+	MO_FgAddSub = 1, MO_BgAddSub = 1, MO_BurnIn = 0, MO_FgRedGain = 1, MO_FgGreenGain = 1,
+	MO_FgBlueGain = 1, MO_FgAlphaGain = 1, MO_Invert = 1, MO_DoZ = false,
+}
+
+-- Each layer blurs an offset silhouette of every text part, then merges under the text.
+local function draw_shadow(image, parts, shadow, quality)
+	for _, layer in ipairs(shadow_layers(shadow.opacity, shadow.radius, shadow.thickness)) do
+		if layer.opacity > 0 then
+			local silhouette = Image({IMG_Like = image})
+			silhouette:Fill(Pixel{R = 0, G = 0, B = 0, A = 0})
+			for _, part in ipairs(parts) do
+				draw_text(silhouette, part.font, part.style, part.text, part.size, part.x + shadow.x, part.y + shadow.y,
+					Pixel{R = shadow.R, G = shadow.G, B = shadow.B, A = layer.opacity * part.color.A}, quality)
+			end
+			local blurred = silhouette
+			if layer.radius > 0 then
+				blurred = Image({IMG_Like = image})
+				local size = layer.radius * SHADOW_BLUR_SCALE
+				silhouette:Blur(blurred, {BLUR_Type = 4, BLUR_Red = true, BLUR_Green = true, BLUR_Blue = true, BLUR_Alpha = true,
+					BLUR_XSize = size, BLUR_YSize = size, BLUR_Blend = 1, BLUR_Normalize = 1, BLUR_Passes = 0,
+					BLUR_RedScale = 1, BLUR_GreenScale = 1, BLUR_BlueScale = 1, BLUR_AlphaScale = 1})
+			end
+			image:Merge(blurred, MERGE_OVER)
+		end
+	end
 end
 
 -- Attach to the current block bounds, so label and unit never overlap each other.
@@ -463,6 +527,7 @@ function Create()
 			{CCS_AddString = "Ground Contact Time"}, {CCS_AddString = "Stride Length"},
 			{CCS_AddString = "Vertical Ratio"}, {CCS_AddString = "GCT Balance"},
 			{CCS_AddString = "Temperature"}, {CCS_AddString = "Grade"},
+			{CCS_AddString = "Real Time"},
 		})
 	end
 	InMetric = metric_input("Metric", "Metric", 0)
@@ -542,11 +607,14 @@ function Create()
 			[4] = combo("Elevation Units", "ElevationUnits", {"m", "ft"}),
 			[9] = combo("Oscillation Units", "OscillationUnits", {"cm", "mm"}),
 			[14] = combo("Temperature Units", "TemperatureUnits", {"Celsius", "Fahrenheit"}),
+			[16] = combo("Clock Format", "ClockFormat", {"24-hour", "12-hour"}),
 		}
 		result.units[8] = result.units[1]
 		result.temperature_source = combo("Temperature Source", "TemperatureSource", {"FIT", "FIT, else manual", "Manual"})
 		result.manual_temperature = self:AddInput("Manual Temperature (°C)", key .. "ManualTemperature", {LINKID_DataType = "Number",
 			INPID_InputControl = "SliderControl", INP_Default = 20, INP_MinScale = -30, INP_MaxScale = 45})
+		result.clock_offset = self:AddInput("Clock UTC Offset (h)", key .. "ClockUtcOffset", {LINKID_DataType = "Number",
+			INPID_InputControl = "SliderControl", INP_Default = 0, INP_MinScale = -12, INP_MaxScale = 14})
 		result.custom_label = self:AddInput("Custom Label (blank = default)", key .. "CustomLabel", {
 			LINKID_DataType = "Text", INPID_InputControl = "TextEditControl", INP_DefaultText = "", TEC_Lines = 1})
 		result.show_unit = self:AddInput("Show Unit", key .. "ShowUnit", {
@@ -569,6 +637,25 @@ function Create()
 			end
 			result[part] = controls
 		end
+		-- Mac defaults: black, 35%, radius 4 pt and 2 pt down at the 1280-point reference.
+		local shadow = {}
+		shadow.enabled = self:AddInput("Shadow", key .. "ShadowEnabled", {
+			LINKID_DataType = "Number", INPID_InputControl = "CheckboxControl", INP_Default = 1})
+		shadow.color = {}
+		for component, name in ipairs({"R", "G", "B"}) do
+			shadow.color[component] = self:AddInput("Shadow " .. name, key .. "Shadow" .. name, {
+				LINKID_DataType = "Number", INPID_InputControl = "ColorControl", INP_Default = 0,
+				INP_MinScale = 0, INP_MaxScale = 1, ICS_Name = "Shadow Color", IC_ControlGroup = 13, IC_ControlID = component - 1})
+		end
+		shadow.opacity = number("Shadow Opacity", "ShadowOpacity", 0.35, 1)
+		shadow.radius = number("Shadow Blur", "ShadowBlur", 4 / 1280, 0.02)
+		shadow.x = self:AddInput("Shadow Offset X", key .. "ShadowOffsetX", {LINKID_DataType = "Number",
+			INPID_InputControl = "SliderControl", INP_Default = 0, INP_MinScale = -0.02, INP_MaxScale = 0.02})
+		shadow.y = self:AddInput("Shadow Offset Y", key .. "ShadowOffsetY", {LINKID_DataType = "Number",
+			INPID_InputControl = "SliderControl", INP_Default = -2 / 1280, INP_MinScale = -0.02, INP_MaxScale = 0.02})
+		shadow.thickness = self:AddInput("Shadow Thickness", key .. "ShadowThickness", {LINKID_DataType = "Number",
+			INPID_InputControl = "SliderControl", INP_Default = 1, INP_MinScale = 1, INP_MaxScale = 4})
+		result.shadow = shadow
 		return result
 	end
 	PrimaryTextOptions = text_options("")
@@ -710,12 +797,15 @@ function Process(req)
 			local source = math.floor(options.temperature_source:GetValue(req).Value + 0.5)
 			local manual = source > 0 and options.manual_temperature:GetValue(req).Value or nil
 			local label, value, unit = metric_text(metric, sample, elapsed_us, data, unit_input and unit_input:GetValue(req).Value or 0,
-				manual, source < 2)
+				manual, source < 2, options.clock_offset:GetValue(req).Value)
 			local custom = tostring(options.custom_label:GetValue(req).Value or ""):match("^%s*(.-)%s*$")
 			if custom ~= "" then label = custom end
 			local x = position.X
 			local y = position.Y * (output.Height * output.YScale) / (output.Width * output.XScale)
-			local value_width = draw_text(output, widget_font, widget_style, value, size, x, y, color, quality)
+			-- Lay out every part first so the shadow pass can sit beneath all of them.
+			local value_metrics = TextStyleFontMetrics(TextStyleFont(widget_font, widget_style))
+			local value_width = add_text_shape(Shape(), value_metrics, value, size, 0, 0)
+			local parts = {{font = widget_font, style = widget_style, text = value, size = size, x = x, y = y, color = color}}
 			local bounds = {left = x, right = x + value_width, bottom = y, top = y + size}
 			local function attachment(text, controls)
 				if text == "" then return end
@@ -727,12 +817,23 @@ function Process(req)
 				local metrics = TextStyleFontMetrics(TextStyleFont(part_font, part_style))
 				local width = add_text_shape(Shape(), metrics, text, part_size, 0, 0)
 				local px, py = attach_text(bounds, width, part_size, controls.position:GetValue(req).Value, controls.spacing:GetValue(req).Value)
-				draw_text(output, part_font, part_style, text, part_size, px, py,
-					Pixel{R = controls.color[1]:GetValue(req).Value, G = controls.color[2]:GetValue(req).Value,
-						B = controls.color[3]:GetValue(req).Value, A = controls.color[4]:GetValue(req).Value}, quality)
+				table.insert(parts, {font = part_font, style = part_style, text = text, size = part_size, x = px, y = py,
+					color = Pixel{R = controls.color[1]:GetValue(req).Value, G = controls.color[2]:GetValue(req).Value,
+						B = controls.color[3]:GetValue(req).Value, A = controls.color[4]:GetValue(req).Value}})
 			end
 			if options.show_unit:GetValue(req).Value > 0.5 then attachment(unit, options.Unit) end
 			if show_label then attachment(label, options.Label) end
+			local shadow = options.shadow
+			if shadow.enabled:GetValue(req).Value > 0.5 then
+				draw_shadow(output, parts, {
+					R = shadow.color[1]:GetValue(req).Value, G = shadow.color[2]:GetValue(req).Value, B = shadow.color[3]:GetValue(req).Value,
+					opacity = shadow.opacity:GetValue(req).Value, radius = shadow.radius:GetValue(req).Value,
+					x = shadow.x:GetValue(req).Value, y = shadow.y:GetValue(req).Value, thickness = shadow.thickness:GetValue(req).Value,
+				}, quality)
+			end
+			for _, part in ipairs(parts) do
+				draw_text(output, part.font, part.style, part.text, part.size, part.x, part.y, part.color, quality)
+			end
 		end
 		if InHeartRateEnabled:GetValue(req).Value > 0.5 then
 			render_widget(math.floor(InMetric:GetValue(req).Value + 0.5), InPosition:GetValue(req), InSize:GetValue(req).Value,

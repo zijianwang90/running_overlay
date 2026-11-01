@@ -1,5 +1,35 @@
 # Running Overlay Resolve Testing
 
+## Real Time And Text Shadow — 2026-10-31
+
+Fuse v9 adds the Real Time metric and the Mac layered text shadow. Node tests run
+the real Lua: 24/12-hour clocks with truncated seconds, fractional offsets,
+midnight/noon, day wrap, missing start time, `startUtcUs` parsing from the
+renderer file (in-memory `io`), shadow defaults, thickness layers and clamping, and
+Process order: one offset silhouette per layer, blur, merge, then sharp text; zero
+blur merges a sharp silhouette; disabled shadows draw nothing. Script tests cover
+seeding the clock offset only for newly assigned instances, offset validation, and
+the offset at activity start for named zones across DST, fixed offsets and the
+computer-zone fallback.
+
+Blur calibration (Resolve Studio 21.1.1, 1920×1080): a development-only probe Fuse
+blurred a hard edge through `Image:Blur` Gaussian. The 16–84 % edge width gave
+σ = 0.4293 × `BLUR_XSize` × width (22.9 px at 20/720). SwiftUI `ImageRenderer`
+measured `.shadow(radius:)` as σ ≈ radius (4.10, 10.15, 20.34 px for 4, 10, 20).
+With the derived constant, a 3 pt template blur measured σ = 4.75 px against 4.5
+expected; the excess matches a fixed ~1.5 px edge spread. The probe was removed
+from the installed Fuses afterwards. Only 16:9 1080p was measured.
+
+Host: installed v9 after saving the open project and restarted Resolve. In the
+separate synthetic project, applied Easy Run numeric styles (Monaco, scaled point
+sizes, 70 % shadow offset 4,4 with blur 4 at scale 0.75) to pace and heart rate,
+plus elapsed and a 12-hour Real Time at UTC−4; 63 inputs survived save/close/
+reopen. A ProRes 4444 alpha frame showed `4:05:23 AM` and `00:05:23` for activity
+time 323.25 s (08:00:00Z start, +1.25 s offset) with soft lower-right shadows. A
+blur-0 render had shadow pixels at 0.7 alpha best matching the text at +4,+4 px
+(expected 4.5). Original project restored. Not checked: live viewer, multi-layer
+thickness on host, playback cost with many shadowed instances, other aspect ratios.
+
 ## Remaining Record-Based Numeric Metrics — 2026-10-31
 
 Fuse v8 adds Avg Pace, Vertical Oscillation, Ground Contact Time, Stride Length,

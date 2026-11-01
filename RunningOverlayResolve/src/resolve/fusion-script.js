@@ -11,15 +11,21 @@ function luaString(value) {
 }
 
 const MAXIMUM_OFFSET_SECONDS = 86_400;
+// Real Time widgets display a fixed UTC offset; the Fuse has no timezone database.
+function validClockOffsetHours(value) {
+  invariant(typeof value === 'number' && Number.isFinite(value) && value >= -12 && value <= 14, 'Clock UTC offset must be between -12 and +14 hours.');
+  return Math.round(value * 60) / 60;
+}
 function validOffsetSeconds(value) {
   invariant(typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= MAXIMUM_OFFSET_SECONDS, 'Data time offset must be within one day.');
   // Millisecond precision keeps the Fusion value readable and deterministic.
   return Math.round(value * 1000) / 1000;
 }
 
-function dataUpdateScript({ bundleDirectory, origin, token, initialize = false, widgets, layoutPreset, initialTimeOffsetSeconds = 0 }) {
+function dataUpdateScript({ bundleDirectory, origin, token, initialize = false, widgets, layoutPreset, initialTimeOffsetSeconds = 0, clockUtcOffsetHours = 0 }) {
   invariant(Number.isSafeInteger(origin), 'Invalid composition origin');
   const initialOffset = validOffsetSeconds(initialTimeOffsetSeconds);
+  const clockOffset = validClockOffsetHours(clockUtcOffsetHours);
   const selected = normalizeWidgets(widgets);
   const layout = normalizeLayout(layoutPreset);
   const fields = {
@@ -111,6 +117,12 @@ local ok, message = pcall(function()
     assigned[widget.id] = slot
     local prefix = prefixes[slot]
     local metric_key = prefix .. "Metric"
+    -- A newly assigned instance starts on the activity's local clock; an existing
+    -- instance keeps the offset the user chose in Fusion.
+    if fresh or not slots[widget.id] then
+      if node:GetInput(prefix .. "ClockUtcOffset") ~= nil then update(prefix .. "ClockUtcOffset", ${clockOffset})
+      else assert(widget.metric ~= "realTime", "Install the current Numeric Fuse and restart Resolve.") end
+    end
     if fresh or previous_layout ~= layout_signature then
       if node:GetInput(metric_key) ~= nil then update(metric_key, widget.metric_index)
       else assert(widget.metric_index == (slot - 1), "Install the current Numeric Fuse and restart Resolve.") end
@@ -183,4 +195,4 @@ comp:SetData(status_key, token .. (ok and ("|ok|" .. result) or ("|error:" .. to
 `;
 }
 
-module.exports = { luaString, dataUpdateScript, timeOffsetScript, validOffsetSeconds };
+module.exports = { luaString, dataUpdateScript, timeOffsetScript, validOffsetSeconds, validClockOffsetHours };

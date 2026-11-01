@@ -9,6 +9,14 @@ const { validOffsetSeconds } = require('../resolve/fusion-script');
 const { compileSyncMap, timelineFingerprint } = require('../sync/compile-sync-map');
 const { writeResolveBundle } = require('../io/render-data');
 const { contextForResolve, validateConfiguration, applyConfirmedCaptureTimes, cameraModels } = require('./configuration');
+const { offsetAt } = require('../sync/capture-time');
+
+// The recording timezone stands in for the activity's local clock. The offset at
+// activity start seeds new Real Time widgets; Fusion keeps it editable afterwards.
+function clockUtcOffsetHours(configuration, systemTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone) {
+  const zone = configuration.captureTimeZone ?? systemTimeZone;
+  return offsetAt(Math.floor(configuration.activity.startUtcUs / 1000), zone) / 60;
+}
 
 const editable = (value) => JSON.stringify([value.referenceVideoTrackIndex, value.activity, value.confirmedCaptureUtcByMediaId, value.cameraAnchors, value.widgets, value.layoutPreset, value.captureTimeZone, value.captureTimeZonesByMediaId]);
 class WorkflowService {
@@ -137,9 +145,9 @@ class WorkflowService {
     await fs.mkdir(revisionRoot, { recursive: true, mode: 0o700 });
     const bundleDirectory = await writeResolveBundle(revisionRoot, configuration.activity, syncMap);
     // Data files are immutable: old instances keep their complete revision until the input switch.
-    const result = await this.update(await this.getResolve(), { contextId: configuration.contextId, syncMap, bundleDirectory, expectedItemId: configuration.managedItemId, referenceVideoTrackIndex: configuration.referenceVideoTrackIndex, widgets: configuration.widgets, layoutPreset: configuration.layoutPreset, initialTimeOffsetSeconds: configuration.draftTimeOffsetMs / 1000 });
+    const result = await this.update(await this.getResolve(), { contextId: configuration.contextId, syncMap, bundleDirectory, expectedItemId: configuration.managedItemId, referenceVideoTrackIndex: configuration.referenceVideoTrackIndex, widgets: configuration.widgets, layoutPreset: configuration.layoutPreset, initialTimeOffsetSeconds: configuration.draftTimeOffsetMs / 1000, clockUtcOffsetHours: clockUtcOffsetHours(configuration) });
     const saved = await this.store.save({ ...configuration, ...result, bundleDirectory, lastAppliedFingerprint: snapshot.fingerprint });
     return { configuration: saved, segmentCount: syncMap.segments.length, fingerprint: snapshot.fingerprint };
   }
 }
-module.exports = { WorkflowService };
+module.exports = { WorkflowService, clockUtcOffsetHours };
