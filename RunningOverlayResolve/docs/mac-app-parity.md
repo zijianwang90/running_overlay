@@ -100,7 +100,7 @@ copied into the immutable activity data; Fusion renders only that snapshot, so
 preview, Deliver and project handoff need no network. The card reproduces the
 shared Easy Run/Race SimpleCard: condition, original vector condition icon,
 divider, location, weekday, temperature and humidity with the template's blue
-glass colors, corner radius, border and 22% shadow. Typography is approximate,
+glass colors, corner radius, border and 35% shadow. Typography is approximate,
 as accepted above. Location text can be relabelled in the panel; automatic
 reverse geocoding, forecasts, the other card presets, and the Mac's global
 weather preferences remain pending. If the cache is absent the card shows the
@@ -120,7 +120,7 @@ is approximated with raster bands; exact raster parity is not claimed.
 
 | Area | Current Resolve behavior | Parity acceptance |
 |---|---|---|
-| Numeric styling | v7 adds separate value/label/unit fonts, sizes, colors/opacity, custom labels, visibility and attachments; v9 adds layered text shadow; v10 adds original vector icons and label/unit alignment. Template fonts are approximately matched; host persistence and export checked | Value/label/unit/icon controls, attachment positions, separate typefaces/sizes/colors/opacities, presets and effects match supported Mac fields |
+| Numeric styling | v7 adds separate value/label/unit fonts, sizes, colors/opacity, custom labels, visibility and attachments; v9 adds layered text shadow; v10 adds original vector icons and label/unit alignment; new instances seed the Mac template's label visibility/color and shadows. Template fonts are approximately matched; host persistence and export checked | Value/label/unit/icon controls, attachment positions, separate typefaces/sizes/colors/opacities, presets and effects match supported Mac fields |
 | Units and formatting | v7 metric-specific km/mi/m, pace /km /mi /500m, elevation m/ft and elapsed formats; Lua tested and imperial host export checked | Metric-specific unit choices, precision, missing values and boundary formatting match Mac |
 | Element layout | Template positions from the Mac 1920×1080 element centers, then Fusion positioning; duplicates and off-template widgets use deterministic free slots | Independent instances, visibility, ordering and reusable layouts; equivalent placement at supported resolutions |
 | Activity import | FIT/GPX; limited normalized fields and timer-pause annotations | Retain fields required by all supported widgets, laps, workout structure and GPS; preserve provenance and gaps |
@@ -146,18 +146,27 @@ order below. Race contains the nine Easy Run elements plus two:
 
 | Template element | Templates | Resolve status |
 |---|---|---|
-| Pace, Heart Rate, Cadence, Power | Both | Numeric values and original vector icons available; typography approximately matched to Monaco/PT Mono |
+| Pace, Heart Rate, Cadence, Power | Both | Numeric values, original vector icons and template-seeded label visibility, label color and shadow; typography approximately matched to Monaco/PT Mono |
 | Elapsed Time | Both | Available |
 | Real Time | Both | v9 |
-| Text shadow | All but Race elevation chart | v9 for numerics; featured widgets need their own shadow pass |
-| Distance Timeline | Both | v10 minimal renderer; full module parity pending |
-| Route Map | Both | v11 offline trace and cursor; dark MapKit background not implemented |
-| Weather Widget | Both | Missing; needs a weather data source and background styling |
-| Zone Edge Bar | Race | v12 HR renderer; five/six ranges configured per instance in Fusion |
-| Elevation Chart | Race | v13 compact full-profile renderer; other module modes pending |
+| Text shadow | All but Race elevation chart | v9 shared shadow; new instances seed the template's radius, offset, opacity and thickness for numerics, route and timeline |
+| Distance Timeline | Both | v10 minimal renderer with template shadow; full module parity pending |
+| Route Map | Both | v11 offline trace and cursor with template shadow; dark MapKit background not implemented |
+| Weather Widget | Both | v14 cached Open-Meteo card with template glass styling and 35% shadow |
+| Zone Edge Bar | Race | v12 HR renderer with template shadow; five/six ranges configured per instance in Fusion |
+| Elevation Chart | Race | v13 compact full-profile renderer with template shadow disabled; other module modes pending |
 
 Template files are large because every element stores every module's sub-style;
 they embed no route or image assets.
+
+**Template style seeding (2026-11-01).** The panel now treats both the Mac
+template positions and a small set of non-typographic style fields as starting
+values. When an instance is first assigned to a slot, the control plane writes
+the template's label visibility, numeric label color and shadow, plus the
+route/timeline/zone/elevation shadow values. A resync never re-seeds an existing
+slot, so Inspector edits and animation survive data and widget-list updates.
+Font family and exact point sizes remain approximate, as accepted above, and no
+font files are redistributed.
 
 ### 1. Numeric Widgets And Styles
 

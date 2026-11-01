@@ -2,6 +2,7 @@
 
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const { lauxlib, lua, to_luastring, to_jsstring } = require('fengari');
 const { normalizeWidgets } = require('../src/domain/widgets');
 const { normalizeTemplateId, fallbackPosition } = require('../src/domain/templates');
 const { validateConfiguration } = require('../src/workflow/configuration');
@@ -114,5 +115,35 @@ test('zone and elevation widgets append metrics and seed template effects only f
   assert.match(script,/metric_index=20, x=0\.5, y=0\.0891454352441613/);
   assert.match(script,/prefix \.\. "ZoneLength"/);
   assert.match(script,/prefix \.\. "ElevationWidth"/);
-  assert.match(script,/if fresh or not slots\[widget.id\] then\n      if widget.metric == "elevationChart" then update\(prefix \.\. "ShadowEnabled", 0\)/);
+  assert.match(script,/\[string\.sub\(\[\[xzones\]\], 2\)\] = \{ \{string\.sub\(\[\[xShadowOpacity\]\], 2\), 0\.34\}, \{string\.sub\(\[\[xShadowBlur\]\], 2\), 0\.004166666666666667\} \}/);
+  assert.match(script,/\[string\.sub\(\[\[xprofile\]\], 2\)\] = \{ \{string\.sub\(\[\[xShadowEnabled\]\], 2\), 0\} \}/);
+  assert.match(script,/if fresh or not slots\[widget\.id\] then\n\s+for _, style in ipairs\(template_styles\[widget\.id\]\) do update\(prefix \.\. style\[1\], style\[2\]\) end/);
+});
+
+test('template styles seed new numeric, route and timeline instances', () => {
+  const script = dataUpdateScript({ bundleDirectory: '/tmp/synthetic', origin: 0, token: 'styles', templateId: 'easyRun',
+    widgets: [{ id: 'p', metric: 'pace' }, { id: 'map', metric: 'routeMap' }, { id: 'bar', metric: 'distanceTimeline' }] });
+  assert.match(script, /\[string\.sub\(\[\[xp\]\], 2\)\] = \{ \{string\.sub\(\[\[xShowLabel\]\], 2\), 0\}, \{string\.sub\(\[\[xLabelR\]\], 2\), 0\.25\}, .*\{string\.sub\(\[\[xShadowOpacity\]\], 2\), 0\.7\}, \{string\.sub\(\[\[xShadowOffsetX\]\], 2\), 0\.0020833333333333333\}/);
+  assert.match(script, /\[string\.sub\(\[\[xmap\]\], 2\)\] = \{ \{string\.sub\(\[\[xShadowOpacity\]\], 2\), 0\.95\}, \{string\.sub\(\[\[xShadowBlur\]\], 2\), 0\.0036458333333333334\} \}/);
+  assert.match(script, /\[string\.sub\(\[\[xbar\]\], 2\)\] = \{ \{string\.sub\(\[\[xShadowOpacity\]\], 2\), 0\.9\}, \{string\.sub\(\[\[xShadowBlur\]\], 2\), 0\.0026041666666666665\}, \{string\.sub\(\[\[xShadowThickness\]\], 2\), 3\} \}/);
+});
+
+test('duplicate template metrics keep the metric styles without a template position', () => {
+  const script = dataUpdateScript({ bundleDirectory: '/tmp/synthetic', origin: 0, token: 'dup', templateId: 'easyRun',
+    widgets: [{ id: 'p1', metric: 'pace' }, { id: 'p2', metric: 'pace' }, { id: 'extra', metric: 'calories' }] });
+  assert.match(script, /id=string\.sub\(\[\[xp2\]\], 2\), metric=string\.sub\(\[\[xpace\]\], 2\), metric_index=1, x=0\.08, y=0\.62/);
+  assert.match(script, /\[string\.sub\(\[\[xp2\]\], 2\)\] = \{ \{string\.sub\(\[\[xShowLabel\]\], 2\), 0\}, /);
+  assert.match(script, /\[string\.sub\(\[\[xextra\]\], 2\)\] = \{  \}/);
+});
+
+test('the generated data update script is valid Lua for every built-in template', () => {
+  for (const templateId of ['easyRun', 'race', 'intervalWorkout']) {
+    const script = dataUpdateScript({ bundleDirectory: '/tmp/synthetic', origin: 0, token: templateId, templateId,
+      widgets: [{ id: 'first', metric: 'pace' }, { id: 'second', metric: 'pace' }, { id: 'third', metric: 'calories' }] });
+    const L = lauxlib.luaL_newstate();
+    const status = lauxlib.luaL_loadstring(L, to_luastring(script));
+    const failure = status === lua.LUA_OK ? '' : to_jsstring(lua.lua_tostring(L, -1));
+    lua.lua_close(L);
+    assert.equal(status, lua.LUA_OK, `${templateId}: ${failure}`);
+  }
 });

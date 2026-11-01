@@ -9,18 +9,32 @@
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.RunningOverlayTemplates = api;
 })(globalThis, function () {
-  const element = (metric, positionX, templateY) => Object.freeze({
-    metric, x: positionX, y: 1 - templateY,
+  // Fuse input suffixes seeded once when an instance is first assigned. Mac
+  // templates hide every label; the four left-column numerics also use the
+  // template's teal label color and its stronger lower-right shadow. Sizes are
+  // output pixels authored at 1920 pixels wide; Fusion Y points up.
+  const NUMERIC_STYLE = Object.freeze({
+    ShowLabel: 0,
+    LabelR: 0.25, LabelG: 0.82, LabelB: 0.38,
+    ShadowOpacity: 0.7, ShadowOffsetX: 4 / 1920, ShadowOffsetY: -4 / 1920,
+  });
+  const LABEL_HIDDEN = Object.freeze({ ShowLabel: 0 });
+  const ROUTE_STYLE = Object.freeze({ ShadowOpacity: 0.95, ShadowBlur: 7 / 1920 });
+  const TIMELINE_STYLE = Object.freeze({ ShadowOpacity: 0.9, ShadowBlur: 5 / 1920, ShadowThickness: 3 });
+  const ZONE_STYLE = Object.freeze({ ShadowOpacity: 0.34, ShadowBlur: 8 / 1920 });
+  const ELEVATION_STYLE = Object.freeze({ ShadowEnabled: 0 });
+  const element = (metric, positionX, templateY, styles = LABEL_HIDDEN) => Object.freeze({
+    metric, x: positionX, y: 1 - templateY, styles,
   });
   const easyRun = [
-    element('pace', 0.030665921145385626, 0.7390206334260655),
-    element('heartRate', 0.030598226300837895, 0.7921729713179458),
-    element('cadence', 0.030463369683198994, 0.8468990093767548),
-    element('routeMap', 0.879024248712692, 0.19476634960677427),
-    element('distanceTimeline', 0.5, 0.06896883363068688),
+    element('pace', 0.030665921145385626, 0.7390206334260655, NUMERIC_STYLE),
+    element('heartRate', 0.030598226300837895, 0.7921729713179458, NUMERIC_STYLE),
+    element('cadence', 0.030463369683198994, 0.8468990093767548, NUMERIC_STYLE),
+    element('routeMap', 0.879024248712692, 0.19476634960677427, ROUTE_STYLE),
+    element('distanceTimeline', 0.5, 0.06896883363068688, TIMELINE_STYLE),
     element('elapsed', 0.8563774200948813, 0.843703791895823),
     element('realTime', 0.8563774200948813, 0.9013793825233812),
-    element('power', 0.029313862326656028, 0.9045746000043129),
+    element('power', 0.029313862326656028, 0.9045746000043129, NUMERIC_STYLE),
     element('weatherWidget', 0.8949036260318015, 0.7564232547646579),
   ];
   const TEMPLATES = Object.freeze([
@@ -35,8 +49,8 @@
       name: 'Race',
       summary: 'Easy Run plus the centre HR zone bar and the bottom elevation chart.',
       elements: Object.freeze([...easyRun,
-        element('zoneEdgeBar', 0.5, 0.5),
-        element('elevationChart', 0.5, 0.9108545647558387),
+        element('zoneEdgeBar', 0.5, 0.5, ZONE_STYLE),
+        element('elevationChart', 0.5, 0.9108545647558387, ELEVATION_STYLE),
       ]),
     }),
     Object.freeze({
@@ -44,7 +58,7 @@
       name: 'Interval Workout',
       summary: 'Route map, clock, elapsed time and weather with the interval HUD bar at the bottom and the interval timeline across the top.',
       elements: Object.freeze([
-        element('routeMap', 0.110546875, 0.2043391181081142),
+        element('routeMap', 0.110546875, 0.2043391181081142, ROUTE_STYLE),
         element('elapsed', 0.8563774200948813, 0.843703791895823),
         element('realTime', 0.8563774200948813, 0.9013793825233812),
         element('weatherWidget', 0.8949036260318015, 0.7564232547646579),

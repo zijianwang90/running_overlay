@@ -31,19 +31,42 @@ test('Race is Easy Run plus the zone bar and elevation chart, with no duplicated
 });
 
 test('template positions are the Mac template centers flipped to Fusion coordinates', () => {
+  const position = (template, metric, occurrence) => {
+    const { x, y } = templateElement(template, metric, occurrence);
+    return { x, y };
+  };
   const easy = byId('easyRun');
-  assert.deepEqual(templateElement(easy, 'pace'), { metric: 'pace', x: 0.030665921145385626, y: 0.2609793665739345 });
-  assert.deepEqual(templateElement(easy, 'heartRate'), { metric: 'heartRate', x: 0.030598226300837895, y: 0.20782702868205416 });
-  assert.deepEqual(templateElement(easy, 'routeMap'), { metric: 'routeMap', x: 0.879024248712692, y: 0.8052336503932257 });
-  assert.deepEqual(templateElement(easy, 'distanceTimeline'), { metric: 'distanceTimeline', x: 0.5, y: 0.9310311663693132 });
-  assert.deepEqual(templateElement(easy, 'weatherWidget'), { metric: 'weatherWidget', x: 0.8949036260318015, y: 0.24357674523534212 });
+  assert.deepEqual(position(easy, 'pace'), { x: 0.030665921145385626, y: 0.2609793665739345 });
+  assert.deepEqual(position(easy, 'heartRate'), { x: 0.030598226300837895, y: 0.20782702868205416 });
+  assert.deepEqual(position(easy, 'routeMap'), { x: 0.879024248712692, y: 0.8052336503932257 });
+  assert.deepEqual(position(easy, 'distanceTimeline'), { x: 0.5, y: 0.9310311663693132 });
+  assert.deepEqual(position(easy, 'weatherWidget'), { x: 0.8949036260318015, y: 0.24357674523534212 });
   const race = byId('race');
-  assert.deepEqual(templateElement(race, 'zoneEdgeBar'), { metric: 'zoneEdgeBar', x: 0.5, y: 0.5 });
-  assert.deepEqual(templateElement(race, 'elevationChart'), { metric: 'elevationChart', x: 0.5, y: 0.0891454352441613 });
+  assert.deepEqual(position(race, 'zoneEdgeBar'), { x: 0.5, y: 0.5 });
+  assert.deepEqual(position(race, 'elevationChart'), { x: 0.5, y: 0.0891454352441613 });
   const interval = byId('intervalWorkout');
-  assert.deepEqual(templateElement(interval, 'routeMap'), { metric: 'routeMap', x: 0.110546875, y: 0.7956608818918858 });
-  assert.deepEqual(templateElement(interval, 'intervalHUDBar'), { metric: 'intervalHUDBar', x: 0.5, y: 0.09999999999999987 });
-  assert.deepEqual(templateElement(interval, 'intervalTimeline'), { metric: 'intervalTimeline', x: 0.5, y: 0.9107836014342482 });
+  assert.deepEqual(position(interval, 'routeMap'), { x: 0.110546875, y: 0.7956608818918858 });
+  assert.deepEqual(position(interval, 'intervalHUDBar'), { x: 0.5, y: 0.09999999999999987 });
+  assert.deepEqual(position(interval, 'intervalTimeline'), { x: 0.5, y: 0.9107836014342482 });
+});
+
+test('template elements seed the Mac starting styles once per new instance', () => {
+  const easy = byId('easyRun');
+  const styles = (metric) => templateElement(easy, metric).styles;
+  for (const metric of ['pace', 'heartRate', 'cadence', 'power']) {
+    assert.deepEqual(styles(metric), { ShowLabel: 0, LabelR: 0.25, LabelG: 0.82, LabelB: 0.38,
+      ShadowOpacity: 0.7, ShadowOffsetX: 4 / 1920, ShadowOffsetY: -4 / 1920 });
+  }
+  assert.deepEqual(styles('routeMap'), { ShadowOpacity: 0.95, ShadowBlur: 7 / 1920 });
+  assert.deepEqual(styles('distanceTimeline'), { ShadowOpacity: 0.9, ShadowBlur: 5 / 1920, ShadowThickness: 3 });
+  assert.deepEqual(styles('elapsed'), { ShowLabel: 0 });
+  assert.deepEqual(styles('realTime'), { ShowLabel: 0 });
+  assert.deepEqual(styles('weatherWidget'), { ShowLabel: 0 });
+  const race = byId('race');
+  assert.deepEqual(templateElement(race, 'zoneEdgeBar').styles, { ShadowOpacity: 0.34, ShadowBlur: 8 / 1920 });
+  assert.deepEqual(templateElement(race, 'elevationChart').styles, { ShadowEnabled: 0 });
+  const interval = byId('intervalWorkout');
+  assert.deepEqual(templateElement(interval, 'routeMap').styles, { ShadowOpacity: 0.95, ShadowBlur: 7 / 1920 });
 });
 
 test('template identity defaults to Easy Run and rejects unknown names', () => {

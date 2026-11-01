@@ -29,11 +29,41 @@ Host evidence: assembled and reinstalled the panel, restarted Resolve, and
 opened it on the independent validation project. The Template card showed Easy
 Run, Race and Interval Workout with Easy Run selected; selecting Race updated
 the note, left Heart Rate, Pace, Cadence, Power, Time and Clock active, and
-autosave persisted `templateId: "race"` with the eleven-widget list. That
-validation timeline has no usable source clip, so the live Fusion apply path
-was covered by generated-script tests rather than an overlay update. The
+autosave persisted `templateId: "race"` with the eleven-widget list. The
 original `Overlay Test` project was reloaded; human review remains required for
 the template positions.
+
+## Template Style Seeding — 2026-11-01
+
+Each built-in template element now carries a small `styles` map of Fuse input
+suffixes and values read from the same Mac `.rotemplate` file. For the Easy Run
+and Race templates: every element hides the numeric label; Pace, Heart Rate,
+Cadence and Power use the template's teal label and its 70 % shadow with a
+4-pixel lower-right offset; Route Map uses a 95 % / 7-pixel shadow; Distance
+Timeline uses 90 % / 5 pixels with thickness 3; Zone Edge Bar uses 34 % /
+8 pixels; Elevation Chart disables the shadow. The control plane writes these
+inputs only when an instance is first assigned to a slot (`fresh` or no previous
+slot ownership), so a template switch keeps every existing Fusion slot and a
+resync never overwrites later Inspector edits. Font family and exact sizes stay
+approximate, as accepted; no fonts are redistributed.
+
+Tests: template style values per element, generated Lua style table and the
+new-instance guard, and a fengari syntax check of the generated update script
+for all three templates. 134 Node tests pass.
+
+Host evidence: Resolve Studio 21.1.1, independent `RO Numeric v7 Validation`
+project. The panel created a fresh Race overlay on an added synthetic 1920×1080
+25 fps timeline (`style-validation`) with a synthetic seven-minute GPX. The new
+slots held the exact template values: Heart Rate and Pace `ShowLabel 0`, label
+`0.25/0.82/0.38`, shadow `0.7` and `±0.00208333`; Cadence and Power the same
+numeric style; Route Map `0.95 / 0.00364583`; Distance Timeline
+`0.9 / 0.00260417 / 3`; Zone Edge Bar `0.34 / 0.00416667`; Elevation Chart
+`ShadowEnabled 0`. A 1080p ProRes 4444 render at activity 4 s showed no numeric
+labels, white values/units, visible lower-right numeric shadows, the route and
+timeline shadows, and the Race zone bar and elevation chart. Save, close and
+reload of the project returned every seeded value. The original `Overlay Test`
+project was reloaded. Only 1080p was inspected; the teal label color was not
+visible because labels are hidden, and UHD/animation remain unchecked.
 
 ## Interval Components And Workout Structure — 2026-11-01
 

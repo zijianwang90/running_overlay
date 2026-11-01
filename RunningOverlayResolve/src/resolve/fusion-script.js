@@ -39,20 +39,30 @@ function dataUpdateScript({ bundleDirectory, origin, token, initialize = false, 
     `{${luaString(key)}, ${typeof value === 'number' ? value : luaString(value)}}`).join(',\n');
   const occurrences = new Map();
   let fallback = 0;
+  const seeded = [];
   const desired = selected.map((widget) => {
     // The template positions the first instance of each metric; duplicates and
     // metrics the template does not place fall back to a free slot.
     const occurrence = occurrences.get(widget.metric) ?? 0;
     occurrences.set(widget.metric, occurrence + 1);
-    const position = templateElement(template, widget.metric, occurrence) ?? fallbackPosition(fallback++);
+    const templateEntry = templateElement(template, widget.metric, occurrence);
+    const position = templateEntry ?? fallbackPosition(fallback++);
+    // Duplicates keep the metric's template style even though they fall back
+    // to a free position.
+    const styles = (templateEntry ?? templateElement(template, widget.metric, 0))?.styles ?? {};
+    const seededStyles = Object.entries(styles)
+      .map(([suffix, value]) => `{${luaString(suffix)}, ${value}}`).join(', ');
+    seeded.push(`  [${luaString(widget.id)}] = { ${seededStyles} }`);
     return `{id=${luaString(widget.id)}, metric=${luaString(widget.metric)}, metric_index=${METRICS[widget.metric]}, x=${position.x}, y=${position.y}}`;
   }).join(',\n');
+  const templateStyles = `{\n${seeded.join(',\n')}\n}`;
   const signature = JSON.stringify([template.id, selected.map((widget) => [widget.id, widget.metric])]);
   return `
 local status_key = "RunningOverlay.Operation"
 local token = ${luaString(token)}
 local fields = { ${assignments} }
 local desired = { ${desired} }
+local template_styles = ${templateStyles}
 local template_signature = ${luaString(signature)}
 local changes, created = {}, {}
 local previous_signature = comp:GetData("RunningOverlay.TemplateSignature")
@@ -124,13 +134,10 @@ local ok, message = pcall(function()
     assigned[widget.id] = slot
     local prefix = prefixes[slot]
     local metric_key = prefix .. "Metric"
+    -- A new instance adopts the template's starting style; later Fusion edits
+    -- are never overwritten by a resync.
     if fresh or not slots[widget.id] then
-      if widget.metric == "elevationChart" then update(prefix .. "ShadowEnabled", 0)
-      elseif widget.metric == "weatherWidget" then update(prefix .. "ShadowOpacity", 0.22)
-      elseif widget.metric == "zoneEdgeBar" then
-        update(prefix .. "ShadowOpacity", 0.34)
-        update(prefix .. "ShadowBlur", 8 / 1920)
-      end
+      for _, style in ipairs(template_styles[widget.id]) do update(prefix .. style[1], style[2]) end
     end
     -- A newly assigned instance starts on the activity's local clock; an existing
     -- instance keeps the offset the user chose in Fusion.
