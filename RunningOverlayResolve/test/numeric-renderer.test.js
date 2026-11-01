@@ -8,7 +8,7 @@ const { METRICS } = require('../src/domain/widgets');
 const FUSE_NAMES = { heartRate: 'Heart Rate', pace: 'Pace', distance: 'Distance', elapsed: 'Elapsed', elevation: 'Elevation',
   cadence: 'Cadence', power: 'Power', calories: 'Calories', avgPace: 'Avg Pace', verticalOscillation: 'Vertical Oscillation',
   groundContactTime: 'Ground Contact Time', strideLength: 'Stride Length', verticalRatio: 'Vertical Ratio',
-  groundContactBalance: 'GCT Balance', temperature: 'Temperature', grade: 'Grade', realTime: 'Real Time', distanceTimeline: 'Distance Timeline', routeMap: 'Route Map', zoneEdgeBar: 'HR Zone Bar', elevationChart: 'Elevation Chart', weatherWidget: 'Weather', date: 'Date', customNumeric: 'Custom Numeric', heartRateZone: 'HR Zone' };
+  groundContactBalance: 'GCT Balance', temperature: 'Temperature', grade: 'Grade', realTime: 'Real Time', distanceTimeline: 'Distance Timeline', routeMap: 'Route Map', zoneEdgeBar: 'HR Zone Bar', elevationChart: 'Elevation Chart', weatherWidget: 'Weather', date: 'Date', customNumeric: 'Custom Numeric', heartRateZone: 'HR Zone', runningGauge: 'Running Gauge' };
 assert.deepEqual(Object.values(METRICS), Object.keys(METRICS).map((_, index) => index));
 const source = fs.readFileSync(path.join(__dirname, '../fusion/Fuses/RunningOverlayNumeric.fuse'), 'utf8');
 function run(code) {
@@ -526,6 +526,25 @@ hr=140;inputs.ZoneCount.value=0;inputs.Zone1Max.value=0;inputs.Zone2Min.value=20
 assert(of('text')[1].text=='--')
 NotifyChanged(inputs.Metric,{Value=HR_ZONE_METRIC})
 assert(inputs.ZoneCount.visible==true and inputs.Zone1Min.visible==true and inputs.TimelineWidth.visible==false)
+`));
+
+test('running gauge draws dial, regions and the distance progress ring', () => run(HOST + `
+local base_capsule=capsule
+capsule=function(...) local s=base_capsule(...);function s:OutlineOfShape() return s end;return s end
+load_data=function() return {timeline_start_frame=0,pauses={},total_distance_m=2000,duration_us=600000000} end
+sample_activity=function() return {distance_m=1000,heart_rate=150,pace_spk=300} end
+inputs.Metric.value=GAUGE_METRIC;inputs.GaugeTicks.value=0;inputs.GaugeProgress.value=1;inputs.ShadowEnabled.value=0
+Process(req)
+local function has(text)
+ for _, entry in ipairs(of('text')) do if entry.text==text then return true end end
+ return false
+end
+assert(has('1.00') and has('DIST') and has('km'))
+assert(has([[5'00"]]) and has('PACE') and has('/km'))
+assert(has('00:00') and has('TIME') and has('HR') and has('bpm'))
+assert(#of('shape')>=4)
+inputs.GaugeDial.value=0;inputs.GaugeRing.value=0;inputs.GaugeProgress.value=0;inputs.GaugeDividers.value=0
+events={};Process(req);assert(#of('shape')==0)
 `));
 
 test('zone bar draws active segments, threshold and inward markers on all four edges', () => run(HOST + `

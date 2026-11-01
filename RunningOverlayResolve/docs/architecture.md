@@ -319,3 +319,10 @@ widget slot, so a text zone label and a zone bar in the same composition share
 the instance configuration. Classification delegates to the existing rounded,
 inclusive first-match helper; no global physiology store or additional data
 bundle is introduced. Active-zone text tint remains a visual-parity gap.
+
+Running Gauge (metric 25) is a vector dial rendered from the same activity sample.
+Its progress ring reuses the normalized total distance/duration and the Mac
+fallback that maps zone modes to elapsed-time progress. Four region bindings
+resolve through `metric_text`, so formatting and missing values stay consistent
+with the numeric widgets. Style inputs persist per instance; Mac style/layout
+presets and per-region typography are not yet modeled.

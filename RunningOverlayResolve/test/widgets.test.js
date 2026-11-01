@@ -28,6 +28,7 @@ test('widget choices and preset positions are deterministic and reject duplicate
   assert.equal(normalizeWidgets([{ id: 'weather-1', metric: 'weatherWidget' }])[0].metric, 'weatherWidget');
   assert.equal(normalizeWidgets([{ id: 'date-1', metric: 'date' }])[0].metric, 'date');
   assert.equal(normalizeWidgets([{ id: 'custom-1', metric: 'customNumeric' }])[0].metric, 'customNumeric');
+  assert.equal(normalizeWidgets([{ id: 'gauge-1', metric: 'runningGauge' }])[0].metric, 'runningGauge');
   assert.throws(() => normalizeWidgets([]), /one and sixteen/);
   assert.equal(normalizeWidgets([{ id: 'a', metric: 'pace' }, { id: 'b', metric: 'pace' }]).length, 2);
   assert.throws(() => normalizeWidgets([{ id: 'a', metric: 'pace' }, { id: 'a', metric: 'power' }]), /unique/);

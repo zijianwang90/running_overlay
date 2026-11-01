@@ -570,3 +570,16 @@ visibility. Host evidence: slot 13 in `RO Numeric v7 Validation` rendered `Z2`
 with the Heart glyph at 1080p ProRes 4444 alpha; save, close and reopen retained
 metric 24, the enabled flag and zone range inputs. The original `Overlay Test`
 project was restored.
+
+## Running Gauge — 2026-11-01
+
+v17 adds metric 25 (Running Gauge): dial fill, outer ring, ticks, dividers,
+distance/time progress ring and four region bindings. The Lua test drives the
+real Process path and checks all four region values, labels, units and the
+shape count with effects toggled off. Progress fractions use normalized total
+distance/duration and clamp to 0–1. Host evidence: slot 14 in
+`RO Numeric v7 Validation` rendered a 260 px dial with 60 ticks, distance/time
+progress ring, dividers and the four regions (`DIST 0.93 km`, `PACE 5'29" /km`,
+`TIME 05:26`, `HR 146 bpm`) at 1080p ProRes 4444 alpha. Save, close and reopen
+retained metric 25, size and progress mode. The original `Overlay Test` project
+was restored.

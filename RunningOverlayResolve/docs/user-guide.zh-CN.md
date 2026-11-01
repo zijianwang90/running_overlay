@@ -98,6 +98,22 @@
 参考范围；没有心率或没有匹配区间时显示 `--`。这一版不随区间改变文字颜色，
 也不读取 Mac 的全局生理设置。
 
+### 跑步仪表盘（v17）
+
+在 Widgets 中添加 **Running gauge**。默认采用 Mac 的 minimalSport 圆盘：深色半透明底、
+外圈、60 个刻度（每 5 个强调），中间显示距离、配速、时间和心率四个区域，
+并带上下分隔线。**Gauge Size** 控制直径；**Dial / Outer Ring / Tick Marks /
+Dividers** 分项开关，各自的颜色、透明度和线宽可调。
+
+- **Progress Ring** 可选 None、Distance、Time、HR Zone、Power Zone、Pace Intensity
+  或 Custom 50%。Distance 按当前距离占活动总距离的比例；Time 按当前经过时间占全程
+  的比例；三个区间模式和 Mac 当前实现一样回退为时间进度；Custom 固定 50%。
+- 四个区域的指标由 **Top/Middle Left/Middle Right/Bottom Metric** 选择，
+  使用与数值组件相同的格式和缺失值规则；**Gauge Labels** 控制小标签，
+  **Accent Color** 控制标签、单位和刻度之外的强调文字。
+- 尚未实现 Mac 的其他布局预设、七套风格预设、玻璃/发光效果和逐区域字体字号；
+  刻度与进度环是矢量近似。
+
 ## 数值文字样式（Fuse v7）
 
 在 Fusion 中选中 Running Overlay Numeric 节点。每个实例分别提供数值字体、Value Size、颜色和 Alpha，以及以下设置：

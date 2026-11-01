@@ -16,7 +16,7 @@ FuRegisterClass("RunningOverlayNumeric", CT_SourceTool, {
 	REG_Source_DepthCtrls = true,
 	REG_Fuse_NoEdit = false,
 	REG_Fuse_NoReload = false,
-	REG_Version = 16,
+	REG_Version = 17,
 })
 
 -- Cache only complete immutable snapshots. Several Numeric Fuse instances can
@@ -734,6 +734,14 @@ WEATHER_METRIC = 21
 DATE_METRIC = 22
 CUSTOM_METRIC = 23
 HR_ZONE_METRIC = 24
+GAUGE_METRIC = 25
+-- Gauge region combo order maps to the existing metric indices.
+GAUGE_METRICS = {0, 2, 1, 8, 3, 16, 6, 5, 4, 7, 9, 10, 11, 12, 13, 14, 15}
+GAUGE_METRIC_LABELS = {"Heart Rate", "Distance", "Pace", "Avg Pace", "Elapsed Time", "Real Time", "Power", "Cadence",
+	"Elevation", "Calories", "Vert. Osc.", "GCT", "Stride", "Vert. Ratio", "GCT Balance", "Temperature", "Grade"}
+GAUGE_LABELS = {[0] = "HR", [1] = "PACE", [2] = "DIST", [3] = "TIME", [4] = "ELEV", [5] = "CADENCE", [6] = "POWER",
+	[7] = "KCAL", [8] = "AVG", [9] = "OSC", [10] = "GCT", [11] = "STRIDE", [12] = "V-RATIO", [13] = "BALANCE",
+	[14] = "TEMP", [15] = "GRADE", [16] = "CLOCK"}
 WEATHER_LABELS = {sunny = "Sunny", clearNight = "Clear night", partlyCloudy = "Partly cloudy", cloudy = "Cloudy",
 	fog = "Fog", rain = "Rain", heavyRain = "Heavy rain", snow = "Snow", thunder = "Thunder", wind = "Wind"}
 -- Mac defaultNumericIconSystemName, keyed by metric index.
@@ -1023,7 +1031,7 @@ function Create()
 			{CCS_AddString = "Temperature"}, {CCS_AddString = "Grade"},
 			{CCS_AddString = "Real Time"}, {CCS_AddString = "Distance Timeline"},
 		{CCS_AddString = "Route Map"}, {CCS_AddString = "HR Zone Bar"}, {CCS_AddString = "Elevation Chart"}, {CCS_AddString = "Weather"},
-		{CCS_AddString = "Date"}, {CCS_AddString = "Custom Numeric"}, {CCS_AddString = "HR Zone"},
+		{CCS_AddString = "Date"}, {CCS_AddString = "Custom Numeric"}, {CCS_AddString = "HR Zone"}, {CCS_AddString = "Running Gauge"},
 		})
 	end
 	InMetric = metric_input("Metric", "Metric", 0)
@@ -1275,6 +1283,40 @@ function Create()
 		end
 		return z
 	end
+	local function gauge_options(key, group)
+		local function number(label, suffix, default, min, max) return number_in(group, label, key .. "Gauge" .. suffix, default, min, max) end
+		local function check(label, suffix, default) return check_in(group, label, key .. "Gauge" .. suffix, default) end
+		return {
+			size = number("Gauge Size", "Size", 260 / 1280, 0.05, 0.8),
+			dial = check("Dial Background", "Dial", 1),
+			dial_color = color_in(group, "Dial Color", key .. "GaugeDial", {0, 0, 0, 1}, 26, true),
+			dial_opacity = number("Dial Opacity", "DialOpacity", 0.62, 0, 1),
+			ring = check("Outer Ring", "Ring", 1),
+			ring_color = color_in(group, "Ring Color", key .. "GaugeRing", {1, 1, 1, 1}, 27, true),
+			ring_opacity = number("Ring Opacity", "RingOpacity", 0.45, 0, 1),
+			ring_width = number("Ring Width", "RingWidth", 0.020, 0.001, 0.08),
+			ticks = check("Tick Marks", "Ticks", 1),
+			tick_count = number("Tick Count", "TickCount", 60, 6, 120),
+			tick_every = number("Major Tick Every", "TickEvery", 5, 1, 30),
+			tick_opacity = number("Tick Opacity", "TickOpacity", 0.35, 0, 1),
+			major_opacity = number("Major Tick Opacity", "MajorOpacity", 0.85, 0, 1),
+			progress = combo_in(group, "Progress Ring", key .. "GaugeProgress",
+				{"None", "Distance", "Time", "HR Zone", "Power Zone", "Pace Intensity", "Custom 50%"}, 1),
+			progress_color = color_in(group, "Progress Color", key .. "GaugeProgressColor", {1, 1, 1, 1}, 28, true),
+			progress_track = color_in(group, "Track Color", key .. "GaugeTrackColor", {1, 1, 1, 1}, 29, true),
+			progress_track_opacity = number("Track Opacity", "TrackOpacity", 0.18, 0, 1),
+			progress_width = number("Progress Width", "ProgressWidth", 0.022, 0.001, 0.08),
+			dividers = check("Dividers", "Dividers", 1),
+			divider_color = color_in(group, "Divider Color", key .. "GaugeDivider", {1, 1, 1, 1}, 30, true),
+			divider_opacity = number("Divider Opacity", "DividerOpacity", 0.22, 0, 1),
+			labels = check("Gauge Labels", "Labels", 1),
+			accent_color = color_in(group, "Accent Color", key .. "GaugeAccent", {1, 1, 1, 1}, 31, true),
+			top_metric = combo_in(group, "Top Metric", key .. "GaugeTop", GAUGE_METRIC_LABELS, 1),
+			middle_left_metric = combo_in(group, "Middle Left Metric", key .. "GaugeMiddleLeft", GAUGE_METRIC_LABELS, 2),
+			middle_right_metric = combo_in(group, "Middle Right Metric", key .. "GaugeMiddleRight", GAUGE_METRIC_LABELS, 4),
+			bottom_metric = combo_in(group, "Bottom Metric", key .. "GaugeBottom", GAUGE_METRIC_LABELS, 0),
+		}
+	end
 	local function elevation_options(key, group)
 		local function number(label,suffix,default,min,max) return number_in(group,label,key.."Elevation"..suffix,default,min,max) end
 		local function check(label,suffix,default) return check_in(group,label,key.."Elevation"..suffix,default) end
@@ -1334,14 +1376,15 @@ function Create()
 		}
 	end
 	VisibilityGroups = {}
-	local primary_numeric, primary_timeline, primary_route, primary_zone, primary_elevation, primary_weather = {InSize, InShowLabel}, {}, {}, {}, {}, {}
+	local primary_numeric, primary_timeline, primary_route, primary_zone, primary_elevation, primary_weather, primary_gauge = {InSize, InShowLabel}, {}, {}, {}, {}, {}, {}
 	PrimaryTextOptions = text_options("", primary_numeric)
 	PrimaryTimelineOptions = timeline_options("", primary_timeline)
 	PrimaryRouteOptions = route_options("", primary_route)
 	PrimaryZoneOptions = zone_options("", primary_zone)
 	PrimaryElevationOptions = elevation_options("", primary_elevation)
 	PrimaryWeatherOptions = weather_options("", primary_weather)
-	VisibilityGroups[InMetric] = {numeric = primary_numeric, timeline = primary_timeline, route = primary_route, zone = primary_zone, elevation = primary_elevation, weather = primary_weather}
+	PrimaryGaugeOptions = gauge_options("", primary_gauge)
+	VisibilityGroups[InMetric] = {numeric = primary_numeric, timeline = primary_timeline, route = primary_route, zone = primary_zone, elevation = primary_elevation, weather = primary_weather, gauge = primary_gauge}
 	WidgetInputs = {}
 	local definitions = {
 		{key = "Pace", label = "Pace", metric = 1},
@@ -1353,7 +1396,7 @@ function Create()
 	end
 	for slot, definition in ipairs(definitions) do
 		local key = definition.key
-		local numeric, timeline, route, zone, elevation, weather = {}, {}, {}, {}, {}, {}
+		local numeric, timeline, route, zone, elevation, weather, gauge = {}, {}, {}, {}, {}, {}, {}
 		self:AddControlPage(definition.label)
 		local controls = {}
 		controls.metric = metric_input("Metric", key .. "Metric", definition.metric)
@@ -1389,7 +1432,8 @@ function Create()
 		controls.zone = zone_options(key, zone)
 		controls.elevation = elevation_options(key, elevation)
 		controls.weather = weather_options(key, weather)
-		VisibilityGroups[controls.metric] = {numeric = numeric, timeline = timeline, route = route, zone = zone, elevation = elevation, weather = weather}
+		controls.gauge = gauge_options(key, gauge)
+		VisibilityGroups[controls.metric] = {numeric = numeric, timeline = timeline, route = route, zone = zone, elevation = elevation, weather = weather, gauge = gauge}
 		WidgetInputs[slot] = controls
 	end
 	-- No default metric is a timeline; NotifyChanged reveals them per slot.
@@ -1399,6 +1443,7 @@ function Create()
 		for _, input in ipairs(groups.zone) do input:SetAttrs({IC_Visible = false}) end
 		for _, input in ipairs(groups.elevation) do input:SetAttrs({IC_Visible = false}) end
 		for _, input in ipairs(groups.weather) do input:SetAttrs({IC_Visible = false}) end
+		for _, input in ipairs(groups.gauge) do input:SetAttrs({IC_Visible = false}) end
 	end
 end
 
@@ -1413,7 +1458,7 @@ function NotifyChanged(input, parameter, time)
 		DataCache = {}
 	elseif VisibilityGroups ~= nil and VisibilityGroups[input] ~= nil then
 		local metric = parameter ~= nil and math.floor((parameter.Value or 0) + 0.5) or 0
-		local kind = ({[TIMELINE_METRIC] = "timeline", [ROUTE_METRIC] = "route", [ZONE_METRIC] = "zone", [ELEVATION_METRIC] = "elevation", [WEATHER_METRIC] = "weather", [HR_ZONE_METRIC] = "zone"})[metric] or "numeric"
+		local kind = ({[TIMELINE_METRIC] = "timeline", [ROUTE_METRIC] = "route", [ZONE_METRIC] = "zone", [ELEVATION_METRIC] = "elevation", [WEATHER_METRIC] = "weather", [HR_ZONE_METRIC] = "zone", [GAUGE_METRIC] = "gauge"})[metric] or "numeric"
 		for name, controls in pairs(VisibilityGroups[input]) do
 			for _, control in ipairs(controls) do control:SetAttrs({IC_Visible = name == kind}) end
 		end
@@ -2005,7 +2050,121 @@ function Process(req)
 			if shadow ~= nil then draw_shadow(output, parts, shadow, quality) end
 			for _, item in ipairs(parts) do draw_part(output, item, item.color, 0, 0, quality) end
 		end
-		local function render_slot(metric, position, size, show_label, widget_font, widget_style, color, options, timeline, route, zone, elevation, weather)
+		local function render_gauge(position, widget_font, widget_style, color, g)
+			local radius = math.max(value_of(g.size), 0.01) / 2
+			local cx, cy = position.X, position.Y * aspect
+			local parts = {}
+			local function part(shape, pixel) table.insert(parts, {shapes = {shape}, color = pixel}) end
+			local function disc(r, pixel, width)
+				local shape = capsule(cx - r, cy - r, r * 2, r * 2, r)
+				if width ~= nil then
+					shape = shape:OutlineOfShape(math.max(width, 1 / output.Width), "OLT_Solid", "OJT_Round", 12, "SWM_Normal", 12)
+				end
+				part(shape, pixel)
+			end
+			if value_of(g.dial) > 0.5 then
+				disc(radius, color_of(g.dial_color, value_of(g.dial_opacity)))
+			end
+			local ring_width = math.max(value_of(g.ring_width) * radius, 1 / output.Width)
+			if value_of(g.ring) > 0.5 then
+				disc(radius, color_of(g.ring_color, value_of(g.ring_opacity)), ring_width)
+			end
+			if value_of(g.ticks) > 0.5 then
+				local count = math.min(math.max(math.floor(value_of(g.tick_count) + 0.5), 6), 120)
+				local every = math.min(math.max(math.floor(value_of(g.tick_every) + 0.5), 1), count)
+				local outer = radius - ring_width - 2 / output.Width
+				for index = 0, count - 1 do
+					local major = index % every == 0
+					local angle = -math.pi / 2 + index / count * 2 * math.pi
+					local inner = outer - radius * (major and 0.055 or 0.030)
+					local half = radius * (major and 0.008 or 0.004)
+					local dx, dy = math.cos(angle), math.sin(angle)
+					local px, py = -dy * half, dx * half
+					local shape = Shape()
+					shape:MoveTo(cx + dx * inner + px, cy + dy * inner + py)
+					shape:LineTo(cx + dx * outer + px, cy + dy * outer + py)
+					shape:LineTo(cx + dx * outer - px, cy + dy * outer - py)
+					shape:LineTo(cx + dx * inner - px, cy + dy * inner - py)
+					shape:Close()
+					part(shape, Pixel{R = 1, G = 1, B = 1, A = major and value_of(g.major_opacity) or value_of(g.tick_opacity)})
+				end
+			end
+			local mode = math.floor(value_of(g.progress) + 0.5)
+			if mode > 0 then
+				local progress_width = math.max(value_of(g.progress_width) * radius, 1 / output.Width)
+				local ring_radius = radius - ring_width - progress_width - 2 / output.Width
+				disc(ring_radius, color_of(g.progress_track, value_of(g.progress_track_opacity)), progress_width)
+				local fraction = 0
+				if mode == 1 then
+					fraction = (data.total_distance_m and data.total_distance_m > 0 and sample.distance_m) and sample.distance_m / data.total_distance_m or 0
+				elseif mode == 2 then
+					fraction = (data.duration_us and data.duration_us > 0) and elapsed_us / data.duration_us or 0
+				elseif mode == 7 then
+					fraction = 0.5
+				else
+					fraction = (data.duration_us and data.duration_us > 0) and elapsed_us / data.duration_us or 0
+				end
+				fraction = math.min(math.max(fraction, 0), 1)
+				if fraction > 0 then
+					local steps = math.max(2, math.ceil(2 * math.pi * fraction / (math.pi / 48)))
+					local shape = Shape()
+					local function at(r, angle)
+						local px = cx + r * math.cos(angle)
+						local py = cy + r * math.sin(angle)
+						return px, py
+					end
+					local from, to = -math.pi / 2, -math.pi / 2 + 2 * math.pi * fraction
+					for index = 0, steps do
+						local px, py = at(ring_radius + progress_width / 2, from + (to - from) * index / steps)
+						if index == 0 then shape:MoveTo(px, py) else shape:LineTo(px, py) end
+					end
+					for index = steps, 0, -1 do
+						local px, py = at(ring_radius - progress_width / 2, from + (to - from) * index / steps)
+						shape:LineTo(px, py)
+					end
+					shape:Close()
+					part(shape, color_of(g.progress_color))
+				end
+			end
+			if value_of(g.dividers) > 0.5 then
+				local half_width = radius * 0.62
+				local height = math.max(radius * 0.004, 1 / output.Width)
+				for _, offset in ipairs({-radius * 0.34, radius * 0.34}) do
+					local shape = Shape()
+					shape:AddRectangle(cx - half_width, cx + half_width, cy + offset - height / 2, cy + offset + height / 2, 0, 8)
+					part(shape, color_of(g.divider_color, value_of(g.divider_opacity)))
+				end
+			end
+			local accent = color_of(g.accent_color, 0.78)
+			local function region(metric, x, y, scale)
+				local label, value, unit = metric_text(metric, sample, elapsed_us, data, metric == 3 and 1 or 0,
+					nil, nil, 0, nil, nil, nil, nil, nil)
+				local value_size = radius * scale
+				local label_size = radius * 0.12
+				local unit_size = radius * 0.11
+				local short_label = GAUGE_LABELS[metric] or label
+				local width = text_width(widget_font, widget_style, value, value_size)
+				table.insert(parts, {font = widget_font, style = widget_style, text = value, size = value_size,
+					x = x - width / 2, y = y, color = color})
+				if value_of(g.labels) > 0.5 then
+					local label_width = text_width(widget_font, widget_style, short_label, label_size)
+					table.insert(parts, {font = widget_font, style = widget_style, text = short_label, size = label_size,
+						x = x - label_width / 2, y = y + value_size * 0.52 + label_size * 0.9, color = accent})
+				end
+				if unit ~= "" then
+					local unit_width = text_width(widget_font, widget_style, unit, unit_size)
+					table.insert(parts, {font = widget_font, style = widget_style, text = unit, size = unit_size,
+						x = x - unit_width / 2, y = y - value_size * 0.52 - unit_size * 0.9, color = accent})
+				end
+			end
+			local function metric_at(combo) return GAUGE_METRICS[math.floor(value_of(combo) + 0.5) + 1] or 2 end
+			region(metric_at(g.top_metric), cx, cy + radius * 0.46, 0.34)
+			region(metric_at(g.middle_left_metric), cx - radius * 0.42, cy, 0.22)
+			region(metric_at(g.middle_right_metric), cx + radius * 0.42, cy, 0.22)
+			region(metric_at(g.bottom_metric), cx, cy - radius * 0.46, 0.22)
+			for _, item in ipairs(parts) do draw_part(output, item, item.color, 0, 0, quality) end
+		end
+		local function render_slot(metric, position, size, show_label, widget_font, widget_style, color, options, timeline, route, zone, elevation, weather, gauge)
 			if metric == TIMELINE_METRIC then
 				render_timeline(position, widget_font, widget_style, color, timeline, options)
 			elseif metric == ROUTE_METRIC then
@@ -2016,6 +2175,8 @@ function Process(req)
 				render_elevation(position, widget_font, widget_style, elevation, options)
 			elseif metric == WEATHER_METRIC then
 				render_weather(position, widget_font, widget_style, weather, options)
+			elseif metric == GAUGE_METRIC then
+				render_gauge(position, widget_font, widget_style, color, gauge)
 			else
 				render_widget(metric, position, size, show_label, widget_font, widget_style, color, options, zone)
 			end
@@ -2024,13 +2185,13 @@ function Process(req)
 			render_slot(math.floor(InMetric:GetValue(req).Value + 0.5), InPosition:GetValue(req), InSize:GetValue(req).Value,
 				InShowLabel:GetValue(req).Value > 0.5, font, style,
 				Pixel{R = InR:GetValue(req).Value, G = InG:GetValue(req).Value,
-					B = InB:GetValue(req).Value, A = InA:GetValue(req).Value}, PrimaryTextOptions, PrimaryTimelineOptions, PrimaryRouteOptions, PrimaryZoneOptions, PrimaryElevationOptions, PrimaryWeatherOptions)
+					B = InB:GetValue(req).Value, A = InA:GetValue(req).Value}, PrimaryTextOptions, PrimaryTimelineOptions, PrimaryRouteOptions, PrimaryZoneOptions, PrimaryElevationOptions, PrimaryWeatherOptions, PrimaryGaugeOptions)
 		end
 		for _, controls in ipairs(WidgetInputs) do
 			if controls.enabled:GetValue(req).Value > 0.5 then
 				local widget_font, widget_style = font_of(controls.font, controls.font_style)
 				render_slot(math.floor(controls.metric:GetValue(req).Value + 0.5), controls.position:GetValue(req), controls.size:GetValue(req).Value,
-					controls.label:GetValue(req).Value > 0.5, widget_font, widget_style, color_of(controls.color), controls.text, controls.timeline, controls.route, controls.zone, controls.elevation, controls.weather)
+					controls.label:GetValue(req).Value > 0.5, widget_font, widget_style, color_of(controls.color), controls.text, controls.timeline, controls.route, controls.zone, controls.elevation, controls.weather, controls.gauge)
 			end
 		end
 	elseif diagnostics_enabled then

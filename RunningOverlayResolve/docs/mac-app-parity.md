@@ -54,7 +54,7 @@ available, but there is no selectable/rendered widget.
 | Elevation Chart | Partial (v13) | Race full-profile smoothed gradient area, line-only, cursor, guide and meter label; other presets, progress mode, axes/stats pending |
 | Cadence | Partial | Widget implemented; activity-specific cadence semantics pending |
 | Power | Partial | Watt widget implemented; full numeric styles pending |
-| Running Gauge | Missing | Gauge metrics, ranges and presets |
+| Running Gauge | Partial (v17) | Circular dial, outer ring, 60 ticks, optional distance/time progress ring, four configurable regions and dividers; the remaining seven Mac layouts, presets, glass, glow and per-region typography pending |
 | Interval HUD Bar | Missing | Workout structure, zones and renderer |
 | Interval Timeline | Missing | Workout structure, lap timeline and renderer |
 | Interval Countdown | Missing | Work/rest phase and countdown semantics |
