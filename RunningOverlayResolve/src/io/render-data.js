@@ -20,7 +20,16 @@ const ACTIVITY_COLUMNS = [
   'groundContactBalanceLeftPercent',
   'temperatureCelsius',
   'gradePercent',
+  'latitude_deg',
+  'longitude_deg',
+  'route_segment',
 ];
+
+const ROUTE_COLUMN_FIELDS = {
+  latitude_deg: 'latitude',
+  longitude_deg: 'longitude',
+  route_segment: 'routeSegment',
+};
 
 function encodeCell(value) {
   if (value === null || value === undefined) return '';
@@ -38,7 +47,7 @@ function serializeActivityRenderData(activity) {
     `columns\t${ACTIVITY_COLUMNS.join('\t')}`,
   ];
   for (const record of activity.records) {
-    lines.push(`record\t${ACTIVITY_COLUMNS.map((field) => encodeCell(record[field])).join('\t')}`);
+    lines.push(`record\t${ACTIVITY_COLUMNS.map((column) => encodeCell(record[ROUTE_COLUMN_FIELDS[column] ?? column])).join('\t')}`);
   }
   for (const annotation of activity.annotations ?? []) {
     lines.push(`annotation\t${annotation.kind}\t${annotation.startElapsedUs}\t${annotation.endElapsedUs}`);
@@ -88,7 +97,11 @@ function parseActivityRenderData(text) {
   const records = lines.filter((line) => line[0] === 'record').map((line) => {
     const record = {};
     for (let index = 0; index < columns.length; index += 1) {
-      record[columns[index]] = line[index + 1] === '' ? null : Number(line[index + 1]);
+      const column = columns[index];
+      const field = ROUTE_COLUMN_FIELDS[column] ?? column;
+      const cell = line[index + 1];
+      if (ROUTE_COLUMN_FIELDS[column] && (cell === '' || cell === undefined)) continue;
+      record[field] = cell === '' ? null : Number(cell);
     }
     return record;
   });

@@ -25,8 +25,28 @@
           "cadenceSpm": { "type": ["number", "null"] },
           "elevationMeters": { "type": ["number", "null"] },
           "powerWatts": { "type": ["number", "null"] },
-          "calories": { "type": ["number", "null"] }
-        }
+          "calories": { "type": ["number", "null"] },
+          "latitude": { "type": ["number", "null"], "minimum": -90, "maximum": 90 },
+          "longitude": { "type": ["number", "null"], "minimum": -180, "maximum": 180 },
+          "routeSegment": { "type": ["integer", "null"], "minimum": 0, "maximum": 9007199254740991 }
+        },
+        "oneOf": [
+          {
+            "properties": {
+              "latitude": { "type": "null" },
+              "longitude": { "type": "null" },
+              "routeSegment": { "type": "null" }
+            }
+          },
+          {
+            "required": ["latitude", "longitude", "routeSegment"],
+            "properties": {
+              "latitude": { "type": "number" },
+              "longitude": { "type": "number" },
+              "routeSegment": { "type": "integer" }
+            }
+          }
+        ]
       }
     },
     "annotations": {

@@ -39,6 +39,20 @@ function validateActivity(activity) {
     invariant(record.elapsedUs >= previousElapsedUs, 'activity records must be ordered by elapsedUs');
     previousElapsedUs = record.elapsedUs;
 
+    const hasLatitude = record.latitude !== null && record.latitude !== undefined;
+    const hasLongitude = record.longitude !== null && record.longitude !== undefined;
+    const hasSegment = record.routeSegment !== null && record.routeSegment !== undefined;
+    invariant(hasLatitude === hasLongitude && hasLatitude === hasSegment,
+      'route position requires paired latitude, longitude and routeSegment');
+    if (hasLatitude) {
+      assertFiniteNumber(record.latitude, `activity.records[${index}].latitude`);
+      assertFiniteNumber(record.longitude, `activity.records[${index}].longitude`);
+      invariant(Math.abs(record.latitude) <= 90, 'latitude must be within [-90, 90] degrees');
+      invariant(Math.abs(record.longitude) <= 180, 'longitude must be within [-180, 180] degrees');
+      assertSafeInteger(record.routeSegment, `activity.records[${index}].routeSegment`);
+      invariant(record.routeSegment >= 0, 'routeSegment must be non-negative');
+    }
+
     for (const field of OPTIONAL_RECORD_FIELDS) {
       if (record[field] !== null && record[field] !== undefined) {
         assertFiniteNumber(record[field], `activity.records[${index}].${field}`);
@@ -105,6 +119,17 @@ function sampleActivity(activity, elapsedUs) {
     } else {
       sampled[field] = null;
     }
+  }
+  // Coordinates are one position: never interpolate axes or segment IDs independently.
+  sampled.latitude = null;
+  sampled.longitude = null;
+  sampled.routeSegment = null;
+  if (typeof left.latitude === 'number' && typeof right.latitude === 'number'
+    && left.routeSegment === right.routeSegment) {
+    const longitudeDelta = ((right.longitude - left.longitude + 540) % 360) - 180;
+    sampled.latitude = left.latitude + (right.latitude - left.latitude) * progress;
+    sampled.longitude = ((left.longitude + longitudeDelta * progress + 540) % 360) - 180;
+    sampled.routeSegment = left.routeSegment;
   }
   return sampled;
 }

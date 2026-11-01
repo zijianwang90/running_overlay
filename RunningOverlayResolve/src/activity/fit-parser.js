@@ -31,6 +31,8 @@ class FitReader {
     const records = this.records
       .map((record) => ({
         elapsedUs: (record.timestampFitSeconds - startFitSeconds) * 1_000_000,
+        latitude: record.latitude,
+        longitude: record.longitude,
         distanceMeters: record.distanceMeters,
         heartRateBpm: record.heartRateBpm,
         paceSecondsPerKilometer: record.paceSecondsPerKilometer,
@@ -46,6 +48,20 @@ class FitReader {
         gradePercent: record.gradePercent,
       }))
       .sort((left, right) => left.elapsedUs - right.elapsedUs);
+    // A missing/invalid pair ends the route run, even if numeric metrics continue.
+    let routeSegment = -1;
+    let previousHasPosition = false;
+    for (const record of records) {
+      const hasPosition = record.latitude !== null && record.longitude !== null;
+      if (hasPosition) {
+        if (!previousHasPosition) routeSegment++;
+        record.routeSegment = routeSegment;
+      } else {
+        delete record.latitude;
+        delete record.longitude;
+      }
+      previousHasPosition = hasPosition;
+    }
     invariant(records.every((record) => record.elapsedUs >= 0), 'FIT records precede the session start');
 
     if (records.length === 0) {
@@ -153,6 +169,11 @@ class FitReader {
   readRecord(values, architecture, compressedTimestamp = null) {
     const timestamp = compressedTimestamp ?? this.uint32(values.get(253), architecture);
     if (timestamp === null) return;
+    const latitudeRaw = this.sint32(values.get(0), architecture);
+    const longitudeRaw = this.sint32(values.get(1), architecture);
+    const latitude = latitudeRaw === null ? null : latitudeRaw * 180 / 2 ** 31;
+    const longitude = longitudeRaw === null ? null : longitudeRaw * 180 / 2 ** 31;
+    const hasPosition = latitude !== null && longitude !== null && Math.abs(latitude) <= 90;
     const distanceRaw = this.uint32(values.get(5), architecture);
     const enhancedSpeedRaw = this.uint32(values.get(73), architecture);
     const speedRaw = this.uint16(values.get(6), architecture);
@@ -171,6 +192,8 @@ class FitReader {
 
     this.records.push({
       timestampFitSeconds: timestamp,
+      latitude: hasPosition ? latitude : null,
+      longitude: hasPosition ? longitude : null,
       distanceMeters: distanceRaw === null ? null : distanceRaw / 100,
       heartRateBpm: this.uint8(values.get(3)),
       paceSecondsPerKilometer: speedMetersPerSecond && speedMetersPerSecond > 0
@@ -266,6 +289,12 @@ class FitReader {
     if (!bytes || bytes.length < 2) return null;
     const value = architecture === 'little' ? bytes.readUInt16LE(0) : bytes.readUInt16BE(0);
     return value === 0xffff ? null : value;
+  }
+
+  sint32(bytes, architecture) {
+    if (!bytes || bytes.length < 4) return null;
+    const value = architecture === 'little' ? bytes.readInt32LE(0) : bytes.readInt32BE(0);
+    return value === 0x7fffffff ? null : value;
   }
 
   uint32(bytes, architecture) {

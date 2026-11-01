@@ -5,9 +5,11 @@ only the history relevant to a task.
 
 ## Current Log
 
-- [2026-10](project-log/2026-10.md) — current month; add new entries here.
+- [2026-11](project-log/2026-11.md) — current month; add new entries here.
 
 ## Archive
+
+- [2026-10](project-log/2026-10.md)
 
 - [2026-09](project-log/2026-09.md)
 - [2026-08](project-log/2026-08.md)

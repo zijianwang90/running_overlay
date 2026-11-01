@@ -1,6 +1,15 @@
 # Running Overlay Resolve 使用指南（当前开发版）
 
-本指南从导入活动与视频，到校时、添加数字控件和导出，说明当前 Workflow 面板的实际流程。插件在 DaVinci Resolve 内生成实时 Fusion 叠加层；不需要运行 Running Overlay Studio，也不先导出一条带数据的透明视频。目前面板支持心率、配速、平均配速、距离、运动计时、海拔、步频、功率、热量、垂直振幅、触地时间、步幅、垂直比、触地平衡、温度、坡度和真实时间共十七种数字控件，尚未提供模板功能或 Studio 的完整控件目录。
+本指南从导入活动与视频，到校时、添加数字控件和导出，说明当前 Workflow 面板的实际流程。插件在 DaVinci Resolve 内生成实时 Fusion 叠加层；不需要运行 Running Overlay Studio，也不先导出一条带数据的透明视频。目前面板支持心率、配速、平均配速、距离、运动计时、海拔、步频、功率、热量、垂直振幅、触地时间、步幅、垂直比、触地平衡、温度、坡度和真实时间共十七种数字控件，以及距离进度条和离线路线地图，尚未提供模板功能或 Studio 的完整控件目录。
+
+## 图标、距离进度条与路线地图（v10 / v11）
+
+- 数值组件的 **Show Icon** 控制图标；**Metric Default** 随指标选择默认图标，也可覆盖为其他原创矢量图标。位置、对齐、大小、间距、颜色与 Alpha 在 Fusion 中独立调整，阴影覆盖整个组件。图标与 Mac 的 SF Symbols 形状不同；字体和字号以视觉接近为目标。
+- **Label / Unit Alignment** 为 Start / Center / End；左右附着时分别对应顶端、居中和底端行框对齐。Easy Run / Race 的右侧单位使用 End。
+- 在 Widgets 中添加 **Dist. timeline**。Fusion 的 **Metric** 选择 Distance Timeline 后显示专属设置：宽高、内边距、当前/总距离、km/mi、轨道、刻度、进度颜色、当前位置的点/胶囊/三角标记、起终点标签和中间距离标签，以及进度发光、整体发光和阴影。默认位于顶部中央，位置为组件中心。
+- 在 Widgets 中添加 **Route map**。先导入或重新导入含 GPS 的 FIT/GPX 并更新数据包；旧的无坐标包无法显示路线。默认位于右上方，位置为地图中心。Fusion 提供 **Map Size / Map Padding / Route Width / Route Color / Current Position / Position Size / Position Color / Start / Finish Markers**，以及共用阴影。
+- 路线保持北向上和比例，透明背景，无需网络或 API。当前位置按活动真实经过时间及每段 Time Offset 更新；GPX 分段和缺失坐标不会连线或跨段插值。无足够 GPS 时显示 **NO GPS**，缺失当前位置时隐藏位置点。当前离线地图没有道路/地名底图，也没有地图供应商、缩放跟随、统计栏或模板一键应用。
+- 所有组件共用最多 16 个独立实例槽位。每个实例的数值、进度条或地图设置由其 Metric 控制显示；切换类型不会修改其他实例。保存 Resolve 项目可保留样式。
 
 ## 数值文字样式（Fuse v7）
 
@@ -11,14 +20,14 @@
 - **Temperature Source**：FIT、FIT（缺失时用手动值）、Manual；手动值在 **Manual Temperature (°C)** 中设置。跑步动态、温度和坡度来自 FIT 记录；GPX 只提供温度扩展字段，并在同一轨迹段、前后两点都有海拔时计算坡度。数据缺失时显示 `--`。
 - **Custom Label**：自定义标签；空白恢复默认标签。Show Label、Show Unit 分别控制标签和单位显示。
 - **Label / Unit Font、Style、Size、Color、Alpha**：标签和单位各有独立字体、字号、颜色和透明度。空字体使用 Open Sans Regular。字体须安装在渲染机器上，且包含自定义文字对应的字形。
-- **Label / Unit Position、Spacing**：上、下、左、右及间距。先围绕数值放置单位，再围绕整体放置标签；侧边文字顶部对齐。字号和间距使用画面宽度比例，与 Value Size 一致。
+- **Label / Unit Position、Spacing**：上、下、左、右及间距。先围绕数值放置单位，再围绕整体放置标签；侧边文字按 Alignment 选择顶部、居中或底部行框对齐。字号和间距使用画面宽度比例，与 Value Size 一致。
 
-样式由 Fusion 保存，普通数据同步不重置这些参数。此版尚无图标、背景、阴影、模板或跨切段同步样式。v7 已在独立 Resolve 测试项目验证参数保存重开及 1080p ProRes 4444 透明导出；实时查看器交互和非 ASCII 字形显示尚未验收。首版开发中的叠加层可重新创建，不承担中间开发版本的迁移保证。
+样式由 Fusion 保存，普通数据同步不重置这些参数。v10 已增加图标、阴影和距离进度条，v11 已增加离线路线地图；背景底图、模板和跨切段同步样式尚未完成。v7 已在独立 Resolve 测试项目验证参数保存重开及 1080p ProRes 4444 透明导出；实时查看器交互和非 ASCII 字形显示尚未验收。首版开发中的叠加层可重新创建，不承担中间开发版本的迁移保证。
 
 ## 真实时间与阴影（Fuse v9）
 
 - **Real Time**（面板中为 Clock）：显示该帧数据对应的当地时刻。**Clock Format** 可选 24 小时（`18:47:03`）或 12 小时（`6:47:03 PM`），秒数截断不进位，与 Studio 一致。**Clock UTC Offset (h)** 是明确的 UTC 偏移；新加入的实例按面板中的录制时区在活动开始时的偏移自动填写，之后在 Fusion 中修改不会被同步覆盖。活动跨越夏令时切换时整段使用同一偏移。
-- **Shadow**：每个实例的数值、单位和标签共用一组阴影，包括开关、颜色、**Shadow Opacity**、**Shadow Blur**、**Shadow Offset X/Y** 和 **Shadow Thickness**。默认与 Studio 相同：黑色、35%、模糊 4 pt、向下 2 pt。尺寸按画面宽度比例；Studio 的 pt 值除以 1280 再乘以元素缩放即为对应值，Offset Y 正值向上。
+- **Shadow**：每个实例的数值、单位和标签共用一组阴影，包括开关、颜色、**Shadow Opacity**、**Shadow Blur**、**Shadow Offset X/Y** 和 **Shadow Thickness**。默认与 Studio 相同：黑色、35%、模糊 4 pt、向下 2 pt。尺寸按画面宽度比例；在 1920 宽输出下，阴影模糊和偏移使用 Studio 值除以 1920（不乘元素缩放）；字号、间距等布局尺寸仍按参考宽 1280 换算，Offset Y 正值向上。
 
 阴影的模糊宽度已在 Resolve 中按 SwiftUI 实测校准（1920×1080）；其他画幅尚未单独验证。每个开启阴影的实例在每帧多做一次全画面模糊，数量多时会影响播放速度。
 

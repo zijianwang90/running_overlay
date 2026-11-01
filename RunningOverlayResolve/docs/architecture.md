@@ -256,3 +256,19 @@ ambiguity. Rendering continues to consume only immutable activity/sync files.
 
 See [ADR 0009](../../docs/adr/0009-resolve-managed-overlay-workflow.md) for the
 persistence, ownership, and timeline-undo boundaries.
+
+## Offline Route Rendering (v11)
+
+FIT/GPX import retains optional paired latitude/longitude in degrees and a
+non-negative routeSegment. Coordinates and segment identity are appended to the
+renderer TSV after existing numeric columns. The Fuse projects and normalizes
+full route geometry once per immutable bundle; north is up, Mercator latitude is
+clamped, longitude unwrap follows the shortest dateline crossing, and coordinate
+gaps/segment changes start separate paths. Per-frame cursor interpolation uses
+adjacent projected positions in the same segment and the existing activity time
+mapping. No render callback accesses networking, the scripting API or Studio.
+Route controls share the existing sixteen-slot node and shadow pipeline.
+
+Map imagery is not part of this increment. A future provider must prepare licensed
+assets in the control plane and bundle them for offline rendering; the trace-only
+renderer does not claim the Mac templates' MapKit background parity.

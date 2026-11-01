@@ -49,7 +49,7 @@ available, but there is no selectable/rendered widget.
 | Real Time | Implemented (v9) | `HH:mm:ss` or `h:mm:ss a`, seconds truncated as on Mac. Mac uses the rendering machine's timezone; Resolve uses an explicit per-instance UTC offset seeded from the recording timezone at activity start, so an activity crossing a DST change keeps one offset. Host export checked |
 | Date | Missing | Explicit timezone and date formatting |
 | Distance | Partial | Units and full numeric styles |
-| Distance Timeline | Missing | Distance progression and module renderer |
+| Distance Timeline | Partial (v10) | Minimal template: progress, ticks, markers, axis labels, glow and shadow implemented; other presets/stats/elevation pending |
 | Elevation | Partial | Meter widget implemented; units and display modes pending |
 | Elevation Chart | Missing | Profile, cursor, range and styles |
 | Cadence | Partial | Widget implemented; activity-specific cadence semantics pending |
@@ -60,7 +60,7 @@ available, but there is no selectable/rendered widget.
 | Interval Countdown | Missing | Work/rest phase and countdown semantics |
 | Interval Work Summary | Missing | Work-interval aggregation and styles |
 | Zone Edge Bar | Missing | Zone settings and renderer |
-| Route Map | Missing | Retained GPS geometry, markers, provider/background assets |
+| Route Map | Partial (v11) | FIT/GPX GPS retained; offline Mercator trace and time-driven cursor implemented; map imagery/provider, other presets and stats pending |
 | Vertical Oscillation | Implemented (v8) | cm/mm units; host export checked |
 | Ground Contact Time | Implemented (v8) | Host export checked |
 | Stride Length | Implemented (v8) | Meters only, as on Mac; host export checked |
@@ -88,11 +88,13 @@ was validated with a synthetic eight-metric export and duplicate styling; see
 the testing record for the initial unreproduced crash, successful 4444 alpha
 retry, real v5/v6 comparison and remaining UI validation limits.
 
+**Visual acceptance (2026-11-01).** The user accepts approximate typography across Fusion and SwiftUI. Exact glyph rasterization and pixel matching are not a gate. Numeric icons are original project vectors, not redistributed SF Symbols. Route Map currently draws a transparent offline trace; both Mac templates use a dark MapKit snapshot, so this remains partial parity.
+
 ## Shared Capabilities
 
 | Area | Current Resolve behavior | Parity acceptance |
 |---|---|---|
-| Numeric styling | v7 adds separate value/label/unit fonts, sizes, colors/opacity, custom labels, visibility and attachments; v9 adds the Mac layered text shadow (color, opacity, blur, offset, thickness) with blur calibrated against SwiftUI; host persistence and export checked | Value/label/unit/icon controls, attachment positions, separate typefaces/sizes/colors/opacities, presets and effects match supported Mac fields |
+| Numeric styling | v7 adds separate value/label/unit fonts, sizes, colors/opacity, custom labels, visibility and attachments; v9 adds layered text shadow; v10 adds original vector icons and label/unit alignment. Template fonts are approximately matched; host persistence and export checked | Value/label/unit/icon controls, attachment positions, separate typefaces/sizes/colors/opacities, presets and effects match supported Mac fields |
 | Units and formatting | v7 metric-specific km/mi/m, pace /km /mi /500m, elevation m/ft and elapsed formats; Lua tested and imperial host export checked | Metric-specific unit choices, precision, missing values and boundary formatting match Mac |
 | Element layout | Stack/row/grid presets; Fusion positioning | Independent instances, visibility, ordering and reusable layouts; equivalent placement at supported resolutions |
 | Activity import | FIT/GPX; limited normalized fields and timer-pause annotations | Retain fields required by all supported widgets, laps, workout structure and GPS; preserve provenance and gaps |
@@ -118,12 +120,12 @@ order below. Race contains the nine Easy Run elements plus two:
 
 | Template element | Templates | Resolve status |
 |---|---|---|
-| Pace, Heart Rate, Cadence, Power | Both | Numeric values available; template styles need icons (`iconEnabled`) and Monaco/PT Mono typography checks |
+| Pace, Heart Rate, Cadence, Power | Both | Numeric values and original vector icons available; typography approximately matched to Monaco/PT Mono |
 | Elapsed Time | Both | Available |
 | Real Time | Both | v9 |
 | Text shadow | All but Race elevation chart | v9 for numerics; featured widgets need their own shadow pass |
-| Distance Timeline | Both | Missing |
-| Route Map | Both | Missing; needs GPS retained in import and bundle |
+| Distance Timeline | Both | v10 minimal renderer; full module parity pending |
+| Route Map | Both | v11 offline trace and cursor; dark MapKit background not implemented |
 | Weather Widget | Both | Missing; needs a weather data source and background styling |
 | Zone Edge Bar, Elevation Chart | Race | Missing |
 

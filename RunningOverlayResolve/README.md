@@ -8,9 +8,14 @@ produce intermediate overlay videos.
 
 The Workflow panel imports FIT or GPX data or normalized activity JSON,
 checks a reference video track, and creates or updates a live Numeric overlay
-on a dedicated video track. The panel can add, remove, and reorder Heart Rate,
-Pace, Distance, and pause-adjusted Elapsed Time in vertical, horizontal, or grid
-layouts. Each metric has native Fusion position and style controls.
+on a dedicated video track. The panel supports seventeen numeric metrics,
+original vector numeric icons, a minimal distance timeline and an offline route
+map with a time-driven position marker. Up to sixteen independent instances,
+including duplicate metrics, share one Fuse. Stack, row and grid provide initial
+layouts; each instance has native Fusion position and style controls. Route Map
+retains FIT/GPX GPS and segment boundaries, but does not yet provide road-map
+imagery. See the [user guide](docs/user-guide.zh-CN.md) for controls and the
+[parity inventory](docs/mac-app-parity.md) for remaining work.
 
 The plugin cross-checks source identity and trim against a temporary Resolve
 OTIO export. Missing source frame rates, retimes, freeze frames, reverse,

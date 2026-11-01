@@ -16,7 +16,7 @@ FuRegisterClass("RunningOverlayNumeric", CT_SourceTool, {
 	REG_Source_DepthCtrls = true,
 	REG_Fuse_NoEdit = false,
 	REG_Fuse_NoReload = false,
-	REG_Version = 9,
+	REG_Version = 11,
 })
 
 -- Cache only complete immutable snapshots. Several Numeric Fuse instances can
@@ -77,6 +77,9 @@ local function read_activity(path)
 				balance_left = tonumber(fields[13]),
 				temperature_c = tonumber(fields[14]),
 				grade_pct = tonumber(fields[15]),
+				latitude_deg = tonumber(fields[16]),
+				longitude_deg = tonumber(fields[17]),
+				route_segment = tonumber(fields[18]),
 			})
 		elseif fields[1] == "annotation" and fields[2] == "timerPaused" then
 			table.insert(annotations, {
@@ -121,6 +124,49 @@ local function read_sync(path)
 	return segments, timeline_start_frame, nil
 end
 
+-- Project immutable GPS geometry once per bundle. Each missing coordinate or
+-- segment boundary starts a new path; longitude unwrap keeps dateline runs local.
+local function valid_gps(record)
+	local lat, lon = record.latitude_deg, record.longitude_deg
+	return type(lat) == "number" and type(lon) == "number" and lat == lat and lon == lon
+		and lat >= -90 and lat <= 90 and lon >= -180 and lon <= 180
+end
+
+local function prepare_route(records)
+	local paths, path, previous, previous_lon = {}, nil, nil, nil
+	local min_x, max_x, min_y, max_y
+	for _, record in ipairs(records) do
+		if valid_gps(record) then
+			local lon = record.longitude_deg
+			if previous_lon ~= nil then lon = previous_lon + ((lon - previous_lon + 180) % 360 - 180) end
+			local lat = math.max(-85.05112878, math.min(85.05112878, record.latitude_deg)) * math.pi / 180
+			local x, y = lon * math.pi / 180, math.log(math.tan(math.pi / 4 + lat / 2))
+			if previous == nil or (previous.route_segment or 0) ~= (record.route_segment or 0) then
+				path = {}; table.insert(paths, path)
+			end
+			local point = {x = x, y = y, record = record}
+			table.insert(path, point)
+			min_x, max_x = math.min(min_x or x, x), math.max(max_x or x, x)
+			min_y, max_y = math.min(min_y or y, y), math.max(max_y or y, y)
+			previous, previous_lon = record, lon
+		else
+			previous, path = nil, nil
+		end
+	end
+	if min_x == nil then return {paths = {}, count = 0} end
+	local span = math.max(max_x - min_x, max_y - min_y, 0.000000001)
+	local cx, cy, count = (min_x + max_x) / 2, (min_y + max_y) / 2, 0
+	for _, points in ipairs(paths) do
+		for _, point in ipairs(points) do
+			point.x, point.y = (point.x - cx) / span, (point.y - cy) / span
+			point.record.route_x, point.record.route_y = point.x, point.y
+			point.record = nil
+			count = count + 1
+		end
+	end
+	return {paths = paths, count = count}
+end
+
 local function load_data(activity_path, sync_path)
 	activity_path = renderer_data_path(activity_path, "activity.json", "activity.roactivity")
 	sync_path = renderer_data_path(sync_path, "sync-map.json", "sync.rosync")
@@ -144,7 +190,13 @@ local function load_data(activity_path, sync_path)
 		DataCache[key] = snapshot
 		return snapshot
 	end
-	snapshot = { records = records, pauses = annotations, start_utc_us = start_utc_us, segments = segments, timeline_start_frame = timeline_start_frame }
+	-- The distance timeline measures progress against the furthest recorded distance.
+	local total_distance_m = 0
+	for _, record in ipairs(records) do
+		if record.distance_m ~= nil and record.distance_m > total_distance_m then total_distance_m = record.distance_m end
+	end
+	snapshot = { records = records, pauses = annotations, start_utc_us = start_utc_us, segments = segments, timeline_start_frame = timeline_start_frame,
+		total_distance_m = total_distance_m, duration_us = records[#records].elapsed_us, route = prepare_route(records) }
 	DataCache[key] = snapshot
 	return snapshot
 end
@@ -211,6 +263,8 @@ local function sample_activity(data, elapsed_us)
 		balance_left = interpolate("balance_left"),
 		temperature_c = interpolate("temperature_c"),
 		grade_pct = interpolate("grade_pct"),
+		route_x = (left.route_segment or 0) == (right.route_segment or 0) and interpolate("route_x") or nil,
+		route_y = (left.route_segment or 0) == (right.route_segment or 0) and interpolate("route_y") or nil,
 	}
 end
 
@@ -246,7 +300,7 @@ end
 
 local function pace_text(seconds_per_kilometer, unit_mode)
 	local factor = unit_mode == 1 and 1.609344 or (unit_mode == 2 and 0.5 or 1)
-	return format_pace(seconds_per_kilometer and seconds_per_kilometer * factor), unit_mode == 1 and "/ mi" or (unit_mode == 2 and "/ 500m" or "/ km")
+	return format_pace(seconds_per_kilometer and seconds_per_kilometer * factor), unit_mode == 1 and "/mi" or (unit_mode == 2 and "/500m" or "/km")
 end
 
 -- Wall clock at the sampled instant, like the Mac app's HH:mm:ss / h:mm:ss a.
@@ -338,7 +392,19 @@ local function codepoints(text)
 	return result
 end
 
-local function add_text_shape(shape, font_metrics, text, size, x, y)
+-- Fusion normalizes ascent plus descent to 0.8 of size. The template fonts'
+-- unitsPerEm values convert its Scale back to em sizing. Other families keep
+-- Fusion sizing; Scale alone cannot reliably identify unitsPerEm.
+local FONT_EM_UNITS = { ["Monaco"] = 2048, ["PT Mono"] = 1000, ["Menlo"] = 2048 }
+local function em_size(font_metrics, size, font)
+	local units = FONT_EM_UNITS[font]
+	local scale = font_metrics ~= nil and font_metrics.Scale or nil
+	if units ~= nil and type(scale) == "number" and scale > 0 then return size * scale / units end
+	return size
+end
+
+local function add_text_shape(shape, font_metrics, text, size, x, y, font)
+	size = em_size(font_metrics, size, font)
 	local matrix = Matrix4()
 	matrix:Scale(1.0 / font_metrics.Scale, 1.0 / font_metrics.Scale, 1.0)
 	matrix:Scale(size, size, 1.0)
@@ -371,10 +437,163 @@ local function draw_text(image, font, style, text, size, x, y, color, quality)
 	channel:SetStyleFill(FillStyle())
 	local metrics = TextStyleFontMetrics(TextStyleFont(font, style))
 	local shape = Shape()
-	local width = add_text_shape(shape, metrics, text, size, x, y)
+	local width = add_text_shape(shape, metrics, text, size, x, y, font)
 	channel:ShapeFill(shape)
 	channel:PutToImage("CM_Merge", channel_style)
 	return width
+end
+
+local function fill_shape(image, shape, color, quality)
+	local channel = ImageChannel(image, quality)
+	local channel_style = ChannelStyle()
+	channel_style.Color = color
+	channel:SetStyleFill(FillStyle())
+	channel:ShapeFill(shape)
+	channel:PutToImage("CM_Merge", channel_style)
+end
+
+-- Ascent and descent plus line gap, in the same units as size. SwiftUI lays
+-- text out in this line box, so Mac top-aligned or centered text needs it.
+local function font_extents(font, style, size)
+	local metrics = TextStyleFontMetrics(TextStyleFont(font, style))
+	if metrics == nil or metrics.TextAscent == nil then return size * 0.8, size * 0.2 end
+	size = em_size(metrics, size, font)
+	return metrics.TextAscent * 10 * size, (metrics.TextDescent + (metrics.TextExternalLeading or 0)) * 10 * size
+end
+
+local function text_width(font, style, text, size)
+	return add_text_shape(Shape(), TextStyleFontMetrics(TextStyleFont(font, style)), text, size, 0, 0, font)
+end
+
+-- A rounded-end bar; AddRectangle's corner radius does not round on Resolve 21.
+local function capsule(left, bottom, width, height)
+	local radius = math.min(width, height) / 2
+	local k = 0.5523 * radius
+	local right, top = left + width, bottom + height
+	local shape = Shape()
+	shape:MoveTo(left + radius, bottom)
+	shape:LineTo(right - radius, bottom)
+	shape:BezierTo(right - radius + k, bottom, right, bottom + radius - k, right, bottom + radius)
+	shape:LineTo(right, top - radius)
+	shape:BezierTo(right, top - radius + k, right - radius + k, top, right - radius, top)
+	shape:LineTo(left + radius, top)
+	shape:BezierTo(left + radius - k, top, left, top - radius + k, left, top - radius)
+	shape:LineTo(left, bottom + radius)
+	shape:BezierTo(left, bottom + radius - k, left + radius - k, bottom, left + radius, bottom)
+	shape:Close()
+	return shape
+end
+
+-- Original Running Overlay line icons on a 24-unit grid with y down. They stand
+-- in for the Mac app's SF Symbols, which may not be redistributed; see
+-- docs/assets-and-licenses.md. Commands: M/L/C/Z as in SVG, "O cx cy r" for a
+-- circle and "A cx cy r from to" for a clockwise arc in degrees.
+ICON_NAMES = {"Metric Default", "Heart", "Speedometer", "Ruler", "Clock", "Watch", "Mountains", "Runner", "Bolt",
+	"Flame", "Up-Down Arrow", "Timer", "Left-Right Arrow", "Percent", "Balance", "Thermometer", "Up-Right Arrow"}
+ICON_GLYPHS = {
+	Heart = {stroke = "M12 20.5 C6 16.3 2.5 12.6 2.5 8.6 C2.5 5.7 4.7 3.6 7.3 3.6 C9.3 3.6 11 4.8 12 6.6 C13 4.8 14.7 3.6 16.7 3.6 C19.3 3.6 21.5 5.7 21.5 8.6 C21.5 12.6 18 16.3 12 20.5 Z"},
+	Speedometer = {stroke = "A12 14 9 150 390 M12 14 L16.6 9", fill = "O12 14 1.7"},
+	Ruler = {stroke = "M2.5 8 L21.5 8 L21.5 16 L2.5 16 Z M6.5 8 L6.5 11 M10.5 8 L10.5 12.5 M14.5 8 L14.5 11 M18.5 8 L18.5 12.5"},
+	Clock = {stroke = "O12 12 9.5 M12 6.5 L12 12 L15.8 14.2"},
+	Watch = {stroke = "O12 12 6 M9 6.8 L9.6 2.5 L14.4 2.5 L15 6.8 M9 17.2 L9.6 21.5 L14.4 21.5 L15 17.2 M12 9 L12 12 L14 13.2"},
+	Mountains = {stroke = "M2 19.5 L9 8 L16 19.5 Z M13.2 14.9 L16.2 10 L22 19.5 L16 19.5"},
+	Runner = {stroke = "M14.3 7.6 L11.6 13.2 M13.9 8.6 L10.2 9.6 L8 7.8 M13.9 8.6 L16 11.4 L19.2 11 M11.6 13.2 L14.6 16.2 L13.6 21 M11.6 13.2 L9.2 16.8 L4.8 17.6",
+		fill = "O15.5 4 2.1", weight = 2.2},
+	Bolt = {stroke = "M13.8 2 L5 13.4 L11.6 13.4 L10.2 22 L19 10.6 L12.4 10.6 Z", weight = 1.8},
+	Flame = {stroke = "M12 21.5 C7.6 21.5 5 18.6 5 15 C5 10.8 8.6 8.4 9.6 3.5 C11.8 5.2 13 7.6 12.8 10.6 C14.2 9.6 15 8 15.2 6.4 C17.8 8.8 19 11.8 19 15 C19 18.6 16.4 21.5 12 21.5 Z"},
+	["Up-Down Arrow"] = {stroke = "M12 3 L12 21 M7.5 7.5 L12 3 L16.5 7.5 M7.5 16.5 L12 21 L16.5 16.5"},
+	Timer = {stroke = "O12 13.5 8.5 M9.5 2.5 L14.5 2.5 M12 2.5 L12 5 M12 13.5 L12 8.8 M18.3 6.8 L19.8 5.3"},
+	["Left-Right Arrow"] = {stroke = "M3 12 L21 12 M7.5 7.5 L3 12 L7.5 16.5 M16.5 7.5 L21 12 L16.5 16.5"},
+	Percent = {stroke = "O7 7 2.6 O17 17 2.6 M18.5 4.5 L5.5 19.5"},
+	Balance = {stroke = "M12 3.5 L12 20.5 M7.5 20.5 L16.5 20.5 M4 6.5 L20 6.5 M2 14 L4 6.5 L6 14 M18 14 L20 6.5 L22 14 M1.8 14 C2.3 17.2 5.7 17.2 6.2 14 Z M17.8 14 C18.3 17.2 21.7 17.2 22.2 14 Z"},
+	Thermometer = {stroke = "M10 14.65 L10 5 C10 2.3 14 2.3 14 5 L14 14.65 A12 18 3.9 300.8 599.2 Z M12 16 L12 9", fill = "O12 18 2"},
+	["Up-Right Arrow"] = {stroke = "M5 19 L19 5 M9 5 L19 5 L19 15"},
+}
+TIMELINE_METRIC = 17
+ROUTE_METRIC = 18
+-- Mac defaultNumericIconSystemName, keyed by metric index.
+DEFAULT_ICONS = {[0] = "Heart", "Speedometer", "Ruler", "Clock", "Mountains", "Runner", "Bolt", "Flame", "Speedometer",
+	"Up-Down Arrow", "Timer", "Left-Right Arrow", "Percent", "Balance", "Thermometer", "Up-Right Arrow", "Watch"}
+
+local function parse_path(path)
+	local commands = {}
+	for op, arguments in path:gmatch("(%a)([^%a]*)") do
+		local numbers = {}
+		for number in arguments:gmatch("-?[%d%.]+") do table.insert(numbers, tonumber(number)) end
+		table.insert(commands, {op = op, n = numbers})
+	end
+	return commands
+end
+
+-- Builds a glyph path in frame units; the icon box's top-left is (left, top).
+local function glyph_shape(path, left, top, size)
+	local scale = size / 24
+	local function point(gx, gy) return left + gx * scale, top - gy * scale end
+	local shape = Shape()
+	local open = false
+	for _, command in ipairs(parse_path(path)) do
+		local op, n = command.op, command.n
+		if op == "M" then
+			shape:MoveTo(point(n[1], n[2])); open = true
+		elseif op == "L" then
+			shape:LineTo(point(n[1], n[2]))
+		elseif op == "C" then
+			local x1, y1 = point(n[1], n[2])
+			local x2, y2 = point(n[3], n[4])
+			local x3, y3 = point(n[5], n[6])
+			shape:BezierTo(x1, y1, x2, y2, x3, y3)
+		elseif op == "Z" then
+			shape:Close(); open = false
+		elseif op == "O" or op == "A" then
+			local cx, cy, r = n[1], n[2], n[3]
+			local from, to = math.rad(n[4] or 0), math.rad(n[5] or 360)
+			local function at(angle) return cx + r * math.cos(angle), cy + r * math.sin(angle) end
+			local sx, sy = at(from)
+			if open and op == "A" then shape:LineTo(point(sx, sy)) else shape:MoveTo(point(sx, sy)) end
+			local steps = math.max(1, math.ceil(math.abs(to - from) / (math.pi / 2) - 1e-9))
+			local step = (to - from) / steps
+			local k = 4 / 3 * math.tan(step / 4) * r
+			for index = 0, steps - 1 do
+				local a, b = from + step * index, from + step * (index + 1)
+				local ax, ay = at(a)
+				local bx, by = at(b)
+				local x1, y1 = point(ax - k * math.sin(a), ay + k * math.cos(a))
+				local x2, y2 = point(bx + k * math.sin(b), by - k * math.cos(b))
+				local x3, y3 = point(bx, by)
+				shape:BezierTo(x1, y1, x2, y2, x3, y3)
+			end
+			if op == "O" then shape:Close(); open = false else open = true end
+		end
+	end
+	return shape
+end
+
+-- Stroke and fill stay separate shapes so overlapping windings never cut holes.
+local function icon_shapes(name, left, top, size)
+	local glyph = ICON_GLYPHS[name]
+	local shapes = {}
+	if glyph.stroke then
+		table.insert(shapes, glyph_shape(glyph.stroke, left, top, size):OutlineOfShape((glyph.weight or 2) / 24 * size,
+			"OLT_Solid", "OJT_Round", 8, "SWM_Normal", 8))
+	end
+	if glyph.fill then table.insert(shapes, glyph_shape(glyph.fill, left, top, size)) end
+	return shapes
+end
+
+-- A part is either text or a list of filled shapes; offsets move silhouettes.
+local function draw_part(image, part, color, dx, dy, quality)
+	if part.text ~= nil then
+		draw_text(image, part.font, part.style, part.text, part.size, part.x + dx, part.y + dy, color, quality)
+		return
+	end
+	for _, shape in ipairs(part.shapes) do
+		if dx ~= 0 or dy ~= 0 then
+			local matrix = Matrix4()
+			matrix:Move(dx, dy, 0)
+			shape = shape:TransformOfShape(matrix)
+		end
+		fill_shape(image, shape, color, quality)
+	end
 end
 
 -- Fusion Gaussian blur size per shadow radius, both as fractions of frame width.
@@ -399,15 +618,24 @@ local MERGE_OVER = {
 	MO_FgBlueGain = 1, MO_FgAlphaGain = 1, MO_Invert = 1, MO_DoZ = false,
 }
 
--- Each layer blurs an offset silhouette of every text part, then merges under the text.
-local function draw_shadow(image, parts, shadow, quality)
-	for _, layer in ipairs(shadow_layers(shadow.opacity, shadow.radius, shadow.thickness)) do
+-- Mac element glow: two wide shadows of the glow color. Glow radii are output
+-- pixels in the Mac export; templates are authored at 1920 pixels wide.
+local function glow_layers(intensity)
+	intensity = math.max(intensity, 0)
+	return {
+		{opacity = intensity * 0.72, radius = intensity * 18 / 1920},
+		{opacity = intensity * 0.35, radius = intensity * 34 / 1920},
+	}
+end
+
+-- Each layer blurs an offset silhouette of every part, then merges beneath them.
+local function draw_layers(image, parts, layers, color, dx, dy, quality)
+	for _, layer in ipairs(layers) do
 		if layer.opacity > 0 then
 			local silhouette = Image({IMG_Like = image})
 			silhouette:Fill(Pixel{R = 0, G = 0, B = 0, A = 0})
 			for _, part in ipairs(parts) do
-				draw_text(silhouette, part.font, part.style, part.text, part.size, part.x + shadow.x, part.y + shadow.y,
-					Pixel{R = shadow.R, G = shadow.G, B = shadow.B, A = layer.opacity * part.color.A}, quality)
+				draw_part(silhouette, part, Pixel{R = color.R, G = color.G, B = color.B, A = layer.opacity * part.color.A}, dx, dy, quality)
 			end
 			local blurred = silhouette
 			if layer.radius > 0 then
@@ -422,19 +650,36 @@ local function draw_shadow(image, parts, shadow, quality)
 	end
 end
 
--- Attach to the current block bounds, so label and unit never overlap each other.
--- Bounds use Fusion's upward Y axis; side attachments align at the top.
-local function attach_text(bounds, width, height, position, spacing)
-	local x, y = bounds.left, bounds.top - height
-	if position == 0 then y = bounds.top + spacing
-	elseif position == 1 then y = bounds.bottom - spacing - height
-	elseif position == 2 then x = bounds.left - spacing - width
-	else x = bounds.right + spacing end
+local function draw_shadow(image, parts, shadow, quality)
+	draw_layers(image, parts, shadow_layers(shadow.opacity, shadow.radius, shadow.thickness), shadow, shadow.x, shadow.y, quality)
+end
+
+-- Attach to the current block bounds, so label, unit and icon never overlap.
+-- Bounds use Fusion's upward Y axis. Alignment on the cross axis: 0 start
+-- (top or left), 1 center, 2 end.
+local function attach_box(bounds, width, height, position, spacing, alignment)
+	local x, y
+	if position == 0 or position == 1 then
+		x = alignment == 1 and (bounds.left + bounds.right - width) / 2 or (alignment == 2 and bounds.right - width or bounds.left)
+		y = position == 0 and bounds.top + spacing or bounds.bottom - spacing - height
+	else
+		y = alignment == 1 and (bounds.top + bounds.bottom - height) / 2 or (alignment == 2 and bounds.bottom or bounds.top - height)
+		x = position == 2 and bounds.left - spacing - width or bounds.right + spacing
+	end
 	bounds.left = math.min(bounds.left, x)
 	bounds.right = math.max(bounds.right, x + width)
 	bounds.bottom = math.min(bounds.bottom, y)
 	bounds.top = math.max(bounds.top, y + height)
 	return x, y
+end
+
+-- Label and unit attach at the start of the cross axis.
+local function attach_text(bounds, width, height, position, spacing)
+	return attach_box(bounds, width, height, position, spacing, 0)
+end
+
+local function distance_point_text(value, unit)
+	return string.format(value >= 10 and "%.1f %s" or "%.2f %s", value, unit)
 end
 
 local function draw_diagnostic(image, font, style, title, detail, quality, color)
@@ -518,7 +763,7 @@ function Create()
 	local function metric_input(label, key, default)
 		return self:AddInput(label, key, {
 			LINKID_DataType = "Number", INPID_InputControl = "ComboControl",
-			INP_Default = default, INP_Integer = true,
+			INP_Default = default, INP_Integer = true, INP_DoNotifyChanged = true,
 			{CCS_AddString = "Heart Rate"}, {CCS_AddString = "Pace"},
 			{CCS_AddString = "Distance"}, {CCS_AddString = "Elapsed"},
 			{CCS_AddString = "Elevation"}, {CCS_AddString = "Cadence"},
@@ -527,7 +772,8 @@ function Create()
 			{CCS_AddString = "Ground Contact Time"}, {CCS_AddString = "Stride Length"},
 			{CCS_AddString = "Vertical Ratio"}, {CCS_AddString = "GCT Balance"},
 			{CCS_AddString = "Temperature"}, {CCS_AddString = "Grade"},
-			{CCS_AddString = "Real Time"},
+			{CCS_AddString = "Real Time"}, {CCS_AddString = "Distance Timeline"},
+		{CCS_AddString = "Route Map"},
 		})
 	end
 	InMetric = metric_input("Metric", "Metric", 0)
@@ -589,16 +835,37 @@ function Create()
 	InHeartRateEnabled = self:AddInput("Show Heart Rate", "HeartRateEnabled", {
 		LINKID_DataType = "Number", INPID_InputControl = "CheckboxControl", INP_Default = 1,
 	})
-	local function text_options(key)
-		local function number(label, suffix, default, max)
-			return self:AddInput(label, key .. suffix, {LINKID_DataType = "Number", INPID_InputControl = "SliderControl",
-				INP_Default = default, INP_MinScale = 0, INP_MaxScale = max})
+	-- Inputs that only apply to number widgets or only to the distance timeline;
+	-- NotifyChanged shows one group per slot according to its metric.
+	local function add(group, label, key, attributes)
+		local input = self:AddInput(label, key, attributes)
+		if group ~= nil then table.insert(group, input) end
+		return input
+	end
+	local function number_in(group, label, key, default, min, max)
+		return add(group, label, key, {LINKID_DataType = "Number", INPID_InputControl = "SliderControl",
+			INP_Default = default, INP_MinScale = min, INP_MaxScale = max})
+	end
+	local function combo_in(group, label, key, choices, default)
+		local attributes = {LINKID_DataType = "Number", INPID_InputControl = "ComboControl", INP_Default = default or 0, INP_Integer = true}
+		for _, choice in ipairs(choices) do table.insert(attributes, {CCS_AddString = choice}) end
+		return add(group, label, key, attributes)
+	end
+	local function check_in(group, label, key, default)
+		return add(group, label, key, {LINKID_DataType = "Number", INPID_InputControl = "CheckboxControl", INP_Default = default})
+	end
+	local function color_in(group, name, key, defaults, control_group, with_alpha)
+		local inputs = {}
+		for component, suffix in ipairs(with_alpha and {"R", "G", "B", "A"} or {"R", "G", "B"}) do
+			inputs[component] = add(group, name .. " " .. suffix, key .. suffix, {
+				LINKID_DataType = "Number", INPID_InputControl = "ColorControl", INP_Default = defaults[component],
+				INP_MinScale = 0, INP_MaxScale = 1, ICS_Name = name, IC_ControlGroup = control_group, IC_ControlID = component - 1})
 		end
-		local function combo(label, suffix, choices, default)
-			local attributes = {LINKID_DataType = "Number", INPID_InputControl = "ComboControl", INP_Default = default or 0, INP_Integer = true}
-			for _, choice in ipairs(choices) do table.insert(attributes, {CCS_AddString = choice}) end
-			return self:AddInput(label, key .. suffix, attributes)
-		end
+		return inputs
+	end
+	local function text_options(key, numeric)
+		local function number(label, suffix, default, max) return number_in(numeric, label, key .. suffix, default, 0, max) end
+		local function combo(label, suffix, choices, default) return combo_in(numeric, label, key .. suffix, choices, default) end
 		local result = {}
 		result.units = {
 			[1] = combo("Pace Units", "PaceUnits", {"min/km", "min/mi", "min/500m"}),
@@ -611,54 +878,113 @@ function Create()
 		}
 		result.units[8] = result.units[1]
 		result.temperature_source = combo("Temperature Source", "TemperatureSource", {"FIT", "FIT, else manual", "Manual"})
-		result.manual_temperature = self:AddInput("Manual Temperature (°C)", key .. "ManualTemperature", {LINKID_DataType = "Number",
-			INPID_InputControl = "SliderControl", INP_Default = 20, INP_MinScale = -30, INP_MaxScale = 45})
-		result.clock_offset = self:AddInput("Clock UTC Offset (h)", key .. "ClockUtcOffset", {LINKID_DataType = "Number",
-			INPID_InputControl = "SliderControl", INP_Default = 0, INP_MinScale = -12, INP_MaxScale = 14})
-		result.custom_label = self:AddInput("Custom Label (blank = default)", key .. "CustomLabel", {
+		result.manual_temperature = number_in(numeric, "Manual Temperature (°C)", key .. "ManualTemperature", 20, -30, 45)
+		result.clock_offset = number_in(numeric, "Clock UTC Offset (h)", key .. "ClockUtcOffset", 0, -12, 14)
+		result.custom_label = add(numeric, "Custom Label (blank = default)", key .. "CustomLabel", {
 			LINKID_DataType = "Text", INPID_InputControl = "TextEditControl", INP_DefaultText = "", TEC_Lines = 1})
-		result.show_unit = self:AddInput("Show Unit", key .. "ShowUnit", {
-			LINKID_DataType = "Number", INPID_InputControl = "CheckboxControl", INP_Default = 1})
+		result.show_unit = check_in(numeric, "Show Unit", key .. "ShowUnit", 1)
 		for index, part in ipairs({"Label", "Unit"}) do
 			local controls = {}
 			controls.position = combo(part .. " Position", part .. "Position", {"Top", "Bottom", "Left", "Right"}, part == "Unit" and 3 or 0)
+			controls.alignment = combo(part .. " Alignment", part .. "Alignment", {"Start", "Center", "End"}, part == "Unit" and 2 or 0)
 			controls.spacing = number(part .. " Spacing", part .. "Spacing", 0.008, 0.1)
 			controls.size = number(part .. " Size", part .. "Size", 0.022, 0.2)
-			controls.font = self:AddInput(part .. " Font", key .. part .. "Font", {
+			controls.font = add(numeric, part .. " Font", key .. part .. "Font", {
 				LINKID_DataType = "Text", INPID_InputControl = "FontFileControl", IC_ControlGroup = index + 2, IC_ControlID = 0})
-			controls.style = self:AddInput(part .. " Style", key .. part .. "FontStyle", {
+			controls.style = add(numeric, part .. " Style", key .. part .. "FontStyle", {
 				LINKID_DataType = "Text", INPID_InputControl = "FontFileControl", IC_ControlGroup = index + 2, IC_ControlID = 1})
-			controls.color = {}
-			for component, name in ipairs({"R", "G", "B", "A"}) do
-				controls.color[component] = self:AddInput(part .. " " .. name, key .. part .. name, {
-					LINKID_DataType = "Number", INPID_InputControl = "ColorControl", INP_Default = 1,
-					INP_MinScale = 0, INP_MaxScale = 1, ICS_Name = part .. " Color",
-					IC_ControlGroup = index + 10, IC_ControlID = component - 1})
-			end
+			controls.color = color_in(numeric, part .. " Color", key .. part, {1, 1, 1, 1}, index + 10, true)
 			result[part] = controls
 		end
-		-- Mac defaults: black, 35%, radius 4 pt and 2 pt down at the 1280-point reference.
+		-- Mac numeric icon defaults: leading, centered, 22 pt with 8 pt spacing, white.
+		local icon = {}
+		icon.enabled = check_in(numeric, "Show Icon", key .. "IconEnabled", 1)
+		icon.glyph = combo("Icon", "IconGlyph", ICON_NAMES, 0)
+		icon.position = combo("Icon Position", "IconPosition", {"Top", "Bottom", "Left", "Right"}, 2)
+		icon.alignment = combo("Icon Alignment", "IconAlignment", {"Start", "Center", "End"}, 1)
+		icon.size = number("Icon Size", "IconSize", 22 / 1280, 0.1)
+		icon.spacing = number("Icon Spacing", "IconSpacing", 8 / 1280, 0.05)
+		icon.color = color_in(numeric, "Icon Color", key .. "Icon", {1, 1, 1, 1}, 14, true)
+		result.icon = icon
+		-- Mac defaults: black, 35%, radius 4 and 2 down. Radius and offset are
+		-- output pixels in the Mac export, authored at 1920 pixels wide.
 		local shadow = {}
-		shadow.enabled = self:AddInput("Shadow", key .. "ShadowEnabled", {
-			LINKID_DataType = "Number", INPID_InputControl = "CheckboxControl", INP_Default = 1})
-		shadow.color = {}
-		for component, name in ipairs({"R", "G", "B"}) do
-			shadow.color[component] = self:AddInput("Shadow " .. name, key .. "Shadow" .. name, {
-				LINKID_DataType = "Number", INPID_InputControl = "ColorControl", INP_Default = 0,
-				INP_MinScale = 0, INP_MaxScale = 1, ICS_Name = "Shadow Color", IC_ControlGroup = 13, IC_ControlID = component - 1})
-		end
-		shadow.opacity = number("Shadow Opacity", "ShadowOpacity", 0.35, 1)
-		shadow.radius = number("Shadow Blur", "ShadowBlur", 4 / 1280, 0.02)
-		shadow.x = self:AddInput("Shadow Offset X", key .. "ShadowOffsetX", {LINKID_DataType = "Number",
-			INPID_InputControl = "SliderControl", INP_Default = 0, INP_MinScale = -0.02, INP_MaxScale = 0.02})
-		shadow.y = self:AddInput("Shadow Offset Y", key .. "ShadowOffsetY", {LINKID_DataType = "Number",
-			INPID_InputControl = "SliderControl", INP_Default = -2 / 1280, INP_MinScale = -0.02, INP_MaxScale = 0.02})
-		shadow.thickness = self:AddInput("Shadow Thickness", key .. "ShadowThickness", {LINKID_DataType = "Number",
-			INPID_InputControl = "SliderControl", INP_Default = 1, INP_MinScale = 1, INP_MaxScale = 4})
+		shadow.enabled = check_in(nil, "Shadow", key .. "ShadowEnabled", 1)
+		shadow.color = color_in(nil, "Shadow Color", key .. "Shadow", {0, 0, 0}, 13, false)
+		shadow.opacity = number_in(nil, "Shadow Opacity", key .. "ShadowOpacity", 0.35, 0, 1)
+		shadow.radius = number_in(nil, "Shadow Blur", key .. "ShadowBlur", 4 / 1920, 0, 0.02)
+		shadow.x = number_in(nil, "Shadow Offset X", key .. "ShadowOffsetX", 0, -0.02, 0.02)
+		shadow.y = number_in(nil, "Shadow Offset Y", key .. "ShadowOffsetY", -2 / 1920, -0.02, 0.02)
+		shadow.thickness = number_in(nil, "Shadow Thickness", key .. "ShadowThickness", 1, 1, 4)
 		result.shadow = shadow
 		return result
 	end
-	PrimaryTextOptions = text_options("")
+	-- Defaults reproduce the Easy Run and Race template timeline at the
+	-- 1280-point reference; colors are the template's green accent.
+	local function timeline_options(key, group)
+		local function number(label, suffix, default, min, max) return number_in(group, label, key .. "Timeline" .. suffix, default, min, max) end
+		local function combo(label, suffix, choices, default) return combo_in(group, label, key .. "Timeline" .. suffix, choices, default) end
+		local function check(label, suffix, default) return check_in(group, label, key .. "Timeline" .. suffix, default) end
+		local accent = {0.25, 0.82, 0.38}
+		local t = {}
+		t.width = number("Timeline Width", "Width", 522.08 / 1280, 0.05, 1)
+		t.height = number("Timeline Height", "Height", 68 / 1280, 0.01, 0.3)
+		t.padding_x = number("Padding X", "PaddingX", 14 / 1280, 0, 0.05)
+		t.padding_y = number("Padding Y", "PaddingY", 10 / 1280, 0, 0.05)
+		t.show_value = check("Show Distance", "ShowValue", 1)
+		t.show_total = check("Show Total Distance", "ShowTotal", 1)
+		t.units = combo("Distance Units", "Units", {"km", "mi"}, 0)
+		t.value_size = number("Distance Size", "ValueSize", 19 / 1280, 0.005, 0.1)
+		t.value_spacing = number("Distance Spacing", "ValueSpacing", 8 / 1280, 0, 0.05)
+		t.track_height = number("Track Height", "TrackHeight", 6 / 1280, 0.001, 0.05)
+		t.track_opacity = number("Track Opacity", "TrackOpacity", 0.62945, 0, 1)
+		t.fill = color_in(group, "Fill Color", key .. "TimelineFill", accent, 15, false)
+		t.glow = check("Progress Glow", "Glow", 1)
+		t.ticks = check("Tick Marks", "Ticks", 1)
+		t.tick_density = number("Tick Density", "TickDensity", 12, 2, 64)
+		t.marker = check("Current Marker", "Marker", 1)
+		t.marker_style = combo("Marker Style", "MarkerStyle", {"Dot", "Pill", "Triangle"}, 0)
+		t.marker_size = number("Marker Size", "MarkerSize", 1, 0.25, 4)
+		t.marker_color = color_in(group, "Marker Color", key .. "TimelineMarker", accent, 16, false)
+		t.axis_labels = check("Axis Labels", "AxisLabels", 1)
+		t.axis_mode = combo("Axis Label Mode", "AxisMode", {"Start / Finish", "Distance"}, 0)
+		t.endpoint_placement = combo("Endpoint Labels", "EndpointPlacement", {"Below", "Above"}, 0)
+		t.endpoint_offset = number("Endpoint Label Gap", "EndpointOffset", 14.123 / 1280, 0, 0.1)
+		t.points = check("Distance Points", "Points", 1)
+		t.point_count = number("Distance Point Count", "PointCount", 3, 0, 12)
+		t.midpoint_placement = combo("Distance Point Labels", "MidpointPlacement", {"Below", "Above"}, 0)
+		t.midpoint_offset = number("Distance Point Gap", "MidpointOffset", 14.123 / 1280, 0, 0.1)
+		t.axis_font = add(group, "Axis Font", key .. "TimelineAxisFont", {
+			LINKID_DataType = "Text", INPID_InputControl = "FontFileControl", IC_ControlGroup = 5, IC_ControlID = 0})
+		t.axis_style = add(group, "Axis Style", key .. "TimelineAxisFontStyle", {
+			LINKID_DataType = "Text", INPID_InputControl = "FontFileControl", IC_ControlGroup = 5, IC_ControlID = 1})
+		t.axis_size = number("Axis Label Size", "AxisSize", 10 / 1280, 0.003, 0.05)
+		t.axis_color = color_in(group, "Axis Color", key .. "TimelineAxis", {1, 1, 1, 1}, 17, true)
+		t.element_glow = check("Element Glow", "ElementGlow", 1)
+		t.glow_intensity = number("Glow Intensity", "GlowIntensity", 0.1, 0, 1)
+		t.glow_color = color_in(group, "Glow Color", key .. "TimelineGlow", accent, 18, false)
+		return t
+	end
+	local function route_options(key, group)
+		local function number(label, suffix, default, min, max) return number_in(group, label, key .. "Route" .. suffix, default, min, max) end
+		local function check(label, suffix, default) return check_in(group, label, key .. "Route" .. suffix, default) end
+		return {
+			size = number("Map Size", "Size", 332 * 0.75 / 1280, 0.02, 1),
+			padding = number("Map Padding", "Padding", 32 * 0.75 / 1280, 0, 0.2),
+			width = number("Route Width", "Width", 4 * 0.75 / 1280, 0.0005, 0.03),
+			color = color_in(group, "Route Color", key .. "Route", {0.25, 0.82, 0.38, 1}, 19, true),
+			marker = check("Current Position", "Marker", 1),
+			marker_size = number("Position Size", "MarkerSize", 10 * 0.75 / 1280, 0.001, 0.06),
+			marker_color = color_in(group, "Position Color", key .. "RouteMarker", {0.25, 0.82, 0.38, 1}, 20, true),
+			endpoints = check("Start / Finish Markers", "Endpoints", 0),
+		}
+	end
+	VisibilityGroups = {}
+	local primary_numeric, primary_timeline, primary_route = {InSize, InShowLabel}, {}, {}
+	PrimaryTextOptions = text_options("", primary_numeric)
+	PrimaryTimelineOptions = timeline_options("", primary_timeline)
+	PrimaryRouteOptions = route_options("", primary_route)
+	VisibilityGroups[InMetric] = {numeric = primary_numeric, timeline = primary_timeline, route = primary_route}
 	WidgetInputs = {}
 	local definitions = {
 		{key = "Pace", label = "Pace", metric = 1},
@@ -670,6 +996,7 @@ function Create()
 	end
 	for slot, definition in ipairs(definitions) do
 		local key = definition.key
+		local numeric, timeline, route = {}, {}, {}
 		self:AddControlPage(definition.label)
 		local controls = {}
 		controls.metric = metric_input("Metric", key .. "Metric", definition.metric)
@@ -680,13 +1007,8 @@ function Create()
 			LINKID_DataType = "Point", INPID_InputControl = "OffsetControl",
 			INPID_PreviewControl = "CrosshairControl", INP_DefaultX = 0.08, INP_DefaultY = 0.68,
 		})
-		controls.size = self:AddInput("Value Size", key .. "ValueSize", {
-			LINKID_DataType = "Number", INPID_InputControl = "SliderControl",
-			INP_MinScale = 0.01, INP_MaxScale = 0.2, INP_Default = 0.065,
-		})
-		controls.label = self:AddInput("Show Label", key .. "ShowLabel", {
-			LINKID_DataType = "Number", INPID_InputControl = "CheckboxControl", INP_Default = 1,
-		})
+		controls.size = number_in(numeric, "Value Size", key .. "ValueSize", 0.065, 0.01, 0.2)
+		controls.label = check_in(numeric, "Show Label", key .. "ShowLabel", 1)
 		controls.font = self:AddInput("Font", key .. "Font", {
 			LINKID_DataType = "Text", INPID_InputControl = "FontFileControl",
 			IC_ControlGroup = 2, IC_ControlID = 0, INP_DoNotifyChanged = true,
@@ -704,8 +1026,16 @@ function Create()
 				IC_ControlGroup = 1, IC_ControlID = index - 1,
 			})
 		end
-		controls.text = text_options(key)
+		controls.text = text_options(key, numeric)
+		controls.timeline = timeline_options(key, timeline)
+		controls.route = route_options(key, route)
+		VisibilityGroups[controls.metric] = {numeric = numeric, timeline = timeline, route = route}
 		WidgetInputs[slot] = controls
+	end
+	-- No default metric is a timeline; NotifyChanged reveals them per slot.
+	for _, groups in pairs(VisibilityGroups) do
+		for _, input in ipairs(groups.timeline) do input:SetAttrs({IC_Visible = false}) end
+		for _, input in ipairs(groups.route) do input:SetAttrs({IC_Visible = false}) end
 	end
 end
 
@@ -718,6 +1048,14 @@ function NotifyChanged(input, parameter, time)
 		if value == "" then InFontStyle:SetSource(Text("Regular"), time) end
 	elseif input == InReloadData then
 		DataCache = {}
+	elseif VisibilityGroups ~= nil and VisibilityGroups[input] ~= nil then
+		local metric = parameter ~= nil and math.floor((parameter.Value or 0) + 0.5) or 0
+		for name, controls in pairs(VisibilityGroups[input]) do
+			local visible = (name == "timeline" and metric == TIMELINE_METRIC)
+				or (name == "route" and metric == ROUTE_METRIC)
+				or (name == "numeric" and metric ~= TIMELINE_METRIC and metric ~= ROUTE_METRIC)
+			for _, control in ipairs(controls) do control:SetAttrs({IC_Visible = visible}) end
+		end
 	elseif NUDGES[input] ~= nil then
 		local current = InTimeOffset:GetSource(time).Value or 0
 		local nudged = math.floor((current + NUDGES[input]) * 1000 + 0.5) / 1000
@@ -792,6 +1130,23 @@ function Process(req)
 		draw_text(output, font, style, readout, 0.02, 0.045, 0.045 * y_scale, Pixel{R = 1, G = 0.85, B = 0.3, A = 1}, quality)
 	end
 	if sample ~= nil then
+		local aspect = (output.Height * output.YScale) / (output.Width * output.XScale)
+		local function value_of(input) return input:GetValue(req).Value end
+		local function color_of(inputs, alpha)
+			return Pixel{R = value_of(inputs[1]), G = value_of(inputs[2]), B = value_of(inputs[3]), A = alpha or (inputs[4] and value_of(inputs[4]) or 1)}
+		end
+		local function font_of(font_input, style_input)
+			local part_font = tostring(value_of(font_input) or "")
+			local part_style = tostring(value_of(style_input) or "")
+			return part_font == "" and "Open Sans" or part_font, part_style == "" and "Regular" or part_style
+		end
+		local function shadow_of(options)
+			local shadow = options.shadow
+			if value_of(shadow.enabled) <= 0.5 then return nil end
+			return {R = value_of(shadow.color[1]), G = value_of(shadow.color[2]), B = value_of(shadow.color[3]),
+				opacity = value_of(shadow.opacity), radius = value_of(shadow.radius),
+				x = value_of(shadow.x), y = value_of(shadow.y), thickness = value_of(shadow.thickness)}
+		end
 		local function render_widget(metric, position, size, show_label, widget_font, widget_style, color, options)
 			local unit_input = options.units[metric]
 			local source = math.floor(options.temperature_source:GetValue(req).Value + 0.5)
@@ -801,56 +1156,235 @@ function Process(req)
 			local custom = tostring(options.custom_label:GetValue(req).Value or ""):match("^%s*(.-)%s*$")
 			if custom ~= "" then label = custom end
 			local x = position.X
-			local y = position.Y * (output.Height * output.YScale) / (output.Width * output.XScale)
+			local y = position.Y * aspect
 			-- Lay out every part first so the shadow pass can sit beneath all of them.
-			local value_metrics = TextStyleFontMetrics(TextStyleFont(widget_font, widget_style))
-			local value_width = add_text_shape(Shape(), value_metrics, value, size, 0, 0)
+			local value_width = text_width(widget_font, widget_style, value, size)
 			local parts = {{font = widget_font, style = widget_style, text = value, size = size, x = x, y = y, color = color}}
-			local bounds = {left = x, right = x + value_width, bottom = y, top = y + size}
+			local ascent, descent = font_extents(widget_font, widget_style, size)
+			local bounds = {left = x, right = x + value_width, bottom = y - descent, top = y + ascent}
 			local function attachment(text, controls)
 				if text == "" then return end
-				local part_font = tostring(controls.font:GetValue(req).Value or "")
-				local part_style = tostring(controls.style:GetValue(req).Value or "")
-				if part_font == "" then part_font = "Open Sans" end
-				if part_style == "" then part_style = "Regular" end
+				local part_font, part_style = font_of(controls.font, controls.style)
 				local part_size = controls.size:GetValue(req).Value
-				local metrics = TextStyleFontMetrics(TextStyleFont(part_font, part_style))
-				local width = add_text_shape(Shape(), metrics, text, part_size, 0, 0)
-				local px, py = attach_text(bounds, width, part_size, controls.position:GetValue(req).Value, controls.spacing:GetValue(req).Value)
-				table.insert(parts, {font = part_font, style = part_style, text = text, size = part_size, x = px, y = py,
-					color = Pixel{R = controls.color[1]:GetValue(req).Value, G = controls.color[2]:GetValue(req).Value,
-						B = controls.color[3]:GetValue(req).Value, A = controls.color[4]:GetValue(req).Value}})
+				local width = text_width(part_font, part_style, text, part_size)
+				local part_ascent, part_descent = font_extents(part_font, part_style, part_size)
+				local px, bottom = attach_box(bounds, width, part_ascent + part_descent,
+					value_of(controls.position), value_of(controls.spacing), value_of(controls.alignment))
+				table.insert(parts, {font = part_font, style = part_style, text = text, size = part_size, x = px, y = bottom + part_descent,
+					color = color_of(controls.color)})
 			end
 			if options.show_unit:GetValue(req).Value > 0.5 then attachment(unit, options.Unit) end
 			if show_label then attachment(label, options.Label) end
-			local shadow = options.shadow
-			if shadow.enabled:GetValue(req).Value > 0.5 then
-				draw_shadow(output, parts, {
-					R = shadow.color[1]:GetValue(req).Value, G = shadow.color[2]:GetValue(req).Value, B = shadow.color[3]:GetValue(req).Value,
-					opacity = shadow.opacity:GetValue(req).Value, radius = shadow.radius:GetValue(req).Value,
-					x = shadow.x:GetValue(req).Value, y = shadow.y:GetValue(req).Value, thickness = shadow.thickness:GetValue(req).Value,
-				}, quality)
+			-- The icon wraps the whole text block, as in the Mac layout. Its cross-axis
+			-- alignment uses the value's line box, which SwiftUI aligns against.
+			local icon = options.icon
+			local glyph = math.floor(value_of(icon.glyph) + 0.5)
+			local icon_name = glyph > 0 and ICON_NAMES[glyph + 1] or DEFAULT_ICONS[metric]
+			if value_of(icon.enabled) > 0.5 and ICON_GLYPHS[icon_name] ~= nil then
+				local icon_size = value_of(icon.size)
+				local ascent, descent = font_extents(widget_font, widget_style, size)
+				local block = {left = bounds.left, right = bounds.right,
+					top = math.max(bounds.top, y + ascent), bottom = math.min(bounds.bottom, y - descent)}
+				local ix, iy = attach_box(block, icon_size, icon_size, math.floor(value_of(icon.position) + 0.5),
+					value_of(icon.spacing), math.floor(value_of(icon.alignment) + 0.5))
+				table.insert(parts, {shapes = icon_shapes(icon_name, ix, iy + icon_size, icon_size), color = color_of(icon.color)})
 			end
+			local shadow = shadow_of(options)
+			if shadow ~= nil then draw_shadow(output, parts, shadow, quality) end
+			for _, part in ipairs(parts) do draw_part(output, part, part.color, 0, 0, quality) end
+		end
+		-- Mac DistanceTimelineOverlayView, minimal preset: the box is centered on
+		-- Position; the distance value sits above a capsule track with ticks, a
+		-- progress fill and marker, and axis labels below or above the track.
+		local function render_timeline(position, value_font, value_style, color, t, options)
+			local pixel = 1 / output.Width
+			local width, height = value_of(t.width), value_of(t.height)
+			local padding_x, padding_y = value_of(t.padding_x), value_of(t.padding_y)
+			local left, top = position.X - width / 2, position.Y * aspect + height / 2
+			local content_left, content_top = left + padding_x, top - padding_y
+			local content_width, content_height = math.max(width - padding_x * 2, pixel), math.max(height - padding_y * 2, pixel)
+			local track_height = math.max(value_of(t.track_height), 2 / 1280)
+			local value_size = math.max(value_of(t.value_size), 12 / 1280)
+			local axis_size = math.max(value_of(t.axis_size), 8 / 1280)
+			local show_value = value_of(t.show_value) > 0.5
+			local value_block = show_value and value_size * 1.35 or 0
+			local track_top = content_top - math.min(content_height - track_height, value_block + value_of(t.value_spacing))
+			local track_bottom = track_top - track_height
+			local track_middle = track_bottom + track_height / 2
+
+			-- Progress follows distance. Without any distance data it follows time,
+			-- like the Mac app; a sample without distance leaves the fill empty.
+			local imperial = math.floor(value_of(t.units) + 0.5) == 1
+			local divisor, unit = imperial and 1609.344 or 1000, imperial and "mi" or "km"
+			local total = data.total_distance_m or 0
+			local current = sample.distance_m
+			local progress = nil
+			if total > 0 then
+				if current ~= nil then progress = current / total end
+			else
+				progress = elapsed_us / math.max(data.duration_us or 0, 1000000)
+			end
+			if progress ~= nil then progress = math.min(math.max(progress, 0), 1) end
+
+			local accent = color_of(t.fill, 1)
+			local parts, overlays = {}, {}
+			table.insert(parts, {shapes = {capsule(content_left, track_bottom, content_width, track_height)},
+				color = Pixel{R = color.R, G = color.G, B = color.B, A = color.A * value_of(t.track_opacity)}})
+			local glow = value_of(t.glow) > 0.5
+			if progress ~= nil then
+				local fill = {shapes = {capsule(content_left, track_bottom, math.max(content_width * progress, track_height), track_height)}, color = accent}
+				table.insert(parts, fill)
+				overlays[fill] = glow and track_height * 2.8 or nil
+			end
+			if value_of(t.ticks) > 0.5 then
+				local count = math.max(math.floor(value_of(t.tick_density) + 0.5), 2)
+				local ticks = Shape()
+				for index = 0, count do
+					local x = content_left + content_width * index / count
+					ticks:AddRectangle(x - pixel / 2, x + pixel / 2, track_top + track_height * 0.45, track_bottom - track_height * 0.45, 0, 8)
+				end
+				table.insert(parts, {shapes = {ticks}, color = Pixel{R = color.R, G = color.G, B = color.B, A = color.A * 0.64 * 0.52}})
+			end
+			if progress ~= nil and value_of(t.marker) > 0.5 then
+				local x = content_left + content_width * progress
+				local multiplier = value_of(t.marker_size)
+				local style = math.floor(value_of(t.marker_style) + 0.5)
+				local shape
+				if style == 2 then
+					local half, marker_height = track_height * 1.3 * multiplier, track_height * 2.4 * multiplier
+					shape = Shape()
+					shape:MoveTo(x, track_middle + marker_height / 2)
+					shape:LineTo(x + half, track_middle - marker_height / 2)
+					shape:LineTo(x - half, track_middle - marker_height / 2)
+					shape:Close()
+				else
+					local marker_width = track_height * (style == 1 and 3.4 or 2.2) * multiplier
+					local marker_height = track_height * (style == 1 and 1.75 or 2.2) * multiplier
+					shape = capsule(x - marker_width / 2, track_middle - marker_height / 2, marker_width, marker_height)
+				end
+				local marker = {shapes = {shape}, color = color_of(t.marker_color, 1)}
+				table.insert(parts, marker)
+				overlays[marker] = glow and track_height * 2.3 or nil
+			end
+
+			if show_value then
+				local current_text = current ~= nil and string.format("%.2f", current / divisor) or "--"
+				local text = value_of(t.show_total) > 0.5 and string.format("%s / %.2f %s", current_text, total / divisor, unit)
+					or current_text .. " " .. unit
+				local ascent = font_extents(value_font, value_style, value_size)
+				table.insert(parts, {font = value_font, style = value_style, text = text, size = value_size,
+					x = content_left, y = content_top - ascent, color = color})
+			end
+			local axis_font, axis_style = font_of(t.axis_font, t.axis_style)
+			local axis_color = color_of(t.axis_color)
+			local axis_ascent, axis_descent = font_extents(axis_font, axis_style, axis_size)
+			-- Mac centers each label's line box in a band of 1.3 x size at the gap.
+			local function axis_baseline(placement_input, gap_input)
+				local band = axis_size * 1.3
+				local gap = value_of(gap_input)
+				local center = math.floor(value_of(placement_input) + 0.5) == 1 and track_top + gap + band / 2 or track_bottom - gap - band / 2
+				return center + (axis_descent - axis_ascent) / 2
+			end
+			local function axis_text(text, x, baseline, anchor)
+				local text_w = text_width(axis_font, axis_style, text, axis_size)
+				table.insert(parts, {font = axis_font, style = axis_style, text = text, size = axis_size,
+					x = x - text_w * anchor, y = baseline, color = axis_color})
+			end
+			if value_of(t.axis_labels) > 0.5 then
+				local baseline = axis_baseline(t.endpoint_placement, t.endpoint_offset)
+				local by_distance = math.floor(value_of(t.axis_mode) + 0.5) == 1
+				axis_text(by_distance and "0 " .. unit or "START", content_left, baseline, 0)
+				axis_text(by_distance and string.format("%.2f %s", total / divisor, unit) or "FINISH", content_left + content_width, baseline, 1)
+			end
+			local count = math.floor(value_of(t.point_count) + 0.5)
+			if value_of(t.points) > 0.5 and count > 0 then
+				local baseline = axis_baseline(t.midpoint_placement, t.midpoint_offset)
+				for index = 1, count do
+					axis_text(distance_point_text(total / divisor * index / (count + 1), unit),
+						content_left + content_width * index / (count + 1), baseline, 0.5)
+				end
+			end
+
+			-- Element glow, then the element shadow, both of the whole widget; the
+			-- fill and marker carry their own accent glow beneath them.
+			if value_of(t.element_glow) > 0.5 then
+				draw_layers(output, parts, glow_layers(value_of(t.glow_intensity)), color_of(t.glow_color, 1), 0, 0, quality)
+			end
+			local shadow = shadow_of(options)
+			if shadow ~= nil then draw_shadow(output, parts, shadow, quality) end
 			for _, part in ipairs(parts) do
-				draw_text(output, part.font, part.style, part.text, part.size, part.x, part.y, part.color, quality)
+				if overlays[part] ~= nil then
+					draw_layers(output, {part}, {{opacity = 0.75, radius = overlays[part]}}, part.color, 0, 0, quality)
+				end
+				draw_part(output, part, part.color, 0, 0, quality)
+			end
+		end
+		local function render_route(position, widget_font, widget_style, r, options)
+			local route = data.route or {paths = {}, count = 0}
+			local size = math.max(value_of(r.size), 2 / output.Width)
+			local padding = math.min(math.max(value_of(r.padding), 0), size * 0.45)
+			-- Fit inside a circle so the transparent trace stays within the
+			-- template's circular container even for diagonal route bounds.
+			local extent = math.max(size - 2 * padding, 1 / output.Width) / math.sqrt(2)
+			local cx, cy = position.X, position.Y * aspect
+			local width = math.max(value_of(r.width), 1 / output.Width)
+			local parts = {}
+			local function point(x, y) return cx + x * extent, cy + y * extent end
+			local function dot(x, y, diameter, color)
+				local px, py = point(x, y)
+				table.insert(parts, {shapes = {capsule(px - diameter/2, py - diameter/2, diameter, diameter)}, color = color})
+			end
+			if route.count < 2 then
+				local text = "NO GPS"
+				local font_size = math.min(size / 8, 0.02)
+				table.insert(parts, {font = widget_font, style = widget_style, text = text, size = font_size,
+					x = cx - text_width(widget_font, widget_style, text, font_size)/2, y = cy, color = Pixel{R=1,G=1,B=1,A=1}})
+			else
+				for _, path in ipairs(route.paths) do
+					if #path >= 2 then
+						local shape = Shape()
+						for index, p in ipairs(path) do
+							local x, y = point(p.x, p.y)
+							if index == 1 then shape:MoveTo(x, y) else shape:LineTo(x, y) end
+						end
+						table.insert(parts, {shapes = {shape:OutlineOfShape(width, "OLT_Solid", "OJT_Round", 8, "SWM_Normal", 8)}, color = color_of(r.color)})
+					end
+				end
+				if value_of(r.endpoints) > 0.5 then
+					local first, last = route.paths[1][1], route.paths[#route.paths][#route.paths[#route.paths]]
+					dot(first.x, first.y, width * 2, color_of(r.color))
+					dot(last.x, last.y, width * 3, color_of(r.color))
+				end
+				if value_of(r.marker) > 0.5 and sample.route_x ~= nil and sample.route_y ~= nil then
+					local diameter = math.max(value_of(r.marker_size), width * 2)
+					dot(sample.route_x, sample.route_y, diameter + 2/output.Width, Pixel{R=1,G=1,B=1,A=1})
+					dot(sample.route_x, sample.route_y, diameter, color_of(r.marker_color))
+				end
+			end
+			local shadow = shadow_of(options)
+			if shadow ~= nil then draw_shadow(output, parts, shadow, quality) end
+			for _, part in ipairs(parts) do draw_part(output, part, part.color, 0, 0, quality) end
+		end
+		local function render_slot(metric, position, size, show_label, widget_font, widget_style, color, options, timeline, route)
+			if metric == TIMELINE_METRIC then
+				render_timeline(position, widget_font, widget_style, color, timeline, options)
+			elseif metric == ROUTE_METRIC then
+				render_route(position, widget_font, widget_style, route, options)
+			else
+				render_widget(metric, position, size, show_label, widget_font, widget_style, color, options)
 			end
 		end
 		if InHeartRateEnabled:GetValue(req).Value > 0.5 then
-			render_widget(math.floor(InMetric:GetValue(req).Value + 0.5), InPosition:GetValue(req), InSize:GetValue(req).Value,
+			render_slot(math.floor(InMetric:GetValue(req).Value + 0.5), InPosition:GetValue(req), InSize:GetValue(req).Value,
 				InShowLabel:GetValue(req).Value > 0.5, font, style,
 				Pixel{R = InR:GetValue(req).Value, G = InG:GetValue(req).Value,
-					B = InB:GetValue(req).Value, A = InA:GetValue(req).Value}, PrimaryTextOptions)
+					B = InB:GetValue(req).Value, A = InA:GetValue(req).Value}, PrimaryTextOptions, PrimaryTimelineOptions, PrimaryRouteOptions)
 		end
 		for _, controls in ipairs(WidgetInputs) do
 			if controls.enabled:GetValue(req).Value > 0.5 then
-				local widget_font = tostring(controls.font:GetValue(req).Value or "")
-				local widget_style = tostring(controls.font_style:GetValue(req).Value or "")
-				if widget_font == "" then widget_font = "Open Sans" end
-				if widget_style == "" then widget_style = "Regular" end
-				render_widget(math.floor(controls.metric:GetValue(req).Value + 0.5), controls.position:GetValue(req), controls.size:GetValue(req).Value,
-					controls.label:GetValue(req).Value > 0.5, widget_font, widget_style,
-					Pixel{R = controls.color[1]:GetValue(req).Value, G = controls.color[2]:GetValue(req).Value,
-						B = controls.color[3]:GetValue(req).Value, A = controls.color[4]:GetValue(req).Value}, controls.text)
+				local widget_font, widget_style = font_of(controls.font, controls.font_style)
+				render_slot(math.floor(controls.metric:GetValue(req).Value + 0.5), controls.position:GetValue(req), controls.size:GetValue(req).Value,
+					controls.label:GetValue(req).Value > 0.5, widget_font, widget_style, color_of(controls.color), controls.text, controls.timeline, controls.route)
 			end
 		end
 	elseif diagnostics_enabled then

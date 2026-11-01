@@ -200,6 +200,9 @@ function parseGpxBuffer(input, options = {}) {
     previous = entry;
     return {
       elapsedUs: entry.timestampUs - startUtcUs,
+      latitude: entry.latitude,
+      longitude: entry.longitude,
+      routeSegment: entry.segment,
       distanceMeters,
       heartRateBpm: entry.heartRateBpm ?? null,
       paceSecondsPerKilometer,

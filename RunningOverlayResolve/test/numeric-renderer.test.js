@@ -8,7 +8,7 @@ const { METRICS } = require('../src/domain/widgets');
 const FUSE_NAMES = { heartRate: 'Heart Rate', pace: 'Pace', distance: 'Distance', elapsed: 'Elapsed', elevation: 'Elevation',
   cadence: 'Cadence', power: 'Power', calories: 'Calories', avgPace: 'Avg Pace', verticalOscillation: 'Vertical Oscillation',
   groundContactTime: 'Ground Contact Time', strideLength: 'Stride Length', verticalRatio: 'Vertical Ratio',
-  groundContactBalance: 'GCT Balance', temperature: 'Temperature', grade: 'Grade', realTime: 'Real Time' };
+  groundContactBalance: 'GCT Balance', temperature: 'Temperature', grade: 'Grade', realTime: 'Real Time', distanceTimeline: 'Distance Timeline', routeMap: 'Route Map' };
 assert.deepEqual(Object.values(METRICS), Object.keys(METRICS).map((_, index) => index));
 const source = fs.readFileSync(path.join(__dirname, '../fusion/Fuses/RunningOverlayNumeric.fuse'), 'utf8');
 function run(code) {
@@ -25,9 +25,9 @@ local sample = {distance_m=1609.344, pace_spk=300, elevation_m=-30.48, heart_rat
 local _, value, unit = metric_text(2, sample, 0, data, 1)
 assert(value == '1.00' and unit == 'mi')
 _, value, unit = metric_text(1, sample, 0, data, 1)
-assert(value == [[8'03"]] and unit == '/ mi')
+assert(value == [[8'03"]] and unit == '/mi')
 _, value, unit = metric_text(1, sample, 0, data, 2)
-assert(value == [[2'30"]] and unit == '/ 500m')
+assert(value == [[2'30"]] and unit == '/500m')
 _, value, unit = metric_text(4, sample, 0, data, 1)
 assert(value == '-100' and unit == 'ft')
 _, value = metric_text(3, sample, 59600000, data, 1)
@@ -51,6 +51,7 @@ self = {Comp={}, AddControlPage=function() end, AddInput=function(_,label,key,at
  if attrs.LINKID_DataType=='Point' then input.value={X=attrs.INP_DefaultX,Y=attrs.INP_DefaultY} end
  function input:GetValue() if type(self.value)=='table' then return self.value end; return {Value=self.value} end
  function input:SetSource(source) self.value=source.Value end
+ function input:SetAttrs(attrs) self.visible=attrs.IC_Visible end
  inputs[key]=input; return input
 end}
 Create()
@@ -72,6 +73,7 @@ OutImage={Set=function() end}
 ensure_fonts=function() end
 TextStyleFont=function() end; TextStyleFontMetrics=function() end; Shape=function() end
 add_text_shape=function(_,_,text,size) return #text*size end
+icon_shapes=function() return {} end
 local drawn={}
 draw_text=function(_,font,style,text,size,x,y,color) table.insert(drawn,{text=text,font=font,size=size,color=color,x=x,y=y}); return #text*size end
 load_data=function() return {timeline_start_frame=0,pauses={}} end
@@ -115,8 +117,8 @@ local data = {pauses = {{start_us=0, end_us=60000000}}}
 local s = {distance_m=1000, oscillation_mm=85.35, contact_ms=244.5, stride_m=1.125, balance_left=49.6, temperature_c=-2.5, grade_pct=1.24}
 local function text(metric, unit, manual, use_fit) local l, v, u = metric_text(metric, s, 300000000, data, unit, manual, use_fit); return l .. '|' .. v .. '|' .. u end
 -- Average pace uses real elapsed time, not moving time, and follows pace units.
-assert(text(8, 0) == [[AVG PACE|5'00"|/ km]])
-assert(text(8, 1) == [[AVG PACE|8'03"|/ mi]])
+assert(text(8, 0) == [[AVG PACE|5'00"|/km]])
+assert(text(8, 1) == [[AVG PACE|8'03"|/mi]])
 assert(text(9, 0) == 'VERT. OSC.|8.5|cm' or text(9, 0) == 'VERT. OSC.|8.6|cm')
 assert(text(9, 1) == 'VERT. OSC.|85|mm')
 assert(text(10, 0) == 'GCT|245|ms')
@@ -191,12 +193,13 @@ self = {Comp={}, AddControlPage=function() end, AddInput=function(_,label,key,at
  local input={value=attrs.INP_DefaultText or attrs.INP_Default or '', attrs=attrs}
  if attrs.LINKID_DataType=='Point' then input.value={X=attrs.INP_DefaultX,Y=attrs.INP_DefaultY} end
  function input:GetValue() if type(self.value)=='table' then return self.value end; return {Value=self.value} end
+ function input:SetAttrs(attrs) self.visible=attrs.IC_Visible end
  inputs[key]=input; return input
 end}
 Create()
--- Defaults are the Mac element defaults at the 1280-point reference.
+-- Defaults are the Mac element defaults; shadow radius and offset are 1920-wide output pixels.
 assert(inputs.ShadowEnabled.value == 1 and inputs.ShadowOpacity.value == 0.35 and inputs.ShadowR.value == 0)
-assert(inputs.ShadowBlur.value == 4 / 1280 and inputs.ShadowOffsetY.value == -2 / 1280 and inputs.Widget16ShadowThickness.value == 1)
+assert(inputs.ShadowBlur.value == 4 / 1920 and inputs.ShadowOffsetY.value == -2 / 1920 and inputs.Widget16ShadowThickness.value == 1)
 assert(inputs.Widget16ClockFormat and inputs.Widget16ClockUtcOffset.value == 0)
 Width=1920; Height=1080; Scale=1; XAspect=1; YAspect=1; SourceDepth=0
 local events = {}
@@ -209,6 +212,7 @@ OutImage={Set=function() end}
 ensure_fonts=function() end
 TextStyleFont=function() end; TextStyleFontMetrics=function() end; Shape=function() end
 add_text_shape=function(_,_,text,size) return #text*size end
+icon_shapes=function() return {} end
 draw_text=function(_,_,_,text,_,x,y,color) table.insert(events, string.format('text %s %.4f %.4f %.3f', text, x, y, color.A)) return 0 end
 load_data=function() return {timeline_start_frame=0,pauses={}} end
 activity_elapsed_at_frame=function() return 0 end
@@ -233,4 +237,257 @@ inputs.ShadowThickness.value=1; inputs.ShadowBlur.value=0; events={}; Process(re
 assert(events[3] == 'merge sharp', table.concat(events, ' | '))
 inputs.ShadowEnabled.value=0; events={}; Process(req)
 assert(#events == 2, table.concat(events, ' | '))
+`));
+
+// Host mocks shared by the icon and timeline tests: font metrics with ascent
+// 0.8 and descent 0.2 of the size, and recorded text, shape fills and blurs.
+const HOST = `
+Number = function(value) return {Value=value} end
+inputs = {}
+self = {Comp={}, AddControlPage=function() end, AddInput=function(_,label,key,attrs)
+ local input={value=attrs.INP_DefaultText or attrs.INP_Default or '', attrs=attrs}
+ if attrs.LINKID_DataType=='Point' then input.value={X=attrs.INP_DefaultX,Y=attrs.INP_DefaultY} end
+ function input:GetValue() if type(self.value)=='table' then return self.value end; return {Value=self.value} end
+ function input:SetSource(source) self.value=source.Value end
+ function input:SetAttrs(attrs) self.visible=attrs.IC_Visible end
+ inputs[key]=input; return input
+end}
+Create()
+Width=1920; Height=1080; Scale=1; XAspect=1; YAspect=1; SourceDepth=0
+events = {}
+Image=function() local image={Height=1080,Width=1920,XScale=1,YScale=1,Fill=function() end}
+ function image:Blur(dest, tags) table.insert(events, {kind='blur', size=tags.BLUR_XSize}) end
+ function image:Merge() table.insert(events, {kind='merge'}) end
+ return image end
+Pixel=function(value) return value end
+OutImage={Set=function() end}
+ensure_fonts=function() end
+TextStyleFont=function() end
+TextStyleFontMetrics=function() return {TextAscent=0.08, TextDescent=0.02, TextExternalLeading=0} end
+add_text_shape=function(_,_,text,size) return #text*size end
+draw_text=function(_,_,_,text,size,x,y,color) table.insert(events,{kind='text',text=text,size=size,x=x,y=y,color=color}) return #text*size end
+fill_shape=function(_,shape,color) table.insert(events,{kind='shape',shape=shape,color=color}) end
+local function moved(shape) return shape end
+Matrix4=function() return {Move=function() end} end
+capsule=function(l,b,w,h) return {kind='capsule',l=l,b=b,w=w,h=h,TransformOfShape=moved} end
+Shape=function() local s={rects={},TransformOfShape=moved}
+ function s:AddRectangle(l,r,t,b) table.insert(self.rects,{l,r,t,b}) end
+ function s:MoveTo(x,y) self.start={x,y} end; function s:LineTo() end; function s:Close() end
+ return s end
+activity_elapsed_at_frame=function() return 0 end
+req={Time=0,IsQuick=function() return false end,IsStampOnly=function() return false end}
+function near(a, b) return math.abs(a - b) < 1e-9 end
+function of(kind) local r={} for _,e in ipairs(events) do if e.kind==kind then table.insert(r,e) end end return r end
+`;
+
+test('numeric icons default per metric, attach like the Mac layout and join the shadow', () => run(HOST + `
+local icons = {}
+local glyph = {TransformOfShape=function(self) return self end}
+icon_shapes=function(name,left,top,size) table.insert(icons,{name=name,left=left,top=top,size=size}); return {glyph} end
+load_data=function() return {timeline_start_frame=0,pauses={},start_utc_us=0} end
+sample_activity=function() return {heart_rate=150} end
+inputs.ShadowEnabled.value=0; inputs.ShowLabel.value=0; inputs.ShowUnit.value=0
+inputs.ValueSize.value=0.05; inputs.Position.value={X=0.1,Y=0.5}
+Process(req)
+local y = 0.5 * 1080 / 1920
+-- Leading, centered on the value line box from y - descent to y + size.
+assert(#icons==1 and icons[1].name=='Heart' and near(icons[1].size, 22/1280))
+assert(near(icons[1].left, 0.1 - 8/1280 - 22/1280), icons[1].left)
+assert(near(icons[1].top, (y - 0.01 + y + 0.04) / 2 + 11/1280), icons[1].top)
+assert(#of('shape')==1 and of('shape')[1].shape==glyph and of('shape')[1].color.A==1)
+-- Every metric has a default glyph; the Inspector glyph overrides it.
+for metric = 0, 16 do assert(ICON_GLYPHS[DEFAULT_ICONS[metric]], metric) end
+for index = 2, #ICON_NAMES do assert(ICON_GLYPHS[ICON_NAMES[index]], ICON_NAMES[index]) end
+inputs.Metric.value=16; icons={}; Process(req); assert(icons[1].name=='Watch')
+inputs.IconGlyph.value=7; icons={}; Process(req); assert(icons[1].name=='Runner')
+-- Top placement aligned to the start sits one spacing above the block.
+inputs.IconPosition.value=0; inputs.IconAlignment.value=0; icons={}; Process(req)
+assert(near(icons[1].left, 0.1) and near(icons[1].top, y + 0.04 + 8/1280 + 22/1280))
+-- The icon silhouette is drawn in the shadow pass with the icon opacity.
+inputs.IconA.value=0.5; inputs.ShadowEnabled.value=1; events={}; Process(req)
+local shapes = of('shape')
+assert(#shapes==2 and near(shapes[1].color.A, 0.35*0.5) and shapes[1].color.R==0 and shapes[2].color.A==0.5)
+inputs.IconEnabled.value=0; icons={}; Process(req); assert(#icons==0)
+`));
+
+test('icon glyphs stay inside their box and arcs keep their radius', () => run(`
+local points = {}
+Matrix4=function() return {} end
+Shape=function() local s={}
+ function s:MoveTo(x,y) table.insert(points,{x,y}) end
+ function s:LineTo(x,y) table.insert(points,{x,y}) end
+ function s:BezierTo(_,_,_,_,x,y) table.insert(points,{x,y}) end
+ function s:Close() end
+ function s:OutlineOfShape(width) self.width=width; return self end
+ return s end
+for name in pairs(ICON_GLYPHS) do
+ points = {}
+ local shapes = icon_shapes(name, 1, 2, 0.24)
+ assert(#shapes >= 1 and shapes[1].width > 0, name)
+ for _, p in ipairs(points) do
+  assert(p[1] >= 1 - 1e-9 and p[1] <= 1.24 + 1e-9 and p[2] <= 2 + 1e-9 and p[2] >= 1.76 - 1e-9, name)
+ end
+end
+points = {}
+glyph_shape('O12 12 10', 0, 24, 24)
+assert(#points == 5)
+for _, p in ipairs(points) do assert(math.abs(math.sqrt((p[1]-12)^2 + (p[2]-12)^2) - 10) < 1e-9) end
+points = {}
+glyph_shape('M0 0 A12 12 6 180 270', 0, 24, 24)
+assert(math.abs(points[2][1] - 6) < 1e-9 and math.abs(points[#points][2] - 18) < 1e-9)
+`));
+
+test('distance timeline lays out the Mac minimal template from the activity total', () => run(HOST + `
+load_data=function() return {timeline_start_frame=0,pauses={},total_distance_m=20000,duration_us=7200000000} end
+local distance = 5000
+sample_activity=function() return {distance_m=distance} end
+inputs.HeartRateEnabled.value=0; inputs.Widget16Enabled.value=1; inputs.Widget16Metric.value=TIMELINE_METRIC
+inputs.Widget16Position.value={X=0.5,Y=0.5}; inputs.Widget16ShadowEnabled.value=0
+inputs.Widget16TimelineGlow.value=0; inputs.Widget16TimelineElementGlow.value=0
+Process(req)
+local w, h, px, py = 522.08/1280, 68/1280, 14/1280, 10/1280
+local left, content_top = 0.5 - w/2 + px, 0.5*1080/1920 + h/2 - py
+local cw = w - 2*px
+local track_top = content_top - (19/1280*1.35 + 8/1280)
+local track_bottom = track_top - 6/1280
+local shapes, texts = of('shape'), of('text')
+-- Track, fill to 25%, 13 ticks, then a dot marker of 2.2 track heights.
+assert(#shapes == 4, #shapes)
+local track, fill, ticks, marker = shapes[1], shapes[2], shapes[3], shapes[4]
+assert(near(track.shape.l, left) and near(track.shape.w, cw) and near(track.shape.b, track_bottom))
+assert(near(track.color.A, 0.62945) and track.color.R == 1)
+assert(near(fill.shape.w, cw * 0.25) and fill.color.G == 0.82)
+assert(#ticks.shape.rects == 13 and near(ticks.color.A, 0.64*0.52))
+assert(near(ticks.shape.rects[13][1] + 0.5/1920, left + cw) and near(ticks.shape.rects[1][3], track_top + 2.7/1280))
+assert(near(marker.shape.w, 13.2/1280) and near(marker.shape.l + marker.shape.w/2, left + cw*0.25))
+assert(near(marker.shape.b + marker.shape.h/2, track_bottom + 3/1280))
+-- Value top-aligned in its line box; axis labels centered in their bands below the track.
+assert(texts[1].text == '5.00 / 20.00 km' and near(texts[1].x, left) and near(texts[1].y, content_top - 0.8*19/1280))
+local axis = 10/1280
+local baseline = track_bottom - 14.123/1280 - axis*1.3/2 - 0.3*axis
+assert(texts[2].text == 'START' and near(texts[2].x, left) and near(texts[2].y, baseline))
+assert(texts[3].text == 'FINISH' and near(texts[3].x, left + cw - 6*axis))
+assert(texts[4].text == '5.00 km' and texts[5].text == '10.0 km' and texts[6].text == '15.0 km')
+assert(near(texts[5].x, left + cw/2 - 7*axis/2))
+-- A sample without distance keeps the track but shows no progress.
+distance = nil; events = {}; Process(req)
+assert(#of('shape') == 2 and of('text')[1].text == '-- / 20.00 km')
+-- Miles, current-only value, distance axis labels.
+distance = 5000; inputs.Widget16TimelineUnits.value=1; inputs.Widget16TimelineShowTotal.value=0; inputs.Widget16TimelineAxisMode.value=1
+events = {}; Process(req)
+texts = of('text')
+assert(texts[1].text == '3.11 mi' and texts[2].text == '0 mi' and texts[3].text == '12.43 mi' and texts[4].text == '3.11 mi')
+-- Without distance data, progress follows time like the Mac app.
+load_data=function() return {timeline_start_frame=0,pauses={},total_distance_m=0,duration_us=7200000000} end
+activity_elapsed_at_frame=function() return 3600000000 end
+distance = nil; events = {}; Process(req)
+assert(near(of('shape')[2].shape.w, cw * 0.5))
+`));
+
+test('distance timeline glows and shadows the whole widget beneath its parts', () => run(HOST + `
+load_data=function() return {timeline_start_frame=0,pauses={},total_distance_m=20000,duration_us=7200000000} end
+sample_activity=function() return {distance_m=10000} end
+inputs.HeartRateEnabled.value=0; inputs.Widget16Enabled.value=1; inputs.Widget16Metric.value=TIMELINE_METRIC
+inputs.Widget16ShadowThickness.value=3
+Process(req)
+-- Element glow (2 layers), shadow (3 layers), then fill and marker accent glows.
+local blurs = of('blur')
+assert(#blurs == 7, #blurs)
+assert(near(blurs[1].size, 0.1*18/1920*SHADOW_BLUR_SCALE) and near(blurs[2].size, 0.1*34/1920*SHADOW_BLUR_SCALE))
+assert(near(blurs[3].size, 4/1920*SHADOW_BLUR_SCALE))
+assert(near(blurs[6].size, 6/1280*2.8*SHADOW_BLUR_SCALE) and near(blurs[7].size, 6/1280*2.3*SHADOW_BLUR_SCALE))
+-- The first glow silhouette carries the glow color at 0.072 of each part's alpha.
+local first = of('shape')[1]
+assert(first.color.G == 0.82 and near(first.color.A, 0.072 * 0.62945))
+`));
+
+test('slot pages show number or timeline controls for the chosen metric', () => run(HOST + `
+assert(inputs.Widget16TimelineWidth.visible == false and inputs.TimelineWidth.visible == false)
+NotifyChanged(inputs.Widget16Metric, {Value=TIMELINE_METRIC})
+assert(inputs.Widget16TimelineWidth.visible == true and inputs.Widget16TimelineAxisFont.visible == true)
+assert(inputs.Widget16IconEnabled.visible == false and inputs.Widget16ValueSize.visible == false and inputs.Widget16UnitR.visible == false)
+assert(inputs.Widget16ShadowEnabled.visible == nil and inputs.Widget15TimelineWidth.visible == false)
+NotifyChanged(inputs.Widget16Metric, {Value=2})
+assert(inputs.Widget16TimelineWidth.visible == false and inputs.Widget16IconEnabled.visible == true)
+NotifyChanged(inputs.Metric, {Value=TIMELINE_METRIC})
+assert(inputs.ValueSize.visible == false and inputs.ShowLabel.visible == false and inputs.TimelineWidth.visible == true)
+`));
+
+test('the activity snapshot records the furthest distance and the duration', () => run(`
+read_activity=function() return {{elapsed_us=0,distance_m=0},{elapsed_us=10,distance_m=900},{elapsed_us=20}}, {}, 1, nil end
+read_sync=function() return {{start_frame=0}}, 0, nil end
+local snapshot = load_data('a.roactivity', 'b.rosync')
+assert(snapshot.total_distance_m == 900 and snapshot.duration_us == 20)
+`));
+
+test('known template fonts use em sizing without guessing other font units', () => run(`
+assert(em_size({Scale=3200}, 0.02, 'Monaco') == 0.03125)
+assert(math.abs(em_size({Scale=1400}, 0.02, 'PT Mono') - 0.028) < 1e-12)
+assert(em_size({Scale=1400}, 0.02, 'Other') == 0.02)
+`));
+
+test('route geometry preserves north, aspect, gaps, dateline and stationary samples', () => run(`
+local records = {
+ {elapsed_us=0, latitude_deg=0, longitude_deg=179.99, route_segment=0},
+ {elapsed_us=10, latitude_deg=0.01, longitude_deg=-179.99, route_segment=0},
+ {elapsed_us=20},
+ {elapsed_us=30, latitude_deg=0.02, longitude_deg=-179.98, route_segment=1},
+ {elapsed_us=40, latitude_deg=0.03, longitude_deg=-179.97, route_segment=2},
+}
+local route = prepare_route(records)
+assert(route.count==4 and #route.paths==3 and #route.paths[1]==2)
+assert(records[2].route_x > records[1].route_x and records[2].route_y > records[1].route_y)
+assert(math.abs(records[2].route_x-records[1].route_x) < 0.6)
+for _,path in ipairs(route.paths) do for _,p in ipairs(path) do assert(math.abs(p.x)<=0.5 and math.abs(p.y)<=0.5) end end
+local sample = sample_activity({records=records}, 5)
+assert(math.abs(sample.route_x-(records[1].route_x+records[2].route_x)/2)<1e-9)
+assert(sample_activity({records=records}, 15).route_x==nil)
+assert(sample_activity({records=records}, 35).route_x==nil)
+local still={{elapsed_us=0,latitude_deg=90,longitude_deg=0},{elapsed_us=10,latitude_deg=90,longitude_deg=0}}
+local stationary=prepare_route(still)
+assert(stationary.count==2 and still[1].route_x==0 and still[1].route_y==0)
+assert(prepare_route({{latitude_deg=100,longitude_deg=0}}).count==0)
+`));
+
+test('route map renders separate strokes, moving cursor, no GPS and independent slots', () => run(HOST + `
+local function shape()
+ local s={points={},TransformOfShape=function(self) return self end}
+ function s:MoveTo(x,y) table.insert(self.points,{x,y}) end
+ function s:LineTo(x,y) table.insert(self.points,{x,y}) end
+ function s:OutlineOfShape(w) self.width=w; return self end
+ return s
+end
+Shape=shape
+local records={{elapsed_us=0,latitude_deg=0,longitude_deg=0},{elapsed_us=10,latitude_deg=1,longitude_deg=1}}
+local route=prepare_route(records)
+load_data=function() return {route=route,records=records} end
+sample_activity=function() return {route_x=0,route_y=0} end
+inputs.Metric.value=ROUTE_METRIC;inputs.ShadowEnabled.value=0
+Process(req)
+local shapes=of('shape')
+assert(#shapes==3 and #shapes[1].shape.points==2 and #of('text')==0)
+assert(near(shapes[1].shape.width,3/1280))
+inputs.RouteMarker.value=0; events={}; Process(req); assert(#of('shape')==1)
+inputs.RouteEndpoints.value=1; events={}; Process(req); assert(#of('shape')==3)
+load_data=function() return {route={paths={},count=0}} end
+events={};Process(req);assert(of('text')[1].text=='NO GPS')
+inputs.HeartRateEnabled.value=0;inputs.Widget16Enabled.value=1;inputs.Widget16Metric.value=ROUTE_METRIC
+events={};Process(req);assert(of('text')[1].text=='NO GPS')
+NotifyChanged(inputs.Widget16Metric,{Value=ROUTE_METRIC})
+assert(inputs.Widget16RouteSize.visible==true and inputs.Widget16TimelineWidth.visible==false and inputs.Widget16IconEnabled.visible==false)
+NotifyChanged(inputs.Widget16Metric,{Value=1})
+assert(inputs.Widget16RouteSize.visible==false and inputs.Widget16IconEnabled.visible==true)
+`));
+
+test('unit line boxes follow start, center and end alignment independently of icons', () => run(HOST + `
+load_data=function() return {} end
+sample_activity=function() return {distance_m=1000} end
+inputs.Metric.value=2;inputs.ShowLabel.value=0;inputs.IconEnabled.value=0;inputs.ShadowEnabled.value=0
+inputs.ValueSize.value=0.05;inputs.UnitSize.value=0.02;inputs.UnitPosition.value=3
+for alignment=0,2 do
+ inputs.UnitAlignment.value=alignment;events={};Process(req)
+ local texts=of('text');assert(#texts==2)
+ local expected = alignment==0 and 0.024 or (alignment==1 and 0.009 or -0.006)
+ assert(near(texts[2].y-texts[1].y, expected))
+end
 `));

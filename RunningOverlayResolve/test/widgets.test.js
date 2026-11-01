@@ -77,3 +77,17 @@ test('the clock offset comes from the recording timezone at activity start, else
   assert.equal(clockUtcOffsetHours({ ...july, captureTimeZone: 'UTC+05:45' }), 5.75);
   assert.equal(clockUtcOffsetHours({ ...july, captureTimeZone: null }, 'Asia/Shanghai'), 8);
 });
+
+test('distance timeline instances start top center and require the v10 Fuse inputs', () => {
+  const script = dataUpdateScript({ bundleDirectory: '/tmp/synthetic', origin: 0, token: 't',
+    widgets: [{ id: 'hr', metric: 'heartRate' }, { id: 'bar', metric: 'distanceTimeline' }], layoutPreset: 'vertical' });
+  assert.match(script, /id=string\.sub\(\[\[xbar\]\], 2\), metric=string\.sub\(\[\[xdistanceTimeline\]\], 2\), metric_index=17, x=0\.5, y=0\.931/);
+  assert.match(script, /if widget\.metric == "distanceTimeline" then\n\s+assert\(node:GetInput\(prefix \.\. "TimelineWidth"\) ~= nil/);
+  assert.deepEqual(normalizeWidgets([{ id: 'bar', metric: 'distanceTimeline' }]), [{ id: 'bar', metric: 'distanceTimeline' }]);
+});
+
+test('route maps use an appended metric and template position with an installation guard', () => {
+  const script = dataUpdateScript({ bundleDirectory: '/tmp/synthetic', origin: 0, token: 'map', widgets: [{ id: 'route', metric: 'routeMap' }] });
+  assert.match(script, /metric_index=18, x=0\.87902425, y=0\.80523365/);
+  assert.match(script, /prefix \.\. "RouteSize"/);
+});

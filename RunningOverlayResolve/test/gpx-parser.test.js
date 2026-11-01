@@ -19,6 +19,15 @@ test('GPX import preserves microsecond time, segment distance, supported metrics
   assert.equal(activity.startUtcUs, 1_767_254_400_123_456);
   assert.equal(activity.endUtcUs - activity.startUtcUs, 30_000_000);
   assert.deepEqual(activity.records.map((record) => record.elapsedUs), [0, 10_000_000, 20_000_000, 30_000_000]);
+  assert.deepEqual(activity.records.map(({ latitude, longitude, routeSegment }) =>
+    [latitude, longitude, routeSegment]), [[0, 0, 0], [0, 0.0001, 0], [10, 10, 1], [10, 10.0001, 1]]);
+  assert.equal(sampleActivity(activity, 5_000_000).latitude, 0);
+  assert.ok(Math.abs(sampleActivity(activity, 5_000_000).longitude - 0.00005) < 1e-10);
+  assert.equal(sampleActivity(activity, 5_000_000).routeSegment, 0);
+  assert.equal(sampleActivity(activity, 15_000_000).latitude, null);
+  assert.equal(sampleActivity(activity, 15_000_000).longitude, null);
+  assert.equal(sampleActivity(activity, 15_000_000).routeSegment, null);
+  assert.equal(sampleActivity(activity, 20_000_000).routeSegment, 1);
   assert.equal(activity.records[0].heartRateBpm, 120);
   assert.equal(activity.records[1].heartRateBpm, null);
   assert.equal(activity.records[1].powerWatts, 250);

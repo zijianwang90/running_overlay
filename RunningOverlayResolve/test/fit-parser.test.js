@@ -3,6 +3,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { FIT_TO_UNIX_SECONDS, parseFitBuffer } = require('../src/activity/fit-parser');
+const { sampleActivity } = require('../src/domain/activity');
 
 function uint16(value) {
   const buffer = Buffer.alloc(2);
@@ -68,6 +69,50 @@ function syntheticFit() {
   header.write('.FIT', 8, 'ascii');
   return Buffer.concat([header, data]);
 }
+
+test('FIT GPS signed semicircles preserve zero, reject invalid pairs, and split route runs', () => {
+  const start = 1_136_188_800;
+  for (const architecture of ['little', 'big']) {
+    const int32 = (value) => {
+      const bytes = Buffer.alloc(4);
+      if (architecture === 'little') bytes.writeInt32LE(value);
+      else bytes.writeInt32BE(value);
+      return bytes;
+    };
+    const timestamp = (value) => {
+      const bytes = Buffer.alloc(4);
+      if (architecture === 'little') bytes.writeUInt32LE(value);
+      else bytes.writeUInt32BE(value);
+      return bytes;
+    };
+    const fields = [{ number: 253, size: 4, baseType: 0x86 },
+      { number: 0, size: 4, baseType: 0x85 }, { number: 1, size: 4, baseType: 0x85 }];
+    const gpsDefinition = definition(0, 20, fields);
+    if (architecture === 'big') { gpsDefinition[2] = 1; gpsDefinition.writeUInt16BE(20, 3); }
+    const pairs = [[0, 0], [-(2 ** 29), 2 ** 30], [0x7fffffff, 0],
+      [0, 0x7fffffff], [2 ** 30 + 1, 0], [0, -(2 ** 31)], [0, -(2 ** 30)]];
+    const activity = parseFitBuffer(withHeader(Buffer.concat([gpsDefinition,
+      ...pairs.map(([lat, lon], index) => record(0, [timestamp(start + index), int32(lat), int32(lon)])),
+      // A later definition without GPS fields must also end the route run.
+      definition(1, 20, [{ number: 253, size: 4, baseType: 0x86 }]),
+      record(1, [uint32(start + 7)]),
+    ])));
+    assert.equal(activity.records[0].latitude, 0);
+    assert.equal(activity.records[0].longitude, 0);
+    assert.equal(activity.records[1].latitude, -45);
+    assert.equal(activity.records[1].longitude, 90);
+    assert.deepEqual(activity.records.map((entry) => entry.routeSegment), [0, 0, undefined, undefined, undefined, 1, 1, undefined]);
+    for (const index of [2, 3, 4, 7]) {
+      assert.equal(activity.records[index].latitude, undefined);
+      assert.equal(activity.records[index].longitude, undefined);
+    }
+    assert.equal(activity.records[5].longitude, -180);
+    for (const elapsedUs of [1_500_000, 2_500_000, 4_500_000, 6_500_000]) {
+      assert.equal(sampleActivity(activity, elapsedUs).latitude, null);
+      assert.equal(sampleActivity(activity, elapsedUs).longitude, null);
+    }
+  }
+});
 
 test('independent FIT parser produces portable activity records and real-time pauses', () => {
   const activity = parseFitBuffer(syntheticFit(), { activityId: 'synthetic-fit' });

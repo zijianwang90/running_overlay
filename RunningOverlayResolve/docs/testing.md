@@ -1,5 +1,34 @@
 # Running Overlay Resolve Testing
 
+## Numeric Icons, Distance Timeline And Offline Route — 2026-11-01
+
+v10 adds original vector numeric icons, line-box label/unit alignment, the minimal
+distance timeline with distance/time fallback, units, ticks, marker variants, axis
+labels, element/progress glow and shared shadows. Template Monaco/PT Mono sizing
+is corrected using their font units; unknown fonts retain native Fusion sizing.
+Exact SwiftUI/Fusion typography is not an acceptance requirement.
+
+v11 adds GPS retention from FIT signed semicircles and GPX track segments to JSON
+and appended TSV columns, cached aspect-preserving Mercator route geometry,
+antimeridian unwrapping, separate paths across GPS gaps/segments, a time-driven
+position dot and optional endpoint markers. Numeric-only files remain valid.
+Tests execute the actual Lua geometry, slot dispatch, marker visibility, NO GPS,
+Inspector switching and font conversion; parser and bundle tests use authored
+synthetic coordinates only, with no private GPS or map imagery.
+
+Host evidence: Resolve Studio 21.1.1, independent synthetic validation project,
+1920×1080 ProRes 4444 with alpha. v10's 178 inputs survived save/close/reopen;
+numeric icons, corrected white units and timeline rendered. v11's 182 settings
+survived save/close/reopen for both route renders; a fictional five-point loop
+rendered with the cursor at activity 323.25 s and 1223.25 s via Time Offset.
+Frames were visually inspected and the original project restored. Development
+probe Fuses were removed. Captures/exports remain ignored local artifacts.
+
+Remaining checks: live viewer interaction/undo, UHD and non-16:9 render matrix,
+large GPS route playback cost and background-map provider integration. This is
+an offline transparent trace, not full MapKit/template parity. Original glyphs
+and visual output still need focused human review.
+
 ## Real Time And Text Shadow — 2026-10-31
 
 Fuse v9 adds the Real Time metric and the Mac layered text shadow. Node tests run

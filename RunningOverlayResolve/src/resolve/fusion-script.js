@@ -1,7 +1,7 @@
 'use strict';
 const path = require('node:path');
 const { invariant } = require('../domain/validation');
-const { METRICS, normalizeWidgets, normalizeLayout, positionFor } = require('../domain/widgets');
+const { METRICS, TIMELINE_POSITION, ROUTE_POSITION, normalizeWidgets, normalizeLayout, positionFor } = require('../domain/widgets');
 
 function luaString(value) {
   let equals = '';
@@ -37,7 +37,7 @@ function dataUpdateScript({ bundleDirectory, origin, token, initialize = false, 
   const assignments = Object.entries(fields).map(([key, value]) =>
     `{${luaString(key)}, ${typeof value === 'number' ? value : luaString(value)}}`).join(',\n');
   const desired = selected.map((widget, index) => {
-    const position = positionFor(layout, index, selected.length);
+    const position = widget.metric === 'distanceTimeline' ? TIMELINE_POSITION : widget.metric === 'routeMap' ? ROUTE_POSITION : positionFor(layout, index, selected.length);
     return `{id=${luaString(widget.id)}, metric=${luaString(widget.metric)}, metric_index=${METRICS[widget.metric]}, x=${position.x}, y=${position.y}}`;
   }).join(',\n');
   const signature = JSON.stringify([layout, selected.map((widget) => [widget.id, widget.metric])]);
@@ -122,6 +122,12 @@ local ok, message = pcall(function()
     if fresh or not slots[widget.id] then
       if node:GetInput(prefix .. "ClockUtcOffset") ~= nil then update(prefix .. "ClockUtcOffset", ${clockOffset})
       else assert(widget.metric ~= "realTime", "Install the current Numeric Fuse and restart Resolve.") end
+    end
+    if widget.metric == "routeMap" then
+      assert(node:GetInput(prefix .. "RouteSize") ~= nil, "Install the current Numeric Fuse and restart Resolve.")
+    end
+    if widget.metric == "distanceTimeline" then
+      assert(node:GetInput(prefix .. "TimelineWidth") ~= nil, "Install the current Numeric Fuse and restart Resolve.")
     end
     if fresh or previous_layout ~= layout_signature then
       if node:GetInput(metric_key) ~= nil then update(metric_key, widget.metric_index)
