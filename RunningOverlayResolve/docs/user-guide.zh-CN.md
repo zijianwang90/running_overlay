@@ -47,6 +47,29 @@
   完全缺失时显示 **NO ELEVATION**；当前帧缺失海拔时隐藏位置点，数值显示 `-- m`。
 - 目前没有进度截取模式、其他预设、可调平滑强度、坐标轴或统计栏；渐变是近似绘制。
 
+## 天气卡片（v14）
+
+在 Widgets 中添加 **Weather**。若活动文件带有 GPS，面板的 Weather 区域可以按
+**Fetch historical weather** 读取活动开始日期、开始时刻和首个 GPS 点的历史天气。
+网络请求只在点击时由后台进程发出；结果保存在项目设置并写入不可变数据包，
+因此 Resolve 预览和 Deliver 不再联网。活动没有 GPS 时显示占位内容。
+
+- 卡片默认对应 Easy Run / Race 共用的 SimpleCard：左侧天气文字和图标，分隔线，
+  右侧地点、星期、温度和湿度。默认蓝色玻璃渐变、圆角 7.5、白色半透明边框和
+  阴影与模板近似，字体字号按 Fusion 近似匹配。
+- Fusion 中可调整 **Card Width / Height / Padding / Corner Radius / Opacity**；
+  **Temperature / Condition / Location / Secondary Text Size** 与图标大小控制排版。
+- **Show Condition / Condition Icon / Location / Weekday / Humidity** 分项隐藏内容。
+  **Temperature Units** 支持摄氏度/华氏度；**FIT Temperature Override** 在数据包存在
+  天气且当前记录带 FIT 温度时，用记录温度替代缓存温度。
+- **Card Top/Bottom Color** 近似模板的斜向渐变（以水平色带绘制），并可用
+  **Card Border**、**Divider**、**Weather Text Color** 与 **Secondary Text Opacity** 调整。
+- 数据缺失时保留 Mac 的占位行为：天气文字为 Sunny、温度/地点/湿度显示 `--`；
+  不会被伪造的示例天气替代。面板中的 **Location label** 可改显示地名；
+  目前没有自动反向地理编码、天气预报和其他卡片预设。
+- 请求发送首个 GPS 坐标和活动日期到 Open-Meteo；不需要 API Key。更换活动会清除
+  旧的天气缓存；修改地点文字或重新获取天气后需要 **Update overlay** 才会进入渲染。
+
 ## 数值文字样式（Fuse v7）
 
 在 Fusion 中选中 Running Overlay Numeric 节点。每个实例分别提供数值字体、Value Size、颜色和 Alpha，以及以下设置：

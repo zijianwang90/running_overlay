@@ -7,6 +7,7 @@ const WorkflowIntegration = require('./WorkflowIntegration.node');
 const { loadActivityFile } = require('./lib/activity/import-activity');
 const { ConfigurationStore } = require('./lib/workflow/configuration');
 const { WorkflowService } = require('./lib/workflow/service');
+const { fetchActivityWeather } = require('./lib/weather/weather');
 
 const PLUGIN_ID = 'com.runningoverlay.resolve';
 const userDataDirectory = path.join(app.getPath('appData'), 'Running Overlay Resolve');
@@ -50,6 +51,9 @@ function registerHandlers() {
     bundleRoot: path.join(app.getPath('userData'), 'bundles'),
   });
   ipcMain.handle('activity:choose', chooseActivityFile);
+  // Only the historical activity weather request is exposed; the renderer cannot
+  // choose arbitrary URLs. The result is cached in the saved configuration.
+  ipcMain.handle('weather:fetch', (event, payload) => { panelWindow(event); return fetchActivityWeather(payload?.activity); });
   ipcMain.handle('resolve:scanTimeline', (_event, request) => service.exclusive(() => service.scanContext(request?.trackIndex, request?.contextId)));
   ipcMain.handle('configuration:save', (_event, payload) => service.exclusive(() => service.saveConfiguration(payload)));
   ipcMain.handle('overlay:apply', (_event, payload) => service.exclusive(() => service.apply(payload)));

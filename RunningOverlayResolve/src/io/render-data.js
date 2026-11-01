@@ -4,6 +4,9 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { validateActivity } = require('../domain/activity');
 const { invariant } = require('../domain/validation');
+const { weatherRenderValues } = require('../weather/weather');
+
+const WEATHER_NUMERIC_KEYS = Object.freeze(['temperatureC', 'humidity', 'highC', 'lowC', 'windKph', 'feelsLikeC', 'sourceUtcUs']);
 
 const ACTIVITY_COLUMNS = [
   'elapsedUs',
@@ -37,7 +40,7 @@ function encodeCell(value) {
   return String(value);
 }
 
-function serializeActivityRenderData(activity) {
+function serializeActivityRenderData(activity, weather = null) {
   validateActivity(activity);
   const lines = [
     'ROACTIVITY\t1',
@@ -46,6 +49,8 @@ function serializeActivityRenderData(activity) {
     `endUtcUs\t${activity.endUtcUs}`,
     `columns\t${ACTIVITY_COLUMNS.join('\t')}`,
   ];
+  // Cached weather travels with the immutable bundle so rendering stays offline.
+  for (const [key, value] of Object.entries(weatherRenderValues(weather) ?? {})) lines.push(`weather\t${key}\t${value}`);
   for (const record of activity.records) {
     lines.push(`record\t${ACTIVITY_COLUMNS.map((column) => encodeCell(record[ROUTE_COLUMN_FIELDS[column] ?? column])).join('\t')}`);
   }
@@ -113,6 +118,12 @@ function parseActivityRenderData(text) {
   return validateActivity({ schemaVersion: 1, activityId, startUtcUs, endUtcUs, records, annotations });
 }
 
+function parseWeatherRenderData(text) {
+  const rows = parseTabLines(text).filter((line) => line[0] === 'weather');
+  if (rows.length === 0) return null;
+  return Object.fromEntries(rows.map((row) => [row[1], WEATHER_NUMERIC_KEYS.includes(row[1]) ? Number(row[2]) : row[2]]));
+}
+
 function parseSyncRenderData(text) {
   const lines = parseTabLines(text);
   invariant(lines[0]?.[0] === 'ROSYNC' && lines[0]?.[1] === '1', 'unsupported sync render-data version');
@@ -136,7 +147,7 @@ function parseSyncRenderData(text) {
   };
 }
 
-async function writeResolveBundle(outputDirectory, activity, syncMap) {
+async function writeResolveBundle(outputDirectory, activity, syncMap, weather = null) {
   validateActivity(activity);
   invariant(syncMap.activityId === activity.activityId, 'sync map and activity IDs do not match');
   const safeId = activity.activityId.replace(/[^a-zA-Z0-9._-]+/g, '-');
@@ -159,7 +170,7 @@ async function writeResolveBundle(outputDirectory, activity, syncMap) {
     fs.writeFile(path.join(bundleDirectory, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8'),
     fs.writeFile(path.join(bundleDirectory, 'activity.json'), `${JSON.stringify(activity, null, 2)}\n`, 'utf8'),
     fs.writeFile(path.join(bundleDirectory, 'sync-map.json'), `${JSON.stringify(syncMap, null, 2)}\n`, 'utf8'),
-    fs.writeFile(path.join(bundleDirectory, 'activity.roactivity'), serializeActivityRenderData(activity), 'utf8'),
+    fs.writeFile(path.join(bundleDirectory, 'activity.roactivity'), serializeActivityRenderData(activity, weather), 'utf8'),
     fs.writeFile(path.join(bundleDirectory, 'sync.rosync'), serializeSyncRenderData(syncMap), 'utf8'),
   ]);
   return bundleDirectory;
@@ -167,7 +178,9 @@ async function writeResolveBundle(outputDirectory, activity, syncMap) {
 
 module.exports = {
   ACTIVITY_COLUMNS,
+  WEATHER_NUMERIC_KEYS,
   parseActivityRenderData,
+  parseWeatherRenderData,
   parseSyncRenderData,
   serializeActivityRenderData,
   serializeSyncRenderData,

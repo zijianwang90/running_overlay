@@ -5,7 +5,7 @@ const { invariant } = require('./validation');
 const METRICS = Object.freeze({ heartRate: 0, pace: 1, distance: 2, elapsed: 3, elevation: 4, cadence: 5, power: 6, calories: 7,
   avgPace: 8, verticalOscillation: 9, groundContactTime: 10, strideLength: 11,
   verticalRatio: 12, groundContactBalance: 13, temperature: 14, grade: 15, realTime: 16,
-  distanceTimeline: 17, routeMap: 18, zoneEdgeBar: 19, elevationChart: 20 });
+  distanceTimeline: 17, routeMap: 18, zoneEdgeBar: 19, elevationChart: 20, weatherWidget: 21 });
 const LAYOUTS = Object.freeze(['vertical', 'horizontal', 'grid']);
 const DEFAULT_WIDGETS = Object.freeze([{ id: 'numeric-1', metric: 'heartRate' }]);
 
@@ -33,6 +33,9 @@ function normalizeLayout(value) {
 const TIMELINE_POSITION = Object.freeze({ x: 0.5, y: 0.931 });
 const ELEVATION_POSITION = Object.freeze({ x: 0.5, y: 0.0891454352441613 });
 const ROUTE_POSITION = Object.freeze({ x: 0.87902425, y: 0.80523365 });
+// Easy Run and Race share the same SimpleCard weather element. The template
+// stores y from the top; Fusion positions are measured from the bottom.
+const WEATHER_POSITION = Object.freeze({ x: 0.894903626, y: 0.2435767452353421 });
 
 function positionFor(layout, index, count = 4) {
   if (count > 4) return { x: 0.05 + (index % 4) * 0.24, y: 0.86 - Math.floor(index / 4) * 0.22 };
@@ -42,4 +45,4 @@ function positionFor(layout, index, count = 4) {
   return { x: 0.08, y: 0.84 - index * 0.16 };
 }
 
-module.exports = { METRICS, LAYOUTS, TIMELINE_POSITION, ROUTE_POSITION, ELEVATION_POSITION, normalizeWidgets, normalizeLayout, positionFor };
+module.exports = { METRICS, LAYOUTS, TIMELINE_POSITION, ROUTE_POSITION, ELEVATION_POSITION, WEATHER_POSITION, normalizeWidgets, normalizeLayout, positionFor };

@@ -11,6 +11,7 @@ const { parseGpxBuffer } = require('../src/activity/gpx-parser');
 const {
   ACTIVITY_COLUMNS,
   writeResolveBundle,
+  parseWeatherRenderData,
   parseActivityRenderData,
   parseSyncRenderData,
   serializeActivityRenderData,
@@ -90,9 +91,15 @@ test('GPX route coordinates and segments survive JSON and TSV bundle round trips
   const activity = parseGpxBuffer(fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'activity.synthetic.gpx')));
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'resolve-route-'));
   context.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const weather = { source: 'openMeteo', activityId: activity.activityId, sourceUtcUs: activity.startUtcUs,
+    latitude: 0, longitude: 0, condition: 'rain', temperatureC: 18.5, humidity: 72, highC: 20, lowC: 16,
+    windKph: 8, feelsLikeC: 17, location: 'Synthetic', weekday: 'Monday', fetchedAt: '2026-01-01T12:00:00.000Z' };
   const bundle = await writeResolveBundle(directory, activity, { schemaVersion: 1,
     activityId: activity.activityId, timelineId: 'route-test', timelineFingerprint: 'synthetic',
-    timelineStartFrame: 0, timelineEndFrame: 900, frameRate: { numerator: 30, denominator: 1 }, segments: [] });
+    timelineStartFrame: 0, timelineEndFrame: 900, frameRate: { numerator: 30, denominator: 1 }, segments: [] }, weather);
+  const tsvText = fs.readFileSync(path.join(bundle, 'activity.roactivity'), 'utf8');
+  assert.deepEqual(parseWeatherRenderData(tsvText), { condition: 'rain', temperatureC: 18.5, humidity: 72, highC: 20, lowC: 16,
+    windKph: 8, feelsLikeC: 17, location: 'Synthetic', weekday: 'Monday', sourceUtcUs: activity.startUtcUs });
   const json = JSON.parse(fs.readFileSync(path.join(bundle, 'activity.json'), 'utf8'));
   const tsv = parseActivityRenderData(fs.readFileSync(path.join(bundle, 'activity.roactivity'), 'utf8'));
   for (const restored of [json, tsv]) {

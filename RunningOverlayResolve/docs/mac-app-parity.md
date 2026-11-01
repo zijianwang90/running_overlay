@@ -69,7 +69,7 @@ available, but there is no selectable/rendered widget.
 | Temperature | Implemented (v8) | °C/°F; FIT, FIT-else-manual or manual source. Mac pairs FIT on/off with an optional manual value |
 | Grade | Implemented (v8) | FIT field; GPX derived within a segment when both elevations exist |
 | Custom Numeric | Missing | Selectable source, precision, units and formats |
-| Weather Widget | Missing | Weather inputs/cache/assets and full module behavior |
+| Weather Widget | Partial (v14) | Open-Meteo historical fetch cached in the project, offline card render, ten conditions, °C/°F, FIT override, SimpleCard layout; forecasts/presets/geocoding pending |
 | Solid Color | Missing | Shape, fill, geometry, opacity and effects |
 | Icon | Missing | Licensed asset handling and renderer |
 | Text | Missing | Text, typography, layout and effects |
@@ -89,6 +89,22 @@ the testing record for the initial unreproduced crash, successful 4444 alpha
 retry, real v5/v6 comparison and remaining UI validation limits.
 
 **Visual acceptance (2026-11-01).** The user accepts approximate typography across Fusion and SwiftUI. Exact glyph rasterization and pixel matching are not a gate. Numeric icons are original project vectors, not redistributed SF Symbols. Route Map currently draws a transparent offline trace; both Mac templates use a dark MapKit snapshot, so this remains partial parity.
+
+**Weather scope (2026-11-01).** The Resolve panel makes the same keyless
+Open-Meteo archive request as the Mac app, for the activity's start date and
+first GPS point, but queries in UTC and selects the hour containing the real
+activity start instant. This deliberately avoids the Mac fetcher's device-
+timezone hour comparison. The snapshot is validated against the activity
+identity, start instant and first coordinates, saved in panel settings, and
+copied into the immutable activity data; Fusion renders only that snapshot, so
+preview, Deliver and project handoff need no network. The card reproduces the
+shared Easy Run/Race SimpleCard: condition, original vector condition icon,
+divider, location, weekday, temperature and humidity with the template's blue
+glass colors, corner radius, border and 22% shadow. Typography is approximate,
+as accepted above. Location text can be relabelled in the panel; automatic
+reverse geocoding, forecasts, the other card presets, and the Mac's global
+weather preferences remain pending. If the cache is absent the card shows the
+Mac's sunny/`--` placeholder state; a stale cache is dropped rather than shown.
 
 **Race module scope (2026-11-01).** HR bars use explicit inclusive bpm ranges,
 with the first matching range winning overlaps, matching Mac classification.

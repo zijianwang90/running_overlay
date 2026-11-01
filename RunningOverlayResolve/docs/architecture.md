@@ -287,3 +287,20 @@ endpoints, and bucket extrema cap drawing anchors before curve flattening and
 cached band clipping. The cursor uses real activity elapsed time/duration,
 independent of pause compression and distance, and hides for missing current
 elevation. Completely absent profiles show an explicit missing-data label.
+
+## Historical Weather (v14)
+
+The control plane owns network access. A narrow `weather:fetch` IPC action sends
+only the selected activity to the Open-Meteo archive client; the renderer page
+cannot choose URLs. The client validates activity shape and GPS, requests one
+UTC day with `timezone=UTC`, and selects the hour containing the activity start
+instant, falling back to the nearest returned sample. WMO codes map to the ten
+Mac conditions, and the payload records the activity identity, start instant and
+first coordinates so a cache cannot silently belong to another activity.
+
+Saved configurations validate and retain the snapshot only while it matches the
+activity; otherwise it becomes null. Apply writes weather metadata into the
+immutable `.roactivity` TSV alongside records, so Fusion preview and Deliver read
+it once with the activity and never perform network access. The weather card is
+metric 21 in the existing sixteen-slot Fuse; visual controls, units, content
+visibility and the FIT temperature override persist per instance in Fusion.

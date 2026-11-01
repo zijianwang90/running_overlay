@@ -16,7 +16,7 @@ FuRegisterClass("RunningOverlayNumeric", CT_SourceTool, {
 	REG_Source_DepthCtrls = true,
 	REG_Fuse_NoEdit = false,
 	REG_Fuse_NoReload = false,
-	REG_Version = 13,
+	REG_Version = 14,
 })
 
 -- Cache only complete immutable snapshots. Several Numeric Fuse instances can
@@ -49,6 +49,7 @@ end
 local function read_activity(path)
 	local records = {}
 	local annotations = {}
+	local weather = {}
 	local start_utc_us = nil
 	local file = io.open(path, "r")
 	if file == nil then return nil, nil, nil, "Cannot open selected .roactivity file" end
@@ -81,6 +82,9 @@ local function read_activity(path)
 				longitude_deg = tonumber(fields[17]),
 				route_segment = tonumber(fields[18]),
 			})
+		elseif fields[1] == "weather" and fields[2] ~= nil then
+			local numeric_keys = {temperatureC=true,humidity=true,highC=true,lowC=true,windKph=true,feelsLikeC=true,sourceUtcUs=true}
+			weather[fields[2]] = numeric_keys[fields[2]] and tonumber(fields[3]) or fields[3]
 		elseif fields[1] == "annotation" and fields[2] == "timerPaused" then
 			table.insert(annotations, {
 				start_us = tonumber(fields[3]),
@@ -91,7 +95,8 @@ local function read_activity(path)
 	file:close()
 	if #records == 0 then return nil, nil, nil, "Activity has no records" end
 	if start_utc_us == nil then return nil, nil, nil, "Activity data has no start time" end
-	return records, annotations, start_utc_us, nil
+	if next(weather) == nil then weather = nil end
+	return records, annotations, start_utc_us, nil, weather
 end
 
 local function read_sync(path)
@@ -291,7 +296,7 @@ local function load_data(activity_path, sync_path)
 		DataCache[key] = snapshot
 		return snapshot
 	end
-	local records, annotations, start_utc_us, activity_error = read_activity(activity_path)
+	local records, annotations, start_utc_us, activity_error, weather = read_activity(activity_path)
 	if records == nil then
 		snapshot = { error = activity_error }
 		DataCache[key] = snapshot
@@ -309,7 +314,7 @@ local function load_data(activity_path, sync_path)
 		if record.distance_m ~= nil and record.distance_m > total_distance_m then total_distance_m = record.distance_m end
 	end
 	snapshot = { records = records, pauses = annotations, start_utc_us = start_utc_us, segments = segments, timeline_start_frame = timeline_start_frame,
-		total_distance_m = total_distance_m, duration_us = records[#records].elapsed_us, route = prepare_route(records), elevation = prepare_elevation(records) }
+		total_distance_m = total_distance_m, duration_us = records[#records].elapsed_us, route = prepare_route(records), elevation = prepare_elevation(records), weather = weather }
 	DataCache[key] = snapshot
 	return snapshot
 end
@@ -621,11 +626,25 @@ ICON_GLYPHS = {
 	Balance = {stroke = "M12 3.5 L12 20.5 M7.5 20.5 L16.5 20.5 M4 6.5 L20 6.5 M2 14 L4 6.5 L6 14 M18 14 L20 6.5 L22 14 M1.8 14 C2.3 17.2 5.7 17.2 6.2 14 Z M17.8 14 C18.3 17.2 21.7 17.2 22.2 14 Z"},
 	Thermometer = {stroke = "M10 14.65 L10 5 C10 2.3 14 2.3 14 5 L14 14.65 A12 18 3.9 300.8 599.2 Z M12 16 L12 9", fill = "O12 18 2"},
 	["Up-Right Arrow"] = {stroke = "M5 19 L19 5 M9 5 L19 5 L19 15"},
+	-- Weather conditions use the same original 24-unit outline grid as the metric icons.
+	Sunny = {stroke = "O12 12 4.2 M12 2 L12 4.4 M12 19.6 L12 22 M2 12 L4.4 12 M19.6 12 L22 12 M4.9 4.9 L6.6 6.6 M17.4 17.4 L19.1 19.1 M19.1 4.9 L17.4 6.6 M6.6 17.4 L4.9 19.1"},
+	["Clear night"] = {stroke = "M17.4 3.6 C12.8 4.6 9.4 8.6 9.4 13.4 C9.4 17.5 12 21.1 15.8 22 C14.4 22.6 12.9 22.9 11.3 22.6 C6.4 21.8 2.9 17.2 3.7 12.3 C4.5 7.4 9.1 3.9 14 4.7 C15.2 4.9 16.4 5.3 17.4 5.9 Z"},
+	["Partly cloudy"] = {stroke = "O8.5 8 3.1 M8.5 2.4 L8.5 4 M2.4 8 L4 8 M4.2 4.2 L5.4 5.4 M4.2 11.8 L5.4 10.6 M12.6 4.2 L11.6 5.4 M12.8 8 L14.4 8 M8 20 C5.6 20 3.8 18.4 3.8 16.4 C3.8 14.4 5.5 12.8 7.5 12.8 C8 10.5 10 9 12.3 9 C14.9 9 17 11 17.3 13.5 C19.2 13.6 20.7 15.1 20.7 16.9 C20.7 18.7 19.2 20 17.4 20 Z"},
+	Cloudy = {stroke = "M7 18 C4.4 18 2.4 16.1 2.4 13.8 C2.4 11.6 4.3 9.8 6.6 9.8 C7.2 7 9.6 5.1 12.3 5.1 C15.2 5.1 17.6 7.3 17.9 10.1 C20.1 10.3 21.7 12 21.7 14.1 C21.7 16.3 19.8 18 17.4 18 Z"},
+	Fog = {stroke = "M7 15 C4.4 15 2.4 13.2 2.4 11 C2.4 8.8 4.3 7 6.6 7 C7.2 4.2 9.6 2.4 12.3 2.4 C15.2 2.4 17.6 4.5 17.9 7.2 C20.1 7.4 21.7 9.1 21.7 11.2 C21.7 13.4 19.8 15 17.4 15 Z M3 18.5 L14 18.5 M16.5 18.5 L21 18.5 M5 21.5 L21 21.5"},
+	Rain = {stroke = "M7 15 C4.4 15 2.4 13.2 2.4 11 C2.4 8.8 4.3 7 6.6 7 C7.2 4.2 9.6 2.4 12.3 2.4 C15.2 2.4 17.6 4.5 17.9 7.2 C20.1 7.4 21.7 9.1 21.7 11.2 C21.7 13.4 19.8 15 17.4 15 Z M8 17.5 L6.5 21.5 M12.5 17.5 L11 21.5 M17 17.5 L15.5 21.5"},
+	["Heavy rain"] = {stroke = "M7 15 C4.4 15 2.4 13.2 2.4 11 C2.4 8.8 4.3 7 6.6 7 C7.2 4.2 9.6 2.4 12.3 2.4 C15.2 2.4 17.6 4.5 17.9 7.2 C20.1 7.4 21.7 9.1 21.7 11.2 C21.7 13.4 19.8 15 17.4 15 Z M6.8 17 L4.9 22 M11 17 L9.1 22 M15.2 17 L13.3 22 M19.4 17 L17.5 22", weight = 2.6},
+	Snow = {stroke = "M7 15 C4.4 15 2.4 13.2 2.4 11 C2.4 8.8 4.3 7 6.6 7 C7.2 4.2 9.6 2.4 12.3 2.4 C15.2 2.4 17.6 4.5 17.9 7.2 C20.1 7.4 21.7 9.1 21.7 11.2 C21.7 13.4 19.8 15 17.4 15 Z M8 17.6 L8 22 M6.1 18.7 L9.9 20.9 M9.9 18.7 L6.1 20.9 M16.5 17.6 L16.5 21 M15.1 18.4 L17.9 19.9 M17.9 18.4 L15.1 19.9"},
+	Thunder = {stroke = "M7 15 C4.4 15 2.4 13.2 2.4 11 C2.4 8.8 4.3 7 6.6 7 C7.2 4.2 9.6 2.4 12.3 2.4 C15.2 2.4 17.6 4.5 17.9 7.2 C20.1 7.4 21.7 9.1 21.7 11.2 C21.7 13.4 19.8 15 17.4 15 Z M13.6 16.2 L9.2 21.5 L12.2 21.5 L10.4 24"},
+	Wind = {stroke = "M2.8 8 L14.2 8 C16.3 8 18 6.4 18 4.4 C18 2.5 16.5 1.2 14.8 1.2 C13.3 1.2 12.1 2.2 11.7 3.6 M2.8 13 L19.3 13 C20.9 13 22 14.2 22 15.6 C22 17.1 20.8 18.3 19.3 18.3 C18.1 18.3 17 17.6 16.6 16.5 M2.8 18 L8.4 18"},
 }
 TIMELINE_METRIC = 17
 ROUTE_METRIC = 18
 ZONE_METRIC = 19
 ELEVATION_METRIC = 20
+WEATHER_METRIC = 21
+WEATHER_LABELS = {sunny = "Sunny", clearNight = "Clear night", partlyCloudy = "Partly cloudy", cloudy = "Cloudy",
+	fog = "Fog", rain = "Rain", heavyRain = "Heavy rain", snow = "Snow", thunder = "Thunder", wind = "Wind"}
 -- Mac defaultNumericIconSystemName, keyed by metric index.
 DEFAULT_ICONS = {[0] = "Heart", "Speedometer", "Ruler", "Clock", "Mountains", "Runner", "Bolt", "Flame", "Speedometer",
 	"Up-Down Arrow", "Timer", "Left-Right Arrow", "Percent", "Balance", "Thermometer", "Up-Right Arrow", "Watch"}
@@ -912,7 +931,7 @@ function Create()
 			{CCS_AddString = "Vertical Ratio"}, {CCS_AddString = "GCT Balance"},
 			{CCS_AddString = "Temperature"}, {CCS_AddString = "Grade"},
 			{CCS_AddString = "Real Time"}, {CCS_AddString = "Distance Timeline"},
-		{CCS_AddString = "Route Map"}, {CCS_AddString = "HR Zone Bar"}, {CCS_AddString = "Elevation Chart"},
+		{CCS_AddString = "Route Map"}, {CCS_AddString = "HR Zone Bar"}, {CCS_AddString = "Elevation Chart"}, {CCS_AddString = "Weather"},
 		})
 	end
 	InMetric = metric_input("Metric", "Metric", 0)
@@ -1178,14 +1197,50 @@ function Create()
 			show_value=check("Elevation Value (m)","ShowValue",0),
 		}
 	end
+	local function weather_options(key, group)
+		local function number(label, suffix, default, min, max) return number_in(group, label, key .. "Weather" .. suffix, default, min, max) end
+		local function check(label, suffix, default) return check_in(group, label, key .. "Weather" .. suffix, default) end
+		local function combo(label, suffix, choices, default) return combo_in(group, label, key .. "Weather" .. suffix, choices, default) end
+		return {
+			width = number("Card Width", "Width", 225 / 1280, 0.05, 0.6),
+			height = number("Card Height", "Height", 82.5 / 1280, 0.02, 0.4),
+			padding = number("Card Padding", "Padding", 7.5 / 1280, 0, 0.05),
+			corner = number("Card Corner Radius", "Corner", 7.5 / 1280, 0, 0.05),
+			opacity = number("Card Opacity", "Opacity", 0.92, 0, 1),
+			temperature_size = number("Temperature Size", "TempSize", 24.75 / 1280, 0.004, 0.08),
+			condition_size = number("Condition Size", "ConditionSize", 19.5 / 1280, 0.004, 0.05),
+			location_size = number("Location Size", "LocationSize", 14.25 / 1280, 0.003, 0.04),
+			secondary_size = number("Secondary Text Size", "SecondarySize", 11.25 / 1280, 0.003, 0.04),
+			icon_size = number("Condition Icon Size", "IconSize", 43.5 / 1280, 0.005, 0.15),
+			show_condition = check("Show Condition", "ShowCondition", 1),
+			show_icon = check("Show Condition Icon", "ShowIcon", 1),
+			show_location = check("Show Location", "ShowLocation", 1),
+			show_weekday = check("Show Weekday", "ShowWeekday", 1),
+			show_humidity = check("Show Humidity", "ShowHumidity", 1),
+			units = combo("Temperature Units", "Units", {"Celsius", "Fahrenheit"}, 0),
+			fit_override = check("FIT Temperature Override", "FitOverride", 0),
+			text = color_in(group, "Weather Text Color", key .. "WeatherText", {1, 1, 1, 1}, 25, true),
+			secondary_opacity = number("Secondary Text Opacity", "SecondaryOpacity", 0.72, 0, 1),
+			background = check("Card Background", "Background", 1),
+			top_color = color_in(group, "Card Top Color", key .. "WeatherTop", {0.38, 0.68, 1}, 26, false),
+			bottom_color = color_in(group, "Card Bottom Color", key .. "WeatherBottom", {0.22, 0.50, 0.92}, 27, false),
+			border = check("Card Border", "Border", 1),
+			border_color = color_in(group, "Card Border Color", key .. "WeatherBorder", {1, 1, 1}, 28, false),
+			border_opacity = number("Card Border Opacity", "BorderOpacity", 0.18, 0, 1),
+			divider = check("Divider", "Divider", 1),
+			divider_color = color_in(group, "Divider Color", key .. "WeatherDivider", {1, 1, 1}, 29, false),
+			divider_opacity = number("Divider Opacity", "DividerOpacity", 0.34, 0, 1),
+		}
+	end
 	VisibilityGroups = {}
-	local primary_numeric, primary_timeline, primary_route, primary_zone, primary_elevation = {InSize, InShowLabel}, {}, {}, {}, {}
+	local primary_numeric, primary_timeline, primary_route, primary_zone, primary_elevation, primary_weather = {InSize, InShowLabel}, {}, {}, {}, {}, {}
 	PrimaryTextOptions = text_options("", primary_numeric)
 	PrimaryTimelineOptions = timeline_options("", primary_timeline)
 	PrimaryRouteOptions = route_options("", primary_route)
 	PrimaryZoneOptions = zone_options("", primary_zone)
 	PrimaryElevationOptions = elevation_options("", primary_elevation)
-	VisibilityGroups[InMetric] = {numeric = primary_numeric, timeline = primary_timeline, route = primary_route, zone = primary_zone, elevation = primary_elevation}
+	PrimaryWeatherOptions = weather_options("", primary_weather)
+	VisibilityGroups[InMetric] = {numeric = primary_numeric, timeline = primary_timeline, route = primary_route, zone = primary_zone, elevation = primary_elevation, weather = primary_weather}
 	WidgetInputs = {}
 	local definitions = {
 		{key = "Pace", label = "Pace", metric = 1},
@@ -1197,7 +1252,7 @@ function Create()
 	end
 	for slot, definition in ipairs(definitions) do
 		local key = definition.key
-		local numeric, timeline, route, zone, elevation = {}, {}, {}, {}, {}
+		local numeric, timeline, route, zone, elevation, weather = {}, {}, {}, {}, {}, {}
 		self:AddControlPage(definition.label)
 		local controls = {}
 		controls.metric = metric_input("Metric", key .. "Metric", definition.metric)
@@ -1232,7 +1287,8 @@ function Create()
 		controls.route = route_options(key, route)
 		controls.zone = zone_options(key, zone)
 		controls.elevation = elevation_options(key, elevation)
-		VisibilityGroups[controls.metric] = {numeric = numeric, timeline = timeline, route = route, zone = zone, elevation = elevation}
+		controls.weather = weather_options(key, weather)
+		VisibilityGroups[controls.metric] = {numeric = numeric, timeline = timeline, route = route, zone = zone, elevation = elevation, weather = weather}
 		WidgetInputs[slot] = controls
 	end
 	-- No default metric is a timeline; NotifyChanged reveals them per slot.
@@ -1241,6 +1297,7 @@ function Create()
 		for _, input in ipairs(groups.route) do input:SetAttrs({IC_Visible = false}) end
 		for _, input in ipairs(groups.zone) do input:SetAttrs({IC_Visible = false}) end
 		for _, input in ipairs(groups.elevation) do input:SetAttrs({IC_Visible = false}) end
+		for _, input in ipairs(groups.weather) do input:SetAttrs({IC_Visible = false}) end
 	end
 end
 
@@ -1255,7 +1312,7 @@ function NotifyChanged(input, parameter, time)
 		DataCache = {}
 	elseif VisibilityGroups ~= nil and VisibilityGroups[input] ~= nil then
 		local metric = parameter ~= nil and math.floor((parameter.Value or 0) + 0.5) or 0
-		local kind = ({[TIMELINE_METRIC] = "timeline", [ROUTE_METRIC] = "route", [ZONE_METRIC] = "zone", [ELEVATION_METRIC] = "elevation"})[metric] or "numeric"
+		local kind = ({[TIMELINE_METRIC] = "timeline", [ROUTE_METRIC] = "route", [ZONE_METRIC] = "zone", [ELEVATION_METRIC] = "elevation", [WEATHER_METRIC] = "weather"})[metric] or "numeric"
 		for name, controls in pairs(VisibilityGroups[input]) do
 			for _, control in ipairs(controls) do control:SetAttrs({IC_Visible = name == kind}) end
 		end
@@ -1736,7 +1793,104 @@ function Process(req)
 			if shadow then draw_shadow(output,parts,shadow,quality) end
 			for _,p in ipairs(parts) do draw_part(output,p,p.color,0,0,quality) end
 		end
-		local function render_slot(metric, position, size, show_label, widget_font, widget_style, color, options, timeline, route, zone, elevation)
+		local function render_weather(position, widget_font, widget_style, w, options)
+			local weather = data.weather
+			local pixel = 1 / output.Width
+			local width, height = math.max(value_of(w.width), 2 * pixel), math.max(value_of(w.height), 2 * pixel)
+			local padding = math.min(math.max(value_of(w.padding), 0), width * 0.2, height * 0.3)
+			local corner = math.min(math.max(value_of(w.corner), 0), height / 2)
+			local left, bottom = position.X - width / 2, position.Y * aspect - height / 2
+			local opacity = math.min(math.max(value_of(w.opacity), 0), 1)
+			local text_color = color_of(w.text)
+			local parts = {}
+			local function part(shape, color, sampling) table.insert(parts, {shapes = {shape}, color = color, sampling = sampling}) end
+			-- Approximate the template's diagonal blue glass with horizontal bands.
+			-- Each band insets to the rounded corner so the card edge stays clean.
+			if value_of(w.background) > 0.5 and opacity > 0 then
+				local top, lower = color_of(w.top_color), color_of(w.bottom_color)
+				for band = 1, 16 do
+					local y0, y1 = bottom + height * (band - 1) / 16, bottom + height * band / 16
+					local f = (band - 0.5) / 16
+					local inset = 0
+					if corner > 0 then
+						local depth = math.min(y0, height - y1)
+						if depth < corner then inset = corner - math.sqrt(math.max(corner * corner - (corner - depth) * (corner - depth), 0)) end
+					end
+					local band_shape = Shape()
+					band_shape:AddRectangle(left + inset, left + width - inset, y0, y1, 0, 8)
+					part(band_shape, Pixel{R = lower.R + (top.R - lower.R) * f, G = lower.G + (top.G - lower.G) * f,
+						B = lower.B + (top.B - lower.B) * f, A = opacity}, 1)
+				end
+			end
+			if value_of(w.border) > 0.5 then
+				local border = color_of(w.border_color, value_of(w.border_opacity) * opacity)
+				part(capsule(left, bottom, width, height, corner):OutlineOfShape(math.max(pixel, 0.5 * pixel), "OLT_Solid", "OJT_Round", 8, "SWM_Normal", 8), border)
+			end
+			local inner_left, inner_bottom = left + padding, bottom + padding
+			local inner_width, inner_height = width - 2 * padding, height - 2 * padding
+			local left_width = inner_width * 0.4
+			local right_left = inner_left + left_width + padding
+			local right_width = inner_width - left_width - padding
+			local condition = weather and weather.condition or "sunny"
+			local label = WEATHER_LABELS[condition] or WEATHER_LABELS.sunny
+			local icon_name = WEATHER_LABELS[condition] and condition or "sunny"
+			if icon_name == "clearNight" then icon_name = "Clear night"
+			elseif icon_name == "partlyCloudy" then icon_name = "Partly cloudy"
+			elseif icon_name == "heavyRain" then icon_name = "Heavy rain"
+			else icon_name = label end
+			local function fit_size(value, max_size, max_width)
+				if value == "" or max_width <= 0 then return max_size end
+				local measured = text_width(widget_font, widget_style, value, max_size)
+				if measured <= max_width then return max_size end
+				return math.max(max_size * 0.55, max_size * max_width / measured)
+			end
+			if value_of(w.show_condition) > 0.5 then
+				local size = fit_size(label, value_of(w.condition_size), left_width)
+				local ascent, descent = font_extents(widget_font, widget_style, size)
+				local width_of = text_width(widget_font, widget_style, label, size)
+				table.insert(parts, {font = widget_font, style = widget_style, text = label, size = size,
+					x = inner_left + (left_width - width_of) / 2, y = inner_bottom + inner_height - ascent, color = text_color})
+			end
+			if value_of(w.show_icon) > 0.5 and ICON_GLYPHS[icon_name] ~= nil then
+				local icon_size = math.min(value_of(w.icon_size), left_width, inner_height)
+				table.insert(parts, {shapes = icon_shapes(icon_name, inner_left + (left_width - icon_size) / 2, inner_bottom + icon_size * 0.45, icon_size), color = text_color})
+			end
+			if value_of(w.divider) > 0.5 then
+				local divider_shape = Shape()
+				divider_shape:AddRectangle(right_left - padding / 2 - 0.5 * pixel, right_left - padding / 2 + 0.5 * pixel,
+					inner_bottom, inner_bottom + inner_height, 0, 8)
+				part(divider_shape, color_of(w.divider_color, value_of(w.divider_opacity) * opacity))
+			end
+			local temperature = weather and weather.temperatureC or nil
+			if temperature ~= nil and value_of(w.fit_override) > 0.5 and sample.temperature_c ~= nil then temperature = sample.temperature_c end
+			local units = math.floor(value_of(w.units) + 0.5)
+			local temperature_text = "--"
+			if temperature ~= nil and weather ~= nil then
+				if units == 1 then temperature_text = string.format("%d", math.floor(temperature * 9 / 5 + 32 + 0.5)) .. "\194\176"
+				else temperature_text = string.format("%d", math.floor(temperature + 0.5)) .. "\194\176" end
+			end
+			local secondary = Pixel{R = text_color.R, G = text_color.G, B = text_color.B, A = opacity * value_of(w.secondary_opacity)}
+			local rows = {}
+			if value_of(w.show_location) > 0.5 then table.insert(rows, {text = weather and weather.location or "--", size = value_of(w.location_size), color = secondary}) end
+			if value_of(w.show_weekday) > 0.5 then table.insert(rows, {text = weather and weather.weekday or "--", size = value_of(w.secondary_size), color = secondary}) end
+			table.insert(rows, {text = temperature_text, size = value_of(w.temperature_size), color = text_color})
+			if value_of(w.show_humidity) > 0.5 then
+				local humidity = weather and weather.humidity
+				table.insert(rows, {text = humidity ~= nil and string.format("%d%% RH", humidity) or "-- RH", size = value_of(w.secondary_size), color = secondary})
+			end
+			local cursor = inner_bottom + inner_height
+			for _, row in ipairs(rows) do
+				local size = fit_size(row.text, row.size, right_width)
+				local ascent, descent = font_extents(widget_font, widget_style, size)
+				cursor = cursor - (ascent + descent) - 1.5 / 1280
+				table.insert(parts, {font = widget_font, style = widget_style, text = row.text, size = size,
+					x = right_left, y = cursor + descent, color = row.color})
+			end
+			local shadow = shadow_of(options)
+			if shadow ~= nil then draw_shadow(output, parts, shadow, quality) end
+			for _, item in ipairs(parts) do draw_part(output, item, item.color, 0, 0, quality) end
+		end
+		local function render_slot(metric, position, size, show_label, widget_font, widget_style, color, options, timeline, route, zone, elevation, weather)
 			if metric == TIMELINE_METRIC then
 				render_timeline(position, widget_font, widget_style, color, timeline, options)
 			elseif metric == ROUTE_METRIC then
@@ -1745,6 +1899,8 @@ function Process(req)
 				render_zone(position, widget_font, widget_style, zone, options)
 			elseif metric == ELEVATION_METRIC then
 				render_elevation(position, widget_font, widget_style, elevation, options)
+			elseif metric == WEATHER_METRIC then
+				render_weather(position, widget_font, widget_style, weather, options)
 			else
 				render_widget(metric, position, size, show_label, widget_font, widget_style, color, options)
 			end
@@ -1753,13 +1909,13 @@ function Process(req)
 			render_slot(math.floor(InMetric:GetValue(req).Value + 0.5), InPosition:GetValue(req), InSize:GetValue(req).Value,
 				InShowLabel:GetValue(req).Value > 0.5, font, style,
 				Pixel{R = InR:GetValue(req).Value, G = InG:GetValue(req).Value,
-					B = InB:GetValue(req).Value, A = InA:GetValue(req).Value}, PrimaryTextOptions, PrimaryTimelineOptions, PrimaryRouteOptions, PrimaryZoneOptions, PrimaryElevationOptions)
+					B = InB:GetValue(req).Value, A = InA:GetValue(req).Value}, PrimaryTextOptions, PrimaryTimelineOptions, PrimaryRouteOptions, PrimaryZoneOptions, PrimaryElevationOptions, PrimaryWeatherOptions)
 		end
 		for _, controls in ipairs(WidgetInputs) do
 			if controls.enabled:GetValue(req).Value > 0.5 then
 				local widget_font, widget_style = font_of(controls.font, controls.font_style)
 				render_slot(math.floor(controls.metric:GetValue(req).Value + 0.5), controls.position:GetValue(req), controls.size:GetValue(req).Value,
-					controls.label:GetValue(req).Value > 0.5, widget_font, widget_style, color_of(controls.color), controls.text, controls.timeline, controls.route, controls.zone, controls.elevation)
+					controls.label:GetValue(req).Value > 0.5, widget_font, widget_style, color_of(controls.color), controls.text, controls.timeline, controls.route, controls.zone, controls.elevation, controls.weather)
 			end
 		end
 	elseif diagnostics_enabled then

@@ -89,6 +89,7 @@ The numeric glyph paths in
 `RunningOverlayResolve/fusion/Fuses/RunningOverlayNumeric.fuse` were authored for
 this project on a 24-unit grid and are distributed under the repository MIT
 license. They are original line/Bezier shapes, not extracted SF Symbols artwork.
-No Apple font files, symbol assets, map tiles or third-party icon packs are
+The weather condition glyphs use the same original 24-unit grid and are not
+Apple weather artwork. No Apple font files, symbol assets, map tiles or third-party icon packs are
 bundled. Resolve uses installed fonts at runtime. Synthetic route coordinates
 in tests are fictional authored fixtures and do not describe a user's activity.

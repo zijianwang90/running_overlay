@@ -18,7 +18,7 @@ function clockUtcOffsetHours(configuration, systemTimeZone = Intl.DateTimeFormat
   return offsetAt(Math.floor(configuration.activity.startUtcUs / 1000), zone) / 60;
 }
 
-const editable = (value) => JSON.stringify([value.referenceVideoTrackIndex, value.activity, value.confirmedCaptureUtcByMediaId, value.cameraAnchors, value.widgets, value.layoutPreset, value.captureTimeZone, value.captureTimeZonesByMediaId]);
+const editable = (value) => JSON.stringify([value.referenceVideoTrackIndex, value.activity, value.weather, value.confirmedCaptureUtcByMediaId, value.cameraAnchors, value.widgets, value.layoutPreset, value.captureTimeZone, value.captureTimeZonesByMediaId]);
 class WorkflowService {
   constructor({ getResolve, store, bundleRoot, scan = scanCurrentTimeline, update = updateManagedOverlay, inspectManaged = managedOverlayIsCurrent,
     pieces = offsetPieces, offset = overlayTimeOffset }) {
@@ -143,7 +143,7 @@ class WorkflowService {
     invariant(syncMap.segments.length > 0, 'No safe sync segments were found.');
     const revisionRoot = path.join(this.bundleRoot, configuration.contextId, crypto.randomUUID());
     await fs.mkdir(revisionRoot, { recursive: true, mode: 0o700 });
-    const bundleDirectory = await writeResolveBundle(revisionRoot, configuration.activity, syncMap);
+    const bundleDirectory = await writeResolveBundle(revisionRoot, configuration.activity, syncMap, configuration.weather);
     // Data files are immutable: old instances keep their complete revision until the input switch.
     const result = await this.update(await this.getResolve(), { contextId: configuration.contextId, syncMap, bundleDirectory, expectedItemId: configuration.managedItemId, referenceVideoTrackIndex: configuration.referenceVideoTrackIndex, widgets: configuration.widgets, layoutPreset: configuration.layoutPreset, initialTimeOffsetSeconds: configuration.draftTimeOffsetMs / 1000, clockUtcOffsetHours: clockUtcOffsetHours(configuration) });
     const saved = await this.store.save({ ...configuration, ...result, bundleDirectory, lastAppliedFingerprint: snapshot.fingerprint });

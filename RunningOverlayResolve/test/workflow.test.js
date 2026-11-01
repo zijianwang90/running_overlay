@@ -127,3 +127,23 @@ test('rendering pauses scans and rejects apply before saving or changing the tim
   const resumed = await service.scanContext();
   assert.equal(resumed.stale, true); assert.equal(scans, 1); assert.equal(inspections, 1);
 });
+
+test('weather cache persists with the activity and is dropped when it no longer matches', async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'ro-weather-settings-')); t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const store = new ConfigurationStore(root);
+  const located = structuredClone(activity);
+  located.records[0] = { ...located.records[0], latitude: 43.653226, longitude: -79.383184, routeSegment: 0 };
+  const weather = { source: 'openMeteo', activityId: located.activityId, sourceUtcUs: located.startUtcUs,
+    latitude: 43.653226, longitude: -79.383184, condition: 'rain', temperatureC: 18.5, humidity: 72,
+    highC: 20, lowC: 16, windKph: 8, feelsLikeC: 17, location: 'Toronto', weekday: 'Thursday',
+    fetchedAt: '2026-01-01T12:00:00.000Z' };
+  const saved = await store.save({ schemaVersion: 1, contextId: id, referenceVideoTrackIndex: 1, activity: located, weather });
+  assert.deepEqual(saved.weather, weather);
+  assert.deepEqual((await new ConfigurationStore(root).load(id)).weather, weather);
+  const edited = await store.save({ ...saved, weather: { ...weather, location: 'Downtown' } });
+  assert.equal(edited.weather.location, 'Downtown');
+  // A cache from another activity or start instant is never shown as current.
+  assert.equal((await store.save({ ...saved, activity: { ...located, activityId: 'other' } })).weather, null);
+  assert.equal((await store.save({ ...saved, activity: { ...located, startUtcUs: located.startUtcUs + 1_000_000, endUtcUs: located.endUtcUs + 1_000_000 } })).weather, null);
+  assert.throws(() => require('../src/workflow/configuration').validateConfiguration({ ...saved, weather: { ...weather, condition: 'hail' } }), /condition/);
+});

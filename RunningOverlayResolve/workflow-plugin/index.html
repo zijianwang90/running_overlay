@@ -99,6 +99,21 @@
         </div>
         <p class="note">Changing metrics or layout resets preset positions on the next update. Size, font, color and exact position stay in Fusion.</p>
       </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Weather</h2>
+          <span id="weather-badge" class="badge muted">Not fetched</span>
+        </div>
+        <p id="weather-summary" class="note">Historical weather for the activity's start hour. It is saved with the project and rendered without network access.</p>
+        <div class="zone-row">
+          <label for="weather-location">Location label</label>
+          <input id="weather-location" type="text" maxlength="120" placeholder="Coordinates by default">
+        </div>
+        <div class="weather-actions">
+          <button id="fetch-weather" class="secondary" type="button">Fetch historical weather</button>
+        </div>
+      </section>
     </main>
 
     <footer class="action-bar">

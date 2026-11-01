@@ -1,5 +1,28 @@
 # Running Overlay Resolve Testing
 
+## Historical Weather — 2026-11-01
+
+v14 adds the Easy Run/Race weather card and a control-plane weather cache.
+`src/weather/weather.js` uses injected fetch/clock so tests perform no network.
+Coverage: one UTC-day archive request with the activity start date and first
+GPS point, exact start-hour selection, nearest-sample fallback, full WMO mapping,
+required/non-null hourly data, numeric ranges, missing GPS, activity/start/GPS
+cache binding, TSV-safe metadata, and stale-cache rejection. Bundle tests assert
+`weather` rows survive activity TSV round trips. Configuration tests assert
+weather persists, accepts a relabelled location, drops when the activity
+identity/start changes, and rejects invalid conditions. Renderer tests execute
+the real Fuse: cached condition, °C/°F conversion, FIT override with and without
+the cache, placeholder card, hidden content rows, slot 16 and Inspector group
+switching, plus `read_activity` parsing weather metadata. Host evidence: installed v14
+(after saving and restarting Resolve), opened the independent synthetic
+validation project, pointed the Fuse at a copied bundle with synthetic weather
+metadata, and rendered 1920x1080 ProRes 4444 alpha. The card showed Rain, New
+York, Thursday, 19° and 72% RH with white text, vector rain icon, blue card,
+divider, border and 22% shadow. All 188 configured inputs survived save, close
+and reopen; the original project was restored. Real activity/API fidelity,
+UHD/non-16:9 output and the remaining card presets still need validation and
+human visual review.
+
 ## Race HR Zone Bar And Elevation Chart — 2026-11-01
 
 v12 adds editable five/six HR ranges, inclusive first-match classification, edge

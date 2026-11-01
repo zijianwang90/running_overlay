@@ -7,6 +7,7 @@ const { invariant } = require('../domain/validation');
 const { buildCameraClockModel } = require('../sync/clock-model');
 const { normalizeWidgets, normalizeLayout } = require('../domain/widgets');
 const { validateTimeZone } = require('../sync/capture-time');
+const { validateWeather, isWeatherCurrent } = require('../weather/weather');
 
 function parseConfirmedDate(value) {
   invariant(typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/i.test(value), 'Capture times and anchors must include a timezone (Z or ±HH:mm).');
@@ -44,8 +45,13 @@ function validateConfiguration(value) {
   const draftTimeOffsetMs = value.draftTimeOffsetMs ?? 0;
   invariant(Number.isSafeInteger(draftTimeOffsetMs) && Math.abs(draftTimeOffsetMs) <= 86_400_000, 'Data time offset must be within one day.');
   invariant(value.activityLabel == null || (typeof value.activityLabel === 'string' && value.activityLabel.length <= 255), 'Invalid activity name.');
+  const activity = value.activity ? validateActivity(value.activity) : null;
+  // Weather is a cache: data bound to another activity or location is dropped
+  // rather than blocking saved settings.
+  const weather = activity && value.weather && isWeatherCurrent(value.weather, activity) ? validateWeather(value.weather, activity) : null;
   return { schemaVersion: 1, contextId: value.contextId, referenceVideoTrackIndex: value.referenceVideoTrackIndex,
-    activity: value.activity ? validateActivity(value.activity) : null,
+    activity,
+    weather,
     activityLabel: value.activity && value.activityLabel ? value.activityLabel : null,
     // Offset used when the overlay is created. Afterwards the Fusion renderer is
     // authoritative and this value only mirrors its last known setting.

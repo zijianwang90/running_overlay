@@ -24,6 +24,8 @@ test('widget choices and preset positions are deterministic and reject duplicate
   assert.deepEqual(widgets.map((widget) => widget.metric), ['heartRate', 'pace', 'distance', 'elapsed']);
   assert.deepEqual(positionFor('grid', 2), { x: 0.08, y: 0.62 });
   assert.deepEqual(positionFor('horizontal', 3), { x: 0.77, y: 0.84 });
+  assert.deepEqual(require('../src/domain/widgets').WEATHER_POSITION, { x: 0.894903626, y: 0.2435767452353421 });
+  assert.equal(normalizeWidgets([{ id: 'weather-1', metric: 'weatherWidget' }])[0].metric, 'weatherWidget');
   assert.throws(() => normalizeWidgets([]), /one and sixteen/);
   assert.equal(normalizeWidgets([{ id: 'a', metric: 'pace' }, { id: 'b', metric: 'pace' }]).length, 2);
   assert.throws(() => normalizeWidgets([{ id: 'a', metric: 'pace' }, { id: 'a', metric: 'power' }]), /unique/);
@@ -38,6 +40,10 @@ test('Fusion scene transaction enables metrics in one renderer and preserves sty
   assert.match(script, /id=string\.sub\(\[\[xpace\]\], 2\), metric=string\.sub\(\[\[xpace\]\], 2\)/);
   assert.match(script, /update\(key, used\[slot\] and 1 or 0\)/);
   assert.match(script, /output:ConnectInput\("Input", node\)/);
+  const weather = dataUpdateScript({ bundleDirectory: '/tmp/synthetic', origin: 0, token: 'test',
+    widgets: [{ id: 'weather', metric: 'weatherWidget' }], layoutPreset: 'vertical' });
+  assert.match(weather, /WeatherWidth/);
+  assert.match(weather, /x=0\.894903626, y=0\.2435767452353421/);
   assert.match(script, /previous_layout ~= layout_signature/);
   assert.match(script, /comp:EndUndo\(ok\)/);
   assert.match(script, /RunningOverlay\.ManagedNumeric/);

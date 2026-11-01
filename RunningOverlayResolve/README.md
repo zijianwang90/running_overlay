@@ -10,8 +10,8 @@ The Workflow panel imports FIT or GPX data or normalized activity JSON,
 checks a reference video track, and creates or updates a live Numeric overlay
 on a dedicated video track. The panel supports seventeen numeric metrics,
 original vector numeric icons, a minimal distance timeline and an offline route
-map with a time-driven position marker, an HR zone bar, and a compact elevation
-chart. Up to sixteen independent instances,
+map with a time-driven position marker, an HR zone bar, a compact elevation
+chart, and the Easy Run/Race weather card. Up to sixteen independent instances,
 including duplicate metrics, share one Fuse. Stack, row and grid provide initial
 layouts; each instance has native Fusion position and style controls. Route Map
 retains FIT/GPX GPS and segment boundaries, but does not yet provide road-map
@@ -25,7 +25,8 @@ block synchronization with an explanation. Source clips are never moved or
 trimmed. The sync map preserves cuts, gaps, real activity time, and source trims.
 
 Settings are stored locally per Resolve project and timeline: activity data,
-confirmed capture times, and optional one- or two-anchor camera calibration.
+confirmed capture times, optional one- or two-anchor camera calibration, and an
+offline historical-weather snapshot.
 Opening the panel restores those settings. Read-only polling notices changes
 while the panel is open; every apply also rescans before updating. Updates use
 immutable data revisions and retain existing widget styles. Changes to reference
@@ -124,6 +125,16 @@ alpha. This path passed the 1080p30 host check, including transparent gaps. Keep
 the original source timeline intact. Ordinary final composites include the
 source video beneath the live widget. See the testing guide for coverage limits
 and the optional decoded-alpha checker.
+
+## Weather
+
+The Weather card uses the same public Open-Meteo archive service as the Mac app;
+no API key is required. Choose or change the activity, then press **Fetch
+historical weather** in the panel. The request uses the activity's start date
+and first GPS point. The returned snapshot is saved with the project and copied
+into the immutable activity bundle, so Resolve preview and Deliver never access
+the network. Editing the location label changes only the displayed text. Weather
+needs GPS in the activity; activities without coordinates show placeholders.
 
 ## Limits
 

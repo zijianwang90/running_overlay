@@ -89,7 +89,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 
 .zone-row { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 8px; margin-top: 10px; }
 .zone-row label { color: var(--muted); font-size: 11px; }
-.zone-row select { width: 100%; min-width: 0; }
+.zone-row select, .zone-row input { width: 100%; min-width: 0; }
+.weather-actions { margin-top: 10px; }
 
 .strip { position: relative; height: 42px; margin-top: 12px; }
 .strip-activity { position: absolute; top: 0; height: 12px; border-radius: 3px; background: #2d5a40; }

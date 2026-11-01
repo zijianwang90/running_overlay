@@ -4,7 +4,7 @@ const state = {
   timeOffset: { seconds: 0, source: 'draft', animated: false },
   busy: false, scanning: false, dirty: false, scanPaused: false, allowClose: false, autoTrackTried: false,
   zoneInferred: false, saveTimer: null, captureDrafts: new Map(), anchorDrafts: new Map(),
-  offset: { pending: null, inFlight: false, activeUntil: 0 },
+  offset: { pending: null, inFlight: false, activeUntil: 0 }, weatherBusy: false,
 };
 const api = window.runningOverlayAPI;
 const time = window.RunningOverlayTime;
@@ -13,7 +13,7 @@ const { createTimePicker, zoneSelect } = window.runningOverlayPickers;
 const byId = (id) => document.getElementById(id);
 const METRICS = [['heartRate', 'Heart rate'], ['pace', 'Pace'], ['distance', 'Distance'], ['elapsed', 'Time'], ['elevation', 'Elevation'], ['cadence', 'Cadence'], ['power', 'Power'], ['calories', 'Calories'],
   ['avgPace', 'Avg pace'], ['verticalOscillation', 'Vert. osc.'], ['groundContactTime', 'Contact time'], ['strideLength', 'Stride'],
-  ['verticalRatio', 'Vert. ratio'], ['groundContactBalance', 'GCT balance'], ['temperature', 'Temperature'], ['grade', 'Grade'], ['realTime', 'Clock'], ['distanceTimeline', 'Dist. timeline'], ['routeMap', 'Route map'], ['zoneEdgeBar', 'HR zone bar'], ['elevationChart', 'Elevation chart']];
+  ['verticalRatio', 'Vert. ratio'], ['groundContactBalance', 'GCT balance'], ['temperature', 'Temperature'], ['grade', 'Grade'], ['realTime', 'Clock'], ['distanceTimeline', 'Dist. timeline'], ['routeMap', 'Route map'], ['zoneEdgeBar', 'HR zone bar'], ['elevationChart', 'Elevation chart'], ['weatherWidget', 'Weather']];
 const OVERLAY_TRACK = 'Running Overlay';
 const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
 
@@ -413,7 +413,7 @@ async function chooseActivity() {
     if (!result) return;
     if (!state.configuration) throw new Error('Open a Resolve timeline first.');
     collect();
-    if (state.configuration.activity?.activityId !== result.activity.activityId) { state.configuration.cameraAnchors = {}; state.anchorDrafts.clear(); }
+    if (state.configuration.activity?.activityId !== result.activity.activityId) { state.configuration.cameraAnchors = {}; state.anchorDrafts.clear(); state.configuration.weather = null; }
     if (state.zoneInferred) { state.configuration.captureTimeZone = null; state.zoneInferred = false; }
     Object.assign(state.configuration, { activity: result.activity, activityLabel: result.fileName });
     window.clearTimeout(state.saveTimer); state.saveTimer = null;
@@ -424,10 +424,53 @@ async function chooseActivity() {
   finally { setBusy(false); }
 }
 
+// ---- Weather -------------------------------------------------------------------
+function weatherCoordinates() {
+  const record = state.configuration?.activity?.records.find((entry) => entry.latitude != null && entry.longitude != null);
+  return record ? `${record.latitude.toFixed(4)}, ${record.longitude.toFixed(4)}` : '';
+}
+function renderWeather() {
+  const config = state.configuration; const activity = config?.activity; const weather = config?.weather;
+  const badge = byId('weather-badge'); const fetch = byId('fetch-weather'); const location = byId('weather-location');
+  const hasGps = Boolean(activity?.records.some((entry) => entry.latitude != null && entry.longitude != null));
+  if (!activity) { badge.textContent = 'Waiting'; badge.className = 'badge muted'; }
+  else if (!hasGps) { badge.textContent = 'No GPS'; badge.className = 'badge warning'; }
+  else if (weather) { badge.textContent = `${Math.round(weather.temperatureC)}°C`; badge.className = 'badge good'; }
+  else { badge.textContent = 'Not fetched'; badge.className = 'badge muted'; }
+  const label = weather ? (weather.condition.replace(/([A-Z])/g, ' $1').toLowerCase()) : '';
+  byId('weather-summary').textContent = !activity
+    ? 'Choose an activity to look up its historical weather.'
+    : !hasGps
+      ? 'This activity has no GPS coordinates, so weather cannot be located automatically.'
+      : weather
+        ? `${label.charAt(0).toUpperCase() + label.slice(1)} · ${Math.round(weather.temperatureC)}°C, feels ${Math.round(weather.feelsLikeC ?? weather.temperatureC)}°C · ${weather.weekday} · saved with the project and rendered offline.`
+        : 'Historical weather for the activity start hour, saved with the project and rendered without network access.';
+  fetch.disabled = !hasGps || state.weatherBusy;
+  fetch.textContent = state.weatherBusy ? 'Fetching…' : weather ? 'Fetch again' : 'Fetch historical weather';
+  location.disabled = !weather;
+  if (document.activeElement !== location) location.value = weather?.location ?? '';
+  location.placeholder = hasGps ? weatherCoordinates() : 'Coordinates by default';
+}
+async function fetchWeather() {
+  const config = state.configuration;
+  if (!config?.activity || state.weatherBusy) return;
+  state.weatherBusy = true; renderWeather();
+  try {
+    const weather = await api.fetchWeather({ activity: config.activity });
+    config.weather = weather;
+    window.clearTimeout(state.saveTimer); state.saveTimer = null; collect();
+    state.configuration = await api.saveConfiguration(state.configuration);
+    state.dirty = false; state.stale = true;
+    setStatus('Weather saved. Update the overlay to include it.', 'good');
+    render();
+  } catch (error) { setStatus(error.message, 'error'); }
+  finally { state.weatherBusy = false; renderWeather(); renderPrimary(); }
+}
+
 // ---- Scanning ------------------------------------------------------------------
 function render() {
   if (!state.configuration) { renderPrimary(); return; }
-  renderActivity(); renderTracks(); renderWidgets(); renderOffset();
+  renderActivity(); renderTracks(); renderWidgets(); renderWeather(); renderOffset();
   if (state.scan) { ensureZone(); renderZone(); renderClipDetails(); renderAlignment(); }
   renderPrimary();
 }
@@ -481,6 +524,13 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   byId('refresh').addEventListener('click', () => scan());
   byId('choose-activity').addEventListener('click', chooseActivity);
+  byId('fetch-weather').addEventListener('click', fetchWeather);
+  byId('weather-location').addEventListener('change', (event) => {
+    const weather = state.configuration?.weather;
+    if (!weather) return;
+    weather.location = event.target.value.trim().slice(0, 120) || weatherCoordinates();
+    scheduleSave();
+  });
   for (const button of document.querySelectorAll('[data-layout]')) button.addEventListener('click', () => {
     if (!state.configuration || state.configuration.layoutPreset === button.dataset.layout) return;
     state.configuration.layoutPreset = button.dataset.layout; renderWidgets(); scheduleSave(); widgetsChanged();

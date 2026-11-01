@@ -8,7 +8,7 @@ const { METRICS } = require('../src/domain/widgets');
 const FUSE_NAMES = { heartRate: 'Heart Rate', pace: 'Pace', distance: 'Distance', elapsed: 'Elapsed', elevation: 'Elevation',
   cadence: 'Cadence', power: 'Power', calories: 'Calories', avgPace: 'Avg Pace', verticalOscillation: 'Vertical Oscillation',
   groundContactTime: 'Ground Contact Time', strideLength: 'Stride Length', verticalRatio: 'Vertical Ratio',
-  groundContactBalance: 'GCT Balance', temperature: 'Temperature', grade: 'Grade', realTime: 'Real Time', distanceTimeline: 'Distance Timeline', routeMap: 'Route Map', zoneEdgeBar: 'HR Zone Bar', elevationChart: 'Elevation Chart' };
+  groundContactBalance: 'GCT Balance', temperature: 'Temperature', grade: 'Grade', realTime: 'Real Time', distanceTimeline: 'Distance Timeline', routeMap: 'Route Map', zoneEdgeBar: 'HR Zone Bar', elevationChart: 'Elevation Chart', weatherWidget: 'Weather' };
 assert.deepEqual(Object.values(METRICS), Object.keys(METRICS).map((_, index) => index));
 const source = fs.readFileSync(path.join(__dirname, '../fusion/Fuses/RunningOverlayNumeric.fuse'), 'utf8');
 function run(code) {
@@ -593,3 +593,81 @@ local peak=false for _,p in ipairs(points) do if p.y==1 then peak=true end end
 assert(peak)
 assert(#elevation_points(values,true)<=3067)
 `));
+
+test('weather card renders cached conditions, temperature units, placeholders and FIT override', () => run(HOST + `
+local base_capsule=capsule
+capsule=function(...) local shape=base_capsule(...); function shape:OutlineOfShape() return self end; return shape end
+local icons={}
+icon_shapes=function(name,left,top,size) table.insert(icons,{name=name,left=left,top=top,size=size}); return {} end
+local cached={condition='rain',temperatureC=20,humidity=68,location='Toronto',weekday='Thursday',highC=23,lowC=19,windKph=9.5,feelsLikeC=18}
+load_data=function() return {timeline_start_frame=0,pauses={},start_utc_us=0,weather=cached} end
+sample_activity=function() return {temperature_c=5} end
+inputs.Metric.value=WEATHER_METRIC;inputs.ShadowEnabled.value=0
+Process(req)
+local texts={} for _,t in ipairs(of('text')) do texts[t.text]=t end
+assert(texts['Rain'] and texts['Toronto'] and texts['Thursday'] and texts['20\\194\\176'] and texts['68% RH'])
+assert(#icons==1 and icons[1].name=='Rain')
+local shapes=of('shape')
+-- 16 gradient bands, a border and a divider precede the icon silhouette.
+assert(#shapes==18 and near(shapes[1].color.A, 0.92) and shapes[1].color.B>shapes[1].color.R)
+assert(shapes[#shapes].shape.kind=='capsule' or type(shapes[#shapes].shape)=='table')
+-- Fahrenheit conversion is rounded from Celsius.
+inputs.WeatherUnits.value=1;events={};Process(req)
+texts={} for _,t in ipairs(of('text')) do texts[t.text]=t end
+assert(texts['68\\194\\176'])
+-- The optional FIT reading replaces the cached value only when present.
+inputs.WeatherUnits.value=0;inputs.WeatherFitOverride.value=1;events={};Process(req)
+texts={} for _,t in ipairs(of('text')) do texts[t.text]=t end
+assert(texts['5\\194\\176'])
+sample_activity=function() return {} end;events={};Process(req)
+texts={} for _,t in ipairs(of('text')) do texts[t.text]=t end
+assert(texts['20\\194\\176'])
+-- Without a cache the card keeps placeholders and never invents weather values.
+cached=nil;icons={};events={};Process(req)
+texts={} for _,t in ipairs(of('text')) do texts[t.text]=t end
+local count=0 for _ in pairs(texts) do count=count+1 end
+assert(texts['Sunny'] and texts['--'] and texts['-- RH'] and count==3)
+assert(#icons==1 and icons[1].name=='Sunny')
+-- Hidden content rows drop out of the card.
+cached={condition='clearNight',temperatureC=2,humidity=nil,location='Ottawa',weekday='Friday'}
+inputs.WeatherShowLocation.value=0;inputs.WeatherShowWeekday.value=0;inputs.WeatherShowHumidity.value=0;icons={};events={};Process(req)
+local rows=of('text')
+assert(#rows==2 and rows[1].text=='Clear night' and rows[2].text=='2\\194\\176' and icons[1].name=='Clear night')
+-- Every weather group toggles with the metric, including slot 16.
+inputs.HeartRateEnabled.value=0
+inputs.Widget16Enabled.value=1;inputs.Widget16Metric.value=WEATHER_METRIC;inputs.Widget16ShadowEnabled.value=0
+NotifyChanged(inputs.Widget16Metric,{Value=WEATHER_METRIC})
+assert(inputs.Widget16WeatherWidth.visible==true and inputs.Widget16ElevationWidth.visible==false and inputs.Widget16ValueSize.visible==false)
+events={};Process(req)
+assert(#of('text')==5)
+`));
+
+test('weather metadata survives the activity TSV round trip', () => {
+  const { serializeActivityRenderData, parseWeatherRenderData } = require('../src/io/render-data');
+  const activity = { schemaVersion: 1, activityId: 'weather-round-trip', startUtcUs: 1_783_016_700_000_000,
+    endUtcUs: 1_783_019_700_000_000, records: [{ elapsedUs: 0 }], annotations: [] };
+  const text = serializeActivityRenderData(activity, { condition: 'snow', temperatureC: -3.5, humidity: 80, highC: 0, lowC: -6,
+    windKph: 12, feelsLikeC: -8, location: 'Oslo', weekday: 'Thursday', sourceUtcUs: activity.startUtcUs });
+  assert.deepEqual(parseWeatherRenderData(text), { condition: 'snow', temperatureC: -3.5, humidity: 80, highC: 0, lowC: -6,
+    windKph: 12, feelsLikeC: -8, location: 'Oslo', weekday: 'Thursday', sourceUtcUs: activity.startUtcUs });
+  assert.equal(parseWeatherRenderData(serializeActivityRenderData(activity)), null);
+  const lines = JSON.stringify(text);
+  run(`
+    local content = ${lines}
+    local lines = {}
+    for line in (content .. "\\n"):gmatch("([^\\n]*)\\n") do table.insert(lines, line) end
+    local index = 0
+    io = {open = function()
+      local file = {}
+      function file:read() index = index + 1; return lines[index] end
+      function file:lines() return function() index = index + 1; return lines[index] end end
+      function file:close() end
+      return file
+    end}
+    local records, _, start, err, weather = read_activity('synthetic.roactivity')
+    assert(records and weather, err)
+    assert(weather.condition == 'snow' and weather.temperatureC == -3.5 and weather.humidity == 80)
+    assert(weather.highC == 0 and weather.lowC == -6 and weather.windKph == 12 and weather.feelsLikeC == -8)
+    assert(weather.location == 'Oslo' and weather.weekday == 'Thursday' and weather.sourceUtcUs == 1783016700000000)
+  `);
+});
