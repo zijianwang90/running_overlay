@@ -16,7 +16,7 @@ FuRegisterClass("RunningOverlayNumeric", CT_SourceTool, {
 	REG_Source_DepthCtrls = true,
 	REG_Fuse_NoEdit = false,
 	REG_Fuse_NoReload = false,
-	REG_Version = 18,
+	REG_Version = 19,
 })
 
 -- Cache only complete immutable snapshots. Several Numeric Fuse instances can
@@ -49,6 +49,7 @@ end
 local function read_activity(path)
 	local records = {}
 	local annotations = {}
+	local laps = {}
 	local weather = {}
 	local start_utc_us = nil
 	local file = io.open(path, "r")
@@ -90,13 +91,18 @@ local function read_activity(path)
 				start_us = tonumber(fields[3]),
 				end_us = tonumber(fields[4]),
 			})
+		elseif fields[1] == "lap" then
+			table.insert(laps, {
+				start_us = tonumber(fields[2]),
+				start_distance_m = tonumber(fields[3]),
+			})
 		end
 	end
 	file:close()
 	if #records == 0 then return nil, nil, nil, "Activity has no records" end
 	if start_utc_us == nil then return nil, nil, nil, "Activity data has no start time" end
 	if next(weather) == nil then weather = nil end
-	return records, annotations, start_utc_us, nil, weather
+	return records, annotations, start_utc_us, nil, weather, laps
 end
 
 local function read_sync(path)
@@ -296,7 +302,7 @@ local function load_data(activity_path, sync_path)
 		DataCache[key] = snapshot
 		return snapshot
 	end
-	local records, annotations, start_utc_us, activity_error, weather = read_activity(activity_path)
+	local records, annotations, start_utc_us, activity_error, weather, laps = read_activity(activity_path)
 	if records == nil then
 		snapshot = { error = activity_error }
 		DataCache[key] = snapshot
@@ -314,7 +320,7 @@ local function load_data(activity_path, sync_path)
 		if record.distance_m ~= nil and record.distance_m > total_distance_m then total_distance_m = record.distance_m end
 	end
 	snapshot = { records = records, pauses = annotations, start_utc_us = start_utc_us, segments = segments, timeline_start_frame = timeline_start_frame,
-		total_distance_m = total_distance_m, duration_us = records[#records].elapsed_us, route = prepare_route(records), elevation = prepare_elevation(records), weather = weather }
+		total_distance_m = total_distance_m, duration_us = records[#records].elapsed_us, route = prepare_route(records), elevation = prepare_elevation(records), weather = weather, laps = laps }
 	DataCache[key] = snapshot
 	return snapshot
 end
@@ -575,6 +581,21 @@ local function metric_text(metric, sample, real_elapsed_us, data, unit_mode, man
 		return custom_numeric_text(sample, real_elapsed_us, data, custom_field, custom_format, custom_precision, custom_unit, utc_offset_hours)
 	elseif metric == HR_ZONE_METRIC then
 		return "HR ZONE", zone_label or "--", ""
+	elseif metric == LAP_PACE_METRIC then
+		local seconds = nil
+		if data.laps ~= nil and #data.laps > 0 then
+			local lap = nil
+			for _, candidate in ipairs(data.laps) do
+				if candidate.start_us <= real_elapsed_us then lap = candidate end
+			end
+			if lap ~= nil then
+				local in_lap_s = (real_elapsed_us - lap.start_us) / 1000000
+				local in_lap_km = (sample.distance_m - lap.start_distance_m) / 1000
+				if in_lap_s > 0 and in_lap_km > 0 then seconds = in_lap_s / in_lap_km end
+			end
+		end
+		local value, unit = pace_text(seconds, unit_mode)
+		return "LAP PACE", value, unit
 	end
 	return "UNKNOWN", "--", ""
 end
@@ -740,6 +761,7 @@ GAUGE_METRIC = 25
 DECOR_SOLID_METRIC = 26
 DECOR_ICON_METRIC = 27
 DECOR_TEXT_METRIC = 28
+LAP_PACE_METRIC = 29
 -- Gauge region combo order maps to the existing metric indices.
 GAUGE_METRICS = {0, 2, 1, 8, 3, 16, 6, 5, 4, 7, 9, 10, 11, 12, 13, 14, 15}
 GAUGE_METRIC_LABELS = {"Heart Rate", "Distance", "Pace", "Avg Pace", "Elapsed Time", "Real Time", "Power", "Cadence",
@@ -751,7 +773,7 @@ WEATHER_LABELS = {sunny = "Sunny", clearNight = "Clear night", partlyCloudy = "P
 	fog = "Fog", rain = "Rain", heavyRain = "Heavy rain", snow = "Snow", thunder = "Thunder", wind = "Wind"}
 -- Mac defaultNumericIconSystemName, keyed by metric index.
 DEFAULT_ICONS = {[0] = "Heart", "Speedometer", "Ruler", "Clock", "Mountains", "Runner", "Bolt", "Flame", "Speedometer",
-	"Up-Down Arrow", "Timer", "Left-Right Arrow", "Percent", "Balance", "Thermometer", "Up-Right Arrow", "Watch", [22] = "Calendar", [24] = "Heart"}
+	"Up-Down Arrow", "Timer", "Left-Right Arrow", "Percent", "Balance", "Thermometer", "Up-Right Arrow", "Watch", [22] = "Calendar", [24] = "Heart", [29] = "Speedometer"}
 
 local function parse_path(path)
 	local commands = {}
@@ -1037,7 +1059,7 @@ function Create()
 			{CCS_AddString = "Real Time"}, {CCS_AddString = "Distance Timeline"},
 		{CCS_AddString = "Route Map"}, {CCS_AddString = "HR Zone Bar"}, {CCS_AddString = "Elevation Chart"}, {CCS_AddString = "Weather"},
 		{CCS_AddString = "Date"}, {CCS_AddString = "Custom Numeric"}, {CCS_AddString = "HR Zone"}, {CCS_AddString = "Running Gauge"}, {CCS_AddString = "Solid Color"},
-		{CCS_AddString = "Decor Icon"}, {CCS_AddString = "Decor Text"},
+		{CCS_AddString = "Decor Icon"}, {CCS_AddString = "Decor Text"}, {CCS_AddString = "Lap Pace"},
 		})
 	end
 	InMetric = metric_input("Metric", "Metric", 0)
@@ -1142,6 +1164,7 @@ function Create()
 			[22] = combo("Date Format", "DateFormat", {"yyyy-MM-dd", "yyyy/MM/dd", "MM/dd/yyyy", "MM-dd", "MM/dd", "MMM d"}),
 		}
 		result.units[8] = result.units[1]
+		result.units[29] = result.units[1]
 		result.temperature_source = combo("Temperature Source", "TemperatureSource", {"FIT", "FIT, else manual", "Manual"})
 		result.manual_temperature = number_in(numeric, "Manual Temperature (°C)", key .. "ManualTemperature", 20, -30, 45)
 		result.clock_offset = number_in(numeric, "Clock UTC Offset (h)", key .. "ClockUtcOffset", 0, -12, 14)

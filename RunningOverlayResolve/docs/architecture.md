@@ -333,3 +333,12 @@ runs Process when no sample exists, while `render_slot` short-circuits non-decor
 metrics. Solid shapes and text are drawn as vector parts; icons use the project's
 original 24-unit glyphs. No external asset, symbol library or network access is
 introduced.
+
+Lap Pace (metric 29) consumes FIT lap messages without creating a separate
+timeline model. The FIT parser emits each lap's start as activity elapsed time and
+interpolates its starting distance from the surrounding records; normalized
+activity validation keeps starts strictly increasing and distances non-decreasing.
+The immutable render snapshot carries these boundaries as `lap` rows. At render
+time the Fuse selects the latest boundary not after the current real elapsed time
+and divides in-lap elapsed time by in-lap distance. Missing laps, missing distance
+or a zero-length lap segment render as `--`, so no synthetic lap is inferred.

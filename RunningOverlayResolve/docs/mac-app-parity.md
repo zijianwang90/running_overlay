@@ -43,7 +43,7 @@ available, but there is no selectable/rendered widget.
 | HR Zone | Partial (v16) | Numeric `Z1`…`Z6` label from the instance HR ranges and existing inclusive first-match rule; optional Mac-style text tint/palette pending |
 | Pace | Partial | Unit options and full numeric styles |
 | Avg Pace | Implemented (v8) | Real elapsed ÷ distance with pace units; host export checked |
-| Lap Pace | Missing | Lap data and Mac selection semantics |
+| Lap Pace | Implemented (v19) | FIT lap boundaries; pace from the current lap start to the sampled record; relies on device lap messages |
 | Calories | Partial | Direct record widget implemented; lap/session fallback pending |
 | Elapsed Time | Partial (`elapsed`) | Match formats and pause behavior at boundaries |
 | Real Time | Implemented (v9) | `HH:mm:ss` or `h:mm:ss a`, seconds truncated as on Mac. Mac uses the rendering machine's timezone; Resolve uses an explicit per-instance UTC offset seeded from the recording timezone at activity start, so an activity crossing a DST change keeps one offset. Host export checked |
@@ -68,7 +68,7 @@ available, but there is no selectable/rendered widget.
 | GCT Balance | Implemented (v8) | Right-side encoding normalized to left percent; host export checked |
 | Temperature | Implemented (v8) | °C/°F; FIT, FIT-else-manual or manual source. Mac pairs FIT on/off with an optional manual value |
 | Grade | Implemented (v8) | FIT field; GPX derived within a segment when both elevations exist |
-| Custom Numeric | Partial (v15) | 19 record sources, number/integer/duration/clock/date/pace/percent/coordinate formats, precision and custom unit. HR-zone, lap pace, elevation gain and generic FIT fields pending |
+| Custom Numeric | Partial (v15) | 19 record sources, number/integer/duration/clock/date/pace/percent/coordinate formats, precision and custom unit. HR-zone, elevation gain and generic FIT fields pending |
 | Weather Widget | Partial (v14) | Open-Meteo historical fetch cached in the project, offline card render, ten conditions, °C/°F, FIT override, SimpleCard layout; forecasts/presets/geocoding pending |
 | Solid Color | Partial (v18) | Rectangle, rounded rectangle and circle with fill/opacity, size and corner radius; borders/effects pending |
 | Icon | Partial (v18) | Original vector glyph set, tint and size; SF Symbols and user SVG/PNG assets intentionally unsupported (licensing/asset pipeline) |

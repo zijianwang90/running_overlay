@@ -57,6 +57,9 @@ function serializeActivityRenderData(activity, weather = null) {
   for (const annotation of activity.annotations ?? []) {
     lines.push(`annotation\t${annotation.kind}\t${annotation.startElapsedUs}\t${annotation.endElapsedUs}`);
   }
+  for (const lap of activity.laps ?? []) {
+    lines.push(`lap\t${lap.startElapsedUs}\t${lap.startDistanceMeters}`);
+  }
   return `${lines.join('\n')}\n`;
 }
 
@@ -115,7 +118,12 @@ function parseActivityRenderData(text) {
     startElapsedUs: Number(line[2]),
     endElapsedUs: Number(line[3]),
   }));
-  return validateActivity({ schemaVersion: 1, activityId, startUtcUs, endUtcUs, records, annotations });
+  const laps = lines.filter((line) => line[0] === 'lap').map((line) => ({
+    startElapsedUs: Number(line[1]),
+    startDistanceMeters: Number(line[2]),
+  }));
+  return validateActivity({ schemaVersion: 1, activityId, startUtcUs, endUtcUs, records, annotations,
+    ...(laps.length ? { laps } : {}) });
 }
 
 function parseWeatherRenderData(text) {

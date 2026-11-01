@@ -51,6 +51,11 @@ function syntheticFit() {
     { number: 2, size: 4, baseType: 0x86 },
     { number: 7, size: 4, baseType: 0x86 },
   ];
+  const lapFields = [
+    { number: 253, size: 4, baseType: 0x86 },
+    { number: 2, size: 4, baseType: 0x86 },
+    { number: 9, size: 4, baseType: 0x86 },
+  ];
   const data = Buffer.concat([
     definition(0, 20, recordFields),
     record(0, [uint32(startFitSeconds), uint32(0), Buffer.from([120]), uint16(3_000), Buffer.from([80]), uint16(3_000), uint16(210)]),
@@ -60,6 +65,9 @@ function syntheticFit() {
     record(1, [uint32(startFitSeconds + 330), Buffer.from([0]), Buffer.from([0])]),
     definition(2, 18, sessionFields),
     record(2, [uint32(startFitSeconds), uint32(600_000)]),
+    definition(3, 19, lapFields),
+    record(3, [uint32(startFitSeconds + 300), uint32(startFitSeconds), uint32(50_000)]),
+    record(3, [uint32(startFitSeconds + 600), uint32(startFitSeconds + 300), uint32(100_000)]),
   ]);
   const header = Buffer.alloc(14);
   header[0] = 14;
@@ -130,6 +138,10 @@ test('independent FIT parser produces portable activity records and real-time pa
     startElapsedUs: 300_000_000,
     endElapsedUs: 330_000_000,
   }]);
+  assert.deepEqual(activity.laps, [
+    { startElapsedUs: 0, startDistanceMeters: 0 },
+    { startElapsedUs: 300_000_000, startDistanceMeters: 500 },
+  ]);
 });
 
 function withHeader(data) {

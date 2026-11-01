@@ -15,6 +15,7 @@ class FitReader {
     this.definitions = new Map();
     this.records = [];
     this.timerEvents = [];
+    this.laps = [];
     this.sessionStartFitSeconds = null;
     this.sessionElapsedUs = null;
     this.previousTimestampFitSeconds = null;
@@ -82,6 +83,7 @@ class FitReader {
       endUtcUs,
       records,
       annotations: this.buildPauseAnnotations(startFitSeconds, durationUs),
+      laps: this.buildLaps(startFitSeconds, durationUs, records),
     });
   }
 
@@ -163,6 +165,7 @@ class FitReader {
 
     if (definition.globalMessageNumber === 20) this.readRecord(values, definition.architecture, compressedTimestamp);
     else if (definition.globalMessageNumber === 18) this.readSession(values, definition.architecture);
+    else if (definition.globalMessageNumber === 19) this.readLap(values, definition.architecture, compressedTimestamp);
     else if (definition.globalMessageNumber === 21) this.readEvent(values, definition.architecture, compressedTimestamp);
   }
 
@@ -230,6 +233,48 @@ class FitReader {
     if (timestamp === null || event !== 0 || eventType === null) return;
     if (eventType === 0) this.timerEvents.push({ timestampFitSeconds: timestamp, type: 'start' });
     else if (eventType === 1 || eventType === 4) this.timerEvents.push({ timestampFitSeconds: timestamp, type: 'stop' });
+  }
+
+  readLap(values, architecture, compressedTimestamp = null) {
+    const end = compressedTimestamp ?? this.uint32(values.get(253), architecture);
+    if (end === null) return;
+    const start = this.uint32(values.get(2), architecture);
+    const distance = this.uint32(values.get(9), architecture);
+    this.laps.push({
+      startFitSeconds: start,
+      endFitSeconds: end,
+      distanceMeters: distance === null ? null : distance / 100,
+    });
+  }
+
+  buildLaps(startFitSeconds, durationUs, records) {
+    if (this.laps.length === 0) return undefined;
+    const distanceAt = (elapsedUs) => {
+      let before = null;
+      let after = null;
+      for (const record of records) {
+        if (record.distanceMeters === null || record.distanceMeters === undefined) continue;
+        if (record.elapsedUs <= elapsedUs) before = record;
+        else { after = record; break; }
+      }
+      if (before && after && after.elapsedUs > before.elapsedUs) {
+        const progress = (elapsedUs - before.elapsedUs) / (after.elapsedUs - before.elapsedUs);
+        return before.distanceMeters + (after.distanceMeters - before.distanceMeters) * progress;
+      }
+      return before?.distanceMeters ?? after?.distanceMeters ?? null;
+    };
+    let previousEnd = startFitSeconds;
+    const laps = [];
+    for (const lap of [...this.laps].sort((left, right) => left.endFitSeconds - right.endFitSeconds)) {
+      const start = lap.startFitSeconds ?? previousEnd;
+      previousEnd = lap.endFitSeconds;
+      const startElapsedUs = Math.max(0, Math.min(durationUs, (start - startFitSeconds) * 1_000_000));
+      const startDistanceMeters = distanceAt(startElapsedUs);
+      if (startDistanceMeters === null) continue;
+      laps.push({ startElapsedUs, startDistanceMeters });
+    }
+    // Consecutive duplicate boundaries add no information.
+    return laps.filter((lap, index) => index === 0 || lap.startElapsedUs > laps[index - 1].startElapsedUs);
   }
 
   buildPauseAnnotations(startFitSeconds, durationUs) {

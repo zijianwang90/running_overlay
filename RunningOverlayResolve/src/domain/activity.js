@@ -66,6 +66,23 @@ function validateActivity(activity) {
     'last activity record lies after activity.endUtcUs',
   );
 
+  if (activity.laps !== undefined) {
+    invariant(Array.isArray(activity.laps), 'activity.laps must be an array');
+    let previousStartUs = -1;
+    let previousDistance = -1;
+    for (const [index, lap] of activity.laps.entries()) {
+      assertSafeInteger(lap.startElapsedUs, `activity.laps[${index}].startElapsedUs`);
+      invariant(lap.startElapsedUs >= 0 && lap.startElapsedUs <= durationUs,
+        `activity.laps[${index}].startElapsedUs must lie within the activity`);
+      assertFiniteNumber(lap.startDistanceMeters, `activity.laps[${index}].startDistanceMeters`);
+      invariant(lap.startDistanceMeters >= 0, `activity.laps[${index}].startDistanceMeters must be non-negative`);
+      invariant(lap.startElapsedUs > previousStartUs, 'activity laps must be ordered by startElapsedUs');
+      invariant(lap.startDistanceMeters >= previousDistance, 'activity lap distance must not decrease');
+      previousStartUs = lap.startElapsedUs;
+      previousDistance = lap.startDistanceMeters;
+    }
+  }
+
   if (activity.annotations !== undefined) {
     invariant(Array.isArray(activity.annotations), 'activity.annotations must be an array');
     for (const [index, annotation] of activity.annotations.entries()) {

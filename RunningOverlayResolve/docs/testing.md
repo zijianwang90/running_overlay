@@ -1,5 +1,30 @@
 # Running Overlay Resolve Testing
 
+## Lap Pace And Lap Data — 2026-11-01
+
+v19 adds FIT lap parsing, normalized lap boundaries and the Lap Pace metric (29).
+The parser reads lap message 19 start time (field 2), end time (253) and total
+distance (9), converts ends to activity elapsed time and interpolates start
+distance from records. `validateActivity` enforces strictly increasing starts and
+non-decreasing distances; render TSV adds `lap` rows. The Fuse selects the latest
+lap at or before the current real time and computes in-lap pace.
+
+Tests execute real Lua for the current-lap boundary, zero in-lap distance,
+pre-lap and no-lap missing values, and metric registration order. Parser tests
+check synthetic lap messages and interpolated boundaries; render-data tests
+round-trip laps and reject unordered starts/decreasing distances. No private FIT
+data is used.
+
+Host evidence: installed v19 after saving and restarting Resolve. In the
+independent synthetic validation project, a copy of the activity bundle with two
+lap rows rendered Lap Pace `5'41"` at Time Offset 300 and `5'42"` at 1200 in
+1920×1080 ProRes 4444; the values reflect real in-lap time over in-lap distance.
+The slot and activity path were restored, the validation project saved, and the
+original project reloaded.
+
+Limits: no manual laps, distance-based auto laps, segment-aware lap exclusion, or
+multi-lap history. GPX has no lap structure and shows `--`.
+
 ## Historical Weather — 2026-11-01
 
 v14 adds the Easy Run/Race weather card and a control-plane weather cache.

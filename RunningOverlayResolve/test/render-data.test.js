@@ -26,6 +26,16 @@ test('activity render data round-trips the portable numeric channels', () => {
   assert.equal(parsed.activityId, activity.activityId);
   assert.deepEqual(parsed.records, activity.records);
   assert.deepEqual(parsed.annotations, activity.annotations);
+
+  const withLaps = { ...activity, laps: [
+    { startElapsedUs: 0, startDistanceMeters: 0 },
+    { startElapsedUs: 600_000_000, startDistanceMeters: 1_500 },
+  ] };
+  assert.deepEqual(parseActivityRenderData(serializeActivityRenderData(withLaps)).laps, withLaps.laps);
+  assert.throws(() => validateActivity({ ...withLaps, laps: [{ startElapsedUs: 600_000_000, startDistanceMeters: 1 },
+    { startElapsedUs: 0, startDistanceMeters: 0 }] }));
+  assert.throws(() => validateActivity({ ...withLaps, laps: [{ startElapsedUs: 0, startDistanceMeters: 2 },
+    { startElapsedUs: 1, startDistanceMeters: 1 }] }));
 });
 
 test('route positions validate as finite degree pairs with non-negative integer segments', () => {

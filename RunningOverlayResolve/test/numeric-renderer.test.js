@@ -8,7 +8,7 @@ const { METRICS } = require('../src/domain/widgets');
 const FUSE_NAMES = { heartRate: 'Heart Rate', pace: 'Pace', distance: 'Distance', elapsed: 'Elapsed', elevation: 'Elevation',
   cadence: 'Cadence', power: 'Power', calories: 'Calories', avgPace: 'Avg Pace', verticalOscillation: 'Vertical Oscillation',
   groundContactTime: 'Ground Contact Time', strideLength: 'Stride Length', verticalRatio: 'Vertical Ratio',
-  groundContactBalance: 'GCT Balance', temperature: 'Temperature', grade: 'Grade', realTime: 'Real Time', distanceTimeline: 'Distance Timeline', routeMap: 'Route Map', zoneEdgeBar: 'HR Zone Bar', elevationChart: 'Elevation Chart', weatherWidget: 'Weather', date: 'Date', customNumeric: 'Custom Numeric', heartRateZone: 'HR Zone', runningGauge: 'Running Gauge', decoSolidColor: 'Solid Color', decorIcon: 'Decor Icon', decorText: 'Decor Text' };
+  groundContactBalance: 'GCT Balance', temperature: 'Temperature', grade: 'Grade', realTime: 'Real Time', distanceTimeline: 'Distance Timeline', routeMap: 'Route Map', zoneEdgeBar: 'HR Zone Bar', elevationChart: 'Elevation Chart', weatherWidget: 'Weather', date: 'Date', customNumeric: 'Custom Numeric', heartRateZone: 'HR Zone', runningGauge: 'Running Gauge', decoSolidColor: 'Solid Color', decorIcon: 'Decor Icon', decorText: 'Decor Text', lapPace: 'Lap Pace' };
 assert.deepEqual(Object.values(METRICS), Object.keys(METRICS).map((_, index) => index));
 const source = fs.readFileSync(path.join(__dirname, '../fusion/Fuses/RunningOverlayNumeric.fuse'), 'utf8');
 function run(code) {
@@ -98,6 +98,25 @@ assert(#drawn==1 and drawn[1].text=='1.00')
 inputs.HeartRateEnabled.value=0; inputs.Widget16Enabled.value=1; inputs.Widget16Metric.value=2
 inputs.Widget16DistanceUnits.value=0; inputs.Widget16CustomLabel.value='Other'; drawn={}; Process(req)
 assert(#drawn==3 and drawn[1].text=='1.61' and drawn[3].text=='Other')
+`));
+
+test('Lap Pace restarts from the latest lap boundary and stays missing before one', () => run(`
+local data = {pauses = {}, laps = {
+  {start_us = 0, start_distance_m = 0},
+  {start_us = 300000000, start_distance_m = 1000},
+}}
+local function lap(value, distance) return metric_text(29, {distance_m = distance}, value, data, 0) end
+local label, value, unit = lap(600000000, 2000)
+assert(label == 'LAP PACE' and value == [[5'00"]] and unit == '/km')
+_, value = lap(300000000, 1000)
+assert(value == [[--'--"]], value)
+_, value = lap(450000000, 1500)
+assert(value == [[5'00"]], value)
+local later = {pauses = {}, laps = {{start_us = 400000000, start_distance_m = 0}}}
+_, value = metric_text(29, {distance_m = 999}, 399000000, later, 0)
+assert(value == [[--'--"]], value)
+_, value = metric_text(29, {distance_m = 2000}, 600000000, {pauses = {}}, 0)
+assert(value == [[--'--"]], value)
 `));
 
 test('attachments measure all four sides and expand around preceding text', () => run(`
