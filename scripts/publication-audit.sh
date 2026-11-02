@@ -61,6 +61,7 @@ required_files=(
   docs/project-log/2026-06.md
   docs/project-log/2026-08.md
   docs/testing.md
+  docs/security/credentials.md
   docs/adr/0008-independent-resolve-live-rendering.md
   RunningOverlayResolve/README.md
   RunningOverlayResolve/docs/architecture.md
@@ -147,6 +148,14 @@ done < <(git ls-files)
 if git grep -n -I -E '/Users/[^/]+/|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' -- \
   ':!scripts/publication-audit.sh'; then
   echo "Machine-specific path or private key marker detected." >&2
+  exit 1
+fi
+
+# Scan everything that can ship for real provider credentials. Test fixtures
+# and docs are intentionally excluded because synthetic tokens are legitimate
+# there; see docs/security/credentials.md.
+if ! ./scripts/scan-credentials.sh; then
+  echo "Credential scan failed. Remove the credential and rotate it at the provider." >&2
   exit 1
 fi
 
