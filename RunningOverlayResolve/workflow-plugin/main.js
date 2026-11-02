@@ -6,6 +6,7 @@ const path = require('node:path');
 const WorkflowIntegration = require('./WorkflowIntegration.node');
 const { loadActivityFile } = require('./lib/activity/import-activity');
 const { ConfigurationStore } = require('./lib/workflow/configuration');
+const { SettingsStore } = require('./lib/workflow/settings');
 const { WorkflowService } = require('./lib/workflow/service');
 const { fetchActivityWeather } = require('./lib/weather/weather');
 const { TemplateLibrary } = require('./lib/workflow/template-library');
@@ -65,7 +66,8 @@ function registerHandlers() {
   };
   ipcMain.handle('window:minimize', (event) => { panelWindow(event).minimize(); });
   ipcMain.handle('window:close', (event) => { panelWindow(event).close(); });
-  const service = new WorkflowService({ getResolve,
+  const settings = new SettingsStore(path.join(app.getPath('userData'), 'settings.json'));
+  const service = new WorkflowService({ getResolve, settings,
     store: new ConfigurationStore(path.join(app.getPath('userData'), 'configurations')),
     bundleRoot: path.join(app.getPath('userData'), 'bundles'),
   });
@@ -92,6 +94,14 @@ function registerHandlers() {
   ipcMain.handle('weather:fetch', (event, payload) => { panelWindow(event); return fetchActivityWeather(payload?.activity); });
   ipcMain.handle('resolve:scanTimeline', (_event, request) => service.exclusive(() => service.scanContext(request?.trackIndex, request?.contextId)));
   ipcMain.handle('configuration:save', (_event, payload) => service.exclusive(() => service.saveConfiguration(payload)));
+  // One user-level settings file. The renderer names no path and sends only the
+  // token value; every other field is preserved from the stored file.
+  ipcMain.handle('settings:load', (event) => { panelWindow(event); return settings.load(); });
+  ipcMain.handle('settings:save', async (event, payload) => {
+    panelWindow(event);
+    const current = await settings.load();
+    return settings.save({ ...current, mapboxToken: payload?.mapboxToken ?? null });
+  });
   ipcMain.handle('overlay:apply', (_event, payload) => service.exclusive(() => service.apply(payload)));
   // Not queued behind scans: timing nudges must feel immediate while the user watches.
   ipcMain.handle('overlay:setTimeOffset', (_event, payload) => service.setTimeOffset(payload));

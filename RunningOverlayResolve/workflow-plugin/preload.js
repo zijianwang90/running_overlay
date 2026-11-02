@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('runningOverlayAPI', {
   fetchWeather: (payload) => ipcRenderer.invoke('weather:fetch', payload),
   scanTimeline: (request) => ipcRenderer.invoke('resolve:scanTimeline', request),
   saveConfiguration: (payload) => ipcRenderer.invoke('configuration:save', payload),
+  loadSettings: () => ipcRenderer.invoke('settings:load'),
+  saveSettings: (payload) => ipcRenderer.invoke('settings:save', payload),
   applyOverlay: (payload) => ipcRenderer.invoke('overlay:apply', payload),
   setTimeOffset: (payload) => ipcRenderer.invoke('overlay:setTimeOffset', payload),
   readPieceOffset: (payload) => ipcRenderer.invoke('overlay:readPieceOffset', payload),

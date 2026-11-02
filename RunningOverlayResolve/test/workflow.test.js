@@ -5,6 +5,7 @@ const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const { ConfigurationStore, parseConfirmedDate, contextForResolve } = require('../src/workflow/configuration');
+const { SettingsStore } = require('../src/workflow/settings');
 const { WorkflowService } = require('../src/workflow/service');
 const { setDataInputs, findManagedOverlay } = require('../src/resolve/managed-overlay');
 const activity = require('../fixtures/activity.synthetic.json');
@@ -154,41 +155,88 @@ test('a saved Mapbox token caches one snapshot per revision and connects it with
   const resolve = { GetProjectManager: async () => ({ GetCurrentProject: async () => ({ IsRenderingInProgress: async () => false, GetUniqueId: async () => 'project', GetCurrentTimeline: async () => tl }) }) };
   const context = await contextForResolve(resolve);
   const scanValue = { timeline: structuredClone(timeline), mediaById, diagnostics: [] };
+  const token = 'pk.eyJ1Ijoic3ludGhldGljIn0.test-signature-123456';
+  const settings = new SettingsStore(path.join(root, 'settings.json'));
+  await settings.save({ schemaVersion: 1, mapboxToken: token });
+  const store = new ConfigurationStore(path.join(root, 'config'));
   let updates = []; let fetches = 0;
-  const service = new WorkflowService({ getResolve: async () => resolve, store: new ConfigurationStore(path.join(root, 'config')), bundleRoot: path.join(root, 'bundles'),
+  const service = new WorkflowService({ getResolve: async () => resolve, store, settings, bundleRoot: path.join(root, 'bundles'),
     scan: async () => structuredClone(scanValue), inspectManaged: async () => true,
     update: async (_resolve, value) => { updates.push(value); return { managedItemId: 'managed-map' }; },
     fetchMap: async () => { fetches++; return { bytes: Buffer.from([0x89,0x50,0x4e,0x47,13,10,26,10]), metadata: { coverage: 2.75, attribution: '© Mapbox © OpenStreetMap' } }; } });
   const snapshot = await service.scanContext(1);
   const mapped = await service.apply({ configuration: { schemaVersion: 1, contextId: context.contextId, referenceVideoTrackIndex: 1,
-    widgets: [{ id: 'route-1', metric: 'routeMap' }],
-    activity, mapboxToken: 'pk.eyJ1Ijoic3ludGhldGljIn0.test-signature-123456' }, expectedFingerprint: snapshot.fingerprint });
+    widgets: [{ id: 'route-1', metric: 'routeMap' }], activity }, expectedFingerprint: snapshot.fingerprint });
   assert.equal(fetches, 1);
   assert.equal(mapped.mapError, undefined);
   assert.equal(updates[0].mapImage, path.join(mapped.configuration.bundleDirectory, 'map.png'));
-  assert.deepEqual(mapped.configuration.mapboxToken, 'pk.eyJ1Ijoic3ludGhldGljIn0.test-signature-123456');
+  // The token is a user setting; the project file and returned configuration
+  // never contain it.
+  assert.equal(mapped.configuration.mapboxToken, undefined);
+  assert.equal(Object.hasOwn(JSON.parse(await fs.readFile(store.file(context.contextId), 'utf8')), 'mapboxToken'), false);
   assert.doesNotMatch(await fs.readFile(path.join(mapped.configuration.bundleDirectory, 'map.json'), 'utf8'), /pk\./);
-  const plain = await service.apply({ configuration: { ...mapped.configuration, mapboxToken: null }, expectedFingerprint: snapshot.fingerprint });
+  // Clearing the user token stops the fetch on the next update.
+  await settings.save({ schemaVersion: 1, mapboxToken: null });
+  const plain = await service.apply({ configuration: { ...mapped.configuration }, expectedFingerprint: snapshot.fingerprint });
   assert.equal(plain.mapError, undefined);
   assert.equal(fetches, 1);
   assert.equal(updates[1].mapImage, null);
-  const failing = new WorkflowService({ getResolve: async () => resolve, store: new ConfigurationStore(path.join(root, 'config2')), bundleRoot: path.join(root, 'bundles2'),
+  const failingSettings = new SettingsStore(path.join(root, 'settings2.json'));
+  await failingSettings.save({ schemaVersion: 1, mapboxToken: token });
+  const failing = new WorkflowService({ getResolve: async () => resolve, store: new ConfigurationStore(path.join(root, 'config2')), settings: failingSettings, bundleRoot: path.join(root, 'bundles2'),
     scan: async () => structuredClone(scanValue), inspectManaged: async () => true,
     update: async (_resolve, value) => { updates.push(value); return { managedItemId: 'managed-map-2' }; },
     fetchMap: async () => { throw new Error('Map service failed (401).'); } });
-  const result = await failing.apply({ configuration: { ...plain.configuration, mapboxToken: 'pk.eyJ1Ijoic3ludGhldGljIn0.test-signature-123456' }, expectedFingerprint: snapshot.fingerprint });
+  const result = await failing.apply({ configuration: { ...plain.configuration }, expectedFingerprint: snapshot.fingerprint });
   assert.equal(result.mapError, 'Map service failed (401).');
   assert.equal(updates[2].mapImage, null);
   let noRouteFetches = 0;
-  const noRoute = new WorkflowService({ getResolve: async () => resolve, store: new ConfigurationStore(path.join(root, 'config3')), bundleRoot: path.join(root, 'bundles3'),
+  const noRouteSettings = new SettingsStore(path.join(root, 'settings3.json'));
+  await noRouteSettings.save({ schemaVersion: 1, mapboxToken: token });
+  const noRoute = new WorkflowService({ getResolve: async () => resolve, store: new ConfigurationStore(path.join(root, 'config3')), settings: noRouteSettings, bundleRoot: path.join(root, 'bundles3'),
     scan: async () => structuredClone(scanValue), inspectManaged: async () => true,
     update: async (_resolve, value) => { updates.push(value); return { managedItemId: 'managed-map-3' }; },
     fetchMap: async () => { noRouteFetches++; return { bytes: Buffer.alloc(8), metadata: {} }; } });
-  const skipped = await noRoute.apply({ configuration: { ...plain.configuration, mapboxToken: 'pk.eyJ1Ijoic3ludGhldGljIn0.test-signature-123456', widgets: [{ id: 'numeric-1', metric: 'heartRate' }] }, expectedFingerprint: snapshot.fingerprint });
+  const skipped = await noRoute.apply({ configuration: { ...plain.configuration, widgets: [{ id: 'numeric-1', metric: 'heartRate' }] }, expectedFingerprint: snapshot.fingerprint });
   assert.equal(noRouteFetches, 0);
   assert.equal(skipped.mapError, undefined);
   assert.equal(updates[3].mapImage, null);
+  // Invalid tokens are refused by the settings store and by legacy project
+  // validation. A valid legacy token is accepted for reading but stripped.
+  await assert.rejects(new SettingsStore(path.join(root, 'bad-settings.json')).save({ schemaVersion: 1, mapboxToken: 'sk.secret-1234567890' }), /Mapbox/);
   await assert.rejects(new ConfigurationStore(path.join(root, 'bad')).save({ schemaVersion: 1, contextId: context.contextId, referenceVideoTrackIndex: 1, mapboxToken: 'sk.secret-1234567890' }), /Mapbox/);
+  const legacyStore = new ConfigurationStore(path.join(root, 'legacy'));
+  const legacy = await legacyStore.save({ schemaVersion: 1, contextId: context.contextId, referenceVideoTrackIndex: 1, mapboxToken: token });
+  assert.equal(legacy.mapboxToken, undefined);
+  assert.equal(Object.hasOwn(JSON.parse(await fs.readFile(legacyStore.file(context.contextId), 'utf8')), 'mapboxToken'), false);
+});
+
+test('a legacy project token migrates once to user settings and leaves the project file', async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'ro-map-migrate-')); t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const tl = { GetUniqueId: async () => timeline.timelineId };
+  const resolve = { GetProjectManager: async () => ({ GetCurrentProject: async () => ({ IsRenderingInProgress: async () => false, GetUniqueId: async () => 'project', GetCurrentTimeline: async () => tl }) }) };
+  const context = await contextForResolve(resolve);
+  const settings = new SettingsStore(path.join(root, 'settings.json'));
+  const store = new ConfigurationStore(path.join(root, 'config'));
+  const token = 'pk.eyJ1Ijoic3ludGhldGljIn0.test-signature-123456';
+  const otherToken = 'pk.eyJ1Ijoib3RoZXIifQ.other-signature-123456';
+  // Current saves never write the token, so author the legacy file directly.
+  const legacy = { schemaVersion: 1, contextId: context.contextId, referenceVideoTrackIndex: 1, activity, widgets: [{ id: 'numeric-1', metric: 'heartRate' }], mapboxToken: token };
+  await fs.mkdir(path.join(root, 'config'), { recursive: true });
+  await fs.writeFile(store.file(context.contextId), JSON.stringify(legacy));
+  const service = new WorkflowService({ getResolve: async () => resolve, store, settings, bundleRoot: path.join(root, 'bundles'),
+    scan: async () => ({ timeline: structuredClone(timeline), mediaById, diagnostics: [] }), inspectManaged: async () => false });
+  // A normal scan is enough; no apply is required.
+  await service.scanContext(1);
+  assert.equal((await settings.load()).mapboxToken, token);
+  assert.equal(Object.hasOwn(JSON.parse(await fs.readFile(store.file(context.contextId), 'utf8')), 'mapboxToken'), false);
+  // An existing user token wins over a later legacy project token, and the
+  // project file is still cleaned.
+  await fs.writeFile(store.file(context.contextId), JSON.stringify({ ...legacy, mapboxToken: otherToken }));
+  const restored = await service.configuration({ contextId: context.contextId });
+  assert.equal(restored.mapboxToken, undefined);
+  assert.equal((await settings.load()).mapboxToken, token);
+  assert.equal(Object.hasOwn(JSON.parse(await fs.readFile(store.file(context.contextId), 'utf8')), 'mapboxToken'), false);
 });
 
 test('detail tiles are opt-in, billed once per apply, and reach four loaders', async (t) => {
@@ -197,8 +245,11 @@ test('detail tiles are opt-in, billed once per apply, and reach four loaders', a
   const resolve = { GetProjectManager: async () => ({ GetCurrentProject: async () => ({ IsRenderingInProgress: async () => false, GetUniqueId: async () => 'project', GetCurrentTimeline: async () => tl }) }) };
   const context = await contextForResolve(resolve);
   const scanValue = { timeline: structuredClone(timeline), mediaById, diagnostics: [] };
+  const token = 'pk.eyJ1Ijoic3ludGhldGljIn0.test-signature-123456';
+  const settings = new SettingsStore(path.join(root, 'settings.json'));
+  await settings.save({ schemaVersion: 1, mapboxToken: token });
   let updates = []; let tileFetches = 0;
-  const service = new WorkflowService({ getResolve: async () => resolve, store: new ConfigurationStore(path.join(root, 'config')), bundleRoot: path.join(root, 'bundles'),
+  const service = new WorkflowService({ getResolve: async () => resolve, store: new ConfigurationStore(path.join(root, 'config')), settings, bundleRoot: path.join(root, 'bundles'),
     scan: async () => structuredClone(scanValue), inspectManaged: async () => true,
     update: async (_resolve, value) => { updates.push(value); return { managedItemId: 'managed-detail' }; },
     fetchMap: async () => ({ bytes: Buffer.from([0x89,0x50,0x4e,0x47,13,10,26,10]), metadata: { coverage: 2.75 } }),
@@ -208,8 +259,7 @@ test('detail tiles are opt-in, billed once per apply, and reach four loaders', a
     } });
   const snapshot = await service.scanContext(1);
   const configuration = { schemaVersion: 1, contextId: context.contextId, referenceVideoTrackIndex: 1,
-    widgets: [{ id: 'route-1', metric: 'routeMap' }], activity,
-    mapboxToken: 'pk.eyJ1Ijoic3ludGhldGljIn0.test-signature-123456', mapDetail: true };
+    widgets: [{ id: 'route-1', metric: 'routeMap' }], activity, mapDetail: true };
   const detailed = await service.apply({ configuration, expectedFingerprint: snapshot.fingerprint });
   assert.equal(tileFetches, 1);
   assert.equal(detailed.mapError, undefined);
@@ -217,6 +267,7 @@ test('detail tiles are opt-in, billed once per apply, and reach four loaders', a
   assert.deepEqual(JSON.parse(await fs.readFile(path.join(detailed.configuration.bundleDirectory, 'manifest.json'), 'utf8')).mapTiles,
     ['map-1.png', 'map-2.png', 'map-3.png', 'map-4.png']);
   assert.doesNotMatch(await fs.readFile(path.join(detailed.configuration.bundleDirectory, 'map-tiles.json'), 'utf8'), /pk\./);
+  assert.equal(Object.hasOwn(JSON.parse(await fs.readFile(path.join(root, 'config', `${context.contextId}.json`), 'utf8')), 'mapboxToken'), false);
   // Disabling detail tiles stops the extra requests and disconnects the loaders.
   // It also marks the applied revision stale, so the panel offers an update.
   assert.equal((await service.saveConfiguration({ ...detailed.configuration, mapDetail: false })).lastAppliedFingerprint, null);
@@ -225,7 +276,9 @@ test('detail tiles are opt-in, billed once per apply, and reach four loaders', a
   assert.equal(overviewOnly.configuration.mapDetail, false);
   assert.equal(updates[1].mapTiles, null);
   // A failed detail fetch keeps the overview and reports the error.
-  const partial = new WorkflowService({ getResolve: async () => resolve, store: new ConfigurationStore(path.join(root, 'config2')), bundleRoot: path.join(root, 'bundles2'),
+  const partialSettings = new SettingsStore(path.join(root, 'settings2.json'));
+  await partialSettings.save({ schemaVersion: 1, mapboxToken: token });
+  const partial = new WorkflowService({ getResolve: async () => resolve, store: new ConfigurationStore(path.join(root, 'config2')), settings: partialSettings, bundleRoot: path.join(root, 'bundles2'),
     scan: async () => structuredClone(scanValue), inspectManaged: async () => true,
     update: async (_resolve, value) => { updates.push(value); return { managedItemId: 'managed-detail-2' }; },
     fetchMap: async () => ({ bytes: Buffer.from([0x89,0x50,0x4e,0x47,13,10,26,10]), metadata: { coverage: 2.75 } }),

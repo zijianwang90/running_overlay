@@ -49,8 +49,9 @@ function validateConfiguration(value) {
   invariant(Number.isSafeInteger(draftTimeOffsetMs) && Math.abs(draftTimeOffsetMs) <= 86_400_000, 'Data time offset must be within one day.');
   invariant(value.activityLabel == null || (typeof value.activityLabel === 'string' && value.activityLabel.length <= 255), 'Invalid activity name.');
   const activity = value.activity ? validateActivity(value.activity) : null;
-  // The Mapbox token stays in the local project configuration and is never
-  // copied into templates or render bundles.
+  // A legacy project file may still carry a token. Accepting it here keeps old
+  // files readable; the service migrates it to user settings and ConfigurationStore
+  // never writes it back.
   const mapboxToken = value.mapboxToken ?? null;
   invariant(mapboxToken === null || validToken(mapboxToken), 'Enter a Mapbox public access token (pk.*).');
   // Detail tiles are opt-in because each apply adds four billable requests.
@@ -111,12 +112,15 @@ class ConfigurationStore {
   }
   async save(value) {
     const normalized = validateConfiguration(value);
+    // Credentials live in user settings. A token may arrive from a legacy
+    // configuration or an old panel, but it never reaches the project file.
+    const { mapboxToken: _legacyToken, ...persisted } = normalized;
     await fs.mkdir(this.directory, { recursive: true, mode: 0o700 });
     const target = this.file(normalized.contextId);
     const temporary = `${target}.${crypto.randomUUID()}.tmp`;
-    try { await fs.writeFile(temporary, `${JSON.stringify(normalized)}\n`, { mode: 0o600 }); await fs.rename(temporary, target); }
+    try { await fs.writeFile(temporary, `${JSON.stringify(persisted)}\n`, { mode: 0o600 }); await fs.rename(temporary, target); }
     finally { await fs.rm(temporary, { force: true }); }
-    return normalized;
+    return persisted;
   }
 }
 module.exports = { parseConfirmedDate, validateConfiguration, cameraModels, applyConfirmedCaptureTimes, contextForResolve, ConfigurationStore };

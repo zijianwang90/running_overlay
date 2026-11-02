@@ -10,6 +10,7 @@ const { compileSyncMap, timelineFingerprint } = require('../sync/compile-sync-ma
 const { writeResolveBundle } = require('../io/render-data');
 const { fetchRouteMap, fetchRouteTiles } = require('../map/mapbox');
 const { contextForResolve, validateConfiguration, applyConfirmedCaptureTimes, cameraModels } = require('./configuration');
+const { MemorySettingsStore } = require('./settings');
 const { offsetAt } = require('../sync/capture-time');
 const { templateById } = require('../domain/templates');
 const { composeTemplateElements } = require('../domain/user-templates');
@@ -23,10 +24,10 @@ function clockUtcOffsetHours(configuration, systemTimeZone = Intl.DateTimeFormat
 
 const editable = (value) => JSON.stringify([value.referenceVideoTrackIndex, value.activity, value.weather, value.confirmedCaptureUtcByMediaId, value.cameraAnchors, value.widgets, value.templateId, value.customTemplate, value.captureTimeZone, value.captureTimeZonesByMediaId, value.mapDetail]);
 class WorkflowService {
-  constructor({ getResolve, store, bundleRoot, scan = scanCurrentTimeline, update = updateManagedOverlay, inspectManaged = managedOverlayIsCurrent,
+  constructor({ getResolve, store, bundleRoot, settings = new MemorySettingsStore(), scan = scanCurrentTimeline, update = updateManagedOverlay, inspectManaged = managedOverlayIsCurrent,
     pieces = offsetPieces, offset = overlayTimeOffset, captureStyles = captureOverlayStyles, fetchMap = fetchRouteMap,
     fetchMapTiles = fetchRouteTiles }) {
-    Object.assign(this, { getResolve, store, bundleRoot, scan, update, inspectManaged, pieces, offset, captureStyles, fetchMap, fetchMapTiles });
+    Object.assign(this, { getResolve, store, bundleRoot, settings, scan, update, inspectManaged, pieces, offset, captureStyles, fetchMap, fetchMapTiles });
     this.queue = Promise.resolve();
     this.applying = false;
     this.offsetTarget = null;
@@ -35,7 +36,17 @@ class WorkflowService {
     const next = this.queue.then(work); this.queue = next.catch(() => {}); return next;
   }
   async configuration(context) {
-    return await this.store.load(context.contextId) ?? validateConfiguration({ schemaVersion: 1, contextId: context.contextId, referenceVideoTrackIndex: 1 });
+    const loaded = await this.store.load(context.contextId) ?? validateConfiguration({ schemaVersion: 1, contextId: context.contextId, referenceVideoTrackIndex: 1 });
+    return await this.migrateLegacyToken(loaded);
+  }
+  // Older builds kept the Mapbox token in each project. Move it to the user
+  // settings once, then rewrite the project file without it, so a normal scan is
+  // enough and no apply is required. An existing user token wins.
+  async migrateLegacyToken(configuration) {
+    if (!configuration.mapboxToken) return configuration;
+    const settings = await this.settings.load();
+    if (!settings.mapboxToken) await this.settings.save({ ...settings, mapboxToken: configuration.mapboxToken });
+    return await this.store.save({ ...configuration, mapboxToken: null });
   }
   async scanContext(trackIndex, expectedContextId = null) {
     const resolve = await this.getResolve();
@@ -170,16 +181,25 @@ class WorkflowService {
     // offline. A failed fetch never blocks the overlay; the panel reports it.
     // Static Images requests are billable, so skip the fetch unless a Route Map
     // widget is actually configured.
+    // The token is a user-level setting; the project file never holds it. An old
+    // panel may still send a legacy token with the apply, so migrate that once.
+    const settings = await this.settings.load();
+    let mapboxToken = settings.mapboxToken;
+    const legacyToken = payload.configuration?.mapboxToken ?? null;
+    if (!mapboxToken && legacyToken) {
+      mapboxToken = legacyToken;
+      await this.settings.save({ ...settings, mapboxToken });
+    }
     let mapSnapshot = null;
     let mapTiles = null;
     let mapError = null;
-    if (configuration.mapboxToken && configuration.widgets.some((widget) => widget.metric === 'routeMap')) {
+    if (mapboxToken && configuration.widgets.some((widget) => widget.metric === 'routeMap')) {
       try {
-        mapSnapshot = await this.fetchMap(configuration.activity, { token: configuration.mapboxToken });
+        mapSnapshot = await this.fetchMap(configuration.activity, { token: mapboxToken });
         if (configuration.mapDetail) {
           // Detail tiles are opt-in: each apply makes four additional billable
           // Static Images requests. A failure keeps the overview snapshot.
-          try { mapTiles = await this.fetchMapTiles(configuration.activity, { token: configuration.mapboxToken }); }
+          try { mapTiles = await this.fetchMapTiles(configuration.activity, { token: mapboxToken }); }
           catch (error) { mapError = `Map detail unavailable: ${error.message}`; }
         }
       } catch (error) { mapError = error.message; }

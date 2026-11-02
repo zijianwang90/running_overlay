@@ -92,6 +92,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .zone-row select, .zone-row input { width: 100%; min-width: 0; }
 .zone-row input[type="checkbox"] { width: auto; justify-self: start; accent-color: var(--accent); }
 .weather-actions { margin-top: 10px; }
+.settings-actions { display: flex; gap: 8px; margin-top: 10px; }
 
 .strip { position: relative; height: 42px; margin-top: 12px; }
 .strip-activity { position: absolute; top: 0; height: 12px; border-radius: 3px; background: #2d5a40; }

@@ -5,6 +5,7 @@ const state = {
   busy: false, scanning: false, dirty: false, scanPaused: false, allowClose: false, autoTrackTried: false,
   zoneInferred: false, saveTimer: null, captureDrafts: new Map(), anchorDrafts: new Map(),
   offset: { pending: null, inFlight: false, activeUntil: 0 }, weatherBusy: false,
+  settings: null, settingsError: null, settingsDirty: false,
   templates: [], templateMenu: null, templateRename: null, templateConfirm: null,
 };
 const api = window.runningOverlayAPI;
@@ -515,7 +516,7 @@ function primaryState() {
   if (captures.available) return { label: 'Use file times', run: useFileTimes };
   if (captures.missing) return { label: `Set ${plural(captures.missing, 'recording time')}`, run: () => { byId('clip-details').open = true; byId('clip-details').scrollIntoView({ behavior: 'smooth' }); } };
   if (!config.managedItemId) return { label: 'Create overlay', run: applyOverlay };
-  if (state.stale || state.dirty || !config.lastAppliedFingerprint) return { label: 'Update overlay', run: applyOverlay };
+  if (state.stale || state.dirty || state.settingsDirty || !config.lastAppliedFingerprint) return { label: 'Update overlay', run: applyOverlay };
   return { label: 'Up to date', run: () => scan(), quiet: true };
 }
 function renderPrimary() {
@@ -530,7 +531,7 @@ async function applyOverlay() {
     window.clearTimeout(state.saveTimer); state.saveTimer = null; collect(true);
     setStatus('Checking the timeline and updating the overlay…');
     const result = await api.applyOverlay({ configuration: state.configuration, expectedFingerprint: state.fingerprint });
-    state.configuration = result.configuration; state.dirty = false; state.stale = false;
+    state.configuration = result.configuration; state.dirty = false; state.stale = false; state.settingsDirty = false;
     const base = created
       ? `Overlay created · ${plural(result.segmentCount, 'segment')}. Play in Resolve and nudge Data timing until it matches.`
       : `Overlay updated · ${plural(result.segmentCount, 'segment')}. Your Fusion styles and timing were kept.`;
@@ -601,24 +602,49 @@ async function fetchWeather() {
   finally { state.weatherBusy = false; renderWeather(); renderPrimary(); }
 }
 
-// ---- Map background ------------------------------------------------------------
+// ---- Settings and Map background -----------------------------------------------
+// The token is user-level, so it is loaded once and shared by every project.
+function renderSettings() {
+  const token = state.settings?.mapboxToken ?? null;
+  const input = byId('mapbox-token'); const badge = byId('settings-badge'); const clear = byId('clear-mapbox-token');
+  if (document.activeElement !== input) input.value = token ?? '';
+  if (state.settingsError) { badge.textContent = 'Settings error'; badge.className = 'badge warning'; }
+  else { badge.textContent = token ? 'Token saved' : 'No token'; badge.className = `badge ${token ? 'good' : 'muted'}`; }
+  clear.disabled = !token;
+}
 function renderMap() {
   const config = state.configuration; const activity = config?.activity;
-  const token = byId('mapbox-token'); const badge = byId('map-badge');
-  const detail = byId('map-detail');
+  const token = state.settings?.mapboxToken ?? null;
+  const badge = byId('map-badge'); const detail = byId('map-detail');
   const hasGps = Boolean(activity?.records.some((entry) => entry.latitude != null && entry.longitude != null));
   if (!activity) { badge.textContent = 'Waiting'; badge.className = 'badge muted'; }
   else if (!hasGps) { badge.textContent = 'No GPS'; badge.className = 'badge warning'; }
-  else if (config.mapboxToken) { badge.textContent = 'Token saved'; badge.className = 'badge good'; }
+  else if (token) { badge.textContent = 'Token saved'; badge.className = 'badge good'; }
   else { badge.textContent = 'No token'; badge.className = 'badge muted'; }
-  if (document.activeElement !== token) token.value = config?.mapboxToken ?? '';
-  token.disabled = !activity;
   detail.checked = config?.mapDetail === true;
-  detail.disabled = !activity || !config?.mapboxToken;
+  detail.disabled = !activity || !token;
+}
+async function loadSettings() {
+  try { state.settings = await api.loadSettings(); state.settingsError = null; }
+  catch (error) { state.settingsError = error.message; setStatus(error.message, 'error'); }
+  renderSettings(); renderMap(); renderPrimary();
+}
+async function saveMapboxToken(value) {
+  const token = value.trim();
+  if (token && !/^pk\.[A-Za-z0-9._-]{10,}$/.test(token)) { setStatus('Enter a Mapbox public access token (pk.*).', 'error'); renderSettings(); return; }
+  try {
+    state.settings = await api.saveSettings({ mapboxToken: token || null }); state.settingsError = null;
+    // The token is not part of the project fingerprint, so remember the pending
+    // change locally; otherwise the periodic scan would hide the update offer.
+    if (state.configuration) state.settingsDirty = true;
+    renderSettings(); renderMap(); renderPrimary();
+    setStatus(token ? 'Map token saved. Update the overlay to fetch the snapshot.' : 'Map token cleared. Update the overlay to remove the map background.', 'good');
+  } catch (error) { setStatus(error.message, 'error'); renderSettings(); }
 }
 
 // ---- Scanning ------------------------------------------------------------------
 function render() {
+  renderSettings();
   if (!state.configuration) { renderPrimary(); return; }
   renderActivity(); renderTracks(); renderWidgets(); renderWeather(); renderMap(); renderOffset();
   if (state.scan) { ensureZone(); renderZone(); renderClipDetails(); renderAlignment(); }
@@ -680,14 +706,9 @@ window.addEventListener('DOMContentLoaded', () => {
   byId('add-widget').addEventListener('change', (event) => addWidget(event.target.value));
   api.listTemplates().then((templates) => { state.templates = templates; if (state.configuration) renderTemplates(); })
     .catch((error) => setStatus(error.message, 'error'));
-  byId('mapbox-token').addEventListener('change', (event) => {
-    if (!state.configuration) return;
-    const token = event.target.value.trim();
-    if (token && !/^pk\.[A-Za-z0-9._-]{10,}$/.test(token)) { setStatus('Enter a Mapbox public access token (pk.*).', 'error'); event.target.value = state.configuration.mapboxToken ?? ''; return; }
-    state.configuration.mapboxToken = token || null;
-    scheduleSave();
-    setStatus(token ? 'Map token saved. Update the overlay to fetch the snapshot.' : 'Map background disabled for the next update.', 'good');
-  });
+  loadSettings();
+  byId('mapbox-token').addEventListener('change', (event) => saveMapboxToken(event.target.value));
+  byId('clear-mapbox-token').addEventListener('click', () => saveMapboxToken(''));
   byId('map-detail').addEventListener('change', (event) => {
     if (!state.configuration) return;
     state.configuration.mapDetail = event.target.checked;
