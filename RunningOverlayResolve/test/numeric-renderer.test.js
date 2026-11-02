@@ -567,6 +567,76 @@ NotifyChanged(inputs.Widget16Metric,{Value=1})
 assert(inputs.Widget16RouteSize.visible==false and inputs.Widget16IconEnabled.visible==true)
 `));
 
+test('UHD and non-16:9 frames keep width-normalised geometry', () => run(HOST + `
+load_data=function() return {timeline_start_frame=0,pauses={}} end
+sample_activity=function() return {distance_m=1609.344} end
+inputs.Metric.value=2; inputs.ShowLabel.value=0; inputs.ShowUnit.value=0; inputs.ShadowEnabled.value=0
+inputs.IconEnabled.value=0; inputs.ValueSize.value=0.05; inputs.Position.value={X=0.25,Y=0.5}
+local function render(w,h)
+  Width=w; Height=h; Scale=1; XAspect=1; YAspect=1; SourceDepth=0
+  Image=function() local image={Height=h,Width=w,XScale=1,YScale=1,Fill=function() end}
+    function image:Blur() end
+    function image:Merge() end
+    return image
+  end
+  events={}
+  Process(req)
+  local text=of('text')[1]
+  return text.x, text.y, text.size
+end
+local x1080, y1080, size1080 = render(1920, 1080)
+local x4k, y4k, size4k = render(3840, 2160)
+-- UHD has the same aspect ratio, so every normalised coordinate is unchanged.
+assert(near(x4k, x1080) and near(y4k, y1080) and near(size4k, size1080), x4k .. ' ' .. y4k .. ' ' .. size4k)
+local xWide, yWide, sizeWide = render(2560, 1080)
+-- Width drives element sizes; Y converts from frame-height units to width units.
+assert(near(xWide, x1080) and near(sizeWide, size1080), xWide .. ' ' .. sizeWide)
+assert(near(yWide, 0.5 * 1080 / 2560 - 6 / 1280 - 0.05 * 0.8), yWide)
+`));
+
+test('route map keeps its square card and width-normalised extent at UHD and ultrawide', () => run(HOST + `
+local function route_shape()
+ local s={points={},TransformOfShape=function(self) return self end}
+ function s:MoveTo(x,y) table.insert(self.points,{x,y}) end
+ function s:LineTo(x,y) table.insert(self.points,{x,y}) end
+ function s:OutlineOfShape(w) self.width=w; return self end
+ return s
+end
+Shape=route_shape
+local records={{elapsed_us=0,latitude_deg=0,longitude_deg=0},{elapsed_us=10,latitude_deg=1,longitude_deg=1}}
+local route=prepare_route(records)
+load_data=function() return {route=route,records=records} end
+sample_activity=function() return {route_x=0,route_y=0} end
+inputs.Metric.value=ROUTE_METRIC; inputs.ShadowEnabled.value=0
+inputs.RouteMarker.value=0; inputs.RouteEndpoints.value=0
+inputs.RouteSize.value=332*0.75/1280; inputs.RoutePadding.value=32*0.75/1280
+inputs.Position.value={X=0.5,Y=0.5}
+local function first_point(w,h)
+  Width=w; Height=h; Scale=1; XAspect=1; YAspect=1; SourceDepth=0
+  Image=function() local image={Height=h,Width=w,XScale=1,YScale=1,Fill=function() end}
+    function image:Blur() end
+    function image:Merge() end
+    return image
+  end
+  events={}
+  Process(req)
+  local shapes=of('shape')
+  assert(#shapes>0 and #shapes[1].shape.points>0, 'route shape missing')
+  return shapes[1].shape.points[1]
+end
+local base=first_point(1920,1080)
+local uhd=first_point(3840,2160)
+assert(near(base[1],uhd[1]) and near(base[2],uhd[2]), base[1] .. ' ' .. base[2])
+local wide=first_point(2560,1080)
+assert(near(wide[1],base[1]))
+-- The Y centre is converted from frame-height units to width units.
+assert(near(wide[2] - base[2], (0.5*1080/2560) - (0.5*1080/1920)), wide[2] .. ' ' .. base[2])
+-- A square card keeps the same normalised width and height at every frame size.
+local extent=math.max(332*0.75/1280-2*(32*0.75/1280),1/2560)/math.sqrt(2)
+local expected_y=0.5*1080/2560 + extent*route.paths[1][1].y
+assert(near(wide[2], expected_y), wide[2] .. ' ' .. expected_y)
+`));
+
 test('unit line boxes follow start, center and end alignment independently of icons', () => run(HOST + `
 load_data=function() return {} end
 sample_activity=function() return {distance_m=1000} end
