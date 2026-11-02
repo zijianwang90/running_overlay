@@ -8,6 +8,11 @@
 > for the reasons and the user-facing behavior. The legacy 10×6 inset is
 > retained and background padding expands outside it, resolving the open
 > question below in favor of compatibility.
+>
+> N3 heart-rate-zone color following was implemented separately in v27 for the
+> Heart Rate and HR Zone metrics; see
+> [Heart Rate Zone Coloring](hr-zone-coloring.md). This specification does not
+> cover it.
 
 ## Scope
 

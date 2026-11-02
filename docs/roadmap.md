@@ -4,15 +4,16 @@ Last updated: 2026-11-02
 
 ## Sibling Product: Running Overlay Resolve
 
-Status: widget catalog implemented through v24; parity and release validation
+Status: widget catalog implemented through v27; parity and release validation
 remain in progress.
 
 - Implemented: the full widget catalog, templates, offline bundles, user-level
   credentials, keyless weather, Mapbox snapshots and detail tiles, calorie
-  fallback, Solid Color border, and panel weather preview.
-- Remaining: numeric container and effects (N2), presets (N1) and HR-zone tint
-  (N3); Elevation Chart presets, Running Gauge layouts, interval module surfaces,
-  Distance Timeline fade and media, and weather card presets. See the
+  fallback, Solid Color border, panel weather preview, numeric container and
+  effects (N2), and HR-zone tint (N3).
+- Remaining: numeric presets (N1); Elevation Chart presets, Running Gauge
+  layouts, interval module surfaces, Distance Timeline fade and media, and
+  weather card presets. See the
   [module parity audit](../RunningOverlayResolve/docs/module-parity-audit.md) for
   these and other gaps.
 - Release gates: host validation matrix, licensing, installation and upgrade,

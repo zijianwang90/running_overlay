@@ -432,6 +432,168 @@ local x=0.1+10/1280
 local top=0.5*1080/1920-6/1280
 `;
 
+test('HR zone follow controls and range defaults exist independently on all 16 slots', () => run(NUMERIC_CONTAINER + `
+local keys={'','Pace','Distance','Elapsed'}
+for slot=5,16 do table.insert(keys,'Widget'..slot) end
+local ranges={{0,134},{134,151},{152,160},{161,171},{172,178},{178,250}}
+for _,key in ipairs(keys) do
+ for _,role in ipairs({'Value','Label','Unit','Icon'}) do
+  local input=inputs[key..'Numeric'..role..'FollowHRZones']
+  assert(input and near(input.value,0) and input.attrs.INPID_InputControl=='CheckboxControl')
+ end
+ assert(near(inputs[key..'ZoneCount'].value,1))
+ for index,range in ipairs(ranges) do
+  assert(near(inputs[key..'Zone'..index..'Min'].value,range[1]))
+  assert(near(inputs[key..'Zone'..index..'Max'].value,range[2]))
+ end
+ assert(inputs[key..'NumericTextFollowHRZones']==nil)
+end
+`));
+
+test('HR zone controls start visible only on default HR slots and follow metric visibility', () => run(NUMERIC_CONTAINER + `
+for _,key in ipairs({'','Widget5','Widget16'}) do
+ assert(inputs[key..'NumericValueFollowHRZones'].visible~=false)
+ assert(inputs[key..'ZoneCount'].visible~=false and inputs[key..'Zone1Min'].visible~=false)
+end
+for _,key in ipairs({'Pace','Distance','Elapsed'}) do
+ assert(inputs[key..'NumericValueFollowHRZones'].visible==false)
+ assert(inputs[key..'ZoneCount'].visible==false and inputs[key..'Zone1Min'].visible==false)
+end
+for _,key in ipairs({'','Pace','Widget16'}) do
+ for _,case in ipairs({{0,true,true,true,false},{19,false,true,false,true},{24,true,true,false,true},
+  {2,false,false,true,false},{TIMELINE_METRIC,false,false,false,false}}) do
+  NotifyChanged(inputs[key..'Metric'],{Value=case[1]})
+  for _,role in ipairs({'Value','Label','Unit','Icon'}) do
+   assert(inputs[key..'Numeric'..role..'FollowHRZones'].visible==case[2])
+  end
+  assert(inputs[key..'ZoneCount'].visible==case[3])
+  for zone=1,6 do
+   assert(inputs[key..'Zone'..zone..'Min'].visible==case[3])
+   assert(inputs[key..'Zone'..zone..'Max'].visible==case[3])
+  end
+  assert(inputs[key..'NumericBackgroundEnabled'].visible==case[4])
+  assert(inputs[key..'ZonePlacement'].visible==case[5])
+ end
+end
+`));
+
+const HR_ZONE_FOLLOW = NUMERIC_CONTAINER + `
+inputs.ShowLabel.value=1;inputs.ShowUnit.value=1
+local roles={'Value','Label','Unit','Icon'}
+local prefixes={'','Label','Unit','Icon'}
+local static={{0.11,0.21,0.31,0.41},{0.12,0.22,0.32,0.42},{0.13,0.23,0.33,0.43},{0.14,0.24,0.34,0.44}}
+for role,prefix in ipairs(prefixes) do
+ for component,suffix in ipairs({'R','G','B','A'}) do
+  inputs[prefix..(prefix=='' and ({'Red','Green','Blue','Alpha'})[component] or suffix)].value=static[role][component]
+ end
+end
+local function colors()
+ local texts=of('text');local shapes=of('shape')
+ return {texts[1].color,texts[3] and texts[3].color,texts[2] and texts[2].color,shapes[#shapes].color}
+end
+local function check_color(actual,expected)
+ for index,component in ipairs({'R','G','B','A'}) do assert(near(actual[component],expected[index]),component) end
+end
+local function follows(role)
+ for _,name in ipairs(roles) do inputs['Numeric'..name..'FollowHRZones'].value=(role=='All' or name==role) and 1 or 0 end
+end
+`;
+
+test('HR zone follow tints each role independently and preserves all role alphas', () => run(HR_ZONE_FOLLOW + `
+for selected,role in ipairs(roles) do
+ follows(role);events={};Process(req)
+ local actual=colors()
+ for index=1,4 do
+  check_color(actual[index],index==selected and {0.28,0.82,0.96,static[index][4]} or static[index])
+ end
+end
+follows('All');events={};Process(req)
+for index,color in ipairs(colors()) do check_color(color,{0.28,0.82,0.96,static[index][4]}) end
+`));
+
+test('HR zone follow off preserves configured colors and does not tint containers or shadows', () => run(HR_ZONE_FOLLOW + `
+follows('None');Process(req)
+for index,color in ipairs(colors()) do check_color(color,static[index]) end
+inputs.NumericBackgroundEnabled.value=1;inputs.NumericBorderEnabled.value=1
+inputs.NumericGlowEnabled.value=1;inputs.NumericGlowIntensity.value=0.5
+inputs.ShadowEnabled.value=1
+follows('All');events={};Process(req)
+local found_fill,found_border,found_glow,found_shadow=false,false,false,false
+for _,event in ipairs(events) do
+ if event.color then
+  local c=event.color
+  if event.kind=='shape' and event.shape.kind=='outline' and near(c.A,0.22) then
+   check_color(c,{1,1,1,0.22});found_border=true
+  elseif event.kind=='shape' and event.shape.kind=='capsule' and near(c.A,0.22) then
+   check_color(c,{0,0,0,0.22});found_fill=true
+  end
+  if near(c.R,1) and near(c.G,1) and near(c.B,1) then found_glow=true end
+  if near(c.R,0) and near(c.G,0) and near(c.B,0) and not near(c.A,0.22) then found_shadow=true end
+ end
+end
+assert(found_fill and found_border and found_glow and found_shadow)
+`));
+
+test('HR zone follow gates non-HR metrics and colors the HR Zone value and label', () => run(HR_ZONE_FOLLOW + `
+follows('All');inputs.Metric.value=2;Process(req)
+for index,color in ipairs(colors()) do check_color(color,static[index]) end
+inputs.Metric.value=HR_ZONE_METRIC;events={};Process(req)
+local texts=of('text')
+assert(texts[1].text=='Z2' and texts[2].text=='HR ZONE')
+check_color(texts[1].color,{0.28,0.82,0.96,0.41})
+check_color(texts[2].color,{0.28,0.82,0.96,0.42})
+-- The HR Zone Bar bypasses numeric follow controls entirely.
+inputs.ZoneBorder.value=0
+inputs.Metric.value=ZONE_METRIC;events={};Process(req)
+local baseline=events
+follows('None');events={};Process(req)
+assert(#events==#baseline)
+for index,event in ipairs(events) do
+ assert(event.kind==baseline[index].kind)
+ if event.color then
+  local c=baseline[index].color;check_color(event.color,{c.R,c.G,c.B,c.A})
+ end
+end
+`));
+
+test('HR zone follow uses first inclusive match and respects count missing HR and out-of-range HR', () => run(HR_ZONE_FOLLOW + `
+follows('All')
+for _,metric in ipairs({0,HR_ZONE_METRIC}) do
+ inputs.Metric.value=metric
+ for _,case in ipairs({{134,1,{0.12,0.56,1},'Z1'}, {176,1,{1,0.56,0.20},'Z5'},
+  {180,0,nil,'--'}, {180,1,{1,0.22,0.18},'Z6'}, {false,1,nil,'--'}, {300,1,nil,'--'}}) do
+  inputs.ZoneCount.value=case[2]
+  sample_activity=function() return {heart_rate=case[1] or nil} end
+  events={};Process(req)
+  local value=of('text')[1]
+  check_color(value.color,case[3] and {case[3][1],case[3][2],case[3][3],0.41} or static[1])
+  if metric==HR_ZONE_METRIC then assert(value.text==case[4]) end
+ end
+end
+`));
+
+test('HR zone ranges and follow toggles remain isolated between primary Widget5 and Widget16', () => run(HR_ZONE_FOLLOW + `
+inputs.Widget5Enabled.value=1;inputs.Widget16Enabled.value=1
+inputs.Widget5ShowLabel.value=0;inputs.Widget5ShowUnit.value=0;inputs.Widget5ShadowEnabled.value=0
+inputs.Widget16ShowLabel.value=0;inputs.Widget16ShowUnit.value=0;inputs.Widget16ShadowEnabled.value=0
+inputs.Widget16NumericValueFollowHRZones.value=1
+inputs.Widget16Zone1Min.value=140;inputs.Widget16Zone1Max.value=160
+Process(req)
+local texts=of('text')
+check_color(texts[1].color,static[1]);check_color(texts[4].color,{1,1,1,1})
+check_color(texts[5].color,{0.12,0.56,1,1})
+follows('Value');inputs.Widget5NumericValueFollowHRZones.value=1
+inputs.Widget16Zone1Max.value=145;inputs.Widget16NumericValueFollowHRZones.value=0
+events={};Process(req);texts=of('text')
+check_color(texts[1].color,{0.28,0.82,0.96,0.41})
+check_color(texts[4].color,{0.28,0.82,0.96,1});check_color(texts[5].color,{1,1,1,1})
+inputs.Widget16NumericValueFollowHRZones.value=1
+inputs.Widget16Zone2Min.value=160;inputs.Widget16Zone2Max.value=170
+events={};Process(req);texts=of('text')
+check_color(texts[1].color,{0.28,0.82,0.96,0.41})
+check_color(texts[4].color,{0.28,0.82,0.96,1});check_color(texts[5].color,{1,1,1,1})
+`));
+
 test('numeric container inputs have compatibility defaults on every slot and numeric visibility', () => run(NUMERIC_CONTAINER + `
 local defaults={NumericBackgroundEnabled=0,NumericBackgroundOpacity=0.22,NumericBackgroundRadius=6/1280,
  NumericBackgroundPaddingX=10/1280,NumericBackgroundPaddingY=6/1280,NumericBackgroundFadeOutEnabled=0,

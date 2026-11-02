@@ -1,5 +1,31 @@
 # Running Overlay Resolve Testing
 
+## HR Zone Coloring — 2026-11-02
+
+v27 implements N3 role-specific HR-zone coloring for every numeric slot. Four
+checkboxes per slot (`NumericValueFollowHRZones`, `NumericLabelFollowHRZones`,
+`NumericUnitFollowHRZones`, `NumericIconFollowHRZones`) default off and are
+visible only for the Heart Rate and HR Zone metrics. The HR Zone Bar shares the
+zone-range inputs but not the toggles. Each enabled role replaces its RGB with
+the active zone's `HRZonePalette` color while preserving that role's configured
+alpha; the background, border, glow and text shadow are not tinted.
+
+Zone classification reuses each slot's existing `ZoneCount` and `Zone1Min` …
+`Zone6Max` inputs with the same inclusive, first-match rules as the HR Zone
+label. The inputs moved to a shared `hrZones` visibility group so they appear
+for Heart Rate, HR Zone Bar and HR Zone; their IDs and defaults are unchanged.
+`NotifyChanged` now supports multiple visible groups per metric. Heart Rate and
+HR Zone show the four toggles; the HR Zone Bar shows only the ranges. Missing or
+out-of-range heart rate keeps the configured colors.
+
+Tests: `test/numeric-renderer.test.js` adds 7 HOST tests covering per-slot
+defaults and range values, initial and metric-driven visibility, independent
+role tinting and alpha preservation, off-state and container/shadow isolation,
+metric gating, inclusive first-match boundaries with 5/6 zones, missing and
+out-of-range heart rate, and slot isolation. The full Node/Lua suite passes
+with 218 tests. Resolve host Inspector visibility, live preview, save/reopen
+and Deliver are unverified.
+
 ## Numeric Container And Effects — 2026-11-02
 
 v26 implements 16 of the 19 N2 fields on every numeric slot: background

@@ -1211,7 +1211,7 @@ function Create()
 		LINKID_DataType = "Number", INPID_InputControl = "CheckboxControl", INP_Default = 1,
 	})
 	-- Inputs that only apply to number widgets or only to the distance timeline;
-	-- NotifyChanged shows one group per slot according to its metric.
+	-- NotifyChanged shows the applicable groups per slot according to its metric.
 	local function add(group, label, key, attributes)
 		local input = self:AddInput(label, key, attributes)
 		if group ~= nil then table.insert(group, input) end
@@ -1238,10 +1238,16 @@ function Create()
 		end
 		return inputs
 	end
-	local function text_options(key, numeric)
+	local function text_options(key, numeric, hr)
 		local function number(label, suffix, default, max) return number_in(numeric, label, key .. suffix, default, 0, max) end
 		local function combo(label, suffix, choices, default) return combo_in(numeric, label, key .. suffix, choices, default) end
 		local result = {}
+		result.hr = {
+			value = check_in(hr, "Value Follows HR Zones", key .. "NumericValueFollowHRZones", 0),
+			label = check_in(hr, "Label Follows HR Zones", key .. "NumericLabelFollowHRZones", 0),
+			unit = check_in(hr, "Unit Follows HR Zones", key .. "NumericUnitFollowHRZones", 0),
+			icon = check_in(hr, "Icon Follows HR Zones", key .. "NumericIconFollowHRZones", 0),
+		}
 		result.units = {
 			[1] = combo("Pace Units", "PaceUnits", {"min/km", "min/mi", "min/500m"}),
 			[2] = combo("Distance Units", "DistanceUnits", {"km", "mi", "m"}),
@@ -1509,11 +1515,11 @@ function Create()
 		end
 		return r
 	end
-	local function zone_options(key, group)
+	local function zone_options(key, group, hr_group)
 		local function number(label, suffix, default, min, max) return number_in(group, label, key .. "Zone" .. suffix, default, min, max) end
 		local function check(label, suffix, default) return check_in(group, label, key .. "Zone" .. suffix, default) end
 		local z = {
-			count = combo_in(group, "Zone Count", key .. "ZoneCount", {"5", "6"}, 1),
+			count = combo_in(hr_group, "Zone Count", key .. "ZoneCount", {"5", "6"}, 1),
 			placement = combo_in(group, "Placement", key .. "ZonePlacement", {"Bottom", "Top", "Left", "Right", "Free"}, 0),
 			orientation = combo_in(group, "Free Orientation", key .. "ZoneOrientation", {"Horizontal", "Vertical"}, 0),
 			length = number("Bar Length", "Length", 780/1280, 0.02, 1),
@@ -1540,8 +1546,8 @@ function Create()
 		local defaults = {{0,134},{134,151},{152,160},{161,171},{172,178},{178,250}}
 		for index, range in ipairs(defaults) do
 			z.ranges[index] = {
-				number("Z" .. index .. " Min HR", index .. "Min", range[1], 0, 300),
-				number("Z" .. index .. " Max HR", index .. "Max", range[2], 0, 300),
+				number_in(hr_group, "Z" .. index .. " Min HR", key .. "Zone" .. index .. "Min", range[1], 0, 300),
+				number_in(hr_group, "Z" .. index .. " Max HR", key .. "Zone" .. index .. "Max", range[2], 0, 300),
 			}
 		end
 		return z
@@ -1772,10 +1778,11 @@ function Create()
 	VisibilityGroups = {}
 	local primary_numeric, primary_timeline, primary_route, primary_zone, primary_elevation, primary_weather, primary_gauge, primary_decor = {InSize, InShowLabel}, {}, {}, {}, {}, {}, {}, {}
 	local primary_hud, primary_interval_timeline, primary_countdown, primary_summary = {}, {}, {}, {}
-	PrimaryTextOptions = text_options("", primary_numeric)
+	local primary_hr, primary_hr_zones = {}, {}
+	PrimaryTextOptions = text_options("", primary_numeric, primary_hr)
 	PrimaryTimelineOptions = timeline_options("", primary_timeline)
 	PrimaryRouteOptions = route_options("", primary_route)
-	PrimaryZoneOptions = zone_options("", primary_zone)
+	PrimaryZoneOptions = zone_options("", primary_zone, primary_hr_zones)
 	PrimaryElevationOptions = elevation_options("", primary_elevation)
 	PrimaryWeatherOptions = weather_options("", primary_weather)
 	PrimaryGaugeOptions = gauge_options("", primary_gauge)
@@ -1784,7 +1791,7 @@ function Create()
 	PrimaryIntervalTimelineOptions = interval_timeline_options("", primary_interval_timeline)
 	PrimaryCountdownOptions = interval_countdown_options("", primary_countdown)
 	PrimarySummaryOptions = interval_summary_options("", primary_summary)
-	VisibilityGroups[InMetric] = {numeric = primary_numeric, timeline = primary_timeline, route = primary_route, zone = primary_zone, elevation = primary_elevation, weather = primary_weather, gauge = primary_gauge, decor = primary_decor,
+	VisibilityGroups[InMetric] = {hr = primary_hr, hrZones = primary_hr_zones, numeric = primary_numeric, timeline = primary_timeline, route = primary_route, zone = primary_zone, elevation = primary_elevation, weather = primary_weather, gauge = primary_gauge, decor = primary_decor,
 		hud = primary_hud, intervalTimeline = primary_interval_timeline, countdown = primary_countdown, summary = primary_summary}
 	WidgetInputs = {}
 	local definitions = {
@@ -1799,6 +1806,7 @@ function Create()
 		local key = definition.key
 		local numeric, timeline, route, zone, elevation, weather, gauge, decor = {}, {}, {}, {}, {}, {}, {}, {}
 		local hud, interval_timeline_group, countdown, summary = {}, {}, {}, {}
+		local hr, hr_zones = {}, {}
 		self:AddControlPage(definition.label)
 		local controls = {}
 		controls.metric = metric_input("Metric", key .. "Metric", definition.metric)
@@ -1828,10 +1836,10 @@ function Create()
 				IC_ControlGroup = 1, IC_ControlID = index - 1,
 			})
 		end
-		controls.text = text_options(key, numeric)
+		controls.text = text_options(key, numeric, hr)
 		controls.timeline = timeline_options(key, timeline)
 		controls.route = route_options(key, route)
-		controls.zone = zone_options(key, zone)
+		controls.zone = zone_options(key, zone, hr_zones)
 		controls.elevation = elevation_options(key, elevation)
 		controls.weather = weather_options(key, weather)
 		controls.gauge = gauge_options(key, gauge)
@@ -1840,11 +1848,18 @@ function Create()
 		controls.interval_timeline = interval_timeline_options(key, interval_timeline_group)
 		controls.countdown = interval_countdown_options(key, countdown)
 		controls.summary = interval_summary_options(key, summary)
-		VisibilityGroups[controls.metric] = {numeric = numeric, timeline = timeline, route = route, zone = zone, elevation = elevation, weather = weather, gauge = gauge, decor = decor,
+		VisibilityGroups[controls.metric] = {hr = hr, hrZones = hr_zones, numeric = numeric, timeline = timeline, route = route, zone = zone, elevation = elevation, weather = weather, gauge = gauge, decor = decor,
 			hud = hud, intervalTimeline = interval_timeline_group, countdown = countdown, summary = summary}
+		if definition.metric ~= 0 then
+			-- Legacy Pace/Distance/Elapsed slots do not start on Heart Rate.
+			for _, input in ipairs(hr) do input:SetAttrs({IC_Visible = false}) end
+			for _, input in ipairs(hr_zones) do input:SetAttrs({IC_Visible = false}) end
+		end
 		WidgetInputs[slot] = controls
 	end
 	-- No default metric is a timeline; NotifyChanged reveals them per slot.
+	-- The primary and Widget5-16 default to Heart Rate, so their hr and
+	-- hrZones groups stay visible; the legacy slots hid them above.
 	for _, groups in pairs(VisibilityGroups) do
 		for _, input in ipairs(groups.timeline) do input:SetAttrs({IC_Visible = false}) end
 		for _, input in ipairs(groups.route) do input:SetAttrs({IC_Visible = false}) end
@@ -1871,9 +1886,16 @@ function NotifyChanged(input, parameter, time)
 		DataCache = {}
 	elseif VisibilityGroups ~= nil and VisibilityGroups[input] ~= nil then
 		local metric = parameter ~= nil and math.floor((parameter.Value or 0) + 0.5) or 0
-		local kind = ({[TIMELINE_METRIC] = "timeline", [ROUTE_METRIC] = "route", [ZONE_METRIC] = "zone", [ELEVATION_METRIC] = "elevation", [WEATHER_METRIC] = "weather", [HR_ZONE_METRIC] = "zone", [GAUGE_METRIC] = "gauge", [DECOR_SOLID_METRIC] = "decor", [DECOR_ICON_METRIC] = "decor", [DECOR_TEXT_METRIC] = "decor", [INTERVAL_HUD_METRIC] = "hud", [INTERVAL_TIMELINE_METRIC] = "intervalTimeline", [INTERVAL_COUNTDOWN_METRIC] = "countdown", [INTERVAL_SUMMARY_METRIC] = "summary"})[metric] or "numeric"
+		local kinds = ({[0] = {"numeric", "hrZones", "hr"},
+			[TIMELINE_METRIC] = {"timeline"}, [ROUTE_METRIC] = {"route"}, [ZONE_METRIC] = {"zone", "hrZones"},
+			[ELEVATION_METRIC] = {"elevation"}, [WEATHER_METRIC] = {"weather"}, [HR_ZONE_METRIC] = {"zone", "hrZones", "hr"},
+			[GAUGE_METRIC] = {"gauge"}, [DECOR_SOLID_METRIC] = {"decor"}, [DECOR_ICON_METRIC] = {"decor"}, [DECOR_TEXT_METRIC] = {"decor"},
+			[INTERVAL_HUD_METRIC] = {"hud"}, [INTERVAL_TIMELINE_METRIC] = {"intervalTimeline"},
+			[INTERVAL_COUNTDOWN_METRIC] = {"countdown"}, [INTERVAL_SUMMARY_METRIC] = {"summary"}})[metric] or {"numeric"}
 		for name, controls in pairs(VisibilityGroups[input]) do
-			for _, control in ipairs(controls) do control:SetAttrs({IC_Visible = name == kind}) end
+			local visible = false
+			for _, kind in ipairs(kinds) do if name == kind then visible = true end end
+			for _, control in ipairs(controls) do control:SetAttrs({IC_Visible = visible}) end
 		end
 	elseif NUDGES[input] ~= nil then
 		local current = InTimeOffset:GetSource(time).Value or 0
@@ -1978,8 +2000,8 @@ function Process(req)
 			local unit_input = options.units[metric]
 			local source = math.floor(options.temperature_source:GetValue(req).Value + 0.5)
 			local manual = source > 0 and options.manual_temperature:GetValue(req).Value or nil
-			local zone_label = nil
-			if metric == HR_ZONE_METRIC and zone_options ~= nil then
+			local zone_label, zone_index = nil, nil
+			if (metric == 0 or metric == HR_ZONE_METRIC) and zone_options ~= nil then
 				local z = zone_options
 				local count = math.floor(value_of(z.count) + 0.5) == 0 and 5 or 6
 				local ranges = {}
@@ -1987,9 +2009,17 @@ function Process(req)
 					ranges[index] = {math.floor(value_of(z.ranges[index][1]) + 0.5),
 						math.floor(value_of(z.ranges[index][2]) + 0.5)}
 				end
-				local zone_index = heart_rate_zone(sample.heart_rate, ranges)
-				if zone_index ~= nil then zone_label = "Z" .. zone_index end
+				zone_index = heart_rate_zone(sample.heart_rate, ranges)
+				if metric == HR_ZONE_METRIC and zone_index ~= nil then zone_label = "Z" .. zone_index end
 			end
+			local tint = zone_index ~= nil and HR_ZONE_COLORS[zone_index] or nil
+			local function followed(color, input)
+				if tint ~= nil and value_of(input) > 0.5 then
+					return Pixel{R = tint[1], G = tint[2], B = tint[3], A = color.A}
+				end
+				return color
+			end
+			color = followed(color, options.hr.value)
 			local label, value, unit = metric_text(metric, sample, elapsed_us, data, unit_input and unit_input:GetValue(req).Value or 0,
 				manual, source < 2, options.clock_offset:GetValue(req).Value,
 				options.custom_field:GetValue(req).Value, options.custom_format:GetValue(req).Value,
@@ -2007,7 +2037,7 @@ function Process(req)
 			local value_width = text_width(widget_font, widget_style, value, size)
 			local parts = {{font = widget_font, style = widget_style, text = value, size = size, x = x, y = y, color = color}}
 			local bounds = {left = x, right = x + value_width, bottom = y - descent, top = y + ascent}
-			local function attachment(text, controls)
+			local function attachment(text, controls, follow)
 				if text == "" then return end
 				local part_font, part_style = font_of(controls.font, controls.style)
 				local part_size = controls.size:GetValue(req).Value
@@ -2016,10 +2046,10 @@ function Process(req)
 				local px, bottom = attach_box(bounds, width, part_ascent + part_descent,
 					value_of(controls.position), value_of(controls.spacing), value_of(controls.alignment))
 				table.insert(parts, {font = part_font, style = part_style, text = text, size = part_size, x = px, y = bottom + part_descent,
-					color = color_of(controls.color)})
+					color = followed(color_of(controls.color), follow)})
 			end
-			if options.show_unit:GetValue(req).Value > 0.5 then attachment(unit, options.Unit) end
-			if show_label then attachment(label, options.Label) end
+			if options.show_unit:GetValue(req).Value > 0.5 then attachment(unit, options.Unit, options.hr.unit) end
+			if show_label then attachment(label, options.Label, options.hr.label) end
 			-- The icon wraps the whole text block, as in the Mac layout. Its cross-axis
 			-- alignment uses the value's line box, which SwiftUI aligns against.
 			local icon = options.icon
@@ -2032,7 +2062,7 @@ function Process(req)
 					top = math.max(bounds.top, y + ascent), bottom = math.min(bounds.bottom, y - descent)}
 				local ix, iy = attach_box(block, icon_size, icon_size, math.floor(value_of(icon.position) + 0.5),
 					value_of(icon.spacing), math.floor(value_of(icon.alignment) + 0.5))
-				table.insert(parts, {shapes = icon_shapes(icon_name, ix, iy + icon_size, icon_size), color = color_of(icon.color)})
+				table.insert(parts, {shapes = icon_shapes(icon_name, ix, iy + icon_size, icon_size), color = followed(color_of(icon.color), options.hr.icon)})
 				bounds = block
 			end
 			local c = options.container

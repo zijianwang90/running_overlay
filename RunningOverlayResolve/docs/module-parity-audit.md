@@ -72,7 +72,10 @@ label, show-unit, label/unit attachment position/alignment/spacing/size/font/
 style/color, icon enable/glyph/position/alignment/size/spacing/color, layered
 shadow, per-slot value size/font/style/color, and top-left anchoring at
 `Position` (`RunningOverlayNumeric.fuse:1976-1982`). New slots seed a subset of
-template style fields once (`fusion-script.js:140-148`).
+template style fields once (`fusion-script.js:140-148`). v27 adds independent
+value/label/unit/icon HR-zone tint for the Heart Rate and HR Zone metrics,
+using each slot's zone ranges; see
+[Heart Rate Zone Coloring](hr-zone-coloring.md).
 
 Shared numeric gaps, named after the Mac fields:
 
@@ -80,7 +83,6 @@ Shared numeric gaps, named after the Mac fields:
 |---|---|---|
 | N1 | `textPreset`, `OverlayPresetTokens` | `OverlayElement.swift:3222-3460` |
 | N2 | Remaining after v26: `rotationDegrees`, `textAlignment`, `backgroundBlurRadius`. Background, border, glow and minimum size are implemented for every numeric slot (see [Numeric Container Controls](numeric-container.md)); blur is not reproducible in a fill-only pipeline, and rotation/alignment need a separate decision. | `OverlayElement.swift:768-817` |
-| N3 | `valueColorsFollowHeartRateZones`, `labelColorsFollowHeartRateZones`, `unitColorsFollowHeartRateZones`, `iconColorsFollowHeartRateZones`, `textColorsFollowHeartRateZones` | `OverlayElement.swift:755-767`, `:821` |
 
 ## Numeric Overlays
 
@@ -110,8 +112,8 @@ Shared numeric gaps, named after the Mac fields:
 
 | Element | Covered today | Gaps | Tests |
 |---|---|---|---|
-| Heart Rate | Integer bpm; `--` when missing; Heart icon. | N1, N2, N3. | `test/numeric-renderer.test.js:22`, `:46`, `:933` |
-| HR Zone | `Z1`…`Z6` from per-instance inclusive ranges; `--` when missing. | N1, N2, N3; no Mac global `HeartRateZonePreferences`; zone palette is fixed in the Fuse. | `test/numeric-renderer.test.js:933`, `:947`; host `testing.md:891-900` |
+| Heart Rate | Integer bpm; `--` when missing; Heart icon; optional value/label/unit/icon HR-zone tint from the slot's ranges. | N1, N2. | `test/numeric-renderer.test.js:23`, `:46`, `:435-595` |
+| HR Zone | `Z1`…`Z6` from per-instance inclusive ranges; `--` when missing; optional value/label/unit/icon HR-zone tint from the same ranges. | N1, N2; per-slot ranges instead of Mac global `HeartRateZonePreferences` (documented difference). | `test/numeric-renderer.test.js:1350`, `:435-595`; [host validation](testing.md#hr-zone-label--2026-11-01) |
 | Pace | min/km, min/mi, min/500m; missing pace `--'--"`. | N1, N2. | `test/numeric-renderer.test.js:22`, `:46` |
 | Avg Pace | Real elapsed ÷ distance with pace units. | N1, N2. | `test/numeric-renderer.test.js:198` |
 | Lap Pace | Current lap start to sampled record; `--` before a lap or with no lap messages. | N1, N2; depends on device lap messages. | `test/numeric-renderer.test.js:107`; host `testing.md:284-308` |
