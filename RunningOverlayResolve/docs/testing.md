@@ -1,5 +1,56 @@
 # Running Overlay Resolve Testing
 
+## Template Library — 2026-11-01
+
+The panel presents the built-in templates and a saved-template library instead
+of restoring three fixed choices without management. Saved templates are stored
+by `src/workflow/template-library.js` in one JSON file under the application
+user-data directory and are shared by every Resolve project; applying one copies
+it into the project configuration. `src/domain/user-templates.js` validates the
+stored form: one to sixteen elements, normalized names, metric names from the
+widget catalog, finite positions, and style keys limited to Fuse suffix strings
+with number, text or point values. Instance state, data-file inputs
+(`ActivityFile`, `SyncFile`), `TimelineOriginFrame`, `TimeOffset`, `Metric`,
+`Enabled` and `Position` are rejected so a template file cannot bind or
+redirect renderer data.
+
+Saving reads live values with `templateCaptureScript`, which returns each active
+slot's metric, position and 300-plus style inputs as JSON keyed by slot number.
+`pairCapturedSlots` pairs those slots with panel widgets by metric in slot order,
+which also works on a cut overlay whose pieces keep separate compositions.
+`composeTemplateElements` then prefers live values and falls back to the selected
+template's placement for widgets not yet on the overlay.
+
+Import accepts the portable `.rortemplate` JSON (`format:
+running-overlay-resolve-template`, schema version 1) and Mac `.rotemplate`
+files. Mac files contribute visible element types and positions only, with the
+Mac top-down Y flipped; `elapsedTime` maps to `elapsed`, unknown visible types
+fail, and more than sixteen elements is refused with a count. Export writes the
+portable format.
+
+Tests: template normalization and rejection cases for metric, name, position,
+style values, excluded style keys and element count; library save, rename,
+duplicate, update, export, import and delete on a temporary directory; file
+round-trip; Mac import mapping, hidden-element removal and the sixteen-widget
+limit; configuration compatibility with and without a library copy, including a
+legacy file; Lua capture of active slots, slot one's `Red`/`Green`/`Blue`/`Alpha`
+input names, string escaping, excluded inputs, failure acknowledgment and
+pairing with duplicate metrics; and saved-template seeding of text, number and
+point inputs through the generated update script, including an input the current
+Fuse does not have. Panel tests cover grouped widget addition, capacity, remove
+using the latest configuration, confirmation before replacing an existing
+overlay's widgets, built-in and saved rows, and a saved template that later
+leaves the library. 148 Node tests pass.
+
+Host evidence: the built panel was rendered from the assembled plugin with
+stubbed IPC for layout review, and the capture script was run read-only against
+the cut `Overlay Test` overlay in Resolve Studio 21.1.1. Both pieces returned
+four active slots with positions and 378 style values each in about 1 s; pairing
+the captured slots with the widget list, composing, normalizing and round-
+tripping produced a 32 KB template with every widget styled. The panel was
+installed afterwards; interactive save, import and apply were not yet exercised
+in the host.
+
 ## Built-In Templates — 2026-11-01
 
 The Workflow panel replaces the Stack/Row/Grid choices with the Mac app's

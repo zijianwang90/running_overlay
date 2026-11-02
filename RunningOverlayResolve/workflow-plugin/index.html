@@ -91,13 +91,25 @@
       </section>
 
       <section class="card">
-        <h2>Template</h2>
-        <div id="template-options" class="segmented" role="radiogroup" aria-label="Template"></div>
-        <p id="template-note" class="note"></p>
-        <p class="note">A template sets the widget list, starting positions and starting styles. Choosing another template replaces the list on the next update; existing instances and your later Fusion edits keep their styles.</p>
-        <h2>Widgets</h2>
-        <div id="metric-chips" class="chips" aria-label="Metrics"></div>
-        <p class="note">Add, duplicate or remove individual widgets. New widgets start at a free position; positions are only reset when the template or widget list changes.</p>
+        <div class="card-head">
+          <h2>Template</h2>
+          <span id="template-badge" class="badge muted"></span>
+        </div>
+        <div id="template-list" class="template-list"></div>
+        <div id="template-confirm" class="template-confirm" role="alertdialog" aria-live="polite" hidden></div>
+        <div class="template-actions">
+          <button id="save-template" class="secondary" type="button">Save current as template</button>
+          <button id="import-template" class="secondary" type="button">Import…</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <details id="widget-details" class="card-details">
+          <summary>Widgets <span id="widget-count" class="note"></span></summary>
+          <div id="widget-list" class="widget-list"></div>
+          <select id="add-widget" class="add-widget" aria-label="Add widget"></select>
+          <p class="note">Position and style each widget in Fusion. Changing this list re-applies template positions on the next update.</p>
+        </details>
       </section>
 
       <section class="card">

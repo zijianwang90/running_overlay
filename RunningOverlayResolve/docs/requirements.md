@@ -150,9 +150,20 @@ data semantics, default styling, and reviewed visual examples.
 - Use the Mac app's built-in Easy Run, Race, and Interval Workout templates as
   the configuration entry point. Choosing a template replaces the widget list
   and assigns each widget that template element's starting position.
+- Let users save the current overlay as a named template, then rename,
+  duplicate, update, export, import, and delete templates in one library shared
+  by every project on the machine. A template captures each widget's live
+  Fusion position and style inputs, not instance identities or data bindings.
+  Applying a saved template replaces the widget list and seeds those styles.
+  Applying a template to an existing overlay asks for confirmation first.
+- Accept Mac `.rotemplate` files on import and transfer their visible widget
+  types and positions only; Mac SwiftUI styles are not converted.
 - Let the panel add, duplicate, or remove widgets on top of the template, with
   one to sixteen active. Metrics shared by the old and new template keep their
   instance identity, Fusion slot, and styling.
+- Keep the widget list collapsed behind a count so template choice stays the
+  primary control, and offer widget addition from the Mac metrics, visuals and
+  decor groups.
 - Create and connect the managed renderer automatically. Users do not wire
   Fusion nodes. Each widget has its own native Fusion position and style inputs.
 - Persist the template, selection, and order per project and timeline. Saved

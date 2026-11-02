@@ -4,12 +4,14 @@ const fs = require('node:fs/promises');
 const crypto = require('node:crypto');
 const { invariant } = require('../domain/validation');
 const { scanCurrentTimeline } = require('../resolve/resolve-adapter');
-const { updateManagedOverlay, managedOverlayIsCurrent, offsetPieces, overlayTimeOffset, OVERLAY_SPLIT, OVERLAY_SPLIT_MESSAGE, OVERLAY_OFF_PIECE } = require('../resolve/managed-overlay');
-const { validOffsetSeconds } = require('../resolve/fusion-script');
+const { updateManagedOverlay, managedOverlayIsCurrent, offsetPieces, overlayTimeOffset, captureOverlayStyles, OVERLAY_SPLIT, OVERLAY_SPLIT_MESSAGE, OVERLAY_OFF_PIECE } = require('../resolve/managed-overlay');
+const { validOffsetSeconds, pairCapturedSlots } = require('../resolve/fusion-script');
 const { compileSyncMap, timelineFingerprint } = require('../sync/compile-sync-map');
 const { writeResolveBundle } = require('../io/render-data');
 const { contextForResolve, validateConfiguration, applyConfirmedCaptureTimes, cameraModels } = require('./configuration');
 const { offsetAt } = require('../sync/capture-time');
+const { templateById } = require('../domain/templates');
+const { composeTemplateElements } = require('../domain/user-templates');
 
 // The recording timezone stands in for the activity's local clock. The offset at
 // activity start seeds new Real Time widgets; Fusion keeps it editable afterwards.
@@ -18,11 +20,11 @@ function clockUtcOffsetHours(configuration, systemTimeZone = Intl.DateTimeFormat
   return offsetAt(Math.floor(configuration.activity.startUtcUs / 1000), zone) / 60;
 }
 
-const editable = (value) => JSON.stringify([value.referenceVideoTrackIndex, value.activity, value.weather, value.confirmedCaptureUtcByMediaId, value.cameraAnchors, value.widgets, value.templateId, value.captureTimeZone, value.captureTimeZonesByMediaId]);
+const editable = (value) => JSON.stringify([value.referenceVideoTrackIndex, value.activity, value.weather, value.confirmedCaptureUtcByMediaId, value.cameraAnchors, value.widgets, value.templateId, value.customTemplate, value.captureTimeZone, value.captureTimeZonesByMediaId]);
 class WorkflowService {
   constructor({ getResolve, store, bundleRoot, scan = scanCurrentTimeline, update = updateManagedOverlay, inspectManaged = managedOverlayIsCurrent,
-    pieces = offsetPieces, offset = overlayTimeOffset }) {
-    Object.assign(this, { getResolve, store, bundleRoot, scan, update, inspectManaged, pieces, offset });
+    pieces = offsetPieces, offset = overlayTimeOffset, captureStyles = captureOverlayStyles }) {
+    Object.assign(this, { getResolve, store, bundleRoot, scan, update, inspectManaged, pieces, offset, captureStyles });
     this.queue = Promise.resolve();
     this.applying = false;
     this.offsetTarget = null;
@@ -110,6 +112,27 @@ class WorkflowService {
     }
     catch (error) { this.offsetTarget = null; throw error; }
   }
+  // A template saved before the overlay exists uses the panel's starting layout.
+  async currentTemplateElements({ contextId, configuration }) {
+    const context = await contextForResolve(await this.getResolve());
+    invariant(context.contextId === contextId, 'Project or timeline changed. Scan again before saving a template.');
+    invariant(!await context.project.IsRenderingInProgress(), 'Resolve is rendering. Save the template after the export finishes.');
+    const value = validateConfiguration(configuration);
+    const template = value.customTemplate ?? templateById(value.templateId);
+    if (!value.managedItemId) return composeTemplateElements(value.widgets, template);
+    // A cut overlay keeps one composition per piece; the first piece that still
+    // has active slots supplies the live positions and styles. A piece whose
+    // composition cannot be read is skipped rather than failing the save.
+    let failure = null;
+    for (const piece of await this.pieces(context.timeline, contextId, value.managedItemId)) {
+      try {
+        const captured = pairCapturedSlots(value.widgets, await this.captureStyles(await piece.load()));
+        if (Object.keys(captured).length) return composeTemplateElements(value.widgets, template, captured);
+      } catch (error) { failure = error; }
+    }
+    if (failure) throw failure;
+    return composeTemplateElements(value.widgets, template);
+  }
   async saveConfiguration(payload) {
     const context = await contextForResolve(await this.getResolve());
     invariant(context.contextId === payload.contextId, 'Project or timeline changed. Scan before saving settings.');
@@ -145,7 +168,7 @@ class WorkflowService {
     await fs.mkdir(revisionRoot, { recursive: true, mode: 0o700 });
     const bundleDirectory = await writeResolveBundle(revisionRoot, configuration.activity, syncMap, configuration.weather);
     // Data files are immutable: old instances keep their complete revision until the input switch.
-    const result = await this.update(await this.getResolve(), { contextId: configuration.contextId, syncMap, bundleDirectory, expectedItemId: configuration.managedItemId, referenceVideoTrackIndex: configuration.referenceVideoTrackIndex, widgets: configuration.widgets, templateId: configuration.templateId, initialTimeOffsetSeconds: configuration.draftTimeOffsetMs / 1000, clockUtcOffsetHours: clockUtcOffsetHours(configuration) });
+    const result = await this.update(await this.getResolve(), { contextId: configuration.contextId, syncMap, bundleDirectory, expectedItemId: configuration.managedItemId, referenceVideoTrackIndex: configuration.referenceVideoTrackIndex, widgets: configuration.widgets, templateId: configuration.templateId, customTemplate: configuration.customTemplate, initialTimeOffsetSeconds: configuration.draftTimeOffsetMs / 1000, clockUtcOffsetHours: clockUtcOffsetHours(configuration) });
     const saved = await this.store.save({ ...configuration, ...result, bundleDirectory, lastAppliedFingerprint: snapshot.fingerprint });
     return { configuration: saved, segmentCount: syncMap.segments.length, fingerprint: snapshot.fingerprint };
   }

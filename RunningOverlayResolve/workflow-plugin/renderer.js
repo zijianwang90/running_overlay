@@ -5,6 +5,7 @@ const state = {
   busy: false, scanning: false, dirty: false, scanPaused: false, allowClose: false, autoTrackTried: false,
   zoneInferred: false, saveTimer: null, captureDrafts: new Map(), anchorDrafts: new Map(),
   offset: { pending: null, inFlight: false, activeUntil: 0 }, weatherBusy: false,
+  templates: [], templateMenu: null, templateRename: null, templateConfirm: null,
 };
 const api = window.runningOverlayAPI;
 const time = window.RunningOverlayTime;
@@ -12,9 +13,15 @@ const alignment = window.RunningOverlayAlignment;
 const templateApi = window.RunningOverlayTemplates;
 const { createTimePicker, zoneSelect } = window.runningOverlayPickers;
 const byId = (id) => document.getElementById(id);
-const METRICS = [['heartRate', 'Heart rate'], ['pace', 'Pace'], ['distance', 'Distance'], ['elapsed', 'Time'], ['elevation', 'Elevation'], ['cadence', 'Cadence'], ['power', 'Power'], ['calories', 'Calories'],
-  ['avgPace', 'Avg pace'], ['verticalOscillation', 'Vert. osc.'], ['groundContactTime', 'Contact time'], ['strideLength', 'Stride'],
-  ['verticalRatio', 'Vert. ratio'], ['groundContactBalance', 'GCT balance'], ['temperature', 'Temperature'], ['grade', 'Grade'], ['realTime', 'Clock'], ['distanceTimeline', 'Dist. timeline'], ['routeMap', 'Route map'], ['zoneEdgeBar', 'HR zone bar'], ['elevationChart', 'Elevation chart'], ['weatherWidget', 'Weather'], ['date', 'Date'], ['customNumeric', 'Custom numeric'], ['heartRateZone', 'HR zone'], ['runningGauge', 'Running gauge'], ['decorSolidColor', 'Solid color'], ['decorIcon', 'Icon'], ['decorText', 'Text'], ['lapPace', 'Lap pace'], ['intervalHUDBar', 'Interval HUD bar'], ['intervalTimeline', 'Interval timeline'], ['intervalCountdown', 'Interval countdown'], ['intervalWorkSummary', 'Interval work summary']];
+// Grouped as in the Mac app's overlay palette.
+const WIDGET_GROUPS = [
+  ['Metrics', [['heartRate', 'Heart rate'], ['heartRateZone', 'HR zone'], ['pace', 'Pace'], ['avgPace', 'Avg pace'], ['lapPace', 'Lap pace'], ['calories', 'Calories'], ['elapsed', 'Time'], ['realTime', 'Clock'], ['date', 'Date'], ['distance', 'Distance'], ['elevation', 'Elevation'], ['cadence', 'Cadence'], ['power', 'Power'],
+    ['verticalOscillation', 'Vert. osc.'], ['groundContactTime', 'Contact time'], ['strideLength', 'Stride'], ['verticalRatio', 'Vert. ratio'], ['groundContactBalance', 'GCT balance'], ['temperature', 'Temperature'], ['grade', 'Grade'], ['customNumeric', 'Custom numeric']]],
+  ['Visuals', [['distanceTimeline', 'Dist. timeline'], ['elevationChart', 'Elevation chart'], ['runningGauge', 'Running gauge'], ['intervalHUDBar', 'Interval HUD bar'], ['intervalTimeline', 'Interval timeline'], ['intervalCountdown', 'Interval countdown'], ['intervalWorkSummary', 'Interval work summary'], ['zoneEdgeBar', 'HR zone bar'], ['routeMap', 'Route map'], ['weatherWidget', 'Weather']]],
+  ['Decor', [['decorSolidColor', 'Solid color'], ['decorIcon', 'Icon'], ['decorText', 'Text']]],
+];
+const METRICS = WIDGET_GROUPS.flatMap(([, metrics]) => metrics);
+const MAXIMUM_WIDGETS = 16;
 const OVERLAY_TRACK = 'Running Overlay';
 const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
 
@@ -326,71 +333,172 @@ function renderTracks() {
   status.className = errors.length ? 'note warning' : 'note';
   status.textContent = `${state.scan.timeline.timelineName}${errors.length ? `\n${errors.map((entry) => entry.message).join('\n')}` : ''}`;
 }
-function templateFor(id) { return templateApi.templateById(id); }
-function renderTemplates() {
-  const config = state.configuration; const box = byId('template-options'); box.replaceChildren();
-  for (const template of templateApi.TEMPLATES) {
-    const button = document.createElement('button'); button.type = 'button'; button.textContent = template.name;
-    button.setAttribute('role', 'radio');
-    button.setAttribute('aria-checked', String(template.id === config.templateId));
-    button.addEventListener('click', () => applyTemplate(template.id));
-    box.appendChild(button);
+function currentTemplate() { return state.configuration.customTemplate ?? templateApi.templateById(state.configuration.templateId); }
+function templateModified() { return !templateApi.templateMatches(currentTemplate(), state.configuration.widgets); }
+function textButton(label, className, action) {
+  const button = document.createElement('button'); button.type = 'button'; button.className = className; button.textContent = label;
+  button.addEventListener('click', action);
+  return button;
+}
+function templateRow(template, saved) {
+  const row = document.createElement('div'); row.className = 'template-row';
+  const selected = template.id === state.configuration.templateId;
+  row.setAttribute('aria-current', String(selected));
+  if (state.templateRename === template.id) {
+    const input = document.createElement('input'); input.type = 'text'; input.className = 'template-rename'; input.value = template.name; input.maxLength = 80;
+    input.setAttribute('aria-label', 'Template name');
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') commitRename(template.id, input.value);
+      if (event.key === 'Escape') { state.templateRename = null; renderTemplates(); }
+    });
+    input.addEventListener('blur', () => { if (state.templateRename === template.id) commitRename(template.id, input.value); });
+    row.appendChild(input);
+    return row;
   }
-  const template = templateFor(config.templateId);
-  const modified = !templateApi.templateMatches(template, config.widgets);
-  byId('template-note').textContent = `${template.name}: ${template.summary}${modified ? ' Widget list modified.' : ''}`;
+  const apply = document.createElement('button'); apply.type = 'button'; apply.className = 'template-apply';
+  const name = document.createElement('span'); name.className = 'template-name'; name.textContent = template.name;
+  const count = document.createElement('span'); count.className = 'template-count'; count.textContent = plural(template.elements.length, 'widget');
+  apply.append(name, count); apply.title = template.summary ?? template.name;
+  apply.addEventListener('click', () => requestTemplate(template));
+  row.appendChild(apply);
+  if (saved) {
+    const more = textButton('⋯', 'template-more', () => { state.templateMenu = state.templateMenu === template.id ? null : template.id; renderTemplates(); });
+    more.setAttribute('aria-label', `Actions for ${template.name}`);
+    more.setAttribute('aria-expanded', String(state.templateMenu === template.id));
+    row.appendChild(more);
+  }
+  return row;
+}
+function templateMenu(template) {
+  const menu = document.createElement('div'); menu.className = 'template-menu';
+  menu.append(
+    textButton('Rename', 'template-action', () => { Object.assign(state, { templateMenu: null, templateRename: template.id }); renderTemplates(); }),
+    textButton('Duplicate', 'template-action', () => libraryChange(() => api.duplicateTemplate({ id: template.id }))),
+    textButton('Update', 'template-action', () => confirmTemplate(`Update ${template.name} with the current setup? This overwrites the saved template.`, 'Update Template', () => libraryChange(() => api.updateTemplateFromCurrent({ id: template.id, ...currentSetup() }), `${template.name} updated.`))),
+    textButton('Export…', 'template-action', () => exportTemplate(template)),
+    textButton('Delete', 'template-action danger', () => confirmTemplate(`Delete ${template.name} from your template library?`, 'Delete Template', () => libraryChange(() => api.deleteTemplate({ id: template.id }), `${template.name} deleted.`))),
+  );
+  return menu;
+}
+function renderTemplates() {
+  const config = state.configuration; const box = byId('template-list'); box.replaceChildren();
+  const heading = (text) => { const label = document.createElement('div'); label.className = 'template-group'; label.textContent = text; return label; };
+  box.appendChild(heading('Built-in'));
+  for (const template of templateApi.TEMPLATES) box.appendChild(templateRow(template, false));
+  box.appendChild(heading('My templates'));
+  if (!state.templates.length) { const empty = document.createElement('div'); empty.className = 'template-empty'; empty.textContent = 'No saved templates yet'; box.appendChild(empty); }
+  for (const template of state.templates) {
+    box.appendChild(templateRow(template, true));
+    if (state.templateMenu === template.id) box.appendChild(templateMenu(template));
+  }
+  const badge = byId('template-badge');
+  badge.textContent = `${currentTemplate().name}${templateModified() ? ' · Modified' : ''}`;
+  const confirm = byId('template-confirm'); confirm.replaceChildren(); confirm.hidden = !state.templateConfirm;
+  if (state.templateConfirm) {
+    const { message, action, run } = state.templateConfirm;
+    const text = document.createElement('p'); text.textContent = message;
+    const buttons = document.createElement('div'); buttons.className = 'template-confirm-actions';
+    buttons.append(
+      textButton('Cancel', 'secondary', () => { state.templateConfirm = null; renderTemplates(); }),
+      textButton(action, 'secondary confirm', () => { state.templateConfirm = null; run(); renderTemplates(); }),
+    );
+    confirm.append(text, buttons);
+  }
+}
+function confirmTemplate(message, action, run) { Object.assign(state, { templateConfirm: { message, action, run }, templateMenu: null }); renderTemplates(); }
+// Applying a template replaces the current widgets, so ask once there is
+// something to lose; the first choice on an untouched panel applies directly.
+function requestTemplate(template) {
+  const config = state.configuration;
+  const saved = !templateApi.TEMPLATES.includes(template);
+  if (!saved && config.templateId === template.id && !templateModified()) return;
+  const apply = () => { if (saved) applySavedTemplate(template); else applyTemplate(template.id); };
+  if (!config.managedItemId && !templateModified()) { apply(); return; }
+  confirmTemplate(`Replace current widgets with ${template.name}? ${saved ? 'Its saved positions and styles replace this overlay\'s widgets on the next update.' : 'Widgets shared with this template keep their Fusion styles.'}`, 'Replace Widgets', apply);
 }
 // Replacing the template keeps the identity (and therefore the Fusion slot and
 // styles) of each metric that both templates share; other widgets are dropped.
 function applyTemplate(templateId) {
-  const config = state.configuration; const template = templateFor(templateId);
-  if (config.templateId === templateId && templateApi.templateMatches(template, config.widgets)) return;
+  const config = state.configuration; const template = templateApi.templateById(templateId);
   const remaining = [...config.widgets]; const widgets = [];
   for (const element of template.elements) {
     const index = remaining.findIndex((widget) => widget.metric === element.metric);
     widgets.push(index >= 0 ? remaining.splice(index, 1)[0] : { id: `numeric-${crypto.randomUUID()}`, metric: element.metric });
   }
-  Object.assign(config, { templateId, widgets });
+  Object.assign(config, { templateId, customTemplate: null, widgets });
   renderWidgets(); scheduleSave(); widgetsChanged();
 }
+// Saved templates carry complete styles, so every widget starts as a new
+// instance and receives them, as applying a Mac template replaces the layout.
+function applySavedTemplate(template) {
+  const { id, name, elements } = template;
+  Object.assign(state.configuration, { templateId: id, customTemplate: { id, name, elements },
+    widgets: elements.map((element) => ({ id: `numeric-${crypto.randomUUID()}`, metric: element.metric })) });
+  renderWidgets(); scheduleSave(); widgetsChanged();
+}
+function currentSetup() { collect(); return { contextId: state.configuration.contextId, configuration: state.configuration }; }
+async function libraryChange(work, message) {
+  try {
+    const result = await work();
+    state.templates = Array.isArray(result) ? result : result.templates;
+    if (message) setStatus(message, 'good');
+    renderTemplates();
+    return result;
+  } catch (error) { setStatus(error.message, 'error'); return null; }
+}
+async function commitRename(id, name) {
+  state.templateRename = null;
+  await libraryChange(() => api.renameTemplate({ id, name }));
+  renderTemplates();
+}
+async function saveTemplate() {
+  if (!state.configuration) return;
+  const result = await libraryChange(() => api.saveCurrentTemplate(currentSetup()));
+  if (result) setStatus(`Saved ${result.template.name}.`, 'good');
+}
+async function importTemplate() {
+  try {
+    const result = await api.importTemplate();
+    if (!result) return;
+    state.templates = result.templates; renderTemplates();
+    setStatus(result.stylesImported ? `Imported ${result.template.name}.` : `Imported ${result.template.name} from the Mac app: widgets and positions only. Fonts, colors and sizes are not converted.`, result.stylesImported ? 'good' : 'warning');
+  } catch (error) { setStatus(error.message, 'error'); }
+}
+async function exportTemplate(template) {
+  state.templateMenu = null; renderTemplates();
+  try { if (await api.exportTemplate({ id: template.id, name: template.name })) setStatus(`Exported ${template.name}.`, 'good'); }
+  catch (error) { setStatus(error.message, 'error'); }
+}
 function renderWidgets() {
-  const config = state.configuration; renderTemplates(); const box = byId('metric-chips'); box.replaceChildren();
-  for (const [metric, label] of METRICS) {
-    const chip = document.createElement('button'); chip.type = 'button'; chip.className = 'chip'; chip.textContent = label;
-    chip.setAttribute('aria-pressed', String(config.widgets.some((widget) => widget.metric === metric)));
-    chip.addEventListener('click', () => toggleMetric(metric));
-    box.appendChild(chip);
-  }
-  const list = document.createElement('div'); list.className = 'widget-instances';
+  const config = state.configuration; renderTemplates();
+  byId('widget-count').textContent = `${config.widgets.length} of ${MAXIMUM_WIDGETS}`;
+  const list = byId('widget-list'); list.replaceChildren();
   for (const widget of config.widgets) {
-    const row = document.createElement('div'); row.className = 'card-row';
+    const row = document.createElement('div'); row.className = 'widget-row';
     const label = document.createElement('span'); label.textContent = METRICS.find(([metric]) => metric === widget.metric)[1];
-    const actions = document.createElement('div');
-    const duplicate = document.createElement('button'); duplicate.type = 'button'; duplicate.className = 'secondary'; duplicate.textContent = 'Duplicate'; duplicate.disabled = config.widgets.length >= 16;
-    duplicate.addEventListener('click', () => {
-      const current = state.configuration;
-      if (current.widgets.length >= 16) return;
-      current.widgets.push({ id: `numeric-${crypto.randomUUID()}`, metric: widget.metric });
-      renderWidgets(); scheduleSave(); widgetsChanged();
-    });
-    const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'secondary'; remove.textContent = 'Remove'; remove.disabled = config.widgets.length === 1;
-    remove.addEventListener('click', () => {
+    const remove = textButton('×', 'widget-remove', () => {
       const current = state.configuration;
       if (current.widgets.length === 1) return;
       current.widgets = current.widgets.filter((candidate) => candidate.id !== widget.id);
       renderWidgets(); scheduleSave(); widgetsChanged();
     });
-    actions.append(duplicate, remove); row.append(label, actions); list.appendChild(row);
+    remove.disabled = config.widgets.length === 1; remove.setAttribute('aria-label', `Remove ${label.textContent}`);
+    row.append(label, remove); list.appendChild(row);
   }
-  box.appendChild(list);
+  const picker = byId('add-widget'); picker.replaceChildren(); picker.disabled = config.widgets.length >= MAXIMUM_WIDGETS;
+  const placeholder = document.createElement('option'); placeholder.value = ''; placeholder.textContent = picker.disabled ? 'Sixteen widgets is the maximum' : 'Add widget…';
+  picker.appendChild(placeholder);
+  for (const [group, metrics] of WIDGET_GROUPS) {
+    const optgroup = document.createElement('optgroup'); optgroup.label = group;
+    for (const [metric, label] of metrics) { const option = document.createElement('option'); option.value = metric; option.textContent = label; optgroup.appendChild(option); }
+    picker.appendChild(optgroup);
+  }
+  picker.value = '';
 }
-function toggleMetric(metric) {
-  const config = state.configuration; const existing = config.widgets.find((widget) => widget.metric === metric);
-  if (!existing && config.widgets.length >= 16) { setStatus('Keep at most sixteen widgets.', 'warning'); return; }
-  if (existing && config.widgets.filter((widget) => widget.metric !== metric).length === 0) { setStatus('Keep at least one metric.', 'warning'); return; }
-  const order = METRICS.map(([key]) => key);
-  config.widgets = (existing ? config.widgets.filter((widget) => widget !== existing) : [...config.widgets, { id: `numeric-${crypto.randomUUID()}`, metric }])
-    .sort((left, right) => order.indexOf(left.metric) - order.indexOf(right.metric));
+function addWidget(metric) {
+  const config = state.configuration;
+  if (!metric || config.widgets.length >= MAXIMUM_WIDGETS) return;
+  config.widgets.push({ id: `numeric-${crypto.randomUUID()}`, metric });
   renderWidgets(); scheduleSave(); widgetsChanged();
 }
 function widgetsChanged() { if (state.configuration.managedItemId) setStatus('Widgets changed. Update the overlay to apply them.', 'warning'); }
@@ -550,6 +658,11 @@ window.addEventListener('DOMContentLoaded', () => {
   byId('refresh').addEventListener('click', () => scan());
   byId('choose-activity').addEventListener('click', chooseActivity);
   byId('fetch-weather').addEventListener('click', fetchWeather);
+  byId('save-template').addEventListener('click', saveTemplate);
+  byId('import-template').addEventListener('click', importTemplate);
+  byId('add-widget').addEventListener('change', (event) => addWidget(event.target.value));
+  api.listTemplates().then((templates) => { state.templates = templates; if (state.configuration) renderTemplates(); })
+    .catch((error) => setStatus(error.message, 'error'));
   byId('weather-location').addEventListener('change', (event) => {
     const weather = state.configuration?.weather;
     if (!weather) return;

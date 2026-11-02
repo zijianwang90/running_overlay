@@ -30,7 +30,7 @@ test('widget choices and fallback positions are deterministic and reject duplica
   assert.equal(normalizeWidgets([{ id: 'date-1', metric: 'date' }])[0].metric, 'date');
   assert.equal(normalizeWidgets([{ id: 'custom-1', metric: 'customNumeric' }])[0].metric, 'customNumeric');
   assert.equal(normalizeWidgets([{ id: 'gauge-1', metric: 'runningGauge' }])[0].metric, 'runningGauge');
-  assert.equal(normalizeWidgets([{ id: 'solid-1', metric: 'decoSolidColor' }])[0].metric, 'decoSolidColor');
+  assert.equal(normalizeWidgets([{ id: 'solid-1', metric: 'decorSolidColor' }])[0].metric, 'decorSolidColor');
   assert.equal(normalizeWidgets([{ id: 'icon-1', metric: 'decorIcon' }])[0].metric, 'decorIcon');
   assert.equal(normalizeWidgets([{ id: 'text-1', metric: 'decorText' }])[0].metric, 'decorText');
   assert.equal(normalizeWidgets([{ id: 'lap-1', metric: 'lapPace' }])[0].metric, 'lapPace');
@@ -117,7 +117,7 @@ test('zone and elevation widgets append metrics and seed template effects only f
   assert.match(script,/prefix \.\. "ElevationWidth"/);
   assert.match(script,/\[string\.sub\(\[\[xzones\]\], 2\)\] = \{ \{string\.sub\(\[\[xShadowOpacity\]\], 2\), 0\.34\}, \{string\.sub\(\[\[xShadowBlur\]\], 2\), 0\.004166666666666667\} \}/);
   assert.match(script,/\[string\.sub\(\[\[xprofile\]\], 2\)\] = \{ \{string\.sub\(\[\[xShadowEnabled\]\], 2\), 0\} \}/);
-  assert.match(script,/if fresh or not slots\[widget\.id\] then\n\s+for _, style in ipairs\(template_styles\[widget\.id\]\) do update\(prefix \.\. style\[1\], style\[2\]\) end/);
+  assert.match(script,/if fresh or not slots\[widget\.id\] then\n\s+for _, style in ipairs\(template_styles\[widget\.id\]\) do\n\s+local key = style_key\(prefix, style\[1\]\)[^\n]*\n[^\n]*\n\s+if true then update\(key, style\[2\]\) end/);
 });
 
 test('template styles seed new numeric, route and timeline instances', () => {

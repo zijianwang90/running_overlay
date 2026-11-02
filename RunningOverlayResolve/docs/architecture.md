@@ -139,6 +139,26 @@ template or widget list is recorded in `RunningOverlay.TemplateSignature` and
 repositions widgets on the next update; later position and style edits stay per
 instance in Fusion.
 
+Saved templates live in `src/domain/user-templates.js` and
+`src/workflow/template-library.js`. The library is one JSON file in the
+application's user-data directory, so it is shared by every Resolve project on
+the machine; applying a template copies its normalized copy into the project
+configuration (`customTemplate`), so deleting it later cannot invalidate a
+timeline. A saved element stores a metric, a Fusion position, and a map of Fuse
+input suffixes to number, text or point values; instance state, data-file
+bindings, the metric selector and enabled flags are excluded, so a template can
+never redirect the renderer's data inputs.
+
+Saving reads the live overlay through `templateCaptureScript`: it lists every
+active slot's metric, position and style inputs and returns JSON keyed by slot
+number. The control plane pairs those slots with the panel's widgets by metric
+and slot order (`pairCapturedSlots`), so the capture works on a cut overlay with
+one composition per piece and needs no composition data. Without an overlay the
+template uses the selected template's placement instead. Import accepts the
+portable `running-overlay-resolve-template` format and Mac `.rotemplate` files;
+the latter contribute visible element types and positions with Y flipped, since
+Mac style models have no Fuse mapping yet.
+
 `sync.rosync` carries the Resolve timeline start frame. A composition beginning
 at that start can use automatic origin mapping; a composition beginning later
 must provide its record start as an explicit override. The Fuse accepts the

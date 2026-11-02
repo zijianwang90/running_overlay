@@ -8,6 +8,7 @@ const { loadActivityFile } = require('./lib/activity/import-activity');
 const { ConfigurationStore } = require('./lib/workflow/configuration');
 const { WorkflowService } = require('./lib/workflow/service');
 const { fetchActivityWeather } = require('./lib/weather/weather');
+const { TemplateLibrary } = require('./lib/workflow/template-library');
 
 const PLUGIN_ID = 'com.runningoverlay.resolve';
 const userDataDirectory = path.join(app.getPath('appData'), 'Running Overlay Resolve');
@@ -39,6 +40,24 @@ async function chooseActivityFile() {
   return { activity, fileName: path.basename(filePath) };
 }
 
+async function chooseTemplateImport() {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Import overlay template',
+    properties: ['openFile'],
+    filters: [{ name: 'Overlay templates', extensions: ['rortemplate', 'rotemplate'] }],
+  });
+  return result.canceled || result.filePaths.length === 0 ? null : result.filePaths[0];
+}
+
+async function chooseTemplateExport(name) {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: 'Export overlay template',
+    defaultPath: `${path.basename(name)}.rortemplate`,
+    filters: [{ name: 'Resolve overlay template', extensions: ['rortemplate'] }],
+  });
+  return result.canceled ? null : result.filePath;
+}
+
 function registerHandlers() {
   const panelWindow = (event) => {
     if (!mainWindow || event.sender !== mainWindow.webContents) throw new Error('Unknown panel window.');
@@ -49,6 +68,23 @@ function registerHandlers() {
   const service = new WorkflowService({ getResolve,
     store: new ConfigurationStore(path.join(app.getPath('userData'), 'configurations')),
     bundleRoot: path.join(app.getPath('userData'), 'bundles'),
+  });
+  const library = new TemplateLibrary(path.join(app.getPath('userData'), 'templates.json'));
+  const templateHandler = (channel, work) => ipcMain.handle(channel, (event, payload) => { panelWindow(event); return service.exclusive(() => work(payload ?? {})); });
+  templateHandler('templates:list', () => library.list());
+  templateHandler('templates:saveCurrent', async (payload) => library.add(await service.currentTemplateElements(payload)));
+  templateHandler('templates:updateFromCurrent', async ({ id, ...payload }) => library.update(id, await service.currentTemplateElements(payload)));
+  templateHandler('templates:rename', ({ id, name }) => library.rename(id, name));
+  templateHandler('templates:duplicate', ({ id }) => library.duplicate(id));
+  templateHandler('templates:delete', ({ id }) => library.remove(id));
+  templateHandler('templates:import', async () => {
+    const file = await chooseTemplateImport();
+    return file ? library.importFile(file) : null;
+  });
+  templateHandler('templates:export', async ({ id, name }) => {
+    const file = await chooseTemplateExport(name);
+    if (file) await library.exportFile(id, file);
+    return Boolean(file);
   });
   ipcMain.handle('activity:choose', chooseActivityFile);
   // Only the historical activity weather request is exposed; the renderer cannot

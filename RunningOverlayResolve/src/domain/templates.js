@@ -96,6 +96,19 @@
   function fallbackPosition(index) {
     return { x: 0.08 + (index % 4) * 0.23, y: 0.62 - Math.floor(index / 4) * 0.18 };
   }
+  // The template positions the first instance of each metric; duplicates and
+  // metrics the template does not place fall back to a free slot. Duplicates keep
+  // the metric's template style even though they fall back to a free position.
+  function resolvePlacements(template, widgets) {
+    const occurrences = new Map();
+    let fallback = 0;
+    return widgets.map((widget) => {
+      const occurrence = occurrences.get(widget.metric) ?? 0;
+      occurrences.set(widget.metric, occurrence + 1);
+      const entry = templateElement(template, widget.metric, occurrence);
+      return { widget, position: entry ?? fallbackPosition(fallback++), styles: (entry ?? templateElement(template, widget.metric, 0))?.styles ?? {} };
+    });
+  }
 
-  return Object.freeze({ TEMPLATES, DEFAULT_TEMPLATE_ID, normalizeTemplateId, templateById, templateElement, templateMatches, fallbackPosition });
+  return Object.freeze({ TEMPLATES, DEFAULT_TEMPLATE_ID, normalizeTemplateId, templateById, templateElement, templateMatches, fallbackPosition, resolvePlacements });
 });
