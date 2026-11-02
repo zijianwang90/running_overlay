@@ -693,6 +693,60 @@ assert(preset_shapes(8) > custom, 'route')
 assert(preset_shapes(1) == custom, 'minimal')
 `));
 
+test('Distance Timeline elevation profile toggle is independent of the Route preset', () => run(HOST + `
+local function timeline_shape()
+ local s={points={},rects={},TransformOfShape=function(self) return self end}
+ function s:MoveTo(x,y) table.insert(self.points,{x,y}) end
+ function s:LineTo(x,y) table.insert(self.points,{x,y}) end
+ function s:AddRectangle(...) table.insert(self.rects,{...}) end
+ function s:Close() end
+ function s:OutlineOfShape(w) self.width=w; return self end
+ return s
+end
+Shape=timeline_shape
+assert(inputs.TimelineElevationProfile and inputs.TimelineElevationProfile.value==0, 'elevation profile input missing')
+local records={}
+for i=1,20 do table.insert(records,{elapsed_us=i*1000000,elevation_m=100+10*math.sin(i/3)}) end
+load_data=function() return {records=records,timeline_start_frame=0,pauses={},total_distance_m=2000,duration_us=20000000} end
+sample_activity=function() return {distance_m=1000} end
+inputs.Metric.value=TIMELINE_METRIC
+inputs.ShadowEnabled.value=0
+inputs.TimelineBackground.value=0; inputs.TimelineBorder.value=0; inputs.TimelineTicks.value=0
+inputs.TimelineAxisLabels.value=0; inputs.TimelineGlow.value=0; inputs.TimelineMarker.value=0
+local cw = 522.08/1280 - 2*(14/1280)
+local function has_curve()
+ for _,entry in ipairs(of('shape')) do
+  if entry.shape.points and #entry.shape.points>2 then return true end
+ end
+ return false
+end
+local function has_fill()
+ for _,entry in ipairs(of('shape')) do
+  local shape=entry.shape
+  if shape.kind=='capsule' and near(shape.w, cw*0.5) then return true end
+ end
+ return false
+end
+-- Custom with the toggle off keeps the straight fill and draws no curve.
+inputs.TimelinePreset.value=0; inputs.TimelineElevationProfile.value=0
+events={}; Process(req)
+assert(has_fill() and not has_curve(), 'custom off')
+-- Custom with the toggle on draws the curve and skips the straight fill.
+inputs.TimelineElevationProfile.value=1
+events={}; Process(req)
+assert(has_curve() and not has_fill(), 'custom on')
+-- Route still draws the curve with the toggle off.
+inputs.TimelinePreset.value=8; inputs.TimelineElevationProfile.value=0
+events={}; Process(req)
+assert(has_curve() and not has_fill(), 'route regression')
+-- Without elevation samples the toggle falls back to the straight track.
+inputs.TimelinePreset.value=0; inputs.TimelineElevationProfile.value=1
+records={}
+for i=1,20 do table.insert(records,{elapsed_us=i*1000000}) end
+events={}; Process(req)
+assert(has_fill() and not has_curve(), 'no elevation fallback')
+`));
+
 test('Route Map container presets pick the shape and feather the edge', () => run(HOST + `
 local function route_shape()
  local s={points={},TransformOfShape=function(self) return self end}

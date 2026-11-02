@@ -1350,6 +1350,9 @@ function Create()
 		-- Mac visual directions. Custom keeps the original single treatment; the
 		-- named presets add the layers that make each direction recognisable.
 		t.preset = combo("Preset", "Preset", {"Custom", "Minimal", "Dense", "Sport", "Splits", "Glass", "Neon", "Lower Third", "Route"}, 0)
+		-- Independent elevation-shaped progress curve. The Route preset shows it
+		-- unconditionally; any other preset opts in here.
+		t.elevation_profile = check("Elevation Profile", "ElevationProfile", 0)
 		-- Remaining Mac Distance Timeline module fields. Label, custom values,
 		-- background/border and the stats bar are independent of the presets;
 		-- preset-specific layers are applied in render_timeline.
@@ -2205,10 +2208,18 @@ function Process(req)
 					Pixel{R = accent.R, G = accent.G, B = accent.B, A = 0.85})
 			end
 
+			-- The Route preset and the independent Elevation Profile toggle replace
+			-- the straight fill with an elevation-shaped progress curve. Unusable
+			-- elevation samples fall back to the straight track; the Route preset
+			-- keeps its original straight-fill omission.
+			local curve_requested = is_route or value_of(t.elevation_profile) > 0.5
+			local curve_points = curve_requested and prepare_elevation(data.records or {}).smooth.points or nil
+			local curve_visible = curve_points ~= nil and #curve_points > 1
+			local skip_fill = is_route or curve_visible
 			part(capsule(content_left, track_bottom, content_width, track_height),
 				Pixel{R = color.R, G = color.G, B = color.B, A = color.A * value_of(t.track_opacity)})
 			local glow = value_of(t.glow) > 0.5 or force_glow
-			if progress ~= nil and not is_route then
+			if progress ~= nil and not skip_fill then
 				-- Neon adds a wide translucent underlay beneath the normal fill.
 				if is_neon then
 					part(capsule(content_left, track_bottom - track_height * 0.5,
@@ -2251,11 +2262,10 @@ function Process(req)
 				overlays[marker] = glow and track_height * 2.3 or nil
 			end
 
-			-- Route preset: replace the straight fill with an elevation-shaped
-			-- progress curve. Without elevation samples it falls back to the track.
-			if is_route then
-				local elevation = prepare_elevation(data.records or {})
-				local points = elevation.smooth.points
+			-- Route preset and Elevation Profile: replace the straight fill with an
+			-- elevation-shaped progress curve.
+			if curve_visible then
+				local points = curve_points
 				if #points > 1 then
 					local band_height = math.max(content_height * 0.6, track_height * 2)
 					local function curve_point(point) return content_left + content_width * point.x, track_bottom + band_height * point.y end
