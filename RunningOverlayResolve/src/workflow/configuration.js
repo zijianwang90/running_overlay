@@ -10,6 +10,7 @@ const { normalizeTemplateId } = require('../domain/templates');
 const { normalizeUserTemplate } = require('../domain/user-templates');
 const { validateTimeZone } = require('../sync/capture-time');
 const { validateWeather, isWeatherCurrent } = require('../weather/weather');
+const { validToken } = require('../map/mapbox');
 
 function parseConfirmedDate(value) {
   invariant(typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/i.test(value), 'Capture times and anchors must include a timezone (Z or ±HH:mm).');
@@ -48,6 +49,10 @@ function validateConfiguration(value) {
   invariant(Number.isSafeInteger(draftTimeOffsetMs) && Math.abs(draftTimeOffsetMs) <= 86_400_000, 'Data time offset must be within one day.');
   invariant(value.activityLabel == null || (typeof value.activityLabel === 'string' && value.activityLabel.length <= 255), 'Invalid activity name.');
   const activity = value.activity ? validateActivity(value.activity) : null;
+  // The Mapbox token stays in the local project configuration and is never
+  // copied into templates or render bundles.
+  const mapboxToken = value.mapboxToken ?? null;
+  invariant(mapboxToken === null || validToken(mapboxToken), 'Enter a Mapbox public access token (pk.*).');
   // Applying a saved template copies it here, so deleting it from the library
   // cannot invalidate this timeline's overlay.
   const customTemplate = value.customTemplate ? normalizeUserTemplate(value.customTemplate) : null;
@@ -58,6 +63,7 @@ function validateConfiguration(value) {
   return { schemaVersion: 1, contextId: value.contextId, referenceVideoTrackIndex: value.referenceVideoTrackIndex,
     activity,
     weather,
+    mapboxToken,
     activityLabel: value.activity && value.activityLabel ? value.activityLabel : null,
     // Offset used when the overlay is created. Afterwards the Fusion renderer is
     // authoritative and this value only mirrors its last known setting.

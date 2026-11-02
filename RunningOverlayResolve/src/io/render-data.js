@@ -179,7 +179,7 @@ function parseSyncRenderData(text) {
   };
 }
 
-async function writeResolveBundle(outputDirectory, activity, syncMap, weather = null) {
+async function writeResolveBundle(outputDirectory, activity, syncMap, weather = null, mapSnapshot = null) {
   validateActivity(activity);
   invariant(syncMap.activityId === activity.activityId, 'sync map and activity IDs do not match');
   const safeId = activity.activityId.replace(/[^a-zA-Z0-9._-]+/g, '-');
@@ -196,15 +196,27 @@ async function writeResolveBundle(outputDirectory, activity, syncMap, weather = 
     syncMapJson: 'sync-map.json',
     activityRenderData: 'activity.roactivity',
     syncRenderData: 'sync.rosync',
+    ...(mapSnapshot ? { mapImage: 'map.png', mapMetadata: 'map.json' } : {}),
   };
 
-  await Promise.all([
+  const writes = [
     fs.writeFile(path.join(bundleDirectory, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8'),
     fs.writeFile(path.join(bundleDirectory, 'activity.json'), `${JSON.stringify(activity, null, 2)}\n`, 'utf8'),
     fs.writeFile(path.join(bundleDirectory, 'sync-map.json'), `${JSON.stringify(syncMap, null, 2)}\n`, 'utf8'),
     fs.writeFile(path.join(bundleDirectory, 'activity.roactivity'), serializeActivityRenderData(activity, weather), 'utf8'),
     fs.writeFile(path.join(bundleDirectory, 'sync.rosync'), serializeSyncRenderData(syncMap), 'utf8'),
-  ]);
+  ];
+  if (mapSnapshot) {
+    // Bundles are immutable and may be copied or archived; never let a provider
+    // credential ride along with the metadata.
+    const metadata = { ...mapSnapshot.metadata };
+    delete metadata.accessToken;
+    writes.push(
+      fs.writeFile(path.join(bundleDirectory, 'map.png'), mapSnapshot.bytes, { mode: 0o600 }),
+      fs.writeFile(path.join(bundleDirectory, 'map.json'), `${JSON.stringify(metadata, null, 2)}\n`, { mode: 0o600 }),
+    );
+  }
+  await Promise.all(writes);
   return bundleDirectory;
 }
 

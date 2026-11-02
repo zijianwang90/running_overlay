@@ -126,6 +126,19 @@
           <button id="fetch-weather" class="secondary" type="button">Fetch historical weather</button>
         </div>
       </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Map background</h2>
+          <span id="map-badge" class="badge muted">No token</span>
+        </div>
+        <p id="map-summary" class="note">Optional Mapbox public token. A snapshot is fetched once when the overlay updates and then rendered offline. The token is saved only in this project's local settings and is never written into the render bundle or a template.</p>
+        <div class="zone-row">
+          <label for="mapbox-token">Mapbox token</label>
+          <input id="mapbox-token" type="password" maxlength="512" autocomplete="off" spellcheck="false" placeholder="pk.…">
+        </div>
+        <p class="note">Toggle <strong>Map Background</strong> on a Route Map widget in the Fusion Inspector to show it.</p>
+      </section>
     </main>
 
     <footer class="action-bar">

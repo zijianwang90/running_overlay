@@ -1083,6 +1083,13 @@ function Create()
 		INP_DefaultText = "",
 		INP_DoNotifyChanged = true,
 	})
+	-- The panel connects a Loader with the cached Mapbox background here. The
+	-- input is optional so projects without a map snapshot keep rendering.
+	InMapImage = self:AddInput("Map Background Image", "MapImage", {
+		LINKID_DataType = "Image",
+		LINK_Main = 1,
+		INP_Required = false,
+	})
 	InSyncFile = self:AddInput("Sync Data (.rosync)", "SyncFile", {
 		LINKID_DataType = "Text",
 		INPID_InputControl = "FileControl",
@@ -1413,6 +1420,21 @@ function Create()
 			marker_size = number("Position Size", "MarkerSize", 10 * 0.75 / 1280, 0.001, 0.06),
 			marker_color = color_in(group, "Position Color", key .. "RouteMarker", {0.25, 0.82, 0.38, 1}, 20, true),
 			endpoints = check("Start / Finish Markers", "Endpoints", 0),
+			map_background = check("Map Background", "MapBackground", 0),
+			follow = check("Follow Camera", "FollowCamera", 1),
+			course_up = check("Course Up", "CourseUp", 0),
+			zoom = number("Camera Zoom", "CameraZoom", 2, 1, 8),
+			coverage = number("Map Coverage", "MapCoverage", 2.75, 1.01, 4),
+			arrow = check("Direction Arrow", "DirectionArrow", 1),
+			arrow_size = number("Arrow Size", "ArrowSize", 26 * 0.75 / 1280, 0.005, 0.08),
+			arrow_color = color_in(group, "Arrow Color", key .. "RouteArrow", {0.25, 0.82, 0.38, 1}, 21, true),
+			map_opacity = number("Map Opacity", "MapOpacity", 0.92, 0, 1),
+			map_shape = combo_in(group, "Map Shape", key .. "RouteMapShape", {"Circle", "Square"}, 0),
+			map_radius = number("Map Corner Radius", "MapCorner", 12 * 0.75 / 1280, 0, 0.05),
+			attribution = add(group, "Map Attribution", key .. "RouteAttribution", {
+				LINKID_DataType = "Text", INPID_InputControl = "TextEditControl",
+				INP_DefaultText = "© Mapbox © OpenStreetMap", TEC_Lines = 1}),
+			attribution_size = number("Attribution Size", "AttributionSize", 7 * 0.75 / 1280, 0.002, 0.02),
 		}
 	end
 	local function zone_options(key, group)
@@ -2263,7 +2285,27 @@ function Process(req)
 				draw_part(output, entry, entry.color, 0, 0, quality)
 			end
 		end
+		-- Course from the route point nearest to the sampled position. The two
+		-- neighbouring points smooth out single-sample GPS jitter.
+		local function route_bearing(route, x, y)
+			local best_path, best_index, best_distance = nil, nil, nil
+			for _, path in ipairs(route.paths) do
+				for index, point in ipairs(path) do
+					local dx, dy = point.x - x, point.y - y
+					local distance = dx * dx + dy * dy
+					if best_distance == nil or distance < best_distance then
+						best_path, best_index, best_distance = path, index, distance
+					end
+				end
+			end
+			if best_path == nil then return 0 end
+			local before = best_path[math.max(best_index - 1, 1)]
+			local after = best_path[math.min(best_index + 1, #best_path)]
+			if before == after then return 0 end
+			return math.atan2(after.x - before.x, after.y - before.y) * 180 / math.pi
+		end
 		local function render_route(position, widget_font, widget_style, r, options)
+			local map_image = InMapImage ~= nil and InMapImage:GetValue(req) or nil
 			local route = data.route or {paths = {}, count = 0}
 			local size = math.max(value_of(r.size), 2 / output.Width)
 			local padding = math.min(math.max(value_of(r.padding), 0), size * 0.45)
@@ -2272,8 +2314,34 @@ function Process(req)
 			local extent = math.max(size - 2 * padding, 1 / output.Width) / math.sqrt(2)
 			local cx, cy = position.X, position.Y * aspect
 			local width = math.max(value_of(r.width), 1 / output.Width)
+			-- The follow camera moves the route trace and the snapshot with the
+			-- same transform. Route coordinates are centered on the route's
+			-- bounding box; `coverage` says how many route units the snapshot
+			-- covers across its width.
+			local map_on = map_image ~= nil and value_of(r.map_background) > 0.5 and value_of(r.map_opacity) > 0
+			local zoom = map_on and math.max(value_of(r.zoom), 1) or 1
+			local follow = map_on and value_of(r.follow) > 0.5
+			local sx, sy, bearing = 0, 0, 0
+			if map_on and sample.route_x ~= nil and sample.route_y ~= nil then
+				sx, sy = sample.route_x, sample.route_y
+				bearing = route_bearing(route, sx, sy)
+			end
+			local course_up = map_on and value_of(r.course_up) > 0.5
+			local course_radians = bearing * math.pi / 180
+			local function camera(x, y)
+				if map_on then
+					x, y = x * zoom, y * zoom
+					if follow then x, y = x - sx * zoom, y - sy * zoom end
+					if course_up then
+						local c, s = math.cos(course_radians), math.sin(course_radians)
+						x, y = x * c - y * s, x * s + y * c
+					end
+				end
+				return cx + x * extent, cy + y * extent
+			end
 			local parts = {}
-			local function point(x, y) return cx + x * extent, cy + y * extent end
+			local card_mask = nil
+			local function point(x, y) return camera(x, y) end
 			local function dot(x, y, diameter, color)
 				local px, py = point(x, y)
 				table.insert(parts, {shapes = {capsule(px - diameter/2, py - diameter/2, diameter, diameter)}, color = color})
@@ -2284,6 +2352,71 @@ function Process(req)
 				table.insert(parts, {font = widget_font, style = widget_style, text = text, size = font_size,
 					x = cx - text_width(widget_font, widget_style, text, font_size)/2, y = cy, color = Pixel{R=1,G=1,B=1,A=1}})
 			else
+				-- Map background with a follow camera. The cached snapshot covers
+				-- `coverage` route units across its width, so route x maps to
+				-- image u = 0.5 + x/coverage. The camera then pans, zooms and
+				-- rotates that single image around the current point.
+				if map_on then
+					local coverage = math.max(value_of(r.coverage), 1.01)
+					local map_angle = course_up and bearing or 0
+					-- Move the snapshot so the sampled route point sits at the
+					-- card center, then rotate that offset with the course.
+					local ox, oy = 0, 0
+					if follow then ox, oy = -sx * extent * zoom, -sy * extent * zoom end
+					if course_up then
+						local c, s = math.cos(course_radians), math.sin(course_radians)
+						ox, oy = ox * c - oy * s, ox * s + oy * c
+					end
+					-- Transform sizes are multiples of the source image, not the
+					-- destination frame; convert the target frame width first.
+					local side_pixels = extent * coverage * zoom * output.Width
+					local map = output:CopyOf()
+					map:Fill(Pixel{R=0,G=0,B=0,A=0})
+					map_image:Transform(map, {
+						XF_XOffset = cx + ox,
+						XF_YOffset = (cy + oy) / aspect,
+						XF_XAxis = 0.5, XF_YAxis = 0.5,
+						XF_XSize = side_pixels / map_image.Width,
+						XF_YSize = side_pixels / map_image.Height,
+						XF_Angle = map_angle,
+						XF_EdgeMode = "Black",
+					})
+					local opacity = math.min(math.max(value_of(r.map_opacity), 0), 1)
+					if opacity < 1 then map = map:ChannelOpOf("Multiply", nil, {R=1, G=1, B=1, A=opacity}) end
+					-- Clip to the element's shape so the snapshot never spills
+					-- past the card the route trace uses.
+					local mask = output:CopyOf()
+					mask:Fill(Pixel{R=0,G=0,B=0,A=0})
+					local corner = value_of(r.map_shape) <= 0.5 and size / 2 or math.max(value_of(r.map_radius), 0)
+					fill_shape(mask, capsule(cx - size/2, cy - size/2, size, size, corner), Pixel{R=1,G=1,B=1,A=1}, quality)
+					map = map:ChannelOpOf("Multiply", mask, {R="fg.R", G="fg.G", B="fg.B", A="fg.A"})
+					output:Merge(map, MERGE_OVER)
+					card_mask = mask
+					local attribution = value_of(r.attribution)
+					if attribution ~= nil and attribution ~= "" then
+						local font_size = math.max(value_of(r.attribution_size), 1 / output.Width)
+						local ascent = font_extents(widget_font, widget_style, font_size)
+						table.insert(parts, {font = widget_font, style = widget_style, text = attribution, size = font_size,
+							x = cx - size/2 + 6/1280, y = cy - size/2 + 4/1280 + ascent,
+							color = Pixel{R=1,G=1,B=1,A=0.55}})
+					end
+					if value_of(r.arrow) > 0.5 and value_of(r.follow) > 0.5 then
+						local arrow_size = math.max(value_of(r.arrow_size), 1 / output.Width)
+						local arrow = Shape()
+						arrow:MoveTo(0, arrow_size * 0.55)
+						arrow:LineTo(arrow_size * 0.42, -arrow_size * 0.35)
+						arrow:LineTo(0, -arrow_size * 0.12)
+						arrow:LineTo(-arrow_size * 0.42, -arrow_size * 0.35)
+						arrow:Close()
+						local matrix = Matrix4()
+						matrix:Identity()
+						-- Shape rotation is counter-clockwise; bearing is clockwise
+						-- from north, and course-up keeps the arrow pointing up.
+						matrix:RotZ(course_up and 0 or -bearing)
+						matrix:Move(cx, cy, 0)
+						table.insert(parts, {shapes = {arrow:TransformOfShape(matrix)}, color = color_of(r.arrow_color)})
+					end
+				end
 				for _, path in ipairs(route.paths) do
 					if #path >= 2 then
 						local shape = Shape()
@@ -2305,9 +2438,20 @@ function Process(req)
 					dot(sample.route_x, sample.route_y, diameter, color_of(r.marker_color))
 				end
 			end
+			-- With a map background, the trace shares the snapshot's circular
+			-- mask so a zoomed route never spills out of the card.
+			local target = output
+			if card_mask ~= nil then
+				target = output:CopyOf()
+				target:Fill(Pixel{R=0,G=0,B=0,A=0})
+			end
 			local shadow = shadow_of(options)
-			if shadow ~= nil then draw_shadow(output, parts, shadow, quality) end
-			for _, part in ipairs(parts) do draw_part(output, part, part.color, 0, 0, quality) end
+			if shadow ~= nil then draw_shadow(target, parts, shadow, quality) end
+			for _, part in ipairs(parts) do draw_part(target, part, part.color, 0, 0, quality) end
+			if card_mask ~= nil then
+				target = target:ChannelOpOf("Multiply", card_mask, {R="fg.R", G="fg.G", B="fg.B", A="fg.A"})
+				output:Merge(target, MERGE_OVER)
+			end
 		end
 		local function render_zone(position, widget_font, widget_style, z, options)
 			local count = math.floor(value_of(z.count) + 0.5) == 0 and 5 or 6

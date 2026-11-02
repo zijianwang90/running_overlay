@@ -60,7 +60,7 @@ available, but there is no selectable/rendered widget.
 | Interval Countdown | Partial (v20) | Phase-colored ring, time/distance center value, remaining/elapsed direction, phase, rep, helper and caption; per-role fonts/glow/borders pending |
 | Interval Work Summary | Partial (v20) | Last completed active lap, lap time/pace/distance/HR/power/cadence, configurable primary and three secondary slots, display window; max HR and per-role typography pending |
 | Zone Edge Bar | Partial (v12) | Five/six editable HR ranges, edge/free placement, active emphasis, current/threshold markers; pace mode and shared project physiology settings pending |
-| Route Map | Partial (v11) | FIT/GPX GPS retained; offline Mercator trace and time-driven cursor implemented; map imagery/provider, other presets and stats pending |
+| Route Map | Partial (v22) | FIT/GPX GPS retained; offline Mercator trace and time-driven cursor; cached Mapbox static background with follow camera, 1–8× zoom, course-up, circular/square mask, direction arrow and attribution; MapKit parity, live tiles, stats and other presets pending |
 | Vertical Oscillation | Implemented (v8) | cm/mm units; host export checked |
 | Ground Contact Time | Implemented (v8) | Host export checked |
 | Stride Length | Implemented (v8) | Meters only, as on Mac; host export checked |
@@ -88,7 +88,7 @@ was validated with a synthetic eight-metric export and duplicate styling; see
 the testing record for the initial unreproduced crash, successful 4444 alpha
 retry, real v5/v6 comparison and remaining UI validation limits.
 
-**Visual acceptance (2026-11-01).** The user accepts approximate typography across Fusion and SwiftUI. Exact glyph rasterization and pixel matching are not a gate. Numeric icons are original project vectors, not redistributed SF Symbols. Route Map currently draws a transparent offline trace; both Mac templates use a dark MapKit snapshot, so this remains partial parity.
+**Visual acceptance (2026-11-01).** The user accepts approximate typography across Fusion and SwiftUI. Exact glyph rasterization and pixel matching are not a gate. Numeric icons are original project vectors, not redistributed SF Symbols. Route Map can now composite a cached Mapbox static snapshot, but it is raster imagery rather than the Mac MapKit renderer, so this remains partial parity.
 
 **Weather scope (2026-11-01).** The Resolve panel makes the same keyless
 Open-Meteo archive request as the Mac app, for the activity's start date and
@@ -151,7 +151,7 @@ order below. Race contains the nine Easy Run elements plus two:
 | Real Time | Both | v9 |
 | Text shadow | All but Race elevation chart | v9 shared shadow; new instances seed the template's radius, offset, opacity and thickness for numerics, route and timeline |
 | Distance Timeline | Both | v21 label, custom values, marker label, background/border and stats bar with template shadow; visual presets pending |
-| Route Map | Both | v11 offline trace and cursor with template shadow; dark MapKit background not implemented |
+| Route Map | Both | v22 trace and cursor with template shadow, cached Mapbox snapshot, follow camera, zoom/course-up, card mask, direction arrow and attribution; MapKit and live tiles not implemented |
 | Weather Widget | Both | v14 cached Open-Meteo card with template glass styling and 35% shadow |
 | Zone Edge Bar | Race | v12 HR renderer with template shadow; five/six ranges configured per instance in Fusion |
 | Elevation Chart | Race | v13 compact full-profile renderer with template shadow disabled; other module modes pending |

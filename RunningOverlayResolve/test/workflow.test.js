@@ -147,3 +147,57 @@ test('weather cache persists with the activity and is dropped when it no longer 
   assert.equal((await store.save({ ...saved, activity: { ...located, startUtcUs: located.startUtcUs + 1_000_000, endUtcUs: located.endUtcUs + 1_000_000 } })).weather, null);
   assert.throws(() => require('../src/workflow/configuration').validateConfiguration({ ...saved, weather: { ...weather, condition: 'hail' } }), /condition/);
 });
+
+test('a saved Mapbox token caches one snapshot per revision and connects it without the token', async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'ro-map-service-')); t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const tl = { GetUniqueId: async () => timeline.timelineId };
+  const resolve = { GetProjectManager: async () => ({ GetCurrentProject: async () => ({ IsRenderingInProgress: async () => false, GetUniqueId: async () => 'project', GetCurrentTimeline: async () => tl }) }) };
+  const context = await contextForResolve(resolve);
+  const scanValue = { timeline: structuredClone(timeline), mediaById, diagnostics: [] };
+  let updates = []; let fetches = 0;
+  const service = new WorkflowService({ getResolve: async () => resolve, store: new ConfigurationStore(path.join(root, 'config')), bundleRoot: path.join(root, 'bundles'),
+    scan: async () => structuredClone(scanValue), inspectManaged: async () => true,
+    update: async (_resolve, value) => { updates.push(value); return { managedItemId: 'managed-map' }; },
+    fetchMap: async () => { fetches++; return { bytes: Buffer.from([0x89,0x50,0x4e,0x47,13,10,26,10]), metadata: { coverage: 2.75, attribution: '© Mapbox © OpenStreetMap' } }; } });
+  const snapshot = await service.scanContext(1);
+  const mapped = await service.apply({ configuration: { schemaVersion: 1, contextId: context.contextId, referenceVideoTrackIndex: 1,
+    widgets: [{ id: 'route-1', metric: 'routeMap' }],
+    activity, mapboxToken: 'pk.eyJ1Ijoic3ludGhldGljIn0.test-signature-123456' }, expectedFingerprint: snapshot.fingerprint });
+  assert.equal(fetches, 1);
+  assert.equal(mapped.mapError, undefined);
+  assert.equal(updates[0].mapImage, path.join(mapped.configuration.bundleDirectory, 'map.png'));
+  assert.deepEqual(mapped.configuration.mapboxToken, 'pk.eyJ1Ijoic3ludGhldGljIn0.test-signature-123456');
+  assert.doesNotMatch(await fs.readFile(path.join(mapped.configuration.bundleDirectory, 'map.json'), 'utf8'), /pk\./);
+  const plain = await service.apply({ configuration: { ...mapped.configuration, mapboxToken: null }, expectedFingerprint: snapshot.fingerprint });
+  assert.equal(plain.mapError, undefined);
+  assert.equal(fetches, 1);
+  assert.equal(updates[1].mapImage, null);
+  const failing = new WorkflowService({ getResolve: async () => resolve, store: new ConfigurationStore(path.join(root, 'config2')), bundleRoot: path.join(root, 'bundles2'),
+    scan: async () => structuredClone(scanValue), inspectManaged: async () => true,
+    update: async (_resolve, value) => { updates.push(value); return { managedItemId: 'managed-map-2' }; },
+    fetchMap: async () => { throw new Error('Map service failed (401).'); } });
+  const result = await failing.apply({ configuration: { ...plain.configuration, mapboxToken: 'pk.eyJ1Ijoic3ludGhldGljIn0.test-signature-123456' }, expectedFingerprint: snapshot.fingerprint });
+  assert.equal(result.mapError, 'Map service failed (401).');
+  assert.equal(updates[2].mapImage, null);
+  let noRouteFetches = 0;
+  const noRoute = new WorkflowService({ getResolve: async () => resolve, store: new ConfigurationStore(path.join(root, 'config3')), bundleRoot: path.join(root, 'bundles3'),
+    scan: async () => structuredClone(scanValue), inspectManaged: async () => true,
+    update: async (_resolve, value) => { updates.push(value); return { managedItemId: 'managed-map-3' }; },
+    fetchMap: async () => { noRouteFetches++; return { bytes: Buffer.alloc(8), metadata: {} }; } });
+  const skipped = await noRoute.apply({ configuration: { ...plain.configuration, mapboxToken: 'pk.eyJ1Ijoic3ludGhldGljIn0.test-signature-123456', widgets: [{ id: 'numeric-1', metric: 'heartRate' }] }, expectedFingerprint: snapshot.fingerprint });
+  assert.equal(noRouteFetches, 0);
+  assert.equal(skipped.mapError, undefined);
+  assert.equal(updates[3].mapImage, null);
+  await assert.rejects(new ConfigurationStore(path.join(root, 'bad')).save({ schemaVersion: 1, contextId: context.contextId, referenceVideoTrackIndex: 1, mapboxToken: 'sk.secret-1234567890' }), /Mapbox/);
+});
+
+test('the Fusion update script manages a map Loader and only enables new route widgets', () => {
+  const { dataUpdateScript } = require('../src/resolve/fusion-script');
+  const withMap = dataUpdateScript({ bundleDirectory: '/b', origin: 0, token: 't', widgets: [{ id: 'route-1', metric: 'routeMap' }], templateId: 'race', mapImage: '/b/map.png' });
+  assert.match(withMap, /RunningOverlay\.ManagedMapLoader/);
+  assert.match(withMap, /ConnectInput\("MapImage", map_loader\)/);
+  assert.match(withMap, /RouteMapBackground/);
+  const without = dataUpdateScript({ bundleDirectory: '/b', origin: 0, token: 't', widgets: [{ id: 'numeric-1', metric: 'heartRate' }], templateId: 'easyRun', mapImage: null });
+  assert.match(without, /local map_image = nil/);
+  assert.doesNotMatch(without, /pk\./);
+});

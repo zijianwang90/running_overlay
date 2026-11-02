@@ -287,7 +287,7 @@ ambiguity. Rendering continues to consume only immutable activity/sync files.
 See [ADR 0009](../../docs/adr/0009-resolve-managed-overlay-workflow.md) for the
 persistence, ownership, and timeline-undo boundaries.
 
-## Offline Route Rendering (v11)
+## Offline Route Rendering And Cached Map Background (v11/v22)
 
 FIT/GPX import retains optional paired latitude/longitude in degrees and a
 non-negative routeSegment. Coordinates and segment identity are appended to the
@@ -299,9 +299,17 @@ adjacent projected positions in the same segment and the existing activity time
 mapping. No render callback accesses networking, the scripting API or Studio.
 Route controls share the existing sixteen-slot node and shadow pipeline.
 
-Map imagery is not part of this increment. A future provider must prepare licensed
-assets in the control plane and bundle them for offline rendering; the trace-only
-renderer does not claim the Mac templates' MapKit background parity.
+The control plane may fetch one licensed Mapbox Static Images snapshot when a
+public token is configured and a route widget exists. It computes the same Web Mercator bounds as the Fuse,
+stores `map.png` and token-free `map.json` in the immutable bundle, and records
+both in the manifest. The Fuse takes the snapshot through an optional `MapImage`
+input connected to a managed Loader; it transforms that image in the same camera
+as the trace, masks image, trace and arrow to the route card, and can pan to the
+current sample, zoom from 1 to 8, and rotate course-up. Map rendering remains
+fully offline and deterministic after the bundle is published; the token lives
+only in local project settings and never in the bundle, templates or repository.
+See [ADR 0012](../../docs/adr/0012-resolve-cached-map-snapshot.md). Live tiles,
+provider alternatives and the Mac MapKit presets remain future work.
 
 ## Race Zone And Elevation Modules (v12/v13)
 

@@ -531,9 +531,10 @@ async function applyOverlay() {
     setStatus('Checking the timeline and updating the overlay…');
     const result = await api.applyOverlay({ configuration: state.configuration, expectedFingerprint: state.fingerprint });
     state.configuration = result.configuration; state.dirty = false; state.stale = false;
-    setStatus(created
+    const base = created
       ? `Overlay created · ${plural(result.segmentCount, 'segment')}. Play in Resolve and nudge Data timing until it matches.`
-      : `Overlay updated · ${plural(result.segmentCount, 'segment')}. Your Fusion styles and timing were kept.`, 'good');
+      : `Overlay updated · ${plural(result.segmentCount, 'segment')}. Your Fusion styles and timing were kept.`;
+    setStatus(result.mapError ? `${base} Map background skipped: ${result.mapError}` : base, result.mapError ? 'warning' : 'good');
   } catch (error) { setStatus(error.message, 'error'); }
   finally { setBusy(false); }
   await scan({ silent: true });
@@ -600,10 +601,23 @@ async function fetchWeather() {
   finally { state.weatherBusy = false; renderWeather(); renderPrimary(); }
 }
 
+// ---- Map background ------------------------------------------------------------
+function renderMap() {
+  const config = state.configuration; const activity = config?.activity;
+  const token = byId('mapbox-token'); const badge = byId('map-badge');
+  const hasGps = Boolean(activity?.records.some((entry) => entry.latitude != null && entry.longitude != null));
+  if (!activity) { badge.textContent = 'Waiting'; badge.className = 'badge muted'; }
+  else if (!hasGps) { badge.textContent = 'No GPS'; badge.className = 'badge warning'; }
+  else if (config.mapboxToken) { badge.textContent = 'Token saved'; badge.className = 'badge good'; }
+  else { badge.textContent = 'No token'; badge.className = 'badge muted'; }
+  if (document.activeElement !== token) token.value = config?.mapboxToken ?? '';
+  token.disabled = !activity;
+}
+
 // ---- Scanning ------------------------------------------------------------------
 function render() {
   if (!state.configuration) { renderPrimary(); return; }
-  renderActivity(); renderTracks(); renderWidgets(); renderWeather(); renderOffset();
+  renderActivity(); renderTracks(); renderWidgets(); renderWeather(); renderMap(); renderOffset();
   if (state.scan) { ensureZone(); renderZone(); renderClipDetails(); renderAlignment(); }
   renderPrimary();
 }
@@ -663,6 +677,14 @@ window.addEventListener('DOMContentLoaded', () => {
   byId('add-widget').addEventListener('change', (event) => addWidget(event.target.value));
   api.listTemplates().then((templates) => { state.templates = templates; if (state.configuration) renderTemplates(); })
     .catch((error) => setStatus(error.message, 'error'));
+  byId('mapbox-token').addEventListener('change', (event) => {
+    if (!state.configuration) return;
+    const token = event.target.value.trim();
+    if (token && !/^pk\.[A-Za-z0-9._-]{10,}$/.test(token)) { setStatus('Enter a Mapbox public access token (pk.*).', 'error'); event.target.value = state.configuration.mapboxToken ?? ''; return; }
+    state.configuration.mapboxToken = token || null;
+    scheduleSave();
+    setStatus(token ? 'Map token saved. Update the overlay to fetch the snapshot.' : 'Map background disabled for the next update.', 'good');
+  });
   byId('weather-location').addEventListener('change', (event) => {
     const weather = state.configuration?.weather;
     if (!weather) return;

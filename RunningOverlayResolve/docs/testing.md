@@ -1,5 +1,53 @@
 # Running Overlay Resolve Testing
 
+## Route Map Background And Follow Camera — 2026-11-01
+
+v22 adds an optional cached Mapbox background to the Route Map without changing
+the offline render contract. When the panel has a public `pk.*` token and a Route Map widget is configured,
+one Static Images snapshot is fetched per apply, using the same Web Mercator
+bounds and coverage factor as the Fuse. The 1280×1280@2x PNG and token-free metadata are
+written into the immutable bundle (`map.png`, `map.json`) and recorded in the
+manifest. The token stays in local project settings; it is never written into the
+bundle, templates, logs or repository.
+
+The control-plane script creates or updates a Loader marked
+`RunningOverlay.ManagedMapLoader`, connects it to the Fuse's optional `MapImage`
+input, and sets `RouteMapBackground` only for route-map widgets. Removing the
+token deletes the managed Loader and turns the background off. Fetch failures
+(401, timeout, non-PNG) are reported as `Map background skipped: …` and do not
+block data, overlay creation or the transparent trace.
+
+The Fuse draws the snapshot with `Image:Transform` using sizes relative to the
+source image, multiplies it through a circular/square card mask, and applies the
+same camera to the trace, arrow and attribution. The follow camera pans to the
+sampled route point; zoom is clamped to 1–8; course-up rotates the snapshot and
+trace together while the arrow stays upright. Attribution text is drawn over the
+card in addition to the logo and attribution baked into the snapshot.
+
+Tests: six mapbox tests use a mocked fetch and no network, covering frame
+coverage and square math, GPS gaps and a single fix, URL and token validation,
+PNG-signature rejection, snapshot writing without the token, bundle manifest
+entries and one-snapshot caching in the workflow service. Fusion-script tests
+assert the managed Loader, `MapImage` connection and `RouteMapBackground` write.
+157 Node/Lua tests and static checks pass.
+
+Host evidence: Resolve Studio 21.1.1, independent `RO Numeric v7 Validation`
+project, synthetic 100-record Toronto route on Bloor/Yonge/Church/Bathurst, at
+1920×1080 ProRes 4444 with alpha. Frame 108120 rendered the cached snapshot with
+the trace on Bloor and Church Streets; frame 108180 moved the follow camera to
+Bathurst and Bloor; the course-up frame rotated the map and labels with the arrow
+pointing up. The `Fusion Clip 2` overlay on video track 2 of the validation
+timeline was removed for the inspection because it covered the Fuse output — that
+baked overlay, not the Fuse, was the source of the earlier apparent figure-eight
+trace. The validation project was altered as described and is disposable; the
+original `Overlay Test` project was not touched.
+
+Licensing and remaining checks: the snapshot includes Mapbox's baked logo and
+attribution and is cropped by the card mask; a text attribution is drawn, but
+placement and Mapbox terms need focused human review. A single snapshot softens at
+high camera zoom for long races, live tiles and provider alternatives are not
+implemented, and MapKit parity, UHD and non-16:9 verification remain pending.
+
 ## Distance Timeline Module — 2026-11-01
 
 v21 completes the Distance Timeline's module content beyond the v10 minimal track.
@@ -314,7 +362,8 @@ probe Fuses were removed. Captures/exports remain ignored local artifacts.
 Remaining checks: live viewer interaction/undo, UHD and non-16:9 render matrix,
 large GPS route playback cost and background-map provider integration. This is
 an offline transparent trace, not full MapKit/template parity. Original glyphs
-and visual output still need focused human review.
+and visual output still need focused human review. (v22 later added the cached
+background; see the section at the top.)
 
 ## Real Time And Text Shadow — 2026-10-31
 

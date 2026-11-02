@@ -35,7 +35,7 @@ const seedValue = (value) => {
   return Array.isArray(value) ? `{${value[0]}, ${value[1]}}` : value;
 };
 
-function dataUpdateScript({ bundleDirectory, origin, token, initialize = false, widgets, templateId, customTemplate = null, initialTimeOffsetSeconds = 0, clockUtcOffsetHours = 0 }) {
+function dataUpdateScript({ bundleDirectory, origin, token, initialize = false, widgets, templateId, customTemplate = null, initialTimeOffsetSeconds = 0, clockUtcOffsetHours = 0, mapImage = null }) {
   invariant(Number.isSafeInteger(origin), 'Invalid composition origin');
   const initialOffset = validOffsetSeconds(initialTimeOffsetSeconds);
   const clockOffset = validClockOffsetHours(clockUtcOffsetHours);
@@ -62,6 +62,7 @@ function dataUpdateScript({ bundleDirectory, origin, token, initialize = false, 
 local status_key = "RunningOverlay.Operation"
 local token = ${luaString(token)}
 local fields = { ${assignments} }
+local map_image = ${mapImage == null ? 'nil' : luaString(mapImage)}
 local desired = { ${desired} }
 local template_styles = ${templateStyles}
 local template_signature = ${luaString(signature)}
@@ -160,6 +161,7 @@ local ok, message = pcall(function()
     end
     if widget.metric == "routeMap" then
       assert(node:GetInput(prefix .. "RouteSize") ~= nil, "Install the current Numeric Fuse and restart Resolve.")
+      if fresh or not slots[widget.id] then update(prefix .. "RouteMapBackground", map_image ~= nil and 1 or 0) end
     end
     if widget.metric == "distanceTimeline" then
       assert(node:GetInput(prefix .. "TimelineWidth") ~= nil, "Install the current Numeric Fuse and restart Resolve.")
@@ -178,6 +180,26 @@ local ok, message = pcall(function()
       if node:GetInput(key) ~= nil then update(key, used[slot] and 1 or 0)
       else assert(not used[slot], "Install the current Numeric Fuse and restart Resolve.") end
     end
+  end
+  -- The map snapshot travels as a Loader so the Fuse reads real pixels; the
+  -- Inspector's Map Background toggle decides whether it is drawn.
+  local map_loader = nil
+  for _, candidate in pairs(comp:GetToolList(false, "Loader")) do
+    if candidate:GetData("RunningOverlay.ManagedMapLoader") then map_loader = candidate end
+  end
+  if map_image ~= nil then
+    if map_loader == nil then
+      map_loader = comp:AddTool("Loader")
+      assert(map_loader, "Could not create the map background Loader.")
+      map_loader:SetData("RunningOverlay.ManagedMapLoader", true)
+      table.insert(created, map_loader)
+    end
+    map_loader:SetInput("Clip", map_image)
+    assert(map_loader:GetInput("Clip") == map_image, "Could not set the map background image.")
+    assert(node:ConnectInput("MapImage", map_loader), "Install the current Numeric Fuse: the map background input is missing.")
+  elseif map_loader ~= nil then
+    if node:GetInput("MapImage") ~= nil then pcall(function() node:ConnectInput("MapImage", nil) end) end
+    map_loader:Delete()
   end
   assert(output:ConnectInput("Input", node), "Could not connect the Numeric output.")
   node:SetData("RunningOverlay.ManagedNumeric", true)
