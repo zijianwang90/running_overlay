@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const { FIT_TO_UNIX_SECONDS, applyCalorieFallback, parseFitBuffer } = require('../src/activity/fit-parser');
 const { sampleActivity } = require('../src/domain/activity');
+const { parseActivityRenderData, serializeActivityRenderData } = require('../src/io/render-data');
 
 function uint16(value) {
   const buffer = Buffer.alloc(2);
@@ -140,11 +141,11 @@ test('independent FIT parser produces portable activity records and real-time pa
   }]);
   assert.deepEqual(activity.laps.map(({ kind, ...lap }) => lap), [
     { startElapsedUs: 0, endElapsedUs: 300_000_000, startDistanceMeters: 0, totalDistanceMeters: 500,
-      totalElapsedTime: 300, avgPaceSecondsPerKilometer: null, avgHeartRateBpm: null, avgCadenceSpm: null,
-      avgPowerWatts: null, totalAscentMeters: null },
+      totalElapsedTime: 300, avgPaceSecondsPerKilometer: null, avgHeartRateBpm: null, maxHeartRateBpm: null,
+      avgCadenceSpm: null, avgPowerWatts: null, totalAscentMeters: null },
     { startElapsedUs: 300_000_000, endElapsedUs: 600_000_000, startDistanceMeters: 500, totalDistanceMeters: 1000,
-      totalElapsedTime: 300, avgPaceSecondsPerKilometer: null, avgHeartRateBpm: null, avgCadenceSpm: null,
-      avgPowerWatts: null, totalAscentMeters: null },
+      totalElapsedTime: 300, avgPaceSecondsPerKilometer: null, avgHeartRateBpm: null, maxHeartRateBpm: null,
+      avgCadenceSpm: null, avgPowerWatts: null, totalAscentMeters: null },
   ]);
   assert.deepEqual(activity.laps.map((lap) => lap.kind), ['unknown', 'unknown']);
   assert.equal(activity.workoutStructure.kind, 'normal');
@@ -399,4 +400,41 @@ test('FIT calorie estimation does not mutate its input records', () => {
   assert.deepEqual(input, [{ elapsedUs: 0 }, { elapsedUs: 400_000_000 }]);
   assert.notEqual(output[0], input[0]);
   assert.equal(applyCalorieFallback(input, { sessionCalories: null }), input);
+});
+
+// Synthetic FIT whose laps carry max heart rate; null writes the uint8 sentinel.
+function lapHeartRateFit(maxHeartRates) {
+  const start = 1_136_188_800;
+  const parts = [
+    definition(0, 20, [{ number: 253, size: 4, baseType: 0x86 }, { number: 5, size: 4, baseType: 0x86 }]),
+    record(0, [uint32(start), uint32(0)]),
+    record(0, [uint32(start + 300 * maxHeartRates.length), uint32(50_000 * maxHeartRates.length)]),
+    definition(1, 19, [
+      { number: 253, size: 4, baseType: 0x86 },
+      { number: 2, size: 4, baseType: 0x86 },
+      { number: 7, size: 4, baseType: 0x86 },
+      { number: 9, size: 4, baseType: 0x86 },
+      { number: 16, size: 1, baseType: 0x02 },
+    ]),
+  ];
+  maxHeartRates.forEach((maxHeartRate, index) => {
+    parts.push(record(1, [uint32(start + 300 * (index + 1)), uint32(start + 300 * index), uint32(300_000),
+      uint32(50_000), Buffer.from([maxHeartRate ?? 0xff])]));
+  });
+  return withHeader(Buffer.concat(parts));
+}
+
+test('FIT lap max heart rate is read from field 16 and treats the sentinel as absent', () => {
+  const activity = parseFitBuffer(lapHeartRateFit([172, null]));
+  assert.deepEqual(activity.laps.map((lap) => lap.maxHeartRateBpm), [172, null]);
+});
+
+test('parsed FIT laps serialize into activity render data with max heart rate', () => {
+  const activity = parseFitBuffer(lapHeartRateFit([172, null]));
+  const text = serializeActivityRenderData(activity);
+  const rows = text.split('\n').filter((line) => line.startsWith('lap\t')).map((line) => line.split('\t'));
+  assert.deepEqual(rows.map((row) => [row[11], row[12]]), [['unknown', '172'], ['unknown', '']]);
+  const parsed = parseActivityRenderData(text);
+  assert.deepEqual(parsed.laps.map((lap) => lap.maxHeartRateBpm), [172, null]);
+  assert.deepEqual(parsed.workoutStructure, activity.workoutStructure);
 });

@@ -58,16 +58,17 @@ function serializeActivityRenderData(activity, weather = null) {
     lines.push(`annotation\t${annotation.kind}\t${annotation.startElapsedUs}\t${annotation.endElapsedUs}`);
   }
   const lapField = (value) => value === undefined || value === null || value === '' ? '' : encodeCell(value);
+  // Positional row: `lap`, the 11 start-to-kind fields, then max HR. Append only.
   for (const lap of activity.laps ?? []) {
     lines.push(['lap', lapField(lap.startElapsedUs), lapField(lap.startDistanceMeters), lapField(lap.endElapsedUs),
       lapField(lap.totalDistanceMeters), lapField(lap.totalElapsedTime), lapField(lap.avgPaceSecondsPerKilometer),
       lapField(lap.avgHeartRateBpm), lapField(lap.avgCadenceSpm), lapField(lap.avgPowerWatts),
-      lapField(lap.totalAscentMeters), lapField(lap.kind)].join('\t'));
+      lapField(lap.totalAscentMeters), lap.kind ?? '', lapField(lap.maxHeartRateBpm)].join('\t'));
   }
   if (activity.workoutStructure) {
     const structure = activity.workoutStructure;
     lines.push(['workout', structure.kind, structure.subtype, structure.source, structure.confidence,
-      encodeCell(structure.reason)].join('\t'));
+      structure.reason].join('\t'));
   }
   return `${lines.join('\n')}\n`;
 }
@@ -141,6 +142,7 @@ function parseActivityRenderData(text) {
     avgPowerWatts: optionalNumber(line[9]) ?? null,
     totalAscentMeters: optionalNumber(line[10]) ?? null,
     kind: optionalString(line[11]),
+    maxHeartRateBpm: optionalNumber(line[12]) ?? null,
   }));
   const workout = lines.find((line) => line[0] === 'workout');
   const workoutStructure = workout ? {

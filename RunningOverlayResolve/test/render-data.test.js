@@ -39,6 +39,21 @@ test('activity render data round-trips the portable numeric channels', () => {
     { startElapsedUs: 1, startDistanceMeters: 1 }] }));
 });
 
+test('lap rows append max heart rate after the existing positional fields', () => {
+  const activity = fixture('activity.synthetic.json');
+  const lap = { startElapsedUs: 1, startDistanceMeters: 2, endElapsedUs: 3, totalDistanceMeters: 4, totalElapsedTime: 5,
+    avgPaceSecondsPerKilometer: 6, avgHeartRateBpm: 7, avgCadenceSpm: 8, avgPowerWatts: 9, totalAscentMeters: 10,
+    kind: 'active' };
+  const lapRows = (laps) => serializeActivityRenderData({ ...activity, laps }).split('\n')
+    .filter((line) => line.startsWith('lap\t')).map((line) => line.split('\t'));
+  const existing = ['lap', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'active'];
+  assert.deepEqual(lapRows([{ ...lap, maxHeartRateBpm: 181 }]), [[...existing, '181']]);
+  assert.deepEqual(lapRows([{ ...lap, maxHeartRateBpm: null }]), [[...existing, '']]);
+  assert.deepEqual(lapRows([lap]), [[...existing, '']]);
+  const legacy = serializeActivityRenderData({ ...activity, laps: [lap] }).replace(/(lap\t.*active)\t\n/, '$1\n');
+  assert.equal(parseActivityRenderData(legacy).laps[0].maxHeartRateBpm, null);
+});
+
 test('route positions validate as finite degree pairs with non-negative integer segments', () => {
   const base = { schemaVersion: 1, activityId: 'route', startUtcUs: 0, endUtcUs: 0 };
   const valid = { elapsedUs: 0, latitude: 0, longitude: 0, routeSegment: 0 };

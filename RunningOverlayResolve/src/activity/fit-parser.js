@@ -269,6 +269,7 @@ class FitReader {
       totalElapsedSeconds: elapsedRaw === null ? null : elapsedRaw / 1000,
       avgSpeedMetersPerSecond: speedRaw === null ? null : speedRaw / 1000,
       avgHeartRateBpm: this.uint8(values.get(15)),
+      maxHeartRateBpm: this.uint8(values.get(16)),
       avgCadenceSpm: cadence === null ? null : Math.round((cadence + (cadenceFraction ?? 0) / 128) * 2),
       avgPowerWatts: this.uint16(values.get(19), architecture),
       totalAscentMeters: this.uint16(values.get(21), architecture),
@@ -318,6 +319,7 @@ class FitReader {
           ? 1_000 / lap.avgSpeedMetersPerSecond
           : null,
         avgHeartRateBpm: lap.avgHeartRateBpm,
+        maxHeartRateBpm: lap.maxHeartRateBpm,
         avgCadenceSpm: lap.avgCadenceSpm,
         avgPowerWatts: lap.avgPowerWatts,
         totalAscentMeters: lap.totalAscentMeters,
