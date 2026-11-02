@@ -154,6 +154,106 @@ async function fetchActivityWeather(activity, { fetchImpl = globalThis.fetch, no
   return weatherFromArchive(payload, { activity, latitude: coordinates.latitude, longitude: coordinates.longitude, fetchedAt: now().toISOString() });
 }
 
+// Shared keyless request path. The caller owns the URL; no credential is ever
+// appended, and redirects are refused so a request cannot leave Open-Meteo.
+async function requestJson(url, { fetchImpl, timeoutMs, serviceLabel }) {
+  invariant(typeof fetchImpl === 'function', 'Weather fetching is unavailable.');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetchImpl(url.toString(), { signal: controller.signal, redirect: 'error', headers: { accept: 'application/json' } });
+    invariant(response && response.ok, `${serviceLabel} failed${response?.status ? ` (${response.status})` : ''}. Check the connection and try again.`);
+    try { return await response.json(); }
+    catch { throw new Error(`${serviceLabel} returned an unreadable response.`); }
+  } catch (error) {
+    if (error?.name === 'AbortError') throw new Error(`${serviceLabel} timed out. Check the connection and try again.`);
+    throw error;
+  } finally { clearTimeout(timer); }
+}
+
+const stringOrNull = (value) => typeof value === 'string' && value.trim() ? value : null;
+
+// Place-name lookup through the keyless Open-Meteo geocoding API. The panel
+// resolves a user-typed city to coordinates before requesting a forecast.
+async function geocodeLocation(name, { fetchImpl = globalThis.fetch, now = () => new Date(), timeoutMs = 15_000 } = {}) {
+  invariant(typeof name === 'string' && name.trim().length > 0, 'Choose a location to search for.');
+  const query = name.trim();
+  invariant(query.length <= 120, 'Location search must be 120 characters or fewer.');
+  invariant(!/[\u0000-\u001F\u007F]/.test(query), 'Location search must not contain control characters.');
+  const url = new URL('https://geocoding-api.open-meteo.com/v1/search');
+  url.searchParams.set('name', query);
+  url.searchParams.set('count', '1');
+  const payload = await requestJson(url, { fetchImpl, timeoutMs, serviceLabel: 'Location search' });
+  invariant(payload && typeof payload === 'object', 'Location search returned no data.');
+  invariant(payload.error !== true, 'Location search failed. Try a different name.');
+  invariant(Array.isArray(payload.results), 'Location search returned an unreadable response.');
+  invariant(payload.results.length > 0, 'Location not found.');
+  const match = payload.results[0];
+  invariant(match && typeof match === 'object', 'Location search returned an unreadable response.');
+  const { latitude, longitude } = match;
+  invariant(typeof latitude === 'number' && Number.isFinite(latitude) && latitude >= -90 && latitude <= 90,
+    'Location search returned invalid coordinates.');
+  invariant(typeof longitude === 'number' && Number.isFinite(longitude) && longitude >= -180 && longitude <= 180,
+    'Location search returned invalid coordinates.');
+  return {
+    name: stringOrNull(match.name),
+    latitude,
+    longitude,
+    country: stringOrNull(match.country),
+    admin1: stringOrNull(match.admin1),
+    timezone: stringOrNull(match.timezone),
+  };
+}
+
+const isIsoDay = (value) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+  && Number.isFinite(Date.parse(`${value}T00:00:00Z`));
+const probabilityOrNull = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100 ? value : null;
+const FORECAST_DAILY_FIELDS = Object.freeze(['weather_code', 'temperature_2m_max', 'temperature_2m_min',
+  'precipitation_probability_max', 'wind_speed_10m_max']);
+
+// Keyless daily forecast through Open-Meteo. Days are normalized to the ten
+// renderer conditions; unavailable values stay null rather than guessing.
+async function fetchWeatherForecast(coordinates, { fetchImpl = globalThis.fetch, now = () => new Date(),
+  timeoutMs = 15_000, days = 7 } = {}) {
+  const { latitude, longitude } = coordinates && typeof coordinates === 'object' ? coordinates : {};
+  invariant(typeof latitude === 'number' && Number.isFinite(latitude) && latitude >= -90 && latitude <= 90,
+    'Latitude must be a finite number between -90 and 90.');
+  invariant(typeof longitude === 'number' && Number.isFinite(longitude) && longitude >= -180 && longitude <= 180,
+    'Longitude must be a finite number between -180 and 180.');
+  invariant(Number.isInteger(days) && days >= 1 && days <= 16, 'Forecast days must be a whole number from 1 to 16.');
+  const url = new URL('https://api.open-meteo.com/v1/forecast');
+  url.searchParams.set('latitude', latitude.toFixed(5));
+  url.searchParams.set('longitude', longitude.toFixed(5));
+  url.searchParams.set('daily', FORECAST_DAILY_FIELDS.join(','));
+  url.searchParams.set('timezone', 'UTC');
+  url.searchParams.set('wind_speed_unit', 'kmh');
+  url.searchParams.set('forecast_days', String(days));
+  const payload = await requestJson(url, { fetchImpl, timeoutMs, serviceLabel: 'Weather service' });
+  invariant(payload && typeof payload === 'object', 'Weather service returned no data.');
+  invariant(payload.error !== true, 'Weather service could not provide a forecast.');
+  const daily = payload.daily;
+  invariant(daily && typeof daily === 'object' && Array.isArray(daily.time) && daily.time.length > 0,
+    'Weather service returned incomplete daily data.');
+  for (const field of FORECAST_DAILY_FIELDS) {
+    invariant(Array.isArray(daily[field]) && daily[field].length === daily.time.length,
+      'Weather service returned incomplete daily data.');
+  }
+  const normalized = [];
+  for (let index = 0; index < daily.time.length; index += 1) {
+    if (!isIsoDay(daily.time[index])) continue;
+    normalized.push({
+      date: daily.time[index],
+      condition: conditionForCode(daily.weather_code[index]),
+      highC: finiteOrNull(daily.temperature_2m_max[index], 90),
+      lowC: finiteOrNull(daily.temperature_2m_min[index], 90),
+      precipitationProbability: probabilityOrNull(daily.precipitation_probability_max[index]),
+      windKph: finiteOrNull(daily.wind_speed_10m_max[index], 500),
+    });
+  }
+  invariant(normalized.length > 0, 'Weather service returned no usable daily data.');
+  return { source: 'openMeteo', days: normalized, fetchedAt: now().toISOString() };
+}
+
 // Metadata rows are appended to the immutable activity TSV. The renderer reads
 // them at load time only; it never performs network access.
 function sanitizeCell(value) {
@@ -180,4 +280,4 @@ function weatherRenderValues(weather) {
 }
 
 module.exports = { CONDITIONS, CONDITION_LABELS, WEEKDAYS, conditionForCode, validateWeather, isWeatherCurrent,
-  fetchActivityWeather, weatherRenderValues };
+  fetchActivityWeather, geocodeLocation, fetchWeatherForecast, weatherRenderValues };
