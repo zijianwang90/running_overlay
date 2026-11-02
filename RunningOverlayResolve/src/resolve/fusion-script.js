@@ -35,7 +35,7 @@ const seedValue = (value) => {
   return Array.isArray(value) ? `{${value[0]}, ${value[1]}}` : value;
 };
 
-function dataUpdateScript({ bundleDirectory, origin, token, initialize = false, widgets, templateId, customTemplate = null, initialTimeOffsetSeconds = 0, clockUtcOffsetHours = 0, mapImage = null }) {
+function dataUpdateScript({ bundleDirectory, origin, token, initialize = false, widgets, templateId, customTemplate = null, initialTimeOffsetSeconds = 0, clockUtcOffsetHours = 0, mapImage = null, mapTiles = null }) {
   invariant(Number.isSafeInteger(origin), 'Invalid composition origin');
   const initialOffset = validOffsetSeconds(initialTimeOffsetSeconds);
   const clockOffset = validClockOffsetHours(clockUtcOffsetHours);
@@ -58,11 +58,13 @@ function dataUpdateScript({ bundleDirectory, origin, token, initialize = false, 
   }).join(',\n');
   const templateStyles = `{\n${seeded.join(',\n')}\n}`;
   const signature = JSON.stringify([template.id, selected.map((widget) => [widget.id, widget.metric])]);
+  const tilePaths = Array.isArray(mapTiles) ? mapTiles.map((value) => (value == null ? 'nil' : luaString(value))).join(', ') : '';
   return `
 local status_key = "RunningOverlay.Operation"
 local token = ${luaString(token)}
 local fields = { ${assignments} }
 local map_image = ${mapImage == null ? 'nil' : luaString(mapImage)}
+local map_tiles = { ${tilePaths} }
 local desired = { ${desired} }
 local template_styles = ${templateStyles}
 local template_signature = ${luaString(signature)}
@@ -182,24 +184,34 @@ local ok, message = pcall(function()
     end
   end
   -- The map snapshot travels as a Loader so the Fuse reads real pixels; the
-  -- Inspector's Map Background toggle decides whether it is drawn.
-  local map_loader = nil
-  for _, candidate in pairs(comp:GetToolList(false, "Loader")) do
-    if candidate:GetData("RunningOverlay.ManagedMapLoader") then map_loader = candidate end
-  end
-  if map_image ~= nil then
-    if map_loader == nil then
-      map_loader = comp:AddTool("Loader")
-      assert(map_loader, "Could not create the map background Loader.")
-      map_loader:SetData("RunningOverlay.ManagedMapLoader", true)
-      table.insert(created, map_loader)
+  -- Inspector's Map Background toggle decides whether it is drawn. Detail
+  -- tiles use one Loader each and are optional.
+  local map_bindings = {
+    {input = "MapImage", key = "RunningOverlay.ManagedMapLoader", path = map_image},
+    {input = "MapTile1", key = "RunningOverlay.ManagedMapTile1", path = map_tiles[1]},
+    {input = "MapTile2", key = "RunningOverlay.ManagedMapTile2", path = map_tiles[2]},
+    {input = "MapTile3", key = "RunningOverlay.ManagedMapTile3", path = map_tiles[3]},
+    {input = "MapTile4", key = "RunningOverlay.ManagedMapTile4", path = map_tiles[4]},
+  }
+  for _, binding in ipairs(map_bindings) do
+    local map_loader = nil
+    for _, candidate in pairs(comp:GetToolList(false, "Loader")) do
+      if candidate:GetData(binding.key) then map_loader = candidate end
     end
-    map_loader:SetInput("Clip", map_image)
-    assert(map_loader:GetInput("Clip") == map_image, "Could not set the map background image.")
-    assert(node:ConnectInput("MapImage", map_loader), "Install the current Numeric Fuse: the map background input is missing.")
-  elseif map_loader ~= nil then
-    if node:GetInput("MapImage") ~= nil then pcall(function() node:ConnectInput("MapImage", nil) end) end
-    map_loader:Delete()
+    if binding.path ~= nil then
+      if map_loader == nil then
+        map_loader = comp:AddTool("Loader")
+        assert(map_loader, "Could not create the map background Loader.")
+        map_loader:SetData(binding.key, true)
+        table.insert(created, map_loader)
+      end
+      map_loader:SetInput("Clip", binding.path)
+      assert(map_loader:GetInput("Clip") == binding.path, "Could not set the map background image.")
+      assert(node:ConnectInput(binding.input, map_loader), "Install the current Numeric Fuse: the map background input is missing.")
+    elseif map_loader ~= nil then
+      if node:GetInput(binding.input) ~= nil then pcall(function() node:ConnectInput(binding.input, nil) end) end
+      map_loader:Delete()
+    end
   end
   assert(output:ConnectInput("Input", node), "Could not connect the Numeric output.")
   node:SetData("RunningOverlay.ManagedNumeric", true)

@@ -1090,6 +1090,16 @@ function Create()
 		LINK_Main = 1,
 		INP_Required = false,
 	})
+	-- Optional detail tiles: a 2x2 grid of the same route frame rendered one
+	-- zoom deeper. The Fuse picks the tile under the camera at higher zoom.
+	InMapTiles = {}
+	for index = 1, 4 do
+		InMapTiles[index] = self:AddInput("Map Detail Image " .. index, "MapTile" .. index, {
+			LINKID_DataType = "Image",
+			LINK_Main = 1,
+			INP_Required = false,
+		})
+	end
 	InSyncFile = self:AddInput("Sync Data (.rosync)", "SyncFile", {
 		LINKID_DataType = "Text",
 		INPID_InputControl = "FileControl",
@@ -2415,6 +2425,8 @@ function Process(req)
 		end
 		local function render_route(position, widget_font, widget_style, r, options)
 			local map_image = InMapImage ~= nil and InMapImage:GetValue(req) or nil
+			map_image = map_image and map_image.Value or nil
+			if map_image == "" then map_image = nil end
 			local route = data.route or {paths = {}, count = 0}
 			local size = math.max(value_of(r.size), 2 / output.Width)
 			local padding = math.min(math.max(value_of(r.padding), 0), size * 0.45)
@@ -2454,6 +2466,36 @@ function Process(req)
 			end
 			local parts = {}
 			local card_mask = nil
+			-- Pick the detail tile under the camera once zoom is high enough for
+			-- the overview to soften. Each tile covers half the overview frame at
+			-- twice the pixel density; route coordinates stay in overview units.
+			local coverage = math.max(value_of(r.coverage), 1.01)
+			local image_coverage = coverage
+			local image_center_x, image_center_y = 0, 0
+			local selected_image = map_image
+			if map_on then
+				local tile_images, have_tiles = {}, false
+				for index = 1, 4 do
+					local input = InMapTiles and InMapTiles[index]
+					local value = input ~= nil and input:GetValue(req) or nil
+					local image = value and value.Value or nil
+					if image == "" then image = nil end
+					tile_images[index] = image
+					if tile_images[index] ~= nil then have_tiles = true end
+				end
+				if have_tiles and zoom >= 1.5 then
+					local half = coverage / 2
+					local col = math.max(0, math.min(1, math.floor((sx + coverage / 2) / half)))
+					local row = math.max(0, math.min(1, math.floor((sy + coverage / 2) / half)))
+					local selected = tile_images[row * 2 + col + 1]
+					if selected ~= nil then
+						selected_image = selected
+						image_coverage = half
+						image_center_x = -coverage / 2 + (col + 0.5) * half
+						image_center_y = -coverage / 2 + (row + 0.5) * half
+					end
+				end
+			end
 			local function point(x, y) return camera(x, y) end
 			local function dot(x, y, diameter, color)
 				local px, py = point(x, y)
@@ -2470,27 +2512,21 @@ function Process(req)
 				-- image u = 0.5 + x/coverage. The camera then pans, zooms and
 				-- rotates that single image around the current point.
 				if map_on then
-					local coverage = math.max(value_of(r.coverage), 1.01)
 					local map_angle = course_up and bearing or 0
-					-- Move the snapshot so the sampled route point sits at the
-					-- card center, then rotate that offset with the course.
-					local ox, oy = 0, 0
-					if follow then ox, oy = -sx * extent * zoom, -sy * extent * zoom end
-					if course_up then
-						local c, s = math.cos(course_radians), math.sin(course_radians)
-						ox, oy = ox * c - oy * s, ox * s + oy * c
-					end
+					-- The image centre is the camera position of the tile centre, so
+					-- the overview and every detail tile share one transform.
+					local image_x, image_y = camera(image_center_x, image_center_y)
 					-- Transform sizes are multiples of the source image, not the
 					-- destination frame; convert the target frame width first.
-					local side_pixels = extent * coverage * zoom * output.Width
+					local side_pixels = extent * image_coverage * zoom * output.Width
 					local map = output:CopyOf()
 					map:Fill(Pixel{R=0,G=0,B=0,A=0})
-					map_image:Transform(map, {
-						XF_XOffset = cx + ox,
-						XF_YOffset = (cy + oy) / aspect,
+					selected_image:Transform(map, {
+						XF_XOffset = image_x,
+						XF_YOffset = image_y / aspect,
 						XF_XAxis = 0.5, XF_YAxis = 0.5,
-						XF_XSize = side_pixels / map_image.Width,
-						XF_YSize = side_pixels / map_image.Height,
+						XF_XSize = side_pixels / selected_image.Width,
+						XF_YSize = side_pixels / selected_image.Height,
 						XF_Angle = map_angle,
 						XF_EdgeMode = "Black",
 					})

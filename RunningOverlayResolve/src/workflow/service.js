@@ -8,7 +8,7 @@ const { updateManagedOverlay, managedOverlayIsCurrent, offsetPieces, overlayTime
 const { validOffsetSeconds, pairCapturedSlots } = require('../resolve/fusion-script');
 const { compileSyncMap, timelineFingerprint } = require('../sync/compile-sync-map');
 const { writeResolveBundle } = require('../io/render-data');
-const { fetchRouteMap } = require('../map/mapbox');
+const { fetchRouteMap, fetchRouteTiles } = require('../map/mapbox');
 const { contextForResolve, validateConfiguration, applyConfirmedCaptureTimes, cameraModels } = require('./configuration');
 const { offsetAt } = require('../sync/capture-time');
 const { templateById } = require('../domain/templates');
@@ -21,11 +21,12 @@ function clockUtcOffsetHours(configuration, systemTimeZone = Intl.DateTimeFormat
   return offsetAt(Math.floor(configuration.activity.startUtcUs / 1000), zone) / 60;
 }
 
-const editable = (value) => JSON.stringify([value.referenceVideoTrackIndex, value.activity, value.weather, value.confirmedCaptureUtcByMediaId, value.cameraAnchors, value.widgets, value.templateId, value.customTemplate, value.captureTimeZone, value.captureTimeZonesByMediaId]);
+const editable = (value) => JSON.stringify([value.referenceVideoTrackIndex, value.activity, value.weather, value.confirmedCaptureUtcByMediaId, value.cameraAnchors, value.widgets, value.templateId, value.customTemplate, value.captureTimeZone, value.captureTimeZonesByMediaId, value.mapDetail]);
 class WorkflowService {
   constructor({ getResolve, store, bundleRoot, scan = scanCurrentTimeline, update = updateManagedOverlay, inspectManaged = managedOverlayIsCurrent,
-    pieces = offsetPieces, offset = overlayTimeOffset, captureStyles = captureOverlayStyles, fetchMap = fetchRouteMap }) {
-    Object.assign(this, { getResolve, store, bundleRoot, scan, update, inspectManaged, pieces, offset, captureStyles, fetchMap });
+    pieces = offsetPieces, offset = overlayTimeOffset, captureStyles = captureOverlayStyles, fetchMap = fetchRouteMap,
+    fetchMapTiles = fetchRouteTiles }) {
+    Object.assign(this, { getResolve, store, bundleRoot, scan, update, inspectManaged, pieces, offset, captureStyles, fetchMap, fetchMapTiles });
     this.queue = Promise.resolve();
     this.applying = false;
     this.offsetTarget = null;
@@ -170,17 +171,26 @@ class WorkflowService {
     // Static Images requests are billable, so skip the fetch unless a Route Map
     // widget is actually configured.
     let mapSnapshot = null;
+    let mapTiles = null;
     let mapError = null;
     if (configuration.mapboxToken && configuration.widgets.some((widget) => widget.metric === 'routeMap')) {
-      try { mapSnapshot = await this.fetchMap(configuration.activity, { token: configuration.mapboxToken }); }
-      catch (error) { mapError = error.message; }
+      try {
+        mapSnapshot = await this.fetchMap(configuration.activity, { token: configuration.mapboxToken });
+        if (configuration.mapDetail) {
+          // Detail tiles are opt-in: each apply makes four additional billable
+          // Static Images requests. A failure keeps the overview snapshot.
+          try { mapTiles = await this.fetchMapTiles(configuration.activity, { token: configuration.mapboxToken }); }
+          catch (error) { mapError = `Map detail unavailable: ${error.message}`; }
+        }
+      } catch (error) { mapError = error.message; }
     }
     const revisionRoot = path.join(this.bundleRoot, configuration.contextId, crypto.randomUUID());
     await fs.mkdir(revisionRoot, { recursive: true, mode: 0o700 });
-    const bundleDirectory = await writeResolveBundle(revisionRoot, configuration.activity, syncMap, configuration.weather, mapSnapshot);
+    const bundleDirectory = await writeResolveBundle(revisionRoot, configuration.activity, syncMap, configuration.weather, mapSnapshot, mapTiles);
     // Data files are immutable: old instances keep their complete revision until the input switch.
     const result = await this.update(await this.getResolve(), { contextId: configuration.contextId, syncMap, bundleDirectory, expectedItemId: configuration.managedItemId, referenceVideoTrackIndex: configuration.referenceVideoTrackIndex, widgets: configuration.widgets, templateId: configuration.templateId, customTemplate: configuration.customTemplate, initialTimeOffsetSeconds: configuration.draftTimeOffsetMs / 1000, clockUtcOffsetHours: clockUtcOffsetHours(configuration),
-      mapImage: mapSnapshot ? path.join(bundleDirectory, 'map.png') : null });
+      mapImage: mapSnapshot ? path.join(bundleDirectory, 'map.png') : null,
+      mapTiles: mapTiles ? mapTiles.map((_, index) => path.join(bundleDirectory, `map-${index + 1}.png`)) : null });
     const saved = await this.store.save({ ...configuration, ...result, bundleDirectory, lastAppliedFingerprint: snapshot.fingerprint });
     return { configuration: saved, segmentCount: syncMap.segments.length, fingerprint: snapshot.fingerprint, ...(mapError ? { mapError } : {}) };
   }

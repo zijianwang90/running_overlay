@@ -605,6 +605,7 @@ async function fetchWeather() {
 function renderMap() {
   const config = state.configuration; const activity = config?.activity;
   const token = byId('mapbox-token'); const badge = byId('map-badge');
+  const detail = byId('map-detail');
   const hasGps = Boolean(activity?.records.some((entry) => entry.latitude != null && entry.longitude != null));
   if (!activity) { badge.textContent = 'Waiting'; badge.className = 'badge muted'; }
   else if (!hasGps) { badge.textContent = 'No GPS'; badge.className = 'badge warning'; }
@@ -612,6 +613,8 @@ function renderMap() {
   else { badge.textContent = 'No token'; badge.className = 'badge muted'; }
   if (document.activeElement !== token) token.value = config?.mapboxToken ?? '';
   token.disabled = !activity;
+  detail.checked = config?.mapDetail === true;
+  detail.disabled = !activity || !config?.mapboxToken;
 }
 
 // ---- Scanning ------------------------------------------------------------------
@@ -684,6 +687,12 @@ window.addEventListener('DOMContentLoaded', () => {
     state.configuration.mapboxToken = token || null;
     scheduleSave();
     setStatus(token ? 'Map token saved. Update the overlay to fetch the snapshot.' : 'Map background disabled for the next update.', 'good');
+  });
+  byId('map-detail').addEventListener('change', (event) => {
+    if (!state.configuration) return;
+    state.configuration.mapDetail = event.target.checked;
+    scheduleSave();
+    setStatus(event.target.checked ? 'High-detail tiles enabled. The next update makes four extra Mapbox requests.' : 'High-detail tiles disabled. The next update uses the overview snapshot only.', 'good');
   });
   byId('weather-location').addEventListener('change', (event) => {
     const weather = state.configuration?.weather;

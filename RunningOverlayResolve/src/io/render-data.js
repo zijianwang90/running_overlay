@@ -179,7 +179,7 @@ function parseSyncRenderData(text) {
   };
 }
 
-async function writeResolveBundle(outputDirectory, activity, syncMap, weather = null, mapSnapshot = null) {
+async function writeResolveBundle(outputDirectory, activity, syncMap, weather = null, mapSnapshot = null, mapTiles = null) {
   validateActivity(activity);
   invariant(syncMap.activityId === activity.activityId, 'sync map and activity IDs do not match');
   const safeId = activity.activityId.replace(/[^a-zA-Z0-9._-]+/g, '-');
@@ -197,6 +197,7 @@ async function writeResolveBundle(outputDirectory, activity, syncMap, weather = 
     activityRenderData: 'activity.roactivity',
     syncRenderData: 'sync.rosync',
     ...(mapSnapshot ? { mapImage: 'map.png', mapMetadata: 'map.json' } : {}),
+    ...(mapTiles ? { mapTiles: mapTiles.map((_, index) => `map-${index + 1}.png`), mapTilesMetadata: 'map-tiles.json' } : {}),
   };
 
   const writes = [
@@ -215,6 +216,17 @@ async function writeResolveBundle(outputDirectory, activity, syncMap, weather = 
       fs.writeFile(path.join(bundleDirectory, 'map.png'), mapSnapshot.bytes, { mode: 0o600 }),
       fs.writeFile(path.join(bundleDirectory, 'map.json'), `${JSON.stringify(metadata, null, 2)}\n`, { mode: 0o600 }),
     );
+  }
+  if (mapTiles) {
+    const metadata = mapTiles.map((tile) => {
+      const copy = { ...tile.metadata };
+      delete copy.accessToken;
+      return copy;
+    });
+    writes.push(fs.writeFile(path.join(bundleDirectory, 'map-tiles.json'), `${JSON.stringify(metadata, null, 2)}\n`, { mode: 0o600 }));
+    mapTiles.forEach((tile, index) => {
+      writes.push(fs.writeFile(path.join(bundleDirectory, `map-${index + 1}.png`), tile.bytes, { mode: 0o600 }));
+    });
   }
   await Promise.all(writes);
   return bundleDirectory;

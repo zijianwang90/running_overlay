@@ -22,14 +22,19 @@ source image, multiplies it through a circular/square card mask, and applies the
 same camera to the trace, arrow and attribution. The follow camera pans to the
 sampled route point; zoom is clamped to 1–8; course-up rotates the snapshot and
 trace together while the arrow stays upright. Attribution text is drawn over the
-card in addition to the logo and attribution baked into the snapshot.
+card in addition to the logo and attribution baked into the snapshot. When
+detail tiles are enabled, the quadrant under the camera replaces the overview
+above 1.5× zoom while route coordinates stay in overview units.
 
-Tests: six mapbox tests use a mocked fetch and no network, covering frame
+Tests: nine mapbox tests use a mocked fetch and no network, covering frame
 coverage and square math, GPS gaps and a single fix, URL and token validation,
 PNG-signature rejection, snapshot writing without the token, bundle manifest
-entries and one-snapshot caching in the workflow service. Fusion-script tests
-assert the managed Loader, `MapImage` connection and `RouteMapBackground` write.
-157 Node/Lua tests and static checks pass.
+entries, four-quadrant detail-tile frames and fetching, tile manifests and
+one-snapshot caching in the workflow service. Fusion-script tests assert the
+managed Loaders, `MapImage` and `MapTile1`–`MapTile4` connections and the
+`RouteMapBackground` write; Fuse tests select the tile under the camera above
+1.5× zoom and fall back to the overview. 167 Node/Lua tests and static checks
+pass.
 
 Host evidence: Resolve Studio 21.1.1, independent `RO Numeric v7 Validation`
 project, synthetic 100-record Toronto route on Bloor/Yonge/Church/Bathurst, at

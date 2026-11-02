@@ -53,6 +53,8 @@ function validateConfiguration(value) {
   // copied into templates or render bundles.
   const mapboxToken = value.mapboxToken ?? null;
   invariant(mapboxToken === null || validToken(mapboxToken), 'Enter a Mapbox public access token (pk.*).');
+  // Detail tiles are opt-in because each apply adds four billable requests.
+  const mapDetail = value.mapDetail === true;
   // Applying a saved template copies it here, so deleting it from the library
   // cannot invalidate this timeline's overlay.
   const customTemplate = value.customTemplate ? normalizeUserTemplate(value.customTemplate) : null;
@@ -64,6 +66,7 @@ function validateConfiguration(value) {
     activity,
     weather,
     mapboxToken,
+    mapDetail,
     activityLabel: value.activity && value.activityLabel ? value.activityLabel : null,
     // Offset used when the overlay is created. Afterwards the Fusion renderer is
     // authoritative and this value only mirrors its last known setting.

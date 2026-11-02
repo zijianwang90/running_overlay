@@ -191,12 +191,62 @@ test('a saved Mapbox token caches one snapshot per revision and connects it with
   await assert.rejects(new ConfigurationStore(path.join(root, 'bad')).save({ schemaVersion: 1, contextId: context.contextId, referenceVideoTrackIndex: 1, mapboxToken: 'sk.secret-1234567890' }), /Mapbox/);
 });
 
+test('detail tiles are opt-in, billed once per apply, and reach four loaders', async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'ro-map-detail-')); t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const tl = { GetUniqueId: async () => timeline.timelineId };
+  const resolve = { GetProjectManager: async () => ({ GetCurrentProject: async () => ({ IsRenderingInProgress: async () => false, GetUniqueId: async () => 'project', GetCurrentTimeline: async () => tl }) }) };
+  const context = await contextForResolve(resolve);
+  const scanValue = { timeline: structuredClone(timeline), mediaById, diagnostics: [] };
+  let updates = []; let tileFetches = 0;
+  const service = new WorkflowService({ getResolve: async () => resolve, store: new ConfigurationStore(path.join(root, 'config')), bundleRoot: path.join(root, 'bundles'),
+    scan: async () => structuredClone(scanValue), inspectManaged: async () => true,
+    update: async (_resolve, value) => { updates.push(value); return { managedItemId: 'managed-detail' }; },
+    fetchMap: async () => ({ bytes: Buffer.from([0x89,0x50,0x4e,0x47,13,10,26,10]), metadata: { coverage: 2.75 } }),
+    fetchMapTiles: async () => {
+      tileFetches++;
+      return [1, 2, 3, 4].map((index) => ({ bytes: Buffer.from([0x89,0x50,0x4e,0x47,13,10,26,10,index]), metadata: { row: index > 2 ? 1 : 0, col: (index - 1) % 2 } }));
+    } });
+  const snapshot = await service.scanContext(1);
+  const configuration = { schemaVersion: 1, contextId: context.contextId, referenceVideoTrackIndex: 1,
+    widgets: [{ id: 'route-1', metric: 'routeMap' }], activity,
+    mapboxToken: 'pk.eyJ1Ijoic3ludGhldGljIn0.test-signature-123456', mapDetail: true };
+  const detailed = await service.apply({ configuration, expectedFingerprint: snapshot.fingerprint });
+  assert.equal(tileFetches, 1);
+  assert.equal(detailed.mapError, undefined);
+  assert.deepEqual(updates[0].mapTiles, [1, 2, 3, 4].map((index) => path.join(detailed.configuration.bundleDirectory, `map-${index}.png`)));
+  assert.deepEqual(JSON.parse(await fs.readFile(path.join(detailed.configuration.bundleDirectory, 'manifest.json'), 'utf8')).mapTiles,
+    ['map-1.png', 'map-2.png', 'map-3.png', 'map-4.png']);
+  assert.doesNotMatch(await fs.readFile(path.join(detailed.configuration.bundleDirectory, 'map-tiles.json'), 'utf8'), /pk\./);
+  // Disabling detail tiles stops the extra requests and disconnects the loaders.
+  // It also marks the applied revision stale, so the panel offers an update.
+  assert.equal((await service.saveConfiguration({ ...detailed.configuration, mapDetail: false })).lastAppliedFingerprint, null);
+  const overviewOnly = await service.apply({ configuration: { ...detailed.configuration, mapDetail: false }, expectedFingerprint: snapshot.fingerprint });
+  assert.equal(tileFetches, 1);
+  assert.equal(overviewOnly.configuration.mapDetail, false);
+  assert.equal(updates[1].mapTiles, null);
+  // A failed detail fetch keeps the overview and reports the error.
+  const partial = new WorkflowService({ getResolve: async () => resolve, store: new ConfigurationStore(path.join(root, 'config2')), bundleRoot: path.join(root, 'bundles2'),
+    scan: async () => structuredClone(scanValue), inspectManaged: async () => true,
+    update: async (_resolve, value) => { updates.push(value); return { managedItemId: 'managed-detail-2' }; },
+    fetchMap: async () => ({ bytes: Buffer.from([0x89,0x50,0x4e,0x47,13,10,26,10]), metadata: { coverage: 2.75 } }),
+    fetchMapTiles: async () => { throw new Error('Map service failed (429).'); } });
+  const failed = await partial.apply({ configuration: { ...configuration, contextId: context.contextId }, expectedFingerprint: snapshot.fingerprint });
+  assert.match(failed.mapError, /Map detail unavailable: Map service failed \(429\)/);
+  assert.equal(updates[2].mapTiles, null);
+  assert.notEqual(updates[2].mapImage, null);
+});
+
 test('the Fusion update script manages a map Loader and only enables new route widgets', () => {
   const { dataUpdateScript } = require('../src/resolve/fusion-script');
   const withMap = dataUpdateScript({ bundleDirectory: '/b', origin: 0, token: 't', widgets: [{ id: 'route-1', metric: 'routeMap' }], templateId: 'race', mapImage: '/b/map.png' });
   assert.match(withMap, /RunningOverlay\.ManagedMapLoader/);
-  assert.match(withMap, /ConnectInput\("MapImage", map_loader\)/);
+  assert.match(withMap, /ConnectInput\(binding\.input, map_loader\)/);
+  assert.match(withMap, /input = "MapImage"/);
   assert.match(withMap, /RouteMapBackground/);
+  const withTiles = dataUpdateScript({ bundleDirectory: '/b', origin: 0, token: 't', widgets: [{ id: 'route-1', metric: 'routeMap' }], templateId: 'race', mapImage: '/b/map.png', mapTiles: ['/b/map-1.png', '/b/map-2.png', '/b/map-3.png', '/b/map-4.png'] });
+  assert.match(withTiles, /local map_tiles = \{ string\.sub\(\[\[x\/b\/map-1\.png\]\], 2\)/);
+  assert.match(withTiles, /input = "MapTile4"/);
+  assert.match(withTiles, /RunningOverlay\.ManagedMapTile4/);
   const without = dataUpdateScript({ bundleDirectory: '/b', origin: 0, token: 't', widgets: [{ id: 'numeric-1', metric: 'heartRate' }], templateId: 'easyRun', mapImage: null });
   assert.match(without, /local map_image = nil/);
   assert.doesNotMatch(without, /pk\./);

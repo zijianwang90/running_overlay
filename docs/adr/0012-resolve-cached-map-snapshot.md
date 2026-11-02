@@ -25,6 +25,13 @@ provide near the runner.
   bundle referenced by the manifest. The Fuse reads the image through an optional
   `MapImage` input from a Loader marked as managed by the product, and performs
   panning, zoom and rotation in the render callback with no networking.
+- Multi-resolution detail is opt-in. When enabled, the control plane also fetches
+  a 2×2 grid of quadrants at one zoom level deeper and writes four `map-N.png`
+  files. The Fuse selects the quadrant under the camera above 1.5× zoom through
+  optional `MapTile1`–`MapTile4` inputs, keeping route coordinates in overview
+  units so the overview and tiles share one transform. Detail requests are
+  billable, so a failed tile fetch keeps the overview and reports the error
+  instead of failing the apply.
 - The public `pk.*` token belongs only to local project settings. It is never
   written into the bundle, templates, logs or repository. Fetches use the token
   in the query string only for that request.
@@ -39,7 +46,8 @@ provide near the runner.
 Existing projects without a token render exactly as before, and a published
 bundle always renders the same map even without network access. Changing the
 token or coverage requires a new apply, which creates a new immutable revision;
-ordinary style and time-offset edits reuse the cached snapshot. The fixed
-snapshot softens at high camera zoom, so live tiles or multi-resolution snapshots
-remain future work. Mapbox terms, logo/attribution placement and the single
-provider choice need human review before this is treated as release-ready.
+ordinary style and time-offset edits reuse the cached snapshot. Detail tiles
+cost five requests per apply when enabled and still sharpen only one quadrant at
+a time, so live tiles remain future work. Mapbox terms, logo/attribution
+placement, request billing and the single provider choice need human review
+before this is treated as release-ready.

@@ -49,7 +49,11 @@ local inputs = {}
 self = {Comp={}, AddControlPage=function() end, AddInput=function(_,label,key,attrs)
  local input={value=attrs.INP_DefaultText or attrs.INP_Default or '', attrs=attrs}
  if attrs.LINKID_DataType=='Point' then input.value={X=attrs.INP_DefaultX,Y=attrs.INP_DefaultY} end
- function input:GetValue() if type(self.value)=='table' then return self.value end; return {Value=self.value} end
+ function input:GetValue()
+  if attrs.LINKID_DataType=='Image' then return {Value=self.value} end
+  if type(self.value)=='table' then return self.value end
+  return {Value=self.value}
+ end
  function input:SetSource(source) self.value=source.Value end
  function input:SetAttrs(attrs) self.visible=attrs.IC_Visible end
  inputs[key]=input; return input
@@ -271,7 +275,11 @@ local inputs = {}
 self = {Comp={}, AddControlPage=function() end, AddInput=function(_,label,key,attrs)
  local input={value=attrs.INP_DefaultText or attrs.INP_Default or '', attrs=attrs}
  if attrs.LINKID_DataType=='Point' then input.value={X=attrs.INP_DefaultX,Y=attrs.INP_DefaultY} end
- function input:GetValue() if type(self.value)=='table' then return self.value end; return {Value=self.value} end
+ function input:GetValue()
+  if attrs.LINKID_DataType=='Image' then return {Value=self.value} end
+  if type(self.value)=='table' then return self.value end
+  return {Value=self.value}
+ end
  function input:SetAttrs(attrs) self.visible=attrs.IC_Visible end
  inputs[key]=input; return input
 end}
@@ -332,7 +340,11 @@ inputs = {}
 self = {Comp={}, AddControlPage=function() end, AddInput=function(_,label,key,attrs)
  local input={value=attrs.INP_DefaultText or attrs.INP_Default or '', attrs=attrs}
  if attrs.LINKID_DataType=='Point' then input.value={X=attrs.INP_DefaultX,Y=attrs.INP_DefaultY} end
- function input:GetValue() if type(self.value)=='table' then return self.value end; return {Value=self.value} end
+ function input:GetValue()
+  if attrs.LINKID_DataType=='Image' then return {Value=self.value} end
+  if type(self.value)=='table' then return self.value end
+  return {Value=self.value}
+ end
  function input:SetSource(source) self.value=source.Value end
  function input:SetAttrs(attrs) self.visible=attrs.IC_Visible end
  inputs[key]=input; return input
@@ -736,6 +748,73 @@ events={}; Process(req)
 assert(#of('blur')==1, 'circle gradient edge blur: ' .. #of('blur'))
 -- The gradient-edge mask is also the trace mask, so both fade together.
 assert(card_shape() ~= nil, 'gradient card mask missing')
+`));
+
+test('Route Map selects the detail tile under the camera above 1.5x zoom', () => run(HOST + `
+local function route_shape()
+ local s={points={},TransformOfShape=function(self) return self end}
+ function s:MoveTo(x,y) table.insert(self.points,{x,y}) end
+ function s:LineTo(x,y) table.insert(self.points,{x,y}) end
+ function s:Close() end
+ function s:OutlineOfShape() return self end
+ return s
+end
+Shape=route_shape
+Matrix4=function() return {Identity=function() end, RotZ=function() end, Move=function() end} end
+Image=function()
+ local image={Height=1080,Width=1920,XScale=1,YScale=1,Fill=function() end}
+ function image:CopyOf() return Image() end
+ function image:ChannelOpOf() return image end
+ function image:Merge() end
+ function image:Blur(dest, tags) table.insert(events,{kind='blur',size=tags.BLUR_XSize}) end
+ return image
+end
+local overview={Width=1280,Height=1280}
+function overview:Transform(destination, transform) table.insert(events,{kind='overview',size=transform.XF_XSize}) end
+inputs.MapImage.value=overview
+local function tile(index)
+ local image={Width=1280,Height=1280,name=index}
+ function image:Transform(destination, transform)
+  table.insert(events,{kind='tile',name=index,size=transform.XF_XSize,x=transform.XF_XOffset,y=transform.XF_YOffset})
+ end
+ return image
+end
+for index=1,4 do inputs['MapTile'..index].value='' end
+local records={{elapsed_us=0,latitude_deg=0,longitude_deg=0},{elapsed_us=10,latitude_deg=1,longitude_deg=1}}
+load_data=function() return {route=prepare_route(records),records=records} end
+inputs.Metric.value=ROUTE_METRIC; inputs.ShadowEnabled.value=0
+inputs.Position.value={X=0.5,Y=0.5}
+inputs.RouteMapBackground.value=1; inputs.RouteMapOpacity.value=1
+inputs.RouteAttribution.value=''
+local function tile_events()
+ local found={}
+ for _,entry in ipairs(events) do if entry.kind=='tile' then table.insert(found,entry) end end
+ return found
+end
+-- Capture the overview transform size first; tiles are selected only when present.
+sample_activity=function() return {route_x=0,route_y=0} end
+events={}; Process(req)
+for _,e in ipairs(events) do print('  ', e.kind) end
+local overview_size=of('overview')[1].size
+for index=1,4 do inputs['MapTile'..index].value=tile(index) end
+-- Route space row 1/column 1 is the north-east tile.
+events={}; Process(req)
+assert(#tile_events()==1 and tile_events()[1].name==4, 'north-east tile expected')
+-- A detail tile covers half the overview frame at the same pixel size.
+assert(near(tile_events()[1].size, overview_size/2), tile_events()[1].size .. ' ' .. overview_size)
+-- Route space row 0/column 0 is the south-west tile.
+sample_activity=function() return {route_x=-1,route_y=-1} end
+events={}; Process(req)
+assert(#tile_events()==1 and tile_events()[1].name==1, 'south-west tile expected')
+-- Below 1.5x the overview stays authoritative.
+inputs.RouteCameraZoom.value=1
+events={}; Process(req)
+assert(#tile_events()==0 and #of('overview')==1, 'overview expected below 1.5x')
+-- Without tiles the overview is always used.
+inputs.RouteCameraZoom.value=2
+for index=1,4 do inputs['MapTile'..index].value='' end
+events={}; Process(req)
+assert(#tile_events()==0 and #of('overview')==1, 'overview expected without tiles')
 `));
 
 test('Route Map stats bar renders configured slots and dividers', () => run(HOST + `
