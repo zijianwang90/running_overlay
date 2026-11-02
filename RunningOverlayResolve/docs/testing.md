@@ -1,5 +1,37 @@
 # Running Overlay Resolve Testing
 
+## Weather Preview, Solid Color Border And Calorie Fallback — 2026-11-01
+
+v24 completes three independent parity increments.
+
+The Weather card now exposes the keyless Open-Meteo location search and 7-day
+forecast that already existed in the control plane. `weather:geocode` and
+`weather:forecast` validate the renderer payload and call the shared library;
+the panel renders the resolved place and daily high/low and precipitation. This
+path is preview-only: it never writes `configuration.weather`, because saved
+weather is validated against the activity identity, start instant and first GPS
+point. See [Weather Panel](weather-panel.md).
+
+Solid Color gains the Mac style fields `borderEnabled`, `borderColor`,
+`borderOpacity` and `borderWidth`. The Fuse draws the border as a filled band
+from `rounded_outline` with radius 0 for rectangles, the clamped corner for
+rounded rectangles and half the shorter side for circles. See
+[Solid Color Border](solid-color-border.md).
+
+The FIT parser now reads session field 11 and lap field 11 (`total_calories`)
+and fills missing record calories with the Mac precedence: direct record values,
+then cumulative lap totals by elapsed time, then the session total spread over
+the activity duration. Estimates are not marked because neither app's activity
+model records provenance. See [Calories Fallback](calories-fallback.md).
+
+Tests: `test/widget-panel.test.js` adds four preview tests (trimmed search,
+failed search, forecast rows without touching saved weather, activity-GPS
+fallback); `test/numeric-renderer.test.js` adds the border shape/alpha test; and
+`test/fit-parser.test.js` adds seven fallback tests, including cumulative lap
+boundaries, precedence and input immutability. The full Node/Lua suite passes
+with 195 tests. Host rendering in Resolve, Electron IPC behavior and visual
+acceptance were not exercised for these increments.
+
 ## Route Map Background And Follow Camera — 2026-11-01
 
 v22 adds an optional cached Mapbox background to the Route Map without changing

@@ -70,8 +70,11 @@
 - **Card Top/Bottom Color** 近似模板的斜向渐变（以水平色带绘制），并可用
   **Card Border**、**Divider**、**Weather Text Color** 与 **Secondary Text Opacity** 调整。
 - 数据缺失时保留 Mac 的占位行为：天气文字为 Sunny、温度/地点/湿度显示 `--`；
-  不会被伪造的示例天气替代。面板中的 **Location label** 可改显示地名；
-  目前没有自动反向地理编码、天气预报和其他卡片预设。
+  不会被伪造的示例天气替代。面板中的 **Location label** 可改显示地名。
+- 面板还提供 **Search location** 和 **7-day forecast**：前者按名称查询地点，
+  后者显示该地点（未搜索时用活动首个 GPS 点）未来 7 天的天气。两者都使用无密钥的
+  Open-Meteo 接口，只用于面板预览，不写入项目、不进入渲染，也不会覆盖活动历史天气。
+  自动反向地理编码、卡片内预报和其他卡片预设仍未实现。
 - 请求发送首个 GPS 坐标和活动日期到 Open-Meteo；不需要 API Key。更换活动会清除
   旧的天气缓存；修改地点文字或重新获取天气后需要 **Update overlay** 才会进入渲染。
 
@@ -126,13 +129,15 @@ Dividers** 分项开关，各自的颜色、透明度和线宽可调。
 
 - **Solid color**：**Shape** 可选矩形、圆角矩形、圆形；**Width / Height** 为画面宽度
   比例，**Corner Radius** 只作用于圆角矩形；**Fill** 颜色和 Alpha 控制填充。
+  **Border** 可开启描边，**Border Width / Border Color / Border Opacity** 控制宽度、
+  颜色和透明度，描边沿当前形状绘制。
 - **Icon**：只能从本项目自带的原始矢量字形中选择（Heart、Calendar 等 17 个），
   **Icon Size** 和 **Icon Color** 控制大小与颜色。不使用 SF Symbols 或外部 SVG/PNG，
   以避免再分发 Apple 图形或引入未授权资源。
 - **Text**：**Text** 输入单行文字，**Text Size**、**Text Color** 和
   **Text Alignment**（Left / Center / Right）控制显示；字号使用宽度比例，位置以
   文本锚点计算。字体固定为 Open Sans，多行、描边、自动缩放和逐字间距尚未实现。
-- 这三类组件都还没有 Mac 的边框、发光、混合模式等完整效果；Text 在 Mac 中本身仍是
+- Solid color 已有边框；这三类组件都还没有 Mac 的发光、混合模式等完整效果；Text 在 Mac 中本身仍是
   占位实现，因此这里先提供可用的基础文字。
 
 ### 单圈配速（v19）

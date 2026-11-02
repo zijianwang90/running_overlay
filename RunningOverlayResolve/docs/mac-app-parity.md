@@ -44,7 +44,7 @@ available, but there is no selectable/rendered widget.
 | Pace | Partial | Unit options and full numeric styles |
 | Avg Pace | Implemented (v8) | Real elapsed ÷ distance with pace units; host export checked |
 | Lap Pace | Implemented (v19) | FIT lap boundaries; pace from the current lap start to the sampled record; relies on device lap messages |
-| Calories | Partial | Direct record widget implemented; lap/session fallback pending |
+| Calories | Implemented (v24) | Direct record values win; otherwise lap totals accumulate by elapsed time, then the session total is spread over the activity duration, matching the Mac fallback. Estimates are not labelled in either app |
 | Elapsed Time | Partial (`elapsed`) | Match formats and pause behavior at boundaries |
 | Real Time | Implemented (v9) | `HH:mm:ss` or `h:mm:ss a`, seconds truncated as on Mac. Mac uses the rendering machine's timezone; Resolve uses an explicit per-instance UTC offset seeded from the recording timezone at activity start, so an activity crossing a DST change keeps one offset. Host export checked |
 | Date | Implemented (v15) | Six en_US_POSIX patterns; per-instance fixed UTC offset applied to the activity instant. Host export checked |
@@ -69,8 +69,8 @@ available, but there is no selectable/rendered widget.
 | Temperature | Implemented (v8) | °C/°F; FIT, FIT-else-manual or manual source. Mac pairs FIT on/off with an optional manual value |
 | Grade | Implemented (v8) | FIT field; GPX derived within a segment when both elevations exist |
 | Custom Numeric | Partial (v15) | 19 record sources, number/integer/duration/clock/date/pace/percent/coordinate formats, precision and custom unit. HR-zone, elevation gain and generic FIT fields pending |
-| Weather Widget | Partial (v14) | Open-Meteo historical fetch cached in the project, offline card render, ten conditions, °C/°F, FIT override, SimpleCard layout; keyless geocoding and daily-forecast library functions exist; panel UI, forecasts in the card and presets pending |
-| Solid Color | Partial (v18) | Rectangle, rounded rectangle and circle with fill/opacity, size and corner radius; borders/effects pending |
+| Weather Widget | Partial (v24) | Open-Meteo historical fetch cached in the project, offline card render, ten conditions, °C/°F, FIT override, SimpleCard layout; the panel also previews keyless location search and a 7-day forecast without saving or rendering them; forecasts in the card and presets pending |
+| Solid Color | Partial (v24) | Rectangle, rounded rectangle and circle with fill/opacity, size, corner radius and an optional border (width, color, opacity) that follows the shape; glow/shadow effects pending |
 | Icon | Partial (v18) | Original vector glyph set, tint and size; SF Symbols and user SVG/PNG assets intentionally unsupported (licensing/asset pipeline) |
 | Text | Partial (v18) | Single-line text, size, color and left/center/right alignment; font selection, multiline, stroke and auto-fit pending (Mac text is still a placeholder) |
 
@@ -101,9 +101,11 @@ preview, Deliver and project handoff need no network. The card reproduces the
 shared Easy Run/Race SimpleCard: condition, original vector condition icon,
 divider, location, weekday, temperature and humidity with the template's blue
 glass colors, corner radius, border and 35% shadow. Typography is approximate,
-as accepted above. Location text can be relabelled in the panel; automatic
-reverse geocoding, forecasts, the other card presets, and the Mac's global
-weather preferences remain pending. If the cache is absent the card shows the
+as accepted above. Location text can be relabelled in the panel. The panel also resolves a typed
+place name through keyless geocoding and previews a 7-day forecast for that
+place or the activity start; neither result is saved or rendered. Automatic
+reverse geocoding, forecasts inside the card, the other card presets, and the
+Mac's global weather preferences remain pending. If the cache is absent the card shows the
 Mac's sunny/`--` placeholder state; a stale cache is dropped rather than shown.
 
 **Race module scope (2026-11-01).** HR bars use explicit inclusive bpm ranges,
@@ -124,7 +126,7 @@ is approximated with raster bands; exact raster parity is not claimed.
 | Units and formatting | v7 metric-specific km/mi/m, pace /km /mi /500m, elevation m/ft and elapsed formats; Lua tested and imperial host export checked | Metric-specific unit choices, precision, missing values and boundary formatting match Mac |
 | Element layout | Template positions from the Mac 1920×1080 element centers, then Fusion positioning; duplicates and off-template widgets use deterministic free slots | Independent instances, visibility, ordering and reusable layouts; equivalent placement at supported resolutions |
 | Activity import | FIT/GPX; limited normalized fields and timer-pause annotations | Retain fields required by all supported widgets, laps, workout structure and GPS; preserve provenance and gaps |
-| Calories | Direct record calories | Match Mac lap-total/session-total fallback, explicitly distinguishing estimates |
+| Calories | Direct record values, then lap totals, then the session total; estimates are unlabelled | Match Mac lap-total/session-total fallback. Neither app records estimate provenance, so the UI cannot label estimates |
 | Templates | Built-in Easy Run, Race and Interval Workout lists and starting positions; saved library with live position and style capture, rename, duplicate, update, portable export/import; Mac `.rotemplate` import of widget list and positions only | Versioned interchange with style conversion and asset provenance for Mac templates; style propagation across cut pieces |
 | Editing after cuts | Per-piece offset; data/layout updates refused | Apply chosen style changes across pieces without changing offsets, source mapping or animation; unsupported cases fail before mutation |
 | Project persistence | Local config plus immutable local bundles | Save/reopen, relink, missing-data diagnostics, offline use and cross-machine handoff without developer paths |
@@ -184,8 +186,8 @@ Acceptance:
 - Synthetic records verify source values, conversions and missing samples.
 - Existing four-metric projects reopen unchanged; preview and Deliver use the
   same inputs and formatter semantics.
-- Document the current direct-record-only calorie behavior until the separate
-  lap/session fallback increment is implemented.
+- Document the calorie fallback precedence (record, lap, session) and that
+  estimates are not labelled.
 
 Subsequent increments: units/formatting, independent numeric style fields, the
 remaining numeric metrics, and presets. Use the Mac renderer and formatter as
