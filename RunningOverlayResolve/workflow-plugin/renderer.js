@@ -5,6 +5,7 @@ const state = {
   busy: false, scanning: false, dirty: false, scanPaused: false, allowClose: false, autoTrackTried: false,
   zoneInferred: false, saveTimer: null, captureDrafts: new Map(), anchorDrafts: new Map(),
   offset: { pending: null, inFlight: false, activeUntil: 0 }, weatherBusy: false,
+  geocodeBusy: false, forecastBusy: false, geocodeResult: null, geocodeError: null, forecast: null, forecastError: null,
   settings: null, settingsError: null, settingsDirty: false,
   templates: [], templateMenu: null, templateRename: null, templateConfirm: null,
 };
@@ -548,7 +549,10 @@ async function chooseActivity() {
     if (!result) return;
     if (!state.configuration) throw new Error('Open a Resolve timeline first.');
     collect();
-    if (state.configuration.activity?.activityId !== result.activity.activityId) { state.configuration.cameraAnchors = {}; state.anchorDrafts.clear(); state.configuration.weather = null; }
+    if (state.configuration.activity?.activityId !== result.activity.activityId) {
+      state.configuration.cameraAnchors = {}; state.anchorDrafts.clear(); state.configuration.weather = null;
+      resetWeatherPreview();
+    }
     if (state.zoneInferred) { state.configuration.captureTimeZone = null; state.zoneInferred = false; }
     Object.assign(state.configuration, { activity: result.activity, activityLabel: result.fileName });
     window.clearTimeout(state.saveTimer); state.saveTimer = null;
@@ -585,6 +589,7 @@ function renderWeather() {
   location.disabled = !weather;
   if (document.activeElement !== location) location.value = weather?.location ?? '';
   location.placeholder = hasGps ? weatherCoordinates() : 'Coordinates by default';
+  renderWeatherExtras();
 }
 async function fetchWeather() {
   const config = state.configuration;
@@ -600,6 +605,92 @@ async function fetchWeather() {
     render();
   } catch (error) { setStatus(error.message, 'error'); }
   finally { state.weatherBusy = false; renderWeather(); renderPrimary(); }
+}
+
+// Location search and the daily forecast preview a place in the panel. They
+// never write configuration.weather: the saved weather is the activity's
+// historical snapshot, validated against the activity's first GPS point.
+function conditionText(condition) {
+  const text = String(condition ?? '').replace(/([A-Z])/g, ' $1').toLowerCase().trim();
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+function placeText(result) {
+  return [result?.name, result?.admin1, result?.country].filter(Boolean).join(', ');
+}
+function forecastCoordinates() {
+  if (state.geocodeResult) return { latitude: state.geocodeResult.latitude, longitude: state.geocodeResult.longitude };
+  const record = state.configuration?.activity?.records.find((entry) => entry.latitude != null && entry.longitude != null);
+  return record ? { latitude: record.latitude, longitude: record.longitude } : null;
+}
+function forecastDateText(date) {
+  const instant = new Date(`${date}T00:00:00Z`);
+  return Number.isFinite(instant.getTime())
+    ? instant.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
+    : String(date);
+}
+function renderWeatherExtras() {
+  const config = state.configuration;
+  const search = byId('weather-search'); const searchButton = byId('search-location');
+  const resultLine = byId('geocode-result'); const forecastButton = byId('fetch-forecast');
+  const note = byId('forecast-note'); const list = byId('forecast-list');
+  search.disabled = !config;
+  searchButton.disabled = !config || state.geocodeBusy;
+  searchButton.textContent = state.geocodeBusy ? 'Searching…' : 'Search location';
+  if (state.geocodeError) { resultLine.textContent = state.geocodeError; resultLine.className = 'note error'; }
+  else if (state.geocodeResult) { resultLine.textContent = `Found ${placeText(state.geocodeResult)}.`; resultLine.className = 'note good'; }
+  else { resultLine.textContent = ''; resultLine.className = 'note'; }
+  forecastButton.disabled = !config || state.forecastBusy || !forecastCoordinates();
+  forecastButton.textContent = state.forecastBusy ? 'Fetching forecast…' : '7-day forecast';
+  if (state.forecastError) { note.textContent = state.forecastError; note.className = 'note error'; }
+  else if (state.forecast) {
+    const place = state.geocodeResult ? placeText(state.geocodeResult) : 'the activity start';
+    note.textContent = `${plural(state.forecast.days.length, 'day')} for ${place}. Preview only; not saved and not rendered.`;
+    note.className = 'note';
+  } else { note.textContent = ''; note.className = 'note'; }
+  list.replaceChildren();
+  for (const day of state.forecast?.days ?? []) {
+    const item = document.createElement('li'); item.className = 'forecast-day';
+    const date = document.createElement('span'); date.className = 'forecast-date'; date.textContent = forecastDateText(day.date);
+    const condition = document.createElement('span'); condition.className = 'forecast-condition'; condition.textContent = conditionText(day.condition);
+    const temperature = document.createElement('span'); temperature.className = 'forecast-temperature';
+    temperature.textContent = `${day.highC == null ? '--' : `${Math.round(day.highC)}°`} / ${day.lowC == null ? '--' : `${Math.round(day.lowC)}°C`}`;
+    const precipitation = document.createElement('span'); precipitation.className = 'forecast-precipitation';
+    precipitation.textContent = day.precipitationProbability == null ? '--' : `${Math.round(day.precipitationProbability)}%`;
+    precipitation.title = 'Precipitation probability';
+    item.append(date, condition, temperature, precipitation);
+    list.appendChild(item);
+  }
+}
+async function searchLocation() {
+  const config = state.configuration;
+  if (!config || state.geocodeBusy) return;
+  const name = byId('weather-search').value.trim();
+  if (!name) {
+    state.geocodeError = 'Enter a place name to search for.';
+    renderWeatherExtras(); setStatus(state.geocodeError, 'error');
+    return;
+  }
+  state.geocodeBusy = true; state.geocodeResult = null; state.geocodeError = null;
+  state.forecast = null; state.forecastError = null;
+  renderWeatherExtras();
+  try { state.geocodeResult = await api.geocodeLocation({ name }); }
+  catch (error) { state.geocodeError = error.message; setStatus(error.message, 'error'); }
+  finally { state.geocodeBusy = false; renderWeatherExtras(); }
+}
+async function fetchForecast() {
+  const config = state.configuration;
+  if (!config || state.forecastBusy) return;
+  const coordinates = forecastCoordinates();
+  if (!coordinates) { setStatus('Search for a location or choose an activity with GPS first.', 'error'); return; }
+  state.forecastBusy = true; state.forecastError = null;
+  renderWeatherExtras();
+  try { state.forecast = await api.fetchForecast({ ...coordinates, days: 7 }); }
+  catch (error) { state.forecastError = error.message; setStatus(error.message, 'error'); }
+  finally { state.forecastBusy = false; renderWeatherExtras(); }
+}
+function resetWeatherPreview() {
+  Object.assign(state, { geocodeResult: null, geocodeError: null, forecast: null, forecastError: null });
+  byId('weather-search').value = '';
 }
 
 // ---- Settings and Map background -----------------------------------------------
@@ -701,6 +792,9 @@ window.addEventListener('DOMContentLoaded', () => {
   byId('refresh').addEventListener('click', () => scan());
   byId('choose-activity').addEventListener('click', chooseActivity);
   byId('fetch-weather').addEventListener('click', fetchWeather);
+  byId('search-location').addEventListener('click', searchLocation);
+  byId('fetch-forecast').addEventListener('click', fetchForecast);
+  byId('weather-search').addEventListener('keydown', (event) => { if (event.key === 'Enter') searchLocation(); });
   byId('save-template').addEventListener('click', saveTemplate);
   byId('import-template').addEventListener('click', importTemplate);
   byId('add-widget').addEventListener('change', (event) => addWidget(event.target.value));

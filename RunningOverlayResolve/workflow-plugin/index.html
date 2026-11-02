@@ -125,6 +125,20 @@
         <div class="weather-actions">
           <button id="fetch-weather" class="secondary" type="button">Fetch historical weather</button>
         </div>
+        <p class="note">Location search and the 7-day forecast are a panel preview only. They are not saved, and they do not change the activity weather or the overlay. Without a search, the forecast uses the activity's first GPS point.</p>
+        <div class="zone-row">
+          <label for="weather-search">Search location</label>
+          <input id="weather-search" type="text" maxlength="120" placeholder="City or place name">
+        </div>
+        <div class="weather-actions">
+          <button id="search-location" class="secondary" type="button" aria-label="Search for a location">Search location</button>
+        </div>
+        <p id="geocode-result" class="note" aria-live="polite"></p>
+        <div class="weather-actions">
+          <button id="fetch-forecast" class="secondary" type="button" disabled>7-day forecast</button>
+        </div>
+        <p id="forecast-note" class="note" aria-live="polite"></p>
+        <ol id="forecast-list" class="forecast-list" aria-label="7-day forecast"></ol>
       </section>
 
       <section class="card">

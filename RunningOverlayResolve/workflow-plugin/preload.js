@@ -5,6 +5,8 @@ const { contextBridge, ipcRenderer } = require('electron/renderer');
 contextBridge.exposeInMainWorld('runningOverlayAPI', {
   chooseActivity: () => ipcRenderer.invoke('activity:choose'),
   fetchWeather: (payload) => ipcRenderer.invoke('weather:fetch', payload),
+  geocodeLocation: (payload) => ipcRenderer.invoke('weather:geocode', payload),
+  fetchForecast: (payload) => ipcRenderer.invoke('weather:forecast', payload),
   scanTimeline: (request) => ipcRenderer.invoke('resolve:scanTimeline', request),
   saveConfiguration: (payload) => ipcRenderer.invoke('configuration:save', payload),
   loadSettings: () => ipcRenderer.invoke('settings:load'),

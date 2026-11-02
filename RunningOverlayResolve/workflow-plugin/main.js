@@ -8,7 +8,7 @@ const { loadActivityFile } = require('./lib/activity/import-activity');
 const { ConfigurationStore } = require('./lib/workflow/configuration');
 const { SettingsStore } = require('./lib/workflow/settings');
 const { WorkflowService } = require('./lib/workflow/service');
-const { fetchActivityWeather } = require('./lib/weather/weather');
+const { fetchActivityWeather, geocodeLocation, fetchWeatherForecast } = require('./lib/weather/weather');
 const { TemplateLibrary } = require('./lib/workflow/template-library');
 
 const PLUGIN_ID = 'com.runningoverlay.resolve';
@@ -92,6 +92,23 @@ function registerHandlers() {
   // Only the historical activity weather request is exposed; the renderer cannot
   // choose arbitrary URLs. The result is cached in the saved configuration.
   ipcMain.handle('weather:fetch', (event, payload) => { panelWindow(event); return fetchActivityWeather(payload?.activity); });
+  // Location search and the daily forecast are keyless previews. The renderer
+  // sends only a place name or validated coordinates, and neither result is
+  // written into the saved activity weather.
+  const finiteWithin = (value, limit) => typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= limit;
+  ipcMain.handle('weather:geocode', async (event, payload) => {
+    panelWindow(event);
+    if (typeof payload?.name !== 'string') throw new Error('Location search needs a place name.');
+    return geocodeLocation(payload.name);
+  });
+  ipcMain.handle('weather:forecast', async (event, payload) => {
+    panelWindow(event);
+    const { latitude, longitude } = payload ?? {};
+    if (!finiteWithin(latitude, 90) || !finiteWithin(longitude, 180)) throw new Error('Forecast needs valid coordinates.');
+    const days = payload?.days ?? 7;
+    if (!Number.isInteger(days) || days < 1 || days > 16) throw new Error('Forecast days must be a whole number from 1 to 16.');
+    return fetchWeatherForecast({ latitude, longitude }, { days });
+  });
   ipcMain.handle('resolve:scanTimeline', (_event, request) => service.exclusive(() => service.scanContext(request?.trackIndex, request?.contextId)));
   ipcMain.handle('configuration:save', (_event, payload) => service.exclusive(() => service.saveConfiguration(payload)));
   // One user-level settings file. The renderer names no path and sends only the

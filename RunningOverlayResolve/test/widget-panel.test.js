@@ -18,8 +18,17 @@ function panel() {
   const document = { getElementById(id) { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); },
     createElement: element, querySelectorAll: () => [] };
   let ids = 0;
+  const calls = { geocode: [], forecast: [] };
+  const responses = {
+    geocode: async () => { throw new Error('Location search is not stubbed.'); },
+    forecast: async () => { throw new Error('Forecast is not stubbed.'); },
+  };
+  const api = {
+    geocodeLocation(payload) { calls.geocode.push(payload); return responses.geocode(payload); },
+    fetchForecast(payload) { calls.forecast.push(payload); return responses.forecast(payload); },
+  };
   const context = vm.createContext({ document, crypto: { randomUUID: () => `new-${++ids}` },
-    window: { runningOverlayAPI: {}, runningOverlayPickers: {}, addEventListener() {}, clearTimeout() {}, setTimeout: () => 1 } });
+    window: { runningOverlayAPI: api, runningOverlayPickers: {}, addEventListener() {}, clearTimeout() {}, setTimeout: () => 1 } });
   const templates = fs.readFileSync(path.join(__dirname, '../src/domain/templates.js'), 'utf8');
   vm.runInContext(templates, context);
   vm.runInContext('window.RunningOverlayTemplates = RunningOverlayTemplates;', context);
@@ -27,7 +36,7 @@ function panel() {
   vm.runInContext(source, context);
   vm.runInContext(`state.configuration = { templateId: 'easyRun', widgets: [{id:'old', metric:'power'}, {id:'other', metric:'pace'}] };
     renderWidgets();`, context);
-  return { context, elements, run: (code) => vm.runInContext(code, context) };
+  return { context, elements, calls, responses, run: (code) => vm.runInContext(code, context) };
 }
 const apply = (row) => row.children[0].listeners.click();
 const rows = (ui) => ui.elements.get('template-list').children.filter((node) => node.className === 'template-row');
@@ -112,4 +121,74 @@ test('saved templates list under the built-ins and apply as new instances with a
   assert.equal(ui.elements.get('template-badge').textContent, 'Long run');
   ui.run(`applyTemplate('race');`);
   assert.equal(ui.run('state.configuration.customTemplate'), null);
+});
+
+test('a location search renders the place and enables the forecast with the trimmed name', async () => {
+  const ui = panel();
+  ui.run(`state.configuration = { templateId: 'easyRun', widgets: [] };`);
+  ui.responses.geocode = async () => ({ name: 'Boulder', admin1: 'Colorado', country: 'United States',
+    latitude: 40.015, longitude: -105.2705, timezone: 'America/Denver' });
+  ui.run('renderWeatherExtras()');
+  ui.elements.get('weather-search').value = '  Boulder  ';
+  await ui.run('searchLocation()');
+  assert.equal(ui.calls.geocode.length, 1);
+  assert.equal(ui.calls.geocode[0].name, 'Boulder');
+  assert.match(ui.elements.get('geocode-result').textContent, /Boulder, Colorado, United States/);
+  assert.equal(ui.elements.get('geocode-result').className, 'note good');
+  assert.equal(ui.elements.get('fetch-forecast').disabled, false);
+});
+
+test('a failed location search reports an error and does not enable the forecast', async () => {
+  const ui = panel();
+  ui.run(`state.configuration = { templateId: 'easyRun', widgets: [] };`);
+  ui.responses.geocode = async () => { throw new Error('Location not found.'); };
+  ui.run('renderWeatherExtras()');
+  ui.elements.get('weather-search').value = 'Nowhere';
+  await ui.run('searchLocation()');
+  assert.match(ui.elements.get('geocode-result').textContent, /Location not found/);
+  assert.equal(ui.elements.get('geocode-result').className, 'note error');
+  assert.match(ui.elements.get('build-status').textContent, /Location not found/);
+  assert.equal(ui.elements.get('fetch-forecast').disabled, true);
+});
+
+test('a forecast renders one row per day and leaves the saved activity weather untouched', async () => {
+  const ui = panel();
+  ui.run(`state.configuration = { templateId: 'easyRun', widgets: [], weather: null };`);
+  ui.responses.geocode = async () => ({ name: 'Boulder', admin1: 'Colorado', country: 'United States',
+    latitude: 40.015, longitude: -105.2705 });
+  ui.responses.forecast = async () => ({ source: 'openMeteo', days: [
+    { date: '2026-11-01', condition: 'sunny', highC: 14.2, lowC: 5.1, precipitationProbability: 10, windKph: 12 },
+    { date: '2026-11-02', condition: 'rain', highC: 11, lowC: 4, precipitationProbability: 80, windKph: 20 },
+  ], fetchedAt: '2026-11-01T12:00:00.000Z' });
+  ui.run('renderWeatherExtras()');
+  ui.elements.get('weather-search').value = 'Boulder';
+  await ui.run('searchLocation()');
+  await ui.run('fetchForecast()');
+  const rows = ui.elements.get('forecast-list').children;
+  assert.equal(rows.length, 2);
+  assert.equal(rows[1].children[1].textContent, 'Rain');
+  assert.equal(rows[1].children[2].textContent, '11° / 4°C');
+  assert.equal(rows[1].children[3].textContent, '80%');
+  assert.equal(ui.calls.forecast.length, 1);
+  assert.equal(ui.calls.forecast[0].latitude, 40.015);
+  assert.equal(ui.calls.forecast[0].longitude, -105.2705);
+  assert.equal(ui.calls.forecast[0].days, 7);
+  assert.equal(ui.run('state.configuration.weather'), null);
+});
+
+test('a forecast without a search uses the activity first GPS point', async () => {
+  const ui = panel();
+  ui.run(`state.configuration = { templateId: 'easyRun', widgets: [], activity: { records: [
+    { latitude: null, longitude: null }, { latitude: 51.5, longitude: -0.12 }, { latitude: 51.6, longitude: -0.2 }] } };`);
+  ui.responses.forecast = async () => ({ source: 'openMeteo', days: [
+    { date: '2026-11-01', condition: 'cloudy', highC: 10, lowC: 3, precipitationProbability: null }],
+    fetchedAt: '2026-11-01T12:00:00.000Z' });
+  ui.run('renderWeatherExtras()');
+  assert.equal(ui.elements.get('fetch-forecast').disabled, false);
+  await ui.run('fetchForecast()');
+  assert.equal(ui.calls.forecast.length, 1);
+  assert.equal(ui.calls.forecast[0].latitude, 51.5);
+  assert.equal(ui.calls.forecast[0].longitude, -0.12);
+  assert.equal(ui.calls.forecast[0].days, 7);
+  assert.equal(ui.elements.get('forecast-list').children.length, 1);
 });
