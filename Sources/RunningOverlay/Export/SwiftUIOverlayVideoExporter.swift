@@ -666,13 +666,13 @@ struct SwiftUIOverlayVideoExporter {
         }
     }
 
-    static func exportFramePNG(
+    /// Rasterizes one frame with the shipping SwiftUI renderer, without PNG encoding.
+    static func renderFrameCGImage(
         overlayLayout: OverlayLayout,
         activity: ActivityTimeline,
         elapsedTime: TimeInterval,
-        size: CGSize,
-        outputURL: URL
-    ) async throws {
+        size: CGSize
+    ) async throws -> CGImage {
         let supportedOverlays = overlayLayout.elements.filter(\.isVisible)
         guard !supportedOverlays.isEmpty else {
             throw SwiftUIOverlayExportError.noSupportedOverlays
@@ -699,6 +699,22 @@ struct SwiftUIOverlayVideoExporter {
         }) else {
             throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce a frame image.")
         }
+        return cgImage
+    }
+
+    static func exportFramePNG(
+        overlayLayout: OverlayLayout,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval,
+        size: CGSize,
+        outputURL: URL
+    ) async throws {
+        let cgImage = try await renderFrameCGImage(
+            overlayLayout: overlayLayout,
+            activity: activity,
+            elapsedTime: elapsedTime,
+            size: size
+        )
 
         let bitmap = NSBitmapImageRep(cgImage: cgImage)
         guard let data = bitmap.representation(using: .png, properties: [:]) else {
