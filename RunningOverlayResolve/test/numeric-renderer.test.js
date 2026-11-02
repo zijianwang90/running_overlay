@@ -979,6 +979,33 @@ NotifyChanged(inputs.Metric,{Value=DECOR_TEXT_METRIC})
 assert(inputs.DecorText.visible==true and inputs.DecorTextColorR.visible==true and inputs.TimelineWidth.visible==false)
 `));
 
+test('solid color border follows the selected shape with its own color and opacity', () => run(HOST + `
+load_data=function() return {} end
+sample_activity=function() return nil end
+inputs.ShadowEnabled.value=0
+inputs.Metric.value=DECOR_SOLID_METRIC;inputs.DecorShape.value=0
+Process(req)
+local shapes=of('shape')
+assert(#shapes==1 and #shapes[1].shape.rects==1)
+assert(near(shapes[1].shape.rects[1][1],0.08-0.1) and near(shapes[1].shape.rects[1][2],0.08+0.1))
+local base_outline=rounded_outline
+local outline
+rounded_outline=function(l,b,w,h,r,t) outline={l=l,b=b,w=w,h=h,r=r,t=t}; return base_outline(l,b,w,h,r,t) end
+inputs.DecorBorder.value=1;inputs.DecorBorderOpacity.value=0.4;inputs.DecorBorderColorR.value=0.3
+events={};Process(req)
+shapes=of('shape')
+assert(#shapes==2 and #shapes[1].shape.rects==1 and #shapes[2].shape.rects==0)
+assert(near(shapes[2].color.A,0.4) and shapes[2].color.R==0.3)
+-- Rectangle: square corners and the minimum one-output-pixel thickness.
+assert(outline.r==0 and near(outline.t,1/1280) and near(outline.w,0.2) and near(outline.h,0.05))
+inputs.DecorShape.value=1;inputs.DecorCorner.value=0.008;events={};Process(req)
+assert(near(outline.r,0.008))
+inputs.DecorShape.value=2;events={};Process(req)
+assert(near(outline.r,0.025) and near(outline.w,0.05) and near(outline.h,0.05))
+inputs.DecorBorder.value=0;events={};Process(req)
+assert(#of('shape')==1)
+`));
+
 test('running gauge draws dial, regions and the distance progress ring', () => run(HOST + `
 local base_capsule=capsule
 capsule=function(...) local s=base_capsule(...);function s:OutlineOfShape() return s end;return s end

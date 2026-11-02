@@ -1530,6 +1530,10 @@ function Create()
 			height = number("Height", "Height", 0.05, 0.005, 1),
 			corner = number("Corner Radius", "Corner", 0.008, 0, 0.2),
 			fill = color_in(group, "Fill", key .. "DecorFill", {1, 1, 1, 1}, 32, true),
+			border = check_in(group, "Border", key .. "DecorBorder", 0),
+			border_width = number("Border Width", "BorderWidth", 1 / 1280, 0.0001, 0.02),
+			border_color = color_in(group, "Border Color", key .. "DecorBorderColor", {1, 1, 1, 1}, 35, true),
+			border_opacity = number("Border Opacity", "BorderOpacity", 0.22, 0, 1),
 			icon = combo_in(group, "Icon", key .. "DecorIcon", {"Heart", "Speedometer", "Ruler", "Clock", "Watch",
 				"Mountains", "Runner", "Bolt", "Flame", "Up-Down Arrow", "Timer", "Left-Right Arrow", "Percent",
 				"Balance", "Thermometer", "Up-Right Arrow", "Calendar"}, 0),
@@ -2990,19 +2994,26 @@ function Process(req)
 				local width = math.max(value_of(d.width), 1 / output.Width)
 				local height = math.max(value_of(d.height), 1 / output.Width)
 				local kind = math.floor(value_of(d.shape) + 0.5)
+				local radius = 0
 				local shape
 				if kind == 2 then
 					local side = math.min(width, height)
 					width, height = side, side
-					shape = capsule(x - width / 2, y - height / 2, width, height, side / 2)
+					radius = side / 2
+					shape = capsule(x - width / 2, y - height / 2, width, height, radius)
 				elseif kind == 1 then
-					shape = capsule(x - width / 2, y - height / 2, width, height,
-						math.min(value_of(d.corner), width / 2, height / 2))
+					radius = math.min(value_of(d.corner), width / 2, height / 2)
+					shape = capsule(x - width / 2, y - height / 2, width, height, radius)
 				else
 					shape = Shape()
 					shape:AddRectangle(x - width / 2, x + width / 2, y - height / 2, y + height / 2, 0, 8)
 				end
 				part(shape, color_of(d.fill))
+				if value_of(d.border) > 0.5 then
+					local thickness = math.max(value_of(d.border_width), 1 / output.Width)
+					part(rounded_outline(x - width / 2, y - height / 2, width, height, radius, thickness),
+						color_of(d.border_color, value_of(d.border_opacity)))
+				end
 			elseif metric == DECOR_ICON_METRIC then
 				local size = math.max(value_of(d.icon_size), 4 / output.Width)
 				local name = DECOR_ICON_NAMES[math.floor(value_of(d.icon) + 0.5) + 1] or "Heart"
