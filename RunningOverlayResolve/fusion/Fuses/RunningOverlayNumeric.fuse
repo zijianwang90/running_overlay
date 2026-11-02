@@ -1337,9 +1337,12 @@ function Create()
 		t.element_glow = check("Element Glow", "ElementGlow", 1)
 		t.glow_intensity = number("Glow Intensity", "GlowIntensity", 0.1, 0, 1)
 		t.glow_color = color_in(group, "Glow Color", key .. "TimelineGlow", accent, 18, false)
+		-- Mac visual directions. Custom keeps the original single treatment; the
+		-- named presets add the layers that make each direction recognisable.
+		t.preset = combo("Preset", "Preset", {"Custom", "Minimal", "Dense", "Sport", "Splits", "Glass", "Neon", "Lower Third", "Route"}, 0)
 		-- Remaining Mac Distance Timeline module fields. Label, custom values,
 		-- background/border and the stats bar are independent of the presets;
-		-- preset-specific visual variants are not reproduced.
+		-- preset-specific layers are applied in render_timeline.
 		local function text(label, suffix, default) return add(group, label, key .. "Timeline" .. suffix, {
 			LINKID_DataType = "Text", INPID_InputControl = "TextEditControl", INP_DefaultText = default, TEC_Lines = 1}) end
 		local function font(label, suffix, control_group) return add(group, label, key .. "Timeline" .. suffix, {
@@ -1981,6 +1984,25 @@ function Process(req)
 			local content_height = math.max(height - padding_y * 2, pixel)
 			local track_height = math.max(value_of(t.track_height), 2 / 1280)
 			local value_size = math.max(value_of(t.value_size), 12 / 1280)
+			-- Mac visual directions. A named preset only adds layers; explicit
+			-- Inspector toggles still apply, and Custom leaves the original look.
+			local preset = math.floor(value_of(t.preset) + 0.5)
+			local is_dense, is_sport, is_splits = preset == 2, preset == 3, preset == 4
+			local is_glass, is_neon, is_lower, is_route = preset == 5, preset == 6, preset == 7, preset == 8
+			local force_ticks = is_dense or is_splits
+			local force_axis = is_dense or is_splits
+			local force_glow = is_neon
+			local force_background = is_sport or is_glass or is_lower
+			local force_border = is_glass or is_lower
+			-- Sport reserves a leading media slot. No asset pipeline exists yet, so
+			-- the slot draws a deterministic accent tile instead of user media.
+			local media_slot = is_sport and math.max(value_size * 1.15, track_height * 4.2) or 0
+			local slot_left = content_left
+			if media_slot > 0 then
+				local slot_gap = value_of(t.value_spacing)
+				content_left = content_left + media_slot + slot_gap
+				content_width = math.max(content_width - media_slot - slot_gap, pixel)
+			end
 			local axis_size = math.max(value_of(t.axis_size), 8 / 1280)
 			local show_value = value_of(t.show_value) > 0.5
 			local show_label = value_of(t.show_label) > 0.5
@@ -2031,7 +2053,7 @@ function Process(req)
 				bounds_top = math.max(bounds_top, text_top + band + axis_size * 0.25)
 				bounds_bottom = math.min(bounds_bottom, text_top - axis_size * 0.15)
 			end
-			if value_of(t.axis_labels) > 0.5 then union_band(t.endpoint_placement, t.endpoint_offset) end
+			if value_of(t.axis_labels) > 0.5 or force_axis then union_band(t.endpoint_placement, t.endpoint_offset) end
 			local point_count = math.floor(value_of(t.point_count) + 0.5)
 			local show_points = value_of(t.points) > 0.5 and point_count > 0
 			if show_points then union_band(t.midpoint_placement, t.midpoint_offset) end
@@ -2103,33 +2125,58 @@ function Process(req)
 
 			-- The rounded background and border sit beneath the content and do not
 			-- cast shadow; an inside stats bar joins their bounds.
-			if value_of(t.background) > 0.5 or value_of(t.border) > 0.5 then
+			local bg_left, bg_right, bg_bottom, bg_top, bg_corner = nil, nil, nil, nil, nil
+			if value_of(t.background) > 0.5 or value_of(t.border) > 0.5 or force_background or force_border then
 				local pad_x, pad_y = value_of(t.background_padding_x), value_of(t.background_padding_y)
-				local bg_left, bg_right = bounds_left - pad_x, bounds_right + pad_x
-				local bg_bottom, bg_top = bounds_bottom - pad_y, bounds_top + pad_y
+				bg_left, bg_right = bounds_left - pad_x, bounds_right + pad_x
+				bg_bottom, bg_top = bounds_bottom - pad_y, bounds_top + pad_y
 				if has_stats and value_of(t.stats_inside) > 0.5 then
 					bg_left, bg_bottom = math.min(bg_left, stats_x - pad_x), math.min(bg_bottom, stats_y - pad_y)
 					bg_right, bg_top = math.max(bg_right, stats_x + stats_width + pad_x), math.max(bg_top, stats_y + stats_height + pad_y)
 				end
-				local corner = math.min(value_of(t.corner), (bg_right - bg_left) / 2, (bg_top - bg_bottom) / 2)
-				if value_of(t.background) > 0.5 then
-					fill_shape(output, capsule(bg_left, bg_bottom, bg_right - bg_left, bg_top - bg_bottom, corner),
+				bg_corner = math.min(value_of(t.corner), (bg_right - bg_left) / 2, (bg_top - bg_bottom) / 2)
+				if value_of(t.background) > 0.5 or force_background then
+					fill_shape(output, capsule(bg_left, bg_bottom, bg_right - bg_left, bg_top - bg_bottom, bg_corner),
 						color_of(t.background_color, value_of(t.background_opacity)), quality)
 				end
-				if value_of(t.border) > 0.5 then
-					fill_shape(output, rounded_outline(bg_left, bg_bottom, bg_right - bg_left, bg_top - bg_bottom, corner,
+				if value_of(t.border) > 0.5 or force_border then
+					fill_shape(output, rounded_outline(bg_left, bg_bottom, bg_right - bg_left, bg_top - bg_bottom, bg_corner,
 						math.max(value_of(t.border_width), 1 / 1280)), color_of(t.border_color, value_of(t.border_opacity)), quality)
 				end
+				-- Glass adds a soft top highlight; Lower Third adds a leading accent
+				-- bar so both read as distinct panels without a blur/material pass.
+				if is_glass then
+					part(capsule(bg_left + bg_corner, bg_top - 1.5 / 1280, math.max(bg_right - bg_left - 2 * bg_corner, pixel),
+						1 / 1280, 0.5 / 1280), Pixel{R = 1, G = 1, B = 1, A = 0.16})
+				end
+				if is_lower then
+					part(capsule(bg_left, bg_bottom, math.max(4 / 1280, pixel), bg_top - bg_bottom, 2 / 1280),
+						Pixel{R = accent.R, G = accent.G, B = accent.B, A = 0.9})
+				end
+			end
+			if media_slot > 0 then
+				local slot_bottom = content_top - content_height / 2 - media_slot / 2
+				part(capsule(slot_left, slot_bottom, media_slot, media_slot, media_slot * 0.22),
+					Pixel{R = accent.R, G = accent.G, B = accent.B, A = 0.18})
+				part(capsule(slot_left + media_slot * 0.3, slot_bottom + media_slot * 0.28,
+					media_slot * 0.4, media_slot * 0.44, media_slot * 0.08),
+					Pixel{R = accent.R, G = accent.G, B = accent.B, A = 0.85})
 			end
 
 			part(capsule(content_left, track_bottom, content_width, track_height),
 				Pixel{R = color.R, G = color.G, B = color.B, A = color.A * value_of(t.track_opacity)})
-			local glow = value_of(t.glow) > 0.5
-			if progress ~= nil then
+			local glow = value_of(t.glow) > 0.5 or force_glow
+			if progress ~= nil and not is_route then
+				-- Neon adds a wide translucent underlay beneath the normal fill.
+				if is_neon then
+					part(capsule(content_left, track_bottom - track_height * 0.5,
+						math.max(content_width * progress, track_height), track_height * 2, track_height),
+						Pixel{R = accent.R, G = accent.G, B = accent.B, A = accent.A * 0.22})
+				end
 				local fill = part(capsule(content_left, track_bottom, math.max(content_width * progress, track_height), track_height), accent)
 				overlays[fill] = glow and track_height * 2.8 or nil
 			end
-			if value_of(t.ticks) > 0.5 then
+			if value_of(t.ticks) > 0.5 or force_ticks then
 				local count = math.max(math.floor(value_of(t.tick_density) + 0.5), 2)
 				local ticks = Shape()
 				for index = 0, count do
@@ -2160,6 +2207,35 @@ function Process(req)
 				end
 				local marker = part(shape, color_of(t.marker_color, 1))
 				overlays[marker] = glow and track_height * 2.3 or nil
+			end
+
+			-- Route preset: replace the straight fill with an elevation-shaped
+			-- progress curve. Without elevation samples it falls back to the track.
+			if is_route then
+				local elevation = prepare_elevation(data.records or {})
+				local points = elevation.smooth.points
+				if #points > 1 then
+					local band_height = math.max(content_height * 0.6, track_height * 2)
+					local function curve_point(point) return content_left + content_width * point.x, track_bottom + band_height * point.y end
+					local area = Shape()
+					area:MoveTo(content_left, track_bottom)
+					for _, point in ipairs(points) do area:LineTo(curve_point(point)) end
+					area:LineTo(content_left + content_width, track_bottom)
+					area:Close()
+					part(area, Pixel{R = accent.R, G = accent.G, B = accent.B, A = 0.22})
+					if progress ~= nil then
+						local curve = Shape()
+						curve:MoveTo(curve_point(points[1]))
+						local last_x, last_y = curve_point(points[1])
+						for _, point in ipairs(points) do
+							if point.x <= progress then last_x, last_y = curve_point(point); curve:LineTo(last_x, last_y) end
+						end
+						if last_x < content_left + content_width * progress then
+							curve:LineTo(content_left + content_width * progress, last_y)
+						end
+						part(curve:OutlineOfShape(math.max(track_height * 0.7, 1 / 1280), "OLT_Solid", "OJT_Round", 8, "SWM_Normal", 8), accent)
+					end
+				end
 			end
 
 			-- Label and value row, with custom values inline after the value.
@@ -2205,7 +2281,7 @@ function Process(req)
 				table.insert(parts, {font = axis_font, style = axis_style, text = text, size = axis_size,
 					x = x - text_w * anchor, y = baseline, color = axis_color})
 			end
-			if value_of(t.axis_labels) > 0.5 then
+			if value_of(t.axis_labels) > 0.5 or force_axis then
 				local baseline = axis_baseline(t.endpoint_placement, t.endpoint_offset)
 				local by_distance = math.floor(value_of(t.axis_mode) + 0.5) == 1
 				axis_text(by_distance and "0 " .. unit or "START", content_left, baseline, 0)

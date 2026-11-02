@@ -637,6 +637,50 @@ local expected_y=0.5*1080/2560 + extent*route.paths[1][1].y
 assert(near(wide[2], expected_y), wide[2] .. ' ' .. expected_y)
 `));
 
+test('Distance Timeline presets add their documented visual layers', () => run(HOST + `
+local function preset_shape()
+ local s={points={},TransformOfShape=function(self) return self end}
+ function s:MoveTo(x,y) table.insert(self.points,{x,y}) end
+ function s:LineTo(x,y) table.insert(self.points,{x,y}) end
+ function s:AddRectangle() end
+ function s:Close() end
+ function s:OutlineOfShape() return self end
+ return s
+end
+Shape=preset_shape
+local records={}
+for i=1,20 do table.insert(records,{elapsed_us=i*1000000,elevation_m=100+10*math.sin(i/3)}) end
+load_data=function() return {records=records,timeline_start_frame=0,pauses={},total_distance_m=2000,duration_us=20000000} end
+sample_activity=function() return {distance_m=1000} end
+inputs.Metric.value=TIMELINE_METRIC
+inputs.ShadowEnabled.value=0
+inputs.TimelineBackground.value=0; inputs.TimelineBorder.value=0; inputs.TimelineTicks.value=0
+inputs.TimelineAxisLabels.value=0; inputs.TimelineGlow.value=0; inputs.TimelineMarker.value=0
+local function shape_count()
+ events={}
+ Process(req)
+ local n=0
+ for _,entry in ipairs(events) do if entry.kind=='shape' then n=n+1 end end
+ return n
+end
+local function preset_shapes(value)
+ inputs.TimelinePreset.value=value
+ return shape_count()
+end
+local custom=preset_shapes(0)
+-- Dense forces ticks, Glass and Lower Third force a panel, Sport adds the media
+-- slot, Neon adds the underlay and Route adds the elevation curve.
+assert(preset_shapes(2) > custom, 'dense')
+assert(preset_shapes(3) > custom, 'sport')
+assert(preset_shapes(4) > custom, 'splits')
+assert(preset_shapes(5) > custom, 'glass')
+assert(preset_shapes(6) > custom, 'neon')
+assert(preset_shapes(7) > custom, 'lower third')
+assert(preset_shapes(8) > custom, 'route')
+-- Minimal and Custom add no preset-only layers.
+assert(preset_shapes(1) == custom, 'minimal')
+`));
+
 test('unit line boxes follow start, center and end alignment independently of icons', () => run(HOST + `
 load_data=function() return {} end
 sample_activity=function() return {distance_m=1000} end

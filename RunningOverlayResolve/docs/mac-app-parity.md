@@ -49,7 +49,7 @@ available, but there is no selectable/rendered widget.
 | Real Time | Implemented (v9) | `HH:mm:ss` or `h:mm:ss a`, seconds truncated as on Mac. Mac uses the rendering machine's timezone; Resolve uses an explicit per-instance UTC offset seeded from the recording timezone at activity start, so an activity crossing a DST change keeps one offset. Host export checked |
 | Date | Implemented (v15) | Six en_US_POSIX patterns; per-instance fixed UTC offset applied to the activity instant. Host export checked |
 | Distance | Partial | Units and full numeric styles |
-| Distance Timeline | Partial (v21) | Label/value row, inline custom values, marker label, background/border and four-slot stats bar (Top/Bottom/Left/Right, Inside, size/offsets) implemented; dense/sport/splits/glass/neon/lowerThird/route presets, media slot and route/elevation variants pending |
+| Distance Timeline | Partial (v23) | Label/value row, inline custom values, marker label, background/border and four-slot stats bar (Top/Bottom/Left/Right, Inside, size/offsets) implemented; preset selector adds dense ticks/axis, sport media tile, splits ticks, glass panel highlight, neon underlay, lower-third accent bar and a route elevation curve; GPS route variant, real media assets and exact preset typography pending |
 | Elevation | Partial | Meter widget implemented; units and display modes pending |
 | Elevation Chart | Partial (v13) | Race full-profile smoothed gradient area, line-only, cursor, guide and meter label; other presets, progress mode, axes/stats pending |
 | Cadence | Partial | Widget implemented; activity-specific cadence semantics pending |
@@ -150,7 +150,7 @@ order below. Race contains the nine Easy Run elements plus two:
 | Elapsed Time | Both | Available |
 | Real Time | Both | v9 |
 | Text shadow | All but Race elevation chart | v9 shared shadow; new instances seed the template's radius, offset, opacity and thickness for numerics, route and timeline |
-| Distance Timeline | Both | v21 label, custom values, marker label, background/border and stats bar with template shadow; visual presets pending |
+| Distance Timeline | Both | v23 label, custom values, marker label, background/border and stats bar with template shadow, plus the dense/sport/splits/glass/neon/lowerThird/route preset layers; exact preset typography and GPS route variant pending |
 | Route Map | Both | v22 trace and cursor with template shadow, cached Mapbox snapshot, follow camera, zoom/course-up, card mask, direction arrow and attribution; MapKit and live tiles not implemented |
 | Weather Widget | Both | v14 cached Open-Meteo card with template glass styling and 35% shadow |
 | Zone Edge Bar | Race | v12 HR renderer with template shadow; five/six ranges configured per instance in Fusion |
