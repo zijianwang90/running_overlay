@@ -78,8 +78,11 @@ unused slot: it received `ValueSize 0.019921875`, `UnitSize 0.01171875`,
 `LabelSize 0.009375`, `IconSize 0.012890625`, hidden label, teal label and the
 70 % shadow, while the existing Heart Rate and Pace slots kept their previous
 values. Save and reload of the project returned every probe value; the probe was
-then removed and the validation project saved. The original `Overlay Test`
-project was reloaded. Only 1080p was inspected; the teal label color was not
+then removed and the validation project saved. An Easy Run overlay rendered from
+the same template data at the same frame also placed the four left numerics, the
+top distance timeline, the route map, the weather card and the clock/elapsed rows
+without clipping or overlap. The original `Overlay Test` project was reloaded.
+Only 1080p was inspected; the teal label color was not
 visible because labels are hidden, and UHD/animation remain unchecked.
 
 Earlier in the same validation session the managed node was deleted from the
