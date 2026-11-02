@@ -1,5 +1,42 @@
 # Running Overlay Resolve Testing
 
+## Distance Timeline Module — 2026-11-01
+
+v21 completes the Distance Timeline's module content beyond the v10 minimal track.
+The label is independently toggleable with editable text, font, style, size,
+color and spacing; up to four metric-driven custom values render inline after the
+main value with their own group/item gaps, size, color and opacity. Axis
+typography also drives an optional marker-distance label, endpoints and distance
+points can sit below or above the track, and the background/border expand to
+cover every visible axis band. The four-slot stats bar supports Top, Bottom, Left
+and Right attachment, Inside grouping, width/height overrides, screen-direction
+offsets, item gap, divider, corner radius, background opacity and separate value
+and label typography. Its cards reuse the shared metric values, add Progress, and
+keep the approved adjacent-record interpolation rule.
+
+Geometry follows the Mac layout: the content bounds union the 1.7× axis bands,
+and an attached bar is placed outside those bounds with the 6-point gap. A
+Bottom bar now sits completely below the axis row; the first host render exposed
+a flipped sign that pushed it upward over the track, and the regression test pins
+the corrected bottom edge. Stats slots default to Distance and Pace, matching
+the Mac config; the Mac's 42-point bar with a 30-point value is intentionally
+not enlarged, because it is the same default the Mac app uses.
+
+Tests: the Lua module test now covers the label, both custom values, marker
+label, background/border, stats bar background, divider, value and label text,
+Inside bounds union and the corrected attached placement. 135 Node/Lua tests
+pass, including the fengari execution of the real Fuse code.
+
+Host evidence: Resolve Studio 21.1.1, independent `RO Numeric v7 Validation`
+project, synthetic `style-validation` timeline at 1920×1080, ProRes 4444 with
+alpha. A frame at 108120 with Widget 5's label, custom values, marker label,
+background, border and stats bar enabled rendered all six features; the stats
+bar sat below the START/FINISH row with no overlap. Resetting those inputs
+rendered the template-default minimal timeline unchanged. The validation project
+was saved and the original `Overlay Test` project was reloaded. Only 1080p was
+inspected; preset visual variants, the media slot, route/elevation underlays and
+live undo remain unchecked.
+
 ## Built-In Templates — 2026-11-01
 
 The Workflow panel replaces the Stack/Row/Grid choices with the Mac app's

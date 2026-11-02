@@ -16,7 +16,7 @@ FuRegisterClass("RunningOverlayNumeric", CT_SourceTool, {
 	REG_Source_DepthCtrls = true,
 	REG_Fuse_NoEdit = false,
 	REG_Fuse_NoReload = false,
-	REG_Version = 20,
+	REG_Version = 21,
 })
 
 -- Cache only complete immutable snapshots. Several Numeric Fuse instances can
@@ -728,6 +728,42 @@ local function capsule(left, bottom, width, height, corner)
 	return shape
 end
 
+-- A rounded-rectangle outline. Fusion shapes are filled only, so the stroke is
+-- a thin band of quads sampled along the rounded path.
+local function rounded_outline(left, bottom, width, height, radius, thickness)
+	radius = math.min(radius, width / 2, height / 2)
+	local points = {}
+	local corners = {
+		{left + width - radius, bottom + radius, -math.pi / 2},
+		{left + width - radius, bottom + height - radius, 0},
+		{left + radius, bottom + height - radius, math.pi / 2},
+		{left + radius, bottom + radius, math.pi},
+	}
+	local steps = 8
+	for _, corner in ipairs(corners) do
+		for step = 0, steps do
+			local angle = corner[3] + math.pi / 2 * step / steps
+			table.insert(points, {corner[1] + math.cos(angle) * radius, corner[2] + math.sin(angle) * radius})
+		end
+	end
+	local shape = Shape()
+	local half = thickness / 2
+	for index = 1, #points do
+		local a, b = points[index], points[index % #points + 1]
+		local dx, dy = b[1] - a[1], b[2] - a[2]
+		local length = math.sqrt(dx * dx + dy * dy)
+		if length > 0 then
+			local nx, ny = -dy / length * half, dx / length * half
+			shape:MoveTo(a[1] + nx, a[2] + ny)
+			shape:LineTo(b[1] + nx, b[2] + ny)
+			shape:LineTo(b[1] - nx, b[2] - ny)
+			shape:LineTo(a[1] - nx, a[2] - ny)
+			shape:Close()
+		end
+	end
+	return shape
+end
+
 -- Original Running Overlay line icons on a 24-unit grid with y down. They stand
 -- in for the Mac app's SF Symbols, which may not be redistributed; see
 -- docs/assets-and-licenses.md. Commands: M/L/C/Z as in SVG, "O cx cy r" for a
@@ -768,6 +804,15 @@ ICON_GLYPHS = {
 	Calendar = {stroke = "M3 5.5 L21 5.5 L21 21 L3 21 Z M3 10 L21 10 M7.5 5.5 L7.5 2.5 M16.5 5.5 L16.5 2.5 M7 14 L9.5 14 M12 14 L14.5 14 M17 14 L18.5 14 M7 17.5 L9.5 17.5 M12 17.5 L14.5 17.5"},
 }
 TIMELINE_METRIC = 17
+-- Distance Timeline custom-value and stats-bar slots read the shared activity
+-- metrics. Mac also offers its full catalog; these are the metrics this Fuse
+-- already formats. Stats bars additionally offer progress percentage.
+TIMELINE_METRIC_NAMES = {"Distance", "Pace", "Avg Pace", "Heart Rate", "Elapsed Time", "Elevation", "Cadence",
+	"Power", "Calories", "Temperature", "Grade", "Vert. Osc.", "GCT", "Stride", "Vert. Ratio", "GCT Balance"}
+TIMELINE_METRIC_VALUES = {2, 1, 8, 0, 3, 4, 5, 6, 7, 14, 15, 9, 10, 11, 12, 13}
+TIMELINE_STATS_METRIC_NAMES = {"Distance", "Pace", "Avg Pace", "Heart Rate", "Elapsed Time", "Elevation", "Cadence",
+	"Power", "Calories", "Temperature", "Grade", "Vert. Osc.", "GCT", "Stride", "Vert. Ratio", "GCT Balance", "Progress"}
+TIMELINE_STATS_METRIC_VALUES = {2, 1, 8, 0, 3, 4, 5, 6, 7, 14, 15, 9, 10, 11, 12, 13, -1}
 ROUTE_METRIC = 18
 ZONE_METRIC = 19
 ELEVATION_METRIC = 20
@@ -1285,6 +1330,75 @@ function Create()
 		t.element_glow = check("Element Glow", "ElementGlow", 1)
 		t.glow_intensity = number("Glow Intensity", "GlowIntensity", 0.1, 0, 1)
 		t.glow_color = color_in(group, "Glow Color", key .. "TimelineGlow", accent, 18, false)
+		-- Remaining Mac Distance Timeline module fields. Label, custom values,
+		-- background/border and the stats bar are independent of the presets;
+		-- preset-specific visual variants are not reproduced.
+		local function text(label, suffix, default) return add(group, label, key .. "Timeline" .. suffix, {
+			LINKID_DataType = "Text", INPID_InputControl = "TextEditControl", INP_DefaultText = default, TEC_Lines = 1}) end
+		local function font(label, suffix, control_group) return add(group, label, key .. "Timeline" .. suffix, {
+			LINKID_DataType = "Text", INPID_InputControl = "FontFileControl", IC_ControlGroup = control_group, IC_ControlID = 0}) end
+		local function font_style(label, suffix, control_group) return add(group, label, key .. "Timeline" .. suffix, {
+			LINKID_DataType = "Text", INPID_InputControl = "FontFileControl", IC_ControlGroup = control_group, IC_ControlID = 1}) end
+		t.show_label = check("Show Label", "ShowLabel", 0)
+		t.label_text = text("Label Text", "LabelText", "Distance")
+		t.label_size = number("Label Size", "LabelSize", 12 / 1280, 0.003, 0.05)
+		t.label_font = font("Label Font", "LabelFont", 30)
+		t.label_style = font_style("Label Style", "LabelFontStyle", 30)
+		t.label_color = color_in(group, "Label Color", key .. "TimelineLabel", {1, 1, 1}, 31, false)
+		t.label_spacing = number("Label Value Gap", "LabelSpacing", 2 / 1280, 0, 0.05)
+		t.custom_values = check("Custom Values", "CustomValues", 0)
+		t.custom_size = number("Custom Value Size", "CustomSize", 12 / 1280, 0.003, 0.05)
+		t.custom_spacing = number("Custom Item Gap", "CustomSpacing", 10 / 1280, 0, 0.1)
+		t.custom_group_spacing = number("Custom Group Gap", "CustomGroupSpacing", 12 / 1280, 0, 0.15)
+		t.custom_opacity = number("Custom Value Opacity", "CustomOpacity", 0.7, 0, 1)
+		t.custom_color = color_in(group, "Custom Value Color", key .. "TimelineCustomValue", {1, 1, 1}, 32, false)
+		t.marker_label = check("Marker Label", "MarkerLabel", 0)
+		t.marker_label_placement = combo("Marker Label Placement", "MarkerLabelPlacement", {"Below", "Above"}, 1)
+		t.marker_label_offset = number("Marker Label Gap", "MarkerLabelOffset", 12 / 1280, 0, 0.1)
+		t.background = check("Background", "Background", 0)
+		t.background_color = color_in(group, "Background Color", key .. "TimelineBackgroundColor", {0, 0, 0}, 33, false)
+		t.background_opacity = number("Background Opacity", "BackgroundOpacity", 0.7, 0, 1)
+		t.corner = number("Corner Radius", "CornerRadius", 9 / 1280, 0, 0.05)
+		t.border = check("Border", "Border", 0)
+		t.border_color = color_in(group, "Border Color", key .. "TimelineBorderColor", {1, 1, 1}, 34, false)
+		t.border_opacity = number("Border Opacity", "BorderOpacity", 0.18, 0, 1)
+		t.border_width = number("Border Width", "BorderWidth", 1 / 1280, 0.0002, 0.01)
+		t.background_padding_x = number("Background Padding X", "BackgroundPaddingX", 10 / 1280, 0, 0.05)
+		t.background_padding_y = number("Background Padding Y", "BackgroundPaddingY", 6 / 1280, 0, 0.05)
+		t.stats = check("Stats Bar", "StatsBar", 0)
+		t.stats_placement = combo("Stats Bar Placement", "StatsPlacement", {"Top", "Bottom", "Left", "Right"}, 1)
+		t.stats_inside = check("Stats Bar Inside Background", "StatsInside", 0)
+		t.stats_width = number("Stats Bar Width (0 = automatic)", "StatsWidth", 0, 0, 1)
+		t.stats_height = number("Stats Bar Height", "StatsHeight", 42 / 1280, 0.01, 0.2)
+		t.stats_offset_x = number("Stats Bar Offset X", "StatsOffsetX", 0, -0.3, 0.3)
+		t.stats_offset_y = number("Stats Bar Offset Y", "StatsOffsetY", 0, -0.3, 0.3)
+		t.stats_spacing = number("Stats Item Gap", "StatsSpacing", 0, 0, 0.05)
+		t.stats_background = number("Stats Background Opacity", "StatsBackground", 0.72, 0, 1)
+		t.stats_corner = number("Stats Corner Radius", "StatsCorner", 8 / 1280, 0, 0.05)
+		t.stats_divider = number("Stats Divider Opacity", "StatsDivider", 0.12, 0, 1)
+		t.stats_value_size = number("Stats Value Size", "StatsValueSize", 30 / 1280, 0.003, 0.1)
+		t.stats_label_size = number("Stats Label Size", "StatsLabelSize", 10 / 1280, 0.002, 0.05)
+		t.stats_value_font = font("Stats Value Font", "StatsValueFont", 35)
+		t.stats_value_style = font_style("Stats Value Style", "StatsValueFontStyle", 35)
+		t.stats_label_font = font("Stats Label Font", "StatsLabelFont", 36)
+		t.stats_label_style = font_style("Stats Label Style", "StatsLabelFontStyle", 36)
+		t.stats_value_color = color_in(group, "Stats Value Color", key .. "TimelineStatsValue", {1, 1, 1}, 37, false)
+		t.stats_label_color = color_in(group, "Stats Label Color", key .. "TimelineStatsLabel", {1, 1, 1}, 38, false)
+		t.stats_label_opacity = number("Stats Label Opacity", "StatsLabelOpacity", 0.58, 0, 1)
+		t.custom_slots, t.stats_slots = {}, {}
+		for index = 1, 4 do
+			t.custom_slots[index] = {
+				visible = check("Custom " .. index .. " Visible", "Custom" .. index .. "Visible", 0),
+				metric = combo("Custom " .. index .. " Metric", "Custom" .. index .. "Metric", TIMELINE_METRIC_NAMES, 0),
+				label = text("Custom " .. index .. " Label", "Custom" .. index .. "Label", ""),
+			}
+			t.stats_slots[index] = {
+				visible = check("Stats " .. index .. " Visible", "Stats" .. index .. "Visible", index <= 2 and 1 or 0),
+				metric = combo("Stats " .. index .. " Metric", "Stats" .. index .. "Metric", TIMELINE_STATS_METRIC_NAMES,
+					index == 2 and 1 or (index == 4 and 3 or 0)),
+				label = text("Stats " .. index .. " Label", "Stats" .. index .. "Label", ""),
+			}
+		end
 		return t
 	end
 	local function route_options(key, group)
@@ -1826,25 +1940,41 @@ function Process(req)
 			if shadow ~= nil then draw_shadow(output, parts, shadow, quality) end
 			for _, part in ipairs(parts) do draw_part(output, part, part.color, 0, 0, quality) end
 		end
-		-- Mac DistanceTimelineOverlayView, minimal preset: the box is centered on
-		-- Position; the distance value sits above a capsule track with ticks, a
-		-- progress fill and marker, and axis labels below or above the track.
+		-- Mac Distance Timeline module: a label and value row, optional inline
+		-- custom values, a capsule track with ticks and a marker, axis and marker
+		-- distance labels, an optional background/border and a four-slot stats
+		-- bar. Preset-specific variants, the media slot and the route preset are
+		-- not reproduced.
+		local function slot_metric(input, names, values)
+			local index = math.floor(value_of(input) + 0.5) + 1
+			return values[index] or values[1], names[index] or names[1]
+		end
 		local function render_timeline(position, value_font, value_style, color, t, options)
 			local pixel = 1 / output.Width
 			local width, height = value_of(t.width), value_of(t.height)
 			local padding_x, padding_y = value_of(t.padding_x), value_of(t.padding_y)
 			local left, top = position.X - width / 2, position.Y * aspect + height / 2
 			local content_left, content_top = left + padding_x, top - padding_y
-			local content_width, content_height = math.max(width - padding_x * 2, pixel), math.max(height - padding_y * 2, pixel)
+			local content_width = math.max(width - padding_x * 2, pixel)
+			local content_height = math.max(height - padding_y * 2, pixel)
 			local track_height = math.max(value_of(t.track_height), 2 / 1280)
 			local value_size = math.max(value_of(t.value_size), 12 / 1280)
 			local axis_size = math.max(value_of(t.axis_size), 8 / 1280)
 			local show_value = value_of(t.show_value) > 0.5
-			local value_block = show_value and value_size * 1.35 or 0
-			local track_top = content_top - math.min(content_height - track_height, value_block + value_of(t.value_spacing))
+			local show_label = value_of(t.show_label) > 0.5
+			local label_size = math.max(value_of(t.label_size), 8 / 1280)
+			local label_block = show_label and label_size * 1.3 + value_of(t.label_spacing) or 0
+			local custom = {}
+			if value_of(t.custom_values) > 0.5 then
+				for index = 1, 4 do
+					if value_of(t.custom_slots[index].visible) > 0.5 then table.insert(custom, t.custom_slots[index]) end
+				end
+			end
+			local custom_size = math.max(value_of(t.custom_size), 6 / 1280)
+			local value_block = (show_value or #custom > 0) and value_size * 1.35 or 0
+			local track_top = content_top - math.min(content_height - track_height, label_block + value_block + value_of(t.value_spacing))
 			local track_bottom = track_top - track_height
 			local track_middle = track_bottom + track_height / 2
-
 			-- Progress follows distance. Without any distance data it follows time,
 			-- like the Mac app; a sample without distance leaves the fill empty.
 			local imperial = math.floor(value_of(t.units) + 0.5) == 1
@@ -1858,15 +1988,123 @@ function Process(req)
 				progress = elapsed_us / math.max(data.duration_us or 0, 1000000)
 			end
 			if progress ~= nil then progress = math.min(math.max(progress, 0), 1) end
-
 			local accent = color_of(t.fill, 1)
 			local parts, overlays = {}, {}
-			table.insert(parts, {shapes = {capsule(content_left, track_bottom, content_width, track_height)},
-				color = Pixel{R = color.R, G = color.G, B = color.B, A = color.A * value_of(t.track_opacity)}})
+			local function part(shape, part_color, sampling)
+				local entry = {shapes = {shape}, color = part_color, sampling = sampling}
+				table.insert(parts, entry)
+				return entry
+			end
+			local axis_font, axis_style = font_of(t.axis_font, t.axis_style)
+			local axis_color = color_of(t.axis_color)
+			local axis_ascent, axis_descent = font_extents(axis_font, axis_style, axis_size)
+			local band = axis_size * 1.3
+			local bounds_left, bounds_right = content_left, content_left + content_width
+			local bounds_top, bounds_bottom = content_top, content_top - content_height
+			-- Mac expands the background and stats attachment bounds to include
+			-- every visible axis band (1.7 x size around a 1.3 x size line box).
+			local function union_band(placement_input, gap_input)
+				local gap = value_of(gap_input)
+				local text_top = math.floor(value_of(placement_input) + 0.5) == 1 and track_top + gap + band or track_bottom - gap - band
+				bounds_top = math.max(bounds_top, text_top + band + axis_size * 0.25)
+				bounds_bottom = math.min(bounds_bottom, text_top - axis_size * 0.15)
+			end
+			if value_of(t.axis_labels) > 0.5 then union_band(t.endpoint_placement, t.endpoint_offset) end
+			local point_count = math.floor(value_of(t.point_count) + 0.5)
+			local show_points = value_of(t.points) > 0.5 and point_count > 0
+			if show_points then union_band(t.midpoint_placement, t.midpoint_offset) end
+			local show_marker = progress ~= nil and value_of(t.marker) > 0.5
+			local show_marker_label = value_of(t.marker_label) > 0.5 and show_marker
+			if show_marker_label then union_band(t.marker_label_placement, t.marker_label_offset) end
+
+			local stats_items = {}
+			if value_of(t.stats) > 0.5 then
+				for index = 1, 4 do
+					local slot = t.stats_slots[index]
+					if value_of(slot.visible) > 0.5 then
+						local metric_index = slot_metric(slot.metric, TIMELINE_STATS_METRIC_NAMES, TIMELINE_STATS_METRIC_VALUES)
+						local item
+						if metric_index < 0 then
+							item = {label = "PROGRESS", value = string.format("%d%%", math.floor((progress or 0) * 100 + 0.5)), unit = ""}
+						else
+							local label, value, slot_unit = metric_text(metric_index, sample, elapsed_us, data, 0, nil, true, 0, 0, 0, 0, "", nil)
+							item = {label = label, value = value, unit = slot_unit or ""}
+						end
+						local custom_label = tostring(value_of(slot.label) or ""):match("^%s*(.-)%s*$")
+						if custom_label ~= "" then item.label = custom_label end
+						table.insert(stats_items, item)
+					end
+				end
+			end
+			local stats_value_font, stats_value_style = font_of(t.stats_value_font, t.stats_value_style)
+			local stats_label_font, stats_label_style = font_of(t.stats_label_font, t.stats_label_style)
+			local stats_label_size = math.max(value_of(t.stats_label_size), 4 / 1280)
+			local stats_value_size = math.max(value_of(t.stats_value_size), 6 / 1280)
+			local function stats_rect()
+				if #stats_items == 0 then return nil end
+				local placement = math.floor(value_of(t.stats_placement) + 0.5)
+				local vertical = placement >= 2
+				local gap = 6 / 1280
+				local base = math.max(value_of(t.stats_height), 10 / 1280)
+				local item_gap = value_of(t.stats_spacing)
+				local row_height = stats_value_size * 1.25 + stats_label_size * 1.2 + 8 / 1280
+				local bar_width, bar_height
+				if vertical then
+					local widest = 0
+					for _, item in ipairs(stats_items) do
+						local text = item.value .. (item.unit ~= "" and " " .. item.unit or "")
+						widest = math.max(widest, text_width(stats_value_font, stats_value_style, text, stats_value_size),
+							text_width(stats_label_font, stats_label_style, item.label, stats_label_size))
+					end
+					bar_width = math.max(math.min(base, content_width * 0.34), widest + 20 / 1280)
+					bar_height = math.max(base, #stats_items * row_height + (#stats_items - 1) * item_gap)
+				else
+					bar_width = value_of(t.stats_width) > 0 and math.min(value_of(t.stats_width), content_width * 1.4) or content_width
+					bar_height = base
+				end
+				-- Offsets move in screen directions like the Mac: +X right, +Y down
+				-- (down is a smaller Fusion Y). The rect returns its bottom edge.
+				local offset_x, offset_y = value_of(t.stats_offset_x), value_of(t.stats_offset_y)
+				local centered = bounds_left + (bounds_right - bounds_left - bar_width) / 2 + offset_x
+				local middle = (bounds_top + bounds_bottom - bar_height) / 2 - offset_y
+				if placement == 0 then
+					return centered, bounds_top + gap - offset_y, bar_width, bar_height
+				elseif placement == 1 then
+					return centered, bounds_bottom - gap - offset_y - bar_height, bar_width, bar_height
+				elseif placement == 2 then
+					return bounds_left - gap - bar_width - offset_x, middle, bar_width, bar_height
+				end
+				return bounds_right + gap + offset_x, middle, bar_width, bar_height
+			end
+			local stats_x, stats_y, stats_width, stats_height = stats_rect()
+			local has_stats = stats_x ~= nil
+
+			-- The rounded background and border sit beneath the content and do not
+			-- cast shadow; an inside stats bar joins their bounds.
+			if value_of(t.background) > 0.5 or value_of(t.border) > 0.5 then
+				local pad_x, pad_y = value_of(t.background_padding_x), value_of(t.background_padding_y)
+				local bg_left, bg_right = bounds_left - pad_x, bounds_right + pad_x
+				local bg_bottom, bg_top = bounds_bottom - pad_y, bounds_top + pad_y
+				if has_stats and value_of(t.stats_inside) > 0.5 then
+					bg_left, bg_bottom = math.min(bg_left, stats_x - pad_x), math.min(bg_bottom, stats_y - pad_y)
+					bg_right, bg_top = math.max(bg_right, stats_x + stats_width + pad_x), math.max(bg_top, stats_y + stats_height + pad_y)
+				end
+				local corner = math.min(value_of(t.corner), (bg_right - bg_left) / 2, (bg_top - bg_bottom) / 2)
+				if value_of(t.background) > 0.5 then
+					fill_shape(output, capsule(bg_left, bg_bottom, bg_right - bg_left, bg_top - bg_bottom, corner),
+						color_of(t.background_color, value_of(t.background_opacity)), quality)
+				end
+				if value_of(t.border) > 0.5 then
+					fill_shape(output, rounded_outline(bg_left, bg_bottom, bg_right - bg_left, bg_top - bg_bottom, corner,
+						math.max(value_of(t.border_width), 1 / 1280)), color_of(t.border_color, value_of(t.border_opacity)), quality)
+				end
+			end
+
+			part(capsule(content_left, track_bottom, content_width, track_height),
+				Pixel{R = color.R, G = color.G, B = color.B, A = color.A * value_of(t.track_opacity)})
 			local glow = value_of(t.glow) > 0.5
 			if progress ~= nil then
-				local fill = {shapes = {capsule(content_left, track_bottom, math.max(content_width * progress, track_height), track_height)}, color = accent}
-				table.insert(parts, fill)
+				local fill = part(capsule(content_left, track_bottom, math.max(content_width * progress, track_height), track_height), accent)
 				overlays[fill] = glow and track_height * 2.8 or nil
 			end
 			if value_of(t.ticks) > 0.5 then
@@ -1876,44 +2114,66 @@ function Process(req)
 					local x = content_left + content_width * index / count
 					ticks:AddRectangle(x - pixel / 2, x + pixel / 2, track_top + track_height * 0.45, track_bottom - track_height * 0.45, 0, 8)
 				end
-				table.insert(parts, {shapes = {ticks}, color = Pixel{R = color.R, G = color.G, B = color.B, A = color.A * 0.64 * 0.52}})
+				part(ticks, Pixel{R = color.R, G = color.G, B = color.B, A = color.A * 0.52})
 			end
-			if progress ~= nil and value_of(t.marker) > 0.5 then
+			if show_marker then
 				local x = content_left + content_width * progress
 				local multiplier = value_of(t.marker_size)
 				local style = math.floor(value_of(t.marker_style) + 0.5)
-				local shape
+				local marker_size = track_height * 2.2 * multiplier
+				part(capsule(x - marker_size / 2, track_middle - marker_size / 2, marker_size, marker_size, marker_size / 2),
+					Pixel{R = 0, G = 0, B = 0, A = color.A * 0.38})
+				local shape, size = nil, marker_size * 0.72
 				if style == 2 then
-					local half, marker_height = track_height * 1.3 * multiplier, track_height * 2.4 * multiplier
+					local half, marker_height = size * 0.58, size * 1.04
 					shape = Shape()
-					shape:MoveTo(x, track_middle + marker_height / 2)
-					shape:LineTo(x + half, track_middle - marker_height / 2)
-					shape:LineTo(x - half, track_middle - marker_height / 2)
+					shape:MoveTo(x, track_middle - marker_height / 2)
+					shape:LineTo(x + half, track_middle + marker_height / 2)
+					shape:LineTo(x - half, track_middle + marker_height / 2)
 					shape:Close()
+				elseif style == 1 then
+					shape = capsule(x - size * 0.75, track_middle - size * 0.36, size * 1.5, size * 0.72, size * 0.36)
 				else
-					local marker_width = track_height * (style == 1 and 3.4 or 2.2) * multiplier
-					local marker_height = track_height * (style == 1 and 1.75 or 2.2) * multiplier
-					shape = capsule(x - marker_width / 2, track_middle - marker_height / 2, marker_width, marker_height)
+					shape = capsule(x - size / 2, track_middle - size / 2, size, size, size / 2)
 				end
-				local marker = {shapes = {shape}, color = color_of(t.marker_color, 1)}
-				table.insert(parts, marker)
+				local marker = part(shape, color_of(t.marker_color, 1))
 				overlays[marker] = glow and track_height * 2.3 or nil
 			end
 
+			-- Label and value row, with custom values inline after the value.
+			if show_label then
+				local label_font, label_style = font_of(t.label_font, t.label_style)
+				local label_text = tostring(value_of(t.label_text) or ""):match("^%s*(.-)%s*$")
+				if label_text == "" then label_text = "DISTANCE" end
+				table.insert(parts, {font = label_font, style = label_style, text = label_text:upper(), size = label_size,
+					x = content_left, y = content_top - font_extents(label_font, label_style, label_size), color = color_of(t.label_color)})
+			end
+			local value_baseline = content_top - label_block - font_extents(value_font, value_style, value_size)
+			local inline_x = content_left
 			if show_value then
 				local current_text = current ~= nil and string.format("%.2f", current / divisor) or "--"
 				local text = value_of(t.show_total) > 0.5 and string.format("%s / %.2f %s", current_text, total / divisor, unit)
 					or current_text .. " " .. unit
-				local ascent = font_extents(value_font, value_style, value_size)
 				table.insert(parts, {font = value_font, style = value_style, text = text, size = value_size,
-					x = content_left, y = content_top - ascent, color = color})
+					x = inline_x, y = value_baseline, color = color})
+				inline_x = inline_x + text_width(value_font, value_style, text, value_size) + value_of(t.custom_group_spacing)
 			end
-			local axis_font, axis_style = font_of(t.axis_font, t.axis_style)
-			local axis_color = color_of(t.axis_color)
-			local axis_ascent, axis_descent = font_extents(axis_font, axis_style, axis_size)
-			-- Mac centers each label's line box in a band of 1.3 x size at the gap.
+			if #custom > 0 then
+				local custom_color = color_of(t.custom_color, value_of(t.custom_opacity))
+				local drop = math.max(value_size - custom_size, 0) * 0.35
+				for _, slot in ipairs(custom) do
+					local metric_index = slot_metric(slot.metric, TIMELINE_METRIC_NAMES, TIMELINE_METRIC_VALUES)
+					local _, value, slot_unit = metric_text(metric_index, sample, elapsed_us, data, 0, nil, true, 0, 0, 0, 0, "", nil)
+					local text = slot_unit ~= "" and value .. " " .. slot_unit or value
+					local custom_label = tostring(value_of(slot.label) or ""):match("^%s*(.-)%s*$")
+					if custom_label ~= "" and value == "--" then text = custom_label end
+					table.insert(parts, {font = value_font, style = value_style, text = text, size = custom_size,
+						x = inline_x, y = value_baseline - drop, color = custom_color})
+					inline_x = inline_x + text_width(value_font, value_style, text, custom_size) + value_of(t.custom_spacing)
+				end
+			end
+
 			local function axis_baseline(placement_input, gap_input)
-				local band = axis_size * 1.3
 				local gap = value_of(gap_input)
 				local center = math.floor(value_of(placement_input) + 0.5) == 1 and track_top + gap + band / 2 or track_bottom - gap - band / 2
 				return center + (axis_descent - axis_ascent) / 2
@@ -1929,12 +2189,63 @@ function Process(req)
 				axis_text(by_distance and "0 " .. unit or "START", content_left, baseline, 0)
 				axis_text(by_distance and string.format("%.2f %s", total / divisor, unit) or "FINISH", content_left + content_width, baseline, 1)
 			end
-			local count = math.floor(value_of(t.point_count) + 0.5)
-			if value_of(t.points) > 0.5 and count > 0 then
+			if show_points then
 				local baseline = axis_baseline(t.midpoint_placement, t.midpoint_offset)
-				for index = 1, count do
-					axis_text(distance_point_text(total / divisor * index / (count + 1), unit),
-						content_left + content_width * index / (count + 1), baseline, 0.5)
+				for index = 1, point_count do
+					axis_text(distance_point_text(total / divisor * index / (point_count + 1), unit),
+						content_left + content_width * index / (point_count + 1), baseline, 0.5)
+				end
+			end
+			if show_marker_label then
+				axis_text(string.format("%.2f %s", (current or 0) / divisor, unit),
+					content_left + content_width * progress, axis_baseline(t.marker_label_placement, t.marker_label_offset), 0.5)
+			end
+
+			if has_stats then
+				local sx, sy, sw, sh = stats_x, stats_y, stats_width, stats_height
+				local vertical = math.floor(value_of(t.stats_placement) + 0.5) >= 2
+				local item_gap = value_of(t.stats_spacing)
+				local count = #stats_items
+				local hairline = 1 / output.Width
+				part(capsule(sx, sy, sw, sh, value_of(t.stats_corner)), Pixel{R = 0, G = 0, B = 0, A = value_of(t.stats_background)}, 1)
+				local stats_label_color = color_of(t.stats_label_color, value_of(t.stats_label_opacity))
+				local stats_value_color = color_of(t.stats_value_color)
+				for index, item in ipairs(stats_items) do
+					local slot_left, slot_bottom, slot_width, slot_height
+					if vertical then
+						slot_height = (sh - item_gap * (count - 1)) / count
+						slot_bottom = sy + sh - index * slot_height - (index - 1) * item_gap
+						slot_left, slot_width = sx, sw
+					else
+						slot_width = (sw - item_gap * (count - 1)) / count
+						slot_left = sx + (index - 1) * (slot_width + item_gap)
+						slot_bottom, slot_height = sy, sh
+					end
+					if index > 1 and value_of(t.stats_divider) > 0 then
+						local divider = color_of(t.stats_label_color, value_of(t.stats_divider))
+						if vertical then
+							local y = slot_bottom + slot_height + item_gap / 2
+							part(capsule(sx + 6 / 1280, y - hairline / 2, sw - 12 / 1280, hairline, 0), divider)
+						else
+							local x = slot_left - item_gap / 2
+							part(capsule(x - hairline / 2, sy + 6 / 1280, hairline, sh - 12 / 1280, 0), divider)
+						end
+					end
+					local slot_top = slot_bottom + slot_height
+					local value_text = item.value .. (item.unit ~= "" and " " .. item.unit or "")
+					local value_width = text_width(stats_value_font, stats_value_style, value_text, stats_value_size)
+					local value_ascent, value_descent = font_extents(stats_value_font, stats_value_style, stats_value_size)
+					local value_center = slot_top - slot_height * 0.18 - stats_value_size * 1.25 / 2
+					table.insert(parts, {font = stats_value_font, style = stats_value_style, text = value_text, size = stats_value_size,
+						x = slot_left + (slot_width - value_width) / 2, y = value_center - (value_ascent - value_descent) / 2,
+						color = stats_value_color})
+					local label_text = item.label:upper()
+					local label_width = text_width(stats_label_font, stats_label_style, label_text, stats_label_size)
+					local label_ascent, label_descent = font_extents(stats_label_font, stats_label_style, stats_label_size)
+					local label_center = slot_top - slot_height * 0.58 - stats_label_size * 1.2 / 2
+					table.insert(parts, {font = stats_label_font, style = stats_label_style, text = label_text, size = stats_label_size,
+						x = slot_left + (slot_width - label_width) / 2, y = label_center - (label_ascent - label_descent) / 2,
+						color = stats_label_color})
 				end
 			end
 
@@ -1945,11 +2256,11 @@ function Process(req)
 			end
 			local shadow = shadow_of(options)
 			if shadow ~= nil then draw_shadow(output, parts, shadow, quality) end
-			for _, part in ipairs(parts) do
-				if overlays[part] ~= nil then
-					draw_layers(output, {part}, {{opacity = 0.75, radius = overlays[part]}}, part.color, 0, 0, quality)
+			for _, entry in ipairs(parts) do
+				if overlays[entry] ~= nil then
+					draw_layers(output, {entry}, {{opacity = 0.75, radius = overlays[entry]}}, entry.color, 0, 0, quality)
 				end
-				draw_part(output, part, part.color, 0, 0, quality)
+				draw_part(output, entry, entry.color, 0, 0, quality)
 			end
 		end
 		local function render_route(position, widget_font, widget_style, r, options)

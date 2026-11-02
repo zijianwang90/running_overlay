@@ -7,6 +7,8 @@
 - 数值组件的 **Show Icon** 控制图标；**Metric Default** 随指标选择默认图标，也可覆盖为其他原创矢量图标。位置、对齐、大小、间距、颜色与 Alpha 在 Fusion 中独立调整，阴影覆盖整个组件。图标与 Mac 的 SF Symbols 形状不同；字体和字号以视觉接近为目标。
 - **Label / Unit Alignment** 为 Start / Center / End；左右附着时分别对应顶端、居中和底端行框对齐。Easy Run / Race 的右侧单位使用 End。
 - 在 Widgets 中添加 **Dist. timeline**。Fusion 的 **Metric** 选择 Distance Timeline 后显示专属设置：宽高、内边距、当前/总距离、km/mi、轨道、刻度、进度颜色、当前位置的点/胶囊/三角标记、起终点标签和中间距离标签，以及进度发光、整体发光和阴影。默认位于顶部中央，位置为组件中心。
+- 距离进度条还提供可选的行内 **Custom 1–4** 数值（指标、自定义标签、组间距、项间距、字号、颜色和透明度），可独立显示的 **Label**（文字、字体、字号、颜色和与数值的间距），可跟随坐标轴样式的 **Marker Label**（当前位置距离，可选下方/上方及间距），以及 **Background / Border**（圆角、内边距、颜色和透明度；边界自动包含可见的坐标轴标签）。
+- **Stats Bar** 支持最多四个指标槽位（含 Progress）和 Top / Bottom / Left / Right 四种贴边位置，用于显示距离/配速等统计；贴边统计栏位于轴标签之外，开启 Inside 时并入背景/边框范围。可调宽度、高度、偏移、项间距、分隔线、圆角和数值/标签两套字体。默认显示 Distance 与 Pace；这些设置作为初始样式，之后仍以 Fusion Inspector 中的数值为准。
 - 在 Widgets 中添加 **Route map**。先导入或重新导入含 GPS 的 FIT/GPX 并更新数据包；旧的无坐标包无法显示路线。默认位于右上方，位置为地图中心。Fusion 提供 **Map Size / Map Padding / Route Width / Route Color / Current Position / Position Size / Position Color / Start / Finish Markers**，以及共用阴影。
 - 路线保持北向上和比例，透明背景，无需网络或 API。当前位置按活动真实经过时间及每段 Time Offset 更新；GPX 分段和缺失坐标不会连线或跨段插值。无足够 GPS 时显示 **NO GPS**，缺失当前位置时隐藏位置点。当前离线地图没有道路/地名底图，也没有地图供应商、缩放跟随、统计栏或模板一键应用。
 - 所有组件共用最多 16 个独立实例槽位。每个实例的数值、进度条或地图设置由其 Metric 控制显示；切换类型不会修改其他实例。保存 Resolve 项目可保留样式。

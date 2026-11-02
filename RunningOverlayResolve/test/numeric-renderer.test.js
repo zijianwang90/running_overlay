@@ -438,15 +438,16 @@ local cw = w - 2*px
 local track_top = content_top - (19/1280*1.35 + 8/1280)
 local track_bottom = track_top - 6/1280
 local shapes, texts = of('shape'), of('text')
--- Track, fill to 25%, 13 ticks, then a dot marker of 2.2 track heights.
-assert(#shapes == 4, #shapes)
-local track, fill, ticks, marker = shapes[1], shapes[2], shapes[3], shapes[4]
+-- Track, fill to 25%, 13 ticks, then the Mac marker halo and 0.72x dot.
+assert(#shapes == 5, #shapes)
+local track, fill, ticks, halo, marker = shapes[1], shapes[2], shapes[3], shapes[4], shapes[5]
 assert(near(track.shape.l, left) and near(track.shape.w, cw) and near(track.shape.b, track_bottom))
 assert(near(track.color.A, 0.62945) and track.color.R == 1)
 assert(near(fill.shape.w, cw * 0.25) and fill.color.G == 0.82)
-assert(#ticks.shape.rects == 13 and near(ticks.color.A, 0.64*0.52))
+assert(#ticks.shape.rects == 13 and near(ticks.color.A, 0.52))
 assert(near(ticks.shape.rects[13][1] + 0.5/1920, left + cw) and near(ticks.shape.rects[1][3], track_top + 2.7/1280))
-assert(near(marker.shape.w, 13.2/1280) and near(marker.shape.l + marker.shape.w/2, left + cw*0.25))
+assert(near(halo.shape.w, 13.2/1280) and near(halo.color.A, 0.38))
+assert(near(marker.shape.w, 13.2*0.72/1280) and near(marker.shape.l + marker.shape.w/2, left + cw*0.25))
 assert(near(marker.shape.b + marker.shape.h/2, track_bottom + 3/1280))
 -- Value top-aligned in its line box; axis labels centered in their bands below the track.
 assert(texts[1].text == '5.00 / 20.00 km' and near(texts[1].x, left) and near(texts[1].y, content_top - 0.8*19/1280))
@@ -855,4 +856,68 @@ _, value, unit = metric_text(CUSTOM_METRIC, sample, 0, data, 0, nil, nil, 0, 0, 
 assert(value == '2026-01-01')
 _, value, unit = metric_text(CUSTOM_METRIC, sample, 0, data, 0, nil, nil, 8, 1, 3, 0, '')
 assert(value == '16:00:00')
+`));
+
+test('distance timeline module draws its label, custom values, marker label, background and stats bar', () => run(HOST + `
+load_data=function() return {timeline_start_frame=0,pauses={},total_distance_m=20000,duration_us=7200000000} end
+local distance = 5000
+sample_activity=function() return {distance_m=distance, heart_rate=150, power_w=250, pace_seconds_per_kilometer=333.33} end
+inputs.HeartRateEnabled.value=0; inputs.Widget16Enabled.value=1; inputs.Widget16Metric.value=TIMELINE_METRIC
+inputs.Widget16Position.value={X=0.5,Y=0.5}; inputs.Widget16ShadowEnabled.value=0
+inputs.Widget16TimelineGlow.value=0; inputs.Widget16TimelineElementGlow.value=0
+inputs.Widget16TimelineShowLabel.value=1; inputs.Widget16TimelineLabelText.value='Distance'
+inputs.Widget16TimelineCustomValues.value=1; inputs.Widget16TimelineCustom1Visible.value=1
+inputs.Widget16TimelineCustom1Metric.value=3; inputs.Widget16TimelineCustom2Visible.value=1
+inputs.Widget16TimelineCustom2Metric.value=7
+inputs.Widget16TimelineMarkerLabel.value=1
+inputs.Widget16TimelineBackground.value=1; inputs.Widget16TimelineBorder.value=1
+inputs.Widget16TimelineStatsBar.value=1
+Process(req)
+local w, h, px, py = 522.08/1280, 68/1280, 14/1280, 10/1280
+local left, content_top = 0.5 - w/2 + px, 0.5*1080/1920 + h/2 - py
+local cw = w - 2*px
+local label_size, value_size = 12/1280, 19/1280
+local label_block = label_size*1.3 + 2/1280
+-- Mac clamps the track to the content bottom when the label and value rows do
+-- not fit above it.
+local track_top = content_top - math.min((h - 2*py) - 6/1280, label_block + value_size*1.35 + 8/1280)
+local track_bottom = track_top - 6/1280
+local texts = of('text')
+-- Label above the value row; custom values follow the value inline.
+assert(texts[1].text == 'DISTANCE' and near(texts[1].x, left))
+assert(near(texts[1].y, content_top - 0.8*label_size))
+assert(texts[2].text == '5.00 / 20.00 km')
+assert(texts[3].text == '150 bpm' and texts[4].text == '250 W')
+assert(texts[3].y < texts[2].y and texts[4].x > texts[3].x)
+-- Marker distance label sits above the track at the progress position.
+local axis_size = 10/1280
+local marker_label
+for _, entry in ipairs(texts) do if entry.text == '5.00 km' and entry.y > track_top then marker_label = entry end end
+assert(marker_label ~= nil)
+assert(near(marker_label.x, left + cw*0.25 - #marker_label.text*axis_size/2))
+assert(near(marker_label.y, track_top + 12/1280 + axis_size*1.3/2 - 0.3*axis_size))
+-- Background, border, stats background and dividers.
+local bounds_bottom = track_bottom - 14.123/1280 - axis_size*1.3 - 0.15*axis_size
+local shapes = of('shape')
+assert(near(shapes[1].color.A, 0.7) and shapes[1].shape.kind == 'capsule' and near(shapes[1].shape.l, left - 10/1280))
+assert(shapes[2].shape.kind ~= 'capsule' and near(shapes[2].color.A, 0.18))
+local bar
+for _, entry in ipairs(shapes) do if entry.shape.kind == 'capsule' and near(entry.color.A, 0.72) then bar = entry.shape end end
+assert(bar ~= nil and near(bar.w, cw) and near(bar.b, bounds_bottom - 6/1280 - 42/1280))
+-- Stats bar items: distance and pace values with their labels below the track.
+-- The 5.00 km axis point shares the distance value's text, so count both rows.
+local pace_stat, distance_rows, stats_labels = false, 0, 0
+for _, entry in ipairs(texts) do
+  if entry.text == [[--'--" /km]] then pace_stat = true end
+  if entry.text == '5.00 km' and entry.y < track_bottom then distance_rows = distance_rows + 1 end
+  if (entry.text == 'DISTANCE' or entry.text == 'PACE') and entry.y < track_bottom then stats_labels = stats_labels + 1 end
+end
+assert(pace_stat and distance_rows == 2 and stats_labels == 2,
+  tostring(pace_stat) .. ' ' .. tostring(distance_rows) .. ' ' .. tostring(stats_labels))
+-- Inside stats bars join the background and border bounds.
+events = {}
+inputs.Widget16TimelineStatsInside.value=1
+Process(req)
+shapes = of('shape')
+assert(near(shapes[1].shape.b, bounds_bottom - 6/1280 - 42/1280 - 6/1280))
 `));
