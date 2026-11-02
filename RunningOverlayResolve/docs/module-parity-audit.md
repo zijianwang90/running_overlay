@@ -213,10 +213,13 @@ Gaps: `stylePreset`; `layoutPreset` (seven Mac layouts versus four fixed regions
 per-region `RunningGaugeRegionConfig` values, labels, units, typography and
 positions; `glassEffectEnabled`; `progressRoundedCaps`; `dividerWidth`;
 `monospacedDigits`; `fontName` and font weights; `primaryTextColor` and
-`secondaryTextColor`; `glow*`. Progress modes 3–6 (HR Zone, Power Zone, Pace
-Intensity, Custom 50%) render as elapsed time, and `mode == 7` is unreachable
-because the combo has indices 0–6 (`RunningOverlayNumeric.fuse:1566-1567`,
-`:3080-3089`).
+`secondaryTextColor`; `glow*`. Progress modes 3–5 (HR Zone, Power Zone, Pace
+Intensity) fall back to elapsed time, matching the Mac app's
+`computeGaugeProgress` placeholder (`OverlayRenderModel.swift:1778-1786`).
+Custom 50% was a real defect: it is combo index 6, but the renderer checked
+`mode == 7`, so it rendered elapsed time and index 7 was unreachable
+(`RunningOverlayNumeric.fuse:1566-1567`, `:3080-3089`). Fixed in v25; the ring
+now uses 0.5 for index 6.
 
 Tests: `test/numeric-renderer.test.js:1009`; host `testing.md:901-913`
 (distance/time only).
@@ -244,7 +247,8 @@ Gaps: `showsZone`, `zoneDisplayMode`, zone segments and markers
 bottom-bar border fields; per-role text styles (`labelText`,
 `primaryValueText`, `phaseText`, `phaseDetailText`, `metricValueText`,
 `metricUnitText`); `phaseColorFallback`. The center label is hardcoded `"LEFT"`
-(`RunningOverlayNumeric.fuse:3273`).
+in both apps (`RunningOverlayNumeric.fuse:3273`;
+`OverlayRenderModel.swift:552`), so it is parity rather than a Resolve defect.
 
 Tests: `test/numeric-renderer.test.js:127`; host `testing.md:255-283`.
 
@@ -289,7 +293,9 @@ per-role sizes.
 Gaps: `roundedLineCap`; `ringGlowEnabled`, `ringGlowIntensity`; per-role
 `IntervalCountdownTextStyle` for helper, phase, rep, countdown and caption. The
 ring fraction always uses `values.time_progress`, even when `centerMetric` is
-distance (`RunningOverlayNumeric.fuse:3379`).
+distance (`RunningOverlayNumeric.fuse:3379`). The Mac app also drives the ring
+from time progress regardless of the center metric
+(`OverlayRenderModel.swift:611-621`), so this is parity rather than a defect.
 
 Tests: `test/numeric-renderer.test.js:127`; host `testing.md:255-283`.
 
@@ -307,9 +313,9 @@ Covered: last completed active lap; display window; primary metric plus three
 secondary metrics; summary label; metric/imperial units; divider; accent
 following phase or custom; sizes; background.
 
-Gaps: `maxHeartRate` always renders `--` because lap rows carry no maximum HR
-(`RunningOverlayNumeric.fuse:3445`; `src/io/render-data.js:60-66`); custom
-secondary labels and visibility (`IntervalWorkSummarySlot`); component-label
+Max HR is now carried from FIT lap field 16 through lap row field 13 into the
+summary renderer (v25). Remaining gaps: custom secondary labels and visibility
+(`IntervalWorkSummarySlot`); component-label
 alignment; divider color and width; per-role text styles.
 
 Tests: `test/numeric-renderer.test.js:127`; host `testing.md:255-283`.

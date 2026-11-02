@@ -1,5 +1,36 @@
 # Running Overlay Resolve Testing
 
+## Gauge Custom %, Lap Max HR And Release Planning — 2026-11-02
+
+v25 fixes the Running Gauge Custom 50% progress mode, which was combo index 6
+while the renderer checked index 7, so the option silently rendered elapsed
+time. The ring now uses 0.5 for index 6. Modes 3–5 still fall back to elapsed
+time because the Mac `computeGaugeProgress` does the same
+(`OverlayRenderModel.swift:1778-1786`); the fixed `LEFT` HUD label and the
+time-based Countdown ring were also confirmed as Mac parity and now carry
+source comments.
+
+FIT lap field 16 (`max_heart_rate`) now flows through `maxHeartRateBpm` into lap
+row field 13 of the activity TSV and into the Interval Work Summary Max HR slot,
+with `--` when the field is absent. While adding the column, the serializer's
+existing `encodeCell` bug was fixed: it rejected the string `lap.kind` and
+`workoutStructure.reason`, so any activity with laps or a classified workout
+threw `render-data cells must be finite numbers` during bundle writing. Both are
+now written as plain classifier strings, and the parser reads the new field.
+
+Planning docs: `numeric-container-style-spec.md` specifies the 19 N2 container
+and effects fields for the next Fuse increment, including the legacy 10×6 inset
+compatibility question and the unsupported backdrop blur;
+`release-gate-checklist.md` records 12 release gates with current evidence, and
+the roadmap and parity baseline were refreshed to `51db91b`.
+
+Tests: `test/numeric-renderer.test.js` covers Custom 50% (0.5) versus zone-mode
+elapsed fallback and Max HR rendering for new and legacy lap rows;
+`test/fit-parser.test.js` covers field-16 parsing, the sentinel and the
+render-data round trip; `test/render-data.test.js` covers the appended field and
+legacy rows. The full Node/Lua suite passes with 200 tests. Host rendering and
+the Resolve undo contract remain unverified.
+
 ## Weather Preview, Solid Color Border And Calorie Fallback — 2026-11-01
 
 v24 completes three independent parity increments.

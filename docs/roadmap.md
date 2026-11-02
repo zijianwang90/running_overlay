@@ -1,39 +1,24 @@
 # Running Overlay Studio Roadmap
 
-Last updated: 2026-09-30
+Last updated: 2026-11-02
 
 ## Sibling Product: Running Overlay Resolve
 
-Status: P1 implementation, activity-file compatibility, and four-metric editing;
-human review before merge.
+Status: widget catalog implemented through v24; parity and release validation
+remain in progress.
 
-Implemented:
-
-- Independent FIT parsing and live Numeric Fuse rendering.
-- Read-only source/OTIO timing checks, unsupported-clip rejection, rational
-  piecewise alignment, and per-camera offset/drift calibration.
-- One-click creation/update of an owned Fusion overlay, including range changes
-  that preserve Fusion node styling and connections.
-- Local per-project/timeline settings, immutable bundle revisions, and stale-map
-  detection after editing or removing the managed overlay.
-- Compressed FIT timestamps and GPX track import, with missing metrics kept
-  unavailable through the Numeric renderer.
-- Panel add/remove/reorder for four Numeric metrics, three layout presets, and
-  independent Fusion styling and animation controls in one managed Fuse.
-- Filename capture-time candidates, calendar/clock/timezone selectors including
-  DST occurrence checks, saved timezone preferences, and a dark frameless panel.
-- Host tests at 24/25/29.97/30/50/59.94 fps with zero and one-hour starts, plus
-  real Workflow-panel creation/update and persistence checks.
-
-Remaining product work:
-
-- Broader verified source metadata and source-time support.
-- Full widget catalog and reviewed visual parity.
-- Portable project packaging, revision cleanup, signing/distribution, and OFX.
-- Remaining production performance/color-management matrix.
-
-See [Resolve testing](../RunningOverlayResolve/docs/testing.md) for precise host
-coverage and remaining gates.
+- Implemented: the full widget catalog, templates, offline bundles, user-level
+  credentials, keyless weather, Mapbox snapshots and detail tiles, calorie
+  fallback, Solid Color border, and panel weather preview.
+- Remaining: numeric container and effects (N2), presets (N1) and HR-zone tint
+  (N3); Elevation Chart presets, Running Gauge layouts, interval module surfaces,
+  Distance Timeline fade and media, and weather card presets. See the
+  [module parity audit](../RunningOverlayResolve/docs/module-parity-audit.md) for
+  these and other gaps.
+- Release gates: host validation matrix, licensing, installation and upgrade,
+  undo and persistence evidence, and merge through a PR. See the
+  [release gate checklist](../RunningOverlayResolve/docs/release-gate-checklist.md)
+  and [testing record](../RunningOverlayResolve/docs/testing.md).
 
 ## Milestone 0: Documentation Bootstrap
 
