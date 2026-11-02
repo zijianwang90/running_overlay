@@ -6,7 +6,7 @@ const METRICS = Object.freeze({ heartRate: 0, pace: 1, distance: 2, elapsed: 3, 
   avgPace: 8, verticalOscillation: 9, groundContactTime: 10, strideLength: 11,
   verticalRatio: 12, groundContactBalance: 13, temperature: 14, grade: 15, realTime: 16,
   distanceTimeline: 17, routeMap: 18, zoneEdgeBar: 19, elevationChart: 20, weatherWidget: 21,
-  date: 22, customNumeric: 23, heartRateZone: 24, runningGauge: 25, decoSolidColor: 26, decorIcon: 27, decorText: 28, lapPace: 29, intervalHUDBar: 30, intervalTimeline: 31, intervalCountdown: 32, intervalWorkSummary: 33 });
+  date: 22, customNumeric: 23, heartRateZone: 24, runningGauge: 25, decorSolidColor: 26, decorIcon: 27, decorText: 28, lapPace: 29, intervalHUDBar: 30, intervalTimeline: 31, intervalCountdown: 32, intervalWorkSummary: 33 });
 const DEFAULT_WIDGETS = Object.freeze([{ id: 'numeric-1', metric: 'heartRate' }]);
 
 function normalizeWidgets(value) {

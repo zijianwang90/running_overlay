@@ -2,7 +2,8 @@
 const path = require('node:path');
 const { invariant } = require('../domain/validation');
 const { METRICS, normalizeWidgets } = require('../domain/widgets');
-const { templateById, templateElement, fallbackPosition } = require('../domain/templates');
+const { templateById, resolvePlacements } = require('../domain/templates');
+const { EXCLUDED_STYLE_KEYS } = require('../domain/user-templates');
 
 function luaString(value) {
   let equals = '';
@@ -10,6 +11,12 @@ function luaString(value) {
   // Lua long strings discard an initial newline; a prefixed character avoids it.
   return `string.sub([${equals}[x${value}]${equals}], 2)`;
 }
+
+// Slot 1 predates the other fifteen and keeps its original color input names.
+const WIDGET_PREFIXES = `local prefixes = {"", "Pace", "Distance", "Elapsed"}
+for slot = 5, 16 do prefixes[slot] = "Widget" .. slot end
+local first_slot_keys = {R = "Red", G = "Green", B = "Blue", A = "Alpha"}
+local function style_key(prefix, suffix) return prefix == "" and first_slot_keys[suffix] or (prefix .. suffix) end`;
 
 const MAXIMUM_OFFSET_SECONDS = 86_400;
 // Real Time widgets display a fixed UTC offset; the Fuse has no timezone database.
@@ -23,12 +30,17 @@ function validOffsetSeconds(value) {
   return Math.round(value * 1000) / 1000;
 }
 
-function dataUpdateScript({ bundleDirectory, origin, token, initialize = false, widgets, templateId, initialTimeOffsetSeconds = 0, clockUtcOffsetHours = 0 }) {
+const seedValue = (value) => {
+  if (typeof value === 'string') return luaString(value);
+  return Array.isArray(value) ? `{${value[0]}, ${value[1]}}` : value;
+};
+
+function dataUpdateScript({ bundleDirectory, origin, token, initialize = false, widgets, templateId, customTemplate = null, initialTimeOffsetSeconds = 0, clockUtcOffsetHours = 0 }) {
   invariant(Number.isSafeInteger(origin), 'Invalid composition origin');
   const initialOffset = validOffsetSeconds(initialTimeOffsetSeconds);
   const clockOffset = validClockOffsetHours(clockUtcOffsetHours);
   const selected = normalizeWidgets(widgets);
-  const template = templateById(templateId);
+  const template = customTemplate ?? templateById(templateId);
   const fields = {
     ActivityFile: path.join(bundleDirectory, 'activity.roactivity'),
     SyncFile: path.join(bundleDirectory, 'sync.rosync'),
@@ -37,21 +49,10 @@ function dataUpdateScript({ bundleDirectory, origin, token, initialize = false, 
   };
   const assignments = Object.entries(fields).map(([key, value]) =>
     `{${luaString(key)}, ${typeof value === 'number' ? value : luaString(value)}}`).join(',\n');
-  const occurrences = new Map();
-  let fallback = 0;
   const seeded = [];
-  const desired = selected.map((widget) => {
-    // The template positions the first instance of each metric; duplicates and
-    // metrics the template does not place fall back to a free slot.
-    const occurrence = occurrences.get(widget.metric) ?? 0;
-    occurrences.set(widget.metric, occurrence + 1);
-    const templateEntry = templateElement(template, widget.metric, occurrence);
-    const position = templateEntry ?? fallbackPosition(fallback++);
-    // Duplicates keep the metric's template style even though they fall back
-    // to a free position.
-    const styles = (templateEntry ?? templateElement(template, widget.metric, 0))?.styles ?? {};
+  const desired = resolvePlacements(template, selected).map(({ widget, position, styles }) => {
     const seededStyles = Object.entries(styles)
-      .map(([suffix, value]) => `{${luaString(suffix)}, ${value}}`).join(', ');
+      .map(([suffix, value]) => `{${luaString(suffix)}, ${seedValue(value)}}`).join(', ');
     seeded.push(`  [${luaString(widget.id)}] = { ${seededStyles} }`);
     return `{id=${luaString(widget.id)}, metric=${luaString(widget.metric)}, metric_index=${METRICS[widget.metric]}, x=${position.x}, y=${position.y}}`;
   }).join(',\n');
@@ -106,8 +107,7 @@ local ok, message = pcall(function()
   -- A new renderer starts from the panel's draft offset. An existing renderer
   -- owns its offset, including Fusion animation; resyncs never reset it.
   if fresh then update("TimeOffset", ${initialOffset}) end
-  local prefixes = {"", "Pace", "Distance", "Elapsed"}
-  for slot = 5, 16 do prefixes[slot] = "Widget" .. slot end
+  ${WIDGET_PREFIXES}
   local legacy_slots = {heartRate = 1, pace = 2, distance = 3, elapsed = 4}
   local slots = comp:GetData("RunningOverlay.WidgetSlots") or {}
   local used = {}
@@ -137,7 +137,11 @@ local ok, message = pcall(function()
     -- A new instance adopts the template's starting style; later Fusion edits
     -- are never overwritten by a resync.
     if fresh or not slots[widget.id] then
-      for _, style in ipairs(template_styles[widget.id]) do update(prefix .. style[1], style[2]) end
+      for _, style in ipairs(template_styles[widget.id]) do
+        local key = style_key(prefix, style[1])
+        -- A saved template may predate an input this Fuse no longer has.
+        if ${customTemplate ? 'node:GetInput(key) ~= nil' : 'true'} then update(key, style[2]) end
+      end
     end
     -- A newly assigned instance starts on the activity's local clock; an existing
     -- instance keeps the offset the user chose in Fusion.
@@ -232,4 +236,92 @@ comp:SetData(status_key, token .. (ok and ("|ok|" .. result) or ("|error:" .. to
 `;
 }
 
-module.exports = { luaString, dataUpdateScript, timeOffsetScript, validOffsetSeconds, validClockOffsetHours };
+// Reads every style input of each active slot as JSON keyed by slot number. The
+// control plane pairs slots with panel widgets by metric, so a cut overlay's
+// pieces can be read without relying on composition data. Animated inputs
+// contribute their value at the current composition time.
+function templateCaptureScript({ token }) {
+  const excluded = EXCLUDED_STYLE_KEYS.map((key) => `[${luaString(key)}] = true`).join(', ');
+  return `
+local status_key = "RunningOverlay.Operation"
+local token = ${luaString(token)}
+local excluded = { ${excluded} }
+${WIDGET_PREFIXES}
+local first_slot_suffixes = {Red = "R", Green = "G", Blue = "B", Alpha = "A"}
+local function style_suffix(prefix, id)
+  if prefix == "" and first_slot_suffixes[id] then return first_slot_suffixes[id] end
+  return string.sub(id, #prefix + 1)
+end
+local escapes = {['"'] = '\\\\"', ['\\\\'] = '\\\\\\\\'}
+local function json_string(value)
+  return '"' .. string.gsub(value, '[%c"\\\\]', function(character)
+    return escapes[character] or string.format("\\\\u%04x", string.byte(character))
+  end) .. '"'
+end
+local function json_number(value)
+  if value ~= value or value == math.huge or value == -math.huge then return nil end
+  return string.format("%.17g", value)
+end
+local function json_point(value)
+  if type(value) ~= "table" then return nil end
+  local x, y = json_number(value[1] or value.X or 0/0), json_number(value[2] or value.Y or 0/0)
+  return x and y and ("[" .. x .. "," .. y .. "]") or nil
+end
+local function json_value(value)
+  if type(value) == "number" then return json_number(value) end
+  if type(value) == "string" then return json_string(value) end
+  if type(value) == "table" then return json_point(value) end
+end
+local ok, payload = pcall(function()
+  local node
+  for _, candidate in pairs(comp:GetToolList(false, "Fuse.RunningOverlayNumeric")) do
+    if candidate:GetData("RunningOverlay.ManagedNumeric") then node = candidate end
+  end
+  assert(node, "The managed overlay has no Numeric node.")
+  local suffixes = {}
+  for _, input in pairs(node:GetInputList()) do
+    local id = input:GetAttrs().INPS_ID
+    local suffix = id and string.match(id, "^Widget16(.+)$")
+    if suffix and not excluded[suffix] then table.insert(suffixes, suffix) end
+  end
+  -- Slot one predates the other fifteen and keeps its original input names.
+  local function read(prefix, suffix) return node:GetInput(style_key(prefix, suffix)) end
+  local slots = {}
+  for slot, prefix in ipairs(prefixes) do
+    local enabled = slot == 1 and node:GetInput("HeartRateEnabled") or read(prefix, "Enabled")
+    if type(enabled) == "number" and enabled ~= 0 then
+      local metric = node:GetInput(style_key(prefix, "Metric"))
+      local point = json_point(node:GetInput(style_key(prefix, "Position")))
+      assert(type(metric) == "number" and point, "Could not read widget slot " .. slot .. ".")
+      local styles = {}
+      for _, suffix in ipairs(suffixes) do
+        local value = json_value(read(prefix, suffix))
+        if value then table.insert(styles, json_string(suffix) .. ":" .. value) end
+      end
+      table.insert(slots, "\\"" .. slot .. "\\":{" .. "\\"metric\\":" .. metric .. ",\\"position\\":" .. point .. ",\\"styles\\":{" .. table.concat(styles, ",") .. "}}")
+    end
+  end
+  return "{" .. table.concat(slots, ",") .. "}"
+end)
+comp:SetData(status_key, token .. (ok and ("|ok|" .. payload) or ("|error:" .. tostring(payload))))
+`;
+}
+
+// Pairs captured slots with panel widgets by metric, in slot order. Duplicate
+// metrics pair with successive slots, as the update assigns them.
+function pairCapturedSlots(widgets, slots) {
+  const byIndex = new Map(Object.entries(METRICS).map(([name, index]) => [index, name]));
+  const entries = Object.entries(slots).map(([slot, value]) => ({ slot: Number(slot), metric: byIndex.get(value.metric), position: value.position, styles: value.styles }))
+    .filter((entry) => entry.metric).sort((left, right) => left.slot - right.slot);
+  const used = new Set();
+  const captured = {};
+  for (const widget of widgets) {
+    const entry = entries.find((candidate) => !used.has(candidate.slot) && candidate.metric === widget.metric);
+    if (!entry) continue;
+    used.add(entry.slot);
+    captured[widget.id] = { x: entry.position[0], y: entry.position[1], styles: entry.styles };
+  }
+  return captured;
+}
+
+module.exports = { luaString, dataUpdateScript, timeOffsetScript, validOffsetSeconds, validClockOffsetHours, templateCaptureScript, pairCapturedSlots };

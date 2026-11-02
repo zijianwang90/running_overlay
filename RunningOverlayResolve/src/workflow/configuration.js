@@ -7,6 +7,7 @@ const { invariant } = require('../domain/validation');
 const { buildCameraClockModel } = require('../sync/clock-model');
 const { normalizeWidgets } = require('../domain/widgets');
 const { normalizeTemplateId } = require('../domain/templates');
+const { normalizeUserTemplate } = require('../domain/user-templates');
 const { validateTimeZone } = require('../sync/capture-time');
 const { validateWeather, isWeatherCurrent } = require('../weather/weather');
 
@@ -47,6 +48,10 @@ function validateConfiguration(value) {
   invariant(Number.isSafeInteger(draftTimeOffsetMs) && Math.abs(draftTimeOffsetMs) <= 86_400_000, 'Data time offset must be within one day.');
   invariant(value.activityLabel == null || (typeof value.activityLabel === 'string' && value.activityLabel.length <= 255), 'Invalid activity name.');
   const activity = value.activity ? validateActivity(value.activity) : null;
+  // Applying a saved template copies it here, so deleting it from the library
+  // cannot invalidate this timeline's overlay.
+  const customTemplate = value.customTemplate ? normalizeUserTemplate(value.customTemplate) : null;
+  invariant(!customTemplate || value.templateId == null || value.templateId === customTemplate.id, 'Saved template identity mismatch.');
   // Weather is a cache: data bound to another activity or location is dropped
   // rather than blocking saved settings.
   const weather = activity && value.weather && isWeatherCurrent(value.weather, activity) ? validateWeather(value.weather, activity) : null;
@@ -57,7 +62,7 @@ function validateConfiguration(value) {
     // Offset used when the overlay is created. Afterwards the Fusion renderer is
     // authoritative and this value only mirrors its last known setting.
     draftTimeOffsetMs,
-    widgets: normalizeWidgets(value.widgets), templateId: normalizeTemplateId(value.templateId),
+    widgets: normalizeWidgets(value.widgets), templateId: customTemplate ? customTemplate.id : normalizeTemplateId(value.templateId), customTemplate,
     captureTimeZone: value.captureTimeZone == null ? null : validateTimeZone(value.captureTimeZone), captureTimeZonesByMediaId,
     confirmedCaptureUtcByMediaId, cameraAnchors,
     lastAppliedFingerprint: typeof value.lastAppliedFingerprint === 'string' ? value.lastAppliedFingerprint : null,
