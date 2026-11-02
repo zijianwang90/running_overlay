@@ -29,4 +29,6 @@ fix and disclosure timeline. No fixed response-time SLA is currently offered.
 Running Overlay Studio processes activity timestamps, GPS traces, local media paths,
 and optional API credentials. Test cases and issue reports must use synthetic
 or intentionally public data. OpenWeather keys and signing credentials must
-never be committed.
+never be committed. Provider tokens are user-supplied and stored in local
+settings or the macOS Keychain; the repository and packaged plugin ship no
+provider key. See [Credential Policy](security/credentials.md).

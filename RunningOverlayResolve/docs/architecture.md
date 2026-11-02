@@ -306,10 +306,11 @@ both in the manifest. The Fuse takes the snapshot through an optional `MapImage`
 input connected to a managed Loader; it transforms that image in the same camera
 as the trace, masks image, trace and arrow to the route card, and can pan to the
 current sample, zoom from 1 to 8, and rotate course-up. Map rendering remains
-fully offline and deterministic after the bundle is published; the token lives
-only in local project settings and never in the bundle, templates or repository.
-See [ADR 0012](../../docs/adr/0012-resolve-cached-map-snapshot.md). Live tiles,
-provider alternatives and the Mac MapKit presets remain future work.
+fully offline and deterministic after the bundle is published. The token is a
+user-level setting stored in `settings.json` on this Mac, never in a project
+file, bundle, template or the repository; legacy project tokens migrate on the
+first scan. See [ADR 0012](../../docs/adr/0012-resolve-cached-map-snapshot.md).
+Live tiles, provider alternatives and the Mac MapKit presets remain future work.
 
 ## Race Zone And Elevation Modules (v12/v13)
 

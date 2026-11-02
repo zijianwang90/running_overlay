@@ -7,8 +7,10 @@ the offline render contract. When the panel has a public `pk.*` token and a Rout
 one Static Images snapshot is fetched per apply, using the same Web Mercator
 bounds and coverage factor as the Fuse. The 1280×1280@2x PNG and token-free metadata are
 written into the immutable bundle (`map.png`, `map.json`) and recorded in the
-manifest. The token stays in local project settings; it is never written into the
-bundle, templates, logs or repository.
+manifest. The token is a user-level setting in `settings.json` on this Mac; it is
+never written into a project file, the bundle, templates, logs or repository.
+Legacy project tokens migrate to settings on the first scan, and the project
+file is rewritten without the token.
 
 The control-plane script creates or updates a Loader marked
 `RunningOverlay.ManagedMapLoader`, connects it to the Fuse's optional `MapImage`
@@ -33,8 +35,12 @@ entries, four-quadrant detail-tile frames and fetching, tile manifests and
 one-snapshot caching in the workflow service. Fusion-script tests assert the
 managed Loaders, `MapImage` and `MapTile1`–`MapTile4` connections and the
 `RouteMapBackground` write; Fuse tests select the tile under the camera above
-1.5× zoom and fall back to the overview. 167 Node/Lua tests and static checks
-pass.
+1.5× zoom and fall back to the overview. `test/settings.test.js` covers the
+user-level settings file (validation, `0600`/`0700` modes, atomic save, corrupt
+JSON) and the workflow tests cover legacy token migration and token-free
+project files. `scripts/scan-credentials.sh --self-test` verifies the
+publication credential scan against a planted fake token. 183 Node/Lua tests and
+static checks pass.
 
 Host evidence: Resolve Studio 21.1.1, independent `RO Numeric v7 Validation`
 project, synthetic 100-record Toronto route on Bloor/Yonge/Church/Bathurst, at
@@ -89,6 +95,21 @@ rendered the template-default minimal timeline unchanged. The validation project
 was saved and the original `Overlay Test` project was reloaded. Only 1080p was
 inspected; preset visual variants, the media slot, route/elevation underlays and
 live undo remain unchecked.
+
+## Visual Presets, Elevation Profile And UHD — 2026-11-01
+
+The Distance Timeline preset selector adds Dense, Sport, Splits, Glass, Neon,
+Lower Third and Route layers over Custom/Minimal; Lua tests assert that each
+preset adds the expected layers while Custom and Minimal stay equivalent. The
+Route Map container presets share one card mask between the snapshot and the
+trace, and the stats bar test covers its slots and dividers. An independent
+`TimelineElevationProfile` checkbox draws the elevation-shaped progress curve
+for any preset; with no usable elevation samples it falls back to the straight
+track, and the Route preset keeps its original curve behavior. UHD and
+non-16:9 tests pin the width-normalized sizes and the `aspect =
+(Height*YScale)/(Width*XScale)` Y conversion. These tests execute the real Fuse
+in fengari and do not require Resolve or the network; host acceptance of the
+visual presets and UHD matrix remains manual.
 
 ## Template Library — 2026-11-01
 
@@ -307,6 +328,26 @@ divider, border and 22% shadow. All 188 configured inputs survived save, close
 and reopen; the original project was restored. Real activity/API fidelity,
 UHD/non-16:9 output and the remaining card presets still need validation and
 human visual review.
+
+## Provider Credentials And Keyless Weather — 2026-11-01
+
+Provider tokens are user-supplied and live in one user-level `settings.json`
+(`0600`, directory `0700`), not in a project file. `test/settings.test.js`
+covers defaults, validation, corrupt JSON, file modes and atomic save;
+workflow tests cover legacy project-token migration, token-free project files
+and token-free map metadata. The panel Settings card exposes the token input and
+a clear action; the renderer sends only the token value over a narrow IPC
+channel. `scripts/scan-credentials.sh` scans the paths that can ship for
+Mapbox, AWS, GitHub, Slack, PEM and credential-assignment patterns, and its
+`--self-test` proves a planted fake token fails while a clean file passes.
+Tests, fixtures and docs are excluded because synthetic tokens are legitimate
+there. See `docs/security/credentials.md` and `docs/credentials.md`.
+
+Weather remains keyless through Open-Meteo. New mocked-fetch tests cover
+`geocodeLocation` (place-name lookup) and `fetchWeatherForecast` (1–16 daily
+forecasts), including URL parameters, condition mapping, missing arrays, HTTP
+errors, timeouts and unreadable JSON; neither URL carries a token or key. The
+panel does not call these functions yet, so no host validation applies to them.
 
 ## Race HR Zone Bar And Elevation Chart — 2026-11-01
 

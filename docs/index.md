@@ -31,7 +31,7 @@ entries in `project-log.md`.
 | Project persistence or undo | `docs/architecture.md`, `docs/development/persistence.md` |
 | UI design system | `docs/design/README.md`, `docs/design/system/` |
 | Fixtures and snapshots | `docs/testing.md` |
-| Security and privacy | `docs/security.md` |
+| Security and privacy | `docs/security.md`, `docs/security/credentials.md` |
 | User data and network behavior | `PRIVACY.md` |
 | Mac App Store packaging and submission | `docs/development/release.md`, `docs/app-store-readiness.md` |
 | App Store marketing screenshots | `docs/app-store-screenshot-template.md` |

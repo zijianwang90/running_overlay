@@ -32,9 +32,11 @@ provide near the runner.
   units so the overview and tiles share one transform. Detail requests are
   billable, so a failed tile fetch keeps the overview and reports the error
   instead of failing the apply.
-- The public `pk.*` token belongs only to local project settings. It is never
-  written into the bundle, templates, logs or repository. Fetches use the token
-  in the query string only for that request.
+- The public `pk.*` token belongs to one user-level settings file on this Mac,
+  not to a project file. It is never written into the bundle, templates, logs or
+  repository. Legacy project tokens migrate to settings on the first scan.
+  Fetches use the token in the query string only for that request. The product
+  ships no provider key; users paste their own.
 - Provider or network failures are non-fatal: the panel reports the error, skips
   the background and still publishes data and the transparent trace.
 - The map, trace, position marker and direction arrow share one camera and card
