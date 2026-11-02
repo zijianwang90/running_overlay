@@ -65,9 +65,10 @@ Snapshot updates are not routine golden-file maintenance. The pull request
 must include before/after images and explain why the visual change is correct.
 A human reviewer must inspect changed snapshots.
 
-Snapshots should favor deterministic Core Graphics geometry and synthetic
-data. Avoid network-backed maps, current time, locale-sensitive content, or
-fonts that differ across supported systems.
+Snapshots render through the shipping `SwiftUIOverlayVideoExporter` path and
+should use deterministic geometry and synthetic data. Avoid network-backed
+maps, current time, locale-sensitive content, or fonts that differ across
+supported systems.
 
 ## Performance Tests
 

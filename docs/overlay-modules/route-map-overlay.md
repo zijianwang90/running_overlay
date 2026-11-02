@@ -133,7 +133,7 @@ struct RouteGeometry: Equatable {
 4. 将经纬度投影到 2D overlay rect。Map Style 使用 Web Mercator；无底图样式可以用同一投影保证一致。
 5. 按当前 elapsed time 拆分 completed route 和 remaining route。
 6. 根据独立的 map / line / marker / stats bar 设置绘制底图、路线、进度点、起终点、legend。
-7. 导出时在 `OverlayFrameRenderer` 中复用相同 layout 和 geometry cache。
+7. 导出时在共享 SwiftUI Route Map 视图中复用相同 layout 和 geometry cache。
 
 ## 8. Animation Behavior
 

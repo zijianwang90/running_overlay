@@ -6,6 +6,8 @@ without changing visual output or export timing.
 
 ## Current Export Path
 
+- `SwiftUIOverlayVideoExporter` is the only overlay renderer. The former
+  `OverlayFrameRenderer` CGContext path was removed and must not be reintroduced.
 - `SwiftUIOverlayVideoExporter` exports one transparent MOV per segment.
 - HEVC-with-alpha output sets VideoToolbox
   `PrioritizeEncodingSpeedOverQuality`, keeping the project bitrate. If

@@ -78,7 +78,7 @@ Implemented in the Swift app as a dedicated `.elevationChart` overlay path:
 - Shared Layout: `CollapsibleLayoutInspectorSection` + `OverlayLayoutInspectorRows`.
 - Shared Stats Bar: `CollapsibleStatsBarInspectorSection` + `OverlayStatsBarInspectorRows`, backed by `DistanceTimelineStatsBarConfig`.
 - Preview renderer: `PreviewCanvasView.ElevationChartOverlayView`.
-- Export renderer: `OverlayFrameRenderer.renderElevationChart`.
+- Export renderer: `SwiftUIOverlayVideoExporter` via the shared SwiftUI Elevation Chart view.
 - Render layout: `OverlayRenderModel.elevationChartLayout`.
 
 Current implementation keeps the first-version surface focused: compact visual presets, line/fill controls, current marker, optional axis/grid, big elevation emphasis, shared background/effects, and the reusable stats bar. `Dark Terrain` currently maps to a two-tone area treatment split around current progress; slope-based climb/descent segmentation remains a later renderer enhancement.

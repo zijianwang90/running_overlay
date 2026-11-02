@@ -1923,7 +1923,24 @@ struct OverlayRenderModelTests {
     }
 
     @MainActor
-    @Test func overlayFrameRendererWritesRunningGaugePNG() throws {
+    private func renderFramePNG(
+        to url: URL,
+        size: CGSize,
+        layout: OverlayLayout,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval
+    ) async throws {
+        try await SwiftUIOverlayVideoExporter.exportFramePNG(
+            overlayLayout: layout,
+            activity: activity,
+            elapsedTime: elapsedTime,
+            size: size,
+            outputURL: url
+        )
+    }
+
+    @MainActor
+    @Test func swiftUIExporterWritesRunningGaugePNG() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer {
@@ -1934,15 +1951,12 @@ struct OverlayRenderModelTests {
         let layout = OverlayLayout(elements: [
             OverlayElement(type: .runningGauge, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: .default)
         ])
-        try OverlayFrameRenderer.renderPNG(
+        try await renderFramePNG(
             to: outputURL,
-            request: OverlayFrameRenderRequest(
-                size: CGSize(width: 640, height: 360),
-                layout: layout,
-                activity: ProjectDocument.calibrationActivity(),
-                elapsedTime: 1.5,
-                renderGuides: false
-            )
+            size: CGSize(width: 640, height: 360),
+            layout: layout,
+            activity: ProjectDocument.calibrationActivity(),
+            elapsedTime: 1.5
         )
 
         let data = try Data(contentsOf: outputURL)
@@ -1951,7 +1965,7 @@ struct OverlayRenderModelTests {
     }
 
     @MainActor
-    @Test func overlayFrameRendererWritesRouteMapPNG() throws {
+    @Test func swiftUIExporterWritesRouteMapPNG() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer {
@@ -1965,15 +1979,12 @@ struct OverlayRenderModelTests {
         let layout = OverlayLayout(elements: [
             OverlayElement(type: .routeMap, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
         ])
-        try OverlayFrameRenderer.renderPNG(
+        try await renderFramePNG(
             to: outputURL,
-            request: OverlayFrameRenderRequest(
-                size: CGSize(width: 640, height: 360),
-                layout: layout,
-                activity: sampleRouteActivity(),
-                elapsedTime: 5,
-                renderGuides: false
-            )
+            size: CGSize(width: 640, height: 360),
+            layout: layout,
+            activity: sampleRouteActivity(),
+            elapsedTime: 5
         )
 
         let data = try Data(contentsOf: outputURL)
@@ -1982,7 +1993,7 @@ struct OverlayRenderModelTests {
     }
 
     @MainActor
-    @Test func overlayFrameRendererWritesZoneEdgeBarPNG() throws {
+    @Test func swiftUIExporterWritesZoneEdgeBarPNG() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer {
@@ -1997,15 +2008,12 @@ struct OverlayRenderModelTests {
         let layout = OverlayLayout(elements: [
             OverlayElement(type: .zoneEdgeBar, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
         ])
-        try OverlayFrameRenderer.renderPNG(
+        try await renderFramePNG(
             to: outputURL,
-            request: OverlayFrameRenderRequest(
-                size: CGSize(width: 640, height: 360),
-                layout: layout,
-                activity: ProjectDocument.calibrationActivity(),
-                elapsedTime: 1.5,
-                renderGuides: false
-            )
+            size: CGSize(width: 640, height: 360),
+            layout: layout,
+            activity: ProjectDocument.calibrationActivity(),
+            elapsedTime: 1.5
         )
 
         let data = try Data(contentsOf: outputURL)
@@ -2014,7 +2022,7 @@ struct OverlayRenderModelTests {
     }
 
     @MainActor
-    @Test func overlayFrameRendererWritesIntervalCountdownPNG() throws {
+    @Test func swiftUIExporterWritesIntervalCountdownPNG() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer {
@@ -2028,15 +2036,12 @@ struct OverlayRenderModelTests {
         let layout = OverlayLayout(elements: [
             OverlayElement(type: .intervalCountdown, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
         ])
-        try OverlayFrameRenderer.renderPNG(
+        try await renderFramePNG(
             to: outputURL,
-            request: OverlayFrameRenderRequest(
-                size: CGSize(width: 640, height: 360),
-                layout: layout,
-                activity: sampleIntervalActivity(),
-                elapsedTime: 40,
-                renderGuides: false
-            )
+            size: CGSize(width: 640, height: 360),
+            layout: layout,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 40
         )
 
         let data = try Data(contentsOf: outputURL)
@@ -2045,7 +2050,7 @@ struct OverlayRenderModelTests {
     }
 
     @MainActor
-    @Test func overlayFrameRendererWritesDistanceTimelineAnimatedSVGSlotPNG() throws {
+    @Test func swiftUIExporterWritesDistanceTimelineAnimatedSVGSlotPNG() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer {
@@ -2068,15 +2073,12 @@ struct OverlayRenderModelTests {
         let layout = OverlayLayout(elements: [
             OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
         ])
-        try OverlayFrameRenderer.renderPNG(
+        try await renderFramePNG(
             to: outputURL,
-            request: OverlayFrameRenderRequest(
-                size: CGSize(width: 640, height: 360),
-                layout: layout,
-                activity: ProjectDocument.calibrationActivity(),
-                elapsedTime: 1.0,
-                renderGuides: false
-            )
+            size: CGSize(width: 640, height: 360),
+            layout: layout,
+            activity: ProjectDocument.calibrationActivity(),
+            elapsedTime: 1.0
         )
 
         let data = try Data(contentsOf: outputURL)
@@ -2114,7 +2116,7 @@ struct OverlayRenderModelTests {
     }
 
     @MainActor
-    @Test func overlayFrameRendererWritesCalibrationPNG() throws {
+    @Test func swiftUIExporterWritesCalibrationPNG() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer {
@@ -2122,15 +2124,12 @@ struct OverlayRenderModelTests {
         }
 
         let outputURL = directory.appendingPathComponent("frame.png")
-        try OverlayFrameRenderer.renderPNG(
+        try await renderFramePNG(
             to: outputURL,
-            request: OverlayFrameRenderRequest(
-                size: CGSize(width: 320, height: 180),
-                layout: ProjectDocument.calibrationOverlayLayout(),
-                activity: ProjectDocument.calibrationActivity(),
-                elapsedTime: 1.5,
-                renderGuides: true
-            )
+            size: CGSize(width: 320, height: 180),
+            layout: ProjectDocument.calibrationOverlayLayout(),
+            activity: ProjectDocument.calibrationActivity(),
+            elapsedTime: 1.5
         )
 
         let data = try Data(contentsOf: outputURL)
@@ -2139,7 +2138,7 @@ struct OverlayRenderModelTests {
     }
 
     @MainActor
-    @Test func overlayFrameRendererWritesIntervalWorkSummaryPNG() throws {
+    @Test func swiftUIExporterWritesIntervalWorkSummaryPNG() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer {
@@ -2159,15 +2158,12 @@ struct OverlayRenderModelTests {
         let layout = OverlayLayout(elements: [
             OverlayElement(type: .intervalWorkSummary, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
         ])
-        try OverlayFrameRenderer.renderPNG(
+        try await renderFramePNG(
             to: outputURL,
-            request: OverlayFrameRenderRequest(
-                size: CGSize(width: 640, height: 360),
-                layout: layout,
-                activity: sampleIntervalActivity(),
-                elapsedTime: 103,
-                renderGuides: false
-            )
+            size: CGSize(width: 640, height: 360),
+            layout: layout,
+            activity: sampleIntervalActivity(),
+            elapsedTime: 103
         )
 
         let data = try Data(contentsOf: outputURL)

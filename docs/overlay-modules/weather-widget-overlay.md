@@ -189,9 +189,9 @@ case .weatherWidget:
         .overlayForegroundEffects(element: element)
 ```
 
-### Export Renderer (`OverlayFrameRenderer.swift`)
+### Export Renderer (`SwiftUIOverlayVideoExporter`)
 
-Add case in `renderElement`. Private `renderWeatherWidget` method: compute layout, construct `WeatherWidgetOverlayView`, rasterise via `ImageRenderer(scale: 2.0)`, draw CGImage at `layout.rect`. Same `ImageRenderer` pattern already used by the lap overlays.
+Export reuses the same shared SwiftUI weather widget view. `SwiftUIOverlayVideoExporter` rasterizes the frame with `ImageRenderer`; there is no separate export renderer.
 
 ### Inspector UI (`WeatherWidgetOverlayDetailView.swift`)
 
@@ -266,7 +266,7 @@ Also update `defaultOverlayStyle(for:)` to set `style.weatherWidget = .preset(.s
 3. `WeatherWidgetRenderLayout` + `weatherWidgetLayout(for:in:)`
 4. `ProjectDocument` mutation methods
 5. SwiftUI preview views + `PreviewCanvasView` routing
-6. `OverlayFrameRenderer` export path
+6. SwiftUI export path (`SwiftUIOverlayVideoExporter`)
 7. Overlay Pool tile registration
 8. `ParameterPanelView` routing
 9. Inspector detail view
