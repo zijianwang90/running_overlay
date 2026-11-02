@@ -681,6 +681,109 @@ assert(preset_shapes(8) > custom, 'route')
 assert(preset_shapes(1) == custom, 'minimal')
 `));
 
+test('Route Map container presets pick the shape and feather the edge', () => run(HOST + `
+local function route_shape()
+ local s={points={},TransformOfShape=function(self) return self end}
+ function s:MoveTo(x,y) table.insert(self.points,{x,y}) end
+ function s:LineTo(x,y) table.insert(self.points,{x,y}) end
+ function s:Close() end
+ function s:OutlineOfShape() return self end
+ return s
+end
+Shape=route_shape
+Matrix4=function() return {Identity=function() end, RotZ=function() end, Move=function() end} end
+Image=function()
+ local image={Height=1080,Width=1920,XScale=1,YScale=1,Fill=function() end}
+ function image:CopyOf() return Image() end
+ function image:ChannelOpOf() return image end
+ function image:Merge() end
+ function image:Blur(dest, tags) table.insert(events,{kind='blur',size=tags.BLUR_XSize}) end
+ return image
+end
+local map_image={Width=1280,Height=1280}
+function map_image:Transform(destination) destination.transformed=true end
+inputs.MapImage.value=map_image
+local records={{elapsed_us=0,latitude_deg=0,longitude_deg=0},{elapsed_us=10,latitude_deg=1,longitude_deg=1}}
+load_data=function() return {route=prepare_route(records),records=records} end
+sample_activity=function() return {route_x=0,route_y=0} end
+inputs.Metric.value=ROUTE_METRIC; inputs.ShadowEnabled.value=0
+inputs.Position.value={X=0.5,Y=0.5}
+inputs.RouteMarker.value=0; inputs.RouteEndpoints.value=0; inputs.RouteAttribution.value=''
+inputs.RouteMapBackground.value=1; inputs.RouteMapOpacity.value=1
+local function card_shape()
+ for _,entry in ipairs(of('shape')) do
+  local shape=entry.shape
+  if shape.kind=='capsule' and near(shape.w,shape.h) and shape.w>0.1 then return shape end
+ end
+ return nil
+end
+inputs.RouteContainer.value=1
+events={}; Process(req)
+assert(#of('blur')==0, 'hard edge must not blur')
+local square=card_shape()
+assert(square ~= nil, 'card mask missing')
+-- Square Hard Edge uses the small corner radius, Circle Hard Edge a full circle.
+assert(square.l + square.w/2 > 0.49 and square.l + square.w/2 < 0.51, square.l .. ' ' .. square.w)
+inputs.RouteContainer.value=2
+events={}; Process(req)
+assert(#of('blur')==0, 'circle hard edge must not blur')
+inputs.RouteContainer.value=3
+events={}; Process(req)
+assert(#of('blur')==1, 'square gradient edge blur: ' .. #of('blur'))
+assert(near(of('blur')[1].size, inputs.RouteEdgeFade.value))
+inputs.RouteContainer.value=4
+events={}; Process(req)
+assert(#of('blur')==1, 'circle gradient edge blur: ' .. #of('blur'))
+-- The gradient-edge mask is also the trace mask, so both fade together.
+assert(card_shape() ~= nil, 'gradient card mask missing')
+`));
+
+test('Route Map stats bar renders configured slots and dividers', () => run(HOST + `
+local function route_shape()
+ local s={points={},TransformOfShape=function(self) return self end}
+ function s:MoveTo(x,y) table.insert(self.points,{x,y}) end
+ function s:LineTo(x,y) table.insert(self.points,{x,y}) end
+ function s:Close() end
+ function s:OutlineOfShape() return self end
+ return s
+end
+Shape=route_shape
+Matrix4=function() return {Identity=function() end, RotZ=function() end, Move=function() end} end
+Image=function()
+ local image={Height=1080,Width=1920,XScale=1,YScale=1,Fill=function() end}
+ function image:CopyOf() return Image() end
+ function image:ChannelOpOf() return image end
+ function image:Merge() end
+ function image:Blur(dest, tags) table.insert(events,{kind='blur',size=tags.BLUR_XSize}) end
+ return image
+end
+local records={{elapsed_us=0,latitude_deg=0,longitude_deg=0},{elapsed_us=10,latitude_deg=1,longitude_deg=1}}
+load_data=function() return {route=prepare_route(records),records=records,total_distance_m=2000,pauses={},timeline_start_frame=0} end
+sample_activity=function() return {route_x=0,route_y=0,distance_m=1000} end
+inputs.Metric.value=ROUTE_METRIC; inputs.ShadowEnabled.value=0
+inputs.RouteMarker.value=0; inputs.RouteEndpoints.value=0; inputs.RouteAttribution.value=''
+inputs.RouteMapBackground.value=0; inputs.RouteContainer.value=0
+assert(inputs.RouteStatsBar and inputs.RouteStats1Visible and inputs.RouteStats1Metric and inputs.RouteStats2Metric, 'stats inputs missing')
+inputs.RouteStatsBar.value=1; inputs.RouteStats1Visible.value=1; inputs.RouteStats1Metric.value=0
+inputs.RouteStats2Visible.value=1; inputs.RouteStats2Metric.value=4
+inputs.RouteStatsDivider.value=0.4
+events={}
+local ok, err = xpcall(function() Process(req) end, debug.traceback)
+assert(ok, tostring(err))
+local texts=of('text')
+assert(#texts >= 4, #texts)
+local labels={}
+for _,entry in ipairs(texts) do labels[entry.text]=true end
+assert(labels['DISTANCE'] and labels['ELAPSED'], table.concat((function() local r={} for k in pairs(labels) do table.insert(r,k) end return r end)(), ','))
+-- Background and one divider are drawn for the two-slot bar.
+local capsules=0
+for _,entry in ipairs(of('shape')) do if entry.shape.kind=='capsule' and entry.shape.h < 0.05 then capsules=capsules+1 end end
+assert(capsules >= 2, capsules)
+-- Turning the bar off removes both labels.
+inputs.RouteStatsBar.value=0; events={}; Process(req)
+for _,entry in ipairs(of('text')) do assert(entry.text ~= 'DISTANCE') end
+`));
+
 test('unit line boxes follow start, center and end alignment independently of icons', () => run(HOST + `
 load_data=function() return {} end
 sample_activity=function() return {distance_m=1000} end

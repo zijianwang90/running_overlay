@@ -1414,7 +1414,7 @@ function Create()
 	local function route_options(key, group)
 		local function number(label, suffix, default, min, max) return number_in(group, label, key .. "Route" .. suffix, default, min, max) end
 		local function check(label, suffix, default) return check_in(group, label, key .. "Route" .. suffix, default) end
-		return {
+		local r = {
 			size = number("Map Size", "Size", 332 * 0.75 / 1280, 0.02, 1),
 			padding = number("Map Padding", "Padding", 32 * 0.75 / 1280, 0, 0.2),
 			width = number("Route Width", "Width", 4 * 0.75 / 1280, 0.0005, 0.03),
@@ -1438,7 +1438,39 @@ function Create()
 				LINKID_DataType = "Text", INPID_InputControl = "TextEditControl",
 				INP_DefaultText = "© Mapbox © OpenStreetMap", TEC_Lines = 1}),
 			attribution_size = number("Attribution Size", "AttributionSize", 7 * 0.75 / 1280, 0.002, 0.02),
+			-- Mac container presets: shape plus a hard or feathered edge.
+			container = combo_in(group, "Container Preset", key .. "RouteContainer",
+				{"Custom", "Square Hard Edge", "Circle Hard Edge", "Square Gradient Edge", "Circle Gradient Edge"}, 0),
+			edge_fade = number("Edge Fade Amount", "EdgeFade", 0.02, 0, 0.08),
+			-- Stats bar attached to the map card, sharing the timeline's metrics.
+			stats = check("Stats Bar", "StatsBar", 0),
+			stats_placement = combo_in(group, "Stats Bar Placement", key .. "RouteStatsPlacement", {"Bottom", "Top", "Left", "Right"}, 0),
+			stats_inside = check("Stats Bar Inside", "StatsInside", 0),
+			stats_width = number("Stats Bar Width (0 = automatic)", "StatsWidth", 0, 0, 1),
+			stats_height = number("Stats Bar Height", "StatsHeight", 42 / 1280, 0.01, 0.2),
+			stats_offset_x = number("Stats Bar Offset X", "StatsOffsetX", 0, -0.3, 0.3),
+			stats_offset_y = number("Stats Bar Offset Y", "StatsOffsetY", 0, -0.3, 0.3),
+			stats_spacing = number("Stats Item Gap", "StatsSpacing", 0, 0, 0.05),
+			stats_background = number("Stats Background Opacity", "StatsBackground", 0.72, 0, 1),
+			stats_corner = number("Stats Corner Radius", "StatsCorner", 8 / 1280, 0, 0.05),
+			stats_divider = number("Stats Divider Opacity", "StatsDivider", 0.12, 0, 1),
+			stats_value_size = number("Stats Value Size", "StatsValueSize", 30 / 1280, 0.003, 0.1),
+			stats_label_size = number("Stats Label Size", "StatsLabelSize", 10 / 1280, 0.002, 0.05),
+			stats_value_color = color_in(group, "Stats Value Color", key .. "RouteStatsValue", {1, 1, 1}, 39, false),
+			stats_label_color = color_in(group, "Stats Label Color", key .. "RouteStatsLabel", {1, 1, 1}, 40, false),
+			stats_label_opacity = number("Stats Label Opacity", "StatsLabelOpacity", 0.58, 0, 1),
+			stats_slots = {},
 		}
+		for index = 1, 4 do
+			r.stats_slots[index] = {
+				visible = check("Stats " .. index .. " Visible", "Stats" .. index .. "Visible", index == 1 and 1 or 0),
+				metric = combo_in(group, "Stats " .. index .. " Metric", key .. "RouteStats" .. index .. "Metric",
+					TIMELINE_STATS_METRIC_NAMES, index == 1 and 0 or (index == 2 and 3 or 0)),
+				label = add(group, "Stats " .. index .. " Label", key .. "RouteStats" .. index .. "Label", {
+					LINKID_DataType = "Text", INPID_InputControl = "TextEditControl", INP_DefaultText = "", TEC_Lines = 1}),
+			}
+		end
+		return r
 	end
 	local function zone_options(key, group)
 		local function number(label, suffix, default, min, max) return number_in(group, label, key .. "Zone" .. suffix, default, min, max) end
@@ -2378,7 +2410,8 @@ function Process(req)
 			local before = best_path[math.max(best_index - 1, 1)]
 			local after = best_path[math.min(best_index + 1, #best_path)]
 			if before == after then return 0 end
-			return math.atan2(after.x - before.x, after.y - before.y) * 180 / math.pi
+			-- Fusion ships Lua 5.1 with math.atan2; newer Lua only has math.atan.
+			return (math.atan2 or math.atan)(after.x - before.x, after.y - before.y) * 180 / math.pi
 		end
 		local function render_route(position, widget_font, widget_style, r, options)
 			local map_image = InMapImage ~= nil and InMapImage:GetValue(req) or nil
@@ -2389,6 +2422,10 @@ function Process(req)
 			-- template's circular container even for diagonal route bounds.
 			local extent = math.max(size - 2 * padding, 1 / output.Width) / math.sqrt(2)
 			local cx, cy = position.X, position.Y * aspect
+			-- Container presets pick the shape and whether the card edge feathers.
+			local container = math.floor(value_of(r.container) + 0.5)
+			local circle = container == 2 or container == 4 or (container == 0 and value_of(r.map_shape) <= 0.5)
+			local edge_fade = (container == 3 or container == 4) and math.max(value_of(r.edge_fade), 0) or 0
 			local width = math.max(value_of(r.width), 1 / output.Width)
 			-- The follow camera moves the route trace and the snapshot with the
 			-- same transform. Route coordinates are centered on the route's
@@ -2463,8 +2500,17 @@ function Process(req)
 					-- past the card the route trace uses.
 					local mask = output:CopyOf()
 					mask:Fill(Pixel{R=0,G=0,B=0,A=0})
-					local corner = value_of(r.map_shape) <= 0.5 and size / 2 or math.max(value_of(r.map_radius), 0)
+					local corner = circle and size / 2 or math.max(value_of(r.map_radius), 0)
 					fill_shape(mask, capsule(cx - size/2, cy - size/2, size, size, corner), Pixel{R=1,G=1,B=1,A=1}, quality)
+					-- Gradient-edge presets feather the alpha mask, so the snapshot
+					-- and trace fade into the frame instead of ending on a hard rim.
+					if edge_fade > 0 then
+						local blurred = Image({IMG_Like = output})
+						mask:Blur(blurred, {BLUR_Type = 4, BLUR_Red = true, BLUR_Green = true, BLUR_Blue = true, BLUR_Alpha = true,
+							BLUR_XSize = edge_fade, BLUR_YSize = edge_fade, BLUR_Blend = 1, BLUR_Normalize = 1, BLUR_Passes = 0,
+							BLUR_RedScale = 1, BLUR_GreenScale = 1, BLUR_BlueScale = 1, BLUR_AlphaScale = 1})
+						mask = blurred
+					end
 					map = map:ChannelOpOf("Multiply", mask, {R="fg.R", G="fg.G", B="fg.B", A="fg.A"})
 					output:Merge(map, MERGE_OVER)
 					card_mask = mask
@@ -2527,6 +2573,102 @@ function Process(req)
 			if card_mask ~= nil then
 				target = target:ChannelOpOf("Multiply", card_mask, {R="fg.R", G="fg.G", B="fg.B", A="fg.A"})
 				output:Merge(target, MERGE_OVER)
+			end
+			-- Stats bar attached to the card, outside the card mask so an outside
+			-- bar is never clipped by the container shape.
+			if value_of(r.stats) > 0.5 then
+				local items = {}
+				for index = 1, 4 do
+					local slot = r.stats_slots[index]
+					if value_of(slot.visible) > 0.5 then
+						local metric_index = slot_metric(slot.metric, TIMELINE_STATS_METRIC_NAMES, TIMELINE_STATS_METRIC_VALUES)
+						local label, value, slot_unit = metric_text(metric_index, sample, elapsed_us, data, 0, nil, true, 0, 0, 0, 0, "", nil)
+						local custom_label = tostring(value_of(slot.label) or ""):match("^%s*(.-)%s*$")
+						if custom_label ~= "" then label = custom_label end
+						table.insert(items, {label = label, text = slot_unit ~= "" and value .. " " .. slot_unit or value})
+					end
+				end
+				if #items > 0 then
+					local placement = math.floor(value_of(r.stats_placement) + 0.5)
+					local vertical = placement >= 2
+					local bar_height = math.max(value_of(r.stats_height), 10 / 1280)
+					local bar_width = value_of(r.stats_width) > 0 and math.min(value_of(r.stats_width), size * 2) or size
+					local gap = 6 / 1280
+					local card_left, card_right = cx - size / 2, cx + size / 2
+					local card_bottom, card_top = cy - size / 2, cy + size / 2
+					local bar_x, bar_y
+					if value_of(r.stats_inside) > 0.5 then
+						bar_width = math.min(bar_width, size)
+						if vertical then
+							bar_x = placement == 2 and card_left + gap or card_right - gap - bar_width
+							bar_y = cy - bar_height / 2
+						else
+							bar_x = cx - bar_width / 2
+							bar_y = placement == 0 and card_bottom + gap or card_top - gap - bar_height
+						end
+					elseif placement == 0 then
+						bar_x, bar_y = cx - bar_width / 2, card_bottom - gap - bar_height
+					elseif placement == 1 then
+						bar_x, bar_y = cx - bar_width / 2, card_top + gap
+					elseif placement == 2 then
+						bar_x, bar_y = card_left - gap - bar_width, cy - bar_height / 2
+					else
+						bar_x, bar_y = card_right + gap, cy - bar_height / 2
+					end
+					bar_x = bar_x + value_of(r.stats_offset_x)
+					bar_y = bar_y - value_of(r.stats_offset_y)
+					if value_of(r.stats_background) > 0 then
+						fill_shape(output, capsule(bar_x, bar_y, bar_width, bar_height, value_of(r.stats_corner)),
+							Pixel{R = 0, G = 0, B = 0, A = value_of(r.stats_background)}, quality)
+					end
+					local value_size = math.max(value_of(r.stats_value_size), 6 / 1280)
+					local label_size = math.max(value_of(r.stats_label_size), 4 / 1280)
+					local value_color = color_of(r.stats_value_color)
+					local label_color = color_of(r.stats_label_color, value_of(r.stats_label_opacity))
+					local item_gap = value_of(r.stats_spacing)
+					local count = #items
+					for index, item in ipairs(items) do
+						local slot_x, slot_y, slot_w, slot_h
+						if vertical then
+							slot_h = (bar_height - item_gap * (count - 1)) / count
+							slot_x, slot_w = bar_x, bar_width
+							slot_y = bar_y + bar_height - index * slot_h - (index - 1) * item_gap
+						else
+							slot_w = (bar_width - item_gap * (count - 1)) / count
+							slot_x, slot_y, slot_h = bar_x + (index - 1) * (slot_w + item_gap), bar_y, bar_height
+						end
+						if index > 1 and value_of(r.stats_divider) > 0 then
+							local divider = color_of(r.stats_label_color, value_of(r.stats_divider))
+							if vertical then
+								local y = slot_y + slot_h + item_gap / 2
+								fill_shape(output, capsule(bar_x + 6 / 1280, y - 0.5 / 1280,
+									math.max(bar_width - 12 / 1280, 0), 1 / 1280, 0), divider, quality)
+							else
+								local x = slot_x - item_gap / 2
+								fill_shape(output, capsule(x - 0.5 / 1280, bar_y + 6 / 1280,
+									1 / 1280, math.max(bar_height - 12 / 1280, 0), 0), divider, quality)
+							end
+						end
+						local value_ascent = font_extents(widget_font, widget_style, value_size)
+						local label_ascent = font_extents(widget_font, widget_style, label_size)
+						local value_text_w = text_width(widget_font, widget_style, item.text, value_size)
+						local label_text_w = text_width(widget_font, widget_style, item.label:upper(), label_size)
+						local center_x = slot_x + slot_w / 2
+						if vertical then
+							local baseline = slot_y + slot_h * 0.62
+							draw_text(output, widget_font, widget_style, item.text, value_size,
+								center_x - value_text_w / 2, baseline, value_color, quality)
+							draw_text(output, widget_font, widget_style, item.label:upper(), label_size,
+								center_x - label_text_w / 2, baseline - value_ascent - label_size * 0.9, label_color, quality)
+						else
+							local baseline = slot_y + (slot_h + value_ascent - label_ascent) / 2
+							draw_text(output, widget_font, widget_style, item.text, value_size,
+								center_x - value_text_w / 2, baseline, value_color, quality)
+							draw_text(output, widget_font, widget_style, item.label:upper(), label_size,
+								center_x - label_text_w / 2, baseline - value_ascent - label_size * 0.2, label_color, quality)
+						end
+					end
+				end
 			end
 		end
 		local function render_zone(position, widget_font, widget_style, z, options)
