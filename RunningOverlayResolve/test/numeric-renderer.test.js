@@ -178,6 +178,35 @@ assert(inputs.IntervalTimelineWidth.visible==true and inputs.SummaryWidth.visibl
 NotifyChanged(inputs.Metric,{Value=INTERVAL_COUNTDOWN_METRIC})
 assert(inputs.CountdownSize.visible==true and inputs.HudWidth.visible==false)
 `));
+test('interval summary renders parsed lap max HR and supports legacy lap rows', () => run(HOST + `
+inputs.Metric.value=INTERVAL_SUMMARY_METRIC;inputs.ShadowEnabled.value=0
+inputs.SummaryPrimaryMetric.value=4;inputs.SummarySecondary3.value=4
+activity_elapsed_at_frame=function() return 301000000 end
+local function has(text)
+ for _,entry in ipairs(of('text')) do if entry.text==text then return true end end
+ return false
+end
+for _,max_hr in ipairs({'181.6',''}) do
+ local fields={'lap','0','0','300000000','1000','300','300','160','180','250','0','active'}
+ if max_hr~='' then table.insert(fields,max_hr) end
+ local lines={'startUtcUs\\t0','record\\t0\\t0',table.concat(fields,'\\t')}
+ io.open=function()
+  return {read=function() return 'ROACTIVITY\\t1' end,close=function() end,lines=function()
+   local index=0
+   return function() index=index+1;return lines[index] end
+  end}
+ end
+ local records,pauses,start_utc_us,err,weather,laps=read_activity('synthetic.roactivity')
+ assert(err==nil,err)
+ assert(laps[1].max_hr==tonumber(max_hr))
+ load_data=function() return {timeline_start_frame=0,pauses=pauses,laps=laps} end
+ sample_activity=function() return records[1] end
+ events={};Process(req)
+ local expected=max_hr~='' and '182' or '--'
+ assert(has(expected) and has(expected..' bpm') and has('MAX HR'))
+end
+`));
+
 test('attachments measure all four sides and expand around preceding text', () => run(`
 for position=0,3 do
  local bounds={left=0,right=2,bottom=0,top=1}
@@ -1023,6 +1052,34 @@ assert(has('00:00') and has('TIME') and has('HR') and has('bpm'))
 assert(#of('shape')>=4)
 inputs.GaugeDial.value=0;inputs.GaugeRing.value=0;inputs.GaugeProgress.value=0;inputs.GaugeDividers.value=0
 events={};Process(req);assert(#of('shape')==0)
+`));
+
+test('running gauge Custom 50% uses index 6 while zone modes keep elapsed-time progress', () => run(HOST + `
+local base_capsule=capsule
+capsule=function(...) local s=base_capsule(...);function s:OutlineOfShape() return s end;return s end
+local base_shape=Shape
+Shape=function()
+ local s=base_shape();s.points={}
+ function s:MoveTo(x,y) table.insert(self.points,{x,y}) end
+ function s:LineTo(x,y) table.insert(self.points,{x,y}) end
+ return s
+end
+load_data=function() return {timeline_start_frame=0,pauses={},duration_us=600000000} end
+sample_activity=function() return {} end
+activity_elapsed_at_frame=function() return 150000000 end
+inputs.Metric.value=GAUGE_METRIC;inputs.ShadowEnabled.value=0
+inputs.GaugeDial.value=0;inputs.GaugeRing.value=0;inputs.GaugeTicks.value=0;inputs.GaugeDividers.value=0
+local function fraction(mode)
+ inputs.GaugeProgress.value=mode;events={};Process(req)
+ local shapes=of('shape')
+ assert(#shapes==2)
+ local track,arc=shapes[1].shape,shapes[2].shape
+ local endpoint=arc.points[#arc.points/2]
+ local cx,cy=track.l+track.w/2,track.b+track.h/2
+ return (math.atan(endpoint[2]-cy,endpoint[1]-cx)+math.pi/2)/(2*math.pi)
+end
+assert(near(fraction(6),0.5))
+for mode=3,5 do assert(near(fraction(mode),0.25)) end
 `));
 
 test('zone bar draws active segments, threshold and inward markers on all four edges', () => run(HOST + `

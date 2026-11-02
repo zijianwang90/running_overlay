@@ -105,6 +105,7 @@ local function read_activity(path)
 				avg_power = tonumber(fields[10]),
 				ascent_m = tonumber(fields[11]),
 				kind = fields[12] or "unknown",
+				max_hr = tonumber(fields[13]),
 			})
 		elseif fields[1] == "workout" then
 			workout = {
@@ -3082,9 +3083,10 @@ function Process(req)
 					fraction = (data.total_distance_m and data.total_distance_m > 0 and sample.distance_m) and sample.distance_m / data.total_distance_m or 0
 				elseif mode == 2 then
 					fraction = (data.duration_us and data.duration_us > 0) and elapsed_us / data.duration_us or 0
-				elseif mode == 7 then
+				elseif mode == 6 then
 					fraction = 0.5
 				else
+					-- Mac parity: modes 3–5 use elapsed time (OverlayRenderModel.swift:1779-1784).
 					fraction = (data.duration_us and data.duration_us > 0) and elapsed_us / data.duration_us or 0
 				end
 				fraction = math.min(math.max(fraction, 0), 1)
@@ -3270,6 +3272,7 @@ function Process(req)
 				if kind == "rest" then detail_mode = math.floor(value_of(h.rest_detail_mode) + 0.5) end
 				local primary = detail_mode == 1 and interval_distance_text(values.remaining_m) or interval_time_text(values.remaining_s)
 				local center_x = cx
+				-- Mac parity: the center label is fixed (OverlayRenderModel.swift:552).
 				add_text(parts, widget_font, widget_style, "LEFT", value_of(h.label_size), center_x,
 					text_bottom + (text_top - text_bottom) * 0.66, text_color, "center")
 				add_text(parts, widget_font, widget_style, primary, value_of(h.value_size), center_x,
@@ -3376,6 +3379,7 @@ function Process(req)
 			local track_radius = radius - ring_width / 2
 			disc(track_radius, color_of(c.track, value_of(c.track_opacity)), ring_width)
 			local clockwise = math.floor(value_of(c.direction) + 0.5) == 0
+			-- Mac parity: ring progress uses time for every center metric (OverlayRenderModel.swift:611-617).
 			local fraction = clockwise and 1 - values.time_progress or values.time_progress
 			fraction = math.min(math.max(fraction, 0), 1)
 			if fraction > 0 then
@@ -3442,7 +3446,7 @@ function Process(req)
 			elseif index == 4 then
 				return lap.avg_hr and tostring(math.floor(lap.avg_hr + 0.5)) or "--", "bpm", SUMMARY_LABELS[4]
 			elseif index == 5 then
-				return "--", "bpm", SUMMARY_LABELS[5]
+				return lap.max_hr and tostring(math.floor(lap.max_hr + 0.5)) or "--", "bpm", SUMMARY_LABELS[5]
 			elseif index == 6 then
 				return lap.avg_power and tostring(math.floor(lap.avg_power + 0.5)) or "--", "W", SUMMARY_LABELS[6]
 			elseif index == 7 then
