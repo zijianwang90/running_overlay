@@ -19,6 +19,7 @@ class FitReader {
     this.laps = [];
     this.sessionStartFitSeconds = null;
     this.sessionElapsedUs = null;
+    this.sessionCalories = null;
     this.previousTimestampFitSeconds = null;
   }
 
@@ -76,13 +77,27 @@ class FitReader {
     const endUtcUs = startUtcUs + durationUs;
     const activityId = options.activityId
       ?? `fit-${startFitSeconds}`;
+    // Match FitFileParser.recordsWithEstimatedCalories: only records without a
+    // recorded value receive an estimate, and lap totals beat the session total.
+    const recordsWithCalories = applyCalorieFallback(records, {
+      sessionCalories: this.sessionCalories,
+      durationUs,
+      laps: this.laps.map((lap) => ({
+        startElapsedUs: lap.startFitSeconds === null
+          ? null
+          : Math.max(0, (lap.startFitSeconds - startFitSeconds) * 1_000_000),
+        totalElapsedSeconds: lap.totalElapsedSeconds,
+        distanceMeters: lap.distanceMeters,
+        totalCalories: lap.totalCalories,
+      })),
+    });
 
     return validateActivity({
       schemaVersion: 1,
       activityId,
       startUtcUs,
       endUtcUs,
-      records,
+      records: recordsWithCalories,
       annotations: this.buildPauseAnnotations(startFitSeconds, durationUs),
       ...this.buildLaps(startFitSeconds, durationUs, records),
     });
@@ -223,8 +238,10 @@ class FitReader {
   readSession(values, architecture) {
     const start = this.uint32(values.get(2), architecture);
     const elapsedMilliseconds = this.uint32(values.get(7), architecture);
+    const totalCalories = this.uint16(values.get(11), architecture);
     if (start !== null) this.sessionStartFitSeconds = start;
     if (elapsedMilliseconds !== null) this.sessionElapsedUs = elapsedMilliseconds * 1_000;
+    if (totalCalories !== null) this.sessionCalories = totalCalories;
   }
 
   readEvent(values, architecture, compressedTimestamp = null) {
@@ -255,6 +272,7 @@ class FitReader {
       avgCadenceSpm: cadence === null ? null : Math.round((cadence + (cadenceFraction ?? 0) / 128) * 2),
       avgPowerWatts: this.uint16(values.get(19), architecture),
       totalAscentMeters: this.uint16(values.get(21), architecture),
+      totalCalories: this.uint16(values.get(11), architecture),
     });
   }
 
@@ -385,6 +403,84 @@ class FitReader {
   }
 }
 
+function clamp01(value) {
+  return Math.min(Math.max(value, 0), 1);
+}
+
+function withCalories(record, calories) {
+  if (calories === record.calories) return record;
+  return { ...record, calories };
+}
+
+// Cumulative calories at an elapsed time, following FitFileParser.estimatedCalories.
+function estimatedCaloriesAt(elapsedUs, segments) {
+  if (elapsedUs <= segments[0].startElapsedUs) return segments[0].startCalories;
+  for (const segment of segments) {
+    if (elapsedUs <= segment.endElapsedUs) {
+      if (segment.endElapsedUs <= segment.startElapsedUs) return segment.endCalories;
+      const progress = (elapsedUs - segment.startElapsedUs) / (segment.endElapsedUs - segment.startElapsedUs);
+      return segment.startCalories + (segment.endCalories - segment.startCalories) * clamp01(progress);
+    }
+  }
+  return segments[segments.length - 1].endCalories;
+}
+
+// Mirrors FitFileParser.recordsWithLapEstimatedCalories: laps are read in FIT
+// message order and their totals accumulate across the activity.
+function estimatedCaloriesFromLaps(records, laps) {
+  if (!laps.some((lap) => typeof lap.totalCalories === 'number')) return null;
+  const segments = [];
+  let cumulativeElapsedUs = 0;
+  let cumulativeCalories = 0;
+  for (const lap of laps) {
+    const elapsedSeconds = lap.totalElapsedSeconds;
+    if (elapsedSeconds === null || elapsedSeconds === undefined) continue;
+    const distanceMeters = lap.distanceMeters ?? 0;
+    if (elapsedSeconds <= 0 && distanceMeters <= 0) continue;
+    const startElapsedUs = lap.startElapsedUs === null || lap.startElapsedUs === undefined
+      ? cumulativeElapsedUs
+      : Math.max(lap.startElapsedUs, 0);
+    const endElapsedUs = startElapsedUs + elapsedSeconds * 1_000_000;
+    const calories = lap.totalCalories ?? 0;
+    segments.push({
+      startElapsedUs,
+      endElapsedUs,
+      startCalories: cumulativeCalories,
+      endCalories: cumulativeCalories + calories,
+    });
+    cumulativeElapsedUs = endElapsedUs;
+    cumulativeCalories += calories;
+  }
+  if (segments.length === 0 || cumulativeCalories <= 0) return null;
+  return records.map((record) => withCalories(record, estimatedCaloriesAt(record.elapsedUs, segments)));
+}
+
+/**
+ * Fills missing record calories the way the Mac app does.
+ *
+ * 1. Recorded per-record calories always win.
+ * 2. Otherwise lap totals are interpolated cumulatively by elapsed time.
+ * 3. Otherwise the session total is spread proportionally over the duration.
+ *
+ * Returns the input records unchanged when no fallback applies. Records are
+ * copied only when a value changes, so callers may keep treating the result as
+ * immutable.
+ */
+function applyCalorieFallback(records, { sessionCalories = null, durationUs = 0, laps = [] } = {}) {
+  if (records.some((record) => typeof record.calories === 'number')) return records;
+
+  const lapEstimated = estimatedCaloriesFromLaps(records, laps);
+  if (lapEstimated) return lapEstimated;
+
+  if (typeof sessionCalories === 'number' && durationUs > 0) {
+    return records.map((record) => withCalories(
+      record,
+      sessionCalories * clamp01(record.elapsedUs / durationUs),
+    ));
+  }
+  return records;
+}
+
 function parseFitBuffer(buffer, options = {}) {
   return new FitReader(buffer).parse(options);
 }
@@ -397,5 +493,6 @@ function activityIdFromPath(filePath) {
 module.exports = {
   FIT_TO_UNIX_SECONDS,
   activityIdFromPath,
+  applyCalorieFallback,
   parseFitBuffer,
 };

@@ -2,7 +2,7 @@
 
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { FIT_TO_UNIX_SECONDS, parseFitBuffer } = require('../src/activity/fit-parser');
+const { FIT_TO_UNIX_SECONDS, applyCalorieFallback, parseFitBuffer } = require('../src/activity/fit-parser');
 const { sampleActivity } = require('../src/domain/activity');
 
 function uint16(value) {
@@ -160,6 +160,51 @@ function withHeader(data) {
   return Buffer.concat([header, data]);
 }
 
+// Synthetic FIT with record, session and lap calorie fields. A missing value is
+// written as the FIT uint16 sentinel so the parser must treat it as absent.
+function calorieFit({ start = 1_136_188_800, records = [], session = null, laps = [] }) {
+  const caloriesField = (value) => (value === null || value === undefined ? uint16(0xffff) : uint16(value));
+  const parts = [definition(0, 20, [
+    { number: 253, size: 4, baseType: 0x86 },
+    { number: 33, size: 2, baseType: 0x84 },
+  ])];
+  for (const entry of records) {
+    parts.push(record(0, [uint32(start + entry.offsetSeconds), caloriesField(entry.calories)]));
+  }
+  if (session) {
+    parts.push(definition(1, 18, [
+      { number: 2, size: 4, baseType: 0x86 },
+      { number: 7, size: 4, baseType: 0x86 },
+      { number: 11, size: 2, baseType: 0x84 },
+    ]));
+    parts.push(record(1, [
+      uint32(start + (session.startOffsetSeconds ?? 0)),
+      uint32(session.elapsedMilliseconds),
+      caloriesField(session.calories),
+    ]));
+  }
+  if (laps.length > 0) {
+    parts.push(definition(2, 19, [
+      { number: 253, size: 4, baseType: 0x86 },
+      { number: 2, size: 4, baseType: 0x86 },
+      { number: 7, size: 4, baseType: 0x86 },
+      { number: 9, size: 4, baseType: 0x86 },
+      { number: 11, size: 2, baseType: 0x84 },
+    ]));
+    for (const lap of laps) {
+      const startOffsetSeconds = lap.startOffsetSeconds ?? 0;
+      parts.push(record(2, [
+        uint32(start + startOffsetSeconds + lap.elapsedSeconds),
+        uint32(start + startOffsetSeconds),
+        uint32(Math.round(lap.elapsedSeconds * 1000)),
+        uint32(Math.round((lap.distanceMeters ?? 0) * 100)),
+        caloriesField(lap.calories),
+      ]));
+    }
+  }
+  return withHeader(Buffer.concat(parts));
+}
+
 test('compressed FIT timestamps reconstruct rollover, omitted timestamp fields, and timer pauses', () => {
   const start = 1_136_188_800; // 2026-01-01T08:00:00Z, divisible by 32.
   const fullRecord = [{ number: 253, size: 4, baseType: 0x86 }, { number: 3, size: 1, baseType: 0x02 }];
@@ -249,4 +294,109 @@ test('FIT running dynamics, temperature and grade keep their units, signs and se
   for (const field of ['verticalOscillationMm', 'groundContactTimeMs', 'strideLengthMeters', 'temperatureCelsius', 'gradePercent']) {
     assert.equal(second[field], null, field);
   }
+});
+
+test('FIT recorded record calories win over lap and session totals', () => {
+  const activity = parseFitBuffer(calorieFit({
+    records: [
+      { offsetSeconds: 0, calories: 10 },
+      { offsetSeconds: 300, calories: 20 },
+      { offsetSeconds: 600, calories: 30 },
+    ],
+    session: { elapsedMilliseconds: 600_000, calories: 400 },
+    laps: [
+      { startOffsetSeconds: 0, elapsedSeconds: 300, distanceMeters: 500, calories: 100 },
+      { startOffsetSeconds: 300, elapsedSeconds: 300, distanceMeters: 500, calories: 50 },
+    ],
+  }));
+  assert.deepEqual(activity.records.map((entry) => entry.calories), [10, 20, 30]);
+});
+
+test('FIT session calories are spread proportionally over elapsed time', () => {
+  const activity = parseFitBuffer(calorieFit({
+    records: [{ offsetSeconds: 0 }, { offsetSeconds: 100 }, { offsetSeconds: 200 }, { offsetSeconds: 400 }],
+    session: { elapsedMilliseconds: 400_000, calories: 400 },
+  }));
+  assert.deepEqual(activity.records.map((entry) => entry.elapsedUs),
+    [0, 100_000_000, 200_000_000, 400_000_000]);
+  assert.deepEqual(activity.records.map((entry) => entry.calories), [0, 100, 200, 400]);
+
+  // The clamp keeps out-of-range elapsed times inside the activity.
+  const clamped = applyCalorieFallback(
+    [{ elapsedUs: -1 }, { elapsedUs: 800_000_000 }],
+    { sessionCalories: 400, durationUs: 400_000_000 },
+  );
+  assert.deepEqual(clamped.map((entry) => entry.calories), [0, 400]);
+});
+
+test('FIT lap calories accumulate by elapsed time and preserve each lap total', () => {
+  const activity = parseFitBuffer(calorieFit({
+    records: [
+      { offsetSeconds: 0 },
+      { offsetSeconds: 150 },
+      { offsetSeconds: 300 },
+      { offsetSeconds: 450 },
+      { offsetSeconds: 600 },
+    ],
+    laps: [
+      { startOffsetSeconds: 0, elapsedSeconds: 300, distanceMeters: 500, calories: 100 },
+      { startOffsetSeconds: 300, elapsedSeconds: 300, distanceMeters: 500, calories: 50 },
+    ],
+  }));
+  assert.deepEqual(activity.records.map((entry) => entry.calories), [0, 50, 100, 125, 150]);
+  // Cumulative estimates keep each lap's contribution exact at its boundary.
+  assert.equal(activity.records[2].calories - activity.records[0].calories, 100);
+  assert.equal(activity.records[4].calories - activity.records[2].calories, 50);
+});
+
+test('FIT lap calories hold the previous total between laps and after the last lap', () => {
+  const activity = parseFitBuffer(calorieFit({
+    records: [
+      { offsetSeconds: 0 },
+      { offsetSeconds: 300 },
+      { offsetSeconds: 350 },
+      { offsetSeconds: 400 },
+      { offsetSeconds: 700 },
+    ],
+    laps: [
+      { startOffsetSeconds: 0, elapsedSeconds: 300, distanceMeters: 500, calories: 100 },
+      { startOffsetSeconds: 400, elapsedSeconds: 300, distanceMeters: 500, calories: 50 },
+    ],
+  }));
+  // FitFileParser.estimatedCalories returns the surrounding cumulative total
+  // for a record between segments or beyond the final segment; it never
+  // returns nil once lap totals exist.
+  assert.deepEqual(activity.records.map((entry) => entry.calories), [0, 100, 100, 100, 150]);
+});
+
+test('FIT lap totals take precedence over the session total', () => {
+  const activity = parseFitBuffer(calorieFit({
+    records: [{ offsetSeconds: 0 }, { offsetSeconds: 300 }, { offsetSeconds: 600 }],
+    session: { elapsedMilliseconds: 600_000, calories: 1000 },
+    laps: [
+      { startOffsetSeconds: 0, elapsedSeconds: 300, distanceMeters: 500, calories: 100 },
+      { startOffsetSeconds: 300, elapsedSeconds: 300, distanceMeters: 500, calories: 50 },
+    ],
+  }));
+  assert.deepEqual(activity.records.map((entry) => entry.calories), [0, 100, 150]);
+});
+
+test('FIT activities without calorie totals keep null record calories', () => {
+  const activity = parseFitBuffer(calorieFit({
+    records: [{ offsetSeconds: 0 }, { offsetSeconds: 300 }, { offsetSeconds: 600 }],
+    session: { elapsedMilliseconds: 600_000, calories: null },
+    laps: [
+      { startOffsetSeconds: 0, elapsedSeconds: 300, distanceMeters: 500, calories: null },
+      { startOffsetSeconds: 300, elapsedSeconds: 300, distanceMeters: 500, calories: null },
+    ],
+  }));
+  assert.deepEqual(activity.records.map((entry) => entry.calories), [null, null, null]);
+});
+
+test('FIT calorie estimation does not mutate its input records', () => {
+  const input = [{ elapsedUs: 0 }, { elapsedUs: 400_000_000 }];
+  const output = applyCalorieFallback(input, { sessionCalories: 400, durationUs: 400_000_000 });
+  assert.deepEqual(input, [{ elapsedUs: 0 }, { elapsedUs: 400_000_000 }]);
+  assert.notEqual(output[0], input[0]);
+  assert.equal(applyCalorieFallback(input, { sessionCalories: null }), input);
 });
