@@ -193,26 +193,35 @@ local ok, message = pcall(function()
     {input = "MapTile3", key = "RunningOverlay.ManagedMapTile3", path = map_tiles[3]},
     {input = "MapTile4", key = "RunningOverlay.ManagedMapTile4", path = map_tiles[4]},
   }
-  for _, binding in ipairs(map_bindings) do
-    local map_loader = nil
-    for _, candidate in pairs(comp:GetToolList(false, "Loader")) do
-      if candidate:GetData(binding.key) then map_loader = candidate end
-    end
-    if binding.path ~= nil then
-      if map_loader == nil then
-        map_loader = comp:AddTool("Loader")
-        assert(map_loader, "Could not create the map background Loader.")
-        map_loader:SetData(binding.key, true)
-        table.insert(created, map_loader)
+  -- Resolve's Fusion opens a file browser for each new Loader while the
+  -- composition is unlocked. Lock the map-loader setup so Update overlay stays
+  -- silent, and always release the lock before rethrowing. Older Fusion builds
+  -- and test shims may not expose Lock/Unlock.
+  local map_locked = pcall(function() comp:Lock() end)
+  local maps_ok, maps_message = pcall(function()
+    for _, binding in ipairs(map_bindings) do
+      local map_loader = nil
+      for _, candidate in pairs(comp:GetToolList(false, "Loader")) do
+        if candidate:GetData(binding.key) then map_loader = candidate end
       end
-      map_loader:SetInput("Clip", binding.path)
-      assert(map_loader:GetInput("Clip") == binding.path, "Could not set the map background image.")
-      assert(node:ConnectInput(binding.input, map_loader), "Install the current Numeric Fuse: the map background input is missing.")
-    elseif map_loader ~= nil then
-      if node:GetInput(binding.input) ~= nil then pcall(function() node:ConnectInput(binding.input, nil) end) end
-      map_loader:Delete()
+      if binding.path ~= nil then
+        if map_loader == nil then
+          map_loader = comp:AddTool("Loader")
+          assert(map_loader, "Could not create the map background Loader.")
+          map_loader:SetData(binding.key, true)
+          table.insert(created, map_loader)
+        end
+        map_loader:SetInput("Clip", binding.path)
+        assert(map_loader:GetInput("Clip") == binding.path, "Could not set the map background image.")
+        assert(node:ConnectInput(binding.input, map_loader), "Install the current Numeric Fuse: the map background input is missing.")
+      elseif map_loader ~= nil then
+        if node:GetInput(binding.input) ~= nil then pcall(function() node:ConnectInput(binding.input, nil) end) end
+        map_loader:Delete()
+      end
     end
-  end
+  end)
+  if map_locked then pcall(function() comp:Unlock() end) end
+  if not maps_ok then error(maps_message) end
   assert(output:ConnectInput("Input", node), "Could not connect the Numeric output.")
   node:SetData("RunningOverlay.ManagedNumeric", true)
   comp:SetData("RunningOverlay.WidgetSlots", assigned)

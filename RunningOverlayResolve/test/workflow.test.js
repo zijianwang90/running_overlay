@@ -296,6 +296,9 @@ test('the Fusion update script manages a map Loader and only enables new route w
   assert.match(withMap, /ConnectInput\(binding\.input, map_loader\)/);
   assert.match(withMap, /input = "MapImage"/);
   assert.match(withMap, /RouteMapBackground/);
+  // Resolve opens a file browser for each new Loader unless the comp is locked.
+  assert.match(withMap, /comp:Lock\(\)[\s\S]*AddTool\("Loader"\)[\s\S]*comp:Unlock\(\)/);
+  assert.match(withMap, /pcall\(function\(\) comp:Unlock\(\) end\)/);
   const withTiles = dataUpdateScript({ bundleDirectory: '/b', origin: 0, token: 't', widgets: [{ id: 'route-1', metric: 'routeMap' }], templateId: 'race', mapImage: '/b/map.png', mapTiles: ['/b/map-1.png', '/b/map-2.png', '/b/map-3.png', '/b/map-4.png'] });
   assert.match(withTiles, /local map_tiles = \{ string\.sub\(\[\[x\/b\/map-1\.png\]\], 2\)/);
   assert.match(withTiles, /input = "MapTile4"/);

@@ -1,5 +1,21 @@
 # Running Overlay Resolve Testing
 
+## Route Map Loader Dialog Fix — 2026-11-02
+
+Pressing **Update overlay** on an Easy Run project with a Route Map and detail
+tiles enabled opened five native file dialogs, one per managed map Loader
+(overview plus four tiles). Resolve's Fusion prompts for a clip when a Loader is
+created while the composition is unlocked; the dialogs defaulted to Resolve's
+Resources folder and `All Files (*)`. The update still completed because the
+script sets each Clip after creation, but the prompts were unexpected.
+
+The generated update script now wraps map-Loader creation and Clip assignment in
+`comp:Lock()` / `comp:Unlock()`, guarded by `pcall` so older Fusion builds and
+test shims without Lock/Unlock still run. A regression assertion checks that the
+lock encloses `AddTool("Loader")` and that Unlock is always attempted. The full
+Node/Lua suite passes with 218 tests. Host confirmation after a panel reinstall
+and Resolve restart is pending.
+
 ## HR Zone Coloring — 2026-11-02
 
 v27 implements N3 role-specific HR-zone coloring for every numeric slot. Four
