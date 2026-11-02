@@ -279,6 +279,9 @@ Create()
 -- Defaults are the Mac element defaults; shadow radius and offset are 1920-wide output pixels.
 assert(inputs.ShadowEnabled.value == 1 and inputs.ShadowOpacity.value == 0.35 and inputs.ShadowR.value == 0)
 assert(inputs.ShadowBlur.value == 4 / 1920 and inputs.ShadowOffsetY.value == -2 / 1920 and inputs.Widget16ShadowThickness.value == 1)
+-- Type defaults are the Mac numeric style's points over the 1280-point reference.
+assert(inputs.ValueSize.value == 28 / 1280 and inputs.UnitSize.value == 20 / 1280)
+assert(inputs.LabelSize.value == 16 / 1280 and inputs.Widget16ValueSize.value == 28 / 1280)
 assert(inputs.Widget16ClockFormat and inputs.Widget16ClockUtcOffset.value == 0)
 Width=1920; Height=1080; Scale=1; XAspect=1; YAspect=1; SourceDepth=0
 local events = {}
@@ -301,10 +304,13 @@ inputs.ShadowOpacity.value=0.7; inputs.ShadowOffsetX.value=0.003; inputs.ShadowO
 local req={Time=0,IsQuick=function() return false end,IsStampOnly=function() return false end}
 Process(req)
 local y = 0.5 * 1080 / 1920
+-- Mac anchors the numeric's top-left corner at Position: the minimal preset's
+-- 10x6 design-point padding, then one value ascent down to the text baseline.
+local x, baseline = 0.1 + 10 / 1280, y - 6 / 1280 - inputs.ValueSize.value * 0.8
 local expected = {
- string.format('text 1.00 %.4f %.4f 0.700', 0.103, y - 0.003),
+ string.format('text 1.00 %.4f %.4f 0.700', x + 0.003, baseline - 0.003),
  'text km', 'blur ' .. 0.002 * SHADOW_BLUR_SCALE, 'merge blurred',
- string.format('text 1.00 %.4f %.4f 1.000', 0.1, y), 'text km',
+ string.format('text 1.00 %.4f %.4f 1.000', x, baseline), 'text km',
 }
 assert(#events == #expected, table.concat(events, ' | '))
 for index, value in ipairs(expected) do assert(events[index]:sub(1, #value) == value, events[index]) end
@@ -368,10 +374,10 @@ sample_activity=function() return {heart_rate=150} end
 inputs.ShadowEnabled.value=0; inputs.ShowLabel.value=0; inputs.ShowUnit.value=0
 inputs.ValueSize.value=0.05; inputs.Position.value={X=0.1,Y=0.5}
 Process(req)
-local y = 0.5 * 1080 / 1920
--- Leading, centered on the value line box from y - descent to y + size.
+local y = 0.5 * 1080 / 1920 - 6 / 1280 - 0.05 * 0.8
+-- Leading, centered on the value line box from the baseline - descent to + size.
 assert(#icons==1 and icons[1].name=='Heart' and near(icons[1].size, 22/1280))
-assert(near(icons[1].left, 0.1 - 8/1280 - 22/1280), icons[1].left)
+assert(near(icons[1].left, 0.1 + 10/1280 - 8/1280 - 22/1280), icons[1].left)
 assert(near(icons[1].top, (y - 0.01 + y + 0.04) / 2 + 11/1280), icons[1].top)
 assert(#of('shape')==1 and of('shape')[1].shape==glyph and of('shape')[1].color.A==1)
 -- Every metric has a default glyph; the Inspector glyph overrides it.
@@ -383,7 +389,7 @@ inputs.Metric.value=22; icons={}; Process(req); assert(icons[1].name=='Calendar'
 inputs.IconGlyph.value=7; icons={}; Process(req); assert(icons[1].name=='Runner')
 -- Top placement aligned to the start sits one spacing above the block.
 inputs.IconPosition.value=0; inputs.IconAlignment.value=0; icons={}; Process(req)
-assert(near(icons[1].left, 0.1) and near(icons[1].top, y + 0.04 + 8/1280 + 22/1280))
+assert(near(icons[1].left, 0.1 + 10/1280) and near(icons[1].top, y + 0.04 + 8/1280 + 22/1280))
 -- The icon silhouette is drawn in the shadow pass with the icon opacity.
 inputs.IconA.value=0.5; inputs.ShadowEnabled.value=1; events={}; Process(req)
 local shapes = of('shape')

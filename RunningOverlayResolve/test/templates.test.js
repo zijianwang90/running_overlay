@@ -53,14 +53,18 @@ test('template positions are the Mac template centers flipped to Fusion coordina
 test('template elements seed the Mac starting styles once per new instance', () => {
   const easy = byId('easyRun');
   const styles = (metric) => templateElement(easy, metric).styles;
+  // Mac type sizes are design points × element scale, at the 1280-point reference.
+  const type = { ValueSize: (34 * 0.75) / 1280, UnitSize: (20 * 0.75) / 1280,
+    LabelSize: (16 * 0.75) / 1280, IconSize: (22 * 0.75) / 1280 };
   for (const metric of ['pace', 'heartRate', 'cadence', 'power']) {
     assert.deepEqual(styles(metric), { ShowLabel: 0, LabelR: 0.25, LabelG: 0.82, LabelB: 0.38,
-      ShadowOpacity: 0.7, ShadowOffsetX: 4 / 1920, ShadowOffsetY: -4 / 1920 });
+      ShadowOpacity: 0.7, ShadowOffsetX: 4 / 1920, ShadowOffsetY: -4 / 1920, ...type });
   }
   assert.deepEqual(styles('routeMap'), { ShadowOpacity: 0.95, ShadowBlur: 7 / 1920 });
   assert.deepEqual(styles('distanceTimeline'), { ShadowOpacity: 0.9, ShadowBlur: 5 / 1920, ShadowThickness: 3 });
-  assert.deepEqual(styles('elapsed'), { ShowLabel: 0 });
-  assert.deepEqual(styles('realTime'), { ShowLabel: 0 });
+  const clock = { ShowLabel: 0, ValueSize: 26 / 1280, UnitSize: 20 / 1280, LabelSize: 16 / 1280, IconSize: 22 / 1280 };
+  assert.deepEqual(styles('elapsed'), clock);
+  assert.deepEqual(styles('realTime'), clock);
   assert.deepEqual(styles('weatherWidget'), { ShowLabel: 0 });
   const race = byId('race');
   assert.deepEqual(templateElement(race, 'zoneEdgeBar').styles, { ShadowOpacity: 0.34, ShadowBlur: 8 / 1920 });

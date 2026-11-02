@@ -120,7 +120,7 @@ is approximated with raster bands; exact raster parity is not claimed.
 
 | Area | Current Resolve behavior | Parity acceptance |
 |---|---|---|
-| Numeric styling | v7 adds separate value/label/unit fonts, sizes, colors/opacity, custom labels, visibility and attachments; v9 adds layered text shadow; v10 adds original vector icons and label/unit alignment; new instances seed the Mac template's label visibility/color and shadows. Template fonts are approximately matched; host persistence and export checked | Value/label/unit/icon controls, attachment positions, separate typefaces/sizes/colors/opacities, presets and effects match supported Mac fields |
+| Numeric styling | v7 adds separate value/label/unit fonts, sizes, colors/opacity, custom labels, visibility and attachments; v9 adds layered text shadow; v10 adds original vector icons and label/unit alignment; new instances seed the Mac template's label visibility/color, shadows and type sizes, and the Fuse positions the element's top-left corner at `Position` as the Mac does. Template font families are approximately matched; host persistence and export checked | Value/label/unit/icon controls, attachment positions, separate typefaces/sizes/colors/opacities, presets and effects match supported Mac fields |
 | Units and formatting | v7 metric-specific km/mi/m, pace /km /mi /500m, elevation m/ft and elapsed formats; Lua tested and imperial host export checked | Metric-specific unit choices, precision, missing values and boundary formatting match Mac |
 | Element layout | Template positions from the Mac 1920×1080 element centers, then Fusion positioning; duplicates and off-template widgets use deterministic free slots | Independent instances, visibility, ordering and reusable layouts; equivalent placement at supported resolutions |
 | Activity import | FIT/GPX; limited normalized fields and timer-pause annotations | Retain fields required by all supported widgets, laps, workout structure and GPS; preserve provenance and gaps |
@@ -160,13 +160,16 @@ Template files are large because every element stores every module's sub-style;
 they embed no route or image assets.
 
 **Template style seeding (2026-11-01).** The panel now treats both the Mac
-template positions and a small set of non-typographic style fields as starting
-values. When an instance is first assigned to a slot, the control plane writes
-the template's label visibility, numeric label color and shadow, plus the
-route/timeline/zone/elevation shadow values. A resync never re-seeds an existing
-slot, so Inspector edits and animation survive data and widget-list updates.
-Font family and exact point sizes remain approximate, as accepted above, and no
-font files are redistributed.
+template positions and a small set of style fields as starting values. When an
+instance is first assigned to a slot, the control plane writes the template's
+label visibility, numeric label color and shadow, the route/timeline/zone/
+elevation shadows, and the numeric value/unit/label/icon sizes (design points ×
+element scale over the 1280-point reference). A resync never re-seeds an
+existing slot, so Inspector edits and animation survive data and widget-list
+updates. Numeric elements also anchor their top-left corner at `Position` with
+the minimal preset's padding, matching the Mac preview and export, and the Fuse
+defaults are the Mac's 28/20/16 pt value/unit/label sizes. Font family remains
+approximate, as accepted above, and no font files are redistributed.
 
 ### 1. Numeric Widgets And Styles
 

@@ -19,6 +19,17 @@
     ShadowOpacity: 0.7, ShadowOffsetX: 4 / 1920, ShadowOffsetY: -4 / 1920,
   });
   const LABEL_HIDDEN = Object.freeze({ ShowLabel: 0 });
+  // Mac sizes type in design points against a 1280-point-wide canvas and
+  // multiplies each element by its template scale. The Fuse expresses the same
+  // sizes as a fraction of frame width, so points divide by 1280.
+  const typography = (fontSize, scale) => Object.freeze({
+    ValueSize: (fontSize * scale) / 1280,
+    UnitSize: (20 * scale) / 1280,
+    LabelSize: (16 * scale) / 1280,
+    IconSize: (22 * scale) / 1280,
+  });
+  const EASY_RUN_NUMERIC = Object.freeze({ ...NUMERIC_STYLE, ...typography(34, 0.75) });
+  const CLOCK_NUMERIC = Object.freeze({ ...LABEL_HIDDEN, ...typography(26, 1) });
   const ROUTE_STYLE = Object.freeze({ ShadowOpacity: 0.95, ShadowBlur: 7 / 1920 });
   const TIMELINE_STYLE = Object.freeze({ ShadowOpacity: 0.9, ShadowBlur: 5 / 1920, ShadowThickness: 3 });
   const ZONE_STYLE = Object.freeze({ ShadowOpacity: 0.34, ShadowBlur: 8 / 1920 });
@@ -27,14 +38,14 @@
     metric, x: positionX, y: 1 - templateY, styles,
   });
   const easyRun = [
-    element('pace', 0.030665921145385626, 0.7390206334260655, NUMERIC_STYLE),
-    element('heartRate', 0.030598226300837895, 0.7921729713179458, NUMERIC_STYLE),
-    element('cadence', 0.030463369683198994, 0.8468990093767548, NUMERIC_STYLE),
+    element('pace', 0.030665921145385626, 0.7390206334260655, EASY_RUN_NUMERIC),
+    element('heartRate', 0.030598226300837895, 0.7921729713179458, EASY_RUN_NUMERIC),
+    element('cadence', 0.030463369683198994, 0.8468990093767548, EASY_RUN_NUMERIC),
     element('routeMap', 0.879024248712692, 0.19476634960677427, ROUTE_STYLE),
     element('distanceTimeline', 0.5, 0.06896883363068688, TIMELINE_STYLE),
-    element('elapsed', 0.8563774200948813, 0.843703791895823),
-    element('realTime', 0.8563774200948813, 0.9013793825233812),
-    element('power', 0.029313862326656028, 0.9045746000043129, NUMERIC_STYLE),
+    element('elapsed', 0.8563774200948813, 0.843703791895823, CLOCK_NUMERIC),
+    element('realTime', 0.8563774200948813, 0.9013793825233812, CLOCK_NUMERIC),
+    element('power', 0.029313862326656028, 0.9045746000043129, EASY_RUN_NUMERIC),
     element('weatherWidget', 0.8949036260318015, 0.7564232547646579),
   ];
   const TEMPLATES = Object.freeze([
