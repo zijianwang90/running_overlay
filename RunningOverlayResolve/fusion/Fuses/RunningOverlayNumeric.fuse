@@ -1291,6 +1291,29 @@ function Create()
 		icon.spacing = number("Icon Spacing", "IconSpacing", 8 / 1280, 0.05)
 		icon.color = color_in(numeric, "Icon Color", key .. "Icon", {1, 1, 1, 1}, 14, true)
 		result.icon = icon
+		-- Numeric containers preserve the legacy content inset. Rotation is omitted:
+		-- Mac stores it without applying it and has no numeric rotation anchor.
+		-- Value alignment stays leading like Mac. Backdrop material blur cannot be
+		-- reproduced by blurring a solid fill, so no blur control is exposed.
+		result.container = {
+			background = check_in(numeric, "Background", key .. "NumericBackgroundEnabled", 0),
+			background_color = color_in(numeric, "Background Color", key .. "NumericBackgroundColor", {0, 0, 0, 1}, 43, true),
+			opacity = number("Background Opacity", "NumericBackgroundOpacity", 0.22, 1),
+			radius = number("Background Radius", "NumericBackgroundRadius", 6 / 1280, 64 / 1280),
+			padding_x = number("Background Padding X", "NumericBackgroundPaddingX", 10 / 1280, 80 / 1280),
+			padding_y = number("Background Padding Y", "NumericBackgroundPaddingY", 6 / 1280, 80 / 1280),
+			fade = check_in(numeric, "Background Fade Out", key .. "NumericBackgroundFadeOutEnabled", 0),
+			fade_amount = number("Background Fade Amount", "NumericBackgroundFadeOutAmount", 0.22, 1),
+			border = check_in(numeric, "Border", key .. "NumericBorderEnabled", 0),
+			border_color = color_in(numeric, "Border Color", key .. "NumericBorderColor", {1, 1, 1, 1}, 44, true),
+			border_opacity = number("Border Opacity", "NumericBorderOpacity", 0.22, 1),
+			border_width = number_in(numeric, "Border Width", key .. "NumericBorderWidth", 1 / 1280, 0.5 / 1280, 12 / 1280),
+			glow = check_in(numeric, "Glow", key .. "NumericGlowEnabled", 0),
+			glow_color = color_in(numeric, "Glow Color", key .. "NumericGlowColor", {1, 1, 1, 1}, 45, true),
+			glow_intensity = number("Glow Intensity", "NumericGlowIntensity", 0, 1),
+			min_width = number("Minimum Width", "NumericMinWidth", 0, 720 / 1280),
+			min_height = number("Minimum Height", "NumericMinHeight", 0, 360 / 1280),
+		}
 		-- Mac defaults: black, 35%, radius 4 and 2 down. Radius and offset are
 		-- output pixels in the Mac export, authored at 1920 pixels wide.
 		local shadow = {}
@@ -2010,10 +2033,71 @@ function Process(req)
 				local ix, iy = attach_box(block, icon_size, icon_size, math.floor(value_of(icon.position) + 0.5),
 					value_of(icon.spacing), math.floor(value_of(icon.alignment) + 0.5))
 				table.insert(parts, {shapes = icon_shapes(icon_name, ix, iy + icon_size, icon_size), color = color_of(icon.color)})
+				bounds = block
+			end
+			local c = options.container
+			local function clamped(input, low, high)
+				return math.min(math.max(value_of(input), low), high)
+			end
+			local function container_color(inputs, opacity)
+				return Pixel{R = clamped(inputs[1], 0, 1), G = clamped(inputs[2], 0, 1), B = clamped(inputs[3], 0, 1),
+					A = clamped(inputs[4], 0, 1) * opacity}
+			end
+			-- Expand right and down from the final content union, without translating
+			-- any text or icon, including attachments above or left of the value.
+			local left, top = bounds.left, bounds.top
+			local width = math.max(bounds.right - left, clamped(c.min_width, 0, 720 / 1280))
+			local height = math.max(top - bounds.bottom, clamped(c.min_height, 0, 360 / 1280))
+			local background = value_of(c.background) > 0.5
+			if background then
+				local px, py = clamped(c.padding_x, 0, 80 / 1280), clamped(c.padding_y, 0, 80 / 1280)
+				left, top, width, height = left - px, top + py, width + 2 * px, height + 2 * py
+			end
+			local radius = math.min(clamped(c.radius, 0, 64 / 1280), width / 2, height / 2)
+			local foreground = {}
+			local function shape_part(shape, color)
+				table.insert(foreground, {shapes = {shape}, color = color})
+			end
+			local function fill(inset)
+				local l, b, w, h = left + inset, top - height + inset, width - 2 * inset, height - 2 * inset
+				local r = math.max(radius - inset, 0)
+				if r > 0 then return capsule(l, b, w, h, r) end
+				local shape = Shape()
+				shape:AddRectangle(l, l + w, b + h, b)
+				return shape
+			end
+			if background then
+				local color = container_color(c.background_color, clamped(c.opacity, 0, 1))
+				local feather = value_of(c.fade) > 0.5 and math.min(width, height) * 0.5 * clamped(c.fade_amount, 0, 0.85) or 0
+				if feather > 0 then
+					-- Nested rounded fills approximate a smoothstep edge mask. Solve
+					-- source-over alpha for each target so the interior never overfills.
+					local previous, steps = 0, 16
+					for step = 1, steps do
+						local t = step / steps
+						local target = color.A * t * t * (3 - 2 * t)
+						local alpha = previous < 1 and (target - previous) / (1 - previous) or 0
+						shape_part(fill(feather * t), Pixel{R = color.R, G = color.G, B = color.B, A = alpha})
+						previous = target
+					end
+				else
+					shape_part(fill(0), color)
+				end
+			end
+			if value_of(c.border) > 0.5 then
+				shape_part(rounded_outline(left, top - height, width, height, radius, clamped(c.border_width, 0.5 / 1280, 12 / 1280)),
+					container_color(c.border_color, clamped(c.border_opacity, 0, 1)))
+			end
+			for _, part in ipairs(parts) do table.insert(foreground, part) end
+			if value_of(c.glow) > 0.5 then
+				local color = container_color(c.glow_color, 1)
+				local layers = glow_layers(clamped(c.glow_intensity, 0, 1))
+				for _, layer in ipairs(layers) do layer.opacity = layer.opacity * color.A end
+				draw_layers(output, foreground, layers, color, 0, 0, quality)
 			end
 			local shadow = shadow_of(options)
 			if shadow ~= nil then draw_shadow(output, parts, shadow, quality) end
-			for _, part in ipairs(parts) do draw_part(output, part, part.color, 0, 0, quality) end
+			for _, part in ipairs(foreground) do draw_part(output, part, part.color, 0, 0, quality) end
 		end
 		-- Mac Distance Timeline module: a label and value row, optional inline
 		-- custom values, a capsule track with ticks and a marker, axis and marker

@@ -395,7 +395,7 @@ draw_text=function(_,_,_,text,size,x,y,color) table.insert(events,{kind='text',t
 fill_shape=function(_,shape,color) table.insert(events,{kind='shape',shape=shape,color=color}) end
 local function moved(shape) return shape end
 Matrix4=function() return {Move=function() end} end
-capsule=function(l,b,w,h) return {kind='capsule',l=l,b=b,w=w,h=h,TransformOfShape=moved} end
+capsule=function(l,b,w,h,r) return {kind='capsule',l=l,b=b,w=w,h=h,r=r,TransformOfShape=moved} end
 Shape=function() local s={rects={},TransformOfShape=moved}
  function s:AddRectangle(l,r,t,b) table.insert(self.rects,{l,r,t,b}) end
  function s:MoveTo(x,y) self.start={x,y} end; function s:LineTo() end; function s:Close() end
@@ -405,6 +405,218 @@ req={Time=0,IsQuick=function() return false end,IsStampOnly=function() return fa
 function near(a, b) return math.abs(a - b) < 1e-9 end
 function of(kind) local r={} for _,e in ipairs(events) do if e.kind==kind then table.insert(r,e) end end return r end
 `;
+
+const NUMERIC_CONTAINER = HOST + `
+load_data=function() return {} end
+sample_activity=function() return {heart_rate=150,distance_m=1000,pace_spk=300} end
+inputs.ShadowEnabled.value=0;inputs.ShowLabel.value=0;inputs.ShowUnit.value=0
+inputs.Position.value={X=0.1,Y=0.5};inputs.ValueSize.value=0.05
+icon_shapes=function(name,left,top,size) return {capsule(left,top-size,size,size,0)} end
+local base_shape=Shape
+Shape=function()
+ local shape=base_shape()
+ local rectangle=shape.AddRectangle
+ function shape:AddRectangle(l,r,t,b)
+  rectangle(self,l,r,t,b)
+  self.l=l;self.b=b;self.w=r-l;self.h=t-b
+ end
+ return shape
+end
+local base_outline=rounded_outline
+rounded_outline=function(l,b,w,h,r,t)
+ local shape=base_outline(l,b,w,h,r,t)
+ shape.kind='outline';shape.l=l;shape.b=b;shape.w=w;shape.h=h;shape.r=r;shape.t=t
+ return shape
+end
+local x=0.1+10/1280
+local top=0.5*1080/1920-6/1280
+`;
+
+test('numeric container inputs have compatibility defaults on every slot and numeric visibility', () => run(NUMERIC_CONTAINER + `
+local defaults={NumericBackgroundEnabled=0,NumericBackgroundOpacity=0.22,NumericBackgroundRadius=6/1280,
+ NumericBackgroundPaddingX=10/1280,NumericBackgroundPaddingY=6/1280,NumericBackgroundFadeOutEnabled=0,
+ NumericBackgroundFadeOutAmount=0.22,NumericBorderEnabled=0,NumericBorderOpacity=0.22,NumericBorderWidth=1/1280,
+ NumericGlowEnabled=0,NumericGlowIntensity=0,NumericMinWidth=0,NumericMinHeight=0}
+local keys={'','Pace','Distance','Elapsed'}
+for slot=5,16 do table.insert(keys,'Widget'..slot) end
+for _,key in ipairs(keys) do
+ for suffix,default in pairs(defaults) do assert(inputs[key..suffix].value==default,key..suffix) end
+ for index,kind in ipairs({'Background','Border','Glow'}) do
+  for component,suffix in ipairs({'R','G','B','A'}) do
+   local input=inputs[key..'Numeric'..kind..'Color'..suffix]
+   assert(input.value==((index==1 and component<4) and 0 or 1))
+   assert(input.attrs.IC_ControlGroup==42+index and input.attrs.IC_ControlID==component-1)
+  end
+ end
+ assert(inputs[key..'NumericRotationDegrees']==nil and inputs[key..'NumericTextAlignment']==nil and inputs[key..'NumericBackgroundBlurRadius']==nil)
+end
+NotifyChanged(inputs.Widget16Metric,{Value=TIMELINE_METRIC})
+assert(inputs.Widget16NumericBackgroundEnabled.visible==false and inputs.Widget16NumericGlowColorA.visible==false)
+NotifyChanged(inputs.Widget16Metric,{Value=2})
+assert(inputs.Widget16NumericBackgroundEnabled.visible==true and inputs.Widget16NumericMinHeight.visible==true)
+`));
+
+test('numeric container defaults preserve the original content shapes and text anchor', () => run(NUMERIC_CONTAINER + `
+Process(req)
+assert(#of('shape')==1 and #of('text')==1 and #of('blur')==0)
+local text=of('text')[1]
+assert(text.text=='150' and near(text.x,x) and near(text.y,top-0.04))
+local icon=of('shape')[1].shape
+assert(near(icon.l,x-30/1280) and near(icon.w,22/1280))
+assert(events[1].kind=='text' and events[2].kind=='shape')
+`));
+
+test('numeric background pads the content union without moving text and preserves color alpha', () => run(NUMERIC_CONTAINER + `
+inputs.IconEnabled.value=0
+inputs.NumericBackgroundEnabled.value=1;inputs.NumericBackgroundPaddingX.value=0.02;inputs.NumericBackgroundPaddingY.value=0.01
+inputs.NumericBackgroundColorR.value=0.3;inputs.NumericBackgroundColorG.value=0.4
+inputs.NumericBackgroundColorA.value=0.5;inputs.NumericBackgroundOpacity.value=0.6
+Process(req)
+local fill=of('shape')[1]
+assert(#of('shape')==1 and events[1].kind=='shape')
+assert(near(fill.shape.l,x-0.02) and near(fill.shape.b,top-0.05-0.01))
+assert(near(fill.shape.w,0.15+0.04) and near(fill.shape.h,0.05+0.02))
+assert(fill.color.R==0.3 and fill.color.G==0.4 and near(fill.color.A,0.3))
+assert(near(of('text')[1].x,x) and near(of('text')[1].y,top-0.04))
+inputs.NumericBackgroundRadius.value=0;events={};Process(req)
+assert(#of('shape')[1].shape.rects==1)
+`));
+
+test('numeric border traces unpadded content with fill off and padded content with fill on', () => run(NUMERIC_CONTAINER + `
+inputs.IconEnabled.value=0;inputs.NumericBorderEnabled.value=1
+inputs.NumericBorderColorB.value=0.2;inputs.NumericBorderColorA.value=0.5;inputs.NumericBorderOpacity.value=0.4
+inputs.NumericBorderWidth.value=3/1280
+Process(req)
+local border=of('shape')[1]
+assert(#of('shape')==1 and border.shape.kind=='outline')
+assert(near(border.shape.l,x) and near(border.shape.b,top-0.05) and near(border.shape.w,0.15) and near(border.shape.h,0.05))
+assert(near(border.shape.t,3/1280) and border.color.B==0.2 and near(border.color.A,0.2))
+inputs.NumericBackgroundEnabled.value=1;events={};Process(req)
+border=of('shape')[2]
+assert(near(border.shape.l,x-10/1280) and near(border.shape.w,0.15+20/1280))
+`));
+
+test('numeric minimum frame expands right and down before padding without moving content', () => run(NUMERIC_CONTAINER + `
+inputs.IconEnabled.value=0;inputs.NumericBorderEnabled.value=1
+inputs.NumericMinWidth.value=0.4;inputs.NumericMinHeight.value=0.2
+Process(req)
+local frame=of('shape')[1].shape
+assert(near(frame.l,x) and near(frame.b,top-0.2) and near(frame.w,0.4) and near(frame.h,0.2))
+assert(near(of('text')[1].x,x) and near(of('text')[1].y,top-0.04))
+inputs.NumericBackgroundEnabled.value=1;events={};Process(req)
+frame=of('shape')[1].shape
+assert(near(frame.w,0.4+20/1280) and near(frame.h,0.2+12/1280))
+inputs.NumericMinWidth.value=0.01;inputs.NumericMinHeight.value=0.01;inputs.NumericBackgroundEnabled.value=0
+ events={};Process(req)
+assert(near(of('shape')[1].shape.w,0.15) and near(of('shape')[1].shape.h,0.05))
+`));
+
+test('numeric fade uses nested rounded bands with source-over alpha reaching the target', () => run(NUMERIC_CONTAINER + `
+inputs.IconEnabled.value=0;inputs.NumericBackgroundEnabled.value=1
+inputs.NumericBackgroundColorA.value=0.5;inputs.NumericBackgroundOpacity.value=0.8
+inputs.NumericBackgroundFadeOutEnabled.value=1;inputs.NumericBackgroundFadeOutAmount.value=0.6
+Process(req)
+local shapes=of('shape');assert(#shapes==16)
+local alpha=0
+for index,entry in ipairs(shapes) do
+ alpha=entry.color.A+alpha*(1-entry.color.A)
+ local t=index/16
+ assert(near(alpha,0.4*t*t*(3-2*t)))
+ if index>1 then assert(entry.shape.w<shapes[index-1].shape.w) end
+end
+assert(near(alpha,0.4))
+local feather=(0.05+12/1280)*0.5*0.6
+assert(near(shapes[16].shape.h,0.05+12/1280-2*feather))
+inputs.NumericBackgroundFadeOutAmount.value=0;events={};Process(req);assert(#of('shape')==1)
+inputs.NumericBackgroundFadeOutAmount.value=0.6;inputs.NumericBackgroundFadeOutEnabled.value=0
+ events={};Process(req);assert(#of('shape')==1 and near(of('shape')[1].color.A,0.4))
+`));
+
+test('numeric glow includes fill border text and icon before shadow and foreground', () => run(NUMERIC_CONTAINER + `
+inputs.NumericBackgroundEnabled.value=1;inputs.NumericBorderEnabled.value=1
+inputs.NumericGlowEnabled.value=1;inputs.NumericGlowIntensity.value=0.5
+inputs.NumericGlowColorR.value=0.2;inputs.NumericGlowColorA.value=0.4
+inputs.IconA.value=0.5;inputs.ShadowEnabled.value=1
+Process(req)
+assert(#of('blur')==3 and #of('merge')==3 and #of('shape')==10 and #of('text')==4)
+local blurs=of('blur')
+assert(near(blurs[1].size,0.5*18/1920*SHADOW_BLUR_SCALE) and near(blurs[2].size,0.5*34/1920*SHADOW_BLUR_SCALE))
+assert(near(blurs[3].size,4/1920*SHADOW_BLUR_SCALE))
+local shapes=of('shape')
+assert(shapes[1].color.R==0.2 and near(shapes[1].color.A,0.5*0.72*0.4*0.22))
+assert(near(shapes[3].color.A,0.5*0.72*0.4*0.5))
+assert(shapes[7].color.R==0 and near(shapes[7].color.A,0.35*0.5))
+assert(shapes[8].shape.kind=='capsule' and shapes[9].shape.kind=='outline')
+inputs.NumericGlowIntensity.value=0;events={};Process(req);assert(#of('blur')==1)
+inputs.NumericGlowIntensity.value=0.5;inputs.NumericGlowEnabled.value=0;events={};Process(req);assert(#of('blur')==1)
+`));
+
+test('numeric frames include icon label and unit attachment boxes on all four sides', () => run(NUMERIC_CONTAINER + `
+inputs.ShowLabel.value=1;inputs.ShowUnit.value=1;inputs.NumericBorderEnabled.value=1
+for side=0,3 do
+ inputs.IconPosition.value=side;inputs.LabelPosition.value=side;inputs.UnitPosition.value=side
+ events={};Process(req)
+ local shapes=of('shape');local frame=shapes[1].shape;local icon=shapes[2].shape
+ assert(icon.l>=frame.l-1e-9 and icon.l+icon.w<=frame.l+frame.w+1e-9)
+ assert(icon.b>=frame.b-1e-9 and icon.b+icon.h<=frame.b+frame.h+1e-9)
+ for _,text in ipairs(of('text')) do
+  assert(text.x>=frame.l-1e-9 and text.x+#text.text*text.size<=frame.l+frame.w+1e-9)
+  assert(text.y-text.size*0.2>=frame.b-1e-9 and text.y+text.size*0.8<=frame.b+frame.h+1e-9)
+ end
+end
+`));
+
+test('numeric container slots keep independent enabled states colors and minimum frames', () => run(NUMERIC_CONTAINER + `
+inputs.IconEnabled.value=0;inputs.NumericBackgroundEnabled.value=1;inputs.NumericBackgroundColorR.value=0.2
+inputs.Widget16Enabled.value=1;inputs.Widget16Metric.value=2;inputs.Widget16IconEnabled.value=0
+inputs.Widget16ShadowEnabled.value=0;inputs.Widget16ShowLabel.value=0;inputs.Widget16ShowUnit.value=0
+inputs.Widget16NumericBorderEnabled.value=1;inputs.Widget16NumericBorderColorG.value=0.3
+inputs.Widget16NumericMinWidth.value=0.4
+Process(req)
+local shapes=of('shape');assert(#shapes==2)
+assert(shapes[1].shape.kind=='capsule' and shapes[1].color.R==0.2)
+assert(shapes[2].shape.kind=='outline' and shapes[2].color.G==0.3 and near(shapes[2].shape.w,0.4))
+assert(near(shapes[1].shape.w,0.15+20/1280))
+`));
+
+test('numeric container render clamps out-of-range lengths colors opacity fade and glow', () => run(NUMERIC_CONTAINER + `
+inputs.IconEnabled.value=0;inputs.NumericBackgroundEnabled.value=1;inputs.NumericBorderEnabled.value=1
+inputs.NumericBackgroundPaddingX.value=-1;inputs.NumericBackgroundPaddingY.value=1
+inputs.NumericBackgroundRadius.value=1;inputs.NumericMinWidth.value=1;inputs.NumericMinHeight.value=-1
+inputs.NumericBackgroundColorR.value=-1;inputs.NumericBackgroundColorG.value=2
+inputs.NumericBackgroundColorA.value=2;inputs.NumericBackgroundOpacity.value=2
+inputs.NumericBorderWidth.value=-1;inputs.NumericBorderOpacity.value=-1
+Process(req)
+local shapes=of('shape');local fill=shapes[1]
+assert(near(fill.shape.l,x) and near(fill.shape.w,720/1280) and near(fill.shape.h,0.05+160/1280))
+assert(near(fill.shape.r,64/1280) and fill.color.R==0 and fill.color.G==1 and fill.color.A==1)
+assert(near(shapes[2].shape.t,0.5/1280) and shapes[2].color.A==0)
+inputs.NumericBackgroundFadeOutEnabled.value=1;inputs.NumericBackgroundFadeOutAmount.value=2
+inputs.NumericGlowEnabled.value=1;inputs.NumericGlowIntensity.value=2
+ events={};Process(req)
+assert(near(of('blur')[1].size,18/1920*SHADOW_BLUR_SCALE))
+shapes=of('shape');local inner=shapes[#shapes-1].shape
+assert(near(inner.h,(0.05+160/1280)*(1-0.85)))
+`));
+
+test('numeric container geometry stays width-normalized at UHD and ultrawide with larger text', () => run(NUMERIC_CONTAINER + `
+inputs.ValueSize.value=0.1;inputs.IconEnabled.value=0
+inputs.NumericBackgroundEnabled.value=1;inputs.NumericBorderEnabled.value=1
+local function frame(w,h)
+ Width=w;Height=h
+ Image=function() return {Width=w,Height=h,XScale=1,YScale=1,Fill=function() end} end
+ events={};Process(req)
+ return of('shape')[1].shape,of('shape')[2].shape,of('text')[1]
+end
+local base,border,text=frame(1920,1080)
+local uhd,ub,ut=frame(3840,2160)
+assert(near(base.w,0.3+20/1280) and near(base.h,0.1+12/1280))
+assert(near(base.w,uhd.w) and near(base.h,uhd.h) and near(text.x,ut.x) and near(text.y,ut.y))
+assert(near(border.t,ub.t))
+local wide,wb,wt=frame(2560,1080)
+assert(near(wide.w,base.w) and near(wide.h,base.h) and near(wb.t,border.t))
+assert(near(wt.y-text.y,0.5*1080/2560-0.5*1080/1920))
+`));
 
 test('numeric icons default per metric, attach like the Mac layout and join the shadow', () => run(HOST + `
 local icons = {}
