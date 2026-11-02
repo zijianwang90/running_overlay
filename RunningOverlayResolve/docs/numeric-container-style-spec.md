@@ -1,5 +1,14 @@
 # Numeric Container and Effects Specification
 
+> **Implementation status (2026-11-02, v26).** Sixteen of the 19 fields are
+> implemented for every numeric slot: background (enabled, color, opacity,
+> radius, padding X/Y, fade out and amount), border, glow and minimum
+> width/height. `rotationDegrees`, `textAlignment` and `backgroundBlurRadius`
+> are intentionally not exposed; see [Numeric Container Controls](numeric-container.md)
+> for the reasons and the user-facing behavior. The legacy 10×6 inset is
+> retained and background padding expands outside it, resolving the open
+> question below in favor of compatibility.
+
 ## Scope
 
 Implement the 19 N2 shared numeric container and effects fields identified in the [parity audit](module-parity-audit.md#shared-references). This applies to numeric widgets and their individual slots. N1 text presets and N3 heart-rate-zone color following are separate follow-ups; do not implement them here. Numeric Mac layouts currently force the minimal preset (`Sources/RunningOverlay/Overlay/OverlayRenderModel.swift:22`).

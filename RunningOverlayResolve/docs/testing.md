@@ -1,5 +1,38 @@
 # Running Overlay Resolve Testing
 
+## Numeric Container And Effects — 2026-11-02
+
+v26 implements 16 of the 19 N2 fields on every numeric slot: background
+(enabled, color, opacity, radius, padding X/Y, fade out and amount), border
+(enabled, color, opacity, width), glow (enabled, color, intensity) and minimum
+width/height. Color groups 43–45 are used. All controls default to the previous
+appearance (background, border and glow off; minimum size zero), and the legacy
+10×6 content inset is retained; enabling a background adds padding outside the
+current content without moving text, label, unit or icon. Minimum size expands
+the frame to the right and downward from the top-left anchor.
+
+The background fill is drawn first, then the border, then a glow underlay built
+from the assembled fill, border and content, then the content; the existing
+text shadow still applies to the content. Fade is approximated with 16 nested
+rounded bands using smoothstep targets and source-over alpha correction, capped
+at 0.85; it is not a true alpha mask. Border and glow are independent of the
+fill. The content-only shadow does not reproduce the Mac's shadow of the glow
+group.
+
+Rotation, value text alignment and backdrop blur are deliberately not exposed.
+The Mac stores `rotationDegrees` without applying it to numeric rendering and
+has no numeric anchor; the Mac forces leading value alignment; and backdrop
+material requires sampling the underlying video, which a fill-only Fuse cannot
+do. See [Numeric Container Controls](numeric-container.md).
+
+Tests: `test/numeric-renderer.test.js` adds 11 HOST tests covering per-slot
+defaults and visibility, unchanged content placement, padded geometry, border
+with and without fill, minimum-size expansion, fade band alphas, glow ordering,
+attachment and icon frame inclusion, slot isolation, clamping and UHD/ultrawide
+normalization. The full Node/Lua suite passes with 211 tests. Resolve host
+rendering, Inspector color-group behavior, save/reopen, preview/Deliver
+appearance, fade corners, effect stacking and performance are unverified.
+
 ## Gauge Custom %, Lap Max HR And Release Planning — 2026-11-02
 
 v25 fixes the Running Gauge Custom 50% progress mode, which was combo index 6

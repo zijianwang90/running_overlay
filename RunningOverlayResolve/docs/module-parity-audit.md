@@ -79,7 +79,7 @@ Shared numeric gaps, named after the Mac fields:
 | Code | Missing Mac field or concept | Mac reference |
 |---|---|---|
 | N1 | `textPreset`, `OverlayPresetTokens` | `OverlayElement.swift:3222-3460` |
-| N2 | `backgroundEnabled`, `backgroundColor`, `backgroundRadius`, `backgroundPaddingX/Y`, `backgroundFadeOutEnabled/Amount`, `backgroundBlurRadius`, `borderEnabled/Color/Opacity/Width`, `glowEnabled/Color/Intensity`, `rotationDegrees`, `textAlignment`, `numericMinWidth/Height` | `OverlayElement.swift:768-817` |
+| N2 | Remaining after v26: `rotationDegrees`, `textAlignment`, `backgroundBlurRadius`. Background, border, glow and minimum size are implemented for every numeric slot (see [Numeric Container Controls](numeric-container.md)); blur is not reproducible in a fill-only pipeline, and rotation/alignment need a separate decision. | `OverlayElement.swift:768-817` |
 | N3 | `valueColorsFollowHeartRateZones`, `labelColorsFollowHeartRateZones`, `unitColorsFollowHeartRateZones`, `iconColorsFollowHeartRateZones`, `textColorsFollowHeartRateZones` | `OverlayElement.swift:755-767`, `:821` |
 
 ## Numeric Overlays
