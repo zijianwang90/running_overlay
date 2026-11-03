@@ -84,11 +84,13 @@ final class SkiaFrameRendererBackend: OverlayFrameRendererBackend {
         activity: ActivityTimeline,
         elapsedTime: TimeInterval
     ) async throws -> CGImage {
-        let (base, rowBytes) = renderer.render(
+        guard let (base, rowBytes) = renderer.render(
             layout: layout,
             activity: activity,
             elapsedTime: elapsedTime
-        )
+        ) else {
+            throw OverlayRendererBackendError.cannotCreateImage
+        }
         return try Self.makeImage(
             base,
             rowBytes: rowBytes,

@@ -159,11 +159,11 @@ struct SkiaRouteWeatherGPUParityTests {
         cpu: SkiaEasyRunRenderer,
         gpu: SkiaEasyRunRenderer
     ) throws {
-        let (cpuPointer, cpuRow) = cpu.render(
+        let (cpuPointer, cpuRow) = try #require(cpu.render(
             layout: layout,
             activity: activity,
             elapsedTime: elapsedTime
-        )
+        ))
         let cpuPixels = Array(
             UnsafeBufferPointer(
                 start: cpuPointer,

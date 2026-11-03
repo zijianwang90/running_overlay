@@ -35,11 +35,11 @@ import Testing
         var cpuPixels = [UInt8]()
         var cpuRow = 0
         for i in 0..<frames {
-            let (ptr, row) = cpu.render(
+            let (ptr, row) = try #require(cpu.render(
                 layout: layout,
                 activity: activity,
                 elapsedTime: Double(i) * 0.5
-            )
+            ))
             if i == frames - 1 {
                 cpuPixels = Array(UnsafeBufferPointer(start: ptr, count: row * 1080))
                 cpuRow = row

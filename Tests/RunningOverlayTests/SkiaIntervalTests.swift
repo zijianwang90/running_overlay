@@ -729,11 +729,11 @@ import Testing
             ))
 
             let renderer = try #require(SkiaIntervalFrameRenderer(size: size))
-            let (pixels, rowBytes) = renderer.render(
+            let (pixels, rowBytes) = try #require(renderer.render(
                 layout: layout,
                 activity: activity,
                 elapsedTime: elapsedTime
-            )
+            ))
             let width = Int(size.width)
             let height = Int(size.height)
             let referenceRowBytes = width * 4

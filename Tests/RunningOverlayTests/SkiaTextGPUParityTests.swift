@@ -114,22 +114,22 @@ import Testing
         let elapsedTime = SkiaTextFixtureFactory.elapsedTime
 
         let cpu = try #require(SkiaEasyRunRenderer(size: size))
-        let cpuPixels = {
-            let (pointer, rowBytes) = cpu.render(
+        let (pointer, rowBytes) = try #require(
+            cpu.render(
                 layout: layout,
                 activity: activity,
                 elapsedTime: elapsedTime
             )
-            return PixelBuffer(
-                bytes: Array(
-                    UnsafeBufferPointer(
-                        start: pointer,
-                        count: rowBytes * Int(size.height)
-                    )
-                ),
-                rowBytes: rowBytes
-            )
-        }()
+        )
+        let cpuPixels = PixelBuffer(
+            bytes: Array(
+                UnsafeBufferPointer(
+                    start: pointer,
+                    count: rowBytes * Int(size.height)
+                )
+            ),
+            rowBytes: rowBytes
+        )
 
         // A Metal device can still exist when the bridge was compiled without
         // GPU support; treat that as an unavailable environment, not a defect.

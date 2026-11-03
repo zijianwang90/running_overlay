@@ -125,11 +125,11 @@ import Testing
             #expect(SkiaEasyRunRenderer.supports(element), "\(element.type.rawValue)")
 
             let renderer = try #require(SkiaEasyRunRenderer(size: Self.hd1080))
-            let (pixels, rowBytes) = renderer.render(
+            let (pixels, rowBytes) = try #require(renderer.render(
                 layout: OverlayLayout(elements: [element]),
                 activity: Self.activity,
                 elapsedTime: 12
-            )
+            ))
 
             var drewPixels = false
             for y in stride(from: 0, to: Int(Self.hd1080.height), by: 8) where !drewPixels {

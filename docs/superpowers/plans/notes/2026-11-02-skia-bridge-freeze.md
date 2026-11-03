@@ -96,6 +96,15 @@ void skb_begin_opacity_layer(ctx, alpha, x, y, w, h);
 5. **No commits or pushes from module agents.** Report with `hc send t2t`.
 6. **Benchmarks run serially.** Do not run GPU export benchmarks while other
    agents are rendering.
+7. **Hosts preload assets before drawing.** Call
+   `SkiaEasyRunRenderer.preloadAssets` whenever layout, activity, canvas size,
+   or available map snapshots change. The one-time auto-preload inside `draw`
+   is only a safety net for tests and must not become the display-link path.
+8. **Skia draws strictly in `layout.elements` order.** The SwiftUI exporter
+   batches numeric overlays for performance, which can reorder an interleaved
+   non-numeric element. Treat layout order as canonical for the Skia renderer
+   and add a mixed-order golden before export cutover; decide separately
+   whether the SwiftUI batching optimization survives.
 
 ## 3. Route + weather decisions
 

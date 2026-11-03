@@ -109,11 +109,11 @@ import Testing
 
             let renderer = try #require(SkiaEasyRunRenderer(size: Self.hd1080))
             let layout = OverlayLayout(elements: [element])
-            let (pixels, rowBytes) = renderer.render(
+            let (pixels, rowBytes) = try #require(renderer.render(
                 layout: layout,
                 activity: Self.activity,
                 elapsedTime: 12
-            )
+            ))
 
             var nonEmptySamples = 0
             makeSampleLoop: for y in stride(from: 0, to: Int(Self.hd1080.height), by: 16) {

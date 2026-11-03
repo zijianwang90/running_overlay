@@ -43,11 +43,11 @@ import Testing
         }
         let skiaMs = Self.ms(ContinuousClock.now - skiaStart) / Double(frames)
 
-        let (skPixels, skRow) = skia.render(
+        let (skPixels, skRow) = try #require(skia.render(
             layout: layout,
             activity: activity,
             elapsedTime: Double(frames - 1) * 0.5
-        )
+        ))
         let cgPixels = try #require(SwiftUIOverlayVideoExporter.rasterizeCanvas(
             draws: [(image, CGRect(origin: .zero, size: size))],
             canvasSize: size
@@ -168,7 +168,9 @@ import Testing
         let image = try await SwiftUIOverlayVideoExporter.renderFrameCGImage(
             overlayLayout: layout, activity: activity, elapsedTime: 59.5, size: size
         )
-        let (skPixels, skRow) = skia.render(layout: layout, activity: activity, elapsedTime: 59.5)
+        let (skPixels, skRow) = try #require(
+            skia.render(layout: layout, activity: activity, elapsedTime: 59.5)
+        )
         let cgPixels = try #require(SwiftUIOverlayVideoExporter.rasterizeCanvas(
             draws: [(image, CGRect(origin: .zero, size: size))], canvasSize: size
         ))

@@ -64,6 +64,8 @@ final class SkiaEasyRunRenderer {
     }
 
     deinit {
+        // Drain GPU work before the context and cached image handles go away.
+        skb_flush(context, 1)
         renderAssets.releaseImages()
         skb_destroy(context)
     }
@@ -157,16 +159,20 @@ final class SkiaEasyRunRenderer {
                     assets: renderAssets
                 )
             default:
-                drawTextElement(element, renderContext: renderContext)
+                // Every supported type is handled above. A new type added to
+                // `supports` without a draw case must fail loudly rather than
+                // silently fall back to the legacy text drawing.
+                assertionFailure("Unhandled Skia overlay type: \(element.type.rawValue)")
             }
         }
     }
 
-    /// Renders supported elements; returns premultiplied BGRA pixels (borrowed, valid until next render).
-    func render(layout: OverlayLayout, activity: ActivityTimeline, elapsedTime: TimeInterval) -> (UnsafePointer<UInt8>, Int) {
+    /// Renders supported elements; returns premultiplied BGRA pixels (borrowed,
+    /// valid until next render), or `nil` if readback fails.
+    func render(layout: OverlayLayout, activity: ActivityTimeline, elapsedTime: TimeInterval) -> (UnsafePointer<UInt8>, Int)? {
         draw(layout: layout, activity: activity, elapsedTime: elapsedTime)
         var rowBytes = 0
-        let base = skb_pixels(context, &rowBytes)!
+        guard let base = skb_pixels(context, &rowBytes) else { return nil }
         return (base, rowBytes)
     }
 
