@@ -188,6 +188,79 @@ import Testing
         }
     }
 
+    @Test func elevationChartGradientArea() async throws {
+        try await OverlayPreferenceFixtures.withDefaults {
+            let element = elevationElement(.gradientArea)
+            try await compare(
+                layout: OverlayLayout(elements: [element]),
+                elapsedTime: 300,
+                label: "elevation-gradient-area"
+            )
+        }
+    }
+
+    @Test func elevationChartDualArea() async throws {
+        try await OverlayPreferenceFixtures.withDefaults {
+            let element = elevationElement(.dualArea)
+            try await compare(
+                layout: OverlayLayout(elements: [element]),
+                elapsedTime: 300,
+                label: "elevation-dual-area"
+            )
+        }
+    }
+
+    @Test func elevationChartTechGlow() async throws {
+        try await OverlayPreferenceFixtures.withDefaults {
+            let element = elevationElement(.techGlow)
+            try await compare(
+                layout: OverlayLayout(elements: [element]),
+                elapsedTime: 300,
+                label: "elevation-tech-glow"
+            )
+        }
+    }
+
+    @Test func elevationChartBigNumbers() async throws {
+        try await OverlayPreferenceFixtures.withDefaults {
+            let element = elevationElement(.bigNumbers)
+            try await compare(
+                layout: OverlayLayout(elements: [element]),
+                elapsedTime: 300,
+                label: "elevation-big-numbers"
+            )
+        }
+    }
+
+    @Test func elevationChartMinimalWhite() async throws {
+        try await OverlayPreferenceFixtures.withDefaults {
+            let element = elevationElement(.minimalWhite)
+            try await compare(
+                layout: OverlayLayout(elements: [element]),
+                elapsedTime: 300,
+                label: "elevation-minimal-white"
+            )
+        }
+    }
+
+    private func elevationElement(
+        _ preset: ElevationChartPreset
+    ) -> OverlayElement {
+        var style = OverlayStyle.default
+        var elevation = ElevationChartStyle.preset(preset)
+        elevation.bigNumberFontName = "Helvetica Neue"
+        elevation.statsBar.valueFontName = "Helvetica Neue"
+        elevation.statsBar.labelFontName = "Helvetica Neue"
+        style.elevationChart = elevation
+        style.fontName = "Helvetica Neue"
+        return OverlayElement(
+            type: .elevationChart,
+            position: CGPoint(x: 0.5, y: 0.5),
+            scale: 1,
+            style: style
+        )
+    }
+
     // MARK: - Helpers
 
     private func easyRunLayout() throws -> OverlayLayout {

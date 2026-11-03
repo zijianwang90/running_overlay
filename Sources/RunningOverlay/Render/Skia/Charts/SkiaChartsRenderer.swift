@@ -60,6 +60,16 @@ enum SkiaChartsModule {
                 element: element,
                 layout: elementLayout
             )
+        case .elevationChart:
+            let elementLayout = OverlayRenderModel.elevationChartLayout(
+                for: element,
+                in: renderContext
+            )
+            SkiaElevationChartRenderer.draw(
+                canvas: canvas,
+                element: element,
+                layout: elementLayout
+            )
         default:
             break
         }

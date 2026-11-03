@@ -844,7 +844,7 @@ enum SkiaStatsBar {
                 }
             }
         } else {
-            let dividerWidth = 13.0
+            let dividerWidth = 1.0
             let fixed = Double(max(count - 1, 0)) * dividerWidth + spacingTotal
             let itemWidth = (rect.width - fixed) / Double(count)
             var cursor = rect.minX
@@ -874,7 +874,7 @@ enum SkiaStatsBar {
                     if dividerOpacity > 0 {
                         canvas.fillRect(
                             CGRect(
-                                x: cursor + 6,
+                                x: cursor,
                                 y: rect.minY + 6,
                                 width: 1,
                                 height: max(rect.height - 12, 0)
