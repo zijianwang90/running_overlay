@@ -55,6 +55,22 @@ final class SkiaRenderAssets {
             pixelWidth: Int,
             pixelHeight: Int
         )
+
+        /// Asset families are evicted independently so a route-map preload pass
+        /// never drops weather icons (and vice versa).
+        enum Family: Hashable {
+            case routeMap
+            case weatherIcon
+            case symbol
+        }
+
+        var family: Family {
+            switch self {
+            case .mapSnapshot, .routeMask: .routeMap
+            case .weatherIcon: .weatherIcon
+            case .symbol: .symbol
+            }
+        }
     }
 
     private struct FontKey: Hashable {
@@ -76,6 +92,18 @@ final class SkiaRenderAssets {
             skb_image_destroy(handle)
         }
         images.removeAll()
+    }
+
+    /// Drops cached images in `family` that `current` does not contain and
+    /// destroys their bridge handles. Other families are untouched, so route
+    /// and weather preload passes can replace their own generations
+    /// independently.
+    func removeImages(notIn current: Set<ImageSource>, family: ImageSource.Family) {
+        let stale = images.keys.filter { $0.family == family && !current.contains($0) }
+        for key in stale {
+            guard let handle = images.removeValue(forKey: key) else { continue }
+            skb_image_destroy(handle)
+        }
     }
 
     func image(for source: ImageSource) -> OpaquePointer? {
@@ -104,11 +132,14 @@ final class SkiaRenderAssets {
 
     /// Registers a MapKit snapshot for a route layout. `request` must be the
     /// value produced by `RouteMapSnapshotRequestBuilder` for the same layout.
+    /// Returns the cache key so preload passes can retain the current
+    /// generation.
+    @discardableResult
     func registerMapSnapshot(
         _ image: NSImage,
         for request: MapSnapshotRequest,
         pixelSize: CGSize
-    ) {
+    ) -> ImageSource {
         let width = max(Int(pixelSize.width.rounded()), 1)
         let height = max(Int(pixelSize.height.rounded()), 1)
         let key = ImageSource.mapSnapshot(
@@ -116,17 +147,20 @@ final class SkiaRenderAssets {
             pixelWidth: width,
             pixelHeight: height
         )
-        guard images[key] == nil else { return }
+        guard images[key] == nil else { return key }
         register(image: image, pixelWidth: width, pixelHeight: height, for: key)
+        return key
     }
 
-    func registerWeatherIcon(_ condition: WeatherCondition, pixelSize: Int) {
+    @discardableResult
+    func registerWeatherIcon(_ condition: WeatherCondition, pixelSize: Int) -> ImageSource {
         let side = max(pixelSize, 1)
         let key = ImageSource.weatherIcon(condition, pixelSize: side)
         guard images[key] == nil,
               let image = IconAssetResolver.bundledImage(name: condition.bundledImageName)
-        else { return }
+        else { return key }
         register(image: image, pixelWidth: side, pixelHeight: side, for: key)
+        return key
     }
 
     func registerSymbol(
@@ -156,14 +190,16 @@ final class SkiaRenderAssets {
     }
 
     /// Builds the route edge-fade mask once and stores it as an alpha mask.
-    /// `fadeAmount` is quantized to 0.001 for the cache key.
+    /// `fadeAmount` is quantized to 0.001 for the cache key. Returns the cache
+    /// key so preload passes can retain the current generation.
+    @discardableResult
     func registerRouteMask(
         shape: OverlayRouteMapShape,
         cornerRadius: Double,
         edgeFade: OverlayRouteMapEdgeFade,
         fadeAmount: Double,
         pixelSize: CGSize
-    ) {
+    ) -> ImageSource {
         let width = max(Int(pixelSize.width.rounded(.up)), 1)
         let height = max(Int(pixelSize.height.rounded(.up)), 1)
         let key = ImageSource.routeMask(
@@ -188,8 +224,9 @@ final class SkiaRenderAssets {
                 pixelHeight: height,
                 alphaFromLuminance: true
               )
-        else { return }
+        else { return key }
         images[key] = handle
+        return key
     }
 
     // MARK: - Rasterization
@@ -353,6 +390,7 @@ extension SkiaRenderAssets {
             activity: activity,
             elapsedTime: 0
         )
+        var current: Set<ImageSource> = []
         for element in elements where element.type == .routeMap && element.isVisible {
             let layout = OverlayRenderModel.routeMapLayout(for: element, in: context)
             let pixelSize = CGSize(
@@ -364,23 +402,26 @@ extension SkiaRenderAssets {
                 for: element,
                 layout: layout
             ), let image = mapSnapshots[request] {
-                assets.registerMapSnapshot(
+                current.insert(assets.registerMapSnapshot(
                     image,
                     for: request,
                     pixelSize: pixelSize
-                )
+                ))
             }
 
             if layout.edgeFade == .fadeOut, layout.fadeAmount > 0.001 {
-                assets.registerRouteMask(
+                current.insert(assets.registerRouteMask(
                     shape: layout.shape,
                     cornerRadius: layout.cornerRadius,
                     edgeFade: layout.edgeFade,
                     fadeAmount: layout.fadeAmount,
                     pixelSize: layout.rect.size
-                )
+                ))
             }
         }
+        // Replace the previous generation instead of accumulating handles for
+        // every size/style/fade value the element has had.
+        assets.removeImages(notIn: current, family: .routeMap)
     }
 
     /// Preloads the bundled weather icon for every visible weather widget at
@@ -397,6 +438,7 @@ extension SkiaRenderAssets {
             activity: activity,
             elapsedTime: 0
         )
+        var current: Set<ImageSource> = []
         for element in elements where element.type == .weatherWidget && element.isVisible {
             let layout = OverlayRenderModel.weatherWidgetLayout(
                 for: element,
@@ -411,11 +453,12 @@ extension SkiaRenderAssets {
             case .minimalText: designSize = 30
             case .dashboardBar: designSize = 44
             }
-            assets.registerWeatherIcon(
+            current.insert(assets.registerWeatherIcon(
                 layout.condition,
                 pixelSize: Int((designSize * scale).rounded(.up))
-            )
+            ))
         }
+        assets.removeImages(notIn: current, family: .weatherIcon)
     }
 }
 #endif

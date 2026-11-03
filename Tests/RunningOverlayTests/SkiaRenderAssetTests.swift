@@ -233,6 +233,204 @@ struct SkiaRenderAssetTests {
         }
     }
 
+    @Test func preloadGenerationEvictsStaleImagesByFamily() throws {
+        try OverlayPreferenceFixtures.withDefaults {
+            let activity = SkiaRouteWeatherGoldenTests.activity()
+            let context = OverlayRenderContext(
+                canvasSize: Self.canvas,
+                activity: activity,
+                elapsedTime: 30
+            )
+            let assets = SkiaRenderAssets()
+            defer { assets.releaseImages() }
+
+            var routeStyle = OverlayStyle.default
+            routeStyle.routeMapBackgroundStyle = .dark
+            routeStyle.routeMapWidth = 420
+            routeStyle.routeMapHeight = 300
+            routeStyle.backgroundEnabled = true
+            routeStyle.backgroundFadeOutEnabled = true
+            routeStyle.backgroundFadeOutAmount = 0.34
+            var routeElement = OverlayElement(
+                type: .routeMap,
+                position: CGPoint(x: 0.5, y: 0.5),
+                scale: 1,
+                style: routeStyle
+            )
+
+            let firstRouteLayout = OverlayRenderModel.routeMapLayout(
+                for: routeElement,
+                in: context
+            )
+            let firstRequest = try #require(
+                RouteMapSnapshotRequestBuilder.request(
+                    for: routeElement,
+                    layout: firstRouteLayout
+                )
+            )
+            let firstSnapshotKey = Self.snapshotKey(
+                firstRequest,
+                firstRouteLayout
+            )
+            let firstMaskKey = Self.maskKey(firstRouteLayout)
+            SkiaRenderAssets.preloadRouteMaps(
+                elements: [routeElement],
+                activity: activity,
+                canvasSize: Self.canvas,
+                mapSnapshots: [
+                    firstRequest: Self.solidImage(
+                        size: firstRouteLayout.rect.size
+                    )
+                ],
+                into: assets
+            )
+            #expect(assets.image(for: firstSnapshotKey) != nil)
+            #expect(assets.image(for: firstMaskKey) != nil)
+
+            var weatherStyle = OverlayStyle.default
+            weatherStyle.weatherWidget = .preset(.simpleCard)
+            var weatherElement = OverlayElement(
+                type: .weatherWidget,
+                position: CGPoint(x: 0.5, y: 0.5),
+                scale: 1,
+                style: weatherStyle
+            )
+            let firstWeatherLayout = OverlayRenderModel.weatherWidgetLayout(
+                for: weatherElement,
+                in: context
+            )
+            let firstIconKey = Self.weatherIconKey(firstWeatherLayout)
+            SkiaWeatherWidgetModule.preloadAssets(
+                elements: [weatherElement],
+                activity: activity,
+                canvasSize: Self.canvas,
+                into: assets
+            )
+            #expect(assets.image(for: firstIconKey) != nil)
+            // The weather pass must not evict route assets.
+            #expect(assets.image(for: firstSnapshotKey) != nil)
+            #expect(assets.image(for: firstMaskKey) != nil)
+
+            // Resize and re-fade the route map: the old snapshot and mask
+            // handles must be replaced, not retained alongside the new ones.
+            routeStyle.routeMapWidth = 520
+            routeStyle.backgroundFadeOutAmount = 0.55
+            routeStyle.routeMapBackgroundStyle = .light
+            routeElement.style = routeStyle
+            let secondRouteLayout = OverlayRenderModel.routeMapLayout(
+                for: routeElement,
+                in: context
+            )
+            let secondRequest = try #require(
+                RouteMapSnapshotRequestBuilder.request(
+                    for: routeElement,
+                    layout: secondRouteLayout
+                )
+            )
+            let secondSnapshotKey = Self.snapshotKey(
+                secondRequest,
+                secondRouteLayout
+            )
+            let secondMaskKey = Self.maskKey(secondRouteLayout)
+            #expect(secondSnapshotKey != firstSnapshotKey)
+            #expect(secondMaskKey != firstMaskKey)
+            SkiaRenderAssets.preloadRouteMaps(
+                elements: [routeElement],
+                activity: activity,
+                canvasSize: Self.canvas,
+                mapSnapshots: [
+                    secondRequest: Self.solidImage(
+                        size: secondRouteLayout.rect.size
+                    )
+                ],
+                into: assets
+            )
+            #expect(assets.image(for: firstSnapshotKey) == nil)
+            #expect(assets.image(for: firstMaskKey) == nil)
+            #expect(assets.image(for: secondSnapshotKey) != nil)
+            #expect(assets.image(for: secondMaskKey) != nil)
+            #expect(assets.image(for: firstIconKey) != nil)
+
+            // Change the weather preset and scale: only the old weather icon
+            // goes, and route assets stay valid.
+            weatherStyle.weatherWidget = .preset(.compactStrip)
+            weatherElement.style = weatherStyle
+            weatherElement.scale = 1.5
+            let secondWeatherLayout = OverlayRenderModel.weatherWidgetLayout(
+                for: weatherElement,
+                in: context
+            )
+            let secondIconKey = Self.weatherIconKey(secondWeatherLayout)
+            #expect(secondIconKey != firstIconKey)
+            SkiaWeatherWidgetModule.preloadAssets(
+                elements: [weatherElement],
+                activity: activity,
+                canvasSize: Self.canvas,
+                into: assets
+            )
+            #expect(assets.image(for: firstIconKey) == nil)
+            #expect(assets.image(for: secondIconKey) != nil)
+            #expect(assets.image(for: secondSnapshotKey) != nil)
+            #expect(assets.image(for: secondMaskKey) != nil)
+        }
+    }
+
+    private static func snapshotKey(
+        _ request: MapSnapshotRequest,
+        _ layout: OverlayRouteMapRenderLayout
+    ) -> SkiaRenderAssets.ImageSource {
+        .mapSnapshot(
+            request,
+            pixelWidth: max(Int(layout.rect.width.rounded()), 1),
+            pixelHeight: max(Int(layout.rect.height.rounded()), 1)
+        )
+    }
+
+    private static func maskKey(
+        _ layout: OverlayRouteMapRenderLayout
+    ) -> SkiaRenderAssets.ImageSource {
+        .routeMask(
+            shape: layout.shape,
+            cornerRadius: Int(layout.cornerRadius.rounded()),
+            edgeFade: layout.edgeFade,
+            fadeAmountMilli: Int((layout.fadeAmount * 1000).rounded()),
+            pixelWidth: max(Int(layout.rect.width.rounded(.up)), 1),
+            pixelHeight: max(Int(layout.rect.height.rounded(.up)), 1)
+        )
+    }
+
+    private static func weatherIconKey(
+        _ layout: WeatherWidgetRenderLayout
+    ) -> SkiaRenderAssets.ImageSource {
+        let scale = layout.rect.width / max(layout.style.width, 1)
+        let designSize: Double
+        switch layout.style.preset {
+        case .simpleCard: designSize = 58
+        case .compactStrip: designSize = 34
+        case .forecastTile: designSize = 54
+        case .minimalText: designSize = 30
+        case .dashboardBar: designSize = 44
+        }
+        return .weatherIcon(
+            layout.condition,
+            pixelSize: Int((designSize * scale).rounded(.up))
+        )
+    }
+
+    private static func solidImage(
+        size: CGSize,
+        color: NSColor = .systemTeal
+    ) -> NSImage {
+        NSImage(
+            size: NSSize(width: size.width, height: size.height),
+            flipped: false
+        ) { rect in
+            color.setFill()
+            rect.fill()
+            return true
+        }
+    }
+
     @Test func fontCacheReusesInstances() {
         let assets = SkiaRenderAssets()
         let first = assets.font(family: "Menlo", size: 18, weight: .semibold)

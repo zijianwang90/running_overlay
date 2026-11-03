@@ -756,3 +756,26 @@ Findings:
 - `displayLinkDrivesFramesInAWindow` (pre-existing preview test) was observed
   timing-flaky once under the full merged suite and passes on rerun; unrelated
   to route/weather.
+
+---
+
+## 13. Preload generation eviction (2026-11-02)
+
+`SkiaRenderAssets` now replaces stale image handles instead of accumulating
+them when a preload pass sees new geometry or style values:
+
+- `ImageSource.family` groups sources into `.routeMap` (map snapshots and fade
+  masks), `.weatherIcon`, and `.symbol`.
+- `removeImages(notIn: Set<ImageSource>, family:)` destroys handles in that
+  family that the current pass did not register; other families are untouched.
+- `registerMapSnapshot`, `registerRouteMask`, and `registerWeatherIcon` return
+  the cache key they represent, so `preloadRouteMaps` and `preloadWeatherIcons`
+  can collect the current generation and evict the rest.
+- The draw path is unchanged: it still performs dictionary lookups only.
+
+Because eviction is family-scoped, the renderer's route pass followed by its
+weather pass cannot drop each other's assets. A size, shape, fade, background
+style, or weather preset/scale change replaces the old full-resolution handles
+on the next preload. `Tests/RunningOverlayTests/SkiaRenderAssetTests.swift`
+covers route snapshot/mask replacement, weather icon replacement, and
+cross-family retention.
