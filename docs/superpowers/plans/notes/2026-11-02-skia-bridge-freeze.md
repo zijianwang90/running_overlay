@@ -177,3 +177,9 @@ context, 1080p/4K at roughly 8.4 ms per frame. Next:
    and drag affordances on top.
 4. Commit the regenerated `RunningOverlay.xcodeproj/project.pbxproj` with the
    new file; do not leave `check.sh`'s generated-project check failing.
+
+Known limitation until every module is ported: supported Skia modules and
+SwiftUI fallback modules cannot interleave z-order inside one canvas, so
+fallback views always draw above Skia pixels. Current Easy Run fallback modules
+are spatially disjoint; resolve by porting the remaining modules, not by
+stacking two canvases.
