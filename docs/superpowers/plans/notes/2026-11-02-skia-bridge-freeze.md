@@ -178,9 +178,9 @@ context, 1080p/4K at roughly 8.4 ms per frame. Next:
 4. Commit the regenerated `RunningOverlay.xcodeproj/project.pbxproj` with the
    new file; do not leave `check.sh`'s generated-project check failing.
 
-Known limitation until every module is ported: supported Skia modules and
-SwiftUI fallback modules cannot interleave z-order inside one canvas, so
-fallback views always draw above Skia pixels. The fallback is temporary only.
-Preview must reach 100% Skia rendering; once every module has a Skia port, the
-fallback pass and its pinned test set are removed. Do not resolve the z-order
-problem by stacking two canvases.
+The temporary SwiftUI fallback has been removed: every overlay module now has
+a Skia port and preview renders 100% through Skia. The all-Skia cutover is
+still behind the debug flag; the SwiftUI preview remains the default until
+parity review. Selection styling is currently the generic rectangle in Skia
+mode; module-specific selected treatments are editor-only affordances and are
+not part of the rendered pixels.
