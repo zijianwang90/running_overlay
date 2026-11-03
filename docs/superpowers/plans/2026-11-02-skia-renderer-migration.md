@@ -123,7 +123,9 @@ parity and speed gates pass; SwiftUI remains selectable.
 ### Phase 2 — Module ports (parallel)
 
 Group modules by shared drawing primitives. Each group owns new files and tests;
-shared bridge/renderer files stay with the lead.
+shared bridge/renderer files stay with the lead. Phase A inventories are
+complete; the frozen bridge API and the Phase B decisions are recorded in
+`notes/2026-11-02-skia-bridge-freeze.md`.
 
 | Group | Modules | Notes |
 | --- | --- | --- |
