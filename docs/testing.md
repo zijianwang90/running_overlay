@@ -69,6 +69,32 @@ Snapshots should favor deterministic Core Graphics geometry and synthetic
 data. Avoid network-backed maps, current time, locale-sensitive content, or
 fonts that differ across supported systems.
 
+## Skia Renderer Tests
+
+The Skia renderer tests are compiled only when `SKIA_DIR` points at the
+pinned prebuilt. CPU raster tests need only `SKIA_DIR`; GPU, preview, and
+GPU-parity tests also need `SKIA_GPU=1`. For example:
+
+```sh
+SKIA_DIR=/path/to/skia-prebuilt SKIA_GPU=1 ./scripts/check.sh
+```
+
+- `Skia*GoldenTests` compare normalized RGBA against
+  `SwiftUIOverlayVideoExporter.renderFrameCGImage`. Thresholds are per suite:
+  text goldens use changed-pixel ratios of 2-5% and mean deltas of 2-6; route
+  and weather allow 10% and mean 8; the mixed full-template golden allows 15%
+  and mean 2. Pixel equality is not expected because Skia and SwiftUI use
+  different anti-aliasing and shadow kernels.
+- GPU parity tests compare the CPU raster bridge with the offscreen Metal
+  surface through `SkiaEasyRunRenderer`. They require at most 2% changed
+  pixels and a mean delta of 0.5 for charts, route, and weather.
+- Suites that create Skia contexts or Metal export sessions are gated so they
+  do not run concurrently across suites. Swift Testing parallelizes suites,
+  and concurrent Ganesh contexts and CPU raster passes have produced
+  intermittent crashes and global-preference races.
+- The Skia prebuilt is a development dependency; it is not committed and is
+  not part of the shipping app unless a release explicitly opts in.
+
 ## Performance Tests
 
 Performance comparisons must use a documented project snapshot with no private

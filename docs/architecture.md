@@ -121,6 +121,28 @@ Current overlay element types:
 | Charts | distanceTimeline, elevationChart, runningGauge, intervalHUDBar, intervalTimeline, intervalCountdown, intervalWorkSummary, zoneEdgeBar |
 | Route | routeMap |
 
+### Overlay Renderer
+
+Responsibilities:
+
+- Build layout and style for every overlay element through
+  `OverlayRenderModel`; renderers consume that model and do not re-derive
+  geometry.
+- Draw all supported elements through one `SkiaEasyRunRenderer` in
+  `layout.elements` order. Preview and export call the same renderer.
+- Use Ganesh Metal for preview and export and the CPU raster bridge for tests
+  and machines without Metal. The `skb_*` C bridge is the only Skia boundary.
+- Preload route-map snapshots, weather icons, and route masks before drawing.
+  Hosts call `preloadAssets` when layout, activity, canvas size, or available
+  map snapshots change; the one-time auto-preload inside `draw` is a test
+  safety net, not the preview display-link path.
+- Keep preview and export pixel-equivalent within documented golden
+  thresholds. Text anti-aliasing and shadow kernels differ from SwiftUI at the
+  pixel level, so parity tests compare changed-pixel ratios and mean deltas.
+- Keep the SwiftUI `ImageRenderer` path available as an opt-in
+  (`RUNNING_OVERLAY_RENDERER=swiftui` for export) until parity review is
+  complete. ADR 0010 records the decision and measurements.
+
 ### Preview
 
 Responsibilities:

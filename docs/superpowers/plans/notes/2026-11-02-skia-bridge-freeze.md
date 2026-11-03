@@ -100,11 +100,11 @@ void skb_begin_opacity_layer(ctx, alpha, x, y, w, h);
    `SkiaEasyRunRenderer.preloadAssets` whenever layout, activity, canvas size,
    or available map snapshots change. The one-time auto-preload inside `draw`
    is only a safety net for tests and must not become the display-link path.
-8. **Skia draws strictly in `layout.elements` order.** The SwiftUI exporter
-   batches numeric overlays for performance, which can reorder an interleaved
-   non-numeric element. Treat layout order as canonical for the Skia renderer
-   and add a mixed-order golden before export cutover; decide separately
-   whether the SwiftUI batching optimization survives.
+8. **Skia draws strictly in `layout.elements` order.** Layout order is the
+   canonical z-order. The SwiftUI exporter keeps its numeric batching
+   optimization but now batches only contiguous runs, so an interleaved
+   non-numeric element is never moved above or below a batch.
+   `renderPlanPreservesLayoutOrderWhenNumericOverlaysAreSplit` guards this.
 
 ## 3. Route + weather decisions
 

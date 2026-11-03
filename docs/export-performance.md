@@ -408,6 +408,10 @@ numeric overlays in the per-overlay path:
 - The batch is enabled only when at least two numeric overlays fit inside a
   padded union rect whose area is below 45% of the canvas and smaller than the
   sum of their individual padded areas.
+- Only contiguous runs of numeric overlays are batched. A non-numeric overlay
+  interleaved between them splits the batch, so the render plan preserves the
+  layout's z-order. This also matches the Skia renderer, which draws strictly
+  in `layout.elements` order.
 - The batch still renders through `SwiftUIOverlayLayerView`, so visual output
   should match the current per-overlay path. Profiling records the batch under
   the first grouped numeric overlay type.
