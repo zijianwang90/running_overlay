@@ -52,6 +52,7 @@
 		94CC1A167F36FFDCEB5046F1 /* SkiaChartsCommon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5819553EE34E845065E3E4E1 /* SkiaChartsCommon.swift */; };
 		C7E9BED755612162DD1B4796 /* SkiaChartsRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DFF23146571788A22CC5830 /* SkiaChartsRenderer.swift */; };
 		64367B517D02D3B3E6D67247 /* SkiaDistanceTimelineRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26893E260A17B4607B50C5BF /* SkiaDistanceTimelineRenderer.swift */; };
+		F7804F5323B7D61B103608DF /* SkiaElevationChartRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8706CE957A3BA4B99C12377 /* SkiaElevationChartRenderer.swift */; };
 		3CE3E5647CBB706D30A8A324 /* SkiaRunningGaugeRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96AF40ABAF752D1197D655EF /* SkiaRunningGaugeRenderer.swift */; };
 		F1022EF0F2A5CB453C014911 /* DecorDrawing.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE4B4FBE08A573C3B26E59C5 /* DecorDrawing.swift */; };
 		DB48B6241D4C78216F1FF0FD /* IntervalCountdownSkiaRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 008516465C1CE5097622CAC5 /* IntervalCountdownSkiaRenderer.swift */; };
@@ -196,6 +197,7 @@
 		5819553EE34E845065E3E4E1 /* SkiaChartsCommon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Charts/SkiaChartsCommon.swift"; sourceTree = SOURCE_ROOT; };
 		6DFF23146571788A22CC5830 /* SkiaChartsRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Charts/SkiaChartsRenderer.swift"; sourceTree = SOURCE_ROOT; };
 		26893E260A17B4607B50C5BF /* SkiaDistanceTimelineRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Charts/SkiaDistanceTimelineRenderer.swift"; sourceTree = SOURCE_ROOT; };
+		D8706CE957A3BA4B99C12377 /* SkiaElevationChartRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Charts/SkiaElevationChartRenderer.swift"; sourceTree = SOURCE_ROOT; };
 		96AF40ABAF752D1197D655EF /* SkiaRunningGaugeRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Charts/SkiaRunningGaugeRenderer.swift"; sourceTree = SOURCE_ROOT; };
 		AE4B4FBE08A573C3B26E59C5 /* DecorDrawing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/DecorDrawing.swift"; sourceTree = SOURCE_ROOT; };
 		008516465C1CE5097622CAC5 /* IntervalCountdownSkiaRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/IntervalCountdownSkiaRenderer.swift"; sourceTree = SOURCE_ROOT; };
@@ -342,6 +344,7 @@
 			5819553EE34E845065E3E4E1 /* SkiaChartsCommon.swift */,
 			6DFF23146571788A22CC5830 /* SkiaChartsRenderer.swift */,
 			26893E260A17B4607B50C5BF /* SkiaDistanceTimelineRenderer.swift */,
+			D8706CE957A3BA4B99C12377 /* SkiaElevationChartRenderer.swift */,
 			96AF40ABAF752D1197D655EF /* SkiaRunningGaugeRenderer.swift */,
 			AE4B4FBE08A573C3B26E59C5 /* DecorDrawing.swift */,
 			008516465C1CE5097622CAC5 /* IntervalCountdownSkiaRenderer.swift */,
@@ -514,6 +517,7 @@
 			94CC1A167F36FFDCEB5046F1 /* SkiaChartsCommon.swift in Sources */,
 			C7E9BED755612162DD1B4796 /* SkiaChartsRenderer.swift in Sources */,
 			64367B517D02D3B3E6D67247 /* SkiaDistanceTimelineRenderer.swift in Sources */,
+			F7804F5323B7D61B103608DF /* SkiaElevationChartRenderer.swift in Sources */,
 			3CE3E5647CBB706D30A8A324 /* SkiaRunningGaugeRenderer.swift in Sources */,
 			F1022EF0F2A5CB453C014911 /* DecorDrawing.swift in Sources */,
 			DB48B6241D4C78216F1FF0FD /* IntervalCountdownSkiaRenderer.swift in Sources */,
