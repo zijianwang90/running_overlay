@@ -49,6 +49,13 @@
 		E5F333668A4C5FF99B660EDA /* SecurityScopedURLAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7606100D21E01FDB106BBF9A /* SecurityScopedURLAccess.swift */; };
 		AB840A15AD4B2EE164ABD7C3 /* UserAssetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFE8BD2F41AD8E4D8AADF542 /* UserAssetStore.swift */; };
 		7628777647677F0F3389B2F0 /* OverlayRendererBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = D98C19D2DCBDD31DA26F0707 /* OverlayRendererBackend.swift */; };
+		94CC1A167F36FFDCEB5046F1 /* SkiaChartsCommon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5819553EE34E845065E3E4E1 /* SkiaChartsCommon.swift */; };
+		C7E9BED755612162DD1B4796 /* SkiaChartsRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DFF23146571788A22CC5830 /* SkiaChartsRenderer.swift */; };
+		64367B517D02D3B3E6D67247 /* SkiaDistanceTimelineRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26893E260A17B4607B50C5BF /* SkiaDistanceTimelineRenderer.swift */; };
+		20C2E8006D678E6DC8C4B8DF /* IntervalShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 629ECB9E5CFA254EF35081EF /* IntervalShared.swift */; };
+		3366CFCB0D8493C57D6AF77E /* IntervalTimelineSkiaRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D67628A343D07CBF38E5E22B /* IntervalTimelineSkiaRenderer.swift */; };
+		861715E8A02F303EBE7915B7 /* SkiaIntervalModules.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DB751CCC88F30EEF6B86F3B /* SkiaIntervalModules.swift */; };
+		B2F3823C2EB2B77082838006 /* ZoneEdgeBarSkiaRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3C41EA8573EE0DA685AE0F /* ZoneEdgeBarSkiaRenderer.swift */; };
 		BEC8055C7BC88AC23222F4FE /* TimelineModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD49E47BFAA48FB08BCA443D /* TimelineModel.swift */; };
 		7B0C594338A3E4F1DFE69CAC /* DecorOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F09A3B41E722847AA2B105 /* DecorOverlayDetailView.swift */; };
 		3B1925D0307551312F663186 /* DecorOverlayViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF73E69FF682BE184C9440FC /* DecorOverlayViews.swift */; };
@@ -172,6 +179,13 @@
 		7606100D21E01FDB106BBF9A /* SecurityScopedURLAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Project/SecurityScopedURLAccess.swift"; sourceTree = SOURCE_ROOT; };
 		EFE8BD2F41AD8E4D8AADF542 /* UserAssetStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Project/UserAssetStore.swift"; sourceTree = SOURCE_ROOT; };
 		D98C19D2DCBDD31DA26F0707 /* OverlayRendererBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/OverlayRendererBackend.swift"; sourceTree = SOURCE_ROOT; };
+		5819553EE34E845065E3E4E1 /* SkiaChartsCommon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Charts/SkiaChartsCommon.swift"; sourceTree = SOURCE_ROOT; };
+		6DFF23146571788A22CC5830 /* SkiaChartsRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Charts/SkiaChartsRenderer.swift"; sourceTree = SOURCE_ROOT; };
+		26893E260A17B4607B50C5BF /* SkiaDistanceTimelineRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Charts/SkiaDistanceTimelineRenderer.swift"; sourceTree = SOURCE_ROOT; };
+		629ECB9E5CFA254EF35081EF /* IntervalShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/IntervalShared.swift"; sourceTree = SOURCE_ROOT; };
+		D67628A343D07CBF38E5E22B /* IntervalTimelineSkiaRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/IntervalTimelineSkiaRenderer.swift"; sourceTree = SOURCE_ROOT; };
+		5DB751CCC88F30EEF6B86F3B /* SkiaIntervalModules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/SkiaIntervalModules.swift"; sourceTree = SOURCE_ROOT; };
+		FA3C41EA8573EE0DA685AE0F /* ZoneEdgeBarSkiaRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/ZoneEdgeBarSkiaRenderer.swift"; sourceTree = SOURCE_ROOT; };
 		FD49E47BFAA48FB08BCA443D /* TimelineModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Timeline/TimelineModel.swift"; sourceTree = SOURCE_ROOT; };
 		04F09A3B41E722847AA2B105 /* DecorOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/DecorOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
 		AF73E69FF682BE184C9440FC /* DecorOverlayViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/DecorOverlayViews.swift"; sourceTree = SOURCE_ROOT; };
@@ -297,6 +311,13 @@
 			7606100D21E01FDB106BBF9A /* SecurityScopedURLAccess.swift */,
 			EFE8BD2F41AD8E4D8AADF542 /* UserAssetStore.swift */,
 			D98C19D2DCBDD31DA26F0707 /* OverlayRendererBackend.swift */,
+			5819553EE34E845065E3E4E1 /* SkiaChartsCommon.swift */,
+			6DFF23146571788A22CC5830 /* SkiaChartsRenderer.swift */,
+			26893E260A17B4607B50C5BF /* SkiaDistanceTimelineRenderer.swift */,
+			629ECB9E5CFA254EF35081EF /* IntervalShared.swift */,
+			D67628A343D07CBF38E5E22B /* IntervalTimelineSkiaRenderer.swift */,
+			5DB751CCC88F30EEF6B86F3B /* SkiaIntervalModules.swift */,
+			FA3C41EA8573EE0DA685AE0F /* ZoneEdgeBarSkiaRenderer.swift */,
 			FD49E47BFAA48FB08BCA443D /* TimelineModel.swift */,
 			04F09A3B41E722847AA2B105 /* DecorOverlayDetailView.swift */,
 			AF73E69FF682BE184C9440FC /* DecorOverlayViews.swift */,
@@ -448,6 +469,13 @@
 			E5F333668A4C5FF99B660EDA /* SecurityScopedURLAccess.swift in Sources */,
 			AB840A15AD4B2EE164ABD7C3 /* UserAssetStore.swift in Sources */,
 			7628777647677F0F3389B2F0 /* OverlayRendererBackend.swift in Sources */,
+			94CC1A167F36FFDCEB5046F1 /* SkiaChartsCommon.swift in Sources */,
+			C7E9BED755612162DD1B4796 /* SkiaChartsRenderer.swift in Sources */,
+			64367B517D02D3B3E6D67247 /* SkiaDistanceTimelineRenderer.swift in Sources */,
+			20C2E8006D678E6DC8C4B8DF /* IntervalShared.swift in Sources */,
+			3366CFCB0D8493C57D6AF77E /* IntervalTimelineSkiaRenderer.swift in Sources */,
+			861715E8A02F303EBE7915B7 /* SkiaIntervalModules.swift in Sources */,
+			B2F3823C2EB2B77082838006 /* ZoneEdgeBarSkiaRenderer.swift in Sources */,
 			BEC8055C7BC88AC23222F4FE /* TimelineModel.swift in Sources */,
 			7B0C594338A3E4F1DFE69CAC /* DecorOverlayDetailView.swift in Sources */,
 			3B1925D0307551312F663186 /* DecorOverlayViews.swift in Sources */,
