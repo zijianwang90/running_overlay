@@ -12,6 +12,7 @@
 #include "include/core/SkRRect.h"
 #include "include/core/SkSamplingOptions.h"
 #include "include/core/SkSurface.h"
+#include "include/effects/SkDashPathEffect.h"
 #include "include/effects/SkGradient.h"
 #include "include/effects/SkImageFilters.h"
 #include "include/ports/SkTypeface_mac.h"
@@ -233,6 +234,116 @@ void skb_clip_round_rect(
     SkiaBridgeContext *ctx, float x, float y, float w, float h, float radius) {
     ctx->surface->getCanvas()->clipRRect(
         SkRRect::MakeRectXY(SkRect::MakeXYWH(x, y, w, h), radius, radius), true);
+}
+
+void skb_clip_rect(
+    SkiaBridgeContext *ctx, float x, float y, float w, float h) {
+    ctx->surface->getCanvas()->clipRect(SkRect::MakeXYWH(x, y, w, h), true);
+}
+
+SkiaBridgePath *skb_path_create(void) { return new SkiaBridgePath(); }
+
+void skb_path_destroy(SkiaBridgePath *path) { delete path; }
+
+void skb_path_move_to(SkiaBridgePath *path, float x, float y) {
+    path->builder.moveTo(x, y);
+}
+
+void skb_path_line_to(SkiaBridgePath *path, float x, float y) {
+    path->builder.lineTo(x, y);
+}
+
+void skb_path_quad_to(
+    SkiaBridgePath *path, float cx, float cy, float x, float y) {
+    path->builder.quadTo(cx, cy, x, y);
+}
+
+void skb_path_cubic_to(
+    SkiaBridgePath *path,
+    float c1x, float c1y, float c2x, float c2y, float x, float y) {
+    path->builder.cubicTo(c1x, c1y, c2x, c2y, x, y);
+}
+
+void skb_path_close(SkiaBridgePath *path) { path->builder.close(); }
+
+void skb_path_add_arc(
+    SkiaBridgePath *path, float cx, float cy, float radius,
+    float startDegrees, float sweepDegrees, int forceMoveTo) {
+    SkRect oval = SkRect::MakeXYWH(
+        cx - radius, cy - radius, radius * 2.0f, radius * 2.0f);
+    if (forceMoveTo) {
+        path->builder.addArc(oval, startDegrees, sweepDegrees);
+    } else {
+        path->builder.arcTo(oval, startDegrees, sweepDegrees, false);
+    }
+}
+
+void skb_draw_path(
+    SkiaBridgeContext *ctx, const SkiaBridgePath *path,
+    int fill, float r, float g, float b, float a,
+    float strokeWidth, int cap, int join,
+    float dashLength, float dashGap) {
+    if (!path) return;
+    SkPaint paint;
+    paint.setAntiAlias(true);
+    if (fill) {
+        paint.setStyle(SkPaint::kFill_Style);
+    } else {
+        paint.setStyle(SkPaint::kStroke_Style);
+        paint.setStrokeWidth(strokeWidth);
+        paint.setStrokeCap(static_cast<SkPaint::Cap>(cap));
+        paint.setStrokeJoin(static_cast<SkPaint::Join>(join));
+        if (dashLength > 0) {
+            SkScalar intervals[2] = {dashLength, dashGap};
+            paint.setPathEffect(SkDashPathEffect::Make(
+                SkSpan<const SkScalar>(intervals, 2), 0));
+        }
+    }
+    paint.setColor4f({r, g, b, a});
+    ctx->surface->getCanvas()->drawPath(path->builder.snapshot(), paint);
+}
+
+void skb_clip_path(SkiaBridgeContext *ctx, const SkiaBridgePath *path) {
+    if (!path) return;
+    ctx->surface->getCanvas()->clipPath(path->builder.snapshot(), true);
+}
+
+void skb_fill_linear_gradient_rect(
+    SkiaBridgeContext *ctx, float x, float y, float w, float h,
+    float x0, float y0, float x1, float y1,
+    float r0, float g0, float b0, float a0,
+    float r1, float g1, float b1, float a1) {
+    SkColor4f colors[2] = {{r0, g0, b0, a0}, {r1, g1, b1, a1}};
+    SkPoint points[2] = {SkPoint::Make(x0, y0), SkPoint::Make(x1, y1)};
+    SkGradient gradient(
+        SkGradient::Colors(
+            SkSpan<const SkColor4f>(colors, 2), SkTileMode::kClamp),
+        SkGradient::Interpolation{});
+    sk_sp<SkShader> shader = SkShaders::LinearGradient(points, gradient);
+    if (!shader) return;
+    SkPaint paint;
+    paint.setAntiAlias(true);
+    paint.setShader(shader);
+    ctx->surface->getCanvas()->drawRect(
+        SkRect::MakeXYWH(x, y, w, h), paint);
+}
+
+void skb_fill_radial_gradient_circle(
+    SkiaBridgeContext *ctx, float cx, float cy, float radius,
+    float r0, float g0, float b0, float a0,
+    float r1, float g1, float b1, float a1) {
+    SkColor4f colors[2] = {{r0, g0, b0, a0}, {r1, g1, b1, a1}};
+    SkGradient gradient(
+        SkGradient::Colors(
+            SkSpan<const SkColor4f>(colors, 2), SkTileMode::kClamp),
+        SkGradient::Interpolation{});
+    sk_sp<SkShader> shader = SkShaders::RadialGradient(
+        SkPoint::Make(cx, cy), radius, gradient);
+    if (!shader) return;
+    SkPaint paint;
+    paint.setAntiAlias(true);
+    paint.setShader(shader);
+    ctx->surface->getCanvas()->drawCircle(cx, cy, radius, paint);
 }
 
 void skb_begin_blur_layer(

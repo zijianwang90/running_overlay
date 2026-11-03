@@ -89,6 +89,51 @@ void skb_stroke_polyline(
 void skb_clip_circle(SkiaBridgeContext *ctx, float cx, float cy, float radius);
 void skb_clip_round_rect(
     SkiaBridgeContext *ctx, float x, float y, float w, float h, float radius);
+void skb_clip_rect(
+    SkiaBridgeContext *ctx, float x, float y, float w, float h);
+
+/// Reusable path for charts, gauges, and segmented bars. The path is in
+/// top-left canvas coordinates.
+typedef struct SkiaBridgePath SkiaBridgePath;
+
+SkiaBridgePath *skb_path_create(void);
+void skb_path_destroy(SkiaBridgePath *path);
+void skb_path_move_to(SkiaBridgePath *path, float x, float y);
+void skb_path_line_to(SkiaBridgePath *path, float x, float y);
+void skb_path_quad_to(
+    SkiaBridgePath *path, float cx, float cy, float x, float y);
+void skb_path_cubic_to(
+    SkiaBridgePath *path,
+    float c1x, float c1y, float c2x, float c2y, float x, float y);
+void skb_path_close(SkiaBridgePath *path);
+/// Adds a circular arc. Angles are in degrees, clockwise from the positive
+/// x-axis. `forceMoveTo` starts a new subpath instead of connecting.
+void skb_path_add_arc(
+    SkiaBridgePath *path, float cx, float cy, float radius,
+    float startDegrees, float sweepDegrees, int forceMoveTo);
+
+/// Draws a path as a fill or stroke. `cap` and `join` use the Skia enum
+/// values (0 = butt/miter, 1 = round, 2 = square/bevel). A positive
+/// `dashLength` enables a two-interval dash with `dashGap`.
+void skb_draw_path(
+    SkiaBridgeContext *ctx, const SkiaBridgePath *path,
+    int fill, float r, float g, float b, float a,
+    float strokeWidth, int cap, int join,
+    float dashLength, float dashGap);
+void skb_clip_path(SkiaBridgeContext *ctx, const SkiaBridgePath *path);
+
+/// Fills a rect with a linear gradient between two points.
+void skb_fill_linear_gradient_rect(
+    SkiaBridgeContext *ctx, float x, float y, float w, float h,
+    float x0, float y0, float x1, float y1,
+    float r0, float g0, float b0, float a0,
+    float r1, float g1, float b1, float a1);
+
+/// Fills a circle with a radial gradient.
+void skb_fill_radial_gradient_circle(
+    SkiaBridgeContext *ctx, float cx, float cy, float radius,
+    float r0, float g0, float b0, float a0,
+    float r1, float g1, float b1, float a1);
 
 /// Starts a layer whose contents are blurred with a Gaussian.
 void skb_begin_blur_layer(

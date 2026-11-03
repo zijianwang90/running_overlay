@@ -1,6 +1,7 @@
 #ifndef SKIA_BRIDGE_INTERNAL_H
 #define SKIA_BRIDGE_INTERNAL_H
 
+#include "include/core/SkPathBuilder.h"
 #include "include/core/SkPixmap.h"
 #include "include/core/SkRefCnt.h"
 #include "include/core/SkSurface.h"
@@ -17,6 +18,11 @@ struct SkiaBridgeContext {
     SkPixmap pixmap;
     sk_sp<GrDirectContext> grContext;
     std::vector<uint8_t> readback;
+};
+
+/// C-side path handle. `snapshot()` keeps the builder reusable after drawing.
+struct SkiaBridgePath {
+    SkPathBuilder builder;
 };
 
 /// Implemented in `skia_gpu.mm`.
