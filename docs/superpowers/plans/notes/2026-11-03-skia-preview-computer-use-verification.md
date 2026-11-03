@@ -5,7 +5,7 @@
 分支/工作区：
 
 ```text
-/Users/codywang/Documents/Projects/running_overlay_skia_gpu_spike
+$HOME/Documents/Projects/running_overlay_skia_gpu_spike
 ```
 
 执行前请遵守：
@@ -20,7 +20,7 @@
 在 Terminal 中执行：
 
 ```sh
-cd /Users/codywang/Documents/Projects/running_overlay_skia_gpu_spike
+cd "$HOME/Documents/Projects/running_overlay_skia_gpu_spike"
 
 export SKIA_DIR=/tmp/skia-prebuilts-m152/skia-m152-0873ec164a-r1-gpu-macos-arm64
 export SKIA_GPU=1
@@ -141,6 +141,13 @@ swift run RunningOverlay \
 
 每个模块至少完成一次 SwiftUI/Skia 同 playhead 截图对比。
 
+Zone Edge Bar 额外检查：
+
+1. 选中 Zone Edge Bar，打开 `Markers`。
+2. 在 `Arrow Size` 依次设为 `0.5x`、`1x`、`2x`，确认 SwiftUI 与 Skia 的箭头同步变化。
+3. 在 `Threshold Size` 依次设为 `0.5x`、`1x`、`2x`，确认 T 线长度和 T 文字同步变化。
+4. 确认放大后标记没有被容器或画面边缘裁切。
+
 ## 6. Route Map 专项验证
 
 1. 在左侧 `Overlays` 选择 `Route Map`，打开右侧 Inspector。
@@ -148,7 +155,9 @@ swift run RunningOverlay \
 3. 确认 `Map Style` 依次切换 `Dark`、`Light`、`Terrain`、`Satellite`，每次等待地图快照更新。
 4. 每个样式下分别截图 SwiftUI 和 Skia 同一 playhead。
 5. 调整 `Map Opacity`，确认两个渲染器都变化。
-6. 播放，观察当前跑者点是否沿路线前进，并在两个渲染器间切换确认位置一致。
+6. 调整 `Map Zoom`（0.5x–3x），确认两个渲染器使用同一张更近/更远的地图快照。
+7. 关闭 `Map POIs`，确认兴趣点文字消失；街名仍可能保留（MapKit 不提供街名密度控制）。
+8. 播放，观察当前跑者点是否沿路线前进，并在两个渲染器间切换确认位置一致。
 
 预期：
 

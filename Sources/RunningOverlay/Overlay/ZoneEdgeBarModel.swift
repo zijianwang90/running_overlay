@@ -81,7 +81,13 @@ struct ZoneEdgeBarStyle: Equatable, Codable {
     var glowIntensity: Double
     var markerEnabled: Bool
     var markerShowsValue: Bool
+    /// Multiplier for the current-zone arrow. `1` matches the original
+    /// thickness-derived size.
+    var markerSizeScale: Double
     var thresholdMarkerEnabled: Bool
+    /// Multiplier for the threshold "T" line and its label. `1` matches the
+    /// original thickness-derived size.
+    var thresholdMarkerSizeScale: Double
     var markerText: IntervalHUDBarTextStyle
 
     static let `default` = ZoneEdgeBarStyle(
@@ -105,9 +111,45 @@ struct ZoneEdgeBarStyle: Equatable, Codable {
         glowIntensity: 0.45,
         markerEnabled: true,
         markerShowsValue: true,
+        markerSizeScale: 1,
         thresholdMarkerEnabled: true,
+        thresholdMarkerSizeScale: 1,
         markerText: IntervalHUDBarTextStyle(fontName: FontLibraryManager.currentDefaultFamily, fontSize: 12, fontWeight: .semibold)
     )
+}
+
+extension ZoneEdgeBarStyle {
+    /// Decodes older project files and templates that predate the marker size
+    /// controls. Implemented in an extension so the memberwise initializer
+    /// stays available.
+    init(from decoder: Decoder) throws {
+        let defaults = Self.default
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        metric = try container.decodeIfPresent(ZoneEdgeBarMetric.self, forKey: .metric) ?? defaults.metric
+        placement = try container.decodeIfPresent(ZoneEdgeBarPlacement.self, forKey: .placement) ?? defaults.placement
+        edge = try container.decodeIfPresent(ZoneEdgeBarEdge.self, forKey: .edge) ?? defaults.edge
+        orientation = try container.decodeIfPresent(ZoneEdgeBarOrientation.self, forKey: .orientation) ?? defaults.orientation
+        length = try container.decodeIfPresent(Double.self, forKey: .length) ?? defaults.length
+        thickness = try container.decodeIfPresent(Double.self, forKey: .thickness) ?? defaults.thickness
+        edgeInset = try container.decodeIfPresent(Double.self, forKey: .edgeInset) ?? defaults.edgeInset
+        activeZoneWidthShare = try container.decodeIfPresent(Double.self, forKey: .activeZoneWidthShare) ?? defaults.activeZoneWidthShare
+        activeZoneHeightScale = try container.decodeIfPresent(Double.self, forKey: .activeZoneHeightScale) ?? defaults.activeZoneHeightScale
+        zoneSegmentGap = try container.decodeIfPresent(Double.self, forKey: .zoneSegmentGap) ?? defaults.zoneSegmentGap
+        cornerRadius = try container.decodeIfPresent(Double.self, forKey: .cornerRadius) ?? defaults.cornerRadius
+        inactiveZoneOpacity = try container.decodeIfPresent(Double.self, forKey: .inactiveZoneOpacity) ?? defaults.inactiveZoneOpacity
+        borderEnabled = try container.decodeIfPresent(Bool.self, forKey: .borderEnabled) ?? defaults.borderEnabled
+        borderColor = try container.decodeIfPresent(OverlayColor.self, forKey: .borderColor) ?? defaults.borderColor
+        borderOpacity = try container.decodeIfPresent(Double.self, forKey: .borderOpacity) ?? defaults.borderOpacity
+        borderWidth = try container.decodeIfPresent(Double.self, forKey: .borderWidth) ?? defaults.borderWidth
+        glowEnabled = try container.decodeIfPresent(Bool.self, forKey: .glowEnabled) ?? defaults.glowEnabled
+        glowIntensity = try container.decodeIfPresent(Double.self, forKey: .glowIntensity) ?? defaults.glowIntensity
+        markerEnabled = try container.decodeIfPresent(Bool.self, forKey: .markerEnabled) ?? defaults.markerEnabled
+        markerShowsValue = try container.decodeIfPresent(Bool.self, forKey: .markerShowsValue) ?? defaults.markerShowsValue
+        markerSizeScale = try container.decodeIfPresent(Double.self, forKey: .markerSizeScale) ?? defaults.markerSizeScale
+        thresholdMarkerEnabled = try container.decodeIfPresent(Bool.self, forKey: .thresholdMarkerEnabled) ?? defaults.thresholdMarkerEnabled
+        thresholdMarkerSizeScale = try container.decodeIfPresent(Double.self, forKey: .thresholdMarkerSizeScale) ?? defaults.thresholdMarkerSizeScale
+        markerText = try container.decodeIfPresent(IntervalHUDBarTextStyle.self, forKey: .markerText) ?? defaults.markerText
+    }
 }
 
 struct ZoneEdgeBarRenderLayout {

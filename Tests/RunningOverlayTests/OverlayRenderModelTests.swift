@@ -1467,6 +1467,30 @@ struct OverlayRenderModelTests {
         #expect(right.markerSide == .leading)
     }
 
+    @Test func zoneEdgeBarMarkerScalesGrowLayoutPadding() {
+        func layoutHeight(markerScale: Double, thresholdScale: Double) -> Double {
+            var style = OverlayStyle.default
+            style.zoneEdgeBar.markerSizeScale = markerScale
+            style.zoneEdgeBar.thresholdMarkerSizeScale = thresholdScale
+            let element = OverlayElement(type: .zoneEdgeBar, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
+            return OverlayRenderModel.zoneEdgeBarLayout(
+                for: element,
+                in: OverlayRenderContext(
+                    canvasSize: OverlayRenderContext.referenceCanvasSize,
+                    activity: sampleIntervalActivity(),
+                    elapsedTime: 50
+                )
+            ).rect.height
+        }
+
+        let baseline = layoutHeight(markerScale: 1, thresholdScale: 1)
+        let tallerArrow = layoutHeight(markerScale: 2, thresholdScale: 1)
+        let tallerThreshold = layoutHeight(markerScale: 1, thresholdScale: 2)
+
+        #expect(tallerArrow > baseline)
+        #expect(tallerThreshold > baseline)
+    }
+
     @Test func intervalTimelineCentersCurrentLapAndSummarizesOverflow() {
         var style = OverlayStyle.default
         style.intervalTimeline.mode = .centeredWindow

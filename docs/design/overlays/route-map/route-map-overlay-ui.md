@@ -191,6 +191,13 @@ Controls (v1):
 - Map Opacity slider, range `0...1`, default `0.72`. The slider modulates the
   alpha applied to the map snapshot in both preview and export. It does **not**
   affect the route line, markers, or legend.
+- Map Zoom slider, range `0.5...3`, default `1`. Values above 1 tighten the
+  MapKit snapshot region around the route; values below 1 show more
+  surrounding area. The widget maps this to region padding
+  (`0.18 / zoom`), so it changes both preview and export requests.
+- Map POIs toggle, default on. When off, the snapshot requests
+  `MKPointOfInterestFilter.excludingAll`. MapKit does not expose street-label
+  density control, so this only removes labeled places.
 
 Controls (v2, planned):
 

@@ -2404,11 +2404,13 @@ struct OverlayFrameRenderer {
         let isThreshold = marker.role == .threshold
         let gap = max(crossThickness * 0.35, 3)
         let font = layout.markerText
+        let markerSizeScale = min(max(style.markerSizeScale, 0.1), 4)
+        let thresholdScale = min(max(style.thresholdMarkerSizeScale, 0.1), 4)
 
         if layout.orientation == .horizontal {
             let x = zoneRect.minX + zoneRect.width * marker.fractionInZone
             if isThreshold {
-                let lineHeight = max(crossThickness * 1.35, 10)
+                let lineHeight = max(crossThickness * 1.35, 10) * thresholdScale
                 let lineWidth = max(1.2 * element.scale, 1)
                 let lineY = barRect.midY - lineHeight / 2
                 drawRoundedRect(
@@ -2416,13 +2418,14 @@ struct OverlayFrameRenderer {
                     color: color.withAlphaComponent(0.78),
                     cornerRadius: lineWidth / 2
                 )
-                let textStyle = IntervalHUDBarTextStyle(fontName: font.fontName, fontSize: max(font.fontSize * 0.72, 7), fontWeight: font.fontWeight)
+                let textStyle = IntervalHUDBarTextStyle(fontName: font.fontName, fontSize: max(font.fontSize * 0.72 * thresholdScale, 7), fontWeight: font.fontWeight)
                 let labelY = layout.markerSide == .above ? lineY - textStyle.fontSize - 4 : lineY + lineHeight + 2
-                drawCenteredText(marker.valueText, in: CGRect(x: x - 12, y: labelY, width: 24, height: textStyle.fontSize + 4), textStyle: textStyle, color: color.withAlphaComponent(0.78))
+                let labelWidth = 24 * thresholdScale
+                drawCenteredText(marker.valueText, in: CGRect(x: x - labelWidth / 2, y: labelY, width: labelWidth, height: textStyle.fontSize + 4), textStyle: textStyle, color: color.withAlphaComponent(0.78))
                 return
             }
-            let arrowW = max(crossThickness * 1.35, 12)
-            let arrowH = max(crossThickness * 0.9, 8)
+            let arrowW = max(crossThickness * 1.35, 12) * markerSizeScale
+            let arrowH = max(crossThickness * 0.9, 8) * markerSizeScale
             let triangle = NSBezierPath()
             if layout.markerSide == .above {
                 let baseY = barRect.minY - gap - arrowH
@@ -2449,7 +2452,7 @@ struct OverlayFrameRenderer {
 
         let y = zoneRect.maxY - zoneRect.height * marker.fractionInZone
         if isThreshold {
-            let lineLength = max(crossThickness * 1.35, 10)
+            let lineLength = max(crossThickness * 1.35, 10) * thresholdScale
             let lineHeight = max(1.2 * element.scale, 1)
             let lineX = barRect.midX - lineLength / 2
             drawRoundedRect(
@@ -2457,14 +2460,15 @@ struct OverlayFrameRenderer {
                 color: color.withAlphaComponent(0.78),
                 cornerRadius: lineHeight / 2
             )
-            let textStyle = IntervalHUDBarTextStyle(fontName: font.fontName, fontSize: max(font.fontSize * 0.72, 7), fontWeight: font.fontWeight)
-            let labelX = layout.markerSide == .leading ? lineX - 20 : lineX + lineLength + 2
-            drawCenteredText(marker.valueText, in: CGRect(x: labelX, y: y - CGFloat(textStyle.fontSize) / 2 - 2, width: 18, height: CGFloat(textStyle.fontSize) + 4), textStyle: textStyle, color: color.withAlphaComponent(0.78))
+            let textStyle = IntervalHUDBarTextStyle(fontName: font.fontName, fontSize: max(font.fontSize * 0.72 * thresholdScale, 7), fontWeight: font.fontWeight)
+            let labelWidth = 18 * thresholdScale
+            let labelX = layout.markerSide == .leading ? lineX - labelWidth - 2 : lineX + lineLength + 2
+            drawCenteredText(marker.valueText, in: CGRect(x: labelX, y: y - CGFloat(textStyle.fontSize) / 2 - 2, width: labelWidth, height: CGFloat(textStyle.fontSize) + 4), textStyle: textStyle, color: color.withAlphaComponent(0.78))
             return
         }
 
-        let arrowW = max(crossThickness * 0.9, 8)
-        let arrowH = max(crossThickness * 1.35, 12)
+        let arrowW = max(crossThickness * 0.9, 8) * markerSizeScale
+        let arrowH = max(crossThickness * 1.35, 12) * markerSizeScale
         let triangle = NSBezierPath()
         if layout.markerSide == .leading {
             let tipX = barRect.minX - gap

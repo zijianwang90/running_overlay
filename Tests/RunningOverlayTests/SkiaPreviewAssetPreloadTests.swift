@@ -12,6 +12,42 @@ import Testing
 @Suite(.serialized, .skiaSerialized) struct SkiaPreviewAssetPreloadTests {
     private static let hd1080 = CGSize(width: 1920, height: 1080)
 
+    init() {
+        MapSnapshotCache.shared.removeAll()
+    }
+
+    @Test func sharedMapSnapshotCacheDeduplicatesConcurrentRequests() async throws {
+        let provider = ManualMapSnapshotProvider(
+            image: NSImage(size: CGSize(width: 32, height: 24))
+        )
+        let request = MapSnapshotRequest(
+            bounds: RouteBounds(
+                minLatitude: 37.0,
+                maxLatitude: 37.01,
+                minLongitude: -122.01,
+                maxLongitude: -122.0
+            ),
+            size: CGSize(width: 320, height: 240),
+            backgroundStyle: .dark,
+            regionPadding: 0.18,
+            showsPointsOfInterest: true
+        )
+
+        let first = Task { await MapSnapshotCache.shared.image(for: request, provider: provider) }
+        try await Task.sleep(for: .milliseconds(20))
+        let second = Task { await MapSnapshotCache.shared.image(for: request, provider: provider) }
+        try await Task.sleep(for: .milliseconds(20))
+
+        #expect(provider.requestCount == 1)
+        provider.completeAll()
+
+        let firstImage = await first.value
+        let secondImage = await second.value
+        #expect(firstImage != nil)
+        #expect(firstImage === secondImage)
+        #expect(provider.requestCount == 1)
+    }
+
     @Test func routeMapSnapshotIsFetchedOnceAndRedrawsWhenItArrives() async throws {
         guard MTLCreateSystemDefaultDevice() != nil else {
             Issue.record("No Metal device available")

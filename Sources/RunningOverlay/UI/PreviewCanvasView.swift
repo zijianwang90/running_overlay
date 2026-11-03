@@ -1577,8 +1577,7 @@ struct RouteMapOverlayView: View {
             return
         }
 
-        let provider = MapKitMapSnapshotProvider()
-        if let image = await provider.snapshotImage(for: request).image {
+        if let image = await MapSnapshotCache.shared.image(for: request) {
             mapSnapshot = image
         }
     }

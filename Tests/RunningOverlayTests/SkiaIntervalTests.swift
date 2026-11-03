@@ -493,6 +493,10 @@ import Testing
         effects.zoneEdgeBar.glowIntensity = 0.55
         effects.zoneEdgeBar.markerShowsValue = true
 
+        var scaled = defaultStyle
+        scaled.zoneEdgeBar.markerSizeScale = 1.6
+        scaled.zoneEdgeBar.thresholdMarkerSizeScale = 1.4
+
         var plain = OverlayStyle.default
         plain.shadowEnabled = false
         plain.zoneEdgeBar.borderEnabled = false
@@ -521,6 +525,17 @@ import Testing
                     isVisible: true,
                     isLocked: false,
                     style: effects
+                )
+            ),
+            Variant(
+                name: "scaled",
+                element: OverlayElement(
+                    type: .zoneEdgeBar,
+                    position: CGPoint(x: 0.5, y: 0.5),
+                    scale: 1,
+                    isVisible: true,
+                    isLocked: false,
+                    style: scaled
                 )
             ),
             Variant(

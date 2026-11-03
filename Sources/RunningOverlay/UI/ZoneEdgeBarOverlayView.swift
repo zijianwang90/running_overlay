@@ -133,7 +133,10 @@ struct ZoneEdgeBarOverlayView: View {
                 }
                 ZoneEdgeBarTriangle(direction: layout.markerSide == .above ? .down : .up)
                     .fill(Color(zoneEdgeBar: marker.color))
-                    .frame(width: max(crossAxisThickness * 1.35, 12), height: max(crossAxisThickness * 0.9, 8))
+                    .frame(
+                        width: max(crossAxisThickness * 1.35, 12) * markerSizeScale,
+                        height: max(crossAxisThickness * 0.9, 8) * markerSizeScale
+                    )
                 if layout.markerSide == .below && style.markerShowsValue {
                     markerValue(marker)
                 }
@@ -146,7 +149,10 @@ struct ZoneEdgeBarOverlayView: View {
                 }
                 ZoneEdgeBarTriangle(direction: layout.markerSide == .leading ? .right : .left)
                     .fill(Color(zoneEdgeBar: marker.color))
-                    .frame(width: max(crossAxisThickness * 0.9, 8), height: max(crossAxisThickness * 1.35, 12))
+                    .frame(
+                        width: max(crossAxisThickness * 0.9, 8) * markerSizeScale,
+                        height: max(crossAxisThickness * 1.35, 12) * markerSizeScale
+                    )
                 if layout.markerSide == .trailing && style.markerShowsValue {
                     markerValue(marker)
                 }
@@ -160,24 +166,24 @@ struct ZoneEdgeBarOverlayView: View {
             if layout.orientation == .horizontal {
                 VStack(spacing: 2) {
                     if layout.markerSide == .above {
-                        markerText(marker, scale: 0.72)
+                        markerText(marker, scale: 0.72 * thresholdMarkerSizeScale)
                     }
                     thresholdLine(marker)
                         .frame(width: max(1.2 * element.scale, 1), height: thresholdLineLength)
                     if layout.markerSide != .above {
-                        markerText(marker, scale: 0.72)
+                        markerText(marker, scale: 0.72 * thresholdMarkerSizeScale)
                     }
                 }
                 .offset(y: horizontalThresholdOffset)
             } else {
                 HStack(spacing: 2) {
                     if layout.markerSide == .leading {
-                        markerText(marker, scale: 0.72)
+                        markerText(marker, scale: 0.72 * thresholdMarkerSizeScale)
                     }
                     thresholdLine(marker)
                         .frame(width: thresholdLineLength, height: max(1.2 * element.scale, 1))
                     if layout.markerSide != .leading {
-                        markerText(marker, scale: 0.72)
+                        markerText(marker, scale: 0.72 * thresholdMarkerSizeScale)
                     }
                 }
                 .offset(x: verticalThresholdOffset)
@@ -212,11 +218,21 @@ struct ZoneEdgeBarOverlayView: View {
     }
 
     private var thresholdLineLength: Double {
-        max(crossAxisThickness * 1.35, 10)
+        max(crossAxisThickness * 1.35, 10) * thresholdMarkerSizeScale
+    }
+
+    private var markerSizeScale: Double {
+        min(max(style.markerSizeScale, 0.1), 4)
+    }
+
+    private var thresholdMarkerSizeScale: Double {
+        min(max(style.thresholdMarkerSizeScale, 0.1), 4)
     }
 
     private var thresholdMarkerHeight: Double {
-        thresholdLineLength + max(layout.markerText.fontSize * 0.72, 7) + 6
+        thresholdLineLength
+            + max(layout.markerText.fontSize * 0.72 * thresholdMarkerSizeScale, 7)
+            + 6
     }
 
     private var thresholdLabelAndSpacing: Double {
@@ -232,11 +248,13 @@ struct ZoneEdgeBarOverlayView: View {
     }
 
     private func currentMarkerHeight(_ marker: IntervalHUDBarZoneMarker) -> Double {
-        max(crossAxisThickness * 0.9, 8) + (style.markerShowsValue ? max(layout.markerText.fontSize, 9) + 8 : 0)
+        max(crossAxisThickness * 0.9, 8) * markerSizeScale
+            + (style.markerShowsValue ? max(layout.markerText.fontSize, 9) + 8 : 0)
     }
 
     private func currentMarkerWidth(_ marker: IntervalHUDBarZoneMarker) -> Double {
-        max(crossAxisThickness * 0.9, 8) + (style.markerShowsValue ? 84 : 0)
+        max(crossAxisThickness * 0.9, 8) * markerSizeScale
+            + (style.markerShowsValue ? 84 : 0)
     }
 }
 

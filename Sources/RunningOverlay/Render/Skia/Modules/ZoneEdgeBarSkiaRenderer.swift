@@ -106,7 +106,9 @@ enum ZoneEdgeBarSkiaRenderer {
                     crossThickness: crossThickness,
                     elementScale: element.scale,
                     textStyle: layout.markerText,
-                    showsValue: style.markerShowsValue
+                    showsValue: style.markerShowsValue,
+                    markerSizeScale: min(max(style.markerSizeScale, 0.1), 4),
+                    thresholdMarkerSizeScale: min(max(style.thresholdMarkerSizeScale, 0.1), 4)
                 )
 
                 if let marker = layout.thresholdZoneMarker,
@@ -196,37 +198,43 @@ enum ZoneEdgeBarSkiaRenderer {
         var elementScale: Double
         var textStyle: IntervalHUDBarTextStyle
         var showsValue: Bool
+        var markerSizeScale: Double
+        var thresholdMarkerSizeScale: Double
 
         var gap: Double { max(crossThickness * 0.35, 3) }
         var stackSpacing: Double { 2 }
         var pillHorizontalPadding: Double { 5 }
         var pillVerticalPadding: Double { 2 }
         var pillCornerRadius: Double { 4 }
-        var thresholdLineLength: Double { max(crossThickness * 1.35, 10) }
+        var thresholdLineLength: Double {
+            max(crossThickness * 1.35, 10) * thresholdMarkerSizeScale
+        }
         var thresholdLineThickness: Double { max(1.2 * elementScale, 1) }
-        var thresholdTextSize: Double { max(textStyle.fontSize * 0.72, 7) }
+        var thresholdTextSize: Double {
+            max(textStyle.fontSize * 0.72, 7) * thresholdMarkerSizeScale
+        }
         var currentTextSize: Double { max(textStyle.fontSize, 7) }
 
         func currentArrowSize(orientation: ZoneEdgeBarOrientation) -> CGSize {
             if orientation == .horizontal {
                 return CGSize(
-                    width: max(crossThickness * 1.35, 12),
-                    height: max(crossThickness * 0.9, 8)
+                    width: max(crossThickness * 1.35, 12) * markerSizeScale,
+                    height: max(crossThickness * 0.9, 8) * markerSizeScale
                 )
             }
             return CGSize(
-                width: max(crossThickness * 0.9, 8),
-                height: max(crossThickness * 1.35, 12)
+                width: max(crossThickness * 0.9, 8) * markerSizeScale,
+                height: max(crossThickness * 1.35, 12) * markerSizeScale
             )
         }
 
         func currentMarkerHeight(showsValue: Bool) -> Double {
-            max(crossThickness * 0.9, 8)
+            max(crossThickness * 0.9, 8) * markerSizeScale
                 + (showsValue ? max(textStyle.fontSize, 9) + 8 : 0)
         }
 
         func currentMarkerWidth(showsValue: Bool) -> Double {
-            max(crossThickness * 0.9, 8) + (showsValue ? 84 : 0)
+            max(crossThickness * 0.9, 8) * markerSizeScale + (showsValue ? 84 : 0)
         }
     }
 

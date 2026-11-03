@@ -318,7 +318,10 @@ final class SkiaPreviewMetalView: NSView {
             pendingSnapshotRequests.insert(request)
             let provider = mapSnapshotProvider
             Task { @MainActor [weak self] in
-                let image = await provider.snapshotImage(for: request).image
+                let image = await MapSnapshotCache.shared.image(
+                    for: request,
+                    provider: provider
+                )
                 self?.finishMapSnapshotRequest(request, image: image)
             }
         }

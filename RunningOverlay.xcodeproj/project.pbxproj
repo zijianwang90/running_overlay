@@ -30,6 +30,7 @@
 		19EF8C93CE9BDC13CEE820A0 /* IntervalHUDBarModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0DD0817C755BB15C06D4DD3 /* IntervalHUDBarModel.swift */; };
 		8751FDC9C7AB471F9B391322 /* IntervalTimelineModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21CF32B5539498AB91DE004D /* IntervalTimelineModel.swift */; };
 		2F0A3DB53175A09573057E7C /* IntervalWorkSummaryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5907BD991E0F8D08BE042CA1 /* IntervalWorkSummaryModel.swift */; };
+		CE61DA2570A43A4EFE9DC0BE /* MapSnapshotCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5847CEC311771CEA2B2C016 /* MapSnapshotCache.swift */; };
 		5D185D174F6F58964E511D8D /* OverlayElement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 022324E020F9CA428D605BAE /* OverlayElement.swift */; };
 		01B113FB4F931C0073DA43CE /* OverlayFeatherMaskRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3607C65FDA8E44A18DECC13A /* OverlayFeatherMaskRenderer.swift */; };
 		E15FD3E37F356CAFF7DD61B7 /* OverlayIconRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC0A8D78A8E37DB1A156545 /* OverlayIconRenderer.swift */; };
@@ -175,6 +176,7 @@
 		B0DD0817C755BB15C06D4DD3 /* IntervalHUDBarModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/IntervalHUDBarModel.swift"; sourceTree = SOURCE_ROOT; };
 		21CF32B5539498AB91DE004D /* IntervalTimelineModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/IntervalTimelineModel.swift"; sourceTree = SOURCE_ROOT; };
 		5907BD991E0F8D08BE042CA1 /* IntervalWorkSummaryModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/IntervalWorkSummaryModel.swift"; sourceTree = SOURCE_ROOT; };
+		B5847CEC311771CEA2B2C016 /* MapSnapshotCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/MapSnapshotCache.swift"; sourceTree = SOURCE_ROOT; };
 		022324E020F9CA428D605BAE /* OverlayElement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/OverlayElement.swift"; sourceTree = SOURCE_ROOT; };
 		3607C65FDA8E44A18DECC13A /* OverlayFeatherMaskRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/OverlayFeatherMaskRenderer.swift"; sourceTree = SOURCE_ROOT; };
 		8AC0A8D78A8E37DB1A156545 /* OverlayIconRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/OverlayIconRenderer.swift"; sourceTree = SOURCE_ROOT; };
@@ -322,6 +324,7 @@
 			B0DD0817C755BB15C06D4DD3 /* IntervalHUDBarModel.swift */,
 			21CF32B5539498AB91DE004D /* IntervalTimelineModel.swift */,
 			5907BD991E0F8D08BE042CA1 /* IntervalWorkSummaryModel.swift */,
+			B5847CEC311771CEA2B2C016 /* MapSnapshotCache.swift */,
 			022324E020F9CA428D605BAE /* OverlayElement.swift */,
 			3607C65FDA8E44A18DECC13A /* OverlayFeatherMaskRenderer.swift */,
 			8AC0A8D78A8E37DB1A156545 /* OverlayIconRenderer.swift */,
@@ -495,6 +498,7 @@
 			19EF8C93CE9BDC13CEE820A0 /* IntervalHUDBarModel.swift in Sources */,
 			8751FDC9C7AB471F9B391322 /* IntervalTimelineModel.swift in Sources */,
 			2F0A3DB53175A09573057E7C /* IntervalWorkSummaryModel.swift in Sources */,
+			CE61DA2570A43A4EFE9DC0BE /* MapSnapshotCache.swift in Sources */,
 			5D185D174F6F58964E511D8D /* OverlayElement.swift in Sources */,
 			01B113FB4F931C0073DA43CE /* OverlayFeatherMaskRenderer.swift in Sources */,
 			E15FD3E37F356CAFF7DD61B7 /* OverlayIconRenderer.swift in Sources */,

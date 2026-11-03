@@ -1490,9 +1490,15 @@ enum OverlayRenderModel {
 
     private static func zoneEdgeBarMarkerPad(style: ZoneEdgeBarStyle, markerText: IntervalHUDBarTextStyle, thickness: Double) -> Double {
         guard style.markerEnabled || style.thresholdMarkerEnabled else { return 0 }
+        let markerScale = min(max(style.markerSizeScale, 0.1), 4)
+        let thresholdScale = min(max(style.thresholdMarkerSizeScale, 0.1), 4)
         let valueHeight = style.markerShowsValue ? max(markerText.fontSize, 9) + 6 : 0
-        let currentPad = max(thickness * 0.9, 8) + valueHeight + (style.markerShowsValue ? 5 : 3)
-        let thresholdPad = max(thickness * 1.35, 10) + max(markerText.fontSize * 0.72, 7) + 6
+        let currentPad = max(thickness * 0.9, 8) * markerScale
+            + valueHeight
+            + (style.markerShowsValue ? 5 : 3)
+        let thresholdPad = max(thickness * 1.35, 10) * thresholdScale
+            + max(markerText.fontSize * 0.72, 7) * thresholdScale
+            + 6
         return max(currentPad, thresholdPad)
     }
 

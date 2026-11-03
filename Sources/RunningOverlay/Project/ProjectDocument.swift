@@ -1764,6 +1764,22 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.routeMapMapOpacity = min(max(opacity, 0), 1)
     }
 
+    func setOverlayRouteMapZoom(_ elementID: OverlayElement.ID, zoom: Double) {
+        registerContinuousUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapZoom = min(max(zoom, 0.5), 3)
+    }
+
+    func setOverlayRouteMapShowsPointsOfInterest(_ elementID: OverlayElement.ID, isVisible: Bool) {
+        registerUndoPoint()
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
+            return
+        }
+        overlayLayout.elements[index].style.routeMapShowsPointsOfInterest = isVisible
+    }
+
     func setOverlayRouteMapBorderVisible(_ elementID: OverlayElement.ID, isVisible: Bool) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {

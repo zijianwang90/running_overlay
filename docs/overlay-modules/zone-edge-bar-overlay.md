@@ -43,7 +43,7 @@ Inspector sections:
 
 - `Layout`: shared position, scale, opacity, visibility, and lock controls.
 - `Zone Bar`: metric, placement, edge/orientation, length, thickness, edge position, active-zone width/height, zone gap, inactive opacity, corner radius, bar-local border, and bar-local glow.
-- `Markers`: current marker, marker value, and threshold marker.
+- `Markers`: current marker, marker value, arrow size, threshold marker, and threshold size.
 - `Effects`: shared shadow controls for the full overlay group. Shared glow and fade-out rows are hidden because this overlay has no outer container surface for those effects.
 
 The overlay does not expose custom zone colors in v1. Colors remain shared with Project Settings, HR Zone numeric text, and Interval HUD Bar zone bars.
@@ -52,7 +52,7 @@ The overlay does not expose custom zone colors in v1. Colors remain shared with 
 
 Preview and export use `OverlayRenderModel.zoneEdgeBarLayout(for:in:)` and `OverlaySharedZoneEdgeBarView`. The legacy PNG renderer also draws the module directly for calibration/export smoke coverage.
 
-The render rect includes marker space so edge and free placements do not clip the current or threshold markers.
+The render rect includes marker space so edge and free placements do not clip the current or threshold markers. Arrow and threshold sizes scale from the bar thickness by default; `markerSizeScale` and `thresholdMarkerSizeScale` multiply those sizes and the reserved marker padding together, and the SwiftUI, Skia, and legacy renderers consume the same fields.
 
 ## Out Of Scope For V1
 
