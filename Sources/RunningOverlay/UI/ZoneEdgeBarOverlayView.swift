@@ -76,43 +76,22 @@ struct ZoneEdgeBarOverlayView: View {
             activeIndex: layout.activeZoneIndex,
             activeWidthShare: style.activeZoneWidthShare
         )
-        return zoneRects(frames: frames)
-    }
-
-    private func zoneRects(frames: [IntervalHUDBarZoneSegmentFrame]) -> [ZoneEdgeBarZoneRect] {
-        let segmentCount = min(frames.count, layout.zoneSegments.count)
-        guard segmentCount > 0 else { return [] }
-        let length = layout.orientation == .horizontal ? localBarRect.width : localBarRect.height
-        let requestedGap = max(style.zoneSegmentGap * element.scale, 0)
-        let maxGap = segmentCount > 1 ? max(length / Double(segmentCount - 1) * 0.18, 0) : 0
-        let gap = min(requestedGap, maxGap)
-        let usableLength = max(length - gap * Double(max(segmentCount - 1, 0)), 1)
-
-        return (0..<segmentCount).map { position in
-            let frame = frames[position]
-            let segment = layout.zoneSegments[position]
-            let isActive = segment.index == layout.activeZoneIndex
-            let activeThickness = crossAxisThickness * max(style.activeZoneHeightScale, 1)
-            let thickness = isActive ? activeThickness : crossAxisThickness
-            let positionOffset = Double(position) * gap
-            let segmentLength = max(usableLength * frame.width, 0)
-
-            if layout.orientation == .horizontal {
-                return ZoneEdgeBarZoneRect(
-                    index: segment.index,
-                    x: localBarRect.minX + usableLength * frame.start + positionOffset,
-                    y: localBarRect.midY - thickness / 2,
-                    width: segmentLength,
-                    height: thickness
-                )
-            }
-
-            return ZoneEdgeBarZoneRect(
-                index: segment.index,
-                x: localBarRect.midX - thickness / 2,
-                y: localBarRect.maxY - usableLength * (frame.start + frame.width) - positionOffset,
-                width: thickness,
-                height: segmentLength
+        return OverlayRenderModel.intervalZoneBarRects(
+            frames: frames,
+            segments: layout.zoneSegments,
+            barRect: layout.barRect,
+            activeIndex: layout.activeZoneIndex,
+            activeThicknessScale: style.activeZoneHeightScale,
+            segmentGap: style.zoneSegmentGap,
+            elementScale: element.scale,
+            orientation: layout.orientation
+        ).map { zoneRect in
+            ZoneEdgeBarZoneRect(
+                index: zoneRect.index,
+                x: zoneRect.rect.minX - layout.rect.minX,
+                y: zoneRect.rect.minY - layout.rect.minY,
+                width: zoneRect.rect.width,
+                height: zoneRect.rect.height
             )
         }
     }
