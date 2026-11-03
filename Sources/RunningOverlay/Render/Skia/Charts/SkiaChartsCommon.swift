@@ -10,6 +10,7 @@ import Foundation
 final class SkiaChartsCanvas {
     let context: OpaquePointer
     let size: CGSize
+    private let ownsContext: Bool
 
     private var fontCache: [String: NSFont] = [:]
     private var imageCache: [String: OpaquePointer] = [:]
@@ -23,13 +24,24 @@ final class SkiaChartsCanvas {
         }
         self.context = context
         self.size = size
+        self.ownsContext = true
+    }
+
+    /// Wraps a caller-owned context. The canvas never destroys this context,
+    /// which lets preview/export reuse a persistent GPU context.
+    init(context: OpaquePointer, size: CGSize) {
+        self.context = context
+        self.size = size
+        self.ownsContext = false
     }
 
     deinit {
         for image in imageCache.values {
             skb_image_destroy(image)
         }
-        skb_destroy(context)
+        if ownsContext {
+            skb_destroy(context)
+        }
     }
 
     // MARK: - Fonts and text
@@ -748,6 +760,181 @@ struct TextLine {
 
     var height: Double {
         ascent + descent + leading
+    }
+}
+
+/// Shared stats-bar drawing used by the distance timeline and elevation chart.
+/// Mirrors `SharedStatsBarContentView`: equal flexible slots with fixed-width
+/// dividers and `itemSpacing` between every adjacent child.
+enum SkiaStatsBar {
+    static func draw(
+        canvas: SkiaChartsCanvas,
+        items: [OverlayDistanceTimelineStatsBarItemLayout],
+        rect: CGRect,
+        stacked: Bool,
+        itemSpacing: Double,
+        dividerOpacity: Double,
+        cornerRadius: Double,
+        backgroundOpacity: Double,
+        valueFontName: String,
+        valueFontSize: Double,
+        valueFontWeight: OverlayFontWeight,
+        valueColor: OverlayColor,
+        labelFontName: String,
+        labelFontSize: Double,
+        labelFontWeight: OverlayFontWeight,
+        labelColor: OverlayColor
+    ) {
+        guard !items.isEmpty else { return }
+        canvas.fillRoundedRect(
+            rect,
+            radius: cornerRadius,
+            color: .black,
+            opacity: backgroundOpacity
+        )
+
+        canvas.save()
+        canvas.clipRoundedRect(rect, radius: cornerRadius)
+        defer { canvas.restore() }
+
+        let count = items.count
+        let spacingTotal = Double(max(2 * count - 2, 0)) * itemSpacing
+
+        if stacked {
+            let dividerHeight = 1.0
+            let fixed = Double(max(count - 1, 0)) * dividerHeight + spacingTotal
+            let itemHeight = (rect.height - fixed) / Double(count)
+            var cursor = rect.minY
+            for (index, item) in items.enumerated() {
+                let cell = CGRect(
+                    x: rect.minX,
+                    y: cursor,
+                    width: rect.width,
+                    height: itemHeight
+                )
+                drawItem(
+                    canvas: canvas,
+                    item: item,
+                    cell: cell,
+                    valueFontName: valueFontName,
+                    valueFontSize: valueFontSize,
+                    valueFontWeight: valueFontWeight,
+                    valueColor: valueColor,
+                    labelFontName: labelFontName,
+                    labelFontSize: labelFontSize,
+                    labelFontWeight: labelFontWeight,
+                    labelColor: labelColor
+                )
+                cursor += itemHeight
+                if index < count - 1 {
+                    cursor += itemSpacing
+                    if dividerOpacity > 0 {
+                        canvas.fillRect(
+                            CGRect(
+                                x: rect.minX + 6,
+                                y: cursor,
+                                width: max(rect.width - 12, 0),
+                                height: dividerHeight
+                            ),
+                            color: labelColor,
+                            opacity: dividerOpacity
+                        )
+                    }
+                    cursor += dividerHeight + itemSpacing
+                }
+            }
+        } else {
+            let dividerWidth = 13.0
+            let fixed = Double(max(count - 1, 0)) * dividerWidth + spacingTotal
+            let itemWidth = (rect.width - fixed) / Double(count)
+            var cursor = rect.minX
+            for (index, item) in items.enumerated() {
+                let cell = CGRect(
+                    x: cursor,
+                    y: rect.minY,
+                    width: itemWidth,
+                    height: rect.height
+                )
+                drawItem(
+                    canvas: canvas,
+                    item: item,
+                    cell: cell,
+                    valueFontName: valueFontName,
+                    valueFontSize: valueFontSize,
+                    valueFontWeight: valueFontWeight,
+                    valueColor: valueColor,
+                    labelFontName: labelFontName,
+                    labelFontSize: labelFontSize,
+                    labelFontWeight: labelFontWeight,
+                    labelColor: labelColor
+                )
+                cursor += itemWidth
+                if index < count - 1 {
+                    cursor += itemSpacing
+                    if dividerOpacity > 0 {
+                        canvas.fillRect(
+                            CGRect(
+                                x: cursor + 6,
+                                y: rect.minY + 6,
+                                width: 1,
+                                height: max(rect.height - 12, 0)
+                            ),
+                            color: labelColor,
+                            opacity: dividerOpacity
+                        )
+                    }
+                    cursor += dividerWidth + itemSpacing
+                }
+            }
+        }
+    }
+
+    private static func drawItem(
+        canvas: SkiaChartsCanvas,
+        item: OverlayDistanceTimelineStatsBarItemLayout,
+        cell: CGRect,
+        valueFontName: String,
+        valueFontSize: Double,
+        valueFontWeight: OverlayFontWeight,
+        valueColor: OverlayColor,
+        labelFontName: String,
+        labelFontSize: Double,
+        labelFontWeight: OverlayFontWeight,
+        labelColor: OverlayColor
+    ) {
+        let valueText = item.value
+            + (item.unit.isEmpty ? "" : " \(item.unit)")
+        let valueLine = canvas.fittedLine(
+            valueText,
+            family: valueFontName,
+            size: valueFontSize,
+            weight: SkiaChartsCanvas.nsWeight(valueFontWeight),
+            maxWidth: cell.width,
+            minScale: 0.7,
+            monospacedDigits: true
+        )
+        let labelLine = canvas.fittedLine(
+            item.label.uppercased(),
+            family: labelFontName,
+            size: labelFontSize,
+            weight: SkiaChartsCanvas.nsWeight(labelFontWeight),
+            maxWidth: cell.width,
+            minScale: 0.7
+        )
+        let totalHeight = valueLine.height + 1 + labelLine.height
+        let top = cell.midY - totalHeight / 2
+        canvas.drawCentered(
+            valueLine,
+            centerX: cell.midX,
+            top: top,
+            color: valueColor
+        )
+        canvas.drawCentered(
+            labelLine,
+            centerX: cell.midX,
+            top: top + valueLine.height + 1,
+            color: labelColor
+        )
     }
 }
 #endif

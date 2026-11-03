@@ -117,12 +117,25 @@ enum SkiaDistanceTimelineRenderer {
         }
 
         if style.statsBar.visible, let statsRect {
-            drawStatsBar(
+            let config = style.statsBar
+            SkiaStatsBar.draw(
                 canvas: canvas,
                 items: layout.statsBarItems,
                 rect: statsRect,
-                config: style.statsBar,
-                styleScale: styleScale
+                stacked: config.placement.isVertical
+                    || config.layoutMode == .stack,
+                itemSpacing: config.itemSpacing * styleScale,
+                dividerOpacity: config.dividerOpacity,
+                cornerRadius: config.cornerRadius,
+                backgroundOpacity: config.backgroundOpacity,
+                valueFontName: config.valueFontName,
+                valueFontSize: config.valueFontSize * styleScale,
+                valueFontWeight: config.valueFontWeight,
+                valueColor: config.valueColor,
+                labelFontName: config.labelFontName,
+                labelFontSize: config.labelFontSize * styleScale,
+                labelFontWeight: config.labelFontWeight,
+                labelColor: config.labelColor
             )
         }
     }
@@ -643,153 +656,6 @@ enum SkiaDistanceTimelineRenderer {
             bandTop: top,
             bandHeight: textHeight,
             color: style.axisLabelColor
-        )
-    }
-
-    // MARK: - Stats bar
-
-    private static func drawStatsBar(
-        canvas: SkiaChartsCanvas,
-        items: [OverlayDistanceTimelineStatsBarItemLayout],
-        rect: CGRect,
-        config: DistanceTimelineStatsBarConfig,
-        styleScale: Double
-    ) {
-        guard !items.isEmpty else { return }
-        canvas.fillRoundedRect(
-            rect,
-            radius: config.cornerRadius,
-            color: .black,
-            opacity: config.backgroundOpacity
-        )
-
-        canvas.save()
-        canvas.clipRoundedRect(rect, radius: config.cornerRadius)
-        defer { canvas.restore() }
-
-        let stacked = config.placement.isVertical
-            || config.layoutMode == .stack
-        let spacing = config.itemSpacing * styleScale
-        let count = items.count
-        let dividerColor = config.labelColor
-        let spacingTotal = Double(max(2 * count - 2, 0)) * spacing
-
-        if stacked {
-            let dividerHeight = 1.0
-            let fixed = Double(max(count - 1, 0)) * dividerHeight + spacingTotal
-            let itemHeight = (rect.height - fixed) / Double(count)
-            var cursor = rect.minY
-            for (index, item) in items.enumerated() {
-                let cell = CGRect(
-                    x: rect.minX,
-                    y: cursor,
-                    width: rect.width,
-                    height: itemHeight
-                )
-                drawStatsItem(
-                    canvas: canvas,
-                    item: item,
-                    cell: cell,
-                    config: config,
-                    styleScale: styleScale
-                )
-                cursor += itemHeight
-                if index < count - 1 {
-                    cursor += spacing
-                    if config.dividerOpacity > 0 {
-                        canvas.fillRect(
-                            CGRect(
-                                x: rect.minX + 6,
-                                y: cursor,
-                                width: max(rect.width - 12, 0),
-                                height: dividerHeight
-                            ),
-                            color: dividerColor,
-                            opacity: config.dividerOpacity
-                        )
-                    }
-                    cursor += dividerHeight + spacing
-                }
-            }
-        } else {
-            let dividerWidth = 13.0
-            let fixed = Double(max(count - 1, 0)) * dividerWidth + spacingTotal
-            let itemWidth = (rect.width - fixed) / Double(count)
-            var cursor = rect.minX
-            for (index, item) in items.enumerated() {
-                let cell = CGRect(
-                    x: cursor,
-                    y: rect.minY,
-                    width: itemWidth,
-                    height: rect.height
-                )
-                drawStatsItem(
-                    canvas: canvas,
-                    item: item,
-                    cell: cell,
-                    config: config,
-                    styleScale: styleScale
-                )
-                cursor += itemWidth
-                if index < count - 1 {
-                    cursor += spacing
-                    if config.dividerOpacity > 0 {
-                        canvas.fillRect(
-                            CGRect(
-                                x: cursor + 6,
-                                y: rect.minY + 6,
-                                width: 1,
-                                height: max(rect.height - 12, 0)
-                            ),
-                            color: dividerColor,
-                            opacity: config.dividerOpacity
-                        )
-                    }
-                    cursor += dividerWidth + spacing
-                }
-            }
-        }
-    }
-
-    private static func drawStatsItem(
-        canvas: SkiaChartsCanvas,
-        item: OverlayDistanceTimelineStatsBarItemLayout,
-        cell: CGRect,
-        config: DistanceTimelineStatsBarConfig,
-        styleScale: Double
-    ) {
-        let valueText = item.value
-            + (item.unit.isEmpty ? "" : " \(item.unit)")
-        let valueLine = canvas.fittedLine(
-            valueText,
-            family: config.valueFontName,
-            size: config.valueFontSize * styleScale,
-            weight: SkiaChartsCanvas.nsWeight(config.valueFontWeight),
-            maxWidth: cell.width,
-            minScale: 0.7,
-            monospacedDigits: true
-        )
-        let labelLine = canvas.fittedLine(
-            item.label.uppercased(),
-            family: config.labelFontName,
-            size: config.labelFontSize * styleScale,
-            weight: SkiaChartsCanvas.nsWeight(config.labelFontWeight),
-            maxWidth: cell.width,
-            minScale: 0.7
-        )
-        let totalHeight = valueLine.height + 1 + labelLine.height
-        let top = cell.midY - totalHeight / 2
-        canvas.drawCentered(
-            valueLine,
-            centerX: cell.midX,
-            top: top,
-            color: config.valueColor
-        )
-        canvas.drawCentered(
-            labelLine,
-            centerX: cell.midX,
-            top: top + valueLine.height + 1,
-            color: config.labelColor
         )
     }
 

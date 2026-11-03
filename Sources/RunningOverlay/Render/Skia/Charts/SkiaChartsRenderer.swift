@@ -3,9 +3,72 @@ import CSkiaBridge
 import CoreGraphics
 import Foundation
 
+/// Caller-owned-context entry point for preview and export hosts. The host
+/// keeps a persistent (raster or GPU) context; this module draws one chart
+/// element into it without creating a context or reading pixels back.
+enum SkiaChartsModule {
+    static func supports(_ element: OverlayElement) -> Bool {
+        switch element.type {
+        case .distanceTimeline, .runningGauge, .elevationChart:
+            true
+        default:
+            false
+        }
+    }
+
+    /// Draws one element into `context`. This creates a short-lived canvas
+    /// wrapper so text and image caches are not shared across calls; hosts that
+    /// want caches should retain a `SkiaChartsCanvas(context:size:)` and use the
+    /// overload below.
+    static func draw(
+        _ element: OverlayElement,
+        renderContext: OverlayRenderContext,
+        context: OpaquePointer
+    ) {
+        let canvas = SkiaChartsCanvas(
+            context: context,
+            size: renderContext.canvasSize
+        )
+        draw(element, renderContext: renderContext, canvas: canvas)
+    }
+
+    /// Draws one element using a caller-held canvas and its caches.
+    static func draw(
+        _ element: OverlayElement,
+        renderContext: OverlayRenderContext,
+        canvas: SkiaChartsCanvas
+    ) {
+        guard element.isVisible, supports(element) else { return }
+        switch element.type {
+        case .distanceTimeline:
+            let elementLayout = OverlayRenderModel.distanceTimelineLayout(
+                for: element,
+                in: renderContext
+            )
+            SkiaDistanceTimelineRenderer.draw(
+                canvas: canvas,
+                element: element,
+                layout: elementLayout
+            )
+        case .runningGauge:
+            let elementLayout = OverlayRenderModel.runningGaugeLayout(
+                for: element,
+                in: renderContext
+            )
+            SkiaRunningGaugeRenderer.draw(
+                canvas: canvas,
+                element: element,
+                layout: elementLayout
+            )
+        default:
+            break
+        }
+    }
+}
+
 /// CPU Skia renderer for the first chart modules: distance timeline, running
-/// gauge, and elevation chart. Preview/export hosts keep using their own
-/// persistent contexts; this type is the golden-frame candidate renderer.
+/// gauge, and elevation chart. This type is the golden-frame candidate
+/// renderer; preview/export hosts draw through `SkiaChartsModule`.
 final class SkiaChartsRenderer {
     let size: CGSize
     private let canvas: SkiaChartsCanvas
@@ -17,12 +80,7 @@ final class SkiaChartsRenderer {
     }
 
     static func supports(_ element: OverlayElement) -> Bool {
-        switch element.type {
-        case .distanceTimeline, .runningGauge, .elevationChart:
-            true
-        default:
-            false
-        }
+        SkiaChartsModule.supports(element)
     }
 
     /// Renders the supported elements and returns premultiplied BGRA pixels.
@@ -39,31 +97,12 @@ final class SkiaChartsRenderer {
             elapsedTime: elapsedTime
         )
         for element in layout.elements
-        where element.isVisible && Self.supports(element) {
-            switch element.type {
-            case .distanceTimeline:
-                let elementLayout = OverlayRenderModel.distanceTimelineLayout(
-                    for: element,
-                    in: context
-                )
-                SkiaDistanceTimelineRenderer.draw(
-                    canvas: canvas,
-                    element: element,
-                    layout: elementLayout
-                )
-            case .runningGauge:
-                let elementLayout = OverlayRenderModel.runningGaugeLayout(
-                    for: element,
-                    in: context
-                )
-                SkiaRunningGaugeRenderer.draw(
-                    canvas: canvas,
-                    element: element,
-                    layout: elementLayout
-                )
-            default:
-                break
-            }
+        where element.isVisible && SkiaChartsModule.supports(element) {
+            SkiaChartsModule.draw(
+                element,
+                renderContext: context,
+                canvas: canvas
+            )
         }
         var rowBytes = 0
         guard let base = skb_pixels(canvas.context, &rowBytes) else {
