@@ -43,6 +43,10 @@ struct ExportRenderPlan: Equatable {
 
     /// Runtime kill switch for elevation chart static fill cache benchmarks.
     nonisolated(unsafe) static var elevationChartStaticFillCacheEnabled = true
+    /// Benchmark switch: force the single full-frame dynamic render path so the
+    /// per-overlay compositing cost can be compared against it.
+    static let forceFullFrameRender =
+        ProcessInfo.processInfo.environment["RUNNING_OVERLAY_FORCE_FULL_FRAME"] == "1"
 
     var canvasSize: CGSize
     var allOverlays: [OverlayElement]
@@ -134,6 +138,7 @@ struct ExportRenderPlan: Equatable {
             && maxIndividualOverlayAreaRatio < Self.perOverlayMaxIndividualAreaThreshold
             && estimatedPerOverlayRenderCost < Self.perOverlayDispersedSumAreaThreshold
         usesPerOverlayRender = usesFullFrameDynamicRender
+            && !Self.forceFullFrameRender
             && staticOverlays.isEmpty
             && !dynamicOverlays.isEmpty
             && individualOverlayItems.count == dynamicOverlays.count

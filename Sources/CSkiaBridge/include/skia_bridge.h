@@ -98,6 +98,27 @@ void skb_begin_blur_layer(
 /// Premultiplied BGRA pixels, `rowBytes` per row.
 const uint8_t *skb_pixels(SkiaBridgeContext *ctx, size_t *rowBytes);
 
+/// Creates a Metal-backed context. `mtlDevice` and `mtlQueue` are borrowed
+/// `MTLDevice`/`MTLCommandQueue` handles; the context retains them.
+SkiaBridgeContext *skb_create_gpu(
+    int width, int height, const void *mtlDevice, const void *mtlQueue);
+
+/// Creates a Metal-backed context without allocating a surface. Wrap an
+/// external texture with `skb_wrap_texture` before drawing.
+SkiaBridgeContext *skb_create_gpu_context(
+    int width, int height, const void *mtlDevice, const void *mtlQueue);
+
+/// Wraps an external `MTLTexture` as the context's render target. Returns 1 on
+/// success. The caller keeps the texture alive until the next flush.
+int skb_wrap_texture(
+    SkiaBridgeContext *ctx, int width, int height, const void *mtlTexture);
+
+/// Flushes pending draws. When `sync` is non-zero, waits for the GPU to finish.
+void skb_flush(SkiaBridgeContext *ctx, int sync);
+
+/// Flushes, waits, and reads the surface back into CPU memory.
+const uint8_t *skb_read_pixels(SkiaBridgeContext *ctx, size_t *rowBytes);
+
 #ifdef __cplusplus
 }
 #endif

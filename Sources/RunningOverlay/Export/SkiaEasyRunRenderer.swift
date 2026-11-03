@@ -3,12 +3,15 @@ import AppKit
 import CSkiaBridge
 import CoreText
 import Foundation
+import Metal
 
 /// Spike: draws the minimal-preset text elements of a template with Skia so the output can be
 /// compared with `SwiftUIOverlayVideoExporter`. See ADR 0009.
 final class SkiaEasyRunRenderer {
     private let context: OpaquePointer
     let size: CGSize
+    private let metalDevice: MTLDevice?
+    private let metalCommandQueue: MTLCommandQueue?
     private var iconCache: [String: IconBitmap] = [:]
     private var fontCache: [String: NSFont] = [:]
 
@@ -16,6 +19,26 @@ final class SkiaEasyRunRenderer {
         guard let context = skb_create(Int32(size.width), Int32(size.height)) else { return nil }
         self.context = context
         self.size = size
+        self.metalDevice = nil
+        self.metalCommandQueue = nil
+    }
+
+    init?(
+        size: CGSize,
+        device: MTLDevice,
+        commandQueue: MTLCommandQueue,
+        offscreen: Bool = true
+    ) {
+        let devicePointer = Unmanaged.passUnretained(device as AnyObject).toOpaque()
+        let queuePointer = Unmanaged.passUnretained(commandQueue as AnyObject).toOpaque()
+        let context = offscreen
+            ? skb_create_gpu(Int32(size.width), Int32(size.height), devicePointer, queuePointer)
+            : skb_create_gpu_context(Int32(size.width), Int32(size.height), devicePointer, queuePointer)
+        guard let context else { return nil }
+        self.context = context
+        self.size = size
+        self.metalDevice = device
+        self.metalCommandQueue = commandQueue
     }
 
     deinit { skb_destroy(context) }
@@ -29,8 +52,8 @@ final class SkiaEasyRunRenderer {
             || element.type == .weatherWidget
     }
 
-    /// Renders supported elements; returns premultiplied BGRA pixels (borrowed, valid until next render).
-    func render(layout: OverlayLayout, activity: ActivityTimeline, elapsedTime: TimeInterval) -> (UnsafePointer<UInt8>, Int) {
+    /// Records the draw commands without reading pixels back.
+    func draw(layout: OverlayLayout, activity: ActivityTimeline, elapsedTime: TimeInterval) {
         skb_clear(context)
         let renderContext = OverlayRenderContext(canvasSize: size, activity: activity, elapsedTime: elapsedTime)
         for element in layout.elements where element.isVisible && Self.supports(element) {
@@ -45,8 +68,37 @@ final class SkiaEasyRunRenderer {
                 drawTextElement(element, renderContext: renderContext)
             }
         }
+    }
+
+    /// Renders supported elements; returns premultiplied BGRA pixels (borrowed, valid until next render).
+    func render(layout: OverlayLayout, activity: ActivityTimeline, elapsedTime: TimeInterval) -> (UnsafePointer<UInt8>, Int) {
+        draw(layout: layout, activity: activity, elapsedTime: elapsedTime)
         var rowBytes = 0
         let base = skb_pixels(context, &rowBytes)!
+        return (base, rowBytes)
+    }
+
+    /// Wraps an external texture (for example a CVPixelBuffer-backed
+    /// MTLTexture) as the render target. The texture must stay alive until the
+    /// next flush.
+    func wrap(texture: MTLTexture) -> Bool {
+        skb_wrap_texture(
+            context,
+            Int32(size.width),
+            Int32(size.height),
+            Unmanaged.passUnretained(texture as AnyObject).toOpaque()
+        ) != 0
+    }
+
+    /// Submits pending draw commands. `sync` waits for the GPU to finish.
+    func flush(sync: Bool) {
+        skb_flush(context, sync ? 1 : 0)
+    }
+
+    /// Flushes, waits, and reads the surface back into CPU memory.
+    func readPixels() -> (UnsafePointer<UInt8>, Int)? {
+        var rowBytes = 0
+        guard let base = skb_read_pixels(context, &rowBytes) else { return nil }
         return (base, rowBytes)
     }
 

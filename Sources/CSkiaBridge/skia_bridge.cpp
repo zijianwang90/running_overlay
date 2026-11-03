@@ -1,4 +1,5 @@
 #include "skia_bridge.h"
+#include "skia_bridge_internal.h"
 
 #include "include/core/SkCanvas.h"
 #include "include/core/SkColor.h"
@@ -19,11 +20,6 @@
 #include <algorithm>
 #include <cmath>
 #include <vector>
-
-struct SkiaBridgeContext {
-    sk_sp<SkSurface> surface;
-    SkPixmap pixmap;
-};
 
 SkiaBridgeContext *skb_create(int width, int height) {
     auto info = SkImageInfo::Make(width, height, kBGRA_8888_SkColorType, kPremul_SkAlphaType);
@@ -250,6 +246,9 @@ void skb_begin_blur_layer(
 }
 
 const uint8_t *skb_pixels(SkiaBridgeContext *ctx, size_t *rowBytes) {
+    if (ctx->grContext) {
+        return skb_read_pixels_impl(ctx, rowBytes);
+    }
     ctx->surface->peekPixels(&ctx->pixmap);
     *rowBytes = ctx->pixmap.rowBytes();
     return (const uint8_t *)ctx->pixmap.addr();

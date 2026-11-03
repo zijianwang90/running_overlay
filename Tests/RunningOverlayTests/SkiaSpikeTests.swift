@@ -302,7 +302,7 @@ import Testing
             + Double(duration.components.attoseconds) / 1e15
     }
 
-    private static func activity() -> ActivityTimeline {
+    static func activity() -> ActivityTimeline {
         let start = Date(timeIntervalSince1970: 1_735_689_600)
         let records = stride(from: 0.0, through: 60, by: 1).map { t in
             ActivityRecord(
