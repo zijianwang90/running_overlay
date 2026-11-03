@@ -170,6 +170,33 @@ import Testing
         #expect(supportedCount + fallbackCount > 0)
     }
 
+    /// The default Easy Run template must preview entirely through Skia, with
+    /// no SwiftUI fallback views left in the composition.
+    @Test func easyRunPreviewUsesSkiaForEveryModule() throws {
+        let layout = try Self.unfilteredEasyRunLayout()
+        let fallback = layout.elements.filter {
+            $0.isVisible && PreviewSwiftUIFallback.isRequired(for: $0)
+        }
+        #expect(fallback.isEmpty, "fallback modules: \(fallback.map(\.type.rawValue))")
+
+        let view = SkiaPreviewMetalView(
+            frame: CGRect(origin: .zero, size: CGSize(width: 480, height: 270))
+        )
+        view.configure(
+            layout: layout,
+            activity: Self.activity,
+            elapsedTime: 12,
+            canvasSize: Self.hd1080,
+            isPaused: true
+        )
+        let pixels = try Self.readPixels(view: view, size: Self.hd1080)
+        let opaquePixels = stride(from: 3, to: pixels.count, by: 4)
+            .reduce(into: 0) { count, index in
+                if pixels[index] > 8 { count += 1 }
+            }
+        #expect(opaquePixels > 1_000)
+    }
+
     // MARK: - Resize, backing scale, and paused scrubbing
 
     @Test func resizingTheViewKeepsTheProjectDrawable() throws {
