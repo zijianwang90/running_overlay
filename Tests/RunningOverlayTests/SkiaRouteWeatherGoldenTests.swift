@@ -9,7 +9,7 @@ import Testing
 /// Route map and weather widget parity goldens against the SwiftUI export
 /// oracle. Scenes avoid MapKit by using `routeMapBackgroundStyle = .none`;
 /// snapshot injection is covered by a separate test.
-@Suite(.serialized)
+@Suite(.serialized, .skiaSerialized)
 struct SkiaRouteWeatherGoldenTests {
     private static let canvas = CGSize(width: 1280, height: 720)
 

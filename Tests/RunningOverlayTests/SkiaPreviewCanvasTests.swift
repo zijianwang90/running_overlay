@@ -11,7 +11,7 @@ import Testing
 /// `CAMetalDrawable` through `SkiaEasyRunRenderer` and measure frame pacing at
 /// 1080p and 4K.
 @MainActor
-@Suite(.serialized) struct SkiaPreviewCanvasTests {
+@Suite(.serialized, .skiaSerialized) struct SkiaPreviewCanvasTests {
     // MARK: - Presentation
 
     @Test func drawablePresentationProducesFrames() throws {

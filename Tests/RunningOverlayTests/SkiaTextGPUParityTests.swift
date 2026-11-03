@@ -21,7 +21,7 @@ import Testing
 /// The export-frame opacity divergence is unchanged and intentionally not
 /// worked around here; see
 /// `docs/superpowers/plans/notes/2026-11-02-skia-text-inventory.md`.
-@Suite(.serialized) struct SkiaTextGPUParityTests {
+@Suite(.serialized, .skiaSerialized) struct SkiaTextGPUParityTests {
     private struct MetalHandles {
         let device: MTLDevice
         let commandQueue: MTLCommandQueue

@@ -8,7 +8,7 @@ import Testing
 /// Golden-frame comparisons for the Skia chart module ports. Each test renders
 /// the SwiftUI export oracle and the Skia candidate, writes both PNGs, and
 /// prints pixel deviation for review.
-@Suite struct SkiaChartsGoldenTests {
+@Suite(.serialized, .skiaSerialized) struct SkiaChartsGoldenTests {
     @Test func distanceTimelineMinimal() async throws {
         try await OverlayPreferenceFixtures.withDefaults {
             var layout = try easyRunLayout()

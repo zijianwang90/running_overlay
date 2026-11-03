@@ -13,9 +13,10 @@ import Testing
 /// the shared Skia canvas and asset preload, and per-frame state carried
 /// across sequential module draws.
 ///
-/// Elevation chart, HUD, and work summary are deliberately absent until their
-/// Skia ports land.
-@Suite(.serialized) struct SkiaFullCompositionGoldenTests {
+/// Elevation chart, HUD, and work summary are covered by their own module
+/// goldens; they are omitted here to keep this scene's display windows
+/// deterministic.
+@Suite(.serialized, .skiaSerialized) struct SkiaFullCompositionGoldenTests {
     private static let canvas = CGSize(width: 1920, height: 1080)
 
     @Test func fullTemplateMatchesSwiftUI() async throws {

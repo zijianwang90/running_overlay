@@ -249,7 +249,7 @@ enum SkiaTextRenderSupport {
     }
 }
 
-@Suite(.serialized) struct SkiaTextGoldenTests {
+@Suite(.serialized, .skiaSerialized) struct SkiaTextGoldenTests {
     struct MinimalControlConfig: Sendable, CustomStringConvertible {
         var name: String
         var label: OverlayTextAttachmentPosition

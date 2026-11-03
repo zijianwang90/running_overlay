@@ -10,7 +10,7 @@ import Testing
 /// Phase 2 of the GPU spike: render directly into the export pixel buffer's
 /// IOSurface and append it to an AVAssetWriter, with no CPU readback or
 /// per-overlay compositing.
-@Suite(.serialized) struct SkiaGPUExportBenchmarkTests {
+@Suite(.serialized, .skiaSerialized) struct SkiaGPUExportBenchmarkTests {
     @Test(arguments: ProjectExportCodec.allCases)
     func exportEasyRunZeroCopy(codec: ProjectExportCodec) async throws {
         try await Self.runExport(

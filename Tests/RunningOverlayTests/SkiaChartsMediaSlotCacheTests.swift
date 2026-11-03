@@ -8,7 +8,7 @@ import Testing
 /// Guards the animated media-slot path used by the preview display link and
 /// the export loop: frames are sampled on a fixed grid and rasterized once, so
 /// per-frame drawing only reads the bounded canvas image cache.
-@Suite struct SkiaChartsMediaSlotCacheTests {
+@Suite(.serialized, .skiaSerialized) struct SkiaChartsMediaSlotCacheTests {
     private static let animatedSVG = """
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="8" fill="#ff5533">

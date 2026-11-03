@@ -8,7 +8,7 @@ import Testing
 
 /// Phase 1 of the GPU spike: render the Easy Run template through a Metal-backed
 /// Skia surface and compare it with the raster bridge used by the CPU spike.
-@Suite(.serialized) struct SkiaGPUSpikeTests {
+@Suite(.serialized, .skiaSerialized) struct SkiaGPUSpikeTests {
     @Test func easyRunGPUvsCPU() async throws {
         guard let device = MTLCreateSystemDefaultDevice(),
               let queue = device.makeCommandQueue() else {

@@ -6,6 +6,7 @@ import VideoToolbox
 @testable import RunningOverlay
 
 @MainActor
+@Suite(.skiaSerialized)
 struct ExportPerformanceTests {
     @Test func projectSnapshotRoundTripsExportableStateAndClearsRuntimeState() throws {
         let tempDirectory = FileManager.default.temporaryDirectory

@@ -6,7 +6,7 @@ import Foundation
 import Testing
 @testable import RunningOverlay
 
-@Suite(.serialized)
+@Suite(.serialized, .skiaSerialized)
 struct SkiaRenderAssetTests {
     private static let canvas = CGSize(width: 1280, height: 720)
 

@@ -9,7 +9,7 @@ import Testing
 /// Preview asset preload: map snapshots are fetched off the frame path, cached,
 /// registered through `preloadAssets`, and cause exactly one redraw.
 @MainActor
-@Suite(.serialized) struct SkiaPreviewAssetPreloadTests {
+@Suite(.serialized, .skiaSerialized) struct SkiaPreviewAssetPreloadTests {
     private static let hd1080 = CGSize(width: 1920, height: 1080)
 
     @Test func routeMapSnapshotIsFetchedOnceAndRedrawsWhenItArrives() async throws {

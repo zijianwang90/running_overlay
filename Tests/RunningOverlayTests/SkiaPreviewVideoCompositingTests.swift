@@ -12,7 +12,7 @@ import Testing
 /// decoded video. The video is generated locally with `AVAssetWriter`; no
 /// fixture media or network access is involved.
 @MainActor
-@Suite(.serialized) struct SkiaPreviewVideoCompositingTests {
+@Suite(.serialized, .skiaSerialized) struct SkiaPreviewVideoCompositingTests {
     private static let size = CGSize(width: 1280, height: 720)
 
     @Test func realVideoCompositesBeneathTransparentSkiaOverlay() async throws {

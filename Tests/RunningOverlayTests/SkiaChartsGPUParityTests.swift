@@ -14,7 +14,7 @@ import Testing
 /// `SkiaChartsGoldenTests` covers SwiftUI parity on the CPU raster context.
 /// These tests only exercise GPU-vs-CPU differences in the production host:
 /// gradient shaders, blur/opacity layers, image upload, and glyph rasterizing.
-@Suite(.serialized)
+@Suite(.serialized, .skiaSerialized)
 struct SkiaChartsGPUParityTests {
     private static let canvas = CGSize(width: 1280, height: 720)
     private static let elapsedTime: TimeInterval = 300

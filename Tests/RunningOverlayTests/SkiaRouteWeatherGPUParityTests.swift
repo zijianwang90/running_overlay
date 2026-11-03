@@ -10,7 +10,7 @@ import Testing
 /// `SkiaEasyRunRenderer` over an offscreen Metal surface and over the raster
 /// bridge, then compared byte-for-byte. Skipped when Metal or a GPU Skia
 /// context is unavailable.
-@Suite(.serialized)
+@Suite(.serialized, .skiaSerialized)
 struct SkiaRouteWeatherGPUParityTests {
     private static let canvas = CGSize(width: 1280, height: 720)
 

@@ -3,6 +3,7 @@ import AppKit
 import Testing
 @testable import RunningOverlay
 
+@Suite(.serialized, .skiaSerialized)
 struct OverlayRenderModelTests {
     @Test func featherMaskFadesFromTransparentEdgeToOpaqueCenter() throws {
         let image = try #require(OverlayFeatherMaskRenderer.makeCGMask(

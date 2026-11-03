@@ -5,7 +5,7 @@ import Foundation
 import Testing
 @testable import RunningOverlay
 
-@Suite struct SkiaSpikeTests {
+@Suite(.serialized, .skiaSerialized) struct SkiaSpikeTests {
     @Test func easyRunNumericTextMatchesSwiftUIBaseline() async throws {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()

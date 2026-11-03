@@ -5,7 +5,7 @@ import Testing
 
 /// Sizes the 4K export gap between the shipping SwiftUI exporter and the
 /// zero-copy GPU path in `SkiaGPUExportBenchmarkTests`.
-@Suite(.serialized) struct Skia4KExportBenchmarkTests {
+@Suite(.serialized, .skiaSerialized) struct Skia4KExportBenchmarkTests {
     @Test func productionSwiftUIExport4KProRes() async throws {
         try await Self.run(resolution: .uhd4k, label: "CPU-4K")
     }

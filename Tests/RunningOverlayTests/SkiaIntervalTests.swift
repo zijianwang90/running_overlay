@@ -8,7 +8,7 @@ import Testing
 
 // `OverlayPreferenceFixtures` saves and restores process-wide UserDefaults
 // keys, so golden tests in this suite must not overlap.
-@Suite(.serialized) struct SkiaIntervalTests {
+@Suite(.serialized, .skiaSerialized) struct SkiaIntervalTests {
     // MARK: - Shared geometry
 
     @Test func zoneBarRectsClampGapAndScaleActiveThickness() throws {
