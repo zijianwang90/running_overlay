@@ -158,6 +158,81 @@ struct SkiaRenderAssetTests {
         #expect(assets.image(for: otherKey) == nil)
     }
 
+    @Test func mapSnapshotDrawsIntoMapContent() throws {
+        try OverlayPreferenceFixtures.withDefaults {
+            let activity = SkiaRouteWeatherGoldenTests.activity()
+            var style = OverlayStyle.default
+            style.routeMapBackgroundStyle = .dark
+            style.backgroundEnabled = false
+            style.shadowEnabled = false
+            style.borderEnabled = false
+            let element = OverlayElement(
+                type: .routeMap,
+                position: CGPoint(x: 0.5, y: 0.5),
+                scale: 1,
+                style: style
+            )
+            let renderContext = OverlayRenderContext(
+                canvasSize: Self.canvas,
+                activity: activity,
+                elapsedTime: 30
+            )
+            let layout = OverlayRenderModel.routeMapLayout(
+                for: element,
+                in: renderContext
+            )
+            let request = try #require(
+                RouteMapSnapshotRequestBuilder.request(for: element, layout: layout)
+            )
+
+            let snapshot = NSImage(
+                size: NSSize(width: layout.rect.width, height: layout.rect.height),
+                flipped: false
+            ) { rect in
+                NSColor.magenta.setFill()
+                rect.fill()
+                return true
+            }
+
+            let assets = SkiaRenderAssets()
+            SkiaRenderAssets.preloadRouteMaps(
+                elements: [element],
+                activity: activity,
+                canvasSize: Self.canvas,
+                mapSnapshots: [request: snapshot],
+                into: assets
+            )
+            defer { assets.releaseImages() }
+
+            let skiaContext = try #require(
+                skb_create(Int32(Self.canvas.width), Int32(Self.canvas.height))
+            )
+            defer { skb_destroy(skiaContext) }
+            skb_clear(skiaContext)
+            SkiaRouteMapModule.draw(
+                element,
+                renderContext: renderContext,
+                context: skiaContext,
+                assets: assets
+            )
+
+            var rowBytes = 0
+            let base = try #require(skb_pixels(skiaContext, &rowBytes))
+            // BGRA little-endian; sample the empty top-left of the map.
+            let x = Int(layout.rect.minX + 30)
+            let y = Int(layout.rect.minY + 30)
+            let index = y * rowBytes + x * 4
+            let blue = base[index]
+            let green = base[index + 1]
+            let red = base[index + 2]
+            let alpha = base[index + 3]
+            // `skb_pixels` is premultiplied BGRA. The snapshot is drawn at
+            // `layout.mapOpacity`, so magenta becomes R=G=B-alpha.
+            #expect(red > 160 && green < 10 && blue > 160 && alpha > 160)
+            #expect(red == alpha && blue == alpha)
+        }
+    }
+
     @Test func fontCacheReusesInstances() {
         let assets = SkiaRenderAssets()
         let first = assets.font(family: "Menlo", size: 18, weight: .semibold)

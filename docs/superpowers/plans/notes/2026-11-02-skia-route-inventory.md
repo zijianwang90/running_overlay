@@ -681,12 +681,18 @@ pinned to Menlo, total-opacity changed-pixel ratio (channel delta > 8):
 | route-circle | 0.258% | 0.048 |
 | route-stats-outside | 0.385% | 0.188 |
 | route-stats-inside | 0.262% | 0.163 |
+| route-no-gps | 0.076% | 0.034 |
 | weather-simpleCard | 0.189% | 0.047 |
 | weather-compactStrip | 0.079% | 0.015 |
 | weather-forecastTile | 0.256% | 0.044 |
 | weather-minimalText | 0.085% | 0.045 |
 | weather-dashboardBar | 0.177% | 0.138 |
 | weather-payload-rain | 0.235% | 0.052 |
+| weather-palette-blueGlass | 0.189% | 0.047 |
+| weather-palette-lightGlass | 0.158% | 0.029 |
+| weather-palette-graphite | 0.198% | 0.068 |
+| weather-palette-minimalWhite | 0.190% | 0.074 |
+| weather-fahrenheit-snow | 0.246% | 0.054 |
 
 All deltas are concentrated on 1px text baselines, route-stroke antialiasing,
 and marker-ring antialiasing. Gate: changed ratio <= 10%, mean delta <= 8.
