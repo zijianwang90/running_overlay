@@ -234,39 +234,6 @@ struct PreviewCanvasView: View {
         canvasSize: CGSize,
         frames: [OverlayElement.ID: CGRect]
     ) -> some View {
-        #if DEBUG && canImport(CSkiaBridge)
-        // Temporary: modules the unified Skia dispatch has not absorbed yet
-        // render their SwiftUI views so the preview never drops them. They are
-        // visual-only: the model-rect interaction layer below still owns
-        // selection and dragging, and `PreviewElementGeometry` supplies their
-        // frames. Delete this pass when the shrunken set becomes empty.
-        ForEach(
-            project.overlayLayout.elements
-                .filter(\.isVisible)
-                .filter { PreviewSwiftUIFallback.isRequired(for: $0) }
-        ) { element in
-            let displayPos: CGPoint = liveDragPosition?.id == element.id
-                ? liveDragPosition!.pos
-                : element.position
-            OverlayElementContent(
-                element: element,
-                canvasSize: canvasSize,
-                sampleTime: project.layerDataSampleTime,
-                activity: project.activity,
-                isSelected: false
-            )
-            .equatable()
-            .modifier(PreviewOverlayPositionModifier(
-                element: element,
-                canvasSize: canvasSize,
-                position: displayPos,
-                sampleTime: project.layerDataSampleTime,
-                activity: project.activity
-            ))
-            .allowsHitTesting(false)
-        }
-        #endif
-
         if let selectedID = project.selectedOverlayID,
            let frame = frames[selectedID] {
             PreviewSelectionAffordance()
@@ -432,18 +399,6 @@ struct PreviewCanvasView: View {
     #endif
 
 }
-
-#if DEBUG && canImport(CSkiaBridge)
-/// Temporary migration bridge: module types still drawn by SwiftUI until the
-/// unified Skia dispatch covers every module. The target is an empty set and
-/// deletion of the fallback pass. This predicate is the single boundary; when a
-/// module ports to Skia, remove it from the preview test's expected set too.
-enum PreviewSwiftUIFallback {
-    static func isRequired(for element: OverlayElement) -> Bool {
-        !SkiaEasyRunRenderer.supports(element)
-    }
-}
-#endif
 
 /// Canvas tap resolution shared by both overlay rendering modes. A tap inside
 /// any visible element's frame keeps the selection; a tap in empty canvas
