@@ -572,9 +572,8 @@ Weather:
 
 - `Sources/RunningOverlay/Render/Skia/Modules/SkiaRouteMapModule.swift`
 - `Sources/RunningOverlay/Render/Skia/Modules/SkiaWeatherWidgetModule.swift`
-- `Tests/RunningOverlayTests/SkiaRouteMapGoldenTests.swift`
-- `Tests/RunningOverlayTests/SkiaWeatherWidgetGoldenTests.swift`
-- `Tests/RunningOverlayTests/SkiaRouteWeatherFixtures.swift`
+- `Tests/RunningOverlayTests/SkiaRouteWeatherGoldenTests.swift`
+- `Tests/RunningOverlayTests/SkiaRenderAssetTests.swift`
 - Updates to `docs/overlay-modules/route-map-overlay.md`,
   `docs/overlay-modules/weather-widget-overlay.md`, and the current monthly
   project log, after the port lands.
@@ -717,3 +716,43 @@ tolerance so exact-fit text is not spuriously truncated.
 - `.continuous` corners use circular `SkRRect`; the measured delta stays below
   the weather threshold, so no AppKit card rasterization is needed in 1.0.
 - `statsBar.blurRadius` is still ignored by both renderers.
+
+---
+
+## 12. GPU-path parity (2026-11-02)
+
+After fast-forwarding onto `claude/skia-gpu-spike` (`024d4c8`), route and
+weather are dispatched from `SkiaEasyRunRenderer` with a shared preloaded
+`SkiaRenderAssets`. `Tests/RunningOverlayTests/SkiaRouteWeatherGPUParityTests.swift`
+renders the same fixtures through the CPU raster bridge and an offscreen Metal
+context (`skb_create_gpu`), then compares the readback byte-for-byte.
+
+Scenes: route with gradient + glow + fade mask + border/shadow + outside stats
+bar; the same route with a synthetic preloaded map snapshot (image upload); and
+all five weather presets (icons are uploaded handles). The test returns early
+without failing when no Metal device or GPU Skia context is available.
+
+| scene | changed | mean delta | max channel delta | worst location |
+| --- | ---: | ---: | ---: | --- |
+| route-gradient-glow-fade-stats | 0.093% | 0.0197 | 57 | route end marker, (724,238) |
+| route-snapshot-upload | 0.125% | 0.0376 | 59 | route end marker, (724,238) |
+| weather-simpleCard | 0.012% | 0.0114 | 61 | bottom-right card corner, (785,413) |
+| weather-compactStrip | 0.031% | 0.0084 | 60 | card edge, (729,386) |
+| weather-forecastTile | 0.053% | 0.0129 | 61 | card top edge, (722,260) |
+| weather-minimalText | 0.000% | 0.0012 | 3 | shadow tail, (567,369) |
+| weather-dashboardBar | 0.017% | 0.0311 | 24 | top-left card corner, (368,304) |
+
+Findings:
+
+- No vertical flip or channel-order difference in `skb_read_pixels`; CPU and
+  GPU frames align structurally.
+- Differences are confined to analytic-AA edges: rounded card corners, the
+  route end marker ring, and the fade-mask boundary. Maximum channel delta is
+  61/255, and every changed pixel is an edge pixel.
+- Synthetic snapshot upload adds no new error class beyond the same edge AA;
+  the image is drawn at `mapOpacity` with the expected orientation and colors.
+- Gate: changed ratio <= 2%, mean delta <= 0.5. Actual values are ~20x under
+  the gate, so regressions in orientation, upload, or dispatch fail loudly.
+- `displayLinkDrivesFramesInAWindow` (pre-existing preview test) was observed
+  timing-flaky once under the full merged suite and passes on rerun; unrelated
+  to route/weather.
