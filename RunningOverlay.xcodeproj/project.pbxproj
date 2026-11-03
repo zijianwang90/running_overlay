@@ -55,8 +55,10 @@
 		3CE3E5647CBB706D30A8A324 /* SkiaRunningGaugeRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96AF40ABAF752D1197D655EF /* SkiaRunningGaugeRenderer.swift */; };
 		F1022EF0F2A5CB453C014911 /* DecorDrawing.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE4B4FBE08A573C3B26E59C5 /* DecorDrawing.swift */; };
 		DB48B6241D4C78216F1FF0FD /* IntervalCountdownSkiaRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 008516465C1CE5097622CAC5 /* IntervalCountdownSkiaRenderer.swift */; };
+		F77CCDAB515BBEC0B472F4D6 /* IntervalHUDBarSkiaRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A59A11C341699ED630C4906F /* IntervalHUDBarSkiaRenderer.swift */; };
 		20C2E8006D678E6DC8C4B8DF /* IntervalShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 629ECB9E5CFA254EF35081EF /* IntervalShared.swift */; };
 		3366CFCB0D8493C57D6AF77E /* IntervalTimelineSkiaRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D67628A343D07CBF38E5E22B /* IntervalTimelineSkiaRenderer.swift */; };
+		B9D4597F57ECE8EA82991D55 /* IntervalWorkSummarySkiaRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4442D0A021427B43A634C2C6 /* IntervalWorkSummarySkiaRenderer.swift */; };
 		861715E8A02F303EBE7915B7 /* SkiaIntervalModules.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DB751CCC88F30EEF6B86F3B /* SkiaIntervalModules.swift */; };
 		1B069CE6837BABA4675CB893 /* SkiaRouteMapModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 051945E4EEDC3970B6C7FCD0 /* SkiaRouteMapModule.swift */; };
 		8984250D459993D18EF702E9 /* SkiaRouteWeatherText.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0F438588A6665FDB4A270E /* SkiaRouteWeatherText.swift */; };
@@ -197,8 +199,10 @@
 		96AF40ABAF752D1197D655EF /* SkiaRunningGaugeRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Charts/SkiaRunningGaugeRenderer.swift"; sourceTree = SOURCE_ROOT; };
 		AE4B4FBE08A573C3B26E59C5 /* DecorDrawing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/DecorDrawing.swift"; sourceTree = SOURCE_ROOT; };
 		008516465C1CE5097622CAC5 /* IntervalCountdownSkiaRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/IntervalCountdownSkiaRenderer.swift"; sourceTree = SOURCE_ROOT; };
+		A59A11C341699ED630C4906F /* IntervalHUDBarSkiaRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/IntervalHUDBarSkiaRenderer.swift"; sourceTree = SOURCE_ROOT; };
 		629ECB9E5CFA254EF35081EF /* IntervalShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/IntervalShared.swift"; sourceTree = SOURCE_ROOT; };
 		D67628A343D07CBF38E5E22B /* IntervalTimelineSkiaRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/IntervalTimelineSkiaRenderer.swift"; sourceTree = SOURCE_ROOT; };
+		4442D0A021427B43A634C2C6 /* IntervalWorkSummarySkiaRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/IntervalWorkSummarySkiaRenderer.swift"; sourceTree = SOURCE_ROOT; };
 		5DB751CCC88F30EEF6B86F3B /* SkiaIntervalModules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/SkiaIntervalModules.swift"; sourceTree = SOURCE_ROOT; };
 		051945E4EEDC3970B6C7FCD0 /* SkiaRouteMapModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/SkiaRouteMapModule.swift"; sourceTree = SOURCE_ROOT; };
 		BC0F438588A6665FDB4A270E /* SkiaRouteWeatherText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/SkiaRouteWeatherText.swift"; sourceTree = SOURCE_ROOT; };
@@ -341,8 +345,10 @@
 			96AF40ABAF752D1197D655EF /* SkiaRunningGaugeRenderer.swift */,
 			AE4B4FBE08A573C3B26E59C5 /* DecorDrawing.swift */,
 			008516465C1CE5097622CAC5 /* IntervalCountdownSkiaRenderer.swift */,
+			A59A11C341699ED630C4906F /* IntervalHUDBarSkiaRenderer.swift */,
 			629ECB9E5CFA254EF35081EF /* IntervalShared.swift */,
 			D67628A343D07CBF38E5E22B /* IntervalTimelineSkiaRenderer.swift */,
+			4442D0A021427B43A634C2C6 /* IntervalWorkSummarySkiaRenderer.swift */,
 			5DB751CCC88F30EEF6B86F3B /* SkiaIntervalModules.swift */,
 			051945E4EEDC3970B6C7FCD0 /* SkiaRouteMapModule.swift */,
 			BC0F438588A6665FDB4A270E /* SkiaRouteWeatherText.swift */,
@@ -511,8 +517,10 @@
 			3CE3E5647CBB706D30A8A324 /* SkiaRunningGaugeRenderer.swift in Sources */,
 			F1022EF0F2A5CB453C014911 /* DecorDrawing.swift in Sources */,
 			DB48B6241D4C78216F1FF0FD /* IntervalCountdownSkiaRenderer.swift in Sources */,
+			F77CCDAB515BBEC0B472F4D6 /* IntervalHUDBarSkiaRenderer.swift in Sources */,
 			20C2E8006D678E6DC8C4B8DF /* IntervalShared.swift in Sources */,
 			3366CFCB0D8493C57D6AF77E /* IntervalTimelineSkiaRenderer.swift in Sources */,
+			B9D4597F57ECE8EA82991D55 /* IntervalWorkSummarySkiaRenderer.swift in Sources */,
 			861715E8A02F303EBE7915B7 /* SkiaIntervalModules.swift in Sources */,
 			1B069CE6837BABA4675CB893 /* SkiaRouteMapModule.swift in Sources */,
 			8984250D459993D18EF702E9 /* SkiaRouteWeatherText.swift in Sources */,
