@@ -233,6 +233,38 @@ struct PreviewCanvasView: View {
         canvasSize: CGSize,
         frames: [OverlayElement.ID: CGRect]
     ) -> some View {
+        #if DEBUG && canImport(CSkiaBridge)
+        // Modules the Skia renderer has not ported yet keep their SwiftUI views
+        // so the preview never silently drops them. They are visual-only: the
+        // model-rect interaction layer below still owns selection and dragging,
+        // and `PreviewElementGeometry` supplies their frames.
+        ForEach(
+            project.overlayLayout.elements
+                .filter(\.isVisible)
+                .filter { PreviewSwiftUIFallback.isRequired(for: $0) }
+        ) { element in
+            let displayPos: CGPoint = liveDragPosition?.id == element.id
+                ? liveDragPosition!.pos
+                : element.position
+            OverlayElementContent(
+                element: element,
+                canvasSize: canvasSize,
+                sampleTime: project.layerDataSampleTime,
+                activity: project.activity,
+                isSelected: false
+            )
+            .equatable()
+            .modifier(PreviewOverlayPositionModifier(
+                element: element,
+                canvasSize: canvasSize,
+                position: displayPos,
+                sampleTime: project.layerDataSampleTime,
+                activity: project.activity
+            ))
+            .allowsHitTesting(false)
+        }
+        #endif
+
         if let selectedID = project.selectedOverlayID,
            let frame = frames[selectedID] {
             PreviewSelectionAffordance()
@@ -398,6 +430,18 @@ struct PreviewCanvasView: View {
     #endif
 
 }
+
+#if DEBUG && canImport(CSkiaBridge)
+/// The module types still drawn by SwiftUI in Skia preview mode. This is the
+/// single migration boundary: when a module ports to Skia, it disappears from
+/// this set and the preview test that pins the set starts failing until it is
+/// updated.
+enum PreviewSwiftUIFallback {
+    static func isRequired(for element: OverlayElement) -> Bool {
+        !SkiaEasyRunRenderer.supports(element)
+    }
+}
+#endif
 
 /// Canvas-space hit and selection geometry for overlay elements when the
 /// SwiftUI element views are not present (Skia preview). Consumes the same

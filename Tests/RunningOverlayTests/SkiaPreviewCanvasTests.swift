@@ -62,6 +62,39 @@ import Testing
         #expect(view.metalLayer.drawableSize == Self.hd1080)
     }
 
+    // MARK: - SwiftUI fallback boundary
+
+    /// Skia preview keeps SwiftUI views only for modules the renderer has not
+    /// ported. This pins the current boundary so a module port cannot silently
+    /// double-draw or disappear from preview.
+    @Test func skiaPreviewKeepsSwiftUIFallbackOnlyForUnportedModules() {
+        let expectedFallback: Set<OverlayElementType> = [
+            .elevationChart,
+            .runningGauge,
+            .intervalHUDBar,
+            .intervalTimeline,
+            .intervalCountdown,
+            .intervalWorkSummary,
+            .zoneEdgeBar,
+            .decorSolidColor,
+            .decorIcon,
+            .decorText,
+        ]
+
+        for type in OverlayElementType.allCases {
+            let element = OverlayElement(
+                type: type,
+                position: CGPoint(x: 0.5, y: 0.5),
+                scale: 1,
+                style: .default
+            )
+            #expect(
+                PreviewSwiftUIFallback.isRequired(for: element) == expectedFallback.contains(type),
+                "\(type.rawValue): port it to Skia or update the fallback set"
+            )
+        }
+    }
+
     // MARK: - Display link
 
     @Test func displayLinkDrivesFramesInAWindow() throws {
