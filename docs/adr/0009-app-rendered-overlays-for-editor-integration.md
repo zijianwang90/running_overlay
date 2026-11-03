@@ -112,3 +112,11 @@ layers. A GPU backend (Graphite/Metal) was not evaluated.
 Conclusion: CPU Skia is not a performance win for the current effects-heavy
 templates. The app-rendered approach in this ADR stands. If a shared or plugin
 renderer is pursued, evaluate a GPU-backed Skia before committing.
+
+## GPU Follow-Up
+
+A Ganesh Metal spike followed this CPU result and measured production export
+and live preview. It is about 1.9x faster at 1080p ProRes, about 1.19x faster
+at 4K ProRes, and encoder-bound at 1080p HEVC alpha; live preview holds about
+8.4 ms per frame at both 1080p and 4K. Based on those results, ADR 0010 adopts
+Skia with the Ganesh Metal backend for preview, export, and the editor helper.
