@@ -123,7 +123,6 @@ import Testing
 
         for element in [icon, text] {
             #expect(SkiaEasyRunRenderer.supports(element), "\(element.type.rawValue)")
-            #expect(!PreviewSwiftUIFallback.isRequired(for: element), "\(element.type.rawValue)")
 
             let renderer = try #require(SkiaEasyRunRenderer(size: Self.hd1080))
             let (pixels, rowBytes) = renderer.render(

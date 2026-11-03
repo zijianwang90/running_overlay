@@ -62,15 +62,11 @@ import Testing
         #expect(view.metalLayer.drawableSize == Self.hd1080)
     }
 
-    // MARK: - SwiftUI fallback boundary
+    // MARK: - All-Skia coverage
 
-    /// Temporary migration pin: Skia preview keeps SwiftUI views only for
-    /// modules the unified dispatch has not absorbed. The target state is an
-    /// empty set with the fallback pass deleted; a module port must update this
-    /// list so double-drawing or a silently dropped module fails the build.
-    @Test func skiaPreviewKeepsSwiftUIFallbackOnlyForUnportedModules() {
-        let expectedFallback: Set<OverlayElementType> = []
-
+    /// Every overlay type is owned by the shared Skia renderer. Preview must
+    /// never fall back to SwiftUI drawing.
+    @Test func everyOverlayTypeIsSkiaSupported() {
         for type in OverlayElementType.allCases {
             let element = OverlayElement(
                 type: type,
@@ -79,8 +75,8 @@ import Testing
                 style: .default
             )
             #expect(
-                PreviewSwiftUIFallback.isRequired(for: element) == expectedFallback.contains(type),
-                "\(type.rawValue): port it to Skia or update the fallback set"
+                SkiaEasyRunRenderer.supports(element),
+                "\(type.rawValue) is not dispatched by Skia"
             )
         }
     }
@@ -143,8 +139,7 @@ import Testing
         #expect(SkiaEasyRunRenderer.supports(workSummary))
     }
 
-    /// Interaction in Skia mode uses model rects for every visible element,
-    /// including the ones currently drawn by the SwiftUI fallback.
+    /// Interaction in Skia mode uses model rects for every visible element.
     @Test func mixedLayoutGivesEveryVisibleElementAHitFrame() throws {
         let layout = try Self.unfilteredEasyRunLayout()
         let context = OverlayRenderContext(
@@ -152,32 +147,99 @@ import Testing
             activity: Self.activity,
             elapsedTime: 12
         )
-        var supportedCount = 0
-        var fallbackCount = 0
+        var checked = 0
 
         for element in layout.elements where element.isVisible {
+            #expect(SkiaEasyRunRenderer.supports(element), "\(element.type.rawValue)")
             let frame = PreviewElementGeometry.frame(for: element, in: context)
             #expect(frame.width > 0, "\(element.type.rawValue) width")
             #expect(frame.height > 0, "\(element.type.rawValue) height")
-            if PreviewSwiftUIFallback.isRequired(for: element) {
-                fallbackCount += 1
-            } else {
-                supportedCount += 1
-            }
+            checked += 1
         }
 
-        #expect(supportedCount > 0)
-        #expect(supportedCount + fallbackCount > 0)
+        #expect(checked > 0)
     }
 
-    /// The default Easy Run template must preview entirely through Skia, with
-    /// no SwiftUI fallback views left in the composition.
+    /// A layout mixing every module group must render entirely through Skia.
+    @Test func mixedLayoutRendersEntirelyThroughSkia() throws {
+        let layout = Self.mixedLayout()
+        for element in layout.elements {
+            #expect(
+                SkiaEasyRunRenderer.supports(element),
+                "\(element.type.rawValue) is not dispatched by Skia"
+            )
+        }
+
+        let view = SkiaPreviewMetalView(
+            frame: CGRect(origin: .zero, size: CGSize(width: 480, height: 270))
+        )
+        view.configure(
+            layout: layout,
+            activity: Self.activity,
+            elapsedTime: 12,
+            canvasSize: Self.hd1080,
+            isPaused: true
+        )
+        let pixels = try Self.readPixels(view: view, size: Self.hd1080)
+        let opaquePixels = stride(from: 3, to: pixels.count, by: 4)
+            .reduce(into: 0) { count, index in
+                if pixels[index] > 8 { count += 1 }
+            }
+        #expect(opaquePixels > 1_000)
+    }
+
+    /// The removed SwiftUI fallback pass must not leave a second draw behind.
+    /// A 50% white decor fill drawn once reads alpha ~128; a double draw would
+    /// read ~191.
+    @Test func translucentDecorIsDrawnOnce() throws {
+        var style = OverlayStyle.default
+        style.decor.shape = .rectangle
+        style.decor.fillColor = OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.5)
+        style.decor.width = 400
+        style.decor.height = 300
+        // Isolate the fill: a shadow underneath would also raise center alpha.
+        style.shadowEnabled = false
+        style.borderEnabled = false
+        let element = OverlayElement(
+            type: .decorSolidColor,
+            position: CGPoint(x: 0.5, y: 0.5),
+            scale: 1,
+            style: style
+        )
+
+        let view = SkiaPreviewMetalView(
+            frame: CGRect(origin: .zero, size: CGSize(width: 480, height: 270))
+        )
+        view.configure(
+            layout: OverlayLayout(elements: [element]),
+            activity: Self.activity,
+            elapsedTime: 12,
+            canvasSize: Self.hd1080,
+            isPaused: true
+        )
+        let pixels = try Self.readPixels(view: view, size: Self.hd1080)
+
+        let context = OverlayRenderContext(
+            canvasSize: Self.hd1080,
+            activity: Self.activity,
+            elapsedTime: 12
+        )
+        let frame = PreviewElementGeometry.frame(for: element, in: context)
+        let x = Int(frame.midX)
+        let y = Int(frame.midY)
+        let index = (y * Int(Self.hd1080.width) + x) * 4
+        let alpha = Int(pixels[index + 3])
+
+        #expect(abs(alpha - 128) <= 8, "decor alpha \(alpha) suggests a double draw")
+    }
+
+    /// The default Easy Run template must preview entirely through Skia.
     @Test func easyRunPreviewUsesSkiaForEveryModule() throws {
         let layout = try Self.unfilteredEasyRunLayout()
-        let fallback = layout.elements.filter {
-            $0.isVisible && PreviewSwiftUIFallback.isRequired(for: $0)
+        let unsupported = layout.elements.filter {
+            $0.isVisible && !SkiaEasyRunRenderer.supports($0)
         }
-        #expect(fallback.isEmpty, "fallback modules: \(fallback.map(\.type.rawValue))")
+        #expect(unsupported.isEmpty, "unsupported modules: \(unsupported.map(\.type.rawValue))")
 
         let view = SkiaPreviewMetalView(
             frame: CGRect(origin: .zero, size: CGSize(width: 480, height: 270))
@@ -404,6 +466,49 @@ import Testing
             #expect(averageTotal < 33.3)
             #expect(achievedFPS >= 30)
         }
+    }
+
+    private static func mixedLayout() -> OverlayLayout {
+        func make(
+            _ type: OverlayElementType,
+            _ x: CGFloat,
+            _ y: CGFloat,
+            _ style: OverlayStyle = .default
+        ) -> OverlayElement {
+            OverlayElement(
+                type: type,
+                position: CGPoint(x: x, y: y),
+                scale: 1,
+                style: style
+            )
+        }
+
+        var decorTextStyle = OverlayStyle.default
+        decorTextStyle.decor.textContent = "MIXED"
+        var decorIconStyle = OverlayStyle.default
+        decorIconStyle.decor.iconAsset = .sfSymbol(name: "star.fill")
+        var routeStyle = OverlayStyle.default
+        routeStyle.routeMapBackgroundStyle = .none
+        routeStyle.routeMapWidth = 320
+        routeStyle.routeMapHeight = 240
+
+        return OverlayLayout(elements: [
+            make(.pace, 0.10, 0.10),
+            make(.heartRate, 0.28, 0.10),
+            make(.decorSolidColor, 0.82, 0.14),
+            make(.decorIcon, 0.82, 0.34, decorIconStyle),
+            make(.decorText, 0.82, 0.46, decorTextStyle),
+            make(.routeMap, 0.18, 0.72, routeStyle),
+            make(.distanceTimeline, 0.50, 0.10),
+            make(.runningGauge, 0.50, 0.40),
+            make(.elevationChart, 0.50, 0.70),
+            make(.weatherWidget, 0.80, 0.70),
+            make(.intervalTimeline, 0.50, 0.90),
+            make(.intervalCountdown, 0.75, 0.90),
+            make(.intervalHUDBar, 0.30, 0.92),
+            make(.zoneEdgeBar, 0.50, 0.96),
+            make(.intervalWorkSummary, 0.65, 0.55),
+        ])
     }
 
     private static func unfilteredEasyRunLayout() throws -> OverlayLayout {
