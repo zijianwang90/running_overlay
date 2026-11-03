@@ -41,9 +41,11 @@ Metal.
 
 ## Decision
 
-1. Adopt one Skia renderer for preview, export, and the editor helper. The
-   SwiftUI `ImageRenderer` path remains selectable behind
-   `RUNNING_OVERLAY_RENDERER=swiftui` until parity review completes.
+1. Adopt one Skia renderer as the target for preview, export, and the editor
+   helper. Preview is wired behind `RUNNING_OVERLAY_RENDERER=skia`/`swiftUI`
+   and a Debug toggle. Production export still uses the SwiftUI
+   `ImageRenderer`; Skia export is exercised by benchmark tests until an
+   explicit export wiring change passes review.
 2. Use the Ganesh Metal backend on macOS. Do not adopt Graphite or Vulkan now.
 3. Keep the C bridge (`skb_*`) as the backend seam. All renderer code calls the
    bridge, never Skia C++ directly. A future Graphite or Windows backend can be

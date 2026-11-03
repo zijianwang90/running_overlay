@@ -31,7 +31,7 @@ passes parity and benchmark gates.
 3. **SwiftUI remains the visual oracle during migration.** Every module port is
    validated against the current `OverlayShared*View` output with golden frames
    before it becomes the default.
-4. **Feature-flag the backend.** `RUNNING_OVERLAY_RENDERER=swiftui|skia` (and a
+4. **Feature-flag the backend.** `RUNNING_OVERLAY_RENDERER=swiftUI|skia` (and a
    debug settings toggle) selects the backend per run. Per-module fallback
    stays available until the module's parity gate passes.
 5. **No Graphite work in this plan.** Ganesh-on-Metal is the shipping backend

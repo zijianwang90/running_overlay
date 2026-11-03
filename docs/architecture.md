@@ -139,9 +139,11 @@ Responsibilities:
 - Keep preview and export pixel-equivalent within documented golden
   thresholds. Text anti-aliasing and shadow kernels differ from SwiftUI at the
   pixel level, so parity tests compare changed-pixel ratios and mean deltas.
-- Keep the SwiftUI `ImageRenderer` path available as an opt-in
-  (`RUNNING_OVERLAY_RENDERER=swiftui` for export) until parity review is
-  complete. ADR 0010 records the decision and measurements.
+- In Debug builds, preview can switch between renderers at runtime with
+  `RUNNING_OVERLAY_RENDERER=skia`/`swiftUI` or the preview header toggle.
+  Production export still uses the SwiftUI `ImageRenderer`; Skia export is
+  covered by the export benchmark tests and waits for an explicit export
+  wiring change. ADR 0010 records the decision and measurements.
 
 ### Preview
 
