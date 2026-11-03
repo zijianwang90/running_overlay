@@ -167,6 +167,14 @@ final class SkiaPreviewMetalView: NSView {
         }
     }
 
+    override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        metalLayer.contentsScale = window?.backingScaleFactor
+            ?? NSScreen.main?.backingScaleFactor
+            ?? 2
+        layout()
+    }
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         if window != nil {
@@ -304,8 +312,12 @@ final class SkiaPreviewMetalView: NSView {
     /// paused in that state, so this is the only path that updates the canvas.
     private func renderIfPaused() {
         guard needsRender, isPaused else { return }
-        needsRender = false
-        renderFrame()
+        // Keep the pending flag when the drawable is temporarily unavailable so
+        // the next layout/configure pass retries instead of stranding a stale
+        // frame on screen.
+        if renderFrame() != nil {
+            needsRender = false
+        }
     }
 }
 

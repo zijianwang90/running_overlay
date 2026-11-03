@@ -1,5 +1,7 @@
+import AppKit
 import CoreGraphics
 import Foundation
+import SwiftUI
 import Testing
 @testable import RunningOverlay
 
@@ -32,6 +34,104 @@ struct PreviewElementGeometryTests {
         let longFrame = PreviewElementGeometry.frame(for: longValue, in: context)
 
         #expect(longFrame.width > shortFrame.width)
+    }
+
+    @Test func numericHitRectIncludesTopLabelAndIcon() {
+        var bare = element(.heartRate, at: CGPoint(x: 0.1, y: 0.1))
+        bare.style.showLabel = false
+        bare.style.iconEnabled = false
+
+        var full = bare
+        full.style.showLabel = true
+        full.style.labelPosition = .top
+        full.style.iconEnabled = true
+        full.style.iconPosition = .top
+
+        let bareFrame = PreviewElementGeometry.frame(for: bare, in: context)
+        let fullFrame = PreviewElementGeometry.frame(for: full, in: context)
+
+        #expect(fullFrame.height > bareFrame.height)
+        #expect(fullFrame.width >= bareFrame.width)
+    }
+
+    @Test func numericHitRectIncludesLeadingLabel() {
+        var label = element(.heartRate, at: CGPoint(x: 0.1, y: 0.1))
+        label.style.showLabel = true
+        label.style.labelPosition = .leading
+
+        var bare = label
+        bare.style.showLabel = false
+
+        let labelFrame = PreviewElementGeometry.frame(for: label, in: context)
+        let bareFrame = PreviewElementGeometry.frame(for: bare, in: context)
+
+        #expect(labelFrame.width > bareFrame.width)
+    }
+
+    @Test func numericHitRectIncludesBackgroundPadding() {
+        var plain = element(.heartRate, at: CGPoint(x: 0.1, y: 0.1))
+        plain.style.backgroundEnabled = false
+
+        var padded = plain
+        padded.style.backgroundEnabled = true
+
+        let plainFrame = PreviewElementGeometry.frame(for: plain, in: context)
+        let paddedFrame = PreviewElementGeometry.frame(for: padded, in: context)
+
+        #expect(paddedFrame.width > plainFrame.width)
+        #expect(paddedFrame.height > plainFrame.height)
+    }
+
+    /// The hit rect should match what SwiftUI actually lays out for the minimal
+    /// numeric preset, since Skia mode uses this rect for selection and drag.
+    @MainActor
+    @Test func numericHitSizeMatchesSwiftUIRenderedSize() {
+        var element = element(.heartRate, at: CGPoint(x: 0.1, y: 0.1))
+        element.style.showLabel = false
+        element.style.showUnit = true
+        element.style.unitPosition = .trailing
+        element.style.iconEnabled = false
+        element.style.backgroundEnabled = false
+
+        expectHitSizeMatchesSwiftUI(for: element)
+
+        var decorated = element
+        decorated.style.showLabel = true
+        decorated.style.labelPosition = .top
+        decorated.style.iconEnabled = true
+        decorated.style.iconSystemName = "heart.fill"
+        decorated.style.iconPosition = .top
+        decorated.style.backgroundEnabled = true
+        decorated.style.unitPosition = .bottom
+
+        expectHitSizeMatchesSwiftUI(for: decorated)
+    }
+
+    @MainActor
+    private func expectHitSizeMatchesSwiftUI(for element: OverlayElement) {
+        let renderContext = context
+        let layout = OverlayRenderModel.textLayout(for: element, in: renderContext)
+        let modelFrame = PreviewElementGeometry.frame(for: element, in: renderContext)
+        let host = NSHostingView(
+            rootView: OverlaySharedTextPresetView(
+                element: element,
+                layout: layout,
+                isInteractive: false
+            )
+        )
+        host.layoutSubtreeIfNeeded()
+        let renderedSize = host.fittingSize
+
+        #expect(renderedSize.width > 0)
+        #expect(renderedSize.height > 0)
+        #expect(
+            abs(renderedSize.width - modelFrame.width) <= 2,
+            "width model=\(modelFrame.width) swiftui=\(renderedSize.width)"
+        )
+        #expect(
+            abs(renderedSize.height - modelFrame.height) <= 2,
+            "height model=\(modelFrame.height) swiftui=\(renderedSize.height)"
+        )
     }
 
     @Test func distanceTimelineUsesRenderModelRect() {
@@ -79,6 +179,47 @@ struct PreviewElementGeometryTests {
             #expect(frame.width > 0, "\(type.rawValue) width")
             #expect(frame.height > 0, "\(type.rawValue) height")
         }
+    }
+
+    @Test func canvasTapUsesTheSameFramesForSupportedAndFallbackModules() {
+        let supportedID = UUID()
+        let fallbackID = UUID()
+        let frames: [OverlayElement.ID: CGRect] = [
+            supportedID: CGRect(x: 100, y: 100, width: 120, height: 40),
+            fallbackID: CGRect(x: 400, y: 300, width: 200, height: 80),
+        ]
+        let visible: Set<OverlayElement.ID> = [supportedID, fallbackID]
+
+        // Inside either module's frame the canvas must keep the selection,
+        // including modules currently drawn by the SwiftUI fallback.
+        #expect(PreviewCanvasHitTesting.isOverlayHit(
+            at: CGPoint(x: 160, y: 120),
+            frames: frames,
+            visibleElementIDs: visible
+        ))
+        #expect(PreviewCanvasHitTesting.isOverlayHit(
+            at: CGPoint(x: 500, y: 340),
+            frames: frames,
+            visibleElementIDs: visible
+        ))
+        // The 4pt tolerance applies at the edge.
+        #expect(PreviewCanvasHitTesting.isOverlayHit(
+            at: CGPoint(x: 97, y: 97),
+            frames: frames,
+            visibleElementIDs: visible
+        ))
+        // Empty canvas clears the selection.
+        #expect(!PreviewCanvasHitTesting.isOverlayHit(
+            at: CGPoint(x: 300, y: 200),
+            frames: frames,
+            visibleElementIDs: visible
+        ))
+        // Hidden elements do not absorb taps.
+        #expect(!PreviewCanvasHitTesting.isOverlayHit(
+            at: CGPoint(x: 160, y: 120),
+            frames: frames,
+            visibleElementIDs: [fallbackID]
+        ))
     }
 
     private var context: OverlayRenderContext {
