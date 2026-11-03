@@ -26,8 +26,21 @@ enum SkiaIconRasterCache {
     }
 
     /// `NSCache` is thread-safe internally; export and preview can rasterize
-    /// icons from different threads.
-    nonisolated(unsafe) private static let cache = NSCache<NSString, BitmapHandle>()
+    /// icons from different threads. The count/cost caps bound memory when a
+    /// user drags scale or color; keys quantize size so continuous drags reuse
+    /// the bitmap for a whole pixel bucket instead of rasterizing every frame.
+    nonisolated(unsafe) private static let cache: NSCache<NSString, BitmapHandle> = {
+        let cache = NSCache<NSString, BitmapHandle>()
+        cache.countLimit = 64
+        cache.totalCostLimit = 32 * 1024 * 1024
+        return cache
+    }()
+
+    private static let rasterStep = 4.0
+
+    private static func quantized(_ value: Double) -> Int {
+        max(Int((value / rasterStep).rounded(.up)) * Int(rasterStep), 1)
+    }
 
     static func draw(
         systemName: String,
@@ -37,7 +50,9 @@ enum SkiaIconRasterCache {
         context: OpaquePointer
     ) {
         guard rect.width > 0, rect.height > 0, opacity > 0.001 else { return }
-        let key = "symbol|\(systemName)|\(rect.width)x\(rect.height)|\(color.red),\(color.green),\(color.blue)" as NSString
+        let key = "symbol|\(systemName)|"
+            + "\(quantized(rect.width))x\(quantized(rect.height))|"
+            + "\(color.red),\(color.green),\(color.blue)" as NSString
         guard let bitmap = bitmap(for: key, size: rect.size, draw: { ctx in
             drawSymbol(
                 name: systemName,
@@ -61,9 +76,25 @@ enum SkiaIconRasterCache {
         context: OpaquePointer
     ) {
         guard rect.width > 0, rect.height > 0, opacity > 0.001 else { return }
-        let key = "asset|\(String(describing: asset))|\(rect.width)x\(rect.height)|"
+        let key = "asset|\(String(describing: asset))|"
+            + "\(quantized(rect.width))x\(quantized(rect.height))|"
             + "\(tint.red),\(tint.green),\(tint.blue)|\(preserveSVGColors)|\(contentMode)" as NSString
         guard let bitmap = bitmap(for: key, size: rect.size, draw: { ctx in
+            if case .sfSymbol(let name, let weight, let scale) = asset {
+                // Draw the tinted symbol directly instead of compositing a
+                // tint fill with `.destinationIn`: the fill leaves a faint
+                // full-height line at the rasterized image's boundary, which
+                // becomes visible when the icon is scaled up.
+                drawAssetSymbol(
+                    name: name,
+                    weight: weight,
+                    scale: scale,
+                    rect: CGRect(origin: .zero, size: rect.size),
+                    color: tint,
+                    in: ctx
+                )
+                return
+            }
             IconRenderer.draw(
                 IconRenderRequest(
                     asset: asset,
@@ -147,7 +178,7 @@ enum SkiaIconRasterCache {
             pointer: pointer,
             pixelSize: CGSize(width: width, height: height)
         )
-        cache.setObject(handle, forKey: key)
+        cache.setObject(handle, forKey: key, cost: width * height * 4)
         return handle
     }
 
@@ -160,44 +191,94 @@ enum SkiaIconRasterCache {
         in ctx: CGContext
     ) {
         let pointSize = rect.width
-        let configuration = NSImage.SymbolConfiguration(
+        guard let image = tintedSymbol(
+            name: name,
             pointSize: pointSize,
-            weight: .medium
-        )
-        guard let base = NSImage(
-            systemSymbolName: name,
-            accessibilityDescription: nil
-        )?.withSymbolConfiguration(configuration) else {
+            weight: .medium,
+            scale: nil,
+            color: color
+        ) else {
             return
         }
-        let tinted = NSImage(size: base.size, flipped: false) { drawRect in
-            NSColor(
-                red: color.red,
-                green: color.green,
-                blue: color.blue,
-                alpha: 1
-            ).set()
-            drawRect.fill()
-            base.draw(
-                in: drawRect,
-                from: .zero,
-                operation: .destinationIn,
-                fraction: 1
-            )
-            return true
-        }
         let target = CGRect(
-            x: rect.midX - base.size.width / 2,
-            y: rect.midY - base.size.height / 2,
-            width: base.size.width,
-            height: base.size.height
+            x: rect.midX - image.size.width / 2,
+            y: rect.midY - image.size.height / 2,
+            width: image.size.width,
+            height: image.size.height
         )
-        tinted.draw(
+        image.draw(
             in: target,
             from: .zero,
             operation: .sourceOver,
             fraction: 1
         )
+    }
+
+    /// Decor icon: mirrors `IconRenderer.drawSFSymbol`'s point size and
+    /// aspect-fit placement, with a palette-tinted symbol image.
+    private static func drawAssetSymbol(
+        name: String,
+        weight: SymbolWeight,
+        scale: SymbolScale,
+        rect: CGRect,
+        color: OverlayColor,
+        in ctx: CGContext
+    ) {
+        let pointSize = min(rect.width, rect.height) * 0.92
+        guard let image = tintedSymbol(
+            name: name,
+            pointSize: pointSize,
+            weight: weight.nsFontWeight,
+            scale: scale.nsSymbolScale,
+            color: color
+        ) else {
+            return
+        }
+        let target = IconRenderer.aspectFitRect(
+            intrinsicSize: image.size,
+            in: rect,
+            mode: .fit
+        )
+        image.draw(
+            in: target,
+            from: .zero,
+            operation: .sourceOver,
+            fraction: 1
+        )
+    }
+
+    /// `NSImage` palette tinting keeps the symbol's own antialiased mask, so
+    /// no fill/`.destinationIn` edge remains in the rasterized bitmap.
+    private static func tintedSymbol(
+        name: String,
+        pointSize: Double,
+        weight: NSFont.Weight,
+        scale: NSImage.SymbolScale?,
+        color: OverlayColor
+    ) -> NSImage? {
+        var configuration = NSImage.SymbolConfiguration(
+            pointSize: pointSize,
+            weight: weight
+        )
+        if let scale {
+            configuration = configuration.applying(.init(scale: scale))
+        }
+        configuration = configuration.applying(
+            .init(
+                paletteColors: [
+                    NSColor(
+                        red: color.red,
+                        green: color.green,
+                        blue: color.blue,
+                        alpha: color.alpha
+                    )
+                ]
+            )
+        )
+        return NSImage(
+            systemSymbolName: name,
+            accessibilityDescription: nil
+        )?.withSymbolConfiguration(configuration)
     }
 }
 #endif

@@ -349,8 +349,31 @@ private enum DecorTextRasterCache {
     }
 
     /// `NSCache` is thread-safe internally; export and preview can rasterize
-    /// decor text from different threads.
-    nonisolated(unsafe) private static let cache = NSCache<NSString, Bitmap>()
+    /// decor text from different threads. Keys quantize the scale-dependent
+    /// metrics so a continuous scale drag reuses one bitmap per bucket instead
+    /// of rasterizing every frame; the caps bound retained memory.
+    nonisolated(unsafe) private static let cache: NSCache<NSString, Bitmap> = {
+        let cache = NSCache<NSString, Bitmap>()
+        cache.countLimit = 32
+        cache.totalCostLimit = 32 * 1024 * 1024
+        return cache
+    }()
+
+    private static let sizeStep = 4.0
+    private static let fontSizeStep = 1.0
+    private static let metricStep = 0.5
+
+    /// Bucket index, not a rounded value: `Int(step)` would truncate a
+    /// fractional step (0.5) to zero and collapse every metric into one key.
+    private static func quantized(_ value: Double, step: Double) -> Int {
+        max(Int((value / step).rounded(.up)), 1)
+    }
+
+    /// Tracking can be negative, so round to the nearest bucket and keep the
+    /// sign instead of clamping at 1.
+    private static func quantizedSigned(_ value: Double, step: Double) -> Int {
+        Int((value / step).rounded())
+    }
 
     static func bitmap(for layout: DecorTextRenderLayout) -> Bitmap? {
         let key = cacheKey(for: layout) as NSString
@@ -389,7 +412,11 @@ private enum DecorTextRasterCache {
             skb_image_create(buffer.baseAddress, Int32(width), Int32(height))
         }
         let bitmap = Bitmap(pointer: pointer)
-        cache.setObject(bitmap, forKey: key)
+        cache.setObject(
+            bitmap,
+            forKey: key,
+            cost: width * height * 4
+        )
         return bitmap
     }
 
@@ -494,11 +521,15 @@ private enum DecorTextRasterCache {
     }
 
     private static func cacheKey(for layout: DecorTextRenderLayout) -> String {
-        "\(layout.content)|\(String(describing: layout.font))|\(layout.fontSize)|"
-            + "\(layout.alignment)|\(layout.lineHeight)|\(layout.letterSpacing)|"
-            + "\(fillKey(layout.fillMode))|\(layout.strokeWidth)|"
+        "\(layout.content)|\(String(describing: layout.font))|"
+            + "\(quantized(layout.fontSize, step: fontSizeStep))|"
+            + "\(layout.alignment)|\(layout.lineHeight)|"
+            + "\(quantizedSigned(layout.letterSpacing, step: metricStep))|"
+            + "\(fillKey(layout.fillMode))|"
+            + "\(quantized(layout.strokeWidth, step: metricStep))|"
             + "\(String(describing: layout.strokeColor))|"
-            + "\(layout.size.width)x\(layout.size.height)"
+            + "\(quantized(layout.size.width, step: sizeStep))x"
+            + "\(quantized(layout.size.height, step: sizeStep))"
     }
 
     private static func fillKey(_ fill: DecorTextFill) -> String {

@@ -932,7 +932,62 @@ The suite is disabled via `.enabled(if:)` when `MTLCreateSystemDefaultDevice()`
 is unavailable, and returns after printing `skipped` when a Metal device exists
 but the bridge has no GPU context. It never fails on machines without Metal.
 
-### Findings and known limitations
+### Full-template composition (`SkiaFullCompositionGoldenTests`)
+
+One 1920×1080 scene is rendered through `SkiaGoldenFrameHarness` against
+`SwiftUIOverlayVideoExporter.renderFrameCGImage`, so the candidate path is the
+shared `SkiaEasyRunRenderer` used by preview and export, not a per-module host.
+Scene order (draw order): decor solid at 0.10/0.11, minimal text with icon at
+0.04/0.05, decor icon at 0.44/0.10, decor text at 0.15/0.22, distance
+timeline, running gauge, route map (`.none` background), weather widget,
+interval timeline, interval countdown, and the edge-pinned zone bar. The
+activity is a synthetic six-lap workout with per-second GPS records; fonts are
+pinned to Menlo so the oracle and Skia resolve the same font.
+
+| Scene | changed | meanDelta | maxDelta |
+| --- | ---: | ---: | ---: |
+| full template, elapsed 150 s | 3.777% | 1.7781 | 1020 |
+
+Most of the change is antialiasing at glyph and icon edges; amplified diffs of
+the text/decor block, gauge, countdown, route, and weather regions show
+coincident geometry with edge-only differences. Two findings:
+
+1. **z-order matches layout order.** SwiftUI export draws
+   `ZStack { Color.clear; ForEach(overlays) }` in array order and filters only
+   `\.isVisible`; the Skia renderer walks the same array sequentially and skips
+   unsupported module types without reordering. Overlapping decor solid → text
+   and countdown → decor text therefore composite identically.
+2. **Interval timeline current-segment text does not shrink vertically.**
+   SwiftUI's `VStack` receives the segment's fixed height, so its three lines
+   shrink to fit (`.minimumScaleFactor`). `SkiaIntervalText.drawStack` only
+   fits by width, so the current segment's "Rep / distance / duration" stack
+   renders at full size and overflows the segment. This accounts for the
+   local 14.46% changed ratio around the interval timeline; it is a port
+   issue in `IntervalTimelineSkiaRenderer`/`IntervalShared`, not an
+   inter-module/cache interaction. Left unmodified per the Group T ownership
+   boundary; report to the interval port owner.
+
+The decor-icon edge line is gone: `SkiaIconRasterCache` now draws SF Symbols
+with palette tinting instead of a tint fill plus `.destinationIn`, so no
+full-height alpha line remains at the raster boundary in either the isolated
+golden or the full scene.
+
+### Raster cache bounds (`SkiaIconRasterCache`, `DecorTextRasterCache`)
+
+Scale drags used to key on raw sizes, rasterizing every frame and retaining
+unbounded entries. Both caches now use `NSCache` with per-entry cost and caps
+(`SkiaIconRasterCache` 64 entries/32 MiB; `DecorTextRasterCache` 32
+entries/32 MiB) and bucket keys:
+
+- icon rasters: width/height in 4 px buckets;
+- decor text: width/height in 4 px buckets, font size in 1 pt buckets,
+  tracking and stroke width in 0.5 pt buckets (tracking keeps its sign).
+
+The bucket key is an index, not `Int(step)`-scaled: `Int(0.5)` truncates to
+zero and would collapse every metric into one key. All text/decor and
+full-template goldens were re-run after this change and stayed green; the
+full-template metrics above are unchanged because a single frame touches each
+size bucket only once.
 
 1. **`element.opacity` is not applied by the SwiftUI export frame view.**
    `SwiftUIOverlayFrameView` never reads `element.opacity`, while preview and
@@ -946,10 +1001,12 @@ but the bridge has no GPU context. It never fails on machines without Metal.
    `ImageRenderer` in the current macOS appearance (near-white ~244/255 fill,
    alpha 0 at 0 → 1 at 16/24 steps). Force-pinning a color scheme in export
    would remove the ambiguity.
-4. **Decor icon raster.** `IconRenderer.drawSFSymbol` through
-   `NSImage.SymbolConfiguration` renders slightly thinner than SwiftUI's
-   `Image(systemName:).font(...)`. Position, size, tint, and effects match;
-   strokes differ by a few pixels.
+4. **Decor icon raster.** SF Symbols are rasterized with
+   `NSImage.SymbolConfiguration(paletteColors:)` and mirrored point size /
+   aspect fit. Position, size, and tint match SwiftUI's
+   `Image(systemName:).font(...)`; residual differences are edge
+   antialiasing only. The earlier tint-fill + `.destinationIn` path left a
+   faint full-height line at the image boundary and is no longer used.
 5. **DigitalWatch font.** `.custom("Menlo-Bold", ...)` must be resolved with
    `NSFont(name:)`; the family resolver snaps it back to Menlo Regular.
 
