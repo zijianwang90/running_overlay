@@ -403,20 +403,10 @@ enum SkiaIntervalDraw {
 
 /// Minimal single-line / vertical-stack text drawing for the interval modules.
 ///
-/// TODO(Group T): replace this with `SkiaTextComposer` when it is published.
-/// This helper deliberately exposes only shaping, fitting, and vertical
-/// stacking so the swap is mechanical.
+/// Shaping and drawing delegate to `SkiaTextComposer`; this seam only adds the
+/// interval modules' row stacking, fitting, and truncation.
 enum SkiaIntervalText {
-    struct Line {
-        var glyphs: [CGGlyph]
-        var xPositions: [Float]
-        var width: Double
-        var ascent: Double
-        var descent: Double
-        var leading: Double
-
-        var height: Double { ascent + descent + leading }
-    }
+    typealias Line = SkiaTextLine
 
     struct StackLine {
         var text: String
@@ -433,10 +423,10 @@ enum SkiaIntervalText {
         weight: OverlayFontWeight,
         monospacedDigits: Bool
     ) -> NSFont {
-        var font = OverlayFontResolver.appKitFont(
+        let font = SkiaTextComposer.font(
             family: family,
             size: size,
-            weight: nsWeight(weight)
+            overlayWeight: weight
         )
         if monospacedDigits {
             let descriptor = font.fontDescriptor.addingAttributes([
@@ -448,47 +438,20 @@ enum SkiaIntervalText {
                 ]
             ])
             if let monoFont = NSFont(descriptor: descriptor, size: size) {
-                font = monoFont
+                return monoFont
             }
         }
         return font
     }
 
     static func makeLine(_ text: String, font: NSFont, tracking: Double = 0) -> Line {
-        var attributes: [NSAttributedString.Key: Any] = [.font: font]
-        if tracking != 0 {
-            attributes[.kern] = tracking
-        }
-        let line = CTLineCreateWithAttributedString(
-            NSAttributedString(string: text, attributes: attributes)
-        )
-        var ascent: CGFloat = 0
-        var descent: CGFloat = 0
-        var leading: CGFloat = 0
-        let width = CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
-
-        var glyphs: [CGGlyph] = []
-        var xPositions: [Float] = []
-        if let runs = CTLineGetGlyphRuns(line) as? [CTRun] {
-            for run in runs {
-                let count = CTRunGetGlyphCount(run)
-                guard count > 0 else { continue }
-                var runGlyphs = [CGGlyph](repeating: 0, count: count)
-                var runPositions = [CGPoint](repeating: .zero, count: count)
-                let range = CFRange(location: 0, length: count)
-                CTRunGetGlyphs(run, range, &runGlyphs)
-                CTRunGetPositions(run, range, &runPositions)
-                glyphs.append(contentsOf: runGlyphs)
-                xPositions.append(contentsOf: runPositions.map { Float($0.x) })
-            }
-        }
-        return Line(
-            glyphs: glyphs,
-            xPositions: xPositions,
-            width: width,
-            ascent: ascent,
-            descent: descent,
-            leading: leading
+        // The seam applies the monospaced-digit feature to the font above, so
+        // the composer must not apply it a second time.
+        SkiaTextComposer.makeLine(
+            text,
+            font: font,
+            tracking: tracking,
+            monospacedDigits: false
         )
     }
 
@@ -501,23 +464,14 @@ enum SkiaIntervalText {
         opacity: Double,
         context: OpaquePointer
     ) {
-        guard !line.glyphs.isEmpty else { return }
-        let c = SkiaIntervalDraw.rgba(color, opacity: opacity)
-        line.glyphs.withUnsafeBufferPointer { glyphs in
-            line.xPositions.withUnsafeBufferPointer { positions in
-                skb_draw_glyphs(
-                    context,
-                    Unmanaged.passUnretained(font).toOpaque(),
-                    glyphs.baseAddress,
-                    positions.baseAddress,
-                    Int32(line.glyphs.count),
-                    Float(x),
-                    Float(baselineY),
-                    c.0, c.1, c.2, c.3,
-                    0, 0, 0, 0
-                )
-            }
-        }
+        SkiaTextComposer.draw(
+            line,
+            context: context,
+            x: x,
+            baselineY: baselineY,
+            color: color,
+            opacity: opacity
+        )
     }
 
     enum Alignment {
@@ -647,6 +601,148 @@ enum SkiaIntervalText {
         }
     }
 
+    struct RowItem {
+        var text: String
+        var font: NSFont
+        var color: OverlayColor
+        var opacity: Double = 1
+        var minimumScaleFactor: Double
+        var verticalPadding: Double = 0
+    }
+
+    enum RowAlignment {
+        case center
+        case firstTextBaseline
+    }
+
+    struct Row {
+        var items: [RowItem]
+        var spacing: Double
+        var alignment: RowAlignment = .center
+    }
+
+    /// Draws a centered stack of rows. Each row lays its items out horizontally
+    /// and shrinks uniformly when the combined width exceeds `rect`.
+    private struct MeasuredItem {
+        var font: NSFont
+        var line: Line
+        var color: OverlayColor
+        var opacity: Double
+        var verticalPadding: Double
+    }
+
+    private struct MeasuredRow {
+        var items: [MeasuredItem]
+        var width: Double
+        var height: Double
+        var maxAscent: Double
+        var alignment: RowAlignment
+        var spacing: Double
+    }
+
+    private static func measure(_ row: Row, maxWidth: Double) -> MeasuredRow? {
+        let rowSpacing = row.spacing * Double(max(row.items.count - 1, 0))
+        let intrinsic = row.items.map { item in
+            fitted(
+                item.text,
+                font: item.font,
+                maxWidth: maxWidth,
+                minimumScaleFactor: item.minimumScaleFactor
+            )
+        }
+        let intrinsicWidth = intrinsic.reduce(0) { $0 + $1.line.width } + rowSpacing
+        let rowScale = intrinsicWidth > maxWidth && intrinsicWidth > 0
+            ? max(min(maxWidth / intrinsicWidth, 1), 0.5)
+            : 1
+        let itemMaxWidth = maxWidth * rowScale
+
+        var items: [MeasuredItem] = []
+        var width = rowSpacing
+        var maxAscent = 0.0
+        var maxDescent = 0.0
+        var maxPaddedLineHeight = 0.0
+        for item in row.items {
+            let fittedItem = fitted(
+                item.text,
+                font: item.font,
+                maxWidth: itemMaxWidth,
+                minimumScaleFactor: item.minimumScaleFactor
+            )
+            let line = fittedItem.line
+            width += line.width
+            maxAscent = max(maxAscent, line.ascent)
+            maxDescent = max(maxDescent, line.descent + line.leading)
+            maxPaddedLineHeight = max(
+                maxPaddedLineHeight,
+                line.height + item.verticalPadding * 2
+            )
+            items.append(MeasuredItem(
+                font: fittedItem.font,
+                line: line,
+                color: item.color,
+                opacity: item.opacity,
+                verticalPadding: item.verticalPadding
+            ))
+        }
+        guard !items.isEmpty else { return nil }
+        return MeasuredRow(
+            items: items,
+            width: width,
+            height: row.alignment == .firstTextBaseline
+                ? maxAscent + maxDescent
+                : maxPaddedLineHeight,
+            maxAscent: maxAscent,
+            alignment: row.alignment,
+            spacing: row.spacing
+        )
+    }
+
+    /// Height of one row as laid out by `drawRows`.
+    static func rowHeight(_ row: Row, maxWidth: Double) -> Double {
+        guard maxWidth > 0 else { return 0 }
+        return measure(row, maxWidth: maxWidth)?.height ?? 0
+    }
+
+    static func drawRows(
+        _ rows: [Row],
+        rect: CGRect,
+        spacing: Double,
+        context: OpaquePointer
+    ) {
+        guard !rows.isEmpty, rect.width > 0 else { return }
+
+        let measured: [MeasuredRow] = rows.compactMap { measure($0, maxWidth: rect.width) }
+        guard !measured.isEmpty else { return }
+
+        let totalHeight = measured.reduce(0) { $0 + $1.height }
+            + spacing * Double(max(measured.count - 1, 0))
+        var top = rect.midY - totalHeight / 2
+
+        for row in measured {
+            var left = rect.midX - row.width / 2
+            for item in row.items {
+                let baselineY: Double
+                switch row.alignment {
+                case .center:
+                    baselineY = top + row.height / 2 - item.line.height / 2 + item.line.ascent
+                case .firstTextBaseline:
+                    baselineY = top + row.maxAscent
+                }
+                draw(
+                    item.line,
+                    font: item.font,
+                    x: left,
+                    baselineY: baselineY,
+                    color: item.color,
+                    opacity: item.opacity,
+                    context: context
+                )
+                left += item.line.width + row.spacing
+            }
+            top += row.height + spacing
+        }
+    }
+
     private static func truncate(_ text: String, font: NSFont, maxWidth: Double) -> String {
         guard !text.isEmpty else { return text }
         let ellipsis = "…"
@@ -659,15 +755,6 @@ enum SkiaIntervalText {
             }
         }
         return ellipsis
-    }
-
-    static func nsWeight(_ weight: OverlayFontWeight) -> NSFont.Weight {
-        switch weight {
-        case .regular: .regular
-        case .medium: .medium
-        case .semibold: .semibold
-        case .bold: .bold
-        }
     }
 }
 #endif

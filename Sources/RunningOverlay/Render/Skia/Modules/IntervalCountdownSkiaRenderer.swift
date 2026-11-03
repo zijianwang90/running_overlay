@@ -215,40 +215,12 @@ enum IntervalCountdownSkiaRenderer {
 
     // MARK: - Text
 
-    private struct RowItem {
-        var text: String
-        var font: NSFont
-        var color: OverlayColor
-        var minimumScaleFactor: Double
-        var verticalPadding: Double
-    }
-
-    private struct Row {
-        var items: [RowItem]
-        var spacing: Double
-    }
-
-    private struct MeasuredItem {
-        var text: String
-        var font: NSFont
-        var line: SkiaIntervalText.Line
-        var color: OverlayColor
-        var verticalPadding: Double
-    }
-
-    private struct MeasuredRow {
-        var items: [MeasuredItem]
-        var width: Double
-        var height: Double
-    }
-
     private static func drawText(
         _ element: OverlayElement,
         layout: IntervalCountdownRenderLayout,
         context: OpaquePointer
     ) {
-        let itemScale = element.scale
-        let rows = makeRows(layout: layout, elementScale: itemScale)
+        let rows = makeRows(layout: layout, elementScale: element.scale)
         guard !rows.isEmpty else { return }
         let textRect = CGRect(
             x: layout.rect.midX - layout.innerDiameter / 2,
@@ -256,53 +228,37 @@ enum IntervalCountdownSkiaRenderer {
             width: layout.innerDiameter,
             height: layout.innerDiameter
         )
-        let stackSpacing = max(2 * itemScale, 1)
-
-        let measured = rows.map { measure($0, maxWidth: textRect.width) }
-        let totalHeight = measured.reduce(0) { $0 + $1.height }
-            + stackSpacing * Double(max(measured.count - 1, 0))
-        var top = textRect.midY - totalHeight / 2
-
-        for (index, row) in measured.enumerated() {
-            var left = textRect.midX - row.width / 2
-            let rowSpacing = rows[index].spacing
-            for item in row.items {
-                let baselineY = top + row.height / 2 - item.line.height / 2 + item.line.ascent
-                SkiaIntervalText.draw(
-                    item.line,
-                    font: item.font,
-                    x: left,
-                    baselineY: baselineY,
-                    color: item.color,
-                    opacity: 1,
-                    context: context
-                )
-                left += item.line.width + rowSpacing
-            }
-            top += row.height + stackSpacing
-        }
+        SkiaIntervalText.drawRows(
+            rows,
+            rect: textRect,
+            spacing: max(2 * element.scale, 1),
+            context: context
+        )
     }
 
     private static func makeRows(
         layout: IntervalCountdownRenderLayout,
         elementScale: Double
-    ) -> [Row] {
-        var rows: [Row] = []
+    ) -> [SkiaIntervalText.Row] {
+        var rows: [SkiaIntervalText.Row] = []
         let phase = item(.phase, in: layout)
         let rep = item(.rep, in: layout)
 
         if let helper = item(.helper, in: layout) {
-            rows.append(Row(items: [rowItem(helper, uppercase: true)], spacing: 0))
+            rows.append(.init(
+                items: [rowItem(helper, uppercase: true)],
+                spacing: 0
+            ))
         }
         if phase != nil || rep != nil {
-            var items: [RowItem] = []
+            var items: [SkiaIntervalText.RowItem] = []
             if let phase {
                 items.append(rowItem(phase, uppercase: true))
             }
             if let rep {
                 items.append(rowItem(rep, uppercase: false))
             }
-            rows.append(Row(
+            rows.append(.init(
                 items: items,
                 spacing: max(5 * elementScale, 2)
             ))
@@ -311,10 +267,13 @@ enum IntervalCountdownSkiaRenderer {
             var converted = rowItem(countdown, uppercase: false)
             converted.minimumScaleFactor = 0.62
             converted.verticalPadding = max(2 * elementScale, 1)
-            rows.append(Row(items: [converted], spacing: 0))
+            rows.append(.init(items: [converted], spacing: 0))
         }
         if let caption = item(.caption, in: layout) {
-            rows.append(Row(items: [rowItem(caption, uppercase: false)], spacing: 0))
+            rows.append(.init(
+                items: [rowItem(caption, uppercase: false)],
+                spacing: 0
+            ))
         }
         return rows
     }
@@ -329,58 +288,19 @@ enum IntervalCountdownSkiaRenderer {
     private static func rowItem(
         _ item: IntervalCountdownRenderLayout.TextItem,
         uppercase: Bool
-    ) -> RowItem {
+    ) -> SkiaIntervalText.RowItem {
         let font = SkiaIntervalText.font(
             family: item.style.fontName,
             size: item.fontSize,
             weight: item.style.fontWeight,
             monospacedDigits: item.role == .countdown
         )
-        return RowItem(
+        return SkiaIntervalText.RowItem(
             text: uppercase ? item.text.uppercased() : item.text,
             font: font,
             color: item.color,
-            minimumScaleFactor: 0.64,
-            verticalPadding: 0
+            minimumScaleFactor: 0.64
         )
-    }
-
-    private static func measure(_ row: Row, maxWidth: Double) -> MeasuredRow {
-        let spacing = row.spacing * Double(max(row.items.count - 1, 0))
-        let intrinsic = row.items.map { item in
-            SkiaIntervalText.fitted(
-                item.text,
-                font: item.font,
-                maxWidth: maxWidth,
-                minimumScaleFactor: item.minimumScaleFactor
-            )
-        }
-        let intrinsicWidth = intrinsic.reduce(0) { $0 + $1.line.width } + spacing
-        let rowScale = intrinsicWidth > maxWidth && intrinsicWidth > 0
-            ? max(min(maxWidth / intrinsicWidth, 1), 0.64)
-            : 1
-        let itemMaxWidth = maxWidth * rowScale
-
-        let items = row.items.map { item -> MeasuredItem in
-            let fitted = SkiaIntervalText.fitted(
-                item.text,
-                font: item.font,
-                maxWidth: itemMaxWidth,
-                minimumScaleFactor: item.minimumScaleFactor
-            )
-            return MeasuredItem(
-                text: fitted.text,
-                font: fitted.font,
-                line: fitted.line,
-                color: item.color,
-                verticalPadding: item.verticalPadding
-            )
-        }
-        let width = items.reduce(0) { $0 + $1.line.width } + spacing
-        let height = items.reduce(0.0) {
-            max($0, $1.line.height + $1.verticalPadding * 2)
-        }
-        return MeasuredRow(items: items, width: width, height: height)
     }
 
     // MARK: - Effects

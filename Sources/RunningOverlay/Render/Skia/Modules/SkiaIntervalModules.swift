@@ -31,9 +31,16 @@ enum SkiaIntervalModules {
     ) {
         switch element.type {
         case .intervalHUDBar:
-            // TODO(Group I): port `IntervalHUDBarOverlayView` after Timeline and
-            // Zone Edge Bar pass their goldens.
-            break
+            let layout = OverlayRenderModel.intervalHUDBarLayout(
+                for: element,
+                in: renderContext
+            )
+            IntervalHUDBarSkiaRenderer.draw(
+                element,
+                layout: layout,
+                context: skiaContext,
+                maskCache: maskCache
+            )
         case .intervalTimeline:
             let layout = OverlayRenderModel.intervalTimelineLayout(
                 for: element,
@@ -57,8 +64,16 @@ enum SkiaIntervalModules {
                 maskCache: maskCache
             )
         case .intervalWorkSummary:
-            // TODO(Group I): port `IntervalWorkSummaryOverlayView`.
-            break
+            let layout = OverlayRenderModel.intervalWorkSummaryLayout(
+                for: element,
+                in: renderContext
+            )
+            IntervalWorkSummarySkiaRenderer.draw(
+                element,
+                layout: layout,
+                context: skiaContext,
+                maskCache: maskCache
+            )
         case .zoneEdgeBar:
             let layout = OverlayRenderModel.zoneEdgeBarLayout(
                 for: element,
