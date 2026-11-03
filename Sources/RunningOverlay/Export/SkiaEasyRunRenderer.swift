@@ -14,6 +14,25 @@ final class SkiaEasyRunRenderer {
     private let metalCommandQueue: MTLCommandQueue?
     private var iconCache: [String: IconBitmap] = [:]
     private var fontCache: [String: NSFont] = [:]
+    private let intervalMaskCache = SkiaIntervalDraw.MaskCache()
+    private lazy var chartsCanvas = SkiaChartsCanvas(context: context, size: size)
+    private let renderAssets = SkiaRenderAssets()
+    private var assetsPrepared = false
+
+    /// Chart-family modules with a real Skia port. Keep this in sync as Group
+    /// D/E lands each renderer; unported types stay on the SwiftUI fallback.
+    private static let portedChartTypes: Set<OverlayElementType> = [
+        .distanceTimeline,
+        .runningGauge
+    ]
+
+    /// Interval-family modules with a real Skia port. Keep this in sync as
+    /// Group I lands each renderer; unported types stay on the SwiftUI fallback.
+    private static let portedIntervalTypes: Set<OverlayElementType> = [
+        .intervalTimeline,
+        .intervalCountdown,
+        .zoneEdgeBar
+    ]
 
     init?(size: CGSize) {
         guard let context = skb_create(Int32(size.width), Int32(size.height)) else { return nil }
@@ -41,7 +60,34 @@ final class SkiaEasyRunRenderer {
         self.metalCommandQueue = commandQueue
     }
 
-    deinit { skb_destroy(context) }
+    deinit {
+        renderAssets.releaseImages()
+        skb_destroy(context)
+    }
+
+    /// Preloads route snapshots and weather assets. Call when the layout,
+    /// activity, or available map snapshots change; it is safe to call
+    /// repeatedly. Draw never performs AppKit, MapKit, network, or async work.
+    func preloadAssets(
+        layout: OverlayLayout,
+        activity: ActivityTimeline,
+        mapSnapshots: [MapSnapshotRequest: NSImage] = [:]
+    ) {
+        SkiaRouteMapModule.preloadAssets(
+            elements: layout.elements,
+            activity: activity,
+            canvasSize: size,
+            mapSnapshots: mapSnapshots,
+            into: renderAssets
+        )
+        SkiaWeatherWidgetModule.preloadAssets(
+            elements: layout.elements,
+            activity: activity,
+            canvasSize: size,
+            into: renderAssets
+        )
+        assetsPrepared = true
+    }
 
     static func supports(_ element: OverlayElement) -> Bool {
         element.type.isNumericOverlay
@@ -50,20 +96,63 @@ final class SkiaEasyRunRenderer {
             || element.type == .distanceTimeline
             || element.type == .routeMap
             || element.type == .weatherWidget
+            || SkiaTextModule.supports(element)
+            || portedChartTypes.contains(element.type)
+            || portedIntervalTypes.contains(element.type)
     }
 
     /// Records the draw commands without reading pixels back.
     func draw(layout: OverlayLayout, activity: ActivityTimeline, elapsedTime: TimeInterval) {
         skb_clear(context)
+        if !assetsPrepared {
+            preloadAssets(layout: layout, activity: activity)
+        }
         let renderContext = OverlayRenderContext(canvasSize: size, activity: activity, elapsedTime: elapsedTime)
         for element in layout.elements where element.isVisible && Self.supports(element) {
+            if Self.portedChartTypes.contains(element.type) {
+                SkiaChartsModule.draw(
+                    element,
+                    renderContext: renderContext,
+                    canvas: chartsCanvas
+                )
+                continue
+            }
+            if Self.portedIntervalTypes.contains(element.type) {
+                SkiaIntervalModules.draw(
+                    element,
+                    in: renderContext,
+                    skiaContext: context,
+                    maskCache: intervalMaskCache
+                )
+                continue
+            }
+            if SkiaTextModule.supports(element) {
+                SkiaTextModule.draw(
+                    element: element,
+                    context: context,
+                    canvasSize: size,
+                    activity: activity,
+                    elapsedTime: elapsedTime
+                )
+                continue
+            }
             switch element.type {
             case .distanceTimeline:
                 drawDistanceTimeline(element, renderContext: renderContext)
             case .routeMap:
-                drawRouteMap(element, renderContext: renderContext)
+                SkiaRouteMapModule.draw(
+                    element,
+                    renderContext: renderContext,
+                    context: context,
+                    assets: renderAssets
+                )
             case .weatherWidget:
-                drawWeatherWidget(element, renderContext: renderContext)
+                SkiaWeatherWidgetModule.draw(
+                    element,
+                    renderContext: renderContext,
+                    context: context,
+                    assets: renderAssets
+                )
             default:
                 drawTextElement(element, renderContext: renderContext)
             }

@@ -70,15 +70,8 @@ import Testing
     @Test func skiaPreviewKeepsSwiftUIFallbackOnlyForUnportedModules() {
         let expectedFallback: Set<OverlayElementType> = [
             .elevationChart,
-            .runningGauge,
             .intervalHUDBar,
-            .intervalTimeline,
-            .intervalCountdown,
             .intervalWorkSummary,
-            .zoneEdgeBar,
-            .decorSolidColor,
-            .decorIcon,
-            .decorText,
         ]
 
         for type in OverlayElementType.allCases {
@@ -92,6 +85,52 @@ import Testing
                 PreviewSwiftUIFallback.isRequired(for: element) == expectedFallback.contains(type),
                 "\(type.rawValue): port it to Skia or update the fallback set"
             )
+        }
+    }
+
+    /// The shared preview/export renderer must actually dispatch the ported
+    /// modules, not merely report support for them.
+    @Test func sharedRendererDrawsPortedModules() throws {
+        let types: [OverlayElementType] = [
+            .heartRate,
+            .decorSolidColor,
+            .distanceTimeline,
+            .runningGauge,
+            .routeMap,
+            .weatherWidget,
+            .intervalTimeline,
+            .intervalCountdown,
+            .zoneEdgeBar,
+        ]
+
+        for type in types {
+            let element = OverlayElement(
+                type: type,
+                position: CGPoint(x: 0.5, y: 0.5),
+                scale: 1,
+                style: .default
+            )
+            #expect(SkiaEasyRunRenderer.supports(element), "\(type.rawValue) not dispatched")
+
+            let renderer = try #require(SkiaEasyRunRenderer(size: Self.hd1080))
+            let layout = OverlayLayout(elements: [element])
+            let (pixels, rowBytes) = renderer.render(
+                layout: layout,
+                activity: Self.activity,
+                elapsedTime: 12
+            )
+
+            var nonEmptySamples = 0
+            makeSampleLoop: for y in stride(from: 0, to: Int(Self.hd1080.height), by: 16) {
+                for x in stride(from: 0, to: Int(Self.hd1080.width), by: 16) {
+                    let alpha = pixels[y * rowBytes + x * 4 + 3]
+                    if alpha > 0 {
+                        nonEmptySamples += 1
+                        break makeSampleLoop
+                    }
+                }
+            }
+            #expect(nonEmptySamples > 0, "\(type.rawValue) drew no pixels")
         }
     }
 
