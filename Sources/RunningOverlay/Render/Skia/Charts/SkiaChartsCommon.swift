@@ -14,6 +14,11 @@ final class SkiaChartsCanvas {
 
     private var fontCache: [String: NSFont] = [:]
     private var imageCache: [String: OpaquePointer] = [:]
+    private var imageCacheOrder: [String] = []
+    private let imageCacheLimit = 64
+
+    /// Number of retained raster images. Exposed for cache-bound tests.
+    var cachedImageCount: Int { imageCache.count }
 
     init?(size: CGSize) {
         guard size.width > 0,
@@ -409,7 +414,7 @@ final class SkiaChartsCanvas {
         let pixelWidth = max(Int(width.rounded(.up)), 1)
         let pixelHeight = max(Int(height.rounded(.up)), 1)
         let key = "feather|\(pixelWidth)x\(pixelHeight)|\(cornerRadius)|\(fadeAmount)"
-        if let cached = imageCache[key] {
+        if let cached = cachedImage(key) {
             return cached
         }
         guard let cgMask = OverlayFeatherMaskRenderer.makeCGMask(
@@ -438,7 +443,7 @@ final class SkiaChartsCanvas {
             skb_image_create($0.baseAddress, Int32(pixelWidth), Int32(pixelHeight))
         }
         if let handle {
-            imageCache[key] = handle
+            storeImage(handle, key: key)
         }
         return handle
     }
@@ -452,7 +457,7 @@ final class SkiaChartsCanvas {
         tint: NSColor? = nil,
         scaleToFit: Bool = true
     ) -> OpaquePointer? {
-        if let cached = imageCache[key] {
+        if let cached = cachedImage(key) {
             return cached
         }
         guard let image = make() else { return nil }
@@ -473,9 +478,35 @@ final class SkiaChartsCanvas {
             )
         }
         if let handle {
-            imageCache[key] = handle
+            storeImage(handle, key: key)
         }
         return handle
+    }
+
+    /// Least-recently-used image lookup. Hits refresh recency so steady-state
+    /// media-slot frames are not evicted by one-off masks or symbols.
+    private func cachedImage(_ key: String) -> OpaquePointer? {
+        guard let handle = imageCache[key] else { return nil }
+        if let index = imageCacheOrder.firstIndex(of: key) {
+            imageCacheOrder.remove(at: index)
+        }
+        imageCacheOrder.append(key)
+        return handle
+    }
+
+    private func storeImage(_ handle: OpaquePointer, key: String) {
+        if imageCache.removeValue(forKey: key) != nil,
+           let index = imageCacheOrder.firstIndex(of: key) {
+            imageCacheOrder.remove(at: index)
+        }
+        imageCache[key] = handle
+        imageCacheOrder.append(key)
+        while imageCacheOrder.count > imageCacheLimit {
+            let evicted = imageCacheOrder.removeFirst()
+            if let image = imageCache.removeValue(forKey: evicted) {
+                skb_image_destroy(image)
+            }
+        }
     }
 
     func drawImage(_ handle: OpaquePointer, in rect: CGRect, opacity: Double = 1) {

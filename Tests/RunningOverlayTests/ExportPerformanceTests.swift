@@ -681,6 +681,26 @@ struct ExportPerformanceTests {
         #expect(plan.overlayRenderAreaRatio < ExportRenderPlan.perOverlayAreaThreshold)
     }
 
+    @Test func renderPlanPreservesLayoutOrderWhenNumericOverlaysAreSplit() {
+        let overlays = [
+            OverlayElement(type: .heartRate, position: CGPoint(x: 0.12, y: 0.86), scale: 1, style: .default),
+            OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.3), scale: 1, style: .default),
+            OverlayElement(type: .pace, position: CGPoint(x: 0.24, y: 0.86), scale: 1, style: .default),
+            OverlayElement(type: .cadence, position: CGPoint(x: 0.36, y: 0.86), scale: 1, style: .default)
+        ]
+
+        let plan = ExportRenderPlan(overlays: overlays, canvasSize: CGSize(width: 1280, height: 720), activity: sampleRouteActivity())
+
+        // A numeric overlay before the chart and two after it must stay on
+        // their own sides of the chart. Batching across the chart would move
+        // the first numeric overlay above it.
+        #expect(plan.overlayRenderItems.map { $0.elements.map(\.type) } == [
+            [.heartRate],
+            [.distanceTimeline],
+            [.pace, .cadence]
+        ])
+    }
+
     @Test func renderPlanDoesNotBatchNumericOverlaysWhenUnionIsTooLarge() {
         let overlays = [
             OverlayElement(type: .heartRate, position: CGPoint(x: 0.05, y: 0.08), scale: 1, style: .default),

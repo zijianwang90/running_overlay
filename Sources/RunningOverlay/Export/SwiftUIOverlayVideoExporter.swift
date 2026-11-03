@@ -284,7 +284,11 @@ struct ExportRenderPlan: Equatable {
         return centeredRect(for: element, size: size, canvasSize: context.canvasSize)
     }
 
-    private static func overlayItemsByBatchingNumericOverlays(
+    /// Batches only *contiguous* numeric items so the batched plan keeps the
+    /// layout's z-order. Batched elements are rendered into one layer, so a
+    /// non-numeric element interleaved between numeric ones must split the
+    /// batch instead of being moved beneath or above it.
+    static func overlayItemsByBatchingNumericOverlays(
         _ items: [ExportOverlayRenderItem],
         canvasRect: CGRect
     ) -> [ExportOverlayRenderItem] {
@@ -317,24 +321,39 @@ struct ExportRenderPlan: Equatable {
         }
 
         let numericIDs = Set(numericItems.map(\.id))
-        let batchedElements = numericItems.flatMap(\.elements)
         var result: [ExportOverlayRenderItem] = []
-        var insertedBatch = false
+        var run: [ExportOverlayRenderItem] = []
+
+        func flushRun() {
+            guard !run.isEmpty else { return }
+            if run.count == 1 {
+                result.append(contentsOf: run)
+            } else {
+                let elements = run.flatMap(\.elements)
+                let rect = run
+                    .map(\.renderRect)
+                    .reduce(CGRect.null) { $0.union($1) }
+                    .intersection(canvasRect)
+                    .integral
+                result.append(ExportOverlayRenderItem(
+                    id: elements[0].id,
+                    elements: elements,
+                    renderRect: rect,
+                    usesRouteMapStaticCache: false
+                ))
+            }
+            run.removeAll()
+        }
+
         for item in items {
             if numericIDs.contains(item.id) {
-                if !insertedBatch {
-                    result.append(ExportOverlayRenderItem(
-                        id: batchedElements[0].id,
-                        elements: batchedElements,
-                        renderRect: numericUnion,
-                        usesRouteMapStaticCache: false
-                    ))
-                    insertedBatch = true
-                }
+                run.append(item)
             } else {
+                flushRun()
                 result.append(item)
             }
         }
+        flushRun()
         return result
     }
 }

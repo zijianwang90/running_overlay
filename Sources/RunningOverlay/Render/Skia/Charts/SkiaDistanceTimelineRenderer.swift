@@ -687,27 +687,14 @@ enum SkiaDistanceTimelineRenderer {
 
         if (slot.mode == .staticSVG || slot.mode == .animatedSVG),
            slot.hasEmbeddedSVG {
-            let elapsed = slot.mode == .animatedSVG
-                ? Int(layout.elapsedTime * 1000)
-                : 0
-            let key = "dt-svg|\(slot.svgSource.hashValue)|\(Int(pixelSize.width))x\(Int(pixelSize.height))|\(nsTint.hashValue)|\(elapsed)"
-            if let handle = canvas.image(
-                key: key,
-                make: {
-                    OverlayIconRenderer.image(
-                        slot: slot,
-                        size: CGSize(
-                            width: pixelSize.width,
-                            height: pixelSize.height
-                        ),
-                        elapsedTime: layout.elapsedTime,
-                        tintColor: nsTint
-                    )
-                },
-                pixelSize: pixelSize
-            ) {
-                canvas.drawImage(handle, in: rect)
-            }
+            drawEmbeddedSVG(
+                canvas: canvas,
+                slot: slot,
+                rect: rect,
+                pixelSize: pixelSize,
+                tint: nsTint,
+                elapsedTime: layout.elapsedTime
+            )
             return
         }
 
@@ -732,6 +719,81 @@ enum SkiaDistanceTimelineRenderer {
             pixelSize: pixelSize,
             tint: nsTint,
             scaleToFit: false
+        ) {
+            canvas.drawImage(handle, in: rect)
+        }
+    }
+
+    /// Animated SVG slots are sampled on a small frame grid and rasterized
+    /// once, then drawn from the canvas image cache. Preview's display link and
+    /// the export loop must not run AppKit image drawing per displayed frame.
+    private static let svgFrameRate = 12.0
+    private static let svgMaxFrames = 24
+
+    private static func drawEmbeddedSVG(
+        canvas: SkiaChartsCanvas,
+        slot: OverlayIconSlot,
+        rect: CGRect,
+        pixelSize: CGSize,
+        tint: NSColor,
+        elapsedTime: TimeInterval
+    ) {
+        let isAnimated = slot.mode == .animatedSVG
+        let speed = max(slot.animationSpeed, 0.05)
+        let duration = max(slot.animationDuration, 0.05)
+        let frameCount = isAnimated
+            ? min(
+                max(Int((duration * svgFrameRate).rounded(.up)), 1),
+                svgMaxFrames
+            )
+            : 1
+        let baseKey = "dt-svg|\(slot.svgSource.hashValue)"
+            + "|\(Int(pixelSize.width))x\(Int(pixelSize.height))"
+            + "|\(tint.hashValue)"
+
+        func frameKey(_ frame: Int) -> String { "\(baseKey)|\(frame)" }
+        func frameElapsed(_ frame: Int, at speed: Double) -> TimeInterval {
+            Double(frame) / svgFrameRate / speed
+        }
+
+        // Populate every sampled frame on first use; later frames are cache
+        // hits only.
+        for frame in 0..<frameCount {
+            _ = canvas.image(
+                key: frameKey(frame),
+                make: {
+                    OverlayIconRenderer.image(
+                        slot: slot,
+                        size: CGSize(
+                            width: pixelSize.width,
+                            height: pixelSize.height
+                        ),
+                        elapsedTime: frameElapsed(frame, at: speed),
+                        tintColor: tint
+                    )
+                },
+                pixelSize: pixelSize
+            )
+        }
+
+        let frame: Int
+        if isAnimated {
+            let local = slot.loop
+                ? (elapsedTime * speed)
+                    .truncatingRemainder(dividingBy: duration)
+                : min(elapsedTime * speed, duration)
+            frame = min(
+                max(Int((local * svgFrameRate).rounded(.down)), 0),
+                frameCount - 1
+            )
+        } else {
+            frame = 0
+        }
+
+        if let handle = canvas.image(
+            key: frameKey(frame),
+            make: { nil },
+            pixelSize: pixelSize
         ) {
             canvas.drawImage(handle, in: rect)
         }
