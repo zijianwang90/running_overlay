@@ -625,9 +625,12 @@ These files do not exist yet. The foundation branch creates
 ```text
 Sources/RunningOverlay/Render/Skia/Modules/
   IntervalShared.swift               # color/shape/effect helpers, feathered
-                                     # background mask cache, text seam
+                                     # background mask cache, interval text seam
   ZoneEdgeBarSkiaRenderer.swift
   IntervalTimelineSkiaRenderer.swift
+  IntervalCountdownSkiaRenderer.swift
+  IntervalHUDBarSkiaRenderer.swift
+  IntervalWorkSummarySkiaRenderer.swift
   SkiaIntervalModules.swift          # dispatch + SkiaIntervalFrameRenderer
 
 Tests/RunningOverlayTests/
@@ -641,21 +644,17 @@ Also added:
   `MARK: - Interval family geometry` section. It mirrors the SwiftUI
   zone-segment rect math, including the `18%` gap clamp, active-thickness
   scaling, and vertical ordering.
+- `ZoneEdgeBarOverlayView` and `IntervalHUDBarOverlayView` now consume that
+  helper instead of keeping duplicate gap/thickness math.
 
 ### Text seam
 
-`SkiaIntervalText` owns shaping, shrink-to-fit, truncation, and vertical stacks
-for now. Group T published `SkiaTextComposer.makeLine/measure/draw`,
-`SkiaTextEffects.withElementLayers`, and `SkiaTextModule.draw` on the
-integration branch, but those files are not on this branch yet. The seam is
-deliberately narrow and marked:
-
-```text
-TODO(Group T): replace this with SkiaTextComposer when it is published.
-```
-
-No module renderer calls CoreText directly; all call sites go through the seam,
-so the swap is mechanical.
+`SkiaIntervalText` delegates shaping and drawing to `SkiaTextComposer` (merged
+from the integration branch as `024d4c8`). The seam retains only interval-local
+row stacking, shrink-to-fit, and truncation. The monospaced-digit feature is
+applied when the seam resolves the font, so the composer is called with
+`monospacedDigits: false` to avoid applying it twice. No module renderer calls
+CoreText directly.
 
 ### Marker geometry (module-local for now)
 
@@ -674,20 +673,43 @@ delta exceeds 8. PNGs are written to
 
 | Fixture | Resolution | Changed | Mean delta |
 | --- | --- | ---: | ---: |
-| zone-edge-bar default | 720p | 0.168% | 0.0307 |
-| zone-edge-bar effects | 720p | 0.518% | 0.0542 |
+| zone-edge-bar default | 720p | 0.093% | 0.0225 |
+| zone-edge-bar effects | 720p | 0.501% | 0.0488 |
 | zone-edge-bar plain | 720p | 0.020% | 0.0040 |
-| zone-edge-bar default | 1080p | 0.098% | 0.0319 |
-| zone-edge-bar effects | 1080p | 0.477% | 0.0566 |
+| zone-edge-bar default | 1080p | 0.057% | 0.0248 |
+| zone-edge-bar effects | 1080p | 0.461% | 0.0517 |
 | zone-edge-bar plain | 1080p | 0.011% | 0.0025 |
-| zone-edge-bar default | 2160p | 0.046% | 0.0154 |
-| timeline default | 720p | 1.484% | 0.2487 |
-| timeline effects | 720p | 1.641% | 0.2727 |
-| timeline plain | 720p | 1.347% | 0.2389 |
-| timeline default | 1080p | 1.010% | 0.1870 |
-| timeline effects | 1080p | 1.172% | 0.2159 |
-| timeline plain | 1080p | 0.908% | 0.1803 |
-| timeline default | 2160p | 0.554% | 0.1397 |
+| zone-edge-bar default | 2160p | 0.027% | 0.0116 |
+| timeline default | 720p | 0.970% | 0.1822 |
+| timeline effects | 720p | 1.148% | 0.2115 |
+| timeline plain | 720p | 0.828% | 0.1730 |
+| timeline default | 1080p | 0.678% | 0.1415 |
+| timeline effects | 1080p | 0.821% | 0.1751 |
+| timeline plain | 1080p | 0.574% | 0.1348 |
+| timeline default | 2160p | 0.376% | 0.1160 |
+| countdown default | 720p | 0.548% | 0.2608 |
+| countdown effects | 720p | 7.403% | 1.1857 |
+| countdown plain | 720p | 0.537% | 0.2654 |
+| countdown default | 1080p | 0.342% | 0.0859 |
+| countdown effects | 1080p | 4.567% | 0.8534 |
+| countdown plain | 1080p | 0.286% | 0.0766 |
+| countdown default | 2160p | 0.191% | 0.0822 |
+| hud bar default | 720p | 0.548% | 0.2639 |
+| hud bar zones | 720p | 1.715% | 0.3433 |
+| hud bar effects | 720p | 1.426% | 0.3087 |
+| hud bar plain | 720p | 0.536% | 0.2872 |
+| hud bar default | 1080p | 0.843% | 0.4126 |
+| hud bar zones | 1080p | 1.950% | 0.4957 |
+| hud bar effects | 1080p | 1.990% | 0.5155 |
+| hud bar plain | 1080p | 0.572% | 0.4468 |
+| hud bar default | 2160p | 0.314% | 0.1062 |
+| work summary default | 720p | 0.865% | 0.9610 |
+| work summary effects | 720p | 2.769% | 0.9938 |
+| work summary plain | 720p | 0.528% | 0.3180 |
+| work summary default | 1080p | 0.725% | 0.9155 |
+| work summary effects | 1080p | 2.649% | 0.9167 |
+| work summary plain | 1080p | 0.413% | 0.3119 |
+| work summary default | 2160p | 0.674% | 1.1392 |
 
 Reading:
 
@@ -695,8 +717,20 @@ Reading:
   parity. The residual is glow/blur falloff.
 - Timeline shapes (segments, progress overlay, current border, overflow hints,
   marker) are at parity. The residual is glyph antialiasing plus a roughly 2 px
-  vertical text-stack offset in SwiftUI Text vs CoreText line boxes. Group T's
-  composer should absorb that offset.
+  vertical text-stack offset in SwiftUI Text vs CoreText line boxes.
+- Shadow calibration: interpreting a SwiftUI shadow `radius` as Gaussian sigma
+  (`SKIA_INTERVAL_SHADOW_SIGMA_FACTOR=1.0`) cut the timeline residual by about a
+  third versus the initial `0.5` default. Blur layers keep the `0.5` factor.
+- Countdown default/plain are at parity; the ring, rows, and background match.
+  The `effects` variant keeps a broad, low-amplitude foreground-glow residual
+  (7.4% changed at 720p, 4.6% at 1080p, mean below 1.2). That is the same
+  element-glow falloff tracked for `SkiaTextEffects`.
+- HUD Bar is at parity; residual is divider/label glyph AA and the zone-marker
+  stack. Its vertical and cell layout is mirrored module-locally (see below).
+- Work Summary shapes, dividers, and text match. The primary stack sits about
+  5 px lower than SwiftUI because SwiftUI's three-spacer VStack does not split
+  leftover height evenly around a `Spacer(minLength: 12)`. Tracked as the one
+  remaining layout residual.
 - Tests pin the font to `"SF Pro"` for goldens. The production fallback is
   `"PT Mono"`, which is not bundled on every machine and resolves to the system
   font through two different SwiftUI/AppKit paths.
@@ -712,14 +746,30 @@ preferences move to an explicit render-context snapshot.
 
 ### Remaining
 
-1. Rebase and swap `SkiaIntervalText` for `SkiaTextComposer`, then re-baseline
-   the timeline goldens.
-2. Port Interval Countdown, Interval HUD Bar, Interval Work Summary in the agreed
-   order.
-3. Lift Zone Edge Bar marker metrics into `OverlayRenderModel` with lead review.
-4. Implement `backgroundBlurRadius` material blur when a backdrop primitive
+1. Lift Zone Edge Bar marker metrics and the HUD Bar vertical/cell layout into
+   `OverlayRenderModel` with lead review.
+2. Implement `backgroundBlurRadius` material blur when a backdrop primitive
    exists; the timeline port currently draws the fade mask but not the material
    blur.
-5. Wire `SkiaIntervalModules.draw` into the shared dispatch table once the lead
-   opens that seam.
+3. Match SwiftUI's uneven three-spacer distribution in Work Summary (primary
+   block is ~5 px low). The current seam splits leftover height evenly after
+   honoring `Spacer(minLength: 12)`.
+4. Wire `SkiaIntervalModules.draw` into the shared dispatch table and route the
+   preview canvas through it; all five interval types are dispatch-ready.
+5. Replace the interval-local element-glow shadow layers with
+   `SkiaTextEffects.withElementLayers` once the calibration notes settle; this
+   is the remaining countdown `effects` residual.
+
+### Dispatch readiness
+
+| Module | Renderer | Dispatch | Tests |
+| --- | --- | --- | --- |
+| Interval HUD Bar | ready | wired in `SkiaIntervalModules` | 720p/1080p/4K pass |
+| Interval Timeline | ready | wired | 720p/1080p/4K pass |
+| Interval Countdown | ready | wired | 720p/1080p/4K pass |
+| Interval Work Summary | ready | wired | 720p/1080p/4K pass |
+| Zone Edge Bar | ready | wired | 720p/1080p/4K pass |
+
+Preview still renders these types through SwiftUI until the preview canvas
+consumes `SkiaIntervalModules`; the lead owns that dispatch change.
 

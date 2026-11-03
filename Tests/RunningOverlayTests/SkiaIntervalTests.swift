@@ -145,6 +145,88 @@ import Testing
         )
     }
 
+    @Test func hudBarParity720pAnd1080p() async throws {
+        let activity = Self.workoutSixLap()
+        for size in [Self.size720p, Self.size1080p] {
+            for variant in Self.hudBarVariants() {
+                try await Self.golden(
+                    element: variant.element,
+                    activity: activity,
+                    elapsedTime: 150,
+                    size: size,
+                    label: "hud-bar-\(variant.name)-\(Int(size.height))p",
+                    maxChangedRatio: 0.08,
+                    maxMeanDelta: 1.00
+                )
+            }
+        }
+    }
+
+    @Test func hudBarParity4KSubset() async throws {
+        try await Self.golden(
+            element: Self.hudBarVariants()[0].element,
+            activity: Self.workoutSixLap(),
+            elapsedTime: 150,
+            size: Self.size4K,
+            label: "hud-bar-default-2160p",
+            maxChangedRatio: 0.08,
+            maxMeanDelta: 1.00
+        )
+    }
+
+    @Test func workSummaryParity720pAnd1080p() async throws {
+        let activity = Self.workoutSixLap()
+        for size in [Self.size720p, Self.size1080p] {
+            for variant in Self.workSummaryVariants() {
+                // SwiftUI splits the three content spacers unevenly around the
+                // 12pt minimum, so the primary stack sits ~5px lower in Skia.
+                // Everything else lines up; keep the wider mean bound until the
+                // spacer model is settled.
+                try await Self.golden(
+                    element: variant.element,
+                    activity: activity,
+                    elapsedTime: 303,
+                    size: size,
+                    label: "work-summary-\(variant.name)-\(Int(size.height))p",
+                    maxChangedRatio: 0.05,
+                    maxMeanDelta: 1.30
+                )
+            }
+        }
+    }
+
+    @Test func workSummaryParity4KSubset() async throws {
+        try await Self.golden(
+            element: Self.workSummaryVariants()[0].element,
+            activity: Self.workoutSixLap(),
+            elapsedTime: 303,
+            size: Self.size4K,
+            label: "work-summary-default-2160p",
+            maxChangedRatio: 0.05,
+            maxMeanDelta: 1.30
+        )
+    }
+
+    @Test func workSummaryDisplayWindow() {
+        OverlayPreferenceFixtures.withDefaults {
+            let activity = Self.workoutSixLap()
+            let element = Self.workSummaryVariants()[0].element
+            let layout = { (elapsed: TimeInterval) in
+                OverlayRenderModel.intervalWorkSummaryLayout(
+                    for: element,
+                    in: OverlayRenderContext(
+                        canvasSize: Self.size1080p,
+                        activity: activity,
+                        elapsedTime: elapsed
+                    )
+                )
+            }
+            #expect(layout(303).isVisible)
+            #expect(!layout(310).isVisible)
+            #expect(!layout(150).isVisible)
+        }
+    }
+
     @Test func timelineOneMinuteBy25Layout() {
         OverlayPreferenceFixtures.withDefaults {
             let activity = Self.oneMinuteBy25()
@@ -347,6 +429,154 @@ import Testing
                 name: "plain",
                 element: OverlayElement(
                     type: .intervalCountdown,
+                    position: CGPoint(x: 0.5, y: 0.5),
+                    scale: 1,
+                    isVisible: true,
+                    isLocked: false,
+                    style: plain
+                )
+            )
+        ]
+    }
+
+    private static func hudBarVariants() -> [Variant] {
+        func pinned(_ style: inout OverlayStyle) {
+            style.fontName = "SF Pro"
+            style.intervalHUDBar.labelText.fontName = "SF Pro"
+            style.intervalHUDBar.primaryValueText.fontName = "SF Pro"
+            style.intervalHUDBar.phaseText.fontName = "SF Pro"
+            style.intervalHUDBar.phaseDetailText.fontName = "SF Pro"
+            style.intervalHUDBar.metricValueText.fontName = "SF Pro"
+            style.intervalHUDBar.metricUnitText.fontName = "SF Pro"
+        }
+
+        var defaultStyle = OverlayStyle.default
+        pinned(&defaultStyle)
+
+        var zones = defaultStyle
+        zones.intervalHUDBar.bottomBarMode = .heartRateZones
+        zones.intervalHUDBar.bottomBarGlowEnabled = true
+        zones.intervalHUDBar.activeZoneWidthShare = 0.30
+
+        var effects = defaultStyle
+        effects.backgroundFadeOutEnabled = true
+        effects.backgroundFadeOutAmount = 0.30
+        effects.borderEnabled = true
+        effects.intervalHUDBar.bottomBarGlowEnabled = true
+
+        var plain = OverlayStyle.default
+        pinned(&plain)
+        plain.backgroundEnabled = false
+        plain.shadowEnabled = false
+        plain.borderEnabled = false
+        plain.intervalHUDBar.bottomBarMode = .heartRateZones
+        plain.intervalHUDBar.bottomBarBorderEnabled = false
+        plain.intervalHUDBar.bottomBarGlowEnabled = false
+
+        return [
+            Variant(
+                name: "default",
+                element: OverlayElement(
+                    type: .intervalHUDBar,
+                    position: CGPoint(x: 0.5, y: 0.5),
+                    scale: 1,
+                    isVisible: true,
+                    isLocked: false,
+                    style: defaultStyle
+                )
+            ),
+            Variant(
+                name: "zones",
+                element: OverlayElement(
+                    type: .intervalHUDBar,
+                    position: CGPoint(x: 0.5, y: 0.5),
+                    scale: 1,
+                    isVisible: true,
+                    isLocked: false,
+                    style: zones
+                )
+            ),
+            Variant(
+                name: "effects",
+                element: OverlayElement(
+                    type: .intervalHUDBar,
+                    position: CGPoint(x: 0.5, y: 0.5),
+                    scale: 1,
+                    isVisible: true,
+                    isLocked: false,
+                    style: effects
+                )
+            ),
+            Variant(
+                name: "plain",
+                element: OverlayElement(
+                    type: .intervalHUDBar,
+                    position: CGPoint(x: 0.5, y: 0.5),
+                    scale: 1,
+                    isVisible: true,
+                    isLocked: false,
+                    style: plain
+                )
+            )
+        ]
+    }
+
+    private static func workSummaryVariants() -> [Variant] {
+        func pinned(_ style: inout OverlayStyle) {
+            style.fontName = "SF Pro"
+            style.intervalWorkSummary.componentLabelText.fontName = "SF Pro"
+            style.intervalWorkSummary.primaryValueText.fontName = "SF Pro"
+            style.intervalWorkSummary.primaryLabelText.fontName = "SF Pro"
+            style.intervalWorkSummary.secondaryValueText.fontName = "SF Pro"
+            style.intervalWorkSummary.secondaryLabelText.fontName = "SF Pro"
+        }
+
+        var defaultStyle = OverlayStyle.default
+        pinned(&defaultStyle)
+        defaultStyle.backgroundEnabled = true
+        defaultStyle.shadowEnabled = true
+
+        var effects = defaultStyle
+        effects.glowEnabled = true
+        effects.glowIntensity = 0.55
+        effects.borderEnabled = true
+        effects.intervalWorkSummary.componentLabelAlignment = .leading
+
+        var plain = OverlayStyle.default
+        pinned(&plain)
+        plain.backgroundEnabled = false
+        plain.shadowEnabled = false
+        plain.glowEnabled = false
+        plain.borderEnabled = false
+        plain.intervalWorkSummary.dividerEnabled = false
+
+        return [
+            Variant(
+                name: "default",
+                element: OverlayElement(
+                    type: .intervalWorkSummary,
+                    position: CGPoint(x: 0.5, y: 0.5),
+                    scale: 1,
+                    isVisible: true,
+                    isLocked: false,
+                    style: defaultStyle
+                )
+            ),
+            Variant(
+                name: "effects",
+                element: OverlayElement(
+                    type: .intervalWorkSummary,
+                    position: CGPoint(x: 0.5, y: 0.5),
+                    scale: 1,
+                    isVisible: true,
+                    isLocked: false,
+                    style: effects
+                )
+            ),
+            Variant(
+                name: "plain",
+                element: OverlayElement(
+                    type: .intervalWorkSummary,
                     position: CGPoint(x: 0.5, y: 0.5),
                     scale: 1,
                     isVisible: true,
