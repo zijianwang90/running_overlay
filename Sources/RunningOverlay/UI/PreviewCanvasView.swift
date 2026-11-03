@@ -163,10 +163,11 @@ struct PreviewCanvasView: View {
             return
         }
 
-        let hitPadding: CGFloat = 4
-        let didHitOverlay = frames.contains { id, frame in
-            visibleElementIDs.contains(id) && frame.insetBy(dx: -hitPadding, dy: -hitPadding).contains(location)
-        }
+        let didHitOverlay = PreviewCanvasHitTesting.isOverlayHit(
+            at: location,
+            frames: frames,
+            visibleElementIDs: visibleElementIDs
+        )
 
         guard !didHitOverlay else { return }
         project.clearMediaPoolPreview()
@@ -234,10 +235,11 @@ struct PreviewCanvasView: View {
         frames: [OverlayElement.ID: CGRect]
     ) -> some View {
         #if DEBUG && canImport(CSkiaBridge)
-        // Modules the Skia renderer has not ported yet keep their SwiftUI views
-        // so the preview never silently drops them. They are visual-only: the
-        // model-rect interaction layer below still owns selection and dragging,
-        // and `PreviewElementGeometry` supplies their frames.
+        // Temporary: modules the unified Skia dispatch has not absorbed yet
+        // render their SwiftUI views so the preview never drops them. They are
+        // visual-only: the model-rect interaction layer below still owns
+        // selection and dragging, and `PreviewElementGeometry` supplies their
+        // frames. Delete this pass when the shrunken set becomes empty.
         ForEach(
             project.overlayLayout.elements
                 .filter(\.isVisible)
@@ -432,16 +434,35 @@ struct PreviewCanvasView: View {
 }
 
 #if DEBUG && canImport(CSkiaBridge)
-/// The module types still drawn by SwiftUI in Skia preview mode. This is the
-/// single migration boundary: when a module ports to Skia, it disappears from
-/// this set and the preview test that pins the set starts failing until it is
-/// updated.
+/// Temporary migration bridge: module types still drawn by SwiftUI until the
+/// unified Skia dispatch covers every module. The target is an empty set and
+/// deletion of the fallback pass. This predicate is the single boundary; when a
+/// module ports to Skia, remove it from the preview test's expected set too.
 enum PreviewSwiftUIFallback {
     static func isRequired(for element: OverlayElement) -> Bool {
         !SkiaEasyRunRenderer.supports(element)
     }
 }
 #endif
+
+/// Canvas tap resolution shared by both overlay rendering modes. A tap inside
+/// any visible element's frame keeps the selection; a tap in empty canvas
+/// clears it.
+enum PreviewCanvasHitTesting {
+    static let hitPadding: CGFloat = 4
+
+    static func isOverlayHit(
+        at location: CGPoint,
+        frames: [OverlayElement.ID: CGRect],
+        visibleElementIDs: Set<OverlayElement.ID>,
+        padding: CGFloat = hitPadding
+    ) -> Bool {
+        frames.contains { id, frame in
+            visibleElementIDs.contains(id)
+                && frame.insetBy(dx: -padding, dy: -padding).contains(location)
+        }
+    }
+}
 
 /// Canvas-space hit and selection geometry for overlay elements when the
 /// SwiftUI element views are not present (Skia preview). Consumes the same
@@ -500,8 +521,9 @@ enum PreviewElementGeometry {
     }
 
     /// Numeric and text overlays are top-leading anchored at the normalized
-    /// element position. Measure value and unit with the same CoreText path the
-    /// Skia renderer uses so the hit rect follows the drawn glyphs.
+    /// element position. Mirror the SwiftUI minimal preset's label/unit/icon
+    /// placement (the only numeric preset `OverlayRenderModel` emits) so the hit
+    /// rect covers the same content a SwiftUI render would.
     private static func textFrame(
         for element: OverlayElement,
         in context: OverlayRenderContext
@@ -522,30 +544,90 @@ enum PreviewElementGeometry {
             size: layout.unitFontSize,
             weight: nsWeight(layout.unitFontWeight)
         )
+        let labelFont = OverlayFontResolver.appKitFont(
+            family: layout.labelFontName,
+            size: layout.labelFontSize,
+            weight: nsWeight(layout.labelFontWeight)
+        )
         let valueLine = lineMetrics(
             layout.components.value,
             font: valueFont,
             tracking: -layout.fontSize * 0.012
         )
-        let unitLine = lineMetrics(layout.components.unit, font: unitFont, tracking: 0)
+        let unitLine = lineMetrics(
+            layout.components.unit,
+            font: unitFont,
+            tracking: 0
+        )
+        let labelLine = lineMetrics(
+            layout.components.label,
+            font: labelFont,
+            tracking: layout.labelFontSize * 0.10
+        )
         let showUnit = element.style.showUnit && !layout.components.unit.isEmpty
+        let showLabel = element.style.showLabel && !layout.components.label.isEmpty
         let showIcon = layout.iconEnabled && !layout.iconSystemName.isEmpty
-        let iconWidth = showIcon ? layout.iconSize + layout.iconSpacing : 0
 
-        let width = iconWidth
-            + valueLine.width
-            + (showUnit ? layout.unitSpacing + unitLine.width : 0)
-        let valueHeight = valueLine.ascent + valueLine.descent + valueLine.leading
-        let unitHeight = unitLine.ascent + unitLine.descent + unitLine.leading
-        let height = max(valueHeight, unitHeight, showIcon ? layout.iconSize : 0)
+        let valueHeight = lineHeight(valueLine)
+        let unitHeight = lineHeight(unitLine)
+        let labelHeight = lineHeight(labelLine)
+
+        // Value and unit cluster.
+        var contentWidth = valueLine.width
+        var contentHeight = valueHeight
+        if showUnit {
+            switch layout.unitPosition {
+            case .leading, .trailing:
+                contentWidth += layout.unitSpacing + unitLine.width
+                contentHeight = max(contentHeight, unitHeight)
+            case .bottom:
+                contentHeight += layout.unitSpacing + unitHeight
+                contentWidth = max(contentWidth, unitLine.width)
+            case .top:
+                // The SwiftUI minimal preset does not render a top unit.
+                break
+            }
+        }
+
+        if showLabel {
+            switch layout.labelPosition {
+            case .leading, .trailing:
+                contentWidth += layout.labelSpacing + labelLine.width
+                contentHeight = max(contentHeight, labelHeight)
+            case .top, .bottom:
+                contentHeight += layout.labelSpacing + labelHeight
+                contentWidth = max(contentWidth, labelLine.width)
+            }
+        }
+
+        if showIcon {
+            switch layout.iconPosition {
+            case .leading, .trailing:
+                contentWidth += layout.iconSize + layout.iconSpacing
+                contentHeight = max(contentHeight, layout.iconSize)
+            case .top, .bottom:
+                contentHeight += layout.iconSize + layout.iconSpacing
+                contentWidth = max(contentWidth, layout.iconSize)
+            }
+        }
+
+        // `minimalCleanView` frames the content to the minimum size first, then
+        // applies background padding only when a background is enabled.
+        let horizontalPadding = element.style.backgroundEnabled ? layout.horizontalPadding : 0
+        let verticalPadding = element.style.backgroundEnabled ? layout.verticalPadding : 0
+        let width = max(contentWidth, layout.minimumWidth) + horizontalPadding * 2
+        let height = max(contentHeight, layout.minimumHeight) + verticalPadding * 2
 
         return CGRect(
             origin: origin,
-            size: CGSize(
-                width: max(width, layout.minimumWidth),
-                height: max(height, layout.minimumHeight)
-            )
+            size: CGSize(width: width, height: height)
         )
+    }
+
+    private static func lineHeight(
+        _ metrics: (width: CGFloat, ascent: CGFloat, descent: CGFloat, leading: CGFloat)
+    ) -> CGFloat {
+        metrics.ascent + metrics.descent + metrics.leading
     }
 
     private static func centeredRect(

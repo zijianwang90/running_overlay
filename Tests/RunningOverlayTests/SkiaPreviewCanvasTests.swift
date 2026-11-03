@@ -64,9 +64,10 @@ import Testing
 
     // MARK: - SwiftUI fallback boundary
 
-    /// Skia preview keeps SwiftUI views only for modules the renderer has not
-    /// ported. This pins the current boundary so a module port cannot silently
-    /// double-draw or disappear from preview.
+    /// Temporary migration pin: Skia preview keeps SwiftUI views only for
+    /// modules the unified dispatch has not absorbed. The target state is an
+    /// empty set with the fallback pass deleted; a module port must update this
+    /// list so double-drawing or a silently dropped module fails the build.
     @Test func skiaPreviewKeepsSwiftUIFallbackOnlyForUnportedModules() {
         let expectedFallback: Set<OverlayElementType> = [
             .elevationChart,
@@ -93,6 +94,96 @@ import Testing
                 "\(type.rawValue): port it to Skia or update the fallback set"
             )
         }
+    }
+
+    /// Interaction in Skia mode uses model rects for every visible element,
+    /// including the ones currently drawn by the SwiftUI fallback.
+    @Test func mixedLayoutGivesEveryVisibleElementAHitFrame() throws {
+        let layout = try Self.unfilteredEasyRunLayout()
+        let context = OverlayRenderContext(
+            canvasSize: Self.hd1080,
+            activity: Self.activity,
+            elapsedTime: 12
+        )
+        var supportedCount = 0
+        var fallbackCount = 0
+
+        for element in layout.elements where element.isVisible {
+            let frame = PreviewElementGeometry.frame(for: element, in: context)
+            #expect(frame.width > 0, "\(element.type.rawValue) width")
+            #expect(frame.height > 0, "\(element.type.rawValue) height")
+            if PreviewSwiftUIFallback.isRequired(for: element) {
+                fallbackCount += 1
+            } else {
+                supportedCount += 1
+            }
+        }
+
+        #expect(supportedCount > 0)
+        #expect(supportedCount + fallbackCount > 0)
+    }
+
+    // MARK: - Resize, backing scale, and paused scrubbing
+
+    @Test func resizingTheViewKeepsTheProjectDrawable() throws {
+        let view = try Self.makeView(size: Self.hd1080)
+        view.frame = CGRect(x: 0, y: 0, width: 480, height: 270)
+        view.layout()
+        #expect(view.metalLayer.frame == view.bounds)
+        #expect(view.metalLayer.drawableSize == Self.hd1080)
+
+        view.frame = CGRect(x: 0, y: 0, width: 240, height: 135)
+        view.layout()
+        #expect(view.metalLayer.frame == view.bounds)
+        // The drawable stays at project resolution; Core Animation scales it
+        // into the fitted pane, so resizing never rebuilds the Skia context.
+        #expect(view.metalLayer.drawableSize == Self.hd1080)
+        #expect(view.renderFrame() != nil)
+    }
+
+    @Test func backingScaleTracksTheHostingWindow() throws {
+        guard MTLCreateSystemDefaultDevice() != nil else {
+            Issue.record("No Metal device available")
+            return
+        }
+
+        _ = NSApplication.shared
+        let view = SkiaPreviewMetalView(frame: CGRect(x: 0, y: 0, width: 480, height: 270))
+        let window = NSWindow(
+            contentRect: CGRect(x: 0, y: 0, width: 480, height: 270),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = view
+        window.alphaValue = 0
+        window.ignoresMouseEvents = true
+        window.orderFrontRegardless()
+        defer { window.orderOut(nil) }
+
+        view.layout()
+        #expect(view.metalLayer.contentsScale == window.backingScaleFactor)
+        #expect(view.metalLayer.frame == view.bounds)
+    }
+
+    @Test func pausedScrubRendersTheNewState() throws {
+        let view = try Self.makeView(size: Self.hd1080)
+        let first = try Self.readPixels(view: view, size: Self.hd1080)
+        let baseline = view.presentedFrameCount
+
+        // A scrub while paused must present exactly one new frame through the
+        // same path `configure` uses during playback pauses.
+        view.configure(
+            layout: try Self.easyRunLayout(),
+            activity: Self.activity,
+            elapsedTime: 30,
+            canvasSize: Self.hd1080,
+            isPaused: true
+        )
+        #expect(view.presentedFrameCount == baseline + 1)
+
+        let second = try Self.readPixels(view: view, size: Self.hd1080)
+        #expect(first != second)
     }
 
     // MARK: - Display link
@@ -241,19 +332,54 @@ import Testing
         }
     }
 
-    private static func easyRunLayout() throws -> OverlayLayout {
+    private static func unfilteredEasyRunLayout() throws -> OverlayLayout {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources/RunningOverlay/Resources/Templates/EasyRun.rotemplate")
         let template = try JSONDecoder().decode(OverlayTemplate.self, from: Data(contentsOf: url))
         var layout = template.layout
-        layout.elements = layout.elements.filter(SkiaEasyRunRenderer.supports)
         // Keep the frame deterministic and offline; the Skia spike draws the
         // local grid when the MapKit background is disabled.
         for index in layout.elements.indices where layout.elements[index].type == .routeMap {
             layout.elements[index].style.routeMapBackgroundStyle = .none
         }
         return layout
+    }
+
+    private static func easyRunLayout() throws -> OverlayLayout {
+        var layout = try unfilteredEasyRunLayout()
+        layout.elements = layout.elements.filter(SkiaEasyRunRenderer.supports)
+        return layout
+    }
+
+    private static func readPixels(
+        view: SkiaPreviewMetalView,
+        size: CGSize
+    ) throws -> [UInt8] {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let width = Int(size.width)
+        let height = Int(size.height)
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm,
+            width: width,
+            height: height,
+            mipmapped: false
+        )
+        descriptor.usage = [.renderTarget, .shaderRead]
+        descriptor.storageMode = .shared
+        let texture = try #require(device.makeTexture(descriptor: descriptor))
+
+        #expect(view.renderIntoTexture(texture))
+
+        let rowBytes = width * 4
+        var pixels = [UInt8](repeating: 0, count: rowBytes * height)
+        texture.getBytes(
+            &pixels,
+            bytesPerRow: rowBytes,
+            from: MTLRegionMake2D(0, 0, width, height),
+            mipmapLevel: 0
+        )
+        return pixels
     }
 
     private static let activity: ActivityTimeline = {
