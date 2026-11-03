@@ -1582,6 +1582,60 @@ enum OverlayRenderModel {
         }
     }
 
+    // MARK: - Interval family geometry
+
+    /// Canvas-space zone-segment rects shared by Interval HUD Bar and Zone Edge
+    /// Bar. Mirrors the SwiftUI views' gap clamp (`18%` of the segment pitch),
+    /// active-thickness scaling, and vertical ordering. `barRect` is the inner
+    /// bar rect in canvas coordinates.
+    static func intervalZoneBarRects(
+        frames: [IntervalHUDBarZoneSegmentFrame],
+        segments: [IntervalHUDBarZoneSegment],
+        barRect: CGRect,
+        activeIndex: Int?,
+        activeThicknessScale: Double,
+        segmentGap: Double,
+        elementScale: Double,
+        orientation: ZoneEdgeBarOrientation
+    ) -> [IntervalZoneBarRect] {
+        let segmentCount = min(frames.count, segments.count)
+        guard segmentCount > 0 else { return [] }
+        let length = orientation == .horizontal ? barRect.width : barRect.height
+        let crossAxisThickness = orientation == .horizontal ? barRect.height : barRect.width
+        let requestedGap = max(segmentGap * elementScale, 0)
+        let maxGap = segmentCount > 1 ? max(length / Double(segmentCount - 1) * 0.18, 0) : 0
+        let gap = min(requestedGap, maxGap)
+        let usableLength = max(length - gap * Double(max(segmentCount - 1, 0)), 1)
+
+        return (0..<segmentCount).map { position in
+            let frame = frames[position]
+            let segment = segments[position]
+            let isActive = segment.index == activeIndex
+            let thickness = isActive
+                ? crossAxisThickness * max(activeThicknessScale, 1)
+                : crossAxisThickness
+            let positionOffset = Double(position) * gap
+            let segmentLength = max(usableLength * frame.width, 0)
+            let rect: CGRect
+            if orientation == .horizontal {
+                rect = CGRect(
+                    x: barRect.minX + usableLength * frame.start + positionOffset,
+                    y: barRect.midY - thickness / 2,
+                    width: segmentLength,
+                    height: thickness
+                )
+            } else {
+                rect = CGRect(
+                    x: barRect.midX - thickness / 2,
+                    y: barRect.maxY - usableLength * (frame.start + frame.width) - positionOffset,
+                    width: thickness,
+                    height: segmentLength
+                )
+            }
+            return IntervalZoneBarRect(index: segment.index, rect: rect)
+        }
+    }
+
     private static func repText(activity: ActivityTimeline, lap: LapRecord?) -> String {
         let activeLaps = activity.laps.filter { $0.kind == .active }
         guard !activeLaps.isEmpty else { return "-- / --" }
