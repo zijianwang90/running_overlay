@@ -51,6 +51,16 @@ final class SkiaChartsRenderer {
                     element: element,
                     layout: elementLayout
                 )
+            case .runningGauge:
+                let elementLayout = OverlayRenderModel.runningGaugeLayout(
+                    for: element,
+                    in: context
+                )
+                SkiaRunningGaugeRenderer.draw(
+                    canvas: canvas,
+                    element: element,
+                    layout: elementLayout
+                )
             default:
                 break
             }
