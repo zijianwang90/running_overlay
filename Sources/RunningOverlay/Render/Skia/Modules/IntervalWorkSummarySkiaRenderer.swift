@@ -328,6 +328,11 @@ enum IntervalWorkSummarySkiaRenderer {
                 )
             )
         }
+        // The dividers are children of SwiftUI's HStack, so they set the row
+        // height when taller than the text stack.
+        if count > 1, layout.style.dividerEnabled {
+            height = max(height, layout.rect.height * 0.26)
+        }
         return height
     }
 

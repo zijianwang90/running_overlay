@@ -664,6 +664,23 @@ the SwiftUI view owns it. It mirrors `markerPosition`, `currentMarkerHeight`,
 Marked for a follow-up lift into `OverlayRenderModel` after lead review; it was
 not lifted now to keep the first milestone small.
 
+### Mask cache bounding
+
+`SkiaIntervalDraw.MaskCache` keys feathered-background masks on quantized
+buckets (8 px size step, 1 pt radius step, 0.01 fade step) instead of raw
+`Double`s, and evicts least-recently-used entries above 24 entries or 96 MB.
+This matters during preview: dragging scale/fade used to mint a new 4K mask per
+frame and retain every one. `maskCacheQuantizesAndBoundsEntries` pins both the
+quantization (99/101 px and 4.0/4.2 pt radii share one entry) and the caps.
+
+### GPU parity
+
+`intervalFamilyMatchesGPU` renders all five interval types in one 1080p frame
+through `SkiaEasyRunRenderer`, once on the CPU raster path and once on a Metal
+device/queue, then compares the readback. Result: 3,777 / 2,073,600 pixels
+changed (0.182%), mean delta 0.044, max 204 — well inside the 3% / 1.0 bounds.
+The test is gated on `MTLCreateSystemDefaultDevice()` and needs `SKIA_GPU=1`.
+
 ### Golden results
 
 Harness: SwiftUI export oracle vs `SkiaIntervalFrameRenderer`, 6-lap synthetic
@@ -687,6 +704,8 @@ delta exceeds 8. PNGs are written to
 | timeline effects | 1080p | 0.821% | 0.1751 |
 | timeline plain | 1080p | 0.574% | 0.1348 |
 | timeline default | 2160p | 0.376% | 0.1160 |
+| timeline tight | 720p | 1.160% | 0.2448 |
+| timeline tight | 1080p | 0.837% | 0.2160 |
 | countdown default | 720p | 0.548% | 0.2608 |
 | countdown effects | 720p | 7.403% | 1.1857 |
 | countdown plain | 720p | 0.537% | 0.2654 |
@@ -696,20 +715,20 @@ delta exceeds 8. PNGs are written to
 | countdown default | 2160p | 0.191% | 0.0822 |
 | hud bar default | 720p | 0.548% | 0.2639 |
 | hud bar zones | 720p | 1.715% | 0.3433 |
-| hud bar effects | 720p | 1.426% | 0.3087 |
+| hud bar effects | 720p | 1.426% | 0.3104 |
 | hud bar plain | 720p | 0.536% | 0.2872 |
 | hud bar default | 1080p | 0.843% | 0.4126 |
 | hud bar zones | 1080p | 1.950% | 0.4957 |
 | hud bar effects | 1080p | 1.990% | 0.5155 |
 | hud bar plain | 1080p | 0.572% | 0.4468 |
 | hud bar default | 2160p | 0.314% | 0.1062 |
-| work summary default | 720p | 0.865% | 0.9610 |
-| work summary effects | 720p | 2.769% | 0.9938 |
+| work summary default | 720p | 0.609% | 0.3980 |
+| work summary effects | 720p | 2.445% | 0.5319 |
 | work summary plain | 720p | 0.528% | 0.3180 |
-| work summary default | 1080p | 0.725% | 0.9155 |
-| work summary effects | 1080p | 2.649% | 0.9167 |
+| work summary default | 1080p | 0.383% | 0.1962 |
+| work summary effects | 1080p | 2.341% | 0.3257 |
 | work summary plain | 1080p | 0.413% | 0.3119 |
-| work summary default | 2160p | 0.674% | 1.1392 |
+| work summary default | 2160p | 0.188% | 0.0841 |
 
 Reading:
 
@@ -717,20 +736,34 @@ Reading:
   parity. The residual is glow/blur falloff.
 - Timeline shapes (segments, progress overlay, current border, overflow hints,
   marker) are at parity. The residual is glyph antialiasing plus a roughly 2 px
-  vertical text-stack offset in SwiftUI Text vs CoreText line boxes.
+  vertical text-stack offset in SwiftUI Text vs CoreText line boxes. The `tight`
+  fixture (56 pt bar, 28 pt segments, 1.3x current scale) guards vertical
+  shrink-to-fit: `drawStack` now scales the whole stack when intrinsic height
+  exceeds the segment, bounded by the strictest `minimumScaleFactor`, matching
+  SwiftUI's `.minimumScaleFactor` on the VStack. Before the fix the full-size
+  stack overflowed the segment (full-template golden: 14.46% local change, mean
+  8.15).
 - Shadow calibration: interpreting a SwiftUI shadow `radius` as Gaussian sigma
   (`SKIA_INTERVAL_SHADOW_SIGMA_FACTOR=1.0`) cut the timeline residual by about a
   third versus the initial `0.5` default. Blur layers keep the `0.5` factor.
 - Countdown default/plain are at parity; the ring, rows, and background match.
   The `effects` variant keeps a broad, low-amplitude foreground-glow residual
-  (7.4% changed at 720p, 4.6% at 1080p, mean below 1.2). That is the same
-  element-glow falloff tracked for `SkiaTextEffects`.
+  (7.4% changed at 720p, 4.6% at 1080p, mean below 1.2). Swept ring/global
+  sigma and alpha scales: ring sigma 0.9 / alpha 1.8 plus global sigma 0.9 /
+  alpha 1.1 halves the effects residual, but over-brightens the default
+  countdown (720p mean 0.26 -> 0.43, failing its bound). The residual is a
+  shadow-kernel shape difference, not a scalar mismatch, so the mapping stays
+  neutral until `SkiaTextEffects` owns element glows. `SKIA_INTERVAL_*_SCALE`
+  env knobs remain for re-calibration.
 - HUD Bar is at parity; residual is divider/label glyph AA and the zone-marker
   stack. Its vertical and cell layout is mirrored module-locally (see below).
-- Work Summary shapes, dividers, and text match. The primary stack sits about
-  5 px lower than SwiftUI because SwiftUI's three-spacer VStack does not split
-  leftover height evenly around a `Spacer(minLength: 12)`. Tracked as the one
-  remaining layout residual.
+- Work Summary shapes, dividers, and text match. The earlier ~5 px primary-stack
+  offset came from the secondary row's height, not the spacer split: SwiftUI's
+  `HStack` height includes the fixed-height divider children
+  (`rect.height * 0.26`), which exceeds the text stack and changes the leftover
+  height fed to the three spacers. Including divider height in
+  `secondaryGroupHeight` dropped means from 0.96 to 0.40 (720p) and 1.14 to
+  0.08 (2160p); goldens now bound at `changed < 4%`, `mean < 0.60`.
 - Tests pin the font to `"SF Pro"` for goldens. The production fallback is
   `"PT Mono"`, which is not bundled on every machine and resolves to the system
   font through two different SwiftUI/AppKit paths.
@@ -751,14 +784,12 @@ preferences move to an explicit render-context snapshot.
 2. Implement `backgroundBlurRadius` material blur when a backdrop primitive
    exists; the timeline port currently draws the fade mask but not the material
    blur.
-3. Match SwiftUI's uneven three-spacer distribution in Work Summary (primary
-   block is ~5 px low). The current seam splits leftover height evenly after
-   honoring `Spacer(minLength: 12)`.
-4. Wire `SkiaIntervalModules.draw` into the shared dispatch table and route the
+3. Wire `SkiaIntervalModules.draw` into the shared dispatch table and route the
    preview canvas through it; all five interval types are dispatch-ready.
-5. Replace the interval-local element-glow shadow layers with
+4. Replace the interval-local element-glow shadow layers with
    `SkiaTextEffects.withElementLayers` once the calibration notes settle; this
-   is the remaining countdown `effects` residual.
+   is the remaining countdown `effects` residual and the kernel-shape gap
+   documented above.
 
 ### Dispatch readiness
 

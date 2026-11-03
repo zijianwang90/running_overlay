@@ -338,6 +338,32 @@ enum IntervalCountdownSkiaRenderer {
         ]
     }
 
+    /// Ring and element glows use the same SwiftUI radius/alpha mapping as the
+    /// rest of the interval family. The remaining `effects` residual is a
+    /// kernel-shape difference: scaling this pair up by 1.8 improves that
+    /// variant but over-brightens the default countdown, so the mapping stays
+    /// neutral until `SkiaTextEffects` owns element glows. `SKIA_INTERVAL_*`
+    /// overrides remain available for re-calibration.
+    private static var ringGlowSigmaScale: Double {
+        (ProcessInfo.processInfo.environment["SKIA_INTERVAL_RING_GLOW_SIGMA_SCALE"]
+            .flatMap(Double.init) ?? 1)
+    }
+
+    private static var globalGlowSigmaScale: Double {
+        (ProcessInfo.processInfo.environment["SKIA_INTERVAL_GLOBAL_GLOW_SIGMA_SCALE"]
+            .flatMap(Double.init) ?? 1)
+    }
+
+    private static var ringGlowAlphaScale: Double {
+        (ProcessInfo.processInfo.environment["SKIA_INTERVAL_RING_GLOW_ALPHA_SCALE"]
+            .flatMap(Double.init) ?? 1)
+    }
+
+    private static var globalGlowAlphaScale: Double {
+        (ProcessInfo.processInfo.environment["SKIA_INTERVAL_GLOBAL_GLOW_ALPHA_SCALE"]
+            .flatMap(Double.init) ?? 1)
+    }
+
     private static func ringGlowShadows(
         _ layout: IntervalCountdownRenderLayout
     ) -> [SkiaIntervalDraw.Shadow] {
@@ -345,18 +371,18 @@ enum IntervalCountdownSkiaRenderer {
         let intensity = layout.style.ringGlowIntensity
         return [
             .init(
-                radius: max(intensity * 16, 0),
+                radius: max(intensity * 16, 0) * ringGlowSigmaScale,
                 dx: 0,
                 dy: 0,
                 color: layout.ringColor,
-                alpha: intensity * 0.70
+                alpha: intensity * 0.70 * ringGlowAlphaScale
             ),
             .init(
-                radius: max(intensity * 28, 0),
+                radius: max(intensity * 28, 0) * ringGlowSigmaScale,
                 dx: 0,
                 dy: 0,
                 color: layout.ringColor,
-                alpha: intensity * 0.35
+                alpha: intensity * 0.35 * ringGlowAlphaScale
             )
         ]
     }
@@ -368,18 +394,18 @@ enum IntervalCountdownSkiaRenderer {
         guard style.glowEnabled else { return [] }
         return [
             .init(
-                radius: max(style.glowIntensity * 18, 0),
+                radius: max(style.glowIntensity * 18, 0) * globalGlowSigmaScale,
                 dx: 0,
                 dy: 0,
                 color: style.glowColor,
-                alpha: style.glowIntensity * 0.72
+                alpha: style.glowIntensity * 0.72 * globalGlowAlphaScale
             ),
             .init(
-                radius: max(style.glowIntensity * 34, 0),
+                radius: max(style.glowIntensity * 34, 0) * globalGlowSigmaScale,
                 dx: 0,
                 dy: 0,
                 color: style.glowColor,
-                alpha: style.glowIntensity * 0.35
+                alpha: style.glowIntensity * 0.35 * globalGlowAlphaScale
             )
         ]
     }

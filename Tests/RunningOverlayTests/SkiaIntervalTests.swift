@@ -2,6 +2,7 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import Metal
 import Testing
 @testable import RunningOverlay
 
@@ -60,6 +61,33 @@ import Testing
         #expect(rects.count == 2)
         #expect(rects[0].rect == CGRect(x: 100, y: 402, width: 10, height: 198))
         #expect(rects[1].rect == CGRect(x: 100, y: 200, width: 10, height: 198))
+    }
+
+    @Test func maskCacheQuantizesAndBoundsEntries() {
+        let cache = SkiaIntervalDraw.MaskCache()
+        let first = cache.mask(
+            size: CGSize(width: 100, height: 100),
+            cornerRadius: 4,
+            fadeAmount: 0.2
+        )
+        let nearby = cache.mask(
+            size: CGSize(width: 101, height: 99),
+            cornerRadius: 4.2,
+            fadeAmount: 0.201
+        )
+        #expect(first != nil)
+        #expect(first == nearby)
+        #expect(cache.cachedEntryCount == 1)
+
+        for index in 0..<40 {
+            _ = cache.mask(
+                size: CGSize(width: 200 + index * 32, height: 200),
+                cornerRadius: 4,
+                fadeAmount: 0.2
+            )
+        }
+        #expect(cache.cachedEntryCount <= 24)
+        #expect(cache.cachedByteCount <= 96 * 1024 * 1024)
     }
 
     // MARK: - Golden frames
@@ -178,18 +206,16 @@ import Testing
         let activity = Self.workoutSixLap()
         for size in [Self.size720p, Self.size1080p] {
             for variant in Self.workSummaryVariants() {
-                // SwiftUI splits the three content spacers unevenly around the
-                // 12pt minimum, so the primary stack sits ~5px lower in Skia.
-                // Everything else lines up; keep the wider mean bound until the
-                // spacer model is settled.
+                // The secondary HStack's dividers set the row height, which
+                // drives the spacer split; the fixed model now matches.
                 try await Self.golden(
                     element: variant.element,
                     activity: activity,
                     elapsedTime: 303,
                     size: size,
                     label: "work-summary-\(variant.name)-\(Int(size.height))p",
-                    maxChangedRatio: 0.05,
-                    maxMeanDelta: 1.30
+                    maxChangedRatio: 0.04,
+                    maxMeanDelta: 0.60
                 )
             }
         }
@@ -202,8 +228,8 @@ import Testing
             elapsedTime: 303,
             size: Self.size4K,
             label: "work-summary-default-2160p",
-            maxChangedRatio: 0.05,
-            maxMeanDelta: 1.30
+            maxChangedRatio: 0.04,
+            maxMeanDelta: 0.60
         )
     }
 
@@ -242,6 +268,123 @@ import Testing
             )
             #expect(layout.segments.count > 0)
             #expect(layout.leftOverflowCount > 0 || layout.rightOverflowCount > 0)
+        }
+    }
+
+    // MARK: - GPU parity
+
+    private struct MetalHandles {
+        let device: MTLDevice
+        let commandQueue: MTLCommandQueue
+    }
+
+    private static let metal: MetalHandles? = {
+        guard let device = MTLCreateSystemDefaultDevice(),
+              let commandQueue = device.makeCommandQueue()
+        else { return nil }
+        return MetalHandles(device: device, commandQueue: commandQueue)
+    }()
+
+    /// All five interval renderers go through `SkiaEasyRunRenderer` in preview
+    /// and export, which can be Metal-backed. Compare that path against the CPU
+    /// backend so GPU-only differences (mask upload, glow layers, glyph masks)
+    /// are visible.
+    @Test(.enabled(if: SkiaIntervalTests.metal != nil))
+    func intervalFamilyMatchesGPU() throws {
+        try OverlayPreferenceFixtures.withDefaults {
+            let size = Self.size1080p
+            let activity = Self.workoutSixLap()
+
+            func placed(_ element: OverlayElement, at position: CGPoint) -> OverlayElement {
+                OverlayElement(
+                    type: element.type,
+                    position: position,
+                    scale: element.scale,
+                    isVisible: true,
+                    isLocked: false,
+                    style: element.style
+                )
+            }
+
+            let layout = OverlayLayout(elements: [
+                placed(Self.timelineVariants()[0].element, at: CGPoint(x: 0.5, y: 0.28)),
+                placed(Self.hudBarVariants()[0].element, at: CGPoint(x: 0.5, y: 0.52)),
+                placed(Self.countdownVariants()[0].element, at: CGPoint(x: 0.22, y: 0.78)),
+                placed(Self.workSummaryVariants()[0].element, at: CGPoint(x: 0.76, y: 0.78)),
+                placed(Self.zoneBarVariants()[0].element, at: CGPoint(x: 0.86, y: 0.28))
+            ])
+
+            guard let cpu = SkiaEasyRunRenderer(size: size) else {
+                Issue.record("CPU Skia renderer unavailable")
+                return
+            }
+            let (cpuPointer, cpuRowBytes) = try #require(cpu.render(
+                layout: layout,
+                activity: activity,
+                elapsedTime: 303
+            ))
+            let cpuPixels = Array(
+                UnsafeBufferPointer(
+                    start: cpuPointer,
+                    count: cpuRowBytes * Int(size.height)
+                )
+            )
+
+            guard let handles = Self.metal,
+                  let gpu = SkiaEasyRunRenderer(
+                      size: size,
+                      device: handles.device,
+                      commandQueue: handles.commandQueue
+                  )
+            else {
+                print("SKIA-INTERVAL-GPU skipped: no GPU Skia context")
+                return
+            }
+            gpu.draw(layout: layout, activity: activity, elapsedTime: 303)
+            gpu.flush(sync: true)
+            guard let (gpuPointer, gpuRowBytes) = gpu.readPixels() else {
+                Issue.record("GPU Skia readback failed")
+                return
+            }
+            let gpuPixels = Array(
+                UnsafeBufferPointer(
+                    start: gpuPointer,
+                    count: gpuRowBytes * Int(size.height)
+                )
+            )
+
+            let width = Int(size.width)
+            let height = Int(size.height)
+            var changed = 0
+            var totalDelta = 0
+            var maxDelta = 0
+            for y in 0..<height {
+                for x in 0..<width {
+                    var pixelDelta = 0
+                    for channel in 0..<4 {
+                        pixelDelta += abs(
+                            Int(cpuPixels[y * cpuRowBytes + x * 4 + channel])
+                                - Int(gpuPixels[y * gpuRowBytes + x * 4 + channel])
+                        )
+                    }
+                    if pixelDelta > 8 {
+                        changed += 1
+                    }
+                    maxDelta = max(maxDelta, pixelDelta)
+                    totalDelta += pixelDelta
+                }
+            }
+            let total = width * height
+            let changedRatio = Double(changed) / Double(total)
+            let meanDelta = Double(totalDelta) / Double(total * 4)
+            print(
+                "SKIA-INTERVAL-GPU changed=\(changed)/\(total) "
+                    + "(\(String(format: "%.3f", changedRatio * 100))%) "
+                    + "meanDelta=\(String(format: "%.4f", meanDelta)) "
+                    + "maxDelta=\(maxDelta)"
+            )
+            #expect(changedRatio < 0.03)
+            #expect(meanDelta < 1)
         }
     }
 
@@ -285,6 +428,14 @@ import Testing
         plain.borderEnabled = false
         plain.intervalTimeline.markerEnabled = false
 
+        // Current segment is short enough that SwiftUI's VStack shrinks the
+        // rep/label/duration stack vertically via minimumScaleFactor.
+        var tight = defaultStyle
+        tight.intervalTimeline.height = 56
+        tight.intervalTimeline.segmentHeight = 28
+        tight.intervalTimeline.currentSegmentHeightScale = 1.3
+        tight.intervalTimeline.currentSegmentWidthFraction = 0.32
+
         return [
             Variant(
                 name: "default",
@@ -317,6 +468,17 @@ import Testing
                     isVisible: true,
                     isLocked: false,
                     style: plain
+                )
+            ),
+            Variant(
+                name: "tight",
+                element: OverlayElement(
+                    type: .intervalTimeline,
+                    position: CGPoint(x: 0.5, y: 0.5),
+                    scale: 1,
+                    isVisible: true,
+                    isLocked: false,
+                    style: tight
                 )
             )
         ]

@@ -263,15 +263,33 @@ enum SkiaIntervalDraw {
     // MARK: - Feathered background
 
     /// Caches the distance-field mask images used by `OverlayFeatheredBackground`.
+    ///
+    /// Keys are quantized so a preview drag changes the key only once per
+    /// bucket instead of once per rendered size, and the cache is bounded by
+    /// both entry count and bytes. A 4K mask is roughly 33 MB, so the byte cap
+    /// keeps only a few of them alive.
     final class MaskCache {
         private struct Key: Hashable {
             var width: Int
             var height: Int
-            var radius: Double
-            var fade: Double
+            var radius: Int
+            var fade: Int
         }
 
+        private static let sizeStep = 8
+        private static let radiusStep = 1.0
+        private static let fadeStep = 0.01
+        private static let maxEntries = 24
+        private static let maxBytes = 96 * 1024 * 1024
+
         private var images: [Key: OpaquePointer] = [:]
+        private var costs: [Key: Int] = [:]
+        private var order: [Key] = []
+        private var totalBytes = 0
+
+        /// Test-visible bounds.
+        var cachedEntryCount: Int { images.count }
+        var cachedByteCount: Int { totalBytes }
 
         deinit {
             for image in images.values {
@@ -282,18 +300,53 @@ enum SkiaIntervalDraw {
         func mask(size: CGSize, cornerRadius: Double, fadeAmount: Double) -> OpaquePointer? {
             let width = max(Int(size.width.rounded(.up)), 1)
             let height = max(Int(size.height.rounded(.up)), 1)
-            let key = Key(width: width, height: height, radius: cornerRadius, fade: fadeAmount)
+            let key = Key(
+                width: Self.bucket(width, step: Self.sizeStep),
+                height: Self.bucket(height, step: Self.sizeStep),
+                radius: max(Self.bucket(cornerRadius, step: Self.radiusStep), 0),
+                fade: max(Int((fadeAmount / Self.fadeStep).rounded()), 0)
+            )
             if let cached = images[key] {
+                touch(key)
                 return cached
             }
             guard let mask = Self.makeMaskImage(
-                width: width,
-                height: height,
-                cornerRadius: cornerRadius,
-                fadeAmount: fadeAmount
+                width: key.width,
+                height: key.height,
+                cornerRadius: Double(key.radius) * Self.radiusStep,
+                fadeAmount: Double(key.fade) * Self.fadeStep
             ) else { return nil }
             images[key] = mask
+            costs[key] = key.width * key.height * 4
+            order.append(key)
+            totalBytes += costs[key] ?? 0
+            evictIfNeeded()
             return mask
+        }
+
+        private static func bucket(_ value: Int, step: Int) -> Int {
+            Int((Double(value) / Double(step)).rounded(.up)) * step
+        }
+
+        private static func bucket(_ value: Double, step: Double) -> Int {
+            Int((value / step).rounded())
+        }
+
+        private func touch(_ key: Key) {
+            guard let index = order.firstIndex(of: key) else { return }
+            order.remove(at: index)
+            order.append(key)
+        }
+
+        private func evictIfNeeded() {
+            while (order.count > Self.maxEntries || totalBytes > Self.maxBytes),
+                  !order.isEmpty {
+                let key = order.removeFirst()
+                if let image = images.removeValue(forKey: key) {
+                    skb_image_destroy(image)
+                }
+                totalBytes -= costs.removeValue(forKey: key) ?? 0
+            }
         }
 
         private static func makeMaskImage(
@@ -548,6 +601,10 @@ enum SkiaIntervalText {
     }
 
     /// Draws a centered vertical stack of lines inside `rect`.
+    ///
+    /// SwiftUI proposes the fixed segment height to the stack, so `Text` with
+    /// `minimumScaleFactor` shrinks vertically as well as horizontally. The
+    /// stack is scaled uniformly when its intrinsic height exceeds `rect`.
     static func drawStack(
         _ lines: [StackLine],
         rect: CGRect,
@@ -564,26 +621,57 @@ enum SkiaIntervalText {
             var opacity: Double
         }
 
-        var measured: [Measured] = []
-        for item in lines where !item.text.isEmpty {
-            let fitted = fitted(
-                item.text,
-                font: item.font,
-                maxWidth: rect.width,
-                minimumScaleFactor: item.minimumScaleFactor
-            )
-            measured.append(Measured(
-                text: fitted.text,
-                font: fitted.font,
-                line: fitted.line,
-                color: item.color,
-                opacity: item.opacity
-            ))
+        func measure(_ scale: Double) -> [Measured] {
+            lines.compactMap { item in
+                guard !item.text.isEmpty else { return nil }
+                let font: NSFont
+                if scale < 0.999 {
+                    font = NSFont(
+                        descriptor: item.font.fontDescriptor,
+                        size: max(item.font.pointSize * CGFloat(scale), 6)
+                    ) ?? item.font
+                } else {
+                    font = item.font
+                }
+                let fitted = fitted(
+                    item.text,
+                    font: font,
+                    maxWidth: rect.width,
+                    minimumScaleFactor: item.minimumScaleFactor
+                )
+                return Measured(
+                    text: fitted.text,
+                    font: fitted.font,
+                    line: fitted.line,
+                    color: item.color,
+                    opacity: item.opacity
+                )
+            }
+        }
+
+        func height(_ measured: [Measured]) -> Double {
+            measured.reduce(0) { $0 + $1.line.height }
+                + spacing * Double(max(measured.count - 1, 0))
+        }
+
+        var measured = measure(1)
+        guard !measured.isEmpty else { return }
+
+        let intrinsic = height(measured)
+        if intrinsic > rect.height, intrinsic > 0 {
+            let floor = lines.map(\.minimumScaleFactor).min() ?? 1
+            let fixedSpacing = spacing * Double(max(measured.count - 1, 0))
+            let lineHeight = measured.reduce(0) { $0 + $1.line.height }
+            let scale = lineHeight > 0
+                ? max((rect.height - fixedSpacing) / lineHeight, floor)
+                : 1
+            if scale < 0.999 {
+                measured = measure(scale)
+            }
         }
         guard !measured.isEmpty else { return }
 
-        let totalHeight = measured.reduce(0) { $0 + $1.line.height }
-            + spacing * Double(max(measured.count - 1, 0))
+        let totalHeight = height(measured)
         var top = rect.midY - totalHeight / 2
         for item in measured {
             let x = rect.midX - item.line.width / 2
