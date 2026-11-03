@@ -868,6 +868,8 @@ Tests (`Tests/RunningOverlayTests/`):
   preset oracle, decor oracle, material-blur fixture, effects fixtures.
 - `SkiaTextComposerTests.swift` — shaping/alignment/tnum and a pill-width
   composition regression test.
+- `SkiaTextGPUParityTests.swift` — CPU-vs-Metal parity through
+  `SkiaEasyRunRenderer` (the preview/export path), skipped without Metal.
 
 ### Composer API (stable for other modules)
 
@@ -907,6 +909,28 @@ Effects fixtures report a larger changed ratio because a small blur-falloff
 difference covers a large glow/shadow area; `meanDelta` remains below 0.25.
 Thresholds therefore use `changedRatio < 0.05` and `meanDelta < 2` for the
 effects fixtures only.
+
+### GPU-path parity (`SkiaEasyRunRenderer`, Metal offscreen)
+
+`SkiaTextGPUParityTests` draws the same production elements through a CPU
+`SkiaEasyRunRenderer` and a Metal-backed one (`skb_create_gpu`, offscreen
+surface, `readPixels`), so the comparison covers the real preview/export
+dispatch rather than `SkiaTextModule` in isolation. Anchors are fractional
+(`0.2137/0.3071`, `0.5031/0.4969`) to exercise subpixel coverage.
+
+| Fixture | changed | meanDelta | maxDelta |
+| --- | ---: | ---: | ---: |
+| minimal text (icon, label, unit, background) | 0.000% | 0.0000 | 0 |
+| decor icon (SF Symbol upload) | 0.000% | 0.0000 | 0 |
+
+Ganesh and the raster backend are pixel-identical for these primitives; glyph
+masks and the rasterized icon are uploaded as the same premultiplied BGRA
+data, and analytic path coverage matches. Thresholds remain
+`changedRatio < 0.02`, `meanDelta < 1` to catch future regressions.
+
+The suite is disabled via `.enabled(if:)` when `MTLCreateSystemDefaultDevice()`
+is unavailable, and returns after printing `skipped` when a Metal device exists
+but the bridge has no GPU context. It never fails on machines without Metal.
 
 ### Findings and known limitations
 
