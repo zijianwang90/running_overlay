@@ -106,6 +106,113 @@ void skb_draw_image(
         image, SkRect::MakeXYWH(x, y, w, h), SkSamplingOptions(SkFilterMode::kLinear), &paint);
 }
 
+SkiaBridgeImage *skb_image_create(
+    const uint8_t *bgra, int width, int height) {
+    if (!bgra || width <= 0 || height <= 0) return nullptr;
+    SkImageInfo info = SkImageInfo::Make(
+        width, height, kBGRA_8888_SkColorType, kPremul_SkAlphaType);
+    SkPixmap pixmap(info, bgra, width * 4);
+    sk_sp<SkImage> image = SkImages::RasterFromPixmapCopy(pixmap);
+    if (!image) return nullptr;
+    auto *handle = new SkiaBridgeImage();
+    handle->image = std::move(image);
+    return handle;
+}
+
+void skb_image_destroy(SkiaBridgeImage *image) { delete image; }
+
+void skb_draw_image_handle(
+    SkiaBridgeContext *ctx, const SkiaBridgeImage *image,
+    float x, float y, float w, float h, float opacity,
+    float shadowSigma, float shadowDX, float shadowDY, float shadowAlpha) {
+    if (!ctx || !image || !image->image) return;
+    SkPaint paint;
+    paint.setAlphaf(opacity);
+    if (shadowAlpha > 0) {
+        paint.setImageFilter(SkImageFilters::DropShadow(
+            shadowDX, shadowDY, shadowSigma, shadowSigma,
+            SkColor4f{0, 0, 0, shadowAlpha}.toSkColor(), nullptr));
+    }
+    ctx->surface->getCanvas()->drawImageRect(
+        image->image, SkRect::MakeXYWH(x, y, w, h),
+        SkSamplingOptions(SkFilterMode::kLinear), &paint);
+}
+
+void skb_draw_image_dst_in(
+    SkiaBridgeContext *ctx, const SkiaBridgeImage *image,
+    float x, float y, float w, float h) {
+    if (!ctx || !image || !image->image) return;
+    SkPaint paint;
+    paint.setBlendMode(SkBlendMode::kDstIn);
+    ctx->surface->getCanvas()->drawImageRect(
+        image->image, SkRect::MakeXYWH(x, y, w, h),
+        SkSamplingOptions(SkFilterMode::kLinear), &paint);
+}
+
+void skb_clip_image_mask(
+    SkiaBridgeContext *ctx, const SkiaBridgeImage *mask,
+    float x, float y, float w, float h) {
+    if (!ctx || !mask || !mask->image) return;
+    SkMatrix matrix = SkMatrix::RectToRect(
+        SkRect::MakeWH(
+            (float)mask->image->width(), (float)mask->image->height()),
+        SkRect::MakeXYWH(x, y, w, h),
+        SkMatrix::kFill_ScaleToFit);
+    sk_sp<SkShader> shader = mask->image->makeShader(
+        SkTileMode::kClamp, SkTileMode::kClamp,
+        SkSamplingOptions(SkFilterMode::kLinear), &matrix);
+    if (shader) {
+        ctx->surface->getCanvas()->clipShader(
+            std::move(shader), SkClipOp::kIntersect);
+    }
+}
+
+void skb_draw_path_gradient(
+    SkiaBridgeContext *ctx, const SkiaBridgePath *path,
+    int fill, float strokeWidth, int cap, int join,
+    const float *stops, int stopCount,
+    float x0, float y0, float x1, float y1) {
+    if (!path || !stops || stopCount < 2) return;
+    std::vector<SkColor4f> colors((size_t)stopCount);
+    std::vector<float> positions((size_t)stopCount);
+    for (int i = 0; i < stopCount; i++) {
+        positions[(size_t)i] = stops[i * 5];
+        colors[(size_t)i] = {
+            stops[i * 5 + 1], stops[i * 5 + 2],
+            stops[i * 5 + 3], stops[i * 5 + 4]};
+    }
+    SkGradient gradient(
+        SkGradient::Colors(
+            SkSpan<const SkColor4f>(colors.data(), (size_t)stopCount),
+            SkSpan<const float>(positions.data(), (size_t)stopCount),
+            SkTileMode::kClamp),
+        SkGradient::Interpolation{});
+    SkPoint points[2] = {SkPoint::Make(x0, y0), SkPoint::Make(x1, y1)};
+    sk_sp<SkShader> shader = SkShaders::LinearGradient(points, gradient);
+    if (!shader) return;
+    SkPaint paint;
+    paint.setAntiAlias(true);
+    paint.setShader(std::move(shader));
+    if (fill) {
+        paint.setStyle(SkPaint::kFill_Style);
+    } else {
+        paint.setStyle(SkPaint::kStroke_Style);
+        paint.setStrokeWidth(strokeWidth);
+        paint.setStrokeCap(static_cast<SkPaint::Cap>(cap));
+        paint.setStrokeJoin(static_cast<SkPaint::Join>(join));
+    }
+    ctx->surface->getCanvas()->drawPath(path->builder.snapshot(), paint);
+}
+
+void skb_begin_opacity_layer(
+    SkiaBridgeContext *ctx, float alpha,
+    float x, float y, float w, float h) {
+    SkPaint paint;
+    paint.setAlphaf(alpha);
+    SkRect bounds = SkRect::MakeXYWH(x, y, w, h);
+    ctx->surface->getCanvas()->saveLayer(&bounds, &paint);
+}
+
 void skb_save(SkiaBridgeContext *ctx) { ctx->surface->getCanvas()->save(); }
 void skb_restore(SkiaBridgeContext *ctx) { ctx->surface->getCanvas()->restore(); }
 

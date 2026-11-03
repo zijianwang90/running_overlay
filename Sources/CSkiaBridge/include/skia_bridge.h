@@ -40,6 +40,27 @@ void skb_draw_image(
     float x, float y, float w, float h, float opacity,
     float shadowSigma, float shadowDX, float shadowDY, float shadowAlpha);
 
+/// Reusable image handle. Create once per asset; the context does not own it.
+typedef struct SkiaBridgeImage SkiaBridgeImage;
+
+SkiaBridgeImage *skb_image_create(
+    const uint8_t *bgra, int width, int height);
+void skb_image_destroy(SkiaBridgeImage *image);
+void skb_draw_image_handle(
+    SkiaBridgeContext *ctx, const SkiaBridgeImage *image,
+    float x, float y, float w, float h, float opacity,
+    float shadowSigma, float shadowDX, float shadowDY, float shadowAlpha);
+/// Intersects the clip with the image's alpha channel, scaled into the rect.
+void skb_clip_image_mask(
+    SkiaBridgeContext *ctx, const SkiaBridgeImage *mask,
+    float x, float y, float w, float h);
+/// Draws an image with destination-in blending. Inside a saved layer this
+/// multiplies the layer's existing alpha by the image alpha, which is the
+/// feathered-background mask recipe.
+void skb_draw_image_dst_in(
+    SkiaBridgeContext *ctx, const SkiaBridgeImage *image,
+    float x, float y, float w, float h);
+
 void skb_save(SkiaBridgeContext *ctx);
 void skb_restore(SkiaBridgeContext *ctx);
 
@@ -122,6 +143,14 @@ void skb_draw_path(
     float dashLength, float dashGap);
 void skb_clip_path(SkiaBridgeContext *ctx, const SkiaBridgePath *path);
 
+/// Draws a path with a linear gradient. `stops` is interleaved
+/// (offset, r, g, b, a) per stop and must be ordered by offset.
+void skb_draw_path_gradient(
+    SkiaBridgeContext *ctx, const SkiaBridgePath *path,
+    int fill, float strokeWidth, int cap, int join,
+    const float *stops, int stopCount,
+    float x0, float y0, float x1, float y1);
+
 /// Fills a rect with a linear gradient between two points.
 void skb_fill_linear_gradient_rect(
     SkiaBridgeContext *ctx, float x, float y, float w, float h,
@@ -138,6 +167,12 @@ void skb_fill_radial_gradient_circle(
 /// Starts a layer whose contents are blurred with a Gaussian.
 void skb_begin_blur_layer(
     SkiaBridgeContext *ctx, float sigma,
+    float x, float y, float w, float h);
+
+/// Starts a layer whose contents are composited with `alpha`. Use for a
+/// whole-module `element.opacity` so overlapping shapes do not double-blend.
+void skb_begin_opacity_layer(
+    SkiaBridgeContext *ctx, float alpha,
     float x, float y, float w, float h);
 
 /// Premultiplied BGRA pixels, `rowBytes` per row.

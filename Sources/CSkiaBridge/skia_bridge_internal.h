@@ -1,6 +1,7 @@
 #ifndef SKIA_BRIDGE_INTERNAL_H
 #define SKIA_BRIDGE_INTERNAL_H
 
+#include "include/core/SkImage.h"
 #include "include/core/SkPathBuilder.h"
 #include "include/core/SkPixmap.h"
 #include "include/core/SkRefCnt.h"
@@ -23,6 +24,11 @@ struct SkiaBridgeContext {
 /// C-side path handle. `snapshot()` keeps the builder reusable after drawing.
 struct SkiaBridgePath {
     SkPathBuilder builder;
+};
+
+/// C-side image handle. The image owns an immutable copy of the BGRA pixels.
+struct SkiaBridgeImage {
+    sk_sp<SkImage> image;
 };
 
 /// Implemented in `skia_gpu.mm`.
