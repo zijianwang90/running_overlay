@@ -69,11 +69,7 @@ import Testing
     /// empty set with the fallback pass deleted; a module port must update this
     /// list so double-drawing or a silently dropped module fails the build.
     @Test func skiaPreviewKeepsSwiftUIFallbackOnlyForUnportedModules() {
-        let expectedFallback: Set<OverlayElementType> = [
-            .elevationChart,
-            .intervalHUDBar,
-            .intervalWorkSummary,
-        ]
+        let expectedFallback: Set<OverlayElementType> = []
 
         for type in OverlayElementType.allCases {
             let element = OverlayElement(
@@ -97,8 +93,10 @@ import Testing
             .decorSolidColor,
             .distanceTimeline,
             .runningGauge,
+            .elevationChart,
             .routeMap,
             .weatherWidget,
+            .intervalHUDBar,
             .intervalTimeline,
             .intervalCountdown,
             .zoneEdgeBar,
@@ -133,6 +131,16 @@ import Testing
             }
             #expect(nonEmptySamples > 0, "\(type.rawValue) drew no pixels")
         }
+
+        // Work Summary draws only inside its display window. This test samples
+        // t=12s, so assert dispatch without requiring pixels here.
+        let workSummary = OverlayElement(
+            type: .intervalWorkSummary,
+            position: CGPoint(x: 0.5, y: 0.5),
+            scale: 1,
+            style: .default
+        )
+        #expect(SkiaEasyRunRenderer.supports(workSummary))
     }
 
     /// Interaction in Skia mode uses model rects for every visible element,

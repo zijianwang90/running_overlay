@@ -23,14 +23,17 @@ final class SkiaEasyRunRenderer {
     /// D/E lands each renderer; unported types stay on the SwiftUI fallback.
     private static let portedChartTypes: Set<OverlayElementType> = [
         .distanceTimeline,
-        .runningGauge
+        .runningGauge,
+        .elevationChart
     ]
 
     /// Interval-family modules with a real Skia port. Keep this in sync as
     /// Group I lands each renderer; unported types stay on the SwiftUI fallback.
     private static let portedIntervalTypes: Set<OverlayElementType> = [
+        .intervalHUDBar,
         .intervalTimeline,
         .intervalCountdown,
+        .intervalWorkSummary,
         .zoneEdgeBar
     ]
 
