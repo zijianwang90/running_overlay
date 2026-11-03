@@ -114,6 +114,37 @@ import Testing
         )
     }
 
+    @Test func countdownParity720pAnd1080p() async throws {
+        let activity = Self.workoutSixLap()
+        for size in [Self.size720p, Self.size1080p] {
+            for variant in Self.countdownVariants() {
+                // The full-foreground white glow is a broad, low-amplitude
+                // layer; its falloff is the remaining calibration gap until
+                // Group T's `SkiaTextEffects` owns element glows.
+                let isEffects = variant.name == "effects"
+                try await Self.golden(
+                    element: variant.element,
+                    activity: activity,
+                    elapsedTime: 150,
+                    size: size,
+                    label: "countdown-\(variant.name)-\(Int(size.height))p",
+                    maxChangedRatio: isEffects ? 0.10 : 0.03,
+                    maxMeanDelta: isEffects ? 1.50 : 0.35
+                )
+            }
+        }
+    }
+
+    @Test func countdownParity4KSubset() async throws {
+        try await Self.golden(
+            element: Self.countdownVariants()[0].element,
+            activity: Self.workoutSixLap(),
+            elapsedTime: 150,
+            size: Self.size4K,
+            label: "countdown-default-2160p"
+        )
+    }
+
     @Test func timelineOneMinuteBy25Layout() {
         OverlayPreferenceFixtures.withDefaults {
             let activity = Self.oneMinuteBy25()
@@ -262,6 +293,70 @@ import Testing
         ]
     }
 
+    private static func countdownVariants() -> [Variant] {
+        func pinned(_ style: inout OverlayStyle) {
+            style.fontName = "SF Pro"
+            style.intervalCountdown.helperText.fontName = "SF Pro"
+            style.intervalCountdown.phaseText.fontName = "SF Pro"
+            style.intervalCountdown.repText.fontName = "SF Pro"
+            style.intervalCountdown.countdownText.fontName = "SF Pro"
+            style.intervalCountdown.captionText.fontName = "SF Pro"
+        }
+
+        var defaultStyle = OverlayStyle.default
+        pinned(&defaultStyle)
+
+        var effects = defaultStyle
+        effects.glowEnabled = true
+        effects.glowIntensity = 0.55
+        effects.borderEnabled = true
+        effects.intervalCountdown.ringGlowIntensity = 0.65
+
+        var plain = OverlayStyle.default
+        pinned(&plain)
+        plain.backgroundEnabled = false
+        plain.shadowEnabled = false
+        plain.glowEnabled = false
+        plain.borderEnabled = false
+        plain.intervalCountdown.ringGlowEnabled = false
+
+        return [
+            Variant(
+                name: "default",
+                element: OverlayElement(
+                    type: .intervalCountdown,
+                    position: CGPoint(x: 0.5, y: 0.5),
+                    scale: 1,
+                    isVisible: true,
+                    isLocked: false,
+                    style: defaultStyle
+                )
+            ),
+            Variant(
+                name: "effects",
+                element: OverlayElement(
+                    type: .intervalCountdown,
+                    position: CGPoint(x: 0.5, y: 0.5),
+                    scale: 1,
+                    isVisible: true,
+                    isLocked: false,
+                    style: effects
+                )
+            ),
+            Variant(
+                name: "plain",
+                element: OverlayElement(
+                    type: .intervalCountdown,
+                    position: CGPoint(x: 0.5, y: 0.5),
+                    scale: 1,
+                    isVisible: true,
+                    isLocked: false,
+                    style: plain
+                )
+            )
+        ]
+    }
+
     private struct LapSpec {
         var kind: LapKind
         var seconds: TimeInterval
@@ -386,7 +481,9 @@ import Testing
         elapsedTime: TimeInterval,
         size: CGSize,
         label: String,
-        threshold: Int = 8
+        threshold: Int = 8,
+        maxChangedRatio: Double = 0.03,
+        maxMeanDelta: Double = 0.35
     ) async throws {
         try await OverlayPreferenceFixtures.withDefaults {
             let layout = OverlayLayout(elements: [element])
@@ -469,8 +566,8 @@ import Testing
             // Smoke bounds only. Residual is glyph antialiasing plus a ~2px
             // text-stack baseline offset that Group T's composer should absorb.
             // Tighten after human review of the PNGs.
-            #expect(metrics.changedRatio < 0.03)
-            #expect(metrics.meanDelta < 0.35)
+            #expect(metrics.changedRatio < maxChangedRatio)
+            #expect(metrics.meanDelta < maxMeanDelta)
         }
     }
 

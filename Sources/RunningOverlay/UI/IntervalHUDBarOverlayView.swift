@@ -407,24 +407,22 @@ struct IntervalHUDBarOverlayView: View {
     }
 
     private func intervalZoneRects(frames: [IntervalHUDBarZoneSegmentFrame], width: Double) -> [IntervalHUDBarZoneRect] {
-        let segmentCount = min(frames.count, layout.zoneSegments.count)
-        guard segmentCount > 0 else { return [] }
-        let requestedGap = max(style.zoneSegmentGap * element.scale, 0)
-        let maxGap = segmentCount > 1 ? max(width / Double(segmentCount - 1) * 0.18, 0) : 0
-        let gap = min(requestedGap, maxGap)
-        let usableWidth = max(width - gap * Double(max(segmentCount - 1, 0)), 1)
-        return (0..<segmentCount).map { position in
-            let frame = frames[position]
-            let segment = layout.zoneSegments[position]
-            let isActive = segment.index == layout.bottomBarActiveZoneIndex
-            let height = isActive ? layout.barHeight * max(style.activeZoneHeightScale, 1) : layout.barHeight
-            let positionOffset = Double(position) * gap
-            return IntervalHUDBarZoneRect(
-                index: segment.index,
-                x: usableWidth * frame.start + positionOffset,
-                y: (layout.barHeight - height) / 2,
-                width: max(usableWidth * frame.width, 0),
-                height: height
+        OverlayRenderModel.intervalZoneBarRects(
+            frames: frames,
+            segments: layout.zoneSegments,
+            barRect: CGRect(x: 0, y: 0, width: width, height: layout.barHeight),
+            activeIndex: layout.bottomBarActiveZoneIndex,
+            activeThicknessScale: style.activeZoneHeightScale,
+            segmentGap: style.zoneSegmentGap,
+            elementScale: element.scale,
+            orientation: .horizontal
+        ).map { zoneRect in
+            IntervalHUDBarZoneRect(
+                index: zoneRect.index,
+                x: zoneRect.rect.minX,
+                y: zoneRect.rect.minY,
+                width: zoneRect.rect.width,
+                height: zoneRect.rect.height
             )
         }
     }

@@ -46,8 +46,16 @@ enum SkiaIntervalModules {
                 maskCache: maskCache
             )
         case .intervalCountdown:
-            // TODO(Group I): port `IntervalCountdownOverlayView`.
-            break
+            let layout = OverlayRenderModel.intervalCountdownLayout(
+                for: element,
+                in: renderContext
+            )
+            IntervalCountdownSkiaRenderer.draw(
+                element,
+                layout: layout,
+                context: skiaContext,
+                maskCache: maskCache
+            )
         case .intervalWorkSummary:
             // TODO(Group I): port `IntervalWorkSummaryOverlayView`.
             break

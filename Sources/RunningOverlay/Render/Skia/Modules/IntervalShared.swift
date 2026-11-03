@@ -148,12 +148,12 @@ enum SkiaIntervalDraw {
         }
     }
 
-    /// SwiftUI `shadow(radius:)` to Skia Gaussian sigma. Calibrated per module
-    /// through an environment override so goldens can be reviewed without
-    /// changing production defaults.
+    /// SwiftUI `shadow(radius:)` to Skia Gaussian sigma. Calibrated against
+    /// the interval goldens through an environment override so goldens can be
+    /// reviewed without changing production defaults.
     static func shadowSigma(_ radius: Double) -> Double {
         let factor = ProcessInfo.processInfo.environment["SKIA_INTERVAL_SHADOW_SIGMA_FACTOR"]
-            .flatMap(Double.init) ?? 0.5
+            .flatMap(Double.init) ?? 1.0
         return max(radius * factor, 0)
     }
 
