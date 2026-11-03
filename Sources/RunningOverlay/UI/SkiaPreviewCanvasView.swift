@@ -100,6 +100,19 @@ final class SkiaPreviewMetalView: NSView {
     private var isPaused = true
     private var needsRender = true
 
+    /// Route map snapshots are fetched asynchronously and only ever consumed by
+    /// `preloadAssets` outside the frame loop. Replaceable in tests.
+    var mapSnapshotProvider: any MapSnapshotProvider & Sendable = MapKitMapSnapshotProvider()
+    private var mapSnapshots: [MapSnapshotRequest: NSImage] = [:]
+    private var pendingSnapshotRequests: Set<MapSnapshotRequest> = []
+    private var failedSnapshotRequests: Set<MapSnapshotRequest> = []
+
+    /// Inputs of the last successful `preloadAssets` call. Draw never rasterizes
+    /// AppKit assets; `configure` refreshes them before the next frame.
+    private var preloadedLayout: OverlayLayout?
+    private var preloadedActivity: ActivityTimeline?
+    private var preloadedCanvasSize: CGSize = .zero
+
     private var frameLink: CADisplayLink?
     private var frameIndex = 0
     private var lastFrameStart: CFTimeInterval?
@@ -142,6 +155,13 @@ final class SkiaPreviewMetalView: NSView {
             metalLayer.drawableSize = canvasSize
         }
         frameLink?.isPaused = isPaused
+
+        // Rasterize route masks / weather icons and register any snapshots we
+        // already have before the next frame. Missing snapshots are fetched
+        // asynchronously and trigger one redraw when they arrive.
+        refreshPreloadedAssetsIfNeeded()
+        requestMissingMapSnapshotsIfNeeded()
+
         needsRender = true
         renderIfPaused()
     }
@@ -194,6 +214,10 @@ final class SkiaPreviewMetalView: NSView {
         guard let drawable = metalLayer.nextDrawable() else { return nil }
         let texture = drawable.texture
         let pixelSize = CGSize(width: texture.width, height: texture.height)
+        // `configure`/`layout` keep the layer at project resolution and preload
+        // assets for it. Skip a stale drawable rather than rebuilding the
+        // renderer (and rasterizing assets) inside the frame callback.
+        guard pixelSize == canvasSize else { return nil }
         guard let renderer = renderer(for: pixelSize),
               renderer.wrap(texture: texture) else {
             return nil
@@ -235,6 +259,8 @@ final class SkiaPreviewMetalView: NSView {
     @discardableResult
     func renderIntoTexture(_ texture: MTLTexture) -> Bool {
         guard let activity else { return false }
+        // Keep asset rasterization on the caller's (non-frame) path.
+        refreshPreloadedAssetsIfNeeded()
         let size = CGSize(width: texture.width, height: texture.height)
         guard let renderer = renderer(for: size),
               renderer.wrap(texture: texture) else {
@@ -243,6 +269,82 @@ final class SkiaPreviewMetalView: NSView {
         renderer.draw(layout: overlayLayout, activity: activity, elapsedTime: elapsedTime)
         renderer.flush(sync: true)
         return true
+    }
+
+    // MARK: - Assets
+
+    /// Preloads route masks, weather icons, and any available map snapshots.
+    /// Runs from `configure` and snapshot completion, never from the display
+    /// link callback.
+    private func refreshPreloadedAssetsIfNeeded(force: Bool = false) {
+        guard let activity else { return }
+        if !force,
+           preloadedCanvasSize == canvasSize,
+           preloadedLayout == overlayLayout,
+           preloadedActivity == activity {
+            return
+        }
+        guard let renderer = renderer(for: canvasSize) else { return }
+        renderer.preloadAssets(
+            layout: overlayLayout,
+            activity: activity,
+            mapSnapshots: mapSnapshots
+        )
+        preloadedLayout = overlayLayout
+        preloadedActivity = activity
+        preloadedCanvasSize = canvasSize
+    }
+
+    /// Requests map snapshots for visible route maps that do not have one yet.
+    /// Requests are deduplicated while in flight and not retried after failure
+    /// until the route geometry or style changes the request key.
+    private func requestMissingMapSnapshotsIfNeeded() {
+        guard let activity else { return }
+        let renderContext = OverlayRenderContext(
+            canvasSize: canvasSize,
+            activity: activity,
+            elapsedTime: 0
+        )
+        for element in overlayLayout.elements where element.isVisible && element.type == .routeMap {
+            let layout = OverlayRenderModel.routeMapLayout(for: element, in: renderContext)
+            guard let request = RouteMapSnapshotRequestBuilder.request(
+                for: element,
+                layout: layout
+            ) else { continue }
+            guard mapSnapshots[request] == nil,
+                  !pendingSnapshotRequests.contains(request),
+                  !failedSnapshotRequests.contains(request) else { continue }
+
+            pendingSnapshotRequests.insert(request)
+            let provider = mapSnapshotProvider
+            Task { @MainActor [weak self] in
+                let image = await provider.snapshotImage(for: request).image
+                self?.finishMapSnapshotRequest(request, image: image)
+            }
+        }
+    }
+
+    private func finishMapSnapshotRequest(
+        _ request: MapSnapshotRequest,
+        image: NSImage?
+    ) {
+        pendingSnapshotRequests.remove(request)
+        guard let image else {
+            failedSnapshotRequests.insert(request)
+            return
+        }
+        mapSnapshots[request] = image
+        refreshPreloadedAssetsIfNeeded(force: true)
+        needsRender = true
+        if isPaused {
+            renderIfPaused()
+        } else if frameLink == nil {
+            // No display link (for example an off-window test host): still
+            // present one frame so the new snapshot is visible.
+            if renderFrame() != nil {
+                needsRender = false
+            }
+        }
     }
 
     // MARK: - Display link

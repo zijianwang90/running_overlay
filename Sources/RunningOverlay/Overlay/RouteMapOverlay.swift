@@ -32,7 +32,7 @@ enum RouteMapSnapshotRequestBuilder {
     }
 }
 
-final class MapKitMapSnapshotProvider: MapSnapshotProvider {
+final class MapKitMapSnapshotProvider: MapSnapshotProvider, @unchecked Sendable {
     func snapshot(for request: MapSnapshotRequest, completion: @escaping @Sendable (Result<NSImage, Error>) -> Void) {
         let options = MKMapSnapshotter.Options()
         options.size = request.size
