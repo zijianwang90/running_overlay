@@ -180,6 +180,7 @@ context, 1080p/4K at roughly 8.4 ms per frame. Next:
 
 Known limitation until every module is ported: supported Skia modules and
 SwiftUI fallback modules cannot interleave z-order inside one canvas, so
-fallback views always draw above Skia pixels. Current Easy Run fallback modules
-are spatially disjoint; resolve by porting the remaining modules, not by
-stacking two canvases.
+fallback views always draw above Skia pixels. The fallback is temporary only.
+Preview must reach 100% Skia rendering; once every module has a Skia port, the
+fallback pass and its pinned test set are removed. Do not resolve the z-order
+problem by stacking two canvases.
