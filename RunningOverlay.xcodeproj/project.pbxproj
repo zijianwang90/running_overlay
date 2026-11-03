@@ -48,6 +48,7 @@
 		CF4CA719D540AFDAE0B6E4FD /* ProjectSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D2419C941377E081BBD8ED4 /* ProjectSettings.swift */; };
 		E5F333668A4C5FF99B660EDA /* SecurityScopedURLAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7606100D21E01FDB106BBF9A /* SecurityScopedURLAccess.swift */; };
 		AB840A15AD4B2EE164ABD7C3 /* UserAssetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFE8BD2F41AD8E4D8AADF542 /* UserAssetStore.swift */; };
+		7628777647677F0F3389B2F0 /* OverlayRendererBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = D98C19D2DCBDD31DA26F0707 /* OverlayRendererBackend.swift */; };
 		BEC8055C7BC88AC23222F4FE /* TimelineModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD49E47BFAA48FB08BCA443D /* TimelineModel.swift */; };
 		7B0C594338A3E4F1DFE69CAC /* DecorOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F09A3B41E722847AA2B105 /* DecorOverlayDetailView.swift */; };
 		3B1925D0307551312F663186 /* DecorOverlayViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF73E69FF682BE184C9440FC /* DecorOverlayViews.swift */; };
@@ -88,6 +89,7 @@
 		07F11C921363CB63C82F1681 /* RunningGaugeOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B3A4DA5F66E0093B63C307E /* RunningGaugeOverlayDetailView.swift */; };
 		6CCA9D41B53280673653FF84 /* SFSymbolPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6A7F00131F2F5F7D2798B33 /* SFSymbolPicker.swift */; };
 		CD5589C6680B0616BC94489D /* SettingsGroupBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 386AD1C9C3524E73B403CDDD /* SettingsGroupBox.swift */; };
+		D888932DA7C817CEF2C26445 /* SkiaPreviewCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8375014E5573390492D2C24 /* SkiaPreviewCanvasView.swift */; };
 		945833D879F0AECB7EA21C4A /* SplitCursorRegion.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFF88C53C751EE8E5CF934D8 /* SplitCursorRegion.swift */; };
 		6C748F1AB8B7B73B1D93F137 /* TemplatePoolView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6922F2C0A7374435BA7DE992 /* TemplatePoolView.swift */; };
 		34417C12EA1EC932F9AFC94D /* TimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182AD5E473BD5311E96EE583 /* TimelineView.swift */; };
@@ -169,6 +171,7 @@
 		2D2419C941377E081BBD8ED4 /* ProjectSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Project/ProjectSettings.swift"; sourceTree = SOURCE_ROOT; };
 		7606100D21E01FDB106BBF9A /* SecurityScopedURLAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Project/SecurityScopedURLAccess.swift"; sourceTree = SOURCE_ROOT; };
 		EFE8BD2F41AD8E4D8AADF542 /* UserAssetStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Project/UserAssetStore.swift"; sourceTree = SOURCE_ROOT; };
+		D98C19D2DCBDD31DA26F0707 /* OverlayRendererBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/OverlayRendererBackend.swift"; sourceTree = SOURCE_ROOT; };
 		FD49E47BFAA48FB08BCA443D /* TimelineModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Timeline/TimelineModel.swift"; sourceTree = SOURCE_ROOT; };
 		04F09A3B41E722847AA2B105 /* DecorOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/DecorOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
 		AF73E69FF682BE184C9440FC /* DecorOverlayViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/DecorOverlayViews.swift"; sourceTree = SOURCE_ROOT; };
@@ -209,6 +212,7 @@
 		2B3A4DA5F66E0093B63C307E /* RunningGaugeOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/RunningGaugeOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
 		B6A7F00131F2F5F7D2798B33 /* SFSymbolPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/SFSymbolPicker.swift"; sourceTree = SOURCE_ROOT; };
 		386AD1C9C3524E73B403CDDD /* SettingsGroupBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/SettingsGroupBox.swift"; sourceTree = SOURCE_ROOT; };
+		B8375014E5573390492D2C24 /* SkiaPreviewCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/SkiaPreviewCanvasView.swift"; sourceTree = SOURCE_ROOT; };
 		AFF88C53C751EE8E5CF934D8 /* SplitCursorRegion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/SplitCursorRegion.swift"; sourceTree = SOURCE_ROOT; };
 		6922F2C0A7374435BA7DE992 /* TemplatePoolView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/TemplatePoolView.swift"; sourceTree = SOURCE_ROOT; };
 		182AD5E473BD5311E96EE583 /* TimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/TimelineView.swift"; sourceTree = SOURCE_ROOT; };
@@ -292,6 +296,7 @@
 			2D2419C941377E081BBD8ED4 /* ProjectSettings.swift */,
 			7606100D21E01FDB106BBF9A /* SecurityScopedURLAccess.swift */,
 			EFE8BD2F41AD8E4D8AADF542 /* UserAssetStore.swift */,
+			D98C19D2DCBDD31DA26F0707 /* OverlayRendererBackend.swift */,
 			FD49E47BFAA48FB08BCA443D /* TimelineModel.swift */,
 			04F09A3B41E722847AA2B105 /* DecorOverlayDetailView.swift */,
 			AF73E69FF682BE184C9440FC /* DecorOverlayViews.swift */,
@@ -332,6 +337,7 @@
 			2B3A4DA5F66E0093B63C307E /* RunningGaugeOverlayDetailView.swift */,
 			B6A7F00131F2F5F7D2798B33 /* SFSymbolPicker.swift */,
 			386AD1C9C3524E73B403CDDD /* SettingsGroupBox.swift */,
+			B8375014E5573390492D2C24 /* SkiaPreviewCanvasView.swift */,
 			AFF88C53C751EE8E5CF934D8 /* SplitCursorRegion.swift */,
 			6922F2C0A7374435BA7DE992 /* TemplatePoolView.swift */,
 			182AD5E473BD5311E96EE583 /* TimelineView.swift */,
@@ -441,6 +447,7 @@
 			CF4CA719D540AFDAE0B6E4FD /* ProjectSettings.swift in Sources */,
 			E5F333668A4C5FF99B660EDA /* SecurityScopedURLAccess.swift in Sources */,
 			AB840A15AD4B2EE164ABD7C3 /* UserAssetStore.swift in Sources */,
+			7628777647677F0F3389B2F0 /* OverlayRendererBackend.swift in Sources */,
 			BEC8055C7BC88AC23222F4FE /* TimelineModel.swift in Sources */,
 			7B0C594338A3E4F1DFE69CAC /* DecorOverlayDetailView.swift in Sources */,
 			3B1925D0307551312F663186 /* DecorOverlayViews.swift in Sources */,
@@ -481,6 +488,7 @@
 			07F11C921363CB63C82F1681 /* RunningGaugeOverlayDetailView.swift in Sources */,
 			6CCA9D41B53280673653FF84 /* SFSymbolPicker.swift in Sources */,
 			CD5589C6680B0616BC94489D /* SettingsGroupBox.swift in Sources */,
+			D888932DA7C817CEF2C26445 /* SkiaPreviewCanvasView.swift in Sources */,
 			945833D879F0AECB7EA21C4A /* SplitCursorRegion.swift in Sources */,
 			6C748F1AB8B7B73B1D93F137 /* TemplatePoolView.swift in Sources */,
 			34417C12EA1EC932F9AFC94D /* TimelineView.swift in Sources */,

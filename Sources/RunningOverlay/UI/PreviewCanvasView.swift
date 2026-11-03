@@ -1,4 +1,5 @@
 import AppKit
+import CoreText
 import SwiftUI
 
 enum PreviewFitMode: Hashable {
@@ -23,6 +24,21 @@ struct PreviewCanvasView: View {
     @State private var overlayFrames: [OverlayElement.ID: CGRect] = [:]
     @State private var activeSnapLines: [PreviewSnapLine] = []
 
+    #if DEBUG && canImport(CSkiaBridge)
+    /// Debug-only override for the overlay renderer. `RUNNING_OVERLAY_RENDERER=skia`
+    /// selects the initial value; the preview header toggle flips it at runtime.
+    /// SwiftUI stays the default.
+    @State private var usesSkiaPreview: Bool
+    #endif
+
+    init() {
+        #if DEBUG && canImport(CSkiaBridge)
+        _usesSkiaPreview = State(
+            initialValue: OverlayRendererBackendKind.selected == .skia
+        )
+        #endif
+    }
+
     var body: some View {
         GeometryReader { proxy in
             let canvasAvailableSize = CGSize(
@@ -30,8 +46,12 @@ struct PreviewCanvasView: View {
                 height: max(proxy.size.height - PreviewLayout.headerHeight - PreviewLayout.playbackHeight, 0)
             )
             let canvasSize = fittedCanvasSize(in: canvasAvailableSize)
+            let frames = activeOverlayFrames(canvasSize: canvasSize)
             VStack(spacing: 0) {
-                PreviewHeader()
+                PreviewHeader(
+                    usesSkiaPreview: isSkiaPreviewActive,
+                    onToggleSkiaPreview: skiaToggleAction
+                )
 
                 ZStack {
                     ZStack {
@@ -63,6 +83,23 @@ struct PreviewCanvasView: View {
                             }
                         }
 
+                        #if DEBUG && canImport(CSkiaBridge)
+                        if usesSkiaPreview {
+                            // Transparent overlay canvas composited above the
+                            // video layer. Selection and drag affordances stay
+                            // in SwiftUI above this view.
+                            SkiaPreviewCanvasView(
+                                layout: skiaPreviewLayout,
+                                activity: project.activity,
+                                elapsedTime: project.layerDataSampleTime,
+                                canvasSize: projectCanvasPixelSize,
+                                isPaused: !project.isPlaying
+                            )
+                            .frame(width: canvasSize.width, height: canvasSize.height)
+                            .allowsHitTesting(false)
+                        }
+                        #endif
+
                         if project.showPreviewGuides {
                             PreviewSafetyGuidesView()
                                 .allowsHitTesting(false)
@@ -75,114 +112,10 @@ struct PreviewCanvasView: View {
                         PreviewSnapLinesView(lines: activeSnapLines)
                             .allowsHitTesting(false)
 
-                        ForEach(project.overlayLayout.elements.filter(\.isVisible)) { element in
-                            let isSelected = project.selection == .overlayElement(element.id)
-                            // During drag: use local live position to avoid @Published mutation every frame.
-                            let displayPos: CGPoint = liveDragPosition?.id == element.id
-                                ? liveDragPosition!.pos
-                                : element.position
-                            OverlayElementContent(
-                                element: element,
-                                canvasSize: canvasSize,
-                                sampleTime: project.layerDataSampleTime,
-                                activity: project.activity,
-                                isSelected: isSelected
-                            )  // .equatable() skips body for unchanged elements (e.g., non-dragged)
-                            .equatable()
-                            .background(
-                                GeometryReader { elementProxy in
-                                    Color.clear.preference(
-                                        key: PreviewOverlayFramePreferenceKey.self,
-                                        value: [element.id: elementProxy.frame(in: .named(PreviewCanvasCoordinateSpace.name))]
-                                    )
-                                }
-                            )
-                            // `position` expands its layout container to the canvas proposal. Define
-                            // the hit shape first so taps and drags remain limited to rendered content.
-                            .contentShape(Rectangle())
-                            .modifier(PreviewOverlayPositionModifier(
-                                element: element,
-                                canvasSize: canvasSize,
-                                position: displayPos,
-                                sampleTime: project.layerDataSampleTime,
-                                activity: project.activity
-                            ))
-                            .gesture(
-                                DragGesture(minimumDistance: 2, coordinateSpace: .named(PreviewCanvasCoordinateSpace.name))
-                                    .onChanged { value in
-                                        guard !element.isLocked else { return }
-                                        // Capture start position and select exactly once per gesture.
-                                        if dragStartPositions[element.id] == nil {
-                                            dragStartPositions[element.id] = element.position
-                                            if element.type.isNumericOverlay,
-                                               let frame = overlayFrames[element.id] {
-                                                dragGrabOffsets[element.id] = CGSize(
-                                                    width: value.startLocation.x - frame.minX,
-                                                    height: value.startLocation.y - frame.minY
-                                                )
-                                            }
-                                            project.selectOverlay(element.id)
-                                        }
-                                        guard let start = dragStartPositions[element.id] else { return }
-                                        let proposedPosition: CGPoint
-                                        if element.type.isNumericOverlay,
-                                           let grabOffset = dragGrabOffsets[element.id] {
-                                            proposedPosition = CGPoint(
-                                                x: (value.location.x - grabOffset.width) / max(canvasSize.width, 1),
-                                                y: (value.location.y - grabOffset.height) / max(canvasSize.height, 1)
-                                            )
-                                        } else {
-                                            proposedPosition = CGPoint(
-                                                x: start.x + value.translation.width / max(canvasSize.width, 1),
-                                                y: start.y + value.translation.height / max(canvasSize.height, 1)
-                                            )
-                                        }
-                                        // Holding Command bypasses snapping for free placement.
-                                        let isSnappingEnabled = !NSEvent.modifierFlags.contains(.command)
-                                        let snapResult: PreviewSnapResult
-                                        if element.type.isNumericOverlay {
-                                            snapResult = PreviewSnapResolver().snapTopLeading(
-                                                movingElementID: element.id,
-                                                proposedPosition: proposedPosition,
-                                                currentFrame: overlayFrames[element.id],
-                                                overlayFrames: overlayFrames,
-                                                canvasSize: canvasSize,
-                                                guidesEnabled: project.showPreviewGuides,
-                                                isSnappingEnabled: isSnappingEnabled
-                                            )
-                                        } else {
-                                            snapResult = PreviewSnapResolver().snap(
-                                                movingElementID: element.id,
-                                                proposedPosition: proposedPosition,
-                                                currentFrame: overlayFrames[element.id],
-                                                overlayFrames: overlayFrames,
-                                                canvasSize: canvasSize,
-                                                guidesEnabled: project.showPreviewGuides,
-                                                isSnappingEnabled: isSnappingEnabled
-                                            )
-                                        }
-                                        liveDragPosition = (element.id, snapResult.position)
-                                        activeSnapLines = snapResult.lines
-                                    }
-                                    .onEnded { _ in
-                                        // Commit final position to document once (single @Published update).
-                                        if let live = liveDragPosition, live.id == element.id {
-                                            project.moveOverlay(element.id, to: live.pos)
-                                        }
-                                        liveDragPosition = nil
-                                        dragStartPositions[element.id] = nil
-                                        dragGrabOffsets[element.id] = nil
-                                        activeSnapLines = []
-                                        project.finishContinuousEdit()
-                                    }
-                            )
-                            .onTapGesture {
-                                guard !element.isLocked else { return }
-                                project.selectOverlay(element.id)
-                            }
-                            .contextMenu {
-                                OverlayElementContextMenu(element: element)
-                            }
+                        if isSkiaPreviewActive {
+                            skiaOverlayLayer(canvasSize: canvasSize, frames: frames)
+                        } else {
+                            swiftUIOverlayLayer(canvasSize: canvasSize, frames: frames)
                         }
                     }
                     .frame(width: canvasSize.width, height: canvasSize.height)
@@ -194,7 +127,7 @@ struct PreviewCanvasView: View {
                     .simultaneousGesture(
                         SpatialTapGesture(coordinateSpace: .named(PreviewCanvasCoordinateSpace.name))
                             .onEnded { value in
-                                handleCanvasTap(at: value.location)
+                                handleCanvasTap(at: value.location, frames: frames)
                             }
                     )
                 }
@@ -221,14 +154,17 @@ struct PreviewCanvasView: View {
         return CGSize(width: availableSize.height * aspectRatio, height: availableSize.height)
     }
 
-    private func handleCanvasTap(at location: CGPoint) {
+    private func handleCanvasTap(
+        at location: CGPoint,
+        frames: [OverlayElement.ID: CGRect]
+    ) {
         let visibleElementIDs = Set(project.overlayLayout.elements.filter(\.isVisible).map(\.id))
-        if !visibleElementIDs.isEmpty && overlayFrames.isEmpty {
+        if !visibleElementIDs.isEmpty && frames.isEmpty {
             return
         }
 
         let hitPadding: CGFloat = 4
-        let didHitOverlay = overlayFrames.contains { id, frame in
+        let didHitOverlay = frames.contains { id, frame in
             visibleElementIDs.contains(id) && frame.insetBy(dx: -hitPadding, dy: -hitPadding).contains(location)
         }
 
@@ -237,6 +173,380 @@ struct PreviewCanvasView: View {
         project.clearSelection()
     }
 
+    // MARK: - Overlay rendering layers
+
+    /// Shipping SwiftUI overlay layer. Elements are real SwiftUI views and their
+    /// measured frames drive snapping and hit testing.
+    @ViewBuilder
+    private func swiftUIOverlayLayer(
+        canvasSize: CGSize,
+        frames: [OverlayElement.ID: CGRect]
+    ) -> some View {
+        ForEach(project.overlayLayout.elements.filter(\.isVisible)) { element in
+            let isSelected = project.selection == .overlayElement(element.id)
+            // During drag: use local live position to avoid @Published mutation every frame.
+            let displayPos: CGPoint = liveDragPosition?.id == element.id
+                ? liveDragPosition!.pos
+                : element.position
+            OverlayElementContent(
+                element: element,
+                canvasSize: canvasSize,
+                sampleTime: project.layerDataSampleTime,
+                activity: project.activity,
+                isSelected: isSelected
+            )  // .equatable() skips body for unchanged elements (e.g., non-dragged)
+            .equatable()
+            .background(
+                GeometryReader { elementProxy in
+                    Color.clear.preference(
+                        key: PreviewOverlayFramePreferenceKey.self,
+                        value: [element.id: elementProxy.frame(in: .named(PreviewCanvasCoordinateSpace.name))]
+                    )
+                }
+            )
+            // `position` expands its layout container to the canvas proposal. Define
+            // the hit shape first so taps and drags remain limited to rendered content.
+            .contentShape(Rectangle())
+            .modifier(PreviewOverlayPositionModifier(
+                element: element,
+                canvasSize: canvasSize,
+                position: displayPos,
+                sampleTime: project.layerDataSampleTime,
+                activity: project.activity
+            ))
+            .gesture(overlayDragGesture(for: element, canvasSize: canvasSize, frames: frames))
+            .onTapGesture {
+                guard !element.isLocked else { return }
+                project.selectOverlay(element.id)
+            }
+            .contextMenu {
+                OverlayElementContextMenu(element: element)
+            }
+        }
+    }
+
+    /// Skia overlay layer: pixels come from `SkiaPreviewCanvasView`; this layer
+    /// keeps SwiftUI selection and drag affordances above it. Hit shapes come
+    /// from `OverlayRenderModel` rects rather than view measurement.
+    @ViewBuilder
+    private func skiaOverlayLayer(
+        canvasSize: CGSize,
+        frames: [OverlayElement.ID: CGRect]
+    ) -> some View {
+        if let selectedID = project.selectedOverlayID,
+           let frame = frames[selectedID] {
+            PreviewSelectionAffordance()
+                .frame(width: frame.width, height: frame.height)
+                .position(x: frame.midX, y: frame.midY)
+                .allowsHitTesting(false)
+        }
+
+        ForEach(project.overlayLayout.elements.filter(\.isVisible)) { element in
+            let hitFrame = (frames[element.id] ?? .zero).insetBy(dx: -4, dy: -4)
+            Color.clear
+                .frame(width: max(hitFrame.width, 12), height: max(hitFrame.height, 12))
+                .contentShape(Rectangle())
+                .position(x: hitFrame.midX, y: hitFrame.midY)
+                .gesture(overlayDragGesture(for: element, canvasSize: canvasSize, frames: frames))
+                .onTapGesture {
+                    guard !element.isLocked else { return }
+                    project.selectOverlay(element.id)
+                }
+                .contextMenu {
+                    OverlayElementContextMenu(element: element)
+                }
+        }
+    }
+
+    private func overlayDragGesture(
+        for element: OverlayElement,
+        canvasSize: CGSize,
+        frames: [OverlayElement.ID: CGRect]
+    ) -> some Gesture {
+        DragGesture(minimumDistance: 2, coordinateSpace: .named(PreviewCanvasCoordinateSpace.name))
+            .onChanged { value in
+                guard !element.isLocked else { return }
+                // Capture start position and select exactly once per gesture.
+                if dragStartPositions[element.id] == nil {
+                    dragStartPositions[element.id] = element.position
+                    if element.type.isNumericOverlay,
+                       let frame = frames[element.id] {
+                        dragGrabOffsets[element.id] = CGSize(
+                            width: value.startLocation.x - frame.minX,
+                            height: value.startLocation.y - frame.minY
+                        )
+                    }
+                    project.selectOverlay(element.id)
+                }
+                guard let start = dragStartPositions[element.id] else { return }
+                let proposedPosition: CGPoint
+                if element.type.isNumericOverlay,
+                   let grabOffset = dragGrabOffsets[element.id] {
+                    proposedPosition = CGPoint(
+                        x: (value.location.x - grabOffset.width) / max(canvasSize.width, 1),
+                        y: (value.location.y - grabOffset.height) / max(canvasSize.height, 1)
+                    )
+                } else {
+                    proposedPosition = CGPoint(
+                        x: start.x + value.translation.width / max(canvasSize.width, 1),
+                        y: start.y + value.translation.height / max(canvasSize.height, 1)
+                    )
+                }
+                // Holding Command bypasses snapping for free placement.
+                let isSnappingEnabled = !NSEvent.modifierFlags.contains(.command)
+                let snapResult: PreviewSnapResult
+                if element.type.isNumericOverlay {
+                    snapResult = PreviewSnapResolver().snapTopLeading(
+                        movingElementID: element.id,
+                        proposedPosition: proposedPosition,
+                        currentFrame: frames[element.id],
+                        overlayFrames: frames,
+                        canvasSize: canvasSize,
+                        guidesEnabled: project.showPreviewGuides,
+                        isSnappingEnabled: isSnappingEnabled
+                    )
+                } else {
+                    snapResult = PreviewSnapResolver().snap(
+                        movingElementID: element.id,
+                        proposedPosition: proposedPosition,
+                        currentFrame: frames[element.id],
+                        overlayFrames: frames,
+                        canvasSize: canvasSize,
+                        guidesEnabled: project.showPreviewGuides,
+                        isSnappingEnabled: isSnappingEnabled
+                    )
+                }
+                liveDragPosition = (element.id, snapResult.position)
+                activeSnapLines = snapResult.lines
+            }
+            .onEnded { _ in
+                // Commit final position to document once (single @Published update).
+                if let live = liveDragPosition, live.id == element.id {
+                    project.moveOverlay(element.id, to: live.pos)
+                }
+                liveDragPosition = nil
+                dragStartPositions[element.id] = nil
+                dragGrabOffsets[element.id] = nil
+                activeSnapLines = []
+                project.finishContinuousEdit()
+            }
+    }
+
+    // MARK: - Skia preview state
+
+    private var isSkiaPreviewActive: Bool {
+        #if DEBUG && canImport(CSkiaBridge)
+        return usesSkiaPreview
+        #else
+        return false
+        #endif
+    }
+
+    private var skiaToggleAction: (() -> Void)? {
+        #if DEBUG && canImport(CSkiaBridge)
+        return { usesSkiaPreview.toggle() }
+        #else
+        return nil
+        #endif
+    }
+
+    private var projectCanvasPixelSize: CGSize {
+        CGSize(
+            width: CGFloat(project.settings.resolution.width),
+            height: CGFloat(project.settings.resolution.height)
+        )
+    }
+
+    /// The Skia canvas consumes the document layout with the live drag position
+    /// applied, so rendered pixels follow the pointer before the drag commits.
+    private var skiaPreviewLayout: OverlayLayout {
+        guard let live = liveDragPosition else { return project.overlayLayout }
+        var layout = project.overlayLayout
+        guard let index = layout.elements.firstIndex(where: { $0.id == live.id }) else {
+            return layout
+        }
+        layout.elements[index].position = live.pos
+        return layout
+    }
+
+    private func activeOverlayFrames(
+        canvasSize: CGSize
+    ) -> [OverlayElement.ID: CGRect] {
+        #if DEBUG && canImport(CSkiaBridge)
+        if usesSkiaPreview {
+            return skiaOverlayFrames(canvasSize: canvasSize)
+        }
+        #endif
+        return overlayFrames
+    }
+
+    #if DEBUG && canImport(CSkiaBridge)
+    private func skiaOverlayFrames(
+        canvasSize: CGSize
+    ) -> [OverlayElement.ID: CGRect] {
+        let context = OverlayRenderContext(
+            canvasSize: canvasSize,
+            activity: project.activity,
+            elapsedTime: project.layerDataSampleTime
+        )
+        var frames: [OverlayElement.ID: CGRect] = [:]
+        for element in skiaPreviewLayout.elements where element.isVisible {
+            frames[element.id] = PreviewElementGeometry.frame(for: element, in: context)
+        }
+        return frames
+    }
+    #endif
+
+}
+
+/// Canvas-space hit and selection geometry for overlay elements when the
+/// SwiftUI element views are not present (Skia preview). Consumes the same
+/// `OverlayRenderModel` layouts as preview and export so hit testing follows
+/// rendered geometry instead of measured SwiftUI frames.
+enum PreviewElementGeometry {
+    static func frame(
+        for element: OverlayElement,
+        in context: OverlayRenderContext
+    ) -> CGRect {
+        switch element.type {
+        case .distanceTimeline:
+            return OverlayRenderModel.distanceTimelineLayout(for: element, in: context).rect
+        case .elevationChart:
+            return OverlayRenderModel.elevationChartLayout(for: element, in: context).rect
+        case .runningGauge:
+            return OverlayRenderModel.runningGaugeLayout(for: element, in: context).rect
+        case .intervalHUDBar:
+            return OverlayRenderModel.intervalHUDBarLayout(for: element, in: context).rect
+        case .intervalTimeline:
+            return OverlayRenderModel.intervalTimelineLayout(for: element, in: context).rect
+        case .intervalCountdown:
+            return OverlayRenderModel.intervalCountdownLayout(for: element, in: context).rect
+        case .intervalWorkSummary:
+            return OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: context).rect
+        case .zoneEdgeBar:
+            return OverlayRenderModel.zoneEdgeBarLayout(for: element, in: context).rect
+        case .routeMap:
+            return OverlayRenderModel.routeMapLayout(for: element, in: context).rect
+        case .weatherWidget:
+            return OverlayRenderModel.weatherWidgetLayout(for: element, in: context).rect
+        case .decorSolidColor:
+            let layout = OverlayRenderModel.decorSolidColorLayout(for: element, in: context)
+            return centeredRect(
+                position: element.position,
+                size: layout.size,
+                canvasSize: context.canvasSize
+            )
+        case .decorIcon:
+            let layout = OverlayRenderModel.decorIconLayout(for: element, in: context)
+            return centeredRect(
+                position: element.position,
+                size: layout.size,
+                canvasSize: context.canvasSize
+            )
+        case .decorText:
+            let layout = OverlayRenderModel.decorTextLayout(for: element, in: context)
+            return centeredRect(
+                position: element.position,
+                size: layout.size,
+                canvasSize: context.canvasSize
+            )
+        default:
+            return textFrame(for: element, in: context)
+        }
+    }
+
+    /// Numeric and text overlays are top-leading anchored at the normalized
+    /// element position. Measure value and unit with the same CoreText path the
+    /// Skia renderer uses so the hit rect follows the drawn glyphs.
+    private static func textFrame(
+        for element: OverlayElement,
+        in context: OverlayRenderContext
+    ) -> CGRect {
+        let layout = OverlayRenderModel.textLayout(for: element, in: context)
+        let origin = CGPoint(
+            x: context.canvasSize.width * element.position.x,
+            y: context.canvasSize.height * element.position.y
+        )
+
+        let valueFont = OverlayFontResolver.appKitFont(
+            family: element.style.fontName,
+            size: layout.fontSize,
+            weight: .semibold
+        )
+        let unitFont = OverlayFontResolver.appKitFont(
+            family: layout.unitFontName,
+            size: layout.unitFontSize,
+            weight: nsWeight(layout.unitFontWeight)
+        )
+        let valueLine = lineMetrics(
+            layout.components.value,
+            font: valueFont,
+            tracking: -layout.fontSize * 0.012
+        )
+        let unitLine = lineMetrics(layout.components.unit, font: unitFont, tracking: 0)
+        let showUnit = element.style.showUnit && !layout.components.unit.isEmpty
+        let showIcon = layout.iconEnabled && !layout.iconSystemName.isEmpty
+        let iconWidth = showIcon ? layout.iconSize + layout.iconSpacing : 0
+
+        let width = iconWidth
+            + valueLine.width
+            + (showUnit ? layout.unitSpacing + unitLine.width : 0)
+        let valueHeight = valueLine.ascent + valueLine.descent + valueLine.leading
+        let unitHeight = unitLine.ascent + unitLine.descent + unitLine.leading
+        let height = max(valueHeight, unitHeight, showIcon ? layout.iconSize : 0)
+
+        return CGRect(
+            origin: origin,
+            size: CGSize(
+                width: max(width, layout.minimumWidth),
+                height: max(height, layout.minimumHeight)
+            )
+        )
+    }
+
+    private static func centeredRect(
+        position: CGPoint,
+        size: CGSize,
+        canvasSize: CGSize
+    ) -> CGRect {
+        CGRect(
+            x: canvasSize.width * position.x - size.width / 2,
+            y: canvasSize.height * position.y - size.height / 2,
+            width: size.width,
+            height: size.height
+        )
+    }
+
+    private static func lineMetrics(
+        _ text: String,
+        font: NSFont,
+        tracking: Double
+    ) -> (width: CGFloat, ascent: CGFloat, descent: CGFloat, leading: CGFloat) {
+        guard !text.isEmpty else {
+            return (0, font.ascender, -font.descender, font.leading)
+        }
+        var attributes: [NSAttributedString.Key: Any] = [.font: font]
+        if tracking != 0 {
+            attributes[.kern] = tracking
+        }
+        let line = CTLineCreateWithAttributedString(
+            NSAttributedString(string: text, attributes: attributes)
+        )
+        var ascent: CGFloat = 0
+        var descent: CGFloat = 0
+        var leading: CGFloat = 0
+        let width = CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
+        return (width, ascent, descent, leading)
+    }
+
+    private static func nsWeight(_ weight: OverlayFontWeight) -> NSFont.Weight {
+        switch weight {
+        case .regular: .regular
+        case .medium: .medium
+        case .semibold: .semibold
+        case .bold: .bold
+        }
+    }
 }
 
 private enum PreviewLayout {
@@ -610,6 +920,8 @@ private struct PreviewSnapLinesView: View {
 
 private struct PreviewHeader: View {
     @EnvironmentObject private var project: ProjectDocument
+    var usesSkiaPreview: Bool = false
+    var onToggleSkiaPreview: (() -> Void)? = nil
 
     var body: some View {
         EditorPanelHeader(title: "Preview") {
@@ -617,6 +929,15 @@ private struct PreviewHeader: View {
                 .font(EditorTheme.captionFont)
                 .foregroundStyle(EditorTheme.textMuted)
                 .lineLimit(1)
+
+            if let onToggleSkiaPreview {
+                Button(action: onToggleSkiaPreview) {
+                    Image(systemName: usesSkiaPreview ? "bolt.fill" : "bolt")
+                }
+                .buttonStyle(PreviewIconButtonStyle(isActive: usesSkiaPreview))
+                .help("Use Skia Overlay Renderer (debug)")
+                .accessibilityLabel("Use Skia Overlay Renderer")
+            }
 
             Button {
                 project.showPreviewGuides.toggle()
