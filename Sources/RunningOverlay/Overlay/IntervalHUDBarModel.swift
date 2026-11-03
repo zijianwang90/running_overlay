@@ -656,3 +656,10 @@ struct IntervalHUDBarZoneSegmentFrame: Equatable {
     var start: Double
     var width: Double
 }
+
+/// Canvas-space rect for one zone segment in a horizontal or vertical zone bar.
+/// Shared by Interval HUD Bar and Zone Edge Bar.
+struct IntervalZoneBarRect: Equatable {
+    var index: Int
+    var rect: CGRect
+}
