@@ -892,6 +892,11 @@ per-run fonts and glyphs so CoreText fallback (CJK, symbols) stays correct.
 | digitalWatch | 0.702% | 0.101 |
 | deprecated 5 presets | 0.093–0.347% | 0.030–0.247 |
 | material blur fallback | 0.110% | 0.045 |
+| feathered background (dst-in mask) | 0.128% | 0.047 |
+| decor rectangle | 0.000% | 0.000 |
+| decor rounded rectangle | 0.047% | 0.011 |
+| decor circle | 0.066% | 0.008 |
+| decor capsule | 0.091% | 0.029 |
 | minimal effects | 1.977% | 0.184 |
 | decor solid | 0.011% | 0.002 |
 | decor icon | 0.395% | 0.770 |
