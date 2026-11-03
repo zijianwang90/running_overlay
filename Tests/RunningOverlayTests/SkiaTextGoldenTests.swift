@@ -250,6 +250,70 @@ enum SkiaTextRenderSupport {
 }
 
 @Suite(.serialized) struct SkiaTextGoldenTests {
+    struct MinimalControlConfig: Sendable, CustomStringConvertible {
+        var name: String
+        var label: OverlayTextAttachmentPosition
+        var unit: OverlayTextAttachmentPosition
+        var icon: OverlayTextAttachmentPosition
+        var iconEnabled: Bool
+        var showLabel: Bool = true
+        var showUnit: Bool = true
+        var iconAlignment: OverlayTextAlignment = .center
+        var labelAlignment: OverlayTextAlignment = .leading
+        var unitAlignment: OverlayTextAlignment = .leading
+
+        var description: String { name }
+
+        static let all: [MinimalControlConfig] = [
+            MinimalControlConfig(
+                name: "label-top-unit-trailing",
+                label: .top,
+                unit: .trailing,
+                icon: .leading,
+                iconEnabled: false
+            ),
+            MinimalControlConfig(
+                name: "label-bottom-unit-bottom",
+                label: .bottom,
+                unit: .bottom,
+                icon: .leading,
+                iconEnabled: false
+            ),
+            MinimalControlConfig(
+                name: "label-leading-unit-leading-icon-leading",
+                label: .leading,
+                unit: .leading,
+                icon: .leading,
+                iconEnabled: true
+            ),
+            MinimalControlConfig(
+                name: "label-trailing-unit-top-icon-top",
+                label: .trailing,
+                unit: .top,
+                icon: .top,
+                iconEnabled: true
+            ),
+            MinimalControlConfig(
+                name: "icon-bottom-unit-trailing",
+                label: .top,
+                unit: .trailing,
+                icon: .bottom,
+                iconEnabled: true,
+                iconAlignment: .trailing
+            ),
+            MinimalControlConfig(
+                name: "no-label-unit-bottom-icon-trailing",
+                label: .top,
+                unit: .bottom,
+                icon: .trailing,
+                iconEnabled: true,
+                showLabel: false,
+                iconAlignment: .trailing,
+                unitAlignment: .trailing
+            ),
+        ]
+    }
+
     /// D2: `.minimal` is the only runtime-reachable preset, so this fixture
     /// uses the unmodified production model path (element + `textLayout`) and
     /// the shipping SwiftUI frame renderer as the oracle.
@@ -282,6 +346,107 @@ enum SkiaTextRenderSupport {
         }
     }
 
+
+    /// Preview uses every numeric attachment control, so cover the
+    /// label/unit/icon position matrix on the production `.minimal` layout.
+    @Test(arguments: MinimalControlConfig.all)
+    func minimalControlsMatchSwiftUI(
+        _ config: MinimalControlConfig
+    ) async throws {
+        var style = SkiaTextFixtureFactory.style()
+        style.showLabel = config.showLabel
+        style.showUnit = config.showUnit
+        style.labelPosition = config.label
+        style.unitPosition = config.unit
+        style.iconEnabled = config.iconEnabled
+        style.iconPosition = config.icon
+        style.iconSystemName = "heart.fill"
+        style.iconTextAlignment = config.iconAlignment
+        style.labelTextAlignment = config.labelAlignment
+        style.unitTextAlignment = config.unitAlignment
+        let element = SkiaTextFixtureFactory.element(style: style)
+        try await productionGolden(
+            element: element,
+            label: "minimal-controls-\(config.name)"
+        )
+    }
+
+    private func productionGolden(
+        element: OverlayElement,
+        label: String,
+        maxChangedRatio: Double = 0.02,
+        maxMeanDelta: Double = 4
+    ) async throws {
+        try await OverlayPreferenceFixtures.withDefaults {
+            let activity = SkiaTextFixtureFactory.activity()
+            let size = SkiaTextFixtureFactory.canvasSize
+            let reference = try await SwiftUIOverlayVideoExporter.renderFrameCGImage(
+                overlayLayout: OverlayLayout(elements: [element]),
+                activity: activity,
+                elapsedTime: SkiaTextFixtureFactory.elapsedTime,
+                size: size
+            )
+            let candidate = try SkiaTextRenderSupport.candidateImage(
+                element: element,
+                size: size,
+                activity: activity,
+                elapsedTime: SkiaTextFixtureFactory.elapsedTime
+            )
+            let metrics = try SkiaTextRenderSupport.compare(
+                reference: reference,
+                candidate: candidate,
+                size: size,
+                label: label
+            )
+            print(metrics.description)
+            #expect(metrics.changedRatio < maxChangedRatio)
+            #expect(metrics.meanDelta < maxMeanDelta)
+        }
+    }
+
+    /// Feathered background: the same distance-field mask as SwiftUI,
+    /// applied through `skb_draw_image_dst_in`.
+    @Test func featheredBackgroundMatchesSwiftUI() async throws {
+        var style = SkiaTextFixtureFactory.style()
+        style.backgroundFadeOutEnabled = true
+        style.backgroundFadeOutAmount = 0.5
+        let element = SkiaTextFixtureFactory.element(style: style)
+        try await productionGolden(
+            element: element,
+            label: "feathered-background",
+            maxChangedRatio: 0.02
+        )
+    }
+
+    /// All solid-color decor shapes share the same fill/stroke/effects path.
+    @Test(arguments: DecorShape.allCases)
+    func decorShapeMatchesSwiftUI(_ shape: DecorShape) async throws {
+        var style = SkiaTextFixtureFactory.decorStyle()
+        style.decor.shape = shape
+        style.decor.fillColor = OverlayColor(
+            red: 0.2,
+            green: 0.55,
+            blue: 1,
+            alpha: 0.85
+        )
+        style.decor.width = 260
+        style.decor.height = 120
+        style.decor.cornerRadius = 28
+        style.borderEnabled = true
+        style.borderWidth = 2
+        style.borderColor = .white
+        style.borderOpacity = 0.6
+        let element = OverlayElement(
+            type: .decorSolidColor,
+            position: CGPoint(x: 0.5, y: 0.5),
+            scale: 1,
+            style: style
+        )
+        try await decorGolden(
+            element: element,
+            label: "decor-shape-\(shape)"
+        )
+    }
 
     /// D6: element opacity, generic border, glow, and layered shadow all run
     /// through `withElementLayers` on the production minimal layout.
