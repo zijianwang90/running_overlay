@@ -14,7 +14,10 @@
 		FD596E89332F89187293F2C5 /* RunningOverlayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B3635999AFC1DB74B38849 /* RunningOverlayApp.swift */; };
 		C36F7A0AC35EBA570ACD3ABD /* RunningOverlayMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422C715ABE853E6DD27F309B /* RunningOverlayMain.swift */; };
 		FA54CF995BF15CB92457EDE4 /* RunningOverlayResources.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7025C2B0CBE7516EC095F597 /* RunningOverlayResources.swift */; };
+		17A2AC2421DB0B2AC8CA49AA /* EditorPackageExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C5C0A329760535725CCAE7E /* EditorPackageExporter.swift */; };
 		6D94BFBD3E97740C1DC37F8B /* EditorPackageManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7912562C1639EE662C8C139D /* EditorPackageManifest.swift */; };
+		A1B0973962B1672FD25E2084 /* EditorPackagePlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28F7423F3C66A377A82E6FB3 /* EditorPackagePlanner.swift */; };
+		178E9D447DF1E3845ACE4C6F /* FCPXMLTimelineWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A3D19DB7518FC6A25C87E00 /* FCPXMLTimelineWriter.swift */; };
 		253EEFA34DB760A83E1CB914 /* OverlayRenderJob.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B5306D85773003A20DB5CDE /* OverlayRenderJob.swift */; };
 		0B01D9E7676921A9C1619906 /* OverlayRenderJobResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A66571DCCEBE0F1C9C49FF7E /* OverlayRenderJobResolver.swift */; };
 		00848E5A1ED6A5BE6F955E58 /* OverlayRenderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1CC8CF6C3665AAD38C2A3EB /* OverlayRenderService.swift */; };
@@ -168,7 +171,10 @@
 		E4B3635999AFC1DB74B38849 /* RunningOverlayApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/RunningOverlayApp.swift"; sourceTree = SOURCE_ROOT; };
 		422C715ABE853E6DD27F309B /* RunningOverlayMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/RunningOverlayMain.swift"; sourceTree = SOURCE_ROOT; };
 		7025C2B0CBE7516EC095F597 /* RunningOverlayResources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/RunningOverlayResources.swift"; sourceTree = SOURCE_ROOT; };
+		8C5C0A329760535725CCAE7E /* EditorPackageExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/EditorIntegration/EditorPackageExporter.swift"; sourceTree = SOURCE_ROOT; };
 		7912562C1639EE662C8C139D /* EditorPackageManifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/EditorIntegration/EditorPackageManifest.swift"; sourceTree = SOURCE_ROOT; };
+		28F7423F3C66A377A82E6FB3 /* EditorPackagePlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/EditorIntegration/EditorPackagePlanner.swift"; sourceTree = SOURCE_ROOT; };
+		0A3D19DB7518FC6A25C87E00 /* FCPXMLTimelineWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/EditorIntegration/FCPXMLTimelineWriter.swift"; sourceTree = SOURCE_ROOT; };
 		5B5306D85773003A20DB5CDE /* OverlayRenderJob.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/EditorIntegration/OverlayRenderJob.swift"; sourceTree = SOURCE_ROOT; };
 		A66571DCCEBE0F1C9C49FF7E /* OverlayRenderJobResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/EditorIntegration/OverlayRenderJobResolver.swift"; sourceTree = SOURCE_ROOT; };
 		F1CC8CF6C3665AAD38C2A3EB /* OverlayRenderService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/EditorIntegration/OverlayRenderService.swift"; sourceTree = SOURCE_ROOT; };
@@ -324,7 +330,10 @@
 			E4B3635999AFC1DB74B38849 /* RunningOverlayApp.swift */,
 			422C715ABE853E6DD27F309B /* RunningOverlayMain.swift */,
 			7025C2B0CBE7516EC095F597 /* RunningOverlayResources.swift */,
+			8C5C0A329760535725CCAE7E /* EditorPackageExporter.swift */,
 			7912562C1639EE662C8C139D /* EditorPackageManifest.swift */,
+			28F7423F3C66A377A82E6FB3 /* EditorPackagePlanner.swift */,
+			0A3D19DB7518FC6A25C87E00 /* FCPXMLTimelineWriter.swift */,
 			5B5306D85773003A20DB5CDE /* OverlayRenderJob.swift */,
 			A66571DCCEBE0F1C9C49FF7E /* OverlayRenderJobResolver.swift */,
 			F1CC8CF6C3665AAD38C2A3EB /* OverlayRenderService.swift */,
@@ -510,7 +519,10 @@
 			FD596E89332F89187293F2C5 /* RunningOverlayApp.swift in Sources */,
 			C36F7A0AC35EBA570ACD3ABD /* RunningOverlayMain.swift in Sources */,
 			FA54CF995BF15CB92457EDE4 /* RunningOverlayResources.swift in Sources */,
+			17A2AC2421DB0B2AC8CA49AA /* EditorPackageExporter.swift in Sources */,
 			6D94BFBD3E97740C1DC37F8B /* EditorPackageManifest.swift in Sources */,
+			A1B0973962B1672FD25E2084 /* EditorPackagePlanner.swift in Sources */,
+			178E9D447DF1E3845ACE4C6F /* FCPXMLTimelineWriter.swift in Sources */,
 			253EEFA34DB760A83E1CB914 /* OverlayRenderJob.swift in Sources */,
 			0B01D9E7676921A9C1619906 /* OverlayRenderJobResolver.swift in Sources */,
 			00848E5A1ED6A5BE6F955E58 /* OverlayRenderService.swift in Sources */,
