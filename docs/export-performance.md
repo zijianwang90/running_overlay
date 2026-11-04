@@ -663,3 +663,24 @@ variable-frame-rate option:
 - Adaptive quality presets for draft vs final exports.
 - Optional hardware-accelerated composition path after CPU-side profiling has
   identified the real bottlenecks.
+
+## Skia Engine Upgrade Experiment (2026-11-03)
+
+The source-built m159 Ganesh/Graphite Metal SDK was compared with m152 Ganesh
+through the same Release production export coordinator. Across 1080p/4K and
+both codecs, total medians differed by at most about 1.2%; this did not establish
+a stable speedup. Graphite render-plus-sync time was slightly higher, while
+HEVC remained encoder-bound. Keep the candidate opt-in. See the
+[method, results and raw trials](benchmarks/2026-11-03-skia-engines.md) and
+[SDK rebuild guide](development/skia-sdk.md).
+
+## Product Cutover Performance Stop — 2026-11-03
+
+The maintainer authorized Skia as the product renderer and limited further
+performance work to sufficient throughput. A bounded one-sample prefetch
+experiment was measured and removed: it helped 1080p ProRes but offered no
+consistent improvement for 4K and HEVC. Keep the serial Graphite host and focus
+on product integration. The fixed 25-second synthetic suite already finishes
+faster than real time on the development Mac. See the
+[pipeline experiment](benchmarks/2026-11-03-skia-pipeline.md) for settings,
+medians, raw records and limits; ADR 0011 supersedes earlier default decisions.

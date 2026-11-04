@@ -88,9 +88,11 @@ jobs:
           } >> "$GITHUB_OUTPUT"
         id: version
 
+      - uses: ./.github/actions/setup-skia
+
       - name: Build, test, and audit
         run: |
-          ./scripts/check.sh
+          caffeinate -d -u ./scripts/check.sh
           ./scripts/visual-test.sh
           ./scripts/publication-audit.sh
           scripts/validate-appstore-config.sh

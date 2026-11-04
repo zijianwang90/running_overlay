@@ -53,7 +53,7 @@ import Testing
         )
 
         let start = ContinuousClock.now
-        try await SwiftUIOverlayVideoExporter.export(job: job) { _ in }
+        try await SwiftUIOverlayVideoExporter.export(job: job, backend: .swiftUI) { _ in }
         let total = Self.seconds(ContinuousClock.now - start)
 
         let profileURL = try #require(

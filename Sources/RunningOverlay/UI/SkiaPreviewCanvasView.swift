@@ -1,5 +1,6 @@
-#if DEBUG && canImport(CSkiaBridge)
+#if canImport(CSkiaBridge)
 import AppKit
+import Combine
 import CSkiaBridge
 import Metal
 import QuartzCore
@@ -8,15 +9,13 @@ import SwiftUI
 // Phase A of the Skia renderer migration (see
 // docs/superpowers/plans/2026-11-02-skia-renderer-migration.md).
 //
-// This is an isolated, debug-only preview host. It does not replace
-// `PreviewCanvasView`; nothing in the shipping editor references it yet. It
-// exists to prove that a persistent Metal context can present the Easy Run
-// template through `SkiaEasyRunRenderer` on a `CAMetalLayer` drawable without a
-// CPU readback, and to measure frame pacing at 1080p and 4K.
+// Product preview host: a persistent Metal context presents overlays through
+// the same Skia renderer used by export, without CPU readback. SwiftUI owns
+// selection/drag affordances above this transparent canvas.
 //
 // Presentation contract:
 //
-// 1. `SkiaEasyRunRenderer` owns one `GrDirectContext` built on the view's
+// 1. `SkiaEasyRunRenderer` owns one bridge GPU context built on the view's
 //    `MTLDevice` and `MTLCommandQueue`; the context survives resizes.
 // 2. Each frame wraps the `CAMetalDrawable` texture as the Skia render target,
 //    records the overlay draws, and submits them with `flush(sync: false)`.
@@ -25,7 +24,7 @@ import SwiftUI
 //    buffers on one queue in submission order, so the drawable is presented
 //    only after the Skia work that filled it.
 // 4. The layer is transparent and the Skia surface clears to transparent, so a
-//    future video layer can sit beneath the overlay canvas.
+//    source video layer sits beneath the overlay canvas.
 
 /// One presented preview frame, reported by `SkiaPreviewMetalView`.
 struct SkiaPreviewFrameStats: Equatable, Sendable {
@@ -40,7 +39,7 @@ struct SkiaPreviewFrameStats: Equatable, Sendable {
     var intervalMilliseconds: Double
 }
 
-/// SwiftUI wrapper for the isolated Skia preview host.
+/// SwiftUI wrapper for the product Skia preview host.
 ///
 /// `canvasSize` is the project pixel resolution (for example 1920x1080 or
 /// 3840x2160). The layer draws at exactly that resolution and Core Animation
@@ -225,7 +224,7 @@ final class SkiaPreviewMetalView: NSView {
 
         let frameStart = CACurrentMediaTime()
         renderer.draw(layout: overlayLayout, activity: activity, elapsedTime: elapsedTime)
-        renderer.flush(sync: false)
+        guard renderer.flush(sync: false) else { return nil }
 
         guard let commandBuffer = commandQueue?.makeCommandBuffer() else { return nil }
         commandBuffer.present(drawable)
@@ -267,8 +266,7 @@ final class SkiaPreviewMetalView: NSView {
             return false
         }
         renderer.draw(layout: overlayLayout, activity: activity, elapsedTime: elapsedTime)
-        renderer.flush(sync: true)
-        return true
+        return renderer.flush(sync: true)
     }
 
     // MARK: - Assets
@@ -426,6 +424,7 @@ final class SkiaPreviewMetalView: NSView {
     }
 }
 
+#if DEBUG
 // MARK: - Isolated demo path
 
 /// Debug-only demo that hosts the Easy Run template in the Skia preview canvas.
@@ -565,4 +564,5 @@ private enum SkiaPreviewDemoData {
 #Preview("Skia Preview Demo") {
     SkiaPreviewDemoView()
 }
+#endif
 #endif

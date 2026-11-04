@@ -232,14 +232,18 @@ enum SkiaTextEffects {
                 cornerRadius: cornerRadius,
                 context: context
             )
-            skb_draw_image_dst_in(
-                context,
-                mask,
-                Float(rect.minX),
-                Float(rect.minY),
-                Float(rect.width),
-                Float(rect.height)
-            )
+            // NSCache may evict its entry at any time. Keep the owning handle
+            // alive through the bridge draw rather than borrowing a raw pointer.
+            withExtendedLifetime(mask) {
+                skb_draw_image_dst_in(
+                    context,
+                    mask.pointer,
+                    Float(rect.minX),
+                    Float(rect.minY),
+                    Float(rect.width),
+                    Float(rect.height)
+                )
+            }
             skb_restore(context)
         } else {
             drawBackgroundFills(
@@ -336,34 +340,35 @@ enum SkiaTextEffects {
 
     // MARK: - Feathered mask cache
 
-    private final class MaskHandle {
-        let pointer: OpaquePointer?
+    final class MaskHandle {
+        let pointer: OpaquePointer
 
-        init(pointer: OpaquePointer?) {
+        init(pointer: OpaquePointer) {
             self.pointer = pointer
         }
 
-        deinit {
-            if let pointer {
-                skb_image_destroy(pointer)
-            }
-        }
+        deinit { skb_image_destroy(pointer) }
     }
 
     /// `NSCache` is thread-safe internally; export and preview can build
     /// masks from different threads.
     nonisolated(unsafe) private static let maskCache = NSCache<NSString, MaskHandle>()
 
-    private static func maskImage(
+    /// Eviction releases cache ownership; active draws retain their own handle.
+    static func removeCachedMasks() {
+        maskCache.removeAllObjects()
+    }
+
+    static func maskImage(
         size: CGSize,
         cornerRadius: Double,
         fadeAmount: Double
-    ) -> OpaquePointer? {
+    ) -> MaskHandle? {
         let width = max(Int(size.width.rounded(.up)), 1)
         let height = max(Int(size.height.rounded(.up)), 1)
         let key = "\(width)|\(height)|\(cornerRadius)|\(fadeAmount)" as NSString
         if let cached = maskCache.object(forKey: key) {
-            return cached.pointer
+            return cached
         }
         guard let cgMask = OverlayFeatherMaskRenderer.makeCGMask(
             size: size,
@@ -386,12 +391,12 @@ enum SkiaTextEffects {
             pixels[index * 4 + 3] = alpha
         }
 
-        let pointer = pixels.withUnsafeBufferPointer { buffer in
+        guard let pointer = pixels.withUnsafeBufferPointer({ buffer in
             skb_image_create(buffer.baseAddress, Int32(width), Int32(height))
-        }
+        }) else { return nil }
         let handle = MaskHandle(pointer: pointer)
         maskCache.setObject(handle, forKey: key)
-        return pointer
+        return handle
     }
 }
 #endif

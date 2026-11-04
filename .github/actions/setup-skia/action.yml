@@ -1,0 +1,30 @@
+name: Pinned Skia SDK
+description: Build or restore the source-pinned macOS arm64 Metal SDK
+runs:
+  using: composite
+  steps:
+    - name: Identify toolchain
+      id: toolchain
+      shell: bash
+      run: |
+        test "$(uname -m)" = arm64
+        echo "key=$(xcodebuild -version | shasum -a 256 | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+    - uses: actions/cache@v4
+      id: sdk
+      with:
+        path: build/skia-sdk
+        key: skia-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.key }}-${{ hashFiles('scripts/build-skia-experimental.py', 'scripts/skia/experimental-args.gn') }}
+    - name: Build pinned SDK
+      if: steps.sdk.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        python3 scripts/build-skia-experimental.py --source "$RUNNER_TEMP/skia-source" --output build/skia-sdk --jobs 3
+    - name: Select and verify SDK
+      shell: bash
+      run: |
+        sdk_dir="$GITHUB_WORKSPACE/build/skia-sdk/skia-m159-1bbd9b972a46-metal-arm64-experimental"
+        python3 scripts/validate-skia-sdk.py "$sdk_dir"
+        echo "SKIA_DIR=$sdk_dir" >> "$GITHUB_ENV"
+        echo "SKIA_GPU=1" >> "$GITHUB_ENV"
+        echo "SKIA_GRAPHITE=1" >> "$GITHUB_ENV"
+        echo "RUNNING_OVERLAY_SKIA_BACKEND=graphite" >> "$GITHUB_ENV"

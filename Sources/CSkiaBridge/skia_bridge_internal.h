@@ -8,6 +8,11 @@
 #include "include/core/SkSurface.h"
 #include "include/gpu/ganesh/GrDirectContext.h"
 
+#if defined(SKB_ENABLE_GRAPHITE)
+#include "include/gpu/graphite/Context.h"
+#include "include/gpu/graphite/Recorder.h"
+#endif
+
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -18,7 +23,14 @@ struct SkiaBridgeContext {
     sk_sp<SkSurface> surface;
     SkPixmap pixmap;
     sk_sp<GrDirectContext> grContext;
+#if defined(SKB_ENABLE_GRAPHITE)
+    std::unique_ptr<skgpu::graphite::Context> graphiteContext;
+    std::unique_ptr<skgpu::graphite::Recorder> graphiteRecorder;
+#endif
+    bool gpuFailed = false;
     std::vector<uint8_t> readback;
+    // Surfaces reference the recorder/context. Release them before those owners.
+    ~SkiaBridgeContext() { surface.reset(); }
 };
 
 /// C-side path handle. `snapshot()` keeps the builder reusable after drawing.

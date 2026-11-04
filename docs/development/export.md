@@ -1,5 +1,42 @@
 # Export Development
 
+## Renderer Selection
+
+The export coordinator retains the name `SwiftUIOverlayVideoExporter`, but
+`export` and `exportFramePNG` accept an explicit backend and otherwise honor
+the product Skia default. Debug builds also honor
+`RUNNING_OVERLAY_RENDERER=swiftUI|skia` for comparisons. Skia-enabled Release
+builds route normal Export, test diagnostics, and headless benchmarks through
+the shared Skia renderer without an environment variable.
+The preview header toggle is local to preview and does not select export.
+`renderFrameCGImage` remains the fixed SwiftUI golden-test oracle.
+
+The Skia host preloads the job's route snapshots and weather assets on the
+main actor, then serializes its renderer/cache access. Each unique Layer Data
+sample draws directly into an IOSurface-backed BGRA pixel buffer; a synchronous
+GPU flush completes before encoder append. Repeated samples reuse the same
+completed buffer. SwiftUI static/per-overlay caches are bypassed. Encoder
+settings, frame sampling, segment progress, cancellation, and security-scoped
+access remain in the existing job pipeline. Missing Skia/Metal is an explicit
+error when selected. Skia MOV names end in `_skia_overlay.mov`; profiles use
+`renderPath=skiaMetal` and report full-canvas rendering without SwiftUI cache or
+per-overlay metrics. This initial host uses one context rather than the spike's
+ping-pong contexts, so benchmark speedups are not a production guarantee.
+
+Presentation timestamps round to the nearest tick on the existing 600-timescale
+export clock, avoiding one-tick truncation of floating-point frame times. Writer
+sessions cancel on failure and exports check writer state while waiting for
+backpressure so a failed encoder cannot leave an endless wait.
+
+## Codec Quality Review
+
+The maintainer accepted both three-second synthetic Easy Run exports through
+Skia (2026-11-03), observing noticeably clearer text in ProRes 4444 than in
+HEVC alpha. Prefer ProRes 4444 for text clarity and editing masters when file
+size permits; HEVC alpha remains an accepted compact alternative. This is a
+visual observation from those samples, not a measured quality comparison or
+an encoder-setting change.
+
 ## Sandboxed Destination Access
 
 - Export destinations must use the URL returned directly by `NSOpenPanel`;
@@ -25,19 +62,19 @@
 - Batch export one overlay video for each timeline clip, including overlapping clips.
 - Full-activity export ignores video clips and renders one overlay file from FIT start to finish.
 - `Export Test Clip` renders a three-second transparent MOV around the current playhead position using the current overlay layout and active activity data (falling back to synthetic data when no activity is loaded).
-- Export now uses a single SwiftUI-based renderer path that rasterizes shared overlay views (`ImageRenderer`) on each frame and encodes transparent MOV output.
-- Preview and export invoke the same shared overlay view entry points (`OverlaySharedTextPresetView`, `OverlaySharedDistanceTimelineView`, `OverlaySharedRouteMapView`) and differ only by `isInteractive` flags.
+- Product export uses the Skia Metal path described above. SwiftUI `ImageRenderer` remains a migration oracle and SDK-free developer build path.
+- The SwiftUI comparison preview and exporter invoke the same shared overlay view entry points (`OverlaySharedTextPresetView`, `OverlaySharedDistanceTimelineView`, `OverlaySharedRouteMapView`) and differ only by `isInteractive` flags.
 - Route Map export resolves its `MapSnapshotRequest` from the same layout inputs as preview, preloads matching `NSImage` snapshots before frame rendering, and supplies them to `OverlaySharedRouteMapView` so `ImageRenderer` does not depend on asynchronous view tasks for the map background.
 - Shared entry points now also include elevation chart, running gauge, Interval HUD Bar, and Zone Edge Bar (`OverlaySharedElevationChartView`, `OverlaySharedRunningGaugeView`, `OverlaySharedIntervalHUDBarView`, `OverlaySharedZoneEdgeBarView`) so SwiftUI export covers current overlay controls on the same component path.
 - Interval HUD Bar style decodes missing newer fields from defaults, allowing early HUD project snapshots to load after the ordered metrics, remaining-primary, and typography controls were added.
 - `SwiftUIOverlayVideoExporter` removes its old per-type fallback drawing implementations and keeps only the shared component path used by preview.
-- Debug-only Export dialog diagnostics include `Export Test Frame`, `Export Test Clip`, and `Export Overlay JSON`. They render through the same SwiftUI export rasterization path or serialize the current `OverlayLayout` as `overlay_configuration.json` for reproducible renderer-debug snapshots.
+- Debug-only Export dialog diagnostics include `Export Test Frame`, `Export Test Clip`, and `Export Overlay JSON`. Frame/clip diagnostics honor the selected export renderer; JSON serializes the current `OverlayLayout` as `overlay_configuration.json` for reproducible renderer-debug snapshots.
 - Debug-only `Save Project Snapshot` / `Restore Project Snapshot` controls in the Export dialog write and load a JSON snapshot of exportable project state for repeatable performance benchmarking. Diagnostics and snapshot controls are hidden from production builds.
 - `--benchmark-export <snapshot.json>` starts Running Overlay Studio in non-interactive benchmark mode, restores the snapshot, exports all timeline clips through `SwiftUIOverlayVideoExporter`, writes outputs into `running_overlay_benchmark_<timestamp>` under the current working directory unless `--benchmark-output <directory>` is provided, and terminates with a non-zero exit code on failure. Benchmark mode is handled by `RunningOverlayMain` through a minimal AppKit run loop (`HeadlessBenchmarkRunner`) before the SwiftUI editor starts, so `swift run RunningOverlay --benchmark-export …` works reliably from the terminal.
 - `scripts/parallel-export-benchmark.rb <snapshot.json> --jobs <n> --output <directory>` measures clip-level multi-process export potential without changing app export behavior. It writes a serial baseline, per-worker shard snapshots, parallel worker outputs, logs, and a JSON/text summary. Use it before implementing app-side segment parallelism so codec contention, SwiftUI render parallelism, and writer wait time are measured on the target machine.
 - `--benchmark-elevation <activity.fit> --template <template.rotemplate>` runs a headless A/B export for a real FIT plus `.rotemplate` without a project snapshot or source video. It exports the same activity window twice into sibling folders (`baseline_no_cache`, `cached`) with the elevation chart static-fill cache disabled and enabled, writes `benchmark_summary.txt`, and is intended for local performance and visual inspection. Optional flags: `--start <seconds>`, `--duration <seconds>`, `--benchmark-output <directory>`.
 - `--benchmark-template-segments <activity.fit> --template <template.rotemplate>` runs a synthetic multi-segment export from a real FIT and template without requiring source videos. Optional flags: `--segments <n>` (default `10`), `--segment-duration <seconds>` (default `10`), `--codec hevcWithAlpha|proRes4444`, `--shard-index <i>`, `--shard-count <n>`, `--start <seconds>`, and `--benchmark-output <directory>`. Shard flags let external benchmark scripts launch multiple headless processes against disjoint segment subsets to estimate app-side clip-level parallelism.
-- Main `Export` no longer exposes legacy mode toggles and always uses SwiftUI shared-component export.
+- Main `Export` has no renderer UI control; it honors the process backend selection described above.
 - Test clip/frame time sampling uses the same activity-time conversion as preview (`timeline.activityElapsed(atProjectTime:)`) before Layer Data FPS quantization.
 - `renderPNG` now supports the same post-render vertical row flip option used by MOV export, so test frame outputs match preview orientation.
 - Text preset export accent color now resolves from `element.style.accentColor` rather than `NSColor.controlAccentColor`.

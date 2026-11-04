@@ -9,7 +9,7 @@ project_dir = File.join(root, "RunningOverlay.xcodeproj")
 project_file = File.join(project_dir, "project.pbxproj")
 scheme_dir = File.join(project_dir, "xcshareddata", "xcschemes")
 
-swift_files = Dir.glob(File.join(root, "Sources/RunningOverlay/**/*.swift"))
+source_files = Dir.glob(File.join(root, "Sources/RunningOverlay/**/*.swift"))
   .map { |path| path.delete_prefix("#{root}/") }
   .sort
 resource_files = Dir.glob(File.join(root, "Sources/RunningOverlay/Resources/**/*"))
@@ -36,6 +36,8 @@ def file_type(path)
 
   {
     ".swift" => "sourcecode.swift",
+    ".cpp" => "sourcecode.cpp.cpp",
+    ".mm" => "sourcecode.cpp.objcpp",
     ".png" => "image.png",
     ".json" => "text.json",
     ".plist" => "text.plist.xml",
@@ -63,6 +65,7 @@ sources_phase = pbx_id("sources-phase")
 frameworks_phase = pbx_id("frameworks-phase")
 resources_phase = pbx_id("resources-phase")
 legal_phase = pbx_id("legal-phase")
+skia_phase = pbx_id("skia-phase")
 target = pbx_id("target")
 project = pbx_id("project")
 project_configs = pbx_id("project-config-list")
@@ -72,8 +75,11 @@ project_release = pbx_id("project-release")
 target_debug = pbx_id("target-debug")
 target_release = pbx_id("target-release")
 
-source_refs = swift_files.to_h { |path| [path, pbx_id("source-ref:#{path}")] }
-source_builds = swift_files.to_h { |path| [path, pbx_id("source-build:#{path}")] }
+bridge_files = ["Sources/CSkiaBridge/skia_bridge.cpp", "Sources/CSkiaBridge/skia_gpu.mm"]
+source_files += bridge_files
+
+source_refs = source_files.to_h { |path| [path, pbx_id("source-ref:#{path}")] }
+source_builds = source_files.to_h { |path| [path, pbx_id("source-build:#{path}")] }
 resource_refs = resource_files.to_h { |path| [path, pbx_id("resource-ref:#{path}")] }
 resource_builds = resource_files.to_h { |path| [path, pbx_id("resource-build:#{path}")] }
 legal_refs = legal_files.to_h { |path| [path, pbx_id("legal-ref:#{path}")] }
@@ -90,7 +96,7 @@ lines << "\tobjectVersion = 56;"
 lines << "\tobjects = {"
 lines << ""
 lines << "/* Begin PBXBuildFile section */"
-swift_files.each do |path|
+source_files.each do |path|
   lines << "\t\t#{source_builds.fetch(path)} /* #{File.basename(path)} in Sources */ = {isa = PBXBuildFile; fileRef = #{source_refs.fetch(path)} /* #{File.basename(path)} */; };"
 end
 resource_files.each do |path|
@@ -110,8 +116,8 @@ lines << "\t\t); name = \"Legal Notices\"; runOnlyForDeploymentPostprocessing = 
 lines << "/* End PBXCopyFilesBuildPhase section */"
 lines << ""
 lines << "/* Begin PBXFileReference section */"
-swift_files.each do |path|
-  lines << "\t\t#{source_refs.fetch(path)} /* #{File.basename(path)} */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = #{quote(path)}; sourceTree = SOURCE_ROOT; };"
+source_files.each do |path|
+  lines << "\t\t#{source_refs.fetch(path)} /* #{File.basename(path)} */ = {isa = PBXFileReference; lastKnownFileType = #{file_type(path)}; path = #{quote(path)}; sourceTree = SOURCE_ROOT; };"
 end
 resource_files.each do |path|
   lines << "\t\t#{resource_refs.fetch(path)} /* #{File.basename(path)} */ = {isa = PBXFileReference; lastKnownFileType = #{file_type(path)}; path = #{quote(path)}; sourceTree = SOURCE_ROOT; };"
@@ -134,7 +140,7 @@ lines << ""
 lines << "/* Begin PBXGroup section */"
 lines << "\t\t#{main_group} = {isa = PBXGroup; children = (#{sources_group}, #{resources_group}, #{app_store_group}, #{config_group}, #{legal_group}, #{products_group}); sourceTree = \"<group>\"; };"
 lines << "\t\t#{sources_group} /* Sources */ = {isa = PBXGroup; children = ("
-swift_files.each { |path| lines << "\t\t\t#{source_refs.fetch(path)} /* #{File.basename(path)} */," }
+source_files.each { |path| lines << "\t\t\t#{source_refs.fetch(path)} /* #{File.basename(path)} */," }
 lines << "\t\t); name = Sources; sourceTree = \"<group>\"; };"
 lines << "\t\t#{resources_group} /* Resources */ = {isa = PBXGroup; children = ("
 resource_files.each { |path| lines << "\t\t\t#{resource_refs.fetch(path)} /* #{File.basename(path)} */," }
@@ -148,7 +154,7 @@ lines << "\t\t#{products_group} /* Products */ = {isa = PBXGroup; children = (#{
 lines << "/* End PBXGroup section */"
 lines << ""
 lines << "/* Begin PBXNativeTarget section */"
-lines << "\t\t#{target} /* RunningOverlay */ = {isa = PBXNativeTarget; buildConfigurationList = #{target_configs}; buildPhases = (#{sources_phase}, #{frameworks_phase}, #{resources_phase}, #{legal_phase}); buildRules = (); dependencies = (); name = RunningOverlay; productName = RunningOverlay; productReference = #{product_ref}; productType = \"com.apple.product-type.application\"; };"
+lines << "\t\t#{target} /* RunningOverlay */ = {isa = PBXNativeTarget; buildConfigurationList = #{target_configs}; buildPhases = (#{sources_phase}, #{frameworks_phase}, #{resources_phase}, #{legal_phase}, #{skia_phase}); buildRules = (); dependencies = (); name = RunningOverlay; productName = RunningOverlay; productReference = #{product_ref}; productType = \"com.apple.product-type.application\"; };"
 lines << "/* End PBXNativeTarget section */"
 lines << ""
 lines << "/* Begin PBXProject section */"
@@ -163,9 +169,13 @@ lines << "\t\t\t#{assets_build} /* Assets.xcassets in Resources */,"
 lines << "\t\t); runOnlyForDeploymentPostprocessing = 0; };"
 lines << "/* End PBXResourcesBuildPhase section */"
 lines << ""
+lines << "/* Begin PBXShellScriptBuildPhase section */"
+lines << "\t\t#{skia_phase} /* Embed Skia */ = {isa = PBXShellScriptBuildPhase; alwaysOutOfDate = 1; buildActionMask = 2147483647; files = (); inputPaths = (); outputPaths = (); name = \"Embed Skia\"; runOnlyForDeploymentPostprocessing = 0; shellPath = /bin/bash; shellScript = #{quote('"${SRCROOT}/scripts/embed-xcode-skia.sh"')}; };"
+lines << "/* End PBXShellScriptBuildPhase section */"
+lines << ""
 lines << "/* Begin PBXSourcesBuildPhase section */"
 lines << "\t\t#{sources_phase} /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = ("
-swift_files.each { |path| lines << "\t\t\t#{source_builds.fetch(path)} /* #{File.basename(path)} in Sources */," }
+source_files.each { |path| lines << "\t\t\t#{source_builds.fetch(path)} /* #{File.basename(path)} in Sources */," }
 lines << "\t\t); runOnlyForDeploymentPostprocessing = 0; };"
 lines << "/* End PBXSourcesBuildPhase section */"
 lines << ""
@@ -178,7 +188,7 @@ target_settings = [
   "CODE_SIGN_STYLE = Automatic",
   "ENABLE_APP_SANDBOX = YES",
   "ENABLE_HARDENED_RUNTIME = YES",
-  "ENABLE_USER_SCRIPT_SANDBOXING = YES",
+  "ENABLE_USER_SCRIPT_SANDBOXING = NO",
   "GENERATE_INFOPLIST_FILE = NO",
   "INFOPLIST_FILE = AppStore/Info.plist",
   "LD_RUNPATH_SEARCH_PATHS = (\"$(inherited)\", \"@executable_path/../Frameworks\")",
@@ -186,7 +196,14 @@ target_settings = [
   "PRODUCT_NAME = \"$(TARGET_NAME)\"",
   "SDKROOT = macosx",
   "SWIFT_EMIT_LOC_STRINGS = YES",
-  "SWIFT_VERSION = 6.0"
+  "SWIFT_VERSION = 6.0",
+  "CLANG_CXX_LANGUAGE_STANDARD = \"c++20\"",
+  "EXCLUDED_SOURCE_FILE_NAMES = \"$(SKIA_EXCLUDED_$(SKIA_ENABLED))\"",
+  "HEADER_SEARCH_PATHS = (\"$(inherited)\", \"$(SKIA_HEADERS_$(SKIA_ENABLED))\")",
+  "SWIFT_INCLUDE_PATHS = (\"$(inherited)\", \"$(SKIA_MODULE_$(SKIA_ENABLED))\")",
+  "LIBRARY_SEARCH_PATHS = (\"$(inherited)\", \"$(SKIA_LIBRARIES_$(SKIA_ENABLED))\")",
+  "OTHER_LDFLAGS = \"$(inherited) $(SKIA_LINK_$(SKIA_ENABLED))\"",
+  "GCC_PREPROCESSOR_DEFINITIONS = (\"$(inherited)\", \"$(SKIA_DEFINES_$(SKIA_ENABLED))\")"
 ].join("; ")
 lines << "\t\t#{target_debug} /* Debug */ = {isa = XCBuildConfiguration; baseConfigurationReference = #{config_ref}; buildSettings = {#{target_settings}; }; name = Debug; };"
 lines << "\t\t#{target_release} /* Release */ = {isa = XCBuildConfiguration; baseConfigurationReference = #{config_ref}; buildSettings = {#{target_settings}; }; name = Release; };"

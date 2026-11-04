@@ -8,6 +8,8 @@ import PackageDescription
 // GPU builds (SKIA_GPU=1) use the shared library under lib/.
 let skiaDir = ProcessInfo.processInfo.environment["SKIA_DIR"]
 let skiaGPU = ProcessInfo.processInfo.environment["SKIA_GPU"] == "1"
+// Experimental dual-backend package built by scripts/build-skia-experimental.py.
+let skiaGraphite = ProcessInfo.processInfo.environment["SKIA_GRAPHITE"] == "1"
 
 let package = Package(
     name: "RunningOverlay",
@@ -65,7 +67,8 @@ var skiaTargets: [Target] {
         .target(
             name: "CSkiaBridge",
             path: "Sources/CSkiaBridge",
-            cxxSettings: [.unsafeFlags(["-std=c++17", "-I\(skiaDir)"])],
+            cxxSettings: [.unsafeFlags(["-std=c++20", "-I\(skiaDir)"])]
+                + (skiaGraphite ? [.define("SKB_ENABLE_GRAPHITE")] : []),
             linkerSettings: linkerSettings
         )
     ]

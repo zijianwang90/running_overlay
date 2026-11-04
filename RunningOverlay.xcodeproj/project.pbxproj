@@ -16,6 +16,7 @@
 		E8D8B2ED4D1412381D917843 /* OverlayExportModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2731A5ED488BF53C7B40BA18 /* OverlayExportModels.swift */; };
 		9617DAAA67E9FE5BF2EB14DB /* OverlayFrameRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E11E7DC676C38E49C1E1C3B1 /* OverlayFrameRenderer.swift */; };
 		F18D40C67EDF6E6106DC51B1 /* SkiaEasyRunRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0DC8B0B0A6789837C22A8AB /* SkiaEasyRunRenderer.swift */; };
+		623981FFA17B7BAEAB468D3A /* SkiaExportFrameRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC59F3227173D1C71117345 /* SkiaExportFrameRenderer.swift */; };
 		9768A45158F5897AD1F641BC /* SwiftUIOverlayVideoExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0841F5230ADE1B0FC520C1D5 /* SwiftUIOverlayVideoExporter.swift */; };
 		03FF01095C8FEC14A3542603 /* ActivityFileParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18A98EAA2DCB2CECBF6FFDDD /* ActivityFileParser.swift */; };
 		0895A8504615BC19C9B4867C /* ActivityTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3573FD932AB7D4977A78DFE3 /* ActivityTimeline.swift */; };
@@ -122,6 +123,8 @@
 		478A11C100BB6E4C52BFEF7E /* ZoneEdgeBarOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04731C14E15DA10D203CE9CD /* ZoneEdgeBarOverlayDetailView.swift */; };
 		084D1232D8109ACEFE88FBBA /* ZoneEdgeBarOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F10E3A9881B84F122EA107B /* ZoneEdgeBarOverlayView.swift */; };
 		071FD18C31D70A7F8A09EF0B /* WeatherFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA38A65F091D5D6DCED7E4F1 /* WeatherFetcher.swift */; };
+		84CA11470A017464CE6A6CBE /* skia_bridge.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 135EDC9501582EC993BA0DCC /* skia_bridge.cpp */; };
+		A1DCA802AF2A72AFE715CE80 /* skia_gpu.mm in Sources */ = {isa = PBXBuildFile; fileRef = 81931A34584D763F45E6F30D /* skia_gpu.mm */; };
 		31804494AB2434FA40AAE101 /* weather-clear-night.png in Resources */ = {isa = PBXBuildFile; fileRef = BC21396CCB191FA3662F2D36 /* weather-clear-night.png */; };
 		0D5D4AFFA48636358684CF92 /* weather-cloudy.png in Resources */ = {isa = PBXBuildFile; fileRef = 62CA75815FA08D6F129063D6 /* weather-cloudy.png */; };
 		EFF6E8CF0476B956AEBBE0D1 /* weather-fog.png in Resources */ = {isa = PBXBuildFile; fileRef = 32F565F10639A4B3FD15949A /* weather-fog.png */; };
@@ -162,6 +165,7 @@
 		2731A5ED488BF53C7B40BA18 /* OverlayExportModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/OverlayExportModels.swift"; sourceTree = SOURCE_ROOT; };
 		E11E7DC676C38E49C1E1C3B1 /* OverlayFrameRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/OverlayFrameRenderer.swift"; sourceTree = SOURCE_ROOT; };
 		A0DC8B0B0A6789837C22A8AB /* SkiaEasyRunRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/SkiaEasyRunRenderer.swift"; sourceTree = SOURCE_ROOT; };
+		8CC59F3227173D1C71117345 /* SkiaExportFrameRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/SkiaExportFrameRenderer.swift"; sourceTree = SOURCE_ROOT; };
 		0841F5230ADE1B0FC520C1D5 /* SwiftUIOverlayVideoExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/SwiftUIOverlayVideoExporter.swift"; sourceTree = SOURCE_ROOT; };
 		18A98EAA2DCB2CECBF6FFDDD /* ActivityFileParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/FitData/ActivityFileParser.swift"; sourceTree = SOURCE_ROOT; };
 		3573FD932AB7D4977A78DFE3 /* ActivityTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/FitData/ActivityTimeline.swift"; sourceTree = SOURCE_ROOT; };
@@ -268,6 +272,8 @@
 		04731C14E15DA10D203CE9CD /* ZoneEdgeBarOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/ZoneEdgeBarOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
 		9F10E3A9881B84F122EA107B /* ZoneEdgeBarOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/ZoneEdgeBarOverlayView.swift"; sourceTree = SOURCE_ROOT; };
 		CA38A65F091D5D6DCED7E4F1 /* WeatherFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Weather/WeatherFetcher.swift"; sourceTree = SOURCE_ROOT; };
+		135EDC9501582EC993BA0DCC /* skia_bridge.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Sources/CSkiaBridge/skia_bridge.cpp"; sourceTree = SOURCE_ROOT; };
+		81931A34584D763F45E6F30D /* skia_gpu.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = "Sources/CSkiaBridge/skia_gpu.mm"; sourceTree = SOURCE_ROOT; };
 		BC21396CCB191FA3662F2D36 /* weather-clear-night.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Sources/RunningOverlay/Resources/Icons/weather-clear-night.png"; sourceTree = SOURCE_ROOT; };
 		62CA75815FA08D6F129063D6 /* weather-cloudy.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Sources/RunningOverlay/Resources/Icons/weather-cloudy.png"; sourceTree = SOURCE_ROOT; };
 		32F565F10639A4B3FD15949A /* weather-fog.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Sources/RunningOverlay/Resources/Icons/weather-fog.png"; sourceTree = SOURCE_ROOT; };
@@ -310,6 +316,7 @@
 			2731A5ED488BF53C7B40BA18 /* OverlayExportModels.swift */,
 			E11E7DC676C38E49C1E1C3B1 /* OverlayFrameRenderer.swift */,
 			A0DC8B0B0A6789837C22A8AB /* SkiaEasyRunRenderer.swift */,
+			8CC59F3227173D1C71117345 /* SkiaExportFrameRenderer.swift */,
 			0841F5230ADE1B0FC520C1D5 /* SwiftUIOverlayVideoExporter.swift */,
 			18A98EAA2DCB2CECBF6FFDDD /* ActivityFileParser.swift */,
 			3573FD932AB7D4977A78DFE3 /* ActivityTimeline.swift */,
@@ -416,6 +423,8 @@
 			04731C14E15DA10D203CE9CD /* ZoneEdgeBarOverlayDetailView.swift */,
 			9F10E3A9881B84F122EA107B /* ZoneEdgeBarOverlayView.swift */,
 			CA38A65F091D5D6DCED7E4F1 /* WeatherFetcher.swift */,
+			135EDC9501582EC993BA0DCC /* skia_bridge.cpp */,
+			81931A34584D763F45E6F30D /* skia_gpu.mm */,
 		); name = Sources; sourceTree = "<group>"; };
 		50F0FC3AFD5FBC981B5A0DDD /* Resources */ = {isa = PBXGroup; children = (
 			BC21396CCB191FA3662F2D36 /* weather-clear-night.png */,
@@ -444,7 +453,7 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		0E8A3AD980EC179856012B7E /* RunningOverlay */ = {isa = PBXNativeTarget; buildConfigurationList = 7DE97F2CECB2601227982F09; buildPhases = (F612CD2E22E187AC48B5913C, 69680EDE0CF9B24DB8DBFE04, 86F6FE2DD6E869C1842A14B3, 67E8874AB1E1A880021CE956); buildRules = (); dependencies = (); name = RunningOverlay; productName = RunningOverlay; productReference = 38A007151ABE87CC01A5B6E9; productType = "com.apple.product-type.application"; };
+		0E8A3AD980EC179856012B7E /* RunningOverlay */ = {isa = PBXNativeTarget; buildConfigurationList = 7DE97F2CECB2601227982F09; buildPhases = (F612CD2E22E187AC48B5913C, 69680EDE0CF9B24DB8DBFE04, 86F6FE2DD6E869C1842A14B3, 67E8874AB1E1A880021CE956, 5011CA04E0BCD45C1345DF97); buildRules = (); dependencies = (); name = RunningOverlay; productName = RunningOverlay; productReference = 38A007151ABE87CC01A5B6E9; productType = "com.apple.product-type.application"; };
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -472,6 +481,10 @@
 		); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		5011CA04E0BCD45C1345DF97 /* Embed Skia */ = {isa = PBXShellScriptBuildPhase; alwaysOutOfDate = 1; buildActionMask = 2147483647; files = (); inputPaths = (); outputPaths = (); name = "Embed Skia"; runOnlyForDeploymentPostprocessing = 0; shellPath = /bin/bash; shellScript = "\"${SRCROOT}/scripts/embed-xcode-skia.sh\""; };
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		F612CD2E22E187AC48B5913C /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
 			857BEEBF82BA872B5706828F /* AppLaunchCommand.swift in Sources */,
@@ -484,6 +497,7 @@
 			E8D8B2ED4D1412381D917843 /* OverlayExportModels.swift in Sources */,
 			9617DAAA67E9FE5BF2EB14DB /* OverlayFrameRenderer.swift in Sources */,
 			F18D40C67EDF6E6106DC51B1 /* SkiaEasyRunRenderer.swift in Sources */,
+			623981FFA17B7BAEAB468D3A /* SkiaExportFrameRenderer.swift in Sources */,
 			9768A45158F5897AD1F641BC /* SwiftUIOverlayVideoExporter.swift in Sources */,
 			03FF01095C8FEC14A3542603 /* ActivityFileParser.swift in Sources */,
 			0895A8504615BC19C9B4867C /* ActivityTimeline.swift in Sources */,
@@ -590,14 +604,16 @@
 			478A11C100BB6E4C52BFEF7E /* ZoneEdgeBarOverlayDetailView.swift in Sources */,
 			084D1232D8109ACEFE88FBBA /* ZoneEdgeBarOverlayView.swift in Sources */,
 			071FD18C31D70A7F8A09EF0B /* WeatherFetcher.swift in Sources */,
+			84CA11470A017464CE6A6CBE /* skia_bridge.cpp in Sources */,
+			A1DCA802AF2A72AFE715CE80 /* skia_gpu.mm in Sources */,
 		); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
 		D12546C7310DEE778E55E187 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; COPY_PHASE_STRIP = NO; DEBUG_INFORMATION_FORMAT = dwarf; ENABLE_TESTABILITY = YES; GCC_C_LANGUAGE_STANDARD = gnu17; MACOSX_DEPLOYMENT_TARGET = 15.0; ONLY_ACTIVE_ARCH = YES; SDKROOT = macosx; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; }; name = Debug; };
 		AA23A758EC6A71B7321371F8 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; COPY_PHASE_STRIP = NO; DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym"; GCC_C_LANGUAGE_STANDARD = gnu17; MACOSX_DEPLOYMENT_TARGET = 15.0; SDKROOT = macosx; SWIFT_COMPILATION_MODE = wholemodule; SWIFT_OPTIMIZATION_LEVEL = "-O"; }; name = Release; };
-		E1698793B8B09B32821D3120 /* Debug */ = {isa = XCBuildConfiguration; baseConfigurationReference = DFBA7AADE0868074C2861C98; buildSettings = {ASSETCATALOG_COMPILER_ACCENT_COLOR_NAME = AccentColor; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CODE_SIGN_STYLE = Automatic; ENABLE_APP_SANDBOX = YES; ENABLE_HARDENED_RUNTIME = YES; ENABLE_USER_SCRIPT_SANDBOXING = YES; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = AppStore/Info.plist; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks"); PRODUCT_MODULE_NAME = RunningOverlay; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = macosx; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 6.0; }; name = Debug; };
-		FFACE85B9B63AB569355131D /* Release */ = {isa = XCBuildConfiguration; baseConfigurationReference = DFBA7AADE0868074C2861C98; buildSettings = {ASSETCATALOG_COMPILER_ACCENT_COLOR_NAME = AccentColor; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CODE_SIGN_STYLE = Automatic; ENABLE_APP_SANDBOX = YES; ENABLE_HARDENED_RUNTIME = YES; ENABLE_USER_SCRIPT_SANDBOXING = YES; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = AppStore/Info.plist; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks"); PRODUCT_MODULE_NAME = RunningOverlay; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = macosx; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 6.0; }; name = Release; };
+		E1698793B8B09B32821D3120 /* Debug */ = {isa = XCBuildConfiguration; baseConfigurationReference = DFBA7AADE0868074C2861C98; buildSettings = {ASSETCATALOG_COMPILER_ACCENT_COLOR_NAME = AccentColor; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CODE_SIGN_STYLE = Automatic; ENABLE_APP_SANDBOX = YES; ENABLE_HARDENED_RUNTIME = YES; ENABLE_USER_SCRIPT_SANDBOXING = NO; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = AppStore/Info.plist; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks"); PRODUCT_MODULE_NAME = RunningOverlay; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = macosx; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 6.0; CLANG_CXX_LANGUAGE_STANDARD = "c++20"; EXCLUDED_SOURCE_FILE_NAMES = "$(SKIA_EXCLUDED_$(SKIA_ENABLED))"; HEADER_SEARCH_PATHS = ("$(inherited)", "$(SKIA_HEADERS_$(SKIA_ENABLED))"); SWIFT_INCLUDE_PATHS = ("$(inherited)", "$(SKIA_MODULE_$(SKIA_ENABLED))"); LIBRARY_SEARCH_PATHS = ("$(inherited)", "$(SKIA_LIBRARIES_$(SKIA_ENABLED))"); OTHER_LDFLAGS = "$(inherited) $(SKIA_LINK_$(SKIA_ENABLED))"; GCC_PREPROCESSOR_DEFINITIONS = ("$(inherited)", "$(SKIA_DEFINES_$(SKIA_ENABLED))"); }; name = Debug; };
+		FFACE85B9B63AB569355131D /* Release */ = {isa = XCBuildConfiguration; baseConfigurationReference = DFBA7AADE0868074C2861C98; buildSettings = {ASSETCATALOG_COMPILER_ACCENT_COLOR_NAME = AccentColor; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CODE_SIGN_STYLE = Automatic; ENABLE_APP_SANDBOX = YES; ENABLE_HARDENED_RUNTIME = YES; ENABLE_USER_SCRIPT_SANDBOXING = NO; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = AppStore/Info.plist; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks"); PRODUCT_MODULE_NAME = RunningOverlay; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = macosx; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 6.0; CLANG_CXX_LANGUAGE_STANDARD = "c++20"; EXCLUDED_SOURCE_FILE_NAMES = "$(SKIA_EXCLUDED_$(SKIA_ENABLED))"; HEADER_SEARCH_PATHS = ("$(inherited)", "$(SKIA_HEADERS_$(SKIA_ENABLED))"); SWIFT_INCLUDE_PATHS = ("$(inherited)", "$(SKIA_MODULE_$(SKIA_ENABLED))"); LIBRARY_SEARCH_PATHS = ("$(inherited)", "$(SKIA_LIBRARIES_$(SKIA_ENABLED))"); OTHER_LDFLAGS = "$(inherited) $(SKIA_LINK_$(SKIA_ENABLED))"; GCC_PREPROCESSOR_DEFINITIONS = ("$(inherited)", "$(SKIA_DEFINES_$(SKIA_ENABLED))"); }; name = Release; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */

@@ -367,7 +367,7 @@ struct ExportPerformanceTests {
             segments: [OverlayExportSegment(startTime: 2, duration: 1, sourceFileName: "clip.mov")]
         )
 
-        try await SwiftUIOverlayVideoExporter.export(job: job) { _ in }
+        try await SwiftUIOverlayVideoExporter.export(job: job, backend: .swiftUI) { _ in }
 
         let movieURL = try #require(
             try FileManager.default.contentsOfDirectory(at: destination, includingPropertiesForKeys: nil)
@@ -410,7 +410,7 @@ struct ExportPerformanceTests {
             segments: [OverlayExportSegment(startTime: 2, duration: 0.2, sourceFileName: "clip.mov")]
         )
 
-        try await SwiftUIOverlayVideoExporter.export(job: job) { _ in }
+        try await SwiftUIOverlayVideoExporter.export(job: job, backend: .swiftUI) { _ in }
 
         let movieURL = try #require(
             try FileManager.default.contentsOfDirectory(at: destination, includingPropertiesForKeys: nil)
@@ -482,7 +482,7 @@ struct ExportPerformanceTests {
         let canvasSize = CGSize(width: 1280, height: 720)
         let overlays: [OverlayElement]
         switch renderPath {
-        case .fullFrameSingleLayer:
+        case .fullFrameSingleLayer, .skiaMetal:
             var style = OverlayStyle.default
             style.routeMapWidth = 1280
             style.routeMapHeight = 720
@@ -520,7 +520,7 @@ struct ExportPerformanceTests {
             writesProfile: true
         )
 
-        try await SwiftUIOverlayVideoExporter.export(job: job) { _ in }
+        try await SwiftUIOverlayVideoExporter.export(job: job, backend: .swiftUI) { _ in }
 
         let files = try FileManager.default.contentsOfDirectory(at: destination, includingPropertiesForKeys: nil)
         let profileURL = try #require(files.first { $0.lastPathComponent.hasPrefix("export_profile_") && $0.pathExtension == "json" })
@@ -578,7 +578,7 @@ struct ExportPerformanceTests {
             profilesRenderModel: true
         )
 
-        try await SwiftUIOverlayVideoExporter.export(job: job) { _ in }
+        try await SwiftUIOverlayVideoExporter.export(job: job, backend: .swiftUI) { _ in }
 
         let profileURL = try #require(
             try FileManager.default.contentsOfDirectory(at: destination, includingPropertiesForKeys: nil)

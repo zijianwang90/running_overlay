@@ -26,6 +26,7 @@ entries in `project-log.md`.
 | Numeric overlays | `docs/design/overlays/numeric/`, `docs/requirements.md` |
 | Featured overlays | `docs/overlay-modules/README.md`, matching module and design directory |
 | Preview | `docs/architecture.md#preview`, `docs/design/panels/preview/` |
+| Skia SDK or GPU backend experiments | `docs/development/skia-sdk.md`, `docs/adr/0010-skia-ganesh-metal-renderer.md` |
 | Export or performance | `docs/architecture.md#export`, `docs/export-performance.md` |
 | Project persistence or undo | `docs/architecture.md`, `docs/development/persistence.md` |
 | UI design system | `docs/design/README.md`, `docs/design/system/` |

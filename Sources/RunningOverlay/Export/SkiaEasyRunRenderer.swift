@@ -7,6 +7,21 @@ import Metal
 
 /// Spike: draws the minimal-preset text elements of a template with Skia so the output can be
 /// compared with `SwiftUIOverlayVideoExporter`. See ADR 0009.
+enum SkiaGPUBackendKind: String, Sendable {
+    case ganesh
+    case graphite
+
+    static var defaultBackend: Self {
+        skb_graphite_available() != 0 ? .graphite : .ganesh
+    }
+
+    static var selected: Self {
+        if let raw = ProcessInfo.processInfo.environment["RUNNING_OVERLAY_SKIA_BACKEND"],
+           let backend = Self(rawValue: raw) { return backend }
+        return defaultBackend
+    }
+}
+
 final class SkiaEasyRunRenderer {
     private let context: OpaquePointer
     let size: CGSize
@@ -49,13 +64,22 @@ final class SkiaEasyRunRenderer {
         size: CGSize,
         device: MTLDevice,
         commandQueue: MTLCommandQueue,
-        offscreen: Bool = true
+        offscreen: Bool = true,
+        gpuBackend: SkiaGPUBackendKind = .selected
     ) {
         let devicePointer = Unmanaged.passUnretained(device as AnyObject).toOpaque()
         let queuePointer = Unmanaged.passUnretained(commandQueue as AnyObject).toOpaque()
-        let context = offscreen
-            ? skb_create_gpu(Int32(size.width), Int32(size.height), devicePointer, queuePointer)
-            : skb_create_gpu_context(Int32(size.width), Int32(size.height), devicePointer, queuePointer)
+        let context: OpaquePointer?
+        switch gpuBackend {
+        case .ganesh:
+            context = offscreen
+                ? skb_create_gpu(Int32(size.width), Int32(size.height), devicePointer, queuePointer)
+                : skb_create_gpu_context(Int32(size.width), Int32(size.height), devicePointer, queuePointer)
+        case .graphite:
+            context = offscreen
+                ? skb_create_graphite_gpu(Int32(size.width), Int32(size.height), devicePointer, queuePointer)
+                : skb_create_graphite_gpu_context(Int32(size.width), Int32(size.height), devicePointer, queuePointer)
+        }
         guard let context else { return nil }
         self.context = context
         self.size = size
@@ -189,8 +213,10 @@ final class SkiaEasyRunRenderer {
     }
 
     /// Submits pending draw commands. `sync` waits for the GPU to finish.
-    func flush(sync: Bool) {
+    @discardableResult
+    func flush(sync: Bool) -> Bool {
         skb_flush(context, sync ? 1 : 0)
+        return skb_gpu_succeeded(context) != 0
     }
 
     /// Flushes, waits, and reads the surface back into CPU memory.

@@ -1,19 +1,28 @@
 import CoreGraphics
 import Foundation
 
-/// Selects which overlay frame renderer backs preview, export, and parity
-/// tests. SwiftUI stays the default until a module passes its golden-frame
-/// review; `RUNNING_OVERLAY_RENDERER=skia` opts into the Skia backend.
+/// Skia owns product overlay pixels. SwiftUI is a Debug comparison oracle;
+/// SDK-free builds remain available for model/UI development and CI.
 enum OverlayRendererBackendKind: String, CaseIterable, Sendable {
     case swiftUI
     case skia
 
+    static var defaultBackend: Self {
+        #if canImport(CSkiaBridge)
+        return .skia
+        #else
+        return .swiftUI
+        #endif
+    }
+
     static var selected: Self {
-        guard let raw = ProcessInfo.processInfo.environment["RUNNING_OVERLAY_RENDERER"],
-              let backend = Self(rawValue: raw) else {
-            return .swiftUI
+        #if DEBUG
+        if let raw = ProcessInfo.processInfo.environment["RUNNING_OVERLAY_RENDERER"],
+           let backend = Self(rawValue: raw) {
+            return backend
         }
-        return backend
+        #endif
+        return defaultBackend
     }
 }
 

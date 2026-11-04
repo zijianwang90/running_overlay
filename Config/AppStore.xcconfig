@@ -7,6 +7,16 @@ CODE_SIGN_ENTITLEMENTS = AppStore/RunningOverlay.entitlements
 ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
 DEVELOPMENT_TEAM =
 
-// Optional local signing overrides. This file is ignored by git and may set
-// DEVELOPMENT_TEAM, CODE_SIGN_STYLE, and provisioning settings for archive.
+// Native product builds use the pinned dual-backend Metal SDK. Supply SKIA_DIR
+// as a build setting (or in ignored LocalSigning.xcconfig). Explicitly set
+// SKIA_ENABLED=NO for SDK-free editor development; never distribute that build.
+SKIA_ENABLED = YES
+SKIA_EXCLUDED_NO = skia_bridge.cpp skia_gpu.mm
+SKIA_HEADERS_YES = $(SKIA_DIR) $(SRCROOT)/Sources/CSkiaBridge/include
+SKIA_MODULE_YES = $(SRCROOT)/Sources/CSkiaBridge/include
+SKIA_LIBRARIES_YES = $(SKIA_DIR)/lib
+SKIA_LINK_YES = -lskia -framework Metal -framework QuartzCore -framework CoreText -framework CoreGraphics -framework AppKit
+SKIA_DEFINES_YES = SKB_ENABLE_GRAPHITE=1
+
+// Optional ignored overrides for SDK location, team and signing settings.
 #include? "LocalSigning.xcconfig"

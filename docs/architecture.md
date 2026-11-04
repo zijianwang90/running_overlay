@@ -130,8 +130,10 @@ Responsibilities:
   geometry.
 - Draw all supported elements through one `SkiaEasyRunRenderer` in
   `layout.elements` order. Preview and export call the same renderer.
-- Use Ganesh Metal for preview and export and the CPU raster bridge for tests
-  and machines without Metal. The `skb_*` C bridge is the only Skia boundary.
+- Use Skia Metal as the product renderer for preview and export. A dual-backend
+  m159 SDK defaults to Graphite; Ganesh remains a backend fallback/diagnostic
+  selection behind the same `skb_*` C bridge. SDK-free builds are developer/CI
+  builds, not the target product configuration. See ADR 0011.
 - Preload route-map snapshots, weather icons, and route masks before drawing.
   Hosts call `preloadAssets` when layout, activity, canvas size, or available
   map snapshots change; the one-time auto-preload inside `draw` is a test
@@ -139,11 +141,14 @@ Responsibilities:
 - Keep preview and export pixel-equivalent within documented golden
   thresholds. Text anti-aliasing and shadow kernels differ from SwiftUI at the
   pixel level, so parity tests compare changed-pixel ratios and mean deltas.
-- In Debug builds, preview can switch between renderers at runtime with
-  `RUNNING_OVERLAY_RENDERER=skia`/`swiftUI` or the preview header toggle.
-  Production export still uses the SwiftUI `ImageRenderer`; Skia export is
-  covered by the export benchmark tests and waits for an explicit export
-  wiring change. ADR 0010 records the decision and measurements.
+- Release builds with Skia always select it for preview, MOV/PNG export and
+  headless export. Debug builds can select `RUNNING_OVERLAY_RENDERER=swiftUI`
+  and use the preview header toggle for visual comparisons. The SwiftUI oracle
+  remains during migration; it is not a selectable product rendering engine.
+  Skia exports draw directly into IOSurface-backed BGRA buffers and complete GPU
+  work before append, preserving the shared writer, sampling, progress,
+  cancellation and destination-access lifecycle. Missing Skia/Metal is an
+  explicit error, with no per-overlay SwiftUI fallback.
 
 ### Preview
 

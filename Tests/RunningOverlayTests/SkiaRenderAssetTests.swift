@@ -10,6 +10,29 @@ import Testing
 struct SkiaRenderAssetTests {
     private static let canvas = CGSize(width: 1280, height: 720)
 
+    @Test func featherMaskSurvivesCacheEvictionUntilDrawFinishes() throws {
+        let context = try #require(skb_create(64, 48))
+        defer { skb_destroy(context) }
+        weak var observed: SkiaTextEffects.MaskHandle?
+        do {
+            let mask = try #require(SkiaTextEffects.maskImage(
+                size: CGSize(width: 64, height: 48), cornerRadius: 12, fadeAmount: 0.5
+            ))
+            observed = mask
+            SkiaTextEffects.removeCachedMasks()
+            #expect(observed != nil)
+            withExtendedLifetime(mask) {
+                skb_fill_round_rect(context, 0, 0, 64, 48, 0, 1, 1, 1, 1)
+                skb_draw_image_dst_in(context, mask.pointer, 0, 0, 64, 48)
+            }
+            var rowBytes = 0
+            let pixels = try #require(skb_pixels(context, &rowBytes))
+            #expect(pixels[24 * rowBytes + 32 * 4 + 3] > 240)
+            #expect(pixels[3] < 5)
+        }
+        #expect(observed == nil)
+    }
+
     @Test func routeSnapshotAndMaskRegistration() throws {
         try OverlayPreferenceFixtures.withDefaults {
             let activity = SkiaRouteWeatherGoldenTests.activity()

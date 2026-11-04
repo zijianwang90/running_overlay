@@ -16,8 +16,15 @@ other app chrome stay SwiftUI.
 Metal zero-copy, per-module benchmarks, and the Skia bridge). Commit the
 uncommitted spike work first, then branch every workstream from it.
 
-**Status:** Proposed. No production renderer changes until the vertical slice
-passes parity and benchmark gates.
+**Status (2026-11-03, product cutover):** The maintainer accepted the Graphite
+sample and authorized Skia as the sole product overlay engine. ADR 0011 is the
+current decision authority. Skia-enabled Debug/Release now default to Skia;
+m159 defaults to Graphite. Release preview is connected, and SwiftPM bundle
+packaging embeds/signs the SDK. SwiftUI remains a Debug/test oracle until final
+preset/packaging acceptance. Further performance work is bounded to one
+prefetch experiment; basic faster-than-real-time throughput is sufficient.
+Native Xcode/CI SDK integration and distribution validation remain open.
+Historical workstreams and checklists below are not current instructions.
 
 ---
 

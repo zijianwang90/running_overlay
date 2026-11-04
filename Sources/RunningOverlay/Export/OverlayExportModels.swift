@@ -43,6 +43,7 @@ struct OverlayExportFrameSample: Equatable {
 }
 
 enum OverlayExportRenderPath: String, Codable, Equatable, Hashable {
+    case skiaMetal
     case fullFrameSingleLayer
     case layeredRegion
     case perOverlay

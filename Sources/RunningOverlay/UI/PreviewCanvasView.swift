@@ -25,9 +25,7 @@ struct PreviewCanvasView: View {
     @State private var activeSnapLines: [PreviewSnapLine] = []
 
     #if DEBUG && canImport(CSkiaBridge)
-    /// Debug-only override for the overlay renderer. `RUNNING_OVERLAY_RENDERER=skia`
-    /// selects the initial value; the preview header toggle flips it at runtime.
-    /// SwiftUI stays the default.
+    /// Debug-only comparison override; product builds always use Skia.
     @State private var usesSkiaPreview: Bool
     #endif
 
@@ -83,8 +81,8 @@ struct PreviewCanvasView: View {
                             }
                         }
 
-                        #if DEBUG && canImport(CSkiaBridge)
-                        if usesSkiaPreview {
+                        #if canImport(CSkiaBridge)
+                        if isSkiaPreviewActive {
                             // Transparent overlay canvas composited above the
                             // video layer. Selection and drag affordances stay
                             // in SwiftUI above this view.
@@ -338,6 +336,8 @@ struct PreviewCanvasView: View {
     private var isSkiaPreviewActive: Bool {
         #if DEBUG && canImport(CSkiaBridge)
         return usesSkiaPreview
+        #elseif canImport(CSkiaBridge)
+        return true
         #else
         return false
         #endif
@@ -373,15 +373,15 @@ struct PreviewCanvasView: View {
     private func activeOverlayFrames(
         canvasSize: CGSize
     ) -> [OverlayElement.ID: CGRect] {
-        #if DEBUG && canImport(CSkiaBridge)
-        if usesSkiaPreview {
+        #if canImport(CSkiaBridge)
+        if isSkiaPreviewActive {
             return skiaOverlayFrames(canvasSize: canvasSize)
         }
         #endif
         return overlayFrames
     }
 
-    #if DEBUG && canImport(CSkiaBridge)
+    #if canImport(CSkiaBridge)
     private func skiaOverlayFrames(
         canvasSize: CGSize
     ) -> [OverlayElement.ID: CGRect] {

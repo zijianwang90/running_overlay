@@ -4,7 +4,9 @@ Date: 2026-11-02
 
 ## Status
 
-Proposed
+Superseded in part by [ADR 0011](0011-skia-product-renderer.md) for product
+defaults, Graphite adoption and performance scope. Measurements below are
+historical evidence.
 
 ## Context
 
@@ -43,10 +45,21 @@ Metal.
 
 1. Adopt one Skia renderer as the target for preview, export, and the editor
    helper. Preview is wired behind `RUNNING_OVERLAY_RENDERER=skia`/`swiftUI`
-   and a Debug toggle. Production export still uses the SwiftUI
-   `ImageRenderer`; Skia export is exercised by benchmark tests until an
-   explicit export wiring change passes review.
-2. Use the Ganesh Metal backend on macOS. Do not adopt Graphite or Vulkan now.
+   and a Debug toggle. MOV export and PNG diagnostics now honor the environment
+   selection as well; the header toggle affects preview only. SwiftUI remains
+   the default until export review and dependency packaging are complete.
+   The Skia export host preloads assets once and wraps each unique sample's
+   IOSurface-backed pixel buffer, completing GPU writes before encoder append.
+   It shares the existing writer and job lifecycle rather than duplicating
+   timing, progress, cancellation, or destination authorization. The initial
+   integration uses one serial Metal context; benchmark-only ping-pong
+   scheduling is deferred until the production path is measured.
+2. Use Ganesh Metal by default on macOS. An opt-in m159 Graphite Metal
+   experiment is available through `SKIA_GRAPHITE=1` and
+   `RUNNING_OVERLAY_SKIA_BACKEND=graphite`; this does not constitute production
+   adoption. Keep both paths behind the C bridge and require parity and measured
+   throughput before a default change. Vulkan remains deferred. See
+   [the SDK guide](../development/skia-sdk.md).
 3. Keep the C bridge (`skb_*`) as the backend seam. All renderer code calls the
    bridge, never Skia C++ directly. A future Graphite or Windows backend can be
    added behind the same seam.
@@ -93,5 +106,5 @@ Costs and risks:
 - Add the Skia license, version, and prebuilt provenance to
   `docs/assets-and-licenses.md`.
 - Record the fixed benchmark suite and parity thresholds in `docs/testing.md`.
-- Re-evaluate Graphite when a prebuilt with it becomes available or when a
-  Windows backend is pursued.
+- Evaluate the source-built m159 dual-backend SDK; keep Ganesh as the default
+  until Graphite passes visual, performance, packaging and release review.

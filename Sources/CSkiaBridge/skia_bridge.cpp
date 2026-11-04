@@ -464,7 +464,11 @@ void skb_begin_blur_layer(
 }
 
 const uint8_t *skb_pixels(SkiaBridgeContext *ctx, size_t *rowBytes) {
-    if (ctx->grContext) {
+    if (ctx->grContext
+#if defined(SKB_ENABLE_GRAPHITE)
+        || ctx->graphiteContext
+#endif
+    ) {
         return skb_read_pixels_impl(ctx, rowBytes);
     }
     ctx->surface->peekPixels(&ctx->pixmap);

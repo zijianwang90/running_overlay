@@ -188,6 +188,17 @@ SkiaBridgeContext *skb_create_gpu(
 SkiaBridgeContext *skb_create_gpu_context(
     int width, int height, const void *mtlDevice, const void *mtlQueue);
 
+/// Experimental Graphite Metal contexts. Return NULL when compiled without
+/// SKB_ENABLE_GRAPHITE; callers must not silently substitute Ganesh.
+SkiaBridgeContext *skb_create_graphite_gpu(
+    int width, int height, const void *mtlDevice, const void *mtlQueue);
+SkiaBridgeContext *skb_create_graphite_gpu_context(
+    int width, int height, const void *mtlDevice, const void *mtlQueue);
+
+/// Returns 0 after a GPU recording/submission error, otherwise 1.
+int skb_gpu_succeeded(SkiaBridgeContext *ctx);
+int skb_graphite_available(void);
+
 /// Wraps an external `MTLTexture` as the context's render target. Returns 1 on
 /// success. The caller keeps the texture alive until the next flush.
 int skb_wrap_texture(

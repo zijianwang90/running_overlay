@@ -15,6 +15,7 @@ load only the conventions relevant to their task.
 | Overlay models, preview rendering, fonts, icons, and weather | [Overlays and Preview](development/overlays-and-preview.md) |
 | Project snapshots, templates, settings, and credentials | [Persistence](development/persistence.md) |
 | Export pipeline, codecs, profiling, and benchmarks | [Export](development/export.md) |
+| Optional Skia SDK builds and Ganesh/Graphite evaluation | [Skia SDK](development/skia-sdk.md) |
 | App Store packaging, sandboxing, signing, and privacy manifests | [Release](development/release.md) |
 | Reliability, testing strategy, and documentation rules | [Quality](development/quality.md) |
 
