@@ -3627,6 +3627,92 @@ final class ProjectDocument: ObservableObject {
         )
     }
 
+    func chooseEditorPackageDestination(mode: EditorPackageMode) {
+        guard !isExporting else {
+            return
+        }
+
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Export"
+        panel.directoryURL = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask).first
+
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return
+        }
+        exportEditorPackage(to: url, mode: mode)
+    }
+
+    func exportEditorPackage(to directoryURL: URL, mode: EditorPackageMode) {
+        guard !isExporting else {
+            return
+        }
+        guard activity.duration > 0 else {
+            statusMessage = "Import a FIT or GPX file before exporting an editor package."
+            return
+        }
+
+        let hasMediaClip = timeline.tracks.flatMap(\.clips).contains { clip in
+            guard let mediaItemID = clip.mediaItemID else { return false }
+            return mediaItems.first(where: { $0.id == mediaItemID })?.fileURL != nil
+        }
+        if mode == .perClip && !hasMediaClip {
+            statusMessage = "Add at least one video clip with a media file before exporting an editor package."
+            return
+        }
+
+        let request = EditorPackageExportRequest(
+            activity: activity,
+            settings: settings,
+            timeline: timeline,
+            mediaItems: mediaItems,
+            overlayLayout: overlayLayout,
+            templateName: projectDisplayName,
+            projectName: projectDisplayName,
+            mode: mode
+        )
+        let title = mode == .perClip
+            ? "Per Clip Editor Package"
+            : "Full Activity Editor Package"
+        let spans = EditorPackageExporter.plannedSpans(for: request)
+
+        isExporting = true
+        exportProgress = ExportProgressState(
+            title: title,
+            items: spans.enumerated().map { index, span in
+                ExportProgressItem(index: index, name: span.name, progress: 0, status: .queued)
+            }
+        )
+        statusMessage = title
+
+        exportTask = Task {
+            do {
+                let packageURL = try await SecurityScopedURLAccess.withAccess(to: directoryURL) {
+                    try await EditorPackageExporter.export(request: request, to: directoryURL) { [weak self] progress in
+                        self?.updateExportProgress(progress)
+                    }
+                }
+                exportProgress?.markCompleted()
+                reportSuccess("Editor package exported: \(packageURL.lastPathComponent).")
+            } catch OverlayExportError.cancelled {
+                exportProgress?.markCancelled()
+                statusMessage = "Export cancelled."
+            } catch is CancellationError {
+                exportProgress?.markCancelled()
+                statusMessage = "Export cancelled."
+            } catch {
+                exportProgress?.markFailed(message: error.localizedDescription)
+                reportError("Editor package export failed: \(error.localizedDescription)")
+                print("[RunningOverlay] Editor package export failed: \(String(reflecting: error))")
+            }
+            isExporting = false
+            exportTask = nil
+        }
+    }
+
     func exportTestClip(to destinationURL: URL) {
         guard !isExporting else {
             return

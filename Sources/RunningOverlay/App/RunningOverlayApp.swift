@@ -133,6 +133,18 @@ struct RunningOverlayApp: App {
                 .keyboardShortcut("S", modifiers: [.command, .shift])
             }
 
+            CommandGroup(after: .importExport) {
+                Button("Export for Editor (Per Clip)…") {
+                    project.chooseEditorPackageDestination(mode: .perClip)
+                }
+                .disabled(project.isExporting)
+
+                Button("Export for Editor (Full Activity)…") {
+                    project.chooseEditorPackageDestination(mode: .fullActivity)
+                }
+                .disabled(project.isExporting)
+            }
+
             CommandMenu("Playback") {
                 Button(project.isPlaying ? "Pause" : "Play") {
                     project.togglePlayback()
