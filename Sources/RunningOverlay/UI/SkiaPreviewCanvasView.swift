@@ -536,21 +536,33 @@ private enum SkiaPreviewDemoData {
     static let activity: ActivityTimeline = {
         let start = Date(timeIntervalSince1970: 1_735_689_600)
         let duration: TimeInterval = 1800
-        let records = stride(from: 0.0, through: duration, by: 1).map { t in
-            ActivityRecord(
-                elapsedTime: t,
-                timestamp: start.addingTimeInterval(t),
-                distanceMeters: t * 3.1,
-                heartRate: 135 + Int(12 * sin(t / 240)),
-                paceSecondsPerKilometer: 320 - 20 * sin(t / 300),
-                elevationMeters: 30 + 18 * sin(t / 420),
-                cadence: 174 + Int(6 * sin(t / 180)),
-                powerWatts: 240 + Int(25 * sin(t / 200)),
-                calories: t / 3.6,
-                latitude: 40.75 + 0.006 * sin(t / 500),
-                longitude: -73.99 + 0.008 * cos(t / 500)
-            )
-        }
+        // Values are separate locals because one large literal times out the
+        // type checker on older toolchains.
+        let records: [ActivityRecord] = stride(from: 0.0, through: duration, by: 1)
+            .map { (t: Double) -> ActivityRecord in
+                let distanceMeters: Double = t * 3.1
+                let heartRate: Int = 135 + Int(12 * sin(t / 240))
+                let paceSecondsPerKilometer: Double = 320 - 20 * sin(t / 300)
+                let elevationMeters: Double = 30 + 18 * sin(t / 420)
+                let cadence: Int = 174 + Int(6 * sin(t / 180))
+                let powerWatts: Int = 240 + Int(25 * sin(t / 200))
+                let calories: Double = t / 3.6
+                let latitude: Double = 40.75 + 0.006 * sin(t / 500)
+                let longitude: Double = -73.99 + 0.008 * cos(t / 500)
+                return ActivityRecord(
+                    elapsedTime: t,
+                    timestamp: start.addingTimeInterval(t),
+                    distanceMeters: distanceMeters,
+                    heartRate: heartRate,
+                    paceSecondsPerKilometer: paceSecondsPerKilometer,
+                    elevationMeters: elevationMeters,
+                    cadence: cadence,
+                    powerWatts: powerWatts,
+                    calories: calories,
+                    latitude: latitude,
+                    longitude: longitude
+                )
+            }
         return ActivityTimeline(
             startDate: start,
             duration: duration,

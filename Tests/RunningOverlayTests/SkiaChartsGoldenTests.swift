@@ -397,21 +397,30 @@ import Testing
     static func activity(duration: TimeInterval) -> ActivityTimeline {
         let start = Date(timeIntervalSince1970: 1_735_689_600)
         let step = 1.0
-        let records = stride(from: 0.0, through: duration, by: step).map { t in
-            ActivityRecord(
-                elapsedTime: t,
-                timestamp: start.addingTimeInterval(t),
-                distanceMeters: t * 3.3,
-                heartRate: 130 + Int(t / 30),
-                paceSecondsPerKilometer: 303,
-                elevationMeters: 20 + 14 * sin(t / 60) + t / 90,
-                cadence: 176,
-                powerWatts: 250,
-                calories: t / 4,
-                latitude: 40.75 + 0.0006 * sin(t / 80),
-                longitude: -73.99 + 0.0008 * cos(t / 80)
-            )
-        }
+        // Values are separate locals because one large literal times out the
+        // type checker on older toolchains.
+        let records: [ActivityRecord] = stride(from: 0.0, through: duration, by: step)
+            .map { (t: Double) -> ActivityRecord in
+                let distanceMeters: Double = t * 3.3
+                let heartRate: Int = 130 + Int(t / 30)
+                let elevationMeters: Double = 20 + 14 * sin(t / 60) + t / 90
+                let calories: Double = t / 4
+                let latitude: Double = 40.75 + 0.0006 * sin(t / 80)
+                let longitude: Double = -73.99 + 0.0008 * cos(t / 80)
+                return ActivityRecord(
+                    elapsedTime: t,
+                    timestamp: start.addingTimeInterval(t),
+                    distanceMeters: distanceMeters,
+                    heartRate: heartRate,
+                    paceSecondsPerKilometer: 303,
+                    elevationMeters: elevationMeters,
+                    cadence: 176,
+                    powerWatts: 250,
+                    calories: calories,
+                    latitude: latitude,
+                    longitude: longitude
+                )
+            }
         return ActivityTimeline(
             startDate: start,
             duration: duration,
