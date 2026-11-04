@@ -223,7 +223,7 @@
   ],
   "sharedStatsBarRenderer": {
     "preview": "PreviewCanvasView.SharedStatsBarContentView",
-    "export": "OverlayFrameRenderer.drawSharedStatsBar",
+    "export": "SwiftUIOverlayVideoExporter via shared SwiftUI stats bar view",
     "baseline": "Distance Timeline stats bar rendering behavior",
     "rules": [
       "Distance Timeline and Route Map use the same stats bar rendering pipeline.",

@@ -189,9 +189,11 @@ case .weatherWidget:
         .overlayForegroundEffects(element: element)
 ```
 
-### Export Renderer (`OverlayFrameRenderer.swift`)
+### Export Renderer (`SwiftUIOverlayVideoExporter`)
 
-Add case in `renderElement`. Private `renderWeatherWidget` method: compute layout, construct `WeatherWidgetOverlayView`, rasterise via `ImageRenderer(scale: 2.0)`, draw CGImage at `layout.rect`. Same `ImageRenderer` pattern already used by the lap overlays.
+Product preview and export share `SkiaWeatherWidgetModule` and its render model.
+`SwiftUIOverlayVideoExporter` coordinates export; its retained SwiftUI comparison
+backend rasterizes the shared weather view with `ImageRenderer`.
 
 ### Inspector UI (`WeatherWidgetOverlayDetailView.swift`)
 
@@ -266,7 +268,7 @@ Also update `defaultOverlayStyle(for:)` to set `style.weatherWidget = .preset(.s
 3. `WeatherWidgetRenderLayout` + `weatherWidgetLayout(for:in:)`
 4. `ProjectDocument` mutation methods
 5. SwiftUI preview views + `PreviewCanvasView` routing
-6. `OverlayFrameRenderer` export path
+6. Shared Skia preview/export module and retained SwiftUI comparison path
 7. Overlay Pool tile registration
 8. `ParameterPanelView` routing
 9. Inspector detail view

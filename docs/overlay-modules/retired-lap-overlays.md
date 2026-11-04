@@ -27,7 +27,7 @@ The removal includes:
 - `LapListStyle`, `LapCardStyle`, and `LapLiveStyle`
 - Lap render layouts and render helpers in `OverlayRenderModel`
 - SwiftUI preview views in `PreviewCanvasView`
-- CoreGraphics export renderers in `OverlayFrameRenderer`
+- CoreGraphics export renderers for the three overlay types
 - SwiftUI export dispatch for the three overlay types
 - Inspector detail views:
   - `Sources/RunningOverlay/UI/LapListOverlayDetailView.swift`

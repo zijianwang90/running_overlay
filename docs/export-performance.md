@@ -6,6 +6,9 @@ without changing visual output or export timing.
 
 ## Current Export Path
 
+- `SwiftUIOverlayVideoExporter` coordinates export through the product Skia
+  renderer; its SwiftUI backend remains a Debug/test oracle. The former
+  `OverlayFrameRenderer` CGContext engine was removed and must not be reintroduced.
 - `SwiftUIOverlayVideoExporter` exports one transparent MOV per segment.
 - HEVC-with-alpha output sets VideoToolbox
   `PrioritizeEncodingSpeedOverQuality`, keeping the project bitrate. If

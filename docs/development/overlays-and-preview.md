@@ -9,6 +9,11 @@ via `RUNNING_OVERLAY_RENDERER=swiftUI` and the preview header toggle. Both hosts
 consume `OverlayRenderModel` and `SkiaEasyRunRenderer`; new product rendering
 behavior belongs in Skia. See [ADR 0011](../adr/0011-skia-product-renderer.md).
 
+The standalone legacy Core Graphics renderer is removed. SwiftUI comparison
+views and the SDK-free path remain on main for several releases, with a
+pre-cleanup archive at `archive/swiftui-renderer-2026-11-04` on origin. See
+[ADR 0012](../adr/0012-staged-legacy-renderer-retirement.md) before removing them.
+
 ### Phase 5: Overlay Editing
 
 - Status: in progress.
@@ -43,10 +48,10 @@ Current implementation:
 - Heart-rate-related numeric overlays can now tint value, label, unit, and icon independently through `OverlayStyle.valueColorsFollowHeartRateZones`, `labelColorsFollowHeartRateZones`, `unitColorsFollowHeartRateZones`, and `iconColorsFollowHeartRateZones`. `OverlayRenderModel.textLayout` resolves a shared `dynamicHeartRateZoneColor` from the current heart rate sample and `HRZonePalette`, then preview/export consume that render-model field without changing layout or picker behavior.
 - Numeric overlay preview/export positioning is top-leading anchored rather than center anchored. Value and label rows resolve to leading alignment so incomplete or shorter dynamic content keeps the same left edge and grows to the right; inline unit alignment still honors `unitTextAlignment` as its top/middle/bottom anchor. Preview placement uses deterministic alignment guides instead of async content-size measurement; numeric drag uses canvas-coordinate pointer location plus a grab offset to track the overlay's top-left corner, then runs a top-leading snap/clamp path so edge snapping still works.
 - `OverlayStyle` carries the numeric-overlay editor state: `unitOption`, `elevationDisplayMode`, `useFITTemperature`, `customNumericField`, `customNumericFormat`, `customNumericPrecision`, `customUnit`, `showLabel`, `showUnit`, `customLabel`, `labelPosition`, `unitPosition`, `labelFont*`, `unitFont*`, `icon*`, `valueColorsFollowHeartRateZones`, `labelColorsFollowHeartRateZones`, `unitColorsFollowHeartRateZones`, `iconColorsFollowHeartRateZones`, `rotationDegrees`, `accentColor`, `backgroundEnabled` / `backgroundColor` / `backgroundRadius` / `backgroundPaddingX` / `backgroundPaddingY` / `backgroundFadeOut*` / `backgroundBlurRadius`, and `shadowEnabled` / `shadowOffsetX` / `shadowOffsetY`. All new fields decode with safe defaults so old saved projects and overlay templates load unchanged.
-- Shared background Fade Out uses `OverlayFeatherMaskRenderer`, a distance-field rounded-rectangle alpha mask reused by SwiftUI preview and CoreGraphics export. The mask fades only the background surface to transparent; it does not fade foreground text/icons or sample/blur the underlying video.
+- Shared background Fade Out uses `OverlayFeatherMaskRenderer`, a distance-field rounded-rectangle alpha mask reused by SwiftUI preview and Route Map rendering. The mask fades only the background surface to transparent; it does not fade foreground text/icons or sample/blur the underlying video.
 - `OverlayValueFormatter.value(for:element:activity:elapsedTime:)` is element-aware: it picks the unit option and label/unit/custom-label rules from `OverlayStyle` to produce the rendered string and the Inspector's live preview. For `customNumeric`, it resolves `customNumericField` through the current `ActivityTimeline`, including dynamic `ActivityRecord.genericFields` keys discovered from imported FIT `record` messages. The inspector filters fixed Numeric Overlay duplicates from the Custom Numeric value menu while preserving formatter/Codable support for older saved selections. It then applies `customNumericFormat` and `customNumericPrecision`, and returns the same components consumed by preview and export. Elapsed Time overlays render active elapsed time from `ActivityTimeline.activeElapsedTime(at:)`, subtracting FIT timer-paused spans from the real elapsed-time axis so the value matches watch moving/workout time.
 - `OverlayElementType.isNumericOverlay` and `OverlayElementType.defaultUnitOption` drive routing into the numeric editor and the unit defaults applied by `ProjectDocument.addOverlayElement`.
-- `OverlayRenderModel` and `OverlayFrameRenderer` honor the new background and shadow style fields on the `.minimal` text preset so the same configuration is consistent between preview, calibration PNG, and MOV export.
+- `OverlayRenderModel`, Skia modules and the SwiftUI comparison views honor the new background and shadow style fields on the `.minimal` text preset so the same configuration is consistent between preview, calibration PNG, and MOV export.
 - `ProjectDocument` exposes setters for every numeric overlay field plus `resetOverlayStyle` used by the numeric Inspector's footer Reset action; all setters are undoable. Heart-rate-specific Inspector toggles for per-role zone coloring (`setOverlayValueColorsFollowHeartRateZones`, `setOverlayLabelColorsFollowHeartRateZones`, `setOverlayUnitColorsFollowHeartRateZones`, `setOverlayIconColorsFollowHeartRateZones`) follow the same undo semantics, while the older `setOverlayTextColorsFollowHeartRateZones` remains as a compatibility-wide setter.
 - Text overlays expose a first-position built-in style picker with Minimal, Pill Badge, Metric Card, Big Number, Sport Watch, and Split Label text presets.
 - Running Gauge is available as a composite circular dashboard overlay with distance, elapsed time, pace, and heart rate in one module.
@@ -61,7 +66,7 @@ Current implementation:
 - Inspector shows a dark outer state when no overlay element is selected, but it only contains `Added Overlays`; it no longer carries the selectable overlay catalog.
 - Inspector added-overlay rows show icon, type, live value preview, visibility toggle, lock toggle, delete, and detail navigation without sorting affordances.
 - Added Overlays rows expose a context menu (`Copy Properties` / `Paste Properties`) for overlay configuration transfer.
-- Overlay visibility now gates both Preview rendering and `OverlayFrameRenderer` export rendering.
+- Overlay visibility now gates both preview and export rendering across Skia and the SwiftUI oracle.
 - Overlay lock is persisted and currently blocks Preview canvas selection/drag plus position writes in `ProjectDocument.moveOverlay` / `setOverlayPosition`.
 - Overlay configuration paste is category-gated through `OverlayElementType.pasteCategory`; numeric overlays can paste only within the numeric group.
 - Distance Timeline is a dedicated module with minimal, dense, sport, splits, glass, neon, lower-third, and route presets, backed by `DistanceTimelineStyle`.
