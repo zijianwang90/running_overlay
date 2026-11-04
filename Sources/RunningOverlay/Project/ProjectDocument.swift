@@ -3400,26 +3400,8 @@ final class ProjectDocument: ObservableObject {
     }
 
     private func loadBuiltInOverlayTemplateResource(_ template: BuiltInOverlayTemplate) -> OverlayTemplate? {
-        guard let resourceName = template.resourceName else {
-            return nil
-        }
-
-        let url = Bundle.runningOverlayResources.url(
-                forResource: resourceName,
-                withExtension: OverlayTemplateStore.fileExtension,
-                subdirectory: "Templates"
-              )
-            ?? Bundle.runningOverlayResources.url(
-                forResource: resourceName,
-                withExtension: OverlayTemplateStore.fileExtension
-            )
-
-        guard let url else {
-            return nil
-        }
-
         do {
-            return try overlayTemplateStore.loadTemplateFile(from: url)
+            return try template.loadResourceTemplate()
         } catch {
             reportError("Built-in template load failed: \(template.name).")
             print("[RunningOverlay] Built-in template load failed: \(template.name), \(String(reflecting: error))")
