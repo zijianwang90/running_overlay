@@ -78,6 +78,7 @@
 		3B1925D0307551312F663186 /* DecorOverlayViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF73E69FF682BE184C9440FC /* DecorOverlayViews.swift */; };
 		944748626621CA9828D03322 /* DistanceTimelineOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3331AE3C054BC9ECC8C53DC7 /* DistanceTimelineOverlayDetailView.swift */; };
 		141398C0956C8E57CAA32C38 /* EditorTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C50E54B829DF19CC63E48CC /* EditorTheme.swift */; };
+		9F63644D3CB49CFFD73AF74C /* EditorTitlebarDoubleClick.swift in Sources */ = {isa = PBXBuildFile; fileRef = 268FCE0E771FCE6D91CE94DF /* EditorTitlebarDoubleClick.swift */; };
 		34F8355133ACFA5A7C9D5CD4 /* ElevationChartOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EE1E52771F1FDF9C23558F7 /* ElevationChartOverlayDetailView.swift */; };
 		8A251E323522502BA799759B /* ExportDialogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BEB77030C4035FCEC7B15E8 /* ExportDialogView.swift */; };
 		A99E7D7329DB077B9318F42B /* FontLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44E1CEC83029C2A443719574 /* FontLibraryView.swift */; };
@@ -227,6 +228,7 @@
 		AF73E69FF682BE184C9440FC /* DecorOverlayViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/DecorOverlayViews.swift"; sourceTree = SOURCE_ROOT; };
 		3331AE3C054BC9ECC8C53DC7 /* DistanceTimelineOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/DistanceTimelineOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
 		2C50E54B829DF19CC63E48CC /* EditorTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/EditorTheme.swift"; sourceTree = SOURCE_ROOT; };
+		268FCE0E771FCE6D91CE94DF /* EditorTitlebarDoubleClick.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/EditorTitlebarDoubleClick.swift"; sourceTree = SOURCE_ROOT; };
 		1EE1E52771F1FDF9C23558F7 /* ElevationChartOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/ElevationChartOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
 		3BEB77030C4035FCEC7B15E8 /* ExportDialogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/ExportDialogView.swift"; sourceTree = SOURCE_ROOT; };
 		44E1CEC83029C2A443719574 /* FontLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/FontLibraryView.swift"; sourceTree = SOURCE_ROOT; };
@@ -378,6 +380,7 @@
 			AF73E69FF682BE184C9440FC /* DecorOverlayViews.swift */,
 			3331AE3C054BC9ECC8C53DC7 /* DistanceTimelineOverlayDetailView.swift */,
 			2C50E54B829DF19CC63E48CC /* EditorTheme.swift */,
+			268FCE0E771FCE6D91CE94DF /* EditorTitlebarDoubleClick.swift */,
 			1EE1E52771F1FDF9C23558F7 /* ElevationChartOverlayDetailView.swift */,
 			3BEB77030C4035FCEC7B15E8 /* ExportDialogView.swift */,
 			44E1CEC83029C2A443719574 /* FontLibraryView.swift */,
@@ -559,6 +562,7 @@
 			3B1925D0307551312F663186 /* DecorOverlayViews.swift in Sources */,
 			944748626621CA9828D03322 /* DistanceTimelineOverlayDetailView.swift in Sources */,
 			141398C0956C8E57CAA32C38 /* EditorTheme.swift in Sources */,
+			9F63644D3CB49CFFD73AF74C /* EditorTitlebarDoubleClick.swift in Sources */,
 			34F8355133ACFA5A7C9D5CD4 /* ElevationChartOverlayDetailView.swift in Sources */,
 			8A251E323522502BA799759B /* ExportDialogView.swift in Sources */,
 			A99E7D7329DB077B9318F42B /* FontLibraryView.swift in Sources */,
