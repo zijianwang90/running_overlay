@@ -44,9 +44,13 @@ overlay or triggers a weather refresh.
   activity date, and requested weather fields.
 - OpenWeather requests receive latitude, longitude, activity timestamp,
   requested units, and the user's OpenWeather API key.
-- macOS geocoding services may be used to turn the selected activity's
-  coordinates into a readable place name. Running Overlay Studio does not use macOS
-  Location Services to request the Mac's current device location.
+- To turn the selected activity's coordinates into a readable place name such
+  as `Peterborough, ON`, Running Overlay Studio first asks the macOS geocoding
+  service. If that returns no place, it sends the activity's latitude and
+  longitude to OpenStreetMap's Nominatim reverse-geocoding service
+  (`nominatim.openstreetmap.org`). Nominatim receives no project data, API key,
+  or device location. Running Overlay Studio does not use macOS Location
+  Services to request the Mac's current device location.
 
 Source videos, preview frames, exported overlays, complete FIT/GPX files, heart-rate
 streams, cadence, pace, power, and layout templates are not uploaded to the

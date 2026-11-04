@@ -70,6 +70,13 @@ documented.
 
 ## External Services
 
-Open-Meteo and OpenWeather are optional runtime data providers, not bundled
-code dependencies. Users are responsible for complying with provider terms
-and supplying their own OpenWeather credentials where required.
+Open-Meteo, OpenWeather, and OpenStreetMap Nominatim are optional runtime data
+providers, not bundled code dependencies. Users are responsible for complying
+with provider terms and supplying their own OpenWeather credentials where
+required.
+
+Nominatim reverse-geocoding results are © OpenStreetMap contributors and are
+available under the Open Database License (ODbL). Running Overlay Studio uses
+the public Nominatim endpoint only for low-volume, per-activity place-name
+lookups with a descriptive `User-Agent`, as required by the
+[Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/).

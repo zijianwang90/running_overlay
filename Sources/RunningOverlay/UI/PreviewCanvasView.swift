@@ -800,17 +800,21 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
         .opacity(element.opacity)
         .overlay {
             if isSelected, element.type != .distanceTimeline {
-                PreviewSelectionAffordance()
+                // Weather cards draw their own opaque surface, so the selection
+                // outline hugs the element instead of floating outside it.
+                PreviewSelectionAffordance(inset: element.type == .weatherWidget ? 0 : -5)
             }
         }
     }
 }
 
 private struct PreviewSelectionAffordance: View {
+    var inset: CGFloat = -5
+
     var body: some View {
         RoundedRectangle(cornerRadius: 4)
             .stroke(EditorTheme.accentBlue.opacity(0.92), lineWidth: 1.4)
-            .padding(-5)
+            .padding(inset)
             .allowsHitTesting(false)
     }
 }

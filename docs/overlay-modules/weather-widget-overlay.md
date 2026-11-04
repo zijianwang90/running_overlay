@@ -37,6 +37,23 @@ Phase 2:
 - GPS start point from FIT (used for coordinate-based localization and weather lookup).
 - Historical weather from Open-Meteo archive API (activity date, not current forecast). Cached into the project for export determinism.
 
+### Location Name Resolution
+
+API-backed weather resolves the activity's start coordinates to a readable
+place name such as `Peterborough, ON`:
+
+1. macOS `CLGeocoder` reverse geocoding, preferring English place names.
+2. If no placemark is returned, a keyless OpenStreetMap Nominatim reverse
+   lookup (`https://nominatim.openstreetmap.org/reverse`, `jsonv2`, zoom 10,
+   `accept-language=en`) with a descriptive `User-Agent`.
+3. If both fail, the raw coordinates remain in place.
+
+Display names use `Locality, Subdivision`, shortening the subdivision to its
+ISO 3166-2 code (`Ontario` → `ON`, `California` → `CA`). When the subdivision
+is unknown the name falls back to `Locality, Country`, then `Locality`, then
+the subdivision or country alone. Successful lookups are cached in memory per
+rounded coordinate. Neither path requests macOS Location Services permission.
+
 ## Rendering Model
 
 Recommended layout pipeline:

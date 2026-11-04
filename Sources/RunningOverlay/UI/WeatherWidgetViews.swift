@@ -170,22 +170,7 @@ private struct SimpleCardWeatherView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: scaled(7)) {
-                if layout.style.showConditionLabel {
-                    Text(layout.conditionLabel)
-                        .weatherText(layout.style.conditionTextStyle, scale: scale)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.72)
-                }
-
-                if layout.style.showIcon {
-                    WeatherConditionIconView(condition: layout.condition, size: scaled(58))
-                        .frame(width: scaled(82), height: scaled(54), alignment: .center)
-                        .padding(.leading, scaled(4))
-                }
-            }
-            .frame(width: layout.rect.width * 0.40, height: layout.rect.height, alignment: .leading)
-            .padding(.leading, scaled(18))
+            leftColumn
 
             if layout.style.dividerEnabled {
                 Rectangle()
@@ -220,8 +205,52 @@ private struct SimpleCardWeatherView: View {
             .padding(.leading, scaled(16))
             .padding(.trailing, scaled(18))
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .clipped()
         }
+        .frame(width: layout.rect.width, height: layout.rect.height)
+        .clipShape(cardShape)
         .weatherCardBackground(layout: layout, tokens: tokens)
+    }
+
+    /// Keeps the icon optically centred in the left block and caps it to the
+    /// space below the condition label so a tall font line box can never push
+    /// the icon out of the card.
+    private var leftColumn: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if layout.style.showConditionLabel {
+                Text(layout.conditionLabel)
+                    .weatherText(layout.style.conditionTextStyle, scale: scale)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .frame(height: conditionLabelHeight, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .clipped()
+            }
+
+            if layout.style.showIcon {
+                WeatherConditionIconView(condition: layout.condition, size: iconSide)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            }
+        }
+        .frame(width: layout.rect.width * 0.40, height: layout.rect.height, alignment: .leading)
+        .padding(.leading, scaled(18))
+    }
+
+    private var cardShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: layout.style.cardCornerRadius * scale, style: .continuous)
+    }
+
+    private var conditionLabelHeight: Double {
+        let requested = scaled(max(layout.style.conditionTextStyle.fontSize * 1.35, 12))
+        // Reserve space for the icon even when the user chooses an unusually
+        // large condition font; the label clips instead of swallowing the card.
+        return min(requested, layout.rect.height * 0.42)
+    }
+
+    private var iconSide: Double {
+        let labelHeight = layout.style.showConditionLabel ? conditionLabelHeight : 0
+        let availableHeight = max(0, layout.rect.height - labelHeight - scaled(6))
+        return min(scaled(58), availableHeight)
     }
 
     private func scaled(_ value: Double) -> Double {
@@ -273,6 +302,8 @@ private struct CompactStripWeatherView: View {
         }
         .padding(.horizontal, scaled(16))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .frame(width: layout.rect.width, height: layout.rect.height)
+        .clipShape(RoundedRectangle(cornerRadius: layout.scaledCardCornerRadius, style: .continuous))
         .weatherCardBackground(layout: layout, tokens: tokens)
     }
 
@@ -352,6 +383,8 @@ private struct ForecastTileWeatherView: View {
             .padding(.bottom, scaled(14))
         }
         .padding(.horizontal, scaled(12))
+        .frame(width: layout.rect.width, height: layout.rect.height)
+        .clipShape(RoundedRectangle(cornerRadius: layout.scaledCardCornerRadius, style: .continuous))
         .weatherCardBackground(layout: layout, tokens: tokens)
     }
 
@@ -461,6 +494,8 @@ private struct DashboardBarWeatherView: View {
         }
         .padding(.horizontal, scaled(20))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .frame(width: layout.rect.width, height: layout.rect.height)
+        .clipShape(RoundedRectangle(cornerRadius: layout.scaledCardCornerRadius, style: .continuous))
         .weatherCardBackground(layout: layout, tokens: tokens)
     }
 
@@ -742,14 +777,23 @@ private struct WindLineShape: Shape {
     }
 }
 
+private extension WeatherWidgetRenderLayout {
+    var scaledCardCornerRadius: Double {
+        style.cardCornerRadius * rect.width / style.width
+    }
+}
+
 private extension View {
     func weatherCardBackground(layout: WeatherWidgetRenderLayout, tokens: WeatherWidgetPresetTokens) -> some View {
         background {
-            RoundedRectangle(cornerRadius: scaledCornerRadius(layout), style: .continuous)
+            RoundedRectangle(cornerRadius: layout.scaledCardCornerRadius, style: .continuous)
                 .fill(tokens.background)
                 .overlay {
-                    RoundedRectangle(cornerRadius: scaledCornerRadius(layout), style: .continuous)
-                        .stroke(tokens.strokeColor.opacity(tokens.strokeOpacity), lineWidth: max(1, layout.rect.width / layout.style.width))
+                    RoundedRectangle(cornerRadius: layout.scaledCardCornerRadius, style: .continuous)
+                        .strokeBorder(
+                            tokens.strokeColor.opacity(tokens.strokeOpacity),
+                            lineWidth: max(1, layout.rect.width / layout.style.width)
+                        )
                 }
                 .shadow(color: tokens.shadow, radius: max(4, layout.rect.width * 0.025), x: 0, y: max(2, layout.rect.height * 0.04))
         }
@@ -757,9 +801,5 @@ private extension View {
 
     func weatherReadabilityShadow(enabled: Bool) -> some View {
         shadow(color: enabled ? .black.opacity(0.55) : .clear, radius: enabled ? 8 : 0, x: 0, y: enabled ? 2 : 0)
-    }
-
-    private func scaledCornerRadius(_ layout: WeatherWidgetRenderLayout) -> Double {
-        layout.style.cardCornerRadius * layout.rect.width / layout.style.width
     }
 }

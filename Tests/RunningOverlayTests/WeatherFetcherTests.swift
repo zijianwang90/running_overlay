@@ -154,4 +154,125 @@ struct WeatherFetcherTests {
         #expect(coordinate.latitude == 34.6937)
         #expect(coordinate.longitude == 135.5023)
     }
+
+    // MARK: Location formatting
+
+    @Test func placeNameUsesProvinceAbbreviation() {
+        #expect(
+            WeatherLocationResolver.formatPlaceName(
+                locality: "Peterborough",
+                administrativeArea: "Ontario",
+                country: "Canada",
+                isoCountryCode: "CA"
+            ) == "Peterborough, ON"
+        )
+        #expect(
+            WeatherLocationResolver.formatPlaceName(
+                locality: "Peterborough",
+                administrativeArea: "ON",
+                country: "Canada",
+                isoCountryCode: "CA"
+            ) == "Peterborough, ON"
+        )
+    }
+
+    @Test func placeNameUsesStateAbbreviation() {
+        #expect(
+            WeatherLocationResolver.formatPlaceName(
+                locality: "San Francisco",
+                administrativeArea: "California",
+                country: "United States",
+                isoCountryCode: "US"
+            ) == "San Francisco, CA"
+        )
+    }
+
+    @Test func placeNameFallsBackToCountryAndLocality() {
+        #expect(
+            WeatherLocationResolver.formatPlaceName(
+                locality: "Osaka",
+                administrativeArea: nil,
+                country: "Japan",
+                isoCountryCode: "JP"
+            ) == "Osaka, Japan"
+        )
+        #expect(
+            WeatherLocationResolver.formatPlaceName(
+                locality: "Osaka",
+                administrativeArea: nil,
+                country: nil,
+                isoCountryCode: nil
+            ) == "Osaka"
+        )
+        #expect(
+            WeatherLocationResolver.formatPlaceName(
+                locality: nil,
+                administrativeArea: "Ontario",
+                country: "Canada",
+                isoCountryCode: "CA"
+            ) == "ON"
+        )
+        #expect(
+            WeatherLocationResolver.formatPlaceName(
+                locality: nil,
+                administrativeArea: nil,
+                country: nil,
+                isoCountryCode: nil
+            ) == nil
+        )
+    }
+
+    @Test func subdivisionAbbreviationNormalizesKnownRegions() {
+        #expect(WeatherLocationResolver.subdivisionAbbreviation("Ontario") == "ON")
+        #expect(WeatherLocationResolver.subdivisionAbbreviation("CA-ON") == "ON")
+        #expect(WeatherLocationResolver.subdivisionAbbreviation("US-CA") == "CA")
+        #expect(WeatherLocationResolver.subdivisionAbbreviation("British Columbia") == "BC")
+        #expect(WeatherLocationResolver.subdivisionAbbreviation("Bavaria") == "Bavaria")
+    }
+
+    @Test func nominatimReverseURLUsesKeylessHTTPSLookup() throws {
+        let url = try #require(
+            WeatherLocationResolver.nominatimReverseURL(latitude: 44.3035, longitude: -78.3218)
+        )
+        let text = url.absoluteString
+
+        #expect(text.contains("nominatim.openstreetmap.org/reverse"))
+        #expect(text.contains("format=jsonv2"))
+        #expect(text.contains("lat=44.30350"))
+        #expect(text.contains("lon=-78.32180"))
+        #expect(text.contains("addressdetails=1"))
+        #expect(text.contains("accept-language=en"))
+    }
+
+    @Test func nominatimResponseResolvesCityAndProvinceCode() throws {
+        let json = """
+        {
+          "address": {
+            "city": "Peterborough",
+            "state": "Ontario",
+            "ISO3166-2-lvl4": "CA-ON",
+            "country": "Canada",
+            "country_code": "ca"
+          }
+        }
+        """
+        let response = try JSONDecoder().decode(NominatimReverseResponse.self, from: Data(json.utf8))
+
+        #expect(response.resolvedPlaceName == "Peterborough, ON")
+    }
+
+    @Test func nominatimResponseFallsBackToStateName() throws {
+        let json = """
+        {
+          "address": {
+            "town": "Peterborough",
+            "state": "Ontario",
+            "country": "Canada"
+          }
+        }
+        """
+        let response = try JSONDecoder().decode(NominatimReverseResponse.self, from: Data(json.utf8))
+
+        #expect(response.resolvedPlaceName == "Peterborough, ON")
+    }
 }
