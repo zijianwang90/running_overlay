@@ -234,7 +234,7 @@ struct FCPXMLTimelineWriter {
         }
 
         // spine: source clips back-to-back, each with its overlay connected on
-        // lane 1. Connected offsets are absolute sequence time.
+        // lane 1.
         var cursorFrames = 0
         var spineClips: [XMLElement] = []
         for clip in clips {
@@ -263,10 +263,10 @@ struct FCPXMLTimelineWriter {
                     connected.setAttribute("ref", overlay.id)
                     connected.setAttribute("lane", "1")
                     connected.setAttribute("name", clip.overlayFileName)
-                    connected.setAttribute(
-                        "offset",
-                        sequenceRate.timeString(frames: cursorFrames + shiftFrames)
-                    )
+                    // A connected clip's offset is in its parent's local
+                    // timeline, which begins at the parent's `start` (0s),
+                    // not in sequence time.
+                    connected.setAttribute("offset", sequenceRate.timeString(frames: shiftFrames))
                     connected.setAttribute("start", sequenceRate.timeString(frames: startFrames))
                     connected.setAttribute("duration", sequenceRate.timeString(frames: connectedFrames))
                     sourceClip.addChild(connected)

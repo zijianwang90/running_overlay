@@ -49,6 +49,62 @@ an encoder-setting change.
 - Do not stop security-scoped access until all frame writes, profiling files,
   and `AVAssetWriter` completion work have finished.
 
+## Render Jobs And Editor Packages
+
+ADR 0013 records the design. Code lives in
+`Sources/RunningOverlay/Export/EditorIntegration/`.
+
+- `OverlayRenderService.render` is the only headless render path. It turns
+  `OverlayRenderSpan`s into one `OverlayExportJob` with `fitStartTime = 0` and
+  segment starts in activity elapsed seconds, then runs the normal exporter in
+  a scratch directory and moves `<span>.mov` into place. Span names are file
+  base names without dots or slashes.
+- The span cache lives in `Caches/RunningOverlay/RenderCache/<key>.mov`. Its
+  keys come from `OverlayRenderContentHash.spanCacheKey`. Bump
+  `OverlayRendererVersion.current` with any change that alters exported
+  pixels. Route map snapshots and weather are not part of the key.
+- `RunningOverlay --render-job job.json [--render-cache DIR | --no-render-cache]`
+  runs an `OverlayRenderJob` through the headless AppKit run loop. It writes
+  `render-result.json`, which stores file names only. Relative job paths
+  resolve against the job file. Example:
+
+  ```json
+  {
+    "schemaVersion": 1,
+    "activity": { "activityFile": { "path": "run.fit" } },
+    "template": { "builtIn": { "id": "easyRun" } },
+    "output": { "directory": "out", "width": 1920, "height": 1080,
+                "frameRateID": "29.97", "layerDataFrameRateID": "5",
+                "codec": "proRes4444", "bitrateMbps": 30 },
+    "spans": [ { "name": "clip_01", "activityElapsedStart": 0, "duration": 12.5 } ]
+  }
+  ```
+
+  The other sources are `{"activitySnapshot": {"path": …}}`, which reads
+  `OverlayRenderJobResolver.writeActivitySnapshot`, and
+  `{"templateFile": {"path": …}}`.
+- File > Export for Editor (Per Clip / Full Activity) writes a
+  `<Project> Editor Package` folder inside the chosen directory. The folder
+  holds the overlay movies, `manifest.json`, and `<Project>.fcpxml`.
+  `EditorPackagePlanner` maps each clip's start to activity elapsed time with
+  `effectiveStartTime - fitStartTime`. Clips are untrimmed, so their media
+  source start is 0.
+- `FCPXMLTimelineWriter` emits FCPXML 1.10:
+  - Source clips are placed back-to-back in the spine, in project timeline
+    order.
+  - Each source clip has its overlay as a connected clip on lane 1. The
+    connected clip's `offset` is in the parent's local time, not sequence
+    time.
+  - All times are whole sequence frames: `1001/30000s` for 29.97, and so on.
+  - In full-activity mode, the connected clip is shifted later when the clip
+    starts before the activity, and trimmed so it never reads past the
+    movie's end.
+  - Media references are absolute file URLs. `manifest.json` stays relative.
+- Import: Final Cut Pro opens the `.fcpxml` directly. DaVinci Resolve uses
+  File > Import > Timeline. Overlays can also be dragged above their clips by
+  hand. Alpha, Rec. 709 handling, and frame-rate conformance in each editor
+  need manual verification.
+
 ### Phase 6: Export
 
 - Status: first-pass implementation completed.

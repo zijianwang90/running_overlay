@@ -225,7 +225,8 @@ struct EditorPackageTests {
         #expect(laneOne[0].attribute(forName: "offset")?.stringValue == "0s")
         #expect(laneOne[0].attribute(forName: "start")?.stringValue == "0s")
         #expect(laneOne[0].attribute(forName: "duration")?.stringValue == "1001/500s")
-        #expect(laneOne[1].attribute(forName: "offset")?.stringValue == "1001/500s")
+        // Connected offsets are in the parent's local time, not sequence time.
+        #expect(laneOne[1].attribute(forName: "offset")?.stringValue == "0s")
         #expect(laneOne[1].attribute(forName: "start")?.stringValue == "0s")
         #expect(laneOne[1].attribute(forName: "duration")?.stringValue == "3003/1000s")
 
@@ -279,7 +280,7 @@ struct EditorPackageTests {
         // The second clip begins at activity 19 s in a 20 s movie: only 1 s of
         // overlay remains. The connected clip stays at its parent's start and
         // reads from 19 s into the movie.
-        #expect(laneOne[1].attribute(forName: "offset")?.stringValue == "10s")
+        #expect(laneOne[1].attribute(forName: "offset")?.stringValue == "0s")
         #expect(laneOne[1].attribute(forName: "start")?.stringValue == "19s")
         #expect(laneOne[1].attribute(forName: "duration")?.stringValue == "1s")
     }
