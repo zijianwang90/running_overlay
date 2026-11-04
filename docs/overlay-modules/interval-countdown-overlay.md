@@ -23,7 +23,6 @@ Design references:
 ## Rendering
 
 - Preview and SwiftUI export use `OverlaySharedIntervalCountdownView`.
-- Legacy frame rendering uses `OverlayFrameRenderer.renderIntervalCountdown`.
 - Layout is computed in `OverlayRenderModel.intervalCountdownLayout(for:in:)`
   so preview, export, hit testing, and tests share the same geometry.
 

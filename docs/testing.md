@@ -65,9 +65,11 @@ Snapshot updates are not routine golden-file maintenance. The pull request
 must include before/after images and explain why the visual change is correct.
 A human reviewer must inspect changed snapshots.
 
-Snapshots should favor deterministic Core Graphics geometry and synthetic
-data. Avoid network-backed maps, current time, locale-sensitive content, or
-fonts that differ across supported systems.
+Snapshots render through `SwiftUIOverlayVideoExporter.exportFramePNG`, using
+the selected backend (Skia in product builds, SwiftUI without the SDK), and
+should use deterministic geometry and synthetic data. Avoid network-backed
+maps, current time, locale-sensitive content, or fonts that differ across
+supported systems.
 
 ## Skia Renderer Tests
 
@@ -202,3 +204,6 @@ These are temporary review artifacts, not committed visual snapshot updates.
 Automated pixel/rewind checks do not establish interactive window, drag,
 snapping, video-compositing or real-map acceptance. Keep the SwiftUI oracle until
 those remaining interaction checks and template visual review are accepted.
+Maintainer policy additionally retains the oracle for several more releases;
+passing acceptance does not authorize deletion. See
+[ADR 0012](adr/0012-staged-legacy-renderer-retirement.md).

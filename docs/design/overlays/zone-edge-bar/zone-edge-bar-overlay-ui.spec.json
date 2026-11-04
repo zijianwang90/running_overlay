@@ -65,7 +65,7 @@
   "rendering": {
     "preview": "OverlaySharedZoneEdgeBarView",
     "layout": "OverlayRenderModel.zoneEdgeBarLayout(for:in:)",
-    "export": ["SwiftUIOverlayVideoExporter", "OverlayFrameRenderer"],
+    "export": ["SwiftUIOverlayVideoExporter"],
     "paceZeroBehavior": "Hide current marker when current pace is 0 or invalid; threshold marker remains eligible."
   }
 }

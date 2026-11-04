@@ -149,6 +149,11 @@ Responsibilities:
   work before append, preserving the shared writer, sampling, progress,
   cancellation and destination-access lifecycle. Missing Skia/Metal is an
   explicit error, with no per-overlay SwiftUI fallback.
+- The independent legacy Core Graphics `OverlayFrameRenderer` has been
+  deleted. SwiftUI comparison rendering remains on main for several more
+  releases; the pre-cleanup state is archived on origin at
+  `archive/swiftui-renderer-2026-11-04`. See
+  [ADR 0012](adr/0012-staged-legacy-renderer-retirement.md) for the retirement policy.
 
 ### Preview
 

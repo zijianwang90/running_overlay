@@ -5,7 +5,7 @@ import Testing
 
 @MainActor
 struct VisualRegressionTests {
-    @Test func routeMapRendererMatchesReferenceSnapshot() throws {
+    @Test func routeMapRendererMatchesReferenceSnapshot() async throws {
         let temporaryDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("running-overlay-visual-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
@@ -17,22 +17,19 @@ struct VisualRegressionTests {
         style.glowEnabled = true
         style.foregroundColor = .cyan
 
-        try OverlayFrameRenderer.renderPNG(
-            to: actualURL,
-            request: OverlayFrameRenderRequest(
-                size: CGSize(width: 640, height: 360),
-                layout: OverlayLayout(elements: [
-                    OverlayElement(
-                        type: .routeMap,
-                        position: CGPoint(x: 0.5, y: 0.5),
-                        scale: 1,
-                        style: style
-                    )
-                ]),
-                activity: syntheticRouteActivity(),
-                elapsedTime: 30,
-                renderGuides: false
-            )
+        try await SwiftUIOverlayVideoExporter.exportFramePNG(
+            overlayLayout: OverlayLayout(elements: [
+                OverlayElement(
+                    type: .routeMap,
+                    position: CGPoint(x: 0.5, y: 0.5),
+                    scale: 1,
+                    style: style
+                )
+            ]),
+            activity: syntheticRouteActivity(),
+            elapsedTime: 30,
+            size: CGSize(width: 640, height: 360),
+            outputURL: actualURL
         )
 
         if ProcessInfo.processInfo.environment["UPDATE_VISUAL_SNAPSHOTS"] == "1" {

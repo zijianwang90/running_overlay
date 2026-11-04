@@ -25,7 +25,8 @@ has no demonstrated engine-only speedup; HEVC is predominantly encoder-bound.
    explicitly selected unavailable backend fails instead of substituting it.
 3. SwiftUI continues to own the editor UI and interactive affordances. Existing
    overlay views and `ImageRenderer` remain as Debug/test comparison oracles
-   during migration. Remove them after packaging and full-template acceptance;
+   during migration. ADR 0012 defers removal for several releases even after
+   packaging and full-template acceptance;
    do not maintain two product engines or add new SwiftUI-only overlay features.
 4. Preserve all project schema, timing, frame reuse, color/alpha, cancellation,
    undo and destination authorization contracts. No persistence migration.
