@@ -273,7 +273,9 @@ import Testing
 
     // MARK: - GPU parity
 
-    private struct MetalHandles {
+    /// Metal handles are thread-safe and created once, but `MTLDevice` is only
+    /// declared `Sendable` by newer SDKs, so the handles are marked explicitly.
+    private struct MetalHandles: @unchecked Sendable {
         let device: MTLDevice
         let commandQueue: MTLCommandQueue
     }

@@ -310,21 +310,30 @@ import Testing
 
     private static let activity: ActivityTimeline = {
         let start = Date(timeIntervalSince1970: 1_735_689_600)
-        let records = stride(from: 0.0, through: 60, by: 1).map { t in
-            ActivityRecord(
-                elapsedTime: t,
-                timestamp: start.addingTimeInterval(t),
-                distanceMeters: t * 3.3,
-                heartRate: 130 + Int(t / 3),
-                paceSecondsPerKilometer: 300,
-                elevationMeters: 20 + t / 10,
-                cadence: 176,
-                powerWatts: 250,
-                calories: t / 4,
-                latitude: 40.75 + 0.0006 * sin(t / 8),
-                longitude: -73.99 + 0.0008 * cos(t / 8)
-            )
-        }
+        // Values are separate locals because one large literal times out the
+        // type checker on older toolchains.
+        let records: [ActivityRecord] = stride(from: 0.0, through: 60, by: 1)
+            .map { (t: Double) -> ActivityRecord in
+                let distanceMeters: Double = t * 3.3
+                let heartRate: Int = 130 + Int(t / 3)
+                let elevationMeters: Double = 20 + t / 10
+                let calories: Double = t / 4
+                let latitude: Double = 40.75 + 0.0006 * sin(t / 8)
+                let longitude: Double = -73.99 + 0.0008 * cos(t / 8)
+                return ActivityRecord(
+                    elapsedTime: t,
+                    timestamp: start.addingTimeInterval(t),
+                    distanceMeters: distanceMeters,
+                    heartRate: heartRate,
+                    paceSecondsPerKilometer: 300,
+                    elevationMeters: elevationMeters,
+                    cadence: 176,
+                    powerWatts: 250,
+                    calories: calories,
+                    latitude: latitude,
+                    longitude: longitude
+                )
+            }
         return ActivityTimeline(
             startDate: start,
             duration: 60,

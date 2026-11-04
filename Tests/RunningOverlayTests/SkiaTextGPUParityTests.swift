@@ -22,7 +22,9 @@ import Testing
 /// worked around here; see
 /// `docs/superpowers/plans/notes/2026-11-02-skia-text-inventory.md`.
 @Suite(.serialized, .skiaSerialized) struct SkiaTextGPUParityTests {
-    private struct MetalHandles {
+    /// Metal handles are thread-safe and created once, but `MTLDevice` is only
+    /// declared `Sendable` by newer SDKs, so the handles are marked explicitly.
+    private struct MetalHandles: @unchecked Sendable {
         let device: MTLDevice
         let commandQueue: MTLCommandQueue
     }
