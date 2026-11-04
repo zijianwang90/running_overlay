@@ -54,6 +54,7 @@ xcodebuild \
   -project RunningOverlay.xcodeproj \
   -scheme RunningOverlay \
   -configuration Debug \
+  SKIA_DIR=/path/to/pinned-skia-sdk ARCHS=arm64 \
   CODE_SIGNING_ALLOWED=NO \
   build
 xcodebuild \
@@ -61,6 +62,7 @@ xcodebuild \
   -scheme RunningOverlay \
   -configuration Release \
   -archivePath /tmp/RunningOverlay.xcarchive \
+  SKIA_DIR=/path/to/pinned-skia-sdk ARCHS=arm64 \
   CODE_SIGNING_ALLOWED=NO \
   archive
 ```
@@ -146,3 +148,49 @@ Required GitHub Actions secrets for notarized release assets:
 - `ASC_KEY_ID`: App Store Connect API key id.
 - `ASC_ISSUER_ID`: App Store Connect issuer id.
 - `ASC_API_KEY_P8`: full App Store Connect `.p8` private key contents.
+
+## Skia Development Cutover Bundle
+
+With the pinned m159 SDK unpacked outside the repository:
+
+```sh
+SKIA_DIR=/path/to/skia-sdk SKIA_GPU=1 SKIA_GRAPHITE=1 \
+  scripts/build-appstore-app.sh
+```
+
+This packages the Release Skia preview/export path, embeds `libskia.dylib` in
+`Contents/Frameworks`, removes SwiftPM's absolute SDK rpath, adds the relative
+Frameworks rpath, and signs the dylib before signing the app. The default `-`
+identity is local ad-hoc preflight. That mode omits Hardened Runtime because
+ad-hoc signatures have no Team ID for validating embedded libraries. Real
+certificate identities keep Hardened Runtime on both app and dylib; Developer
+ID/notarization validation remains a distribution gate. SDK-free
+bundles are still available for CI but are not the Skia product configuration.
+The native Xcode target now compiles the same C bridge with C++20 and Graphite,
+links the SDK dylib, and embeds/signs it before Xcode signs the application.
+Pass `SKIA_DIR` as an Xcode build setting, or define it in ignored
+`Config/LocalSigning.xcconfig`. Native builds default to `SKIA_ENABLED=YES`;
+missing SDK inputs fail the build. Explicit `SKIA_ENABLED=NO` is reserved for
+SDK-free editor development. The generated project is independent of local
+SDK paths. The embed phase disables Xcode script sandboxing to validate Mach-O
+files and sign the externally supplied SDK; application sandboxing stays on.
+For local ad-hoc native builds, also use `ENABLE_HARDENED_RUNTIME=NO`; real
+certificate builds retain Hardened Runtime. Unsigned archives are structural
+preflight only and cannot establish distribution-signing acceptance.
+
+Both packaging paths validate the source commit, recipe/builder identity and
+binary digest from the SDK manifest, and include the SDK's Skia/skcms license
+texts. The CI `skia-product` job builds/caches the pinned SDK on arm64, runs the
+Graphite tests and creates an ad-hoc signed native archive plus an ad-hoc SwiftPM
+bundle. It also smoke-exports all three built-in templates from a disposable
+sandboxed archive copy; the harness grants only its temporary output directory.
+The release workflow uses the same SDK setup so tags cannot silently
+produce the SDK-free renderer. Cache keys include the recipe, builder, CPU and
+Xcode version. The existing SDK-free job remains independent.
+
+For sandboxed headless bundle smoke tests, stage a copy of the app with synthetic
+FIT/template inputs inside its Resources and re-sign that test copy with the
+same sandbox entitlements. Write test exports into a unique subdirectory of
+the app's container temporary directory. Raw repository input paths have no
+Powerbox grant and are correctly denied by the sandbox. Keep the distributable
+bundle free of these injected test fixtures.

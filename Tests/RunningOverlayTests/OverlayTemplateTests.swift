@@ -194,6 +194,47 @@ struct OverlayTemplateTests {
         #expect(style.zoneEdgeBar == ZoneEdgeBarStyle.default)
     }
 
+    @Test func zoneEdgeBarDecodesMissingMarkerScalesWithDefaults() throws {
+        let json = """
+        {
+          "metric": "heartRate",
+          "markerShowsValue": false,
+          "thresholdMarkerEnabled": true
+        }
+        """
+
+        let style = try JSONDecoder().decode(ZoneEdgeBarStyle.self, from: Data(json.utf8))
+
+        #expect(style.markerShowsValue == false)
+        #expect(style.markerSizeScale == 1)
+        #expect(style.thresholdMarkerSizeScale == 1)
+        #expect(style.markerText == ZoneEdgeBarStyle.default.markerText)
+    }
+
+    @Test func overlayStyleRoundTripsRouteMapZoomAndPOIVisibility() throws {
+        var style = OverlayStyle.default
+        style.routeMapZoom = 2.25
+        style.routeMapShowsPointsOfInterest = false
+
+        let data = try JSONEncoder().encode(style)
+        let decoded = try JSONDecoder().decode(OverlayStyle.self, from: data)
+
+        #expect(decoded.routeMapZoom == 2.25)
+        #expect(decoded.routeMapShowsPointsOfInterest == false)
+    }
+
+    @Test func routeMapZoomMapsToTighterSnapshotPadding() {
+        let baseline = RouteMapSnapshotRequestBuilder.regionPadding(forZoom: 1)
+        let zoomedIn = RouteMapSnapshotRequestBuilder.regionPadding(forZoom: 2)
+        let zoomedOut = RouteMapSnapshotRequestBuilder.regionPadding(forZoom: 0.5)
+
+        #expect(baseline == RouteMapSnapshotRequestBuilder.defaultRegionPadding)
+        #expect(zoomedIn < baseline)
+        #expect(zoomedOut > baseline)
+        #expect(RouteMapSnapshotRequestBuilder.regionPadding(forZoom: 99)
+            == RouteMapSnapshotRequestBuilder.regionPadding(forZoom: 3))
+    }
+
     @Test func distanceTimelineIconSlotPersistsEmbeddedSVG() throws {
         var style = OverlayStyle.default
         style.distanceTimeline = .preset(.sport)

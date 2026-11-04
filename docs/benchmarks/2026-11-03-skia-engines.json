@@ -1,0 +1,520 @@
+{
+  "runs": [
+    {
+      "backend": "m152-ganesh",
+      "case": "1080p-proRes4444",
+      "imageRenderDuration": 0.8309094905853271,
+      "processSeconds": 1.5122938340064138,
+      "renderedFrameCount": 125,
+      "repeat": 1,
+      "totalDuration": 1.420774221420288,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 0.1630716323852539
+    },
+    {
+      "backend": "m159-ganesh",
+      "case": "1080p-proRes4444",
+      "imageRenderDuration": 0.8616642951965332,
+      "processSeconds": 1.5590148750925437,
+      "renderedFrameCount": 125,
+      "repeat": 1,
+      "totalDuration": 1.458324909210205,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 0.16479575634002686
+    },
+    {
+      "backend": "m159-graphite",
+      "case": "1080p-proRes4444",
+      "imageRenderDuration": 0.8235150575637817,
+      "processSeconds": 1.517089041066356,
+      "renderedFrameCount": 125,
+      "repeat": 1,
+      "totalDuration": 1.4152079820632935,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 0.16432201862335205
+    },
+    {
+      "backend": "m159-ganesh",
+      "case": "1080p-proRes4444",
+      "imageRenderDuration": 0.8179854154586792,
+      "processSeconds": 1.50303537491709,
+      "renderedFrameCount": 125,
+      "repeat": 2,
+      "totalDuration": 1.4087318181991577,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 0.16590583324432373
+    },
+    {
+      "backend": "m159-graphite",
+      "case": "1080p-proRes4444",
+      "imageRenderDuration": 0.8516521453857422,
+      "processSeconds": 1.55295912490692,
+      "renderedFrameCount": 125,
+      "repeat": 2,
+      "totalDuration": 1.44912588596344,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 0.16660094261169434
+    },
+    {
+      "backend": "m152-ganesh",
+      "case": "1080p-proRes4444",
+      "imageRenderDuration": 0.816322922706604,
+      "processSeconds": 1.5146387499989942,
+      "renderedFrameCount": 125,
+      "repeat": 2,
+      "totalDuration": 1.412503957748413,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 0.16817820072174072
+    },
+    {
+      "backend": "m159-graphite",
+      "case": "1080p-proRes4444",
+      "imageRenderDuration": 0.8260118961334229,
+      "processSeconds": 1.5286072080489248,
+      "renderedFrameCount": 125,
+      "repeat": 3,
+      "totalDuration": 1.4234449863433838,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 0.16885018348693848
+    },
+    {
+      "backend": "m152-ganesh",
+      "case": "1080p-proRes4444",
+      "imageRenderDuration": 0.817428708076477,
+      "processSeconds": 1.510097709018737,
+      "renderedFrameCount": 125,
+      "repeat": 3,
+      "totalDuration": 1.4060219526290894,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 0.16490864753723145
+    },
+    {
+      "backend": "m159-ganesh",
+      "case": "1080p-proRes4444",
+      "imageRenderDuration": 0.8031967878341675,
+      "processSeconds": 1.4919056249782443,
+      "renderedFrameCount": 125,
+      "repeat": 3,
+      "totalDuration": 1.3894869089126587,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 0.1655052900314331
+    },
+    {
+      "backend": "m152-ganesh",
+      "case": "1080p-hevcWithAlpha",
+      "imageRenderDuration": 1.1046981811523438,
+      "processSeconds": 5.380619875038974,
+      "renderedFrameCount": 125,
+      "repeat": 1,
+      "totalDuration": 5.263758063316345,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 3.3267457485198975
+    },
+    {
+      "backend": "m159-ganesh",
+      "case": "1080p-hevcWithAlpha",
+      "imageRenderDuration": 1.0756422281265259,
+      "processSeconds": 5.298030957928859,
+      "renderedFrameCount": 125,
+      "repeat": 1,
+      "totalDuration": 5.17090380191803,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 3.32479465007782
+    },
+    {
+      "backend": "m159-graphite",
+      "case": "1080p-hevcWithAlpha",
+      "imageRenderDuration": 1.1074178218841553,
+      "processSeconds": 5.314797207945958,
+      "renderedFrameCount": 125,
+      "repeat": 1,
+      "totalDuration": 5.191222071647644,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 3.2903765439987183
+    },
+    {
+      "backend": "m159-ganesh",
+      "case": "1080p-hevcWithAlpha",
+      "imageRenderDuration": 1.1311538219451904,
+      "processSeconds": 5.306157042039558,
+      "renderedFrameCount": 125,
+      "repeat": 2,
+      "totalDuration": 5.184607028961182,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 3.2561477422714233
+    },
+    {
+      "backend": "m159-graphite",
+      "case": "1080p-hevcWithAlpha",
+      "imageRenderDuration": 1.1425857543945312,
+      "processSeconds": 5.303952750051394,
+      "renderedFrameCount": 125,
+      "repeat": 2,
+      "totalDuration": 5.17793607711792,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 3.246249198913574
+    },
+    {
+      "backend": "m152-ganesh",
+      "case": "1080p-hevcWithAlpha",
+      "imageRenderDuration": 1.1140776872634888,
+      "processSeconds": 5.287903290940449,
+      "renderedFrameCount": 125,
+      "repeat": 2,
+      "totalDuration": 5.164481043815613,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 3.267655849456787
+    },
+    {
+      "backend": "m159-graphite",
+      "case": "1080p-hevcWithAlpha",
+      "imageRenderDuration": 1.1570929288864136,
+      "processSeconds": 5.296062292065471,
+      "renderedFrameCount": 125,
+      "repeat": 3,
+      "totalDuration": 5.17296290397644,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 3.229740858078003
+    },
+    {
+      "backend": "m152-ganesh",
+      "case": "1080p-hevcWithAlpha",
+      "imageRenderDuration": 1.1034269332885742,
+      "processSeconds": 5.288150833919644,
+      "renderedFrameCount": 125,
+      "repeat": 3,
+      "totalDuration": 5.163604974746704,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 3.2883673906326294
+    },
+    {
+      "backend": "m159-ganesh",
+      "case": "1080p-hevcWithAlpha",
+      "imageRenderDuration": 1.0442649126052856,
+      "processSeconds": 5.279416917008348,
+      "renderedFrameCount": 125,
+      "repeat": 3,
+      "totalDuration": 5.156957983970642,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 3.3554404973983765
+    },
+    {
+      "backend": "m152-ganesh",
+      "case": "2160p-proRes4444",
+      "imageRenderDuration": 1.0652074813842773,
+      "processSeconds": 3.1807298329658806,
+      "renderedFrameCount": 125,
+      "repeat": 1,
+      "totalDuration": 3.0683549642562866,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 1.4786334037780762
+    },
+    {
+      "backend": "m159-ganesh",
+      "case": "2160p-proRes4444",
+      "imageRenderDuration": 1.1123149394989014,
+      "processSeconds": 3.1373093749862164,
+      "renderedFrameCount": 125,
+      "repeat": 1,
+      "totalDuration": 3.0195270776748657,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 1.3652963638305664
+    },
+    {
+      "backend": "m159-graphite",
+      "case": "2160p-proRes4444",
+      "imageRenderDuration": 1.2491216659545898,
+      "processSeconds": 3.2100423329975456,
+      "renderedFrameCount": 125,
+      "repeat": 1,
+      "totalDuration": 3.0883148908615112,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 1.3009203672409058
+    },
+    {
+      "backend": "m159-ganesh",
+      "case": "2160p-proRes4444",
+      "imageRenderDuration": 1.1032533645629883,
+      "processSeconds": 3.130704125040211,
+      "renderedFrameCount": 125,
+      "repeat": 2,
+      "totalDuration": 3.011979818344116,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 1.3579533100128174
+    },
+    {
+      "backend": "m159-graphite",
+      "case": "2160p-proRes4444",
+      "imageRenderDuration": 1.1686667203903198,
+      "processSeconds": 3.112815667060204,
+      "renderedFrameCount": 125,
+      "repeat": 2,
+      "totalDuration": 2.994940996170044,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 1.2930816411972046
+    },
+    {
+      "backend": "m152-ganesh",
+      "case": "2160p-proRes4444",
+      "imageRenderDuration": 1.103122353553772,
+      "processSeconds": 3.1264572499785572,
+      "renderedFrameCount": 125,
+      "repeat": 2,
+      "totalDuration": 2.9949402809143066,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 1.3635109663009644
+    },
+    {
+      "backend": "m159-graphite",
+      "case": "2160p-proRes4444",
+      "imageRenderDuration": 1.1686722040176392,
+      "processSeconds": 3.09370820899494,
+      "renderedFrameCount": 125,
+      "repeat": 3,
+      "totalDuration": 2.983051896095276,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 1.2836768627166748
+    },
+    {
+      "backend": "m152-ganesh",
+      "case": "2160p-proRes4444",
+      "imageRenderDuration": 1.1096537113189697,
+      "processSeconds": 3.144981624907814,
+      "renderedFrameCount": 125,
+      "repeat": 3,
+      "totalDuration": 3.0288981199264526,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 1.3772333860397339
+    },
+    {
+      "backend": "m159-ganesh",
+      "case": "2160p-proRes4444",
+      "imageRenderDuration": 1.1110024452209473,
+      "processSeconds": 3.1368605840252712,
+      "renderedFrameCount": 125,
+      "repeat": 3,
+      "totalDuration": 3.0173020362854004,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 1.3576335906982422
+    },
+    {
+      "backend": "m152-ganesh",
+      "case": "2160p-hevcWithAlpha",
+      "imageRenderDuration": 1.5588054656982422,
+      "processSeconds": 17.33012499997858,
+      "renderedFrameCount": 125,
+      "repeat": 1,
+      "totalDuration": 17.191142916679382,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 13.6318678855896
+    },
+    {
+      "backend": "m159-ganesh",
+      "case": "2160p-hevcWithAlpha",
+      "imageRenderDuration": 1.5311561822891235,
+      "processSeconds": 17.265804624999873,
+      "renderedFrameCount": 125,
+      "repeat": 1,
+      "totalDuration": 17.143479108810425,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 13.647269606590271
+    },
+    {
+      "backend": "m159-graphite",
+      "case": "2160p-hevcWithAlpha",
+      "imageRenderDuration": 1.6349138021469116,
+      "processSeconds": 17.274336291942745,
+      "renderedFrameCount": 125,
+      "repeat": 1,
+      "totalDuration": 17.158966898918152,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 13.550601601600647
+    },
+    {
+      "backend": "m159-ganesh",
+      "case": "2160p-hevcWithAlpha",
+      "imageRenderDuration": 1.5799146890640259,
+      "processSeconds": 17.300408542039804,
+      "renderedFrameCount": 125,
+      "repeat": 2,
+      "totalDuration": 17.178796887397766,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 13.606995105743408
+    },
+    {
+      "backend": "m159-graphite",
+      "case": "2160p-hevcWithAlpha",
+      "imageRenderDuration": 1.619415283203125,
+      "processSeconds": 17.296279500005767,
+      "renderedFrameCount": 125,
+      "repeat": 2,
+      "totalDuration": 17.16631805896759,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 13.56180453300476
+    },
+    {
+      "backend": "m152-ganesh",
+      "case": "2160p-hevcWithAlpha",
+      "imageRenderDuration": 1.5715417861938477,
+      "processSeconds": 17.286576542071998,
+      "renderedFrameCount": 125,
+      "repeat": 2,
+      "totalDuration": 17.158141255378723,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 13.604005217552185
+    },
+    {
+      "backend": "m159-graphite",
+      "case": "2160p-hevcWithAlpha",
+      "imageRenderDuration": 1.596173882484436,
+      "processSeconds": 17.287630041013472,
+      "renderedFrameCount": 125,
+      "repeat": 3,
+      "totalDuration": 17.16364288330078,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 13.583690881729126
+    },
+    {
+      "backend": "m152-ganesh",
+      "case": "2160p-hevcWithAlpha",
+      "imageRenderDuration": 1.5594674348831177,
+      "processSeconds": 17.283135584089905,
+      "renderedFrameCount": 125,
+      "repeat": 3,
+      "totalDuration": 17.15693509578705,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 13.615946173667908
+    },
+    {
+      "backend": "m159-ganesh",
+      "case": "2160p-hevcWithAlpha",
+      "imageRenderDuration": 1.5500152111053467,
+      "processSeconds": 17.267262500012293,
+      "renderedFrameCount": 125,
+      "repeat": 3,
+      "totalDuration": 17.14582395553589,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 13.626896858215332
+    }
+  ],
+  "summary": {
+    "application_tree_sha256": "07b74df74128c5fc323b733c5866ec7e3ee5ffc3a519ec02d56ff0acfd295ae9",
+    "binary_sha256": {
+      "m152-ganesh": "02e524ee7f3f602d7a021be39c23af8158e6c260697303cfe6e0f81cd34d68a2",
+      "m159-ganesh": "0683fb91a0f690eecac6cbd27e90d081d6a22ab950c9faefe1a7c8a05d3e239e",
+      "m159-graphite": "0683fb91a0f690eecac6cbd27e90d081d6a22ab950c9faefe1a7c8a05d3e239e"
+    },
+    "duration": 5,
+    "frameRate": 30,
+    "hardware": "Apple M3",
+    "layerDataFrameRate": 5,
+    "medians": [
+      {
+        "backend": "m152-ganesh",
+        "case": "1080p-hevcWithAlpha",
+        "imageRenderDuration": 1.1046981811523438,
+        "processSeconds": 5.288150833919644,
+        "totalDuration": 5.164481043815613,
+        "writerWaitDuration": 3.2883673906326294
+      },
+      {
+        "backend": "m159-ganesh",
+        "case": "1080p-hevcWithAlpha",
+        "imageRenderDuration": 1.0756422281265259,
+        "processSeconds": 5.298030957928859,
+        "totalDuration": 5.17090380191803,
+        "writerWaitDuration": 3.32479465007782
+      },
+      {
+        "backend": "m159-graphite",
+        "case": "1080p-hevcWithAlpha",
+        "imageRenderDuration": 1.1425857543945312,
+        "processSeconds": 5.303952750051394,
+        "totalDuration": 5.17793607711792,
+        "writerWaitDuration": 3.246249198913574
+      },
+      {
+        "backend": "m152-ganesh",
+        "case": "1080p-proRes4444",
+        "imageRenderDuration": 0.817428708076477,
+        "processSeconds": 1.5122938340064138,
+        "totalDuration": 1.412503957748413,
+        "writerWaitDuration": 0.16490864753723145
+      },
+      {
+        "backend": "m159-ganesh",
+        "case": "1080p-proRes4444",
+        "imageRenderDuration": 0.8179854154586792,
+        "processSeconds": 1.50303537491709,
+        "totalDuration": 1.4087318181991577,
+        "writerWaitDuration": 0.1655052900314331
+      },
+      {
+        "backend": "m159-graphite",
+        "case": "1080p-proRes4444",
+        "imageRenderDuration": 0.8260118961334229,
+        "processSeconds": 1.5286072080489248,
+        "totalDuration": 1.4234449863433838,
+        "writerWaitDuration": 0.16660094261169434
+      },
+      {
+        "backend": "m152-ganesh",
+        "case": "2160p-hevcWithAlpha",
+        "imageRenderDuration": 1.5594674348831177,
+        "processSeconds": 17.286576542071998,
+        "totalDuration": 17.158141255378723,
+        "writerWaitDuration": 13.615946173667908
+      },
+      {
+        "backend": "m159-ganesh",
+        "case": "2160p-hevcWithAlpha",
+        "imageRenderDuration": 1.5500152111053467,
+        "processSeconds": 17.267262500012293,
+        "totalDuration": 17.14582395553589,
+        "writerWaitDuration": 13.626896858215332
+      },
+      {
+        "backend": "m159-graphite",
+        "case": "2160p-hevcWithAlpha",
+        "imageRenderDuration": 1.619415283203125,
+        "processSeconds": 17.287630041013472,
+        "totalDuration": 17.16364288330078,
+        "writerWaitDuration": 13.56180453300476
+      },
+      {
+        "backend": "m152-ganesh",
+        "case": "2160p-proRes4444",
+        "imageRenderDuration": 1.103122353553772,
+        "processSeconds": 3.144981624907814,
+        "totalDuration": 3.0288981199264526,
+        "writerWaitDuration": 1.3772333860397339
+      },
+      {
+        "backend": "m159-ganesh",
+        "case": "2160p-proRes4444",
+        "imageRenderDuration": 1.1110024452209473,
+        "processSeconds": 3.1368605840252712,
+        "totalDuration": 3.0173020362854004,
+        "writerWaitDuration": 1.3579533100128174
+      },
+      {
+        "backend": "m159-graphite",
+        "case": "2160p-proRes4444",
+        "imageRenderDuration": 1.1686722040176392,
+        "processSeconds": 3.112815667060204,
+        "totalDuration": 2.994940996170044,
+        "writerWaitDuration": 1.2930816411972046
+      }
+    ],
+    "method": "Release; synthetic FIT + Easy Run; fresh process per run; one short warmup per case/backend; rotated serial trials",
+    "os": "27.2",
+    "repeats": 3,
+    "sdks": {
+      "baseline": "aaf2b085b0f157435b017000e6fff89c3047e7c141b92efba0771eb41c0cdbc9",
+      "candidate": "12ad67c7226e30f700a35ce2ab3f8224a6ceb0ae6f4fc5fd1a0e78d9fbe5b114"
+    },
+    "segments": 5,
+    "source_commit": "d2494de5a7a4bd554a005aa92514f4c8d8b62e7f",
+    "source_state": "Base commit plus uncommitted opt-in production export and dual-backend experiment; both Release variants use the same application source tree."
+  }
+}

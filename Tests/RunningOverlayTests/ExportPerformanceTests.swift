@@ -6,6 +6,7 @@ import VideoToolbox
 @testable import RunningOverlay
 
 @MainActor
+@Suite(.skiaSerialized)
 struct ExportPerformanceTests {
     @Test func projectSnapshotRoundTripsExportableStateAndClearsRuntimeState() throws {
         let tempDirectory = FileManager.default.temporaryDirectory
@@ -366,7 +367,7 @@ struct ExportPerformanceTests {
             segments: [OverlayExportSegment(startTime: 2, duration: 1, sourceFileName: "clip.mov")]
         )
 
-        try await SwiftUIOverlayVideoExporter.export(job: job) { _ in }
+        try await SwiftUIOverlayVideoExporter.export(job: job, backend: .swiftUI) { _ in }
 
         let movieURL = try #require(
             try FileManager.default.contentsOfDirectory(at: destination, includingPropertiesForKeys: nil)
@@ -409,7 +410,7 @@ struct ExportPerformanceTests {
             segments: [OverlayExportSegment(startTime: 2, duration: 0.2, sourceFileName: "clip.mov")]
         )
 
-        try await SwiftUIOverlayVideoExporter.export(job: job) { _ in }
+        try await SwiftUIOverlayVideoExporter.export(job: job, backend: .swiftUI) { _ in }
 
         let movieURL = try #require(
             try FileManager.default.contentsOfDirectory(at: destination, includingPropertiesForKeys: nil)
@@ -481,7 +482,7 @@ struct ExportPerformanceTests {
         let canvasSize = CGSize(width: 1280, height: 720)
         let overlays: [OverlayElement]
         switch renderPath {
-        case .fullFrameSingleLayer:
+        case .fullFrameSingleLayer, .skiaMetal:
             var style = OverlayStyle.default
             style.routeMapWidth = 1280
             style.routeMapHeight = 720
@@ -519,7 +520,7 @@ struct ExportPerformanceTests {
             writesProfile: true
         )
 
-        try await SwiftUIOverlayVideoExporter.export(job: job) { _ in }
+        try await SwiftUIOverlayVideoExporter.export(job: job, backend: .swiftUI) { _ in }
 
         let files = try FileManager.default.contentsOfDirectory(at: destination, includingPropertiesForKeys: nil)
         let profileURL = try #require(files.first { $0.lastPathComponent.hasPrefix("export_profile_") && $0.pathExtension == "json" })
@@ -577,7 +578,7 @@ struct ExportPerformanceTests {
             profilesRenderModel: true
         )
 
-        try await SwiftUIOverlayVideoExporter.export(job: job) { _ in }
+        try await SwiftUIOverlayVideoExporter.export(job: job, backend: .swiftUI) { _ in }
 
         let profileURL = try #require(
             try FileManager.default.contentsOfDirectory(at: destination, includingPropertiesForKeys: nil)
@@ -679,6 +680,26 @@ struct ExportPerformanceTests {
         #expect(batch.elements.map(\.type) == [.heartRate, .pace, .cadence])
         #expect(plan.overlayRenderItems.count < plan.dynamicOverlays.count)
         #expect(plan.overlayRenderAreaRatio < ExportRenderPlan.perOverlayAreaThreshold)
+    }
+
+    @Test func renderPlanPreservesLayoutOrderWhenNumericOverlaysAreSplit() {
+        let overlays = [
+            OverlayElement(type: .heartRate, position: CGPoint(x: 0.12, y: 0.86), scale: 1, style: .default),
+            OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.3), scale: 1, style: .default),
+            OverlayElement(type: .pace, position: CGPoint(x: 0.24, y: 0.86), scale: 1, style: .default),
+            OverlayElement(type: .cadence, position: CGPoint(x: 0.36, y: 0.86), scale: 1, style: .default)
+        ]
+
+        let plan = ExportRenderPlan(overlays: overlays, canvasSize: CGSize(width: 1280, height: 720), activity: sampleRouteActivity())
+
+        // A numeric overlay before the chart and two after it must stay on
+        // their own sides of the chart. Batching across the chart would move
+        // the first numeric overlay above it.
+        #expect(plan.overlayRenderItems.map { $0.elements.map(\.type) } == [
+            [.heartRate],
+            [.distanceTimeline],
+            [.pace, .cadence]
+        ])
     }
 
     @Test func renderPlanDoesNotBatchNumericOverlaysWhenUnionIsTooLarge() {

@@ -23,7 +23,25 @@ license and attribution requirements here.
 
 ## Runtime Dependencies
 
-The Swift package currently declares no third-party runtime dependencies.
+The Swift package declares no third-party Swift package dependencies. Setting
+`SKIA_DIR` enables an optional native Skia dependency; its GPU build links
+`libskia.dylib`. The baseline development prebuilt is Skia m152 at
+`0873ec164a06966b90ae0d43ef783cfb180084ae`; its original distributor provenance
+still needs confirmation before shipping that binary.
+
+The experimental SDK is built directly from the official
+[Skia repository](https://skia.googlesource.com/skia.git) at m159 commit
+`1bbd9b972a4667a98fb16b8441444b2282fed0ac`. Its included skcms revision is
+`f0bbebbebb50851813e4f11d3d4b9edd2878a056`. Both use BSD-3-Clause notices,
+reproduced in [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md) and copied
+into the generated SDK with the build manifest. The minimal recipe excludes
+external codec, HarfBuzz, ICU, Dawn and PartitionAlloc libraries. See the
+[SDK guide](development/skia-sdk.md) for the exact source, build flags and
+verification process. No Skia binary is committed. Building an experimental
+SDK does not itself complete release approval. The Skia-enabled SwiftPM app
+packager now embeds/signs the dylib and includes the notices in the app's Legal
+directory. ADR 0011 selects the source-built m159 SDK for product cutover;
+m152 distributor provenance is not required to distribute that different binary.
 
 ## Apple Platform Resources
 

@@ -238,6 +238,30 @@
           "enabledWhen": "showMap == true"
         },
         {
+          "id": "mapZoom",
+          "type": "slider",
+          "range": [
+            0.5,
+            3.0
+          ],
+          "modelPath": "OverlayStyle.routeMapZoom",
+          "modelBacked": true,
+          "enabledWhen": "showMap == true",
+          "notes": [
+            "Region padding is 0.18 / zoom, so larger values tighten the snapshot around the route."
+          ]
+        },
+        {
+          "id": "mapPointsOfInterest",
+          "type": "toggle",
+          "modelPath": "OverlayStyle.routeMapShowsPointsOfInterest",
+          "modelBacked": true,
+          "enabledWhen": "showMap == true",
+          "notes": [
+            "Off requests MKPointOfInterestFilter.excludingAll. MapKit does not expose street-label density."
+          ]
+        },
+        {
           "id": "contrast",
           "type": "slider",
           "modelBacked": "phaseF"
@@ -764,6 +788,8 @@
     "OverlayStyle.shadowRadius",
     "routeMapContainerPreset (template / test API; not in Inspector)",
     "routeMapMapOpacity",
+    "routeMapZoom",
+    "routeMapShowsPointsOfInterest",
     "routeMapLegendVisible / routeMapLegendMode (legacy migration only)",
     "routeMapStatsBar.visible / placement / inside / layoutMode / height / width / offsetX / offsetY / itemSpacing / backgroundOpacity / dividerOpacity / cornerRadius / slots",
     "glowEnabled"

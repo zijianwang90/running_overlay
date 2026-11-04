@@ -160,6 +160,26 @@ struct RouteMapOverlayDetailView: View {
             displayText: String(format: "%.0f%%", element.style.routeMapMapOpacity * 100),
             isEnabled: mapEnabled
         )
+        InspectorDenseSliderRow(
+            label: "Map Zoom",
+            value: Binding(
+                get: { element.style.routeMapZoom },
+                set: { project.setOverlayRouteMapZoom(elementID, zoom: $0.quantizedRouteMap(to: 0.05)) }
+            ),
+            range: 0.5...3,
+            displayText: String(format: "%.2gx", element.style.routeMapZoom),
+            isEnabled: mapEnabled
+        )
+        InspectorDenseRow(label: "Map POIs") {
+            Toggle("", isOn: Binding(
+                get: { element.style.routeMapShowsPointsOfInterest },
+                set: { project.setOverlayRouteMapShowsPointsOfInterest(elementID, isVisible: $0) }
+            ))
+            .toggleStyle(.switch)
+            .controlSize(.mini)
+            .labelsHidden()
+            .disabled(!mapEnabled)
+        }
     }
 
     @ViewBuilder

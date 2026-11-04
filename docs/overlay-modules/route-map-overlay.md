@@ -57,6 +57,7 @@ Inspector 控件需要覆盖这些维度：
 - Current position marker: 可独立开关并设置颜色；开启时当前版本统一渲染为 dot。
 - Legend (v2): hide / minimal / start+finish+distance / gradient band.
 - Map background style (v1): none / dark / light / terrain / satellite.
+- Map opacity, map zoom, and points-of-interest visibility.
 - Map opacity and route opacity。
 - Map shape: square, circle。
 - Edge fade out: solid edge / gradient edge, with fade amount.
@@ -150,7 +151,8 @@ struct RouteGeometry: Equatable {
 地图相关缓存需要显式设计：
 
 - Route geometry cache: 与 FIT 文件内容和清洗参数绑定。
-- Map snapshot cache: 与 provider、style、bounds、zoom、scale、project resolution、padding 绑定。
+- Map snapshot cache: 与 provider、style、bounds、zoom、scale、project resolution、padding 绑定。预览中 SwiftUI 与 Skia 共享 `MapSnapshotCache`，避免两个渲染器各自请求同一区域时 MapKit 返回不同的标签密度或抗锯齿结果。
+- MapKit 不提供街名/标签密度 API；`Map Zoom` 通过收紧 region 间接减少周边标签，`Map POIs` 只控制兴趣点标注。
 - Export cache: 导出开始前冻结当前地图快照，避免中途网络失败或地图样式变化。
 
 离线行为：

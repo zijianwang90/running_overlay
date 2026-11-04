@@ -69,9 +69,136 @@ Snapshots should favor deterministic Core Graphics geometry and synthetic
 data. Avoid network-backed maps, current time, locale-sensitive content, or
 fonts that differ across supported systems.
 
+## Skia Renderer Tests
+
+The Skia renderer tests are compiled only when `SKIA_DIR` points at the
+pinned prebuilt. CPU raster tests need only `SKIA_DIR`; GPU, preview, and
+GPU-parity tests also need `SKIA_GPU=1`. For example:
+
+```sh
+SKIA_DIR=/path/to/skia-prebuilt SKIA_GPU=1 ./scripts/check.sh
+```
+
+- `Skia*GoldenTests` compare normalized RGBA against
+  `SwiftUIOverlayVideoExporter.renderFrameCGImage`. Thresholds are per suite:
+  text goldens use changed-pixel ratios of 2-5% and mean deltas of 2-6; route
+  and weather allow 10% and mean 8; the mixed full-template golden allows 15%
+  and mean 2. Pixel equality is not expected because Skia and SwiftUI use
+  different anti-aliasing and shadow kernels.
+- GPU parity tests compare the CPU raster bridge with the offscreen Metal
+  surface through `SkiaEasyRunRenderer`. They require at most 2% changed
+  pixels and a mean delta of 0.5 for charts, route, and weather.
+- Suites that create Skia contexts or Metal export sessions are gated so they
+  do not run concurrently across suites. Swift Testing parallelizes suites,
+  and concurrent Ganesh contexts and CPU raster passes have produced
+  intermittent crashes and global-preference races.
+- `SkiaProductionExportTests` run the real export coordinator for ProRes 4444
+  and HEVC alpha using synthetic activity and authored decor/text. They decode
+  both segments and check alpha (including half opacity), orientation, z-order,
+  BT.709 tags, timestamps, frame count, activity offset, progress, cancellation,
+  frame reuse, profiling, and the selected PNG path. They require no map network
+  access and create/remove media in a unique temporary directory.
+- Native preview display-link tests require an awake display. Display sleep can
+  suppress callbacks and leave `displayLinkDrivesFramesInAWindow` at zero frames
+  even when offscreen rendering and drawable presentation work. For long local
+  runs, use `caffeinate -d -u ./scripts/check.sh` with the same Skia environment;
+  the assertion ends with the command. Do not relax the frame-count assertion
+  to accommodate display sleep.
+- The optional m159 SDK includes Graphite. Build with `SKIA_GRAPHITE=1` and
+  select `RUNNING_OVERLAY_SKIA_BACKEND=graphite` to exercise the same GPU parity
+  and production export suites through it; existing thresholds are unchanged.
+  `SkiaBackendSelectionTests` also checks explicit unavailability on m152 and
+  successive Ganesh/Graphite frames on a dual-backend build. The
+  [SDK guide](development/skia-sdk.md) documents source packaging and the
+  serial Release benchmark matrix.
+- The source-built Skia SDK is the target product dependency and remains
+  outside Git. Skia-enabled bundles embed/sign the dylib and validate relative
+  runtime paths. SDK-free builds remain a developer/CI path, not the target
+  product configuration. Distribution still requires the release gates in ADR 0011.
+
 ## Performance Tests
 
 Performance comparisons must use a documented project snapshot with no private
 media paths or activity data. Record toolchain, hardware class, settings, and
 before/after measurements. Performance snapshots are not committed when they
 contain local source paths.
+
+## Skia Product Cutover Validation
+
+- Run the full check with m159 Graphite and an awake display; selected-renderer
+  defaults must exercise Skia. Legacy SwiftUI performance/cache tests explicitly
+  request the oracle so they still test the behavior named by each test.
+- Feather-mask lifetime coverage actively evicts the cache while a draw owns
+  the image, then checks pixels and owner release. Raw cache pointers must not
+  escape their owning handles.
+- Production codec tests decode advancing sample times as well as the first
+  frame, covering stale/reordered sample regressions and buffer reuse.
+- `scripts/build-appstore-app.sh` with `SKIA_DIR`, `SKIA_GPU=1`, and
+  `SKIA_GRAPHITE=1` creates the local Release bundle. Its
+  `validate-packaged-skia.py` gate verifies dylib linkage, relative rpaths,
+  architecture coverage, legal notices and system-only transitive dependencies;
+  codesign verification follows. Check actual packaged runtime loading as well.
+- The bounded prefetch result and decision to remove it are recorded in the
+  [pipeline experiment](benchmarks/2026-11-03-skia-pipeline.md). Do not revive
+  scheduling work while the fixed suite meets basic throughput needs.
+
+## Native Skia Build Coverage
+
+The `skia-product` CI job supplements SDK-free checks with the pinned m159
+Graphite SDK. It runs the full SwiftPM test suite, visual regression, an ad-hoc signed
+native Xcode Release archive and an ad-hoc SwiftPM bundle. Both packaging paths
+validate the SDK manifest and bundled dependency paths/notices. SDK build caches
+are scoped to source recipe, builder, architecture and Xcode version.
+
+For local archive preflight, use the commands in the [release guide](development/release.md).
+Check `validate-packaged-skia.py` against the archived app as well as the SwiftPM
+bundle. A build that passes with `SKIA_ENABLED=NO` does not validate the product
+renderer. Native archives still need real-certificate and oldest-OS validation.
+
+`scripts/smoke-skia-app.py APP` copies an archived or packaged app, injects only
+existing synthetic FIT and built-in templates into that copy, re-signs it with
+sandbox entitlements, then exports one second of ProRes for each template.
+The disposable copy receives a temporary sandbox exception for its unique
+harness output directory, equivalent in scope to the missing headless file-picker
+grant. The harness can then check and remove exports without container privacy
+blocking its access. Product entitlements are unchanged. It requires a nonempty
+MOV for every preset and leaves the original bundle untouched. CI runs this on the native archive. This verifies
+packaged loading and sandbox execution, not full workout/visual acceptance;
+codec pixels and advancing samples remain covered by production export tests.
+The SDK validator's synthetic tampering tests run in `scripts/check.sh` even
+without an SDK, including wrong source/recipe and modified dylib rejection.
+
+
+## Built-In Template Acceptance
+
+`SkiaBuiltInTemplateTests` loads the actual Easy Run, Interval Workout and Race
+resources and reuses the existing synthetic six-lap workout fixture. With
+`SKIA_GPU=1`, all three templates render at 1080p and 4K through both the
+preview offscreen Metal surface and the production IOSurface export renderer.
+The sequence covers warmup, two work phases, recovery, cooldown, finish, backward
+scrubbing and rewind. It checks visible pixels, distinct advancing frames,
+repeatable restored frames and exact preview/export pixel equality. A raster
+reference with the same map assets also checks one active-work frame per
+configuration using the existing GPU limits (2% changed pixels, mean channel
+delta 0.5). Metal/context unavailability fails
+when the GPU configuration was requested.
+
+Three 1080p SwiftUI-oracle comparisons use the existing mixed-composition
+limits (15% changed pixels, mean channel delta 2). Only their map background is
+disabled to avoid live MapKit. Host comparisons preserve authored styles and
+inject a simple synthetic map snapshot; no weather or map network is used.
+The fixture comes from `SkiaFullCompositionGoldenTests` and creates no new
+committed media or athlete data.
+
+To write transparent review PNGs for each unique template/size/workout phase:
+
+```sh
+SKIA_DIR=/path/to/pinned-sdk SKIA_GPU=1 SKIA_GRAPHITE=1 \
+  RUNNING_OVERLAY_TEMPLATE_REVIEW_DIR=/tmp/skia-template-review \
+  ./scripts/test.sh SkiaBuiltInTemplateTests
+```
+
+These are temporary review artifacts, not committed visual snapshot updates.
+Automated pixel/rewind checks do not establish interactive window, drag,
+snapping, video-compositing or real-map acceptance. Keep the SwiftUI oracle until
+those remaining interaction checks and template visual review are accepted.

@@ -1,5 +1,14 @@
 # Overlay and Preview Development
 
+## Product Renderer
+
+Skia-enabled builds use `SkiaPreviewCanvasView` in Debug and Release. Skia
+draws overlay pixels; SwiftUI owns editor chrome, hit targets, selection and
+guides. Release has no renderer toggle. Debug retains the SwiftUI visual oracle
+via `RUNNING_OVERLAY_RENDERER=swiftUI` and the preview header toggle. Both hosts
+consume `OverlayRenderModel` and `SkiaEasyRunRenderer`; new product rendering
+behavior belongs in Skia. See [ADR 0011](../adr/0011-skia-product-renderer.md).
+
 ### Phase 5: Overlay Editing
 
 - Status: in progress.

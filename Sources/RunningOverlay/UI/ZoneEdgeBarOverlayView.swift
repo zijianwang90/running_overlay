@@ -76,43 +76,22 @@ struct ZoneEdgeBarOverlayView: View {
             activeIndex: layout.activeZoneIndex,
             activeWidthShare: style.activeZoneWidthShare
         )
-        return zoneRects(frames: frames)
-    }
-
-    private func zoneRects(frames: [IntervalHUDBarZoneSegmentFrame]) -> [ZoneEdgeBarZoneRect] {
-        let segmentCount = min(frames.count, layout.zoneSegments.count)
-        guard segmentCount > 0 else { return [] }
-        let length = layout.orientation == .horizontal ? localBarRect.width : localBarRect.height
-        let requestedGap = max(style.zoneSegmentGap * element.scale, 0)
-        let maxGap = segmentCount > 1 ? max(length / Double(segmentCount - 1) * 0.18, 0) : 0
-        let gap = min(requestedGap, maxGap)
-        let usableLength = max(length - gap * Double(max(segmentCount - 1, 0)), 1)
-
-        return (0..<segmentCount).map { position in
-            let frame = frames[position]
-            let segment = layout.zoneSegments[position]
-            let isActive = segment.index == layout.activeZoneIndex
-            let activeThickness = crossAxisThickness * max(style.activeZoneHeightScale, 1)
-            let thickness = isActive ? activeThickness : crossAxisThickness
-            let positionOffset = Double(position) * gap
-            let segmentLength = max(usableLength * frame.width, 0)
-
-            if layout.orientation == .horizontal {
-                return ZoneEdgeBarZoneRect(
-                    index: segment.index,
-                    x: localBarRect.minX + usableLength * frame.start + positionOffset,
-                    y: localBarRect.midY - thickness / 2,
-                    width: segmentLength,
-                    height: thickness
-                )
-            }
-
-            return ZoneEdgeBarZoneRect(
-                index: segment.index,
-                x: localBarRect.midX - thickness / 2,
-                y: localBarRect.maxY - usableLength * (frame.start + frame.width) - positionOffset,
-                width: thickness,
-                height: segmentLength
+        return OverlayRenderModel.intervalZoneBarRects(
+            frames: frames,
+            segments: layout.zoneSegments,
+            barRect: layout.barRect,
+            activeIndex: layout.activeZoneIndex,
+            activeThicknessScale: style.activeZoneHeightScale,
+            segmentGap: style.zoneSegmentGap,
+            elementScale: element.scale,
+            orientation: layout.orientation
+        ).map { zoneRect in
+            ZoneEdgeBarZoneRect(
+                index: zoneRect.index,
+                x: zoneRect.rect.minX - layout.rect.minX,
+                y: zoneRect.rect.minY - layout.rect.minY,
+                width: zoneRect.rect.width,
+                height: zoneRect.rect.height
             )
         }
     }
@@ -154,7 +133,10 @@ struct ZoneEdgeBarOverlayView: View {
                 }
                 ZoneEdgeBarTriangle(direction: layout.markerSide == .above ? .down : .up)
                     .fill(Color(zoneEdgeBar: marker.color))
-                    .frame(width: max(crossAxisThickness * 1.35, 12), height: max(crossAxisThickness * 0.9, 8))
+                    .frame(
+                        width: max(crossAxisThickness * 1.35, 12) * markerSizeScale,
+                        height: max(crossAxisThickness * 0.9, 8) * markerSizeScale
+                    )
                 if layout.markerSide == .below && style.markerShowsValue {
                     markerValue(marker)
                 }
@@ -167,7 +149,10 @@ struct ZoneEdgeBarOverlayView: View {
                 }
                 ZoneEdgeBarTriangle(direction: layout.markerSide == .leading ? .right : .left)
                     .fill(Color(zoneEdgeBar: marker.color))
-                    .frame(width: max(crossAxisThickness * 0.9, 8), height: max(crossAxisThickness * 1.35, 12))
+                    .frame(
+                        width: max(crossAxisThickness * 0.9, 8) * markerSizeScale,
+                        height: max(crossAxisThickness * 1.35, 12) * markerSizeScale
+                    )
                 if layout.markerSide == .trailing && style.markerShowsValue {
                     markerValue(marker)
                 }
@@ -181,24 +166,24 @@ struct ZoneEdgeBarOverlayView: View {
             if layout.orientation == .horizontal {
                 VStack(spacing: 2) {
                     if layout.markerSide == .above {
-                        markerText(marker, scale: 0.72)
+                        markerText(marker, scale: 0.72 * thresholdMarkerSizeScale)
                     }
                     thresholdLine(marker)
                         .frame(width: max(1.2 * element.scale, 1), height: thresholdLineLength)
                     if layout.markerSide != .above {
-                        markerText(marker, scale: 0.72)
+                        markerText(marker, scale: 0.72 * thresholdMarkerSizeScale)
                     }
                 }
                 .offset(y: horizontalThresholdOffset)
             } else {
                 HStack(spacing: 2) {
                     if layout.markerSide == .leading {
-                        markerText(marker, scale: 0.72)
+                        markerText(marker, scale: 0.72 * thresholdMarkerSizeScale)
                     }
                     thresholdLine(marker)
                         .frame(width: thresholdLineLength, height: max(1.2 * element.scale, 1))
                     if layout.markerSide != .leading {
-                        markerText(marker, scale: 0.72)
+                        markerText(marker, scale: 0.72 * thresholdMarkerSizeScale)
                     }
                 }
                 .offset(x: verticalThresholdOffset)
@@ -233,11 +218,21 @@ struct ZoneEdgeBarOverlayView: View {
     }
 
     private var thresholdLineLength: Double {
-        max(crossAxisThickness * 1.35, 10)
+        max(crossAxisThickness * 1.35, 10) * thresholdMarkerSizeScale
+    }
+
+    private var markerSizeScale: Double {
+        min(max(style.markerSizeScale, 0.1), 4)
+    }
+
+    private var thresholdMarkerSizeScale: Double {
+        min(max(style.thresholdMarkerSizeScale, 0.1), 4)
     }
 
     private var thresholdMarkerHeight: Double {
-        thresholdLineLength + max(layout.markerText.fontSize * 0.72, 7) + 6
+        thresholdLineLength
+            + max(layout.markerText.fontSize * 0.72 * thresholdMarkerSizeScale, 7)
+            + 6
     }
 
     private var thresholdLabelAndSpacing: Double {
@@ -253,11 +248,13 @@ struct ZoneEdgeBarOverlayView: View {
     }
 
     private func currentMarkerHeight(_ marker: IntervalHUDBarZoneMarker) -> Double {
-        max(crossAxisThickness * 0.9, 8) + (style.markerShowsValue ? max(layout.markerText.fontSize, 9) + 8 : 0)
+        max(crossAxisThickness * 0.9, 8) * markerSizeScale
+            + (style.markerShowsValue ? max(layout.markerText.fontSize, 9) + 8 : 0)
     }
 
     private func currentMarkerWidth(_ marker: IntervalHUDBarZoneMarker) -> Double {
-        max(crossAxisThickness * 0.9, 8) + (style.markerShowsValue ? 84 : 0)
+        max(crossAxisThickness * 0.9, 8) * markerSizeScale
+            + (style.markerShowsValue ? 84 : 0)
     }
 }
 

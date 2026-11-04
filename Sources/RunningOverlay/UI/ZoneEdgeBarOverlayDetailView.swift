@@ -274,9 +274,29 @@ struct ZoneEdgeBarOverlayDetailView: View {
             toggleRow("Marker Value", isOn: style.markerShowsValue) { value in
                 project.mutateZoneEdgeBarStyle(elementID) { $0.markerShowsValue = value }
             }
+            InspectorDenseSliderRow(
+                label: "Arrow Size",
+                value: Binding(
+                    get: { style.markerSizeScale },
+                    set: { value in project.mutateZoneEdgeBarStyleContinuous(elementID) { $0.markerSizeScale = value.quantizedNumeric(to: 0.05) } }
+                ),
+                range: 0.5...2,
+                displayText: String(format: "%.2gx", style.markerSizeScale)
+            )
         }
         toggleRow("Threshold Marker", isOn: style.thresholdMarkerEnabled) { value in
             project.mutateZoneEdgeBarStyle(elementID) { $0.thresholdMarkerEnabled = value }
+        }
+        if style.thresholdMarkerEnabled {
+            InspectorDenseSliderRow(
+                label: "Threshold Size",
+                value: Binding(
+                    get: { style.thresholdMarkerSizeScale },
+                    set: { value in project.mutateZoneEdgeBarStyleContinuous(elementID) { $0.thresholdMarkerSizeScale = value.quantizedNumeric(to: 0.05) } }
+                ),
+                range: 0.5...2,
+                displayText: String(format: "%.2gx", style.thresholdMarkerSizeScale)
+            )
         }
     }
 

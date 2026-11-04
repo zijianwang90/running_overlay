@@ -1,0 +1,354 @@
+{
+  "application_tree_sha256": "d58b9dcbacbd37fd982bc7b55d08470decd3ed486a98e92f31d05ec654086701",
+  "binary_sha256": {
+    "graphite-prefetch": "e1bf9ab17cc773c8d54ce38d9f32a99aa94fa8b10ba29c9ccdff45dc16ca60df",
+    "graphite-serial": "e1bf9ab17cc773c8d54ce38d9f32a99aa94fa8b10ba29c9ccdff45dc16ca60df"
+  },
+  "decision": "Reject prefetch; keep serial production host. Sufficient throughput; stop scheduling optimization.",
+  "duration": 5,
+  "frameRate": 30,
+  "hardware": "Apple M3",
+  "layerDataFrameRate": 5,
+  "medians": [
+    {
+      "backend": "graphite-serial",
+      "case": "1080p-hevcWithAlpha",
+      "imageRenderDuration": 1.1828583478927612,
+      "processSeconds": 5.3500392499845475,
+      "totalDuration": 5.218921065330505,
+      "writerWaitDuration": 3.261810064315796
+    },
+    {
+      "backend": "graphite-prefetch",
+      "case": "1080p-hevcWithAlpha",
+      "imageRenderDuration": 1.1860333681106567,
+      "processSeconds": 5.344462083070539,
+      "totalDuration": 5.209456086158752,
+      "writerWaitDuration": 4.355329632759094
+    },
+    {
+      "backend": "graphite-serial",
+      "case": "1080p-proRes4444",
+      "imageRenderDuration": 0.9383819103240967,
+      "processSeconds": 1.6394457499263808,
+      "totalDuration": 1.526196837425232,
+      "writerWaitDuration": 0.1726698875427246
+    },
+    {
+      "backend": "graphite-prefetch",
+      "case": "1080p-proRes4444",
+      "imageRenderDuration": 0.8899966478347778,
+      "processSeconds": 1.3951227499637753,
+      "totalDuration": 1.283722996711731,
+      "writerWaitDuration": 0.2285076379776001
+    },
+    {
+      "backend": "graphite-serial",
+      "case": "2160p-hevcWithAlpha",
+      "imageRenderDuration": 1.8505059480667114,
+      "processSeconds": 17.340346041019075,
+      "totalDuration": 17.203475832939148,
+      "writerWaitDuration": 13.396193265914917
+    },
+    {
+      "backend": "graphite-prefetch",
+      "case": "2160p-hevcWithAlpha",
+      "imageRenderDuration": 1.8204036951065063,
+      "processSeconds": 17.375077040982433,
+      "totalDuration": 17.219816088676453,
+      "writerWaitDuration": 15.097241282463074
+    },
+    {
+      "backend": "graphite-serial",
+      "case": "2160p-proRes4444",
+      "imageRenderDuration": 1.3021851778030396,
+      "processSeconds": 3.179271791013889,
+      "totalDuration": 3.045327067375183,
+      "writerWaitDuration": 1.2012861967086792
+    },
+    {
+      "backend": "graphite-prefetch",
+      "case": "2160p-proRes4444",
+      "imageRenderDuration": 1.5104343891143799,
+      "processSeconds": 3.2760430830530822,
+      "totalDuration": 3.1393141746520996,
+      "writerWaitDuration": 2.48922336101532
+    }
+  ],
+  "method": "Release; synthetic FIT + Easy Run; fresh process per run; one short warmup per case/backend; rotated serial trials",
+  "os": "27.2",
+  "pipeline_only": true,
+  "repeats": 3,
+  "runs": [
+    {
+      "backend": "graphite-serial",
+      "case": "1080p-proRes4444",
+      "imageRenderDuration": 0.9445054531097412,
+      "processSeconds": 1.6317768750013784,
+      "renderedFrameCount": 125,
+      "repeat": 1,
+      "totalDuration": 1.526196837425232,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 0.1694321632385254
+    },
+    {
+      "backend": "graphite-prefetch",
+      "case": "1080p-proRes4444",
+      "imageRenderDuration": 0.8788367509841919,
+      "processSeconds": 1.3951227499637753,
+      "renderedFrameCount": 125,
+      "repeat": 1,
+      "totalDuration": 1.2829370498657227,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 0.20774543285369873
+    },
+    {
+      "backend": "graphite-prefetch",
+      "case": "1080p-proRes4444",
+      "imageRenderDuration": 0.8899966478347778,
+      "processSeconds": 1.3782959160162136,
+      "renderedFrameCount": 125,
+      "repeat": 2,
+      "totalDuration": 1.283722996711731,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 0.2285076379776001
+    },
+    {
+      "backend": "graphite-serial",
+      "case": "1080p-proRes4444",
+      "imageRenderDuration": 0.9383819103240967,
+      "processSeconds": 1.6394457499263808,
+      "renderedFrameCount": 125,
+      "repeat": 2,
+      "totalDuration": 1.5260502099990845,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 0.1745929718017578
+    },
+    {
+      "backend": "graphite-serial",
+      "case": "1080p-proRes4444",
+      "imageRenderDuration": 0.9383742809295654,
+      "processSeconds": 1.6497486250009388,
+      "renderedFrameCount": 125,
+      "repeat": 3,
+      "totalDuration": 1.5416630506515503,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 0.1726698875427246
+    },
+    {
+      "backend": "graphite-prefetch",
+      "case": "1080p-proRes4444",
+      "imageRenderDuration": 0.9574744701385498,
+      "processSeconds": 1.494570582988672,
+      "renderedFrameCount": 125,
+      "repeat": 3,
+      "totalDuration": 1.3762329816818237,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 0.2782212495803833
+    },
+    {
+      "backend": "graphite-serial",
+      "case": "1080p-hevcWithAlpha",
+      "imageRenderDuration": 1.1828583478927612,
+      "processSeconds": 5.394773457897827,
+      "renderedFrameCount": 125,
+      "repeat": 1,
+      "totalDuration": 5.261868000030518,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 3.2635263204574585
+    },
+    {
+      "backend": "graphite-prefetch",
+      "case": "1080p-hevcWithAlpha",
+      "imageRenderDuration": 1.193535566329956,
+      "processSeconds": 5.344462083070539,
+      "renderedFrameCount": 125,
+      "repeat": 1,
+      "totalDuration": 5.209456086158752,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 4.338532447814941
+    },
+    {
+      "backend": "graphite-prefetch",
+      "case": "1080p-hevcWithAlpha",
+      "imageRenderDuration": 1.1304877996444702,
+      "processSeconds": 5.335575332981534,
+      "renderedFrameCount": 125,
+      "repeat": 2,
+      "totalDuration": 5.1967350244522095,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 4.35705041885376
+    },
+    {
+      "backend": "graphite-serial",
+      "case": "1080p-hevcWithAlpha",
+      "imageRenderDuration": 1.1919097900390625,
+      "processSeconds": 5.3500392499845475,
+      "renderedFrameCount": 125,
+      "repeat": 2,
+      "totalDuration": 5.218921065330505,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 3.253803014755249
+    },
+    {
+      "backend": "graphite-serial",
+      "case": "1080p-hevcWithAlpha",
+      "imageRenderDuration": 1.1608220338821411,
+      "processSeconds": 5.332851541927084,
+      "renderedFrameCount": 125,
+      "repeat": 3,
+      "totalDuration": 5.202257037162781,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 3.261810064315796
+    },
+    {
+      "backend": "graphite-prefetch",
+      "case": "1080p-hevcWithAlpha",
+      "imageRenderDuration": 1.1860333681106567,
+      "processSeconds": 5.357919999980368,
+      "renderedFrameCount": 125,
+      "repeat": 3,
+      "totalDuration": 5.230985045433044,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 4.355329632759094
+    },
+    {
+      "backend": "graphite-serial",
+      "case": "2160p-proRes4444",
+      "imageRenderDuration": 1.5548847913742065,
+      "processSeconds": 3.371871249983087,
+      "renderedFrameCount": 125,
+      "repeat": 1,
+      "totalDuration": 3.261517882347107,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 1.180782675743103
+    },
+    {
+      "backend": "graphite-prefetch",
+      "case": "2160p-proRes4444",
+      "imageRenderDuration": 1.3456932306289673,
+      "processSeconds": 3.2347865420160815,
+      "renderedFrameCount": 125,
+      "repeat": 1,
+      "totalDuration": 3.094936966896057,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 2.4549663066864014
+    },
+    {
+      "backend": "graphite-prefetch",
+      "case": "2160p-proRes4444",
+      "imageRenderDuration": 1.5104343891143799,
+      "processSeconds": 3.3338797909673303,
+      "renderedFrameCount": 125,
+      "repeat": 2,
+      "totalDuration": 3.202700972557068,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 2.5484681129455566
+    },
+    {
+      "backend": "graphite-serial",
+      "case": "2160p-proRes4444",
+      "imageRenderDuration": 1.3021851778030396,
+      "processSeconds": 3.1483895409619436,
+      "renderedFrameCount": 125,
+      "repeat": 2,
+      "totalDuration": 3.023500084877014,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 1.2012861967086792
+    },
+    {
+      "backend": "graphite-serial",
+      "case": "2160p-proRes4444",
+      "imageRenderDuration": 1.2567113637924194,
+      "processSeconds": 3.179271791013889,
+      "renderedFrameCount": 125,
+      "repeat": 3,
+      "totalDuration": 3.045327067375183,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 1.2904391288757324
+    },
+    {
+      "backend": "graphite-prefetch",
+      "case": "2160p-proRes4444",
+      "imageRenderDuration": 1.568731665611267,
+      "processSeconds": 3.2760430830530822,
+      "renderedFrameCount": 125,
+      "repeat": 3,
+      "totalDuration": 3.1393141746520996,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 2.48922336101532
+    },
+    {
+      "backend": "graphite-serial",
+      "case": "2160p-hevcWithAlpha",
+      "imageRenderDuration": 2.0114184617996216,
+      "processSeconds": 17.327567165950313,
+      "renderedFrameCount": 125,
+      "repeat": 1,
+      "totalDuration": 17.178851008415222,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 13.150584816932678
+    },
+    {
+      "backend": "graphite-prefetch",
+      "case": "2160p-hevcWithAlpha",
+      "imageRenderDuration": 1.9356632232666016,
+      "processSeconds": 17.375077040982433,
+      "renderedFrameCount": 125,
+      "repeat": 1,
+      "totalDuration": 17.233954071998596,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 15.06907057762146
+    },
+    {
+      "backend": "graphite-prefetch",
+      "case": "2160p-hevcWithAlpha",
+      "imageRenderDuration": 1.8083139657974243,
+      "processSeconds": 17.311874542036094,
+      "renderedFrameCount": 125,
+      "repeat": 2,
+      "totalDuration": 17.18305790424347,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 15.097241282463074
+    },
+    {
+      "backend": "graphite-serial",
+      "case": "2160p-hevcWithAlpha",
+      "imageRenderDuration": 1.7938252687454224,
+      "processSeconds": 17.340346041019075,
+      "renderedFrameCount": 125,
+      "repeat": 2,
+      "totalDuration": 17.203475832939148,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 13.396193265914917
+    },
+    {
+      "backend": "graphite-serial",
+      "case": "2160p-hevcWithAlpha",
+      "imageRenderDuration": 1.8505059480667114,
+      "processSeconds": 17.364896000013687,
+      "renderedFrameCount": 125,
+      "repeat": 3,
+      "totalDuration": 17.238178968429565,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 13.396496057510376
+    },
+    {
+      "backend": "graphite-prefetch",
+      "case": "2160p-hevcWithAlpha",
+      "imageRenderDuration": 1.8204036951065063,
+      "processSeconds": 17.40153541706968,
+      "renderedFrameCount": 125,
+      "repeat": 3,
+      "totalDuration": 17.219816088676453,
+      "totalFrameCount": 750,
+      "writerWaitDuration": 15.118791341781616
+    }
+  ],
+  "sdks": {
+    "candidate": "12ad67c7226e30f700a35ce2ab3f8224a6ceb0ae6f4fc5fd1a0e78d9fbe5b114"
+  },
+  "segments": 5,
+  "source_commit": "d2494de5a7a4bd554a005aa92514f4c8d8b62e7f",
+  "source_state": "modified working tree"
+}

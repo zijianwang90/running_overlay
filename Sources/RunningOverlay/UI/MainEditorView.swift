@@ -83,7 +83,11 @@ struct MainEditorView: View {
 
                 if showsPoolPanel {
                     ToolbarItem(placement: .navigation) {
+                        // AppKit collapses a fixed `ToolbarSpacer` in the leading
+                        // navigation cluster, so the group gap lives in the
+                        // item content instead.
                         PoolModeSwitch(activePool: $activePool)
+                            .padding(.leading, 16)
                     }
                 }
 
@@ -356,7 +360,8 @@ private extension ToolbarContent {
 
 #if compiler(>=6.2)
 /// Separates trailing toolbar groups on macOS 26, where adjacent items otherwise
-/// sit tightly together.
+/// sit tightly together. The leading navigation cluster collapses a
+/// `ToolbarSpacer`, so the pool switch uses content padding for its gap.
 private struct EditorToolbarGroupSpacer: ToolbarContent {
     var body: some ToolbarContent {
         if #available(macOS 26, *) {
@@ -405,6 +410,7 @@ private struct WindowDocumentEditedState: NSViewRepresentable {
             guard let window = nsView.window else { return }
             window.isDocumentEdited = isEdited
             EditorWindowCloseGuard.shared.install(on: window)
+            EditorTitlebarDoubleClickGuard.shared.install(on: window)
         }
     }
 }

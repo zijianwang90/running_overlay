@@ -408,6 +408,10 @@ numeric overlays in the per-overlay path:
 - The batch is enabled only when at least two numeric overlays fit inside a
   padded union rect whose area is below 45% of the canvas and smaller than the
   sum of their individual padded areas.
+- Only contiguous runs of numeric overlays are batched. A non-numeric overlay
+  interleaved between them splits the batch, so the render plan preserves the
+  layout's z-order. This also matches the Skia renderer, which draws strictly
+  in `layout.elements` order.
 - The batch still renders through `SwiftUIOverlayLayerView`, so visual output
   should match the current per-overlay path. Profiling records the batch under
   the first grouped numeric overlay type.
@@ -659,3 +663,24 @@ variable-frame-rate option:
 - Adaptive quality presets for draft vs final exports.
 - Optional hardware-accelerated composition path after CPU-side profiling has
   identified the real bottlenecks.
+
+## Skia Engine Upgrade Experiment (2026-11-03)
+
+The source-built m159 Ganesh/Graphite Metal SDK was compared with m152 Ganesh
+through the same Release production export coordinator. Across 1080p/4K and
+both codecs, total medians differed by at most about 1.2%; this did not establish
+a stable speedup. Graphite render-plus-sync time was slightly higher, while
+HEVC remained encoder-bound. Keep the candidate opt-in. See the
+[method, results and raw trials](benchmarks/2026-11-03-skia-engines.md) and
+[SDK rebuild guide](development/skia-sdk.md).
+
+## Product Cutover Performance Stop — 2026-11-03
+
+The maintainer authorized Skia as the product renderer and limited further
+performance work to sufficient throughput. A bounded one-sample prefetch
+experiment was measured and removed: it helped 1080p ProRes but offered no
+consistent improvement for 4K and HEVC. Keep the serial Graphite host and focus
+on product integration. The fixed 25-second synthetic suite already finishes
+faster than real time on the development Mac. See the
+[pipeline experiment](benchmarks/2026-11-03-skia-pipeline.md) for settings,
+medians, raw records and limits; ADR 0011 supersedes earlier default decisions.

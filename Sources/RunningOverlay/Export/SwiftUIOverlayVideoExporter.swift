@@ -43,6 +43,10 @@ struct ExportRenderPlan: Equatable {
 
     /// Runtime kill switch for elevation chart static fill cache benchmarks.
     nonisolated(unsafe) static var elevationChartStaticFillCacheEnabled = true
+    /// Benchmark switch: force the single full-frame dynamic render path so the
+    /// per-overlay compositing cost can be compared against it.
+    static let forceFullFrameRender =
+        ProcessInfo.processInfo.environment["RUNNING_OVERLAY_FORCE_FULL_FRAME"] == "1"
 
     var canvasSize: CGSize
     var allOverlays: [OverlayElement]
@@ -134,6 +138,7 @@ struct ExportRenderPlan: Equatable {
             && maxIndividualOverlayAreaRatio < Self.perOverlayMaxIndividualAreaThreshold
             && estimatedPerOverlayRenderCost < Self.perOverlayDispersedSumAreaThreshold
         usesPerOverlayRender = usesFullFrameDynamicRender
+            && !Self.forceFullFrameRender
             && staticOverlays.isEmpty
             && !dynamicOverlays.isEmpty
             && individualOverlayItems.count == dynamicOverlays.count
@@ -279,7 +284,11 @@ struct ExportRenderPlan: Equatable {
         return centeredRect(for: element, size: size, canvasSize: context.canvasSize)
     }
 
-    private static func overlayItemsByBatchingNumericOverlays(
+    /// Batches only *contiguous* numeric items so the batched plan keeps the
+    /// layout's z-order. Batched elements are rendered into one layer, so a
+    /// non-numeric element interleaved between numeric ones must split the
+    /// batch instead of being moved beneath or above it.
+    static func overlayItemsByBatchingNumericOverlays(
         _ items: [ExportOverlayRenderItem],
         canvasRect: CGRect
     ) -> [ExportOverlayRenderItem] {
@@ -312,24 +321,39 @@ struct ExportRenderPlan: Equatable {
         }
 
         let numericIDs = Set(numericItems.map(\.id))
-        let batchedElements = numericItems.flatMap(\.elements)
         var result: [ExportOverlayRenderItem] = []
-        var insertedBatch = false
+        var run: [ExportOverlayRenderItem] = []
+
+        func flushRun() {
+            guard !run.isEmpty else { return }
+            if run.count == 1 {
+                result.append(contentsOf: run)
+            } else {
+                let elements = run.flatMap(\.elements)
+                let rect = run
+                    .map(\.renderRect)
+                    .reduce(CGRect.null) { $0.union($1) }
+                    .intersection(canvasRect)
+                    .integral
+                result.append(ExportOverlayRenderItem(
+                    id: elements[0].id,
+                    elements: elements,
+                    renderRect: rect,
+                    usesRouteMapStaticCache: false
+                ))
+            }
+            run.removeAll()
+        }
+
         for item in items {
             if numericIDs.contains(item.id) {
-                if !insertedBatch {
-                    result.append(ExportOverlayRenderItem(
-                        id: batchedElements[0].id,
-                        elements: batchedElements,
-                        renderRect: numericUnion,
-                        usesRouteMapStaticCache: false
-                    ))
-                    insertedBatch = true
-                }
+                run.append(item)
             } else {
+                flushRun()
                 result.append(item)
             }
         }
+        flushRun()
         return result
     }
 }
@@ -543,11 +567,12 @@ enum ExportPixelBufferImageConverter {
 }
 
 struct SwiftUIOverlayVideoExporter {
-    static func export(job: OverlayExportJob, progress: @escaping @MainActor (OverlayExportProgress) -> Void) async throws {
+    static func export(job: OverlayExportJob, backend: OverlayRendererBackendKind = .selected, progress: @escaping @MainActor (OverlayExportProgress) -> Void) async throws {
         guard !job.segments.isEmpty else {
             throw OverlayExportError.noSegments
         }
 
+        if Task.isCancelled { throw OverlayExportError.cancelled }
         let supportedOverlays = job.overlayLayout.elements.filter(\.isVisible)
         guard !supportedOverlays.isEmpty else {
             throw SwiftUIOverlayExportError.noSupportedOverlays
@@ -559,6 +584,14 @@ struct SwiftUIOverlayVideoExporter {
             activity: job.activity,
             size: CGSize(width: job.settings.resolution.width, height: job.settings.resolution.height)
         )
+        if Task.isCancelled { throw OverlayExportError.cancelled }
+        let pixelBufferRenderer = try await OverlayExportRendererFactory.make(
+            backend: backend,
+            size: CGSize(width: job.settings.resolution.width, height: job.settings.resolution.height),
+            layout: job.overlayLayout,
+            activity: job.activity,
+            mapSnapshots: routeMapSnapshots.snapshots
+        )
         let profileStartedAt = Date()
         let renderPlan = ExportRenderPlan(
             overlays: supportedOverlays,
@@ -567,7 +600,7 @@ struct SwiftUIOverlayVideoExporter {
         )
         let staticLayer: CGImage?
         let staticRenderDuration: TimeInterval
-        if renderPlan.usesFullFrameDynamicRender || renderPlan.staticOverlays.isEmpty {
+        if pixelBufferRenderer != nil || renderPlan.usesFullFrameDynamicRender || renderPlan.staticOverlays.isEmpty {
             staticLayer = nil
             staticRenderDuration = 0
         } else {
@@ -584,7 +617,7 @@ struct SwiftUIOverlayVideoExporter {
         }
         let routeMapStaticLayerStartedAt = Date()
         var routeMapStaticLayerCache: [UUID: ExportOverlayRenderedImage] = [:]
-        if renderPlan.usesPerOverlayRender {
+        if pixelBufferRenderer == nil && renderPlan.usesPerOverlayRender {
             for item in renderPlan.overlayRenderItems where item.usesRouteMapStaticCache {
                 guard let renderedImage = try await renderRouteMapLayer(
                     size: renderPlan.canvasSize,
@@ -612,7 +645,7 @@ struct SwiftUIOverlayVideoExporter {
 
         let elevationChartStaticLayerStartedAt = Date()
         var elevationChartStaticFillCache: [UUID: ExportElevationChartStaticFillCache] = [:]
-        if renderPlan.usesPerOverlayRender {
+        if pixelBufferRenderer == nil && renderPlan.usesPerOverlayRender {
             for item in renderPlan.overlayRenderItems where item.usesElevationChartStaticFillCache {
                 elevationChartStaticFillCache[item.id] = try await buildElevationChartStaticFillCache(
                     item: item,
@@ -638,6 +671,7 @@ struct SwiftUIOverlayVideoExporter {
                 segmentCount: job.segments.count,
                 job: job,
                 renderPlan: renderPlan,
+                pixelBufferRenderer: pixelBufferRenderer,
                 staticLayer: staticLayer,
                 staticRenderDuration: index == 0 ? staticRenderDuration + routeMapStaticRenderDuration + elevationChartStaticRenderDuration : 0,
                 routeMapStaticLayerCache: routeMapStaticLayerCache,
@@ -666,13 +700,13 @@ struct SwiftUIOverlayVideoExporter {
         }
     }
 
-    static func exportFramePNG(
+    /// Rasterizes one frame with the shipping SwiftUI renderer, without PNG encoding.
+    static func renderFrameCGImage(
         overlayLayout: OverlayLayout,
         activity: ActivityTimeline,
         elapsedTime: TimeInterval,
-        size: CGSize,
-        outputURL: URL
-    ) async throws {
+        size: CGSize
+    ) async throws -> CGImage {
         let supportedOverlays = overlayLayout.elements.filter(\.isVisible)
         guard !supportedOverlays.isEmpty else {
             throw SwiftUIOverlayExportError.noSupportedOverlays
@@ -699,6 +733,53 @@ struct SwiftUIOverlayVideoExporter {
         }) else {
             throw SwiftUIOverlayExportError.appendFailed("ImageRenderer did not produce a frame image.")
         }
+        return cgImage
+    }
+
+    static func exportFramePNG(
+        overlayLayout: OverlayLayout,
+        activity: ActivityTimeline,
+        elapsedTime: TimeInterval,
+        size: CGSize,
+        outputURL: URL,
+        backend: OverlayRendererBackendKind = .selected
+    ) async throws {
+        let cgImage: CGImage
+        if backend == .skia {
+            guard overlayLayout.elements.contains(where: \.isVisible) else {
+                throw SwiftUIOverlayExportError.noSupportedOverlays
+            }
+            let snapshots = await loadRouteMapSnapshots(
+                overlays: overlayLayout.elements.filter(\.isVisible), activity: activity, size: size
+            )
+            let renderer = try await OverlayExportRendererFactory.make(
+                backend: backend, size: size, layout: overlayLayout,
+                activity: activity, mapSnapshots: snapshots.snapshots
+            )
+            var buffer: CVPixelBuffer?
+            let attributes: [String: Any] = [
+                kCVPixelBufferIOSurfacePropertiesKey as String: [:],
+                kCVPixelBufferMetalCompatibilityKey as String: true
+            ]
+            guard CVPixelBufferCreate(
+                nil, Int(size.width), Int(size.height), kCVPixelFormatType_32BGRA,
+                attributes as CFDictionary, &buffer
+            ) == kCVReturnSuccess, let buffer, let renderer else {
+                throw SwiftUIOverlayExportError.cannotCreatePixelBuffer
+            }
+            try renderer.render(into: buffer, elapsedTime: elapsedTime)
+            var image: CGImage?
+            guard VTCreateCGImageFromCVPixelBuffer(buffer, options: nil, imageOut: &image) == noErr,
+                  let image else {
+                throw OverlayRendererBackendError.cannotCreateImage
+            }
+            cgImage = image
+        } else {
+            cgImage = try await renderFrameCGImage(
+                overlayLayout: overlayLayout, activity: activity,
+                elapsedTime: elapsedTime, size: size
+            )
+        }
 
         let bitmap = NSBitmapImageRep(cgImage: cgImage)
         guard let data = bitmap.representation(using: .png, properties: [:]) else {
@@ -713,6 +794,7 @@ struct SwiftUIOverlayVideoExporter {
         segmentCount: Int,
         job: OverlayExportJob,
         renderPlan: ExportRenderPlan,
+        pixelBufferRenderer: (any OverlayExportPixelBufferRenderer)?,
         staticLayer: CGImage?,
         staticRenderDuration: TimeInterval,
         routeMapStaticLayerCache: [UUID: ExportOverlayRenderedImage],
@@ -720,7 +802,7 @@ struct SwiftUIOverlayVideoExporter {
         routeMapSnapshots: RouteMapSnapshotCache,
         progress: @escaping @MainActor (OverlayExportProgress) -> Void
     ) async throws -> OverlayExportSegmentProfile {
-        let outputURL = outputURL(for: segment, destinationURL: job.destinationURL)
+        let outputURL = outputURL(for: segment, destinationURL: job.destinationURL, backend: pixelBufferRenderer == nil ? .swiftUI : .skia)
         try? FileManager.default.removeItem(at: outputURL)
         let segmentStartedAt = Date()
 
@@ -749,16 +831,24 @@ struct SwiftUIOverlayVideoExporter {
         }
         let input = AVAssetWriterInput(mediaType: .video, outputSettings: outputSettings)
         input.expectsMediaDataInRealTime = false
+        // Match the explicit presentation-time scale below; the writer's
+        // inferred scale can round timestamps in short, heavily reused clips.
+        input.mediaTimeScale = 600
 
+        var bufferAttributes: [String: Any] = [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            kCVPixelBufferWidthKey as String: width,
+            kCVPixelBufferHeightKey as String: height,
+            kCVPixelBufferCGImageCompatibilityKey as String: true,
+            kCVPixelBufferCGBitmapContextCompatibilityKey as String: true
+        ]
+        if pixelBufferRenderer != nil {
+            bufferAttributes[kCVPixelBufferIOSurfacePropertiesKey as String] = [:] as [String: Any]
+            bufferAttributes[kCVPixelBufferMetalCompatibilityKey as String] = true
+        }
         let adaptor = AVAssetWriterInputPixelBufferAdaptor(
             assetWriterInput: input,
-            sourcePixelBufferAttributes: [
-                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-                kCVPixelBufferWidthKey as String: width,
-                kCVPixelBufferHeightKey as String: height,
-                kCVPixelBufferCGImageCompatibilityKey as String: true,
-                kCVPixelBufferCGBitmapContextCompatibilityKey as String: true
-            ]
+            sourcePixelBufferAttributes: bufferAttributes
         )
 
         guard writer.canAdd(input) else {
@@ -768,6 +858,11 @@ struct SwiftUIOverlayVideoExporter {
 
         guard writer.startWriting() else {
             throw SwiftUIOverlayExportError.cannotStartWriting(writer.error?.localizedDescription ?? "unknown error")
+        }
+        // Every failure (including cancellation during writer backpressure)
+        // must terminate the writing session before destination access ends.
+        defer {
+            if writer.status == .writing { writer.cancelWriting() }
         }
         writer.startSession(atSourceTime: .zero)
 
@@ -847,7 +942,17 @@ struct SwiftUIOverlayVideoExporter {
                 }
                 pixelBuffer = newPixelBuffer
 
-                if renderPlan.usesPerOverlayRender {
+                if let pixelBufferRenderer {
+                    _ = probeRenderModel(renderPlan.allOverlays, elapsedTime: sample.sampleElapsed)
+                    let startedAt = Date()
+                    try pixelBufferRenderer.render(into: pixelBuffer, elapsedTime: sample.sampleElapsed)
+                    let duration = Date().timeIntervalSince(startedAt)
+                    renderDurationForFrame = duration
+                    imageRenderDuration += duration
+                    dynamicRenderDuration += duration
+                    renderedFrameCount += 1
+                    dynamicRenderCount += 1
+                } else if renderPlan.usesPerOverlayRender {
                     let overlayImages: [ExportOverlayRenderedImage]
                     let renderStartedAt = Date()
                     var frameModelProbeDuration: TimeInterval = 0
@@ -1023,6 +1128,7 @@ struct SwiftUIOverlayVideoExporter {
                     }
                 }
                 previousFrame = (sample.sampleElapsed, pixelBuffer)
+
             }
 
             // Wait for the writer only after rendering, so the encoder drains
@@ -1033,12 +1139,17 @@ struct SwiftUIOverlayVideoExporter {
                     writer.cancelWriting()
                     throw OverlayExportError.cancelled
                 }
+                guard writer.status == .writing else {
+                    throw SwiftUIOverlayExportError.appendFailed(writer.error?.localizedDescription ?? "Writer stopped accepting frames.")
+                }
                 // Repeated frames append in bursts, so poll finely to resume
                 // as soon as the encoder accepts the next frame.
                 try await Task.sleep(nanoseconds: 100_000)
             }
             writerWaitDuration += Date().timeIntervalSince(waitStartedAt)
-            let presentationTime = CMTime(seconds: sample.clipElapsed, preferredTimescale: 600)
+            // CMTime(seconds:) truncates some floating-point multiples of
+            // 1/30 by one tick. Round explicitly on the export timebase.
+            let presentationTime = CMTime(value: CMTimeValue((sample.clipElapsed * 600).rounded()), timescale: 600)
             let appendStartedAt = Date()
             guard adaptor.append(pixelBuffer, withPresentationTime: presentationTime) else {
                 throw SwiftUIOverlayExportError.appendFailed(writer.error?.localizedDescription ?? "unknown error")
@@ -1071,8 +1182,9 @@ struct SwiftUIOverlayVideoExporter {
             }
         }
 
-        if let error = writer.error {
-            throw SwiftUIOverlayExportError.appendFailed(error.localizedDescription)
+        if Task.isCancelled { throw OverlayExportError.cancelled }
+        guard writer.status == .completed else {
+            throw SwiftUIOverlayExportError.appendFailed(writer.error?.localizedDescription ?? "Writer did not complete.")
         }
 
         let totalDuration = Date().timeIntervalSince(segmentStartedAt)
@@ -1116,20 +1228,20 @@ struct SwiftUIOverlayVideoExporter {
             dynamicRenderDuration: dynamicRenderDuration,
             staticDrawDuration: staticDrawDuration,
             dynamicDrawDuration: dynamicDrawDuration,
-            dynamicRenderAreaRatio: renderPlan.dynamicRenderAreaRatio,
+            dynamicRenderAreaRatio: pixelBufferRenderer == nil ? renderPlan.dynamicRenderAreaRatio : 1,
             staticLayerCacheHitCount: staticLayer == nil ? 0 : frameCount,
             dynamicRenderCount: dynamicRenderCount,
             appendDuration: appendDuration,
             writerWaitDuration: writerWaitDuration,
             averageFrameDuration: frameCount > 0 ? totalDuration / Double(frameCount) : 0,
-            renderPath: renderPlan.renderPath,
-            dynamicRenderRectX: Double(renderPlan.dynamicRenderRect.origin.x),
-            dynamicRenderRectY: Double(renderPlan.dynamicRenderRect.origin.y),
-            dynamicRenderRectWidth: Double(renderPlan.dynamicRenderRect.width),
-            dynamicRenderRectHeight: Double(renderPlan.dynamicRenderRect.height),
-            dynamicOverlayCount: renderPlan.dynamicOverlays.count,
-            staticOverlayCount: renderPlan.staticOverlays.count,
-            fullFrameFallbackCount: renderPlan.renderPath == .fullFrameSingleLayer ? 1 : 0,
+            renderPath: pixelBufferRenderer == nil ? renderPlan.renderPath : .skiaMetal,
+            dynamicRenderRectX: pixelBufferRenderer == nil ? Double(renderPlan.dynamicRenderRect.origin.x) : 0,
+            dynamicRenderRectY: pixelBufferRenderer == nil ? Double(renderPlan.dynamicRenderRect.origin.y) : 0,
+            dynamicRenderRectWidth: pixelBufferRenderer == nil ? Double(renderPlan.dynamicRenderRect.width) : Double(renderPlan.canvasSize.width),
+            dynamicRenderRectHeight: pixelBufferRenderer == nil ? Double(renderPlan.dynamicRenderRect.height) : Double(renderPlan.canvasSize.height),
+            dynamicOverlayCount: pixelBufferRenderer == nil ? renderPlan.dynamicOverlays.count : renderPlan.allOverlays.count,
+            staticOverlayCount: pixelBufferRenderer == nil ? renderPlan.staticOverlays.count : 0,
+            fullFrameFallbackCount: pixelBufferRenderer == nil && renderPlan.renderPath == .fullFrameSingleLayer ? 1 : 0,
             renderDurationP50: frameTimingSummary.renderDurationP50,
             renderDurationP95: frameTimingSummary.renderDurationP95,
             renderDurationMax: frameTimingSummary.renderDurationMax,
@@ -1142,11 +1254,11 @@ struct SwiftUIOverlayVideoExporter {
             slowFrameThreshold: frameTimingSummary.slowFrameThreshold,
             slowFrameCount: frameTimingSummary.slowFrameCount,
             slowFrames: frameTimingSummary.slowFrames,
-            overlayRenderPathEnabled: renderPlan.usesPerOverlayRender,
-            overlayRenderAreaRatio: overlayRenderAreaRatio,
+            overlayRenderPathEnabled: pixelBufferRenderer == nil && renderPlan.usesPerOverlayRender,
+            overlayRenderAreaRatio: pixelBufferRenderer == nil ? overlayRenderAreaRatio : 1,
             overlayRenderCount: overlayRenderCount,
             overlayDrawCount: overlayDrawCount,
-            overlayProfiles: overlayProfiles,
+            overlayProfiles: pixelBufferRenderer == nil ? overlayProfiles : [],
             renderModelProfilingEnabled: job.profilesRenderModel,
             renderModelDuration: renderModelDuration
         )
@@ -1745,9 +1857,9 @@ struct SwiftUIOverlayVideoExporter {
         return (total / Double(max(count, 1)), maxDiff, progress)
     }
 
-    private static func outputURL(for segment: OverlayExportSegment, destinationURL: URL) -> URL {
+    private static func outputURL(for segment: OverlayExportSegment, destinationURL: URL, backend: OverlayRendererBackendKind) -> URL {
         let baseName = URL(fileURLWithPath: segment.sourceFileName).deletingPathExtension().lastPathComponent
-        return destinationURL.appendingPathComponent("\(baseName)_swiftui_overlay.mov")
+        return destinationURL.appendingPathComponent("\(baseName)_\(backend == .skia ? "skia" : "swiftui")_overlay.mov")
     }
 
     private static func writeProfile(_ profile: OverlayExportProfile, to destinationURL: URL) throws {

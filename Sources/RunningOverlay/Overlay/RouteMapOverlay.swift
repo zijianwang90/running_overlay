@@ -10,9 +10,23 @@ struct MapSnapshotRequest: Hashable {
     var bounds: RouteBounds
     var size: CGSize
     var backgroundStyle: OverlayRouteMapBackgroundStyle
+    /// Fractional padding added around the route bounds before MapKit fits the
+    /// snapshot region.
+    var regionPadding: Double
+    /// Whether MapKit draws labeled points of interest.
+    var showsPointsOfInterest: Bool
 }
 
 enum RouteMapSnapshotRequestBuilder {
+    static let defaultRegionPadding = 0.18
+
+    /// Converts the widget's zoom multiplier into MapKit region padding.
+    /// Larger zoom means a tighter region and fewer surrounding labels.
+    static func regionPadding(forZoom zoom: Double) -> Double {
+        let clampedZoom = min(max(zoom, 0.5), 3)
+        return defaultRegionPadding / clampedZoom
+    }
+
     static func request(
         for element: OverlayElement,
         layout: OverlayRouteMapRenderLayout
@@ -27,18 +41,21 @@ enum RouteMapSnapshotRequestBuilder {
         return MapSnapshotRequest(
             bounds: geometry.bounds,
             size: layout.rect.size,
-            backgroundStyle: element.style.routeMapBackgroundStyle
+            backgroundStyle: element.style.routeMapBackgroundStyle,
+            regionPadding: regionPadding(forZoom: element.style.routeMapZoom),
+            showsPointsOfInterest: element.style.routeMapShowsPointsOfInterest
         )
     }
 }
 
-final class MapKitMapSnapshotProvider: MapSnapshotProvider {
+final class MapKitMapSnapshotProvider: MapSnapshotProvider, @unchecked Sendable {
     func snapshot(for request: MapSnapshotRequest, completion: @escaping @Sendable (Result<NSImage, Error>) -> Void) {
         let options = MKMapSnapshotter.Options()
         options.size = request.size
         options.mapType = mapType(for: request.backgroundStyle)
         options.appearance = appearance(for: request.backgroundStyle)
-        options.region = request.bounds.coordinateRegion(padding: 0.18)
+        options.region = request.bounds.coordinateRegion(padding: request.regionPadding)
+        options.pointOfInterestFilter = request.showsPointsOfInterest ? .includingAll : .excludingAll
 
         MKMapSnapshotter(options: options).start(with: DispatchQueue.global(qos: .userInitiated)) { snapshot, error in
             if let snapshot {

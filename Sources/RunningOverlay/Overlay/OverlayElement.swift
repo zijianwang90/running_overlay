@@ -692,6 +692,13 @@ struct OverlayStyle: Equatable, Codable {
     /// legend stay opaque). 0.0 hides the map background, 1.0 draws it at
     /// full opacity.
     var routeMapMapOpacity: Double
+    /// Zoom multiplier for the MapKit snapshot region. `1` uses the original
+    /// route-fit region; larger values zoom in and show less surrounding
+    /// detail.
+    var routeMapZoom: Double
+    /// Whether MapKit draws points of interest (shops, stations, and other
+    /// labeled places) on the snapshot. Street names are unaffected.
+    var routeMapShowsPointsOfInterest: Bool
     /// Whether to draw the subtle border stroke around the container when not
     /// selected. The selection-state border is always shown as a UI affordance.
     var routeMapBorderVisible: Bool
@@ -883,6 +890,8 @@ struct OverlayStyle: Equatable, Codable {
         routeMapLegendMode: .startFinishDistance,
         routeMapContainerPreset: .squareHardEdge,
         routeMapMapOpacity: 0.72,
+        routeMapZoom: 1,
+        routeMapShowsPointsOfInterest: true,
         routeMapBorderVisible: true,
         routeMapWidth: 320,
         routeMapHeight: 240,
@@ -1001,6 +1010,8 @@ struct OverlayStyle: Equatable, Codable {
         routeMapLegendMode: OverlayRouteMapLegendMode = .startFinishDistance,
         routeMapContainerPreset: OverlayRouteMapContainerPreset = .squareHardEdge,
         routeMapMapOpacity: Double = 0.72,
+        routeMapZoom: Double = 1,
+        routeMapShowsPointsOfInterest: Bool = true,
         routeMapBorderVisible: Bool = true,
         routeMapWidth: Double = 320,
         routeMapHeight: Double = 240,
@@ -1117,6 +1128,8 @@ struct OverlayStyle: Equatable, Codable {
         self.routeMapLegendMode = routeMapLegendMode
         self.routeMapContainerPreset = routeMapContainerPreset
         self.routeMapMapOpacity = min(max(routeMapMapOpacity, 0), 1)
+        self.routeMapZoom = min(max(routeMapZoom, 0.5), 3)
+        self.routeMapShowsPointsOfInterest = routeMapShowsPointsOfInterest
         self.routeMapBorderVisible = routeMapBorderVisible
         self.routeMapWidth = min(max(routeMapWidth, 80), 1200)
         self.routeMapHeight = min(max(routeMapHeight, 80), 1200)
@@ -1235,6 +1248,8 @@ struct OverlayStyle: Equatable, Codable {
         routeMapLegendMode = try container.decodeIfPresent(OverlayRouteMapLegendMode.self, forKey: .routeMapLegendMode) ?? Self.default.routeMapLegendMode
         routeMapContainerPreset = try container.decodeIfPresent(OverlayRouteMapContainerPreset.self, forKey: .routeMapContainerPreset) ?? Self.default.routeMapContainerPreset
         routeMapMapOpacity = min(max(try container.decodeIfPresent(Double.self, forKey: .routeMapMapOpacity) ?? Self.default.routeMapMapOpacity, 0), 1)
+        routeMapZoom = min(max(try container.decodeIfPresent(Double.self, forKey: .routeMapZoom) ?? Self.default.routeMapZoom, 0.5), 3)
+        routeMapShowsPointsOfInterest = try container.decodeIfPresent(Bool.self, forKey: .routeMapShowsPointsOfInterest) ?? Self.default.routeMapShowsPointsOfInterest
         routeMapBorderVisible = try container.decodeIfPresent(Bool.self, forKey: .routeMapBorderVisible) ?? true
         routeMapWidth = min(max(try container.decodeIfPresent(Double.self, forKey: .routeMapWidth) ?? Self.default.routeMapWidth, 80), 1200)
         routeMapHeight = min(max(try container.decodeIfPresent(Double.self, forKey: .routeMapHeight) ?? Self.default.routeMapHeight, 80), 1200)
