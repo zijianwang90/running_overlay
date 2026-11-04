@@ -170,6 +170,13 @@ struct MainEditorView: View {
             ExportDialogView()
                 .environmentObject(project)
         }
+        .sheet(isPresented: $project.showingEditorExportSheet) {
+            EditorExportSheet()
+                .environmentObject(project)
+        }
+        .sheet(item: $project.editorImportGuide) { guide in
+            EditorImportGuideView(guide: guide, packageBookmark: project.editorPackageAccessBookmark)
+        }
         .onKeyPress(.space) {
             guard !isTextInputFocused else { return .ignored }
             project.togglePlayback()

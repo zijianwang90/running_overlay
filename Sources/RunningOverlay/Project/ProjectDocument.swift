@@ -21,6 +21,12 @@ final class ProjectDocument: ObservableObject {
     @Published private(set) var playbackSeekToken: UInt64 = 0
     @Published var showingProjectSettings = false
     @Published var showingExportDialog = false
+    @Published var showingEditorExportSheet = false
+    /// Set after an editor package export; presents the import guide.
+    @Published var editorImportGuide: EditorImportGuide?
+    /// Security-scoped bookmark for the last exported package, so the guide
+    /// can open its timeline from the sandboxed app.
+    @Published var editorPackageAccessBookmark: Data?
     @Published var overlayTemplates: [OverlayTemplate] = []
     @Published var userAssets: [UserAsset] = [] {
         didSet { IconAssetResolver.configure(userAssets: userAssets, projectURL: projectURL) }
@@ -3609,10 +3615,50 @@ final class ProjectDocument: ObservableObject {
         )
     }
 
+    /// Export for Editor choices, remembered across exports.
+    var savedEditorPackageOptions: EditorPackageExportOptions {
+        get {
+            guard let data = userDefaults.data(forKey: Self.editorPackageOptionsKey),
+                  let options = try? JSONDecoder().decode(EditorPackageExportOptions.self, from: data) else {
+                return EditorPackageExportOptions()
+            }
+            return options
+        }
+        set {
+            guard let data = try? JSONEncoder().encode(newValue) else { return }
+            userDefaults.set(data, forKey: Self.editorPackageOptionsKey)
+        }
+    }
+
+    private static let editorPackageOptionsKey = "editorPackageOptions"
+
+    /// Shows the import steps for an editor without a fresh export, from the
+    /// Help menu.
+    func presentEditorImportGuide(editor: EditorTarget) {
+        editorImportGuide = EditorImportGuide(
+            editor: editor,
+            projectName: projectDisplayName,
+            packageURL: nil,
+            fcpxmlFileName: nil,
+            overlayFileNames: [],
+            frameRateID: settings.frameRate.id,
+            mode: savedEditorPackageOptions.mode,
+            codec: settings.exportCodec
+        )
+    }
+
     func chooseEditorPackageDestination(mode: EditorPackageMode) {
+        chooseEditorPackageDestination(options: EditorPackageExportOptions(
+            target: savedEditorPackageOptions.target,
+            mode: mode
+        ))
+    }
+
+    func chooseEditorPackageDestination(options: EditorPackageExportOptions) {
         guard !isExporting else {
             return
         }
+        savedEditorPackageOptions = options
 
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
@@ -3625,10 +3671,17 @@ final class ProjectDocument: ObservableObject {
         guard panel.runModal() == .OK, let url = panel.url else {
             return
         }
-        exportEditorPackage(to: url, mode: mode)
+        exportEditorPackage(to: url, options: options)
     }
 
     func exportEditorPackage(to directoryURL: URL, mode: EditorPackageMode) {
+        exportEditorPackage(to: directoryURL, options: EditorPackageExportOptions(
+            target: savedEditorPackageOptions.target,
+            mode: mode
+        ))
+    }
+
+    func exportEditorPackage(to directoryURL: URL, options: EditorPackageExportOptions) {
         guard !isExporting else {
             return
         }
@@ -3641,7 +3694,7 @@ final class ProjectDocument: ObservableObject {
             guard let mediaItemID = clip.mediaItemID else { return false }
             return mediaItems.first(where: { $0.id == mediaItemID })?.fileURL != nil
         }
-        if mode == .perClip && !hasMediaClip {
+        if options.mode == .perClip && !hasMediaClip {
             statusMessage = "Add at least one video clip with a media file before exporting an editor package."
             return
         }
@@ -3654,9 +3707,10 @@ final class ProjectDocument: ObservableObject {
             overlayLayout: overlayLayout,
             templateName: projectDisplayName,
             projectName: projectDisplayName,
-            mode: mode
+            mode: options.mode,
+            target: options.target
         )
-        let title = mode == .perClip
+        let title = options.mode == .perClip
             ? "Per Clip Editor Package"
             : "Full Activity Editor Package"
         let spans = EditorPackageExporter.plannedSpans(for: request)
@@ -3672,13 +3726,23 @@ final class ProjectDocument: ObservableObject {
 
         exportTask = Task {
             do {
-                let packageURL = try await SecurityScopedURLAccess.withAccess(to: directoryURL) {
-                    try await EditorPackageExporter.export(request: request, to: directoryURL) { [weak self] progress in
+                let (result, bookmark) = try await SecurityScopedURLAccess.withAccess(to: directoryURL) {
+                    let result = try await EditorPackageExporter.export(request: request, to: directoryURL) { [weak self] progress in
                         self?.updateExportProgress(progress)
                     }
+                    // Created while access is active; the sandboxed app needs
+                    // it to open the timeline after the export returns.
+                    let bookmark = try? result.packageURL.bookmarkData(
+                        options: .withSecurityScope,
+                        includingResourceValuesForKeys: nil,
+                        relativeTo: nil
+                    )
+                    return (result, bookmark)
                 }
                 exportProgress?.markCompleted()
-                reportSuccess("Editor package exported: \(packageURL.lastPathComponent).")
+                editorPackageAccessBookmark = bookmark
+                reportSuccess("Editor package exported: \(result.packageURL.lastPathComponent).")
+                editorImportGuide = result.guide
             } catch OverlayExportError.cancelled {
                 exportProgress?.markCancelled()
                 statusMessage = "Export cancelled."

@@ -12,6 +12,14 @@ struct EditorPackageExportRequest {
     var templateName: String
     var projectName: String
     var mode: EditorPackageMode
+    /// Editor the package is prepared for. Changes guidance only.
+    var target: EditorTarget = .other
+}
+
+/// What an editor package export produced, including the guidance to show.
+struct EditorPackageExportResult {
+    var packageURL: URL
+    var guide: EditorImportGuide
 }
 
 enum EditorPackageExportError: LocalizedError, Equatable {
@@ -54,7 +62,7 @@ enum EditorPackageExporter {
         request: EditorPackageExportRequest,
         to directoryURL: URL,
         progress: @escaping @MainActor (OverlayExportProgress) -> Void = { _ in }
-    ) async throws -> URL {
+    ) async throws -> EditorPackageExportResult {
         guard request.activity.duration > 0 else {
             throw EditorPackageExportError.noActivity
         }
@@ -153,14 +161,30 @@ enum EditorPackageExporter {
             clips: timelineClips,
             mediaInfo: mediaInfo
         )
-        let fcpxmlName = "\(EditorPackageNaming.sanitizedBaseName(request.projectName)).fcpxml"
+        let fcpxmlName = "\(EditorPackageNaming.safeDocumentBaseName(request.projectName)).fcpxml"
         try writer.xmlString().write(
             to: packageURL.appendingPathComponent(fcpxmlName),
             atomically: true,
             encoding: .utf8
         )
 
-        return packageURL
+        let guide = EditorImportGuide(
+            editor: request.target,
+            projectName: request.projectName,
+            packageURL: packageURL,
+            fcpxmlFileName: fcpxmlName,
+            overlayFileNames: overlays.map { ($0.fileName as NSString).deletingPathExtension },
+            frameRateID: request.settings.frameRate.id,
+            mode: request.mode,
+            codec: request.settings.exportCodec
+        )
+        try guide.importInstructionsText().write(
+            to: packageURL.appendingPathComponent(EditorImportGuideText.fileName),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        return EditorPackageExportResult(packageURL: packageURL, guide: guide)
     }
 
     private static func makePlan(for request: EditorPackageExportRequest) -> EditorPackagePlan {

@@ -134,15 +134,25 @@ struct RunningOverlayApp: App {
             }
 
             CommandGroup(after: .importExport) {
-                Button("Export for Editor (Per Clip)…") {
-                    project.chooseEditorPackageDestination(mode: .perClip)
+                Button("Export for Editor…") {
+                    project.showingEditorExportSheet = true
                 }
+                .keyboardShortcut("e", modifiers: [.command, .shift])
                 .disabled(project.isExporting)
 
-                Button("Export for Editor (Full Activity)…") {
-                    project.chooseEditorPackageDestination(mode: .fullActivity)
+                Divider()
+
+                Button("Import into Final Cut Pro") {
+                    project.presentEditorImportGuide(editor: .finalCutPro)
                 }
-                .disabled(project.isExporting)
+
+                Button("Import into DaVinci Resolve") {
+                    project.presentEditorImportGuide(editor: .resolve)
+                }
+
+                Button("Import into Another Editor") {
+                    project.presentEditorImportGuide(editor: .other)
+                }
             }
 
             CommandMenu("Playback") {

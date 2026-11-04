@@ -129,6 +129,17 @@ enum EditorPackageNaming {
         return trimmed.isEmpty ? "clip" : trimmed
     }
 
+    /// Editor-facing document name: keeps spaces and case, removes only path
+    /// separators and colons so the name is still a valid file name.
+    static func safeDocumentBaseName(_ name: String) -> String {
+        let cleaned = name
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+            .replacingOccurrences(of: "\\", with: "-")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return cleaned.isEmpty ? "Project" : cleaned
+    }
+
     /// `base` plus `_overlay`, with `_2`, `_3`, … inserted before the suffix
     /// when a name (compared case-insensitively) was already used.
     static func uniqueOverlayName(base: String, usedNames: inout Set<String>) -> String {
