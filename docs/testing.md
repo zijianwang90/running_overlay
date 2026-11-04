@@ -167,3 +167,38 @@ packaged loading and sandbox execution, not full workout/visual acceptance;
 codec pixels and advancing samples remain covered by production export tests.
 The SDK validator's synthetic tampering tests run in `scripts/check.sh` even
 without an SDK, including wrong source/recipe and modified dylib rejection.
+
+
+## Built-In Template Acceptance
+
+`SkiaBuiltInTemplateTests` loads the actual Easy Run, Interval Workout and Race
+resources and reuses the existing synthetic six-lap workout fixture. With
+`SKIA_GPU=1`, all three templates render at 1080p and 4K through both the
+preview offscreen Metal surface and the production IOSurface export renderer.
+The sequence covers warmup, two work phases, recovery, cooldown, finish, backward
+scrubbing and rewind. It checks visible pixels, distinct advancing frames,
+repeatable restored frames and exact preview/export pixel equality. A raster
+reference with the same map assets also checks one active-work frame per
+configuration using the existing GPU limits (2% changed pixels, mean channel
+delta 0.5). Metal/context unavailability fails
+when the GPU configuration was requested.
+
+Three 1080p SwiftUI-oracle comparisons use the existing mixed-composition
+limits (15% changed pixels, mean channel delta 2). Only their map background is
+disabled to avoid live MapKit. Host comparisons preserve authored styles and
+inject a simple synthetic map snapshot; no weather or map network is used.
+The fixture comes from `SkiaFullCompositionGoldenTests` and creates no new
+committed media or athlete data.
+
+To write transparent review PNGs for each unique template/size/workout phase:
+
+```sh
+SKIA_DIR=/path/to/pinned-sdk SKIA_GPU=1 SKIA_GRAPHITE=1 \
+  RUNNING_OVERLAY_TEMPLATE_REVIEW_DIR=/tmp/skia-template-review \
+  ./scripts/test.sh SkiaBuiltInTemplateTests
+```
+
+These are temporary review artifacts, not committed visual snapshot updates.
+Automated pixel/rewind checks do not establish interactive window, drag,
+snapping, video-compositing or real-map acceptance. Keep the SwiftUI oracle until
+those remaining interaction checks and template visual review are accepted.

@@ -155,7 +155,7 @@ import Testing
 
     /// Six-lap interval workout with per-second GPS records, so the route map
     /// and the interval modules read the same synthetic timeline.
-    private static func workout() -> ActivityTimeline {
+    static func workout() -> ActivityTimeline {
         let start = Date(timeIntervalSince1970: 1_700_000_000)
         let specs: [LapSpec] = [
             LapSpec(kind: .warmup, seconds: 60, heartRate: 128, paceSecondsPerKm: 330),
