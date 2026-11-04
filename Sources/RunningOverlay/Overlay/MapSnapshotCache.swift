@@ -11,14 +11,16 @@ import Foundation
 /// `MapSnapshotRequest` resolves to exactly the same `NSImage`.
 ///
 /// The cache is main-actor isolated because `NSImage` is not `Sendable` and
-/// both preview hosts already request snapshots from the main actor.
+/// both preview hosts already request snapshots from the main actor. In-flight
+/// fetches travel as `MapSnapshotImageBox` so awaiting them also compiles
+/// against SDKs that do not declare `NSImage` as `Sendable`.
 @MainActor
 final class MapSnapshotCache {
     static let shared = MapSnapshotCache()
 
     private var images: [MapSnapshotRequest: NSImage] = [:]
     private var insertionOrder: [MapSnapshotRequest] = []
-    private var inFlight: [MapSnapshotRequest: Task<NSImage?, Never>] = [:]
+    private var inFlight: [MapSnapshotRequest: Task<MapSnapshotImageBox, Never>] = [:]
     private let imageLimit = 12
 
     private init() {}
@@ -32,14 +34,14 @@ final class MapSnapshotCache {
             return image
         }
         if let task = inFlight[request] {
-            return await task.value
+            return await task.value.image
         }
 
-        let task = Task<NSImage?, Never> {
-            await provider.snapshotImage(for: request).image
+        let task = Task<MapSnapshotImageBox, Never> {
+            await provider.snapshotImage(for: request)
         }
         inFlight[request] = task
-        let image = await task.value
+        let image = await task.value.image
         inFlight[request] = nil
 
         if let image {
