@@ -214,12 +214,12 @@ struct MainEditorView: View {
             return handled ? .handled : .ignored
         }
         .onKeyPress(.delete) {
-            guard !isTextInputFocused else { return .ignored }
+            guard !isTextInputFocused, !isMediaPoolFocused else { return .ignored }
             project.deleteSelectedItem()
             return .handled
         }
         .onKeyPress(.deleteForward) {
-            guard !isTextInputFocused else { return .ignored }
+            guard !isTextInputFocused, !isMediaPoolFocused else { return .ignored }
             project.deleteSelectedItem()
             return .handled
         }
@@ -290,6 +290,11 @@ struct MainEditorView: View {
 
     private var isTextInputFocused: Bool {
         EditorEscapeKey.isTextInput(NSApp.keyWindow?.firstResponder)
+    }
+
+    /// The Media Pool list deletes its own selection.
+    private var isMediaPoolFocused: Bool {
+        MediaPoolKeyFocus.owns(NSApp.keyWindow?.firstResponder)
     }
 }
 
