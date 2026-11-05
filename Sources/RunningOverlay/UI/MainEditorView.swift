@@ -449,7 +449,9 @@ private struct ExportProgressButton: View {
             } else {
                 HStack(spacing: 6) {
                     ProgressView(value: progress.overallProgress)
+                        .progressViewStyle(.linear)
                         .controlSize(.small)
+                        .tint(EditorTheme.accentBlue)
                         .frame(width: 68)
                     Text("\(Int((progress.overallProgress * 100).rounded()))%")
                         .font(.caption.monospacedDigit())
@@ -457,7 +459,11 @@ private struct ExportProgressButton: View {
                 }
             }
         }
-        .buttonStyle(EditorSecondaryButtonStyle())
+        // Let the native toolbar supply its sizing and interaction surface.
+        // Panel button chrome adds a second, oversized background here.
+        .buttonStyle(.automatic)
+        .accessibilityLabel(progress.isCompleted ? "Export Complete" : "Export Progress")
+        .accessibilityValue(Text("\(Int((progress.overallProgress * 100).rounded()))%"))
         .help(progress.isCompleted ? "Export Complete" : "Export Progress")
         .popover(isPresented: $isPresented, arrowEdge: .bottom) {
             ExportProgressPopover(progress: progress)
