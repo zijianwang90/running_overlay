@@ -39,6 +39,9 @@ an encoder-setting change.
 
 ## Sandboxed Destination Access
 
+- The suggested destination is an `overlay` folder beside the first source
+  video, created on demand. Without source videos it falls back to
+  `~/Movies`.
 - Export destinations must use the URL returned directly by `NSOpenPanel`;
   rebuilding a URL from displayed path text loses the sandbox authorization
   context.

@@ -561,9 +561,15 @@ final class ProjectDocument: ObservableObject {
         quantizedLayerDataTime(for: timeline.activityElapsed(atProjectTime: timeline.playhead))
     }
 
+    /// Default export folder: an `overlay` folder beside the first video's
+    /// media. It is created on demand so the export dialog can open there.
     var defaultExportDestinationURL: URL {
-        mediaItems.first?.fileURL?.deletingLastPathComponent()
-            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Movies")
+        guard let mediaFolder = mediaItems.first?.fileURL?.deletingLastPathComponent() else {
+            return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Movies")
+        }
+        let overlayFolder = mediaFolder.appendingPathComponent("overlay", isDirectory: true)
+        try? FileManager.default.createDirectory(at: overlayFolder, withIntermediateDirectories: true)
+        return overlayFolder
     }
 
     func quantizedLayerDataTime(for elapsedTime: TimeInterval) -> TimeInterval {
