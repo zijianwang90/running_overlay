@@ -185,8 +185,8 @@ struct EditorPackageTests {
 
     @Test func fcpxmlPlacesSourceClipsBackToBackWithLaneOneOverlays() throws {
         let writer = makeWriter(clips: [
-            (name: "a.mov", url: "/tmp/a.mov", duration: 2, overlay: "a_overlay.mov", sourceStart: 0),
-            (name: "b.mov", url: "/tmp/b.mov", duration: 3, overlay: "b_overlay.mov", sourceStart: 0)
+            (name: "a.mov", url: "/tmp/a.mov", duration: 2, overlay: "a_overlay.mov", sourceStart: 0, start: 0, track: 0),
+            (name: "b.mov", url: "/tmp/b.mov", duration: 3, overlay: "b_overlay.mov", sourceStart: 0, start: 2, track: 0)
         ], overlays: [
             ("a_overlay.mov", 2),
             ("b_overlay.mov", 3)
@@ -255,14 +255,16 @@ struct EditorPackageTests {
                     mediaURL: URL(fileURLWithPath: "/tmp/early.mov"),
                     duration: 10,
                     overlayFileName: "full_activity_overlay.mov",
-                    overlaySourceStart: -2
+                    overlaySourceStart: -2,
+                    startTime: 0
                 ),
                 EditorPackageTimelineClip(
                     mediaName: "late.mov",
                     mediaURL: URL(fileURLWithPath: "/tmp/late.mov"),
                     duration: 5,
                     overlayFileName: "full_activity_overlay.mov",
-                    overlaySourceStart: 19
+                    overlaySourceStart: 19,
+                    startTime: 10
                 )
             ]
         )
@@ -322,21 +324,32 @@ struct EditorPackageTests {
             return
         }
 
-        let writer = makeWriter(clips: [
-            (name: "a.mov", url: "/tmp/a.mov", duration: 2, overlay: "a_overlay.mov", sourceStart: 0)
+        let singleTrack = makeWriter(clips: [
+            (name: "a.mov", url: "/tmp/a.mov", duration: 2, overlay: "a_overlay.mov", sourceStart: 0, start: 0, track: 0)
         ], overlays: [
             ("a_overlay.mov", 2)
+        ])
+        let multiTrack = makeWriter(clips: [
+            (name: "a.mov", url: "/tmp/a.mov", duration: 2, overlay: "a_overlay.mov", sourceStart: 0, start: 0, track: 0),
+            (name: "b.mov", url: "/tmp/b.mov", duration: 2, overlay: "b_overlay.mov", sourceStart: 0, start: 0.5, track: 1),
+            (name: "c.mov", url: "/tmp/c.mov", duration: 1, overlay: "c_overlay.mov", sourceStart: 0, start: 3, track: 1)
+        ], overlays: [
+            ("a_overlay.mov", 2),
+            ("b_overlay.mov", 2),
+            ("c_overlay.mov", 1)
         ])
 
         // Foundation only consults an external subset named by the document's
         // own doctype, so point a copy at the DTD before validating.
         let dtdURL = URL(fileURLWithPath: dtdPath)
-        let xml = writer.xmlString().replacingOccurrences(
-            of: "<!DOCTYPE fcpxml>",
-            with: "<!DOCTYPE fcpxml SYSTEM \"\(dtdURL.absoluteString)\">"
-        )
-        let document = try XMLDocument(data: Data(xml.utf8))
-        try document.validate()
+        for writer in [singleTrack, multiTrack] {
+            let xml = writer.xmlString().replacingOccurrences(
+                of: "<!DOCTYPE fcpxml>",
+                with: "<!DOCTYPE fcpxml SYSTEM \"\(dtdURL.absoluteString)\">"
+            )
+            let document = try XMLDocument(data: Data(xml.utf8))
+            try document.validate()
+        }
     }
 
     // MARK: - Manifest
@@ -399,6 +412,154 @@ struct EditorPackageTests {
         #expect(manifest.overlays.allSatisfy { !$0.fileName.contains("/") })
     }
 
+    // MARK: - Multi-track timelines
+
+    @Test func overlappingTracksBecomeConnectedLanes() throws {
+        let writer = FCPXMLTimelineWriter(
+            projectName: "Run",
+            frameRate: .fps30,
+            canvasWidth: 1920,
+            canvasHeight: 1080,
+            overlays: [
+                EditorPackageTimelineOverlay(fileName: "a_overlay.mov", fileURL: URL(fileURLWithPath: "/tmp/a_overlay.mov"), duration: 10),
+                EditorPackageTimelineOverlay(fileName: "b_overlay.mov", fileURL: URL(fileURLWithPath: "/tmp/b_overlay.mov"), duration: 10)
+            ],
+            clips: [
+                EditorPackageTimelineClip(mediaName: "cam-a.mov", mediaURL: URL(fileURLWithPath: "/tmp/cam-a.mov"), duration: 10, overlayFileName: "a_overlay.mov", overlaySourceStart: 0, startTime: 0, trackIndex: 0),
+                EditorPackageTimelineClip(mediaName: "cam-b.mov", mediaURL: URL(fileURLWithPath: "/tmp/cam-b.mov"), duration: 10, overlayFileName: "b_overlay.mov", overlaySourceStart: 0, startTime: 0, trackIndex: 1)
+            ]
+        )
+
+        let document = try XMLDocument(data: Data(writer.xmlString().utf8))
+        let spineClips = try elements(in: document, xpath: "//spine/asset-clip")
+        #expect(spineClips.count == 1)
+        #expect(spineClips[0].attribute(forName: "name")?.stringValue == "cam-a.mov")
+        #expect(spineClips[0].attribute(forName: "offset")?.stringValue == "0s")
+
+        // The second camera is a connected clip on lane 1, still at 0 s.
+        let laneClips = try elements(in: document, xpath: "//spine/asset-clip/asset-clip[@lane='1']")
+        #expect(laneClips.count == 1)
+        #expect(laneClips[0].attribute(forName: "name")?.stringValue == "cam-b.mov")
+        #expect(laneClips[0].attribute(forName: "offset")?.stringValue == "0s")
+        #expect(laneClips[0].attribute(forName: "duration")?.stringValue == "10s")
+
+        // Both overlays sit above every source lane. Lane numbers are relative
+        // to the parent, so cam-a's overlay is on absolute lane 2 and cam-b's
+        // overlay is on absolute lane 3 (lane 2 relative to cam-b's lane 1).
+        let spineOverlay = try elements(in: document, xpath: "//spine/asset-clip/asset-clip[@name='a_overlay.mov']")
+        #expect(spineOverlay.first?.attribute(forName: "lane")?.stringValue == "2")
+        let attachedOverlay = try elements(in: document, xpath: "//spine/asset-clip/asset-clip/asset-clip[@name='b_overlay.mov']")
+        #expect(attachedOverlay.first?.attribute(forName: "lane")?.stringValue == "2")
+
+        #expect(try elements(in: document, xpath: "//gap").isEmpty)
+        #expect(document.rootElement()?.elements(forName: "library").first?
+            .elements(forName: "event").first?
+            .elements(forName: "project").first?
+            .elements(forName: "sequence").first?
+            .attribute(forName: "duration")?.stringValue == "10s")
+    }
+
+    @Test func partiallyOverlappingTrackKeepsItsTimelineOffset() throws {
+        let writer = FCPXMLTimelineWriter(
+            projectName: "Run",
+            frameRate: .fps30,
+            canvasWidth: 1920,
+            canvasHeight: 1080,
+            overlays: [
+                EditorPackageTimelineOverlay(fileName: "a_overlay.mov", fileURL: URL(fileURLWithPath: "/tmp/a_overlay.mov"), duration: 10),
+                EditorPackageTimelineOverlay(fileName: "b_overlay.mov", fileURL: URL(fileURLWithPath: "/tmp/b_overlay.mov"), duration: 10)
+            ],
+            clips: [
+                EditorPackageTimelineClip(mediaName: "cam-a.mov", mediaURL: URL(fileURLWithPath: "/tmp/cam-a.mov"), duration: 10, overlayFileName: "a_overlay.mov", overlaySourceStart: 0, startTime: 0, trackIndex: 0),
+                EditorPackageTimelineClip(mediaName: "cam-b.mov", mediaURL: URL(fileURLWithPath: "/tmp/cam-b.mov"), duration: 10, overlayFileName: "b_overlay.mov", overlaySourceStart: 5, startTime: 5, trackIndex: 1)
+            ]
+        )
+
+        let document = try XMLDocument(data: Data(writer.xmlString().utf8))
+        let laneClip = try #require(try elements(in: document, xpath: "//asset-clip[@lane='1']").first)
+        #expect(laneClip.attribute(forName: "name")?.stringValue == "cam-b.mov")
+        // Offset is relative to its parent clip, which starts at 0 s.
+        #expect(laneClip.attribute(forName: "offset")?.stringValue == "5s")
+        #expect(laneClip.attribute(forName: "duration")?.stringValue == "10s")
+
+        let sequenceDuration = document.rootElement()?.elements(forName: "library").first?
+            .elements(forName: "event").first?
+            .elements(forName: "project").first?
+            .elements(forName: "sequence").first?
+            .attribute(forName: "duration")?.stringValue
+        #expect(sequenceDuration == "15s")
+    }
+
+    @Test func threeTracksStackOnSeparateLanes() throws {
+        let writer = FCPXMLTimelineWriter(
+            projectName: "Run",
+            frameRate: .fps30,
+            canvasWidth: 1920,
+            canvasHeight: 1080,
+            overlays: [],
+            clips: (0..<3).map { track in
+                EditorPackageTimelineClip(
+                    mediaName: "cam-\(track).mov",
+                    mediaURL: URL(fileURLWithPath: "/tmp/cam-\(track).mov"),
+                    duration: 5,
+                    overlayFileName: "",
+                    overlaySourceStart: 0,
+                    startTime: 0,
+                    trackIndex: track
+                )
+            }
+        )
+
+        let document = try XMLDocument(data: Data(writer.xmlString().utf8))
+        let laneClips = try elements(in: document, xpath: "//asset-clip[@lane]")
+        #expect(laneClips.count == 2)
+        #expect(laneClips.compactMap { $0.attribute(forName: "lane")?.stringValue }.sorted() == ["1", "2"])
+    }
+
+    @Test func gapAppearsOnlyWhereNoTrackHasMedia() throws {
+        let writer = FCPXMLTimelineWriter(
+            projectName: "Run",
+            frameRate: .fps30,
+            canvasWidth: 1920,
+            canvasHeight: 1080,
+            overlays: [],
+            clips: [
+                EditorPackageTimelineClip(mediaName: "a.mov", mediaURL: URL(fileURLWithPath: "/tmp/a.mov"), duration: 5, overlayFileName: "", overlaySourceStart: 0, startTime: 0, trackIndex: 0),
+                EditorPackageTimelineClip(mediaName: "b.mov", mediaURL: URL(fileURLWithPath: "/tmp/b.mov"), duration: 5, overlayFileName: "", overlaySourceStart: 0, startTime: 10, trackIndex: 1)
+            ]
+        )
+
+        let document = try XMLDocument(data: Data(writer.xmlString().utf8))
+        let gaps = try elements(in: document, xpath: "//gap")
+        #expect(gaps.count == 1)
+        #expect(gaps[0].attribute(forName: "offset")?.stringValue == "5s")
+        #expect(gaps[0].attribute(forName: "duration")?.stringValue == "5s")
+        // Both clips are in the spine; the gap proves the gap is not used to
+        // carry connected clips.
+        #expect(try elements(in: document, xpath: "//spine/asset-clip").count == 2)
+    }
+
+    @Test func sharedFullActivityOverlayIsAttachedOnceAcrossTracks() throws {
+        let writer = FCPXMLTimelineWriter(
+            projectName: "Run",
+            frameRate: .fps30,
+            canvasWidth: 1920,
+            canvasHeight: 1080,
+            overlays: [
+                EditorPackageTimelineOverlay(fileName: "full_activity_overlay.mov", fileURL: URL(fileURLWithPath: "/tmp/full.mov"), duration: 10)
+            ],
+            clips: [
+                EditorPackageTimelineClip(mediaName: "cam-a.mov", mediaURL: URL(fileURLWithPath: "/tmp/cam-a.mov"), duration: 10, overlayFileName: "full_activity_overlay.mov", overlaySourceStart: 0, startTime: 0, trackIndex: 0),
+                EditorPackageTimelineClip(mediaName: "cam-b.mov", mediaURL: URL(fileURLWithPath: "/tmp/cam-b.mov"), duration: 10, overlayFileName: "full_activity_overlay.mov", overlaySourceStart: 0, startTime: 0, trackIndex: 1)
+            ]
+        )
+
+        let document = try XMLDocument(data: Data(writer.xmlString().utf8))
+        let overlays = try elements(in: document, xpath: "//asset-clip[@name='full_activity_overlay.mov']")
+        #expect(overlays.count == 1)
+        #expect(overlays[0].attribute(forName: "duration")?.stringValue == "10s")
+    }
+
     // MARK: - Helpers
 
     private func elements(in document: XMLDocument, xpath: String) throws -> [XMLElement] {
@@ -406,7 +567,7 @@ struct EditorPackageTests {
     }
 
     private func makeWriter(
-        clips: [(name: String, url: String, duration: TimeInterval, overlay: String, sourceStart: TimeInterval)],
+        clips: [(name: String, url: String, duration: TimeInterval, overlay: String, sourceStart: TimeInterval, start: TimeInterval, track: Int)],
         overlays: [(fileName: String, duration: TimeInterval)]
     ) -> FCPXMLTimelineWriter {
         FCPXMLTimelineWriter(
@@ -427,7 +588,9 @@ struct EditorPackageTests {
                     mediaURL: URL(fileURLWithPath: clip.url),
                     duration: clip.duration,
                     overlayFileName: clip.overlay,
-                    overlaySourceStart: clip.sourceStart
+                    overlaySourceStart: clip.sourceStart,
+                    startTime: clip.start,
+                    trackIndex: clip.track
                 )
             }
         )

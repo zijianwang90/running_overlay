@@ -141,7 +141,9 @@ enum EditorPackageExporter {
                 mediaURL: url,
                 duration: clip.duration,
                 overlayFileName: clip.overlayFileName,
-                overlaySourceStart: clip.overlaySourceStart
+                overlaySourceStart: clip.overlaySourceStart,
+                startTime: source.effectiveStartTime,
+                trackIndex: source.trackIndex
             )
         }
         let timelineOverlays = overlays.map { overlay in

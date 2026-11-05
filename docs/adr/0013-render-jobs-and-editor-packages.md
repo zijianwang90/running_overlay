@@ -45,9 +45,11 @@ Integration is built in layers. Each layer works without the next one.
    - `manifest.json` (`EditorPackageManifest`): activity start (UTC), output
      settings, the template manifest, and for each clip its media name, the
      activity elapsed time at its first frame, and its overlay source range;
-   - an FCPXML timeline that places each source clip with its overlay on
-     connected lane 1. Final Cut Pro imports it directly, and DaVinci Resolve
-     imports it through File > Import > Timeline.
+   - an FCPXML timeline that places each source clip with its overlay on a
+     connected lane. Multi-track projects keep their overlapping tracks as
+     connected lanes above the spine, packed by frame ranges. Final Cut Pro
+     imports it directly, and DaVinci Resolve imports it through
+     File > Import > Timeline.
 
    Users who skip the XML can drag a movie above the matching clip.
 5. **Distribution.** Layers 0 and 1 run inside the sandboxed app. They need no

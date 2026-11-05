@@ -93,11 +93,22 @@ ADR 0013 records the design. Code lives in
   `effectiveStartTime - fitStartTime`. Clips are untrimmed, so their media
   source start is 0.
 - `FCPXMLTimelineWriter` emits FCPXML 1.10:
-  - Source clips are placed back-to-back in the spine, in project timeline
-    order.
-  - Each source clip has its overlay as a connected clip on lane 1. The
-    connected clip's `offset` is in the parent's local time, not sequence
-    time.
+  - The spine takes clips in time order whenever they do not overlap what
+    precedes them, so every covered region is anchored to a real clip.
+    Regions no track covers become `gap` elements. FCPXML gaps cannot carry
+    connected clips, which is why the spine is built this way.
+  - Clips from other app tracks that overlap in time become connected clips on
+    lanes above the spine item that contains their start. Lanes are packed in
+    frame ranges, so overlapping angles never share a lane. Two camera tracks
+    therefore import as V1 plus V2 (or more lanes per overlapping angle).
+  - Clips that only touch end-to-start stay in the spine and do not need a
+    lane.
+  - Each source clip has its overlay as a connected clip. Lane numbers are
+    relative to the parent: overlays sit above every source lane, sharing one
+    lane when sequential and stacking when they overlap. The connected clip's
+    `offset` is in the parent's local time, not sequence time.
+  - A full-activity overlay shared by overlapping tracks is attached once
+    above the program instead of once per angle.
   - All times are whole sequence frames: `1001/30000s` for 29.97, and so on.
   - In full-activity mode, the connected clip is shifted later when the clip
     starts before the activity, and trimmed so it never reads past the
