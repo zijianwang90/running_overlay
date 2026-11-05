@@ -14,6 +14,9 @@ struct EditorPackageExportRequest {
     var mode: EditorPackageMode
     /// Editor the package is prepared for. Changes guidance only.
     var target: EditorTarget = .other
+    /// Keep the project timeline's empty stretches as gaps. The full-activity
+    /// layout always preserves them so its single overlay stays aligned.
+    var keepsTimelinePositions: Bool = false
 }
 
 /// What an editor package export produced, including the guidance to show.
@@ -125,6 +128,9 @@ enum EditorPackageExporter {
             options: .atomic
         )
 
+        let preservesTimelinePositions = request.keepsTimelinePositions
+            || request.mode == .fullActivity
+
         var mediaInfo: [URL: EditorPackageSourceMediaInfo] = [:]
         var probedURLs: Set<URL> = []
         for source in plan.sources {
@@ -161,7 +167,8 @@ enum EditorPackageExporter {
             canvasHeight: request.settings.resolution.height,
             overlays: timelineOverlays,
             clips: timelineClips,
-            mediaInfo: mediaInfo
+            mediaInfo: mediaInfo,
+            preservesTimelinePositions: preservesTimelinePositions
         )
         let fcpxmlName = "\(EditorPackageNaming.safeDocumentBaseName(request.projectName)).fcpxml"
         try writer.xmlString().write(
@@ -178,7 +185,8 @@ enum EditorPackageExporter {
             overlayFileNames: overlays.map { ($0.fileName as NSString).deletingPathExtension },
             frameRateID: request.settings.frameRate.id,
             mode: request.mode,
-            codec: request.settings.exportCodec
+            codec: request.settings.exportCodec,
+            keepsTimelinePositions: preservesTimelinePositions
         )
         try guide.importInstructionsText().write(
             to: packageURL.appendingPathComponent(EditorImportGuideText.fileName),

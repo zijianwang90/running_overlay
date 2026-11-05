@@ -93,10 +93,18 @@ ADR 0013 records the design. Code lives in
   `effectiveStartTime - fitStartTime`. Clips are untrimmed, so their media
   source start is 0.
 - `FCPXMLTimelineWriter` emits FCPXML 1.10:
+  - By default the stretches of the project timeline that no clip covers are
+    removed, so the imported timeline is a packed sequence. A connected clip
+    that runs past its parent can still leave a structural `gap` at the end of
+    the spine; that gap is not an empty project stretch.
+  - "Keep original positions" turns that off: every clip starts at its
+    project timeline time and regions no track covers become `gap` elements.
+    The Full Activity layout always keeps positions, because its single
+    overlay is in activity time and would drift otherwise.
   - The spine takes clips in time order whenever they do not overlap what
     precedes them, so every covered region is anchored to a real clip.
-    Regions no track covers become `gap` elements. FCPXML gaps cannot carry
-    connected clips, which is why the spine is built this way.
+    FCPXML gaps cannot carry connected clips, which is why the spine is built
+    this way.
   - Clips from other app tracks that overlap in time become connected clips on
     lanes above the spine item that contains their start. Lanes are packed in
     frame ranges, so overlapping angles never share a lane. Two camera tracks
@@ -115,9 +123,10 @@ ADR 0013 records the design. Code lives in
     movie's end.
   - Media references are absolute file URLs. `manifest.json` stays relative.
 - The Export dialog has an optional Editor Package section. Turning on
-  "Also export an editor package" adds a target editor and an overlay layout
-  to the same export; the overlay MOV is still written. The choice is
-  remembered. The target changes only guidance. After the export, the app
+  "Also export an editor package" adds a target editor, an overlay layout, and
+  a "Keep original positions" switch to the same export; the overlay MOV is
+  still written. Positions default to off (clips import back to back) and are
+  forced on in Full Activity layout. The choice is remembered. The target changes only guidance. After the export, the app
   shows an import guide for that editor (`EditorImportGuideView`):
   - numbered steps that name the real package files;
   - Open in Final Cut Pro, or the Resolve import steps;

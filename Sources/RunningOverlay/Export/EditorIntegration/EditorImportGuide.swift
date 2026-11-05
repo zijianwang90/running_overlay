@@ -70,6 +70,8 @@ struct EditorImportGuide: Identifiable, Equatable {
     var frameRateID: String
     var mode: EditorPackageMode
     var codec: ProjectExportCodec
+    /// Whether the timeline keeps the project's empty stretches as gaps.
+    var keepsTimelinePositions: Bool = true
 
     init(
         editor: EditorTarget,
@@ -79,7 +81,8 @@ struct EditorImportGuide: Identifiable, Equatable {
         overlayFileNames: [String],
         frameRateID: String,
         mode: EditorPackageMode,
-        codec: ProjectExportCodec
+        codec: ProjectExportCodec,
+        keepsTimelinePositions: Bool = true
     ) {
         self.editor = editor
         self.projectName = projectName
@@ -89,6 +92,7 @@ struct EditorImportGuide: Identifiable, Equatable {
         self.frameRateID = frameRateID
         self.mode = mode
         self.codec = codec
+        self.keepsTimelinePositions = keepsTimelinePositions
     }
 
     var headline: String {
@@ -140,6 +144,9 @@ struct EditorImportGuide: Identifiable, Equatable {
         switch mode {
         case .perClip:
             notes.append("Each overlay movie is exactly as long as its clip, so trimming a clip also trims its overlay.")
+            if !keepsTimelinePositions {
+                notes.append("Clips are packed back to back; the project timeline's empty stretches are not reproduced.")
+            }
         case .fullActivity:
             notes.append("Every clip reads a range of the full-activity movie, so you can slip the overlay manually in the editor.")
         }
@@ -310,15 +317,25 @@ struct EditorPackageExportOptions: Codable, Equatable {
     var enabled: Bool = false
     var target: EditorTarget = .finalCutPro
     var mode: EditorPackageMode = .perClip
+    /// Keep the project's empty stretches as gaps in the imported timeline.
+    /// Off by default so clips import back to back; a continuous
+    /// full-activity overlay needs it to stay aligned.
+    var keepsTimelinePositions: Bool = false
 
     private enum CodingKeys: String, CodingKey {
-        case enabled, target, mode
+        case enabled, target, mode, keepsTimelinePositions
     }
 
-    init(enabled: Bool = false, target: EditorTarget = .finalCutPro, mode: EditorPackageMode = .perClip) {
+    init(
+        enabled: Bool = false,
+        target: EditorTarget = .finalCutPro,
+        mode: EditorPackageMode = .perClip,
+        keepsTimelinePositions: Bool = false
+    ) {
         self.enabled = enabled
         self.target = target
         self.mode = mode
+        self.keepsTimelinePositions = keepsTimelinePositions
     }
 
     init(from decoder: Decoder) throws {
@@ -326,5 +343,9 @@ struct EditorPackageExportOptions: Codable, Equatable {
         enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
         target = try container.decodeIfPresent(EditorTarget.self, forKey: .target) ?? .finalCutPro
         mode = try container.decodeIfPresent(EditorPackageMode.self, forKey: .mode) ?? .perClip
+        keepsTimelinePositions = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .keepsTimelinePositions
+        ) ?? false
     }
 }

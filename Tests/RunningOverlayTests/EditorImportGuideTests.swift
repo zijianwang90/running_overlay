@@ -57,6 +57,17 @@ struct EditorImportGuideTests {
         #expect(fullActivity.notes.contains { $0.contains("slip the overlay") })
     }
 
+    @Test func packedPerClipGuideExplainsMissingEmptyStretches() {
+        let packed = makeGuide(keepsTimelinePositions: false)
+        let preserved = makeGuide()
+
+        #expect(packed.notes.contains { $0.contains("packed back to back") })
+        #expect(!preserved.notes.contains { $0.contains("packed back to back") })
+        // The full-activity layout keeps positions, so it never says this.
+        #expect(!makeGuide(mode: .fullActivity, keepsTimelinePositions: false)
+            .notes.contains { $0.contains("packed back to back") })
+    }
+
     @Test func proResGuideSuggestsProResForGrading() {
         let guide = makeGuide(codec: .proRes4444)
         #expect(guide.notes.contains { $0.contains("ProRes 4444 keeps text crisp") })
@@ -100,7 +111,12 @@ struct EditorImportGuideTests {
     // MARK: - Options
 
     @Test func exportOptionsRoundTripThroughJSON() throws {
-        let options = EditorPackageExportOptions(enabled: true, target: .resolve, mode: .fullActivity)
+        let options = EditorPackageExportOptions(
+            enabled: true,
+            target: .resolve,
+            mode: .fullActivity,
+            keepsTimelinePositions: true
+        )
         let data = try JSONEncoder().encode(options)
         #expect(try JSONDecoder().decode(EditorPackageExportOptions.self, from: data) == options)
         #expect(EditorPackageExportOptions() == EditorPackageExportOptions(
@@ -117,6 +133,7 @@ struct EditorImportGuideTests {
         #expect(options.enabled == false)
         #expect(options.target == .resolve)
         #expect(options.mode == .fullActivity)
+        #expect(options.keepsTimelinePositions == false)
     }
 
     // MARK: - Export writes the guide
@@ -184,7 +201,8 @@ struct EditorImportGuideTests {
         packageURL: URL? = URL(fileURLWithPath: "/tmp/Morning Run Editor Package", isDirectory: true),
         fcpxmlFileName: String? = "Morning Run.fcpxml",
         mode: EditorPackageMode = .perClip,
-        codec: ProjectExportCodec = .hevcWithAlpha
+        codec: ProjectExportCodec = .hevcWithAlpha,
+        keepsTimelinePositions: Bool = true
     ) -> EditorImportGuide {
         EditorImportGuide(
             editor: target,
@@ -194,7 +212,8 @@ struct EditorImportGuideTests {
             overlayFileNames: ["A001_C001_overlay", "A001_C002_overlay"],
             frameRateID: "29.97",
             mode: mode,
-            codec: codec
+            codec: codec,
+            keepsTimelinePositions: keepsTimelinePositions
         )
     }
 

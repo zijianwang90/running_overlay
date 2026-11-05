@@ -16,6 +16,7 @@ struct ExportDialogView: View {
     @State private var editorPackageEnabled = false
     @State private var editorTarget: EditorTarget = .finalCutPro
     @State private var editorMode: EditorPackageMode = .perClip
+    @State private var keepsTimelinePositions = false
     @State private var didLoadEditorOptions = false
     @State private var activeHelpTooltip: ExportHelpTooltipState?
 
@@ -238,6 +239,14 @@ struct ExportDialogView: View {
                         .disabled(project.isExporting)
                     }
                     dividerRow
+                    SettingsRow(leading: { rowLabel("Timeline") }) {
+                        Toggle("Keep original positions", isOn: keepsTimelinePositionsBinding)
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                            .frame(width: ExportDialogLayout.trailingColumnWidth, alignment: .trailing)
+                            .disabled(project.isExporting || editorMode == .fullActivity)
+                    }
+                    dividerRow
                     Text(editorPackageHint)
                         .font(EditorTheme.captionFont)
                         .foregroundStyle(EditorTheme.textMuted)
@@ -250,11 +259,23 @@ struct ExportDialogView: View {
         }
     }
 
+    /// The full-activity layout always keeps the original positions, so the
+    /// toggle reads as on and cannot be changed in that mode.
+    private var keepsTimelinePositionsBinding: Binding<Bool> {
+        Binding(
+            get: { keepsTimelinePositions || editorMode == .fullActivity },
+            set: { keepsTimelinePositions = $0 }
+        )
+    }
+
     private var editorPackageHint: String {
         var hints: [String] = []
         hints.append(editorMode == .perClip
             ? "Each clip gets an overlay movie of its own length."
             : "One movie for the whole activity; clips read their range from it.")
+        hints.append(editorMode == .fullActivity || keepsTimelinePositions
+            ? "Empty stretches stay as gaps, so every clip keeps its project timeline position."
+            : "Clips are packed back to back; turn on Keep original positions to keep empty stretches.")
         if editorTarget == .resolve {
             hints.append("Set the Resolve timeline to \(project.settings.frameRate.id) fps before importing.")
         }
@@ -354,7 +375,8 @@ struct ExportDialogView: View {
                 let options = EditorPackageExportOptions(
                     enabled: editorPackageEnabled,
                     target: editorTarget,
-                    mode: editorMode
+                    mode: editorMode,
+                    keepsTimelinePositions: keepsTimelinePositions || editorMode == .fullActivity
                 )
                 project.savedEditorPackageOptions = options
                 performExportAction { destination in
@@ -437,6 +459,7 @@ struct ExportDialogView: View {
         editorPackageEnabled = saved.enabled
         editorTarget = saved.target
         editorMode = saved.mode
+        keepsTimelinePositions = saved.keepsTimelinePositions
     }
 
     private func initializeDestinationIfNeeded() {

@@ -516,7 +516,7 @@ struct EditorPackageTests {
         #expect(laneClips.compactMap { $0.attribute(forName: "lane")?.stringValue }.sorted() == ["1", "2"])
     }
 
-    @Test func gapAppearsOnlyWhereNoTrackHasMedia() throws {
+    @Test func preservedLayoutKeepsGapsOnlyWhereNoTrackHasMedia() throws {
         let writer = FCPXMLTimelineWriter(
             projectName: "Run",
             frameRate: .fps30,
@@ -526,7 +526,8 @@ struct EditorPackageTests {
             clips: [
                 EditorPackageTimelineClip(mediaName: "a.mov", mediaURL: URL(fileURLWithPath: "/tmp/a.mov"), duration: 5, overlayFileName: "", overlaySourceStart: 0, startTime: 0, trackIndex: 0),
                 EditorPackageTimelineClip(mediaName: "b.mov", mediaURL: URL(fileURLWithPath: "/tmp/b.mov"), duration: 5, overlayFileName: "", overlaySourceStart: 0, startTime: 10, trackIndex: 1)
-            ]
+            ],
+            preservesTimelinePositions: true
         )
 
         let document = try XMLDocument(data: Data(writer.xmlString().utf8))
@@ -537,6 +538,62 @@ struct EditorPackageTests {
         // Both clips are in the spine; the gap proves the gap is not used to
         // carry connected clips.
         #expect(try elements(in: document, xpath: "//spine/asset-clip").count == 2)
+    }
+
+    @Test func defaultLayoutPacksClipsTogetherWithoutGaps() throws {
+        let writer = FCPXMLTimelineWriter(
+            projectName: "Run",
+            frameRate: .fps30,
+            canvasWidth: 1920,
+            canvasHeight: 1080,
+            overlays: [],
+            clips: [
+                EditorPackageTimelineClip(mediaName: "a.mov", mediaURL: URL(fileURLWithPath: "/tmp/a.mov"), duration: 5, overlayFileName: "", overlaySourceStart: 0, startTime: 0, trackIndex: 0),
+                EditorPackageTimelineClip(mediaName: "b.mov", mediaURL: URL(fileURLWithPath: "/tmp/b.mov"), duration: 5, overlayFileName: "", overlaySourceStart: 0, startTime: 600, trackIndex: 0)
+            ]
+        )
+
+        let document = try XMLDocument(data: Data(writer.xmlString().utf8))
+        #expect(try elements(in: document, xpath: "//gap").isEmpty)
+        let spineClips = try elements(in: document, xpath: "//spine/asset-clip")
+        #expect(spineClips.compactMap { $0.attribute(forName: "offset")?.stringValue } == ["0s", "5s"])
+        #expect(document.rootElement()?.elements(forName: "library").first?
+            .elements(forName: "event").first?
+            .elements(forName: "project").first?
+            .elements(forName: "sequence").first?
+            .attribute(forName: "duration")?.stringValue == "10s")
+    }
+
+    @Test func compactionKeepsOverlappingTracksAligned() throws {
+        // A 0-10 s, B 30-40 s (empty stretch 10-30 s), C 35-40 s on another
+        // track. Compaction removes the empty stretch but keeps C's 5 s offset
+        // inside B.
+        let writer = FCPXMLTimelineWriter(
+            projectName: "Run",
+            frameRate: .fps30,
+            canvasWidth: 1920,
+            canvasHeight: 1080,
+            overlays: [],
+            clips: [
+                EditorPackageTimelineClip(mediaName: "a.mov", mediaURL: URL(fileURLWithPath: "/tmp/a.mov"), duration: 10, overlayFileName: "", overlaySourceStart: 0, startTime: 0, trackIndex: 0),
+                EditorPackageTimelineClip(mediaName: "b.mov", mediaURL: URL(fileURLWithPath: "/tmp/b.mov"), duration: 10, overlayFileName: "", overlaySourceStart: 0, startTime: 30, trackIndex: 0),
+                EditorPackageTimelineClip(mediaName: "c.mov", mediaURL: URL(fileURLWithPath: "/tmp/c.mov"), duration: 5, overlayFileName: "", overlaySourceStart: 0, startTime: 35, trackIndex: 1)
+            ]
+        )
+
+        let document = try XMLDocument(data: Data(writer.xmlString().utf8))
+        #expect(try elements(in: document, xpath: "//gap").isEmpty)
+        let spineClips = try elements(in: document, xpath: "//spine/asset-clip")
+        #expect(spineClips.compactMap { $0.attribute(forName: "name")?.stringValue } == ["a.mov", "b.mov"])
+        #expect(spineClips.compactMap { $0.attribute(forName: "offset")?.stringValue } == ["0s", "10s"])
+        let laneClip = try #require(try elements(in: document, xpath: "//asset-clip[@lane='1']").first)
+        #expect(laneClip.attribute(forName: "name")?.stringValue == "c.mov")
+        #expect(laneClip.attribute(forName: "offset")?.stringValue == "5s")
+        #expect(document.rootElement()?.elements(forName: "library").first?
+            .elements(forName: "event").first?
+            .elements(forName: "project").first?
+            .elements(forName: "sequence").first?
+            .attribute(forName: "duration")?.stringValue == "20s")
     }
 
     @Test func sharedFullActivityOverlayIsAttachedOnceAcrossTracks() throws {

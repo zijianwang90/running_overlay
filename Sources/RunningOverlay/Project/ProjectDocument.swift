@@ -3679,7 +3679,8 @@ final class ProjectDocument: ObservableObject {
             templateName: projectDisplayName,
             projectName: projectDisplayName,
             mode: options.mode,
-            target: options.target
+            target: options.target,
+            keepsTimelinePositions: options.keepsTimelinePositions
         )
         let title = options.mode == .perClip
             ? "Per Clip Editor Package"

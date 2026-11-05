@@ -153,6 +153,10 @@ struct EditorPackageTimelineClip: Equatable {
 ///   precedes them, so every covered region is anchored to a real clip. Gaps
 ///   appear only where no clip exists, because FCPXML gaps cannot carry
 ///   connected clips.
+/// - By default empty stretches between clips are removed so the timeline
+///   imports as a packed sequence. Set `preservesTimelinePositions` to keep
+///   the project's empty stretches as gaps; a continuous full-activity overlay
+///   needs them to stay aligned.
 /// - Overlapping clips from other tracks become connected clips on lanes above
 ///   the spine item that contains their start. Lanes are packed so clips that
 ///   overlap in time never share a lane.
@@ -169,6 +173,9 @@ struct FCPXMLTimelineWriter {
     var overlays: [EditorPackageTimelineOverlay]
     var clips: [EditorPackageTimelineClip]
     var mediaInfo: [URL: EditorPackageSourceMediaInfo] = [:]
+    /// When false, stretches of the project timeline that no clip covers are
+    /// removed. Defaults to false so imported clips sit back to back.
+    var preservesTimelinePositions: Bool = false
 
     private static let epsilon: TimeInterval = 0.000_001
 
@@ -262,7 +269,8 @@ struct FCPXMLTimelineWriter {
         let layout = TimelineLayout(
             clips: clips,
             overlays: overlays,
-            rate: sequenceRate
+            rate: sequenceRate,
+            preservesTimelinePositions: preservesTimelinePositions
         )
         let spine = XMLElement(name: "spine")
         let spineElements = layout.spineElements(
@@ -416,9 +424,17 @@ private struct TimelineLayout {
     let maxSourceLane: Int
     let overlayFramesByFileName: [String: Int]
 
+    let preservesTimelinePositions: Bool
+
     private static let epsilon: TimeInterval = 0.000_001
 
-    init(clips: [EditorPackageTimelineClip], overlays: [EditorPackageTimelineOverlay], rate: FCPXMLFrameRate) {
+    init(
+        clips: [EditorPackageTimelineClip],
+        overlays: [EditorPackageTimelineOverlay],
+        rate: FCPXMLFrameRate,
+        preservesTimelinePositions: Bool
+    ) {
+        self.preservesTimelinePositions = preservesTimelinePositions
         let overlayFrames = Dictionary(
             uniqueKeysWithValues: overlays.map { ($0.fileName, max(rate.frames(seconds: $0.duration), 1)) }
         )
@@ -427,7 +443,10 @@ private struct TimelineLayout {
             let start = max(clip.startTime - origin, 0)
             return Placement(index: index, clip: clip, start: start, end: start + max(clip.duration, 0))
         }
-        let sorted = normalized.sorted { lhs, rhs in
+        let placements = preservesTimelinePositions
+            ? normalized
+            : Self.compacted(normalized)
+        let sorted = placements.sorted { lhs, rhs in
             if lhs.start != rhs.start { return lhs.start < rhs.start }
             if lhs.clip.trackIndex != rhs.clip.trackIndex { return lhs.clip.trackIndex < rhs.clip.trackIndex }
             return lhs.index < rhs.index
@@ -545,6 +564,45 @@ private struct TimelineLayout {
         self.overlayAbsoluteLaneByClipIndex = overlayLanes
         self.singleOverlayClipIndex = singleOverlayClipIndex
         self.maxSourceLane = maxSourceLane
+    }
+
+    /// Removes the stretches no clip covers. Overlapping clips keep their
+    /// relative offsets, so multi-track lanes are unaffected; only empty
+    /// project-timeline stretches disappear.
+    private static func compacted(_ placements: [Placement]) -> [Placement] {
+        guard placements.count > 1 else { return placements }
+        let intervals = placements
+            .map { (start: $0.start, end: $0.end) }
+            .filter { $0.end > $0.start }
+            .sorted { $0.start < $1.start }
+        guard let first = intervals.first else { return placements }
+
+        var gaps: [(start: TimeInterval, end: TimeInterval)] = []
+        var coveredEnd = first.end
+        for interval in intervals.dropFirst() {
+            if interval.start > coveredEnd + epsilon {
+                gaps.append((coveredEnd, interval.start))
+                coveredEnd = interval.end
+            } else {
+                coveredEnd = max(coveredEnd, interval.end)
+            }
+        }
+        guard !gaps.isEmpty else { return placements }
+
+        func shifted(_ time: TimeInterval) -> TimeInterval {
+            var removed: TimeInterval = 0
+            for gap in gaps where gap.start < time - epsilon {
+                removed += min(gap.end, time) - gap.start
+            }
+            return max(time - removed, 0)
+        }
+
+        return placements.map { placement in
+            var placement = placement
+            placement.start = shifted(placement.start)
+            placement.end = shifted(placement.end)
+            return placement
+        }
     }
 
     /// Builds the spine elements, nesting attached clips and overlays under

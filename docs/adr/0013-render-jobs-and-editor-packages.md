@@ -47,9 +47,11 @@ Integration is built in layers. Each layer works without the next one.
      activity elapsed time at its first frame, and its overlay source range;
    - an FCPXML timeline that places each source clip with its overlay on a
      connected lane. Multi-track projects keep their overlapping tracks as
-     connected lanes above the spine, packed by frame ranges. Final Cut Pro
-     imports it directly, and DaVinci Resolve imports it through
-     File > Import > Timeline.
+     connected lanes above the spine, packed by frame ranges. Empty stretches
+     of the project timeline are dropped by default; the user can keep them as
+     gaps, which the Full Activity layout always does so its single overlay
+     stays in activity time. Final Cut Pro imports it directly, and DaVinci
+     Resolve imports it through File > Import > Timeline.
 
    Users who skip the XML can drag a movie above the matching clip.
 5. **Distribution.** Layers 0 and 1 run inside the sandboxed app. They need no
