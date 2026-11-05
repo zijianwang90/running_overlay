@@ -1,6 +1,6 @@
 # Media Pool UI Design Spec
 
-Last updated: 2026-04-29
+Last updated: 2026-11-05
 
 ## Purpose
 
@@ -26,8 +26,8 @@ The left pool should feel like a professional video editor bin, not a generic sy
 
 - Dark panel background with alternating row bands.
 - A compact top mode switch controls `Media Pool`, `Overlay Pool`, and `Templates`, similar to a production editor's source/effects panel switch.
-- Compact rows with clear filename, duration, capture time, and a compact alignment status indicator.
-- Selected rows use a controlled blue/charcoal highlight, not a full washed-out system selection.
+- Compact rows with clear filename, duration, capture time, and an alignment status symbol.
+- Selected rows follow macOS list rules: the system selection color while the list has keyboard focus, the gray unemphasized selection color otherwise. See [Media Pool HIG review](media-pool-hig-review.md).
 - Menus feel native to macOS but visually belong to the app: dark, elevated, rounded, bordered.
 - Color marks are small, fast-to-scan dots or strips, not dominant labels.
 - Overlay module choices live in `Overlay Pool`; the Inspector should not duplicate the add-overlay catalog.
@@ -46,12 +46,13 @@ Prefer reusing shared tokens from `inspector-ui.md`. Media-specific values:
 | `media.header`              | `#1B2025`   | Header bar                              |
 | `media.rowEven`             | `#1B2025`   | Alternating row                         |
 | `media.rowOdd`              | `#171C21`   | Alternating row                         |
-| `media.rowHover`            | `#222932`   | Hover row                               |
-| `media.rowSelected`         | `#263244`   | Selected row                            |
-| `media.rowSelectedBorder`   | `#2F8CFF`   | Selected row left or top accent         |
+| `media.rowHover`            | `NSColor.quaternarySystemFill` | Hover row                |
+| `media.rowSelected`         | `NSColor.selectedContentBackgroundColor` | Selected row, list focused |
+| `media.rowSelectedUnfocused` | `NSColor.unemphasizedSelectedContentBackgroundColor` | Selected row, list not focused |
+| `media.focusRing`           | `NSColor.keyboardFocusIndicatorColor` | List focus ring |
 | `media.menuBackground`      | `#1D2228`   | Context menu                            |
 | `media.menuHover`           | `#2F8CFF`   | Active menu item                        |
-| `media.thumbnailBackground` | `#101418`   | Thumbnail/file icon well                |
+| `media.thumbnailBackground` | `NSColor.underPageBackgroundColor` | Thumbnail/file icon well |
 | `row.height`                | `68-76 px`  | Default media row height                |
 | `thumbnail.size`            | `42x42 px`  | Optional thumbnail/icon well            |
 | `toolbar.iconButton`        | `30x30 px`  | Header actions                          |
@@ -90,20 +91,18 @@ Current SwiftUI entry point:
 
 Existing behavior to preserve:
 
-- Drag/drop video import.
-- Single selection and Command-click multi-selection.
-- Command+A selects all visible media when the Media Pool is active.
-- Double-click previews a media-pool source item.
-- Context menu actions:
-  - `Auto Match to Current Layer`
-  - `Match to New Layer`
-  - `Match to Layer`
-  - `Mark`
-  - `Select All`
-  - `Delete from Media Pool`
-- Tag filter menu.
+- Drag/drop video import, refused before an activity exists.
+- Click, Shift-click and Command-click selection of clips and folders.
+- Command+A selects all visible clips when the Media Pool list has focus.
+- Double-click previews a media-pool source item, or toggles a folder.
+- Keyboard navigation (see Interaction Rules).
+- Context menu actions (see Context Menu).
+- Status filter (`All` / `Ready` / `Aligned`) and name search.
 - Alternating row backgrounds.
 - Focus loss clears transient media-pool preview.
+
+Selection model: `MediaPoolSelection` (`Sources/RunningOverlay/UI/MediaPoolSelection.swift`)
+holds the outline-view rules and is unit tested in `MediaPoolSelectionTests`.
 
 ## Layout
 
@@ -162,12 +161,11 @@ Recommended implementation:
 
 Content:
 
-- Left title: `Media`
+- Left title: `Media`, followed by the visible clip count (`6 clips`) once media exists.
 - Right toolbar icon buttons:
-  - Select all visible media
-  - Clear selection
-  - View/filter menu
-  - Dropdown chevron or additional options
+  - `folder.badge.plus`: New Folder (with the selected clips, if any).
+  - `plus`: Import Videos. Disabled until an activity is imported.
+- Select All and Clear Selection are not buttons: use ⌘A, Esc, or click empty space.
 
 Icon guidance:
 
@@ -178,25 +176,15 @@ Icon guidance:
 
 ## Search And Filter Strip
 
-Add a compact search field below or integrated into the header:
-
-- Placeholder: `Search media`
-- Height: 30 px
-- Background: `control.background`
-- Border: `border.subtle`
-
-Status/filter row:
-
-- Left: clip count, e.g. `8 clips`
-- Filter chips: `All`, `Ready`, `Aligned`
-- `All` selected by default.
-
-Implementation note:
-
-- The current model supports tag filtering but does not obviously expose a search query state or `Ready`/`Aligned` filters in the mockup form. It is acceptable to implement visual-ready structure incrementally:
-  - Add search only if it filters `displayName`.
-  - Keep existing tag filter menu if status chips are deferred.
-  - Do not show filter chips that do not work.
+- System search field (`NSSearchField`, small), placeholder `Search`. It filters
+  `displayName`. ⌘F focuses it; Esc and the cancel button clear it.
+- Status filter: a small segmented control with `All`, `Ready` (clock) and
+  `Aligned` (checkmark circle). The symbols match the row status symbols.
+  `All` is selected by default.
+- Activity status row, when an activity is loaded: a green checkmark, the
+  activity file name and workout summary, a small Workout type pop-up
+  (`Picker(.menu)`, with the up/down indicator), and a `⋯` menu containing
+  `Replace Activity…`. This is the only Workout type control in the panel.
 
 ## Media Rows
 
@@ -207,9 +195,10 @@ Each row contains:
 - Primary filename.
 - Secondary duration.
 - Secondary capture date/time.
-- Right-side alignment status dot. Hovering the dot shows the status help text,
-  such as `Ready to match FIT timestamps` for yellow, `Already on the timeline`
-  for green, or `Needs manual placement` for muted gray.
+- Right-side alignment status symbol plus color, so status reads without color:
+  `checkmark.circle.fill` green (aligned), `clock` yellow (ready to match),
+  `questionmark.circle` gray (needs manual placement). Hovering shows the status
+  help text, which is also the accessibility label.
 - Do not show a trailing more/ellipsis affordance unless it opens a visible row action menu.
 
 Example filenames:
@@ -226,32 +215,52 @@ Example filenames:
 Row states:
 
 - Default: alternating dark backgrounds.
-- Hover: slightly elevated dark fill.
-- Selected: `media.rowSelected` plus a subtle blue accent line or border.
+- Hover: `media.rowHover`.
+- Selected, list focused: `media.rowSelected` with white text and symbols, and a
+  focus ring around the list.
+- Selected, list not focused (or window inactive): `media.rowSelectedUnfocused`
+  with normal text colors.
 - Multi-selected: same selected style per row.
 - Source-previewed item may use an additional play indicator if needed, but do not confuse it with selection.
 
 Text:
 
 - Filename: 13 px semibold, primary text.
-- Metadata: 11-12 px regular, secondary text.
-- Alignment status dot: 8-9 px circular indicator using success/warning/muted status color, with a larger hover target and the full status help text exposed as hover help and accessibility text.
-- Use monospaced digits for duration if it improves scanning.
+- Metadata: 11-12 px regular, secondary text, monospaced digits: duration as
+  `4:12` (`1:02:05` past an hour, matching the Timeline) and start time without
+  seconds (`8:39 AM`). The full date and time is in the row's help tag.
+- Alignment status symbol: 12 pt in an 18 pt hover target.
+
+Folder rows:
+
+- Disclosure triangle, fixed `folder` symbol (it does not change with expansion),
+  name, and clip count.
+- A click selects the folder. The triangle, ←/→, or a double-click expands and
+  collapses it.
 
 ## Context Menu
 
-The context menu should remain functionally equivalent to the current SwiftUI `.contextMenu`.
+Menus show only commands that apply to the clicked row. When the clicked row
+is part of the selection, the commands act on the whole selection and the first
+item names the count (`Auto Match 2 Clips to Current Layer`).
 
-Menu items:
+Clip rows:
 
-1. `Auto Match to Current Layer`
-2. `Match to New Layer`
-3. `Match to Layer` with chevron and submenu of existing timeline layers
-4. Separator
-5. `Mark` with chevron and submenu
-6. Separator
-7. `Select All`
-8. `Delete from Media Pool`
+1. `Auto Match to Current Layer`, `Match to New Layer`, `Match to Layer ▸`
+2. `Show in Finder` (⇧⌘R), `Move to Folder ▸`, `Move to Root` (when any clip is in a folder)
+3. `Delete from Media Pool` (⌘⌫)
+
+Folder rows:
+
+1. The match commands, acting on the folder's clips (omitted for an empty folder)
+2. `Rename`, `New Folder`
+3. `Delete Folder, Keep Clips` and `Delete Folder and N Clips` (⌘⌫)
+
+Empty space: `Import Videos…`, `New Folder`, `Select All`.
+
+Delete is undoable, so it is not red and has no confirmation.
+
+The `Mark` submenu below is not implemented.
 
 Mark submenu:
 
@@ -282,9 +291,12 @@ No FIT and no media:
 - Title: `Import Activity`
 - Secondary text: `Start with running activity data`
 - Primary action: `Import Activity`
-- Step indicator: `1 FIT` active, `2 Videos` inactive.
+- Step indicator: plain text with symbols, `① Activity · ② Videos`; not a control.
 - Secondary disabled or muted hint: `Then import videos`
 - Use a subtle dashed rounded rectangle drop zone boundary, but do not imply video drop is ready before activity import.
+- Dragging a video here is refused while the pointer moves (no `+` cursor), and the
+  copy changes to `Import an Activity First` / `Videos are matched to a FIT or GPX activity.`
+  No error is shown after the drop.
 
 Activity imported, no media:
 
@@ -293,8 +305,8 @@ Activity imported, no media:
 - Secondary text: `Import clips to match them with your running activity`
 - Primary action: `Import Videos`
 - Optional format hint: `MP4, MOV`
-- Step indicator: `1 FIT` complete, `2 Videos` active.
-- Use a subtle dashed rounded rectangle drop zone only when drag/drop import is active.
+- Step indicator: `✓ Activity · ② Videos`.
+- The dashed drop zone turns accent-colored and the title reads `Release to Import` while a file is dragged over it.
 - Keep background consistent with the panel.
 
 Filtered empty:
@@ -447,13 +459,20 @@ Import/export:
 
 ## Interaction Rules
 
-- Single click selects a row.
-- Command-click toggles selection.
-- Double-click selects the row and opens transient source preview.
+- Single click selects a clip or folder row. Shift-click extends from the anchor; Command-click toggles.
+- Double-click on a clip selects it and opens transient source preview; on a folder it toggles expansion.
 - Dragging a row provides the media item id to timeline drop targets.
 - Right-click actions apply to all selected items if the clicked item is already selected; otherwise apply only to the clicked item.
-- `Select All` acts on visible/filtered media.
-- Changing filters must remove selected IDs that are no longer visible.
+- Keyboard, while the list has focus:
+  - ↑/↓ move the selection; Shift+↑/↓ extend it.
+  - ← collapses an expanded folder or selects a clip's folder; → expands a folder.
+  - Return renames the selected folder.
+  - ⌘⌫ (and ⌫, ⌦) delete the selection as one undo step. A selected folder is deleted with its clips.
+  - ⌘A selects all visible clips (not folders). Esc clears the selection.
+  - ⇧⌘R shows the selected clips in Finder.
+- Collapsing a folder moves selection from its hidden clips onto the folder and keeps the rest of the selection.
+- Changing filters must remove selected rows that are no longer visible.
+- Media Pool selection and the editor selection are exclusive: selecting media clears `ProjectDocument.selection`; selecting an overlay or clip clears the selected media rows and takes keyboard focus away from the list.
 - Losing Media Pool focus clears transient media-pool preview.
 
 ## Recommended Components
@@ -486,7 +505,5 @@ Reuse a shared app theme where possible:
 
 ## Open Product Questions
 
-- Should search be added now, or should it wait until media libraries become larger?
-- Should `Ready` and `Aligned` filter chips be real filters or only future design placeholders?
 - Should Media Pool rows show real video thumbnails, or keep icon wells for performance and simplicity?
 - Should tag color be a dot, a left stripe, or both for selected rows?

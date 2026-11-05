@@ -62,7 +62,8 @@ struct PoolModeSwitch: View {
             }
         }
         .pickerStyle(.segmented)
-        .labelStyle(.titleAndIcon)
+        .labelStyle(.iconOnly)
+        .controlSize(.large)
         .labelsHidden()
     }
 }
