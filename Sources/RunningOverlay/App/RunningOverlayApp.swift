@@ -104,6 +104,11 @@ struct RunningOverlayApp: App {
                     showsInspector.toggle()
                 }
                 .keyboardShortcut("i", modifiers: [.option, .command])
+
+                Divider()
+
+                Toggle("Show Safe Frames", isOn: $project.showPreviewGuides)
+                    .keyboardShortcut("'", modifiers: [.command])
             }
 
             CommandGroup(after: .pasteboard) {
@@ -134,22 +139,18 @@ struct RunningOverlayApp: App {
             }
 
             CommandMenu("Playback") {
-                Button(project.isPlaying ? "Pause" : "Play") {
+                Button(PlaybackMenuItem.playPause.title(isPlaying: project.isPlaying)) {
                     project.togglePlayback()
                 }
                 .keyboardShortcut(.space, modifiers: [])
+                .help(PlaybackMenuItem.playPause.editorKeysHelp ?? "")
 
-                Button(project.isPlaying ? "Pause (K)" : "Play (K)") {
-                    project.togglePlayback()
-                }
-                .keyboardShortcut("k", modifiers: [])
-
-                Button("Play Faster (L)") {
+                Button(PlaybackMenuItem.playFaster.title(isPlaying: project.isPlaying)) {
                     project.increaseForwardPlaybackRate()
                 }
                 .keyboardShortcut("l", modifiers: [])
 
-                Button("Play Slower (J)") {
+                Button(PlaybackMenuItem.playSlower.title(isPlaying: project.isPlaying)) {
                     project.decreaseForwardPlaybackRate()
                 }
                 .keyboardShortcut("j", modifiers: [])
@@ -157,23 +158,27 @@ struct RunningOverlayApp: App {
 
                 Divider()
 
-                // Navigation keys are handled by the editor so they keep their
-                // meaning in lists and text fields; titles show the key.
-                Button("Go to Start (Home)") {
+                // See PlaybackMenuItem: the editor handles these keys so
+                // lists and text fields keep their own meaning for them.
+                Button(PlaybackMenuItem.goToStart.title(isPlaying: project.isPlaying)) {
                     project.movePlayheadToStart()
                 }
+                .help(PlaybackMenuItem.goToStart.editorKeysHelp ?? "")
 
-                Button("Go to End (End)") {
+                Button(PlaybackMenuItem.goToEnd.title(isPlaying: project.isPlaying)) {
                     project.movePlayheadToEnd()
                 }
+                .help(PlaybackMenuItem.goToEnd.editorKeysHelp ?? "")
 
-                Button("Previous Edit Point (Up Arrow)") {
+                Button(PlaybackMenuItem.previousEditPoint.title(isPlaying: project.isPlaying)) {
                     project.jumpToEditPoint(forward: false)
                 }
+                .help(PlaybackMenuItem.previousEditPoint.editorKeysHelp ?? "")
 
-                Button("Next Edit Point (Down Arrow)") {
+                Button(PlaybackMenuItem.nextEditPoint.title(isPlaying: project.isPlaying)) {
                     project.jumpToEditPoint(forward: true)
                 }
+                .help(PlaybackMenuItem.nextEditPoint.editorKeysHelp ?? "")
             }
 
             CommandMenu("Timeline") {

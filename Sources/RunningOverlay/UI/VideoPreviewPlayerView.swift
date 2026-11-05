@@ -127,7 +127,7 @@ final class VideoPreviewNSView: NSView {
             } else if previewMedia.syncsToSourceTime && !clipChanged && !isSeeking && drift > 0.35 {
                 seek(to: targetTime)
             }
-            let rate = Float(max(playbackRate, 1))
+            let rate = Float(max(playbackRate, ProjectDocument.minimumPlaybackRate))
             player.rate = rate
         } else {
             if clipChanged || abs(targetTime - lastPausedSeekTarget) > 0.02 {

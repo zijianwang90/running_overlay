@@ -332,7 +332,7 @@ final class ProjectDocument: ObservableObject {
         if isPreviewingMediaPoolItem {
             isPlaying.toggle()
             if isPlaying {
-                playbackRate = max(playbackRate, 1)
+                playbackRate = max(playbackRate, Self.minimumPlaybackRate)
             } else {
                 playbackRate = 1
             }
@@ -347,20 +347,9 @@ final class ProjectDocument: ObservableObject {
         if !isPlaying {
             playbackRate = 1
         } else {
-            playbackRate = max(playbackRate, 1)
+            playbackRate = max(playbackRate, Self.minimumPlaybackRate)
         }
         statusMessage = isPlaying ? "Playback started." : "Playback paused."
-    }
-
-    func stopPlayback() {
-        isPlaying = false
-        playbackRate = 1
-        if isPreviewingMediaPoolItem {
-            mediaPoolPreviewSourceTime = 0
-            statusMessage = "Source preview stopped."
-        } else {
-            statusMessage = "Playback stopped."
-        }
     }
 
     func increaseForwardPlaybackRate() {
@@ -368,9 +357,9 @@ final class ProjectDocument: ObservableObject {
             isPlaying = true
             playbackRate = 1
         } else {
-            playbackRate = min(playbackRate * 2, 8)
+            playbackRate = min(playbackRate * 2, Self.maximumPlaybackRate)
         }
-        statusMessage = playbackRate == 1 ? "Playback started." : "Playback \(Int(playbackRate))x."
+        statusMessage = playbackRate == 1 ? "Playback started." : "Playback \(Self.playbackRateLabel(playbackRate))."
     }
 
     /// J: halves a fast forward rate, and pauses at normal speed. Reverse
@@ -379,20 +368,30 @@ final class ProjectDocument: ObservableObject {
         guard isPlaying else { return }
         if playbackRate > 1 {
             playbackRate = max(playbackRate / 2, 1)
-            statusMessage = playbackRate == 1 ? "Playback 1x." : "Playback \(Int(playbackRate))x."
+            statusMessage = "Playback \(Self.playbackRateLabel(playbackRate))."
         } else {
             isPlaying = false
             statusMessage = "Playback paused."
         }
     }
 
+    /// Rates offered by the Preview speed menu. J and L halve and double
+    /// within the 1x...8x part of this range.
+    static let playbackRateOptions: [Double] = [0.5, 1, 2, 4, 8]
+    static let minimumPlaybackRate: Double = 0.5
+    static let maximumPlaybackRate: Double = 8
+
+    static func playbackRateLabel(_ rate: Double) -> String {
+        rate == rate.rounded() ? "\(Int(rate))x" : "\(rate)x"
+    }
+
     func setPlaybackRate(_ rate: Double) {
-        let clampedRate = min(max(rate, 1), 8)
+        let clampedRate = min(max(rate, Self.minimumPlaybackRate), Self.maximumPlaybackRate)
         playbackRate = clampedRate
         if isPlaying {
-            statusMessage = clampedRate == 1 ? "Playback started." : "Playback \(Int(clampedRate))x."
+            statusMessage = clampedRate == 1 ? "Playback started." : "Playback \(Self.playbackRateLabel(clampedRate))."
         } else {
-            statusMessage = "Playback speed \(Int(clampedRate))x."
+            statusMessage = "Playback speed \(Self.playbackRateLabel(clampedRate))."
         }
     }
 

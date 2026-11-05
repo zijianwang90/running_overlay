@@ -9,6 +9,7 @@
 		857BEEBF82BA872B5706828F /* AppLaunchCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F90D93448DFB9B9FE10A6C4 /* AppLaunchCommand.swift */; };
 		6C37E615226F1B8FF494BE59 /* ExportBenchmarkCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FBA4A29449DD6E1B2E8BE72 /* ExportBenchmarkCommand.swift */; };
 		16FF772A3969374092F731BB /* HeadlessBenchmarkRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC559EBBA7D6CBFBD0ABE110 /* HeadlessBenchmarkRunner.swift */; };
+		702EC74BC14CD6C395183C8A /* PlaybackMenuItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C5ADF6FECC3DEA1148B9AB1 /* PlaybackMenuItem.swift */; };
 		BA70C27C166C867DFE129725 /* PresetFonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 461C22D4050609BA14549233 /* PresetFonts.swift */; };
 		FD596E89332F89187293F2C5 /* RunningOverlayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B3635999AFC1DB74B38849 /* RunningOverlayApp.swift */; };
 		C36F7A0AC35EBA570ACD3ABD /* RunningOverlayMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422C715ABE853E6DD27F309B /* RunningOverlayMain.swift */; };
@@ -159,6 +160,7 @@
 		3F90D93448DFB9B9FE10A6C4 /* AppLaunchCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/AppLaunchCommand.swift"; sourceTree = SOURCE_ROOT; };
 		7FBA4A29449DD6E1B2E8BE72 /* ExportBenchmarkCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/ExportBenchmarkCommand.swift"; sourceTree = SOURCE_ROOT; };
 		EC559EBBA7D6CBFBD0ABE110 /* HeadlessBenchmarkRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/HeadlessBenchmarkRunner.swift"; sourceTree = SOURCE_ROOT; };
+		9C5ADF6FECC3DEA1148B9AB1 /* PlaybackMenuItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/PlaybackMenuItem.swift"; sourceTree = SOURCE_ROOT; };
 		461C22D4050609BA14549233 /* PresetFonts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/PresetFonts.swift"; sourceTree = SOURCE_ROOT; };
 		E4B3635999AFC1DB74B38849 /* RunningOverlayApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/RunningOverlayApp.swift"; sourceTree = SOURCE_ROOT; };
 		422C715ABE853E6DD27F309B /* RunningOverlayMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/RunningOverlayMain.swift"; sourceTree = SOURCE_ROOT; };
@@ -311,6 +313,7 @@
 			3F90D93448DFB9B9FE10A6C4 /* AppLaunchCommand.swift */,
 			7FBA4A29449DD6E1B2E8BE72 /* ExportBenchmarkCommand.swift */,
 			EC559EBBA7D6CBFBD0ABE110 /* HeadlessBenchmarkRunner.swift */,
+			9C5ADF6FECC3DEA1148B9AB1 /* PlaybackMenuItem.swift */,
 			461C22D4050609BA14549233 /* PresetFonts.swift */,
 			E4B3635999AFC1DB74B38849 /* RunningOverlayApp.swift */,
 			422C715ABE853E6DD27F309B /* RunningOverlayMain.swift */,
@@ -493,6 +496,7 @@
 			857BEEBF82BA872B5706828F /* AppLaunchCommand.swift in Sources */,
 			6C37E615226F1B8FF494BE59 /* ExportBenchmarkCommand.swift in Sources */,
 			16FF772A3969374092F731BB /* HeadlessBenchmarkRunner.swift in Sources */,
+			702EC74BC14CD6C395183C8A /* PlaybackMenuItem.swift in Sources */,
 			BA70C27C166C867DFE129725 /* PresetFonts.swift in Sources */,
 			FD596E89332F89187293F2C5 /* RunningOverlayApp.swift in Sources */,
 			C36F7A0AC35EBA570ACD3ABD /* RunningOverlayMain.swift in Sources */,
