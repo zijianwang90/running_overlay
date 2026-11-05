@@ -4,18 +4,22 @@ import UniformTypeIdentifiers
 
 struct MediaBrowserView: View {
     @EnvironmentObject private var project: ProjectDocument
-    @State private var selectedMediaIDs: Set<MediaItem.ID> = []
-    @State private var selectionAnchorID: MediaItem.ID?
+    @Environment(\.controlActiveState) private var controlActiveState
+    @State private var selection = MediaPoolSelection()
     @State private var expandedFolderIDs: Set<MediaFolder.ID> = []
     @State private var editingFolderID: MediaFolder.ID?
     @State private var editingFolderName: String = ""
     @State private var statusFilter: MediaStatusFilter = .all
     @State private var searchText = ""
-    @State private var hoveredMediaID: MediaItem.ID?
-    @State private var hoveredFolderID: MediaFolder.ID?
+    @State private var searchFocusRequest = 0
+    @State private var hoveredRowID: MediaPoolRowID?
     @State private var dropTargetFolderID: MediaFolder.ID?
     @State private var isRootDropTarget = false
-    @State private var isMediaBrowserActive = false
+    @State private var isPlaceholderDropTarget = false
+    /// Asks the key capture view to take (true) or give up (false) keyboard focus.
+    @State private var wantsKeyboardFocus = false
+    /// Whether the key capture view is the first responder.
+    @State private var hasKeyboardFocus = false
     @FocusState private var renameFieldFocused: Bool
 
     var body: some View {
@@ -34,225 +38,155 @@ struct MediaBrowserView: View {
         .background(EditorTheme.panelBackground)
         .background(
             MediaBrowserKeyHandler(
-                isActive: $isMediaBrowserActive,
-                onSelectAll: {
-                    selectedMediaIDs = Set(allVisibleMediaIDs)
-                },
+                wantsFocus: $wantsKeyboardFocus,
+                hasFocus: $hasKeyboardFocus,
+                onCommand: handleKeyCommand,
                 onFocusLost: {
                     project.clearMediaPoolPreview()
                 }
             )
         )
+        .background(findShortcut)
         .contentShape(Rectangle())
-        .onDrop(of: [.fileURL], isTargeted: nil) { providers in
-            importDroppedVideoFiles(providers)
-        }
-        .onChange(of: project.mediaItems.map(\.id)) { _, ids in
-            selectedMediaIDs.formIntersection(Set(ids))
-            if let anchor = selectionAnchorID, !ids.contains(anchor) {
-                selectionAnchorID = nil
-            }
+        .onDrop(
+            of: [.fileURL],
+            delegate: MediaPoolDropDelegate(
+                acceptsFiles: hasActivity,
+                acceptsMediaRows: false,
+                onTargetChange: { isPlaceholderDropTarget = $0 },
+                perform: { importDroppedVideoFiles($0) }
+            )
+        )
+        .onChange(of: project.mediaItems.map(\.id)) { _, _ in
+            selection.prune(toVisible: outlineRows)
         }
         .onChange(of: project.mediaFolders.map(\.id)) { _, ids in
             expandedFolderIDs.formIntersection(Set(ids))
             if let editing = editingFolderID, !ids.contains(editing) {
                 editingFolderID = nil
             }
+            selection.prune(toVisible: outlineRows)
         }
         .onChange(of: statusFilter) { _, _ in
-            pruneSelectionToVisibleItems()
+            selection.prune(toVisible: outlineRows)
         }
         .onChange(of: searchText) { _, _ in
-            pruneSelectionToVisibleItems()
+            selection.prune(toVisible: outlineRows)
+        }
+        .onChange(of: project.selection) { _, newValue in
+            // Selecting an overlay or clip makes that the current selection;
+            // the list keeps its rows but stops taking keys.
+            if newValue != .none {
+                wantsKeyboardFocus = false
+            }
         }
     }
 
+    private var hasActivity: Bool {
+        project.activity.duration > 0
+    }
+
     private var header: some View {
-        EditorPanelHeader(title: "Media") {
+        EditorPanelHeader(title: "Media", subtitle: project.mediaItems.isEmpty ? nil : visibleCountLabel) {
             Button {
-                let newID = project.createMediaFolder(containing: rootSelectedMediaIDs)
+                let ids = selection.mediaIDs
+                let newID = project.createMediaFolder(containing: ids)
                 expandedFolderIDs.insert(newID)
                 beginRenaming(folderID: newID)
             } label: {
                 Image(systemName: "folder.badge.plus")
             }
             .buttonStyle(EditorIconButtonStyle(isEnabled: true))
-            .help(rootSelectedMediaIDs.isEmpty ? "New Folder" : "New Folder from \(rootSelectedMediaIDs.count) Selected Item(s)")
+            .help(selection.mediaIDs.isEmpty ? "New Folder" : "New Folder with \(selection.mediaIDs.count) Selected Clip(s)")
             .accessibilityLabel("New Folder")
 
             Button {
-                selectedMediaIDs = Set(allVisibleMediaIDs)
+                project.importVideos()
             } label: {
-                Image(systemName: "checklist")
+                Image(systemName: "plus")
             }
-            .buttonStyle(EditorIconButtonStyle(isEnabled: !allVisibleMediaIDs.isEmpty))
-            .help("Select All Visible Media")
-            .accessibilityLabel("Select All Visible Media")
-            .disabled(allVisibleMediaIDs.isEmpty)
-
-            Button {
-                selectedMediaIDs.removeAll()
-                selectionAnchorID = nil
-            } label: {
-                Image(systemName: "xmark.circle")
-            }
-            .buttonStyle(EditorIconButtonStyle(isEnabled: !selectedMediaIDs.isEmpty))
-            .help("Clear Media Selection")
-            .accessibilityLabel("Clear Media Selection")
-            .disabled(selectedMediaIDs.isEmpty)
+            .buttonStyle(EditorIconButtonStyle(isEnabled: hasActivity))
+            .disabled(!hasActivity)
+            .help(hasActivity ? "Import Videos" : "Import an activity before importing videos")
+            .accessibilityLabel("Import Videos")
         }
+    }
+
+    /// ⌘F focuses the search field while the Media Pool is showing.
+    private var findShortcut: some View {
+        Button("Find Media") {
+            searchFocusRequest += 1
+        }
+        .keyboardShortcut("f", modifiers: .command)
+        .opacity(0)
+        .frame(width: 0, height: 0)
+        .accessibilityHidden(true)
     }
 
     private var searchAndFilterStrip: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: EditorTheme.space2) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(EditorTheme.textMuted)
-                TextField("Search media", text: $searchText)
-                    .textFieldStyle(.plain)
-                    .font(EditorTheme.bodyFont)
-                    .foregroundStyle(EditorTheme.textPrimary)
-                if !searchText.isEmpty {
-                    Button {
-                        searchText = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 12, weight: .semibold))
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(EditorTheme.textMuted)
-                    .help("Clear Search")
+        VStack(alignment: .leading, spacing: 8) {
+            MediaSearchField(text: $searchText, focusRequest: searchFocusRequest)
+                .frame(height: 22)
+
+            Picker("Filter", selection: $statusFilter) {
+                ForEach(MediaStatusFilter.allCases) { filter in
+                    filter.label
+                        .tag(filter)
                 }
             }
-            .padding(.horizontal, EditorTheme.space2)
-            .frame(height: 30)
-            .background(EditorTheme.surfaceControl)
-            .clipShape(RoundedRectangle(cornerRadius: EditorTheme.controlRadius))
-            .overlay {
-                RoundedRectangle(cornerRadius: EditorTheme.controlRadius)
-                    .stroke(EditorTheme.borderSubtle, lineWidth: 1)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(EditorTheme.borderSubtle)
-                    .frame(height: 1)
-            }
+            .pickerStyle(.segmented)
+            .labelStyle(.titleAndIcon)
+            .labelsHidden()
+            .controlSize(.small)
+            .help("Filter by alignment status")
 
-            VStack(spacing: 0) {
-                HStack(spacing: 6) {
-                    Text(visibleCountLabel)
-                        .font(EditorTheme.captionFont)
-                        .foregroundStyle(EditorTheme.textMuted)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    ForEach(MediaStatusFilter.allCases) { filter in
-                        Button {
-                            statusFilter = filter
-                        } label: {
-                            Text(filter.label)
-                        }
-                        .buttonStyle(MediaFilterChipStyle(isSelected: statusFilter == filter))
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.top, 6)
-                .padding(.bottom, !project.mediaItems.isEmpty && project.activity.duration > 0 ? 4 : 8)
-
-                if !project.mediaItems.isEmpty && project.activity.duration > 0 {
-                    fitStatusRow
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 8)
-                }
-            }
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(EditorTheme.borderSubtle)
-                    .frame(height: 1)
+            if hasActivity {
+                activityStatusRow
             }
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .background(EditorTheme.panelBackground)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(EditorTheme.borderSubtle)
+                .frame(height: 1)
+        }
     }
 
-    private var fitStatusRow: some View {
+    private var activityStatusRow: some View {
         HStack(spacing: 6) {
-            Circle()
-                .fill(EditorTheme.successGreen)
-                .frame(width: 6, height: 6)
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 11))
+                .foregroundStyle(MediaBrowserColor.aligned)
+                .accessibilityLabel("Activity loaded")
             VStack(alignment: .leading, spacing: 1) {
                 Text(project.activitySourceName.isEmpty ? "Activity loaded" : project.activitySourceName)
                     .font(EditorTheme.captionFont)
-                    .foregroundStyle(EditorTheme.textMuted)
+                    .foregroundStyle(EditorTheme.textSecondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Text(project.workoutStructureSummary)
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(EditorTheme.textMuted.opacity(0.85))
+                    .foregroundStyle(EditorTheme.textMuted)
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
+            WorkoutTypePicker()
+
             Menu {
-                ForEach(WorkoutStructureSelection.allCases) { selection in
-                    Button {
-                        project.setWorkoutStructureSelection(selection)
-                    } label: {
-                        if project.workoutStructureSelection == selection {
-                            Label(selection.label, systemImage: "checkmark")
-                        } else {
-                            Text(selection.label)
-                        }
-                    }
+                Button("Replace Activity…") {
+                    project.importActivityFile()
                 }
             } label: {
-                Text(project.workoutStructureSelection.label)
-                    .font(EditorTheme.captionFont)
-                    .foregroundStyle(EditorTheme.textSecondary)
+                Image(systemName: "ellipsis.circle")
             }
             .menuStyle(.borderlessButton)
-            .frame(width: 78)
-            .help("Workout type")
-
-            Button {
-                project.importActivityFile()
-            } label: {
-                Text("Replace")
-                    .font(EditorTheme.captionFont)
-                    .foregroundStyle(EditorTheme.textMuted)
-                    .underline()
-            }
-            .buttonStyle(.plain)
-            .help("Replace the current activity file")
-        }
-    }
-
-    private var workoutStructureMenuRow: some View {
-        HStack(spacing: 8) {
-            Text(project.workoutStructureSummary)
-                .font(EditorTheme.captionFont)
-                .foregroundStyle(EditorTheme.textMuted)
-                .lineLimit(1)
-            Menu {
-                ForEach(WorkoutStructureSelection.allCases) { selection in
-                    Button {
-                        project.setWorkoutStructureSelection(selection)
-                    } label: {
-                        if project.workoutStructureSelection == selection {
-                            Label(selection.label, systemImage: "checkmark")
-                        } else {
-                            Text(selection.label)
-                        }
-                    }
-                }
-            } label: {
-                Text(project.workoutStructureSelection.label)
-                    .font(EditorTheme.captionFont)
-            }
-            .menuStyle(.borderlessButton)
-            .frame(width: 78)
-            .help("Workout type")
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Activity Actions")
+            .accessibilityLabel("Activity Actions")
         }
     }
 
@@ -269,40 +203,65 @@ struct MediaBrowserView: View {
             Color.clear
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    selectedMediaIDs.removeAll()
-                    selectionAnchorID = nil
-                    isMediaBrowserActive = true
+                    updateSelection { $0.clear() }
+                    wantsKeyboardFocus = true
                 }
                 .background(MediaPoolStripeBackground(rowHeight: EditorTheme.mediaRowHeight))
                 .background(
                     rootDropOverlayBackground
                 )
-                .onDrop(of: [.plainText, .fileURL], isTargeted: $isRootDropTarget) { providers in
-                    handleDrop(providers: providers, targetFolderID: nil)
-                }
+                .onDrop(
+                    of: [.plainText, .fileURL],
+                    delegate: MediaPoolDropDelegate(
+                        acceptsFiles: hasActivity,
+                        acceptsMediaRows: true,
+                        onTargetChange: { isRootDropTarget = $0 },
+                        perform: { handleDrop(providers: $0, targetFolderID: nil) }
+                    )
+                )
         )
+        .overlay {
+            if isListEmphasized {
+                Rectangle()
+                    .strokeBorder(MediaBrowserColor.focusRing, lineWidth: 2)
+                    .allowsHitTesting(false)
+            }
+        }
         .contextMenu {
             emptyAreaContextMenu
         }
     }
 
+    /// Keys go to the list and the window is active: selected rows use the
+    /// accent colour. Otherwise they turn gray.
+    private var isListEmphasized: Bool {
+        hasKeyboardFocus && controlActiveState == .key
+    }
+
     @ViewBuilder
     private var emptyAreaContextMenu: some View {
-        Button("Import Media…") {
+        Button("Import Videos…") {
             project.importVideos()
         }
+        .disabled(!hasActivity)
         Button("New Folder") {
             let newID = project.createMediaFolder()
             expandedFolderIDs.insert(newID)
             beginRenaming(folderID: newID)
         }
+        Divider()
+        Button("Select All") {
+            updateSelection { $0.selectAllMedia(in: outlineRows) }
+        }
+        .keyboardShortcut("a", modifiers: .command)
+        .disabled(allVisibleMediaIDs.isEmpty)
     }
 
     @ViewBuilder
     private var rootDropOverlayBackground: some View {
         if isRootDropTarget {
             Rectangle()
-                .fill(EditorTheme.accentBlue.opacity(0.08))
+                .fill(Color.accentColor.opacity(0.08))
         }
     }
 
@@ -317,37 +276,58 @@ struct MediaBrowserView: View {
     }
 
     private func folderRow(folder: MediaFolder, childCount: Int, isExpanded: Bool, index: Int) -> some View {
-        let isHovered = hoveredFolderID == folder.id
+        let rowID = MediaPoolRowID.folder(folder.id)
         let isDropTarget = dropTargetFolderID == folder.id
         let isEditing = editingFolderID == folder.id
+        let isSelected = selection.contains(rowID)
+        let emphasized = isSelected && isListEmphasized
 
-        return HStack(spacing: 8) {
-            Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(EditorTheme.textMuted)
-                .frame(width: 12)
-            Image(systemName: isExpanded ? "folder" : "folder.fill")
+        return HStack(spacing: 6) {
+            Button {
+                toggleFolderExpansion(folder.id)
+                wantsKeyboardFocus = true
+            } label: {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .medium))
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                    .foregroundStyle(emphasized ? MediaBrowserColor.emphasizedSecondaryText : EditorTheme.textMuted)
+                    .frame(width: 14, height: 20)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(isFilterActive)
+            .help(isExpanded ? "Collapse" : "Expand")
+            .accessibilityLabel(isExpanded ? "Collapse \(folder.name)" : "Expand \(folder.name)")
+
+            Image(systemName: "folder")
                 .font(.system(size: 14))
-                .foregroundStyle(EditorTheme.accentBlue)
+                .foregroundStyle(emphasized ? MediaBrowserColor.emphasizedText : Color.accentColor)
             if isEditing {
                 folderRenameField(folder: folder)
             } else {
                 Text(folder.name)
                     .font(EditorTheme.bodyStrongFont)
-                    .foregroundStyle(EditorTheme.textPrimary)
+                    .foregroundStyle(emphasized ? MediaBrowserColor.emphasizedText : EditorTheme.textPrimary)
                     .lineLimit(1)
             }
             Spacer(minLength: 4)
             if !isEditing {
                 Text("\(childCount)")
                     .font(EditorTheme.captionFont.monospacedDigit())
-                    .foregroundStyle(EditorTheme.textMuted)
+                    .foregroundStyle(emphasized ? MediaBrowserColor.emphasizedSecondaryText : EditorTheme.textMuted)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 12)
+        .padding(.leading, 6)
+        .padding(.trailing, 12)
         .frame(height: EditorTheme.mediaRowHeight, alignment: .center)
-        .background(folderBackground(index: index, isHovered: isHovered, isDropTarget: isDropTarget))
+        .background(rowBackground(index: index, row: rowID, isDropTarget: isDropTarget))
+        .overlay {
+            if isDropTarget {
+                Rectangle()
+                    .strokeBorder(Color.accentColor, lineWidth: 2)
+            }
+        }
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(EditorTheme.borderSubtle.opacity(0.72))
@@ -355,120 +335,158 @@ struct MediaBrowserView: View {
         }
         .contentShape(Rectangle())
         .onHover { hovering in
-            hoveredFolderID = hovering ? folder.id : (hoveredFolderID == folder.id ? nil : hoveredFolderID)
+            setHovered(rowID, hovering)
         }
         .onTapGesture {
             if isEditing {
                 return
             }
-            toggleFolderExpansion(folder.id)
-            isMediaBrowserActive = true
+            handleRowClick(rowID)
         }
         .contextMenu {
-            Button("Auto Match to Current Layer") {
-                project.matchMediaItemsToCurrentLayer(mediaIDs(inFolder: folder.id))
-            }
-            .disabled(mediaIDs(inFolder: folder.id).isEmpty)
-            Button("Match to New Layer") {
-                project.matchMediaItemsToNewLayer(mediaIDs(inFolder: folder.id))
-            }
-            .disabled(mediaIDs(inFolder: folder.id).isEmpty)
-            matchToLayerMenu(for: mediaIDs(inFolder: folder.id))
-            Divider()
-            Button("Rename Folder") { beginRenaming(folderID: folder.id) }
-            Button("Delete Folder") { project.deleteMediaFolder(folder.id) }
+            rowContextMenu(for: rowID)
         }
         .onDrop(
             of: [.plainText, .fileURL],
-            isTargeted: Binding(
-                get: { dropTargetFolderID == folder.id },
-                set: { newValue in
-                    dropTargetFolderID = newValue ? folder.id : (dropTargetFolderID == folder.id ? nil : dropTargetFolderID)
-                }
+            delegate: MediaPoolDropDelegate(
+                acceptsFiles: hasActivity,
+                acceptsMediaRows: true,
+                onTargetChange: { isTargeted in
+                    dropTargetFolderID = isTargeted ? folder.id : (dropTargetFolderID == folder.id ? nil : dropTargetFolderID)
+                },
+                perform: { handleDrop(providers: $0, targetFolderID: folder.id) }
             )
-        ) { providers in
-            handleDrop(providers: providers, targetFolderID: folder.id)
-        }
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func mediaRowContainer(item: MediaItem, inFolder: Bool, index: Int) -> some View {
-        mediaRow(item, inFolder: inFolder)
+        let rowID = MediaPoolRowID.media(item.id)
+        let isSelected = selection.contains(rowID)
+
+        return mediaRow(item, emphasized: isSelected && isListEmphasized)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, inFolder ? 28 : 12)
+            .padding(.leading, inFolder ? 40 : 12)
             .padding(.trailing, 12)
             .frame(height: EditorTheme.mediaRowHeight, alignment: .center)
-            .background(rowBackground(index: index, item: item))
-            .overlay(alignment: .leading) {
-                if selectedMediaIDs.contains(item.id) {
-                    Rectangle()
-                        .fill(EditorTheme.accentBlue)
-                        .frame(width: 2)
-                }
-            }
+            .background(rowBackground(index: index, row: rowID, isDropTarget: false))
             .overlay(alignment: .bottom) {
                 Rectangle()
                     .fill(EditorTheme.borderSubtle.opacity(0.72))
                     .frame(height: 1)
             }
             .contentShape(Rectangle())
-            .onHover { isHovering in
-                hoveredMediaID = isHovering ? item.id : (hoveredMediaID == item.id ? nil : hoveredMediaID)
+            .onHover { hovering in
+                setHovered(rowID, hovering)
             }
             .onTapGesture {
-                handleMediaTap(item)
+                handleRowClick(rowID)
             }
             .contextMenu {
-                Button("Auto Match to Current Layer") {
-                    project.matchMediaItemsToCurrentLayer(actionIDs(for: item))
-                }
-                Button("Match to New Layer") {
-                    project.matchMediaItemsToNewLayer(actionIDs(for: item))
-                }
-                matchToLayerMenu(for: actionIDs(for: item))
-                Divider()
-                Button("Show in Finder") {
-                    project.showMediaItemsInFinder(actionIDs(for: item))
-                }
-                .disabled(project.mediaFileURLs(for: actionIDs(for: item)).isEmpty)
-                Divider()
-                Menu("Add to Folder") {
-                    Button("New Folder from Selection") {
-                        let ids = actionIDs(for: item).intersection(rootMediaIDs)
-                        let newID = project.createMediaFolder(containing: ids)
-                        expandedFolderIDs.insert(newID)
-                        beginRenaming(folderID: newID)
-                    }
-                    if !project.mediaFolders.isEmpty {
-                        Divider()
-                        ForEach(project.mediaFolders) { folder in
-                            Button(folder.name) {
-                                project.moveMediaItems(actionIDs(for: item), toFolder: folder.id)
-                                expandedFolderIDs.insert(folder.id)
-                            }
-                        }
-                    }
-                }
-                if anyInFolder(actionIDs(for: item)) {
-                    Button("Move to Root") {
-                        project.moveMediaItems(actionIDs(for: item), toFolder: nil)
-                    }
-                }
-                Divider()
-                Button("Select All") {
-                    selectedMediaIDs = Set(allVisibleMediaIDs)
-                }
-                Button("Delete from Media Pool") {
-                    let ids = actionIDs(for: item)
-                    selectedMediaIDs.subtract(ids)
-                    project.deleteMediaItems(ids)
-                }
+                rowContextMenu(for: rowID)
             }
             .onDrag {
                 NSItemProvider(object: item.id.uuidString as NSString)
             }
-            .onDrop(of: [.fileURL], isTargeted: nil) { providers in
-                importDroppedVideoFiles(providers, intoFolder: nil)
+            .onDrop(
+                of: [.fileURL],
+                delegate: MediaPoolDropDelegate(
+                    acceptsFiles: hasActivity,
+                    acceptsMediaRows: false,
+                    onTargetChange: { _ in },
+                    perform: { importDroppedVideoFiles($0, intoFolder: nil) }
+                )
+            )
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    /// Commands for the clicked row. When the row is part of the selection
+    /// they act on the whole selection.
+    @ViewBuilder
+    private func rowContextMenu(for row: MediaPoolRowID) -> some View {
+        let targets = selection.contains(row) ? selection.rows : [row]
+        let targetMedia = Set(targets.compactMap { if case .media(let id) = $0 { id } else { nil } })
+        let targetFolders = Set(targets.compactMap { if case .folder(let id) = $0 { id } else { nil } })
+        let clipIDs = targetMedia.union(targetFolders.flatMap { mediaIDs(inFolder: $0) })
+        let singleFolder: MediaFolder? = targetMedia.isEmpty && targetFolders.count == 1
+            ? project.mediaFolders.first { targetFolders.contains($0.id) }
+            : nil
+
+        if !clipIDs.isEmpty {
+            Button(clipIDs.count > 1 ? "Auto Match \(clipIDs.count) Clips to Current Layer" : "Auto Match to Current Layer") {
+                project.matchMediaItemsToCurrentLayer(clipIDs)
             }
+            Button("Match to New Layer") {
+                project.matchMediaItemsToNewLayer(clipIDs)
+            }
+            matchToLayerMenu(for: clipIDs)
+        }
+
+        if targetFolders.isEmpty {
+            Divider()
+            if !project.mediaFileURLs(for: targetMedia).isEmpty {
+                Button("Show in Finder") {
+                    project.showMediaItemsInFinder(targetMedia)
+                }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+            }
+            Menu("Move to Folder") {
+                Button("New Folder with Selection") {
+                    let newID = project.createMediaFolder(containing: targetMedia)
+                    expandedFolderIDs.insert(newID)
+                    beginRenaming(folderID: newID)
+                }
+                let destinations = project.mediaFolders.filter { folder in
+                    project.mediaItems.contains { targetMedia.contains($0.id) && $0.folderID != folder.id }
+                }
+                if !destinations.isEmpty {
+                    Divider()
+                    ForEach(destinations) { folder in
+                        Button(folder.name) {
+                            project.moveMediaItems(targetMedia, toFolder: folder.id)
+                            expandedFolderIDs.insert(folder.id)
+                        }
+                    }
+                }
+            }
+            if anyInFolder(targetMedia) {
+                Button("Move to Root") {
+                    project.moveMediaItems(targetMedia, toFolder: nil)
+                }
+            }
+        }
+
+        if let singleFolder {
+            Divider()
+            Button("Rename") { beginRenaming(folderID: singleFolder.id) }
+            Button("New Folder") {
+                let newID = project.createMediaFolder()
+                expandedFolderIDs.insert(newID)
+                beginRenaming(folderID: newID)
+            }
+        }
+
+        Divider()
+        if let singleFolder {
+            let childCount = mediaIDs(inFolder: singleFolder.id).count
+            if childCount > 0 {
+                Button("Delete Folder, Keep Clips") {
+                    updateSelection { $0.rows.remove(.folder(singleFolder.id)) }
+                    project.deleteMediaFolder(singleFolder.id)
+                }
+            }
+            Button(childCount == 0 ? "Delete Folder" : "Delete Folder and \(childCount) \(childCount == 1 ? "Clip" : "Clips")") {
+                deleteRows(targets)
+            }
+            .keyboardShortcut(.delete, modifiers: .command)
+        } else {
+            Button("Delete from Media Pool") {
+                deleteRows(targets)
+            }
+            .keyboardShortcut(.delete, modifiers: .command)
+        }
     }
 
     @ViewBuilder
@@ -487,10 +505,6 @@ struct MediaBrowserView: View {
         .disabled(mediaItemIDs.isEmpty || project.timeline.tracks.isEmpty)
     }
 
-    private func importVideoURLs(_ urls: [URL], intoFolder folderID: MediaFolder.ID?) {
-        project.importVideoURLs(urls, intoFolder: folderID)
-    }
-
     private func handleDrop(providers: [NSItemProvider], targetFolderID: MediaFolder.ID?) -> Bool {
         let fileURLProviders = providers.filter {
             $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier)
@@ -500,13 +514,12 @@ struct MediaBrowserView: View {
         }
 
         guard let provider = providers.first else { return false }
-        let capturedSelection = selectedMediaIDs
+        let capturedSelection = selection.mediaIDs
         let target = targetFolderID
         provider.loadObject(ofClass: NSString.self) { reading, _ in
             guard let string = reading as? String, let mediaID = UUID(uuidString: string) else { return }
-            let draggedFromSelection = capturedSelection.contains(mediaID)
             Task { @MainActor in
-                performDrop(droppedItemID: mediaID, draggedFromSelection: draggedFromSelection, targetFolderID: target)
+                performDrop(droppedItemID: mediaID, selectedMediaIDs: capturedSelection, targetFolderID: target)
             }
         }
         return true
@@ -526,6 +539,7 @@ struct MediaBrowserView: View {
             .submitLabel(.done)
             .onExitCommand {
                 editingFolderID = nil
+                wantsKeyboardFocus = true
             }
             .onAppear {
                 DispatchQueue.main.async {
@@ -540,49 +554,93 @@ struct MediaBrowserView: View {
             )
             .overlay {
                 RoundedRectangle(cornerRadius: 6)
-                    .stroke(EditorTheme.accentBlue, lineWidth: 1.5)
+                    .stroke(Color.accentColor, lineWidth: 1.5)
             }
             .frame(maxWidth: .infinity)
     }
 
-    private func handleMediaTap(_ item: MediaItem) {
-        isMediaBrowserActive = true
-        let clickCount = NSApp.currentEvent?.clickCount ?? 1
-        if clickCount >= 2 {
-            selectedMediaIDs = [item.id]
-            selectionAnchorID = item.id
-            project.previewMediaPoolItem(item.id)
-            return
-        }
-        let modifiers = NSEvent.modifierFlags
-        if modifiers.contains(.shift), let anchor = selectionAnchorID {
-            let ids = allVisibleMediaIDs
-            if let anchorIndex = ids.firstIndex(of: anchor), let targetIndex = ids.firstIndex(of: item.id) {
-                let range = anchorIndex <= targetIndex ? anchorIndex...targetIndex : targetIndex...anchorIndex
-                selectedMediaIDs = Set(ids[range])
-                return
-            }
-        }
-        if modifiers.contains(.command) {
-            if selectedMediaIDs.contains(item.id) {
-                selectedMediaIDs.remove(item.id)
-            } else {
-                selectedMediaIDs.insert(item.id)
-            }
-            selectionAnchorID = item.id
-            return
-        }
-        selectedMediaIDs = [item.id]
-        selectionAnchorID = item.id
+    /// Writes the Media Pool selection. A non-empty selection clears the
+    /// editor selection, so the Inspector and Delete never act on a stale
+    /// overlay or clip.
+    private func updateSelection(_ change: (inout MediaPoolSelection) -> Void) {
+        var next = selection
+        change(&next)
+        MediaPoolSelection.commit(next, into: &selection, project: project)
     }
 
-    private func performDrop(droppedItemID: MediaItem.ID, draggedFromSelection: Bool, targetFolderID: MediaFolder.ID?) {
-        let idsToMove: Set<MediaItem.ID>
-        if draggedFromSelection {
-            idsToMove = selectedMediaIDs
-        } else {
-            idsToMove = [droppedItemID]
+    private func handleRowClick(_ row: MediaPoolRowID) {
+        wantsKeyboardFocus = true
+        let clickCount = NSApp.currentEvent?.clickCount ?? 1
+        if clickCount >= 2 {
+            switch row {
+            case .media(let mediaID):
+                updateSelection { $0.select(row) }
+                project.previewMediaPoolItem(mediaID)
+            case .folder(let folderID):
+                if !isFilterActive {
+                    toggleFolderExpansion(folderID)
+                }
+            }
+            return
         }
+        let flags = NSEvent.modifierFlags
+        var modifiers: MediaPoolSelection.ClickModifiers = []
+        if flags.contains(.shift) { modifiers.insert(.shift) }
+        if flags.contains(.command) { modifiers.insert(.command) }
+        let outline = outlineRows
+        updateSelection { $0.click(row, modifiers: modifiers, in: outline) }
+    }
+
+    private func handleKeyCommand(_ command: MediaPoolKeyCommand) -> Bool {
+        let outline = outlineRows
+        switch command {
+        case .selectAll:
+            updateSelection { $0.selectAllMedia(in: outline) }
+        case .move(let direction, let extending):
+            updateSelection { $0.move(direction, extending: extending, in: outline) }
+        case .horizontal(let direction):
+            switch selection.horizontalAction(direction, in: outline) {
+            case .collapse(let folderID):
+                if !isFilterActive { collapseFolder(folderID) }
+            case .expand(let folderID):
+                if !isFilterActive { expandedFolderIDs.insert(folderID) }
+            case .selectParent(let folderID):
+                updateSelection { $0.select(.folder(folderID)) }
+            case .none:
+                break
+            }
+        case .rename:
+            if selection.rows.count == 1, case .folder(let folderID) = selection.rows.first {
+                beginRenaming(folderID: folderID)
+            } else {
+                NSSound.beep()
+            }
+        case .delete:
+            if selection.isEmpty {
+                NSSound.beep()
+            } else {
+                deleteRows(selection.rows)
+            }
+        case .clearSelection:
+            guard !selection.isEmpty else { return false }
+            updateSelection { $0.clear() }
+        case .showInFinder:
+            guard !selection.mediaIDs.isEmpty else { return false }
+            project.showMediaItemsInFinder(selection.mediaIDs)
+        }
+        return true
+    }
+
+    /// Deletes clips and folders (with their clips) as one undo step.
+    private func deleteRows(_ rows: Set<MediaPoolRowID>) {
+        let media = Set(rows.compactMap { if case .media(let id) = $0 { id } else { nil } })
+        let folders = Set(rows.compactMap { if case .folder(let id) = $0 { id } else { nil } })
+        updateSelection { $0.rows.subtract(rows) }
+        project.deleteMediaPoolItems(media, folders: folders)
+    }
+
+    private func performDrop(droppedItemID: MediaItem.ID, selectedMediaIDs: Set<MediaItem.ID>, targetFolderID: MediaFolder.ID?) {
+        let idsToMove = selectedMediaIDs.contains(droppedItemID) ? selectedMediaIDs : [droppedItemID]
         project.moveMediaItems(idsToMove, toFolder: targetFolderID)
         if let targetFolderID {
             expandedFolderIDs.insert(targetFolderID)
@@ -601,33 +659,33 @@ struct MediaBrowserView: View {
         let name = editingFolderName
         editingFolderID = nil
         project.renameMediaFolder(folderID, to: name)
+        wantsKeyboardFocus = true
     }
 
     private func toggleFolderExpansion(_ folderID: MediaFolder.ID) {
         if expandedFolderIDs.contains(folderID) {
-            expandedFolderIDs.remove(folderID)
-            let idsInFolder = Set(project.mediaItems.filter { $0.folderID == folderID }.map(\.id))
-            if !idsInFolder.isEmpty {
-                selectedMediaIDs.subtract(idsInFolder)
-                if let anchor = selectionAnchorID, idsInFolder.contains(anchor) {
-                    selectionAnchorID = nil
-                }
-            }
+            collapseFolder(folderID)
         } else {
             expandedFolderIDs.insert(folderID)
         }
     }
 
+    private func collapseFolder(_ folderID: MediaFolder.ID) {
+        expandedFolderIDs.remove(folderID)
+        let children = mediaIDs(inFolder: folderID)
+        updateSelection { $0.collapse(folder: folderID, childIDs: children) }
+    }
+
+    private func setHovered(_ row: MediaPoolRowID, _ hovering: Bool) {
+        if hovering {
+            hoveredRowID = row
+        } else if hoveredRowID == row {
+            hoveredRowID = nil
+        }
+    }
+
     private func anyInFolder(_ ids: Set<MediaItem.ID>) -> Bool {
         project.mediaItems.contains { ids.contains($0.id) && $0.folderID != nil }
-    }
-
-    private var rootMediaIDs: Set<MediaItem.ID> {
-        Set(project.mediaItems.filter { $0.folderID == nil }.map(\.id))
-    }
-
-    private var rootSelectedMediaIDs: Set<MediaItem.ID> {
-        selectedMediaIDs.intersection(rootMediaIDs)
     }
 
     private var filteredMediaItems: [MediaItem] {
@@ -658,6 +716,15 @@ struct MediaBrowserView: View {
 
         let id: String
         let kind: Kind
+
+        var outlineRow: MediaPoolOutlineRow {
+            switch kind {
+            case .folder(let folder, _, let isExpanded):
+                MediaPoolOutlineRow(id: .folder(folder.id), isExpanded: isExpanded)
+            case .media(let item, let inFolder):
+                MediaPoolOutlineRow(id: .media(item.id), parentFolderID: inFolder ? item.folderID : nil)
+            }
+        }
     }
 
     private var visibleRows: [VisibleRow] {
@@ -701,6 +768,10 @@ struct MediaBrowserView: View {
         return rows
     }
 
+    private var outlineRows: [MediaPoolOutlineRow] {
+        visibleRows.map(\.outlineRow)
+    }
+
     private var allVisibleMediaIDs: [MediaItem.ID] {
         visibleRows.compactMap { row in
             if case .media(let item, _) = row.kind { return item.id }
@@ -708,7 +779,7 @@ struct MediaBrowserView: View {
         }
     }
 
-    private func mediaRow(_ item: MediaItem, inFolder: Bool) -> some View {
+    private func mediaRow(_ item: MediaItem, emphasized: Bool) -> some View {
         HStack(spacing: 10) {
             RoundedRectangle(cornerRadius: 4)
                 .fill(MediaBrowserColor.thumbnailBackground)
@@ -722,38 +793,34 @@ struct MediaBrowserView: View {
                         .foregroundStyle(EditorTheme.textMuted)
                 }
                 .overlay(alignment: .topTrailing) {
-                if project.mediaPoolPreviewItemID == item.id {
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 7, weight: .bold))
-                        .foregroundStyle(Color.white)
-                        .padding(3)
-                        .background(EditorTheme.accentBlue)
-                        .clipShape(Circle())
-                        .offset(x: 3, y: -3)
+                    if project.mediaPoolPreviewItemID == item.id {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 7, weight: .bold))
+                            .foregroundStyle(Color.white)
+                            .padding(3)
+                            .background(Color.accentColor)
+                            .clipShape(Circle())
+                            .offset(x: 3, y: -3)
+                    }
                 }
-                }
-            .frame(width: 42, height: 42)
+                .frame(width: 42, height: 42)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.displayName)
                     .font(EditorTheme.bodyStrongFont)
-                    .foregroundStyle(EditorTheme.textPrimary)
+                    .foregroundStyle(emphasized ? MediaBrowserColor.emphasizedText : EditorTheme.textPrimary)
                     .lineLimit(1)
 
-                HStack(spacing: EditorTheme.space2) {
-                    Text(formatDuration(item.duration))
-                        .monospacedDigit()
-                    if let inferredStartDate = item.inferredStartDate {
-                        Text(inferredStartDate.formatted(date: .abbreviated, time: .standard))
-                            .lineLimit(1)
-                    }
-                }
-                .font(EditorTheme.captionFont)
-                .foregroundStyle(EditorTheme.textMuted)
+                Text(MediaPoolFormat.subtitle(duration: item.duration, startDate: item.inferredStartDate))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .font(EditorTheme.captionFont)
+                    .foregroundStyle(emphasized ? MediaBrowserColor.emphasizedSecondaryText : EditorTheme.textMuted)
+                    .help(item.inferredStartDate.map { $0.formatted(date: .abbreviated, time: .standard) } ?? "")
             }
             .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
 
-            MediaStatusDot(status: item.alignmentStatus, size: 8)
+            MediaStatusSymbol(status: item.alignmentStatus, emphasized: emphasized)
         }
     }
 
@@ -763,10 +830,10 @@ struct MediaBrowserView: View {
         GeometryReader { proxy in
             ScrollView {
                 Group {
-                    if project.activity.duration <= 0 {
-                        fitImportPlaceholder
-                    } else {
+                    if hasActivity {
                         videoImportPlaceholder
+                    } else {
+                        fitImportPlaceholder
                     }
                 }
                 .frame(minHeight: proxy.size.height)
@@ -774,25 +841,28 @@ struct MediaBrowserView: View {
         }
     }
 
+    /// While a video is dragged over it, this explains why the drop is
+    /// refused instead of reporting an error after the drop.
     private var fitImportPlaceholder: some View {
-        VStack(spacing: 8) {
+        let isRefusingDrop = isPlaceholderDropTarget
+        return VStack(spacing: 8) {
             Spacer()
             StepIndicator(currentStep: .fit)
                 .padding(.bottom, EditorTheme.space2)
             Image(systemName: "waveform.path.ecg")
                 .font(.system(size: 32))
                 .foregroundStyle(EditorTheme.textMuted)
-            Text("Import Activity")
+            Text(isRefusingDrop ? "Import an Activity First" : "Import Activity")
                 .font(EditorTheme.bodyStrongFont)
                 .foregroundStyle(EditorTheme.textSecondary)
-            Text("Choose a FIT or GPX running activity")
+            Text(isRefusingDrop ? "Videos are matched to a FIT or GPX activity." : "Choose a FIT or GPX running activity")
                 .font(EditorTheme.captionFont)
                 .foregroundStyle(EditorTheme.textMuted)
                 .multilineTextAlignment(.center)
             Button {
                 project.importActivityFile()
             } label: {
-                Label("Import Activity", systemImage: "plus")
+                Label("Import Activity…", systemImage: "plus")
             }
             .buttonStyle(EditorPrimaryButtonStyle())
             Text("Then import videos")
@@ -811,30 +881,15 @@ struct MediaBrowserView: View {
     }
 
     private var videoImportPlaceholder: some View {
-        VStack(spacing: 8) {
+        let isAcceptingDrop = isPlaceholderDropTarget
+        return VStack(spacing: 8) {
             Spacer()
             StepIndicator(currentStep: .videos)
-            VStack(spacing: 2) {
-                Button {
-                    project.importActivityFile()
-                } label: {
-                    Text("Replace Activity")
-                        .font(EditorTheme.captionFont)
-                        .foregroundStyle(EditorTheme.textMuted)
-                        .underline()
-                }
-                .buttonStyle(.plain)
-                .help("Replace the current activity file")
-
-                if project.activity.duration > 0 {
-                    workoutStructureMenuRow
-                }
-            }
-            .padding(.bottom, EditorTheme.space2)
+                .padding(.bottom, EditorTheme.space2)
             Image(systemName: "video.badge.plus")
                 .font(.system(size: 32))
-                .foregroundStyle(EditorTheme.textMuted)
-            Text("Drop videos here")
+                .foregroundStyle(isAcceptingDrop ? Color.accentColor : EditorTheme.textMuted)
+            Text(isAcceptingDrop ? "Release to Import" : "Drop videos here")
                 .font(EditorTheme.bodyStrongFont)
                 .foregroundStyle(EditorTheme.textSecondary)
             Text("Import clips to match them with your running activity")
@@ -844,7 +899,7 @@ struct MediaBrowserView: View {
             Button {
                 project.importVideos()
             } label: {
-                Label("Import Videos", systemImage: "plus")
+                Label("Import Videos…", systemImage: "plus")
             }
             .buttonStyle(EditorPrimaryButtonStyle())
             Text("MP4, MOV")
@@ -857,8 +912,16 @@ struct MediaBrowserView: View {
         .background(EditorTheme.panelBackground)
         .overlay {
             RoundedRectangle(cornerRadius: EditorTheme.panelRadius)
-                .stroke(EditorTheme.borderSubtle, style: StrokeStyle(lineWidth: 1, dash: [5, 5]))
+                .fill(isAcceptingDrop ? Color.accentColor.opacity(0.08) : Color.clear)
+                .overlay {
+                    RoundedRectangle(cornerRadius: EditorTheme.panelRadius)
+                        .stroke(
+                            isAcceptingDrop ? Color.accentColor : EditorTheme.borderSubtle,
+                            style: StrokeStyle(lineWidth: isAcceptingDrop ? 2 : 1, dash: [5, 5])
+                        )
+                }
                 .padding(EditorTheme.space4)
+                .allowsHitTesting(false)
         }
     }
 
@@ -877,28 +940,14 @@ struct MediaBrowserView: View {
         .background(EditorTheme.panelBackground)
     }
 
-    private func actionIDs(for item: MediaItem) -> Set<MediaItem.ID> {
-        if selectedMediaIDs.contains(item.id) {
-            return selectedMediaIDs
-        }
-        return [item.id]
-    }
-
-    private func rowBackground(index: Int, item: MediaItem) -> Color {
-        if selectedMediaIDs.contains(item.id) {
-            return MediaBrowserColor.selectedRow
-        }
-        if hoveredMediaID == item.id {
-            return MediaBrowserColor.hoverRow
-        }
-        return index.isMultiple(of: 2) ? MediaBrowserColor.evenRow : MediaBrowserColor.oddRow
-    }
-
-    private func folderBackground(index: Int, isHovered: Bool, isDropTarget: Bool) -> Color {
+    private func rowBackground(index: Int, row: MediaPoolRowID, isDropTarget: Bool) -> Color {
         if isDropTarget {
-            return EditorTheme.accentBlue.opacity(0.18)
+            return Color.accentColor.opacity(0.12)
         }
-        if isHovered {
+        if selection.contains(row) {
+            return isListEmphasized ? MediaBrowserColor.selectedRow : MediaBrowserColor.unemphasizedSelectedRow
+        }
+        if hoveredRowID == row {
             return MediaBrowserColor.hoverRow
         }
         return index.isMultiple(of: 2) ? MediaBrowserColor.evenRow : MediaBrowserColor.oddRow
@@ -916,17 +965,10 @@ struct MediaBrowserView: View {
         return "No media matches the current filter"
     }
 
-    private func pruneSelectionToVisibleItems() {
-        let visible = Set(filteredMediaItems.map(\.id))
-        selectedMediaIDs.formIntersection(visible)
-        if let anchor = selectionAnchorID, !visible.contains(anchor) {
-            selectionAnchorID = nil
-        }
-    }
-
     private func importDroppedVideoFiles(_ providers: [NSItemProvider], intoFolder folderID: MediaFolder.ID? = nil) -> Bool {
-        guard project.activity.duration > 0 else {
-            project.reportError("Import a FIT or GPX file before importing videos.")
+        // The drop delegates refuse files before an activity exists, so this
+        // is only a guard.
+        guard hasActivity else {
             return false
         }
 
@@ -953,14 +995,161 @@ struct MediaBrowserView: View {
         }
         return true
     }
+}
 
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let minutes = Int(duration) / 60
-        let seconds = Int(duration) % 60
-        return "\(minutes)m \(seconds)s"
+/// Text for the second line of a media row.
+enum MediaPoolFormat {
+    /// `4:12`, or `1:02:05` past an hour, matching the Timeline.
+    static func duration(_ duration: TimeInterval) -> String {
+        let total = max(Int(duration.rounded(.down)), 0)
+        let hours = total / 3600
+        let minutes = (total % 3600) / 60
+        let seconds = total % 60
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        }
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    /// Duration and start time without seconds, such as `4:12 · 8:39 AM`.
+    /// The full date goes in the row's help tag.
+    static func subtitle(duration: TimeInterval, startDate: Date?) -> String {
+        guard let startDate else { return Self.duration(duration) }
+        return "\(Self.duration(duration)) · \(startDate.formatted(date: .omitted, time: .shortened))"
     }
 }
 
+/// The workout-type pop-up shared by every Activity status row.
+private struct WorkoutTypePicker: View {
+    @EnvironmentObject private var project: ProjectDocument
+
+    var body: some View {
+        Picker(
+            "Workout type",
+            selection: Binding(
+                get: { project.workoutStructureSelection },
+                set: { newValue in
+                    guard newValue != project.workoutStructureSelection else { return }
+                    project.setWorkoutStructureSelection(newValue)
+                }
+            )
+        ) {
+            ForEach(WorkoutStructureSelection.allCases) { selection in
+                Text(selection.label)
+                    .tag(selection)
+            }
+        }
+        .pickerStyle(.menu)
+        .labelsHidden()
+        .controlSize(.small)
+        .fixedSize()
+        .help("Workout type")
+    }
+}
+
+/// The system search field. Its cancel button and Escape clear the text.
+private struct MediaSearchField: NSViewRepresentable {
+    @Binding var text: String
+    /// Incremented to move keyboard focus into the field (⌘F).
+    var focusRequest: Int
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text)
+    }
+
+    func makeNSView(context: Context) -> NSSearchField {
+        let field = NSSearchField()
+        field.placeholderString = "Search"
+        field.controlSize = .small
+        field.font = .systemFont(ofSize: NSFont.systemFontSize(for: .small))
+        field.sendsSearchStringImmediately = true
+        field.delegate = context.coordinator
+        field.target = context.coordinator
+        field.action = #selector(Coordinator.searchChanged(_:))
+        field.setAccessibilityLabel("Search Media")
+        context.coordinator.lastFocusRequest = focusRequest
+        return field
+    }
+
+    func updateNSView(_ field: NSSearchField, context: Context) {
+        context.coordinator.text = $text
+        if field.stringValue != text {
+            field.stringValue = text
+        }
+        if context.coordinator.lastFocusRequest != focusRequest {
+            context.coordinator.lastFocusRequest = focusRequest
+            DispatchQueue.main.async {
+                field.window?.makeFirstResponder(field)
+            }
+        }
+    }
+
+    final class Coordinator: NSObject, NSSearchFieldDelegate {
+        var text: Binding<String>
+        var lastFocusRequest = 0
+
+        init(text: Binding<String>) {
+            self.text = text
+        }
+
+        func controlTextDidChange(_ notification: Notification) {
+            guard let field = notification.object as? NSSearchField else { return }
+            text.wrappedValue = field.stringValue
+        }
+
+        @objc func searchChanged(_ sender: NSSearchField) {
+            text.wrappedValue = sender.stringValue
+        }
+    }
+}
+
+/// Refuses drops the Media Pool cannot take while the pointer is still
+/// moving, so the cursor never shows a `+` for a drop that would fail.
+private struct MediaPoolDropDelegate: DropDelegate {
+    /// Video files need an activity to match against.
+    var acceptsFiles: Bool
+    /// Rows dragged from inside the Media Pool.
+    var acceptsMediaRows: Bool
+    var onTargetChange: (Bool) -> Void
+    var perform: ([NSItemProvider]) -> Bool
+
+    func validateDrop(info: DropInfo) -> Bool {
+        info.hasItemsConforming(to: [.fileURL, .plainText])
+    }
+
+    func dropEntered(info: DropInfo) {
+        onTargetChange(true)
+    }
+
+    func dropExited(info: DropInfo) {
+        onTargetChange(false)
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        guard let operation = operation(for: info) else {
+            return DropProposal(operation: .forbidden)
+        }
+        return DropProposal(operation: operation)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        onTargetChange(false)
+        guard operation(for: info) != nil else { return false }
+        return perform(info.itemProviders(for: [.fileURL, .plainText]))
+    }
+
+    private func operation(for info: DropInfo) -> DropOperation? {
+        if info.hasItemsConforming(to: [.fileURL]) {
+            return acceptsFiles ? .copy : nil
+        }
+        if info.hasItemsConforming(to: [.plainText]) {
+            return acceptsMediaRows ? .move : nil
+        }
+        return nil
+    }
+}
+
+/// Plain progress text, not a control: "✓ Activity · 2 Videos".
 private struct StepIndicator: View {
     enum CurrentStep {
         case fit
@@ -970,132 +1159,137 @@ private struct StepIndicator: View {
     let currentStep: CurrentStep
 
     var body: some View {
-        HStack(spacing: EditorTheme.space2) {
-            step(label: "1 Activity", state: currentStep == .fit ? .active : .complete)
-
-            Rectangle()
-                .fill(EditorTheme.borderSubtle)
-                .frame(width: 18, height: 1)
-
-            step(label: "2 Videos", state: currentStep == .videos ? .active : .inactive)
+        HStack(spacing: 6) {
+            step(
+                "Activity",
+                systemImage: currentStep == .fit ? "1.circle" : "checkmark.circle.fill",
+                color: currentStep == .fit ? EditorTheme.textPrimary : MediaBrowserColor.aligned,
+                isCurrent: currentStep == .fit
+            )
+            Text("·")
+                .foregroundStyle(EditorTheme.textMuted)
+            step(
+                "Videos",
+                systemImage: "2.circle",
+                color: currentStep == .videos ? EditorTheme.textPrimary : EditorTheme.textMuted,
+                isCurrent: currentStep == .videos
+            )
         }
+        .font(EditorTheme.captionFont)
+        .accessibilityElement(children: .combine)
     }
 
-    private func step(label: String, state: StepState) -> some View {
-        Text(label)
-            .font(EditorTheme.captionFont.weight(.medium))
-            .foregroundStyle(state.foreground)
-            .padding(.horizontal, EditorTheme.space2)
-            .frame(height: 22)
-            .background(state.background)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .overlay {
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(state.border, lineWidth: 1)
-            }
+    private func step(_ label: String, systemImage: String, color: Color, isCurrent: Bool) -> some View {
+        Label(label, systemImage: systemImage)
+            .labelStyle(.titleAndIcon)
+            .fontWeight(isCurrent ? .semibold : .regular)
+            .foregroundStyle(color)
     }
+}
 
-    private enum StepState {
-        case active
-        case complete
-        case inactive
-
-        var foreground: Color {
-            switch self {
-            case .active:
-                Color.white
-            case .complete:
-                EditorTheme.successGreen
-            case .inactive:
-                EditorTheme.textMuted
-            }
-        }
-
-        var background: Color {
-            switch self {
-            case .active:
-                EditorTheme.accentBlue
-            case .complete:
-                EditorTheme.surfaceControl
-            case .inactive:
-                EditorTheme.surfacePressed
-            }
-        }
-
-        var border: Color {
-            switch self {
-            case .active:
-                EditorTheme.accentBlue
-            case .complete:
-                EditorTheme.successGreen.opacity(0.7)
-            case .inactive:
-                EditorTheme.borderSubtle
-            }
-        }
+/// Which Media Pool owns the keyboard. `MainEditorView` checks this so its
+/// window-wide Delete does not act on the editor selection while the list
+/// is focused.
+enum MediaPoolKeyFocus {
+    @MainActor static func owns(_ responder: NSResponder?) -> Bool {
+        responder is MediaBrowserKeyCaptureView
     }
 }
 
 private struct MediaBrowserKeyHandler: NSViewRepresentable {
-    @Binding var isActive: Bool
-    var onSelectAll: () -> Void
+    @Binding var wantsFocus: Bool
+    @Binding var hasFocus: Bool
+    var onCommand: (MediaPoolKeyCommand) -> Bool
     var onFocusLost: () -> Void
 
     func makeNSView(context: Context) -> MediaBrowserKeyCaptureView {
         let view = MediaBrowserKeyCaptureView()
-        view.onSelectAll = onSelectAll
-        view.onFocusLost = {
-            isActive = false
-            onFocusLost()
-        }
+        configure(view)
         return view
     }
 
     func updateNSView(_ nsView: MediaBrowserKeyCaptureView, context: Context) {
-        nsView.onSelectAll = onSelectAll
-        nsView.onFocusLost = {
-            isActive = false
-            onFocusLost()
-        }
+        configure(nsView)
 
-        guard isActive, nsView.window?.firstResponder !== nsView else {
-            return
+        let isFirstResponder = nsView.window?.firstResponder === nsView
+        if wantsFocus, !isFirstResponder {
+            DispatchQueue.main.async {
+                nsView.window?.makeFirstResponder(nsView)
+            }
+        } else if !wantsFocus, isFirstResponder {
+            DispatchQueue.main.async {
+                if nsView.window?.firstResponder === nsView {
+                    nsView.window?.makeFirstResponder(nil)
+                }
+            }
         }
-        DispatchQueue.main.async {
-            nsView.window?.makeFirstResponder(nsView)
+    }
+
+    private func configure(_ view: MediaBrowserKeyCaptureView) {
+        view.onCommand = onCommand
+        view.onFocusChange = { focused in
+            hasFocus = focused
+            wantsFocus = focused
+            if !focused {
+                onFocusLost()
+            }
         }
     }
 }
 
 private final class MediaBrowserKeyCaptureView: NSView {
-    var onSelectAll: (() -> Void)?
-    var onFocusLost: (() -> Void)?
+    var onCommand: ((MediaPoolKeyCommand) -> Bool)?
+    var onFocusChange: ((Bool) -> Void)?
 
     override var acceptsFirstResponder: Bool {
         true
     }
 
+    /// The list draws its own focus ring around the rows.
     override var focusRingType: NSFocusRingType {
         get { .none }
         set {}
     }
 
-    override func keyDown(with event: NSEvent) {
-        if event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command),
-           event.charactersIgnoringModifiers?.lowercased() == "a" {
-            onSelectAll?()
-            return
+    override func becomeFirstResponder() -> Bool {
+        let didBecome = super.becomeFirstResponder()
+        if didBecome {
+            DispatchQueue.main.async { [weak self] in
+                self?.onFocusChange?(true)
+            }
         }
-        super.keyDown(with: event)
+        return didBecome
     }
 
     override func resignFirstResponder() -> Bool {
         let didResign = super.resignFirstResponder()
         if didResign {
             DispatchQueue.main.async { [weak self] in
-                self?.onFocusLost?()
+                self?.onFocusChange?(false)
             }
         }
         return didResign
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if let command = MediaPoolKeyCommand(
+            keyCode: event.keyCode,
+            modifiers: event.modifierFlags,
+            characters: event.charactersIgnoringModifiers
+        ), onCommand?(command) == true {
+            return
+        }
+        super.keyDown(with: event)
+    }
+
+    /// Edit > Select All.
+    override func selectAll(_ sender: Any?) {
+        _ = onCommand?(.selectAll)
+    }
+
+    /// Edit > Delete.
+    @objc func delete(_ sender: Any?) {
+        _ = onCommand?(.delete)
     }
 }
 
@@ -1106,14 +1300,15 @@ private enum MediaStatusFilter: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var label: String {
+    @ViewBuilder
+    var label: some View {
         switch self {
         case .all:
-            "All"
+            Text("All")
         case .ready:
-            "Ready"
+            Label("Ready", systemImage: MediaStatusSymbol.symbolName(for: .readyToMatch(source: "")))
         case .aligned:
-            "Aligned"
+            Label("Aligned", systemImage: MediaStatusSymbol.symbolName(for: .aligned(source: "")))
         }
     }
 
@@ -1131,68 +1326,40 @@ private enum MediaStatusFilter: String, CaseIterable, Identifiable {
     }
 }
 
-private struct MediaFilterChipStyle: ButtonStyle {
-    var isSelected: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(isSelected ? Color.white : EditorTheme.textSecondary)
-            .padding(.horizontal, 10)
-            .frame(height: 24)
-            .background(background(isPressed: configuration.isPressed))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .overlay {
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(isSelected ? EditorTheme.accentBlue : EditorTheme.borderSubtle, lineWidth: 1)
-            }
-    }
-
-    private func background(isPressed: Bool) -> Color {
-        if isPressed {
-            return EditorTheme.surfacePressed
-        }
-        return isSelected ? EditorTheme.accentBlue : EditorTheme.surfaceControl
-    }
-}
-
-private struct MediaStatusDot: View {
+/// Alignment status as a symbol plus colour, so it reads without colour.
+private struct MediaStatusSymbol: View {
     let status: AlignmentStatus
-    let size: CGFloat
+    var emphasized = false
+
+    static func symbolName(for status: AlignmentStatus) -> String {
+        switch status {
+        case .aligned:
+            "checkmark.circle.fill"
+        case .readyToMatch:
+            "clock"
+        case .needsManualPlacement:
+            "questionmark.circle"
+        }
+    }
 
     var body: some View {
-        Circle()
-            .fill(fill)
-            .overlay {
-                Circle()
-                    .stroke(stroke, lineWidth: max(size * 0.08, 1))
-            }
-            .frame(width: size, height: size)
+        Image(systemName: Self.symbolName(for: status))
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(emphasized ? MediaBrowserColor.emphasizedText : color)
             .frame(width: 18, height: 18)
             .contentShape(Rectangle())
             .help(status.helpText)
             .accessibilityLabel(status.helpText)
     }
 
-    private var fill: Color {
+    private var color: Color {
         switch status {
         case .aligned:
-            EditorTheme.successGreen
+            MediaBrowserColor.aligned
         case .readyToMatch:
-            EditorTheme.warningYellow
+            MediaBrowserColor.ready
         case .needsManualPlacement:
-            EditorTheme.textMuted
-        }
-    }
-
-    private var stroke: Color {
-        switch status {
-        case .aligned:
-            EditorTheme.successGreen.opacity(0.78)
-        case .readyToMatch:
-            EditorTheme.warningYellow.opacity(0.78)
-        case .needsManualPlacement:
-            EditorTheme.textMuted.opacity(0.78)
+            MediaBrowserColor.manual
         }
     }
 }
@@ -1201,9 +1368,16 @@ private enum MediaBrowserColor {
     static let panel = EditorTheme.panelBackground
     static let evenRow = EditorTheme.panelHeader
     static let oddRow = EditorTheme.panelBackground
-    static let hoverRow = Color(hex: 0x222932)
-    static let selectedRow = EditorTheme.surfaceSelected
-    static let thumbnailBackground = Color(hex: 0x101418)
+    static let hoverRow = Color(nsColor: .quaternarySystemFill)
+    static let selectedRow = Color(nsColor: .selectedContentBackgroundColor)
+    static let unemphasizedSelectedRow = Color(nsColor: .unemphasizedSelectedContentBackgroundColor)
+    static let emphasizedText = Color(nsColor: .alternateSelectedControlTextColor)
+    static let emphasizedSecondaryText = Color(nsColor: .alternateSelectedControlTextColor).opacity(0.8)
+    static let focusRing = Color(nsColor: .keyboardFocusIndicatorColor)
+    static let thumbnailBackground = Color(nsColor: .underPageBackgroundColor)
+    static let aligned = Color(nsColor: .systemGreen)
+    static let ready = Color(nsColor: .systemYellow)
+    static let manual = Color(nsColor: .systemGray)
 }
 
 private struct MediaPoolStripeBackground: View {

@@ -994,6 +994,33 @@ final class ProjectDocument: ObservableObject {
             return
         }
         registerUndoPoint()
+        removeMediaItems(mediaItemIDs)
+        statusMessage = "Deleted \(mediaItemIDs.count) media item(s) from the media pool."
+    }
+
+    /// Deletes a Media Pool selection as one undo step. Selected folders are
+    /// deleted together with the clips inside them.
+    func deleteMediaPoolItems(_ mediaItemIDs: Set<MediaItem.ID>, folders folderIDs: Set<MediaFolder.ID>) {
+        let existingFolderIDs = folderIDs.filter { id in mediaFolders.contains { $0.id == id } }
+        let clipIDs = mediaItemIDs.union(
+            mediaItems.filter { item in item.folderID.map(existingFolderIDs.contains) ?? false }.map(\.id)
+        ).filter { id in mediaItems.contains { $0.id == id } }
+        guard !clipIDs.isEmpty || !existingFolderIDs.isEmpty else {
+            return
+        }
+        registerUndoPoint()
+        if !clipIDs.isEmpty {
+            removeMediaItems(clipIDs)
+        }
+        mediaFolders.removeAll { existingFolderIDs.contains($0.id) }
+        if existingFolderIDs.isEmpty {
+            statusMessage = "Deleted \(clipIDs.count) media item(s) from the media pool."
+        } else {
+            statusMessage = "Deleted \(existingFolderIDs.count) folder(s) and \(clipIDs.count) media item(s) from the media pool."
+        }
+    }
+
+    private func removeMediaItems(_ mediaItemIDs: Set<MediaItem.ID>) {
         mediaItems.removeAll { mediaItemIDs.contains($0.id) }
         if let mediaPoolPreviewItemID, mediaItemIDs.contains(mediaPoolPreviewItemID) {
             self.mediaPoolPreviewItemID = nil
@@ -1005,7 +1032,6 @@ final class ProjectDocument: ObservableObject {
         updatedTimeline.deleteClips(forMediaItemIDs: mediaItemIDs)
         timeline = updatedTimeline
         reconcileTimelineSelection()
-        statusMessage = "Deleted \(mediaItemIDs.count) media item(s) from the media pool."
     }
 
     func setSelectedClipOffset(_ clipID: TimelineClip.ID, offset: TimeInterval) {

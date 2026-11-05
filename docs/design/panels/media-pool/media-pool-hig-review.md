@@ -53,6 +53,8 @@ sidebars、panels）、`hig-components-search`（search-fields）、
 
 ### [P1] 媒体列表不支持键盘操作
 
+- **Status**：已完成（2026-11-05，`feature/media-pool-hig`）。 保留自绘列表，扩展 `MediaBrowserKeyCaptureView`；选择规则在 `MediaPoolSelection`。Return 改为重命名文件夹（产品决定），预览仍用双击。
+
 - **Surface**：所有媒体行和文件夹行。
 - **Evidence**：`MediaBrowserView.swift:1082-1089`。`MediaBrowserKeyCaptureView`
   只拦截 ⌘A，其他按键交给 `super.keyDown`。列表本身是 `ScrollView + LazyVStack`
@@ -80,6 +82,8 @@ sidebars、panels）、`hig-components-search`（search-fields）、
 - **Validation**：focused test 覆盖选择和删除后的撤销；手动检查键盘操作和 Tab 顺序。
 
 ### [P1] 媒体选择与项目选择互不感知，⌫ 可能删错对象
+
+- **Status**：已完成（2026-11-05，`feature/media-pool-hig`）。 选中媒体时清空 `project.selection`；列表有焦点时 `MainEditorView` 的 Delete 不生效。overlay 后选 clip 的提示音问题另行修复。
 
 - **实测（2026-11-05）**：先选中一个 overlay，再选中一个 clip，按 Delete，
   系统发出错误提示音，什么都没有删除。删除的目标与用户看到的选择不一致，已确认需要修复。
@@ -111,6 +115,8 @@ sidebars、panels）、`hig-components-search`（search-fields）、
 
 ### [P1] 文件夹行不能被选中，单击就展开
 
+- **Status**：已完成（2026-11-05，`feature/media-pool-hig`）。 单击选中，三角形、←/→、双击展开；收起时选中的子项移到文件夹上。
+
 - **Surface**：文件夹行。
 - **Evidence**：`MediaBrowserView.swift:360-366`，整行 `onTapGesture` 直接调用
   `toggleFolderExpansion`。另外，收起文件夹时会悄悄丢掉其中已选中的媒体
@@ -128,6 +134,8 @@ sidebars、panels）、`hig-components-search`（search-fields）、
 - **Validation**：focused test 断言收起文件夹后选择不会静默丢失。
 
 ### [P1] 状态只用颜色区分
+
+- **Status**：已完成（2026-11-05，`feature/media-pool-hig`）。
 
 - **Surface**：每行右侧的对齐状态点，Activity 状态行左侧的绿点。
 - **Evidence**：`MediaStatusDot` 用 8pt 圆点区分绿、黄、灰三种状态
@@ -147,6 +155,8 @@ sidebars、panels）、`hig-components-search`（search-fields）、
 
 ### [P2] Header 工具按钮重复了标准命令
 
+- **Status**：已完成（2026-11-05，`feature/media-pool-hig`）。
+
 - **Evidence**：`MediaBrowserView.swift:83-102`，“全选”（`checklist`）和
   “清除选择”（`xmark.circle`）做成了常驻的图标按钮。
 - **HIG basis**：`hig-components-menus/buttons`、`toolbars`（工具栏只放常用、
@@ -158,6 +168,8 @@ sidebars、panels）、`hig-components-search`（search-fields）、
   “Select All” 交给 ⌘A 和右键菜单；清除选择交给点击空白处和 Esc。
 
 ### [P2] 搜索框和过滤条是自绘的
+
+- **Status**：已完成（2026-11-05，`feature/media-pool-hig`）。
 
 - **Evidence**：搜索框是 `TextField(.plain)` 加自绘放大镜和清除按钮
   （`MediaBrowserView.swift:108-135`）；All / Ready / Aligned 是三个
@@ -175,6 +187,8 @@ sidebars、panels）、`hig-components-search`（search-fields）、
 
 ### [P2] “Replace” 是网页式下划线链接，Workout type 菜单没有指示器
 
+- **Status**：已完成（2026-11-05，`feature/media-pool-hig`）。 Activity 的 Show in Finder 未做：项目只保存文件名，没有 URL。
+
 - **Evidence**：`MediaBrowserView.swift:218-227` 与 `818-827` 用带下划线的文字
   按钮替换 Activity。`MediaBrowserView.swift:197-216` 与 `237-256`
   的 Workout type 菜单 `.menuStyle(.borderlessButton)` 只显示文字，
@@ -190,6 +204,8 @@ sidebars、panels）、`hig-components-search`（search-fields）、
 
 ### [P2] 选中态不区分窗口焦点
 
+- **Status**：已完成（2026-11-05，`feature/media-pool-hig`）。
+
 - **Evidence**：`rowBackground` 只看 `selectedMediaIDs`
   （`MediaBrowserView.swift:887-895`），选中行一直是同一种蓝灰底色，
   左侧再加 2px 蓝条。
@@ -202,6 +218,8 @@ sidebars、panels）、`hig-components-search`（search-fields）、
   `@Environment(\.controlActiveState)` 和焦点状态，提供两套底色。
 
 ### [P2] 拖入视频时，不合法的拖放也显示“可以放下”
+
+- **Status**：已完成（2026-11-05，`feature/media-pool-hig`）。
 
 - **Evidence**：`importDroppedVideoFiles` 在 drop 发生**之后**才检查是否已导入
   Activity，不满足时弹出错误（`MediaBrowserView.swift:927-931`）。
@@ -217,6 +235,8 @@ sidebars、panels）、`hig-components-search`（search-fields）、
 
 ### [P2] 右键菜单的结构
 
+- **Status**：已完成（2026-11-05，`feature/media-pool-hig`）。
+
 - **Evidence**：`MediaBrowserView.swift:420-465`。
   - “Select All” 出现在单行的右键菜单里。
   - “Delete from Media Pool” 没有 destructive 标记，也没有显示快捷键。
@@ -231,20 +251,20 @@ sidebars、panels）、`hig-components-search`（search-fields）、
 
 ## P3：打磨
 
-- **文件夹图标反了**：收起时显示实心 `folder.fill`，展开时显示空心 `folder`
+- **[已完成] 文件夹图标反了**：收起时显示实心 `folder.fill`，展开时显示空心 `folder`
   （`MediaBrowserView.swift:329`）。Finder 不会随展开状态更换图标；
   建议固定使用 `folder`，展开状态只交给 disclosure triangle。
 - **Disclosure 符号**：`chevron.right` / `chevron.down` 方向正确，但尺寸是 10pt
   semibold。系统 outline view 的 disclosure triangle 更细，交给 `OutlineGroup`
   渲染即可。
-- **步骤指示器像按钮**：空状态的 “1 Activity → 2 Videos” 用带描边的圆角块表示
+- **[已完成] 步骤指示器像按钮**：空状态的 “1 Activity → 2 Videos” 用带描边的圆角块表示
   （`MediaBrowserView.swift:984-996`），看起来可以点击，实际不能。
   建议改成无边框的文字加符号，例如 “✓ Activity · 2 Videos”。
-- **时长格式**：`12m 5s` 与 Timeline 的 `12:05` 不一致。建议统一为
+- **[已完成] 时长格式**：`12m 5s` 与 Timeline 的 `12:05` 不一致。建议统一为
   `12:05`，搭配 `.monospacedDigit()`。
-- **日期包含秒**：`time: .standard` 会显示到秒，第二行很容易被截断。
+- **[已完成] 日期包含秒**：`time: .standard` 会显示到秒，第二行很容易被截断。
   建议使用 `.shortened`，完整时间放到 `.help` 里。
-- **颜色写死为 hex**：与 Inspector 相同，`MediaBrowserColor` 应映射到语义色，
+- **[已完成，仅 `MediaBrowserColor`] 颜色写死为 hex**：与 Inspector 相同，`MediaBrowserColor` 应映射到语义色，
   这样 Increase Contrast 才能生效。
 - **重命名**：只能从右键菜单进入。Finder 的惯例是选中后按 Return 进入重命名；
   但本面板的 Return 更适合用于预览，建议保留菜单入口，再增加 “双击名称重命名”。
