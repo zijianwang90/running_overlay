@@ -101,22 +101,25 @@ ADR 0013 records the design. Code lives in
     project timeline time and regions no track covers become `gap` elements.
     The Full Activity layout always keeps positions, because its single
     overlay is in activity time and would drift otherwise.
-  - The spine takes clips in time order whenever they do not overlap what
-    precedes them, so every covered region is anchored to a real clip.
-    FCPXML gaps cannot carry connected clips, which is why the spine is built
-    this way.
-  - Clips from other app tracks that overlap in time become connected clips on
-    lanes above the spine item that contains their start. Lanes are packed in
-    frame ranges, so overlapping angles never share a lane. Two camera tracks
-    therefore import as V1 plus V2 (or more lanes per overlapping angle).
-  - Clips that only touch end-to-start stay in the spine and do not need a
-    lane.
-  - Each source clip has its overlay as a connected clip. Lane numbers are
-    relative to the parent: overlays sit above every source lane, sharing one
-    lane when sequential and stacking when they overlap. The connected clip's
-    `offset` is in the parent's local time, not sequence time.
-  - A full-activity overlay shared by overlapping tracks is attached once
-    above the program instead of once per angle.
+  - The layout splits the timeline into frame-aligned segments. The
+    highest-priority clip covering a segment (lowest track index, then earliest
+    start) owns it in the spine; every other covering clip becomes a connected
+    clip inside that spine item. Lanes are packed in frame ranges, so
+    overlapping angles never share a lane.
+  - A clip that spans a spine boundary is emitted as trimmed pieces: each
+    piece carries the matching media `start`, so the pieces play continuously
+    while no connected clip runs past its parent. Final Cut Pro tolerates that
+    overflow, but DaVinci Resolve truncates it, which is why the split exists.
+  - FCPXML gaps cannot carry connected clips, so a region no track covers is
+    its own spine item.
+  - One overlay covers each time region, owned by the highest-priority clip
+    there. Overlapping angles therefore never stack duplicate overlays, which
+    would composite twice. Overlay lane numbers are relative to the parent:
+    overlays sit above every source lane. A connected clip's `offset` is in
+    the parent's local time, not sequence time.
+  - In full-activity mode every clip reads the same movie, so an empty stretch
+    between clips is filled by the overlay movie itself in the spine. The
+    data layer keeps running instead of stopping at the last clip.
   - All times are whole sequence frames: `1001/30000s` for 29.97, and so on.
   - In full-activity mode, the connected clip is shifted later when the clip
     starts before the activity, and trimmed so it never reads past the

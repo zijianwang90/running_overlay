@@ -279,11 +279,6 @@ struct FCPXMLTimelineWriter {
                 let element = XMLElement(name: "asset-clip")
                 element.setAttribute("ref", assetID)
                 element.setAttribute("name", clip.mediaName)
-                element.setAttribute("start", "0s")
-                element.setAttribute(
-                    "duration",
-                    sequenceRate.timeString(frames: framesAtLeastOne(sequenceRate, seconds: clip.duration))
-                )
                 return element
             },
             makeOverlay: { fileName in
@@ -393,38 +388,75 @@ struct FCPXMLTimelineWriter {
 
 /// Places source clips into a spine plus connected lanes and attaches overlay
 /// movies above them. Pure value logic so it can be tested without XML.
+///
+/// The layout splits the timeline into frame-aligned segments. The
+/// highest-priority clip covering a segment owns it in the spine; every other
+/// covering clip becomes a connected clip inside that spine item. A clip that
+/// spans a spine boundary is emitted as trimmed pieces with the matching media
+/// start time, so no connected clip ever runs past its parent. Final Cut Pro
+/// tolerates that overflow, but DaVinci Resolve truncates it.
 private struct TimelineLayout {
     struct Placement {
         var index: Int
         var clip: EditorPackageTimelineClip
         var start: TimeInterval
         var end: TimeInterval
+        var startFrame: Int
+        var endFrame: Int
     }
 
-    struct OverlayPlacement {
-        /// Connected clip offset inside its parent.
+    struct ChildPiece {
+        var placement: Placement
         var offsetFrames: Int
-        /// Media time of the overlay movie at the connected clip's first frame.
-        var startFrames: Int
+        var sourceStartFrames: Int
+        var durationFrames: Int
+        var lane: Int
+    }
+
+    struct OverlayPiece {
+        var fileName: String
+        var lane: Int
+        var offsetFrames: Int
+        var sourceStartFrames: Int
         var durationFrames: Int
     }
 
-    let rate: FCPXMLFrameRate
-    let placements: [Placement]
-    let spine: [Placement]
-    let attached: [Placement]
-    let origin: TimeInterval
-    let sequenceFrames: Int
-    let lanesByClipIndex: [Int: Int]
-    let overlaysByClipIndex: [Int: OverlayPlacement]
-    let overlayAbsoluteLaneByClipIndex: [Int: Int]
-    /// Full-activity packages use one movie for many clips; with overlapping
-    /// tracks it is attached once above the program instead of once per clip.
-    let singleOverlayClipIndex: Int?
-    let maxSourceLane: Int
-    let overlayFramesByFileName: [String: Int]
+    struct SpineItem {
+        var placement: Placement?
+        var startFrame: Int
+        var durationFrames: Int
+        var sourceStartFrames: Int
+        var children: [ChildPiece] = []
+        var overlays: [OverlayPiece] = []
+        /// A gap region of a full-activity package: the overlay movie becomes
+        /// the spine item so the data layer stays continuous there.
+        var overlayOnly: OverlayPiece?
+    }
 
-    let preservesTimelinePositions: Bool
+    private struct Segment {
+        var startFrame: Int
+        var endFrame: Int
+        /// Covering placements in priority order.
+        var covering: [Placement]
+        var primary: Placement? { covering.first }
+    }
+
+    private struct Run {
+        var startFrame: Int
+        var endFrame: Int
+        var primary: Placement?
+        var segments: [Segment]
+    }
+
+    private struct ChildBuilder {
+        var placement: Placement
+        var startFrame: Int
+        var endFrame: Int
+    }
+
+    let rate: FCPXMLFrameRate
+    let items: [SpineItem]
+    let sequenceFrames: Int
 
     private static let epsilon: TimeInterval = 0.000_001
 
@@ -434,142 +466,179 @@ private struct TimelineLayout {
         rate: FCPXMLFrameRate,
         preservesTimelinePositions: Bool
     ) {
-        self.preservesTimelinePositions = preservesTimelinePositions
+        self.rate = rate
         let overlayFrames = Dictionary(
             uniqueKeysWithValues: overlays.map { ($0.fileName, max(rate.frames(seconds: $0.duration), 1)) }
         )
         let origin = clips.map(\.startTime).min() ?? 0
         let normalized = clips.enumerated().map { index, clip -> Placement in
             let start = max(clip.startTime - origin, 0)
-            return Placement(index: index, clip: clip, start: start, end: start + max(clip.duration, 0))
-        }
-        let placements = preservesTimelinePositions
-            ? normalized
-            : Self.compacted(normalized)
-        let sorted = placements.sorted { lhs, rhs in
-            if lhs.start != rhs.start { return lhs.start < rhs.start }
-            if lhs.clip.trackIndex != rhs.clip.trackIndex { return lhs.clip.trackIndex < rhs.clip.trackIndex }
-            return lhs.index < rhs.index
-        }
-
-        var spine: [Placement] = []
-        var attached: [Placement] = []
-        var spineEnd = -TimeInterval.infinity
-        for placement in sorted {
-            if placement.start >= spineEnd - Self.epsilon {
-                spine.append(placement)
-                spineEnd = max(spineEnd, placement.end)
-            } else {
-                attached.append(placement)
-            }
-        }
-
-        var sequenceEnd = spine.last?.end ?? 0
-        for placement in attached {
-            sequenceEnd = max(sequenceEnd, placement.end)
-        }
-        let sequenceFrames = max(rate.frames(seconds: sequenceEnd), spine.isEmpty ? 0 : 1)
-
-        // Lane packing for attached clips, per parent spine item. Parents are
-        // always spine items, so the absolute lane equals the relative lane.
-        // Intervals are frame ranges so frame-aligned clips never collide by
-        // floating-point drift.
-        var lanesByParent: [Int: [Range<Int>]] = [:]
-        var laneByClipIndex: [Int: Int] = [:]
-        var maxSourceLane = 0
-        for placement in attached {
-            guard let parent = Self.parentIndex(of: placement, in: spine) else { continue }
-            var lanes = lanesByParent[parent] ?? []
-            let startFrame = rate.frames(seconds: placement.start)
-            let durationFrames = max(rate.frames(seconds: placement.clip.duration), 1)
-            let interval = startFrame..<(startFrame + durationFrames)
-            var laneIndex = 0
-            while laneIndex < lanes.count, lanes[laneIndex].overlaps(interval) {
-                laneIndex += 1
-            }
-            if laneIndex == lanes.count {
-                lanes.append(0..<0)
-            }
-            lanes[laneIndex] = interval
-            lanesByParent[parent] = lanes
-            laneByClipIndex[placement.index] = laneIndex + 1
-            maxSourceLane = max(maxSourceLane, laneIndex + 1)
-        }
-
-        // Overlay placement per clip.
-        var overlayPlacementByClipIndex: [Int: OverlayPlacement] = [:]
-        for placement in sorted {
-            let fileName = placement.clip.overlayFileName
-            guard let totalFrames = overlayFrames[fileName], totalFrames > 0 else { continue }
-            let sourceFrames = rate.frames(seconds: placement.clip.overlaySourceStart)
-            let shiftFrames = max(-sourceFrames, 0)
-            let startFrames = max(sourceFrames, 0)
-            let clipFrames = max(rate.frames(seconds: placement.clip.duration), 1)
-            let availableInOverlay = totalFrames - startFrames
-            let availableInClip = clipFrames - shiftFrames
-            let durationFrames = min(availableInOverlay, availableInClip)
-            guard durationFrames > 0 else { continue }
-            overlayPlacementByClipIndex[placement.index] = OverlayPlacement(
-                offsetFrames: shiftFrames,
-                startFrames: startFrames,
-                durationFrames: durationFrames
+            let end = start + max(clip.duration, 0)
+            return Placement(
+                index: index,
+                clip: clip,
+                start: start,
+                end: end,
+                startFrame: rate.frames(seconds: start),
+                endFrame: rate.frames(seconds: end)
             )
         }
-
-        // A shared overlay movie across overlapping tracks covers the whole
-        // activity; attach it once above the program instead of duplicating it
-        // on every angle.
-        var singleOverlayClipIndex: Int?
-        if !attached.isEmpty, let firstSpine = spine.first {
-            var sharedCounts: [String: Int] = [:]
-            for placement in sorted {
-                sharedCounts[placement.clip.overlayFileName, default: 0] += 1
-            }
-            let fileName = firstSpine.clip.overlayFileName
-            if let totalFrames = overlayFrames[fileName],
-               let count = sharedCounts[fileName], count > 1 {
-                let sequenceStartFrames = rate.frames(seconds: firstSpine.start)
-                let sequenceEndFrames = rate.frames(seconds: sequenceEnd)
-                let durationFrames = min(totalFrames, max(sequenceEndFrames - sequenceStartFrames, 1))
-                if durationFrames > 0 {
-                    singleOverlayClipIndex = firstSpine.index
-                    for placement in sorted where placement.clip.overlayFileName == fileName {
-                        overlayPlacementByClipIndex.removeValue(forKey: placement.index)
-                    }
-                    overlayPlacementByClipIndex[firstSpine.index] = OverlayPlacement(
-                        offsetFrames: 0,
-                        startFrames: 0,
-                        durationFrames: durationFrames
-                    )
+        let placements = (preservesTimelinePositions ? normalized : Self.compacted(normalized, rate: rate))
+            .filter { $0.endFrame > $0.startFrame }
+            .sorted { lhs, rhs in
+                if lhs.clip.trackIndex != rhs.clip.trackIndex {
+                    return lhs.clip.trackIndex < rhs.clip.trackIndex
                 }
+                if lhs.startFrame != rhs.startFrame { return lhs.startFrame < rhs.startFrame }
+                return lhs.index < rhs.index
+            }
+
+        guard let sequenceEndFrame = placements.map(\.endFrame).max(), sequenceEndFrame > 0 else {
+            self.items = []
+            self.sequenceFrames = 0
+            return
+        }
+
+        var boundarySet = Set(placements.map(\.startFrame))
+        boundarySet.formUnion(placements.map(\.endFrame))
+        boundarySet.insert(0)
+        let boundaries = boundarySet.filter { $0 <= sequenceEndFrame }.sorted()
+
+        var segments: [Segment] = []
+        if boundaries.count > 1 {
+            for index in 0..<(boundaries.count - 1) {
+                let startFrame = boundaries[index]
+                let endFrame = boundaries[index + 1]
+                guard endFrame > startFrame else { continue }
+                let covering = placements.filter {
+                    $0.startFrame <= startFrame && $0.endFrame >= endFrame
+                }
+                segments.append(Segment(startFrame: startFrame, endFrame: endFrame, covering: covering))
             }
         }
 
-        let overlayLanes = Self.packOverlayLanes(
-            placements: sorted,
-            overlaysByClipIndex: overlayPlacementByClipIndex,
-            rate: rate,
-            baseLane: maxSourceLane + 1
-        )
+        var runs: [Run] = []
+        for segment in segments {
+            if var last = runs.last,
+               last.endFrame == segment.startFrame,
+               last.primary?.index == segment.primary?.index {
+                last.endFrame = segment.endFrame
+                last.segments.append(segment)
+                runs[runs.count - 1] = last
+            } else {
+                runs.append(Run(
+                    startFrame: segment.startFrame,
+                    endFrame: segment.endFrame,
+                    primary: segment.primary,
+                    segments: [segment]
+                ))
+            }
+        }
 
-        self.rate = rate
-        self.overlayFramesByFileName = overlayFrames
-        self.origin = origin
-        self.placements = sorted
-        self.spine = spine
-        self.attached = attached
-        self.sequenceFrames = sequenceFrames
-        self.lanesByClipIndex = laneByClipIndex
-        self.overlaysByClipIndex = overlayPlacementByClipIndex
-        self.overlayAbsoluteLaneByClipIndex = overlayLanes
-        self.singleOverlayClipIndex = singleOverlayClipIndex
-        self.maxSourceLane = maxSourceLane
+        let sharedOverlay = Self.sharedOverlay(placements, rate: rate, overlayFrames: overlayFrames)
+        var items: [SpineItem] = []
+
+        for run in runs {
+            guard let primary = run.primary else {
+                Self.appendGapRun(
+                    run,
+                    sharedOverlay: sharedOverlay,
+                    overlayFrames: overlayFrames,
+                    to: &items
+                )
+                continue
+            }
+
+            var item = SpineItem(
+                placement: primary,
+                startFrame: run.startFrame,
+                durationFrames: run.endFrame - run.startFrame,
+                sourceStartFrames: run.startFrame - primary.startFrame
+            )
+
+            var childBuilders: [Int: ChildBuilder] = [:]
+            var childOrder: [Int] = []
+            for segment in run.segments {
+                for covering in segment.covering where covering.index != primary.index {
+                    if var builder = childBuilders[covering.index], builder.endFrame == segment.startFrame {
+                        builder.endFrame = segment.endFrame
+                        childBuilders[covering.index] = builder
+                    } else {
+                        if childBuilders[covering.index] == nil {
+                            childOrder.append(covering.index)
+                        }
+                        childBuilders[covering.index] = ChildBuilder(
+                            placement: covering,
+                            startFrame: segment.startFrame,
+                            endFrame: segment.endFrame
+                        )
+                    }
+                }
+            }
+
+            var lanes: [Range<Int>] = []
+            for childIndex in childOrder {
+                guard let builder = childBuilders[childIndex] else { continue }
+                let offset = builder.startFrame - run.startFrame
+                let interval = offset..<(offset + builder.endFrame - builder.startFrame)
+                var laneIndex = 0
+                while laneIndex < lanes.count, lanes[laneIndex].overlaps(interval) {
+                    laneIndex += 1
+                }
+                if laneIndex == lanes.count {
+                    lanes.append(0..<0)
+                }
+                lanes[laneIndex] = interval
+                item.children.append(ChildPiece(
+                    placement: builder.placement,
+                    offsetFrames: offset,
+                    sourceStartFrames: builder.startFrame - builder.placement.startFrame,
+                    durationFrames: builder.endFrame - builder.startFrame,
+                    lane: laneIndex + 1
+                ))
+            }
+
+            // One overlay per segment: the highest-priority clip that has
+            // overlay frames there. Overlapping angles therefore never stack
+            // duplicate overlays.
+            let overlayLane = (item.children.map(\.lane).max() ?? 0) + 1
+            var pendingOverlay: OverlayPiece?
+            for segment in run.segments {
+                guard let piece = Self.overlayPiece(
+                    for: segment,
+                    parentStartFrame: run.startFrame,
+                    rate: rate,
+                    overlayFrames: overlayFrames
+                ) else { continue }
+                if var pending = pendingOverlay,
+                   pending.fileName == piece.fileName,
+                   pending.offsetFrames + pending.durationFrames == piece.offsetFrames,
+                   pending.sourceStartFrames + pending.durationFrames == piece.sourceStartFrames {
+                    pending.durationFrames += piece.durationFrames
+                    pendingOverlay = pending
+                } else {
+                    if var pending = pendingOverlay {
+                        pending.lane = overlayLane
+                        item.overlays.append(pending)
+                    }
+                    pendingOverlay = piece
+                }
+            }
+            if var pending = pendingOverlay {
+                pending.lane = overlayLane
+                item.overlays.append(pending)
+            }
+            items.append(item)
+        }
+
+        self.items = items
+        self.sequenceFrames = items.last.map { $0.startFrame + $0.durationFrames } ?? 0
     }
 
     /// Removes the stretches no clip covers. Overlapping clips keep their
     /// relative offsets, so multi-track lanes are unaffected; only empty
     /// project-timeline stretches disappear.
-    private static func compacted(_ placements: [Placement]) -> [Placement] {
+    private static func compacted(_ placements: [Placement], rate: FCPXMLFrameRate) -> [Placement] {
         guard placements.count > 1 else { return placements }
         let intervals = placements
             .map { (start: $0.start, end: $0.end) }
@@ -601,77 +670,183 @@ private struct TimelineLayout {
             var placement = placement
             placement.start = shifted(placement.start)
             placement.end = shifted(placement.end)
+            placement.startFrame = rate.frames(seconds: placement.start)
+            placement.endFrame = rate.frames(seconds: placement.end)
             return placement
         }
     }
 
-    /// Builds the spine elements, nesting attached clips and overlays under
+    /// Overlay frames for one segment, owned by the highest-priority covering
+    /// clip that has frames there. `offsetFrames` is relative to the parent
+    /// spine item.
+    private static func overlayPiece(
+        for segment: Segment,
+        parentStartFrame: Int,
+        rate: FCPXMLFrameRate,
+        overlayFrames: [String: Int]
+    ) -> OverlayPiece? {
+        for covering in segment.covering {
+            let fileName = covering.clip.overlayFileName
+            guard !fileName.isEmpty,
+                  let totalFrames = overlayFrames[fileName],
+                  totalFrames > 0 else { continue }
+
+            let pieceOffset = segment.startFrame - covering.startFrame
+            let rawSource = rate.frames(seconds: covering.clip.overlaySourceStart) + pieceOffset
+            let shift = max(-rawSource, 0)
+            let startFrames = max(rawSource, 0)
+            let pieceFrames = segment.endFrame - segment.startFrame
+            let durationFrames = min(totalFrames - startFrames, pieceFrames - shift)
+            guard durationFrames > 0 else { continue }
+
+            return OverlayPiece(
+                fileName: fileName,
+                lane: 0,
+                offsetFrames: segment.startFrame - parentStartFrame + shift,
+                sourceStartFrames: startFrames,
+                durationFrames: durationFrames
+            )
+        }
+        return nil
+    }
+
+    /// One overlay movie shared by every clip (full-activity layout) maps
+    /// project time to activity time with a constant offset.
+    private static func sharedOverlay(
+        _ placements: [Placement],
+        rate: FCPXMLFrameRate,
+        overlayFrames: [String: Int]
+    ) -> (fileName: String, offsetFrames: Int)? {
+        guard placements.count > 1 else { return nil }
+        let names = Set(placements.map(\.clip.overlayFileName).filter { !$0.isEmpty })
+        guard names.count == 1,
+              let fileName = names.first,
+              overlayFrames[fileName] != nil else { return nil }
+
+        let offsets = Set(placements.map {
+            rate.frames(seconds: $0.clip.overlaySourceStart) - $0.startFrame
+        })
+        guard offsets.count == 1, let offsetFrames = offsets.first else { return nil }
+        return (fileName, offsetFrames)
+    }
+
+    /// A stretch no clip covers. With a shared full-activity overlay the
+    /// overlay movie itself fills the spine there, so the data layer keeps
+    /// running across the empty stretch instead of stopping at the last clip.
+    private static func appendGapRun(
+        _ run: Run,
+        sharedOverlay: (fileName: String, offsetFrames: Int)?,
+        overlayFrames: [String: Int],
+        to items: inout [SpineItem]
+    ) {
+        let length = run.endFrame - run.startFrame
+        guard length > 0 else { return }
+
+        if let sharedOverlay, let totalFrames = overlayFrames[sharedOverlay.fileName] {
+            let sourceStart = run.startFrame + sharedOverlay.offsetFrames
+            if sourceStart >= 0, sourceStart < totalFrames {
+                let durationFrames = min(length, totalFrames - sourceStart)
+                var item = SpineItem(
+                    placement: nil,
+                    startFrame: run.startFrame,
+                    durationFrames: durationFrames,
+                    sourceStartFrames: sourceStart
+                )
+                item.overlayOnly = OverlayPiece(
+                    fileName: sharedOverlay.fileName,
+                    lane: 1,
+                    offsetFrames: 0,
+                    sourceStartFrames: sourceStart,
+                    durationFrames: durationFrames
+                )
+                items.append(item)
+                if durationFrames < length {
+                    items.append(SpineItem(
+                        placement: nil,
+                        startFrame: run.startFrame + durationFrames,
+                        durationFrames: length - durationFrames,
+                        sourceStartFrames: 0
+                    ))
+                }
+                return
+            }
+        }
+
+        items.append(SpineItem(
+            placement: nil,
+            startFrame: run.startFrame,
+            durationFrames: length,
+            sourceStartFrames: 0
+        ))
+    }
+
+    /// Builds the spine elements, nesting connected clips and overlays under
     /// their parent. `makeClip` and `makeOverlay` supply the resource `ref`;
-    /// the layout supplies offsets, lanes, and durations.
+    /// the layout supplies offsets, starts, lanes, and durations.
     func spineElements(
         makeClip: (EditorPackageTimelineClip) -> XMLElement?,
         makeOverlay: (String) -> XMLElement?
     ) -> [XMLElement] {
         var elements: [XMLElement] = []
-        var cursorFrames = 0
-
-        for (parentIndex, placement) in spine.enumerated() {
-            let startFrames = rate.frames(seconds: placement.start)
-            let clipFrames = max(rate.frames(seconds: placement.clip.duration), 1)
-            if startFrames > cursorFrames {
-                elements.append(makeGap(startFrames: cursorFrames, durationFrames: startFrames - cursorFrames))
-            }
-
-            guard let element = makeClip(placement.clip) else {
-                cursorFrames = max(cursorFrames, startFrames + clipFrames)
+        for item in items {
+            if let overlay = item.overlayOnly, let element = makeOverlay(overlay.fileName) {
+                configure(
+                    element,
+                    offsetFrames: item.startFrame,
+                    startFrames: overlay.sourceStartFrames,
+                    durationFrames: overlay.durationFrames
+                )
+                elements.append(element)
                 continue
             }
-            element.setAttribute("offset", rate.timeString(frames: startFrames))
 
-            if let overlay = overlaysByClipIndex[placement.index],
-               let overlayElement = makeOverlay(placement.clip.overlayFileName) {
-                configureOverlay(
-                    overlayElement,
-                    placement: overlay,
-                    lane: overlayAbsoluteLaneByClipIndex[placement.index] ?? (maxSourceLane + 1)
+            if let placement = item.placement, let element = makeClip(placement.clip) {
+                configure(
+                    element,
+                    offsetFrames: item.startFrame,
+                    startFrames: item.sourceStartFrames,
+                    durationFrames: item.durationFrames
                 )
-                element.addChild(overlayElement)
+                for child in item.children {
+                    guard let childElement = makeClip(child.placement.clip) else { continue }
+                    configure(
+                        childElement,
+                        offsetFrames: child.offsetFrames,
+                        startFrames: child.sourceStartFrames,
+                        durationFrames: child.durationFrames
+                    )
+                    childElement.setAttribute("lane", String(child.lane))
+                    element.addChild(childElement)
+                }
+                for overlay in item.overlays {
+                    guard let overlayElement = makeOverlay(overlay.fileName) else { continue }
+                    configure(
+                        overlayElement,
+                        offsetFrames: overlay.offsetFrames,
+                        startFrames: overlay.sourceStartFrames,
+                        durationFrames: overlay.durationFrames
+                    )
+                    overlayElement.setAttribute("lane", String(max(overlay.lane, 1)))
+                    element.addChild(overlayElement)
+                }
+                elements.append(element)
+                continue
             }
 
-            for child in attached where Self.parentIndex(of: child, in: spine) == parentIndex {
-                guard let childElement = makeClip(child.clip) else { continue }
-                let childOffset = max(rate.frames(seconds: child.start) - startFrames, 0)
-                childElement.setAttribute("offset", rate.timeString(frames: childOffset))
-                if let lane = lanesByClipIndex[child.index] {
-                    childElement.setAttribute("lane", String(lane))
-                }
-                if let overlay = overlaysByClipIndex[child.index],
-                   let overlayElement = makeOverlay(child.clip.overlayFileName) {
-                    // Lanes are relative to the parent clip, so put the overlay
-                    // above every source lane.
-                    let absoluteLane = overlayAbsoluteLaneByClipIndex[child.index] ?? (maxSourceLane + 1)
-                    let relativeLane = max(absoluteLane - (lanesByClipIndex[child.index] ?? 0), 1)
-                    configureOverlay(overlayElement, placement: overlay, lane: relativeLane)
-                    childElement.addChild(overlayElement)
-                }
-                element.addChild(childElement)
-            }
-
-            elements.append(element)
-            cursorFrames = max(cursorFrames, startFrames + clipFrames)
-        }
-
-        if sequenceFrames > cursorFrames {
-            elements.append(makeGap(startFrames: cursorFrames, durationFrames: sequenceFrames - cursorFrames))
+            elements.append(makeGap(startFrames: item.startFrame, durationFrames: item.durationFrames))
         }
         return elements
     }
 
-    private func configureOverlay(_ element: XMLElement, placement: OverlayPlacement, lane: Int) {
-        element.setAttribute("lane", String(max(lane, 1)))
-        element.setAttribute("offset", rate.timeString(frames: placement.offsetFrames))
-        element.setAttribute("start", rate.timeString(frames: placement.startFrames))
-        element.setAttribute("duration", rate.timeString(frames: placement.durationFrames))
+    private func configure(
+        _ element: XMLElement,
+        offsetFrames: Int,
+        startFrames: Int,
+        durationFrames: Int
+    ) {
+        element.setAttribute("offset", rate.timeString(frames: offsetFrames))
+        element.setAttribute("start", rate.timeString(frames: startFrames))
+        element.setAttribute("duration", rate.timeString(frames: max(durationFrames, 1)))
     }
 
     private func makeGap(startFrames: Int, durationFrames: Int) -> XMLElement {
@@ -679,44 +854,6 @@ private struct TimelineLayout {
         element.setAttribute("offset", rate.timeString(frames: startFrames))
         element.setAttribute("duration", rate.timeString(frames: max(durationFrames, 1)))
         return element
-    }
-
-    private static func parentIndex(of placement: Placement, in spine: [Placement]) -> Int? {
-        guard !spine.isEmpty else { return nil }
-        if let containing = spine.firstIndex(where: {
-            $0.start <= placement.start + epsilon && placement.start < $0.end - epsilon
-        }) {
-            return containing
-        }
-        if let before = spine.lastIndex(where: { $0.start <= placement.start }) {
-            return before
-        }
-        return 0
-    }
-
-    private static func packOverlayLanes(
-        placements: [Placement],
-        overlaysByClipIndex: [Int: OverlayPlacement],
-        rate: FCPXMLFrameRate,
-        baseLane: Int
-    ) -> [Int: Int] {
-        var lanes: [Range<Int>] = []
-        var lanesByClipIndex: [Int: Int] = [:]
-        for placement in placements {
-            guard let overlay = overlaysByClipIndex[placement.index] else { continue }
-            let startFrame = rate.frames(seconds: placement.start) + overlay.offsetFrames
-            let interval = startFrame..<(startFrame + overlay.durationFrames)
-            var laneIndex = 0
-            while laneIndex < lanes.count, lanes[laneIndex].overlaps(interval) {
-                laneIndex += 1
-            }
-            if laneIndex == lanes.count {
-                lanes.append(0..<0)
-            }
-            lanes[laneIndex] = interval
-            lanesByClipIndex[placement.index] = baseLane + laneIndex
-        }
-        return lanesByClipIndex
     }
 }
 

@@ -443,13 +443,14 @@ struct EditorPackageTests {
         #expect(laneClips[0].attribute(forName: "offset")?.stringValue == "0s")
         #expect(laneClips[0].attribute(forName: "duration")?.stringValue == "10s")
 
-        // Both overlays sit above every source lane. Lane numbers are relative
-        // to the parent, so cam-a's overlay is on absolute lane 2 and cam-b's
-        // overlay is on absolute lane 3 (lane 2 relative to cam-b's lane 1).
-        let spineOverlay = try elements(in: document, xpath: "//spine/asset-clip/asset-clip[@name='a_overlay.mov']")
-        #expect(spineOverlay.first?.attribute(forName: "lane")?.stringValue == "2")
-        let attachedOverlay = try elements(in: document, xpath: "//spine/asset-clip/asset-clip/asset-clip[@name='b_overlay.mov']")
-        #expect(attachedOverlay.first?.attribute(forName: "lane")?.stringValue == "2")
+        // One overlay per time region: cam-a owns the segment, so only its
+        // overlay is attached, above both source lanes. Duplicate overlays
+        // from overlapping angles would composite twice.
+        let overlays = try elements(in: document, xpath: "//asset-clip[@name='a_overlay.mov']")
+        #expect(overlays.count == 1)
+        #expect(overlays.first?.attribute(forName: "lane")?.stringValue == "2")
+        #expect(try elements(in: document, xpath: "//asset-clip[@name='b_overlay.mov']").isEmpty)
+        try expectConnectedClipsFitTheirParent(document)
 
         #expect(try elements(in: document, xpath: "//gap").isEmpty)
         #expect(document.rootElement()?.elements(forName: "library").first?
@@ -478,9 +479,21 @@ struct EditorPackageTests {
         let document = try XMLDocument(data: Data(writer.xmlString().utf8))
         let laneClip = try #require(try elements(in: document, xpath: "//asset-clip[@lane='1']").first)
         #expect(laneClip.attribute(forName: "name")?.stringValue == "cam-b.mov")
-        // Offset is relative to its parent clip, which starts at 0 s.
+        // Cam-b is split at cam-a's end: the overlap is a connected clip under
+        // cam-a, and the remainder continues in the spine. No connected clip
+        // may run past its parent or DaVinci Resolve truncates it.
         #expect(laneClip.attribute(forName: "offset")?.stringValue == "5s")
-        #expect(laneClip.attribute(forName: "duration")?.stringValue == "10s")
+        #expect(laneClip.attribute(forName: "start")?.stringValue == "0s")
+        #expect(laneClip.attribute(forName: "duration")?.stringValue == "5s")
+
+        let spineClips = try elements(in: document, xpath: "//spine/asset-clip")
+        #expect(spineClips.compactMap { $0.attribute(forName: "name")?.stringValue } == [
+            "cam-a.mov", "cam-b.mov"
+        ])
+        #expect(spineClips.compactMap { $0.attribute(forName: "offset")?.stringValue } == ["0s", "10s"])
+        #expect(spineClips[1].attribute(forName: "start")?.stringValue == "5s")
+        #expect(spineClips[1].attribute(forName: "duration")?.stringValue == "5s")
+        try expectConnectedClipsFitTheirParent(document)
 
         let sequenceDuration = document.rootElement()?.elements(forName: "library").first?
             .elements(forName: "event").first?
@@ -514,6 +527,71 @@ struct EditorPackageTests {
         let laneClips = try elements(in: document, xpath: "//asset-clip[@lane]")
         #expect(laneClips.count == 2)
         #expect(laneClips.compactMap { $0.attribute(forName: "lane")?.stringValue }.sorted() == ["1", "2"])
+    }
+
+    @Test func attachedClipLongerThanItsParentContinuesInTheSpine() throws {
+        // The case that truncated CAM B in Resolve: a clip runs past the end
+        // of the clip it is connected to.
+        let writer = FCPXMLTimelineWriter(
+            projectName: "Run",
+            frameRate: .fps30,
+            canvasWidth: 1920,
+            canvasHeight: 1080,
+            overlays: [],
+            clips: [
+                EditorPackageTimelineClip(mediaName: "cam-a.mov", mediaURL: URL(fileURLWithPath: "/tmp/cam-a.mov"), duration: 45, overlayFileName: "", overlaySourceStart: 0, startTime: 0, trackIndex: 0),
+                EditorPackageTimelineClip(mediaName: "cam-b.mov", mediaURL: URL(fileURLWithPath: "/tmp/cam-b.mov"), duration: 45, overlayFileName: "", overlaySourceStart: 0, startTime: 20, trackIndex: 1),
+                EditorPackageTimelineClip(mediaName: "cam-c.mov", mediaURL: URL(fileURLWithPath: "/tmp/cam-c.mov"), duration: 45, overlayFileName: "", overlaySourceStart: 0, startTime: 220, trackIndex: 0)
+            ]
+        )
+
+        let document = try XMLDocument(data: Data(writer.xmlString().utf8))
+        let spineClips = try elements(in: document, xpath: "//spine/asset-clip")
+        #expect(spineClips.compactMap { $0.attribute(forName: "name")?.stringValue } == [
+            "cam-a.mov", "cam-b.mov", "cam-c.mov"
+        ])
+        // Empty 45-220 s is compacted away, so cam-c starts right after the
+        // cam-b remainder.
+        #expect(spineClips.compactMap { $0.attribute(forName: "offset")?.stringValue } == ["0s", "45s", "65s"])
+        #expect(spineClips[1].attribute(forName: "start")?.stringValue == "25s")
+        #expect(spineClips[1].attribute(forName: "duration")?.stringValue == "20s")
+
+        let laneClip = try #require(try elements(in: document, xpath: "//asset-clip[@lane='1']").first)
+        #expect(laneClip.attribute(forName: "name")?.stringValue == "cam-b.mov")
+        #expect(laneClip.attribute(forName: "offset")?.stringValue == "20s")
+        #expect(laneClip.attribute(forName: "duration")?.stringValue == "25s")
+        try expectConnectedClipsFitTheirParent(document)
+        #expect(try elements(in: document, xpath: "//gap").isEmpty)
+    }
+
+    @Test func sharedFullActivityOverlayRunsAcrossAnEmptyStretch() throws {
+        let writer = FCPXMLTimelineWriter(
+            projectName: "Run",
+            frameRate: .fps30,
+            canvasWidth: 1920,
+            canvasHeight: 1080,
+            overlays: [
+                EditorPackageTimelineOverlay(fileName: "full_activity_overlay.mov", fileURL: URL(fileURLWithPath: "/tmp/full.mov"), duration: 40)
+            ],
+            clips: [
+                EditorPackageTimelineClip(mediaName: "cam-a.mov", mediaURL: URL(fileURLWithPath: "/tmp/cam-a.mov"), duration: 10, overlayFileName: "full_activity_overlay.mov", overlaySourceStart: 0, startTime: 0, trackIndex: 0),
+                EditorPackageTimelineClip(mediaName: "cam-b.mov", mediaURL: URL(fileURLWithPath: "/tmp/cam-b.mov"), duration: 10, overlayFileName: "full_activity_overlay.mov", overlaySourceStart: 30, startTime: 30, trackIndex: 0)
+            ],
+            preservesTimelinePositions: true
+        )
+
+        let document = try XMLDocument(data: Data(writer.xmlString().utf8))
+        // 10-30 s has no video, so the overlay movie itself fills the spine
+        // and keeps playing instead of becoming a gap.
+        let spineClips = try elements(in: document, xpath: "//spine/asset-clip")
+        #expect(spineClips.compactMap { $0.attribute(forName: "name")?.stringValue } == [
+            "cam-a.mov", "full_activity_overlay.mov", "cam-b.mov"
+        ])
+        #expect(spineClips[1].attribute(forName: "offset")?.stringValue == "10s")
+        #expect(spineClips[1].attribute(forName: "start")?.stringValue == "10s")
+        #expect(spineClips[1].attribute(forName: "duration")?.stringValue == "20s")
+        #expect(try elements(in: document, xpath: "//gap").isEmpty)
+        try expectConnectedClipsFitTheirParent(document)
     }
 
     @Test func preservedLayoutKeepsGapsOnlyWhereNoTrackHasMedia() throws {
@@ -621,6 +699,44 @@ struct EditorPackageTests {
 
     private func elements(in document: XMLDocument, xpath: String) throws -> [XMLElement] {
         try document.nodes(forXPath: xpath).compactMap { $0 as? XMLElement }
+    }
+
+    /// Connected clips and their overlays must sit inside the parent clip's
+    /// time range; Resolve drops whatever runs past the end.
+    private func expectConnectedClipsFitTheirParent(
+        _ document: XMLDocument,
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) throws {
+        for parent in try elements(in: document, xpath: "//spine/asset-clip") {
+            let parentDuration = try #require(
+                seconds(parent.attribute(forName: "duration")?.stringValue),
+                sourceLocation: sourceLocation
+            )
+            for child in parent.elements(forName: "asset-clip") {
+                let offset = seconds(child.attribute(forName: "offset")?.stringValue) ?? 0
+                let duration = try #require(
+                    seconds(child.attribute(forName: "duration")?.stringValue),
+                    sourceLocation: sourceLocation
+                )
+                #expect(
+                    offset + duration <= parentDuration + 0.000_1,
+                    "connected clip runs past its parent",
+                    sourceLocation: sourceLocation
+                )
+            }
+        }
+    }
+
+    private func seconds(_ value: String?) -> Double? {
+        guard var value else { return nil }
+        if value.hasSuffix("s") {
+            value.removeLast()
+        }
+        let parts = value.split(separator: "/")
+        if parts.count == 2, let numerator = Double(parts[0]), let denominator = Double(parts[1]) {
+            return denominator == 0 ? nil : numerator / denominator
+        }
+        return Double(value)
     }
 
     private func makeWriter(
