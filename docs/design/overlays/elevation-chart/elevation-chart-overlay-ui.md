@@ -120,7 +120,7 @@ Effects
 
 Collapsed Elevation Chart Inspector section headers use one bottom separator only, matching the regular dense Inspector section rhythm without doubled rules between adjacent sections.
 
-The fixed Reset / Done footer reuses the shared Inspector detail footer so its button layout and height match the other overlay detail panels.
+There is no footer; Reset Style lives in the shared detail header's action menu.
 
 ## 1. Preset Section
 

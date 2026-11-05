@@ -142,9 +142,8 @@
       "content": {
         "title": "Media",
         "toolbarButtons": [
-          { "id": "selectAllVisible", "icon": "checklist", "help": "Select All Visible Media" },
-          { "id": "clearSelection", "icon": "xmark.circle", "help": "Clear Media Selection" },
-          { "id": "filterMenu", "icon": "line.3.horizontal.decrease.circle", "help": "Filter by Mark" },
+          { "id": "newFolder", "icon": "folder.badge.plus", "help": "New Folder" },
+          { "id": "importVideos", "icon": "plus", "help": "Import Videos", "disabledUntil": "activity imported" },
           { "id": "more", "icon": "chevron.down", "help": "Media options", "optional": true }
         ]
       }
@@ -153,11 +152,12 @@
       "component": "MediaPoolSearchAndFilter",
       "optional": true,
       "controls": [
-        { "type": "searchField", "placeholder": "Search media", "implementationRule": "only show if it filters displayName" },
-        { "type": "statusText", "value": "{visibleCount} clips" },
-        { "type": "filterChip", "label": "All", "selected": true },
-        { "type": "filterChip", "label": "Ready", "implementationRule": "only show if backed by real filter" },
-        { "type": "filterChip", "label": "Aligned", "implementationRule": "only show if backed by real filter" }
+        { "type": "searchField", "control": "NSSearchField", "placeholder": "Search", "shortcut": "cmd+F", "escape": "clears" },
+        { "type": "segmentedControl", "controlSize": "small", "segments": [
+          { "label": "All", "selected": true },
+          { "label": "Ready", "symbol": "clock" },
+          { "label": "Aligned", "symbol": "checkmark.circle.fill" }
+        ] }
       ]
     },
     {

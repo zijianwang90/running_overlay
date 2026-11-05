@@ -439,12 +439,11 @@ Route Map uses the shared modules below the Route Map-specific sections:
   is clipped to the Route Map shape; square maps use the shared feather mask so
   rounded corners stay rounded at large fade amounts.
 
-## Footer
+## Reset
 
-Sticky footer:
-
-- Secondary `Reset` button — calls `project.resetOverlayStyle(elementID)`.
-- Primary `Done` button — clears overlay selection.
+There is no footer. `Reset Style` in the shared detail header's action menu
+calls `project.resetOverlayInspectorStyle(elementID)`, which resets Route Map
+through `resetOverlayStyle`.
 
 ## Density And Layout Tokens
 

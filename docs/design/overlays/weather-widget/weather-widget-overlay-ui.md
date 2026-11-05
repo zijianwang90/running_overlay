@@ -201,11 +201,11 @@ Recommended sections:
 
 Key controls:
 
-- Style picker: icon buttons for Simple Card, Compact Strip, Forecast Tile, Minimal Text, Dashboard Bar. Do not show a duplicate text-only Preset menu in Weather Widget 1.0.
+- Preset: one pop-up menu (Simple Card, Compact Strip, Forecast Tile, Minimal Text, Dashboard Bar), the same dense Preset row other overlays use.
 - Location fetch action: activity GPS start location.
 - Location text fields.
 - Data source picker (Manual, Open-Meteo API, OpenWeather API) lives in the Weather section.
-- When the loaded activity includes temperature records, Weather exposes a **Use Activity Temperature** toggle. When enabled, activity temperature overrides the API or manual temperature at the current playhead for more accurate on-run readings.
+- When the loaded activity includes temperature records, Weather exposes a **From Activity** checkbox (tooltip: "Use the temperature recorded in the activity"). When enabled, activity temperature overrides the API or manual temperature at the current playhead for more accurate on-run readings.
 - Manual mode: condition picker, optional label override, manual temperature, unit, Style-specific metric slots, and manual values for selected slot metrics.
 - API modes: API-owned condition/temperature/metric text inputs are hidden; keep unit, Style-specific metric slot assignment, display toggles, and optional FIT temperature override. OpenWeather mode disables fetch buttons until an OpenWeather API key is set in Project Settings.
 - Metric slots are Style-specific: Simple Card has 1 slot, Forecast Tile has 3 slots, Dashboard Bar has 3 slots, Compact Strip and Minimal Text have 0 slots. Each slot can choose `-`, Humidity, High / Low, Wind, or Feels Like. `-` leaves that slot empty.
@@ -233,7 +233,7 @@ Implemented as of 2026-05-07:
 - Production weather icons are now bundled transparent PNG assets resolved from `WeatherCondition.bundledImageName`, preserving the same visual family while making the icons reusable outside the Weather Widget view code.
 - Newly added widgets start with Open-Meteo selected, no sample city text, and placeholder weather fields until activity-location weather is cached.
 - Preset switching is centralized through a project mutator that preserves content fields and cached weather while applying new visual defaults.
-- Inspector exposes quick style buttons only for preset switching; the duplicate Preset menu is intentionally hidden in Weather Widget 1.0.
+- Inspector switches presets through the single Preset pop-up menu.
 - Inspector orders the primary setup sections as Layout, Preset, Appearance, Typography, Location, then Weather.
 - Inspector combines Content, Temperature, Metrics, and Icon into one Weather section.
 - Inspector hides API-owned manual input fields when an API source is selected, while keeping unit/display toggles available.

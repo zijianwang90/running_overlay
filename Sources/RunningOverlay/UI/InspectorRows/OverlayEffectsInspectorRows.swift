@@ -51,43 +51,7 @@ struct CollapsibleEffectsInspectorSection<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Button {
-                isExpanded.toggle()
-            } label: {
-                HStack(spacing: NumericTokens.space2) {
-                    Image(systemName: "sparkles")
-                        .frame(width: 16, alignment: .center)
-                        .foregroundStyle(NumericTokens.textSecondary)
-                    Text("Effects")
-                        .font(NumericTokens.sectionTitleFont)
-                        .foregroundStyle(NumericTokens.textPrimary)
-                    Spacer()
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(NumericTokens.textMuted)
-                        .frame(width: 18, height: 18)
-                }
-                .frame(height: NumericTokens.sectionHeaderHeight)
-                .padding(.horizontal, NumericTokens.panelPaddingX)
-                .background(NumericTokens.panelBackgroundElevated)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Effects")
-            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(NumericTokens.borderSubtle)
-                    .frame(height: 1)
-            }
-
-            if isExpanded {
-                VStack(spacing: 0) {
-                    content()
-                }
-            }
-        }
+        InspectorCollapsibleSection(title: "Effects", isExpanded: $isExpanded, content: content)
     }
 }
 
@@ -124,14 +88,13 @@ struct OverlayEffectsInspectorRows: View {
     var body: some View {
         InspectorDenseRow(label: "Shadow") {
             Toggle("", isOn: Binding(get: { shadowEnabled }, set: onSetShadowEnabled))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
+                .toggleStyle(.checkbox)
+                .controlSize(.small)
                 .labelsHidden()
         }
         InspectorDenseRow(label: "Shadow Color") {
             InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: shadowColor, action: onSetShadowColor)
                 .disabled(!shadowEnabled)
-                .opacity(shadowEnabled ? 1 : 0.5)
         }
         InspectorDenseSliderRow(
             label: "Shadow Opacity",
@@ -148,7 +111,7 @@ struct OverlayEffectsInspectorRows: View {
             isEnabled: shadowEnabled
         )
         InspectorDenseSliderRow(
-            label: "Shadow Thickness",
+            label: "Shadow Spread",
             value: Binding(get: { shadowThickness }, set: onSetShadowThickness),
             range: 1...4,
             displayText: String(format: "%.2gx", shadowThickness),
@@ -160,20 +123,18 @@ struct OverlayEffectsInspectorRows: View {
             InspectorDenseAxisField(axis: "Y", value: Binding(get: { shadowOffsetY }, set: onSetShadowOffsetY), precision: 0)
                 .disabled(!shadowEnabled)
         }
-        .opacity(shadowEnabled ? 1 : 0.5)
         .disabled(!shadowEnabled)
 
         if showsGlowControls {
             InspectorDenseRow(label: "Glow") {
                 Toggle("", isOn: Binding(get: { glowEnabled }, set: onSetGlowEnabled))
-                    .toggleStyle(.switch)
-                    .controlSize(.mini)
+                    .toggleStyle(.checkbox)
+                    .controlSize(.small)
                     .labelsHidden()
             }
             InspectorDenseRow(label: "Glow Color") {
                 InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: glowColor, action: onSetGlowColor)
                     .disabled(!glowEnabled)
-                    .opacity(glowEnabled ? 1 : 0.5)
             }
             InspectorDenseSliderRow(
                 label: "Glow Intensity",
@@ -187,11 +148,10 @@ struct OverlayEffectsInspectorRows: View {
         if showsFadeOutControls {
             InspectorDenseRow(label: "Fade Out") {
                 Toggle("", isOn: Binding(get: { fadeOutEnabled }, set: onSetFadeOutEnabled))
-                    .toggleStyle(.switch)
-                    .controlSize(.mini)
+                    .toggleStyle(.checkbox)
+                    .controlSize(.small)
                     .labelsHidden()
                     .disabled(!backgroundEnabled)
-                    .opacity(backgroundEnabled ? 1 : 0.5)
             }
             InspectorDenseSliderRow(
                 label: "Fade Amount",

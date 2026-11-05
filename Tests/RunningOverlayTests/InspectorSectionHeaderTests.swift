@@ -59,7 +59,6 @@ struct InspectorSectionHeaderTests {
             return AnyView(CollapsibleStatsBarInspectorSection(
                 isExpanded: expanded,
                 title: "Stats Bar",
-                systemImage: "chart.bar",
                 isBarEnabled: true,
                 onSetBarEnabled: { _ in }
             ) { sectionBody })

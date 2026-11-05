@@ -336,18 +336,10 @@ Model mapping:
 - `OverlayStyle.borderEnabled` toggles drawing.
 - `OverlayStyle.borderColor`, `borderOpacity`, and `borderWidth` drive the rendered stroke.
 
-## Footer
+## Reset
 
-Sticky footer:
-
-- Secondary `Reset`.
-- Primary `Done`.
-
-Rules:
-
-- Footer is compact.
-- `Done` returns to Inspector outer/detail navigation as currently defined.
-- `Reset` should only appear when reset behavior is implemented.
+There is no footer. `Reset Style` lives in the shared detail header's action
+menu; see [Inspector UI](../../panels/inspector/inspector-ui.md#detail-header).
 
 ## Density And Layout Tokens
 

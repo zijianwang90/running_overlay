@@ -332,7 +332,7 @@ final class ProjectDocument: ObservableObject {
         if isPreviewingMediaPoolItem {
             isPlaying.toggle()
             if isPlaying {
-                playbackRate = max(playbackRate, 1)
+                playbackRate = max(playbackRate, Self.minimumPlaybackRate)
             } else {
                 playbackRate = 1
             }
@@ -347,20 +347,9 @@ final class ProjectDocument: ObservableObject {
         if !isPlaying {
             playbackRate = 1
         } else {
-            playbackRate = max(playbackRate, 1)
+            playbackRate = max(playbackRate, Self.minimumPlaybackRate)
         }
         statusMessage = isPlaying ? "Playback started." : "Playback paused."
-    }
-
-    func stopPlayback() {
-        isPlaying = false
-        playbackRate = 1
-        if isPreviewingMediaPoolItem {
-            mediaPoolPreviewSourceTime = 0
-            statusMessage = "Source preview stopped."
-        } else {
-            statusMessage = "Playback stopped."
-        }
     }
 
     func increaseForwardPlaybackRate() {
@@ -368,9 +357,9 @@ final class ProjectDocument: ObservableObject {
             isPlaying = true
             playbackRate = 1
         } else {
-            playbackRate = min(playbackRate * 2, 8)
+            playbackRate = min(playbackRate * 2, Self.maximumPlaybackRate)
         }
-        statusMessage = playbackRate == 1 ? "Playback started." : "Playback \(Int(playbackRate))x."
+        statusMessage = playbackRate == 1 ? "Playback started." : "Playback \(Self.playbackRateLabel(playbackRate))."
     }
 
     /// J: halves a fast forward rate, and pauses at normal speed. Reverse
@@ -379,20 +368,30 @@ final class ProjectDocument: ObservableObject {
         guard isPlaying else { return }
         if playbackRate > 1 {
             playbackRate = max(playbackRate / 2, 1)
-            statusMessage = playbackRate == 1 ? "Playback 1x." : "Playback \(Int(playbackRate))x."
+            statusMessage = "Playback \(Self.playbackRateLabel(playbackRate))."
         } else {
             isPlaying = false
             statusMessage = "Playback paused."
         }
     }
 
+    /// Rates offered by the Preview speed menu. J and L halve and double
+    /// within the 1x...8x part of this range.
+    static let playbackRateOptions: [Double] = [0.5, 1, 2, 4, 8]
+    static let minimumPlaybackRate: Double = 0.5
+    static let maximumPlaybackRate: Double = 8
+
+    static func playbackRateLabel(_ rate: Double) -> String {
+        rate == rate.rounded() ? "\(Int(rate))x" : "\(rate)x"
+    }
+
     func setPlaybackRate(_ rate: Double) {
-        let clampedRate = min(max(rate, 1), 8)
+        let clampedRate = min(max(rate, Self.minimumPlaybackRate), Self.maximumPlaybackRate)
         playbackRate = clampedRate
         if isPlaying {
-            statusMessage = clampedRate == 1 ? "Playback started." : "Playback \(Int(clampedRate))x."
+            statusMessage = clampedRate == 1 ? "Playback started." : "Playback \(Self.playbackRateLabel(clampedRate))."
         } else {
-            statusMessage = "Playback speed \(Int(clampedRate))x."
+            statusMessage = "Playback speed \(Self.playbackRateLabel(clampedRate))."
         }
     }
 
@@ -503,6 +502,12 @@ final class ProjectDocument: ObservableObject {
         timeline = updatedTimeline
     }
 
+    /// Fits the whole timeline; Shift-Z from Fit returns to this zoom.
+    func zoomTimelineToFit() {
+        guard case .pixelsPerSecond = timeline.zoom else { return }
+        toggleTimelineFitZoom()
+    }
+
     func zoomTimelineIn() {
         zoomTimeline(by: Self.timelineZoomStep)
     }
@@ -552,6 +557,14 @@ final class ProjectDocument: ObservableObject {
         }
     }
 
+    /// Display time that fits in the timeline viewport at the current zoom.
+    /// Fit shows the whole display range; zooming in narrows it.
+    var timelineVisibleDuration: TimeInterval {
+        let bounds = timeline.displayBounds(activityDuration: activity.duration, collapsed: isTimelineCollapsed)
+        let displayDuration = max(bounds.upperBound - bounds.lowerBound, 1)
+        return displayDuration * fitPixelsPerSecond / max(currentPixelsPerSecond, 0.001)
+    }
+
     var layerDataSampleTime: TimeInterval {
         quantizedLayerDataTime(for: timeline.activityElapsed(atProjectTime: timeline.playhead))
     }
@@ -572,7 +585,14 @@ final class ProjectDocument: ObservableObject {
     }
 
     func toggleTimelineCollapse() {
-        isTimelineCollapsed.toggle()
+        setTimelineCollapsed(!isTimelineCollapsed)
+    }
+
+    /// Shared by the header toggle and the Timeline menu item so both always
+    /// show the same state.
+    func setTimelineCollapsed(_ collapsed: Bool) {
+        guard collapsed != isTimelineCollapsed else { return }
+        isTimelineCollapsed = collapsed
         if isTimelineCollapsed, let visibleTime = timeline.visiblePlaybackTime(atOrAfter: timeline.playhead) {
             setPlayhead(visibleTime)
         }
@@ -1014,6 +1034,33 @@ final class ProjectDocument: ObservableObject {
             return
         }
         registerUndoPoint()
+        removeMediaItems(mediaItemIDs)
+        statusMessage = "Deleted \(mediaItemIDs.count) media item(s) from the media pool."
+    }
+
+    /// Deletes a Media Pool selection as one undo step. Selected folders are
+    /// deleted together with the clips inside them.
+    func deleteMediaPoolItems(_ mediaItemIDs: Set<MediaItem.ID>, folders folderIDs: Set<MediaFolder.ID>) {
+        let existingFolderIDs = folderIDs.filter { id in mediaFolders.contains { $0.id == id } }
+        let clipIDs = mediaItemIDs.union(
+            mediaItems.filter { item in item.folderID.map(existingFolderIDs.contains) ?? false }.map(\.id)
+        ).filter { id in mediaItems.contains { $0.id == id } }
+        guard !clipIDs.isEmpty || !existingFolderIDs.isEmpty else {
+            return
+        }
+        registerUndoPoint()
+        if !clipIDs.isEmpty {
+            removeMediaItems(clipIDs)
+        }
+        mediaFolders.removeAll { existingFolderIDs.contains($0.id) }
+        if existingFolderIDs.isEmpty {
+            statusMessage = "Deleted \(clipIDs.count) media item(s) from the media pool."
+        } else {
+            statusMessage = "Deleted \(existingFolderIDs.count) folder(s) and \(clipIDs.count) media item(s) from the media pool."
+        }
+    }
+
+    private func removeMediaItems(_ mediaItemIDs: Set<MediaItem.ID>) {
         mediaItems.removeAll { mediaItemIDs.contains($0.id) }
         if let mediaPoolPreviewItemID, mediaItemIDs.contains(mediaPoolPreviewItemID) {
             self.mediaPoolPreviewItemID = nil
@@ -1025,7 +1072,6 @@ final class ProjectDocument: ObservableObject {
         updatedTimeline.deleteClips(forMediaItemIDs: mediaItemIDs)
         timeline = updatedTimeline
         reconcileTimelineSelection()
-        statusMessage = "Deleted \(mediaItemIDs.count) media item(s) from the media pool."
     }
 
     func setSelectedClipOffset(_ clipID: TimelineClip.ID, offset: TimeInterval) {
@@ -1037,6 +1083,23 @@ final class ProjectDocument: ObservableObject {
             updatedTimeline.playhead = updatedClip.effectiveStartTime + pausedSourceTime
         }
         timeline = updatedTimeline
+    }
+
+    /// Resets every clip's alignment offset as one undoable edit.
+    func resetClipOffsets(_ clipIDs: Set<TimelineClip.ID>) {
+        let clipIDs = clipIDs.filter { (timeline.clip(with: $0)?.alignmentOffset ?? 0) != 0 }
+        guard !clipIDs.isEmpty else { return }
+        registerUndoPoint()
+        let pausedSourceTime = clipIDs.count == 1 ? clipIDs.first.flatMap(stationarySourceTime(for:)) : nil
+        var updatedTimeline = timeline
+        for clipID in clipIDs {
+            updatedTimeline.setClipOffset(clipID, offset: 0, activityDuration: activity.duration)
+        }
+        if let pausedSourceTime, let clipID = clipIDs.first, let updatedClip = updatedTimeline.clip(with: clipID) {
+            updatedTimeline.playhead = updatedClip.effectiveStartTime + pausedSourceTime
+        }
+        timeline = updatedTimeline
+        statusMessage = clipIDs.count == 1 ? "Reset clip offset." : "Reset \(clipIDs.count) clip offsets."
     }
 
     func moveClip(_ clipID: TimelineClip.ID, toEffectiveStartTime effectiveStartTime: TimeInterval) {
@@ -3051,6 +3114,35 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style = style
         overlayLayout.elements[index].scale = 1.0
         statusMessage = "Reset overlay style."
+    }
+
+    /// The Inspector's Reset Style command. Overlays with a dedicated style
+    /// block reset only that block, so shared position, background, and
+    /// effects settings survive; other overlays reset their whole style.
+    func resetOverlayInspectorStyle(_ elementID: OverlayElement.ID) {
+        guard let element = selectedOverlay(elementID) else {
+            return
+        }
+        switch element.type {
+        case .distanceTimeline:
+            mutateDistanceTimelineStyle(elementID) { $0 = .default }
+        case .elevationChart:
+            mutateElevationChartStyle(elementID) { $0 = .default }
+        case .intervalHUDBar:
+            mutateIntervalHUDBarStyle(elementID) { $0 = .default }
+        case .intervalTimeline:
+            mutateIntervalTimelineStyle(elementID) { $0 = .default }
+        case .zoneEdgeBar:
+            mutateZoneEdgeBarStyle(elementID) { $0 = .default }
+        case .weatherWidget:
+            mutateWeatherWidgetStyle(elementID) { style in
+                let unit = style.temperatureUnit
+                style = WeatherWidgetStyle.preset(style.preset)
+                style.temperatureUnit = unit
+            }
+        default:
+            resetOverlayStyle(elementID)
+        }
     }
 
     func setOverlayShadowRadius(_ elementID: OverlayElement.ID, radius: Double) {

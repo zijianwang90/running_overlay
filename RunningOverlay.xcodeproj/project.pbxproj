@@ -9,6 +9,7 @@
 		857BEEBF82BA872B5706828F /* AppLaunchCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F90D93448DFB9B9FE10A6C4 /* AppLaunchCommand.swift */; };
 		6C37E615226F1B8FF494BE59 /* ExportBenchmarkCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FBA4A29449DD6E1B2E8BE72 /* ExportBenchmarkCommand.swift */; };
 		16FF772A3969374092F731BB /* HeadlessBenchmarkRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC559EBBA7D6CBFBD0ABE110 /* HeadlessBenchmarkRunner.swift */; };
+		702EC74BC14CD6C395183C8A /* PlaybackMenuItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C5ADF6FECC3DEA1148B9AB1 /* PlaybackMenuItem.swift */; };
 		BA70C27C166C867DFE129725 /* PresetFonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 461C22D4050609BA14549233 /* PresetFonts.swift */; };
 		FD596E89332F89187293F2C5 /* RunningOverlayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B3635999AFC1DB74B38849 /* RunningOverlayApp.swift */; };
 		C36F7A0AC35EBA570ACD3ABD /* RunningOverlayMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422C715ABE853E6DD27F309B /* RunningOverlayMain.swift */; };
@@ -84,6 +85,7 @@
 		7B0C594338A3E4F1DFE69CAC /* DecorOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F09A3B41E722847AA2B105 /* DecorOverlayDetailView.swift */; };
 		3B1925D0307551312F663186 /* DecorOverlayViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF73E69FF682BE184C9440FC /* DecorOverlayViews.swift */; };
 		944748626621CA9828D03322 /* DistanceTimelineOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3331AE3C054BC9ECC8C53DC7 /* DistanceTimelineOverlayDetailView.swift */; };
+		59E4829412D89B2A30F2E521 /* EditorEscapeKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 488BE84D1125EF935ED1D234 /* EditorEscapeKey.swift */; };
 		141398C0956C8E57CAA32C38 /* EditorTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C50E54B829DF19CC63E48CC /* EditorTheme.swift */; };
 		9F63644D3CB49CFFD73AF74C /* EditorTitlebarDoubleClick.swift in Sources */ = {isa = PBXBuildFile; fileRef = 268FCE0E771FCE6D91CE94DF /* EditorTitlebarDoubleClick.swift */; };
 		34F8355133ACFA5A7C9D5CD4 /* ElevationChartOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EE1E52771F1FDF9C23558F7 /* ElevationChartOverlayDetailView.swift */; };
@@ -107,6 +109,7 @@
 		9B04AA4B103D38834395511D /* IntervalWorkSummaryOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97DCDD349415E0AF7D2795AD /* IntervalWorkSummaryOverlayView.swift */; };
 		16BE9082B25E4DC867510C8D /* MainEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 201DF00A012914ACC6A5ECF7 /* MainEditorView.swift */; };
 		7C006B80FEEA0C8C7631C5FD /* MediaBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48DB45C477FB52D74EE4588E /* MediaBrowserView.swift */; };
+		AEDD4586963DB2B393A46B7F /* MediaPoolSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD77F05084B1ECD616559C05 /* MediaPoolSelection.swift */; };
 		10EBE9F553F1190D6EAC144E /* NumericOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6DD4C828B0CFC04F18CC7F5 /* NumericOverlayDetailView.swift */; };
 		1D7229E1BC4BDBDD471C1671 /* OverlayElementContextMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = E666AC1E03E824CE0E818D3A /* OverlayElementContextMenu.swift */; };
 		2D284C805E7ECBE6371B7F2E /* OverlayFeatheredBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = F757CFF33BF4A545CA2E4513 /* OverlayFeatheredBackground.swift */; };
@@ -124,6 +127,7 @@
 		D888932DA7C817CEF2C26445 /* SkiaPreviewCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8375014E5573390492D2C24 /* SkiaPreviewCanvasView.swift */; };
 		945833D879F0AECB7EA21C4A /* SplitCursorRegion.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFF88C53C751EE8E5CF934D8 /* SplitCursorRegion.swift */; };
 		6C748F1AB8B7B73B1D93F137 /* TemplatePoolView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6922F2C0A7374435BA7DE992 /* TemplatePoolView.swift */; };
+		7141A0FA2CBB8C67319E28C7 /* TimelineInteraction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 481969888F2D6F9D1E68D982 /* TimelineInteraction.swift */; };
 		34417C12EA1EC932F9AFC94D /* TimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182AD5E473BD5311E96EE583 /* TimelineView.swift */; };
 		F1A9159886F1A4FA089E5FC9 /* VideoPreviewPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F64F91D8CFC093962D1CAB7 /* VideoPreviewPlayerView.swift */; };
 		79BACA5FAD09261D22122A10 /* WeatherWidgetOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1CB2483721DE6508751CCAB /* WeatherWidgetOverlayDetailView.swift */; };
@@ -166,6 +170,7 @@
 		3F90D93448DFB9B9FE10A6C4 /* AppLaunchCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/AppLaunchCommand.swift"; sourceTree = SOURCE_ROOT; };
 		7FBA4A29449DD6E1B2E8BE72 /* ExportBenchmarkCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/ExportBenchmarkCommand.swift"; sourceTree = SOURCE_ROOT; };
 		EC559EBBA7D6CBFBD0ABE110 /* HeadlessBenchmarkRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/HeadlessBenchmarkRunner.swift"; sourceTree = SOURCE_ROOT; };
+		9C5ADF6FECC3DEA1148B9AB1 /* PlaybackMenuItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/PlaybackMenuItem.swift"; sourceTree = SOURCE_ROOT; };
 		461C22D4050609BA14549233 /* PresetFonts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/PresetFonts.swift"; sourceTree = SOURCE_ROOT; };
 		E4B3635999AFC1DB74B38849 /* RunningOverlayApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/RunningOverlayApp.swift"; sourceTree = SOURCE_ROOT; };
 		422C715ABE853E6DD27F309B /* RunningOverlayMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/RunningOverlayMain.swift"; sourceTree = SOURCE_ROOT; };
@@ -241,6 +246,7 @@
 		04F09A3B41E722847AA2B105 /* DecorOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/DecorOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
 		AF73E69FF682BE184C9440FC /* DecorOverlayViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/DecorOverlayViews.swift"; sourceTree = SOURCE_ROOT; };
 		3331AE3C054BC9ECC8C53DC7 /* DistanceTimelineOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/DistanceTimelineOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
+		488BE84D1125EF935ED1D234 /* EditorEscapeKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/EditorEscapeKey.swift"; sourceTree = SOURCE_ROOT; };
 		2C50E54B829DF19CC63E48CC /* EditorTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/EditorTheme.swift"; sourceTree = SOURCE_ROOT; };
 		268FCE0E771FCE6D91CE94DF /* EditorTitlebarDoubleClick.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/EditorTitlebarDoubleClick.swift"; sourceTree = SOURCE_ROOT; };
 		1EE1E52771F1FDF9C23558F7 /* ElevationChartOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/ElevationChartOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
@@ -264,6 +270,7 @@
 		97DCDD349415E0AF7D2795AD /* IntervalWorkSummaryOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/IntervalWorkSummaryOverlayView.swift"; sourceTree = SOURCE_ROOT; };
 		201DF00A012914ACC6A5ECF7 /* MainEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/MainEditorView.swift"; sourceTree = SOURCE_ROOT; };
 		48DB45C477FB52D74EE4588E /* MediaBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/MediaBrowserView.swift"; sourceTree = SOURCE_ROOT; };
+		FD77F05084B1ECD616559C05 /* MediaPoolSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/MediaPoolSelection.swift"; sourceTree = SOURCE_ROOT; };
 		F6DD4C828B0CFC04F18CC7F5 /* NumericOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/NumericOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
 		E666AC1E03E824CE0E818D3A /* OverlayElementContextMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/OverlayElementContextMenu.swift"; sourceTree = SOURCE_ROOT; };
 		F757CFF33BF4A545CA2E4513 /* OverlayFeatheredBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/OverlayFeatheredBackground.swift"; sourceTree = SOURCE_ROOT; };
@@ -281,6 +288,7 @@
 		B8375014E5573390492D2C24 /* SkiaPreviewCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/SkiaPreviewCanvasView.swift"; sourceTree = SOURCE_ROOT; };
 		AFF88C53C751EE8E5CF934D8 /* SplitCursorRegion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/SplitCursorRegion.swift"; sourceTree = SOURCE_ROOT; };
 		6922F2C0A7374435BA7DE992 /* TemplatePoolView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/TemplatePoolView.swift"; sourceTree = SOURCE_ROOT; };
+		481969888F2D6F9D1E68D982 /* TimelineInteraction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/TimelineInteraction.swift"; sourceTree = SOURCE_ROOT; };
 		182AD5E473BD5311E96EE583 /* TimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/TimelineView.swift"; sourceTree = SOURCE_ROOT; };
 		8F64F91D8CFC093962D1CAB7 /* VideoPreviewPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/VideoPreviewPlayerView.swift"; sourceTree = SOURCE_ROOT; };
 		F1CB2483721DE6508751CCAB /* WeatherWidgetOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/WeatherWidgetOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
@@ -325,6 +333,7 @@
 			3F90D93448DFB9B9FE10A6C4 /* AppLaunchCommand.swift */,
 			7FBA4A29449DD6E1B2E8BE72 /* ExportBenchmarkCommand.swift */,
 			EC559EBBA7D6CBFBD0ABE110 /* HeadlessBenchmarkRunner.swift */,
+			9C5ADF6FECC3DEA1148B9AB1 /* PlaybackMenuItem.swift */,
 			461C22D4050609BA14549233 /* PresetFonts.swift */,
 			E4B3635999AFC1DB74B38849 /* RunningOverlayApp.swift */,
 			422C715ABE853E6DD27F309B /* RunningOverlayMain.swift */,
@@ -400,6 +409,7 @@
 			04F09A3B41E722847AA2B105 /* DecorOverlayDetailView.swift */,
 			AF73E69FF682BE184C9440FC /* DecorOverlayViews.swift */,
 			3331AE3C054BC9ECC8C53DC7 /* DistanceTimelineOverlayDetailView.swift */,
+			488BE84D1125EF935ED1D234 /* EditorEscapeKey.swift */,
 			2C50E54B829DF19CC63E48CC /* EditorTheme.swift */,
 			268FCE0E771FCE6D91CE94DF /* EditorTitlebarDoubleClick.swift */,
 			1EE1E52771F1FDF9C23558F7 /* ElevationChartOverlayDetailView.swift */,
@@ -423,6 +433,7 @@
 			97DCDD349415E0AF7D2795AD /* IntervalWorkSummaryOverlayView.swift */,
 			201DF00A012914ACC6A5ECF7 /* MainEditorView.swift */,
 			48DB45C477FB52D74EE4588E /* MediaBrowserView.swift */,
+			FD77F05084B1ECD616559C05 /* MediaPoolSelection.swift */,
 			F6DD4C828B0CFC04F18CC7F5 /* NumericOverlayDetailView.swift */,
 			E666AC1E03E824CE0E818D3A /* OverlayElementContextMenu.swift */,
 			F757CFF33BF4A545CA2E4513 /* OverlayFeatheredBackground.swift */,
@@ -440,6 +451,7 @@
 			B8375014E5573390492D2C24 /* SkiaPreviewCanvasView.swift */,
 			AFF88C53C751EE8E5CF934D8 /* SplitCursorRegion.swift */,
 			6922F2C0A7374435BA7DE992 /* TemplatePoolView.swift */,
+			481969888F2D6F9D1E68D982 /* TimelineInteraction.swift */,
 			182AD5E473BD5311E96EE583 /* TimelineView.swift */,
 			8F64F91D8CFC093962D1CAB7 /* VideoPreviewPlayerView.swift */,
 			F1CB2483721DE6508751CCAB /* WeatherWidgetOverlayDetailView.swift */,
@@ -514,6 +526,7 @@
 			857BEEBF82BA872B5706828F /* AppLaunchCommand.swift in Sources */,
 			6C37E615226F1B8FF494BE59 /* ExportBenchmarkCommand.swift in Sources */,
 			16FF772A3969374092F731BB /* HeadlessBenchmarkRunner.swift in Sources */,
+			702EC74BC14CD6C395183C8A /* PlaybackMenuItem.swift in Sources */,
 			BA70C27C166C867DFE129725 /* PresetFonts.swift in Sources */,
 			FD596E89332F89187293F2C5 /* RunningOverlayApp.swift in Sources */,
 			C36F7A0AC35EBA570ACD3ABD /* RunningOverlayMain.swift in Sources */,
@@ -589,6 +602,7 @@
 			7B0C594338A3E4F1DFE69CAC /* DecorOverlayDetailView.swift in Sources */,
 			3B1925D0307551312F663186 /* DecorOverlayViews.swift in Sources */,
 			944748626621CA9828D03322 /* DistanceTimelineOverlayDetailView.swift in Sources */,
+			59E4829412D89B2A30F2E521 /* EditorEscapeKey.swift in Sources */,
 			141398C0956C8E57CAA32C38 /* EditorTheme.swift in Sources */,
 			9F63644D3CB49CFFD73AF74C /* EditorTitlebarDoubleClick.swift in Sources */,
 			34F8355133ACFA5A7C9D5CD4 /* ElevationChartOverlayDetailView.swift in Sources */,
@@ -612,6 +626,7 @@
 			9B04AA4B103D38834395511D /* IntervalWorkSummaryOverlayView.swift in Sources */,
 			16BE9082B25E4DC867510C8D /* MainEditorView.swift in Sources */,
 			7C006B80FEEA0C8C7631C5FD /* MediaBrowserView.swift in Sources */,
+			AEDD4586963DB2B393A46B7F /* MediaPoolSelection.swift in Sources */,
 			10EBE9F553F1190D6EAC144E /* NumericOverlayDetailView.swift in Sources */,
 			1D7229E1BC4BDBDD471C1671 /* OverlayElementContextMenu.swift in Sources */,
 			2D284C805E7ECBE6371B7F2E /* OverlayFeatheredBackground.swift in Sources */,
@@ -629,6 +644,7 @@
 			D888932DA7C817CEF2C26445 /* SkiaPreviewCanvasView.swift in Sources */,
 			945833D879F0AECB7EA21C4A /* SplitCursorRegion.swift in Sources */,
 			6C748F1AB8B7B73B1D93F137 /* TemplatePoolView.swift in Sources */,
+			7141A0FA2CBB8C67319E28C7 /* TimelineInteraction.swift in Sources */,
 			34417C12EA1EC932F9AFC94D /* TimelineView.swift in Sources */,
 			F1A9159886F1A4FA089E5FC9 /* VideoPreviewPlayerView.swift in Sources */,
 			79BACA5FAD09261D22122A10 /* WeatherWidgetOverlayDetailView.swift in Sources */,

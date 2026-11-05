@@ -201,7 +201,7 @@ New file following `NumericOverlayDetailView` structure. Use `InspectorDense*` p
 
 | Section | Key controls |
 |---|---|
-| Preset | Compact Styles icon buttons over all presets → `applyWeatherWidgetPreset`; no duplicate text-only Preset menu in 1.0 |
+| Preset | `Preset` pop-up menu over all presets → `applyWeatherWidgetPreset`, matching the other overlays' Preset rows |
 | Appearance | Palette, card opacity, corner radius, show divider, divider color, divider width, divider opacity |
 | Location | API fetch button for activity GPS start location; TextField for `locationText`; toggles for showLocation, showWeekday |
 | Weather | Combined content/temperature/metric/icon controls: condition, manual values, unit, Style-specific metric slots, showIcon, showConditionLabel |
@@ -210,7 +210,7 @@ Shared `OverlayBackgroundInspectorModule`, `OverlayBorderInspectorModule`, and `
 
 When `dataSource` is an API source, Weather hides manual value text inputs because condition, temperature, and metric values are owned by the cached API payload. Unit and metric slot assignments remain editable.
 
-Footer: Reset / Done.
+Reset Style (shared detail header action menu) restores the preset and keeps the temperature unit. There is no footer.
 
 ### ProjectDocument Mutations (`ProjectDocument.swift`)
 

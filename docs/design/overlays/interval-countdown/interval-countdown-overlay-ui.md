@@ -61,7 +61,7 @@ not hideable. Use tabular or monospaced digits by default to prevent layout
 jitter during countdown updates.
 
 In the Text inspector, group controls by role: Helper, Phase, Rep, Countdown,
-and Caption. A hideable role puts its Visible mini switch in the trailing group
+and Caption. A hideable role puts its Visible checkbox in the trailing group
 header; the rows beneath use only Font, Size, Weight, Color, and Custom labels.
 
 ## Progress Ring

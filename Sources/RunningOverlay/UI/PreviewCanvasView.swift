@@ -2,7 +2,7 @@ import AppKit
 import CoreText
 import SwiftUI
 
-enum PreviewFitMode: Hashable {
+enum PreviewFitMode: Hashable, CaseIterable {
     case fit
     case fill
 
@@ -23,6 +23,10 @@ struct PreviewCanvasView: View {
     @State private var dragGrabOffsets: [OverlayElement.ID: CGSize] = [:]
     @State private var overlayFrames: [OverlayElement.ID: CGRect] = [:]
     @State private var activeSnapLines: [PreviewSnapLine] = []
+    @State private var draggingElementID: OverlayElement.ID?
+    // Briefly marks a locked overlay the user clicked, since it cannot be selected.
+    @State private var lockedFeedback: (id: OverlayElement.ID, token: Int)?
+    @State private var lockedFeedbackToken = 0
 
     #if DEBUG && canImport(CSkiaBridge)
     /// Debug-only comparison override; product builds always use Skia.
@@ -71,14 +75,9 @@ struct PreviewCanvasView: View {
                                 }
                             }
                         } else {
-                            VStack(spacing: 10) {
-                                Image(systemName: "film")
-                                    .font(.system(size: 54))
-                                    .foregroundStyle(EditorTheme.textMuted.opacity(0.6))
-                                Text(project.mediaItems.isEmpty ? "" : "No video at playhead")
-                                    .font(EditorTheme.sectionTitleFont)
-                                    .foregroundStyle(EditorTheme.textSecondary)
-                            }
+                            PreviewEmptyState(
+                                hint: PreviewEmptyState.hint(hasMedia: !project.mediaItems.isEmpty)
+                            )
                         }
 
                         #if canImport(CSkiaBridge)
@@ -102,9 +101,6 @@ struct PreviewCanvasView: View {
                             PreviewSafetyGuidesView()
                                 .allowsHitTesting(false)
 
-                            PreviewGuidesHUD()
-                                .allowsHitTesting(false)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         }
 
                         PreviewSnapLinesView(lines: activeSnapLines)
@@ -114,6 +110,13 @@ struct PreviewCanvasView: View {
                             skiaOverlayLayer(canvasSize: canvasSize, frames: frames)
                         } else {
                             swiftUIOverlayLayer(canvasSize: canvasSize, frames: frames)
+                        }
+
+                        if let lockedFeedback, let frame = frames[lockedFeedback.id] {
+                            PreviewLockedMark()
+                                .position(x: frame.maxX, y: frame.minY)
+                                .allowsHitTesting(false)
+                                .transition(.opacity)
                         }
                     }
                     .frame(width: canvasSize.width, height: canvasSize.height)
@@ -214,9 +217,11 @@ struct PreviewCanvasView: View {
                 activity: project.activity
             ))
             .gesture(overlayDragGesture(for: element, canvasSize: canvasSize, frames: frames))
+            .modifier(PreviewOverlayPointerModifier(
+                pointer: .resolve(isLocked: element.isLocked, isDragging: draggingElementID == element.id)
+            ))
             .onTapGesture {
-                guard !element.isLocked else { return }
-                project.selectOverlay(element.id)
+                handleOverlayTap(element)
             }
             .contextMenu {
                 OverlayElementContextMenu(element: element)
@@ -247,13 +252,34 @@ struct PreviewCanvasView: View {
                 .contentShape(Rectangle())
                 .position(x: hitFrame.midX, y: hitFrame.midY)
                 .gesture(overlayDragGesture(for: element, canvasSize: canvasSize, frames: frames))
+                .modifier(PreviewOverlayPointerModifier(
+                    pointer: .resolve(isLocked: element.isLocked, isDragging: draggingElementID == element.id)
+                ))
                 .onTapGesture {
-                    guard !element.isLocked else { return }
-                    project.selectOverlay(element.id)
+                    handleOverlayTap(element)
                 }
                 .contextMenu {
                     OverlayElementContextMenu(element: element)
                 }
+        }
+    }
+
+    private func handleOverlayTap(_ element: OverlayElement) {
+        guard element.isLocked else {
+            project.selectOverlay(element.id)
+            return
+        }
+        lockedFeedbackToken &+= 1
+        let token = lockedFeedbackToken
+        withAnimation(.easeOut(duration: 0.12)) {
+            lockedFeedback = (element.id, token)
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.2))
+            guard lockedFeedback?.token == token else { return }
+            withAnimation(.easeOut(duration: 0.2)) {
+                lockedFeedback = nil
+            }
         }
     }
 
@@ -267,6 +293,7 @@ struct PreviewCanvasView: View {
                 guard !element.isLocked else { return }
                 // Capture start position and select exactly once per gesture.
                 if dragStartPositions[element.id] == nil {
+                    draggingElementID = element.id
                     dragStartPositions[element.id] = element.position
                     if element.type.isNumericOverlay,
                        let frame = frames[element.id] {
@@ -324,6 +351,7 @@ struct PreviewCanvasView: View {
                     project.moveOverlay(element.id, to: live.pos)
                 }
                 liveDragPosition = nil
+                draggingElementID = nil
                 dragStartPositions[element.id] = nil
                 dragGrabOffsets[element.id] = nil
                 activeSnapLines = []
@@ -1048,14 +1076,14 @@ private struct PreviewHeader: View {
                 .accessibilityLabel("Use Skia Overlay Renderer")
             }
 
-            Button {
-                project.showPreviewGuides.toggle()
-            } label: {
+            // A button-style Toggle reports its on/off state to accessibility.
+            Toggle(isOn: $project.showPreviewGuides) {
                 Image(systemName: "viewfinder")
             }
+            .toggleStyle(.button)
             .buttonStyle(PreviewIconButtonStyle(isActive: project.showPreviewGuides))
-            .help("Show Safe Frames")
-            .accessibilityLabel("Show Safe Frames")
+            .help(project.showPreviewGuides ? "Hide Safe Frames" : "Show Safe Frames")
+            .accessibilityLabel("Safe Frames")
 
             ColorPicker(
                 "Canvas Background",
@@ -1067,40 +1095,16 @@ private struct PreviewHeader: View {
             .help("Canvas Background Color")
             .accessibilityLabel("Canvas Background Color")
 
-            Menu {
-                ForEach([PreviewFitMode.fit, .fill], id: \.self) { mode in
-                    Button {
-                        project.previewFitMode = mode
-                    } label: {
-                        if project.previewFitMode == mode {
-                            Label(mode.label, systemImage: "checkmark")
-                        } else {
-                            Text(mode.label)
-                        }
-                    }
-                }
-            } label: {
-                HStack(spacing: EditorTheme.space1) {
-                    Text(project.previewFitMode.label)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 9, weight: .semibold))
-                }
-                .font(EditorTheme.bodyStrongFont)
-                .foregroundStyle(EditorTheme.textSecondary)
-                .frame(height: PreviewLayout.headerButtonSize)
-                .padding(.horizontal, EditorTheme.space2)
-                .background(EditorTheme.surfaceControl)
-                .clipShape(RoundedRectangle(cornerRadius: EditorTheme.controlRadius))
-                .overlay {
-                    RoundedRectangle(cornerRadius: EditorTheme.controlRadius)
-                        .stroke(EditorTheme.borderSubtle, lineWidth: 1)
+            Picker("Fit Mode", selection: $project.previewFitMode) {
+                ForEach(PreviewFitMode.allCases, id: \.self) { mode in
+                    Text(mode.label).tag(mode)
                 }
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .help("Preview Zoom")
-            .accessibilityLabel("Preview Zoom")
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .controlSize(.regular)
+            .frame(width: 82)
+            .help("Fit Mode")
         }
     }
 
@@ -1109,19 +1113,6 @@ private struct PreviewHeader: View {
         let fps = project.settings.frameRate.value
         let fpsText = fps.rounded() == fps ? "\(Int(fps)) fps" : "\(fps.formatted(.number.precision(.fractionLength(2)))) fps"
         return "\(resolution.width) x \(resolution.height) • \(fpsText)"
-    }
-}
-
-private struct PreviewGuidesHUD: View {
-    var body: some View {
-        Text("Guides On")
-            .font(EditorTheme.captionFont)
-            .foregroundStyle(EditorTheme.accentBlue)
-            .padding(.horizontal, EditorTheme.space2)
-            .padding(.vertical, EditorTheme.space1)
-            .background(EditorTheme.accentBlueSoft.opacity(0.78))
-            .clipShape(RoundedRectangle(cornerRadius: EditorTheme.controlRadius))
-            .padding(EditorTheme.space3)
     }
 }
 
@@ -1239,10 +1230,63 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
     }
 }
 
+/// Pointer shape over an overlay hit area: movable overlays show a hand,
+/// locked overlays keep the arrow and explain why in a help tag.
+enum PreviewOverlayPointer: Equatable {
+    case arrow
+    case openHand
+    case closedHand
+
+    static func resolve(isLocked: Bool, isDragging: Bool) -> PreviewOverlayPointer {
+        if isLocked { return .arrow }
+        return isDragging ? .closedHand : .openHand
+    }
+
+    var helpText: String {
+        self == .arrow ? "Locked" : ""
+    }
+}
+
+private struct PreviewOverlayPointerModifier: ViewModifier {
+    let pointer: PreviewOverlayPointer
+
+    func body(content: Content) -> some View {
+        content
+            .pointerStyle(pointerStyle)
+            .help(pointer.helpText)
+    }
+
+    private var pointerStyle: PointerStyle {
+        switch pointer {
+        case .arrow: return .default
+        case .openHand: return .grabIdle
+        case .closedHand: return .grabActive
+        }
+    }
+}
+
+private struct PreviewLockedMark: View {
+    var body: some View {
+        Image(systemName: "lock.fill")
+            .font(.system(size: 9, weight: .semibold))
+            .foregroundStyle(EditorTheme.textPrimary)
+            .frame(width: 18, height: 18)
+            .background(Circle().fill(Color.black.opacity(0.78)))
+            .overlay(Circle().stroke(Color.white.opacity(0.18), lineWidth: 0.5))
+            .accessibilityLabel("Locked")
+    }
+}
+
 private struct PreviewSelectionAffordance: View {
     var body: some View {
+        // The dark outer stroke keeps the blue border visible on bright video.
         RoundedRectangle(cornerRadius: 4)
             .stroke(EditorTheme.accentBlue.opacity(0.92), lineWidth: 1.4)
+            .background {
+                RoundedRectangle(cornerRadius: 5)
+                    .stroke(Color.black.opacity(0.55), lineWidth: 1)
+                    .padding(-1.2)
+            }
             .padding(-5)
             .allowsHitTesting(false)
     }
@@ -1290,23 +1334,67 @@ private struct PreviewIconButtonStyle: ButtonStyle {
     var isActive = false
 
     func makeBody(configuration: Configuration) -> some View {
+        PreviewIconButtonBody(configuration: configuration, isActive: isActive)
+    }
+}
+
+private struct PreviewIconButtonBody: View {
+    let configuration: ButtonStyleConfiguration
+    let isActive: Bool
+    @State private var isHovered = false
+
+    var body: some View {
         configuration.label
             .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(isActive ? EditorTheme.accentBlue : EditorTheme.textSecondary)
+            .foregroundStyle(foreground)
             .frame(width: PreviewLayout.headerButtonSize, height: PreviewLayout.headerButtonSize)
-            .background(background(isPressed: configuration.isPressed))
+            .background(background)
             .clipShape(RoundedRectangle(cornerRadius: EditorTheme.controlRadius))
             .overlay {
                 RoundedRectangle(cornerRadius: EditorTheme.controlRadius)
                     .stroke(isActive ? EditorTheme.accentBlue.opacity(0.58) : EditorTheme.borderSubtle, lineWidth: 1)
             }
+            .contentShape(Rectangle())
+            .onHover { isHovered = $0 }
     }
 
-    private func background(isPressed: Bool) -> Color {
-        if isPressed {
+    private var foreground: Color {
+        if isActive { return EditorTheme.accentBlue }
+        return configuration.isPressed || isHovered ? EditorTheme.textPrimary : EditorTheme.textSecondary
+    }
+
+    private var background: Color {
+        if configuration.isPressed {
             return EditorTheme.surfacePressed
         }
-        return isActive ? EditorTheme.accentBlueSoft : EditorTheme.surfaceControl
+        if isActive {
+            return EditorTheme.accentBlueSoft
+        }
+        return isHovered ? EditorTheme.surfaceHover : EditorTheme.surfaceControl
+    }
+}
+
+/// Shown in the canvas when no video covers the playhead.
+private struct PreviewEmptyState: View {
+    let hint: String
+
+    static func hint(hasMedia: Bool) -> String {
+        hasMedia
+            ? "Move the playhead over a clip to see its video."
+            : "Choose File > Import Videos to add footage."
+    }
+
+    var body: some View {
+        VStack(spacing: EditorTheme.space1) {
+            Text("No Video")
+                .font(EditorTheme.sectionTitleFont)
+                .foregroundStyle(EditorTheme.textSecondary)
+            Text(hint)
+                .font(EditorTheme.captionFont)
+                .foregroundStyle(EditorTheme.textMuted)
+        }
+        .multilineTextAlignment(.center)
+        .padding(EditorTheme.space4)
     }
 }
 
@@ -2826,33 +2914,8 @@ private struct PreviewPlaybackControls: View {
     var body: some View {
         ZStack {
             HStack(spacing: EditorTheme.space4) {
-                playbackButton(
-                    systemImage: "backward.end.fill",
-                    label: "Previous"
-                ) {
-                    project.jumpToPreviousPreviewItem()
-                }
-
-                playbackButton(
-                    systemImage: "stop.fill",
-                    label: "Stop"
-                ) {
-                    project.stopPlayback()
-                }
-
-                playbackButton(
-                    systemImage: project.isPlaying ? "pause.fill" : "play.fill",
-                    label: project.isPlaying ? "Pause" : "Play",
-                    isPrimary: true
-                ) {
-                    project.togglePlayback()
-                }
-
-                playbackButton(
-                    systemImage: "forward.end.fill",
-                    label: "Next"
-                ) {
-                    project.jumpToNextPreviewItem()
+                ForEach(PreviewPlaybackButton.allCases, id: \.self) { button in
+                    playbackButton(button)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -2872,18 +2935,46 @@ private struct PreviewPlaybackControls: View {
         }
     }
 
-    private func playbackButton(
-        systemImage: String,
-        label: String,
-        isPrimary: Bool = false,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
+    private func playbackButton(_ button: PreviewPlaybackButton) -> some View {
+        let label = button.label(isPlaying: project.isPlaying)
+        return Button {
+            switch button {
+            case .previousClip: project.jumpToPreviousPreviewItem()
+            case .playPause: project.togglePlayback()
+            case .nextClip: project.jumpToNextPreviewItem()
+            }
+        } label: {
+            Image(systemName: button.systemImage(isPlaying: project.isPlaying))
         }
-        .buttonStyle(PreviewPlaybackButtonStyle(isPrimary: isPrimary))
+        .buttonStyle(PreviewPlaybackButtonStyle(isPrimary: button == .playPause))
         .help(label)
         .accessibilityLabel(label)
+    }
+}
+
+/// The Preview transport, in display order. Pause replaces Play while
+/// playing, so there is no separate Stop.
+enum PreviewPlaybackButton: CaseIterable {
+    case previousClip
+    case playPause
+    case nextClip
+
+    /// Previous and Next step between timeline clip starts, or between
+    /// media-pool items while one is being previewed.
+    func label(isPlaying: Bool) -> String {
+        switch self {
+        case .previousClip: return "Previous Clip"
+        case .playPause: return isPlaying ? "Pause" : "Play"
+        case .nextClip: return "Next Clip"
+        }
+    }
+
+    func systemImage(isPlaying: Bool) -> String {
+        switch self {
+        case .previousClip: return "backward.end.fill"
+        case .playPause: return isPlaying ? "pause.fill" : "play.fill"
+        case .nextClip: return "forward.end.fill"
+        }
     }
 }
 
@@ -2910,40 +3001,19 @@ private struct PreviewRateMenu: View {
     @EnvironmentObject private var project: ProjectDocument
 
     var body: some View {
-        Menu {
-            ForEach([1, 2, 4, 8], id: \.self) { rate in
-                Button {
-                    project.setPlaybackRate(Double(rate))
-                } label: {
-                    if Int(project.playbackRate) == rate {
-                        Label("\(rate)x", systemImage: "checkmark")
-                    } else {
-                        Text("\(rate)x")
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: EditorTheme.space1) {
-                Text("\(Int(project.playbackRate))x")
-                    .font(EditorTheme.numericFont)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 9, weight: .semibold))
-            }
-            .foregroundStyle(EditorTheme.textSecondary)
-            .frame(minWidth: 54, minHeight: EditorTheme.iconButtonSize)
-            .padding(.horizontal, EditorTheme.space2)
-            .background(EditorTheme.surfaceControl)
-            .clipShape(RoundedRectangle(cornerRadius: EditorTheme.controlRadius))
-            .overlay {
-                RoundedRectangle(cornerRadius: EditorTheme.controlRadius)
-                    .stroke(EditorTheme.borderSubtle, lineWidth: 1)
+        Picker("Playback Speed", selection: Binding(
+            get: { project.playbackRate },
+            set: { project.setPlaybackRate($0) }
+        )) {
+            ForEach(ProjectDocument.playbackRateOptions, id: \.self) { rate in
+                Text(ProjectDocument.playbackRateLabel(rate)).tag(rate)
             }
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
+        .pickerStyle(.menu)
+        .labelsHidden()
+        .controlSize(.regular)
+        .frame(width: 82)
         .help("Playback Speed")
-        .accessibilityLabel("Playback Speed")
     }
 }
 
