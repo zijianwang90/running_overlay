@@ -472,7 +472,7 @@ Import/export:
   - ⇧⌘R shows the selected clips in Finder.
 - Collapsing a folder moves selection from its hidden clips onto the folder and keeps the rest of the selection.
 - Changing filters must remove selected rows that are no longer visible.
-- Media Pool selection and the editor selection are exclusive: selecting media clears `ProjectDocument.selection`, so the Inspector returns to the overlay list and Delete cannot hit a stale overlay or clip. Selecting an overlay or clip elsewhere takes keyboard focus away from the list; its rows stay selected in gray.
+- Media Pool selection and the editor selection are exclusive: selecting media clears `ProjectDocument.selection`; selecting an overlay or clip clears the selected media rows and takes keyboard focus away from the list.
 - Losing Media Pool focus clears transient media-pool preview.
 
 ## Recommended Components

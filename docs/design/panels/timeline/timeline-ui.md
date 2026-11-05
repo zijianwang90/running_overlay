@@ -99,6 +99,8 @@ Right controls:
 - Readout of the time visible at the current zoom, e.g. `30 s`, `2 min`,
   `1.5 h`. It never shows raw pixels per second.
 - `Fit` button (Shift-Z toggles Fit), disabled while already at Fit.
+- The toggle and Fit button use regular system control size, and the duration
+  readout keeps its full intrinsic width so it cannot crowd the Fit button.
 
 Rules:
 

@@ -39,7 +39,7 @@ struct RunningOverlayApp: App {
         }
         .windowStyle(.titleBar)
         .windowResizability(.contentMinSize)
-        .windowToolbarStyle(.unifiedCompact(showsTitle: false))
+        .windowToolbarStyle(.unified(showsTitle: false))
         .commands {
             CommandGroup(replacing: .undoRedo) {
                 Button("Undo") {

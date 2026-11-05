@@ -83,11 +83,7 @@ struct MainEditorView: View {
 
                 if showsPoolPanel {
                     ToolbarItem(placement: .navigation) {
-                        // AppKit collapses a fixed `ToolbarSpacer` in the leading
-                        // navigation cluster, so the group gap lives in the
-                        // item content instead.
                         PoolModeSwitch(activePool: $activePool)
-                            .padding(.leading, 16)
                     }
                 }
 
@@ -106,13 +102,9 @@ struct MainEditorView: View {
                     Button {
                         project.showingExportDialog = true
                     } label: {
-                        // The default capsule inset crowds the icon and title.
                         Label("Export", systemImage: "square.and.arrow.up")
-                            .labelStyle(.titleAndIcon)
-                            .padding(.horizontal, 3)
+                            .labelStyle(.iconOnly)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(EditorTheme.accentBlue)
                     .help("Export overlays")
                 }
 
@@ -144,7 +136,6 @@ struct MainEditorView: View {
             RunningOverlayAppDelegate.reopenMainWindow = { openWindow(id: "main") }
             project.offerAutosaveRecoveryIfNeeded()
         }
-        .toolbarBackground(EditorTheme.appChrome, for: .windowToolbar)
         .overlay(alignment: .top) {
             VStack(spacing: 8) {
                 if let errorNotice = project.errorNotice {

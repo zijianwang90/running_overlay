@@ -90,8 +90,8 @@ Header rules:
   `accent.blue.soft` background. Header icon buttons show a hover fill.
 - Safe Frames is also available as the checked View > Show Safe Frames (⌘')
   menu item.
-- Fit Mode is a system pop-up (`Picker` with `.menu` style, small control
-  size), not a custom chevron menu or a segmented control. It offers only Fit
+- Fit Mode is a regular-size system pop-up (`Picker` with `.menu` style),
+  with room for the selected value and indicator. It offers only Fit
   and Fill; there are no zoom levels.
 
 Implementation notes:
@@ -155,7 +155,7 @@ start, or to the previous or next media-pool item while one is previewed.
 
 Bottom-right speed control:
 
-- System pop-up (`Picker` with `.menu` style, small control size) showing the
+- Regular-size system pop-up (`Picker` with `.menu` style) showing the
   current playback rate, for example `1x`.
 - Options: 0.5x, 1x, 2x, 4x, 8x.
 

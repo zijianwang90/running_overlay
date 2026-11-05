@@ -37,6 +37,17 @@ struct MediaPoolSelectionTests {
 
     // MARK: Editor selection
 
+    @Test func editorSelectionClearsMediaRowsAndRangeAnchor() {
+        for editorSelection: EditorSelection in [.overlayElement(UUID()), .timelineClip(UUID())] {
+            var selection = MediaPoolSelection()
+            selection.select(.media(rootA))
+            selection.clearForEditorSelection(editorSelection)
+            #expect(selection.isEmpty)
+            #expect(selection.anchor == nil)
+            #expect(selection.cursor == nil)
+        }
+    }
+
     @Test func selectingMediaClearsTheEditorSelection() {
         let project = ProjectDocument()
         project.selection = .overlayElement(UUID())

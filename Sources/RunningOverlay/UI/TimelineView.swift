@@ -42,7 +42,7 @@ struct TimelineView: View {
                         .labelStyle(.iconOnly)
                 }
                 .toggleStyle(.button)
-                .controlSize(.small)
+                .controlSize(.regular)
                 .help(project.isTimelineCollapsed ? "Show timeline gaps" : "Hide gaps without video")
 
                 Button {
@@ -75,13 +75,14 @@ struct TimelineView: View {
                 Text(zoomReadout)
                     .font(EditorTheme.numericFont)
                     .foregroundStyle(EditorTheme.textSecondary)
-                    .frame(width: 44, alignment: .trailing)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .frame(minWidth: 58, alignment: .trailing)
                     .help("Time visible in the timeline")
                     .accessibilityHidden(true)
                 Button("Fit") {
                     project.zoomTimelineToFit()
                 }
-                .controlSize(.small)
+                .controlSize(.regular)
                 .font(EditorTheme.captionFont)
                 .disabled(project.timeline.zoom == .fit)
                 .help("Zoom to Fit (Shift-Z)")

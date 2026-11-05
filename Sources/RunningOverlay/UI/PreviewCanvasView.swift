@@ -1074,8 +1074,8 @@ private struct PreviewHeader: View {
             }
             .pickerStyle(.menu)
             .labelsHidden()
-            .controlSize(.small)
-            .fixedSize()
+            .controlSize(.regular)
+            .frame(width: 82)
             .help("Fit Mode")
         }
     }
@@ -2980,8 +2980,8 @@ private struct PreviewRateMenu: View {
         }
         .pickerStyle(.menu)
         .labelsHidden()
-        .controlSize(.small)
-        .fixedSize()
+        .controlSize(.regular)
+        .frame(width: 82)
         .help("Playback Speed")
     }
 }

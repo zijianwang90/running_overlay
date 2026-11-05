@@ -21,9 +21,8 @@ struct MediaPoolOutlineRow: Equatable {
 /// cursor, and collapsing a folder moves selected children onto the folder.
 ///
 /// It is separate from `ProjectDocument.selection`. The two are exclusive:
-/// committing a non-empty Media Pool selection clears the editor selection
-/// (see `commit(_:into:project:)`), so Delete and the Inspector never act on
-/// a stale overlay or clip.
+/// committing a non-empty Media Pool selection clears the editor selection,
+/// and an editor selection clears the Media Pool selection.
 struct MediaPoolSelection: Equatable {
     var rows: Set<MediaPoolRowID> = []
     /// The fixed end of a Shift range.
@@ -58,6 +57,10 @@ struct MediaPoolSelection: Equatable {
 
     mutating func clear() {
         self = MediaPoolSelection()
+    }
+
+    mutating func clearForEditorSelection(_ editorSelection: EditorSelection) {
+        if editorSelection != .none { clear() }
     }
 
     mutating func select(_ row: MediaPoolRowID) {

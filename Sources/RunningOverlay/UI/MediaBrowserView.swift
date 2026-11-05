@@ -74,9 +74,8 @@ struct MediaBrowserView: View {
             selection.prune(toVisible: outlineRows)
         }
         .onChange(of: project.selection) { _, newValue in
-            // Selecting an overlay or clip makes that the current selection;
-            // the list keeps its rows but stops taking keys.
             if newValue != .none {
+                selection.clearForEditorSelection(newValue)
                 wantsKeyboardFocus = false
             }
         }
@@ -616,7 +615,9 @@ struct MediaBrowserView: View {
                 NSSound.beep()
             }
         case .delete:
-            if selection.isEmpty {
+            if project.selection != .none {
+                project.deleteSelectedItem()
+            } else if selection.isEmpty {
                 NSSound.beep()
             } else {
                 deleteRows(selection.rows)
@@ -1221,6 +1222,7 @@ private struct MediaBrowserKeyHandler: NSViewRepresentable {
         if wantsFocus, !isFirstResponder, !nsView.hasPendingFocusRequest, nsView.window != nil {
             nsView.hasPendingFocusRequest = true
             DispatchQueue.main.async {
+                guard wantsFocus else { return }
                 nsView.window?.makeFirstResponder(nsView)
             }
         } else if !wantsFocus, isFirstResponder {

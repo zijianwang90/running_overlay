@@ -46,7 +46,7 @@
       "right": [
         { "type": "toggleButton", "id": "safeGuides", "control": "Toggle(.button)", "icon": "viewfinder", "statePath": "ProjectDocument.showPreviewGuides", "activeStyle": "accent.blue", "menuItem": "View > Show Safe Frames (Cmd-')" },
         { "type": "colorWell", "id": "canvasBackground", "statePath": "ProjectDocument.previewCanvasBackground" },
-        { "type": "popUp", "id": "fit", "control": "Picker(.menu), small", "help": "Fit Mode", "options": ["Fit", "Fill"], "statePath": "ProjectDocument.previewFitMode" }
+        { "type": "popUp", "id": "fit", "control": "Picker(.menu), regular", "help": "Fit Mode", "options": ["Fit", "Fill"], "statePath": "ProjectDocument.previewFitMode" }
       ],
       "mustNotInclude": ["fullscreen", "backgroundToggle", "overlayVisibility", "export"]
     },
