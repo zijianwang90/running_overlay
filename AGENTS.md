@@ -87,6 +87,11 @@ If `just` is installed, the equivalent commands are `just check`,
 - Independent large features should use a sibling worktree.
 - Keep `main` protected and release-ready; do not commit directly to it.
 - Never rewrite contributor history or discard unrelated working-tree changes.
+- Before merging, follow the Skia CI scope and merge guidance in
+  [docs/contributing.md](docs/contributing.md#skia-ci-and-merge-guidance).
+  Ordinary PRs with no plausible rendering, export, or packaging impact may
+  merge without waiting for Skia; relevant or uncertain changes must pass it.
+  Never ignore a failed required check or a relevant Skia failure.
 
 ## Definition Of Done
 

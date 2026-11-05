@@ -32,6 +32,37 @@ Clone the repository and validate the checkout:
 All contributions target `main` through pull requests. Keep `main` protected,
 release-ready, and free of direct commits.
 
+## Skia CI and Merge Guidance
+
+Always wait for required checks, including `build-and-test`, and satisfy review
+requirements before merging. Assess the actual diff and dependencies, not just
+the PR title. Record the rationale and any pending or intentionally skipped
+Skia checks in the PR validation section.
+
+- Changes affecting rendering, overlay models or assets, preview, export,
+  templates, fonts, Skia, tests of those areas, dependency versions, build,
+  packaging, release, or CI must pass `skia-product` before merge. If impact
+  is uncertain, treat the change as relevant and wait. A failed relevant check
+  must be investigated and fixed, not bypassed after an earlier manual review.
+- For an ordinary PR with no plausible impact on those areas, an agent or
+  maintainer may merge after required checks and reviews pass without waiting
+  for a pending `skia-product`. Do not disregard a known Skia failure without
+  determining its cause and relevance; report it and follow up as appropriate.
+- CI automatically skips Skia on PRs consisting solely of `docs/`, `AGENTS.md`,
+  `.github/ISSUE_TEMPLATE/`, `.github/CODEOWNERS`, or the PR template. All
+  other paths conservatively run it, including mixed and unknown changes. An
+  intentional skip is reported by `skia-product`; it is not evidence that a
+  renderer test ran. To force a full run, use CI's manual workflow dispatch
+  on the PR branch. Scope detection errors fail the check rather than skip it.
+
+Full Skia validation also runs on every push to `main`, daily, and on manual
+dispatch. The release workflow retains Skia-enabled tests, visual regression,
+and signed bundle validation. Investigate
+failures on `main` or scheduled runs promptly; manual visual approval covers
+the reviewed revision and does not replace tests for subsequent changes.
+Current repository rules require `build-and-test`, not `skia-product`; verify
+the actual rules and required checks before relying on this policy.
+
 ## AI-Assisted Contributions
 
 AI agents may implement, test, document, and review changes. The contributor

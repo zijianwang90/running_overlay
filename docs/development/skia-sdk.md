@@ -131,3 +131,5 @@ on a cache miss. CI's `skia-product` check aggregates parallel Graphite tests,
 native archive, and SwiftPM packaging jobs; release tags use the same setup. No SDK download
 URL, repository secret or committed binary is required. Remote Actions results
 and real-certificate distribution acceptance must still be checked before shipping.
+PR scope selection and merge expectations are documented in the
+[contributor guide](../contributing.md#skia-ci-and-merge-guidance).

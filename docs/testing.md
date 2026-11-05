@@ -153,10 +153,12 @@ native Xcode Release archive and an ad-hoc SwiftPM bundle are included in the ch
 Both packaging paths
 validate the SDK manifest and bundled dependency paths/notices. SDK build caches
 are scoped to source recipe, builder, architecture and Xcode version.
-The aggregate fails if any job fails, is cancelled, or is skipped. Parallel
-macOS jobs reduce elapsed time but use more runner minutes and depend on runner
-availability. Repository rules must require `skia-product` to gate merges on
-this check. `scripts/check.sh` forwards optional arguments to `swift test`;
+When checks are selected, the aggregate fails if any job fails, is cancelled,
+or is skipped; explicitly out-of-scope PRs report an intentional skip instead.
+See the [merge guidance](contributing.md#skia-ci-and-merge-guidance) for scope,
+manual dispatch and when to wait. Parallel macOS jobs reduce elapsed time but
+use more runner minutes and depend on runner availability. `scripts/check.sh`
+forwards optional arguments to `swift test`;
 without arguments it still runs the complete suite.
 
 For local archive preflight, use the commands in the [release guide](development/release.md).
