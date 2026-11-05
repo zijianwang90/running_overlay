@@ -127,7 +127,7 @@ dylib before its final app-signing phase. See the [release guide](release.md)
 for unsigned archive commands and local versus distribution signing.
 
 The shared `.github/actions/setup-skia` action builds the SDK from pinned source
-on a cache miss. CI's separate `skia-product` job exercises Graphite plus native
-archive and SwiftPM packaging; release tags use the same setup. No SDK download
+on a cache miss. CI's `skia-product` check aggregates parallel Graphite tests,
+native archive, and SwiftPM packaging jobs; release tags use the same setup. No SDK download
 URL, repository secret or committed binary is required. Remote Actions results
 and real-certificate distribution acceptance must still be checked before shipping.

@@ -32,16 +32,32 @@ jobs:
       - name: Publication audit
         run: ./scripts/publication-audit.sh
 
-  skia-product:
+  skia-tests:
     runs-on: macos-15
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-skia
       - name: Skia build and tests
-        run: caffeinate -d -u ./scripts/check.sh
+        run: caffeinate -d -u ./scripts/check.sh --skip SkiaBuiltInTemplateTests
       - name: Skia visual regression
         run: ./scripts/visual-test.sh
+
+  skia-templates:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-skia
+      - name: Built-in template tests
+        run: caffeinate -d -u ./scripts/test.sh SkiaBuiltInTemplateTests
+
+  skia-native-archive:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-skia
       - name: Native Skia archive
         run: |
           xcodebuild -project RunningOverlay.xcodeproj -scheme RunningOverlay -configuration Release -archivePath "$RUNNER_TEMP/RunningOverlay.xcarchive" SKIA_DIR="$SKIA_DIR" ARCHS=arm64 CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= ENABLE_HARDENED_RUNTIME=NO archive
@@ -49,5 +65,33 @@ jobs:
           codesign --verify --deep --strict "$RUNNER_TEMP/RunningOverlay.xcarchive/Products/Applications/RunningOverlay.app"
       - name: Sandboxed archive template exports
         run: python3 scripts/smoke-skia-app.py "$RUNNER_TEMP/RunningOverlay.xcarchive/Products/Applications/RunningOverlay.app"
+
+  skia-swiftpm-bundle:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-skia
       - name: SwiftPM Skia bundle
         run: ./scripts/build-appstore-app.sh
+
+  # Preserve the existing required check while making every parallel job a gate.
+  skia-product:
+    if: always()
+    needs: [skia-tests, skia-templates, skia-native-archive, skia-swiftpm-bundle]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all Skia checks
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          results = json.loads(os.environ["RESULTS"])
+          for name, job in results.items():
+              print(f"{name}: {job['result']}")
+          sys.exit(any(job["result"] != "success" for job in results.values()))
+          PY
