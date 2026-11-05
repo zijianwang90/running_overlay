@@ -22,21 +22,27 @@ enum EditorTarget: String, Codable, CaseIterable, Identifiable {
         }
     }
 
-    var applicationBundleIdentifier: String? {
+    /// Bundle identifiers this editor may ship under. Final Cut Pro Creator
+    /// Studio uses `com.apple.FinalCutApp`; builds differ between editions.
+    var applicationBundleIdentifiers: [String] {
         switch self {
         case .finalCutPro:
-            "com.apple.FinalCut"
+            ["com.apple.FinalCutApp", "com.apple.FinalCut"]
         case .resolve:
-            "com.blackmagic-design.DaVinciResolve"
+            ["com.blackmagic-design.DaVinciResolve", "com.blackmagic-design.DaVinciResolveStudio"]
         case .other:
-            nil
+            []
         }
     }
 
     /// The installed application, when this target names one that is present.
     var applicationURL: URL? {
-        guard let applicationBundleIdentifier else { return nil }
-        return NSWorkspace.shared.urlForApplication(withBundleIdentifier: applicationBundleIdentifier)
+        for identifier in applicationBundleIdentifiers {
+            if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: identifier) {
+                return url
+            }
+        }
+        return nil
     }
 
     var isInstalled: Bool {
@@ -289,6 +295,26 @@ enum EditorImportGuideText {
 /// Export for Editor choices remembered between exports. They affect guidance
 /// and overlay layout, never the project document.
 struct EditorPackageExportOptions: Codable, Equatable {
+    /// Whether the Export dialog also writes an editor package. Off by
+    /// default so the familiar overlay export is unchanged.
+    var enabled: Bool = false
     var target: EditorTarget = .finalCutPro
     var mode: EditorPackageMode = .perClip
+
+    private enum CodingKeys: String, CodingKey {
+        case enabled, target, mode
+    }
+
+    init(enabled: Bool = false, target: EditorTarget = .finalCutPro, mode: EditorPackageMode = .perClip) {
+        self.enabled = enabled
+        self.target = target
+        self.mode = mode
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
+        target = try container.decodeIfPresent(EditorTarget.self, forKey: .target) ?? .finalCutPro
+        mode = try container.decodeIfPresent(EditorPackageMode.self, forKey: .mode) ?? .perClip
+    }
 }

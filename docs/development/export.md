@@ -100,15 +100,17 @@ ADR 0013 records the design. Code lives in
     starts before the activity, and trimmed so it never reads past the
     movie's end.
   - Media references are absolute file URLs. `manifest.json` stays relative.
-- Choosing Export for Editor… opens a sheet for the target editor, overlay
-  layout, and codec. The target changes only guidance. After the export, the
-  app shows an import guide for that editor (`EditorImportGuideView`):
+- The Export dialog has an optional Editor Package section. Turning on
+  "Also export an editor package" adds a target editor and an overlay layout
+  to the same export; the overlay MOV is still written. The choice is
+  remembered. The target changes only guidance. After the export, the app
+  shows an import guide for that editor (`EditorImportGuideView`):
   - numbered steps that name the real package files;
   - Open in Final Cut Pro, or the Resolve import steps;
   - Show in Finder and Copy Timeline Path.
 
   The same text is written to `How to Import.txt` inside the package.
-  File > Import into Final Cut Pro / DaVinci Resolve / Another Editor reopens
+  Help > Import into Final Cut Pro / DaVinci Resolve / Another Editor reopens
   the guidance without exporting. The guide resolves the package through a
   security-scoped bookmark created during export, because the sandboxed app
   has no access after the export task ends. The chosen target and layout are

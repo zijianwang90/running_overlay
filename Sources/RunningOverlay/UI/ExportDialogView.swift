@@ -13,6 +13,10 @@ struct ExportDialogView: View {
     @State private var suggestedDestinationURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Movies")
     @State private var didInitializeDestination = false
     @State private var isAdvancedExpanded = false
+    @State private var editorPackageEnabled = false
+    @State private var editorTarget: EditorTarget = .finalCutPro
+    @State private var editorMode: EditorPackageMode = .perClip
+    @State private var didLoadEditorOptions = false
     @State private var activeHelpTooltip: ExportHelpTooltipState?
 
     private let outputHelpText = "1080p currently provides the best export time. 5 fps is usually the best-balanced layer data refresh rate for speed and visual quality. Higher data FPS and 4K export significantly increase render time with the current implementation."
@@ -30,6 +34,7 @@ struct ExportDialogView: View {
                     destinationSection
                     outputSection
                     encodingSection
+                    editorPackageSection
                     advancedSection
                 }
                 .padding(24)
@@ -59,6 +64,7 @@ struct ExportDialogView: View {
         .animation(.easeOut(duration: 0.12), value: activeHelpTooltip?.text)
         .onAppear {
             initializeDestinationIfNeeded()
+            loadEditorOptionsIfNeeded()
         }
     }
 
@@ -190,6 +196,72 @@ struct ExportDialogView: View {
         )
     }
 
+    private var editorPackageSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ExportSectionHeader(
+                title: "Editor Package",
+                helpText: "Also writes alpha movies, a manifest, and a timeline file that Final Cut Pro or DaVinci Resolve can import. The overlay MOV is still exported.",
+                activeHelpTooltip: $activeHelpTooltip
+            )
+
+            SettingsGroupBox {
+                Toggle("Also export an editor package", isOn: $editorPackageEnabled)
+                    .font(EditorTheme.bodyFont)
+                    .foregroundStyle(EditorTheme.textPrimary)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 44)
+                    .disabled(project.isExporting)
+
+                if editorPackageEnabled {
+                    dividerRow
+                    SettingsRow(leading: { rowLabel("Prepare for") }) {
+                        Picker("", selection: $editorTarget) {
+                            ForEach(EditorTarget.allCases) { editor in
+                                Text(editor.displayName).tag(editor)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: ExportDialogLayout.trailingColumnWidth, alignment: .trailing)
+                        .disabled(project.isExporting)
+                    }
+                    dividerRow
+                    SettingsRow(leading: { rowLabel("Layout") }) {
+                        Picker("", selection: $editorMode) {
+                            Text("One per clip").tag(EditorPackageMode.perClip)
+                            Text("Full activity").tag(EditorPackageMode.fullActivity)
+                        }
+                        .pickerStyle(.radioGroup)
+                        .labelsHidden()
+                        .frame(width: ExportDialogLayout.trailingColumnWidth, alignment: .trailing)
+                        .disabled(project.isExporting)
+                    }
+                    dividerRow
+                    Text(editorPackageHint)
+                        .font(EditorTheme.captionFont)
+                        .foregroundStyle(EditorTheme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+    }
+
+    private var editorPackageHint: String {
+        var hints: [String] = []
+        hints.append(editorMode == .perClip
+            ? "Each clip gets an overlay movie of its own length."
+            : "One movie for the whole activity; clips read their range from it.")
+        if editorTarget == .resolve {
+            hints.append("Set the Resolve timeline to \(project.settings.frameRate.id) fps before importing.")
+        }
+        hints.append("The package is written to a \"<Project> Editor Package\" folder in the destination.")
+        return hints.joined(separator: " ")
+    }
+
     private var advancedSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Button {
@@ -279,7 +351,19 @@ struct ExportDialogView: View {
             .buttonStyle(EditorSecondaryButtonStyle())
 
             Button("Export") {
-                performExportAction { project.exportOverlays(to: $0) }
+                let options = EditorPackageExportOptions(
+                    enabled: editorPackageEnabled,
+                    target: editorTarget,
+                    mode: editorMode
+                )
+                project.savedEditorPackageOptions = options
+                performExportAction { destination in
+                    if editorPackageEnabled {
+                        project.exportEditorPackage(to: destination, options: options)
+                    } else {
+                        project.exportOverlays(to: destination)
+                    }
+                }
             }
             .buttonStyle(EditorPrimaryButtonStyle())
             .keyboardShortcut(.defaultAction)
@@ -342,6 +426,17 @@ struct ExportDialogView: View {
         }
         action(destinationURL)
         dismiss()
+    }
+
+    private func loadEditorOptionsIfNeeded() {
+        guard !didLoadEditorOptions else {
+            return
+        }
+        didLoadEditorOptions = true
+        let saved = project.savedEditorPackageOptions
+        editorPackageEnabled = saved.enabled
+        editorTarget = saved.target
+        editorMode = saved.mode
     }
 
     private func initializeDestinationIfNeeded() {

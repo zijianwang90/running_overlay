@@ -21,7 +21,6 @@ final class ProjectDocument: ObservableObject {
     @Published private(set) var playbackSeekToken: UInt64 = 0
     @Published var showingProjectSettings = false
     @Published var showingExportDialog = false
-    @Published var showingEditorExportSheet = false
     /// Set after an editor package export; presents the import guide.
     @Published var editorImportGuide: EditorImportGuide?
     /// Security-scoped bookmark for the last exported package, so the guide
@@ -3645,40 +3644,6 @@ final class ProjectDocument: ObservableObject {
             mode: savedEditorPackageOptions.mode,
             codec: settings.exportCodec
         )
-    }
-
-    func chooseEditorPackageDestination(mode: EditorPackageMode) {
-        chooseEditorPackageDestination(options: EditorPackageExportOptions(
-            target: savedEditorPackageOptions.target,
-            mode: mode
-        ))
-    }
-
-    func chooseEditorPackageDestination(options: EditorPackageExportOptions) {
-        guard !isExporting else {
-            return
-        }
-        savedEditorPackageOptions = options
-
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.canCreateDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Export"
-        panel.directoryURL = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask).first
-
-        guard panel.runModal() == .OK, let url = panel.url else {
-            return
-        }
-        exportEditorPackage(to: url, options: options)
-    }
-
-    func exportEditorPackage(to directoryURL: URL, mode: EditorPackageMode) {
-        exportEditorPackage(to: directoryURL, options: EditorPackageExportOptions(
-            target: savedEditorPackageOptions.target,
-            mode: mode
-        ))
     }
 
     func exportEditorPackage(to directoryURL: URL, options: EditorPackageExportOptions) {

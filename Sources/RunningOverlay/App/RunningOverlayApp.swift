@@ -133,15 +133,7 @@ struct RunningOverlayApp: App {
                 .keyboardShortcut("S", modifiers: [.command, .shift])
             }
 
-            CommandGroup(after: .importExport) {
-                Button("Export for Editor…") {
-                    project.showingEditorExportSheet = true
-                }
-                .keyboardShortcut("e", modifiers: [.command, .shift])
-                .disabled(project.isExporting)
-
-                Divider()
-
+            CommandGroup(after: .help) {
                 Button("Import into Final Cut Pro") {
                     project.presentEditorImportGuide(editor: .finalCutPro)
                 }

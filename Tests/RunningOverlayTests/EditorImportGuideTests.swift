@@ -88,10 +88,23 @@ struct EditorImportGuideTests {
     // MARK: - Options
 
     @Test func exportOptionsRoundTripThroughJSON() throws {
-        let options = EditorPackageExportOptions(target: .resolve, mode: .fullActivity)
+        let options = EditorPackageExportOptions(enabled: true, target: .resolve, mode: .fullActivity)
         let data = try JSONEncoder().encode(options)
         #expect(try JSONDecoder().decode(EditorPackageExportOptions.self, from: data) == options)
-        #expect(EditorPackageExportOptions() == EditorPackageExportOptions(target: .finalCutPro, mode: .perClip))
+        #expect(EditorPackageExportOptions() == EditorPackageExportOptions(
+            enabled: false,
+            target: .finalCutPro,
+            mode: .perClip
+        ))
+    }
+
+    @Test func savedOptionsWithoutEnabledDecodeAsDisabled() throws {
+        // Options written before the Export dialog toggle existed.
+        let legacy = Data(#"{"target":"resolve","mode":"fullActivity"}"#.utf8)
+        let options = try JSONDecoder().decode(EditorPackageExportOptions.self, from: legacy)
+        #expect(options.enabled == false)
+        #expect(options.target == .resolve)
+        #expect(options.mode == .fullActivity)
     }
 
     // MARK: - Export writes the guide
