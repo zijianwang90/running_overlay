@@ -215,6 +215,13 @@ Rules:
 
 ## Exporting State
 
+The main window toolbar shows a compact native button with a thin determinate
+progress bar and monospaced percentage while exporting. Use the system toolbar
+button surface and sizing, without the custom filled/bordered panel button
+style. Clicking it opens the existing export queue popover, including cancel.
+On completion it shows the green completion label. Expose the progress label
+and percentage to accessibility.
+
 When `project.isExporting` is true:
 
 - Disable destination editing, codec menu, bitrate slider, advanced buttons, and primary export.
