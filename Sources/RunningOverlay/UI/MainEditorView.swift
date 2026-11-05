@@ -98,11 +98,21 @@ struct MainEditorView: View {
                 }
                 .hidingSharedToolbarBackground()
 
-                ToolbarItemGroup(placement: .primaryAction) {
-                    if let exportProgress = project.exportProgress {
+                // Progress and Export stay separate toolbar items so the
+                // native item spacing applies between them. Inside one
+                // `ToolbarItemGroup` AppKit packs them edge to edge, which
+                // reads as a single control.
+                if let exportProgress = project.exportProgress {
+                    ToolbarItem(placement: .primaryAction) {
                         ExportProgressButton(progress: exportProgress, isPresented: $showingExportProgress)
                     }
 
+                    #if compiler(>=6.2)
+                    EditorToolbarGroupSpacer()
+                    #endif
+                }
+
+                ToolbarItem(placement: .primaryAction) {
                     Button {
                         project.showingExportDialog = true
                     } label: {
