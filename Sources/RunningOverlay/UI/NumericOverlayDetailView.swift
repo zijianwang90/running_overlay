@@ -11,16 +11,15 @@ struct NumericOverlayDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let element = project.selectedOverlay(elementID) {
-                NumericOverlayHeader(element: element)
 
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
                         layoutInspectorSection
                         sectionView(.content, element: element) { contentSection(element) }
                         sectionView(.typography, element: element) { typographySection(element) }
-                        sectionView(.label, element: element, accessory: { labelEnabledToggle(element) }) { labelSection(element) }
-                        sectionView(.unit, element: element, accessory: { unitEnabledToggle(element) }) { unitSection(element) }
-                        sectionView(.icon, element: element, accessory: { iconEnabledToggle(element) }) { iconSection(element) }
+                        sectionView(.label, element: element, isOn: labelEnabledBinding(element)) { labelSection(element) }
+                        sectionView(.unit, element: element, isOn: unitEnabledBinding(element)) { unitSection(element) }
+                        sectionView(.icon, element: element, isOn: iconEnabledBinding(element)) { iconSection(element) }
                         OverlayBackgroundInspectorModule(elementID: elementID, element: element)
                         OverlayBorderInspectorModule(elementID: elementID, element: element)
                         OverlayEffectsInspectorModule(elementID: elementID, element: element)
@@ -28,7 +27,6 @@ struct NumericOverlayDetailView: View {
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
 
-                footerBar
             } else {
                 Spacer()
             }
@@ -62,7 +60,7 @@ struct NumericOverlayDetailView: View {
                 } label: {
                     InspectorDenseMenuLabel(title: element.style.unitOption.label)
                 }
-                .menuStyle(.borderlessButton)
+                .inspectorMenuStyle()
                 .frame(height: NumericTokens.controlHeight)
             }
         } else if let only = units.first {
@@ -87,19 +85,20 @@ struct NumericOverlayDetailView: View {
                 } label: {
                     InspectorDenseMenuLabel(title: element.style.elevationDisplayMode.label)
                 }
-                .menuStyle(.borderlessButton)
+                .inspectorMenuStyle()
                 .frame(height: NumericTokens.controlHeight)
             }
         }
         if element.type == .temperature, project.activity.hasTemperatureData {
-            InspectorDenseRow(label: "Use Activity Temperature") {
+            InspectorDenseRow(label: "From Activity") {
                 Toggle("", isOn: Binding(
                     get: { element.style.useFITTemperature },
                     set: { project.setOverlayUseFITTemperature(elementID, enabled: $0) }
                 ))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
+                .toggleStyle(.checkbox)
+                .controlSize(.small)
                 .labelsHidden()
+                .help("Use the temperature recorded in the activity")
                 .tint(NumericTokens.accentBlue)
             }
         }
@@ -135,7 +134,7 @@ struct NumericOverlayDetailView: View {
             } label: {
                 InspectorDenseMenuLabel(title: element.style.customNumericField.label)
             }
-            .menuStyle(.borderlessButton)
+            .inspectorMenuStyle()
             .frame(height: NumericTokens.controlHeight)
         }
         InspectorDenseRow(label: "Format") {
@@ -154,7 +153,7 @@ struct NumericOverlayDetailView: View {
             } label: {
                 InspectorDenseMenuLabel(title: element.style.customNumericFormat.label)
             }
-            .menuStyle(.borderlessButton)
+            .inspectorMenuStyle()
             .frame(height: NumericTokens.controlHeight)
         }
         if element.style.customNumericFormat.supportsPrecision {
@@ -230,7 +229,7 @@ struct NumericOverlayDetailView: View {
             } label: {
                 InspectorDenseMenuLabel(title: element.style.fontName)
             }
-            .menuStyle(.borderlessButton)
+            .inspectorMenuStyle()
             .frame(height: NumericTokens.controlHeight)
         }
         InspectorDenseSliderRow(
@@ -306,7 +305,6 @@ struct NumericOverlayDetailView: View {
             .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
             .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
             .disabled(!isEnabled)
-            .opacity(isEnabled ? 1 : 0.5)
         }
         InspectorDenseRow(label: "Position") {
             InspectorDenseSegmented(values: OverlayTextAttachmentPosition.allCases, selection: Binding(
@@ -317,7 +315,6 @@ struct NumericOverlayDetailView: View {
                     .lineLimit(1)
             }
             .disabled(!isEnabled)
-            .opacity(isEnabled ? 1 : 0.5)
         }
         InspectorDenseRow(label: alignRowLabel(for: element.style.labelPosition)) {
             InspectorDenseSegmented(values: OverlayTextAlignment.allCases, selection: Binding(
@@ -327,7 +324,6 @@ struct NumericOverlayDetailView: View {
                 Image(systemName: alignSystemImage(for: alignment, position: element.style.labelPosition))
             }
             .disabled(!isEnabled)
-            .opacity(isEnabled ? 1 : 0.5)
         }
         InspectorDenseRow(label: "Color") {
             InspectorDenseSwatchStrip(
@@ -337,7 +333,6 @@ struct NumericOverlayDetailView: View {
                 project.setOverlayLabelColor(elementID, color: color)
             }
             .disabled(!isEnabled)
-            .opacity(isEnabled ? 1 : 0.5)
         }
         if supportsHeartRateZoneColoring(element) {
             InspectorDenseRow(label: "Zone Color") {
@@ -350,7 +345,6 @@ struct NumericOverlayDetailView: View {
                 )
                 .toggleStyle(.checkbox)
                 .disabled(!isEnabled)
-                .opacity(isEnabled ? 1 : 0.5)
             }
         }
         InspectorDenseSliderRow(
@@ -407,7 +401,6 @@ struct NumericOverlayDetailView: View {
                 .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
                 .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
                 .disabled(!isEnabled)
-                .opacity(isEnabled ? 1 : 0.5)
             }
         }
         InspectorDenseRow(label: "Position") {
@@ -419,7 +412,6 @@ struct NumericOverlayDetailView: View {
                     .lineLimit(1)
             }
             .disabled(!isEnabled)
-            .opacity(isEnabled ? 1 : 0.5)
         }
         // Unit alignment is independent from label and value. Top/bottom: own
         // row horizontal align. Left/right of value: vertical align in the row
@@ -432,7 +424,6 @@ struct NumericOverlayDetailView: View {
                 Image(systemName: alignSystemImage(for: alignment, position: element.style.unitPosition))
             }
             .disabled(!isEnabled)
-            .opacity(isEnabled ? 1 : 0.5)
         }
         InspectorDenseRow(label: "Color") {
             InspectorDenseSwatchStrip(
@@ -442,7 +433,6 @@ struct NumericOverlayDetailView: View {
                 project.setOverlayUnitColor(elementID, color: color)
             }
             .disabled(!isEnabled)
-            .opacity(isEnabled ? 1 : 0.5)
         }
         if supportsHeartRateZoneColoring(element) {
             InspectorDenseRow(label: "Zone Color") {
@@ -455,7 +445,6 @@ struct NumericOverlayDetailView: View {
                 )
                 .toggleStyle(.checkbox)
                 .disabled(!isEnabled)
-                .opacity(isEnabled ? 1 : 0.5)
             }
         }
         InspectorDenseSliderRow(
@@ -514,7 +503,6 @@ struct NumericOverlayDetailView: View {
                 }
             )
             .disabled(!isEnabled)
-            .opacity(isEnabled ? 1 : 0.5)
         }
         InspectorDenseRow(label: "Position") {
             InspectorDenseSegmented(values: OverlayTextAttachmentPosition.allCases, selection: Binding(
@@ -525,7 +513,6 @@ struct NumericOverlayDetailView: View {
                     .lineLimit(1)
             }
             .disabled(!isEnabled)
-            .opacity(isEnabled ? 1 : 0.5)
         }
         InspectorDenseRow(label: alignRowLabel(for: element.style.iconPosition)) {
             InspectorDenseSegmented(values: OverlayTextAlignment.allCases, selection: Binding(
@@ -535,7 +522,6 @@ struct NumericOverlayDetailView: View {
                 Image(systemName: alignSystemImage(for: alignment, position: element.style.iconPosition))
             }
             .disabled(!isEnabled)
-            .opacity(isEnabled ? 1 : 0.5)
         }
         InspectorDenseSliderRow(
             label: "Size",
@@ -555,7 +541,6 @@ struct NumericOverlayDetailView: View {
                 project.setOverlayIconColor(elementID, color: color)
             }
             .disabled(!isEnabled)
-            .opacity(isEnabled ? 1 : 0.5)
         }
         if supportsHeartRateZoneColoring(element) {
             InspectorDenseRow(label: "Zone Color") {
@@ -568,7 +553,6 @@ struct NumericOverlayDetailView: View {
                 )
                 .toggleStyle(.checkbox)
                 .disabled(!isEnabled)
-                .opacity(isEnabled ? 1 : 0.5)
             }
         }
         InspectorDenseSliderRow(
@@ -616,10 +600,9 @@ struct NumericOverlayDetailView: View {
             } label: {
                 InspectorDenseMenuLabel(title: fontName.wrappedValue)
             }
-            .menuStyle(.borderlessButton)
+            .inspectorMenuStyle()
             .frame(height: NumericTokens.controlHeight)
             .disabled(!isEnabled)
-            .opacity(isEnabled ? 1 : 0.5)
         }
         InspectorDenseSliderRow(
             label: "Size",
@@ -634,7 +617,6 @@ struct NumericOverlayDetailView: View {
                     .lineLimit(1)
             }
             .disabled(!isEnabled)
-            .opacity(isEnabled ? 1 : 0.5)
         }
     }
 
@@ -649,7 +631,6 @@ struct NumericOverlayDetailView: View {
                 project.setOverlayBackgroundColor(elementID, color: color)
             }
             .disabled(!isEnabled)
-            .opacity(isEnabled ? 1 : 0.5)
         }
         InspectorDenseSliderRow(
             label: "Opacity",
@@ -692,18 +673,16 @@ struct NumericOverlayDetailView: View {
                 )
                 .disabled(!isEnabled)
             }
-            .opacity(isEnabled ? 1 : 0.5)
         }
         InspectorDenseRow(label: "Fade Out") {
             Toggle("", isOn: Binding(
                 get: { element.style.backgroundFadeOutEnabled },
                 set: { project.setOverlayBackgroundFadeOutEnabled(elementID, enabled: $0) }
             ))
-            .toggleStyle(.switch)
-            .controlSize(.mini)
+            .toggleStyle(.checkbox)
+            .controlSize(.small)
             .labelsHidden()
             .disabled(!isEnabled)
-            .opacity(isEnabled ? 1 : 0.5)
         }
         InspectorDenseSliderRow(
             label: "Fade Amount",
@@ -771,143 +750,50 @@ struct NumericOverlayDetailView: View {
                 )
                 .disabled(!isEnabled)
             }
-            .opacity(isEnabled ? 1 : 0.5)
         }
     }
 
     // MARK: - Composite components
 
-    @ViewBuilder
-    private func sectionView<Body: View, Accessory: View>(
+    private func sectionView<Body: View>(
         _ section: NumericSection,
         element: OverlayElement,
-        @ViewBuilder accessory: () -> Accessory = { EmptyView() },
+        isOn: Binding<Bool>? = nil,
         @ViewBuilder content: () -> Body
     ) -> some View {
-        let isOpen = openSections.contains(section)
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: NumericTokens.space2) {
-                Button {
-                    if isOpen {
-                        openSections.remove(section)
-                    } else {
-                        openSections.insert(section)
-                    }
-                } label: {
-                    HStack(spacing: NumericTokens.space2) {
-                        Image(systemName: section.systemImage)
-                            .frame(width: 16, alignment: .center)
-                            .foregroundStyle(NumericTokens.textSecondary)
-                        Text(section.title)
-                            .font(NumericTokens.sectionTitleFont)
-                            .foregroundStyle(NumericTokens.textPrimary)
-                        Spacer()
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(section.title)
-                .accessibilityValue(isOpen ? "Expanded" : "Collapsed")
-                accessory()
-                    .accessibilityLabel("Enable \(section.title)")
-                Image(systemName: isOpen ? "chevron.up" : "chevron.down")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(NumericTokens.textMuted)
-                    .frame(width: 18, height: 18)
-            }
-            .frame(height: NumericTokens.sectionHeaderHeight)
-            .padding(.horizontal, NumericTokens.panelPaddingX)
-            .background(NumericTokens.panelBackgroundElevated)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                if isOpen {
-                    openSections.remove(section)
-                } else {
-                    openSections.insert(section)
-                }
-            }
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(NumericTokens.borderSubtle)
-                    .frame(height: 1)
-            }
-
-            if isOpen {
-                VStack(spacing: 0) {
-                    content()
-                }
-            }
-        }
+        let body = content()
+        return InspectorCollapsibleSection(title: section.title, isExpanded: sectionExpansion(section), isOn: isOn) { body }
     }
 
-    @ViewBuilder
-    private func backgroundEnabledToggle(_ element: OverlayElement) -> some View {
-        Toggle("", isOn: Binding(
-            get: { element.style.backgroundEnabled },
-            set: { project.setOverlayBackgroundEnabled(elementID, enabled: $0) }
-        ))
-        .toggleStyle(.switch)
-        .controlSize(.mini)
-        .labelsHidden()
+    private func sectionExpansion(_ section: NumericSection) -> Binding<Bool> {
+        Binding(
+            get: { openSections.contains(section) },
+            set: { isOpen in
+                if isOpen { openSections.insert(section) } else { openSections.remove(section) }
+            }
+        )
     }
 
-    @ViewBuilder
-    private func labelEnabledToggle(_ element: OverlayElement) -> some View {
-        Toggle("", isOn: Binding(
+    private func labelEnabledBinding(_ element: OverlayElement) -> Binding<Bool> {
+        Binding(
             get: { element.style.showLabel },
             set: { project.setOverlayShowLabel(elementID, showLabel: $0) }
-        ))
-        .toggleStyle(.switch)
-        .controlSize(.mini)
-        .labelsHidden()
+        )
     }
-
-    @ViewBuilder
-    private func unitEnabledToggle(_ element: OverlayElement) -> some View {
-        Toggle("", isOn: Binding(
+    private func unitEnabledBinding(_ element: OverlayElement) -> Binding<Bool> {
+        Binding(
             get: { element.style.showUnit },
             set: { project.setOverlayShowUnit(elementID, showUnit: $0) }
-        ))
-        .toggleStyle(.switch)
-        .controlSize(.mini)
-        .labelsHidden()
+        )
     }
-
-    @ViewBuilder
-    private func iconEnabledToggle(_ element: OverlayElement) -> some View {
-        Toggle("", isOn: Binding(
+    private func iconEnabledBinding(_ element: OverlayElement) -> Binding<Bool> {
+        Binding(
             get: { element.style.iconEnabled },
             set: { project.setOverlayIconEnabled(elementID, enabled: $0) }
-        ))
-        .toggleStyle(.switch)
-        .controlSize(.mini)
-        .labelsHidden()
+        )
     }
-
     private func supportsHeartRateZoneColoring(_ element: OverlayElement) -> Bool {
         element.type == .heartRate || element.type == .heartRateZone
-    }
-
-    @ViewBuilder
-    private func shadowEnabledToggle(_ element: OverlayElement) -> some View {
-        Toggle("", isOn: Binding(
-            get: { element.style.shadowEnabled },
-            set: { project.setOverlayShadowEnabled(elementID, enabled: $0) }
-        ))
-        .toggleStyle(.switch)
-        .controlSize(.mini)
-        .labelsHidden()
-    }
-
-    private var footerBar: some View {
-        InspectorDetailFooterBar(
-            leadingTitle: "Reset",
-            leadingSystemImage: "arrow.counterclockwise",
-            trailingTitle: "Done",
-            trailingSystemImage: "checkmark",
-            onLeadingTap: { project.resetOverlayStyle(elementID) },
-            onTrailingTap: { project.selection = .none }
-        )
     }
 
     private func previewValue(for element: OverlayElement) -> String {
@@ -979,78 +865,6 @@ private struct ManualTemperatureField: View {
 
 // MARK: - Header
 
-struct NumericOverlayHeader: View {
-    @EnvironmentObject private var project: ProjectDocument
-    let element: OverlayElement
-
-    var body: some View {
-        HStack(spacing: NumericTokens.space3) {
-            Button {
-                project.selection = .none
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                    .foregroundStyle(NumericTokens.textPrimary)
-            }
-            .buttonStyle(.plain)
-            .help("Back")
-            .accessibilityLabel("Back")
-
-            ZStack {
-                RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
-                    .fill(NumericTokens.controlBackground)
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                Image(systemName: element.type.defaultNumericIconSystemName)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(NumericTokens.textPrimary)
-            }
-            .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-
-            HStack(spacing: 8) {
-                Text(element.type.label)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(NumericTokens.textPrimary)
-                Text("Numeric Overlay")
-                    .font(NumericTokens.captionFont)
-                    .foregroundStyle(NumericTokens.textSecondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-            }
-
-            Spacer()
-
-            Button(role: .destructive) {
-                project.deleteOverlay(element.id)
-            } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                    .foregroundStyle(NumericTokens.dangerRed)
-            }
-            .buttonStyle(.plain)
-            .help("Delete")
-            .accessibilityLabel("Delete")
-        }
-        .padding(.horizontal, NumericTokens.panelPaddingX)
-        .frame(height: EditorTheme.panelHeaderHeight)
-        .background(NumericTokens.panelBackgroundElevated)
-        .overlay(alignment: .bottom) {
-            Divider()
-                .overlay(NumericTokens.borderSubtle)
-        }
-    }
-}
-
 // MARK: - Reusable Inspector dense components
 
 enum NumericSection: String, CaseIterable {
@@ -1073,19 +887,6 @@ enum NumericSection: String, CaseIterable {
         case .icon: "Icon"
         case .background: "Background"
         case .effects: "Shadow"
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .content: "list.bullet.rectangle"
-        case .layout: "scope"
-        case .typography: "textformat"
-        case .label: "textformat.abc"
-        case .unit: "character.textbox"
-        case .icon: "star"
-        case .background: "rectangle.fill"
-        case .effects: "square.fill.on.square.fill"
         }
     }
 }

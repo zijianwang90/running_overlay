@@ -9,7 +9,6 @@ struct DistanceTimelineOverlayDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let element = project.selectedOverlay(elementID) {
-                header(element)
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
                         sectionView(.preset) { presetSection(element) }
@@ -31,63 +30,10 @@ struct DistanceTimelineOverlayDetailView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
-                footerBar
             } else {
                 Spacer()
             }
         }
-    }
-
-    private func header(_ element: OverlayElement) -> some View {
-        HStack(spacing: NumericTokens.space3) {
-            Button {
-                project.selection = .none
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Back")
-
-            Image(systemName: "waveform.path.ecg")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(NumericTokens.accentBlue)
-                .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                .background(NumericTokens.controlBackground)
-                .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(element.type.label)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(NumericTokens.textPrimary)
-                Text(element.style.distanceTimeline.preset.compactLabel)
-                    .font(NumericTokens.captionFont)
-                    .foregroundStyle(NumericTokens.textSecondary)
-            }
-            Spacer()
-            Button(role: .destructive) {
-                project.deleteOverlay(element.id)
-            } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                    .foregroundStyle(NumericTokens.dangerRed)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Delete")
-        }
-        .padding(.horizontal, NumericTokens.panelPaddingX)
-        .frame(height: EditorTheme.panelHeaderHeight)
-        .background(NumericTokens.panelBackgroundElevated)
-        .overlay(alignment: .bottom) { Divider().overlay(NumericTokens.borderSubtle) }
     }
 
     @ViewBuilder
@@ -109,7 +55,7 @@ struct DistanceTimelineOverlayDetailView: View {
             } label: {
                 InspectorDenseMenuLabel(title: style.preset.compactLabel)
             }
-            .menuStyle(.borderlessButton)
+            .inspectorMenuStyle()
             .frame(height: NumericTokens.controlHeight)
         }
     }
@@ -147,7 +93,7 @@ struct DistanceTimelineOverlayDetailView: View {
             } label: {
                 InspectorDenseMenuLabel(title: element.style.fontName)
             }
-            .menuStyle(.borderlessButton)
+            .inspectorMenuStyle()
             .frame(height: NumericTokens.controlHeight)
         }
         InspectorDenseSliderRow(label: "Size", value: Binding(
@@ -198,14 +144,14 @@ struct DistanceTimelineOverlayDetailView: View {
                     } label: {
                         InspectorDenseMenuLabel(title: custom.metric.label, isEnabled: custom.visible)
                     }
-                    .menuStyle(.borderlessButton)
+                    .inspectorMenuStyle()
                     .frame(height: NumericTokens.controlHeight)
                     Toggle("", isOn: Binding(
                         get: { custom.visible },
                         set: { newValue in project.mutateDistanceTimelineStyle(elementID) { $0.setCustomValueVisible(newValue, at: index) } }
                     ))
-                    .toggleStyle(.switch)
-                    .controlSize(.mini)
+                    .toggleStyle(.checkbox)
+                    .controlSize(.small)
                     .labelsHidden()
                 }
             }
@@ -302,13 +248,13 @@ struct DistanceTimelineOverlayDetailView: View {
                 Text(markerStyle.label)
             }
         }
-        .opacity(style.currentMarkerEnabled ? 1 : 0.5).disabled(!style.currentMarkerEnabled)
+        .disabled(!style.currentMarkerEnabled)
         InspectorDenseRow(label: "Marker Color") {
             InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: style.currentMarkerColor) { color in
                 project.mutateDistanceTimelineStyle(elementID) { $0.currentMarkerColor = color }
             }
         }
-        .opacity(style.currentMarkerEnabled ? 1 : 0.5).disabled(!style.currentMarkerEnabled)
+        .disabled(!style.currentMarkerEnabled)
         InspectorDenseSliderRow(
             label: "Marker Size",
             value: Binding(
@@ -328,7 +274,7 @@ struct DistanceTimelineOverlayDetailView: View {
                 project.mutateDistanceTimelineStyle(elementID) { $0.markerDistanceLabelEnabled = newValue }
             }
         }
-        .opacity(style.currentMarkerEnabled ? 1 : 0.5).disabled(!style.currentMarkerEnabled)
+        .disabled(!style.currentMarkerEnabled)
         InspectorDenseRow(label: "Label Side") {
             InspectorDenseSegmented(values: DistanceTimelineAxisLabelTrackPlacement.allCases, selection: Binding(
                 get: { style.markerDistanceLabelPlacement },
@@ -337,7 +283,6 @@ struct DistanceTimelineOverlayDetailView: View {
                 Text(placement.label)
             }
         }
-        .opacity(style.currentMarkerEnabled && style.markerDistanceLabelEnabled ? 1 : 0.5)
         .disabled(!style.currentMarkerEnabled || !style.markerDistanceLabelEnabled)
         InspectorDenseSliderRow(
             label: "Label Offset",
@@ -365,7 +310,7 @@ struct DistanceTimelineOverlayDetailView: View {
                 Text(placement.label)
             }
         }
-        .opacity(style.showAxisLabels ? 1 : 0.5).disabled(!style.showAxisLabels)
+        .disabled(!style.showAxisLabels)
         InspectorDenseSliderRow(
             label: "Start / End Offset",
             value: distanceBinding(\.distancePointOffset, of: style),
@@ -398,7 +343,7 @@ struct DistanceTimelineOverlayDetailView: View {
                 Text(placement.label)
             }
         }
-        .opacity(style.showDistancePoints ? 1 : 0.5).disabled(!style.showDistancePoints)
+        .disabled(!style.showDistancePoints)
         InspectorDenseSliderRow(
             label: "Midpoints Offset",
             value: distanceBinding(\.midpointAxisLabelOffset, of: style),
@@ -432,7 +377,6 @@ struct DistanceTimelineOverlayDetailView: View {
                 }
             ),
             title: SharedStatsBarInspectorUI.sectionTitle,
-            systemImage: SharedStatsBarInspectorUI.sectionSystemImage,
             isBarEnabled: config.visible,
             onSetBarEnabled: { newValue in
                 project.mutateDistanceTimelineStyle(elementID) { $0.statsBar.visible = newValue }
@@ -528,7 +472,7 @@ struct DistanceTimelineOverlayDetailView: View {
             } label: {
                 InspectorDenseMenuLabel(title: style.mediaSlotMode.label)
             }
-            .menuStyle(.borderlessButton)
+            .inspectorMenuStyle()
             .frame(height: NumericTokens.controlHeight)
         }
         if style.mediaSlotMode == .staticSVG || style.mediaSlotMode == .animatedSVG {
@@ -583,8 +527,8 @@ struct DistanceTimelineOverlayDetailView: View {
 
     private func toggle(_ isOn: Bool, action: @escaping (Bool) -> Void) -> some View {
         Toggle("", isOn: Binding(get: { isOn }, set: { newValue in action(newValue) }))
-            .toggleStyle(.switch)
-            .controlSize(.mini)
+            .toggleStyle(.checkbox)
+            .controlSize(.small)
             .labelsHidden()
     }
 
@@ -623,10 +567,10 @@ struct DistanceTimelineOverlayDetailView: View {
             } label: {
                 InspectorDenseMenuLabel(title: fontName, isEnabled: isEnabled)
             }
-            .menuStyle(.borderlessButton)
+            .inspectorMenuStyle()
             .frame(height: NumericTokens.controlHeight)
         }
-        .opacity(isEnabled ? 1 : 0.5).disabled(!isEnabled)
+        .disabled(!isEnabled)
 
         InspectorDenseSliderRow(
             label: "\(title) Size",
@@ -650,65 +594,33 @@ struct DistanceTimelineOverlayDetailView: View {
                 Text(weight.label)
             }
         }
-        .opacity(isEnabled ? 1 : 0.5).disabled(!isEnabled)
+        .disabled(!isEnabled)
 
         InspectorDenseRow(label: "\(title) Color") {
             InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: color) { newColor in
                 onSetColor(newColor)
             }
         }
-        .opacity(isEnabled ? 1 : 0.5).disabled(!isEnabled)
+        .disabled(!isEnabled)
     }
 
-    @ViewBuilder
-    private func sectionView<Body: View>(_ section: DistanceTimelineSection, @ViewBuilder content: () -> Body) -> some View {
-        let isOpen = openSections.contains(section)
-        VStack(alignment: .leading, spacing: 0) {
-            Button {
-                if isOpen {
-                    openSections.remove(section)
-                } else {
-                    openSections.insert(section)
-                }
-            } label: {
-                HStack(spacing: NumericTokens.space2) {
-                    Image(systemName: section.systemImage)
-                        .frame(width: 16)
-                        .foregroundStyle(NumericTokens.textSecondary)
-                    Text(section.title)
-                        .font(NumericTokens.sectionTitleFont)
-                        .foregroundStyle(NumericTokens.textPrimary)
-                    Spacer()
-                    Image(systemName: isOpen ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(NumericTokens.textMuted)
-                }
-                .frame(height: NumericTokens.sectionHeaderHeight)
-                .padding(.horizontal, NumericTokens.panelPaddingX)
-                .background(NumericTokens.panelBackgroundElevated)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(section.title)
-            .accessibilityValue(isOpen ? "Expanded" : "Collapsed")
-            .overlay(alignment: .bottom) { Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1) }
-
-            if isOpen {
-                VStack(spacing: 0) { content() }
-            }
-        }
+    private func sectionView<Body: View>(
+        _ section: DistanceTimelineSection,
+        @ViewBuilder content: () -> Body
+    ) -> some View {
+        let body = content()
+        return InspectorCollapsibleSection(title: section.title, isExpanded: sectionExpansion(section)) { body }
     }
 
-    private var footerBar: some View {
-        InspectorDetailFooterBar(
-            leadingTitle: "Reset",
-            leadingSystemImage: "arrow.counterclockwise",
-            trailingTitle: "Done",
-            trailingSystemImage: "checkmark",
-            onLeadingTap: { project.mutateDistanceTimelineStyle(elementID) { $0 = .default } },
-            onTrailingTap: { project.selection = .none }
+    private func sectionExpansion(_ section: DistanceTimelineSection) -> Binding<Bool> {
+        Binding(
+            get: { openSections.contains(section) },
+            set: { isOpen in
+                if isOpen { openSections.insert(section) } else { openSections.remove(section) }
+            }
         )
     }
+
 }
 
 private enum DistanceTimelineSection: String, CaseIterable {
@@ -733,20 +645,6 @@ private enum DistanceTimelineSection: String, CaseIterable {
         case .statsBar: "Stats Bar"
         case .mediaSlot: "Media Slot"
         case .routeElevation: "Route / Elevation"
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .preset: "slider.horizontal.3"
-        case .value: "number"
-        case .label: "tag"
-        case .layout: "scope"
-        case .progress: "chart.bar.fill"
-        case .axisLabels: "ruler"
-        case .statsBar: "tablecells"
-        case .mediaSlot: "photo"
-        case .routeElevation: "point.topleft.down.curvedto.point.bottomright.up"
         }
     }
 }

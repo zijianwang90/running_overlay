@@ -138,6 +138,7 @@ struct MainEditorView: View {
         .onChange(of: showsInspector) { _, _ in widenWindowToFitPanels() }
         .background(EditorTheme.appBackground)
         .background(WindowDocumentEditedState(isEdited: project.hasUnsavedChanges))
+        .background(EditorEscapeKeyMonitorView(project: project))
         .navigationTitle(project.projectDisplayName)
         .onAppear {
             RunningOverlayAppDelegate.reopenMainWindow = { openWindow(id: "main") }
@@ -288,11 +289,7 @@ struct MainEditorView: View {
     }
 
     private var isTextInputFocused: Bool {
-        guard let responder = NSApp.keyWindow?.firstResponder else { return false }
-        if let textView = responder as? NSTextView, textView.isEditable {
-            return true
-        }
-        return responder is NSTextField
+        EditorEscapeKey.isTextInput(NSApp.keyWindow?.firstResponder)
     }
 }
 
@@ -411,6 +408,23 @@ private struct WindowDocumentEditedState: NSViewRepresentable {
             window.isDocumentEdited = isEdited
             EditorWindowCloseGuard.shared.install(on: window)
             EditorTitlebarDoubleClickGuard.shared.install(on: window)
+        }
+    }
+}
+
+/// Installs the editor window's Escape-to-deselect monitor for this project.
+private struct EditorEscapeKeyMonitorView: NSViewRepresentable {
+    var project: ProjectDocument
+
+    func makeNSView(context: Context) -> NSView {
+        NSView()
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        let project = project
+        DispatchQueue.main.async {
+            guard let window = nsView.window else { return }
+            EditorEscapeKeyMonitor.shared.install(on: window, project: project)
         }
     }
 }

@@ -3033,6 +3033,35 @@ final class ProjectDocument: ObservableObject {
         statusMessage = "Reset overlay style."
     }
 
+    /// The Inspector's Reset Style command. Overlays with a dedicated style
+    /// block reset only that block, so shared position, background, and
+    /// effects settings survive; other overlays reset their whole style.
+    func resetOverlayInspectorStyle(_ elementID: OverlayElement.ID) {
+        guard let element = selectedOverlay(elementID) else {
+            return
+        }
+        switch element.type {
+        case .distanceTimeline:
+            mutateDistanceTimelineStyle(elementID) { $0 = .default }
+        case .elevationChart:
+            mutateElevationChartStyle(elementID) { $0 = .default }
+        case .intervalHUDBar:
+            mutateIntervalHUDBarStyle(elementID) { $0 = .default }
+        case .intervalTimeline:
+            mutateIntervalTimelineStyle(elementID) { $0 = .default }
+        case .zoneEdgeBar:
+            mutateZoneEdgeBarStyle(elementID) { $0 = .default }
+        case .weatherWidget:
+            mutateWeatherWidgetStyle(elementID) { style in
+                let unit = style.temperatureUnit
+                style = WeatherWidgetStyle.preset(style.preset)
+                style.temperatureUnit = unit
+            }
+        default:
+            resetOverlayStyle(elementID)
+        }
+    }
+
     func setOverlayShadowRadius(_ elementID: OverlayElement.ID, radius: Double) {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {

@@ -76,7 +76,7 @@
   },
   "inspectorChrome": {
     "collapsedSectionSeparatorRule": "Elevation Chart custom section headers draw one bottom separator only.",
-    "footerRule": "Reuse InspectorDetailFooterBar so Reset and Done follow the shared one-third/two-thirds layout and adjacent Preview playback row height."
+    "resetRule": "No footer; Reset Style is in the shared OverlayDetailHeader action menu."
   },
   "model": {
     "rootType": "OverlayStyle.elevationChart",

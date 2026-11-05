@@ -12,10 +12,11 @@ struct ParameterPanelView: View {
                 InspectorOuterView()
             case .overlayElement(let elementID):
                 VStack(spacing: 0) {
-                    if project.overlayLayout.elements.count > 1 {
-                        OverlaySwitcherBar(elementID: elementID)
+                    if let element = project.selectedOverlay(elementID) {
+                        OverlayDetailHeader(element: element)
                     }
                     overlayDetail(elementID)
+                        .inspectorRevealsExpandedSections()
                 }
             case .none:
                 InspectorOuterView()
@@ -62,68 +63,93 @@ struct ParameterPanelView: View {
     }
 }
 
-/// The position leads so a truncated title only loses the overlay name.
+/// "3 of 6" beside the overlay pop-up, so the list position stays visible
+/// while the pop-up shows only the overlay name.
 enum OverlaySwitcherTitle {
-    static func text(index: Int, count: Int, label: String) -> String {
-        "\(index + 1) / \(count)  \(label)"
+    static func position(index: Int, count: Int) -> String {
+        "\(index + 1) of \(count)"
     }
 }
 
-/// Lets the Inspector jump between overlays without going back to the
-/// Added Overlays list.
-private struct OverlaySwitcherBar: View {
+/// Header for every overlay detail panel. The Inspector follows the editor
+/// selection, so there is no Back or Done: clicking empty canvas or pressing
+/// Escape returns to the overlay list. The pop-up switches overlays, the
+/// arrows step through unlocked overlays, and the action menu holds Reset
+/// Style plus the same commands as the overlay's context menu.
+private struct OverlayDetailHeader: View {
     @EnvironmentObject private var project: ProjectDocument
-    let elementID: OverlayElement.ID
+    let element: OverlayElement
 
     var body: some View {
         let elements = project.overlayLayout.elements
-        let currentIndex = elements.firstIndex { $0.id == elementID }
+        let currentIndex = elements.firstIndex { $0.id == element.id }
         let canStep = elements.filter { !$0.isLocked }.count > 1
 
-        InspectorDenseRow(label: "Overlay", minHeight: EditorTheme.panelHeaderHeight) {
-            Menu {
-                ForEach(Array(elements.enumerated()), id: \.element.id) { index, element in
-                    Button {
-                        project.openOverlayDetailFromList(element.id)
-                    } label: {
-                        Label("\(index + 1). \(element.type.label)", systemImage: menuIcon(for: element))
-                    }
-                    .disabled(element.isLocked || element.id == elementID)
+        HStack(spacing: 4) {
+            Picker("Overlay", selection: Binding(
+                get: { element.id },
+                set: { project.openOverlayDetailFromList($0) }
+            )) {
+                ForEach(elements) { item in
+                    Label(item.type.label, systemImage: item.isLocked ? "lock.fill" : item.type.inspectorIcon)
+                        .tag(item.id)
+                        .disabled(item.isLocked && item.id != element.id)
                 }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .fixedSize()
+            .help("Switch Overlay")
+
+            if let currentIndex {
+                Text(OverlaySwitcherTitle.position(index: currentIndex, count: elements.count))
+                    .font(NumericTokens.captionFont)
+                    .monospacedDigit()
+                    .foregroundStyle(NumericTokens.textMuted)
+                    .lineLimit(1)
+                    .padding(.leading, 2)
+            }
+
+            Spacer(minLength: NumericTokens.space2)
+
+            InspectorIconButton(systemImage: "chevron.up", help: "Previous Overlay", isEnabled: canStep) {
+                project.selectAdjacentOverlay(-1)
+            }
+            InspectorIconButton(systemImage: "chevron.down", help: "Next Overlay", isEnabled: canStep) {
+                project.selectAdjacentOverlay(1)
+            }
+
+            Menu {
+                Button("Reset Style") {
+                    project.resetOverlayInspectorStyle(element.id)
+                }
+                Divider()
+                OverlayElementContextMenu(element: element)
             } label: {
-                InspectorDenseMenuLabel(
-                    systemImage: currentIndex.map { elements[$0].type.inspectorIcon },
-                    title: currentIndex.map {
-                        OverlaySwitcherTitle.text(index: $0, count: elements.count, label: elements[$0].type.label)
-                    } ?? "Overlay"
-                )
+                Image(systemName: "ellipsis.circle")
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
-            .help("Switch Overlay")
-
-            InspectorIconButton(systemImage: "chevron.up", help: "Previous Overlay", isEnabled: canStep, compact: true) {
-                project.selectAdjacentOverlay(-1)
-            }
-            InspectorIconButton(systemImage: "chevron.down", help: "Next Overlay", isEnabled: canStep, compact: true) {
-                project.selectAdjacentOverlay(1)
-            }
+            .fixedSize()
+            .help("More Actions")
+            .accessibilityLabel("More Actions")
         }
+        .padding(.leading, NumericTokens.panelPaddingX - 4)
+        .padding(.trailing, NumericTokens.panelPaddingX)
+        .frame(height: NumericTokens.detailHeaderHeight)
         .background(NumericTokens.panelBackgroundElevated)
-    }
-
-    private func menuIcon(for element: OverlayElement) -> String {
-        if element.id == elementID { return "checkmark" }
-        if element.isLocked { return "lock.fill" }
-        if !element.isVisible { return "eye.slash" }
-        return element.type.inspectorIcon
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(NumericTokens.borderSubtle)
+                .frame(height: 1)
+        }
     }
 }
 
 private struct MissingOverlayInspectorView: View {
     var body: some View {
         VStack(spacing: 0) {
-            InspectorHeader(title: "Inspector", status: "Missing", trailingSystemImage: "slider.horizontal.3")
+            InspectorHeader(title: "Inspector", status: "Missing")
             Spacer()
         }
     }
@@ -201,7 +227,7 @@ private struct ClipDetailView: View {
                     }
                 }
             } else {
-                InspectorHeader(title: "Inspector", status: "Missing", trailingSystemImage: "slider.horizontal.3")
+                InspectorHeader(title: "Inspector", status: "Missing")
                 Spacer()
             }
         }
@@ -251,66 +277,21 @@ private struct ClipDetailHeader: View {
     let clip: TimelineClip
 
     var body: some View {
-        HStack(spacing: InspectorTheme.space3) {
-            Button {
-                project.clearSelection()
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                    .foregroundStyle(NumericTokens.textPrimary)
-            }
-            .buttonStyle(.plain)
-            .help("Back")
-            .accessibilityLabel("Back")
-
-            ZStack {
-                RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
-                    .fill(NumericTokens.controlBackground)
-                Image(systemName: "video")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(NumericTokens.textPrimary)
-            }
-            .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-            .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-
-            HStack(spacing: 8) {
-                Text(clip.title)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(NumericTokens.textPrimary)
-                    .lineLimit(1)
-                Text("Clip")
-                    .font(NumericTokens.captionFont)
-                    .foregroundStyle(NumericTokens.textSecondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-            }
-
+        HStack(spacing: NumericTokens.space2) {
+            Image(systemName: "video")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(NumericTokens.textSecondary)
+            Text(clip.title)
+                .font(NumericTokens.bodyStrongFont)
+                .foregroundStyle(NumericTokens.textPrimary)
+                .lineLimit(1)
             Spacer()
-
-            Button(role: .destructive) {
+            InspectorIconButton(systemImage: "trash", help: "Delete Clip") {
                 project.deleteSelectedItem()
-            } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                    .foregroundStyle(NumericTokens.dangerRed)
             }
-            .buttonStyle(.plain)
-            .help("Delete Clip")
-            .accessibilityLabel("Delete Clip")
         }
         .padding(.horizontal, NumericTokens.panelPaddingX)
-        .frame(height: EditorTheme.panelHeaderHeight)
+        .frame(height: NumericTokens.detailHeaderHeight)
         .background(NumericTokens.panelBackgroundElevated)
         .overlay(alignment: .bottom) {
             Divider()
@@ -451,18 +432,25 @@ private struct InspectorOuterView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            InspectorHeader(
-                title: "Inspector",
-                status: overlayCountLabel,
-                trailingSystemImage: "slider.horizontal.3"
-            )
+            InspectorHeader(title: "Inspector", status: overlayCountLabel)
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: InspectorTheme.sectionGap) {
-                    AddedOverlaysSection()
+            if project.overlayLayout.elements.isEmpty {
+                VStack(spacing: InspectorTheme.space2) {
+                    Image(systemName: "rectangle.stack.badge.plus")
+                        .font(.system(size: 24))
+                        .foregroundStyle(InspectorTheme.textMuted)
+                    Text("No Overlays")
+                        .font(InspectorTheme.bodyStrongFont)
+                        .foregroundStyle(InspectorTheme.textPrimary)
+                    Text("Drag an overlay from the Overlay Pool onto the preview to add it.")
+                        .font(InspectorTheme.captionFont)
+                        .foregroundStyle(InspectorTheme.textSecondary)
+                        .multilineTextAlignment(.center)
                 }
-                .padding(.horizontal, InspectorTheme.outerPanelPaddingX)
-                .padding(.vertical, InspectorTheme.outerPanelPaddingY)
+                .padding(InspectorTheme.space3)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                AddedOverlaysList()
             }
         }
     }
@@ -473,112 +461,86 @@ private struct InspectorOuterView: View {
     }
 }
 
-private struct AddedOverlaysSection: View {
+/// The overlay list is a standard selectable `List`: clicking a row (or
+/// moving to it with the arrow keys) selects that overlay, and the Inspector
+/// follows the selection into its detail panel. Row actions stay out of the
+/// way until the pointer is over the row, except for the hidden and locked
+/// indicators, which always show because they describe the overlay's state.
+private struct AddedOverlaysList: View {
     @EnvironmentObject private var project: ProjectDocument
 
     var body: some View {
-        InspectorSection(title: "Added Overlays", subtitle: "Manage overlays in your scene") {
-            if project.overlayLayout.elements.isEmpty {
-                HStack(spacing: InspectorTheme.space3) {
-                    Image(systemName: "rectangle.stack.badge.plus")
-                        .foregroundStyle(InspectorTheme.textMuted)
-                    Text("No overlays added yet")
-                        .font(InspectorTheme.bodyFont)
-                        .foregroundStyle(InspectorTheme.textSecondary)
-                    Spacer()
-                }
-                .padding(.horizontal, InspectorTheme.space3)
-                .frame(minHeight: InspectorTheme.rowHeight)
-                .background(InspectorTheme.controlBackground)
-                .clipShape(RoundedRectangle(cornerRadius: InspectorTheme.controlRadius))
-                .overlay(InspectorRoundedBorder())
-            } else {
-                VStack(spacing: InspectorTheme.space2) {
-                    ForEach(project.overlayLayout.elements) { element in
-                        OverlayElementRow(element: element)
-                    }
+        List(selection: Binding<OverlayElement.ID?>(
+            get: { nil },
+            set: { elementID in
+                if let elementID { project.openOverlayDetailFromList(elementID) }
+            }
+        )) {
+            Section("Added Overlays") {
+                ForEach(project.overlayLayout.elements) { element in
+                    OverlayElementRow(element: element)
+                        .tag(element.id)
+                        .contextMenu {
+                            OverlayElementContextMenu(element: element)
+                        }
                 }
             }
         }
+        .listStyle(.inset)
+        .scrollContentBackground(.hidden)
+        .environment(\.defaultMinListRowHeight, InspectorTheme.listRowHeight)
     }
 }
 
 private struct OverlayElementRow: View {
     @EnvironmentObject private var project: ProjectDocument
     let element: OverlayElement
+    @State private var isHovered = false
 
     var body: some View {
         HStack(spacing: InspectorTheme.space2) {
-            Button {
-                project.openOverlayDetailFromList(element.id)
-            } label: {
-                rowBody
-            }
-            .buttonStyle(.plain)
-
-            Divider()
-                .frame(height: 24)
-                .overlay(InspectorTheme.borderSubtle)
-
-            InspectorIconButton(
-                systemImage: element.isVisible ? "eye" : "eye.slash",
-                help: element.isVisible ? "Hide Overlay" : "Show Overlay",
-                compact: true
-            ) {
-                project.setOverlayVisibility(element.id, isVisible: !element.isVisible)
-            }
-            InspectorIconButton(
-                systemImage: element.isLocked ? "lock.fill" : "lock.open",
-                help: element.isLocked ? "Unlock Overlay" : "Lock Overlay",
-                compact: true
-            ) {
-                project.setOverlayLocked(element.id, isLocked: !element.isLocked)
-            }
-            InspectorIconButton(systemImage: "trash", help: "Delete", role: .destructive, compact: true) {
-                project.deleteOverlay(element.id)
-            }
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(InspectorTheme.textMuted)
-        }
-        .padding(.horizontal, InspectorTheme.outerRowPaddingX)
-        .frame(minHeight: InspectorTheme.rowHeight)
-        .background(InspectorTheme.controlBackground)
-        .clipShape(RoundedRectangle(cornerRadius: InspectorTheme.controlRadius))
-        .overlay(InspectorRoundedBorder())
-        .opacity(element.isVisible ? 1 : 0.72)
-        .contextMenu {
-            OverlayElementContextMenu(element: element)
-        }
-    }
-
-    private var rowBody: some View {
-        HStack(spacing: InspectorTheme.space3) {
             Image(systemName: element.type.inspectorIcon)
-                .font(.system(size: 19, weight: .medium))
-                .foregroundStyle(InspectorTheme.textPrimary)
-                .frame(width: 24)
+                .font(.system(size: 13))
+                .foregroundStyle(InspectorTheme.textSecondary)
+                .frame(width: 18)
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(element.type.label)
-                    .font(InspectorTheme.bodyStrongFont)
-                    .foregroundStyle(InspectorTheme.textPrimary)
-                    .lineLimit(1)
-                Text(element.subtitle)
-                    .font(InspectorTheme.captionFont)
-                    .foregroundStyle(InspectorTheme.textMuted)
-                    .lineLimit(1)
-            }
+            Text(element.type.label)
+                .font(InspectorTheme.bodyFont)
+                .foregroundStyle(InspectorTheme.textPrimary)
+                .lineLimit(1)
 
             Spacer(minLength: InspectorTheme.space2)
 
             Text(valuePreview)
-                .font(InspectorTheme.numericFont)
+                .font(InspectorTheme.captionFont)
+                .monospacedDigit()
                 .foregroundStyle(InspectorTheme.textSecondary)
                 .lineLimit(1)
+
+            // Both buttons always take part in layout and only fade in, so
+            // hovering never resizes the row. The fixed height lets the 24 pt
+            // hit targets overhang the text line instead of growing the row.
+            HStack(spacing: 0) {
+                InspectorIconButton(
+                    systemImage: element.isVisible ? "eye" : "eye.slash",
+                    help: element.isVisible ? "Hide Overlay" : "Show Overlay"
+                ) {
+                    project.setOverlayVisibility(element.id, isVisible: !element.isVisible)
+                }
+                .rowAccessory(isShown: isHovered || !element.isVisible)
+                InspectorIconButton(
+                    systemImage: element.isLocked ? "lock.fill" : "lock.open",
+                    help: element.isLocked ? "Unlock Overlay" : "Lock Overlay"
+                ) {
+                    project.setOverlayLocked(element.id, isLocked: !element.isLocked)
+                }
+                .rowAccessory(isShown: isHovered || element.isLocked)
+            }
+            .frame(width: NumericTokens.iconButtonSize * 2, height: InspectorTheme.rowAccessoryHeight, alignment: .trailing)
         }
+        .opacity(element.isVisible ? 1 : 0.55)
         .contentShape(Rectangle())
-        .frame(maxWidth: .infinity)
+        .onHover { isHovered = $0 }
     }
 
     private var valuePreview: String {
@@ -587,6 +549,12 @@ private struct OverlayElementRow: View {
             activity: project.activity,
             elapsedTime: project.layerDataSampleTime
         )
+    }
+}
+
+private extension View {
+    func rowAccessory(isShown: Bool) -> some View {
+        opacity(isShown ? 1 : 0).allowsHitTesting(isShown)
     }
 }
 
@@ -678,7 +646,6 @@ private struct InspectorBufferedNumberField: View {
 private struct InspectorHeader: View {
     var title: String
     var status: String
-    var trailingSystemImage: String
 
     var body: some View {
         EditorPanelHeader(title: title) {
@@ -686,43 +653,6 @@ private struct InspectorHeader: View {
                 .font(EditorTheme.captionFont)
                 .foregroundStyle(EditorTheme.textMuted)
                 .lineLimit(1)
-
-            InspectorIconButton(systemImage: trailingSystemImage, help: "Inspector Options", isEnabled: false) {}
-        }
-    }
-}
-
-private struct InspectorSection<Content: View>: View {
-    var title: String
-    var subtitle: String?
-    var systemImage: String?
-    @ViewBuilder var content: Content
-
-    init(title: String, subtitle: String? = nil, systemImage: String? = nil, @ViewBuilder content: () -> Content) {
-        self.title = title
-        self.subtitle = subtitle
-        self.systemImage = systemImage
-        self.content = content()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: InspectorTheme.space3) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: InspectorTheme.space2) {
-                    if let systemImage {
-                        Image(systemName: systemImage)
-                            .foregroundStyle(InspectorTheme.textSecondary)
-                    }
-                    Text(title)
-                        .font(InspectorTheme.sectionTitleFont)
-                }
-                if let subtitle {
-                    Text(subtitle)
-                        .font(InspectorTheme.bodyFont)
-                        .foregroundStyle(InspectorTheme.textSecondary)
-                }
-            }
-            content
         }
     }
 }
@@ -730,45 +660,18 @@ private struct InspectorSection<Content: View>: View {
 private struct InspectorIconButton: View {
     var systemImage: String
     var help: String
-    var role: ButtonRole?
     var isEnabled = true
-    var compact = false
     var action: () -> Void
 
     var body: some View {
-        Button(role: role, action: action) {
+        Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(foreground)
-                .frame(
-                    width: compact ? InspectorTheme.compactIconButtonSize : InspectorTheme.iconButtonSize,
-                    height: compact ? InspectorTheme.compactIconButtonSize : InspectorTheme.iconButtonSize
-                )
-                .background(InspectorTheme.controlBackground)
-                .clipShape(RoundedRectangle(cornerRadius: InspectorTheme.controlRadius))
-                .overlay(InspectorRoundedBorder())
+                .font(.system(size: 12, weight: .semibold))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(InspectorIconButtonStyle())
         .disabled(!isEnabled)
         .help(help)
         .accessibilityLabel(help)
-    }
-
-    private var foreground: Color {
-        if !isEnabled {
-            return InspectorTheme.textMuted.opacity(0.45)
-        }
-        return role == .destructive ? InspectorTheme.dangerRed : InspectorTheme.textPrimary
-    }
-}
-
-private struct InspectorRoundedBorder: View {
-    var cornerRadius = InspectorTheme.controlRadius
-    var color = InspectorTheme.borderSubtle
-
-    var body: some View {
-        RoundedRectangle(cornerRadius: cornerRadius)
-            .stroke(color, lineWidth: 1)
     }
 }
 
@@ -797,16 +700,10 @@ private enum InspectorTheme {
     static let space1 = EditorTheme.space1
     static let space2 = EditorTheme.space2
     static let space3 = EditorTheme.space3
-    static let outerPanelPaddingX: CGFloat = 14
-    static let outerPanelPaddingY: CGFloat = 14
-    static let sectionGap: CGFloat = 18
-    static let controlHeight: CGFloat = 34
-    static let rowHeight: CGFloat = 56
-    static let iconButtonSize = EditorTheme.iconButtonSize
-    static let compactIconButtonSize: CGFloat = 26
-    static let tileMinHeight: CGFloat = 56
-    static let outerTilePaddingX: CGFloat = 10
-    static let outerRowPaddingX: CGFloat = 10
+    static let controlHeight: CGFloat = 28
+    static let listRowHeight: CGFloat = 28
+    /// Layout height of the row eye/lock group; the buttons overhang it.
+    static let rowAccessoryHeight: CGFloat = 18
     static let controlRadius = EditorTheme.controlRadius
 
     static let sectionTitleFont = EditorTheme.sectionTitleFont
@@ -816,31 +713,10 @@ private enum InspectorTheme {
     static let numericFont = EditorTheme.numericFont
 }
 
-private extension OverlayElement {
-    var subtitle: String {
-        let components = OverlayValueFormatter.components(for: type, activity: .empty, elapsedTime: 0)
-        return "\(components.label) • \(type.kindLabel)"
-    }
-}
-
-private extension OverlayElementType {
+extension OverlayElementType {
     var inspectorIcon: String {
         OverlayTileInfo.all.first { $0.type == self }?.systemImage ?? "square.stack.3d.up"
     }
-
-    var kindLabel: String {
-        switch self {
-        case .distanceTimeline, .elevationChart:
-            "Chart"
-        case .runningGauge:
-            "Gauge"
-        case .routeMap:
-            "Map"
-        default:
-            "Text"
-        }
-    }
-
 }
 
 extension OverlayRouteMapContainerPreset {
