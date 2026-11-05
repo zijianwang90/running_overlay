@@ -1085,7 +1085,8 @@ private struct MediaSearchField: NSViewRepresentable {
         }
     }
 
-    final class Coordinator: NSObject, NSSearchFieldDelegate {
+    @MainActor
+    final class Coordinator: NSObject, @preconcurrency NSSearchFieldDelegate {
         var text: Binding<String>
         var lastFocusRequest = 0
 
@@ -1310,7 +1311,7 @@ private enum MediaStatusFilter: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    @ViewBuilder
+    @MainActor @ViewBuilder
     var label: some View {
         switch self {
         case .all:
