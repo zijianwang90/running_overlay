@@ -118,8 +118,10 @@ ADR 0013 records the design. Code lives in
   security-scoped bookmark created during export, because the sandboxed app
   has no access after the export task ends. The chosen target and layout are
   remembered in user defaults and are not part of the project file.
-- Import: Final Cut Pro opens the `.fcpxml` directly. DaVinci Resolve uses
-  File > Import > Timeline. Overlays can also be dragged above their clips by
+- Import: Final Cut Pro opens the `.fcpxml` directly. DaVinci Resolve does
+  not register that file type, so its guide button launches Resolve and copies
+  the timeline path for File > Import > Timeline. The package format is the
+  same for both editors. Overlays can also be dragged above their clips by
   hand. Alpha, Rec. 709 handling, and frame-rate conformance in each editor
   need manual verification.
 

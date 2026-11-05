@@ -29,6 +29,18 @@ struct EditorImportGuideTests {
         #expect(guide.notes.contains { $0.contains("HEVC with alpha") })
     }
 
+    @Test func onlyFinalCutProOpensTheTimelineFileDirectly() {
+        #expect(makeGuide(target: .finalCutPro).opensTimelineFileDirectly)
+        #expect(makeGuide(target: .finalCutPro).openButtonTitle == "Open in Final Cut Pro")
+
+        let resolve = makeGuide(target: .resolve)
+        #expect(resolve.opensTimelineFileDirectly == false)
+        #expect(resolve.openButtonTitle == "Open DaVinci Resolve")
+        #expect(resolve.notes.contains { $0.contains("does not open FCPXML from Finder") })
+
+        #expect(makeGuide(target: .other).opensTimelineFileDirectly == false)
+    }
+
     @Test func otherEditorStepsReferenceTheOverlayMovie() {
         let guide = makeGuide(target: .other)
 

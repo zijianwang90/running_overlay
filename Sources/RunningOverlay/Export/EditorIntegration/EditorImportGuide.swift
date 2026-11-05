@@ -147,6 +147,9 @@ struct EditorImportGuide: Identifiable, Equatable {
         if editor == .other {
             notes.append("Overlays are transparent MOVs; no keying is required.")
         }
+        if editor == .resolve {
+            notes.append("Resolve does not open FCPXML from Finder. Open DaVinci Resolve copies the timeline path; then use File > Import > Timeline.")
+        }
         return notes
     }
 
@@ -163,13 +166,20 @@ struct EditorImportGuide: Identifiable, Equatable {
         return names
     }
 
-    /// True when the sheet can open the package's timeline in the target app.
+    /// True when the sheet can launch the target app for this package.
     var canOpenInEditor: Bool {
         editor.applicationURL != nil && editor != .other && packageURL != nil && fcpxmlFileName != nil
     }
 
+    /// Final Cut Pro opens `.fcpxml` from Finder. DaVinci Resolve does not
+    /// register the type, so the sheet launches it and copies the path for
+    /// File > Import > Timeline instead.
+    var opensTimelineFileDirectly: Bool {
+        editor == .finalCutPro
+    }
+
     var openButtonTitle: String {
-        "Open in \(editor.displayName)"
+        opensTimelineFileDirectly ? "Open in \(editor.displayName)" : "Open \(editor.displayName)"
     }
 
     /// Text of `How to Import.txt`, written into the package so guidance

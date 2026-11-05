@@ -227,6 +227,21 @@ struct EditorImportGuideView: View {
 
         let editorName = guide.editor.displayName
         let configuration = NSWorkspace.OpenConfiguration()
+
+        guard guide.opensTimelineFileDirectly else {
+            // Resolve does not accept .fcpxml from Finder. Launch it and put
+            // the timeline path on the clipboard for File > Import > Timeline.
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(timelineURL.path, forType: .string)
+            NSWorkspace.shared.openApplication(at: applicationURL, configuration: configuration) { _, error in
+                guard let error else { return }
+                Task { @MainActor in
+                    openFailure = "Could not open \(editorName): \(error.localizedDescription)"
+                }
+            }
+            return
+        }
+
         NSWorkspace.shared.open([timelineURL], withApplicationAt: applicationURL, configuration: configuration) { _, error in
             guard let error else { return }
             Task { @MainActor in
