@@ -83,11 +83,7 @@ struct MainEditorView: View {
 
                 if showsPoolPanel {
                     ToolbarItem(placement: .navigation) {
-                        // AppKit collapses a fixed `ToolbarSpacer` in the leading
-                        // navigation cluster, so the group gap lives in the
-                        // item content instead.
                         PoolModeSwitch(activePool: $activePool)
-                            .padding(.leading, 16)
                     }
                 }
 
@@ -116,13 +112,9 @@ struct MainEditorView: View {
                     Button {
                         project.showingExportDialog = true
                     } label: {
-                        // The default capsule inset crowds the icon and title.
                         Label("Export", systemImage: "square.and.arrow.up")
-                            .labelStyle(.titleAndIcon)
-                            .padding(.horizontal, 3)
+                            .labelStyle(.iconOnly)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(EditorTheme.accentBlue)
                     .help("Export overlays")
                 }
 
@@ -148,12 +140,12 @@ struct MainEditorView: View {
         .onChange(of: showsInspector) { _, _ in widenWindowToFitPanels() }
         .background(EditorTheme.appBackground)
         .background(WindowDocumentEditedState(isEdited: project.hasUnsavedChanges))
+        .background(EditorEscapeKeyMonitorView(project: project))
         .navigationTitle(project.projectDisplayName)
         .onAppear {
             RunningOverlayAppDelegate.reopenMainWindow = { openWindow(id: "main") }
             project.offerAutosaveRecoveryIfNeeded()
         }
-        .toolbarBackground(EditorTheme.appChrome, for: .windowToolbar)
         .overlay(alignment: .top) {
             VStack(spacing: 8) {
                 if let errorNotice = project.errorNotice {
@@ -226,12 +218,12 @@ struct MainEditorView: View {
             return handled ? .handled : .ignored
         }
         .onKeyPress(.delete) {
-            guard !isTextInputFocused else { return .ignored }
+            guard !isTextInputFocused, !isMediaPoolFocused else { return .ignored }
             project.deleteSelectedItem()
             return .handled
         }
         .onKeyPress(.deleteForward) {
-            guard !isTextInputFocused else { return .ignored }
+            guard !isTextInputFocused, !isMediaPoolFocused else { return .ignored }
             project.deleteSelectedItem()
             return .handled
         }
@@ -301,11 +293,12 @@ struct MainEditorView: View {
     }
 
     private var isTextInputFocused: Bool {
-        guard let responder = NSApp.keyWindow?.firstResponder else { return false }
-        if let textView = responder as? NSTextView, textView.isEditable {
-            return true
-        }
-        return responder is NSTextField
+        EditorEscapeKey.isTextInput(NSApp.keyWindow?.firstResponder)
+    }
+
+    /// The Media Pool list deletes its own selection.
+    private var isMediaPoolFocused: Bool {
+        MediaPoolKeyFocus.owns(NSApp.keyWindow?.firstResponder)
     }
 }
 
@@ -424,6 +417,23 @@ private struct WindowDocumentEditedState: NSViewRepresentable {
             window.isDocumentEdited = isEdited
             EditorWindowCloseGuard.shared.install(on: window)
             EditorTitlebarDoubleClickGuard.shared.install(on: window)
+        }
+    }
+}
+
+/// Installs the editor window's Escape-to-deselect monitor for this project.
+private struct EditorEscapeKeyMonitorView: NSViewRepresentable {
+    var project: ProjectDocument
+
+    func makeNSView(context: Context) -> NSView {
+        NSView()
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        let project = project
+        DispatchQueue.main.async {
+            guard let window = nsView.window else { return }
+            EditorEscapeKeyMonitor.shared.install(on: window, project: project)
         }
     }
 }

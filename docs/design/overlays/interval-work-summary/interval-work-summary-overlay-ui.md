@@ -69,12 +69,12 @@ metrics.
 - Use the same dense row system as Background, Border, Effects, Interval
   Timeline, and Interval Countdown.
 - Avoid standalone native controls that create inconsistent spacing.
-- Use mini switches on the right for visibility toggles.
+- Use small checkboxes on the right for visibility toggles.
 - Use dense slider rows with right-side numeric readouts.
 - Use segmented controls for color mode and metric selection where space allows;
   use dense menus for longer metric lists.
 - Group Text controls by role: Summary Label, Primary Value, Primary Label,
   Secondary Value, and Secondary Label.
-- Put a hideable role's Visible mini switch in its group header, trailing the
+- Put a hideable role's Visible checkbox in its group header, trailing the
   role name. Inside each group, use short row labels: Font, Size, Weight,
   Color, and Custom. Do not prefix each row with the role name.

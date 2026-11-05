@@ -12,7 +12,6 @@ struct DecorOverlayDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let element = project.selectedOverlay(elementID) {
-                header(element: element)
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
                         switch element.type {
@@ -28,7 +27,6 @@ struct DecorOverlayDetailView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
-                footerBar
             } else {
                 Spacer()
             }
@@ -216,7 +214,7 @@ struct DecorOverlayDetailView: View {
                     get: { r.preserveSVGColors },
                     set: { project.setDecorIconPreserveSVGColors(elementID, enabled: $0) }
                 ))
-                .toggleStyle(.switch)
+                .toggleStyle(.checkbox)
             }
 
         case .userStaticSVG:
@@ -416,7 +414,7 @@ struct DecorOverlayDetailView: View {
                 get: { r.autoFit },
                 set: { project.setDecorTextAutoFit(elementID, enabled: $0) }
             ))
-            .toggleStyle(.switch)
+            .toggleStyle(.checkbox)
         }
     }
 
@@ -469,90 +467,6 @@ struct DecorOverlayDetailView: View {
 
     // MARK: Header / Footer / Section shell
 
-    private func header(element: OverlayElement) -> some View {
-        HStack(spacing: NumericTokens.space3) {
-            Button {
-                project.selection = .none
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                    .foregroundStyle(NumericTokens.textPrimary)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Back")
-
-            ZStack {
-                RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
-                    .fill(NumericTokens.controlBackground)
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                Image(systemName: headerSymbol(for: element.type))
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(NumericTokens.accentBlue)
-            }
-            .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-
-            HStack(spacing: 8) {
-                Text(element.type.label)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(NumericTokens.textPrimary)
-                Text("Decor")
-                    .font(NumericTokens.captionFont)
-                    .foregroundStyle(NumericTokens.textSecondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-            }
-
-            Spacer()
-
-            Button(role: .destructive) {
-                project.deleteOverlay(element.id)
-            } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                    .foregroundStyle(NumericTokens.dangerRed)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Delete")
-        }
-        .padding(.horizontal, NumericTokens.panelPaddingX)
-        .frame(height: EditorTheme.panelHeaderHeight)
-        .background(NumericTokens.panelBackgroundElevated)
-        .overlay(alignment: .bottom) {
-            Divider().overlay(NumericTokens.borderSubtle)
-        }
-    }
-
-    private func headerSymbol(for type: OverlayElementType) -> String {
-        switch type {
-        case .decorSolidColor: "square.fill"
-        case .decorIcon: "star"
-        case .decorText: "textformat"
-        default: "square"
-        }
-    }
-
-    private var footerBar: some View {
-        InspectorDetailFooterBar(
-            leadingTitle: "Reset",
-            leadingSystemImage: "arrow.counterclockwise",
-            trailingTitle: "Done",
-            trailingSystemImage: "checkmark",
-            onLeadingTap: { project.resetOverlayStyle(elementID) },
-            onTrailingTap: { project.selection = .none }
-        )
-    }
-
     private enum DecorSection: String, CaseIterable {
         case layout, shape, fill, iconSource, iconTint, textContent, textFont, textAppearance, textFill
 
@@ -569,20 +483,6 @@ struct DecorOverlayDetailView: View {
             case .textFill: "Fill & Stroke"
             }
         }
-
-        var systemImage: String {
-            switch self {
-            case .layout: "scope"
-            case .shape: "square.on.square"
-            case .fill: "paintpalette"
-            case .iconSource: "star"
-            case .iconTint: "paintbrush"
-            case .textContent: "text.quote"
-            case .textFont: "character.square"
-            case .textAppearance: "text.alignleft"
-            case .textFill: "paintbrush.pointed"
-            }
-        }
     }
 
     private func sectionView<Content: View>(
@@ -590,37 +490,17 @@ struct DecorOverlayDetailView: View {
         element: OverlayElement,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        let isOpen = openSections.contains(section)
-        return VStack(alignment: .leading, spacing: NumericTokens.rowGap) {
-            HStack(spacing: NumericTokens.space2) {
-                Image(systemName: section.systemImage)
-                    .frame(width: 16, alignment: .center)
-                    .foregroundStyle(NumericTokens.textSecondary)
-                Text(section.title)
-                    .font(NumericTokens.sectionTitleFont)
-                    .foregroundStyle(NumericTokens.textPrimary)
-                Spacer()
-                Button {
-                    if isOpen { openSections.remove(section) } else { openSections.insert(section) }
-                } label: {
-                    Image(systemName: isOpen ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(NumericTokens.textMuted)
-                        .frame(width: 18, height: 18)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(section.title)
-                .accessibilityValue(isOpen ? "Expanded" : "Collapsed")
-            }
-            .frame(height: NumericTokens.sectionHeaderHeight)
-            .padding(.horizontal, NumericTokens.panelPaddingX)
-            .background(NumericTokens.panelBackgroundElevated)
-            .overlay(alignment: .bottom) { Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1) }
+        let body = content()
+        return InspectorCollapsibleSection(title: section.title, isExpanded: sectionExpansion(section)) { body }
+    }
 
-            if isOpen {
-                VStack(spacing: 0) { content() }
+    private func sectionExpansion(_ section: DecorSection) -> Binding<Bool> {
+        Binding(
+            get: { openSections.contains(section) },
+            set: { isOpen in
+                if isOpen { openSections.insert(section) } else { openSections.remove(section) }
             }
-        }
+        )
     }
 
     // MARK: Helpers

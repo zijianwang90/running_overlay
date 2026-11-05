@@ -50,6 +50,8 @@ enum EditorTheme {
 
 struct EditorPanelHeader<Actions: View>: View {
     var title: String
+    /// Secondary text after the title, such as an item count.
+    var subtitle: String? = nil
     @ViewBuilder var actions: Actions
 
     var body: some View {
@@ -58,6 +60,12 @@ struct EditorPanelHeader<Actions: View>: View {
                 .font(EditorTheme.panelTitleFont)
                 .foregroundStyle(EditorTheme.textPrimary)
                 .lineLimit(1)
+            if let subtitle {
+                Text(subtitle)
+                    .font(EditorTheme.captionFont.monospacedDigit())
+                    .foregroundStyle(EditorTheme.textMuted)
+                    .lineLimit(1)
+            }
             Spacer()
             actions
         }

@@ -47,8 +47,8 @@
       "Length",
       "Thickness",
       "Vertical Position / Horizontal Position",
-      "Active Zone Width",
-      "Active Zone Height",
+      "Active Width",
+      "Active Height",
       "Zone Gap",
       "Inactive Opacity",
       "Corner Radius",
@@ -60,7 +60,7 @@
       "Glow Intensity"
     ],
     "markerRows": ["Current Marker", "Marker Value", "Threshold Marker"],
-    "effectsRows": ["Shadow", "Shadow Color", "Shadow Opacity", "Shadow Radius", "Shadow Thickness", "Shadow Offset"]
+    "effectsRows": ["Shadow", "Shadow Color", "Shadow Opacity", "Shadow Radius", "Shadow Spread", "Shadow Offset"]
   },
   "rendering": {
     "preview": "OverlaySharedZoneEdgeBarView",

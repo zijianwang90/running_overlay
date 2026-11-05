@@ -2,6 +2,7 @@ import SwiftUI
 import AppKit
 
 struct InspectorDenseRow<Trailing: View>: View {
+    @Environment(\.isEnabled) private var isEnabled
     var label: String
     var minHeight: CGFloat = NumericTokens.rowHeight
     @ViewBuilder var trailing: Trailing
@@ -10,7 +11,7 @@ struct InspectorDenseRow<Trailing: View>: View {
         HStack(alignment: .center, spacing: NumericTokens.space3) {
             Text(label)
                 .font(NumericTokens.bodyFont)
-                .foregroundStyle(NumericTokens.textSecondary)
+                .foregroundStyle(isEnabled ? NumericTokens.textSecondary : NumericTokens.textDisabled)
                 .frame(width: NumericTokens.labelColumnWidth, alignment: .leading)
             HStack(spacing: NumericTokens.space2) {
                 trailing
@@ -42,22 +43,37 @@ struct InspectorDenseReadout: View {
     }
 }
 
+/// Label for an Inspector `Menu`. Apply `inspectorMenuStyle()` to the menu so
+/// the system indicator is hidden and this label draws the HIG one: a pop-up
+/// (choose one value) shows up/down chevrons, a pull-down (run a command)
+/// shows a single down chevron.
 struct InspectorDenseMenuLabel: View {
+    enum Kind {
+        case popUp
+        case pullDown
+    }
+
+    @Environment(\.isEnabled) private var isEnvironmentEnabled
     var systemImage: String?
     var title: String
     var isEnabled: Bool = true
+    var kind: Kind = .popUp
 
     var body: some View {
+        let enabled = isEnabled && isEnvironmentEnabled
         HStack(spacing: NumericTokens.space2) {
             if let systemImage {
                 Image(systemName: systemImage)
-                    .foregroundStyle(NumericTokens.textSecondary)
+                    .foregroundStyle(enabled ? NumericTokens.textSecondary : NumericTokens.textDisabled)
             }
             Text(title)
                 .font(NumericTokens.bodyFont)
-                .foregroundStyle(NumericTokens.textPrimary)
+                .foregroundStyle(enabled ? NumericTokens.textPrimary : NumericTokens.textDisabled)
                 .lineLimit(1)
-            Spacer()
+            Spacer(minLength: 0)
+            Image(systemName: kind == .popUp ? "chevron.up.chevron.down" : "chevron.down")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(enabled ? NumericTokens.textSecondary : NumericTokens.textDisabled)
         }
         .padding(.horizontal, NumericTokens.space2)
         .frame(maxWidth: .infinity)
@@ -65,7 +81,14 @@ struct InspectorDenseMenuLabel: View {
         .background(NumericTokens.controlBackground)
         .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
         .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-        .opacity(isEnabled ? 1 : 0.7)
+    }
+}
+
+extension View {
+    /// Pairs with `InspectorDenseMenuLabel`, which draws its own indicator.
+    func inspectorMenuStyle() -> some View {
+        menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
     }
 }
 
@@ -84,23 +107,109 @@ struct InspectorDenseSliderRow: View {
             })
             .controlSize(.small)
             .frame(maxWidth: .infinity)
-            Text(displayText)
-                .font(NumericTokens.captionFont.monospacedDigit())
-                .foregroundStyle(NumericTokens.textSecondary)
-                .frame(width: 44, alignment: .trailing)
-                .padding(.horizontal, NumericTokens.space2)
-                .frame(height: NumericTokens.controlHeight)
-                .background(NumericTokens.controlBackground)
-                .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
+            .accessibilityLabel(label)
+            .accessibilityValue(displayText)
+            InspectorDenseValueField(label: label, value: $value, range: range, displayText: displayText)
         }
-        .opacity(isEnabled ? 1 : 0.5)
         .disabled(!isEnabled)
+    }
+}
+
+/// Editable readout beside an Inspector slider. Shows the caller's formatted
+/// text and accepts a typed value in the same display units, committed on
+/// Return or when focus leaves. Escape cancels the edit.
+struct InspectorDenseValueField: View {
+    @EnvironmentObject private var project: ProjectDocument
+    @Environment(\.isEnabled) private var isEnabled
+    var label: String
+    @Binding var value: Double
+    var range: ClosedRange<Double>
+    var displayText: String
+
+    @FocusState private var isFocused: Bool
+    @State private var draft = ""
+    /// Set by a commit so the next readout replaces the draft even while the
+    /// field keeps focus after Return.
+    @State private var syncsNextReadout = false
+
+    var body: some View {
+        TextField(label, text: $draft)
+            .textFieldStyle(.plain)
+            .labelsHidden()
+            .font(NumericTokens.valueFieldFont)
+            .monospacedDigit()
+            .foregroundStyle(isEnabled ? NumericTokens.textPrimary : NumericTokens.textDisabled)
+            .multilineTextAlignment(.trailing)
+            .focused($isFocused)
+            .frame(width: NumericTokens.valueFieldWidth)
+            .padding(.horizontal, 6)
+            .frame(height: NumericTokens.controlHeight)
+            .background(NumericTokens.fieldBackground)
+            .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
+            .overlay(
+                RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
+                    .stroke(isFocused ? NumericTokens.accentBlue : NumericTokens.borderSubtle, lineWidth: isFocused ? 2 : 1)
+            )
+            .onAppear { draft = displayText }
+            .onChange(of: displayText) { _, newText in
+                if !isFocused || syncsNextReadout { draft = newText }
+                syncsNextReadout = false
+            }
+            .onChange(of: isFocused) { _, focused in
+                if !focused { commit() }
+            }
+            // Return commits in place, like a native field; resigning first
+            // responder through AppKit does not update `@FocusState`.
+            .onSubmit { commit() }
+            .onExitCommand {
+                draft = displayText
+                isFocused = false
+            }
+            .accessibilityLabel(label)
+    }
+
+    private func commit() {
+        guard draft != displayText,
+              let parsed = InspectorNumericInput.value(from: draft, displayText: displayText, range: range),
+              parsed != value else {
+            // Nothing to apply (including a clamp back to the current value),
+            // so the readout will not change; restore it now.
+            draft = displayText
+            return
+        }
+        syncsNextReadout = true
+        value = parsed
+        project.finishContinuousEdit()
+    }
+}
+
+/// Parses text typed into an Inspector value field. The field shows values in
+/// display units, so a percentage readout ("92%") takes "80" or "80%" as 0.8.
+enum InspectorNumericInput {
+    static func value(from text: String, displayText: String, range: ClosedRange<Double>) -> Double? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let number = leadingNumber(in: trimmed) else { return nil }
+        let scale = trimmed.contains("%") || displaysPercent(displayText, range: range) ? 100.0 : 1.0
+        return min(max(number / scale, range.lowerBound), range.upperBound)
+    }
+
+    /// A word readout such as "Off" or "Equal" stands in for a percentage on
+    /// unit-interval sliders.
+    private static func displaysPercent(_ displayText: String, range: ClosedRange<Double>) -> Bool {
+        if displayText.contains("%") { return true }
+        return leadingNumber(in: displayText) == nil && range.upperBound <= 1
+    }
+
+    private static func leadingNumber(in text: String) -> Double? {
+        let normalized = text.replacingOccurrences(of: ",", with: ".")
+        guard let match = normalized.firstMatch(of: /[-+]?(\d+\.?\d*|\.\d+)/) else { return nil }
+        return Double(match.output.0)
     }
 }
 
 struct InspectorDenseAxisField: View {
     @EnvironmentObject private var project: ProjectDocument
+    @Environment(\.isEnabled) private var isEnabled
     var axis: String
     @Binding var value: Double
     var precision: Int
@@ -109,11 +218,11 @@ struct InspectorDenseAxisField: View {
         HStack(spacing: 4) {
             Text(axis)
                 .font(NumericTokens.captionFont)
-                .foregroundStyle(NumericTokens.textMuted)
+                .foregroundStyle(isEnabled ? NumericTokens.textMuted : NumericTokens.textDisabled)
             TextField(axis, value: $value, format: .number.precision(.fractionLength(precision)))
                 .textFieldStyle(.plain)
                 .font(NumericTokens.numericFont)
-                .foregroundStyle(NumericTokens.textPrimary)
+                .foregroundStyle(isEnabled ? NumericTokens.textPrimary : NumericTokens.textDisabled)
                 .multilineTextAlignment(.trailing)
                 .monospacedDigit()
                 .onSubmit { project.finishContinuousEdit() }
@@ -141,46 +250,62 @@ struct InspectorDenseSegmented<Value: Hashable & Identifiable, Label: View>: Vie
         }
         .labelsHidden()
         .pickerStyle(.segmented)
-        .tint(NumericTokens.accentBlue)
         .frame(height: NumericTokens.segmentedVisibleHeight)
         .frame(maxWidth: .infinity)
     }
 }
 
-struct InspectorDetailFooterBar: View {
-    var leadingTitle: String
-    var leadingSystemImage: String
-    var trailingTitle: String
-    var trailingSystemImage: String
-    var onLeadingTap: () -> Void
-    var onTrailingTap: () -> Void
+/// Disclosure header shared by every collapsible Inspector section. The
+/// disclosure chevron leads, points right when collapsed and down when
+/// expanded, and an optional enable checkbox sits before the title.
+struct InspectorSectionHeader<Trailing: View>: View {
+    var title: String
+    @Binding var isExpanded: Bool
+    var isOn: Binding<Bool>?
+    @ViewBuilder var trailing: Trailing
 
     var body: some View {
-        GeometryReader { proxy in
-            let spacing = NumericTokens.space2
-            let unitWidth = max((proxy.size.width - spacing) / 3, 0)
-            HStack(spacing: spacing) {
-                Button(action: onLeadingTap) {
-                    Label(leadingTitle, systemImage: leadingSystemImage)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(EditorSecondaryButtonStyle())
-                .frame(width: unitWidth)
-
-                Button(action: onTrailingTap) {
-                    Label(trailingTitle, systemImage: trailingSystemImage)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(EditorPrimaryButtonStyle())
-                .frame(width: unitWidth * 2)
+        HStack(spacing: 6) {
+            Button {
+                isExpanded.toggle()
+            } label: {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(NumericTokens.textSecondary)
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                    .frame(width: 14, height: 14)
+                    .contentShape(Rectangle())
             }
-            .frame(height: NumericTokens.footerButtonHeight)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .buttonStyle(.borderless)
+            .accessibilityLabel(title)
+            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
+
+            if let isOn {
+                Toggle(title, isOn: isOn)
+                    .toggleStyle(.checkbox)
+                    .labelsHidden()
+                    .controlSize(.small)
+                    .accessibilityLabel("Enable \(title)")
+            }
+
+            Text(title)
+                .font(NumericTokens.sectionTitleFont)
+                .foregroundStyle(NumericTokens.textPrimary)
+                .lineLimit(1)
+                .accessibilityHidden(true)
+
+            Spacer(minLength: NumericTokens.space2)
+            trailing
         }
-        .padding(.horizontal, NumericTokens.panelPaddingX)
-        .frame(height: NumericTokens.detailFooterHeight)
+        .padding(.leading, NumericTokens.sectionHeaderPaddingLeading)
+        .padding(.trailing, NumericTokens.panelPaddingX)
+        .frame(height: NumericTokens.sectionHeaderHeight)
         .background(NumericTokens.panelBackgroundElevated)
-        .overlay(alignment: .top) {
+        .contentShape(Rectangle())
+        .onTapGesture {
+            isExpanded.toggle()
+        }
+        .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(NumericTokens.borderSubtle)
                 .frame(height: 1)
@@ -188,7 +313,148 @@ struct InspectorDetailFooterBar: View {
     }
 }
 
+extension InspectorSectionHeader where Trailing == EmptyView {
+    init(title: String, isExpanded: Binding<Bool>, isOn: Binding<Bool>? = nil) {
+        self.init(title: title, isExpanded: isExpanded, isOn: isOn) { EmptyView() }
+    }
+}
+
+/// A collapsible Inspector section. When the section has an enable checkbox
+/// and it is off, every row in the body is disabled so no child control looks
+/// adjustable while it has no effect.
+struct InspectorCollapsibleSection<Content: View>: View {
+    var title: String
+    @Binding var isExpanded: Bool
+    var isOn: Binding<Bool>?
+    @ViewBuilder var content: () -> Content
+
+    init(
+        title: String,
+        isExpanded: Binding<Bool>,
+        isOn: Binding<Bool>? = nil,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.title = title
+        self._isExpanded = isExpanded
+        self.isOn = isOn
+        self.content = content
+    }
+
+    @Environment(\.inspectorRevealSection) private var revealSection
+    @State private var revealsAfterLayout = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            InspectorSectionHeader(title: title, isExpanded: $isExpanded, isOn: isOn)
+                .id(InspectorSectionScrollID.header(title))
+            if isExpanded {
+                VStack(spacing: 0) {
+                    content()
+                }
+                .disabled(isOn.map { !$0.wrappedValue } ?? false)
+                Color.clear
+                    .frame(height: 0)
+                    .id(InspectorSectionScrollID.end(title))
+            }
+        }
+        .onChange(of: isExpanded) { _, expanded in
+            revealsAfterLayout = expanded
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+            guard revealsAfterLayout else { return }
+            revealsAfterLayout = false
+            revealSection(title, height)
+        }
+    }
+}
+
+enum InspectorSectionScrollID: Hashable {
+    case header(String)
+    case end(String)
+}
+
+/// Scrolls the Inspector so a section the user just expanded is in view.
+/// The default does nothing; `inspectorRevealsExpandedSections()` installs
+/// the real action around a detail panel's scroll view.
+struct InspectorRevealSectionAction {
+    var action: (_ title: String, _ sectionHeight: CGFloat) -> Void = { _, _ in }
+
+    func callAsFunction(_ title: String, _ sectionHeight: CGFloat) {
+        action(title, sectionHeight)
+    }
+}
+
+extension EnvironmentValues {
+    @Entry var inspectorRevealSection = InspectorRevealSectionAction()
+}
+
+private struct InspectorRevealsExpandedSections: ViewModifier {
+    @State private var viewportHeight: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        ScrollViewReader { proxy in
+            content
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { viewportHeight = $0 }
+                .environment(\.inspectorRevealSection, InspectorRevealSectionAction { title, sectionHeight in
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        // A section that fits scrolls just enough to show its
+                        // last row, which keeps its header on screen. A taller
+                        // one pins its header to the top instead.
+                        if sectionHeight <= viewportHeight {
+                            proxy.scrollTo(InspectorSectionScrollID.end(title))
+                        } else {
+                            proxy.scrollTo(InspectorSectionScrollID.header(title), anchor: .top)
+                        }
+                    }
+                })
+        }
+    }
+}
+
+extension View {
+    /// Wrap a detail panel that contains `InspectorCollapsibleSection`s so
+    /// expanding a section near the bottom scrolls it into view.
+    func inspectorRevealsExpandedSections() -> some View {
+        modifier(InspectorRevealsExpandedSections())
+    }
+}
+
+/// Borderless icon button for Inspector chrome: no resting background, a
+/// light fill on hover, and a stronger fill while pressed.
+struct InspectorIconButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        InspectorIconButtonBody(configuration: configuration)
+    }
+}
+
+private struct InspectorIconButtonBody: View {
+    let configuration: ButtonStyleConfiguration
+    @Environment(\.isEnabled) private var isEnabled
+    @State private var isHovered = false
+
+    var body: some View {
+        configuration.label
+            .foregroundStyle(foreground)
+            .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
+            .background(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).fill(fill))
+            .contentShape(Rectangle())
+            .onHover { isHovered = $0 }
+    }
+
+    private var foreground: Color {
+        guard isEnabled else { return NumericTokens.textDisabled.opacity(0.6) }
+        return configuration.isPressed || isHovered ? NumericTokens.textPrimary : NumericTokens.textSecondary
+    }
+
+    private var fill: Color {
+        guard isEnabled else { return .clear }
+        if configuration.isPressed { return Color.white.opacity(0.16) }
+        return isHovered ? Color.white.opacity(0.08) : .clear
+    }
+}
+
 struct InspectorDenseSwatchStrip: View {
+    @Environment(\.isEnabled) private var isEnabled
     var presets: [(name: String, color: OverlayColor)]
     var selected: OverlayColor
     var action: (OverlayColor) -> Void
@@ -252,6 +518,9 @@ struct InspectorDenseSwatchStrip: View {
             .help("Custom Color")
             .accessibilityLabel("Custom Color")
         }
+        // Swatches are colors rather than text, so fading them reads as
+        // disabled without hurting label contrast.
+        .opacity(isEnabled ? 1 : 0.4)
         .frame(height: NumericTokens.controlHeight)
         .frame(maxWidth: .infinity, alignment: .trailing)
     }
@@ -394,11 +663,14 @@ enum NumericTokens {
     static let panelBackground = EditorTheme.panelBackground
     static let panelBackgroundElevated = EditorTheme.panelHeader
     static let controlBackground = EditorTheme.surfaceControl
+    static let fieldBackground = EditorTheme.surfacePressed
     static let borderSubtle = EditorTheme.borderSubtle
     static let borderStrong = EditorTheme.borderStrong
     static let textPrimary = EditorTheme.textPrimary
     static let textSecondary = EditorTheme.textSecondary
     static let textMuted = EditorTheme.textMuted
+    /// Disabled text stays readable instead of fading the whole row.
+    static let textDisabled = EditorTheme.textMuted
     static let accentBlue = EditorTheme.accentBlue
     static let accentBlueSoft = EditorTheme.accentBlueSoft
     static let dangerRed = EditorTheme.dangerRed
@@ -406,26 +678,28 @@ enum NumericTokens {
     static let space2: CGFloat = 8
     static let space3: CGFloat = 10
 
-    // Numeric Overlay tokens (numeric-overlay-ui.spec.json).
-    static let sectionHeaderHeight: CGFloat = 30
-    static let rowHeight: CGFloat = 34
+    // Metrics follow macOS small controls: about 22pt controls in 28pt rows.
+    static let sectionHeaderHeight: CGFloat = 28
+    static let sectionHeaderPaddingLeading: CGFloat = 6
+    static let rowHeight: CGFloat = 28
     static let anchorGridRowHeight: CGFloat = 64
     static let rowGap: CGFloat = 0
     static let sectionGap: CGFloat = 0
-    static let labelColumnWidth: CGFloat = 112
-    static let controlHeight: CGFloat = 26
-    static let segmentedVisibleHeight: CGFloat = 24
-    static let footerButtonHeight: CGFloat = 32
-    static let detailFooterHeight: CGFloat = EditorTheme.previewPlaybackHeight
-    static let iconButtonSize: CGFloat = 28
-    static let swatchSize: CGFloat = 20
+    static let labelColumnWidth: CGFloat = 104
+    static let controlHeight: CGFloat = 22
+    static let segmentedVisibleHeight: CGFloat = 22
+    static let detailHeaderHeight: CGFloat = 40
+    static let iconButtonSize: CGFloat = 24
+    static let valueFieldWidth: CGFloat = 46
+    static let swatchSize: CGFloat = 18
     static let panelPaddingX: CGFloat = 12
     static let panelPaddingY: CGFloat = 8
     static let controlRadius: CGFloat = 5
 
-    static let sectionTitleFont = Font.system(size: 13, weight: .semibold)
+    static let sectionTitleFont = Font.system(size: 12, weight: .semibold)
     static let bodyFont = Font.system(size: 12, weight: .regular)
     static let bodyStrongFont = Font.system(size: 12, weight: .semibold)
-    static let captionFont = Font.system(size: 10, weight: .medium)
-    static let numericFont = Font.system(size: 12, weight: .medium, design: .monospaced)
+    static let captionFont = Font.system(size: 11, weight: .regular)
+    static let numericFont = Font.system(size: 12, weight: .regular).monospacedDigit()
+    static let valueFieldFont = Font.system(size: 11, weight: .regular)
 }

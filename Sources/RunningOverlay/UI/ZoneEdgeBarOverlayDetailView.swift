@@ -9,7 +9,6 @@ struct ZoneEdgeBarOverlayDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let element = project.selectedOverlay(elementID) {
-                header(element)
 
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
@@ -19,7 +18,6 @@ struct ZoneEdgeBarOverlayDetailView: View {
 
                         ZoneEdgeBarInspectorSection(
                             title: "Zone Bar",
-                            systemImage: "rectangle.compress.vertical",
                             isExpanded: binding(for: .zoneBar)
                         ) {
                             zoneBarRows(element.style.zoneEdgeBar)
@@ -27,7 +25,6 @@ struct ZoneEdgeBarOverlayDetailView: View {
 
                         ZoneEdgeBarInspectorSection(
                             title: "Markers",
-                            systemImage: "target",
                             isExpanded: binding(for: .markers)
                         ) {
                             markerRows(element.style.zoneEdgeBar)
@@ -43,77 +40,9 @@ struct ZoneEdgeBarOverlayDetailView: View {
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
 
-                footerBar
             } else {
                 Spacer()
             }
-        }
-    }
-
-    private func header(_ element: OverlayElement) -> some View {
-        HStack(spacing: NumericTokens.space3) {
-            Button {
-                project.selection = .none
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                    .foregroundStyle(NumericTokens.textPrimary)
-            }
-            .buttonStyle(.plain)
-            .help("Back")
-            .accessibilityLabel("Back")
-
-            ZStack {
-                RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
-                    .fill(NumericTokens.controlBackground)
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                Image(systemName: "rectangle.compress.vertical")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(NumericTokens.textPrimary)
-            }
-            .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-
-            HStack(spacing: 8) {
-                Text(element.type.label)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(NumericTokens.textPrimary)
-                Text("Zone Overlay")
-                    .font(NumericTokens.captionFont)
-                    .foregroundStyle(NumericTokens.textSecondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-            }
-
-            Spacer()
-
-            Button(role: .destructive) {
-                project.deleteOverlay(element.id)
-            } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                    .foregroundStyle(NumericTokens.dangerRed)
-            }
-            .buttonStyle(.plain)
-            .help("Delete")
-            .accessibilityLabel("Delete")
-        }
-        .padding(.horizontal, NumericTokens.panelPaddingX)
-        .frame(height: EditorTheme.panelHeaderHeight)
-        .background(NumericTokens.panelBackgroundElevated)
-        .overlay(alignment: .bottom) {
-            Divider()
-                .overlay(NumericTokens.borderSubtle)
         }
     }
 
@@ -201,7 +130,7 @@ struct ZoneEdgeBarOverlayDetailView: View {
             displayText: String(format: "%.1f", style.thickness)
         )
         InspectorDenseSliderRow(
-            label: "Active Zone Width",
+            label: "Active Width",
             value: Binding(
                 get: { style.activeZoneWidthShare },
                 set: { value in project.mutateZoneEdgeBarStyleContinuous(elementID) { $0.activeZoneWidthShare = value.quantizedNumeric(to: 0.05) } }
@@ -210,7 +139,7 @@ struct ZoneEdgeBarOverlayDetailView: View {
             displayText: style.activeZoneWidthShare <= 0 ? "Equal" : String(format: "%.0f%%", style.activeZoneWidthShare * 100)
         )
         InspectorDenseSliderRow(
-            label: "Active Zone Height",
+            label: "Active Height",
             value: Binding(
                 get: { style.activeZoneHeightScale },
                 set: { value in project.mutateZoneEdgeBarStyleContinuous(elementID) { $0.activeZoneHeightScale = value.quantizedNumeric(to: 0.05) } }
@@ -344,22 +273,12 @@ struct ZoneEdgeBarOverlayDetailView: View {
     private func toggleRow(_ label: String, isOn: Bool, onSet: @escaping (Bool) -> Void) -> some View {
         InspectorDenseRow(label: label) {
             Toggle("", isOn: Binding(get: { isOn }, set: onSet))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
+                .toggleStyle(.checkbox)
+                .controlSize(.small)
                 .labelsHidden()
         }
     }
 
-    private var footerBar: some View {
-        InspectorDetailFooterBar(
-            leadingTitle: "Reset",
-            leadingSystemImage: "arrow.counterclockwise",
-            trailingTitle: "Done",
-            trailingSystemImage: "checkmark",
-            onLeadingTap: { project.mutateZoneEdgeBarStyle(elementID) { $0 = .default } },
-            onTrailingTap: { project.selection = .none }
-        )
-    }
 }
 
 private enum ZoneEdgeBarInspectorSectionKind: CaseIterable {
@@ -370,73 +289,24 @@ private enum ZoneEdgeBarInspectorSectionKind: CaseIterable {
 
 private struct ZoneEdgeBarInspectorSection<Content: View>: View {
     var title: String
-    var systemImage: String
     @Binding var isExpanded: Bool
     var headerToggle: Binding<Bool>?
     @ViewBuilder var content: Content
 
     init(
         title: String,
-        systemImage: String,
         isExpanded: Binding<Bool>,
         headerToggle: Binding<Bool>? = nil,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
-        self.systemImage = systemImage
         self._isExpanded = isExpanded
         self.headerToggle = headerToggle
         self.content = content()
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: NumericTokens.space2) {
-                Button {
-                    isExpanded.toggle()
-                } label: {
-                    HStack(spacing: NumericTokens.space2) {
-                        Image(systemName: systemImage)
-                            .frame(width: 16, alignment: .center)
-                            .foregroundStyle(NumericTokens.textSecondary)
-                        Text(title)
-                            .font(NumericTokens.sectionTitleFont)
-                            .foregroundStyle(NumericTokens.textPrimary)
-                        Spacer()
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(title)
-                .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
-                if let headerToggle {
-                    Toggle("", isOn: headerToggle)
-                        .toggleStyle(.switch)
-                        .controlSize(.mini)
-                        .labelsHidden()
-                        .accessibilityLabel("Enable \(title)")
-                }
-                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(NumericTokens.textMuted)
-                    .frame(width: 18, height: 18)
-            }
-            .padding(.horizontal, NumericTokens.panelPaddingX)
-            .frame(height: NumericTokens.sectionHeaderHeight)
-            .background(NumericTokens.panelBackgroundElevated)
-            .contentShape(Rectangle())
-            .onTapGesture { isExpanded.toggle() }
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(NumericTokens.borderSubtle)
-                    .frame(height: 1)
-            }
-
-            if isExpanded {
-                VStack(spacing: 0) {
-                    content
-                }
-            }
-        }
+        let body = content
+        InspectorCollapsibleSection(title: title, isExpanded: $isExpanded, isOn: headerToggle) { body }
     }
 }

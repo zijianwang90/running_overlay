@@ -240,7 +240,7 @@
         "HR Zones",
         "Pace Zones"
       ],
-      "bottomBarEnabled": "Section-header switch in the Bottom Bar header, before the disclosure chevron.",
+      "bottomBarEnabled": "Section-header checkbox in the Bottom Bar header, between the disclosure chevron and the title.",
       "bottomBarGlow": [
         "enabled",
         "intensity"
@@ -253,8 +253,8 @@
         "opacity"
       ],
       "bottomBarZoneControls": [
-        "Active Zone Width",
-        "Active Zone Height",
+        "Active Width",
+        "Active Height",
         "Zone Gap",
         "Inactive Opacity",
         "Zone Marker",

@@ -69,11 +69,16 @@ Use the system font stack, with SF Pro on macOS.
 | Role           | Size | Weight                    | Usage                           |
 | -------------- | ---- | ------------------------- | ------------------------------- |
 | `title`        | 22   | Semibold                  | Inspector header title          |
-| `sectionTitle` | 15   | Semibold                  | Section labels                  |
+| `sectionTitle` | 12   | Semibold                  | Detail section headers          |
 | `body`         | 13   | Regular                   | Control labels, row text        |
 | `bodyStrong`   | 13   | Semibold                  | Tile labels and selected values |
 | `caption`      | 11   | Regular                   | Hints, subtitles, metadata      |
-| `numeric`      | 13   | Medium, monospaced digits | Metric preview values           |
+| `numeric`      | 12   | Regular, monospaced digits | Values in detail rows and list |
+| `valueField`   | 11   | Regular, monospaced digits | Editable slider value fields   |
+
+Detail panels use the dense `NumericTokens` metrics: 28 pt rows and section
+headers, 22 pt controls (`.controlSize(.small)`), a 104 pt label column, 24 pt
+icon buttons, 18 pt swatches, and a 46 pt slider value field.
 
 
 ### Spacing And Size
@@ -99,6 +104,9 @@ Use the system font stack, with SF Pro on macOS.
 | `border.width`    | 1     |
 
 
+See [Inspector HIG Review](inspector-hig-review.md) for the macOS HIG
+rationale behind the controls described here.
+
 ## State 1: Inspector Outer
 
 The outer Inspector appears when no overlay detail is open. It replaces the current `OverlayLibraryView` content.
@@ -107,7 +115,8 @@ The outer Inspector appears when no overlay detail is open. It replaces the curr
 
 - Display overlays already added to the project.
 - Allow each added overlay row to open its detail editor.
-- Provide quick row actions for visibility, lock, and delete.
+- Provide quick row actions for visibility and lock; delete lives in the
+  context menu and the detail header's action menu.
 
 ### Explicit Non-Goals
 
@@ -121,8 +130,7 @@ The outer Inspector appears when no overlay detail is open. It replaces the curr
 Top to bottom:
 
 1. Header
-2. `Added Overlays` section
-3. Optional footer hint
+2. `Added Overlays` list
 
 Inspector default width is 460 px with a 460 px minimum, and the panel is user-resizable by dragging its leading split divider. The Inspector must keep its current width across every internal state change — outer state, overlay detail, timeline clip selection, and any future state. The horizontal layout uses a custom `HStack` + `HorizontalResizeHandle` (not SwiftUI `HSplitView`) so widths are stored in `@State` and cannot be reset by child intrinsic-size or identity changes. The app window minimum width must be large enough to contain the left pool minimum, preview minimum, Inspector minimum, and split handles without compressing the Inspector below its stored width. The design mockup is square only for reference output; implementation should use a right-panel layout.
 
@@ -132,32 +140,32 @@ Content:
 
 - Left: `Inspector`
 - Right: status pill such as `2 overlays`
-- Right trailing icon button: filter/settings
 
 Behavior:
 
 - The pill count updates from `project.overlayLayout.elements.count`.
-- Settings/filter may be non-functional initially, but reserve the slot for future overlay filtering.
+- Do not add a permanently disabled placeholder button; add a filter control
+  only when filtering is implemented.
 
-### Added Overlays Section
+### Added Overlays List
 
-Section title: `Added Overlays`
+`AddedOverlaysList` is a native `List(selection:)` with an inset style, a
+`Section("Added Overlays")`, and 28 pt minimum row height, so selection
+highlight, keyboard navigation, and context menus follow the system list.
 
 Example rows:
 
-- `Running Gauge`, subtitle `Distance • Gauge`, value `10.73 km`
-- `Pace`, subtitle `Pace • Text`, value `5'10"/km`
+- `Running Gauge`, value `10.73 km`
+- `Pace`, value `5'10"/km`
 
 Row content:
 
 - Leading overlay type icon.
 - Primary name.
-- Secondary subtitle.
 - Right-side live value preview.
-- Visibility icon button.
-- Lock icon button.
-- Delete icon button.
-- Chevron indicating the row opens detail.
+- Visibility and lock icon buttons, shown on hover or while the overlay is
+  hidden or locked so the non-default state stays visible. Hidden rows are
+  drawn at reduced opacity.
 
 Icon color:
 
@@ -168,7 +176,6 @@ Row behavior:
 
 - Clicking the row body opens the Overlay Detail screen for that element.
 - Clicking the same overlay in Preview must open the same detail screen.
-- Delete button removes the overlay and does not open detail.
 - Visibility and lock are separate hit targets with immediate model updates.
 - Visibility off hides the overlay from both Preview and export output.
 - Lock on prevents canvas selection and drag edits from Preview; list actions (unlock/delete/open detail) remain available.
@@ -178,7 +185,7 @@ Row behavior:
 
 Empty state:
 
-- If no overlays exist, show a compact row-like empty state: `No overlays added yet`.
+- If no overlays exist, show a centered `No Overlays` title with a one-line hint pointing to the Overlay Pool.
 - The empty state stays compact. It should not include a duplicate add-overlay grid; users add overlays from the left `Overlay Pool`.
 
 ## State 2: Overlay Detail
@@ -189,57 +196,72 @@ The detail screen appears when `project.selection == .overlayElement(elementID)`
 
 - Identify the selected overlay.
 - Provide direct editing controls for that overlay.
-- Provide a return path to the outer Inspector.
+- Follow the selection: the detail shows whatever overlay is selected, and
+  clearing the selection (Esc, clicking empty canvas) returns to the outer
+  Inspector. There is no Back or Done button.
 - Switch directly to another overlay without returning to the outer Inspector.
-- Expose destructive delete from the detail header.
+- Expose Reset Style and destructive delete from the header's action menu.
 - Use [Numeric Overlay UI](../../overlays/numeric/numeric-overlay-ui.md) for single-value numeric metric overlays instead of building one-off Pace, Heart Rate, Distance, Power, Cadence, Calories, Elevation, Elapsed Time, or Real Time panels.
 
-### Overlay Switcher
+### Detail Header
 
-When the project has two or more overlays, an `Overlay` switcher row sits
-above every overlay detail view. It is an `InspectorDenseRow` on the elevated
-panel background, at the shared `panelHeaderHeight` so its bottom border lines
-up with the Media and Preview headers, containing:
+Every overlay detail view sits below one shared `OverlayDetailHeader`
+rendered by `ParameterPanelView`. Individual detail views must not draw their
+own header or footer. The header contains:
 
-- an `InspectorDenseMenuLabel` pop-up showing `<n> / <count>  <type label>`,
-  with the position first so truncation only affects the name;
-  the menu lists every overlay in list order as `<n>. <type label>`, marking
-  the current overlay with a checkmark, locked overlays with a lock, and
-  hidden overlays with a slashed eye;
-- compact Previous / Next icon buttons that cycle through unlocked overlays
-  in list order, wrapping around.
+- a pop-up `Picker` showing the current overlay; the menu lists every overlay
+  in list order, with locked overlays disabled;
+- an `<n> of <count>` caption (`OverlaySwitcherTitle.position`);
+- Previous / Next icon buttons that cycle through unlocked overlays in list
+  order, wrapping around;
+- an `ellipsis.circle` action menu with `Reset Style`, a divider, and the
+  shared overlay context-menu items (Duplicate, Copy/Paste Properties,
+  Hide/Show, Lock/Unlock, Delete).
 
-Locked overlays are disabled in the menu and skipped by Previous / Next,
-matching the rule that locked overlays must be unlocked before editing.
+Behavior:
+
+- `Reset Style` calls `ProjectDocument.resetOverlayInspectorStyle(_:)`, which
+  resets only the current overlay's style in one undo step (weather keeps its
+  temperature unit).
+- Delete clears the selection, which returns to the outer Inspector.
+- Locked overlays are disabled in the picker and skipped by Previous / Next,
+  matching the rule that locked overlays must be unlocked before editing.
+- Timeline clip details use `ClipDetailHeader`: icon, title, and a trash icon
+  button, with no Back button.
 
 ### Layout
 
 Top to bottom:
 
-0. Overlay switcher row (two or more overlays only)
 1. Detail header
-2. `Content` section
-3. `Position & Size` section
-4. `Style` section
-5. `Animation` section
-6. Optional sticky footer for non-destructive actions only
+2. Overlay-specific collapsible sections
+3. Shared Background, Border, and Effects sections
 
-### Detail Header
+### Collapsible Sections
 
-For `Running Gauge`:
+All detail sections use `InspectorCollapsibleSection` /
+`InspectorSectionHeader`:
 
-- Back icon button
-- Title: `Running Gauge`
-- Pill: `Overlay` or `Data Overlay`
-- Value preview: `10.73 km`
-- Trash icon button
-
-Behavior:
-
-- Back returns to the outer Inspector and clears overlay detail focus if needed.
-- Trash deletes the overlay and returns to the outer Inspector.
-- Overlay detail views should not place a secondary delete button in the footer; all destructive overlay deletion belongs in the top header bar.
-- The header value should use the same formatter as the Preview and Added Overlays row.
+- A leading disclosure chevron (`chevron.right`, rotated when expanded) and a
+  title; no per-section decorative icon.
+- Sections that can be switched off show a small checkbox before the title.
+  When it is off, the section body is wrapped in `.disabled(true)`; rows read
+  `@Environment(\.isEnabled)` and render disabled text instead of fading with
+  opacity. Do not add `.opacity(...)` to signal disabled rows.
+- Expanding a section scrolls it into view: a section that fits scrolls just
+  enough to show its last row, and a taller one pins its header to the top.
+  `ParameterPanelView` installs this with `.inspectorRevealsExpandedSections()`.
+- Row labels must fit the 104 pt label column on one line at 12 pt. Prefer a
+  shorter label (for example `Shadow Spread`, `Active Height`, `From Activity`)
+  plus a `.help` tooltip over a wrapped label.
+- Boolean rows use `.toggleStyle(.checkbox)` with `.controlSize(.small)`.
+- Value menus use `InspectorDenseMenuLabel` with the default `.popUp`
+  indicator (⌃⌄) and `.inspectorMenuStyle()`; action menus such as Add Metric
+  use `kind: .pullDown`.
+- Slider rows pair the slider with an editable value field. Typing a value and
+  pressing Return or leaving the field commits it (clamped to the range, with
+  `%` read as a unit-interval percentage) and finishes one continuous undo
+  edit; Esc cancels.
 
 ### Content Section
 
@@ -316,37 +338,29 @@ Implementation note:
 
 - If animation is not model-backed, this section should be hidden in the first implementation or rendered disabled under a feature flag. Do not create UI that appears to save animation if the project file cannot persist it.
 
-### Sticky Footer
+### No Footer
 
-Buttons:
-
-- Secondary `Reset`
-- Primary `Done`
-
-Behavior:
-
-- `Done` returns to the outer Inspector and keeps the overlay selected on Preview if that selection is needed for canvas handles.
-- `Reset` resets only style/layout values for the current overlay. If reset behavior is not implemented yet, omit the button.
-- Overlay detail footers use the shared `InspectorDetailFooterBar` layout: one-third secondary Reset, two-thirds primary Done, centered inside a footer whose total height matches the adjacent Preview playback row.
-- The shared footer owns its elevated background and single top separator; detail panels should not add per-overlay footer padding, backgrounds, or separate divider rows.
+Overlay detail views have no sticky footer. Edits apply immediately, so there
+is no `Done` commit step; Reset lives in the header action menu.
 
 ## Interaction Rules
 
 - Clicking an overlay row and clicking an overlay in Preview must route to the same detail state.
+- Esc in the editor window clears the selection when no text field has focus, no sheet is open, and no modifier is held. `EditorEscapeKeyMonitor` watches key-down at the window, because selecting on the canvas or in the Inspector list does not move keyboard focus and a SwiftUI `onKeyPress` would miss the key.
+- Icon buttons use `InspectorIconButtonStyle`, which shows hover and pressed fills.
 - Add overlay tiles should be keyboard-focusable.
 - Row action buttons must not trigger row navigation.
 - Destructive actions should use `danger.red` on hover or confirmation affordance, not constant bright red unless active.
 - Sliders should call continuous update while dragging and finish undo grouping at drag end, matching current `finishContinuousEdit()` behavior.
 - Numeric fields should commit on submit and preserve normalized coordinate precision.
-- The panel should scroll when content exceeds height; header and optional footer may stay fixed.
+- The panel should scroll when content exceeds height; the detail header stays fixed.
 
 ## Shared Stats Bar Inspector Component
 
 `Stats Bar` is a single shared inspector module and must not diverge by overlay type.
 
-- Use `CollapsibleStatsBarInspectorSection` for section chrome: title, icon, expand/collapse, and Enabled toggle in the header (toggle sits left of chevron).
+- Use `CollapsibleStatsBarInspectorSection` for section chrome: disclosure chevron, Enabled checkbox before the title, and title.
 - Use `OverlayStatsBarInspectorRows` for the section body rows.
-- Current canonical icon is `tablecells` for every overlay.
 - `Enabled` must not appear as a separate first row in expanded content.
 - Collapsed Stats Bar headers use the regular single bottom separator; the shared wrapper must not add a top rule that doubles the line against the preceding section.
 - Keep one shared row set across overlays: `Placement`, `Inside`, `Layout`, `Size`, `Width`, `Offset`, `Item Gap`, `Background`, `Dividers`, `Radius`, `Value Font/Size/Weight/Color`, `Label Font/Size/Weight/Color`, and `Slot 1...4`.
@@ -358,7 +372,7 @@ Behavior:
 
 `Layout` is also a single shared inspector module and must be reused by every overlay detail panel.
 
-- Use `CollapsibleLayoutInspectorSection` for section chrome: title, icon (`scope`), and disclosure behavior.
+- Use `CollapsibleLayoutInspectorSection` for section chrome: title and disclosure behavior.
 - Use `OverlayLayoutInspectorRows` for the body rows.
 - Canonical row set is fixed: `Position`, `Scale`, `Width`, `Height`, `Opacity`.
 - Layout `Opacity` is element-level opacity (`OverlayElement.opacity`) and must fade the whole rendered overlay in preview and export. Background-only transparency belongs in the shared Background module.
@@ -373,15 +387,15 @@ Behavior:
 
 `Background`, `Border`, and `Effects` are shared inspector modules and must be available at the end of every overlay detail panel.
 
-- Use `OverlayBackgroundInspectorModule` for complete Background chrome and rows. The module includes the title, icon (`rectangle.fill`), disclosure behavior, and the header switch.
+- Use `OverlayBackgroundInspectorModule` for complete Background chrome and rows. The module includes the title, disclosure behavior, and the header checkbox.
 - Use `OverlayBackgroundInspectorRows` only when a custom section wrapper is explicitly required.
 - Canonical Background rows are `Color`, `Opacity`, `Radius`, `Padding`, and `Blur`.
-- Use `OverlayBorderInspectorModule` for complete Border chrome and rows. The module includes the title, icon (`rectangle`), disclosure behavior, and the header switch.
+- Use `OverlayBorderInspectorModule` for complete Border chrome and rows. The module includes the title, disclosure behavior, and the header checkbox.
 - Use `OverlayBorderInspectorRows` only when a custom section wrapper is explicitly required.
 - Canonical Border rows are `Color`, `Opacity`, and `Thickness`.
-- Use `OverlayEffectsInspectorModule` for complete Effects chrome and rows. The Effects section has disclosure behavior but no section-level switch.
+- Use `OverlayEffectsInspectorModule` for complete Effects chrome and rows. The Effects section has disclosure behavior but no section-level checkbox.
 - Use `OverlayEffectsInspectorRows` only when a custom section wrapper is explicitly required.
-- Canonical Effects rows are `Shadow`, `Shadow Color`, `Shadow Opacity`, `Shadow Radius`, `Shadow Thickness`, `Shadow Offset`, `Glow`, `Glow Color`, `Glow Intensity`, `Fade Out`, and `Fade Amount`.
+- Canonical Effects rows are `Shadow`, `Shadow Color`, `Shadow Opacity`, `Shadow Radius`, `Shadow Spread`, `Shadow Offset`, `Glow`, `Glow Color`, `Glow Intensity`, `Fade Out`, and `Fade Amount`.
 - Shadow targets the whole background/container when the overlay background is enabled; if background is disabled, shadow targets the internal foreground elements.
 - Glow targets foreground/internal elements.
 - Fade Out targets only the background. If background is disabled, Fade Out controls may stay visible but have no rendered effect.
@@ -423,9 +437,9 @@ Keep component APIs model-oriented. Avoid view-only state that diverges from `Pr
 ## Accessibility
 
 - Minimum text contrast should pass WCAG AA on dark backgrounds.
-- Icon-only buttons need `.help(...)` and accessibility labels (`.accessibilityLabel(...)`, normally the same text as the tooltip). This includes the Back/Delete buttons in each detail header (clips included), color swatches, and the SF Symbol picker buttons. `InspectorIconButton` (overlay row eye/lock/trash, Inspector Options) already applies `.accessibilityLabel(help)`, so pass a `help` string that reads well as a label; buttons built directly with `Button` must add the label themselves.
-- Collapsible section headers must be real `Button`s (`.buttonStyle(.plain)`), never a bare `.onTapGesture`, so they take keyboard focus (Tab with Full Keyboard Access on), activate with Space, and are exposed to VoiceOver as buttons. Each header sets `.accessibilityLabel(<section title>)` and `.accessibilityValue("Expanded" | "Collapsed")`, so VoiceOver announces "Layout, Expanded, button". Disclosure changes stay immediate with no animation.
-- Headers with an accessory switch (Background, Border, Stats Bar, Divider, and similar) must not nest the switch inside the header `Button`. The `Button` wraps the icon, title, and spacer; the switch is its sibling and carries its own label (`.accessibilityLabel("Enable <title>")`); a pointer-only `.onTapGesture` on the row keeps the chevron and padding clickable so the mouse hit area is the whole row except the switch.
+- Icon-only buttons need `.help(...)` and accessibility labels (`.accessibilityLabel(...)`, normally the same text as the tooltip). This includes the Previous/Next and Delete buttons in the detail headers (clips included), color swatches, and the SF Symbol picker buttons. `InspectorIconButton` (overlay row eye/lock, detail header buttons) already applies `.accessibilityLabel(help)`, so pass a `help` string that reads well as a label; buttons built directly with `Button` must add the label themselves.
+- Collapsible section headers must be real `Button`s (`.buttonStyle(.borderless)`), never a bare `.onTapGesture`, so they take keyboard focus (Tab with Full Keyboard Access on), activate with Space, and are exposed to VoiceOver as buttons. Each header sets `.accessibilityLabel(<section title>)` and `.accessibilityValue("Expanded" | "Collapsed")`, so VoiceOver announces "Layout, Expanded, button". Disclosure changes stay immediate with no animation.
+- Headers with an enable checkbox (Background, Border, Stats Bar, Divider, and similar) must not nest the checkbox inside the header `Button`. The `Button` wraps the chevron, title, and spacer; the checkbox is its sibling and carries its own label (`.accessibilityLabel("Enable <title>")`); a pointer-only `.onTapGesture` on the row keeps the padding clickable so the mouse hit area is the whole row except the checkbox.
 - Section header keyboard, pointer, and VoiceOver behavior needs a live window server, so it is checked by hand after changing a header: with Full Keyboard Access on, Tab to a header and press Space (the section toggles once); click the title, the empty space, and the chevron (each toggles once) and the accessory switch (toggles the switch only, not the section); with VoiceOver, confirm it reads the title, the expanded state, and "button". `InspectorSectionHeaderTests` only covers the window-free layout contract (collapsed shell is one header row tall; expanded adds only the body). Do not add tests that open an `NSWindow` or send synthetic events: a version that did made `swift test` time out on the GitHub macOS runner.
 - Hit targets should be at least 28x28 px for dense controls and preferably 30x30 px.
 - Selected/focused states should not rely on color alone; use border or checkmark indicators for swatches and selected cells.

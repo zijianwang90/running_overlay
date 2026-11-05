@@ -13,13 +13,12 @@ struct RouteMapOverlayDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let element = project.selectedOverlay(elementID) {
-                RouteMapOverlayHeader(element: element, subtitle: subtitle(for: element))
 
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
                         layoutInspectorSection(element)
                         sectionView(.container) { containerSection(element) }
-                        sectionView(.backgroundMap, accessory: { showMapToggle(element) }) { backgroundMapSection(element) }
+                        sectionView(.backgroundMap, isOn: showMapBinding(element)) { backgroundMapSection(element) }
                         sectionView(.routeLine) { routeLineSection(element) }
                         sectionView(.markers) { markersSection(element) }
                         routeMapStatsBarInspectorSection(element)
@@ -30,7 +29,6 @@ struct RouteMapOverlayDetailView: View {
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
 
-                footerBar
             } else {
                 Spacer()
             }
@@ -121,9 +119,9 @@ struct RouteMapOverlayDetailView: View {
     private func backgroundMapSection(_ element: OverlayElement) -> some View {
         // The Map Style picker only exposes the four "show map" choices.
         // Whether the map is rendered at all is controlled by the section
-        // header toggle (`showMapToggle`). When the user toggles Show Map
-        // off we set `routeMapBackgroundStyle = .none` and disable the
-        // dependent rows.
+        // header checkbox (`showMapBinding`). When the user turns the map
+        // off we set `routeMapBackgroundStyle = .none`, and the section
+        // disables every dependent row, including Map POIs.
         let mapEnabled = element.style.routeMapBackgroundStyle != .none
         InspectorDenseRow(label: "Map Style") {
             Menu {
@@ -144,10 +142,9 @@ struct RouteMapOverlayDetailView: View {
                     : OverlayRouteMapBackgroundStyle.dark.compactLabel
                 InspectorDenseMenuLabel(title: title, isEnabled: mapEnabled)
             }
-            .menuStyle(.borderlessButton)
+            .inspectorMenuStyle()
             .frame(height: NumericTokens.controlHeight)
         }
-        .opacity(mapEnabled ? 1 : 0.5)
         .disabled(!mapEnabled)
 
         InspectorDenseSliderRow(
@@ -175,23 +172,18 @@ struct RouteMapOverlayDetailView: View {
                 get: { element.style.routeMapShowsPointsOfInterest },
                 set: { project.setOverlayRouteMapShowsPointsOfInterest(elementID, isVisible: $0) }
             ))
-            .toggleStyle(.switch)
-            .controlSize(.mini)
+            .toggleStyle(.checkbox)
+            .controlSize(.small)
             .labelsHidden()
             .disabled(!mapEnabled)
         }
     }
 
-    @ViewBuilder
-    private func showMapToggle(_ element: OverlayElement) -> some View {
-        Toggle("", isOn: Binding(
+    private func showMapBinding(_ element: OverlayElement) -> Binding<Bool> {
+        Binding(
             get: { element.style.routeMapBackgroundStyle != .none },
             set: { project.setOverlayRouteMapShowMap(elementID, showMap: $0) }
-        ))
-        .toggleStyle(.switch)
-        .controlSize(.mini)
-        .labelsHidden()
-        .help("Show or hide the map background")
+        )
     }
 
     @ViewBuilder
@@ -246,8 +238,8 @@ struct RouteMapOverlayDetailView: View {
                 get: { element.style.glowEnabled },
                 set: { project.setOverlayGlowEnabled(elementID, enabled: $0) }
             ))
-            .toggleStyle(.switch)
-            .controlSize(.mini)
+            .toggleStyle(.checkbox)
+            .controlSize(.small)
             .labelsHidden()
         }
     }
@@ -284,8 +276,8 @@ struct RouteMapOverlayDetailView: View {
             Toggle("", isOn: Binding(get: { isVisible }, set: { newValue in
                 onSet(newValue)
             }))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
+                .toggleStyle(.checkbox)
+                .controlSize(.small)
         }
     }
 
@@ -321,7 +313,6 @@ struct RouteMapOverlayDetailView: View {
                 }
             ),
             title: SharedStatsBarInspectorUI.sectionTitle,
-            systemImage: SharedStatsBarInspectorUI.sectionSystemImage,
             isBarEnabled: config.visible,
             onSetBarEnabled: { project.setOverlayRouteMapStatsBarVisible(elementID, isVisible: $0) }
         ) {
@@ -391,170 +382,26 @@ struct RouteMapOverlayDetailView: View {
 
     // MARK: - Composition
 
-    @ViewBuilder
-    private func sectionView<Body: View, Accessory: View>(
+    private func sectionView<Body: View>(
         _ section: RouteMapSection,
-        @ViewBuilder accessory: () -> Accessory = { EmptyView() },
+        isOn: Binding<Bool>? = nil,
         @ViewBuilder content: () -> Body
     ) -> some View {
-        let isOpen = openSections.contains(section)
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: NumericTokens.space2) {
-                Button {
-                    if isOpen {
-                        openSections.remove(section)
-                    } else {
-                        openSections.insert(section)
-                    }
-                } label: {
-                    HStack(spacing: NumericTokens.space2) {
-                        Image(systemName: section.systemImage)
-                            .frame(width: 16, alignment: .center)
-                            .foregroundStyle(NumericTokens.textSecondary)
-                        Text(section.title)
-                            .font(NumericTokens.sectionTitleFont)
-                            .foregroundStyle(NumericTokens.textPrimary)
-                        Spacer()
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(section.title)
-                .accessibilityValue(isOpen ? "Expanded" : "Collapsed")
-                accessory()
-                    .accessibilityLabel("Enable \(section.title)")
-                Image(systemName: isOpen ? "chevron.up" : "chevron.down")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(NumericTokens.textMuted)
-                    .frame(width: 18, height: 18)
-            }
-            .frame(height: NumericTokens.sectionHeaderHeight)
-            .padding(.horizontal, NumericTokens.panelPaddingX)
-            .background(NumericTokens.panelBackgroundElevated)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                if isOpen {
-                    openSections.remove(section)
-                } else {
-                    openSections.insert(section)
-                }
-            }
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(NumericTokens.borderSubtle)
-                    .frame(height: 1)
-            }
-
-            if isOpen {
-                VStack(spacing: 0) {
-                    content()
-                }
-            }
-        }
+        let body = content()
+        return InspectorCollapsibleSection(title: section.title, isExpanded: sectionExpansion(section), isOn: isOn) { body }
     }
 
-    private var footerBar: some View {
-        InspectorDetailFooterBar(
-            leadingTitle: "Reset",
-            leadingSystemImage: "arrow.counterclockwise",
-            trailingTitle: "Done",
-            trailingSystemImage: "checkmark",
-            onLeadingTap: { project.resetOverlayStyle(elementID) },
-            onTrailingTap: { project.selection = .none }
+    private func sectionExpansion(_ section: RouteMapSection) -> Binding<Bool> {
+        Binding(
+            get: { openSections.contains(section) },
+            set: { isOpen in
+                if isOpen { openSections.insert(section) } else { openSections.remove(section) }
+            }
         )
-    }
-
-    private func subtitle(for element: OverlayElement) -> String {
-        distanceText(for: element)
-    }
-
-    private func distanceText(for element: OverlayElement) -> String {
-        let meters = project.activity.distanceMeters
-        guard meters > 0 else { return "—" }
-        return String(format: "%.2f km", meters / 1000)
     }
 }
 
 // MARK: - Header
-
-struct RouteMapOverlayHeader: View {
-    @EnvironmentObject private var project: ProjectDocument
-    let element: OverlayElement
-    let subtitle: String
-
-    var body: some View {
-        HStack(spacing: NumericTokens.space3) {
-            Button {
-                project.selection = .none
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                    .foregroundStyle(NumericTokens.textPrimary)
-            }
-            .buttonStyle(.plain)
-            .help("Back")
-            .accessibilityLabel("Back")
-
-            ZStack {
-                RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
-                    .fill(NumericTokens.controlBackground)
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                Image(systemName: "map")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(NumericTokens.accentBlue)
-            }
-            .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
-                    Text("Route Map")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(NumericTokens.textPrimary)
-                    Text("Overlay")
-                        .font(NumericTokens.captionFont)
-                        .foregroundStyle(NumericTokens.textSecondary)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(NumericTokens.controlBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                }
-                Text(subtitle)
-                    .font(NumericTokens.captionFont)
-                    .foregroundStyle(NumericTokens.textMuted)
-                    .lineLimit(1)
-            }
-
-            Spacer()
-
-            Button(role: .destructive) {
-                project.deleteOverlay(element.id)
-            } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                    .foregroundStyle(NumericTokens.dangerRed)
-            }
-            .buttonStyle(.plain)
-            .help("Delete")
-            .accessibilityLabel("Delete")
-        }
-        .padding(.horizontal, NumericTokens.panelPaddingX)
-        .frame(height: EditorTheme.panelHeaderHeight)
-        .background(NumericTokens.panelBackgroundElevated)
-        .overlay(alignment: .bottom) {
-            Divider()
-                .overlay(NumericTokens.borderSubtle)
-        }
-    }
-}
 
 // MARK: - Section enum
 
@@ -574,17 +421,6 @@ enum RouteMapSection: String, CaseIterable {
         case .routeLine: "Route Line"
         case .markers: "Markers"
         case .legend: "Stats Bar"
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .layout: "scope"
-        case .container: "rectangle.dashed"
-        case .backgroundMap: "map"
-        case .routeLine: "scribble.variable"
-        case .markers: "mappin.and.ellipse"
-        case .legend: "list.dash"
         }
     }
 }

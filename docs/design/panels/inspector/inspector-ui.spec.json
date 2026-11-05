@@ -102,29 +102,29 @@
           "component": "InspectorHeader",
           "content": {
             "title": "Inspector",
-            "statusPill": "{overlayCount} overlays",
-            "trailingIcon": "settings/filter"
+            "statusPill": "{overlayCount} overlays"
           }
         },
         {
-          "component": "AddedOverlaysSection",
+          "component": "AddedOverlaysList",
           "title": "Added Overlays",
-          "rowBehavior": "row body opens overlay detail; action buttons do not navigate",
+          "implementation": "List(selection:) with inset style and 28 pt minimum row height",
+          "rowBehavior": "selecting a row opens overlay detail; action buttons do not navigate",
           "sorting": false,
-          "actions": ["visibility", "lock", "delete", "openDetail"]
+          "actions": ["visibility", "lock"],
+          "actionVisibility": "on hover, or while the overlay is hidden or locked",
+          "contextMenu": "shared overlay context menu, including Delete"
         }
       ],
       "addOverlayCatalogLocation": "left Overlay Pool",
       "exampleRows": [
         {
           "name": "Running Gauge",
-          "subtitle": "Distance • Gauge",
           "value": "10.73 km",
           "icon": "gauge"
         },
         {
           "name": "Pace",
-          "subtitle": "Pace • Text",
           "value": "5'10\"/km",
           "icon": "timer"
         }
@@ -146,12 +146,12 @@
         {
           "component": "OverlayDetailHeader",
           "content": {
-            "leadingIcon": "back",
-            "title": "{overlay.label}",
-            "pill": "Overlay",
-            "valuePreview": "{formattedOverlayValue}",
-            "trailingIcon": "trash"
-          }
+            "overlayPicker": "pop-up of all overlays in list order; locked overlays disabled",
+            "position": "{index} of {count}",
+            "previousNext": "icon buttons cycling unlocked overlays, wrapping",
+            "actionMenu": ["Reset Style", "divider", "shared overlay context menu items"]
+          },
+          "rule": "Rendered once by ParameterPanelView; detail views draw no header or footer. No Back or Done: clearing the selection (Esc, empty canvas click, delete) returns to inspector.outer."
         },
         {
           "component": "ContentSection",
@@ -194,14 +194,6 @@
             { "type": "toggle", "label": "Enable Animation", "value": true },
             { "type": "select", "label": "Entrance", "value": "Fade Up" },
             { "type": "durationField", "label": "Duration", "value": "0.4s" }
-          ]
-        },
-        {
-          "component": "StickyFooter",
-          "layoutRule": "Use InspectorDetailFooterBar with a one-third Reset button, two-thirds Done button, elevated background, one top separator, and total height matching the adjacent Preview playback row.",
-          "buttons": [
-            { "label": "Reset", "style": "secondary", "displayRule": "only if reset is implemented" },
-            { "label": "Done", "style": "primary", "action": "return to inspector.outer" }
           ]
         }
       ]
@@ -303,7 +295,7 @@
         "Shadow Color",
         "Shadow Opacity",
         "Shadow Radius",
-        "Shadow Thickness",
+        "Shadow Spread",
         "Shadow Offset",
         "Glow",
         "Glow Color",

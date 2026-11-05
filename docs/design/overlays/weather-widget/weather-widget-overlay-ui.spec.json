@@ -145,10 +145,6 @@
       "reason": "Card surface color is palette-owned in Weather Widget 1.0; the old field did not reliably affect the preset renderer."
     },
     {
-      "control": "duplicate preset menu",
-      "reason": "Preset switching is already handled by the compact Styles icon buttons."
-    },
-    {
       "control": "Icon Size slider",
       "reason": "Icon size is preset-owned in Weather Widget 1.0."
     },

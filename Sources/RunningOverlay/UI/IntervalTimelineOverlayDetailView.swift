@@ -12,7 +12,6 @@ struct IntervalTimelineOverlayDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let element = project.selectedOverlay(elementID) {
-                header(element)
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
                         CollapsibleLayoutInspectorSection(isExpanded: $layoutOpen) {
@@ -24,13 +23,13 @@ struct IntervalTimelineOverlayDetailView: View {
                                 heightRange: 56...180
                             )
                         }
-                        section("Timeline", systemImage: "timeline.selection", isOpen: $timelineOpen) {
+                        section("Timeline", isOpen: $timelineOpen) {
                             timelineRows(element.style.intervalTimeline)
                         }
-                        section("Current", systemImage: "location.fill", isOpen: $currentOpen) {
+                        section("Current", isOpen: $currentOpen) {
                             currentRows(element.style.intervalTimeline)
                         }
-                        section("Labels", systemImage: "textformat", isOpen: $labelsOpen) {
+                        section("Labels", isOpen: $labelsOpen) {
                             labelRows(element.style.intervalTimeline)
                         }
                         OverlayBackgroundInspectorModule(elementID: elementID, element: element)
@@ -39,96 +38,15 @@ struct IntervalTimelineOverlayDetailView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
-                footerBar
             } else {
                 Spacer()
             }
         }
     }
 
-    private func header(_ element: OverlayElement) -> some View {
-        HStack(spacing: NumericTokens.space3) {
-            Button {
-                project.selection = .none
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Back")
-
-            Image(systemName: "timeline.selection")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(NumericTokens.accentBlue)
-                .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                .background(NumericTokens.controlBackground)
-                .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Interval Timeline")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(NumericTokens.textPrimary)
-                Text("Charts")
-                    .font(NumericTokens.captionFont)
-                    .foregroundStyle(NumericTokens.textSecondary)
-            }
-            Spacer()
-            Button(role: .destructive) {
-                project.deleteOverlay(element.id)
-            } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                    .foregroundStyle(NumericTokens.dangerRed)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Delete")
-        }
-        .padding(.horizontal, NumericTokens.panelPaddingX)
-        .frame(height: EditorTheme.panelHeaderHeight)
-        .background(NumericTokens.panelBackgroundElevated)
-        .overlay(alignment: .bottom) { Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1) }
-    }
-
-    private func section<Content: View>(_ title: String, systemImage: String, isOpen: Binding<Bool>, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Button {
-                isOpen.wrappedValue.toggle()
-            } label: {
-                HStack(spacing: NumericTokens.space2) {
-                    Image(systemName: systemImage)
-                        .frame(width: 16, alignment: .center)
-                        .foregroundStyle(NumericTokens.textSecondary)
-                    Text(title)
-                        .font(NumericTokens.sectionTitleFont)
-                        .foregroundStyle(NumericTokens.textPrimary)
-                    Spacer()
-                    Image(systemName: isOpen.wrappedValue ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(NumericTokens.textMuted)
-                        .frame(width: 18, height: 18)
-                }
-                .frame(height: NumericTokens.sectionHeaderHeight)
-                .padding(.horizontal, NumericTokens.panelPaddingX)
-                .background(NumericTokens.panelBackgroundElevated)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(title)
-            .accessibilityValue(isOpen.wrappedValue ? "Expanded" : "Collapsed")
-            .overlay(alignment: .bottom) { Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1) }
-            if isOpen.wrappedValue {
-                VStack(spacing: 0) { content() }
-            }
-        }
+    private func section<Content: View>(_ title: String, isOpen: Binding<Bool>, @ViewBuilder content: () -> Content) -> some View {
+        let body = content()
+        return InspectorCollapsibleSection(title: title, isExpanded: isOpen) { body }
     }
 
     @ViewBuilder
@@ -235,7 +153,6 @@ struct IntervalTimelineOverlayDetailView: View {
             .labelsHidden()
             .tint(NumericTokens.accentBlue)
         }
-        .opacity(style.markerEnabled ? 1 : 0.5)
         .disabled(!style.markerEnabled)
         InspectorDenseRow(label: "Text") {
             TextField("NOW", text: Binding(
@@ -247,7 +164,6 @@ struct IntervalTimelineOverlayDetailView: View {
             .foregroundStyle(NumericTokens.textPrimary)
             .multilineTextAlignment(.trailing)
         }
-        .opacity(style.markerEnabled && style.markerLabelEnabled ? 1 : 0.5)
         .disabled(!style.markerEnabled || !style.markerLabelEnabled)
         InspectorDenseRow(label: "Marker Pos") {
             InspectorDenseSegmented(values: IntervalTimelineMarkerPosition.allCases, selection: Binding(
@@ -293,7 +209,7 @@ struct IntervalTimelineOverlayDetailView: View {
             } label: {
                 InspectorDenseMenuLabel(title: style.markerFontName.isEmpty ? "Default" : style.markerFontName)
             }
-            .menuStyle(.borderlessButton)
+            .inspectorMenuStyle()
             .frame(height: NumericTokens.controlHeight)
         }
         InspectorDenseRow(label: "Marker Color") {
@@ -368,14 +284,4 @@ struct IntervalTimelineOverlayDetailView: View {
         )
     }
 
-    private var footerBar: some View {
-        InspectorDetailFooterBar(
-            leadingTitle: "Reset",
-            leadingSystemImage: "arrow.counterclockwise",
-            trailingTitle: "Done",
-            trailingSystemImage: "checkmark",
-            onLeadingTap: { project.mutateIntervalTimelineStyle(elementID) { $0 = .default } },
-            onTrailingTap: { project.selection = .none }
-        )
-    }
 }
