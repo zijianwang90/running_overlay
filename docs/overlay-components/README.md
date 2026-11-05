@@ -1,8 +1,10 @@
 # Overlay Components
 
-Status: **Draft.** The format is specified and reviewed-pending; no runtime,
-renderer, Inspector generation, CLI or project-schema support exists in the
-app yet. See [ADR 0013](../adr/0013-declarative-overlay-components.md) for the
+Status: **Draft, with a runtime kernel implemented.** The loader, validator,
+expression evaluator and resolved draw-tree builder live in
+`Sources/RunningOverlay/Components/` and have focused tests. The format is not
+yet wired into the project schema, Inspector, Overlay Pool, preview or export
+renderer. See [ADR 0013](../adr/0013-declarative-overlay-components.md) for the
 decision and gates.
 
 This directory defines how an overlay can be described as data instead of
@@ -108,7 +110,7 @@ milestone, not the current app.
 | Milestone | Content | Exit gate |
 |---|---|---|
 | M0 (this draft) | ADR, spec v0.1, schema, examples | Maintainer review of format |
-| M1 | Parser, validator, expression evaluator, compiled render graph, tests | Schema-valid examples load; evaluator unit tests pass |
+| M1 | Parser, validator, expression evaluator, compiled render graph, tests | **Kernel implemented:** `Sources/RunningOverlay/Components/`; focused tests pass |
 | M2 | Base + capability nodes through `SkiaEasyRunRenderer`; `.component` element kind | One numeric overlay renders pixel-equivalent to native at fixture times |
 | M3 | Params to Inspector generation and `ProjectDocument` undo | Inspector parity with native detail view; undo tests |
 | M4 | `.rocomponent` import, embedded definitions, validation errors, CLI | Import/render loop works on synthetic fixtures |

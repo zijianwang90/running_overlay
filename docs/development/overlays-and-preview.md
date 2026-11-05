@@ -206,3 +206,24 @@ Open engineering decisions:
 - Template file extension.
 - Whether template IDs should be stable UUIDs or derived from filenames.
 - How to handle missing future style fields when reading old templates.
+
+## Declarative Overlay Components (Experimental)
+
+The v0.1 component runtime kernel lives in
+`Sources/RunningOverlay/Components/`. It loads and strictly validates
+`ros.component/0.1` documents, evaluates the closed expression language,
+adapts `ActivityTimeline` to the read-only data contract, and resolves a
+component definition plus parameter values into a draw tree for base and
+capability nodes. Do not add new overlay behavior there yet: nothing in the
+project schema, Inspector, Overlay Pool, preview or export renderer references
+the kernel.
+
+- Format and data contract: `docs/overlay-components/spec-v0.1.md`.
+- Decision and gates: `docs/adr/0013-declarative-overlay-components.md`.
+- Tests: `OverlayComponentExpressionTests`, `OverlayComponentLoaderTests`,
+  `OverlayComponentDataTests`, `OverlayComponentResolverTests`.
+- Fixtures: `Tests/RunningOverlayTests/Fixtures/Components/`.
+
+The next integration step adds a component element kind and a Skia drawing
+path. It changes the project schema, so it needs the human review required by
+`AGENTS.md` and parity evidence against the native renderer.

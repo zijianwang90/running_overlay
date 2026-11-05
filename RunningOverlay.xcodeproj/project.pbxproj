@@ -13,6 +13,12 @@
 		FD596E89332F89187293F2C5 /* RunningOverlayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B3635999AFC1DB74B38849 /* RunningOverlayApp.swift */; };
 		C36F7A0AC35EBA570ACD3ABD /* RunningOverlayMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422C715ABE853E6DD27F309B /* RunningOverlayMain.swift */; };
 		FA54CF995BF15CB92457EDE4 /* RunningOverlayResources.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7025C2B0CBE7516EC095F597 /* RunningOverlayResources.swift */; };
+		473627BAF8C748504A83BCD4 /* OverlayComponentData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E26A6F96B943B72B8A07EDB /* OverlayComponentData.swift */; };
+		39CC4742C4B1439127E7331B /* OverlayComponentDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EB1970A744A1A12F23A8ABE /* OverlayComponentDocument.swift */; };
+		64CD676CCCD5C0AFDBF73293 /* OverlayComponentExpression.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9F8035625AEE8B872A9188A /* OverlayComponentExpression.swift */; };
+		50299C586936E656D88EA424 /* OverlayComponentLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = E34B2B14F12E507E5D7D6AA9 /* OverlayComponentLoader.swift */; };
+		F37BA8A8A6CDFAC7BF4DB956 /* OverlayComponentResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C35464BC659E14E10C78AA8 /* OverlayComponentResolver.swift */; };
+		14E3E31028624FF06DD1AC40 /* OverlayComponentValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = F96DF36D10990A86E386AC7A /* OverlayComponentValue.swift */; };
 		E8D8B2ED4D1412381D917843 /* OverlayExportModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2731A5ED488BF53C7B40BA18 /* OverlayExportModels.swift */; };
 		F18D40C67EDF6E6106DC51B1 /* SkiaEasyRunRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0DC8B0B0A6789837C22A8AB /* SkiaEasyRunRenderer.swift */; };
 		623981FFA17B7BAEAB468D3A /* SkiaExportFrameRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC59F3227173D1C71117345 /* SkiaExportFrameRenderer.swift */; };
@@ -162,6 +168,12 @@
 		E4B3635999AFC1DB74B38849 /* RunningOverlayApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/RunningOverlayApp.swift"; sourceTree = SOURCE_ROOT; };
 		422C715ABE853E6DD27F309B /* RunningOverlayMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/RunningOverlayMain.swift"; sourceTree = SOURCE_ROOT; };
 		7025C2B0CBE7516EC095F597 /* RunningOverlayResources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/RunningOverlayResources.swift"; sourceTree = SOURCE_ROOT; };
+		6E26A6F96B943B72B8A07EDB /* OverlayComponentData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentData.swift"; sourceTree = SOURCE_ROOT; };
+		7EB1970A744A1A12F23A8ABE /* OverlayComponentDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentDocument.swift"; sourceTree = SOURCE_ROOT; };
+		B9F8035625AEE8B872A9188A /* OverlayComponentExpression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentExpression.swift"; sourceTree = SOURCE_ROOT; };
+		E34B2B14F12E507E5D7D6AA9 /* OverlayComponentLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentLoader.swift"; sourceTree = SOURCE_ROOT; };
+		5C35464BC659E14E10C78AA8 /* OverlayComponentResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentResolver.swift"; sourceTree = SOURCE_ROOT; };
+		F96DF36D10990A86E386AC7A /* OverlayComponentValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentValue.swift"; sourceTree = SOURCE_ROOT; };
 		2731A5ED488BF53C7B40BA18 /* OverlayExportModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/OverlayExportModels.swift"; sourceTree = SOURCE_ROOT; };
 		A0DC8B0B0A6789837C22A8AB /* SkiaEasyRunRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/SkiaEasyRunRenderer.swift"; sourceTree = SOURCE_ROOT; };
 		8CC59F3227173D1C71117345 /* SkiaExportFrameRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/SkiaExportFrameRenderer.swift"; sourceTree = SOURCE_ROOT; };
@@ -313,6 +325,12 @@
 			E4B3635999AFC1DB74B38849 /* RunningOverlayApp.swift */,
 			422C715ABE853E6DD27F309B /* RunningOverlayMain.swift */,
 			7025C2B0CBE7516EC095F597 /* RunningOverlayResources.swift */,
+			6E26A6F96B943B72B8A07EDB /* OverlayComponentData.swift */,
+			7EB1970A744A1A12F23A8ABE /* OverlayComponentDocument.swift */,
+			B9F8035625AEE8B872A9188A /* OverlayComponentExpression.swift */,
+			E34B2B14F12E507E5D7D6AA9 /* OverlayComponentLoader.swift */,
+			5C35464BC659E14E10C78AA8 /* OverlayComponentResolver.swift */,
+			F96DF36D10990A86E386AC7A /* OverlayComponentValue.swift */,
 			2731A5ED488BF53C7B40BA18 /* OverlayExportModels.swift */,
 			A0DC8B0B0A6789837C22A8AB /* SkiaEasyRunRenderer.swift */,
 			8CC59F3227173D1C71117345 /* SkiaExportFrameRenderer.swift */,
@@ -494,6 +512,12 @@
 			FD596E89332F89187293F2C5 /* RunningOverlayApp.swift in Sources */,
 			C36F7A0AC35EBA570ACD3ABD /* RunningOverlayMain.swift in Sources */,
 			FA54CF995BF15CB92457EDE4 /* RunningOverlayResources.swift in Sources */,
+			473627BAF8C748504A83BCD4 /* OverlayComponentData.swift in Sources */,
+			39CC4742C4B1439127E7331B /* OverlayComponentDocument.swift in Sources */,
+			64CD676CCCD5C0AFDBF73293 /* OverlayComponentExpression.swift in Sources */,
+			50299C586936E656D88EA424 /* OverlayComponentLoader.swift in Sources */,
+			F37BA8A8A6CDFAC7BF4DB956 /* OverlayComponentResolver.swift in Sources */,
+			14E3E31028624FF06DD1AC40 /* OverlayComponentValue.swift in Sources */,
 			E8D8B2ED4D1412381D917843 /* OverlayExportModels.swift in Sources */,
 			F18D40C67EDF6E6106DC51B1 /* SkiaEasyRunRenderer.swift in Sources */,
 			623981FFA17B7BAEAB468D3A /* SkiaExportFrameRenderer.swift in Sources */,

@@ -1,7 +1,10 @@
 # Overlay Component Format v0.1 (Draft)
 
-Status: **Draft for review.** No host implementation exists. This document
-defines the format only; ADR 0013 records the decision and gates.
+Status: **Draft for review.** A standalone runtime kernel implements parsing,
+validation, expression evaluation and resolved draw-tree construction under
+`Sources/RunningOverlay/Components/`. It is not yet wired into the project
+schema, Inspector, renderer, preview or export. This document defines the
+format; ADR 0013 records the decision and gates.
 
 - Specification identifier: `ros.component/0.1`
 - Package extension: `.rocomponent`

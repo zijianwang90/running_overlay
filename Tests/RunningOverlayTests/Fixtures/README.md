@@ -11,6 +11,9 @@ the repository's MIT License.
   track-point extension metrics. It contains no real athlete or route data.
 - `Icons/` contains minimal authored SVG inputs used only to verify rendering
   behavior.
+- `Components/` contains copies of the public overlay component examples in
+  `docs/overlay-components/examples/`. They are authored for this repository
+  and use synthetic values in tests.
 - `VisualSnapshots/` contains renderer output generated from synthetic
   activity data.
 
