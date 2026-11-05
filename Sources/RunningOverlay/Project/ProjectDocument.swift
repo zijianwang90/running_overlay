@@ -502,6 +502,12 @@ final class ProjectDocument: ObservableObject {
         timeline = updatedTimeline
     }
 
+    /// Fits the whole timeline; Shift-Z from Fit returns to this zoom.
+    func zoomTimelineToFit() {
+        guard case .pixelsPerSecond = timeline.zoom else { return }
+        toggleTimelineFitZoom()
+    }
+
     func zoomTimelineIn() {
         zoomTimeline(by: Self.timelineZoomStep)
     }
@@ -551,6 +557,14 @@ final class ProjectDocument: ObservableObject {
         }
     }
 
+    /// Display time that fits in the timeline viewport at the current zoom.
+    /// Fit shows the whole display range; zooming in narrows it.
+    var timelineVisibleDuration: TimeInterval {
+        let bounds = timeline.displayBounds(activityDuration: activity.duration, collapsed: isTimelineCollapsed)
+        let displayDuration = max(bounds.upperBound - bounds.lowerBound, 1)
+        return displayDuration * fitPixelsPerSecond / max(currentPixelsPerSecond, 0.001)
+    }
+
     var layerDataSampleTime: TimeInterval {
         quantizedLayerDataTime(for: timeline.activityElapsed(atProjectTime: timeline.playhead))
     }
@@ -571,7 +585,14 @@ final class ProjectDocument: ObservableObject {
     }
 
     func toggleTimelineCollapse() {
-        isTimelineCollapsed.toggle()
+        setTimelineCollapsed(!isTimelineCollapsed)
+    }
+
+    /// Shared by the header toggle and the Timeline menu item so both always
+    /// show the same state.
+    func setTimelineCollapsed(_ collapsed: Bool) {
+        guard collapsed != isTimelineCollapsed else { return }
+        isTimelineCollapsed = collapsed
         if isTimelineCollapsed, let visibleTime = timeline.visiblePlaybackTime(atOrAfter: timeline.playhead) {
             setPlayhead(visibleTime)
         }
@@ -1042,6 +1063,23 @@ final class ProjectDocument: ObservableObject {
             updatedTimeline.playhead = updatedClip.effectiveStartTime + pausedSourceTime
         }
         timeline = updatedTimeline
+    }
+
+    /// Resets every clip's alignment offset as one undoable edit.
+    func resetClipOffsets(_ clipIDs: Set<TimelineClip.ID>) {
+        let clipIDs = clipIDs.filter { (timeline.clip(with: $0)?.alignmentOffset ?? 0) != 0 }
+        guard !clipIDs.isEmpty else { return }
+        registerUndoPoint()
+        let pausedSourceTime = clipIDs.count == 1 ? clipIDs.first.flatMap(stationarySourceTime(for:)) : nil
+        var updatedTimeline = timeline
+        for clipID in clipIDs {
+            updatedTimeline.setClipOffset(clipID, offset: 0, activityDuration: activity.duration)
+        }
+        if let pausedSourceTime, let clipID = clipIDs.first, let updatedClip = updatedTimeline.clip(with: clipID) {
+            updatedTimeline.playhead = updatedClip.effectiveStartTime + pausedSourceTime
+        }
+        timeline = updatedTimeline
+        statusMessage = clipIDs.count == 1 ? "Reset clip offset." : "Reset \(clipIDs.count) clip offsets."
     }
 
     func moveClip(_ clipID: TimelineClip.ID, toEffectiveStartTime effectiveStartTime: TimeInterval) {

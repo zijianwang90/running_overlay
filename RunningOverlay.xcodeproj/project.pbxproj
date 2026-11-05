@@ -119,6 +119,7 @@
 		D888932DA7C817CEF2C26445 /* SkiaPreviewCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8375014E5573390492D2C24 /* SkiaPreviewCanvasView.swift */; };
 		945833D879F0AECB7EA21C4A /* SplitCursorRegion.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFF88C53C751EE8E5CF934D8 /* SplitCursorRegion.swift */; };
 		6C748F1AB8B7B73B1D93F137 /* TemplatePoolView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6922F2C0A7374435BA7DE992 /* TemplatePoolView.swift */; };
+		7141A0FA2CBB8C67319E28C7 /* TimelineInteraction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 481969888F2D6F9D1E68D982 /* TimelineInteraction.swift */; };
 		34417C12EA1EC932F9AFC94D /* TimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182AD5E473BD5311E96EE583 /* TimelineView.swift */; };
 		F1A9159886F1A4FA089E5FC9 /* VideoPreviewPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F64F91D8CFC093962D1CAB7 /* VideoPreviewPlayerView.swift */; };
 		79BACA5FAD09261D22122A10 /* WeatherWidgetOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1CB2483721DE6508751CCAB /* WeatherWidgetOverlayDetailView.swift */; };
@@ -271,6 +272,7 @@
 		B8375014E5573390492D2C24 /* SkiaPreviewCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/SkiaPreviewCanvasView.swift"; sourceTree = SOURCE_ROOT; };
 		AFF88C53C751EE8E5CF934D8 /* SplitCursorRegion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/SplitCursorRegion.swift"; sourceTree = SOURCE_ROOT; };
 		6922F2C0A7374435BA7DE992 /* TemplatePoolView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/TemplatePoolView.swift"; sourceTree = SOURCE_ROOT; };
+		481969888F2D6F9D1E68D982 /* TimelineInteraction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/TimelineInteraction.swift"; sourceTree = SOURCE_ROOT; };
 		182AD5E473BD5311E96EE583 /* TimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/TimelineView.swift"; sourceTree = SOURCE_ROOT; };
 		8F64F91D8CFC093962D1CAB7 /* VideoPreviewPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/VideoPreviewPlayerView.swift"; sourceTree = SOURCE_ROOT; };
 		F1CB2483721DE6508751CCAB /* WeatherWidgetOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/WeatherWidgetOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
@@ -425,6 +427,7 @@
 			B8375014E5573390492D2C24 /* SkiaPreviewCanvasView.swift */,
 			AFF88C53C751EE8E5CF934D8 /* SplitCursorRegion.swift */,
 			6922F2C0A7374435BA7DE992 /* TemplatePoolView.swift */,
+			481969888F2D6F9D1E68D982 /* TimelineInteraction.swift */,
 			182AD5E473BD5311E96EE583 /* TimelineView.swift */,
 			8F64F91D8CFC093962D1CAB7 /* VideoPreviewPlayerView.swift */,
 			F1CB2483721DE6508751CCAB /* WeatherWidgetOverlayDetailView.swift */,
@@ -609,6 +612,7 @@
 			D888932DA7C817CEF2C26445 /* SkiaPreviewCanvasView.swift in Sources */,
 			945833D879F0AECB7EA21C4A /* SplitCursorRegion.swift in Sources */,
 			6C748F1AB8B7B73B1D93F137 /* TemplatePoolView.swift in Sources */,
+			7141A0FA2CBB8C67319E28C7 /* TimelineInteraction.swift in Sources */,
 			34417C12EA1EC932F9AFC94D /* TimelineView.swift in Sources */,
 			F1A9159886F1A4FA089E5FC9 /* VideoPreviewPlayerView.swift in Sources */,
 			79BACA5FAD09261D22122A10 /* WeatherWidgetOverlayDetailView.swift in Sources */,
