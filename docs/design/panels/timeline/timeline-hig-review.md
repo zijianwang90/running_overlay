@@ -46,8 +46,8 @@ Reduce Motion 下的自动滚动。
 - Header 的两个开关看不出状态。
 
 明确违背 HIG 的有 4 项（P1）。P1 和 P2 条目按出现顺序编号为 1–9，
-与设计稿中的黄色编号一一对应。“看不到播放头时间”与 Preview 共用一条结论，
-见 [Preview HIG 契合度检查](../preview/preview-hig-review.md) 的 P1。
+与设计稿中的黄色编号一一对应。“看不到播放头时间”已决定不做，见
+[Preview HIG 契合度检查](../preview/preview-hig-review.md)。
 
 ## P1：明确违背 HIG
 
@@ -202,10 +202,9 @@ Reduce Motion 下的自动滚动。
   分段信息。
 - **HIG basis**：`hig-foundations/typography`（macOS 上避免小于 10pt 的文字；
   10pt 已经是下限）；`hig-patterns/feedback`。
-- **Problem**：读数很有用，但字号小、宽度固定，长内容会被截断。并且如 Preview 的 P1
-  所述，读数只反映指针位置，不反映播放头位置。
-- **Suggested fix**：字号提高到 11pt，宽度随内容自适应；播放头时间统一由
-  Preview 播放条的时间读数提供，这里只保留悬停读数。
+- **Problem**：读数很有用，但字号小、宽度固定，长内容会被截断。
+- **Suggested fix**：字号提高到 11pt，宽度随内容自适应。不新增播放头时间读数
+  （产品决定，见 Preview 评审）。
 
 ## P3：打磨
 
@@ -234,7 +233,6 @@ Reduce Motion 下的自动滚动。
 | 指针随命中区域变化，不可用时显示禁止符号 | 标准指针反馈 |
 | ⌘ 点击、Shift 点击、⌘A、框选 | 标准选择约定 |
 | 缩放滑杆两端的放大镜图标 | HIG 推荐的滑杆形式 |
-| 时间码与检视器相连，始终显示播放头位置 | 对齐任务的基础 |
 
 不必借鉴的部分：磁性时间线、连接片段、多种编辑工具（Blade、Trim、Position）。
 本项目的时间线用于对齐，不是剪辑，`timeline-ui.md` 也明确把 trim 和 snapping

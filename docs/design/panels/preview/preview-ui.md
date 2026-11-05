@@ -107,7 +107,7 @@ Rules:
 
 Safe guides:
 
-- When enabled, draw guide overlays on top of video and below interactive overlay handles.
+- When enabled, draw guide overlays on top of video and below the overlay selection border.
 - Include safe-area rectangles and center guides.
 - Guides should be thin, subtle, and non-interactive.
 - Use blue/cyan with low opacity. Do not make guides look decorative.
@@ -120,12 +120,9 @@ Optional canvas HUD:
 
 Overlay editing affordances:
 
-- Selected overlay gets a subtle blue selection border and small corner handles.
-- Handles should be visible but not oversized.
-- Dragging any corner handle scales the selected overlay by updating the element `scale` value directly.
-- Handle scaling should use continuous undo grouping and commit on drag end.
-- Non-selected overlays should not show handles.
-- Row/action controls outside the canvas should not overlap overlay handles.
+- Selected overlay gets a subtle blue selection border. There are no corner
+  handles; scale is edited from the Inspector.
+- Non-selected overlays show no selection border.
 - Dragging an overlay should support pixel-threshold snapping on the fitted canvas:
   - When safe guides are enabled, overlay left/right edges snap to the 90%/80% vertical safe-guide lines, top/bottom edges snap to the 90%/80% horizontal safe-guide lines, and overlay center axes snap to the canvas center crosshair.
   - Visible overlays snap to each other by left/center/right and top/center/bottom alignment lines, regardless of safe-guide visibility.
@@ -175,7 +172,6 @@ Rules:
 - Dragging an overlay updates normalized position and commits undo grouping at drag end.
 - Dragging an overlay first computes a proposed normalized center point, then applies preview snapping before updating local live-drag state.
 - Preview snapping uses measured rendered overlay frames in canvas coordinates, not hard-coded overlay type dimensions.
-- Dragging a selected overlay corner handle updates that overlay's `scale` continuously and commits undo grouping at drag end.
 - Overlays with visibility off are not rendered in the Preview canvas.
 - Locked overlays are rendered but cannot be selected or dragged from the Preview canvas.
 - Right-clicking a Preview overlay opens the same context menu as Inspector rows (`Duplicate`, `Copy Properties`, `Paste Properties`, `Hide`/`Show`, `Lock`/`Unlock`, and `Delete`); paste follows the same category-compatibility rules. Hidden overlays are not on the canvas, so they are shown again from the Inspector row.

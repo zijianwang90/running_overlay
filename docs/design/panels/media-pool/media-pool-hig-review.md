@@ -79,7 +79,10 @@ sidebars、panels）、`hig-components-search`（search-fields）、
   实现。
 - **Validation**：focused test 覆盖选择和删除后的撤销；手动检查键盘操作和 Tab 顺序。
 
-### [P1] 媒体选择与项目选择互不感知，⌫ 可能删错对象（需实测）
+### [P1] 媒体选择与项目选择互不感知，⌫ 可能删错对象
+
+- **实测（2026-11-05）**：先选中一个 overlay，再选中一个 clip，按 Delete，
+  系统发出错误提示音，什么都没有删除。删除的目标与用户看到的选择不一致，已确认需要修复。
 
 - **Surface**：先选中 overlay 或 clip，再点击媒体行。
 - **Evidence**：

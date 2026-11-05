@@ -37,17 +37,19 @@ the-menu-bar、context-menus）、`hig-components-controls`（toggles）、
 方向键 1px 和 Shift 10px 微调、拖动结束时提交一次撤销，都符合 HIG。
 问题集中在**画布外的控件**和**缺失的反馈**：
 
-- 播放条没有当前时间，整个应用里也找不到播放头时间。
-- 规范写明的角点缩放手柄没有实现。
 - 指针在 overlay 上不会变化，用户看不出它可以拖。
 - Header 里的 pop-up 和 toggle 都是自绘的。
 
-明确违背 HIG 的有 3 项（P1）。P1 和 P2 条目按出现顺序编号为 1–8，
+明确违背 HIG 的有 3 项（P1），其中 2 项已由产品决定不做，见各条的 **Decision**。P1 和 P2 条目按出现顺序编号为 1–8，
 与设计稿中的黄色编号一一对应。
 
 ## P1：明确违背 HIG
 
-### [P1] 看不到播放头的当前时间
+### [P1] 看不到播放头的当前时间（已决定不做）
+
+- **Decision（2026-11-05）**：不显示播放头时间。本应用不是剪辑软件，用户只关心
+  时间是否对齐，不关心播放头的具体时间。保留 `preview-ui.md` 的
+  “Do not show timecode”。以下内容仅作记录。
 
 - **Surface**：Preview 播放条，以及整个编辑器。
 - **Evidence**：`preview-ui.md` 的 Bottom Playback Row 明确要求 “Do not show:
@@ -71,7 +73,10 @@ the-menu-bar、context-menus）、`hig-components-controls`（toggles）、
   - 这是对已有设计决策的修改，需要产品确认。
 - **Validation**：focused test 覆盖时间读数的格式化（负数、超过 1 小时、帧小数）。
 
-### [P1] 规范中的角点缩放手柄没有实现
+### [P1] 规范中的角点缩放手柄没有实现（已决定不做）
+
+- **Decision（2026-11-05）**：暂不实现角点缩放，已从 `preview-ui.md` 删除对应规范。
+  缩放继续在 Inspector 中调整。以下内容仅作记录。
 
 - **Surface**：选中的 overlay。
 - **Evidence**：`preview-ui.md` 规定 “Selected overlay gets a subtle blue selection
@@ -210,8 +215,6 @@ the-menu-bar、context-menus）、`hig-components-controls`（toggles）、
 | 借鉴 | 原因 |
 | --- | --- |
 | 检视器顶部右侧有缩放 pop-up（Fit / 50% / 100%） | 标准 pop-up，能查看细节 |
-| 底部居中的时间码，左右是播放控件 | 用户总能看到当前位置 |
-| 选中对象显示四角和边中点手柄，指针随之变化 | 直接操作 |
 | 视图开关（安全框、网格）放在 View 菜单，并有快捷键 | 低频开关不占用画布空间 |
 
 不必借鉴的部分：FCP 检视器底部的 Transform / Crop / Distort 模式切换。
@@ -219,9 +222,7 @@ the-menu-bar、context-menus）、`hig-components-controls`（toggles）、
 
 ## 建议的落地顺序
 
-1. 播放条加时间读数（P1；先修改 `preview-ui.md`，需要产品确认时间域的显示方式）。
-2. 指针反馈、锁定 overlay 的提示（P1，改动小）。
-3. 角点缩放手柄（P1；涉及撤销分组，需要人工评审），或者先从规范中删掉这一段。
-4. Fit 和速度改为系统 pop-up，Safe Frames 改为 toggle 按钮（P2，可复用 PR #58 的样式）。
-5. 播放条按钮精简，Playback 菜单整理（P2）。
-6. P3 打磨。
+1. 指针反馈、锁定 overlay 的提示（P1，改动小）。播放头时间和角点手柄已决定不做。
+2. Fit 和速度改为系统 pop-up，Safe Frames 改为 toggle 按钮（P2，可复用 PR #58 的样式）。
+3. 播放条按钮精简，Playback 菜单整理（P2）。
+4. P3 打磨。

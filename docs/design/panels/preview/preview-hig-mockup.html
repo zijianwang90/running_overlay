@@ -158,7 +158,7 @@
 
 <div class="grid">
   <div class="shot">
-    <div class="cap"><span class="tag bad">当前</span><div class="t">选中 Heart Rate · Safe Frames 打开</div><div class="d">没有时间；选中框没有手柄；Stop 与 Pause 重复；pop-up 是自绘的</div></div>
+    <div class="cap"><span class="tag bad">当前</span><div class="t">选中 Heart Rate · Safe Frames 打开</div><div class="d">Stop 与 Pause 重复；pop-up 是自绘的</div></div>
     <div class="pane cur">
       <div class="ph"><span class="title">Preview</span><span class="meta">1920 x 1080 • 30 fps</span><span class="sp"></span>
         <span class="cbtn on"><svg><use href="#viewfinder"/></svg></span>
@@ -187,7 +187,7 @@
   </div>
 
   <div class="shot">
-    <div class="cap"><span class="tag ok">HIG</span><div class="t">同一状态</div><div class="d">播放头时间常驻；四角手柄；指针提示可拖动；系统 pop-up 和 toggle 按钮</div></div>
+    <div class="cap"><span class="tag ok">HIG</span><div class="t">同一状态</div><div class="d">指针提示可拖动；系统 pop-up 和 toggle 按钮</div></div>
     <div class="pane">
       <div class="ph"><span class="title">Preview</span><span class="meta">1920 × 1080 · 30 fps</span><span class="sp"></span>
         <span class="ib on"><svg><use href="#viewfinder"/></svg></span>
@@ -197,14 +197,14 @@
         <div class="video">
           <div class="guides"><i style="inset:5%"></i><i style="inset:10%;opacity:.7"></i></div>
           <div class="ov" style="left:72px;top:206px"><div class="u">HEART RATE</div><div class="v">156 <span style="font-size:13px">bpm</span></div>
-            <div class="selbox"><i class="hd tl"></i><i class="hd tr"></i><i class="hd bl"></i><i class="hd br"></i></div>
+            <div class="selbox"></div>
           </div>
           <div class="ov" style="left:380px;top:206px"><div class="u">PACE</div><div class="v">4:32 <span style="font-size:13px">/km</span></div></div>
           <div class="cursor" style="left:118px;top:226px">✋</div>
         </div>
       </div>
       <div class="pb">
-        <div class="l"><span class="tc hov">23:41.12</span><span class="tcd">Activity</span></div>
+        <div class="l"></div>
         <div class="c">
           <span class="pbtn"><svg><use href="#prev"/></svg></span>
           <span class="pbtn main hov"><svg><use href="#play"/></svg></span>
@@ -212,8 +212,6 @@
         </div>
         <div class="r"><span class="popup" style="font-variant-numeric:tabular-nums">1×<span class="chev"><svg><use href="#updown"/></svg></span></span></div>
       </div>
-      <span class="n pin" style="left:150px;top:372px">1</span>
-      <span class="n pin" style="left:198px;top:236px">2</span>
       <span class="n pin" style="left:178px;top:302px">3</span>
       <span class="n pin" style="left:566px;top:44px">4</span>
       <span class="n pin" style="left:520px;top:44px">5</span>
@@ -221,8 +219,7 @@
       <span class="n pin" style="left:520px;top:372px">8</span>
     </div>
     <ul class="notes">
-      <li><span class="n">1</span>播放条左侧显示播放头时间（等宽数字），旁边标出时间域。点击在 <b>Activity</b> 与 <b>Timeline</b> 之间切换。</li>
-      <li><span class="n">2</span>选中框四角有 7pt 手柄，拖动等比缩放；外加 1pt 深色描边，在亮色画面上也看得清。</li>
+      <li><span class="n">1</span><span class="n">2</span>播放头时间和角点手柄已决定不做（见评审文档的 Decision）。选中框外加 1pt 深色描边，在亮色画面上也看得清。</li>
       <li><span class="n">3</span>悬停可移动的 overlay 时显示 open hand，拖动时显示 closed hand。</li>
       <li><span class="n">4</span>Fit 是系统 pop-up（上下箭头），选项补上 50% / 100% / 200%。</li>
       <li><span class="n">5</span>Safe Frames 是 toggle 按钮，系统提供激活态和 <code>isSelected</code>；有悬停态。背景色移到 Fit 菜单下方。</li>
@@ -233,13 +230,12 @@
 </div>
 
 <!-- ============================ POINTER STATES ============================ -->
-<h2>2 · 画布上的指针与手柄</h2>
+<h2>2 · 画布上的指针</h2>
 <p class="lede">指针反映当前位置可以做什么；锁定的 overlay 点击时给出提示，而不是没有任何反应。</p>
 
 <div class="tiles">
   <div class="tile"><div class="ov"><div class="u">HEART RATE</div><div class="v">156</div></div><div class="cursor" style="left:96px;top:58px">✋</div><div class="lbl">悬停未选中：open hand</div></div>
-  <div class="tile"><div class="ov"><div class="u">HEART RATE</div><div class="v">156</div><div class="selbox"><i class="hd tl"></i><i class="hd tr"></i><i class="hd bl"></i><i class="hd br"></i></div></div><div class="cursor" style="left:96px;top:58px">✊</div><div class="lbl">拖动：closed hand，吸附时触控板轻震</div></div>
-  <div class="tile"><div class="ov"><div class="u">HEART RATE</div><div class="v">156</div><div class="selbox"><i class="hd tl"></i><i class="hd tr"></i><i class="hd bl"></i><i class="hd br"></i></div></div><div class="cursor" style="left:118px;top:68px;font-size:16px">⤡</div><div class="lbl">悬停手柄：对角缩放箭头；⌥ 从中心缩放</div></div>
+  <div class="tile"><div class="ov"><div class="u">HEART RATE</div><div class="v">156</div><div class="selbox"></div></div><div class="cursor" style="left:96px;top:58px">✊</div><div class="lbl">拖动：closed hand，吸附时触控板轻震</div></div>
   <div class="tile"><div class="ov"><div class="u">HEART RATE</div><div class="v">156</div><div class="lockmark"><svg><use href="#lock"/></svg></div></div><div class="cursor" style="left:96px;top:58px;font-size:16px">➚</div><div class="tip" style="left:106px;top:30px">Locked</div><div class="lbl">锁定：保持箭头，help 显示 Locked</div></div>
 </div>
 
@@ -312,11 +308,6 @@
 <table class="cmp">
   <tr><th>控件</th><th>HIG 版本</th><th>依据</th></tr>
   <tr>
-    <td class="k">时间读数</td>
-    <td><div class="demo"><span class="tc">23:41.12</span><span class="tcd">Activity</span></div></td>
-    <td class="why"><code>playing-video</code>、<code>feedback</code>：当前位置要持续可见；明确标出时间域</td>
-  </tr>
-  <tr>
     <td class="k">Fit / 速度</td>
     <td><div class="demo"><span class="popup">Fit<span class="chev"><svg><use href="#updown"/></svg></span></span><span class="popup">1×<span class="chev"><svg><use href="#updown"/></svg></span></span></div></td>
     <td class="why"><code>pop-up-buttons</code>：互斥值选择显示上下箭头</td>
@@ -333,8 +324,8 @@
   </tr>
   <tr>
     <td class="k">选中框</td>
-    <td><div class="demo" style="height:58px;position:relative"><div style="position:relative;margin-left:30px;font:600 18px -apple-system">156<div class="selbox"><i class="hd tl"></i><i class="hd tr"></i><i class="hd bl"></i><i class="hd br"></i></div></div></div></td>
-    <td class="why"><code>pointing-devices</code>：可直接操作的对象提供操作点和对应的指针</td>
+    <td><div class="demo" style="height:58px;position:relative"><div style="position:relative;margin-left:30px;font:600 18px -apple-system">156<div class="selbox"></div></div></div></td>
+    <td class="why"><code>pointing-devices</code>：选中态清楚可见；不提供角点手柄（产品决定），缩放在 Inspector 中调整</td>
   </tr>
 </table>
 
