@@ -25,6 +25,7 @@ entries in `project-log.md`.
 | Timeline behavior | `docs/architecture.md#timeline`, `docs/design/panels/timeline/` |
 | Numeric overlays | `docs/design/overlays/numeric/`, `docs/requirements.md` |
 | Featured overlays | `docs/overlay-modules/README.md`, matching module and design directory |
+| Overlay component format (proposed) | `docs/adr/0013-declarative-overlay-components.md`, `docs/overlay-components/` |
 | Preview | `docs/architecture.md#preview`, `docs/design/panels/preview/` |
 | Skia SDK or GPU backend experiments | `docs/development/skia-sdk.md`, `docs/adr/0010-skia-ganesh-metal-renderer.md` |
 | Export or performance | `docs/architecture.md#export`, `docs/export-performance.md` |

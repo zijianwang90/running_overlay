@@ -1,0 +1,734 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:running-overlay:component:0.1",
+  "title": "Running Overlay Component v0.1",
+  "description": "Declarative overlay component format. See docs/overlay-components/spec-v0.1.md.",
+  "type": "object",
+  "required": ["spec", "id", "version", "name", "license", "size", "nodes"],
+  "additionalProperties": false,
+  "properties": {
+    "spec": { "const": "ros.component/0.1" },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(\\.[a-z0-9-]+)+$",
+      "maxLength": 128
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "name": { "$ref": "#/$defs/localizedText" },
+    "description": { "$ref": "#/$defs/localizedText" },
+    "author": { "type": "string", "maxLength": 128 },
+    "license": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "homepage": { "type": "string", "pattern": "^https://" },
+    "size": {
+      "type": "array",
+      "prefixItems": [
+        { "$ref": "#/$defs/sizeValue" },
+        { "$ref": "#/$defs/sizeValue" }
+      ],
+      "items": false
+    },
+    "background": {
+      "type": "object",
+      "required": ["color"],
+      "additionalProperties": false,
+      "properties": {
+        "color": { "$ref": "#/$defs/colorValue" },
+        "radius": { "$ref": "#/$defs/numberOrExpression" }
+      }
+    },
+    "params": {
+      "type": "array",
+      "maxItems": 64,
+      "items": { "$ref": "#/$defs/param" }
+    },
+    "bindings": {
+      "type": "object",
+      "maxProperties": 64,
+      "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+      "additionalProperties": { "$ref": "#/$defs/binding" }
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 512,
+      "items": { "$ref": "#/$defs/node" }
+    }
+  },
+  "$defs": {
+    "languageTag": {
+      "type": "string",
+      "pattern": "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+    },
+    "localizedText": {
+      "oneOf": [
+        { "type": "string", "minLength": 1, "maxLength": 512 },
+        {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 16,
+          "required": ["en"],
+          "propertyNames": { "$ref": "#/$defs/languageTag" },
+          "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 512 }
+        }
+      ]
+    },
+    "sizeValue": { "type": "number", "minimum": 8, "maximum": 8192 },
+    "expression": { "type": "string", "pattern": "^=.+" , "maxLength": 512 },
+    "numberOrExpression": {
+      "oneOf": [
+        { "type": "number", "minimum": -32768, "maximum": 32768 },
+        { "$ref": "#/$defs/expression" }
+      ]
+    },
+    "colorLiteral": {
+      "type": "string",
+      "pattern": "^(#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?|transparent)$"
+    },
+    "colorValue": {
+      "oneOf": [
+        { "$ref": "#/$defs/colorLiteral" },
+        { "$ref": "#/$defs/expression" }
+      ]
+    },
+    "stringOrExpression": {
+      "oneOf": [
+        { "type": "string", "maxLength": 1024, "pattern": "^(?!\\=)" },
+        { "$ref": "#/$defs/expression" }
+      ]
+    },
+    "frame": {
+      "type": "array",
+      "prefixItems": [
+        { "$ref": "#/$defs/numberOrExpression" },
+        { "$ref": "#/$defs/numberOrExpression" },
+        { "$ref": "#/$defs/numberOrExpression" },
+        { "$ref": "#/$defs/numberOrExpression" }
+      ],
+      "items": false
+    },
+    "point": {
+      "type": "array",
+      "prefixItems": [
+        { "$ref": "#/$defs/numberOrExpression" },
+        { "$ref": "#/$defs/numberOrExpression" }
+      ],
+      "items": false
+    },
+    "font": {
+      "type": "object",
+      "required": ["family", "size"],
+      "additionalProperties": false,
+      "properties": {
+        "family": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "size": { "$ref": "#/$defs/numberOrExpression" },
+        "weight": {
+          "enum": [
+            "ultraLight", "light", "regular", "medium",
+            "semibold", "bold", "heavy", "black"
+          ]
+        }
+      }
+    },
+    "binding": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["signal"],
+          "additionalProperties": false,
+          "properties": {
+            "signal": {
+              "type": "string",
+              "pattern": "^(activity|clock|host|zone|structure|route|weather)\\.[A-Za-z0-9_.]+$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["series"],
+          "additionalProperties": false,
+          "properties": {
+            "series": { "type": "string", "pattern": "^activity\\.[A-Za-z]+$" },
+            "window": {
+              "oneOf": [
+                { "const": "full" },
+                {
+                  "type": "array",
+                  "prefixItems": [{ "type": "number" }, { "type": "number" }],
+                  "items": false
+                }
+              ]
+            },
+            "samples": { "type": "integer", "minimum": 2, "maximum": 1024 }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["list"],
+          "additionalProperties": false,
+          "properties": {
+            "list": { "enum": ["structure.laps", "structure.intervals"] }
+          }
+        }
+      ]
+    },
+    "param": {
+      "oneOf": [
+        { "$ref": "#/$defs/paramNumber" },
+        { "$ref": "#/$defs/paramBool" },
+        { "$ref": "#/$defs/paramColor" },
+        { "$ref": "#/$defs/paramEnum" },
+        { "$ref": "#/$defs/paramString" },
+        { "$ref": "#/$defs/paramFont" },
+        { "$ref": "#/$defs/paramMetric" }
+      ]
+    },
+    "paramCommon": {
+      "type": "object",
+      "required": ["id", "type", "label", "default"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9_]*$", "maxLength": 64 },
+        "type": { "type": "string" },
+        "label": { "$ref": "#/$defs/localizedText" },
+        "section": { "$ref": "#/$defs/localizedText" },
+        "description": { "$ref": "#/$defs/localizedText" },
+        "default": {},
+        "advanced": { "type": "boolean" },
+        "when": { "$ref": "#/$defs/expression" }
+      }
+    },
+    "paramNumber": {
+      "allOf": [
+        { "$ref": "#/$defs/paramCommon" },
+        {
+          "type": "object",
+          "required": ["type", "min", "max", "default"],
+          "properties": {
+            "type": { "const": "number" },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "step": { "type": "number", "exclusiveMinimum": 0 },
+            "unit": { "type": "string", "maxLength": 16 },
+            "style": { "enum": ["slider", "field", "stepper"] },
+            "default": { "type": "number" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "paramBool": {
+      "allOf": [
+        { "$ref": "#/$defs/paramCommon" },
+        {
+          "type": "object",
+          "required": ["type", "default"],
+          "properties": {
+            "type": { "const": "bool" },
+            "default": { "type": "boolean" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "paramColor": {
+      "allOf": [
+        { "$ref": "#/$defs/paramCommon" },
+        {
+          "type": "object",
+          "required": ["type", "default"],
+          "properties": {
+            "type": { "const": "color" },
+            "default": { "$ref": "#/$defs/colorLiteral" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "paramEnum": {
+      "allOf": [
+        { "$ref": "#/$defs/paramCommon" },
+        {
+          "type": "object",
+          "required": ["type", "options", "default"],
+          "properties": {
+            "type": { "const": "enum" },
+            "options": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 16,
+              "items": {
+                "type": "object",
+                "required": ["value", "label"],
+                "additionalProperties": false,
+                "properties": {
+                  "value": { "type": "string", "minLength": 1, "maxLength": 64 },
+                  "label": { "$ref": "#/$defs/localizedText" }
+                }
+              }
+            },
+            "default": { "type": "string", "minLength": 1, "maxLength": 64 }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "paramString": {
+      "allOf": [
+        { "$ref": "#/$defs/paramCommon" },
+        {
+          "type": "object",
+          "required": ["type", "default"],
+          "properties": {
+            "type": { "const": "string" },
+            "maxLength": { "type": "integer", "minimum": 1, "maximum": 512 },
+            "default": { "type": "string", "maxLength": 512 }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "paramFont": {
+      "allOf": [
+        { "$ref": "#/$defs/paramCommon" },
+        {
+          "type": "object",
+          "required": ["type", "default"],
+          "properties": {
+            "type": { "const": "font" },
+            "default": { "type": "string", "minLength": 1, "maxLength": 128 }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "paramMetric": {
+      "allOf": [
+        { "$ref": "#/$defs/paramCommon" },
+        {
+          "type": "object",
+          "required": ["type", "signals", "default"],
+          "properties": {
+            "type": { "const": "metric" },
+            "signals": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "items": {
+                "enum": [
+                  "activity.heartRate", "activity.pace", "activity.avgPace",
+                  "activity.distance", "activity.elevation",
+                  "activity.elevationGain", "activity.cadence", "activity.power",
+                  "activity.grade", "activity.temperature", "activity.calories",
+                  "activity.elapsed", "activity.remaining"
+                ]
+              }
+            },
+            "series": { "type": "boolean" },
+            "default": { "type": "string", "minLength": 1, "maxLength": 64 }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "node": {
+      "oneOf": [
+        { "$ref": "#/$defs/groupNode" },
+        { "$ref": "#/$defs/rectNode" },
+        { "$ref": "#/$defs/circleNode" },
+        { "$ref": "#/$defs/lineNode" },
+        { "$ref": "#/$defs/polylineNode" },
+        { "$ref": "#/$defs/pathNode" },
+        { "$ref": "#/$defs/textNode" },
+        { "$ref": "#/$defs/imageNode" },
+        { "$ref": "#/$defs/gradientRectNode" },
+        { "$ref": "#/$defs/sparklineNode" },
+        { "$ref": "#/$defs/progressBarNode" },
+        { "$ref": "#/$defs/arcNode" },
+        { "$ref": "#/$defs/repeatNode" }
+      ]
+    },
+    "nodeCommon": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$", "maxLength": 64 },
+        "frame": { "$ref": "#/$defs/frame" },
+        "if": { "$ref": "#/$defs/expression" },
+        "opacity": { "$ref": "#/$defs/numberOrExpression" }
+      }
+    },
+    "groupNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeCommon" },
+        {
+          "type": "object",
+          "required": ["type", "children"],
+          "properties": {
+            "type": { "const": "group" },
+            "children": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 512,
+              "items": { "$ref": "#/$defs/node" }
+            },
+            "clip": { "type": "boolean" },
+            "shadow": {
+              "type": "object",
+              "required": ["sigma", "dx", "dy", "color"],
+              "additionalProperties": false,
+              "properties": {
+                "sigma": { "$ref": "#/$defs/numberOrExpression" },
+                "dx": { "$ref": "#/$defs/numberOrExpression" },
+                "dy": { "$ref": "#/$defs/numberOrExpression" },
+                "color": { "$ref": "#/$defs/colorValue" }
+              }
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "rectNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeCommon" },
+        {
+          "type": "object",
+          "required": ["type", "frame", "fill"],
+          "properties": {
+            "type": { "const": "rect" },
+            "fill": { "$ref": "#/$defs/colorValue" },
+            "radius": { "$ref": "#/$defs/numberOrExpression" },
+            "stroke": { "$ref": "#/$defs/colorValue" },
+            "strokeWidth": { "$ref": "#/$defs/numberOrExpression" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "circleNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeCommon" },
+        {
+          "type": "object",
+          "required": ["type", "center", "radius"],
+          "properties": {
+            "type": { "const": "circle" },
+            "center": { "$ref": "#/$defs/point" },
+            "radius": { "$ref": "#/$defs/numberOrExpression" },
+            "fill": { "$ref": "#/$defs/colorValue" },
+            "stroke": { "$ref": "#/$defs/colorValue" },
+            "strokeWidth": { "$ref": "#/$defs/numberOrExpression" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "lineNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeCommon" },
+        {
+          "type": "object",
+          "required": ["type", "from", "to", "width", "color"],
+          "properties": {
+            "type": { "const": "line" },
+            "from": { "$ref": "#/$defs/point" },
+            "to": { "$ref": "#/$defs/point" },
+            "width": { "$ref": "#/$defs/numberOrExpression" },
+            "color": { "$ref": "#/$defs/colorValue" },
+            "cap": { "enum": ["butt", "round", "square"] }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "polylineNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeCommon" },
+        {
+          "type": "object",
+          "required": ["type", "points", "width", "color"],
+          "properties": {
+            "type": { "const": "polyline" },
+            "points": {
+              "oneOf": [
+                {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 1024,
+                  "items": { "$ref": "#/$defs/point" }
+                },
+                { "$ref": "#/$defs/expression" }
+              ]
+            },
+            "width": { "$ref": "#/$defs/numberOrExpression" },
+            "color": { "$ref": "#/$defs/colorValue" },
+            "cap": { "enum": ["butt", "round", "square"] },
+            "join": { "enum": ["miter", "round", "bevel"] },
+            "dash": {
+              "type": "array",
+              "prefixItems": [
+                { "$ref": "#/$defs/numberOrExpression" },
+                { "$ref": "#/$defs/numberOrExpression" }
+              ],
+              "items": false
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "pathCommand": {
+      "oneOf": [
+        {
+          "type": "array",
+          "prefixItems": [
+            { "const": "M" },
+            { "$ref": "#/$defs/numberOrExpression" },
+            { "$ref": "#/$defs/numberOrExpression" }
+          ],
+          "items": false
+        },
+        {
+          "type": "array",
+          "prefixItems": [
+            { "const": "L" },
+            { "$ref": "#/$defs/numberOrExpression" },
+            { "$ref": "#/$defs/numberOrExpression" }
+          ],
+          "items": false
+        },
+        {
+          "type": "array",
+          "prefixItems": [
+            { "const": "Q" },
+            { "$ref": "#/$defs/numberOrExpression" },
+            { "$ref": "#/$defs/numberOrExpression" },
+            { "$ref": "#/$defs/numberOrExpression" },
+            { "$ref": "#/$defs/numberOrExpression" }
+          ],
+          "items": false
+        },
+        {
+          "type": "array",
+          "prefixItems": [
+            { "const": "C" },
+            { "$ref": "#/$defs/numberOrExpression" },
+            { "$ref": "#/$defs/numberOrExpression" },
+            { "$ref": "#/$defs/numberOrExpression" },
+            { "$ref": "#/$defs/numberOrExpression" },
+            { "$ref": "#/$defs/numberOrExpression" },
+            { "$ref": "#/$defs/numberOrExpression" }
+          ],
+          "items": false
+        },
+        {
+          "type": "array",
+          "prefixItems": [
+            { "const": "A" },
+            { "$ref": "#/$defs/numberOrExpression" },
+            { "$ref": "#/$defs/numberOrExpression" },
+            { "$ref": "#/$defs/numberOrExpression" },
+            { "$ref": "#/$defs/numberOrExpression" },
+            { "$ref": "#/$defs/numberOrExpression" }
+          ],
+          "items": false
+        },
+        {
+          "type": "array",
+          "prefixItems": [{ "const": "Z" }],
+          "items": false
+        }
+      ]
+    },
+    "pathNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeCommon" },
+        {
+          "type": "object",
+          "required": ["type", "commands"],
+          "properties": {
+            "type": { "const": "path" },
+            "commands": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1024,
+              "items": { "$ref": "#/$defs/pathCommand" }
+            },
+            "fill": { "$ref": "#/$defs/colorValue" },
+            "stroke": { "$ref": "#/$defs/colorValue" },
+            "strokeWidth": { "$ref": "#/$defs/numberOrExpression" },
+            "cap": { "enum": ["butt", "round", "square"] },
+            "join": { "enum": ["miter", "round", "bevel"] },
+            "dash": {
+              "type": "array",
+              "prefixItems": [
+                { "$ref": "#/$defs/numberOrExpression" },
+                { "$ref": "#/$defs/numberOrExpression" }
+              ],
+              "items": false
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "textNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeCommon" },
+        {
+          "type": "object",
+          "required": ["type", "frame", "text", "font", "color"],
+          "properties": {
+            "type": { "const": "text" },
+            "text": { "$ref": "#/$defs/stringOrExpression" },
+            "font": { "$ref": "#/$defs/font" },
+            "color": { "$ref": "#/$defs/colorValue" },
+            "align": { "enum": ["left", "center", "right"] },
+            "verticalAlign": { "enum": ["top", "center", "bottom"] },
+            "maxWidth": { "$ref": "#/$defs/numberOrExpression" },
+            "lineHeight": { "$ref": "#/$defs/numberOrExpression" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "imageNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeCommon" },
+        {
+          "type": "object",
+          "required": ["type", "frame", "asset"],
+          "properties": {
+            "type": { "const": "image" },
+            "asset": {
+              "type": "string",
+              "pattern": "^assets/[A-Za-z0-9._-]+\\.(png|jpg|jpeg)$"
+            },
+            "fit": { "enum": ["fill", "contain"] }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "gradientStop": {
+      "type": "object",
+      "required": ["offset", "color"],
+      "additionalProperties": false,
+      "properties": {
+        "offset": { "type": "number", "minimum": 0, "maximum": 1 },
+        "color": { "$ref": "#/$defs/colorLiteral" }
+      }
+    },
+    "gradientRectNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeCommon" },
+        {
+          "type": "object",
+          "required": ["type", "frame", "stops", "from", "to"],
+          "properties": {
+            "type": { "const": "gradientRect" },
+            "stops": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 8,
+              "items": { "$ref": "#/$defs/gradientStop" }
+            },
+            "from": { "$ref": "#/$defs/point" },
+            "to": { "$ref": "#/$defs/point" },
+            "radius": { "$ref": "#/$defs/numberOrExpression" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "sparklineNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeCommon" },
+        {
+          "type": "object",
+          "required": ["type", "frame", "series", "stroke", "lineWidth"],
+          "properties": {
+            "type": { "const": "sparkline" },
+            "series": { "$ref": "#/$defs/expression" },
+            "stroke": { "$ref": "#/$defs/colorValue" },
+            "lineWidth": { "$ref": "#/$defs/numberOrExpression" },
+            "fill": {
+              "oneOf": [
+                { "$ref": "#/$defs/colorValue" },
+                { "type": "null" }
+              ]
+            },
+            "smoothing": { "enum": ["none", "monotone"] }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "progressBarNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeCommon" },
+        {
+          "type": "object",
+          "required": ["type", "frame", "value", "trackColor", "fillColor"],
+          "properties": {
+            "type": { "const": "progressBar" },
+            "value": { "$ref": "#/$defs/expression" },
+            "trackColor": { "$ref": "#/$defs/colorValue" },
+            "fillColor": { "$ref": "#/$defs/colorValue" },
+            "radius": { "$ref": "#/$defs/numberOrExpression" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "arcNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeCommon" },
+        {
+          "type": "object",
+          "required": [
+            "type", "frame", "value", "startDegrees", "sweepDegrees",
+            "radius", "width", "fillColor"
+          ],
+          "properties": {
+            "type": { "const": "arc" },
+            "value": { "$ref": "#/$defs/expression" },
+            "startDegrees": { "$ref": "#/$defs/numberOrExpression" },
+            "sweepDegrees": { "$ref": "#/$defs/numberOrExpression" },
+            "radius": { "$ref": "#/$defs/numberOrExpression" },
+            "width": { "$ref": "#/$defs/numberOrExpression" },
+            "trackColor": { "$ref": "#/$defs/colorValue" },
+            "fillColor": { "$ref": "#/$defs/colorValue" },
+            "cap": { "enum": ["butt", "round", "square"] }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "repeatNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeCommon" },
+        {
+          "type": "object",
+          "required": ["type", "frame", "over", "children"],
+          "properties": {
+            "type": { "const": "repeat" },
+            "over": { "$ref": "#/$defs/expression" },
+            "as": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+            "index": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+            "max": { "$ref": "#/$defs/numberOrExpression" },
+            "children": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 512,
+              "items": { "$ref": "#/$defs/node" }
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    }
+  }
+}
