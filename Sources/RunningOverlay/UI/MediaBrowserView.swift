@@ -1212,7 +1212,14 @@ private struct MediaBrowserKeyHandler: NSViewRepresentable {
         configure(nsView)
 
         let isFirstResponder = nsView.window?.firstResponder === nsView
-        if wantsFocus, !isFirstResponder {
+        // Claim focus once per request. Re-claiming on every update would
+        // pull keys back from a timeline or canvas click that landed before
+        // the async focus-lost callback cleared `wantsFocus`.
+        if !wantsFocus {
+            nsView.hasPendingFocusRequest = false
+        }
+        if wantsFocus, !isFirstResponder, !nsView.hasPendingFocusRequest, nsView.window != nil {
+            nsView.hasPendingFocusRequest = true
             DispatchQueue.main.async {
                 nsView.window?.makeFirstResponder(nsView)
             }
@@ -1240,6 +1247,7 @@ private struct MediaBrowserKeyHandler: NSViewRepresentable {
 private final class MediaBrowserKeyCaptureView: NSView {
     var onCommand: ((MediaPoolKeyCommand) -> Bool)?
     var onFocusChange: ((Bool) -> Void)?
+    var hasPendingFocusRequest = false
 
     override var acceptsFirstResponder: Bool {
         true
