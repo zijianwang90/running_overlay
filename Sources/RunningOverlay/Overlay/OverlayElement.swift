@@ -15,6 +15,8 @@ struct OverlayElement: Identifiable, Equatable {
     var isVisible: Bool = true
     var isLocked: Bool = false
     var style: OverlayStyle
+    /// Present when `type == .component`. Native element types leave it nil.
+    var component: OverlayComponentInstance? = nil
 }
 
 enum OverlayPasteCategory: String, Equatable {
@@ -29,6 +31,7 @@ enum OverlayPasteCategory: String, Equatable {
     case zoneEdgeBar
     case routeMap
     case weather
+    case component
 }
 
 enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
@@ -69,6 +72,25 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     case decorSolidColor
     case decorIcon
     case decorText
+    /// A declarative overlay component instance. The definition and parameter
+    /// values live on `OverlayElement.component`; see
+    /// `docs/overlay-components/spec-v0.1.md`.
+    case component
+
+    /// `component` is a container kind rather than a catalog metric, so it is
+    /// excluded from the add-overlay catalog and the per-type test sweeps.
+    static var allCases: [OverlayElementType] {
+        [
+            .heartRate, .heartRateZone, .pace, .avgPace, .lapPace, .calories,
+            .elapsedTime, .realTime, .date, .distance, .distanceTimeline,
+            .elevation, .elevationChart, .cadence, .power, .runningGauge,
+            .intervalHUDBar, .intervalTimeline, .intervalCountdown,
+            .intervalWorkSummary, .zoneEdgeBar, .routeMap, .verticalOscillation,
+            .groundContactTime, .strideLength, .verticalRatio,
+            .groundContactBalance, .temperature, .grade, .customNumeric,
+            .weatherWidget, .decorSolidColor, .decorIcon, .decorText
+        ]
+    }
 
     var id: String { rawValue }
 
@@ -108,13 +130,14 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         case .decorSolidColor: "Solid Color"
         case .decorIcon: "Icon"
         case .decorText: "Text"
+        case .component: "Component"
         }
     }
 
     var supportsTextPresets: Bool {
         switch self {
         case .distanceTimeline, .elevationChart, .runningGauge, .intervalHUDBar, .intervalTimeline, .intervalCountdown, .intervalWorkSummary, .zoneEdgeBar, .routeMap,
-             .weatherWidget, .decorSolidColor, .decorIcon, .decorText:
+             .weatherWidget, .decorSolidColor, .decorIcon, .decorText, .component:
             false
         default:
             true
@@ -189,6 +212,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         case .decorSolidColor: "square.fill"
         case .decorIcon: "star"
         case .decorText: "textformat"
+        case .component: "square.stack.3d.up"
         }
     }
 
@@ -217,6 +241,8 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
             return .routeMap
         case .weatherWidget:
             return .weather
+        case .component:
+            return .component
         default:
             return .numeric
         }
@@ -324,7 +350,7 @@ enum OverlayUnitOption: String, CaseIterable, Identifiable, Codable {
         case .grade: [.gradePercent]
         case .customNumeric: []
         case .distanceTimeline, .elevationChart, .runningGauge, .intervalHUDBar, .intervalTimeline, .intervalCountdown, .intervalWorkSummary, .zoneEdgeBar, .routeMap,
-             .weatherWidget, .decorSolidColor, .decorIcon, .decorText:
+             .weatherWidget, .decorSolidColor, .decorIcon, .decorText, .component:
             []
         }
     }

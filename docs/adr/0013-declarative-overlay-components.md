@@ -5,7 +5,9 @@ Date: 2026-11-04
 ## Status
 
 Accepted as a direction by the maintainer. The v0.1 specification linked below
-is a draft and no runtime, renderer, project-schema change, or CLI exists yet.
+is still a draft. A runtime kernel, a `component` project element kind (project
+schema version 2) and a Skia drawing path now exist; Inspector generation,
+import tooling, bundled definitions and visual-parity approval do not.
 Implementation remains gated on the reviews listed under Consequences.
 
 ## Context

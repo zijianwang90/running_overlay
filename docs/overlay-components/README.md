@@ -1,11 +1,14 @@
 # Overlay Components
 
-Status: **Draft, with a runtime kernel implemented.** The loader, validator,
-expression evaluator and resolved draw-tree builder live in
-`Sources/RunningOverlay/Components/` and have focused tests. The format is not
-yet wired into the project schema, Inspector, Overlay Pool, preview or export
-renderer. See [ADR 0013](../adr/0013-declarative-overlay-components.md) for the
-decision and gates.
+Status: **Draft, with a runtime kernel and a rendering path implemented.** The
+loader, validator, expression evaluator and resolved draw-tree builder live in
+`Sources/RunningOverlay/Components/`. The project schema now stores a
+`component` element kind (schema version 2), and the shared Skia
+preview/export renderer draws instances from embedded definitions. The
+Inspector, Overlay Pool, `.rocomponent` import and bundled component library
+are not wired yet, so no UI creates a component element. See
+[ADR 0013](../adr/0013-declarative-overlay-components.md) for the decision and
+gates.
 
 This directory defines how an overlay can be described as data instead of
 Swift code, so the community, the maintainer and AI tooling can all author
@@ -111,7 +114,7 @@ milestone, not the current app.
 |---|---|---|
 | M0 (this draft) | ADR, spec v0.1, schema, examples | Maintainer review of format |
 | M1 | Parser, validator, expression evaluator, compiled render graph, tests | **Kernel implemented:** `Sources/RunningOverlay/Components/`; focused tests pass |
-| M2 | Base + capability nodes through `SkiaEasyRunRenderer`; `.component` element kind | One numeric overlay renders pixel-equivalent to native at fixture times |
+| M2 | Base + capability nodes through `SkiaEasyRunRenderer`; `.component` element kind | **Implemented for embedded definitions:** schema v2, canonical digest, Skia path; pixel parity with native still pending |
 | M3 | Params to Inspector generation and `ProjectDocument` undo | Inspector parity with native detail view; undo tests |
 | M4 | `.rocomponent` import, embedded definitions, validation errors, CLI | Import/render loop works on synthetic fixtures |
 | M5 | Port built-ins one by one with snapshot evidence | Parity approved, then native removal in a separate change |

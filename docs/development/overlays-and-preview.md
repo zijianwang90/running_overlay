@@ -214,16 +214,31 @@ The v0.1 component runtime kernel lives in
 `ros.component/0.1` documents, evaluates the closed expression language,
 adapts `ActivityTimeline` to the read-only data contract, and resolves a
 component definition plus parameter values into a draw tree for base and
-capability nodes. Do not add new overlay behavior there yet: nothing in the
-project schema, Inspector, Overlay Pool, preview or export renderer references
-the kernel.
+capability nodes.
+
+A `.component` overlay element stores an `OverlayComponentInstance`:
+`OverlayTemplateElement.component` holds the id/version/digest/source and, for
+imported or project components, the embedded definition; `params` holds the
+authored values. `OverlayComponentRegistry` parses and caches definitions by
+canonical digest, and `OverlayComponentSkiaRenderer` draws the resolved tree
+through the shared preview/export Skia context. `ProjectDocument`
+.addComponentElement(_:parameters:position:scale:) is the single undo point for
+addition.
+
+Current limitations: no UI creates component elements yet; the Inspector shows
+the missing-detail placeholder for one; bundled (`studio.*`) definitions are
+not resolvable; image nodes draw nothing because package assets are not
+persisted. Adding the first component element raises the project schema to
+version 2, so this remains subject to the human review rules in `AGENTS.md`
+(project-file compatibility) and to pixel-parity evidence against native
+modules.
 
 - Format and data contract: `docs/overlay-components/spec-v0.1.md`.
 - Decision and gates: `docs/adr/0013-declarative-overlay-components.md`.
 - Tests: `OverlayComponentExpressionTests`, `OverlayComponentLoaderTests`,
-  `OverlayComponentDataTests`, `OverlayComponentResolverTests`.
+  `OverlayComponentDataTests`, `OverlayComponentResolverTests`,
+  `OverlayComponentIntegrationTests`.
 - Fixtures: `Tests/RunningOverlayTests/Fixtures/Components/`.
 
-The next integration step adds a component element kind and a Skia drawing
-path. It changes the project schema, so it needs the human review required by
-`AGENTS.md` and parity evidence against the native renderer.
+The next integration steps are generated Inspector rows (M3) and
+`.rocomponent` import plus bundled definitions (M4).

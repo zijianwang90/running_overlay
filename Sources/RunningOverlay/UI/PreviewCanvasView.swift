@@ -470,6 +470,8 @@ enum PreviewElementGeometry {
                 size: layout.size,
                 canvasSize: context.canvasSize
             )
+        case .component:
+            return componentFrame(for: element, in: context)
         default:
             return textFrame(for: element, in: context)
         }
@@ -583,6 +585,32 @@ enum PreviewElementGeometry {
         _ metrics: (width: CGFloat, ascent: CGFloat, descent: CGFloat, leading: CGFloat)
     ) -> CGFloat {
         metrics.ascent + metrics.descent + metrics.leading
+    }
+
+    /// Components use a top-leading normalized anchor and their own declared
+    /// size, scaled by the existing reference-canvas factor.
+    static func componentFrame(
+        for element: OverlayElement,
+        in context: OverlayRenderContext
+    ) -> CGRect {
+        let size = componentSize(for: element) ?? CGSize(width: 160, height: 48)
+        let scale = element.scale * context.canvasScale
+        return CGRect(
+            x: context.canvasSize.width * element.position.x,
+            y: context.canvasSize.height * element.position.y,
+            width: size.width * scale,
+            height: size.height * scale
+        )
+    }
+
+    /// Design-unit size of the instance's resolved definition.
+    static func componentSize(for element: OverlayElement) -> CGSize? {
+        guard let instance = element.component,
+              let definition = OverlayComponentRegistry.definition(for: instance.reference)
+        else {
+            return nil
+        }
+        return CGSize(width: definition.size.width, height: definition.size.height)
     }
 
     private static func centeredRect(
@@ -1191,6 +1219,9 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
                     element: element,
                     layout: OverlayRenderModel.weatherWidgetLayout(for: element, in: renderContext)
                 )
+            case .component:
+                // Components render only through the shared Skia pipeline.
+                EmptyView()
             default:
                 OverlaySharedTextPresetView(
                     element: element,

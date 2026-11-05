@@ -280,7 +280,7 @@ enum OverlayValueFormatter {
             )
         case .customNumeric:
             return OverlayValueComponents(label: resolvedLabel("Custom Numeric"), shortLabel: "CUSTOM", value: "--", unit: "")
-        case .decorSolidColor, .decorIcon, .decorText, .weatherWidget:
+        case .decorSolidColor, .decorIcon, .decorText, .weatherWidget, .component:
             return OverlayValueComponents(label: type.label, shortLabel: "", value: "", unit: "")
         }
     }

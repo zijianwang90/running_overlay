@@ -1,10 +1,12 @@
 # Overlay Component Format v0.1 (Draft)
 
-Status: **Draft for review.** A standalone runtime kernel implements parsing,
+Status: **Draft for review.** The runtime kernel implements parsing,
 validation, expression evaluation and resolved draw-tree construction under
-`Sources/RunningOverlay/Components/`. It is not yet wired into the project
-schema, Inspector, renderer, preview or export. This document defines the
-format; ADR 0013 records the decision and gates.
+`Sources/RunningOverlay/Components/`. A `component` overlay element kind now
+persists instances in projects (project schema version 2) and renders through
+the shared Skia preview/export renderer. Inspector generation, `.rocomponent`
+import and bundled component resolution are not implemented yet. This document
+defines the format; ADR 0013 records the decision and gates.
 
 - Specification identifier: `ros.component/0.1`
 - Package extension: `.rocomponent`
@@ -489,10 +491,15 @@ Rules:
    MUST fail that element's validation with a clear message, not guess.
 4. `positionX`, `positionY`, `scale`, visibility, lock and opacity reuse the
    existing `OverlayElement` semantics and `ProjectDocument` mutation API.
-5. This adds a new element kind and a project schema version. Existing
-   projects and native element types MUST continue to load and render
-   unchanged. Migration of native elements to components is out of scope for
-   v0.1.
+5. This adds a new element kind and raises the project schema to version 2.
+   Existing version 1 projects and native element types MUST continue to load
+   and render unchanged. Migration of native elements to components is out of
+   scope for v0.1.
+6. The digest is SHA-256 over the canonical JSON encoding (sorted keys, no
+   insignificant whitespace), not over the package file bytes, so reformatting
+   an embedded definition does not change its identity. When an embedded
+   definition's recomputed digest differs from the stored digest, rendering
+   uses the embedded bytes.
 
 ## 11. Validation, Failure And Limits
 

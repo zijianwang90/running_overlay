@@ -128,6 +128,7 @@ final class SkiaEasyRunRenderer {
             || SkiaTextModule.supports(element)
             || portedChartTypes.contains(element.type)
             || portedIntervalTypes.contains(element.type)
+            || element.type == .component
     }
 
     /// Records the draw commands without reading pixels back.
@@ -138,6 +139,14 @@ final class SkiaEasyRunRenderer {
         }
         let renderContext = OverlayRenderContext(canvasSize: size, activity: activity, elapsedTime: elapsedTime)
         for element in layout.elements where element.isVisible && Self.supports(element) {
+            if element.type == .component {
+                OverlayComponentSkiaRenderer.draw(
+                    element,
+                    renderContext: renderContext,
+                    context: context
+                )
+                continue
+            }
             if Self.portedChartTypes.contains(element.type) {
                 SkiaChartsModule.draw(
                     element,

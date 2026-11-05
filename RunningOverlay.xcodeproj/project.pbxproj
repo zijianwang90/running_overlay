@@ -16,6 +16,7 @@
 		473627BAF8C748504A83BCD4 /* OverlayComponentData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E26A6F96B943B72B8A07EDB /* OverlayComponentData.swift */; };
 		39CC4742C4B1439127E7331B /* OverlayComponentDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EB1970A744A1A12F23A8ABE /* OverlayComponentDocument.swift */; };
 		64CD676CCCD5C0AFDBF73293 /* OverlayComponentExpression.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9F8035625AEE8B872A9188A /* OverlayComponentExpression.swift */; };
+		E1A32220E78CE9655EA6F149 /* OverlayComponentInstance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9224CF87C1208D489F242150 /* OverlayComponentInstance.swift */; };
 		50299C586936E656D88EA424 /* OverlayComponentLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = E34B2B14F12E507E5D7D6AA9 /* OverlayComponentLoader.swift */; };
 		F37BA8A8A6CDFAC7BF4DB956 /* OverlayComponentResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C35464BC659E14E10C78AA8 /* OverlayComponentResolver.swift */; };
 		14E3E31028624FF06DD1AC40 /* OverlayComponentValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = F96DF36D10990A86E386AC7A /* OverlayComponentValue.swift */; };
@@ -61,6 +62,7 @@
 		64367B517D02D3B3E6D67247 /* SkiaDistanceTimelineRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26893E260A17B4607B50C5BF /* SkiaDistanceTimelineRenderer.swift */; };
 		F7804F5323B7D61B103608DF /* SkiaElevationChartRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8706CE957A3BA4B99C12377 /* SkiaElevationChartRenderer.swift */; };
 		3CE3E5647CBB706D30A8A324 /* SkiaRunningGaugeRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96AF40ABAF752D1197D655EF /* SkiaRunningGaugeRenderer.swift */; };
+		AA4FD102DF791484C8D4CFE2 /* OverlayComponentSkiaRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED1FF957901BCAB5EA49825E /* OverlayComponentSkiaRenderer.swift */; };
 		F1022EF0F2A5CB453C014911 /* DecorDrawing.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE4B4FBE08A573C3B26E59C5 /* DecorDrawing.swift */; };
 		DB48B6241D4C78216F1FF0FD /* IntervalCountdownSkiaRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 008516465C1CE5097622CAC5 /* IntervalCountdownSkiaRenderer.swift */; };
 		F77CCDAB515BBEC0B472F4D6 /* IntervalHUDBarSkiaRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A59A11C341699ED630C4906F /* IntervalHUDBarSkiaRenderer.swift */; };
@@ -171,6 +173,7 @@
 		6E26A6F96B943B72B8A07EDB /* OverlayComponentData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentData.swift"; sourceTree = SOURCE_ROOT; };
 		7EB1970A744A1A12F23A8ABE /* OverlayComponentDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentDocument.swift"; sourceTree = SOURCE_ROOT; };
 		B9F8035625AEE8B872A9188A /* OverlayComponentExpression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentExpression.swift"; sourceTree = SOURCE_ROOT; };
+		9224CF87C1208D489F242150 /* OverlayComponentInstance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentInstance.swift"; sourceTree = SOURCE_ROOT; };
 		E34B2B14F12E507E5D7D6AA9 /* OverlayComponentLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentLoader.swift"; sourceTree = SOURCE_ROOT; };
 		5C35464BC659E14E10C78AA8 /* OverlayComponentResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentResolver.swift"; sourceTree = SOURCE_ROOT; };
 		F96DF36D10990A86E386AC7A /* OverlayComponentValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentValue.swift"; sourceTree = SOURCE_ROOT; };
@@ -216,6 +219,7 @@
 		26893E260A17B4607B50C5BF /* SkiaDistanceTimelineRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Charts/SkiaDistanceTimelineRenderer.swift"; sourceTree = SOURCE_ROOT; };
 		D8706CE957A3BA4B99C12377 /* SkiaElevationChartRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Charts/SkiaElevationChartRenderer.swift"; sourceTree = SOURCE_ROOT; };
 		96AF40ABAF752D1197D655EF /* SkiaRunningGaugeRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Charts/SkiaRunningGaugeRenderer.swift"; sourceTree = SOURCE_ROOT; };
+		ED1FF957901BCAB5EA49825E /* OverlayComponentSkiaRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Components/OverlayComponentSkiaRenderer.swift"; sourceTree = SOURCE_ROOT; };
 		AE4B4FBE08A573C3B26E59C5 /* DecorDrawing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/DecorDrawing.swift"; sourceTree = SOURCE_ROOT; };
 		008516465C1CE5097622CAC5 /* IntervalCountdownSkiaRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/IntervalCountdownSkiaRenderer.swift"; sourceTree = SOURCE_ROOT; };
 		A59A11C341699ED630C4906F /* IntervalHUDBarSkiaRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/IntervalHUDBarSkiaRenderer.swift"; sourceTree = SOURCE_ROOT; };
@@ -328,6 +332,7 @@
 			6E26A6F96B943B72B8A07EDB /* OverlayComponentData.swift */,
 			7EB1970A744A1A12F23A8ABE /* OverlayComponentDocument.swift */,
 			B9F8035625AEE8B872A9188A /* OverlayComponentExpression.swift */,
+			9224CF87C1208D489F242150 /* OverlayComponentInstance.swift */,
 			E34B2B14F12E507E5D7D6AA9 /* OverlayComponentLoader.swift */,
 			5C35464BC659E14E10C78AA8 /* OverlayComponentResolver.swift */,
 			F96DF36D10990A86E386AC7A /* OverlayComponentValue.swift */,
@@ -373,6 +378,7 @@
 			26893E260A17B4607B50C5BF /* SkiaDistanceTimelineRenderer.swift */,
 			D8706CE957A3BA4B99C12377 /* SkiaElevationChartRenderer.swift */,
 			96AF40ABAF752D1197D655EF /* SkiaRunningGaugeRenderer.swift */,
+			ED1FF957901BCAB5EA49825E /* OverlayComponentSkiaRenderer.swift */,
 			AE4B4FBE08A573C3B26E59C5 /* DecorDrawing.swift */,
 			008516465C1CE5097622CAC5 /* IntervalCountdownSkiaRenderer.swift */,
 			A59A11C341699ED630C4906F /* IntervalHUDBarSkiaRenderer.swift */,
@@ -515,6 +521,7 @@
 			473627BAF8C748504A83BCD4 /* OverlayComponentData.swift in Sources */,
 			39CC4742C4B1439127E7331B /* OverlayComponentDocument.swift in Sources */,
 			64CD676CCCD5C0AFDBF73293 /* OverlayComponentExpression.swift in Sources */,
+			E1A32220E78CE9655EA6F149 /* OverlayComponentInstance.swift in Sources */,
 			50299C586936E656D88EA424 /* OverlayComponentLoader.swift in Sources */,
 			F37BA8A8A6CDFAC7BF4DB956 /* OverlayComponentResolver.swift in Sources */,
 			14E3E31028624FF06DD1AC40 /* OverlayComponentValue.swift in Sources */,
@@ -560,6 +567,7 @@
 			64367B517D02D3B3E6D67247 /* SkiaDistanceTimelineRenderer.swift in Sources */,
 			F7804F5323B7D61B103608DF /* SkiaElevationChartRenderer.swift in Sources */,
 			3CE3E5647CBB706D30A8A324 /* SkiaRunningGaugeRenderer.swift in Sources */,
+			AA4FD102DF791484C8D4CFE2 /* OverlayComponentSkiaRenderer.swift in Sources */,
 			F1022EF0F2A5CB453C014911 /* DecorDrawing.swift in Sources */,
 			DB48B6241D4C78216F1FF0FD /* IntervalCountdownSkiaRenderer.swift in Sources */,
 			F77CCDAB515BBEC0B472F4D6 /* IntervalHUDBarSkiaRenderer.swift in Sources */,

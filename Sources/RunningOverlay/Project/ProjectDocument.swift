@@ -600,6 +600,26 @@ final class ProjectDocument: ObservableObject {
         }
     }
 
+    /// Adds a declarative overlay component as one undo point. The reference
+    /// must carry the definition (imported/project) or resolve as bundled.
+    /// Invalid references are stored as-is; the renderer skips elements it
+    /// cannot resolve so a damaged project stays editable.
+    @discardableResult
+    func addComponentElement(
+        reference: OverlayComponentReference,
+        parameters: [String: OverlayJSONValue] = [:],
+        position: CGPoint = CGPoint(x: 0.5, y: 0.5),
+        scale: Double = 1
+    ) -> OverlayElement.ID {
+        registerUndoPoint()
+        var element = makeOverlayElement(type: .component, position: position, scale: scale)
+        element.component = OverlayComponentInstance(reference: reference, parameters: parameters)
+        overlayLayout.elements.append(element)
+        selection = .overlayElement(element.id)
+        statusMessage = "Added \(reference.id) component."
+        return element.id
+    }
+
     private func makeOverlayElement(type: OverlayElementType, position: CGPoint, scale: Double) -> OverlayElement {
         let style = defaultOverlayStyle(for: type)
         return OverlayElement(

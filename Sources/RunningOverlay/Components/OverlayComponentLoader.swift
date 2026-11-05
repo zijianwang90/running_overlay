@@ -1,5 +1,4 @@
 import CoreFoundation
-import CryptoKit
 import Foundation
 
 enum OverlayJSONValue: Equatable {
@@ -97,12 +96,11 @@ enum OverlayComponentLoader {
         guard errors.isEmpty else {
             throw OverlayComponentValidationError(diagnostics: parser.diagnostics)
         }
-        let digest = SHA256.hash(data: data)
-            .map { String(format: "%02x", $0) }
-            .joined()
+        // Hash canonical bytes so a digest survives embedding and reformatting.
+        let digest = OverlayComponentDigest.sha256(of: try root.canonicalData())
         return OverlayComponentPackage(
             definition: definition,
-            digest: "sha256:" + digest,
+            digest: digest,
             assets: assets
         )
     }
