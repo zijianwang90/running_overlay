@@ -41,7 +41,7 @@
     "sharedLayout": ["CollapsibleLayoutInspectorSection", "OverlayLayoutInspectorRows"],
     "sharedStatsBar": ["CollapsibleStatsBarInspectorSection", "OverlayStatsBarInspectorRows", "DistanceTimelineStatsBarConfig"],
     "previewRenderer": "PreviewCanvasView.ElevationChartOverlayView",
-    "exportRenderer": "OverlayFrameRenderer.renderElevationChart",
+    "exportRenderer": "SwiftUIOverlayVideoExporter via shared SwiftUI Elevation Chart view",
     "renderLayout": "OverlayRenderModel.elevationChartLayout",
     "notes": [
       "Presets are structural and initialize values only.",
