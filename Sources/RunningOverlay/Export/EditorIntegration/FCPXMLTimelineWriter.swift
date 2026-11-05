@@ -483,9 +483,16 @@ private struct TimelineLayout {
                 endFrame: rate.frames(seconds: end)
             )
         }
+        // Priority: after the current clip ends, the covering clip that runs
+        // furthest wins. That guarantees every spine run starts at its clip's
+        // own first frame, so a spine clip never carries a non-zero media
+        // start. Resolve mishandles connected clips whose parent has a
+        // non-zero start: it offsets them by -start and effectively loses
+        // them. Trimmed media is fine on connected clips themselves.
         let placements = (preservesTimelinePositions ? normalized : Self.compacted(normalized, rate: rate))
             .filter { $0.endFrame > $0.startFrame }
             .sorted { lhs, rhs in
+                if lhs.endFrame != rhs.endFrame { return lhs.endFrame > rhs.endFrame }
                 if lhs.clip.trackIndex != rhs.clip.trackIndex {
                     return lhs.clip.trackIndex < rhs.clip.trackIndex
                 }

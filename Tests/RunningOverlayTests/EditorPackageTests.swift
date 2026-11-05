@@ -477,22 +477,23 @@ struct EditorPackageTests {
         )
 
         let document = try XMLDocument(data: Data(writer.xmlString().utf8))
-        let laneClip = try #require(try elements(in: document, xpath: "//asset-clip[@lane='1']").first)
-        #expect(laneClip.attribute(forName: "name")?.stringValue == "cam-b.mov")
-        // Cam-b is split at cam-a's end: the overlap is a connected clip under
-        // cam-a, and the remainder continues in the spine. No connected clip
-        // may run past its parent or DaVinci Resolve truncates it.
-        #expect(laneClip.attribute(forName: "offset")?.stringValue == "5s")
-        #expect(laneClip.attribute(forName: "start")?.stringValue == "0s")
+        // The spine always hands over to the covering clip that runs furthest,
+        // so cam-b owns the overlap and cam-a's remainder is attached to it.
+        // Spine clips therefore never carry a non-zero media start, which
+        // DaVinci Resolve mishandles on connected clips' parents.
+        let laneClip = try #require(try elements(in: document, xpath: "//spine/asset-clip[@name='cam-b.mov']/asset-clip[@lane='1']").first)
+        #expect(laneClip.attribute(forName: "name")?.stringValue == "cam-a.mov")
+        #expect(laneClip.attribute(forName: "offset")?.stringValue == "0s")
+        #expect(laneClip.attribute(forName: "start")?.stringValue == "5s")
         #expect(laneClip.attribute(forName: "duration")?.stringValue == "5s")
 
         let spineClips = try elements(in: document, xpath: "//spine/asset-clip")
         #expect(spineClips.compactMap { $0.attribute(forName: "name")?.stringValue } == [
             "cam-a.mov", "cam-b.mov"
         ])
-        #expect(spineClips.compactMap { $0.attribute(forName: "offset")?.stringValue } == ["0s", "10s"])
-        #expect(spineClips[1].attribute(forName: "start")?.stringValue == "5s")
-        #expect(spineClips[1].attribute(forName: "duration")?.stringValue == "5s")
+        #expect(spineClips.compactMap { $0.attribute(forName: "offset")?.stringValue } == ["0s", "5s"])
+        #expect(spineClips.compactMap { $0.attribute(forName: "start")?.stringValue } == ["0s", "0s"])
+        #expect(spineClips.compactMap { $0.attribute(forName: "duration")?.stringValue } == ["5s", "10s"])
         try expectConnectedClipsFitTheirParent(document)
 
         let sequenceDuration = document.rootElement()?.elements(forName: "library").first?
@@ -550,15 +551,18 @@ struct EditorPackageTests {
         #expect(spineClips.compactMap { $0.attribute(forName: "name")?.stringValue } == [
             "cam-a.mov", "cam-b.mov", "cam-c.mov"
         ])
-        // Empty 45-220 s is compacted away, so cam-c starts right after the
-        // cam-b remainder.
-        #expect(spineClips.compactMap { $0.attribute(forName: "offset")?.stringValue } == ["0s", "45s", "65s"])
-        #expect(spineClips[1].attribute(forName: "start")?.stringValue == "25s")
-        #expect(spineClips[1].attribute(forName: "duration")?.stringValue == "20s")
+        // Empty 45-220 s is compacted away, so cam-c starts right after cam-b.
+        // The spine hands over to cam-b at 20 s (it ends last), and cam-a's
+        // remainder becomes a connected clip, keeping every spine clip's media
+        // start at zero.
+        #expect(spineClips.compactMap { $0.attribute(forName: "offset")?.stringValue } == ["0s", "20s", "65s"])
+        #expect(spineClips.compactMap { $0.attribute(forName: "start")?.stringValue } == ["0s", "0s", "0s"])
+        #expect(spineClips.compactMap { $0.attribute(forName: "duration")?.stringValue } == ["20s", "45s", "45s"])
 
-        let laneClip = try #require(try elements(in: document, xpath: "//asset-clip[@lane='1']").first)
-        #expect(laneClip.attribute(forName: "name")?.stringValue == "cam-b.mov")
-        #expect(laneClip.attribute(forName: "offset")?.stringValue == "20s")
+        let laneClip = try #require(try elements(in: document, xpath: "//spine/asset-clip[@name='cam-b.mov']/asset-clip[@lane='1']").first)
+        #expect(laneClip.attribute(forName: "name")?.stringValue == "cam-a.mov")
+        #expect(laneClip.attribute(forName: "offset")?.stringValue == "0s")
+        #expect(laneClip.attribute(forName: "start")?.stringValue == "20s")
         #expect(laneClip.attribute(forName: "duration")?.stringValue == "25s")
         try expectConnectedClipsFitTheirParent(document)
         #expect(try elements(in: document, xpath: "//gap").isEmpty)

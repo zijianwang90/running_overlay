@@ -47,9 +47,12 @@ Integration is built in layers. Each layer works without the next one.
      activity elapsed time at its first frame, and its overlay source range;
    - an FCPXML timeline that places each source clip with its overlay on a
      connected lane. Multi-track projects keep their overlapping tracks as
-     connected lanes above the spine, packed by frame ranges; clips that cross
-     a spine boundary are split into trimmed pieces so no connected clip runs
-     past its parent, because Resolve truncates the overflow. Empty stretches
+     connected lanes above the spine, packed by frame ranges. The spine hands
+     over to the covering clip that ends last, so no spine item is trimmed
+     and no connected clip runs past its parent; Resolve truncates such
+     overflow and also misplaces children of a trimmed parent. Clips that
+     cross a spine boundary are therefore split into trimmed connected pieces
+     with matching media starts. Empty stretches
      of the project timeline are dropped by default; the user can keep them as
      gaps, which the Full Activity layout always does so its single overlay
      stays in activity time (that overlay fills the spine across gaps so it

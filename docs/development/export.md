@@ -101,19 +101,23 @@ ADR 0013 records the design. Code lives in
     project timeline time and regions no track covers become `gap` elements.
     The Full Activity layout always keeps positions, because its single
     overlay is in activity time and would drift otherwise.
-  - The layout splits the timeline into frame-aligned segments. The
-    highest-priority clip covering a segment (lowest track index, then earliest
-    start) owns it in the spine; every other covering clip becomes a connected
-    clip inside that spine item. Lanes are packed in frame ranges, so
-    overlapping angles never share a lane.
+  - The layout splits the timeline into frame-aligned segments. The covering
+    clip that runs furthest (ties: lowest track index, then earliest start)
+    owns the segment in the spine; every other covering clip becomes a
+    connected clip inside that spine item. Lanes are packed in frame ranges,
+    so overlapping angles never share a lane.
+  - That rule guarantees every spine item starts at its clip's own first
+    frame, so a spine clip always has media `start="0s"`. Trimmed media then
+    appears only on connected clips. DaVinci Resolve mishandles connected
+    clips whose parent has a non-zero `start` (it offsets the children by
+    `-start`), so keeping parents untrimmed is required for import.
   - A clip that spans a spine boundary is emitted as trimmed pieces: each
     piece carries the matching media `start`, so the pieces play continuously
     while no connected clip runs past its parent. Final Cut Pro tolerates that
     overflow, but DaVinci Resolve truncates it, which is why the split exists.
   - FCPXML gaps cannot carry connected clips, so a region no track covers is
     its own spine item.
-  - One overlay covers each time region, owned by the highest-priority clip
-    there. Overlapping angles therefore never stack duplicate overlays, which
+  - One overlay covers each time region, owned by the spine clip there. Overlapping angles therefore never stack duplicate overlays, which
     would composite twice. Overlay lane numbers are relative to the parent:
     overlays sit above every source lane. A connected clip's `offset` is in
     the parent's local time, not sequence time.
