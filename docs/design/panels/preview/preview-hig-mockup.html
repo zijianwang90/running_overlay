@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Preview · HIG 设计稿</title>
+<style>
+  :root {
+    --page: #0e0f10; --page-text: #e8e8ea; --page-muted: #8d9096; --note: #ffd166;
+    --win: #1e1e1e; --panel: #252525; --header: #2b2b2b; --canvas-bg: #121212;
+    --sep: rgba(255,255,255,.10);
+    --label: rgba(255,255,255,.86); --label2: rgba(255,255,255,.55); --label3: rgba(255,255,255,.28);
+    --accent: #0a84ff; --hover: rgba(255,255,255,.06); --control: rgba(255,255,255,.14);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 40px 48px 80px; background: var(--page); color: var(--page-text);
+    font: 13px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: -.01em; }
+  h2 { font-size: 17px; margin: 56px 0 6px; }
+  .lede { color: var(--page-muted); max-width: 880px; margin: 0 0 8px; }
+  .lede b { color: var(--page-text); font-weight: 600; }
+  .grid { display: flex; flex-wrap: wrap; gap: 36px; margin-top: 22px; align-items: flex-start; }
+  .shot > .cap { margin-bottom: 10px; }
+  .cap .t { font-weight: 600; font-size: 13px; }
+  .cap .d { color: var(--page-muted); font-size: 12px; }
+  .notes { margin: 12px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--page-muted); max-width: 600px; }
+  .notes li { margin: 5px 0; }
+  .notes li .n { margin-right: 6px; vertical-align: 1px; }
+  .n {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px;
+    padding: 0 4px; border-radius: 8px; background: var(--note); color: #1a1a1a; font-size: 10px; font-weight: 700; line-height: 1;
+  }
+  .pin { position: absolute; z-index: 5; box-shadow: 0 0 0 2px var(--page); }
+  .tag { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px; background: #2b2e34; color: var(--page-muted); margin-bottom: 6px; }
+  .tag.ok { background: #16351f; color: #7ad08f; }
+  .tag.bad { background: #3a1a1a; color: #ff8c84; }
+  code { font: 11.5px ui-monospace, "SF Mono", Menlo, monospace; color: #cfd3da; background: #1b1d21; padding: 1px 4px; border-radius: 3px; }
+
+  .pane { position: relative; width: 600px; background: var(--win); border: 1px solid #000; border-radius: 8px; overflow: hidden; color: var(--label); font-size: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+  .ph { height: 38px; display: flex; align-items: center; gap: 6px; padding: 0 10px 0 12px; background: var(--header); border-bottom: 1px solid var(--sep); }
+  .ph .title { font-weight: 600; font-size: 13px; }
+  .ph .meta { color: var(--label2); font-size: 11px; margin-left: 4px; }
+  .ph .sp { flex: 1; }
+  .ib { width: 24px; height: 22px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; color: var(--label2); }
+  .ib svg { width: 15px; height: 15px; }
+  .ib.on { background: rgba(10,132,255,.22); color: var(--accent); }
+  .ib.hov { background: rgba(255,255,255,.10); color: var(--label); }
+  .popup {
+    display: inline-flex; align-items: center; gap: 6px; height: 20px; padding: 0 3px 0 8px; background: var(--control);
+    border-radius: 5px; font-size: 12px; color: var(--label); white-space: nowrap;
+    box-shadow: inset 0 .5px 0 rgba(255,255,255,.12), 0 .5px 1px rgba(0,0,0,.5);
+  }
+  .popup .chev { width: 14px; height: 14px; border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: #fff; }
+  .popup .chev svg { width: 8px; height: 10px; }
+  .cw { height: 20px; width: 40px; display: inline-flex; align-items: center; gap: 3px; padding: 0 3px; border-radius: 5px; background: var(--control); }
+  .cw b { width: 22px; height: 14px; border-radius: 3px; display: block; background: #121212; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.3); }
+
+  .stage { height: 320px; background: var(--canvas-bg); display: flex; align-items: center; justify-content: center; position: relative; }
+  .video {
+    position: relative; width: 528px; height: 297px; overflow: hidden;
+    background: linear-gradient(160deg, #3c5a46 0%, #6b8a6a 38%, #a59b7d 62%, #4a5560 100%);
+  }
+  .video::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 38%; background: linear-gradient(0deg, rgba(0,0,0,.35), transparent); }
+  .guides { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+  .guides i { position: absolute; border: 1px solid rgba(10,132,255,.4); }
+  .ov { position: absolute; z-index: 2; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+  .ov .v { font: 600 26px/1 -apple-system, sans-serif; font-variant-numeric: tabular-nums; }
+  .ov .u { font-size: 10px; opacity: .85; letter-spacing: .06em; }
+  .selbox { position: absolute; inset: -6px; border: 1.4px solid var(--accent); border-radius: 3px; box-shadow: 0 0 0 1px rgba(0,0,0,.55); }
+  .hd { position: absolute; width: 7px; height: 7px; background: #fff; border: 1px solid var(--accent); border-radius: 1.5px; box-shadow: 0 0 0 .5px rgba(0,0,0,.6); }
+  .hd.tl { left: -4px; top: -4px; } .hd.tr { right: -4px; top: -4px; } .hd.bl { left: -4px; bottom: -4px; } .hd.br { right: -4px; bottom: -4px; }
+  .cselbox { position: absolute; inset: -5px; border: 1.4px solid rgba(47,140,255,.92); border-radius: 4px; }
+  .hud { position: absolute; left: 12px; top: 12px; z-index: 3; font-size: 11px; color: #2f8cff; background: rgba(47,140,255,.18); padding: 2px 8px; border-radius: 5px; }
+  .cursor { position: absolute; z-index: 6; font-size: 18px; filter: drop-shadow(0 1px 1px rgba(0,0,0,.7)); }
+
+  .pb { height: 40px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 10px; background: var(--header); border-top: 1px solid var(--sep); }
+  .pb .l { display: flex; align-items: center; gap: 6px; }
+  .pb .c { display: flex; align-items: center; gap: 6px; }
+  .pb .r { display: flex; justify-content: flex-end; }
+  .tc { font: 500 13px ui-monospace, "SF Mono", Menlo, monospace; font-variant-numeric: tabular-nums; color: var(--label); padding: 1px 6px; border-radius: 4px; }
+  .tc.hov { background: rgba(255,255,255,.08); }
+  .tcd { font-size: 10px; color: var(--label2); text-transform: uppercase; letter-spacing: .05em; }
+  .pbtn { width: 28px; height: 24px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; color: var(--label); }
+  .pbtn svg { width: 14px; height: 14px; }
+  .pbtn.main svg { width: 16px; height: 16px; }
+  .pbtn.hov { background: rgba(255,255,255,.10); }
+
+  /* current (custom) chrome */
+  .cur .ph { height: 46px; }
+  .cbtn { width: 30px; height: 30px; border-radius: 6px; background: #20252a; border: 1px solid #2b3238; display: inline-flex; align-items: center; justify-content: center; color: #b6bec7; }
+  .cbtn svg { width: 15px; height: 15px; }
+  .cbtn.on { background: rgba(47,140,255,.18); border-color: rgba(47,140,255,.58); color: #2f8cff; }
+  .cmenu { height: 30px; padding: 0 9px; border-radius: 6px; background: #20252a; border: 1px solid #2b3238; display: inline-flex; align-items: center; gap: 5px; color: #b6bec7; font-weight: 600; font-size: 13px; }
+  .cmenu svg { width: 9px; height: 9px; }
+  .cur .pb { height: 44px; grid-template-columns: 1fr auto 1fr; }
+  .cpb { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; color: #b6bec7; border-radius: 6px; }
+  .cpb svg { width: 15px; height: 15px; }
+  .cpb.main { background: #20252a; border: 1px solid #2b3238; color: #fff; }
+
+  .menu {
+    position: absolute; z-index: 7; min-width: 200px; padding: 5px; background: rgba(40,40,40,.97); border-radius: 8px; font-size: 13px;
+    box-shadow: 0 0 0 .5px rgba(255,255,255,.16), 0 12px 30px rgba(0,0,0,.6);
+  }
+  .menu .mi { height: 22px; display: flex; align-items: center; gap: 6px; padding: 0 10px 0 22px; border-radius: 4px; color: var(--label); position: relative; }
+  .menu .mi .k { margin-left: auto; color: var(--label2); font-size: 12px; padding-left: 18px; }
+  .menu .mi .chk { position: absolute; left: 7px; font-size: 11px; }
+  .menu .mi.on { background: var(--accent); color: #fff; }
+  .menu .mi.on .k { color: rgba(255,255,255,.8); }
+  .menu .mi.dis { color: var(--label3); }
+  .menu .hdr { font-size: 11px; color: var(--label2); padding: 2px 10px 2px 22px; font-weight: 600; }
+  .menu hr { border: 0; height: 1px; background: rgba(255,255,255,.1); margin: 5px 10px; }
+  .menubox { position: relative; width: 300px; height: 300px; }
+  .menubox .menu { position: static; width: 300px; }
+
+  .tiles { display: flex; gap: 18px; flex-wrap: wrap; }
+  .tile { position: relative; width: 200px; height: 130px; border-radius: 8px; background: linear-gradient(160deg, #3c5a46, #8a8a70); overflow: hidden; border: 1px solid #000; }
+  .tile .ov { left: 50px; top: 44px; }
+  .tile .lbl { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 10px; font-size: 11px; background: rgba(0,0,0,.55); color: var(--label); }
+  .lockmark { position: absolute; right: -10px; top: -12px; width: 18px; height: 18px; border-radius: 9px; background: rgba(30,30,30,.9); display: flex; align-items: center; justify-content: center; color: var(--label); }
+  .lockmark svg { width: 10px; height: 10px; }
+  .tip { position: absolute; z-index: 6; font-size: 11px; background: #3a3a3a; color: var(--label); padding: 2px 6px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,.5); white-space: nowrap; }
+
+  table.cmp { border-collapse: collapse; margin-top: 18px; width: 100%; max-width: 1180px; }
+  table.cmp th, table.cmp td { text-align: left; vertical-align: middle; padding: 12px 14px; border-bottom: 1px solid #23252a; }
+  table.cmp th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--page-muted); font-weight: 600; }
+  table.cmp td.k { font-weight: 600; width: 150px; }
+  table.cmp td.why { color: var(--page-muted); font-size: 12px; width: 330px; }
+  .demo { background: var(--header); border-radius: 6px; padding: 10px 12px; width: 300px; color: var(--label); font-size: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="updown" viewBox="0 0 8 10"><path d="M1.5 4 4 1.5 6.5 4M1.5 6 4 8.5 6.5 6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="chev" viewBox="0 0 10 10"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="viewfinder" viewBox="0 0 16 16"><path d="M1.5 5V2.5h3M11.5 2.5h3V5M14.5 11v2.5h-3M4.5 13.5h-3V11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="8" r="1.4" fill="currentColor"/></symbol>
+    <symbol id="prev" viewBox="0 0 16 16"><path d="M3 3v10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M13 3.5v9L5.5 8Z" fill="currentColor"/></symbol>
+    <symbol id="next" viewBox="0 0 16 16"><path d="M13 3v10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 3.5v9L10.5 8Z" fill="currentColor"/></symbol>
+    <symbol id="play" viewBox="0 0 16 16"><path d="M4 2.5v11L13.5 8Z" fill="currentColor"/></symbol>
+    <symbol id="pause" viewBox="0 0 16 16"><rect x="3.5" y="2.5" width="3" height="11" rx=".8" fill="currentColor"/><rect x="9.5" y="2.5" width="3" height="11" rx=".8" fill="currentColor"/></symbol>
+    <symbol id="stop" viewBox="0 0 16 16"><rect x="3.5" y="3.5" width="9" height="9" rx="1.2" fill="currentColor"/></symbol>
+    <symbol id="lock" viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="7.5" rx="1.6" fill="currentColor"/><path d="M5.2 7V5.2a2.8 2.8 0 0 1 5.6 0V7" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="film" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6.5 6v4l3.5-2Z" fill="currentColor"/></symbol>
+  </defs>
+</svg>
+
+<h1>Preview · HIG 设计稿</h1>
+<p class="lede">
+  配套文档：<code>preview-hig-review.md</code>。这份设计稿保留现有的三段布局（Header、画布、播放条），
+  只调整<b>画布外的控件</b>和<b>缺失的反馈</b>。黄色编号对应文档里的条目：P1 为 1–3，P2 为 4–8。
+</p>
+
+<!-- ============================ OVERALL ============================ -->
+<h2>1 · 整体：当前 vs HIG</h2>
+
+<div class="grid">
+  <div class="shot">
+    <div class="cap"><span class="tag bad">当前</span><div class="t">选中 Heart Rate · Safe Frames 打开</div><div class="d">没有时间；选中框没有手柄；Stop 与 Pause 重复；pop-up 是自绘的</div></div>
+    <div class="pane cur">
+      <div class="ph"><span class="title">Preview</span><span class="meta">1920 x 1080 • 30 fps</span><span class="sp"></span>
+        <span class="cbtn on"><svg><use href="#viewfinder"/></svg></span>
+        <span class="cbtn"><span style="width:16px;height:16px;border-radius:3px;background:#121212;border:1px solid #555"></span></span>
+        <span class="cmenu">Fit<svg><use href="#chev"/></svg></span>
+      </div>
+      <div class="stage">
+        <div class="video">
+          <div class="guides"><i style="inset:5%"></i><i style="inset:10%;opacity:.7"></i></div>
+          <div class="hud">Guides On</div>
+          <div class="ov" style="left:72px;top:206px"><div class="u">HEART RATE</div><div class="v">156 <span style="font-size:13px">bpm</span></div><div class="cselbox"></div></div>
+          <div class="ov" style="left:380px;top:206px"><div class="u">PACE</div><div class="v">4:32 <span style="font-size:13px">/km</span></div></div>
+        </div>
+      </div>
+      <div class="pb">
+        <div></div>
+        <div class="c" style="gap:16px">
+          <span class="cpb"><svg><use href="#prev"/></svg></span>
+          <span class="cpb"><svg><use href="#stop"/></svg></span>
+          <span class="cpb main"><svg><use href="#play"/></svg></span>
+          <span class="cpb"><svg><use href="#next"/></svg></span>
+        </div>
+        <div class="r"><span class="cmenu" style="font-family:ui-monospace,Menlo,monospace;font-weight:500">1x<svg><use href="#chev"/></svg></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="shot">
+    <div class="cap"><span class="tag ok">HIG</span><div class="t">同一状态</div><div class="d">播放头时间常驻；四角手柄；指针提示可拖动；系统 pop-up 和 toggle 按钮</div></div>
+    <div class="pane">
+      <div class="ph"><span class="title">Preview</span><span class="meta">1920 × 1080 · 30 fps</span><span class="sp"></span>
+        <span class="ib on"><svg><use href="#viewfinder"/></svg></span>
+        <span class="popup">Fit<span class="chev"><svg><use href="#updown"/></svg></span></span>
+      </div>
+      <div class="stage">
+        <div class="video">
+          <div class="guides"><i style="inset:5%"></i><i style="inset:10%;opacity:.7"></i></div>
+          <div class="ov" style="left:72px;top:206px"><div class="u">HEART RATE</div><div class="v">156 <span style="font-size:13px">bpm</span></div>
+            <div class="selbox"><i class="hd tl"></i><i class="hd tr"></i><i class="hd bl"></i><i class="hd br"></i></div>
+          </div>
+          <div class="ov" style="left:380px;top:206px"><div class="u">PACE</div><div class="v">4:32 <span style="font-size:13px">/km</span></div></div>
+          <div class="cursor" style="left:118px;top:226px">✋</div>
+        </div>
+      </div>
+      <div class="pb">
+        <div class="l"><span class="tc hov">23:41.12</span><span class="tcd">Activity</span></div>
+        <div class="c">
+          <span class="pbtn"><svg><use href="#prev"/></svg></span>
+          <span class="pbtn main hov"><svg><use href="#play"/></svg></span>
+          <span class="pbtn"><svg><use href="#next"/></svg></span>
+        </div>
+        <div class="r"><span class="popup" style="font-variant-numeric:tabular-nums">1×<span class="chev"><svg><use href="#updown"/></svg></span></span></div>
+      </div>
+      <span class="n pin" style="left:150px;top:372px">1</span>
+      <span class="n pin" style="left:198px;top:236px">2</span>
+      <span class="n pin" style="left:178px;top:302px">3</span>
+      <span class="n pin" style="left:566px;top:44px">4</span>
+      <span class="n pin" style="left:520px;top:44px">5</span>
+      <span class="n pin" style="left:212px;top:368px">6</span>
+      <span class="n pin" style="left:520px;top:372px">8</span>
+    </div>
+    <ul class="notes">
+      <li><span class="n">1</span>播放条左侧显示播放头时间（等宽数字），旁边标出时间域。点击在 <b>Activity</b> 与 <b>Timeline</b> 之间切换。</li>
+      <li><span class="n">2</span>选中框四角有 7pt 手柄，拖动等比缩放；外加 1pt 深色描边，在亮色画面上也看得清。</li>
+      <li><span class="n">3</span>悬停可移动的 overlay 时显示 open hand，拖动时显示 closed hand。</li>
+      <li><span class="n">4</span>Fit 是系统 pop-up（上下箭头），选项补上 50% / 100% / 200%。</li>
+      <li><span class="n">5</span>Safe Frames 是 toggle 按钮，系统提供激活态和 <code>isSelected</code>；有悬停态。背景色移到 Fit 菜单下方。</li>
+      <li><span class="n">6</span>去掉 Stop；Previous / Next 改名为 Previous / Next Clip（或统一为 Edit Point），形成三键布局。</li>
+      <li><span class="n">8</span>速度 pop-up 增加 0.5×。去掉 “Guides On” HUD，按钮状态已经说明一切。</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================ POINTER STATES ============================ -->
+<h2>2 · 画布上的指针与手柄</h2>
+<p class="lede">指针反映当前位置可以做什么；锁定的 overlay 点击时给出提示，而不是没有任何反应。</p>
+
+<div class="tiles">
+  <div class="tile"><div class="ov"><div class="u">HEART RATE</div><div class="v">156</div></div><div class="cursor" style="left:96px;top:58px">✋</div><div class="lbl">悬停未选中：open hand</div></div>
+  <div class="tile"><div class="ov"><div class="u">HEART RATE</div><div class="v">156</div><div class="selbox"><i class="hd tl"></i><i class="hd tr"></i><i class="hd bl"></i><i class="hd br"></i></div></div><div class="cursor" style="left:96px;top:58px">✊</div><div class="lbl">拖动：closed hand，吸附时触控板轻震</div></div>
+  <div class="tile"><div class="ov"><div class="u">HEART RATE</div><div class="v">156</div><div class="selbox"><i class="hd tl"></i><i class="hd tr"></i><i class="hd bl"></i><i class="hd br"></i></div></div><div class="cursor" style="left:118px;top:68px;font-size:16px">⤡</div><div class="lbl">悬停手柄：对角缩放箭头；⌥ 从中心缩放</div></div>
+  <div class="tile"><div class="ov"><div class="u">HEART RATE</div><div class="v">156</div><div class="lockmark"><svg><use href="#lock"/></svg></div></div><div class="cursor" style="left:96px;top:58px;font-size:16px">➚</div><div class="tip" style="left:106px;top:30px">Locked</div><div class="lbl">锁定：保持箭头，help 显示 Locked</div></div>
+</div>
+
+<!-- ============================ MENUS ============================ -->
+<h2>3 · 菜单</h2>
+<p class="lede">Fit 菜单补上缩放比例；Playback 菜单的快捷键放进右侧的快捷键栏，删掉重复项。</p>
+
+<div class="grid">
+  <div class="shot">
+    <div class="cap"><div class="t">Fit pop-up 展开</div><div class="d">当前值打勾；背景色作为最后一项</div></div>
+    <div class="menubox">
+      <div class="menu">
+        <div class="mi"><span class="chk">✓</span>Fit<span class="k">⇧Z</span></div>
+        <div class="mi">Fill</div>
+        <hr>
+        <div class="mi">50%</div>
+        <div class="mi on">100%</div>
+        <div class="mi">200%</div>
+        <hr>
+        <div class="mi">Canvas Background…</div>
+      </div>
+    </div>
+    <ul class="notes">
+      <li><span class="n">4</span>⌘+ / ⌘- 当前分配给 Timeline 菜单，需要按焦点区域分派。</li>
+    </ul>
+  </div>
+
+  <div class="shot">
+    <div class="cap"><span class="tag bad">当前</span><div class="t">Playback 菜单</div><div class="d">快捷键写在标题里；Play 出现两次</div></div>
+    <div class="menubox">
+      <div class="menu">
+        <div class="mi">Play<span class="k">Space</span></div>
+        <div class="mi">Play (K)<span class="k">K</span></div>
+        <div class="mi">Play Faster (L)<span class="k">L</span></div>
+        <div class="mi dis">Play Slower (J)<span class="k">J</span></div>
+        <hr>
+        <div class="mi">Go to Start (Home)</div>
+        <div class="mi">Go to End (End)</div>
+        <div class="mi">Previous Edit Point (Up Arrow)</div>
+        <div class="mi">Next Edit Point (Down Arrow)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="shot">
+    <div class="cap"><span class="tag ok">HIG</span><div class="t">Playback 菜单</div><div class="d"><code>NSMenuItem.keyEquivalent</code> + <code>validateMenuItem</code>：文本框获得焦点时禁用</div></div>
+    <div class="menubox">
+      <div class="menu">
+        <div class="mi">Play<span class="k">Space</span></div>
+        <div class="mi">Play Faster<span class="k">L</span></div>
+        <div class="mi">Play Slower<span class="k">J</span></div>
+        <hr>
+        <div class="mi">Go to Start<span class="k">↖</span></div>
+        <div class="mi">Go to End<span class="k">↘</span></div>
+        <div class="mi on">Previous Edit Point<span class="k">↑</span></div>
+        <div class="mi">Next Edit Point<span class="k">↓</span></div>
+        <div class="mi">Previous Frame<span class="k">←</span></div>
+        <div class="mi">Next Frame<span class="k">→</span></div>
+      </div>
+    </div>
+    <ul class="notes">
+      <li><span class="n">7</span>K 作为 Play 的别名，写在帮助文档里，不再单独占一项。</li>
+      <li><span class="n">6</span>播放条的 Previous / Next 与 ↑/↓ 共用一套 “Edit Point” 逻辑。</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================ COMPARE ============================ -->
+<h2>4 · 控件对照</h2>
+<table class="cmp">
+  <tr><th>控件</th><th>HIG 版本</th><th>依据</th></tr>
+  <tr>
+    <td class="k">时间读数</td>
+    <td><div class="demo"><span class="tc">23:41.12</span><span class="tcd">Activity</span></div></td>
+    <td class="why"><code>playing-video</code>、<code>feedback</code>：当前位置要持续可见；明确标出时间域</td>
+  </tr>
+  <tr>
+    <td class="k">Fit / 速度</td>
+    <td><div class="demo"><span class="popup">Fit<span class="chev"><svg><use href="#updown"/></svg></span></span><span class="popup">1×<span class="chev"><svg><use href="#updown"/></svg></span></span></div></td>
+    <td class="why"><code>pop-up-buttons</code>：互斥值选择显示上下箭头</td>
+  </tr>
+  <tr>
+    <td class="k">Safe Frames</td>
+    <td><div class="demo"><span class="ib on"><svg><use href="#viewfinder"/></svg></span> 开　<span class="ib"><svg><use href="#viewfinder"/></svg></span> 关　<span class="ib hov"><svg><use href="#viewfinder"/></svg></span> 悬停</div></td>
+    <td class="why"><code>toggles</code>：<code>Toggle</code> + <code>.toggleStyle(.button)</code>，状态对 VoiceOver 可见</td>
+  </tr>
+  <tr>
+    <td class="k">播放控件</td>
+    <td><div class="demo"><span class="pbtn"><svg><use href="#prev"/></svg></span><span class="pbtn main"><svg><use href="#pause"/></svg></span><span class="pbtn"><svg><use href="#next"/></svg></span></div></td>
+    <td class="why"><code>buttons</code>：不放功能重复的按钮；help 写清楚 “Previous Clip”</td>
+  </tr>
+  <tr>
+    <td class="k">选中框</td>
+    <td><div class="demo" style="height:58px;position:relative"><div style="position:relative;margin-left:30px;font:600 18px -apple-system">156<div class="selbox"><i class="hd tl"></i><i class="hd tr"></i><i class="hd bl"></i><i class="hd br"></i></div></div></div></td>
+    <td class="why"><code>pointing-devices</code>：可直接操作的对象提供操作点和对应的指针</td>
+  </tr>
+</table>
+
+</body>
+</html>
