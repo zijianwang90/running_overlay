@@ -301,7 +301,7 @@
         "Ring Glow",
         "Ring Glow Intensity"
       ],
-      "text": "Expose one group per typography role. Hideable-role visibility uses a mini switch in the trailing group header; rows use short Font, Size, Weight, Color, and Custom labels.",
+      "text": "Expose one group per typography role. Hideable-role visibility uses a checkbox in the trailing group header; rows use short Font, Size, Weight, Color, and Custom labels.",
       "background": "Shared OverlayBackgroundInspectorModule.",
       "border": "Shared OverlayBorderInspectorModule.",
       "effects": "Shared OverlayEffectsInspectorModule. Shadow and global glow targets follow background-enabled rules in this spec."

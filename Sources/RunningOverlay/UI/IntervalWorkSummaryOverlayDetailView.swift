@@ -12,7 +12,6 @@ struct IntervalWorkSummaryOverlayDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let element = project.selectedOverlay(elementID) {
-                header(element)
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
                         CollapsibleLayoutInspectorSection(isExpanded: $layoutOpen) {
@@ -24,13 +23,13 @@ struct IntervalWorkSummaryOverlayDetailView: View {
                                 heightRange: 140...520
                             )
                         }
-                        section("Timing", systemImage: "timer", isOpen: $timingOpen) {
+                        section("Timing", isOpen: $timingOpen) {
                             timingRows(element.style.intervalWorkSummary)
                         }
-                        section("Content", systemImage: "list.bullet.rectangle", isOpen: $contentOpen) {
+                        section("Content", isOpen: $contentOpen) {
                             contentRows(element.style.intervalWorkSummary)
                         }
-                        section("Text", systemImage: "textformat", isOpen: $textOpen) {
+                        section("Text", isOpen: $textOpen) {
                             textRows(element.style.intervalWorkSummary)
                         }
                         OverlayBackgroundInspectorModule(elementID: elementID, element: element)
@@ -39,98 +38,15 @@ struct IntervalWorkSummaryOverlayDetailView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
-                footerBar
             } else {
                 Spacer()
             }
         }
     }
 
-    private func header(_ element: OverlayElement) -> some View {
-        HStack(spacing: NumericTokens.space3) {
-            Button {
-                project.selection = .none
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Back")
-
-            Image(systemName: "flag.checkered.2.crossed")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(NumericTokens.accentBlue)
-                .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                .background(NumericTokens.controlBackground)
-                .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Interval Work Summary")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(NumericTokens.textPrimary)
-                Text("Charts")
-                    .font(NumericTokens.captionFont)
-                    .foregroundStyle(NumericTokens.textSecondary)
-            }
-            Spacer()
-            Button(role: .destructive) {
-                project.deleteOverlay(element.id)
-            } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                    .foregroundStyle(NumericTokens.dangerRed)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Delete")
-        }
-        .padding(.horizontal, NumericTokens.panelPaddingX)
-        .frame(height: EditorTheme.panelHeaderHeight)
-        .background(NumericTokens.panelBackgroundElevated)
-        .overlay(alignment: .bottom) { Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1) }
-    }
-
-    private func section<Content: View>(_ title: String, systemImage: String, isOpen: Binding<Bool>, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Button {
-                isOpen.wrappedValue.toggle()
-            } label: {
-                HStack(spacing: NumericTokens.space2) {
-                    Image(systemName: systemImage)
-                        .frame(width: 16)
-                        .foregroundStyle(NumericTokens.textSecondary)
-                    Text(title)
-                        .font(NumericTokens.sectionTitleFont)
-                        .foregroundStyle(NumericTokens.textPrimary)
-                    Spacer()
-                    Image(systemName: isOpen.wrappedValue ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(NumericTokens.textMuted)
-                        .frame(width: 18, height: 18)
-                }
-                .frame(height: NumericTokens.sectionHeaderHeight)
-                .padding(.horizontal, NumericTokens.panelPaddingX)
-                .background(NumericTokens.panelBackgroundElevated)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(title)
-            .accessibilityValue(isOpen.wrappedValue ? "Expanded" : "Collapsed")
-            .overlay(alignment: .bottom) { Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1) }
-            if isOpen.wrappedValue {
-                VStack(spacing: 0) {
-                    content()
-                }
-            }
-        }
+    private func section<Content: View>(_ title: String, isOpen: Binding<Bool>, @ViewBuilder content: () -> Content) -> some View {
+        let body = content()
+        return InspectorCollapsibleSection(title: title, isExpanded: isOpen) { body }
     }
 
     @ViewBuilder
@@ -213,12 +129,10 @@ struct IntervalWorkSummaryOverlayDetailView: View {
                 .foregroundStyle(NumericTokens.textPrimary)
                 .multilineTextAlignment(.trailing)
         }
-        .opacity(slot.isVisible ? 1 : 0.5)
         .disabled(!slot.isVisible)
         InspectorDenseRow(label: "Show Label \(index + 1)") {
             miniToggle(slotLabelVisibleBinding(index, current: style))
         }
-        .opacity(slot.isVisible ? 1 : 0.5)
         .disabled(!slot.isVisible)
     }
 
@@ -291,21 +205,10 @@ struct IntervalWorkSummaryOverlayDetailView: View {
         project.selectedOverlay(elementID)?.style.intervalWorkSummary ?? .default
     }
 
-    private var footerBar: some View {
-        InspectorDetailFooterBar(
-            leadingTitle: "Reset",
-            leadingSystemImage: "arrow.counterclockwise",
-            trailingTitle: "Done",
-            trailingSystemImage: "checkmark",
-            onLeadingTap: { project.resetOverlayStyle(elementID) },
-            onTrailingTap: { project.selection = .none }
-        )
-    }
-
     private func miniToggle(_ binding: Binding<Bool>) -> some View {
         Toggle("", isOn: binding)
-            .toggleStyle(.switch)
-            .controlSize(.mini)
+            .toggleStyle(.checkbox)
+            .controlSize(.small)
             .labelsHidden()
             .tint(NumericTokens.accentBlue)
     }
@@ -326,7 +229,7 @@ struct IntervalWorkSummaryOverlayDetailView: View {
         } label: {
             InspectorDenseMenuLabel(title: selected.label)
         }
-        .menuStyle(.borderlessButton)
+        .inspectorMenuStyle()
         .frame(height: NumericTokens.controlHeight)
     }
 
@@ -346,7 +249,7 @@ struct IntervalWorkSummaryOverlayDetailView: View {
         } label: {
             InspectorDenseMenuLabel(title: selected.isEmpty ? "Default" : selected)
         }
-        .menuStyle(.borderlessButton)
+        .inspectorMenuStyle()
         .frame(height: NumericTokens.controlHeight)
     }
 

@@ -9,7 +9,6 @@ struct IntervalHUDBarOverlayDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let element = project.selectedOverlay(elementID) {
-                header(element)
 
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
@@ -19,7 +18,6 @@ struct IntervalHUDBarOverlayDetailView: View {
 
                         IntervalHUDBarInspectorSection(
                             title: "HUD Bar",
-                            systemImage: "rectangle.split.3x1",
                             isExpanded: binding(for: .hudBar)
                         ) {
                             sizeRows(element.style.intervalHUDBar)
@@ -28,7 +26,6 @@ struct IntervalHUDBarOverlayDetailView: View {
 
                         IntervalHUDBarInspectorSection(
                             title: "Metrics",
-                            systemImage: "waveform.path.ecg",
                             isExpanded: binding(for: .metrics)
                         ) {
                             metricRows(element.style.intervalHUDBar)
@@ -36,7 +33,6 @@ struct IntervalHUDBarOverlayDetailView: View {
 
                         IntervalHUDBarInspectorSection(
                             title: "Bottom Bar",
-                            systemImage: "rectangle.bottomthird.inset.filled",
                             isExpanded: binding(for: .bottomBar),
                             headerToggle: Binding(
                                 get: { element.style.intervalHUDBar.bottomBarEnabled },
@@ -48,7 +44,6 @@ struct IntervalHUDBarOverlayDetailView: View {
 
                         IntervalHUDBarInspectorSection(
                             title: "Typography",
-                            systemImage: "textformat.size",
                             isExpanded: binding(for: .typography)
                         ) {
                             typographyRows(element.style.intervalHUDBar)
@@ -62,77 +57,9 @@ struct IntervalHUDBarOverlayDetailView: View {
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
 
-                footerBar
             } else {
                 Spacer()
             }
-        }
-    }
-
-    private func header(_ element: OverlayElement) -> some View {
-        HStack(spacing: NumericTokens.space3) {
-            Button {
-                project.selection = .none
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                    .foregroundStyle(NumericTokens.textPrimary)
-            }
-            .buttonStyle(.plain)
-            .help("Back")
-            .accessibilityLabel("Back")
-
-            ZStack {
-                RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
-                    .fill(NumericTokens.controlBackground)
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                Image(systemName: "rectangle.split.3x1")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(NumericTokens.textPrimary)
-            }
-            .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-
-            HStack(spacing: 8) {
-                Text(element.type.label)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(NumericTokens.textPrimary)
-                Text("Interval Overlay")
-                    .font(NumericTokens.captionFont)
-                    .foregroundStyle(NumericTokens.textSecondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-            }
-
-            Spacer()
-
-            Button(role: .destructive) {
-                project.deleteOverlay(element.id)
-            } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                    .foregroundStyle(NumericTokens.dangerRed)
-            }
-            .buttonStyle(.plain)
-            .help("Delete")
-            .accessibilityLabel("Delete")
-        }
-        .padding(.horizontal, NumericTokens.panelPaddingX)
-        .frame(height: EditorTheme.panelHeaderHeight)
-        .background(NumericTokens.panelBackgroundElevated)
-        .overlay(alignment: .bottom) {
-            Divider()
-                .overlay(NumericTokens.borderSubtle)
         }
     }
 
@@ -252,7 +179,7 @@ struct IntervalHUDBarOverlayDetailView: View {
                 } label: {
                     InspectorDenseMenuLabel(title: style.bottomBarMode.label)
                 }
-                .menuStyle(.borderlessButton)
+                .inspectorMenuStyle()
                 .frame(height: NumericTokens.controlHeight)
             }
             if style.bottomBarMode == .lapProgress {
@@ -332,7 +259,7 @@ struct IntervalHUDBarOverlayDetailView: View {
             }
             if style.bottomBarMode == .heartRateZones || style.bottomBarMode == .paceZones {
                 InspectorDenseSliderRow(
-                    label: "Active Zone Width",
+                    label: "Active Width",
                     value: Binding(
                         get: { style.activeZoneWidthShare },
                         set: { value in
@@ -345,7 +272,7 @@ struct IntervalHUDBarOverlayDetailView: View {
                     displayText: style.activeZoneWidthShare <= 0 ? "Equal" : String(format: "%.0f%%", style.activeZoneWidthShare * 100)
                 )
                 InspectorDenseSliderRow(
-                    label: "Active Zone Height",
+                    label: "Active Height",
                     value: Binding(
                         get: { style.activeZoneHeightScale },
                         set: { value in
@@ -423,8 +350,8 @@ struct IntervalHUDBarOverlayDetailView: View {
     private func toggleRow(_ label: String, isOn: Bool, onSet: @escaping (Bool) -> Void) -> some View {
         InspectorDenseRow(label: label) {
             Toggle("", isOn: Binding(get: { isOn }, set: onSet))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
+                .toggleStyle(.checkbox)
+                .controlSize(.small)
                 .labelsHidden()
         }
     }
@@ -452,7 +379,7 @@ struct IntervalHUDBarOverlayDetailView: View {
                 } label: {
                     InspectorDenseMenuLabel(title: slot.metric.label)
                 }
-                .menuStyle(.borderlessButton)
+                .inspectorMenuStyle()
                 .frame(height: NumericTokens.controlHeight)
 
                 if slot.metric.unitOptions.count > 1 {
@@ -474,7 +401,7 @@ struct IntervalHUDBarOverlayDetailView: View {
                     } label: {
                         InspectorDenseMenuLabel(title: slot.unitOption.label)
                     }
-                    .menuStyle(.borderlessButton)
+                    .inspectorMenuStyle()
                     .frame(height: NumericTokens.controlHeight)
                 }
 
@@ -505,9 +432,9 @@ struct IntervalHUDBarOverlayDetailView: View {
                     }
                 }
             } label: {
-                InspectorDenseMenuLabel(systemImage: "plus", title: "Add Metric")
+                InspectorDenseMenuLabel(systemImage: "plus", title: "Add Metric", kind: .pullDown)
             }
-            .menuStyle(.borderlessButton)
+            .inspectorMenuStyle()
             .frame(height: NumericTokens.controlHeight)
         }
     }
@@ -540,7 +467,7 @@ struct IntervalHUDBarOverlayDetailView: View {
             } label: {
                 InspectorDenseMenuLabel(title: text.fontName)
             }
-            .menuStyle(.borderlessButton)
+            .inspectorMenuStyle()
             .frame(height: NumericTokens.controlHeight)
         }
         InspectorDenseSliderRow(
@@ -562,17 +489,6 @@ struct IntervalHUDBarOverlayDetailView: View {
                     .minimumScaleFactor(0.7)
             }
         }
-    }
-
-    private var footerBar: some View {
-        InspectorDetailFooterBar(
-            leadingTitle: "Reset",
-            leadingSystemImage: "arrow.counterclockwise",
-            trailingTitle: "Done",
-            trailingSystemImage: "checkmark",
-            onLeadingTap: { project.mutateIntervalHUDBarStyle(elementID) { $0 = .default } },
-            onTrailingTap: { project.selection = .none }
-        )
     }
 
     private func intervalBinding(_ keyPath: WritableKeyPath<IntervalHUDBarStyle, Double>, current: IntervalHUDBarStyle) -> Binding<Double> {
@@ -620,47 +536,14 @@ private struct IntervalHUDBarDividerInspectorModule: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: NumericTokens.space2) {
-                Button {
-                    isExpanded.toggle()
-                } label: {
-                    HStack(spacing: NumericTokens.space2) {
-                        Image(systemName: "minus")
-                            .frame(width: 16, alignment: .center)
-                            .foregroundStyle(NumericTokens.textSecondary)
-                        Text("Divider")
-                            .font(NumericTokens.sectionTitleFont)
-                            .foregroundStyle(NumericTokens.textPrimary)
-                        Spacer()
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Divider")
-                .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
-                Toggle("", isOn: Binding(
+            InspectorSectionHeader(
+                title: "Divider",
+                isExpanded: $isExpanded,
+                isOn: Binding(
                     get: { element.style.dividerEnabled },
                     set: { project.setOverlayDividerEnabled(elementID, enabled: $0) }
-                ))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-                .labelsHidden()
-                .accessibilityLabel("Enable Divider")
-                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(NumericTokens.textMuted)
-                    .frame(width: 18, height: 18)
-            }
-            .frame(height: NumericTokens.sectionHeaderHeight)
-            .padding(.horizontal, NumericTokens.panelPaddingX)
-            .background(NumericTokens.panelBackgroundElevated)
-            .contentShape(Rectangle())
-            .onTapGesture { isExpanded.toggle() }
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(NumericTokens.borderSubtle)
-                    .frame(height: 1)
-            }
+                )
+            )
 
             if isExpanded {
                 InspectorDenseRow(label: "Color") {
@@ -670,7 +553,6 @@ private struct IntervalHUDBarDividerInspectorModule: View {
                         action: { project.setOverlayDividerColor(elementID, color: $0) }
                     )
                     .disabled(!element.style.dividerEnabled)
-                    .opacity(element.style.dividerEnabled ? 1 : 0.5)
                 }
                 InspectorDenseSliderRow(
                     label: "Thickness",
@@ -707,73 +589,24 @@ private enum IntervalHUDBarInspectorSectionKind: CaseIterable {
 
 private struct IntervalHUDBarInspectorSection<Content: View>: View {
     var title: String
-    var systemImage: String
     @Binding var isExpanded: Bool
     var headerToggle: Binding<Bool>?
     @ViewBuilder var content: Content
 
     init(
         title: String,
-        systemImage: String,
         isExpanded: Binding<Bool>,
         headerToggle: Binding<Bool>? = nil,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
-        self.systemImage = systemImage
         self._isExpanded = isExpanded
         self.headerToggle = headerToggle
         self.content = content()
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: NumericTokens.space2) {
-                Button {
-                    isExpanded.toggle()
-                } label: {
-                    HStack(spacing: NumericTokens.space2) {
-                        Image(systemName: systemImage)
-                            .frame(width: 16, alignment: .center)
-                            .foregroundStyle(NumericTokens.textSecondary)
-                        Text(title)
-                            .font(NumericTokens.sectionTitleFont)
-                            .foregroundStyle(NumericTokens.textPrimary)
-                        Spacer()
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(title)
-                .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
-                if let headerToggle {
-                    Toggle("", isOn: headerToggle)
-                        .toggleStyle(.switch)
-                        .controlSize(.mini)
-                        .labelsHidden()
-                        .accessibilityLabel("Enable \(title)")
-                }
-                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(NumericTokens.textMuted)
-                    .frame(width: 18, height: 18)
-            }
-            .padding(.horizontal, NumericTokens.panelPaddingX)
-            .frame(height: NumericTokens.sectionHeaderHeight)
-            .background(NumericTokens.panelBackgroundElevated)
-            .contentShape(Rectangle())
-            .onTapGesture { isExpanded.toggle() }
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(NumericTokens.borderSubtle)
-                    .frame(height: 1)
-            }
-
-            if isExpanded {
-                VStack(spacing: 0) {
-                    content
-                }
-            }
-        }
+        let body = content
+        InspectorCollapsibleSection(title: title, isExpanded: $isExpanded, isOn: headerToggle) { body }
     }
 }

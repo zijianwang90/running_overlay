@@ -9,7 +9,6 @@ struct ElevationChartOverlayDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let element = project.selectedOverlay(elementID) {
-                header(element)
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
                         sectionView(.preset) { presetSection(element) }
@@ -26,59 +25,10 @@ struct ElevationChartOverlayDetailView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
-                footerBar
             } else {
                 Spacer()
             }
         }
-    }
-
-    private func header(_ element: OverlayElement) -> some View {
-        HStack(spacing: NumericTokens.space3) {
-            Button { project.selection = .none } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Back")
-
-            Image(systemName: "chart.line.uptrend.xyaxis")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(NumericTokens.accentBlue)
-                .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                .background(NumericTokens.controlBackground)
-                .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Elevation Chart")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(NumericTokens.textPrimary)
-                Text(element.style.elevationChart.preset.label)
-                    .font(NumericTokens.captionFont)
-                    .foregroundStyle(NumericTokens.textSecondary)
-            }
-            Spacer()
-            Button(role: .destructive) { project.deleteOverlay(element.id) } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                    .foregroundStyle(NumericTokens.dangerRed)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Delete")
-        }
-        .padding(.horizontal, NumericTokens.panelPaddingX)
-        .frame(height: EditorTheme.panelHeaderHeight)
-        .background(NumericTokens.panelBackgroundElevated)
-        .overlay(alignment: .bottom) { Divider().overlay(NumericTokens.borderSubtle) }
     }
 
     @ViewBuilder
@@ -95,7 +45,7 @@ struct ElevationChartOverlayDetailView: View {
             } label: {
                 InspectorDenseMenuLabel(title: style.preset.label)
             }
-            .menuStyle(.borderlessButton)
+            .inspectorMenuStyle()
             .frame(height: NumericTokens.controlHeight)
         }
     }
@@ -128,7 +78,6 @@ struct ElevationChartOverlayDetailView: View {
             displayText: percent(style.smoothingAmount)
         )
         .disabled(!style.smoothingEnabled)
-        .opacity(style.smoothingEnabled ? 1 : 0.5)
         InspectorDenseRow(label: "Progress") {
             InspectorDenseSegmented(values: ElevationChartProgressMode.allCases, selection: elevationBinding(\.progressMode, of: style)) { Text($0.label) }
         }
@@ -174,12 +123,10 @@ struct ElevationChartOverlayDetailView: View {
         InspectorDenseRow(label: "Playhead Line") {
             toggle(style.markerPlayheadLineEnabled) { set(\.markerPlayheadLineEnabled, to: $0) }
         }
-        .opacity(style.currentMarkerEnabled ? 1 : 0.5)
         .disabled(!style.currentMarkerEnabled)
         InspectorDenseRow(label: "Marker Color") {
             InspectorDenseSwatchStrip(presets: colorPresets, selected: style.markerColor) { set(\.markerColor, to: $0) }
         }
-        .opacity(style.currentMarkerEnabled ? 1 : 0.5)
         .disabled(!style.currentMarkerEnabled)
         InspectorDenseSliderRow(
             label: "Size",
@@ -189,7 +136,6 @@ struct ElevationChartOverlayDetailView: View {
             isEnabled: style.currentMarkerEnabled
         )
         InspectorDenseRow(label: "Value Label") { toggle(style.markerLabelEnabled) { set(\.markerLabelEnabled, to: $0) } }
-            .opacity(style.currentMarkerEnabled ? 1 : 0.5)
             .disabled(!style.currentMarkerEnabled)
     }
 
@@ -224,7 +170,7 @@ struct ElevationChartOverlayDetailView: View {
             } label: {
                 InspectorDenseMenuLabel(title: style.bigNumberFontName)
             }
-            .menuStyle(.borderlessButton)
+            .inspectorMenuStyle()
             .frame(height: NumericTokens.controlHeight)
         }
         InspectorDenseRow(label: "Weight") {
@@ -239,7 +185,6 @@ struct ElevationChartOverlayDetailView: View {
         CollapsibleStatsBarInspectorSection(
             isExpanded: binding(for: .statsBar),
             title: SharedStatsBarInspectorUI.sectionTitle,
-            systemImage: SharedStatsBarInspectorUI.sectionSystemImage,
             isBarEnabled: config.visible,
             onSetBarEnabled: { isVisible in setStats { $0.visible = isVisible } }
         ) {
@@ -323,50 +268,21 @@ struct ElevationChartOverlayDetailView: View {
         InspectorDenseRow(label: "Line Glow") { toggle(style.glowEnabled) { set(\.glowEnabled, to: $0) } }
     }
 
-    private var footerBar: some View {
-        InspectorDetailFooterBar(
-            leadingTitle: "Reset",
-            leadingSystemImage: "arrow.counterclockwise",
-            trailingTitle: "Done",
-            trailingSystemImage: "checkmark",
-            onLeadingTap: { project.mutateElevationChartStyle(elementID) { $0 = .default } },
-            onTrailingTap: { project.selection = .none }
-        )
+    private func sectionView<Content: View>(
+        _ section: Section,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        let body = content()
+        return InspectorCollapsibleSection(title: section.title, isExpanded: sectionExpansion(section)) { body }
     }
 
-    private func sectionView<Content: View>(_ section: Section, @ViewBuilder content: () -> Content) -> some View {
-        let isOpen = openSections.contains(section)
-        return VStack(alignment: .leading, spacing: 0) {
-            Button {
-                if isOpen { openSections.remove(section) }
-                else { openSections.insert(section) }
-            } label: {
-                HStack(spacing: NumericTokens.space2) {
-                    Image(systemName: section.icon)
-                        .frame(width: 16)
-                        .foregroundStyle(NumericTokens.textSecondary)
-                    Text(section.title)
-                        .font(NumericTokens.sectionTitleFont)
-                        .foregroundStyle(NumericTokens.textPrimary)
-                    Spacer()
-                    Image(systemName: isOpen ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(NumericTokens.textMuted)
-                }
-                .frame(height: NumericTokens.sectionHeaderHeight)
-                .padding(.horizontal, NumericTokens.panelPaddingX)
-                .background(NumericTokens.panelBackgroundElevated)
-                .contentShape(Rectangle())
+    private func sectionExpansion(_ section: Section) -> Binding<Bool> {
+        Binding(
+            get: { openSections.contains(section) },
+            set: { isOpen in
+                if isOpen { openSections.insert(section) } else { openSections.remove(section) }
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(section.title)
-            .accessibilityValue(isOpen ? "Expanded" : "Collapsed")
-            .overlay(alignment: .bottom) { Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1) }
-
-            if isOpen {
-                VStack(spacing: 0) { content() }
-            }
-        }
+        )
     }
 
     private func binding(for section: Section) -> Binding<Bool> {
@@ -402,8 +318,8 @@ struct ElevationChartOverlayDetailView: View {
 
     private func toggle(_ value: Bool, onSet: @escaping (Bool) -> Void) -> some View {
         Toggle("", isOn: Binding(get: { value }, set: onSet))
-            .toggleStyle(.switch)
-            .controlSize(.mini)
+            .toggleStyle(.checkbox)
+            .controlSize(.small)
             .labelsHidden()
     }
 
@@ -440,21 +356,6 @@ private enum Section: CaseIterable, Hashable {
         case .statsBar: "Stats Bar"
         case .background: "Background"
         case .effects: "Effects"
-        }
-    }
-
-    var icon: String {
-        switch self {
-        case .preset: "wand.and.stars"
-        case .layout: "scope"
-        case .chart: "chart.xyaxis.line"
-        case .lineFill: "paintpalette"
-        case .markers: "mappin.and.ellipse"
-        case .axis: "textformat.size"
-        case .bigNumbers: "number"
-        case .statsBar: SharedStatsBarInspectorUI.sectionSystemImage
-        case .background: "square.on.square"
-        case .effects: "sparkles"
         }
     }
 }

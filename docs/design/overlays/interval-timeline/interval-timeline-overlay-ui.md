@@ -193,7 +193,7 @@ Recommended sections:
 - The marker triangle and label remain inside the background and border at all supported rail sizes and marker font sizes.
 - Overflow hints remain compact and reserve enough width to avoid overlapping the first or last visible segment.
 - Increasing rail spacing keeps the rail inside the background by increasing the rendered background height.
-- The Inspector keeps `Reset` and `Done` fixed at the bottom while sections scroll.
+- The shared detail header stays fixed while sections scroll; Reset Style lives in its action menu.
 - Current lap progress advances smoothly at Layer Data FPS.
 - Labels never overlap inside segment blocks; when space is insufficient, labels reduce to kind-only or hide duration before shrinking below readable size.
 - Preview and exported PNG/MOV frames match visually.

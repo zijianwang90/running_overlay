@@ -76,10 +76,10 @@ struct OverlayStatsBarInspectorRows: View {
             } label: {
                 InspectorDenseMenuLabel(title: placement.label, isEnabled: isOn)
             }
-            .menuStyle(.borderlessButton)
+            .inspectorMenuStyle()
             .frame(height: NumericTokens.controlHeight)
         }
-        .opacity(isOn ? 1 : 0.5).disabled(!isOn)
+        .disabled(!isOn)
     }
 
     private var layoutRow: some View {
@@ -96,20 +96,20 @@ struct OverlayStatsBarInspectorRows: View {
             } label: {
                 InspectorDenseMenuLabel(title: layoutMode.label, isEnabled: isOn)
             }
-            .menuStyle(.borderlessButton)
+            .inspectorMenuStyle()
             .frame(height: NumericTokens.controlHeight)
         }
-        .opacity(isOn ? 1 : 0.5).disabled(!isOn)
+        .disabled(!isOn)
     }
 
     private func insideRow(_ value: Bool, onSet: @escaping (Bool) -> Void) -> some View {
         InspectorDenseRow(label: "Inside") {
             Toggle("", isOn: Binding(get: { value }, set: onSet))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
+                .toggleStyle(.checkbox)
+                .controlSize(.small)
                 .labelsHidden()
         }
-        .opacity(isOn ? 1 : 0.5).disabled(!isOn)
+        .disabled(!isOn)
     }
 
     private var heightRow: some View {
@@ -135,7 +135,7 @@ struct OverlayStatsBarInspectorRows: View {
             InspectorDenseAxisField(axis: "X", value: Binding(get: { extra.offsetX }, set: extra.onSetOffsetX), precision: 0)
             InspectorDenseAxisField(axis: "Y", value: Binding(get: { extra.offsetY }, set: extra.onSetOffsetY), precision: 0)
         }
-        .opacity(isOn ? 1 : 0.5).disabled(!isOn)
+        .disabled(!isOn)
         InspectorDenseSliderRow(
             label: "Item Gap",
             value: Binding(get: { extra.itemSpacing }, set: extra.onSetItemSpacing),
@@ -199,10 +199,10 @@ struct OverlayStatsBarInspectorRows: View {
             } label: {
                 InspectorDenseMenuLabel(title: config.fontName, isEnabled: isOn)
             }
-            .menuStyle(.borderlessButton)
+            .inspectorMenuStyle()
             .frame(height: NumericTokens.controlHeight)
         }
-        .opacity(isOn ? 1 : 0.5).disabled(!isOn)
+        .disabled(!isOn)
 
         InspectorDenseSliderRow(
             label: "\(title) Size",
@@ -220,14 +220,14 @@ struct OverlayStatsBarInspectorRows: View {
                 Text(weight.label)
             }
         }
-        .opacity(isOn ? 1 : 0.5).disabled(!isOn)
+        .disabled(!isOn)
 
         InspectorDenseRow(label: "\(title) Color") {
             InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: config.color) { color in
                 config.onSetColor(color)
             }
         }
-        .opacity(isOn ? 1 : 0.5).disabled(!isOn)
+        .disabled(!isOn)
     }
 
     @ViewBuilder
@@ -247,18 +247,18 @@ struct OverlayStatsBarInspectorRows: View {
                 } label: {
                     InspectorDenseMenuLabel(title: slot.metric.label, isEnabled: slot.visible)
                 }
-                .menuStyle(.borderlessButton)
+                .inspectorMenuStyle()
                 .frame(height: NumericTokens.controlHeight)
 
                 Toggle("", isOn: Binding(
                     get: { slot.visible },
                     set: { onSetSlotVisible(index, $0) }
                 ))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
+                .toggleStyle(.checkbox)
+                .controlSize(.small)
                 .labelsHidden()
             }
-            .opacity(isOn ? 1 : 0.5).disabled(!isOn)
+            .disabled(!isOn)
         }
     }
 }
@@ -267,7 +267,6 @@ struct OverlayStatsBarInspectorRows: View {
 
 enum SharedStatsBarInspectorUI {
     static let sectionTitle = "Stats Bar"
-    static let sectionSystemImage = "tablecells"
     static let placements = RouteMapStatsBarPlacement.distanceTimelinePlacements
     static let heightRange: ClosedRange<Double> = 32...120
     static let heightLabel = "Size"
@@ -311,64 +310,21 @@ extension RouteMapStatsBarPlacement {
 // MARK: - Collapsible section wrapper
 
 /// Self-contained Stats Bar inspector block:
-/// title row (tap to expand) with Enabled toggle in the header, then caller-supplied rows.
+/// disclosure header with an enable checkbox, then caller-supplied rows.
 /// Use this from any overlay detail view so the Stats Bar UI stays consistent and reusable.
 struct CollapsibleStatsBarInspectorSection<Content: View>: View {
     @Binding var isExpanded: Bool
     let title: String
-    let systemImage: String
     let isBarEnabled: Bool
     let onSetBarEnabled: (Bool) -> Void
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            header
-            if isExpanded {
-                VStack(spacing: 0) { content() }
-            }
-        }
-    }
-
-    private var header: some View {
-        HStack(spacing: NumericTokens.space2) {
-            Button {
-                isExpanded.toggle()
-            } label: {
-                HStack(spacing: NumericTokens.space2) {
-                    Image(systemName: systemImage)
-                        .frame(width: 16, alignment: .center)
-                        .foregroundStyle(NumericTokens.textSecondary)
-                    Text(title)
-                        .font(NumericTokens.sectionTitleFont)
-                        .foregroundStyle(NumericTokens.textPrimary)
-                    Spacer()
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(title)
-            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
-            Toggle("", isOn: Binding(get: { isBarEnabled }, set: onSetBarEnabled))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-                .labelsHidden()
-                .accessibilityLabel("Enable \(title)")
-                .onTapGesture { }
-            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(NumericTokens.textMuted)
-                .frame(width: 18, height: 18)
-        }
-        .frame(height: NumericTokens.sectionHeaderHeight)
-        .padding(.horizontal, NumericTokens.panelPaddingX)
-        .background(NumericTokens.panelBackgroundElevated)
-        .contentShape(Rectangle())
-        .onTapGesture { isExpanded.toggle() }
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(NumericTokens.borderSubtle)
-                .frame(height: 1)
-        }
+        InspectorCollapsibleSection(
+            title: title,
+            isExpanded: $isExpanded,
+            isOn: Binding(get: { isBarEnabled }, set: onSetBarEnabled),
+            content: content
+        )
     }
 }

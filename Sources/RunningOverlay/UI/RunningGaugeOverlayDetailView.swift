@@ -19,7 +19,6 @@ struct RunningGaugeOverlayDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let element = project.selectedOverlay(elementID) {
-                RunningGaugeOverlayHeader(element: element)
 
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
@@ -38,7 +37,6 @@ struct RunningGaugeOverlayDetailView: View {
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
 
-                footerBar
             } else {
                 Spacer()
             }
@@ -65,7 +63,7 @@ struct RunningGaugeOverlayDetailView: View {
             } label: {
                 InspectorDenseMenuLabel(title: element.style.gaugePreset.compactDisplayLabel)
             }
-            .menuStyle(.borderlessButton)
+            .inspectorMenuStyle()
             .frame(height: NumericTokens.controlHeight)
         }
     }
@@ -111,7 +109,7 @@ struct RunningGaugeOverlayDetailView: View {
             } label: {
                 InspectorDenseMenuLabel(title: gauge.layoutPreset.compactLabel)
             }
-            .menuStyle(.borderlessButton)
+            .inspectorMenuStyle()
             .frame(height: NumericTokens.controlHeight)
         }
     }
@@ -155,7 +153,7 @@ struct RunningGaugeOverlayDetailView: View {
                 } label: {
                     InspectorDenseMenuLabel(title: region.metric.label)
                 }
-                .menuStyle(.borderlessButton)
+                .inspectorMenuStyle()
                 .frame(height: NumericTokens.controlHeight)
 
                 Button {
@@ -166,7 +164,7 @@ struct RunningGaugeOverlayDetailView: View {
                         .foregroundStyle(NumericTokens.textMuted)
                         .frame(width: 22, height: NumericTokens.controlHeight)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
                 .help(isOpen ? "Hide region settings" : "Show region settings")
                 .accessibilityLabel("Region settings")
                 .accessibilityValue(isOpen ? "Expanded" : "Collapsed")
@@ -323,7 +321,7 @@ struct RunningGaugeOverlayDetailView: View {
                     } label: {
                         InspectorDenseMenuLabel(title: gauge.progressMode.label)
                     }
-                    .menuStyle(.borderlessButton)
+                    .inspectorMenuStyle()
                     .frame(height: NumericTokens.controlHeight)
                 }
                 InspectorDenseRow(label: "Progress Color") {
@@ -466,7 +464,7 @@ struct RunningGaugeOverlayDetailView: View {
             } label: {
                 InspectorDenseMenuLabel(title: gauge.fontName)
             }
-            .menuStyle(.borderlessButton)
+            .inspectorMenuStyle()
             .frame(height: NumericTokens.controlHeight)
         }
         InspectorDenseRow(label: "Monospaced") {
@@ -594,9 +592,9 @@ struct RunningGaugeOverlayDetailView: View {
         Toggle("", isOn: Binding(get: { isOn }, set: { newValue in
             set(newValue)
         }))
-            .toggleStyle(.switch)
+            .toggleStyle(.checkbox)
             .labelsHidden()
-            .controlSize(.mini)
+            .controlSize(.small)
     }
 
     @ViewBuilder
@@ -607,29 +605,30 @@ struct RunningGaugeOverlayDetailView: View {
         onToggleOn: @escaping (Bool) -> Void,
         onToggleExpanded: @escaping () -> Void
     ) -> some View {
-        HStack(spacing: NumericTokens.space2) {
+        HStack(spacing: 6) {
             Button {
                 onToggleExpanded()
             } label: {
-                HStack(spacing: NumericTokens.space2) {
-                    Text(title)
-                        .font(NumericTokens.bodyFont.weight(.medium))
-                        .foregroundStyle(NumericTokens.textSecondary)
-                    Spacer()
-                }
-                .contentShape(Rectangle())
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(NumericTokens.textSecondary)
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                    .frame(width: 14, height: 14)
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.borderless)
             .accessibilityLabel(title)
             .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
             gaugeToggle(isOn: isOn, set: onToggleOn)
                 .accessibilityLabel("Enable \(title)")
-            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(NumericTokens.textMuted)
-                .frame(width: 18, height: 18)
+            Text(title)
+                .font(NumericTokens.bodyFont.weight(.medium))
+                .foregroundStyle(NumericTokens.textSecondary)
+                .accessibilityHidden(true)
+            Spacer()
         }
-        .padding(.horizontal, NumericTokens.panelPaddingX)
+        .padding(.leading, NumericTokens.sectionHeaderPaddingLeading + 12)
+        .padding(.trailing, NumericTokens.panelPaddingX)
         .frame(height: NumericTokens.sectionHeaderHeight)
         .background(NumericTokens.panelBackground.opacity(0.72))
         .contentShape(Rectangle())
@@ -643,140 +642,26 @@ struct RunningGaugeOverlayDetailView: View {
         }
     }
 
-    @ViewBuilder
     private func sectionView<Body: View>(
         _ section: GaugeSection,
         @ViewBuilder content: () -> Body
     ) -> some View {
-        let isOpen = openSections.contains(section)
-        VStack(alignment: .leading, spacing: 0) {
-            Button {
-                if isOpen {
-                    openSections.remove(section)
-                } else {
-                    openSections.insert(section)
-                }
-            } label: {
-                HStack(spacing: NumericTokens.space2) {
-                    Image(systemName: section.systemImage)
-                        .frame(width: 16, alignment: .center)
-                        .foregroundStyle(NumericTokens.textSecondary)
-                    Text(section.title)
-                        .font(NumericTokens.sectionTitleFont)
-                        .foregroundStyle(NumericTokens.textPrimary)
-                    Spacer()
-                    Image(systemName: isOpen ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(NumericTokens.textMuted)
-                        .frame(width: 18, height: 18)
-                }
-                .frame(height: NumericTokens.sectionHeaderHeight)
-                .padding(.horizontal, NumericTokens.panelPaddingX)
-                .background(NumericTokens.panelBackgroundElevated)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(section.title)
-            .accessibilityValue(isOpen ? "Expanded" : "Collapsed")
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(NumericTokens.borderSubtle)
-                    .frame(height: 1)
-            }
-
-            if isOpen {
-                VStack(spacing: 0) {
-                    content()
-                }
-            }
-        }
+        let body = content()
+        return InspectorCollapsibleSection(title: section.title, isExpanded: sectionExpansion(section)) { body }
     }
 
-    private var footerBar: some View {
-        InspectorDetailFooterBar(
-            leadingTitle: "Reset",
-            leadingSystemImage: "arrow.counterclockwise",
-            trailingTitle: "Done",
-            trailingSystemImage: "checkmark",
-            onLeadingTap: { project.resetOverlayStyle(elementID) },
-            onTrailingTap: { project.selection = .none }
+    private func sectionExpansion(_ section: GaugeSection) -> Binding<Bool> {
+        Binding(
+            get: { openSections.contains(section) },
+            set: { isOpen in
+                if isOpen { openSections.insert(section) } else { openSections.remove(section) }
+            }
         )
     }
+
 }
 
 // MARK: - Header
-
-private struct RunningGaugeOverlayHeader: View {
-    @EnvironmentObject private var project: ProjectDocument
-    let element: OverlayElement
-
-    var body: some View {
-        HStack(spacing: NumericTokens.space3) {
-            Button {
-                project.selection = .none
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                    .foregroundStyle(NumericTokens.textPrimary)
-            }
-            .buttonStyle(.plain)
-            .help("Back")
-            .accessibilityLabel("Back")
-
-            ZStack {
-                RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
-                    .fill(NumericTokens.controlBackground)
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                Image(systemName: "gauge")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(NumericTokens.accentBlue)
-            }
-            .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-
-            HStack(spacing: 8) {
-                Text(element.type.label)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(NumericTokens.textPrimary)
-                Text(element.style.gauge.layoutPreset.compactLabel)
-                    .font(NumericTokens.captionFont)
-                    .foregroundStyle(NumericTokens.textSecondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-            }
-
-            Spacer()
-
-            Button(role: .destructive) {
-                project.deleteOverlay(element.id)
-            } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                    .foregroundStyle(NumericTokens.dangerRed)
-            }
-            .buttonStyle(.plain)
-            .help("Delete")
-            .accessibilityLabel("Delete")
-        }
-        .padding(.horizontal, NumericTokens.panelPaddingX)
-        .frame(height: EditorTheme.panelHeaderHeight)
-        .background(NumericTokens.panelBackgroundElevated)
-        .overlay(alignment: .bottom) {
-            Divider()
-                .overlay(NumericTokens.borderSubtle)
-        }
-    }
-}
 
 // MARK: - Section model
 
@@ -806,22 +691,6 @@ enum GaugeSection: String, CaseIterable {
         case .typography: "Typography"
         case .color: "Color"
         case .effects: "Effects"
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .style: "gauge"
-        case .layout: "scope"
-        case .dataLayout: "square.grid.2x2"
-        case .regions: "slider.horizontal.3"
-        case .dial: "circle.fill"
-        case .ring: "circle.dashed"
-        case .ticks: "minus"
-        case .dividers: "line.3.horizontal"
-        case .typography: "textformat"
-        case .color: "paintpalette"
-        case .effects: "sparkles"
         }
     }
 }

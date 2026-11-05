@@ -33,7 +33,7 @@ Design references:
 - Helper, phase, rep, and caption text can be hidden independently.
 - Every text role has independent font family, size, weight, and color mode.
 - Text inspector roles are grouped; each hideable role exposes its visibility
-  switch in the trailing group header.
+  checkbox in the trailing group header.
 - Text and ring fill color modes are `Follow Group` or `Custom`.
 - The `Direction` control selects clockwise `Full to Empty` (the default) or
   counterclockwise `Empty to Full`. Both modes use the current segment only.

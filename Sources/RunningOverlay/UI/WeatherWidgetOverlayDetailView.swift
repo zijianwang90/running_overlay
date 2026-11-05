@@ -15,7 +15,6 @@ struct WeatherWidgetOverlayDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let element = project.selectedOverlay(elementID) {
-                header(element: element)
                 ScrollView {
                     VStack(spacing: NumericTokens.sectionGap) {
                         layoutInspectorSection(element)
@@ -27,7 +26,6 @@ struct WeatherWidgetOverlayDetailView: View {
                     }
                     .padding(.bottom, NumericTokens.panelPaddingY)
                 }
-                footerBar
             } else {
                 Spacer()
             }
@@ -49,17 +47,6 @@ struct WeatherWidgetOverlayDetailView: View {
             case .weather: "Weather"
             }
         }
-
-        var systemImage: String {
-            switch self {
-            case .layout: "scope"
-            case .preset: "rectangle.3.group"
-            case .appearance: "paintpalette"
-            case .typography: "textformat"
-            case .location: "location"
-            case .weather: "cloud.sun"
-            }
-        }
     }
 
     // MARK: - Section wrapper
@@ -69,107 +56,20 @@ struct WeatherWidgetOverlayDetailView: View {
         element: OverlayElement,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        let isOpen = openSections.contains(section)
-        return VStack(alignment: .leading, spacing: 0) {
-            Button {
-                if isOpen {
-                    openSections.remove(section)
-                } else {
-                    openSections.insert(section)
-                }
-            } label: {
-                HStack(spacing: NumericTokens.space2) {
-                    Image(systemName: section.systemImage)
-                        .frame(width: 16, alignment: .center)
-                        .foregroundStyle(NumericTokens.textSecondary)
-                    Text(section.title)
-                        .font(NumericTokens.sectionTitleFont)
-                        .foregroundStyle(NumericTokens.textPrimary)
-                    Spacer()
-                    Image(systemName: isOpen ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(NumericTokens.textMuted)
-                        .frame(width: 18, height: 18)
-                }
-                .frame(height: NumericTokens.sectionHeaderHeight)
-                .padding(.horizontal, NumericTokens.panelPaddingX)
-                .background(NumericTokens.panelBackgroundElevated)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(section.title)
-            .accessibilityValue(isOpen ? "Expanded" : "Collapsed")
-            .overlay(alignment: .bottom) {
-                Rectangle().fill(NumericTokens.borderSubtle).frame(height: 1)
-            }
+        let body = content()
+        return InspectorCollapsibleSection(title: section.title, isExpanded: sectionExpansion(section)) { body }
+    }
 
-            if isOpen {
-                VStack(spacing: 0) { content() }
+    private func sectionExpansion(_ section: WeatherSection) -> Binding<Bool> {
+        Binding(
+            get: { openSections.contains(section) },
+            set: { isOpen in
+                if isOpen { openSections.insert(section) } else { openSections.remove(section) }
             }
-        }
+        )
     }
 
     // MARK: - Header
-
-    private func header(element: OverlayElement) -> some View {
-        HStack(spacing: NumericTokens.space3) {
-            Button {
-                project.selection = .none
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                    .foregroundStyle(NumericTokens.textPrimary)
-            }
-            .buttonStyle(.plain).help("Back")
-            .accessibilityLabel("Back")
-
-            ZStack {
-                RoundedRectangle(cornerRadius: NumericTokens.controlRadius)
-                    .fill(NumericTokens.controlBackground)
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                Image(systemName: "cloud.sun.fill")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(NumericTokens.accentBlue)
-            }
-            .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
-                    Text("Weather Widget").font(.system(size: 15, weight: .semibold)).foregroundStyle(NumericTokens.textPrimary)
-                    Text("Weather").font(NumericTokens.captionFont).foregroundStyle(NumericTokens.textSecondary)
-                        .padding(.horizontal, 6).padding(.vertical, 2)
-                        .background(NumericTokens.controlBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                }
-            }
-            Spacer()
-
-            Button(role: .destructive) {
-                project.deleteOverlay(element.id)
-            } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 13, weight: .medium))
-                    .frame(width: NumericTokens.iconButtonSize, height: NumericTokens.iconButtonSize)
-                    .background(NumericTokens.controlBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NumericTokens.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: NumericTokens.controlRadius).stroke(NumericTokens.borderSubtle, lineWidth: 1))
-                    .foregroundStyle(NumericTokens.textSecondary)
-            }
-            .buttonStyle(.plain).help("Delete")
-            .accessibilityLabel("Delete")
-        }
-        .padding(.horizontal, NumericTokens.panelPaddingX)
-        .frame(height: EditorTheme.panelHeaderHeight)
-        .background(NumericTokens.panelBackgroundElevated)
-        .overlay(alignment: .bottom) {
-            Divider().overlay(NumericTokens.borderSubtle)
-        }
-    }
 
     // MARK: - Layout section
 
@@ -196,31 +96,19 @@ struct WeatherWidgetOverlayDetailView: View {
     private func presetSection(_ element: OverlayElement) -> some View {
         let s = element.style.weatherWidget
         return sectionView(.preset, element: element) {
-            InspectorDenseRow(label: "Styles") {
-                HStack(spacing: 6) {
+            InspectorDenseRow(label: "Preset") {
+                Menu {
                     ForEach(WeatherWidgetPreset.allCases) { preset in
-                        Button {
-                            project.applyWeatherWidgetPreset(elementID, preset: preset)
-                        } label: {
-                            VStack(spacing: 3) {
-                                Image(systemName: presetIcon(preset))
-                                    .font(.system(size: 12, weight: .semibold))
-                                Text(presetShortLabel(preset))
-                                    .font(.system(size: 8, weight: .medium))
-                            }
-                            .foregroundStyle(preset == s.preset ? NumericTokens.textPrimary : NumericTokens.textSecondary)
-                            .frame(width: 42, height: 36)
-                            .background(preset == s.preset ? NumericTokens.accentBlue.opacity(0.24) : NumericTokens.controlBackground)
-                            .clipShape(RoundedRectangle(cornerRadius: 5))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 5)
-                                    .stroke(preset == s.preset ? NumericTokens.accentBlue : NumericTokens.borderSubtle, lineWidth: 1)
-                            }
+                        Button { project.applyWeatherWidgetPreset(elementID, preset: preset) } label: {
+                            if preset == s.preset { Label(preset.label, systemImage: "checkmark") }
+                            else { Text(preset.label) }
                         }
-                        .buttonStyle(.plain)
-                        .help(preset.label)
                     }
+                } label: {
+                    InspectorDenseMenuLabel(title: s.preset.label)
                 }
+                .inspectorMenuStyle()
+                .frame(height: NumericTokens.controlHeight)
             }
         }
     }
@@ -247,17 +135,19 @@ struct WeatherWidgetOverlayDetailView: View {
                 } label: {
                     InspectorDenseMenuLabel(title: s.dataSource.label)
                 }
+                .inspectorMenuStyle()
             }
 
             if hasFITTemperature {
-                InspectorDenseRow(label: "Use Activity Temperature") {
+                InspectorDenseRow(label: "From Activity") {
                     Toggle("", isOn: Binding(
                         get: { s.useFITTemperature },
                         set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.useFITTemperature = v } }
                     ))
-                    .toggleStyle(.switch)
-                    .controlSize(.mini)
+                    .toggleStyle(.checkbox)
+                    .controlSize(.small)
                     .labelsHidden()
+                    .help("Use the temperature recorded in the activity")
                     .tint(NumericTokens.accentBlue)
                 }
             }
@@ -295,6 +185,7 @@ struct WeatherWidgetOverlayDetailView: View {
                             Image(systemName: s.manualCondition.sfSymbolName).foregroundStyle(Color(s.manualCondition.iconTint))
                             InspectorDenseMenuLabel(title: s.manualCondition.label)
                         }
+                        .inspectorMenuStyle()
                     }
                 }
                 InspectorDenseRow(label: "Label Override") {
@@ -334,6 +225,7 @@ struct WeatherWidgetOverlayDetailView: View {
                 } label: {
                     InspectorDenseMenuLabel(title: s.temperatureUnit.shortLabel)
                 }
+                .inspectorMenuStyle()
             }
 
             if s.preset.metricSlotCount == 0 {
@@ -359,8 +251,8 @@ struct WeatherWidgetOverlayDetailView: View {
                     get: { s.showIcon },
                     set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.showIcon = v } }
                 ))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
+                .toggleStyle(.checkbox)
+                .controlSize(.small)
                 .labelsHidden()
                 .tint(NumericTokens.accentBlue)
             }
@@ -370,8 +262,8 @@ struct WeatherWidgetOverlayDetailView: View {
                     get: { s.showConditionLabel },
                     set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.showConditionLabel = v } }
                 ))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
+                .toggleStyle(.checkbox)
+                .controlSize(.small)
                 .labelsHidden()
                 .tint(NumericTokens.accentBlue)
             }
@@ -397,6 +289,7 @@ struct WeatherWidgetOverlayDetailView: View {
             } label: {
                 InspectorDenseMenuLabel(title: selected.label)
             }
+            .inspectorMenuStyle()
         }
     }
 
@@ -492,13 +385,13 @@ struct WeatherWidgetOverlayDetailView: View {
                 Toggle("", isOn: Binding(
                     get: { s.showLocation },
                     set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.showLocation = v } }
-                )).toggleStyle(.switch).controlSize(.mini).labelsHidden().tint(NumericTokens.accentBlue)
+                )).toggleStyle(.checkbox).controlSize(.mini).labelsHidden().tint(NumericTokens.accentBlue)
             }
             InspectorDenseRow(label: "Show Weekday") {
                 Toggle("", isOn: Binding(
                     get: { s.showWeekday },
                     set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.showWeekday = v } }
-                )).toggleStyle(.switch).controlSize(.mini).labelsHidden().tint(NumericTokens.accentBlue)
+                )).toggleStyle(.checkbox).controlSize(.mini).labelsHidden().tint(NumericTokens.accentBlue)
             }
         }
     }
@@ -528,6 +421,7 @@ struct WeatherWidgetOverlayDetailView: View {
                 } label: {
                     InspectorDenseMenuLabel(title: s.palette.label)
                 }
+                .inspectorMenuStyle()
             }
             InspectorDenseSliderRow(
                 label: "Card Opacity", value: Binding(
@@ -546,8 +440,8 @@ struct WeatherWidgetOverlayDetailView: View {
                     get: { s.dividerEnabled },
                     set: { v in project.mutateWeatherWidgetStyle(elementID) { $0.dividerEnabled = v } }
                 ))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
+                .toggleStyle(.checkbox)
+                .controlSize(.small)
                 .labelsHidden()
                 .tint(NumericTokens.accentBlue)
             }
@@ -655,7 +549,7 @@ struct WeatherWidgetOverlayDetailView: View {
             } label: {
                 InspectorDenseMenuLabel(title: style.fontName)
             }
-            .menuStyle(.borderlessButton)
+            .inspectorMenuStyle()
             .frame(height: NumericTokens.controlHeight)
         }
         InspectorDenseSliderRow(
@@ -706,40 +600,6 @@ struct WeatherWidgetOverlayDetailView: View {
         ("Purple", .purple), ("Pink", .pink)
     ]
 
-    private func presetShortLabel(_ preset: WeatherWidgetPreset) -> String {
-        switch preset {
-        case .simpleCard: "Card"
-        case .compactStrip: "Strip"
-        case .forecastTile: "Tile"
-        case .minimalText: "Text"
-        case .dashboardBar: "Bar"
-        }
-    }
-
-    private func presetIcon(_ preset: WeatherWidgetPreset) -> String {
-        switch preset {
-        case .simpleCard: "rectangle.split.2x1"
-        case .compactStrip: "capsule"
-        case .forecastTile: "square"
-        case .minimalText: "textformat"
-        case .dashboardBar: "rectangle.grid.1x2"
-        }
-    }
-
     // MARK: - Footer
 
-    private var footerBar: some View {
-        InspectorDetailFooterBar(
-            leadingTitle: "Reset", leadingSystemImage: "arrow.counterclockwise",
-            trailingTitle: "Done", trailingSystemImage: "checkmark",
-            onLeadingTap: {
-                project.mutateWeatherWidgetStyle(elementID) { style in
-                    let unit = style.temperatureUnit
-                    style = WeatherWidgetStyle.preset(style.preset)
-                    style.temperatureUnit = unit
-                }
-            },
-            onTrailingTap: { project.selection = .none }
-        )
-    }
 }

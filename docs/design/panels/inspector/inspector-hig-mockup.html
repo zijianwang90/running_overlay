@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Inspector · HIG 设计稿</title>
+<style>
+  :root {
+    /* Page chrome */
+    --page: #0e0f10;
+    --page-text: #e8e8ea;
+    --page-muted: #8d9096;
+    --note: #ffd166;
+
+    /* macOS dark semantic colors (approximate NSColor values) */
+    --win: #1e1e1e;
+    --panel: #252525;
+    --header: #2b2b2b;
+    --sep: rgba(255,255,255,.10);
+    --label: rgba(255,255,255,.86);
+    --label2: rgba(255,255,255,.55);
+    --label3: rgba(255,255,255,.28);
+    --accent: #0a84ff;
+    --sel: #0059d1;
+    --sel-unfocused: rgba(255,255,255,.10);
+    --hover: rgba(255,255,255,.06);
+    --field: rgba(255,255,255,.055);
+    --field-border: rgba(255,255,255,.14);
+    --control: rgba(255,255,255,.14);
+    --control-hi: rgba(255,255,255,.20);
+    --danger: #ff453a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 40px 48px 80px;
+    background: var(--page); color: var(--page-text);
+    font: 13px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: -.01em; }
+  h2 { font-size: 17px; margin: 56px 0 6px; }
+  .lede { color: var(--page-muted); max-width: 860px; margin: 0 0 8px; }
+  .lede b { color: var(--page-text); font-weight: 600; }
+  .grid { display: flex; flex-wrap: wrap; gap: 36px; margin-top: 22px; align-items: flex-start; }
+  .shot { width: 460px; }
+  .shot > .cap { margin-bottom: 10px; }
+  .cap .t { font-weight: 600; font-size: 13px; }
+  .cap .d { color: var(--page-muted); font-size: 12px; }
+  .notes { margin: 12px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--page-muted); }
+  .notes li { display: flex; gap: 8px; margin: 5px 0; }
+  .notes li .n { flex: none; }
+
+  /* Numbered callout badge */
+  .n {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
+    background: var(--note); color: #1a1a1a; font-size: 10px; font-weight: 700;
+    line-height: 1;
+  }
+  .pin { position: absolute; z-index: 3; box-shadow: 0 0 0 2px var(--page); }
+
+  /* ------- Inspector panel ------- */
+  .insp {
+    position: relative; width: 460px; background: var(--panel);
+    border: 1px solid #000; border-radius: 8px; overflow: hidden;
+    color: var(--label); font-size: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.45);
+  }
+  .insp.h-620 { height: 620px; }
+  .insp.h-520 { height: 520px; }
+  .insp.h-300 { height: 300px; }
+  .ph {
+    height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 12px;
+    background: var(--header); border-bottom: 1px solid var(--sep);
+  }
+  .ph .title { font-weight: 600; font-size: 13px; }
+  .ph .sp { flex: 1; }
+  .ph .meta { color: var(--label2); font-size: 11px; }
+
+  /* List */
+  .list { padding: 6px; }
+  .lrow {
+    position: relative; height: 28px; display: flex; align-items: center; gap: 8px;
+    padding: 0 6px 0 8px; border-radius: 5px; color: var(--label);
+  }
+  .lrow .ico { width: 18px; display: flex; justify-content: center; color: var(--label2); }
+  .lrow .name { font-size: 13px; white-space: nowrap; }
+  .lrow .val { margin-left: auto; color: var(--label2); font: 12px ui-monospace, "SF Mono", Menlo, monospace; font-variant-numeric: tabular-nums; }
+  .lrow .acts { display: flex; gap: 2px; margin-left: 6px; width: 50px; justify-content: flex-end; }
+  .lrow.sel { background: var(--sel); color: #fff; }
+  .lrow.sel .ico, .lrow.sel .val { color: rgba(255,255,255,.85); }
+  .lrow.hover { background: var(--hover); }
+  .lrow.dim .name, .lrow.dim .val, .lrow.dim .ico { opacity: .45; }
+
+  /* Borderless icon button (hover & pressed states) */
+  .ib {
+    width: 22px; height: 22px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center;
+    color: var(--label2);
+  }
+  .ib.hov { background: rgba(255,255,255,.10); color: var(--label); }
+  .ib.press { background: rgba(255,255,255,.18); color: #fff; }
+  .ib.dis { color: var(--label3); }
+  .ib svg { width: 14px; height: 14px; }
+
+  /* Detail header */
+  .dh {
+    display: flex; align-items: center; gap: 6px; height: 38px; padding: 0 8px 0 10px;
+    background: var(--header); border-bottom: 1px solid var(--sep);
+  }
+  .dh .live { margin-left: 6px; color: var(--label2); font: 12px ui-monospace, "SF Mono", Menlo, monospace; }
+
+  /* Pop-up button */
+  .popup {
+    display: inline-flex; align-items: center; gap: 6px; height: 20px; padding: 0 3px 0 8px;
+    background: var(--control); border-radius: 5px; font-size: 12px; color: var(--label);
+    box-shadow: inset 0 .5px 0 rgba(255,255,255,.12), 0 .5px 1px rgba(0,0,0,.5);
+    white-space: nowrap;
+  }
+  .popup .chev {
+    width: 14px; height: 14px; border-radius: 3px; display: inline-flex; align-items: center; justify-content: center;
+    background: var(--accent); color: #fff; margin-left: auto;
+  }
+  .popup .chev svg { width: 8px; height: 10px; }
+  .popup.big { font-weight: 600; font-size: 13px; height: 22px; }
+  .popup.wide { width: 100%; }
+  .popup.dis { color: var(--label3); }
+  .popup.dis .chev { background: rgba(255,255,255,.12); color: var(--label3); }
+
+  /* Sections */
+  .scroll { overflow: hidden; }
+  .sec-h {
+    position: relative; height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 10px 0 6px;
+    border-bottom: 1px solid var(--sep); background: rgba(255,255,255,.025);
+    font-weight: 600; font-size: 12px; color: var(--label);
+  }
+  .sec-h .tri { width: 14px; display: inline-flex; justify-content: center; color: var(--label2); }
+  .sec-h .tri svg { width: 9px; height: 9px; }
+  .sec-h .tail { margin-left: auto; display: flex; gap: 8px; align-items: center; color: var(--label2); font-weight: 500; font-size: 11px; }
+  .sec-h.hover { background: rgba(255,255,255,.05); }
+
+  .row {
+    position: relative; min-height: 26px; display: grid; grid-template-columns: 104px 1fr; align-items: center;
+    gap: 10px; padding: 3px 10px 3px 26px; border-bottom: 1px solid rgba(255,255,255,.045);
+  }
+  .row .lab { color: var(--label2); font-size: 12px; white-space: nowrap; }
+  .row .ctl { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .row.dis .lab { color: var(--label3); }
+  .row.sub { padding-left: 38px; }
+  .row.sub .lab { width: 92px; }
+
+  /* Text field (+ stepper) */
+  .tf {
+    height: 20px; display: inline-flex; align-items: center; gap: 4px; padding: 0 6px;
+    background: var(--field); border: 1px solid var(--field-border); border-radius: 4px;
+    font: 12px -apple-system, sans-serif; font-variant-numeric: tabular-nums; color: var(--label);
+    justify-content: flex-end; min-width: 0;
+  }
+  .tf .pre { color: var(--label3); margin-right: auto; font-size: 11px; }
+  .tf .unit { color: var(--label2); font-size: 11px; }
+  .tf.focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(10,132,255,.45); }
+  .tf.focus .caret { width: 1px; height: 13px; background: var(--label); margin-left: 1px; }
+  .tf.dis { color: var(--label3); border-color: rgba(255,255,255,.07); }
+  .tf.w60 { width: 62px; } .tf.w70 { width: 74px; } .tf.flex { flex: 1; }
+  .step {
+    width: 13px; height: 20px; display: inline-flex; flex-direction: column; border-radius: 4px;
+    background: var(--control); box-shadow: inset 0 .5px 0 rgba(255,255,255,.12);
+    overflow: hidden; flex: none;
+  }
+  .step i { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--label2); }
+  .step i + i { border-top: 1px solid rgba(0,0,0,.35); }
+  .step svg { width: 7px; height: 5px; }
+  .step.dis i { color: var(--label3); }
+  .pair { display: inline-flex; gap: 2px; align-items: center; }
+
+  /* Slider (small) */
+  .sl { position: relative; flex: 1; height: 16px; min-width: 60px; }
+  .sl .track { position: absolute; left: 0; right: 0; top: 7px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.16); }
+  .sl .fill { position: absolute; left: 0; top: 7px; height: 3px; border-radius: 2px; background: var(--accent); }
+  .sl .knob {
+    position: absolute; top: 1.5px; width: 13px; height: 13px; border-radius: 50%; margin-left: -6.5px;
+    background: #cfcfcf; box-shadow: 0 .5px 2px rgba(0,0,0,.6), inset 0 .5px 0 #fff;
+  }
+  .sl.dis .fill { background: rgba(255,255,255,.22); }
+  .sl.dis .knob { background: #5c5c5c; box-shadow: none; }
+  .sl .ticks { position: absolute; left: 0; right: 0; top: 13px; display: flex; justify-content: space-between; }
+  .sl .ticks i { width: 1px; height: 3px; background: var(--label3); }
+
+  /* Checkbox */
+  .cb {
+    width: 14px; height: 14px; border-radius: 3.5px; flex: none; display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.10); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.25);
+  }
+  .cb.on { background: var(--accent); box-shadow: none; color: #fff; }
+  .cb.dis { background: rgba(255,255,255,.05); }
+  .cb.on.dis { background: rgba(255,255,255,.18); color: var(--label3); }
+  .cb svg { width: 9px; height: 9px; }
+  .cbl { display: inline-flex; align-items: center; gap: 6px; }
+
+  /* Segmented (select-one, macOS: selected segment is raised gray, not accent fill) */
+  .seg {
+    display: inline-flex; height: 20px; padding: 1px; border-radius: 5px; background: rgba(255,255,255,.08);
+    flex: 1; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.06);
+  }
+  .seg i { flex: 1; font-style: normal; font-size: 12px; display: flex; align-items: center; justify-content: center; border-radius: 4px; color: var(--label); }
+  .seg i + i { box-shadow: -1px 0 0 -0px rgba(255,255,255,.0); }
+  .seg i.on { background: rgba(255,255,255,.26); box-shadow: 0 .5px 1px rgba(0,0,0,.5), inset 0 .5px 0 rgba(255,255,255,.12); }
+  .seg.icons i svg { width: 13px; height: 13px; }
+
+  /* Color well (macOS 14 minimal style) */
+  .cw {
+    height: 20px; width: 44px; display: inline-flex; align-items: center; gap: 3px; padding: 0 3px;
+    border-radius: 5px; background: var(--control); flex: none;
+  }
+  .cw b { width: 24px; height: 14px; border-radius: 3px; display: block; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.3); }
+  .cw svg { width: 8px; height: 8px; color: var(--label2); }
+  .sw { width: 16px; height: 16px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.35); }
+  .sw.on { box-shadow: 0 0 0 1.5px var(--panel), 0 0 0 3px var(--label); }
+
+  /* Inline banner */
+  .banner {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin: 8px;
+    border-radius: 6px; background: rgba(255,255,255,.06); color: var(--label); font-size: 12px;
+  }
+  .btn {
+    height: 20px; padding: 0 10px; border-radius: 5px; background: var(--control); color: var(--label);
+    font-size: 12px; display: inline-flex; align-items: center;
+    box-shadow: inset 0 .5px 0 rgba(255,255,255,.12), 0 .5px 1px rgba(0,0,0,.5);
+  }
+
+  /* Menu (NSMenu dark) */
+  .menu {
+    position: absolute; z-index: 4; min-width: 210px; padding: 5px;
+    background: rgba(40,40,40,.96); border-radius: 8px; font-size: 13px;
+    box-shadow: 0 0 0 .5px rgba(255,255,255,.16), 0 12px 30px rgba(0,0,0,.6);
+    backdrop-filter: blur(20px);
+  }
+  .menu .mi { height: 22px; display: flex; align-items: center; gap: 6px; padding: 0 10px 0 22px; border-radius: 4px; color: var(--label); position: relative; }
+  .menu .mi .k { margin-left: auto; color: var(--label2); font-size: 12px; padding-left: 18px; }
+  .menu .mi.on { background: var(--accent); color: #fff; }
+  .menu .mi.on .k { color: rgba(255,255,255,.8); }
+  .menu .mi.dis { color: var(--label3); }
+  .menu .mi .chk { position: absolute; left: 7px; font-size: 11px; }
+  .menu .mi.danger { color: var(--danger); }
+  .menu hr { border: 0; height: 1px; background: rgba(255,255,255,.1); margin: 5px 10px; }
+
+  .empty {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    height: 220px; color: var(--label2); text-align: center; font-size: 12px;
+  }
+  .empty .big { font-size: 13px; color: var(--label); font-weight: 600; }
+  .empty svg { width: 28px; height: 28px; color: var(--label3); margin-bottom: 4px; }
+
+  /* Comparison table */
+  table.cmp { border-collapse: collapse; margin-top: 18px; width: 100%; max-width: 1180px; }
+  table.cmp th, table.cmp td { text-align: left; vertical-align: middle; padding: 12px 14px; border-bottom: 1px solid #23252a; }
+  table.cmp th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--page-muted); font-weight: 600; }
+  table.cmp td.k { font-weight: 600; width: 150px; }
+  table.cmp td.why { color: var(--page-muted); font-size: 12px; width: 330px; }
+  .demo { background: var(--panel); border-radius: 6px; padding: 10px 12px; width: 290px; color: var(--label); font-size: 12px; display: flex; align-items: center; gap: 8px; }
+  .cur { opacity: .95; }
+  /* "Current" renders (custom chrome) */
+  .c-field { height: 26px; padding: 0 8px; display: inline-flex; align-items: center; background: #20252a; border: 1px solid #2b3238; border-radius: 5px; color: #b6bec7; font-size: 10px; font-weight: 500; }
+  .c-switch { width: 30px; height: 17px; border-radius: 9px; background: #3d3f45; position: relative; }
+  .c-switch::after { content: ""; position: absolute; left: 2px; top: 2px; width: 13px; height: 13px; border-radius: 50%; background: #ddd; }
+  .c-seg { display: flex; flex: 1; height: 24px; border-radius: 5px; overflow: hidden; background: #55585e; font-size: 12px; }
+  .c-seg i { flex: 1; font-style: normal; display: flex; align-items: center; justify-content: center; color: #fff; }
+  .c-seg i.on { background: #4e63d6; }
+  .c-menu { flex: 1; height: 26px; display: flex; align-items: center; padding: 0 8px; background: #20252a; border: 1px solid #2b3238; border-radius: 5px; justify-content: space-between; }
+  .c-btn { width: 28px; height: 28px; border-radius: 5px; background: #20252a; border: 1px solid #2b3238; display: inline-flex; align-items: center; justify-content: center; }
+  .c-btn svg { width: 15px; height: 15px; }
+  .c-done { flex: 2; height: 30px; border-radius: 6px; background: #5b7cf2; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; }
+  .c-reset { flex: 1; height: 30px; border-radius: 6px; background: #20252a; border: 1px solid #2b3238; display: flex; align-items: center; justify-content: center; }
+  .tag { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px; background: #2b2e34; color: var(--page-muted); margin-bottom: 6px; }
+  .tag.ok { background: #16351f; color: #7ad08f; }
+  .tag.bad { background: #3a1a1a; color: #ff8c84; }
+
+  .spec { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px 28px; max-width: 1180px; margin-top: 16px; }
+  .spec div { font-size: 12px; color: var(--page-muted); border-top: 1px solid #23252a; padding-top: 8px; }
+  .spec b { color: var(--page-text); display: block; font-size: 12px; margin-bottom: 2px; }
+  code { font: 11.5px ui-monospace, "SF Mono", Menlo, monospace; color: #cfd3da; background: #1b1d21; padding: 1px 4px; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="eye" viewBox="0 0 16 16"><path d="M1 8s2.6-5 7-5 7 5 7 5-2.6 5-7 5-7-5-7-5Z" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="8" r="2.2" fill="currentColor"/></symbol>
+    <symbol id="eyeslash" viewBox="0 0 16 16"><path d="M1 8s2.6-5 7-5 7 5 7 5-2.6 5-7 5-7-5-7-5Z" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M2.5 2.5l11 11" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="lock" viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="7.5" rx="1.6" fill="currentColor"/><path d="M5.2 7V5.2a2.8 2.8 0 0 1 5.6 0V7" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="lockopen" viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="7.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5.2 7V5.2a2.8 2.8 0 0 1 5.4-1" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+    <symbol id="trash" viewBox="0 0 16 16"><path d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+    <symbol id="map" viewBox="0 0 16 16"><path d="M1.5 3.5 5.5 2l5 1.8 4-1.5v10.2l-4 1.5-5-1.8-4 1.5Z M5.5 2v10.2 M10.5 3.8V14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></symbol>
+    <symbol id="clock" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 4.5V8h2.8" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+    <symbol id="watch" viewBox="0 0 16 16"><rect x="4" y="4" width="8" height="8" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5.5 4l.6-2.5h3.8l.6 2.5M5.5 12l.6 2.5h3.8l.6-2.5M8 6v2l1.3 1" fill="none" stroke="currentColor" stroke-width="1.2"/></symbol>
+    <symbol id="cloud" viewBox="0 0 16 16"><path d="M4.5 13h7.2a3 3 0 0 0 .2-6 4 4 0 0 0-7.6.9A2.6 2.6 0 0 0 4.5 13Z" fill="currentColor"/></symbol>
+    <symbol id="bars" viewBox="0 0 16 16"><rect x="1.5" y="3.5" width="13" height="9" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M6 3.5v9M10 3.5v9" stroke="currentColor" stroke-width="1.3"/></symbol>
+    <symbol id="film" viewBox="0 0 16 16"><rect x="4" y="3" width="8" height="10" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M1 6l2 2-2 2zM15 6l-2 2 2 2z" fill="currentColor"/></symbol>
+    <symbol id="more" viewBox="0 0 16 16"><circle cx="3.5" cy="8" r="1.4" fill="currentColor"/><circle cx="8" cy="8" r="1.4" fill="currentColor"/><circle cx="12.5" cy="8" r="1.4" fill="currentColor"/></symbol>
+    <symbol id="tri-r" viewBox="0 0 10 10"><path d="M3 1.5 7.5 5 3 8.5Z" fill="currentColor"/></symbol>
+    <symbol id="tri-d" viewBox="0 0 10 10"><path d="M1.5 3 5 7.5 8.5 3Z" fill="currentColor"/></symbol>
+    <symbol id="updown" viewBox="0 0 8 10"><path d="M1.5 4 4 1.5 6.5 4M1.5 6 4 8.5 6.5 6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="up" viewBox="0 0 8 5"><path d="M1 4 4 1l3 3" fill="none" stroke="currentColor" stroke-width="1.2"/></symbol>
+    <symbol id="down" viewBox="0 0 8 5"><path d="M1 1l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.2"/></symbol>
+    <symbol id="cup" viewBox="0 0 16 16"><path d="M4 10l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="cdown" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="reset" viewBox="0 0 16 16"><path d="M3.2 6.2A5 5 0 1 1 3 9.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M2.5 2.8v3.8h3.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="check" viewBox="0 0 10 10"><path d="M1.8 5.2 4 7.3 8.3 2.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="stack" viewBox="0 0 28 28"><rect x="5" y="9" width="18" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 6h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="sq" viewBox="0 0 16 16"><rect x="3" y="3" width="10" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+    <symbol id="circ" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.3" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+    <symbol id="filter" viewBox="0 0 16 16"><path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  </defs>
+</svg>
+
+<h1>Inspector · HIG 设计稿</h1>
+<p class="lede">
+  配套文档：<code>inspector-hig-review.md</code>。这份设计稿只调整<b>控件层和交互模型</b>，
+  不改动信息架构（分组、两栏布局、共享模块）。控件全部采用 macOS 系统控件的
+  <code>.controlSize(.small)</code> 外观，颜色全部是语义色（label、secondaryLabel、
+  separator、controlAccent）。黄色编号对应文档里的条目。
+</p>
+
+<!-- ============================ OUTER ============================ -->
+<h2>1 · Inspector Outer：列表</h2>
+<p class="lede">采用标准 <code>List(selection:)</code>。选中状态和 Preview、Timeline 同步；行内操作只在 hover 或非默认状态时显示；删除放进右键菜单并支持 ⌫。</p>
+
+<div class="grid">
+  <div class="shot">
+    <div class="cap"><div class="t">默认 · 选中 Route Map · 鼠标悬停在 Real Time 上</div><div class="d">行高 28，正文 13pt；隐藏和锁定状态的图标常驻</div></div>
+    <div class="insp h-300">
+      <div class="ph"><span class="title">Overlays</span><span class="sp"></span><span class="meta">6</span></div>
+      <div class="list">
+        <div class="lrow sel">
+          <span class="ico"><svg width="15" height="15"><use href="#map"/></svg></span>
+          <span class="name">Route Map</span><span class="val">12.84 km</span>
+          <span class="acts"></span>
+        </div>
+        <div class="lrow">
+          <span class="ico"><svg width="15" height="15"><use href="#clock"/></svg></span>
+          <span class="name">Elapsed Time</span><span class="val">00:21:04</span>
+          <span class="acts"></span>
+        </div>
+        <div class="lrow hover">
+          <span class="ico"><svg width="15" height="15"><use href="#watch"/></svg></span>
+          <span class="name">Real Time</span><span class="val">18:29:58</span>
+          <span class="acts"><span class="ib hov"><svg><use href="#eye"/></svg></span><span class="ib"><svg><use href="#lockopen"/></svg></span></span>
+        </div>
+        <div class="lrow dim">
+          <span class="ico"><svg width="15" height="15"><use href="#cloud"/></svg></span>
+          <span class="name">Weather Widget</span><span class="val">18°C</span>
+          <span class="acts"><span class="ib"><svg style="opacity:1"><use href="#eyeslash"/></svg></span></span>
+        </div>
+        <div class="lrow">
+          <span class="ico"><svg width="15" height="15"><use href="#bars"/></svg></span>
+          <span class="name">Interval HUD Bar</span><span class="val">3 / 8</span>
+          <span class="acts"><span class="ib"><svg><use href="#lock"/></svg></span></span>
+        </div>
+        <div class="lrow">
+          <span class="ico"><svg width="15" height="15"><use href="#film"/></svg></span>
+          <span class="name">Interval Timeline</span><span class="val"></span>
+          <span class="acts"></span>
+        </div>
+      </div>
+      <span class="n pin" style="left:6px;top:46px">3</span>
+      <span class="n pin" style="left:400px;top:104px">3</span>
+      <span class="n pin" style="left:430px;top:12px">5</span>
+    </div>
+    <ul class="notes">
+      <li><span class="n">3</span>选中行使用系统选中色；双击或 Return 打开详情，↑/↓ 移动选择，⌫ 删除（可撤销）。</li>
+      <li><span class="n">3</span>eye 和 lock 只在 hover 时显示；已隐藏行变暗并常驻 eye.slash，已锁定行常驻 lock。</li>
+      <li><span class="n">5</span>移除永远禁用的 filter 按钮；标题栏只保留标题和数量。去掉 “Manage overlays in your scene” 副标题。</li>
+      <li>去掉重复的副标题 “Route Map • Map”，名字本身已经说明类型。</li>
+    </ul>
+  </div>
+
+  <div class="shot">
+    <div class="cap"><div class="t">右键菜单</div><div class="d">命令沿用 <code>OverlayElementContextMenu</code>，补上快捷键提示</div></div>
+    <div class="insp h-300">
+      <div class="ph"><span class="title">Overlays</span><span class="sp"></span><span class="meta">6</span></div>
+      <div class="list">
+        <div class="lrow sel"><span class="ico"><svg width="15" height="15"><use href="#map"/></svg></span><span class="name">Route Map</span><span class="val">12.84 km</span><span class="acts"></span></div>
+        <div class="lrow"><span class="ico"><svg width="15" height="15"><use href="#clock"/></svg></span><span class="name">Elapsed Time</span><span class="val">00:21:04</span><span class="acts"></span></div>
+        <div class="lrow"><span class="ico"><svg width="15" height="15"><use href="#watch"/></svg></span><span class="name">Real Time</span><span class="val">18:29:58</span><span class="acts"></span></div>
+      </div>
+      <div class="menu" style="left:150px;top:58px">
+        <div class="mi">Open in Inspector<span class="k">↩</span></div>
+        <hr>
+        <div class="mi on">Duplicate<span class="k">⌘D</span></div>
+        <div class="mi">Copy Properties<span class="k">⌥⌘C</span></div>
+        <div class="mi">Paste Properties<span class="k">⌥⌘V</span></div>
+        <hr>
+        <div class="mi">Hide</div>
+        <div class="mi">Lock</div>
+        <hr>
+        <div class="mi">Delete<span class="k">⌫</span></div>
+      </div>
+    </div>
+    <ul class="notes">
+      <li>macOS 菜单里的 Delete 不需要标红，删除可撤销，也不需要二次确认。</li>
+    </ul>
+  </div>
+
+  <div class="shot">
+    <div class="cap"><div class="t">空状态</div><div class="d">居中显示说明文字，告诉用户下一步去哪里操作</div></div>
+    <div class="insp h-300">
+      <div class="ph"><span class="title">Overlays</span><span class="sp"></span><span class="meta">0</span></div>
+      <div class="empty">
+        <svg><use href="#stack"/></svg>
+        <div class="big">No Overlays</div>
+        <div>Drag an overlay from the Overlay Pool<br>onto the preview to add it.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ DETAIL ============================ -->
+<h2>2 · Overlay Detail：Route Map</h2>
+<p class="lede">
+  inspector 跟随选择变化：在画布空白处点击、按 Esc，或在列表里取消选择，都会回到 Outer。
+  因此<b>不再需要 Back 和 Done</b>。原来的切换条和详情头合并为一个 header：
+  pop-up 切换器、实时数值、上一个/下一个、<code>⋯</code> 操作菜单。
+</p>
+
+<div class="grid">
+  <div class="shot">
+    <div class="cap"><div class="t">展开 · Width 数值框获得焦点</div><div class="d">滑杆 + 可编辑数值框 + stepper；disclosure triangle 放在标题前</div></div>
+    <div class="insp h-620">
+      <div class="dh">
+        <span class="popup big"><svg width="14" height="14" style="color:var(--label2)"><use href="#map"/></svg>Route Map<span class="chev"><svg><use href="#updown"/></svg></span></span>
+        <span class="live">12.84 km</span>
+        <span class="sp" style="flex:1"></span>
+        <span class="ib"><svg><use href="#cup"/></svg></span>
+        <span class="ib"><svg><use href="#cdown"/></svg></span>
+        <span class="ib"><svg><use href="#more"/></svg></span>
+      </div>
+      <div class="scroll">
+        <div class="sec-h"><span class="tri"><svg><use href="#tri-d"/></svg></span>Layout</div>
+        <div class="row"><span class="lab">Position</span><span class="ctl">
+          <span class="tf flex"><span class="pre">X</span>11.1<span class="unit">%</span></span>
+          <span class="tf flex"><span class="pre">Y</span>20.4<span class="unit">%</span></span></span></div>
+        <div class="row"><span class="lab">Scale</span><span class="ctl">
+          <span class="sl"><span class="track"></span><span class="fill" style="width:15%"></span><span class="knob" style="left:15%"></span></span>
+          <span class="pair"><span class="tf w60">0.75<span class="unit">×</span></span><span class="step"><i><svg><use href="#up"/></svg></i><i><svg><use href="#down"/></svg></i></span></span></span></div>
+        <div class="row"><span class="lab">Width</span><span class="ctl">
+          <span class="sl"><span class="track"></span><span class="fill" style="width:42%"></span><span class="knob" style="left:42%"></span></span>
+          <span class="pair"><span class="tf w60 focus">380<span class="caret"></span><span class="unit">px</span></span><span class="step"><i><svg><use href="#up"/></svg></i><i><svg><use href="#down"/></svg></i></span></span></span></div>
+        <div class="row"><span class="lab">Height</span><span class="ctl">
+          <span class="sl"><span class="track"></span><span class="fill" style="width:46%"></span><span class="knob" style="left:46%"></span></span>
+          <span class="pair"><span class="tf w60">400<span class="unit">px</span></span><span class="step"><i><svg><use href="#up"/></svg></i><i><svg><use href="#down"/></svg></i></span></span></span></div>
+        <div class="row"><span class="lab">Opacity</span><span class="ctl">
+          <span class="sl"><span class="track"></span><span class="fill" style="width:100%"></span><span class="knob" style="left:100%"></span></span>
+          <span class="pair"><span class="tf w60">100<span class="unit">%</span></span><span class="step"><i><svg><use href="#up"/></svg></i><i><svg><use href="#down"/></svg></i></span></span></span></div>
+
+        <div class="sec-h"><span class="tri"><svg><use href="#tri-d"/></svg></span>Container</div>
+        <div class="row"><span class="lab">Shape</span><span class="ctl">
+          <span class="seg" style="flex:none;width:140px"><i>Square</i><i class="on">Circle</i></span></span></div>
+        <div class="row"><span class="lab">Size</span><span class="ctl">
+          <span class="sl"><span class="track"></span><span class="fill" style="width:52%"></span><span class="knob" style="left:52%"></span></span>
+          <span class="pair"><span class="tf w60">376<span class="unit">px</span></span><span class="step"><i><svg><use href="#up"/></svg></i><i><svg><use href="#down"/></svg></i></span></span></span></div>
+
+        <div class="sec-h"><span class="tri"><svg><use href="#tri-d"/></svg></span><span class="cb on"><svg><use href="#check"/></svg></span>Background Map</div>
+        <div class="row"><span class="lab">Style</span><span class="ctl"><span class="popup" style="width:140px">Dark<span class="chev"><svg><use href="#updown"/></svg></span></span></span></div>
+        <div class="row"><span class="lab">Opacity</span><span class="ctl">
+          <span class="sl"><span class="track"></span><span class="fill" style="width:92%"></span><span class="knob" style="left:92%"></span></span>
+          <span class="pair"><span class="tf w60">92<span class="unit">%</span></span><span class="step"><i><svg><use href="#up"/></svg></i><i><svg><use href="#down"/></svg></i></span></span></span></div>
+        <div class="row"><span class="lab">Zoom</span><span class="ctl">
+          <span class="sl"><span class="track"></span><span class="fill" style="width:20%"></span><span class="knob" style="left:20%"></span><span class="ticks"><i></i><i></i><i></i><i></i><i></i></span></span>
+          <span class="pair"><span class="tf w60">1<span class="unit">×</span></span><span class="step"><i><svg><use href="#up"/></svg></i><i><svg><use href="#down"/></svg></i></span></span></span></div>
+        <div class="row"><span class="lab"></span><span class="ctl"><span class="cbl"><span class="cb on"><svg><use href="#check"/></svg></span>Show points of interest</span></span></div>
+
+        <div class="sec-h"><span class="tri"><svg><use href="#tri-d"/></svg></span>Route Line</div>
+        <div class="row"><span class="lab">Color</span><span class="ctl">
+          <span class="seg" style="flex:none;width:140px"><i class="on">Solid</i><i>Gradient</i></span>
+          <span class="cw"><b style="background:#ff7a1a"></b><svg viewBox="0 0 8 5"><use href="#down"/></svg></span></span></div>
+        <div class="row"><span class="lab">Width</span><span class="ctl">
+          <span class="sl"><span class="track"></span><span class="fill" style="width:30%"></span><span class="knob" style="left:30%"></span></span>
+          <span class="pair"><span class="tf w60">6<span class="unit">px</span></span><span class="step"><i><svg><use href="#up"/></svg></i><i><svg><use href="#down"/></svg></i></span></span></span></div>
+        <div class="row"><span class="lab"></span><span class="ctl"><span class="cbl"><span class="cb"></span>Glow</span></span></div>
+      </div>
+      <span class="n pin" style="left:6px;top:12px">P2</span>
+      <span class="n pin" style="left:440px;top:12px">P2</span>
+      <span class="n pin" style="left:434px;top:118px">1</span>
+      <span class="n pin" style="left:2px;top:42px">P2</span>
+      <span class="n pin" style="left:22px;top:302px">P2</span>
+    </div>
+    <ul class="notes">
+      <li><span class="n">1</span>数值框是真正的 <code>TextField</code>，带 number formatter 和单位后缀；↑/↓ 调一步，⇧↑/↓ 调十步；回车或失焦时提交，并只注册一个撤销点。</li>
+      <li><span class="n">P2</span>header 里的 pop-up 使用 ⌃⌄ 指示器，表示“在互斥项中选一个”；行尾三个按钮是上一个、下一个、⋯。</li>
+      <li><span class="n">P2</span>disclosure triangle 放在标题前（▸ / ▾）；分组的启用用 checkbox，放在标题前。</li>
+      <li>Position 显示为百分比，仍然按归一化值存储，只改显示 formatter。</li>
+      <li>segmented 的选中段使用系统的浮起灰色，不做蓝色实心填充。</li>
+      <li>没有 footer，滚动区域一直延伸到底部。</li>
+    </ul>
+  </div>
+
+  <div class="shot">
+    <div class="cap"><div class="t">Background Map 关闭 · 悬停 Layout header · 打开 ⋯ 菜单</div><div class="d">子控件统一禁用；分组复位按钮只在 hover 时出现</div></div>
+    <div class="insp h-620">
+      <div class="dh">
+        <span class="popup big"><svg width="14" height="14" style="color:var(--label2)"><use href="#map"/></svg>Route Map<span class="chev"><svg><use href="#updown"/></svg></span></span>
+        <span class="live">12.84 km</span>
+        <span class="sp" style="flex:1"></span>
+        <span class="ib"><svg><use href="#cup"/></svg></span>
+        <span class="ib"><svg><use href="#cdown"/></svg></span>
+        <span class="ib press"><svg><use href="#more"/></svg></span>
+      </div>
+      <div class="scroll">
+        <div class="sec-h hover"><span class="tri"><svg><use href="#tri-d"/></svg></span>Layout<span class="tail"><span class="ib hov" style="width:20px;height:20px"><svg><use href="#reset"/></svg></span></span></div>
+        <div class="row"><span class="lab">Position</span><span class="ctl">
+          <span class="tf flex"><span class="pre">X</span>11.1<span class="unit">%</span></span>
+          <span class="tf flex"><span class="pre">Y</span>20.4<span class="unit">%</span></span></span></div>
+        <div class="row"><span class="lab">Scale</span><span class="ctl">
+          <span class="sl"><span class="track"></span><span class="fill" style="width:15%"></span><span class="knob" style="left:15%"></span></span>
+          <span class="pair"><span class="tf w60">0.75<span class="unit">×</span></span><span class="step"><i><svg><use href="#up"/></svg></i><i><svg><use href="#down"/></svg></i></span></span></span></div>
+
+        <div class="sec-h"><span class="tri"><svg><use href="#tri-r"/></svg></span>Container</div>
+
+        <div class="sec-h"><span class="tri"><svg><use href="#tri-d"/></svg></span><span class="cb"></span>Background Map</div>
+        <div class="row dis"><span class="lab">Style</span><span class="ctl"><span class="popup dis" style="width:140px">Dark<span class="chev"><svg><use href="#updown"/></svg></span></span></span></div>
+        <div class="row dis"><span class="lab">Opacity</span><span class="ctl">
+          <span class="sl dis"><span class="track"></span><span class="fill" style="width:92%"></span><span class="knob" style="left:92%"></span></span>
+          <span class="pair"><span class="tf w60 dis">92<span class="unit" style="color:var(--label3)">%</span></span><span class="step dis"><i><svg><use href="#up"/></svg></i><i><svg><use href="#down"/></svg></i></span></span></span></div>
+        <div class="row dis"><span class="lab">Zoom</span><span class="ctl">
+          <span class="sl dis"><span class="track"></span><span class="fill" style="width:20%"></span><span class="knob" style="left:20%"></span></span>
+          <span class="pair"><span class="tf w60 dis">1<span class="unit" style="color:var(--label3)">×</span></span><span class="step dis"><i><svg><use href="#up"/></svg></i><i><svg><use href="#down"/></svg></i></span></span></span></div>
+        <div class="row dis"><span class="lab"></span><span class="ctl"><span class="cbl" style="color:var(--label3)"><span class="cb on dis"><svg><use href="#check"/></svg></span>Show points of interest</span></span></div>
+
+        <div class="sec-h"><span class="tri"><svg><use href="#tri-r"/></svg></span>Route Line</div>
+        <div class="sec-h"><span class="tri"><svg><use href="#tri-r"/></svg></span>Stats Bar</div>
+        <div class="sec-h"><span class="tri"><svg><use href="#tri-r"/></svg></span><span class="cb"></span>Background</div>
+        <div class="sec-h"><span class="tri"><svg><use href="#tri-r"/></svg></span><span class="cb on"><svg><use href="#check"/></svg></span>Border</div>
+        <div class="sec-h"><span class="tri"><svg><use href="#tri-r"/></svg></span>Effects</div>
+      </div>
+
+      <div class="menu" style="right:8px;top:34px">
+        <div class="mi">Reset Layout</div>
+        <div class="mi">Reset Style</div>
+        <hr>
+        <div class="mi">Copy Properties<span class="k">⌥⌘C</span></div>
+        <div class="mi dis">Paste Properties<span class="k">⌥⌘V</span></div>
+        <div class="mi">Duplicate<span class="k">⌘D</span></div>
+        <hr>
+        <div class="mi"><span class="chk">✓</span>Visible</div>
+        <div class="mi">Lock</div>
+        <hr>
+        <div class="mi">Delete Overlay<span class="k">⌫</span></div>
+      </div>
+
+      <span class="n pin" style="left:22px;top:122px">P2</span>
+      <span class="n pin" style="left:22px;top:188px">4</span>
+      <span class="n pin" style="left:440px;top:58px">P2</span>
+    </div>
+    <ul class="notes">
+      <li><span class="n">4</span>父级 checkbox 取消勾选后，整组子控件（包括 POI）统一下发 <code>.disabled(true)</code>，使用系统的禁用外观，不再用整行降透明度。</li>
+      <li><span class="n">P2</span>Reset 和 Delete 都放进 ⋯ 菜单；每个分组的复位按钮只在 hover header 时出现（借鉴 FCP），两者都可撤销。</li>
+      <li>折叠状态（▸）是按用户、按 section 记住的（HIG：保留用户的展开选择）。</li>
+    </ul>
+  </div>
+
+  <div class="shot">
+    <div class="cap"><div class="t">锁定的 overlay</div><div class="d">可以打开查看；控件禁用，并在顶部给出解锁入口</div></div>
+    <div class="insp h-300">
+      <div class="dh">
+        <span class="popup big"><svg width="14" height="14" style="color:var(--label2)"><use href="#bars"/></svg>Interval HUD Bar<span class="chev"><svg><use href="#updown"/></svg></span></span>
+        <span class="live">3 / 8</span>
+        <span class="sp" style="flex:1"></span>
+        <span class="ib"><svg><use href="#cup"/></svg></span>
+        <span class="ib"><svg><use href="#cdown"/></svg></span>
+        <span class="ib"><svg><use href="#more"/></svg></span>
+      </div>
+      <div class="banner"><svg width="13" height="13" style="color:var(--label2)"><use href="#lock"/></svg>This overlay is locked.<span style="flex:1"></span><span class="btn">Unlock</span></div>
+      <div class="sec-h"><span class="tri"><svg><use href="#tri-d"/></svg></span>Layout</div>
+      <div class="row dis"><span class="lab">Position</span><span class="ctl">
+        <span class="tf flex dis"><span class="pre">X</span>50.0<span class="unit" style="color:var(--label3)">%</span></span>
+        <span class="tf flex dis"><span class="pre">Y</span>92.0<span class="unit" style="color:var(--label3)">%</span></span></span></div>
+      <div class="row dis"><span class="lab">Scale</span><span class="ctl">
+        <span class="sl dis"><span class="track"></span><span class="fill" style="width:50%"></span><span class="knob" style="left:50%"></span></span>
+        <span class="pair"><span class="tf w60 dis">1.00<span class="unit" style="color:var(--label3)">×</span></span><span class="step dis"><i><svg><use href="#up"/></svg></i><i><svg><use href="#down"/></svg></i></span></span></span></div>
+    </div>
+    <ul class="notes">
+      <li>这一状态回答了规范里的 Open Question “lock 是否禁用 inspector 编辑”。设计稿的立场是：禁用编辑，但允许查看，并就地解锁。目前切换器会直接跳过锁定项，用户不知道为什么点不进去。这项需要产品决定。</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================ CONTROLS ============================ -->
+<h2>3 · 控件对照：当前 vs HIG</h2>
+<p class="lede">左列是当前的实现，右列是建议的系统控件。全部使用 <code>.controlSize(.small)</code>；SwiftUI 写法见最后一列。</p>
+
+<table class="cmp">
+  <tr><th>控件</th><th>当前</th><th>建议</th><th>原因 / SwiftUI</th></tr>
+
+  <tr>
+    <td class="k">滑杆数值</td>
+    <td><div class="demo cur"><span class="sl"><span class="track" style="background:#3a3f45"></span><span class="fill" style="width:45%;background:#5b6fe0"></span><span class="knob" style="left:45%;background:#9aa0a6"></span></span><span class="c-field">376</span></div><span class="tag bad">只读 Text 套了输入框外观</span></td>
+    <td><div class="demo"><span class="sl"><span class="track"></span><span class="fill" style="width:45%"></span><span class="knob" style="left:45%"></span></span><span class="pair"><span class="tf w60">376<span class="unit">px</span></span><span class="step"><i><svg><use href="#up"/></svg></i><i><svg><use href="#down"/></svg></i></span></span></div></td>
+    <td class="why">sliders / text-fields / steppers。<br><code>TextField(value:format:)</code> + <code>Stepper</code>，提交时调用 <code>finishContinuousEdit()</code>。</td>
+  </tr>
+
+  <tr>
+    <td class="k">分组启用</td>
+    <td><div class="demo cur" style="font-weight:600"><svg width="14" height="14"><use href="#map"/></svg>Background Map<span style="flex:1"></span><span class="c-switch"></span><svg width="14" height="14" style="color:#888"><use href="#cup"/></svg></div><span class="tag bad">mini switch + 行尾 chevron.up</span></td>
+    <td><div class="demo" style="font-weight:600"><span class="tri" style="color:var(--label2)"><svg width="9" height="9"><use href="#tri-d"/></svg></span><span class="cb on"><svg><use href="#check"/></svg></span>Background Map</div></td>
+    <td class="why">toggles（层级设置用 checkbox）、disclosure-controls（▸/▾ 放在标题前）。<br><code>DisclosureGroup</code> 的 label 里放 <code>Toggle(.checkbox)</code>。</td>
+  </tr>
+
+  <tr>
+    <td class="k">单项开关</td>
+    <td><div class="demo cur"><span style="color:#b6bec7;width:96px">Map POIs</span><span style="flex:1"></span><span class="c-switch" style="background:#4e63d6"></span></div><span class="tag bad">switch，且父级关闭时仍然可用</span></td>
+    <td><div class="demo"><span style="width:96px"></span><span class="cbl"><span class="cb on"><svg><use href="#check"/></svg></span>Show points of interest</span></div></td>
+    <td class="why">toggles（单个开关设置优先用 checkbox）。<br><code>Toggle("…", isOn:).toggleStyle(.checkbox)</code>，父级用 <code>.disabled</code> 统一下发。</td>
+  </tr>
+
+  <tr>
+    <td class="k">选值菜单</td>
+    <td><div class="demo cur"><span class="c-menu">Dark<svg width="12" height="12" style="color:#888"><use href="#cdown"/></svg></span></div><span class="tag bad">单箭头 = pull-down 的语义</span></td>
+    <td><div class="demo"><span class="popup" style="width:150px">Dark<span class="chev"><svg><use href="#updown"/></svg></span></span></div></td>
+    <td class="why">pop-up-buttons。<br><code>Picker(...).pickerStyle(.menu)</code>（渲染为 NSPopUpButton）。</td>
+  </tr>
+
+  <tr>
+    <td class="k">二选一</td>
+    <td><div class="demo cur"><span class="c-seg"><i>Square</i><i class="on">Circle</i></span></div><span class="tag">撑满整行 + 自定义蓝色 tint</span></td>
+    <td><div class="demo"><span class="seg" style="flex:none;width:140px"><i>Square</i><i class="on">Circle</i></span></div></td>
+    <td class="why">segmented-controls。保留控件，但宽度按内容决定，去掉 <code>.tint</code>，让选中段遵循系统外观和强调色。</td>
+  </tr>
+
+  <tr>
+    <td class="k">图标按钮</td>
+    <td><div class="demo cur"><span class="c-btn"><svg><use href="#eye"/></svg></span><span class="c-btn"><svg><use href="#lockopen"/></svg></span><span class="c-btn" style="color:#ff5a5f"><svg><use href="#trash"/></svg></span></div><span class="tag bad">没有按下态；常驻；红色</span></td>
+    <td><div class="demo"><span class="ib"><svg><use href="#eye"/></svg></span><span class="ib hov"><svg><use href="#eye"/></svg></span><span class="ib press"><svg><use href="#eye"/></svg></span><span style="color:var(--label2);font-size:11px;margin-left:6px">默认 / 悬停 / 按下</span></div></td>
+    <td class="why">buttons（自定义按钮必须有按下态）。<br><code>.buttonStyle(.borderless)</code>，或读取 <code>configuration.isPressed</code> 的自定义 ButtonStyle。</td>
+  </tr>
+
+  <tr>
+    <td class="k">Done / Reset</td>
+    <td><div class="demo cur"><span class="c-reset">Reset</span><span class="c-done">✓ Done</span></div><span class="tag bad">非模态 inspector 里放了模态提交</span></td>
+    <td><div class="demo"><span style="color:var(--label2)">（删除）</span><span style="flex:1"></span><span class="ib"><svg><use href="#more"/></svg></span><span style="color:var(--label2);font-size:11px">→ Reset Style</span></div></td>
+    <td class="why">panels（inspector 修改即时生效）、buttons（醒目样式只留给最可能执行的操作）。</td>
+  </tr>
+</table>
+
+<h2>4 · 度量</h2>
+<div class="spec">
+  <div><b>控件</b><code>.controlSize(.small)</code>：text field、pop-up、segmented 高约 20pt，checkbox 14pt，slider knob 13pt。</div>
+  <div><b>行</b>属性行最小高 26pt（当前 34pt），列表行 28pt；section header 26pt。</div>
+  <div><b>文字</b>标题 13pt semibold；标签 12pt secondaryLabel；数值 12pt <code>.monospacedDigit()</code>；不使用 10pt。</div>
+  <div><b>标签列</b>保持 104–112pt，左对齐；子项缩进 12pt。</div>
+  <div><b>颜色</b>label / secondaryLabel / tertiaryLabel / separator / controlAccentColor，保持深色外观，但自动跟随 Increase Contrast。</div>
+  <div><b>键盘</b>Tab 在数值框之间移动；↑/↓ 调整数值；Esc 取消选择并回到列表；⌘[ / ⌘] 切换上一个、下一个 overlay。</div>
+</div>
+
+</body>
+</html>
