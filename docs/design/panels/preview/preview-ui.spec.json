@@ -55,7 +55,7 @@
         { "type": "videoFrame", "sizing": "fitted project resolution" },
         { "type": "safeGuides", "visibleWhen": "ProjectDocument.showPreviewGuides == true", "hitTesting": false },
         { "type": "overlays", "coordinateSpace": "fitted canvas" },
-        { "type": "selectionHandles", "visibleWhen": "overlay selected" },
+        { "type": "selectionBorder", "visibleWhen": "overlay selected" },
         { "type": "hud", "label": "Guides On", "optional": true, "visibleWhen": "ProjectDocument.showPreviewGuides == true" }
       ]
     },

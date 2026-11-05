@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Timeline · HIG 设计稿</title>
+<style>
+  :root {
+    --page: #0e0f10; --page-text: #e8e8ea; --page-muted: #8d9096; --note: #ffd166;
+    --win: #1e1e1e; --panel: #222; --header: #2b2b2b; --labelcol: #262626;
+    --sep: rgba(255,255,255,.10);
+    --label: rgba(255,255,255,.86); --label2: rgba(255,255,255,.55); --label3: rgba(255,255,255,.28);
+    --accent: #0a84ff; --control: rgba(255,255,255,.14);
+    --clip: #3d74d9; --fit: #3aa65a; --rest: #4b6f8f; --wu: #c58a2b; --pause: #6b6b6b; --playhead: #e4525a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 40px 48px 80px; background: var(--page); color: var(--page-text);
+    font: 13px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: -.01em; }
+  h2 { font-size: 17px; margin: 56px 0 6px; }
+  .lede { color: var(--page-muted); max-width: 880px; margin: 0 0 8px; }
+  .lede b { color: var(--page-text); font-weight: 600; }
+  .grid { display: flex; flex-wrap: wrap; gap: 36px; margin-top: 22px; align-items: flex-start; }
+  .shot > .cap { margin-bottom: 10px; }
+  .cap .t { font-weight: 600; font-size: 13px; }
+  .cap .d { color: var(--page-muted); font-size: 12px; }
+  .notes { margin: 12px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--page-muted); max-width: 860px; }
+  .notes li { margin: 5px 0; }
+  .notes li .n { margin-right: 6px; vertical-align: 1px; }
+  .n {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px;
+    padding: 0 4px; border-radius: 8px; background: var(--note); color: #1a1a1a; font-size: 10px; font-weight: 700; line-height: 1;
+  }
+  .pin { position: absolute; z-index: 8; box-shadow: 0 0 0 2px var(--page); }
+  .tag { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px; background: #2b2e34; color: var(--page-muted); margin-bottom: 6px; }
+  .tag.ok { background: #16351f; color: #7ad08f; }
+  .tag.bad { background: #3a1a1a; color: #ff8c84; }
+  code { font: 11.5px ui-monospace, "SF Mono", Menlo, monospace; color: #cfd3da; background: #1b1d21; padding: 1px 4px; border-radius: 3px; }
+
+  .pane { position: relative; width: 860px; background: var(--panel); border: 1px solid #000; border-radius: 8px; overflow: hidden; color: var(--label); font-size: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+  .ph { height: 36px; display: flex; align-items: center; gap: 6px; padding: 0 10px 0 12px; background: var(--header); border-bottom: 1px solid var(--sep); }
+  .ph .sp { flex: 1; }
+  .ph .lab { color: var(--label2); font-size: 11px; }
+  .ib { width: 24px; height: 22px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; color: var(--label2); }
+  .ib svg { width: 14px; height: 14px; }
+  .ib.on { background: rgba(10,132,255,.22); color: var(--accent); }
+  .ib.hov { background: rgba(255,255,255,.10); color: var(--label); }
+  .pulldown { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 6px; border-radius: 5px; color: var(--label); font-size: 12px; }
+  .pulldown.hov { background: rgba(255,255,255,.10); }
+  .pulldown svg.i { width: 14px; height: 14px; color: var(--label2); }
+  .pulldown svg.c { width: 8px; height: 8px; color: var(--label2); }
+  .pulldown .cnt { color: var(--label2); font-size: 11px; }
+  .sl { position: relative; width: 150px; height: 16px; }
+  .sl .track { position: absolute; left: 0; right: 0; top: 7px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.16); }
+  .sl .fill { position: absolute; left: 0; top: 7px; height: 3px; border-radius: 2px; background: var(--accent); }
+  .sl .knob { position: absolute; top: 1.5px; width: 13px; height: 13px; border-radius: 50%; margin-left: -6.5px; background: #cfcfcf; box-shadow: 0 .5px 2px rgba(0,0,0,.6), inset 0 .5px 0 #fff; }
+  .zread { font-size: 11px; color: var(--label2); font-variant-numeric: tabular-nums; width: 44px; text-align: right; }
+  .btn { height: 20px; padding: 0 8px; border-radius: 5px; background: var(--control); color: var(--label); font-size: 11px; display: inline-flex; align-items: center; box-shadow: inset 0 .5px 0 rgba(255,255,255,.12), 0 .5px 1px rgba(0,0,0,.5); }
+
+  /* current chrome */
+  .cur .ph { height: 54px; gap: 10px; }
+  .cbtn { width: 30px; height: 30px; border-radius: 6px; background: #20252a; border: 1px solid #2b3238; display: inline-flex; align-items: center; justify-content: center; color: #b6bec7; }
+  .cbtn svg { width: 15px; height: 15px; }
+  .cnum { font: 500 13px ui-monospace, Menlo, monospace; color: #b6bec7; width: 48px; text-align: right; }
+
+  /* timeline body */
+  .tl { position: relative; height: 196px; display: grid; grid-template-columns: 110px 1fr; }
+  .cols { background: var(--labelcol); border-right: 1px solid var(--sep); }
+  .cols .corner { height: 28px; border-bottom: 1px solid var(--sep); background: var(--header); }
+  .cols .lr { height: 40px; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 10px; border-bottom: 1px solid rgba(255,255,255,.05); font-size: 11px; font-weight: 500; }
+  .cols .lr.fitr { height: 32px; font-weight: 600; }
+  .cols .lr .vis { margin-left: auto; color: var(--label2); width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; }
+  .cols .lr .vis svg { width: 13px; height: 13px; }
+  .cols .lr .vis.off { color: var(--label3); }
+  .cols .lr.dim .nm { color: var(--label3); }
+  .cols .lr.hov { background: rgba(255,255,255,.04); }
+  .lanes { position: relative; overflow: hidden; }
+  .ruler { height: 28px; border-bottom: 1px solid var(--sep); background: var(--header); position: relative; }
+  .ruler span { position: absolute; top: 4px; font-size: 10px; color: var(--label2); font-variant-numeric: tabular-nums; transform: translateX(3px); }
+  .ruler i { position: absolute; bottom: 0; width: 1px; height: 7px; background: rgba(255,255,255,.18); }
+  .lane { position: relative; height: 40px; border-bottom: 1px solid rgba(255,255,255,.05); }
+  .lane.alt { background: rgba(255,255,255,.02); }
+  .lane.fitl { height: 32px; }
+  .clip { position: absolute; top: 6px; height: 28px; background: var(--clip); border: 1px solid rgba(0,0,0,.55); border-radius: 4px; color: #fff; font-size: 11px; padding: 0 7px; display: flex; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .clip.join-r { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .clip.join-l { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+  .clip.sel { box-shadow: inset 0 0 0 2px #fff; }
+  .clip.ghost { opacity: .72; }
+  .seg { position: absolute; top: 5px; height: 22px; border: 1px solid rgba(0,0,0,.45); font-size: 9.5px; font-weight: 600; color: rgba(255,255,255,.9); display: flex; align-items: center; padding: 0 5px; overflow: hidden; white-space: nowrap; }
+  .playhead { position: absolute; top: 14px; bottom: 0; width: 2px; margin-left: -1px; background: rgba(228,82,90,.92); z-index: 4; }
+  .playhead::before { content: ""; position: absolute; top: 0; left: -5px; border: 6px solid transparent; border-top-color: var(--playhead); border-bottom: 0; }
+  .playhead.grab { box-shadow: 0 0 0 3px rgba(228,82,90,.18); }
+  .cursor { position: absolute; z-index: 7; font-size: 17px; filter: drop-shadow(0 1px 1px rgba(0,0,0,.7)); }
+  .tip { position: absolute; z-index: 7; font-size: 11px; background: #3a3a3a; color: var(--label); padding: 2px 7px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,.5); white-space: nowrap; }
+  .pill { position: absolute; z-index: 7; font-size: 11px; background: rgba(43,43,43,.97); border: 1px solid var(--sep); color: var(--label); padding: 2px 9px; border-radius: 10px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+  .menu {
+    position: absolute; z-index: 9; min-width: 210px; padding: 5px; background: rgba(40,40,40,.97); border-radius: 8px; font-size: 13px;
+    box-shadow: 0 0 0 .5px rgba(255,255,255,.16), 0 12px 30px rgba(0,0,0,.6);
+  }
+  .menu .mi { height: 22px; display: flex; align-items: center; gap: 6px; padding: 0 10px 0 22px; border-radius: 4px; color: var(--label); position: relative; }
+  .menu .mi .k { margin-left: auto; color: var(--label2); font-size: 12px; padding-left: 18px; }
+  .menu .mi .chk { position: absolute; left: 7px; font-size: 11px; }
+  .menu .mi.on { background: var(--accent); color: #fff; }
+  .menu .mi.on .k { color: rgba(255,255,255,.8); }
+  .menu .mi.dis { color: var(--label3); }
+  .menu .sub2 { font-size: 11px; color: var(--label2); padding: 0 10px 2px 22px; }
+  .menu hr { border: 0; height: 1px; background: rgba(255,255,255,.1); margin: 5px 10px; }
+
+  .mini { position: relative; width: 410px; height: 150px; background: var(--panel); border: 1px solid #000; border-radius: 8px; overflow: hidden; }
+  .mini .lane { position: absolute; left: 0; right: 0; }
+  .mini .lbl { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 10px; font-size: 11px; background: rgba(0,0,0,.45); color: var(--label); }
+
+  table.cmp { border-collapse: collapse; margin-top: 18px; width: 100%; max-width: 1180px; }
+  table.cmp th, table.cmp td { text-align: left; vertical-align: middle; padding: 12px 14px; border-bottom: 1px solid #23252a; }
+  table.cmp th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--page-muted); font-weight: 600; }
+  table.cmp td.k { font-weight: 600; width: 150px; }
+  table.cmp td.why { color: var(--page-muted); font-size: 12px; width: 330px; }
+  .demo { background: var(--header); border-radius: 6px; padding: 10px 12px; width: 340px; color: var(--label); font-size: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="eye" viewBox="0 0 16 16"><path d="M1 8s2.6-5 7-5 7 5 7 5-2.6 5-7 5-7-5-7-5Z" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="8" r="2.2" fill="currentColor"/></symbol>
+    <symbol id="eyeslash" viewBox="0 0 16 16"><path d="M1 8s2.6-5 7-5 7 5 7 5-2.6 5-7 5-7-5-7-5Z" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M2.5 2.5l11 11" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="gap" viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4 8h8M4 8l2-2M4 8l2 2M12 8l-2-2M12 8l-2 2" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></symbol>
+    <symbol id="gapfill" viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="11" rx="2" fill="currentColor"/><path d="M4 8h8M4 8l2-2M4 8l2 2M12 8l-2-2M12 8l-2 2" fill="none" stroke="#20252a" stroke-width="1.2" stroke-linecap="round"/></symbol>
+    <symbol id="zout" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m10.5 10.5 3.5 3.5M5 7h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="zin" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m10.5 10.5 3.5 3.5M5 7h4M7 5v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="chev" viewBox="0 0 10 10"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<h1>Timeline · HIG 设计稿</h1>
+<p class="lede">
+  配套文档：<code>timeline-hig-review.md</code>。这份设计稿保留 AppKit 自绘画布和现有的视觉语言，
+  只调整 <b>Header 控件</b>、<b>轨道头</b>、<b>指针反馈</b>和<b>右键菜单</b>。
+  无障碍元素（2）和 C 键修复（1）没有视觉变化，只在文末列出。
+  黄色编号对应文档里的条目：P1 为 1–4，P2 为 5–9。
+</p>
+
+<!-- ============================ HEADER ============================ -->
+<h2>1 · Header 与轨道头：当前 vs HIG</h2>
+
+<div class="grid">
+  <div class="shot">
+    <div class="cap"><span class="tag bad">当前</span><div class="t">折叠空隙已打开 · Layer 2 已从预览中排除</div><div class="d">按钮看不出处于折叠状态；eye 按钮看不出有轨道被排除；缩放读数 “37” 没有单位</div></div>
+    <div class="pane cur">
+      <div class="ph">
+        <span class="lab" style="color:#b6bec7">Preview</span>
+        <span class="cbtn"><svg><use href="#eye"/></svg></span>
+        <span class="sp"></span>
+        <span class="cbtn"><svg><use href="#gap"/></svg></span>
+        <span class="lab" style="color:#b6bec7">Zoom</span>
+        <div class="sl" style="width:180px"><div class="track"></div><div class="fill" style="width:38%"></div><div class="knob" style="left:38%"></div></div>
+        <span class="cnum">37</span>
+      </div>
+      <div class="tl">
+        <div class="cols">
+          <div class="corner"></div>
+          <div class="lr fitr">Activity</div>
+          <div class="lr">Layer 1</div>
+          <div class="lr">Layer 2</div>
+        </div>
+        <div class="lanes">
+          <div class="ruler">
+            <i style="left:0"></i><span style="left:0">00:00</span><i style="left:150px"></i><span style="left:150px">05:00</span><i style="left:300px"></i><span style="left:300px">10:00</span><i style="left:450px"></i><span style="left:450px">15:00</span><i style="left:600px"></i><span style="left:600px">20:00</span>
+          </div>
+          <div class="lane fitl">
+            <div class="seg" style="left:0;width:90px;background:var(--wu)">WU</div>
+            <div class="seg" style="left:90px;width:120px;background:var(--fit)">RUN</div>
+            <div class="seg" style="left:210px;width:50px;background:var(--rest)">REST</div>
+            <div class="seg" style="left:260px;width:120px;background:var(--fit)">RUN</div>
+            <div class="seg" style="left:380px;width:50px;background:var(--rest)">REST</div>
+            <div class="seg" style="left:430px;width:140px;background:var(--fit)">RUN</div>
+          </div>
+          <div class="lane">
+            <div class="clip ghost join-r" style="left:40px;width:150px">PRO_VID_0839_001</div>
+            <div class="clip ghost join-l" style="left:190px;width:100px">PRO_VID_0858_002</div>
+            <div class="clip sel" style="left:330px;width:190px">PRO_VID_0905_003</div>
+          </div>
+          <div class="lane alt">
+            <div class="clip ghost" style="left:120px;width:160px">GOPRO_0412</div>
+          </div>
+          <div class="playhead" style="left:400px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="shot">
+    <div class="cap"><span class="tag ok">HIG</span><div class="t">同一状态</div><div class="d">toggle 按钮显示激活态；轨道头上的可见性开关；缩放两端有按钮，读数改为可见时长</div></div>
+    <div class="pane">
+      <div class="ph">
+        <span class="pulldown hov"><svg class="i"><use href="#eye"/></svg>Preview Layers<span class="cnt">1 of 2</span><svg class="c"><use href="#chev"/></svg></span>
+        <span class="sp"></span>
+        <span class="ib on"><svg><use href="#gap"/></svg></span>
+        <span style="width:8px"></span>
+        <span class="ib"><svg><use href="#zout"/></svg></span>
+        <div class="sl"><div class="track"></div><div class="fill" style="width:38%"></div><div class="knob" style="left:38%"></div></div>
+        <span class="ib"><svg><use href="#zin"/></svg></span>
+        <span class="zread">2 min</span>
+        <span class="btn">Fit</span>
+      </div>
+      <div class="tl">
+        <div class="cols">
+          <div class="corner"></div>
+          <div class="lr fitr">Activity</div>
+          <div class="lr"><span class="nm">Layer 1</span><span class="vis"><svg><use href="#eye"/></svg></span></div>
+          <div class="lr dim hov"><span class="nm">Layer 2</span><span class="vis off"><svg><use href="#eyeslash"/></svg></span></div>
+        </div>
+        <div class="lanes">
+          <div class="ruler">
+            <i style="left:0"></i><span style="left:0">00:00</span><i style="left:150px"></i><span style="left:150px">05:00</span><i style="left:300px"></i><span style="left:300px">10:00</span><i style="left:450px"></i><span style="left:450px">15:00</span><i style="left:600px"></i><span style="left:600px">20:00</span>
+          </div>
+          <div class="lane fitl">
+            <div class="seg" style="left:0;width:90px;background:var(--wu)">WU</div>
+            <div class="seg" style="left:90px;width:120px;background:var(--fit)">RUN 1</div>
+            <div class="seg" style="left:210px;width:50px;background:var(--rest)">REST</div>
+            <div class="seg" style="left:260px;width:120px;background:var(--fit)">RUN 2</div>
+            <div class="seg" style="left:380px;width:50px;background:var(--rest)">REST</div>
+            <div class="seg" style="left:430px;width:140px;background:var(--fit)">RUN 3</div>
+          </div>
+          <div class="lane">
+            <div class="clip join-r" style="left:40px;width:150px">PRO_VID_0839_001</div>
+            <div class="clip join-l" style="left:190px;width:100px">PRO_VID_0858_002</div>
+            <div class="clip sel" style="left:330px;width:190px">PRO_VID_0905_003</div>
+          </div>
+          <div class="lane alt">
+            <div class="clip" style="left:120px;width:160px;opacity:.45">GOPRO_0412</div>
+          </div>
+          <div class="playhead" style="left:400px"></div>
+          <div class="cursor" style="left:430px;top:80px;font-size:15px">🚫</div>
+          <div class="tip" style="left:446px;top:100px">Show gaps to move clips</div>
+        </div>
+      </div>
+      <span class="n pin" style="left:528px;top:10px">4</span>
+      <span class="n pin" style="left:6px;top:10px">5</span>
+      <span class="n pin" style="left:90px;top:150px">5</span>
+      <span class="n pin" style="left:800px;top:32px">6</span>
+      <span class="n pin" style="left:638px;top:104px">3</span>
+    </div>
+    <ul class="notes">
+      <li><span class="n">4</span>折叠空隙用 <code>Toggle</code> + <code>.toggleStyle(.button)</code>：打开时强调色图标加浅色底；图标固定，不靠实心和空心区分状态。Timeline 菜单增加 “Hide Gaps Without Video”，带勾选状态。</li>
+      <li><span class="n">5</span>带指示器的 pull-down “Preview Layers”，有轨道被排除时显示 “1 of 2”。每条轨道头上都有 eye 开关，被排除的轨道名字和 clip 变暗。</li>
+      <li><span class="n">6</span>缩放滑杆两端是 ⌘- / ⌘+ 按钮；读数是可见时长（“2 min”），右侧 Fit 按钮对应 ⇧Z。</li>
+      <li><span class="n">3</span>折叠模式下悬停 clip，指针显示禁止符号，并提示 “Show gaps to move clips”。</li>
+      <li>未选中的 clip 改为不透明底色，选中靠白色描边区分；宽度足够时，Activity 分段内显示 “RUN 2” 这样的序号。</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================ POINTER ============================ -->
+<h2>2 · 指针反馈</h2>
+<p class="lede">指针形状反映当前位置可以做的操作。四种状态都由 <code>TimelineCanvasNSView</code> 在 <code>mouseMoved</code> 或 <code>resetCursorRects</code> 中设置。</p>
+
+<div class="grid">
+  <div class="mini">
+    <div class="lane" style="top:30px"><div class="clip" style="left:60px;width:200px">PRO_VID_0839_001</div></div>
+    <div class="cursor" style="left:150px;top:42px">✋</div>
+    <div class="lbl">展开模式悬停 clip：open hand；拖动时 closed hand</div>
+  </div>
+  <div class="mini">
+    <div class="lane" style="top:30px"><div class="clip" style="left:60px;width:200px">PRO_VID_0839_001</div></div>
+    <div class="cursor" style="left:150px;top:42px;font-size:15px">🚫</div>
+    <div class="tip" style="left:168px;top:66px">Show gaps to move clips</div>
+    <div class="lbl">折叠模式悬停 clip：operationNotAllowed + help</div>
+  </div>
+  <div class="mini">
+    <div class="ruler" style="position:absolute;left:0;right:0;top:0"><span style="left:40px">10:00</span><span style="left:240px">15:00</span><i style="left:40px"></i><i style="left:240px"></i></div>
+    <div class="lane" style="top:30px"><div class="clip" style="left:20px;width:300px">PRO_VID_0905_003</div></div>
+    <div class="playhead grab" style="left:180px"></div>
+    <div class="cursor" style="left:172px;top:44px;font-size:16px">⇔</div>
+    <div class="pill" style="left:140px;top:-2px;display:none"></div>
+    <div class="lbl">播放头线 ±3pt：可以直接抓取拖动，resizeLeftRight</div>
+  </div>
+  <div class="mini">
+    <div class="ruler" style="position:absolute;left:0;right:0;top:0"><span style="left:40px">10:00</span><span style="left:240px">15:00</span><i style="left:40px"></i><i style="left:240px"></i></div>
+    <div class="pill" style="left:150px;top:32px">12:37 · 9:51 AM · 2.84 km</div>
+    <div class="cursor" style="left:200px;top:8px;font-size:15px">⇕</div>
+    <div class="lbl">悬停 ruler：读数 11pt，宽度随内容自适应</div>
+  </div>
+</div>
+<ul class="notes">
+  <li><span class="n">3</span>悬停 ruler 时使用定位指针（示意为 ⇕，实际可用 I-beam 或自定义的竖线指针）。</li>
+  <li><span class="n">9</span>悬停读数字号 11pt，宽度随内容自适应。不新增播放头时间读数。</li>
+</ul>
+
+<!-- ============================ MENUS ============================ -->
+<h2>3 · 右键菜单与选择</h2>
+<p class="lede">Clip 菜单只放 clip 命令；删除轨道只出现在轨道头。右键已选中的 clip 时保留多选，菜单作用于全部选中项。</p>
+
+<div class="grid">
+  <div class="shot">
+    <div class="cap"><span class="tag bad">当前</span><div class="t">右键 clip（之前框选了 2 个）</div><div class="d">多选被改成单选；菜单里混入删除整条轨道</div></div>
+    <div class="pane" style="width:420px;height:210px">
+      <div class="tl" style="grid-template-columns:90px 1fr;height:210px">
+        <div class="cols"><div class="corner"></div><div class="lr">Layer 1</div><div class="lr">Layer 2</div></div>
+        <div class="lanes">
+          <div class="ruler"></div>
+          <div class="lane"><div class="clip ghost" style="left:10px;width:120px">PRO_VID_001</div><div class="clip sel" style="left:140px;width:130px">PRO_VID_003</div></div>
+          <div class="lane alt"><div class="clip ghost" style="left:60px;width:120px">GOPRO_0412</div></div>
+          <div class="menu" style="left:30px;top:76px;min-width:290px">
+            <div class="mi">Apply +1.23s Offset to All Clips in Layer 1</div>
+            <div class="mi">Reset Offset</div>
+            <hr>
+            <div class="mi">Delete Clip</div>
+            <hr>
+            <div class="mi on">Delete Layer 1</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="shot">
+    <div class="cap"><span class="tag ok">HIG</span><div class="t">右键已选中的 clip</div><div class="d">保留多选，标题写明数量；快捷键显示在右侧</div></div>
+    <div class="pane" style="width:420px;height:210px">
+      <div class="tl" style="grid-template-columns:90px 1fr;height:210px">
+        <div class="cols"><div class="corner"></div><div class="lr"><span class="nm">Layer 1</span></div><div class="lr"><span class="nm">Layer 2</span></div></div>
+        <div class="lanes">
+          <div class="ruler"></div>
+          <div class="lane"><div class="clip sel" style="left:10px;width:120px">PRO_VID_001</div><div class="clip sel" style="left:140px;width:130px">PRO_VID_003</div></div>
+          <div class="lane alt"><div class="clip" style="left:60px;width:120px">GOPRO_0412</div></div>
+          <div class="menu" style="left:40px;top:76px;min-width:230px">
+            <div class="mi">Apply Offset to Layer</div>
+            <div class="sub2">+1.23s from PRO_VID_003</div>
+            <div class="mi">Reset Offset</div>
+            <hr>
+            <div class="mi on">Delete 2 Clips<span class="k">⌫</span></div>
+          </div>
+        </div>
+      </div>
+      <span class="n pin" style="left:396px;top:10px">8</span>
+    </div>
+  </div>
+
+  <div class="shot">
+    <div class="cap"><span class="tag ok">HIG</span><div class="t">右键轨道头</div><div class="d">轨道级命令放在轨道头上</div></div>
+    <div class="pane" style="width:420px;height:210px">
+      <div class="tl" style="grid-template-columns:90px 1fr;height:210px">
+        <div class="cols"><div class="corner"></div><div class="lr hov" style="background:rgba(255,255,255,.08)"><span class="nm">Layer 1</span><span class="vis"><svg><use href="#eye"/></svg></span></div><div class="lr"><span class="nm">Layer 2</span><span class="vis"><svg><use href="#eye"/></svg></span></div></div>
+        <div class="lanes">
+          <div class="ruler"></div>
+          <div class="lane"><div class="clip" style="left:10px;width:120px">PRO_VID_001</div><div class="clip" style="left:140px;width:130px">PRO_VID_003</div></div>
+          <div class="lane alt"><div class="clip" style="left:60px;width:120px">GOPRO_0412</div></div>
+        </div>
+      </div>
+      <div class="menu" style="left:40px;top:64px;min-width:220px">
+        <div class="mi"><span class="chk">✓</span>Show in Preview</div>
+        <div class="mi">Select All Clips in Layer</div>
+        <div class="mi">Rename…</div>
+        <hr>
+        <div class="mi on">Delete Layer 1…</div>
+      </div>
+    </div>
+  </div>
+</div>
+<ul class="notes">
+  <li><span class="n">7</span>⌘ 点击切换单个 clip 的选中状态；Shift 点击选中同一轨道上从锚点到当前 clip 的范围；⌘A 选中全部 clip。都通过 <code>project.selectClips</code>。</li>
+  <li><span class="n">8</span>“Delete Layer 1…” 带省略号，表示还需要一步确认；它删除整条轨道，即使能撤销，也不应和 clip 命令混在一起。</li>
+</ul>
+
+<!-- ============================ NON-VISUAL ============================ -->
+<h2>4 · 没有视觉变化的条目</h2>
+<table class="cmp">
+  <tr><th>条目</th><th>行为</th><th>依据</th></tr>
+  <tr>
+    <td class="k"><span class="n">1</span> C 键悬停拖播</td>
+    <td><div class="demo"><span>first responder 是文本输入时，<code>keyEventMonitor</code> 直接返回 <code>event</code>，C 照常输入。复用 PR #58 的 <code>isTextInput</code>。</span></div></td>
+    <td class="why"><code>keyboards</code>：自定义快捷键只在相关上下文中生效，不能抢走文本输入</td>
+  </tr>
+  <tr>
+    <td class="k"><span class="n">2</span> VoiceOver</td>
+    <td><div class="demo">画布为 group “Timeline”；轨道 “Layer 1, 3 clips”；clip 读出名称、起点、时长，可按下选中；播放头为 slider，increment / decrement 逐帧移动。</div></td>
+    <td class="why"><code>accessibility</code>：自定义控件必须提供无障碍信息</td>
+  </tr>
+  <tr>
+    <td class="k">缩放手势</td>
+    <td><div class="demo">⌘ 滚轮和捏合以指针为中心缩放：保持现状，已经符合 HIG。</div></td>
+    <td class="why"><code>gestures</code>：使用系统的标准手势含义</td>
+  </tr>
+</table>
+
+</body>
+</html>
