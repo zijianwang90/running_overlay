@@ -119,7 +119,7 @@ ADR 0013 records the design. Code lives in
     its own spine item.
   - One overlay covers each time region, owned by the spine clip there. Overlapping angles therefore never stack duplicate overlays, which
     would composite twice. Overlay lane numbers are relative to the parent:
-    overlays sit above every source lane. A connected clip's `offset` is in
+    overlays use one sequence-wide lane above every source lane. A connected clip's `offset` is in
     the parent's local time, not sequence time.
   - In full-activity mode every clip reads the same movie, so an empty stretch
     between clips is filled by the overlay movie itself in the spine. The

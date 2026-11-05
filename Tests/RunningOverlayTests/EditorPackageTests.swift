@@ -494,6 +494,11 @@ struct EditorPackageTests {
         #expect(spineClips.compactMap { $0.attribute(forName: "offset")?.stringValue } == ["0s", "5s"])
         #expect(spineClips.compactMap { $0.attribute(forName: "start")?.stringValue } == ["0s", "0s"])
         #expect(spineClips.compactMap { $0.attribute(forName: "duration")?.stringValue } == ["5s", "10s"])
+        // The first parent has no connected source, while the second does.
+        // Both overlay pieces must reserve the same sequence-wide lane.
+        let overlayPieces = try elements(in: document, xpath: "//asset-clip[@name='a_overlay.mov' or @name='b_overlay.mov']")
+        #expect(overlayPieces.count == 2)
+        #expect(overlayPieces.compactMap { $0.attribute(forName: "lane")?.stringValue } == ["2", "2"])
         try expectConnectedClipsFitTheirParent(document)
 
         let sequenceDuration = document.rootElement()?.elements(forName: "library").first?

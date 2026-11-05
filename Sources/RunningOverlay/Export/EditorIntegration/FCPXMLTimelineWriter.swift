@@ -160,8 +160,7 @@ struct EditorPackageTimelineClip: Equatable {
 /// - Overlapping clips from other tracks become connected clips on lanes above
 ///   the spine item that contains their start. Lanes are packed so clips that
 ///   overlap in time never share a lane.
-/// - Overlays sit above every source lane. Overlays that overlap in time stack
-///   on separate lanes; sequential ones share the lowest lane.
+/// - One overlay covers each region, on a shared lane above all source lanes.
 ///
 /// The asset media URLs are absolute and percent-encoded; FCPXML has no way to
 /// express package-relative media paths.
@@ -638,6 +637,14 @@ private struct TimelineLayout {
             items.append(item)
         }
 
+        // Reserve one lane for overlays across the entire sequence, including
+        // spine items with fewer connected source clips.
+        let overlayLane = (items.flatMap(\.children).map(\.lane).max() ?? 0) + 1
+        for index in items.indices {
+            for overlayIndex in items[index].overlays.indices {
+                items[index].overlays[overlayIndex].lane = overlayLane
+            }
+        }
         self.items = items
         self.sequenceFrames = items.last.map { $0.startFrame + $0.durationFrames } ?? 0
     }
