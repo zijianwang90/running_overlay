@@ -191,6 +191,13 @@ struct RunningOverlayApp: App {
                     project.toggleTimelineFitZoom()
                 }
                 .keyboardShortcut("z", modifiers: [.shift])
+
+                Divider()
+
+                Toggle("Hide Gaps Without Video", isOn: Binding(
+                    get: { project.isTimelineCollapsed },
+                    set: { project.setTimelineCollapsed($0) }
+                ))
             }
         }
     }

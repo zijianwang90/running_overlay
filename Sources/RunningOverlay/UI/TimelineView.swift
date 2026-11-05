@@ -9,10 +9,6 @@ struct TimelineView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
-                Text("Preview")
-                    .font(EditorTheme.captionFont)
-                    .foregroundStyle(EditorTheme.textSecondary)
-
                 Menu {
                     ForEach(project.timeline.tracks) { track in
                         Toggle(track.name, isOn: Binding(
@@ -21,24 +17,43 @@ struct TimelineView: View {
                         ))
                     }
                 } label: {
-                    Image(systemName: "eye")
+                    Label {
+                        Text(previewLayersTitle)
+                    } icon: {
+                        Image(systemName: previewLayerCount == nil ? "eye" : "eye.slash")
+                    }
+                    .labelStyle(.titleAndIcon)
                 }
-                .buttonStyle(EditorIconButtonStyle())
-                .help("Preview Track Visibility")
+                .menuStyle(.button)
+                .buttonStyle(.borderless)
+                .menuIndicator(.visible)
+                .fixedSize()
+                .font(EditorTheme.captionFont)
+                .foregroundStyle(EditorTheme.textSecondary)
+                .disabled(project.timeline.tracks.isEmpty)
+                .help("Choose which layers the preview shows")
 
                 Spacer()
-                Button {
-                    project.toggleTimelineCollapse()
-                } label: {
-                    Image(systemName: project.isTimelineCollapsed ? "arrow.left.and.right.square" : "arrow.left.and.right.square.fill")
+                Toggle(isOn: Binding(
+                    get: { project.isTimelineCollapsed },
+                    set: { project.setTimelineCollapsed($0) }
+                )) {
+                    Label("Hide Gaps Without Video", systemImage: "arrow.left.and.right.square")
+                        .labelStyle(.iconOnly)
                 }
-                .buttonStyle(EditorIconButtonStyle())
-                .tint(project.isTimelineCollapsed ? EditorTheme.accentBlue : EditorTheme.textSecondary)
+                .toggleStyle(.button)
+                .controlSize(.small)
                 .help(project.isTimelineCollapsed ? "Show timeline gaps" : "Hide gaps without video")
 
-                Text("Zoom")
-                    .font(EditorTheme.captionFont)
-                    .foregroundStyle(EditorTheme.textSecondary)
+                Button {
+                    project.zoomTimelineOut()
+                } label: {
+                    Label("Zoom Out", systemImage: "minus.magnifyingglass")
+                        .labelStyle(.iconOnly)
+                }
+                .buttonStyle(InspectorIconButtonStyle())
+                .disabled(project.timeline.zoom == .fit)
+                .help("Zoom Out (Command-Minus)")
                 Slider(
                     value: Binding(
                         get: { project.timelineZoomSliderValue },
@@ -46,11 +61,30 @@ struct TimelineView: View {
                     ),
                     in: 0...100
                 )
-                .frame(width: 180)
-                Text(zoomLabel)
+                .frame(width: 160)
+                .accessibilityLabel("Zoom")
+                .accessibilityValue(zoomReadout)
+                Button {
+                    project.zoomTimelineIn()
+                } label: {
+                    Label("Zoom In", systemImage: "plus.magnifyingglass")
+                        .labelStyle(.iconOnly)
+                }
+                .buttonStyle(InspectorIconButtonStyle())
+                .help("Zoom In (Command-Plus)")
+                Text(zoomReadout)
                     .font(EditorTheme.numericFont)
                     .foregroundStyle(EditorTheme.textSecondary)
-                    .frame(width: 48, alignment: .trailing)
+                    .frame(width: 44, alignment: .trailing)
+                    .help("Time visible in the timeline")
+                    .accessibilityHidden(true)
+                Button("Fit") {
+                    project.zoomTimelineToFit()
+                }
+                .controlSize(.small)
+                .font(EditorTheme.captionFont)
+                .disabled(project.timeline.zoom == .fit)
+                .help("Zoom to Fit (Shift-Z)")
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 5)
@@ -81,16 +115,19 @@ struct TimelineView: View {
         .background(EditorTheme.panelBackground)
     }
 
-    private var zoomLabel: String {
-        switch project.timeline.zoom {
-        case .fit:
-            return "Fit"
-        case .pixelsPerSecond(let value):
-            if value < 10 {
-                return String(format: "%.1f", value)
-            }
-            return "\(Int(value.rounded()))"
-        }
+    private var zoomReadout: String {
+        TimelineHeaderText.zoomReadout(visibleDuration: project.timelineVisibleDuration)
+    }
+
+    private var previewLayerCount: String? {
+        TimelineHeaderText.previewLayerCount(
+            trackNames: project.timeline.tracks.map(\.name),
+            disabled: project.settings.disabledPreviewTrackNames
+        )
+    }
+
+    private var previewLayersTitle: String {
+        previewLayerCount.map { "Preview Layers  \($0)" } ?? "Preview Layers"
     }
 }
 
@@ -202,7 +239,7 @@ private struct RectCorners: OptionSet {
     static let all: RectCorners = [.topLeft, .topRight, .bottomRight, .bottomLeft]
 }
 
-private struct TimelineHoverInfo {
+struct TimelineHoverInfo {
     let visibleX: CGFloat
     let text: String
 }
@@ -221,13 +258,20 @@ enum TimelineMarqueeGeometry {
 private struct RulerHoverTooltip: View {
     let info: TimelineHoverInfo
 
-    private let tooltipWidth: CGFloat = 220
+    private static let font = NSFont.systemFont(ofSize: 11, weight: .medium)
+    private let horizontalPadding: CGFloat = 8
     private let tooltipHeight: CGFloat = 22
     private let arrowSize: CGFloat = 5
     private let topPad: CGFloat = 4
 
+    /// The pill grows with its text, up to the canvas width.
+    private var textWidth: CGFloat {
+        ceil((info.text as NSString).size(withAttributes: [.font: Self.font]).width)
+    }
+
     var body: some View {
         GeometryReader { geo in
+            let tooltipWidth = min(textWidth + horizontalPadding * 2, max(geo.size.width - 8, 0))
             let x = info.visibleX
             let pillX = min(max(x - tooltipWidth / 2, 4), geo.size.width - tooltipWidth - 4)
             let arrowAnchorX = min(max(x, pillX + 12), pillX + tooltipWidth - 12)
@@ -254,12 +298,12 @@ private struct RulerHoverTooltip: View {
                 }
 
                 Text(info.text)
-                    .font(.system(size: 10, weight: .medium))
+                    .font(Font(Self.font))
                     .foregroundStyle(Color(nsColor: .editorTextPrimary))
                     .lineLimit(1)
                     .truncationMode(.tail)
-                    .frame(width: tooltipWidth - 16, alignment: .leading)
-                    .offset(x: pillX + 8, y: topPad + (tooltipHeight - 12) / 2)
+                    .frame(width: max(tooltipWidth - horizontalPadding * 2, 0), alignment: .leading)
+                    .offset(x: pillX + horizontalPadding, y: topPad + (tooltipHeight - 14) / 2)
             }
         }
         .frame(height: topPad + tooltipHeight + arrowSize)
@@ -267,7 +311,7 @@ private struct RulerHoverTooltip: View {
     }
 }
 
-private final class TimelineCanvasNSView: NSView {
+final class TimelineCanvasNSView: NSView {
     private weak var project: ProjectDocument?
     private var tracks: [TimelineTrack] = []
     private var activityDuration: TimeInterval = 0
@@ -285,6 +329,12 @@ private final class TimelineCanvasNSView: NSView {
     private var draggingClipID: TimelineClip.ID?
     private var dragInitialStart: TimeInterval = 0
     private var dragCurrentStart: TimeInterval = 0
+    /// Clip that Shift-click ranges extend from.
+    private var selectionAnchorClipID: TimelineClip.ID?
+    private var isDraggingPlayhead = false
+    private var pointer: TimelinePointer = .arrow
+    private var disabledPreviewTrackNames: Set<String> = []
+    private var cachedAccessibilityChildren: [Any]?
     private var marqueeAnchor: CGPoint?
     private var marqueeCurrentPoint: CGPoint?
     private var hoverPoint: CGPoint?
@@ -296,16 +346,19 @@ private final class TimelineCanvasNSView: NSView {
     private var trackingArea: NSTrackingArea?
     nonisolated(unsafe) private var keyEventMonitor: Any?
 
-    private let hoverScrubKeyCode: CGKeyCode = 8
+    private let hoverScrubKeyCode = CGKeyCode(TimelineHoverScrubKey.keyCode)
     private let minimumScrubTimeDelta: TimeInterval = 0.0001
     private let rulerScaleHeight: CGFloat = 28
     private let fitTrackHeight: CGFloat = 44
     private let trackHeight: CGFloat = 44
     private let trackGap: CGFloat = 0
-    private let labelWidth: CGFloat = 64
+    private let labelWidth: CGFloat = 84
     private let contentPadding: CGFloat = 8
     private let playheadLineWidth: CGFloat = 2
     private let playheadHeadSize = CGSize(width: 12, height: 8)
+    /// The playhead line can be grabbed this far to either side.
+    private let playheadGrabTolerance: CGFloat = 3
+    private let trackVisibilityIconSize: CGFloat = 14
 
     weak var hostScrollView: NSScrollView? {
         didSet {
@@ -352,6 +405,9 @@ private final class TimelineCanvasNSView: NSView {
         super.init(frame: frameRect)
         wantsLayer = true
         registerForDraggedTypes([.string])
+        setAccessibilityElement(true)
+        setAccessibilityRole(.group)
+        setAccessibilityLabel("Timeline")
     }
 
     required init?(coder: NSCoder) {
@@ -394,6 +450,8 @@ private final class TimelineCanvasNSView: NSView {
         playhead = timeline.playhead
         mediaItemsAreAvailable = hasMediaItems
         self.isCollapsed = isCollapsed
+        disabledPreviewTrackNames = project.settings.disabledPreviewTrackNames
+        cachedAccessibilityChildren = nil
         if marqueeAnchor == nil {
             switch selection {
             case .timelineClip(let clipID):
@@ -432,6 +490,66 @@ private final class TimelineCanvasNSView: NSView {
         true
     }
 
+    // MARK: Accessibility
+
+    /// Layers (each holding its clips) followed by the playhead slider.
+    override func accessibilityChildren() -> [Any]? {
+        if let cachedAccessibilityChildren {
+            return cachedAccessibilityChildren
+        }
+        var children: [Any] = []
+        let timelineStartX = labelWidth + contentPadding
+        for (index, track) in tracks.enumerated() {
+            let y = trackStartY + CGFloat(index) * (trackHeight + trackGap)
+            let trackElement = TimelineAccessibilityElement(canvas: self, rect: CGRect(
+                x: timelineStartX,
+                y: y,
+                width: max(bounds.width - timelineStartX, 1),
+                height: trackHeight
+            ))
+            trackElement.setAccessibilityRole(.group)
+            trackElement.setAccessibilityLabel(
+                "\(track.name), \(track.clips.count == 1 ? "1 clip" : "\(track.clips.count) clips")"
+            )
+            trackElement.setAccessibilityParent(self)
+            trackElement.setAccessibilityChildren(track.clips.map { clip in
+                let clipElement = TimelineClipAccessibilityElement(canvas: self, rect: clipRect(clip, trackY: y))
+                clipElement.setAccessibilityRole(.button)
+                clipElement.setAccessibilityRoleDescription("clip")
+                clipElement.setAccessibilityLabel(
+                    "\(clip.title), starts at \(formatSignedDuration(clip.effectiveStartTime - fitStartTime)), duration \(formatDuration(clip.duration))"
+                )
+                clipElement.isSelectedClip = selectedClipIDs.contains(clip.id)
+                clipElement.setAccessibilityParent(trackElement)
+                clipElement.onPress = { [weak self] in
+                    self?.selectedClipIDs = [clip.id]
+                    self?.selectionAnchorClipID = clip.id
+                    self?.project?.selectClip(clip.id)
+                }
+                return clipElement
+            })
+            children.append(trackElement)
+        }
+        if hasPlayhead {
+            let playheadElement = TimelinePlayheadAccessibilityElement(canvas: self, rect: CGRect(
+                x: playheadX - playheadGrabTolerance,
+                y: 0,
+                width: playheadGrabTolerance * 2,
+                height: bounds.height
+            ))
+            playheadElement.setAccessibilityRole(.slider)
+            playheadElement.setAccessibilityLabel("Playhead")
+            playheadElement.setAccessibilityValue(formatSignedDuration(playhead - fitStartTime))
+            playheadElement.setAccessibilityParent(self)
+            playheadElement.step = { [weak self] frames in
+                self?.project?.stepPlayheadByFrames(frames)
+            }
+            children.append(playheadElement)
+        }
+        cachedAccessibilityChildren = children
+        return children
+    }
+
     override var acceptsFirstResponder: Bool {
         true
     }
@@ -440,11 +558,36 @@ private final class TimelineCanvasNSView: NSView {
         if event.keyCode == hoverScrubKeyCode {
             return
         }
-        if event.keyCode == 51 || event.keyCode == 117 {
-            project?.deleteSelectedItem()
+        if TimelineDeleteKey.matches(keyCode: event.keyCode, modifiers: event.modifierFlags) {
+            delete(nil)
             return
         }
         super.keyDown(with: event)
+    }
+
+    /// Delete is claimed before the main menu sees it. Otherwise a menu item
+    /// that shares the key equivalent but is disabled for the current
+    /// responder chain swallows the key with an error beep.
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if window?.firstResponder === self,
+           TimelineDeleteKey.matches(keyCode: event.keyCode, modifiers: event.modifierFlags) {
+            delete(nil)
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+
+    /// Edit > Delete and the Delete keys.
+    @objc func delete(_ sender: Any?) {
+        project?.deleteSelectedItem()
+    }
+
+    /// Edit > Select All (Command-A) while the timeline has focus.
+    override func selectAll(_ sender: Any?) {
+        let clipIDs = Set(tracks.flatMap(\.clips).map(\.id))
+        selectedClipIDs = clipIDs
+        project?.selectClips(clipIDs)
+        needsDisplay = true
     }
 
     override func keyUp(with event: NSEvent) {
@@ -468,8 +611,11 @@ private final class TimelineCanvasNSView: NSView {
         }
         keyEventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
             guard let self,
-                  event.keyCode == self.hoverScrubKeyCode,
-                  self.isMouseOverTimeline else {
+                  TimelineHoverScrubKey.shouldConsume(
+                    keyCode: event.keyCode,
+                    isMouseOverTimeline: self.isMouseOverTimeline,
+                    isTextInputFocused: self.isTextInputFocused
+                  ) else {
                 return event
             }
             return nil
@@ -483,7 +629,7 @@ private final class TimelineCanvasNSView: NSView {
         }
         let area = NSTrackingArea(
             rect: bounds,
-            options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow],
+            options: [.mouseMoved, .mouseEnteredAndExited, .cursorUpdate, .activeInKeyWindow],
             owner: self
         )
         trackingArea = area
@@ -562,13 +708,64 @@ private final class TimelineCanvasNSView: NSView {
                 from: CGPoint(x: offsetX, y: y + trackHeight - 0.5),
                 to: CGPoint(x: offsetX + columnWidth - 1, y: y + trackHeight - 0.5)
             )
-            drawText(
-                track.name,
-                at: CGPoint(x: offsetX + 10, y: y + 16),
-                color: .editorTextPrimary,
-                font: .systemFont(ofSize: 11, weight: .medium)
-            )
+            drawTrackLabel(track, trackY: y, offsetX: offsetX)
         }
+    }
+
+    /// Layer name plus its preview visibility eye. Layers excluded from the
+    /// preview draw dimmed.
+    private func drawTrackLabel(_ track: TimelineTrack, trackY y: CGFloat, offsetX: CGFloat) {
+        let isRealTrack = tracks.contains { $0.name == track.name }
+        let isHidden = disabledPreviewTrackNames.contains(track.name)
+        let eyeRect = trackVisibilityRect(trackY: y, offsetX: offsetX)
+        let nameWidth = (isRealTrack ? eyeRect.minX - 4 : offsetX + labelWidth + contentPadding) - (offsetX + 10)
+        drawText(
+            track.name,
+            in: CGRect(x: offsetX + 10, y: y + 16, width: max(nameWidth, 0), height: 16),
+            color: isHidden ? .editorTextMuted : .editorTextPrimary,
+            font: .systemFont(ofSize: 11, weight: .medium),
+            lineBreakMode: .byTruncatingTail
+        )
+        guard isRealTrack,
+              let symbol = NSImage(
+                systemSymbolName: isHidden ? "eye.slash" : "eye",
+                accessibilityDescription: isHidden ? "Show in Preview" : "Hide from Preview"
+              ),
+              let image = symbol.withSymbolConfiguration(
+                NSImage.SymbolConfiguration(pointSize: 11, weight: .regular)
+                    .applying(NSImage.SymbolConfiguration(hierarchicalColor: isHidden ? .editorTextMuted : .editorTextSecondary))
+              ) else {
+            return
+        }
+        let size = image.size
+        let imageRect = CGRect(
+            x: eyeRect.midX - size.width / 2,
+            y: eyeRect.midY - size.height / 2,
+            width: size.width,
+            height: size.height
+        )
+        image.draw(in: imageRect, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
+    }
+
+    private func trackVisibilityRect(trackY y: CGFloat, offsetX: CGFloat) -> CGRect {
+        let size = trackVisibilityIconSize + 6
+        return CGRect(
+            x: offsetX + labelWidth + contentPadding - size - 4,
+            y: y + (trackHeight - size) / 2,
+            width: size,
+            height: size
+        )
+    }
+
+    /// Name of the layer whose visibility eye is under `point`.
+    private func trackVisibilityHit(at point: CGPoint) -> String? {
+        for (index, track) in tracks.enumerated() {
+            let y = trackStartY + CGFloat(index) * (trackHeight + trackGap)
+            if trackVisibilityRect(trackY: y, offsetX: scrollOffsetX).contains(point) {
+                return track.name
+            }
+        }
+        return nil
     }
 
     override func mouseMoved(with event: NSEvent) {
@@ -601,23 +798,76 @@ private final class TimelineCanvasNSView: NSView {
         } else {
             onHoverChange?(nil)
         }
+        updatePointer(at: point)
         needsDisplay = true
     }
 
     override func mouseExited(with event: NSEvent) {
         hoverPoint = nil
         onHoverChange?(nil)
+        setPointer(.arrow, help: nil)
         needsDisplay = true
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        pointer.cursor.set()
+    }
+
+    private func updatePointer(at point: CGPoint) {
+        let target: TimelinePointer.Target
+        if !hasTimelineContent || point.x < scrollOffsetX + labelWidth + contentPadding {
+            target = .none
+        } else if point.y <= rulerHeight && activityDuration > 0 {
+            target = .ruler
+        } else if isNearPlayhead(point) {
+            target = .playhead
+        } else if clipHit(at: point) != nil {
+            target = .clip
+        } else {
+            target = .none
+        }
+        let next = TimelinePointer.pointer(for: target, isCollapsed: isCollapsed, isDraggingClip: draggingClipID != nil)
+        setPointer(next, help: next == .notAllowed ? TimelinePointer.collapsedClipHelp : nil)
+    }
+
+    private func setPointer(_ next: TimelinePointer, help: String?) {
+        pointer = next
+        next.cursor.set()
+        if toolTip != help {
+            toolTip = help
+        }
+    }
+
+    private var hasPlayhead: Bool {
+        activityDuration > 0 || !tracks.isEmpty
+    }
+
+    private func isNearPlayhead(_ point: CGPoint) -> Bool {
+        hasPlayhead
+            && point.y > rulerHeight
+            && point.x >= scrollOffsetX + labelWidth + contentPadding
+            && abs(point.x - playheadX) <= playheadGrabTolerance
     }
 
     override func mouseDown(with event: NSEvent) {
         guard let project else { return }
-        NSApplication.shared.activate(ignoringOtherApps: true)
         window?.makeKey()
         window?.makeFirstResponder(self)
         project.clearMediaPoolPreview()
         let point = convert(event.locationInWindow, from: nil)
         if point.y <= rulerHeight {
+            isDraggingPlayhead = true
+            project.seekPlayheadFromTimeline(time(atX: point.x))
+            return
+        }
+
+        if let trackName = trackVisibilityHit(at: point) {
+            project.setPreviewTrackDisabled(trackName, disabled: !disabledPreviewTrackNames.contains(trackName))
+            return
+        }
+
+        if isNearPlayhead(point) {
+            isDraggingPlayhead = true
             project.seekPlayheadFromTimeline(time(atX: point.x))
             return
         }
@@ -627,15 +877,28 @@ private final class TimelineCanvasNSView: NSView {
         }
 
         if let hit = clipHit(at: point) {
-            project.selectClip(hit.clip.id)
-            if !isCollapsed {
+            let mode = TimelineClipSelection.mode(for: event.modifierFlags)
+            let result = TimelineClipSelection.click(
+                hit.clip.id,
+                mode: mode,
+                current: selectedClipIDs,
+                anchor: selectionAnchorClipID,
+                tracks: tracks
+            )
+            selectionAnchorClipID = result.anchor
+            selectedClipIDs = result.selection
+            project.selectClips(result.selection)
+            if mode == .replace && !isCollapsed {
                 draggingClipID = hit.clip.id
                 dragInitialStart = hit.clip.effectiveStartTime
                 dragCurrentStart = hit.clip.effectiveStartTime
+                setPointer(.closedHand, help: nil)
             }
+            needsDisplay = true
         } else {
             project.clearSelection()
             selectedClipIDs = []
+            selectionAnchorClipID = nil
             if marqueeStartRegion.contains(point) {
                 marqueeAnchor = point
                 marqueeCurrentPoint = point
@@ -650,15 +913,15 @@ private final class TimelineCanvasNSView: NSView {
             return
         }
 
+        if isDraggingPlayhead {
+            project.seekPlayheadFromTimeline(time(atX: point.x))
+            return
+        }
+
         if marqueeAnchor != nil {
             marqueeCurrentPoint = point
             selectedClipIDs = clipsIntersectingMarquee()
             needsDisplay = true
-            return
-        }
-
-        if point.y <= rulerHeight {
-            project.seekPlayheadFromTimeline(time(atX: point.x))
             return
         }
 
@@ -671,8 +934,10 @@ private final class TimelineCanvasNSView: NSView {
     }
 
     override func mouseUp(with event: NSEvent) {
+        isDraggingPlayhead = false
         if marqueeAnchor != nil {
             project?.selectClips(selectedClipIDs)
+            selectionAnchorClipID = nil
             marqueeAnchor = nil
             marqueeCurrentPoint = nil
             needsDisplay = true
@@ -683,56 +948,84 @@ private final class TimelineCanvasNSView: NSView {
         }
         draggingClipID = nil
         project?.finishContinuousEdit()
+        updatePointer(at: convert(event.locationInWindow, from: nil))
     }
 
+    /// Clip menus hold clip commands only. Deleting a layer is offered from
+    /// the layer's label or an empty part of its lane.
     override func rightMouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
         guard point.y >= trackStartY else {
             return
         }
-        let trackSpan = trackHeight + trackGap
-        let index = Int((point.y - trackStartY) / trackSpan)
+        let index = Int((point.y - trackStartY) / (trackHeight + trackGap))
         guard index >= 0, index < tracks.count else {
             return
         }
         let trackName = tracks[index].name
         let menu = NSMenu()
-        if let hit = clipHit(at: point) {
-            project?.selectClip(hit.clip.id)
-            addClipMenuItems(for: hit.clip, trackName: trackName, to: menu)
+        let inLabelColumn = point.x < scrollOffsetX + labelWidth + contentPadding
+        if !inLabelColumn, let hit = clipHit(at: point) {
+            // Right-clicking inside the selection keeps it, so the menu acts
+            // on every selected clip.
+            if !selectedClipIDs.contains(hit.clip.id) {
+                selectedClipIDs = [hit.clip.id]
+                selectionAnchorClipID = hit.clip.id
+                project?.selectClip(hit.clip.id)
+                needsDisplay = true
+            }
+            addClipMenuItems(for: hit.clip, to: menu)
+        } else {
+            let item = NSMenuItem(
+                title: "Delete \(trackName)…",
+                action: #selector(deleteTrackMenuAction(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = trackName
+            menu.addItem(item)
         }
-        let item = NSMenuItem(
-            title: "Delete \(trackName)",
-            action: #selector(deleteTrackMenuAction(_:)),
-            keyEquivalent: ""
-        )
-        item.target = self
-        item.representedObject = trackName
-        menu.addItem(item)
         NSMenu.popUpContextMenu(menu, with: event, for: self)
     }
 
-    private func addClipMenuItems(for clip: TimelineClip, trackName: String, to menu: NSMenu) {
-        let offset = String(format: "%+.2fs", clip.alignmentOffset)
-        let items = [
-            NSMenuItem(
-                title: "Apply \(offset) Offset to All Clips in \(trackName)",
-                action: #selector(applyOffsetToTrackMenuAction(_:)),
-                keyEquivalent: ""
-            ),
-            NSMenuItem(title: "Reset Offset", action: #selector(resetClipOffsetMenuAction(_:)), keyEquivalent: ""),
-            NSMenuItem.separator(),
-            NSMenuItem(title: "Delete Clip", action: #selector(deleteClipMenuAction(_:)), keyEquivalent: ""),
-            NSMenuItem.separator()
-        ]
-        for item in items where !item.isSeparatorItem {
-            item.target = self
-            item.representedObject = clip.id
-        }
+    private func addClipMenuItems(for clip: TimelineClip, to menu: NSMenu) {
+        let clipIDs = selectedClipIDs.contains(clip.id) ? selectedClipIDs : [clip.id]
+        let clips = clipIDs.compactMap { id in tracks.lazy.flatMap(\.clips).first { $0.id == id } }
         // Menu validation is off so the item states below are honored.
         menu.autoenablesItems = false
-        items[1].isEnabled = clip.alignmentOffset != 0
-        items.forEach(menu.addItem)
+
+        let applyOffset = NSMenuItem(
+            title: "Apply Offset to Layer",
+            action: #selector(applyOffsetToTrackMenuAction(_:)),
+            keyEquivalent: ""
+        )
+        applyOffset.target = self
+        applyOffset.representedObject = clip.id
+        applyOffset.isEnabled = clipIDs.count == 1
+        applyOffset.toolTip = String(format: "Apply this clip's %+.2f s offset to every clip in its layer.", clip.alignmentOffset)
+        menu.addItem(applyOffset)
+
+        let resetOffset = NSMenuItem(
+            title: clipIDs.count == 1 ? "Reset Offset" : "Reset Offsets",
+            action: #selector(resetClipOffsetMenuAction(_:)),
+            keyEquivalent: ""
+        )
+        resetOffset.target = self
+        resetOffset.representedObject = clipIDs
+        resetOffset.isEnabled = clips.contains { $0.alignmentOffset != 0 }
+        menu.addItem(resetOffset)
+
+        menu.addItem(.separator())
+
+        let delete = NSMenuItem(
+            title: clipIDs.count == 1 ? "Delete Clip" : "Delete \(clipIDs.count) Clips",
+            action: #selector(deleteClipMenuAction(_:)),
+            keyEquivalent: String(UnicodeScalar(UInt8(NSBackspaceCharacter)))
+        )
+        delete.keyEquivalentModifierMask = []
+        delete.target = self
+        delete.representedObject = clipIDs
+        menu.addItem(delete)
     }
 
     @objc private func applyOffsetToTrackMenuAction(_ sender: NSMenuItem) {
@@ -741,22 +1034,39 @@ private final class TimelineCanvasNSView: NSView {
     }
 
     @objc private func resetClipOffsetMenuAction(_ sender: NSMenuItem) {
-        guard let clipID = sender.representedObject as? TimelineClip.ID else { return }
-        project?.setSelectedClipOffset(clipID, offset: 0)
-        project?.finishContinuousEdit()
+        guard let clipIDs = sender.representedObject as? Set<TimelineClip.ID> else { return }
+        project?.resetClipOffsets(clipIDs)
     }
 
     @objc private func deleteClipMenuAction(_ sender: NSMenuItem) {
-        guard let clipID = sender.representedObject as? TimelineClip.ID else { return }
-        project?.selectClip(clipID)
+        guard let clipIDs = sender.representedObject as? Set<TimelineClip.ID> else { return }
+        project?.selectClips(clipIDs)
         project?.deleteSelectedItem()
     }
 
     @objc private func deleteTrackMenuAction(_ sender: NSMenuItem) {
-        guard let trackName = sender.representedObject as? String else {
+        guard let trackName = sender.representedObject as? String, let project else {
             return
         }
-        project?.removeTrack(named: trackName)
+        let clipCount = tracks.first { $0.name == trackName }?.clips.count ?? 0
+        let alert = NSAlert()
+        alert.messageText = "Delete \(trackName)?"
+        alert.informativeText = switch clipCount {
+        case 0: "The empty layer is removed. You can undo this."
+        case 1: "The layer and its clip are removed from the timeline. You can undo this."
+        default: "The layer and its \(clipCount) clips are removed from the timeline. You can undo this."
+        }
+        let deleteButton = alert.addButton(withTitle: "Delete")
+        deleteButton.hasDestructiveAction = true
+        alert.addButton(withTitle: "Cancel")
+        guard let window else {
+            project.removeTrack(named: trackName)
+            return
+        }
+        alert.beginSheetModal(for: window) { response in
+            guard response == .alertFirstButtonReturn else { return }
+            project.removeTrack(named: trackName)
+        }
     }
 
     override func scrollWheel(with event: NSEvent) {
@@ -973,12 +1283,7 @@ private final class TimelineCanvasNSView: NSView {
             labelRect.fill()
             NSColor.editorBorderSubtle.withAlphaComponent(0.55).setStroke()
             NSBezierPath.strokeLine(from: CGPoint(x: 0, y: y + trackHeight - 0.5), to: CGPoint(x: timelineStartX - 1, y: y + trackHeight - 0.5))
-            drawText(
-                track.name,
-                at: CGPoint(x: 10, y: y + 16),
-                color: .editorTextPrimary,
-                font: .systemFont(ofSize: 11, weight: .medium)
-            )
+            drawTrackLabel(track, trackY: y, offsetX: 0)
 
             let laneRect = CGRect(x: timelineStartX, y: y, width: laneWidth, height: trackHeight)
             (index % 2 == 0 ? NSColor.timelineTrackBandA : NSColor.timelineTrackBandB).setFill()
@@ -1039,7 +1344,9 @@ private final class TimelineCanvasNSView: NSView {
         let width = max(CGFloat(clip.duration * pixelsPerSecond), 1)
         let rect = CGRect(x: x, y: y + 6, width: width, height: trackHeight - 12)
         let isSelected = selectedClipIDs.contains(clip.id)
-        let color = isSelected ? NSColor.timelineClipBlue : NSColor.timelineClipBlue.withAlphaComponent(0.72)
+        let previewAlpha: CGFloat = disabledPreviewTrackNames.contains(track.name) ? 0.45 : 1
+        let color = (isSelected ? NSColor.timelineClipBlue : NSColor.timelineClipBlue.withAlphaComponent(0.72))
+            .withAlphaComponent((isSelected ? 1 : 0.72) * previewAlpha)
         let roundedCorners = clipRoundedCorners(for: clip, in: track)
         let fillPath = roundedPath(rect, radius: 4, corners: roundedCorners)
         color.setFill()
@@ -1239,6 +1546,7 @@ private final class TimelineCanvasNSView: NSView {
 
     private func scrubPlayheadIfNeeded(at point: CGPoint) -> Bool {
         guard isHoverScrubKeyPressed,
+              !isTextInputFocused,
               hasTimelineContent,
               draggingClipID == nil,
               !isMediaDragActive,
@@ -1269,6 +1577,10 @@ private final class TimelineCanvasNSView: NSView {
             && point.x <= bounds.maxX
             && point.y >= 0
             && point.y <= bounds.maxY
+    }
+
+    private var isTextInputFocused: Bool {
+        EditorEscapeKey.isTextInput(window?.firstResponder)
     }
 
     private var isMouseOverTimeline: Bool {
@@ -1544,5 +1856,56 @@ private final class TimelineCanvasNSView: NSView {
     private func formatSignedDuration(_ elapsed: TimeInterval) -> String {
         let prefix = elapsed < 0 ? "-" : ""
         return prefix + formatDuration(elapsed)
+    }
+}
+
+/// Accessibility element whose frame follows a rect in the timeline canvas.
+private class TimelineAccessibilityElement: NSAccessibilityElement {
+    private weak var canvas: NSView?
+    private let rect: CGRect
+
+    init(canvas: NSView, rect: CGRect) {
+        self.canvas = canvas
+        self.rect = rect
+        super.init()
+    }
+
+    override func accessibilityFrame() -> NSRect {
+        guard let canvas else { return .zero }
+        return NSAccessibility.screenRect(fromView: canvas, rect: rect)
+    }
+}
+
+/// A clip: pressing it selects the clip.
+private final class TimelineClipAccessibilityElement: TimelineAccessibilityElement {
+    var isSelectedClip = false
+    var onPress: (() -> Void)?
+
+    override func isAccessibilitySelected() -> Bool {
+        isSelectedClip
+    }
+
+    override func setAccessibilitySelected(_ selected: Bool) {
+        if selected { onPress?() }
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        onPress?()
+        return onPress != nil
+    }
+}
+
+/// The playhead: increment and decrement step one frame.
+private final class TimelinePlayheadAccessibilityElement: TimelineAccessibilityElement {
+    var step: ((Int) -> Void)?
+
+    override func accessibilityPerformIncrement() -> Bool {
+        step?(1)
+        return step != nil
+    }
+
+    override func accessibilityPerformDecrement() -> Bool {
+        step?(-1)
+        return step != nil
     }
 }
