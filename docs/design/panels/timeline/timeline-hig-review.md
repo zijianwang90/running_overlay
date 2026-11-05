@@ -53,6 +53,7 @@ Reduce Motion 下的自动滚动。
 
 ### [P1] 指针悬停在 Timeline 上时，所有文本框都打不出 “c”
 
+- **Status**：已完成（2026-11-05）：`TimelineHoverScrubKey.shouldConsume` 复用 `EditorEscapeKey.isTextInput`；悬停拖播本身也在文本输入有焦点时停止。
 - **Surface**：Inspector 的数值框和文本框、Media Pool 的搜索框和重命名框、
   所有 sheet。
 - **Evidence**：`TimelineView.swift:457-477`。`keyEventMonitor` 是窗口级的 local
@@ -72,6 +73,7 @@ Reduce Motion 下的自动滚动。
 
 ### [P1] 时间线画布对 VoiceOver 不可见
 
+- **Status**：已完成（2026-11-05）：画布、轨道、clip、播放头；Activity 分段尚未暴露。VoiceOver 实测仍待人工检查。
 - **Surface**：整个画布：轨道、clip、Activity 轨、播放头。
 - **Evidence**：`TimelineCanvasNSView` 只实现了 `draw(_:)`，没有
   `accessibilityChildren`、`accessibilityRole` 或任何 `setAccessibility*` 调用。
@@ -95,6 +97,7 @@ Reduce Motion 下的自动滚动。
 
 ### [P1] 自绘画布没有指针反馈
 
+- **Status**：已完成（2026-11-05）：ruler 和播放头使用 `resizeLeftRight`；播放头线 ±3pt 可抓取。
 - **Surface**：clip、ruler、播放头、折叠模式下的 clip。
 - **Evidence**：`TimelineView.swift` 没有任何 `NSCursor` 调用，
   也没有 `resetCursorRects`。
@@ -117,6 +120,7 @@ Reduce Motion 下的自动滚动。
 
 ### [P1] 折叠空隙按钮的激活态不可见
 
+- **Status**：已完成（2026-11-05）：`Toggle` + `.toggleStyle(.button)`，Timeline 菜单有带勾选的 “Hide Gaps Without Video”。
 - **Surface**：Header 右侧的折叠空隙按钮。
 - **Evidence**：`TimelineView.swift:30-37`。
   - 激活态依赖 `.tint(...)`，但 `EditorIconButtonStyle` 的前景色写死为
@@ -139,6 +143,7 @@ Reduce Motion 下的自动滚动。
 
 ### [P2] 预览轨道可见性菜单的入口不清楚
 
+- **Status**：已完成（2026-11-05）：pull-down “Preview Layers” 加 “N of M”；标签列每条轨道有 eye 开关，标签列加宽到 84pt。
 - **Evidence**：`TimelineView.swift:12-27`。左侧是一个 “Preview” 文字标签，
   后面跟一个 `eye` 图标的 `Menu`，没有菜单指示器。
 - **HIG basis**：`hig-components-menus/pull-down-buttons`（pull-down 按钮要显示指示器，
@@ -155,6 +160,7 @@ Reduce Motion 下的自动滚动。
 
 ### [P2] 缩放滑杆的数值没有单位，两端没有按钮
 
+- **Status**：已完成（2026-11-05）：读数为可见时长，两端有放大镜按钮，右侧 Fit 按钮。
 - **Evidence**：`TimelineView.swift:39-53`。滑杆范围是 0...100 的非线性映射，
   右侧读数显示 “Fit” 或像素每秒的原始数字（如 `37`、`4.5`）。
 - **HIG basis**：`hig-components-controls/sliders`（可以在两端放图标表示最小值和
@@ -169,6 +175,7 @@ Reduce Motion 下的自动滚动。
 
 ### [P2] Clip 选择不支持修饰键
 
+- **Status**：已完成（2026-11-05）：⌘ 点击、Shift 点击（同一轨道）、⌘A（Edit > Select All）。
 - **Evidence**：`mouseDown` 在命中 clip 时直接调用 `project.selectClip`
   （`TimelineView.swift:629-630`），不读 Shift 和 Command。多选只能靠框选。
   也没有 ⌘A 选择全部 clip。
@@ -180,6 +187,7 @@ Reduce Motion 下的自动滚动。
 
 ### [P2] 右键菜单的作用范围混在一起
 
+- **Status**：已完成（2026-11-05）：删除轨道写成 “Delete Layer 1…” 并在 sheet 中确认。
 - **Evidence**：`TimelineView.swift:688-736`。
   - 右键 clip 时，菜单同时包含 clip 操作和 “Delete Layer 1”，后者删除整条轨道。
   - 右键空白轨道时，菜单里只有 “Delete Layer 1” 这一项。
@@ -197,6 +205,7 @@ Reduce Motion 下的自动滚动。
 
 ### [P2] 悬停读数只给指针位置
 
+- **Status**：已完成（2026-11-05）。
 - **Evidence**：`RulerHoverTooltip` 固定 220pt 宽、10pt 字号，内容为
   “时间 • 时刻 • 距离”（`TimelineView.swift:221-268`）。悬停 Activity 分段时显示
   分段信息。
@@ -208,7 +217,7 @@ Reduce Motion 下的自动滚动。
 
 ## P3：打磨
 
-- **规范与实现不一致**：
+- **规范与实现不一致**（已完成，2026-11-05：`timeline-ui.md` 已改为 Activity，并删去拖动 Activity 轨的描述）：
   - `timeline-ui.md` 的 Label Column 写的是 `FIT`，实现已经改为 `Activity`
     （`TimelineView.swift:550`）。应以实现为准，更新规范。
   - FIT Track 一节同时写了 “The Activity layer is currently not draggable” 和
@@ -221,7 +230,7 @@ Reduce Motion 下的自动滚动。
 - **播放头颜色写死**：`timelinePlayheadRed` 是固定值，Increase Contrast 下不会加深。
 - **`NSApplication.shared.activate(ignoringOtherApps:)`**：`mouseDown` 中主动激活应用
   （`TimelineView.swift:615`）。这个 API 在 macOS 14 起已弃用，而且点击本来就会
-  激活窗口，建议删除。
+  激活窗口，建议删除。已删除（2026-11-05）。
 
 ## 要不要做成 FCP 时间线的样子
 

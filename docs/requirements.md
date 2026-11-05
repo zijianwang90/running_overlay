@@ -272,8 +272,8 @@ Requirements:
   - Left Arrow / Right Arrow: step the timeline playhead backward or forward by one project frame when no unlocked overlay is selected; Shift steps ten frames. Stepping pauses playback.
   - Up Arrow / Down Arrow with no unlocked overlay selected: jump to the previous / next edit point (any clip start or end on any camera track, or the timeline start or end) without changing play state.
   - Home / End: jump to the timeline start / end without changing play state.
-  - J / K / L: J halves a fast-forward rate and pauses at 1x (reverse playback is not supported), K toggles play/pause, L starts playback or doubles the rate up to 8x.
-  - Playback menu lists Go to Start, Go to End, and Previous / Next Edit Point with their keys in the title; these keys are handled by the editor so lists and text fields keep their own meaning for them.
+  - J / K / L: J halves a fast-forward rate and pauses at 1x (reverse playback is not supported), K toggles play/pause, L starts playback or doubles the rate up to 8x. The Preview speed pop-up also offers 0.5x; J at 0.5x or 1x pauses, and L from 0.5x returns to 1x.
+  - Playback menu titles never name a key. Space, L, and J are menu key equivalents shown in the shortcut column. K, Home, End, and Up / Down Arrow are handled by the editor so lists and text fields keep their own meaning for them; the menu items for those commands list the key in their help tag instead. There is one Play / Pause item.
   - Arrow keys with an unlocked overlay selected: move the overlay by one output pixel; Shift + Arrow moves it by ten output pixels. Each press registers one undo point.
 - Timeline should expose a visible zoom slider in the timeline header.
 - Timeline should expose a collapse/expand control next to the zoom slider for hiding and restoring no-video gaps.

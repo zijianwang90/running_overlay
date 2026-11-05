@@ -1,6 +1,6 @@
 {
   "name": "Preview UI",
-  "updated": "2026-04-26",
+  "updated": "2026-11-05",
   "references": {
     "mockup": "./preview.png",
     "relatedStyleSpec": "../../system/app-ui.md"
@@ -44,8 +44,9 @@
         { "type": "metadata", "value": "{resolution} • {frameRate} fps", "fallback": "{resolution}" }
       ],
       "right": [
-        { "type": "toggleButton", "id": "safeGuides", "icon": "viewfinder", "statePath": "ProjectDocument.showPreviewGuides", "activeStyle": "accent.blue" },
-        { "type": "dropdown", "id": "fit", "label": "Fit", "modelBacked": "optional" }
+        { "type": "toggleButton", "id": "safeGuides", "control": "Toggle(.button)", "icon": "viewfinder", "statePath": "ProjectDocument.showPreviewGuides", "activeStyle": "accent.blue", "menuItem": "View > Show Safe Frames (Cmd-')" },
+        { "type": "colorWell", "id": "canvasBackground", "statePath": "ProjectDocument.previewCanvasBackground" },
+        { "type": "popUp", "id": "fit", "control": "Picker(.menu), regular", "help": "Fit Mode", "options": ["Fit", "Fill"], "statePath": "ProjectDocument.previewFitMode" }
       ],
       "mustNotInclude": ["fullscreen", "backgroundToggle", "overlayVisibility", "export"]
     },
@@ -55,23 +56,22 @@
         { "type": "videoFrame", "sizing": "fitted project resolution" },
         { "type": "safeGuides", "visibleWhen": "ProjectDocument.showPreviewGuides == true", "hitTesting": false },
         { "type": "overlays", "coordinateSpace": "fitted canvas" },
-        { "type": "selectionBorder", "visibleWhen": "overlay selected" },
-        { "type": "hud", "label": "Guides On", "optional": true, "visibleWhen": "ProjectDocument.showPreviewGuides == true" }
+        { "type": "selectionBorder", "visibleWhen": "overlay selected", "outerStroke": "1pt dark" },
+        { "type": "lockedMark", "visibleWhen": "briefly after clicking a locked overlay", "hitTesting": false }
       ]
     },
     {
       "component": "PreviewPlaybackRow",
       "height": "44-52",
       "centerCluster": [
-        { "id": "previous", "icon": "backward.end", "action": "previous/step previous command" },
-        { "id": "stop", "icon": "stop.fill", "action": "stop playback command" },
+        { "id": "previousClip", "icon": "backward.end.fill", "label": "Previous Clip", "action": "ProjectDocument.jumpToPreviousPreviewItem" },
         { "id": "playPause", "icon": "play.fill or pause.fill", "action": "ProjectDocument.togglePlayback" },
-        { "id": "next", "icon": "forward.end", "action": "next/step next command" }
+        { "id": "nextClip", "icon": "forward.end.fill", "label": "Next Clip", "action": "ProjectDocument.jumpToNextPreviewItem" }
       ],
       "right": [
-        { "id": "playbackRate", "type": "dropdownButton", "label": "{playbackRate}x", "example": "1x" }
+        { "id": "playbackRate", "type": "popUp", "control": "Picker(.menu), small", "label": "{playbackRate}x", "options": ["0.5x", "1x", "2x", "4x", "8x"] }
       ],
-      "mustNotInclude": ["timecode", "time text", "scrubber", "progress bar", "timeline"]
+      "mustNotInclude": ["stop", "timecode", "time text", "scrubber", "progress bar", "timeline"]
     }
   ],
   "preserveBehavior": [
@@ -90,11 +90,12 @@
   },
   "interactions": {
     "safeGuides": "toggles ProjectDocument.showPreviewGuides",
-    "fit": "controls preview zoom/fitting when model support exists; may be static initially",
+    "fit": "switches video between aspect fit and aspect fill; no zoom levels",
     "playPause": "toggles playback",
-    "rate": "shows current playback rate and later opens rate menu",
+    "rate": "pop-up of playbackRateOptions; calls ProjectDocument.setPlaybackRate",
     "overlayClick": "selects overlay and opens Inspector detail state",
-    "overlayDrag": "moves overlay in normalized fitted-canvas coordinates"
+    "overlayDrag": "moves overlay in normalized fitted-canvas coordinates",
+    "overlayPointer": "open hand on movable overlays, closed hand while dragging, arrow plus Locked help on locked overlays"
   },
   "recommendedComponents": [
     "PreviewPanel",
@@ -103,7 +104,6 @@
     "PreviewSafeGuidesButton",
     "PreviewFitMenu",
     "PreviewCanvasWorkspace",
-    "PreviewCanvasHUD",
     "PreviewPlaybackBar",
     "PreviewPlaybackButton",
     "PreviewRateMenu"

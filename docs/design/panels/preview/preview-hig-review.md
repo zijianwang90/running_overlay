@@ -95,7 +95,12 @@ the-menu-bar、context-menus）、`hig-components-controls`（toggles）、
   如果短期不做，就先从 `preview-ui.md` 中删掉这一段，避免规范超前于实现。
 - **Validation**：focused test 断言一次 handle 拖动只注册一个撤销点。
 
-### [P1] 指针不提示可拖动
+### [P1] 指针不提示可拖动（已完成）
+
+- **Done（2026-11-05）**：可移动的 overlay 悬停显示 open hand，拖动时显示
+  closed hand（SwiftUI `pointerStyle(.grabIdle / .grabActive)`）。锁定的 overlay
+  保持箭头，help 显示 “Locked”，点击时在 overlay 右上角短暂显示锁形标记。
+  没有角点手柄，所以没有缩放箭头。
 
 - **Surface**：所有可选中的 overlay，以及锁定的 overlay。
 - **Evidence**：Preview 中没有任何 `NSCursor` 调用（全仓库只有分栏拖动条用了
@@ -116,7 +121,10 @@ the-menu-bar、context-menus）、`hig-components-controls`（toggles）、
 
 ## P2：与 macOS 惯例冲突
 
-### [P2] Fit 和播放速度是自绘的 pop-up
+### [P2] Fit 和播放速度是自绘的 pop-up（已完成）
+
+- **Done（2026-11-05）**：两者都改为 `Picker(.menu)` 搭配 `.controlSize(.small)`。
+  没有加缩放级别，Fit 的 help 改为 “Fit Mode”。
 
 - **Evidence**：Fit 菜单（`PreviewCanvasView.swift:1042-1075`）和速度菜单
   （`PreviewCanvasView.swift:2878-2916`）都用 `chevron.down` 自绘，并设置了
@@ -132,7 +140,12 @@ the-menu-bar、context-menus）、`hig-components-controls`（toggles）、
     需要按焦点区域分派，或者 Preview 改用 ⌘⇧+ 等组合。
   - 如果短期不做缩放，help 改为 “Fit Mode”。
 
-### [P2] Header 的开关按钮不报告状态
+### [P2] Header 的开关按钮不报告状态（已完成）
+
+- **Done（2026-11-05）**：Safe Frames 改为 `Toggle` 搭配 `.toggleStyle(.button)`，
+  help 随状态切换 Show / Hide。`PreviewIconButtonStyle` 增加悬停态（与
+  `InspectorIconButtonStyle` 一致的做法，保留 Preview 的激活态）。View 菜单新增带勾选的
+  “Show Safe Frames”（⌘'）。
 
 - **Evidence**：Safe Frames 是普通 `Button` 加自绘的激活态
   （`PreviewCanvasView.swift:1022-1030`），help 文案不随状态变化，
@@ -146,7 +159,11 @@ the-menu-bar、context-menus）、`hig-components-controls`（toggles）、
   - 悬停态复用 Inspector 分支里的 `InspectorIconButtonStyle`（PR #58）。
   - 在 View 菜单增加 “Show Safe Frames”（⌘'），让这个开关有菜单栏入口。
 
-### [P2] Stop 与 Pause 重复，Previous / Next 含义不清
+### [P2] Stop 与 Pause 重复，Previous / Next 含义不清（已完成）
+
+- **Done（2026-11-05）**：删除 Stop 和 `ProjectDocument.stopPlayback()`。
+  Previous / Next 保留原有逻辑（timeline 上跳到 clip 起点；预览媒体池时切换媒体），
+  help 改为 “Previous Clip” / “Next Clip”。播放条为三键布局。
 
 - **Evidence**：
   - 播放 timeline 时，`stopPlayback()` 只是暂停并把速度重置为 1x，不会移动播放头
@@ -163,7 +180,14 @@ the-menu-bar、context-menus）、`hig-components-controls`（toggles）、
     “Previous / Next Edit Point”，与方向键 ↑/↓ 共用一套逻辑。
   - 播放条形成 `|◀  ▶  ▶|` 三键布局，与 QuickTime 和 FCP 的检视器一致。
 
-### [P2] Playback 菜单的快捷键写在标题里，且有重复项
+### [P2] Playback 菜单的快捷键写在标题里，且有重复项（部分完成）
+
+- **Done（2026-11-05）**：删除 “Play (K)”；所有标题不再写按键，
+  “Play Faster” / “Play Slower” 的 L / J 显示在快捷键栏。
+- **Not done**：Home、End、↑、↓ 仍由编辑器的 `onKeyPress` 处理，没有改成
+  `NSMenuItem.keyEquivalent`。菜单的 key equivalent 会在焦点视图处理按键之前触发，
+  只排除文本输入不够：Timeline、媒体池等列表也要用方向键和 Home / End。
+  这些按键改为写在菜单项的 help 中，K 写在 Play 的 help 中。
 
 - **Evidence**：`RunningOverlayApp.swift:136-177`。
   - 同时有 “Play” 和 “Play (K)” 两个菜单项。
@@ -180,7 +204,10 @@ the-menu-bar、context-menus）、`hig-components-controls`（toggles）、
     `validateMenuItem`，只在焦点不在文本输入时启用。这样快捷键能显示在右侧，
     同时不会抢走文本框的按键。
 
-### [P2] 播放速度只有 1x–8x，J 不能倒放
+### [P2] 播放速度只有 1x–8x，J 不能倒放（0.5x 已完成）
+
+- **Done（2026-11-05）**：速度 pop-up 增加 0.5x，`setPlaybackRate` 的范围改为
+  0.5x–8x。J 在 1x 及以下暂停。倒放仍不做。
 
 - **Evidence**：`setPlaybackRate` 把速度限制在 1...8
   （`ProjectDocument.swift:389-391`）；J 只会减速或暂停
@@ -194,10 +221,10 @@ the-menu-bar、context-menus）、`hig-components-controls`（toggles）、
 
 ## P3：打磨
 
-- **“Guides On” HUD 重复**：Safe Frames 按钮已经显示激活态，画布左上角再显示一个
+- **（已完成）“Guides On” HUD 重复**：Safe Frames 按钮已经显示激活态，画布左上角再显示一个
   “Guides On”（`PreviewCanvasView.swift:1087-1100`），还会盖住放在左上角的 overlay。
   建议删除。
-- **空状态**：没有媒体时只显示一个 54pt 的 `film` 图标，文字为空字符串
+- **（已完成，显示 “No Video” 和一行提示，不放图标）空状态**：没有媒体时只显示一个 54pt 的 `film` 图标，文字为空字符串
   （`PreviewCanvasView.swift:73-80`）。建议显示 “No Video” 和一句下一步提示，
   或者干脆留空，不放图标。
 - **背景色 color well**：`ColorPicker` 是系统 color well，符合 HIG。但它和
@@ -205,7 +232,7 @@ the-menu-bar、context-menus）、`hig-components-controls`（toggles）、
   或者移到 View 菜单 “Canvas Background…”。
 - **吸附反馈**：吸附发生时可以通过 `NSHapticFeedbackManager` 发送
   `.alignment` 反馈（Force Touch 触控板），这是 Keynote 的做法。
-- **选中框**：1.4pt 蓝色描边加 5pt 外扩。在亮色视频上不太明显，建议加 1pt 深色外描边。
+- **（已完成）选中框**：1.4pt 蓝色描边加 5pt 外扩。在亮色视频上不太明显，建议加 1pt 深色外描边。
 - **Skia 调试开关**：只在 DEBUG 构建中出现，不影响发布版本，保持现状。
 
 ## 要不要做成 FCP 检视器的样子
