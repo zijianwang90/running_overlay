@@ -251,6 +251,17 @@ enum OverlayComponentVerticalAlignment: String, Equatable {
     case bottom
 }
 
+enum OverlayComponentStackDirection: String, Equatable {
+    case horizontal
+    case vertical
+}
+
+enum OverlayComponentCrossAlignment: String, Equatable {
+    case start
+    case center
+    case end
+}
+
 enum OverlayComponentLineCap: String, Equatable {
     case butt
     case round
@@ -309,6 +320,12 @@ struct OverlayComponentNode: Equatable {
 
 enum OverlayComponentNodeKind: Equatable {
     case group(children: [OverlayComponentNode], clip: Bool, shadow: OverlayComponentShadow?)
+    case stack(
+        direction: OverlayComponentStackDirection,
+        spacing: OverlayComponentNumberSource,
+        crossAlign: OverlayComponentCrossAlignment,
+        children: [OverlayComponentNode]
+    )
     case rect(fill: OverlayComponentColorSource,
               radius: OverlayComponentNumberSource,
               stroke: OverlayComponentColorSource?,

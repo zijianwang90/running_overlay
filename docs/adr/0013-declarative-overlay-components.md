@@ -53,8 +53,10 @@ Two alternatives were considered and rejected:
 3. **A closed, pure expression language and a fixed node vocabulary.** Base
    nodes map one-to-one onto `skb_*` primitives. Capability nodes (for example
    `sparkline`, `progressBar`, `arc`) are implemented natively and added to the
-   contract only through review. The language has no loops beyond a bounded
-   `repeat` node, no recursion, and no user-defined functions.
+   contract only through review. Layout is limited to a one-dimensional
+   `stack` with auto-sized text; there is no general constraint solver,
+   wrapping container or distribution engine. The language has no loops beyond
+   a bounded `repeat` node, no recursion, and no user-defined functions.
 4. **Inspector UI is generated from typed params, not designed by authors.**
    Params use a fixed control vocabulary (`number`, `bool`, `color`, `enum`,
    `string`, `font`, `metric`) rendered through the existing
@@ -80,8 +82,10 @@ Two alternatives were considered and rejected:
    placeholder and fails export with a diagnostic rather than being skipped.
 8. **Compilation happens once.** The host validates and compiles a component
    into a typed render graph at load time. Per frame it evaluates only dynamic
-   values. Per-component draw cost is gated by the existing export benchmark
-   suite.
+   values. `stack` layout is the exception: it measures text at draw time in
+   pixel space, because CoreText advances are not linear in point size and
+   scaling design-unit measurements drifts from the native path. Per-component
+   draw cost is gated by the existing export benchmark suite.
 
 ## Consequences
 

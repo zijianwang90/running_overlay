@@ -32,7 +32,7 @@ struct OverlayComponentResolverTests {
         _ resolved: OverlayComponentResolved
     ) -> [(text: String, color: OverlayColor, frame: CGRect)] {
         flatten(resolved.nodes).compactMap { node in
-            guard case .text(let frame, let text, _, let color, _, _, _, _, _) = node else {
+            guard case .text(let frame, let text, _, let color, _, _, _, _, _, _) = node else {
                 return nil
             }
             return (text, color, frame)
@@ -167,13 +167,66 @@ struct OverlayComponentResolverTests {
 
         var trackingByText: [String: Double] = [:]
         for node in flatten(resolved.nodes) {
-            guard case .text(_, let text, _, _, _, _, _, _, let tracking) = node else {
+            guard case .text(_, let text, _, _, _, _, _, _, let tracking, _) = node else {
                 continue
             }
             trackingByText[text] = tracking
         }
         #expect(trackingByText["tight"] == -2.5)
         #expect(trackingByText["default"] == 0)
+    }
+
+    @Test func stackResolvesChildrenAndMarksAutoSizedText() throws {
+        let json = """
+        {
+          "spec": "ros.component/0.1",
+          "id": "community.test.stack",
+          "version": "1.0.0",
+          "name": "Stack",
+          "license": "MIT",
+          "size": [200, 100],
+          "params": [
+            { "id": "gap", "type": "number", "label": "Gap", "min": 0, "max": 20, "default": 4 }
+          ],
+          "nodes": [
+            {
+              "type": "stack",
+              "direction": "horizontal",
+              "spacing": "=gap",
+              "crossAlign": "center",
+              "children": [
+                {
+                  "type": "text", "text": "130",
+                  "font": { "family": "Helvetica Neue", "size": 28, "weight": "semibold" },
+                  "color": "#FFFFFF"
+                },
+                { "type": "rect", "frame": [0, 0, 20, 4], "fill": "#FFFFFF" }
+              ]
+            }
+          ]
+        }
+        """
+        let package = try OverlayComponentLoader.load(data: try #require(json.data(using: .utf8)))
+        let resolved = OverlayComponentResolver(definition: package.definition)
+            .resolve(parameters: ["gap": .number(6)], data: OverlayComponentStubData())
+
+        #expect(resolved.diagnostics.isEmpty)
+        let stack = try #require(resolved.nodes.first)
+        guard case .stack(let frame, let direction, let spacing, let crossAlign, let children) = stack else {
+            Issue.record("expected stack")
+            return
+        }
+        #expect(frame == nil)
+        #expect(direction == .horizontal)
+        #expect(spacing == 6)
+        #expect(crossAlign == .center)
+        #expect(children.count == 2)
+        guard case .text(let textFrame, _, _, _, _, _, _, _, _, let autoSize) = children[0] else {
+            Issue.record("expected auto-sized text")
+            return
+        }
+        #expect(autoSize)
+        #expect(textFrame == .zero)
     }
 
     @Test func unknownParametersProduceDiagnosticsButStillResolve() throws {

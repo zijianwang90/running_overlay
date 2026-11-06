@@ -257,19 +257,22 @@ reports changed pixels, maximum and mean channel deltas, and the bounding box of
 changed pixels. Set `PARITY_DUMP_DIR` to also write both renders as PNGs.
 `OverlayComponentParityTests` holds the pilots: Decor Solid Color as a rectangle
 and a rounded rectangle, with and without element opacity, and a heart-rate
-value-plus-unit numeric text element, all compared at exact thresholds (zero
-changed pixels). The pilots found and fixed two real defects: element opacity
-was applied both as a layer and again per node, and components drew their own
+value plus trailing unit that uses a horizontal stack of auto-sized text, at
+element scale 1 and 1.5, all compared at exact thresholds (zero changed
+pixels). The pilots found and fixed two real defects: element opacity was
+applied both as a layer and again per node, and components drew their own
 opacity layer while ignoring the host's element-level glow and shadow entirely.
 
-Digits from the numeric pilot: text nodes gained an optional `tracking` value
-(to match the native value line's `-fontSize * 0.012`), and the pilot keeps the
-unit below the value. A trailing unit would need the measured value width,
-which absolute text frames cannot express; real numeric ports are gated on a
-layout feature (flow or measured text) or must place the unit on its own row.
-Component definitions should also leave a few design units of padding around
-text: the renderer clips to the component rectangle and can otherwise trim the
-last glyph's ink.
+Text nodes gained an optional `tracking` value (to match the native value line's
+`-fontSize * 0.012`) and an optional `frame`: without a frame a text node
+measures its lines. The new `stack` node lays children along one axis with
+spacing and cross-axis alignment, so a unit can follow a value whose width
+changes. Stack layout runs at draw time in pixel space because CoreText
+advances are not linear in point size: measuring at design size and scaling the
+result drifted by about one pixel at 1.5× and three pixels at 2×. Component
+definitions should still leave a few design units of padding around text: the
+renderer clips to the component rectangle and can otherwise trim the last
+glyph's ink.
 
 Use the harness before porting a built-in. Differences are attributable to
 draw-tree construction, not the backend, so non-text geometry should be exact;
@@ -294,12 +297,12 @@ design size.
 
 Current limitations: the CLI render uses default parameters and no FIT data;
 bundled components currently ship without image assets; renaming a project
-component in place is not supported (export, edit the JSON and re-import); text
-nodes are absolutely positioned, so ports that depend on measured text widths
-need a layout feature. Adding the first component element raises the project
-schema to version 2, so this remains subject to the human review rules in
-`AGENTS.md` (project-file compatibility) and to pixel-parity evidence against
-native modules.
+component in place is not supported (export, edit the JSON and re-import);
+layout is limited to one-dimensional stacks, so intrinsic containers, wrapping
+and distribution are not available. Adding the first component element raises
+the project schema to version 2, so this remains subject to the human review
+rules in `AGENTS.md` (project-file compatibility) and to pixel-parity evidence
+against native modules.
 
 - Format and data contract: `docs/overlay-components/spec-v0.1.md`.
 - Decision and gates: `docs/adr/0013-declarative-overlay-components.md`.

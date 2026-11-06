@@ -129,6 +129,76 @@ struct OverlayComponentLoaderTests {
         #expect(diagnostics.contains { $0.message.contains("nested repeat") })
     }
 
+    @Test func loadsStackWithAutoSizedText() throws {
+        let json = """
+        {
+          "spec": "ros.component/0.1",
+          "id": "community.test.stack",
+          "version": "1.0.0",
+          "name": "Stack",
+          "license": "MIT",
+          "size": [200, 100],
+          "nodes": [
+            {
+              "type": "stack",
+              "direction": "vertical",
+              "spacing": 6,
+              "crossAlign": "center",
+              "children": [
+                {
+                  "type": "text", "text": "=format(42, \\"integer\\")",
+                  "font": { "family": "Helvetica Neue", "size": 20 },
+                  "color": "#FFFFFF"
+                },
+                { "type": "rect", "frame": [0, 0, 40, 4], "fill": "#FFFFFF" }
+              ]
+            }
+          ]
+        }
+        """
+        let package = try OverlayComponentLoader.load(
+            data: try #require(json.data(using: .utf8))
+        )
+        guard case .stack(let direction, _, let crossAlign, let children)? =
+            package.definition.nodes.first?.kind else {
+            Issue.record("expected stack node")
+            return
+        }
+        #expect(direction == .vertical)
+        #expect(crossAlign == .center)
+        #expect(children.count == 2)
+        #expect(children.first?.frame == nil)
+        #expect(children.last?.frame != nil)
+    }
+
+    @Test func rejectsStackChildWithoutFrame() throws {
+        let json = """
+        {
+          "spec": "ros.component/0.1",
+          "id": "community.test.stack-child",
+          "version": "1.0.0",
+          "name": "Stack Child",
+          "license": "MIT",
+          "size": [100, 100],
+          "nodes": [
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "group",
+                  "children": [
+                    { "type": "rect", "frame": [0, 0, 10, 10], "fill": "#FFFFFF" }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+        """
+        let diagnostics = errors(from: try #require(json.data(using: .utf8)))
+        #expect(diagnostics.contains { $0.path == "$.nodes[0].children[0].frame" })
+    }
+
     @Test func rejectsDuplicateParameterIDs() throws {
         let json = """
         {

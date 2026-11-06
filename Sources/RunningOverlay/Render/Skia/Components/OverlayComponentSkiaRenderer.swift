@@ -167,8 +167,21 @@ enum OverlayComponentSkiaRenderer {
                 skb_restore(context)
             }
 
+        case let .stack(frame, direction, spacing, crossAlign, children):
+            drawStack(
+                frame: frame,
+                direction: direction,
+                spacing: spacing,
+                crossAlign: crossAlign,
+                children: children,
+                context: context,
+                space: space,
+                opacity: opacity,
+                assets: assets
+            )
+
         case let .opacity(nodeOpacity, content):
-            let rect = space.rect(nodeBounds(content))
+            let rect = pixelBounds(content, space: space)
             skb_begin_opacity_layer(
                 context,
                 Float(nodeOpacity),
@@ -293,10 +306,30 @@ enum OverlayComponentSkiaRenderer {
                 }
             }
 
-        case let .text(frame, text, font, color, align, verticalAlign, maxWidth, lineHeight, tracking):
+        case let .text(frame, text, font, color, align, verticalAlign, maxWidth, lineHeight, tracking, autoSize):
+            let drawFrame: CGRect
+            if autoSize {
+                let size = intrinsicTextSize(
+                    text: text,
+                    font: font,
+                    maxWidth: maxWidth,
+                    lineHeight: lineHeight,
+                    tracking: tracking,
+                    space: space
+                )
+                drawFrame = CGRect(
+                    origin: frame.origin,
+                    size: CGSize(
+                        width: size.width / space.scale,
+                        height: size.height / space.scale
+                    )
+                )
+            } else {
+                drawFrame = frame
+            }
             drawText(
                 text,
-                frame: frame,
+                frame: drawFrame,
                 font: font,
                 color: color,
                 align: align,
@@ -435,7 +468,268 @@ enum OverlayComponentSkiaRenderer {
         }
     }
 
+    // MARK: - Stack layout
+
+    /// Stack layout runs at draw time in pixel space because CoreText advances
+    /// are not linear in font size: measuring at design size and scaling the
+    /// result drifts from measuring at the final pixel size.
+    private struct StackLayout {
+        var bounds: CGRect
+        var placements: [(node: OverlayComponentResolvedNode, origin: CGPoint)]
+    }
+
+    private static func drawStack(
+        frame: CGRect?,
+        direction: OverlayComponentStackDirection,
+        spacing: Double,
+        crossAlign: OverlayComponentCrossAlignment,
+        children: [OverlayComponentResolvedNode],
+        context: OpaquePointer,
+        space: DrawSpace,
+        opacity: Double,
+        assets: [String: Data]
+    ) {
+        let layout = layoutStack(
+            frame: frame,
+            direction: direction,
+            spacing: spacing,
+            crossAlign: crossAlign,
+            children: children,
+            space: space
+        )
+        for placement in layout.placements {
+            let origin = nodeOrigin(placement.node)
+            var childSpace = space
+            childSpace.origin = CGPoint(
+                x: layout.bounds.minX + placement.origin.x - origin.x * space.scale,
+                y: layout.bounds.minY + placement.origin.y - origin.y * space.scale
+            )
+            draw(
+                placement.node,
+                context: context,
+                space: childSpace,
+                opacity: opacity,
+                assets: assets
+            )
+        }
+    }
+
+    private static func layoutStack(
+        frame: CGRect?,
+        direction: OverlayComponentStackDirection,
+        spacing: Double,
+        crossAlign: OverlayComponentCrossAlignment,
+        children: [OverlayComponentResolvedNode],
+        space: DrawSpace
+    ) -> StackLayout {
+        let spacingPixels = spacing * space.scale
+        let sizes = children.map { intrinsicSize(of: $0, space: space) }
+        let mainSizes = sizes.map { direction == .horizontal ? $0.width : $0.height }
+        let crossSizes = sizes.map { direction == .horizontal ? $0.height : $0.width }
+        let contentMain = mainSizes.reduce(0, +)
+            + spacingPixels * Double(max(children.count - 1, 0))
+        let contentCross = crossSizes.max() ?? 0
+        let contentOrigin = space.point(frame?.origin ?? .zero)
+        let containerSize: CGSize
+        if let frame {
+            containerSize = CGSize(
+                width: frame.width * space.scale,
+                height: frame.height * space.scale
+            )
+        } else {
+            containerSize = direction == .horizontal
+                ? CGSize(width: contentMain, height: contentCross)
+                : CGSize(width: contentCross, height: contentMain)
+        }
+        let availableCross = direction == .horizontal
+            ? containerSize.height
+            : containerSize.width
+        var placements: [(OverlayComponentResolvedNode, CGPoint)] = []
+        var cursor = 0.0
+        for (index, child) in children.enumerated() {
+            let childMain = mainSizes[index]
+            let childCross = crossSizes[index]
+            let crossOffset: Double
+            switch crossAlign {
+            case .start:
+                crossOffset = 0
+            case .center:
+                crossOffset = (availableCross - childCross) / 2
+            case .end:
+                crossOffset = availableCross - childCross
+            }
+            let origin = direction == .horizontal
+                ? CGPoint(x: cursor, y: crossOffset)
+                : CGPoint(x: crossOffset, y: cursor)
+            placements.append((child, origin))
+            cursor += childMain + spacingPixels
+        }
+        return StackLayout(
+            bounds: CGRect(origin: contentOrigin, size: containerSize),
+            placements: placements
+        )
+    }
+
+    private static func intrinsicSize(
+        of node: OverlayComponentResolvedNode,
+        space: DrawSpace
+    ) -> CGSize {
+        switch node {
+        case let .text(frame, text, font, _, _, _, maxWidth, lineHeight, tracking, autoSize):
+            if autoSize {
+                return intrinsicTextSize(
+                    text: text,
+                    font: font,
+                    maxWidth: maxWidth,
+                    lineHeight: lineHeight,
+                    tracking: tracking,
+                    space: space
+                )
+            }
+            return CGSize(
+                width: frame.width * space.scale,
+                height: frame.height * space.scale
+            )
+
+        case let .stack(stackFrame, direction, spacing, crossAlign, children):
+            if let stackFrame {
+                return CGSize(
+                    width: stackFrame.width * space.scale,
+                    height: stackFrame.height * space.scale
+                )
+            }
+            return layoutStack(
+                frame: nil,
+                direction: direction,
+                spacing: spacing,
+                crossAlign: crossAlign,
+                children: children,
+                space: space
+            ).bounds.size
+
+        case .opacity(_, let content):
+            return intrinsicSize(of: content, space: space)
+
+        default:
+            let rect = nodeBounds(node)
+            return CGSize(
+                width: rect.width * space.scale,
+                height: rect.height * space.scale
+            )
+        }
+    }
+
+    private static func nodeOrigin(_ node: OverlayComponentResolvedNode) -> CGPoint {
+        switch node {
+        case let .group(frame, _, _, _, _): frame.origin
+        case let .stack(frame, _, _, _, _): frame?.origin ?? .zero
+        case .opacity(_, let content): nodeOrigin(content)
+        case let .rect(frame, _, _, _, _): frame.origin
+        case .circle: .zero
+        case .line: .zero
+        case .polyline: .zero
+        case .path: .zero
+        case let .text(frame, _, _, _, _, _, _, _, _, _): frame.origin
+        case let .image(frame, _, _): frame.origin
+        case let .gradientRect(frame, _, _, _, _): frame.origin
+        case let .sparkline(frame, _, _, _, _, _): frame.origin
+        case let .progressBar(frame, _, _, _, _): frame.origin
+        case let .arc(frame, _, _, _, _, _, _, _, _): frame.origin
+        }
+    }
+
+    private static func pixelBounds(
+        _ node: OverlayComponentResolvedNode,
+        space: DrawSpace
+    ) -> CGRect {
+        switch node {
+        case let .stack(frame, direction, spacing, crossAlign, children):
+            return layoutStack(
+                frame: frame,
+                direction: direction,
+                spacing: spacing,
+                crossAlign: crossAlign,
+                children: children,
+                space: space
+            ).bounds
+        case .opacity(_, let content):
+            return pixelBounds(content, space: space)
+        case let .text(frame, text, font, _, _, _, maxWidth, lineHeight, tracking, autoSize):
+            guard autoSize else { return space.rect(frame) }
+            let size = intrinsicTextSize(
+                text: text,
+                font: font,
+                maxWidth: maxWidth,
+                lineHeight: lineHeight,
+                tracking: tracking,
+                space: space
+            )
+            return CGRect(origin: space.point(frame.origin), size: size)
+        default:
+            return space.rect(nodeBounds(node))
+        }
+    }
+
     // MARK: - Text
+
+    private struct TextMeasurement {
+        var lines: [SkiaTextLine]
+        var lineHeightPixels: Double
+        var totalHeight: Double
+        var width: Double
+    }
+
+    private static func measureText(
+        _ text: String,
+        font: OverlayComponentResolvedFont,
+        maxWidth: Double?,
+        lineHeight: Double,
+        tracking: Double,
+        space: DrawSpace
+    ) -> TextMeasurement? {
+        let nsFont = SkiaTextComposer.font(
+            family: resolvedFamily(font.family),
+            size: font.size * space.scale,
+            weight: font.weight.appKitWeight
+        )
+        let lines = makeLines(
+            text,
+            font: nsFont,
+            maxWidth: maxWidth.map(space.length),
+            tracking: space.length(tracking)
+        )
+        guard let first = lines.first else { return nil }
+        let lineHeightPixels = max(font.size * space.scale * lineHeight, first.height)
+        let totalHeight = lineHeightPixels * Double(lines.count - 1) + first.height
+        return TextMeasurement(
+            lines: lines,
+            lineHeightPixels: lineHeightPixels,
+            totalHeight: totalHeight,
+            width: lines.map(\.width).max() ?? 0
+        )
+    }
+
+    private static func intrinsicTextSize(
+        text: String,
+        font: OverlayComponentResolvedFont,
+        maxWidth: Double?,
+        lineHeight: Double,
+        tracking: Double,
+        space: DrawSpace
+    ) -> CGSize {
+        guard !text.isEmpty,
+              let measurement = measureText(
+                  text,
+                  font: font,
+                  maxWidth: maxWidth,
+                  lineHeight: lineHeight,
+                  tracking: tracking,
+                  space: space
+              ) else {
+            return .zero
+        }
+        return CGSize(width: measurement.width, height: measurement.totalHeight)
+    }
 
     private static func drawText(
         _ text: String,
@@ -451,24 +745,20 @@ enum OverlayComponentSkiaRenderer {
         space: DrawSpace,
         opacity: Double
     ) {
-        guard !text.isEmpty else { return }
+        guard !text.isEmpty,
+              let measurement = measureText(
+                  text,
+                  font: font,
+                  maxWidth: maxWidth,
+                  lineHeight: lineHeight,
+                  tracking: tracking,
+                  space: space
+              ) else {
+            return
+        }
         let rect = space.rect(frame)
-        let nsFont = SkiaTextComposer.font(
-            family: resolvedFamily(font.family),
-            size: font.size * space.scale,
-            weight: font.weight.appKitWeight
-        )
-        let limit = maxWidth.map(space.length)
-        let lines = makeLines(
-            text,
-            font: nsFont,
-            maxWidth: limit,
-            tracking: space.length(tracking)
-        )
-        guard !lines.isEmpty else { return }
-
-        let lineHeightPixels = max(font.size * space.scale * lineHeight, lines[0].height)
-        let totalHeight = lineHeightPixels * Double(lines.count - 1) + lines[0].height
+        let lines = measurement.lines
+        let totalHeight = measurement.totalHeight
         let top: Double
         switch verticalAlign {
         case .top: top = rect.minY
@@ -483,7 +773,7 @@ enum OverlayComponentSkiaRenderer {
             case .center: x = rect.minX + (rect.width - line.width) / 2
             case .right: x = rect.maxX - line.width
             }
-            let y = top + lineHeightPixels * Double(index)
+            let y = top + measurement.lineHeightPixels * Double(index)
             SkiaTextComposer.draw(
                 line,
                 context: context,
@@ -741,6 +1031,7 @@ enum OverlayComponentSkiaRenderer {
     private static func nodeBounds(_ node: OverlayComponentResolvedNode) -> CGRect {
         switch node {
         case let .group(frame, _, _, _, _): frame
+        case .stack: .zero
         case let .opacity(_, node): nodeBounds(node)
         case let .rect(frame, _, _, _, _): frame
         case let .circle(center, radius, _, _, _):
@@ -756,7 +1047,7 @@ enum OverlayComponentSkiaRenderer {
             boundingBox(points: points, padding: width)
         case let .path(_, _, _, _, _, _, _):
             CGRect(x: -32768, y: -32768, width: 65536, height: 65536)
-        case let .text(frame, _, _, _, _, _, _, _, _): frame
+        case let .text(frame, _, _, _, _, _, _, _, _, _): frame
         case let .image(frame, _, _): frame
         case let .gradientRect(frame, _, _, _, _): frame
         case let .sparkline(frame, _, _, _, _, _): frame

@@ -248,10 +248,11 @@ These map directly to primitives in `Sources/CSkiaBridge/include/skia_bridge.h`.
 | `line` | `from` `[x, y]`, `to` `[x, y]`, `width`, `color`, `cap` (`butt`, `round`, `square`) |
 | `polyline` | `points` (array of `[x, y]` or expression), `width`, `color`, `cap`, `join`, `dash` `[length, gap]?` |
 | `path` | `commands` (array; see below), `fill?`, `stroke?`, `strokeWidth?`, `cap`, `join`, `dash?` |
-| `text` | `text` (string or expression), `font` (section 7.3), `color`, `align` (`left`, `center`, `right`, default `left`), `verticalAlign` (`top`, `center`, `bottom`, default `top`), `maxWidth?`, `lineHeight?` (multiplier, default 1.2), `tracking?` (extra advance per glyph in design units, default 0; negative tightens) |
+| `text` | `text` (string or expression), `font` (section 7.3), `color`, `align` (`left`, `center`, `right`, default `left`), `verticalAlign` (`top`, `center`, `bottom`, default `top`), `maxWidth?`, `lineHeight?` (multiplier, default 1.2), `tracking?` (extra advance per glyph in design units, default 0; negative tightens). `frame` is optional; without it the node is auto-sized from its measured lines. |
 | `image` | `asset` (`assets/...`), `fit` (`fill` or `contain`, default `contain`), `opacity?` |
 | `gradientRect` | `radius?`, `stops` (2..8 `{ "offset": 0..1, "color": "#..." }`), `from` `[x, y]`, `to` `[x, y]` |
 | `group` | `children` (array of nodes), `frame?`, `clip`, `shadow?`, `opacity?` |
+| `stack` | `children` (array of nodes), `direction` (`horizontal`, default, or `vertical`), `spacing?` (default 0), `crossAlign` (`start`, default, `center`, `end`), `frame?`, `opacity?` |
 
 `path.commands` entries:
 
@@ -270,10 +271,20 @@ Text is a single draw per line. `text` MAY contain at most 8 `\n`-separated
 lines. Text is laid out with the host's CoreText metrics and the same font
 resolution rules as existing overlays; `maxWidth` enables host-side fitting
 without changing font size. `tracking` adds a fixed advance per glyph in design
-units and is applied as CoreText kerning; negative values tighten. Text frames
-are absolute positions, so a line is not automatically placed next to another
-line's measured width. The renderer clips to the component rectangle, so leave
-padding around glyphs whose ink can overhang the typographic line box.
+units and is applied as CoreText kerning; negative values tighten. When `frame`
+is omitted, the text node measures its lines and reports that as its intrinsic
+size. The renderer clips to the component rectangle, so leave padding around
+glyphs whose ink can overhang the typographic line box.
+
+`stack` lays children out in order along one axis using each child's box size.
+A child's box is its `frame` size unless the child is a `text` node without a
+frame (measured lines) or a `stack` without a frame (its own content). Child
+`frame` origins are ignored for placement; the stack assigns positions. Every
+other child MUST declare a `frame`, so wrap `circle`, `line`, `polyline` and
+`path` in a group. The stack reports its content size when `frame` is omitted;
+a declared frame fixes the container size and `crossAlign` aligns children
+inside it. Layout runs at render pixel size, not in design units, because
+CoreText advances are not linear in point size.
 
 ### 7.2 Capability nodes
 

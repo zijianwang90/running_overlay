@@ -669,6 +669,7 @@ final class OverlayComponentParser {
         let typeKeys: Set<String>
         switch type {
         case "group": typeKeys = ["children", "clip", "shadow"]
+        case "stack": typeKeys = ["direction", "spacing", "crossAlign", "children"]
         case "rect": typeKeys = ["fill", "radius", "stroke", "strokeWidth"]
         case "circle": typeKeys = ["center", "radius", "fill", "stroke", "strokeWidth"]
         case "line": typeKeys = ["from", "to", "width", "color", "cap"]
@@ -697,7 +698,7 @@ final class OverlayComponentParser {
         }
 
         let frameRequired: Set<String> = [
-            "rect", "text", "image", "gradientRect", "sparkline",
+            "rect", "image", "gradientRect", "sparkline",
             "progressBar", "arc", "repeat"
         ]
         let frame = parseFrame(object["frame"], at: "\(path).frame", required: frameRequired.contains(type))
@@ -719,6 +720,46 @@ final class OverlayComponentParser {
                 children: children,
                 clip: bool(object, "clip", at: "\(path).clip") ?? false,
                 shadow: shadow
+            )
+
+        case "stack":
+            guard let rawChildren = object["children"],
+                  case .array(let childrenArray) = rawChildren else {
+                error("\(path).children", "stack requires children")
+                return nil
+            }
+            let children = parseNodes(
+                rawChildren,
+                path: "\(path).children",
+                depth: depth + 1,
+                insideRepeat: insideRepeat
+            )
+            if childrenArray.isEmpty {
+                error("\(path).children", "stack requires at least one child")
+            }
+            for (index, child) in children.enumerated()
+            where child.frame == nil && !hasIntrinsicSize(child.kind) {
+                error(
+                    "\(path).children[\(index)].frame",
+                    "stack child requires a frame unless it is text or a stack"
+                )
+            }
+            kind = .stack(
+                direction: rawEnumValue(
+                    object,
+                    "direction",
+                    at: "\(path).direction",
+                    default: OverlayComponentStackDirection.horizontal
+                ),
+                spacing: object["spacing"].flatMap { numberSource($0, at: "\(path).spacing") }
+                    ?? .literal(0),
+                crossAlign: rawEnumValue(
+                    object,
+                    "crossAlign",
+                    at: "\(path).crossAlign",
+                    default: OverlayComponentCrossAlignment.start
+                ),
+                children: children
             )
 
         case "rect":
@@ -1008,6 +1049,15 @@ final class OverlayComponentParser {
             return nil
         }
         return OverlayComponentFrame(x: x, y: y, width: width, height: height)
+    }
+
+    private func hasIntrinsicSize(_ kind: OverlayComponentNodeKind) -> Bool {
+        switch kind {
+        case .text, .stack:
+            true
+        default:
+            false
+        }
     }
 
     private func parseFont(_ value: OverlayJSONValue?, at path: String) -> OverlayComponentFont? {

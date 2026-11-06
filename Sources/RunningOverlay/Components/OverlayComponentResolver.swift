@@ -43,6 +43,13 @@ indirect enum OverlayComponentResolvedNode: Equatable {
         shadow: OverlayComponentResolvedShadow?,
         children: [OverlayComponentResolvedNode]
     )
+    case stack(
+        frame: CGRect?,
+        direction: OverlayComponentStackDirection,
+        spacing: Double,
+        crossAlign: OverlayComponentCrossAlignment,
+        children: [OverlayComponentResolvedNode]
+    )
     case opacity(Double, OverlayComponentResolvedNode)
     case rect(
         frame: CGRect,
@@ -91,7 +98,8 @@ indirect enum OverlayComponentResolvedNode: Equatable {
         verticalAlign: OverlayComponentVerticalAlignment,
         maxWidth: Double?,
         lineHeight: Double,
-        tracking: Double
+        tracking: Double,
+        autoSize: Bool
     )
     case image(
         frame: CGRect,
@@ -322,6 +330,27 @@ struct OverlayComponentResolver {
             )
             return resolved
 
+        case .stack(let direction, let spacing, let crossAlign, let children):
+            let stackFrame: CGRect?
+            if node.frame == nil {
+                stackFrame = nil
+            } else {
+                guard let rect = frame() else { return nil }
+                stackFrame = rect
+            }
+            resolved = .stack(
+                frame: stackFrame,
+                direction: direction,
+                spacing: max(number(spacing, default: 0), 0),
+                crossAlign: crossAlign,
+                children: resolveNodes(
+                    children,
+                    path: "\(path).children",
+                    context: &context,
+                    diagnostics: &diagnostics
+                )
+            )
+
         case .rect(let fill, let radius, let stroke, let strokeWidth):
             guard let rect = frame(), let fillColor = color(fill) else {
                 diagnostics.append("\(path): rect did not resolve")
@@ -410,7 +439,13 @@ struct OverlayComponentResolver {
             )
 
         case .text(let text, let font, let textColor, let align, let verticalAlign, let maxWidth, let lineHeight, let tracking):
-            guard let rect = frame() else { return nil }
+            let resolvedFrame: CGRect?
+            if node.frame == nil {
+                resolvedFrame = nil
+            } else {
+                guard let rect = frame() else { return nil }
+                resolvedFrame = rect
+            }
             guard let resolvedColor = textColor.evaluate(in: context) else {
                 diagnostics.append("\(path): text color did not resolve")
                 return nil
@@ -421,7 +456,7 @@ struct OverlayComponentResolver {
                 return nil
             }
             resolved = .text(
-                frame: rect,
+                frame: resolvedFrame ?? .zero,
                 text: text.evaluate(in: context),
                 font: OverlayComponentResolvedFont(
                     family: font.family,
@@ -433,7 +468,8 @@ struct OverlayComponentResolver {
                 verticalAlign: verticalAlign,
                 maxWidth: maxWidth?.evaluate(in: context),
                 lineHeight: max(lineHeight?.evaluate(in: context) ?? 1.2, 0.5),
-                tracking: tracking?.evaluate(in: context) ?? 0
+                tracking: tracking?.evaluate(in: context) ?? 0,
+                autoSize: resolvedFrame == nil
             )
 
         case .image(let asset, let fit):

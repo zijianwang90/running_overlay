@@ -64,6 +64,8 @@ export.
 
 - Draw text, shapes, paths, images and gradients with the primitives already
   exposed by `skb_*`, including per-node letter tracking.
+- Stack text and other boxed nodes horizontally or vertically with auto-sized
+  text, so a unit can follow a value whose width changes.
 - Read a versioned, read-only view of activity signals, series, laps,
   intervals, zones, route position and weather results.
 - Use three native capability nodes in v0.1: `sparkline`, `progressBar`, `arc`.
@@ -76,7 +78,8 @@ export.
 - Access the network, files, processes, keychain, or arbitrary clocks.
 - Compute intervals, zones, route projection or weather. Those stay in the
   host and are exposed as data.
-- Use auto layout, SVG, bundled fonts or nested `repeat`.
+- Use general auto layout (wrapping, distribution, intrinsic containers), SVG,
+  bundled fonts or nested `repeat`. Only one-dimensional stacks are available.
 - Design arbitrary Inspector UI.
 
 ## Authoring Loop (Planned)
@@ -120,7 +123,7 @@ milestone, not the current app.
 | M2 | Base + capability nodes through `SkiaEasyRunRenderer`; `.component` element kind | **Implemented for embedded definitions:** schema v2, canonical digest, Skia path; pixel parity with native still pending |
 | M3 | Params to Inspector generation and `ProjectDocument` undo | **Implemented:** generated Inspector rows, add/duplicate from the Overlay Pool, clamped/quantized parameter edits with discrete and continuous undo |
 | M4 | `.rocomponent` import, embedded definitions, validation errors, CLI | **Implemented:** folder/ZIP/JSON import with asset embedding and defensive archive checks, My Components management and export, Skia image nodes, `--component-validate` and `--component-render` |
-| M5 | Port built-ins one by one with snapshot evidence | **In progress:** exact native/component parity harness with Decor Solid Color and heart-rate numeric text pilots; remaining ports need a text layout feature, then native removal in a separate change |
+| M5 | Port built-ins one by one with snapshot evidence | **In progress:** exact native/component parity harness, Decor Solid Color pilots, and a heart-rate value plus trailing unit pilot using auto-sized text in a stack, including a scaled-element case; remaining ports need host chrome/symbol work, then native removal in a separate change |
 | M6 | Authoring guide + AI skill + example gallery | Community can author without reading Swift |
 
 M2 changes the project schema and is subject to the human review rules in

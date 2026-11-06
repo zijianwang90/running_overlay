@@ -180,21 +180,17 @@ struct OverlayComponentParityTests {
 
     // MARK: - Numeric text
 
-    /// Builds a heart-rate element and its declarative equivalent from the
-    /// native composition itself: the component uses the native line origins
-    /// and box size, so any pixel difference is attributable to text shaping or
-    /// host layer effects rather than to hand-copied geometry.
-    ///
-    /// The unit sits below the value because component text nodes are
-    /// absolutely positioned. A trailing unit would need the measured value
-    /// width, which the component format cannot express yet.
-    private func makeHeartRatePair() throws -> Pair {
+    /// Builds a heart-rate element and a declarative equivalent that uses a
+    /// horizontal stack with auto-sized text. Layout runs at pixel size in
+    /// both paths, so the unit lands after the measured value width even when
+    /// the element is scaled.
+    private func makeHeartRatePair(elementScale: Double = 1) throws -> Pair {
         var style = OverlayStyle.default
         style.fontName = "Helvetica Neue"
         style.fontSize = 28
         style.showLabel = false
         style.showUnit = true
-        style.unitPosition = .bottom
+        style.unitPosition = .trailing
         style.unitTextAlignment = .leading
         style.unitFontName = "Helvetica Neue"
         style.unitFontSize = 20
@@ -206,7 +202,7 @@ struct OverlayComponentParityTests {
         let nativeElement = OverlayElement(
             type: .heartRate,
             position: CGPoint(x: 0.25, y: 0.25),
-            scale: 1,
+            scale: elementScale,
             opacity: 1,
             style: style
         )
@@ -221,9 +217,7 @@ struct OverlayComponentParityTests {
             layout: layout,
             renderContext: context
         )
-        let valueLine = try #require(composition.lines.first)
-        let unitLine = try #require(composition.lines.dropFirst().first)
-        let valueTracking = -layout.fontSize * 0.012
+        let valueTracking = -style.fontSize * 0.012
 
         let definition = """
         {
@@ -232,26 +226,32 @@ struct OverlayComponentParityTests {
           "version": "1.0.0",
           "name": "Parity Heart Rate",
           "license": "MIT",
-          "size": [\(composition.size.width + 8), \(composition.size.height + 8)],
+          "size": [\(composition.size.width / elementScale + 8), \(composition.size.height / elementScale + 8)],
           "nodes": [
             {
-              "type": "text",
-              "frame": [\(valueLine.origin.x), \(valueLine.origin.y), \(valueLine.line.width), \(valueLine.line.height)],
-              "text": "=format(signal(\\"activity.heartRate\\"), \\"integer\\")",
-              "font": { "family": "Helvetica Neue", "size": 28, "weight": "semibold" },
-              "color": "#FFFFFF",
-              "align": "left",
-              "verticalAlign": "top",
-              "tracking": \(valueTracking)
-            },
-            {
-              "type": "text",
-              "frame": [\(unitLine.origin.x), \(unitLine.origin.y), \(unitLine.line.width), \(unitLine.line.height)],
-              "text": "bpm",
-              "font": { "family": "Helvetica Neue", "size": 20, "weight": "medium" },
-              "color": "#FFFFFF",
-              "align": "left",
-              "verticalAlign": "top"
+              "type": "stack",
+              "direction": "horizontal",
+              "spacing": 8,
+              "crossAlign": "start",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "=format(signal(\\"activity.heartRate\\"), \\"integer\\")",
+                  "font": { "family": "Helvetica Neue", "size": 28, "weight": "semibold" },
+                  "color": "#FFFFFF",
+                  "align": "left",
+                  "verticalAlign": "top",
+                  "tracking": \(valueTracking)
+                },
+                {
+                  "type": "text",
+                  "text": "bpm",
+                  "font": { "family": "Helvetica Neue", "size": 20, "weight": "medium" },
+                  "color": "#FFFFFF",
+                  "align": "left",
+                  "verticalAlign": "top"
+                }
+              ]
             }
           ]
         }
@@ -263,7 +263,7 @@ struct OverlayComponentParityTests {
         let componentElement = OverlayElement(
             type: .component,
             position: nativeElement.position,
-            scale: 1,
+            scale: elementScale,
             opacity: 1,
             style: style,
             component: OverlayComponentInstance(reference: reference)
@@ -275,11 +275,33 @@ struct OverlayComponentParityTests {
         )
     }
 
-    @Test func heartRateValueAndUnitMatchEquivalentComponent() throws {
+    @Test func heartRateTrailingUnitMatchesEquivalentComponent() throws {
         let pair = try makeHeartRatePair()
 
         try NativeComponentParityHarness.assertParity(
-            label: "heart-rate-value-unit",
+            label: "heart-rate-trailing-unit",
+            native: pair.native,
+            component: pair.component,
+            activity: Self.activity,
+            elapsedTime: 0,
+            size: Self.canvas,
+            thresholds: NativeComponentParityHarness.Thresholds(
+                channelTolerance: 0,
+                maximumChangedPixelRatio: 0,
+                maximumChannelDelta: 0,
+                maximumMeanChannelDelta: 0
+            )
+        )
+    }
+
+    /// CoreText advances are not linear in point size, so this pins the
+    /// decision to lay stacks out at pixel size rather than scaling design-unit
+    /// measurements.
+    @Test func heartRateTrailingUnitMatchesAtScaledElement() throws {
+        let pair = try makeHeartRatePair(elementScale: 1.5)
+
+        try NativeComponentParityHarness.assertParity(
+            label: "heart-rate-trailing-unit-scale-1.5",
             native: pair.native,
             component: pair.component,
             activity: Self.activity,

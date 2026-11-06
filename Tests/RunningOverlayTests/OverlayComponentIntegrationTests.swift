@@ -197,7 +197,7 @@ struct OverlayComponentIntegrationTests {
         #expect(fill.alpha < 1)
 
         guard let textNode = resolved.nodes.dropFirst().first,
-              case .text(_, let text, _, let color, _, _, _, _, _) = textNode else {
+              case .text(_, let text, _, let color, _, _, _, _, _, _) = textNode else {
             Issue.record("expected heart-rate text node")
             return
         }
@@ -243,7 +243,7 @@ struct OverlayComponentIntegrationTests {
         // dropped before resolution, so the declared defaults render.
         #expect(resolved.diagnostics.isEmpty)
         guard let textNode = resolved.nodes.dropFirst().first,
-              case .text(_, _, _, let color, _, _, _, _, _) = textNode else {
+              case .text(_, _, _, let color, _, _, _, _, _, _) = textNode else {
             Issue.record("expected heart-rate text node")
             return
         }
@@ -740,6 +740,55 @@ struct OverlayComponentIntegrationTests {
             Int(pixels[offset + 2]),
             Int(pixels[offset + 3])
         )
+    }
+
+    @Test func stackAutoSizedTextHonorsNodeOpacity() throws {
+        let package = try makePackage(
+            nodes: #"""
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text", "text": "A",
+                  "font": { "family": "Helvetica Neue", "size": 28, "weight": "semibold" },
+                  "color": "#FFFFFF", "opacity": 0.5
+                }
+              ]
+            }
+            """#
+        )
+        defer { package.cleanUp() }
+
+        var style = OverlayStyle.default
+        style.shadowEnabled = false
+        style.glowEnabled = false
+        let element = OverlayElement(
+            type: .component,
+            position: .zero,
+            scale: 1,
+            style: style,
+            component: OverlayComponentInstance(
+                reference: try OverlayComponentLoader.loadReference(at: package.root)
+            )
+        )
+        let size = CGSize(width: 1280, height: 720)
+        let renderer = try #require(SkiaEasyRunRenderer(size: size))
+        let (pixels, rowBytes) = try #require(renderer.render(
+            layout: OverlayLayout(elements: [element]),
+            activity: makeTimeline(),
+            elapsedTime: 0
+        ))
+
+        var maximumAlpha = 0
+        for y in 0..<100 {
+            for x in 0..<100 {
+                maximumAlpha = max(maximumAlpha, Int(pixels[y * rowBytes + x * 4 + 3]))
+            }
+        }
+        // The opacity layer must cover the auto-sized text; a zero-size layer
+        // would clip it away entirely.
+        #expect(maximumAlpha > 100)
+        #expect(maximumAlpha < 200)
     }
 
     @Test func skiaRendererDrawsRepeatBasedComponent() throws {
