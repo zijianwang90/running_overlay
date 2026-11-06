@@ -24,6 +24,8 @@ enum HeadlessBenchmarkRunner {
                     defer { HeadlessBenchmarkRunner.stopRunLoop() }
                     do {
                         switch command {
+                        case .pluginDevelopment(let pluginCommand):
+                            _ = try await PluginDevelopmentRunner.run(pluginCommand)
                         case .renderJob(let renderJobCommand):
                             _ = try await RenderJobRunner.run(renderJobCommand)
                         case .export(let exportCommand):
@@ -71,12 +73,16 @@ enum HeadlessBenchmarkRunner {
 }
 
 enum HeadlessBenchmarkCommand: Equatable {
+    case pluginDevelopment(PluginDevelopmentCommand)
     case renderJob(RenderJobCommand)
     case export(ExportBenchmarkCommand)
     case elevation(ElevationBenchmarkCommand)
     case templateSegments(TemplateSegmentsBenchmarkCommand)
 
     static func parse(arguments: [String] = CommandLine.arguments) throws -> HeadlessBenchmarkCommand? {
+        if let pluginCommand = try PluginDevelopmentCommand.parse(arguments: arguments) {
+            return .pluginDevelopment(pluginCommand)
+        }
         if let renderJob = try RenderJobCommand.parse(arguments: arguments) {
             return .renderJob(renderJob)
         }

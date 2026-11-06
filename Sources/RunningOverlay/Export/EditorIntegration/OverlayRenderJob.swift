@@ -1,12 +1,6 @@
 import CryptoKit
 import Foundation
 
-/// Version of the overlay pixel output. Bump it whenever a renderer change
-/// alters exported pixels, so cached editor renders are invalidated (ADR 0013).
-enum OverlayRendererVersion {
-    static let current = "skia-1"
-}
-
 /// Declarative, Codable headless render request (ADR 0013). Editor carriers
 /// and the `--render-job` command line both produce one; the app resolves it
 /// into an `OverlayExportJob` for the shared Skia exporter.

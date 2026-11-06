@@ -27,6 +27,8 @@ entries in `project-log.md`.
 | Featured overlays | `docs/overlay-modules/README.md`, matching module and design directory |
 | Preview | `docs/architecture.md#preview`, `docs/design/panels/preview/` |
 | Skia SDK or GPU backend experiments | `docs/development/skia-sdk.md`, `docs/adr/0010-skia-ganesh-metal-renderer.md` |
+| Native FCP/Resolve plugins | `docs/development/native-editor-plugins.md`, `docs/adr/0014-native-editor-plugin-contracts.md` |
+| FxPlug diagnostic build and source-sharing boundary | `docs/adr/0015-fxplug-diagnostic-carrier.md`, `scripts/build-fxplug-spike.py` |
 | Export or performance | `docs/architecture.md#export`, `docs/export-performance.md` |
 | Editor integration, render jobs, editor packages | `docs/adr/0013-render-jobs-and-editor-packages.md`, `docs/development/export.md#render-jobs-and-editor-packages` |
 | Project persistence or undo | `docs/architecture.md`, `docs/development/persistence.md` |

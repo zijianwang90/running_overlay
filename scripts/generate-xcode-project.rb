@@ -9,7 +9,8 @@ project_dir = File.join(root, "RunningOverlay.xcodeproj")
 project_file = File.join(project_dir, "project.pbxproj")
 scheme_dir = File.join(project_dir, "xcshareddata", "xcschemes")
 
-source_files = Dir.glob(File.join(root, "Sources/RunningOverlay/**/*.swift"))
+source_files = (Dir.glob(File.join(root, "Sources/RunningOverlay/**/*.swift")) +
+  Dir.glob(File.join(root, "Sources/OverlayPluginCore/**/*.swift")))
   .map { |path| path.delete_prefix("#{root}/") }
   .sort
 resource_files = Dir.glob(File.join(root, "Sources/RunningOverlay/Resources/**/*"))

@@ -1,6 +1,20 @@
 # Running Overlay Studio Roadmap
 
-Last updated: 2026-04-24
+Last updated: 2026-11-05
+
+## Native Editor Integration (2026-11-05)
+
+Status: in progress on the local plugin branch; no production native effect
+ships yet.
+
+Layers 0/1, shared data/time contracts, the Skia frame probe and a locally
+registered FCP/Motion diagnostic are implemented. Normal-speed source
+following, parameter persistence, restart and ProRes export have been verified.
+Next: extract the shared rendering target, implement portable file selection and
+offline resources, then expand real editing, retiming, color/alpha and
+distribution acceptance. Resolve follows FCP; Premiere is deferred and CapCut
+retains alpha-movie interchange. See the
+[development gates](development/native-editor-plugins.md).
 
 ## Milestone 0: Documentation Bootstrap
 

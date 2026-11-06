@@ -212,6 +212,12 @@ final class SkiaEasyRunRenderer {
         ) != 0
     }
 
+    /// The serial owner calls this after a synchronous flush. The GPU
+    /// context survives while the borrowed host surface is detached.
+    func releaseExternalSurface() {
+        skb_release_gpu_surface(context)
+    }
+
     /// Submits pending draw commands. `sync` waits for the GPU to finish.
     @discardableResult
     func flush(sync: Bool) -> Bool {

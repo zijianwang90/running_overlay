@@ -88,6 +88,15 @@ documented.
 
 ## External Services
 
+The local FxPlug diagnostic uses Apple's separately installed SDK and embeds
+its FxPlug/PluginManager runtime frameworks only into ignored developer build
+outputs. No Apple SDK source or binary is vendored into the repository. The
+service and compositor source are authored for this project. An effect template
+authored in Motion remains a local test artifact pending focused asset and
+distribution review; SDK runtime redistribution and App Store acceptance are
+not certified by the diagnostic build. Skia and project notices accompany the
+local service bundle.
+
 Open-Meteo and OpenWeather are optional runtime data providers, not bundled
 code dependencies. Users are responsible for complying with provider terms
 and supplying their own OpenWeather credentials where required.
