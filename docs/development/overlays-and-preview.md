@@ -230,8 +230,15 @@ The editor wiring is:
 
 - Overlay Pool → Components lists `OverlayComponentLibraryItem.all` (bundled
   `studio.*` definitions, read-only) and offers **Import Component…**, which
-  opens a package folder or component JSON file. Import validation errors are
-  shown in an alert with their JSON paths.
+  opens a package folder, `.rocomponent` ZIP archive or component JSON file.
+  Import validation errors are shown in an alert with their JSON paths.
+- The same panel's **My Components** section lists definitions carried by the
+  project (imported or duplicated), deduplicated by digest. Clicking one adds
+  another instance; the context menu exports it back to a `.rocomponent`
+  directory or removes every instance in one undo point.
+- ZIP import is defensive: stored/deflate entries only, no encryption, ZIP64,
+  symlinks, duplicate names or path traversal, per-entry and total size limits,
+  and CRC verification. `__MACOSX/` and `.DS_Store` metadata is ignored.
 - `ProjectDocument.addComponentFromLibrary` and `importComponentPackage` each
   add one undo point; `addComponentElement` remains the shared mutation.
 - `OverlayComponentDetailView` generates the Inspector: Layout rows plus one
@@ -255,10 +262,10 @@ bytes. Rendering requires the Skia build; it uses default parameter values, no
 activity data, a transparent canvas, and crops the PNG to the component's
 design size.
 
-Current limitations: `.rocomponent` ZIP archives are not unpacked (directory
-packages and single JSON files are supported); the CLI render uses default
-parameters and no FIT data; bundled components currently ship without image
-assets; pixel parity against native modules still needs evidence. Adding the
+Current limitations: the CLI render uses default parameters and no FIT data;
+bundled components currently ship without image assets; renaming a project
+component in place is not supported (export, edit the JSON and re-import); pixel
+parity against native modules still needs evidence. Adding the
 first component element raises the project schema to version 2, so this remains
 subject to the human review rules in `AGENTS.md` (project-file compatibility)
 and to pixel-parity evidence against native modules.

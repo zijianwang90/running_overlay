@@ -89,11 +89,62 @@ enum OverlayComponentLibrary {
 
 enum OverlayComponentLibraryError: LocalizedError, Equatable {
     case missingResource(String)
+    case missingDefinition
+    case invalidAssetPath(String)
 
     var errorDescription: String? {
         switch self {
         case .missingResource(let name):
             "Bundled component resource '\(name)' is missing."
+        case .missingDefinition:
+            "Only imported or project components can be exported."
+        case .invalidAssetPath(let path):
+            "Component asset path '\(path)' is invalid."
+        }
+    }
+}
+
+/// A component definition carried by the open project, deduplicated by digest.
+struct OverlayComponentProjectEntry: Identifiable, Equatable {
+    var reference: OverlayComponentReference
+    var displayName: String
+    var instanceCount: Int
+
+    var id: String { reference.digest }
+}
+
+/// Writes a project component back out as a `.rocomponent` directory package.
+enum OverlayComponentPackageWriter {
+    static func write(_ reference: OverlayComponentReference, to directory: URL) throws {
+        guard let definition = reference.definition else {
+            throw OverlayComponentLibraryError.missingDefinition
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        let data = try encoder.encode(definition)
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        try data.write(
+            to: directory.appendingPathComponent("component.json"),
+            options: .atomic
+        )
+        guard let assets = reference.assets, !assets.isEmpty else { return }
+        let assetsDirectory = directory.appendingPathComponent("assets", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: assetsDirectory,
+            withIntermediateDirectories: true
+        )
+        for (path, bytes) in assets {
+            let name = (path as NSString).lastPathComponent
+            guard path == "assets/\(name)", !name.isEmpty, name != ".", name != ".." else {
+                throw OverlayComponentLibraryError.invalidAssetPath(path)
+            }
+            try bytes.write(
+                to: assetsDirectory.appendingPathComponent(name),
+                options: .atomic
+            )
         }
     }
 }

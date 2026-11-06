@@ -4,7 +4,12 @@ import UniformTypeIdentifiers
 struct OverlayPoolView: View {
     @EnvironmentObject private var project: ProjectDocument
     @State private var activeCategory: OverlayCategory = .metrics
-    @State private var importErrorMessage: String?
+    @State private var alert: ComponentAlert?
+
+    private struct ComponentAlert {
+        var title: String
+        var message: String
+    }
 
     private let columns = [
         GridItem(.flexible(), spacing: EditorTheme.space2),
@@ -48,28 +53,52 @@ struct OverlayPoolView: View {
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(EditorTheme.textSecondary)
-                        .help("Import a .rocomponent package or component JSON file")
+                        .help("Import a .rocomponent package (folder or ZIP) or component JSON file")
                         Spacer()
                     }
                 }
 
                 ScrollView {
-                    LazyVGrid(columns: columns, spacing: EditorTheme.space2) {
-                        if activeCategory == .components {
-                            ForEach(OverlayComponentLibraryItem.all) { item in
-                                OverlayComponentAddTile(item: item) {
-                                    project.addComponentFromLibrary(item)
+                    if activeCategory == .components {
+                        VStack(alignment: .leading, spacing: EditorTheme.space3) {
+                            componentSectionHeader("Bundled")
+                            LazyVGrid(columns: columns, spacing: EditorTheme.space2) {
+                                ForEach(OverlayComponentLibraryItem.all) { item in
+                                    OverlayComponentAddTile(
+                                        displayName: item.displayName,
+                                        hint: item.hint,
+                                        systemImage: item.systemImage
+                                    ) {
+                                        project.addComponentFromLibrary(item)
+                                    }
                                 }
                             }
-                        } else {
+
+                            componentSectionHeader("My Components")
+                            if project.projectComponentEntries.isEmpty {
+                                Text("Imported and duplicated components appear here.")
+                                    .font(EditorTheme.captionFont)
+                                    .foregroundStyle(EditorTheme.textMuted)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            } else {
+                                LazyVGrid(columns: columns, spacing: EditorTheme.space2) {
+                                    ForEach(project.projectComponentEntries) { entry in
+                                        projectComponentTile(entry)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.bottom, EditorTheme.space4)
+                    } else {
+                        LazyVGrid(columns: columns, spacing: EditorTheme.space2) {
                             ForEach(OverlayTileInfo.tiles(for: activeCategory)) { tile in
                                 OverlayAddTile(tile: tile) {
                                     project.addOverlayElement(tile.type)
                                 }
                             }
                         }
+                        .padding(.bottom, EditorTheme.space4)
                     }
-                    .padding(.bottom, EditorTheme.space4)
                 }
             }
             .padding(.horizontal, EditorTheme.panelPaddingX)
@@ -77,17 +106,42 @@ struct OverlayPoolView: View {
         }
         .background(EditorTheme.panelBackground)
         .alert(
-            "Component Import Failed",
+            alert?.title ?? "Component",
             isPresented: Binding(
-                get: { importErrorMessage != nil },
-                set: { if !$0 { importErrorMessage = nil } }
+                get: { alert != nil },
+                set: { if !$0 { alert = nil } }
             )
         ) {
             Button("OK", role: .cancel) {
-                importErrorMessage = nil
+                alert = nil
             }
         } message: {
-            Text(importErrorMessage ?? "")
+            Text(alert?.message ?? "")
+        }
+    }
+
+    private func componentSectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(EditorTheme.bodyStrongFont)
+            .foregroundStyle(EditorTheme.textSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func projectComponentTile(_ entry: OverlayComponentProjectEntry) -> some View {
+        OverlayComponentAddTile(
+            displayName: entry.displayName,
+            hint: entry.instanceCount == 1 ? "1 instance" : "\(entry.instanceCount) instances",
+            systemImage: "square.stack.3d.up"
+        ) {
+            project.addComponentFromProject(entry)
+        }
+        .contextMenu {
+            Button("Export Component…") {
+                exportComponent(entry)
+            }
+            Button("Remove All Instances", role: .destructive) {
+                project.removeProjectComponent(entry)
+            }
         }
     }
 
@@ -95,23 +149,52 @@ struct OverlayPoolView: View {
         let panel = NSOpenPanel()
         panel.title = "Import Component"
         panel.prompt = "Import"
-        panel.message = "Choose a .rocomponent package folder or a component JSON file."
+        panel.message = "Choose a .rocomponent package (folder or ZIP) or a component JSON file."
         panel.canChooseDirectories = true
         panel.canChooseFiles = true
         panel.allowsMultipleSelection = false
-        panel.allowedContentTypes = [.json]
+        panel.allowedContentTypes = [.json, .zip]
+            + [UTType(filenameExtension: "rocomponent")].compactMap { $0 }
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
             _ = try SecurityScopedURLAccess.withAccess(to: url) {
                 try project.importComponentPackage(at: url)
             }
         } catch let error as OverlayComponentValidationError {
-            importErrorMessage = error.diagnostics
-                .filter { $0.severity == .error }
-                .map { "\($0.path): \($0.message)" }
-                .joined(separator: "\n")
+            alert = ComponentAlert(
+                title: "Component Import Failed",
+                message: error.diagnostics
+                    .filter { $0.severity == .error }
+                    .map { "\($0.path): \($0.message)" }
+                    .joined(separator: "\n")
+            )
         } catch {
-            importErrorMessage = error.localizedDescription
+            alert = ComponentAlert(
+                title: "Component Import Failed",
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    private func exportComponent(_ entry: OverlayComponentProjectEntry) {
+        let panel = NSSavePanel()
+        panel.title = "Export Component"
+        panel.prompt = "Export"
+        panel.nameFieldStringValue = "\(entry.displayName).rocomponent"
+        panel.canCreateDirectories = true
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try SecurityScopedURLAccess.withAccess(to: url) {
+                if FileManager.default.fileExists(atPath: url.path) {
+                    try FileManager.default.removeItem(at: url)
+                }
+                try OverlayComponentPackageWriter.write(entry.reference, to: url)
+            }
+        } catch {
+            alert = ComponentAlert(
+                title: "Component Export Failed",
+                message: error.localizedDescription
+            )
         }
     }
 }
@@ -225,26 +308,28 @@ struct OverlayAddTile: View {
     }
 }
 
-/// Add tile for a read-only bundled component. Bundled definitions cannot be
-/// edited in place; the Inspector offers "Duplicate to My Components".
+/// Add tile for a bundled or project component. Bundled definitions are
+/// read-only; the Inspector offers "Duplicate to My Components".
 struct OverlayComponentAddTile: View {
-    let item: OverlayComponentLibraryItem
+    let displayName: String
+    let hint: String
+    let systemImage: String
     var action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: EditorTheme.space3) {
-                Image(systemName: item.systemImage)
+                Image(systemName: systemImage)
                     .font(.system(size: 19, weight: .medium))
                     .foregroundStyle(EditorTheme.textPrimary)
                     .frame(width: 22)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(item.displayName)
+                    Text(displayName)
                         .font(EditorTheme.bodyStrongFont)
                         .foregroundStyle(EditorTheme.textPrimary)
                         .lineLimit(1)
-                    Text(item.hint)
+                    Text(hint)
                         .font(EditorTheme.captionFont)
                         .foregroundStyle(EditorTheme.textMuted)
                         .lineLimit(1)
@@ -262,7 +347,7 @@ struct OverlayComponentAddTile: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(OverlayTileButtonStyle(isAccent: false))
-        .help("Add \(item.displayName)")
+        .help("Add \(displayName)")
     }
 }
 

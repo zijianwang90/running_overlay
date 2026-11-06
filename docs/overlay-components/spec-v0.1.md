@@ -5,9 +5,10 @@ validation, expression evaluation and resolved draw-tree construction under
 `Sources/RunningOverlay/Components/`. A `component` overlay element kind now
 persists instances in projects (project schema version 2) and renders through
 the shared Skia preview/export renderer, including image assets. The Inspector
-is generated from `params`, the Overlay Pool imports `.rocomponent` packages
-and component JSON files, and `--component-validate` / `--component-render`
-provide a headless authoring loop. Bundled components are read-only and
+is generated from `params`, the Overlay Pool imports `.rocomponent` folders,
+ZIP archives and component JSON files and manages project definitions, and
+`--component-validate` / `--component-render` provide a headless authoring
+loop. Bundled components are read-only and
 resolved by id, version and digest. This document defines the format; ADR 0013
 records the decision and gates.
 

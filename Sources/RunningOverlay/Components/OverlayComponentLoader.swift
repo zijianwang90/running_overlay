@@ -168,9 +168,20 @@ enum OverlayComponentLoader {
         return try load(data: data, assets: assets, assetData: assetData)
     }
 
-    /// Loads a package directory or a single component JSON file into a
-    /// validated reference. Imported references embed the definition and asset
-    /// bytes so the resulting project is self-contained.
+    /// Loads a component ZIP archive. The archive must contain `component.json`
+    /// at the root; `assets/` entries become the package's asset bytes.
+    static func load(archive data: Data) throws -> OverlayComponentPackage {
+        let contents = try OverlayComponentZipArchive.extract(data)
+        return try load(
+            data: contents.definitionData,
+            assets: Set(contents.assets.keys),
+            assetData: contents.assets
+        )
+    }
+
+    /// Loads a package directory, ZIP archive, or a single component JSON file
+    /// into a validated reference. Imported references embed the definition and
+    /// asset bytes so the resulting project is self-contained.
     static func loadReference(
         at url: URL,
         source: OverlayComponentSource = .imported
@@ -188,8 +199,17 @@ enum OverlayComponentLoader {
                 assets: package.assetData
             )
         }
+        let fileData = try Data(contentsOf: url)
+        if OverlayComponentZipArchive.looksLikeZip(fileData) {
+            let contents = try OverlayComponentZipArchive.extract(fileData)
+            return try OverlayComponentReference(
+                definitionData: contents.definitionData,
+                source: source,
+                assets: contents.assets
+            )
+        }
         return try OverlayComponentReference(
-            definitionData: Data(contentsOf: url),
+            definitionData: fileData,
             source: source
         )
     }

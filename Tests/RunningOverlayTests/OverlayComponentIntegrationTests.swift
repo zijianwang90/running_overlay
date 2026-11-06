@@ -557,6 +557,84 @@ struct OverlayComponentIntegrationTests {
         #expect(OverlayComponentRegistry.definition(for: reference) != nil)
     }
 
+    @MainActor
+    @Test func projectComponentCatalogDeduplicatesByDigest() throws {
+        let project = ProjectDocument()
+        let reference = try self.reference()
+        project.addComponentElement(reference: reference)
+        project.addComponentElement(reference: reference)
+
+        let entries = project.projectComponentEntries
+        #expect(entries.count == 1)
+        #expect(entries.first?.instanceCount == 2)
+        #expect(entries.first?.displayName == "Heart Rate Pill")
+    }
+
+    @MainActor
+    @Test func bundledComponentsStayOutOfProjectCatalog() throws {
+        let project = ProjectDocument()
+        let item = try #require(OverlayComponentLibraryItem.all.first)
+        _ = try #require(project.addComponentFromLibrary(item))
+        #expect(project.projectComponentEntries.isEmpty)
+    }
+
+    @MainActor
+    @Test func removingProjectComponentRemovesAllInstancesInOneUndo() throws {
+        let project = ProjectDocument()
+        let reference = try self.reference()
+        project.addComponentElement(reference: reference)
+        project.addComponentElement(reference: reference)
+        let entry = try #require(project.projectComponentEntries.first)
+
+        project.removeProjectComponent(entry)
+        #expect(project.overlayLayout.elements.isEmpty)
+
+        project.undo()
+        #expect(project.overlayLayout.elements.count == 2)
+    }
+
+    @MainActor
+    @Test func exportedProjectComponentReloadsWithSameDigestAndAssets() throws {
+        let package = try makePackage(
+            nodes: #"{ "type": "image", "frame": [0, 0, 100, 100], "asset": "assets/card.png", "fit": "fill" }"#,
+            assets: ["card.png": try makePNG(red: 5, green: 6, blue: 7)]
+        )
+        defer { package.cleanUp() }
+
+        let project = ProjectDocument()
+        _ = try project.importComponentPackage(at: package.root)
+        let entry = try #require(project.projectComponentEntries.first)
+
+        let exportURL = package.root.deletingLastPathComponent()
+            .appendingPathComponent("export-\(UUID().uuidString).rocomponent", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: exportURL) }
+        try OverlayComponentPackageWriter.write(entry.reference, to: exportURL)
+
+        let reloaded = try OverlayComponentLoader.loadReference(at: exportURL)
+        #expect(reloaded.digest == entry.reference.digest)
+        #expect(reloaded.id == entry.reference.id)
+        #expect(reloaded.assets?["assets/card.png"] == entry.reference.assets?["assets/card.png"])
+    }
+
+    @MainActor
+    @Test func duplicatingComponentOverlayKeepsItsPayload() throws {
+        let project = ProjectDocument()
+        let item = try #require(OverlayComponentLibraryItem.all.first)
+        let id = try #require(project.addComponentFromLibrary(item))
+        project.setComponentParameter(id, parameterID: "radius", value: .number(12))
+        let original = try #require(project.overlayLayout.elements.first { $0.id == id })
+
+        project.duplicateOverlay(id)
+
+        let copy = try #require(project.overlayLayout.elements.last)
+        #expect(copy.id != id)
+        #expect(copy.component == original.component)
+        #expect(project.overlayLayout.elements.count == 2)
+
+        project.undo()
+        #expect(project.overlayLayout.elements.count == 1)
+    }
+
     @Test func componentCLIParsesValidateAndRenderArguments() throws {
         let validate = try ComponentCLICommand.parse(arguments: [
             "RunningOverlay", "--component-validate", "Packages/Card"

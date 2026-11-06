@@ -742,8 +742,7 @@ final class ProjectDocument: ObservableObject {
 
     /// Promotes a bundled component to an editable project component by
     /// embedding its definition. Parameter values and placement are preserved.
-    func makeComponentEditable(_ elementID: OverlayElement.ID) {
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }),
+    func makeComponentEditable(_ elementID: OverlayElement.ID) {        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }),
               var component = overlayLayout.elements[index].component,
               component.reference.source == .bundled else {
             return
@@ -756,6 +755,67 @@ final class ProjectDocument: ObservableObject {
         component.reference = editable
         overlayLayout.elements[index].component = component
         statusMessage = "Duplicated \(component.displayName) to My Components."
+    }
+
+    /// Component definitions that live in the project (imported or duplicated
+    /// from a bundle), deduplicated by digest in first-use order.
+    var projectComponentEntries: [OverlayComponentProjectEntry] {
+        var order: [String] = []
+        var references: [String: OverlayComponentReference] = [:]
+        var counts: [String: Int] = [:]
+        for element in overlayLayout.elements {
+            guard let component = element.component,
+                  component.reference.source != .bundled else {
+                continue
+            }
+            let digest = component.reference.digest
+            if references[digest] == nil {
+                references[digest] = component.reference
+                order.append(digest)
+            }
+            counts[digest, default: 0] += 1
+        }
+        return order.compactMap { digest in
+            guard let reference = references[digest] else { return nil }
+            let name = OverlayComponentRegistry.definition(for: reference)?.name
+                .resolve(language: OverlayComponentInstance.hostLanguage)
+                ?? reference.id
+            return OverlayComponentProjectEntry(
+                reference: reference,
+                displayName: name,
+                instanceCount: counts[digest] ?? 0
+            )
+        }
+    }
+
+    /// Adds another instance of a project component in one undo point.
+    @discardableResult
+    func addComponentFromProject(
+        _ entry: OverlayComponentProjectEntry,
+        position: CGPoint = CGPoint(x: 0.5, y: 0.5),
+        scale: Double = 1
+    ) -> OverlayElement.ID {
+        addComponentElement(reference: entry.reference, position: position, scale: scale)
+    }
+
+    /// Removes every instance of a project component in one undo point, so the
+    /// definition disappears from "My Components" together with its elements.
+    func removeProjectComponent(_ entry: OverlayComponentProjectEntry) {
+        let removedIDs = Set(
+            overlayLayout.elements
+                .filter {
+                    $0.component?.reference.digest == entry.reference.digest
+                        && $0.component?.reference.source != .bundled
+                }
+                .map(\.id)
+        )
+        guard !removedIDs.isEmpty else { return }
+        registerUndoPoint()
+        overlayLayout.elements.removeAll { removedIDs.contains($0.id) }
+        if case let .overlayElement(selected) = selection, removedIDs.contains(selected) {
+            selection = .none
+        }
+        statusMessage = "Removed \(entry.displayName) from the project."
     }
 
     private func makeOverlayElement(type: OverlayElementType, position: CGPoint, scale: Double) -> OverlayElement {
@@ -3303,7 +3363,8 @@ final class ProjectDocument: ObservableObject {
             opacity: original.opacity,
             isVisible: true,
             isLocked: false,
-            style: original.style
+            style: original.style,
+            component: original.component
         )
         overlayLayout.elements.insert(copy, at: index + 1)
         selection = .overlayElement(copy.id)
