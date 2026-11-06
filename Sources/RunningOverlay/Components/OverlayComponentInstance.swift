@@ -80,37 +80,48 @@ struct OverlayComponentReference: Codable, Equatable {
     var source: OverlayComponentSource
     /// Nil for bundled components, which ship with the host.
     var definition: OverlayJSONValue?
+    /// Package-relative asset bytes (`assets/name.png`), embedded for imported
+    /// and project components. Nil when the component has no assets.
+    var assets: [String: Data]?
 
     init(
         id: String,
         version: String,
         digest: String,
         source: OverlayComponentSource,
-        definition: OverlayJSONValue? = nil
+        definition: OverlayJSONValue? = nil,
+        assets: [String: Data]? = nil
     ) {
         self.id = id
         self.version = version
         self.digest = digest
         self.source = source
         self.definition = definition
+        self.assets = assets
     }
 
     /// Validates `component.json` bytes and builds a reference. Imported and
-    /// project definitions embed the canonical document; bundled ones omit it.
+    /// project definitions embed the canonical document and their asset bytes;
+    /// bundled ones omit both.
     init(
         definitionData: Data,
         source: OverlayComponentSource,
-        assets: Set<String> = []
+        assets: [String: Data] = [:]
     ) throws {
         let root = try OverlayJSONValue.decode(definitionData)
         let canonical = try root.canonicalData()
-        let package = try OverlayComponentLoader.load(data: canonical, assets: assets)
+        let package = try OverlayComponentLoader.load(
+            data: canonical,
+            assets: Set(assets.keys),
+            assetData: assets
+        )
         self.init(
             id: package.definition.id,
             version: package.definition.version,
             digest: package.digest,
             source: source,
-            definition: source == .bundled ? nil : root
+            definition: source == .bundled ? nil : root,
+            assets: source == .bundled || assets.isEmpty ? nil : assets
         )
     }
 }
@@ -125,6 +136,31 @@ struct OverlayComponentInstance: Equatable {
     init(reference: OverlayComponentReference, parameters: [String: OverlayJSONValue] = [:]) {
         self.reference = reference
         self.parameters = parameters
+    }
+}
+
+// MARK: - Display
+
+extension OverlayComponentInstance {
+    /// Localized display name from the resolved definition, falling back to the
+    /// component id so a missing definition still identifies the element.
+    var displayName: String {
+        guard let definition = OverlayComponentRegistry.definition(for: reference) else {
+            return reference.id
+        }
+        return definition.name.resolve(language: Self.hostLanguage)
+    }
+
+    static var hostLanguage: String {
+        Locale.preferredLanguages.first ?? "en"
+    }
+}
+
+extension OverlayElement {
+    /// User-facing element name. Components use their definition name instead
+    /// of the generic "Component" type label.
+    var displayLabel: String {
+        component?.displayName ?? type.label
     }
 }
 
@@ -166,9 +202,9 @@ extension OverlayComponentDefinition {
 
 /// Resolves and caches component definitions for rendering.
 ///
-/// Validation runs once per digest. Bundled definitions are not part of the
-/// v0.1 kernel yet, so a bundled reference without embedded bytes cannot
-/// resolve and its element draws nothing.
+/// Validation runs once per digest. References without embedded bytes resolve
+/// through `OverlayComponentLibrary` when they name a bundled definition with
+/// the recorded digest.
 enum OverlayComponentRegistry {
     private static let lock = NSLock()
     nonisolated(unsafe) private static var definitionsByDigest: [String: OverlayComponentDefinition] = [:]
@@ -178,9 +214,11 @@ enum OverlayComponentRegistry {
     static func definition(for reference: OverlayComponentReference) -> OverlayComponentDefinition? {
         guard let embedded = reference.definition,
               let data = try? embedded.canonicalData() else {
-            return nil
+            return OverlayComponentLibrary.definition(for: reference)
         }
-        let key = OverlayComponentDigest.sha256(of: data)
+        let assetData = reference.assets ?? [:]
+        let assetPaths = assetData.keys.sorted().joined(separator: "|")
+        let key = OverlayComponentDigest.sha256(of: data) + "|" + assetPaths
 
         lock.lock()
         if let cached = definitionsByDigest[key] {
@@ -189,7 +227,11 @@ enum OverlayComponentRegistry {
         }
         lock.unlock()
 
-        guard let package = try? OverlayComponentLoader.load(data: data) else {
+        guard let package = try? OverlayComponentLoader.load(
+            data: data,
+            assets: Set(assetData.keys),
+            assetData: assetData
+        ) else {
             return nil
         }
 
@@ -197,6 +239,11 @@ enum OverlayComponentRegistry {
         definitionsByDigest[key] = package.definition
         lock.unlock()
         return package.definition
+    }
+
+    /// Asset bytes available to a component, keyed by package-relative path.
+    static func assets(for reference: OverlayComponentReference) -> [String: Data] {
+        reference.assets ?? [:]
     }
 
     /// Resolves an instance against host data. Returns nil when the definition

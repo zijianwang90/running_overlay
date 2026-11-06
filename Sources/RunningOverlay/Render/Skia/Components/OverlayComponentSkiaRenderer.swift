@@ -71,8 +71,15 @@ enum OverlayComponentSkiaRenderer {
                 Float(background.color.alpha)
             )
         }
+        let assets = OverlayComponentRegistry.assets(for: instance.reference)
         for node in resolved.nodes {
-            draw(node, context: context, space: space, opacity: element.opacity)
+            draw(
+                node,
+                context: context,
+                space: space,
+                opacity: element.opacity,
+                assets: assets
+            )
         }
         if element.opacity < 0.999 {
             skb_restore(context)
@@ -110,7 +117,8 @@ enum OverlayComponentSkiaRenderer {
         _ node: OverlayComponentResolvedNode,
         context: OpaquePointer,
         space: DrawSpace,
-        opacity: Double
+        opacity: Double,
+        assets: [String: Data]
     ) {
         guard opacity > 0.001 else { return }
         switch node {
@@ -157,7 +165,7 @@ enum OverlayComponentSkiaRenderer {
                 restoreCount += 1
             }
             for child in children {
-                draw(child, context: context, space: space, opacity: opacity)
+                draw(child, context: context, space: space, opacity: opacity, assets: assets)
             }
             for _ in 0..<restoreCount {
                 skb_restore(context)
@@ -173,7 +181,7 @@ enum OverlayComponentSkiaRenderer {
                 Float(rect.width),
                 Float(rect.height)
             )
-            draw(content, context: context, space: space, opacity: opacity)
+            draw(content, context: context, space: space, opacity: opacity, assets: assets)
             skb_restore(context)
 
         case let .rect(frame, fill, radius, stroke, strokeWidth):
@@ -304,10 +312,15 @@ enum OverlayComponentSkiaRenderer {
                 opacity: opacity
             )
 
-        case .image:
-            // Bundled asset blobs arrive with the import milestone. Until then
-            // an image node draws nothing rather than a placeholder rectangle.
-            return
+        case let .image(frame, asset, fit):
+            OverlayComponentImageCache.draw(
+                assetPath: asset,
+                assets: assets,
+                rect: space.rect(frame),
+                fit: fit,
+                opacity: opacity,
+                context: context
+            )
 
         case let .gradientRect(frame, stops, from, to, radius):
             guard let first = stops.first?.color, let last = stops.last?.color else { return }

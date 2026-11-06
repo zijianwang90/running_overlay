@@ -375,5 +375,9 @@ enum OverlayComponentNodeKind: Equatable {
 struct OverlayComponentPackage: Equatable {
     var definition: OverlayComponentDefinition
     var digest: String
+    /// Package-relative asset paths, e.g. `assets/heart.png`.
     var assets: Set<String>
+    /// Asset bytes keyed by the same package-relative paths. Imported and
+    /// project components persist these so the project is self-contained.
+    var assetData: [String: Data]
 }

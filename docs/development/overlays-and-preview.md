@@ -217,21 +217,51 @@ component definition plus parameter values into a draw tree for base and
 capability nodes.
 
 A `.component` overlay element stores an `OverlayComponentInstance`:
-`OverlayTemplateElement.component` holds the id/version/digest/source and, for
-imported or project components, the embedded definition; `params` holds the
-authored values. `OverlayComponentRegistry` parses and caches definitions by
-canonical digest, and `OverlayComponentSkiaRenderer` draws the resolved tree
-through the shared preview/export Skia context. `ProjectDocument`
-.addComponentElement(_:parameters:position:scale:) is the single undo point for
-addition.
+`OverlayTemplateElement.component` holds the id/version/digest/source,
+`definition` for imported or project components, and `assets` (base64-keyed
+package paths) when image nodes reference assets; `params` holds the authored
+values. `OverlayComponentRegistry` parses and caches definitions by canonical
+digest plus asset path set, and `OverlayComponentSkiaRenderer` draws the
+resolved tree through the shared preview/export Skia context.
+`OverlayComponentImageCache` decodes PNG/JPEG assets once per digest and draws
+them with contain/fill fit.
 
-Current limitations: no UI creates component elements yet; the Inspector shows
-the missing-detail placeholder for one; bundled (`studio.*`) definitions are
-not resolvable; image nodes draw nothing because package assets are not
-persisted. Adding the first component element raises the project schema to
-version 2, so this remains subject to the human review rules in `AGENTS.md`
-(project-file compatibility) and to pixel-parity evidence against native
-modules.
+The editor wiring is:
+
+- Overlay Pool → Components lists `OverlayComponentLibraryItem.all` (bundled
+  `studio.*` definitions, read-only) and offers **Import Component…**, which
+  opens a package folder or component JSON file. Import validation errors are
+  shown in an alert with their JSON paths.
+- `ProjectDocument.addComponentFromLibrary` and `importComponentPackage` each
+  add one undo point; `addComponentElement` remains the shared mutation.
+- `OverlayComponentDetailView` generates the Inspector: Layout rows plus one
+  collapsible section per declared `section` (first-appearance order), with
+  controls chosen from `params.range`/step/style. Slider edits are continuous
+  and share one undo transaction; fields, toggles, menus and color wells are
+  discrete edits. `when` expressions hide controls against current data.
+- **Duplicate to My Components** promotes a bundled element to an embedded
+  project reference; bundled definitions themselves are never edited.
+
+Headless authoring:
+
+```sh
+swift run RunningOverlay --component-validate path/to/Card.rocomponent
+swift run RunningOverlay --component-render path/to/Card.rocomponent \
+  --component-output /tmp/card.png --component-scale 2
+```
+
+Validation works in every build and prints the id, version, digest and asset
+bytes. Rendering requires the Skia build; it uses default parameter values, no
+activity data, a transparent canvas, and crops the PNG to the component's
+design size.
+
+Current limitations: `.rocomponent` ZIP archives are not unpacked (directory
+packages and single JSON files are supported); the CLI render uses default
+parameters and no FIT data; bundled components currently ship without image
+assets; pixel parity against native modules still needs evidence. Adding the
+first component element raises the project schema to version 2, so this remains
+subject to the human review rules in `AGENTS.md` (project-file compatibility)
+and to pixel-parity evidence against native modules.
 
 - Format and data contract: `docs/overlay-components/spec-v0.1.md`.
 - Decision and gates: `docs/adr/0013-declarative-overlay-components.md`.
@@ -240,5 +270,5 @@ modules.
   `OverlayComponentIntegrationTests`.
 - Fixtures: `Tests/RunningOverlayTests/Fixtures/Components/`.
 
-The next integration steps are generated Inspector rows (M3) and
-`.rocomponent` import plus bundled definitions (M4).
+The next integration steps are M5 (port built-ins with snapshot evidence) and
+M6 (authoring guide and AI skill).

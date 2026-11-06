@@ -5,6 +5,9 @@ enum RunningOverlayMain {
     @MainActor
     static func main() {
         do {
+            if let command = try ComponentCLICommand.parse() {
+                exit(ComponentCommandRunner.run(command))
+            }
             if let command = try HeadlessBenchmarkCommand.parse() {
                 let exitCode = HeadlessBenchmarkRunner.run(command)
                 exit(exitCode)

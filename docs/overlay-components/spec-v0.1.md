@@ -4,9 +4,12 @@ Status: **Draft for review.** The runtime kernel implements parsing,
 validation, expression evaluation and resolved draw-tree construction under
 `Sources/RunningOverlay/Components/`. A `component` overlay element kind now
 persists instances in projects (project schema version 2) and renders through
-the shared Skia preview/export renderer. Inspector generation, `.rocomponent`
-import and bundled component resolution are not implemented yet. This document
-defines the format; ADR 0013 records the decision and gates.
+the shared Skia preview/export renderer, including image assets. The Inspector
+is generated from `params`, the Overlay Pool imports `.rocomponent` packages
+and component JSON files, and `--component-validate` / `--component-render`
+provide a headless authoring loop. Bundled components are read-only and
+resolved by id, version and digest. This document defines the format; ADR 0013
+records the decision and gates.
 
 - Specification identifier: `ros.component/0.1`
 - Package extension: `.rocomponent`
@@ -466,7 +469,8 @@ A component instance is stored as:
     "version": "1.2.0",
     "digest": "sha256:…",
     "source": "imported",
-    "definition": { "...": "embedded component document" }
+    "definition": { "...": "embedded component document" },
+    "assets": { "assets/logo.png": "<base64 asset bytes>" }
   },
   "params": { "accent": "#FF4D4F", "radius": 36, "showTrend": true },
   "positionX": 0.03,
@@ -500,6 +504,12 @@ Rules:
    an embedded definition does not change its identity. When an embedded
    definition's recomputed digest differs from the stored digest, rendering
    uses the embedded bytes.
+7. Imported and project components MUST embed the bytes of every asset their
+   `image` nodes reference, keyed by package path (`assets/name.png`) and stored
+   base64-encoded by the ordinary JSON encoder. A node that references an asset
+   missing from the package is a validation error and the element is not added.
+   Bundled components carry no `assets` field because the host ships their
+   bytes.
 
 ## 11. Validation, Failure And Limits
 

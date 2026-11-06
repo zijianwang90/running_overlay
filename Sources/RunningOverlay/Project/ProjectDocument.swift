@@ -640,6 +640,124 @@ final class ProjectDocument: ObservableObject {
         return element.id
     }
 
+    /// Adds a read-only bundled component from the Overlay Pool.
+    @discardableResult
+    func addComponentFromLibrary(
+        _ item: OverlayComponentLibraryItem,
+        position: CGPoint = CGPoint(x: 0.5, y: 0.5),
+        scale: Double = 1
+    ) -> OverlayElement.ID? {
+        do {
+            let reference = try OverlayComponentLibrary.reference(for: item)
+            return addComponentElement(reference: reference, position: position, scale: scale)
+        } catch {
+            statusMessage = error.localizedDescription
+            return nil
+        }
+    }
+
+    /// Imports a `.rocomponent` package (a directory with `component.json` and
+    /// an optional `assets/` folder) or a single component JSON document. The
+    /// definition and assets are embedded in the project so later edits to the
+    /// source package do not change the project. Throws validation diagnostics
+    /// for the caller to present; nothing is added when validation fails.
+    @discardableResult
+    func importComponentPackage(at url: URL) throws -> OverlayElement.ID {
+        let reference = try OverlayComponentLoader.loadReference(at: url)
+        let id = addComponentElement(reference: reference)
+        statusMessage = "Imported \(reference.id) component."
+        return id
+    }
+
+    /// Updates one component parameter as an undoable edit. Continuous edits
+    /// (sliders) register one transaction; the caller finishes it with
+    /// `finishContinuousEdit()`. Values are normalized against the declared
+    /// parameter type, so a damaged project cannot inject invalid values.
+    func setComponentParameter(
+        _ elementID: OverlayElement.ID,
+        parameterID: String,
+        value: OverlayJSONValue,
+        continuous: Bool = false
+    ) {
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }),
+              var component = overlayLayout.elements[index].component,
+              let definition = OverlayComponentRegistry.definition(for: component.reference),
+              let parameter = definition.parameter(named: parameterID),
+              let normalized = Self.normalizedComponentParameter(value, kind: parameter.kind) else {
+            return
+        }
+        guard component.parameters[parameterID] != normalized else { return }
+        if continuous {
+            registerContinuousUndoPoint()
+        } else {
+            registerUndoPoint()
+        }
+        component.parameters[parameterID] = normalized
+        overlayLayout.elements[index].component = component
+        statusMessage = "Updated \(parameter.label.resolve(language: OverlayComponentInstance.hostLanguage))."
+    }
+
+    static func normalizedComponentParameter(
+        _ value: OverlayJSONValue,
+        kind: OverlayComponentParamKind
+    ) -> OverlayJSONValue? {
+        switch kind {
+        case let .number(minimum, maximum, step, _, _):
+            guard case .number(let raw) = value, raw.isFinite else { return nil }
+            var number = min(max(raw, minimum), maximum)
+            if let step, step > 0 {
+                number = minimum + ((number - minimum) / step).rounded() * step
+                number = min(max(number, minimum), maximum)
+            }
+            return .number(number)
+        case .boolean:
+            guard case .boolean = value else { return nil }
+            return value
+        case .color:
+            guard case .string(let text) = value,
+                  let color = OverlayComponentColorParser.parse(text) else {
+                return nil
+            }
+            return .string(color.componentHexString)
+        case let .enumeration(options):
+            guard case .string(let text) = value,
+                  options.contains(where: { $0.value == text }) else {
+                return nil
+            }
+            return value
+        case let .string(maxLength):
+            guard case .string(let text) = value else { return nil }
+            return .string(String(text.prefix(maxLength)))
+        case .font:
+            guard case .string(let text) = value,
+                  !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return nil
+            }
+            return value
+        case let .metric(signals, _):
+            guard case .string(let text) = value, signals.contains(text) else { return nil }
+            return value
+        }
+    }
+
+    /// Promotes a bundled component to an editable project component by
+    /// embedding its definition. Parameter values and placement are preserved.
+    func makeComponentEditable(_ elementID: OverlayElement.ID) {
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }),
+              var component = overlayLayout.elements[index].component,
+              component.reference.source == .bundled else {
+            return
+        }
+        guard let editable = OverlayComponentLibrary.editableReference(for: component.reference) else {
+            statusMessage = "Bundled component definition is unavailable."
+            return
+        }
+        registerUndoPoint()
+        component.reference = editable
+        overlayLayout.elements[index].component = component
+        statusMessage = "Duplicated \(component.displayName) to My Components."
+    }
+
     private func makeOverlayElement(type: OverlayElementType, position: CGPoint, scale: Double) -> OverlayElement {
         let style = defaultOverlayStyle(for: type)
         return OverlayElement(

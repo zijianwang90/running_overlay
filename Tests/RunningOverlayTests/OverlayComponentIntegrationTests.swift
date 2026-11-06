@@ -1,4 +1,6 @@
+import AppKit
 import Foundation
+import ImageIO
 import Testing
 @testable import RunningOverlay
 
@@ -100,7 +102,7 @@ struct OverlayComponentIntegrationTests {
         )
 
         #expect(bundled.definition == nil)
-        #expect(OverlayComponentRegistry.definition(for: bundled) == nil)
+        #expect(OverlayComponentRegistry.definition(for: bundled) != nil)
     }
 
     @Test func templateRoundTripPreservesComponentElement() throws {
@@ -251,6 +253,159 @@ struct OverlayComponentIntegrationTests {
         #expect(abs(color.blue - defaultAccent.blue) < 0.001)
     }
 
+    // MARK: - Bundled library
+
+    @Test func bundledExamplesResolveByDigest() throws {
+        let item = try #require(
+            OverlayComponentLibraryItem.all.first { $0.id == "studio.builtin.heart-rate-pill" }
+        )
+        let reference = try OverlayComponentLibrary.reference(for: item)
+
+        #expect(reference.source == .bundled)
+        #expect(reference.definition == nil)
+        #expect(reference.digest.hasPrefix("sha256:"))
+
+        let definition = try #require(OverlayComponentRegistry.definition(for: reference))
+        #expect(definition.id == item.id)
+        #expect(definition.name.resolve() == "Heart Rate Pill")
+
+        // A stale digest must not resolve to a different bundled build.
+        var stale = reference
+        stale.digest = "sha256:0000"
+        #expect(OverlayComponentRegistry.definition(for: stale) == nil)
+    }
+
+    @MainActor
+    @Test func addingBundledComponentFromLibraryUsesDisplayName() throws {
+        let project = ProjectDocument()
+        let item = try #require(
+            OverlayComponentLibraryItem.all.first { $0.id == "studio.builtin.heart-rate-pill" }
+        )
+
+        let id = try #require(project.addComponentFromLibrary(item))
+        let element = try #require(project.selectedOverlay(id))
+
+        #expect(element.type == .component)
+        #expect(element.component?.reference.source == .bundled)
+        #expect(element.component?.reference.definition == nil)
+        #expect(element.displayLabel == "Heart Rate Pill")
+        #expect(project.selection == .overlayElement(id))
+    }
+
+    @MainActor
+    @Test func duplicatingBundledComponentEmbedsDefinition() throws {
+        let project = ProjectDocument()
+        let item = try #require(OverlayComponentLibraryItem.all.first)
+        let id = try #require(project.addComponentFromLibrary(item))
+        let originalDigest = project.selectedOverlay(id)?.component?.reference.digest
+
+        project.makeComponentEditable(id)
+
+        let reference = try #require(project.selectedOverlay(id)?.component?.reference)
+        #expect(reference.source == .project)
+        #expect(reference.definition != nil)
+        #expect(reference.digest == originalDigest)
+
+        project.undo()
+        #expect(project.selectedOverlay(id)?.component?.reference.source == .bundled)
+    }
+
+    // MARK: - Parameter editing
+
+    @MainActor
+    @Test func numberParametersClampAndQuantizeWithOneUndoPoint() throws {
+        let project = ProjectDocument()
+        let item = try #require(OverlayComponentLibraryItem.all.first)
+        let id = try #require(project.addComponentFromLibrary(item))
+        // hr-pill radius: 0...36, step 1.
+        project.setComponentParameter(id, parameterID: "radius", value: .number(100))
+        #expect(project.selectedOverlay(id)?.component?.parameters["radius"] == .number(36))
+
+        project.setComponentParameter(id, parameterID: "radius", value: .number(12.6))
+        #expect(project.selectedOverlay(id)?.component?.parameters["radius"] == .number(13))
+
+        project.undo()
+        #expect(project.selectedOverlay(id)?.component?.parameters["radius"] == .number(36))
+        project.undo()
+        #expect(project.selectedOverlay(id)?.component?.parameters["radius"] == nil)
+    }
+
+    @MainActor
+    @Test func continuousParameterEditsShareOneUndoTransaction() throws {
+        let project = ProjectDocument()
+        let item = try #require(OverlayComponentLibraryItem.all.first)
+        let id = try #require(project.addComponentFromLibrary(item))
+
+        project.setComponentParameter(id, parameterID: "radius", value: .number(10), continuous: true)
+        project.setComponentParameter(id, parameterID: "radius", value: .number(20), continuous: true)
+        project.finishContinuousEdit()
+
+        #expect(project.selectedOverlay(id)?.component?.parameters["radius"] == .number(20))
+        project.undo()
+        #expect(project.selectedOverlay(id)?.component?.parameters["radius"] == nil)
+    }
+
+    @MainActor
+    @Test func invalidParameterValuesAreIgnored() throws {
+        let project = ProjectDocument()
+        let item = try #require(OverlayComponentLibraryItem.all.first)
+        let id = try #require(project.addComponentFromLibrary(item))
+
+        project.setComponentParameter(id, parameterID: "showTrend", value: .number(1))
+        project.setComponentParameter(id, parameterID: "unknown", value: .number(1))
+        project.setComponentParameter(id, parameterID: "accent", value: .string("not-a-color"))
+
+        let parameters = project.selectedOverlay(id)?.component?.parameters ?? [:]
+        #expect(parameters.isEmpty)
+
+        // Only the add is on the undo stack, so one undo removes the element
+        // instead of reverting an ignored parameter write.
+        project.undo()
+        #expect(project.selectedOverlay(id) == nil)
+    }
+
+    @MainActor
+    @Test func colorParametersStoreCanonicalHex() throws {
+        let project = ProjectDocument()
+        let item = try #require(OverlayComponentLibraryItem.all.first)
+        let id = try #require(project.addComponentFromLibrary(item))
+
+        project.setComponentParameter(id, parameterID: "accent", value: .string("#ff0000"))
+
+        #expect(
+            project.selectedOverlay(id)?.component?.parameters["accent"]
+                == .string(OverlayColor(red: 1, green: 0, blue: 0, alpha: 1).componentHexString)
+        )
+    }
+
+    @MainActor
+    @Test func booleanParametersPersistAsBool() throws {
+        let project = ProjectDocument()
+        let item = try #require(OverlayComponentLibraryItem.all.first)
+        let id = try #require(project.addComponentFromLibrary(item))
+
+        project.setComponentParameter(id, parameterID: "showTrend", value: .boolean(false))
+
+        #expect(project.selectedOverlay(id)?.component?.parameters["showTrend"] == .boolean(false))
+    }
+
+    @MainActor
+    @Test func stringParametersAreTruncatedToMaxLength() throws {
+        let project = ProjectDocument()
+        let item = try #require(
+            OverlayComponentLibraryItem.all.first { $0.id == "studio.examples.lap-splits" }
+        )
+        let id = try #require(project.addComponentFromLibrary(item))
+
+        let long = String(repeating: "A", count: 40)
+        project.setComponentParameter(id, parameterID: "title", value: .string(long))
+
+        #expect(
+            project.selectedOverlay(id)?.component?.parameters["title"]
+                == .string(String(long.prefix(32)))
+        )
+    }
+
     // MARK: - Project mutation
 
     @MainActor
@@ -275,6 +430,159 @@ struct OverlayComponentIntegrationTests {
 
         project.redo()
         #expect(project.overlayLayout.elements.count == 1)
+    }
+
+
+    // MARK: - Package import
+
+    private struct TempPackage {
+        var root: URL
+
+        func cleanUp() {
+            try? FileManager.default.removeItem(at: root)
+        }
+    }
+
+    private func makePackage(
+        nodes: String,
+        assets: [String: Data] = [:]
+    ) throws -> TempPackage {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rocomponent-\(UUID().uuidString)", isDirectory: true)
+        let assetsDirectory = root.appendingPathComponent("assets", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: assetsDirectory,
+            withIntermediateDirectories: true
+        )
+        let json = """
+        {
+          "spec": "ros.component/0.1",
+          "id": "community.test.image",
+          "version": "1.0.0",
+          "name": "Image Card",
+          "license": "MIT",
+          "size": [100, 100],
+          "nodes": [\(nodes)]
+        }
+        """
+        try Data(json.utf8).write(to: root.appendingPathComponent("component.json"))
+        for (name, data) in assets {
+            try data.write(to: assetsDirectory.appendingPathComponent(name))
+        }
+        return TempPackage(root: root)
+    }
+
+    private func makePNG(
+        red: UInt8,
+        green: UInt8,
+        blue: UInt8,
+        size: Int = 4
+    ) throws -> Data {
+        let bitmap = try #require(NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: size,
+            pixelsHigh: size,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: size * 4,
+            bitsPerPixel: 32
+        ))
+        let base = try #require(bitmap.bitmapData)
+        for index in 0..<(size * size) {
+            base[index * 4] = red
+            base[index * 4 + 1] = green
+            base[index * 4 + 2] = blue
+            base[index * 4 + 3] = 255
+        }
+        return try #require(bitmap.representation(using: .png, properties: [:]))
+    }
+
+    @Test func directoryPackageEmbedsAssetBytes() throws {
+        let package = try makePackage(
+            nodes: #"{ "type": "image", "frame": [0, 0, 100, 100], "asset": "assets/card.png", "fit": "fill" }"#,
+            assets: ["card.png": try makePNG(red: 220, green: 40, blue: 60)]
+        )
+        defer { package.cleanUp() }
+
+        let reference = try OverlayComponentLoader.loadReference(at: package.root)
+        #expect(reference.id == "community.test.image")
+        #expect(reference.source == .imported)
+        #expect(reference.definition != nil)
+        let asset = try #require(reference.assets?["assets/card.png"])
+        #expect(!asset.isEmpty)
+        #expect(OverlayComponentRegistry.definition(for: reference) != nil)
+    }
+
+    @Test func directoryPackageRejectsMissingAsset() throws {
+        let package = try makePackage(
+            nodes: #"{ "type": "image", "frame": [0, 0, 100, 100], "asset": "assets/missing.png" }"#
+        )
+        defer { package.cleanUp() }
+
+        do {
+            _ = try OverlayComponentLoader.loadReference(at: package.root)
+            Issue.record("Expected a validation error")
+        } catch let error as OverlayComponentValidationError {
+            #expect(error.errors.contains { $0.path == "$.nodes[0].asset" })
+        }
+    }
+
+    @MainActor
+    @Test func importedPackageRoundTripsThroughProjectFile() throws {
+        let package = try makePackage(
+            nodes: #"{ "type": "image", "frame": [0, 0, 100, 100], "asset": "assets/card.png", "fit": "fill" }"#,
+            assets: ["card.png": try makePNG(red: 10, green: 200, blue: 90)]
+        )
+        defer { package.cleanUp() }
+
+        let project = ProjectDocument()
+        _ = try project.importComponentPackage(at: package.root)
+        #expect(project.overlayLayout.elements.count == 1)
+
+        let fileURL = package.root.deletingLastPathComponent()
+            .appendingPathComponent("import-test-\(UUID().uuidString).roproj")
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+        try project.writeProject(to: fileURL)
+
+        let reopened = ProjectDocument()
+        _ = try reopened.loadProject(from: fileURL)
+        let element = try #require(reopened.overlayLayout.elements.first)
+        #expect(element.type == .component)
+        let reference = try #require(element.component?.reference)
+        #expect(reference.source == .imported)
+        #expect(reference.assets?["assets/card.png"] != nil)
+        #expect(OverlayComponentRegistry.definition(for: reference) != nil)
+    }
+
+    @Test func componentCLIParsesValidateAndRenderArguments() throws {
+        let validate = try ComponentCLICommand.parse(arguments: [
+            "RunningOverlay", "--component-validate", "Packages/Card"
+        ])
+        guard case let .validate(command)? = validate else {
+            Issue.record("Expected a validate command")
+            return
+        }
+        #expect(command.packageURL.path.hasSuffix("Packages/Card"))
+
+        let render = try ComponentCLICommand.parse(arguments: [
+            "RunningOverlay", "--component-render", "Packages/Card",
+            "--component-output", "out.png", "--component-scale", "3"
+        ])
+        guard case let .render(renderCommand)? = render else {
+            Issue.record("Expected a render command")
+            return
+        }
+        #expect(renderCommand.outputURL.path.hasSuffix("out.png"))
+        #expect(renderCommand.scale == 3)
+
+        #expect(throws: ComponentCLIError.self) {
+            _ = try ComponentCLICommand.parse(arguments: [
+                "RunningOverlay", "--component-render", "Packages/Card"
+            ])
+        }
     }
 
     // MARK: - Rendering
@@ -378,6 +686,64 @@ struct OverlayComponentIntegrationTests {
             }
         }
         #expect(visibleSamples > 0)
+    }
+
+
+    @Test func skiaRendererDrawsImageAssets() throws {
+        let package = try makePackage(
+            nodes: #"{ "type": "image", "frame": [0, 0, 100, 100], "asset": "assets/card.png", "fit": "fill" }"#,
+            assets: ["card.png": try makePNG(red: 230, green: 40, blue: 50)]
+        )
+        defer { package.cleanUp() }
+
+        let reference = try OverlayComponentLoader.loadReference(at: package.root)
+        let element = OverlayElement(
+            type: .component,
+            position: .zero,
+            scale: 1,
+            style: .default,
+            component: OverlayComponentInstance(reference: reference)
+        )
+        let size = CGSize(width: 1280, height: 720)
+        let renderer = try #require(SkiaEasyRunRenderer(size: size))
+        let (pixels, rowBytes) = try #require(renderer.render(
+            layout: OverlayLayout(elements: [element]),
+            activity: makeTimeline(),
+            elapsedTime: 0
+        ))
+
+        let inside = pixel(pixels, rowBytes: rowBytes, x: 50, y: 50)
+        #expect(inside.a > 240)
+        #expect(inside.r > 200)
+        #expect(inside.g < 80)
+
+        let outside = pixel(pixels, rowBytes: rowBytes, x: 150, y: 50)
+        #expect(outside.a == 0)
+    }
+
+    @MainActor
+    @Test func componentRenderCommandWritesPNG() throws {
+        let package = try makePackage(
+            nodes: #"{ "type": "image", "frame": [0, 0, 100, 100], "asset": "assets/card.png", "fit": "fill" }"#,
+            assets: ["card.png": try makePNG(red: 20, green: 180, blue: 240)]
+        )
+        defer { package.cleanUp() }
+        let output = package.root.deletingLastPathComponent()
+            .appendingPathComponent("component-\(UUID().uuidString).png")
+        defer { try? FileManager.default.removeItem(at: output) }
+
+        let url = try ComponentCommandRunner.renderComponent(
+            ComponentRenderCommand(
+                packageURL: package.root,
+                outputURL: output,
+                scale: 2
+            )
+        )
+        #expect(url == output)
+        let source = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
+        let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        #expect(image.width == 200)
+        #expect(image.height == 200)
     }
 
     @Test func unresolvedComponentDrawsNothingWithoutFailing() throws {

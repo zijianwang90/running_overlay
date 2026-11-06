@@ -6,9 +6,10 @@ Date: 2026-11-04
 
 Accepted as a direction by the maintainer. The v0.1 specification linked below
 is still a draft. A runtime kernel, a `component` project element kind (project
-schema version 2) and a Skia drawing path now exist; Inspector generation,
-import tooling, bundled definitions and visual-parity approval do not.
-Implementation remains gated on the reviews listed under Consequences.
+schema version 2), a Skia drawing path with embedded image assets, a generated
+Inspector, bundled read-only definitions, package import and a headless
+validate/render CLI now exist. Visual-parity approval for ported built-ins does
+not. Implementation remains gated on the reviews listed under Consequences.
 
 ## Context
 

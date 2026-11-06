@@ -54,6 +54,8 @@ struct ParameterPanelView: View {
                 WeatherWidgetOverlayDetailView(elementID: elementID)
             } else if element.type.isDecorOverlay {
                 DecorOverlayDetailView(elementID: elementID)
+            } else if element.type == .component {
+                OverlayComponentDetailView(elementID: elementID)
             } else {
                 MissingOverlayInspectorView()
             }
@@ -91,7 +93,7 @@ private struct OverlayDetailHeader: View {
                 set: { project.openOverlayDetailFromList($0) }
             )) {
                 ForEach(elements) { item in
-                    Label(item.type.label, systemImage: item.isLocked ? "lock.fill" : item.type.inspectorIcon)
+                    Label(item.displayLabel, systemImage: item.isLocked ? "lock.fill" : item.type.inspectorIcon)
                         .tag(item.id)
                         .disabled(item.isLocked && item.id != element.id)
                 }
@@ -504,7 +506,7 @@ private struct OverlayElementRow: View {
                 .foregroundStyle(InspectorTheme.textSecondary)
                 .frame(width: 18)
 
-            Text(element.type.label)
+            Text(element.displayLabel)
                 .font(InspectorTheme.bodyFont)
                 .foregroundStyle(InspectorTheme.textPrimary)
                 .lineLimit(1)

@@ -1,8 +1,10 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct OverlayPoolView: View {
     @EnvironmentObject private var project: ProjectDocument
     @State private var activeCategory: OverlayCategory = .metrics
+    @State private var importErrorMessage: String?
 
     private let columns = [
         GridItem(.flexible(), spacing: EditorTheme.space2),
@@ -36,11 +38,34 @@ struct OverlayPoolView: View {
                     Spacer()
                 }
 
+                if activeCategory == .components {
+                    HStack {
+                        Button {
+                            importComponent()
+                        } label: {
+                            Label("Import Component…", systemImage: "square.and.arrow.down")
+                                .font(EditorTheme.captionFont)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(EditorTheme.textSecondary)
+                        .help("Import a .rocomponent package or component JSON file")
+                        Spacer()
+                    }
+                }
+
                 ScrollView {
                     LazyVGrid(columns: columns, spacing: EditorTheme.space2) {
-                        ForEach(OverlayTileInfo.tiles(for: activeCategory)) { tile in
-                            OverlayAddTile(tile: tile) {
-                                project.addOverlayElement(tile.type)
+                        if activeCategory == .components {
+                            ForEach(OverlayComponentLibraryItem.all) { item in
+                                OverlayComponentAddTile(item: item) {
+                                    project.addComponentFromLibrary(item)
+                                }
+                            }
+                        } else {
+                            ForEach(OverlayTileInfo.tiles(for: activeCategory)) { tile in
+                                OverlayAddTile(tile: tile) {
+                                    project.addOverlayElement(tile.type)
+                                }
                             }
                         }
                     }
@@ -51,12 +76,50 @@ struct OverlayPoolView: View {
             .padding(.vertical, EditorTheme.space3)
         }
         .background(EditorTheme.panelBackground)
+        .alert(
+            "Component Import Failed",
+            isPresented: Binding(
+                get: { importErrorMessage != nil },
+                set: { if !$0 { importErrorMessage = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {
+                importErrorMessage = nil
+            }
+        } message: {
+            Text(importErrorMessage ?? "")
+        }
+    }
+
+    private func importComponent() {
+        let panel = NSOpenPanel()
+        panel.title = "Import Component"
+        panel.prompt = "Import"
+        panel.message = "Choose a .rocomponent package folder or a component JSON file."
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = true
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.json]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            _ = try SecurityScopedURLAccess.withAccess(to: url) {
+                try project.importComponentPackage(at: url)
+            }
+        } catch let error as OverlayComponentValidationError {
+            importErrorMessage = error.diagnostics
+                .filter { $0.severity == .error }
+                .map { "\($0.path): \($0.message)" }
+                .joined(separator: "\n")
+        } catch {
+            importErrorMessage = error.localizedDescription
+        }
     }
 }
 
 enum OverlayCategory: String, CaseIterable, Identifiable {
     case metrics
     case visuals
+    case components
     case decor
 
     var id: String { rawValue }
@@ -65,6 +128,7 @@ enum OverlayCategory: String, CaseIterable, Identifiable {
         switch self {
         case .metrics: "Metrics"
         case .visuals: "Visuals"
+        case .components: "Components"
         case .decor: "Decor"
         }
     }
@@ -158,6 +222,47 @@ struct OverlayAddTile: View {
         }
         .buttonStyle(OverlayTileButtonStyle(isAccent: tile.isAccent))
         .help("Add \(tile.label)")
+    }
+}
+
+/// Add tile for a read-only bundled component. Bundled definitions cannot be
+/// edited in place; the Inspector offers "Duplicate to My Components".
+struct OverlayComponentAddTile: View {
+    let item: OverlayComponentLibraryItem
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: EditorTheme.space3) {
+                Image(systemName: item.systemImage)
+                    .font(.system(size: 19, weight: .medium))
+                    .foregroundStyle(EditorTheme.textPrimary)
+                    .frame(width: 22)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(item.displayName)
+                        .font(EditorTheme.bodyStrongFont)
+                        .foregroundStyle(EditorTheme.textPrimary)
+                        .lineLimit(1)
+                    Text(item.hint)
+                        .font(EditorTheme.captionFont)
+                        .foregroundStyle(EditorTheme.textMuted)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: EditorTheme.space1)
+
+                Image(systemName: "plus")
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(EditorTheme.textSecondary)
+                    .frame(width: 18, alignment: .center)
+            }
+            .padding(.horizontal, 10)
+            .frame(minHeight: 56)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(OverlayTileButtonStyle(isAccent: false))
+        .help("Add \(item.displayName)")
     }
 }
 

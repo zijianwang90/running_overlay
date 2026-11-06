@@ -88,7 +88,11 @@ enum OverlayComponentSignalCatalog {
 }
 
 enum OverlayComponentLoader {
-    static func load(data: Data, assets: Set<String> = []) throws -> OverlayComponentPackage {
+    static func load(
+        data: Data,
+        assets: Set<String> = [],
+        assetData: [String: Data] = [:]
+    ) throws -> OverlayComponentPackage {
         let root = try OverlayJSONValue.decode(data)
         let parser = OverlayComponentParser(root: root, assets: assets)
         let definition = parser.parseDocument()
@@ -101,15 +105,32 @@ enum OverlayComponentLoader {
         return OverlayComponentPackage(
             definition: definition,
             digest: digest,
-            assets: assets
+            assets: assets,
+            assetData: assetData
         )
     }
 
     static func load(directory url: URL) throws -> OverlayComponentPackage {
         let manifest = url.appendingPathComponent("component.json")
-        let data = try Data(contentsOf: manifest)
+        let data: Data
+        do {
+            data = try Data(contentsOf: manifest)
+        } catch {
+            throw OverlayComponentValidationError(diagnostics: [
+                OverlayComponentDiagnostic(
+                    path: "component.json",
+                    message: "cannot read component.json: \(error.localizedDescription)"
+                )
+            ])
+        }
+        if data.count > 1024 * 1024 {
+            throw OverlayComponentValidationError(diagnostics: [
+                OverlayComponentDiagnostic(path: "component.json", message: "must not exceed 1 MiB")
+            ])
+        }
         let assetsDirectory = url.appendingPathComponent("assets")
         var assets: Set<String> = []
+        var assetData: [String: Data] = [:]
         var totalAssetBytes = 0
         if FileManager.default.fileExists(atPath: assetsDirectory.path) {
             let contents = try FileManager.default.contentsOfDirectory(
@@ -129,7 +150,9 @@ enum OverlayComponentLoader {
                     ])
                 }
                 totalAssetBytes += size
-                assets.insert("assets/\(file.lastPathComponent)")
+                let path = "assets/\(file.lastPathComponent)"
+                assets.insert(path)
+                assetData[path] = try Data(contentsOf: file)
             }
         }
         if assets.count > 32 {
@@ -142,7 +165,33 @@ enum OverlayComponentLoader {
                 OverlayComponentDiagnostic(path: "assets", message: "assets exceed 32 MiB in total")
             ])
         }
-        return try load(data: data, assets: assets)
+        return try load(data: data, assets: assets, assetData: assetData)
+    }
+
+    /// Loads a package directory or a single component JSON file into a
+    /// validated reference. Imported references embed the definition and asset
+    /// bytes so the resulting project is self-contained.
+    static func loadReference(
+        at url: URL,
+        source: OverlayComponentSource = .imported
+    ) throws -> OverlayComponentReference {
+        var isDirectory: ObjCBool = false
+        let exists = FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+        if exists && isDirectory.boolValue {
+            let package = try load(directory: url)
+            let definitionData = try Data(
+                contentsOf: url.appendingPathComponent("component.json")
+            )
+            return try OverlayComponentReference(
+                definitionData: definitionData,
+                source: source,
+                assets: package.assetData
+            )
+        }
+        return try OverlayComponentReference(
+            definitionData: Data(contentsOf: url),
+            source: source
+        )
     }
 }
 
@@ -772,7 +821,7 @@ final class OverlayComponentParser {
             }
             if !matches(asset, "^assets/[A-Za-z0-9._-]+\\.(png|jpg|jpeg)$") {
                 error("\(path).asset", "invalid asset path")
-            } else if !assets.isEmpty && !assets.contains(asset) {
+            } else if !assets.contains(asset) {
                 error("\(path).asset", "asset '\(asset)' is not in the package")
             }
             kind = .image(
