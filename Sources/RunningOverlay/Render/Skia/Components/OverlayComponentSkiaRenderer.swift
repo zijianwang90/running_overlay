@@ -44,50 +44,43 @@ enum OverlayComponentSkiaRenderer {
             )
         )
 
-        skb_save(context)
-        skb_clip_rect(context, Float(bounds.minX), Float(bounds.minY), Float(bounds.width), Float(bounds.height))
-        if element.opacity < 0.999 {
-            skb_begin_opacity_layer(
-                context,
-                Float(element.opacity),
-                Float(bounds.minX),
-                Float(bounds.minY),
-                Float(bounds.width),
-                Float(bounds.height)
-            )
-        }
-        if let background = resolved.background {
-            let radius = background.radius * scale
-            skb_fill_round_rect(
-                context,
-                Float(bounds.minX),
-                Float(bounds.minY),
-                Float(bounds.width),
-                Float(bounds.height),
-                Float(radius),
-                Float(background.color.red),
-                Float(background.color.green),
-                Float(background.color.blue),
-                Float(background.color.alpha)
-            )
-        }
-        let assets = OverlayComponentRegistry.assets(for: instance.reference)
-        // Element opacity is one layer around the whole component; passing it
-        // into individual nodes would apply it twice and double-blend
-        // overlapping shapes.
-        for node in resolved.nodes {
-            draw(
-                node,
-                context: context,
-                space: space,
-                opacity: 1,
-                assets: assets
-            )
-        }
-        if element.opacity < 0.999 {
+        // Element-level styling (opacity, glow, drop shadow) is host state, not
+        // part of a component definition. Apply it once around the whole
+        // component so a ported built-in keeps the same Inspector effects as
+        // the native module it replaces.
+        SkiaTextEffects.withElementLayers(element: element, bounds: bounds, context: context) {
+            skb_save(context)
+            skb_clip_rect(context, Float(bounds.minX), Float(bounds.minY), Float(bounds.width), Float(bounds.height))
+            if let background = resolved.background {
+                let radius = background.radius * scale
+                skb_fill_round_rect(
+                    context,
+                    Float(bounds.minX),
+                    Float(bounds.minY),
+                    Float(bounds.width),
+                    Float(bounds.height),
+                    Float(radius),
+                    Float(background.color.red),
+                    Float(background.color.green),
+                    Float(background.color.blue),
+                    Float(background.color.alpha)
+                )
+            }
+            let assets = OverlayComponentRegistry.assets(for: instance.reference)
+            // Element opacity is handled by the host layer above; passing it
+            // into individual nodes would apply it twice and double-blend
+            // overlapping shapes.
+            for node in resolved.nodes {
+                draw(
+                    node,
+                    context: context,
+                    space: space,
+                    opacity: 1,
+                    assets: assets
+                )
+            }
             skb_restore(context)
         }
-        skb_restore(context)
     }
 
     // MARK: - Draw space
@@ -300,7 +293,7 @@ enum OverlayComponentSkiaRenderer {
                 }
             }
 
-        case let .text(frame, text, font, color, align, verticalAlign, maxWidth, lineHeight):
+        case let .text(frame, text, font, color, align, verticalAlign, maxWidth, lineHeight, tracking):
             drawText(
                 text,
                 frame: frame,
@@ -310,6 +303,7 @@ enum OverlayComponentSkiaRenderer {
                 verticalAlign: verticalAlign,
                 maxWidth: maxWidth,
                 lineHeight: lineHeight,
+                tracking: tracking,
                 context: context,
                 space: space,
                 opacity: opacity
@@ -452,6 +446,7 @@ enum OverlayComponentSkiaRenderer {
         verticalAlign: OverlayComponentVerticalAlignment,
         maxWidth: Double?,
         lineHeight: Double,
+        tracking: Double,
         context: OpaquePointer,
         space: DrawSpace,
         opacity: Double
@@ -464,7 +459,12 @@ enum OverlayComponentSkiaRenderer {
             weight: font.weight.appKitWeight
         )
         let limit = maxWidth.map(space.length)
-        let lines = makeLines(text, font: nsFont, maxWidth: limit)
+        let lines = makeLines(
+            text,
+            font: nsFont,
+            maxWidth: limit,
+            tracking: space.length(tracking)
+        )
         guard !lines.isEmpty else { return }
 
         let lineHeightPixels = max(font.size * space.scale * lineHeight, lines[0].height)
@@ -495,26 +495,31 @@ enum OverlayComponentSkiaRenderer {
         }
     }
 
-    private static func makeLines(_ text: String, font: NSFont, maxWidth: Double?) -> [SkiaTextLine] {
+    private static func makeLines(
+        _ text: String,
+        font: NSFont,
+        maxWidth: Double?,
+        tracking: Double
+    ) -> [SkiaTextLine] {
         let paragraphs = text.components(separatedBy: "\n").prefix(8)
         var lines: [SkiaTextLine] = []
         for paragraph in paragraphs {
             guard let maxWidth, maxWidth > 0 else {
-                lines.append(SkiaTextComposer.makeLine(paragraph, font: font))
+                lines.append(SkiaTextComposer.makeLine(paragraph, font: font, tracking: tracking))
                 continue
             }
             var current = ""
             for word in paragraph.split(separator: " ", omittingEmptySubsequences: false) {
                 let candidate = current.isEmpty ? String(word) : current + " " + word
-                let line = SkiaTextComposer.makeLine(candidate, font: font)
+                let line = SkiaTextComposer.makeLine(candidate, font: font, tracking: tracking)
                 if line.width > maxWidth, !current.isEmpty {
-                    lines.append(SkiaTextComposer.makeLine(current, font: font))
+                    lines.append(SkiaTextComposer.makeLine(current, font: font, tracking: tracking))
                     current = String(word)
                 } else {
                     current = candidate
                 }
             }
-            lines.append(SkiaTextComposer.makeLine(current, font: font))
+            lines.append(SkiaTextComposer.makeLine(current, font: font, tracking: tracking))
         }
         return lines
     }
@@ -751,7 +756,7 @@ enum OverlayComponentSkiaRenderer {
             boundingBox(points: points, padding: width)
         case let .path(_, _, _, _, _, _, _):
             CGRect(x: -32768, y: -32768, width: 65536, height: 65536)
-        case let .text(frame, _, _, _, _, _, _, _): frame
+        case let .text(frame, _, _, _, _, _, _, _, _): frame
         case let .image(frame, _, _): frame
         case let .gradientRect(frame, _, _, _, _): frame
         case let .sparkline(frame, _, _, _, _, _): frame

@@ -197,7 +197,7 @@ struct OverlayComponentIntegrationTests {
         #expect(fill.alpha < 1)
 
         guard let textNode = resolved.nodes.dropFirst().first,
-              case .text(_, let text, _, let color, _, _, _, _) = textNode else {
+              case .text(_, let text, _, let color, _, _, _, _, _) = textNode else {
             Issue.record("expected heart-rate text node")
             return
         }
@@ -243,7 +243,7 @@ struct OverlayComponentIntegrationTests {
         // dropped before resolution, so the declared defaults render.
         #expect(resolved.diagnostics.isEmpty)
         guard let textNode = resolved.nodes.dropFirst().first,
-              case .text(_, _, _, let color, _, _, _, _) = textNode else {
+              case .text(_, _, _, let color, _, _, _, _, _) = textNode else {
             Issue.record("expected heart-rate text node")
             return
         }
@@ -667,11 +667,17 @@ struct OverlayComponentIntegrationTests {
 
     #if canImport(CSkiaBridge)
     @Test func skiaRendererDrawsComponentPixels() throws {
+        // Element-level shadow/glow is host styling applied around the whole
+        // component; disable it here so the samples isolate the definition's
+        // background and text.
+        var style = OverlayStyle.default
+        style.shadowEnabled = false
+        style.glowEnabled = false
         let element = OverlayElement(
             type: .component,
             position: CGPoint(x: 0.1, y: 0.2),
             scale: 1,
-            style: .default,
+            style: style,
             component: OverlayComponentInstance(reference: try reference())
         )
         #expect(SkiaEasyRunRenderer.supports(element))

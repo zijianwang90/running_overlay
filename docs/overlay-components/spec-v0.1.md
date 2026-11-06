@@ -248,7 +248,7 @@ These map directly to primitives in `Sources/CSkiaBridge/include/skia_bridge.h`.
 | `line` | `from` `[x, y]`, `to` `[x, y]`, `width`, `color`, `cap` (`butt`, `round`, `square`) |
 | `polyline` | `points` (array of `[x, y]` or expression), `width`, `color`, `cap`, `join`, `dash` `[length, gap]?` |
 | `path` | `commands` (array; see below), `fill?`, `stroke?`, `strokeWidth?`, `cap`, `join`, `dash?` |
-| `text` | `text` (string or expression), `font` (section 7.3), `color`, `align` (`left`, `center`, `right`, default `left`), `verticalAlign` (`top`, `center`, `bottom`, default `top`), `maxWidth?`, `lineHeight?` (multiplier, default 1.2) |
+| `text` | `text` (string or expression), `font` (section 7.3), `color`, `align` (`left`, `center`, `right`, default `left`), `verticalAlign` (`top`, `center`, `bottom`, default `top`), `maxWidth?`, `lineHeight?` (multiplier, default 1.2), `tracking?` (extra advance per glyph in design units, default 0; negative tightens) |
 | `image` | `asset` (`assets/...`), `fit` (`fill` or `contain`, default `contain`), `opacity?` |
 | `gradientRect` | `radius?`, `stops` (2..8 `{ "offset": 0..1, "color": "#..." }`), `from` `[x, y]`, `to` `[x, y]` |
 | `group` | `children` (array of nodes), `frame?`, `clip`, `shadow?`, `opacity?` |
@@ -269,7 +269,11 @@ and applies to the composited group, using `skb_begin_shadow_layer`.
 Text is a single draw per line. `text` MAY contain at most 8 `\n`-separated
 lines. Text is laid out with the host's CoreText metrics and the same font
 resolution rules as existing overlays; `maxWidth` enables host-side fitting
-without changing font size.
+without changing font size. `tracking` adds a fixed advance per glyph in design
+units and is applied as CoreText kerning; negative values tighten. Text frames
+are absolute positions, so a line is not automatically placed next to another
+line's measured width. The renderer clips to the component rectangle, so leave
+padding around glyphs whose ink can overhang the typographic line box.
 
 ### 7.2 Capability nodes
 

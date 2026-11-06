@@ -90,7 +90,8 @@ indirect enum OverlayComponentResolvedNode: Equatable {
         align: OverlayComponentTextAlignment,
         verticalAlign: OverlayComponentVerticalAlignment,
         maxWidth: Double?,
-        lineHeight: Double
+        lineHeight: Double,
+        tracking: Double
     )
     case image(
         frame: CGRect,
@@ -408,7 +409,7 @@ struct OverlayComponentResolver {
                 dash: dash?.compactMap { $0.evaluate(in: context) }
             )
 
-        case .text(let text, let font, let textColor, let align, let verticalAlign, let maxWidth, let lineHeight):
+        case .text(let text, let font, let textColor, let align, let verticalAlign, let maxWidth, let lineHeight, let tracking):
             guard let rect = frame() else { return nil }
             guard let resolvedColor = textColor.evaluate(in: context) else {
                 diagnostics.append("\(path): text color did not resolve")
@@ -431,7 +432,8 @@ struct OverlayComponentResolver {
                 align: align,
                 verticalAlign: verticalAlign,
                 maxWidth: maxWidth?.evaluate(in: context),
-                lineHeight: max(lineHeight?.evaluate(in: context) ?? 1.2, 0.5)
+                lineHeight: max(lineHeight?.evaluate(in: context) ?? 1.2, 0.5),
+                tracking: tracking?.evaluate(in: context) ?? 0
             )
 
         case .image(let asset, let fit):

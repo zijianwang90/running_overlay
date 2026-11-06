@@ -674,7 +674,7 @@ final class OverlayComponentParser {
         case "line": typeKeys = ["from", "to", "width", "color", "cap"]
         case "polyline": typeKeys = ["points", "width", "color", "cap", "join", "dash"]
         case "path": typeKeys = ["commands", "fill", "stroke", "strokeWidth", "cap", "join", "dash"]
-        case "text": typeKeys = ["text", "font", "color", "align", "verticalAlign", "maxWidth", "lineHeight"]
+        case "text": typeKeys = ["text", "font", "color", "align", "verticalAlign", "maxWidth", "lineHeight", "tracking"]
         case "image": typeKeys = ["asset", "fit"]
         case "gradientRect": typeKeys = ["stops", "from", "to", "radius"]
         case "sparkline": typeKeys = ["series", "stroke", "lineWidth", "fill", "smoothing"]
@@ -832,7 +832,8 @@ final class OverlayComponentParser {
                     default: OverlayComponentVerticalAlignment.top
                 ),
                 maxWidth: object["maxWidth"].flatMap { numberSource($0, at: "\(path).maxWidth") },
-                lineHeight: object["lineHeight"].flatMap { numberSource($0, at: "\(path).lineHeight") }
+                lineHeight: object["lineHeight"].flatMap { numberSource($0, at: "\(path).lineHeight") },
+                tracking: object["tracking"].flatMap { numberSource($0, at: "\(path).tracking") }
             )
 
         case "image":

@@ -588,7 +588,8 @@
             "align": { "enum": ["left", "center", "right"] },
             "verticalAlign": { "enum": ["top", "center", "bottom"] },
             "maxWidth": { "$ref": "#/$defs/numberOrExpression" },
-            "lineHeight": { "$ref": "#/$defs/numberOrExpression" }
+            "lineHeight": { "$ref": "#/$defs/numberOrExpression" },
+            "tracking": { "$ref": "#/$defs/numberOrExpression" }
           }
         }
       ],

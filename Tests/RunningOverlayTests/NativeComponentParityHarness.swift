@@ -1,7 +1,9 @@
 #if canImport(CSkiaBridge)
 import CoreGraphics
 import Foundation
+import ImageIO
 import Testing
+import UniformTypeIdentifiers
 @testable import RunningOverlay
 
 /// Compares the imperative native overlay modules with the declarative
@@ -31,6 +33,8 @@ enum NativeComponentParityHarness {
         var changedPixels: Int
         var maximumChannelDelta: Int
         var meanChannelDelta: Double
+        /// Bounding box of pixels that exceeded the channel tolerance.
+        var changedBounds: (minX: Int, minY: Int, maxX: Int, maxY: Int)?
 
         var changedPixelRatio: Double {
             guard width * height > 0 else { return 0 }
@@ -38,10 +42,15 @@ enum NativeComponentParityHarness {
         }
 
         var summary: String {
-            "\(label): \(changedPixels) changed pixels "
+            var text = "\(label): \(changedPixels) changed pixels "
                 + "(\(String(format: "%.4f", changedPixelRatio))), "
                 + "max channel Δ \(maximumChannelDelta), "
                 + "mean Δ \(String(format: "%.3f", meanChannelDelta))"
+            if let changedBounds {
+                text += ", area [\(changedBounds.minX),\(changedBounds.minY)]"
+                    + "–[\(changedBounds.maxX),\(changedBounds.maxY)]"
+            }
+            return text
         }
     }
 
@@ -86,6 +95,20 @@ enum NativeComponentParityHarness {
             elapsedTime: elapsedTime,
             size: size
         )
+        if let directory = ProcessInfo.processInfo.environment["PARITY_DUMP_DIR"] {
+            writePNG(
+                nativePixels,
+                size: size,
+                to: URL(fileURLWithPath: directory)
+                    .appendingPathComponent("\(label)-native.png")
+            )
+            writePNG(
+                componentPixels,
+                size: size,
+                to: URL(fileURLWithPath: directory)
+                    .appendingPathComponent("\(label)-component.png")
+            )
+        }
 
         let width = Int(size.width)
         let height = Int(size.height)
@@ -97,6 +120,10 @@ enum NativeComponentParityHarness {
         var changedPixels = 0
         var maximumChannelDelta = 0
         var totalChannelDelta = 0
+        var minX = width
+        var minY = height
+        var maxX = -1
+        var maxY = -1
         for pixelOffset in stride(from: 0, to: width * height * 4, by: 4) {
             var pixelChanged = false
             for channel in 0..<4 {
@@ -112,6 +139,13 @@ enum NativeComponentParityHarness {
             }
             if pixelChanged {
                 changedPixels += 1
+                let index = pixelOffset / 4
+                let x = index % width
+                let y = index / width
+                minX = min(minX, x)
+                minY = min(minY, y)
+                maxX = max(maxX, x)
+                maxY = max(maxY, y)
             }
         }
 
@@ -122,7 +156,10 @@ enum NativeComponentParityHarness {
             changedPixels: changedPixels,
             maximumChannelDelta: maximumChannelDelta,
             meanChannelDelta: Double(totalChannelDelta)
-                / Double(width * height * 4)
+                / Double(width * height * 4),
+            changedBounds: changedPixels > 0
+                ? (minX, minY, maxX, maxY)
+                : nil
         )
     }
 
@@ -160,6 +197,38 @@ enum NativeComponentParityHarness {
             "\(result.summary) exceeds mean Δ \(thresholds.maximumMeanChannelDelta)",
             sourceLocation: sourceLocation
         )
+    }
+
+    private static func writePNG(_ pixels: [UInt8], size: CGSize, to url: URL) {
+        let width = Int(size.width)
+        let height = Int(size.height)
+        guard let provider = CGDataProvider(data: Data(pixels) as CFData),
+              let image = CGImage(
+                  width: width,
+                  height: height,
+                  bitsPerComponent: 8,
+                  bitsPerPixel: 32,
+                  bytesPerRow: width * 4,
+                  space: CGColorSpaceCreateDeviceRGB(),
+                  bitmapInfo: CGBitmapInfo(
+                      rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue
+                          | CGBitmapInfo.byteOrder32Little.rawValue
+                  ),
+                  provider: provider,
+                  decode: nil,
+                  shouldInterpolate: false,
+                  intent: .defaultIntent
+              ),
+              let destination = CGImageDestinationCreateWithURL(
+                  url as CFURL,
+                  UTType.png.identifier as CFString,
+                  1,
+                  nil
+              ) else {
+            return
+        }
+        CGImageDestinationAddImage(destination, image, nil)
+        CGImageDestinationFinalize(destination)
     }
 
     private static func render(

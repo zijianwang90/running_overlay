@@ -253,19 +253,31 @@ The editor wiring is:
 
 `NativeComponentParityHarness` (test target) renders a native-module layout and
 an equivalent declarative-component layout on the same Skia raster surface and
-reports changed pixels plus maximum and mean channel deltas.
-`OverlayComponentParityTests` holds the first pilots: Decor Solid Color as a
-rectangle and a rounded rectangle, with and without element opacity, compared
-at exact thresholds (zero changed pixels). The pilot found and fixed a real
-defect: element opacity was applied both as a layer and again per node, which
-double-blended component pixels.
+reports changed pixels, maximum and mean channel deltas, and the bounding box of
+changed pixels. Set `PARITY_DUMP_DIR` to also write both renders as PNGs.
+`OverlayComponentParityTests` holds the pilots: Decor Solid Color as a rectangle
+and a rounded rectangle, with and without element opacity, and a heart-rate
+value-plus-unit numeric text element, all compared at exact thresholds (zero
+changed pixels). The pilots found and fixed two real defects: element opacity
+was applied both as a layer and again per node, and components drew their own
+opacity layer while ignoring the host's element-level glow and shadow entirely.
+
+Digits from the numeric pilot: text nodes gained an optional `tracking` value
+(to match the native value line's `-fontSize * 0.012`), and the pilot keeps the
+unit below the value. A trailing unit would need the measured value width,
+which absolute text frames cannot express; real numeric ports are gated on a
+layout feature (flow or measured text) or must place the unit on its own row.
+Component definitions should also leave a few design units of padding around
+text: the renderer clips to the component rectangle and can otherwise trim the
+last glyph's ink.
 
 Use the harness before porting a built-in. Differences are attributable to
 draw-tree construction, not the backend, so non-text geometry should be exact;
 text drawn through different rasterization paths (for example the AppKit decor
 text cache) needs a looser threshold or a structural comparison. Element-level
-shadow/glow in `OverlayStyle` is host styling that components do not carry yet;
-the pilots disable it and compare the shape itself.
+opacity, shadow and glow in `OverlayStyle` are host styling: the component
+renderer applies them once around the whole element, so definitions must not
+repeat them.
 
 Headless authoring:
 
@@ -282,11 +294,12 @@ design size.
 
 Current limitations: the CLI render uses default parameters and no FIT data;
 bundled components currently ship without image assets; renaming a project
-component in place is not supported (export, edit the JSON and re-import); pixel
-parity against native modules still needs evidence. Adding the
-first component element raises the project schema to version 2, so this remains
-subject to the human review rules in `AGENTS.md` (project-file compatibility)
-and to pixel-parity evidence against native modules.
+component in place is not supported (export, edit the JSON and re-import); text
+nodes are absolutely positioned, so ports that depend on measured text widths
+need a layout feature. Adding the first component element raises the project
+schema to version 2, so this remains subject to the human review rules in
+`AGENTS.md` (project-file compatibility) and to pixel-parity evidence against
+native modules.
 
 - Format and data contract: `docs/overlay-components/spec-v0.1.md`.
 - Decision and gates: `docs/adr/0013-declarative-overlay-components.md`.

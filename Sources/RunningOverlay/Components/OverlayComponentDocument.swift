@@ -342,7 +342,8 @@ enum OverlayComponentNodeKind: Equatable {
               align: OverlayComponentTextAlignment,
               verticalAlign: OverlayComponentVerticalAlignment,
               maxWidth: OverlayComponentNumberSource?,
-              lineHeight: OverlayComponentNumberSource?)
+              lineHeight: OverlayComponentNumberSource?,
+              tracking: OverlayComponentNumberSource?)
     case image(asset: String, fit: OverlayComponentImageFit)
     case gradientRect(stops: [OverlayComponentGradientStop],
                       from: OverlayComponentPoint,

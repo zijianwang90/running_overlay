@@ -32,7 +32,7 @@ struct OverlayComponentResolverTests {
         _ resolved: OverlayComponentResolved
     ) -> [(text: String, color: OverlayColor, frame: CGRect)] {
         flatten(resolved.nodes).compactMap { node in
-            guard case .text(let frame, let text, _, let color, _, _, _, _) = node else {
+            guard case .text(let frame, let text, _, let color, _, _, _, _, _) = node else {
                 return nil
             }
             return (text, color, frame)
@@ -136,6 +136,44 @@ struct OverlayComponentResolverTests {
         #expect(textNodes(resolved).filter { $0.text == "1" }.count == 1)
         #expect(textNodes(resolved).filter { $0.text == "2" }.count == 1)
         #expect(textNodes(resolved).filter { $0.text == "150" }.count == 2)
+    }
+
+    @Test func textTrackingResolvesAndDefaultsToZero() throws {
+        let json = """
+        {
+          "spec": "ros.component/0.1",
+          "id": "community.test.tracking",
+          "version": "1.0.0",
+          "name": "Tracking",
+          "license": "MIT",
+          "size": [200, 80],
+          "nodes": [
+            {
+              "type": "text", "frame": [0, 0, 100, 30], "text": "tight",
+              "font": { "family": "Helvetica Neue", "size": 20, "weight": "semibold" },
+              "color": "#FFFFFF", "tracking": -2.5
+            },
+            {
+              "type": "text", "frame": [0, 40, 100, 30], "text": "default",
+              "font": { "family": "Helvetica Neue", "size": 20 },
+              "color": "#FFFFFF"
+            }
+          ]
+        }
+        """
+        let package = try OverlayComponentLoader.load(data: try #require(json.data(using: .utf8)))
+        let resolved = OverlayComponentResolver(definition: package.definition)
+            .resolve(parameters: [:], data: OverlayComponentStubData())
+
+        var trackingByText: [String: Double] = [:]
+        for node in flatten(resolved.nodes) {
+            guard case .text(_, let text, _, _, _, _, _, _, let tracking) = node else {
+                continue
+            }
+            trackingByText[text] = tracking
+        }
+        #expect(trackingByText["tight"] == -2.5)
+        #expect(trackingByText["default"] == 0)
     }
 
     @Test func unknownParametersProduceDiagnosticsButStillResolve() throws {
