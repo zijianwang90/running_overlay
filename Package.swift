@@ -17,6 +17,7 @@ let package = Package(
         .macOS(.v15)
     ],
     products: [
+        .library(name: "OverlayPluginCore", targets: ["OverlayPluginCore"]),
         .executable(
             name: "RunningOverlay",
             targets: ["RunningOverlay"]
@@ -24,9 +25,11 @@ let package = Package(
     ],
     dependencies: [],
     targets: skiaTargets + [
+        .target(name: "OverlayPluginCore"),
+        .testTarget(name: "OverlayPluginCoreTests", dependencies: ["OverlayPluginCore"]),
         .executableTarget(
             name: "RunningOverlay",
-            dependencies: skiaDir == nil ? [] : ["CSkiaBridge"],
+            dependencies: ["OverlayPluginCore"] + (skiaDir == nil ? [] : ["CSkiaBridge"]),
             path: "Sources/RunningOverlay",
             resources: [
                 .process("Resources")
@@ -34,7 +37,7 @@ let package = Package(
         ),
         .testTarget(
             name: "RunningOverlayTests",
-            dependencies: ["RunningOverlay"],
+            dependencies: ["RunningOverlay", "OverlayPluginCore"],
             path: "Tests/RunningOverlayTests",
             resources: [
                 .copy("Fixtures")

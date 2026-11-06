@@ -6,14 +6,29 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		BE81A239E639E85B82FBCE62 /* PluginDataPackage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31EC49699E120BC10103A4A2 /* PluginDataPackage.swift */; };
+		69E4E485AC89211FA048E500 /* PluginTimeMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11D46F9C610F5F62703DCD10 /* PluginTimeMapping.swift */; };
 		857BEEBF82BA872B5706828F /* AppLaunchCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F90D93448DFB9B9FE10A6C4 /* AppLaunchCommand.swift */; };
 		6C37E615226F1B8FF494BE59 /* ExportBenchmarkCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FBA4A29449DD6E1B2E8BE72 /* ExportBenchmarkCommand.swift */; };
 		16FF772A3969374092F731BB /* HeadlessBenchmarkRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC559EBBA7D6CBFBD0ABE110 /* HeadlessBenchmarkRunner.swift */; };
 		702EC74BC14CD6C395183C8A /* PlaybackMenuItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C5ADF6FECC3DEA1148B9AB1 /* PlaybackMenuItem.swift */; };
+		C93C7AD1F3C22140CB5EB279 /* PluginDevelopmentCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02CFC4A76B00C03BB8DDBDFE /* PluginDevelopmentCommand.swift */; };
 		BA70C27C166C867DFE129725 /* PresetFonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 461C22D4050609BA14549233 /* PresetFonts.swift */; };
+		A83A270792372AC990122BF5 /* RenderJobCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82CC049F4D0E5578BA1B9C56 /* RenderJobCommand.swift */; };
 		FD596E89332F89187293F2C5 /* RunningOverlayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B3635999AFC1DB74B38849 /* RunningOverlayApp.swift */; };
 		C36F7A0AC35EBA570ACD3ABD /* RunningOverlayMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422C715ABE853E6DD27F309B /* RunningOverlayMain.swift */; };
 		FA54CF995BF15CB92457EDE4 /* RunningOverlayResources.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7025C2B0CBE7516EC095F597 /* RunningOverlayResources.swift */; };
+		E46D59BA632E8E94534A2B40 /* EditorImportGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 695E43F538A44C378720F3E6 /* EditorImportGuide.swift */; };
+		17A2AC2421DB0B2AC8CA49AA /* EditorPackageExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C5C0A329760535725CCAE7E /* EditorPackageExporter.swift */; };
+		6D94BFBD3E97740C1DC37F8B /* EditorPackageManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7912562C1639EE662C8C139D /* EditorPackageManifest.swift */; };
+		A1B0973962B1672FD25E2084 /* EditorPackagePlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28F7423F3C66A377A82E6FB3 /* EditorPackagePlanner.swift */; };
+		178E9D447DF1E3845ACE4C6F /* FCPXMLTimelineWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A3D19DB7518FC6A25C87E00 /* FCPXMLTimelineWriter.swift */; };
+		253EEFA34DB760A83E1CB914 /* OverlayRenderJob.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B5306D85773003A20DB5CDE /* OverlayRenderJob.swift */; };
+		0B01D9E7676921A9C1619906 /* OverlayRenderJobResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A66571DCCEBE0F1C9C49FF7E /* OverlayRenderJobResolver.swift */; };
+		00848E5A1ED6A5BE6F955E58 /* OverlayRenderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1CC8CF6C3665AAD38C2A3EB /* OverlayRenderService.swift */; };
+		28CAA77D111C3773477546B2 /* PluginDataPackageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B6FF267D5B0E8E0832E513C /* PluginDataPackageService.swift */; };
+		AC1EFAC32E10CEF5FCD5EA6C /* PluginMetalFrameProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B7CC1340511DDB4B774E3CF /* PluginMetalFrameProbe.swift */; };
+		56EBDF6EDF51C1D25EBFC0A7 /* PluginMetalRenderSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B20BA9B485BFCA0DCEDBF95 /* PluginMetalRenderSession.swift */; };
 		E8D8B2ED4D1412381D917843 /* OverlayExportModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2731A5ED488BF53C7B40BA18 /* OverlayExportModels.swift */; };
 		F18D40C67EDF6E6106DC51B1 /* SkiaEasyRunRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0DC8B0B0A6789837C22A8AB /* SkiaEasyRunRenderer.swift */; };
 		623981FFA17B7BAEAB468D3A /* SkiaExportFrameRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC59F3227173D1C71117345 /* SkiaExportFrameRenderer.swift */; };
@@ -50,7 +65,9 @@
 		CF4CA719D540AFDAE0B6E4FD /* ProjectSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D2419C941377E081BBD8ED4 /* ProjectSettings.swift */; };
 		E5F333668A4C5FF99B660EDA /* SecurityScopedURLAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7606100D21E01FDB106BBF9A /* SecurityScopedURLAccess.swift */; };
 		AB840A15AD4B2EE164ABD7C3 /* UserAssetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFE8BD2F41AD8E4D8AADF542 /* UserAssetStore.swift */; };
+		644C73AEDE9296B3B2D43B7F /* OverlayFontResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 841CBDF59343D70CDCB5A0C2 /* OverlayFontResolver.swift */; };
 		7628777647677F0F3389B2F0 /* OverlayRendererBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = D98C19D2DCBDD31DA26F0707 /* OverlayRendererBackend.swift */; };
+		787739FB64FFFD31BB0ACE34 /* OverlayRendererVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0967E2ABC36FAD2C3290C434 /* OverlayRendererVersion.swift */; };
 		94CC1A167F36FFDCEB5046F1 /* SkiaChartsCommon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5819553EE34E845065E3E4E1 /* SkiaChartsCommon.swift */; };
 		C7E9BED755612162DD1B4796 /* SkiaChartsRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DFF23146571788A22CC5830 /* SkiaChartsRenderer.swift */; };
 		64367B517D02D3B3E6D67247 /* SkiaDistanceTimelineRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26893E260A17B4607B50C5BF /* SkiaDistanceTimelineRenderer.swift */; };
@@ -73,11 +90,13 @@
 		DC35E60B471EE559D42EB08C /* SkiaRenderAssets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6769AEEF59A8820810BF734F /* SkiaRenderAssets.swift */; };
 		22260E54D7FD981A048E2C99 /* SkiaTextComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2148DA2EF9936CAB55BD1C0C /* SkiaTextComposer.swift */; };
 		26C99177CF6E641EBD271D2F /* SkiaTextEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C6AF568B865D5E46981EA29 /* SkiaTextEffects.swift */; };
+		9B1B391F6246C67A2E42BB88 /* SkiaMetalRenderSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FCA5E589BB802041FB56A87 /* SkiaMetalRenderSession.swift */; };
 		BEC8055C7BC88AC23222F4FE /* TimelineModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD49E47BFAA48FB08BCA443D /* TimelineModel.swift */; };
 		7B0C594338A3E4F1DFE69CAC /* DecorOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F09A3B41E722847AA2B105 /* DecorOverlayDetailView.swift */; };
 		3B1925D0307551312F663186 /* DecorOverlayViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF73E69FF682BE184C9440FC /* DecorOverlayViews.swift */; };
 		944748626621CA9828D03322 /* DistanceTimelineOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3331AE3C054BC9ECC8C53DC7 /* DistanceTimelineOverlayDetailView.swift */; };
 		59E4829412D89B2A30F2E521 /* EditorEscapeKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 488BE84D1125EF935ED1D234 /* EditorEscapeKey.swift */; };
+		6CA80A116F436B987D3DB459 /* EditorImportGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B3D7EA67FE8ED85818D8E36 /* EditorImportGuideView.swift */; };
 		141398C0956C8E57CAA32C38 /* EditorTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C50E54B829DF19CC63E48CC /* EditorTheme.swift */; };
 		9F63644D3CB49CFFD73AF74C /* EditorTitlebarDoubleClick.swift in Sources */ = {isa = PBXBuildFile; fileRef = 268FCE0E771FCE6D91CE94DF /* EditorTitlebarDoubleClick.swift */; };
 		34F8355133ACFA5A7C9D5CD4 /* ElevationChartOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EE1E52771F1FDF9C23558F7 /* ElevationChartOverlayDetailView.swift */; };
@@ -126,6 +145,7 @@
 		911CA313B34CB1B8EDF3CD65 /* WeatherWidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8981B88FA0A80AE95D6AE836 /* WeatherWidgetViews.swift */; };
 		478A11C100BB6E4C52BFEF7E /* ZoneEdgeBarOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04731C14E15DA10D203CE9CD /* ZoneEdgeBarOverlayDetailView.swift */; };
 		084D1232D8109ACEFE88FBBA /* ZoneEdgeBarOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F10E3A9881B84F122EA107B /* ZoneEdgeBarOverlayView.swift */; };
+		ECECEFBCD2966E000030C48F /* WeatherFetchLocationMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 349BADAD677DC20F9500CECA /* WeatherFetchLocationMode.swift */; };
 		071FD18C31D70A7F8A09EF0B /* WeatherFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA38A65F091D5D6DCED7E4F1 /* WeatherFetcher.swift */; };
 		84CA11470A017464CE6A6CBE /* skia_bridge.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 135EDC9501582EC993BA0DCC /* skia_bridge.cpp */; };
 		A1DCA802AF2A72AFE715CE80 /* skia_gpu.mm in Sources */ = {isa = PBXBuildFile; fileRef = 81931A34584D763F45E6F30D /* skia_gpu.mm */; };
@@ -159,14 +179,29 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		31EC49699E120BC10103A4A2 /* PluginDataPackage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/OverlayPluginCore/PluginDataPackage.swift"; sourceTree = SOURCE_ROOT; };
+		11D46F9C610F5F62703DCD10 /* PluginTimeMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/OverlayPluginCore/PluginTimeMapping.swift"; sourceTree = SOURCE_ROOT; };
 		3F90D93448DFB9B9FE10A6C4 /* AppLaunchCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/AppLaunchCommand.swift"; sourceTree = SOURCE_ROOT; };
 		7FBA4A29449DD6E1B2E8BE72 /* ExportBenchmarkCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/ExportBenchmarkCommand.swift"; sourceTree = SOURCE_ROOT; };
 		EC559EBBA7D6CBFBD0ABE110 /* HeadlessBenchmarkRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/HeadlessBenchmarkRunner.swift"; sourceTree = SOURCE_ROOT; };
 		9C5ADF6FECC3DEA1148B9AB1 /* PlaybackMenuItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/PlaybackMenuItem.swift"; sourceTree = SOURCE_ROOT; };
+		02CFC4A76B00C03BB8DDBDFE /* PluginDevelopmentCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/PluginDevelopmentCommand.swift"; sourceTree = SOURCE_ROOT; };
 		461C22D4050609BA14549233 /* PresetFonts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/PresetFonts.swift"; sourceTree = SOURCE_ROOT; };
+		82CC049F4D0E5578BA1B9C56 /* RenderJobCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/RenderJobCommand.swift"; sourceTree = SOURCE_ROOT; };
 		E4B3635999AFC1DB74B38849 /* RunningOverlayApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/RunningOverlayApp.swift"; sourceTree = SOURCE_ROOT; };
 		422C715ABE853E6DD27F309B /* RunningOverlayMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/RunningOverlayMain.swift"; sourceTree = SOURCE_ROOT; };
 		7025C2B0CBE7516EC095F597 /* RunningOverlayResources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/RunningOverlayResources.swift"; sourceTree = SOURCE_ROOT; };
+		695E43F538A44C378720F3E6 /* EditorImportGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/EditorIntegration/EditorImportGuide.swift"; sourceTree = SOURCE_ROOT; };
+		8C5C0A329760535725CCAE7E /* EditorPackageExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/EditorIntegration/EditorPackageExporter.swift"; sourceTree = SOURCE_ROOT; };
+		7912562C1639EE662C8C139D /* EditorPackageManifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/EditorIntegration/EditorPackageManifest.swift"; sourceTree = SOURCE_ROOT; };
+		28F7423F3C66A377A82E6FB3 /* EditorPackagePlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/EditorIntegration/EditorPackagePlanner.swift"; sourceTree = SOURCE_ROOT; };
+		0A3D19DB7518FC6A25C87E00 /* FCPXMLTimelineWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/EditorIntegration/FCPXMLTimelineWriter.swift"; sourceTree = SOURCE_ROOT; };
+		5B5306D85773003A20DB5CDE /* OverlayRenderJob.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/EditorIntegration/OverlayRenderJob.swift"; sourceTree = SOURCE_ROOT; };
+		A66571DCCEBE0F1C9C49FF7E /* OverlayRenderJobResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/EditorIntegration/OverlayRenderJobResolver.swift"; sourceTree = SOURCE_ROOT; };
+		F1CC8CF6C3665AAD38C2A3EB /* OverlayRenderService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/EditorIntegration/OverlayRenderService.swift"; sourceTree = SOURCE_ROOT; };
+		8B6FF267D5B0E8E0832E513C /* PluginDataPackageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/EditorIntegration/PluginDataPackageService.swift"; sourceTree = SOURCE_ROOT; };
+		1B7CC1340511DDB4B774E3CF /* PluginMetalFrameProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/EditorIntegration/PluginMetalFrameProbe.swift"; sourceTree = SOURCE_ROOT; };
+		3B20BA9B485BFCA0DCEDBF95 /* PluginMetalRenderSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/EditorIntegration/PluginMetalRenderSession.swift"; sourceTree = SOURCE_ROOT; };
 		2731A5ED488BF53C7B40BA18 /* OverlayExportModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/OverlayExportModels.swift"; sourceTree = SOURCE_ROOT; };
 		A0DC8B0B0A6789837C22A8AB /* SkiaEasyRunRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/SkiaEasyRunRenderer.swift"; sourceTree = SOURCE_ROOT; };
 		8CC59F3227173D1C71117345 /* SkiaExportFrameRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/SkiaExportFrameRenderer.swift"; sourceTree = SOURCE_ROOT; };
@@ -203,7 +238,9 @@
 		2D2419C941377E081BBD8ED4 /* ProjectSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Project/ProjectSettings.swift"; sourceTree = SOURCE_ROOT; };
 		7606100D21E01FDB106BBF9A /* SecurityScopedURLAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Project/SecurityScopedURLAccess.swift"; sourceTree = SOURCE_ROOT; };
 		EFE8BD2F41AD8E4D8AADF542 /* UserAssetStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Project/UserAssetStore.swift"; sourceTree = SOURCE_ROOT; };
+		841CBDF59343D70CDCB5A0C2 /* OverlayFontResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/OverlayFontResolver.swift"; sourceTree = SOURCE_ROOT; };
 		D98C19D2DCBDD31DA26F0707 /* OverlayRendererBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/OverlayRendererBackend.swift"; sourceTree = SOURCE_ROOT; };
+		0967E2ABC36FAD2C3290C434 /* OverlayRendererVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/OverlayRendererVersion.swift"; sourceTree = SOURCE_ROOT; };
 		5819553EE34E845065E3E4E1 /* SkiaChartsCommon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Charts/SkiaChartsCommon.swift"; sourceTree = SOURCE_ROOT; };
 		6DFF23146571788A22CC5830 /* SkiaChartsRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Charts/SkiaChartsRenderer.swift"; sourceTree = SOURCE_ROOT; };
 		26893E260A17B4607B50C5BF /* SkiaDistanceTimelineRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Charts/SkiaDistanceTimelineRenderer.swift"; sourceTree = SOURCE_ROOT; };
@@ -226,11 +263,13 @@
 		6769AEEF59A8820810BF734F /* SkiaRenderAssets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Shared/SkiaRenderAssets.swift"; sourceTree = SOURCE_ROOT; };
 		2148DA2EF9936CAB55BD1C0C /* SkiaTextComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Shared/SkiaTextComposer.swift"; sourceTree = SOURCE_ROOT; };
 		3C6AF568B865D5E46981EA29 /* SkiaTextEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Shared/SkiaTextEffects.swift"; sourceTree = SOURCE_ROOT; };
+		5FCA5E589BB802041FB56A87 /* SkiaMetalRenderSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/SkiaMetalRenderSession.swift"; sourceTree = SOURCE_ROOT; };
 		FD49E47BFAA48FB08BCA443D /* TimelineModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Timeline/TimelineModel.swift"; sourceTree = SOURCE_ROOT; };
 		04F09A3B41E722847AA2B105 /* DecorOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/DecorOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
 		AF73E69FF682BE184C9440FC /* DecorOverlayViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/DecorOverlayViews.swift"; sourceTree = SOURCE_ROOT; };
 		3331AE3C054BC9ECC8C53DC7 /* DistanceTimelineOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/DistanceTimelineOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
 		488BE84D1125EF935ED1D234 /* EditorEscapeKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/EditorEscapeKey.swift"; sourceTree = SOURCE_ROOT; };
+		4B3D7EA67FE8ED85818D8E36 /* EditorImportGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/EditorImportGuideView.swift"; sourceTree = SOURCE_ROOT; };
 		2C50E54B829DF19CC63E48CC /* EditorTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/EditorTheme.swift"; sourceTree = SOURCE_ROOT; };
 		268FCE0E771FCE6D91CE94DF /* EditorTitlebarDoubleClick.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/EditorTitlebarDoubleClick.swift"; sourceTree = SOURCE_ROOT; };
 		1EE1E52771F1FDF9C23558F7 /* ElevationChartOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/ElevationChartOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
@@ -279,6 +318,7 @@
 		8981B88FA0A80AE95D6AE836 /* WeatherWidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/WeatherWidgetViews.swift"; sourceTree = SOURCE_ROOT; };
 		04731C14E15DA10D203CE9CD /* ZoneEdgeBarOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/ZoneEdgeBarOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
 		9F10E3A9881B84F122EA107B /* ZoneEdgeBarOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/ZoneEdgeBarOverlayView.swift"; sourceTree = SOURCE_ROOT; };
+		349BADAD677DC20F9500CECA /* WeatherFetchLocationMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Weather/WeatherFetchLocationMode.swift"; sourceTree = SOURCE_ROOT; };
 		CA38A65F091D5D6DCED7E4F1 /* WeatherFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Weather/WeatherFetcher.swift"; sourceTree = SOURCE_ROOT; };
 		135EDC9501582EC993BA0DCC /* skia_bridge.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Sources/CSkiaBridge/skia_bridge.cpp"; sourceTree = SOURCE_ROOT; };
 		81931A34584D763F45E6F30D /* skia_gpu.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = "Sources/CSkiaBridge/skia_gpu.mm"; sourceTree = SOURCE_ROOT; };
@@ -314,14 +354,29 @@
 /* Begin PBXGroup section */
 		870B3294C0CBD48AF6BBCC1B = {isa = PBXGroup; children = (8309DD304D804F9D7F6302F5, 50F0FC3AFD5FBC981B5A0DDD, 805D39FC15AEDC4AD0E4E917, B6561938591A059DEBBCECA2, 62C2857EEBBA20131483F32E, 615B463D1028E4E24B674CF7); sourceTree = "<group>"; };
 		8309DD304D804F9D7F6302F5 /* Sources */ = {isa = PBXGroup; children = (
+			31EC49699E120BC10103A4A2 /* PluginDataPackage.swift */,
+			11D46F9C610F5F62703DCD10 /* PluginTimeMapping.swift */,
 			3F90D93448DFB9B9FE10A6C4 /* AppLaunchCommand.swift */,
 			7FBA4A29449DD6E1B2E8BE72 /* ExportBenchmarkCommand.swift */,
 			EC559EBBA7D6CBFBD0ABE110 /* HeadlessBenchmarkRunner.swift */,
 			9C5ADF6FECC3DEA1148B9AB1 /* PlaybackMenuItem.swift */,
+			02CFC4A76B00C03BB8DDBDFE /* PluginDevelopmentCommand.swift */,
 			461C22D4050609BA14549233 /* PresetFonts.swift */,
+			82CC049F4D0E5578BA1B9C56 /* RenderJobCommand.swift */,
 			E4B3635999AFC1DB74B38849 /* RunningOverlayApp.swift */,
 			422C715ABE853E6DD27F309B /* RunningOverlayMain.swift */,
 			7025C2B0CBE7516EC095F597 /* RunningOverlayResources.swift */,
+			695E43F538A44C378720F3E6 /* EditorImportGuide.swift */,
+			8C5C0A329760535725CCAE7E /* EditorPackageExporter.swift */,
+			7912562C1639EE662C8C139D /* EditorPackageManifest.swift */,
+			28F7423F3C66A377A82E6FB3 /* EditorPackagePlanner.swift */,
+			0A3D19DB7518FC6A25C87E00 /* FCPXMLTimelineWriter.swift */,
+			5B5306D85773003A20DB5CDE /* OverlayRenderJob.swift */,
+			A66571DCCEBE0F1C9C49FF7E /* OverlayRenderJobResolver.swift */,
+			F1CC8CF6C3665AAD38C2A3EB /* OverlayRenderService.swift */,
+			8B6FF267D5B0E8E0832E513C /* PluginDataPackageService.swift */,
+			1B7CC1340511DDB4B774E3CF /* PluginMetalFrameProbe.swift */,
+			3B20BA9B485BFCA0DCEDBF95 /* PluginMetalRenderSession.swift */,
 			2731A5ED488BF53C7B40BA18 /* OverlayExportModels.swift */,
 			A0DC8B0B0A6789837C22A8AB /* SkiaEasyRunRenderer.swift */,
 			8CC59F3227173D1C71117345 /* SkiaExportFrameRenderer.swift */,
@@ -358,7 +413,9 @@
 			2D2419C941377E081BBD8ED4 /* ProjectSettings.swift */,
 			7606100D21E01FDB106BBF9A /* SecurityScopedURLAccess.swift */,
 			EFE8BD2F41AD8E4D8AADF542 /* UserAssetStore.swift */,
+			841CBDF59343D70CDCB5A0C2 /* OverlayFontResolver.swift */,
 			D98C19D2DCBDD31DA26F0707 /* OverlayRendererBackend.swift */,
+			0967E2ABC36FAD2C3290C434 /* OverlayRendererVersion.swift */,
 			5819553EE34E845065E3E4E1 /* SkiaChartsCommon.swift */,
 			6DFF23146571788A22CC5830 /* SkiaChartsRenderer.swift */,
 			26893E260A17B4607B50C5BF /* SkiaDistanceTimelineRenderer.swift */,
@@ -381,11 +438,13 @@
 			6769AEEF59A8820810BF734F /* SkiaRenderAssets.swift */,
 			2148DA2EF9936CAB55BD1C0C /* SkiaTextComposer.swift */,
 			3C6AF568B865D5E46981EA29 /* SkiaTextEffects.swift */,
+			5FCA5E589BB802041FB56A87 /* SkiaMetalRenderSession.swift */,
 			FD49E47BFAA48FB08BCA443D /* TimelineModel.swift */,
 			04F09A3B41E722847AA2B105 /* DecorOverlayDetailView.swift */,
 			AF73E69FF682BE184C9440FC /* DecorOverlayViews.swift */,
 			3331AE3C054BC9ECC8C53DC7 /* DistanceTimelineOverlayDetailView.swift */,
 			488BE84D1125EF935ED1D234 /* EditorEscapeKey.swift */,
+			4B3D7EA67FE8ED85818D8E36 /* EditorImportGuideView.swift */,
 			2C50E54B829DF19CC63E48CC /* EditorTheme.swift */,
 			268FCE0E771FCE6D91CE94DF /* EditorTitlebarDoubleClick.swift */,
 			1EE1E52771F1FDF9C23558F7 /* ElevationChartOverlayDetailView.swift */,
@@ -434,6 +493,7 @@
 			8981B88FA0A80AE95D6AE836 /* WeatherWidgetViews.swift */,
 			04731C14E15DA10D203CE9CD /* ZoneEdgeBarOverlayDetailView.swift */,
 			9F10E3A9881B84F122EA107B /* ZoneEdgeBarOverlayView.swift */,
+			349BADAD677DC20F9500CECA /* WeatherFetchLocationMode.swift */,
 			CA38A65F091D5D6DCED7E4F1 /* WeatherFetcher.swift */,
 			135EDC9501582EC993BA0DCC /* skia_bridge.cpp */,
 			81931A34584D763F45E6F30D /* skia_gpu.mm */,
@@ -499,14 +559,29 @@
 
 /* Begin PBXSourcesBuildPhase section */
 		F612CD2E22E187AC48B5913C /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
+			BE81A239E639E85B82FBCE62 /* PluginDataPackage.swift in Sources */,
+			69E4E485AC89211FA048E500 /* PluginTimeMapping.swift in Sources */,
 			857BEEBF82BA872B5706828F /* AppLaunchCommand.swift in Sources */,
 			6C37E615226F1B8FF494BE59 /* ExportBenchmarkCommand.swift in Sources */,
 			16FF772A3969374092F731BB /* HeadlessBenchmarkRunner.swift in Sources */,
 			702EC74BC14CD6C395183C8A /* PlaybackMenuItem.swift in Sources */,
+			C93C7AD1F3C22140CB5EB279 /* PluginDevelopmentCommand.swift in Sources */,
 			BA70C27C166C867DFE129725 /* PresetFonts.swift in Sources */,
+			A83A270792372AC990122BF5 /* RenderJobCommand.swift in Sources */,
 			FD596E89332F89187293F2C5 /* RunningOverlayApp.swift in Sources */,
 			C36F7A0AC35EBA570ACD3ABD /* RunningOverlayMain.swift in Sources */,
 			FA54CF995BF15CB92457EDE4 /* RunningOverlayResources.swift in Sources */,
+			E46D59BA632E8E94534A2B40 /* EditorImportGuide.swift in Sources */,
+			17A2AC2421DB0B2AC8CA49AA /* EditorPackageExporter.swift in Sources */,
+			6D94BFBD3E97740C1DC37F8B /* EditorPackageManifest.swift in Sources */,
+			A1B0973962B1672FD25E2084 /* EditorPackagePlanner.swift in Sources */,
+			178E9D447DF1E3845ACE4C6F /* FCPXMLTimelineWriter.swift in Sources */,
+			253EEFA34DB760A83E1CB914 /* OverlayRenderJob.swift in Sources */,
+			0B01D9E7676921A9C1619906 /* OverlayRenderJobResolver.swift in Sources */,
+			00848E5A1ED6A5BE6F955E58 /* OverlayRenderService.swift in Sources */,
+			28CAA77D111C3773477546B2 /* PluginDataPackageService.swift in Sources */,
+			AC1EFAC32E10CEF5FCD5EA6C /* PluginMetalFrameProbe.swift in Sources */,
+			56EBDF6EDF51C1D25EBFC0A7 /* PluginMetalRenderSession.swift in Sources */,
 			E8D8B2ED4D1412381D917843 /* OverlayExportModels.swift in Sources */,
 			F18D40C67EDF6E6106DC51B1 /* SkiaEasyRunRenderer.swift in Sources */,
 			623981FFA17B7BAEAB468D3A /* SkiaExportFrameRenderer.swift in Sources */,
@@ -543,7 +618,9 @@
 			CF4CA719D540AFDAE0B6E4FD /* ProjectSettings.swift in Sources */,
 			E5F333668A4C5FF99B660EDA /* SecurityScopedURLAccess.swift in Sources */,
 			AB840A15AD4B2EE164ABD7C3 /* UserAssetStore.swift in Sources */,
+			644C73AEDE9296B3B2D43B7F /* OverlayFontResolver.swift in Sources */,
 			7628777647677F0F3389B2F0 /* OverlayRendererBackend.swift in Sources */,
+			787739FB64FFFD31BB0ACE34 /* OverlayRendererVersion.swift in Sources */,
 			94CC1A167F36FFDCEB5046F1 /* SkiaChartsCommon.swift in Sources */,
 			C7E9BED755612162DD1B4796 /* SkiaChartsRenderer.swift in Sources */,
 			64367B517D02D3B3E6D67247 /* SkiaDistanceTimelineRenderer.swift in Sources */,
@@ -566,11 +643,13 @@
 			DC35E60B471EE559D42EB08C /* SkiaRenderAssets.swift in Sources */,
 			22260E54D7FD981A048E2C99 /* SkiaTextComposer.swift in Sources */,
 			26C99177CF6E641EBD271D2F /* SkiaTextEffects.swift in Sources */,
+			9B1B391F6246C67A2E42BB88 /* SkiaMetalRenderSession.swift in Sources */,
 			BEC8055C7BC88AC23222F4FE /* TimelineModel.swift in Sources */,
 			7B0C594338A3E4F1DFE69CAC /* DecorOverlayDetailView.swift in Sources */,
 			3B1925D0307551312F663186 /* DecorOverlayViews.swift in Sources */,
 			944748626621CA9828D03322 /* DistanceTimelineOverlayDetailView.swift in Sources */,
 			59E4829412D89B2A30F2E521 /* EditorEscapeKey.swift in Sources */,
+			6CA80A116F436B987D3DB459 /* EditorImportGuideView.swift in Sources */,
 			141398C0956C8E57CAA32C38 /* EditorTheme.swift in Sources */,
 			9F63644D3CB49CFFD73AF74C /* EditorTitlebarDoubleClick.swift in Sources */,
 			34F8355133ACFA5A7C9D5CD4 /* ElevationChartOverlayDetailView.swift in Sources */,
@@ -619,6 +698,7 @@
 			911CA313B34CB1B8EDF3CD65 /* WeatherWidgetViews.swift in Sources */,
 			478A11C100BB6E4C52BFEF7E /* ZoneEdgeBarOverlayDetailView.swift in Sources */,
 			084D1232D8109ACEFE88FBBA /* ZoneEdgeBarOverlayView.swift in Sources */,
+			ECECEFBCD2966E000030C48F /* WeatherFetchLocationMode.swift in Sources */,
 			071FD18C31D70A7F8A09EF0B /* WeatherFetcher.swift in Sources */,
 			84CA11470A017464CE6A6CBE /* skia_bridge.cpp in Sources */,
 			A1DCA802AF2A72AFE715CE80 /* skia_gpu.mm in Sources */,

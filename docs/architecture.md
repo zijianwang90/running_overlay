@@ -130,6 +130,11 @@ Responsibilities:
   geometry.
 - Draw all supported elements through one `SkiaEasyRunRenderer` in
   `layout.elements` order. Preview and export call the same renderer.
+- Export and plugin frame adapters now share `SkiaMetalRenderSession`, a
+  persistent serial context accepting a borrowed full-frame Metal texture.
+  The session completes GPU work and detaches the surface before returning.
+  The local FxPlug diagnostic compiles these same sources without the editor
+  shell; see [ADR 0015](adr/0015-fxplug-diagnostic-carrier.md) for its limits.
 - Use Skia Metal as the product renderer for preview and export. A dual-backend
   m159 SDK defaults to Graphite; Ganesh remains a backend fallback/diagnostic
   selection behind the same `skb_*` C bridge. SDK-free builds are developer/CI
@@ -180,8 +185,21 @@ Responsibilities:
 - Reuse the shared overlay frame renderer for MOV frames and PNG calibration frames.
 - Apply project resolution, frame rate, and bitrate.
 - Report progress and failures.
+- Run declarative `OverlayRenderJob`s (`--render-job`) and write Export for
+  Editor packages (alpha movies, `manifest.json`, FCPXML) through
+  `OverlayRenderService`. That service drives the same exporter and keeps a
+  content-addressed span cache (ADR 0013).
 
 ## 4. Timing Model
+
+`OverlayPluginCore` is an independently buildable library for versioned,
+self-contained activity/template transport and rational media-source anchors.
+It has no app/UI/editor SDK dependencies. Studio resolves domain models and
+its developer frame probe calls the existing Skia PNG path; rendering has not
+yet been extracted from the app. Source-following Effect time is distinct
+from project/template time. See [ADR 0014](adr/0014-native-editor-plugin-contracts.md)
+and the [native-plugin guide](development/native-editor-plugins.md) for limits
+and remaining host gates. No installable native effect ships in this slice.
 
 The app has multiple time domains:
 

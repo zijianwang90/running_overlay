@@ -123,6 +123,41 @@ struct BuiltInOverlayTemplate: Identifiable, Equatable {
     static var defaultTemplate: BuiltInOverlayTemplate? {
         all.first { $0.id == "easyRun" }
     }
+
+    /// Loads this template's bundled `.rotemplate` resource. Shared by the app
+    /// and the headless `--render-job` resolver so both read the same bytes.
+    func loadResourceTemplate() throws -> OverlayTemplate {
+        guard let resourceName else {
+            throw BuiltInOverlayTemplateError.missingResource(id)
+        }
+
+        let bundle = Bundle.runningOverlayResources
+        let url = bundle.url(
+                forResource: resourceName,
+                withExtension: OverlayTemplateStore.fileExtension,
+                subdirectory: "Templates"
+              )
+            ?? bundle.url(
+                forResource: resourceName,
+                withExtension: OverlayTemplateStore.fileExtension
+            )
+
+        guard let url else {
+            throw BuiltInOverlayTemplateError.missingResource(id)
+        }
+        return try OverlayTemplateStore().loadTemplateFile(from: url)
+    }
+}
+
+enum BuiltInOverlayTemplateError: LocalizedError, Equatable {
+    case missingResource(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .missingResource(let id):
+            "Built-in template resource is missing: \(id)."
+        }
+    }
 }
 
 struct OverlayTemplateElement: Codable, Equatable {

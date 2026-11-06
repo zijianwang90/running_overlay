@@ -94,6 +94,7 @@ Config/LocalSigning.xcconfig
 
 # Project-specific local artifacts
 # Local sample fixtures or exports that should stay out of version control.
+*.roplugin
 build/
 ExampleData/local/
 Exports/

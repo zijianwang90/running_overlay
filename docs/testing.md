@@ -2,6 +2,17 @@
 
 ## Test Layers
 
+- `Tests/OverlayPluginCoreTests/` tests native plugin data/time contracts without
+  editor SDKs. App integration and Skia frame parity are covered by
+  `PluginDevelopmentTests`; see the [native-plugin guide](development/native-editor-plugins.md).
+- `PluginMetalRenderSessionTests` covers persistent external-texture rendering,
+  source seeks, clearing, ownership and concurrent requests with the product
+  SDK. The native FxPlug build script separately verifies the SDK/sandboxed
+  bundle with a packaged Metal self-test. Manual local FCP/Motion acceptance
+  covers discovery, normal-speed source following, native parameters,
+  save/restart and ProRes export; it cannot stand in for the final signed,
+  color-managed, distribution acceptance matrix.
+
 - Unit and model tests use Swift Testing under
   `Tests/RunningOverlayTests/`.
 - Renderer smoke tests verify that supported asset formats produce pixels.
@@ -9,6 +20,10 @@
   reviewed PNG snapshots.
 - Optional real-world FIT and GPX tests may be run locally through environment
   variables, but never gate CI.
+- `EditorPackageTests` validates generated FCPXML against a DTD only when
+  `FCPXML_DTD` names a local copy of Final Cut Pro's `FCPXMLv1_10.dtd`. The
+  DTD ships inside Final Cut Pro, so it is not committed. Copy it out of the
+  app bundle first: libxml cannot load it from the bundle path directly.
 
 ## Commands
 

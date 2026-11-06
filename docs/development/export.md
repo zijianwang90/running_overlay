@@ -39,6 +39,9 @@ an encoder-setting change.
 
 ## Sandboxed Destination Access
 
+- The suggested destination is an `overlay` folder beside the first source
+  video, created on demand. Without source videos it falls back to
+  `~/Movies`.
 - Export destinations must use the URL returned directly by `NSOpenPanel`;
   rebuilding a URL from displayed path text loses the sandbox authorization
   context.
@@ -48,6 +51,106 @@ an encoder-setting change.
   export task and for synchronous diagnostic JSON writes.
 - Do not stop security-scoped access until all frame writes, profiling files,
   and `AVAssetWriter` completion work have finished.
+
+## Render Jobs And Editor Packages
+
+ADR 0013 records the design. Code lives in
+`Sources/RunningOverlay/Export/EditorIntegration/`.
+
+- `OverlayRenderService.render` is the only headless render path. It turns
+  `OverlayRenderSpan`s into one `OverlayExportJob` with `fitStartTime = 0` and
+  segment starts in activity elapsed seconds, then runs the normal exporter in
+  a scratch directory and moves `<span>.mov` into place. Span names are file
+  base names without dots or slashes.
+- The span cache lives in `Caches/RunningOverlay/RenderCache/<key>.mov`. Its
+  keys come from `OverlayRenderContentHash.spanCacheKey`. Bump
+  `OverlayRendererVersion.current` with any change that alters exported
+  pixels. Route map snapshots and weather are not part of the key.
+- `RunningOverlay --render-job job.json [--render-cache DIR | --no-render-cache]`
+  runs an `OverlayRenderJob` through the headless AppKit run loop. It writes
+  `render-result.json`, which stores file names only. Relative job paths
+  resolve against the job file. Example:
+
+  ```json
+  {
+    "schemaVersion": 1,
+    "activity": { "activityFile": { "path": "run.fit" } },
+    "template": { "builtIn": { "id": "easyRun" } },
+    "output": { "directory": "out", "width": 1920, "height": 1080,
+                "frameRateID": "29.97", "layerDataFrameRateID": "5",
+                "codec": "proRes4444", "bitrateMbps": 30 },
+    "spans": [ { "name": "clip_01", "activityElapsedStart": 0, "duration": 12.5 } ]
+  }
+  ```
+
+  The other sources are `{"activitySnapshot": {"path": …}}`, which reads
+  `OverlayRenderJobResolver.writeActivitySnapshot`, and
+  `{"templateFile": {"path": …}}`.
+- File > Export for Editor (Per Clip / Full Activity) writes a
+  `<Project> Editor Package` folder inside the chosen directory. The folder
+  holds the overlay movies, `manifest.json`, and `<Project>.fcpxml`.
+  `EditorPackagePlanner` maps each clip's start to activity elapsed time with
+  `effectiveStartTime - fitStartTime`. Clips are untrimmed, so their media
+  source start is 0.
+- `FCPXMLTimelineWriter` emits FCPXML 1.10:
+  - By default the stretches of the project timeline that no clip covers are
+    removed, so the imported timeline is a packed sequence. A connected clip
+    that runs past its parent can still leave a structural `gap` at the end of
+    the spine; that gap is not an empty project stretch.
+  - "Keep original positions" turns that off: every clip starts at its
+    project timeline time and regions no track covers become `gap` elements.
+    The Full Activity layout always keeps positions, because its single
+    overlay is in activity time and would drift otherwise.
+  - The layout splits the timeline into frame-aligned segments. The covering
+    clip that runs furthest (ties: lowest track index, then earliest start)
+    owns the segment in the spine; every other covering clip becomes a
+    connected clip inside that spine item. Lanes are packed in frame ranges,
+    so overlapping angles never share a lane.
+  - That rule guarantees every spine item starts at its clip's own first
+    frame, so a spine clip always has media `start="0s"`. Trimmed media then
+    appears only on connected clips. DaVinci Resolve mishandles connected
+    clips whose parent has a non-zero `start` (it offsets the children by
+    `-start`), so keeping parents untrimmed is required for import.
+  - A clip that spans a spine boundary is emitted as trimmed pieces: each
+    piece carries the matching media `start`, so the pieces play continuously
+    while no connected clip runs past its parent. Final Cut Pro tolerates that
+    overflow, but DaVinci Resolve truncates it, which is why the split exists.
+  - FCPXML gaps cannot carry connected clips, so a region no track covers is
+    its own spine item.
+  - One overlay covers each time region, owned by the spine clip there. Overlapping angles therefore never stack duplicate overlays, which
+    would composite twice. Overlay lane numbers are relative to the parent:
+    overlays use one sequence-wide lane above every source lane. A connected clip's `offset` is in
+    the parent's local time, not sequence time.
+  - In full-activity mode every clip reads the same movie, so an empty stretch
+    between clips is filled by the overlay movie itself in the spine. The
+    data layer keeps running instead of stopping at the last clip.
+  - All times are whole sequence frames: `1001/30000s` for 29.97, and so on.
+  - In full-activity mode, the connected clip is shifted later when the clip
+    starts before the activity, and trimmed so it never reads past the
+    movie's end.
+  - Media references are absolute file URLs. `manifest.json` stays relative.
+- The Export dialog has an optional Editor Package section. Turning on
+  "Also export an editor package" adds a target editor, an overlay layout, and
+  a "Keep original positions" switch to the same export; the overlay MOV is
+  still written. Positions default to off (clips import back to back) and are
+  forced on in Full Activity layout. The choice is remembered. The target changes only guidance. After the export, the app
+  shows an import guide for that editor (`EditorImportGuideView`):
+  - numbered steps that name the real package files;
+  - Open in Final Cut Pro, or the Resolve import steps;
+  - Show in Finder and Copy Timeline Path.
+
+  The same text is written to `How to Import.txt` inside the package.
+  Help > Import into Final Cut Pro / DaVinci Resolve / Another Editor reopens
+  the guidance without exporting. The guide resolves the package through a
+  security-scoped bookmark created during export, because the sandboxed app
+  has no access after the export task ends. The chosen target and layout are
+  remembered in user defaults and are not part of the project file.
+- Import: Final Cut Pro opens the `.fcpxml` directly. DaVinci Resolve does
+  not register that file type, so its guide button launches Resolve and copies
+  the timeline path for File > Import > Timeline. The package format is the
+  same for both editors. Overlays can also be dragged above their clips by
+  hand. Alpha, Rec. 709 handling, and frame-rate conformance in each editor
+  need manual verification.
 
 ### Phase 6: Export
 

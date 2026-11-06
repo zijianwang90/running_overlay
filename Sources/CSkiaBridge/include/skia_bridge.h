@@ -204,6 +204,11 @@ int skb_graphite_available(void);
 int skb_wrap_texture(
     SkiaBridgeContext *ctx, int width, int height, const void *mtlTexture);
 
+/// Detaches the current surface from a GPU context. Call only after a
+/// synchronous flush, before returning a borrowed render target to its host.
+/// Keeps the context, recorder, and asset caches available for the next frame.
+void skb_release_gpu_surface(SkiaBridgeContext *ctx);
+
 /// Flushes pending draws. When `sync` is non-zero, waits for the GPU to finish.
 void skb_flush(SkiaBridgeContext *ctx, int sync);
 

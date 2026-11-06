@@ -206,6 +206,15 @@ int skb_wrap_texture(
     return 1;
 }
 
+void skb_release_gpu_surface(SkiaBridgeContext *ctx) {
+    if (!ctx) return;
+    bool isGPU = bool(ctx->grContext);
+#if defined(SKB_ENABLE_GRAPHITE)
+    isGPU = isGPU || bool(ctx->graphiteContext);
+#endif
+    if (isGPU) ctx->surface.reset();
+}
+
 void skb_flush_impl(SkiaBridgeContext *ctx, bool sync) {
 #if defined(SKB_ENABLE_GRAPHITE)
     if (ctx->graphiteContext) {

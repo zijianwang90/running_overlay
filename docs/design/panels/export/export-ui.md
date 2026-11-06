@@ -219,8 +219,10 @@ The main window toolbar shows a compact native button with a thin determinate
 progress bar and monospaced percentage while exporting. Use the system toolbar
 button surface and sizing, without the custom filled/bordered panel button
 style. Clicking it opens the existing export queue popover, including cancel.
-On completion it shows the green completion label. Expose the progress label
-and percentage to accessibility.
+It is its own toolbar item, separated from the primary `Export` button by the
+standard fixed toolbar spacer, so the progress control and `Export` never read
+as one control. On completion it shows the green completion label. Expose the
+progress label and percentage to accessibility.
 
 When `project.isExporting` is true:
 

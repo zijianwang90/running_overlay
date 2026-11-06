@@ -781,6 +781,10 @@ struct SwiftUIOverlayVideoExporter {
             )
         }
 
+        try writeFramePNG(cgImage, to: outputURL)
+    }
+
+    static func writeFramePNG(_ cgImage: CGImage, to outputURL: URL) throws {
         let bitmap = NSBitmapImageRep(cgImage: cgImage)
         guard let data = bitmap.representation(using: .png, properties: [:]) else {
             throw SwiftUIOverlayExportError.appendFailed("Could not convert SwiftUI frame to PNG data.")
