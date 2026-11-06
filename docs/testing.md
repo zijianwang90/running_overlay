@@ -9,6 +9,10 @@
   reviewed PNG snapshots.
 - Optional real-world FIT and GPX tests may be run locally through environment
   variables, but never gate CI.
+- `EditorPackageTests` validates generated FCPXML against a DTD only when
+  `FCPXML_DTD` names a local copy of Final Cut Pro's `FCPXMLv1_10.dtd`. The
+  DTD ships inside Final Cut Pro, so it is not committed. Copy it out of the
+  app bundle first: libxml cannot load it from the bundle path directly.
 
 ## Commands
 

@@ -28,6 +28,7 @@ entries in `project-log.md`.
 | Preview | `docs/architecture.md#preview`, `docs/design/panels/preview/` |
 | Skia SDK or GPU backend experiments | `docs/development/skia-sdk.md`, `docs/adr/0010-skia-ganesh-metal-renderer.md` |
 | Export or performance | `docs/architecture.md#export`, `docs/export-performance.md` |
+| Editor integration, render jobs, editor packages | `docs/adr/0013-render-jobs-and-editor-packages.md`, `docs/development/export.md#render-jobs-and-editor-packages` |
 | Project persistence or undo | `docs/architecture.md`, `docs/development/persistence.md` |
 | UI design system | `docs/design/README.md`, `docs/design/system/` |
 | Fixtures and snapshots | `docs/testing.md` |

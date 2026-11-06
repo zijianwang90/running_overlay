@@ -382,12 +382,20 @@ struct ProjectSettingsTests {
         #expect(project.isPlaying)
     }
 
-    @Test func defaultExportDestinationUsesFirstVideoFolder() {
+    @Test func defaultExportDestinationUsesOverlayFolderBesideFirstVideo() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("running-overlay-destination-\(UUID().uuidString)", isDirectory: true)
+        let sourceA = root.appendingPathComponent("source-a", isDirectory: true)
+        let sourceB = root.appendingPathComponent("source-b", isDirectory: true)
+        try FileManager.default.createDirectory(at: sourceA, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: sourceB, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
         let project = ProjectDocument()
         project.mediaItems = [
             MediaItem(
                 displayName: "clip-b.mov",
-                fileURL: URL(fileURLWithPath: "/tmp/running-overlay/source-a/clip-b.mov"),
+                fileURL: sourceA.appendingPathComponent("clip-b.mov"),
                 duration: 10,
                 inferredStartDate: nil,
                 cameraGroupID: "Camera A",
@@ -395,7 +403,7 @@ struct ProjectSettingsTests {
             ),
             MediaItem(
                 displayName: "clip-a.mov",
-                fileURL: URL(fileURLWithPath: "/tmp/running-overlay/source-b/clip-a.mov"),
+                fileURL: sourceB.appendingPathComponent("clip-a.mov"),
                 duration: 10,
                 inferredStartDate: nil,
                 cameraGroupID: "Camera B",
@@ -403,7 +411,9 @@ struct ProjectSettingsTests {
             )
         ]
 
-        #expect(project.defaultExportDestinationURL.path == "/tmp/running-overlay/source-a")
+        let destination = project.defaultExportDestinationURL
+        #expect(destination.standardizedFileURL.path == sourceA.appendingPathComponent("overlay").standardizedFileURL.path)
+        #expect(FileManager.default.fileExists(atPath: destination.path))
     }
 
     @Test func defaultExportDestinationFallsBackToMoviesWithoutVideoFiles() {

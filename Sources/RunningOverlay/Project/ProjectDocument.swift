@@ -21,6 +21,11 @@ final class ProjectDocument: ObservableObject {
     @Published private(set) var playbackSeekToken: UInt64 = 0
     @Published var showingProjectSettings = false
     @Published var showingExportDialog = false
+    /// Set after an editor package export; presents the import guide.
+    @Published var editorImportGuide: EditorImportGuide?
+    /// Security-scoped bookmark for the last exported package, so the guide
+    /// can open its timeline from the sandboxed app.
+    @Published var editorPackageAccessBookmark: Data?
     @Published var overlayTemplates: [OverlayTemplate] = []
     @Published var userAssets: [UserAsset] = [] {
         didSet { IconAssetResolver.configure(userAssets: userAssets, projectURL: projectURL) }
@@ -569,9 +574,15 @@ final class ProjectDocument: ObservableObject {
         quantizedLayerDataTime(for: timeline.activityElapsed(atProjectTime: timeline.playhead))
     }
 
+    /// Default export folder: an `overlay` folder beside the first video's
+    /// media. It is created on demand so the export dialog can open there.
     var defaultExportDestinationURL: URL {
-        mediaItems.first?.fileURL?.deletingLastPathComponent()
-            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Movies")
+        guard let mediaFolder = mediaItems.first?.fileURL?.deletingLastPathComponent() else {
+            return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Movies")
+        }
+        let overlayFolder = mediaFolder.appendingPathComponent("overlay", isDirectory: true)
+        try? FileManager.default.createDirectory(at: overlayFolder, withIntermediateDirectories: true)
+        return overlayFolder
     }
 
     func quantizedLayerDataTime(for elapsedTime: TimeInterval) -> TimeInterval {
@@ -3492,26 +3503,8 @@ final class ProjectDocument: ObservableObject {
     }
 
     private func loadBuiltInOverlayTemplateResource(_ template: BuiltInOverlayTemplate) -> OverlayTemplate? {
-        guard let resourceName = template.resourceName else {
-            return nil
-        }
-
-        let url = Bundle.runningOverlayResources.url(
-                forResource: resourceName,
-                withExtension: OverlayTemplateStore.fileExtension,
-                subdirectory: "Templates"
-              )
-            ?? Bundle.runningOverlayResources.url(
-                forResource: resourceName,
-                withExtension: OverlayTemplateStore.fileExtension
-            )
-
-        guard let url else {
-            return nil
-        }
-
         do {
-            return try overlayTemplateStore.loadTemplateFile(from: url)
+            return try template.loadResourceTemplate()
         } catch {
             reportError("Built-in template load failed: \(template.name).")
             print("[RunningOverlay] Built-in template load failed: \(template.name), \(String(reflecting: error))")
@@ -3717,6 +3710,117 @@ final class ProjectDocument: ObservableObject {
             completedMessage: "Full activity overlay export completed.",
             failurePrefix: "Full activity overlay export failed"
         )
+    }
+
+    /// Export for Editor choices, remembered across exports.
+    var savedEditorPackageOptions: EditorPackageExportOptions {
+        get {
+            guard let data = userDefaults.data(forKey: Self.editorPackageOptionsKey),
+                  let options = try? JSONDecoder().decode(EditorPackageExportOptions.self, from: data) else {
+                return EditorPackageExportOptions()
+            }
+            return options
+        }
+        set {
+            guard let data = try? JSONEncoder().encode(newValue) else { return }
+            userDefaults.set(data, forKey: Self.editorPackageOptionsKey)
+        }
+    }
+
+    private static let editorPackageOptionsKey = "editorPackageOptions"
+
+    /// Shows the import steps for an editor without a fresh export, from the
+    /// Help menu.
+    func presentEditorImportGuide(editor: EditorTarget) {
+        editorImportGuide = EditorImportGuide(
+            editor: editor,
+            projectName: projectDisplayName,
+            packageURL: nil,
+            fcpxmlFileName: nil,
+            overlayFileNames: [],
+            frameRateID: settings.frameRate.id,
+            mode: savedEditorPackageOptions.mode,
+            codec: settings.exportCodec
+        )
+    }
+
+    func exportEditorPackage(to directoryURL: URL, options: EditorPackageExportOptions) {
+        guard !isExporting else {
+            return
+        }
+        guard activity.duration > 0 else {
+            statusMessage = "Import a FIT or GPX file before exporting an editor package."
+            return
+        }
+
+        let hasMediaClip = timeline.tracks.flatMap(\.clips).contains { clip in
+            guard let mediaItemID = clip.mediaItemID else { return false }
+            return mediaItems.first(where: { $0.id == mediaItemID })?.fileURL != nil
+        }
+        if options.mode == .perClip && !hasMediaClip {
+            statusMessage = "Add at least one video clip with a media file before exporting an editor package."
+            return
+        }
+
+        let request = EditorPackageExportRequest(
+            activity: activity,
+            settings: settings,
+            timeline: timeline,
+            mediaItems: mediaItems,
+            overlayLayout: overlayLayout,
+            templateName: projectDisplayName,
+            projectName: projectDisplayName,
+            mode: options.mode,
+            target: options.target,
+            keepsTimelinePositions: options.keepsTimelinePositions
+        )
+        let title = options.mode == .perClip
+            ? "Per Clip Editor Package"
+            : "Full Activity Editor Package"
+        let spans = EditorPackageExporter.plannedSpans(for: request)
+
+        isExporting = true
+        exportProgress = ExportProgressState(
+            title: title,
+            items: spans.enumerated().map { index, span in
+                ExportProgressItem(index: index, name: span.name, progress: 0, status: .queued)
+            }
+        )
+        statusMessage = title
+
+        exportTask = Task {
+            do {
+                let (result, bookmark) = try await SecurityScopedURLAccess.withAccess(to: directoryURL) {
+                    let result = try await EditorPackageExporter.export(request: request, to: directoryURL) { [weak self] progress in
+                        self?.updateExportProgress(progress)
+                    }
+                    // Created while access is active; the sandboxed app needs
+                    // it to open the timeline after the export returns.
+                    let bookmark = try? result.packageURL.bookmarkData(
+                        options: .withSecurityScope,
+                        includingResourceValuesForKeys: nil,
+                        relativeTo: nil
+                    )
+                    return (result, bookmark)
+                }
+                exportProgress?.markCompleted()
+                editorPackageAccessBookmark = bookmark
+                reportSuccess("Editor package exported: \(result.packageURL.lastPathComponent).")
+                editorImportGuide = result.guide
+            } catch OverlayExportError.cancelled {
+                exportProgress?.markCancelled()
+                statusMessage = "Export cancelled."
+            } catch is CancellationError {
+                exportProgress?.markCancelled()
+                statusMessage = "Export cancelled."
+            } catch {
+                exportProgress?.markFailed(message: error.localizedDescription)
+                reportError("Editor package export failed: \(error.localizedDescription)")
+                print("[RunningOverlay] Editor package export failed: \(String(reflecting: error))")
+            }
+            isExporting = false
+            exportTask = nil
+        }
     }
 
     func exportTestClip(to destinationURL: URL) {

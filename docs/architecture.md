@@ -180,6 +180,10 @@ Responsibilities:
 - Reuse the shared overlay frame renderer for MOV frames and PNG calibration frames.
 - Apply project resolution, frame rate, and bitrate.
 - Report progress and failures.
+- Run declarative `OverlayRenderJob`s (`--render-job`) and write Export for
+  Editor packages (alpha movies, `manifest.json`, FCPXML) through
+  `OverlayRenderService`. That service drives the same exporter and keeps a
+  content-addressed span cache (ADR 0013).
 
 ## 4. Timing Model
 

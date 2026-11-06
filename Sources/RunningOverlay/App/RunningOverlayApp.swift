@@ -138,6 +138,20 @@ struct RunningOverlayApp: App {
                 .keyboardShortcut("S", modifiers: [.command, .shift])
             }
 
+            CommandGroup(after: .help) {
+                Button("Import into Final Cut Pro") {
+                    project.presentEditorImportGuide(editor: .finalCutPro)
+                }
+
+                Button("Import into DaVinci Resolve") {
+                    project.presentEditorImportGuide(editor: .resolve)
+                }
+
+                Button("Import into Another Editor") {
+                    project.presentEditorImportGuide(editor: .other)
+                }
+            }
+
             CommandMenu("Playback") {
                 Button(PlaybackMenuItem.playPause.title(isPlaying: project.isPlaying)) {
                     project.togglePlayback()
