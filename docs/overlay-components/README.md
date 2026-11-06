@@ -120,7 +120,7 @@ milestone, not the current app.
 | M2 | Base + capability nodes through `SkiaEasyRunRenderer`; `.component` element kind | **Implemented for embedded definitions:** schema v2, canonical digest, Skia path; pixel parity with native still pending |
 | M3 | Params to Inspector generation and `ProjectDocument` undo | **Implemented:** generated Inspector rows, add/duplicate from the Overlay Pool, clamped/quantized parameter edits with discrete and continuous undo |
 | M4 | `.rocomponent` import, embedded definitions, validation errors, CLI | **Implemented:** folder/ZIP/JSON import with asset embedding and defensive archive checks, My Components management and export, Skia image nodes, `--component-validate` and `--component-render` |
-| M5 | Port built-ins one by one with snapshot evidence | Parity approved, then native removal in a separate change |
+| M5 | Port built-ins one by one with snapshot evidence | **Started:** native/component parity harness with exact Decor Solid Color pilots; remaining ports pending approval, then native removal in a separate change |
 | M6 | Authoring guide + AI skill + example gallery | Community can author without reading Swift |
 
 M2 changes the project schema and is subject to the human review rules in

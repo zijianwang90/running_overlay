@@ -72,12 +72,15 @@ enum OverlayComponentSkiaRenderer {
             )
         }
         let assets = OverlayComponentRegistry.assets(for: instance.reference)
+        // Element opacity is one layer around the whole component; passing it
+        // into individual nodes would apply it twice and double-blend
+        // overlapping shapes.
         for node in resolved.nodes {
             draw(
                 node,
                 context: context,
                 space: space,
-                opacity: element.opacity,
+                opacity: 1,
                 assets: assets
             )
         }

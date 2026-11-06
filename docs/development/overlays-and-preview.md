@@ -249,6 +249,24 @@ The editor wiring is:
 - **Duplicate to My Components** promotes a bundled element to an embedded
   project reference; bundled definitions themselves are never edited.
 
+### Native/component parity harness
+
+`NativeComponentParityHarness` (test target) renders a native-module layout and
+an equivalent declarative-component layout on the same Skia raster surface and
+reports changed pixels plus maximum and mean channel deltas.
+`OverlayComponentParityTests` holds the first pilots: Decor Solid Color as a
+rectangle and a rounded rectangle, with and without element opacity, compared
+at exact thresholds (zero changed pixels). The pilot found and fixed a real
+defect: element opacity was applied both as a layer and again per node, which
+double-blended component pixels.
+
+Use the harness before porting a built-in. Differences are attributable to
+draw-tree construction, not the backend, so non-text geometry should be exact;
+text drawn through different rasterization paths (for example the AppKit decor
+text cache) needs a looser threshold or a structural comparison. Element-level
+shadow/glow in `OverlayStyle` is host styling that components do not carry yet;
+the pilots disable it and compare the shape itself.
+
 Headless authoring:
 
 ```sh
@@ -274,7 +292,8 @@ and to pixel-parity evidence against native modules.
 - Decision and gates: `docs/adr/0013-declarative-overlay-components.md`.
 - Tests: `OverlayComponentExpressionTests`, `OverlayComponentLoaderTests`,
   `OverlayComponentDataTests`, `OverlayComponentResolverTests`,
-  `OverlayComponentIntegrationTests`.
+  `OverlayComponentIntegrationTests`, `OverlayComponentArchiveTests`,
+  `OverlayComponentParityTests`.
 - Fixtures: `Tests/RunningOverlayTests/Fixtures/Components/`.
 
 The next integration steps are M5 (port built-ins with snapshot evidence) and
