@@ -102,8 +102,10 @@ Rules:
 | `author` | no | Display name of the author or organization. |
 | `license` | yes | SPDX identifier, for example `MIT`, `Apache-2.0`, `CC-BY-4.0`. |
 | `homepage` | no | `https` URL. |
-| `size` | yes | `[width, height]` design units, each 8..8192. |
-| `background` | no | Optional card behind all nodes: `{ "color": "#RRGGBBAA", "radius": 0 }`. |
+| `size` | yes | `[width, height]` design units, each 8..8192, or `"content"` to size the instance from its measured nodes (section 4.1). |
+| `padding` | no | `"content"` only. `[x, y]` design units added on each side of the measured content. Numbers or expressions; default `[0, 0]`. |
+| `minSize` | no | `"content"` only. `[width, height]` minimum inner (unpadded) size. Numbers or expressions; default `[0, 0]`. |
+| `background` | no | Optional card behind all nodes: `{ "color": "#RRGGBBAA", "radius": 0 }`. For `"content"` it fills the padded bounds. |
 | `params` | no | Inspector controls (section 9). |
 | `bindings` | no | Named data reads (section 6). |
 | `nodes` | yes | Draw list, rendered in array order (section 7). At most 512 nodes. |
@@ -137,6 +139,29 @@ An object MUST contain `en`. Resolution order: exact tag, language-only tag,
 - Frames are `[x, y, width, height]`. Negative coordinates are allowed but
   clipped. Coordinates MUST be finite and within ±32768.
 - Drawing order is array order. There is no z-index.
+
+### 4.1 Content-sized components
+
+`"size": "content"` lets an instance grow and shrink with its values, for
+example a numeric readout whose width changes from `99` to `130`.
+
+- The content box spans from the design origin to the farthest right and
+  bottom edge of the top-level nodes' boxes. Every top-level node MUST have a
+  box: a `frame`, or be `text`/`stack` (measured). `circle`, `line`,
+  `polyline` and `path` MUST be wrapped in a framed group.
+- The inner size is `max(content, minSize)`; the instance bounds are the inner
+  size plus `padding` on each side. Content keeps its top-leading origin inside
+  the padding when `minSize` is larger.
+- Measurement runs at render pixel size, like `stack`, so the bounds follow
+  the playhead. The host uses these bounds for the background, element-level
+  effects, hit testing and selection.
+- Rendering is clipped to the bounds outset by 16 design units on each side,
+  so glyph ink that overhangs the typographic box (negative tracking, italic
+  shapes) is not cut. Hit testing uses the bounds without the margin.
+- `width` and `height` are undefined for a content-sized component; an
+  expression that reads them is a validation error.
+- Padding, minimum size and background radius scale with the element like
+  every other design unit.
 
 ## 5. Data Contract
 
@@ -228,10 +253,11 @@ Every node has:
 |---|---|---|
 | `type` | yes | One of the node types below. |
 | `id` | no | Unique within the component; for diagnostics. |
-| `frame` | depends | `[x, y, width, height]`. Numbers or expressions. Required for `rect`, `text`, `image`, `gradientRect`, `sparkline`, `progressBar`, `arc` and `repeat`; optional for `group`, `line`, `circle`, `polyline` and `path`, whose geometry is explicit. |
-| `if` | no | Expression. The node is skipped when the result is falsey. |
+| `frame` | depends | `[x, y, width, height]`. Numbers or expressions. Required for `rect`, `image`, `symbol`, `gradientRect`, `sparkline`, `progressBar`, `arc` and `repeat`; optional for `text` (measured when absent) and `stack`; optional for `group`, `line`, `circle`, `polyline` and `path`, whose geometry is explicit. |
+| `if` | no | Expression. The node is skipped when the result is falsey. A skipped stack child takes no space. |
 | `opacity` | no | Number 0..1 or expression, multiplied into the node. |
 | `clip` | no | `group` only, default `false`. Clips children to the group frame. |
+| `alignSelf` | no | Direct `stack` children only: `start`, `center` or `end`, overriding the stack's `crossAlign` for this child. |
 
 Any numeric field accepts a JSON number or an expression string beginning with
 `=`. Color fields accept `#RRGGBB`, `#RRGGBBAA`, `transparent`, or an
@@ -250,6 +276,7 @@ These map directly to primitives in `Sources/CSkiaBridge/include/skia_bridge.h`.
 | `path` | `commands` (array; see below), `fill?`, `stroke?`, `strokeWidth?`, `cap`, `join`, `dash?` |
 | `text` | `text` (string or expression), `font` (section 7.3), `color`, `align` (`left`, `center`, `right`, default `left`), `verticalAlign` (`top`, `center`, `bottom`, default `top`), `maxWidth?`, `lineHeight?` (multiplier, default 1.2), `tracking?` (extra advance per glyph in design units, default 0; negative tightens). `frame` is optional; without it the node is auto-sized from its measured lines. |
 | `image` | `asset` (`assets/...`), `fit` (`fill` or `contain`, default `contain`), `opacity?` |
+| `symbol` | `name` (SF Symbol name or expression), `color`, `weight` (font weights from section 7.3, default `medium`) |
 | `gradientRect` | `radius?`, `stops` (2..8 `{ "offset": 0..1, "color": "#..." }`), `from` `[x, y]`, `to` `[x, y]` |
 | `group` | `children` (array of nodes), `frame?`, `clip`, `shadow?`, `opacity?` |
 | `stack` | `children` (array of nodes), `direction` (`horizontal`, default, or `vertical`), `spacing?` (default 0), `crossAlign` (`start`, default, `center`, `end`), `frame?`, `opacity?` |
@@ -276,12 +303,23 @@ is omitted, the text node measures its lines and reports that as its intrinsic
 size. The renderer clips to the component rectangle, so leave padding around
 glyphs whose ink can overhang the typographic line box.
 
+`symbol` draws a system SF Symbol tinted with `color`. The glyph's point
+size equals the shorter frame edge, and the glyph is centered in a square of
+that edge inside the frame, matching native numeric overlay icons. `name` is a
+lowercase dot-separated token (`heart.fill`, `figure.run`) of at most 128
+characters; a literal that does not match is a validation error, and an
+expression result that does not match skips the node with a diagnostic. An
+unknown but well-formed name draws nothing. Symbols are rendered by the host
+and are not bundled assets.
+
 `stack` lays children out in order along one axis using each child's box size.
 A child's box is its `frame` size unless the child is a `text` node without a
 frame (measured lines) or a `stack` without a frame (its own content). Child
 `frame` origins are ignored for placement; the stack assigns positions. Every
-other child MUST declare a `frame`, so wrap `circle`, `line`, `polyline` and
-`path` in a group. The stack reports its content size when `frame` is omitted;
+other child MUST declare a `frame`, and `circle`, `line`, `polyline` and `path`
+MUST be wrapped in a group even when they declare one, because their geometry,
+not a frame, defines what they draw. A child's `alignSelf` overrides
+`crossAlign` for that child, so a centered unit can sit under a leading value. The stack reports its content size when `frame` is omitted;
 a declared frame fixes the container size and `crossAlign` aligns children
 inside it. Layout runs at render pixel size, not in design units, because
 CoreText advances are not linear in point size.

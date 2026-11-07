@@ -3,9 +3,23 @@ import Foundation
 
 struct OverlayComponentResolved: Equatable {
     var size: OverlayComponentSize
+    var contentLayout: OverlayComponentResolvedContentLayout?
     var background: OverlayComponentResolvedBackground?
     var nodes: [OverlayComponentResolvedNode]
     var diagnostics: [String]
+}
+
+/// Design-unit padding and minimum inner size of a content-sized component.
+struct OverlayComponentResolvedContentLayout: Equatable {
+    var paddingX: Double
+    var paddingY: Double
+    var minWidth: Double
+    var minHeight: Double
+}
+
+struct OverlayComponentResolvedStackChild: Equatable {
+    var node: OverlayComponentResolvedNode
+    var alignSelf: OverlayComponentCrossAlignment?
 }
 
 struct OverlayComponentResolvedBackground: Equatable {
@@ -48,7 +62,7 @@ indirect enum OverlayComponentResolvedNode: Equatable {
         direction: OverlayComponentStackDirection,
         spacing: Double,
         crossAlign: OverlayComponentCrossAlignment,
-        children: [OverlayComponentResolvedNode]
+        children: [OverlayComponentResolvedStackChild]
     )
     case opacity(Double, OverlayComponentResolvedNode)
     case rect(
@@ -105,6 +119,12 @@ indirect enum OverlayComponentResolvedNode: Equatable {
         frame: CGRect,
         asset: String,
         fit: OverlayComponentImageFit
+    )
+    case symbol(
+        frame: CGRect,
+        name: String,
+        color: OverlayColor,
+        weight: OverlayComponentFontWeight
     )
     case gradientRect(
         frame: CGRect,
@@ -169,6 +189,14 @@ struct OverlayComponentResolver {
             componentSize: definition.size
         )
 
+        let contentLayout = definition.contentLayout.map { layout in
+            OverlayComponentResolvedContentLayout(
+                paddingX: max(layout.paddingX.evaluate(in: context) ?? 0, 0),
+                paddingY: max(layout.paddingY.evaluate(in: context) ?? 0, 0),
+                minWidth: max(layout.minWidth.evaluate(in: context) ?? 0, 0),
+                minHeight: max(layout.minHeight.evaluate(in: context) ?? 0, 0)
+            )
+        }
         let background = resolveBackground(in: &context, diagnostics: &diagnostics)
         let nodes = resolveNodes(
             definition.nodes,
@@ -178,6 +206,7 @@ struct OverlayComponentResolver {
         )
         return OverlayComponentResolved(
             size: definition.size,
+            contentLayout: contentLayout,
             background: background,
             nodes: nodes,
             diagnostics: diagnostics
@@ -278,6 +307,30 @@ struct OverlayComponentResolver {
         return result
     }
 
+    /// Like `resolveNodes`, keeping each surviving child's `alignSelf`.
+    private func resolveStackChildren(
+        _ nodes: [OverlayComponentNode],
+        path: String,
+        context: inout OverlayComponentEvaluationContext,
+        diagnostics: inout [String]
+    ) -> [OverlayComponentResolvedStackChild] {
+        var result: [OverlayComponentResolvedStackChild] = []
+        for (index, node) in nodes.enumerated() {
+            if let condition = node.condition, !condition.evaluate(in: context).isTruthy {
+                continue
+            }
+            if let resolved = resolveNode(
+                node,
+                path: "\(path)[\(index)]",
+                context: &context,
+                diagnostics: &diagnostics
+            ) {
+                result.append(OverlayComponentResolvedStackChild(node: resolved, alignSelf: node.alignSelf))
+            }
+        }
+        return result
+    }
+
     private func resolveNode(
         _ node: OverlayComponentNode,
         path: String,
@@ -343,7 +396,7 @@ struct OverlayComponentResolver {
                 direction: direction,
                 spacing: max(number(spacing, default: 0), 0),
                 crossAlign: crossAlign,
-                children: resolveNodes(
+                children: resolveStackChildren(
                     children,
                     path: "\(path).children",
                     context: &context,
@@ -475,6 +528,19 @@ struct OverlayComponentResolver {
         case .image(let asset, let fit):
             guard let rect = frame() else { return nil }
             resolved = .image(frame: rect, asset: asset, fit: fit)
+
+        case .symbol(let name, let symbolColor, let weight):
+            guard let rect = frame() else { return nil }
+            let resolvedName = name.evaluate(in: context)
+            guard OverlayComponentSymbolName.isValid(resolvedName) else {
+                diagnostics.append("\(path): symbol name '\(resolvedName)' is invalid")
+                return nil
+            }
+            guard let resolvedColor = symbolColor.evaluate(in: context) else {
+                diagnostics.append("\(path): symbol color did not resolve")
+                return nil
+            }
+            resolved = .symbol(frame: rect, name: resolvedName, color: resolvedColor, weight: weight)
 
         case .gradientRect(let stops, let from, let to, let radius):
             guard let rect = frame(),

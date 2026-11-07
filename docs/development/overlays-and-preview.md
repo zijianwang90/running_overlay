@@ -270,9 +270,27 @@ spacing and cross-axis alignment, so a unit can follow a value whose width
 changes. Stack layout runs at draw time in pixel space because CoreText
 advances are not linear in point size: measuring at design size and scaling the
 result drifted by about one pixel at 1.5× and three pixels at 2×. Component
-definitions should still leave a few design units of padding around text: the
-renderer clips to the component rectangle and can otherwise trim the last
-glyph's ink.
+definitions with a fixed `size` should still leave a few design units of
+padding around text: the renderer clips to the component rectangle and can
+otherwise trim the last glyph's ink.
+
+Numeric chrome uses three more primitives. `symbol` draws an SF Symbol through
+`SkiaIconRasterCache`, the same raster path as native numeric icons (point size
+equals the glyph box edge, weight defaults to medium). `alignSelf` overrides a
+stack's cross alignment for one child, for example a unit centered under a
+leading value. `"size": "content"` sizes the instance from its measured
+top-level nodes plus `padding`, with `minSize` as the inner minimum and the
+background filling the padded bounds; the clip is that rect outset by
+`OverlayComponentSkiaRenderer.contentInkMargin` (16 design units) so glyph
+overhang survives. `OverlayComponentSkiaRenderer.frame(for:renderContext:)`
+exposes the measured bounds; `PreviewElementGeometry` uses it for hit testing
+and selection, and `--component-render` measures content-sized definitions on
+the reference canvas before cropping. The heart-rate pilots with icon and
+background match native exactly at element scale 1, 1.5 and 2. Native numeric
+background padding and radius scale with the canvas but not the element, while
+component design units scale with both, so the pilot definitions divide those
+values by the element scale; legacy mapping (M5d) will bake the same
+conversion per element.
 
 Use the harness before porting a built-in. Differences are attributable to
 draw-tree construction, not the backend, so non-text geometry should be exact;
@@ -293,13 +311,13 @@ swift run RunningOverlay --component-render path/to/Card.rocomponent \
 Validation works in every build and prints the id, version, digest and asset
 bytes. Rendering requires the Skia build; it uses default parameter values, no
 activity data, a transparent canvas, and crops the PNG to the component's
-design size.
+design size (measured size for content-sized definitions).
 
 Current limitations: the CLI render uses default parameters and no FIT data;
 bundled components currently ship without image assets; renaming a project
 component in place is not supported (export, edit the JSON and re-import);
-layout is limited to one-dimensional stacks, so intrinsic containers, wrapping
-and distribution are not available. Adding the first component element raises
+layout is limited to one-dimensional stacks and content-sized components, so
+wrapping, distribution and flexible sizing are not available. Adding the first component element raises
 the project schema to version 2, so this remains subject to the human review
 rules in `AGENTS.md` (project-file compatibility) and to pixel-parity evidence
 against native modules.
@@ -312,5 +330,6 @@ against native modules.
   `OverlayComponentParityTests`.
 - Fixtures: `Tests/RunningOverlayTests/Fixtures/Components/`.
 
-The next integration steps are M5 (port built-ins with snapshot evidence) and
-M6 (authoring guide and AI skill).
+The next integration steps are M5b–M5e (metric data contract, a generic numeric
+definition, legacy mapping, then native removal; see
+`docs/overlay-components/README.md`) and M6 (authoring guide and AI skill).

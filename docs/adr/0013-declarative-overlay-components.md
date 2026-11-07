@@ -54,9 +54,12 @@ Two alternatives were considered and rejected:
    nodes map one-to-one onto `skb_*` primitives. Capability nodes (for example
    `sparkline`, `progressBar`, `arc`) are implemented natively and added to the
    contract only through review. Layout is limited to a one-dimensional
-   `stack` with auto-sized text; there is no general constraint solver,
-   wrapping container or distribution engine. The language has no loops beyond
-   a bounded `repeat` node, no recursion, and no user-defined functions.
+   `stack` with auto-sized text and per-child `alignSelf`, plus
+   content-sized components (`"size": "content"` with padding and a minimum
+   size); there is no general constraint solver, wrapping container or
+   distribution engine. System icons use a host-rendered `symbol` node. The
+   language has no loops beyond a bounded `repeat` node, no recursion, and no
+   user-defined functions.
 4. **Inspector UI is generated from typed params, not designed by authors.**
    Params use a fixed control vocabulary (`number`, `bool`, `color`, `enum`,
    `string`, `font`, `metric`) rendered through the existing
@@ -66,7 +69,11 @@ Two alternatives were considered and rejected:
 5. **Bundled overlays use the same format.** Native overlay types are ported
    to components incrementally. Each port must pass pixel-parity checks against
    the existing Skia renderer and visual snapshots before its native renderer
-   and detail view are removed. Bundled definitions are read-only in the app;
+   and detail view are removed. Built-ins are composed from the same general
+   nodes community authors use: numeric overlays use one generic definition
+   built from `symbol`, `stack` and content sizing rather than a dedicated
+   numeric layout node. A native `textCluster` capability node is a fallback,
+   adopted only if the general composition cannot reach parity. Bundled definitions are read-only in the app;
    users may inspect them and duplicate one into an editable custom component,
    but cannot edit a bundled definition in place. Legacy element types remain
    readable for the foreseeable future; there is no flag-day migration.
@@ -108,6 +115,13 @@ Negative and risks:
 - Component text is canvas-drawn and has no accessibility tree, matching
   existing overlay behavior. Editor-side accessibility for generated
   Inspector controls must be preserved.
+- Native renderers cannot be removed while saved projects and bundled
+  templates still contain native element types. Removal therefore depends on a
+  documented legacy-style-to-params mapping and a separate, human-reviewed
+  decision on migrating saved projects. Where native semantics differ from
+  component semantics (for example numeric background padding scales with the
+  canvas but not the element), the mapping converts values per element instead
+  of copying the quirk into the format.
 - Route map, weather and chart rendering may remain partially host-defined;
   the format describes their appearance and inputs, not their internals.
 - The SwiftUI comparison renderer retained by ADR 0012 cannot draw

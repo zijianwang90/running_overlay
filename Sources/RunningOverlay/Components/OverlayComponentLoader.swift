@@ -221,6 +221,9 @@ final class OverlayComponentParser {
     private(set) var diagnostics: [OverlayComponentDiagnostic] = []
     private var parameterIDs: Set<String> = []
     private var nodeIDs: Set<String> = []
+    /// First JSON path whose expression reads the `width`/`height` builtins,
+    /// which are undefined for a content-sized component.
+    private var sizeBuiltinPath: String?
 
     init(root: OverlayJSONValue, assets: Set<String>) {
         self.root = root
@@ -236,7 +239,7 @@ final class OverlayComponentParser {
             object,
             allowed: [
                 "spec", "id", "version", "name", "description", "author",
-                "license", "homepage", "size", "background", "params",
+                "license", "homepage", "size", "padding", "minSize", "background", "params",
                 "bindings", "nodes"
             ],
             at: "$"
@@ -270,13 +273,39 @@ final class OverlayComponentParser {
             error("$.homepage", "must use https")
         }
 
-        let size = parseSize(object["size"])
+        let isContentSized: Bool
+        if case .string(let sizeMode)? = object["size"] {
+            if sizeMode != "content" {
+                error("$.size", "size must be [width, height] or \"content\"")
+            }
+            isContentSized = true
+        } else {
+            isContentSized = false
+        }
+        let size = isContentSized ? .zero : parseSize(object["size"])
+        let contentLayout = isContentSized ? parseContentLayout(object) : nil
+        if !isContentSized {
+            for key in ["padding", "minSize"] where object[key] != nil {
+                error("$.\(key)", "\(key) requires \"size\": \"content\"")
+            }
+        }
         let background = parseBackground(object["background"], path: "$.background")
         let params = parseParams(object["params"], path: "$.params")
         let bindings = parseBindings(object["bindings"], path: "$.bindings")
         let nodes = parseNodes(object["nodes"], path: "$.nodes", depth: 0, insideRepeat: false)
         if nodes.isEmpty {
             error("$.nodes", "at least one node is required")
+        }
+        if isContentSized {
+            for (index, node) in nodes.enumerated() where !isBoxed(node) {
+                error(
+                    "$.nodes[\(index)].frame",
+                    "content-sized component node requires a frame unless it is text or a stack; wrap circle, line, polyline and path in a group"
+                )
+            }
+            if let sizeBuiltinPath {
+                error(sizeBuiltinPath, "width and height are unavailable when size is \"content\"")
+            }
         }
 
         return OverlayComponentDefinition(
@@ -289,6 +318,7 @@ final class OverlayComponentParser {
             license: license,
             homepage: string(object, "homepage", at: "$"),
             size: size,
+            contentLayout: contentLayout,
             background: background,
             params: params,
             bindings: bindings,
@@ -307,6 +337,7 @@ final class OverlayComponentParser {
             license: "",
             homepage: nil,
             size: .zero,
+            contentLayout: nil,
             background: nil,
             params: [],
             bindings: [:],
@@ -330,6 +361,28 @@ final class OverlayComponentParser {
         if !(8...8192).contains(width) { error("$.size[0]", "must be 8...8192") }
         if !(8...8192).contains(height) { error("$.size[1]", "must be 8...8192") }
         return OverlayComponentSize(width: width, height: height)
+    }
+
+    private func parseContentLayout(_ object: [String: OverlayJSONValue]) -> OverlayComponentContentLayout {
+        func pair(_ key: String) -> (OverlayComponentNumberSource, OverlayComponentNumberSource) {
+            guard let value = object[key] else { return (.literal(0), .literal(0)) }
+            guard case .array(let items) = value, items.count == 2 else {
+                error("$.\(key)", "\(key) must be [x, y]")
+                return (.literal(0), .literal(0))
+            }
+            return (
+                numberSource(items[0], at: "$.\(key)[0]") ?? .literal(0),
+                numberSource(items[1], at: "$.\(key)[1]") ?? .literal(0)
+            )
+        }
+        let padding = pair("padding")
+        let minSize = pair("minSize")
+        return OverlayComponentContentLayout(
+            paddingX: padding.0,
+            paddingY: padding.1,
+            minWidth: minSize.0,
+            minHeight: minSize.1
+        )
     }
 
     private func parseBackground(_ value: OverlayJSONValue?, path: String) -> OverlayComponentBackground? {
@@ -636,7 +689,8 @@ final class OverlayComponentParser {
         _ value: OverlayJSONValue?,
         path: String,
         depth: Int,
-        insideRepeat: Bool
+        insideRepeat: Bool,
+        insideStack: Bool = false
     ) -> [OverlayComponentNode] {
         guard let value else {
             error(path, "nodes are required")
@@ -649,7 +703,13 @@ final class OverlayComponentParser {
         if items.count > 512 { error(path, "at most 512 nodes are allowed") }
         if depth > 16 { error(path, "group nesting exceeds 16 levels") }
         return items.enumerated().compactMap { index, item in
-            parseNode(item, at: "\(path)[\(index)]", depth: depth, insideRepeat: insideRepeat)
+            parseNode(
+                item,
+                at: "\(path)[\(index)]",
+                depth: depth,
+                insideRepeat: insideRepeat,
+                insideStack: insideStack
+            )
         }
     }
 
@@ -657,7 +717,8 @@ final class OverlayComponentParser {
         _ value: OverlayJSONValue,
         at path: String,
         depth: Int,
-        insideRepeat: Bool
+        insideRepeat: Bool,
+        insideStack: Bool
     ) -> OverlayComponentNode? {
         guard case .object(let object) = value else {
             error(path, "node must be an object")
@@ -665,7 +726,7 @@ final class OverlayComponentParser {
         }
         guard let type = string(object, "type", at: "\(path).type") else { return nil }
 
-        let commonKeys: Set<String> = ["type", "id", "frame", "if", "opacity"]
+        let commonKeys: Set<String> = ["type", "id", "frame", "if", "opacity", "alignSelf"]
         let typeKeys: Set<String>
         switch type {
         case "group": typeKeys = ["children", "clip", "shadow"]
@@ -677,6 +738,7 @@ final class OverlayComponentParser {
         case "path": typeKeys = ["commands", "fill", "stroke", "strokeWidth", "cap", "join", "dash"]
         case "text": typeKeys = ["text", "font", "color", "align", "verticalAlign", "maxWidth", "lineHeight", "tracking"]
         case "image": typeKeys = ["asset", "fit"]
+        case "symbol": typeKeys = ["name", "color", "weight"]
         case "gradientRect": typeKeys = ["stops", "from", "to", "radius"]
         case "sparkline": typeKeys = ["series", "stroke", "lineWidth", "fill", "smoothing"]
         case "progressBar": typeKeys = ["value", "trackColor", "fillColor", "radius"]
@@ -698,12 +760,25 @@ final class OverlayComponentParser {
         }
 
         let frameRequired: Set<String> = [
-            "rect", "image", "gradientRect", "sparkline",
+            "rect", "image", "symbol", "gradientRect", "sparkline",
             "progressBar", "arc", "repeat"
         ]
         let frame = parseFrame(object["frame"], at: "\(path).frame", required: frameRequired.contains(type))
         let condition = object["if"].flatMap { expression($0, at: "\(path).if") }
         let opacity = object["opacity"].flatMap { numberSource($0, at: "\(path).opacity") }
+        var alignSelf: OverlayComponentCrossAlignment?
+        if object["alignSelf"] != nil {
+            if insideStack {
+                alignSelf = rawEnumValue(
+                    object,
+                    "alignSelf",
+                    at: "\(path).alignSelf",
+                    default: OverlayComponentCrossAlignment.start
+                )
+            } else {
+                error("\(path).alignSelf", "alignSelf is only valid on a stack child")
+            }
+        }
 
         let kind: OverlayComponentNodeKind?
         switch type {
@@ -732,16 +807,16 @@ final class OverlayComponentParser {
                 rawChildren,
                 path: "\(path).children",
                 depth: depth + 1,
-                insideRepeat: insideRepeat
+                insideRepeat: insideRepeat,
+                insideStack: true
             )
             if childrenArray.isEmpty {
                 error("\(path).children", "stack requires at least one child")
             }
-            for (index, child) in children.enumerated()
-            where child.frame == nil && !hasIntrinsicSize(child.kind) {
+            for (index, child) in children.enumerated() where !isBoxed(child) {
                 error(
                     "\(path).children[\(index)].frame",
-                    "stack child requires a frame unless it is text or a stack"
+                    "stack child requires a frame unless it is text or a stack; wrap circle, line, polyline and path in a group"
                 )
             }
             kind = .stack(
@@ -896,6 +971,27 @@ final class OverlayComponentParser {
                 )
             )
 
+        case "symbol":
+            guard let rawName = object["name"],
+                  let name = stringSource(rawName, at: "\(path).name"),
+                  let color = object["color"].flatMap({ colorSource($0, at: "\(path).color") }) else {
+                error(path, "symbol requires name and color")
+                return nil
+            }
+            if case .literal(let literal) = name, !OverlayComponentSymbolName.isValid(literal) {
+                error("\(path).name", "invalid SF Symbol name '\(literal)'")
+            }
+            kind = .symbol(
+                name: name,
+                color: color,
+                weight: rawEnumValue(
+                    object,
+                    "weight",
+                    at: "\(path).weight",
+                    default: OverlayComponentFontWeight.medium
+                )
+            )
+
         case "gradientRect":
             guard let stopsValue = object["stops"],
                   case .array(let stopItems) = stopsValue,
@@ -1025,7 +1121,8 @@ final class OverlayComponentParser {
             frame: frame,
             condition: condition,
             opacity: opacity,
-            kind: kind
+            kind: kind,
+            alignSelf: alignSelf
         )
     }
 
@@ -1051,12 +1148,16 @@ final class OverlayComponentParser {
         return OverlayComponentFrame(x: x, y: y, width: width, height: height)
     }
 
-    private func hasIntrinsicSize(_ kind: OverlayComponentNodeKind) -> Bool {
-        switch kind {
+    /// Whether a node has a layout box: text and stacks measure themselves,
+    /// shapes with explicit geometry never do, everything else needs a frame.
+    private func isBoxed(_ node: OverlayComponentNode) -> Bool {
+        switch node.kind {
         case .text, .stack:
             true
-        default:
+        case .circle, .line, .polyline, .path:
             false
+        default:
+            node.frame != nil
         }
     }
 
@@ -1215,7 +1316,12 @@ final class OverlayComponentParser {
             return nil
         }
         do {
-            return try OverlayComponentExpression.parse(String(text.dropFirst()))
+            let parsed = try OverlayComponentExpression.parse(String(text.dropFirst()))
+            if sizeBuiltinPath == nil,
+               !parsed.referencedIdentifiers.isDisjoint(with: ["width", "height"]) {
+                sizeBuiltinPath = path
+            }
+            return parsed
         } catch {
             self.error(path, "invalid expression: \(error)")
             return nil

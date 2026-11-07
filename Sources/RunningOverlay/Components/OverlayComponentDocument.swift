@@ -55,7 +55,11 @@ struct OverlayComponentDefinition: Equatable {
     var author: String?
     var license: String
     var homepage: String?
+    /// Fixed design size. `.zero` when `contentLayout` is set.
     var size: OverlayComponentSize
+    /// Present when the document declares `"size": "content"`: the instance
+    /// bounds come from measured content at render time.
+    var contentLayout: OverlayComponentContentLayout?
     var background: OverlayComponentBackground?
     var params: [OverlayComponentParam]
     var bindings: [String: OverlayComponentBinding]
@@ -68,6 +72,14 @@ struct OverlayComponentDefinition: Equatable {
     func defaultParameters() -> [String: OverlayComponentValue] {
         Dictionary(uniqueKeysWithValues: params.map { ($0.id, $0.defaultValue) })
     }
+}
+
+/// Padding and minimum size for a content-sized component, in design units.
+struct OverlayComponentContentLayout: Equatable {
+    var paddingX: OverlayComponentNumberSource
+    var paddingY: OverlayComponentNumberSource
+    var minWidth: OverlayComponentNumberSource
+    var minHeight: OverlayComponentNumberSource
 }
 
 struct OverlayComponentBackground: Equatable {
@@ -200,6 +212,17 @@ enum OverlayComponentPointsSource: Equatable {
     }
 }
 
+/// SF Symbol names are lowercase dot-separated tokens. The check keeps a
+/// symbol node a reference into the system catalog rather than free text.
+enum OverlayComponentSymbolName {
+    static func isValid(_ name: String) -> Bool {
+        guard !name.isEmpty, name.count <= 128 else { return false }
+        return name.split(separator: ".", omittingEmptySubsequences: false).allSatisfy { token in
+            !token.isEmpty && token.allSatisfy { ("a"..."z").contains($0) || ("0"..."9").contains($0) }
+        }
+    }
+}
+
 struct OverlayComponentFrame: Equatable {
     var x: OverlayComponentNumberSource
     var y: OverlayComponentNumberSource
@@ -316,6 +339,8 @@ struct OverlayComponentNode: Equatable {
     var condition: OverlayComponentExpression?
     var opacity: OverlayComponentNumberSource?
     var kind: OverlayComponentNodeKind
+    /// Cross-axis alignment override; only valid on a direct `stack` child.
+    var alignSelf: OverlayComponentCrossAlignment? = nil
 }
 
 enum OverlayComponentNodeKind: Equatable {
@@ -362,6 +387,9 @@ enum OverlayComponentNodeKind: Equatable {
               lineHeight: OverlayComponentNumberSource?,
               tracking: OverlayComponentNumberSource?)
     case image(asset: String, fit: OverlayComponentImageFit)
+    case symbol(name: OverlayComponentStringSource,
+                color: OverlayComponentColorSource,
+                weight: OverlayComponentFontWeight)
     case gradientRect(stops: [OverlayComponentGradientStop],
                       from: OverlayComponentPoint,
                       to: OverlayComponentPoint,

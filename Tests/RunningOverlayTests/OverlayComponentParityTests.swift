@@ -315,5 +315,213 @@ struct OverlayComponentParityTests {
             )
         )
     }
+
+    // MARK: - Numeric chrome
+
+    private enum ChromeLayout {
+        /// Icon leading and vertically centered, unit trailing.
+        case iconLeadingUnitTrailing
+        /// Icon top-centered, unit below the value and centered, minimum width.
+        case iconTopUnitBottomCentered
+    }
+
+    /// Heart rate with the native icon and background chrome. The component
+    /// expresses it with a content-sized definition, a `symbol` node and
+    /// stacks. Native background padding and radius are canvas-scaled but not
+    /// element-scaled, while component units scale with the element, so the
+    /// definition divides them by the element scale; legacy mapping will bake
+    /// the same conversion.
+    private func makeHeartRateChromePair(
+        elementScale: Double,
+        layout chrome: ChromeLayout
+    ) throws -> Pair {
+        var style = OverlayStyle.default
+        style.fontName = "Helvetica Neue"
+        style.fontSize = 28
+        style.showLabel = false
+        style.showUnit = true
+        style.unitFontName = "Helvetica Neue"
+        style.unitFontSize = 20
+        style.unitFontWeight = .medium
+        style.iconEnabled = true
+        style.iconSystemName = "heart.fill"
+        style.iconSize = 22
+        style.iconSpacing = 8
+        style.iconTextAlignment = .center
+        style.backgroundEnabled = true
+        style.backgroundColor = .black
+        style.backgroundOpacity = 51.0 / 255
+        style.backgroundPaddingX = 10
+        style.backgroundPaddingY = 6
+        style.backgroundRadius = 6
+        switch chrome {
+        case .iconLeadingUnitTrailing:
+            style.iconPosition = .leading
+            style.unitPosition = .trailing
+            style.unitTextAlignment = .leading
+            style.numericMinWidth = 0
+        case .iconTopUnitBottomCentered:
+            style.iconPosition = .top
+            style.unitPosition = .bottom
+            style.unitTextAlignment = .center
+            style.numericMinWidth = 120
+        }
+        let nativeElement = OverlayElement(
+            type: .heartRate,
+            position: CGPoint(x: 0.25, y: 0.25),
+            scale: elementScale,
+            opacity: 1,
+            style: style
+        )
+        let valueTracking = -style.fontSize * 0.012
+        let value = """
+        {
+          "type": "text",
+          "text": "=format(signal(\\"activity.heartRate\\"), \\"integer\\")",
+          "font": { "family": "Helvetica Neue", "size": 28, "weight": "semibold" },
+          "color": "#FFFFFF",
+          "tracking": \(valueTracking)
+        }
+        """
+        let icon = """
+        { "type": "symbol", "name": "heart.fill", "frame": [0, 0, 22, 22], "color": "#FFFFFF"%@ }
+        """
+        let content: String
+        let minWidth: Double
+        switch chrome {
+        case .iconLeadingUnitTrailing:
+            minWidth = 0
+            content = """
+            {
+              "type": "stack", "direction": "horizontal", "spacing": 8, "crossAlign": "center",
+              "children": [
+                \(icon.replacingOccurrences(of: "%@", with: "")),
+                {
+                  "type": "stack", "direction": "horizontal", "spacing": 8, "crossAlign": "start",
+                  "children": [
+                    \(value),
+                    {
+                      "type": "text", "text": "bpm",
+                      "font": { "family": "Helvetica Neue", "size": 20, "weight": "medium" },
+                      "color": "#FFFFFF"
+                    }
+                  ]
+                }
+              ]
+            }
+            """
+        case .iconTopUnitBottomCentered:
+            minWidth = 120
+            content = """
+            {
+              "type": "stack", "direction": "vertical", "spacing": 8, "crossAlign": "start",
+              "children": [
+                \(icon.replacingOccurrences(of: "%@", with: ", \"alignSelf\": \"center\"")),
+                {
+                  "type": "stack", "direction": "vertical", "spacing": 8, "crossAlign": "start",
+                  "children": [
+                    \(value),
+                    {
+                      "type": "text", "text": "bpm", "alignSelf": "center",
+                      "font": { "family": "Helvetica Neue", "size": 20, "weight": "medium" },
+                      "color": "#FFFFFF"
+                    }
+                  ]
+                }
+              ]
+            }
+            """
+        }
+        let definition = """
+        {
+          "spec": "ros.component/0.1",
+          "id": "community.parity.heart-rate-chrome",
+          "version": "1.0.0",
+          "name": "Parity Heart Rate Chrome",
+          "license": "MIT",
+          "size": "content",
+          "padding": [\(10 / elementScale), \(6 / elementScale)],
+          "minSize": [\(minWidth), 0],
+          "background": { "color": "#00000033", "radius": \(6 / elementScale) },
+          "nodes": [\(content)]
+        }
+        """
+        let reference = try OverlayComponentReference(
+            definitionData: Data(definition.utf8),
+            source: .imported
+        )
+        let componentElement = OverlayElement(
+            type: .component,
+            position: nativeElement.position,
+            scale: elementScale,
+            opacity: 1,
+            style: style,
+            component: OverlayComponentInstance(reference: reference)
+        )
+        return Pair(
+            native: OverlayLayout(elements: [nativeElement]),
+            component: OverlayLayout(elements: [componentElement])
+        )
+    }
+
+    @Test(arguments: [1.0, 1.5, 2.0])
+    func heartRateIconAndBackgroundMatchContentSizedComponent(elementScale: Double) throws {
+        let pair = try makeHeartRateChromePair(
+            elementScale: elementScale,
+            layout: .iconLeadingUnitTrailing
+        )
+        try NativeComponentParityHarness.assertParity(
+            label: "heart-rate-chrome-leading-scale-\(elementScale)",
+            native: pair.native,
+            component: pair.component,
+            activity: Self.activity,
+            elapsedTime: 0,
+            size: Self.canvas,
+            thresholds: .exact
+        )
+    }
+
+    @Test(arguments: [1.0, 2.0])
+    func heartRateIconTopUnitBottomMatchesAlignSelfComponent(elementScale: Double) throws {
+        let pair = try makeHeartRateChromePair(
+            elementScale: elementScale,
+            layout: .iconTopUnitBottomCentered
+        )
+        try NativeComponentParityHarness.assertParity(
+            label: "heart-rate-chrome-top-scale-\(elementScale)",
+            native: pair.native,
+            component: pair.component,
+            activity: Self.activity,
+            elapsedTime: 0,
+            size: Self.canvas,
+            thresholds: .exact
+        )
+    }
+
+    /// The host frame used for hit testing and selection is the measured
+    /// content-sized bounds, which equal the native composition size.
+    @Test func contentSizedFrameMatchesNativeCompositionSize() throws {
+        for chrome in [ChromeLayout.iconLeadingUnitTrailing, .iconTopUnitBottomCentered] {
+            let pair = try makeHeartRateChromePair(elementScale: 1.5, layout: chrome)
+            let context = OverlayRenderContext(
+                canvasSize: Self.canvas,
+                activity: Self.activity,
+                elapsedTime: 0
+            )
+            let native = try #require(pair.native.elements.first)
+            let composition = SkiaTextPresetDrawing.compose(
+                element: native,
+                layout: OverlayRenderModel.textLayout(for: native, in: context),
+                renderContext: context
+            )
+            let component = try #require(pair.component.elements.first)
+            let frame = try #require(OverlayComponentSkiaRenderer.frame(
+                for: component,
+                renderContext: context
+            ))
+            #expect(abs(frame.width - composition.size.width) < 0.001)
+            #expect(abs(frame.height - composition.size.height) < 0.001)
+        }
+    }
 }
 #endif

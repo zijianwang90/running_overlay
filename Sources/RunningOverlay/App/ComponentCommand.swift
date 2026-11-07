@@ -185,7 +185,39 @@ enum ComponentCommandRunner {
         guard let definition = OverlayComponentRegistry.definition(for: reference) else {
             throw ComponentCLIError.unresolvedDefinition
         }
-        let design = definition.size
+        var element = OverlayElement(
+            type: .component,
+            position: .zero,
+            scale: 1,
+            style: .default
+        )
+        element.component = OverlayComponentInstance(reference: reference)
+        let activity = ActivityTimeline(
+            startDate: Date(timeIntervalSince1970: 0),
+            duration: 0,
+            distanceMeters: 0,
+            records: [],
+            laps: []
+        )
+        // A content-sized definition has no declared size; measure it once on
+        // the reference canvas (one pixel per design unit).
+        let design: OverlayComponentSize
+        if definition.contentLayout != nil {
+            let measured = OverlayComponentSkiaRenderer.frame(
+                for: element,
+                renderContext: OverlayRenderContext(
+                    canvasSize: OverlayRenderContext.referenceCanvasSize,
+                    activity: activity,
+                    elapsedTime: 0
+                )
+            )?.size ?? CGSize(width: 1, height: 1)
+            design = OverlayComponentSize(
+                width: max(Double(measured.width), 1),
+                height: max(Double(measured.height), 1)
+            )
+        } else {
+            design = definition.size
+        }
         // Keep the reference-canvas scale uniform so the component renders at
         // exactly `scale` pixels per design unit, then crop to its bounds.
         let scale = min(
@@ -204,20 +236,6 @@ enum ComponentCommandRunner {
         defer { skb_destroy(context) }
         skb_clear(context)
 
-        var element = OverlayElement(
-            type: .component,
-            position: .zero,
-            scale: 1,
-            style: .default
-        )
-        element.component = OverlayComponentInstance(reference: reference)
-        let activity = ActivityTimeline(
-            startDate: Date(timeIntervalSince1970: 0),
-            duration: 0,
-            distanceMeters: 0,
-            records: [],
-            laps: []
-        )
         let renderContext = OverlayRenderContext(
             canvasSize: CGSize(width: canvasWidth, height: canvasHeight),
             activity: activity,

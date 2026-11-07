@@ -47,10 +47,11 @@ enum SkiaIconRasterCache {
         rect: CGRect,
         color: OverlayColor,
         opacity: Double,
+        weight: NSFont.Weight = .medium,
         context: OpaquePointer
     ) {
         guard rect.width > 0, rect.height > 0, opacity > 0.001 else { return }
-        let key = "symbol|\(systemName)|"
+        let key = "symbol|\(systemName)|\(weight.rawValue)|"
             + "\(quantized(rect.width))x\(quantized(rect.height))|"
             + "\(color.red),\(color.green),\(color.blue)" as NSString
         guard let bitmap = bitmap(for: key, size: rect.size, draw: { ctx in
@@ -58,6 +59,7 @@ enum SkiaIconRasterCache {
                 name: systemName,
                 rect: CGRect(origin: .zero, size: rect.size),
                 color: color,
+                weight: weight,
                 in: ctx
             )
         }) else {
@@ -183,18 +185,20 @@ enum SkiaIconRasterCache {
     }
 
     /// Numeric overlay icon: `Image(systemName:).font(.system(size:weight:.medium))`
-    /// inside an `iconSize × iconSize` frame.
+    /// inside an `iconSize × iconSize` frame. Component `symbol` nodes reuse it
+    /// with their own weight.
     private static func drawSymbol(
         name: String,
         rect: CGRect,
         color: OverlayColor,
+        weight: NSFont.Weight,
         in ctx: CGContext
     ) {
         let pointSize = rect.width
         guard let image = tintedSymbol(
             name: name,
             pointSize: pointSize,
-            weight: .medium,
+            weight: weight,
             scale: nil,
             color: color
         ) else {

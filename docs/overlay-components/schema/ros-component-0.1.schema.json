@@ -23,13 +23,20 @@
     "license": { "type": "string", "minLength": 1, "maxLength": 64 },
     "homepage": { "type": "string", "pattern": "^https://" },
     "size": {
-      "type": "array",
-      "prefixItems": [
-        { "$ref": "#/$defs/sizeValue" },
-        { "$ref": "#/$defs/sizeValue" }
-      ],
-      "items": false
+      "oneOf": [
+        {
+          "type": "array",
+          "prefixItems": [
+            { "$ref": "#/$defs/sizeValue" },
+            { "$ref": "#/$defs/sizeValue" }
+          ],
+          "items": false
+        },
+        { "const": "content" }
+      ]
     },
+    "padding": { "$ref": "#/$defs/numberPair" },
+    "minSize": { "$ref": "#/$defs/numberPair" },
     "background": {
       "type": "object",
       "required": ["color"],
@@ -58,6 +65,15 @@
     }
   },
   "$defs": {
+    "numberPair": {
+      "description": "Only valid with \"size\": \"content\".",
+      "type": "array",
+      "prefixItems": [
+        { "$ref": "#/$defs/numberOrExpression" },
+        { "$ref": "#/$defs/numberOrExpression" }
+      ],
+      "items": false
+    },
     "languageTag": {
       "type": "string",
       "pattern": "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
@@ -343,6 +359,7 @@
         { "$ref": "#/$defs/pathNode" },
         { "$ref": "#/$defs/textNode" },
         { "$ref": "#/$defs/imageNode" },
+        { "$ref": "#/$defs/symbolNode" },
         { "$ref": "#/$defs/gradientRectNode" },
         { "$ref": "#/$defs/sparklineNode" },
         { "$ref": "#/$defs/progressBarNode" },
@@ -357,7 +374,11 @@
         "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$", "maxLength": 64 },
         "frame": { "$ref": "#/$defs/frame" },
         "if": { "$ref": "#/$defs/expression" },
-        "opacity": { "$ref": "#/$defs/numberOrExpression" }
+        "opacity": { "$ref": "#/$defs/numberOrExpression" },
+        "alignSelf": {
+          "description": "Only valid on a direct stack child.",
+          "enum": ["start", "center", "end"]
+        }
       }
     },
     "groupNode": {
@@ -631,6 +652,33 @@
               "pattern": "^assets/[A-Za-z0-9._-]+\\.(png|jpg|jpeg)$"
             },
             "fit": { "enum": ["fill", "contain"] }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "symbolNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeCommon" },
+        {
+          "type": "object",
+          "required": ["type", "frame", "name", "color"],
+          "properties": {
+            "type": { "const": "symbol" },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]+(\\.[a-z0-9]+)*$",
+                  "maxLength": 128
+                },
+                { "$ref": "#/$defs/expression" }
+              ]
+            },
+            "color": { "$ref": "#/$defs/colorValue" },
+            "weight": {
+              "enum": ["ultraLight", "light", "regular", "medium", "semibold", "bold", "heavy", "black"]
+            }
           }
         }
       ],

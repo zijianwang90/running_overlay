@@ -221,7 +221,7 @@ struct OverlayComponentResolverTests {
         #expect(spacing == 6)
         #expect(crossAlign == .center)
         #expect(children.count == 2)
-        guard case .text(let textFrame, _, _, _, _, _, _, _, _, let autoSize) = children[0] else {
+        guard case .text(let textFrame, _, _, _, _, _, _, _, _, let autoSize) = children[0].node else {
             Issue.record("expected auto-sized text")
             return
         }
@@ -269,5 +269,113 @@ struct OverlayComponentResolverTests {
         }
         #expect(abs(opacity - 0.25) < 0.001)
         #expect(frame == CGRect(x: 0, y: 0, width: 100, height: 100))
+    }
+
+    @Test func symbolNameResolvesFromExpressionAndInvalidNamesAreDropped() throws {
+        let json = """
+        {
+          "spec": "ros.component/0.1",
+          "id": "community.test.symbol",
+          "version": "1.0.0",
+          "name": "Symbol",
+          "license": "MIT",
+          "size": [100, 100],
+          "params": [
+            { "id": "icon", "type": "string", "label": "Icon", "default": "heart.fill" }
+          ],
+          "nodes": [
+            { "type": "symbol", "name": "=icon", "frame": [0, 0, 22, 22], "color": "#FF0000", "weight": "bold" }
+          ]
+        }
+        """
+        let package = try OverlayComponentLoader.load(data: try #require(json.data(using: .utf8)))
+        let resolver = OverlayComponentResolver(definition: package.definition)
+
+        let resolved = resolver.resolve(parameters: [:], data: OverlayComponentStubData())
+        guard case .symbol(let frame, let name, _, let weight)? = resolved.nodes.first else {
+            Issue.record("expected symbol")
+            return
+        }
+        #expect(frame == CGRect(x: 0, y: 0, width: 22, height: 22))
+        #expect(name == "heart.fill")
+        #expect(weight == .bold)
+
+        let invalid = resolver.resolve(
+            parameters: ["icon": .string("../etc/passwd")],
+            data: OverlayComponentStubData()
+        )
+        #expect(invalid.nodes.isEmpty)
+        #expect(invalid.diagnostics.contains { $0.contains("symbol name") })
+    }
+
+    @Test func stackChildrenKeepAlignSelfAfterConditionalChildIsSkipped() throws {
+        let json = """
+        {
+          "spec": "ros.component/0.1",
+          "id": "community.test.align-self",
+          "version": "1.0.0",
+          "name": "Align Self",
+          "license": "MIT",
+          "size": [100, 100],
+          "params": [
+            { "id": "showFirst", "type": "bool", "label": "Show", "default": false }
+          ],
+          "nodes": [
+            {
+              "type": "stack", "direction": "vertical",
+              "children": [
+                { "type": "rect", "frame": [0, 0, 10, 10], "fill": "#FFFFFF", "if": "=showFirst", "alignSelf": "end" },
+                { "type": "rect", "frame": [0, 0, 20, 10], "fill": "#FFFFFF", "alignSelf": "center" },
+                { "type": "rect", "frame": [0, 0, 30, 10], "fill": "#FFFFFF" }
+              ]
+            }
+          ]
+        }
+        """
+        let package = try OverlayComponentLoader.load(data: try #require(json.data(using: .utf8)))
+        let resolved = OverlayComponentResolver(definition: package.definition)
+            .resolve(parameters: [:], data: OverlayComponentStubData())
+        guard case .stack(_, _, _, _, let children)? = resolved.nodes.first else {
+            Issue.record("expected stack")
+            return
+        }
+        #expect(children.map(\.alignSelf) == [.center, nil])
+    }
+
+    @Test func contentLayoutResolvesExpressionsAndClampsNegativeValues() throws {
+        let json = """
+        {
+          "spec": "ros.component/0.1",
+          "id": "community.test.content",
+          "version": "1.0.0",
+          "name": "Content",
+          "license": "MIT",
+          "size": "content",
+          "padding": ["=showBackground ? 10 : 0", -4],
+          "minSize": ["=minWidth", 0],
+          "params": [
+            { "id": "showBackground", "type": "bool", "label": "Background", "default": true },
+            { "id": "minWidth", "type": "number", "label": "Min", "min": 0, "max": 400, "default": 120 }
+          ],
+          "nodes": [
+            { "type": "text", "text": "A", "font": { "family": "system", "size": 12 }, "color": "#FFFFFF" }
+          ]
+        }
+        """
+        let package = try OverlayComponentLoader.load(data: try #require(json.data(using: .utf8)))
+        let resolver = OverlayComponentResolver(definition: package.definition)
+
+        let resolved = resolver.resolve(parameters: [:], data: OverlayComponentStubData())
+        #expect(resolved.contentLayout == OverlayComponentResolvedContentLayout(
+            paddingX: 10,
+            paddingY: 0,
+            minWidth: 120,
+            minHeight: 0
+        ))
+        let withoutBackground = resolver.resolve(
+            parameters: ["showBackground": .boolean(false)],
+            data: OverlayComponentStubData()
+        )
+        #expect(withoutBackground.contentLayout?.paddingX == 0)
     }
 }

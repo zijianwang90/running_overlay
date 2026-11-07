@@ -283,4 +283,123 @@ struct OverlayComponentLoaderTests {
         let diagnostics = errors(from: try #require(json.data(using: .utf8)))
         #expect(diagnostics.contains { $0.path == "$.params[0].default" })
     }
+
+    private func document(size: String = "[100, 100]", extra: String = "", nodes: String) -> Data {
+        Data("""
+        {
+          "spec": "ros.component/0.1",
+          "id": "community.test.m5a",
+          "version": "1.0.0",
+          "name": "M5a",
+          "license": "MIT",
+          "size": \(size),
+          \(extra)
+          "nodes": [\(nodes)]
+        }
+        """.utf8)
+    }
+
+    @Test func loadsSymbolNodeWithDefaultWeight() throws {
+        let package = try OverlayComponentLoader.load(data: document(nodes: """
+            { "type": "symbol", "name": "heart.fill", "frame": [0, 0, 22, 22], "color": "#FFFFFF" }
+            """))
+        guard case .symbol(let name, _, let weight)? = package.definition.nodes.first?.kind else {
+            Issue.record("expected symbol node")
+            return
+        }
+        #expect(name == .literal("heart.fill"))
+        #expect(weight == .medium)
+    }
+
+    @Test func rejectsInvalidSymbolNameAndMissingFrame() throws {
+        let diagnostics = errors(from: document(nodes: """
+            { "type": "symbol", "name": "Heart Fill", "frame": [0, 0, 22, 22], "color": "#FFFFFF" },
+            { "type": "symbol", "name": "heart", "color": "#FFFFFF" }
+            """))
+        #expect(diagnostics.contains { $0.path == "$.nodes[0].name" })
+        #expect(diagnostics.contains { $0.path == "$.nodes[1].frame" })
+    }
+
+    @Test func alignSelfIsOnlyValidOnStackChildren() throws {
+        let package = try OverlayComponentLoader.load(data: document(nodes: """
+            {
+              "type": "stack", "direction": "vertical",
+              "children": [
+                { "type": "rect", "frame": [0, 0, 10, 10], "fill": "#FFFFFF", "alignSelf": "end" }
+              ]
+            }
+            """))
+        guard case .stack(_, _, _, let children)? = package.definition.nodes.first?.kind else {
+            Issue.record("expected stack node")
+            return
+        }
+        #expect(children.first?.alignSelf == .end)
+
+        let diagnostics = errors(from: document(nodes: """
+            { "type": "rect", "frame": [0, 0, 10, 10], "fill": "#FFFFFF", "alignSelf": "end" }
+            """))
+        #expect(diagnostics.contains { $0.path == "$.nodes[0].alignSelf" })
+    }
+
+    @Test func stackRejectsShapeChildEvenWithFrame() throws {
+        let diagnostics = errors(from: document(nodes: """
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "path", "frame": [0, 0, 10, 10], "fill": "#FFFFFF",
+                  "commands": [["M", 0, 0], ["L", 10, 0], ["L", 10, 10], ["Z"]]
+                }
+              ]
+            }
+            """))
+        #expect(diagnostics.contains { $0.path == "$.nodes[0].children[0].frame" })
+    }
+
+    @Test func loadsContentSizedDefinition() throws {
+        let package = try OverlayComponentLoader.load(data: document(
+            size: #""content""#,
+            extra: ##""padding": [10, 6], "minSize": [120, 0], "background": { "color": "#00000033" },"##,
+            nodes: """
+            { "type": "text", "text": "120", "font": { "family": "system", "size": 28 }, "color": "#FFFFFF" }
+            """
+        ))
+        let layout = try #require(package.definition.contentLayout)
+        #expect(package.definition.size == .zero)
+        #expect(layout.paddingX == .literal(10))
+        #expect(layout.paddingY == .literal(6))
+        #expect(layout.minWidth == .literal(120))
+        #expect(layout.minHeight == .literal(0))
+    }
+
+    @Test func contentSizedDefinitionRejectsUnboxedNodesAndSizeBuiltins() throws {
+        let diagnostics = errors(from: document(
+            size: #""content""#,
+            nodes: """
+            { "type": "circle", "center": [5, 5], "radius": 5, "fill": "#FFFFFF" },
+            { "type": "rect", "frame": [0, 0, "=width", 10], "fill": "#FFFFFF" },
+            { "type": "group", "children": [
+              { "type": "rect", "frame": [0, 0, 10, 10], "fill": "#FFFFFF" }
+            ] }
+            """
+        ))
+        #expect(diagnostics.contains { $0.path == "$.nodes[0].frame" })
+        #expect(diagnostics.contains { $0.path == "$.nodes[1].frame[2]" })
+        #expect(diagnostics.contains { $0.path == "$.nodes[2].frame" })
+    }
+
+    @Test func paddingAndMinSizeRequireContentSize() throws {
+        let diagnostics = errors(from: document(
+            extra: #""padding": [4, 4], "minSize": [10, 10],"#,
+            nodes: ##"{ "type": "rect", "frame": [0, 0, 10, 10], "fill": "#FFFFFF" }"##
+        ))
+        #expect(diagnostics.contains { $0.path == "$.padding" })
+        #expect(diagnostics.contains { $0.path == "$.minSize" })
+
+        let badMode = errors(from: document(
+            size: #""auto""#,
+            nodes: ##"{ "type": "text", "text": "A", "font": { "family": "system", "size": 12 }, "color": "#FFFFFF" }"##
+        ))
+        #expect(badMode.contains { $0.path == "$.size" })
+    }
 }

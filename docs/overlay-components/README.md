@@ -65,7 +65,11 @@ export.
 - Draw text, shapes, paths, images and gradients with the primitives already
   exposed by `skb_*`, including per-node letter tracking.
 - Stack text and other boxed nodes horizontally or vertically with auto-sized
-  text, so a unit can follow a value whose width changes.
+  text, so a unit can follow a value whose width changes, and override the
+  cross-axis alignment of a single child with `alignSelf`.
+- Size the whole component from its measured content (`"size": "content"`)
+  with padding, a minimum size and a background that follows the content.
+- Draw system SF Symbols with the `symbol` node.
 - Read a versioned, read-only view of activity signals, series, laps,
   intervals, zones, route position and weather results.
 - Use three native capability nodes in v0.1: `sparkline`, `progressBar`, `arc`.
@@ -78,8 +82,9 @@ export.
 - Access the network, files, processes, keychain, or arbitrary clocks.
 - Compute intervals, zones, route projection or weather. Those stay in the
   host and are exposed as data.
-- Use general auto layout (wrapping, distribution, intrinsic containers), SVG,
-  bundled fonts or nested `repeat`. Only one-dimensional stacks are available.
+- Use general auto layout (wrapping, distribution, flexible sizing), SVG,
+  bundled fonts or nested `repeat`. Only one-dimensional stacks and
+  content-sized components are available.
 - Design arbitrary Inspector UI.
 
 ## Authoring Loop (Planned)
@@ -123,8 +128,13 @@ milestone, not the current app.
 | M2 | Base + capability nodes through `SkiaEasyRunRenderer`; `.component` element kind | **Implemented for embedded definitions:** schema v2, canonical digest, Skia path; pixel parity with native still pending |
 | M3 | Params to Inspector generation and `ProjectDocument` undo | **Implemented:** generated Inspector rows, add/duplicate from the Overlay Pool, clamped/quantized parameter edits with discrete and continuous undo |
 | M4 | `.rocomponent` import, embedded definitions, validation errors, CLI | **Implemented:** folder/ZIP/JSON import with asset embedding and defensive archive checks, My Components management and export, Skia image nodes, `--component-validate` and `--component-render` |
-| M5 | Port built-ins one by one with snapshot evidence | **In progress:** exact native/component parity harness, Decor Solid Color pilots, and a heart-rate value plus trailing unit pilot using auto-sized text in a stack, including a scaled-element case; remaining ports need host chrome/symbol work, then native removal in a separate change |
-| M6 | Authoring guide + AI skill + example gallery | Community can author without reading Swift |
+| M5 | Port built-ins one by one with snapshot evidence | **In progress**, split below. Done before M5a: exact native/component parity harness, Decor Solid Color pilots, heart-rate value plus trailing unit in an auto-sized stack |
+| M5a | Layout primitives: `symbol`, `alignSelf`, content-sized components with padding, minimum size and background | **Implemented:** heart rate with icon and background matches native exactly at element scale 1, 1.5 and 2 (icon leading) and 1 and 2 (icon top, unit centered below, minimum width); measured bounds drive hit testing |
+| M5b | Metric data contract: running-dynamics and speed signals, unit conversion, 12-hour clock, host-provided localized metric label/unit/icon | String-level parity for every numeric type against `OverlayValueFormatter` |
+| M5c | One generic `studio.numeric` definition with per-metric Overlay Pool presets | Pairwise pixel parity over icon/unit/label/background combinations and scales. Failure is a decision point for a native `textCluster` capability node |
+| M5d | Legacy mapping: documented `OverlayStyle` → params conversion, used first by Pool add and bundled templates | Human review of project compatibility; automatic migration of saved projects is a separate decision |
+| M5e | Remove native numeric renderers | Depends on the M5d migration decision; separate PR with visual snapshot review |
+| M6 | Authoring guide + AI skill + example gallery, CLI fixtures | Community can author without reading Swift; can run in parallel with M5 |
 
 M2 changes the project schema and is subject to the human review rules in
 `AGENTS.md` (project-file compatibility) and to visual snapshot approval.

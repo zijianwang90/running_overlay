@@ -16,33 +16,14 @@ enum OverlayComponentSkiaRenderer {
         renderContext: OverlayRenderContext,
         context: OpaquePointer
     ) {
-        guard let instance = element.component else { return }
-        let scale = element.scale * renderContext.canvasScale
-        let data = OverlayComponentActivityData(
-            activity: renderContext.activity,
-            elapsedTime: renderContext.elapsedTime,
-            zoneSnapshot: HeartRateZonePreferences.currentSnapshot(),
-            canvasSize: renderContext.canvasSize,
-            elementScale: scale
-        )
-        guard let resolved = OverlayComponentRegistry.resolve(instance: instance, data: data) else {
+        guard let instance = element.component,
+              let placement = placement(for: element, renderContext: renderContext) else {
             return
         }
-
-        let space = DrawSpace(
-            origin: CGPoint(
-                x: renderContext.canvasSize.width * element.position.x,
-                y: renderContext.canvasSize.height * element.position.y
-            ),
-            scale: scale
-        )
-        let bounds = CGRect(
-            origin: space.origin,
-            size: CGSize(
-                width: resolved.size.width * scale,
-                height: resolved.size.height * scale
-            )
-        )
+        let resolved = placement.resolved
+        let space = placement.space
+        let bounds = placement.bounds
+        let clip = placement.clip
 
         // Element-level styling (opacity, glow, drop shadow) is host state, not
         // part of a component definition. Apply it once around the whole
@@ -50,9 +31,9 @@ enum OverlayComponentSkiaRenderer {
         // the native module it replaces.
         SkiaTextEffects.withElementLayers(element: element, bounds: bounds, context: context) {
             skb_save(context)
-            skb_clip_rect(context, Float(bounds.minX), Float(bounds.minY), Float(bounds.width), Float(bounds.height))
+            skb_clip_rect(context, Float(clip.minX), Float(clip.minY), Float(clip.width), Float(clip.height))
             if let background = resolved.background {
-                let radius = background.radius * scale
+                let radius = background.radius * space.scale
                 skb_fill_round_rect(
                     context,
                     Float(bounds.minX),
@@ -81,6 +62,100 @@ enum OverlayComponentSkiaRenderer {
             }
             skb_restore(context)
         }
+    }
+
+    /// Canvas-pixel frame of a component instance at the render context's
+    /// playhead. Content-sized components measure their content, so the frame
+    /// follows the current values; hit testing and selection use this.
+    static func frame(
+        for element: OverlayElement,
+        renderContext: OverlayRenderContext
+    ) -> CGRect? {
+        placement(for: element, renderContext: renderContext)?.bounds
+    }
+
+    // MARK: - Placement
+
+    /// Glyph ink can overhang the typographic box (negative tracking, italic
+    /// shapes). A content-sized component has no author-chosen slack around
+    /// its measured bounds, so its clip grows by this many design units.
+    static let contentInkMargin = 16.0
+
+    private struct Placement {
+        var resolved: OverlayComponentResolved
+        /// Space whose origin is the content origin (inside any padding).
+        var space: DrawSpace
+        /// Element frame: background rect and host layer bounds.
+        var bounds: CGRect
+        var clip: CGRect
+    }
+
+    private static func placement(
+        for element: OverlayElement,
+        renderContext: OverlayRenderContext
+    ) -> Placement? {
+        guard let instance = element.component else { return nil }
+        let scale = element.scale * renderContext.canvasScale
+        let data = OverlayComponentActivityData(
+            activity: renderContext.activity,
+            elapsedTime: renderContext.elapsedTime,
+            zoneSnapshot: HeartRateZonePreferences.currentSnapshot(),
+            canvasSize: renderContext.canvasSize,
+            elementScale: scale
+        )
+        guard let resolved = OverlayComponentRegistry.resolve(instance: instance, data: data) else {
+            return nil
+        }
+        let origin = CGPoint(
+            x: renderContext.canvasSize.width * element.position.x,
+            y: renderContext.canvasSize.height * element.position.y
+        )
+
+        guard let layout = resolved.contentLayout else {
+            let bounds = CGRect(
+                origin: origin,
+                size: CGSize(
+                    width: resolved.size.width * scale,
+                    height: resolved.size.height * scale
+                )
+            )
+            return Placement(
+                resolved: resolved,
+                space: DrawSpace(origin: origin, scale: scale),
+                bounds: bounds,
+                clip: bounds
+            )
+        }
+
+        // Content size is measured in pixel space, like stacks, then padded.
+        // Content keeps its top-leading origin when a minimum size is larger.
+        let padX = layout.paddingX * scale
+        let padY = layout.paddingY * scale
+        let space = DrawSpace(
+            origin: CGPoint(x: origin.x + padX, y: origin.y + padY),
+            scale: scale
+        )
+        var extent = CGSize.zero
+        for node in resolved.nodes {
+            let rect = pixelBounds(node, space: space)
+            extent.width = max(extent.width, rect.maxX - space.origin.x)
+            extent.height = max(extent.height, rect.maxY - space.origin.y)
+        }
+        let innerWidth = max(extent.width, layout.minWidth * scale)
+        let innerHeight = max(extent.height, layout.minHeight * scale)
+        let bounds = CGRect(
+            x: origin.x,
+            y: origin.y,
+            width: innerWidth + padX * 2,
+            height: innerHeight + padY * 2
+        )
+        let margin = contentInkMargin * scale
+        return Placement(
+            resolved: resolved,
+            space: space,
+            bounds: bounds,
+            clip: bounds.insetBy(dx: -margin, dy: -margin)
+        )
     }
 
     // MARK: - Draw space
@@ -342,6 +417,25 @@ enum OverlayComponentSkiaRenderer {
                 opacity: opacity
             )
 
+        case let .symbol(frame, name, color, weight):
+            // Square glyph box centered in the frame; the point size follows
+            // the box edge, matching native numeric overlay icons.
+            let rect = space.rect(frame)
+            let side = min(rect.width, rect.height)
+            SkiaIconRasterCache.draw(
+                systemName: name,
+                rect: CGRect(
+                    x: rect.midX - side / 2,
+                    y: rect.midY - side / 2,
+                    width: side,
+                    height: side
+                ),
+                color: color,
+                opacity: opacity,
+                weight: weight.appKitWeight,
+                context: context
+            )
+
         case let .image(frame, asset, fit):
             OverlayComponentImageCache.draw(
                 assetPath: asset,
@@ -483,7 +577,7 @@ enum OverlayComponentSkiaRenderer {
         direction: OverlayComponentStackDirection,
         spacing: Double,
         crossAlign: OverlayComponentCrossAlignment,
-        children: [OverlayComponentResolvedNode],
+        children: [OverlayComponentResolvedStackChild],
         context: OpaquePointer,
         space: DrawSpace,
         opacity: Double,
@@ -519,11 +613,11 @@ enum OverlayComponentSkiaRenderer {
         direction: OverlayComponentStackDirection,
         spacing: Double,
         crossAlign: OverlayComponentCrossAlignment,
-        children: [OverlayComponentResolvedNode],
+        children: [OverlayComponentResolvedStackChild],
         space: DrawSpace
     ) -> StackLayout {
         let spacingPixels = spacing * space.scale
-        let sizes = children.map { intrinsicSize(of: $0, space: space) }
+        let sizes = children.map { intrinsicSize(of: $0.node, space: space) }
         let mainSizes = sizes.map { direction == .horizontal ? $0.width : $0.height }
         let crossSizes = sizes.map { direction == .horizontal ? $0.height : $0.width }
         let contentMain = mainSizes.reduce(0, +)
@@ -550,7 +644,7 @@ enum OverlayComponentSkiaRenderer {
             let childMain = mainSizes[index]
             let childCross = crossSizes[index]
             let crossOffset: Double
-            switch crossAlign {
+            switch child.alignSelf ?? crossAlign {
             case .start:
                 crossOffset = 0
             case .center:
@@ -561,7 +655,7 @@ enum OverlayComponentSkiaRenderer {
             let origin = direction == .horizontal
                 ? CGPoint(x: cursor, y: crossOffset)
                 : CGPoint(x: crossOffset, y: cursor)
-            placements.append((child, origin))
+            placements.append((child.node, origin))
             cursor += childMain + spacingPixels
         }
         return StackLayout(
@@ -631,6 +725,7 @@ enum OverlayComponentSkiaRenderer {
         case .path: .zero
         case let .text(frame, _, _, _, _, _, _, _, _, _): frame.origin
         case let .image(frame, _, _): frame.origin
+        case let .symbol(frame, _, _, _): frame.origin
         case let .gradientRect(frame, _, _, _, _): frame.origin
         case let .sparkline(frame, _, _, _, _, _): frame.origin
         case let .progressBar(frame, _, _, _, _): frame.origin
@@ -1049,6 +1144,7 @@ enum OverlayComponentSkiaRenderer {
             CGRect(x: -32768, y: -32768, width: 65536, height: 65536)
         case let .text(frame, _, _, _, _, _, _, _, _, _): frame
         case let .image(frame, _, _): frame
+        case let .symbol(frame, _, _, _): frame
         case let .gradientRect(frame, _, _, _, _): frame
         case let .sparkline(frame, _, _, _, _, _): frame
         case let .progressBar(frame, _, _, _, _): frame

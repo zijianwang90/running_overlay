@@ -621,6 +621,11 @@ enum PreviewElementGeometry {
         for element: OverlayElement,
         in context: OverlayRenderContext
     ) -> CGRect {
+        #if canImport(CSkiaBridge)
+        if let frame = OverlayComponentSkiaRenderer.frame(for: element, renderContext: context) {
+            return frame
+        }
+        #endif
         let size = componentSize(for: element) ?? CGSize(width: 160, height: 48)
         let scale = element.scale * context.canvasScale
         return CGRect(
@@ -631,10 +636,12 @@ enum PreviewElementGeometry {
         )
     }
 
-    /// Design-unit size of the instance's resolved definition.
+    /// Design-unit size of the instance's resolved definition; `nil` for a
+    /// content-sized definition, whose size depends on measured content.
     static func componentSize(for element: OverlayElement) -> CGSize? {
         guard let instance = element.component,
-              let definition = OverlayComponentRegistry.definition(for: instance.reference)
+              let definition = OverlayComponentRegistry.definition(for: instance.reference),
+              definition.contentLayout == nil
         else {
             return nil
         }

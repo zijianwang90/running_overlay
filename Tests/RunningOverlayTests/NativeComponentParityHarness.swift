@@ -24,6 +24,9 @@ enum NativeComponentParityHarness {
         /// Maximum difference seen on any channel, changed or not.
         var maximumChannelDelta = 0
         var maximumMeanChannelDelta = 0.0
+
+        /// Zero tolerance on every axis.
+        static let exact = Thresholds()
     }
 
     struct Result {

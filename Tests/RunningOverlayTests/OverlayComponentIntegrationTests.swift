@@ -911,5 +911,189 @@ struct OverlayComponentIntegrationTests {
         }
         #expect(visible == false)
     }
+
+    private func contentSizedReference() throws -> OverlayComponentReference {
+        let json = """
+        {
+          "spec": "ros.component/0.1",
+          "id": "community.test.content-sized",
+          "version": "1.0.0",
+          "name": "Content Sized",
+          "license": "MIT",
+          "size": "content",
+          "padding": ["=pad", 6],
+          "minSize": [0, "=minHeight"],
+          "params": [
+            { "id": "label", "type": "string", "label": "Label", "default": "1" },
+            { "id": "pad", "type": "number", "label": "Pad", "min": 0, "max": 40, "default": 0 },
+            { "id": "minHeight", "type": "number", "label": "Min Height", "min": 0, "max": 400, "default": 0 }
+          ],
+          "background": { "color": "#FF0000FF" },
+          "nodes": [
+            {
+              "type": "text", "text": "=label",
+              "font": { "family": "Helvetica Neue", "size": 28, "weight": "semibold" },
+              "color": "#FFFFFF"
+            }
+          ]
+        }
+        """
+        return try OverlayComponentReference(definitionData: Data(json.utf8), source: .imported)
+    }
+
+    private func contentSizedElement(
+        _ reference: OverlayComponentReference,
+        parameters: [String: OverlayJSONValue]
+    ) -> OverlayElement {
+        var style = OverlayStyle.default
+        style.shadowEnabled = false
+        style.glowEnabled = false
+        return OverlayElement(
+            type: .component,
+            position: CGPoint(x: 0.1, y: 0.1),
+            scale: 1,
+            style: style,
+            component: OverlayComponentInstance(reference: reference, parameters: parameters)
+        )
+    }
+
+    @Test func contentSizedFrameFollowsValuePaddingAndMinimumSize() throws {
+        let reference = try contentSizedReference()
+        let context = OverlayRenderContext(
+            canvasSize: CGSize(width: 1280, height: 720),
+            activity: makeTimeline(),
+            elapsedTime: 0
+        )
+        func frame(_ parameters: [String: OverlayJSONValue]) throws -> CGRect {
+            try #require(OverlayComponentSkiaRenderer.frame(
+                for: contentSizedElement(reference, parameters: parameters),
+                renderContext: context
+            ))
+        }
+
+        let narrow = try frame(["label": .string("1")])
+        let wide = try frame(["label": .string("1111")])
+        #expect(narrow.origin == CGPoint(x: 128, y: 72))
+        #expect(wide.width > narrow.width * 2)
+        #expect(abs(wide.height - narrow.height) < 0.001)
+
+        let padded = try frame(["label": .string("1"), "pad": .number(10)])
+        #expect(abs(padded.width - narrow.width - 20) < 0.001)
+
+        let tall = try frame(["label": .string("1"), "minHeight": .number(200)])
+        #expect(abs(tall.height - (200 + 12)) < 0.001)
+
+        // The preview hit/selection frame uses the same measurement.
+        let element = contentSizedElement(reference, parameters: ["label": .string("1111")])
+        #expect(PreviewElementGeometry.frame(for: element, in: context) == wide)
+    }
+
+    @Test func contentSizedBackgroundFillsMeasuredBounds() throws {
+        let reference = try contentSizedReference()
+        let element = contentSizedElement(
+            reference,
+            parameters: ["label": .string("88"), "pad": .number(10)]
+        )
+        let size = CGSize(width: 1280, height: 720)
+        let context = OverlayRenderContext(canvasSize: size, activity: makeTimeline(), elapsedTime: 0)
+        let bounds = try #require(OverlayComponentSkiaRenderer.frame(for: element, renderContext: context))
+        let renderer = try #require(SkiaEasyRunRenderer(size: size))
+        let (pixels, rowBytes) = try #require(renderer.render(
+            layout: OverlayLayout(elements: [element]),
+            activity: makeTimeline(),
+            elapsedTime: 0
+        ))
+
+        let midY = Int(bounds.midY)
+        let insideRight = pixel(pixels, rowBytes: rowBytes, x: Int(bounds.maxX.rounded(.down)) - 1, y: midY)
+        #expect(insideRight.a == 255)
+        #expect(insideRight.r == 255)
+        let outsideRight = pixel(pixels, rowBytes: rowBytes, x: Int(bounds.maxX.rounded(.up)) + 1, y: midY)
+        #expect(outsideRight.a == 0)
+        let insideBottom = pixel(pixels, rowBytes: rowBytes, x: Int(bounds.midX), y: Int(bounds.maxY.rounded(.down)) - 1)
+        #expect(insideBottom.a == 255)
+    }
+
+    @Test func skiaRendererDrawsSymbolNode() throws {
+        let json = """
+        {
+          "spec": "ros.component/0.1",
+          "id": "community.test.symbol",
+          "version": "1.0.0",
+          "name": "Symbol",
+          "license": "MIT",
+          "size": [60, 60],
+          "nodes": [
+            { "type": "symbol", "name": "heart.fill", "frame": [10, 10, 40, 40], "color": "#FF0000" }
+          ]
+        }
+        """
+        let reference = try OverlayComponentReference(definitionData: Data(json.utf8), source: .imported)
+        var style = OverlayStyle.default
+        style.shadowEnabled = false
+        style.glowEnabled = false
+        let element = OverlayElement(
+            type: .component,
+            position: .zero,
+            scale: 1,
+            style: style,
+            component: OverlayComponentInstance(reference: reference)
+        )
+        let size = CGSize(width: 1280, height: 720)
+        let renderer = try #require(SkiaEasyRunRenderer(size: size))
+        let (pixels, rowBytes) = try #require(renderer.render(
+            layout: OverlayLayout(elements: [element]),
+            activity: makeTimeline(),
+            elapsedTime: 0
+        ))
+
+        var redInside = 0
+        var paintedOutside = 0
+        for y in 0..<70 {
+            for x in 0..<70 {
+                let sample = pixel(pixels, rowBytes: rowBytes, x: x, y: y)
+                let inGlyphBox = (10..<50).contains(x) && (10..<50).contains(y)
+                if inGlyphBox, sample.a > 200, sample.r > 200, sample.g < 40 {
+                    redInside += 1
+                } else if !inGlyphBox, sample.a > 0 {
+                    paintedOutside += 1
+                }
+            }
+        }
+        #expect(redInside > 400)
+        #expect(paintedOutside == 0)
+    }
+
+    @MainActor
+    @Test func componentRenderCommandCropsContentSizedComponent() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rocomponent-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let json = """
+        {
+          "spec": "ros.component/0.1",
+          "id": "community.test.content-cli",
+          "version": "1.0.0",
+          "name": "Content CLI",
+          "license": "MIT",
+          "size": "content",
+          "minSize": [50, 30],
+          "nodes": [
+            { "type": "rect", "frame": [0, 0, 40, 20], "fill": "#FFFFFF" }
+          ]
+        }
+        """
+        try Data(json.utf8).write(to: root.appendingPathComponent("component.json"))
+        let output = root.appendingPathComponent("out.png")
+
+        let url = try ComponentCommandRunner.renderComponent(
+            ComponentRenderCommand(packageURL: root, outputURL: output, scale: 2)
+        )
+        let source = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
+        let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        #expect(image.width == 100)
+        #expect(image.height == 60)
+    }
     #endif
 }
