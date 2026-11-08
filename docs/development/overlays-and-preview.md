@@ -310,6 +310,20 @@ unit and sampled time with the native formatter, including no-data
 placeholders. Raw numbers for lap pace and running dynamics are available as
 `activity.*` signals and series.
 
+The bundled `studio.numeric` definition (`Resources/Components/numeric.json`)
+is the generic numeric overlay: a `metricId` enum plus one unit param per
+metric family feed `metric(...)`, and stacks reproduce `composeMinimal`. The
+text block is a vertical stack of top label, row, bottom unit and bottom
+label with fixed spacers for the differing gaps; the row is stretched across
+the block so a flexible spacer pushes a trailing unit or label to the edge
+when a wider label or unit widens the block, exactly as the native layout
+does. The icon wraps the block in a stack whose direction and alignment are
+expressions. `OverlayComponentLibraryItem.numericPresets` lists one Pool entry
+per metric (`studio.numeric#<metric>`) that seeds `metricId`.
+`OverlayComponentNumericParityTests` compares 13 pairwise cases with native
+at exact thresholds through a test-side style-to-params mapping that M5d will
+formalize. Native numeric tiles stay the default until parity acceptance.
+
 Headless authoring:
 
 ```sh
@@ -335,12 +349,11 @@ against native modules.
 - Format and data contract: `docs/overlay-components/spec-v0.1.md`.
 - Decision and gates: `docs/adr/0013-declarative-overlay-components.md`.
 - Tests: `OverlayComponentExpressionTests`, `OverlayComponentLoaderTests`,
-  `OverlayComponentMetricParityTests`,
+  `OverlayComponentMetricParityTests`, `OverlayComponentNumericParityTests`,
   `OverlayComponentDataTests`, `OverlayComponentResolverTests`,
   `OverlayComponentIntegrationTests`, `OverlayComponentArchiveTests`,
   `OverlayComponentParityTests`.
 - Fixtures: `Tests/RunningOverlayTests/Fixtures/Components/`.
 
-The next integration steps are M5c–M5e (a generic numeric definition, legacy
-mapping, then native removal; see
+The next integration steps are M5d–M5e (legacy mapping, then native removal; see
 `docs/overlay-components/README.md`) and M6 (authoring guide and AI skill).

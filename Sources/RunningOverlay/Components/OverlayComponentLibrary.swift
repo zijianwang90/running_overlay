@@ -6,14 +6,18 @@ import Foundation
 /// digest; the project does not embed them. Users can inspect them and
 /// duplicate one into an editable project component, but cannot edit the
 /// bundled document in place.
-struct OverlayComponentLibraryItem: Identifiable, Equatable {
+struct OverlayComponentLibraryItem: Identifiable, Equatable, Sendable {
+    /// Pool entry identity. Presets of one definition share `resourceName`
+    /// and differ by `parameters`, so the id is not the component id.
     var id: String
     var displayName: String
     var hint: String
     var systemImage: String
     var resourceName: String
+    /// Initial parameter values for a new instance.
+    var parameters: [String: OverlayJSONValue] = [:]
 
-    static let all: [OverlayComponentLibraryItem] = [
+    static let all: [OverlayComponentLibraryItem] = numericPresets + [
         OverlayComponentLibraryItem(
             id: "studio.builtin.heart-rate-pill",
             displayName: "Heart Rate Pill",
@@ -29,9 +33,32 @@ struct OverlayComponentLibraryItem: Identifiable, Equatable {
             resourceName: "lap-splits"
         )
     ]
+
+    /// One Overlay Pool entry per metric of the generic `studio.numeric`
+    /// definition. Native numeric tiles stay authoritative until the
+    /// component passes parity acceptance (spec section 15).
+    static let numericPresets: [OverlayComponentLibraryItem] = OverlayComponentMetricCatalog
+        .presetOrder
+        .compactMap { id in
+            guard let metric = OverlayComponentMetricCatalog.metrics[id] else { return nil }
+            return OverlayComponentLibraryItem(
+                id: "studio.numeric#\(id)",
+                displayName: OverlayComponentMetricCatalog.displayName(for: id),
+                hint: "numeric",
+                systemImage: metric.type.defaultNumericIconSystemName,
+                resourceName: "numeric",
+                parameters: ["metricId": .string(id)]
+            )
+        }
 }
 
 enum OverlayComponentLibrary {
+    /// One item per bundled resource; presets share a definition.
+    private static var uniqueResources: [OverlayComponentLibraryItem] {
+        var seen: Set<String> = []
+        return OverlayComponentLibraryItem.all.filter { seen.insert($0.resourceName).inserted }
+    }
+
     /// Loads the bundled `component.json` bytes for an item.
     static func data(for item: OverlayComponentLibraryItem) -> Data? {
         let url = Bundle.runningOverlayResources.url(
@@ -58,7 +85,7 @@ enum OverlayComponentLibrary {
     /// silently change an existing project.
     static func definition(for reference: OverlayComponentReference) -> OverlayComponentDefinition? {
         guard reference.source == .bundled else { return nil }
-        for item in OverlayComponentLibraryItem.all {
+        for item in uniqueResources {
             guard let data = data(for: item),
                   let package = try? OverlayComponentLoader.load(data: data),
                   package.definition.id == reference.id,
@@ -74,7 +101,7 @@ enum OverlayComponentLibrary {
     /// `.project`, used by "Duplicate to My Components".
     static func editableReference(for reference: OverlayComponentReference) -> OverlayComponentReference? {
         guard reference.source == .bundled else { return nil }
-        for item in OverlayComponentLibraryItem.all {
+        for item in uniqueResources {
             guard let data = data(for: item),
                   let bundled = try? OverlayComponentReference(definitionData: data, source: .project),
                   bundled.id == reference.id,

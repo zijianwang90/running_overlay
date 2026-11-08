@@ -649,7 +649,12 @@ final class ProjectDocument: ObservableObject {
     ) -> OverlayElement.ID? {
         do {
             let reference = try OverlayComponentLibrary.reference(for: item)
-            return addComponentElement(reference: reference, position: position, scale: scale)
+            return addComponentElement(
+                reference: reference,
+                parameters: item.parameters,
+                position: position,
+                scale: scale
+            )
         } catch {
             statusMessage = error.localizedDescription
             return nil

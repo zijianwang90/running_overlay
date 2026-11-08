@@ -69,7 +69,7 @@ struct OverlayComponentMetricParityTests {
     ) throws -> OverlayValueComponents {
         let metric = try #require(OverlayComponentMetricCatalog.metrics[id])
         var style = OverlayStyle.default
-        style.unitOption = OverlayComponentMetricCatalog.unitOption(for: metric, requested: unit)
+        style.unitOption = OverlayComponentMetricCatalog.unitOption(for: metric, requested: unit.map { [$0] } ?? [])
         style.elevationDisplayMode = metric.elevationDisplayMode
         style.customLabel = ""
         let element = OverlayElement(
@@ -162,6 +162,17 @@ struct OverlayComponentMetricParityTests {
         let activity = makeTimeline()
         let record = try componentRecord(id: "distance", unit: "paceImperial", activity: activity, elapsedTime: 100)
         #expect(record["unit"] == .string("km"))
+        // The first candidate the metric supports wins.
+        let multi = try OverlayComponentExpression.parse(
+            "metric(\"distance\", \"paceImperial\", \"distanceMiles\", \"distanceMeters\")"
+        ).evaluate(in: OverlayComponentEvaluationContext(data: OverlayComponentActivityData(
+            activity: activity,
+            elapsedTime: 100,
+            zoneSnapshot: nil,
+            canvasSize: CGSize(width: 1280, height: 720),
+            elementScale: 1
+        )))
+        #expect(multi.record?["unit"] == .string("mi"))
         #expect(record["icon"] == .string("ruler"))
         let unknown = try OverlayComponentExpression.parse("metric(\"speed\")")
             .evaluate(in: OverlayComponentEvaluationContext(data: OverlayComponentActivityData(

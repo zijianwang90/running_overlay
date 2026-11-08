@@ -34,34 +34,51 @@ enum OverlayComponentMetricCatalog {
         "grade": Metric(type: .grade)
     ]
 
+    /// Overlay Pool order, matching the native numeric tiles.
+    static let presetOrder = [
+        "heartRate", "heartRateZone", "pace", "avgPace", "lapPace", "distance",
+        "elapsedTime", "realTime", "date", "calories", "elevation", "elevationGain",
+        "cadence", "power", "temperature", "grade", "verticalOscillation",
+        "groundContactTime", "strideLength", "verticalRatio", "groundContactBalance"
+    ]
+
+    static func displayName(for id: String) -> String {
+        guard let metric = metrics[id] else { return id }
+        return metric.elevationDisplayMode == .gain ? "Elevation Gain" : metric.type.label
+    }
+
     /// Display-unit identifiers accepted for a metric, default first.
     static func units(for id: String) -> [String] {
         guard let metric = metrics[id] else { return [] }
         return OverlayUnitOption.options(for: metric.type).map(\.rawValue)
     }
 
-    /// The display unit to format with: the requested one when the metric
-    /// accepts it, otherwise the metric's default.
-    static func unitOption(for metric: Metric, requested: String?) -> OverlayUnitOption {
+    /// Every display-unit identifier any metric accepts.
+    static let allUnits: Set<String> = Set(metrics.keys.flatMap(units(for:)))
+
+    /// The display unit to format with: the first requested unit the metric
+    /// accepts, otherwise the metric's default. Unit names are disjoint across
+    /// metric families, so one call can list a unit per family.
+    static func unitOption(for metric: Metric, requested: [String]) -> OverlayUnitOption {
         let options = OverlayUnitOption.options(for: metric.type)
-        if let requested,
-           let option = OverlayUnitOption(rawValue: requested),
-           options.contains(option) {
-            return option
+        for candidate in requested {
+            if let option = OverlayUnitOption(rawValue: candidate), options.contains(option) {
+                return option
+            }
         }
         return OverlayUnitOption.defaultOption(for: metric.type)
     }
 
     static func record(
         id: String,
-        unit: String?,
+        units: [String],
         activity: ActivityTimeline,
         elapsedTime: TimeInterval
     ) -> OverlayComponentValue {
         guard let metric = metrics[id] else { return .null }
         let components = OverlayValueFormatter.components(
             for: metric.type,
-            unit: unitOption(for: metric, requested: unit),
+            unit: unitOption(for: metric, requested: units),
             elevationDisplayMode: metric.elevationDisplayMode,
             customLabel: "",
             activity: activity,

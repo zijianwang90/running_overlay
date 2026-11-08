@@ -229,7 +229,7 @@ are strings.
 
 ### 5.4 Formatted metrics
 
-`metric(id, unit?)` returns the host-formatted reading that a native numeric
+`metric(id, unit...)` returns the host-formatted reading that a native numeric
 overlay shows, as a record of strings: `value`, `unit`, `label`, `shortLabel`
 and `icon` (the default SF Symbol name). Formatting, rounding, placeholders
 (`--`, `--'--"`) and unit conversion are the host's, so a component and a
@@ -257,8 +257,11 @@ native overlay always show the same text. Use `signal` for raw numbers and
 | `temperature` | `temperatureCelsius`, `temperatureFahrenheit` |
 | `grade` | `gradePercent` |
 
-- An omitted or unsupported `unit` uses the default. Literal ids and units
-  are validated; an unknown id at runtime returns `null`.
+- Each `unit` argument is a candidate; the first one the metric supports is
+  used, otherwise the metric's default. Unit names are disjoint across metric
+  families, so a generic component can pass one unit param per family:
+  `metric(id, paceUnit, distanceUnit, ...)`. Literal ids and units are
+  validated; an unknown id at runtime returns `null`.
 - `realTime` and `date` use the playhead's wall-clock time in the host's time
   zone. `temperature` reads FIT temperature only; the native manual fallback
   is not part of the contract.
@@ -303,11 +306,15 @@ Every node has:
 | `if` | no | Expression. The node is skipped when the result is falsey. A skipped stack child takes no space. |
 | `opacity` | no | Number 0..1 or expression, multiplied into the node. |
 | `clip` | no | `group` only, default `false`. Clips children to the group frame. |
-| `alignSelf` | no | Direct `stack` children only: `start`, `center` or `end`, overriding the stack's `crossAlign` for this child. |
+| `alignSelf` | no | Direct `stack` children only: `start`, `center`, `end` or `stretch`, overriding the stack's `crossAlign` for this child. |
 
 Any numeric field accepts a JSON number or an expression string beginning with
 `=`. Color fields accept `#RRGGBB`, `#RRGGBBAA`, `transparent`, or an
-expression string.
+expression string. `stack.direction`, `stack.crossAlign`, `alignSelf`,
+`font.family` and `font.weight` accept their literal value or an expression
+returning it, so params can drive them; a literal outside the allowed values
+is a validation error, and an expression result outside them falls back to
+the field's default with a diagnostic.
 
 ### 7.1 Base nodes
 
@@ -325,7 +332,8 @@ These map directly to primitives in `Sources/CSkiaBridge/include/skia_bridge.h`.
 | `symbol` | `name` (SF Symbol name or expression), `color`, `weight` (font weights from section 7.3, default `medium`) |
 | `gradientRect` | `radius?`, `stops` (2..8 `{ "offset": 0..1, "color": "#..." }`), `from` `[x, y]`, `to` `[x, y]` |
 | `group` | `children` (array of nodes), `frame?`, `clip`, `shadow?`, `opacity?` |
-| `stack` | `children` (array of nodes), `direction` (`horizontal`, default, or `vertical`), `spacing?` (default 0), `crossAlign` (`start`, default, `center`, `end`), `frame?`, `opacity?` |
+| `stack` | `children` (array of nodes), `direction` (`horizontal`, default, or `vertical`), `spacing?` (default 0), `crossAlign` (`start`, default, `center`, `end`, `stretch`), `frame?`, `opacity?` |
+| `spacer` | `length?`. Stack children only; no `frame`. With `length` a fixed gap, without it flexible. |
 
 `path.commands` entries:
 
@@ -365,7 +373,15 @@ frame (measured lines) or a `stack` without a frame (its own content). Child
 other child MUST declare a `frame`, and `circle`, `line`, `polyline` and `path`
 MUST be wrapped in a group even when they declare one, because their geometry,
 not a frame, defines what they draw. A child's `alignSelf` overrides
-`crossAlign` for that child, so a centered unit can sit under a leading value. The stack reports its content size when `frame` is omitted;
+`crossAlign` for that child, so a centered unit can sit under a leading value.
+
+`stretch` aligns a child to the start of the cross axis and, when the child is
+itself a stack, sizes that stack to the container's cross extent. Flexible
+`spacer` children (no `length`) share the leftover main-axis length of their
+stack equally, so in a stretched row a trailing child sits at the far edge.
+A stack never shrinks below its content; without stretch or a fixed frame
+there is no leftover and flexible spacers are zero. A fixed `spacer` is a gap
+of `length` design units, useful where neighbouring gaps differ. The stack reports its content size when `frame` is omitted;
 a declared frame fixes the container size and `crossAlign` aligns children
 inside it. Layout runs at render pixel size, not in design units, because
 CoreText advances are not linear in point size.
@@ -399,6 +415,9 @@ nodes.
 - `size`: design units, 1..512.
 - `weight`: `ultraLight`, `light`, `regular`, `medium`, `semibold`, `bold`,
   `heavy`, `black`.
+- `family` and `weight` may be expressions, typically `=fontParam` for a
+  `font` param and an `enum` param of weights. An empty family resolves to
+  `system`.
 - Missing families resolve to `system`; the Inspector SHOULD warn.
 
 ### 7.4 Repeat
@@ -490,7 +509,7 @@ call         := IDENT "(" [ expr ( "," expr )* ] ")"
 | `alpha(color, a)` | color |
 | `signal(path)` | current value for a path in section 5; null when unavailable |
 | `series(path, windowSeconds, samples)` | series for an `activity.*` path; window relative to the playhead |
-| `metric(id, unit?)` | host-formatted record `{ value, unit, label, shortLabel, icon }`; see 5.4 |
+| `metric(id, unit...)` | host-formatted record `{ value, unit, label, shortLabel, icon }`; see 5.4 |
 | `width`, `height` | component design size (constants) |
 | `pi` | 3.141592653589793 |
 
@@ -538,7 +557,7 @@ params; the control is hidden when falsey).
 | `number` | `min`, `max` (both required), `step?`, `unit?`, `style?` (`slider` default, `field`, `stepper`) | Dense slider with editable value, or field/stepper |
 | `bool` | — | Toggle row |
 | `color` | — | Color well with hex entry and opacity |
-| `enum` | `options` (2..16 `{ "value": string, "label": localized }`) | Segmented control for ≤4 options, menu otherwise |
+| `enum` | `options` (2..32 `{ "value": string, "label": localized }`) | Segmented control for ≤4 options, menu otherwise |
 | `string` | `maxLength` (default 64, max 512) | Text field |
 | `font` | — | Host font picker |
 | `metric` | `signals` (allowed paths from 5.1), `series` (bool, allow series selection) | Metric picker constrained to the list |

@@ -72,10 +72,10 @@ struct OverlayComponentActivityData: OverlayComponentDataProviding {
         }
     }
 
-    func metric(id: String, unit: String?) -> OverlayComponentValue {
+    func metric(id: String, units: [String]) -> OverlayComponentValue {
         OverlayComponentMetricCatalog.record(
             id: id,
-            unit: unit,
+            units: units,
             activity: activity,
             elapsedTime: activity.componentElapsedTime(elapsedTime)
         )

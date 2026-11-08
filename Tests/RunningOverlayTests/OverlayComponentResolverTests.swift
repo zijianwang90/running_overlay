@@ -378,4 +378,86 @@ struct OverlayComponentResolverTests {
         )
         #expect(withoutBackground.contentLayout?.paddingX == 0)
     }
+
+    @Test func invalidEnumExpressionsFallBackWithDiagnostics() throws {
+        let json = """
+        {
+          "spec": "ros.component/0.1",
+          "id": "community.test.enum-expr",
+          "version": "1.0.0",
+          "name": "Enum Expressions",
+          "license": "MIT",
+          "size": [100, 100],
+          "params": [
+            { "id": "dir", "type": "string", "label": "Direction", "default": "diagonal" },
+            { "id": "weight", "type": "string", "label": "Weight", "default": "heavy" }
+          ],
+          "nodes": [
+            {
+              "type": "stack", "direction": "=dir", "crossAlign": "=dir",
+              "children": [
+                { "type": "spacer", "length": -3 },
+                {
+                  "type": "text", "text": "A", "alignSelf": "=dir",
+                  "font": { "family": "=\\"\\"", "size": 12, "weight": "=weight" }, "color": "#FFFFFF"
+                }
+              ]
+            }
+          ]
+        }
+        """
+        let package = try OverlayComponentLoader.load(data: try #require(json.data(using: .utf8)))
+        let resolver = OverlayComponentResolver(definition: package.definition)
+        let resolved = resolver.resolve(parameters: [:], data: OverlayComponentStubData())
+        guard case .stack(_, let direction, _, let crossAlign, let children)? = resolved.nodes.first else {
+            Issue.record("expected stack")
+            return
+        }
+        #expect(direction == .horizontal)
+        #expect(crossAlign == .start)
+        #expect(children[0].node == .spacer(length: 0))
+        #expect(children[1].alignSelf == .start)
+        guard case .text(_, _, let font, _, _, _, _, _, _, _) = children[1].node else {
+            Issue.record("expected text")
+            return
+        }
+        #expect(font.family == "system")
+        #expect(font.weight == .heavy)
+        #expect(resolved.diagnostics.filter { $0.contains("not a valid value") }.count == 3)
+
+        let invalidWeight = resolver.resolve(parameters: ["weight": .string("wide")], data: OverlayComponentStubData())
+        #expect(invalidWeight.diagnostics.contains { $0.contains("font weight 'wide'") })
+    }
+
+    @Test func everyNumericPresetResolvesWithoutDiagnostics() throws {
+        // No samples: every metric formats its placeholder, which still has to
+        // resolve cleanly (the icon comes from the metric, not the data).
+        let emptyActivity = OverlayComponentActivityData(
+            activity: ActivityTimeline(
+                startDate: Date(timeIntervalSince1970: 0),
+                duration: 0,
+                distanceMeters: 0,
+                records: [],
+                laps: []
+            ),
+            elapsedTime: 0,
+            zoneSnapshot: nil,
+            canvasSize: CGSize(width: 1280, height: 720),
+            elementScale: 1
+        )
+        for item in OverlayComponentLibraryItem.numericPresets {
+            let data = try #require(OverlayComponentLibrary.data(for: item))
+            let package = try OverlayComponentLoader.load(data: data)
+            let parameters = item.parameters.mapValues { value -> OverlayComponentValue in
+                if case .string(let string) = value { return .string(string) }
+                return .null
+            }
+            for extra in [[:], ["showLabel": OverlayComponentValue.boolean(true), "labelPosition": .string("trailing")]] {
+                let resolved = OverlayComponentResolver(definition: package.definition)
+                    .resolve(parameters: parameters.merging(extra) { $1 }, data: emptyActivity)
+                #expect(resolved.diagnostics.isEmpty, "\(item.id): \(resolved.diagnostics)")
+                #expect(!resolved.nodes.isEmpty, "\(item.id)")
+            }
+        }
+    }
 }

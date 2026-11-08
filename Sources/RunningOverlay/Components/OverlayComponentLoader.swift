@@ -1,7 +1,7 @@
 import CoreFoundation
 import Foundation
 
-enum OverlayJSONValue: Equatable {
+enum OverlayJSONValue: Equatable, Sendable {
     case object([String: OverlayJSONValue])
     case array([OverlayJSONValue])
     case string(String)
@@ -505,8 +505,8 @@ final class OverlayComponentParser {
                 error("\(path).options", "options are required")
                 return nil
             }
-            if !(2...16).contains(rawOptions.count) {
-                error("\(path).options", "must contain 2...16 options")
+            if !(2...32).contains(rawOptions.count) {
+                error("\(path).options", "must contain 2...32 options")
             }
             var options: [OverlayComponentParamOption] = []
             var seen: Set<String> = []
@@ -743,6 +743,7 @@ final class OverlayComponentParser {
         case "text": typeKeys = ["text", "font", "color", "align", "verticalAlign", "maxWidth", "lineHeight", "tracking"]
         case "image": typeKeys = ["asset", "fit"]
         case "symbol": typeKeys = ["name", "color", "weight"]
+        case "spacer": typeKeys = ["length"]
         case "gradientRect": typeKeys = ["stops", "from", "to", "radius"]
         case "sparkline": typeKeys = ["series", "stroke", "lineWidth", "fill", "smoothing"]
         case "progressBar": typeKeys = ["value", "trackColor", "fillColor", "radius"]
@@ -770,14 +771,14 @@ final class OverlayComponentParser {
         let frame = parseFrame(object["frame"], at: "\(path).frame", required: frameRequired.contains(type))
         let condition = object["if"].flatMap { expression($0, at: "\(path).if") }
         let opacity = object["opacity"].flatMap { numberSource($0, at: "\(path).opacity") }
-        var alignSelf: OverlayComponentCrossAlignment?
+        var alignSelf: OverlayComponentStringSource?
         if object["alignSelf"] != nil {
             if insideStack {
-                alignSelf = rawEnumValue(
+                alignSelf = enumSource(
                     object,
                     "alignSelf",
                     at: "\(path).alignSelf",
-                    default: OverlayComponentCrossAlignment.start
+                    as: OverlayComponentCrossAlignment.self
                 )
             } else {
                 error("\(path).alignSelf", "alignSelf is only valid on a stack child")
@@ -824,20 +825,20 @@ final class OverlayComponentParser {
                 )
             }
             kind = .stack(
-                direction: rawEnumValue(
+                direction: enumSource(
                     object,
                     "direction",
                     at: "\(path).direction",
-                    default: OverlayComponentStackDirection.horizontal
-                ),
+                    as: OverlayComponentStackDirection.self
+                ) ?? .literal(OverlayComponentStackDirection.horizontal.rawValue),
                 spacing: object["spacing"].flatMap { numberSource($0, at: "\(path).spacing") }
                     ?? .literal(0),
-                crossAlign: rawEnumValue(
+                crossAlign: enumSource(
                     object,
                     "crossAlign",
                     at: "\(path).crossAlign",
-                    default: OverlayComponentCrossAlignment.start
-                ),
+                    as: OverlayComponentCrossAlignment.self
+                ) ?? .literal(OverlayComponentCrossAlignment.start.rawValue),
                 children: children
             )
 
@@ -974,6 +975,15 @@ final class OverlayComponentParser {
                     default: OverlayComponentImageFit.contain
                 )
             )
+
+        case "spacer":
+            if !insideStack {
+                error(path, "spacer is only valid as a stack child")
+            }
+            if object["frame"] != nil {
+                error("\(path).frame", "spacer takes a length, not a frame")
+            }
+            kind = .spacer(length: object["length"].flatMap { numberSource($0, at: "\(path).length") })
 
         case "symbol":
             guard let rawName = object["name"],
@@ -1156,7 +1166,7 @@ final class OverlayComponentParser {
     /// shapes with explicit geometry never do, everything else needs a frame.
     private func isBoxed(_ node: OverlayComponentNode) -> Bool {
         switch node.kind {
-        case .text, .stack:
+        case .text, .stack, .spacer:
             true
         case .circle, .line, .polyline, .path:
             false
@@ -1175,18 +1185,28 @@ final class OverlayComponentParser {
             return nil
         }
         checkUnknownKeys(object, allowed: ["family", "size", "weight"], at: path)
-        guard let family = string(object, "family", at: "\(path).family"),
-              !family.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+        var weight = OverlayComponentStringSource.literal(OverlayComponentFontWeight.regular.rawValue)
+        if let rawWeight = object["weight"] {
+            if let source = stringSource(rawWeight, at: "\(path).weight") {
+                if case .literal(let literal) = source,
+                   OverlayComponentFontWeight(rawValue: literal) == nil {
+                    error("\(path).weight", "unknown value '\(literal)'")
+                } else {
+                    weight = source
+                }
+            }
+        }
+        guard let rawFamily = object["family"],
+              let family = stringSource(rawFamily, at: "\(path).family"),
               let size = object["size"].flatMap({ numberSource($0, at: "\(path).size") }) else {
             error(path, "font requires family and size")
             return nil
         }
-        let weight = rawEnumValue(
-            object,
-            "weight",
-            at: "\(path).weight",
-            default: OverlayComponentFontWeight.regular
-        )
+        if case .literal(let literal) = family,
+           literal.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            error("\(path).family", "font family must not be empty")
+            return nil
+        }
         return OverlayComponentFont(family: family, size: size, weight: weight)
     }
 
@@ -1356,14 +1376,25 @@ final class OverlayComponentParser {
         case .call(let name, let arguments):
             arguments.forEach { validateMetricCalls(in: $0, at: path) }
             guard name == "metric" else { return }
-            if case .literal(.string(let id))? = arguments.first {
-                if OverlayComponentMetricCatalog.metrics[id] == nil {
-                    error(path, "unknown metric '\(id)'")
-                } else if arguments.count > 1,
-                          case .literal(.string(let unit)) = arguments[1],
-                          !OverlayComponentMetricCatalog.units(for: id).contains(unit) {
-                    error(path, "metric '\(id)' does not support unit '\(unit)'")
+            var literalUnits: [String] = []
+            var allUnitsLiteral = true
+            for argument in arguments.dropFirst() {
+                guard case .literal(.string(let unit)) = argument else {
+                    allUnitsLiteral = false
+                    continue
                 }
+                if OverlayComponentMetricCatalog.allUnits.contains(unit) {
+                    literalUnits.append(unit)
+                } else {
+                    error(path, "unknown metric unit '\(unit)'")
+                }
+            }
+            guard case .literal(.string(let id))? = arguments.first else { return }
+            if OverlayComponentMetricCatalog.metrics[id] == nil {
+                error(path, "unknown metric '\(id)'")
+            } else if allUnitsLiteral, !literalUnits.isEmpty,
+                      Set(literalUnits).isDisjoint(with: OverlayComponentMetricCatalog.units(for: id)) {
+                error(path, "metric '\(id)' does not support unit '\(literalUnits.joined(separator: "', '"))'")
             }
         }
     }
@@ -1525,6 +1556,23 @@ final class OverlayComponentParser {
             return fallback
         }
         return parsed
+    }
+
+    /// An enum-valued field that also accepts an expression. Literals must
+    /// name a case; expressions are checked when resolved.
+    private func enumSource<T: RawRepresentable>(
+        _ object: [String: OverlayJSONValue],
+        _ key: String,
+        at path: String,
+        as type: T.Type
+    ) -> OverlayComponentStringSource? where T.RawValue == String {
+        guard let value = object[key] else { return nil }
+        guard let source = stringSource(value, at: path) else { return nil }
+        if case .literal(let literal) = source, T(rawValue: literal) == nil {
+            error(path, "unknown value '\(literal)'")
+            return nil
+        }
+        return source
     }
 
     private func matches(_ value: String, _ pattern: String) -> Bool {

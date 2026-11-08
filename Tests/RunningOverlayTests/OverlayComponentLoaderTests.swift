@@ -164,8 +164,8 @@ struct OverlayComponentLoaderTests {
             Issue.record("expected stack node")
             return
         }
-        #expect(direction == .vertical)
-        #expect(crossAlign == .center)
+        #expect(direction == .literal("vertical"))
+        #expect(crossAlign == .literal("center"))
         #expect(children.count == 2)
         #expect(children.first?.frame == nil)
         #expect(children.last?.frame != nil)
@@ -333,7 +333,7 @@ struct OverlayComponentLoaderTests {
             Issue.record("expected stack node")
             return
         }
-        #expect(children.first?.alignSelf == .end)
+        #expect(children.first?.alignSelf == .literal("end"))
 
         let diagnostics = errors(from: document(nodes: """
             { "type": "rect", "frame": [0, 0, 10, 10], "fill": "#FFFFFF", "alignSelf": "end" }
@@ -424,5 +424,72 @@ struct OverlayComponentLoaderTests {
             """))
         #expect(diagnostics.contains { $0.path == "$.nodes[0].text" && $0.message.contains("speed") })
         #expect(diagnostics.contains { $0.path == "$.nodes[1].text" && $0.message.contains("paceImperial") })
+    }
+
+    @Test func spacerIsOnlyValidInsideAStackAndTakesNoFrame() throws {
+        let diagnostics = errors(from: document(nodes: """
+            { "type": "spacer" },
+            { "type": "stack", "children": [ { "type": "spacer", "frame": [0, 0, 4, 4] } ] }
+            """))
+        #expect(diagnostics.contains { $0.path == "$.nodes[0]" })
+        #expect(diagnostics.contains { $0.path == "$.nodes[1].children[0].frame" })
+
+        let package = try OverlayComponentLoader.load(data: document(nodes: """
+            { "type": "stack", "children": [ { "type": "spacer", "length": 6 }, { "type": "spacer" } ] }
+            """))
+        guard case .stack(_, _, _, let children)? = package.definition.nodes.first?.kind else {
+            Issue.record("expected stack")
+            return
+        }
+        #expect(children.map(\.kind) == [.spacer(length: .literal(6)), .spacer(length: nil)])
+    }
+
+    @Test func enumAndFontFieldsAcceptExpressionsAndValidateLiterals() throws {
+        let package = try OverlayComponentLoader.load(data: document(nodes: """
+            {
+              "type": "stack", "direction": "=\\"vertical\\"", "crossAlign": "=\\"stretch\\"",
+              "children": [
+                {
+                  "type": "text", "text": "A", "alignSelf": "=\\"end\\"",
+                  "font": { "family": "=\\"Avenir Next\\"", "size": 12, "weight": "=\\"bold\\"" },
+                  "color": "#FFFFFF"
+                }
+              ]
+            }
+            """))
+        #expect(package.definition.nodes.count == 1)
+
+        let diagnostics = errors(from: document(nodes: """
+            {
+              "type": "stack", "direction": "diagonal", "crossAlign": "middle",
+              "children": [
+                {
+                  "type": "text", "text": "A", "alignSelf": "left",
+                  "font": { "family": "", "size": 12, "weight": "extraBold" }, "color": "#FFFFFF"
+                }
+              ]
+            }
+            """))
+        #expect(diagnostics.contains { $0.path == "$.nodes[0].direction" })
+        #expect(diagnostics.contains { $0.path == "$.nodes[0].crossAlign" })
+        #expect(diagnostics.contains { $0.path == "$.nodes[0].children[0].alignSelf" })
+        #expect(diagnostics.contains { $0.path.hasPrefix("$.nodes[0].children[0].font") })
+        #expect(diagnostics.contains { $0.path == "$.nodes[0].children[0].font.weight" })
+    }
+
+    @Test func bundledNumericDefinitionLoadsWithAPresetPerMetric() throws {
+        let presets = OverlayComponentLibraryItem.numericPresets
+        #expect(presets.count == OverlayComponentMetricCatalog.metrics.count)
+        #expect(Set(presets.map(\.id)).count == presets.count)
+        let item = try #require(presets.first)
+        let data = try #require(OverlayComponentLibrary.data(for: item))
+        let package = try OverlayComponentLoader.load(data: data)
+        #expect(package.definition.id == "studio.numeric")
+        #expect(package.definition.contentLayout != nil)
+        guard case .enumeration(let options)? = package.definition.parameter(named: "metricId")?.kind else {
+            Issue.record("expected metric enum")
+            return
+        }
+        #expect(Set(options.map(\.value)) == Set(OverlayComponentMetricCatalog.metrics.keys))
     }
 }

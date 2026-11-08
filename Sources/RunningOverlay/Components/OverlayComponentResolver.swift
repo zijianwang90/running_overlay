@@ -120,6 +120,7 @@ indirect enum OverlayComponentResolvedNode: Equatable {
         asset: String,
         fit: OverlayComponentImageFit
     )
+    case spacer(length: Double?)
     case symbol(
         frame: CGRect,
         name: String,
@@ -325,10 +326,34 @@ struct OverlayComponentResolver {
                 context: &context,
                 diagnostics: &diagnostics
             ) {
-                result.append(OverlayComponentResolvedStackChild(node: resolved, alignSelf: node.alignSelf))
+                let alignSelf = node.alignSelf.map {
+                    resolveEnum(
+                        $0,
+                        default: OverlayComponentCrossAlignment.start,
+                        path: "\(path)[\(index)].alignSelf",
+                        context: context,
+                        diagnostics: &diagnostics
+                    )
+                }
+                result.append(OverlayComponentResolvedStackChild(node: resolved, alignSelf: alignSelf))
             }
         }
         return result
+    }
+
+    private func resolveEnum<T: RawRepresentable>(
+        _ source: OverlayComponentStringSource,
+        default fallback: T,
+        path: String,
+        context: OverlayComponentEvaluationContext,
+        diagnostics: inout [String]
+    ) -> T where T.RawValue == String {
+        let raw = source.evaluate(in: context)
+        guard let value = T(rawValue: raw) else {
+            diagnostics.append("\(path): '\(raw)' is not a valid value; using '\(fallback.rawValue)'")
+            return fallback
+        }
+        return value
     }
 
     private func resolveNode(
@@ -393,9 +418,21 @@ struct OverlayComponentResolver {
             }
             resolved = .stack(
                 frame: stackFrame,
-                direction: direction,
+                direction: resolveEnum(
+                    direction,
+                    default: OverlayComponentStackDirection.horizontal,
+                    path: "\(path).direction",
+                    context: context,
+                    diagnostics: &diagnostics
+                ),
                 spacing: max(number(spacing, default: 0), 0),
-                crossAlign: crossAlign,
+                crossAlign: resolveEnum(
+                    crossAlign,
+                    default: OverlayComponentCrossAlignment.start,
+                    path: "\(path).crossAlign",
+                    context: context,
+                    diagnostics: &diagnostics
+                ),
                 children: resolveStackChildren(
                     children,
                     path: "\(path).children",
@@ -508,13 +545,20 @@ struct OverlayComponentResolver {
                 diagnostics.append("\(path): text font size did not resolve")
                 return nil
             }
+            let family = font.family.evaluate(in: context)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let weightName = font.weight.evaluate(in: context)
+            let weight = OverlayComponentFontWeight(rawValue: weightName) ?? {
+                diagnostics.append("\(path): font weight '\(weightName)' is invalid; using regular")
+                return .regular
+            }()
             resolved = .text(
                 frame: resolvedFrame ?? .zero,
                 text: text.evaluate(in: context),
                 font: OverlayComponentResolvedFont(
-                    family: font.family,
+                    family: family.isEmpty ? "system" : family,
                     size: size,
-                    weight: font.weight
+                    weight: weight
                 ),
                 color: resolvedColor,
                 align: align,
@@ -528,6 +572,9 @@ struct OverlayComponentResolver {
         case .image(let asset, let fit):
             guard let rect = frame() else { return nil }
             resolved = .image(frame: rect, asset: asset, fit: fit)
+
+        case .spacer(let length):
+            resolved = .spacer(length: length.map { max(number($0, default: 0), 0) })
 
         case .symbol(let name, let symbolColor, let weight):
             guard let rect = frame() else { return nil }

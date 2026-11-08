@@ -295,7 +295,7 @@ struct OverlayComponentIntegrationTests {
     @MainActor
     @Test func duplicatingBundledComponentEmbedsDefinition() throws {
         let project = ProjectDocument()
-        let item = try #require(OverlayComponentLibraryItem.all.first)
+        let item = try #require(OverlayComponentLibraryItem.all.first { $0.id == "studio.builtin.heart-rate-pill" })
         let id = try #require(project.addComponentFromLibrary(item))
         let originalDigest = project.selectedOverlay(id)?.component?.reference.digest
 
@@ -315,7 +315,7 @@ struct OverlayComponentIntegrationTests {
     @MainActor
     @Test func numberParametersClampAndQuantizeWithOneUndoPoint() throws {
         let project = ProjectDocument()
-        let item = try #require(OverlayComponentLibraryItem.all.first)
+        let item = try #require(OverlayComponentLibraryItem.all.first { $0.id == "studio.builtin.heart-rate-pill" })
         let id = try #require(project.addComponentFromLibrary(item))
         // hr-pill radius: 0...36, step 1.
         project.setComponentParameter(id, parameterID: "radius", value: .number(100))
@@ -333,7 +333,7 @@ struct OverlayComponentIntegrationTests {
     @MainActor
     @Test func continuousParameterEditsShareOneUndoTransaction() throws {
         let project = ProjectDocument()
-        let item = try #require(OverlayComponentLibraryItem.all.first)
+        let item = try #require(OverlayComponentLibraryItem.all.first { $0.id == "studio.builtin.heart-rate-pill" })
         let id = try #require(project.addComponentFromLibrary(item))
 
         project.setComponentParameter(id, parameterID: "radius", value: .number(10), continuous: true)
@@ -348,7 +348,7 @@ struct OverlayComponentIntegrationTests {
     @MainActor
     @Test func invalidParameterValuesAreIgnored() throws {
         let project = ProjectDocument()
-        let item = try #require(OverlayComponentLibraryItem.all.first)
+        let item = try #require(OverlayComponentLibraryItem.all.first { $0.id == "studio.builtin.heart-rate-pill" })
         let id = try #require(project.addComponentFromLibrary(item))
 
         project.setComponentParameter(id, parameterID: "showTrend", value: .number(1))
@@ -367,7 +367,7 @@ struct OverlayComponentIntegrationTests {
     @MainActor
     @Test func colorParametersStoreCanonicalHex() throws {
         let project = ProjectDocument()
-        let item = try #require(OverlayComponentLibraryItem.all.first)
+        let item = try #require(OverlayComponentLibraryItem.all.first { $0.id == "studio.builtin.heart-rate-pill" })
         let id = try #require(project.addComponentFromLibrary(item))
 
         project.setComponentParameter(id, parameterID: "accent", value: .string("#ff0000"))
@@ -381,7 +381,7 @@ struct OverlayComponentIntegrationTests {
     @MainActor
     @Test func booleanParametersPersistAsBool() throws {
         let project = ProjectDocument()
-        let item = try #require(OverlayComponentLibraryItem.all.first)
+        let item = try #require(OverlayComponentLibraryItem.all.first { $0.id == "studio.builtin.heart-rate-pill" })
         let id = try #require(project.addComponentFromLibrary(item))
 
         project.setComponentParameter(id, parameterID: "showTrend", value: .boolean(false))
@@ -573,7 +573,7 @@ struct OverlayComponentIntegrationTests {
     @MainActor
     @Test func bundledComponentsStayOutOfProjectCatalog() throws {
         let project = ProjectDocument()
-        let item = try #require(OverlayComponentLibraryItem.all.first)
+        let item = try #require(OverlayComponentLibraryItem.all.first { $0.id == "studio.builtin.heart-rate-pill" })
         _ = try #require(project.addComponentFromLibrary(item))
         #expect(project.projectComponentEntries.isEmpty)
     }
@@ -619,7 +619,7 @@ struct OverlayComponentIntegrationTests {
     @MainActor
     @Test func duplicatingComponentOverlayKeepsItsPayload() throws {
         let project = ProjectDocument()
-        let item = try #require(OverlayComponentLibraryItem.all.first)
+        let item = try #require(OverlayComponentLibraryItem.all.first { $0.id == "studio.builtin.heart-rate-pill" })
         let id = try #require(project.addComponentFromLibrary(item))
         project.setComponentParameter(id, parameterID: "radius", value: .number(12))
         let original = try #require(project.overlayLayout.elements.first { $0.id == id })
@@ -1094,6 +1094,81 @@ struct OverlayComponentIntegrationTests {
         let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
         #expect(image.width == 100)
         #expect(image.height == 60)
+    }
+
+    /// A stretched row takes the vertical stack's width and its flexible
+    /// spacer pushes the last child to the trailing edge, also when the row
+    /// carries a node opacity layer.
+    @Test(arguments: [false, true])
+    func flexibleSpacerDistributesStretchedRowWidth(withOpacity: Bool) throws {
+        let opacity = withOpacity ? #", "opacity": 0.5"# : ""
+        let json = """
+        {
+          "spec": "ros.component/0.1",
+          "id": "community.test.flex",
+          "version": "1.0.0",
+          "name": "Flex",
+          "license": "MIT",
+          "size": [300, 100],
+          "nodes": [
+            {
+              "type": "stack", "direction": "vertical",
+              "children": [
+                { "type": "rect", "frame": [0, 0, 200, 10], "fill": "#00FF00" },
+                {
+                  "type": "stack", "direction": "horizontal", "alignSelf": "stretch"\(opacity),
+                  "children": [
+                    { "type": "rect", "frame": [0, 0, 10, 10], "fill": "#FF0000" },
+                    { "type": "spacer" },
+                    { "type": "spacer", "length": 4 },
+                    { "type": "rect", "frame": [0, 0, 10, 10], "fill": "#0000FF" }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+        """
+        let reference = try OverlayComponentReference(definitionData: Data(json.utf8), source: .imported)
+        var style = OverlayStyle.default
+        style.shadowEnabled = false
+        style.glowEnabled = false
+        let element = OverlayElement(
+            type: .component,
+            position: .zero,
+            scale: 1,
+            style: style,
+            component: OverlayComponentInstance(reference: reference)
+        )
+        let size = CGSize(width: 1280, height: 720)
+        let renderer = try #require(SkiaEasyRunRenderer(size: size))
+        let (pixels, rowBytes) = try #require(renderer.render(
+            layout: OverlayLayout(elements: [element]),
+            activity: makeTimeline(),
+            elapsedTime: 0
+        ))
+
+        let left = pixel(pixels, rowBytes: rowBytes, x: 5, y: 15)
+        #expect(left.r > 100 && left.b < 20)
+        let right = pixel(pixels, rowBytes: rowBytes, x: 195, y: 15)
+        #expect(right.b > 100 && right.r < 20)
+        let gap = pixel(pixels, rowBytes: rowBytes, x: 187, y: 15)
+        #expect(gap.a == 0)
+        let beyond = pixel(pixels, rowBytes: rowBytes, x: 205, y: 15)
+        #expect(beyond.a == 0)
+    }
+
+    @MainActor
+    @Test func addingNumericPresetSeedsItsMetric() throws {
+        let project = ProjectDocument()
+        let item = try #require(
+            OverlayComponentLibraryItem.numericPresets.first { $0.id == "studio.numeric#pace" }
+        )
+        let id = try #require(project.addComponentFromLibrary(item))
+        let element = try #require(project.overlayLayout.elements.first { $0.id == id })
+        #expect(element.component?.parameters["metricId"] == .string("pace"))
+        #expect(element.component?.reference.source == .bundled)
+        #expect(element.component?.reference.id == "studio.numeric")
     }
     #endif
 }

@@ -417,6 +417,9 @@ enum OverlayComponentSkiaRenderer {
                 opacity: opacity
             )
 
+        case .spacer:
+            return
+
         case let .symbol(frame, name, color, weight):
             // Square glyph box centered in the frame; the point size follows
             // the box edge, matching native numeric overlay icons.
@@ -569,7 +572,21 @@ enum OverlayComponentSkiaRenderer {
     /// result drifts from measuring at the final pixel size.
     private struct StackLayout {
         var bounds: CGRect
-        var placements: [(node: OverlayComponentResolvedNode, origin: CGPoint)]
+        var placements: [StackPlacement]
+    }
+
+    private struct StackPlacement {
+        var node: OverlayComponentResolvedNode
+        var origin: CGPoint
+        /// Cross-axis extent imposed on a stretched child stack, in pixels.
+        var proposal: StackProposal?
+    }
+
+    /// Pixel extents a parent imposes on a stretched stack. A `nil` axis keeps
+    /// the stack's natural size; a proposal never shrinks a stack.
+    private struct StackProposal {
+        var width: Double?
+        var height: Double?
     }
 
     private static func drawStack(
@@ -578,6 +595,7 @@ enum OverlayComponentSkiaRenderer {
         spacing: Double,
         crossAlign: OverlayComponentCrossAlignment,
         children: [OverlayComponentResolvedStackChild],
+        proposal: StackProposal? = nil,
         context: OpaquePointer,
         space: DrawSpace,
         opacity: Double,
@@ -589,6 +607,7 @@ enum OverlayComponentSkiaRenderer {
             spacing: spacing,
             crossAlign: crossAlign,
             children: children,
+            proposal: proposal,
             space: space
         )
         for placement in layout.placements {
@@ -598,13 +617,66 @@ enum OverlayComponentSkiaRenderer {
                 x: layout.bounds.minX + placement.origin.x - origin.x * space.scale,
                 y: layout.bounds.minY + placement.origin.y - origin.y * space.scale
             )
-            draw(
+            drawStackChild(
                 placement.node,
+                proposal: placement.proposal,
                 context: context,
                 space: childSpace,
                 opacity: opacity,
                 assets: assets
             )
+        }
+    }
+
+    /// Draws a stack child, forwarding a stretch proposal to child stacks
+    /// (including ones wrapped in a node opacity layer).
+    private static func drawStackChild(
+        _ node: OverlayComponentResolvedNode,
+        proposal: StackProposal?,
+        context: OpaquePointer,
+        space: DrawSpace,
+        opacity: Double,
+        assets: [String: Data]
+    ) {
+        guard let proposal else {
+            draw(node, context: context, space: space, opacity: opacity, assets: assets)
+            return
+        }
+        switch node {
+        case let .stack(frame, direction, spacing, crossAlign, children):
+            drawStack(
+                frame: frame,
+                direction: direction,
+                spacing: spacing,
+                crossAlign: crossAlign,
+                children: children,
+                proposal: proposal,
+                context: context,
+                space: space,
+                opacity: opacity,
+                assets: assets
+            )
+        case let .opacity(nodeOpacity, content):
+            let rect = pixelBounds(content, proposal: proposal, space: space)
+            skb_begin_opacity_layer(
+                context,
+                Float(nodeOpacity),
+                Float(rect.minX),
+                Float(rect.minY),
+                Float(rect.width),
+                Float(rect.height)
+            )
+            drawStackChild(
+                content,
+                proposal: proposal,
+                context: context,
+                space: space,
+                opacity: opacity,
+                assets: assets
+            )
+            skb_restore(context)
+        default:
+            draw(node, context: context, space: space, opacity: opacity, assets: assets)
         }
     }
 
@@ -614,12 +686,22 @@ enum OverlayComponentSkiaRenderer {
         spacing: Double,
         crossAlign: OverlayComponentCrossAlignment,
         children: [OverlayComponentResolvedStackChild],
+        proposal: StackProposal? = nil,
         space: DrawSpace
     ) -> StackLayout {
+        let horizontal = direction == .horizontal
         let spacingPixels = spacing * space.scale
-        let sizes = children.map { intrinsicSize(of: $0.node, space: space) }
-        let mainSizes = sizes.map { direction == .horizontal ? $0.width : $0.height }
-        let crossSizes = sizes.map { direction == .horizontal ? $0.height : $0.width }
+        var flexibleCount = 0
+        let sizes: [CGSize] = children.map { child in
+            if case .spacer(let length) = child.node {
+                if length == nil { flexibleCount += 1 }
+                let main = (length ?? 0) * space.scale
+                return horizontal ? CGSize(width: main, height: 0) : CGSize(width: 0, height: main)
+            }
+            return intrinsicSize(of: child.node, space: space)
+        }
+        let mainSizes = sizes.map { horizontal ? $0.width : $0.height }
+        let crossSizes = sizes.map { horizontal ? $0.height : $0.width }
         let contentMain = mainSizes.reduce(0, +)
             + spacingPixels * Double(max(children.count - 1, 0))
         let contentCross = crossSizes.max() ?? 0
@@ -631,31 +713,46 @@ enum OverlayComponentSkiaRenderer {
                 height: frame.height * space.scale
             )
         } else {
-            containerSize = direction == .horizontal
+            let natural = horizontal
                 ? CGSize(width: contentMain, height: contentCross)
                 : CGSize(width: contentCross, height: contentMain)
+            containerSize = CGSize(
+                width: max(proposal?.width ?? natural.width, natural.width),
+                height: max(proposal?.height ?? natural.height, natural.height)
+            )
         }
-        let availableCross = direction == .horizontal
-            ? containerSize.height
-            : containerSize.width
-        var placements: [(OverlayComponentResolvedNode, CGPoint)] = []
+        let availableMain = horizontal ? containerSize.width : containerSize.height
+        let availableCross = horizontal ? containerSize.height : containerSize.width
+        let flexibleLength = flexibleCount > 0
+            ? max(availableMain - contentMain, 0) / Double(flexibleCount)
+            : 0
+        var placements: [StackPlacement] = []
         var cursor = 0.0
         for (index, child) in children.enumerated() {
-            let childMain = mainSizes[index]
+            var childMain = mainSizes[index]
+            if case .spacer(nil) = child.node {
+                childMain += flexibleLength
+            }
             let childCross = crossSizes[index]
+            let alignment = child.alignSelf ?? crossAlign
             let crossOffset: Double
-            switch child.alignSelf ?? crossAlign {
-            case .start:
+            switch alignment {
+            case .start, .stretch:
                 crossOffset = 0
             case .center:
                 crossOffset = (availableCross - childCross) / 2
             case .end:
                 crossOffset = availableCross - childCross
             }
-            let origin = direction == .horizontal
+            let childProposal: StackProposal? = alignment == .stretch
+                ? (horizontal
+                    ? StackProposal(width: nil, height: availableCross)
+                    : StackProposal(width: availableCross, height: nil))
+                : nil
+            let origin = horizontal
                 ? CGPoint(x: cursor, y: crossOffset)
                 : CGPoint(x: crossOffset, y: cursor)
-            placements.append((child.node, origin))
+            placements.append(StackPlacement(node: child.node, origin: origin, proposal: childProposal))
             cursor += childMain + spacingPixels
         }
         return StackLayout(
@@ -726,6 +823,7 @@ enum OverlayComponentSkiaRenderer {
         case let .text(frame, _, _, _, _, _, _, _, _, _): frame.origin
         case let .image(frame, _, _): frame.origin
         case let .symbol(frame, _, _, _): frame.origin
+        case .spacer: .zero
         case let .gradientRect(frame, _, _, _, _): frame.origin
         case let .sparkline(frame, _, _, _, _, _): frame.origin
         case let .progressBar(frame, _, _, _, _): frame.origin
@@ -735,6 +833,7 @@ enum OverlayComponentSkiaRenderer {
 
     private static func pixelBounds(
         _ node: OverlayComponentResolvedNode,
+        proposal: StackProposal? = nil,
         space: DrawSpace
     ) -> CGRect {
         switch node {
@@ -745,10 +844,11 @@ enum OverlayComponentSkiaRenderer {
                 spacing: spacing,
                 crossAlign: crossAlign,
                 children: children,
+                proposal: proposal,
                 space: space
             ).bounds
         case .opacity(_, let content):
-            return pixelBounds(content, space: space)
+            return pixelBounds(content, proposal: proposal, space: space)
         case let .text(frame, text, font, _, _, _, maxWidth, lineHeight, tracking, autoSize):
             guard autoSize else { return space.rect(frame) }
             let size = intrinsicTextSize(
@@ -1145,6 +1245,7 @@ enum OverlayComponentSkiaRenderer {
         case let .text(frame, _, _, _, _, _, _, _, _, _): frame
         case let .image(frame, _, _): frame
         case let .symbol(frame, _, _, _): frame
+        case .spacer: .zero
         case let .gradientRect(frame, _, _, _, _): frame
         case let .sparkline(frame, _, _, _, _, _): frame
         case let .progressBar(frame, _, _, _, _): frame

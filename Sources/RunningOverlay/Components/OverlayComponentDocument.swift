@@ -245,10 +245,12 @@ struct OverlayComponentFrame: Equatable {
     }
 }
 
+/// Family and weight accept expressions so `font` and enum params can drive
+/// them; literals are validated at load.
 struct OverlayComponentFont: Equatable {
-    var family: String
+    var family: OverlayComponentStringSource
     var size: OverlayComponentNumberSource
-    var weight: OverlayComponentFontWeight
+    var weight: OverlayComponentStringSource
 }
 
 enum OverlayComponentFontWeight: String, Equatable, CaseIterable {
@@ -283,6 +285,9 @@ enum OverlayComponentCrossAlignment: String, Equatable {
     case start
     case center
     case end
+    /// Start-aligned; a child stack is also sized to the container's cross
+    /// extent so its flexible spacers can distribute the extra length.
+    case stretch
 }
 
 enum OverlayComponentLineCap: String, Equatable {
@@ -339,16 +344,19 @@ struct OverlayComponentNode: Equatable {
     var condition: OverlayComponentExpression?
     var opacity: OverlayComponentNumberSource?
     var kind: OverlayComponentNodeKind
-    /// Cross-axis alignment override; only valid on a direct `stack` child.
-    var alignSelf: OverlayComponentCrossAlignment? = nil
+    /// Cross-axis alignment override (literal or expression naming an
+    /// `OverlayComponentCrossAlignment`); only valid on a direct `stack` child.
+    var alignSelf: OverlayComponentStringSource? = nil
 }
 
 enum OverlayComponentNodeKind: Equatable {
     case group(children: [OverlayComponentNode], clip: Bool, shadow: OverlayComponentShadow?)
+    /// `direction` and `crossAlign` are literals or expressions naming
+    /// `OverlayComponentStackDirection` / `OverlayComponentCrossAlignment`.
     case stack(
-        direction: OverlayComponentStackDirection,
+        direction: OverlayComponentStringSource,
         spacing: OverlayComponentNumberSource,
-        crossAlign: OverlayComponentCrossAlignment,
+        crossAlign: OverlayComponentStringSource,
         children: [OverlayComponentNode]
     )
     case rect(fill: OverlayComponentColorSource,
@@ -387,6 +395,9 @@ enum OverlayComponentNodeKind: Equatable {
               lineHeight: OverlayComponentNumberSource?,
               tracking: OverlayComponentNumberSource?)
     case image(asset: String, fit: OverlayComponentImageFit)
+    /// Fixed gap when `length` is set, otherwise flexible: flexible spacers
+    /// share a stack's leftover main-axis length. Only valid in a stack.
+    case spacer(length: OverlayComponentNumberSource?)
     case symbol(name: OverlayComponentStringSource,
                 color: OverlayComponentColorSource,
                 weight: OverlayComponentFontWeight)

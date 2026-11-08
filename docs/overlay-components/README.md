@@ -65,8 +65,11 @@ export.
 - Draw text, shapes, paths, images and gradients with the primitives already
   exposed by `skb_*`, including per-node letter tracking.
 - Stack text and other boxed nodes horizontally or vertically with auto-sized
-  text, so a unit can follow a value whose width changes, and override the
-  cross-axis alignment of a single child with `alignSelf`.
+  text, so a unit can follow a value whose width changes, override the
+  cross-axis alignment of a single child with `alignSelf`, stretch a child
+  stack across its parent and push items apart with flexible `spacer` nodes.
+- Drive fonts, stack direction and alignment from params through
+  expressions.
 - Size the whole component from its measured content (`"size": "content"`)
   with padding, a minimum size and a background that follows the content.
 - Draw system SF Symbols with the `symbol` node.
@@ -86,9 +89,9 @@ export.
 - Access the network, files, processes, keychain, or arbitrary clocks.
 - Compute intervals, zones, route projection or weather. Those stay in the
   host and are exposed as data.
-- Use general auto layout (wrapping, distribution, flexible sizing), SVG,
-  bundled fonts or nested `repeat`. Only one-dimensional stacks and
-  content-sized components are available.
+- Use general auto layout (wrapping, grid, proportional flex), SVG, bundled
+  fonts or nested `repeat`. Only one-dimensional stacks with spacers and
+  stretch, and content-sized components, are available.
 - Design arbitrary Inspector UI.
 
 ## Authoring Loop (Planned)
@@ -135,7 +138,7 @@ milestone, not the current app.
 | M5 | Port built-ins one by one with snapshot evidence | **In progress**, split below. Done before M5a: exact native/component parity harness, Decor Solid Color pilots, heart-rate value plus trailing unit in an auto-sized stack |
 | M5a | Layout primitives: `symbol`, `alignSelf`, content-sized components with padding, minimum size and background | **Implemented:** heart rate with icon and background matches native exactly at element scale 1, 1.5 and 2 (icon leading) and 1 and 2 (icon top, unit centered below, minimum width); measured bounds drive hit testing |
 | M5b | Metric data contract | **Implemented:** `metric(id, unit)` returns host-formatted value/unit/label/short label/icon for every numeric type except Custom Numeric, with every native display unit (including 12-hour clock and date formats); lap pace and running-dynamics signals. String parity with `OverlayValueFormatter` for all 21 metrics × units × sampled times. Deferred: localized labels (native labels are English), Custom Numeric, manual temperature fallback, a speed signal |
-| M5c | One generic `studio.numeric` definition with per-metric Overlay Pool presets | Pairwise pixel parity over icon/unit/label/background combinations and scales. Failure is a decision point for a native `textCluster` capability node |
+| M5c | One generic `studio.numeric` definition with per-metric Overlay Pool presets | **Implemented:** bundled `studio.numeric` (46 params) with 21 Pool presets under Components → Bundled; 13 pairwise cases over metric, icon/unit/label positions, alignments, colors, fonts, background, minimum size and element scale 1/1.5/2 match native exactly, so `textCluster` is not needed. Added `spacer`, `stretch`, and expression-driven enum and font fields. Native numeric tiles remain the default |
 | M5d | Legacy mapping: documented `OverlayStyle` → params conversion, used first by Pool add and bundled templates | Human review of project compatibility; automatic migration of saved projects is a separate decision |
 | M5e | Remove native numeric renderers | Depends on the M5d migration decision; separate PR with visual snapshot review |
 | M6 | Authoring guide + AI skill + example gallery, CLI fixtures | Community can author without reading Swift; can run in parallel with M5 |

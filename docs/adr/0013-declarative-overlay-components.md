@@ -56,10 +56,10 @@ Two alternatives were considered and rejected:
    nodes map one-to-one onto `skb_*` primitives. Capability nodes (for example
    `sparkline`, `progressBar`, `arc`) are implemented natively and added to the
    contract only through review. Layout is limited to a one-dimensional
-   `stack` with auto-sized text and per-child `alignSelf`, plus
-   content-sized components (`"size": "content"` with padding and a minimum
-   size); there is no general constraint solver, wrapping container or
-   distribution engine. System icons use a host-rendered `symbol` node. The
+   `stack` with auto-sized text, per-child `alignSelf`, cross-axis `stretch`
+   and fixed or flexible `spacer` nodes, plus content-sized components
+   (`"size": "content"` with padding and a minimum size); there is no general
+   constraint solver, wrapping container, grid or proportional flex. System icons use a host-rendered `symbol` node. The
    language has no loops beyond a bounded `repeat` node, no recursion, and no
    user-defined functions.
 4. **Inspector UI is generated from typed params, not designed by authors.**
@@ -74,8 +74,9 @@ Two alternatives were considered and rejected:
    and detail view are removed. Built-ins are composed from the same general
    nodes community authors use: numeric overlays use one generic definition
    built from `symbol`, `stack` and content sizing rather than a dedicated
-   numeric layout node. A native `textCluster` capability node is a fallback,
-   adopted only if the general composition cannot reach parity. Bundled definitions are read-only in the app;
+   numeric layout node. A native `textCluster` capability node was the
+   fallback if the general composition could not reach parity; the bundled
+   `studio.numeric` definition reached exact parity, so it is not adopted. Bundled definitions are read-only in the app;
    users may inspect them and duplicate one into an editable custom component,
    but cannot edit a bundled definition in place. Legacy element types remain
    readable for the foreseeable future; there is no flag-day migration.
