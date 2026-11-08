@@ -204,4 +204,46 @@ struct OverlayComponentDataTests {
         )
         #expect(data.signal(path: "structure.current") == .null)
     }
+
+    @Test func runningDynamicsSignalsUseFITUnits() {
+        let records = [0.0, 100].map { time in
+            ActivityRecord(
+                elapsedTime: time,
+                timestamp: start.addingTimeInterval(time),
+                distanceMeters: time * 3,
+                heartRate: 140,
+                paceSecondsPerKilometer: 300,
+                elevationMeters: 10,
+                cadence: 170,
+                powerWatts: 240,
+                calories: 0,
+                verticalOscillationMM: 84,
+                groundContactTimeMS: 240,
+                strideLengthM: 1.2,
+                groundContactBalance: 50.4
+            )
+        }
+        let activity = ActivityTimeline(
+            startDate: start,
+            duration: 100,
+            distanceMeters: 300,
+            records: records,
+            laps: []
+        )
+        let data = OverlayComponentActivityData(
+            activity: activity,
+            elapsedTime: 50,
+            zoneSnapshot: nil,
+            canvasSize: CGSize(width: 1280, height: 720),
+            elementScale: 1
+        )
+        #expect(data.signal(path: "activity.verticalOscillation") == .number(84))
+        #expect(data.signal(path: "activity.groundContactTime") == .number(240))
+        #expect(data.signal(path: "activity.strideLength") == .number(1.2))
+        #expect(data.signal(path: "activity.groundContactBalance") == .number(50.4))
+        #expect(abs((data.signal(path: "activity.verticalRatio").number ?? 0) - 7) < 0.000_001)
+        #expect(data.signal(path: "activity.lapPace") == .null)
+        let series = data.series(path: "activity.groundContactTime", window: .full, samples: 3)
+        #expect(series == .list([.number(240), .number(240), .number(240)]))
+    }
 }

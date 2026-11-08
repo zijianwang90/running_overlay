@@ -402,4 +402,27 @@ struct OverlayComponentLoaderTests {
         ))
         #expect(badMode.contains { $0.path == "$.size" })
     }
+
+    @Test func metricBuiltinValidatesLiteralIDsAndUnits() throws {
+        let valid = errors(from: document(nodes: """
+            {
+              "type": "text", "text": "=metric(\\"pace\\", \\"paceImperial\\").value",
+              "font": { "family": "system", "size": 12 }, "color": "#FFFFFF"
+            }
+            """))
+        #expect(valid.isEmpty)
+
+        let diagnostics = errors(from: document(nodes: """
+            {
+              "type": "text", "text": "=metric(\\"speed\\").value",
+              "font": { "family": "system", "size": 12 }, "color": "#FFFFFF"
+            },
+            {
+              "type": "text", "text": "=concat(metric(\\"distance\\", \\"paceImperial\\").unit)",
+              "font": { "family": "system", "size": 12 }, "color": "#FFFFFF"
+            }
+            """))
+        #expect(diagnostics.contains { $0.path == "$.nodes[0].text" && $0.message.contains("speed") })
+        #expect(diagnostics.contains { $0.path == "$.nodes[1].text" && $0.message.contains("paceImperial") })
+    }
 }

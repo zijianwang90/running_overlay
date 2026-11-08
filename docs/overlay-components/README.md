@@ -71,7 +71,11 @@ export.
   with padding, a minimum size and a background that follows the content.
 - Draw system SF Symbols with the `symbol` node.
 - Read a versioned, read-only view of activity signals, series, laps,
-  intervals, zones, route position and weather results.
+  intervals, zones, route position and weather results, including lap pace
+  and running dynamics.
+- Show any native numeric reading with host formatting through
+  `metric(id, unit)`, which returns the same value, unit and label text as the
+  native overlay.
 - Use three native capability nodes in v0.1: `sparkline`, `progressBar`, `arc`.
 - Expose typed params that become HIG-consistent Inspector rows.
 - Bundle PNG/JPEG assets with declared licensing.
@@ -130,7 +134,7 @@ milestone, not the current app.
 | M4 | `.rocomponent` import, embedded definitions, validation errors, CLI | **Implemented:** folder/ZIP/JSON import with asset embedding and defensive archive checks, My Components management and export, Skia image nodes, `--component-validate` and `--component-render` |
 | M5 | Port built-ins one by one with snapshot evidence | **In progress**, split below. Done before M5a: exact native/component parity harness, Decor Solid Color pilots, heart-rate value plus trailing unit in an auto-sized stack |
 | M5a | Layout primitives: `symbol`, `alignSelf`, content-sized components with padding, minimum size and background | **Implemented:** heart rate with icon and background matches native exactly at element scale 1, 1.5 and 2 (icon leading) and 1 and 2 (icon top, unit centered below, minimum width); measured bounds drive hit testing |
-| M5b | Metric data contract: running-dynamics and speed signals, unit conversion, 12-hour clock, host-provided localized metric label/unit/icon | String-level parity for every numeric type against `OverlayValueFormatter` |
+| M5b | Metric data contract | **Implemented:** `metric(id, unit)` returns host-formatted value/unit/label/short label/icon for every numeric type except Custom Numeric, with every native display unit (including 12-hour clock and date formats); lap pace and running-dynamics signals. String parity with `OverlayValueFormatter` for all 21 metrics × units × sampled times. Deferred: localized labels (native labels are English), Custom Numeric, manual temperature fallback, a speed signal |
 | M5c | One generic `studio.numeric` definition with per-metric Overlay Pool presets | Pairwise pixel parity over icon/unit/label/background combinations and scales. Failure is a decision point for a native `textCluster` capability node |
 | M5d | Legacy mapping: documented `OverlayStyle` → params conversion, used first by Pool add and bundled templates | Human review of project compatibility; automatic migration of saved projects is a separate decision |
 | M5e | Remove native numeric renderers | Depends on the M5d migration decision; separate PR with visual snapshot review |

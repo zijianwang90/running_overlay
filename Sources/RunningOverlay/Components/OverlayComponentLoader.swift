@@ -58,7 +58,9 @@ enum OverlayComponentSignalCatalog {
         "activity.heartRate", "activity.pace", "activity.avgPace",
         "activity.elevation", "activity.elevationGain", "activity.cadence",
         "activity.power", "activity.grade", "activity.temperature",
-        "activity.calories", "clock.realTime", "clock.date",
+        "activity.calories", "activity.lapPace", "activity.verticalOscillation",
+        "activity.groundContactTime", "activity.strideLength", "activity.verticalRatio",
+        "activity.groundContactBalance", "clock.realTime", "clock.date",
         "host.canvasWidth", "host.canvasHeight", "host.scale"
     ]
 
@@ -72,7 +74,9 @@ enum OverlayComponentSignalCatalog {
         "activity.heartRate", "activity.pace", "activity.avgPace",
         "activity.elevation", "activity.elevationGain", "activity.cadence",
         "activity.power", "activity.grade", "activity.temperature",
-        "activity.calories"
+        "activity.calories", "activity.lapPace", "activity.verticalOscillation",
+        "activity.groundContactTime", "activity.strideLength", "activity.verticalRatio",
+        "activity.groundContactBalance"
     ]
 
     static let listSignals: Set<String> = [
@@ -83,7 +87,7 @@ enum OverlayComponentSignalCatalog {
         "min", "max", "clamp", "abs", "round", "floor", "ceil", "lerp",
         "map", "sum", "avg", "count", "first", "last", "at", "coalesce",
         "exists", "format", "concat", "upper", "lower", "slice", "mix",
-        "alpha", "signal", "series"
+        "alpha", "signal", "series", "metric"
     ]
 }
 
@@ -1317,6 +1321,7 @@ final class OverlayComponentParser {
         }
         do {
             let parsed = try OverlayComponentExpression.parse(String(text.dropFirst()))
+            validateMetricCalls(in: parsed, at: path)
             if sizeBuiltinPath == nil,
                !parsed.referencedIdentifiers.isDisjoint(with: ["width", "height"]) {
                 sizeBuiltinPath = path
@@ -1325,6 +1330,41 @@ final class OverlayComponentParser {
         } catch {
             self.error(path, "invalid expression: \(error)")
             return nil
+        }
+    }
+
+    /// Literal `metric(id, unit)` arguments are checked against the catalog so
+    /// a typo fails validation instead of rendering nothing.
+    private func validateMetricCalls(in expression: OverlayComponentExpression, at path: String) {
+        switch expression {
+        case .literal, .variable:
+            return
+        case .member(let base, _):
+            validateMetricCalls(in: base, at: path)
+        case .index(let base, let index):
+            validateMetricCalls(in: base, at: path)
+            validateMetricCalls(in: index, at: path)
+        case .unary(_, let operand):
+            validateMetricCalls(in: operand, at: path)
+        case .binary(_, let left, let right):
+            validateMetricCalls(in: left, at: path)
+            validateMetricCalls(in: right, at: path)
+        case .conditional(let condition, let whenTrue, let whenFalse):
+            validateMetricCalls(in: condition, at: path)
+            validateMetricCalls(in: whenTrue, at: path)
+            validateMetricCalls(in: whenFalse, at: path)
+        case .call(let name, let arguments):
+            arguments.forEach { validateMetricCalls(in: $0, at: path) }
+            guard name == "metric" else { return }
+            if case .literal(.string(let id))? = arguments.first {
+                if OverlayComponentMetricCatalog.metrics[id] == nil {
+                    error(path, "unknown metric '\(id)'")
+                } else if arguments.count > 1,
+                          case .literal(.string(let unit)) = arguments[1],
+                          !OverlayComponentMetricCatalog.units(for: id).contains(unit) {
+                    error(path, "metric '\(id)' does not support unit '\(unit)'")
+                }
+            }
         }
     }
 

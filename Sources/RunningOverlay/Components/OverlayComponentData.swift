@@ -40,6 +40,9 @@ struct OverlayComponentActivityData: OverlayComponentDataProviding {
             return activity.temperature(at: time).map(OverlayComponentValue.number) ?? .null
         case "activity.calories":
             return activity.calories(at: time).map(OverlayComponentValue.number) ?? .null
+        case "activity.lapPace", "activity.verticalOscillation", "activity.groundContactTime",
+             "activity.strideLength", "activity.verticalRatio", "activity.groundContactBalance":
+            return runningSignal(path: path, at: time)
         case "clock.realTime":
             return .number(Self.secondsSinceMidnight(activity.startDate.addingTimeInterval(time)))
         case "clock.date":
@@ -67,6 +70,15 @@ struct OverlayComponentActivityData: OverlayComponentDataProviding {
         default:
             return .null
         }
+    }
+
+    func metric(id: String, unit: String?) -> OverlayComponentValue {
+        OverlayComponentMetricCatalog.record(
+            id: id,
+            unit: unit,
+            activity: activity,
+            elapsedTime: activity.componentElapsedTime(elapsedTime)
+        )
     }
 
     func series(
@@ -145,8 +157,24 @@ struct OverlayComponentActivityData: OverlayComponentDataProviding {
         case "activity.calories":
             return activity.calories(at: clamped).map(OverlayComponentValue.number) ?? .null
         default:
-            return .null
+            return runningSignal(path: path, at: clamped)
         }
+    }
+
+    /// Lap pace and running dynamics in their FIT units: seconds per
+    /// kilometer, millimeters, milliseconds, meters, percent, and percent left.
+    private func runningSignal(path: String, at time: TimeInterval) -> OverlayComponentValue {
+        let value: Double?
+        switch path {
+        case "activity.lapPace": value = activity.lapPace(at: time)
+        case "activity.verticalOscillation": value = activity.verticalOscillation(at: time)
+        case "activity.groundContactTime": value = activity.groundContactTime(at: time)
+        case "activity.strideLength": value = activity.strideLength(at: time)
+        case "activity.verticalRatio": value = activity.verticalRatio(at: time)
+        case "activity.groundContactBalance": value = activity.groundContactBalance(at: time)
+        default: value = nil
+        }
+        return value.map(OverlayComponentValue.number) ?? .null
     }
 
     private func heartRateZone(at time: TimeInterval) -> OverlayComponentValue {

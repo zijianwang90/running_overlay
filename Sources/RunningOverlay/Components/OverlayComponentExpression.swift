@@ -5,6 +5,12 @@ protocol OverlayComponentDataProviding {
     func signal(path: String) -> OverlayComponentValue
     func series(path: String, window: OverlayComponentSeriesWindow, samples: Int) -> OverlayComponentValue
     func list(path: String) -> OverlayComponentValue
+    /// Host-formatted metric record; see `OverlayComponentMetricCatalog`.
+    func metric(id: String, unit: String?) -> OverlayComponentValue
+}
+
+extension OverlayComponentDataProviding {
+    func metric(id: String, unit: String?) -> OverlayComponentValue { .null }
 }
 
 enum OverlayComponentSeriesWindow: Equatable {
@@ -345,6 +351,10 @@ indirect enum OverlayComponentExpression: Equatable {
         case "signal":
             guard let path = value(0).string else { return .null }
             return context.data?.signal(path: path) ?? .null
+
+        case "metric":
+            guard let id = value(0).string else { return .null }
+            return context.data?.metric(id: id, unit: value(1).string) ?? .null
 
         case "series":
             guard let path = value(0).string,

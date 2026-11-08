@@ -22,6 +22,7 @@
 		E1A32220E78CE9655EA6F149 /* OverlayComponentInstance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9224CF87C1208D489F242150 /* OverlayComponentInstance.swift */; };
 		7597051FCA14320559433E15 /* OverlayComponentLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D89B6252B1A173EECEE955B /* OverlayComponentLibrary.swift */; };
 		50299C586936E656D88EA424 /* OverlayComponentLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = E34B2B14F12E507E5D7D6AA9 /* OverlayComponentLoader.swift */; };
+		1ED0D49BE1B4979286EC1EF0 /* OverlayComponentMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B279D03C8AC164311E854AB /* OverlayComponentMetrics.swift */; };
 		F37BA8A8A6CDFAC7BF4DB956 /* OverlayComponentResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C35464BC659E14E10C78AA8 /* OverlayComponentResolver.swift */; };
 		14E3E31028624FF06DD1AC40 /* OverlayComponentValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = F96DF36D10990A86E386AC7A /* OverlayComponentValue.swift */; };
 		E8D8B2ED4D1412381D917843 /* OverlayExportModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2731A5ED488BF53C7B40BA18 /* OverlayExportModels.swift */; };
@@ -190,6 +191,7 @@
 		9224CF87C1208D489F242150 /* OverlayComponentInstance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentInstance.swift"; sourceTree = SOURCE_ROOT; };
 		2D89B6252B1A173EECEE955B /* OverlayComponentLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentLibrary.swift"; sourceTree = SOURCE_ROOT; };
 		E34B2B14F12E507E5D7D6AA9 /* OverlayComponentLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentLoader.swift"; sourceTree = SOURCE_ROOT; };
+		7B279D03C8AC164311E854AB /* OverlayComponentMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentMetrics.swift"; sourceTree = SOURCE_ROOT; };
 		5C35464BC659E14E10C78AA8 /* OverlayComponentResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentResolver.swift"; sourceTree = SOURCE_ROOT; };
 		F96DF36D10990A86E386AC7A /* OverlayComponentValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentValue.swift"; sourceTree = SOURCE_ROOT; };
 		2731A5ED488BF53C7B40BA18 /* OverlayExportModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Export/OverlayExportModels.swift"; sourceTree = SOURCE_ROOT; };
@@ -360,6 +362,7 @@
 			9224CF87C1208D489F242150 /* OverlayComponentInstance.swift */,
 			2D89B6252B1A173EECEE955B /* OverlayComponentLibrary.swift */,
 			E34B2B14F12E507E5D7D6AA9 /* OverlayComponentLoader.swift */,
+			7B279D03C8AC164311E854AB /* OverlayComponentMetrics.swift */,
 			5C35464BC659E14E10C78AA8 /* OverlayComponentResolver.swift */,
 			F96DF36D10990A86E386AC7A /* OverlayComponentValue.swift */,
 			2731A5ED488BF53C7B40BA18 /* OverlayExportModels.swift */,
@@ -562,6 +565,7 @@
 			E1A32220E78CE9655EA6F149 /* OverlayComponentInstance.swift in Sources */,
 			7597051FCA14320559433E15 /* OverlayComponentLibrary.swift in Sources */,
 			50299C586936E656D88EA424 /* OverlayComponentLoader.swift in Sources */,
+			1ED0D49BE1B4979286EC1EF0 /* OverlayComponentMetrics.swift in Sources */,
 			F37BA8A8A6CDFAC7BF4DB956 /* OverlayComponentResolver.swift in Sources */,
 			14E3E31028624FF06DD1AC40 /* OverlayComponentValue.swift in Sources */,
 			E8D8B2ED4D1412381D917843 /* OverlayExportModels.swift in Sources */,

@@ -47,7 +47,9 @@ Two alternatives were considered and rejected:
    read-only data contract: current signal values, bounded series, lap and
    interval structure, zone state, route geometry and weather results.
    Interval detection, zone resolution, route projection and weather fetching
-   stay in native Swift. Components never access the network, the file system,
+   stay in native Swift, and so does display formatting of numeric readings:
+   components receive host-formatted metric text rather than reimplementing
+   pace, duration, date and unit conversion rules. Components never access the network, the file system,
    the process environment, or any clock other than the playhead-derived
    values the host publishes.
 3. **A closed, pure expression language and a fixed node vocabulary.** Base

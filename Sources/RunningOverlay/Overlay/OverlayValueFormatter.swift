@@ -70,7 +70,9 @@ enum OverlayValueFormatter {
         return output
     }
 
-    private static func components(
+    /// Full formatter entry point. Declarative components reach it through
+    /// the `metric(id, unit)` builtin so they share native formatting exactly.
+    static func components(
         for type: OverlayElementType,
         unit unitOption: OverlayUnitOption,
         elevationDisplayMode: OverlayElevationDisplayMode = .current,

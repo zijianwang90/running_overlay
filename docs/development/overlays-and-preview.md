@@ -300,6 +300,16 @@ opacity, shadow and glow in `OverlayStyle` are host styling: the component
 renderer applies them once around the whole element, so definitions must not
 repeat them.
 
+Numeric text comes from the host. `metric(id, unit)` (expression builtin)
+returns a record of the strings `OverlayValueFormatter` produces for the
+matching native type, using `OverlayComponentMetricCatalog` to map ids to
+element types and validate units. Formatting therefore has one
+implementation; components never reimplement pace, duration, date or unit
+conversion rules. `OverlayComponentMetricParityTests` compares every metric,
+unit and sampled time with the native formatter, including no-data
+placeholders. Raw numbers for lap pace and running dynamics are available as
+`activity.*` signals and series.
+
 Headless authoring:
 
 ```sh
@@ -325,11 +335,12 @@ against native modules.
 - Format and data contract: `docs/overlay-components/spec-v0.1.md`.
 - Decision and gates: `docs/adr/0013-declarative-overlay-components.md`.
 - Tests: `OverlayComponentExpressionTests`, `OverlayComponentLoaderTests`,
+  `OverlayComponentMetricParityTests`,
   `OverlayComponentDataTests`, `OverlayComponentResolverTests`,
   `OverlayComponentIntegrationTests`, `OverlayComponentArchiveTests`,
   `OverlayComponentParityTests`.
 - Fixtures: `Tests/RunningOverlayTests/Fixtures/Components/`.
 
-The next integration steps are M5b–M5e (metric data contract, a generic numeric
-definition, legacy mapping, then native removal; see
+The next integration steps are M5c–M5e (a generic numeric definition, legacy
+mapping, then native removal; see
 `docs/overlay-components/README.md`) and M6 (authoring guide and AI skill).

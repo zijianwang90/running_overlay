@@ -191,6 +191,12 @@ Missing data resolves to `null`; it is never an error.
 | `activity.grade` | number? | percent |
 | `activity.temperature` | number? | degrees Celsius |
 | `activity.calories` | number? | kilocalories |
+| `activity.lapPace` | number? | seconds per kilometer in the current lap |
+| `activity.verticalOscillation` | number? | millimeters |
+| `activity.groundContactTime` | number? | milliseconds |
+| `activity.strideLength` | number? | meters |
+| `activity.verticalRatio` | number? | percent (oscillation ÷ stride) |
+| `activity.groundContactBalance` | number? | percent on the left foot |
 | `clock.realTime` | number? | seconds since local midnight at the playhead |
 | `clock.date` | string? | ISO-8601 date at the playhead |
 | `host.canvasWidth` | number | project canvas width in pixels |
@@ -220,6 +226,46 @@ are strings.
 - `activity.*` numeric signals listed in 5.1 MAY be requested as series.
 - `structure.laps` and `structure.intervals` are lists of records with the
   fields in 5.2 plus `index`; they are usable with `repeat`.
+
+### 5.4 Formatted metrics
+
+`metric(id, unit?)` returns the host-formatted reading that a native numeric
+overlay shows, as a record of strings: `value`, `unit`, `label`, `shortLabel`
+and `icon` (the default SF Symbol name). Formatting, rounding, placeholders
+(`--`, `--'--"`) and unit conversion are the host's, so a component and a
+native overlay always show the same text. Use `signal` for raw numbers and
+`metric` for display text.
+
+| `id` | `unit` values (first is the default) |
+|---|---|
+| `heartRate` | `bpm` |
+| `heartRateZone` | none |
+| `pace`, `avgPace`, `lapPace` | `paceMetric`, `paceImperial`, `paceRowing` |
+| `distance` | `distanceKilometers`, `distanceMiles`, `distanceMeters` |
+| `elevation`, `elevationGain` | `elevationMeters`, `elevationFeet` |
+| `cadence` | `spm` |
+| `power` | `watts` |
+| `calories` | `kcal` |
+| `elapsedTime` | `durationHMS`, `durationMS`, `durationSeconds` |
+| `realTime` | `clock24Hour`, `clock12Hour` |
+| `date` | `dateYMDHyphen`, `dateYMDSlash`, `dateMDYSlash`, `dateMDHyphen`, `dateMDSlash`, `dateMonthDay` |
+| `verticalOscillation` | `oscillationCentimeters`, `oscillationMillimeters` |
+| `groundContactTime` | `contactTimeMilliseconds` |
+| `strideLength` | `strideLengthMeters` |
+| `verticalRatio` | `verticalRatioPercent` |
+| `groundContactBalance` | `balancePercent` |
+| `temperature` | `temperatureCelsius`, `temperatureFahrenheit` |
+| `grade` | `gradePercent` |
+
+- An omitted or unsupported `unit` uses the default. Literal ids and units
+  are validated; an unknown id at runtime returns `null`.
+- `realTime` and `date` use the playhead's wall-clock time in the host's time
+  zone. `temperature` reads FIT temperature only; the native manual fallback
+  is not part of the contract.
+- Labels are the host's English labels, matching native overlays. Localized
+  labels are a later addition.
+- Custom Numeric is not a metric; its field, format and precision choices are
+  not part of v0.1.
 
 ## 6. Bindings
 
@@ -444,6 +490,7 @@ call         := IDENT "(" [ expr ( "," expr )* ] ")"
 | `alpha(color, a)` | color |
 | `signal(path)` | current value for a path in section 5; null when unavailable |
 | `series(path, windowSeconds, samples)` | series for an `activity.*` path; window relative to the playhead |
+| `metric(id, unit?)` | host-formatted record `{ value, unit, label, shortLabel, icon }`; see 5.4 |
 | `width`, `height` | component design size (constants) |
 | `pi` | 3.141592653589793 |
 

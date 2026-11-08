@@ -337,7 +337,10 @@
                   "activity.distance", "activity.elevation",
                   "activity.elevationGain", "activity.cadence", "activity.power",
                   "activity.grade", "activity.temperature", "activity.calories",
-                  "activity.elapsed", "activity.remaining"
+                  "activity.elapsed", "activity.remaining", "activity.lapPace",
+                  "activity.verticalOscillation", "activity.groundContactTime",
+                  "activity.strideLength", "activity.verticalRatio",
+                  "activity.groundContactBalance"
                 ]
               }
             },
