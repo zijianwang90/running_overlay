@@ -1608,6 +1608,9 @@ struct OverlayComponentResolver {
 
         let preset = nodeStringEnum(widget.preset, default: WeatherWidgetPreset.simpleCard, context: context)
         var style = WeatherWidgetStyle.preset(preset)
+        let dataSource: WeatherDataSource = nodeStringEnum(
+        widget.dataSource, default: .openMeteo, context: context
+        )
         style.manualCondition = nodeStringEnum(widget.condition, default: style.manualCondition, context: context)
         style.manualTemperatureCelsius = nodeNumber(
         widget.temperatureCelsius, default: style.manualTemperatureCelsius, context: context
@@ -1726,8 +1729,8 @@ struct OverlayComponentResolver {
         if style.showFeelsLike { slots.append(.feelsLike) }
         style.metricSlots = slots.isEmpty ? preset.defaultMetricSlots : slots
 
-        if let snapshot = context.data?.weatherSnapshot() {
-        style.dataSource = .openMeteo
+        if dataSource.isAPI, let snapshot = context.data?.weatherSnapshot() {
+        style.dataSource = dataSource
         style.cachedWeather = snapshot
         } else {
         style.dataSource = .manual

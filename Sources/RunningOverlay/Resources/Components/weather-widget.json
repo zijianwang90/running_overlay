@@ -99,6 +99,37 @@
       ]
     },
     {
+      "id": "dataSource",
+      "type": "enum",
+      "label": {
+        "en": "Data Source",
+        "zh-Hans": "数据源"
+      },
+      "description": {
+        "en": "API sources render the weather the host fetched for the activity location; Manual renders the values below.",
+        "zh-Hans": "API 数据源渲染宿主为活动位置抓取的天气；手动则使用下方数值。"
+      },
+      "section": {
+        "en": "Weather Data",
+        "zh-Hans": "Weather Data"
+      },
+      "default": "openMeteo",
+      "options": [
+        {
+          "value": "manual",
+          "label": "Manual"
+        },
+        {
+          "value": "openMeteo",
+          "label": "Open-Meteo API"
+        },
+        {
+          "value": "openWeather",
+          "label": "OpenWeather API"
+        }
+      ]
+    },
+    {
       "id": "condition",
       "type": "enum",
       "label": {
@@ -997,6 +1028,7 @@
         "=usePresetSize ? (preset == \"compactStrip\" ? 56 : preset == \"forecastTile\" ? 180 : preset == \"minimalText\" ? 92 : preset == \"dashboardBar\" ? 112 : 110) : componentHeight"
       ],
       "preset": "=preset",
+      "dataSource": "=dataSource",
       "condition": "=condition",
       "temperatureC": "=temperatureC",
       "humidity": "=humidity",

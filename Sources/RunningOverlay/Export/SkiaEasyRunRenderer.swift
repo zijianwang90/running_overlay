@@ -33,6 +33,9 @@ final class SkiaEasyRunRenderer {
     private lazy var chartsCanvas = SkiaChartsCanvas(context: context, size: size)
     private let renderAssets = SkiaRenderAssets()
     private var assetsPrepared = false
+    /// Weather the host resolved for the activity location. Host-drawn weather
+    /// components read it through the render context; components never fetch.
+    var weatherPayload: WeatherPayload?
 
     /// Chart-family modules with a real Skia port. Keep this in sync as Group
     /// D/E lands each renderer; unported types stay on the SwiftUI fallback.
@@ -138,7 +141,8 @@ final class SkiaEasyRunRenderer {
             canvasSize: size,
             activity: activity,
             elapsedTime: elapsedTime,
-            renderAssets: renderAssets
+            renderAssets: renderAssets,
+            weatherPayload: weatherPayload
         )
         for element in layout.elements where element.isVisible && Self.supports(element) {
             if element.type == .component {

@@ -866,6 +866,9 @@ struct OverlayComponentElevationChart: Equatable {
 /// `weather.current`; without one the node's manual values are used, matching
 /// the native widget's manual data source.
 struct OverlayComponentWeatherWidget: Equatable {
+    /// `manual`, `openMeteo` or `openWeather`. API sources render the host
+    /// snapshot; manual renders the node's own values.
+    var dataSource: OverlayComponentStringSource?
     /// `simpleCard`, `compactStrip`, `forecastTile`, `minimalText` or
     /// `dashboardBar`.
     var preset: OverlayComponentStringSource?

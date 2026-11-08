@@ -32,6 +32,11 @@ struct OverlayComponentDetailView: View {
                     section("Component") {
                         componentInfo(element: element, instance: instance, definition: definition)
                     }
+                    if definition.usesHostWeather {
+                        section("Weather") {
+                            componentWeatherRows(element: element, instance: instance)
+                        }
+                    }
                     ForEach(sectionNames(for: definition), id: \.self) { name in
                         section(name) {
                             ForEach(definition.params.filter { sectionName(for: $0) == name }, id: \.id) { parameter in
@@ -128,6 +133,45 @@ struct OverlayComponentDetailView: View {
                 }
                 .controlSize(.small)
                 .help("Embed this bundled definition so it can be customized.")
+            }
+        }
+    }
+
+    /// Weather fetched for the activity location is project state, not a
+    /// component value: one snapshot serves every host-drawn weather
+    /// component. The generated `dataSource` parameter still selects manual
+    /// values or an API source.
+    @ViewBuilder
+    private func componentWeatherRows(
+        element: OverlayElement,
+        instance: OverlayComponentInstance
+    ) -> some View {
+        let source = ProjectDocument.componentWeatherSource(instance)
+        if let payload = project.weatherPayloadForComponents {
+            InspectorDenseRow(label: "Snapshot") {
+                InspectorDenseReadout(
+                    text: "\(payload.temperatureCelsius.formatted(.number.precision(.fractionLength(0))))°C · \(payload.condition.label)",
+                    isNumeric: true
+                )
+            }
+            if let location = payload.resolvedLocation, !location.isEmpty {
+                InspectorDenseRow(label: "Location") {
+                    InspectorDenseReadout(text: location)
+                }
+            }
+        } else {
+            InspectorDenseRow(label: "Snapshot") {
+                InspectorDenseReadout(text: source.isAPI ? "Not fetched" : "Manual values")
+            }
+        }
+        if source.isAPI {
+            InspectorDenseRow(label: "Fetch") {
+                Button("Activity Location") {
+                    project.fetchWeatherForComponents(element.id)
+                }
+                .controlSize(.small)
+                .disabled(project.activity.routePoints.isEmpty)
+                .help("Fetch weather for the activity start location. Components never fetch weather themselves.")
             }
         }
     }
@@ -421,7 +465,8 @@ struct OverlayComponentDetailView: View {
                 width: project.settings.resolution.width,
                 height: project.settings.resolution.height
             ),
-            elementScale: element.scale
+            elementScale: element.scale,
+            weatherPayload: project.weatherPayloadForComponents
         )
         let parameters = definition.parameterValues(
             from: element.component?.parameters ?? [:]

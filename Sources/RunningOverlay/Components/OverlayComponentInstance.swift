@@ -278,3 +278,56 @@ enum OverlayComponentRegistry {
         lock.unlock()
     }
 }
+
+// MARK: - Host capabilities
+
+extension OverlayComponentDefinition {
+    /// Whether the definition reads host weather, through the `weatherWidget`
+    /// capability node or a `weather.*` signal binding. The host uses this to
+    /// show a fetch control and to decide when a project weather cache is
+    /// relevant; components themselves never fetch weather.
+    var usesHostWeather: Bool {
+        if bindings.values.contains(where: { binding in
+            guard case .signal(let path) = binding else { return false }
+            return path == "weather.current" || path.hasPrefix("weather.")
+        }) {
+            return true
+        }
+        return nodes.contains { $0.kind.usesHostWeather }
+    }
+}
+
+extension OverlayComponentNodeKind {
+    /// Recursively reports whether this node or any descendant uses weather.
+    var usesHostWeather: Bool {
+        switch self {
+        case .weatherWidget:
+            return true
+        case .group(_, _, _, _), .stack(_, _, _, _), .columns(_, _, _), .repeatNode(_, _, _, _, _):
+            return self.children.contains { $0.kind.usesHostWeather }
+        default:
+            return false
+        }
+    }
+
+    /// Direct child nodes, for recursive capability checks.
+    private var children: [OverlayComponentNode] {
+        switch self {
+        case .group(let children, _, _, _): children
+        case .stack(_, _, _, let children): children
+        case .columns(_, _, let children): children
+        case .repeatNode(_, _, _, _, let children): children
+        default: []
+        }
+    }
+}
+
+extension OverlayElement {
+    /// Host-drawn component that consumes the project weather snapshot.
+    var componentUsesHostWeather: Bool {
+        guard let definition = component.flatMap({
+            OverlayComponentRegistry.definition(for: $0.reference)
+        }) else { return false }
+        return definition.usesHostWeather
+    }
+}

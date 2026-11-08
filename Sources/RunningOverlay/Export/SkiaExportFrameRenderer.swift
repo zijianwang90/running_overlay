@@ -16,12 +16,14 @@ enum OverlayExportRendererFactory {
         size: CGSize,
         layout: OverlayLayout,
         activity: ActivityTimeline,
-        mapSnapshots: [MapSnapshotRequest: NSImage]
+        mapSnapshots: [MapSnapshotRequest: NSImage],
+        weatherPayload: WeatherPayload? = nil
     ) throws -> (any OverlayExportPixelBufferRenderer)? {
         guard backend == .skia else { return nil }
         #if canImport(CSkiaBridge)
         return try SkiaExportFrameRenderer(
-            size: size, layout: layout, activity: activity, mapSnapshots: mapSnapshots
+            size: size, layout: layout, activity: activity, mapSnapshots: mapSnapshots,
+            weatherPayload: weatherPayload
         )
         #else
         throw OverlayRendererBackendError.unavailable(.skia)
@@ -45,7 +47,8 @@ private final class SkiaExportFrameRenderer: OverlayExportPixelBufferRenderer, @
         size: CGSize,
         layout: OverlayLayout,
         activity: ActivityTimeline,
-        mapSnapshots: [MapSnapshotRequest: NSImage]
+        mapSnapshots: [MapSnapshotRequest: NSImage],
+        weatherPayload: WeatherPayload? = nil
     ) throws {
         guard layout.elements.filter(\.isVisible).allSatisfy(SkiaEasyRunRenderer.supports),
               let device = MTLCreateSystemDefaultDevice(),
@@ -60,6 +63,7 @@ private final class SkiaExportFrameRenderer: OverlayExportPixelBufferRenderer, @
         self.layout = layout
         self.activity = activity
         self.size = size
+        renderer.weatherPayload = weatherPayload
         renderer.preloadAssets(layout: layout, activity: activity, mapSnapshots: mapSnapshots)
     }
 

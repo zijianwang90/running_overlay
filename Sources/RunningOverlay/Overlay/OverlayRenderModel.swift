@@ -8,6 +8,9 @@ struct OverlayRenderContext {
     /// nodes reuse the same store so a route map or weather widget draws the
     /// same host snapshot as the native element at this playhead.
     var renderAssets: SkiaRenderAssets?
+    /// Weather the host resolved for the project's activity location. Host-drawn
+    /// weather components read this snapshot; components never fetch weather.
+    var weatherPayload: WeatherPayload? = nil
 
     var canvasScale: Double {
         min(canvasSize.width / Self.referenceCanvasSize.width, canvasSize.height / Self.referenceCanvasSize.height)

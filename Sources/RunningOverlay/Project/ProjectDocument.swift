@@ -15,6 +15,10 @@ final class ProjectDocument: ObservableObject {
         didSet { rememberNonFitZoom() }
     }
     @Published var overlayLayout = OverlayLayout.empty
+    /// Weather the host resolved for the activity location. Host-drawn weather
+    /// components read this project snapshot; native weather widgets keep their
+    /// own per-element cache.
+    @Published var weatherCache: ProjectWeatherCache?
     @Published var selection: EditorSelection = .none
     @Published var isPlaying = false
     @Published var playbackRate: Double = 1
@@ -649,12 +653,21 @@ final class ProjectDocument: ObservableObject {
     ) -> OverlayElement.ID? {
         do {
             let reference = try OverlayComponentLibrary.reference(for: item)
-            return addComponentElement(
+            let elementID = addComponentElement(
                 reference: reference,
                 parameters: item.parameters,
                 position: position,
                 scale: scale
             )
+            // Mirror the native weather widget: resolve a snapshot on add when
+            // the component reads host weather and the activity has a start
+            // position. Components still never fetch weather themselves.
+            if weatherPayloadForComponents == nil,
+               !activity.routePoints.isEmpty,
+               overlayLayout.elements.first(where: { $0.id == elementID })?.componentUsesHostWeather == true {
+                fetchWeatherForComponents(elementID, registersUndo: false)
+            }
+            return elementID
         } catch {
             statusMessage = error.localizedDescription
             return nil
@@ -2277,6 +2290,7 @@ final class ProjectDocument: ObservableObject {
     }
 
     private func refreshOpenMeteoWeatherWidgetsAfterFitImport() {
+        refreshComponentWeatherAfterFitImport()
         let weatherWidgetIDs = overlayLayout.elements
             .filter { $0.type == .weatherWidget && $0.style.weatherWidget.dataSource.isAPI }
             .map(\.id)
@@ -2285,6 +2299,22 @@ final class ProjectDocument: ObservableObject {
         for elementID in weatherWidgetIDs {
             fetchWeatherForNewWeatherWidget(elementID, updatesStatusMessage: false)
         }
+    }
+
+    /// One project-level snapshot serves every weather component. Refresh it
+    /// after a FIT import so the cache follows the new activity instead of
+    /// keeping the previous run's temperature.
+    private func refreshComponentWeatherAfterFitImport() {
+        guard weatherCache != nil,
+              let element = overlayLayout.elements.first(where: {
+                  $0.component != nil && $0.componentUsesHostWeather
+              }) else { return }
+        fetchWeatherForComponents(
+            element.id,
+            registersUndo: false,
+            updatesStatusMessage: false,
+            source: weatherCache?.dataSource
+        )
     }
 
     private func fetchWeatherForNewWeatherWidget(_ elementID: OverlayElement.ID, updatesStatusMessage: Bool = true) {
@@ -2306,6 +2336,8 @@ final class ProjectDocument: ObservableObject {
             return
         }
         let dataSource = element.style.weatherWidget.dataSource
+        // Manual and FIT sources render their own values; only API sources fetch.
+        guard dataSource.isAPI else { return }
 
         let activity = activity
         let openWeatherAPIKey = self.openWeatherAPIKey
@@ -2315,34 +2347,11 @@ final class ProjectDocument: ObservableObject {
 
         Task {
             do {
-                let coordinate = try WeatherLocationResolver.activityStartCoordinate(from: activity)
-
-                async let resolvedLocation = WeatherLocationResolver.displayName(
-                    latitude: coordinate.latitude,
-                    longitude: coordinate.longitude
+                let payload = try await Self.fetchWeatherPayload(
+                    for: activity,
+                    dataSource: dataSource,
+                    openWeatherAPIKey: openWeatherAPIKey
                 )
-                var payload: WeatherPayload
-                switch dataSource {
-                case .openMeteo:
-                    payload = try await WeatherFetcher.fetch(
-                        latitude: coordinate.latitude,
-                        longitude: coordinate.longitude,
-                        date: activity.startDate,
-                        resolvedLocation: nil
-                    )
-                case .openWeather:
-                    payload = try await WeatherFetcher.fetchOpenWeather(
-                        latitude: coordinate.latitude,
-                        longitude: coordinate.longitude,
-                        date: activity.startDate,
-                        apiKey: openWeatherAPIKey,
-                        resolvedLocation: nil
-                    )
-                case .fitTemperature, .manual:
-                    return
-                }
-                payload.resolvedLocation = await resolvedLocation
-                payload.fetchLocationMode = .activityLocation
                 applyFetchedWeatherPayload(
                     payload,
                     dataSource: dataSource,
@@ -2351,20 +2360,70 @@ final class ProjectDocument: ObservableObject {
                     updatesStatusMessage: updatesStatusMessage
                 )
             } catch {
-                if updatesStatusMessage {
-                    if registersUndo {
-                        reportError("Weather fetch failed: \(error.localizedDescription)")
-                    } else {
-                        statusMessage = "Weather unavailable; showing placeholders."
-                    }
-                    if error as? WeatherFetchError == .openWeatherUnauthorized {
-                        showToast(
-                            "OpenWeather 401: the API key or One Call 4.0 subscription may still be activating. Verify the key, subscribe to One Call 4.0, or use Open-Meteo.",
-                            duration: 6
-                        )
-                    }
-                }
+                reportWeatherFetchFailure(
+                    error,
+                    registersUndo: registersUndo,
+                    updatesStatusMessage: updatesStatusMessage
+                )
             }
+        }
+    }
+
+    /// Fetches one host weather snapshot and resolves its display location.
+    /// Only API sources reach the network; callers must handle manual and FIT
+    /// sources before calling.
+    private static func fetchWeatherPayload(
+        for activity: ActivityTimeline,
+        dataSource: WeatherDataSource,
+        openWeatherAPIKey: String
+    ) async throws -> WeatherPayload {
+        let coordinate = try WeatherLocationResolver.activityStartCoordinate(from: activity)
+
+        async let resolvedLocation = WeatherLocationResolver.displayName(
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude
+        )
+        var payload: WeatherPayload
+        switch dataSource {
+        case .openMeteo:
+            payload = try await WeatherFetcher.fetch(
+                latitude: coordinate.latitude,
+                longitude: coordinate.longitude,
+                date: activity.startDate,
+                resolvedLocation: nil
+            )
+        case .openWeather:
+            payload = try await WeatherFetcher.fetchOpenWeather(
+                latitude: coordinate.latitude,
+                longitude: coordinate.longitude,
+                date: activity.startDate,
+                apiKey: openWeatherAPIKey,
+                resolvedLocation: nil
+            )
+        case .fitTemperature, .manual:
+            throw WeatherFetchError.missingHourlyData
+        }
+        payload.resolvedLocation = await resolvedLocation
+        payload.fetchLocationMode = .activityLocation
+        return payload
+    }
+
+    private func reportWeatherFetchFailure(
+        _ error: Error,
+        registersUndo: Bool,
+        updatesStatusMessage: Bool
+    ) {
+        guard updatesStatusMessage else { return }
+        if registersUndo {
+            reportError("Weather fetch failed: \(error.localizedDescription)")
+        } else {
+            statusMessage = "Weather unavailable; showing placeholders."
+        }
+        if error as? WeatherFetchError == .openWeatherUnauthorized {
+            showToast(
+                "OpenWeather 401: the API key or One Call 4.0 subscription may still be activating. Verify the key, subscribe to One Call 4.0, or use Open-Meteo.",
+                duration: 6
+            )
         }
     }
 
@@ -2387,6 +2446,115 @@ final class ProjectDocument: ObservableObject {
         if updatesStatusMessage {
             statusMessage = "Weather updated from \(dataSource.label) · \(payload.fetchLocationMode?.label ?? "Activity Location")."
         }
+    }
+
+    // MARK: - Component Weather
+
+    /// Snapshot host-drawn components render at the current activity. `nil`
+    /// when the cache is missing or belongs to a different activity.
+    var weatherPayloadForComponents: WeatherPayload? {
+        guard let cache = weatherCache else { return nil }
+        guard let sourceDate = cache.payload.sourceDate else { return cache.payload }
+        return sourceDate == activity.startDate ? cache.payload : nil
+    }
+
+    /// Fetches a project-level snapshot for a weather-capable component.
+    ///
+    /// The component's `dataSource` parameter selects Open-Meteo or
+    /// OpenWeather; manual and activity-temperature sources never fetch. One
+    /// fetch updates the project cache, so every weather component in the
+    /// project renders the same snapshot.
+    func fetchWeatherForComponents(
+        _ elementID: OverlayElement.ID,
+        registersUndo: Bool = true,
+        updatesStatusMessage: Bool = true,
+        source: WeatherDataSource? = nil
+    ) {
+        guard let instance = overlayLayout.elements.first(where: { $0.id == elementID })?.component
+        else { return }
+        let dataSource = source ?? Self.componentWeatherSource(instance)
+        guard dataSource.isAPI else {
+            if updatesStatusMessage {
+                statusMessage = "Weather component uses \(dataSource.label); no weather fetch needed."
+            }
+            return
+        }
+
+        let activity = activity
+        let openWeatherAPIKey = self.openWeatherAPIKey
+        if updatesStatusMessage {
+            statusMessage = "Fetching \(dataSource.label) weather from Activity Location..."
+        }
+
+        Task {
+            do {
+                let payload = try await Self.fetchWeatherPayload(
+                    for: activity,
+                    dataSource: dataSource,
+                    openWeatherAPIKey: openWeatherAPIKey
+                )
+                applyFetchedProjectWeather(
+                    payload,
+                    dataSource: dataSource,
+                    resolvedFor: elementID,
+                    registersUndo: registersUndo,
+                    updatesStatusMessage: updatesStatusMessage
+                )
+            } catch {
+                reportWeatherFetchFailure(
+                    error,
+                    registersUndo: registersUndo,
+                    updatesStatusMessage: updatesStatusMessage
+                )
+            }
+        }
+    }
+
+    /// Records a host-resolved snapshot for host-drawn components. Exposed
+    /// separately from the fetch task so import-triggered refreshes and tests
+    /// share one undo and status path.
+    func applyFetchedProjectWeather(
+        _ payload: WeatherPayload,
+        dataSource: WeatherDataSource,
+        resolvedFor elementID: OverlayElement.ID? = nil,
+        registersUndo: Bool = true,
+        updatesStatusMessage: Bool = true
+    ) {
+        if registersUndo {
+            registerUndoPoint()
+        }
+        weatherCache = ProjectWeatherCache(
+            payload: payload,
+            dataSource: dataSource,
+            fetchedAt: Date()
+        )
+        // Mirror the native widget's fetch behavior: the resolved place name
+        // becomes the instance's location text. Authored text survives because
+        // only the instance that requested the fetch is updated.
+        if let elementID,
+           let location = payload.resolvedLocation, !location.isEmpty,
+           let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }),
+           var component = overlayLayout.elements[index].component,
+           OverlayComponentRegistry.definition(for: component.reference)?
+               .parameter(named: "locationText") != nil {
+            component.parameters["locationText"] = .string(location)
+            overlayLayout.elements[index].component = component
+            markEdited()
+        }
+        if updatesStatusMessage {
+            statusMessage = "Weather updated from \(dataSource.label) · \(payload.fetchLocationMode?.label ?? "Activity Location")."
+        }
+    }
+
+    /// The component instance's declared weather source, defaulting to
+    /// Open-Meteo when the parameter is absent or not a string.
+    static func componentWeatherSource(_ instance: OverlayComponentInstance) -> WeatherDataSource {
+        guard case .string(let raw)? = instance.parameters["dataSource"],
+              let source = WeatherDataSource(rawValue: raw),
+              source != .fitTemperature else {
+            return .openMeteo
+        }
+        return source
     }
 
     func setDecorShape(_ elementID: OverlayElement.ID, shape: DecorShape) {
@@ -3445,7 +3613,8 @@ final class ProjectDocument: ObservableObject {
             activity: activity,
             overlayLayout: overlayLayout,
             fitStartTime: timeline.fitStartTime,
-            segments: segments
+            segments: segments,
+            weatherPayload: weatherPayloadForComponents
         )
 
         runSwiftUIExport(
@@ -3486,7 +3655,8 @@ final class ProjectDocument: ObservableObject {
                     duration: activity.duration,
                     sourceFileName: "full_activity.mov"
                 )
-            ]
+            ],
+            weatherPayload: weatherPayloadForComponents
         )
 
         runSwiftUIExport(
@@ -3519,7 +3689,8 @@ final class ProjectDocument: ObservableObject {
                     duration: 3,
                     sourceFileName: "overlay_test_clip.mov"
                 )
-            ]
+            ],
+            weatherPayload: weatherPayloadForComponents
         )
 
         runSwiftUIExport(
@@ -4617,7 +4788,8 @@ final class ProjectDocument: ObservableObject {
             overlayLayout: overlayLayout,
             userAssets: userAssets,
             selection: selection,
-            fitSourceName: fitSourceName
+            fitSourceName: fitSourceName,
+            weatherCache: weatherCache
         )
     }
 
@@ -4632,6 +4804,7 @@ final class ProjectDocument: ObservableObject {
         userAssets = snapshot.userAssets
         selection = snapshot.selection
         fitSourceName = snapshot.fitSourceName
+        weatherCache = snapshot.weatherCache
     }
 
     private func makePersistentSnapshot() -> ProjectPerformanceSnapshot {
@@ -4646,7 +4819,8 @@ final class ProjectDocument: ObservableObject {
             ),
             userAssets: userAssets,
             fitSourceName: fitSourceName,
-            workoutStructureSelection: workoutStructureSelection
+            workoutStructureSelection: workoutStructureSelection,
+            weatherCache: weatherCache
         )
     }
 
@@ -4666,6 +4840,13 @@ final class ProjectDocument: ObservableObject {
         overlayLayout = OverlayLayout(elements: snapshot.overlayElements.elements.map(\.overlayElement))
         userAssets = snapshot.userAssets
         fitSourceName = snapshot.fitSourceName
+        // Drop a cached snapshot that belongs to a different activity start.
+        // Saving and reopening keeps it because the start date round-trips.
+        weatherCache = snapshot.weatherCache.flatMap { cache in
+            guard let sourceDate = cache.payload.sourceDate,
+                  sourceDate != snapshot.activity.startDate else { return cache }
+            return nil
+        }
 
         selection = .none
         isPlaying = false
@@ -4725,6 +4906,7 @@ private struct ProjectSnapshot: Equatable {
     var userAssets: [UserAsset]
     var selection: EditorSelection
     var fitSourceName: String
+    var weatherCache: ProjectWeatherCache?
 }
 
 struct ProjectPerformanceSnapshot: Codable, Equatable {
@@ -4738,6 +4920,9 @@ struct ProjectPerformanceSnapshot: Codable, Equatable {
     var userAssets: [UserAsset]
     var fitSourceName: String
     var workoutStructureSelection: WorkoutStructureSelection? = nil
+    /// Optional so projects written before the component weather cache decode
+    /// unchanged. Existing native weather caches stay on their element styles.
+    var weatherCache: ProjectWeatherCache? = nil
 }
 
 private struct CopiedOverlayConfiguration {

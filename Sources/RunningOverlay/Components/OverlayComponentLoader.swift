@@ -773,7 +773,7 @@ final class OverlayComponentParser {
             "secondaryTextColor", "accentColor", "regions"
         ]
         case "weatherWidget": typeKeys = [
-            "preset", "condition", "temperatureC", "humidity", "highC", "lowC",
+            "dataSource", "preset", "condition", "temperatureC", "humidity", "highC", "lowC",
             "windKph", "feelsLikeC", "temperatureUnit", "useActivityTemperature",
             "locationText", "showLocation", "showWeekday", "showHumidity",
             "showHighLow", "showWind", "showFeelsLike", "showIcon",
@@ -2185,6 +2185,7 @@ final class OverlayComponentParser {
         ]
         let conditions: Set<String> = Set(WeatherCondition.allCases.map(\.rawValue))
         let units: Set<String> = ["celsius", "fahrenheit"]
+        let dataSources: Set<String> = ["manual", "openMeteo", "openWeather"]
         let palettes: Set<String> = [
             "presetDefault", "blueGlass", "lightGlass", "graphite", "minimalWhite"
         ]
@@ -2204,6 +2205,7 @@ final class OverlayComponentParser {
             }
         }
         return OverlayComponentWeatherWidget(
+            dataSource: enumOrNil("dataSource", allowed: dataSources),
             preset: enumOrNil("preset", allowed: presets),
             condition: enumOrNil("condition", allowed: conditions),
             temperatureCelsius: numberOrNil("temperatureC"),

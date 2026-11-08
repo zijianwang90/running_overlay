@@ -90,6 +90,7 @@ struct PreviewCanvasView: View {
                                 activity: project.activity,
                                 elapsedTime: project.layerDataSampleTime,
                                 canvasSize: projectCanvasPixelSize,
+                                weatherPayload: project.weatherPayloadForComponents,
                                 isPaused: !project.isPlaying
                             )
                             .frame(width: canvasSize.width, height: canvasSize.height)
@@ -416,7 +417,8 @@ struct PreviewCanvasView: View {
         let context = OverlayRenderContext(
             canvasSize: canvasSize,
             activity: project.activity,
-            elapsedTime: project.layerDataSampleTime
+            elapsedTime: project.layerDataSampleTime,
+            weatherPayload: project.weatherPayloadForComponents
         )
         var frames: [OverlayElement.ID: CGRect] = [:]
         for element in skiaPreviewLayout.elements where element.isVisible {

@@ -55,6 +55,39 @@ struct OverlayComponentWeatherWidgetTests {
         )
     }
 
+    @Test func manualSourceIgnoresHostSnapshot() throws {
+        let package = try OverlayComponentLoader.load(data: Self.data())
+        let payload = WeatherPayload(
+            condition: .rain, temperatureCelsius: 8, humidity: 94,
+            highTemperatureCelsius: 11, lowTemperatureCelsius: 5,
+            windKph: 18, feelsLikeCelsius: 4, resolvedLocation: "Shanghai",
+            sourceDate: nil
+        )
+        let data = OverlayComponentActivityData(
+            activity: OverlayComponentWeatherWidgetParityTests.activity(),
+            elapsedTime: 90, zoneSnapshot: nil,
+            canvasSize: CGSize(width: 1280, height: 720), elementScale: 1,
+            weatherPayload: payload
+        )
+        func style(_ parameters: [String: OverlayComponentValue]) throws -> WeatherWidgetStyle {
+            let result = OverlayComponentResolver(definition: package.definition)
+                .resolve(parameters: parameters, data: data)
+            let node = try #require(result.nodes.first)
+            guard case let .weatherWidget(_, style) = node else {
+                Issue.record("expected a weather node")
+                return .preset(.simpleCard)
+            }
+            return style
+        }
+        let host = try style(["dataSource": .string("openMeteo")])
+        #expect(host.dataSource == .openMeteo)
+        #expect(host.cachedWeather == payload)
+
+        let manual = try style(["dataSource": .string("manual")])
+        #expect(manual.dataSource == .manual)
+        #expect(manual.cachedWeather == nil)
+    }
+
     @Test func hostSnapshotFeedsWeatherCurrent() throws {
         let payload = WeatherPayload(
             condition: .rain, temperatureCelsius: 8, humidity: 94,

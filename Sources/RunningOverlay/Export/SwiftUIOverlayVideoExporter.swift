@@ -474,7 +474,8 @@ struct SwiftUIOverlayVideoExporter {
             size: CGSize(width: job.settings.resolution.width, height: job.settings.resolution.height),
             layout: job.overlayLayout,
             activity: job.activity,
-            mapSnapshots: routeMapSnapshots.snapshots
+            mapSnapshots: routeMapSnapshots.snapshots,
+            weatherPayload: job.weatherPayload
         )
         let profileStartedAt = Date()
         let renderPlan = ExportRenderPlan(
@@ -626,7 +627,8 @@ struct SwiftUIOverlayVideoExporter {
         elapsedTime: TimeInterval,
         size: CGSize,
         outputURL: URL,
-        backend: OverlayRendererBackendKind = .selected
+        backend: OverlayRendererBackendKind = .selected,
+        weatherPayload: WeatherPayload? = nil
     ) async throws {
         let cgImage: CGImage
         if backend == .skia {
@@ -638,7 +640,8 @@ struct SwiftUIOverlayVideoExporter {
             )
             let renderer = try await OverlayExportRendererFactory.make(
                 backend: backend, size: size, layout: overlayLayout,
-                activity: activity, mapSnapshots: snapshots.snapshots
+                activity: activity, mapSnapshots: snapshots.snapshots,
+                weatherPayload: weatherPayload
             )
             var buffer: CVPixelBuffer?
             let attributes: [String: Any] = [

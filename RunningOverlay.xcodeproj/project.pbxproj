@@ -142,6 +142,7 @@
 		911CA313B34CB1B8EDF3CD65 /* WeatherWidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8981B88FA0A80AE95D6AE836 /* WeatherWidgetViews.swift */; };
 		478A11C100BB6E4C52BFEF7E /* ZoneEdgeBarOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04731C14E15DA10D203CE9CD /* ZoneEdgeBarOverlayDetailView.swift */; };
 		084D1232D8109ACEFE88FBBA /* ZoneEdgeBarOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F10E3A9881B84F122EA107B /* ZoneEdgeBarOverlayView.swift */; };
+		A75F0E3B2AE41214EDE1B970 /* ProjectWeatherCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3E32737CEEEC2FAA0061136 /* ProjectWeatherCache.swift */; };
 		071FD18C31D70A7F8A09EF0B /* WeatherFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA38A65F091D5D6DCED7E4F1 /* WeatherFetcher.swift */; };
 		84CA11470A017464CE6A6CBE /* skia_bridge.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 135EDC9501582EC993BA0DCC /* skia_bridge.cpp */; };
 		A1DCA802AF2A72AFE715CE80 /* skia_gpu.mm in Sources */ = {isa = PBXBuildFile; fileRef = 81931A34584D763F45E6F30D /* skia_gpu.mm */; };
@@ -327,6 +328,7 @@
 		8981B88FA0A80AE95D6AE836 /* WeatherWidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/WeatherWidgetViews.swift"; sourceTree = SOURCE_ROOT; };
 		04731C14E15DA10D203CE9CD /* ZoneEdgeBarOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/ZoneEdgeBarOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
 		9F10E3A9881B84F122EA107B /* ZoneEdgeBarOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/ZoneEdgeBarOverlayView.swift"; sourceTree = SOURCE_ROOT; };
+		C3E32737CEEEC2FAA0061136 /* ProjectWeatherCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Weather/ProjectWeatherCache.swift"; sourceTree = SOURCE_ROOT; };
 		CA38A65F091D5D6DCED7E4F1 /* WeatherFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Weather/WeatherFetcher.swift"; sourceTree = SOURCE_ROOT; };
 		135EDC9501582EC993BA0DCC /* skia_bridge.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Sources/CSkiaBridge/skia_bridge.cpp"; sourceTree = SOURCE_ROOT; };
 		81931A34584D763F45E6F30D /* skia_gpu.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = "Sources/CSkiaBridge/skia_gpu.mm"; sourceTree = SOURCE_ROOT; };
@@ -514,6 +516,7 @@
 			8981B88FA0A80AE95D6AE836 /* WeatherWidgetViews.swift */,
 			04731C14E15DA10D203CE9CD /* ZoneEdgeBarOverlayDetailView.swift */,
 			9F10E3A9881B84F122EA107B /* ZoneEdgeBarOverlayView.swift */,
+			C3E32737CEEEC2FAA0061136 /* ProjectWeatherCache.swift */,
 			CA38A65F091D5D6DCED7E4F1 /* WeatherFetcher.swift */,
 			135EDC9501582EC993BA0DCC /* skia_bridge.cpp */,
 			81931A34584D763F45E6F30D /* skia_gpu.mm */,
@@ -747,6 +750,7 @@
 			911CA313B34CB1B8EDF3CD65 /* WeatherWidgetViews.swift in Sources */,
 			478A11C100BB6E4C52BFEF7E /* ZoneEdgeBarOverlayDetailView.swift in Sources */,
 			084D1232D8109ACEFE88FBBA /* ZoneEdgeBarOverlayView.swift in Sources */,
+			A75F0E3B2AE41214EDE1B970 /* ProjectWeatherCache.swift in Sources */,
 			071FD18C31D70A7F8A09EF0B /* WeatherFetcher.swift in Sources */,
 			84CA11470A017464CE6A6CBE /* skia_bridge.cpp in Sources */,
 			A1DCA802AF2A72AFE715CE80 /* skia_gpu.mm in Sources */,

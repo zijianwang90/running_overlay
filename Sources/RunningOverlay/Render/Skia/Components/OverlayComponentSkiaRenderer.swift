@@ -103,7 +103,7 @@ enum OverlayComponentSkiaRenderer {
             zoneSnapshot: HeartRateZonePreferences.currentSnapshot(),
             canvasSize: renderContext.canvasSize,
             elementScale: scale,
-            weatherPayload: element.style.weatherWidget.cachedWeather
+            weatherPayload: renderContext.weatherPayload ?? element.style.weatherWidget.cachedWeather
         )
         guard let resolved = OverlayComponentRegistry.resolve(instance: instance, data: data) else {
             return nil
