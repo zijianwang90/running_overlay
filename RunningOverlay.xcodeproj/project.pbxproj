@@ -46,6 +46,7 @@
 		5D185D174F6F58964E511D8D /* OverlayElement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 022324E020F9CA428D605BAE /* OverlayElement.swift */; };
 		01B113FB4F931C0073DA43CE /* OverlayFeatherMaskRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3607C65FDA8E44A18DECC13A /* OverlayFeatherMaskRenderer.swift */; };
 		E15FD3E37F356CAFF7DD61B7 /* OverlayIconRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC0A8D78A8E37DB1A156545 /* OverlayIconRenderer.swift */; };
+		3FE25EF9EDB039B1948D057B /* OverlayMetric.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05DFB1101FF196839647CBDA /* OverlayMetric.swift */; };
 		06B621DF418E6C753C17897C /* OverlayRenderModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64A99B05B9AEF256FDDB464C /* OverlayRenderModel.swift */; };
 		26E2B544ED4D86449D89FF2F /* OverlayTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EB6A19241F120C1B88432DC /* OverlayTemplate.swift */; };
 		D7486D14FC1D7164C1A832F3 /* OverlayValueFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 778C0C068B5E1BA565776404 /* OverlayValueFormatter.swift */; };
@@ -80,7 +81,6 @@
 		8984250D459993D18EF702E9 /* SkiaRouteWeatherText.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0F438588A6665FDB4A270E /* SkiaRouteWeatherText.swift */; };
 		60C3EA5CC70541C58E51E5A1 /* SkiaWeatherWidgetModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65470D5ECF849247C5F097CA /* SkiaWeatherWidgetModule.swift */; };
 		999355A1E5724F2C62801F54 /* TextModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785379C840FC73EAD7881557 /* TextModule.swift */; };
-		5B3F7A5DF69D8ECEF1F4C723 /* TextPresetDrawing.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCA8EA97DD8D782F3C86430A /* TextPresetDrawing.swift */; };
 		B2F3823C2EB2B77082838006 /* ZoneEdgeBarSkiaRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3C41EA8573EE0DA685AE0F /* ZoneEdgeBarSkiaRenderer.swift */; };
 		5AE94A8544667862549CD598 /* SkiaIconRasterCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0E7621727C23E32E1325B93 /* SkiaIconRasterCache.swift */; };
 		DC35E60B471EE559D42EB08C /* SkiaRenderAssets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6769AEEF59A8820810BF734F /* SkiaRenderAssets.swift */; };
@@ -115,7 +115,6 @@
 		16BE9082B25E4DC867510C8D /* MainEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 201DF00A012914ACC6A5ECF7 /* MainEditorView.swift */; };
 		7C006B80FEEA0C8C7631C5FD /* MediaBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48DB45C477FB52D74EE4588E /* MediaBrowserView.swift */; };
 		AEDD4586963DB2B393A46B7F /* MediaPoolSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD77F05084B1ECD616559C05 /* MediaPoolSelection.swift */; };
-		10EBE9F553F1190D6EAC144E /* NumericOverlayDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6DD4C828B0CFC04F18CC7F5 /* NumericOverlayDetailView.swift */; };
 		E92231D55BE399F84CA6FCC4 /* OverlayComponentDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7ECDEB4600523C5A768AEF1 /* OverlayComponentDetailView.swift */; };
 		1D7229E1BC4BDBDD471C1671 /* OverlayElementContextMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = E666AC1E03E824CE0E818D3A /* OverlayElementContextMenu.swift */; };
 		2D284C805E7ECBE6371B7F2E /* OverlayFeatheredBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = F757CFF33BF4A545CA2E4513 /* OverlayFeatheredBackground.swift */; };
@@ -216,6 +215,7 @@
 		022324E020F9CA428D605BAE /* OverlayElement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/OverlayElement.swift"; sourceTree = SOURCE_ROOT; };
 		3607C65FDA8E44A18DECC13A /* OverlayFeatherMaskRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/OverlayFeatherMaskRenderer.swift"; sourceTree = SOURCE_ROOT; };
 		8AC0A8D78A8E37DB1A156545 /* OverlayIconRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/OverlayIconRenderer.swift"; sourceTree = SOURCE_ROOT; };
+		05DFB1101FF196839647CBDA /* OverlayMetric.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/OverlayMetric.swift"; sourceTree = SOURCE_ROOT; };
 		64A99B05B9AEF256FDDB464C /* OverlayRenderModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/OverlayRenderModel.swift"; sourceTree = SOURCE_ROOT; };
 		2EB6A19241F120C1B88432DC /* OverlayTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/OverlayTemplate.swift"; sourceTree = SOURCE_ROOT; };
 		778C0C068B5E1BA565776404 /* OverlayValueFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Overlay/OverlayValueFormatter.swift"; sourceTree = SOURCE_ROOT; };
@@ -250,7 +250,6 @@
 		BC0F438588A6665FDB4A270E /* SkiaRouteWeatherText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/SkiaRouteWeatherText.swift"; sourceTree = SOURCE_ROOT; };
 		65470D5ECF849247C5F097CA /* SkiaWeatherWidgetModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/SkiaWeatherWidgetModule.swift"; sourceTree = SOURCE_ROOT; };
 		785379C840FC73EAD7881557 /* TextModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/TextModule.swift"; sourceTree = SOURCE_ROOT; };
-		BCA8EA97DD8D782F3C86430A /* TextPresetDrawing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/TextPresetDrawing.swift"; sourceTree = SOURCE_ROOT; };
 		FA3C41EA8573EE0DA685AE0F /* ZoneEdgeBarSkiaRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Modules/ZoneEdgeBarSkiaRenderer.swift"; sourceTree = SOURCE_ROOT; };
 		D0E7621727C23E32E1325B93 /* SkiaIconRasterCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Shared/SkiaIconRasterCache.swift"; sourceTree = SOURCE_ROOT; };
 		6769AEEF59A8820810BF734F /* SkiaRenderAssets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Shared/SkiaRenderAssets.swift"; sourceTree = SOURCE_ROOT; };
@@ -285,7 +284,6 @@
 		201DF00A012914ACC6A5ECF7 /* MainEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/MainEditorView.swift"; sourceTree = SOURCE_ROOT; };
 		48DB45C477FB52D74EE4588E /* MediaBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/MediaBrowserView.swift"; sourceTree = SOURCE_ROOT; };
 		FD77F05084B1ECD616559C05 /* MediaPoolSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/MediaPoolSelection.swift"; sourceTree = SOURCE_ROOT; };
-		F6DD4C828B0CFC04F18CC7F5 /* NumericOverlayDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/NumericOverlayDetailView.swift"; sourceTree = SOURCE_ROOT; };
 		D7ECDEB4600523C5A768AEF1 /* OverlayComponentDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/OverlayComponentDetailView.swift"; sourceTree = SOURCE_ROOT; };
 		E666AC1E03E824CE0E818D3A /* OverlayElementContextMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/OverlayElementContextMenu.swift"; sourceTree = SOURCE_ROOT; };
 		F757CFF33BF4A545CA2E4513 /* OverlayFeatheredBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/OverlayFeatheredBackground.swift"; sourceTree = SOURCE_ROOT; };
@@ -388,6 +386,7 @@
 			022324E020F9CA428D605BAE /* OverlayElement.swift */,
 			3607C65FDA8E44A18DECC13A /* OverlayFeatherMaskRenderer.swift */,
 			8AC0A8D78A8E37DB1A156545 /* OverlayIconRenderer.swift */,
+			05DFB1101FF196839647CBDA /* OverlayMetric.swift */,
 			64A99B05B9AEF256FDDB464C /* OverlayRenderModel.swift */,
 			2EB6A19241F120C1B88432DC /* OverlayTemplate.swift */,
 			778C0C068B5E1BA565776404 /* OverlayValueFormatter.swift */,
@@ -422,7 +421,6 @@
 			BC0F438588A6665FDB4A270E /* SkiaRouteWeatherText.swift */,
 			65470D5ECF849247C5F097CA /* SkiaWeatherWidgetModule.swift */,
 			785379C840FC73EAD7881557 /* TextModule.swift */,
-			BCA8EA97DD8D782F3C86430A /* TextPresetDrawing.swift */,
 			FA3C41EA8573EE0DA685AE0F /* ZoneEdgeBarSkiaRenderer.swift */,
 			D0E7621727C23E32E1325B93 /* SkiaIconRasterCache.swift */,
 			6769AEEF59A8820810BF734F /* SkiaRenderAssets.swift */,
@@ -457,7 +455,6 @@
 			201DF00A012914ACC6A5ECF7 /* MainEditorView.swift */,
 			48DB45C477FB52D74EE4588E /* MediaBrowserView.swift */,
 			FD77F05084B1ECD616559C05 /* MediaPoolSelection.swift */,
-			F6DD4C828B0CFC04F18CC7F5 /* NumericOverlayDetailView.swift */,
 			D7ECDEB4600523C5A768AEF1 /* OverlayComponentDetailView.swift */,
 			E666AC1E03E824CE0E818D3A /* OverlayElementContextMenu.swift */,
 			F757CFF33BF4A545CA2E4513 /* OverlayFeatheredBackground.swift */,
@@ -593,6 +590,7 @@
 			5D185D174F6F58964E511D8D /* OverlayElement.swift in Sources */,
 			01B113FB4F931C0073DA43CE /* OverlayFeatherMaskRenderer.swift in Sources */,
 			E15FD3E37F356CAFF7DD61B7 /* OverlayIconRenderer.swift in Sources */,
+			3FE25EF9EDB039B1948D057B /* OverlayMetric.swift in Sources */,
 			06B621DF418E6C753C17897C /* OverlayRenderModel.swift in Sources */,
 			26E2B544ED4D86449D89FF2F /* OverlayTemplate.swift in Sources */,
 			D7486D14FC1D7164C1A832F3 /* OverlayValueFormatter.swift in Sources */,
@@ -627,7 +625,6 @@
 			8984250D459993D18EF702E9 /* SkiaRouteWeatherText.swift in Sources */,
 			60C3EA5CC70541C58E51E5A1 /* SkiaWeatherWidgetModule.swift in Sources */,
 			999355A1E5724F2C62801F54 /* TextModule.swift in Sources */,
-			5B3F7A5DF69D8ECEF1F4C723 /* TextPresetDrawing.swift in Sources */,
 			B2F3823C2EB2B77082838006 /* ZoneEdgeBarSkiaRenderer.swift in Sources */,
 			5AE94A8544667862549CD598 /* SkiaIconRasterCache.swift in Sources */,
 			DC35E60B471EE559D42EB08C /* SkiaRenderAssets.swift in Sources */,
@@ -662,7 +659,6 @@
 			16BE9082B25E4DC867510C8D /* MainEditorView.swift in Sources */,
 			7C006B80FEEA0C8C7631C5FD /* MediaBrowserView.swift in Sources */,
 			AEDD4586963DB2B393A46B7F /* MediaPoolSelection.swift in Sources */,
-			10EBE9F553F1190D6EAC144E /* NumericOverlayDetailView.swift in Sources */,
 			E92231D55BE399F84CA6FCC4 /* OverlayComponentDetailView.swift in Sources */,
 			1D7229E1BC4BDBDD471C1671 /* OverlayElementContextMenu.swift in Sources */,
 			2D284C805E7ECBE6371B7F2E /* OverlayFeatheredBackground.swift in Sources */,

@@ -115,35 +115,4 @@ import Testing
     }
 }
 
-@Suite struct SkiaTextCompositionTests {
-    /// Regression: pill width must include the value and unit after the
-    /// label/divider; previously the background capsule stopped at the
-    /// divider and the value spilled outside it.
-    @Test func pillCompositionSizesBackgroundAroundLabelAndValue() throws {
-        var style = SkiaTextFixtureFactory.style()
-        style.iconEnabled = false
-        let element = SkiaTextFixtureFactory.element(style: style)
-        let activity = SkiaTextFixtureFactory.activity()
-        let layout = SkiaTextFixtureFactory.directLayout(
-            for: element,
-            preset: .pillBadge,
-            activity: activity
-        )
-        let renderContext = OverlayRenderContext(
-            canvasSize: SkiaTextFixtureFactory.canvasSize,
-            activity: activity,
-            elapsedTime: SkiaTextFixtureFactory.elapsedTime
-        )
-        let composition = SkiaTextPresetDrawing.compose(
-            element: element,
-            layout: layout,
-            renderContext: renderContext
-        )
-        let valueLine = composition.lines.max { $0.line.width < $1.line.width }
-        let value = try #require(valueLine)
-        let valueRight = value.origin.x + value.line.width
-        let background = try #require(composition.backgroundRect)
-        #expect(valueRight <= background.width)
-    }
-}
 #endif

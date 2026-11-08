@@ -83,7 +83,7 @@ struct DistanceTimelineOverlayDetailView: View {
         }
         InspectorDenseRow(label: "Font") {
             Menu {
-                ForEach(NumericOverlayDetailView.fontPresets, id: \.self) { name in
+                ForEach(InspectorPresets.fontPresets, id: \.self) { name in
                     Button {
                         project.setOverlayFontName(elementID, fontName: name)
                     } label: {
@@ -109,7 +109,7 @@ struct DistanceTimelineOverlayDetailView: View {
             }
         }
         InspectorDenseRow(label: "Color") {
-            InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: element.style.foregroundColor) { color in
+            InspectorDenseSwatchStrip(presets: InspectorPresets.colorPresets, selected: element.style.foregroundColor) { color in
                 project.setOverlayForegroundColor(elementID, color: color)
             }
         }
@@ -124,7 +124,7 @@ struct DistanceTimelineOverlayDetailView: View {
             InspectorDenseSliderRow(label: "Item Gap", value: distanceBinding(\.customValueSpacing, of: style), range: 0...48, displayText: "\(Int(style.customValueSpacing))")
             InspectorDenseSliderRow(label: "Custom Size", value: distanceBinding(\.customValueFontSize, of: style), range: 8...32, displayText: "\(Int(style.customValueFontSize))")
             InspectorDenseRow(label: "Custom Color") {
-                InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: style.customValueColor) { color in
+                InspectorDenseSwatchStrip(presets: InspectorPresets.colorPresets, selected: style.customValueColor) { color in
                     project.mutateDistanceTimelineStyle(elementID) { $0.customValueColor = color }
                 }
             }
@@ -220,7 +220,7 @@ struct DistanceTimelineOverlayDetailView: View {
     private func progressSection(_ element: OverlayElement) -> some View {
         let style = element.style.distanceTimeline
         InspectorDenseRow(label: "Fill Color") {
-            InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: style.fillColor) { color in
+            InspectorDenseSwatchStrip(presets: InspectorPresets.colorPresets, selected: style.fillColor) { color in
                 project.mutateDistanceTimelineStyle(elementID) { $0.fillColor = color }
             }
         }
@@ -250,7 +250,7 @@ struct DistanceTimelineOverlayDetailView: View {
         }
         .disabled(!style.currentMarkerEnabled)
         InspectorDenseRow(label: "Marker Color") {
-            InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: style.currentMarkerColor) { color in
+            InspectorDenseSwatchStrip(presets: InspectorPresets.colorPresets, selected: style.currentMarkerColor) { color in
                 project.mutateDistanceTimelineStyle(elementID) { $0.currentMarkerColor = color }
             }
         }
@@ -556,7 +556,7 @@ struct DistanceTimelineOverlayDetailView: View {
     ) -> some View {
         InspectorDenseRow(label: "\(title) Font") {
             Menu {
-                ForEach(NumericOverlayDetailView.fontPresets, id: \.self) { name in
+                ForEach(InspectorPresets.fontPresets, id: \.self) { name in
                     Button {
                         onSetFontName(name)
                     } label: {
@@ -597,7 +597,7 @@ struct DistanceTimelineOverlayDetailView: View {
         .disabled(!isEnabled)
 
         InspectorDenseRow(label: "\(title) Color") {
-            InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: color) { newColor in
+            InspectorDenseSwatchStrip(presets: InspectorPresets.colorPresets, selected: color) { newColor in
                 onSetColor(newColor)
             }
         }

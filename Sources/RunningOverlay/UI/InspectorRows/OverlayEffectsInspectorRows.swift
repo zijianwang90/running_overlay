@@ -93,7 +93,7 @@ struct OverlayEffectsInspectorRows: View {
                 .labelsHidden()
         }
         InspectorDenseRow(label: "Shadow Color") {
-            InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: shadowColor, action: onSetShadowColor)
+            InspectorDenseSwatchStrip(presets: InspectorPresets.colorPresets, selected: shadowColor, action: onSetShadowColor)
                 .disabled(!shadowEnabled)
         }
         InspectorDenseSliderRow(
@@ -133,7 +133,7 @@ struct OverlayEffectsInspectorRows: View {
                     .labelsHidden()
             }
             InspectorDenseRow(label: "Glow Color") {
-                InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: glowColor, action: onSetGlowColor)
+                InspectorDenseSwatchStrip(presets: InspectorPresets.colorPresets, selected: glowColor, action: onSetGlowColor)
                     .disabled(!glowEnabled)
             }
             InspectorDenseSliderRow(

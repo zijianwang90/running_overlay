@@ -85,7 +85,7 @@ struct IntervalWorkSummaryOverlayDetailView: View {
         }
         if style.accentColorMode == .customColor {
             InspectorDenseRow(label: "Accent Color") {
-                InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: style.accentCustomColor) { color in
+                InspectorDenseSwatchStrip(presets: InspectorPresets.colorPresets, selected: style.accentCustomColor) { color in
                     project.mutateIntervalWorkSummaryStyle(elementID) { $0.accentCustomColor = color }
                 }
             }
@@ -178,7 +178,7 @@ struct IntervalWorkSummaryOverlayDetailView: View {
         }
         if style.colorMode == .customColor {
             InspectorDenseRow(label: "Custom") {
-                InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: style.customColor) { color in
+                InspectorDenseSwatchStrip(presets: InspectorPresets.colorPresets, selected: style.customColor) { color in
                     updateTextStyle(role) { $0.customColor = color }
                 }
             }
@@ -235,7 +235,7 @@ struct IntervalWorkSummaryOverlayDetailView: View {
 
     private func fontMenu(selected: String, action: @escaping (String) -> Void) -> some View {
         Menu {
-            ForEach(NumericOverlayDetailView.fontPresets, id: \.self) { name in
+            ForEach(InspectorPresets.fontPresets, id: \.self) { name in
                 Button {
                     action(name)
                 } label: {

@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Dense Inspector detail panel for the Route Map overlay.
-/// Mirrors the design language of `NumericOverlayDetailView`:
+/// Uses the shared `InspectorDense*` design language:
 /// `InspectorDenseRow` rows, collapsible sections, and the same tokens
 /// (`NumericTokens`) so the right Inspector feels consistent across overlay types.
 struct RouteMapOverlayDetailView: View {
@@ -200,7 +200,7 @@ struct RouteMapOverlayDetailView: View {
         if element.style.routeMapColorMode == .solid {
             InspectorDenseRow(label: "Color") {
                 InspectorDenseSwatchStrip(
-                    presets: NumericOverlayDetailView.colorPresets,
+                    presets: InspectorPresets.colorPresets,
                     selected: element.style.foregroundColor
                 ) { color in
                     project.setOverlayForegroundColor(elementID, color: color)
@@ -209,7 +209,7 @@ struct RouteMapOverlayDetailView: View {
         } else {
             InspectorDenseRow(label: "Gradient Start") {
                 InspectorDenseSwatchStrip(
-                    presets: NumericOverlayDetailView.colorPresets,
+                    presets: InspectorPresets.colorPresets,
                     selected: element.style.routeMapGradientStart
                 ) { color in
                     project.setOverlayRouteMapGradientStart(elementID, color: color)
@@ -217,7 +217,7 @@ struct RouteMapOverlayDetailView: View {
             }
             InspectorDenseRow(label: "Gradient Mid") {
                 InspectorDenseSwatchStrip(
-                    presets: NumericOverlayDetailView.colorPresets,
+                    presets: InspectorPresets.colorPresets,
                     selected: element.style.routeMapGradientMiddle
                 ) { color in
                     project.setOverlayRouteMapGradientMiddle(elementID, color: color)
@@ -225,7 +225,7 @@ struct RouteMapOverlayDetailView: View {
             }
             InspectorDenseRow(label: "Gradient End") {
                 InspectorDenseSwatchStrip(
-                    presets: NumericOverlayDetailView.colorPresets,
+                    presets: InspectorPresets.colorPresets,
                     selected: element.style.routeMapGradientEnd
                 ) { color in
                     project.setOverlayRouteMapGradientEnd(elementID, color: color)
@@ -284,7 +284,7 @@ struct RouteMapOverlayDetailView: View {
     @ViewBuilder
     private func markerColorRow(
         label: String,
-        presets: [(name: String, color: OverlayColor)] = NumericOverlayDetailView.colorPresets,
+        presets: [(name: String, color: OverlayColor)] = InspectorPresets.colorPresets,
         selected: OverlayColor,
         onSelect: @escaping (OverlayColor) -> Void
     ) -> some View {
@@ -298,7 +298,7 @@ struct RouteMapOverlayDetailView: View {
     }
 
     private var endMarkerColorPresets: [(name: String, color: OverlayColor)] {
-        [("Checker", .routeMapEndCheckerboard)] + NumericOverlayDetailView.colorPresets
+        [("Checker", .routeMapEndCheckerboard)] + InspectorPresets.colorPresets
     }
 
     @ViewBuilder

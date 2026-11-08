@@ -703,3 +703,27 @@ enum NumericTokens {
     static let numericFont = Font.system(size: 12, weight: .regular).monospacedDigit()
     static let valueFieldFont = Font.system(size: 11, weight: .regular)
 }
+
+extension Color {
+    init(numericOverlay color: OverlayColor) {
+        self.init(red: color.red, green: color.green, blue: color.blue, opacity: color.alpha)
+    }
+}
+
+extension Double {
+    func quantizedNumeric(to step: Double) -> Double {
+        guard step > 0 else { return self }
+        return (self / step).rounded() * step
+    }
+}
+
+/// Swatch and font shortcuts shared by native overlay Inspectors.
+@MainActor
+enum InspectorPresets {
+    static var fontPresets: [String] { FontLibraryManager.shared.effectiveFavorites }
+    static let colorPresets: [(name: String, color: OverlayColor)] = [
+        ("White", .white), ("Black", .black), ("Red", .red), ("Orange", .orange),
+        ("Yellow", .yellow), ("Green", .green), ("Blue", .blue), ("Cyan", .cyan),
+        ("Purple", .purple), ("Pink", .pink)
+    ]
+}

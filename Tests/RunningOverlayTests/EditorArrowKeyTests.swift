@@ -6,7 +6,7 @@ import Testing
 struct EditorArrowKeyTests {
     @Test func arrowKeysNudgeSelectedOverlayByOutputPixels() {
         let project = ProjectDocument()
-        project.addOverlayElement(.heartRate)
+        project.addOverlayElement(.decorSolidColor)
         let elementID = project.overlayLayout.elements[0].id
         let start = project.overlayLayout.elements[0].position
         let playhead = project.timeline.playhead
@@ -46,7 +46,7 @@ struct EditorArrowKeyTests {
         #expect(project.handleArrowKey(.left, largeStep: true))
         project.setPlayhead(2)
 
-        project.addOverlayElement(.pace)
+        project.addOverlayElement(.decorText)
         let elementID = project.overlayLayout.elements[0].id
         let position = project.overlayLayout.elements[0].position
         project.setOverlayLocked(elementID, isLocked: true)

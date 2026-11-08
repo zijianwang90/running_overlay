@@ -17,7 +17,11 @@ struct OverlayComponentLibraryItem: Identifiable, Equatable, Sendable {
     /// Initial parameter values for a new instance.
     var parameters: [String: OverlayJSONValue] = [:]
 
-    static let all: [OverlayComponentLibraryItem] = numericPresets + [
+    /// Every bundled entry: numeric presets (Overlay Pool → Metrics) and
+    /// example components (Overlay Pool → Components → Bundled).
+    static let all: [OverlayComponentLibraryItem] = numericPresets + examples
+
+    static let examples: [OverlayComponentLibraryItem] = [
         OverlayComponentLibraryItem(
             id: "studio.builtin.heart-rate-pill",
             displayName: "Heart Rate Pill",
@@ -34,20 +38,19 @@ struct OverlayComponentLibraryItem: Identifiable, Equatable, Sendable {
         )
     ]
 
-    /// One Overlay Pool entry per metric of the generic `studio.numeric`
-    /// definition. Native numeric tiles stay authoritative until the
-    /// component passes parity acceptance (spec section 15).
+    /// One Overlay Pool → Metrics entry per metric of the generic
+    /// `studio.numeric` definition, which replaced the native numeric
+    /// overlays (ADR 0014).
     static let numericPresets: [OverlayComponentLibraryItem] = OverlayComponentMetricCatalog
         .presetOrder
-        .compactMap { id in
-            guard let metric = OverlayComponentMetricCatalog.metrics[id] else { return nil }
-            return OverlayComponentLibraryItem(
-                id: "studio.numeric#\(id)",
-                displayName: OverlayComponentMetricCatalog.displayName(for: id),
-                hint: "numeric",
-                systemImage: metric.type.defaultNumericIconSystemName,
+        .map { metric in
+            OverlayComponentLibraryItem(
+                id: "studio.numeric#\(metric.rawValue)",
+                displayName: metric.displayName,
+                hint: metric.poolHint,
+                systemImage: metric.defaultIconSystemName,
                 resourceName: "numeric",
-                parameters: ["metricId": .string(id)]
+                parameters: ["metricId": .string(metric.rawValue)]
             )
         }
 }
@@ -78,6 +81,27 @@ enum OverlayComponentLibrary {
             throw OverlayComponentLibraryError.missingResource(item.resourceName)
         }
         return try OverlayComponentReference(definitionData: data, source: .bundled)
+    }
+
+    /// A `studio.numeric` instance for one metric, as the Overlay Pool adds it.
+    static func numericElement(
+        _ metric: OverlayMetric,
+        position: CGPoint,
+        scale: Double,
+        style: OverlayStyle = .default
+    ) -> OverlayElement? {
+        guard let item = OverlayComponentLibraryItem.numericPresets.first(where: {
+            $0.parameters["metricId"] == .string(metric.rawValue)
+        }), let reference = try? reference(for: item) else {
+            return nil
+        }
+        return OverlayElement(
+            type: .component,
+            position: position,
+            scale: scale,
+            style: style,
+            component: OverlayComponentInstance(reference: reference, parameters: item.parameters)
+        )
     }
 
     /// Resolves a bundled reference to a validated definition, matching the

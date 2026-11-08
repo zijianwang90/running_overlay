@@ -17,81 +17,6 @@ struct OverlayRenderContext {
 }
 
 enum OverlayRenderModel {
-    static func textLayout(for element: OverlayElement, in context: OverlayRenderContext) -> OverlayTextRenderLayout {
-        let fontSize = context.scaled(element.style.fontSize * element.scale)
-        let preset: OverlayTextPreset = element.type.isNumericOverlay ? .minimal : element.style.textPreset
-        let metrics = textMetrics(for: preset, fontSize: fontSize, scale: element.scale, context: context, element: element)
-        let components = OverlayValueFormatter.components(for: element, activity: context.activity, elapsedTime: context.elapsedTime)
-        let dynamicHeartRateZoneColor = resolvedHeartRateZoneBaseColor(for: element, in: context)
-        return OverlayTextRenderLayout(
-            value: OverlayValueFormatter.value(for: element, activity: context.activity, elapsedTime: context.elapsedTime),
-            components: components,
-            preset: preset,
-            fontSize: fontSize,
-            labelFontSize: context.scaled(element.style.labelFontSize * element.scale),
-            unitFontSize: context.scaled(element.style.unitFontSize * element.scale),
-            labelFontName: element.style.labelFontName,
-            unitFontName: element.style.unitFontName,
-            labelFontWeight: element.style.labelFontWeight,
-            unitFontWeight: element.style.unitFontWeight,
-            labelPosition: element.style.labelPosition,
-            unitPosition: element.style.unitPosition,
-            labelSpacing: context.scaled(element.style.labelSpacing * element.scale),
-            unitSpacing: context.scaled(element.style.unitSpacing * element.scale),
-            iconEnabled: element.type.isNumericOverlay && element.style.iconEnabled,
-            iconSystemName: element.style.iconSystemName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                ? element.type.defaultNumericIconSystemName
-                : element.style.iconSystemName,
-            iconPosition: element.style.iconPosition,
-            iconTextAlignment: element.style.iconTextAlignment,
-            iconSize: context.scaled(element.style.iconSize * element.scale),
-            iconColor: element.style.iconColor,
-            iconOpacity: element.style.iconOpacity,
-            iconSpacing: context.scaled(element.style.iconSpacing * element.scale),
-            iconColorsFollowHeartRateZones: element.style.iconColorsFollowHeartRateZones,
-            valueColorsFollowHeartRateZones: element.style.valueColorsFollowHeartRateZones,
-            labelColorsFollowHeartRateZones: element.style.labelColorsFollowHeartRateZones,
-            unitColorsFollowHeartRateZones: element.style.unitColorsFollowHeartRateZones,
-            horizontalPadding: metrics.horizontalPadding,
-            verticalPadding: metrics.verticalPadding,
-            minimumWidth: context.scaled(element.style.numericMinWidth * element.scale),
-            minimumHeight: context.scaled(element.style.numericMinHeight * element.scale),
-            cornerRadius: metrics.cornerRadius,
-            backgroundFadeOutEnabled: element.style.backgroundFadeOutEnabled,
-            backgroundFadeOutAmount: element.style.backgroundFadeOutAmount,
-            backgroundBlurRadius: context.scaled(element.style.backgroundBlurRadius),
-            shadowRadius: context.scaled(element.style.shadowRadius),
-            shadowOffsetY: context.scaled(element.style.shadowOffsetY),
-            labelTextAlignment: element.type.isNumericOverlay ? .leading : element.style.labelTextAlignment,
-            valueTextAlignment: element.type.isNumericOverlay ? .leading : element.style.textAlignment,
-            unitTextAlignment: element.style.unitTextAlignment,
-            dividerEnabled: element.type.isNumericOverlay ? false : element.style.dividerEnabled,
-            dividerColor: element.style.dividerColor,
-            dividerThickness: context.scaled(element.style.dividerThickness * element.scale),
-            dividerOpacity: element.style.dividerOpacity,
-            dynamicHeartRateZoneColor: dynamicHeartRateZoneColor
-        )
-    }
-
-    private static func resolvedHeartRateZoneBaseColor(
-        for element: OverlayElement,
-        in context: OverlayRenderContext
-    ) -> OverlayColor? {
-        guard element.type == .heartRate || element.type == .heartRateZone else { return nil }
-        guard element.style.textColorsFollowHeartRateZones
-            || element.style.iconColorsFollowHeartRateZones
-            || element.style.valueColorsFollowHeartRateZones
-            || element.style.labelColorsFollowHeartRateZones
-            || element.style.unitColorsFollowHeartRateZones
-        else { return nil }
-        let snapshot = HeartRateZonePreferences.currentSnapshot()
-        let visibleZones = Array(snapshot.zones.prefix(snapshot.zoneCount))
-        guard let heartRate = context.activity.heartRate(at: context.elapsedTime),
-              let zoneIndex = resolvedHeartRateZoneIndex(heartRate: heartRate, zones: visibleZones)
-        else { return nil }
-        return HRZonePalette.overlayColor(forIndex: zoneIndex)
-    }
-
     static func distanceTimelineLayout(for element: OverlayElement, in context: OverlayRenderContext) -> OverlayDistanceTimelineRenderLayout {
         let style = element.style.distanceTimeline
         let width = context.scaled(style.width * element.scale)
@@ -244,7 +169,7 @@ enum OverlayRenderModel {
                     unit: ""
                 )
             }
-            let components = OverlayValueFormatter.components(for: slot.metric.elementType, activity: activity, elapsedTime: elapsedTime)
+            let components = OverlayValueFormatter.components(for: slot.metric.overlayMetric, activity: activity, elapsedTime: elapsedTime)
             return OverlayDistanceTimelineStatsBarItemLayout(
                 label: slot.customLabel.isEmpty ? components.shortLabel : slot.customLabel,
                 value: components.value,
@@ -265,7 +190,7 @@ enum OverlayRenderModel {
             if slot.metric == .progress {
                 return DistanceTimelineCustomValue(visible: true, metric: slot.metric, value: "\(Int((progress * 100).rounded()))%")
             }
-            let components = OverlayValueFormatter.components(for: slot.metric.elementType, activity: activity, elapsedTime: elapsedTime)
+            let components = OverlayValueFormatter.components(for: slot.metric.overlayMetric, activity: activity, elapsedTime: elapsedTime)
             let text = components.unit.isEmpty ? components.value : "\(components.value) \(components.unit)"
             return DistanceTimelineCustomValue(visible: true, metric: slot.metric, value: text)
         }
@@ -420,7 +345,7 @@ enum OverlayRenderModel {
                     unit: ""
                 )
             }
-            let components = OverlayValueFormatter.components(for: slot.metric.elementType, activity: activity, elapsedTime: elapsedTime)
+            let components = OverlayValueFormatter.components(for: slot.metric.overlayMetric, activity: activity, elapsedTime: elapsedTime)
             return OverlayDistanceTimelineStatsBarItemLayout(
                 label: slot.customLabel.isEmpty ? components.shortLabel : slot.customLabel,
                 value: components.value,
@@ -437,7 +362,7 @@ enum OverlayRenderModel {
         let elevations = activity.records.compactMap(\.elevationMeters)
         switch style.bigNumberMetric {
         case .currentElevation:
-            return OverlayValueFormatter.components(for: .elevation, activity: activity, elapsedTime: elapsedTime)
+            return OverlayValueFormatter.components(for: OverlayMetric.elevation, activity: activity, elapsedTime: elapsedTime)
         case .elevationGain:
             let gain = zip(elevations, elevations.dropFirst()).reduce(0) { total, pair in
                 total + max(pair.1 - pair.0, 0)
@@ -477,7 +402,7 @@ enum OverlayRenderModel {
             let labelSize = max(baseLabelSize * (config.labelFontScale / 0.32), 7)
             let unitSize = max(baseUnitSize * (config.unitFontScale / 0.42), 7)
             let components = OverlayValueFormatter.components(
-                for: config.metric.elementType,
+                for: config.metric.overlayMetric,
                 activity: context.activity,
                 elapsedTime: context.elapsedTime
             )
@@ -1199,9 +1124,9 @@ enum OverlayRenderModel {
             case .heartRateZone, .hrDrop:
                 return nil
             case .heartRate, .pace, .avgPace, .lapPace, .calories, .elapsedTime, .realTime, .distance, .elevation, .cadence, .power, .verticalOscillation, .groundContactTime, .strideLength, .verticalRatio, .groundContactBalance, .temperature, .grade:
-                guard let elementType = slot.metric.elementType else { return nil }
+                guard let metric = slot.metric.overlayMetric else { return nil }
                 let components = OverlayValueFormatter.components(
-                    for: elementType,
+                    for: metric,
                     unit: slot.unitOption,
                     activity: activity,
                     elapsedTime: elapsedTime
@@ -2016,7 +1941,7 @@ enum OverlayRenderModel {
                     return OverlayRouteMapStatsBarItemLayout(value: "\(Int((clampedProgress(progress) * 100).rounded()))%", unit: "", label: label)
                 }
                 let comps = OverlayValueFormatter.components(
-                    for: slot.metric.elementType,
+                    for: slot.metric.overlayMetric,
                     activity: context.activity,
                     elapsedTime: context.elapsedTime
                 )
@@ -2189,66 +2114,6 @@ enum OverlayRenderModel {
         return (1 - log(tan(radians) + 1 / cos(radians)) / .pi) / 2
     }
 
-    private static func textMetrics(
-        for preset: OverlayTextPreset,
-        fontSize: Double,
-        scale: Double,
-        context: OverlayRenderContext,
-        element: OverlayElement
-    ) -> (labelFontSize: Double, unitFontSize: Double, horizontalPadding: Double, verticalPadding: Double, cornerRadius: Double) {
-        switch preset {
-        case .minimal:
-            // Minimal preset adopts model-backed padding/radius from the numeric overlay style.
-            return (
-                fontSize * 0.72,
-                fontSize * 0.58,
-                context.scaled(element.style.backgroundPaddingX),
-                context.scaled(element.style.backgroundPaddingY),
-                context.scaled(element.style.backgroundRadius)
-            )
-        case .pillBadge:
-            return (fontSize * 0.42, fontSize * 0.58, context.scaled(18 * scale), context.scaled(10 * scale), context.scaled(28 * scale))
-        case .metricCard:
-            return (fontSize * 0.58, fontSize * 0.58, context.scaled(18 * scale), context.scaled(14 * scale), context.scaled(10 * scale))
-        case .bigNumber:
-            return (fontSize * 0.56, fontSize * 0.42, context.scaled(6), context.scaled(4), context.scaled(0))
-        case .sportWatch:
-            return (fontSize * 0.46, fontSize * 0.46, context.scaled(18 * scale), context.scaled(14 * scale), context.scaled(18 * scale))
-        case .splitLabel:
-            return (fontSize * 0.34, fontSize * 0.50, context.scaled(0), context.scaled(0), context.scaled(0))
-        case .minimalLabel:
-            return (fontSize * 0.34, fontSize * 0.55, context.scaled(0), context.scaled(0), context.scaled(0))
-        case .neonGlow:
-            return (fontSize * 0.34, fontSize * 0.55, context.scaled(0), context.scaled(0), context.scaled(0))
-        case .racingStripe:
-            return (
-                fontSize * 0.34,
-                fontSize * 0.50,
-                context.scaled(element.style.backgroundPaddingX > 0 ? element.style.backgroundPaddingX : 18),
-                context.scaled(element.style.backgroundPaddingY > 0 ? element.style.backgroundPaddingY : 12),
-                context.scaled(element.style.backgroundRadius)
-            )
-        case .editorial:
-            return (fontSize * 0.34, fontSize * 0.42, context.scaled(0), context.scaled(0), context.scaled(0))
-        case .digitalWatch:
-            return (
-                fontSize * 0.32,
-                fontSize * 0.48,
-                context.scaled(element.style.backgroundPaddingX > 0 ? element.style.backgroundPaddingX : 18),
-                context.scaled(element.style.backgroundPaddingY > 0 ? element.style.backgroundPaddingY : 12),
-                context.scaled(element.style.backgroundRadius)
-            )
-        case .inlineGhost:
-            return (fontSize * 0.44, fontSize * 0.44, context.scaled(0), context.scaled(0), context.scaled(0))
-        case .accentBar:
-            return (fontSize * 0.27, fontSize * 0.33, context.scaled(0), context.scaled(0), context.scaled(0))
-        case .sportNeon:
-            return (fontSize * 0.22, fontSize * 0.25, context.scaled(0), context.scaled(0), context.scaled(0))
-        case .serifEditorial:
-            return (fontSize * 0.22, fontSize * 0.25, context.scaled(0), context.scaled(0), context.scaled(0))
-        }
-    }
-
     /// Resolve final pixel dimensions for a Decor Solid Color element.
     /// Width and height come from `DecorStyle`; `element.scale` plus the
     /// canvas DPR (`context.scaled`) bring design units into pixel space.
@@ -2351,55 +2216,6 @@ struct DecorTextRenderLayout {
     var strokeWidth: Double
     var strokeColor: OverlayColor
     var autoFit: Bool
-}
-
-struct OverlayTextRenderLayout {
-    var value: String
-    var components: OverlayValueComponents
-    var preset: OverlayTextPreset
-    var fontSize: Double
-    var labelFontSize: Double
-    var unitFontSize: Double
-    var labelFontName: String
-    var unitFontName: String
-    var labelFontWeight: OverlayFontWeight
-    var unitFontWeight: OverlayFontWeight
-    var labelPosition: OverlayTextAttachmentPosition
-    var unitPosition: OverlayTextAttachmentPosition
-    var labelSpacing: Double
-    var unitSpacing: Double
-    var iconEnabled: Bool
-    var iconSystemName: String
-    var iconPosition: OverlayTextAttachmentPosition
-    var iconTextAlignment: OverlayTextAlignment
-    var iconSize: Double
-    var iconColor: OverlayColor
-    var iconOpacity: Double
-    var iconSpacing: Double
-    var iconColorsFollowHeartRateZones: Bool
-    var valueColorsFollowHeartRateZones: Bool
-    var labelColorsFollowHeartRateZones: Bool
-    var unitColorsFollowHeartRateZones: Bool
-    var horizontalPadding: Double
-    var verticalPadding: Double
-    var minimumWidth: Double
-    var minimumHeight: Double
-    var cornerRadius: Double
-    var backgroundFadeOutEnabled: Bool
-    var backgroundFadeOutAmount: Double
-    var backgroundBlurRadius: Double
-    var shadowRadius: Double
-    var shadowOffsetY: Double
-    var labelTextAlignment: OverlayTextAlignment
-    var valueTextAlignment: OverlayTextAlignment
-    var unitTextAlignment: OverlayTextAlignment
-    var dividerEnabled: Bool
-    var dividerColor: OverlayColor
-    var dividerThickness: Double
-    var dividerOpacity: Double
-    /// When non-nil, heart-rate-derived icon tint can use this RGB while
-    /// keeping `iconOpacity` from the static style.
-    var dynamicHeartRateZoneColor: OverlayColor?
 }
 
 struct OverlayDistanceTimelineRenderLayout {

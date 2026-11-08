@@ -408,7 +408,6 @@ import Testing
         var defaultStyle = OverlayStyle.default
         defaultStyle.fontName = "SF Pro"
         defaultStyle.labelFontName = "SF Pro"
-        defaultStyle.unitFontName = "SF Pro"
         defaultStyle.backgroundEnabled = true
         defaultStyle.shadowEnabled = true
 
@@ -424,7 +423,6 @@ import Testing
         var plain = OverlayStyle.default
         plain.fontName = "SF Pro"
         plain.labelFontName = "SF Pro"
-        plain.unitFontName = "SF Pro"
         plain.backgroundEnabled = false
         plain.shadowEnabled = false
         plain.borderEnabled = false

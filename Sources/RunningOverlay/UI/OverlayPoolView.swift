@@ -63,7 +63,7 @@ struct OverlayPoolView: View {
                         VStack(alignment: .leading, spacing: EditorTheme.space3) {
                             componentSectionHeader("Bundled")
                             LazyVGrid(columns: columns, spacing: EditorTheme.space2) {
-                                ForEach(OverlayComponentLibraryItem.all) { item in
+                                ForEach(OverlayComponentLibraryItem.examples) { item in
                                     OverlayComponentAddTile(
                                         displayName: item.displayName,
                                         hint: item.hint,
@@ -85,6 +85,21 @@ struct OverlayPoolView: View {
                                     ForEach(project.projectComponentEntries) { entry in
                                         projectComponentTile(entry)
                                     }
+                                }
+                            }
+                        }
+                        .padding(.bottom, EditorTheme.space4)
+                    } else if activeCategory == .metrics {
+                        // Numeric readings are presets of the bundled
+                        // `studio.numeric` component (ADR 0014).
+                        LazyVGrid(columns: columns, spacing: EditorTheme.space2) {
+                            ForEach(OverlayComponentLibraryItem.numericPresets) { item in
+                                OverlayComponentAddTile(
+                                    displayName: item.displayName,
+                                    hint: item.hint,
+                                    systemImage: item.systemImage
+                                ) {
+                                    project.addComponentFromLibrary(item)
                                 }
                             }
                         }
@@ -228,27 +243,6 @@ struct OverlayTileInfo: Identifiable {
     var label: String { type.label }
 
     static let all: [OverlayTileInfo] = [
-        OverlayTileInfo(type: .heartRate, hint: "bpm", systemImage: "heart", category: .metrics),
-        OverlayTileInfo(type: .heartRateZone, hint: "Z1–Z6", systemImage: "heart.text.square.fill", category: .metrics),
-        OverlayTileInfo(type: .pace, hint: "min/km", systemImage: "timer", category: .metrics),
-        OverlayTileInfo(type: .avgPace, hint: "avg", systemImage: "speedometer", category: .metrics),
-        OverlayTileInfo(type: .lapPace, hint: "lap", systemImage: "flag.checkered", category: .metrics),
-        OverlayTileInfo(type: .calories, hint: "kcal", systemImage: "flame", category: .metrics),
-        OverlayTileInfo(type: .elapsedTime, hint: "duration", systemImage: "clock", category: .metrics),
-        OverlayTileInfo(type: .realTime, hint: "clock time", systemImage: "watch.analog", category: .metrics),
-        OverlayTileInfo(type: .date, hint: "year / month / day", systemImage: "calendar", category: .metrics),
-        OverlayTileInfo(type: .distance, hint: "km / mi", systemImage: "ruler", category: .metrics),
-        OverlayTileInfo(type: .elevation, hint: "altitude", systemImage: "mountain.2", category: .metrics),
-        OverlayTileInfo(type: .cadence, hint: "spm", systemImage: "figure.run", category: .metrics),
-        OverlayTileInfo(type: .power, hint: "watts", systemImage: "bolt", category: .metrics),
-        OverlayTileInfo(type: .verticalOscillation, hint: "cm", systemImage: "arrow.up.and.down", category: .metrics),
-        OverlayTileInfo(type: .groundContactTime, hint: "ms", systemImage: "timer", category: .metrics),
-        OverlayTileInfo(type: .strideLength, hint: "m", systemImage: "arrow.left.and.right", category: .metrics),
-        OverlayTileInfo(type: .verticalRatio, hint: "%", systemImage: "percent", category: .metrics),
-        OverlayTileInfo(type: .groundContactBalance, hint: "L/R", systemImage: "scale.3d", category: .metrics),
-        OverlayTileInfo(type: .temperature, hint: "°C / °F", systemImage: "thermometer", category: .metrics),
-        OverlayTileInfo(type: .grade, hint: "slope %", systemImage: "arrow.up.right", category: .metrics),
-        OverlayTileInfo(type: .customNumeric, hint: "custom activity field", systemImage: "number", category: .metrics),
         OverlayTileInfo(type: .distanceTimeline, hint: "progress", systemImage: "waveform.path.ecg", category: .visuals),
         OverlayTileInfo(type: .elevationChart, hint: "profile", systemImage: "chart.line.uptrend.xyaxis", category: .visuals),
         OverlayTileInfo(type: .runningGauge, hint: "live gauge", systemImage: "gauge", category: .visuals, isAccent: true),

@@ -10,6 +10,9 @@ struct OverlayTemplate: Identifiable, Codable, Equatable {
     var elements: [OverlayTemplateElement]
     /// Embedded asset blobs for self-contained template export (Phase E6).
     var assets: [TemplateAsset]
+    /// Elements of removed native numeric types skipped while decoding
+    /// (ADR 0014). Not persisted.
+    var droppedLegacyElementCount = 0
 
     init(
         schemaVersion: Int = 2,
@@ -62,7 +65,9 @@ struct OverlayTemplate: Identifiable, Codable, Equatable {
         createdAt = try c.decode(Date.self, forKey: .createdAt)
         updatedAt = try c.decode(Date.self, forKey: .updatedAt)
         referenceResolution = try c.decodeIfPresent(OverlayTemplateResolution.self, forKey: .referenceResolution)
-        elements = try c.decode([OverlayTemplateElement].self, forKey: .elements)
+        let list = try c.decode(OverlayTemplateElementList.self, forKey: .elements)
+        elements = list.elements
+        droppedLegacyElementCount = list.droppedLegacyCount
         assets = try c.decodeIfPresent([TemplateAsset].self, forKey: .assets) ?? []
     }
 
@@ -245,6 +250,43 @@ struct OverlayTemplateElement: Codable, Equatable {
                 debugDescription: "component element requires a component reference"
             )
         }
+    }
+}
+
+/// Persisted overlay elements for projects and templates. Decoding skips the
+/// native numeric element types removed without migration (ADR 0014) and
+/// counts them so the caller can tell the user; every other element decodes
+/// strictly. Encodes as a plain array.
+struct OverlayTemplateElementList: Codable, Equatable {
+    var elements: [OverlayTemplateElement]
+    var droppedLegacyCount = 0
+
+    init(_ elements: [OverlayTemplateElement]) {
+        self.elements = elements
+    }
+
+    private struct TypeProbe: Decodable {
+        var type: String
+    }
+
+    init(from decoder: Decoder) throws {
+        var container = try decoder.unkeyedContainer()
+        var elements: [OverlayTemplateElement] = []
+        while !container.isAtEnd {
+            let elementDecoder = try container.superDecoder()
+            let probe = try TypeProbe(from: elementDecoder)
+            if OverlayElementType.removedNumericRawValues.contains(probe.type) {
+                droppedLegacyCount += 1
+                continue
+            }
+            elements.append(try OverlayTemplateElement(from: elementDecoder))
+        }
+        self.elements = elements
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(elements)
     }
 }
 

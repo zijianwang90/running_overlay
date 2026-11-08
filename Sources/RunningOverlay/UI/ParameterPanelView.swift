@@ -30,9 +30,7 @@ struct ParameterPanelView: View {
     @ViewBuilder
     private func overlayDetail(_ elementID: OverlayElement.ID) -> some View {
         if let element = project.selectedOverlay(elementID) {
-            if element.type.isNumericOverlay {
-                NumericOverlayDetailView(elementID: elementID)
-            } else if element.type == .distanceTimeline {
+            if element.type == .distanceTimeline {
                 DistanceTimelineOverlayDetailView(elementID: elementID)
             } else if element.type == .elevationChart {
                 ElevationChartOverlayDetailView(elementID: elementID)

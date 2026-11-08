@@ -34,26 +34,17 @@ Current implementation:
 - Interval Timeline uses the same fixed footer pattern as other dense overlay detail views: header and `Reset` / `Done` footer stay pinned while Timeline, Current, Rail, Labels, Background, Border, and Effects sections scroll.
 - Shared `Layout` rows are now fixed to `Position`, `Scale`, `Width`, `Height`, and `Opacity`; `Rotation` is intentionally removed from the shared Layout section across overlay detail panels.
 - Inspector default width is 460 px and minimum width is 460 px; the panel is user-resizable through the custom `HorizontalResizeHandle`, and `ParameterPanelView` does not impose its own width frame so internal outer/detail/editing state switches cannot resize the right column or squeeze tile content.
-- Inspector segmented controls are implemented with native SwiftUI segmented `Picker` (`.pickerStyle(.segmented)`) instead of custom button rows, including shared dense controls used by Numeric Overlay, Running Gauge, and Route Map detail views.
+- Inspector segmented controls are implemented with native SwiftUI segmented `Picker` (`.pickerStyle(.segmented)`) instead of custom button rows, including shared dense controls used by the Running Gauge, Route Map and generated component detail views.
 - Preview overlay elements can be dragged and clamped within the preview coordinate space.
 - Preview overlay hit shapes are applied before position layout so each element only intercepts pointer input inside its rendered bounds; clicking the remaining canvas clears the current overlay selection.
 - Preview drag uses measured rendered overlay frames for snapping: with safe guides enabled, overlay edges snap to 90%/80% guide lines and overlay center axes snap to the canvas center crosshair; visible overlays also snap to each other's left/center/right and top/center/bottom alignment lines during drag.
 - Inspector supports selected overlay font family, font weight, font size (value text), scale, color presets, independent label/unit controls, and advanced background controls.
 - SwiftUI overlay previews route configurable text through the shared overlay font helper. macOS system UI font family aliases such as `SF Pro` and `SF Pro Display` render with `Font.system(size:weight:)` to avoid SwiftUI font descriptor weight diagnostics. Custom font families resolve through AppKit to the concrete PostScript face for the selected weight before creating `Font.custom(...)`, so multi-weight families such as JetBrains Mono use their Regular/Medium/SemiBold/Bold faces. Visible weight changes still depend on whether that family provides matching weight faces, so single-weight families such as Monaco may not visibly respond to every weight option.
-- Numeric overlays (heart rate, pace, calories, elapsed time, real time, date, distance, elevation, cadence, power, run-dynamics fields, temperature, grade, and Custom Numeric) use the dense `NumericOverlayDetailView` Inspector defined in `docs/design/overlays/numeric/numeric-overlay-ui.md`. `ParameterPanelView` routes these `OverlayElementType` values through the new view. Every other overlay type has its own dedicated detail view (`DistanceTimelineOverlayDetailView`, `ElevationChartOverlayDetailView`, `RunningGaugeOverlayDetailView`, the interval detail views, `ZoneEdgeBarOverlayDetailView`, `RouteMapOverlayDetailView`, `WeatherWidgetOverlayDetailView`, and `DecorOverlayDetailView`); a selection whose overlay no longer exists, or a type with no dedicated view, shows the `Missing` placeholder (`MissingOverlayInspectorView`). The legacy shared `OverlayDetailView` and its row primitives were removed.
-- The Date numeric overlay formats `ActivityTimeline.timestamp(at:)` with a Content-section Format menu. Its six options cover common year-month-day and month-day styles, while all other Inspector behavior and preview/export rendering remain shared with Numeric Overlay.
-- The Elevation numeric overlay supports `OverlayStyle.elevationDisplayMode` so the same tile can show either live altitude (`current`) or cumulative ascent to the current playhead (`gain`) while keeping the existing meter/feet unit switch. The Temperature numeric overlay supports `OverlayStyle.useFITTemperature`; it defaults on and, when FIT temperature samples exist, exposes an Inspector toggle matching the Weather Widget FIT temperature control. When FIT temperature is missing or disabled, `OverlayStyle.manualTemperatureCelsius` provides the manual Celsius fallback for preview and export.
-- Numeric Overlay 1.0 removes the numeric style preset picker and divider controls. Numeric preview/export always uses the Minimal Clean render path and disables divider rendering even if old project/template data decodes `textPreset` or `dividerEnabled`.
-- Numeric Overlay 1.0 supports a configurable SF Symbol icon attachment. `OverlayElementType.defaultNumericIconSystemName` seeds each newly added metric, while `OverlayStyle.iconEnabled`, `iconSystemName`, `iconPosition`, `iconTextAlignment`, `iconSize`, `iconColor`, `iconOpacity`, and `iconSpacing` drive the Inspector and shared SwiftUI preview/export path. Numeric Icon and Decor Icon SF Symbol selection share `SFSymbolPicker`, which keeps direct text entry but adds a searchable bundled SF Symbol name catalog generated from public CoreGlyphs symbol order data, sport-first default browsing, cached renderability checks, current-symbol preview, recent symbols, and default reset.
-- Heart-rate-related numeric overlays can now tint value, label, unit, and icon independently through `OverlayStyle.valueColorsFollowHeartRateZones`, `labelColorsFollowHeartRateZones`, `unitColorsFollowHeartRateZones`, and `iconColorsFollowHeartRateZones`. `OverlayRenderModel.textLayout` resolves a shared `dynamicHeartRateZoneColor` from the current heart rate sample and `HRZonePalette`, then preview/export consume that render-model field without changing layout or picker behavior.
-- Numeric overlay preview/export positioning is top-leading anchored rather than center anchored. Value and label rows resolve to leading alignment so incomplete or shorter dynamic content keeps the same left edge and grows to the right; inline unit alignment still honors `unitTextAlignment` as its top/middle/bottom anchor. Preview placement uses deterministic alignment guides instead of async content-size measurement; numeric drag uses canvas-coordinate pointer location plus a grab offset to track the overlay's top-left corner, then runs a top-leading snap/clamp path so edge snapping still works.
-- `OverlayStyle` carries the numeric-overlay editor state: `unitOption`, `elevationDisplayMode`, `useFITTemperature`, `customNumericField`, `customNumericFormat`, `customNumericPrecision`, `customUnit`, `showLabel`, `showUnit`, `customLabel`, `labelPosition`, `unitPosition`, `labelFont*`, `unitFont*`, `icon*`, `valueColorsFollowHeartRateZones`, `labelColorsFollowHeartRateZones`, `unitColorsFollowHeartRateZones`, `iconColorsFollowHeartRateZones`, `rotationDegrees`, `accentColor`, `backgroundEnabled` / `backgroundColor` / `backgroundRadius` / `backgroundPaddingX` / `backgroundPaddingY` / `backgroundFadeOut*` / `backgroundBlurRadius`, and `shadowEnabled` / `shadowOffsetX` / `shadowOffsetY`. All new fields decode with safe defaults so old saved projects and overlay templates load unchanged.
+- Numeric readings (heart rate, HR zone, pace, average and lap pace, calories, elapsed and real time, date, distance, elevation and elevation gain, cadence, power, running dynamics, temperature, grade) are the bundled `studio.numeric` component (ADR 0014). The Overlay Pool Metrics tab adds one preset per metric through `OverlayComponentLibraryItem.numericPresets`; the Inspector is the generated `OverlayComponentDetailView`. The native numeric element types, `NumericOverlayDetailView`, text presets, the Skia/SwiftUI numeric renderers and the numeric-only `OverlayStyle` fields and setters were removed without migration: decoding drops saved elements of those types (`OverlayTemplateElementList`) and opening a project reports how many were removed. Custom Numeric, the manual temperature fallback, numeric background fade/blur and border, and separate value/label/unit opacity were dropped with them.
+- `OverlayMetric` is the metric vocabulary shared by components (`metric(id, unit...)`), interval HUD slots, running gauge regions and route-map stats slots. `OverlayValueFormatter.components(for: OverlayMetric, unit:customLabel:activity:elapsedTime:)` is the one numeric formatter; `components(for: OverlayElementType, ...)` only describes non-metric overlays for layer-list previews and chart labels. Elapsed Time renders active elapsed time from `ActivityTimeline.activeElapsedTime(at:)`.
+- Components are top-leading anchored. Preview drag of a component uses the canvas pointer location plus a grab offset and the top-leading snap/clamp path, the behavior native numeric overlays had.
+- `NumericOverlayDetailView`'s shared swatch and font shortcuts live in `InspectorPresets`; the `InspectorDense*` primitives are unchanged in `InspectorDenseComponents.swift`.
 - Shared background Fade Out uses `OverlayFeatherMaskRenderer`, a distance-field rounded-rectangle alpha mask reused by SwiftUI preview and Route Map rendering. The mask fades only the background surface to transparent; it does not fade foreground text/icons or sample/blur the underlying video.
-- `OverlayValueFormatter.value(for:element:activity:elapsedTime:)` is element-aware: it picks the unit option and label/unit/custom-label rules from `OverlayStyle` to produce the rendered string and the Inspector's live preview. For `customNumeric`, it resolves `customNumericField` through the current `ActivityTimeline`, including dynamic `ActivityRecord.genericFields` keys discovered from imported FIT `record` messages. The inspector filters fixed Numeric Overlay duplicates from the Custom Numeric value menu while preserving formatter/Codable support for older saved selections. It then applies `customNumericFormat` and `customNumericPrecision`, and returns the same components consumed by preview and export. Elapsed Time overlays render active elapsed time from `ActivityTimeline.activeElapsedTime(at:)`, subtracting FIT timer-paused spans from the real elapsed-time axis so the value matches watch moving/workout time.
-- `OverlayElementType.isNumericOverlay` and `OverlayElementType.defaultUnitOption` drive routing into the numeric editor and the unit defaults applied by `ProjectDocument.addOverlayElement`.
-- `OverlayRenderModel`, Skia modules and the SwiftUI comparison views honor the new background and shadow style fields on the `.minimal` text preset so the same configuration is consistent between preview, calibration PNG, and MOV export.
-- `ProjectDocument` exposes setters for every numeric overlay field plus `resetOverlayStyle` used by the numeric Inspector's footer Reset action; all setters are undoable. Heart-rate-specific Inspector toggles for per-role zone coloring (`setOverlayValueColorsFollowHeartRateZones`, `setOverlayLabelColorsFollowHeartRateZones`, `setOverlayUnitColorsFollowHeartRateZones`, `setOverlayIconColorsFollowHeartRateZones`) follow the same undo semantics, while the older `setOverlayTextColorsFollowHeartRateZones` remains as a compatibility-wide setter.
-- Text overlays expose a first-position built-in style picker with Minimal, Pill Badge, Metric Card, Big Number, Sport Watch, and Split Label text presets.
 - Running Gauge is available as a composite circular dashboard overlay with distance, elapsed time, pace, and heart rate in one module.
 - Running Gauge supports Minimal Sport, High Contrast, Trail Adventure, Tech Future, and Retro Digital style presets through the Inspector.
 - Route Map is available as a featured overlay module backed by FIT GPS latitude/longitude when present.
@@ -68,7 +59,7 @@ Current implementation:
 - Added Overlays rows expose a context menu (`Copy Properties` / `Paste Properties`) for overlay configuration transfer.
 - Overlay visibility now gates both preview and export rendering across Skia and the SwiftUI oracle.
 - Overlay lock is persisted and currently blocks Preview canvas selection/drag plus position writes in `ProjectDocument.moveOverlay` / `setOverlayPosition`.
-- Overlay configuration paste is category-gated through `OverlayElementType.pasteCategory`; numeric overlays can paste only within the numeric group.
+- Overlay configuration paste is category-gated through `OverlayElementType.pasteCategory`; decor overlays paste only within the decor group and components within components.
 - Distance Timeline is a dedicated module with minimal, dense, sport, splits, glass, neon, lower-third, and route presets, backed by `DistanceTimelineStyle`.
 - Distance Timeline preview/export rendering supports distinct progress treatments, optional system-icon media slots for sport/lower-third, border/background controls, ticks, marker, glow, fade amount, route elevation underlay, and sampled GPS route geometry when available.
 - Distance Timeline Value is separate from Label, owns the value font controls, can be disabled, can switch between current/total distance and current distance only, switches metric/imperial units, and supports a Custom Values master toggle that expands four inline metric slots with independent group gap, item gap, size, color, and opacity. Group gap offsets the whole custom group without compressing custom text or changing item gap.
@@ -100,7 +91,6 @@ Current implementation:
 - Running Gauge overlays render circular ticks, a progress ring, section dividers, and core run metrics in both preview and export.
 - Route Map overlays render the route path, start marker, finish marker, and current-position marker in both preview and export.
 - `OverlayRenderModel` provides the shared layout data used by SwiftUI preview and AVFoundation export rendering.
-- Text preset selection is stored on `OverlayStyle`, decodes old templates as the Minimal preset, and is honored by both preview and export renderers.
 - Preview overlay positions, drag deltas, guides, font sizes, padding, and chart dimensions are based on the fitted project canvas inside the preview area, so resizing split panes keeps overlays anchored to the same normalized video position.
 - Preview can show 90%/80% safety guides and center crosshairs from an in-preview header toggle.
 - Preview draws temporary snap guide lines while an overlay drag is actively snapped; these lines are non-interactive and live only in Preview editing, not export rendering.
@@ -255,11 +245,11 @@ The editor wiring is:
 an equivalent declarative-component layout on the same Skia raster surface and
 reports changed pixels, maximum and mean channel deltas, and the bounding box of
 changed pixels. Set `PARITY_DUMP_DIR` to also write both renders as PNGs.
-`OverlayComponentParityTests` holds the pilots: Decor Solid Color as a rectangle
-and a rounded rectangle, with and without element opacity, and a heart-rate
-value plus trailing unit that uses a horizontal stack of auto-sized text, at
-element scale 1 and 1.5, all compared at exact thresholds (zero changed
-pixels). The pilots found and fixed two real defects: element opacity was
+`OverlayComponentParityTests` holds the Decor Solid Color pilots (rectangle and
+rounded rectangle, with and without element opacity) at exact thresholds. The
+numeric pilots and the 13-case `studio.numeric` parity suite ran against the
+native numeric renderer until ADR 0014 removed it; their exact-parity results
+are recorded in the November 2026 project log. The pilots found and fixed two real defects: element opacity was
 applied both as a layer and again per node, and components drew their own
 opacity layer while ignoring the host's element-level glow and shadow entirely.
 
@@ -285,12 +275,10 @@ background filling the padded bounds; the clip is that rect outset by
 overhang survives. `OverlayComponentSkiaRenderer.frame(for:renderContext:)`
 exposes the measured bounds; `PreviewElementGeometry` uses it for hit testing
 and selection, and `--component-render` measures content-sized definitions on
-the reference canvas before cropping. The heart-rate pilots with icon and
-background match native exactly at element scale 1, 1.5 and 2. Native numeric
-background padding and radius scale with the canvas but not the element, while
-component design units scale with both, so the pilot definitions divide those
-values by the element scale; legacy mapping (M5d) will bake the same
-conversion per element.
+the reference canvas before cropping. Native numeric background padding and
+radius scaled with the canvas but not the element, while component design
+units scale with both; the bundled template conversion divided those values
+by each element's scale.
 
 Use the harness before porting a built-in. Differences are attributable to
 draw-tree construction, not the backend, so non-text geometry should be exact;
@@ -300,14 +288,14 @@ opacity, shadow and glow in `OverlayStyle` are host styling: the component
 renderer applies them once around the whole element, so definitions must not
 repeat them.
 
-Numeric text comes from the host. `metric(id, unit)` (expression builtin)
-returns a record of the strings `OverlayValueFormatter` produces for the
-matching native type, using `OverlayComponentMetricCatalog` to map ids to
-element types and validate units. Formatting therefore has one
-implementation; components never reimplement pace, duration, date or unit
-conversion rules. `OverlayComponentMetricParityTests` compares every metric,
-unit and sampled time with the native formatter, including no-data
-placeholders. Raw numbers for lap pace and running dynamics are available as
+Numeric text comes from the host. `metric(id, unit...)` (expression builtin)
+returns a record of the strings `OverlayValueFormatter` produces for an
+`OverlayMetric`; `OverlayComponentMetricCatalog` validates ids and resolves
+unit candidates. Formatting therefore has one implementation; components never
+reimplement pace, duration, date or unit conversion rules.
+`OverlayComponentMetricTests` checks every metric, unit and sampled time
+against the formatter, the no-data placeholders, and a pinned table of the
+exact strings native numeric overlays showed. Raw numbers for lap pace and running dynamics are available as
 `activity.*` signals and series.
 
 The bundled `studio.numeric` definition (`Resources/Components/numeric.json`)
@@ -319,10 +307,9 @@ the block so a flexible spacer pushes a trailing unit or label to the edge
 when a wider label or unit widens the block, exactly as the native layout
 does. The icon wraps the block in a stack whose direction and alignment are
 expressions. `OverlayComponentLibraryItem.numericPresets` lists one Pool entry
-per metric (`studio.numeric#<metric>`) that seeds `metricId`.
-`OverlayComponentNumericParityTests` compares 13 pairwise cases with native
-at exact thresholds through a test-side style-to-params mapping that M5d will
-formalize. Native numeric tiles stay the default until parity acceptance.
+per metric (`studio.numeric#<metric>`) that seeds `metricId`; the Overlay Pool
+Metrics tab shows them. `OverlayComponentLibrary.numericElement` builds the
+same instance in code (calibration layout, tests).
 
 Headless authoring:
 
@@ -349,7 +336,7 @@ against native modules.
 - Format and data contract: `docs/overlay-components/spec-v0.1.md`.
 - Decision and gates: `docs/adr/0013-declarative-overlay-components.md`.
 - Tests: `OverlayComponentExpressionTests`, `OverlayComponentLoaderTests`,
-  `OverlayComponentMetricParityTests`, `OverlayComponentNumericParityTests`,
+  `OverlayComponentMetricTests`,
   `OverlayComponentDataTests`, `OverlayComponentResolverTests`,
   `OverlayComponentIntegrationTests`, `OverlayComponentArchiveTests`,
   `OverlayComponentParityTests`.

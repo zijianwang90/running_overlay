@@ -78,7 +78,7 @@ struct DecorOverlayDetailView: View {
         let s = element.style.decor
         InspectorDenseRow(label: "Fill") {
             InspectorDenseSwatchStrip(
-                presets: NumericOverlayDetailView.colorPresets,
+                presets: InspectorPresets.colorPresets,
                 selected: s.fillColor
             ) { color in
                 project.setDecorFillColor(elementID, color: color)
@@ -241,7 +241,7 @@ struct DecorOverlayDetailView: View {
         // Tint color swatch
         InspectorDenseRow(label: "Tint") {
             InspectorDenseSwatchStrip(
-                presets: NumericOverlayDetailView.colorPresets,
+                presets: InspectorPresets.colorPresets,
                 selected: r.tint
             ) { color in
                 project.setDecorIconTint(elementID, color: color)
@@ -424,7 +424,7 @@ struct DecorOverlayDetailView: View {
         if case .solid(let solidColor) = r.fillMode {
             InspectorDenseRow(label: "Color") {
                 InspectorDenseSwatchStrip(
-                    presets: NumericOverlayDetailView.colorPresets,
+                    presets: InspectorPresets.colorPresets,
                     selected: solidColor
                 ) { color in
                     project.setDecorTextFillMode(elementID, fillMode: .solid(color: color))
@@ -443,7 +443,7 @@ struct DecorOverlayDetailView: View {
         if r.strokeWidth > 0 {
             InspectorDenseRow(label: "Stroke Color") {
                 InspectorDenseSwatchStrip(
-                    presets: NumericOverlayDetailView.colorPresets,
+                    presets: InspectorPresets.colorPresets,
                     selected: r.strokeColor
                 ) { color in
                     project.setDecorTextStrokeColor(elementID, color: color)

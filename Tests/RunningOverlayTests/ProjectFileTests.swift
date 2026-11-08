@@ -12,7 +12,7 @@ struct ProjectFileTests {
         #expect(!project.hasUnsavedChanges)
         #expect(project.projectDisplayName == "Untitled")
 
-        project.addOverlayElement(.heartRate)
+        project.addOverlayElement(.decorSolidColor)
         project.setPreviewTrackName("Camera A")
         #expect(project.hasUnsavedChanges)
 
@@ -25,7 +25,7 @@ struct ProjectFileTests {
         let reopened = fixture.makeProject()
         let offline = try reopened.loadProject(from: url)
         #expect(offline.isEmpty)
-        #expect(reopened.overlayLayout.elements.map(\.type) == [.heartRate])
+        #expect(reopened.overlayLayout.elements.map(\.type) == [.decorSolidColor])
         #expect(reopened.settings.previewTrackName == "Camera A")
         #expect(reopened.projectFileURL == url)
         #expect(!reopened.hasUnsavedChanges)
@@ -37,7 +37,7 @@ struct ProjectFileTests {
         defer { fixture.cleanUp() }
 
         let project = fixture.makeProject()
-        project.addOverlayElement(.pace)
+        project.addOverlayElement(.decorText)
         try project.writeProject(to: fixture.directory.appendingPathComponent("a.roproj"))
         #expect(!project.hasUnsavedChanges)
 
@@ -54,9 +54,9 @@ struct ProjectFileTests {
         defer { fixture.cleanUp() }
 
         let project = fixture.makeProject()
-        project.addOverlayElement(.pace)
+        project.addOverlayElement(.decorText)
         try project.writeProject(to: fixture.directory.appendingPathComponent("a.roproj"))
-        project.addOverlayElement(.heartRate)
+        project.addOverlayElement(.decorSolidColor)
 
         project.resetToNewProject()
 
@@ -136,7 +136,7 @@ struct ProjectFileTests {
             mediaItems: [],
             mediaFolders: [],
             timeline: .empty,
-            overlayElements: [],
+            overlayElements: OverlayTemplateElementList([]),
             userAssets: [],
             fitSourceName: "",
             workoutStructureSelection: .structured
@@ -161,7 +161,7 @@ struct ProjectFileTests {
             )],
             mediaFolders: [],
             timeline: .empty,
-            overlayElements: [],
+            overlayElements: OverlayTemplateElementList([]),
             userAssets: [],
             fitSourceName: ""
         )
@@ -178,6 +178,51 @@ struct ProjectFileTests {
         #expect(decoded.workoutStructureSelection == nil)
         #expect(decoded.mediaItems[0].bookmarkData == nil)
         #expect(decoded.mediaItems[0].displayName == "a.mov")
+    }
+
+    /// Native numeric overlays were removed without migration (ADR 0014).
+    /// Opening a project that still has them drops just those elements and
+    /// says so; the rest of the project opens unchanged.
+    @Test func openingProjectDropsLegacyNumericOverlaysAndReportsThem() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+
+        let project = fixture.makeProject()
+        project.addOverlayElement(.decorSolidColor)
+        project.addOverlayElement(.distanceTimeline)
+        let url = fixture.directory.appendingPathComponent("Legacy.roproj")
+        try project.writeProject(to: url)
+
+        var object = try #require(
+            JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
+        )
+        var elements = try #require(object["overlayElements"] as? [[String: Any]])
+        var legacy = elements[0]
+        legacy["type"] = "heartRate"
+        var custom = elements[0]
+        custom["type"] = "customNumeric"
+        elements.insert(legacy, at: 1)
+        elements.append(custom)
+        object["overlayElements"] = elements
+        try JSONSerialization.data(withJSONObject: object).write(to: url)
+
+        let snapshot = try ProjectFileFormat.decode(Data(contentsOf: url))
+        #expect(snapshot.overlayElements.droppedLegacyCount == 2)
+        #expect(snapshot.overlayElements.elements.map(\.type) == [.decorSolidColor, .distanceTimeline])
+
+        let reopened = fixture.makeProject()
+        try reopened.loadProject(from: url)
+        #expect(reopened.overlayLayout.elements.map(\.type) == [.decorSolidColor, .distanceTimeline])
+        #expect(reopened.statusMessage == ProjectDocument.droppedLegacyElementsMessage(2))
+        #expect(reopened.statusMessage.contains("Removed 2 legacy numeric overlays"))
+        #expect(ProjectDocument.droppedLegacyElementsMessage(0) == nil)
+        #expect(ProjectDocument.droppedLegacyElementsMessage(1)?.contains("1 legacy numeric overlay;") == true)
+
+        // Saving again writes only the surviving elements.
+        try reopened.writeProject(to: url)
+        let resaved = try ProjectFileFormat.decode(Data(contentsOf: url))
+        #expect(resaved.overlayElements.droppedLegacyCount == 0)
+        #expect(resaved.overlayElements.elements.count == 2)
     }
 
     @Test func newerSchemaVersionIsRejectedWithAClearError() throws {
@@ -222,13 +267,13 @@ struct ProjectAutosaveTests {
         #expect(try await !project.autosaveIfNeeded())
         #expect(project.pendingAutosaveRecovery == nil)
 
-        project.addOverlayElement(.pace)
+        project.addOverlayElement(.decorText)
         let savedAt = Date(timeIntervalSince1970: 1_000)
         #expect(try await project.autosaveIfNeeded(now: savedAt))
         #expect(project.pendingAutosaveRecovery == AutosaveStore.Info(savedAt: savedAt, projectPath: nil, projectBookmark: nil))
         #expect(try await !project.autosaveIfNeeded())
 
-        project.addOverlayElement(.heartRate)
+        project.addOverlayElement(.decorSolidColor)
         #expect(try await project.autosaveIfNeeded())
     }
 
@@ -238,22 +283,22 @@ struct ProjectAutosaveTests {
         let url = fixture.directory.appendingPathComponent("run.roproj")
 
         let project = fixture.makeProject()
-        project.addOverlayElement(.pace)
+        project.addOverlayElement(.decorText)
         try await project.autosaveIfNeeded()
         try project.writeProject(to: url)
         #expect(project.pendingAutosaveRecovery == nil)
 
-        project.addOverlayElement(.heartRate)
+        project.addOverlayElement(.decorSolidColor)
         try await project.autosaveIfNeeded()
         try project.loadProject(from: url)
         #expect(project.pendingAutosaveRecovery == nil)
 
-        project.addOverlayElement(.heartRate)
+        project.addOverlayElement(.decorSolidColor)
         try await project.autosaveIfNeeded()
         project.resetToNewProject()
         #expect(project.pendingAutosaveRecovery == nil)
 
-        project.addOverlayElement(.heartRate)
+        project.addOverlayElement(.decorSolidColor)
         try await project.autosaveIfNeeded()
         project.discardAutosave()
         #expect(project.pendingAutosaveRecovery == nil)
@@ -265,9 +310,9 @@ struct ProjectAutosaveTests {
         let url = fixture.directory.appendingPathComponent("run.roproj")
 
         let crashed = fixture.makeProject()
-        crashed.addOverlayElement(.pace)
+        crashed.addOverlayElement(.decorText)
         try crashed.writeProject(to: url)
-        crashed.addOverlayElement(.heartRate)
+        crashed.addOverlayElement(.decorSolidColor)
         try await crashed.autosaveIfNeeded()
 
         let relaunched = fixture.makeProject()
@@ -277,7 +322,7 @@ struct ProjectAutosaveTests {
         let offline = try relaunched.recoverAutosavedProject()
 
         #expect(offline.isEmpty)
-        #expect(relaunched.overlayLayout.elements.map(\.type) == [.pace, .heartRate])
+        #expect(relaunched.overlayLayout.elements.map(\.type) == [.decorText, .decorSolidColor])
         #expect(relaunched.projectFileURL?.standardizedFileURL.resolvingSymlinksInPath()
             == url.standardizedFileURL.resolvingSymlinksInPath())
         #expect(relaunched.hasUnsavedChanges)
@@ -294,7 +339,7 @@ struct ProjectAutosaveTests {
         defer { fixture.cleanUp() }
 
         let crashed = fixture.makeProject()
-        crashed.addOverlayElement(.distance)
+        crashed.addOverlayElement(.decorIcon)
         try await crashed.autosaveIfNeeded()
 
         let relaunched = fixture.makeProject()
@@ -302,7 +347,7 @@ struct ProjectAutosaveTests {
 
         #expect(relaunched.projectFileURL == nil)
         #expect(relaunched.projectDisplayName == "Untitled")
-        #expect(relaunched.overlayLayout.elements.map(\.type) == [.distance])
+        #expect(relaunched.overlayLayout.elements.map(\.type) == [.decorIcon])
         #expect(relaunched.hasUnsavedChanges)
     }
 }

@@ -1390,7 +1390,7 @@ final class OverlayComponentParser {
                 }
             }
             guard case .literal(.string(let id))? = arguments.first else { return }
-            if OverlayComponentMetricCatalog.metrics[id] == nil {
+            if OverlayMetric(rawValue: id) == nil {
                 error(path, "unknown metric '\(id)'")
             } else if allUnitsLiteral, !literalUnits.isEmpty,
                       Set(literalUnits).isDisjoint(with: OverlayComponentMetricCatalog.units(for: id)) {

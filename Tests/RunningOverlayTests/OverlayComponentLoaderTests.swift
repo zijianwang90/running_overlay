@@ -479,7 +479,7 @@ struct OverlayComponentLoaderTests {
 
     @Test func bundledNumericDefinitionLoadsWithAPresetPerMetric() throws {
         let presets = OverlayComponentLibraryItem.numericPresets
-        #expect(presets.count == OverlayComponentMetricCatalog.metrics.count)
+        #expect(presets.count == OverlayMetric.allCases.count)
         #expect(Set(presets.map(\.id)).count == presets.count)
         let item = try #require(presets.first)
         let data = try #require(OverlayComponentLibrary.data(for: item))
@@ -490,6 +490,6 @@ struct OverlayComponentLoaderTests {
             Issue.record("expected metric enum")
             return
         }
-        #expect(Set(options.map(\.value)) == Set(OverlayComponentMetricCatalog.metrics.keys))
+        #expect(Set(options.map(\.value)) == Set(OverlayMetric.allCases.map(\.rawValue)))
     }
 }

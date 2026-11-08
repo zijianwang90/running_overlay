@@ -197,7 +197,7 @@ backend rasterizes the shared weather view with `ImageRenderer`.
 
 ### Inspector UI (`WeatherWidgetOverlayDetailView.swift`)
 
-New file following `NumericOverlayDetailView` structure. Use `InspectorDense*` primitives directly — no wrappers.
+New file following the dense detail view structure of the other overlay Inspectors. Use `InspectorDense*` primitives directly — no wrappers.
 
 | Section | Key controls |
 |---|---|

@@ -224,7 +224,7 @@ struct IntervalHUDBarOverlayDetailView: View {
             if style.bottomBarBorderEnabled {
                 InspectorDenseRow(label: "Border Color") {
                     InspectorDenseSwatchStrip(
-                        presets: NumericOverlayDetailView.colorPresets,
+                        presets: InspectorPresets.colorPresets,
                         selected: style.bottomBarBorderColor
                     ) { color in
                         project.mutateIntervalHUDBarStyle(elementID) { $0.bottomBarBorderColor = color }
@@ -453,7 +453,7 @@ struct IntervalHUDBarOverlayDetailView: View {
     private func typographyRoleRows(_ label: String, role: IntervalHUDBarTypographyRole, text: IntervalHUDBarTextStyle) -> some View {
         InspectorDenseRow(label: label) {
             Menu {
-                ForEach(NumericOverlayDetailView.fontPresets, id: \.self) { name in
+                ForEach(InspectorPresets.fontPresets, id: \.self) { name in
                     Button {
                         updateTextStyle(role) { $0.fontName = name }
                     } label: {
@@ -548,7 +548,7 @@ private struct IntervalHUDBarDividerInspectorModule: View {
             if isExpanded {
                 InspectorDenseRow(label: "Color") {
                     InspectorDenseSwatchStrip(
-                        presets: NumericOverlayDetailView.colorPresets,
+                        presets: InspectorPresets.colorPresets,
                         selected: element.style.dividerColor,
                         action: { project.setOverlayDividerColor(elementID, color: $0) }
                     )

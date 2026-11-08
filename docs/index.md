@@ -23,9 +23,9 @@ entries in `project-log.md`.
 | FIT/GPX parser or workout analysis | `docs/architecture.md#activity-data-fit-and-gpx`, `docs/testing.md` |
 | Media import and alignment | `docs/architecture.md#media-import`, `docs/architecture.md#alignment-engine` |
 | Timeline behavior | `docs/architecture.md#timeline`, `docs/design/panels/timeline/` |
-| Numeric overlays | `docs/design/overlays/numeric/`, `docs/requirements.md` |
+| Numeric overlays | `docs/adr/0014-remove-native-numeric-overlays.md`, `docs/overlay-components/` (`studio.numeric`), `docs/requirements.md` |
 | Featured overlays | `docs/overlay-modules/README.md`, matching module and design directory |
-| Overlay component format (proposed) | `docs/adr/0013-declarative-overlay-components.md`, `docs/overlay-components/` |
+| Overlay component format | `docs/adr/0013-declarative-overlay-components.md`, `docs/adr/0014-remove-native-numeric-overlays.md`, `docs/overlay-components/` |
 | Preview | `docs/architecture.md#preview`, `docs/design/panels/preview/` |
 | Skia SDK or GPU backend experiments | `docs/development/skia-sdk.md`, `docs/adr/0010-skia-ganesh-metal-renderer.md` |
 | Export or performance | `docs/architecture.md#export`, `docs/export-performance.md` |

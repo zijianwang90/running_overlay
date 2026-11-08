@@ -119,7 +119,7 @@ struct TimelineInteractionTests {
     /// clip that was selected last as one undo step.
     @Test func deleteAfterSwitchingFromOverlayToClipDeletesTheClip() throws {
         let project = makeProject()
-        project.addOverlayElement(.heartRate)
+        project.addOverlayElement(.decorSolidColor)
         let overlayID = try #require(project.selectedOverlayID)
         let (window, canvas) = makeCanvas(for: project)
         let clip = project.timeline.tracks[0].clips[0]

@@ -55,7 +55,7 @@ struct OverlayBorderInspectorRows: View {
 
     var body: some View {
         InspectorDenseRow(label: "Color") {
-            InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: color, action: onSetColor)
+            InspectorDenseSwatchStrip(presets: InspectorPresets.colorPresets, selected: color, action: onSetColor)
                 .disabled(!isOn)
         }
         InspectorDenseSliderRow(

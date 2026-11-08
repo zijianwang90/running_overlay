@@ -374,7 +374,7 @@ struct OverlayComponentDetailView: View {
     }
 
     private func fontFamilies(including current: String) -> [String] {
-        var families = NumericOverlayDetailView.fontPresets
+        var families = InspectorPresets.fontPresets
         if !families.contains(current) { families.insert(current, at: 0) }
         return families
     }

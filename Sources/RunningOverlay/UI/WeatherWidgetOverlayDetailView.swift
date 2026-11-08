@@ -538,7 +538,7 @@ struct WeatherWidgetOverlayDetailView: View {
         }
         InspectorDenseRow(label: "Font") {
             Menu {
-                ForEach(NumericOverlayDetailView.fontPresets, id: \.self) { name in
+                ForEach(InspectorPresets.fontPresets, id: \.self) { name in
                     Button {
                         writer { $0.fontName = name }
                     } label: {

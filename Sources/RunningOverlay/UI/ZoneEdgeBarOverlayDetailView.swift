@@ -234,7 +234,7 @@ struct ZoneEdgeBarOverlayDetailView: View {
         if style.borderEnabled {
             InspectorDenseRow(label: "Color") {
                 InspectorDenseSwatchStrip(
-                    presets: NumericOverlayDetailView.colorPresets,
+                    presets: InspectorPresets.colorPresets,
                     selected: style.borderColor
                 ) { color in
                     project.mutateZoneEdgeBarStyle(elementID) { $0.borderColor = color }

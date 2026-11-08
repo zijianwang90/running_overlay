@@ -841,19 +841,6 @@ final class ProjectDocument: ObservableObject {
         let defaultFont = FontLibraryManager.shared.defaultFamily
         style.fontName = defaultFont
         style.labelFontName = defaultFont
-        style.unitFontName = defaultFont
-        style.unitOption = type.defaultUnitOption
-        if type == .customNumeric {
-            let field = style.customNumericField
-            style.customNumericField = field
-            style.customNumericFormat = field.defaultFormat
-            style.customNumericPrecision = field.defaultPrecision
-            style.customUnit = field.defaultUnit
-            style.customLabel = field.label
-        }
-        if type == .heartRateZone || type == .date {
-            style.showUnit = false
-        }
         if type == .routeMap {
             style.routeMapColorMode = .gradient
             style.routeMapProvider = .mapKit
@@ -1006,43 +993,6 @@ final class ProjectDocument: ObservableObject {
                 textAutoFit: false
             )
             style.backgroundEnabled = false
-        }
-        if let recommended = type.defaultNumericPreset {
-            style.textPreset = recommended
-            style.iconSystemName = type.defaultNumericIconSystemName
-            if let tokens = recommended.recommendedTokens {
-                style.fontName = tokens.fontName
-                style.fontWeight = tokens.fontWeight
-                style.fontSize = tokens.fontSize
-                style.textAlignment = tokens.textAlignment
-                style.showLabel = tokens.showLabel
-                style.showUnit = tokens.showUnit
-                style.labelPosition = tokens.labelPosition
-                style.unitPosition = tokens.unitPosition
-                if let size = tokens.labelFontSize {
-                    style.labelFontSize = size
-                }
-                if let weight = tokens.labelFontWeight {
-                    style.labelFontWeight = weight
-                }
-                if let size = tokens.unitFontSize {
-                    style.unitFontSize = size
-                }
-                if let weight = tokens.unitFontWeight {
-                    style.unitFontWeight = weight
-                }
-                style.backgroundEnabled = tokens.backgroundEnabled
-                if let bg = tokens.backgroundColor {
-                    style.backgroundColor = bg
-                }
-                if let opacity = tokens.backgroundOpacity {
-                    style.backgroundOpacity = opacity
-                }
-                style.backgroundRadius = tokens.backgroundRadius
-                if let accent = tokens.accentColor {
-                    style.accentColor = accent
-                }
-            }
         }
         return style
     }
@@ -1708,14 +1658,6 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.fontSize = fontSize
     }
 
-    func setOverlayTextPreset(_ elementID: OverlayElement.ID, textPreset: OverlayTextPreset) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.textPreset = textPreset
-    }
-
     func setOverlayDistanceTimelinePreset(_ elementID: OverlayElement.ID, preset: DistanceTimelinePreset) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
@@ -1787,65 +1729,6 @@ final class ProjectDocument: ObservableObject {
         } catch {
             reportError("Icon import failed: \(error.localizedDescription)")
         }
-    }
-
-    /// Applies an `OverlayTextPreset` and, when the preset declares
-    /// recommended typography/style tokens, snaps fontName/fontSize/
-    /// fontWeight/textAlignment/showLabel/showUnit/backgroundEnabled/
-    /// accentColor to those tokens so users get the intended look.
-    func applyOverlayTextPreset(_ elementID: OverlayElement.ID, textPreset: OverlayTextPreset) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.textPreset = textPreset
-        guard let tokens = textPreset.recommendedTokens else { return }
-        var style = overlayLayout.elements[index].style
-        style.fontName = tokens.fontName
-        style.fontWeight = tokens.fontWeight
-        style.fontSize = tokens.fontSize
-        style.textAlignment = tokens.textAlignment
-        style.showLabel = tokens.showLabel
-        style.showUnit = tokens.showUnit
-        style.labelPosition = tokens.labelPosition
-        style.unitPosition = tokens.unitPosition
-        if let size = tokens.labelFontSize {
-            style.labelFontSize = size
-        }
-        if let weight = tokens.labelFontWeight {
-            style.labelFontWeight = weight
-        }
-        if let size = tokens.unitFontSize {
-            style.unitFontSize = size
-        }
-        if let weight = tokens.unitFontWeight {
-            style.unitFontWeight = weight
-        }
-        style.backgroundEnabled = tokens.backgroundEnabled
-        if let bg = tokens.backgroundColor {
-            style.backgroundColor = bg
-        }
-        if let opacity = tokens.backgroundOpacity {
-            style.backgroundOpacity = opacity
-        }
-        style.backgroundRadius = tokens.backgroundRadius
-        if let accent = tokens.accentColor {
-            style.accentColor = accent
-            if textPreset == .splitLabel || textPreset == .racingStripe || textPreset == .editorial {
-                style.labelColor = accent
-            }
-        }
-        if let divider = tokens.divider {
-            style.dividerEnabled = true
-            style.dividerColor = divider.color
-            style.dividerThickness = divider.thickness
-            style.dividerOpacity = divider.opacity
-        } else {
-            // Preset has no built-in divider; collapse the section by default.
-            // The user can still toggle it on if they want a custom one.
-            style.dividerEnabled = false
-        }
-        overlayLayout.elements[index].style = style
     }
 
     private static func svgDuration(from source: String) -> Double? {
@@ -2716,42 +2599,6 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.unitColor = color
     }
 
-    func setOverlayValueColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.valueColor = color
-    }
-
-    func setOverlayValueOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.valueOpacity = min(max(opacity, 0), 1)
-    }
-
-    func setOverlayLabelColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.labelColor = color
-    }
-
-    func setOverlayLabelOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.labelOpacity = min(max(opacity, 0), 1)
-    }
-
-    func setOverlayUnitColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.unitColor = color
-    }
-
-    func setOverlayUnitOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.unitOpacity = min(max(opacity, 0), 1)
-    }
-
     func setOverlayBackgroundOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
@@ -2766,244 +2613,6 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].style.shadowOpacity = min(max(opacity, 0), 1)
-    }
-
-    func setOverlayUnitOption(_ elementID: OverlayElement.ID, unitOption: OverlayUnitOption) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.unitOption = unitOption
-    }
-
-    func setOverlayCustomNumericField(_ elementID: OverlayElement.ID, field: CustomNumericField) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        let previousField = overlayLayout.elements[index].style.customNumericField
-        let currentLabel = overlayLayout.elements[index].style.customLabel.trimmingCharacters(in: .whitespacesAndNewlines)
-        overlayLayout.elements[index].style.customNumericField = field
-        overlayLayout.elements[index].style.customNumericFormat = field.defaultFormat
-        overlayLayout.elements[index].style.customNumericPrecision = field.defaultPrecision
-        overlayLayout.elements[index].style.customUnit = field.defaultUnit
-        if currentLabel.isEmpty || currentLabel == previousField.label {
-            overlayLayout.elements[index].style.customLabel = field.label
-        }
-    }
-
-    func setOverlayCustomNumericFormat(_ elementID: OverlayElement.ID, format: CustomNumericFormat) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.customNumericFormat = format
-    }
-
-    func setOverlayCustomNumericPrecision(_ elementID: OverlayElement.ID, precision: Int) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.customNumericPrecision = min(max(precision, 0), 8)
-    }
-
-    func setOverlayCustomUnit(_ elementID: OverlayElement.ID, unit: String) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.customUnit = unit.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    func setOverlayElevationDisplayMode(_ elementID: OverlayElement.ID, mode: OverlayElevationDisplayMode) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.elevationDisplayMode = mode
-    }
-
-    func setOverlayUseFITTemperature(_ elementID: OverlayElement.ID, enabled: Bool) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.useFITTemperature = enabled
-    }
-
-    func setOverlayManualTemperatureCelsius(_ elementID: OverlayElement.ID, temperature: Double?) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.manualTemperatureCelsius = temperature
-    }
-
-    func setOverlayShowLabel(_ elementID: OverlayElement.ID, showLabel: Bool) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.showLabel = showLabel
-    }
-
-    func setOverlayShowUnit(_ elementID: OverlayElement.ID, showUnit: Bool) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.showUnit = showUnit
-    }
-
-    func setOverlayIconEnabled(_ elementID: OverlayElement.ID, enabled: Bool) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.iconEnabled = enabled
-    }
-
-    func setOverlayIconSystemName(_ elementID: OverlayElement.ID, systemName: String) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        let trimmed = systemName.trimmingCharacters(in: .whitespacesAndNewlines)
-        overlayLayout.elements[index].style.iconSystemName = trimmed.isEmpty
-            ? overlayLayout.elements[index].type.defaultNumericIconSystemName
-            : trimmed
-    }
-
-    func setOverlayTextColorsFollowHeartRateZones(_ elementID: OverlayElement.ID, _ enabled: Bool) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.textColorsFollowHeartRateZones = enabled
-        overlayLayout.elements[index].style.valueColorsFollowHeartRateZones = enabled
-        overlayLayout.elements[index].style.labelColorsFollowHeartRateZones = enabled
-        overlayLayout.elements[index].style.unitColorsFollowHeartRateZones = enabled
-    }
-
-    func setOverlayIconColorsFollowHeartRateZones(_ elementID: OverlayElement.ID, _ enabled: Bool) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.iconColorsFollowHeartRateZones = enabled
-    }
-
-    func setOverlayValueColorsFollowHeartRateZones(_ elementID: OverlayElement.ID, _ enabled: Bool) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.valueColorsFollowHeartRateZones = enabled
-    }
-
-    func setOverlayLabelColorsFollowHeartRateZones(_ elementID: OverlayElement.ID, _ enabled: Bool) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.labelColorsFollowHeartRateZones = enabled
-    }
-
-    func setOverlayUnitColorsFollowHeartRateZones(_ elementID: OverlayElement.ID, _ enabled: Bool) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.unitColorsFollowHeartRateZones = enabled
-    }
-
-    func setOverlayCustomLabel(_ elementID: OverlayElement.ID, label: String) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.customLabel = label
-    }
-
-    func setOverlayLabelPosition(_ elementID: OverlayElement.ID, position: OverlayTextAttachmentPosition) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.labelPosition = position
-    }
-
-    func setOverlayUnitPosition(_ elementID: OverlayElement.ID, position: OverlayTextAttachmentPosition) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.unitPosition = position
-    }
-
-    func setOverlayIconPosition(_ elementID: OverlayElement.ID, position: OverlayTextAttachmentPosition) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.iconPosition = position
-    }
-
-    func setOverlayLabelFontName(_ elementID: OverlayElement.ID, fontName: String) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.labelFontName = fontName
-    }
-
-    func setOverlayLabelFontSize(_ elementID: OverlayElement.ID, fontSize: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.labelFontSize = min(max(fontSize, 8), 72)
-    }
-
-    func setOverlayLabelFontWeight(_ elementID: OverlayElement.ID, fontWeight: OverlayFontWeight) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.labelFontWeight = fontWeight
-    }
-
-    func setOverlayLabelSpacing(_ elementID: OverlayElement.ID, spacing: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.labelSpacing = min(max(spacing, 0), 60)
-    }
-
-    func setOverlayUnitFontName(_ elementID: OverlayElement.ID, fontName: String) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.unitFontName = fontName
-    }
-
-    func setOverlayUnitFontSize(_ elementID: OverlayElement.ID, fontSize: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.unitFontSize = min(max(fontSize, 8), 72)
-    }
-
-    func setOverlayUnitFontWeight(_ elementID: OverlayElement.ID, fontWeight: OverlayFontWeight) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.unitFontWeight = fontWeight
-    }
-
-    func setOverlayUnitSpacing(_ elementID: OverlayElement.ID, spacing: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.unitSpacing = min(max(spacing, 0), 60)
-    }
-
-    func setOverlayIconSize(_ elementID: OverlayElement.ID, size: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.iconSize = min(max(size, 8), 96)
-    }
-
-    func setOverlayIconColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.iconColor = color
-    }
-
-    func setOverlayIconOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.iconOpacity = min(max(opacity, 0), 1)
-    }
-
-    func setOverlayIconSpacing(_ elementID: OverlayElement.ID, spacing: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.iconSpacing = min(max(spacing, 0), 60)
     }
 
     func setOverlayPosition(_ elementID: OverlayElement.ID, position: CGPoint) {
@@ -3060,24 +2669,6 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].style.accentColor = color
-    }
-
-    func setOverlayLabelTextAlignment(_ elementID: OverlayElement.ID, alignment: OverlayTextAlignment) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.labelTextAlignment = alignment
-    }
-
-    func setOverlayUnitTextAlignment(_ elementID: OverlayElement.ID, alignment: OverlayTextAlignment) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.unitTextAlignment = alignment
-    }
-
-    func setOverlayIconTextAlignment(_ elementID: OverlayElement.ID, alignment: OverlayTextAlignment) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.iconTextAlignment = alignment
     }
 
     func setOverlayDividerEnabled(_ elementID: OverlayElement.ID, enabled: Bool) {
@@ -3138,19 +2729,6 @@ final class ProjectDocument: ObservableObject {
         }
         if let y {
             overlayLayout.elements[index].style.backgroundPaddingY = max(0, min(y, 80))
-        }
-    }
-
-    func setOverlayNumericMinimumSize(_ elementID: OverlayElement.ID, width: Double? = nil, height: Double? = nil) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        if let width {
-            overlayLayout.elements[index].style.numericMinWidth = min(max(width, 0), 720)
-        }
-        if let height {
-            overlayLayout.elements[index].style.numericMinHeight = min(max(height, 0), 360)
         }
     }
 
@@ -3272,10 +2850,6 @@ final class ProjectDocument: ObservableObject {
         }
         let type = overlayLayout.elements[index].type
         var style = OverlayStyle.default
-        style.unitOption = type.defaultUnitOption
-        if type == .heartRateZone || type == .date {
-            style.showUnit = false
-        }
         if type == .routeMap {
             style.routeMapProvider = .mapKit
             style.routeMapBackgroundStyle = .dark
@@ -4011,7 +3585,7 @@ final class ProjectDocument: ObservableObject {
             mediaItems: [],
             mediaFolders: [],
             timeline: .empty,
-            overlayElements: [],
+            overlayElements: OverlayTemplateElementList([]),
             userAssets: [],
             fitSourceName: ""
         ))
@@ -4877,11 +4451,14 @@ final class ProjectDocument: ObservableObject {
         OverlayLayout(elements: [
             OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.14), scale: 1.15, isVisible: true, isLocked: false, style: .default),
             OverlayElement(type: .elevationChart, position: CGPoint(x: 0.5, y: 0.30), scale: 1.0, isVisible: true, isLocked: false, style: .default),
-            OverlayElement(type: .heartRate, position: CGPoint(x: 0.12, y: 0.86), scale: 1.25, isVisible: true, isLocked: false, style: .default),
-            OverlayElement(type: .distance, position: CGPoint(x: 0.50, y: 0.68), scale: 1.35, isVisible: true, isLocked: false, style: .default),
-            OverlayElement(type: .pace, position: CGPoint(x: 0.86, y: 0.86), scale: 1.25, isVisible: true, isLocked: false, style: .default),
-            OverlayElement(type: .elapsedTime, position: CGPoint(x: 0.86, y: 0.14), scale: 1.0, isVisible: true, isLocked: false, style: .default)
-        ])
+        ] + [
+            (OverlayMetric.heartRate, CGPoint(x: 0.12, y: 0.86), 1.25),
+            (.distance, CGPoint(x: 0.50, y: 0.68), 1.35),
+            (.pace, CGPoint(x: 0.86, y: 0.86), 1.25),
+            (.elapsedTime, CGPoint(x: 0.86, y: 0.14), 1.0)
+        ].compactMap { metric, position, scale in
+            OverlayComponentLibrary.numericElement(metric, position: position, scale: scale)
+        })
     }
 
     static func calibrationActivity() -> ActivityTimeline {
@@ -5064,7 +4641,9 @@ final class ProjectDocument: ObservableObject {
             mediaItems: mediaItems,
             mediaFolders: mediaFolders,
             timeline: timeline,
-            overlayElements: overlayLayout.elements.map(OverlayTemplateElement.init(element:)),
+            overlayElements: OverlayTemplateElementList(
+                overlayLayout.elements.map(OverlayTemplateElement.init(element:))
+            ),
             userAssets: userAssets,
             fitSourceName: fitSourceName,
             workoutStructureSelection: workoutStructureSelection
@@ -5072,7 +4651,11 @@ final class ProjectDocument: ObservableObject {
     }
 
     private func restorePersistentSnapshot(_ snapshot: ProjectPerformanceSnapshot) -> String? {
-        let credentialMessage = migrateLegacyOpenWeatherAPIKeyIfNeeded(from: snapshot.settings)
+        let messages = [
+            migrateLegacyOpenWeatherAPIKeyIfNeeded(from: snapshot.settings),
+            Self.droppedLegacyElementsMessage(snapshot.overlayElements.droppedLegacyCount)
+        ].compactMap { $0 }
+        let credentialMessage = messages.isEmpty ? nil : messages.joined(separator: " ")
         settings = snapshot.settings
         settings.removeLegacyCredentials()
         activity = snapshot.activity
@@ -5080,7 +4663,7 @@ final class ProjectDocument: ObservableObject {
         mediaItems = snapshot.mediaItems
         mediaFolders = snapshot.mediaFolders
         timeline = snapshot.timeline
-        overlayLayout = OverlayLayout(elements: snapshot.overlayElements.map(\.overlayElement))
+        overlayLayout = OverlayLayout(elements: snapshot.overlayElements.elements.map(\.overlayElement))
         userAssets = snapshot.userAssets
         fitSourceName = snapshot.fitSourceName
 
@@ -5097,6 +4680,13 @@ final class ProjectDocument: ObservableObject {
         redoStack.removeAll()
         updateUndoRedoFlags()
         return credentialMessage
+    }
+
+    /// Status text when native numeric overlays were dropped on load (ADR 0014).
+    static func droppedLegacyElementsMessage(_ count: Int) -> String? {
+        guard count > 0 else { return nil }
+        let noun = count == 1 ? "overlay" : "overlays"
+        return "Removed \(count) legacy numeric \(noun); add Numeric components from the Overlay Pool."
     }
 
     private func migrateLegacyOpenWeatherAPIKeyIfNeeded(from settings: ProjectSettings) -> String? {
@@ -5144,7 +4734,7 @@ struct ProjectPerformanceSnapshot: Codable, Equatable {
     var mediaItems: [MediaItem]
     var mediaFolders: [MediaFolder]
     var timeline: TimelineModel
-    var overlayElements: [OverlayTemplateElement]
+    var overlayElements: OverlayTemplateElementList
     var userAssets: [UserAsset]
     var fitSourceName: String
     var workoutStructureSelection: WorkoutStructureSelection? = nil

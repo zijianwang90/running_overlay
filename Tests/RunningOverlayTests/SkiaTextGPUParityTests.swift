@@ -40,21 +40,27 @@ import Testing
     }()
 
     @Test(.enabled(if: SkiaTextGPUParityTests.metal != nil))
-    func minimalTextMatchesGPU() throws {
-        var style = SkiaTextFixtureFactory.style()
-        style.iconEnabled = true
-        style.iconSystemName = "heart.fill"
-        // The default minimal element exercises glyphs, the rounded
-        // background, label/unit runs, and the icon's BGRA upload.
+    func numericComponentMatchesGPU() throws {
+        // The bundled numeric component exercises glyphs, the rounded
+        // background, label/unit runs, and the SF Symbol's BGRA upload.
         // Fractional anchors exercise subpixel glyph and shape coverage, where
         // Ganesh and the raster backend are most likely to differ.
-        let element = SkiaTextFixtureFactory.element(
+        var element = try #require(OverlayComponentLibrary.numericElement(
+            .heartRate,
             position: CGPoint(x: 0.2137, y: 0.3071),
-            style: style
-        )
+            scale: 1.5,
+            style: SkiaTextFixtureFactory.style()
+        ))
+        element.component?.parameters.merge([
+            "valueFont": .string("Menlo-Bold"),
+            "unitFont": .string("Menlo"),
+            "labelFont": .string("Menlo"),
+            "showLabel": .boolean(true),
+            "iconName": .string("heart.fill")
+        ]) { $1 }
         try compareGPU(
             element: element,
-            label: "minimal-text",
+            label: "numeric-component",
             maxChangedRatio: 0.02,
             maxMeanDelta: 1
         )

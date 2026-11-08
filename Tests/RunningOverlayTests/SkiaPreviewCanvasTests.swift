@@ -85,7 +85,6 @@ import Testing
     /// modules, not merely report support for them.
     @Test func sharedRendererDrawsPortedModules() throws {
         let types: [OverlayElementType] = [
-            .heartRate,
             .decorSolidColor,
             .distanceTimeline,
             .runningGauge,
@@ -492,9 +491,10 @@ import Testing
         routeStyle.routeMapWidth = 320
         routeStyle.routeMapHeight = 240
 
-        return OverlayLayout(elements: [
-            make(.pace, 0.10, 0.10),
-            make(.heartRate, 0.28, 0.10),
+        let numeric = [(OverlayMetric.pace, 0.10), (.heartRate, 0.28)].compactMap { metric, x in
+            OverlayComponentLibrary.numericElement(metric, position: CGPoint(x: x, y: 0.10), scale: 1)
+        }
+        return OverlayLayout(elements: numeric + [
             make(.decorSolidColor, 0.82, 0.14),
             make(.decorIcon, 0.82, 0.34, decorIconStyle),
             make(.decorText, 0.82, 0.46, decorTextStyle),

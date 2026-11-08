@@ -90,7 +90,7 @@ struct IntervalCountdownOverlayDetailView: View {
         }
         if style.fillColorMode == .customColor {
             InspectorDenseRow(label: "Custom Fill") {
-                InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: style.fillCustomColor) { color in
+                InspectorDenseSwatchStrip(presets: InspectorPresets.colorPresets, selected: style.fillCustomColor) { color in
                     project.mutateIntervalCountdownStyle(elementID) { $0.fillCustomColor = color }
                 }
             }
@@ -162,7 +162,7 @@ struct IntervalCountdownOverlayDetailView: View {
         }
         if style.colorMode == .customColor {
             InspectorDenseRow(label: "Custom") {
-                InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: style.customColor) { color in
+                InspectorDenseSwatchStrip(presets: InspectorPresets.colorPresets, selected: style.customColor) { color in
                     updateTextStyle(role) { $0.customColor = color }
                 }
             }
@@ -199,7 +199,7 @@ struct IntervalCountdownOverlayDetailView: View {
 
     private func fontMenu(selected: String, action: @escaping (String) -> Void) -> some View {
         Menu {
-            ForEach(NumericOverlayDetailView.fontPresets, id: \.self) { name in
+            ForEach(InspectorPresets.fontPresets, id: \.self) { name in
                 Button {
                     action(name)
                 } label: {

@@ -156,7 +156,7 @@ struct ElevationChartOverlayDetailView: View {
         }
         InspectorDenseRow(label: "Font") {
             Menu {
-                ForEach(NumericOverlayDetailView.fontPresets, id: \.self) { name in
+                ForEach(InspectorPresets.fontPresets, id: \.self) { name in
                     Button {
                         set(\.bigNumberFontName, to: name)
                     } label: {
@@ -328,7 +328,7 @@ struct ElevationChartOverlayDetailView: View {
     }
 
     private var colorPresets: [(name: String, color: OverlayColor)] {
-        NumericOverlayDetailView.colorPresets
+        InspectorPresets.colorPresets
     }
 }
 

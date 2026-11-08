@@ -119,10 +119,7 @@ final class SkiaEasyRunRenderer {
     }
 
     static func supports(_ element: OverlayElement) -> Bool {
-        element.type.isNumericOverlay
-            || element.type == .elapsedTime
-            || element.type == .realTime
-            || element.type == .distanceTimeline
+        element.type == .distanceTimeline
             || element.type == .routeMap
             || element.type == .weatherWidget
             || SkiaTextModule.supports(element)
@@ -233,95 +230,6 @@ final class SkiaEasyRunRenderer {
         var rowBytes = 0
         guard let base = skb_read_pixels(context, &rowBytes) else { return nil }
         return (base, rowBytes)
-    }
-
-    // MARK: - Text elements
-
-    private func drawTextElement(_ element: OverlayElement, renderContext: OverlayRenderContext) {
-        let layout = OverlayRenderModel.textLayout(for: element, in: renderContext)
-        let originX = size.width * element.position.x
-        let originY = size.height * element.position.y
-        let valueFont = cachedFont(
-            family: element.style.fontName,
-            size: layout.fontSize,
-            weight: .semibold
-        )
-        let unitFont = cachedFont(
-            family: layout.unitFontName,
-            size: layout.unitFontSize,
-            weight: Self.weight(layout.unitFontWeight)
-        )
-
-        let valueLine = Self.makeLine(
-            layout.components.value,
-            font: valueFont,
-            tracking: -layout.fontSize * 0.012
-        )
-        let unitLine = Self.makeLine(layout.components.unit, font: unitFont, tracking: 0)
-        let valueHeight = valueLine.ascent + valueLine.descent + valueLine.leading
-        let unitHeight = unitLine.ascent + unitLine.descent + unitLine.leading
-
-        let showIcon = layout.iconEnabled && !layout.iconSystemName.isEmpty
-        let textX = showIcon ? layout.iconSize + layout.iconSpacing : 0
-        let showUnit = element.style.showUnit && !layout.components.unit.isEmpty
-        let unitX = originX + textX + valueLine.width + (showUnit ? layout.unitSpacing : 0)
-
-        let valueBaseline = originY + valueLine.ascent
-        let unitTop: Double
-        switch layout.unitTextAlignment {
-        case .leading:
-            unitTop = originY
-        case .center:
-            unitTop = originY + (valueHeight - unitHeight) / 2
-        case .trailing:
-            unitTop = originY + valueHeight - unitHeight
-        }
-        let unitBaseline = unitTop + unitLine.ascent
-
-        let shadow = shadowParameters(for: element, layout: layout)
-        if showIcon {
-            let iconTop = originY + (valueHeight - layout.iconSize) / 2
-            drawIcon(
-                name: layout.iconSystemName,
-                rect: CGRect(x: originX, y: iconTop, width: layout.iconSize, height: layout.iconSize),
-                color: resolvedColor(
-                    layout.iconColor,
-                    followsZones: layout.iconColorsFollowHeartRateZones,
-                    base: layout.dynamicHeartRateZoneColor
-                ),
-                opacity: layout.iconOpacity * element.opacity,
-                shadow: shadow
-            )
-        }
-
-        drawGlyphs(
-            valueLine,
-            font: valueFont,
-            x: originX + textX,
-            baselineY: valueBaseline,
-            color: resolvedColor(
-                element.style.valueColor,
-                followsZones: layout.valueColorsFollowHeartRateZones,
-                base: layout.dynamicHeartRateZoneColor
-            ),
-            opacity: element.style.valueOpacity * element.opacity,
-            shadow: shadow
-        )
-        if showUnit {
-            drawGlyphs(
-                unitLine,
-                font: unitFont,
-                x: unitX,
-                baselineY: unitBaseline,
-                color: resolvedColor(
-                    element.style.unitColor,
-                    followsZones: layout.unitColorsFollowHeartRateZones,
-                    base: layout.dynamicHeartRateZoneColor
-                ),
-                opacity: element.style.unitOpacity * element.opacity,
-                shadow: shadow
-            )
-        }
     }
 
     // MARK: - Route map
@@ -963,20 +871,6 @@ final class SkiaEasyRunRenderer {
         var offsetX: Double
         var offsetY: Double
         var alpha: Double
-    }
-
-    private func shadowParameters(for element: OverlayElement, layout: OverlayTextRenderLayout) -> ShadowParameters {
-        guard element.style.shadowEnabled, element.style.shadowOpacity > 0 else {
-            return ShadowParameters(sigma: 0, offsetX: 0, offsetY: 0, alpha: 0)
-        }
-        let sigmaFactor = ProcessInfo.processInfo.environment["SKIA_SHADOW_SIGMA_FACTOR"]
-            .flatMap(Double.init) ?? 1.0
-        return ShadowParameters(
-            sigma: layout.shadowRadius * sigmaFactor,
-            offsetX: element.style.shadowOffsetX,
-            offsetY: element.style.shadowOffsetY,
-            alpha: element.style.shadowOpacity * element.opacity
-        )
     }
 
     private func drawGlyphs(

@@ -56,36 +56,21 @@ enum SkiaTextRenderSupport {
         element: OverlayElement,
         size: CGSize,
         activity: ActivityTimeline,
-        elapsedTime: TimeInterval,
-        layout: OverlayTextRenderLayout? = nil
+        elapsedTime: TimeInterval
     ) throws -> (pixels: [UInt8], rowBytes: Int) {
         guard let context = skb_create(Int32(size.width), Int32(size.height)) else {
             throw SkiaTextGoldenError.cannotCreateContext
         }
         defer { skb_destroy(context) }
         skb_clear(context)
-        let renderContext = OverlayRenderContext(
+        let handled = SkiaTextModule.draw(
+            element: element,
+            context: context,
             canvasSize: size,
             activity: activity,
             elapsedTime: elapsedTime
         )
-        if let layout {
-            SkiaTextModule.draw(
-                element: element,
-                layout: layout,
-                context: context,
-                renderContext: renderContext
-            )
-        } else {
-            let handled = SkiaTextModule.draw(
-                element: element,
-                context: context,
-                canvasSize: size,
-                activity: activity,
-                elapsedTime: elapsedTime
-            )
-            guard handled else { throw SkiaTextGoldenError.cannotRenderCandidate }
-        }
+        guard handled else { throw SkiaTextGoldenError.cannotRenderCandidate }
         var rowBytes = 0
         guard let base = skb_pixels(context, &rowBytes) else {
             throw SkiaTextGoldenError.cannotRenderCandidate
@@ -98,15 +83,13 @@ enum SkiaTextRenderSupport {
         element: OverlayElement,
         size: CGSize,
         activity: ActivityTimeline,
-        elapsedTime: TimeInterval,
-        layout: OverlayTextRenderLayout? = nil
+        elapsedTime: TimeInterval
     ) throws -> CGImage {
         let result = try candidatePixels(
             element: element,
             size: size,
             activity: activity,
-            elapsedTime: elapsedTime,
-            layout: layout
+            elapsedTime: elapsedTime
         )
         let data = Data(result.pixels)
         guard let provider = CGDataProvider(data: data as CFData),
@@ -130,34 +113,6 @@ enum SkiaTextRenderSupport {
             throw SkiaTextGoldenError.cannotRenderCandidate
         }
         return image
-    }
-
-    /// Direct-layout oracle: the SwiftUI preset view at the element's
-    /// top-leading anchor, matching `SkiaTextModule`'s origin.
-    @MainActor
-    static func oracleImage(
-        element: OverlayElement,
-        layout: OverlayTextRenderLayout,
-        size: CGSize
-    ) -> CGImage? {
-        let content = ZStack(alignment: .topLeading) {
-            Color.clear
-            TextPresetOverlayView(element: element, layout: layout, isSelected: false)
-                .opacity(element.opacity)
-                .offset(
-                    x: size.width * element.position.x,
-                    y: size.height * element.position.y
-                )
-        }
-        .frame(width: size.width, height: size.height, alignment: .topLeading)
-        let renderer = ImageRenderer(content: content)
-        renderer.isOpaque = false
-        renderer.proposedSize = ProposedViewSize(
-            width: size.width,
-            height: size.height
-        )
-        renderer.scale = 1
-        return renderer.cgImage
     }
 
     static func compare(
@@ -250,174 +205,6 @@ enum SkiaTextRenderSupport {
 }
 
 @Suite(.serialized, .skiaSerialized) struct SkiaTextGoldenTests {
-    struct MinimalControlConfig: Sendable, CustomStringConvertible {
-        var name: String
-        var label: OverlayTextAttachmentPosition
-        var unit: OverlayTextAttachmentPosition
-        var icon: OverlayTextAttachmentPosition
-        var iconEnabled: Bool
-        var showLabel: Bool = true
-        var showUnit: Bool = true
-        var iconAlignment: OverlayTextAlignment = .center
-        var labelAlignment: OverlayTextAlignment = .leading
-        var unitAlignment: OverlayTextAlignment = .leading
-
-        var description: String { name }
-
-        static let all: [MinimalControlConfig] = [
-            MinimalControlConfig(
-                name: "label-top-unit-trailing",
-                label: .top,
-                unit: .trailing,
-                icon: .leading,
-                iconEnabled: false
-            ),
-            MinimalControlConfig(
-                name: "label-bottom-unit-bottom",
-                label: .bottom,
-                unit: .bottom,
-                icon: .leading,
-                iconEnabled: false
-            ),
-            MinimalControlConfig(
-                name: "label-leading-unit-leading-icon-leading",
-                label: .leading,
-                unit: .leading,
-                icon: .leading,
-                iconEnabled: true
-            ),
-            MinimalControlConfig(
-                name: "label-trailing-unit-top-icon-top",
-                label: .trailing,
-                unit: .top,
-                icon: .top,
-                iconEnabled: true
-            ),
-            MinimalControlConfig(
-                name: "icon-bottom-unit-trailing",
-                label: .top,
-                unit: .trailing,
-                icon: .bottom,
-                iconEnabled: true,
-                iconAlignment: .trailing
-            ),
-            MinimalControlConfig(
-                name: "no-label-unit-bottom-icon-trailing",
-                label: .top,
-                unit: .bottom,
-                icon: .trailing,
-                iconEnabled: true,
-                showLabel: false,
-                iconAlignment: .trailing,
-                unitAlignment: .trailing
-            ),
-        ]
-    }
-
-    /// D2: `.minimal` is the only runtime-reachable preset, so this fixture
-    /// uses the unmodified production model path (element + `textLayout`) and
-    /// the shipping SwiftUI frame renderer as the oracle.
-    @Test func minimalProductionPathMatchesSwiftUI() async throws {
-        try await OverlayPreferenceFixtures.withDefaults {
-            let element = SkiaTextFixtureFactory.element()
-            let activity = SkiaTextFixtureFactory.activity()
-            let size = SkiaTextFixtureFactory.canvasSize
-            let reference = try await SwiftUIOverlayVideoExporter.renderFrameCGImage(
-                overlayLayout: OverlayLayout(elements: [element]),
-                activity: activity,
-                elapsedTime: SkiaTextFixtureFactory.elapsedTime,
-                size: size
-            )
-            let candidate = try SkiaTextRenderSupport.candidateImage(
-                element: element,
-                size: size,
-                activity: activity,
-                elapsedTime: SkiaTextFixtureFactory.elapsedTime
-            )
-            let metrics = try SkiaTextRenderSupport.compare(
-                reference: reference,
-                candidate: candidate,
-                size: size,
-                label: "minimal-production"
-            )
-            print(metrics.description)
-            #expect(metrics.changedRatio < 0.02)
-            #expect(metrics.meanDelta < 4)
-        }
-    }
-
-
-    /// Preview uses every numeric attachment control, so cover the
-    /// label/unit/icon position matrix on the production `.minimal` layout.
-    @Test(arguments: MinimalControlConfig.all)
-    func minimalControlsMatchSwiftUI(
-        _ config: MinimalControlConfig
-    ) async throws {
-        var style = SkiaTextFixtureFactory.style()
-        style.showLabel = config.showLabel
-        style.showUnit = config.showUnit
-        style.labelPosition = config.label
-        style.unitPosition = config.unit
-        style.iconEnabled = config.iconEnabled
-        style.iconPosition = config.icon
-        style.iconSystemName = "heart.fill"
-        style.iconTextAlignment = config.iconAlignment
-        style.labelTextAlignment = config.labelAlignment
-        style.unitTextAlignment = config.unitAlignment
-        let element = SkiaTextFixtureFactory.element(style: style)
-        try await productionGolden(
-            element: element,
-            label: "minimal-controls-\(config.name)"
-        )
-    }
-
-    private func productionGolden(
-        element: OverlayElement,
-        label: String,
-        maxChangedRatio: Double = 0.02,
-        maxMeanDelta: Double = 4
-    ) async throws {
-        try await OverlayPreferenceFixtures.withDefaults {
-            let activity = SkiaTextFixtureFactory.activity()
-            let size = SkiaTextFixtureFactory.canvasSize
-            let reference = try await SwiftUIOverlayVideoExporter.renderFrameCGImage(
-                overlayLayout: OverlayLayout(elements: [element]),
-                activity: activity,
-                elapsedTime: SkiaTextFixtureFactory.elapsedTime,
-                size: size
-            )
-            let candidate = try SkiaTextRenderSupport.candidateImage(
-                element: element,
-                size: size,
-                activity: activity,
-                elapsedTime: SkiaTextFixtureFactory.elapsedTime
-            )
-            let metrics = try SkiaTextRenderSupport.compare(
-                reference: reference,
-                candidate: candidate,
-                size: size,
-                label: label
-            )
-            print(metrics.description)
-            #expect(metrics.changedRatio < maxChangedRatio)
-            #expect(metrics.meanDelta < maxMeanDelta)
-        }
-    }
-
-    /// Feathered background: the same distance-field mask as SwiftUI,
-    /// applied through `skb_draw_image_dst_in`.
-    @Test func featheredBackgroundMatchesSwiftUI() async throws {
-        var style = SkiaTextFixtureFactory.style()
-        style.backgroundFadeOutEnabled = true
-        style.backgroundFadeOutAmount = 0.5
-        let element = SkiaTextFixtureFactory.element(style: style)
-        try await productionGolden(
-            element: element,
-            label: "feathered-background",
-            maxChangedRatio: 0.02
-        )
-    }
-
     /// All solid-color decor shapes share the same fill/stroke/effects path.
     @Test(arguments: DecorShape.allCases)
     func decorShapeMatchesSwiftUI(_ shape: DecorShape) async throws {
@@ -446,39 +233,6 @@ enum SkiaTextRenderSupport {
             element: element,
             label: "decor-shape-\(shape)"
         )
-    }
-
-    /// D6: element opacity, generic border, glow, and layered shadow all run
-    /// through `withElementLayers` on the production minimal layout.
-    @Test func minimalEffectsMatchSwiftUI() async throws {
-        try await OverlayPreferenceFixtures.withDefaults {
-            let element = SkiaTextFixtureFactory.effectsElement()
-            let activity = SkiaTextFixtureFactory.activity()
-            let size = SkiaTextFixtureFactory.canvasSize
-            let reference = try await SwiftUIOverlayVideoExporter.renderFrameCGImage(
-                overlayLayout: OverlayLayout(elements: [element]),
-                activity: activity,
-                elapsedTime: SkiaTextFixtureFactory.elapsedTime,
-                size: size
-            )
-            let candidate = try SkiaTextRenderSupport.candidateImage(
-                element: element,
-                size: size,
-                activity: activity,
-                elapsedTime: SkiaTextFixtureFactory.elapsedTime
-            )
-            let metrics = try SkiaTextRenderSupport.compare(
-                reference: reference,
-                candidate: candidate,
-                size: size,
-                label: "minimal-effects"
-            )
-            print(metrics.description)
-            // Blur tails over a large glow/shadow region differ subtly even
-            // when geometry, color, and opacity match; meanDelta stays low.
-            #expect(metrics.changedRatio < 0.05)
-            #expect(metrics.meanDelta < 2)
-        }
     }
 
     @Test func decorEffectsMatchSwiftUI() async throws {
@@ -547,134 +301,5 @@ enum SkiaTextRenderSupport {
         }
     }
 
-    /// D3: export has no backdrop to blur. `ImageRenderer` renders
-    /// `.ultraThinMaterial` over a transparent canvas as a near-white
-    /// translucent fill; the Skia module reproduces that measured fallback.
-    @Test func materialBlurFallbackMatchesSwiftUI() async throws {
-        try await OverlayPreferenceFixtures.withDefaults {
-            var style = SkiaTextFixtureFactory.style()
-            style.backgroundBlurRadius = 12
-            style.backgroundOpacity = 0.5
-            let element = SkiaTextFixtureFactory.element(style: style)
-            let activity = SkiaTextFixtureFactory.activity()
-            let size = SkiaTextFixtureFactory.canvasSize
-            let reference = try await SwiftUIOverlayVideoExporter.renderFrameCGImage(
-                overlayLayout: OverlayLayout(elements: [element]),
-                activity: activity,
-                elapsedTime: SkiaTextFixtureFactory.elapsedTime,
-                size: size
-            )
-            let candidate = try SkiaTextRenderSupport.candidateImage(
-                element: element,
-                size: size,
-                activity: activity,
-                elapsedTime: SkiaTextFixtureFactory.elapsedTime
-            )
-            let metrics = try SkiaTextRenderSupport.compare(
-                reference: reference,
-                candidate: candidate,
-                size: size,
-                label: "material-blur-fallback"
-            )
-            print(metrics.description)
-            #expect(metrics.changedRatio < 0.02)
-            #expect(metrics.meanDelta < 4)
-        }
-    }
-
-    /// Canonical presets 1-9 (`.minimal` covered by the production fixture).
-    /// Numeric elements force `.minimal` in the model, so each preset is
-    /// compared through the direct-layout oracle.
-    @Test(arguments: SkiaTextFixtureFactory.canonicalPresets.filter { $0 != .minimal })
-    func canonicalPresetMatchesDirectLayoutOracle(
-        _ preset: OverlayTextPreset
-    ) async throws {
-        try await OverlayPreferenceFixtures.withDefaults {
-            var style = SkiaTextFixtureFactory.style()
-            style.iconEnabled = false
-            let element = SkiaTextFixtureFactory.element(style: style)
-            let activity = SkiaTextFixtureFactory.activity()
-            let layout = SkiaTextFixtureFactory.directLayout(
-                for: element,
-                preset: preset,
-                activity: activity
-            )
-            let size = SkiaTextFixtureFactory.canvasSize
-            let reference = await MainActor.run {
-                SkiaTextRenderSupport.oracleImage(
-                    element: element,
-                    layout: layout,
-                    size: size
-                )
-            }
-            let oracle = try #require(
-                reference,
-                "ImageRenderer returned no image for \(preset.rawValue)"
-            )
-            let candidate = try SkiaTextRenderSupport.candidateImage(
-                element: element,
-                size: size,
-                activity: activity,
-                elapsedTime: SkiaTextFixtureFactory.elapsedTime,
-                layout: layout
-            )
-            let metrics = try SkiaTextRenderSupport.compare(
-                reference: oracle,
-                candidate: candidate,
-                size: size,
-                label: "canonical-\(preset.rawValue)"
-            )
-            print(metrics.description)
-            #expect(metrics.changedRatio < 0.02)
-            #expect(metrics.meanDelta < 4)
-        }
-    }
-
-    /// Deprecated presets are drawn but not re-enabled. Thresholds are the
-    /// same; failures here do not block runtime exposure.
-    @Test(arguments: SkiaTextFixtureFactory.deprecatedPresets)
-    func deprecatedPresetMatchesDirectLayoutOracle(
-        _ preset: OverlayTextPreset
-    ) async throws {
-        try await OverlayPreferenceFixtures.withDefaults {
-            var style = SkiaTextFixtureFactory.style()
-            style.iconEnabled = false
-            let element = SkiaTextFixtureFactory.element(style: style)
-            let activity = SkiaTextFixtureFactory.activity()
-            let layout = SkiaTextFixtureFactory.directLayout(
-                for: element,
-                preset: preset,
-                activity: activity
-            )
-            let size = SkiaTextFixtureFactory.canvasSize
-            let reference = await MainActor.run {
-                SkiaTextRenderSupport.oracleImage(
-                    element: element,
-                    layout: layout,
-                    size: size
-                )
-            }
-            let oracle = try #require(
-                reference,
-                "ImageRenderer returned no image for \(preset.rawValue)"
-            )
-            let candidate = try SkiaTextRenderSupport.candidateImage(
-                element: element,
-                size: size,
-                activity: activity,
-                elapsedTime: SkiaTextFixtureFactory.elapsedTime,
-                layout: layout
-            )
-            let metrics = try SkiaTextRenderSupport.compare(
-                reference: oracle,
-                candidate: candidate,
-                size: size,
-                label: "deprecated-\(preset.rawValue)"
-            )
-            print(metrics.description)
-            #expect(metrics.changedRatio < 0.03)
-            #expect(metrics.meanDelta < 6)
-        }
-    }
 }
 #endif

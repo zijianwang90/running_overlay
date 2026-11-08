@@ -310,7 +310,7 @@ Controls:
 
 Implementation mapping:
 
-- Text overlays map to `OverlayTextPreset`: Minimal, Pill Badge, Metric Card, Big Number, Sport Watch, Split Label.
+- Numeric overlays have no text presets; they are the `studio.numeric` component (ADR 0014).
 - Running Gauge maps to `OverlayGaugePreset`: Minimal Sport, High Contrast, Trail Adventure, Tech Future, Retro Digital.
 - Route Map does not expose a preset; line color mode and Glow live in the Route Line section.
 - Existing style supports font name, font size, font weight, foreground color, background opacity, shadow opacity, and shadow radius.

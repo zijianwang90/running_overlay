@@ -40,18 +40,11 @@ import Testing
         let style = pinnedStyle()
         var elements: [OverlayElement] = []
 
-        // Decor solid is drawn first and deliberately overlaps the text
-        // anchor, so the text background renders over it.
+        // Numeric readings are components, which the SwiftUI oracle cannot
+        // draw (ADR 0014), so this scene covers native modules only.
         var solid = SkiaTextFixtureFactory.solidColorElement()
         solid.position = CGPoint(x: 0.10, y: 0.11)
         elements.append(solid)
-
-        var text = SkiaTextFixtureFactory.element(
-            position: CGPoint(x: 0.04, y: 0.05),
-            style: SkiaTextFixtureFactory.style()
-        )
-        text.style.iconEnabled = true
-        elements.append(text)
 
         var icon = SkiaTextFixtureFactory.iconElement()
         icon.position = CGPoint(x: 0.44, y: 0.10)
@@ -106,7 +99,6 @@ import Testing
         var style = OverlayStyle.default
         style.fontName = "Menlo"
         style.labelFontName = "Menlo"
-        style.unitFontName = "Menlo"
         style.distanceTimeline.labelFontName = "Menlo"
         style.distanceTimeline.axisLabelFontName = "Menlo"
         style.routeMapStatsBar.valueFontName = "Menlo"

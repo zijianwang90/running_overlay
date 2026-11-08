@@ -2,11 +2,11 @@ import Foundation
 import Testing
 @testable import RunningOverlay
 
-/// String-level parity for the `metric(id, unit)` builtin. Every numeric
-/// overlay type except Custom Numeric must produce exactly the value, unit,
-/// label and short label of the native formatter, for every display unit and
-/// across times with and without data.
-struct OverlayComponentMetricParityTests {
+/// The `metric(id, unit...)` builtin returns `OverlayValueFormatter` text for
+/// every metric, display unit and time, with and without data. Native numeric
+/// overlays were the parity oracle until they were removed (ADR 0014); the
+/// pinned table keeps their exact formatting.
+struct OverlayComponentMetricTests {
     private let start = Date(timeIntervalSince1970: 1_700_000_000)
 
     /// Records cover running dynamics, temperature and grade. Records 3–4 drop
@@ -61,24 +61,19 @@ struct OverlayComponentMetricParityTests {
         )
     }
 
-    private func nativeComponents(
+    private func formatterComponents(
         id: String,
         unit: String?,
         activity: ActivityTimeline,
         elapsedTime: TimeInterval
     ) throws -> OverlayValueComponents {
-        let metric = try #require(OverlayComponentMetricCatalog.metrics[id])
-        var style = OverlayStyle.default
-        style.unitOption = OverlayComponentMetricCatalog.unitOption(for: metric, requested: unit.map { [$0] } ?? [])
-        style.elevationDisplayMode = metric.elevationDisplayMode
-        style.customLabel = ""
-        let element = OverlayElement(
-            type: metric.type,
-            position: .zero,
-            scale: 1,
-            style: style
+        let metric = try #require(OverlayMetric(rawValue: id))
+        return OverlayValueFormatter.components(
+            for: metric,
+            unit: unit.flatMap(OverlayUnitOption.init(rawValue:)),
+            activity: activity,
+            elapsedTime: elapsedTime
         )
-        return OverlayValueFormatter.components(for: element, activity: activity, elapsedTime: elapsedTime)
     }
 
     private func componentRecord(
@@ -100,19 +95,13 @@ struct OverlayComponentMetricParityTests {
         return try #require(value.record)
     }
 
-    @Test func everyNativeNumericTypeHasAMetric() {
-        let covered = Set(OverlayComponentMetricCatalog.metrics.values.map(\.type))
-        let numeric = OverlayElementType.allCases.filter { $0.isNumericOverlay && $0 != .customNumeric }
-        #expect(numeric.allSatisfy(covered.contains))
-    }
-
-    @Test(arguments: OverlayComponentMetricCatalog.metrics.keys.sorted())
-    func metricMatchesNativeFormatter(id: String) throws {
+    @Test(arguments: OverlayMetric.allCases.map(\.rawValue))
+    func metricMatchesFormatter(id: String) throws {
         let activity = makeTimeline()
         let units: [String?] = [nil] + OverlayComponentMetricCatalog.units(for: id)
         for unit in units {
             for time in [0.0, 112.5, 262.0, 437.8, 600.0] {
-                let native = try nativeComponents(id: id, unit: unit, activity: activity, elapsedTime: time)
+                let native = try formatterComponents(id: id, unit: unit, activity: activity, elapsedTime: time)
                 let record = try componentRecord(id: id, unit: unit, activity: activity, elapsedTime: time)
                 let context = "\(id) unit=\(unit ?? "default") t=\(time)"
                 #expect(record["value"] == .string(native.value), "\(context)")
@@ -146,8 +135,8 @@ struct OverlayComponentMetricParityTests {
             records: records,
             laps: []
         )
-        for id in OverlayComponentMetricCatalog.metrics.keys.sorted() {
-            let native = try nativeComponents(id: id, unit: nil, activity: activity, elapsedTime: 120)
+        for id in OverlayMetric.allCases.map(\.rawValue) {
+            let native = try formatterComponents(id: id, unit: nil, activity: activity, elapsedTime: 120)
             let record = try componentRecord(id: id, unit: nil, activity: activity, elapsedTime: 120)
             #expect(record["value"] == .string(native.value), "\(id)")
         }
@@ -183,5 +172,48 @@ struct OverlayComponentMetricParityTests {
                 elementScale: 1
             )))
         #expect(unknown == .null)
+    }
+
+    /// Exact strings the native numeric overlays showed for this timeline at
+    /// 112.5 s. Clock, date and HR zone metrics are omitted: they depend on
+    /// the host time zone and the user's zone preferences.
+    @Test func formattingIsPinned() throws {
+        let pins: [(String, String?, String)] = [
+            ("heartRate", nil, "113|bpm|Heart Rate|HR"),
+            ("pace", nil, "5'01\"|/km|Pace|PACE"),
+            ("pace", "paceImperial", "8'05\"|/mi|Pace|PACE"),
+            ("pace", "paceRowing", "2'31\"|/500m|Pace|PACE"),
+            ("avgPace", nil, "4'57\"|/km|Avg Pace|AVG"),
+            ("lapPace", nil, "4'57\"|/km|Lap Pace|LAP"),
+            ("distance", nil, "0.38|km|Distance|DIST"),
+            ("distance", "distanceMiles", "0.24|mi|Distance|DIST"),
+            ("distance", "distanceMeters", "379|m|Distance|DIST"),
+            ("elevation", nil, "15|m|Elevation|ELEV"),
+            ("elevation", "elevationFeet", "49|ft|Elevation|ELEV"),
+            ("elevationGain", nil, "3|m|Elevation Gain|GAIN"),
+            ("elapsedTime", nil, "00:01:53||Elapsed Time|TIME"),
+            ("elapsedTime", "durationMS", "01:53||Elapsed Time|TIME"),
+            ("elapsedTime", "durationSeconds", "113||Elapsed Time|TIME"),
+            ("cadence", nil, "170|spm|Cadence|CAD"),
+            ("power", nil, "237|W|Power|PWR"),
+            ("calories", nil, "15|kcal|Calories|CAL"),
+            ("verticalOscillation", nil, "8.5|cm|Vert. Osc.|OSC"),
+            ("verticalOscillation", "oscillationMillimeters", "85|mm|Vert. Osc.|OSC"),
+            ("groundContactTime", nil, "240|ms|GCT|GCT"),
+            ("strideLength", nil, "1.15|m|Stride|STRIDE"),
+            ("verticalRatio", nil, "7.4|%|Vert. Ratio|VR"),
+            ("groundContactBalance", nil, "49.8L / 50.2R|%|GCT Balance|BAL"),
+            ("temperature", nil, "18°|°C|Temp|TEMP"),
+            ("temperature", "temperatureFahrenheit", "64°|°F|Temp|TEMP"),
+            ("grade", nil, "-0.9|%|Grade|GRD")
+        ]
+        let activity = makeTimeline()
+        for (id, unit, expected) in pins {
+            let record = try componentRecord(id: id, unit: unit, activity: activity, elapsedTime: 112.5)
+            let text = [record["value"], record["unit"], record["label"], record["shortLabel"]]
+                .map { $0?.string ?? "nil" }
+                .joined(separator: "|")
+            #expect(text == expected, "\(id) \(unit ?? "default")")
+        }
     }
 }

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Dense Inspector detail panel for the Running Gauge overlay.
 ///
-/// Mirrors the design language of `NumericOverlayDetailView` (same tokens,
+/// Uses the shared `InspectorDense*` design language (same tokens,
 /// row sizes, segmented controls, swatch strips, section disclosure pattern)
 /// while exposing the full Running Gauge surface area: style preset, data
 /// layout + per-region metric configuration, dial, outer ring, progress ring,
@@ -223,7 +223,7 @@ struct RunningGaugeOverlayDetailView: View {
         }
         InspectorDenseRow(label: "Value Color") {
             InspectorDenseSwatchStrip(
-                presets: NumericOverlayDetailView.colorPresets,
+                presets: InspectorPresets.colorPresets,
                 selected: region.valueColor ?? element?.style.gauge.primaryTextColor ?? .white
             ) { color in
                 project.updateOverlayGaugeRegion(elementID, region: region.region) { $0.valueColor = color }
@@ -238,7 +238,7 @@ struct RunningGaugeOverlayDetailView: View {
         let gauge = element.style.gauge
         InspectorDenseRow(label: "Background") {
             InspectorDenseSwatchStrip(
-                presets: NumericOverlayDetailView.colorPresets,
+                presets: InspectorPresets.colorPresets,
                 selected: gauge.dialBackgroundColor
             ) { color in
                 project.mutateGaugeStyle(elementID) { $0.dialBackgroundColor = color }
@@ -275,7 +275,7 @@ struct RunningGaugeOverlayDetailView: View {
             if gauge.outerRingEnabled && outerRingExpanded {
                 InspectorDenseRow(label: "Outer Color") {
                     InspectorDenseSwatchStrip(
-                        presets: NumericOverlayDetailView.colorPresets,
+                        presets: InspectorPresets.colorPresets,
                         selected: gauge.outerRingColor
                     ) { color in
                         project.mutateGaugeStyle(elementID) { $0.outerRingColor = color }
@@ -326,7 +326,7 @@ struct RunningGaugeOverlayDetailView: View {
                 }
                 InspectorDenseRow(label: "Progress Color") {
                     InspectorDenseSwatchStrip(
-                        presets: NumericOverlayDetailView.colorPresets,
+                        presets: InspectorPresets.colorPresets,
                         selected: gauge.progressColor
                     ) { color in
                         project.mutateGaugeStyle(elementID) { $0.progressColor = color }
@@ -366,7 +366,7 @@ struct RunningGaugeOverlayDetailView: View {
         if gauge.tickMarksEnabled {
             InspectorDenseRow(label: "Tick Color") {
                 InspectorDenseSwatchStrip(
-                    presets: NumericOverlayDetailView.colorPresets,
+                    presets: InspectorPresets.colorPresets,
                     selected: gauge.tickColor
                 ) { color in
                     project.mutateGaugeStyle(elementID) { $0.tickColor = color }
@@ -422,7 +422,7 @@ struct RunningGaugeOverlayDetailView: View {
         if gauge.dividerEnabled {
             InspectorDenseRow(label: "Divider Color") {
                 InspectorDenseSwatchStrip(
-                    presets: NumericOverlayDetailView.colorPresets,
+                    presets: InspectorPresets.colorPresets,
                     selected: gauge.dividerColor
                 ) { color in
                     project.mutateGaugeStyle(elementID) { $0.dividerColor = color }
@@ -450,7 +450,7 @@ struct RunningGaugeOverlayDetailView: View {
         let gauge = element.style.gauge
         InspectorDenseRow(label: "Font") {
             Menu {
-                ForEach(NumericOverlayDetailView.fontPresets, id: \.self) { name in
+                ForEach(InspectorPresets.fontPresets, id: \.self) { name in
                     Button {
                         project.mutateGaugeStyle(elementID) { $0.fontName = name }
                     } label: {
@@ -497,7 +497,7 @@ struct RunningGaugeOverlayDetailView: View {
         let gauge = element.style.gauge
         InspectorDenseRow(label: "Primary Text") {
             InspectorDenseSwatchStrip(
-                presets: NumericOverlayDetailView.colorPresets,
+                presets: InspectorPresets.colorPresets,
                 selected: gauge.primaryTextColor
             ) { color in
                 project.mutateGaugeStyle(elementID) { $0.primaryTextColor = color }
@@ -505,7 +505,7 @@ struct RunningGaugeOverlayDetailView: View {
         }
         InspectorDenseRow(label: "Secondary") {
             InspectorDenseSwatchStrip(
-                presets: NumericOverlayDetailView.colorPresets,
+                presets: InspectorPresets.colorPresets,
                 selected: gauge.secondaryTextColor
             ) { color in
                 project.mutateGaugeStyle(elementID) { $0.secondaryTextColor = color }
@@ -513,7 +513,7 @@ struct RunningGaugeOverlayDetailView: View {
         }
         InspectorDenseRow(label: "Accent") {
             InspectorDenseSwatchStrip(
-                presets: NumericOverlayDetailView.colorPresets,
+                presets: InspectorPresets.colorPresets,
                 selected: gauge.accentColor
             ) { color in
                 project.mutateGaugeStyle(elementID) { $0.accentColor = color }
@@ -553,7 +553,7 @@ struct RunningGaugeOverlayDetailView: View {
         if gauge.glowEnabled {
             InspectorDenseRow(label: "Glow Color") {
                 InspectorDenseSwatchStrip(
-                    presets: NumericOverlayDetailView.colorPresets,
+                    presets: InspectorPresets.colorPresets,
                     selected: gauge.glowColor
                 ) { color in
                     project.mutateGaugeStyle(elementID) { $0.glowColor = color }

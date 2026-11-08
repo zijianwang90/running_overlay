@@ -197,7 +197,7 @@ struct ProjectSettingsTests {
             mediaItems: [],
             mediaFolders: [],
             timeline: .empty,
-            overlayElements: [],
+            overlayElements: OverlayTemplateElementList([]),
             userAssets: [],
             fitSourceName: ""
         )

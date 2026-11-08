@@ -94,7 +94,7 @@ enum ExportBenchmarkRunner {
             destinationURL: outputDirectory,
             settings: snapshot.settings,
             activity: snapshot.activity,
-            overlayLayout: OverlayLayout(elements: snapshot.overlayElements.map(\.overlayElement)),
+            overlayLayout: OverlayLayout(elements: snapshot.overlayElements.elements.map(\.overlayElement)),
             fitStartTime: snapshot.timeline.fitStartTime,
             segments: segments,
             writesProfile: true,

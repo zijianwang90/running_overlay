@@ -195,7 +195,7 @@ struct IntervalTimelineOverlayDetailView: View {
                     }
                 }
                 Divider()
-                ForEach(NumericOverlayDetailView.fontPresets, id: \.self) { name in
+                ForEach(InspectorPresets.fontPresets, id: \.self) { name in
                     Button {
                         project.mutateIntervalTimelineStyle(elementID) { $0.markerFontName = name }
                     } label: {
@@ -213,7 +213,7 @@ struct IntervalTimelineOverlayDetailView: View {
             .frame(height: NumericTokens.controlHeight)
         }
         InspectorDenseRow(label: "Marker Color") {
-            InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: style.markerColor) { color in
+            InspectorDenseSwatchStrip(presets: InspectorPresets.colorPresets, selected: style.markerColor) { color in
                 project.mutateIntervalTimelineStyle(elementID) { $0.markerColor = color }
             }
         }

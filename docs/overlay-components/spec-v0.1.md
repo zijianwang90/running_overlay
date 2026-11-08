@@ -722,6 +722,8 @@ Validation errors MUST name the JSON pointer and a human-readable message.
 ## 15. Migration From Native Overlays
 
 Native overlay types remain the authoritative implementation until ported.
+Numeric overlays are the exception: ADR 0014 removed the native numeric types
+without migrating saved projects, and `studio.numeric` replaces them.
 
 1. Port one overlay at a time, starting with a numeric metric overlay.
 2. The component and native renderer render the same fixture; compare with

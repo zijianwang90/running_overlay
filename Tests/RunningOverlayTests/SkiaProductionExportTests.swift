@@ -169,9 +169,13 @@ struct SkiaProductionExportTests {
         blue.style.decor.fillColor = OverlayColor(red: 0, green: 0, blue: 1, alpha: 1)
         var translucent = OverlayElement(type: red.type, position: CGPoint(x: 0.6, y: 0.2), scale: red.scale, style: red.style)
         translucent.style.decor.fillColor = OverlayColor(red: 0, green: 1, blue: 0, alpha: 0.5)
-        var timeStyle = SkiaTextFixtureFactory.style()
-        timeStyle.fontSize = 100
-        let time = OverlayElement(type: .elapsedTime, position: CGPoint(x: 0.4, y: 0.65), scale: 1, style: timeStyle)
+        var time = try #require(OverlayComponentLibrary.numericElement(
+            .elapsedTime,
+            position: CGPoint(x: 0.4, y: 0.65),
+            scale: 1,
+            style: SkiaTextFixtureFactory.style()
+        ))
+        time.component?.parameters["valueSize"] = .number(100)
         return OverlayExportJob(
             destinationURL: destination, settings: settings,
             activity: try FitFileParser.parse(url: fixture),

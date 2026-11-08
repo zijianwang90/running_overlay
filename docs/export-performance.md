@@ -400,6 +400,10 @@ renders, not create more SwiftUI render passes.
 
 ## Numeric Batch Candidate
 
+Removed with the native numeric overlays (ADR 0014): numeric readings are
+components, which the SwiftUI exporter does not draw, so there is nothing left
+to batch. The record below is historical.
+
 Test12 targeted the remaining repeated `ImageRenderer` calls by batching simple
 numeric overlays in the per-overlay path:
 
