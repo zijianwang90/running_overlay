@@ -26,6 +26,21 @@ struct ComponentRenderCommand: Equatable {
     var activityURL: URL?
     var elapsedTime: TimeInterval = 0
     var parametersURL: URL?
+    var weatherURL: URL?
+}
+
+/// Author-facing weather input for `--component-weather`. Mirrors the host
+/// snapshot a weather component renders; the author supplies data instead of
+/// the CLI reaching the network.
+struct ComponentWeatherInput: Decodable, Equatable {
+    var condition: String
+    var temperatureC: Double
+    var humidity: Double?
+    var highC: Double?
+    var lowC: Double?
+    var windKph: Double?
+    var feelsLikeC: Double?
+    var location: String?
 }
 
 enum ComponentCLICommand: Equatable {
@@ -38,6 +53,7 @@ enum ComponentCLICommand: Equatable {
         var scale = 2.0
         var activityPath: String?
         var parametersPath: String?
+        var weatherPath: String?
         var elapsedTime = 0.0
         var index = 1
 
@@ -56,7 +72,7 @@ enum ComponentCLICommand: Equatable {
                     throw ComponentCLIError.missingValue(argument)
                 }
                 outputPath = arguments[index]
-            case "--component-activity", "--component-at", "--component-params":
+            case "--component-activity", "--component-at", "--component-params", "--component-weather":
                 index += 1
                 guard index < arguments.count else {
                     throw ComponentCLIError.missingValue(argument)
@@ -64,6 +80,7 @@ enum ComponentCLICommand: Equatable {
                 switch argument {
                 case "--component-activity": activityPath = arguments[index]
                 case "--component-params": parametersPath = arguments[index]
+                case "--component-weather": weatherPath = arguments[index]
                 default:
                     guard let value = Double(arguments[index]), value.isFinite, value >= 0 else {
                         throw ComponentCLIError.invalidTime(arguments[index])
@@ -95,7 +112,8 @@ enum ComponentCLICommand: Equatable {
                     scale: scale,
                     activityURL: activityPath.map(resolvedURL),
                     elapsedTime: elapsedTime,
-                    parametersURL: parametersPath.map(resolvedURL)
+                    parametersURL: parametersPath.map(resolvedURL),
+                    weatherURL: weatherPath.map(resolvedURL)
                 )
             )
         }
@@ -123,6 +141,7 @@ enum ComponentCLIError: LocalizedError {
     case invalidScale(String)
     case invalidTime(String)
     case invalidParameters(String)
+    case invalidWeather(String)
     case unresolvedDefinition
     case renderFailed
     case writeFailed(String)
@@ -138,7 +157,9 @@ enum ComponentCLIError: LocalizedError {
         case .invalidTime(let value):
             "Invalid --component-at '\(value)'; expected nonnegative activity elapsed seconds."
         case .invalidParameters(let message):
-            "Invalid --component-params: \(message)"
+            "Invalid --component-params: \(message)."
+        case .invalidWeather(let message):
+            "Invalid --component-weather: \(message)."
         case .unresolvedDefinition:
             "Component definition could not be resolved."
         case .renderFailed:
@@ -211,7 +232,7 @@ enum ComponentCommandRunner {
     static func inputs(
         for command: ComponentRenderCommand,
         definition: OverlayComponentDefinition
-    ) throws -> (activity: ActivityTimeline, parameters: [String: OverlayJSONValue]) {
+    ) throws -> (activity: ActivityTimeline, parameters: [String: OverlayJSONValue], weather: WeatherPayload?) {
         let activity: ActivityTimeline
         if let url = command.activityURL {
             activity = try ActivityFileParser.parse(url: url)
@@ -221,7 +242,8 @@ enum ComponentCommandRunner {
                 duration: 0, distanceMeters: 0, records: [], laps: []
             )
         }
-        guard let url = command.parametersURL else { return (activity, [:]) }
+        let weather = try weatherPayload(at: command.weatherURL)
+        guard let url = command.parametersURL else { return (activity, [:], weather) }
         let values: [String: OverlayJSONValue]
         do {
             values = try JSONDecoder().decode([String: OverlayJSONValue].self, from: Data(contentsOf: url))
@@ -255,7 +277,36 @@ enum ComponentCommandRunner {
                 throw ComponentCLIError.invalidParameters("'\(id)' is outside its declared range or options.")
             }
         }
-        return (activity, values)
+        return (activity, values, weather)
+    }
+
+    /// Reads the optional author-supplied weather snapshot. Authoring never
+    /// reaches the network; an API data source renders exactly these values.
+    private static func weatherPayload(at url: URL?) throws -> WeatherPayload? {
+        guard let url else { return nil }
+        let input: ComponentWeatherInput
+        do {
+            input = try JSONDecoder().decode(
+                ComponentWeatherInput.self,
+                from: Data(contentsOf: url)
+            )
+        } catch {
+            throw ComponentCLIError.invalidWeather(error.localizedDescription)
+        }
+        guard let condition = WeatherCondition(rawValue: input.condition) else {
+            throw ComponentCLIError.invalidWeather("unknown condition '\(input.condition)'.")
+        }
+        return WeatherPayload(
+            condition: condition,
+            temperatureCelsius: input.temperatureC,
+            humidity: input.humidity,
+            highTemperatureCelsius: input.highC,
+            lowTemperatureCelsius: input.lowC,
+            windKph: input.windKph,
+            feelsLikeCelsius: input.feelsLikeC,
+            resolvedLocation: input.location,
+            sourceDate: nil
+        )
     }
 
     #if canImport(CSkiaBridge)
@@ -278,7 +329,7 @@ enum ComponentCommandRunner {
         let elapsedTime = min(max(command.elapsedTime, 0), activity.duration)
         let data = OverlayComponentActivityData(
             activity: activity, elapsedTime: elapsedTime, canvasSize: OverlayRenderContext.referenceCanvasSize,
-            elementScale: 1
+            elementScale: 1, weatherPayload: inputs.weather
         )
         let resolved = element.component.flatMap { OverlayComponentRegistry.resolve(instance: $0, data: data) }
         for diagnostic in resolved?.diagnostics ?? [] {
@@ -293,7 +344,8 @@ enum ComponentCommandRunner {
                 renderContext: OverlayRenderContext(
                     canvasSize: OverlayRenderContext.referenceCanvasSize,
                     activity: activity,
-                    elapsedTime: elapsedTime
+                    elapsedTime: elapsedTime,
+                    weatherPayload: inputs.weather
                 )
             )?.size ?? CGSize(width: 1, height: 1)
             design = OverlayComponentSize(
@@ -324,7 +376,8 @@ enum ComponentCommandRunner {
         let renderContext = OverlayRenderContext(
             canvasSize: CGSize(width: canvasWidth, height: canvasHeight),
             activity: activity,
-            elapsedTime: elapsedTime
+            elapsedTime: elapsedTime,
+            weatherPayload: inputs.weather
         )
         OverlayComponentSkiaRenderer.draw(
             element,

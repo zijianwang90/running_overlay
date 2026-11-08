@@ -39,6 +39,47 @@ struct ComponentAuthoringTests {
         }
     }
 
+    @Test func parsesWeatherInputForHostDrawnWeather() throws {
+        let parsed = try ComponentCLICommand.parse(arguments: [
+            "RunningOverlay", "--component-render", "weather.json",
+            "--component-output", "weather.png", "--component-weather", "weather-input.json"
+        ])
+        guard case .render(let renderCommand) = parsed else {
+            Issue.record("Expected render command")
+            return
+        }
+        #expect(renderCommand.weatherURL?.lastPathComponent == "weather-input.json")
+
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("weather.json")
+        var withWeather = command()
+        withWeather.weatherURL = url
+        let definition = try definition()
+
+        try Data(#"""
+        {"condition":"rain","temperatureC":8.5,"humidity":94,"highC":11,"lowC":5,
+         "windKph":18,"feelsLikeC":4,"location":"Shanghai"}
+        """#.utf8).write(to: url)
+        let inputs = try ComponentCommandRunner.inputs(for: withWeather, definition: definition)
+        #expect(inputs.weather?.condition == .rain)
+        #expect(inputs.weather?.temperatureCelsius == 8.5)
+        #expect(inputs.weather?.resolvedLocation == "Shanghai")
+        #expect(inputs.weather?.sourceDate == nil)
+
+        for invalid in [
+            #"{"condition":"hail","temperatureC":8}"#,
+            #"{"compiles":true}"#,
+            "[]"
+        ] {
+            try Data(invalid.utf8).write(to: url)
+            #expect(throws: ComponentCLIError.self) {
+                _ = try ComponentCommandRunner.inputs(for: withWeather, definition: definition)
+            }
+        }
+    }
+
     @Test func syntheticFixtureSuppliesMetricsSeriesAndLaps() throws {
         var command = command()
         let fixtureURL = try #require(Bundle.module.url(
@@ -120,6 +161,43 @@ struct ComponentAuthoringRenderTests {
         command.parametersURL = parameters
         _ = try ComponentCommandRunner.renderComponent(command)
         #expect(try Data(contentsOf: output) != end)
+    }
+
+    /// The render context, not the element style, carries authored weather.
+    /// This pins the plumbing the app uses for host-drawn weather components.
+    @MainActor
+    @Test func CLIWeatherInputChangesWeatherNodePixels() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let package = directory.appendingPathComponent("weather.json")
+        let weather = directory.appendingPathComponent("weather-input.json")
+        let output = directory.appendingPathComponent("weather.png")
+        try Data(#"""
+        {
+          "spec": "ros.component/0.1",
+          "id": "tests.weather-node",
+          "version": "1.0.0",
+          "name": "Weather Node",
+          "license": "MIT",
+          "size": [300, 110],
+          "nodes": [
+            { "type": "weatherWidget", "frame": [0, 0, 300, 110], "dataSource": "openMeteo" }
+          ]
+        }
+        """#.utf8).write(to: package)
+        try Data(#"""
+        {"condition":"rain","temperatureC":7,"humidity":93,"highC":10,"lowC":4,
+         "windKph":22,"feelsLikeC":3,"location":"Shanghai"}
+        """#.utf8).write(to: weather)
+
+        var command = ComponentRenderCommand(packageURL: package, outputURL: output)
+        _ = try ComponentCommandRunner.renderComponent(command)
+        let manual = try Data(contentsOf: output)
+        command.weatherURL = weather
+        _ = try ComponentCommandRunner.renderComponent(command)
+        let snapshot = try Data(contentsOf: output)
+        #expect(snapshot != manual)
     }
 }
 #endif
