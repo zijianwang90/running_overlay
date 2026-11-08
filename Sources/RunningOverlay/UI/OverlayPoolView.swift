@@ -108,7 +108,13 @@ struct OverlayPoolView: View {
                         LazyVGrid(columns: columns, spacing: EditorTheme.space2) {
                             ForEach(OverlayTileInfo.tiles(for: activeCategory)) { tile in
                                 OverlayAddTile(tile: tile) {
-                                    project.addOverlayElement(tile.type)
+                                    // Tiles create the declarative component,
+                                    // never the legacy native element. Native
+                                    // types still decode for older projects.
+                                    guard let item = OverlayComponentLibraryItem.all.first(
+                                        where: { $0.id == tile.componentID }
+                                    ) else { return }
+                                    project.addComponentFromLibrary(item)
                                 }
                             }
                         }
@@ -234,6 +240,8 @@ enum OverlayCategory: String, CaseIterable, Identifiable {
 
 struct OverlayTileInfo: Identifiable {
     var type: OverlayElementType
+    /// Bundled component this tile creates.
+    var componentID: String
     var hint: String
     var systemImage: String
     var category: OverlayCategory
@@ -243,19 +251,19 @@ struct OverlayTileInfo: Identifiable {
     var label: String { type.label }
 
     static let all: [OverlayTileInfo] = [
-        OverlayTileInfo(type: .distanceTimeline, hint: "progress", systemImage: "waveform.path.ecg", category: .visuals),
-        OverlayTileInfo(type: .elevationChart, hint: "profile", systemImage: "chart.line.uptrend.xyaxis", category: .visuals),
-        OverlayTileInfo(type: .runningGauge, hint: "live gauge", systemImage: "gauge", category: .visuals, isAccent: true),
-        OverlayTileInfo(type: .intervalHUDBar, hint: "interval HUD", systemImage: "rectangle.split.3x1", category: .visuals, isAccent: true),
-        OverlayTileInfo(type: .intervalTimeline, hint: "interval plan", systemImage: "timeline.selection", category: .visuals, isAccent: true),
-        OverlayTileInfo(type: .intervalCountdown, hint: "set timer", systemImage: "timer.circle", category: .visuals, isAccent: true),
-        OverlayTileInfo(type: .intervalWorkSummary, hint: "work summary", systemImage: "flag.checkered.2.crossed", category: .visuals, isAccent: true),
-        OverlayTileInfo(type: .zoneEdgeBar, hint: "HR / Pace zones", systemImage: "rectangle.compress.vertical", category: .visuals, isAccent: true),
-        OverlayTileInfo(type: .routeMap, hint: "GPS path", systemImage: "map", category: .visuals, isAccent: true),
-        OverlayTileInfo(type: .weatherWidget, hint: "current weather", systemImage: "cloud.sun.fill", category: .visuals, isAccent: true),
-        OverlayTileInfo(type: .decorSolidColor, hint: "shape", systemImage: "square.fill", category: .decor),
-        OverlayTileInfo(type: .decorIcon, hint: "symbol", systemImage: "star", category: .decor),
-        OverlayTileInfo(type: .decorText, hint: "label", systemImage: "textformat", category: .decor)
+        OverlayTileInfo(type: .distanceTimeline, componentID: "studio.distance-timeline", hint: "progress", systemImage: "waveform.path.ecg", category: .visuals),
+        OverlayTileInfo(type: .elevationChart, componentID: "studio.elevation-chart", hint: "profile", systemImage: "chart.line.uptrend.xyaxis", category: .visuals),
+        OverlayTileInfo(type: .runningGauge, componentID: "studio.running-gauge", hint: "live gauge", systemImage: "gauge", category: .visuals, isAccent: true),
+        OverlayTileInfo(type: .intervalHUDBar, componentID: "studio.interval-hud-bar", hint: "interval HUD", systemImage: "rectangle.split.3x1", category: .visuals, isAccent: true),
+        OverlayTileInfo(type: .intervalTimeline, componentID: "studio.interval-timeline", hint: "interval plan", systemImage: "timeline.selection", category: .visuals, isAccent: true),
+        OverlayTileInfo(type: .intervalCountdown, componentID: "studio.interval-countdown", hint: "set timer", systemImage: "timer.circle", category: .visuals, isAccent: true),
+        OverlayTileInfo(type: .intervalWorkSummary, componentID: "studio.interval-work-summary", hint: "work summary", systemImage: "flag.checkered.2.crossed", category: .visuals, isAccent: true),
+        OverlayTileInfo(type: .zoneEdgeBar, componentID: "studio.zone-edge-bar", hint: "HR / Pace zones", systemImage: "rectangle.compress.vertical", category: .visuals, isAccent: true),
+        OverlayTileInfo(type: .routeMap, componentID: "studio.route-map", hint: "GPS path", systemImage: "map", category: .visuals, isAccent: true),
+        OverlayTileInfo(type: .weatherWidget, componentID: "studio.weather-widget", hint: "current weather", systemImage: "cloud.sun.fill", category: .visuals, isAccent: true),
+        OverlayTileInfo(type: .decorSolidColor, componentID: "studio.decor-shape", hint: "shape", systemImage: "square.fill", category: .decor),
+        OverlayTileInfo(type: .decorIcon, componentID: "studio.decor-icon", hint: "symbol", systemImage: "star", category: .decor),
+        OverlayTileInfo(type: .decorText, componentID: "studio.decor-text", hint: "label", systemImage: "textformat", category: .decor)
     ]
 
     static func tiles(for category: OverlayCategory) -> [OverlayTileInfo] {

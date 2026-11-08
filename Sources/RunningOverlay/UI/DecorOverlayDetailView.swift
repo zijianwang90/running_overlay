@@ -101,37 +101,6 @@ struct DecorOverlayDetailView: View {
     private func iconSourceSection(_ element: OverlayElement) -> some View {
         let r = DecorIconResolved(from: element.style.decor)
 
-        // Source type picker
-        InspectorDenseRow(label: "Source") {
-            InspectorDenseSegmented(
-                values: IconSourceType.allCases,
-                selection: Binding(
-                    get: { iconSourceType(for: r.asset) },
-                    set: { newSource in
-                        switch newSource {
-                        case .sfSymbol:
-                            project.setDecorIconAsset(elementID, asset: .sfSymbol(name: "star.fill", weight: .medium, scale: .large))
-                        case .bundledSVG:
-                            project.setDecorIconAsset(elementID, asset: .bundledSVG(name: ""))
-                        case .upload:
-                        project.importUserAsset(kind: .svg, allowedContentTypes: [.svg])
-                        if let lastAsset = project.userAssets.last {
-                            project.setDecorIconAsset(elementID, asset: .userStaticSVG(assetID: lastAsset.id))
-                        }
-                    }
-                }
-                ),
-                label: { source in
-                    HStack(spacing: 4) {
-                        Image(systemName: source.systemImage)
-                            .font(.system(size: 10))
-                        Text(source.label)
-                            .font(.system(size: 10, weight: .medium))
-                    }
-                }
-            )
-        }
-
         switch r.asset {
         case .sfSymbol, .none:
             InspectorDenseRow(label: "Symbol") {
@@ -199,26 +168,24 @@ struct DecorOverlayDetailView: View {
                 )
             }
 
-        case .bundledSVG, .bundledImage:
-            // Bundled SVG name display
-            let name = r.asset.bundledSVGName ?? ""
-            if name.isEmpty {
-                InspectorDenseRow(label: "SVG") { Text("None selected — add .svg files to Resources/Icons/").font(NumericTokens.captionFont).foregroundStyle(NumericTokens.textSecondary) }
-            } else {
-                InspectorDenseRow(label: "SVG") { Text("\(name).svg").font(NumericTokens.captionFont).foregroundStyle(NumericTokens.textPrimary) }
+        case .bundledSVG, .bundledImage, .userStaticSVG:
+            // SVG and user-asset icons are no longer a creation path. Projects
+            // saved before the removal still render their assets; this row is
+            // the only editing affordance and only moves them to SF Symbols.
+            InspectorDenseRow(label: "Icon") {
+                Text("Legacy SVG asset")
+                    .font(NumericTokens.captionFont)
+                    .foregroundStyle(NumericTokens.textSecondary)
             }
-
-            // "Preserve SVG Colors" toggle
-            InspectorDenseRow(label: "Preserve Colors") {
-                Toggle("", isOn: Binding(
-                    get: { r.preserveSVGColors },
-                    set: { project.setDecorIconPreserveSVGColors(elementID, enabled: $0) }
-                ))
-                .toggleStyle(.checkbox)
+            InspectorDenseRow(label: "") {
+                Button("Convert to SF Symbol") {
+                    project.setDecorIconAsset(
+                        elementID,
+                        asset: .sfSymbol(name: "star.fill", weight: .medium, scale: .large)
+                    )
+                }
+                .font(NumericTokens.captionFont)
             }
-
-        case .userStaticSVG:
-            InspectorDenseRow(label: "Asset") { Text("User upload — Phase E").font(NumericTokens.captionFont).foregroundStyle(NumericTokens.textSecondary) }
         }
     }
 
@@ -504,36 +471,6 @@ struct DecorOverlayDetailView: View {
     }
 
     // MARK: Helpers
-
-    private enum IconSourceType: String, CaseIterable, Identifiable {
-        case sfSymbol, bundledSVG, upload
-
-        var id: String { rawValue }
-        var label: String {
-            switch self {
-            case .sfSymbol: "SF Symbol"
-            case .bundledSVG: "Bundled"
-            case .upload: "Upload"
-            }
-        }
-        var systemImage: String {
-            switch self {
-            case .sfSymbol: "square.grid.3x3"
-            case .bundledSVG: "shippingbox"
-            case .upload: "square.and.arrow.up"
-            }
-        }
-    }
-
-    private func iconSourceType(for asset: IconAsset) -> IconSourceType {
-        switch asset {
-        case .sfSymbol: .sfSymbol
-        case .bundledSVG: .bundledSVG
-        case .bundledImage: .bundledSVG
-        case .userStaticSVG: .upload
-        case .none: .sfSymbol
-        }
-    }
 
 }
 

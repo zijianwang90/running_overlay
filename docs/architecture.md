@@ -117,10 +117,8 @@ Current overlay element types:
 
 | Category | Types |
 |---|---|
-| Components | `component`; numeric readings are presets of bundled `studio.numeric` (ADR 0014) |
-| Charts and workout | distanceTimeline, elevationChart, runningGauge, intervalHUDBar, intervalTimeline, intervalCountdown, intervalWorkSummary, zoneEdgeBar; bundled `studio.interval-countdown` is the first declarative interval port |
-| Route and weather | routeMap, weatherWidget |
-| Decor | decorSolidColor, decorIcon, decorText; bundled `studio.decor-shape`, `studio.decor-text` and `studio.decor-icon` ports exist, native removal remains gated |
+| Created from Overlay Pool | `component` only. Metrics presets seed `studio.numeric`; Visuals tiles create the matching bundled `studio.*` component. |
+| Legacy native (decode and render for existing projects and bundled templates) | distanceTimeline, elevationChart, runningGauge, intervalHUDBar, intervalTimeline, intervalCountdown, intervalWorkSummary, zoneEdgeBar, routeMap, weatherWidget, decorSolidColor, decorIcon, decorText |
 
 Component definitions own visual composition and generated Inspector params.
 Shared host services own activity analysis and display-only preparation, such
