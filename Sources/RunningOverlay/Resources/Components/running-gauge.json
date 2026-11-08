@@ -1,0 +1,2129 @@
+{
+  "spec": "ros.component/0.1",
+  "id": "studio.running-gauge",
+  "version": "1.0.0",
+  "name": {
+    "en": "Running Gauge",
+    "zh-Hans": "跑步仪表盘"
+  },
+  "description": {
+    "en": "Circular activity dial with rings, ticks and metric regions.",
+    "zh-Hans": "带圆环、刻度与指标分区的跑步仪表盘。"
+  },
+  "author": "Running Overlay Studio",
+  "license": "MIT",
+  "size": [
+    300,
+    300
+  ],
+  "params": [
+    {
+      "id": "layoutPreset",
+      "type": "enum",
+      "label": {
+        "en": "Layout",
+        "zh-Hans": "Layout"
+      },
+      "section": {
+        "en": "Layout",
+        "zh-Hans": "Layout"
+      },
+      "default": "topTwoMiddleBottom",
+      "options": [
+        {
+          "value": "topBottom",
+          "label": "Top / Bottom"
+        },
+        {
+          "value": "topMiddleBottom",
+          "label": "Top / Middle / Bottom"
+        },
+        {
+          "value": "threeZones",
+          "label": "Three Zones"
+        },
+        {
+          "value": "topTwoMiddleBottom",
+          "label": "Top + Two Middle + Bottom"
+        },
+        {
+          "value": "topThreeMiddleBottom",
+          "label": "Top + Three Middle + Bottom"
+        },
+        {
+          "value": "fourZones",
+          "label": "Four Zones"
+        },
+        {
+          "value": "fiveZones",
+          "label": "Five Zones"
+        }
+      ]
+    },
+    {
+      "id": "progress",
+      "type": "number",
+      "label": {
+        "en": "Progress",
+        "zh-Hans": "Progress"
+      },
+      "section": {
+        "en": "Progress",
+        "zh-Hans": "Progress"
+      },
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "dialBackgroundColor",
+      "type": "color",
+      "label": {
+        "en": "Dial Color",
+        "zh-Hans": "Dial Color"
+      },
+      "section": {
+        "en": "Colors",
+        "zh-Hans": "Colors"
+      },
+      "default": "#000000"
+    },
+    {
+      "id": "dialBackgroundOpacity",
+      "type": "number",
+      "label": {
+        "en": "Dial Opacity",
+        "zh-Hans": "Dial Opacity"
+      },
+      "section": {
+        "en": "Dial",
+        "zh-Hans": "Dial"
+      },
+      "default": 0.7,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "glassEffectEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Glass Effect",
+        "zh-Hans": "Glass Effect"
+      },
+      "section": {
+        "en": "Dial",
+        "zh-Hans": "Dial"
+      },
+      "default": false
+    },
+    {
+      "id": "outerRingEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Outer Ring",
+        "zh-Hans": "Outer Ring"
+      },
+      "section": {
+        "en": "Dial",
+        "zh-Hans": "Dial"
+      },
+      "default": true
+    },
+    {
+      "id": "outerRingColor",
+      "type": "color",
+      "label": {
+        "en": "Outer Ring Color",
+        "zh-Hans": "Outer Ring Color"
+      },
+      "section": {
+        "en": "Colors",
+        "zh-Hans": "Colors"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "outerRingOpacity",
+      "type": "number",
+      "label": {
+        "en": "Outer Ring Opacity",
+        "zh-Hans": "Outer Ring Opacity"
+      },
+      "section": {
+        "en": "Dial",
+        "zh-Hans": "Dial"
+      },
+      "default": 0.5,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "outerRingWidthScale",
+      "type": "number",
+      "label": {
+        "en": "Outer Ring Width",
+        "zh-Hans": "Outer Ring Width"
+      },
+      "section": {
+        "en": "Dial",
+        "zh-Hans": "Dial"
+      },
+      "default": 0.022,
+      "min": 0,
+      "max": 0.2,
+      "step": 0.001
+    },
+    {
+      "id": "tickMarksEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Tick Marks",
+        "zh-Hans": "Tick Marks"
+      },
+      "section": {
+        "en": "Dial",
+        "zh-Hans": "Dial"
+      },
+      "default": true
+    },
+    {
+      "id": "tickColor",
+      "type": "color",
+      "label": {
+        "en": "Tick Color",
+        "zh-Hans": "Tick Color"
+      },
+      "section": {
+        "en": "Colors",
+        "zh-Hans": "Colors"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "tickOpacity",
+      "type": "number",
+      "label": {
+        "en": "Tick Opacity",
+        "zh-Hans": "Tick Opacity"
+      },
+      "section": {
+        "en": "Dial",
+        "zh-Hans": "Dial"
+      },
+      "default": 0.42,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "majorTickOpacity",
+      "type": "number",
+      "label": {
+        "en": "Major Tick Opacity",
+        "zh-Hans": "Major Tick Opacity"
+      },
+      "section": {
+        "en": "Dial",
+        "zh-Hans": "Dial"
+      },
+      "default": 0.95,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "tickCount",
+      "type": "number",
+      "label": {
+        "en": "Tick Count",
+        "zh-Hans": "Tick Count"
+      },
+      "section": {
+        "en": "Dial",
+        "zh-Hans": "Dial"
+      },
+      "default": 60,
+      "min": 4,
+      "max": 240,
+      "step": 1
+    },
+    {
+      "id": "majorTickEvery",
+      "type": "number",
+      "label": {
+        "en": "Major Tick Every",
+        "zh-Hans": "Major Tick Every"
+      },
+      "section": {
+        "en": "Dial",
+        "zh-Hans": "Dial"
+      },
+      "default": 5,
+      "min": 1,
+      "max": 20,
+      "step": 1
+    },
+    {
+      "id": "progressRingEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Progress Ring",
+        "zh-Hans": "Progress Ring"
+      },
+      "section": {
+        "en": "Dial",
+        "zh-Hans": "Dial"
+      },
+      "default": true
+    },
+    {
+      "id": "progressColor",
+      "type": "color",
+      "label": {
+        "en": "Progress Color",
+        "zh-Hans": "Progress Color"
+      },
+      "section": {
+        "en": "Colors",
+        "zh-Hans": "Colors"
+      },
+      "default": "#FF8A1E"
+    },
+    {
+      "id": "progressTrackColor",
+      "type": "color",
+      "label": {
+        "en": "Progress Track Color",
+        "zh-Hans": "Progress Track Color"
+      },
+      "section": {
+        "en": "Colors",
+        "zh-Hans": "Colors"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "progressTrackOpacity",
+      "type": "number",
+      "label": {
+        "en": "Progress Track Opacity",
+        "zh-Hans": "Progress Track Opacity"
+      },
+      "section": {
+        "en": "Dial",
+        "zh-Hans": "Dial"
+      },
+      "default": 0.22,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "progressRingWidthScale",
+      "type": "number",
+      "label": {
+        "en": "Progress Ring Width",
+        "zh-Hans": "Progress Ring Width"
+      },
+      "section": {
+        "en": "Dial",
+        "zh-Hans": "Dial"
+      },
+      "default": 0.026,
+      "min": 0,
+      "max": 0.2,
+      "step": 0.001
+    },
+    {
+      "id": "progressRoundedCaps",
+      "type": "bool",
+      "label": {
+        "en": "Rounded Caps",
+        "zh-Hans": "Rounded Caps"
+      },
+      "section": {
+        "en": "Dial",
+        "zh-Hans": "Dial"
+      },
+      "default": true
+    },
+    {
+      "id": "dividerEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Dividers",
+        "zh-Hans": "Dividers"
+      },
+      "section": {
+        "en": "Dial",
+        "zh-Hans": "Dial"
+      },
+      "default": true
+    },
+    {
+      "id": "dividerColor",
+      "type": "color",
+      "label": {
+        "en": "Divider Color",
+        "zh-Hans": "Divider Color"
+      },
+      "section": {
+        "en": "Colors",
+        "zh-Hans": "Colors"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "dividerOpacity",
+      "type": "number",
+      "label": {
+        "en": "Divider Opacity",
+        "zh-Hans": "Divider Opacity"
+      },
+      "section": {
+        "en": "Dial",
+        "zh-Hans": "Dial"
+      },
+      "default": 0.22,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "dividerWidth",
+      "type": "number",
+      "label": {
+        "en": "Divider Width",
+        "zh-Hans": "Divider Width"
+      },
+      "section": {
+        "en": "Dial",
+        "zh-Hans": "Dial"
+      },
+      "default": 1,
+      "min": 0,
+      "max": 8,
+      "step": 0.5
+    },
+    {
+      "id": "fontFamily",
+      "type": "string",
+      "label": {
+        "en": "Font",
+        "zh-Hans": "Font"
+      },
+      "section": {
+        "en": "Typography",
+        "zh-Hans": "Typography"
+      },
+      "default": "Menlo"
+    },
+    {
+      "id": "monospacedDigits",
+      "type": "bool",
+      "label": {
+        "en": "Monospaced Digits",
+        "zh-Hans": "Monospaced Digits"
+      },
+      "section": {
+        "en": "Typography",
+        "zh-Hans": "Typography"
+      },
+      "default": true
+    },
+    {
+      "id": "primaryFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Primary Weight",
+        "zh-Hans": "Primary Weight"
+      },
+      "section": {
+        "en": "Typography",
+        "zh-Hans": "Typography"
+      },
+      "default": "bold",
+      "options": [
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ]
+    },
+    {
+      "id": "secondaryFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Secondary Weight",
+        "zh-Hans": "Secondary Weight"
+      },
+      "section": {
+        "en": "Typography",
+        "zh-Hans": "Typography"
+      },
+      "default": "medium",
+      "options": [
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ]
+    },
+    {
+      "id": "primaryTextColor",
+      "type": "color",
+      "label": {
+        "en": "Primary Text",
+        "zh-Hans": "Primary Text"
+      },
+      "section": {
+        "en": "Colors",
+        "zh-Hans": "Colors"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "secondaryTextColor",
+      "type": "color",
+      "label": {
+        "en": "Secondary Text",
+        "zh-Hans": "Secondary Text"
+      },
+      "section": {
+        "en": "Colors",
+        "zh-Hans": "Colors"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "accentColor",
+      "type": "color",
+      "label": {
+        "en": "Accent",
+        "zh-Hans": "Accent"
+      },
+      "section": {
+        "en": "Colors",
+        "zh-Hans": "Colors"
+      },
+      "default": "#FF8A1E"
+    },
+    {
+      "id": "topMetric",
+      "type": "enum",
+      "label": {
+        "en": "top Metric",
+        "zh-Hans": "top Metric"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": "distance",
+      "options": [
+        {
+          "value": "heartRate",
+          "label": "heartRate"
+        },
+        {
+          "value": "pace",
+          "label": "pace"
+        },
+        {
+          "value": "avgPace",
+          "label": "avgPace"
+        },
+        {
+          "value": "lapPace",
+          "label": "lapPace"
+        },
+        {
+          "value": "distance",
+          "label": "distance"
+        },
+        {
+          "value": "elapsedTime",
+          "label": "elapsedTime"
+        },
+        {
+          "value": "realTime",
+          "label": "realTime"
+        },
+        {
+          "value": "power",
+          "label": "power"
+        },
+        {
+          "value": "cadence",
+          "label": "cadence"
+        },
+        {
+          "value": "elevation",
+          "label": "elevation"
+        },
+        {
+          "value": "calories",
+          "label": "calories"
+        },
+        {
+          "value": "temperature",
+          "label": "temperature"
+        },
+        {
+          "value": "grade",
+          "label": "grade"
+        },
+        {
+          "value": "verticalOscillation",
+          "label": "verticalOscillation"
+        },
+        {
+          "value": "groundContactTime",
+          "label": "groundContactTime"
+        },
+        {
+          "value": "strideLength",
+          "label": "strideLength"
+        },
+        {
+          "value": "verticalRatio",
+          "label": "verticalRatio"
+        },
+        {
+          "value": "groundContactBalance",
+          "label": "groundContactBalance"
+        }
+      ]
+    },
+    {
+      "id": "topValueFontScale",
+      "type": "number",
+      "label": {
+        "en": "top Value Size",
+        "zh-Hans": "top Value Size"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": 1.0,
+      "min": 0.1,
+      "max": 3,
+      "step": 0.01
+    },
+    {
+      "id": "topShowLabel",
+      "type": "bool",
+      "label": {
+        "en": "top Show Label",
+        "zh-Hans": "top Show Label"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": true
+    },
+    {
+      "id": "topShowUnit",
+      "type": "bool",
+      "label": {
+        "en": "top Show Unit",
+        "zh-Hans": "top Show Unit"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": true
+    },
+    {
+      "id": "topCustomLabel",
+      "type": "string",
+      "label": {
+        "en": "top Custom Label",
+        "zh-Hans": "top Custom Label"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": ""
+    },
+    {
+      "id": "middleMetric",
+      "type": "enum",
+      "label": {
+        "en": "middle Metric",
+        "zh-Hans": "middle Metric"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": "distance",
+      "options": [
+        {
+          "value": "heartRate",
+          "label": "heartRate"
+        },
+        {
+          "value": "pace",
+          "label": "pace"
+        },
+        {
+          "value": "avgPace",
+          "label": "avgPace"
+        },
+        {
+          "value": "lapPace",
+          "label": "lapPace"
+        },
+        {
+          "value": "distance",
+          "label": "distance"
+        },
+        {
+          "value": "elapsedTime",
+          "label": "elapsedTime"
+        },
+        {
+          "value": "realTime",
+          "label": "realTime"
+        },
+        {
+          "value": "power",
+          "label": "power"
+        },
+        {
+          "value": "cadence",
+          "label": "cadence"
+        },
+        {
+          "value": "elevation",
+          "label": "elevation"
+        },
+        {
+          "value": "calories",
+          "label": "calories"
+        },
+        {
+          "value": "temperature",
+          "label": "temperature"
+        },
+        {
+          "value": "grade",
+          "label": "grade"
+        },
+        {
+          "value": "verticalOscillation",
+          "label": "verticalOscillation"
+        },
+        {
+          "value": "groundContactTime",
+          "label": "groundContactTime"
+        },
+        {
+          "value": "strideLength",
+          "label": "strideLength"
+        },
+        {
+          "value": "verticalRatio",
+          "label": "verticalRatio"
+        },
+        {
+          "value": "groundContactBalance",
+          "label": "groundContactBalance"
+        }
+      ]
+    },
+    {
+      "id": "middleValueFontScale",
+      "type": "number",
+      "label": {
+        "en": "middle Value Size",
+        "zh-Hans": "middle Value Size"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": 1.0,
+      "min": 0.1,
+      "max": 3,
+      "step": 0.01
+    },
+    {
+      "id": "middleShowLabel",
+      "type": "bool",
+      "label": {
+        "en": "middle Show Label",
+        "zh-Hans": "middle Show Label"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": true
+    },
+    {
+      "id": "middleShowUnit",
+      "type": "bool",
+      "label": {
+        "en": "middle Show Unit",
+        "zh-Hans": "middle Show Unit"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": true
+    },
+    {
+      "id": "middleCustomLabel",
+      "type": "string",
+      "label": {
+        "en": "middle Custom Label",
+        "zh-Hans": "middle Custom Label"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": ""
+    },
+    {
+      "id": "bottomMetric",
+      "type": "enum",
+      "label": {
+        "en": "bottom Metric",
+        "zh-Hans": "bottom Metric"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": "heartRate",
+      "options": [
+        {
+          "value": "heartRate",
+          "label": "heartRate"
+        },
+        {
+          "value": "pace",
+          "label": "pace"
+        },
+        {
+          "value": "avgPace",
+          "label": "avgPace"
+        },
+        {
+          "value": "lapPace",
+          "label": "lapPace"
+        },
+        {
+          "value": "distance",
+          "label": "distance"
+        },
+        {
+          "value": "elapsedTime",
+          "label": "elapsedTime"
+        },
+        {
+          "value": "realTime",
+          "label": "realTime"
+        },
+        {
+          "value": "power",
+          "label": "power"
+        },
+        {
+          "value": "cadence",
+          "label": "cadence"
+        },
+        {
+          "value": "elevation",
+          "label": "elevation"
+        },
+        {
+          "value": "calories",
+          "label": "calories"
+        },
+        {
+          "value": "temperature",
+          "label": "temperature"
+        },
+        {
+          "value": "grade",
+          "label": "grade"
+        },
+        {
+          "value": "verticalOscillation",
+          "label": "verticalOscillation"
+        },
+        {
+          "value": "groundContactTime",
+          "label": "groundContactTime"
+        },
+        {
+          "value": "strideLength",
+          "label": "strideLength"
+        },
+        {
+          "value": "verticalRatio",
+          "label": "verticalRatio"
+        },
+        {
+          "value": "groundContactBalance",
+          "label": "groundContactBalance"
+        }
+      ]
+    },
+    {
+      "id": "bottomValueFontScale",
+      "type": "number",
+      "label": {
+        "en": "bottom Value Size",
+        "zh-Hans": "bottom Value Size"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": 0.66,
+      "min": 0.1,
+      "max": 3,
+      "step": 0.01
+    },
+    {
+      "id": "bottomShowLabel",
+      "type": "bool",
+      "label": {
+        "en": "bottom Show Label",
+        "zh-Hans": "bottom Show Label"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": true
+    },
+    {
+      "id": "bottomShowUnit",
+      "type": "bool",
+      "label": {
+        "en": "bottom Show Unit",
+        "zh-Hans": "bottom Show Unit"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": true
+    },
+    {
+      "id": "bottomCustomLabel",
+      "type": "string",
+      "label": {
+        "en": "bottom Custom Label",
+        "zh-Hans": "bottom Custom Label"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": ""
+    },
+    {
+      "id": "middleLeftMetric",
+      "type": "enum",
+      "label": {
+        "en": "middleLeft Metric",
+        "zh-Hans": "middleLeft Metric"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": "pace",
+      "options": [
+        {
+          "value": "heartRate",
+          "label": "heartRate"
+        },
+        {
+          "value": "pace",
+          "label": "pace"
+        },
+        {
+          "value": "avgPace",
+          "label": "avgPace"
+        },
+        {
+          "value": "lapPace",
+          "label": "lapPace"
+        },
+        {
+          "value": "distance",
+          "label": "distance"
+        },
+        {
+          "value": "elapsedTime",
+          "label": "elapsedTime"
+        },
+        {
+          "value": "realTime",
+          "label": "realTime"
+        },
+        {
+          "value": "power",
+          "label": "power"
+        },
+        {
+          "value": "cadence",
+          "label": "cadence"
+        },
+        {
+          "value": "elevation",
+          "label": "elevation"
+        },
+        {
+          "value": "calories",
+          "label": "calories"
+        },
+        {
+          "value": "temperature",
+          "label": "temperature"
+        },
+        {
+          "value": "grade",
+          "label": "grade"
+        },
+        {
+          "value": "verticalOscillation",
+          "label": "verticalOscillation"
+        },
+        {
+          "value": "groundContactTime",
+          "label": "groundContactTime"
+        },
+        {
+          "value": "strideLength",
+          "label": "strideLength"
+        },
+        {
+          "value": "verticalRatio",
+          "label": "verticalRatio"
+        },
+        {
+          "value": "groundContactBalance",
+          "label": "groundContactBalance"
+        }
+      ]
+    },
+    {
+      "id": "middleLeftValueFontScale",
+      "type": "number",
+      "label": {
+        "en": "middleLeft Value Size",
+        "zh-Hans": "middleLeft Value Size"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": 0.62,
+      "min": 0.1,
+      "max": 3,
+      "step": 0.01
+    },
+    {
+      "id": "middleLeftShowLabel",
+      "type": "bool",
+      "label": {
+        "en": "middleLeft Show Label",
+        "zh-Hans": "middleLeft Show Label"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": true
+    },
+    {
+      "id": "middleLeftShowUnit",
+      "type": "bool",
+      "label": {
+        "en": "middleLeft Show Unit",
+        "zh-Hans": "middleLeft Show Unit"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": true
+    },
+    {
+      "id": "middleLeftCustomLabel",
+      "type": "string",
+      "label": {
+        "en": "middleLeft Custom Label",
+        "zh-Hans": "middleLeft Custom Label"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": ""
+    },
+    {
+      "id": "middleRightMetric",
+      "type": "enum",
+      "label": {
+        "en": "middleRight Metric",
+        "zh-Hans": "middleRight Metric"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": "elapsedTime",
+      "options": [
+        {
+          "value": "heartRate",
+          "label": "heartRate"
+        },
+        {
+          "value": "pace",
+          "label": "pace"
+        },
+        {
+          "value": "avgPace",
+          "label": "avgPace"
+        },
+        {
+          "value": "lapPace",
+          "label": "lapPace"
+        },
+        {
+          "value": "distance",
+          "label": "distance"
+        },
+        {
+          "value": "elapsedTime",
+          "label": "elapsedTime"
+        },
+        {
+          "value": "realTime",
+          "label": "realTime"
+        },
+        {
+          "value": "power",
+          "label": "power"
+        },
+        {
+          "value": "cadence",
+          "label": "cadence"
+        },
+        {
+          "value": "elevation",
+          "label": "elevation"
+        },
+        {
+          "value": "calories",
+          "label": "calories"
+        },
+        {
+          "value": "temperature",
+          "label": "temperature"
+        },
+        {
+          "value": "grade",
+          "label": "grade"
+        },
+        {
+          "value": "verticalOscillation",
+          "label": "verticalOscillation"
+        },
+        {
+          "value": "groundContactTime",
+          "label": "groundContactTime"
+        },
+        {
+          "value": "strideLength",
+          "label": "strideLength"
+        },
+        {
+          "value": "verticalRatio",
+          "label": "verticalRatio"
+        },
+        {
+          "value": "groundContactBalance",
+          "label": "groundContactBalance"
+        }
+      ]
+    },
+    {
+      "id": "middleRightValueFontScale",
+      "type": "number",
+      "label": {
+        "en": "middleRight Value Size",
+        "zh-Hans": "middleRight Value Size"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": 0.62,
+      "min": 0.1,
+      "max": 3,
+      "step": 0.01
+    },
+    {
+      "id": "middleRightShowLabel",
+      "type": "bool",
+      "label": {
+        "en": "middleRight Show Label",
+        "zh-Hans": "middleRight Show Label"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": true
+    },
+    {
+      "id": "middleRightShowUnit",
+      "type": "bool",
+      "label": {
+        "en": "middleRight Show Unit",
+        "zh-Hans": "middleRight Show Unit"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": true
+    },
+    {
+      "id": "middleRightCustomLabel",
+      "type": "string",
+      "label": {
+        "en": "middleRight Custom Label",
+        "zh-Hans": "middleRight Custom Label"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": ""
+    },
+    {
+      "id": "middleCenterMetric",
+      "type": "enum",
+      "label": {
+        "en": "middleCenter Metric",
+        "zh-Hans": "middleCenter Metric"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": "power",
+      "options": [
+        {
+          "value": "heartRate",
+          "label": "heartRate"
+        },
+        {
+          "value": "pace",
+          "label": "pace"
+        },
+        {
+          "value": "avgPace",
+          "label": "avgPace"
+        },
+        {
+          "value": "lapPace",
+          "label": "lapPace"
+        },
+        {
+          "value": "distance",
+          "label": "distance"
+        },
+        {
+          "value": "elapsedTime",
+          "label": "elapsedTime"
+        },
+        {
+          "value": "realTime",
+          "label": "realTime"
+        },
+        {
+          "value": "power",
+          "label": "power"
+        },
+        {
+          "value": "cadence",
+          "label": "cadence"
+        },
+        {
+          "value": "elevation",
+          "label": "elevation"
+        },
+        {
+          "value": "calories",
+          "label": "calories"
+        },
+        {
+          "value": "temperature",
+          "label": "temperature"
+        },
+        {
+          "value": "grade",
+          "label": "grade"
+        },
+        {
+          "value": "verticalOscillation",
+          "label": "verticalOscillation"
+        },
+        {
+          "value": "groundContactTime",
+          "label": "groundContactTime"
+        },
+        {
+          "value": "strideLength",
+          "label": "strideLength"
+        },
+        {
+          "value": "verticalRatio",
+          "label": "verticalRatio"
+        },
+        {
+          "value": "groundContactBalance",
+          "label": "groundContactBalance"
+        }
+      ]
+    },
+    {
+      "id": "middleCenterValueFontScale",
+      "type": "number",
+      "label": {
+        "en": "middleCenter Value Size",
+        "zh-Hans": "middleCenter Value Size"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": 0.5,
+      "min": 0.1,
+      "max": 3,
+      "step": 0.01
+    },
+    {
+      "id": "middleCenterShowLabel",
+      "type": "bool",
+      "label": {
+        "en": "middleCenter Show Label",
+        "zh-Hans": "middleCenter Show Label"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": true
+    },
+    {
+      "id": "middleCenterShowUnit",
+      "type": "bool",
+      "label": {
+        "en": "middleCenter Show Unit",
+        "zh-Hans": "middleCenter Show Unit"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": true
+    },
+    {
+      "id": "middleCenterCustomLabel",
+      "type": "string",
+      "label": {
+        "en": "middleCenter Custom Label",
+        "zh-Hans": "middleCenter Custom Label"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": ""
+    },
+    {
+      "id": "topLeftMetric",
+      "type": "enum",
+      "label": {
+        "en": "topLeft Metric",
+        "zh-Hans": "topLeft Metric"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": "distance",
+      "options": [
+        {
+          "value": "heartRate",
+          "label": "heartRate"
+        },
+        {
+          "value": "pace",
+          "label": "pace"
+        },
+        {
+          "value": "avgPace",
+          "label": "avgPace"
+        },
+        {
+          "value": "lapPace",
+          "label": "lapPace"
+        },
+        {
+          "value": "distance",
+          "label": "distance"
+        },
+        {
+          "value": "elapsedTime",
+          "label": "elapsedTime"
+        },
+        {
+          "value": "realTime",
+          "label": "realTime"
+        },
+        {
+          "value": "power",
+          "label": "power"
+        },
+        {
+          "value": "cadence",
+          "label": "cadence"
+        },
+        {
+          "value": "elevation",
+          "label": "elevation"
+        },
+        {
+          "value": "calories",
+          "label": "calories"
+        },
+        {
+          "value": "temperature",
+          "label": "temperature"
+        },
+        {
+          "value": "grade",
+          "label": "grade"
+        },
+        {
+          "value": "verticalOscillation",
+          "label": "verticalOscillation"
+        },
+        {
+          "value": "groundContactTime",
+          "label": "groundContactTime"
+        },
+        {
+          "value": "strideLength",
+          "label": "strideLength"
+        },
+        {
+          "value": "verticalRatio",
+          "label": "verticalRatio"
+        },
+        {
+          "value": "groundContactBalance",
+          "label": "groundContactBalance"
+        }
+      ]
+    },
+    {
+      "id": "topLeftValueFontScale",
+      "type": "number",
+      "label": {
+        "en": "topLeft Value Size",
+        "zh-Hans": "topLeft Value Size"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": 0.78,
+      "min": 0.1,
+      "max": 3,
+      "step": 0.01
+    },
+    {
+      "id": "topLeftShowLabel",
+      "type": "bool",
+      "label": {
+        "en": "topLeft Show Label",
+        "zh-Hans": "topLeft Show Label"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": true
+    },
+    {
+      "id": "topLeftShowUnit",
+      "type": "bool",
+      "label": {
+        "en": "topLeft Show Unit",
+        "zh-Hans": "topLeft Show Unit"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": true
+    },
+    {
+      "id": "topLeftCustomLabel",
+      "type": "string",
+      "label": {
+        "en": "topLeft Custom Label",
+        "zh-Hans": "topLeft Custom Label"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": ""
+    },
+    {
+      "id": "topRightMetric",
+      "type": "enum",
+      "label": {
+        "en": "topRight Metric",
+        "zh-Hans": "topRight Metric"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": "elapsedTime",
+      "options": [
+        {
+          "value": "heartRate",
+          "label": "heartRate"
+        },
+        {
+          "value": "pace",
+          "label": "pace"
+        },
+        {
+          "value": "avgPace",
+          "label": "avgPace"
+        },
+        {
+          "value": "lapPace",
+          "label": "lapPace"
+        },
+        {
+          "value": "distance",
+          "label": "distance"
+        },
+        {
+          "value": "elapsedTime",
+          "label": "elapsedTime"
+        },
+        {
+          "value": "realTime",
+          "label": "realTime"
+        },
+        {
+          "value": "power",
+          "label": "power"
+        },
+        {
+          "value": "cadence",
+          "label": "cadence"
+        },
+        {
+          "value": "elevation",
+          "label": "elevation"
+        },
+        {
+          "value": "calories",
+          "label": "calories"
+        },
+        {
+          "value": "temperature",
+          "label": "temperature"
+        },
+        {
+          "value": "grade",
+          "label": "grade"
+        },
+        {
+          "value": "verticalOscillation",
+          "label": "verticalOscillation"
+        },
+        {
+          "value": "groundContactTime",
+          "label": "groundContactTime"
+        },
+        {
+          "value": "strideLength",
+          "label": "strideLength"
+        },
+        {
+          "value": "verticalRatio",
+          "label": "verticalRatio"
+        },
+        {
+          "value": "groundContactBalance",
+          "label": "groundContactBalance"
+        }
+      ]
+    },
+    {
+      "id": "topRightValueFontScale",
+      "type": "number",
+      "label": {
+        "en": "topRight Value Size",
+        "zh-Hans": "topRight Value Size"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": 0.78,
+      "min": 0.1,
+      "max": 3,
+      "step": 0.01
+    },
+    {
+      "id": "topRightShowLabel",
+      "type": "bool",
+      "label": {
+        "en": "topRight Show Label",
+        "zh-Hans": "topRight Show Label"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": true
+    },
+    {
+      "id": "topRightShowUnit",
+      "type": "bool",
+      "label": {
+        "en": "topRight Show Unit",
+        "zh-Hans": "topRight Show Unit"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": true
+    },
+    {
+      "id": "topRightCustomLabel",
+      "type": "string",
+      "label": {
+        "en": "topRight Custom Label",
+        "zh-Hans": "topRight Custom Label"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": ""
+    },
+    {
+      "id": "bottomLeftMetric",
+      "type": "enum",
+      "label": {
+        "en": "bottomLeft Metric",
+        "zh-Hans": "bottomLeft Metric"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": "pace",
+      "options": [
+        {
+          "value": "heartRate",
+          "label": "heartRate"
+        },
+        {
+          "value": "pace",
+          "label": "pace"
+        },
+        {
+          "value": "avgPace",
+          "label": "avgPace"
+        },
+        {
+          "value": "lapPace",
+          "label": "lapPace"
+        },
+        {
+          "value": "distance",
+          "label": "distance"
+        },
+        {
+          "value": "elapsedTime",
+          "label": "elapsedTime"
+        },
+        {
+          "value": "realTime",
+          "label": "realTime"
+        },
+        {
+          "value": "power",
+          "label": "power"
+        },
+        {
+          "value": "cadence",
+          "label": "cadence"
+        },
+        {
+          "value": "elevation",
+          "label": "elevation"
+        },
+        {
+          "value": "calories",
+          "label": "calories"
+        },
+        {
+          "value": "temperature",
+          "label": "temperature"
+        },
+        {
+          "value": "grade",
+          "label": "grade"
+        },
+        {
+          "value": "verticalOscillation",
+          "label": "verticalOscillation"
+        },
+        {
+          "value": "groundContactTime",
+          "label": "groundContactTime"
+        },
+        {
+          "value": "strideLength",
+          "label": "strideLength"
+        },
+        {
+          "value": "verticalRatio",
+          "label": "verticalRatio"
+        },
+        {
+          "value": "groundContactBalance",
+          "label": "groundContactBalance"
+        }
+      ]
+    },
+    {
+      "id": "bottomLeftValueFontScale",
+      "type": "number",
+      "label": {
+        "en": "bottomLeft Value Size",
+        "zh-Hans": "bottomLeft Value Size"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": 0.78,
+      "min": 0.1,
+      "max": 3,
+      "step": 0.01
+    },
+    {
+      "id": "bottomLeftShowLabel",
+      "type": "bool",
+      "label": {
+        "en": "bottomLeft Show Label",
+        "zh-Hans": "bottomLeft Show Label"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": true
+    },
+    {
+      "id": "bottomLeftShowUnit",
+      "type": "bool",
+      "label": {
+        "en": "bottomLeft Show Unit",
+        "zh-Hans": "bottomLeft Show Unit"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": true
+    },
+    {
+      "id": "bottomLeftCustomLabel",
+      "type": "string",
+      "label": {
+        "en": "bottomLeft Custom Label",
+        "zh-Hans": "bottomLeft Custom Label"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": ""
+    },
+    {
+      "id": "bottomRightMetric",
+      "type": "enum",
+      "label": {
+        "en": "bottomRight Metric",
+        "zh-Hans": "bottomRight Metric"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": "heartRate",
+      "options": [
+        {
+          "value": "heartRate",
+          "label": "heartRate"
+        },
+        {
+          "value": "pace",
+          "label": "pace"
+        },
+        {
+          "value": "avgPace",
+          "label": "avgPace"
+        },
+        {
+          "value": "lapPace",
+          "label": "lapPace"
+        },
+        {
+          "value": "distance",
+          "label": "distance"
+        },
+        {
+          "value": "elapsedTime",
+          "label": "elapsedTime"
+        },
+        {
+          "value": "realTime",
+          "label": "realTime"
+        },
+        {
+          "value": "power",
+          "label": "power"
+        },
+        {
+          "value": "cadence",
+          "label": "cadence"
+        },
+        {
+          "value": "elevation",
+          "label": "elevation"
+        },
+        {
+          "value": "calories",
+          "label": "calories"
+        },
+        {
+          "value": "temperature",
+          "label": "temperature"
+        },
+        {
+          "value": "grade",
+          "label": "grade"
+        },
+        {
+          "value": "verticalOscillation",
+          "label": "verticalOscillation"
+        },
+        {
+          "value": "groundContactTime",
+          "label": "groundContactTime"
+        },
+        {
+          "value": "strideLength",
+          "label": "strideLength"
+        },
+        {
+          "value": "verticalRatio",
+          "label": "verticalRatio"
+        },
+        {
+          "value": "groundContactBalance",
+          "label": "groundContactBalance"
+        }
+      ]
+    },
+    {
+      "id": "bottomRightValueFontScale",
+      "type": "number",
+      "label": {
+        "en": "bottomRight Value Size",
+        "zh-Hans": "bottomRight Value Size"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": 0.78,
+      "min": 0.1,
+      "max": 3,
+      "step": 0.01
+    },
+    {
+      "id": "bottomRightShowLabel",
+      "type": "bool",
+      "label": {
+        "en": "bottomRight Show Label",
+        "zh-Hans": "bottomRight Show Label"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": true
+    },
+    {
+      "id": "bottomRightShowUnit",
+      "type": "bool",
+      "label": {
+        "en": "bottomRight Show Unit",
+        "zh-Hans": "bottomRight Show Unit"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": true
+    },
+    {
+      "id": "bottomRightCustomLabel",
+      "type": "string",
+      "label": {
+        "en": "bottomRight Custom Label",
+        "zh-Hans": "bottomRight Custom Label"
+      },
+      "section": {
+        "en": "Regions",
+        "zh-Hans": "Regions"
+      },
+      "default": ""
+    }
+  ],
+  "bindings": {},
+  "nodes": [
+    {
+      "type": "runningGauge",
+      "frame": [
+        "=0",
+        "=0",
+        "=300",
+        "=300"
+      ],
+      "layoutPreset": "=layoutPreset",
+      "progress": "=progress",
+      "dialBackgroundColor": "=dialBackgroundColor",
+      "dialBackgroundOpacity": "=dialBackgroundOpacity",
+      "glassEffectEnabled": "=glassEffectEnabled ? 1 : 0",
+      "outerRingEnabled": "=outerRingEnabled ? 1 : 0",
+      "outerRingColor": "=outerRingColor",
+      "outerRingOpacity": "=outerRingOpacity",
+      "outerRingWidthScale": "=outerRingWidthScale",
+      "tickMarksEnabled": "=tickMarksEnabled ? 1 : 0",
+      "tickColor": "=tickColor",
+      "tickOpacity": "=tickOpacity",
+      "majorTickOpacity": "=majorTickOpacity",
+      "tickCount": "=tickCount",
+      "majorTickEvery": "=majorTickEvery",
+      "progressRingEnabled": "=progressRingEnabled ? 1 : 0",
+      "progressColor": "=progressColor",
+      "progressTrackColor": "=progressTrackColor",
+      "progressTrackOpacity": "=progressTrackOpacity",
+      "progressRingWidthScale": "=progressRingWidthScale",
+      "progressRoundedCaps": "=progressRoundedCaps ? 1 : 0",
+      "dividerEnabled": "=dividerEnabled ? 1 : 0",
+      "dividerColor": "=dividerColor",
+      "dividerOpacity": "=dividerOpacity",
+      "dividerWidth": "=dividerWidth",
+      "font": {
+        "family": "=fontFamily",
+        "size": 300,
+        "weight": "regular"
+      },
+      "monospacedDigits": "=monospacedDigits ? 1 : 0",
+      "primaryFontWeight": "=primaryFontWeight",
+      "secondaryFontWeight": "=secondaryFontWeight",
+      "primaryTextColor": "=primaryTextColor",
+      "secondaryTextColor": "=secondaryTextColor",
+      "accentColor": "=accentColor",
+      "regions": [
+        {
+          "region": "top",
+          "metric": "=topMetric",
+          "customLabel": "=topCustomLabel",
+          "showLabel": "=topShowLabel ? 1 : 0",
+          "showUnit": "=topShowUnit ? 1 : 0",
+          "valueFontScale": "=topValueFontScale",
+          "labelFontScale": 0.32,
+          "unitFontScale": 0.42,
+          "valueWeight": "bold",
+          "labelWeight": "medium"
+        },
+        {
+          "region": "middle",
+          "metric": "=middleMetric",
+          "customLabel": "=middleCustomLabel",
+          "showLabel": "=middleShowLabel ? 1 : 0",
+          "showUnit": "=middleShowUnit ? 1 : 0",
+          "valueFontScale": "=middleValueFontScale",
+          "labelFontScale": 0.32,
+          "unitFontScale": 0.42,
+          "valueWeight": "bold",
+          "labelWeight": "medium"
+        },
+        {
+          "region": "bottom",
+          "metric": "=bottomMetric",
+          "customLabel": "=bottomCustomLabel",
+          "showLabel": "=bottomShowLabel ? 1 : 0",
+          "showUnit": "=bottomShowUnit ? 1 : 0",
+          "valueFontScale": "=bottomValueFontScale",
+          "labelFontScale": 0.32,
+          "unitFontScale": 0.42,
+          "valueWeight": "bold",
+          "labelWeight": "medium"
+        },
+        {
+          "region": "middleLeft",
+          "metric": "=middleLeftMetric",
+          "customLabel": "=middleLeftCustomLabel",
+          "showLabel": "=middleLeftShowLabel ? 1 : 0",
+          "showUnit": "=middleLeftShowUnit ? 1 : 0",
+          "valueFontScale": "=middleLeftValueFontScale",
+          "labelFontScale": 0.32,
+          "unitFontScale": 0.42,
+          "valueWeight": "bold",
+          "labelWeight": "medium"
+        },
+        {
+          "region": "middleRight",
+          "metric": "=middleRightMetric",
+          "customLabel": "=middleRightCustomLabel",
+          "showLabel": "=middleRightShowLabel ? 1 : 0",
+          "showUnit": "=middleRightShowUnit ? 1 : 0",
+          "valueFontScale": "=middleRightValueFontScale",
+          "labelFontScale": 0.32,
+          "unitFontScale": 0.42,
+          "valueWeight": "bold",
+          "labelWeight": "medium"
+        },
+        {
+          "region": "middleCenter",
+          "metric": "=middleCenterMetric",
+          "customLabel": "=middleCenterCustomLabel",
+          "showLabel": "=middleCenterShowLabel ? 1 : 0",
+          "showUnit": "=middleCenterShowUnit ? 1 : 0",
+          "valueFontScale": "=middleCenterValueFontScale",
+          "labelFontScale": 0.32,
+          "unitFontScale": 0.42,
+          "valueWeight": "bold",
+          "labelWeight": "medium"
+        },
+        {
+          "region": "topLeft",
+          "metric": "=topLeftMetric",
+          "customLabel": "=topLeftCustomLabel",
+          "showLabel": "=topLeftShowLabel ? 1 : 0",
+          "showUnit": "=topLeftShowUnit ? 1 : 0",
+          "valueFontScale": "=topLeftValueFontScale",
+          "labelFontScale": 0.32,
+          "unitFontScale": 0.42,
+          "valueWeight": "bold",
+          "labelWeight": "medium"
+        },
+        {
+          "region": "topRight",
+          "metric": "=topRightMetric",
+          "customLabel": "=topRightCustomLabel",
+          "showLabel": "=topRightShowLabel ? 1 : 0",
+          "showUnit": "=topRightShowUnit ? 1 : 0",
+          "valueFontScale": "=topRightValueFontScale",
+          "labelFontScale": 0.32,
+          "unitFontScale": 0.42,
+          "valueWeight": "bold",
+          "labelWeight": "medium"
+        },
+        {
+          "region": "bottomLeft",
+          "metric": "=bottomLeftMetric",
+          "customLabel": "=bottomLeftCustomLabel",
+          "showLabel": "=bottomLeftShowLabel ? 1 : 0",
+          "showUnit": "=bottomLeftShowUnit ? 1 : 0",
+          "valueFontScale": "=bottomLeftValueFontScale",
+          "labelFontScale": 0.32,
+          "unitFontScale": 0.42,
+          "valueWeight": "bold",
+          "labelWeight": "medium"
+        },
+        {
+          "region": "bottomRight",
+          "metric": "=bottomRightMetric",
+          "customLabel": "=bottomRightCustomLabel",
+          "showLabel": "=bottomRightShowLabel ? 1 : 0",
+          "showUnit": "=bottomRightShowUnit ? 1 : 0",
+          "valueFontScale": "=bottomRightValueFontScale",
+          "labelFontScale": 0.32,
+          "unitFontScale": 0.42,
+          "valueWeight": "bold",
+          "labelWeight": "medium"
+        }
+      ]
+    }
+  ]
+}

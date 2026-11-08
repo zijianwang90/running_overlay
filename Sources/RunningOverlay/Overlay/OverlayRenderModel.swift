@@ -4,6 +4,10 @@ struct OverlayRenderContext {
     var canvasSize: CGSize
     var activity: ActivityTimeline
     var elapsedTime: TimeInterval
+    /// Host-preloaded images for the Skia module renderers. Component chart
+    /// nodes reuse the same store so a route map or weather widget draws the
+    /// same host snapshot as the native element at this playhead.
+    var renderAssets: SkiaRenderAssets?
 
     var canvasScale: Double {
         min(canvasSize.width / Self.referenceCanvasSize.width, canvasSize.height / Self.referenceCanvasSize.height)

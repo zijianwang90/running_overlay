@@ -761,6 +761,73 @@ final class OverlayComponentParser {
         case "progressBar": typeKeys = ["value", "trackColor", "fillColor", "radius"]
         case "arc": typeKeys = ["value", "startDegrees", "sweepDegrees", "radius", "width", "trackColor", "fillColor", "cap"]
         case "segmentedBar": typeKeys = ["orientation", "segments", "activeIndex", "activeWidthShare", "activeThicknessScale", "gap", "radius", "inactiveOpacity", "glow", "border", "markers"]
+        case "runningGauge": typeKeys = [
+            "layoutPreset", "progress", "dialBackgroundColor", "dialBackgroundOpacity",
+            "glassEffectEnabled", "outerRingEnabled", "outerRingColor", "outerRingOpacity",
+            "outerRingWidthScale", "tickMarksEnabled", "tickColor", "tickOpacity",
+            "majorTickOpacity", "tickCount", "majorTickEvery", "progressRingEnabled",
+            "progressColor", "progressTrackColor", "progressTrackOpacity",
+            "progressRingWidthScale", "progressRoundedCaps", "dividerEnabled",
+            "dividerColor", "dividerOpacity", "dividerWidth", "font", "monospacedDigits",
+            "primaryFontWeight", "secondaryFontWeight", "primaryTextColor",
+            "secondaryTextColor", "accentColor", "regions"
+        ]
+        case "weatherWidget": typeKeys = [
+            "preset", "condition", "temperatureC", "humidity", "highC", "lowC",
+            "windKph", "feelsLikeC", "temperatureUnit", "useActivityTemperature",
+            "locationText", "showLocation", "showWeekday", "showHumidity",
+            "showHighLow", "showWind", "showFeelsLike", "showIcon",
+            "showConditionLabel", "conditionLabelOverride", "humiditySuffix",
+            "humidityMetricLabel", "windMetricLabel", "feelsLikeMetricLabel",
+            "cardBackgroundColor", "cardBackgroundOpacity", "cardCornerRadius",
+            "dividerEnabled", "dividerColor", "dividerThickness", "dividerOpacity",
+            "palette", "iconSize", "slotBackgroundColor", "slotBackgroundOpacity",
+            "slotSpacing", "fontFamily",
+            "locationFontSize", "locationFontWeight", "locationColor",
+            "conditionFontSize", "conditionFontWeight", "conditionColor",
+            "temperatureFontSize", "temperatureFontWeight", "temperatureColor",
+            "slotTitleFontSize", "slotTitleFontWeight", "slotTitleColor",
+            "slotLabelFontSize", "slotLabelFontWeight", "slotLabelColor"
+        ]
+        case "routeMap": typeKeys = [
+            "shape", "backgroundStyle", "cornerRadius", "backgroundOpacity",
+            "startMarkerStyle", "endMarkerStyle", "runnerMarkerStyle",
+            "startMarkerColor", "endMarkerColor", "runnerMarkerColor",
+            "glowEnabled", "mapOpacity", "borderEnabled", "borderOpacity",
+            "foregroundColor", "fontFamily"
+        ]
+        case "elevationChart": typeKeys = [
+            "preset", "chartStyle", "smoothingEnabled", "smoothingAmount",
+            "progressMode", "chartPaddingX", "chartPaddingY", "lineColor",
+            "lineWidth", "lineOpacity", "fillEnabled", "fillStartColor",
+            "fillEndColor", "fillOpacity", "dualAreaEnabled", "upperFillColor",
+            "lowerFillColor", "currentMarkerEnabled", "markerColor",
+            "markerSizeMultiplier", "markerPlayheadLineEnabled", "markerLabelEnabled",
+            "gridEnabled", "axisLineEnabled", "axisLabelsEnabled", "bigNumbersEnabled",
+            "bigNumberMetric", "bigNumberFontSize", "bigNumberFontFamily",
+            "bigNumberFontWeight", "backgroundEnabled", "backgroundColor",
+            "backgroundOpacity", "cornerRadius", "borderEnabled", "borderOpacity",
+            "shadowEnabled", "shadowOpacity", "shadowRadius", "glowEnabled",
+            "glowOpacity", "fontFamily", "foregroundColor", "valueFontSize"
+        ]
+        case "distanceTimeline": typeKeys = [
+            "preset", "valueFontSize", "valueUnitSystem", "showValue", "showTotalDistance",
+            "showLabel", "label", "labelFontFamily", "labelFontSize", "labelFontWeight",
+            "labelColor", "labelValueSpacing", "showAxisLabels", "axisLabelMode",
+            "axisLabelOffset", "axisLabelFontFamily", "axisLabelFontSize",
+            "axisLabelFontWeight", "axisLabelColor", "showDistancePoints",
+            "distancePointCount", "distancePointOffset", "midpointAxisLabelOffset",
+            "axisEndpointLabelPlacement", "axisMidpointLabelPlacement",
+            "markerDistanceLabelEnabled", "markerDistanceLabelPlacement",
+            "markerDistanceLabelOffset", "currentMarkerSizeMultiplier",
+            "backgroundEnabled", "backgroundColor", "backgroundOpacity", "borderEnabled",
+            "borderColor", "borderOpacity", "borderWidth", "cornerRadius", "paddingX",
+            "paddingY", "trackHeight", "trackOpacity", "fillColor", "tickMarksEnabled",
+            "tickDensity", "currentMarkerEnabled", "currentMarkerStyle",
+            "currentMarkerColor", "glowEnabled", "fadeEnabled", "fadeEdge", "fadeAmount",
+            "mediaSlotEnabled", "mediaSlotMode", "mediaSystemImage", "mediaSlotSize",
+            "elevationProfileVisible"
+        ]
         case "timelineStrip": typeKeys = [
             "segments", "currentIndex", "elapsed", "mode", "emphasisFraction", "window",
             "showsWarmup", "showsRest", "showsCooldown", "segmentAreaHeight", "segmentHeight",
@@ -787,7 +854,8 @@ final class OverlayComponentParser {
         let frameRequired: Set<String> = [
             "rect", "image", "symbol", "gradientRect", "richText",
             "sparkline", "progressBar", "arc", "repeat", "segmentedBar",
-            "timelineStrip"
+            "timelineStrip", "runningGauge", "distanceTimeline", "elevationChart", "routeMap",
+            "weatherWidget"
         ]
         let frame = parseFrame(object["frame"], at: "\(path).frame", required: frameRequired.contains(type))
         let condition = object["if"].flatMap { expression($0, at: "\(path).if") }
@@ -850,6 +918,16 @@ final class OverlayComponentParser {
             kind = parseSegmentedBarKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
         case "timelineStrip":
             kind = parseTimelineStripKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
+        case "runningGauge":
+            kind = parseRunningGaugeKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
+        case "distanceTimeline":
+            kind = parseDistanceTimelineKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
+        case "elevationChart":
+            kind = parseElevationChartKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
+        case "routeMap":
+            kind = parseRouteMapKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
+        case "weatherWidget":
+            kind = parseWeatherWidgetKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
         default:
             return nil
         }
@@ -1694,6 +1772,491 @@ final class OverlayComponentParser {
     ) -> OverlayComponentNodeKind? {
         guard let strip = parseTimelineStripNode(object, at: path) else { return nil }
         return .timelineStrip(strip)
+    }
+
+    @inline(never)
+    private func parseRunningGaugeKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let gauge = parseRunningGaugeNode(object, at: path) else { return nil }
+        return .runningGauge(gauge)
+    }
+
+    @inline(never)
+    private func parseRunningGaugeNode(
+        _ object: [String: OverlayJSONValue],
+        at path: String
+    ) -> OverlayComponentRunningGauge? {
+        let layoutPresets: Set<String> = [
+            "topBottom", "topMiddleBottom", "threeZones", "topTwoMiddleBottom",
+            "topThreeMiddleBottom", "fourZones", "fiveZones"
+        ]
+        let regionNames: Set<String> = [
+            "top", "middle", "bottom", "middleLeft", "middleCenter", "middleRight",
+            "topLeft", "topRight", "bottomLeft", "bottomCenter", "bottomRight"
+        ]
+        guard let font = parseFont(object["font"], at: "\(path).font") else {
+            error("\(path).font", "font is required")
+            return nil
+        }
+        var regions: [OverlayComponentRunningGauge.Region]?
+        if let rawRegions = object["regions"] {
+            guard case .array(let items) = rawRegions else {
+                error("\(path).regions", "regions must be an array")
+                return nil
+            }
+            if items.count > 12 {
+                error("\(path).regions", "at most 12 regions are allowed")
+            }
+            var parsed: [OverlayComponentRunningGauge.Region] = []
+            for (index, item) in items.enumerated() {
+                let regionPath = "\(path).regions[\(index)]"
+                guard case .object(let regionObject) = item else {
+                    error(regionPath, "region must be an object")
+                    return nil
+                }
+                guard let metricValue = regionObject["metric"],
+                      let metric = stringSource(metricValue, at: "\(regionPath).metric") else {
+                    error("\(regionPath).metric", "region requires metric")
+                    return nil
+                }
+                if case .literal(let literal) = metric, OverlayMetric(rawValue: literal) == nil {
+                    error("\(regionPath).metric", "unknown metric '\(literal)'")
+                    return nil
+                }
+                if let rawRegion = regionObject["region"] {
+                    _ = timelineEnumSource(rawRegion, at: "\(regionPath).region", allowed: regionNames)
+                }
+                for key in ["valueWeight", "labelWeight"] {
+                    if let rawWeight = regionObject[key] {
+                        _ = timelineEnumSource(
+                            rawWeight,
+                            at: "\(regionPath).\(key)",
+                            allowed: Set(OverlayComponentFontWeight.allCases.map(\.rawValue))
+                        )
+                    }
+                }
+                parsed.append(OverlayComponentRunningGauge.Region(
+                    region: regionObject["region"].flatMap {
+                        timelineEnumSource($0, at: "\(regionPath).region", allowed: regionNames)
+                    },
+                    metric: metric,
+                    customLabel: regionObject["customLabel"].flatMap { stringSource($0, at: "\(regionPath).customLabel") },
+                    showLabel: regionObject["showLabel"].flatMap { numberSource($0, at: "\(regionPath).showLabel") },
+                    showUnit: regionObject["showUnit"].flatMap { numberSource($0, at: "\(regionPath).showUnit") },
+                    valueFontScale: regionObject["valueFontScale"].flatMap { numberSource($0, at: "\(regionPath).valueFontScale") },
+                    labelFontScale: regionObject["labelFontScale"].flatMap { numberSource($0, at: "\(regionPath).labelFontScale") },
+                    unitFontScale: regionObject["unitFontScale"].flatMap { numberSource($0, at: "\(regionPath).unitFontScale") },
+                    valueWeight: regionObject["valueWeight"].flatMap {
+                        timelineEnumSource($0, at: "\(regionPath).valueWeight", allowed: Set(OverlayComponentFontWeight.allCases.map(\.rawValue)))
+                    },
+                    labelWeight: regionObject["labelWeight"].flatMap {
+                        timelineEnumSource($0, at: "\(regionPath).labelWeight", allowed: Set(OverlayComponentFontWeight.allCases.map(\.rawValue)))
+                    },
+                    valueColor: regionObject["valueColor"].flatMap { colorSource($0, at: "\(regionPath).valueColor") },
+                    labelColor: regionObject["labelColor"].flatMap { colorSource($0, at: "\(regionPath).labelColor") }
+                ))
+            }
+            regions = parsed
+        }
+        func numberOrNil(_ key: String) -> OverlayComponentNumberSource? {
+            object[key].flatMap { numberSource($0, at: "\(path).\(key)") }
+        }
+        func colorOrNil(_ key: String) -> OverlayComponentColorSource? {
+            object[key].flatMap { colorSource($0, at: "\(path).\(key)") }
+        }
+        func weightOrNil(_ key: String) -> OverlayComponentStringSource? {
+            object[key].flatMap {
+                timelineEnumSource($0, at: "\(path).\(key)", allowed: Set(OverlayComponentFontWeight.allCases.map(\.rawValue)))
+            }
+        }
+        return OverlayComponentRunningGauge(
+            layoutPreset: object["layoutPreset"].flatMap {
+                timelineEnumSource($0, at: "\(path).layoutPreset", allowed: layoutPresets)
+            },
+            progress: numberOrNil("progress"),
+            dialBackgroundColor: colorOrNil("dialBackgroundColor"),
+            dialBackgroundOpacity: numberOrNil("dialBackgroundOpacity"),
+            glassEffectEnabled: numberOrNil("glassEffectEnabled"),
+            outerRingEnabled: numberOrNil("outerRingEnabled"),
+            outerRingColor: colorOrNil("outerRingColor"),
+            outerRingOpacity: numberOrNil("outerRingOpacity"),
+            outerRingWidthScale: numberOrNil("outerRingWidthScale"),
+            tickMarksEnabled: numberOrNil("tickMarksEnabled"),
+            tickColor: colorOrNil("tickColor"),
+            tickOpacity: numberOrNil("tickOpacity"),
+            majorTickOpacity: numberOrNil("majorTickOpacity"),
+            tickCount: numberOrNil("tickCount"),
+            majorTickEvery: numberOrNil("majorTickEvery"),
+            progressRingEnabled: numberOrNil("progressRingEnabled"),
+            progressColor: colorOrNil("progressColor"),
+            progressTrackColor: colorOrNil("progressTrackColor"),
+            progressTrackOpacity: numberOrNil("progressTrackOpacity"),
+            progressRingWidthScale: numberOrNil("progressRingWidthScale"),
+            progressRoundedCaps: numberOrNil("progressRoundedCaps"),
+            dividerEnabled: numberOrNil("dividerEnabled"),
+            dividerColor: colorOrNil("dividerColor"),
+            dividerOpacity: numberOrNil("dividerOpacity"),
+            dividerWidth: numberOrNil("dividerWidth"),
+            font: font,
+            monospacedDigits: numberOrNil("monospacedDigits"),
+            primaryFontWeight: weightOrNil("primaryFontWeight"),
+            secondaryFontWeight: weightOrNil("secondaryFontWeight"),
+            primaryTextColor: colorOrNil("primaryTextColor"),
+            secondaryTextColor: colorOrNil("secondaryTextColor"),
+            accentColor: colorOrNil("accentColor"),
+            regions: regions
+        )
+    }
+
+    @inline(never)
+    private func parseDistanceTimelineKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let timeline = parseDistanceTimelineNode(object, at: path) else { return nil }
+        return .distanceTimeline(timeline)
+    }
+
+    @inline(never)
+    private func parseDistanceTimelineNode(
+        _ object: [String: OverlayJSONValue],
+        at path: String
+    ) -> OverlayComponentDistanceTimeline? {
+        let presets: Set<String> = [
+            "minimal", "dense", "sport", "splits", "glass", "neon", "lowerThird", "route"
+        ]
+        let unitSystems: Set<String> = ["metric", "imperial"]
+        let axisModes: Set<String> = ["startFinish", "distance"]
+        let placements: Set<String> = ["below", "above"]
+        let markerStyles: Set<String> = ["dot", "pill", "triangle"]
+        let fadeEdges: Set<String> = ["left", "right", "both", "vertical", "all"]
+        let mediaModes: Set<String> = [
+            "none", "systemIcon", "staticSVG", "animatedSVG", "image"
+        ]
+        let weightValues: Set<String> = Set(OverlayComponentFontWeight.allCases.map(\.rawValue))
+        func numberOrNil(_ key: String) -> OverlayComponentNumberSource? {
+            object[key].flatMap { numberSource($0, at: "\(path).\(key)") }
+        }
+        func colorOrNil(_ key: String) -> OverlayComponentColorSource? {
+            object[key].flatMap { colorSource($0, at: "\(path).\(key)") }
+        }
+        func stringOrNil(_ key: String) -> OverlayComponentStringSource? {
+            object[key].flatMap { stringSource($0, at: "\(path).\(key)") }
+        }
+        func enumOrNil(_ key: String, allowed: Set<String>) -> OverlayComponentStringSource? {
+            object[key].flatMap {
+                timelineEnumSource($0, at: "\(path).\(key)", allowed: allowed)
+            }
+        }
+        return OverlayComponentDistanceTimeline(
+            preset: enumOrNil("preset", allowed: presets),
+            valueFontSize: numberOrNil("valueFontSize"),
+            valueUnitSystem: enumOrNil("valueUnitSystem", allowed: unitSystems),
+            showValue: numberOrNil("showValue"),
+            showTotalDistance: numberOrNil("showTotalDistance"),
+            showLabel: numberOrNil("showLabel"),
+            label: stringOrNil("label"),
+            labelFontFamily: stringOrNil("labelFontFamily"),
+            labelFontSize: numberOrNil("labelFontSize"),
+            labelFontWeight: enumOrNil("labelFontWeight", allowed: weightValues),
+            labelColor: colorOrNil("labelColor"),
+            labelValueSpacing: numberOrNil("labelValueSpacing"),
+            showAxisLabels: numberOrNil("showAxisLabels"),
+            axisLabelMode: enumOrNil("axisLabelMode", allowed: axisModes),
+            axisLabelOffset: numberOrNil("axisLabelOffset"),
+            axisLabelFontFamily: stringOrNil("axisLabelFontFamily"),
+            axisLabelFontSize: numberOrNil("axisLabelFontSize"),
+            axisLabelFontWeight: enumOrNil("axisLabelFontWeight", allowed: weightValues),
+            axisLabelColor: colorOrNil("axisLabelColor"),
+            showDistancePoints: numberOrNil("showDistancePoints"),
+            distancePointCount: numberOrNil("distancePointCount"),
+            distancePointOffset: numberOrNil("distancePointOffset"),
+            midpointAxisLabelOffset: numberOrNil("midpointAxisLabelOffset"),
+            axisEndpointLabelPlacement: enumOrNil("axisEndpointLabelPlacement", allowed: placements),
+            axisMidpointLabelPlacement: enumOrNil("axisMidpointLabelPlacement", allowed: placements),
+            markerDistanceLabelEnabled: numberOrNil("markerDistanceLabelEnabled"),
+            markerDistanceLabelPlacement: enumOrNil("markerDistanceLabelPlacement", allowed: placements),
+            markerDistanceLabelOffset: numberOrNil("markerDistanceLabelOffset"),
+            currentMarkerSizeMultiplier: numberOrNil("currentMarkerSizeMultiplier"),
+            backgroundEnabled: numberOrNil("backgroundEnabled"),
+            backgroundColor: colorOrNil("backgroundColor"),
+            backgroundOpacity: numberOrNil("backgroundOpacity"),
+            borderEnabled: numberOrNil("borderEnabled"),
+            borderColor: colorOrNil("borderColor"),
+            borderOpacity: numberOrNil("borderOpacity"),
+            borderWidth: numberOrNil("borderWidth"),
+            cornerRadius: numberOrNil("cornerRadius"),
+            paddingX: numberOrNil("paddingX"),
+            paddingY: numberOrNil("paddingY"),
+            trackHeight: numberOrNil("trackHeight"),
+            trackOpacity: numberOrNil("trackOpacity"),
+            fillColor: colorOrNil("fillColor"),
+            tickMarksEnabled: numberOrNil("tickMarksEnabled"),
+            tickDensity: numberOrNil("tickDensity"),
+            currentMarkerEnabled: numberOrNil("currentMarkerEnabled"),
+            currentMarkerStyle: enumOrNil("currentMarkerStyle", allowed: markerStyles),
+            currentMarkerColor: colorOrNil("currentMarkerColor"),
+            glowEnabled: numberOrNil("glowEnabled"),
+            fadeEnabled: numberOrNil("fadeEnabled"),
+            fadeEdge: enumOrNil("fadeEdge", allowed: fadeEdges),
+            fadeAmount: numberOrNil("fadeAmount"),
+            mediaSlotEnabled: numberOrNil("mediaSlotEnabled"),
+            mediaSlotMode: enumOrNil("mediaSlotMode", allowed: mediaModes),
+            mediaSystemImage: stringOrNil("mediaSystemImage"),
+            mediaSlotSize: numberOrNil("mediaSlotSize"),
+            elevationProfileVisible: numberOrNil("elevationProfileVisible")
+        )
+    }
+
+    @inline(never)
+    private func parseElevationChartKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let chart = parseElevationChartNode(object, at: path) else { return nil }
+        return .elevationChart(chart)
+    }
+
+    @inline(never)
+    private func parseElevationChartNode(
+        _ object: [String: OverlayJSONValue],
+        at path: String
+    ) -> OverlayComponentElevationChart? {
+        let presets: Set<String> = [
+            "gradientArea", "dualArea", "techGlow", "minimalWhite", "bigNumbers"
+        ]
+        let renderStyles: Set<String> = ["area", "lineOnly"]
+        let progressModes: Set<String> = ["fullProfile", "progressToCurrent"]
+        let bigMetrics: Set<String> = [
+            "currentElevation", "elevationGain", "maxElevation", "minElevation"
+        ]
+        let weightValues: Set<String> = Set(OverlayComponentFontWeight.allCases.map(\.rawValue))
+        func numberOrNil(_ key: String) -> OverlayComponentNumberSource? {
+            object[key].flatMap { numberSource($0, at: "\(path).\(key)") }
+        }
+        func colorOrNil(_ key: String) -> OverlayComponentColorSource? {
+            object[key].flatMap { colorSource($0, at: "\(path).\(key)") }
+        }
+        func stringOrNil(_ key: String) -> OverlayComponentStringSource? {
+            object[key].flatMap { stringSource($0, at: "\(path).\(key)") }
+        }
+        func enumOrNil(_ key: String, allowed: Set<String>) -> OverlayComponentStringSource? {
+            object[key].flatMap {
+                timelineEnumSource($0, at: "\(path).\(key)", allowed: allowed)
+            }
+        }
+        return OverlayComponentElevationChart(
+            preset: enumOrNil("preset", allowed: presets),
+            chartStyle: enumOrNil("chartStyle", allowed: renderStyles),
+            smoothingEnabled: numberOrNil("smoothingEnabled"),
+            smoothingAmount: numberOrNil("smoothingAmount"),
+            progressMode: enumOrNil("progressMode", allowed: progressModes),
+            chartPaddingX: numberOrNil("chartPaddingX"),
+            chartPaddingY: numberOrNil("chartPaddingY"),
+            lineColor: colorOrNil("lineColor"),
+            lineWidth: numberOrNil("lineWidth"),
+            lineOpacity: numberOrNil("lineOpacity"),
+            fillEnabled: numberOrNil("fillEnabled"),
+            fillStartColor: colorOrNil("fillStartColor"),
+            fillEndColor: colorOrNil("fillEndColor"),
+            fillOpacity: numberOrNil("fillOpacity"),
+            dualAreaEnabled: numberOrNil("dualAreaEnabled"),
+            upperFillColor: colorOrNil("upperFillColor"),
+            lowerFillColor: colorOrNil("lowerFillColor"),
+            currentMarkerEnabled: numberOrNil("currentMarkerEnabled"),
+            markerColor: colorOrNil("markerColor"),
+            markerSizeMultiplier: numberOrNil("markerSizeMultiplier"),
+            markerPlayheadLineEnabled: numberOrNil("markerPlayheadLineEnabled"),
+            markerLabelEnabled: numberOrNil("markerLabelEnabled"),
+            gridEnabled: numberOrNil("gridEnabled"),
+            axisLineEnabled: numberOrNil("axisLineEnabled"),
+            axisLabelsEnabled: numberOrNil("axisLabelsEnabled"),
+            bigNumbersEnabled: numberOrNil("bigNumbersEnabled"),
+            bigNumberMetric: enumOrNil("bigNumberMetric", allowed: bigMetrics),
+            bigNumberFontSize: numberOrNil("bigNumberFontSize"),
+            bigNumberFontFamily: stringOrNil("bigNumberFontFamily"),
+            bigNumberFontWeight: enumOrNil("bigNumberFontWeight", allowed: weightValues),
+            backgroundEnabled: numberOrNil("backgroundEnabled"),
+            backgroundColor: colorOrNil("backgroundColor"),
+            backgroundOpacity: numberOrNil("backgroundOpacity"),
+            cornerRadius: numberOrNil("cornerRadius"),
+            borderEnabled: numberOrNil("borderEnabled"),
+            borderOpacity: numberOrNil("borderOpacity"),
+            shadowEnabled: numberOrNil("shadowEnabled"),
+            shadowOpacity: numberOrNil("shadowOpacity"),
+            shadowRadius: numberOrNil("shadowRadius"),
+            glowEnabled: numberOrNil("glowEnabled"),
+            glowOpacity: numberOrNil("glowOpacity"),
+            fontFamily: stringOrNil("fontFamily"),
+            foregroundColor: colorOrNil("foregroundColor"),
+            valueFontSize: numberOrNil("valueFontSize")
+        )
+    }
+
+    @inline(never)
+    private func parseRouteMapKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let map = parseRouteMapNode(object, at: path) else { return nil }
+        return .routeMap(map)
+    }
+
+    @inline(never)
+    private func parseRouteMapNode(
+        _ object: [String: OverlayJSONValue],
+        at path: String
+    ) -> OverlayComponentRouteMap? {
+        let shapes: Set<String> = ["square", "circle"]
+        let backgrounds: Set<String> = ["none", "dark", "light", "terrain", "satellite"]
+        let markers: Set<String> = ["hidden", "dot", "pin", "flag"]
+        func numberOrNil(_ key: String) -> OverlayComponentNumberSource? {
+            object[key].flatMap { numberSource($0, at: "\(path).\(key)") }
+        }
+        func colorOrNil(_ key: String) -> OverlayComponentColorSource? {
+            object[key].flatMap { colorSource($0, at: "\(path).\(key)") }
+        }
+        func stringOrNil(_ key: String) -> OverlayComponentStringSource? {
+            object[key].flatMap { stringSource($0, at: "\(path).\(key)") }
+        }
+        func enumOrNil(_ key: String, allowed: Set<String>) -> OverlayComponentStringSource? {
+            object[key].flatMap {
+                timelineEnumSource($0, at: "\(path).\(key)", allowed: allowed)
+            }
+        }
+        return OverlayComponentRouteMap(
+            shape: enumOrNil("shape", allowed: shapes),
+            backgroundStyle: enumOrNil("backgroundStyle", allowed: backgrounds),
+            cornerRadius: numberOrNil("cornerRadius"),
+            backgroundOpacity: numberOrNil("backgroundOpacity"),
+            startMarkerStyle: enumOrNil("startMarkerStyle", allowed: markers),
+            endMarkerStyle: enumOrNil("endMarkerStyle", allowed: markers),
+            runnerMarkerStyle: enumOrNil("runnerMarkerStyle", allowed: markers),
+            startMarkerColor: colorOrNil("startMarkerColor"),
+            endMarkerColor: colorOrNil("endMarkerColor"),
+            runnerMarkerColor: colorOrNil("runnerMarkerColor"),
+            glowEnabled: numberOrNil("glowEnabled"),
+            mapOpacity: numberOrNil("mapOpacity"),
+            borderEnabled: numberOrNil("borderEnabled"),
+            borderOpacity: numberOrNil("borderOpacity"),
+            foregroundColor: colorOrNil("foregroundColor"),
+            fontFamily: stringOrNil("fontFamily")
+        )
+    }
+
+    @inline(never)
+    private func parseWeatherWidgetKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let widget = parseWeatherWidgetNode(object, at: path) else { return nil }
+        return .weatherWidget(widget)
+    }
+
+    @inline(never)
+    private func parseWeatherWidgetNode(
+        _ object: [String: OverlayJSONValue],
+        at path: String
+    ) -> OverlayComponentWeatherWidget? {
+        let presets: Set<String> = [
+            "simpleCard", "compactStrip", "forecastTile", "minimalText", "dashboardBar"
+        ]
+        let conditions: Set<String> = Set(WeatherCondition.allCases.map(\.rawValue))
+        let units: Set<String> = ["celsius", "fahrenheit"]
+        let palettes: Set<String> = [
+            "presetDefault", "blueGlass", "lightGlass", "graphite", "minimalWhite"
+        ]
+        let weightValues: Set<String> = Set(OverlayComponentFontWeight.allCases.map(\.rawValue))
+        func numberOrNil(_ key: String) -> OverlayComponentNumberSource? {
+            object[key].flatMap { numberSource($0, at: "\(path).\(key)") }
+        }
+        func colorOrNil(_ key: String) -> OverlayComponentColorSource? {
+            object[key].flatMap { colorSource($0, at: "\(path).\(key)") }
+        }
+        func stringOrNil(_ key: String) -> OverlayComponentStringSource? {
+            object[key].flatMap { stringSource($0, at: "\(path).\(key)") }
+        }
+        func enumOrNil(_ key: String, allowed: Set<String>) -> OverlayComponentStringSource? {
+            object[key].flatMap {
+                timelineEnumSource($0, at: "\(path).\(key)", allowed: allowed)
+            }
+        }
+        return OverlayComponentWeatherWidget(
+            preset: enumOrNil("preset", allowed: presets),
+            condition: enumOrNil("condition", allowed: conditions),
+            temperatureCelsius: numberOrNil("temperatureC"),
+            humidity: numberOrNil("humidity"),
+            highCelsius: numberOrNil("highC"),
+            lowCelsius: numberOrNil("lowC"),
+            windKph: numberOrNil("windKph"),
+            feelsLikeCelsius: numberOrNil("feelsLikeC"),
+            temperatureUnit: enumOrNil("temperatureUnit", allowed: units),
+            useActivityTemperature: numberOrNil("useActivityTemperature"),
+            locationText: stringOrNil("locationText"),
+            showLocation: numberOrNil("showLocation"),
+            showWeekday: numberOrNil("showWeekday"),
+            showHumidity: numberOrNil("showHumidity"),
+            showHighLow: numberOrNil("showHighLow"),
+            showWind: numberOrNil("showWind"),
+            showFeelsLike: numberOrNil("showFeelsLike"),
+            showIcon: numberOrNil("showIcon"),
+            showConditionLabel: numberOrNil("showConditionLabel"),
+            conditionLabelOverride: stringOrNil("conditionLabelOverride"),
+            humiditySuffix: stringOrNil("humiditySuffix"),
+            humidityMetricLabel: stringOrNil("humidityMetricLabel"),
+            windMetricLabel: stringOrNil("windMetricLabel"),
+            feelsLikeMetricLabel: stringOrNil("feelsLikeMetricLabel"),
+            cardBackgroundColor: colorOrNil("cardBackgroundColor"),
+            cardBackgroundOpacity: numberOrNil("cardBackgroundOpacity"),
+            cardCornerRadius: numberOrNil("cardCornerRadius"),
+            dividerEnabled: numberOrNil("dividerEnabled"),
+            dividerColor: colorOrNil("dividerColor"),
+            dividerThickness: numberOrNil("dividerThickness"),
+            dividerOpacity: numberOrNil("dividerOpacity"),
+            palette: enumOrNil("palette", allowed: palettes),
+            iconSize: numberOrNil("iconSize"),
+            slotBackgroundColor: colorOrNil("slotBackgroundColor"),
+            slotBackgroundOpacity: numberOrNil("slotBackgroundOpacity"),
+            slotSpacing: numberOrNil("slotSpacing"),
+            fontFamily: stringOrNil("fontFamily"),
+            locationFontSize: numberOrNil("locationFontSize"),
+            locationFontWeight: enumOrNil("locationFontWeight", allowed: weightValues),
+            locationColor: colorOrNil("locationColor"),
+            conditionFontSize: numberOrNil("conditionFontSize"),
+            conditionFontWeight: enumOrNil("conditionFontWeight", allowed: weightValues),
+            conditionColor: colorOrNil("conditionColor"),
+            temperatureFontSize: numberOrNil("temperatureFontSize"),
+            temperatureFontWeight: enumOrNil("temperatureFontWeight", allowed: weightValues),
+            temperatureColor: colorOrNil("temperatureColor"),
+            slotTitleFontSize: numberOrNil("slotTitleFontSize"),
+            slotTitleFontWeight: enumOrNil("slotTitleFontWeight", allowed: weightValues),
+            slotTitleColor: colorOrNil("slotTitleColor"),
+            slotLabelFontSize: numberOrNil("slotLabelFontSize"),
+            slotLabelFontWeight: enumOrNil("slotLabelFontWeight", allowed: weightValues),
+            slotLabelColor: colorOrNil("slotLabelColor")
+        )
     }
 
     private func parseTimelineColors(

@@ -1,0 +1,1037 @@
+{
+  "spec": "ros.component/0.1",
+  "id": "studio.distance-timeline",
+  "version": "1.0.0",
+  "name": {
+    "en": "Distance Timeline",
+    "zh-Hans": "距离时间轴"
+  },
+  "description": {
+    "en": "Distance progress track with value text, axis labels and marker.",
+    "zh-Hans": "带数值、刻度与标记的距离进度条。"
+  },
+  "author": "Running Overlay Studio",
+  "license": "MIT",
+  "size": [
+    460,
+    150
+  ],
+  "params": [
+    {
+      "type": "enum",
+      "default": "minimal",
+      "id": "preset",
+      "label": {
+        "en": "preset",
+        "zh-Hans": "preset"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "options": [
+        {
+          "value": "minimal",
+          "label": "minimal"
+        },
+        {
+          "value": "dense",
+          "label": "dense"
+        },
+        {
+          "value": "sport",
+          "label": "sport"
+        },
+        {
+          "value": "splits",
+          "label": "splits"
+        },
+        {
+          "value": "glass",
+          "label": "glass"
+        },
+        {
+          "value": "neon",
+          "label": "neon"
+        },
+        {
+          "value": "lowerThird",
+          "label": "lowerThird"
+        },
+        {
+          "value": "route",
+          "label": "route"
+        }
+      ]
+    },
+    {
+      "type": "number",
+      "default": 28,
+      "id": "valueFontSize",
+      "label": {
+        "en": "valueFontSize",
+        "zh-Hans": "valueFontSize"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "min": 8,
+      "max": 120
+    },
+    {
+      "type": "enum",
+      "default": "metric",
+      "id": "valueUnitSystem",
+      "label": {
+        "en": "valueUnitSystem",
+        "zh-Hans": "valueUnitSystem"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "options": [
+        {
+          "value": "metric",
+          "label": "metric"
+        },
+        {
+          "value": "imperial",
+          "label": "imperial"
+        }
+      ]
+    },
+    {
+      "type": "bool",
+      "default": true,
+      "id": "showValue",
+      "label": {
+        "en": "showValue",
+        "zh-Hans": "showValue"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "bool",
+      "default": true,
+      "id": "showTotalDistance",
+      "label": {
+        "en": "showTotalDistance",
+        "zh-Hans": "showTotalDistance"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "bool",
+      "default": false,
+      "id": "showLabel",
+      "label": {
+        "en": "showLabel",
+        "zh-Hans": "showLabel"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "string",
+      "default": "Distance",
+      "id": "label",
+      "label": {
+        "en": "label",
+        "zh-Hans": "label"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "string",
+      "default": "Helvetica Neue",
+      "id": "labelFontFamily",
+      "label": {
+        "en": "labelFontFamily",
+        "zh-Hans": "labelFontFamily"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "number",
+      "default": 12,
+      "id": "labelFontSize",
+      "label": {
+        "en": "labelFontSize",
+        "zh-Hans": "labelFontSize"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "min": 6,
+      "max": 72
+    },
+    {
+      "type": "enum",
+      "default": "medium",
+      "id": "labelFontWeight",
+      "label": {
+        "en": "labelFontWeight",
+        "zh-Hans": "labelFontWeight"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "options": [
+        {
+          "value": "regular",
+          "label": "regular"
+        },
+        {
+          "value": "medium",
+          "label": "medium"
+        },
+        {
+          "value": "semibold",
+          "label": "semibold"
+        },
+        {
+          "value": "bold",
+          "label": "bold"
+        }
+      ]
+    },
+    {
+      "type": "color",
+      "default": "#FFFFFF",
+      "id": "labelColor",
+      "label": {
+        "en": "labelColor",
+        "zh-Hans": "labelColor"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "number",
+      "default": 2,
+      "id": "labelValueSpacing",
+      "label": {
+        "en": "labelValueSpacing",
+        "zh-Hans": "labelValueSpacing"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "min": 0,
+      "max": 60
+    },
+    {
+      "type": "bool",
+      "default": false,
+      "id": "showAxisLabels",
+      "label": {
+        "en": "showAxisLabels",
+        "zh-Hans": "showAxisLabels"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "enum",
+      "default": "startFinish",
+      "id": "axisLabelMode",
+      "label": {
+        "en": "axisLabelMode",
+        "zh-Hans": "axisLabelMode"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "options": [
+        {
+          "value": "startFinish",
+          "label": "startFinish"
+        },
+        {
+          "value": "distance",
+          "label": "distance"
+        }
+      ]
+    },
+    {
+      "type": "number",
+      "default": 14,
+      "id": "axisLabelOffset",
+      "label": {
+        "en": "axisLabelOffset",
+        "zh-Hans": "axisLabelOffset"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "min": 0,
+      "max": 120
+    },
+    {
+      "type": "string",
+      "default": "Helvetica Neue",
+      "id": "axisLabelFontFamily",
+      "label": {
+        "en": "axisLabelFontFamily",
+        "zh-Hans": "axisLabelFontFamily"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "number",
+      "default": 11,
+      "id": "axisLabelFontSize",
+      "label": {
+        "en": "axisLabelFontSize",
+        "zh-Hans": "axisLabelFontSize"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "min": 6,
+      "max": 72
+    },
+    {
+      "type": "enum",
+      "default": "medium",
+      "id": "axisLabelFontWeight",
+      "label": {
+        "en": "axisLabelFontWeight",
+        "zh-Hans": "axisLabelFontWeight"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "options": [
+        {
+          "value": "regular",
+          "label": "regular"
+        },
+        {
+          "value": "medium",
+          "label": "medium"
+        },
+        {
+          "value": "semibold",
+          "label": "semibold"
+        },
+        {
+          "value": "bold",
+          "label": "bold"
+        }
+      ]
+    },
+    {
+      "type": "color",
+      "default": "#FFFFFF",
+      "id": "axisLabelColor",
+      "label": {
+        "en": "axisLabelColor",
+        "zh-Hans": "axisLabelColor"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "bool",
+      "default": false,
+      "id": "showDistancePoints",
+      "label": {
+        "en": "showDistancePoints",
+        "zh-Hans": "showDistancePoints"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "number",
+      "default": 3,
+      "id": "distancePointCount",
+      "label": {
+        "en": "distancePointCount",
+        "zh-Hans": "distancePointCount"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "min": 0,
+      "max": 12
+    },
+    {
+      "type": "number",
+      "default": 34,
+      "id": "distancePointOffset",
+      "label": {
+        "en": "distancePointOffset",
+        "zh-Hans": "distancePointOffset"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "min": 0,
+      "max": 120
+    },
+    {
+      "type": "number",
+      "default": 34,
+      "id": "midpointAxisLabelOffset",
+      "label": {
+        "en": "midpointAxisLabelOffset",
+        "zh-Hans": "midpointAxisLabelOffset"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "min": 0,
+      "max": 160
+    },
+    {
+      "type": "enum",
+      "default": "below",
+      "id": "axisEndpointLabelPlacement",
+      "label": {
+        "en": "axisEndpointLabelPlacement",
+        "zh-Hans": "axisEndpointLabelPlacement"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "options": [
+        {
+          "value": "below",
+          "label": "below"
+        },
+        {
+          "value": "above",
+          "label": "above"
+        }
+      ]
+    },
+    {
+      "type": "enum",
+      "default": "below",
+      "id": "axisMidpointLabelPlacement",
+      "label": {
+        "en": "axisMidpointLabelPlacement",
+        "zh-Hans": "axisMidpointLabelPlacement"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "options": [
+        {
+          "value": "below",
+          "label": "below"
+        },
+        {
+          "value": "above",
+          "label": "above"
+        }
+      ]
+    },
+    {
+      "type": "bool",
+      "default": false,
+      "id": "markerDistanceLabelEnabled",
+      "label": {
+        "en": "markerDistanceLabelEnabled",
+        "zh-Hans": "markerDistanceLabelEnabled"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "enum",
+      "default": "above",
+      "id": "markerDistanceLabelPlacement",
+      "label": {
+        "en": "markerDistanceLabelPlacement",
+        "zh-Hans": "markerDistanceLabelPlacement"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "options": [
+        {
+          "value": "below",
+          "label": "below"
+        },
+        {
+          "value": "above",
+          "label": "above"
+        }
+      ]
+    },
+    {
+      "type": "number",
+      "default": 12,
+      "id": "markerDistanceLabelOffset",
+      "label": {
+        "en": "markerDistanceLabelOffset",
+        "zh-Hans": "markerDistanceLabelOffset"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "min": 0,
+      "max": 120
+    },
+    {
+      "type": "number",
+      "default": 1,
+      "id": "currentMarkerSizeMultiplier",
+      "label": {
+        "en": "currentMarkerSizeMultiplier",
+        "zh-Hans": "currentMarkerSizeMultiplier"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "min": 0.25,
+      "max": 4
+    },
+    {
+      "type": "bool",
+      "default": true,
+      "id": "backgroundEnabled",
+      "label": {
+        "en": "backgroundEnabled",
+        "zh-Hans": "backgroundEnabled"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "color",
+      "default": "#000000",
+      "id": "backgroundColor",
+      "label": {
+        "en": "backgroundColor",
+        "zh-Hans": "backgroundColor"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "number",
+      "default": 0.7,
+      "id": "backgroundOpacity",
+      "label": {
+        "en": "backgroundOpacity",
+        "zh-Hans": "backgroundOpacity"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "min": 0,
+      "max": 1
+    },
+    {
+      "type": "bool",
+      "default": false,
+      "id": "borderEnabled",
+      "label": {
+        "en": "borderEnabled",
+        "zh-Hans": "borderEnabled"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "color",
+      "default": "#FFFFFF",
+      "id": "borderColor",
+      "label": {
+        "en": "borderColor",
+        "zh-Hans": "borderColor"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "number",
+      "default": 0.18,
+      "id": "borderOpacity",
+      "label": {
+        "en": "borderOpacity",
+        "zh-Hans": "borderOpacity"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "min": 0,
+      "max": 1
+    },
+    {
+      "type": "number",
+      "default": 1,
+      "id": "borderWidth",
+      "label": {
+        "en": "borderWidth",
+        "zh-Hans": "borderWidth"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "min": 0,
+      "max": 12
+    },
+    {
+      "type": "number",
+      "default": 9,
+      "id": "cornerRadius",
+      "label": {
+        "en": "cornerRadius",
+        "zh-Hans": "cornerRadius"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "min": 0,
+      "max": 80
+    },
+    {
+      "type": "number",
+      "default": 14,
+      "id": "paddingX",
+      "label": {
+        "en": "paddingX",
+        "zh-Hans": "paddingX"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "min": 0,
+      "max": 120
+    },
+    {
+      "type": "number",
+      "default": 10,
+      "id": "paddingY",
+      "label": {
+        "en": "paddingY",
+        "zh-Hans": "paddingY"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "min": 0,
+      "max": 120
+    },
+    {
+      "type": "number",
+      "default": 6,
+      "id": "trackHeight",
+      "label": {
+        "en": "trackHeight",
+        "zh-Hans": "trackHeight"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "min": 2,
+      "max": 40
+    },
+    {
+      "type": "number",
+      "default": 0.24,
+      "id": "trackOpacity",
+      "label": {
+        "en": "trackOpacity",
+        "zh-Hans": "trackOpacity"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "min": 0,
+      "max": 1
+    },
+    {
+      "type": "color",
+      "default": "#34C759",
+      "id": "fillColor",
+      "label": {
+        "en": "fillColor",
+        "zh-Hans": "fillColor"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "bool",
+      "default": false,
+      "id": "tickMarksEnabled",
+      "label": {
+        "en": "tickMarksEnabled",
+        "zh-Hans": "tickMarksEnabled"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "number",
+      "default": 8,
+      "id": "tickDensity",
+      "label": {
+        "en": "tickDensity",
+        "zh-Hans": "tickDensity"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "min": 2,
+      "max": 40
+    },
+    {
+      "type": "bool",
+      "default": false,
+      "id": "currentMarkerEnabled",
+      "label": {
+        "en": "currentMarkerEnabled",
+        "zh-Hans": "currentMarkerEnabled"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "enum",
+      "default": "dot",
+      "id": "currentMarkerStyle",
+      "label": {
+        "en": "currentMarkerStyle",
+        "zh-Hans": "currentMarkerStyle"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "options": [
+        {
+          "value": "dot",
+          "label": "dot"
+        },
+        {
+          "value": "pill",
+          "label": "pill"
+        },
+        {
+          "value": "triangle",
+          "label": "triangle"
+        }
+      ]
+    },
+    {
+      "type": "color",
+      "default": "#34C759",
+      "id": "currentMarkerColor",
+      "label": {
+        "en": "currentMarkerColor",
+        "zh-Hans": "currentMarkerColor"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "bool",
+      "default": false,
+      "id": "glowEnabled",
+      "label": {
+        "en": "glowEnabled",
+        "zh-Hans": "glowEnabled"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "bool",
+      "default": false,
+      "id": "fadeEnabled",
+      "label": {
+        "en": "fadeEnabled",
+        "zh-Hans": "fadeEnabled"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "enum",
+      "default": "right",
+      "id": "fadeEdge",
+      "label": {
+        "en": "fadeEdge",
+        "zh-Hans": "fadeEdge"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "options": [
+        {
+          "value": "left",
+          "label": "left"
+        },
+        {
+          "value": "right",
+          "label": "right"
+        },
+        {
+          "value": "both",
+          "label": "both"
+        },
+        {
+          "value": "vertical",
+          "label": "vertical"
+        },
+        {
+          "value": "all",
+          "label": "all"
+        }
+      ]
+    },
+    {
+      "type": "number",
+      "default": 0.22,
+      "id": "fadeAmount",
+      "label": {
+        "en": "fadeAmount",
+        "zh-Hans": "fadeAmount"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "min": 0,
+      "max": 1
+    },
+    {
+      "type": "bool",
+      "default": false,
+      "id": "mediaSlotEnabled",
+      "label": {
+        "en": "mediaSlotEnabled",
+        "zh-Hans": "mediaSlotEnabled"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "enum",
+      "default": "none",
+      "id": "mediaSlotMode",
+      "label": {
+        "en": "mediaSlotMode",
+        "zh-Hans": "mediaSlotMode"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "options": [
+        {
+          "value": "none",
+          "label": "none"
+        },
+        {
+          "value": "systemIcon",
+          "label": "systemIcon"
+        },
+        {
+          "value": "staticSVG",
+          "label": "staticSVG"
+        },
+        {
+          "value": "animatedSVG",
+          "label": "animatedSVG"
+        },
+        {
+          "value": "image",
+          "label": "image"
+        }
+      ]
+    },
+    {
+      "type": "string",
+      "default": "figure.run",
+      "id": "mediaSystemImage",
+      "label": {
+        "en": "mediaSystemImage",
+        "zh-Hans": "mediaSystemImage"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    },
+    {
+      "type": "number",
+      "default": 30,
+      "id": "mediaSlotSize",
+      "label": {
+        "en": "mediaSlotSize",
+        "zh-Hans": "mediaSlotSize"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "min": 0,
+      "max": 200
+    },
+    {
+      "type": "bool",
+      "default": false,
+      "id": "elevationProfileVisible",
+      "label": {
+        "en": "elevationProfileVisible",
+        "zh-Hans": "elevationProfileVisible"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "type": "distanceTimeline",
+      "frame": [
+        "=16",
+        "=24",
+        "=320",
+        "=68"
+      ],
+      "preset": "=preset",
+      "valueFontSize": "=valueFontSize",
+      "valueUnitSystem": "=valueUnitSystem",
+      "showValue": "=showValue ? 1 : 0",
+      "showTotalDistance": "=showTotalDistance ? 1 : 0",
+      "showLabel": "=showLabel ? 1 : 0",
+      "label": "=label",
+      "labelFontFamily": "=labelFontFamily",
+      "labelFontSize": "=labelFontSize",
+      "labelFontWeight": "=labelFontWeight",
+      "labelColor": "=labelColor",
+      "labelValueSpacing": "=labelValueSpacing",
+      "showAxisLabels": "=showAxisLabels ? 1 : 0",
+      "axisLabelMode": "=axisLabelMode",
+      "axisLabelOffset": "=axisLabelOffset",
+      "axisLabelFontFamily": "=axisLabelFontFamily",
+      "axisLabelFontSize": "=axisLabelFontSize",
+      "axisLabelFontWeight": "=axisLabelFontWeight",
+      "axisLabelColor": "=axisLabelColor",
+      "showDistancePoints": "=showDistancePoints ? 1 : 0",
+      "distancePointCount": "=distancePointCount",
+      "distancePointOffset": "=distancePointOffset",
+      "midpointAxisLabelOffset": "=midpointAxisLabelOffset",
+      "axisEndpointLabelPlacement": "=axisEndpointLabelPlacement",
+      "axisMidpointLabelPlacement": "=axisMidpointLabelPlacement",
+      "markerDistanceLabelEnabled": "=markerDistanceLabelEnabled ? 1 : 0",
+      "markerDistanceLabelPlacement": "=markerDistanceLabelPlacement",
+      "markerDistanceLabelOffset": "=markerDistanceLabelOffset",
+      "currentMarkerSizeMultiplier": "=currentMarkerSizeMultiplier",
+      "backgroundEnabled": "=backgroundEnabled ? 1 : 0",
+      "backgroundColor": "=backgroundColor",
+      "backgroundOpacity": "=backgroundOpacity",
+      "borderEnabled": "=borderEnabled ? 1 : 0",
+      "borderColor": "=borderColor",
+      "borderOpacity": "=borderOpacity",
+      "borderWidth": "=borderWidth",
+      "cornerRadius": "=cornerRadius",
+      "paddingX": "=paddingX",
+      "paddingY": "=paddingY",
+      "trackHeight": "=trackHeight",
+      "trackOpacity": "=trackOpacity",
+      "fillColor": "=fillColor",
+      "tickMarksEnabled": "=tickMarksEnabled ? 1 : 0",
+      "tickDensity": "=tickDensity",
+      "currentMarkerEnabled": "=currentMarkerEnabled ? 1 : 0",
+      "currentMarkerStyle": "=currentMarkerStyle",
+      "currentMarkerColor": "=currentMarkerColor",
+      "glowEnabled": "=glowEnabled ? 1 : 0",
+      "fadeEnabled": "=fadeEnabled ? 1 : 0",
+      "fadeEdge": "=fadeEdge",
+      "fadeAmount": "=fadeAmount",
+      "mediaSlotEnabled": "=mediaSlotEnabled ? 1 : 0",
+      "mediaSlotMode": "=mediaSlotMode",
+      "mediaSystemImage": "=mediaSystemImage",
+      "mediaSlotSize": "=mediaSlotSize",
+      "elevationProfileVisible": "=elevationProfileVisible ? 1 : 0"
+    }
+  ],
+  "bindings": {}
+}

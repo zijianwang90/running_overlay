@@ -148,6 +148,8 @@
 		6CDFD229F4B0BBAF8DFCFCFD /* decor-icon.json in Resources */ = {isa = PBXBuildFile; fileRef = 811EC2AACF11FE061EFAA95B /* decor-icon.json */; };
 		BE4596E15B2DF82744A340AE /* decor-shape.json in Resources */ = {isa = PBXBuildFile; fileRef = 58C18E7BF084620FC6ECCF3B /* decor-shape.json */; };
 		6292EBB621794BED0DDCE65C /* decor-text.json in Resources */ = {isa = PBXBuildFile; fileRef = D5377ACCCDACFF48F0101D18 /* decor-text.json */; };
+		315B884E62956EA2B00870ED /* distance-timeline.json in Resources */ = {isa = PBXBuildFile; fileRef = 3E51F8BEED0EDEC7EC5BA889 /* distance-timeline.json */; };
+		3078A74B01D621AF9352D6C3 /* elevation-chart.json in Resources */ = {isa = PBXBuildFile; fileRef = 3A451551EAC642F3D239032E /* elevation-chart.json */; };
 		0E64E98FAB5AD66013C57662 /* hr-pill.json in Resources */ = {isa = PBXBuildFile; fileRef = 62F149B0B66BD346F36D84C3 /* hr-pill.json */; };
 		19957364E15DA611DDD8E5FD /* interval-countdown.json in Resources */ = {isa = PBXBuildFile; fileRef = 53B10D55A04678594A49A237 /* interval-countdown.json */; };
 		80EEC69D8DD6BAA60C2D1154 /* interval-hud-bar.json in Resources */ = {isa = PBXBuildFile; fileRef = AB769BD8C2AB434D38AF1400 /* interval-hud-bar.json */; };
@@ -155,6 +157,9 @@
 		A4C7D79618BE4D8494570EBC /* interval-work-summary.json in Resources */ = {isa = PBXBuildFile; fileRef = 584ADBA4447BC7EE9F40CF79 /* interval-work-summary.json */; };
 		E52BC0F286EE8A388624E9A5 /* lap-splits.json in Resources */ = {isa = PBXBuildFile; fileRef = 39917CE97950B55E51DEE996 /* lap-splits.json */; };
 		EA6348FA1EA23CA69D0BAD9A /* numeric.json in Resources */ = {isa = PBXBuildFile; fileRef = 5D65B2FCC824C40892232935 /* numeric.json */; };
+		12CF34AE55782CB37F521B47 /* route-map.json in Resources */ = {isa = PBXBuildFile; fileRef = FFD7BD9073117C39C88C0776 /* route-map.json */; };
+		EC4B700FC5B4B09186F925A8 /* running-gauge.json in Resources */ = {isa = PBXBuildFile; fileRef = 3FAC9C0DD60B52A839EB8346 /* running-gauge.json */; };
+		4A888B64B50FEC370D17AF66 /* weather-widget.json in Resources */ = {isa = PBXBuildFile; fileRef = 7A2473586448F85BF704AC0A /* weather-widget.json */; };
 		10EF61200A8DA1DE8D567CEF /* zone-edge-bar.json in Resources */ = {isa = PBXBuildFile; fileRef = 83A77ADBFA39E8852C7AE400 /* zone-edge-bar.json */; };
 		31804494AB2434FA40AAE101 /* weather-clear-night.png in Resources */ = {isa = PBXBuildFile; fileRef = BC21396CCB191FA3662F2D36 /* weather-clear-night.png */; };
 		0D5D4AFFA48636358684CF92 /* weather-cloudy.png in Resources */ = {isa = PBXBuildFile; fileRef = 62CA75815FA08D6F129063D6 /* weather-cloudy.png */; };
@@ -328,6 +333,8 @@
 		811EC2AACF11FE061EFAA95B /* decor-icon.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/decor-icon.json"; sourceTree = SOURCE_ROOT; };
 		58C18E7BF084620FC6ECCF3B /* decor-shape.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/decor-shape.json"; sourceTree = SOURCE_ROOT; };
 		D5377ACCCDACFF48F0101D18 /* decor-text.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/decor-text.json"; sourceTree = SOURCE_ROOT; };
+		3E51F8BEED0EDEC7EC5BA889 /* distance-timeline.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/distance-timeline.json"; sourceTree = SOURCE_ROOT; };
+		3A451551EAC642F3D239032E /* elevation-chart.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/elevation-chart.json"; sourceTree = SOURCE_ROOT; };
 		62F149B0B66BD346F36D84C3 /* hr-pill.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/hr-pill.json"; sourceTree = SOURCE_ROOT; };
 		53B10D55A04678594A49A237 /* interval-countdown.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/interval-countdown.json"; sourceTree = SOURCE_ROOT; };
 		AB769BD8C2AB434D38AF1400 /* interval-hud-bar.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/interval-hud-bar.json"; sourceTree = SOURCE_ROOT; };
@@ -335,6 +342,9 @@
 		584ADBA4447BC7EE9F40CF79 /* interval-work-summary.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/interval-work-summary.json"; sourceTree = SOURCE_ROOT; };
 		39917CE97950B55E51DEE996 /* lap-splits.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/lap-splits.json"; sourceTree = SOURCE_ROOT; };
 		5D65B2FCC824C40892232935 /* numeric.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/numeric.json"; sourceTree = SOURCE_ROOT; };
+		FFD7BD9073117C39C88C0776 /* route-map.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/route-map.json"; sourceTree = SOURCE_ROOT; };
+		3FAC9C0DD60B52A839EB8346 /* running-gauge.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/running-gauge.json"; sourceTree = SOURCE_ROOT; };
+		7A2473586448F85BF704AC0A /* weather-widget.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/weather-widget.json"; sourceTree = SOURCE_ROOT; };
 		83A77ADBFA39E8852C7AE400 /* zone-edge-bar.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/zone-edge-bar.json"; sourceTree = SOURCE_ROOT; };
 		BC21396CCB191FA3662F2D36 /* weather-clear-night.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Sources/RunningOverlay/Resources/Icons/weather-clear-night.png"; sourceTree = SOURCE_ROOT; };
 		62CA75815FA08D6F129063D6 /* weather-cloudy.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Sources/RunningOverlay/Resources/Icons/weather-cloudy.png"; sourceTree = SOURCE_ROOT; };
@@ -512,6 +522,8 @@
 			811EC2AACF11FE061EFAA95B /* decor-icon.json */,
 			58C18E7BF084620FC6ECCF3B /* decor-shape.json */,
 			D5377ACCCDACFF48F0101D18 /* decor-text.json */,
+			3E51F8BEED0EDEC7EC5BA889 /* distance-timeline.json */,
+			3A451551EAC642F3D239032E /* elevation-chart.json */,
 			62F149B0B66BD346F36D84C3 /* hr-pill.json */,
 			53B10D55A04678594A49A237 /* interval-countdown.json */,
 			AB769BD8C2AB434D38AF1400 /* interval-hud-bar.json */,
@@ -519,6 +531,9 @@
 			584ADBA4447BC7EE9F40CF79 /* interval-work-summary.json */,
 			39917CE97950B55E51DEE996 /* lap-splits.json */,
 			5D65B2FCC824C40892232935 /* numeric.json */,
+			FFD7BD9073117C39C88C0776 /* route-map.json */,
+			3FAC9C0DD60B52A839EB8346 /* running-gauge.json */,
+			7A2473586448F85BF704AC0A /* weather-widget.json */,
 			83A77ADBFA39E8852C7AE400 /* zone-edge-bar.json */,
 			BC21396CCB191FA3662F2D36 /* weather-clear-night.png */,
 			62CA75815FA08D6F129063D6 /* weather-cloudy.png */,
@@ -558,6 +573,8 @@
 			6CDFD229F4B0BBAF8DFCFCFD /* decor-icon.json in Resources */,
 			BE4596E15B2DF82744A340AE /* decor-shape.json in Resources */,
 			6292EBB621794BED0DDCE65C /* decor-text.json in Resources */,
+			315B884E62956EA2B00870ED /* distance-timeline.json in Resources */,
+			3078A74B01D621AF9352D6C3 /* elevation-chart.json in Resources */,
 			0E64E98FAB5AD66013C57662 /* hr-pill.json in Resources */,
 			19957364E15DA611DDD8E5FD /* interval-countdown.json in Resources */,
 			80EEC69D8DD6BAA60C2D1154 /* interval-hud-bar.json in Resources */,
@@ -565,6 +582,9 @@
 			A4C7D79618BE4D8494570EBC /* interval-work-summary.json in Resources */,
 			E52BC0F286EE8A388624E9A5 /* lap-splits.json in Resources */,
 			EA6348FA1EA23CA69D0BAD9A /* numeric.json in Resources */,
+			12CF34AE55782CB37F521B47 /* route-map.json in Resources */,
+			EC4B700FC5B4B09186F925A8 /* running-gauge.json in Resources */,
+			4A888B64B50FEC370D17AF66 /* weather-widget.json in Resources */,
 			10EF61200A8DA1DE8D567CEF /* zone-edge-bar.json in Resources */,
 			31804494AB2434FA40AAE101 /* weather-clear-night.png in Resources */,
 			0D5D4AFFA48636358684CF92 /* weather-cloudy.png in Resources */,

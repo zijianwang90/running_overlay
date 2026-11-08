@@ -467,7 +467,7 @@ CoreText advances are not linear in point size.
 ### 7.2 Capability nodes
 
 Capability nodes are implemented natively because their layout or data
-reduction is not expressible as base nodes. v0.1 defines five:
+reduction is not expressible as base nodes. v0.1 defines six:
 
 | Type | Fields |
 |---|---|
@@ -475,10 +475,42 @@ reduction is not expressible as base nodes. v0.1 defines five:
 | `progressBar` | `value` (0..1 expression), `trackColor`, `fillColor`, `radius` (default 0) |
 | `arc` | `value` (0..1), `startDegrees`, `sweepDegrees`, `radius`, `width`, `trackColor?`, `fillColor`, `cap` |
 | `segmentedBar` | `segments` (list expression of records with `index` and `color`), `orientation?` (`horizontal`, default, or `vertical`), `activeIndex?`, `activeWidthShare?` (0..0.5, default 0), `activeThicknessScale?` (default 1), `gap?`, `radius?`, `inactiveOpacity?` (default 1), `glow?` (`{ "opacity", "sigma" }`), `border?` (`{ "color", "opacity", "width" }`), `markers?` (max 8; `role`, optional `layout` `inline`/`outside`, `position` `above`/`below`/`leading`/`trailing`, `scale`) |
+| `distanceTimeline` | `preset` (`minimal`, `dense`, `sport`, `splits`, `glass`, `neon`, `lowerThird`, `route`), `valueFontSize`, `valueUnitSystem`, `showValue`, `showTotalDistance`, label fields (`showLabel`, `label`, font family/size/weight/color, spacing), axis fields (`showAxisLabels`, `axisLabelMode`, `axisLabelOffset`, font family/size/weight/color, `showDistancePoints`, `distancePointCount`, `distancePointOffset`, `midpointAxisLabelOffset`, endpoint/midpoint placement), marker fields (`markerDistanceLabel*`, `currentMarkerSizeMultiplier`, `currentMarkerEnabled`, `currentMarkerStyle`, `currentMarkerColor`), container (`backgroundEnabled`, `backgroundColor`, `backgroundOpacity`, `borderEnabled`, `borderColor`, `borderOpacity`, `borderWidth`, `cornerRadius`, `paddingX`, `paddingY`), track (`trackHeight`, `trackOpacity`, `fillColor`, `tickMarksEnabled`, `tickDensity`), effects (`glowEnabled`, `fadeEnabled`, `fadeEdge`, `fadeAmount`), media slot fields, `elevationProfileVisible` |
+| `elevationChart` | `preset` (`gradientArea`, `dualArea`, `techGlow`, `minimalWhite`, `bigNumbers`), `chartStyle` (`area`, `lineOnly`), smoothing, `progressMode`, padding, line/fill colors and opacities, dual-area colors, marker and playhead fields, grid/axis toggles, big-number fields, container background/border/corner/effect fields, text `fontFamily`/`foregroundColor`/`valueFontSize` |
+| `routeMap` | `shape` (`square`, `circle`), `backgroundStyle` (`none`, `dark`, `light`, `terrain`, `satellite`), `cornerRadius`, `backgroundOpacity`, start/end/runner marker style and color, `glowEnabled`, `mapOpacity`, `borderEnabled`, `borderOpacity`, `foregroundColor`, `fontFamily` |
+| `weatherWidget` | `preset` (`simpleCard`, `compactStrip`, `forecastTile`, `minimalText`, `dashboardBar`), manual data (`condition`, `temperatureC`, `humidity`, `highC`, `lowC`, `windKph`, `feelsLikeC`, `temperatureUnit`, `useActivityTemperature`, `locationText`), visibility toggles (`showLocation`, `showWeekday`, `showHumidity`, `showHighLow`, `showWind`, `showFeelsLike`, `showIcon`, `showConditionLabel`), labels (`conditionLabelOverride`, `humiditySuffix`, `humidityMetricLabel`, `windMetricLabel`, `feelsLikeMetricLabel`), card (`cardBackgroundColor`, `cardBackgroundOpacity`, `cardCornerRadius`, `dividerEnabled`, `dividerColor`, `dividerThickness`, `dividerOpacity`, `palette`, `iconSize`), slots (`slotBackgroundColor`, `slotBackgroundOpacity`, `slotSpacing`), and five text roles with `fontFamily` plus per-role `location`/`condition`/`temperature`/`slotTitle`/`slotLabel` size, weight and color |
+| `runningGauge` | `layoutPreset` (`topBottom`, `topMiddleBottom`, `threeZones`, `topTwoMiddleBottom`, `topThreeMiddleBottom`, `fourZones`, `fiveZones`), `progress` (0..1), dial (`dialBackgroundColor`, `dialBackgroundOpacity`, `glassEffectEnabled`), outer ring (`outerRingEnabled`, `outerRingColor`, `outerRingOpacity`, `outerRingWidthScale`), ticks (`tickMarksEnabled`, `tickColor`, `tickOpacity`, `majorTickOpacity`, `tickCount`, `majorTickEvery`), progress ring (`progressRingEnabled`, `progressColor`, `progressTrackColor`, `progressTrackOpacity`, `progressRingWidthScale`, `progressRoundedCaps`), dividers (`dividerEnabled`, `dividerColor`, `dividerOpacity`, `dividerWidth`), typography (`font`, `monospacedDigits`, `primaryFontWeight`, `secondaryFontWeight`, `primaryTextColor`, `secondaryTextColor`, `accentColor`), `regions?` (max 12; `region?`, `metric`, `customLabel?`, `showLabel?`, `showUnit?`, `valueFontScale?`, `labelFontScale?`, `unitFontScale?`, `valueWeight?`, `labelWeight?`, `valueColor?`, `labelColor?`) |
 | `timelineStrip` | `segments` (list expression of lap records), `currentIndex?`, `elapsed?`, `mode` (`emphasized`, `equal`, `weighted`), `emphasisFraction?` (0..0.65), `window?`, `showsWarmup?`/`showsRest?`/`showsCooldown?`, `segmentAreaHeight?`, `segmentHeight?`, `currentHeightScale?`, `minSegmentWidth?`, `gap?`, `radius?`, `currentBorderWidth?`, `completedOpacity?`, `futureOpacity?`, `colors` (`warmup`/`active`/`rest`/`cooldown`/`unknown`), `labels?` (`font`, current work/rest metrics, `neighbor`), `progress?` (`value`, `color`, `opacity`), `marker?` (`enabled`, `position`, `color`, `label`, `showsLabel`, `font`), `overflow?` (`enabled`, `text`, `color`, `inset`), `repText?`, `distanceProgress?` |
 
 | `textRows` | `frame` or `maxWidth`; non-empty `rows`; optional `spacing` between rows. Without `frame` the node is auto-sized and `maxWidth` bounds it; the node's measured width equals `maxWidth`. Each row has `runs` (non-empty), optional `spacing`, `alignment` (`center`, default, or `firstTextBaseline`), and `if`. Each run has `text`, `font`, `color`, optional `minimumScaleFactor` (0.1..1, default 1), `verticalPadding` (design units, default 0), `monospacedDigits` (default false), `opacity` (0..1, default 1) and `if`. |
 | `richText` | Required `frame`, `text`, `font`, `color`; optional `align` (`left`, `center`, `right`, default `center`; literal or expression), `lineHeight` (multiplier, default 1.2, minimum 0.5), `tracking` (extra glyph advance in design units, default 0), `stroke` (color, default white), `strokeWidth` (design units, default 0), `autoFit` (boolean or expression, default false), `gradient` (below). |
+
+`distanceTimeline`, `elevationChart`, `routeMap` and `weatherWidget` are
+host-drawn chart capability nodes: the host supplies the activity, the
+formatted distance and axis text, the elevation samples, the projected route
+and the weather snapshot. The node carries only
+appearance and layout fields, and reuses the same layout engine and Skia
+renderer as the native element, so preview and export stay identical. Give each
+node an explicit `[width, height]` size that leaves room for content drawn
+outside the track or card (axis labels, attached stats bars, marker labels).
+
+`weatherWidget` renders the native weather card through the host module and
+never fetches weather. The host passes a snapshot through the
+`weather.current` record (`temperatureC`, `condition`, `icon`, `windSpeedMPS`,
+`humidity`); when a host snapshot for the playhead also carries high/low,
+feels-like and a resolved location, the host may supply the full payload, and
+the node falls back to its own manual values otherwise. The component clip ends
+at the card bounds, so the module's soft card shadow is trimmed to an
+alpha-only fringe on the widest preset; leave a margin in the frame when that
+shadow must be visible.
+
+`runningGauge` draws the native activity dial. The host owns metric
+formatting and chart drawing; this node supplies the appearance fields and the
+region-to-metric mapping. `layoutPreset` selects where regions sit on the dial,
+and each `regions` entry maps one region to a host metric with optional label,
+unit, typography and color overrides. `progress` is the host-computed ring
+fraction (distance target, elapsed target or zone-derived). The node is
+fixed-size, so give it an explicit `[width, height]` size in the definition.
 
 `timelineStrip` draws the interval timeline rail: one segment per lap in the
 supplied record list, centered on `currentIndex` with `window` neighbors per

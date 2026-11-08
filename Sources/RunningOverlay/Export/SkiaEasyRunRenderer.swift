@@ -134,7 +134,12 @@ final class SkiaEasyRunRenderer {
         if !assetsPrepared {
             preloadAssets(layout: layout, activity: activity)
         }
-        let renderContext = OverlayRenderContext(canvasSize: size, activity: activity, elapsedTime: elapsedTime)
+        let renderContext = OverlayRenderContext(
+            canvasSize: size,
+            activity: activity,
+            elapsedTime: elapsedTime,
+            renderAssets: renderAssets
+        )
         for element in layout.elements where element.isVisible && Self.supports(element) {
             if element.type == .component {
                 OverlayComponentSkiaRenderer.draw(

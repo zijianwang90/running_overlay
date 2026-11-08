@@ -433,6 +433,25 @@ extension SkiaRenderAssets {
         canvasSize: CGSize,
         into assets: SkiaRenderAssets
     ) {
+        let current = registerWeatherIcons(
+            for: elements,
+            activity: activity,
+            canvasSize: canvasSize,
+            into: assets
+        )
+        assets.removeImages(notIn: current, family: .weatherIcon)
+    }
+
+    /// Registers bundled weather icons for elements that are not part of the
+    /// host preload pass, such as a component weather node's synthesized
+    /// element. Does not evict anything, so host-preloaded icons stay.
+    @discardableResult
+    static func registerWeatherIcons(
+        for elements: [OverlayElement],
+        activity: ActivityTimeline,
+        canvasSize: CGSize,
+        into assets: SkiaRenderAssets
+    ) -> Set<ImageSource> {
         let context = OverlayRenderContext(
             canvasSize: canvasSize,
             activity: activity,
@@ -458,7 +477,7 @@ extension SkiaRenderAssets {
                 pixelSize: Int((designSize * scale).rounded(.up))
             ))
         }
-        assets.removeImages(notIn: current, family: .weatherIcon)
+        return current
     }
 }
 #endif

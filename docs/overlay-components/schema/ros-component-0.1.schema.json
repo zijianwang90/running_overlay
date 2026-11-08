@@ -383,6 +383,11 @@
         { "$ref": "#/$defs/arcNode" },
         { "$ref": "#/$defs/segmentedBarNode" },
         { "$ref": "#/$defs/timelineStripNode" },
+        { "$ref": "#/$defs/runningGaugeNode" },
+        { "$ref": "#/$defs/distanceTimelineNode" },
+        { "$ref": "#/$defs/elevationChartNode" },
+        { "$ref": "#/$defs/routeMapNode" },
+        { "$ref": "#/$defs/weatherWidgetNode" },
         { "$ref": "#/$defs/repeatNode" }
       ]
     },
@@ -1021,6 +1026,375 @@
             },
             "repText": { "$ref": "#/$defs/stringOrExpression" },
             "distanceProgress": { "$ref": "#/$defs/numberOrExpression" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "runningGaugeNode": {
+      "description": "Host-drawn activity dial. Data formatting and drawing stay host-owned; this node supplies appearance and region metrics.",
+      "allOf": [
+        { "$ref": "#/$defs/nodeCommon" },
+        {
+          "type": "object",
+          "required": ["type", "frame", "font"],
+          "properties": {
+            "type": { "const": "runningGauge" },
+            "layoutPreset": {
+              "oneOf": [
+                { "enum": ["topBottom", "topMiddleBottom", "threeZones", "topTwoMiddleBottom",
+                           "topThreeMiddleBottom", "fourZones", "fiveZones"] },
+                { "$ref": "#/$defs/expression" }
+              ]
+            },
+            "progress": { "$ref": "#/$defs/numberOrExpression" },
+            "dialBackgroundColor": { "$ref": "#/$defs/colorValue" },
+            "dialBackgroundOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "glassEffectEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "outerRingEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "outerRingColor": { "$ref": "#/$defs/colorValue" },
+            "outerRingOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "outerRingWidthScale": { "$ref": "#/$defs/numberOrExpression" },
+            "tickMarksEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "tickColor": { "$ref": "#/$defs/colorValue" },
+            "tickOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "majorTickOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "tickCount": { "$ref": "#/$defs/numberOrExpression" },
+            "majorTickEvery": { "$ref": "#/$defs/numberOrExpression" },
+            "progressRingEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "progressColor": { "$ref": "#/$defs/colorValue" },
+            "progressTrackColor": { "$ref": "#/$defs/colorValue" },
+            "progressTrackOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "progressRingWidthScale": { "$ref": "#/$defs/numberOrExpression" },
+            "progressRoundedCaps": { "$ref": "#/$defs/numberOrExpression" },
+            "dividerEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "dividerColor": { "$ref": "#/$defs/colorValue" },
+            "dividerOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "dividerWidth": { "$ref": "#/$defs/numberOrExpression" },
+            "font": { "$ref": "#/$defs/font" },
+            "monospacedDigits": { "$ref": "#/$defs/numberOrExpression" },
+            "primaryFontWeight": {
+              "oneOf": [
+                { "enum": ["regular", "medium", "semibold", "bold"] },
+                { "$ref": "#/$defs/expression" }
+              ]
+            },
+            "secondaryFontWeight": {
+              "oneOf": [
+                { "enum": ["regular", "medium", "semibold", "bold"] },
+                { "$ref": "#/$defs/expression" }
+              ]
+            },
+            "primaryTextColor": { "$ref": "#/$defs/colorValue" },
+            "secondaryTextColor": { "$ref": "#/$defs/colorValue" },
+            "accentColor": { "$ref": "#/$defs/colorValue" },
+            "regions": {
+              "type": "array",
+              "maxItems": 12,
+              "items":         {
+          "type": "object",
+          "required": ["metric"],
+          "additionalProperties": false,
+          "properties": {
+            "region": {
+              "oneOf": [
+                { "enum": ["top", "middle", "bottom", "middleLeft", "middleCenter", "middleRight",
+                           "topLeft", "topRight", "bottomLeft", "bottomCenter", "bottomRight"] },
+                { "$ref": "#/$defs/expression" }
+              ]
+            },
+            "metric": { "$ref": "#/$defs/stringOrExpression" },
+            "customLabel": { "$ref": "#/$defs/stringOrExpression" },
+            "showLabel": { "$ref": "#/$defs/numberOrExpression" },
+            "showUnit": { "$ref": "#/$defs/numberOrExpression" },
+            "valueFontScale": { "$ref": "#/$defs/numberOrExpression" },
+            "labelFontScale": { "$ref": "#/$defs/numberOrExpression" },
+            "unitFontScale": { "$ref": "#/$defs/numberOrExpression" },
+            "valueWeight": {
+              "oneOf": [
+                { "enum": ["regular", "medium", "semibold", "bold"] },
+                { "$ref": "#/$defs/expression" }
+              ]
+            },
+            "labelWeight": {
+              "oneOf": [
+                { "enum": ["regular", "medium", "semibold", "bold"] },
+                { "$ref": "#/$defs/expression" }
+              ]
+            },
+            "valueColor": { "$ref": "#/$defs/colorValue" },
+            "labelColor": { "$ref": "#/$defs/colorValue" }
+          }
+        }
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "distanceTimelineNode": {
+      "description": "Host-drawn distance progress track. Distance text, axis labels and stats bar stay host-owned.",
+      "allOf": [
+        { "$ref": "#/$defs/nodeCommon" },
+        {
+          "type": "object",
+          "required": ["type", "frame"],
+          "properties": {
+            "type": { "const": "distanceTimeline" },
+            "preset": {
+              "oneOf": [
+                { "enum": ["minimal", "dense", "sport", "splits", "glass", "neon", "lowerThird", "route"] },
+                { "$ref": "#/$defs/expression" }
+              ]
+            },
+            "valueFontSize": { "$ref": "#/$defs/numberOrExpression" },
+            "valueUnitSystem": {
+              "oneOf": [{ "enum": ["metric", "imperial"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "showValue": { "$ref": "#/$defs/numberOrExpression" },
+            "showTotalDistance": { "$ref": "#/$defs/numberOrExpression" },
+            "showLabel": { "$ref": "#/$defs/numberOrExpression" },
+            "label": { "$ref": "#/$defs/stringOrExpression" },
+            "labelFontFamily": { "$ref": "#/$defs/stringOrExpression" },
+            "labelFontSize": { "$ref": "#/$defs/numberOrExpression" },
+            "labelFontWeight": {
+              "oneOf": [{ "enum": ["regular", "medium", "semibold", "bold"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "labelColor": { "$ref": "#/$defs/colorValue" },
+            "labelValueSpacing": { "$ref": "#/$defs/numberOrExpression" },
+            "showAxisLabels": { "$ref": "#/$defs/numberOrExpression" },
+            "axisLabelMode": {
+              "oneOf": [{ "enum": ["startFinish", "distance"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "axisLabelOffset": { "$ref": "#/$defs/numberOrExpression" },
+            "axisLabelFontFamily": { "$ref": "#/$defs/stringOrExpression" },
+            "axisLabelFontSize": { "$ref": "#/$defs/numberOrExpression" },
+            "axisLabelFontWeight": {
+              "oneOf": [{ "enum": ["regular", "medium", "semibold", "bold"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "axisLabelColor": { "$ref": "#/$defs/colorValue" },
+            "showDistancePoints": { "$ref": "#/$defs/numberOrExpression" },
+            "distancePointCount": { "$ref": "#/$defs/numberOrExpression" },
+            "distancePointOffset": { "$ref": "#/$defs/numberOrExpression" },
+            "midpointAxisLabelOffset": { "$ref": "#/$defs/numberOrExpression" },
+            "axisEndpointLabelPlacement": {
+              "oneOf": [{ "enum": ["below", "above"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "axisMidpointLabelPlacement": {
+              "oneOf": [{ "enum": ["below", "above"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "markerDistanceLabelEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "markerDistanceLabelPlacement": {
+              "oneOf": [{ "enum": ["below", "above"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "markerDistanceLabelOffset": { "$ref": "#/$defs/numberOrExpression" },
+            "currentMarkerSizeMultiplier": { "$ref": "#/$defs/numberOrExpression" },
+            "backgroundEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "backgroundColor": { "$ref": "#/$defs/colorValue" },
+            "backgroundOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "borderEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "borderColor": { "$ref": "#/$defs/colorValue" },
+            "borderOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "borderWidth": { "$ref": "#/$defs/numberOrExpression" },
+            "cornerRadius": { "$ref": "#/$defs/numberOrExpression" },
+            "paddingX": { "$ref": "#/$defs/numberOrExpression" },
+            "paddingY": { "$ref": "#/$defs/numberOrExpression" },
+            "trackHeight": { "$ref": "#/$defs/numberOrExpression" },
+            "trackOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "fillColor": { "$ref": "#/$defs/colorValue" },
+            "tickMarksEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "tickDensity": { "$ref": "#/$defs/numberOrExpression" },
+            "currentMarkerEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "currentMarkerStyle": {
+              "oneOf": [{ "enum": ["dot", "pill", "triangle"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "currentMarkerColor": { "$ref": "#/$defs/colorValue" },
+            "glowEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "fadeEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "fadeEdge": {
+              "oneOf": [{ "enum": ["left", "right", "both", "vertical", "all"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "fadeAmount": { "$ref": "#/$defs/numberOrExpression" },
+            "mediaSlotEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "mediaSlotMode": {
+              "oneOf": [{ "enum": ["none", "systemIcon", "staticSVG", "animatedSVG", "image"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "mediaSystemImage": { "$ref": "#/$defs/stringOrExpression" },
+            "mediaSlotSize": { "$ref": "#/$defs/numberOrExpression" },
+            "elevationProfileVisible": { "$ref": "#/$defs/numberOrExpression" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "elevationChartNode": {
+      "description": "Host-drawn elevation profile. Sample series, smoothing and labels stay host-owned.",
+      "allOf": [
+        { "$ref": "#/$defs/nodeCommon" },
+        {
+          "type": "object",
+          "required": ["type", "frame"],
+          "properties": {
+            "type": { "const": "elevationChart" },
+            "preset": {
+              "oneOf": [{ "enum": ["gradientArea", "dualArea", "techGlow", "minimalWhite", "bigNumbers"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "chartStyle": {
+              "oneOf": [{ "enum": ["area", "lineOnly"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "smoothingEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "smoothingAmount": { "$ref": "#/$defs/numberOrExpression" },
+            "progressMode": {
+              "oneOf": [{ "enum": ["fullProfile", "progressToCurrent"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "chartPaddingX": { "$ref": "#/$defs/numberOrExpression" },
+            "chartPaddingY": { "$ref": "#/$defs/numberOrExpression" },
+            "lineColor": { "$ref": "#/$defs/colorValue" },
+            "lineWidth": { "$ref": "#/$defs/numberOrExpression" },
+            "lineOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "fillEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "fillStartColor": { "$ref": "#/$defs/colorValue" },
+            "fillEndColor": { "$ref": "#/$defs/colorValue" },
+            "fillOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "dualAreaEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "upperFillColor": { "$ref": "#/$defs/colorValue" },
+            "lowerFillColor": { "$ref": "#/$defs/colorValue" },
+            "currentMarkerEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "markerColor": { "$ref": "#/$defs/colorValue" },
+            "markerSizeMultiplier": { "$ref": "#/$defs/numberOrExpression" },
+            "markerPlayheadLineEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "markerLabelEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "gridEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "axisLineEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "axisLabelsEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "bigNumbersEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "bigNumberMetric": {
+              "oneOf": [{ "enum": ["currentElevation", "elevationGain", "maxElevation", "minElevation"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "bigNumberFontSize": { "$ref": "#/$defs/numberOrExpression" },
+            "bigNumberFontFamily": { "$ref": "#/$defs/stringOrExpression" },
+            "bigNumberFontWeight": {
+              "oneOf": [{ "enum": ["regular", "medium", "semibold", "bold"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "backgroundEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "backgroundColor": { "$ref": "#/$defs/colorValue" },
+            "backgroundOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "cornerRadius": { "$ref": "#/$defs/numberOrExpression" },
+            "borderEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "borderOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "shadowEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "shadowOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "shadowRadius": { "$ref": "#/$defs/numberOrExpression" },
+            "glowEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "glowOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "fontFamily": { "$ref": "#/$defs/stringOrExpression" },
+            "foregroundColor": { "$ref": "#/$defs/colorValue" },
+            "valueFontSize": { "$ref": "#/$defs/numberOrExpression" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "routeMapNode": {
+      "description": "Host-drawn projected GPS route. Projection, map snapshots and stats bar stay host-owned.",
+      "allOf": [
+        { "$ref": "#/$defs/nodeCommon" },
+        {
+          "type": "object",
+          "required": ["type", "frame"],
+          "properties": {
+            "type": { "const": "routeMap" },
+            "shape": { "oneOf": [{ "enum": ["square", "circle"] }, { "$ref": "#/$defs/expression" }] },
+            "backgroundStyle": {
+              "oneOf": [{ "enum": ["none", "dark", "light", "terrain", "satellite"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "cornerRadius": { "$ref": "#/$defs/numberOrExpression" },
+            "backgroundOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "startMarkerStyle": {
+              "oneOf": [{ "enum": ["hidden", "dot", "pin", "flag"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "endMarkerStyle": {
+              "oneOf": [{ "enum": ["hidden", "dot", "pin", "flag"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "runnerMarkerStyle": {
+              "oneOf": [{ "enum": ["hidden", "dot", "pin", "flag"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "startMarkerColor": { "$ref": "#/$defs/colorValue" },
+            "endMarkerColor": { "$ref": "#/$defs/colorValue" },
+            "runnerMarkerColor": { "$ref": "#/$defs/colorValue" },
+            "glowEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "mapOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "borderEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "borderOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "foregroundColor": { "$ref": "#/$defs/colorValue" },
+            "fontFamily": { "$ref": "#/$defs/stringOrExpression" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "weatherWidgetNode": {
+      "description": "Host-drawn weather card. The host supplies the weather snapshot and icon assets; the component never fetches weather.",
+      "allOf": [
+        { "$ref": "#/$defs/nodeCommon" },
+        {
+          "type": "object",
+          "required": ["type", "frame"],
+          "properties": {
+            "type": { "const": "weatherWidget" },
+            "usePresetSize": { "$ref": "#/$defs/numberOrExpression" },
+            "temperatureC": { "$ref": "#/$defs/numberOrExpression" },
+            "humidity": { "$ref": "#/$defs/numberOrExpression" },
+            "highC": { "$ref": "#/$defs/numberOrExpression" },
+            "lowC": { "$ref": "#/$defs/numberOrExpression" },
+            "windKph": { "$ref": "#/$defs/numberOrExpression" },
+            "feelsLikeC": { "$ref": "#/$defs/numberOrExpression" },
+            "useActivityTemperature": { "$ref": "#/$defs/numberOrExpression" },
+            "showLocation": { "$ref": "#/$defs/numberOrExpression" },
+            "showWeekday": { "$ref": "#/$defs/numberOrExpression" },
+            "showHumidity": { "$ref": "#/$defs/numberOrExpression" },
+            "showHighLow": { "$ref": "#/$defs/numberOrExpression" },
+            "showWind": { "$ref": "#/$defs/numberOrExpression" },
+            "showFeelsLike": { "$ref": "#/$defs/numberOrExpression" },
+            "showIcon": { "$ref": "#/$defs/numberOrExpression" },
+            "showConditionLabel": { "$ref": "#/$defs/numberOrExpression" },
+            "cardBackgroundOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "cardCornerRadius": { "$ref": "#/$defs/numberOrExpression" },
+            "dividerEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "dividerThickness": { "$ref": "#/$defs/numberOrExpression" },
+            "dividerOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "iconSize": { "$ref": "#/$defs/numberOrExpression" },
+            "slotBackgroundOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "slotSpacing": { "$ref": "#/$defs/numberOrExpression" },
+            "condition": { "oneOf": [{ "enum": ["sunny", "clearNight", "partlyCloudy", "cloudy", "rain", "heavyRain", "thunder", "snow", "fog", "wind"] }, { "$ref": "#/$defs/expression" }] },
+            "preset": { "oneOf": [{ "enum": ["simpleCard", "compactStrip", "forecastTile", "minimalText", "dashboardBar"] }, { "$ref": "#/$defs/expression" }] },
+            "temperatureUnit": { "oneOf": [{ "enum": ["celsius", "fahrenheit"] }, { "$ref": "#/$defs/expression" }] },
+            "palette": { "oneOf": [{ "enum": ["presetDefault", "blueGlass", "lightGlass", "graphite", "minimalWhite"] }, { "$ref": "#/$defs/expression" }] },
+            "locationText": { "$ref": "#/$defs/stringOrExpression" },
+            "conditionLabelOverride": { "$ref": "#/$defs/stringOrExpression" },
+            "humiditySuffix": { "$ref": "#/$defs/stringOrExpression" },
+            "humidityMetricLabel": { "$ref": "#/$defs/stringOrExpression" },
+            "windMetricLabel": { "$ref": "#/$defs/stringOrExpression" },
+            "feelsLikeMetricLabel": { "$ref": "#/$defs/stringOrExpression" },
+            "fontFamily": { "$ref": "#/$defs/stringOrExpression" },
+            "cardBackgroundColor": { "$ref": "#/$defs/colorValue" },
+            "dividerColor": { "$ref": "#/$defs/colorValue" },
+            "slotBackgroundColor": { "$ref": "#/$defs/colorValue" },
+            "locationColor": { "$ref": "#/$defs/colorValue" },
+            "conditionColor": { "$ref": "#/$defs/colorValue" },
+            "temperatureColor": { "$ref": "#/$defs/colorValue" },
+            "slotTitleColor": { "$ref": "#/$defs/colorValue" },
+            "slotLabelColor": { "$ref": "#/$defs/colorValue" },
+            "locationFontSize": { "$ref": "#/$defs/numberOrExpression" },
+            "locationFontWeight": { "oneOf": [{ "enum": ["regular", "medium", "semibold", "bold"] }, { "$ref": "#/$defs/expression" }] },
+            "conditionFontSize": { "$ref": "#/$defs/numberOrExpression" },
+            "conditionFontWeight": { "oneOf": [{ "enum": ["regular", "medium", "semibold", "bold"] }, { "$ref": "#/$defs/expression" }] },
+            "temperatureFontSize": { "$ref": "#/$defs/numberOrExpression" },
+            "temperatureFontWeight": { "oneOf": [{ "enum": ["regular", "medium", "semibold", "bold"] }, { "$ref": "#/$defs/expression" }] },
+            "slotTitleFontSize": { "$ref": "#/$defs/numberOrExpression" },
+            "slotTitleFontWeight": { "oneOf": [{ "enum": ["regular", "medium", "semibold", "bold"] }, { "$ref": "#/$defs/expression" }] },
+            "slotLabelFontSize": { "$ref": "#/$defs/numberOrExpression" },
+            "slotLabelFontWeight": { "oneOf": [{ "enum": ["regular", "medium", "semibold", "bold"] }, { "$ref": "#/$defs/expression" }] }
           }
         }
       ],

@@ -19,7 +19,7 @@ struct OverlayComponentLibraryItem: Identifiable, Equatable, Sendable {
 
     /// Every bundled entry: numeric presets (Overlay Pool → Metrics) and
     /// decor and example components (Overlay Pool → Components → Bundled).
-    static let all: [OverlayComponentLibraryItem] = numericPresets + decor + intervalComponents + examples
+    static let all: [OverlayComponentLibraryItem] = numericPresets + decor + intervalComponents + chartComponents + examples
 
     static let decor: [OverlayComponentLibraryItem] = [
         OverlayComponentLibraryItem(
@@ -85,7 +85,46 @@ struct OverlayComponentLibraryItem: Identifiable, Equatable, Sendable {
         )
     ]
 
-    static let bundledVisuals: [OverlayComponentLibraryItem] = decor + intervalComponents + examples
+    /// Chart and dial modules whose data and formatting stay host-owned.
+    static let chartComponents: [OverlayComponentLibraryItem] = [
+        OverlayComponentLibraryItem(
+            id: "studio.running-gauge",
+            displayName: "Running Gauge",
+            hint: "dial + rings + metrics",
+            systemImage: "gauge.with.dots.needle.67percent",
+            resourceName: "running-gauge"
+        ),
+        OverlayComponentLibraryItem(
+            id: "studio.distance-timeline",
+            displayName: "Distance Timeline",
+            hint: "track + axis + marker",
+            systemImage: "point.topleft.down.to.point.bottomright.curvepath",
+            resourceName: "distance-timeline"
+        ),
+        OverlayComponentLibraryItem(
+            id: "studio.elevation-chart",
+            displayName: "Elevation Chart",
+            hint: "profile + fill + marker",
+            systemImage: "chart.xyaxis.line",
+            resourceName: "elevation-chart"
+        ),
+        OverlayComponentLibraryItem(
+            id: "studio.route-map",
+            displayName: "Route Map",
+            hint: "route + markers",
+            systemImage: "map",
+            resourceName: "route-map"
+        ),
+        OverlayComponentLibraryItem(
+            id: "studio.weather-widget",
+            displayName: "Weather Widget",
+            hint: "weather + metrics",
+            systemImage: "cloud.sun.fill",
+            resourceName: "weather-widget"
+        )
+    ]
+
+    static let bundledVisuals: [OverlayComponentLibraryItem] = decor + intervalComponents + chartComponents + examples
 
     static let examples: [OverlayComponentLibraryItem] = [
         OverlayComponentLibraryItem(

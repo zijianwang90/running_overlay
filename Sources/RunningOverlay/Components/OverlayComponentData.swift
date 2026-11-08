@@ -11,6 +11,9 @@ struct OverlayComponentActivityData: OverlayComponentDataProviding {
     var canvasSize: CGSize
     var elementScale: Double
     var intervalColors: IntervalKindColorPalette = IntervalKindColorPreferences.currentSnapshot()
+    /// Weather already resolved by the host for the playhead. Components never
+    /// fetch weather themselves.
+    var weatherPayload: WeatherPayload?
 
     func signal(path: String) -> OverlayComponentValue {
         let time = activity.componentElapsedTime(elapsedTime)
@@ -83,11 +86,20 @@ struct OverlayComponentActivityData: OverlayComponentDataProviding {
         case "route.current":
             return routePosition(at: time)
         case "weather.current":
-            return .null
+            guard let weather = weatherPayload else { return .null }
+            return .record([
+                "temperatureC": .number(weather.temperatureCelsius),
+                "condition": .string(weather.condition.rawValue),
+                "icon": .string(weather.condition.sfSymbolName),
+                "windSpeedMPS": weather.windKph.map { .number($0 / 3.6) } ?? .null,
+                "humidity": weather.humidity.map { .number($0) } ?? .null
+            ])
         default:
             return .null
         }
     }
+
+    func weatherSnapshot() -> WeatherPayload? { weatherPayload }
 
     func metric(id: String, units: [String]) -> OverlayComponentValue {
         OverlayComponentMetricCatalog.record(

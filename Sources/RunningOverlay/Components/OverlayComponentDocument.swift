@@ -518,6 +518,16 @@ enum OverlayComponentNodeKind: Equatable {
     /// index and fraction, so a definition never re-implements the geometry.
     case segmentedBar(OverlayComponentSegmentedBar)
     indirect case timelineStrip(OverlayComponentTimelineStrip)
+    /// Circular running-gauge dial; the host formats each region metric.
+    indirect case runningGauge(OverlayComponentRunningGauge)
+    /// Distance progress track; the host formats distance text and axis labels.
+    indirect case distanceTimeline(OverlayComponentDistanceTimeline)
+    /// Elevation profile chart; the host builds the sample series and labels.
+    indirect case elevationChart(OverlayComponentElevationChart)
+    /// Projected GPS route window; the host supplies route geometry.
+    indirect case routeMap(OverlayComponentRouteMap)
+    /// Weather card; the host supplies the weather snapshot and icon assets.
+    indirect case weatherWidget(OverlayComponentWeatherWidget)
 }
 
 struct OverlayComponentSegmentedBar: Equatable {
@@ -658,6 +668,286 @@ struct OverlayComponentTimelineStrip: Equatable {
         /// Distance from the segment area edge to the hint center, design units.
         var inset: OverlayComponentNumberSource?
     }
+}
+
+
+/// A circular gauge dial for one activity snapshot. The host formats each
+/// region's metric; the node owns the dial, rings, ticks, dividers and the
+/// per-region typography, matching the native Running Gauge module.
+struct OverlayComponentRunningGauge: Equatable {
+    /// `topBottom`, `topMiddleBottom`, `threeZones`, `topTwoMiddleBottom`,
+    /// `topThreeMiddleBottom`, `fourZones` or `fiveZones`.
+    var layoutPreset: OverlayComponentStringSource?
+    var progress: OverlayComponentNumberSource?
+    var dialBackgroundColor: OverlayComponentColorSource?
+    var dialBackgroundOpacity: OverlayComponentNumberSource?
+    var glassEffectEnabled: OverlayComponentNumberSource?
+    var outerRingEnabled: OverlayComponentNumberSource?
+    var outerRingColor: OverlayComponentColorSource?
+    var outerRingOpacity: OverlayComponentNumberSource?
+    var outerRingWidthScale: OverlayComponentNumberSource?
+    var tickMarksEnabled: OverlayComponentNumberSource?
+    var tickColor: OverlayComponentColorSource?
+    var tickOpacity: OverlayComponentNumberSource?
+    var majorTickOpacity: OverlayComponentNumberSource?
+    var tickCount: OverlayComponentNumberSource?
+    var majorTickEvery: OverlayComponentNumberSource?
+    var progressRingEnabled: OverlayComponentNumberSource?
+    var progressColor: OverlayComponentColorSource?
+    var progressTrackColor: OverlayComponentColorSource?
+    var progressTrackOpacity: OverlayComponentNumberSource?
+    var progressRingWidthScale: OverlayComponentNumberSource?
+    var progressRoundedCaps: OverlayComponentNumberSource?
+    var dividerEnabled: OverlayComponentNumberSource?
+    var dividerColor: OverlayComponentColorSource?
+    var dividerOpacity: OverlayComponentNumberSource?
+    var dividerWidth: OverlayComponentNumberSource?
+    var font: OverlayComponentFont
+    var monospacedDigits: OverlayComponentNumberSource?
+    var primaryFontWeight: OverlayComponentStringSource?
+    var secondaryFontWeight: OverlayComponentStringSource?
+    var primaryTextColor: OverlayComponentColorSource?
+    var secondaryTextColor: OverlayComponentColorSource?
+    var accentColor: OverlayComponentColorSource?
+    var regions: [Region]?
+
+    struct Region: Equatable {
+        /// `top`, `middle`, `bottom`, `middleLeft`, `middleCenter`,
+        /// `middleRight`, `topLeft`, `topRight`, `bottomLeft`, `bottomRight`.
+        var region: OverlayComponentStringSource?
+        /// Overlay metric id, e.g. `heartRate`, `pace`, `distance`.
+        var metric: OverlayComponentStringSource
+        var customLabel: OverlayComponentStringSource?
+        var showLabel: OverlayComponentNumberSource?
+        var showUnit: OverlayComponentNumberSource?
+        var valueFontScale: OverlayComponentNumberSource?
+        var labelFontScale: OverlayComponentNumberSource?
+        var unitFontScale: OverlayComponentNumberSource?
+        var valueWeight: OverlayComponentStringSource?
+        var labelWeight: OverlayComponentStringSource?
+        var valueColor: OverlayComponentColorSource?
+        var labelColor: OverlayComponentColorSource?
+    }
+}
+
+/// A distance progress track for one activity snapshot. The host computes the
+/// current/total distance, axis labels and stats bar; the node owns the track,
+/// marker, labels and appearance, matching the native Distance Timeline module.
+struct OverlayComponentDistanceTimeline: Equatable {
+    /// `minimal`, `dense`, `sport`, `splits`, `glass`, `neon`, `lowerThird` or
+    /// `route`; selects the native preset defaults for any omitted field.
+    var preset: OverlayComponentStringSource?
+    /// Value text size in design units (native element `fontSize`).
+    var valueFontSize: OverlayComponentNumberSource?
+    /// `metric` or `imperial`.
+    var valueUnitSystem: OverlayComponentStringSource?
+    var showValue: OverlayComponentNumberSource?
+    var showTotalDistance: OverlayComponentNumberSource?
+    var showLabel: OverlayComponentNumberSource?
+    var label: OverlayComponentStringSource?
+    var labelFontFamily: OverlayComponentStringSource?
+    var labelFontSize: OverlayComponentNumberSource?
+    var labelFontWeight: OverlayComponentStringSource?
+    var labelColor: OverlayComponentColorSource?
+    var labelValueSpacing: OverlayComponentNumberSource?
+    var showAxisLabels: OverlayComponentNumberSource?
+    /// `startFinish` or `distance`.
+    var axisLabelMode: OverlayComponentStringSource?
+    var axisLabelOffset: OverlayComponentNumberSource?
+    var axisLabelFontFamily: OverlayComponentStringSource?
+    var axisLabelFontSize: OverlayComponentNumberSource?
+    var axisLabelFontWeight: OverlayComponentStringSource?
+    var axisLabelColor: OverlayComponentColorSource?
+    var showDistancePoints: OverlayComponentNumberSource?
+    var distancePointCount: OverlayComponentNumberSource?
+    var distancePointOffset: OverlayComponentNumberSource?
+    var midpointAxisLabelOffset: OverlayComponentNumberSource?
+    /// `below` or `above`.
+    var axisEndpointLabelPlacement: OverlayComponentStringSource?
+    var axisMidpointLabelPlacement: OverlayComponentStringSource?
+    var markerDistanceLabelEnabled: OverlayComponentNumberSource?
+    var markerDistanceLabelPlacement: OverlayComponentStringSource?
+    var markerDistanceLabelOffset: OverlayComponentNumberSource?
+    var currentMarkerSizeMultiplier: OverlayComponentNumberSource?
+    var backgroundEnabled: OverlayComponentNumberSource?
+    var backgroundColor: OverlayComponentColorSource?
+    var backgroundOpacity: OverlayComponentNumberSource?
+    var borderEnabled: OverlayComponentNumberSource?
+    var borderColor: OverlayComponentColorSource?
+    var borderOpacity: OverlayComponentNumberSource?
+    var borderWidth: OverlayComponentNumberSource?
+    var cornerRadius: OverlayComponentNumberSource?
+    var paddingX: OverlayComponentNumberSource?
+    var paddingY: OverlayComponentNumberSource?
+    var trackHeight: OverlayComponentNumberSource?
+    var trackOpacity: OverlayComponentNumberSource?
+    var fillColor: OverlayComponentColorSource?
+    var tickMarksEnabled: OverlayComponentNumberSource?
+    var tickDensity: OverlayComponentNumberSource?
+    var currentMarkerEnabled: OverlayComponentNumberSource?
+    /// `dot`, `pill` or `triangle`.
+    var currentMarkerStyle: OverlayComponentStringSource?
+    var currentMarkerColor: OverlayComponentColorSource?
+    var glowEnabled: OverlayComponentNumberSource?
+    var fadeEnabled: OverlayComponentNumberSource?
+    /// `left`, `right`, `both`, `vertical` or `all`.
+    var fadeEdge: OverlayComponentStringSource?
+    var fadeAmount: OverlayComponentNumberSource?
+    var mediaSlotEnabled: OverlayComponentNumberSource?
+    /// `none`, `systemIcon`, `staticSVG`, `animatedSVG` or `image`.
+    var mediaSlotMode: OverlayComponentStringSource?
+    var mediaSystemImage: OverlayComponentStringSource?
+    var mediaSlotSize: OverlayComponentNumberSource?
+    var elevationProfileVisible: OverlayComponentNumberSource?
+}
+
+/// An elevation profile chart for one activity snapshot. The host builds the
+/// sample series, smoothing, axis and stats-bar data; the node owns the card,
+/// line, fill, marker and typography, matching the native Elevation Chart.
+struct OverlayComponentElevationChart: Equatable {
+    /// `gradientArea`, `dualArea`, `techGlow`, `minimalWhite` or `bigNumbers`.
+    var preset: OverlayComponentStringSource?
+    /// `area` or `lineOnly`.
+    var chartStyle: OverlayComponentStringSource?
+    var smoothingEnabled: OverlayComponentNumberSource?
+    var smoothingAmount: OverlayComponentNumberSource?
+    /// `fullProfile` or `progressToCurrent`.
+    var progressMode: OverlayComponentStringSource?
+    var chartPaddingX: OverlayComponentNumberSource?
+    var chartPaddingY: OverlayComponentNumberSource?
+    var lineColor: OverlayComponentColorSource?
+    var lineWidth: OverlayComponentNumberSource?
+    var lineOpacity: OverlayComponentNumberSource?
+    var fillEnabled: OverlayComponentNumberSource?
+    var fillStartColor: OverlayComponentColorSource?
+    var fillEndColor: OverlayComponentColorSource?
+    var fillOpacity: OverlayComponentNumberSource?
+    var dualAreaEnabled: OverlayComponentNumberSource?
+    var upperFillColor: OverlayComponentColorSource?
+    var lowerFillColor: OverlayComponentColorSource?
+    var currentMarkerEnabled: OverlayComponentNumberSource?
+    var markerColor: OverlayComponentColorSource?
+    var markerSizeMultiplier: OverlayComponentNumberSource?
+    var markerPlayheadLineEnabled: OverlayComponentNumberSource?
+    var markerLabelEnabled: OverlayComponentNumberSource?
+    var gridEnabled: OverlayComponentNumberSource?
+    var axisLineEnabled: OverlayComponentNumberSource?
+    var axisLabelsEnabled: OverlayComponentNumberSource?
+    var bigNumbersEnabled: OverlayComponentNumberSource?
+    /// `currentElevation`, `elevationGain`, `maxElevation` or `minElevation`.
+    var bigNumberMetric: OverlayComponentStringSource?
+    var bigNumberFontSize: OverlayComponentNumberSource?
+    var bigNumberFontFamily: OverlayComponentStringSource?
+    var bigNumberFontWeight: OverlayComponentStringSource?
+    var backgroundEnabled: OverlayComponentNumberSource?
+    var backgroundColor: OverlayComponentColorSource?
+    var backgroundOpacity: OverlayComponentNumberSource?
+    var cornerRadius: OverlayComponentNumberSource?
+    var borderEnabled: OverlayComponentNumberSource?
+    var borderOpacity: OverlayComponentNumberSource?
+    var shadowEnabled: OverlayComponentNumberSource?
+    var shadowOpacity: OverlayComponentNumberSource?
+    var shadowRadius: OverlayComponentNumberSource?
+    var glowEnabled: OverlayComponentNumberSource?
+    var glowOpacity: OverlayComponentNumberSource?
+    /// Shared text style for the axis and value label.
+    var fontFamily: OverlayComponentStringSource?
+    var foregroundColor: OverlayComponentColorSource?
+    /// Base text size in design units (native element `fontSize`).
+    var valueFontSize: OverlayComponentNumberSource?
+}
+
+/// A projected GPS route window. The host supplies the activity route and the
+/// projection; the node owns the container shape, background, route line,
+/// markers and border, matching the native Route Map module.
+/// Declarative appearance for the host-drawn weather widget.
+///
+/// The component never fetches weather. The host may supply a snapshot through
+/// `weather.current`; without one the node's manual values are used, matching
+/// the native widget's manual data source.
+struct OverlayComponentWeatherWidget: Equatable {
+    /// `simpleCard`, `compactStrip`, `forecastTile`, `minimalText` or
+    /// `dashboardBar`.
+    var preset: OverlayComponentStringSource?
+    /// `WeatherCondition` raw value used when the host has no snapshot.
+    var condition: OverlayComponentStringSource?
+    var temperatureCelsius: OverlayComponentNumberSource?
+    var humidity: OverlayComponentNumberSource?
+    var highCelsius: OverlayComponentNumberSource?
+    var lowCelsius: OverlayComponentNumberSource?
+    var windKph: OverlayComponentNumberSource?
+    var feelsLikeCelsius: OverlayComponentNumberSource?
+    /// `celsius` or `fahrenheit`.
+    var temperatureUnit: OverlayComponentStringSource?
+    /// Replaces the reading with the activity's FIT temperature.
+    var useActivityTemperature: OverlayComponentNumberSource?
+    var locationText: OverlayComponentStringSource?
+    var showLocation: OverlayComponentNumberSource?
+    var showWeekday: OverlayComponentNumberSource?
+    var showHumidity: OverlayComponentNumberSource?
+    var showHighLow: OverlayComponentNumberSource?
+    var showWind: OverlayComponentNumberSource?
+    var showFeelsLike: OverlayComponentNumberSource?
+    var showIcon: OverlayComponentNumberSource?
+    var showConditionLabel: OverlayComponentNumberSource?
+    var conditionLabelOverride: OverlayComponentStringSource?
+    var humiditySuffix: OverlayComponentStringSource?
+    var humidityMetricLabel: OverlayComponentStringSource?
+    var windMetricLabel: OverlayComponentStringSource?
+    var feelsLikeMetricLabel: OverlayComponentStringSource?
+    var cardBackgroundColor: OverlayComponentColorSource?
+    var cardBackgroundOpacity: OverlayComponentNumberSource?
+    var cardCornerRadius: OverlayComponentNumberSource?
+    var dividerEnabled: OverlayComponentNumberSource?
+    var dividerColor: OverlayComponentColorSource?
+    var dividerThickness: OverlayComponentNumberSource?
+    var dividerOpacity: OverlayComponentNumberSource?
+    /// `presetDefault`, `blueGlass`, `lightGlass`, `graphite` or
+    /// `minimalWhite`.
+    var palette: OverlayComponentStringSource?
+    var iconSize: OverlayComponentNumberSource?
+    var slotBackgroundColor: OverlayComponentColorSource?
+    var slotBackgroundOpacity: OverlayComponentNumberSource?
+    var slotSpacing: OverlayComponentNumberSource?
+    /// Font family applied to every text role the node does not override.
+    var fontFamily: OverlayComponentStringSource?
+    var locationFontSize: OverlayComponentNumberSource?
+    var locationFontWeight: OverlayComponentStringSource?
+    var locationColor: OverlayComponentColorSource?
+    var conditionFontSize: OverlayComponentNumberSource?
+    var conditionFontWeight: OverlayComponentStringSource?
+    var conditionColor: OverlayComponentColorSource?
+    var temperatureFontSize: OverlayComponentNumberSource?
+    var temperatureFontWeight: OverlayComponentStringSource?
+    var temperatureColor: OverlayComponentColorSource?
+    var slotTitleFontSize: OverlayComponentNumberSource?
+    var slotTitleFontWeight: OverlayComponentStringSource?
+    var slotTitleColor: OverlayComponentColorSource?
+    var slotLabelFontSize: OverlayComponentNumberSource?
+    var slotLabelFontWeight: OverlayComponentStringSource?
+    var slotLabelColor: OverlayComponentColorSource?
+}
+
+struct OverlayComponentRouteMap: Equatable {
+    /// `square` or `circle`.
+    var shape: OverlayComponentStringSource?
+    /// `none`, `dark`, `light`, `terrain` or `satellite`.
+    var backgroundStyle: OverlayComponentStringSource?
+    var cornerRadius: OverlayComponentNumberSource?
+    var backgroundOpacity: OverlayComponentNumberSource?
+    /// `hidden`, `dot`, `pin` or `flag` (the renderer draws dot geometry).
+    var startMarkerStyle: OverlayComponentStringSource?
+    var endMarkerStyle: OverlayComponentStringSource?
+    var runnerMarkerStyle: OverlayComponentStringSource?
+    var startMarkerColor: OverlayComponentColorSource?
+    var endMarkerColor: OverlayComponentColorSource?
+    var runnerMarkerColor: OverlayComponentColorSource?
+    var glowEnabled: OverlayComponentNumberSource?
+    var mapOpacity: OverlayComponentNumberSource?
+    var borderEnabled: OverlayComponentNumberSource?
+    var borderOpacity: OverlayComponentNumberSource?
+    var foregroundColor: OverlayComponentColorSource?
+    var fontFamily: OverlayComponentStringSource?
 }
 
 enum OverlayComponentSegmentedBarMarkerLayout: String, CaseIterable {

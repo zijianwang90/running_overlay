@@ -158,6 +158,18 @@ struct OverlayComponentResolvedTimelineStrip: Equatable {
     var distanceProgress: Double
 }
 
+
+struct OverlayComponentResolvedGaugeRegion: Equatable {
+    var config: RunningGaugeRegionConfig
+    var components: OverlayValueComponents
+}
+
+struct OverlayComponentResolvedGauge: Equatable {
+    var style: RunningGaugeStyle
+    var progress: Double
+    var regions: [OverlayComponentResolvedGaugeRegion]
+}
+
 struct OverlayComponentResolvedShadow: Equatable {
     var sigma: Double
     var dx: Double
@@ -352,6 +364,17 @@ indirect enum OverlayComponentResolvedNode: Equatable {
         markers: [OverlayComponentResolvedSegmentedBarMarker]
     )
     case timelineStrip(frame: CGRect, strip: OverlayComponentResolvedTimelineStrip)
+    case runningGauge(frame: CGRect, gauge: OverlayComponentResolvedGauge)
+    case distanceTimeline(frame: CGRect, style: DistanceTimelineStyle, valueFontSize: Double)
+    case elevationChart(
+        frame: CGRect,
+        style: ElevationChartStyle,
+        valueFontSize: Double,
+        fontName: String,
+        foregroundColor: OverlayColor
+    )
+    case routeMap(frame: CGRect, style: OverlayStyle)
+    case weatherWidget(frame: CGRect, style: WeatherWidgetStyle)
 }
 
 struct OverlayComponentResolver {
@@ -629,6 +652,27 @@ struct OverlayComponentResolver {
 
         func number(_ source: OverlayComponentNumberSource?, default fallback: Double) -> Double {
             source?.evaluate(in: context) ?? fallback
+        }
+
+        func flag(_ source: OverlayComponentNumberSource?, default fallback: Bool) -> Bool {
+            guard let source else { return fallback }
+            return (source.evaluate(in: context) ?? (fallback ? 1 : 0)) != 0
+        }
+
+        func weight(
+            _ source: OverlayComponentStringSource?,
+            default fallback: OverlayFontWeight
+        ) -> OverlayFontWeight {
+            guard let source else { return fallback }
+            return OverlayFontWeight(rawValue: source.evaluate(in: context)) ?? fallback
+        }
+
+        func stringEnum<Enum: RawRepresentable>(
+            _ source: OverlayComponentStringSource?,
+            default fallback: Enum
+        ) -> Enum where Enum.RawValue == String {
+            guard let source else { return fallback }
+            return Enum(rawValue: source.evaluate(in: context)) ?? fallback
         }
 
         let resolved: OverlayComponentResolvedNode
@@ -1229,6 +1273,33 @@ struct OverlayComponentResolver {
                 )
             )
 
+
+        case .runningGauge(let gauge):
+            guard let rect = frame() else { return nil }
+            return resolveRunningGaugeNode(gauge, rect: rect, path: path,
+                                           context: context, diagnostics: &diagnostics)
+
+        case .distanceTimeline(let timeline):
+            guard let rect = frame() else { return nil }
+            return resolveDistanceTimelineNode(timeline, rect: rect, path: path,
+                                               context: context, diagnostics: &diagnostics)
+
+        case .elevationChart(let chart):
+            guard let rect = frame() else { return nil }
+            return resolveElevationChartNode(chart, rect: rect, path: path,
+                                             context: context, diagnostics: &diagnostics)
+
+        case .routeMap(let map):
+            guard let rect = frame() else { return nil }
+            return resolveRouteMapNode(map, rect: rect, path: path,
+                                       context: context, diagnostics: &diagnostics)
+
+        case .weatherWidget(let widget):
+            guard let rect = frame() else { return nil }
+            return resolveWeatherWidgetNode(widget, rect: rect, path: path,
+                                            context: context, diagnostics: &diagnostics)
+
+
         case .repeatNode(let over, let itemName, let indexName, let maximum, let children):
             guard let rect = frame() else { return nil }
             guard case .list(let items) = over.evaluate(in: context) else {
@@ -1265,6 +1336,434 @@ struct OverlayComponentResolver {
         if opacity < 1 {
             return .opacity(opacity, resolved)
         }
+        return resolved
+    }
+
+    private func nodeNumber(_ source: OverlayComponentNumberSource?, default fallback: Double,
+                           context: OverlayComponentEvaluationContext) -> Double {
+        source?.evaluate(in: context) ?? fallback
+    }
+
+    private func nodeFlag(_ source: OverlayComponentNumberSource?, default fallback: Bool,
+                          context: OverlayComponentEvaluationContext) -> Bool {
+        guard let source else { return fallback }
+        return (source.evaluate(in: context) ?? (fallback ? 1 : 0)) != 0
+    }
+
+    private func nodeColor(_ source: OverlayComponentColorSource?, default fallback: OverlayColor?,
+                           context: OverlayComponentEvaluationContext) -> OverlayColor? {
+        guard let source else { return fallback }
+        return source.evaluate(in: context)
+    }
+
+    private func nodeWeight(_ source: OverlayComponentStringSource?, default fallback: OverlayFontWeight,
+                            context: OverlayComponentEvaluationContext) -> OverlayFontWeight {
+        guard let source else { return fallback }
+        return OverlayFontWeight(rawValue: source.evaluate(in: context)) ?? fallback
+    }
+
+    private func nodeStringEnum<Enum: RawRepresentable>(
+        _ source: OverlayComponentStringSource?, default fallback: Enum,
+        context: OverlayComponentEvaluationContext
+    ) -> Enum where Enum.RawValue == String {
+        guard let source else { return fallback }
+        return Enum(rawValue: source.evaluate(in: context)) ?? fallback
+    }
+
+    @inline(never)
+    private func resolveRunningGaugeNode(_ gauge: OverlayComponentRunningGauge, rect: CGRect, path: String,
+        context: OverlayComponentEvaluationContext, diagnostics: inout [String]
+    ) -> OverlayComponentResolvedNode? {
+        let resolved: OverlayComponentResolvedNode
+        
+        let presetName = gauge.layoutPreset?.evaluate(in: context) ?? "topTwoMiddleBottom"
+        let layoutPreset = RunningGaugeLayoutPreset(rawValue: presetName) ?? .topTwoMiddleBottom
+        var style = RunningGaugeStyle.default
+        style.layoutPreset = layoutPreset
+        style.fontName = gauge.font.family.evaluate(in: context)
+        style.dialBackgroundColor = gauge.dialBackgroundColor?.evaluate(in: context) ?? style.dialBackgroundColor
+        style.dialBackgroundOpacity = nodeNumber(gauge.dialBackgroundOpacity, default: style.dialBackgroundOpacity, context: context)
+        style.glassEffectEnabled = nodeFlag(gauge.glassEffectEnabled, default: style.glassEffectEnabled, context: context)
+        style.outerRingEnabled = nodeFlag(gauge.outerRingEnabled, default: style.outerRingEnabled, context: context)
+        style.outerRingColor = gauge.outerRingColor?.evaluate(in: context) ?? style.outerRingColor
+        style.outerRingOpacity = nodeNumber(gauge.outerRingOpacity, default: style.outerRingOpacity, context: context)
+        style.outerRingWidthScale = nodeNumber(gauge.outerRingWidthScale, default: style.outerRingWidthScale, context: context)
+        style.tickMarksEnabled = nodeFlag(gauge.tickMarksEnabled, default: style.tickMarksEnabled, context: context)
+        style.tickColor = gauge.tickColor?.evaluate(in: context) ?? style.tickColor
+        style.tickOpacity = nodeNumber(gauge.tickOpacity, default: style.tickOpacity, context: context)
+        style.majorTickOpacity = nodeNumber(gauge.majorTickOpacity, default: style.majorTickOpacity, context: context)
+        style.tickCount = Int(nodeNumber(gauge.tickCount, default: Double(style.tickCount), context: context).rounded())
+        style.majorTickEvery = Int(nodeNumber(gauge.majorTickEvery, default: Double(style.majorTickEvery), context: context).rounded())
+        style.progressRingEnabled = nodeFlag(gauge.progressRingEnabled, default: style.progressRingEnabled, context: context)
+        style.progressColor = gauge.progressColor?.evaluate(in: context) ?? style.progressColor
+        style.progressTrackColor = gauge.progressTrackColor?.evaluate(in: context) ?? style.progressTrackColor
+        style.progressTrackOpacity = nodeNumber(gauge.progressTrackOpacity, default: style.progressTrackOpacity, context: context)
+        style.progressRingWidthScale = nodeNumber(gauge.progressRingWidthScale, default: style.progressRingWidthScale, context: context)
+        style.progressRoundedCaps = nodeFlag(gauge.progressRoundedCaps, default: style.progressRoundedCaps, context: context)
+        style.dividerEnabled = nodeFlag(gauge.dividerEnabled, default: style.dividerEnabled, context: context)
+        style.dividerColor = gauge.dividerColor?.evaluate(in: context) ?? style.dividerColor
+        style.dividerOpacity = nodeNumber(gauge.dividerOpacity, default: style.dividerOpacity, context: context)
+        style.dividerWidth = nodeNumber(gauge.dividerWidth, default: style.dividerWidth, context: context)
+        style.monospacedDigits = nodeFlag(gauge.monospacedDigits, default: style.monospacedDigits, context: context)
+        style.primaryFontWeight = nodeWeight(gauge.primaryFontWeight, default: style.primaryFontWeight, context: context)
+        style.secondaryFontWeight = nodeWeight(gauge.secondaryFontWeight, default: style.secondaryFontWeight, context: context)
+        style.primaryTextColor = gauge.primaryTextColor?.evaluate(in: context) ?? style.primaryTextColor
+        style.secondaryTextColor = gauge.secondaryTextColor?.evaluate(in: context) ?? style.secondaryTextColor
+        style.accentColor = gauge.accentColor?.evaluate(in: context) ?? style.accentColor
+
+        var configs: [RunningGaugeRegionConfig] = []
+        for (index, region) in (gauge.regions ?? []).enumerated() {
+            let metricId = region.metric.evaluate(in: context)
+            guard let overlayMetric = OverlayMetric(rawValue: metricId),
+                  let gaugeMetric = OverlayGaugeMetric(metric: overlayMetric) else {
+                diagnostics.append("\(path).regions[\(index)]: unknown metric")
+                continue
+            }
+            let regionName = region.region?.evaluate(in: context)
+                ?? layoutPreset.regions[min(index, max(layoutPreset.regions.count - 1, 0))].rawValue
+            guard let gaugeRegion = RunningGaugeRegion(rawValue: regionName) else {
+                diagnostics.append("\(path).regions[\(index)]: unknown region '\(regionName)'")
+                continue
+            }
+            configs.append(RunningGaugeRegionConfig(
+                region: gaugeRegion,
+                metric: gaugeMetric,
+                customLabel: region.customLabel?.evaluate(in: context) ?? "",
+                showLabel: nodeFlag(region.showLabel, default: true, context: context),
+                showUnit: nodeFlag(region.showUnit, default: true, context: context),
+                showIcon: false,
+                valueFontScale: nodeNumber(region.valueFontScale, default: 1, context: context),
+                labelFontScale: nodeNumber(region.labelFontScale, default: 0.32, context: context),
+                unitFontScale: nodeNumber(region.unitFontScale, default: 0.42, context: context),
+                valueWeight: nodeWeight(region.valueWeight, default: .bold, context: context),
+                labelWeight: nodeWeight(region.labelWeight, default: .medium, context: context),
+                valueColor: region.valueColor?.evaluate(in: context),
+                labelColor: region.labelColor?.evaluate(in: context)
+            ))
+        }
+        style.regions = configs
+        let regions = configs.enumerated().map { index, config in
+            let value = context.data?.metric(
+                id: (gauge.regions ?? [])[index].metric.evaluate(in: context),
+                units: []
+            ) ?? .null
+            let record = value.record
+            return OverlayComponentResolvedGaugeRegion(
+                config: config,
+                components: OverlayValueComponents(
+                    label: record?["label"]?.string ?? "",
+                    shortLabel: record?["shortLabel"]?.string ?? "",
+                    value: record?["value"]?.string ?? "",
+                    unit: record?["unit"]?.string ?? ""
+                )
+            )
+        }
+        resolved = .runningGauge(
+            frame: rect,
+            gauge: OverlayComponentResolvedGauge(
+                style: style,
+                progress: min(max(nodeNumber(gauge.progress, default: 0, context: context), 0), 1),
+                regions: regions
+            )
+        )
+        return resolved
+    }
+
+    @inline(never)
+    private func resolveDistanceTimelineNode(_ timeline: OverlayComponentDistanceTimeline, rect: CGRect, path: String,
+        context: OverlayComponentEvaluationContext, diagnostics: inout [String]
+    ) -> OverlayComponentResolvedNode? {
+        let resolved: OverlayComponentResolvedNode
+        
+        let presetName = timeline.preset?.evaluate(in: context) ?? "minimal"
+        let preset = DistanceTimelinePreset(rawValue: presetName) ?? .minimal
+        var style = DistanceTimelineStyle.preset(preset)
+        style.valueUnitSystem = nodeStringEnum(timeline.valueUnitSystem, default: style.valueUnitSystem, context: context)
+        style.showValue = nodeFlag(timeline.showValue, default: style.showValue, context: context)
+        style.showTotalDistance = nodeFlag(timeline.showTotalDistance, default: style.showTotalDistance, context: context)
+        style.showLabel = nodeFlag(timeline.showLabel, default: style.showLabel, context: context)
+        style.label = timeline.label?.evaluate(in: context) ?? style.label
+        style.labelFontName = timeline.labelFontFamily?.evaluate(in: context) ?? style.labelFontName
+        style.labelFontSize = nodeNumber(timeline.labelFontSize, default: style.labelFontSize, context: context)
+        style.labelFontWeight = nodeWeight(timeline.labelFontWeight, default: style.labelFontWeight, context: context)
+        style.labelColor = nodeColor(timeline.labelColor, default: style.labelColor, context: context) ?? style.labelColor
+        style.labelValueSpacing = nodeNumber(timeline.labelValueSpacing, default: style.labelValueSpacing, context: context)
+        style.showAxisLabels = nodeFlag(timeline.showAxisLabels, default: style.showAxisLabels, context: context)
+        style.axisLabelMode = nodeStringEnum(timeline.axisLabelMode, default: style.axisLabelMode, context: context)
+        style.axisLabelOffset = nodeNumber(timeline.axisLabelOffset, default: style.axisLabelOffset, context: context)
+        style.axisLabelFontName = timeline.axisLabelFontFamily?.evaluate(in: context) ?? style.axisLabelFontName
+        style.axisLabelFontSize = nodeNumber(timeline.axisLabelFontSize, default: style.axisLabelFontSize, context: context)
+        style.axisLabelFontWeight = nodeWeight(timeline.axisLabelFontWeight, default: style.axisLabelFontWeight, context: context)
+        style.axisLabelColor = nodeColor(timeline.axisLabelColor, default: style.axisLabelColor, context: context) ?? style.axisLabelColor
+        style.showDistancePoints = nodeFlag(timeline.showDistancePoints, default: style.showDistancePoints, context: context)
+        style.distancePointCount = Int(nodeNumber(timeline.distancePointCount, default: Double(style.distancePointCount), context: context).rounded())
+        style.distancePointOffset = nodeNumber(timeline.distancePointOffset, default: style.distancePointOffset, context: context)
+        style.midpointAxisLabelOffset = nodeNumber(timeline.midpointAxisLabelOffset, default: style.midpointAxisLabelOffset, context: context)
+        style.axisEndpointLabelPlacement = nodeStringEnum(timeline.axisEndpointLabelPlacement, default: style.axisEndpointLabelPlacement, context: context)
+        style.axisMidpointLabelPlacement = nodeStringEnum(timeline.axisMidpointLabelPlacement, default: style.axisMidpointLabelPlacement, context: context)
+        style.markerDistanceLabelEnabled = nodeFlag(timeline.markerDistanceLabelEnabled, default: style.markerDistanceLabelEnabled, context: context)
+        style.markerDistanceLabelPlacement = nodeStringEnum(timeline.markerDistanceLabelPlacement, default: style.markerDistanceLabelPlacement, context: context)
+        style.markerDistanceLabelOffset = nodeNumber(timeline.markerDistanceLabelOffset, default: style.markerDistanceLabelOffset, context: context)
+        style.currentMarkerSizeMultiplier = nodeNumber(timeline.currentMarkerSizeMultiplier, default: style.currentMarkerSizeMultiplier, context: context)
+        style.backgroundEnabled = nodeFlag(timeline.backgroundEnabled, default: style.backgroundEnabled, context: context)
+        style.backgroundColor = nodeColor(timeline.backgroundColor, default: style.backgroundColor, context: context) ?? style.backgroundColor
+        style.backgroundOpacity = nodeNumber(timeline.backgroundOpacity, default: style.backgroundOpacity, context: context)
+        style.borderEnabled = nodeFlag(timeline.borderEnabled, default: style.borderEnabled, context: context)
+        style.borderColor = nodeColor(timeline.borderColor, default: style.borderColor, context: context) ?? style.borderColor
+        style.borderOpacity = nodeNumber(timeline.borderOpacity, default: style.borderOpacity, context: context)
+        style.borderWidth = nodeNumber(timeline.borderWidth, default: style.borderWidth, context: context)
+        style.cornerRadius = nodeNumber(timeline.cornerRadius, default: style.cornerRadius, context: context)
+        style.paddingX = nodeNumber(timeline.paddingX, default: style.paddingX, context: context)
+        style.paddingY = nodeNumber(timeline.paddingY, default: style.paddingY, context: context)
+        style.trackHeight = nodeNumber(timeline.trackHeight, default: style.trackHeight, context: context)
+        style.trackOpacity = nodeNumber(timeline.trackOpacity, default: style.trackOpacity, context: context)
+        style.fillColor = nodeColor(timeline.fillColor, default: style.fillColor, context: context) ?? style.fillColor
+        style.tickMarksEnabled = nodeFlag(timeline.tickMarksEnabled, default: style.tickMarksEnabled, context: context)
+        style.tickDensity = Int(nodeNumber(timeline.tickDensity, default: Double(style.tickDensity), context: context).rounded())
+        style.currentMarkerEnabled = nodeFlag(timeline.currentMarkerEnabled, default: style.currentMarkerEnabled, context: context)
+        style.currentMarkerStyle = nodeStringEnum(timeline.currentMarkerStyle, default: style.currentMarkerStyle, context: context)
+        style.currentMarkerColor = nodeColor(timeline.currentMarkerColor, default: style.currentMarkerColor, context: context) ?? style.currentMarkerColor
+        style.glowEnabled = nodeFlag(timeline.glowEnabled, default: style.glowEnabled, context: context)
+        style.fadeEnabled = nodeFlag(timeline.fadeEnabled, default: style.fadeEnabled, context: context)
+        style.fadeEdge = nodeStringEnum(timeline.fadeEdge, default: style.fadeEdge, context: context)
+        style.fadeAmount = nodeNumber(timeline.fadeAmount, default: style.fadeAmount, context: context)
+        style.mediaSlotEnabled = nodeFlag(timeline.mediaSlotEnabled, default: style.mediaSlotEnabled, context: context)
+        style.mediaSlotMode = nodeStringEnum(timeline.mediaSlotMode, default: style.mediaSlotMode, context: context)
+        style.mediaSystemImage = timeline.mediaSystemImage?.evaluate(in: context) ?? style.mediaSystemImage
+        style.mediaSlotSize = nodeNumber(timeline.mediaSlotSize, default: style.mediaSlotSize, context: context)
+        style.elevationProfileVisible = nodeFlag(timeline.elevationProfileVisible, default: style.elevationProfileVisible, context: context)
+        resolved = .distanceTimeline(
+            frame: rect,
+            style: style,
+            valueFontSize: max(nodeNumber(timeline.valueFontSize, default: 28, context: context), 1)
+        )
+        return resolved
+    }
+
+    @inline(never)
+    private func resolveElevationChartNode(_ chart: OverlayComponentElevationChart, rect: CGRect, path: String,
+        context: OverlayComponentEvaluationContext, diagnostics: inout [String]
+    ) -> OverlayComponentResolvedNode? {
+        let resolved: OverlayComponentResolvedNode
+        
+        let presetName = chart.preset?.evaluate(in: context) ?? "gradientArea"
+        let preset = ElevationChartPreset(rawValue: presetName) ?? .gradientArea
+        var style = ElevationChartStyle.preset(preset)
+        style.chartStyle = nodeStringEnum(chart.chartStyle, default: style.chartStyle, context: context)
+        style.smoothingEnabled = nodeFlag(chart.smoothingEnabled, default: style.smoothingEnabled, context: context)
+        style.smoothingAmount = nodeNumber(chart.smoothingAmount, default: style.smoothingAmount, context: context)
+        style.progressMode = nodeStringEnum(chart.progressMode, default: style.progressMode, context: context)
+        style.chartPaddingX = nodeNumber(chart.chartPaddingX, default: style.chartPaddingX, context: context)
+        style.chartPaddingY = nodeNumber(chart.chartPaddingY, default: style.chartPaddingY, context: context)
+        style.lineColor = nodeColor(chart.lineColor, default: style.lineColor, context: context) ?? style.lineColor
+        style.lineWidth = nodeNumber(chart.lineWidth, default: style.lineWidth, context: context)
+        style.lineOpacity = nodeNumber(chart.lineOpacity, default: style.lineOpacity, context: context)
+        style.fillEnabled = nodeFlag(chart.fillEnabled, default: style.fillEnabled, context: context)
+        style.fillStartColor = nodeColor(chart.fillStartColor, default: style.fillStartColor, context: context) ?? style.fillStartColor
+        style.fillEndColor = nodeColor(chart.fillEndColor, default: style.fillEndColor, context: context) ?? style.fillEndColor
+        style.fillOpacity = nodeNumber(chart.fillOpacity, default: style.fillOpacity, context: context)
+        style.dualAreaEnabled = nodeFlag(chart.dualAreaEnabled, default: style.dualAreaEnabled, context: context)
+        style.upperFillColor = nodeColor(chart.upperFillColor, default: style.upperFillColor, context: context) ?? style.upperFillColor
+        style.lowerFillColor = nodeColor(chart.lowerFillColor, default: style.lowerFillColor, context: context) ?? style.lowerFillColor
+        style.currentMarkerEnabled = nodeFlag(chart.currentMarkerEnabled, default: style.currentMarkerEnabled, context: context)
+        style.markerColor = nodeColor(chart.markerColor, default: style.markerColor, context: context) ?? style.markerColor
+        style.markerSizeMultiplier = nodeNumber(chart.markerSizeMultiplier, default: style.markerSizeMultiplier, context: context)
+        style.markerPlayheadLineEnabled = nodeFlag(chart.markerPlayheadLineEnabled, default: style.markerPlayheadLineEnabled, context: context)
+        style.markerLabelEnabled = nodeFlag(chart.markerLabelEnabled, default: style.markerLabelEnabled, context: context)
+        style.gridEnabled = nodeFlag(chart.gridEnabled, default: style.gridEnabled, context: context)
+        style.axisLineEnabled = nodeFlag(chart.axisLineEnabled, default: style.axisLineEnabled, context: context)
+        style.axisLabelsEnabled = nodeFlag(chart.axisLabelsEnabled, default: style.axisLabelsEnabled, context: context)
+        style.bigNumbersEnabled = nodeFlag(chart.bigNumbersEnabled, default: style.bigNumbersEnabled, context: context)
+        style.bigNumberMetric = nodeStringEnum(chart.bigNumberMetric, default: style.bigNumberMetric, context: context)
+        style.bigNumberFontSize = nodeNumber(chart.bigNumberFontSize, default: style.bigNumberFontSize, context: context)
+        style.bigNumberFontName = chart.bigNumberFontFamily?.evaluate(in: context) ?? style.bigNumberFontName
+        style.bigNumberFontWeight = nodeWeight(chart.bigNumberFontWeight, default: style.bigNumberFontWeight, context: context)
+        style.backgroundEnabled = nodeFlag(chart.backgroundEnabled, default: style.backgroundEnabled, context: context)
+        style.backgroundColor = nodeColor(chart.backgroundColor, default: style.backgroundColor, context: context) ?? style.backgroundColor
+        style.backgroundOpacity = nodeNumber(chart.backgroundOpacity, default: style.backgroundOpacity, context: context)
+        style.cornerRadius = nodeNumber(chart.cornerRadius, default: style.cornerRadius, context: context)
+        style.borderEnabled = nodeFlag(chart.borderEnabled, default: style.borderEnabled, context: context)
+        style.borderOpacity = nodeNumber(chart.borderOpacity, default: style.borderOpacity, context: context)
+        style.shadowEnabled = nodeFlag(chart.shadowEnabled, default: style.shadowEnabled, context: context)
+        style.shadowOpacity = nodeNumber(chart.shadowOpacity, default: style.shadowOpacity, context: context)
+        style.shadowRadius = nodeNumber(chart.shadowRadius, default: style.shadowRadius, context: context)
+        style.glowEnabled = nodeFlag(chart.glowEnabled, default: style.glowEnabled, context: context)
+        style.glowOpacity = nodeNumber(chart.glowOpacity, default: style.glowOpacity, context: context)
+        let defaultStyle = OverlayStyle.default
+        resolved = .elevationChart(
+            frame: rect,
+            style: style,
+            valueFontSize: max(nodeNumber(chart.valueFontSize, default: defaultStyle.fontSize, context: context), 1),
+            fontName: chart.fontFamily?.evaluate(in: context) ?? defaultStyle.fontName,
+            foregroundColor: nodeColor(chart.foregroundColor, default: defaultStyle.foregroundColor, context: context) ?? defaultStyle.foregroundColor
+        )
+        return resolved
+    }
+
+    @inline(never)
+    private func resolveWeatherWidgetNode(
+        _ widget: OverlayComponentWeatherWidget, rect: CGRect, path: String,
+        context: OverlayComponentEvaluationContext, diagnostics: inout [String]
+    ) -> OverlayComponentResolvedNode? {
+
+        let preset = nodeStringEnum(widget.preset, default: WeatherWidgetPreset.simpleCard, context: context)
+        var style = WeatherWidgetStyle.preset(preset)
+        style.manualCondition = nodeStringEnum(widget.condition, default: style.manualCondition, context: context)
+        style.manualTemperatureCelsius = nodeNumber(
+        widget.temperatureCelsius, default: style.manualTemperatureCelsius, context: context
+        )
+        style.manualHumidity = nodeNumber(widget.humidity, default: style.manualHumidity, context: context)
+        style.manualHigh = nodeNumber(widget.highCelsius, default: style.manualHigh, context: context)
+        style.manualLow = nodeNumber(widget.lowCelsius, default: style.manualLow, context: context)
+        style.manualWind = nodeNumber(widget.windKph, default: style.manualWind, context: context)
+        style.manualFeelsLike = nodeNumber(
+        widget.feelsLikeCelsius, default: style.manualFeelsLike, context: context
+        )
+        style.temperatureUnit = nodeStringEnum(
+        widget.temperatureUnit, default: style.temperatureUnit, context: context
+        )
+        style.useFITTemperature = nodeFlag(
+        widget.useActivityTemperature, default: style.useFITTemperature, context: context
+        )
+        style.locationText = widget.locationText?.evaluate(in: context) ?? style.locationText
+        style.showLocation = nodeFlag(widget.showLocation, default: style.showLocation, context: context)
+        style.showWeekday = nodeFlag(widget.showWeekday, default: style.showWeekday, context: context)
+        style.showHumidity = nodeFlag(widget.showHumidity, default: style.showHumidity, context: context)
+        style.showHighLow = nodeFlag(widget.showHighLow, default: style.showHighLow, context: context)
+        style.showWind = nodeFlag(widget.showWind, default: style.showWind, context: context)
+        style.showFeelsLike = nodeFlag(widget.showFeelsLike, default: style.showFeelsLike, context: context)
+        style.showIcon = nodeFlag(widget.showIcon, default: style.showIcon, context: context)
+        style.showConditionLabel = nodeFlag(
+        widget.showConditionLabel, default: style.showConditionLabel, context: context
+        )
+        style.conditionLabelOverride = widget.conditionLabelOverride?.evaluate(in: context)
+        ?? style.conditionLabelOverride
+        style.humiditySuffix = widget.humiditySuffix?.evaluate(in: context) ?? style.humiditySuffix
+        style.humidityMetricLabel = widget.humidityMetricLabel?.evaluate(in: context)
+        ?? style.humidityMetricLabel
+        style.windMetricLabel = widget.windMetricLabel?.evaluate(in: context) ?? style.windMetricLabel
+        style.feelsLikeMetricLabel = widget.feelsLikeMetricLabel?.evaluate(in: context)
+        ?? style.feelsLikeMetricLabel
+        style.cardBackgroundColor = nodeColor(
+        widget.cardBackgroundColor, default: style.cardBackgroundColor, context: context
+        ) ?? style.cardBackgroundColor
+        style.cardBackgroundOpacity = nodeNumber(
+        widget.cardBackgroundOpacity, default: style.cardBackgroundOpacity, context: context
+        )
+        style.cardCornerRadius = nodeNumber(
+        widget.cardCornerRadius, default: style.cardCornerRadius, context: context
+        )
+        style.dividerEnabled = nodeFlag(widget.dividerEnabled, default: style.dividerEnabled, context: context)
+        style.dividerColor = nodeColor(
+        widget.dividerColor, default: style.dividerColor, context: context
+        ) ?? style.dividerColor
+        style.dividerThickness = nodeNumber(
+        widget.dividerThickness, default: style.dividerThickness, context: context
+        )
+        style.dividerOpacity = nodeNumber(
+        widget.dividerOpacity, default: style.dividerOpacity, context: context
+        )
+        style.palette = nodeStringEnum(widget.palette, default: style.palette, context: context)
+        style.iconSize = nodeNumber(widget.iconSize, default: style.iconSize, context: context)
+        style.slotBackgroundColor = nodeColor(
+        widget.slotBackgroundColor, default: style.slotBackgroundColor, context: context
+        ) ?? style.slotBackgroundColor
+        style.slotBackgroundOpacity = nodeNumber(
+        widget.slotBackgroundOpacity, default: style.slotBackgroundOpacity, context: context
+        )
+        style.slotSpacing = nodeNumber(widget.slotSpacing, default: style.slotSpacing, context: context)
+
+        let family = widget.fontFamily?.evaluate(in: context)
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+        func textStyle(
+        _ base: WeatherTextStyle,
+        size: OverlayComponentNumberSource?,
+        weight: OverlayComponentStringSource?,
+        color: OverlayComponentColorSource?
+        ) -> WeatherTextStyle {
+        var result = base
+        if let family, !family.isEmpty { result.fontName = family }
+        result.fontSize = nodeNumber(size, default: result.fontSize, context: context)
+        result.fontWeight = nodeWeight(weight, default: result.fontWeight, context: context)
+        result.color = nodeColor(color, default: result.color, context: context) ?? result.color
+        return result
+        }
+        style.locationTextStyle = textStyle(
+        style.locationTextStyle,
+        size: widget.locationFontSize,
+        weight: widget.locationFontWeight,
+        color: widget.locationColor
+        )
+        style.conditionTextStyle = textStyle(
+        style.conditionTextStyle,
+        size: widget.conditionFontSize,
+        weight: widget.conditionFontWeight,
+        color: widget.conditionColor
+        )
+        style.temperatureTextStyle = textStyle(
+        style.temperatureTextStyle,
+        size: widget.temperatureFontSize,
+        weight: widget.temperatureFontWeight,
+        color: widget.temperatureColor
+        )
+        style.slotTitleTextStyle = textStyle(
+        style.slotTitleTextStyle,
+        size: widget.slotTitleFontSize,
+        weight: widget.slotTitleFontWeight,
+        color: widget.slotTitleColor
+        )
+        style.slotLabelTextStyle = textStyle(
+        style.slotLabelTextStyle,
+        size: widget.slotLabelFontSize,
+        weight: widget.slotLabelFontWeight,
+        color: widget.slotLabelColor
+        )
+
+        var slots: [WeatherMetricSlotValue] = []
+        if style.showHumidity { slots.append(.humidity) }
+        if style.showHighLow { slots.append(.highLow) }
+        if style.showWind { slots.append(.wind) }
+        if style.showFeelsLike { slots.append(.feelsLike) }
+        style.metricSlots = slots.isEmpty ? preset.defaultMetricSlots : slots
+
+        if let snapshot = context.data?.weatherSnapshot() {
+        style.dataSource = .openMeteo
+        style.cachedWeather = snapshot
+        } else {
+        style.dataSource = .manual
+        style.cachedWeather = nil
+        }
+        return .weatherWidget(frame: rect, style: style)
+    }
+
+    @inline(never)
+    private func resolveRouteMapNode(_ map: OverlayComponentRouteMap, rect: CGRect, path: String,
+        context: OverlayComponentEvaluationContext, diagnostics: inout [String]
+    ) -> OverlayComponentResolvedNode? {
+        let resolved: OverlayComponentResolvedNode
+        
+        let defaultStyle = OverlayStyle.default
+        var style = defaultStyle
+        style.shadowEnabled = false
+        style.glowEnabled = false
+        style.routeMapShape = nodeStringEnum(map.shape, default: style.routeMapShape, context: context)
+        style.routeMapBackgroundStyle = nodeStringEnum(map.backgroundStyle, default: style.routeMapBackgroundStyle, context: context)
+        style.routeMapCornerRadius = nodeNumber(map.cornerRadius, default: style.routeMapCornerRadius, context: context)
+        style.backgroundRadius = style.routeMapCornerRadius
+        style.backgroundOpacity = nodeNumber(map.backgroundOpacity, default: style.backgroundOpacity, context: context)
+        style.routeMapStartMarkerStyle = nodeStringEnum(map.startMarkerStyle, default: style.routeMapStartMarkerStyle, context: context)
+        style.routeMapEndMarkerStyle = nodeStringEnum(map.endMarkerStyle, default: style.routeMapEndMarkerStyle, context: context)
+        style.routeMapRunnerMarkerStyle = nodeStringEnum(map.runnerMarkerStyle, default: style.routeMapRunnerMarkerStyle, context: context)
+        style.routeMapStartMarkerColor = nodeColor(map.startMarkerColor, default: style.routeMapStartMarkerColor, context: context) ?? style.routeMapStartMarkerColor
+        style.routeMapEndMarkerColor = nodeColor(map.endMarkerColor, default: style.routeMapEndMarkerColor, context: context) ?? style.routeMapEndMarkerColor
+        style.routeMapRunnerDotColor = nodeColor(map.runnerMarkerColor, default: style.routeMapRunnerDotColor, context: context) ?? style.routeMapRunnerDotColor
+        style.glowEnabled = nodeFlag(map.glowEnabled, default: style.glowEnabled, context: context)
+        style.routeMapMapOpacity = nodeNumber(map.mapOpacity, default: style.routeMapMapOpacity, context: context)
+        style.borderEnabled = nodeFlag(map.borderEnabled, default: style.borderEnabled, context: context)
+        style.borderOpacity = nodeNumber(map.borderOpacity, default: style.borderOpacity, context: context)
+        style.foregroundColor = nodeColor(map.foregroundColor, default: style.foregroundColor, context: context) ?? style.foregroundColor
+        style.fontName = map.fontFamily?.evaluate(in: context) ?? style.fontName
+        resolved = .routeMap(frame: rect, style: style)
         return resolved
     }
 

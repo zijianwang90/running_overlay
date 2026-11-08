@@ -8,10 +8,14 @@ protocol OverlayComponentDataProviding {
     /// Host-formatted metric record; see `OverlayComponentMetricCatalog`.
     /// `units` are candidates in order; the first one the metric supports wins.
     func metric(id: String, units: [String]) -> OverlayComponentValue
+    /// Host weather snapshot for host-drawn weather nodes. The host fetches
+    /// weather; a component only renders it. `nil` means no snapshot.
+    func weatherSnapshot() -> WeatherPayload?
 }
 
 extension OverlayComponentDataProviding {
     func metric(id: String, units: [String]) -> OverlayComponentValue { .null }
+    func weatherSnapshot() -> WeatherPayload? { nil }
 }
 
 enum OverlayComponentSeriesWindow: Equatable {

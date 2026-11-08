@@ -57,7 +57,8 @@ enum OverlayComponentSkiaRenderer {
                     context: context,
                     space: space,
                     opacity: 1,
-                    assets: assets
+                    assets: assets,
+                    renderContext: renderContext
                 )
             }
             skb_restore(context)
@@ -101,7 +102,8 @@ enum OverlayComponentSkiaRenderer {
             elapsedTime: renderContext.elapsedTime,
             zoneSnapshot: HeartRateZonePreferences.currentSnapshot(),
             canvasSize: renderContext.canvasSize,
-            elementScale: scale
+            elementScale: scale,
+            weatherPayload: element.style.weatherWidget.cachedWeather
         )
         guard let resolved = OverlayComponentRegistry.resolve(instance: instance, data: data) else {
             return nil
@@ -193,7 +195,8 @@ enum OverlayComponentSkiaRenderer {
         context: OpaquePointer,
         space: DrawSpace,
         opacity: Double,
-        assets: [String: Data]
+        assets: [String: Data],
+        renderContext: OverlayRenderContext
     ) {
         guard opacity > 0.001 else { return }
         switch node {
@@ -259,7 +262,7 @@ enum OverlayComponentSkiaRenderer {
                 restoreCount += 1
             }
             for child in children {
-                draw(child, context: context, space: space, opacity: opacity, assets: assets)
+                draw(child, context: context, space: space, opacity: opacity, assets: assets, renderContext: renderContext)
             }
             for _ in 0..<restoreCount {
                 skb_restore(context)
@@ -275,7 +278,8 @@ enum OverlayComponentSkiaRenderer {
                 context: context,
                 space: space,
                 opacity: opacity,
-                assets: assets
+                assets: assets,
+                renderContext: renderContext
             )
 
         case let .opacity(nodeOpacity, content):
@@ -288,7 +292,7 @@ enum OverlayComponentSkiaRenderer {
                 Float(rect.width),
                 Float(rect.height)
             )
-            draw(content, context: context, space: space, opacity: opacity, assets: assets)
+            draw(content, context: context, space: space, opacity: opacity, assets: assets, renderContext: renderContext)
             skb_restore(context)
 
         case let .rect(frame, fill, radius, stroke, strokeWidth):
@@ -456,7 +460,8 @@ enum OverlayComponentSkiaRenderer {
                 context: context,
                 space: space,
                 opacity: opacity,
-                assets: assets
+                assets: assets,
+                renderContext: renderContext
             )
 
         case let .richText(frame, text):
@@ -725,6 +730,54 @@ enum OverlayComponentSkiaRenderer {
                 frame: space.rect(frame),
                 strip: strip,
                 space: space,
+                context: context
+            )
+
+        case let .runningGauge(frame, gauge):
+            drawRunningGauge(
+                frame: space.rect(frame),
+                gauge: gauge,
+                space: space,
+                context: context
+            )
+
+        case let .distanceTimeline(frame, style, valueFontSize):
+            drawDistanceTimeline(
+                frame: space.rect(frame),
+                style: style,
+                valueFontSize: valueFontSize,
+                space: space,
+                renderContext: renderContext,
+                context: context
+            )
+
+        case let .elevationChart(frame, style, valueFontSize, fontName, foregroundColor):
+            drawElevationChart(
+                frame: space.rect(frame),
+                style: style,
+                valueFontSize: valueFontSize,
+                fontName: fontName,
+                foregroundColor: foregroundColor,
+                space: space,
+                renderContext: renderContext,
+                context: context
+            )
+
+        case let .routeMap(frame, style):
+            drawRouteMap(
+                frame: space.rect(frame),
+                style: style,
+                space: space,
+                renderContext: renderContext,
+                context: context
+            )
+
+        case let .weatherWidget(frame, style):
+            drawWeatherWidget(
+                frame: space.rect(frame),
+                style: style,
+                space: space,
+                renderContext: renderContext,
                 context: context
             )
         }
@@ -1785,7 +1838,8 @@ enum OverlayComponentSkiaRenderer {
         context: OpaquePointer,
         space: DrawSpace,
         opacity: Double,
-        assets: [String: Data]
+        assets: [String: Data],
+        renderContext: OverlayRenderContext
     ) {
         let layout = layoutStack(
             frame: frame,
@@ -1809,7 +1863,8 @@ enum OverlayComponentSkiaRenderer {
                 context: context,
                 space: childSpace,
                 opacity: opacity,
-                assets: assets
+                assets: assets,
+                renderContext: renderContext
             )
         }
     }
@@ -1822,10 +1877,11 @@ enum OverlayComponentSkiaRenderer {
         context: OpaquePointer,
         space: DrawSpace,
         opacity: Double,
-        assets: [String: Data]
+        assets: [String: Data],
+        renderContext: OverlayRenderContext
     ) {
         guard let proposal else {
-            draw(node, context: context, space: space, opacity: opacity, assets: assets)
+            draw(node, context: context, space: space, opacity: opacity, assets: assets, renderContext: renderContext)
             return
         }
         switch node {
@@ -1840,7 +1896,8 @@ enum OverlayComponentSkiaRenderer {
                 context: context,
                 space: space,
                 opacity: opacity,
-                assets: assets
+                assets: assets,
+                renderContext: renderContext
             )
         case let .opacity(nodeOpacity, content):
             let rect = pixelBounds(content, proposal: proposal, space: space)
@@ -1858,11 +1915,12 @@ enum OverlayComponentSkiaRenderer {
                 context: context,
                 space: space,
                 opacity: opacity,
-                assets: assets
+                assets: assets,
+                renderContext: renderContext
             )
             skb_restore(context)
         default:
-            draw(node, context: context, space: space, opacity: opacity, assets: assets)
+            draw(node, context: context, space: space, opacity: opacity, assets: assets, renderContext: renderContext)
         }
     }
 
@@ -2018,7 +2076,8 @@ enum OverlayComponentSkiaRenderer {
         context: OpaquePointer,
         space: DrawSpace,
         opacity: Double,
-        assets: [String: Data]
+        assets: [String: Data],
+        renderContext: OverlayRenderContext
     ) {
         let metrics = columnsMetrics(
             width: width,
@@ -2066,7 +2125,8 @@ enum OverlayComponentSkiaRenderer {
                 context: context,
                 space: childSpace,
                 opacity: opacity,
-                assets: assets
+                assets: assets,
+                renderContext: renderContext
             )
             x += metrics.itemWidth
         }
@@ -2265,6 +2325,11 @@ enum OverlayComponentSkiaRenderer {
         case let .arc(frame, _, _, _, _, _, _, _, _): frame.origin
         case let .segmentedBar(frame, _, _, _, _, _, _, _, _, _, _, _): frame.origin
         case let .timelineStrip(frame, _): frame.origin
+        case let .runningGauge(frame, _): frame.origin
+        case let .distanceTimeline(frame, _, _): frame.origin
+        case let .elevationChart(frame, _, _, _, _): frame.origin
+        case let .routeMap(frame, _): frame.origin
+        case let .weatherWidget(frame, _): frame.origin
         }
     }
 
@@ -2729,7 +2794,256 @@ enum OverlayComponentSkiaRenderer {
         case let .arc(frame, _, _, _, _, _, _, _, _): frame
         case let .segmentedBar(frame, _, _, _, _, _, _, _, _, _, _, _): frame
         case let .timelineStrip(frame, _): frame
+        case let .runningGauge(frame, _): frame
+        case let .distanceTimeline(frame, _, _): frame
+        case let .elevationChart(frame, _, _, _, _): frame
+        case let .routeMap(frame, _): frame
+        case let .weatherWidget(frame, _): frame
         }
+    }
+
+    // MARK: - Running gauge
+
+    private static func drawRunningGauge(
+        frame: CGRect,
+        gauge: OverlayComponentResolvedGauge,
+        space: DrawSpace,
+        context: OpaquePointer
+    ) {
+        let diameter = frame.width
+        guard diameter > 0, frame.height > 0 else { return }
+        let style = gauge.style
+        let regionFrames = RunningGaugeLayoutEngine.regionFrames(
+            for: style.layoutPreset,
+            in: CGSize(width: diameter, height: diameter)
+        )
+        let baseValueSize = diameter * 0.145
+        let baseLabelSize = diameter * 0.038
+        let baseUnitSize = diameter * 0.045
+        let regions: [OverlayRunningGaugeRegionLayout] = regionFrames.compactMap { regionFrame in
+            guard let region = gauge.regions.first(where: { $0.config.region == regionFrame.region }) else {
+                return nil
+            }
+            return OverlayRunningGaugeRegionLayout(
+                config: region.config,
+                rect: CGRect(
+                    x: frame.minX + regionFrame.rect.minX,
+                    y: frame.minY + regionFrame.rect.minY,
+                    width: regionFrame.rect.width,
+                    height: regionFrame.rect.height
+                ),
+                components: region.components,
+                valueFontSize: max(baseValueSize * region.config.valueFontScale, 8),
+                labelFontSize: max(baseLabelSize * (region.config.labelFontScale / 0.32), 7),
+                unitFontSize: max(baseUnitSize * (region.config.unitFontScale / 0.42), 7)
+            )
+        }
+        let layout = OverlayRunningGaugeRenderLayout(
+            style: style,
+            rect: frame,
+            diameter: diameter,
+            progress: min(max(gauge.progress, 0), 1),
+            regions: regions,
+            outerRingWidth: max(diameter * style.outerRingWidthScale, 1.5),
+            progressRingWidth: max(diameter * style.progressRingWidthScale, 1.5),
+            tickLength: diameter * 0.025,
+            majorTickLength: diameter * 0.040,
+            safeRadius: diameter * 0.40
+        )
+        let canvas = SkiaChartsCanvas(context: context, size: frame.size)
+        // The host applies the element's opacity, glow and shadow once around
+        // the whole component. The chart renderer applies element effects
+        // itself, so hand it an effect-free element to avoid a second blend.
+        var hostStyle = OverlayStyle.default
+        hostStyle.shadowEnabled = false
+        hostStyle.glowEnabled = false
+        let element = OverlayElement(
+            type: .runningGauge,
+            position: .zero,
+            scale: space.elementScale,
+            style: hostStyle
+        )
+        SkiaRunningGaugeRenderer.draw(canvas: canvas, element: element, layout: layout)
+    }
+
+    // MARK: - Distance timeline
+
+    private static func drawDistanceTimeline(
+        frame: CGRect,
+        style: DistanceTimelineStyle,
+        valueFontSize: Double,
+        space: DrawSpace,
+        renderContext: OverlayRenderContext,
+        context: OpaquePointer
+    ) {
+        guard frame.width > 0, frame.height > 0 else { return }
+        // The native layout sizes the element from its style. Feed it the
+        // node's frame so preview and export reuse the same track, labels,
+        // marker and stats-bar layout.
+        var resolvedStyle = style
+        let scale = max(renderContext.canvasScale * space.elementScale, 0.0001)
+        resolvedStyle.width = frame.width / scale
+        resolvedStyle.height = frame.height / scale
+        var hostStyle = OverlayStyle.default
+        hostStyle.shadowEnabled = false
+        hostStyle.glowEnabled = false
+        hostStyle.fontSize = valueFontSize
+        // The native module paints its background and border from the shared
+        // element style. Map the node's declarative fields onto it and drop
+        // the host background padding so the frame is the painted bounds.
+        hostStyle.backgroundEnabled = resolvedStyle.backgroundEnabled
+        hostStyle.backgroundColor = resolvedStyle.backgroundColor
+        hostStyle.backgroundOpacity = resolvedStyle.backgroundOpacity
+        hostStyle.backgroundPaddingX = 0
+        hostStyle.backgroundPaddingY = 0
+        hostStyle.borderEnabled = resolvedStyle.borderEnabled
+        hostStyle.borderColor = resolvedStyle.borderColor
+        hostStyle.borderOpacity = resolvedStyle.borderOpacity
+        hostStyle.borderWidth = resolvedStyle.borderWidth
+        hostStyle.distanceTimeline = resolvedStyle
+        let element = OverlayElement(
+            type: .distanceTimeline,
+            position: CGPoint(
+                x: frame.midX / max(renderContext.canvasSize.width, 1),
+                y: frame.midY / max(renderContext.canvasSize.height, 1)
+            ),
+            scale: space.elementScale,
+            style: hostStyle
+        )
+        let layout = OverlayRenderModel.distanceTimelineLayout(for: element, in: renderContext)
+        let canvas = SkiaChartsCanvas(context: context, size: frame.size)
+        SkiaDistanceTimelineRenderer.draw(canvas: canvas, element: element, layout: layout)
+    }
+
+    // MARK: - Elevation chart
+
+    private static func drawElevationChart(
+        frame: CGRect,
+        style: ElevationChartStyle,
+        valueFontSize: Double,
+        fontName: String,
+        foregroundColor: OverlayColor,
+        space: DrawSpace,
+        renderContext: OverlayRenderContext,
+        context: OpaquePointer
+    ) {
+        guard frame.width > 0, frame.height > 0 else { return }
+        var resolvedStyle = style
+        let scale = max(renderContext.canvasScale * space.elementScale, 0.0001)
+        resolvedStyle.width = frame.width / scale
+        resolvedStyle.height = frame.height / scale
+        var hostStyle = OverlayStyle.default
+        hostStyle.shadowEnabled = false
+        hostStyle.glowEnabled = false
+        hostStyle.fontName = fontName
+        hostStyle.fontSize = valueFontSize
+        hostStyle.foregroundColor = foregroundColor
+        hostStyle.backgroundEnabled = resolvedStyle.backgroundEnabled
+        hostStyle.backgroundColor = resolvedStyle.backgroundColor
+        hostStyle.backgroundOpacity = resolvedStyle.backgroundOpacity
+        hostStyle.backgroundRadius = resolvedStyle.cornerRadius
+        hostStyle.backgroundPaddingX = 0
+        hostStyle.backgroundPaddingY = 0
+        hostStyle.borderEnabled = resolvedStyle.borderEnabled
+        hostStyle.borderOpacity = resolvedStyle.borderOpacity
+        hostStyle.elevationChart = resolvedStyle
+        let element = OverlayElement(
+            type: .elevationChart,
+            position: CGPoint(
+                x: frame.midX / max(renderContext.canvasSize.width, 1),
+                y: frame.midY / max(renderContext.canvasSize.height, 1)
+            ),
+            scale: space.elementScale,
+            style: hostStyle
+        )
+        let layout = OverlayRenderModel.elevationChartLayout(for: element, in: renderContext)
+        let canvas = SkiaChartsCanvas(context: context, size: frame.size)
+        SkiaElevationChartRenderer.draw(canvas: canvas, element: element, layout: layout)
+    }
+
+    // MARK: - Route map
+
+    private static func drawRouteMap(
+        frame: CGRect,
+        style: OverlayStyle,
+        space: DrawSpace,
+        renderContext: OverlayRenderContext,
+        context: OpaquePointer
+    ) {
+        guard frame.width > 0, frame.height > 0 else { return }
+        var hostStyle = style
+        let scale = max(renderContext.canvasScale * space.elementScale, 0.0001)
+        hostStyle.routeMapWidth = frame.width / scale
+        hostStyle.routeMapHeight = frame.height / scale
+        hostStyle.backgroundEnabled = hostStyle.routeMapBackgroundStyle != .none
+        hostStyle.backgroundPaddingX = 0
+        hostStyle.backgroundPaddingY = 0
+        let element = OverlayElement(
+            type: .routeMap,
+            position: CGPoint(
+                x: frame.midX / max(renderContext.canvasSize.width, 1),
+                y: frame.midY / max(renderContext.canvasSize.height, 1)
+            ),
+            scale: space.elementScale,
+            style: hostStyle
+        )
+        let layout = OverlayRenderModel.routeMapLayout(for: element, in: renderContext)
+        // The host module owns the map snapshot, mask and stats-bar drawing.
+        // Components carry no render assets of their own, so an empty store
+        // falls back to the module's generated background.
+        SkiaRouteMapModule.draw(
+            element,
+            renderContext: renderContext,
+            context: context,
+            assets: renderContext.renderAssets ?? SkiaRenderAssets()
+        )
+    }
+
+    // MARK: - Weather widget
+
+    private static func drawWeatherWidget(
+        frame: CGRect,
+        style: WeatherWidgetStyle,
+        space: DrawSpace,
+        renderContext: OverlayRenderContext,
+        context: OpaquePointer
+    ) {
+        guard frame.width > 0, frame.height > 0 else { return }
+        var hostStyle = OverlayStyle.default
+        // The host applies the element's opacity, glow and shadow once around
+        // the whole component; the weather module must not blend them again.
+        hostStyle.shadowEnabled = false
+        hostStyle.glowEnabled = false
+        let scale = max(renderContext.canvasScale * space.elementScale, 0.0001)
+        var widget = style
+        widget.width = frame.width / scale
+        widget.height = frame.height / scale
+        hostStyle.weatherWidget = widget
+        let element = OverlayElement(
+            type: .weatherWidget,
+            position: CGPoint(
+                x: frame.midX / max(renderContext.canvasSize.width, 1),
+                y: frame.midY / max(renderContext.canvasSize.height, 1)
+            ),
+            scale: space.elementScale,
+            style: hostStyle
+        )
+        let assets = renderContext.renderAssets ?? SkiaRenderAssets()
+        // Components do not run the host's preload pass over weather elements,
+        // so register the bundled condition icon for this frame's pixel size
+        // without evicting icons the host preloaded for native cards.
+        SkiaRenderAssets.registerWeatherIcons(
+            for: [element],
+            activity: renderContext.activity,
+            canvasSize: renderContext.canvasSize,
+            into: assets
+        )
+        SkiaWeatherWidgetModule.draw(
+            element,
+            renderContext: renderContext,
+            context: context,
+            assets: assets
+        )
     }
 
     private static func boundingBox(points: [CGPoint], padding: Double) -> CGRect {
