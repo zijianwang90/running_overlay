@@ -478,7 +478,7 @@ reduction is not expressible as base nodes. v0.1 defines six:
 | `distanceTimeline` | `preset` (`minimal`, `dense`, `sport`, `splits`, `glass`, `neon`, `lowerThird`, `route`), `valueFontSize`, `valueUnitSystem`, `showValue`, `showTotalDistance`, label fields (`showLabel`, `label`, font family/size/weight/color, spacing), axis fields (`showAxisLabels`, `axisLabelMode`, `axisLabelOffset`, font family/size/weight/color, `showDistancePoints`, `distancePointCount`, `distancePointOffset`, `midpointAxisLabelOffset`, endpoint/midpoint placement), marker fields (`markerDistanceLabel*`, `currentMarkerSizeMultiplier`, `currentMarkerEnabled`, `currentMarkerStyle`, `currentMarkerColor`), container (`backgroundEnabled`, `backgroundColor`, `backgroundOpacity`, `borderEnabled`, `borderColor`, `borderOpacity`, `borderWidth`, `cornerRadius`, `paddingX`, `paddingY`), track (`trackHeight`, `trackOpacity`, `fillColor`, `tickMarksEnabled`, `tickDensity`), effects (`glowEnabled`, `fadeEnabled`, `fadeEdge`, `fadeAmount`), media slot fields, `elevationProfileVisible` |
 | `elevationChart` | `preset` (`gradientArea`, `dualArea`, `techGlow`, `minimalWhite`, `bigNumbers`), `chartStyle` (`area`, `lineOnly`), smoothing, `progressMode`, padding, line/fill colors and opacities, dual-area colors, marker and playhead fields, grid/axis toggles, big-number fields, container background/border/corner/effect fields, text `fontFamily`/`foregroundColor`/`valueFontSize` |
 | `routeMap` | `shape` (`square`, `circle`), `backgroundStyle` (`none`, `dark`, `light`, `terrain`, `satellite`), `cornerRadius`, `backgroundOpacity`, start/end/runner marker style and color, `glowEnabled`, `mapOpacity`, `borderEnabled`, `borderOpacity`, `foregroundColor`, `fontFamily` |
-| `weatherWidget` | `preset` (`simpleCard`, `compactStrip`, `forecastTile`, `minimalText`, `dashboardBar`), manual data (`condition`, `temperatureC`, `humidity`, `highC`, `lowC`, `windKph`, `feelsLikeC`, `temperatureUnit`, `useActivityTemperature`, `locationText`), visibility toggles (`showLocation`, `showWeekday`, `showHumidity`, `showHighLow`, `showWind`, `showFeelsLike`, `showIcon`, `showConditionLabel`), labels (`conditionLabelOverride`, `humiditySuffix`, `humidityMetricLabel`, `windMetricLabel`, `feelsLikeMetricLabel`), card (`cardBackgroundColor`, `cardBackgroundOpacity`, `cardCornerRadius`, `dividerEnabled`, `dividerColor`, `dividerThickness`, `dividerOpacity`, `palette`, `iconSize`), slots (`slotBackgroundColor`, `slotBackgroundOpacity`, `slotSpacing`), and five text roles with `fontFamily` plus per-role `location`/`condition`/`temperature`/`slotTitle`/`slotLabel` size, weight and color |
+| `weatherWidget` | `dataSource` (`manual`, `openMeteo`, `openWeather`; default `openMeteo`), `preset` (`simpleCard`, `compactStrip`, `forecastTile`, `minimalText`, `dashboardBar`), manual data (`condition`, `temperatureC`, `humidity`, `highC`, `lowC`, `windKph`, `feelsLikeC`, `temperatureUnit`, `useActivityTemperature`, `locationText`), visibility toggles (`showLocation`, `showWeekday`, `showHumidity`, `showHighLow`, `showWind`, `showFeelsLike`, `showIcon`, `showConditionLabel`), labels (`conditionLabelOverride`, `humiditySuffix`, `humidityMetricLabel`, `windMetricLabel`, `feelsLikeMetricLabel`), card (`cardBackgroundColor`, `cardBackgroundOpacity`, `cardCornerRadius`, `dividerEnabled`, `dividerColor`, `dividerThickness`, `dividerOpacity`, `palette`, `iconSize`), slots (`slotBackgroundColor`, `slotBackgroundOpacity`, `slotSpacing`), and five text roles with `fontFamily` plus per-role `location`/`condition`/`temperature`/`slotTitle`/`slotLabel` size, weight and color |
 | `runningGauge` | `layoutPreset` (`topBottom`, `topMiddleBottom`, `threeZones`, `topTwoMiddleBottom`, `topThreeMiddleBottom`, `fourZones`, `fiveZones`), `progress` (0..1), dial (`dialBackgroundColor`, `dialBackgroundOpacity`, `glassEffectEnabled`), outer ring (`outerRingEnabled`, `outerRingColor`, `outerRingOpacity`, `outerRingWidthScale`), ticks (`tickMarksEnabled`, `tickColor`, `tickOpacity`, `majorTickOpacity`, `tickCount`, `majorTickEvery`), progress ring (`progressRingEnabled`, `progressColor`, `progressTrackColor`, `progressTrackOpacity`, `progressRingWidthScale`, `progressRoundedCaps`), dividers (`dividerEnabled`, `dividerColor`, `dividerOpacity`, `dividerWidth`), typography (`font`, `monospacedDigits`, `primaryFontWeight`, `secondaryFontWeight`, `primaryTextColor`, `secondaryTextColor`, `accentColor`), `regions?` (max 12; `region?`, `metric`, `customLabel?`, `showLabel?`, `showUnit?`, `valueFontScale?`, `labelFontScale?`, `unitFontScale?`, `valueWeight?`, `labelWeight?`, `valueColor?`, `labelColor?`) |
 | `timelineStrip` | `segments` (list expression of lap records), `currentIndex?`, `elapsed?`, `mode` (`emphasized`, `equal`, `weighted`), `emphasisFraction?` (0..0.65), `window?`, `showsWarmup?`/`showsRest?`/`showsCooldown?`, `segmentAreaHeight?`, `segmentHeight?`, `currentHeightScale?`, `minSegmentWidth?`, `gap?`, `radius?`, `currentBorderWidth?`, `completedOpacity?`, `futureOpacity?`, `colors` (`warmup`/`active`/`rest`/`cooldown`/`unknown`), `labels?` (`font`, current work/rest metrics, `neighbor`), `progress?` (`value`, `color`, `opacity`), `marker?` (`enabled`, `position`, `color`, `label`, `showsLabel`, `font`), `overflow?` (`enabled`, `text`, `color`, `inset`), `repText?`, `distanceProgress?` |
 
@@ -495,14 +495,20 @@ node an explicit `[width, height]` size that leaves room for content drawn
 outside the track or card (axis labels, attached stats bars, marker labels).
 
 `weatherWidget` renders the native weather card through the host module and
-never fetches weather. The host passes a snapshot through the
-`weather.current` record (`temperatureC`, `condition`, `icon`, `windSpeedMPS`,
-`humidity`); when a host snapshot for the playhead also carries high/low,
-feels-like and a resolved location, the host may supply the full payload, and
-the node falls back to its own manual values otherwise. The component clip ends
-at the card bounds, so the module's soft card shadow is trimmed to an
-alpha-only fringe on the widest preset; leave a margin in the frame when that
-shadow must be visible.
+never fetches weather. `dataSource` selects how data arrives: `manual` keeps the
+node's own values, while `openMeteo` and `openWeather` render the snapshot the
+host resolved for the activity location. In the app that snapshot lives in a
+project-level cache shared by every weather component, so one fetch serves the
+whole project and survives save/reopen; the Inspector exposes the source as a
+param and a fetch action on weather-capable components. The host also passes
+the snapshot through the `weather.current` record (`temperatureC`, `condition`,
+`icon`, `windSpeedMPS`, `humidity`); when the snapshot carries high/low,
+feels-like and a resolved location the host supplies the full payload, and the
+node falls back to its own manual values when no snapshot exists. The
+`--component-weather` authoring input reproduces a snapshot without network
+access. The component clip ends at the card bounds, so the module's soft card
+shadow is trimmed to an alpha-only fringe on the widest preset; leave a margin
+in the frame when that shadow must be visible.
 
 `runningGauge` draws the native activity dial. The host owns metric
 formatting and chart drawing; this node supplies the appearance fields and the

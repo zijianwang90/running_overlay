@@ -21,7 +21,8 @@ current protocol and CLI before claiming validation.
 
 Use the examples in `docs/overlay-components/examples/` as starting points:
 `metric-card` for scalar metrics and auto layout, `hr-pill` for a time series,
-`lap-splits` for a list. The bundled `numeric.json` is a larger reference.
+`lap-splits` for a list, and `weather-card` for a host-drawn `weatherWidget`
+node. The bundled `numeric.json` is a larger reference.
 Do not read Swift sources unless investigating a host implementation defect.
 
 ## Author
@@ -60,6 +61,11 @@ Run the existing product binary (`.build/debug/RunningOverlay` in the repo):
 Build first if necessary. Rendering needs Skia; use the repository's SDK setup
 instructions. Without Skia, run validation and explicitly report that rendering
 was unavailable. Never describe an unexecuted command as passing.
+
+For a host-drawn weather node, `--component-weather` supplies the snapshot the
+app would fetch (`condition`, `temperatureC`, optional `humidity`, `highC`,
+`lowC`, `windKph`, `feelsLikeC`, `location`); the CLI never reaches the
+network. Start from `examples/weather/osaka-afternoon.json`.
 
 Parameter overrides are a JSON object. The author CLI rejects unknown IDs,
 wrong types and invalid ranges/options. Fix JSON-pointer validation errors and

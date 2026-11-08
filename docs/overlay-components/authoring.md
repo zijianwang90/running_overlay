@@ -35,6 +35,19 @@ project time. Samples beyond the activity end clamp to the activity duration.
 Omit the activity argument to check missing-data placeholders. FIT and GPX use
 the same parsers as the app. The command never fetches weather or maps.
 
+`--component-weather` reads a JSON object describing the host weather snapshot
+for host-drawn weather nodes: `condition` (the `weather.current` condition
+name), `temperatureC`, and optional `humidity`, `highC`, `lowC`, `windKph`,
+`feelsLikeC` and `location`. It never reaches the network, so an
+`openMeteo`/`openWeather` data source renders exactly those authored values:
+
+```sh
+.build/debug/RunningOverlay --component-render \
+  docs/overlay-components/examples/weather-card.rocomponent.json \
+  --component-weather docs/overlay-components/examples/weather/osaka-afternoon.json \
+  --component-output /tmp/weather-card.png
+```
+
 `--component-params` reads a JSON object mapping parameter IDs to JSON values.
 Omitted IDs keep their declared defaults. Unknown IDs, wrong types, invalid
 colors, out-of-range numbers, overlong strings and undeclared enum/metric
@@ -96,7 +109,7 @@ Run the repository command after building with Skia:
 ./scripts/component-gallery.sh
 ```
 
-It validates all three examples and renders twelve PNGs (empty activity and
+It validates all four examples and renders sixteen PNGs (empty activity and
 0/30/60 seconds with parameter overrides) into a temporary directory. Optional
 arguments select a binary and output directory. Inputs are authored JSON plus
 a generated FIT file with three records and three laps; there are no real GPS
@@ -107,6 +120,7 @@ traces, credentials, downloads or API calls.
 | [Metric Card](examples/metric-card.rocomponent.json) | Host formatting, content sizing, stacked text | Pace and a longer title |
 | [Heart Rate Pill](examples/hr-pill.rocomponent.json) | Scalar, zone fallback, a recent series | Accent, radius, trend visibility |
 | [Lap Splits](examples/lap-splits.rocomponent.json) | List binding, bounded repeat, row offsets | Title and visible row count |
+| [Weather Card](examples/weather-card.rocomponent.json) | Host-drawn `weatherWidget` capability node with a data-source selector | Preset, unit, palette and metric slots |
 
 The larger bundled [Numeric component](../../Sources/RunningOverlay/Resources/Components/numeric.json)
 shows production parameter sections, unit families, conditional controls and

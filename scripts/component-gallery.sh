@@ -17,4 +17,18 @@ for name in metric-card hr-pill lap-splits; do
       --component-output "$output/$name-$seconds.png"
   done
 done
+
+# The weather card renders a host snapshot. The CLI takes it from a local
+# JSON file so the gallery never reaches the network.
+weather="docs/overlay-components/examples/weather-card.rocomponent.json"
+weatherInput="docs/overlay-components/examples/weather/osaka-afternoon.json"
+"$binary" --component-validate "$weather"
+"$binary" --component-render "$weather" --component-output "$output/weather-card-empty.png"
+for seconds in 0 30 60; do
+  "$binary" --component-render "$weather" \
+    --component-activity "$fixture" --component-at "$seconds" \
+    --component-params "docs/overlay-components/examples/params/weather-card.json" \
+    --component-weather "$weatherInput" \
+    --component-output "$output/weather-card-$seconds.png"
+done
 printf 'Gallery PNGs: %s\n' "$output"

@@ -301,6 +301,13 @@ Implemented:
 - Temperature strings include explicit units (`°C` / `°F`).
 - Render model uses cached Open-Meteo values only when the selected data source is `.openMeteo`; FIT/manual modes are not overridden by stale cache data.
 - Optional cached metrics render through the selected Style's metric slots.
+- The declarative `studio.weather-widget` component (M5i) renders the same
+  native module through the `weatherWidget` capability node. Its `dataSource`
+  param selects manual values or an API source; API sources render the
+  project-level `weatherCache`, so one fetch serves every weather component and
+  the snapshot persists with the project. The Inspector shows the cached
+  snapshot and fetches it for weather-capable components. Components never
+  reach the network.
 
 Remaining:
 

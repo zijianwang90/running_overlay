@@ -1368,6 +1368,7 @@
             "slotSpacing": { "$ref": "#/$defs/numberOrExpression" },
             "condition": { "oneOf": [{ "enum": ["sunny", "clearNight", "partlyCloudy", "cloudy", "rain", "heavyRain", "thunder", "snow", "fog", "wind"] }, { "$ref": "#/$defs/expression" }] },
             "preset": { "oneOf": [{ "enum": ["simpleCard", "compactStrip", "forecastTile", "minimalText", "dashboardBar"] }, { "$ref": "#/$defs/expression" }] },
+            "dataSource": { "oneOf": [{ "enum": ["manual", "openMeteo", "openWeather"] }, { "$ref": "#/$defs/expression" }] },
             "temperatureUnit": { "oneOf": [{ "enum": ["celsius", "fahrenheit"] }, { "$ref": "#/$defs/expression" }] },
             "palette": { "oneOf": [{ "enum": ["presetDefault", "blueGlass", "lightGlass", "graphite", "minimalWhite"] }, { "$ref": "#/$defs/expression" }] },
             "locationText": { "$ref": "#/$defs/stringOrExpression" },
