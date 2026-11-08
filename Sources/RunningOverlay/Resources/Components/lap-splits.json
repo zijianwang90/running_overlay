@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "name": { "en": "Lap Splits", "zh-Hans": "分圈配速" },
   "description": {
-    "en": "Recent lap splits with pace and average heart rate.",
-    "zh-Hans": "显示最近分圈的配速和平均心率。"
+    "en": "Lap splits with pace and average heart rate.",
+    "zh-Hans": "显示分圈配速和平均心率。"
   },
   "author": "Running Overlay Studio",
   "license": "MIT",
@@ -71,27 +71,27 @@
         {
           "type": "rect",
           "if": "=index % 2 == 0",
-          "frame": [0, "=index * 34", 288, 28],
+          "frame": [16, "=44 + index * 34", 288, 28],
           "radius": 6,
           "fill": "#FFFFFF0F"
         },
         {
           "type": "text",
-          "frame": [10, "=index * 34 + 6", 28, 16],
-          "text": "=format(lap.index, \"integer\")",
+          "frame": [26, "=44 + index * 34 + 6", 28, 16],
+          "text": "=format(index + 1, \"integer\")",
           "font": { "family": "system", "size": 12, "weight": "medium" },
           "color": "#FFFFFF80"
         },
         {
           "type": "text",
-          "frame": [44, "=index * 34 + 5", 120, 18],
+          "frame": [60, "=44 + index * 34 + 5", 120, 18],
           "text": "=format(lap.avgPace, \"pace\")",
           "font": { "family": "system", "size": 14, "weight": "semibold" },
           "color": "#FFFFFFE6"
         },
         {
           "type": "text",
-          "frame": [176, "=index * 34 + 5", 52, 18],
+          "frame": [192, "=44 + index * 34 + 5", 52, 18],
           "text": "=format(lap.avgHeartRate, \"integer\")",
           "font": { "family": "system", "size": 14, "weight": "medium" },
           "color": "=accent",
@@ -99,7 +99,7 @@
         },
         {
           "type": "text",
-          "frame": [236, "=index * 34 + 5", 44, 18],
+          "frame": [252, "=44 + index * 34 + 5", 44, 18],
           "text": "bpm",
           "font": { "family": "system", "size": 10, "weight": "regular" },
           "color": "#FFFFFF66",

@@ -86,6 +86,21 @@ struct OverlayComponentExpressionTests {
         #expect(try evaluate("zone.missing", context: context) == .null)
     }
 
+    @Test func fieldReadsRecordKeysDynamically() throws {
+        let context = OverlayComponentEvaluationContext(
+            bindings: [
+                "metrics": .record([
+                    "metric": .record(["value": .number(300), "label": .string("Pace")]),
+                    "imperial": .record(["value": .number(480), "unit": .string("/mi")])
+                ])
+            ]
+        )
+        #expect(try evaluate("field(metrics, \"metric\").value", context: context) == .number(300))
+        #expect(try evaluate("field(metrics, \"imperial\").unit", context: context) == .string("/mi"))
+        #expect(try evaluate("field(metrics, \"missing\")", context: context) == .null)
+        #expect(try evaluate("field(missing, \"value\")", context: context) == .null)
+    }
+
     @Test func formatPatterns() throws {
         #expect(try evaluate("format(432, \"duration\")") == .string("7:12"))
         #expect(try evaluate("format(3661, \"duration\")") == .string("1:01:01"))

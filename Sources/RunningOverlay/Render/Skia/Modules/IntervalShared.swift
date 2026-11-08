@@ -556,7 +556,9 @@ enum SkiaIntervalText {
                 line = makeLine(text, font: drawFont)
             }
         }
-        if line.width > maxWidth {
+        // Floating-point row widths can land a hair above `maxWidth` after the
+        // scale step; only truncate when the overflow is real.
+        if line.width > maxWidth + 0.001 {
             drawText = truncate(text, font: drawFont, maxWidth: maxWidth)
             line = makeLine(drawText, font: drawFont)
         }
@@ -789,6 +791,17 @@ enum SkiaIntervalText {
     static func rowHeight(_ row: Row, maxWidth: Double) -> Double {
         guard maxWidth > 0 else { return 0 }
         return measure(row, maxWidth: maxWidth)?.height ?? 0
+    }
+
+    /// Size of a row stack as laid out by `drawRows`.
+    static func rowsSize(_ rows: [Row], maxWidth: Double, spacing: Double) -> CGSize {
+        guard maxWidth > 0 else { return .zero }
+        let measured = rows.compactMap { measure($0, maxWidth: maxWidth) }
+        guard !measured.isEmpty else { return .zero }
+        let height = measured.reduce(0) { $0 + $1.height }
+            + spacing * Double(max(measured.count - 1, 0))
+        let width = measured.map(\.width).max() ?? 0
+        return CGSize(width: min(width, maxWidth), height: height)
     }
 
     static func drawRows(

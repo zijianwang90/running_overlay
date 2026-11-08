@@ -18,8 +18,74 @@ struct OverlayComponentLibraryItem: Identifiable, Equatable, Sendable {
     var parameters: [String: OverlayJSONValue] = [:]
 
     /// Every bundled entry: numeric presets (Overlay Pool → Metrics) and
-    /// example components (Overlay Pool → Components → Bundled).
-    static let all: [OverlayComponentLibraryItem] = numericPresets + examples
+    /// decor and example components (Overlay Pool → Components → Bundled).
+    static let all: [OverlayComponentLibraryItem] = numericPresets + decor + intervalComponents + examples
+
+    static let decor: [OverlayComponentLibraryItem] = [
+        OverlayComponentLibraryItem(
+            id: "studio.decor-shape",
+            displayName: "Shape",
+            hint: "fill + border",
+            systemImage: "square.fill",
+            resourceName: "decor-shape"
+        ),
+        OverlayComponentLibraryItem(
+            id: "studio.decor-text",
+            displayName: "Text",
+            hint: "paragraph + styles",
+            systemImage: "textformat",
+            resourceName: "decor-text"
+        ),
+        OverlayComponentLibraryItem(
+            id: "studio.decor-icon",
+            displayName: "Symbol",
+            hint: "SF Symbol + tint",
+            systemImage: "figure.run",
+            resourceName: "decor-icon"
+        )
+    ]
+
+    /// Interval workout modules whose composition is declarative. Data comes
+    /// from the host `structure.segment` contract.
+    static let intervalComponents: [OverlayComponentLibraryItem] = [
+        OverlayComponentLibraryItem(
+            id: "studio.interval-countdown",
+            displayName: "Interval Countdown",
+            hint: "ring + remaining",
+            systemImage: "timer",
+            resourceName: "interval-countdown"
+        ),
+        OverlayComponentLibraryItem(
+            id: "studio.interval-work-summary",
+            displayName: "Interval Work Summary",
+            hint: "primary + columns",
+            systemImage: "list.bullet.rectangle",
+            resourceName: "interval-work-summary"
+        ),
+        OverlayComponentLibraryItem(
+            id: "studio.interval-hud-bar",
+            displayName: "Interval HUD Bar",
+            hint: "rep + phase + metrics",
+            systemImage: "rectangle.split.3x1",
+            resourceName: "interval-hud-bar"
+        ),
+        OverlayComponentLibraryItem(
+            id: "studio.interval-timeline",
+            displayName: "Interval Timeline",
+            hint: "lap schedule + marker",
+            systemImage: "rectangle.split.3x1.fill",
+            resourceName: "interval-timeline"
+        ),
+        OverlayComponentLibraryItem(
+            id: "studio.zone-edge-bar",
+            displayName: "Zone Edge Bar",
+            hint: "zones + markers",
+            systemImage: "chart.bar.fill",
+            resourceName: "zone-edge-bar"
+        )
+    ]
+
+    static let bundledVisuals: [OverlayComponentLibraryItem] = decor + intervalComponents + examples
 
     static let examples: [OverlayComponentLibraryItem] = [
         OverlayComponentLibraryItem(

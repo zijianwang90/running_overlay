@@ -33,11 +33,137 @@ struct OverlayComponentResolvedFont: Equatable {
     var weight: OverlayComponentFontWeight
 }
 
+struct OverlayComponentResolvedDivider: Equatable {
+    var width: Double
+    var color: OverlayColor
+    var opacity: Double
+    var height: Double
+}
+
+struct OverlayComponentResolvedSegment: Equatable {
+    var index: Int
+    var color: OverlayColor
+}
+
+struct OverlayComponentResolvedSegmentedBarGlow: Equatable {
+    var opacity: Double
+    var sigma: Double
+}
+
+struct OverlayComponentResolvedSegmentedBarBorder: Equatable {
+    var color: OverlayColor
+    var opacity: Double
+    var width: Double
+}
+
+struct OverlayComponentResolvedSegmentedBarMarker: Equatable {
+    var role: OverlayComponentSegmentedBarMarkerRole
+    var layout: OverlayComponentSegmentedBarMarkerLayout
+    var index: Int
+    var fraction: Double
+    var text: String
+    var color: OverlayColor
+    var side: OverlayComponentSegmentedBarMarkerSide
+    var showsValue: Bool
+    var scale: Double
+    var font: OverlayComponentResolvedFont
+}
+
+struct OverlayComponentResolvedTimelineLap: Equatable {
+    var index: Int
+    var kind: String
+    var startElapsed: Double
+    var endElapsed: Double
+    var elapsed: Double
+    var distance: Double
+}
+
+struct OverlayComponentResolvedTimelineColors: Equatable {
+    var warmup: OverlayColor
+    var active: OverlayColor
+    var rest: OverlayColor
+    var cooldown: OverlayColor
+    var unknown: OverlayColor
+
+    func color(for kind: String) -> OverlayColor {
+        switch kind {
+        case "warmup": warmup
+        case "active": active
+        case "rest": rest
+        case "cooldown": cooldown
+        default: unknown
+        }
+    }
+}
+
+struct OverlayComponentResolvedTimelineLabels: Equatable {
+    var font: OverlayComponentResolvedFont
+    var currentWorkDistance: String
+    var currentWorkTime: String
+    var currentRestKind: Bool
+    var currentRestDistance: String
+    var currentRestTime: String
+    var neighbor: String
+}
+
+struct OverlayComponentResolvedTimelineMarker: Equatable {
+    var enabled: Bool
+    /// `progress` or `center`.
+    var position: String
+    var color: OverlayColor
+    var label: String
+    var showsLabel: Bool
+    var font: OverlayComponentResolvedFont
+}
+
+struct OverlayComponentResolvedTimelineProgress: Equatable {
+    var value: Double
+    var color: OverlayColor
+    var opacity: Double
+}
+
+struct OverlayComponentResolvedTimelineOverflow: Equatable {
+    var enabled: Bool
+    var text: String
+    var color: OverlayColor
+    var inset: Double
+}
+
+struct OverlayComponentResolvedTimelineStrip: Equatable {
+    var laps: [OverlayComponentResolvedTimelineLap]
+    var currentIndex: Int?
+    var elapsed: Double
+    var mode: String
+    var emphasisFraction: Double
+    /// Neighbor count for `emphasized`; nil shows every lap.
+    var window: Int?
+    var showsWarmup: Bool
+    var showsRest: Bool
+    var showsCooldown: Bool
+    var segmentAreaHeight: Double
+    var segmentHeight: Double
+    var currentHeightScale: Double
+    var minSegmentWidth: Double
+    var gap: Double
+    var radius: Double
+    var currentBorderWidth: Double
+    var completedOpacity: Double
+    var futureOpacity: Double
+    var colors: OverlayComponentResolvedTimelineColors
+    var labels: OverlayComponentResolvedTimelineLabels?
+    var progress: OverlayComponentResolvedTimelineProgress?
+    var marker: OverlayComponentResolvedTimelineMarker?
+    var overflow: OverlayComponentResolvedTimelineOverflow?
+    var repText: String
+    var distanceProgress: Double
+}
+
 struct OverlayComponentResolvedShadow: Equatable {
     var sigma: Double
     var dx: Double
     var dy: Double
     var color: OverlayColor
+    var opacity: Double
 }
 
 enum OverlayComponentResolvedPathCommand: Equatable {
@@ -49,12 +175,56 @@ enum OverlayComponentResolvedPathCommand: Equatable {
     case close
 }
 
+struct OverlayComponentResolvedRichText: Equatable {
+    var text: String
+    var font: OverlayComponentResolvedFont
+    var color: OverlayColor
+    var align: OverlayComponentTextAlignment
+    var lineHeight: Double
+    var tracking: Double
+    var stroke: OverlayColor
+    var strokeWidth: Double
+    var autoFit: Bool
+    var gradient: OverlayComponentResolvedTextGradient?
+}
+
+struct OverlayComponentResolvedTextRows: Equatable {
+    struct Run: Equatable {
+        var text: String
+        var font: OverlayComponentResolvedFont
+        var color: OverlayColor
+        var minimumScaleFactor: Double
+        var verticalPadding: Double
+        var opacity: Double
+        var monospacedDigits: Bool
+    }
+
+    struct Row: Equatable {
+        var runs: [Run]
+        var spacing: Double
+        var alignment: OverlayComponentTextRowAlignment
+    }
+
+    var rows: [Row]
+    var spacing: Double
+    var maxWidth: Double?
+}
+
+struct OverlayComponentResolvedTextGradient: Equatable {
+    var stops: [OverlayComponentGradientStop]
+    var from: CGPoint
+    var to: CGPoint
+}
+
 indirect enum OverlayComponentResolvedNode: Equatable {
+    case richText(frame: CGRect, text: OverlayComponentResolvedRichText)
+    case textRows(frame: CGRect, text: OverlayComponentResolvedTextRows, autoSize: Bool)
     case group(
         frame: CGRect,
         opacity: Double,
         clip: Bool,
-        shadow: OverlayComponentResolvedShadow?,
+        shadows: [OverlayComponentResolvedShadow],
+        shadowBounds: CGRect?,
         children: [OverlayComponentResolvedNode]
     )
     case stack(
@@ -120,12 +290,19 @@ indirect enum OverlayComponentResolvedNode: Equatable {
         asset: String,
         fit: OverlayComponentImageFit
     )
-    case spacer(length: Double?)
+    case spacer(length: Double?, minimum: Double)
+    case columns(
+        width: Double,
+        divider: OverlayComponentResolvedDivider?,
+        children: [OverlayComponentResolvedNode]
+    )
     case symbol(
         frame: CGRect,
         name: String,
         color: OverlayColor,
-        weight: OverlayComponentFontWeight
+        weight: OverlayComponentFontWeight,
+        scale: OverlayComponentSymbolScale,
+        rendering: OverlayComponentSymbolRendering
     )
     case gradientRect(
         frame: CGRect,
@@ -160,6 +337,21 @@ indirect enum OverlayComponentResolvedNode: Equatable {
         fillColor: OverlayColor,
         cap: OverlayComponentLineCap
     )
+    case segmentedBar(
+        frame: CGRect,
+        vertical: Bool,
+        segments: [OverlayComponentResolvedSegment],
+        activeIndex: Int?,
+        activeWidthShare: Double,
+        activeThicknessScale: Double,
+        gap: Double,
+        radius: Double,
+        inactiveOpacity: Double,
+        glow: OverlayComponentResolvedSegmentedBarGlow?,
+        border: OverlayComponentResolvedSegmentedBarBorder?,
+        markers: [OverlayComponentResolvedSegmentedBarMarker]
+    )
+    case timelineStrip(frame: CGRect, strip: OverlayComponentResolvedTimelineStrip)
 }
 
 struct OverlayComponentResolver {
@@ -172,6 +364,7 @@ struct OverlayComponentResolver {
         var diagnostics: [String] = []
         let parameters = normalizedParameters(rawParameters, diagnostics: &diagnostics)
         var bindings: [String: OverlayComponentValue] = [:]
+        var computedBindings: [String: OverlayComponentExpression] = [:]
         for (name, binding) in definition.bindings {
             switch binding {
             case .signal(let path):
@@ -180,7 +373,34 @@ struct OverlayComponentResolver {
                 bindings[name] = data.series(path: path, window: window, samples: samples)
             case .list(let path):
                 bindings[name] = data.list(path: path)
+            case .value(let expression):
+                computedBindings[name] = expression
             }
+        }
+        var evaluatingBindings: Set<String> = []
+        func evaluateComputedBinding(_ name: String) -> OverlayComponentValue {
+            if let value = bindings[name] { return value }
+            guard let expression = computedBindings[name],
+                  evaluatingBindings.insert(name).inserted else {
+                return .null
+            }
+            defer { evaluatingBindings.remove(name) }
+            for dependency in expression.referencedIdentifiers
+            where computedBindings[dependency] != nil && bindings[dependency] == nil {
+                _ = evaluateComputedBinding(dependency)
+            }
+            let bindingContext = OverlayComponentEvaluationContext(
+                parameters: parameters,
+                bindings: bindings,
+                data: data,
+                componentSize: definition.size
+            )
+            let value = expression.evaluate(in: bindingContext)
+            bindings[name] = value
+            return value
+        }
+        for name in computedBindings.keys {
+            _ = evaluateComputedBinding(name)
         }
 
         var context = OverlayComponentEvaluationContext(
@@ -285,6 +505,32 @@ struct OverlayComponentResolver {
         return OverlayComponentResolvedBackground(color: color, radius: max(radius, 0))
     }
 
+    private func resolveFont(
+        _ font: OverlayComponentFont,
+        path: String,
+        context: OverlayComponentEvaluationContext,
+        diagnostics: inout [String]
+    ) -> OverlayComponentResolvedFont? {
+        guard let size = font.size.evaluate(in: context), size > 0 else {
+            diagnostics.append("\(path): font size did not resolve")
+            return nil
+        }
+        let family = font.family.evaluate(in: context)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let weight = resolveEnum(
+            font.weight,
+            default: OverlayComponentFontWeight.regular,
+            path: "\(path).weight",
+            context: context,
+            diagnostics: &diagnostics
+        )
+        return OverlayComponentResolvedFont(
+            family: family.isEmpty ? "system" : family,
+            size: size,
+            weight: weight
+        )
+    }
+
     private func resolveNodes(
         _ nodes: [OverlayComponentNode],
         path: String,
@@ -387,23 +633,26 @@ struct OverlayComponentResolver {
 
         let resolved: OverlayComponentResolvedNode
         switch node.kind {
-        case .group(let children, let clip, let shadow):
+        case .group(let children, let clip, let shadows, let shadowBounds):
             let groupFrame = frame(required: false)
                 ?? CGRect(origin: .zero, size: CGSize(width: CGFloat(definition.size.width), height: CGFloat(definition.size.height)))
-            let resolvedShadow = shadow.flatMap { shadow -> OverlayComponentResolvedShadow? in
+            let resolvedShadows = shadows.compactMap { shadow -> OverlayComponentResolvedShadow? in
                 guard let color = shadow.color.evaluate(in: context) else { return nil }
                 return OverlayComponentResolvedShadow(
                     sigma: number(shadow.sigma, default: 0),
                     dx: number(shadow.dx, default: 0),
                     dy: number(shadow.dy, default: 0),
-                    color: color
+                    color: color,
+                    opacity: min(max(number(shadow.opacity, default: 1), 0), 1)
                 )
             }
+            let resolvedShadowBounds = shadowBounds?.evaluate(in: context)
             resolved = .group(
                 frame: groupFrame,
                 opacity: opacity,
                 clip: clip,
-                shadow: resolvedShadow,
+                shadows: resolvedShadows,
+                shadowBounds: resolvedShadowBounds,
                 children: resolveNodes(children, path: "\(path).children", context: &context, diagnostics: &diagnostics)
             )
             return resolved
@@ -569,14 +818,139 @@ struct OverlayComponentResolver {
                 autoSize: resolvedFrame == nil
             )
 
+        case .textRows(let rows, let spacing, let maxWidth):
+            let resolvedFrame: CGRect?
+            if node.frame == nil {
+                resolvedFrame = nil
+            } else {
+                guard let rect = frame() else { return nil }
+                resolvedFrame = rect
+            }
+            var resolvedRows: [OverlayComponentResolvedTextRows.Row] = []
+            for row in rows {
+                if let condition = row.condition, !condition.evaluate(in: context).isTruthy {
+                    continue
+                }
+                var runs: [OverlayComponentResolvedTextRows.Run] = []
+                for run in row.runs {
+                    if let condition = run.condition, !condition.evaluate(in: context).isTruthy {
+                        continue
+                    }
+                    guard let size = run.font.size.evaluate(in: context), size > 0,
+                          let runColor = run.color.evaluate(in: context) else {
+                        diagnostics.append("\(path): textRows font or color did not resolve")
+                        return nil
+                    }
+                    let family = run.font.family.evaluate(in: context)
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    let weight = resolveEnum(run.font.weight, default: OverlayComponentFontWeight.regular,
+                                             path: "\(path).rows.font.weight", context: context, diagnostics: &diagnostics)
+                    let resolvedText = run.text.evaluate(in: context)
+                    guard !resolvedText.isEmpty else { continue }
+                    runs.append(.init(
+                        text: resolvedText,
+                        font: .init(family: family.isEmpty ? "system" : family, size: size, weight: weight),
+                        color: runColor,
+                        minimumScaleFactor: min(max(number(run.minimumScaleFactor, default: 1), 0.1), 1),
+                        verticalPadding: max(number(run.verticalPadding, default: 0), 0),
+                        opacity: min(max(number(run.opacity, default: 1), 0), 1),
+                        monospacedDigits: run.monospacedDigits
+                    ))
+                }
+                resolvedRows.append(.init(
+                    runs: runs,
+                    spacing: max(number(row.spacing, default: 0), 0),
+                    alignment: row.alignment
+                ))
+            }
+            resolved = .textRows(
+                frame: resolvedFrame ?? .zero,
+                text: .init(
+                    rows: resolvedRows,
+                    spacing: max(number(spacing, default: 0), 0),
+                    maxWidth: maxWidth.map { max(number($0, default: 0), 1) }
+                ),
+                autoSize: resolvedFrame == nil
+            )
+
+        case .richText(let text):
+            guard let rect = frame(), let fill = color(text.color),
+                  let size = text.font.size.evaluate(in: context), size > 0 else {
+                diagnostics.append("\(path): richText frame, font or color did not resolve")
+                return nil
+            }
+            let family = text.font.family.evaluate(in: context).trimmingCharacters(in: .whitespacesAndNewlines)
+            let weight = resolveEnum(text.font.weight, default: OverlayComponentFontWeight.regular,
+                                     path: "\(path).font.weight", context: context, diagnostics: &diagnostics)
+            var gradient: OverlayComponentResolvedTextGradient?
+            if let source = text.gradient {
+                let stops = source.stops.compactMap { stop -> OverlayComponentGradientStop? in
+                    guard let color = stop.color.evaluate(in: context) else { return nil }
+                    return .init(offset: stop.offset, color: color)
+                }
+                guard stops.count == source.stops.count,
+                      let from = source.from.evaluate(in: context),
+                      let to = source.to.evaluate(in: context) else {
+                    diagnostics.append("\(path).gradient: gradient did not resolve")
+                    return nil
+                }
+                gradient = .init(stops: stops, from: from, to: to)
+            }
+            resolved = .richText(frame: rect, text: .init(
+                text: text.text.evaluate(in: context),
+                font: .init(family: family.isEmpty ? "system" : family, size: size, weight: weight),
+                color: fill,
+                align: resolveEnum(text.align, default: OverlayComponentTextAlignment.center,
+                                   path: "\(path).align", context: context, diagnostics: &diagnostics),
+                lineHeight: max(number(text.lineHeight, default: 1.2), 0.5),
+                tracking: number(text.tracking, default: 0),
+                stroke: color(text.stroke, default: .white) ?? .white,
+                strokeWidth: max(number(text.strokeWidth, default: 0), 0),
+                autoFit: text.autoFit?.evaluate(in: context).isTruthy ?? false,
+                gradient: gradient
+            ))
+
         case .image(let asset, let fit):
             guard let rect = frame() else { return nil }
             resolved = .image(frame: rect, asset: asset, fit: fit)
 
-        case .spacer(let length):
-            resolved = .spacer(length: length.map { max(number($0, default: 0), 0) })
+        case .spacer(let length, let minimum):
+            resolved = .spacer(
+                length: length.map { max(number($0, default: 0), 0) },
+                minimum: max(number(minimum, default: 0), 0)
+            )
 
-        case .symbol(let name, let symbolColor, let weight):
+        case .columns(let width, let divider, let children):
+            guard let resolvedWidth = width.evaluate(in: context), resolvedWidth > 0 else {
+                diagnostics.append("\(path): columns width did not resolve")
+                return nil
+            }
+            let resolvedChildren = resolveNodes(
+                children,
+                path: "\(path).children",
+                context: &context,
+                diagnostics: &diagnostics
+            )
+            var resolvedDivider: OverlayComponentResolvedDivider?
+            if let divider {
+                guard let color = divider.color.evaluate(in: context) else {
+                    diagnostics.append("\(path).divider: color did not resolve")
+                    return nil
+                }
+                resolvedDivider = .init(
+                    width: max(number(divider.width, default: 1), 0),
+                    color: color,
+                    opacity: min(max(number(divider.opacity, default: 1), 0), 1),
+                    height: max(number(divider.height, default: 0), 0)
+                )
+            }
+            resolved = .columns(
+                width: resolvedWidth,
+                divider: resolvedDivider,
+                children: resolvedChildren
+            )
+
+        case .symbol(let name, let symbolColor, let weight, let scale, let rendering):
             guard let rect = frame() else { return nil }
             let resolvedName = name.evaluate(in: context)
             guard OverlayComponentSymbolName.isValid(resolvedName) else {
@@ -587,7 +961,14 @@ struct OverlayComponentResolver {
                 diagnostics.append("\(path): symbol color did not resolve")
                 return nil
             }
-            resolved = .symbol(frame: rect, name: resolvedName, color: resolvedColor, weight: weight)
+            resolved = .symbol(
+                frame: rect, name: resolvedName, color: resolvedColor,
+                weight: resolveEnum(weight, default: OverlayComponentFontWeight.medium,
+                                    path: "\(path).weight", context: context, diagnostics: &diagnostics),
+                scale: resolveEnum(scale, default: OverlayComponentSymbolScale.medium,
+                                   path: "\(path).scale", context: context, diagnostics: &diagnostics),
+                rendering: rendering
+            )
 
         case .gradientRect(let stops, let from, let to, let radius):
             guard let rect = frame(),
@@ -655,6 +1036,199 @@ struct OverlayComponentResolver {
                 cap: cap
             )
 
+        case .segmentedBar(let bar):
+            guard let rect = frame() else { return nil }
+            let segments: [OverlayComponentResolvedSegment]
+            switch bar.segments.evaluate(in: context) {
+            case .list(let items):
+                segments = items.compactMap { item in
+                    guard let record = item.record,
+                          let index = record["index"]?.number.map({ Int($0.rounded()) }),
+                          let segmentColor = record["color"]?.color else {
+                        return nil
+                    }
+                    return OverlayComponentResolvedSegment(index: index, color: segmentColor)
+                }
+            case .null:
+                segments = []
+            default:
+                diagnostics.append("\(path): segmentedBar segments did not resolve to a list")
+                return nil
+            }
+            let isVertical = bar.orientation?.evaluate(in: context) == "vertical"
+            var markers: [OverlayComponentResolvedSegmentedBarMarker] = []
+            for marker in bar.markers {
+                if let condition = marker.condition, !condition.evaluate(in: context).isTruthy {
+                    continue
+                }
+                guard let markerIndex = marker.index?.evaluate(in: context).map({ Int($0.rounded()) }),
+                      let fraction = marker.fraction?.evaluate(in: context),
+                      let markerColor = marker.color.evaluate(in: context),
+                      let font = resolveFont(marker.font, path: "\(path).markers", context: context, diagnostics: &diagnostics) else {
+                    diagnostics.append("\(path): segmentedBar marker did not resolve")
+                    continue
+                }
+                let position = marker.position?.evaluate(in: context)
+                let side = OverlayComponentSegmentedBarMarkerSide(rawValue: position ?? "")
+                    ?? (isVertical ? .trailing : .above)
+                markers.append(OverlayComponentResolvedSegmentedBarMarker(
+                    role: marker.role,
+                    layout: marker.layout,
+                    index: markerIndex,
+                    fraction: min(max(fraction, 0), 1),
+                    text: marker.text.evaluate(in: context),
+                    color: markerColor,
+                    side: side,
+                    showsValue: marker.showsValue.map { ($0.evaluate(in: context) ?? 0) != 0 } ?? true,
+                    scale: marker.scale.flatMap { $0.evaluate(in: context) }.map { max($0, 0) } ?? 1,
+                    font: font
+                ))
+            }
+            var glow: OverlayComponentResolvedSegmentedBarGlow?
+            if let resolvedGlow = bar.glow {
+                glow = OverlayComponentResolvedSegmentedBarGlow(
+                    opacity: min(max(number(resolvedGlow.opacity, default: 0), 0), 1),
+                    sigma: max(number(resolvedGlow.sigma, default: 0), 0)
+                )
+            }
+            resolved = .segmentedBar(
+                frame: rect,
+                vertical: isVertical,
+                segments: segments,
+                activeIndex: bar.activeIndex.flatMap { source in
+                    source.evaluate(in: context).map { Int($0.rounded()) }
+                },
+                activeWidthShare: min(max(number(bar.activeWidthShare, default: 0), 0), 0.5),
+                activeThicknessScale: max(number(bar.activeThicknessScale, default: 1), 1),
+                gap: max(number(bar.gap, default: 0), 0),
+                radius: max(number(bar.radius, default: 0), 0),
+                inactiveOpacity: min(max(number(bar.inactiveOpacity, default: 1), 0), 1),
+                glow: glow,
+                border: bar.border.flatMap { resolvedBorder in
+                    guard let borderColor = resolvedBorder.color.evaluate(in: context) else {
+                        diagnostics.append("\(path).border: color did not resolve")
+                        return nil
+                    }
+                    return OverlayComponentResolvedSegmentedBarBorder(
+                        color: borderColor,
+                        opacity: min(max(number(resolvedBorder.opacity, default: 1), 0), 1),
+                        width: max(number(resolvedBorder.width, default: 1), 0)
+                    )
+                },
+                markers: markers
+            )
+
+
+        case .timelineStrip(let strip):
+            guard let rect = frame() else { return nil }
+            let laps: [OverlayComponentResolvedTimelineLap]
+            switch strip.segments.evaluate(in: context) {
+            case .list(let items):
+                laps = items.compactMap { item in
+                    guard let record = item.record else { return nil }
+                    return OverlayComponentResolvedTimelineLap(
+                        index: record["index"]?.number.map { Int($0.rounded()) } ?? 0,
+                        kind: record["kind"]?.string ?? "unknown",
+                        startElapsed: record["startElapsed"]?.number ?? 0,
+                        endElapsed: record["endElapsed"]?.number ?? 0,
+                        elapsed: record["elapsed"]?.number ?? 0,
+                        distance: record["distance"]?.number ?? 0
+                    )
+                }
+            case .null:
+                laps = []
+            default:
+                diagnostics.append("\(path): timelineStrip segments did not resolve to a list")
+                return nil
+            }
+            let resolvedColors = OverlayComponentResolvedTimelineColors(
+                warmup: strip.colors?.warmup.evaluate(in: context) ?? .white,
+                active: strip.colors?.active.evaluate(in: context) ?? .white,
+                rest: strip.colors?.rest.evaluate(in: context) ?? .white,
+                cooldown: strip.colors?.cooldown.evaluate(in: context) ?? .white,
+                unknown: strip.colors?.unknown.evaluate(in: context) ?? .white
+            )
+            var resolvedLabels: OverlayComponentResolvedTimelineLabels?
+            if let labels = strip.labels,
+               let font = resolveFont(labels.font, path: "\(path).labels", context: context, diagnostics: &diagnostics) {
+                resolvedLabels = OverlayComponentResolvedTimelineLabels(
+                    font: font,
+                    currentWorkDistance: labels.currentWorkDistance?.evaluate(in: context) ?? "elapsed",
+                    currentWorkTime: labels.currentWorkTime?.evaluate(in: context) ?? "remaining",
+                    currentRestKind: labels.currentRestKind.map { ($0.evaluate(in: context) ?? 0) != 0 } ?? true,
+                    currentRestDistance: labels.currentRestDistance?.evaluate(in: context) ?? "hidden",
+                    currentRestTime: labels.currentRestTime?.evaluate(in: context) ?? "remaining",
+                    neighbor: labels.neighbor?.evaluate(in: context) ?? "distance"
+                )
+            }
+            var resolvedProgress: OverlayComponentResolvedTimelineProgress?
+            if let progress = strip.progress,
+               let value = progress.value.evaluate(in: context),
+               let progressColor = progress.color.evaluate(in: context) {
+                resolvedProgress = OverlayComponentResolvedTimelineProgress(
+                    value: min(max(value, 0), 1),
+                    color: progressColor,
+                    opacity: min(max(progress.opacity.flatMap { $0.evaluate(in: context) } ?? 0.3, 0), 1)
+                )
+            }
+            var resolvedMarker: OverlayComponentResolvedTimelineMarker?
+            if let marker = strip.marker,
+               let markerColor = marker.color.evaluate(in: context),
+               let markerFont = resolveFont(marker.font, path: "\(path).marker", context: context, diagnostics: &diagnostics) {
+                resolvedMarker = OverlayComponentResolvedTimelineMarker(
+                    enabled: marker.enabled.map { ($0.evaluate(in: context) ?? 0) != 0 } ?? true,
+                    position: marker.position?.evaluate(in: context) ?? "progress",
+                    color: markerColor,
+                    label: marker.label?.evaluate(in: context) ?? "NOW",
+                    showsLabel: marker.showsLabel.map { ($0.evaluate(in: context) ?? 0) != 0 } ?? true,
+                    font: markerFont
+                )
+            }
+            var resolvedOverflow: OverlayComponentResolvedTimelineOverflow?
+            if let overflow = strip.overflow,
+               let overflowColor = overflow.color.evaluate(in: context) {
+                resolvedOverflow = OverlayComponentResolvedTimelineOverflow(
+                    enabled: overflow.enabled.map { ($0.evaluate(in: context) ?? 0) != 0 } ?? true,
+                    text: overflow.text?.evaluate(in: context) ?? "···",
+                    color: overflowColor,
+                    inset: max(overflow.inset.flatMap { $0.evaluate(in: context) } ?? 36, 0)
+                )
+            }
+            resolved = .timelineStrip(
+                frame: rect,
+                strip: OverlayComponentResolvedTimelineStrip(
+                    laps: laps,
+                    currentIndex: strip.currentIndex.flatMap { source in
+                        source.evaluate(in: context).map { Int($0.rounded()) }
+                    },
+                    elapsed: strip.elapsed.flatMap { $0.evaluate(in: context) } ?? 0,
+                    mode: strip.mode?.evaluate(in: context) ?? "emphasized",
+                    emphasisFraction: min(max(strip.emphasisFraction.flatMap { $0.evaluate(in: context) } ?? 0.28, 0), 0.65),
+                    window: strip.window.flatMap { source in
+                        source.evaluate(in: context).map { max(Int($0.rounded()), 0) }
+                    },
+                    showsWarmup: strip.showsWarmup.map { ($0.evaluate(in: context) ?? 0) != 0 } ?? true,
+                    showsRest: strip.showsRest.map { ($0.evaluate(in: context) ?? 0) != 0 } ?? true,
+                    showsCooldown: strip.showsCooldown.map { ($0.evaluate(in: context) ?? 0) != 0 } ?? true,
+                    segmentAreaHeight: max(strip.segmentAreaHeight.flatMap { $0.evaluate(in: context) } ?? 64, 1),
+                    segmentHeight: max(strip.segmentHeight.flatMap { $0.evaluate(in: context) } ?? 30, 1),
+                    currentHeightScale: max(strip.currentHeightScale.flatMap { $0.evaluate(in: context) } ?? 1.35, 1),
+                    minSegmentWidth: max(strip.minSegmentWidth.flatMap { $0.evaluate(in: context) } ?? 54, 0),
+                    gap: max(strip.gap.flatMap { $0.evaluate(in: context) } ?? 4, 0),
+                    radius: max(strip.radius.flatMap { $0.evaluate(in: context) } ?? 6, 0),
+                    currentBorderWidth: max(strip.currentBorderWidth.flatMap { $0.evaluate(in: context) } ?? 1.4, 0),
+                    completedOpacity: min(max(strip.completedOpacity.flatMap { $0.evaluate(in: context) } ?? 0.45, 0), 1),
+                    futureOpacity: min(max(strip.futureOpacity.flatMap { $0.evaluate(in: context) } ?? 0.32, 0), 1),
+                    colors: resolvedColors,
+                    labels: resolvedLabels,
+                    progress: resolvedProgress,
+                    marker: resolvedMarker,
+                    overflow: resolvedOverflow,
+                    repText: strip.repText?.evaluate(in: context) ?? "",
+                    distanceProgress: min(max(strip.distanceProgress.flatMap { $0.evaluate(in: context) } ?? 0, 0), 1)
+                )
+            )
+
         case .repeatNode(let over, let itemName, let indexName, let maximum, let children):
             guard let rect = frame() else { return nil }
             guard case .list(let items) = over.evaluate(in: context) else {
@@ -678,7 +1252,8 @@ struct OverlayComponentResolver {
                 frame: rect,
                 opacity: opacity,
                 clip: false,
-                shadow: nil,
+                shadows: [],
+                shadowBounds: nil,
                 children: resolvedChildren
             )
             return resolved

@@ -1,6 +1,6 @@
 # Overlay Components
 
-Status: **Draft, with an authoring loop implemented.** The loader, validator,
+Status: **v0.1 implemented; built-in ports in progress.** The loader, validator,
 expression evaluator and resolved draw-tree builder live in
 `Sources/RunningOverlay/Components/`. The project schema stores a `component`
 element kind (schema version 2), and the shared Skia preview/export renderer
@@ -21,6 +21,8 @@ overlays against the same contract.
 
 | Document | Purpose |
 |---|---|
+| [Authoring Guide](authoring.md) | Create, validate, render and import a component without reading Swift. |
+| [AI Authoring Skill](skills/overlay-component-authoring/SKILL.md) | Portable protocol-driven authoring workflow and evaluation prompts. |
 | [Spec v0.1](spec-v0.1.md) | Normative format: package, data contract, expressions, nodes, params, persistence, limits, security. |
 | [JSON Schema](schema/ros-component-0.1.schema.json) | Machine-readable validation for editors and future import tooling. |
 | [Heart Rate Pill](examples/hr-pill.rocomponent.json) | Minimal scalar + series example with params and Inspector controls. |
@@ -67,7 +69,11 @@ export.
 - Stack text and other boxed nodes horizontally or vertically with auto-sized
   text, so a unit can follow a value whose width changes, override the
   cross-axis alignment of a single child with `alignSelf`, stretch a child
-  stack across its parent and push items apart with flexible `spacer` nodes.
+  stack across its parent and push items apart with flexible `spacer` nodes,
+  optionally pinning them to a minimum length.
+- Lay out equal-width `columns` with an optional vertical divider between
+  them, and auto-size `textRows` blocks against a `maxWidth` instead of a
+  frame.
 - Drive fonts, stack direction and alignment from params through
   expressions.
 - Size the whole component from its measured content (`"size": "content"`)
@@ -76,10 +82,14 @@ export.
 - Read a versioned, read-only view of activity signals, series, laps,
   intervals, zones, route position and weather results, including lap pace
   and running dynamics.
-- Show any native numeric reading with host formatting through
+- Show any supported numeric reading with host formatting through
   `metric(id, unit)`, which returns the same value, unit and label text as the
-  native overlay.
-- Use three native capability nodes in v0.1: `sparkline`, `progressBar`, `arc`.
+  host formatter.
+- Reuse computed `value` bindings to evaluate one expression once and share
+  the result across several nodes.
+- Use generic capability nodes in v0.1, including `sparkline`,
+  `progressBar`, `arc` and `segmentedBar`, the last for zone bars and other
+  segmented runs with active-segment, orientation and marker support.
 - Expose typed params that become HIG-consistent Inspector rows.
 - Bundle PNG/JPEG assets with declared licensing.
 
@@ -94,21 +104,15 @@ export.
   stretch, and content-sized components, are available.
 - Design arbitrary Inspector UI.
 
-## Authoring Loop (Planned)
+## Authoring Loop
 
-The intended feedback loop for humans and AI is:
-
-1. Write `component.json` against the spec and schema.
-2. `RunningOverlay component validate <package>` — schema plus semantic
-   validation with JSON-pointer errors.
-3. `RunningOverlay component render <package> --activity <fixture.fit>
-   --at <elapsed> --out frame.png` — headless render through the product Skia
-   renderer with synthetic fixtures.
-4. Inspect the PNG, adjust, repeat.
-5. Add the package to a project and verify Inspector behavior and undo.
-
-None of the CLI commands exist yet. They are part of the v0.1 implementation
-milestone, not the current app.
+Follow the [authoring guide](authoring.md): write component JSON, run
+`--component-validate`, render through Skia with `--component-render`, inspect
+the PNG, then import and check Inspector editing, undo and save/reopen.
+Rendering accepts `--component-activity` (FIT/GPX), `--component-at` (activity
+elapsed seconds), `--component-params` (a JSON object file), and
+`--component-output`. The public fixture supplies metrics, series and laps.
+Run `./scripts/component-gallery.sh` for the three reproducible examples.
 
 ## Governance
 
@@ -124,7 +128,7 @@ milestone, not the current app.
   one into a new editable component, but cannot edit a bundled definition in
   place.
 - Deferred capability nodes: `areaChart`, `intervalTimeline`, `routeMap`,
-  `weatherIcon`, `textEffect`, `richText`.
+  `weatherIcon`, `textEffect`.
 
 ## Implementation Milestones
 
@@ -132,16 +136,20 @@ milestone, not the current app.
 |---|---|---|
 | M0 (this draft) | ADR, spec v0.1, schema, examples | Maintainer review of format |
 | M1 | Parser, validator, expression evaluator, compiled render graph, tests | **Kernel implemented:** `Sources/RunningOverlay/Components/`; focused tests pass |
-| M2 | Base + capability nodes through `SkiaEasyRunRenderer`; `.component` element kind | **Implemented for embedded definitions:** schema v2, canonical digest, Skia path; pixel parity with native still pending |
+| M2 | Base + capability nodes through `SkiaEasyRunRenderer`; `.component` element kind | **Implemented for embedded definitions:** schema v2, canonical digest, Skia path; numeric and solid-color parity established during M5 |
 | M3 | Params to Inspector generation and `ProjectDocument` undo | **Implemented:** generated Inspector rows, add/duplicate from the Overlay Pool, clamped/quantized parameter edits with discrete and continuous undo |
 | M4 | `.rocomponent` import, embedded definitions, validation errors, CLI | **Implemented:** folder/ZIP/JSON import with asset embedding and defensive archive checks, My Components management and export, Skia image nodes, `--component-validate` and `--component-render` |
 | M5 | Port built-ins one by one with snapshot evidence | **In progress**, split below. Done before M5a: exact native/component parity harness, Decor Solid Color pilots, heart-rate value plus trailing unit in an auto-sized stack |
 | M5a | Layout primitives: `symbol`, `alignSelf`, content-sized components with padding, minimum size and background | **Implemented:** heart rate with icon and background matches native exactly at element scale 1, 1.5 and 2 (icon leading) and 1 and 2 (icon top, unit centered below, minimum width); measured bounds drive hit testing |
 | M5b | Metric data contract | **Implemented:** `metric(id, unit)` returns host-formatted value/unit/label/short label/icon for every numeric type except Custom Numeric, with every native display unit (including 12-hour clock and date formats); lap pace and running-dynamics signals. String parity with `OverlayValueFormatter` for all 21 metrics × units × sampled times. Deferred: localized labels (native labels are English), Custom Numeric, manual temperature fallback, a speed signal |
-| M5c | One generic `studio.numeric` definition with per-metric Overlay Pool presets | **Implemented:** bundled `studio.numeric` (46 params) with 21 Pool presets under Components → Bundled; 13 pairwise cases over metric, icon/unit/label positions, alignments, colors, fonts, background, minimum size and element scale 1/1.5/2 match native exactly, so `textCluster` is not needed. Added `spacer`, `stretch`, and expression-driven enum and font fields. Native numeric tiles remain the default |
+| M5c | One generic `studio.numeric` definition with per-metric Overlay Pool presets | **Implemented:** bundled `studio.numeric` (46 params) with 21 Pool presets under Metrics; 13 pairwise cases over metric, icon/unit/label positions, alignments, colors, fonts, background, minimum size and element scale 1/1.5/2 match native exactly, so `textCluster` is not needed. Added `spacer`, `stretch`, and expression-driven enum and font fields. Native numeric tiles were replaced in M5d |
 | M5d | Replace native numeric overlays | **Implemented without migration (ADR 0014):** bundled templates converted to `studio.numeric` with exact pixel parity; Overlay Pool Metrics lists the numeric presets; saved projects drop native numeric elements on load with a status message |
 | M5e | Remove native numeric renderers | **Implemented with M5d:** native types, Skia/SwiftUI renderers, Inspector, numeric-only style fields and setters removed; metric formatting keyed by `OverlayMetric` |
-| M6 | Authoring guide + AI skill + example gallery, CLI fixtures | Community can author without reading Swift; can run in parallel with M5 |
+| M5f | Decor shapes, text and icons | **Component ports implemented:** `studio.decor-shape` (24 exact native combinations), `studio.decor-text` (18 exact richText cases) and `studio.decor-icon` (27 exact fitted-symbol cases). Added generic `richText`, `textRows`, multi-shadow group effects and expression-driven symbol weight/scale. SVG/user-image selection and native removal remain on their compatibility/review gate |
+| M5g | Distance Timeline, Elevation Chart, Running Gauge | Chart/axis/zone data and reusable drawing capabilities; shared preview/export and benchmark evidence |
+| M5h | Interval Countdown, Work Summary, HUD Bar, Timeline, Zone Edge Bar | **In progress:** `studio.interval-countdown` consumes `structure.segment` for phase, rep, remaining/elapsed time and distance, ring progress in both directions, per-role text visibility and typography, background/border and effect chains. Native comparison covers warmup/active/rest, both directions, distance/elapsed values, hidden roles, background and element scale 1–2; remaining difference is a sub-0.25% antialias fringe at ring edges (mean channel delta under 0.13). `studio.interval-work-summary` matches native exactly across metric/unit combinations, column visibility, label visibility, background with element shadow, and element scale 1.5, using auto-sized `textRows`, `columns` with dividers and `field()`; it relies on the host's element-level shadow/glow instead of re-creating them. `studio.interval-hud-bar` matches native across lap progress, HR and pace zone bars, marker and threshold marker states, HR-drop-at-rest and element scales, using the new generic `segmentedBar` node and lazy `value` bindings. `studio.zone-edge-bar` matches native across HR and pace metrics, horizontal and vertical bars, free and edge placements, marker above/below/leading/trailing, marker and threshold size scales, active-zone widening, glow, border and element scale 1.5, reusing `segmentedBar` with vertical orientation and outside-layout markers; it cannot yet reproduce the host's edge auto-pinning, so its position stays author-controlled. `studio.interval-timeline` matches native across centered and full-schedule modes, equal and duration layouts, warmup/work/rest states, neighbor and current label modes, live-progress and centered markers, overflow hints, rep counters, kind filters, element scale 1.5 and background/border, using the new `timelineStrip` capability node |
+| M5i | Route Map and Weather Widget | Host-owned projection/snapshots/weather; declarative appearance; no component network access |
+| M6 | Authoring guide + AI skill + example gallery, CLI fixtures | Authoring guide and portable skill; strict CLI parameter overrides, FIT/GPX activity and elapsed-time inputs; reproducible scalar/series/list gallery with synthetic fixtures |
 
 M2 changes the project schema and is subject to the human review rules in
 `AGENTS.md` (project-file compatibility) and to visual snapshot approval.

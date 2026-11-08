@@ -18,7 +18,7 @@ struct OverlayComponentResolverTests {
     private func flatten(_ nodes: [OverlayComponentResolvedNode]) -> [OverlayComponentResolvedNode] {
         nodes.flatMap { node -> [OverlayComponentResolvedNode] in
             switch node {
-            case .group(_, _, _, _, let children):
+            case .group(_, _, _, _, _, let children):
                 return [node] + flatten(children)
             case .opacity(_, let content):
                 return [node] + flatten([content])
@@ -127,12 +127,18 @@ struct OverlayComponentResolverTests {
 
         #expect(resolved.diagnostics.isEmpty)
         let group = try #require(resolved.nodes.last)
-        guard case .group(let frame, _, _, _, let children) = group else {
+        guard case .group(let frame, _, _, _, _, let children) = group else {
             Issue.record("expected repeat group")
             return
         }
         #expect(frame == CGRect(x: 16, y: 44, width: 288, height: 168))
         #expect(children.count == 9)
+        guard case .rect(let firstRow, _, _, _, _) = children.first else {
+            Issue.record("Expected a first-row background")
+            return
+        }
+        #expect(firstRow.minX == 16)
+        #expect(firstRow.minY == 44)
         #expect(textNodes(resolved).filter { $0.text == "1" }.count == 1)
         #expect(textNodes(resolved).filter { $0.text == "2" }.count == 1)
         #expect(textNodes(resolved).filter { $0.text == "150" }.count == 2)
@@ -174,6 +180,86 @@ struct OverlayComponentResolverTests {
         }
         #expect(trackingByText["tight"] == -2.5)
         #expect(trackingByText["default"] == 0)
+    }
+
+    @Test func columnsAutoSizedTextRowsAndPinnedSpacersResolve() throws {
+        let json = """
+        {
+          "spec": "ros.component/0.1",
+          "id": "community.test.columns",
+          "version": "1.0.0",
+          "name": "Columns",
+          "license": "MIT",
+          "size": [300, 200],
+          "bindings": { "hostInfo": { "signal": "host" } },
+          "nodes": [
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "textRows", "maxWidth": 120,
+                  "rows": [{ "runs": [{
+                    "text": "A", "font": { "family": "Helvetica Neue", "size": 12 },
+                    "color": "#FFFFFF", "opacity": 0.6
+                  }] }]
+                },
+                { "type": "spacer", "min": "=10 / hostInfo.scale" },
+                {
+                  "type": "columns", "width": "=width - 20",
+                  "divider": { "width": 2, "color": "#FFFFFF", "height": 30 },
+                  "children": [
+                    {
+                      "type": "textRows", "maxWidth": 80,
+                      "rows": [{ "runs": [{
+                        "text": "1", "font": { "family": "Helvetica Neue", "size": 12 },
+                        "color": "#FFFFFF"
+                      }] }]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+        """
+        let package = try OverlayComponentLoader.load(data: try #require(json.data(using: .utf8)))
+        let data = OverlayComponentStubData(signals: ["host": .record(["scale": .number(2)])])
+        let resolved = OverlayComponentResolver(definition: package.definition)
+            .resolve(parameters: [:], data: data)
+        #expect(resolved.diagnostics.isEmpty)
+
+        guard case .stack(_, _, _, _, let children) = try #require(resolved.nodes.first) else {
+            Issue.record("expected stack")
+            return
+        }
+        #expect(children.count == 3)
+        guard case .textRows(let frame, let rows, let autoSize) = children[0].node else {
+            Issue.record("expected auto-sized textRows")
+            return
+        }
+        #expect(autoSize)
+        #expect(frame.height == 0)
+        #expect(rows.maxWidth == 120)
+        #expect(rows.rows[0].runs[0].opacity == 0.6)
+        guard case .spacer(let length, let minimum) = children[1].node else {
+            Issue.record("expected pinned spacer")
+            return
+        }
+        #expect(length == nil)
+        #expect(minimum == 5)
+        guard case .columns(let width, let divider, let columns) = children[2].node else {
+            Issue.record("expected columns")
+            return
+        }
+        #expect(width == 280)
+        #expect(divider?.width == 2)
+        #expect(divider?.height == 30)
+        #expect(columns.count == 1)
+        guard case .textRows(_, let columnRows, _) = columns[0] else {
+            Issue.record("expected column textRows")
+            return
+        }
+        #expect(columnRows.maxWidth == 80)
     }
 
     @Test func stackResolvesChildrenAndMarksAutoSizedText() throws {
@@ -292,7 +378,7 @@ struct OverlayComponentResolverTests {
         let resolver = OverlayComponentResolver(definition: package.definition)
 
         let resolved = resolver.resolve(parameters: [:], data: OverlayComponentStubData())
-        guard case .symbol(let frame, let name, _, let weight)? = resolved.nodes.first else {
+        guard case .symbol(let frame, let name, _, let weight, _, _)? = resolved.nodes.first else {
             Issue.record("expected symbol")
             return
         }
@@ -415,7 +501,7 @@ struct OverlayComponentResolverTests {
         }
         #expect(direction == .horizontal)
         #expect(crossAlign == .start)
-        #expect(children[0].node == .spacer(length: 0))
+        #expect(children[0].node == .spacer(length: 0, minimum: 0))
         #expect(children[1].alignSelf == .start)
         guard case .text(_, _, let font, _, _, _, _, _, _, _) = children[1].node else {
             Issue.record("expected text")
@@ -459,5 +545,101 @@ struct OverlayComponentResolverTests {
                 #expect(!resolved.nodes.isEmpty, "\(item.id)")
             }
         }
+    }
+}
+
+extension OverlayComponentResolverTests {
+    @Test func segmentedBarResolvesComputedBindingsSegmentsAndMarkers() throws {
+        let json = """
+        {
+          "spec": "ros.component/0.1",
+          "id": "community.test.segmented",
+          "version": "1.0.0",
+          "name": "Segmented",
+          "license": "MIT",
+          "size": [200, 40],
+          "bindings": {
+            "zones": { "list": "zone.heartRateZones" },
+            "zoneCount": { "value": "=count(zones)" },
+            "active": { "value": "=zoneCount - 1" }
+          },
+          "params": [
+            { "id": "isBelow", "type": "bool", "label": "Below", "default": true }
+          ],
+          "nodes": [{
+            "type": "segmentedBar", "frame": [0, 0, 200, 10],
+            "segments": "=zones", "activeIndex": "=active",
+            "activeWidthShare": 0.25, "activeThicknessScale": 1.5,
+            "gap": 2, "radius": 6, "inactiveOpacity": 0.4,
+            "glow": { "opacity": 0.5, "sigma": 8 },
+            "border": { "color": "#FFFFFF", "opacity": 0.3, "width": 1 },
+            "markers": [
+              {
+                "role": "current", "index": "=active", "fraction": 0.5,
+                "text": "=format(active)", "color": "#FFFFFF",
+                "position": "=isBelow ? \\"below\\" : \\"above\\"", "showsValue": 0,
+                "font": { "family": "Menlo", "size": 9 }
+              },
+              {
+                "role": "threshold", "index": 2, "fraction": 0.75, "text": "T",
+                "color": "#FF0000", "font": { "family": "Menlo", "size": 9 }
+              }
+            ]
+          }]
+        }
+        """
+        let package = try OverlayComponentLoader.load(data: try #require(json.data(using: .utf8)))
+        let red = OverlayColor(red: 1, green: 0.2, blue: 0.2, alpha: 1)
+        let blue = OverlayColor(red: 0.2, green: 0.4, blue: 1, alpha: 1)
+        let yellow = OverlayColor(red: 1, green: 0.8, blue: 0.2, alpha: 1)
+        let stub = OverlayComponentStubData(lists: [
+            "zone.heartRateZones": [
+                .record(["index": .number(1), "color": .color(red)]),
+                .record(["index": .number(2), "color": .color(blue)]),
+                .record(["index": .number(3), "color": .color(yellow)])
+            ]
+        ])
+        let resolved = OverlayComponentResolver(definition: package.definition)
+            .resolve(parameters: [:], data: stub)
+        #expect(resolved.diagnostics.isEmpty)
+        guard case .segmentedBar(
+            let frame, let vertical, let segments, let activeIndex, let activeWidthShare,
+            let activeThicknessScale, let gap, let radius, let inactiveOpacity,
+            let glow, let border, let markers
+        ) = resolved.nodes.first else {
+            Issue.record("expected a segmentedBar")
+            return
+        }
+        #expect(frame == CGRect(x: 0, y: 0, width: 200, height: 10))
+        #expect(vertical == false)
+        #expect(segments.map(\.index) == [1, 2, 3])
+        #expect(segments.map(\.color) == [red, blue, yellow])
+        // The computed binding chain resolves lazily: `count(zones)` feeds
+        // `active`, which the node then reads.
+        #expect(activeIndex == 2)
+        #expect(activeWidthShare == 0.25)
+        #expect(activeThicknessScale == 1.5)
+        #expect(gap == 2)
+        #expect(radius == 6)
+        #expect(inactiveOpacity == 0.4)
+        #expect(glow?.opacity == 0.5)
+        #expect(glow?.sigma == 8)
+        #expect(border?.color == .white)
+        #expect(border?.opacity == 0.3)
+        #expect(border?.width == 1)
+        #expect(markers.count == 2)
+        #expect(markers[0].role == .current)
+        #expect(markers[0].index == 2)
+        #expect(markers[0].fraction == 0.5)
+        #expect(markers[0].text == "2")
+        #expect(markers[0].layout == .inline)
+        #expect(markers[0].side == .below)
+        #expect(markers[0].scale == 1)
+        #expect(markers[0].showsValue == false)
+        #expect(markers[0].font.size == 9)
+        #expect(markers[1].role == .threshold)
+        #expect(markers[1].side == .above)
+        #expect(markers[1].showsValue == true)
+        #expect(markers[1].text == "T")
     }
 }

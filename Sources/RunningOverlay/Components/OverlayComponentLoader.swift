@@ -55,6 +55,7 @@ enum OverlayJSONValue: Equatable, Sendable {
 enum OverlayComponentSignalCatalog {
     static let scalarSignals: Set<String> = [
         "activity.elapsed", "activity.remaining", "activity.distance",
+        "activity.duration", "activity.totalDistance",
         "activity.heartRate", "activity.pace", "activity.avgPace",
         "activity.elevation", "activity.elevationGain", "activity.cadence",
         "activity.power", "activity.grade", "activity.temperature",
@@ -66,7 +67,9 @@ enum OverlayComponentSignalCatalog {
 
     static let recordSignals: Set<String> = [
         "zone.heartRate", "zone.pace", "structure.currentLap",
-        "structure.current", "route.current", "weather.current", "host"
+        "structure.current", "structure.segment", "structure.lastWork", "structure.recovery",
+        "zone.current", "zone.heartRateThreshold", "zone.paceThreshold",
+        "route.current", "weather.current", "host"
     ]
 
     static let seriesSignals: Set<String> = [
@@ -80,14 +83,14 @@ enum OverlayComponentSignalCatalog {
     ]
 
     static let listSignals: Set<String> = [
-        "structure.laps", "structure.intervals"
+        "structure.laps", "structure.intervals", "zone.heartRateZones", "zone.paceZones"
     ]
 
     static let builtinNames: Set<String> = [
         "min", "max", "clamp", "abs", "round", "floor", "ceil", "lerp",
         "map", "sum", "avg", "count", "first", "last", "at", "coalesce",
         "exists", "format", "concat", "upper", "lower", "slice", "mix",
-        "alpha", "signal", "series", "metric"
+        "alpha", "field", "signal", "series", "metric"
     ]
 }
 
@@ -410,7 +413,7 @@ final class OverlayComponentParser {
             error(path, "params must be an array")
             return []
         }
-        if items.count > 64 { error(path, "at most 64 params are allowed") }
+        if items.count > 96 { error(path, "at most 96 params are allowed") }
         return items.enumerated().compactMap { index, item in
             parseParam(item, at: "\(path)[\(index)]")
         }
@@ -623,9 +626,9 @@ final class OverlayComponentParser {
                 error(bindingPath, "binding must be an object")
                 continue
             }
-            let kinds = ["signal", "series", "list"].filter { bindingObject[$0] != nil }
+            let kinds = ["signal", "series", "list", "value"].filter { bindingObject[$0] != nil }
             if kinds.count != 1 {
-                error(bindingPath, "binding must contain exactly one of signal, series, list")
+                error(bindingPath, "binding must contain exactly one of signal, series, list, value")
                 continue
             }
             if let rawSignal = bindingObject["signal"] {
@@ -669,6 +672,12 @@ final class OverlayComponentParser {
                     error("\(bindingPath).samples", "must be 2...1024")
                 }
                 result[name] = .series(path: seriesPath, window: window, samples: samples)
+            } else if let rawValue = bindingObject["value"] {
+                checkUnknownKeys(bindingObject, allowed: ["value"], at: bindingPath)
+                guard let parsed = expression(rawValue, at: "\(bindingPath).value") else {
+                    continue
+                }
+                result[name] = .value(parsed)
             } else if let rawList = bindingObject["list"] {
                 checkUnknownKeys(bindingObject, allowed: ["list"], at: bindingPath)
                 guard case .string(let listPath) = rawList else {
@@ -681,7 +690,7 @@ final class OverlayComponentParser {
                 }
                 result[name] = .list(listPath)
             } else {
-                error(bindingPath, "binding must contain exactly one of signal, series, list")
+                error(bindingPath, "binding must contain exactly one of signal, series, list, value")
             }
         }
         return result
@@ -733,7 +742,7 @@ final class OverlayComponentParser {
         let commonKeys: Set<String> = ["type", "id", "frame", "if", "opacity", "alignSelf"]
         let typeKeys: Set<String>
         switch type {
-        case "group": typeKeys = ["children", "clip", "shadow"]
+        case "group": typeKeys = ["children", "clip", "shadow", "shadows", "shadowBounds"]
         case "stack": typeKeys = ["direction", "spacing", "crossAlign", "children"]
         case "rect": typeKeys = ["fill", "radius", "stroke", "strokeWidth"]
         case "circle": typeKeys = ["center", "radius", "fill", "stroke", "strokeWidth"]
@@ -741,13 +750,24 @@ final class OverlayComponentParser {
         case "polyline": typeKeys = ["points", "width", "color", "cap", "join", "dash"]
         case "path": typeKeys = ["commands", "fill", "stroke", "strokeWidth", "cap", "join", "dash"]
         case "text": typeKeys = ["text", "font", "color", "align", "verticalAlign", "maxWidth", "lineHeight", "tracking"]
+        case "richText": typeKeys = ["text", "font", "color", "align", "lineHeight", "tracking", "stroke", "strokeWidth", "autoFit", "gradient"]
+        case "textRows": typeKeys = ["rows", "spacing", "maxWidth"]
         case "image": typeKeys = ["asset", "fit"]
-        case "symbol": typeKeys = ["name", "color", "weight"]
-        case "spacer": typeKeys = ["length"]
+        case "symbol": typeKeys = ["name", "color", "weight", "scale", "rendering"]
+        case "spacer": typeKeys = ["length", "min"]
+        case "columns": typeKeys = ["width", "divider", "children"]
         case "gradientRect": typeKeys = ["stops", "from", "to", "radius"]
         case "sparkline": typeKeys = ["series", "stroke", "lineWidth", "fill", "smoothing"]
         case "progressBar": typeKeys = ["value", "trackColor", "fillColor", "radius"]
         case "arc": typeKeys = ["value", "startDegrees", "sweepDegrees", "radius", "width", "trackColor", "fillColor", "cap"]
+        case "segmentedBar": typeKeys = ["orientation", "segments", "activeIndex", "activeWidthShare", "activeThicknessScale", "gap", "radius", "inactiveOpacity", "glow", "border", "markers"]
+        case "timelineStrip": typeKeys = [
+            "segments", "currentIndex", "elapsed", "mode", "emphasisFraction", "window",
+            "showsWarmup", "showsRest", "showsCooldown", "segmentAreaHeight", "segmentHeight",
+            "currentHeightScale", "minSegmentWidth", "gap", "radius",
+            "currentBorderWidth", "completedOpacity", "futureOpacity", "colors",
+            "labels", "progress", "marker", "overflow", "repText", "distanceProgress"
+        ]
         case "repeat": typeKeys = ["over", "as", "index", "max", "children"]
         default:
             error("\(path).type", "unknown node type '\(type)'")
@@ -765,8 +785,9 @@ final class OverlayComponentParser {
         }
 
         let frameRequired: Set<String> = [
-            "rect", "image", "symbol", "gradientRect", "sparkline",
-            "progressBar", "arc", "repeat"
+            "rect", "image", "symbol", "gradientRect", "richText",
+            "sparkline", "progressBar", "arc", "repeat", "segmentedBar",
+            "timelineStrip"
         ]
         let frame = parseFrame(object["frame"], at: "\(path).frame", required: frameRequired.contains(type))
         let condition = object["if"].flatMap { expression($0, at: "\(path).if") }
@@ -788,343 +809,47 @@ final class OverlayComponentParser {
         let kind: OverlayComponentNodeKind?
         switch type {
         case "group":
-            guard let rawChildren = object["children"],
-                  case .array(let childrenArray) = rawChildren else {
-                error("\(path).children", "group requires children")
-                return nil
-            }
-            let children = parseNodes(rawChildren, path: "\(path).children", depth: depth + 1, insideRepeat: insideRepeat)
-            if childrenArray.isEmpty { error("\(path).children", "group requires at least one child") }
-            let shadow = parseShadow(object["shadow"], at: "\(path).shadow")
-            kind = .group(
-                children: children,
-                clip: bool(object, "clip", at: "\(path).clip") ?? false,
-                shadow: shadow
-            )
-
+            kind = parseGroupKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
         case "stack":
-            guard let rawChildren = object["children"],
-                  case .array(let childrenArray) = rawChildren else {
-                error("\(path).children", "stack requires children")
-                return nil
-            }
-            let children = parseNodes(
-                rawChildren,
-                path: "\(path).children",
-                depth: depth + 1,
-                insideRepeat: insideRepeat,
-                insideStack: true
-            )
-            if childrenArray.isEmpty {
-                error("\(path).children", "stack requires at least one child")
-            }
-            for (index, child) in children.enumerated() where !isBoxed(child) {
-                error(
-                    "\(path).children[\(index)].frame",
-                    "stack child requires a frame unless it is text or a stack; wrap circle, line, polyline and path in a group"
-                )
-            }
-            kind = .stack(
-                direction: enumSource(
-                    object,
-                    "direction",
-                    at: "\(path).direction",
-                    as: OverlayComponentStackDirection.self
-                ) ?? .literal(OverlayComponentStackDirection.horizontal.rawValue),
-                spacing: object["spacing"].flatMap { numberSource($0, at: "\(path).spacing") }
-                    ?? .literal(0),
-                crossAlign: enumSource(
-                    object,
-                    "crossAlign",
-                    at: "\(path).crossAlign",
-                    as: OverlayComponentCrossAlignment.self
-                ) ?? .literal(OverlayComponentCrossAlignment.start.rawValue),
-                children: children
-            )
-
+            kind = parseStackKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
         case "rect":
-            guard let fillValue = object["fill"] else {
-                error("\(path).fill", "fill is required")
-                return nil
-            }
-            kind = .rect(
-                fill: colorSource(fillValue, at: "\(path).fill") ?? .literal(.black),
-                radius: object["radius"].flatMap { numberSource($0, at: "\(path).radius") } ?? .literal(0),
-                stroke: object["stroke"].flatMap { colorSource($0, at: "\(path).stroke") },
-                strokeWidth: object["strokeWidth"].flatMap { numberSource($0, at: "\(path).strokeWidth") }
-            )
-
+            kind = parseRectKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
         case "circle":
-            guard let center = object["center"].flatMap({ point($0, at: "\(path).center") }),
-                  let radius = object["radius"].flatMap({ numberSource($0, at: "\(path).radius") }) else {
-                error(path, "circle requires center and radius")
-                return nil
-            }
-            kind = .circle(
-                center: center,
-                radius: radius,
-                fill: object["fill"].flatMap { colorSource($0, at: "\(path).fill") },
-                stroke: object["stroke"].flatMap { colorSource($0, at: "\(path).stroke") },
-                strokeWidth: object["strokeWidth"].flatMap { numberSource($0, at: "\(path).strokeWidth") }
-            )
-
+            kind = parseCircleKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
         case "line":
-            guard let from = object["from"].flatMap({ point($0, at: "\(path).from") }),
-                  let to = object["to"].flatMap({ point($0, at: "\(path).to") }),
-                  let width = object["width"].flatMap({ numberSource($0, at: "\(path).width") }),
-                  let color = object["color"].flatMap({ colorSource($0, at: "\(path).color") }) else {
-                error(path, "line requires from, to, width and color")
-                return nil
-            }
-            kind = .line(
-                from: from,
-                to: to,
-                width: width,
-                color: color,
-                cap: rawEnumValue(object, "cap", at: "\(path).cap", default: OverlayComponentLineCap.butt)
-            )
-
+            kind = parseLineKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
         case "polyline":
-            guard let pointsValue = object["points"],
-                  let points = pointsSource(pointsValue, at: "\(path).points"),
-                  let width = object["width"].flatMap({ numberSource($0, at: "\(path).width") }),
-                  let color = object["color"].flatMap({ colorSource($0, at: "\(path).color") }) else {
-                error(path, "polyline requires points, width and color")
-                return nil
-            }
-            kind = .polyline(
-                points: points,
-                width: width,
-                color: color,
-                cap: rawEnumValue(object, "cap", at: "\(path).cap", default: OverlayComponentLineCap.butt),
-                join: rawEnumValue(object, "join", at: "\(path).join", default: OverlayComponentLineJoin.miter),
-                dash: parseDash(object["dash"], at: "\(path).dash")
-            )
-
+            kind = parsePolylineKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
         case "path":
-            guard let commandsValue = object["commands"],
-                  case .array(let commandItems) = commandsValue else {
-                error("\(path).commands", "path requires commands")
-                return nil
-            }
-            var commands: [OverlayComponentPathCommand] = []
-            for (index, item) in commandItems.enumerated() {
-                if let command = parsePathCommand(item, at: "\(path).commands[\(index)]") {
-                    commands.append(command)
-                }
-            }
-            let fill = object["fill"].flatMap { colorSource($0, at: "\(path).fill") }
-            let stroke = object["stroke"].flatMap { colorSource($0, at: "\(path).stroke") }
-            if fill == nil && stroke == nil {
-                error(path, "path requires fill or stroke")
-            }
-            kind = .path(
-                commands: commands,
-                fill: fill,
-                stroke: stroke,
-                strokeWidth: object["strokeWidth"].flatMap { numberSource($0, at: "\(path).strokeWidth") },
-                cap: rawEnumValue(object, "cap", at: "\(path).cap", default: OverlayComponentLineCap.butt),
-                join: rawEnumValue(object, "join", at: "\(path).join", default: OverlayComponentLineJoin.miter),
-                dash: parseDash(object["dash"], at: "\(path).dash")
-            )
-
+            kind = parsePathKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
         case "text":
-            guard let rawText = object["text"],
-                  let text = stringSource(rawText, at: "\(path).text"),
-                  let font = parseFont(object["font"], at: "\(path).font"),
-                  let color = object["color"].flatMap({ colorSource($0, at: "\(path).color") }) else {
-                error(path, "text requires text, font and color")
-                return nil
-            }
-            kind = .text(
-                text: text,
-                font: font,
-                color: color,
-                align: rawEnumValue(
-                    object,
-                    "align",
-                    at: "\(path).align",
-                    default: OverlayComponentTextAlignment.left
-                ),
-                verticalAlign: rawEnumValue(
-                    object,
-                    "verticalAlign",
-                    at: "\(path).verticalAlign",
-                    default: OverlayComponentVerticalAlignment.top
-                ),
-                maxWidth: object["maxWidth"].flatMap { numberSource($0, at: "\(path).maxWidth") },
-                lineHeight: object["lineHeight"].flatMap { numberSource($0, at: "\(path).lineHeight") },
-                tracking: object["tracking"].flatMap { numberSource($0, at: "\(path).tracking") }
-            )
-
+            kind = parseTextKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
+        case "richText":
+            kind = parseRichTextKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
+        case "textRows":
+            kind = parseTextRowsKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
         case "image":
-            guard let asset = string(object, "asset", at: "\(path).asset") else {
-                return nil
-            }
-            if !matches(asset, "^assets/[A-Za-z0-9._-]+\\.(png|jpg|jpeg)$") {
-                error("\(path).asset", "invalid asset path")
-            } else if !assets.contains(asset) {
-                error("\(path).asset", "asset '\(asset)' is not in the package")
-            }
-            kind = .image(
-                asset: asset,
-                fit: rawEnumValue(
-                    object,
-                    "fit",
-                    at: "\(path).fit",
-                    default: OverlayComponentImageFit.contain
-                )
-            )
-
+            kind = parseImageKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
         case "spacer":
-            if !insideStack {
-                error(path, "spacer is only valid as a stack child")
-            }
-            if object["frame"] != nil {
-                error("\(path).frame", "spacer takes a length, not a frame")
-            }
-            kind = .spacer(length: object["length"].flatMap { numberSource($0, at: "\(path).length") })
-
+            kind = parseSpacerKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
+        case "columns":
+            kind = parseColumnsKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
         case "symbol":
-            guard let rawName = object["name"],
-                  let name = stringSource(rawName, at: "\(path).name"),
-                  let color = object["color"].flatMap({ colorSource($0, at: "\(path).color") }) else {
-                error(path, "symbol requires name and color")
-                return nil
-            }
-            if case .literal(let literal) = name, !OverlayComponentSymbolName.isValid(literal) {
-                error("\(path).name", "invalid SF Symbol name '\(literal)'")
-            }
-            kind = .symbol(
-                name: name,
-                color: color,
-                weight: rawEnumValue(
-                    object,
-                    "weight",
-                    at: "\(path).weight",
-                    default: OverlayComponentFontWeight.medium
-                )
-            )
-
+            kind = parseSymbolKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
         case "gradientRect":
-            guard let stopsValue = object["stops"],
-                  case .array(let stopItems) = stopsValue,
-                  let from = object["from"].flatMap({ point($0, at: "\(path).from") }),
-                  let to = object["to"].flatMap({ point($0, at: "\(path).to") }) else {
-                error(path, "gradientRect requires stops, from and to")
-                return nil
-            }
-            var stops: [OverlayComponentGradientStop] = []
-            var previousOffset = -Double.infinity
-            for (index, item) in stopItems.enumerated() {
-                let stopPath = "\(path).stops[\(index)]"
-                guard case .object(let stopObject) = item,
-                      let offset = number(stopObject["offset"], at: "\(stopPath).offset"),
-                      case .string(let colorText)? = stopObject["color"],
-                      let color = OverlayComponentColorParser.parse(colorText) else {
-                    error(stopPath, "stop requires offset and color")
-                    continue
-                }
-                if offset < previousOffset {
-                    error("\(stopPath).offset", "stops must be ordered by offset")
-                }
-                previousOffset = offset
-                stops.append(OverlayComponentGradientStop(offset: offset, color: color))
-            }
-            if !(2...8).contains(stops.count) {
-                error("\(path).stops", "must contain 2...8 stops")
-            }
-            kind = .gradientRect(
-                stops: stops,
-                from: from,
-                to: to,
-                radius: object["radius"].flatMap { numberSource($0, at: "\(path).radius") }
-            )
-
+            kind = parseGradientRectKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
         case "sparkline":
-            guard let seriesValue = object["series"],
-                  let series = expression(seriesValue, at: "\(path).series"),
-                  let stroke = object["stroke"].flatMap({ colorSource($0, at: "\(path).stroke") }),
-                  let lineWidth = object["lineWidth"].flatMap({ numberSource($0, at: "\(path).lineWidth") }) else {
-                error(path, "sparkline requires series, stroke and lineWidth")
-                return nil
-            }
-            kind = .sparkline(
-                series: series,
-                stroke: stroke,
-                lineWidth: lineWidth,
-                fill: object["fill"].flatMap { colorSource($0, at: "\(path).fill") },
-                smoothing: rawEnumValue(
-                    object,
-                    "smoothing",
-                    at: "\(path).smoothing",
-                    default: OverlayComponentSmoothing.none
-                )
-            )
-
+            kind = parseSparklineKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
         case "progressBar":
-            guard let value = object["value"].flatMap({ expression($0, at: "\(path).value") }),
-                  let trackColor = object["trackColor"].flatMap({ colorSource($0, at: "\(path).trackColor") }),
-                  let fillColor = object["fillColor"].flatMap({ colorSource($0, at: "\(path).fillColor") }) else {
-                error(path, "progressBar requires value, trackColor and fillColor")
-                return nil
-            }
-            kind = .progressBar(
-                value: value,
-                trackColor: trackColor,
-                fillColor: fillColor,
-                radius: object["radius"].flatMap { numberSource($0, at: "\(path).radius") }
-            )
-
+            kind = parseProgressBarKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
         case "arc":
-            guard let value = object["value"].flatMap({ expression($0, at: "\(path).value") }),
-                  let start = object["startDegrees"].flatMap({ numberSource($0, at: "\(path).startDegrees") }),
-                  let sweep = object["sweepDegrees"].flatMap({ numberSource($0, at: "\(path).sweepDegrees") }),
-                  let radius = object["radius"].flatMap({ numberSource($0, at: "\(path).radius") }),
-                  let width = object["width"].flatMap({ numberSource($0, at: "\(path).width") }),
-                  let fillColor = object["fillColor"].flatMap({ colorSource($0, at: "\(path).fillColor") }) else {
-                error(path, "arc requires value, angles, radius, width and fillColor")
-                return nil
-            }
-            kind = .arc(
-                value: value,
-                startDegrees: start,
-                sweepDegrees: sweep,
-                radius: radius,
-                width: width,
-                trackColor: object["trackColor"].flatMap { colorSource($0, at: "\(path).trackColor") },
-                fillColor: fillColor,
-                cap: rawEnumValue(object, "cap", at: "\(path).cap", default: OverlayComponentLineCap.butt)
-            )
-
+            kind = parseArcKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
         case "repeat":
-            if insideRepeat {
-                error(path, "nested repeat is not allowed")
-            }
-            guard let over = object["over"].flatMap({ expression($0, at: "\(path).over") }) else {
-                return nil
-            }
-            let itemName = string(object, "as", at: "\(path).as") ?? "item"
-            let indexName = string(object, "index", at: "\(path).index") ?? "index"
-            for name in [itemName, indexName] {
-                if !matches(name, "^[A-Za-z_][A-Za-z0-9_]*$") {
-                    error(path, "invalid repeat variable name '\(name)'")
-                }
-            }
-            let children = parseNodes(
-                object["children"],
-                path: "\(path).children",
-                depth: depth + 1,
-                insideRepeat: true
-            )
-            kind = .repeatNode(
-                over: over,
-                itemName: itemName,
-                indexName: indexName,
-                maximum: object["max"].flatMap { numberSource($0, at: "\(path).max") },
-                children: children
-            )
-
+            kind = parseRepeatKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
+        case "segmentedBar":
+            kind = parseSegmentedBarKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
+        case "timelineStrip":
+            kind = parseTimelineStripKind(object: object, path: path, depth: depth, insideRepeat: insideRepeat, insideStack: insideStack, frame: frame)
         default:
             return nil
         }
@@ -1137,6 +862,913 @@ final class OverlayComponentParser {
             opacity: opacity,
             kind: kind,
             alignSelf: alignSelf
+        )
+    }
+
+
+    @inline(never)
+    private func parseTimelineStripNode(
+        _ object: [String: OverlayJSONValue],
+        at path: String
+    ) -> OverlayComponentTimelineStrip? {
+            guard let segments = object["segments"].flatMap({ expression($0, at: "\(path).segments") }) else {
+                error(path, "timelineStrip requires segments")
+                return nil
+            }
+            guard let colors = parseTimelineColors(object["colors"], at: "\(path).colors") else {
+                error("\(path).colors", "colors requires warmup, active, rest, cooldown and unknown")
+                return nil
+            }
+            var labels: OverlayComponentTimelineStrip.Labels?
+            if let rawLabels = object["labels"] {
+                guard case .object(let labelObject) = rawLabels,
+                      let font = parseFont(labelObject["font"], at: "\(path).labels.font") else {
+                    error("\(path).labels", "labels requires font")
+                    return nil
+                }
+                checkUnknownKeys(labelObject, allowed: [
+                    "font", "currentWorkDistance", "currentWorkTime", "currentRestKind",
+                    "currentRestDistance", "currentRestTime", "neighbor"
+                ], at: "\(path).labels")
+                labels = OverlayComponentTimelineStrip.Labels(
+                    font: font,
+                    currentWorkDistance: labelObject["currentWorkDistance"].flatMap {
+                        timelineEnumSource($0, at: "\(path).labels.currentWorkDistance", allowed: ["hidden", "elapsed", "remaining"])
+                    },
+                    currentWorkTime: labelObject["currentWorkTime"].flatMap {
+                        timelineEnumSource($0, at: "\(path).labels.currentWorkTime", allowed: ["hidden", "elapsed", "remaining"])
+                    },
+                    currentRestKind: labelObject["currentRestKind"].flatMap {
+                        numberSource($0, at: "\(path).labels.currentRestKind")
+                    },
+                    currentRestDistance: labelObject["currentRestDistance"].flatMap {
+                        timelineEnumSource($0, at: "\(path).labels.currentRestDistance", allowed: ["hidden", "elapsed", "remaining"])
+                    },
+                    currentRestTime: labelObject["currentRestTime"].flatMap {
+                        timelineEnumSource($0, at: "\(path).labels.currentRestTime", allowed: ["hidden", "elapsed", "remaining"])
+                    },
+                    neighbor: labelObject["neighbor"].flatMap {
+                        timelineEnumSource($0, at: "\(path).labels.neighbor", allowed: ["hidden", "distance", "time"])
+                    }
+                )
+            }
+            var progress: OverlayComponentTimelineStrip.Progress?
+            if let rawProgress = object["progress"] {
+                guard case .object(let progressObject) = rawProgress,
+                      let value = progressObject["value"].flatMap({ numberSource($0, at: "\(path).progress.value") }),
+                      let progressColor = progressObject["color"].flatMap({ colorSource($0, at: "\(path).progress.color") }) else {
+                    error("\(path).progress", "progress requires value and color")
+                    return nil
+                }
+                checkUnknownKeys(progressObject, allowed: ["value", "color", "opacity"], at: "\(path).progress")
+                progress = OverlayComponentTimelineStrip.Progress(
+                    value: value,
+                    color: progressColor,
+                    opacity: progressObject["opacity"].flatMap { numberSource($0, at: "\(path).progress.opacity") }
+                )
+            }
+            var marker: OverlayComponentTimelineStrip.Marker?
+            if let rawMarker = object["marker"] {
+                guard case .object(let markerObject) = rawMarker,
+                      let markerColor = markerObject["color"].flatMap({ colorSource($0, at: "\(path).marker.color") }),
+                      let markerFont = parseFont(markerObject["font"], at: "\(path).marker.font") else {
+                    error("\(path).marker", "marker requires color and font")
+                    return nil
+                }
+                checkUnknownKeys(markerObject, allowed: [
+                    "enabled", "position", "color", "label", "showsLabel", "font"
+                ], at: "\(path).marker")
+                marker = OverlayComponentTimelineStrip.Marker(
+                    enabled: markerObject["enabled"].flatMap { numberSource($0, at: "\(path).marker.enabled") },
+                    position: markerObject["position"].flatMap {
+                        timelineEnumSource($0, at: "\(path).marker.position", allowed: ["progress", "center"])
+                    },
+                    color: markerColor,
+                    label: markerObject["label"].flatMap { stringSource($0, at: "\(path).marker.label") },
+                    showsLabel: markerObject["showsLabel"].flatMap { numberSource($0, at: "\(path).marker.showsLabel") },
+                    font: markerFont
+                )
+            }
+            var overflow: OverlayComponentTimelineStrip.Overflow?
+            if let rawOverflow = object["overflow"] {
+                guard case .object(let overflowObject) = rawOverflow,
+                      let overflowColor = overflowObject["color"].flatMap({ colorSource($0, at: "\(path).overflow.color") }) else {
+                    error("\(path).overflow", "overflow requires color")
+                    return nil
+                }
+                checkUnknownKeys(overflowObject, allowed: ["enabled", "text", "color", "inset"], at: "\(path).overflow")
+                overflow = OverlayComponentTimelineStrip.Overflow(
+                    enabled: overflowObject["enabled"].flatMap { numberSource($0, at: "\(path).overflow.enabled") },
+                    text: overflowObject["text"].flatMap { stringSource($0, at: "\(path).overflow.text") },
+                    color: overflowColor,
+                    inset: overflowObject["inset"].flatMap { numberSource($0, at: "\(path).overflow.inset") }
+                )
+            }
+        return OverlayComponentTimelineStrip(
+                segments: segments,
+                currentIndex: object["currentIndex"].flatMap { numberSource($0, at: "\(path).currentIndex") },
+                elapsed: object["elapsed"].flatMap { numberSource($0, at: "\(path).elapsed") },
+                mode: object["mode"].flatMap {
+                    timelineEnumSource($0, at: "\(path).mode", allowed: ["emphasized", "equal", "weighted"])
+                },
+                emphasisFraction: object["emphasisFraction"].flatMap { numberSource($0, at: "\(path).emphasisFraction") },
+                window: object["window"].flatMap { numberSource($0, at: "\(path).window") },
+                showsWarmup: object["showsWarmup"].flatMap { numberSource($0, at: "\(path).showsWarmup") },
+                showsRest: object["showsRest"].flatMap { numberSource($0, at: "\(path).showsRest") },
+                showsCooldown: object["showsCooldown"].flatMap { numberSource($0, at: "\(path).showsCooldown") },
+                segmentAreaHeight: object["segmentAreaHeight"].flatMap { numberSource($0, at: "\(path).segmentAreaHeight") },
+                segmentHeight: object["segmentHeight"].flatMap { numberSource($0, at: "\(path).segmentHeight") },
+                currentHeightScale: object["currentHeightScale"].flatMap { numberSource($0, at: "\(path).currentHeightScale") },
+                minSegmentWidth: object["minSegmentWidth"].flatMap { numberSource($0, at: "\(path).minSegmentWidth") },
+                gap: object["gap"].flatMap { numberSource($0, at: "\(path).gap") },
+                radius: object["radius"].flatMap { numberSource($0, at: "\(path).radius") },
+                currentBorderWidth: object["currentBorderWidth"].flatMap { numberSource($0, at: "\(path).currentBorderWidth") },
+                completedOpacity: object["completedOpacity"].flatMap { numberSource($0, at: "\(path).completedOpacity") },
+                futureOpacity: object["futureOpacity"].flatMap { numberSource($0, at: "\(path).futureOpacity") },
+                colors: colors,
+                labels: labels,
+                progress: progress,
+                marker: marker,
+                overflow: overflow,
+                repText: object["repText"].flatMap { stringSource($0, at: "\(path).repText") },
+                distanceProgress: object["distanceProgress"].flatMap { numberSource($0, at: "\(path).distanceProgress") }
+            )
+
+    }
+
+    @inline(never)
+    private func parseGroupKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let rawChildren = object["children"],
+              case .array(let childrenArray) = rawChildren else {
+            error("\(path).children", "group requires children")
+            return nil
+        }
+        let children = parseNodes(rawChildren, path: "\(path).children", depth: depth + 1, insideRepeat: insideRepeat)
+        if childrenArray.isEmpty { error("\(path).children", "group requires at least one child") }
+        var shadows: [OverlayComponentShadow] = []
+        if let shadow = parseShadow(object["shadow"], at: "\(path).shadow") {
+            shadows.append(shadow)
+        }
+        if let rawShadows = object["shadows"] {
+            guard case .array(let items) = rawShadows else {
+                error("\(path).shadows", "shadows must be an array")
+                return nil
+            }
+            for (index, item) in items.enumerated() {
+                if let shadow = parseShadow(item, at: "\(path).shadows[\(index)]") {
+                    shadows.append(shadow)
+                }
+            }
+        }
+        let shadowBounds = object["shadowBounds"].flatMap {
+            parseFrame($0, at: "\(path).shadowBounds", required: true)
+        }
+        return .group(
+            children: children,
+            clip: bool(object, "clip", at: "\(path).clip") ?? false,
+            shadows: shadows,
+            shadowBounds: shadowBounds
+        )
+    }
+
+    @inline(never)
+    private func parseStackKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let rawChildren = object["children"],
+              case .array(let childrenArray) = rawChildren else {
+            error("\(path).children", "stack requires children")
+            return nil
+        }
+        let children = parseNodes(
+            rawChildren,
+            path: "\(path).children",
+            depth: depth + 1,
+            insideRepeat: insideRepeat,
+            insideStack: true
+        )
+        if childrenArray.isEmpty {
+            error("\(path).children", "stack requires at least one child")
+        }
+        for (index, child) in children.enumerated() where !isBoxed(child) {
+            error(
+                "\(path).children[\(index)].frame",
+                "stack child requires a frame unless it is text or a stack; wrap circle, line, polyline and path in a group"
+            )
+        }
+        return .stack(
+            direction: enumSource(
+                object,
+                "direction",
+                at: "\(path).direction",
+                as: OverlayComponentStackDirection.self
+            ) ?? .literal(OverlayComponentStackDirection.horizontal.rawValue),
+            spacing: object["spacing"].flatMap { numberSource($0, at: "\(path).spacing") }
+                ?? .literal(0),
+            crossAlign: enumSource(
+                object,
+                "crossAlign",
+                at: "\(path).crossAlign",
+                as: OverlayComponentCrossAlignment.self
+            ) ?? .literal(OverlayComponentCrossAlignment.start.rawValue),
+            children: children
+        )
+    }
+
+    @inline(never)
+    private func parseRectKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let fillValue = object["fill"] else {
+            error("\(path).fill", "fill is required")
+            return nil
+        }
+        return .rect(
+            fill: colorSource(fillValue, at: "\(path).fill") ?? .literal(.black),
+            radius: object["radius"].flatMap { numberSource($0, at: "\(path).radius") } ?? .literal(0),
+            stroke: object["stroke"].flatMap { colorSource($0, at: "\(path).stroke") },
+            strokeWidth: object["strokeWidth"].flatMap { numberSource($0, at: "\(path).strokeWidth") }
+        )
+    }
+
+    @inline(never)
+    private func parseCircleKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let center = object["center"].flatMap({ point($0, at: "\(path).center") }),
+              let radius = object["radius"].flatMap({ numberSource($0, at: "\(path).radius") }) else {
+            error(path, "circle requires center and radius")
+            return nil
+        }
+        return .circle(
+            center: center,
+            radius: radius,
+            fill: object["fill"].flatMap { colorSource($0, at: "\(path).fill") },
+            stroke: object["stroke"].flatMap { colorSource($0, at: "\(path).stroke") },
+            strokeWidth: object["strokeWidth"].flatMap { numberSource($0, at: "\(path).strokeWidth") }
+        )
+    }
+
+    @inline(never)
+    private func parseLineKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let from = object["from"].flatMap({ point($0, at: "\(path).from") }),
+              let to = object["to"].flatMap({ point($0, at: "\(path).to") }),
+              let width = object["width"].flatMap({ numberSource($0, at: "\(path).width") }),
+              let color = object["color"].flatMap({ colorSource($0, at: "\(path).color") }) else {
+            error(path, "line requires from, to, width and color")
+            return nil
+        }
+        return .line(
+            from: from,
+            to: to,
+            width: width,
+            color: color,
+            cap: rawEnumValue(object, "cap", at: "\(path).cap", default: OverlayComponentLineCap.butt)
+        )
+    }
+
+    @inline(never)
+    private func parsePolylineKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let pointsValue = object["points"],
+              let points = pointsSource(pointsValue, at: "\(path).points"),
+              let width = object["width"].flatMap({ numberSource($0, at: "\(path).width") }),
+              let color = object["color"].flatMap({ colorSource($0, at: "\(path).color") }) else {
+            error(path, "polyline requires points, width and color")
+            return nil
+        }
+        return .polyline(
+            points: points,
+            width: width,
+            color: color,
+            cap: rawEnumValue(object, "cap", at: "\(path).cap", default: OverlayComponentLineCap.butt),
+            join: rawEnumValue(object, "join", at: "\(path).join", default: OverlayComponentLineJoin.miter),
+            dash: parseDash(object["dash"], at: "\(path).dash")
+        )
+    }
+
+    @inline(never)
+    private func parsePathKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let commandsValue = object["commands"],
+              case .array(let commandItems) = commandsValue else {
+            error("\(path).commands", "path requires commands")
+            return nil
+        }
+        var commands: [OverlayComponentPathCommand] = []
+        for (index, item) in commandItems.enumerated() {
+            if let command = parsePathCommand(item, at: "\(path).commands[\(index)]") {
+                commands.append(command)
+            }
+        }
+        let fill = object["fill"].flatMap { colorSource($0, at: "\(path).fill") }
+        let stroke = object["stroke"].flatMap { colorSource($0, at: "\(path).stroke") }
+        if fill == nil && stroke == nil {
+            error(path, "path requires fill or stroke")
+        }
+        return .path(
+            commands: commands,
+            fill: fill,
+            stroke: stroke,
+            strokeWidth: object["strokeWidth"].flatMap { numberSource($0, at: "\(path).strokeWidth") },
+            cap: rawEnumValue(object, "cap", at: "\(path).cap", default: OverlayComponentLineCap.butt),
+            join: rawEnumValue(object, "join", at: "\(path).join", default: OverlayComponentLineJoin.miter),
+            dash: parseDash(object["dash"], at: "\(path).dash")
+        )
+    }
+
+    @inline(never)
+    private func parseTextKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let rawText = object["text"],
+              let text = stringSource(rawText, at: "\(path).text"),
+              let font = parseFont(object["font"], at: "\(path).font"),
+              let color = object["color"].flatMap({ colorSource($0, at: "\(path).color") }) else {
+            error(path, "text requires text, font and color")
+            return nil
+        }
+        return .text(
+            text: text,
+            font: font,
+            color: color,
+            align: rawEnumValue(
+                object,
+                "align",
+                at: "\(path).align",
+                default: OverlayComponentTextAlignment.left
+            ),
+            verticalAlign: rawEnumValue(
+                object,
+                "verticalAlign",
+                at: "\(path).verticalAlign",
+                default: OverlayComponentVerticalAlignment.top
+            ),
+            maxWidth: object["maxWidth"].flatMap { numberSource($0, at: "\(path).maxWidth") },
+            lineHeight: object["lineHeight"].flatMap { numberSource($0, at: "\(path).lineHeight") },
+            tracking: object["tracking"].flatMap { numberSource($0, at: "\(path).tracking") }
+        )
+    }
+
+    @inline(never)
+    private func parseRichTextKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let rawText = object["text"],
+              let text = stringSource(rawText, at: "\(path).text"),
+              let font = parseFont(object["font"], at: "\(path).font"),
+              let color = object["color"].flatMap({ colorSource($0, at: "\(path).color") }) else {
+            error(path, "richText requires text, font and color")
+            return nil
+        }
+        let autoFit: OverlayComponentExpression?
+        if case .boolean(let enabled)? = object["autoFit"] {
+            autoFit = .literal(.boolean(enabled))
+        } else {
+            autoFit = object["autoFit"].flatMap { expression($0, at: "\(path).autoFit") }
+        }
+        return .richText(OverlayComponentRichText(
+            text: text,
+            font: font,
+            color: color,
+            align: enumSource(object, "align", at: "\(path).align", as: OverlayComponentTextAlignment.self) ?? .literal("center"),
+            lineHeight: object["lineHeight"].flatMap { numberSource($0, at: "\(path).lineHeight") },
+            tracking: object["tracking"].flatMap { numberSource($0, at: "\(path).tracking") },
+            stroke: object["stroke"].flatMap { colorSource($0, at: "\(path).stroke") },
+            strokeWidth: object["strokeWidth"].flatMap { numberSource($0, at: "\(path).strokeWidth") },
+            autoFit: autoFit,
+            gradient: parseTextGradient(object["gradient"], at: "\(path).gradient")
+        ))
+    }
+
+    @inline(never)
+    private func parseTextRowsKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let rawRows = object["rows"], case .array(let rowItems) = rawRows,
+              !rowItems.isEmpty else {
+            error("\(path).rows", "textRows requires a non-empty rows array")
+            return nil
+        }
+        var rows: [OverlayComponentTextRow] = []
+        for (rowIndex, rowValue) in rowItems.enumerated() {
+            let rowPath = "\(path).rows[\(rowIndex)]"
+            guard case .object(let rowObject) = rowValue else {
+                error(rowPath, "row must be an object")
+                return nil
+            }
+            checkUnknownKeys(rowObject, allowed: ["runs", "spacing", "alignment", "if"], at: rowPath)
+            guard let rawRuns = rowObject["runs"], case .array(let runItems) = rawRuns,
+                  !runItems.isEmpty else {
+                error("\(rowPath).runs", "row requires a non-empty runs array")
+                return nil
+            }
+            var runs: [OverlayComponentTextRowRun] = []
+            for (runIndex, runValue) in runItems.enumerated() {
+                let runPath = "\(rowPath).runs[\(runIndex)]"
+                guard case .object(let runObject) = runValue else {
+                    error(runPath, "run must be an object")
+                    return nil
+                }
+                checkUnknownKeys(runObject, allowed: ["text", "font", "color", "minimumScaleFactor", "verticalPadding", "opacity", "monospacedDigits", "if"], at: runPath)
+                guard let rawText = runObject["text"], let text = stringSource(rawText, at: "\(runPath).text"),
+                      let font = parseFont(runObject["font"], at: "\(runPath).font"),
+                      let color = runObject["color"].flatMap({ colorSource($0, at: "\(runPath).color") }) else {
+                    error(runPath, "run requires text, font and color")
+                    return nil
+                }
+                runs.append(OverlayComponentTextRowRun(
+                    text: text,
+                    font: font,
+                    color: color,
+                    minimumScaleFactor: runObject["minimumScaleFactor"].flatMap { numberSource($0, at: "\(runPath).minimumScaleFactor") },
+                    verticalPadding: runObject["verticalPadding"].flatMap { numberSource($0, at: "\(runPath).verticalPadding") },
+                    opacity: runObject["opacity"].flatMap { numberSource($0, at: "\(runPath).opacity") },
+                    monospacedDigits: bool(runObject, "monospacedDigits", at: "\(runPath).monospacedDigits") ?? false,
+                    condition: runObject["if"].flatMap { expression($0, at: "\(runPath).if") }
+                ))
+            }
+            rows.append(OverlayComponentTextRow(
+                runs: runs,
+                spacing: rowObject["spacing"].flatMap { numberSource($0, at: "\(rowPath).spacing") },
+                alignment: rawEnumValue(rowObject, "alignment", at: "\(rowPath).alignment", default: OverlayComponentTextRowAlignment.center),
+                condition: rowObject["if"].flatMap { expression($0, at: "\(rowPath).if") }
+            ))
+        }
+        if frame == nil, object["maxWidth"] == nil {
+            error("\(path).maxWidth", "auto-sized textRows requires maxWidth")
+        }
+        return .textRows(
+            rows: rows,
+            spacing: object["spacing"].flatMap { numberSource($0, at: "\(path).spacing") },
+            maxWidth: object["maxWidth"].flatMap { numberSource($0, at: "\(path).maxWidth") }
+        )
+    }
+
+    @inline(never)
+    private func parseImageKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let asset = string(object, "asset", at: "\(path).asset") else {
+            return nil
+        }
+        if !matches(asset, "^assets/[A-Za-z0-9._-]+\\.(png|jpg|jpeg)$") {
+            error("\(path).asset", "invalid asset path")
+        } else if !assets.contains(asset) {
+            error("\(path).asset", "asset '\(asset)' is not in the package")
+        }
+        return .image(
+            asset: asset,
+            fit: rawEnumValue(
+                object,
+                "fit",
+                at: "\(path).fit",
+                default: OverlayComponentImageFit.contain
+            )
+        )
+    }
+
+    @inline(never)
+    private func parseSpacerKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        if !insideStack {
+            error(path, "spacer is only valid as a stack child")
+        }
+        if object["frame"] != nil {
+            error("\(path).frame", "spacer takes a length, not a frame")
+        }
+        return .spacer(
+            length: object["length"].flatMap { numberSource($0, at: "\(path).length") },
+            minimum: object["min"].flatMap { numberSource($0, at: "\(path).min") }
+        )
+    }
+
+    @inline(never)
+    private func parseColumnsKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let columns = parseColumns(
+            object,
+            at: path,
+            depth: depth,
+            insideRepeat: insideRepeat
+        ) else { return nil }
+        return columns
+    }
+
+    @inline(never)
+    private func parseSymbolKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let rawName = object["name"],
+              let name = stringSource(rawName, at: "\(path).name"),
+              let color = object["color"].flatMap({ colorSource($0, at: "\(path).color") }) else {
+            error(path, "symbol requires name and color")
+            return nil
+        }
+        if case .literal(let literal) = name, !OverlayComponentSymbolName.isValid(literal) {
+            error("\(path).name", "invalid SF Symbol name '\(literal)'")
+        }
+        return .symbol(
+            name: name,
+            color: color,
+            weight: enumSource(object, "weight", at: "\(path).weight", as: OverlayComponentFontWeight.self) ?? .literal("medium"),
+            scale: enumSource(object, "scale", at: "\(path).scale", as: OverlayComponentSymbolScale.self) ?? .literal("medium"),
+            rendering: rawEnumValue(object, "rendering", at: "\(path).rendering", default: OverlayComponentSymbolRendering.glyph)
+        )
+    }
+
+    @inline(never)
+    private func parseGradientRectKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let stopsValue = object["stops"],
+              case .array(let stopItems) = stopsValue,
+              let from = object["from"].flatMap({ point($0, at: "\(path).from") }),
+              let to = object["to"].flatMap({ point($0, at: "\(path).to") }) else {
+            error(path, "gradientRect requires stops, from and to")
+            return nil
+        }
+        var stops: [OverlayComponentGradientStop] = []
+        var previousOffset = -Double.infinity
+        for (index, item) in stopItems.enumerated() {
+            let stopPath = "\(path).stops[\(index)]"
+            guard case .object(let stopObject) = item,
+                  let offset = number(stopObject["offset"], at: "\(stopPath).offset"),
+                  case .string(let colorText)? = stopObject["color"],
+                  let color = OverlayComponentColorParser.parse(colorText) else {
+                error(stopPath, "stop requires offset and color")
+                continue
+            }
+            if offset < previousOffset {
+                error("\(stopPath).offset", "stops must be ordered by offset")
+            }
+            previousOffset = offset
+            stops.append(OverlayComponentGradientStop(offset: offset, color: color))
+        }
+        if !(2...8).contains(stops.count) {
+            error("\(path).stops", "must contain 2...8 stops")
+        }
+        return .gradientRect(
+            stops: stops,
+            from: from,
+            to: to,
+            radius: object["radius"].flatMap { numberSource($0, at: "\(path).radius") }
+        )
+    }
+
+    @inline(never)
+    private func parseSparklineKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let seriesValue = object["series"],
+              let series = expression(seriesValue, at: "\(path).series"),
+              let stroke = object["stroke"].flatMap({ colorSource($0, at: "\(path).stroke") }),
+              let lineWidth = object["lineWidth"].flatMap({ numberSource($0, at: "\(path).lineWidth") }) else {
+            error(path, "sparkline requires series, stroke and lineWidth")
+            return nil
+        }
+        return .sparkline(
+            series: series,
+            stroke: stroke,
+            lineWidth: lineWidth,
+            fill: object["fill"].flatMap { colorSource($0, at: "\(path).fill") },
+            smoothing: rawEnumValue(
+                object,
+                "smoothing",
+                at: "\(path).smoothing",
+                default: OverlayComponentSmoothing.none
+            )
+        )
+    }
+
+    @inline(never)
+    private func parseProgressBarKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let value = object["value"].flatMap({ expression($0, at: "\(path).value") }),
+              let trackColor = object["trackColor"].flatMap({ colorSource($0, at: "\(path).trackColor") }),
+              let fillColor = object["fillColor"].flatMap({ colorSource($0, at: "\(path).fillColor") }) else {
+            error(path, "progressBar requires value, trackColor and fillColor")
+            return nil
+        }
+        return .progressBar(
+            value: value,
+            trackColor: trackColor,
+            fillColor: fillColor,
+            radius: object["radius"].flatMap { numberSource($0, at: "\(path).radius") }
+        )
+    }
+
+    @inline(never)
+    private func parseArcKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let value = object["value"].flatMap({ expression($0, at: "\(path).value") }),
+              let start = object["startDegrees"].flatMap({ numberSource($0, at: "\(path).startDegrees") }),
+              let sweep = object["sweepDegrees"].flatMap({ numberSource($0, at: "\(path).sweepDegrees") }),
+              let radius = object["radius"].flatMap({ numberSource($0, at: "\(path).radius") }),
+              let width = object["width"].flatMap({ numberSource($0, at: "\(path).width") }),
+              let fillColor = object["fillColor"].flatMap({ colorSource($0, at: "\(path).fillColor") }) else {
+            error(path, "arc requires value, angles, radius, width and fillColor")
+            return nil
+        }
+        return .arc(
+            value: value,
+            startDegrees: start,
+            sweepDegrees: sweep,
+            radius: radius,
+            width: width,
+            trackColor: object["trackColor"].flatMap { colorSource($0, at: "\(path).trackColor") },
+            fillColor: fillColor,
+            cap: rawEnumValue(object, "cap", at: "\(path).cap", default: OverlayComponentLineCap.butt)
+        )
+    }
+
+    @inline(never)
+    private func parseRepeatKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        if insideRepeat {
+            error(path, "nested repeat is not allowed")
+        }
+        guard let over = object["over"].flatMap({ expression($0, at: "\(path).over") }) else {
+            return nil
+        }
+        let itemName = string(object, "as", at: "\(path).as") ?? "item"
+        let indexName = string(object, "index", at: "\(path).index") ?? "index"
+        for name in [itemName, indexName] {
+            if !matches(name, "^[A-Za-z_][A-Za-z0-9_]*$") {
+                error(path, "invalid repeat variable name '\(name)'")
+            }
+        }
+        let children = parseNodes(
+            object["children"],
+            path: "\(path).children",
+            depth: depth + 1,
+            insideRepeat: true
+        )
+        return .repeatNode(
+            over: over,
+            itemName: itemName,
+            indexName: indexName,
+            maximum: object["max"].flatMap { numberSource($0, at: "\(path).max") },
+            children: children
+        )
+    }
+
+    @inline(never)
+    private func parseSegmentedBarKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let segments = object["segments"].flatMap({ expression($0, at: "\(path).segments") }) else {
+            error(path, "segmentedBar requires segments")
+            return nil
+        }
+        var markers: [OverlayComponentSegmentedBar.Marker] = []
+        if let rawMarkers = object["markers"] {
+            guard case .array(let items) = rawMarkers else {
+                error("\(path).markers", "markers must be an array")
+                return nil
+            }
+            if items.count > 8 { error("\(path).markers", "at most 8 markers are allowed") }
+            markers = items.enumerated().compactMap { index, item in
+                parseSegmentedBarMarker(item, at: "\(path).markers[\(index)]")
+            }
+        }
+        var glow: OverlayComponentSegmentedBar.Glow?
+        if let rawGlow = object["glow"] {
+            guard case .object(let glowObject) = rawGlow,
+                  let opacity = glowObject["opacity"].flatMap({ numberSource($0, at: "\(path).glow.opacity") }),
+                  let sigma = glowObject["sigma"].flatMap({ numberSource($0, at: "\(path).glow.sigma") }) else {
+                error("\(path).glow", "glow requires opacity and sigma")
+                return nil
+            }
+            checkUnknownKeys(glowObject, allowed: ["opacity", "sigma"], at: "\(path).glow")
+            glow = OverlayComponentSegmentedBar.Glow(opacity: opacity, sigma: sigma)
+        }
+        var barBorder: OverlayComponentSegmentedBar.Border?
+        if let rawBorder = object["border"] {
+            guard case .object(let borderObject) = rawBorder,
+                  let borderColor = borderObject["color"].flatMap({ colorSource($0, at: "\(path).border.color") }),
+                  let borderOpacity = borderObject["opacity"].flatMap({ numberSource($0, at: "\(path).border.opacity") }),
+                  let borderWidth = borderObject["width"].flatMap({ numberSource($0, at: "\(path).border.width") }) else {
+                error("\(path).border", "border requires color, opacity and width")
+                return nil
+            }
+            checkUnknownKeys(borderObject, allowed: ["color", "opacity", "width"], at: "\(path).border")
+            barBorder = OverlayComponentSegmentedBar.Border(
+                color: borderColor, opacity: borderOpacity, width: borderWidth
+            )
+        }
+        return .segmentedBar(OverlayComponentSegmentedBar(
+            segments: segments,
+            orientation: object["orientation"].flatMap { stringSource($0, at: "\(path).orientation") },
+            activeIndex: object["activeIndex"].flatMap { numberSource($0, at: "\(path).activeIndex") },
+            activeWidthShare: object["activeWidthShare"].flatMap { numberSource($0, at: "\(path).activeWidthShare") },
+            activeThicknessScale: object["activeThicknessScale"].flatMap { numberSource($0, at: "\(path).activeThicknessScale") },
+            gap: object["gap"].flatMap { numberSource($0, at: "\(path).gap") },
+            radius: object["radius"].flatMap { numberSource($0, at: "\(path).radius") },
+            inactiveOpacity: object["inactiveOpacity"].flatMap { numberSource($0, at: "\(path).inactiveOpacity") },
+            glow: glow,
+            border: barBorder,
+            markers: markers
+        ))
+    }
+
+    @inline(never)
+    private func parseTimelineStripKind(
+        object: [String: OverlayJSONValue],
+        path: String,
+        depth: Int,
+        insideRepeat: Bool,
+        insideStack: Bool,
+        frame: OverlayComponentFrame?
+    ) -> OverlayComponentNodeKind? {
+        guard let strip = parseTimelineStripNode(object, at: path) else { return nil }
+        return .timelineStrip(strip)
+    }
+
+    private func parseTimelineColors(
+        _ value: OverlayJSONValue?,
+        at path: String
+    ) -> OverlayComponentTimelineStrip.Colors? {
+        guard case .object(let object)? = value else { return nil }
+        checkUnknownKeys(object, allowed: [
+            "warmup", "active", "rest", "cooldown", "unknown"
+        ], at: path)
+        guard let warmup = object["warmup"].flatMap({ colorSource($0, at: "\(path).warmup") }),
+              let active = object["active"].flatMap({ colorSource($0, at: "\(path).active") }),
+              let rest = object["rest"].flatMap({ colorSource($0, at: "\(path).rest") }),
+              let cooldown = object["cooldown"].flatMap({ colorSource($0, at: "\(path).cooldown") }),
+              let unknown = object["unknown"].flatMap({ colorSource($0, at: "\(path).unknown") }) else {
+            return nil
+        }
+        return OverlayComponentTimelineStrip.Colors(
+            warmup: warmup, active: active, rest: rest,
+            cooldown: cooldown, unknown: unknown
+        )
+    }
+
+    /// A string source whose literal form must be one of `allowed`; expression
+    /// forms are validated at resolve time by falling back to the default.
+    private func timelineEnumSource(
+        _ value: OverlayJSONValue,
+        at path: String,
+        allowed: Set<String>
+    ) -> OverlayComponentStringSource? {
+        let source = stringSource(value, at: path)
+        if case .literal(let literal)? = source, !allowed.contains(literal) {
+            error(path, "unknown value '\(literal)'")
+            return nil
+        }
+        return source
+    }
+
+    private func parseSegmentedBarMarker(
+        _ value: OverlayJSONValue,
+        at path: String
+    ) -> OverlayComponentSegmentedBar.Marker? {
+        guard case .object(let object) = value else {
+            error(path, "marker must be an object")
+            return nil
+        }
+        checkUnknownKeys(
+            object,
+            allowed: ["role", "layout", "if", "index", "fraction", "text", "color", "position", "showsValue", "scale", "font"],
+            at: path
+        )
+        guard let text = object["text"].flatMap({ stringSource($0, at: "\(path).text") }),
+              let color = object["color"].flatMap({ colorSource($0, at: "\(path).color") }),
+              let font = parseFont(object["font"], at: "\(path).font") else {
+            error(path, "marker requires text, color and font")
+            return nil
+        }
+        var position = object["position"].flatMap { stringSource($0, at: "\(path).position") }
+        if case .literal(let literal)? = position,
+           !["above", "below", "leading", "trailing"].contains(literal) {
+            error("\(path).position", "unknown value '\(literal)'")
+            position = nil
+        }
+        return OverlayComponentSegmentedBar.Marker(
+            role: rawEnumValue(object, "role", at: "\(path).role", default: OverlayComponentSegmentedBarMarkerRole.current),
+            layout: rawEnumValue(object, "layout", at: "\(path).layout", default: OverlayComponentSegmentedBarMarkerLayout.inline),
+            condition: object["if"].flatMap { expression($0, at: "\(path).if") },
+            index: object["index"].flatMap { numberSource($0, at: "\(path).index") },
+            fraction: object["fraction"].flatMap { numberSource($0, at: "\(path).fraction") },
+            text: text,
+            color: color,
+            position: position,
+            showsValue: object["showsValue"].flatMap { numberSource($0, at: "\(path).showsValue") },
+            scale: object["scale"].flatMap { numberSource($0, at: "\(path).scale") },
+            font: font
         )
     }
 
@@ -1162,11 +1794,67 @@ final class OverlayComponentParser {
         return OverlayComponentFrame(x: x, y: y, width: width, height: height)
     }
 
+
+    private func parseColumns(
+        _ object: [String: OverlayJSONValue],
+        at path: String,
+        depth: Int,
+        insideRepeat: Bool
+    ) -> OverlayComponentNodeKind? {
+        guard let widthValue = object["width"],
+              let width = numberSource(widthValue, at: "\(path).width") else {
+            error("\(path).width", "columns requires width")
+            return nil
+        }
+        guard let rawChildren = object["children"],
+              case .array(let childrenArray) = rawChildren else {
+            error("\(path).children", "columns requires children")
+            return nil
+        }
+        let children = parseNodes(
+            rawChildren,
+            path: "\(path).children",
+            depth: depth + 1,
+            insideRepeat: insideRepeat
+        )
+        if childrenArray.isEmpty { error("\(path).children", "columns requires at least one child") }
+        var divider: OverlayComponentDivider?
+        if let rawDivider = object["divider"] {
+            guard case .object(let dividerObject) = rawDivider else {
+                error("\(path).divider", "divider must be an object")
+                return nil
+            }
+            checkUnknownKeys(
+                dividerObject,
+                allowed: ["width", "color", "opacity", "height"],
+                at: "\(path).divider"
+            )
+            guard let rawColor = dividerObject["color"],
+                  let color = colorSource(rawColor, at: "\(path).divider.color"),
+                  let rawHeight = dividerObject["height"],
+                  let height = numberSource(rawHeight, at: "\(path).divider.height") else {
+                error("\(path).divider", "divider requires color and height")
+                return nil
+            }
+            divider = OverlayComponentDivider(
+                width: dividerObject["width"].flatMap {
+                    numberSource($0, at: "\(path).divider.width")
+                } ?? .literal(1),
+                color: color,
+                opacity: dividerObject["opacity"].flatMap {
+                    numberSource($0, at: "\(path).divider.opacity")
+                } ?? .literal(1),
+                height: height
+            )
+        }
+        return .columns(width: width, divider: divider, children: children)
+    }
+
     /// Whether a node has a layout box: text and stacks measure themselves,
     /// shapes with explicit geometry never do, everything else needs a frame.
     private func isBoxed(_ node: OverlayComponentNode) -> Bool {
         switch node.kind {
-        case .text, .stack, .spacer:
+        case .text, .textRows, .stack, .spacer, .columns:
             true
         case .circle, .line, .polyline, .path:
             false
@@ -1210,13 +1898,47 @@ final class OverlayComponentParser {
         return OverlayComponentFont(family: family, size: size, weight: weight)
     }
 
+    private func parseTextGradient(_ value: OverlayJSONValue?, at path: String) -> OverlayComponentTextGradient? {
+        guard let value else { return nil }
+        guard case .object(let object) = value else {
+            error(path, "gradient must be an object")
+            return nil
+        }
+        checkUnknownKeys(object, allowed: ["stops", "from", "to"], at: path)
+        guard case .array(let rawStops)? = object["stops"], (2...8).contains(rawStops.count),
+              let from = object["from"].flatMap({ point($0, at: "\(path).from") }),
+              let to = object["to"].flatMap({ point($0, at: "\(path).to") }) else {
+            error(path, "gradient requires 2...8 stops and from/to points")
+            return nil
+        }
+        var stops: [OverlayComponentTextGradient.Stop] = []
+        for (index, raw) in rawStops.enumerated() {
+            let stopPath = "\(path).stops[\(index)]"
+            guard case .object(let stop) = raw else {
+                error(stopPath, "stop must be an object")
+                continue
+            }
+            checkUnknownKeys(stop, allowed: ["offset", "color"], at: stopPath)
+            guard case .number(let offset)? = stop["offset"], (0...1).contains(offset),
+                  let color = stop["color"].flatMap({ colorSource($0, at: "\(stopPath).color") }) else {
+                error(stopPath, "stop requires an offset in 0...1 and color")
+                continue
+            }
+            if let previous = stops.last, offset < previous.offset {
+                error("\(stopPath).offset", "stops must be ordered by offset")
+            }
+            stops.append(.init(offset: offset, color: color))
+        }
+        return OverlayComponentTextGradient(stops: stops, from: from, to: to)
+    }
+
     private func parseShadow(_ value: OverlayJSONValue?, at path: String) -> OverlayComponentShadow? {
         guard let value else { return nil }
         guard case .object(let object) = value else {
             error(path, "shadow must be an object")
             return nil
         }
-        checkUnknownKeys(object, allowed: ["sigma", "dx", "dy", "color"], at: path)
+        checkUnknownKeys(object, allowed: ["sigma", "dx", "dy", "color", "opacity"], at: path)
         guard let sigma = object["sigma"].flatMap({ numberSource($0, at: "\(path).sigma") }),
               let dx = object["dx"].flatMap({ numberSource($0, at: "\(path).dx") }),
               let dy = object["dy"].flatMap({ numberSource($0, at: "\(path).dy") }),
@@ -1224,7 +1946,10 @@ final class OverlayComponentParser {
             error(path, "shadow requires sigma, dx, dy and color")
             return nil
         }
-        return OverlayComponentShadow(sigma: sigma, dx: dx, dy: dy, color: color)
+        return OverlayComponentShadow(
+            sigma: sigma, dx: dx, dy: dy, color: color,
+            opacity: object["opacity"].flatMap { numberSource($0, at: "\(path).opacity") }
+        )
     }
 
     private func parsePathCommand(

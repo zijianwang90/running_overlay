@@ -48,7 +48,7 @@
     },
     "params": {
       "type": "array",
-      "maxItems": 64,
+      "maxItems": 96,
       "items": { "$ref": "#/$defs/param" }
     },
     "bindings": {
@@ -191,6 +191,14 @@
           "additionalProperties": false,
           "properties": {
             "list": { "enum": ["structure.laps", "structure.intervals"] }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["value"],
+          "additionalProperties": false,
+          "properties": {
+            "value": { "$ref": "#/$defs/expression" }
           }
         }
       ]
@@ -373,6 +381,8 @@
         { "$ref": "#/$defs/sparklineNode" },
         { "$ref": "#/$defs/progressBarNode" },
         { "$ref": "#/$defs/arcNode" },
+        { "$ref": "#/$defs/segmentedBarNode" },
+        { "$ref": "#/$defs/timelineStripNode" },
         { "$ref": "#/$defs/repeatNode" }
       ]
     },
@@ -811,6 +821,206 @@
             "trackColor": { "$ref": "#/$defs/colorValue" },
             "fillColor": { "$ref": "#/$defs/colorValue" },
             "cap": { "enum": ["butt", "round", "square"] }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "segmentedBarNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeCommon" },
+        {
+          "type": "object",
+          "required": ["type", "frame", "segments"],
+          "properties": {
+            "type": { "const": "segmentedBar" },
+            "orientation": {
+              "oneOf": [
+                { "enum": ["horizontal", "vertical"] },
+                { "$ref": "#/$defs/expression" }
+              ]
+            },
+            "segments": { "$ref": "#/$defs/expression" },
+            "activeIndex": { "$ref": "#/$defs/numberOrExpression" },
+            "activeWidthShare": { "$ref": "#/$defs/numberOrExpression" },
+            "activeThicknessScale": { "$ref": "#/$defs/numberOrExpression" },
+            "gap": { "$ref": "#/$defs/numberOrExpression" },
+            "radius": { "$ref": "#/$defs/numberOrExpression" },
+            "inactiveOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "glow": {
+              "type": "object",
+              "required": ["opacity", "sigma"],
+              "additionalProperties": false,
+              "properties": {
+                "opacity": { "$ref": "#/$defs/numberOrExpression" },
+                "sigma": { "$ref": "#/$defs/numberOrExpression" }
+              }
+            },
+            "border": {
+              "type": "object",
+              "required": ["color", "opacity", "width"],
+              "additionalProperties": false,
+              "properties": {
+                "color": { "$ref": "#/$defs/colorValue" },
+                "opacity": { "$ref": "#/$defs/numberOrExpression" },
+                "width": { "$ref": "#/$defs/numberOrExpression" }
+              }
+            },
+            "markers": {
+              "type": "array",
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "required": ["role", "text", "color", "font"],
+                "additionalProperties": false,
+                "properties": {
+                  "role": { "enum": ["current", "threshold"] },
+                  "layout": { "enum": ["inline", "outside"] },
+                  "if": { "$ref": "#/$defs/expression" },
+                  "index": { "$ref": "#/$defs/numberOrExpression" },
+                  "fraction": { "$ref": "#/$defs/numberOrExpression" },
+                  "text": { "$ref": "#/$defs/stringOrExpression" },
+                  "color": { "$ref": "#/$defs/colorValue" },
+                  "position": {
+                    "oneOf": [
+                      { "enum": ["above", "below", "leading", "trailing"] },
+                      { "$ref": "#/$defs/expression" }
+                    ]
+                  },
+                  "showsValue": { "$ref": "#/$defs/numberOrExpression" },
+                  "scale": { "$ref": "#/$defs/numberOrExpression" },
+                  "font": { "$ref": "#/$defs/font" }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "timelineStripNode": {
+      "allOf": [
+        { "$ref": "#/$defs/nodeCommon" },
+        {
+          "type": "object",
+          "required": ["type", "frame", "segments", "colors"],
+          "properties": {
+            "type": { "const": "timelineStrip" },
+            "segments": { "$ref": "#/$defs/expression" },
+            "currentIndex": { "$ref": "#/$defs/numberOrExpression" },
+            "elapsed": { "$ref": "#/$defs/numberOrExpression" },
+            "mode": {
+              "oneOf": [
+                { "enum": ["emphasized", "equal", "weighted"] },
+                { "$ref": "#/$defs/expression" }
+              ]
+            },
+            "emphasisFraction": { "$ref": "#/$defs/numberOrExpression" },
+            "window": { "$ref": "#/$defs/numberOrExpression" },
+            "showsWarmup": { "$ref": "#/$defs/numberOrExpression" },
+            "showsRest": { "$ref": "#/$defs/numberOrExpression" },
+            "showsCooldown": { "$ref": "#/$defs/numberOrExpression" },
+            "segmentAreaHeight": { "$ref": "#/$defs/numberOrExpression" },
+            "segmentHeight": { "$ref": "#/$defs/numberOrExpression" },
+            "currentHeightScale": { "$ref": "#/$defs/numberOrExpression" },
+            "minSegmentWidth": { "$ref": "#/$defs/numberOrExpression" },
+            "gap": { "$ref": "#/$defs/numberOrExpression" },
+            "radius": { "$ref": "#/$defs/numberOrExpression" },
+            "currentBorderWidth": { "$ref": "#/$defs/numberOrExpression" },
+            "completedOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "futureOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "colors": {
+              "type": "object",
+              "required": ["warmup", "active", "rest", "cooldown", "unknown"],
+              "additionalProperties": false,
+              "properties": {
+                "warmup": { "$ref": "#/$defs/colorValue" },
+                "active": { "$ref": "#/$defs/colorValue" },
+                "rest": { "$ref": "#/$defs/colorValue" },
+                "cooldown": { "$ref": "#/$defs/colorValue" },
+                "unknown": { "$ref": "#/$defs/colorValue" }
+              }
+            },
+            "labels": {
+              "type": "object",
+              "required": ["font"],
+              "additionalProperties": false,
+              "properties": {
+                "font": { "$ref": "#/$defs/font" },
+                "currentWorkDistance": {
+                  "oneOf": [
+                    { "enum": ["hidden", "elapsed", "remaining"] },
+                    { "$ref": "#/$defs/expression" }
+                  ]
+                },
+                "currentWorkTime": {
+                  "oneOf": [
+                    { "enum": ["hidden", "elapsed", "remaining"] },
+                    { "$ref": "#/$defs/expression" }
+                  ]
+                },
+                "currentRestKind": { "$ref": "#/$defs/numberOrExpression" },
+                "currentRestDistance": {
+                  "oneOf": [
+                    { "enum": ["hidden", "elapsed", "remaining"] },
+                    { "$ref": "#/$defs/expression" }
+                  ]
+                },
+                "currentRestTime": {
+                  "oneOf": [
+                    { "enum": ["hidden", "elapsed", "remaining"] },
+                    { "$ref": "#/$defs/expression" }
+                  ]
+                },
+                "neighbor": {
+                  "oneOf": [
+                    { "enum": ["hidden", "distance", "time"] },
+                    { "$ref": "#/$defs/expression" }
+                  ]
+                }
+              }
+            },
+            "progress": {
+              "type": "object",
+              "required": ["value", "color"],
+              "additionalProperties": false,
+              "properties": {
+                "value": { "$ref": "#/$defs/numberOrExpression" },
+                "color": { "$ref": "#/$defs/colorValue" },
+                "opacity": { "$ref": "#/$defs/numberOrExpression" }
+              }
+            },
+            "marker": {
+              "type": "object",
+              "required": ["color", "font"],
+              "additionalProperties": false,
+              "properties": {
+                "enabled": { "$ref": "#/$defs/numberOrExpression" },
+                "position": {
+                  "oneOf": [
+                    { "enum": ["progress", "center"] },
+                    { "$ref": "#/$defs/expression" }
+                  ]
+                },
+                "color": { "$ref": "#/$defs/colorValue" },
+                "label": { "$ref": "#/$defs/stringOrExpression" },
+                "showsLabel": { "$ref": "#/$defs/numberOrExpression" },
+                "font": { "$ref": "#/$defs/font" }
+              }
+            },
+            "overflow": {
+              "type": "object",
+              "required": ["color"],
+              "additionalProperties": false,
+              "properties": {
+                "enabled": { "$ref": "#/$defs/numberOrExpression" },
+                "text": { "$ref": "#/$defs/stringOrExpression" },
+                "color": { "$ref": "#/$defs/colorValue" },
+                "inset": { "$ref": "#/$defs/numberOrExpression" }
+              }
+            },
+            "repText": { "$ref": "#/$defs/stringOrExpression" },
+            "distanceProgress": { "$ref": "#/$defs/numberOrExpression" }
           }
         }
       ],

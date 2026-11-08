@@ -1,0 +1,28 @@
+{
+  "spec": "ros.component/0.1",
+  "id": "studio.decor-icon",
+  "version": "1.0.0",
+  "name": { "en": "Symbol", "zh-Hans": "系统图标" },
+  "description": { "en": "A fitted SF Symbol with editable weight, scale and tint.", "zh-Hans": "可编辑字重、比例和颜色的 SF Symbol。" },
+  "license": "MIT",
+  "size": "content",
+  "params": [
+    { "id": "symbolName", "type": "string", "label": "Symbol Name", "default": "figure.run", "maxLength": 128 },
+    { "id": "iconWidth", "type": "number", "label": "Width", "min": 8, "max": 2048, "step": 1, "default": 160 },
+    { "id": "iconHeight", "type": "number", "label": "Height", "min": 8, "max": 2048, "step": 1, "default": 160 },
+    { "id": "weight", "type": "enum", "label": "Weight", "default": "regular", "options": [
+      { "value": "ultraLight", "label": "Ultra Light" }, { "value": "thin", "label": "Thin" },
+      { "value": "light", "label": "Light" }, { "value": "regular", "label": "Regular" },
+      { "value": "medium", "label": "Medium" }, { "value": "semibold", "label": "Semibold" },
+      { "value": "bold", "label": "Bold" }, { "value": "heavy", "label": "Heavy" },
+      { "value": "black", "label": "Black" }
+    ] },
+    { "id": "symbolScale", "type": "enum", "label": "Symbol Scale", "default": "medium", "options": [
+      { "value": "small", "label": "Small" }, { "value": "medium", "label": "Medium" }, { "value": "large", "label": "Large" }
+    ] },
+    { "id": "tint", "type": "color", "label": "Tint", "default": "#FFFFFFFF" }
+  ],
+  "nodes": [
+    { "type": "symbol", "frame": [0, 0, "=iconWidth", "=iconHeight"], "name": "=symbolName", "color": "=tint", "weight": "=weight", "scale": "=symbolScale", "rendering": "fit" }
+  ]
+}

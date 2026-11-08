@@ -1,0 +1,59 @@
+{
+  "spec": "ros.component/0.1",
+  "id": "studio.decor-text",
+  "version": "1.0.0",
+  "name": { "en": "Text", "zh-Hans": "文字" },
+  "description": "Multiline text with paragraph alignment, tracking, auto-fit, fill and stroke.",
+  "license": "MIT",
+  "size": "content",
+  "params": [
+    { "id": "text", "type": "string", "label": "Text", "section": "Content", "maxLength": 512, "default": "Hello" },
+    { "id": "textWidth", "type": "number", "label": "Width", "section": "Content", "min": 8, "max": 2048, "step": 1, "default": 240 },
+    { "id": "textHeight", "type": "number", "label": "Height", "section": "Content", "min": 8, "max": 2048, "step": 1, "default": 80 },
+    { "id": "fontFamily", "type": "font", "label": "Font", "section": "Typography", "default": "Menlo" },
+    { "id": "fontSize", "type": "number", "label": "Size", "section": "Typography", "min": 1, "max": 300, "step": 1, "default": 36 },
+    { "id": "fontWeight", "type": "enum", "label": "Weight", "section": "Typography", "default": "regular", "options": [
+      { "value": "ultraLight", "label": "Ultra Light" }, { "value": "light", "label": "Light" },
+      { "value": "regular", "label": "Regular" }, { "value": "medium", "label": "Medium" },
+      { "value": "semibold", "label": "Semibold" }, { "value": "bold", "label": "Bold" },
+      { "value": "heavy", "label": "Heavy" }, { "value": "black", "label": "Black" }
+    ] },
+    { "id": "alignment", "type": "enum", "label": "Alignment", "section": "Typography", "default": "center", "options": [
+      { "value": "left", "label": "Left" }, { "value": "center", "label": "Center" }, { "value": "right", "label": "Right" }
+    ] },
+    { "id": "lineHeight", "type": "number", "label": "Line Height", "section": "Typography", "min": 0.5, "max": 3, "step": 0.1, "default": 1.2 },
+    { "id": "tracking", "type": "number", "label": "Tracking", "section": "Typography", "min": -10, "max": 30, "step": 0.1, "default": 0 },
+    { "id": "autoFit", "type": "bool", "label": "Auto Fit", "section": "Typography", "default": false },
+    { "id": "fillMode", "type": "enum", "label": "Fill", "section": "Appearance", "default": "solid", "options": [
+      { "value": "solid", "label": "Solid" }, { "value": "gradient", "label": "Gradient" }
+    ] },
+    { "id": "fillColor", "type": "color", "label": "Color", "section": "Appearance", "when": "=fillMode == \"solid\"", "default": "#FFFFFFFF" },
+    { "id": "gradientStart", "type": "color", "label": "Start Color", "section": "Appearance", "when": "=fillMode == \"gradient\"", "default": "#FFFFFFFF" },
+    { "id": "gradientEnd", "type": "color", "label": "End Color", "section": "Appearance", "when": "=fillMode == \"gradient\"", "default": "#3399FFFF" },
+    { "id": "gradientDirection", "type": "enum", "label": "Direction", "section": "Appearance", "when": "=fillMode == \"gradient\"", "default": "topToBottom", "options": [
+      { "value": "topToBottom", "label": "Top to Bottom" }, { "value": "leftToRight", "label": "Left to Right" },
+      { "value": "bottomLeftToTopRight", "label": "Bottom Left to Top Right" }, { "value": "topLeftToBottomRight", "label": "Top Left to Bottom Right" }
+    ] },
+    { "id": "strokeWidth", "type": "number", "label": "Stroke", "section": "Appearance", "min": 0, "max": 32, "step": 0.5, "default": 0 },
+    { "id": "strokeColor", "type": "color", "label": "Stroke Color", "section": "Appearance", "when": "=strokeWidth > 0", "default": "#FFFFFFFF" }
+  ],
+  "nodes": [
+    {
+      "type": "richText", "if": "=fillMode == \"solid\"", "frame": [0, 0, "=textWidth", "=textHeight"],
+      "text": "=text", "font": { "family": "=fontFamily", "size": "=fontSize", "weight": "=fontWeight" },
+      "align": "=alignment", "lineHeight": "=lineHeight", "tracking": "=tracking", "autoFit": "=autoFit",
+      "color": "=fillColor", "stroke": "=strokeColor", "strokeWidth": "=strokeWidth"
+    },
+    {
+      "type": "richText", "if": "=fillMode == \"gradient\"", "frame": [0, 0, "=textWidth", "=textHeight"],
+      "text": "=text", "font": { "family": "=fontFamily", "size": "=fontSize", "weight": "=fontWeight" },
+      "align": "=alignment", "lineHeight": "=lineHeight", "tracking": "=tracking", "autoFit": "=autoFit",
+      "color": "#FFFFFFFF", "stroke": "=strokeColor", "strokeWidth": "=strokeWidth",
+      "gradient": {
+        "stops": [{ "offset": 0, "color": "=gradientStart" }, { "offset": 1, "color": "=gradientEnd" }],
+        "from": [0, "=gradientDirection == \"bottomLeftToTopRight\" ? textHeight : 0"],
+        "to": ["=gradientDirection == \"topToBottom\" ? 0 : textWidth", "=gradientDirection == \"leftToRight\" || gradientDirection == \"bottomLeftToTopRight\" ? 0 : textHeight"]
+      }
+    }
+  ]
+}

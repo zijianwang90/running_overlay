@@ -21,6 +21,14 @@ struct OverlayComponentDetailView: View {
                     section("Layout") {
                         OverlayLayoutInspectorRows(elementID: elementID)
                     }
+                    // Element shadow, glow and opacity are host state, applied
+                    // around the whole component outside its clip. Components
+                    // do not draw these themselves.
+                    OverlayEffectsInspectorModule(
+                        elementID: elementID,
+                        element: element,
+                        showsFadeOutControls: false
+                    )
                     section("Component") {
                         componentInfo(element: element, instance: instance, definition: definition)
                     }

@@ -66,6 +66,45 @@ The preview and export render the main row as equal-width cells: enabled `REP`, 
 
 Do not include Target Pace in v1.
 
+## Declarative Component Port
+
+`studio.interval-hud-bar` composes the same strip from `structure.segment`,
+`structure.recovery`, `zone.*` and general component nodes. It ships 71
+generated Inspector parameters covering HUD cells, metrics, bottom bar,
+markers, typography, colors, divider, background, border and effects.
+
+The port introduced two reusable spec primitives:
+
+- `segmentedBar`, a generic equal-width segment run with active-segment
+  widening and thickening, gap/radius clamping, optional glow and border, and
+  `current`/`threshold` markers. Zone Edge Bar and Interval Timeline share it.
+- `value` bindings, lazily evaluated computed bindings that let one expression
+  feed several nodes without repeating it (the HUD uses 30 of them for its
+  vertical layout, cell sizing and bottom-bar state).
+
+Native parity is exact for the default lap-progress strip in warmup, work and
+rest, HR and pace zone bars, widened/thickened active zones, marker above and
+below with and without its value pill, threshold markers, HR-drop-at-rest,
+time/distance remaining and progress modes, hidden cells, three metrics,
+background with element shadow/border, and element scale 1.5. The scaled case
+keeps a sub-0.4% antialias fringe on glyph edges.
+
+Rules that make the port pixel-faithful:
+
+- Layout constants that are raw pixels in the native renderer are divided by
+  `signal("host.scale")`: row spacing, divider insets, marker paddings and the
+  minimum arrow/text sizes. Marker line width uses
+  `max(1.2 * host.elementScale, 1)`, which is why the renderer exposes the
+  element scale without the canvas scale.
+- Element shadow, glow and opacity are host state, so the definition draws
+  none of them. Background padding is a definition parameter, and the
+  component's content coordinates include it so the whole frame matches the
+  native layout rect plus its padding.
+- Group children are positioned in content space; a group's frame only drives
+  clipping and shadow bounds.
+
+The native renderer remains the parity oracle and is not removed.
+
 ## Inspector Surface
 
 Inspector sections:

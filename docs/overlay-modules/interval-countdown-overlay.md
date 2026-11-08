@@ -20,6 +20,25 @@ Design references:
 - Color source: `IntervalKindColorPreferences.currentSnapshot()`, shared with
   interval workout coloring.
 
+## Declarative Component Port
+
+`studio.interval-countdown` composes the same layout from `structure.segment`
+data and general component nodes (`arc`, `group` shadow chains, `textRows`).
+It covers both ring directions, time/distance and remaining/elapsed values,
+per-role text visibility and typography, background, border, shadow and glow.
+The element-level drop shadow and glow are applied by the host around the
+component, outside its clip, and the ring glow is drawn by the definition.
+Parameter values that the native renderer treats as pixels are divided by
+`signal("host.scale")` to stay pixel-faithful at every element scale.
+
+The native renderer remains the parity oracle and is not removed; the port's
+remaining visible difference is an antialias fringe below 0.25% of pixels at
+ring edges. With both a background and the element glow enabled, the host glow
+follows the component's outer silhouette rather than only the ring, which is a
+small, deliberate difference; the host shadow also includes the border in its
+mask, costing at most two alpha levels at the edge. SVG/user-image selection
+does not apply to this module.
+
 ## Rendering
 
 - Preview and SwiftUI export use `OverlaySharedIntervalCountdownView`.

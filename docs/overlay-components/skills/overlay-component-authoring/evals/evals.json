@@ -1,0 +1,19 @@
+{
+  "skill_name": "overlay-component-authoring",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Create an importable pace badge with an editable title and accent, content sizing, host-formatted metric units, and a legible missing-data state. Validate and render empty and populated synthetic activity at two times. Do not read Swift sources.",
+      "expected_output": "Component JSON, override JSON, PNGs and exact command results; no invented protocol fields.",
+      "files": [],
+      "assertions": ["Component passes product validation", "Non-studio component ID", "Uses host metric formatting", "Empty and populated renders succeed", "Editable title and accent are declared params"]
+    },
+    {
+      "id": 2,
+      "prompt": "Create a compact last-laps list with an editable visible-row count and title. Use the public synthetic fixture, render at 30 and 60 activity seconds and also without data, and provide import instructions. Do not read Swift sources.",
+      "expected_output": "Bounded repeat component using structure.laps, override example, PNGs and honest verification report.",
+      "files": [],
+      "assertions": ["Component passes product validation", "List binding uses structure.laps", "Repeat is bounded and unnested", "Parameter override renders succeed", "App checks are not falsely claimed"]
+    }
+  ]
+}

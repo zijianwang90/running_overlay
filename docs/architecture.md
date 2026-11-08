@@ -117,9 +117,16 @@ Current overlay element types:
 
 | Category | Types |
 |---|---|
-| Metrics | heartRate, heartRateZone, pace, avgPace, lapPace, distance, elapsedTime, realTime, elevation, cadence, power, calories, verticalOscillation, groundContactTime, strideLength, verticalRatio, groundContactBalance, temperature, grade |
-| Charts | distanceTimeline, elevationChart, runningGauge, intervalHUDBar, intervalTimeline, intervalCountdown, intervalWorkSummary, zoneEdgeBar |
-| Route | routeMap |
+| Components | `component`; numeric readings are presets of bundled `studio.numeric` (ADR 0014) |
+| Charts and workout | distanceTimeline, elevationChart, runningGauge, intervalHUDBar, intervalTimeline, intervalCountdown, intervalWorkSummary, zoneEdgeBar; bundled `studio.interval-countdown` is the first declarative interval port |
+| Route and weather | routeMap, weatherWidget |
+| Decor | decorSolidColor, decorIcon, decorText; bundled `studio.decor-shape`, `studio.decor-text` and `studio.decor-icon` ports exist, native removal remains gated |
+
+Component definitions own visual composition and generated Inspector params.
+Shared host services own activity analysis and display-only preparation, such
+as elevation sampling/smoothing and strip width allocation. Native modules and
+components reuse those services during parity verification; moving analysis
+into JSON expressions is not a prerequisite for porting a renderer.
 
 ### Overlay Renderer
 

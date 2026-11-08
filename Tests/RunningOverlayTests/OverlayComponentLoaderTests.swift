@@ -303,12 +303,14 @@ struct OverlayComponentLoaderTests {
         let package = try OverlayComponentLoader.load(data: document(nodes: """
             { "type": "symbol", "name": "heart.fill", "frame": [0, 0, 22, 22], "color": "#FFFFFF" }
             """))
-        guard case .symbol(let name, _, let weight)? = package.definition.nodes.first?.kind else {
+        guard case .symbol(let name, _, let weight, let scale, let rendering)? = package.definition.nodes.first?.kind else {
             Issue.record("expected symbol node")
             return
         }
         #expect(name == .literal("heart.fill"))
-        #expect(weight == .medium)
+        #expect(weight == .literal("medium"))
+        #expect(scale == .literal("medium"))
+        #expect(rendering == .glyph)
     }
 
     @Test func rejectsInvalidSymbolNameAndMissingFrame() throws {
@@ -441,7 +443,81 @@ struct OverlayComponentLoaderTests {
             Issue.record("expected stack")
             return
         }
-        #expect(children.map(\.kind) == [.spacer(length: .literal(6)), .spacer(length: nil)])
+        #expect(children.map(\.kind) == [.spacer(length: .literal(6), minimum: nil), .spacer(length: nil, minimum: nil)])
+    }
+
+    @Test func columnsAutoSizedTextRowsAndRunOpacityLoad() throws {
+        let package = try OverlayComponentLoader.load(data: document(size: "\"content\"", nodes: """
+            {
+              "type": "stack",
+              "children": [
+                { "type": "spacer", "min": "=12" },
+                {
+                  "type": "textRows", "maxWidth": 120, "spacing": 4,
+                  "rows": [{
+                    "runs": [{
+                      "text": "A", "font": { "family": "Helvetica Neue", "size": 12 },
+                      "color": "#FFFFFF", "opacity": 0.5
+                    }]
+                  }]
+                },
+                {
+                  "type": "columns", "width": 300,
+                  "divider": { "width": 1, "color": "#FFFFFF", "height": 40 },
+                  "children": [
+                    {
+                      "type": "textRows", "maxWidth": 90,
+                      "rows": [{ "runs": [{
+                        "text": "1", "font": { "family": "Helvetica Neue", "size": 12 },
+                        "color": "#FFFFFF"
+                      }] }]
+                    }
+                  ]
+                }
+              ]
+            }
+            """))
+        guard case .stack(_, _, _, let children)? = package.definition.nodes.first?.kind else {
+            Issue.record("expected stack")
+            return
+        }
+        #expect(children.count == 3)
+        guard case .spacer(let length, let minimum) = children[0].kind else {
+            Issue.record("expected pinned spacer")
+            return
+        }
+        #expect(length == nil)
+        #expect(minimum == .expression(OverlayComponentExpression.literal(.number(12))))
+        guard case .textRows(let rows, let spacing, let maxWidth) = children[1].kind else {
+            Issue.record("expected auto-sized textRows")
+            return
+        }
+        #expect(children[1].frame == nil)
+        #expect(spacing == .literal(4))
+        #expect(maxWidth == .literal(120))
+        #expect(rows.count == 1)
+        #expect(rows[0].runs[0].opacity == .literal(0.5))
+        guard case .columns(let width, let divider, let columns) = children[2].kind else {
+            Issue.record("expected columns")
+            return
+        }
+        #expect(width == .literal(300))
+        #expect(divider?.height == .literal(40))
+        #expect(columns.count == 1)
+    }
+
+    @Test func autoSizedTextRowsRequireMaxWidthAndColumnsRequireWidth() throws {
+        let diagnostics = errors(from: document(size: "\"content\"", nodes: """
+            { "type": "textRows", "rows": [{ "runs": [{
+                "text": "A", "font": { "family": "Helvetica Neue", "size": 12 }, "color": "#FFFFFF"
+            }] }] }
+            """))
+        #expect(diagnostics.contains { $0.path == "$.nodes[0].maxWidth" })
+
+        let columnsDiagnostics = errors(from: document(nodes: """
+            { "type": "columns", "children": [] }
+            """))
+        #expect(columnsDiagnostics.contains { $0.path == "$.nodes[0].width" })
     }
 
     @Test func enumAndFontFieldsAcceptExpressionsAndValidateLiterals() throws {
@@ -491,5 +567,90 @@ struct OverlayComponentLoaderTests {
             return
         }
         #expect(Set(options.map(\.value)) == Set(OverlayMetric.allCases.map(\.rawValue)))
+    }
+}
+
+extension OverlayComponentLoaderTests {
+    @Test func loadsSegmentedBarWithComputedBindingsAndMarkers() throws {
+        let package = try OverlayComponentLoader.load(data: document(extra: """
+            "bindings": {
+              "zones": { "list": "zone.heartRateZones" },
+              "zoneCount": { "value": "=count(zones)" },
+              "active": { "value": "=zoneCount - 1" }
+            },
+            """, nodes: """
+            {
+              "type": "segmentedBar", "frame": [0, 0, 200, 10],
+              "orientation": "vertical",
+              "segments": "=zones", "activeIndex": "=active",
+              "activeWidthShare": 0.2, "activeThicknessScale": 1.4,
+              "gap": 2, "radius": 5, "inactiveOpacity": 0.4,
+              "glow": { "opacity": 0.5, "sigma": 8 },
+              "border": { "color": "#FFFFFF", "opacity": 0.3, "width": 1 },
+              "markers": [
+                {
+                  "role": "current", "index": "=active", "text": "=format(active)",
+                  "color": "#FFFFFF", "position": "leading", "showsValue": 0,
+                  "layout": "outside", "scale": 1.5,
+                  "font": { "family": "Menlo", "size": 9 }
+                },
+                {
+                  "role": "threshold", "fraction": 0.5, "text": "T", "color": "#FF0000",
+                  "font": { "family": "Menlo", "size": 9 }
+                }
+              ]
+            }
+            """))
+        guard case .segmentedBar(let bar)? = package.definition.nodes.first?.kind else {
+            Issue.record("expected segmentedBar node")
+            return
+        }
+        #expect(bar.segments.referencedIdentifiers.contains("zones"))
+        #expect(bar.orientation == .literal("vertical"))
+        #expect(bar.markers.count == 2)
+        #expect(bar.markers[0].role == .current)
+        #expect(bar.markers[0].layout == .outside)
+        #expect(bar.markers[0].scale == .literal(1.5))
+        #expect(bar.markers[0].font.size == .literal(9))
+        #expect(bar.markers[1].role == .threshold)
+        guard case .value(let expression) = package.definition.bindings["active"] else {
+            Issue.record("expected a computed value binding")
+            return
+        }
+        #expect(expression.referencedIdentifiers.contains("zoneCount"))
+    }
+
+    @Test func segmentedBarRejectsUnknownMarkerKeysAndRole() throws {
+        let diagnostics = errors(from: document(nodes: """
+            {
+              "type": "segmentedBar", "frame": [0, 0, 200, 10], "segments": "=zones",
+              "markers": [{
+                "role": "rounded", "text": "x", "color": "#FFFFFF",
+                "font": { "family": "Menlo", "size": 9 }
+              }, {
+                "role": "current", "text": "x", "color": "#FFFFFF", "width": 4,
+                "font": { "family": "Menlo", "size": 9 }
+              }]
+            }
+            """))
+        #expect(diagnostics.contains { $0.path == "$.nodes[0].markers[0].role" })
+        #expect(diagnostics.contains { $0.path == "$.nodes[0].markers[1].width" })
+    }
+
+    @Test func segmentedBarRejectsUnknownSideAndLayout() throws {
+        let diagnostics = errors(from: document(nodes: """
+            {
+              "type": "segmentedBar", "frame": [0, 0, 200, 10], "segments": "=zones",
+              "markers": [{
+                "role": "current", "text": "x", "color": "#FFFFFF", "position": "beside",
+                "font": { "family": "Menlo", "size": 9 }
+              }, {
+                "role": "current", "text": "x", "color": "#FFFFFF", "layout": "floating",
+                "font": { "family": "Menlo", "size": 9 }
+              }]
+            }
+            """))
+        #expect(diagnostics.contains { $0.path == "$.nodes[0].markers[0].position" })
+        #expect(diagnostics.contains { $0.path == "$.nodes[0].markers[1].layout" })
     }
 }

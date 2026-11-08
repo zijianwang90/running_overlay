@@ -1,0 +1,1440 @@
+{
+  "spec": "ros.component/0.1",
+  "id": "studio.interval-work-summary",
+  "version": "1.0.0",
+  "name": {
+    "en": "Interval Work Summary",
+    "zh-Hans": "间歇工作摘要"
+  },
+  "description": {
+    "en": "Primary and secondary metrics for the most recently completed work interval.",
+    "zh-Hans": "最近完成的工作间歇的主要和次要指标。"
+  },
+  "author": "Running Overlay Studio",
+  "license": "MIT",
+  "size": "content",
+  "padding": [
+    0,
+    0
+  ],
+  "minSize": [
+    120,
+    80
+  ],
+  "bindings": {
+    "work": {
+      "signal": "structure.lastWork"
+    }
+  },
+  "params": [
+    {
+      "id": "summaryWidth",
+      "type": "number",
+      "label": {
+        "en": "Width"
+      },
+      "section": {
+        "en": "Layout"
+      },
+      "default": 560,
+      "min": 80,
+      "max": 2000,
+      "step": 1
+    },
+    {
+      "id": "summaryHeight",
+      "type": "number",
+      "label": {
+        "en": "Height"
+      },
+      "section": {
+        "en": "Layout"
+      },
+      "default": 260,
+      "min": 60,
+      "max": 1200,
+      "step": 1
+    },
+    {
+      "id": "unitSystem",
+      "type": "enum",
+      "label": {
+        "en": "Units"
+      },
+      "section": {
+        "en": "Layout"
+      },
+      "default": "metric",
+      "options": [
+        {
+          "value": "metric",
+          "label": "Metric"
+        },
+        {
+          "value": "imperial",
+          "label": "Imperial"
+        }
+      ]
+    },
+    {
+      "id": "displayDuration",
+      "type": "number",
+      "label": {
+        "en": "Display Duration"
+      },
+      "section": {
+        "en": "Timing"
+      },
+      "default": 6,
+      "min": 0,
+      "max": 60,
+      "step": 0.5,
+      "unit": "s"
+    },
+    {
+      "id": "componentLabel",
+      "type": "string",
+      "label": {
+        "en": "Summary Label"
+      },
+      "section": {
+        "en": "Content"
+      },
+      "default": "WORK SUMMARY",
+      "maxLength": 40
+    },
+    {
+      "id": "componentLabelTextVisible",
+      "type": "bool",
+      "label": {
+        "en": "Show Summary Label"
+      },
+      "section": {
+        "en": "Content"
+      },
+      "default": true
+    },
+    {
+      "id": "primaryMetric",
+      "type": "enum",
+      "label": {
+        "en": "Primary Metric"
+      },
+      "section": {
+        "en": "Content"
+      },
+      "default": "lapTime",
+      "options": [
+        {
+          "value": "lapTime",
+          "label": "Lap Time"
+        },
+        {
+          "value": "lapPace",
+          "label": "Lap Pace"
+        },
+        {
+          "value": "lapDistance",
+          "label": "Lap Distance"
+        },
+        {
+          "value": "avgHeartRate",
+          "label": "Avg Heart Rate"
+        },
+        {
+          "value": "maxHeartRate",
+          "label": "Max Heart Rate"
+        },
+        {
+          "value": "avgPower",
+          "label": "Avg Power"
+        },
+        {
+          "value": "avgCadence",
+          "label": "Avg Cadence"
+        }
+      ]
+    },
+    {
+      "id": "primaryMetricLabelVisible",
+      "type": "bool",
+      "label": {
+        "en": "Primary Metric Label"
+      },
+      "section": {
+        "en": "Content"
+      },
+      "default": true
+    },
+    {
+      "id": "primaryLabelTextVisible",
+      "type": "bool",
+      "label": {
+        "en": "Show Primary Label"
+      },
+      "section": {
+        "en": "Content"
+      },
+      "default": true
+    },
+    {
+      "id": "slot1Metric",
+      "type": "enum",
+      "label": {
+        "en": "Column 1 Metric"
+      },
+      "section": {
+        "en": "Content"
+      },
+      "default": "lapPace",
+      "options": [
+        {
+          "value": "lapTime",
+          "label": "Lap Time"
+        },
+        {
+          "value": "lapPace",
+          "label": "Lap Pace"
+        },
+        {
+          "value": "lapDistance",
+          "label": "Lap Distance"
+        },
+        {
+          "value": "avgHeartRate",
+          "label": "Avg Heart Rate"
+        },
+        {
+          "value": "maxHeartRate",
+          "label": "Max Heart Rate"
+        },
+        {
+          "value": "avgPower",
+          "label": "Avg Power"
+        },
+        {
+          "value": "avgCadence",
+          "label": "Avg Cadence"
+        }
+      ]
+    },
+    {
+      "id": "slot1Visible",
+      "type": "bool",
+      "label": {
+        "en": "Show Column 1"
+      },
+      "section": {
+        "en": "Content"
+      },
+      "default": true
+    },
+    {
+      "id": "slot1LabelVisible",
+      "type": "bool",
+      "label": {
+        "en": "Column 1 Label Visible"
+      },
+      "section": {
+        "en": "Content"
+      },
+      "default": true
+    },
+    {
+      "id": "slot2Metric",
+      "type": "enum",
+      "label": {
+        "en": "Column 2 Metric"
+      },
+      "section": {
+        "en": "Content"
+      },
+      "default": "lapDistance",
+      "options": [
+        {
+          "value": "lapTime",
+          "label": "Lap Time"
+        },
+        {
+          "value": "lapPace",
+          "label": "Lap Pace"
+        },
+        {
+          "value": "lapDistance",
+          "label": "Lap Distance"
+        },
+        {
+          "value": "avgHeartRate",
+          "label": "Avg Heart Rate"
+        },
+        {
+          "value": "maxHeartRate",
+          "label": "Max Heart Rate"
+        },
+        {
+          "value": "avgPower",
+          "label": "Avg Power"
+        },
+        {
+          "value": "avgCadence",
+          "label": "Avg Cadence"
+        }
+      ]
+    },
+    {
+      "id": "slot2Visible",
+      "type": "bool",
+      "label": {
+        "en": "Show Column 2"
+      },
+      "section": {
+        "en": "Content"
+      },
+      "default": true
+    },
+    {
+      "id": "slot2LabelVisible",
+      "type": "bool",
+      "label": {
+        "en": "Column 2 Label Visible"
+      },
+      "section": {
+        "en": "Content"
+      },
+      "default": true
+    },
+    {
+      "id": "slot3Metric",
+      "type": "enum",
+      "label": {
+        "en": "Column 3 Metric"
+      },
+      "section": {
+        "en": "Content"
+      },
+      "default": "avgHeartRate",
+      "options": [
+        {
+          "value": "lapTime",
+          "label": "Lap Time"
+        },
+        {
+          "value": "lapPace",
+          "label": "Lap Pace"
+        },
+        {
+          "value": "lapDistance",
+          "label": "Lap Distance"
+        },
+        {
+          "value": "avgHeartRate",
+          "label": "Avg Heart Rate"
+        },
+        {
+          "value": "maxHeartRate",
+          "label": "Max Heart Rate"
+        },
+        {
+          "value": "avgPower",
+          "label": "Avg Power"
+        },
+        {
+          "value": "avgCadence",
+          "label": "Avg Cadence"
+        }
+      ]
+    },
+    {
+      "id": "slot3Visible",
+      "type": "bool",
+      "label": {
+        "en": "Show Column 3"
+      },
+      "section": {
+        "en": "Content"
+      },
+      "default": true
+    },
+    {
+      "id": "slot3LabelVisible",
+      "type": "bool",
+      "label": {
+        "en": "Column 3 Label Visible"
+      },
+      "section": {
+        "en": "Content"
+      },
+      "default": true
+    },
+    {
+      "id": "dividerEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Dividers"
+      },
+      "section": {
+        "en": "Divider"
+      },
+      "default": true
+    },
+    {
+      "id": "dividerOpacity",
+      "type": "number",
+      "label": {
+        "en": "Divider Opacity"
+      },
+      "section": {
+        "en": "Divider"
+      },
+      "default": 0.18,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "dividerWidth",
+      "type": "number",
+      "label": {
+        "en": "Divider Width"
+      },
+      "section": {
+        "en": "Divider"
+      },
+      "default": 1,
+      "min": 0,
+      "max": 12,
+      "step": 0.5
+    },
+    {
+      "id": "accentColorMode",
+      "type": "enum",
+      "label": {
+        "en": "Accent Color Mode"
+      },
+      "section": {
+        "en": "Divider"
+      },
+      "default": "followGroupColor",
+      "options": [
+        {
+          "value": "followGroupColor",
+          "label": "Follow Group Color"
+        },
+        {
+          "value": "customColor",
+          "label": "Custom Color"
+        }
+      ]
+    },
+    {
+      "id": "accentColor",
+      "type": "color",
+      "label": {
+        "en": "Accent Color"
+      },
+      "section": {
+        "en": "Divider"
+      },
+      "default": "#FF5C2E"
+    },
+    {
+      "id": "componentLabelFontFamily",
+      "type": "string",
+      "label": {
+        "en": "Summary Label Text Font"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "Menlo",
+      "maxLength": 128
+    },
+    {
+      "id": "componentLabelFontSize",
+      "type": "number",
+      "label": {
+        "en": "Summary Label Text Size"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": 18.0,
+      "min": 6,
+      "max": 300,
+      "step": 1
+    },
+    {
+      "id": "componentLabelFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Summary Label Text Weight"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "bold",
+      "options": [
+        {
+          "value": "ultraLight",
+          "label": "Ultralight"
+        },
+        {
+          "value": "thin",
+          "label": "Thin"
+        },
+        {
+          "value": "light",
+          "label": "Light"
+        },
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        },
+        {
+          "value": "heavy",
+          "label": "Heavy"
+        },
+        {
+          "value": "black",
+          "label": "Black"
+        }
+      ]
+    },
+    {
+      "id": "componentLabelColorMode",
+      "type": "enum",
+      "label": {
+        "en": "Summary Label Text Color Mode"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "followGroupColor",
+      "options": [
+        {
+          "value": "followGroupColor",
+          "label": "Follow Accent"
+        },
+        {
+          "value": "customColor",
+          "label": "Custom Color"
+        }
+      ]
+    },
+    {
+      "id": "componentLabelCustomColor",
+      "type": "color",
+      "label": {
+        "en": "Summary Label Text Color"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "#FF5C2E"
+    },
+    {
+      "id": "primaryValueFontFamily",
+      "type": "string",
+      "label": {
+        "en": "Primary Value Font"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "Menlo",
+      "maxLength": 128
+    },
+    {
+      "id": "primaryValueFontSize",
+      "type": "number",
+      "label": {
+        "en": "Primary Value Size"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": 88.0,
+      "min": 6,
+      "max": 300,
+      "step": 1
+    },
+    {
+      "id": "primaryValueFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Primary Value Weight"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "bold",
+      "options": [
+        {
+          "value": "ultraLight",
+          "label": "Ultralight"
+        },
+        {
+          "value": "thin",
+          "label": "Thin"
+        },
+        {
+          "value": "light",
+          "label": "Light"
+        },
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        },
+        {
+          "value": "heavy",
+          "label": "Heavy"
+        },
+        {
+          "value": "black",
+          "label": "Black"
+        }
+      ]
+    },
+    {
+      "id": "primaryValueColorMode",
+      "type": "enum",
+      "label": {
+        "en": "Primary Value Color Mode"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "customColor",
+      "options": [
+        {
+          "value": "followGroupColor",
+          "label": "Follow Accent"
+        },
+        {
+          "value": "customColor",
+          "label": "Custom Color"
+        }
+      ]
+    },
+    {
+      "id": "primaryValueCustomColor",
+      "type": "color",
+      "label": {
+        "en": "Primary Value Color"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "primaryLabelFontFamily",
+      "type": "string",
+      "label": {
+        "en": "Primary Label Font"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "Menlo",
+      "maxLength": 128
+    },
+    {
+      "id": "primaryLabelFontSize",
+      "type": "number",
+      "label": {
+        "en": "Primary Label Size"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": 20.0,
+      "min": 6,
+      "max": 300,
+      "step": 1
+    },
+    {
+      "id": "primaryLabelFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Primary Label Weight"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "bold",
+      "options": [
+        {
+          "value": "ultraLight",
+          "label": "Ultralight"
+        },
+        {
+          "value": "thin",
+          "label": "Thin"
+        },
+        {
+          "value": "light",
+          "label": "Light"
+        },
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        },
+        {
+          "value": "heavy",
+          "label": "Heavy"
+        },
+        {
+          "value": "black",
+          "label": "Black"
+        }
+      ]
+    },
+    {
+      "id": "primaryLabelColorMode",
+      "type": "enum",
+      "label": {
+        "en": "Primary Label Color Mode"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "followGroupColor",
+      "options": [
+        {
+          "value": "followGroupColor",
+          "label": "Follow Accent"
+        },
+        {
+          "value": "customColor",
+          "label": "Custom Color"
+        }
+      ]
+    },
+    {
+      "id": "primaryLabelCustomColor",
+      "type": "color",
+      "label": {
+        "en": "Primary Label Color"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "#FF5C2E"
+    },
+    {
+      "id": "secondaryValueFontFamily",
+      "type": "string",
+      "label": {
+        "en": "Column Value Font"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "Menlo",
+      "maxLength": 128
+    },
+    {
+      "id": "secondaryValueFontSize",
+      "type": "number",
+      "label": {
+        "en": "Column Value Size"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": 32.0,
+      "min": 6,
+      "max": 300,
+      "step": 1
+    },
+    {
+      "id": "secondaryValueFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Column Value Weight"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "bold",
+      "options": [
+        {
+          "value": "ultraLight",
+          "label": "Ultralight"
+        },
+        {
+          "value": "thin",
+          "label": "Thin"
+        },
+        {
+          "value": "light",
+          "label": "Light"
+        },
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        },
+        {
+          "value": "heavy",
+          "label": "Heavy"
+        },
+        {
+          "value": "black",
+          "label": "Black"
+        }
+      ]
+    },
+    {
+      "id": "secondaryValueColorMode",
+      "type": "enum",
+      "label": {
+        "en": "Column Value Color Mode"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "customColor",
+      "options": [
+        {
+          "value": "followGroupColor",
+          "label": "Follow Accent"
+        },
+        {
+          "value": "customColor",
+          "label": "Custom Color"
+        }
+      ]
+    },
+    {
+      "id": "secondaryValueCustomColor",
+      "type": "color",
+      "label": {
+        "en": "Column Value Color"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "secondaryLabelFontFamily",
+      "type": "string",
+      "label": {
+        "en": "Column Label Font"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "Menlo",
+      "maxLength": 128
+    },
+    {
+      "id": "secondaryLabelFontSize",
+      "type": "number",
+      "label": {
+        "en": "Column Label Size"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": 14.0,
+      "min": 6,
+      "max": 300,
+      "step": 1
+    },
+    {
+      "id": "secondaryLabelFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Column Label Weight"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "bold",
+      "options": [
+        {
+          "value": "ultraLight",
+          "label": "Ultralight"
+        },
+        {
+          "value": "thin",
+          "label": "Thin"
+        },
+        {
+          "value": "light",
+          "label": "Light"
+        },
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        },
+        {
+          "value": "heavy",
+          "label": "Heavy"
+        },
+        {
+          "value": "black",
+          "label": "Black"
+        }
+      ]
+    },
+    {
+      "id": "secondaryLabelColorMode",
+      "type": "enum",
+      "label": {
+        "en": "Column Label Color Mode"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "followGroupColor",
+      "options": [
+        {
+          "value": "followGroupColor",
+          "label": "Follow Accent"
+        },
+        {
+          "value": "customColor",
+          "label": "Custom Color"
+        }
+      ]
+    },
+    {
+      "id": "secondaryLabelCustomColor",
+      "type": "color",
+      "label": {
+        "en": "Column Label Color"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "#FF5C2E"
+    },
+    {
+      "id": "secondaryLabelTextVisible",
+      "type": "bool",
+      "label": {
+        "en": "Show Column Labels"
+      },
+      "section": {
+        "en": "Content"
+      },
+      "default": true
+    },
+    {
+      "id": "backgroundEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Background"
+      },
+      "section": {
+        "en": "Background"
+      },
+      "default": true
+    },
+    {
+      "id": "backgroundColor",
+      "type": "color",
+      "label": {
+        "en": "Background Color"
+      },
+      "section": {
+        "en": "Background"
+      },
+      "default": "#0A121F"
+    },
+    {
+      "id": "backgroundOpacity",
+      "type": "number",
+      "label": {
+        "en": "Background Opacity"
+      },
+      "section": {
+        "en": "Background"
+      },
+      "default": 0.22,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "backgroundRadius",
+      "type": "number",
+      "label": {
+        "en": "Corner Radius"
+      },
+      "section": {
+        "en": "Background"
+      },
+      "default": 6,
+      "min": 0,
+      "max": 200,
+      "step": 0.5
+    },
+    {
+      "id": "backgroundPaddingX",
+      "type": "number",
+      "label": {
+        "en": "Padding X"
+      },
+      "section": {
+        "en": "Background"
+      },
+      "default": 10,
+      "min": 0,
+      "max": 200,
+      "step": 1
+    },
+    {
+      "id": "backgroundPaddingY",
+      "type": "number",
+      "label": {
+        "en": "Padding Y"
+      },
+      "section": {
+        "en": "Background"
+      },
+      "default": 6,
+      "min": 0,
+      "max": 200,
+      "step": 1
+    },
+    {
+      "id": "borderEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Border"
+      },
+      "section": {
+        "en": "Border"
+      },
+      "default": false
+    },
+    {
+      "id": "borderOpacity",
+      "type": "number",
+      "label": {
+        "en": "Border Opacity"
+      },
+      "section": {
+        "en": "Border"
+      },
+      "default": 0.22,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "borderWidth",
+      "type": "number",
+      "label": {
+        "en": "Border Width"
+      },
+      "section": {
+        "en": "Border"
+      },
+      "default": 1,
+      "min": 0.5,
+      "max": 20,
+      "step": 0.5
+    }
+  ],
+  "nodes": [
+    {
+      "type": "group",
+      "if": "=backgroundEnabled && (coalesce(work.completionAge, 1000000) <= displayDuration)",
+      "frame": [
+        0,
+        0,
+        "=summaryWidth",
+        "=summaryHeight"
+      ],
+      "children": [
+        {
+          "type": "group",
+          "frame": [
+            0,
+            0,
+            "=summaryWidth",
+            "=summaryHeight"
+          ],
+          "children": [
+            {
+              "type": "rect",
+              "frame": [
+                0,
+                0,
+                "=summaryWidth",
+                "=summaryHeight"
+              ],
+              "radius": "=backgroundRadius",
+              "fill": "=backgroundColor",
+              "opacity": "=backgroundOpacity"
+            }
+          ]
+        },
+        {
+          "type": "rect",
+          "if": "=borderEnabled",
+          "frame": [
+            0,
+            0,
+            "=summaryWidth",
+            "=summaryHeight"
+          ],
+          "radius": "=backgroundRadius",
+          "fill": "#00000000",
+          "stroke": "#FFFFFF",
+          "strokeWidth": "=max(borderWidth, 0.5)",
+          "opacity": "=borderOpacity"
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "frame": [
+        0,
+        0,
+        "=summaryWidth",
+        "=summaryHeight"
+      ],
+      "children": [
+        {
+          "type": "stack",
+          "frame": [
+            "=backgroundPaddingX",
+            "=backgroundPaddingY",
+            "=(summaryWidth - 2 * backgroundPaddingX)",
+            "=summaryHeight - 2 * backgroundPaddingY"
+          ],
+          "direction": "vertical",
+          "spacing": 0,
+          "crossAlign": "center",
+          "children": [
+            {
+              "type": "text",
+              "if": "=componentLabelTextVisible",
+              "text": "=upper(componentLabel)",
+              "font": {
+                "family": "=componentLabelFontFamily",
+                "size": "=componentLabelFontSize",
+                "weight": "=componentLabelFontWeight"
+              },
+              "color": "=componentLabelColorMode == \"followGroupColor\" ? (accentColorMode == \"followGroupColor\" ? work.groupColor : accentColor) : componentLabelCustomColor",
+              "align": "center",
+              "maxWidth": "=(summaryWidth - 2 * backgroundPaddingX)"
+            },
+            {
+              "type": "spacer",
+              "length": "=8 / signal(\"host.scale\")",
+              "if": "=componentLabelTextVisible"
+            },
+            {
+              "type": "spacer"
+            },
+            {
+              "type": "textRows",
+              "maxWidth": "=(summaryWidth - 2 * backgroundPaddingX)",
+              "spacing": 0,
+              "rows": [
+                {
+                  "alignment": "firstTextBaseline",
+                  "spacing": "=7 / signal(\"host.scale\")",
+                  "runs": [
+                    {
+                      "text": "=unitSystem == \"imperial\" ? field(field(work.metrics, \"imperial\"), primaryMetric).value : field(field(work.metrics, \"metric\"), primaryMetric).value",
+                      "font": {
+                        "family": "=primaryValueFontFamily",
+                        "size": "=primaryValueFontSize",
+                        "weight": "=primaryValueFontWeight"
+                      },
+                      "color": "=primaryValueColorMode == \"followGroupColor\" ? (accentColorMode == \"followGroupColor\" ? work.groupColor : accentColor) : primaryValueCustomColor",
+                      "minimumScaleFactor": 0.55,
+                      "monospacedDigits": true
+                    },
+                    {
+                      "text": "=unitSystem == \"imperial\" ? field(field(work.metrics, \"imperial\"), primaryMetric).unit : field(field(work.metrics, \"metric\"), primaryMetric).unit",
+                      "if": "=(unitSystem == \"imperial\" ? field(field(work.metrics, \"imperial\"), primaryMetric).unit : field(field(work.metrics, \"metric\"), primaryMetric).unit) != \"\"",
+                      "font": {
+                        "family": "=primaryValueFontFamily",
+                        "size": "=primaryValueFontSize * 0.34",
+                        "weight": "=primaryValueFontWeight"
+                      },
+                      "color": "=primaryValueColorMode == \"followGroupColor\" ? (accentColorMode == \"followGroupColor\" ? work.groupColor : accentColor) : primaryValueCustomColor",
+                      "minimumScaleFactor": 1,
+                      "opacity": 0.9
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "spacer",
+              "length": "=5 / signal(\"host.scale\")",
+              "if": "=primaryMetricLabelVisible && primaryLabelTextVisible"
+            },
+            {
+              "type": "text",
+              "if": "=primaryMetricLabelVisible && primaryLabelTextVisible",
+              "text": "=(unitSystem == \"imperial\" ? field(field(work.metrics, \"imperial\"), primaryMetric).label : field(field(work.metrics, \"metric\"), primaryMetric).label)",
+              "font": {
+                "family": "=primaryLabelFontFamily",
+                "size": "=primaryLabelFontSize",
+                "weight": "=primaryLabelFontWeight"
+              },
+              "color": "=primaryLabelColorMode == \"followGroupColor\" ? (accentColorMode == \"followGroupColor\" ? work.groupColor : accentColor) : primaryLabelCustomColor",
+              "align": "center",
+              "maxWidth": "=(summaryWidth - 2 * backgroundPaddingX)"
+            },
+            {
+              "type": "spacer",
+              "min": "=slot1Visible || slot2Visible || slot3Visible ? 12 / signal(\"host.scale\") : 0"
+            },
+            {
+              "type": "columns",
+              "if": "=slot1Visible || slot2Visible || slot3Visible",
+              "width": "=(summaryWidth - 2 * backgroundPaddingX)",
+              "divider": {
+                "width": "=dividerEnabled ? max(dividerWidth, 0.5) / signal(\"host.scale\") : 0",
+                "color": "#FFFFFF",
+                "opacity": "=dividerOpacity",
+                "height": "=dividerEnabled ? summaryHeight * 0.26 : 0"
+              },
+              "children": [
+                {
+                  "type": "textRows",
+                  "maxWidth": "=((summaryWidth - 2 * backgroundPaddingX) / 3 - 16 / signal(\"host.scale\"))",
+                  "spacing": "=4 / signal(\"host.scale\")",
+                  "rows": [
+                    {
+                      "alignment": "firstTextBaseline",
+                      "spacing": "=4 / signal(\"host.scale\")",
+                      "runs": [
+                        {
+                          "text": "=unitSystem == \"imperial\" ? field(field(work.metrics, \"imperial\"), slot1Metric).value : field(field(work.metrics, \"metric\"), slot1Metric).value",
+                          "font": {
+                            "family": "=secondaryValueFontFamily",
+                            "size": "=secondaryValueFontSize",
+                            "weight": "=secondaryValueFontWeight"
+                          },
+                          "color": "=secondaryValueColorMode == \"followGroupColor\" ? (accentColorMode == \"followGroupColor\" ? work.groupColor : accentColor) : secondaryValueCustomColor",
+                          "minimumScaleFactor": 0.55,
+                          "monospacedDigits": true
+                        },
+                        {
+                          "text": "=unitSystem == \"imperial\" ? field(field(work.metrics, \"imperial\"), slot1Metric).unit : field(field(work.metrics, \"metric\"), slot1Metric).unit",
+                          "if": "=(unitSystem == \"imperial\" ? field(field(work.metrics, \"imperial\"), slot1Metric).unit : field(field(work.metrics, \"metric\"), slot1Metric).unit) != \"\"",
+                          "font": {
+                            "family": "=secondaryValueFontFamily",
+                            "size": "=secondaryValueFontSize * 0.38",
+                            "weight": "=secondaryValueFontWeight"
+                          },
+                          "color": "=secondaryValueColorMode == \"followGroupColor\" ? (accentColorMode == \"followGroupColor\" ? work.groupColor : accentColor) : secondaryValueCustomColor",
+                          "minimumScaleFactor": 1,
+                          "opacity": 0.9
+                        }
+                      ]
+                    },
+                    {
+                      "alignment": "center",
+                      "spacing": 0,
+                      "if": "=secondaryLabelTextVisible && slot1LabelVisible",
+                      "runs": [
+                        {
+                          "text": "=unitSystem == \"imperial\" ? field(field(work.metrics, \"imperial\"), slot1Metric).label : field(field(work.metrics, \"metric\"), slot1Metric).label",
+                          "font": {
+                            "family": "=secondaryLabelFontFamily",
+                            "size": "=secondaryLabelFontSize",
+                            "weight": "=secondaryLabelFontWeight"
+                          },
+                          "color": "=secondaryLabelColorMode == \"followGroupColor\" ? (accentColorMode == \"followGroupColor\" ? work.groupColor : accentColor) : secondaryLabelCustomColor",
+                          "minimumScaleFactor": 1
+                        }
+                      ]
+                    }
+                  ],
+                  "if": "=slot1Visible"
+                },
+                {
+                  "type": "textRows",
+                  "maxWidth": "=((summaryWidth - 2 * backgroundPaddingX) / 3 - 16 / signal(\"host.scale\"))",
+                  "spacing": "=4 / signal(\"host.scale\")",
+                  "rows": [
+                    {
+                      "alignment": "firstTextBaseline",
+                      "spacing": "=4 / signal(\"host.scale\")",
+                      "runs": [
+                        {
+                          "text": "=unitSystem == \"imperial\" ? field(field(work.metrics, \"imperial\"), slot2Metric).value : field(field(work.metrics, \"metric\"), slot2Metric).value",
+                          "font": {
+                            "family": "=secondaryValueFontFamily",
+                            "size": "=secondaryValueFontSize",
+                            "weight": "=secondaryValueFontWeight"
+                          },
+                          "color": "=secondaryValueColorMode == \"followGroupColor\" ? (accentColorMode == \"followGroupColor\" ? work.groupColor : accentColor) : secondaryValueCustomColor",
+                          "minimumScaleFactor": 0.55,
+                          "monospacedDigits": true
+                        },
+                        {
+                          "text": "=unitSystem == \"imperial\" ? field(field(work.metrics, \"imperial\"), slot2Metric).unit : field(field(work.metrics, \"metric\"), slot2Metric).unit",
+                          "if": "=(unitSystem == \"imperial\" ? field(field(work.metrics, \"imperial\"), slot2Metric).unit : field(field(work.metrics, \"metric\"), slot2Metric).unit) != \"\"",
+                          "font": {
+                            "family": "=secondaryValueFontFamily",
+                            "size": "=secondaryValueFontSize * 0.38",
+                            "weight": "=secondaryValueFontWeight"
+                          },
+                          "color": "=secondaryValueColorMode == \"followGroupColor\" ? (accentColorMode == \"followGroupColor\" ? work.groupColor : accentColor) : secondaryValueCustomColor",
+                          "minimumScaleFactor": 1,
+                          "opacity": 0.9
+                        }
+                      ]
+                    },
+                    {
+                      "alignment": "center",
+                      "spacing": 0,
+                      "if": "=secondaryLabelTextVisible && slot2LabelVisible",
+                      "runs": [
+                        {
+                          "text": "=unitSystem == \"imperial\" ? field(field(work.metrics, \"imperial\"), slot2Metric).label : field(field(work.metrics, \"metric\"), slot2Metric).label",
+                          "font": {
+                            "family": "=secondaryLabelFontFamily",
+                            "size": "=secondaryLabelFontSize",
+                            "weight": "=secondaryLabelFontWeight"
+                          },
+                          "color": "=secondaryLabelColorMode == \"followGroupColor\" ? (accentColorMode == \"followGroupColor\" ? work.groupColor : accentColor) : secondaryLabelCustomColor",
+                          "minimumScaleFactor": 1
+                        }
+                      ]
+                    }
+                  ],
+                  "if": "=slot2Visible"
+                },
+                {
+                  "type": "textRows",
+                  "maxWidth": "=((summaryWidth - 2 * backgroundPaddingX) / 3 - 16 / signal(\"host.scale\"))",
+                  "spacing": "=4 / signal(\"host.scale\")",
+                  "rows": [
+                    {
+                      "alignment": "firstTextBaseline",
+                      "spacing": "=4 / signal(\"host.scale\")",
+                      "runs": [
+                        {
+                          "text": "=unitSystem == \"imperial\" ? field(field(work.metrics, \"imperial\"), slot3Metric).value : field(field(work.metrics, \"metric\"), slot3Metric).value",
+                          "font": {
+                            "family": "=secondaryValueFontFamily",
+                            "size": "=secondaryValueFontSize",
+                            "weight": "=secondaryValueFontWeight"
+                          },
+                          "color": "=secondaryValueColorMode == \"followGroupColor\" ? (accentColorMode == \"followGroupColor\" ? work.groupColor : accentColor) : secondaryValueCustomColor",
+                          "minimumScaleFactor": 0.55,
+                          "monospacedDigits": true
+                        },
+                        {
+                          "text": "=unitSystem == \"imperial\" ? field(field(work.metrics, \"imperial\"), slot3Metric).unit : field(field(work.metrics, \"metric\"), slot3Metric).unit",
+                          "if": "=(unitSystem == \"imperial\" ? field(field(work.metrics, \"imperial\"), slot3Metric).unit : field(field(work.metrics, \"metric\"), slot3Metric).unit) != \"\"",
+                          "font": {
+                            "family": "=secondaryValueFontFamily",
+                            "size": "=secondaryValueFontSize * 0.38",
+                            "weight": "=secondaryValueFontWeight"
+                          },
+                          "color": "=secondaryValueColorMode == \"followGroupColor\" ? (accentColorMode == \"followGroupColor\" ? work.groupColor : accentColor) : secondaryValueCustomColor",
+                          "minimumScaleFactor": 1,
+                          "opacity": 0.9
+                        }
+                      ]
+                    },
+                    {
+                      "alignment": "center",
+                      "spacing": 0,
+                      "if": "=secondaryLabelTextVisible && slot3LabelVisible",
+                      "runs": [
+                        {
+                          "text": "=unitSystem == \"imperial\" ? field(field(work.metrics, \"imperial\"), slot3Metric).label : field(field(work.metrics, \"metric\"), slot3Metric).label",
+                          "font": {
+                            "family": "=secondaryLabelFontFamily",
+                            "size": "=secondaryLabelFontSize",
+                            "weight": "=secondaryLabelFontWeight"
+                          },
+                          "color": "=secondaryLabelColorMode == \"followGroupColor\" ? (accentColorMode == \"followGroupColor\" ? work.groupColor : accentColor) : secondaryLabelCustomColor",
+                          "minimumScaleFactor": 1
+                        }
+                      ]
+                    }
+                  ],
+                  "if": "=slot3Visible"
+                }
+              ]
+            },
+            {
+              "type": "spacer",
+              "if": "=slot1Visible || slot2Visible || slot3Visible"
+            }
+          ],
+          "if": "=coalesce(work.completionAge, 1000000) <= displayDuration"
+        }
+      ]
+    }
+  ]
+}

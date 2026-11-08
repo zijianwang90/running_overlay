@@ -63,7 +63,7 @@ struct OverlayPoolView: View {
                         VStack(alignment: .leading, spacing: EditorTheme.space3) {
                             componentSectionHeader("Bundled")
                             LazyVGrid(columns: columns, spacing: EditorTheme.space2) {
-                                ForEach(OverlayComponentLibraryItem.examples) { item in
+                                ForEach(OverlayComponentLibraryItem.bundledVisuals) { item in
                                     OverlayComponentAddTile(
                                         displayName: item.displayName,
                                         hint: item.hint,

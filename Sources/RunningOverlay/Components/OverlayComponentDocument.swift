@@ -123,6 +123,10 @@ enum OverlayComponentBinding: Equatable {
     case signal(String)
     case series(path: String, window: OverlayComponentSeriesWindow, samples: Int)
     case list(String)
+    /// A value computed from parameters, signals and earlier computed
+    /// bindings. Lets a definition name intermediate geometry instead of
+    /// repeating one long expression on every node that needs it.
+    case value(OverlayComponentExpression)
 }
 
 enum OverlayComponentNumberSource: Equatable {
@@ -255,6 +259,7 @@ struct OverlayComponentFont: Equatable {
 
 enum OverlayComponentFontWeight: String, Equatable, CaseIterable {
     case ultraLight
+    case thin
     case light
     case regular
     case medium
@@ -262,6 +267,17 @@ enum OverlayComponentFontWeight: String, Equatable, CaseIterable {
     case bold
     case heavy
     case black
+}
+
+enum OverlayComponentSymbolRendering: String, Equatable {
+    case glyph
+    case fit
+}
+
+enum OverlayComponentSymbolScale: String, Equatable {
+    case small
+    case medium
+    case large
 }
 
 enum OverlayComponentTextAlignment: String, Equatable {
@@ -312,11 +328,36 @@ enum OverlayComponentSmoothing: String, Equatable {
     case monotone
 }
 
+struct OverlayComponentTextRowRun: Equatable {
+    var text: OverlayComponentStringSource
+    var font: OverlayComponentFont
+    var color: OverlayComponentColorSource
+    var minimumScaleFactor: OverlayComponentNumberSource?
+    var verticalPadding: OverlayComponentNumberSource?
+    var opacity: OverlayComponentNumberSource?
+    var monospacedDigits: Bool
+    var condition: OverlayComponentExpression?
+}
+
+enum OverlayComponentTextRowAlignment: String, Equatable {
+    case center
+    case firstTextBaseline
+}
+
+struct OverlayComponentTextRow: Equatable {
+    var runs: [OverlayComponentTextRowRun]
+    var spacing: OverlayComponentNumberSource?
+    var alignment: OverlayComponentTextRowAlignment
+    var condition: OverlayComponentExpression?
+}
+
 struct OverlayComponentShadow: Equatable {
     var sigma: OverlayComponentNumberSource
     var dx: OverlayComponentNumberSource
     var dy: OverlayComponentNumberSource
     var color: OverlayComponentColorSource
+    /// Multiplies the color alpha; 1 by default.
+    var opacity: OverlayComponentNumberSource?
 }
 
 struct OverlayComponentGradientStop: Equatable {
@@ -349,8 +390,41 @@ struct OverlayComponentNode: Equatable {
     var alignSelf: OverlayComponentStringSource? = nil
 }
 
+/// Multiline, frame-constrained text with AppKit paragraph layout. Unlike
+/// `text`, this capability can fit its font to the frame and paint glyph ink.
+struct OverlayComponentRichText: Equatable {
+    var text: OverlayComponentStringSource
+    var font: OverlayComponentFont
+    var color: OverlayComponentColorSource
+    var align: OverlayComponentStringSource
+    var lineHeight: OverlayComponentNumberSource?
+    var tracking: OverlayComponentNumberSource?
+    var stroke: OverlayComponentColorSource?
+    var strokeWidth: OverlayComponentNumberSource?
+    var autoFit: OverlayComponentExpression?
+    var gradient: OverlayComponentTextGradient?
+}
+
+struct OverlayComponentTextGradient: Equatable {
+    var stops: [Stop]
+    var from: OverlayComponentPoint
+    var to: OverlayComponentPoint
+
+    struct Stop: Equatable {
+        var offset: Double
+        var color: OverlayComponentColorSource
+    }
+}
+
 enum OverlayComponentNodeKind: Equatable {
-    case group(children: [OverlayComponentNode], clip: Bool, shadow: OverlayComponentShadow?)
+    case richText(OverlayComponentRichText)
+    /// Centered display rows that shrink each run to fit the node frame.
+    /// Unlike `richText`, this is a short vertical stack of single-line runs.
+    case textRows(rows: [OverlayComponentTextRow], spacing: OverlayComponentNumberSource?,
+                  maxWidth: OverlayComponentNumberSource?)
+    case group(children: [OverlayComponentNode], clip: Bool,
+               shadows: [OverlayComponentShadow],
+               shadowBounds: OverlayComponentFrame?)
     /// `direction` and `crossAlign` are literals or expressions naming
     /// `OverlayComponentStackDirection` / `OverlayComponentCrossAlignment`.
     case stack(
@@ -396,11 +470,22 @@ enum OverlayComponentNodeKind: Equatable {
               tracking: OverlayComponentNumberSource?)
     case image(asset: String, fit: OverlayComponentImageFit)
     /// Fixed gap when `length` is set, otherwise flexible: flexible spacers
-    /// share a stack's leftover main-axis length. Only valid in a stack.
-    case spacer(length: OverlayComponentNumberSource?)
+    /// share a stack's leftover main-axis length. `minimum` keeps a flexible
+    /// spacer from collapsing below that length when space is tight. Only
+    /// valid in a stack.
+    case spacer(length: OverlayComponentNumberSource?,
+                minimum: OverlayComponentNumberSource?)
+    /// Equal-width columns sized to `width`; children are centered vertically
+    /// and optional dividers are drawn between them. Column count is the
+    /// number of children that survive their `if` conditions.
+    case columns(width: OverlayComponentNumberSource,
+                 divider: OverlayComponentDivider?,
+                 children: [OverlayComponentNode])
     case symbol(name: OverlayComponentStringSource,
                 color: OverlayComponentColorSource,
-                weight: OverlayComponentFontWeight)
+                weight: OverlayComponentStringSource,
+                scale: OverlayComponentStringSource,
+                rendering: OverlayComponentSymbolRendering)
     case gradientRect(stops: [OverlayComponentGradientStop],
                       from: OverlayComponentPoint,
                       to: OverlayComponentPoint,
@@ -427,6 +512,181 @@ enum OverlayComponentNodeKind: Equatable {
                     indexName: String,
                     maximum: OverlayComponentNumberSource?,
                     children: [OverlayComponentNode])
+    /// One horizontal bar split into proportional segments from a data list.
+    /// Segments come from records with `index` and `color`; an optional active
+    /// segment can widen and thicken. Optional markers anchor to a segment by
+    /// index and fraction, so a definition never re-implements the geometry.
+    case segmentedBar(OverlayComponentSegmentedBar)
+    indirect case timelineStrip(OverlayComponentTimelineStrip)
+}
+
+struct OverlayComponentSegmentedBar: Equatable {
+    var segments: OverlayComponentExpression
+    /// `horizontal` (default) or `vertical`. Vertical runs order segments
+    /// from the bottom edge upward, matching the native zone bars.
+    var orientation: OverlayComponentStringSource?
+    var activeIndex: OverlayComponentNumberSource?
+    var activeWidthShare: OverlayComponentNumberSource?
+    var activeThicknessScale: OverlayComponentNumberSource?
+    var gap: OverlayComponentNumberSource?
+    var radius: OverlayComponentNumberSource?
+    var inactiveOpacity: OverlayComponentNumberSource?
+    var glow: Glow?
+    /// Rounded outline drawn over the segments and under the markers, matching
+    /// host bars that draw their outline before markers.
+    var border: Border?
+    var markers: [Marker]
+
+    struct Border: Equatable {
+        var color: OverlayComponentColorSource
+        var opacity: OverlayComponentNumberSource
+        var width: OverlayComponentNumberSource
+    }
+
+    struct Glow: Equatable {
+        var opacity: OverlayComponentNumberSource
+        /// Blur sigma in design units.
+        var sigma: OverlayComponentNumberSource
+    }
+
+    struct Marker: Equatable {
+        var role: OverlayComponentSegmentedBarMarkerRole
+        /// `inline` (default) draws the native interval-HUD marker; `outside`
+        /// draws the native zone-edge marker, which sits wholly outside the
+        /// bar on `position`'s side and supports vertical bars.
+        var layout: OverlayComponentSegmentedBarMarkerLayout = .inline
+        var condition: OverlayComponentExpression?
+        /// Segment index (as carried by the segment record's `index`).
+        var index: OverlayComponentNumberSource?
+        /// 0...1 position inside the segment.
+        var fraction: OverlayComponentNumberSource?
+        var text: OverlayComponentStringSource
+        var color: OverlayComponentColorSource
+        /// `above`, `below`, `leading` or `trailing` relative to the bar.
+        var position: OverlayComponentStringSource?
+        var showsValue: OverlayComponentNumberSource?
+        /// Multiplier for the marker's arrow (inline current) or the whole
+        /// outside callout/tick geometry.
+        var scale: OverlayComponentNumberSource?
+        var font: OverlayComponentFont
+    }
+}
+
+/// A horizontally laid-out lap schedule for interval workouts. The node owns
+/// the schedule geometry the way the native module does: visibility filters,
+/// the centered window, weighted segment widths, labels, progress fill, the
+/// overflow hints and the marker lane all derive from the segment list.
+struct OverlayComponentTimelineStrip: Equatable {
+    /// List expression of lap records (`structure.laps`); each record supplies
+    /// `index`, `kind`, `startElapsed`, `endElapsed`, `elapsed` and `distance`.
+    var segments: OverlayComponentExpression
+    /// Current lap index as carried by a record's `index`.
+    var currentIndex: OverlayComponentNumberSource?
+    /// Activity elapsed seconds, used for completed/future styling and the
+    /// fallback marker anchor.
+    var elapsed: OverlayComponentNumberSource?
+    /// `emphasized` (default, centered window), `equal` or `weighted`.
+    var mode: OverlayComponentStringSource?
+    var emphasisFraction: OverlayComponentNumberSource?
+    /// Neighbor count on each side in `emphasized` mode; omitted means all.
+    var window: OverlayComponentNumberSource?
+    var showsWarmup: OverlayComponentNumberSource?
+    var showsRest: OverlayComponentNumberSource?
+    var showsCooldown: OverlayComponentNumberSource?
+    /// Segment area height before vertical padding (the native `height`).
+    var segmentAreaHeight: OverlayComponentNumberSource?
+    var segmentHeight: OverlayComponentNumberSource?
+    var currentHeightScale: OverlayComponentNumberSource?
+    var minSegmentWidth: OverlayComponentNumberSource?
+    var gap: OverlayComponentNumberSource?
+    var radius: OverlayComponentNumberSource?
+    var currentBorderWidth: OverlayComponentNumberSource?
+    var completedOpacity: OverlayComponentNumberSource?
+    var futureOpacity: OverlayComponentNumberSource?
+    var colors: Colors?
+    var labels: Labels?
+    var progress: Progress?
+    var marker: Marker?
+    var overflow: Overflow?
+    /// Rep counter line shown on the current active segment, e.g. `Rep 2 / 5`.
+    var repText: OverlayComponentStringSource?
+    /// Current lap distance progress, used for elapsed/remaining distance labels.
+    var distanceProgress: OverlayComponentNumberSource?
+
+    struct Colors: Equatable {
+        var warmup: OverlayComponentColorSource
+        var active: OverlayComponentColorSource
+        var rest: OverlayComponentColorSource
+        var cooldown: OverlayComponentColorSource
+        var unknown: OverlayComponentColorSource
+    }
+
+    struct Labels: Equatable {
+        var font: OverlayComponentFont
+        /// `hidden`, `elapsed` or `remaining` for the current work segment.
+        var currentWorkDistance: OverlayComponentStringSource?
+        var currentWorkTime: OverlayComponentStringSource?
+        /// Draw the kind text (`Rest`, `WU`, ...) on the current non-work segment.
+        var currentRestKind: OverlayComponentNumberSource?
+        var currentRestDistance: OverlayComponentStringSource?
+        var currentRestTime: OverlayComponentStringSource?
+        /// `hidden`, `distance` or `time` for non-current segments.
+        var neighbor: OverlayComponentStringSource?
+    }
+
+    struct Progress: Equatable {
+        var value: OverlayComponentNumberSource
+        var color: OverlayComponentColorSource
+        var opacity: OverlayComponentNumberSource?
+    }
+
+    struct Marker: Equatable {
+        var enabled: OverlayComponentNumberSource?
+        /// `progress` (default) or `center`.
+        var position: OverlayComponentStringSource?
+        var color: OverlayComponentColorSource
+        var label: OverlayComponentStringSource?
+        var showsLabel: OverlayComponentNumberSource?
+        var font: OverlayComponentFont
+    }
+
+    struct Overflow: Equatable {
+        var enabled: OverlayComponentNumberSource?
+        /// Text drawn at the left and right edges, e.g. `···`.
+        var text: OverlayComponentStringSource?
+        var color: OverlayComponentColorSource
+        /// Distance from the segment area edge to the hint center, design units.
+        var inset: OverlayComponentNumberSource?
+    }
+}
+
+enum OverlayComponentSegmentedBarMarkerLayout: String, CaseIterable {
+    case inline
+    case outside
+}
+
+/// Side of the bar a segmented-bar marker sits on. `above`/`below` apply to
+/// horizontal bars; `leading`/`trailing` apply to vertical bars.
+enum OverlayComponentSegmentedBarMarkerSide: String, CaseIterable {
+    case above
+    case below
+    case leading
+    case trailing
+}
+
+enum OverlayComponentSegmentedBarMarkerRole: String, CaseIterable {
+    /// Arrow plus an optional value pill, centered on the bar edge.
+    case current
+    /// A thin capsule crossing the bar with a value label below it.
+    case threshold
+}
+
+struct OverlayComponentDivider: Equatable {
+    var width: OverlayComponentNumberSource
+    var color: OverlayComponentColorSource
+    var opacity: OverlayComponentNumberSource
+    /// Zero hides the separator without removing the space reserved by `width`.
+    var height: OverlayComponentNumberSource
 }
 
 struct OverlayComponentPackage: Equatable {

@@ -15,7 +15,9 @@ records the decision and gates.
 - Specification identifier: `ros.component/0.1`
 - Package extension: `.rocomponent`
 - JSON Schema: [schema/ros-component-0.1.schema.json](schema/ros-component-0.1.schema.json)
-- Examples: [examples/hr-pill.rocomponent.json](examples/hr-pill.rocomponent.json),
+- Authoring: [guide](authoring.md), including CLI activity/time/parameter inputs.
+- Examples: [Metric Card](examples/metric-card.rocomponent.json),
+  [examples/hr-pill.rocomponent.json](examples/hr-pill.rocomponent.json),
   [examples/lap-splits.rocomponent.json](examples/lap-splits.rocomponent.json)
 
 Keywords MUST, MUST NOT, SHOULD and MAY are used as in RFC 2119.
@@ -37,7 +39,8 @@ The same component definition MUST render identically in preview and export.
 ### Non-goals for v0.1
 
 - Executable code, scripts, plugins, dylibs, or network access.
-- Auto-layout, stacks, or constraint solving. Frames are explicit.
+- General auto layout (wrapping, grids, constraint solving). One-dimensional
+  stacks, spacers, stretch and content sizing are supported.
 - SVG, video, or bundled font files. Images are PNG or JPEG; fonts come from
   the host font library.
 - User-defined functions, loops other than `repeat`, or mutable state.
@@ -178,6 +181,8 @@ Missing data resolves to `null`; it is never an error.
 
 | Path | Type | Unit / meaning |
 |---|---|---|
+| `activity.duration` | number | total activity elapsed seconds |
+| `activity.totalDistance` | number | total activity distance in meters |
 | `activity.elapsed` | number | seconds of activity elapsed time |
 | `activity.remaining` | number | seconds remaining |
 | `activity.distance` | number | meters |
@@ -201,7 +206,7 @@ Missing data resolves to `null`; it is never an error.
 | `clock.date` | string? | ISO-8601 date at the playhead |
 | `host.canvasWidth` | number | project canvas width in pixels |
 | `host.canvasHeight` | number | project canvas height in pixels |
-| `host.scale` | number | `element.scale × canvasScale` |
+| `host.scale` | number | `element.scale × canvasScale`; read it with `signal("host.scale")` and divide a pixel-faithful constant by it to express that constant in design units |
 
 ### 5.2 Records
 
@@ -226,6 +231,50 @@ are strings.
 - `activity.*` numeric signals listed in 5.1 MAY be requested as series.
 - `structure.laps` and `structure.intervals` are lists of records with the
   fields in 5.2 plus `index`; they are usable with `repeat`.
+
+### Workout and zone records
+
+All times below are **activity elapsed seconds**. Lap lists contain the whole
+activity in source order, including future laps at the playhead. `index` is
+the raw source lap index (zero-based for imported FIT). Use repeat indices for
+presentation row numbers. Lap records also provide `startElapsed`, `endElapsed`,
+`startDistance` (meters) and `totalAscent` (meters or null).
+
+`structure.current` retains its structured-workout-only semantics.
+`structure.segment` is available for normal and structured activities, using
+the native current lap or an activity-level fallback:
+
+- `index` (number or null), `startElapsed`, `endElapsed`, `startDistance`;
+- `phase`, `phaseText` (`WU`, `WORK`, `REST`, `CD`, `LAP`), `groupColor`,
+  `phaseColor` (active laps follow the resolved zone; others the group);
+- `elapsed`, `duration`, `remaining`, `timeProgress`, `distanceProgress`;
+- `distance`, `elapsedDistance`, `remainingDistance` (meters);
+- `elapsedText`, `remainingText`, `elapsedDistanceText`, `remainingDistanceText`;
+- `repIndex` (one-based or null), `repCount`, `repText`.
+
+Without a source lap, time/distance values use the activity fallback and
+`endElapsed` is `max(activity.duration, 1)`. Both progress fields stay zero,
+matching native `lapProgress`; do not infer them from elapsed/duration.
+
+`structure.lastWork` is null until an active lap has ended. At its exact end
+boundary it becomes that lap's record, plus `completionAge` and `groupColor`.
+Its `metrics.metric` and `metrics.imperial` records contain `lapTime`,
+`lapPace`, `lapDistance`, `avgHeartRate`, `maxHeartRate`, `avgPower` and
+`avgCadence`, each a host-formatted `{ value, unit, label }` record.
+Summary visibility uses `completionAge >= 0 && completionAge <= displayDuration`.
+`structure.recovery` exposes `peakHeartRate`, `drop` and `dropPercent`, each
+nullable, using the native current-lap recovery queries. Seeking is stateless.
+
+`zone.heartRateZones` and `zone.paceZones` are lists of all configured visible
+zone slots, including empty slots, or null without a snapshot. Each record has
+`index` (one-based), `count`, `label`, `color`, `lower` and `upper` (nullable).
+Active `zone.heartRate` and `zone.pace` additionally provide `fraction` (0..1),
+`value` and `valueText`. Matching uses inclusive boundaries and the first
+matching visible slot; fractions default to 0.5 for open/degenerate bounds.
+`zone.current` prefers HR, then positive pace. `zone.heartRateThreshold` and
+`zone.paceThreshold` have the same active-value shape, with `valueText: "T"`,
+or null when the threshold cannot be resolved. Zone values use bpm or seconds/km.
+These totals are scalar signals, not resampled time series.
 
 ### 5.4 Formatted metrics
 
@@ -289,6 +338,10 @@ component depends on.
   to the playhead (`"full"` for the whole activity), and `samples` 2..1024.
   Windows are clamped to the activity.
 - `list` takes `structure.laps` or `structure.intervals`.
+- `value` is a computed binding: `{ "value": "=expression" }` evaluates the
+  expression once per resolve and stores the result under that name. Computed
+  bindings may reference params, signal/series/list bindings and other computed
+  bindings, which are evaluated first; reference cycles resolve to null.
 - A binding name MUST be unique, match `[A-Za-z_][A-Za-z0-9_]*`, and MUST NOT
   shadow a builtin name.
 - The host MAY use bindings to preload or cache data. A component MUST NOT
@@ -302,7 +355,7 @@ Every node has:
 |---|---|---|
 | `type` | yes | One of the node types below. |
 | `id` | no | Unique within the component; for diagnostics. |
-| `frame` | depends | `[x, y, width, height]`. Numbers or expressions. Required for `rect`, `image`, `symbol`, `gradientRect`, `sparkline`, `progressBar`, `arc` and `repeat`; optional for `text` (measured when absent) and `stack`; optional for `group`, `line`, `circle`, `polyline` and `path`, whose geometry is explicit. |
+| `frame` | depends | `[x, y, width, height]`. Numbers or expressions. Required for `rect`, `image`, `symbol`, `gradientRect`, `richText`, `sparkline`, `progressBar`, `arc`, `segmentedBar` and `repeat`; optional for `text` (measured when absent), `textRows` (measured when absent; then `maxWidth` is required) and `stack`; optional for `group`, `line`, `circle`, `polyline` and `path`, whose geometry is explicit. |
 | `if` | no | Expression. The node is skipped when the result is falsey. A skipped stack child takes no space. |
 | `opacity` | no | Number 0..1 or expression, multiplied into the node. |
 | `clip` | no | `group` only, default `false`. Clips children to the group frame. |
@@ -329,11 +382,12 @@ These map directly to primitives in `Sources/CSkiaBridge/include/skia_bridge.h`.
 | `path` | `commands` (array; see below), `fill?`, `stroke?`, `strokeWidth?`, `cap`, `join`, `dash?` |
 | `text` | `text` (string or expression), `font` (section 7.3), `color`, `align` (`left`, `center`, `right`, default `left`), `verticalAlign` (`top`, `center`, `bottom`, default `top`), `maxWidth?`, `lineHeight?` (multiplier, default 1.2), `tracking?` (extra advance per glyph in design units, default 0; negative tightens). `frame` is optional; without it the node is auto-sized from its measured lines. |
 | `image` | `asset` (`assets/...`), `fit` (`fill` or `contain`, default `contain`), `opacity?` |
-| `symbol` | `name` (SF Symbol name or expression), `color`, `weight` (font weights from section 7.3, default `medium`) |
+| `symbol` | `name` (SF Symbol name or expression), `color`, `weight` (font weight or expression, default `medium`), `scale` (`small`/`medium`/`large` or expression, default `medium`), `rendering` (`glyph`/`fit`, default `glyph`) |
 | `gradientRect` | `radius?`, `stops` (2..8 `{ "offset": 0..1, "color": "#..." }`), `from` `[x, y]`, `to` `[x, y]` |
-| `group` | `children` (array of nodes), `frame?`, `clip`, `shadow?`, `opacity?` |
+| `group` | `children` (array of nodes), `frame?`, `clip`, `shadow?`, `shadows?` (2..8 shadows), `shadowBounds?` (frame for the shadow layer), `opacity?` |
 | `stack` | `children` (array of nodes), `direction` (`horizontal`, default, or `vertical`), `spacing?` (default 0), `crossAlign` (`start`, default, `center`, `end`, `stretch`), `frame?`, `opacity?` |
-| `spacer` | `length?`. Stack children only; no `frame`. With `length` a fixed gap, without it flexible. |
+| `spacer` | `length?`, `min?`. Stack children only; no `frame`. With `length` a fixed gap, without it flexible. `min` pinning keeps a flexible spacer at least that long before the rest of the leftover is shared. |
+| `columns` | `width`, `divider?` (`{ "width": number, "color": color, "opacity?": number, "height": number }`), `children` (array of nodes). Children are laid out in equal-width columns along the row; a divider of the given width and height is drawn between them while more than one child is present. |
 
 `path.commands` entries:
 
@@ -345,8 +399,13 @@ These map directly to primitives in `Sources/CSkiaBridge/include/skia_bridge.h`.
 `A` is `[cx, cy, radius, startDegrees, sweepDegrees]`. Coordinates may be
 expressions.
 
-`group.shadow` is `{ "sigma": number, "dx": number, "dy": number, "color": color }`
-and applies to the composited group, using `skb_begin_shadow_layer`.
+`group.shadow` is `{ "sigma": number, "dx": number, "dy": number, "color": color,
+"opacity?": number }` and applies to the composited group, using a shadow
+layer. `group.shadows` adds a multi-shadow chain for effects that need layered
+glows; when both are present the single `shadow` is first. `opacity`
+multiplies the color alpha. `shadowBounds` sets the pixel-space layer extent
+when blur must paint outside the group frame; it defaults to the group frame.
+Zero-alpha shadows are skipped, matching native effect-chain filtering.
 
 Text is a single draw per line. `text` MAY contain at most 8 `\n`-separated
 lines. Text is laid out with the host's CoreText metrics and the same font
@@ -364,7 +423,21 @@ lowercase dot-separated token (`heart.fill`, `figure.run`) of at most 128
 characters; a literal that does not match is a validation error, and an
 expression result that does not match skips the node with a diagnostic. An
 unknown but well-formed name draws nothing. Symbols are rendered by the host
-and are not bundled assets.
+and are not bundled assets. The default `rendering: "glyph"` retains the
+numeric-icon behavior above and ignores `scale`. `rendering: "fit"` uses the
+host decor-symbol rasterizer: point size is 92% of the shorter edge, the chosen
+symbol scale is applied, and the result is aspect-fitted into the full frame.
+`weight` accepts all nine system weights, including `thin`. Invalid enum
+expression results emit diagnostics and use their defaults. The bundled
+`studio.decor-icon` definition exposes this fitted-symbol mode; user SVG and
+image selection remain on the native Decor Icon until package asset inputs
+have a reusable authoring contract.
+
+Element-level Inspector effects (element opacity, the inspector drop shadow and
+glow) are host state and are applied by the host around the whole component
+before its nodes are drawn. A definition MUST NOT recreate them with group
+shadows; group shadows are for design-internal effects such as a ring glow, and
+the host shadow is what makes a ported built-in match its native module.
 
 `stack` lays children out in order along one axis using each child's box size.
 A child's box is its `frame` size unless the child is a `text` node without a
@@ -381,7 +454,12 @@ itself a stack, sizes that stack to the container's cross extent. Flexible
 stack equally, so in a stretched row a trailing child sits at the far edge.
 A stack never shrinks below its content; without stretch or a fixed frame
 there is no leftover and flexible spacers are zero. A fixed `spacer` is a gap
-of `length` design units, useful where neighbouring gaps differ. The stack reports its content size when `frame` is omitted;
+of `length` design units, useful where neighbouring gaps differ. A flexible
+spacer's `min` pins it to at least that length before the remaining space is
+shared, which matches native layouts that switch from even distribution to a
+minimum gutter. `columns` gives each child an equal share of `width` minus the
+dividers; a divider's `height` is independent of the row height, and a
+single-child row draws no divider. The stack reports its content size when `frame` is omitted;
 a declared frame fixes the container size and `crossAlign` aligns children
 inside it. Layout runs at render pixel size, not in design units, because
 CoreText advances are not linear in point size.
@@ -389,17 +467,96 @@ CoreText advances are not linear in point size.
 ### 7.2 Capability nodes
 
 Capability nodes are implemented natively because their layout or data
-reduction is not expressible as base nodes. v0.1 defines exactly three:
+reduction is not expressible as base nodes. v0.1 defines five:
 
 | Type | Fields |
 |---|---|
 | `sparkline` | `series` (series expression), `stroke`, `lineWidth`, `fill?` (color or `null`), `smoothing` (`none` or `monotone`, default `none`) |
 | `progressBar` | `value` (0..1 expression), `trackColor`, `fillColor`, `radius` (default 0) |
 | `arc` | `value` (0..1), `startDegrees`, `sweepDegrees`, `radius`, `width`, `trackColor?`, `fillColor`, `cap` |
+| `segmentedBar` | `segments` (list expression of records with `index` and `color`), `orientation?` (`horizontal`, default, or `vertical`), `activeIndex?`, `activeWidthShare?` (0..0.5, default 0), `activeThicknessScale?` (default 1), `gap?`, `radius?`, `inactiveOpacity?` (default 1), `glow?` (`{ "opacity", "sigma" }`), `border?` (`{ "color", "opacity", "width" }`), `markers?` (max 8; `role`, optional `layout` `inline`/`outside`, `position` `above`/`below`/`leading`/`trailing`, `scale`) |
+| `timelineStrip` | `segments` (list expression of lap records), `currentIndex?`, `elapsed?`, `mode` (`emphasized`, `equal`, `weighted`), `emphasisFraction?` (0..0.65), `window?`, `showsWarmup?`/`showsRest?`/`showsCooldown?`, `segmentAreaHeight?`, `segmentHeight?`, `currentHeightScale?`, `minSegmentWidth?`, `gap?`, `radius?`, `currentBorderWidth?`, `completedOpacity?`, `futureOpacity?`, `colors` (`warmup`/`active`/`rest`/`cooldown`/`unknown`), `labels?` (`font`, current work/rest metrics, `neighbor`), `progress?` (`value`, `color`, `opacity`), `marker?` (`enabled`, `position`, `color`, `label`, `showsLabel`, `font`), `overflow?` (`enabled`, `text`, `color`, `inset`), `repText?`, `distanceProgress?` |
+
+| `textRows` | `frame` or `maxWidth`; non-empty `rows`; optional `spacing` between rows. Without `frame` the node is auto-sized and `maxWidth` bounds it; the node's measured width equals `maxWidth`. Each row has `runs` (non-empty), optional `spacing`, `alignment` (`center`, default, or `firstTextBaseline`), and `if`. Each run has `text`, `font`, `color`, optional `minimumScaleFactor` (0.1..1, default 1), `verticalPadding` (design units, default 0), `monospacedDigits` (default false), `opacity` (0..1, default 1) and `if`. |
+| `richText` | Required `frame`, `text`, `font`, `color`; optional `align` (`left`, `center`, `right`, default `center`; literal or expression), `lineHeight` (multiplier, default 1.2, minimum 0.5), `tracking` (extra glyph advance in design units, default 0), `stroke` (color, default white), `strokeWidth` (design units, default 0), `autoFit` (boolean or expression, default false), `gradient` (below). |
+
+`timelineStrip` draws the interval timeline rail: one segment per lap in the
+supplied record list, centered on `currentIndex` with `window` neighbors per
+side, or the whole schedule when `window` is large. Segment widths follow the
+native timeline rules (`emphasized` gives the current lap `emphasisFraction` of
+the width, `equal` splits evenly and `weighted` scales by lap distance/time).
+The host supplies lap records; the node owns the layout, per-kind colors,
+current/neighbor labels, progress overlay, overflow ellipses and the live
+marker with its label. `labels` selects which metrics each segment shows;
+`marker.position` is `progress` (live fraction) or `center` (segment middle).
+The node measures its own height from `segmentAreaHeight`, so place it inside a
+content-sized component rather than a fixed frame.
+
+`segmentedBar` draws an equal-width run of segments inside its frame, matching
+the native zone bars. `segments` records supply the paint order and each
+segment's color; a record's `index` identifies it for `activeIndex`. The active
+segment widens to at least `activeWidthShare` of the bar (capped at half) and
+scales its thickness by `activeThicknessScale`; inactive segments fade by
+`inactiveOpacity`. `gap` is clamped so the run always fits: at most
+`length / (count - 1) * 0.18` per gap. `radius` is clamped to half the
+cross-axis extent. An optional `glow` blurs the whole run and an optional
+`border` strokes its outline. `orientation` defaults to `horizontal`;
+`vertical` runs the first segment from the bottom edge upward.
+
+Markers are drawn after the segments. Each marker names a segment `index` and
+a `fraction` within it, and `text` must be supplied. `position` selects the
+side: `above`/`below` for horizontal bars, `leading`/`trailing` for vertical
+bars. `layout` defaults to `inline`, the interval HUD treatment (an arrow plus
+an optional value pill stacked against the bar); `outside` matches the zone
+edge treatment, where the callout or threshold tick sits wholly outside the
+bar on the named side. `scale` multiplies the inline arrow or the whole outside
+callout. `showsValue` (default true) hides the current marker's value pill
+without hiding its arrow. A `threshold` marker draws a capsule with a label.
+Marker metrics follow the corresponding native module, including the minimum
+arrow and text sizes used at small element scales.
+
+`textRows` lays out a short, vertically centered stack of single-line runs. It
+uses the same CoreText line shaping and shrink-to-fit behavior as the native
+interval modules: a run shrinks down to `minimumScaleFactor` when its row is
+wider than the frame, and rows shrink their combined width toward 0.5. Row
+conditions and run conditions are evaluated before layout, so hidden helper,
+phase, rep or caption rows take no space. Use `richText` for wrapped
+paragraphs and `textRows` for display typography such as countdown values.
+
+`richText` is the reviewed paragraph-text capability for Decor Text and other
+multiline cards. It uses the shared AppKit paragraph rasterizer, including
+word wrapping, font leading and explicit newlines, vertically centered in its
+required frame. It does not change the existing `text` node or its CoreText
+measurement rules. Its `lineHeight` adds `max(0, (lineHeight - 1) * fontSize)`
+paragraph line spacing. Its stroke is a copy of the paragraph scaled about the
+frame center by `1 + strokeWidth / max(renderedFontSize, 1) * 0.5`, drawn behind
+the fill; it is not a geometric glyph outline.
+
+`autoFit` shrinks the requested font (never enlarges it) until the paragraph
+fits the frame, with a bounded 12-step search down to one rendered pixel.
+Tracking scales with the fitted font. Oversized content may still clip at the
+minimum font size. Empty content paints nothing. Raster requests exceeding
+16,384 pixels on either axis or 16,777,216 total pixels are rejected to bound
+bitmap allocation; authors should keep frame dimensions and font sizes modest.
+
+`gradient` overrides `color` for glyph fill only and leaves stroke unchanged.
+It is an object with `stops` (2–8 objects with a literal `offset` in 0…1 and a
+literal or expression `color`, sorted by offset), `from` and `to` (points in
+node-local design units, top-left origin). Colors extend beyond the endpoints.
+All font fields use the same generic font contract as `text`.
+
+The bundled `studio.decor-text` exposes content, dimensions, font family,
+weight, size, alignment, line height, tracking, auto-fit, solid/gradient fill,
+gradient direction and stroke as params. Native Decor Text's gradient is
+currently a white placeholder and its auto-fit flag is inactive; these two
+new component behaviors are tested independently, not claimed as native pixel
+parity. Native letter spacing historically passes `letterSpacing / fontSize`
+to AppKit; matching that output requires converting to component tracking in
+rendered pixels. No native style type appears in component JSON.
 
 Deferred to a later version, each requiring an ADR amendment or a reviewed
 spec change: `areaChart`, `intervalTimeline`, `routeMap`, `weatherIcon`,
-`textEffect`, `richText`.
+`textEffect`.
 
 Capability nodes MUST honor `if`, `opacity`, `frame` and clipping like base
 nodes.
@@ -441,8 +598,9 @@ nodes.
   and their frames. Their defaults are `item` and `index`.
 - `max` is a number or expression, defaults to 64, and is clamped to
   0...512. Iteration stops at `max`.
-- `repeat` does not lay out children; each child computes its own frame,
-  usually from `index`.
+- `repeat` does not lay out or translate children; each child computes its own
+  frame in component coordinates, usually from `index`. A group frame bounds
+  clipping/effects but does not establish a new coordinate origin.
 - Nested `repeat` is not allowed in v0.1.
 
 ## 8. Expressions

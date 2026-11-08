@@ -147,7 +147,7 @@ enum SkiaDecorDrawing {
             context: context,
             entries: decorShadowEntries(for: element)
         ) {
-            if let bitmap = DecorTextRasterCache.bitmap(for: layout),
+            if let bitmap = SkiaParagraphTextRasterCache.bitmap(for: layout),
                let pointer = bitmap.pointer {
                 skb_draw_image_handle(
                     context,
@@ -333,7 +333,23 @@ enum SkiaDecorDrawing {
 /// reproduces SwiftUI's multiline layout, paragraph alignment, line spacing,
 /// tracking, and the scaled stroke layer without needing a glyph-stroke
 /// primitive.
-private enum DecorTextRasterCache {
+/// Generic pixel-space paragraph request shared by native decor and component
+/// richText. Tracking is an extra glyph advance in pixels.
+struct SkiaParagraphTextLayout {
+    var size: CGSize
+    var content: String
+    var font: NSFont
+    var alignment: NSTextAlignment
+    var lineHeight: Double
+    var tracking: Double
+    var color: OverlayColor
+    var gradient: OverlayComponentResolvedTextGradient?
+    var strokeWidth: Double
+    var strokeColor: OverlayColor
+    var autoFit: Bool
+}
+
+enum SkiaParagraphTextRasterCache {
     final class Bitmap {
         let pointer: OpaquePointer?
 
@@ -349,9 +365,8 @@ private enum DecorTextRasterCache {
     }
 
     /// `NSCache` is thread-safe internally; export and preview can rasterize
-    /// decor text from different threads. Keys quantize the scale-dependent
-    /// metrics so a continuous scale drag reuses one bitmap per bucket instead
-    /// of rasterizing every frame; the caps bound retained memory.
+    /// paragraph text from different threads. Exact keys preserve deterministic
+    /// output across scale changes; count and cost limits bound retained memory.
     nonisolated(unsafe) private static let cache: NSCache<NSString, Bitmap> = {
         let cache = NSCache<NSString, Bitmap>()
         cache.countLimit = 32
@@ -359,23 +374,27 @@ private enum DecorTextRasterCache {
         return cache
     }()
 
-    private static let sizeStep = 4.0
-    private static let fontSizeStep = 1.0
-    private static let metricStep = 0.5
-
-    /// Bucket index, not a rounded value: `Int(step)` would truncate a
-    /// fractional step (0.5) to zero and collapse every metric into one key.
-    private static func quantized(_ value: Double, step: Double) -> Int {
-        max(Int((value / step).rounded(.up)), 1)
-    }
-
-    /// Tracking can be negative, so round to the nearest bucket and keep the
-    /// sign instead of clamping at 1.
-    private static func quantizedSigned(_ value: Double, step: Double) -> Int {
-        Int((value / step).rounded())
-    }
-
+    /// Preserve the native renderer's historical gradient placeholder and
+    /// inactive auto-fit flag while sharing the paragraph rasterizer itself.
     static func bitmap(for layout: DecorTextRenderLayout) -> Bitmap? {
+        bitmap(for: SkiaParagraphTextLayout(
+            size: layout.size, content: layout.content, font: resolvedFont(layout),
+            alignment: nsAlignment(layout.alignment), lineHeight: layout.lineHeight,
+            tracking: layout.letterSpacing / max(layout.fontSize, 1),
+            color: {
+                if case .solid(let color) = layout.fillMode { return color }
+                return .white
+            }(),
+            gradient: nil, strokeWidth: layout.strokeWidth,
+            strokeColor: layout.strokeColor, autoFit: false
+        ))
+    }
+
+    static func bitmap(for layout: SkiaParagraphTextLayout) -> Bitmap? {
+        guard !layout.content.isEmpty, layout.size.width.isFinite, layout.size.height.isFinite,
+              layout.size.width > 0, layout.size.height > 0,
+              layout.size.width <= 16384, layout.size.height <= 16384,
+              layout.size.width * layout.size.height <= 16_777_216 else { return nil }
         let key = cacheKey(for: layout) as NSString
         if let cached = cache.object(forKey: key) {
             return cached
@@ -421,27 +440,13 @@ private enum DecorTextRasterCache {
     }
 
     private static func draw(
-        _ layout: DecorTextRenderLayout,
+        _ layout: SkiaParagraphTextLayout,
         in ctx: CGContext,
         width: Double,
         height: Double
     ) {
-        let font = resolvedFont(layout)
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = nsAlignment(layout.alignment)
-        paragraph.lineSpacing = max(0, (layout.lineHeight - 1) * layout.fontSize)
-
-        let tracking = layout.letterSpacing / max(layout.fontSize, 1)
-        let fillColor = nsColor(layout.fillMode)
-        let attributed = NSAttributedString(
-            string: layout.content,
-            attributes: [
-                .font: font,
-                .foregroundColor: fillColor,
-                .paragraphStyle: paragraph,
-                .kern: tracking
-            ]
-        )
+        let fontSize = fittedFontSize(for: layout, width: width, height: height)
+        let attributed = attributedText(layout, fontSize: fontSize)
 
         let measured = attributed.boundingRect(
             with: CGSize(width: width, height: .greatestFiniteMagnitude),
@@ -456,7 +461,7 @@ private enum DecorTextRasterCache {
         )
 
         if layout.strokeWidth > 0 {
-            let scale = 1 + layout.strokeWidth / max(layout.fontSize, 1) * 0.5
+            let scale = 1 + layout.strokeWidth / max(fontSize, 1) * 0.5
             var strokeAttributes = attributed.attributes(
                 at: 0,
                 effectiveRange: nil
@@ -474,7 +479,63 @@ private enum DecorTextRasterCache {
             ctx.restoreGState()
         }
 
-        attributed.draw(in: drawRect)
+        if let gradient = layout.gradient {
+            // Isolate the glyph mask so the gradient does not recolor stroke.
+            ctx.saveGState()
+            ctx.beginTransparencyLayer(auxiliaryInfo: nil)
+            attributed.draw(in: drawRect)
+            ctx.setBlendMode(.sourceIn)
+            let colors = gradient.stops.map { nsColor($0.color).cgColor } as CFArray
+            let locations = gradient.stops.map { CGFloat($0.offset) }
+            if let paint = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: locations) {
+                ctx.drawLinearGradient(
+                    paint,
+                    start: CGPoint(x: gradient.from.x, y: height - gradient.from.y),
+                    end: CGPoint(x: gradient.to.x, y: height - gradient.to.y),
+                    options: [.drawsBeforeStartLocation, .drawsAfterEndLocation]
+                )
+            }
+            ctx.endTransparencyLayer()
+            ctx.restoreGState()
+        } else {
+            attributed.draw(in: drawRect)
+        }
+    }
+
+    private static func attributedText(_ layout: SkiaParagraphTextLayout, fontSize: Double) -> NSAttributedString {
+        let font = NSFont(descriptor: layout.font.fontDescriptor, size: fontSize) ?? layout.font
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = layout.alignment
+        paragraph.lineSpacing = max(0, (layout.lineHeight - 1) * fontSize)
+        return NSAttributedString(string: layout.content, attributes: [
+            .font: font,
+            .foregroundColor: nsColor(layout.gradient == nil ? layout.color : .white),
+            .paragraphStyle: paragraph,
+            .kern: layout.tracking * fontSize / max(layout.font.pointSize, 1)
+        ])
+    }
+
+    /// Bounded shrink-only search. AppKit measures wrapping and font leading
+    /// using the same attributes as the final draw.
+    static func fittedFontSize(for layout: SkiaParagraphTextLayout, width: Double, height: Double) -> Double {
+        let requested = layout.font.pointSize
+        guard layout.autoFit else { return requested }
+        func fits(_ size: Double) -> Bool {
+            let text = attributedText(layout, fontSize: size)
+            let bounds = text.boundingRect(
+                with: CGSize(width: width, height: .greatestFiniteMagnitude),
+                options: [.usesLineFragmentOrigin, .usesFontLeading]
+            )
+            return ceil(bounds.height) <= height && ceil(bounds.width) <= width
+        }
+        guard !fits(requested) else { return requested }
+        var low = min(1, requested)
+        var high = requested
+        for _ in 0..<12 {
+            let mid = (low + high) / 2
+            if fits(mid) { low = mid } else { high = mid }
+        }
+        return low
     }
 
     private static func resolvedFont(_ layout: DecorTextRenderLayout) -> NSFont {
@@ -501,16 +562,6 @@ private enum DecorTextRasterCache {
         }
     }
 
-    private static func nsColor(_ fill: DecorTextFill) -> NSColor {
-        switch fill {
-        case .solid(let color):
-            return nsColor(color)
-        case .gradient:
-            // Phase F6 placeholder in the SwiftUI view: gradient fill is white.
-            return .white
-        }
-    }
-
     private static func nsColor(_ color: OverlayColor) -> NSColor {
         NSColor(
             red: color.red,
@@ -520,25 +571,17 @@ private enum DecorTextRasterCache {
         )
     }
 
-    private static func cacheKey(for layout: DecorTextRenderLayout) -> String {
-        "\(layout.content)|\(String(describing: layout.font))|"
-            + "\(quantized(layout.fontSize, step: fontSizeStep))|"
-            + "\(layout.alignment)|\(layout.lineHeight)|"
-            + "\(quantizedSigned(layout.letterSpacing, step: metricStep))|"
-            + "\(fillKey(layout.fillMode))|"
-            + "\(quantized(layout.strokeWidth, step: metricStep))|"
-            + "\(String(describing: layout.strokeColor))|"
-            + "\(quantized(layout.size.width, step: sizeStep))x"
-            + "\(quantized(layout.size.height, step: sizeStep))"
-    }
-
-    private static func fillKey(_ fill: DecorTextFill) -> String {
-        switch fill {
-        case .solid(let color):
-            return "solid:\(color.red),\(color.green),\(color.blue),\(color.alpha)"
-        case .gradient:
-            return "gradient"
-        }
+    private static func cacheKey(for layout: SkiaParagraphTextLayout) -> String {
+        // Exact metrics keep output independent of which preview scale first
+        // populated the cache. NSCache's cost and count limits bound retention.
+        String(reflecting: [
+            layout.content, layout.font.fontName, "\(layout.font.pointSize)",
+            "\(layout.font.fontDescriptor.symbolicTraits.rawValue)",
+            "\(layout.size.width)", "\(layout.size.height)", "\(layout.alignment.rawValue)",
+            "\(layout.lineHeight)", "\(layout.tracking)", String(reflecting: layout.color),
+            String(reflecting: layout.gradient), "\(layout.strokeWidth)",
+            String(reflecting: layout.strokeColor), "\(layout.autoFit)"
+        ])
     }
 }
 

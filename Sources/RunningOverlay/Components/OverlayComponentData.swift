@@ -10,10 +10,25 @@ struct OverlayComponentActivityData: OverlayComponentDataProviding {
     var zoneSnapshot: HeartRateZoneSnapshot?
     var canvasSize: CGSize
     var elementScale: Double
+    var intervalColors: IntervalKindColorPalette = IntervalKindColorPreferences.currentSnapshot()
 
     func signal(path: String) -> OverlayComponentValue {
         let time = activity.componentElapsedTime(elapsedTime)
         switch path {
+        case "activity.duration":
+            return .number(activity.duration)
+        case "activity.totalDistance":
+            return .number(activity.distanceMeters)
+        case "structure.segment":
+            return segment(at: time)
+        case "structure.lastWork":
+            return lastWork(at: time)
+        case "structure.recovery":
+            return recovery(at: time)
+        case "zone.heartRateThreshold":
+            return zoneThreshold(isPace: false)
+        case "zone.paceThreshold":
+            return zoneThreshold(isPace: true)
         case "activity.elapsed":
             return .number(time)
         case "activity.remaining":
@@ -55,6 +70,8 @@ struct OverlayComponentActivityData: OverlayComponentDataProviding {
             return .number(Double(canvasSize.height))
         case "host.scale":
             return .number(elementScale)
+        case "zone.current":
+            return heartRateOrPaceZone(at: time)
         case "zone.heartRate":
             return heartRateZone(at: time)
         case "zone.pace":
@@ -109,6 +126,10 @@ struct OverlayComponentActivityData: OverlayComponentDataProviding {
 
     func list(path: String) -> OverlayComponentValue {
         switch path {
+        case "zone.heartRateZones":
+            return zoneList(isPace: false)
+        case "zone.paceZones":
+            return zoneList(isPace: true)
         case "structure.laps":
             return .list(activity.laps.map(Self.lapRecord))
         case "structure.intervals":
@@ -183,16 +204,16 @@ struct OverlayComponentActivityData: OverlayComponentDataProviding {
               let zoneIndex = Self.heartRateZoneIndex(heartRate: heartRate, snapshot: snapshot) else {
             return .null
         }
-        return Self.zoneRecord(index: zoneIndex, snapshot: snapshot, isPace: false)
+        return zoneValue(index: zoneIndex, snapshot: snapshot, isPace: false, value: Double(heartRate))
     }
 
     private func paceZone(at time: TimeInterval) -> OverlayComponentValue {
         guard let snapshot = zoneSnapshot,
-              let pace = activity.pace(at: time),
+              let pace = activity.pace(at: time), pace > 0,
               let zoneIndex = Self.paceZoneIndex(pace: pace, snapshot: snapshot) else {
             return .null
         }
-        return Self.zoneRecord(index: zoneIndex, snapshot: snapshot, isPace: true)
+        return zoneValue(index: zoneIndex, snapshot: snapshot, isPace: true, value: pace)
     }
 
     private func currentStructure(at time: TimeInterval) -> OverlayComponentValue {
@@ -235,7 +256,7 @@ struct OverlayComponentActivityData: OverlayComponentDataProviding {
         ])
     }
 
-    private static func heartRateZoneIndex(
+    static func heartRateZoneIndex(
         heartRate: Int,
         snapshot: HeartRateZoneSnapshot
     ) -> Int? {
@@ -247,7 +268,7 @@ struct OverlayComponentActivityData: OverlayComponentDataProviding {
         }
     }
 
-    private static func paceZoneIndex(
+    static func paceZoneIndex(
         pace: Double,
         snapshot: HeartRateZoneSnapshot
     ) -> Int? {
@@ -261,7 +282,7 @@ struct OverlayComponentActivityData: OverlayComponentDataProviding {
         }
     }
 
-    private static func zoneRecord(
+    static func zoneRecord(
         index: Int,
         snapshot: HeartRateZoneSnapshot,
         isPace: Bool
@@ -286,9 +307,12 @@ struct OverlayComponentActivityData: OverlayComponentDataProviding {
         ])
     }
 
-    private static func lapRecord(_ lap: LapRecord) -> OverlayComponentValue {
+    static func lapRecord(_ lap: LapRecord) -> OverlayComponentValue {
         .record([
             "index": .number(Double(lap.lapIndex)),
+            "startElapsed": .number(lap.startElapsedTime),
+            "endElapsed": .number(lap.endElapsedTime),
+            "startDistance": .number(lap.startDistanceMeters),
             "elapsed": .number(lap.totalElapsedTime),
             "distance": .number(lap.totalDistanceMeters),
             "avgPace": lap.avgPaceSecondsPerKm.map(OverlayComponentValue.number) ?? .null,
@@ -296,6 +320,7 @@ struct OverlayComponentActivityData: OverlayComponentDataProviding {
             "maxHeartRate": lap.maxHeartRate.map { .number(Double($0)) } ?? .null,
             "avgCadence": lap.avgCadenceSPM.map { .number(Double($0)) } ?? .null,
             "avgPower": lap.avgPowerWatts.map { .number(Double($0)) } ?? .null,
+            "totalAscent": lap.totalAscent.map { .number(Double($0)) } ?? .null,
             "kind": .string(lap.kind.rawValue)
         ])
     }

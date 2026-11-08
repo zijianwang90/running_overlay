@@ -23,6 +23,9 @@ struct ComponentRenderCommand: Equatable {
     var packageURL: URL
     var outputURL: URL
     var scale: Double = 2
+    var activityURL: URL?
+    var elapsedTime: TimeInterval = 0
+    var parametersURL: URL?
 }
 
 enum ComponentCLICommand: Equatable {
@@ -33,6 +36,9 @@ enum ComponentCLICommand: Equatable {
         var packagePath: String?
         var outputPath: String?
         var scale = 2.0
+        var activityPath: String?
+        var parametersPath: String?
+        var elapsedTime = 0.0
         var index = 1
 
         while index < arguments.count {
@@ -50,6 +56,20 @@ enum ComponentCLICommand: Equatable {
                     throw ComponentCLIError.missingValue(argument)
                 }
                 outputPath = arguments[index]
+            case "--component-activity", "--component-at", "--component-params":
+                index += 1
+                guard index < arguments.count else {
+                    throw ComponentCLIError.missingValue(argument)
+                }
+                switch argument {
+                case "--component-activity": activityPath = arguments[index]
+                case "--component-params": parametersPath = arguments[index]
+                default:
+                    guard let value = Double(arguments[index]), value.isFinite, value >= 0 else {
+                        throw ComponentCLIError.invalidTime(arguments[index])
+                    }
+                    elapsedTime = value
+                }
             case "--component-scale":
                 index += 1
                 guard index < arguments.count else {
@@ -72,7 +92,10 @@ enum ComponentCLICommand: Equatable {
                 ComponentRenderCommand(
                     packageURL: packageURL,
                     outputURL: resolvedURL(for: outputPath),
-                    scale: scale
+                    scale: scale,
+                    activityURL: activityPath.map(resolvedURL),
+                    elapsedTime: elapsedTime,
+                    parametersURL: parametersPath.map(resolvedURL)
                 )
             )
         }
@@ -98,6 +121,8 @@ enum ComponentCLIError: LocalizedError {
     case missingValue(String)
     case missingOutput
     case invalidScale(String)
+    case invalidTime(String)
+    case invalidParameters(String)
     case unresolvedDefinition
     case renderFailed
     case writeFailed(String)
@@ -110,6 +135,10 @@ enum ComponentCLIError: LocalizedError {
             "Missing --component-output for --component-render."
         case .invalidScale(let value):
             "Invalid --component-scale '\(value)'; expected a positive number."
+        case .invalidTime(let value):
+            "Invalid --component-at '\(value)'; expected nonnegative activity elapsed seconds."
+        case .invalidParameters(let message):
+            "Invalid --component-params: \(message)"
         case .unresolvedDefinition:
             "Component definition could not be resolved."
         case .renderFailed:
@@ -177,8 +206,60 @@ enum ComponentCommandRunner {
         fputs("[RunningOverlay] \(error.localizedDescription)\n", stderr)
     }
 
+    /// Load author inputs independently of Skia so validation and renderer tests
+    /// exercise exactly the data and parameters used by the command.
+    static func inputs(
+        for command: ComponentRenderCommand,
+        definition: OverlayComponentDefinition
+    ) throws -> (activity: ActivityTimeline, parameters: [String: OverlayJSONValue]) {
+        let activity: ActivityTimeline
+        if let url = command.activityURL {
+            activity = try ActivityFileParser.parse(url: url)
+        } else {
+            activity = ActivityTimeline(
+                startDate: Date(timeIntervalSince1970: 0),
+                duration: 0, distanceMeters: 0, records: [], laps: []
+            )
+        }
+        guard let url = command.parametersURL else { return (activity, [:]) }
+        let values: [String: OverlayJSONValue]
+        do {
+            values = try JSONDecoder().decode([String: OverlayJSONValue].self, from: Data(contentsOf: url))
+        } catch {
+            throw ComponentCLIError.invalidParameters(error.localizedDescription)
+        }
+        // Persistence tolerates stale parameters, but an authoring command
+        // should fail on typos instead of silently rendering the default.
+        for id in values.keys.sorted() {
+            guard let parameter = definition.parameter(named: id), let value = values[id] else {
+                throw ComponentCLIError.invalidParameters("unknown parameter '\(id)'.")
+            }
+            let typed = definition.parameterValues(from: [id: value])[id]
+            guard let typed else {
+                throw ComponentCLIError.invalidParameters("'\(id)' has the wrong type or an invalid color.")
+            }
+            let valid: Bool
+            switch parameter.kind {
+            case .number(let minimum, let maximum, _, _, _):
+                valid = typed.number.map { $0 >= minimum && $0 <= maximum } ?? false
+            case .enumeration(let options):
+                valid = options.contains { $0.value == typed.string }
+            case .metric(let signals, _):
+                valid = typed.string.map(signals.contains) ?? false
+            case .string(let maxLength):
+                valid = typed.string.map { $0.count <= maxLength } ?? false
+            default:
+                valid = true
+            }
+            guard valid else {
+                throw ComponentCLIError.invalidParameters("'\(id)' is outside its declared range or options.")
+            }
+        }
+        return (activity, values)
+    }
+
     #if canImport(CSkiaBridge)
-    /// Renders the component with default parameters onto a transparent canvas
+    /// Renders the component with author inputs onto a transparent canvas
     /// and crops the PNG to the component's design bounds.
     static func renderComponent(_ command: ComponentRenderCommand) throws -> URL {
         let reference = try OverlayComponentLoader.loadReference(at: command.packageURL)
@@ -191,14 +272,18 @@ enum ComponentCommandRunner {
             scale: 1,
             style: .default
         )
-        element.component = OverlayComponentInstance(reference: reference)
-        let activity = ActivityTimeline(
-            startDate: Date(timeIntervalSince1970: 0),
-            duration: 0,
-            distanceMeters: 0,
-            records: [],
-            laps: []
+        let inputs = try inputs(for: command, definition: definition)
+        element.component = OverlayComponentInstance(reference: reference, parameters: inputs.parameters)
+        let activity = inputs.activity
+        let elapsedTime = min(max(command.elapsedTime, 0), activity.duration)
+        let data = OverlayComponentActivityData(
+            activity: activity, elapsedTime: elapsedTime, canvasSize: OverlayRenderContext.referenceCanvasSize,
+            elementScale: 1
         )
+        let resolved = element.component.flatMap { OverlayComponentRegistry.resolve(instance: $0, data: data) }
+        for diagnostic in resolved?.diagnostics ?? [] {
+            fputs("[RunningOverlay] warning: \(diagnostic)\n", stderr)
+        }
         // A content-sized definition has no declared size; measure it once on
         // the reference canvas (one pixel per design unit).
         let design: OverlayComponentSize
@@ -208,7 +293,7 @@ enum ComponentCommandRunner {
                 renderContext: OverlayRenderContext(
                     canvasSize: OverlayRenderContext.referenceCanvasSize,
                     activity: activity,
-                    elapsedTime: 0
+                    elapsedTime: elapsedTime
                 )
             )?.size ?? CGSize(width: 1, height: 1)
             design = OverlayComponentSize(
@@ -239,7 +324,7 @@ enum ComponentCommandRunner {
         let renderContext = OverlayRenderContext(
             canvasSize: CGSize(width: canvasWidth, height: canvasHeight),
             activity: activity,
-            elapsedTime: 0
+            elapsedTime: elapsedTime
         )
         OverlayComponentSkiaRenderer.draw(
             element,

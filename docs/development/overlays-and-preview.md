@@ -344,3 +344,12 @@ against native modules.
 
 The next integration steps are M5d–M5e (legacy mapping, then native removal; see
 `docs/overlay-components/README.md`) and M6 (authoring guide and AI skill).
+
+### Component Authoring Commands
+
+The [component authoring guide](../overlay-components/authoring.md) documents
+`--component-activity` (FIT/GPX), `--component-at` (activity elapsed seconds) and
+`--component-params` (strict JSON overrides) for headless PNG rendering. These
+commands reuse the activity parser, resolver and product Skia renderer; no
+project/timeline time conversions or external services are involved. Reproduce
+the public scalar/series/list gallery with `./scripts/component-gallery.sh`.

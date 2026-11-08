@@ -293,6 +293,12 @@ indirect enum OverlayComponentExpression: Equatable {
             }
             return list[index]
 
+        case "field":
+            guard let record = value(0).record, let key = value(1).string else {
+                return .null
+            }
+            return record[key] ?? .null
+
         case "coalesce":
             for argument in arguments {
                 let result = argument.evaluate(in: context)
@@ -561,6 +567,7 @@ private struct OverlayComponentLexer {
 private struct OverlayComponentExpressionParser {
     let tokens: [OverlayComponentToken]
     private var index = 0
+    private var depth = 0
 
     init(tokens: [OverlayComponentToken]) {
         self.tokens = tokens
@@ -589,6 +596,16 @@ private struct OverlayComponentExpressionParser {
     }
 
     private mutating func parseConditional() throws -> OverlayComponentExpression {
+        // Bounds parser recursion before the post-parse depth check runs, so a
+        // hostile or mistaken document cannot overflow the stack. The limit is
+        // the same nesting budget the parser validates against afterwards.
+        depth += 1
+        defer { depth -= 1 }
+        if depth > OverlayComponentExpression.maximumDepth {
+            throw OverlayComponentExpressionError(
+                "expression nesting exceeds \(OverlayComponentExpression.maximumDepth) levels"
+            )
+        }
         let condition = try parseOr()
         guard match("?") != nil else { return condition }
         let whenTrue = try parseConditional()
