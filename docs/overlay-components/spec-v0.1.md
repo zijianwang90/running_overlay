@@ -819,23 +819,31 @@ Rules:
    their definition is not embedded. Imported components MUST embed the
    definition so projects remain renderable after the source package is
    removed or updated.
-2. On load, if the embedded definition's digest does not match, the host MUST
+2. When a project or template references a bundled digest that the current
+   host build no longer ships, the host MAY load the current bundled definition
+   with the same id and version and keep the instance's authored parameters.
+   Parameters are re-typed against the current document, so unknown fields are
+   ignored. Only an exact id and version match refreshes; a reference whose
+   version the host does not ship remains unresolved rather than guessing.
+   Imported and project references never refresh; their embedded bytes remain
+   authoritative.
+3. On load, if the embedded definition's digest does not match, the host MUST
    use the embedded definition and warn; rendering is authoritative from the
    embedded bytes.
-3. Loading a project with a component version newer than the host supports
+4. Loading a project with a component version newer than the host supports
    MUST fail that element's validation with a clear message, not guess.
-4. `positionX`, `positionY`, `scale`, visibility, lock and opacity reuse the
+5. `positionX`, `positionY`, `scale`, visibility, lock and opacity reuse the
    existing `OverlayElement` semantics and `ProjectDocument` mutation API.
-5. This adds a new element kind and raises the project schema to version 2.
+6. This adds a new element kind and raises the project schema to version 2.
    Existing version 1 projects and native element types MUST continue to load
    and render unchanged. Migration of native elements to components is out of
    scope for v0.1.
-6. The digest is SHA-256 over the canonical JSON encoding (sorted keys, no
+7. The digest is SHA-256 over the canonical JSON encoding (sorted keys, no
    insignificant whitespace), not over the package file bytes, so reformatting
    an embedded definition does not change its identity. When an embedded
    definition's recomputed digest differs from the stored digest, rendering
    uses the embedded bytes.
-7. Imported and project components MUST embed the bytes of every asset their
+8. Imported and project components MUST embed the bytes of every asset their
    `image` nodes reference, keyed by package path (`assets/name.png`) and stored
    base64-encoded by the ordinary JSON encoder. A node that references an asset
    missing from the package is a validation error and the element is not added.

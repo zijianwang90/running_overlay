@@ -3897,7 +3897,7 @@
     },
     {
       "component" : {
-        "digest" : "sha256:7ccbe0f141bfa6c6c0c1d61d8ca9d6bdb922b982ec9048bc29060158e640c0d2",
+        "digest" : "sha256:5021a64fc334f23db3e3aae63e27f1561af33d303c5d5d13dbdf17cce5ce2b3c",
         "id" : "studio.weather-widget",
         "source" : "bundled",
         "version" : "1.0.0"
@@ -5213,7 +5213,7 @@
     },
     {
       "component" : {
-        "digest" : "sha256:9c5f6129189c95214e28b2c7345e9582e8ba5895d95da78b25c502cbd1305b67",
+        "digest" : "sha256:9639d81fa0095a6e1a3fbee02e43db4eb8f3d447974d73fd155259ca77444847",
         "id" : "studio.interval-hud-bar",
         "source" : "bundled",
         "version" : "1.0.0"

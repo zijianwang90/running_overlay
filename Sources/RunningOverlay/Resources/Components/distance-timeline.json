@@ -1068,7 +1068,7 @@
     0
   ],
   "minSize": [
-    460,
-    150
+    "=16 + timelineWidth + max(24, markerDistanceLabelEnabled ? axisLabelFontSize * 3 : 0)",
+    "=24 + timelineHeight + max((showAxisLabels && axisEndpointLabelPlacement == \"below\") ? max(distancePointOffset + axisLabelFontSize * 1.3 - paddingY, 0) : 0, (showDistancePoints && axisMidpointLabelPlacement == \"below\") ? max(midpointAxisLabelOffset + axisLabelFontSize * 1.3 - paddingY, 0) : 0, (markerDistanceLabelEnabled && markerDistanceLabelPlacement == \"below\") ? max(markerDistanceLabelOffset + axisLabelFontSize * 1.3 - paddingY, 0) : 0)"
   ]
 }

@@ -5195,7 +5195,7 @@
     },
     {
       "component" : {
-        "digest" : "sha256:902655bc24c1b3c032d223aaff39f38964198346a96dbc6da83b99dc2c024132",
+        "digest" : "sha256:43d51e3022699150d16d0a6feaa426561a4af30a9017cd79cf5cdd5535b18a88",
         "id" : "studio.distance-timeline",
         "source" : "bundled",
         "version" : "1.0.0"
@@ -10417,7 +10417,7 @@
     },
     {
       "component" : {
-        "digest" : "sha256:7ccbe0f141bfa6c6c0c1d61d8ca9d6bdb922b982ec9048bc29060158e640c0d2",
+        "digest" : "sha256:5021a64fc334f23db3e3aae63e27f1561af33d303c5d5d13dbdf17cce5ce2b3c",
         "id" : "studio.weather-widget",
         "source" : "bundled",
         "version" : "1.0.0"
@@ -13019,7 +13019,7 @@
     },
     {
       "component" : {
-        "digest" : "sha256:a380c6472c2525b4280ffd83cf3c610d6a899839aa040ba86609ac358a266e98",
+        "digest" : "sha256:45029427a0025936dc389d8842834b55a6cf5fef3a6d62a439f895ee6619d344",
         "id" : "studio.elevation-chart",
         "source" : "bundled",
         "version" : "1.0.0"

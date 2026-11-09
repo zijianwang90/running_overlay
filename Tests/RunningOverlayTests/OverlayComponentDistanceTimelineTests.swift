@@ -238,6 +238,52 @@ struct OverlayComponentDistanceTimelineParityTests {
         ]
     }
 
+    @Test func contentBoundsTrackTimelineAndVisibleLabels() throws {
+        let reference = try OverlayComponentReference(
+            definitionData: OverlayComponentDistanceTimelineTests.data(), source: .bundled
+        )
+        let context = OverlayRenderContext(
+            canvasSize: CGSize(width: 1280, height: 720),
+            activity: Self.activity(),
+            elapsedTime: 90
+        )
+        func frame(_ parameters: [String: OverlayJSONValue]) throws -> CGRect {
+            let element = OverlayElement(
+                type: .component,
+                position: CGPoint(x: 0.1, y: 0.1),
+                scale: 1,
+                style: .default,
+                component: OverlayComponentInstance(
+                    reference: reference,
+                    parameters: parameters
+                )
+            )
+            return try #require(OverlayComponentSkiaRenderer.frame(
+                for: element,
+                renderContext: context
+            ))
+        }
+
+        // The retired attached Stats Bar used to reserve 460x150 regardless of
+        // the timeline's own size. Bounds now follow the node frame and only
+        // grow for labels that actually draw outside it.
+        let plain = try frame([:])
+        #expect(abs(plain.width - 360) < 0.001)
+        #expect(abs(plain.height - 92) < 0.001)
+
+        let wide = try frame(["timelineWidth": .number(500)])
+        #expect(abs(wide.width - 540) < 0.001)
+
+        let labeled = try frame([
+            "showAxisLabels": .boolean(true),
+            "axisEndpointLabelPlacement": .string("below"),
+            "distancePointOffset": .number(14),
+            "axisLabelFontSize": .number(11),
+            "paddingY": .number(10)
+        ])
+        #expect(abs(labeled.height - (92 + 18.3)) < 0.001)
+    }
+
     @Test func distanceTimelineMatchesNative() throws {
         try OverlayPreferenceFixtures.withDefaults {
             let reference = try OverlayComponentReference(

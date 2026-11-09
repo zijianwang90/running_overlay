@@ -184,8 +184,19 @@ struct OverlayTemplateElement: Codable, Equatable {
     }
 
     var overlayElement: OverlayElement {
-        let component = componentReference.map {
-            OverlayComponentInstance(reference: $0, parameters: componentParameters)
+        let component = componentReference.map { reference in
+            // Projects and templates authored against an older app build keep
+            // their id and version; refresh a bundled reference the host no
+            // longer ships so the element keeps rendering with the current
+            // definition. Imported and project definitions never refresh.
+            let current = reference.source == .bundled
+                && OverlayComponentRegistry.definition(for: reference) == nil
+                ? OverlayComponentLibrary.currentBundledReference(matching: reference)
+                : nil
+            return OverlayComponentInstance(
+                reference: current ?? reference,
+                parameters: componentParameters
+            )
         }
         return OverlayElement(
             type: type,

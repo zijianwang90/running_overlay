@@ -199,6 +199,43 @@ struct OverlayComponentElevationChartParityTests {
         ]
     }
 
+    @Test func contentBoundsMatchTheChartWithoutStatsBarDeadSpace() throws {
+        let reference = try OverlayComponentReference(
+            definitionData: OverlayComponentElevationChartTests.data(), source: .bundled
+        )
+        let context = OverlayRenderContext(
+            canvasSize: CGSize(width: 1280, height: 720),
+            activity: Self.activity(),
+            elapsedTime: 90
+        )
+        func frame(_ parameters: [String: OverlayJSONValue]) throws -> CGRect {
+            let element = OverlayElement(
+                type: .component,
+                position: CGPoint(x: 0.1, y: 0.1),
+                scale: 1,
+                style: .default,
+                component: OverlayComponentInstance(
+                    reference: reference,
+                    parameters: parameters
+                )
+            )
+            return try #require(OverlayComponentSkiaRenderer.frame(
+                for: element,
+                renderContext: context
+            ))
+        }
+
+        // The retired attached Stats Bar used to reserve 72 extra design units
+        // below a 178-point chart, which showed as empty draggable space.
+        let defaultFrame = try frame([:])
+        #expect(abs(defaultFrame.width - 420) < 0.001)
+        #expect(abs(defaultFrame.height - 178) < 0.001)
+
+        let tallFrame = try frame(["chartHeight": .number(240)])
+        #expect(abs(tallFrame.width - 420) < 0.001)
+        #expect(abs(tallFrame.height - 240) < 0.001)
+    }
+
     @Test func elevationChartMatchesNative() throws {
         try OverlayPreferenceFixtures.withDefaults {
             let reference = try OverlayComponentReference(

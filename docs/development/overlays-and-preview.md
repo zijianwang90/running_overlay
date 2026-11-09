@@ -208,7 +208,14 @@ A `.component` overlay element stores an `OverlayComponentInstance`:
 package paths) when image nodes reference assets; `params` holds the authored
 values. `OverlayComponentRegistry` parses and caches definitions by canonical
 digest plus asset path set, and `OverlayComponentSkiaRenderer` draws the
-resolved tree through the shared preview/export Skia context.
+resolved tree through the shared preview/export Skia context. On project or
+template load, a bundled reference whose exact digest is no longer shipped is
+refreshed to the host's current definition for the same id and version; the
+instance parameters are re-typed, so removed fields are ignored. Editing any
+bundled `component.json` changes its digest, so update the matching
+`component.digest` values in `Resources/Templates/*.rotemplate` in the same
+change; `OverlayTemplateTests.builtInTemplatesReferenceTheHostBundledBuild`
+guards that.
 `OverlayComponentImageCache` decodes PNG/JPEG assets once per digest and draws
 them with contain/fill fit.
 

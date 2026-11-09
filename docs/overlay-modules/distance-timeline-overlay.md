@@ -175,6 +175,11 @@ Implemented on 2026-04-28:
 - When FIT GPS samples are available, the route preset projects and renders the sampled route geometry with a current-position marker; when GPS is missing, it falls back to the stylized progress curve.
 - The Inspector uses dense module-specific sections: Preset, Value, Label, Layout, Progress, Axis Labels, Stats Bar, Media Slot, Route / Elevation, Background & Border, and Effects. Irrelevant sections are hidden for presets that do not use them.
 
+Component bounds follow `timelineWidth`/`timelineHeight` plus only the space
+needed by out-of-frame labels that are currently enabled (axis endpoints,
+distance points, marker distance). The retired attached Stats Bar no longer
+reserves a fixed 460×150 box.
+
 Remaining:
 
 - Full SVG path coverage, gradients, filters, masks, and CSS animation support.

@@ -216,9 +216,33 @@ enum OverlayComponentLibrary {
         )
     }
 
+    /// The host's current reference for a bundled id and version, used when a
+    /// project or template was authored against an older app build. A version
+    /// the host does not ship still fails to resolve.
+    static func currentBundledReference(
+        matching reference: OverlayComponentReference
+    ) -> OverlayComponentReference? {
+        guard reference.source == .bundled else { return nil }
+        for item in uniqueResources {
+            guard let data = data(for: item),
+                  let current = try? OverlayComponentReference(
+                      definitionData: data,
+                      source: .bundled
+                  ),
+                  current.id == reference.id,
+                  current.version == reference.version else {
+                continue
+            }
+            return current
+        }
+        return nil
+    }
+
     /// Resolves a bundled reference to a validated definition, matching the
-    /// digest recorded in the reference so updated bundled components do not
-    /// silently change an existing project.
+    /// digest recorded in the reference so a template or project only resolves
+    /// against the exact build it recorded. Callers that need to keep an older
+    /// reference rendering refresh it with `currentBundledReference(matching:)`
+    /// before resolving.
     static func definition(for reference: OverlayComponentReference) -> OverlayComponentDefinition? {
         guard reference.source == .bundled else { return nil }
         for item in uniqueResources {

@@ -612,6 +612,52 @@ struct OverlayTemplateTests {
         #expect(project.toastMessage == "Template applied: Race")
     }
 
+    @Test func staleBundledTemplateReferenceRefreshesToHostBuild() throws {
+        let item = try numericLibraryItem()
+        let current = try OverlayComponentLibrary.reference(for: item)
+        var stale = current
+        stale.digest = "sha256:0000"
+
+        let stored = OverlayTemplateElement(
+            type: .component,
+            positionX: 0.1,
+            positionY: 0.2,
+            scale: 1,
+            style: .default,
+            componentReference: stale,
+            componentParameters: ["metricId": .string("pace")]
+        )
+
+        let element = stored.overlayElement
+        #expect(element.component?.reference == current)
+        #expect(element.component?.parameters["metricId"] == .string("pace"))
+    }
+
+    @Test func builtInTemplatesReferenceTheHostBundledBuild() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        for template in BuiltInOverlayTemplate.all {
+            let resourceName = try #require(template.resourceName)
+            let url = root
+                .appendingPathComponent("Sources/RunningOverlay/Resources/Templates")
+                .appendingPathComponent("\(resourceName).rotemplate")
+            let decoded = try JSONDecoder().decode(
+                OverlayTemplate.self,
+                from: Data(contentsOf: url)
+            )
+            let references = decoded.elements.compactMap(\.componentReference)
+            #expect(!references.isEmpty, "\(template.name) has no component elements")
+            for reference in references where reference.source == .bundled {
+                #expect(
+                    OverlayComponentRegistry.definition(for: reference) != nil,
+                    "\(template.name) references a stale bundled \(reference.id) \(reference.version)"
+                )
+            }
+        }
+    }
+
     private func numericLibraryItem() throws -> OverlayComponentLibraryItem {
         try #require(OverlayComponentLibraryItem.all.first { $0.id == "studio.numeric#pace" })
     }
