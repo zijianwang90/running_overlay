@@ -36,6 +36,11 @@ final class SkiaEasyRunRenderer {
     /// Weather the host resolved for the activity location. Host-drawn weather
     /// components read it through the render context; components never fetch.
     var weatherPayload: WeatherPayload?
+    /// Preview only: lets component draws publish their measured bounds so the
+    /// selection/hit-test frame query does not resolve every component twice
+    /// per update. Export never publishes, so a concurrent export cannot
+    /// overwrite the preview's frame cache.
+    var publishesPreviewFrames = false
 
     /// Chart-family modules with a real Skia port. Keep this in sync as Group
     /// D/E lands each renderer; unported types stay on the SwiftUI fallback.
@@ -149,7 +154,8 @@ final class SkiaEasyRunRenderer {
                 OverlayComponentSkiaRenderer.draw(
                     element,
                     renderContext: renderContext,
-                    context: context
+                    context: context,
+                    publishesPreviewFrame: publishesPreviewFrames
                 )
                 continue
             }

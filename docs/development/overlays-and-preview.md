@@ -275,7 +275,10 @@ background filling the padded bounds; the clip is that rect outset by
 overhang survives. `OverlayComponentSkiaRenderer.frame(for:renderContext:)`
 exposes the measured bounds; `PreviewElementGeometry` uses it for hit testing
 and selection, and `--component-render` measures content-sized definitions on
-the reference canvas before cropping. Native numeric background padding and
+the reference canvas before cropping. The preview draw publishes the bounds it
+measured (export never does), so the frame query reuses them shifted to the
+element's current position and scaled to the fitted on-screen canvas instead
+of resolving and text-measuring every component a second time per update. Native numeric background padding and
 radius scaled with the canvas but not the element, while component design
 units scale with both; the bundled template conversion divided those values
 by each element's scale.

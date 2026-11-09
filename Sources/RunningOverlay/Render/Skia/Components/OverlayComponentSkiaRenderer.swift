@@ -14,11 +14,15 @@ enum OverlayComponentSkiaRenderer {
     static func draw(
         _ element: OverlayElement,
         renderContext: OverlayRenderContext,
-        context: OpaquePointer
+        context: OpaquePointer,
+        publishesPreviewFrame: Bool = false
     ) {
         guard let instance = element.component,
               let placement = placement(for: element, renderContext: renderContext) else {
             return
+        }
+        if publishesPreviewFrame {
+            publishPreviewFrame(element: element, placement: placement, renderContext: renderContext)
         }
         let resolved = placement.resolved
         let space = placement.space
@@ -68,11 +72,96 @@ enum OverlayComponentSkiaRenderer {
     /// Canvas-pixel frame of a component instance at the render context's
     /// playhead. Content-sized components measure their content, so the frame
     /// follows the current values; hit testing and selection use this.
+    ///
+    /// Reuses the bounds of the most recent preview draw for the same element
+    /// when its position, scale and instance are unchanged. SwiftUI asks for
+    /// every visible frame from `body` before the draw runs, so resolving and
+    /// measuring the tree here too doubled the per-update component cost. The
+    /// reused bounds trail the playhead by at most one presented frame, which
+    /// is below the resolution of hit testing and selection chrome.
     static func frame(
         for element: OverlayElement,
         renderContext: OverlayRenderContext
     ) -> CGRect? {
-        placement(for: element, renderContext: renderContext)?.bounds
+        if let cached = cachedPreviewFrame(for: element, renderContext: renderContext) {
+            return cached
+        }
+        return placement(for: element, renderContext: renderContext)?.bounds
+    }
+
+    // MARK: - Preview frame reuse
+
+    private struct PreviewFrameEntry {
+        var canvasSize: CGSize
+        /// Element origin (canvas pixels) the bounds were measured at.
+        var origin: CGPoint
+        var bounds: CGRect
+        var instance: OverlayComponentInstance
+        var elementScale: Double
+    }
+
+    private static let previewFrameLock = NSLock()
+    nonisolated(unsafe) private static var previewFrames: [OverlayElement.ID: PreviewFrameEntry] = [:]
+
+    /// Records the bounds a preview draw produced so `frame(for:)` can answer
+    /// without resolving the component again.
+    private static func publishPreviewFrame(
+        element: OverlayElement,
+        placement: Placement,
+        renderContext: OverlayRenderContext
+    ) {
+        guard let instance = element.component else { return }
+        let entry = PreviewFrameEntry(
+            canvasSize: renderContext.canvasSize,
+            origin: componentOrigin(for: element, in: renderContext),
+            bounds: placement.bounds,
+            instance: instance,
+            elementScale: element.scale
+        )
+        previewFrameLock.lock()
+        previewFrames[element.id] = entry
+        previewFrameLock.unlock()
+    }
+
+    private static func cachedPreviewFrame(
+        for element: OverlayElement,
+        renderContext: OverlayRenderContext
+    ) -> CGRect? {
+        guard let instance = element.component else { return nil }
+        previewFrameLock.lock()
+        let entry = previewFrames[element.id]
+        previewFrameLock.unlock()
+        guard let entry,
+              entry.elementScale == element.scale,
+              entry.instance == instance else {
+            return nil
+        }
+        // The draw runs at the project pixel resolution while the SwiftUI
+        // canvas asks for frames in its fitted, on-screen points. Both keep
+        // the project aspect ratio, so measured bounds scale linearly.
+        let scaleX = renderContext.canvasSize.width / entry.canvasSize.width
+        let scaleY = renderContext.canvasSize.height / entry.canvasSize.height
+        guard scaleX.isFinite, scaleY.isFinite,
+              abs(scaleX - scaleY) <= 0.001 else {
+            return nil
+        }
+        let origin = componentOrigin(for: element, in: renderContext)
+        return CGRect(
+            x: origin.x + (entry.bounds.minX - entry.origin.x) * scaleX,
+            y: origin.y + (entry.bounds.minY - entry.origin.y) * scaleY,
+            width: entry.bounds.width * scaleX,
+            height: entry.bounds.height * scaleY
+        )
+    }
+
+    private static func componentOrigin(
+        for element: OverlayElement,
+        in renderContext: OverlayRenderContext
+    ) -> CGPoint {
+        CGPoint(
+            x: renderContext.canvasSize.width * element.position.x,
+            y: renderContext.canvasSize.height * element.position.y
+        )
     }
 
     // MARK: - Placement

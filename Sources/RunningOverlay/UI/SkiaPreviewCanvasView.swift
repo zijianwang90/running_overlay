@@ -415,6 +415,7 @@ final class SkiaPreviewMetalView: NSView {
         }
         renderer = newRenderer
         newRenderer.weatherPayload = weatherPayload
+        newRenderer.publishesPreviewFrames = true
         rendererSize = size
         return newRenderer
     }

@@ -359,6 +359,83 @@ import Testing
         #expect(view.presentedFrameCount >= 3)
     }
 
+    // MARK: - Component frame reuse
+
+    /// The preview asks for every component frame from SwiftUI `body` and then
+    /// draws the same elements. A draw publishes its measured bounds so the
+    /// frame query answers without resolving the component again, scaled to the
+    /// fitted on-screen canvas.
+    @Test func componentFrameQueryReusesPaintedBounds() throws {
+        let item = try #require(
+            OverlayComponentLibraryItem.all.first { $0.id == "studio.builtin.heart-rate-pill" }
+        )
+        let reference = try OverlayComponentLibrary.reference(for: item)
+        let element = OverlayElement(
+            type: .component,
+            position: CGPoint(x: 0.25, y: 0.4),
+            scale: 1,
+            style: .default,
+            component: OverlayComponentInstance(reference: reference)
+        )
+        let full = Self.hd1080
+        let half = CGSize(width: full.width / 2, height: full.height / 2)
+        let fullContext = OverlayRenderContext(
+            canvasSize: full,
+            activity: Self.activity,
+            elapsedTime: 30
+        )
+        let halfContext = OverlayRenderContext(
+            canvasSize: half,
+            activity: Self.activity,
+            elapsedTime: 30
+        )
+
+        // Ground truth from the uncached measurement path.
+        let measuredFull = try #require(
+            OverlayComponentSkiaRenderer.frame(for: element, renderContext: fullContext)
+        )
+        let measuredHalf = try #require(
+            OverlayComponentSkiaRenderer.frame(for: element, renderContext: halfContext)
+        )
+        #expect(abs(measuredFull.width * 0.5 - measuredHalf.width) < 0.5)
+        #expect(abs(measuredFull.height * 0.5 - measuredHalf.height) < 0.5)
+        #expect(abs(measuredFull.minX * 0.5 - measuredHalf.minX) < 0.5)
+
+        // A preview draw publishes the bounds it painted.
+        let renderer = try #require(SkiaEasyRunRenderer(size: full))
+        renderer.publishesPreviewFrames = true
+        renderer.draw(
+            layout: OverlayLayout(elements: [element]),
+            activity: Self.activity,
+            elapsedTime: 30
+        )
+
+        let cachedFull = try #require(
+            OverlayComponentSkiaRenderer.frame(for: element, renderContext: fullContext)
+        )
+        let cachedHalf = try #require(
+            OverlayComponentSkiaRenderer.frame(for: element, renderContext: halfContext)
+        )
+        #expect(abs(cachedFull.minX - measuredFull.minX) < 0.001)
+        #expect(abs(cachedFull.minY - measuredFull.minY) < 0.001)
+        #expect(abs(cachedFull.width - measuredFull.width) < 0.001)
+        #expect(abs(cachedFull.height - measuredFull.height) < 0.001)
+        #expect(abs(cachedHalf.minX - measuredHalf.minX) < 0.5)
+        #expect(abs(cachedHalf.minY - measuredHalf.minY) < 0.5)
+        #expect(abs(cachedHalf.width - measuredHalf.width) < 0.5)
+        #expect(abs(cachedHalf.height - measuredHalf.height) < 0.5)
+
+        // Moving the element shifts the reused frame without a new measurement.
+        var moved = element
+        moved.position = CGPoint(x: 0.5, y: 0.4)
+        let movedFrame = try #require(
+            OverlayComponentSkiaRenderer.frame(for: moved, renderContext: fullContext)
+        )
+        let expectedX = full.width * 0.5
+        #expect(abs(movedFrame.minX - expectedX) < 0.001)
+        #expect(abs(movedFrame.width - measuredFull.width) < 0.001)
+    }
+
     // MARK: - Helpers
 
     private static let hd1080 = CGSize(width: 1920, height: 1080)
